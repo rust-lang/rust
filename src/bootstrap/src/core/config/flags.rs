@@ -132,6 +132,9 @@ pub struct Flags {
     #[arg(global = true, long)]
     /// use message-format=json
     pub json_output: bool,
+    #[arg(global = true, long)]
+    /// only build proc-macros and build scripts (for rust-analyzer)
+    pub compile_time_deps: bool,
 
     #[arg(global = true, long, value_name = "STYLE")]
     #[arg(value_enum, default_value_t = Color::Auto)]
@@ -383,7 +386,10 @@ pub enum Subcommand {
         bless: bool,
         #[arg(long)]
         /// comma-separated list of other files types to check (accepts py, py:lint,
-        /// py:fmt, shell, shell:lint, cpp, cpp:fmt, spellcheck, spellcheck:fix)
+        /// py:fmt, shell, cpp, cpp:fmt, js, js:lint, js:typecheck, spellcheck)
+        ///
+        /// Any argument can be prefixed with "auto:" to only run if
+        /// relevant files are modified (eg. "auto:py").
         extra_checks: Option<String>,
         #[arg(long)]
         /// rerun tests even if the inputs are unchanged
@@ -475,13 +481,6 @@ Arguments:
         #[arg(value_name = "<PROFILE>|hook|editor|link")]
         profile: Option<PathBuf>,
     },
-    /// Suggest a subset of tests to run, based on modified files
-    #[command(long_about = "\n")]
-    Suggest {
-        /// run suggested tests
-        #[arg(long)]
-        run: bool,
-    },
     /// Vendor dependencies
     Vendor {
         /// Additional `Cargo.toml` to sync and vendor
@@ -512,7 +511,6 @@ impl Subcommand {
             Subcommand::Install => Kind::Install,
             Subcommand::Run { .. } => Kind::Run,
             Subcommand::Setup { .. } => Kind::Setup,
-            Subcommand::Suggest { .. } => Kind::Suggest,
             Subcommand::Vendor { .. } => Kind::Vendor,
             Subcommand::Perf { .. } => Kind::Perf,
         }

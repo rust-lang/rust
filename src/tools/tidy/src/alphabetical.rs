@@ -103,7 +103,7 @@ fn check_section<'a>(
 
         let prev_line_trimmed_lowercase = prev_line.trim_start_matches(' ');
 
-        if version_sort(&trimmed_line, &prev_line_trimmed_lowercase).is_lt() {
+        if version_sort(trimmed_line, prev_line_trimmed_lowercase).is_lt() {
             tidy_error_ext!(err, bad, "{file}:{}: line not in alphabetical order", idx + 1);
         }
 

@@ -2036,7 +2036,7 @@ impl DefWithBody {
                     )
                 }
                 let mol = &borrowck_result.mutability_of_locals;
-                for (binding_id, binding_data) in body.bindings.iter() {
+                for (binding_id, binding_data) in body.bindings() {
                     if binding_data.problems.is_some() {
                         // We should report specific diagnostics for these problems, not `need-mut` and `unused-mut`.
                         continue;
@@ -3222,7 +3222,8 @@ impl Macro {
         }
     }
 
-    pub fn is_asm_or_global_asm(&self, db: &dyn HirDatabase) -> bool {
+    /// Is this `asm!()`, or a variant of it (e.g. `global_asm!()`)?
+    pub fn is_asm_like(&self, db: &dyn HirDatabase) -> bool {
         match self.id {
             MacroId::Macro2Id(it) => {
                 matches!(it.lookup(db).expander, MacroExpander::BuiltIn(m) if m.is_asm())

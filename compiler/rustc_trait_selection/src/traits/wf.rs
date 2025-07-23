@@ -197,6 +197,7 @@ pub fn clause_obligations<'tcx>(
         ty::ClauseKind::ConstEvaluatable(ct) => {
             wf.add_wf_preds_for_term(ct.into());
         }
+        ty::ClauseKind::UnstableFeature(_) => {}
     }
 
     wf.normalize(infcx)
@@ -288,9 +289,9 @@ fn extend_cause_with_original_assoc_item_obligation<'tcx>(
             && let Some(&impl_item_id) =
                 tcx.impl_item_implementor_ids(impl_def_id).get(&projection_ty.def_id)
             && let Some(impl_item) =
-                items.iter().find(|item| item.id.owner_id.to_def_id() == impl_item_id)
+                items.iter().find(|item| item.owner_id.to_def_id() == impl_item_id)
         {
-            Some(tcx.hir_impl_item(impl_item.id).expect_type().span)
+            Some(tcx.hir_impl_item(*impl_item).expect_type().span)
         } else {
             None
         }
@@ -1095,6 +1096,7 @@ pub fn object_region_bounds<'tcx>(
                 | ty::ClauseKind::Projection(_)
                 | ty::ClauseKind::ConstArgHasType(_, _)
                 | ty::ClauseKind::WellFormed(_)
+                | ty::ClauseKind::UnstableFeature(_)
                 | ty::ClauseKind::ConstEvaluatable(_) => None,
             }
         })

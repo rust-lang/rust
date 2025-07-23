@@ -62,12 +62,14 @@ impl<'tcx> crate::MirPass<'tcx> for ElaborateDrops {
             let env = MoveDataTypingEnv { move_data, typing_env };
 
             let mut inits = MaybeInitializedPlaces::new(tcx, body, &env.move_data)
+                .exclude_inactive_in_otherwise()
                 .skipping_unreachable_unwind()
                 .iterate_to_fixpoint(tcx, body, Some("elaborate_drops"))
                 .into_results_cursor(body);
             let dead_unwinds = compute_dead_unwinds(body, &mut inits);
 
             let uninits = MaybeUninitializedPlaces::new(tcx, body, &env.move_data)
+                .include_inactive_in_otherwise()
                 .mark_inactive_variants_as_uninit()
                 .skipping_unreachable_unwind(dead_unwinds)
                 .iterate_to_fixpoint(tcx, body, Some("elaborate_drops"))
@@ -251,8 +253,8 @@ struct ElaborateDropsCtxt<'a, 'tcx> {
 }
 
 impl fmt::Debug for ElaborateDropsCtxt<'_, '_> {
-    fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        Ok(())
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ElaborateDropsCtxt").finish_non_exhaustive()
     }
 }
 

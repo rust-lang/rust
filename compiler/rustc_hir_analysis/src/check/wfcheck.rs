@@ -326,7 +326,9 @@ pub(crate) fn check_trait_item<'tcx>(
     let mut res = Ok(());
 
     if matches!(tcx.def_kind(def_id), DefKind::AssocFn) {
-        for &assoc_ty_def_id in tcx.associated_types_for_impl_traits_in_associated_fn(def_id) {
+        for &assoc_ty_def_id in
+            tcx.associated_types_for_impl_traits_in_associated_fn(def_id.to_def_id())
+        {
             res = res.and(check_associated_item(tcx, assoc_ty_def_id.expect_local()));
         }
     }
@@ -2210,12 +2212,16 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
         let implied_obligations = traits::elaborate(tcx, predicates_with_span);
 
         for (pred, obligation_span) in implied_obligations {
-            // We lower empty bounds like `Vec<dyn Copy>:` as
-            // `WellFormed(Vec<dyn Copy>)`, which will later get checked by
-            // regular WF checking
-            if let ty::ClauseKind::WellFormed(..) = pred.kind().skip_binder() {
-                continue;
+            match pred.kind().skip_binder() {
+                // We lower empty bounds like `Vec<dyn Copy>:` as
+                // `WellFormed(Vec<dyn Copy>)`, which will later get checked by
+                // regular WF checking
+                ty::ClauseKind::WellFormed(..)
+                // Unstable feature goals cannot be proven in an empty environment so skip them
+                | ty::ClauseKind::UnstableFeature(..) => continue,
+                _ => {}
             }
+
             // Match the existing behavior.
             if pred.is_global() && !pred.has_type_flags(TypeFlags::HAS_BINDER_VARS) {
                 let pred = self.normalize(span, None, pred);

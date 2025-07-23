@@ -384,15 +384,19 @@ impl<'tcx> AsmCodegenMethods<'tcx> for CodegenCx<'_, 'tcx> {
     ) {
         let asm_arch = self.tcx.sess.asm_arch.unwrap();
 
-        // Default to Intel syntax on x86
-        let intel_syntax = matches!(asm_arch, InlineAsmArch::X86 | InlineAsmArch::X86_64)
-            && !options.contains(InlineAsmOptions::ATT_SYNTAX);
-
         // Build the template string
         let mut template_str = String::new();
-        if intel_syntax {
-            template_str.push_str(".intel_syntax\n");
+
+        // On X86 platforms there are two assembly syntaxes. Rust uses intel by default,
+        // but AT&T can be specified explicitly.
+        if matches!(asm_arch, InlineAsmArch::X86 | InlineAsmArch::X86_64) {
+            if options.contains(InlineAsmOptions::ATT_SYNTAX) {
+                template_str.push_str(".att_syntax\n")
+            } else {
+                template_str.push_str(".intel_syntax\n")
+            }
         }
+
         for piece in template {
             match *piece {
                 InlineAsmTemplatePiece::String(ref s) => template_str.push_str(s),
@@ -431,7 +435,11 @@ impl<'tcx> AsmCodegenMethods<'tcx> for CodegenCx<'_, 'tcx> {
                 }
             }
         }
-        if intel_syntax {
+
+        // Just to play it safe, if intel was used, reset the assembly syntax to att.
+        if matches!(asm_arch, InlineAsmArch::X86 | InlineAsmArch::X86_64)
+            && !options.contains(InlineAsmOptions::ATT_SYNTAX)
+        {
             template_str.push_str("\n.att_syntax\n");
         }
 

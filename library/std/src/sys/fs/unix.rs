@@ -1491,7 +1491,6 @@ impl File {
             target_os = "redox",
             target_os = "espidf",
             target_os = "horizon",
-            target_os = "vxworks",
             target_os = "nuttx",
         )))]
         let to_timespec = |time: Option<SystemTime>| match time {

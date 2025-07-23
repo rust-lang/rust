@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use rustc_abi::Align;
 use rustc_ast::expand::autodiff_attrs::AutoDiffAttrs;
 use rustc_attr_data_structures::{InlineAttr, InstructionSetAttr, OptimizeAttr};
@@ -6,6 +8,26 @@ use rustc_span::Symbol;
 use rustc_target::spec::SanitizerSet;
 
 use crate::mir::mono::Linkage;
+use crate::ty::{InstanceKind, TyCtxt};
+
+impl<'tcx> TyCtxt<'tcx> {
+    pub fn codegen_instance_attrs(
+        self,
+        instance_kind: InstanceKind<'_>,
+    ) -> Cow<'tcx, CodegenFnAttrs> {
+        let mut attrs = Cow::Borrowed(self.codegen_fn_attrs(instance_kind.def_id()));
+
+        // Drop the `#[naked]` attribute on non-item `InstanceKind`s, like the shims that
+        // are generated for indirect function calls.
+        if !matches!(instance_kind, InstanceKind::Item(_)) {
+            if attrs.flags.contains(CodegenFnAttrFlags::NAKED) {
+                attrs.to_mut().flags.remove(CodegenFnAttrFlags::NAKED);
+            }
+        }
+
+        attrs
+    }
+}
 
 #[derive(Clone, TyEncodable, TyDecodable, HashStable, Debug)]
 pub struct CodegenFnAttrs {
@@ -48,6 +70,7 @@ pub struct CodegenFnAttrs {
     /// switching between multiple instruction sets.
     pub instruction_set: Option<InstructionSetAttr>,
     /// The `#[align(...)]` attribute. Determines the alignment of the function body.
+    // FIXME(#82232, #143834): temporarily renamed to mitigate `#[align]` nameres ambiguity
     pub alignment: Option<Align>,
     /// The `#[patchable_function_entry(...)]` attribute. Indicates how many nops should be around
     /// the function entry.

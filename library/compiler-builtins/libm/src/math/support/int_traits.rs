@@ -37,8 +37,6 @@ pub trait Int:
     + fmt::Display
     + fmt::Binary
     + fmt::LowerHex
-    + PartialEq
-    + PartialOrd
     + ops::AddAssign
     + ops::SubAssign
     + ops::MulAssign
@@ -102,7 +100,10 @@ pub trait Int:
     fn rotate_left(self, other: u32) -> Self;
     fn overflowing_add(self, other: Self) -> (Self, bool);
     fn overflowing_sub(self, other: Self) -> (Self, bool);
+    fn carrying_add(self, other: Self, carry: bool) -> (Self, bool);
+    fn borrowing_sub(self, other: Self, borrow: bool) -> (Self, bool);
     fn leading_zeros(self) -> u32;
+    fn trailing_zeros(self) -> u32;
     fn ilog2(self) -> u32;
 }
 
@@ -168,11 +169,29 @@ macro_rules! int_impl_common {
             <Self>::leading_zeros(self)
         }
 
+        fn trailing_zeros(self) -> u32 {
+            <Self>::trailing_zeros(self)
+        }
+
         fn ilog2(self) -> u32 {
             // On our older MSRV, this resolves to the trait method. Which won't actually work,
             // but this is only called behind other gates.
             #[allow(clippy::incompatible_msrv)]
             <Self>::ilog2(self)
+        }
+
+        fn carrying_add(self, other: Self, carry: bool) -> (Self, bool) {
+            let (ab, of1) = self.overflowing_add(other);
+            let (abc, of2) = ab.overflowing_add(Self::from_bool(carry));
+            // `of1 && of2` is possible with signed integers if a negative sum
+            // overflows to `MAX` and adding the carry overflows again back to `MIN`
+            (abc, of1 ^ of2)
+        }
+
+        fn borrowing_sub(self, other: Self, borrow: bool) -> (Self, bool) {
+            let (ab, of1) = self.overflowing_sub(other);
+            let (abc, of2) = ab.overflowing_sub(Self::from_bool(borrow));
+            (abc, of1 ^ of2)
         }
     };
 }

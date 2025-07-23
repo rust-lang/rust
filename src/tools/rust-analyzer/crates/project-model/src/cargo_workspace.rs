@@ -300,8 +300,6 @@ pub struct CargoMetadataConfig {
     pub extra_args: Vec<String>,
     /// Extra env vars to set when invoking the cargo command
     pub extra_env: FxHashMap<String, Option<String>>,
-    /// The target dir for this workspace load.
-    pub target_dir: Utf8PathBuf,
     /// What kind of metadata are we fetching: workspace, rustc, or sysroot.
     pub kind: &'static str,
     /// The toolchain version, if known.
@@ -317,188 +315,6 @@ struct PackageMetadata {
 }
 
 impl CargoWorkspace {
-    /// Fetches the metadata for the given `cargo_toml` manifest.
-    /// A successful result may contain another metadata error if the initial fetching failed but
-    /// the `--no-deps` retry succeeded.
-    ///
-    /// The sysroot is used to set the `RUSTUP_TOOLCHAIN` env var when invoking cargo
-    /// to ensure that the rustup proxy uses the correct toolchain.
-    pub fn fetch_metadata(
-        cargo_toml: &ManifestPath,
-        current_dir: &AbsPath,
-        config: &CargoMetadataConfig,
-        sysroot: &Sysroot,
-        no_deps: bool,
-        locked: bool,
-        progress: &dyn Fn(String),
-    ) -> anyhow::Result<(cargo_metadata::Metadata, Option<anyhow::Error>)> {
-        let res = Self::fetch_metadata_(
-            cargo_toml,
-            current_dir,
-            config,
-            sysroot,
-            no_deps,
-            locked,
-            progress,
-        );
-        if let Ok((_, Some(ref e))) = res {
-            tracing::warn!(
-                %cargo_toml,
-                ?e,
-                "`cargo metadata` failed, but retry with `--no-deps` succeeded"
-            );
-        }
-        res
-    }
-
-    fn fetch_metadata_(
-        cargo_toml: &ManifestPath,
-        current_dir: &AbsPath,
-        config: &CargoMetadataConfig,
-        sysroot: &Sysroot,
-        no_deps: bool,
-        locked: bool,
-        progress: &dyn Fn(String),
-    ) -> anyhow::Result<(cargo_metadata::Metadata, Option<anyhow::Error>)> {
-        let cargo = sysroot.tool(Tool::Cargo, current_dir, &config.extra_env);
-        let mut meta = MetadataCommand::new();
-        meta.cargo_path(cargo.get_program());
-        cargo.get_envs().for_each(|(var, val)| _ = meta.env(var, val.unwrap_or_default()));
-        meta.manifest_path(cargo_toml.to_path_buf());
-        match &config.features {
-            CargoFeatures::All => {
-                meta.features(CargoOpt::AllFeatures);
-            }
-            CargoFeatures::Selected { features, no_default_features } => {
-                if *no_default_features {
-                    meta.features(CargoOpt::NoDefaultFeatures);
-                }
-                if !features.is_empty() {
-                    meta.features(CargoOpt::SomeFeatures(features.clone()));
-                }
-            }
-        }
-        meta.current_dir(current_dir);
-
-        let mut other_options = vec![];
-        // cargo metadata only supports a subset of flags of what cargo usually accepts, and usually
-        // the only relevant flags for metadata here are unstable ones, so we pass those along
-        // but nothing else
-        let mut extra_args = config.extra_args.iter();
-        while let Some(arg) = extra_args.next() {
-            if arg == "-Z" {
-                if let Some(arg) = extra_args.next() {
-                    other_options.push("-Z".to_owned());
-                    other_options.push(arg.to_owned());
-                }
-            }
-        }
-
-        if !config.targets.is_empty() {
-            other_options.extend(
-                config.targets.iter().flat_map(|it| ["--filter-platform".to_owned(), it.clone()]),
-            );
-        }
-        if no_deps {
-            other_options.push("--no-deps".to_owned());
-        }
-
-        let mut using_lockfile_copy = false;
-        // The manifest is a rust file, so this means its a script manifest
-        if cargo_toml.is_rust_manifest() {
-            other_options.push("-Zscript".to_owned());
-        } else if config
-            .toolchain_version
-            .as_ref()
-            .is_some_and(|v| *v >= MINIMUM_TOOLCHAIN_VERSION_SUPPORTING_LOCKFILE_PATH)
-        {
-            let lockfile = <_ as AsRef<Utf8Path>>::as_ref(cargo_toml).with_extension("lock");
-            let target_lockfile = config
-                .target_dir
-                .join("rust-analyzer")
-                .join("metadata")
-                .join(config.kind)
-                .join("Cargo.lock");
-            match std::fs::copy(&lockfile, &target_lockfile) {
-                Ok(_) => {
-                    using_lockfile_copy = true;
-                    other_options.push("--lockfile-path".to_owned());
-                    other_options.push(target_lockfile.to_string());
-                }
-                Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
-                    // There exists no lockfile yet
-                    using_lockfile_copy = true;
-                    other_options.push("--lockfile-path".to_owned());
-                    other_options.push(target_lockfile.to_string());
-                }
-                Err(e) => {
-                    tracing::warn!(
-                        "Failed to copy lock file from `{lockfile}` to `{target_lockfile}`: {e}",
-                    );
-                }
-            }
-        }
-        if using_lockfile_copy {
-            other_options.push("-Zunstable-options".to_owned());
-            meta.env("RUSTC_BOOTSTRAP", "1");
-        }
-        // No need to lock it if we copied the lockfile, we won't modify the original after all/
-        // This way cargo cannot error out on us if the lockfile requires updating.
-        if !using_lockfile_copy && locked {
-            other_options.push("--locked".to_owned());
-        }
-        meta.other_options(other_options);
-
-        // FIXME: Fetching metadata is a slow process, as it might require
-        // calling crates.io. We should be reporting progress here, but it's
-        // unclear whether cargo itself supports it.
-        progress("cargo metadata: started".to_owned());
-
-        let res = (|| -> anyhow::Result<(_, _)> {
-            let mut errored = false;
-            let output =
-                spawn_with_streaming_output(meta.cargo_command(), &mut |_| (), &mut |line| {
-                    errored = errored || line.starts_with("error") || line.starts_with("warning");
-                    if errored {
-                        progress("cargo metadata: ?".to_owned());
-                        return;
-                    }
-                    progress(format!("cargo metadata: {line}"));
-                })?;
-            if !output.status.success() {
-                progress(format!("cargo metadata: failed {}", output.status));
-                let error = cargo_metadata::Error::CargoMetadata {
-                    stderr: String::from_utf8(output.stderr)?,
-                }
-                .into();
-                if !no_deps {
-                    // If we failed to fetch metadata with deps, try again without them.
-                    // This makes r-a still work partially when offline.
-                    if let Ok((metadata, _)) = Self::fetch_metadata_(
-                        cargo_toml,
-                        current_dir,
-                        config,
-                        sysroot,
-                        true,
-                        locked,
-                        progress,
-                    ) {
-                        return Ok((metadata, Some(error)));
-                    }
-                }
-                return Err(error);
-            }
-            let stdout = from_utf8(&output.stdout)?
-                .lines()
-                .find(|line| line.starts_with('{'))
-                .ok_or(cargo_metadata::Error::NoJson)?;
-            Ok((cargo_metadata::MetadataCommand::parse(stdout)?, None))
-        })()
-        .with_context(|| format!("Failed to run `{:?}`", meta.cargo_command()));
-        progress("cargo metadata: finished".to_owned());
-        res
-    }
-
     pub fn new(
         mut meta: cargo_metadata::Metadata,
         ws_manifest_path: ManifestPath,
@@ -731,5 +547,216 @@ impl CargoWorkspace {
 
     pub fn requires_rustc_private(&self) -> bool {
         self.requires_rustc_private
+    }
+}
+
+pub(crate) struct FetchMetadata {
+    command: cargo_metadata::MetadataCommand,
+    lockfile_path: Option<Utf8PathBuf>,
+    kind: &'static str,
+    no_deps: bool,
+    no_deps_result: anyhow::Result<cargo_metadata::Metadata>,
+    other_options: Vec<String>,
+}
+
+impl FetchMetadata {
+    /// Builds a command to fetch metadata for the given `cargo_toml` manifest.
+    ///
+    /// Performs a lightweight pre-fetch using the `--no-deps` option,
+    /// available via [`FetchMetadata::no_deps_metadata`], to gather basic
+    /// information such as the `target-dir`.
+    ///
+    /// The provided sysroot is used to set the `RUSTUP_TOOLCHAIN`
+    /// environment variable when invoking Cargo, ensuring that the
+    /// rustup proxy selects the correct toolchain.
+    pub(crate) fn new(
+        cargo_toml: &ManifestPath,
+        current_dir: &AbsPath,
+        config: &CargoMetadataConfig,
+        sysroot: &Sysroot,
+        no_deps: bool,
+    ) -> Self {
+        let cargo = sysroot.tool(Tool::Cargo, current_dir, &config.extra_env);
+        let mut command = MetadataCommand::new();
+        command.cargo_path(cargo.get_program());
+        cargo.get_envs().for_each(|(var, val)| _ = command.env(var, val.unwrap_or_default()));
+        command.manifest_path(cargo_toml.to_path_buf());
+        match &config.features {
+            CargoFeatures::All => {
+                command.features(CargoOpt::AllFeatures);
+            }
+            CargoFeatures::Selected { features, no_default_features } => {
+                if *no_default_features {
+                    command.features(CargoOpt::NoDefaultFeatures);
+                }
+                if !features.is_empty() {
+                    command.features(CargoOpt::SomeFeatures(features.clone()));
+                }
+            }
+        }
+        command.current_dir(current_dir);
+
+        let mut needs_nightly = false;
+        let mut other_options = vec![];
+        // cargo metadata only supports a subset of flags of what cargo usually accepts, and usually
+        // the only relevant flags for metadata here are unstable ones, so we pass those along
+        // but nothing else
+        let mut extra_args = config.extra_args.iter();
+        while let Some(arg) = extra_args.next() {
+            if arg == "-Z" {
+                if let Some(arg) = extra_args.next() {
+                    needs_nightly = true;
+                    other_options.push("-Z".to_owned());
+                    other_options.push(arg.to_owned());
+                }
+            }
+        }
+
+        let mut lockfile_path = None;
+        if cargo_toml.is_rust_manifest() {
+            needs_nightly = true;
+            other_options.push("-Zscript".to_owned());
+        } else if config
+            .toolchain_version
+            .as_ref()
+            .is_some_and(|v| *v >= MINIMUM_TOOLCHAIN_VERSION_SUPPORTING_LOCKFILE_PATH)
+        {
+            lockfile_path = Some(<_ as AsRef<Utf8Path>>::as_ref(cargo_toml).with_extension("lock"));
+        }
+
+        if !config.targets.is_empty() {
+            other_options.extend(
+                config.targets.iter().flat_map(|it| ["--filter-platform".to_owned(), it.clone()]),
+            );
+        }
+
+        command.other_options(other_options.clone());
+
+        if needs_nightly {
+            command.env("RUSTC_BOOTSTRAP", "1");
+        }
+
+        // Pre-fetch basic metadata using `--no-deps`, which:
+        // - avoids fetching registries like crates.io,
+        // - skips dependency resolution and does not modify lockfiles,
+        // - and thus doesn't require progress reporting or copying lockfiles.
+        //
+        // Useful as a fast fallback to extract info like `target-dir`.
+        let cargo_command;
+        let no_deps_result = if no_deps {
+            command.no_deps();
+            cargo_command = command.cargo_command();
+            command.exec()
+        } else {
+            let mut no_deps_command = command.clone();
+            no_deps_command.no_deps();
+            cargo_command = no_deps_command.cargo_command();
+            no_deps_command.exec()
+        }
+        .with_context(|| format!("Failed to run `{cargo_command:?}`"));
+
+        Self { command, lockfile_path, kind: config.kind, no_deps, no_deps_result, other_options }
+    }
+
+    pub(crate) fn no_deps_metadata(&self) -> Option<&cargo_metadata::Metadata> {
+        self.no_deps_result.as_ref().ok()
+    }
+
+    /// Executes the metadata-fetching command.
+    ///
+    /// A successful result may still contain a metadata error if the full fetch failed,
+    /// but the fallback `--no-deps` pre-fetch succeeded during command construction.
+    pub(crate) fn exec(
+        self,
+        target_dir: &Utf8Path,
+        locked: bool,
+        progress: &dyn Fn(String),
+    ) -> anyhow::Result<(cargo_metadata::Metadata, Option<anyhow::Error>)> {
+        let Self { mut command, lockfile_path, kind, no_deps, no_deps_result, mut other_options } =
+            self;
+
+        if no_deps {
+            return no_deps_result.map(|m| (m, None));
+        }
+
+        let mut using_lockfile_copy = false;
+        // The manifest is a rust file, so this means its a script manifest
+        if let Some(lockfile) = lockfile_path {
+            let target_lockfile =
+                target_dir.join("rust-analyzer").join("metadata").join(kind).join("Cargo.lock");
+            match std::fs::copy(&lockfile, &target_lockfile) {
+                Ok(_) => {
+                    using_lockfile_copy = true;
+                    other_options.push("--lockfile-path".to_owned());
+                    other_options.push(target_lockfile.to_string());
+                }
+                Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+                    // There exists no lockfile yet
+                    using_lockfile_copy = true;
+                    other_options.push("--lockfile-path".to_owned());
+                    other_options.push(target_lockfile.to_string());
+                }
+                Err(e) => {
+                    tracing::warn!(
+                        "Failed to copy lock file from `{lockfile}` to `{target_lockfile}`: {e}",
+                    );
+                }
+            }
+        }
+        if using_lockfile_copy {
+            other_options.push("-Zunstable-options".to_owned());
+            command.env("RUSTC_BOOTSTRAP", "1");
+        }
+        // No need to lock it if we copied the lockfile, we won't modify the original after all/
+        // This way cargo cannot error out on us if the lockfile requires updating.
+        if !using_lockfile_copy && locked {
+            other_options.push("--locked".to_owned());
+        }
+        command.other_options(other_options);
+
+        // FIXME: Fetching metadata is a slow process, as it might require
+        // calling crates.io. We should be reporting progress here, but it's
+        // unclear whether cargo itself supports it.
+        progress("cargo metadata: started".to_owned());
+
+        let res = (|| -> anyhow::Result<(_, _)> {
+            let mut errored = false;
+            let output =
+                spawn_with_streaming_output(command.cargo_command(), &mut |_| (), &mut |line| {
+                    errored = errored || line.starts_with("error") || line.starts_with("warning");
+                    if errored {
+                        progress("cargo metadata: ?".to_owned());
+                        return;
+                    }
+                    progress(format!("cargo metadata: {line}"));
+                })?;
+            if !output.status.success() {
+                progress(format!("cargo metadata: failed {}", output.status));
+                let error = cargo_metadata::Error::CargoMetadata {
+                    stderr: String::from_utf8(output.stderr)?,
+                }
+                .into();
+                if !no_deps {
+                    // If we failed to fetch metadata with deps, return pre-fetched result without them.
+                    // This makes r-a still work partially when offline.
+                    if let Ok(metadata) = no_deps_result {
+                        tracing::warn!(
+                            ?error,
+                            "`cargo metadata` failed and returning succeeded result with `--no-deps`"
+                        );
+                        return Ok((metadata, Some(error)));
+                    }
+                }
+                return Err(error);
+            }
+            let stdout = from_utf8(&output.stdout)?
+                .lines()
+                .find(|line| line.starts_with('{'))
+                .ok_or(cargo_metadata::Error::NoJson)?;
+            Ok((cargo_metadata::MetadataCommand::parse(stdout)?, None))
+        })()
+        .with_context(|| format!("Failed to run `{:?}`", command.cargo_command()));
+        progress("cargo metadata: finished".to_owned());
+        res
     }
 }

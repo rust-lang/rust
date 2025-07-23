@@ -186,15 +186,15 @@ pub struct Thread<'tcx> {
     /// The join status.
     join_status: ThreadJoinStatus,
 
-    /// Stack of active panic payloads for the current thread. Used for storing
-    /// the argument of the call to `miri_start_unwind` (the panic payload) when unwinding.
+    /// Stack of active unwind payloads for the current thread. Used for storing
+    /// the argument of the call to `miri_start_unwind` (the payload) when unwinding.
     /// This is pointer-sized, and matches the `Payload` type in `src/libpanic_unwind/miri.rs`.
     ///
     /// In real unwinding, the payload gets passed as an argument to the landing pad,
     /// which then forwards it to 'Resume'. However this argument is implicit in MIR,
     /// so we have to store it out-of-band. When there are multiple active unwinds,
     /// the innermost one is always caught first, so we can store them as a stack.
-    pub(crate) panic_payloads: Vec<ImmTy<'tcx>>,
+    pub(crate) unwind_payloads: Vec<ImmTy<'tcx>>,
 
     /// Last OS error location in memory. It is a 32-bit integer.
     pub(crate) last_error: Option<MPlaceTy<'tcx>>,
@@ -282,7 +282,7 @@ impl<'tcx> Thread<'tcx> {
             stack: Vec::new(),
             top_user_relevant_frame: None,
             join_status: ThreadJoinStatus::Joinable,
-            panic_payloads: Vec::new(),
+            unwind_payloads: Vec::new(),
             last_error: None,
             on_stack_empty,
         }
@@ -292,7 +292,7 @@ impl<'tcx> Thread<'tcx> {
 impl VisitProvenance for Thread<'_> {
     fn visit_provenance(&self, visit: &mut VisitWith<'_>) {
         let Thread {
-            panic_payloads: panic_payload,
+            unwind_payloads: panic_payload,
             last_error,
             stack,
             top_user_relevant_frame: _,
@@ -677,6 +677,8 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
     fn run_on_stack_empty(&mut self) -> InterpResult<'tcx, Poll<()>> {
         let this = self.eval_context_mut();
         // Inform GenMC that a thread has finished all user code. GenMC needs to know this for scheduling.
+        // FIXME(GenMC): Thread-local destructors *are* user code, so this is odd. Also now that we
+        // support pre-main constructors, it can get called there as well.
         if let Some(genmc_ctx) = this.machine.data_race.as_genmc_ref() {
             let thread_id = this.active_thread();
             genmc_ctx.handle_thread_stack_empty(thread_id);

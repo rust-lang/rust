@@ -15,11 +15,12 @@ use std::{env, process};
 use tidy::*;
 
 fn main() {
-    // Running Cargo will read the libstd Cargo.toml
+    // Enable nightly, because Cargo will read the libstd Cargo.toml
     // which uses the unstable `public-dependency` feature.
-    //
-    // `setenv` might not be thread safe, so run it before using multiple threads.
-    env::set_var("RUSTC_BOOTSTRAP", "1");
+    // SAFETY: no other threads have been spawned
+    unsafe {
+        env::set_var("RUSTC_BOOTSTRAP", "1");
+    }
 
     let root_path: PathBuf = env::args_os().nth(1).expect("need path to root of repo").into();
     let cargo: PathBuf = env::args_os().nth(2).expect("need path to cargo").into();
@@ -111,7 +112,6 @@ fn main() {
         check!(rustdoc_gui_tests, &tests_path);
         check!(rustdoc_css_themes, &librustdoc_path);
         check!(rustdoc_templates, &librustdoc_path);
-        check!(rustdoc_js, &librustdoc_path, &tools_path, &src_path);
         check!(rustdoc_json, &src_path, &ci_info);
         check!(known_bug, &crashes_path);
         check!(unknown_revision, &tests_path);
@@ -154,6 +154,8 @@ fn main() {
 
         check!(triagebot, &root_path);
 
+        check!(filenames, &root_path);
+
         let collected = {
             drain_handles(&mut handles);
 
@@ -173,7 +175,17 @@ fn main() {
         };
         check!(unstable_book, &src_path, collected);
 
-        check!(ext_tool_checks, &root_path, &output_directory, bless, extra_checks, pos_args);
+        check!(
+            ext_tool_checks,
+            &root_path,
+            &output_directory,
+            &ci_info,
+            &librustdoc_path,
+            &tools_path,
+            bless,
+            extra_checks,
+            pos_args
+        );
     });
 
     if bad.load(Ordering::Relaxed) {

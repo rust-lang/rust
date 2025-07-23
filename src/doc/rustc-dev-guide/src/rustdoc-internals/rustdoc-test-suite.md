@@ -20,7 +20,7 @@ Internally, [`compiletest`] invokes the supplementary checker script [`htmldocck
 
 Directives to HtmlDocCk are assertions that place constraints on the generated HTML.
 They look similar to those given to `compiletest` in that they take the form of `//@` comments
-but ultimately, they are completey distinct and processed by different programs.
+but ultimately, they are completely distinct and processed by different programs.
 
 [XPath] is used to query parts of the HTML document tree.
 
@@ -54,6 +54,9 @@ Before you add negated directives, please read about [their caveats](#caveats).
 Similar to shell commands,
 directives can extend across multiple lines if their last char is `\`.
 In this case, the start of the next line should be `//`, with no `@`.
+
+Similar to compiletest directives, besides a space you can also use a colon `:` to separate
+the directive name and the arguments, however a space is preferred for HtmlDocCk directives.
 
 Use the special string `{{channel}}` in XPaths, `PATTERN` arguments and [snapshot files](#snapshot)
 if you'd like to refer to the URL `https://doc.rust-lang.org/CHANNEL` where `CHANNEL` refers to the

@@ -4,10 +4,9 @@ use rustc_middle::ty::layout::{HasTyCtxt, HasTypingEnv, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_middle::{bug, mir};
 use rustc_session::config::OptLevel;
-use rustc_span::{DUMMY_SP, Span};
 use tracing::{debug, instrument};
 
-use super::operand::{OperandRef, OperandValue};
+use super::operand::{OperandRef, OperandRefBuilder, OperandValue};
 use super::place::{PlaceRef, codegen_tag_value};
 use super::{FunctionCx, LocalRef};
 use crate::common::{IntPredicate, TypeKind};
@@ -181,7 +180,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
 
             _ => {
-                assert!(self.rvalue_creates_operand(rvalue, DUMMY_SP));
+                assert!(self.rvalue_creates_operand(rvalue));
                 let temp = self.codegen_rvalue_operand(bx, rvalue);
                 temp.val.store(bx, dest);
             }
@@ -208,9 +207,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         {
             // These cases are all UB to actually hit, so don't emit code for them.
             // (The size mismatches are reachable via `transmute_unchecked`.)
-            // We can't use unreachable because that's a terminator, and we
-            // need something that can be in the middle of a basic block.
-            bx.assume(bx.cx().const_bool(false))
+            bx.unreachable_nonterminator();
         } else {
             // Since in this path we have a place anyway, we can store or copy to it,
             // making sure we use the destination place's alignment even if the
@@ -237,14 +234,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             || operand.layout.is_uninhabited()
             || cast.is_uninhabited()
         {
-            if !operand.layout.is_uninhabited() {
-                // Since this is known statically and the input could have existed
-                // without already having hit UB, might as well trap for it.
-                bx.abort();
-            }
+            bx.unreachable_nonterminator();
 
-            // Because this transmute is UB, return something easy to generate,
-            // since it's fine that later uses of the value are probably UB.
+            // We still need to return a value of the appropriate type, but
+            // it's already UB so do the easiest thing available.
             return OperandValue::poison(bx, cast);
         }
 
@@ -328,36 +321,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         Some(imm)
     }
 
-    pub(crate) fn codegen_rvalue_unsized(
-        &mut self,
-        bx: &mut Bx,
-        indirect_dest: PlaceRef<'tcx, Bx::Value>,
-        rvalue: &mir::Rvalue<'tcx>,
-    ) {
-        debug!(
-            "codegen_rvalue_unsized(indirect_dest.llval={:?}, rvalue={:?})",
-            indirect_dest.val.llval, rvalue
-        );
-
-        match *rvalue {
-            mir::Rvalue::Use(ref operand) => {
-                let cg_operand = self.codegen_operand(bx, operand);
-                cg_operand.val.store_unsized(bx, indirect_dest);
-            }
-
-            _ => bug!("unsized assignment other than `Rvalue::Use`"),
-        }
-    }
-
     pub(crate) fn codegen_rvalue_operand(
         &mut self,
         bx: &mut Bx,
         rvalue: &mir::Rvalue<'tcx>,
     ) -> OperandRef<'tcx, Bx::Value> {
-        assert!(
-            self.rvalue_creates_operand(rvalue, DUMMY_SP),
-            "cannot codegen {rvalue:?} to operand",
-        );
+        assert!(self.rvalue_creates_operand(rvalue), "cannot codegen {rvalue:?} to operand",);
 
         match *rvalue {
             mir::Rvalue::Cast(ref kind, ref source, mir_cast_ty) => {
@@ -642,18 +611,36 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     let fn_abi = bx.fn_abi_of_instance(instance, ty::List::empty());
                     let fn_ty = bx.fn_decl_backend_type(fn_abi);
                     let fn_attrs = if bx.tcx().def_kind(instance.def_id()).has_codegen_attrs() {
-                        Some(bx.tcx().codegen_fn_attrs(instance.def_id()))
+                        Some(bx.tcx().codegen_instance_attrs(instance.def))
                     } else {
                         None
                     };
-                    bx.call(fn_ty, fn_attrs, Some(fn_abi), fn_ptr, &[], None, Some(instance))
+                    bx.call(
+                        fn_ty,
+                        fn_attrs.as_deref(),
+                        Some(fn_abi),
+                        fn_ptr,
+                        &[],
+                        None,
+                        Some(instance),
+                    )
                 } else {
                     bx.get_static(def_id)
                 };
                 OperandRef { val: OperandValue::Immediate(static_), layout }
             }
             mir::Rvalue::Use(ref operand) => self.codegen_operand(bx, operand),
-            mir::Rvalue::Repeat(..) => bug!("{rvalue:?} in codegen_rvalue_operand"),
+            mir::Rvalue::Repeat(ref elem, len_const) => {
+                // All arrays have `BackendRepr::Memory`, so only the ZST cases
+                // end up here. Anything else forces the destination local to be
+                // `Memory`, and thus ends up handled in `codegen_rvalue` instead.
+                let operand = self.codegen_operand(bx, elem);
+                let array_ty = Ty::new_array_with_const_len(bx.tcx(), operand.layout.ty, len_const);
+                let array_ty = self.monomorphize(array_ty);
+                let array_layout = bx.layout_of(array_ty);
+                assert!(array_layout.is_zst());
+                OperandRef { val: OperandValue::ZeroSized, layout: array_layout }
+            }
             mir::Rvalue::Aggregate(ref kind, ref fields) => {
                 let (variant_index, active_field_index) = match **kind {
                     mir::AggregateKind::Adt(_, variant_index, _, _, active_field_index) => {
@@ -668,9 +655,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
                 // `rvalue_creates_operand` has arranged that we only get here if
                 // we can build the aggregate immediate from the field immediates.
-                let Some(mut builder) = OperandRef::builder(layout) else {
-                    bug!("Cannot use type in operand builder: {layout:?}")
-                };
+                let mut builder = OperandRefBuilder::new(layout);
                 for (field_idx, field) in fields.iter_enumerated() {
                     let op = self.codegen_operand(bx, field);
                     let fi = active_field_index.unwrap_or(field_idx);
@@ -884,7 +869,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     let ltext = bx.zext(is_lt, bx.type_i8());
                     bx.unchecked_ssub(gtext, ltext)
                 } else {
-                    // These operations are those expected by `tests/codegen/integer-cmp.rs`,
+                    // These operations are those expected by `tests/codegen-llvm/integer-cmp.rs`,
                     // from <https://github.com/rust-lang/rust/pull/63767>.
                     let is_lt = bx.icmp(pred(mir::BinOp::Lt), lhs, rhs);
                     let is_ne = bx.icmp(pred(mir::BinOp::Ne), lhs, rhs);
@@ -980,7 +965,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     /// will not actually take the operand path because the result type is such
     /// that it always gets an `alloca`, but where it's not worth re-checking the
     /// layout in this code when the right thing will happen anyway.
-    pub(crate) fn rvalue_creates_operand(&self, rvalue: &mir::Rvalue<'tcx>, span: Span) -> bool {
+    pub(crate) fn rvalue_creates_operand(&self, rvalue: &mir::Rvalue<'tcx>) -> bool {
         match *rvalue {
             mir::Rvalue::Cast(mir::CastKind::Transmute, ref operand, cast_ty) => {
                 let operand_ty = operand.ty(self.mir, self.cx.tcx());
@@ -1025,18 +1010,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             mir::Rvalue::NullaryOp(..) |
             mir::Rvalue::ThreadLocalRef(_) |
             mir::Rvalue::Use(..) |
+            mir::Rvalue::Repeat(..) | // (*)
+            mir::Rvalue::Aggregate(..) | // (*)
             mir::Rvalue::WrapUnsafeBinder(..) => // (*)
                 true,
-            // Arrays are always aggregates, so it's not worth checking anything here.
-            // (If it's really `[(); N]` or `[T; 0]` and we use the place path, fine.)
-            mir::Rvalue::Repeat(..) => false,
-            mir::Rvalue::Aggregate(..) => {
-                    let ty = rvalue.ty(self.mir, self.cx.tcx());
-                    let ty = self.monomorphize(ty);
-                    let layout = self.cx.spanned_layout_of(ty, span);
-                    OperandRef::<Bx::Value>::builder(layout).is_some()
-                }
-            }
+        }
 
         // (*) this is only true if the type is suitable
     }

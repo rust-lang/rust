@@ -567,6 +567,7 @@ pub(crate) fn generate_impl_text(adt: &ast::Adt, code: &str) -> String {
 ///
 /// This is useful for traits like `PartialEq`, since `impl<T> PartialEq for U<T>` often requires `T: PartialEq`.
 // FIXME: migrate remaining uses to `generate_trait_impl`
+#[allow(dead_code)]
 pub(crate) fn generate_trait_impl_text(adt: &ast::Adt, trait_text: &str, code: &str) -> String {
     generate_impl_text_inner(adt, Some(trait_text), true, code)
 }
@@ -594,12 +595,10 @@ fn generate_impl_text_inner(
     let generic_params = adt.generic_param_list().map(|generic_params| {
         let lifetime_params =
             generic_params.lifetime_params().map(ast::GenericParam::LifetimeParam);
-        let ty_or_const_params = generic_params.type_or_const_params().map(|param| {
-            match param {
+        let ty_or_const_params = generic_params.type_or_const_params().filter_map(|param| {
+            let param = match param {
                 ast::TypeOrConstParam::Type(param) => {
-                    let param = param.clone_for_update();
                     // remove defaults since they can't be specified in impls
-                    param.remove_default();
                     let mut bounds =
                         param.type_bound_list().map_or_else(Vec::new, |it| it.bounds().collect());
                     if let Some(trait_) = trait_text {
@@ -610,17 +609,16 @@ fn generate_impl_text_inner(
                         }
                     };
                     // `{ty_param}: {bounds}`
-                    let param =
-                        make::type_param(param.name().unwrap(), make::type_bound_list(bounds));
+                    let param = make::type_param(param.name()?, make::type_bound_list(bounds));
                     ast::GenericParam::TypeParam(param)
                 }
                 ast::TypeOrConstParam::Const(param) => {
-                    let param = param.clone_for_update();
                     // remove defaults since they can't be specified in impls
-                    param.remove_default();
+                    let param = make::const_param(param.name()?, param.ty()?);
                     ast::GenericParam::ConstParam(param)
                 }
-            }
+            };
+            Some(param)
         });
 
         make::generic_param_list(itertools::chain(lifetime_params, ty_or_const_params))
@@ -695,12 +693,10 @@ fn generate_impl_inner(
     let generic_params = adt.generic_param_list().map(|generic_params| {
         let lifetime_params =
             generic_params.lifetime_params().map(ast::GenericParam::LifetimeParam);
-        let ty_or_const_params = generic_params.type_or_const_params().map(|param| {
-            match param {
+        let ty_or_const_params = generic_params.type_or_const_params().filter_map(|param| {
+            let param = match param {
                 ast::TypeOrConstParam::Type(param) => {
-                    let param = param.clone_for_update();
                     // remove defaults since they can't be specified in impls
-                    param.remove_default();
                     let mut bounds =
                         param.type_bound_list().map_or_else(Vec::new, |it| it.bounds().collect());
                     if let Some(trait_) = &trait_ {
@@ -711,17 +707,16 @@ fn generate_impl_inner(
                         }
                     };
                     // `{ty_param}: {bounds}`
-                    let param =
-                        make::type_param(param.name().unwrap(), make::type_bound_list(bounds));
+                    let param = make::type_param(param.name()?, make::type_bound_list(bounds));
                     ast::GenericParam::TypeParam(param)
                 }
                 ast::TypeOrConstParam::Const(param) => {
-                    let param = param.clone_for_update();
                     // remove defaults since they can't be specified in impls
-                    param.remove_default();
+                    let param = make::const_param(param.name()?, param.ty()?);
                     ast::GenericParam::ConstParam(param)
                 }
-            }
+            };
+            Some(param)
         });
 
         make::generic_param_list(itertools::chain(lifetime_params, ty_or_const_params))
@@ -749,14 +744,21 @@ fn generate_impl_inner(
     .clone_for_update();
 
     // Copy any cfg attrs from the original adt
-    let cfg_attrs = adt
-        .attrs()
-        .filter(|attr| attr.as_simple_call().map(|(name, _arg)| name == "cfg").unwrap_or(false));
-    for attr in cfg_attrs {
-        impl_.add_attr(attr.clone_for_update());
-    }
+    add_cfg_attrs_to(adt, &impl_);
 
     impl_
+}
+
+pub(crate) fn add_cfg_attrs_to<T, U>(from: &T, to: &U)
+where
+    T: HasAttrs,
+    U: AttrsOwnerEdit,
+{
+    let cfg_attrs =
+        from.attrs().filter(|attr| attr.as_simple_call().is_some_and(|(name, _arg)| name == "cfg"));
+    for attr in cfg_attrs {
+        to.add_attr(attr.clone_for_update());
+    }
 }
 
 pub(crate) fn add_method_to_adt(

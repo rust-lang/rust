@@ -1,11 +1,12 @@
-use rustc_ast::expand::StrippedCfgItem;
 use rustc_ast::ptr::P;
 use rustc_ast::visit::{self, Visitor};
 use rustc_ast::{
-    self as ast, CRATE_NODE_ID, Crate, ItemKind, MetaItemInner, MetaItemKind, ModKind, NodeId, Path,
+    self as ast, CRATE_NODE_ID, Crate, ItemKind, ModKind, NodeId, Path, join_path_idents,
 };
 use rustc_ast_pretty::pprust;
-use rustc_attr_data_structures::{self as attr, AttributeKind, Stability, find_attr};
+use rustc_attr_data_structures::{
+    self as attr, AttributeKind, CfgEntry, Stability, StrippedCfgItem, find_attr,
+};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::codes::*;
@@ -233,12 +234,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             return;
         }
 
-        let old_kind = match (ns, old_binding.module()) {
+        let old_kind = match (ns, old_binding.res()) {
             (ValueNS, _) => "value",
             (MacroNS, _) => "macro",
             (TypeNS, _) if old_binding.is_extern_crate() => "extern crate",
-            (TypeNS, Some(module)) if module.is_normal() => "module",
-            (TypeNS, Some(module)) if module.is_trait() => "trait",
+            (TypeNS, Res::Def(DefKind::Mod, _)) => "module",
+            (TypeNS, Res::Def(DefKind::Trait, _)) => "trait",
             (TypeNS, _) => "type",
         };
 
@@ -1320,7 +1321,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 }
 
                 // collect submodules to explore
-                if let Some(module) = name_binding.module() {
+                if let Some(def_id) = name_binding.res().module_like_def_id() {
                     // form the path
                     let mut path_segments = path_segments.clone();
                     path_segments.push(ast::PathSegment::from_ident(ident));
@@ -1340,14 +1341,14 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
                     if !is_extern_crate_that_also_appears_in_prelude || alias_import {
                         // add the module to the lookup
-                        if seen_modules.insert(module.def_id()) {
+                        if seen_modules.insert(def_id) {
                             if via_import { &mut worklist_via_import } else { &mut worklist }.push(
                                 (
-                                    module,
+                                    this.expect_module(def_id),
                                     path_segments,
                                     child_accessible,
                                     child_doc_visible,
-                                    is_stable && this.is_stable(module.def_id(), name_binding.span),
+                                    is_stable && this.is_stable(def_id, name_binding.span),
                                 ),
                             );
                         }
@@ -1424,7 +1425,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     // otherwise cause duplicate suggestions.
                     continue;
                 }
-                let Some(crate_id) = self.crate_loader(|c| c.maybe_process_path_extern(ident.name))
+                let Some(crate_id) =
+                    self.cstore_mut().maybe_process_path_extern(self.tcx, ident.name)
                 else {
                     continue;
                 };
@@ -1440,7 +1442,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         |(key, name_resolution)| {
                             if key.ns == TypeNS
                                 && key.ident == ident
-                                && let Some(binding) = name_resolution.borrow().binding
+                                && let Some(binding) = name_resolution.borrow().best_binding()
                             {
                                 match binding.res() {
                                     // No disambiguation needed if the identically named item we
@@ -1494,7 +1496,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     return None;
                 };
                 for (_, resolution) in this.resolutions(m).borrow().iter() {
-                    let Some(binding) = resolution.borrow().binding else {
+                    let Some(binding) = resolution.borrow().best_binding() else {
                         continue;
                     };
                     let Res::Def(DefKind::Macro(MacroKind::Derive | MacroKind::Attr), def_id) =
@@ -1669,9 +1671,14 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let mut all_attrs: UnordMap<Symbol, Vec<_>> = UnordMap::default();
         // We're collecting these in a hashmap, and handle ordering the output further down.
         #[allow(rustc::potential_query_instability)]
-        for (def_id, data) in &self.macro_map {
+        for (def_id, data) in self
+            .local_macro_map
+            .iter()
+            .map(|(local_id, data)| (local_id.to_def_id(), data))
+            .chain(self.extern_macro_map.borrow().iter().map(|(id, d)| (*id, d)))
+        {
             for helper_attr in &data.ext.helper_attrs {
-                let item_name = self.tcx.item_name(*def_id);
+                let item_name = self.tcx.item_name(def_id);
                 all_attrs.entry(*helper_attr).or_default().push(item_name);
                 if helper_attr == &ident.name {
                     derives.push(item_name);
@@ -2014,7 +2021,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             }
         }
 
-        let mut sugg_paths = vec![];
+        let mut sugg_paths: Vec<(Vec<Ident>, bool)> = vec![];
         if let Some(mut def_id) = res.opt_def_id() {
             // We can't use `def_path_str` in resolve.
             let mut path = vec![def_id];
@@ -2027,16 +2034,16 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 }
             }
             // We will only suggest importing directly if it is accessible through that path.
-            let path_names: Option<Vec<String>> = path
+            let path_names: Option<Vec<Ident>> = path
                 .iter()
                 .rev()
                 .map(|def_id| {
-                    self.tcx.opt_item_name(*def_id).map(|n| {
-                        if def_id.is_top_level_module() {
-                            "crate".to_string()
+                    self.tcx.opt_item_name(*def_id).map(|name| {
+                        Ident::with_dummy_span(if def_id.is_top_level_module() {
+                            kw::Crate
                         } else {
-                            n.to_string()
-                        }
+                            name
+                        })
                     })
                 })
                 .collect();
@@ -2080,17 +2087,14 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             match binding.kind {
                 NameBindingKind::Import { import, .. } => {
                     for segment in import.module_path.iter().skip(1) {
-                        path.push(segment.ident.to_string());
+                        path.push(segment.ident);
                     }
                     sugg_paths.push((
-                        path.iter()
-                            .cloned()
-                            .chain(vec![ident.to_string()].into_iter())
-                            .collect::<Vec<_>>(),
+                        path.iter().cloned().chain(std::iter::once(ident)).collect::<Vec<_>>(),
                         true, // re-export
                     ));
                 }
-                NameBindingKind::Res(_) | NameBindingKind::Module(_) => {}
+                NameBindingKind::Res(_) => {}
             }
             let first = binding == first_binding;
             let def_span = self.tcx.sess.source_map().guess_head_span(binding.span);
@@ -2122,7 +2126,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             err.subdiagnostic(note);
         }
         // We prioritize shorter paths, non-core imports and direct imports over the alternatives.
-        sugg_paths.sort_by_key(|(p, reexport)| (p.len(), p[0] == "core", *reexport));
+        sugg_paths.sort_by_key(|(p, reexport)| (p.len(), p[0].name == sym::core, *reexport));
         for (sugg, reexport) in sugg_paths {
             if not_publicly_reexported {
                 break;
@@ -2132,7 +2136,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 // `tests/ui/imports/issue-55884-2.rs`
                 continue;
             }
-            let path = sugg.join("::");
+            let path = join_path_idents(sugg);
             let sugg = if reexport {
                 errors::ImportIdent::ThroughReExport { span: dedup_span, ident, path }
             } else {
@@ -2146,7 +2150,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     }
 
     pub(crate) fn find_similarly_named_module_or_crate(
-        &mut self,
+        &self,
         ident: Symbol,
         current_module: Module<'ra>,
     ) -> Option<Symbol> {
@@ -2155,7 +2159,16 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             .keys()
             .map(|ident| ident.name)
             .chain(
-                self.module_map
+                self.local_module_map
+                    .iter()
+                    .filter(|(_, module)| {
+                        current_module.is_ancestor_of(**module) && current_module != **module
+                    })
+                    .flat_map(|(_, module)| module.kind.name()),
+            )
+            .chain(
+                self.extern_module_map
+                    .borrow()
                     .iter()
                     .filter(|(_, module)| {
                         current_module.is_ancestor_of(**module) && current_module != **module
@@ -2302,25 +2315,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     .ok()
                 };
                 if let Some(binding) = binding {
-                    let mut found = |what| {
-                        msg = format!(
-                            "expected {}, found {} `{}` in {}",
-                            ns.descr(),
-                            what,
-                            ident,
-                            parent
-                        )
-                    };
-                    if binding.module().is_some() {
-                        found("module")
-                    } else {
-                        match binding.res() {
-                            // Avoid using TyCtxt::def_kind_descr in the resolver, because it
-                            // indirectly *calls* the resolver, and would cause a query cycle.
-                            Res::Def(kind, id) => found(kind.descr(id)),
-                            _ => found(ns_to_try.descr()),
-                        }
-                    }
+                    msg = format!(
+                        "expected {}, found {} `{ident}` in {parent}",
+                        ns.descr(),
+                        binding.res().descr(),
+                    );
                 };
             }
             (msg, None)
@@ -2445,7 +2444,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     }
 
     fn undeclared_module_suggest_declare(
-        &mut self,
+        &self,
         ident: Ident,
         path: std::path::PathBuf,
     ) -> Option<(Vec<(Span, String)>, String, Applicability)> {
@@ -2460,7 +2459,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         ))
     }
 
-    fn undeclared_module_exists(&mut self, ident: Ident) -> Option<std::path::PathBuf> {
+    fn undeclared_module_exists(&self, ident: Ident) -> Option<std::path::PathBuf> {
         let map = self.tcx.sess.source_map();
 
         let src = map.span_to_filename(ident.span).into_local_path()?;
@@ -2819,24 +2818,23 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     return cached;
                 }
                 visited.insert(parent_module, false);
-                let res = r.module_map.get(&parent_module).is_some_and(|m| {
-                    for importer in m.glob_importers.borrow().iter() {
-                        if let Some(next_parent_module) = importer.parent_scope.module.opt_def_id()
+                let m = r.expect_module(parent_module);
+                let mut res = false;
+                for importer in m.glob_importers.borrow().iter() {
+                    if let Some(next_parent_module) = importer.parent_scope.module.opt_def_id() {
+                        if next_parent_module == module
+                            || comes_from_same_module_for_glob(
+                                r,
+                                next_parent_module,
+                                module,
+                                visited,
+                            )
                         {
-                            if next_parent_module == module
-                                || comes_from_same_module_for_glob(
-                                    r,
-                                    next_parent_module,
-                                    module,
-                                    visited,
-                                )
-                            {
-                                return true;
-                            }
+                            res = true;
+                            break;
                         }
                     }
-                    false
-                });
+                }
                 visited.insert(parent_module, res);
                 res
             }
@@ -2855,17 +2853,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             let note = errors::FoundItemConfigureOut { span: ident.span };
             err.subdiagnostic(note);
 
-            if let MetaItemKind::List(nested) = &cfg.kind
-                && let MetaItemInner::MetaItem(meta_item) = &nested[0]
-                && let MetaItemKind::NameValue(feature_name) = &meta_item.kind
-            {
-                let note = errors::ItemWasBehindFeature {
-                    feature: feature_name.symbol,
-                    span: meta_item.span,
-                };
+            if let CfgEntry::NameValue { value: Some((feature, _)), .. } = cfg.0 {
+                let note = errors::ItemWasBehindFeature { feature, span: cfg.1 };
                 err.subdiagnostic(note);
             } else {
-                let note = errors::ItemWasCfgOut { span: cfg.span };
+                let note = errors::ItemWasCfgOut { span: cfg.1 };
                 err.subdiagnostic(note);
             }
         }

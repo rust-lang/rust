@@ -14,7 +14,7 @@ pub(crate) struct TransparencyParser;
 #[allow(rustc::diagnostic_outside_of_impl)]
 impl<S: Stage> SingleAttributeParser<S> for TransparencyParser {
     const PATH: &[Symbol] = &[sym::rustc_macro_transparency];
-    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepFirst;
+    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepInnermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Custom(|cx, used, unused| {
         cx.dcx().span_err(vec![used, unused], "multiple macro transparency attributes");
     });

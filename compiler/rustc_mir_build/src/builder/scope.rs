@@ -927,6 +927,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             scrut_span: rustc_span::Span::default(),
             refutable: true,
             known_valid_scrutinee: true,
+            internal_state: Default::default(),
         };
 
         let valtree = match self.eval_unevaluated_mir_constant_to_valtree(constant) {

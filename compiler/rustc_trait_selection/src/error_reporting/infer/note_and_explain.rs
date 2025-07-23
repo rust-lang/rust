@@ -841,54 +841,32 @@ fn foo(&self) -> Self::T { String::new() }
 
         let param_env = tcx.param_env(body_owner_def_id);
 
-        match item {
-            hir::Node::Item(hir::Item { kind: hir::ItemKind::Trait(.., items), .. }) => {
-                // FIXME: account for `#![feature(specialization)]`
-                for item in &items[..] {
-                    match item.kind {
-                        hir::AssocItemKind::Type => {
-                            // FIXME: account for returning some type in a trait fn impl that has
-                            // an assoc type as a return type (#72076).
-                            if let hir::Defaultness::Default { has_value: true } =
-                                tcx.defaultness(item.id.owner_id)
-                            {
-                                let assoc_ty = tcx.type_of(item.id.owner_id).instantiate_identity();
-                                if self.infcx.can_eq(param_env, assoc_ty, found) {
-                                    diag.span_label(
-                                        item.span,
-                                        "associated type defaults can't be assumed inside the \
-                                            trait defining them",
-                                    );
-                                    return true;
-                                }
-                            }
+        if let DefKind::Trait | DefKind::Impl { .. } = tcx.def_kind(parent_id) {
+            let assoc_items = tcx.associated_items(parent_id);
+            // FIXME: account for `#![feature(specialization)]`
+            for assoc_item in assoc_items.in_definition_order() {
+                if assoc_item.is_type()
+                    // FIXME: account for returning some type in a trait fn impl that has
+                    // an assoc type as a return type (#72076).
+                    && let hir::Defaultness::Default { has_value: true } = assoc_item.defaultness(tcx)
+                    && let assoc_ty = tcx.type_of(assoc_item.def_id).instantiate_identity()
+                    && self.infcx.can_eq(param_env, assoc_ty, found)
+                {
+                    let msg = match assoc_item.container {
+                        ty::AssocItemContainer::Trait => {
+                            "associated type defaults can't be assumed inside the \
+                                            trait defining them"
                         }
-                        _ => {}
-                    }
+                        ty::AssocItemContainer::Impl => {
+                            "associated type is `default` and may be overridden"
+                        }
+                    };
+                    diag.span_label(tcx.def_span(assoc_item.def_id), msg);
+                    return true;
                 }
             }
-            hir::Node::Item(hir::Item {
-                kind: hir::ItemKind::Impl(hir::Impl { items, .. }),
-                ..
-            }) => {
-                for item in &items[..] {
-                    if let hir::AssocItemKind::Type = item.kind {
-                        let assoc_ty = tcx.type_of(item.id.owner_id).instantiate_identity();
-                        if let hir::Defaultness::Default { has_value: true } =
-                            tcx.defaultness(item.id.owner_id)
-                            && self.infcx.can_eq(param_env, assoc_ty, found)
-                        {
-                            diag.span_label(
-                                item.span,
-                                "associated type is `default` and may be overridden",
-                            );
-                            return true;
-                        }
-                    }
-                }
-            }
-            _ => {}
         }
+
         false
     }
 

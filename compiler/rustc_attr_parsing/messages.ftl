@@ -78,6 +78,9 @@ attr_parsing_invalid_repr_hint_no_value =
 attr_parsing_invalid_since =
     'since' must be a Rust version number, such as "1.31.0"
 
+attr_parsing_link_ordinal_out_of_range = ordinal value in `link_ordinal` is too large: `{$ordinal}`
+    .note = the value may not exceed `u16::MAX`
+
 attr_parsing_missing_feature =
     missing 'feature'
 
@@ -133,6 +136,9 @@ attr_parsing_unrecognized_repr_hint =
 attr_parsing_unstable_cfg_target_compact =
     compact `cfg(target(..))` is experimental and subject to change
 
+attr_parsing_unstable_feature_bound_incompatible_stability = Item annotated with `#[unstable_feature_bound]` should not be stable
+    .help = If this item is meant to be stable, do not use any functions annotated with `#[unstable_feature_bound]`. Otherwise, mark this item as unstable with `#[unstable]`
+
 attr_parsing_unsupported_literal_cfg_boolean =
     literal in `cfg` predicate value must be a boolean
 attr_parsing_unsupported_literal_cfg_string =
@@ -146,12 +152,12 @@ attr_parsing_unused_duplicate =
     unused attribute
     .suggestion = remove this attribute
     .note = attribute also specified here
-    .warn = {-passes_previously_accepted}
+    .warn = {-attr_parsing_previously_accepted}
 
 attr_parsing_unused_multiple =
     multiple `{$name}` attributes
     .suggestion = remove this attribute
     .note = attribute also specified here
 
--attr_parsing_perviously_accepted =
+-attr_parsing_previously_accepted =
     this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!

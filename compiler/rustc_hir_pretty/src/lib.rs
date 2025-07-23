@@ -654,8 +654,8 @@ impl<'a> State<'a> {
                 let (cb, ib) = self.head("extern");
                 self.word_nbsp(abi.to_string());
                 self.bopen(ib);
-                for item in items {
-                    self.ann.nested(self, Nested::ForeignItem(item.id));
+                for &foreign_item in items {
+                    self.ann.nested(self, Nested::ForeignItem(foreign_item));
                 }
                 self.bclose(item.span, cb);
             }
@@ -730,13 +730,22 @@ impl<'a> State<'a> {
 
                 self.space();
                 self.bopen(ib);
-                for impl_item in items {
-                    self.ann.nested(self, Nested::ImplItem(impl_item.id));
+                for &impl_item in items {
+                    self.ann.nested(self, Nested::ImplItem(impl_item));
                 }
                 self.bclose(item.span, cb);
             }
-            hir::ItemKind::Trait(is_auto, safety, ident, generics, bounds, trait_items) => {
+            hir::ItemKind::Trait(
+                constness,
+                is_auto,
+                safety,
+                ident,
+                generics,
+                bounds,
+                trait_items,
+            ) => {
                 let (cb, ib) = self.head("");
+                self.print_constness(constness);
                 self.print_is_auto(is_auto);
                 self.print_safety(safety);
                 self.word_nbsp("trait");
@@ -746,8 +755,8 @@ impl<'a> State<'a> {
                 self.print_where_clause(generics);
                 self.word(" ");
                 self.bopen(ib);
-                for trait_item in trait_items {
-                    self.ann.nested(self, Nested::TraitItem(trait_item.id));
+                for &trait_item in trait_items {
+                    self.ann.nested(self, Nested::TraitItem(trait_item));
                 }
                 self.bclose(item.span, cb);
             }

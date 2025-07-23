@@ -3,9 +3,8 @@
 use std::borrow::Borrow;
 
 use libc::{c_char, c_uint};
-use rustc_abi as abi;
-use rustc_abi::HasDataLayout;
 use rustc_abi::Primitive::Pointer;
+use rustc_abi::{self as abi, HasDataLayout as _};
 use rustc_ast::Mutability;
 use rustc_codegen_ssa::common::TypeKind;
 use rustc_codegen_ssa::traits::*;
@@ -119,6 +118,10 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
             r
         }
     }
+
+    pub(crate) fn const_null(&self, t: &'ll Type) -> &'ll Value {
+        unsafe { llvm::LLVMConstNull(t) }
+    }
 }
 
 impl<'ll, 'tcx> ConstCodegenMethods for CodegenCx<'ll, 'tcx> {
@@ -216,10 +219,10 @@ impl<'ll, 'tcx> ConstCodegenMethods for CodegenCx<'ll, 'tcx> {
                 bug!("symbol `{}` is already defined", sym);
             });
             llvm::set_initializer(g, sc);
-            unsafe {
-                llvm::LLVMSetGlobalConstant(g, True);
-                llvm::LLVMSetUnnamedAddress(g, llvm::UnnamedAddr::Global);
-            }
+
+            llvm::set_global_constant(g, true);
+            llvm::set_unnamed_address(g, llvm::UnnamedAddr::Global);
+
             llvm::set_linkage(g, llvm::Linkage::InternalLinkage);
             // Cast to default address space if globals are in a different addrspace
             let g = self.const_pointercast(g, self.type_ptr());
@@ -284,7 +287,8 @@ impl<'ll, 'tcx> ConstCodegenMethods for CodegenCx<'ll, 'tcx> {
                                 self.const_bitcast(llval, llty)
                             };
                         } else {
-                            let init = const_alloc_to_llvm(self, alloc, /*static*/ false);
+                            let init =
+                                const_alloc_to_llvm(self, alloc.inner(), /*static*/ false);
                             let alloc = alloc.inner();
                             let value = match alloc.mutability {
                                 Mutability::Mut => self.static_addr_of_mut(init, alloc.align, None),
@@ -316,14 +320,18 @@ impl<'ll, 'tcx> ConstCodegenMethods for CodegenCx<'ll, 'tcx> {
                                 }),
                             )))
                             .unwrap_memory();
-                        let init = const_alloc_to_llvm(self, alloc, /*static*/ false);
-                        let value = self.static_addr_of_impl(init, alloc.inner().align, None);
-                        value
+                        let init = const_alloc_to_llvm(self, alloc.inner(), /*static*/ false);
+                        self.static_addr_of_impl(init, alloc.inner().align, None)
                     }
                     GlobalAlloc::Static(def_id) => {
                         assert!(self.tcx.is_static(def_id));
                         assert!(!self.tcx.is_thread_local_static(def_id));
                         self.get_static(def_id)
+                    }
+                    GlobalAlloc::TypeId { .. } => {
+                        // Drop the provenance, the offset contains the bytes of the hash
+                        let llval = self.const_usize(offset.bytes());
+                        return unsafe { llvm::LLVMConstIntToPtr(llval, llty) };
                     }
                 };
                 let base_addr_space = global_alloc.address_space(self);
@@ -346,7 +354,7 @@ impl<'ll, 'tcx> ConstCodegenMethods for CodegenCx<'ll, 'tcx> {
     }
 
     fn const_data_from_alloc(&self, alloc: ConstAllocation<'_>) -> Self::Value {
-        const_alloc_to_llvm(self, alloc, /*static*/ false)
+        const_alloc_to_llvm(self, alloc.inner(), /*static*/ false)
     }
 
     fn const_ptr_byte_offset(&self, base_addr: Self::Value, offset: abi::Size) -> Self::Value {
@@ -371,6 +379,11 @@ pub(crate) fn bytes_in_context<'ll>(llcx: &'ll llvm::Context, bytes: &[u8]) -> &
         let ptr = bytes.as_ptr() as *const c_char;
         llvm::LLVMConstStringInContext2(llcx, ptr, bytes.len(), True)
     }
+}
+
+pub(crate) fn named_struct<'ll>(ty: &'ll Type, elts: &[&'ll Value]) -> &'ll Value {
+    let len = c_uint::try_from(elts.len()).expect("LLVMConstStructInContext elements len overflow");
+    unsafe { llvm::LLVMConstNamedStruct(ty, elts.as_ptr(), len) }
 }
 
 fn struct_in_context<'ll>(

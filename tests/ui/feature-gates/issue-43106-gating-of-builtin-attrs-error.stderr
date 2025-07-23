@@ -121,21 +121,6 @@ LL - #![rustc_main]
 LL + #[rustc_main]
    |
 
-error: `automatically_derived` attribute cannot be used at crate level
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:23:1
-   |
-LL | #![automatically_derived]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^
-...
-LL | mod inline {
-   |     ------ the inner attribute doesn't annotate this module
-   |
-help: perhaps you meant to use an outer attribute
-   |
-LL - #![automatically_derived]
-LL + #[automatically_derived]
-   |
-
 error: `repr` attribute cannot be used at crate level
   --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:19:1
    |
@@ -164,6 +149,21 @@ help: perhaps you meant to use an outer attribute
    |
 LL - #![path = "3800"]
 LL + #[path = "3800"]
+   |
+
+error: `automatically_derived` attribute cannot be used at crate level
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:23:1
+   |
+LL | #![automatically_derived]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | mod inline {
+   |     ------ the inner attribute doesn't annotate this module
+   |
+help: perhaps you meant to use an outer attribute
+   |
+LL - #![automatically_derived]
+LL + #[automatically_derived]
    |
 
 error[E0518]: attribute should be applied to function or closure

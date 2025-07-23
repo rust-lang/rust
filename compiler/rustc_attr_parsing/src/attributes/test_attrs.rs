@@ -11,7 +11,7 @@ pub(crate) struct IgnoreParser;
 
 impl<S: Stage> SingleAttributeParser<S> for IgnoreParser {
     const PATH: &[Symbol] = &[sym::ignore];
-    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepLast;
+    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
     const TEMPLATE: AttributeTemplate = template!(Word, NameValueStr: "reason");
 

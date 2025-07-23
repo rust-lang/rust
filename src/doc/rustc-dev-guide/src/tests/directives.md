@@ -59,7 +59,7 @@ not be exhaustive. Directives can generally be found by browsing the
 | `aux-crate`           | Like `aux-build` but makes available as extern prelude                                                | All except `run-make` | `<extern_prelude_name>=<path/to/aux/file.rs>` |
 | `aux-codegen-backend` | Similar to `aux-build` but pass the compiled dylib to `-Zcodegen-backend` when building the main file | `ui-fulldeps`         | Path to codegen backend file                  |
 | `proc-macro`          | Similar to `aux-build`, but for aux forces host and don't use `-Cprefer-dynamic`[^pm].                | All except `run-make` | Path to auxiliary proc-macro `.rs` file       |
-| `build-aux-docs`      | Build docs for auxiliaries as well                                                                    | All except `run-make` | N/A                                           |
+| `build-aux-docs`      | Build docs for auxiliaries as well.  Note that this only works with `aux-build`, not `aux-crate`.     | All except `run-make` | N/A                                           |
 
 [^pm]: please see the Auxiliary proc-macro section in the
     [compiletest](./compiletest.md) chapter for specifics.
@@ -75,8 +75,10 @@ expectations](ui.md#controlling-passfail-expectations).
 | `check-fail`                | Building (no codegen) should fail           | `ui`, `crashes`                           | N/A             |
 | `build-pass`                | Building should pass                        | `ui`, `crashes`, `codegen`, `incremental` | N/A             |
 | `build-fail`                | Building should fail                        | `ui`, `crashes`                           | N/A             |
-| `run-pass`                  | Running the test binary should pass         | `ui`, `crashes`, `incremental`            | N/A             |
-| `run-fail`                  | Running the test binary should fail         | `ui`, `crashes`                           | N/A             |
+| `run-pass`                  | Program must exit with code `0`             | `ui`, `crashes`, `incremental`            | N/A             |
+| `run-fail`                  | Program must exit with code `1..=127`       | `ui`, `crashes`                           | N/A             |
+| `run-crash`                 | Program must crash                          | `ui`                                      | N/A             |
+| `run-fail-or-crash`         | Program must `run-fail` or `run-crash`      | `ui`                                      | N/A             |
 | `ignore-pass`               | Ignore `--pass` flag                        | `ui`, `crashes`, `codegen`, `incremental` | N/A             |
 | `dont-check-failure-status` | Don't check exact failure status (i.e. `1`) | `ui`, `incremental`                       | N/A             |
 | `failure-status`            | Check                                       | `ui`, `crashes`                           | Any `u16`       |
@@ -203,6 +205,8 @@ settings:
   on `wasm32-unknown-unknown` target because the target does not support the
   `proc-macro` crate type.
 - `needs-target-std` — ignores if target platform does not have std support.
+- `ignore-backends` — ignores the listed backends, separated by whitespace characters.
+- `needs-backends` — only runs the test if current codegen backend is listed.
 
 The following directives will check LLVM support:
 

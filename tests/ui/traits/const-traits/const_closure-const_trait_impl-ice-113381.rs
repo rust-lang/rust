@@ -1,3 +1,4 @@
+//@ known-bug: #110395
 //@ compile-flags: -Znext-solver
 #![feature(const_closures, const_trait_impl)]
 #![allow(incomplete_features)]
@@ -11,7 +12,7 @@ impl Foo for () {
 }
 
 fn main() {
-    (const || { (()).foo() })();
-    //~^ ERROR: cannot call non-const method `<() as Foo>::foo` in constant functions
+    (const || (()).foo())();
+    // ^ ERROR: cannot call non-const method `<() as Foo>::foo` in constant functions
     // FIXME(const_trait_impl) this should probably say constant closures
 }

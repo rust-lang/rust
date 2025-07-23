@@ -3,7 +3,6 @@ resolver = "2"
 members = [
     "builtins-shim",
     "builtins-test",
-    "crates/josh-sync",
     "crates/libm-macros",
     "crates/musl-math-sys",
     "crates/panic-handler",

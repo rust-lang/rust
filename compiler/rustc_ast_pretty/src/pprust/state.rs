@@ -120,7 +120,7 @@ fn gather_comments(sm: &SourceMap, path: FileName, src: String) -> Vec<Comment> 
         pos += shebang_len;
     }
 
-    for token in rustc_lexer::tokenize(&text[pos..]) {
+    for token in rustc_lexer::tokenize(&text[pos..], rustc_lexer::FrontmatterAllowed::Yes) {
         let token_text = &text[pos..pos + token.len as usize];
         match token.kind {
             rustc_lexer::TokenKind::Whitespace => {
@@ -170,6 +170,14 @@ fn gather_comments(sm: &SourceMap, path: FileName, src: String) -> Vec<Comment> 
                         pos: start_bpos + BytePos(pos as u32),
                     })
                 }
+            }
+            rustc_lexer::TokenKind::Frontmatter { .. } => {
+                code_to_the_left = false;
+                comments.push(Comment {
+                    style: CommentStyle::Isolated,
+                    lines: vec![token_text.to_string()],
+                    pos: start_bpos + BytePos(pos as u32),
+                });
             }
             _ => {
                 code_to_the_left = true;

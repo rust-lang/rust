@@ -294,7 +294,7 @@ fn generate_setter_from_info(info: &AssistInfo, record_field_info: &RecordFieldI
     let self_expr = make::ext::expr_self();
     let lhs = make::expr_field(self_expr, field_name);
     let rhs = make::expr_path(make::ext::ident_path(field_name));
-    let assign_stmt = make::expr_stmt(make::expr_assignment(lhs, rhs));
+    let assign_stmt = make::expr_stmt(make::expr_assignment(lhs, rhs).into());
     let body = make::block_expr([assign_stmt.into()], None);
 
     // Make the setter fn

@@ -150,3 +150,16 @@ const fn foo() {
     [42, 55][get_usize()];
     //~^ unnecessary_operation
 }
+
+fn issue15173() {
+    // No lint as `Box::new(None)` alone would be ambiguous
+    Box::new(None) as Box<Option<i32>>;
+}
+
+#[expect(clippy::redundant_closure_call)]
+fn issue15173_original<MsU>(handler: impl FnOnce() -> MsU + Clone + 'static) {
+    Box::new(move |value| {
+        (|_| handler.clone()())(value);
+        None
+    }) as Box<dyn Fn(i32) -> Option<i32>>;
+}

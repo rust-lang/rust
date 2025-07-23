@@ -13,10 +13,13 @@ error[E0308]: mismatched types
   --> $DIR/issue-52820.rs:13:17
    |
 LL |         brains: guts.clone(),
-   |                 ^^^^^-----^^
-   |                 |    |
-   |                 |    help: try using a conversion method: `to_string`
-   |                 expected `String`, found `&str`
+   |                 ^^^^^^^^^^^^ expected `String`, found `&str`
+   |
+help: try using a conversion method
+   |
+LL -         brains: guts.clone(),
+LL +         brains: guts.to_string(),
+   |
 
 error: aborting due to 2 previous errors
 

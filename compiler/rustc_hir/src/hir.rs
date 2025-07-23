@@ -7,7 +7,7 @@ use rustc_ast::token::CommentKind;
 use rustc_ast::util::parser::ExprPrecedence;
 use rustc_ast::{
     self as ast, FloatTy, InlineAsmOptions, InlineAsmTemplatePiece, IntTy, Label, LitIntType,
-    LitKind, TraitObjectSyntax, UintTy, UnsafeBinderCastKind,
+    LitKind, TraitObjectSyntax, UintTy, UnsafeBinderCastKind, join_path_idents,
 };
 pub use rustc_ast::{
     AssignOp, AssignOpKind, AttrId, AttrStyle, BinOp, BinOpKind, BindingMode, BorrowKind,
@@ -1168,7 +1168,7 @@ impl AttrPath {
 
 impl fmt::Display for AttrPath {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.segments.iter().map(|i| i.to_string()).collect::<Vec<_>>().join("::"))
+        write!(f, "{}", join_path_idents(&self.segments))
     }
 }
 
@@ -1304,6 +1304,7 @@ impl AttributeExt for Attribute {
             Attribute::Parsed(AttributeKind::DocComment { span, .. }) => *span,
             Attribute::Parsed(AttributeKind::MayDangle(span)) => *span,
             Attribute::Parsed(AttributeKind::Ignore { span, .. }) => *span,
+            Attribute::Parsed(AttributeKind::AutomaticallyDerived(span)) => *span,
             a => panic!("can't get the span of an arbitrary parsed attribute: {a:?}"),
         }
     }
@@ -1334,6 +1335,11 @@ impl AttributeExt for Attribute {
             _ => None,
         }
     }
+
+    fn is_automatically_derived_attr(&self) -> bool {
+        matches!(self, Attribute::Parsed(AttributeKind::AutomaticallyDerived(..)))
+    }
+
     #[inline]
     fn doc_str_and_comment_kind(&self) -> Option<(Symbol, CommentKind)> {
         match &self {
@@ -3172,6 +3178,8 @@ pub struct ImplItem<'hir> {
     pub span: Span,
     pub vis_span: Span,
     pub has_delayed_lints: bool,
+    /// When we are in a trait impl, link to the trait-item's id.
+    pub trait_item_def_id: Option<DefId>,
 }
 
 impl<'hir> ImplItem<'hir> {
@@ -4136,7 +4144,7 @@ impl<'hir> Item<'hir> {
 
         expect_mod, (Ident, &'hir Mod<'hir>), ItemKind::Mod(ident, m), (*ident, m);
 
-        expect_foreign_mod, (ExternAbi, &'hir [ForeignItemRef]),
+        expect_foreign_mod, (ExternAbi, &'hir [ForeignItemId]),
             ItemKind::ForeignMod { abi, items }, (*abi, items);
 
         expect_global_asm, &'hir InlineAsm<'hir>, ItemKind::GlobalAsm { asm, .. }, asm;
@@ -4155,15 +4163,16 @@ impl<'hir> Item<'hir> {
 
         expect_trait,
             (
+                Constness,
                 IsAuto,
                 Safety,
                 Ident,
                 &'hir Generics<'hir>,
                 GenericBounds<'hir>,
-                &'hir [TraitItemRef]
+                &'hir [TraitItemId]
             ),
-            ItemKind::Trait(is_auto, safety, ident, generics, bounds, items),
-            (*is_auto, *safety, *ident, generics, bounds, items);
+            ItemKind::Trait(constness, is_auto, safety, ident, generics, bounds, items),
+            (*constness, *is_auto, *safety, *ident, generics, bounds, items);
 
         expect_trait_alias, (Ident, &'hir Generics<'hir>, GenericBounds<'hir>),
             ItemKind::TraitAlias(ident, generics, bounds), (*ident, generics, bounds);
@@ -4313,7 +4322,7 @@ pub enum ItemKind<'hir> {
     /// A module.
     Mod(Ident, &'hir Mod<'hir>),
     /// An external module, e.g. `extern { .. }`.
-    ForeignMod { abi: ExternAbi, items: &'hir [ForeignItemRef] },
+    ForeignMod { abi: ExternAbi, items: &'hir [ForeignItemId] },
     /// Module-level inline assembly (from `global_asm!`).
     GlobalAsm {
         asm: &'hir InlineAsm<'hir>,
@@ -4333,7 +4342,15 @@ pub enum ItemKind<'hir> {
     /// A union definition, e.g., `union Foo<A, B> {x: A, y: B}`.
     Union(Ident, &'hir Generics<'hir>, VariantData<'hir>),
     /// A trait definition.
-    Trait(IsAuto, Safety, Ident, &'hir Generics<'hir>, GenericBounds<'hir>, &'hir [TraitItemRef]),
+    Trait(
+        Constness,
+        IsAuto,
+        Safety,
+        Ident,
+        &'hir Generics<'hir>,
+        GenericBounds<'hir>,
+        &'hir [TraitItemId],
+    ),
     /// A trait alias.
     TraitAlias(Ident, &'hir Generics<'hir>, GenericBounds<'hir>),
 
@@ -4360,7 +4377,7 @@ pub struct Impl<'hir> {
     pub of_trait: Option<TraitRef<'hir>>,
 
     pub self_ty: &'hir Ty<'hir>,
-    pub items: &'hir [ImplItemRef],
+    pub items: &'hir [ImplItemId],
 }
 
 impl ItemKind<'_> {
@@ -4377,7 +4394,7 @@ impl ItemKind<'_> {
             | ItemKind::Enum(ident, ..)
             | ItemKind::Struct(ident, ..)
             | ItemKind::Union(ident, ..)
-            | ItemKind::Trait(_, _, ident, ..)
+            | ItemKind::Trait(_, _, _, ident, ..)
             | ItemKind::TraitAlias(ident, ..) => Some(ident),
 
             ItemKind::Use(_, UseKind::Glob | UseKind::ListStem)
@@ -4395,49 +4412,12 @@ impl ItemKind<'_> {
             | ItemKind::Enum(_, generics, _)
             | ItemKind::Struct(_, generics, _)
             | ItemKind::Union(_, generics, _)
-            | ItemKind::Trait(_, _, _, generics, _, _)
+            | ItemKind::Trait(_, _, _, _, generics, _, _)
             | ItemKind::TraitAlias(_, generics, _)
             | ItemKind::Impl(Impl { generics, .. }) => generics,
             _ => return None,
         })
     }
-}
-
-/// A reference from an trait to one of its associated items. This
-/// contains the item's id, naturally, but also the item's name and
-/// some other high-level details (like whether it is an associated
-/// type or method, and whether it is public). This allows other
-/// passes to find the impl they want without loading the ID (which
-/// means fewer edges in the incremental compilation graph).
-#[derive(Debug, Clone, Copy, HashStable_Generic)]
-pub struct TraitItemRef {
-    pub id: TraitItemId,
-    pub ident: Ident,
-    pub kind: AssocItemKind,
-    pub span: Span,
-}
-
-/// A reference from an impl to one of its associated items. This
-/// contains the item's ID, naturally, but also the item's name and
-/// some other high-level details (like whether it is an associated
-/// type or method, and whether it is public). This allows other
-/// passes to find the impl they want without loading the ID (which
-/// means fewer edges in the incremental compilation graph).
-#[derive(Debug, Clone, Copy, HashStable_Generic)]
-pub struct ImplItemRef {
-    pub id: ImplItemId,
-    pub ident: Ident,
-    pub kind: AssocItemKind,
-    pub span: Span,
-    /// When we are in a trait impl, link to the trait-item's id.
-    pub trait_item_def_id: Option<DefId>,
-}
-
-#[derive(Copy, Clone, PartialEq, Debug, HashStable_Generic)]
-pub enum AssocItemKind {
-    Const,
-    Fn { has_self: bool },
-    Type,
 }
 
 // The bodies for items are stored "out of line", in a separate
@@ -4454,19 +4434,6 @@ impl ForeignItemId {
         // Items are always HIR owners.
         HirId::make_owner(self.owner_id.def_id)
     }
-}
-
-/// A reference from a foreign block to one of its items. This
-/// contains the item's ID, naturally, but also the item's name and
-/// some other high-level details (like whether it is an associated
-/// type or method, and whether it is public). This allows other
-/// passes to find the impl they want without loading the ID (which
-/// means fewer edges in the incremental compilation graph).
-#[derive(Debug, Clone, Copy, HashStable_Generic)]
-pub struct ForeignItemRef {
-    pub id: ForeignItemId,
-    pub ident: Ident,
-    pub span: Span,
 }
 
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
@@ -4969,7 +4936,7 @@ mod size_asserts {
     static_assert_size!(GenericBound<'_>, 64);
     static_assert_size!(Generics<'_>, 56);
     static_assert_size!(Impl<'_>, 80);
-    static_assert_size!(ImplItem<'_>, 88);
+    static_assert_size!(ImplItem<'_>, 96);
     static_assert_size!(ImplItemKind<'_>, 40);
     static_assert_size!(Item<'_>, 88);
     static_assert_size!(ItemKind<'_>, 64);

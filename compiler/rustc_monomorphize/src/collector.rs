@@ -1219,6 +1219,7 @@ fn collect_alloc<'tcx>(tcx: TyCtxt<'tcx>, alloc_id: AllocId, output: &mut MonoIt
             ));
             collect_alloc(tcx, alloc_id, output)
         }
+        GlobalAlloc::TypeId { .. } => {}
     }
 }
 

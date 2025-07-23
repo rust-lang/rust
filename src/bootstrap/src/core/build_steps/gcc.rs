@@ -220,21 +220,18 @@ fn build_gcc(metadata: &Meta, builder: &Builder<'_>, target: TargetSelection) {
     t!(fs::create_dir_all(install_dir));
 
     // GCC creates files (e.g. symlinks to the downloaded dependencies)
-    // in the source directory, which does not work with our CI setup, where we mount
+    // in the source directory, which does not work with our CI/Docker setup, where we mount
     // source directories as read-only on Linux.
-    // Therefore, as a part of the build in CI, we first copy the whole source directory
-    // to the build directory, and perform the build from there.
-    let src_dir = if builder.config.is_running_on_ci {
-        let src_dir = builder.gcc_out(target).join("src");
-        if src_dir.exists() {
-            builder.remove_dir(&src_dir);
-        }
-        builder.create_dir(&src_dir);
-        builder.cp_link_r(root, &src_dir);
-        src_dir
-    } else {
-        root.clone()
-    };
+    // And in general, we shouldn't be modifying the source directories if possible, even for local
+    // builds.
+    // Therefore, we first copy the whole source directory to the build directory, and perform the
+    // build from there.
+    let src_dir = builder.gcc_out(target).join("src");
+    if src_dir.exists() {
+        builder.remove_dir(&src_dir);
+    }
+    builder.create_dir(&src_dir);
+    builder.cp_link_r(root, &src_dir);
 
     command(src_dir.join("contrib/download_prerequisites")).current_dir(&src_dir).run(builder);
     let mut configure_cmd = command(src_dir.join("configure"));

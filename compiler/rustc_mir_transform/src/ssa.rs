@@ -293,10 +293,6 @@ impl<'tcx> Visitor<'tcx> for SsaVisitor<'_, 'tcx> {
 fn compute_copy_classes(ssa: &mut SsaLocals, body: &Body<'_>) {
     let mut direct_uses = std::mem::take(&mut ssa.direct_uses);
     let mut copies = IndexVec::from_fn_n(|l| l, body.local_decls.len());
-    // We must not unify two locals that are borrowed. But this is fine if one is borrowed and
-    // the other is not. This bitset is keyed by *class head* and contains whether any member of
-    // the class is borrowed.
-    let mut borrowed_classes = ssa.borrowed_locals().clone();
 
     for (local, rvalue, _) in ssa.assignments(body) {
         let (Rvalue::Use(Operand::Copy(place) | Operand::Move(place))
@@ -322,8 +318,12 @@ fn compute_copy_classes(ssa: &mut SsaLocals, body: &Body<'_>) {
         // visited before `local`, and we just have to copy the representing local.
         let head = copies[rhs];
 
-        // Do not unify borrowed locals.
-        if borrowed_classes.contains(local) || borrowed_classes.contains(head) {
+        // When propagating from `head` to `local` we need to ensure that changes to the address
+        // are not observable, so at most one the locals involved can be borrowed. Additionally, we
+        // need to ensure that the definition of `head` dominates all uses of `local`. When `local`
+        // is borrowed, there might exist an indirect use of `local` that isn't dominated by the
+        // definition, so we have to reject copy propagation.
+        if ssa.borrowed_locals().contains(local) {
             continue;
         }
 
@@ -339,21 +339,14 @@ fn compute_copy_classes(ssa: &mut SsaLocals, body: &Body<'_>) {
                     *h = RETURN_PLACE;
                 }
             }
-            if borrowed_classes.contains(head) {
-                borrowed_classes.insert(RETURN_PLACE);
-            }
         } else {
             copies[local] = head;
-            if borrowed_classes.contains(local) {
-                borrowed_classes.insert(head);
-            }
         }
         direct_uses[rhs] -= 1;
     }
 
     debug!(?copies);
     debug!(?direct_uses);
-    debug!(?borrowed_classes);
 
     // Invariant: `copies` must point to the head of an equivalence class.
     #[cfg(debug_assertions)]
@@ -361,13 +354,6 @@ fn compute_copy_classes(ssa: &mut SsaLocals, body: &Body<'_>) {
         assert_eq!(copies[head], head);
     }
     debug_assert_eq!(copies[RETURN_PLACE], RETURN_PLACE);
-
-    // Invariant: `borrowed_classes` must be true if any member of the class is borrowed.
-    #[cfg(debug_assertions)]
-    for &head in copies.iter() {
-        let any_borrowed = ssa.borrowed_locals.iter().any(|l| copies[l] == head);
-        assert_eq!(borrowed_classes.contains(head), any_borrowed);
-    }
 
     ssa.direct_uses = direct_uses;
     ssa.copy_classes = copies;

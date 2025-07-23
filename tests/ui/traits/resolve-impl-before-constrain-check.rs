@@ -15,7 +15,6 @@ use foo::*;
 
 fn test() -> impl Sized {
     <() as Callable>::call()
-//~^ ERROR: type annotations needed
 }
 
 fn main() {}

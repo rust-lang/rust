@@ -49,6 +49,7 @@ use std::{fs, str};
 
 use askama::Template;
 use itertools::Either;
+use rustc_ast::join_path_syms;
 use rustc_attr_data_structures::{
     ConstStability, DeprecatedSince, Deprecation, RustcVersion, StabilityLevel, StableSince,
 };
@@ -74,9 +75,9 @@ use crate::formats::cache::Cache;
 use crate::formats::item_type::ItemType;
 use crate::html::escape::Escape;
 use crate::html::format::{
-    Ending, HrefError, PrintWithSpace, href, join_with_double_colon, print_abi_with_space,
-    print_constness_with_space, print_default_space, print_generic_bounds, print_where_clause,
-    visibility_print_with_space, write_str,
+    Ending, HrefError, PrintWithSpace, href, print_abi_with_space, print_constness_with_space,
+    print_default_space, print_generic_bounds, print_where_clause, visibility_print_with_space,
+    write_str,
 };
 use crate::html::markdown::{
     HeadingOffset, IdMap, Markdown, MarkdownItemInfo, MarkdownSummaryLine,
@@ -980,7 +981,7 @@ fn assoc_method(
     let name = meth.name.as_ref().unwrap();
     let vis = visibility_print_with_space(meth, cx).to_string();
     let defaultness = print_default_space(meth.is_default());
-    // FIXME: Once https://github.com/rust-lang/rust/issues/67792 is implemented, we can remove
+    // FIXME: Once https://github.com/rust-lang/rust/issues/143874 is implemented, we can remove
     // this condition.
     let constness = match render_mode {
         RenderMode::Normal => print_constness_with_space(
@@ -1109,7 +1110,7 @@ fn since_to_string(since: &StableSince) -> Option<String> {
     match since {
         StableSince::Version(since) => Some(since.to_string()),
         StableSince::Current => Some(RustcVersion::CURRENT.to_string()),
-        StableSince::Err => None,
+        StableSince::Err(_) => None,
     }
 }
 
@@ -1191,7 +1192,7 @@ fn render_assoc_item(
 // a whitespace prefix and newline.
 fn render_attributes_in_pre(it: &clean::Item, prefix: &str, cx: &Context<'_>) -> impl fmt::Display {
     fmt::from_fn(move |f| {
-        for a in it.attributes(cx.tcx(), cx.cache(), false) {
+        for a in it.attributes(cx.tcx(), cx.cache()) {
             writeln!(f, "{prefix}{a}")?;
         }
         Ok(())
@@ -1207,7 +1208,7 @@ fn render_code_attribute(code_attr: CodeAttribute, w: &mut impl fmt::Write) {
 // When an attribute is rendered inside a <code> tag, it is formatted using
 // a div to produce a newline after it.
 fn render_attributes_in_code(w: &mut impl fmt::Write, it: &clean::Item, cx: &Context<'_>) {
-    for attr in it.attributes(cx.tcx(), cx.cache(), false) {
+    for attr in it.attributes(cx.tcx(), cx.cache()) {
         render_code_attribute(CodeAttribute(attr), w);
     }
 }
@@ -1219,7 +1220,7 @@ fn render_repr_attributes_in_code(
     def_id: DefId,
     item_type: ItemType,
 ) {
-    if let Some(repr) = clean::repr_attributes(cx.tcx(), cx.cache(), def_id, item_type, false) {
+    if let Some(repr) = clean::repr_attributes(cx.tcx(), cx.cache(), def_id, item_type) {
         render_code_attribute(CodeAttribute(repr), w);
     }
 }
@@ -1482,10 +1483,10 @@ fn render_deref_methods(
             }
         }
         render_assoc_items_inner(&mut w, cx, container_item, did, what, derefs);
-    } else if let Some(prim) = target.primitive_type() {
-        if let Some(&did) = cache.primitive_locations.get(&prim) {
-            render_assoc_items_inner(&mut w, cx, container_item, did, what, derefs);
-        }
+    } else if let Some(prim) = target.primitive_type()
+        && let Some(&did) = cache.primitive_locations.get(&prim)
+    {
+        render_assoc_items_inner(&mut w, cx, container_item, did, what, derefs);
     }
 }
 
@@ -2057,21 +2058,20 @@ fn render_impl(
         // default items which weren't overridden in the implementation block.
         // We don't emit documentation for default items if they appear in the
         // Implementations on Foreign Types or Implementors sections.
-        if rendering_params.show_default_items {
-            if let Some(t) = trait_
-                && !impl_.is_negative_trait_impl()
-            {
-                render_default_items(
-                    &mut default_impl_items,
-                    &mut impl_items,
-                    cx,
-                    t,
-                    impl_,
-                    &i.impl_item,
-                    render_mode,
-                    rendering_params,
-                )?;
-            }
+        if rendering_params.show_default_items
+            && let Some(t) = trait_
+            && !impl_.is_negative_trait_impl()
+        {
+            render_default_items(
+                &mut default_impl_items,
+                &mut impl_items,
+                cx,
+                t,
+                impl_,
+                &i.impl_item,
+                render_mode,
+                rendering_params,
+            )?;
         }
         if render_mode == RenderMode::Normal {
             let toggled = !(impl_items.is_empty() && default_impl_items.is_empty());
@@ -2152,7 +2152,7 @@ fn render_rightside(
     let tcx = cx.tcx();
 
     fmt::from_fn(move |w| {
-        // FIXME: Once https://github.com/rust-lang/rust/issues/67792 is implemented, we can remove
+        // FIXME: Once https://github.com/rust-lang/rust/issues/143874 is implemented, we can remove
         // this condition.
         let const_stability = match render_mode {
             RenderMode::Normal => item.const_stability(tcx),
@@ -2555,7 +2555,7 @@ fn collect_paths_for_type(first_ty: &clean::Type, cache: &Cache) -> Vec<String> 
         let fqp = cache.exact_paths.get(&did).or_else(get_extern);
 
         if let Some(path) = fqp {
-            out.push(join_with_double_colon(path));
+            out.push(join_path_syms(path));
         }
     };
 
@@ -2569,7 +2569,7 @@ fn collect_paths_for_type(first_ty: &clean::Type, cache: &Cache) -> Vec<String> 
         match ty {
             clean::Type::Path { path } => process_path(path.def_id()),
             clean::Type::Tuple(tys) => {
-                work.extend(tys.into_iter());
+                work.extend(tys.iter());
             }
             clean::Type::Slice(ty) => {
                 work.push_back(ty);

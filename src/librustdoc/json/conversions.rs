@@ -5,9 +5,12 @@
 use rustc_abi::ExternAbi;
 use rustc_ast::ast;
 use rustc_attr_data_structures::{self as attrs, DeprecatedSince};
+use rustc_hir as hir;
 use rustc_hir::def::CtorKind;
 use rustc_hir::def_id::DefId;
+use rustc_hir::{HeaderSafety, Safety};
 use rustc_metadata::rendered_const;
+use rustc_middle::ty::TyCtxt;
 use rustc_middle::{bug, ty};
 use rustc_span::{Pos, kw, sym};
 use rustdoc_json_types::*;
@@ -38,11 +41,16 @@ impl JsonRenderer<'_> {
             })
             .collect();
         let docs = item.opt_doc_value();
-        let attrs = item.attributes(self.tcx, &self.cache, true);
+        let attrs = item
+            .attrs
+            .other_attrs
+            .iter()
+            .filter_map(|a| maybe_from_hir_attr(a, item.item_id, self.tcx))
+            .collect();
         let span = item.span(self.tcx);
         let visibility = item.visibility(self.tcx);
         let clean::ItemInner { name, item_id, .. } = *item.inner;
-        let id = self.id_from_item(&item);
+        let id = self.id_from_item(item);
         let inner = match item.kind {
             clean::KeywordItem => return None,
             clean::StrippedItem(ref inner) => {
@@ -78,14 +86,14 @@ impl JsonRenderer<'_> {
         items
             .iter()
             .filter(|i| !i.is_stripped() && !i.is_keyword())
-            .map(|i| self.id_from_item(&i))
+            .map(|i| self.id_from_item(i))
             .collect()
     }
 
     fn ids_keeping_stripped(&self, items: &[clean::Item]) -> Vec<Option<Id>> {
         items
             .iter()
-            .map(|i| (!i.is_stripped() && !i.is_keyword()).then(|| self.id_from_item(&i)))
+            .map(|i| (!i.is_stripped() && !i.is_keyword()).then(|| self.id_from_item(i)))
             .collect()
     }
 }
@@ -350,12 +358,12 @@ impl FromClean<clean::Struct> for Struct {
         let clean::Struct { ctor_kind, generics, fields } = struct_;
 
         let kind = match ctor_kind {
-            Some(CtorKind::Fn) => StructKind::Tuple(renderer.ids_keeping_stripped(&fields)),
+            Some(CtorKind::Fn) => StructKind::Tuple(renderer.ids_keeping_stripped(fields)),
             Some(CtorKind::Const) => {
                 assert!(fields.is_empty());
                 StructKind::Unit
             }
-            None => StructKind::Plain { fields: renderer.ids(&fields), has_stripped_fields },
+            None => StructKind::Plain { fields: renderer.ids(fields), has_stripped_fields },
         };
 
         Struct {
@@ -373,7 +381,7 @@ impl FromClean<clean::Union> for Union {
         Union {
             generics: generics.into_json(renderer),
             has_stripped_fields,
-            fields: renderer.ids(&fields),
+            fields: renderer.ids(fields),
             impls: Vec::new(), // Added in JsonRenderer::item
         }
     }
@@ -381,10 +389,22 @@ impl FromClean<clean::Union> for Union {
 
 impl FromClean<rustc_hir::FnHeader> for FunctionHeader {
     fn from_clean(header: &rustc_hir::FnHeader, renderer: &JsonRenderer<'_>) -> Self {
+        let is_unsafe = match header.safety {
+            HeaderSafety::SafeTargetFeatures => {
+                // The type system's internal implementation details consider
+                // safe functions with the `#[target_feature]` attribute to be analogous
+                // to unsafe functions: `header.is_unsafe()` returns `true` for them.
+                // For rustdoc, this isn't the right decision, so we explicitly return `false`.
+                // Context: https://github.com/rust-lang/rust/issues/142655
+                false
+            }
+            HeaderSafety::Normal(Safety::Safe) => false,
+            HeaderSafety::Normal(Safety::Unsafe) => true,
+        };
         FunctionHeader {
             is_async: header.is_async(),
             is_const: header.is_const(),
-            is_unsafe: header.is_unsafe(),
+            is_unsafe,
             abi: header.abi.into_json(renderer),
         }
     }
@@ -639,7 +659,7 @@ impl FromClean<clean::FnDecl> for FunctionSignature {
         let clean::FnDecl { inputs, output, c_variadic } = decl;
         FunctionSignature {
             inputs: inputs
-                .into_iter()
+                .iter()
                 .map(|param| {
                     // `_` is the most sensible name for missing param names.
                     let name = param.name.unwrap_or(kw::Underscore).to_string();
@@ -664,7 +684,7 @@ impl FromClean<clean::Trait> for Trait {
             is_auto,
             is_unsafe,
             is_dyn_compatible,
-            items: renderer.ids(&items),
+            items: renderer.ids(items),
             generics: generics.into_json(renderer),
             bounds: bounds.into_json(renderer),
             implementations: Vec::new(), // Added in JsonRenderer::item
@@ -707,7 +727,7 @@ impl FromClean<clean::Impl> for Impl {
                 .collect(),
             trait_: trait_.into_json(renderer),
             for_: for_.into_json(renderer),
-            items: renderer.ids(&items),
+            items: renderer.ids(items),
             is_negative,
             is_synthetic,
             blanket_impl: blanket_impl.map(|x| x.into_json(renderer)),
@@ -750,7 +770,7 @@ impl FromClean<clean::Variant> for Variant {
 
         let kind = match &variant.kind {
             CLike => VariantKind::Plain,
-            Tuple(fields) => VariantKind::Tuple(renderer.ids_keeping_stripped(&fields)),
+            Tuple(fields) => VariantKind::Tuple(renderer.ids_keeping_stripped(fields)),
             Struct(s) => VariantKind::Struct {
                 has_stripped_fields: s.has_stripped_entries(),
                 fields: renderer.ids(&s.fields),
@@ -872,4 +892,94 @@ impl FromClean<ItemType> for ItemKind {
             ProcDerive => ItemKind::ProcDerive,
         }
     }
+}
+
+/// Maybe convert a attribute from hir to json.
+///
+/// Returns `None` if the attribute shouldn't be in the output.
+fn maybe_from_hir_attr(
+    attr: &hir::Attribute,
+    item_id: ItemId,
+    tcx: TyCtxt<'_>,
+) -> Option<Attribute> {
+    use attrs::AttributeKind as AK;
+
+    let kind = match attr {
+        hir::Attribute::Parsed(kind) => kind,
+
+        hir::Attribute::Unparsed(_) => {
+            // FIXME: We should handle `#[doc(hidden)]`.
+            return Some(other_attr(tcx, attr));
+        }
+    };
+
+    Some(match kind {
+        AK::Deprecation { .. } => return None, // Handled separately into Item::deprecation.
+        AK::DocComment { .. } => unreachable!("doc comments stripped out earlier"),
+
+        AK::MustUse { reason, span: _ } => {
+            Attribute::MustUse { reason: reason.map(|s| s.to_string()) }
+        }
+        AK::Repr { .. } => repr_attr(
+            tcx,
+            item_id.as_def_id().expect("all items that could have #[repr] have a DefId"),
+        ),
+        AK::ExportName { name, span: _ } => Attribute::ExportName(name.to_string()),
+        AK::LinkSection { name, span: _ } => Attribute::LinkSection(name.to_string()),
+        AK::TargetFeature(features, _span) => Attribute::TargetFeature {
+            enable: features.iter().map(|(feat, _span)| feat.to_string()).collect(),
+        },
+
+        AK::NoMangle(_) => Attribute::NoMangle,
+        AK::NonExhaustive(_) => Attribute::NonExhaustive,
+        AK::AutomaticallyDerived(_) => Attribute::AutomaticallyDerived,
+
+        _ => other_attr(tcx, attr),
+    })
+}
+
+fn other_attr(tcx: TyCtxt<'_>, attr: &hir::Attribute) -> Attribute {
+    let mut s = rustc_hir_pretty::attribute_to_string(&tcx, attr);
+    assert_eq!(s.pop(), Some('\n'));
+    Attribute::Other(s)
+}
+
+fn repr_attr(tcx: TyCtxt<'_>, def_id: DefId) -> Attribute {
+    let repr = tcx.adt_def(def_id).repr();
+
+    let kind = if repr.c() {
+        ReprKind::C
+    } else if repr.transparent() {
+        ReprKind::Transparent
+    } else if repr.simd() {
+        ReprKind::Simd
+    } else {
+        ReprKind::Rust
+    };
+
+    let align = repr.align.map(|a| a.bytes());
+    let packed = repr.pack.map(|p| p.bytes());
+    let int = repr.int.map(format_integer_type);
+
+    Attribute::Repr(AttributeRepr { kind, align, packed, int })
+}
+
+fn format_integer_type(it: rustc_abi::IntegerType) -> String {
+    use rustc_abi::Integer::*;
+    use rustc_abi::IntegerType::*;
+    match it {
+        Pointer(true) => "isize",
+        Pointer(false) => "usize",
+        Fixed(I8, true) => "i8",
+        Fixed(I8, false) => "u8",
+        Fixed(I16, true) => "i16",
+        Fixed(I16, false) => "u16",
+        Fixed(I32, true) => "i32",
+        Fixed(I32, false) => "u32",
+        Fixed(I64, true) => "i64",
+        Fixed(I64, false) => "u64",
+        Fixed(I128, true) => "i128",
+        Fixed(I128, false) => "u128",
+    }
+    .to_owned()
 }

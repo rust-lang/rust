@@ -1011,8 +1011,7 @@ pub mod ops {
     }
 
     #[lang = "add_assign"]
-    #[const_trait]
-    pub trait AddAssign<Rhs = Self> {
+    pub const trait AddAssign<Rhs = Self> {
         fn add_assign(&mut self, rhs: Rhs);
     }
 
@@ -1941,6 +1940,7 @@ pub mod prelude {
             clone::Clone,                            // :clone
             cmp::{Eq, PartialEq},                    // :eq
             cmp::{Ord, PartialOrd},                  // :ord
+            convert::AsMut,                          // :as_mut
             convert::AsRef,                          // :as_ref
             convert::{From, Into, TryFrom, TryInto}, // :from
             default::Default,                        // :default

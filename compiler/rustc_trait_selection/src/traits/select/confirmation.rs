@@ -21,7 +21,7 @@ use thin_vec::thin_vec;
 use tracing::{debug, instrument};
 
 use super::SelectionCandidate::{self, *};
-use super::{BuiltinImplConditions, PredicateObligations, SelectionContext};
+use super::{PredicateObligations, SelectionContext};
 use crate::traits::normalize::{normalize_with_depth, normalize_with_depth_to};
 use crate::traits::util::{self, closure_trait_ref_and_return_type};
 use crate::traits::{
@@ -257,16 +257,25 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         debug!(?obligation, "confirm_builtin_candidate");
         let tcx = self.tcx();
         let trait_def = obligation.predicate.def_id();
-        let conditions = match tcx.as_lang_item(trait_def) {
-            Some(LangItem::Sized) => self.sizedness_conditions(obligation, SizedTraitKind::Sized),
+        let self_ty = self.infcx.shallow_resolve(
+            self.infcx.enter_forall_and_leak_universe(obligation.predicate.self_ty()),
+        );
+        let types = match tcx.as_lang_item(trait_def) {
+            Some(LangItem::Sized) => self.sizedness_conditions(self_ty, SizedTraitKind::Sized),
             Some(LangItem::MetaSized) => {
-                self.sizedness_conditions(obligation, SizedTraitKind::MetaSized)
+                self.sizedness_conditions(self_ty, SizedTraitKind::MetaSized)
             }
             Some(LangItem::PointeeSized) => {
                 bug!("`PointeeSized` is removing during lowering");
             }
-            Some(LangItem::Copy | LangItem::Clone) => self.copy_clone_conditions(obligation),
-            Some(LangItem::FusedIterator) => self.fused_iterator_conditions(obligation),
+            Some(LangItem::Copy | LangItem::Clone) => self.copy_clone_conditions(self_ty),
+            Some(LangItem::FusedIterator) => {
+                if self.coroutine_is_gen(self_ty) {
+                    ty::Binder::dummy(vec![])
+                } else {
+                    unreachable!("tried to assemble `FusedIterator` for non-gen coroutine");
+                }
+            }
             Some(
                 LangItem::Destruct
                 | LangItem::DiscriminantKind
@@ -274,11 +283,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 | LangItem::PointeeTrait
                 | LangItem::Tuple
                 | LangItem::Unpin,
-            ) => BuiltinImplConditions::Where(ty::Binder::dummy(vec![])),
+            ) => ty::Binder::dummy(vec![]),
             other => bug!("unexpected builtin trait {trait_def:?} ({other:?})"),
-        };
-        let BuiltinImplConditions::Where(types) = conditions else {
-            bug!("obligation {:?} had matched a builtin impl but now doesn't", obligation);
         };
         let types = self.infcx.enter_forall_and_leak_universe(types);
 
@@ -403,18 +409,34 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
             let self_ty =
                 obligation.predicate.self_ty().map_bound(|ty| self.infcx.shallow_resolve(ty));
+            let self_ty = self.infcx.enter_forall_and_leak_universe(self_ty);
 
-            let types = self.constituent_types_for_ty(self_ty)?;
-            let types = self.infcx.enter_forall_and_leak_universe(types);
+            let constituents = self.constituent_types_for_auto_trait(self_ty)?;
+            let constituents = self.infcx.enter_forall_and_leak_universe(constituents);
 
             let cause = obligation.derived_cause(ObligationCauseCode::BuiltinDerived);
-            let obligations = self.collect_predicates_for_types(
+            let mut obligations = self.collect_predicates_for_types(
                 obligation.param_env,
-                cause,
+                cause.clone(),
                 obligation.recursion_depth + 1,
                 obligation.predicate.def_id(),
-                types,
+                constituents.types,
             );
+
+            // FIXME(coroutine_clone): We could uplift this into `collect_predicates_for_types`
+            // and do this for `Copy`/`Clone` too, but that's feature-gated so it doesn't really
+            // matter yet.
+            for assumption in constituents.assumptions {
+                let assumption = normalize_with_depth_to(
+                    self,
+                    obligation.param_env,
+                    cause.clone(),
+                    obligation.recursion_depth + 1,
+                    assumption,
+                    &mut obligations,
+                );
+                self.infcx.register_region_assumption(assumption);
+            }
 
             Ok(obligations)
         })

@@ -8,6 +8,7 @@
 use std::fs::{self, OpenOptions};
 use std::io::{self, BufRead, BufReader, IsTerminal, Write};
 use std::str::FromStr;
+use std::time::Instant;
 use std::{env, process};
 
 use bootstrap::{
@@ -17,10 +18,16 @@ use bootstrap::{
 #[cfg(feature = "tracing")]
 use tracing::instrument;
 
+fn is_bootstrap_profiling_enabled() -> bool {
+    env::var("BOOTSTRAP_PROFILE").is_ok_and(|v| v == "1")
+}
+
 #[cfg_attr(feature = "tracing", instrument(level = "trace", name = "main"))]
 fn main() {
     #[cfg(feature = "tracing")]
     let _guard = setup_tracing();
+
+    let start_time = Instant::now();
 
     let args = env::args().skip(1).collect::<Vec<_>>();
 
@@ -96,7 +103,8 @@ fn main() {
     let out_dir = config.out.clone();
 
     debug!("creating new build based on config");
-    Build::new(config).build();
+    let mut build = Build::new(config);
+    build.build();
 
     if suggest_setup {
         println!("WARNING: you have not made a `bootstrap.toml`");
@@ -146,6 +154,10 @@ fn main() {
             let mut file = t!(OpenOptions::new().write(true).truncate(true).open(entry.path()));
             t!(file.write_all(lines.join("\n").as_bytes()));
         }
+    }
+
+    if is_bootstrap_profiling_enabled() {
+        build.report_summary(start_time);
     }
 }
 
@@ -226,7 +238,7 @@ fn setup_tracing() -> impl Drop {
     let mut chrome_layer = tracing_chrome::ChromeLayerBuilder::new().include_args(true);
 
     // Writes the Chrome profile to trace-<unix-timestamp>.json if enabled
-    if !env::var("BOOTSTRAP_PROFILE").is_ok_and(|v| v == "1") {
+    if !is_bootstrap_profiling_enabled() {
         chrome_layer = chrome_layer.writer(io::sink());
     }
 

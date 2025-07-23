@@ -40,9 +40,13 @@ use std::cmp;
 use std::time::Instant;
 
 #[cfg(target_arch = "x86")]
-use {core_arch::arch::x86::*, std_detect::is_x86_feature_detected};
+use core_arch::arch::x86::*;
 #[cfg(target_arch = "x86_64")]
-use {core_arch::arch::x86_64::*, std_detect::is_x86_feature_detected};
+use core_arch::arch::x86_64::*;
+#[cfg(target_arch = "x86")]
+use std::is_x86_feature_detected;
+#[cfg(target_arch = "x86_64")]
+use std::is_x86_feature_detected;
 
 // types
 
@@ -558,7 +562,7 @@ fn search(pos: &Pos, alpha: i32, beta: i32, depth: i32, _ply: i32) -> i32 {
     assert_ne!(bm, MOVE_NONE);
     assert!(bs >= -EVAL_INF && bs <= EVAL_INF);
 
-    // best move at the root node, best score elsewhere
+    //best move at the root node, best score elsewhere
     if _ply == 0 { bm } else { bs }
 }
 

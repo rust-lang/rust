@@ -504,6 +504,14 @@ pub(crate) struct UnrecognizedReprHint {
 }
 
 #[derive(Diagnostic)]
+#[diag(attr_parsing_unstable_feature_bound_incompatible_stability)]
+#[help]
+pub(crate) struct UnstableFeatureBoundIncompatibleStability {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(attr_parsing_naked_functions_incompatible_attribute, code = E0736)]
 pub(crate) struct NakedFunctionIncompatibleAttribute {
     #[primary_span]
@@ -514,9 +522,20 @@ pub(crate) struct NakedFunctionIncompatibleAttribute {
     pub attr: String,
 }
 
+#[derive(Diagnostic)]
+#[diag(attr_parsing_link_ordinal_out_of_range)]
+#[note]
+pub(crate) struct LinkOrdinalOutOfRange {
+    #[primary_span]
+    pub span: Span,
+    pub ordinal: u128,
+}
+
 pub(crate) enum AttributeParseErrorReason {
     ExpectedNoArgs,
-    ExpectedStringLiteral { byte_string: Option<Span> },
+    ExpectedStringLiteral {
+        byte_string: Option<Span>,
+    },
     ExpectedIntegerLiteral,
     ExpectedAtLeastOneArgument,
     ExpectedSingleArgument,
@@ -524,7 +543,12 @@ pub(crate) enum AttributeParseErrorReason {
     UnexpectedLiteral,
     ExpectedNameValue(Option<Symbol>),
     DuplicateKey(Symbol),
-    ExpectedSpecificArgument { possibilities: Vec<&'static str>, strings: bool },
+    ExpectedSpecificArgument {
+        possibilities: Vec<&'static str>,
+        strings: bool,
+        /// Should we tell the user to write a list when they didn't?
+        list: bool,
+    },
 }
 
 pub(crate) struct AttributeParseError {
@@ -584,7 +608,13 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for AttributeParseError {
                 diag.code(E0565);
             }
             AttributeParseErrorReason::ExpectedNameValue(None) => {
-                // The suggestion we add below this match already contains enough information
+                // If the span is the entire attribute, the suggestion we add below this match already contains enough information
+                if self.span != self.attr_span {
+                    diag.span_label(
+                        self.span,
+                        format!("expected this to be of the form `... = \"...\"`"),
+                    );
+                }
             }
             AttributeParseErrorReason::ExpectedNameValue(Some(name)) => {
                 diag.span_label(
@@ -592,7 +622,11 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for AttributeParseError {
                     format!("expected this to be of the form `{name} = \"...\"`"),
                 );
             }
-            AttributeParseErrorReason::ExpectedSpecificArgument { possibilities, strings } => {
+            AttributeParseErrorReason::ExpectedSpecificArgument {
+                possibilities,
+                strings,
+                list: false,
+            } => {
                 let quote = if strings { '"' } else { '`' };
                 match possibilities.as_slice() {
                     &[] => {}
@@ -615,6 +649,38 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for AttributeParseError {
                         ));
 
                         diag.span_label(self.span, format!("valid arguments are {res}"));
+                    }
+                }
+            }
+            AttributeParseErrorReason::ExpectedSpecificArgument {
+                possibilities,
+                strings,
+                list: true,
+            } => {
+                let quote = if strings { '"' } else { '`' };
+                match possibilities.as_slice() {
+                    &[] => {}
+                    &[x] => {
+                        diag.span_label(
+                            self.span,
+                            format!(
+                                "this attribute is only valid with {quote}{x}{quote} as an argument"
+                            ),
+                        );
+                    }
+                    [first, second] => {
+                        diag.span_label(self.span, format!("this attribute is only valid with either {quote}{first}{quote} or {quote}{second}{quote} as an argument"));
+                    }
+                    [first @ .., second_to_last, last] => {
+                        let mut res = String::new();
+                        for i in first {
+                            res.push_str(&format!("{quote}{i}{quote}, "));
+                        }
+                        res.push_str(&format!(
+                            "{quote}{second_to_last}{quote} or {quote}{last}{quote}"
+                        ));
+
+                        diag.span_label(self.span, format!("this attribute is only valid with one of the following arguments: {res}"));
                     }
                 }
             }

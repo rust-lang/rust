@@ -247,7 +247,7 @@ pub struct Tree {
     /// `unwrap` any `perm.get(key)`.
     ///
     /// We do uphold the fact that `keys(perms)` is a subset of `keys(nodes)`
-    pub(super) rperms: RangeMap<UniValMap<LocationState>>,
+    pub(super) rperms: DedupRangeMap<UniValMap<LocationState>>,
     /// The index of the root node.
     pub(super) root: UniIndex,
 }
@@ -609,7 +609,7 @@ impl Tree {
                     IdempotentForeignAccess::None,
                 ),
             );
-            RangeMap::new(size, perms)
+            DedupRangeMap::new(size, perms)
         };
         Self { root: root_idx, nodes, rperms, tag_mapping }
     }
@@ -631,7 +631,7 @@ impl<'tcx> Tree {
         base_offset: Size,
         parent_tag: BorTag,
         new_tag: BorTag,
-        initial_perms: RangeMap<LocationState>,
+        initial_perms: DedupRangeMap<LocationState>,
         default_perm: Permission,
         protected: bool,
         span: Span,

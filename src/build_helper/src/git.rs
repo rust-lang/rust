@@ -13,7 +13,7 @@ pub struct GitConfig<'a> {
 pub fn output_result(cmd: &mut Command) -> Result<String, String> {
     let output = match cmd.stderr(Stdio::inherit()).output() {
         Ok(status) => status,
-        Err(e) => return Err(format!("failed to run command: {:?}: {}", cmd, e)),
+        Err(e) => return Err(format!("failed to run command: {cmd:?}: {e}")),
     };
     if !output.status.success() {
         return Err(format!(
@@ -62,22 +62,22 @@ pub enum PathFreshness {
 /// The function behaves differently in CI and outside CI.
 ///
 /// - Outside CI, we want to find out if `target_paths` were modified in some local commit on
-/// top of the latest upstream commit that is available in local git history.
-/// If not, we try to find the most recent upstream commit (which we assume are commits
-/// made by bors) that modified `target_paths`.
-/// We don't want to simply take the latest master commit to avoid changing the output of
-/// this function frequently after rebasing on the latest master branch even if `target_paths`
-/// were not modified upstream in the meantime. In that case we would be redownloading CI
-/// artifacts unnecessarily.
+///   top of the latest upstream commit that is available in local git history.
+///   If not, we try to find the most recent upstream commit (which we assume are commits
+///   made by bors) that modified `target_paths`.
+///   We don't want to simply take the latest master commit to avoid changing the output of
+///   this function frequently after rebasing on the latest master branch even if `target_paths`
+///   were not modified upstream in the meantime. In that case we would be redownloading CI
+///   artifacts unnecessarily.
 ///
 /// - In CI, we use a shallow clone of depth 2, i.e., we fetch only a single parent commit
-/// (which will be the most recent bors merge commit) and do not have access
-/// to the full git history. Luckily, we only need to distinguish between two situations:
-/// 1) The current PR made modifications to `target_paths`.
-/// In that case, a build is typically necessary.
-/// 2) The current PR did not make modifications to `target_paths`.
-/// In that case we simply take the latest upstream commit, because on CI there is no need to avoid
-/// redownloading.
+///   (which will be the most recent bors merge commit) and do not have access
+///   to the full git history. Luckily, we only need to distinguish between two situations:
+///   1) The current PR made modifications to `target_paths`.
+///      In that case, a build is typically necessary.
+///   2) The current PR did not make modifications to `target_paths`.
+///      In that case we simply take the latest upstream commit, because on CI there is no need to avoid
+///      redownloading.
 pub fn check_path_modifications(
     git_dir: &Path,
     config: &GitConfig<'_>,
@@ -232,7 +232,7 @@ pub fn get_closest_upstream_commit(
         "--author-date-order",
         &format!("--author={}", config.git_merge_commit_email),
         "-n1",
-        &base,
+        base,
     ]);
 
     let output = output_result(&mut git)?.trim().to_owned();

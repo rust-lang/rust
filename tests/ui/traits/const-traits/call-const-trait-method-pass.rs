@@ -1,4 +1,4 @@
-#![feature(const_trait_impl, const_ops)]
+#![feature(const_trait_impl, const_ops, const_cmp)]
 //@ check-pass
 
 struct Int(i32);

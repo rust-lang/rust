@@ -1052,9 +1052,11 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for FreeAliasTypeExpander<'tcx> {
         }
 
         self.depth += 1;
-        ensure_sufficient_stack(|| {
+        let ty = ensure_sufficient_stack(|| {
             self.tcx.type_of(alias.def_id).instantiate(self.tcx, alias.args).fold_with(self)
-        })
+        });
+        self.depth -= 1;
+        ty
     }
 
     fn fold_const(&mut self, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
@@ -1681,7 +1683,7 @@ pub fn intrinsic_raw(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<ty::Intrinsi
             _ => true,
         };
         Some(ty::IntrinsicDef {
-            name: tcx.item_name(def_id.into()),
+            name: tcx.item_name(def_id),
             must_be_overridden,
             const_stable: tcx.has_attr(def_id, sym::rustc_intrinsic_const_stable_indirect),
         })

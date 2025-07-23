@@ -107,3 +107,11 @@ EXPORT void set_shared_mem(int32_t** ptr) {
 EXPORT void init_ptr_stored_in_shared_mem(int32_t val) {
   **shared_place = val;
 }
+
+/* Test: partial_init */
+
+EXPORT void init_n(int32_t n, char* ptr) {
+  for (int i=0; i<n; i++) {
+    *(ptr+i) = 0;
+  }
+}

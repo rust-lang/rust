@@ -1,28 +1,45 @@
-error: `cfg` predicate key must be an identifier
-  --> $DIR/cfg-target-compact-errors.rs:5:14
+error[E0539]: malformed `cfg` attribute input
+  --> $DIR/cfg-target-compact-errors.rs:5:1
    |
 LL | #[cfg(target(o::o))]
-   |              ^^^^
+   | ^^^^^^^^^^^^^----^^^
+   | |            |
+   | |            expected this to be of the form `... = "..."`
+   | help: must be of the form: `#[cfg(predicate)]`
 
-error[E0565]: literal in `cfg` predicate value must be a string
-  --> $DIR/cfg-target-compact-errors.rs:9:19
+error[E0539]: malformed `cfg` attribute input
+  --> $DIR/cfg-target-compact-errors.rs:9:1
    |
 LL | #[cfg(target(os = 8))]
-   |                   ^
+   | ^^^^^^^^^^^^^^^^^^-^^^
+   | |                 |
+   | |                 expected a string literal here
+   | help: must be of the form: `#[cfg(predicate)]`
 
-error[E0537]: invalid predicate `target_pointer`
-  --> $DIR/cfg-target-compact-errors.rs:13:28
+error[E0539]: malformed `cfg` attribute input
+  --> $DIR/cfg-target-compact-errors.rs:13:1
    |
 LL | #[cfg(target(os = "linux", pointer(width = "64")))]
-   |                            ^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^---------------------^^^
+   | |                          |
+   | |                          expected this to be of the form `... = "..."`
+   | help: must be of the form: `#[cfg(predicate)]`
 
-error: `cfg` predicate key must be an identifier
-  --> $DIR/cfg-target-compact-errors.rs:17:14
+error[E0539]: malformed `cfg` attribute input
+  --> $DIR/cfg-target-compact-errors.rs:17:1
    |
 LL | #[cfg(target(true))]
-   |              ^^^^
+   | ^^^^^^^^^^^^^----^^^
+   | |            |
+   | |            expected this to be of the form `... = "..."`
+   | help: must be of the form: `#[cfg(predicate)]`
 
-error: aborting due to 4 previous errors
+error: `cfg` predicate key must be an identifier
+  --> $DIR/cfg-target-compact-errors.rs:21:14
+   |
+LL | #[cfg(target(clippy::os = "linux"))]
+   |              ^^^^^^^^^^
 
-Some errors have detailed explanations: E0537, E0565.
-For more information about an error, try `rustc --explain E0537`.
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0539`.

@@ -1,0 +1,38 @@
+[package]
+authors = ["Miri Team"]
+description = "dependencies that unit tests can have"
+license = "MIT OR Apache-2.0"
+name = "miri-test-deps"
+repository = "https://github.com/rust-lang/miri"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+# all dependencies (and their transitive ones) listed here can be used in `tests/*-dep`.
+libc = "0.2"
+num_cpus = "1.10.1"
+cfg-if = "1"
+
+getrandom_01 = { package = "getrandom", version = "0.1" }
+getrandom_02 = { package = "getrandom", version = "0.2", features = ["js"] }
+getrandom_03 = { package = "getrandom", version = "0.3" }
+
+[target.'cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))'.dependencies]
+tempfile = "3"
+page_size = "0.6"
+# Avoid pulling in all of tokio's dependencies.
+# However, without `net` and `signal`, tokio uses fewer relevant system APIs.
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "time", "net", "fs", "sync", "signal", "io-util"] }
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.60", features = [
+    "Win32_Foundation",
+    "Win32_System_Threading",
+    "Win32_Storage_FileSystem",
+    "Win32_Security",
+    "Win32_System_IO",
+    "Wdk_Storage_FileSystem",
+] }
+
+# Make sure we are not part of the rustc workspace.
+[workspace]

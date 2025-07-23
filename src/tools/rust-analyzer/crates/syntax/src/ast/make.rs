@@ -680,7 +680,7 @@ pub fn expr_tuple(elements: impl IntoIterator<Item = ast::Expr>) -> ast::TupleEx
     let expr = elements.into_iter().format(", ");
     expr_from_text(&format!("({expr})"))
 }
-pub fn expr_assignment(lhs: ast::Expr, rhs: ast::Expr) -> ast::Expr {
+pub fn expr_assignment(lhs: ast::Expr, rhs: ast::Expr) -> ast::BinExpr {
     expr_from_text(&format!("{lhs} = {rhs}"))
 }
 fn expr_from_text<E: Into<ast::Expr> + AstNode>(text: &str) -> E {

@@ -3088,4 +3088,42 @@ fn main() {
             "#]],
         );
     }
+
+    #[test]
+    fn raw_labels_and_lifetimes() {
+        check(
+            r#"
+fn foo<'r#fn>(s: &'r#fn str) {
+    let _a: &'r#fn str = s;
+    let _b: &'r#fn str;
+    'r#break$0: {
+        break 'r#break;
+    }
+}
+        "#,
+            expect![[r#"
+                'r#break Label FileId(0) 87..96 87..95
+
+                FileId(0) 113..121
+            "#]],
+        );
+        check(
+            r#"
+fn foo<'r#fn$0>(s: &'r#fn str) {
+    let _a: &'r#fn str = s;
+    let _b: &'r#fn str;
+    'r#break: {
+        break 'r#break;
+    }
+}
+        "#,
+            expect![[r#"
+                'r#fn LifetimeParam FileId(0) 7..12
+
+                FileId(0) 18..23
+                FileId(0) 44..49
+                FileId(0) 72..77
+            "#]],
+        );
+    }
 }

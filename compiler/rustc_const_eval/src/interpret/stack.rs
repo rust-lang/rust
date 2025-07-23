@@ -12,6 +12,7 @@ use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::{bug, mir};
 use rustc_mir_dataflow::impls::always_storage_live_locals;
 use rustc_span::Span;
+use tracing::field::Empty;
 use tracing::{info_span, instrument, trace};
 
 use super::{
@@ -396,7 +397,11 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // Finish things up.
         M::after_stack_push(self)?;
         self.frame_mut().loc = Left(mir::Location::START);
-        let span = info_span!("frame", "{}", instance);
+        // `tracing_separate_thread` is used to instruct the chrome_tracing [tracing::Layer] in Miri
+        // to put the "frame" span on a separate trace thread/line than other spans, to make the
+        // visualization in https://ui.perfetto.dev easier to interpret. It is set to a value of
+        // [tracing::field::Empty] so that other tracing layers (e.g. the logger) will ignore it.
+        let span = info_span!("frame", tracing_separate_thread = Empty, "{}", instance);
         self.frame_mut().tracing_span.enter(span);
 
         interp_ok(())

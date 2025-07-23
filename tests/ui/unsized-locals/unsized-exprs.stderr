@@ -10,7 +10,11 @@ note: required because it appears within the type `A<[u8]>`
    |
 LL | struct A<X: ?Sized>(X);
    |        ^
-   = note: structs must have a statically known size to be initialized
+note: unsized values must be place expressions and cannot be put in temporaries
+  --> $DIR/unsized-exprs.rs:19:22
+   |
+LL |     udrop::<A<[u8]>>(A { 0: *foo() });
+   |                      ^^^^^^^^^^^^^^^
 
 error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
   --> $DIR/unsized-exprs.rs:21:22
@@ -24,7 +28,11 @@ note: required because it appears within the type `A<[u8]>`
    |
 LL | struct A<X: ?Sized>(X);
    |        ^
-   = note: the return type of a function must have a statically known size
+note: unsized values must be place expressions and cannot be put in temporaries
+  --> $DIR/unsized-exprs.rs:21:22
+   |
+LL |     udrop::<A<[u8]>>(A(*foo()));
+   |                      ^^^^^^^^^
 
 error: aborting due to 2 previous errors
 

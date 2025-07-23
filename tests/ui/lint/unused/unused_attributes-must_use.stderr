@@ -45,7 +45,7 @@ error: `#[must_use]` has no effect when applied to a static item
 LL | #[must_use]
    | ^^^^^^^^^^^
 
-error: `#[must_use]` has no effect when applied to an implementation block
+error: `#[must_use]` has no effect when applied to an inherent implementation block
   --> $DIR/unused_attributes-must_use.rs:33:1
    |
 LL | #[must_use]
@@ -69,7 +69,7 @@ error: `#[must_use]` has no effect when applied to a type parameter
 LL | fn qux<#[must_use] T>(_: T) {}
    |        ^^^^^^^^^^^
 
-error: `#[must_use]` has no effect when applied to an implementation block
+error: `#[must_use]` has no effect when applied to an trait implementation block
   --> $DIR/unused_attributes-must_use.rs:79:1
    |
 LL | #[must_use]

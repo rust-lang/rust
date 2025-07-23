@@ -48,15 +48,28 @@ impl ConfigBuilder {
     }
 
     pub fn path(mut self, path: &str) -> Self {
-        self.args.push(path.to_string());
-        self
+        self.arg(path)
     }
 
     pub fn paths(mut self, paths: &[&str]) -> Self {
-        for path in paths {
-            self = self.path(path);
+        self.args(paths)
+    }
+
+    pub fn arg(mut self, arg: &str) -> Self {
+        self.args.push(arg.to_string());
+        self
+    }
+
+    pub fn args(mut self, args: &[&str]) -> Self {
+        for arg in args {
+            self = self.arg(arg);
         }
         self
+    }
+
+    /// Set the specified target to be treated as a no_std target.
+    pub fn override_target_no_std(mut self, target: &str) -> Self {
+        self.args(&["--set", &format!("target.{target}.no-std=true")])
     }
 
     pub fn hosts(mut self, targets: &[&str]) -> Self {
@@ -77,13 +90,6 @@ impl ConfigBuilder {
         self
     }
 
-    pub fn args(mut self, args: &[&str]) -> Self {
-        for arg in args {
-            self.args.push(arg.to_string());
-        }
-        self
-    }
-
     pub fn create_config(mut self) -> Config {
         // Run in dry-check, otherwise the test would be too slow
         self.args.push("--dry-run".to_string());
@@ -96,8 +102,6 @@ impl ConfigBuilder {
         // in-tree LLVM from sources.
         self.args.push("--set".to_string());
         self.args.push("llvm.download-ci-llvm=false".to_string());
-        self.args.push("--set".to_string());
-        self.args.push(format!("target.'{}'.llvm-config=false", get_host_target()));
 
         // Do not mess with the local rustc checkout build directory
         self.args.push("--build-dir".to_string());

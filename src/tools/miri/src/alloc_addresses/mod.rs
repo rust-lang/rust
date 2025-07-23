@@ -116,20 +116,25 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_ref();
         let info = this.get_alloc_info(alloc_id);
 
-        // Miri's address assignment leaks state across thread boundaries, which is incompatible
-        // with GenMC execution. So we instead let GenMC assign addresses to allocations.
-        if let Some(genmc_ctx) = this.machine.data_race.as_genmc_ref() {
-            let addr = genmc_ctx.handle_alloc(&this.machine, info.size, info.align, memory_kind)?;
-            return interp_ok(addr);
-        }
-
-        let mut rng = this.machine.rng.borrow_mut();
         // This is either called immediately after allocation (and then cached), or when
         // adjusting `tcx` pointers (which never get freed). So assert that we are looking
         // at a live allocation. This also ensures that we never re-assign an address to an
         // allocation that previously had an address, but then was freed and the address
         // information was removed.
         assert!(!matches!(info.kind, AllocKind::Dead));
+
+        // TypeId allocations always have a "base address" of 0 (i.e., the relative offset is the
+        // hash fragment and therefore equal to the actual integer value).
+        if matches!(info.kind, AllocKind::TypeId) {
+            return interp_ok(0);
+        }
+
+        // Miri's address assignment leaks state across thread boundaries, which is incompatible
+        // with GenMC execution. So we instead let GenMC assign addresses to allocations.
+        if let Some(genmc_ctx) = this.machine.data_race.as_genmc_ref() {
+            let addr = genmc_ctx.handle_alloc(&this.machine, info.size, info.align, memory_kind)?;
+            return interp_ok(addr);
+        }
 
         // This allocation does not have a base address yet, pick or reuse one.
         if !this.machine.native_lib.is_empty() {
@@ -169,12 +174,13 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     std::mem::forget(alloc_bytes);
                     ptr
                 }
-                AllocKind::Dead => unreachable!(),
+                AllocKind::TypeId | AllocKind::Dead => unreachable!(),
             };
             // We don't have to expose this pointer yet, we do that in `prepare_for_native_call`.
             return interp_ok(base_ptr.addr().to_u64());
         }
         // We are not in native lib mode, so we control the addresses ourselves.
+        let mut rng = this.machine.rng.borrow_mut();
         if let Some((reuse_addr, clock)) = global_state.reuse.take_addr(
             &mut *rng,
             info.size,
@@ -295,21 +301,25 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // Store address in cache.
                 global_state.base_addr.try_insert(alloc_id, base_addr).unwrap();
 
-                // Also maintain the opposite mapping in `int_to_ptr_map`, ensuring we keep it sorted.
-                // We have a fast-path for the common case that this address is bigger than all previous ones.
-                let pos = if global_state
-                    .int_to_ptr_map
-                    .last()
-                    .is_some_and(|(last_addr, _)| *last_addr < base_addr)
-                {
-                    global_state.int_to_ptr_map.len()
-                } else {
-                    global_state
+                // Also maintain the opposite mapping in `int_to_ptr_map`, ensuring we keep it
+                // sorted. We have a fast-path for the common case that this address is bigger than
+                // all previous ones. We skip this for allocations at address 0; those can't be
+                // real, they must be TypeId "fake allocations".
+                if base_addr != 0 {
+                    let pos = if global_state
                         .int_to_ptr_map
-                        .binary_search_by_key(&base_addr, |(addr, _)| *addr)
-                        .unwrap_err()
-                };
-                global_state.int_to_ptr_map.insert(pos, (base_addr, alloc_id));
+                        .last()
+                        .is_some_and(|(last_addr, _)| *last_addr < base_addr)
+                    {
+                        global_state.int_to_ptr_map.len()
+                    } else {
+                        global_state
+                            .int_to_ptr_map
+                            .binary_search_by_key(&base_addr, |(addr, _)| *addr)
+                            .unwrap_err()
+                    };
+                    global_state.int_to_ptr_map.insert(pos, (base_addr, alloc_id));
+                }
 
                 interp_ok(base_addr)
             }

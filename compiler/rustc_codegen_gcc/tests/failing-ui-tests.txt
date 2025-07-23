@@ -80,3 +80,5 @@ tests/ui/uninhabited/uninhabited-transparent-return-abi.rs
 tests/ui/coroutine/panic-drops-resume.rs
 tests/ui/coroutine/panic-drops.rs
 tests/ui/coroutine/panic-safe.rs
+tests/ui/process/nofile-limit.rs
+tests/ui/simd/intrinsic/generic-arithmetic-pass.rs

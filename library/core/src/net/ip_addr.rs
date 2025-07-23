@@ -787,7 +787,6 @@ impl Ipv4Addr {
     /// [IANA IPv4 Special-Purpose Address Registry]: https://www.iana.org/assignments/iana-ipv4-special-registry/iana-ipv4-special-registry.xhtml
     /// [unspecified address]: Ipv4Addr::UNSPECIFIED
     /// [broadcast address]: Ipv4Addr::BROADCAST
-
     ///
     /// # Examples
     ///
@@ -1089,7 +1088,8 @@ impl fmt::Debug for IpAddr {
 }
 
 #[stable(feature = "ip_from_ip", since = "1.16.0")]
-impl From<Ipv4Addr> for IpAddr {
+#[rustc_const_unstable(feature = "const_try", issue = "74935")]
+impl const From<Ipv4Addr> for IpAddr {
     /// Copies this address to a new `IpAddr::V4`.
     ///
     /// # Examples
@@ -1111,7 +1111,8 @@ impl From<Ipv4Addr> for IpAddr {
 }
 
 #[stable(feature = "ip_from_ip", since = "1.16.0")]
-impl From<Ipv6Addr> for IpAddr {
+#[rustc_const_unstable(feature = "const_try", issue = "74935")]
+impl const From<Ipv6Addr> for IpAddr {
     /// Copies this address to a new `IpAddr::V6`.
     ///
     /// # Examples
@@ -1221,7 +1222,8 @@ impl Ord for Ipv4Addr {
 }
 
 #[stable(feature = "ip_u32", since = "1.1.0")]
-impl From<Ipv4Addr> for u32 {
+#[rustc_const_unstable(feature = "const_try", issue = "74935")]
+impl const From<Ipv4Addr> for u32 {
     /// Uses [`Ipv4Addr::to_bits`] to convert an IPv4 address to a host byte order `u32`.
     #[inline]
     fn from(ip: Ipv4Addr) -> u32 {
@@ -1230,7 +1232,8 @@ impl From<Ipv4Addr> for u32 {
 }
 
 #[stable(feature = "ip_u32", since = "1.1.0")]
-impl From<u32> for Ipv4Addr {
+#[rustc_const_unstable(feature = "const_try", issue = "74935")]
+impl const From<u32> for Ipv4Addr {
     /// Uses [`Ipv4Addr::from_bits`] to convert a host byte order `u32` into an IPv4 address.
     #[inline]
     fn from(ip: u32) -> Ipv4Addr {
@@ -1239,7 +1242,8 @@ impl From<u32> for Ipv4Addr {
 }
 
 #[stable(feature = "from_slice_v4", since = "1.9.0")]
-impl From<[u8; 4]> for Ipv4Addr {
+#[rustc_const_unstable(feature = "const_try", issue = "74935")]
+impl const From<[u8; 4]> for Ipv4Addr {
     /// Creates an `Ipv4Addr` from a four element byte array.
     ///
     /// # Examples
@@ -1257,7 +1261,8 @@ impl From<[u8; 4]> for Ipv4Addr {
 }
 
 #[stable(feature = "ip_from_slice", since = "1.17.0")]
-impl From<[u8; 4]> for IpAddr {
+#[rustc_const_unstable(feature = "const_try", issue = "74935")]
+impl const From<[u8; 4]> for IpAddr {
     /// Creates an `IpAddr::V4` from a four element byte array.
     ///
     /// # Examples
@@ -2211,7 +2216,8 @@ impl Ord for Ipv6Addr {
 }
 
 #[stable(feature = "i128", since = "1.26.0")]
-impl From<Ipv6Addr> for u128 {
+#[rustc_const_unstable(feature = "const_try", issue = "74935")]
+impl const From<Ipv6Addr> for u128 {
     /// Uses [`Ipv6Addr::to_bits`] to convert an IPv6 address to a host byte order `u128`.
     #[inline]
     fn from(ip: Ipv6Addr) -> u128 {
@@ -2219,7 +2225,8 @@ impl From<Ipv6Addr> for u128 {
     }
 }
 #[stable(feature = "i128", since = "1.26.0")]
-impl From<u128> for Ipv6Addr {
+#[rustc_const_unstable(feature = "const_try", issue = "74935")]
+impl const From<u128> for Ipv6Addr {
     /// Uses [`Ipv6Addr::from_bits`] to convert a host byte order `u128` to an IPv6 address.
     #[inline]
     fn from(ip: u128) -> Ipv6Addr {
@@ -2228,7 +2235,8 @@ impl From<u128> for Ipv6Addr {
 }
 
 #[stable(feature = "ipv6_from_octets", since = "1.9.0")]
-impl From<[u8; 16]> for Ipv6Addr {
+#[rustc_const_unstable(feature = "const_try", issue = "74935")]
+impl const From<[u8; 16]> for Ipv6Addr {
     /// Creates an `Ipv6Addr` from a sixteen element byte array.
     ///
     /// # Examples
@@ -2255,7 +2263,8 @@ impl From<[u8; 16]> for Ipv6Addr {
 }
 
 #[stable(feature = "ipv6_from_segments", since = "1.16.0")]
-impl From<[u16; 8]> for Ipv6Addr {
+#[rustc_const_unstable(feature = "const_try", issue = "74935")]
+impl const From<[u16; 8]> for Ipv6Addr {
     /// Creates an `Ipv6Addr` from an eight element 16-bit array.
     ///
     /// # Examples
@@ -2283,7 +2292,8 @@ impl From<[u16; 8]> for Ipv6Addr {
 }
 
 #[stable(feature = "ip_from_slice", since = "1.17.0")]
-impl From<[u8; 16]> for IpAddr {
+#[rustc_const_unstable(feature = "const_try", issue = "74935")]
+impl const From<[u8; 16]> for IpAddr {
     /// Creates an `IpAddr::V6` from a sixteen element byte array.
     ///
     /// # Examples
@@ -2310,7 +2320,8 @@ impl From<[u8; 16]> for IpAddr {
 }
 
 #[stable(feature = "ip_from_slice", since = "1.17.0")]
-impl From<[u16; 8]> for IpAddr {
+#[rustc_const_unstable(feature = "const_try", issue = "74935")]
+impl const From<[u16; 8]> for IpAddr {
     /// Creates an `IpAddr::V6` from an eight element 16-bit array.
     ///
     /// # Examples

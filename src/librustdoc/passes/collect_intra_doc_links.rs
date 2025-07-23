@@ -274,7 +274,7 @@ impl From<DiagnosticInfo<'_>> for OwnedDiagnosticInfo {
 }
 
 impl OwnedDiagnosticInfo {
-    pub(crate) fn into_info(&self) -> DiagnosticInfo<'_> {
+    pub(crate) fn as_info(&self) -> DiagnosticInfo<'_> {
         DiagnosticInfo {
             item: &self.item,
             ori_link: &self.ori_link,
@@ -1177,7 +1177,7 @@ impl LinkCollector<'_, '_> {
                     // Primitive types are always valid.
                     Res::Primitive(_) => true,
                 });
-                let diag_info = info.diag_info.into_info();
+                let diag_info = info.diag_info.as_info();
                 match info.resolved.len() {
                     1 => {
                         let (res, fragment) = info.resolved.pop().unwrap();
@@ -1243,17 +1243,16 @@ impl LinkCollector<'_, '_> {
             disambiguator,
             None | Some(Disambiguator::Namespace(Namespace::TypeNS) | Disambiguator::Primitive)
         ) && !matches!(res, Res::Primitive(_))
+            && let Some(prim) = resolve_primitive(path_str, TypeNS)
         {
-            if let Some(prim) = resolve_primitive(path_str, TypeNS) {
-                // `prim@char`
-                if matches!(disambiguator, Some(Disambiguator::Primitive)) {
-                    res = prim;
-                } else {
-                    // `[char]` when a `char` module is in scope
-                    let candidates = &[(res, res.def_id(self.cx.tcx)), (prim, None)];
-                    ambiguity_error(self.cx, &diag_info, path_str, candidates, true);
-                    return None;
-                }
+            // `prim@char`
+            if matches!(disambiguator, Some(Disambiguator::Primitive)) {
+                res = prim;
+            } else {
+                // `[char]` when a `char` module is in scope
+                let candidates = &[(res, res.def_id(self.cx.tcx)), (prim, None)];
+                ambiguity_error(self.cx, &diag_info, path_str, candidates, true);
+                return None;
             }
         }
 
@@ -2233,7 +2232,7 @@ fn ambiguity_error(
     // proc macro can exist in multiple namespaces at once, so we need to compare `DefIds`
     //  to remove the candidate in the fn namespace.
     let mut possible_proc_macro_id = None;
-    let is_proc_macro_crate = cx.tcx.crate_types() == &[CrateType::ProcMacro];
+    let is_proc_macro_crate = cx.tcx.crate_types() == [CrateType::ProcMacro];
     let mut kinds = candidates
         .iter()
         .map(|(res, def_id)| {

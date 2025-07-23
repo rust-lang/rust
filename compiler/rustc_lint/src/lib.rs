@@ -55,7 +55,7 @@ mod invalid_from_utf8;
 mod late;
 mod let_underscore;
 mod levels;
-mod lifetime_syntax;
+pub mod lifetime_syntax;
 mod lints;
 mod macro_expr_fragment_specifier_2024_migration;
 mod map_unit_fn;
@@ -338,6 +338,14 @@ fn register_builtins(store: &mut LintStore) {
     );
 
     add_lint_group!("deprecated_safe", DEPRECATED_SAFE_2024);
+
+    add_lint_group!(
+        "unknown_or_malformed_diagnostic_attributes",
+        MALFORMED_DIAGNOSTIC_ATTRIBUTES,
+        MALFORMED_DIAGNOSTIC_FORMAT_LITERALS,
+        MISPLACED_DIAGNOSTIC_ATTRIBUTES,
+        UNKNOWN_DIAGNOSTIC_ATTRIBUTES
+    );
 
     // Register renamed and removed lints.
     store.register_renamed("single_use_lifetime", "single_use_lifetimes");

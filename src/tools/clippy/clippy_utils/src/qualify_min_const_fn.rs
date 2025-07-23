@@ -432,7 +432,7 @@ pub fn is_stable_const_fn(cx: &LateContext<'_>, def_id: DefId, msrv: Msrv) -> bo
                     let const_stab_rust_version = match since {
                         StableSince::Version(version) => version,
                         StableSince::Current => RustcVersion::CURRENT,
-                        StableSince::Err => return false,
+                        StableSince::Err(_) => return false,
                     };
 
                     msrv.meets(cx, const_stab_rust_version)

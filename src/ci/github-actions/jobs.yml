@@ -34,6 +34,8 @@ runners:
     os: windows-2022
     <<: *base-job
 
+  # NOTE: windows-2025 has less disk space available than windows-2022,
+  # because the D drive is missing.
   - &job-windows-25
     os: windows-2025
     <<: *base-job
@@ -44,6 +46,10 @@ runners:
 
   - &job-windows-25-8c
     os: windows-2025-8core-32gb
+    <<: *base-job
+
+  - &job-windows-aarch64
+    os: windows-11-arm
     <<: *base-job
 
   - &job-aarch64-linux
@@ -166,9 +172,9 @@ try:
 optional:
   # This job is used just to test optional jobs.
   # It will be replaced by tier 2 and tier 3 jobs in the future.
-  - name: optional-mingw-check-1
+  - name: optional-pr-check-1
     env:
-      IMAGE: mingw-check-1
+      IMAGE: pr-check-1
     <<: *job-linux-4c
 
 # Main CI jobs that have to be green to merge a commit into master
@@ -311,16 +317,14 @@ auto:
   - name: i686-gnu-nopt-1
     env:
       IMAGE: i686-gnu-nopt
-      DOCKER_SCRIPT: /scripts/stage_2_test_set1.sh
+      DOCKER_SCRIPT: stage_2_test_set1.sh
     <<: *job-linux-4c
 
   # Skip tests that run in i686-gnu-nopt-1
   - name: i686-gnu-nopt-2
     env:
       IMAGE: i686-gnu-nopt
-      DOCKER_SCRIPT: >-
-        python3 ../x.py test --stage 1 --set rust.optimize=false library/std &&
-        /scripts/stage_2_test_set2.sh
+      DOCKER_SCRIPT: i686-gnu-nopt-2.sh
     <<: *job-linux-4c
 
   - name: pr-check-1
@@ -474,7 +478,7 @@ auto:
       NO_LLVM_ASSERTIONS: 1
       NO_DEBUG_ASSERTIONS: 1
       NO_OVERFLOW_CHECKS: 1
-    <<: *job-macos
+    <<: *job-macos-m1
 
   - name: x86_64-apple-1
     env:
@@ -540,13 +544,13 @@ auto:
     env:
       RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-sanitizers --enable-profiler
       SCRIPT: make ci-msvc-py
-    <<: *job-windows-25
+    <<: *job-windows
 
   - name: x86_64-msvc-2
     env:
       RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-sanitizers --enable-profiler
       SCRIPT: make ci-msvc-ps1
-    <<: *job-windows-25
+    <<: *job-windows
 
   # i686-msvc is split into two jobs to run tests in parallel.
   - name: i686-msvc-1
@@ -560,6 +564,19 @@ auto:
       RUST_CONFIGURE_ARGS: --build=i686-pc-windows-msvc --enable-sanitizers
       SCRIPT: make ci-msvc-ps1
     <<: *job-windows
+
+  # aarch64-msvc is split into two jobs to run tests in parallel.
+  - name: aarch64-msvc-1
+    env:
+      RUST_CONFIGURE_ARGS: --build=aarch64-pc-windows-msvc
+      SCRIPT: make ci-msvc-py
+    <<: *job-windows-aarch64
+
+  - name: aarch64-msvc-2
+    env:
+      RUST_CONFIGURE_ARGS: --build=aarch64-pc-windows-msvc
+      SCRIPT: make ci-msvc-ps1
+    <<: *job-windows-aarch64
 
   # x86_64-msvc-ext is split into multiple jobs to run tests in parallel.
   - name: x86_64-msvc-ext1
@@ -656,14 +673,14 @@ auto:
   - name: dist-aarch64-msvc
     env:
       RUST_CONFIGURE_ARGS: >-
-        --build=x86_64-pc-windows-msvc
+        --build=aarch64-pc-windows-msvc
         --host=aarch64-pc-windows-msvc
         --target=aarch64-pc-windows-msvc,arm64ec-pc-windows-msvc
         --enable-full-tools
         --enable-profiler
       SCRIPT: python x.py dist bootstrap --include-default-paths
       DIST_REQUIRE_ALL_TOOLS: 1
-    <<: *job-windows
+    <<: *job-windows-aarch64
 
   - name: dist-i686-mingw
     env:

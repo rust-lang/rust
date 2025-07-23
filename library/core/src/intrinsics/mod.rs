@@ -910,7 +910,7 @@ pub const unsafe fn arith_offset<T>(dst: *const T, offset: isize) -> *const T;
 /// # Safety
 ///
 /// - `index < PtrMetadata(slice_ptr)`, so the indexing is in-bounds for the slice
-/// - the resulting offsetting is in-bounds of the allocated object, which is
+/// - the resulting offsetting is in-bounds of the allocation, which is
 ///   always the case for references, but needs to be upheld manually for pointers
 #[rustc_nounwind]
 #[rustc_intrinsic]
@@ -1379,6 +1379,7 @@ pub unsafe fn fmuladdf128(a: f128, b: f128, c: f128) -> f128;
 ///
 /// The stabilized version of this intrinsic is
 /// [`f16::floor`](../../std/primitive.f16.html#method.floor)
+#[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub const unsafe fn floorf16(x: f16) -> f16;
@@ -1386,6 +1387,7 @@ pub const unsafe fn floorf16(x: f16) -> f16;
 ///
 /// The stabilized version of this intrinsic is
 /// [`f32::floor`](../../std/primitive.f32.html#method.floor)
+#[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub const unsafe fn floorf32(x: f32) -> f32;
@@ -1393,6 +1395,7 @@ pub const unsafe fn floorf32(x: f32) -> f32;
 ///
 /// The stabilized version of this intrinsic is
 /// [`f64::floor`](../../std/primitive.f64.html#method.floor)
+#[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub const unsafe fn floorf64(x: f64) -> f64;
@@ -1400,6 +1403,7 @@ pub const unsafe fn floorf64(x: f64) -> f64;
 ///
 /// The stabilized version of this intrinsic is
 /// [`f128::floor`](../../std/primitive.f128.html#method.floor)
+#[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub const unsafe fn floorf128(x: f128) -> f128;
@@ -1408,6 +1412,7 @@ pub const unsafe fn floorf128(x: f128) -> f128;
 ///
 /// The stabilized version of this intrinsic is
 /// [`f16::ceil`](../../std/primitive.f16.html#method.ceil)
+#[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub const unsafe fn ceilf16(x: f16) -> f16;
@@ -1415,6 +1420,7 @@ pub const unsafe fn ceilf16(x: f16) -> f16;
 ///
 /// The stabilized version of this intrinsic is
 /// [`f32::ceil`](../../std/primitive.f32.html#method.ceil)
+#[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub const unsafe fn ceilf32(x: f32) -> f32;
@@ -1422,6 +1428,7 @@ pub const unsafe fn ceilf32(x: f32) -> f32;
 ///
 /// The stabilized version of this intrinsic is
 /// [`f64::ceil`](../../std/primitive.f64.html#method.ceil)
+#[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub const unsafe fn ceilf64(x: f64) -> f64;
@@ -1429,6 +1436,7 @@ pub const unsafe fn ceilf64(x: f64) -> f64;
 ///
 /// The stabilized version of this intrinsic is
 /// [`f128::ceil`](../../std/primitive.f128.html#method.ceil)
+#[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub const unsafe fn ceilf128(x: f128) -> f128;
@@ -1437,6 +1445,7 @@ pub const unsafe fn ceilf128(x: f128) -> f128;
 ///
 /// The stabilized version of this intrinsic is
 /// [`f16::trunc`](../../std/primitive.f16.html#method.trunc)
+#[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub const unsafe fn truncf16(x: f16) -> f16;
@@ -1444,6 +1453,7 @@ pub const unsafe fn truncf16(x: f16) -> f16;
 ///
 /// The stabilized version of this intrinsic is
 /// [`f32::trunc`](../../std/primitive.f32.html#method.trunc)
+#[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub const unsafe fn truncf32(x: f32) -> f32;
@@ -1451,6 +1461,7 @@ pub const unsafe fn truncf32(x: f32) -> f32;
 ///
 /// The stabilized version of this intrinsic is
 /// [`f64::trunc`](../../std/primitive.f64.html#method.trunc)
+#[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub const unsafe fn truncf64(x: f64) -> f64;
@@ -1458,6 +1469,7 @@ pub const unsafe fn truncf64(x: f64) -> f64;
 ///
 /// The stabilized version of this intrinsic is
 /// [`f128::trunc`](../../std/primitive.f128.html#method.trunc)
+#[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub const unsafe fn truncf128(x: f128) -> f128;
@@ -1467,6 +1479,7 @@ pub const unsafe fn truncf128(x: f128) -> f128;
 ///
 /// The stabilized version of this intrinsic is
 /// [`f16::round_ties_even`](../../std/primitive.f16.html#method.round_ties_even)
+#[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub const fn round_ties_even_f16(x: f16) -> f16;
@@ -1476,6 +1489,7 @@ pub const fn round_ties_even_f16(x: f16) -> f16;
 ///
 /// The stabilized version of this intrinsic is
 /// [`f32::round_ties_even`](../../std/primitive.f32.html#method.round_ties_even)
+#[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub const fn round_ties_even_f32(x: f32) -> f32;
@@ -1485,6 +1499,7 @@ pub const fn round_ties_even_f32(x: f32) -> f32;
 ///
 /// The stabilized version of this intrinsic is
 /// [`f64::round_ties_even`](../../std/primitive.f64.html#method.round_ties_even)
+#[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub const fn round_ties_even_f64(x: f64) -> f64;
@@ -1494,6 +1509,7 @@ pub const fn round_ties_even_f64(x: f64) -> f64;
 ///
 /// The stabilized version of this intrinsic is
 /// [`f128::round_ties_even`](../../std/primitive.f128.html#method.round_ties_even)
+#[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub const fn round_ties_even_f128(x: f128) -> f128;
@@ -1502,6 +1518,7 @@ pub const fn round_ties_even_f128(x: f128) -> f128;
 ///
 /// The stabilized version of this intrinsic is
 /// [`f16::round`](../../std/primitive.f16.html#method.round)
+#[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub const unsafe fn roundf16(x: f16) -> f16;
@@ -1509,6 +1526,7 @@ pub const unsafe fn roundf16(x: f16) -> f16;
 ///
 /// The stabilized version of this intrinsic is
 /// [`f32::round`](../../std/primitive.f32.html#method.round)
+#[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub const unsafe fn roundf32(x: f32) -> f32;
@@ -1516,6 +1534,7 @@ pub const unsafe fn roundf32(x: f32) -> f32;
 ///
 /// The stabilized version of this intrinsic is
 /// [`f64::round`](../../std/primitive.f64.html#method.round)
+#[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub const unsafe fn roundf64(x: f64) -> f64;
@@ -1523,6 +1542,7 @@ pub const unsafe fn roundf64(x: f64) -> f64;
 ///
 /// The stabilized version of this intrinsic is
 /// [`f128::round`](../../std/primitive.f128.html#method.round)
+#[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub const unsafe fn roundf128(x: f128) -> f128;
@@ -2208,6 +2228,7 @@ pub const unsafe fn raw_eq<T>(a: &T, b: &T) -> bool;
 /// [valid]: crate::ptr#safety
 #[rustc_nounwind]
 #[rustc_intrinsic]
+#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
 pub const unsafe fn compare_bytes(left: *const u8, right: *const u8, bytes: usize) -> i32;
 
 /// See documentation of [`std::hint::black_box`] for details.
@@ -2279,7 +2300,7 @@ pub const fn const_eval_select<ARG: Tuple, F, G, RET>(
 ) -> RET
 where
     G: FnOnce<ARG, Output = RET>,
-    F: FnOnce<ARG, Output = RET>;
+    F: const FnOnce<ARG, Output = RET>;
 
 /// A macro to make it easier to invoke const_eval_select. Use as follows:
 /// ```rust,ignore (just a macro example)
@@ -2533,6 +2554,15 @@ pub const unsafe fn const_deallocate(_ptr: *mut u8, _size: usize, _align: usize)
     // Runtime NOP
 }
 
+#[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+#[rustc_nounwind]
+#[rustc_intrinsic]
+#[miri::intrinsic_fallback_is_spec]
+pub const unsafe fn const_make_global(ptr: *mut u8) -> *const u8 {
+    // const eval overrides this function; at runtime, it is a NOP.
+    ptr
+}
+
 /// Returns whether we should perform contract-checking at runtime.
 ///
 /// This is meant to be similar to the ub_checks intrinsic, in terms
@@ -2724,7 +2754,20 @@ pub const fn type_name<T: ?Sized>() -> &'static str;
 #[rustc_nounwind]
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_intrinsic]
-pub const fn type_id<T: ?Sized + 'static>() -> u128;
+pub const fn type_id<T: ?Sized + 'static>() -> crate::any::TypeId;
+
+/// Tests (at compile-time) if two [`crate::any::TypeId`] instances identify the
+/// same type. This is necessary because at const-eval time the actual discriminating
+/// data is opaque and cannot be inspected directly.
+///
+/// The stabilized version of this intrinsic is the [PartialEq] impl for [`core::any::TypeId`].
+#[rustc_nounwind]
+#[unstable(feature = "core_intrinsics", issue = "none")]
+#[rustc_intrinsic]
+#[rustc_do_not_const_check]
+pub const fn type_id_eq(a: crate::any::TypeId, b: crate::any::TypeId) -> bool {
+    a.data == b.data
+}
 
 /// Lowers in MIR to `Rvalue::Aggregate` with `AggregateKind::RawPtr`.
 ///

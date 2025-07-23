@@ -396,7 +396,7 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
     bool EmitStackSizeSection, bool RelaxELFRelocations, bool UseInitArray,
     const char *SplitDwarfFile, const char *OutputObjFile,
     const char *DebugInfoCompression, bool UseEmulatedTls,
-    const char *ArgsCstrBuff, size_t ArgsCstrBuffLen) {
+    const char *ArgsCstrBuff, size_t ArgsCstrBuffLen, bool UseWasmEH) {
 
   auto OptLevel = fromRust(RustOptLevel);
   auto RM = fromRust(RustReloc);
@@ -461,6 +461,9 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
   if (Singlethread) {
     Options.ThreadModel = ThreadModel::Single;
   }
+
+  if (UseWasmEH)
+    Options.ExceptionModel = ExceptionHandling::Wasm;
 
   Options.EmitStackSizeSection = EmitStackSizeSection;
 
@@ -700,6 +703,10 @@ struct LLVMRustSanitizerOptions {
 #ifdef ENZYME
 extern "C" void registerEnzymeAndPassPipeline(llvm::PassBuilder &PB,
                                               /* augmentPassBuilder */ bool);
+
+extern "C" {
+extern llvm::cl::opt<std::string> EnzymeFunctionToAnalyze;
+}
 #endif
 
 extern "C" LLVMRustResult LLVMRustOptimize(
@@ -1067,6 +1074,15 @@ extern "C" LLVMRustResult LLVMRustOptimize(
       std::string ErrMsg = toString(std::move(Err));
       LLVMRustSetLastError(ErrMsg.c_str());
       return LLVMRustResult::Failure;
+    }
+
+    // Check if PrintTAFn was used and add type analysis pass if needed
+    if (!EnzymeFunctionToAnalyze.empty()) {
+      if (auto Err = PB.parsePassPipeline(MPM, "print-type-analysis")) {
+        std::string ErrMsg = toString(std::move(Err));
+        LLVMRustSetLastError(ErrMsg.c_str());
+        return LLVMRustResult::Failure;
+      }
     }
 
     if (PrintAfterEnzyme) {

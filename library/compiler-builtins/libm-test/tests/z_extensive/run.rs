@@ -197,15 +197,15 @@ impl Progress {
 
     fn update(&self, completed: u64, input: impl fmt::Debug) {
         // Infrequently update the progress bar.
-        if completed % 20_000 == 0 {
+        if completed.is_multiple_of(20_000) {
             self.pb.set_position(completed);
         }
 
-        if completed % 500_000 == 0 {
+        if completed.is_multiple_of(500_000) {
             self.pb.set_message(format!("input: {input:<24?}"));
         }
 
-        if !self.is_tty && completed % 5_000_000 == 0 {
+        if !self.is_tty && completed.is_multiple_of(5_000_000) {
             let len = self.pb.length().unwrap_or_default();
             eprintln!(
                 "[{elapsed:3?}s {percent:3.0}%] {name} \

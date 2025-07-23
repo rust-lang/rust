@@ -212,21 +212,37 @@ impl<Prov: Provenance> ProvenanceMap<Prov> {
         Ok(())
     }
 
-    /// Overwrites all provenance in the allocation with wildcard provenance.
+    /// Overwrites all provenance in the given range with wildcard provenance.
+    /// Pointers partially overwritten will have their provenances preserved
+    /// bytewise on their remaining bytes.
     ///
     /// Provided for usage in Miri and panics otherwise.
-    pub fn write_wildcards(&mut self, alloc_size: usize) {
+    pub fn write_wildcards(&mut self, cx: &impl HasDataLayout, range: AllocRange) {
         assert!(
             Prov::OFFSET_IS_ADDR,
             "writing wildcard provenance is not supported when `OFFSET_IS_ADDR` is false"
         );
         let wildcard = Prov::WILDCARD.unwrap();
 
-        // Remove all pointer provenances, then write wildcards into the whole byte range.
-        self.ptrs.clear();
-        let last = Size::from_bytes(alloc_size);
         let bytes = self.bytes.get_or_insert_with(Box::default);
-        for offset in Size::ZERO..last {
+
+        // Remove pointer provenances that overlap with the range, then readd the edge ones bytewise.
+        let ptr_range = Self::adjusted_range_ptrs(range, cx);
+        let ptrs = self.ptrs.range(ptr_range.clone());
+        if let Some((offset, prov)) = ptrs.first() {
+            for byte_ofs in *offset..range.start {
+                bytes.insert(byte_ofs, *prov);
+            }
+        }
+        if let Some((offset, prov)) = ptrs.last() {
+            for byte_ofs in range.end()..*offset + cx.data_layout().pointer_size() {
+                bytes.insert(byte_ofs, *prov);
+            }
+        }
+        self.ptrs.remove_range(ptr_range);
+
+        // Overwrite bytewise provenance.
+        for offset in range.start..range.end() {
             bytes.insert(offset, wildcard);
         }
     }
