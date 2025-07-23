@@ -1294,7 +1294,6 @@ compiler_leads = [
 ]
 compiler = [
     "@BoxyUwU",
-    "@compiler-errors",
     "@davidtwco",
     "@eholk",
     "@fee1-dead",
@@ -1347,13 +1346,11 @@ incremental = [
     "@wesleywiser",
 ]
 diagnostics = [
-    "@compiler-errors",
     "@davidtwco",
     "@oli-obk",
     "@chenyukang",
 ]
 parser = [
-    "@compiler-errors",
     "@davidtwco",
     "@nnethercote",
     "@petrochenkov",
@@ -1380,7 +1377,6 @@ mir-opt = [
     "@saethlin",
 ]
 types = [
-    "@compiler-errors",
     "@jackh726",
     "@lcnr",
     "@oli-obk",
@@ -1392,7 +1388,6 @@ borrowck = [
     "@matthewjasper"
 ]
 ast_lowering = [
-    "@compiler-errors",
     "@spastorino",
 ]
 debuginfo = [
@@ -1403,12 +1398,10 @@ fallback = [
 ]
 style-team = [
     "@calebcartwright",
-    "@compiler-errors",
     "@joshtriplett",
     "@yaahc",
 ]
 project-const-traits = [
-    "@compiler-errors",
     "@fee1-dead",
     "@fmease",
     "@oli-obk",
@@ -1500,7 +1493,7 @@ dep-bumps = [
 "/tests/rustdoc-ui" =                                    ["rustdoc"]
 "/tests/ui" =                                            ["compiler"]
 "/src/tools/cargo" =                                     ["@ehuss"]
-"/src/tools/compiletest" =                               ["bootstrap", "@wesleywiser", "@oli-obk", "@compiler-errors", "@jieyouxu"]
+"/src/tools/compiletest" =                               ["bootstrap", "@wesleywiser", "@oli-obk", "@jieyouxu"]
 "/src/tools/linkchecker" =                               ["@ehuss"]
 "/src/tools/opt-dist" =                                  ["@kobzol"]
 "/src/tools/run-make-support" =                          ["@jieyouxu"]
