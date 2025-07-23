@@ -253,6 +253,10 @@ mod ok {
         run_and_expect_no_errors("test_data/parser/inline/ok/fn_pointer_unnamed_arg.rs");
     }
     #[test]
+    fn for_binder_bound() {
+        run_and_expect_no_errors("test_data/parser/inline/ok/for_binder_bound.rs");
+    }
+    #[test]
     fn for_expr() { run_and_expect_no_errors("test_data/parser/inline/ok/for_expr.rs"); }
     #[test]
     fn for_range_from() {
@@ -401,6 +405,10 @@ mod ok {
     fn match_expr() { run_and_expect_no_errors("test_data/parser/inline/ok/match_expr.rs"); }
     #[test]
     fn match_guard() { run_and_expect_no_errors("test_data/parser/inline/ok/match_guard.rs"); }
+    #[test]
+    fn maybe_const_trait_bound() {
+        run_and_expect_no_errors("test_data/parser/inline/ok/maybe_const_trait_bound.rs");
+    }
     #[test]
     fn metas() { run_and_expect_no_errors("test_data/parser/inline/ok/metas.rs"); }
     #[test]
