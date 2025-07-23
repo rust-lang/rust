@@ -135,6 +135,7 @@ fn add_assist(
             &annotated_name,
             trait_,
             replace_trait_path,
+            impl_is_unsafe,
         );
         update_attribute(builder, old_derives, old_tree, old_trait_path, attr);
 
@@ -142,13 +143,7 @@ fn add_assist(
 
         match (ctx.config.snippet_cap, impl_def_with_items) {
             (None, None) => {
-                let impl_def = generate_trait_impl(adt, trait_path);
-                if impl_is_unsafe {
-                    ted::insert(
-                        Position::first_child_of(impl_def.syntax()),
-                        make::token(T![unsafe]),
-                    );
-                }
+                let impl_def = generate_trait_impl(impl_is_unsafe, adt, trait_path);
 
                 ted::insert_all(
                     insert_after,
@@ -156,26 +151,13 @@ fn add_assist(
                 );
             }
             (None, Some((impl_def, _))) => {
-                if impl_is_unsafe {
-                    ted::insert(
-                        Position::first_child_of(impl_def.syntax()),
-                        make::token(T![unsafe]),
-                    );
-                }
                 ted::insert_all(
                     insert_after,
                     vec![make::tokens::blank_line().into(), impl_def.syntax().clone().into()],
                 );
             }
             (Some(cap), None) => {
-                let impl_def = generate_trait_impl(adt, trait_path);
-
-                if impl_is_unsafe {
-                    ted::insert(
-                        Position::first_child_of(impl_def.syntax()),
-                        make::token(T![unsafe]),
-                    );
-                }
+                let impl_def = generate_trait_impl(impl_is_unsafe, adt, trait_path);
 
                 if let Some(l_curly) = impl_def.assoc_item_list().and_then(|it| it.l_curly_token())
                 {
@@ -188,26 +170,13 @@ fn add_assist(
                 );
             }
             (Some(cap), Some((impl_def, first_assoc_item))) => {
-                let mut added_snippet = false;
-
-                if impl_is_unsafe {
-                    ted::insert(
-                        Position::first_child_of(impl_def.syntax()),
-                        make::token(T![unsafe]),
-                    );
-                }
-
-                if let ast::AssocItem::Fn(ref func) = first_assoc_item {
-                    if let Some(m) = func.syntax().descendants().find_map(ast::MacroCall::cast) {
-                        if m.syntax().text() == "todo!()" {
-                            // Make the `todo!()` a placeholder
-                            builder.add_placeholder_snippet(cap, m);
-                            added_snippet = true;
-                        }
-                    }
-                }
-
-                if !added_snippet {
+                if let ast::AssocItem::Fn(ref func) = first_assoc_item
+                    && let Some(m) = func.syntax().descendants().find_map(ast::MacroCall::cast)
+                    && m.syntax().text() == "todo!()"
+                {
+                    // Make the `todo!()` a placeholder
+                    builder.add_placeholder_snippet(cap, m);
+                } else {
                     // If we haven't already added a snippet, add a tabstop before the generated function
                     builder.add_tabstop_before(cap, first_assoc_item);
                 }
@@ -228,6 +197,7 @@ fn impl_def_from_trait(
     annotated_name: &ast::Name,
     trait_: Option<hir::Trait>,
     trait_path: &ast::Path,
+    impl_is_unsafe: bool,
 ) -> Option<(ast::Impl, ast::AssocItem)> {
     let trait_ = trait_?;
     let target_scope = sema.scope(annotated_name.syntax())?;
@@ -245,14 +215,18 @@ fn impl_def_from_trait(
     if trait_items.is_empty() {
         return None;
     }
-    let impl_def = generate_trait_impl(adt, make::ty_path(trait_path.clone()));
+    let impl_def = generate_trait_impl(impl_is_unsafe, adt, make::ty_path(trait_path.clone()));
 
     let first_assoc_item =
         add_trait_assoc_items_to_impl(sema, config, &trait_items, trait_, &impl_def, &target_scope);
 
     // Generate a default `impl` function body for the derived trait.
     if let ast::AssocItem::Fn(ref func) = first_assoc_item {
-        let _ = gen_trait_fn_body(func, trait_path, adt, None);
+        if let Some(body) = gen_trait_fn_body(func, trait_path, adt, None)
+            && let Some(func_body) = func.body()
+        {
+            ted::replace(func_body.syntax(), body.syntax());
+        }
     };
 
     Some((impl_def, first_assoc_item))

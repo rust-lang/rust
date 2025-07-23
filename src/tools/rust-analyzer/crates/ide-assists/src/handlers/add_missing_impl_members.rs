@@ -2,6 +2,7 @@ use hir::HasSource;
 use syntax::{
     Edition,
     ast::{self, AstNode, make},
+    ted,
 };
 
 use crate::{
@@ -157,19 +158,21 @@ fn add_missing_impl_members_inner(
             &target_scope,
         );
 
+        let mut editor = edit.make_editor(impl_def.syntax());
         if let Some(cap) = ctx.config.snippet_cap {
             let mut placeholder = None;
             if let DefaultMethods::No = mode {
                 if let ast::AssocItem::Fn(func) = &first_new_item {
-                    if try_gen_trait_body(
+                    if let Some(body) = try_gen_trait_body(
                         ctx,
                         func,
                         trait_ref,
                         &impl_def,
                         target_scope.krate().edition(ctx.sema.db),
-                    )
-                    .is_none()
+                    ) && let Some(func_body) = func.body()
                     {
+                        ted::replace(func_body.syntax(), body.syntax());
+                    } else {
                         if let Some(m) = func.syntax().descendants().find_map(ast::MacroCall::cast)
                         {
                             if m.syntax().text() == "todo!()" {
@@ -195,7 +198,7 @@ fn try_gen_trait_body(
     trait_ref: hir::TraitRef<'_>,
     impl_def: &ast::Impl,
     edition: Edition,
-) -> Option<()> {
+) -> Option<ast::BlockExpr> {
     let trait_path = make::ext::ident_path(
         &trait_ref.trait_().name(ctx.db()).display(ctx.db(), edition).to_string(),
     );
