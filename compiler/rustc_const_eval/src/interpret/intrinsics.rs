@@ -11,7 +11,7 @@ use rustc_middle::mir::interpret::{read_target_uint, write_target_uint};
 use rustc_middle::mir::{self, BinOp, ConstValue, NonDivergingIntrinsic};
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::ty::{Ty, TyCtxt, Upcast};
-use rustc_middle::{bug, ty};
+use rustc_middle::{bug, span_bug, ty};
 use rustc_span::{Symbol, sym};
 use rustc_trait_selection::traits::{Obligation, ObligationCause, ObligationCtxt};
 use tracing::trace;
@@ -21,7 +21,7 @@ use super::util::ensure_monomorphic_enough;
 use super::{
     Allocation, CheckInAllocMsg, ConstAllocation, ImmTy, InterpCx, InterpResult, Machine, OpTy,
     PlaceTy, Pointer, PointerArithmetic, Provenance, Scalar, err_ub_custom, err_unsup_format,
-    interp_ok, throw_inval, throw_ub_custom, throw_ub_format, throw_unsup_format,
+    interp_ok, throw_inval, throw_ub_custom, throw_ub_format,
 };
 use crate::fluent_generated as fluent;
 
@@ -156,17 +156,15 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
                 ensure_monomorphic_enough(tcx, tp_ty)?;
                 ensure_monomorphic_enough(tcx, result_ty)?;
-
                 let ty::Dynamic(preds, _, ty::Dyn) = result_ty.kind() else {
-                    throw_unsup_format!(
+                    span_bug!(
+                        self.find_closest_untracked_caller_location(),
                         "Invalid type provided to vtable_for::<T, U>. U must be dyn Trait, got {result_ty}."
                     );
                 };
 
-                let (infcx, param_env) = self
-                    .tcx
-                    .infer_ctxt()
-                    .build_with_typing_env(self.typing_env);
+                let (infcx, param_env) =
+                    self.tcx.infer_ctxt().build_with_typing_env(self.typing_env);
 
                 let type_impls_trait = preds.iter().all(|pred| {
                     let trait_ref = ty::TraitRef::new(tcx, pred.def_id(), [tp_ty]);
