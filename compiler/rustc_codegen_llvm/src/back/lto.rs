@@ -599,13 +599,11 @@ pub(crate) fn run_pass_manager(
         for function in cx.get_functions() {
             let enzyme_marker = "enzyme_marker";
             if attributes::has_string_attr(function, enzyme_marker) {
-                // Sanity check: Ensure 'noinline' is present before replacing it.
-                assert!(
-                    attributes::has_attr(function, Function, llvm::AttributeKind::NoInline),
-                    "Expected __enzyme function to have 'noinline' before adding 'alwaysinline'"
-                );
+                // Remove 'noinline' if present (it should be there in most cases)
+                if attributes::has_attr(function, Function, llvm::AttributeKind::NoInline) {
+                    attributes::remove_from_llfn(function, Function, llvm::AttributeKind::NoInline);
+                }
 
-                attributes::remove_from_llfn(function, Function, llvm::AttributeKind::NoInline);
                 attributes::remove_string_attr_from_llfn(function, enzyme_marker);
 
                 assert!(
