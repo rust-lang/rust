@@ -1277,9 +1277,9 @@ See [Tracking issue for specialization (RFC 1210) #31844](https://github.com/rus
 
 Stability attributes used internally by the standard library: `#[stable()]` and `#[unstable()]`.
 
-## `tests/ui/stable-mir-print/`
+## `tests/ui/rustc_public-ir-print/`
 
-Some tests for pretty printing of StableMIR.
+Some tests for pretty printing of rustc_public's IR.
 
 ## `tests/ui/stack-protector/`: `-Z stack-protector` command line flag
 
