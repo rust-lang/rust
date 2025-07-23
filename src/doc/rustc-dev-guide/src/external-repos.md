@@ -40,27 +40,24 @@ implement a new tool feature or test, that should happen in one collective rustc
     * `portable-simd` ([sync script](https://github.com/rust-lang/portable-simd/blob/master/subtree-sync.sh))
     * `rustfmt`
     * `rustc_codegen_cranelift` ([sync script](https://github.com/rust-lang/rustc_codegen_cranelift/blob/113af154d459e41b3dc2c5d7d878e3d3a8f33c69/scripts/rustup.sh#L7))
-* Using the [josh] tool
-    * `miri` ([sync guide](https://github.com/rust-lang/miri/blob/master/CONTRIBUTING.md#advanced-topic-syncing-with-the-rustc-repo))
-    * `rust-analyzer` ([sync script](https://github.com/rust-lang/rust-analyzer/blob/2e13684be123eca7181aa48e043e185d8044a84a/xtask/src/release.rs#L147))
-    * `rustc-dev-guide` ([josh sync](#synchronizing-a-josh-subtree))
-    * `compiler-builtins` ([josh sync](#synchronizing-a-josh-subtree))
-    * `stdarch` ([josh sync](#synchronizing-a-josh-subtree))
+* Using the [josh](#synchronizing-a-josh-subtree) tool
+    * `miri`
+    * `rust-analyzer`
+    * `rustc-dev-guide`
+    * `compiler-builtins`
+    * `stdarch`
 
 ### Josh subtrees
 
-The [josh] tool is an alternative to git subtrees, which manages git history in a different way and scales better to larger repositories. Specific tooling is required to work with josh; you can check out the `miri` or `rust-analyzer` scripts linked above for inspiration. We provide a helper [`rustc-josh-sync`][josh-sync] tool to help with the synchronization, described [below](#synchronizing-a-josh-subtree).
+The [josh] tool is an alternative to git subtrees, which manages git history in a different way and scales better to larger repositories. Specific tooling is required to work with josh. We provide a helper [`rustc-josh-sync`][josh-sync] tool to help with the synchronization, described [below](#synchronizing-a-josh-subtree).
 
 ### Synchronizing a Josh subtree
 
 We use a dedicated tool called [`rustc-josh-sync`][josh-sync] for performing Josh subtree updates.
-Currently, we are migrating Josh repositories to it. So far, it is used in:
+The commands below can be used for all our Josh subtrees, although note that `miri`
+requires you to perform some [additional steps](https://github.com/rust-lang/miri/blob/master/CONTRIBUTING.md#advanced-topic-syncing-with-the-rustc-repo) during pulls.
 
-- compiler-builtins
-- rustc-dev-guide
-- stdarch
-
-To install the tool:
+You can install the tool using the following command:
 ```
 cargo install --locked --git https://github.com/rust-lang/josh-sync
 ```
