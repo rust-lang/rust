@@ -29,6 +29,7 @@ use std::ops::ControlFlow;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::DefKind;
 pub use rustc_infer::traits::*;
+use rustc_macros::TypeVisitable;
 use rustc_middle::query::Providers;
 use rustc_middle::span_bug;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
@@ -75,7 +76,7 @@ use crate::infer::{InferCtxt, TyCtxtInferExt};
 use crate::regions::InferCtxtRegionExt;
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
 
-#[derive(Debug)]
+#[derive(Debug, TypeVisitable)]
 pub struct FulfillmentError<'tcx> {
     pub obligation: PredicateObligation<'tcx>,
     pub code: FulfillmentErrorCode<'tcx>,
@@ -107,7 +108,7 @@ impl<'tcx> FulfillmentError<'tcx> {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, TypeVisitable)]
 pub enum FulfillmentErrorCode<'tcx> {
     /// Inherently impossible to fulfill; this trait is implemented if and only
     /// if it is already implemented.
