@@ -1,3 +1,4 @@
+use std::any::Any;
 use std::default::Default;
 use std::iter;
 use std::path::Component::Prefix;
@@ -361,17 +362,13 @@ where
 }
 
 /// Represents a thing that maps token trees to Macro Results
-pub trait TTMacroExpander {
+pub trait TTMacroExpander: Any {
     fn expand<'cx>(
         &self,
         ecx: &'cx mut ExtCtxt<'_>,
         span: Span,
         input: TokenStream,
     ) -> MacroExpanderResult<'cx>;
-
-    fn get_unused_rule(&self, _rule_i: usize) -> Option<(&Ident, Span)> {
-        None
-    }
 }
 
 pub type MacroExpanderResult<'cx> = ExpandResult<Box<dyn MacResult + 'cx>, ()>;
@@ -379,7 +376,7 @@ pub type MacroExpanderResult<'cx> = ExpandResult<Box<dyn MacResult + 'cx>, ()>;
 pub type MacroExpanderFn =
     for<'cx> fn(&'cx mut ExtCtxt<'_>, Span, TokenStream) -> MacroExpanderResult<'cx>;
 
-impl<F> TTMacroExpander for F
+impl<F: 'static> TTMacroExpander for F
 where
     F: for<'cx> Fn(&'cx mut ExtCtxt<'_>, Span, TokenStream) -> MacroExpanderResult<'cx>,
 {
