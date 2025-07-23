@@ -4,6 +4,7 @@ error[E0277]: the trait bound `foo::Struct: Trait` is not satisfied
 13 |     check_trait::<foo::Struct>();
    |                   ^^^^^^^^^^^ the trait `Trait` is not implemented for `foo::Struct`
    |
+   = note: `foo::Struct` implements similarly named `foo::Trait`, but not `Trait`
 note: there are multiple different versions of crate `foo` in the dependency graph
   --> foo-current.rs:7:1
    |
