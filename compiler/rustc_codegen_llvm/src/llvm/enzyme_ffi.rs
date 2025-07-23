@@ -1,6 +1,6 @@
 #![expect(dead_code)]
 
-use libc::{c_char, c_uint, size_t};
+use libc::{c_char, c_uint};
 
 use super::MetadataKindId;
 use super::ffi::{AttributeKind, BasicBlock, Context, Metadata, Module, Type, Value};
@@ -17,6 +17,7 @@ pub(crate) struct EnzymeTypeTree {
 
 #[repr(u32)]
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+#[allow(non_camel_case_types)]
 pub(crate) enum CConcreteType {
     DT_Anything = 0,
     DT_Integer = 1,
@@ -25,6 +26,10 @@ pub(crate) enum CConcreteType {
     DT_Float = 4,
     DT_Double = 5,
     DT_Unknown = 6,
+}
+
+pub(crate) struct TypeTree {
+    pub(crate) inner: CTypeTreeRef,
 }
 
 #[link(name = "llvm-wrapper", kind = "static")]
@@ -87,7 +92,7 @@ pub(crate) use self::Enzyme_AD::*;
 pub(crate) mod Enzyme_AD {
     use std::ffi::{CString, c_char};
 
-    use libc::{c_void, size_t};
+    use libc::c_void;
 
     use super::{CConcreteType, CTypeTreeRef, Context};
 
@@ -262,5 +267,83 @@ pub(crate) mod Fallback_AD {
     }
     pub(crate) fn set_rust_rules(val: bool) {
         unimplemented!()
+    }
+}
+
+impl TypeTree {
+    pub(crate) fn new() -> TypeTree {
+        let inner = unsafe { EnzymeNewTypeTree() };
+        TypeTree { inner }
+    }
+
+    pub(crate) fn from_type(t: CConcreteType, ctx: &Context) -> TypeTree {
+        let inner = unsafe { EnzymeNewTypeTreeCT(t, ctx) };
+        TypeTree { inner }
+    }
+
+    pub(crate) fn merge(self, other: Self) -> Self {
+        unsafe {
+            EnzymeMergeTypeTree(self.inner, other.inner);
+        }
+        drop(other);
+        self
+    }
+
+    #[must_use]
+    pub(crate) fn shift(
+        self,
+        layout: &str,
+        offset: isize,
+        max_size: isize,
+        add_offset: usize,
+    ) -> Self {
+        let layout = std::ffi::CString::new(layout).unwrap();
+
+        unsafe {
+            EnzymeTypeTreeShiftIndiciesEq(
+                self.inner,
+                layout.as_ptr(),
+                offset as i64,
+                max_size as i64,
+                add_offset as u64,
+            )
+        }
+
+        self
+    }
+}
+
+impl Clone for TypeTree {
+    fn clone(&self) -> Self {
+        let inner = unsafe { EnzymeNewTypeTreeTR(self.inner) };
+        TypeTree { inner }
+    }
+}
+
+impl std::fmt::Display for TypeTree {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let ptr = unsafe { EnzymeTypeTreeToString(self.inner) };
+        let cstr = unsafe { std::ffi::CStr::from_ptr(ptr) };
+        match cstr.to_str() {
+            Ok(x) => write!(f, "{}", x)?,
+            Err(err) => write!(f, "could not parse: {}", err)?,
+        }
+
+        // delete C string pointer
+        unsafe { EnzymeTypeTreeToStringFree(ptr) }
+
+        Ok(())
+    }
+}
+
+impl std::fmt::Debug for TypeTree {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        <Self as std::fmt::Display>::fmt(self, f)
+    }
+}
+
+impl Drop for TypeTree {
+    fn drop(&mut self) {
+        unsafe { EnzymeFreeTypeTree(self.inner) }
     }
 }
