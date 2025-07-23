@@ -6,28 +6,9 @@ use std::sync::mpsc::channel;
 use std::sync::{Arc, Condvar, MappedMutexGuard, Mutex, MutexGuard, TryLockError};
 use std::{hint, mem, thread};
 
-struct Packet<T>(Arc<(Mutex<T>, Condvar)>);
-
-#[derive(Eq, PartialEq, Debug)]
-struct NonCopy(i32);
-
-#[derive(Eq, PartialEq, Debug)]
-struct NonCopyNeedsDrop(i32);
-
-impl Drop for NonCopyNeedsDrop {
-    fn drop(&mut self) {
-        hint::black_box(());
-    }
-}
-
-#[test]
-fn test_needs_drop() {
-    assert!(!mem::needs_drop::<NonCopy>());
-    assert!(mem::needs_drop::<NonCopyNeedsDrop>());
-}
-
-#[derive(Clone, Eq, PartialEq, Debug)]
-struct Cloneable(i32);
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// Nonpoison & Poison Tests
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #[test]
 fn smoke() {
@@ -78,19 +59,22 @@ fn try_lock() {
     *m.try_lock().unwrap() = ();
 }
 
-fn new_poisoned_mutex<T>(value: T) -> Mutex<T> {
-    let mutex = Mutex::new(value);
+#[derive(Eq, PartialEq, Debug)]
+struct NonCopy(i32);
 
-    let catch_unwind_result = panic::catch_unwind(AssertUnwindSafe(|| {
-        let _guard = mutex.lock().unwrap();
+#[derive(Eq, PartialEq, Debug)]
+struct NonCopyNeedsDrop(i32);
 
-        panic!("test panic to poison mutex");
-    }));
+impl Drop for NonCopyNeedsDrop {
+    fn drop(&mut self) {
+        hint::black_box(());
+    }
+}
 
-    assert!(catch_unwind_result.is_err());
-    assert!(mutex.is_poisoned());
-
-    mutex
+#[test]
+fn test_needs_drop() {
+    assert!(!mem::needs_drop::<NonCopy>());
+    assert!(mem::needs_drop::<NonCopyNeedsDrop>());
 }
 
 #[test]
@@ -118,35 +102,6 @@ fn test_into_inner_drop() {
 }
 
 #[test]
-#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
-fn test_into_inner_poison() {
-    let m = new_poisoned_mutex(NonCopy(10));
-
-    match m.into_inner() {
-        Err(e) => assert_eq!(e.into_inner(), NonCopy(10)),
-        Ok(x) => panic!("into_inner of poisoned Mutex is Ok: {x:?}"),
-    }
-}
-
-#[test]
-fn test_get_cloned() {
-    let m = Mutex::new(Cloneable(10));
-
-    assert_eq!(m.get_cloned().unwrap(), Cloneable(10));
-}
-
-#[test]
-#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
-fn test_get_cloned_poison() {
-    let m = new_poisoned_mutex(Cloneable(10));
-
-    match m.get_cloned() {
-        Err(e) => assert_eq!(e.into_inner(), ()),
-        Ok(x) => panic!("get of poisoned Mutex is Ok: {x:?}"),
-    }
-}
-
-#[test]
 fn test_get_mut() {
     let mut m = Mutex::new(NonCopy(10));
     *m.get_mut().unwrap() = NonCopy(20);
@@ -154,14 +109,13 @@ fn test_get_mut() {
 }
 
 #[test]
-#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
-fn test_get_mut_poison() {
-    let mut m = new_poisoned_mutex(NonCopy(10));
+fn test_get_cloned() {
+    #[derive(Clone, Eq, PartialEq, Debug)]
+    struct Cloneable(i32);
 
-    match m.get_mut() {
-        Err(e) => assert_eq!(*e.into_inner(), NonCopy(10)),
-        Ok(x) => panic!("get_mut of poisoned Mutex is Ok: {x:?}"),
-    }
+    let m = Mutex::new(Cloneable(10));
+
+    assert_eq!(m.get_cloned().unwrap(), Cloneable(10));
 }
 
 #[test]
@@ -182,6 +136,145 @@ fn test_set() {
 }
 
 #[test]
+fn test_replace() {
+    fn inner<T>(mut init: impl FnMut() -> T, mut value: impl FnMut() -> T)
+    where
+        T: Debug + Eq,
+    {
+        let m = Mutex::new(init());
+
+        assert_eq!(*m.lock().unwrap(), init());
+        assert_eq!(m.replace(value()).unwrap(), init());
+        assert_eq!(*m.lock().unwrap(), value());
+    }
+
+    inner(|| NonCopy(10), || NonCopy(20));
+    inner(|| NonCopyNeedsDrop(10), || NonCopyNeedsDrop(20));
+}
+
+#[test]
+fn test_mutex_arc_condvar() {
+    struct Packet<T>(Arc<(Mutex<T>, Condvar)>);
+
+    let packet = Packet(Arc::new((Mutex::new(false), Condvar::new())));
+    let packet2 = Packet(packet.0.clone());
+    let (tx, rx) = channel();
+    let _t = thread::spawn(move || {
+        // wait until parent gets in
+        rx.recv().unwrap();
+        let &(ref lock, ref cvar) = &*packet2.0;
+        let mut lock = lock.lock().unwrap();
+        *lock = true;
+        cvar.notify_one();
+    });
+
+    let &(ref lock, ref cvar) = &*packet.0;
+    let mut lock = lock.lock().unwrap();
+    tx.send(()).unwrap();
+    assert!(!*lock);
+    while !*lock {
+        lock = cvar.wait(lock).unwrap();
+    }
+}
+
+#[test]
+fn test_mutex_arc_nested() {
+    // Tests nested mutexes and access
+    // to underlying data.
+    let arc = Arc::new(Mutex::new(1));
+    let arc2 = Arc::new(Mutex::new(arc));
+    let (tx, rx) = channel();
+    let _t = thread::spawn(move || {
+        let lock = arc2.lock().unwrap();
+        let lock2 = lock.lock().unwrap();
+        assert_eq!(*lock2, 1);
+        tx.send(()).unwrap();
+    });
+    rx.recv().unwrap();
+}
+
+#[test]
+fn test_mutex_unsized() {
+    let mutex: &Mutex<[i32]> = &Mutex::new([1, 2, 3]);
+    {
+        let b = &mut *mutex.lock().unwrap();
+        b[0] = 4;
+        b[2] = 5;
+    }
+    let comp: &[i32] = &[4, 2, 5];
+    assert_eq!(&*mutex.lock().unwrap(), comp);
+}
+
+#[test]
+fn test_mapping_mapped_guard() {
+    let arr = [0; 4];
+    let mut lock = Mutex::new(arr);
+    let guard = lock.lock().unwrap();
+    let guard = MutexGuard::map(guard, |arr| &mut arr[..2]);
+    let mut guard = MappedMutexGuard::map(guard, |slice| &mut slice[1..]);
+    assert_eq!(guard.len(), 1);
+    guard[0] = 42;
+    drop(guard);
+    assert_eq!(*lock.get_mut().unwrap(), [0, 42, 0, 0]);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// Poison Tests
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/// Creates a mutex that is immediately poisoned.
+fn new_poisoned_mutex<T>(value: T) -> Mutex<T> {
+    let mutex = Mutex::new(value);
+
+    let catch_unwind_result = panic::catch_unwind(AssertUnwindSafe(|| {
+        let _guard = mutex.lock().unwrap();
+
+        panic!("test panic to poison mutex");
+    }));
+
+    assert!(catch_unwind_result.is_err());
+    assert!(mutex.is_poisoned());
+
+    mutex
+}
+
+#[test]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
+fn test_into_inner_poison() {
+    let m = new_poisoned_mutex(NonCopy(10));
+
+    match m.into_inner() {
+        Err(e) => assert_eq!(e.into_inner(), NonCopy(10)),
+        Ok(x) => panic!("into_inner of poisoned Mutex is Ok: {x:?}"),
+    }
+}
+
+#[test]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
+fn test_get_cloned_poison() {
+    #[derive(Clone, Eq, PartialEq, Debug)]
+    struct Cloneable(i32);
+
+    let m = new_poisoned_mutex(Cloneable(10));
+
+    match m.get_cloned() {
+        Err(e) => assert_eq!(e.into_inner(), ()),
+        Ok(x) => panic!("get of poisoned Mutex is Ok: {x:?}"),
+    }
+}
+
+#[test]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
+fn test_get_mut_poison() {
+    let mut m = new_poisoned_mutex(NonCopy(10));
+
+    match m.get_mut() {
+        Err(e) => assert_eq!(*e.into_inner(), NonCopy(10)),
+        Ok(x) => panic!("get_mut of poisoned Mutex is Ok: {x:?}"),
+    }
+}
+
+#[test]
 #[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn test_set_poison() {
     fn inner<T>(mut init: impl FnMut() -> T, mut value: impl FnMut() -> T)
@@ -197,23 +290,6 @@ fn test_set_poison() {
             }
             Ok(x) => panic!("set of poisoned Mutex is Ok: {x:?}"),
         }
-    }
-
-    inner(|| NonCopy(10), || NonCopy(20));
-    inner(|| NonCopyNeedsDrop(10), || NonCopyNeedsDrop(20));
-}
-
-#[test]
-fn test_replace() {
-    fn inner<T>(mut init: impl FnMut() -> T, mut value: impl FnMut() -> T)
-    where
-        T: Debug + Eq,
-    {
-        let m = Mutex::new(init());
-
-        assert_eq!(*m.lock().unwrap(), init());
-        assert_eq!(m.replace(value()).unwrap(), init());
-        assert_eq!(*m.lock().unwrap(), value());
     }
 
     inner(|| NonCopy(10), || NonCopy(20));
@@ -243,31 +319,10 @@ fn test_replace_poison() {
 }
 
 #[test]
-fn test_mutex_arc_condvar() {
-    let packet = Packet(Arc::new((Mutex::new(false), Condvar::new())));
-    let packet2 = Packet(packet.0.clone());
-    let (tx, rx) = channel();
-    let _t = thread::spawn(move || {
-        // wait until parent gets in
-        rx.recv().unwrap();
-        let &(ref lock, ref cvar) = &*packet2.0;
-        let mut lock = lock.lock().unwrap();
-        *lock = true;
-        cvar.notify_one();
-    });
-
-    let &(ref lock, ref cvar) = &*packet.0;
-    let mut lock = lock.lock().unwrap();
-    tx.send(()).unwrap();
-    assert!(!*lock);
-    while !*lock {
-        lock = cvar.wait(lock).unwrap();
-    }
-}
-
-#[test]
 #[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn test_arc_condvar_poison() {
+    struct Packet<T>(Arc<(Mutex<T>, Condvar)>);
+
     let packet = Packet(Arc::new((Mutex::new(1), Condvar::new())));
     let packet2 = Packet(packet.0.clone());
     let (tx, rx) = channel();
@@ -327,22 +382,6 @@ fn test_mutex_arc_poison_mapped() {
 }
 
 #[test]
-fn test_mutex_arc_nested() {
-    // Tests nested mutexes and access
-    // to underlying data.
-    let arc = Arc::new(Mutex::new(1));
-    let arc2 = Arc::new(Mutex::new(arc));
-    let (tx, rx) = channel();
-    let _t = thread::spawn(move || {
-        let lock = arc2.lock().unwrap();
-        let lock2 = lock.lock().unwrap();
-        assert_eq!(*lock2, 1);
-        tx.send(()).unwrap();
-    });
-    rx.recv().unwrap();
-}
-
-#[test]
 #[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn test_mutex_arc_access_in_unwind() {
     let arc = Arc::new(Mutex::new(1));
@@ -362,31 +401,6 @@ fn test_mutex_arc_access_in_unwind() {
     .join();
     let lock = arc.lock().unwrap();
     assert_eq!(*lock, 2);
-}
-
-#[test]
-fn test_mutex_unsized() {
-    let mutex: &Mutex<[i32]> = &Mutex::new([1, 2, 3]);
-    {
-        let b = &mut *mutex.lock().unwrap();
-        b[0] = 4;
-        b[2] = 5;
-    }
-    let comp: &[i32] = &[4, 2, 5];
-    assert_eq!(&*mutex.lock().unwrap(), comp);
-}
-
-#[test]
-fn test_mapping_mapped_guard() {
-    let arr = [0; 4];
-    let mut lock = Mutex::new(arr);
-    let guard = lock.lock().unwrap();
-    let guard = MutexGuard::map(guard, |arr| &mut arr[..2]);
-    let mut guard = MappedMutexGuard::map(guard, |slice| &mut slice[1..]);
-    assert_eq!(guard.len(), 1);
-    guard[0] = 42;
-    drop(guard);
-    assert_eq!(*lock.get_mut().unwrap(), [0, 42, 0, 0]);
 }
 
 #[test]
