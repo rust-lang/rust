@@ -943,16 +943,14 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                 p!("}}")
             }
             ty::Closure(did, args) => {
-                p!(write("{{"));
                 if !self.should_print_verbose() {
-                    p!(write("closure"));
                     if self.should_truncate() {
-                        write!(self, "@...}}")?;
+                        write!(self, "{{closure@...}}")?;
                         return Ok(());
                     } else {
                         if let Some(did) = did.as_local() {
                             if self.tcx().sess.opts.unstable_opts.span_free_formats {
-                                p!("@", print_def_path(did.to_def_id(), args));
+                                p!(print_def_path(did.to_def_id(), args));
                             } else {
                                 let span = self.tcx().def_span(did);
                                 let preference = if with_forced_trimmed_paths() {
@@ -961,17 +959,20 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                                     FileNameDisplayPreference::Remapped
                                 };
                                 p!(write(
-                                    "@{}",
+                                    "{{closure@{}}}",
                                     // This may end up in stderr diagnostics but it may also be emitted
                                     // into MIR. Hence we use the remapped path if available
                                     self.tcx().sess.source_map().span_to_string(span, preference)
                                 ));
                             }
                         } else {
-                            p!(write("@"), print_def_path(did, args));
+                            write!(self, "{{closure@")?;
+                            p!(print_def_path(did, args));
+                            write!(self, "}}")?;
                         }
                     }
                 } else {
+                    p!(write("{{"));
                     p!(print_def_path(did, args));
                     p!(
                         " closure_kind_ty=",
@@ -981,8 +982,8 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                         " upvar_tys=",
                         print(args.as_closure().tupled_upvars_ty())
                     );
+                    p!("}}");
                 }
-                p!("}}");
             }
             ty::CoroutineClosure(did, args) => {
                 p!(write("{{"));
@@ -2721,7 +2722,7 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
                     match self.tcx.parent_hir_node(closure.hir_id) {
                         // `let`-binding
                         hir::Node::LetStmt(stmt) if let Some(ident) = stmt.pat.simple_ident() => {
-                            write!(self, "{ident}")?
+                            write!(self, "{namespace} {ident}")?
                         }
                         // Fn call
                         hir::Node::Expr(expr)
@@ -2735,7 +2736,7 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
                                 && let Some(i) = find_param(args, closure.hir_id) =>
                         {
                             let fn_name = self.tcx.item_name(fn_id);
-                            write!(self, "{fn_name}#")?;
+                            write!(self, "{namespace} {fn_name}#")?;
                             param_name(self, fn_id, i)?;
                         }
                         hir::Node::Expr(expr)
@@ -2748,7 +2749,7 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
                                 && let Some(i) = find_param(args, closure.hir_id) =>
                         {
                             let parent = self.tcx.item_name(id);
-                            write!(self, "{parent}::{}#{i}", segment.ident)?
+                            write!(self, "{namespace} {parent}::{}#{i}", segment.ident)?
                         }
                         // Method call
                         hir::Node::Expr(expr)
@@ -2759,7 +2760,7 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
                         {
                             let parent = self.tcx.parent(id);
                             let parent = self.tcx.item_name(parent);
-                            write!(self, "{parent}::{}#", segment.ident)?;
+                            write!(self, "{namespace} {parent}::{}#", segment.ident)?;
                             param_name(self, id, i)?;
                         }
                         hir::Node::Expr(expr)
@@ -2767,17 +2768,19 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
                                 expr.kind
                                 && let Some(i) = find_param(args, closure.hir_id) =>
                         {
-                            write!(self, "_::{}#{i}", segment.ident)?;
+                            write!(self, "{namespace} _::{}#{i}", segment.ident)?;
                         }
                         // Explicit `return`
                         hir::Node::Expr(expr) if let hir::ExprKind::Ret(_) = expr.kind => {
-                            write!(self, "return")?
+                            write!(self, "returned {namespace}")?
                         }
                         // Explicit `return`
                         hir::Node::Stmt(hir::Stmt {
                             kind: hir::StmtKind::Expr(expr) | hir::StmtKind::Semi(expr),
                             ..
-                        }) if let hir::ExprKind::Ret(_) = expr.kind => write!(self, "return")?,
+                        }) if let hir::ExprKind::Ret(_) = expr.kind => {
+                            write!(self, "returned {namespace}")?
+                        }
                         // fn return value
                         hir::Node::Block(block)
                             if let Some(expr) = block.expr
@@ -2792,25 +2795,25 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
                                     ..
                                 }) = self.tcx.parent_hir_node(block.hir_id) =>
                         {
-                            write!(self, "return")?
+                            write!(self, "returned {namespace}")?
                         }
                         // closure return value
                         hir::Node::Expr(expr)
                             if let hir::ExprKind::Closure(c) = expr.kind
                                 && self.tcx.hir_body(c.body).value.hir_id == closure.hir_id =>
                         {
-                            write!(self, "return")?
+                            write!(self, "returned {namespace}")?
                         }
                         // `asm!()`
                         hir::Node::Expr(expr) if let hir::ExprKind::InlineAsm(_) = expr.kind => {
-                            write!(self, "asm {namespace}#{}", disambiguated_data.disambiguator)?
+                            write!(self, "asm {namespace}")?
                         }
                         // `static` or `const`
                         hir::Node::Item(item)
                             if let hir::ItemKind::Static(_, ident, ..)
                             | hir::ItemKind::Const(ident, ..) = item.kind =>
                         {
-                            write!(self, "{ident}")?
+                            write!(self, "{ident} {namespace}")?
                         }
                         hir::Node::TraitItem(_) | hir::Node::ImplItem(_)
                             if disambiguated_data.disambiguator == 0 =>

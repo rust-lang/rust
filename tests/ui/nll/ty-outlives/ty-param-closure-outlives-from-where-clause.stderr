@@ -4,7 +4,7 @@ note: external requirements
 LL |     with_signature(a, b, |x, y| {
    |                          ^^^^^^
    |
-   = note: defining type: no_region::<T>::{with_signature#op} with closure args [
+   = note: defining type: no_region::<T>::{closure with_signature#op} with closure args [
                i32,
                extern "rust-call" fn((std::cell::Cell<&'?1 ()>, T)),
                (),
@@ -41,7 +41,7 @@ note: external requirements
 LL |     with_signature(a, b, |x, y| {
    |                          ^^^^^^
    |
-   = note: defining type: correct_region::<'?1, T>::{with_signature#op} with closure args [
+   = note: defining type: correct_region::<'?1, T>::{closure with_signature#op} with closure args [
                i32,
                extern "rust-call" fn((std::cell::Cell<&'?2 ()>, T)),
                (),
@@ -65,7 +65,7 @@ note: external requirements
 LL |     with_signature(a, b, |x, y| {
    |                          ^^^^^^
    |
-   = note: defining type: wrong_region::<'?1, T>::{with_signature#op} with closure args [
+   = note: defining type: wrong_region::<'?1, T>::{closure with_signature#op} with closure args [
                i32,
                extern "rust-call" fn((std::cell::Cell<&'?2 ()>, T)),
                (),
@@ -104,7 +104,7 @@ note: external requirements
 LL |     with_signature(a, b, |x, y| {
    |                          ^^^^^^
    |
-   = note: defining type: outlives_region::<'?1, '?2, T>::{with_signature#op} with closure args [
+   = note: defining type: outlives_region::<'?1, '?2, T>::{closure with_signature#op} with closure args [
                i32,
                extern "rust-call" fn((std::cell::Cell<&'?3 ()>, T)),
                (),

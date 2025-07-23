@@ -6,7 +6,7 @@ fn main() {
     //~^ NOTE the expected `async` closure body
     let () = x();
     //~^ ERROR mismatched types
-    //~| NOTE this expression has type `{static main::{x}::{return}<
+    //~| NOTE this expression has type `{static main::{closure x}::{returned closure}<
     //~| NOTE expected `async` closure body, found `()`
-    //~| NOTE expected `async` closure body `{static main::{x}::{return}<
+    //~| NOTE expected `async` closure body `{static main::{closure x}::{returned closure}<
 }

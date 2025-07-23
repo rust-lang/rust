@@ -4,7 +4,7 @@ note: no external requirements
 LL |     expect_sig(|a, b| b); // ought to return `a`
    |                ^^^^^^
    |
-   = note: defining type: test::{expect_sig#f} with closure args [
+   = note: defining type: test::{closure expect_sig#f} with closure args [
                i16,
                for<Region(BrAnon), Region(BrAnon)> extern "rust-call" fn((&'^0 i32, &'^1 i32)) -> &'^0 i32,
                (),

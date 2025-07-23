@@ -4,7 +4,7 @@ note: no external requirements
 LL |     foo(cell, |cell_a, cell_x| {
    |               ^^^^^^^^^^^^^^^^
    |
-   = note: defining type: case1::{foo#_f} with closure args [
+   = note: defining type: case1::{closure foo#_f} with closure args [
                i32,
                for<Region(BrAnon)> extern "rust-call" fn((std::cell::Cell<&'?1 u32>, std::cell::Cell<&'^0 u32>)),
                (),
@@ -38,7 +38,7 @@ note: external requirements
 LL |     foo(cell, |cell_a, cell_x| {
    |               ^^^^^^^^^^^^^^^^
    |
-   = note: defining type: case2::{foo#_f} with closure args [
+   = note: defining type: case2::{closure foo#_f} with closure args [
                i32,
                for<Region(BrAnon)> extern "rust-call" fn((std::cell::Cell<&'?1 u32>, std::cell::Cell<&'^0 u32>)),
                (),

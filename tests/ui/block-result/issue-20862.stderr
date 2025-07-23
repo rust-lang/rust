@@ -7,7 +7,7 @@ LL |     |y| x + y
    |     ^^^^^^^^^ expected `()`, found closure
    |
    = note: expected unit type `()`
-                found closure `{closure@foo::{return}}`
+                found closure `foo::{returned closure}`
 
 error[E0618]: expected function, found `()`
   --> $DIR/issue-20862.rs:8:13

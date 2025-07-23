@@ -4,7 +4,7 @@ note: external requirements
 LL |     establish_relationships(&cell_a, &cell_b, |_outlives1, _outlives2, x, y| {
    |                                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: defining type: supply::{establish_relationships#_closure} with closure args [
+   = note: defining type: supply::{closure establish_relationships#_closure} with closure args [
                i16,
                for<Region(BrAnon), Region(BrAnon), Region(BrAnon), Region(BrAnon), Region(BrAnon), Region(BrAnon)> extern "rust-call" fn((&'^0 std::cell::Cell<&'?1 &'^1 u32>, &'^2 std::cell::Cell<&'^3 &'?2 u32>, &'^4 std::cell::Cell<&'^1 u32>, &'^5 std::cell::Cell<&'^3 u32>)),
                (),

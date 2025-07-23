@@ -4,7 +4,7 @@ note: external requirements
 LL |         |_outlives1, _outlives2, x, y| {
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: defining type: supply::{establish_relationships#_closure} with closure args [
+   = note: defining type: supply::{closure establish_relationships#_closure} with closure args [
                i16,
                for<Region(BrAnon), Region(BrAnon)> extern "rust-call" fn((std::cell::Cell<&'?1 &'^0 u32>, std::cell::Cell<&'^1 &'?2 u32>, std::cell::Cell<&'^0 u32>, std::cell::Cell<&'^1 u32>)),
                (),

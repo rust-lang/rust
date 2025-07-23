@@ -20,7 +20,7 @@ help: use parentheses to call the method
 LL |     let px: isize = point.get_x();
    |                                ++
 
-error[E0615]: attempted to take value of method `filter_map` on type `Filter<Map<std::slice::Iter<'_, {integer}>, {closure@main::{_::map#0}}>, {closure@main::{_::filter#0}}>`
+error[E0615]: attempted to take value of method `filter_map` on type `Filter<Map<std::slice::Iter<'_, {integer}>, main::{closure _::map#0}>, main::{closure _::filter#0}>`
   --> $DIR/method-value-without-call.rs:33:10
    |
 LL |         .filter_map;

@@ -4,8 +4,8 @@ error[E0283]: type annotations needed
 LL |         .into()?;
    |          ^^^^
    |
-   = note: cannot satisfy `_: From<FilterMap<Map<std::slice::Iter<'_, &str>, {closure@main::{_::map#0}}>, fn(Option<&str>) -> Option<Option<&str>> {Option::<Option<&str>>::Some}>>`
-   = note: required for `FilterMap<Map<std::slice::Iter<'_, &str>, {closure@main::{_::map#0}}>, fn(Option<&str>) -> Option<Option<&str>> {Option::<Option<&str>>::Some}>` to implement `Into<_>`
+   = note: cannot satisfy `_: From<FilterMap<Map<std::slice::Iter<'_, &str>, main::{closure _::map#0}>, fn(Option<&str>) -> Option<Option<&str>> {Option::<Option<&str>>::Some}>>`
+   = note: required for `FilterMap<Map<std::slice::Iter<'_, &str>, main::{closure _::map#0}>, fn(Option<&str>) -> Option<Option<&str>> {Option::<Option<&str>>::Some}>` to implement `Into<_>`
 help: try using a fully qualified path to specify the expected types
    |
 LL ~     let list = <FilterMap<Map<std::slice::Iter<'_, &str>, _>, _> as Into<T>>::into(vec
