@@ -193,21 +193,16 @@ enum CharErrorKind {
 }
 
 #[stable(feature = "char_from_str", since = "1.20.0")]
-impl Error for ParseCharError {
-    #[allow(deprecated)]
-    fn description(&self) -> &str {
-        match self.kind {
-            CharErrorKind::EmptyString => "cannot parse char from empty string",
-            CharErrorKind::TooManyChars => "too many characters in string",
-        }
-    }
-}
+impl Error for ParseCharError {}
 
 #[stable(feature = "char_from_str", since = "1.20.0")]
 impl fmt::Display for ParseCharError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        #[allow(deprecated)]
-        self.description().fmt(f)
+        match self.kind {
+            CharErrorKind::EmptyString => "cannot parse char from empty string",
+            CharErrorKind::TooManyChars => "too many characters in string",
+        }
+        .fmt(f)
     }
 }
 

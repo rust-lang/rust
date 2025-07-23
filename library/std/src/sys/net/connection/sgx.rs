@@ -452,12 +452,7 @@ pub struct NonIpSockAddr {
     host: String,
 }
 
-impl error::Error for NonIpSockAddr {
-    #[allow(deprecated)]
-    fn description(&self) -> &str {
-        "Failed to convert address to SocketAddr"
-    }
-}
+impl error::Error for NonIpSockAddr {}
 
 impl fmt::Display for NonIpSockAddr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
