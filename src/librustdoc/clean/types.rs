@@ -768,13 +768,13 @@ impl Item {
             .iter()
             .filter_map(|attr| match attr {
                 hir::Attribute::Parsed(AttributeKind::LinkSection { name, .. }) => {
-                    Some(format!("#[link_section = \"{name}\"]"))
+                    Some(format!("#[unsafe(link_section = \"{name}\")]"))
                 }
                 hir::Attribute::Parsed(AttributeKind::NoMangle(..)) => {
-                    Some("#[no_mangle]".to_string())
+                    Some("#[unsafe(no_mangle)]".to_string())
                 }
                 hir::Attribute::Parsed(AttributeKind::ExportName { name, .. }) => {
-                    Some(format!("#[export_name = \"{name}\"]"))
+                    Some(format!("#[unsafe(export_name = \"{name}\")]"))
                 }
                 hir::Attribute::Parsed(AttributeKind::NonExhaustive(..)) => {
                     Some("#[non_exhaustive]".to_string())
