@@ -219,4 +219,4 @@ trait Visible {
     pub fn g() {}
 }
 
-trait Foomp = Hash;
+const trait Foomp = Hash;
