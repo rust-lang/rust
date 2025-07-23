@@ -54,6 +54,27 @@ macro_rules! assume_usize_width {
     }
 }
 
+/// Return `a * 2^b`.
+#[cfg(target_has_reliable_f16)]
+fn ldexp_f16(a: f16, b: i32) -> f16 {
+    ldexp_f64(a as f64, b) as f16
+}
+
+/// Return `a * 2^b`.
+fn ldexp_f32(a: f32, b: i32) -> f32 {
+    ldexp_f64(a as f64, b) as f32
+}
+
+/// Return `a * 2^b`.
+fn ldexp_f64(a: f64, b: i32) -> f64 {
+    unsafe extern "C" {
+        fn ldexp(x: f64, n: i32) -> f64;
+    }
+    // SAFETY: assuming a correct `ldexp` has been supplied, the given arguments cannot possibly
+    // cause undefined behavior
+    unsafe { ldexp(a, b) }
+}
+
 /// Helper function for testing numeric operations
 pub fn test_num<T>(ten: T, two: T)
 where
