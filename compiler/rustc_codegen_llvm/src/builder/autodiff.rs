@@ -16,7 +16,7 @@ use crate::context::SimpleCx;
 use crate::declare::declare_simple_fn;
 use crate::errors::{AutoDiffWithoutEnable, LlvmError};
 use crate::llvm::AttributePlace::Function;
-use crate::llvm::{Metadata, True};
+use crate::llvm::{Metadata, True, TypeTree};
 use crate::value::Value;
 use crate::{CodegenContext, LlvmCodegenBackend, ModuleLlvm, attributes, llvm};
 
@@ -520,13 +520,14 @@ pub(crate) fn differentiate<'ll>(
 /// This function takes a Rust-side TypeTree (from rustc_ast::expand::typetree)
 /// and converts it to Enzyme's internal C++ TypeTree representation that
 /// Enzyme can understand during differentiation analysis.
+#[cfg(llvm_enzyme)]
 fn to_enzyme_typetree(
     rust_typetree: RustTypeTree,
     data_layout: &str,
     llcx: &llvm::Context,
-) -> llvm::TypeTree {
+) -> TypeTree {
     // Start with an empty TypeTree
-    let mut enzyme_tt = llvm::TypeTree::new();
+    let mut enzyme_tt = TypeTree::new();
 
     // Convert each Type in the Rust TypeTree to Enzyme format
     for rust_type in rust_typetree.0 {
@@ -541,7 +542,7 @@ fn to_enzyme_typetree(
         };
 
         // Create a TypeTree for this specific type
-        let type_tt = llvm::TypeTree::from_type(concrete_type, llcx);
+        let type_tt = TypeTree::from_type(concrete_type, llcx);
 
         // Apply offset if specified
         let type_tt = if rust_type.offset == -1 {
@@ -558,7 +559,17 @@ fn to_enzyme_typetree(
     enzyme_tt
 }
 
+#[cfg(not(llvm_enzyme))]
+fn to_enzyme_typetree(
+    _rust_typetree: RustTypeTree,
+    _data_layout: &str,
+    _llcx: &llvm::Context,
+) -> ! {
+    unimplemented!("TypeTree conversion not available without llvm_enzyme support")
+}
+
 // Attaches TypeTree information to LLVM function as enzyme_type attributes.
+#[cfg(llvm_enzyme)]
 pub(crate) fn add_tt<'ll>(
     llmod: &'ll llvm::Module,
     llcx: &'ll llvm::Context,
