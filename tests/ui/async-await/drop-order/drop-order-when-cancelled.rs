@@ -10,6 +10,7 @@
 // This file is mostly copy-pasted from drop-order-for-async-fn-parameters.rs
 
 #![allow(unused_variables)]
+#![allow(dead_code)]
 
 extern crate arc_wake;
 

@@ -8,7 +8,7 @@ use std::mem;
 
 #[derive(Debug, PartialEq, Eq)]
 struct ComparisonResults {
-    lt: bool,
+    lt: bool, //~ WARN: fields `lt`, `le`, `gt`, `ge`, `eq`, and `ne` are never read
     le: bool,
     gt: bool,
     ge: bool,

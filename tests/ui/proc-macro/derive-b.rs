@@ -1,6 +1,8 @@
 //@ run-pass
 //@ proc-macro: derive-b-rpass.rs
 
+#![allow(dead_code)]
+
 extern crate derive_b_rpass as derive_b;
 
 #[derive(Debug, PartialEq, derive_b::B, Eq, Copy, Clone)]

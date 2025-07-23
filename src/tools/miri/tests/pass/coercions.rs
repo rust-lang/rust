@@ -1,4 +1,5 @@
 #![feature(coerce_unsized, unsize)]
+#![allow(dead_code)]
 
 use std::marker::Unsize;
 use std::ops::CoerceUnsized;

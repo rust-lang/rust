@@ -8,6 +8,7 @@
 //! leading to incorrect method dispatch for `unwrap()`.
 
 //@ run-pass
+#![allow(dead_code)]
 
 #[derive(Copy, Clone)]
 struct S<T> {

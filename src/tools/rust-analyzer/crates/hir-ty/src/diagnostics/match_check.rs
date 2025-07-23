@@ -65,6 +65,8 @@ pub(crate) enum PatKind {
     /// `Foo(...)` or `Foo{...}` or `Foo`, where `Foo` is a variant name from an ADT with
     /// multiple variants.
     Variant {
+        // FIXME(#143487): is it okay that the field is never read?
+        #[allow(dead_code)]
         substs: Substitution,
         enum_variant: EnumVariantId,
         subpatterns: Vec<FieldPat>,

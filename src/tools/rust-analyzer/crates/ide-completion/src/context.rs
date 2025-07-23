@@ -287,6 +287,7 @@ pub(crate) struct PatternContext {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct ParamContext {
     pub(crate) param_list: ast::ParamList,
+    #[allow(dead_code, reason = "Used for equality comparison")]
     pub(crate) param: ast::Param,
     pub(crate) kind: ParamKind,
 }

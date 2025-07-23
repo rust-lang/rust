@@ -5,6 +5,7 @@
 // as well as some compile time properties we expect.
 
 #![allow(dropping_copy_types)]
+#![allow(dead_code)]
 
 #[derive(Copy, Clone, Debug)]
 struct Unit;

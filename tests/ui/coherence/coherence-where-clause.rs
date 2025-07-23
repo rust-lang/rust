@@ -1,4 +1,5 @@
 //@ run-pass
+#![allow(dead_code)]
 
 use std::fmt::Debug;
 trait MyTrait {

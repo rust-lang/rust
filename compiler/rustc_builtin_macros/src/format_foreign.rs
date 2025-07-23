@@ -62,6 +62,8 @@ pub(crate) mod printf {
         /// Precision of the conversion.
         precision: Option<Num>,
         /// Length modifier for the conversion.
+        // FIXME(#143487): is it okay that this field is never read?
+        #[cfg_attr(not(bootstrap), expect(dead_code))]
         length: Option<&'a str>,
         /// Type of parameter being converted.
         type_: &'a str,

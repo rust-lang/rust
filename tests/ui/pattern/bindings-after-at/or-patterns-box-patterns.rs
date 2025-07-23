@@ -2,6 +2,7 @@
 
 //@ run-pass
 
+#![allow(dead_code)]
 #![feature(box_patterns)]
 
 #[derive(Debug, PartialEq)]

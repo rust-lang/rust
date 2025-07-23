@@ -657,7 +657,13 @@ impl Slice {
 
 /// A globally unique id to distinguish `Opaque` patterns.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct OpaqueId(u32);
+pub struct OpaqueId(
+    #[cfg_attr(
+        not(bootstrap),
+        expect(dead_code, reason = "This field is only used for equality comparisons")
+    )]
+    u32,
+);
 
 impl OpaqueId {
     pub fn new() -> Self {
