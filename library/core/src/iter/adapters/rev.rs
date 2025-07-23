@@ -20,6 +20,24 @@ impl<T> Rev<T> {
     pub(in crate::iter) fn new(iter: T) -> Rev<T> {
         Rev { iter }
     }
+
+    /// Consumes the `Rev`, returning the inner iterator.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// #![feature(rev_into_inner)]
+    ///
+    /// let s = "foo";
+    /// let mut rev = s.chars().rev();
+    /// rev.next();
+    /// rev.next();
+    /// assert_eq!(rev.into_inner().collect::<String>(), "f");
+    /// ```
+    #[unstable(feature = "rev_into_inner", issue = "144277")]
+    pub fn into_inner(self) -> T {
+        self.iter
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
