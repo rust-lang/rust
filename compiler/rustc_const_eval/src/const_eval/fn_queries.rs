@@ -34,8 +34,8 @@ fn constness(tcx: TyCtxt<'_>, def_id: LocalDefId) -> hir::Constness {
         hir::Node::Item(i) if let hir::ItemKind::Impl(impl_) = i.kind => impl_.constness,
         _ => {
             if let Some(fn_kind) = node.fn_kind() {
-                if fn_kind.constness() == hir::Constness::Const {
-                    return hir::Constness::Const;
+                if fn_kind.constness() != hir::Constness::NotConst {
+                    return fn_kind.constness();
                 }
 
                 // If the function itself is not annotated with `const`, it may still be a `const fn`
