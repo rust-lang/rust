@@ -4,7 +4,6 @@ use hir::{ConstContext, LangItem};
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, Diag, MultiSpan};
 use rustc_hir as hir;
-use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::{ImplSource, Obligation, ObligationCause};
@@ -12,8 +11,8 @@ use rustc_middle::mir::CallSource;
 use rustc_middle::span_bug;
 use rustc_middle::ty::print::{PrintTraitRefExt as _, with_no_trimmed_paths};
 use rustc_middle::ty::{
-    self, Closure, FnDef, FnPtr, GenericArgKind, GenericArgsRef, Param, TraitRef, Ty,
-    suggest_constraining_type_param,
+    self, AssocItemContainer, Closure, FnDef, FnPtr, GenericArgKind, GenericArgsRef, Param,
+    TraitRef, Ty, suggest_constraining_type_param,
 };
 use rustc_session::parse::add_feature_diagnostics;
 use rustc_span::{BytePos, Pos, Span, Symbol, sym};
@@ -212,7 +211,6 @@ fn build_error_for_const_call<'tcx>(
 
     debug!(?call_kind);
 
-    let mut note = true;
     let mut err = match call_kind {
         CallKind::Normal { desugaring: Some((kind, self_ty)), .. } => {
             macro_rules! error {
@@ -363,16 +361,9 @@ fn build_error_for_const_call<'tcx>(
                 kind: ccx.const_kind(),
                 non_or_conditionally,
             });
-            let context_span = ccx.tcx.def_span(ccx.def_id());
-            err.span_label(context_span, format!(
-                "calls in {}s are limited to constant functions, tuple structs and tuple variants",
-                ccx.const_kind(),
-            ));
-            note = false;
-            let def_kind = ccx.tcx.def_kind(callee);
-            if let DefKind::AssocTy | DefKind::AssocConst | DefKind::AssocFn = def_kind {
-                let parent = ccx.tcx.parent(callee);
-                if let DefKind::Trait = ccx.tcx.def_kind(parent)
+            if let Some(item) = ccx.tcx.opt_associated_item(callee) {
+                if let AssocItemContainer::Trait = item.container
+                    && let parent = item.container_id(ccx.tcx)
                     && !ccx.tcx.is_const_trait(parent)
                 {
                     let assoc_span = ccx.tcx.def_span(callee);
@@ -407,7 +398,7 @@ fn build_error_for_const_call<'tcx>(
                             trait_span.shrink_to_lo(),
                             format!("consider making trait `{trait_name}` const"),
                             format!("#[const_trait]\n{indentation}"),
-                            Applicability::MachineApplicable,
+                            Applicability::MaybeIncorrect,
                         );
                     } else if !ccx.tcx.sess.is_nightly_build() {
                         err.help("const traits are not yet supported on stable Rust");
@@ -424,12 +415,10 @@ fn build_error_for_const_call<'tcx>(
         }
     };
 
-    if note {
-        err.note(format!(
-            "calls in {}s are limited to constant functions, tuple structs and tuple variants",
-            ccx.const_kind(),
-        ));
-    }
+    err.note(format!(
+        "calls in {}s are limited to constant functions, tuple structs and tuple variants",
+        ccx.const_kind(),
+    ));
 
     err
 }

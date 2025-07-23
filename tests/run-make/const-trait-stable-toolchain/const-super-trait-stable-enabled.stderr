@@ -43,8 +43,6 @@ note: `Bar` can't be used with `[const]` because it isn't `const`
 error[E0015]: cannot call non-const method `<T as Foo>::a` in constant functions
   --> const-super-trait.rs:10:7
    |
-9  | const fn foo<T: ~const Bar>(x: &T) {
-   | ---------------------------------- calls in constant functions are limited to constant functions, tuple structs and tuple variants
 10 |     x.a();
    |       ^^^
    |
@@ -56,6 +54,7 @@ note: method `a` is not const because trait `Foo` is not const
 4  |     fn a(&self);
    |     ------------ this method is not const
    = help: const traits are not yet supported on stable Rust
+   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
 
 error: aborting due to 5 previous errors
 

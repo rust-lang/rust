@@ -23,19 +23,15 @@ error[E0015]: cannot call non-const method `slice::<impl [MyOwned]>::into_vec::<
   --> $DIR/check-values-constraints.rs:81:33
    |
 LL | static STATIC11: Vec<MyOwned> = vec![MyOwned];
-   | -----------------------------   ^^^^^^^^^^^^^
-   | |
-   | calls in statics are limited to constant functions, tuple structs and tuple variants
+   |                                 ^^^^^^^^^^^^^
    |
+   = note: calls in statics are limited to constant functions, tuple structs and tuple variants
    = note: consider wrapping this expression in `std::sync::LazyLock::new(|| ...)`
    = note: this error originates in the macro `vec` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0015]: cannot call non-const method `<str as ToString>::to_string` in statics
   --> $DIR/check-values-constraints.rs:92:38
    |
-LL | static mut STATIC14: SafeStruct = SafeStruct {
-   | ------------------------------- calls in statics are limited to constant functions, tuple structs and tuple variants
-LL |     field1: SafeEnum::Variant1,
 LL |     field2: SafeEnum::Variant4("str".to_string()),
    |                                      ^^^^^^^^^^^
    |
@@ -46,6 +42,7 @@ note: method `to_string` is not const because trait `ToString` is not const
   ::: $SRC_DIR/alloc/src/string.rs:LL:COL
    |
    = note: this method is not const
+   = note: calls in statics are limited to constant functions, tuple structs and tuple variants
    = note: consider wrapping this expression in `std::sync::LazyLock::new(|| ...)`
 
 error[E0010]: allocations are not allowed in statics
@@ -59,11 +56,10 @@ LL |     vec![MyOwned],
 error[E0015]: cannot call non-const method `slice::<impl [MyOwned]>::into_vec::<std::alloc::Global>` in statics
   --> $DIR/check-values-constraints.rs:96:5
    |
-LL | static STATIC15: &'static [Vec<MyOwned>] = &[
-   | ---------------------------------------- calls in statics are limited to constant functions, tuple structs and tuple variants
 LL |     vec![MyOwned],
    |     ^^^^^^^^^^^^^
    |
+   = note: calls in statics are limited to constant functions, tuple structs and tuple variants
    = note: consider wrapping this expression in `std::sync::LazyLock::new(|| ...)`
    = note: this error originates in the macro `vec` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -78,12 +74,10 @@ LL |     vec![MyOwned],
 error[E0015]: cannot call non-const method `slice::<impl [MyOwned]>::into_vec::<std::alloc::Global>` in statics
   --> $DIR/check-values-constraints.rs:98:5
    |
-LL | static STATIC15: &'static [Vec<MyOwned>] = &[
-   | ---------------------------------------- calls in statics are limited to constant functions, tuple structs and tuple variants
-...
 LL |     vec![MyOwned],
    |     ^^^^^^^^^^^^^
    |
+   = note: calls in statics are limited to constant functions, tuple structs and tuple variants
    = note: consider wrapping this expression in `std::sync::LazyLock::new(|| ...)`
    = note: this error originates in the macro `vec` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -98,11 +92,10 @@ LL |     &vec![MyOwned],
 error[E0015]: cannot call non-const method `slice::<impl [MyOwned]>::into_vec::<std::alloc::Global>` in statics
   --> $DIR/check-values-constraints.rs:103:6
    |
-LL | static STATIC16: (&'static Vec<MyOwned>, &'static Vec<MyOwned>) = (
-   | --------------------------------------------------------------- calls in statics are limited to constant functions, tuple structs and tuple variants
 LL |     &vec![MyOwned],
    |      ^^^^^^^^^^^^^
    |
+   = note: calls in statics are limited to constant functions, tuple structs and tuple variants
    = note: consider wrapping this expression in `std::sync::LazyLock::new(|| ...)`
    = note: this error originates in the macro `vec` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -117,12 +110,10 @@ LL |     &vec![MyOwned],
 error[E0015]: cannot call non-const method `slice::<impl [MyOwned]>::into_vec::<std::alloc::Global>` in statics
   --> $DIR/check-values-constraints.rs:105:6
    |
-LL | static STATIC16: (&'static Vec<MyOwned>, &'static Vec<MyOwned>) = (
-   | --------------------------------------------------------------- calls in statics are limited to constant functions, tuple structs and tuple variants
-...
 LL |     &vec![MyOwned],
    |      ^^^^^^^^^^^^^
    |
+   = note: calls in statics are limited to constant functions, tuple structs and tuple variants
    = note: consider wrapping this expression in `std::sync::LazyLock::new(|| ...)`
    = note: this error originates in the macro `vec` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -138,10 +129,9 @@ error[E0015]: cannot call non-const method `slice::<impl [isize]>::into_vec::<st
   --> $DIR/check-values-constraints.rs:111:31
    |
 LL | static STATIC19: Vec<isize> = vec![3];
-   | ---------------------------   ^^^^^^^
-   | |
-   | calls in statics are limited to constant functions, tuple structs and tuple variants
+   |                               ^^^^^^^
    |
+   = note: calls in statics are limited to constant functions, tuple structs and tuple variants
    = note: consider wrapping this expression in `std::sync::LazyLock::new(|| ...)`
    = note: this error originates in the macro `vec` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -157,10 +147,9 @@ error[E0015]: cannot call non-const method `slice::<impl [isize]>::into_vec::<st
   --> $DIR/check-values-constraints.rs:117:32
    |
 LL |         static x: Vec<isize> = vec![3];
-   |         --------------------   ^^^^^^^
-   |         |
-   |         calls in statics are limited to constant functions, tuple structs and tuple variants
+   |                                ^^^^^^^
    |
+   = note: calls in statics are limited to constant functions, tuple structs and tuple variants
    = note: consider wrapping this expression in `std::sync::LazyLock::new(|| ...)`
    = note: this error originates in the macro `vec` (in Nightly builds, run with -Z macro-backtrace for more info)
 
