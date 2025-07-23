@@ -183,6 +183,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
                 if type_impls_trait {
                     let vtable_ptr = self.get_vtable_ptr(tp_ty, preds)?;
+                    // Writing a non-null pointer into an `Option<NonNull>` will automatically make it `Some`.
                     self.write_pointer(vtable_ptr, dest)?;
                 } else {
                     // Write `None`
