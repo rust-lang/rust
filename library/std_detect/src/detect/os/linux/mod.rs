@@ -6,14 +6,16 @@ use alloc::vec::Vec;
 mod auxvec;
 
 #[cfg(feature = "std_detect_file_io")]
-fn read_file(path: &str) -> Result<Vec<u8>, ()> {
-    let mut path = Vec::from(path.as_bytes());
+fn read_file(orig_path: &str) -> Result<Vec<u8>, alloc::string::String> {
+    use alloc::format;
+
+    let mut path = Vec::from(orig_path.as_bytes());
     path.push(0);
 
     unsafe {
         let file = libc::open(path.as_ptr() as *const libc::c_char, libc::O_RDONLY);
         if file == -1 {
-            return Err(());
+            return Err(format!("Cannot open file at {orig_path}"));
         }
 
         let mut data = Vec::new();
@@ -23,7 +25,7 @@ fn read_file(path: &str) -> Result<Vec<u8>, ()> {
             match libc::read(file, spare.as_mut_ptr() as *mut _, spare.len()) {
                 -1 => {
                     libc::close(file);
-                    return Err(());
+                    return Err(format!("Error while reading from file at {orig_path}"));
                 }
                 0 => break,
                 n => data.set_len(data.len() + n as usize),

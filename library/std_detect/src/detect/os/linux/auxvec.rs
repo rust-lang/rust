@@ -119,7 +119,7 @@ pub(crate) fn auxv() -> Result<AuxVec, ()> {
     {
         // If calling getauxval fails, try to read the auxiliary vector from
         // its file:
-        auxv_from_file("/proc/self/auxv")
+        auxv_from_file("/proc/self/auxv").map_err(|_| ())
     }
     #[cfg(not(feature = "std_detect_file_io"))]
     {
@@ -157,17 +157,22 @@ fn getauxval(key: usize) -> Result<usize, ()> {
 /// Tries to read the auxiliary vector from the `file`. If this fails, this
 /// function returns `Err`.
 #[cfg(feature = "std_detect_file_io")]
-pub(super) fn auxv_from_file(file: &str) -> Result<AuxVec, ()> {
+pub(super) fn auxv_from_file(file: &str) -> Result<AuxVec, alloc::string::String> {
     let file = super::read_file(file)?;
+    auxv_from_file_bytes(&file)
+}
 
+/// Read auxiliary vector from a slice of bytes.
+#[cfg(feature = "std_detect_file_io")]
+pub(super) fn auxv_from_file_bytes(bytes: &[u8]) -> Result<AuxVec, alloc::string::String> {
     // See <https://github.com/torvalds/linux/blob/v5.15/include/uapi/linux/auxvec.h>.
     //
     // The auxiliary vector contains at most 34 (key,value) fields: from
     // `AT_MINSIGSTKSZ` to `AT_NULL`, but its number may increase.
-    let len = file.len();
+    let len = bytes.len();
     let mut buf = alloc::vec![0_usize; 1 + len / core::mem::size_of::<usize>()];
     unsafe {
-        core::ptr::copy_nonoverlapping(file.as_ptr(), buf.as_mut_ptr() as *mut u8, len);
+        core::ptr::copy_nonoverlapping(bytes.as_ptr(), buf.as_mut_ptr() as *mut u8, len);
     }
 
     auxv_from_buf(&buf)
@@ -176,7 +181,7 @@ pub(super) fn auxv_from_file(file: &str) -> Result<AuxVec, ()> {
 /// Tries to interpret the `buffer` as an auxiliary vector. If that fails, this
 /// function returns `Err`.
 #[cfg(feature = "std_detect_file_io")]
-fn auxv_from_buf(buf: &[usize]) -> Result<AuxVec, ()> {
+fn auxv_from_buf(buf: &[usize]) -> Result<AuxVec, alloc::string::String> {
     // Targets with only AT_HWCAP:
     #[cfg(any(
         target_arch = "riscv32",
@@ -222,120 +227,8 @@ fn auxv_from_buf(buf: &[usize]) -> Result<AuxVec, ()> {
     }
     // Suppress unused variable
     let _ = buf;
-    Err(())
+    Err(alloc::string::String::from("hwcap not found"))
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    // FIXME: on mips/mips64 getauxval returns 0, and /proc/self/auxv
-    // does not always contain the AT_HWCAP key under qemu.
-    #[cfg(any(
-        target_arch = "arm",
-        target_arch = "powerpc",
-        target_arch = "powerpc64",
-        target_arch = "s390x",
-    ))]
-    #[test]
-    fn auxv_crate() {
-        let v = auxv();
-        if let Ok(hwcap) = getauxval(AT_HWCAP) {
-            let rt_hwcap = v.expect("failed to find hwcap key").hwcap;
-            assert_eq!(rt_hwcap, hwcap);
-        }
-
-        // Targets with AT_HWCAP and AT_HWCAP2:
-        #[cfg(any(
-            target_arch = "aarch64",
-            target_arch = "arm",
-            target_arch = "powerpc",
-            target_arch = "powerpc64",
-            target_arch = "s390x",
-        ))]
-        {
-            if let Ok(hwcap2) = getauxval(AT_HWCAP2) {
-                let rt_hwcap2 = v.expect("failed to find hwcap2 key").hwcap2;
-                assert_eq!(rt_hwcap2, hwcap2);
-            }
-        }
-    }
-
-    #[test]
-    fn auxv_dump() {
-        if let Ok(auxvec) = auxv() {
-            println!("{:?}", auxvec);
-        } else {
-            println!("both getauxval() and reading /proc/self/auxv failed!");
-        }
-    }
-
-    #[cfg(feature = "std_detect_file_io")]
-    cfg_if::cfg_if! {
-        if #[cfg(target_arch = "arm")] {
-            #[test]
-            fn linux_rpi3() {
-                let file = concat!(env!("CARGO_MANIFEST_DIR"), "/src/detect/test_data/linux-rpi3.auxv");
-                println!("file: {file}");
-                let v = auxv_from_file(file).unwrap();
-                assert_eq!(v.hwcap, 4174038);
-                assert_eq!(v.hwcap2, 16);
-            }
-
-            #[test]
-            fn linux_macos_vb() {
-                let file = concat!(env!("CARGO_MANIFEST_DIR"), "/src/detect/test_data/macos-virtualbox-linux-x86-4850HQ.auxv");
-                println!("file: {file}");
-                // The file contains HWCAP but not HWCAP2. In that case, we treat HWCAP2 as zero.
-                let v = auxv_from_file(file).unwrap();
-                assert_eq!(v.hwcap, 126614527);
-                assert_eq!(v.hwcap2, 0);
-            }
-        } else if #[cfg(target_arch = "aarch64")] {
-            #[cfg(target_endian = "little")]
-            #[test]
-            fn linux_artificial_aarch64() {
-                let file = concat!(env!("CARGO_MANIFEST_DIR"), "/src/detect/test_data/linux-artificial-aarch64.auxv");
-                println!("file: {file}");
-                let v = auxv_from_file(file).unwrap();
-                assert_eq!(v.hwcap, 0x0123456789abcdef);
-                assert_eq!(v.hwcap2, 0x02468ace13579bdf);
-            }
-            #[cfg(target_endian = "little")]
-            #[test]
-            fn linux_no_hwcap2_aarch64() {
-                let file = concat!(env!("CARGO_MANIFEST_DIR"), "/src/detect/test_data/linux-no-hwcap2-aarch64.auxv");
-                println!("file: {file}");
-                let v = auxv_from_file(file).unwrap();
-                // An absent HWCAP2 is treated as zero, and does not prevent acceptance of HWCAP.
-                assert_ne!(v.hwcap, 0);
-                assert_eq!(v.hwcap2, 0);
-            }
-        }
-    }
-
-    #[test]
-    #[cfg(feature = "std_detect_file_io")]
-    fn auxv_dump_procfs() {
-        if let Ok(auxvec) = auxv_from_file("/proc/self/auxv") {
-            println!("{:?}", auxvec);
-        } else {
-            println!("reading /proc/self/auxv failed!");
-        }
-    }
-
-    #[cfg(any(
-        target_arch = "aarch64",
-        target_arch = "arm",
-        target_arch = "powerpc",
-        target_arch = "powerpc64",
-        target_arch = "s390x",
-    ))]
-    #[test]
-    #[cfg(feature = "std_detect_file_io")]
-    fn auxv_crate_procfs() {
-        if let Ok(procfs_auxv) = auxv_from_file("/proc/self/auxv") {
-            assert_eq!(auxv().unwrap(), procfs_auxv);
-        }
-    }
-}
+mod tests;

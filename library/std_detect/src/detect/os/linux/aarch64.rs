@@ -343,14 +343,8 @@ impl AtHwcap {
             enable_feature(Feature::sve2, sve2);
             enable_feature(Feature::sve2p1, self.sve2p1 && sve2);
             // SVE2 extensions require SVE2 and crypto features
-            enable_feature(
-                Feature::sve2_aes,
-                self.sveaes && self.svepmull && sve2 && self.aes,
-            );
-            enable_feature(
-                Feature::sve2_sm4,
-                self.svesm4 && sve2 && self.sm3 && self.sm4,
-            );
+            enable_feature(Feature::sve2_aes, self.sveaes && self.svepmull && sve2 && self.aes);
+            enable_feature(Feature::sve2_sm4, self.svesm4 && sve2 && self.sm3 && self.sm4);
             enable_feature(
                 Feature::sve2_sha3,
                 self.svesha3 && sve2 && self.sha512 && self.sha3 && self.sha1 && self.sha2,
@@ -401,84 +395,4 @@ impl AtHwcap {
 
 #[cfg(target_endian = "little")]
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[cfg(feature = "std_detect_file_io")]
-    mod auxv_from_file {
-        use super::auxvec::auxv_from_file;
-        use super::*;
-        // The baseline hwcaps used in the (artificial) auxv test files.
-        fn baseline_hwcaps() -> AtHwcap {
-            AtHwcap {
-                fp: true,
-                asimd: true,
-                aes: true,
-                pmull: true,
-                sha1: true,
-                sha2: true,
-                crc32: true,
-                atomics: true,
-                fphp: true,
-                asimdhp: true,
-                asimdrdm: true,
-                lrcpc: true,
-                dcpop: true,
-                asimddp: true,
-                ssbs: true,
-                ..AtHwcap::default()
-            }
-        }
-
-        #[test]
-        fn linux_empty_hwcap2_aarch64() {
-            let file = concat!(
-                env!("CARGO_MANIFEST_DIR"),
-                "/src/detect/test_data/linux-empty-hwcap2-aarch64.auxv"
-            );
-            println!("file: {file}");
-            let v = auxv_from_file(file).unwrap();
-            println!("HWCAP : 0x{:0x}", v.hwcap);
-            println!("HWCAP2: 0x{:0x}", v.hwcap2);
-            assert_eq!(AtHwcap::from(v), baseline_hwcaps());
-        }
-        #[test]
-        fn linux_no_hwcap2_aarch64() {
-            let file = concat!(
-                env!("CARGO_MANIFEST_DIR"),
-                "/src/detect/test_data/linux-no-hwcap2-aarch64.auxv"
-            );
-            println!("file: {file}");
-            let v = auxv_from_file(file).unwrap();
-            println!("HWCAP : 0x{:0x}", v.hwcap);
-            println!("HWCAP2: 0x{:0x}", v.hwcap2);
-            assert_eq!(AtHwcap::from(v), baseline_hwcaps());
-        }
-        #[test]
-        fn linux_hwcap2_aarch64() {
-            let file = concat!(
-                env!("CARGO_MANIFEST_DIR"),
-                "/src/detect/test_data/linux-hwcap2-aarch64.auxv"
-            );
-            println!("file: {file}");
-            let v = auxv_from_file(file).unwrap();
-            println!("HWCAP : 0x{:0x}", v.hwcap);
-            println!("HWCAP2: 0x{:0x}", v.hwcap2);
-            assert_eq!(
-                AtHwcap::from(v),
-                AtHwcap {
-                    // Some other HWCAP bits.
-                    paca: true,
-                    pacg: true,
-                    // HWCAP2-only bits.
-                    dcpodp: true,
-                    frint: true,
-                    rng: true,
-                    bti: true,
-                    mte: true,
-                    ..baseline_hwcaps()
-                }
-            );
-        }
-    }
-}
+mod tests;
