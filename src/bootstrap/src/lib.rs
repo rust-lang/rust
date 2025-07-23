@@ -1343,7 +1343,7 @@ impl Build {
             .map(|p| &**p);
 
         if self.config.is_host_target(target) && configured_root.is_none() {
-            return Some(Path::new("/usr"));
+            Some(Path::new("/usr"))
         } else {
             configured_root
         }
