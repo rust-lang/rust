@@ -1147,6 +1147,12 @@ cc = ["@nnethercote"]
 message = "Changes to the size of AST and/or HIR nodes."
 cc = ["@nnethercote"]
 
+[mentions."tests/ui/issues"]
+message = """
+This PR modifies `tests/ui/issues/`. If this PR is adding new tests to `tests/ui/issues/`,
+please refrain from doing so, and instead add it to more descriptive subdirectories.
+"""
+
 [mentions."compiler/rustc_sanitizers"]
 cc = ["@rcvalle"]
 
