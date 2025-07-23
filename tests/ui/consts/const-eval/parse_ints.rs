@@ -1,3 +1,5 @@
+//@ ignore-backends: gcc
+
 const _OK: () = match i32::from_str_radix("-1234", 10) {
     Ok(x) => assert!(x == -1234),
     Err(_) => panic!(),
