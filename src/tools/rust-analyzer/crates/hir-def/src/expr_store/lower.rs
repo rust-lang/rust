@@ -1981,13 +1981,7 @@ impl ExprCollector<'_> {
                 return collector(self, None);
             }
         };
-        if record_diagnostics {
-            if let Some(err) = res.err {
-                self.store
-                    .diagnostics
-                    .push(ExpressionStoreDiagnostics::MacroError { node: macro_call_ptr, err });
-            }
-        }
+        // No need to push macro and parsing errors as they'll be recreated from `macro_calls()`.
 
         match res.value {
             Some((mark, expansion)) => {
@@ -1995,10 +1989,6 @@ impl ExprCollector<'_> {
                 // other services in incomplete macro expressions.
                 if let Some(macro_file) = self.expander.current_file_id().macro_file() {
                     self.store.expansions.insert(macro_call_ptr, macro_file);
-                }
-
-                if record_diagnostics {
-                    // FIXME: Report parse errors here
                 }
 
                 let id = collector(self, expansion.map(|it| it.tree()));
