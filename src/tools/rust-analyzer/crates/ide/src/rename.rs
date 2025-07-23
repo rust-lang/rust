@@ -473,12 +473,7 @@ fn text_edit_from_self_param(self_param: &ast::SelfParam, new_name: String) -> O
         replacement_text.push_str("mut ");
     }
 
-    if self_param.syntax().ancestors().find_map(ast::Impl::cast).is_some() {
-        replacement_text.push_str("Self");
-    } else {
-        cov_mark::hit!(rename_self_outside_of_methods);
-        replacement_text.push('_');
-    }
+    replacement_text.push_str("Self");
 
     Some(TextEdit::replace(self_param.syntax().text_range(), replacement_text))
 }
@@ -2124,7 +2119,6 @@ impl<'a> Foo<'a> {
 
     #[test]
     fn test_self_outside_of_methods() {
-        cov_mark::check!(rename_self_outside_of_methods);
         check(
             "foo",
             r#"
@@ -2133,7 +2127,7 @@ fn f($0self) -> i32 {
 }
 "#,
             r#"
-fn f(foo: _) -> i32 {
+fn f(foo: Self) -> i32 {
     foo.i
 }
 "#,
