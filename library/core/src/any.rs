@@ -899,7 +899,7 @@ pub const fn type_name_of_val<T: ?Sized>(_val: &T) -> &'static str {
 
 #[allow(missing_docs)]
 #[must_use]
-#[unstable(feature = "downcast_trait", issue = "69420")]
+#[unstable(feature = "downcast_trait", issue = "144361")]
 pub const fn downcast_trait<
     T: Any + 'static,
     U: ptr::Pointee<Metadata = ptr::DynMetadata<U>> + ?Sized + 'static,
@@ -915,9 +915,10 @@ pub const fn downcast_trait<
         None => None,
     }
 }
+
 #[allow(missing_docs)]
 #[must_use]
-#[unstable(feature = "downcast_trait", issue = "69420")]
+#[unstable(feature = "downcast_trait", issue = "144361")]
 pub const fn downcast_trait_mut<
     T: Any + 'static,
     U: ptr::Pointee<Metadata = ptr::DynMetadata<U>> + ?Sized + 'static,
