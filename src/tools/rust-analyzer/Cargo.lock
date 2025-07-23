@@ -3103,6 +3103,7 @@ dependencies = [
  "proc-macro2",
  "quote",
  "stdx",
+ "time",
  "ungrammar",
  "write-json",
  "xflags",
