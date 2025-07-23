@@ -25,4 +25,4 @@ fn main() {
 
     // Run FileCheck on the stdout using the check file
     llvm_filecheck().patterns("memcpy.check").stdin_buf(rfs::read("memcpy.stdout")).run();
-} 
+}
