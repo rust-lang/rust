@@ -206,19 +206,35 @@ fn impl_def_from_trait(
     }
     let impl_def = generate_trait_impl(impl_is_unsafe, adt, make::ty_path(trait_path.clone()));
 
-    let _ =
+    let assoc_items =
         add_trait_assoc_items_to_impl(sema, config, &trait_items, trait_, &impl_def, &target_scope);
-    let impl_def = impl_def.clone_subtree();
-    let mut editor = SyntaxEditor::new(impl_def.syntax().clone());
-    let first_assoc_item = impl_def.assoc_item_list().and_then(|item| item.assoc_items().next())?;
-    // Generate a default `impl` function body for the derived trait.
-    if let ast::AssocItem::Fn(ref func) = first_assoc_item {
-        if let Some(body) = gen_trait_fn_body(func, trait_path, adt, None)
+    let assoc_item_list = if let Some((first, other)) =
+        assoc_items.split_first().map(|(first, other)| (first.clone_subtree(), other))
+    {
+        let first_item = if let ast::AssocItem::Fn(ref func) = first
+            && let Some(body) = gen_trait_fn_body(func, trait_path, adt, None)
             && let Some(func_body) = func.body()
         {
+            let mut editor = SyntaxEditor::new(first.syntax().clone());
             editor.replace(func_body.syntax(), body.syntax());
-        }
-    };
+            ast::AssocItem::cast(editor.finish().new_root().clone())
+        } else {
+            Some(first.clone())
+        };
+        let items = first_item
+            .into_iter()
+            .chain(other.iter().cloned())
+            .map(either::Either::Right)
+            .collect();
+        make::assoc_item_list(Some(items))
+    } else {
+        make::assoc_item_list(None)
+    }
+    .clone_for_update();
+
+    let impl_def = impl_def.clone_subtree();
+    let mut editor = SyntaxEditor::new(impl_def.syntax().clone());
+    editor.replace(impl_def.assoc_item_list()?.syntax(), assoc_item_list.syntax());
     let impl_def = ast::Impl::cast(editor.finish().new_root().clone())?;
     Some(impl_def)
 }
