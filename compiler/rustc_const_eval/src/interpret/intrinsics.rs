@@ -166,7 +166,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let (infcx, param_env) = self
                     .tcx
                     .infer_ctxt()
-                    .build_with_typing_env(ty::TypingEnv::fully_monomorphized());
+                    .build_with_typing_env(self.typing_env);
 
                 let type_impls_trait = preds.iter().all(|pred| {
                     let trait_ref = ty::TraitRef::new(tcx, pred.def_id(), [tp_ty]);
