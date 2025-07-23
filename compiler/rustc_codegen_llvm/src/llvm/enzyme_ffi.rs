@@ -1,10 +1,31 @@
 #![expect(dead_code)]
 
-use libc::{c_char, c_uint};
+use libc::{c_char, c_uint, size_t};
 
 use super::MetadataKindId;
-use super::ffi::{AttributeKind, BasicBlock, Metadata, Module, Type, Value};
+use super::ffi::{AttributeKind, BasicBlock, Context, Metadata, Module, Type, Value};
 use crate::llvm::{Bool, Builder};
+
+// TypeTree types
+pub(crate) type CTypeTreeRef = *mut EnzymeTypeTree;
+
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub(crate) struct EnzymeTypeTree {
+    _unused: [u8; 0],
+}
+
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub(crate) enum CConcreteType {
+    DT_Anything = 0,
+    DT_Integer = 1,
+    DT_Pointer = 2,
+    DT_Half = 3,
+    DT_Float = 4,
+    DT_Double = 5,
+    DT_Unknown = 6,
+}
 
 #[link(name = "llvm-wrapper", kind = "static")]
 unsafe extern "C" {
@@ -66,12 +87,35 @@ pub(crate) use self::Enzyme_AD::*;
 pub(crate) mod Enzyme_AD {
     use std::ffi::{CString, c_char};
 
-    use libc::c_void;
+    use libc::{c_void, size_t};
+
+    use super::{CConcreteType, CTypeTreeRef, Context};
 
     unsafe extern "C" {
         pub(crate) fn EnzymeSetCLBool(arg1: *mut ::std::os::raw::c_void, arg2: u8);
         pub(crate) fn EnzymeSetCLString(arg1: *mut ::std::os::raw::c_void, arg2: *const c_char);
     }
+    
+    // TypeTree functions
+    unsafe extern "C" {
+        pub(crate) fn EnzymeNewTypeTree() -> CTypeTreeRef;
+        pub(crate) fn EnzymeNewTypeTreeCT(arg1: CConcreteType, ctx: &Context) -> CTypeTreeRef;
+        pub(crate) fn EnzymeNewTypeTreeTR(arg1: CTypeTreeRef) -> CTypeTreeRef;
+        pub(crate) fn EnzymeFreeTypeTree(CTT: CTypeTreeRef);
+        pub(crate) fn EnzymeMergeTypeTree(arg1: CTypeTreeRef, arg2: CTypeTreeRef) -> bool;
+        pub(crate) fn EnzymeTypeTreeOnlyEq(arg1: CTypeTreeRef, pos: i64);
+        pub(crate) fn EnzymeTypeTreeData0Eq(arg1: CTypeTreeRef);
+        pub(crate) fn EnzymeTypeTreeShiftIndiciesEq(
+            arg1: CTypeTreeRef,
+            data_layout: *const c_char,
+            offset: i64,
+            max_size: i64,
+            add_offset: u64,
+        );
+        pub(crate) fn EnzymeTypeTreeToString(arg1: CTypeTreeRef) -> *const c_char;
+        pub(crate) fn EnzymeTypeTreeToStringFree(arg1: *const c_char);
+    }
+    
     unsafe extern "C" {
         static mut EnzymePrintPerf: c_void;
         static mut EnzymePrintActivity: c_void;
@@ -140,6 +184,56 @@ pub(crate) use self::Fallback_AD::*;
 #[cfg(not(llvm_enzyme))]
 pub(crate) mod Fallback_AD {
     #![allow(unused_variables)]
+    
+    use super::{CConcreteType, CTypeTreeRef, Context};
+    use libc::c_char;
+
+    // TypeTree function fallbacks
+    pub(crate) fn EnzymeNewTypeTree() -> CTypeTreeRef {
+        unimplemented!()
+    }
+    
+    pub(crate) fn EnzymeNewTypeTreeCT(arg1: CConcreteType, ctx: &Context) -> CTypeTreeRef {
+        unimplemented!()
+    }
+    
+    pub(crate) fn EnzymeNewTypeTreeTR(arg1: CTypeTreeRef) -> CTypeTreeRef {
+        unimplemented!()
+    }
+    
+    pub(crate) fn EnzymeFreeTypeTree(CTT: CTypeTreeRef) {
+        unimplemented!()
+    }
+    
+    pub(crate) fn EnzymeMergeTypeTree(arg1: CTypeTreeRef, arg2: CTypeTreeRef) -> bool {
+        unimplemented!()
+    }
+    
+    pub(crate) fn EnzymeTypeTreeOnlyEq(arg1: CTypeTreeRef, pos: i64) {
+        unimplemented!()
+    }
+    
+    pub(crate) fn EnzymeTypeTreeData0Eq(arg1: CTypeTreeRef) {
+        unimplemented!()
+    }
+    
+    pub(crate) fn EnzymeTypeTreeShiftIndiciesEq(
+        arg1: CTypeTreeRef,
+        data_layout: *const c_char,
+        offset: i64,
+        max_size: i64,
+        add_offset: u64,
+    ) {
+        unimplemented!()
+    }
+    
+    pub(crate) fn EnzymeTypeTreeToString(arg1: CTypeTreeRef) -> *const c_char {
+        unimplemented!()
+    }
+    
+    pub(crate) fn EnzymeTypeTreeToStringFree(arg1: *const c_char) {
+        unimplemented!()
+    }
 
     pub(crate) fn set_inline(val: bool) {
         unimplemented!()
