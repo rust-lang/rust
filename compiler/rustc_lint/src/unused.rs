@@ -1062,7 +1062,6 @@ pub(crate) struct UnusedParens {
 /// ```
 /// type Example = Box<dyn Fn() -> &'static dyn Send>;
 /// ```
-#[derive(Copy, Clone)]
 enum NoBoundsException {
     /// The type must be parenthesized.
     None,
@@ -1343,8 +1342,12 @@ impl EarlyLintPass for UnusedParens {
             ast::TyKind::Ref(_, mut_ty) | ast::TyKind::Ptr(mut_ty) => {
                 // If this type itself appears in no-bounds position, we propagate its
                 // potentially tighter constraint or risk a false posive (issue 143653).
-                let own_constraint = self.in_no_bounds_pos.get(&ty.id).copied();
-                let constraint = own_constraint.unwrap_or(NoBoundsException::OneBound);
+                let own_constraint = self.in_no_bounds_pos.get(&ty.id);
+                let constraint = match own_constraint {
+                    Some(NoBoundsException::None) => NoBoundsException::None,
+                    Some(NoBoundsException::OneBound) => NoBoundsException::OneBound,
+                    None => NoBoundsException::OneBound,
+                };
                 self.in_no_bounds_pos.insert(mut_ty.ty.id, constraint);
             }
             ast::TyKind::TraitObject(bounds, _) | ast::TyKind::ImplTrait(_, bounds) => {
