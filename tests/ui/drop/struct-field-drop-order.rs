@@ -1,3 +1,5 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/16492
+
 //@ run-pass
 #![allow(non_snake_case)]
 

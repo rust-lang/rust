@@ -1,3 +1,5 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/15735
+
 //@ check-pass
 #![allow(dead_code)]
 struct A<'a> {
