@@ -68,6 +68,7 @@ declare_lint_pass! {
         MISPLACED_DIAGNOSTIC_ATTRIBUTES,
         MISSING_ABI,
         MISSING_UNSAFE_ON_EXTERN,
+        MUSL_MISSING_CRT_STATIC,
         MUST_NOT_SUSPEND,
         NAMED_ARGUMENTS_USED_POSITIONALLY,
         NEVER_TYPE_FALLBACK_FLOWING_INTO_UNSAFE,
@@ -5314,4 +5315,17 @@ declare_lint! {
         reason: fcw!(FutureReleaseError #145544),
         report_in_deps: false,
     };
+}
+
+declare_lint! {
+    /// The `musl_missing_crt_static` lint detects when code is compiled for a target using musl libc
+    /// without explicitly specifying `+crt-static` or `-crt-static`.
+    ///
+    /// ### Explanation
+    ///
+    /// The musl targets will change to be dynamically linked by default in the future, to avoid a
+    /// sudden change in behavior, the desired linkage should be specified in the interim period.
+    pub MUSL_MISSING_CRT_STATIC,
+    Warn,
+    "on musl targets, the default for `crt-static` will change; explicitly set `+crt-static` or `-crt-static`",
 }

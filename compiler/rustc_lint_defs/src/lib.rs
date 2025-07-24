@@ -748,6 +748,7 @@ pub enum BuiltinLintDiag {
     },
     UnusedVisibility(Span),
     AttributeLint(AttributeLintKind),
+    MissingCrtStatic,
 }
 
 #[derive(Debug, HashStable_Generic)]

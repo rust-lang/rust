@@ -6,6 +6,7 @@ use std::sync::atomic::AtomicBool;
 use std::{env, io};
 
 use rand::{RngCore, rng};
+use rustc_ast::ast;
 use rustc_data_structures::base_n::{CASE_INSENSITIVE, ToBaseN};
 use rustc_data_structures::flock;
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
@@ -18,10 +19,12 @@ use rustc_errors::json::JsonEmitter;
 use rustc_errors::timings::TimingSectionHandler;
 use rustc_errors::translation::Translator;
 use rustc_errors::{
-    Diag, DiagCtxt, DiagCtxtHandle, DiagMessage, Diagnostic, ErrorGuaranteed, FatalAbort,
-    TerminalUrl, fallback_fluent_bundle,
+    DecorateDiagCompat, Diag, DiagCtxt, DiagCtxtHandle, DiagMessage, Diagnostic, ErrorGuaranteed,
+    FatalAbort, TerminalUrl, fallback_fluent_bundle,
 };
 use rustc_hir::limit::Limit;
+use rustc_lint_defs::BuiltinLintDiag;
+use rustc_lint_defs::builtin::MUSL_MISSING_CRT_STATIC;
 use rustc_macros::HashStable_Generic;
 pub use rustc_span::def_id::StableCrateId;
 use rustc_span::edition::Edition;
@@ -29,7 +32,7 @@ use rustc_span::source_map::{FilePathMapping, SourceMap};
 use rustc_span::{RealFileName, Span, Symbol};
 use rustc_target::asm::InlineAsmArch;
 use rustc_target::spec::{
-    Arch, CodeModel, DebuginfoKind, Os, PanicStrategy, RelocModel, RelroLevel, SanitizerSet,
+    Arch, CodeModel, DebuginfoKind, Env, Os, PanicStrategy, RelocModel, RelroLevel, SanitizerSet,
     SmallDataThresholdSupport, SplitDebuginfo, StackProtector, SymbolVisibility, Target,
     TargetTuple, TlsModel, apple,
 };
@@ -363,6 +366,15 @@ impl Session {
             // We can't check `#![crate_type = "proc-macro"]` here.
             false
         } else {
+            if self.target.env == Env::Musl && self.target.crt_static_default {
+                self.psess.opt_span_buffer_lint(
+                    MUSL_MISSING_CRT_STATIC,
+                    None,
+                    ast::CRATE_NODE_ID,
+                    DecorateDiagCompat::Builtin(BuiltinLintDiag::MissingCrtStatic),
+                );
+            }
+
             self.target.crt_static_default
         }
     }
