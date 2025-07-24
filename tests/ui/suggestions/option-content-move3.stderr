@@ -26,17 +26,16 @@ error[E0507]: cannot move out of `var`, a captured variable in an `FnMut` closur
   --> $DIR/option-content-move3.rs:12:9
    |
 LL |     let var = NotCopyable;
-   |         --- captured outer variable
+   |         ---   ----------- move occurs because `var` has type `NotCopyable`, which does not implement the `Copy` trait
+   |         |
+   |         captured outer variable
 LL |     func(|| {
    |          -- captured by this `FnMut` closure
 LL |         // Shouldn't suggest `move ||.as_ref()` here
 LL |         move || {
    |         ^^^^^^^ `var` is moved here
 LL |             let x = var;
-   |                     ---
-   |                     |
-   |                     variable moved due to use in closure
-   |                     move occurs because `var` has type `NotCopyable`, which does not implement the `Copy` trait
+   |                     --- variable moved due to use in closure
    |
 note: if `NotCopyable` implemented `Clone`, you could clone the value
   --> $DIR/option-content-move3.rs:2:1
@@ -67,17 +66,16 @@ error[E0507]: cannot move out of `var`, a captured variable in an `FnMut` closur
   --> $DIR/option-content-move3.rs:23:9
    |
 LL |     let var = NotCopyableButCloneable;
-   |         --- captured outer variable
+   |         ---   ----------------------- move occurs because `var` has type `NotCopyableButCloneable`, which does not implement the `Copy` trait
+   |         |
+   |         captured outer variable
 LL |     func(|| {
    |          -- captured by this `FnMut` closure
 LL |         // Shouldn't suggest `move ||.as_ref()` here
 LL |         move || {
    |         ^^^^^^^ `var` is moved here
 LL |             let x = var;
-   |                     ---
-   |                     |
-   |                     variable moved due to use in closure
-   |                     move occurs because `var` has type `NotCopyableButCloneable`, which does not implement the `Copy` trait
+   |                     --- variable moved due to use in closure
    |
 help: consider cloning the value before moving it into the closure
    |
