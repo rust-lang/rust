@@ -334,8 +334,8 @@ pub fn create_ecx<'tcx>(
         helpers::try_resolve_path(tcx, &["core", "ascii", "escape_default"], Namespace::ValueNS);
     if !matches!(sentinel, Some(s) if tcx.is_mir_available(s.def.def_id())) {
         tcx.dcx().fatal(
-            "the current sysroot was built without `-Zalways-encode-mir`, or libcore seems missing. \
-            Use `cargo miri setup` to prepare a sysroot that is suitable for Miri."
+            "the current sysroot was built without `-Zalways-encode-mir`, or libcore seems missing.\n\
+            Note that directly invoking the `miri` binary is not supported; please use `cargo miri` instead."
         );
     }
 
