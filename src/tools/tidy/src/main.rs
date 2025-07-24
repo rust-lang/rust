@@ -29,6 +29,7 @@ fn main() {
     let concurrency: NonZeroUsize =
         FromStr::from_str(&env::args().nth(4).expect("need concurrency"))
             .expect("concurrency must be a number");
+    let npm: PathBuf = env::args_os().nth(5).expect("need name/path of npm command").into();
 
     let root_manifest = root_path.join("Cargo.toml");
     let src_path = root_path.join("src");
@@ -182,6 +183,7 @@ fn main() {
             &ci_info,
             &librustdoc_path,
             &tools_path,
+            &npm,
             bless,
             extra_checks,
             pos_args
