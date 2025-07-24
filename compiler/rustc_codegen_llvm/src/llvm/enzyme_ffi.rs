@@ -306,7 +306,7 @@ impl TypeTree {
                 offset as i64,
                 max_size as i64,
                 add_offset as u64,
-            )
+            );
         }
 
         self
@@ -330,7 +330,9 @@ impl std::fmt::Display for TypeTree {
         }
 
         // delete C string pointer
-        unsafe { EnzymeTypeTreeToStringFree(ptr) }
+        unsafe {
+            EnzymeTypeTreeToStringFree(ptr);
+        }
 
         Ok(())
     }

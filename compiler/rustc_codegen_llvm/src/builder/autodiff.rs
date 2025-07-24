@@ -560,6 +560,7 @@ fn to_enzyme_typetree(
 }
 
 #[cfg(not(llvm_enzyme))]
+#[allow(dead_code)]
 fn to_enzyme_typetree(
     _rust_typetree: RustTypeTree,
     _data_layout: &str,
