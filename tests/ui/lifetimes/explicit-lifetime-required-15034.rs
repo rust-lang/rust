@@ -1,3 +1,5 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/15034
+
 pub struct Lexer<'a> {
     input: &'a str,
 }

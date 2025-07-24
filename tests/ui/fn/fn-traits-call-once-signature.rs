@@ -1,3 +1,5 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/15094
+
 #![feature(fn_traits, unboxed_closures)]
 
 use std::{fmt, ops};

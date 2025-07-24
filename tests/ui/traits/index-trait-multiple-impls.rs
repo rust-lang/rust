@@ -1,3 +1,5 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/15734
+
 //@ run-pass
 //@ revisions: current next
 //@ ignore-compare-mode-next-solver (explicit revisions)

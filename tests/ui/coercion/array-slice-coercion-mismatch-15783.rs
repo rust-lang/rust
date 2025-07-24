@@ -1,3 +1,5 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/15783
+
 //@ dont-require-annotations: NOTE
 
 pub fn foo(params: Option<&[&str]>) -> usize {

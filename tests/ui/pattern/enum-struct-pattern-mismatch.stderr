@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/issue-15896.rs:11:11
+  --> $DIR/enum-struct-pattern-mismatch.rs:13:11
    |
 LL |     let u = match e {
    |                   - this expression has type `E`

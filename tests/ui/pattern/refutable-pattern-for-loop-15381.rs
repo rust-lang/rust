@@ -1,3 +1,5 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/15381
+
 fn main() {
     let values: Vec<u8> = vec![1,2,3,4,5,6,7,8];
 

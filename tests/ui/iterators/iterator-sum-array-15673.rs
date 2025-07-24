@@ -1,3 +1,5 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/15673
+
 //@ run-pass
 #![allow(stable_features)]
 

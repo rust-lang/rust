@@ -1,3 +1,5 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/16401
+
 struct Slice<T> {
     data: *const T,
     len: usize,

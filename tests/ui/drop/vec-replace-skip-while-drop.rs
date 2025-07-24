@@ -1,3 +1,5 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/16151
+
 //@ run-pass
 
 // FIXME(static_mut_refs): Do not allow `static_mut_refs` lint

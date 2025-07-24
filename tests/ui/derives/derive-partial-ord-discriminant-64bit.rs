@@ -1,3 +1,5 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/15523
+
 //@ run-pass
 // Issue 15523: derive(PartialOrd) should use the provided
 // discriminant values for the derived ordering.
@@ -27,7 +29,6 @@ fn main() {
     assert!(Eu64::Pos2 > Eu64::Pos1);
     assert!(Eu64::Pos2 < Eu64::PosMax);
     assert!(Eu64::Pos1 < Eu64::PosMax);
-
 
     assert!(Ei64::Pos2 > Ei64::Pos1);
     assert!(Ei64::Pos2 > Ei64::Neg1);

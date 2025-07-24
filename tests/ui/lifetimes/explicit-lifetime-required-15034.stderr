@@ -1,5 +1,5 @@
 error[E0621]: explicit lifetime required in the type of `lexer`
-  --> $DIR/issue-15034.rs:17:9
+  --> $DIR/explicit-lifetime-required-15034.rs:19:9
    |
 LL |         Parser { lexer: lexer }
    |         ^^^^^^^^^^^^^^^^^^^^^^^ lifetime `'a` required

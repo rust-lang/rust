@@ -1,3 +1,5 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/15571
+
 //@ run-pass
 
 fn match_on_local() {

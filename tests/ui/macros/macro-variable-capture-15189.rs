@@ -1,3 +1,5 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/15189
+
 //@ run-pass
 macro_rules! third {
     ($e:expr) => ({let x = 2; $e[x]})

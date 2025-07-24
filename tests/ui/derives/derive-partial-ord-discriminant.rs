@@ -1,3 +1,5 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/15523
+
 //@ run-pass
 // Issue 15523: derive(PartialOrd) should use the provided
 // discriminant values for the derived ordering.

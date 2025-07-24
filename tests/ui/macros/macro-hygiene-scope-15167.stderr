@@ -1,5 +1,5 @@
 error[E0425]: cannot find value `n` in this scope
-  --> $DIR/issue-15167.rs:3:25
+  --> $DIR/macro-hygiene-scope-15167.rs:5:25
    |
 LL | macro_rules! f { () => (n) }
    |                         ^ not found in this scope
@@ -10,7 +10,7 @@ LL |         println!("{}", f!());
    = note: this error originates in the macro `f` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0425]: cannot find value `n` in this scope
-  --> $DIR/issue-15167.rs:3:25
+  --> $DIR/macro-hygiene-scope-15167.rs:5:25
    |
 LL | macro_rules! f { () => (n) }
    |                         ^ not found in this scope
@@ -21,7 +21,7 @@ LL |         println!("{}", f!());
    = note: this error originates in the macro `f` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0425]: cannot find value `n` in this scope
-  --> $DIR/issue-15167.rs:3:25
+  --> $DIR/macro-hygiene-scope-15167.rs:5:25
    |
 LL | macro_rules! f { () => (n) }
    |                         ^ not found in this scope
@@ -32,7 +32,7 @@ LL |         println!("{}", f!());
    = note: this error originates in the macro `f` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0425]: cannot find value `n` in this scope
-  --> $DIR/issue-15167.rs:3:25
+  --> $DIR/macro-hygiene-scope-15167.rs:5:25
    |
 LL | macro_rules! f { () => (n) }
    |                         ^ not found in this scope

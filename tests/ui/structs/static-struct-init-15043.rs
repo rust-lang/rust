@@ -1,3 +1,5 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/15043
+
 //@ run-pass
 
 #![allow(warnings)]

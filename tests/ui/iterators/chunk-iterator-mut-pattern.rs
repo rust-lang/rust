@@ -1,3 +1,5 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/15756
+
 use std::slice::Chunks;
 use std::slice::ChunksMut;
 

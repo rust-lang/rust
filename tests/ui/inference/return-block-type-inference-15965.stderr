@@ -1,5 +1,5 @@
 error[E0282]: type annotations needed
-  --> $DIR/issue-15965.rs:3:9
+  --> $DIR/return-block-type-inference-15965.rs:5:9
    |
 LL | /         { return () }
 LL | |

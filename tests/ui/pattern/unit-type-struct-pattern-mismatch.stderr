@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/issue-16401.rs:8:9
+  --> $DIR/unit-type-struct-pattern-mismatch.rs:10:9
    |
 LL |     match () {
    |           -- this expression has type `()`

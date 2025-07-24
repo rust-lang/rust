@@ -1,3 +1,5 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/16048
+
 trait NoLifetime {
     fn get<'p, T : Test<'p>>(&self) -> T;
     //~^ NOTE lifetimes in impl do not match this method in trait
