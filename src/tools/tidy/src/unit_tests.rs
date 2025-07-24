@@ -79,8 +79,7 @@ pub fn check(root_path: &Path, stdlib: bool, bad: &mut bool) {
             let line = line.trim();
             let is_test = || line.contains("#[test]") && !line.contains("`#[test]");
             let is_bench = || line.contains("#[bench]") && !line.contains("`#[bench]");
-            let manual_skip = line.contains("//tidy:skip");
-            if !line.starts_with("//") && (is_test() || is_bench()) && !manual_skip {
+            if !line.starts_with("//") && (is_test() || is_bench()) {
                 let explanation = if stdlib {
                     format!(
                         "`{package}` unit tests and benchmarks must be placed into `{package}tests`"
