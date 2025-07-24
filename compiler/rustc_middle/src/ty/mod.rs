@@ -1970,6 +1970,19 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
+    pub fn impl_polarity(self, def_id: impl IntoQueryParam<DefId>) -> ty::ImplPolarity {
+        self.impl_trait_header(def_id).map_or(ty::ImplPolarity::Positive, |h| h.polarity)
+    }
+
+    /// Given an `impl_id`, return the trait it implements.
+    /// Return `None` if this is an inherent impl.
+    pub fn impl_trait_ref(
+        self,
+        def_id: impl IntoQueryParam<DefId>,
+    ) -> Option<ty::EarlyBinder<'tcx, ty::TraitRef<'tcx>>> {
+        Some(self.impl_trait_header(def_id)?.trait_ref)
+    }
+
     pub fn is_exportable(self, def_id: DefId) -> bool {
         self.exportable_items(def_id.krate).contains(&def_id)
     }

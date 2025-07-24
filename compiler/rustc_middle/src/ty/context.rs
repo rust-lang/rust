@@ -3530,19 +3530,6 @@ impl<'tcx> TyCtxt<'tcx> {
         crate::dep_graph::make_metadata(self)
     }
 
-    /// Given an `impl_id`, return the trait it implements.
-    /// Return `None` if this is an inherent impl.
-    pub fn impl_trait_ref(
-        self,
-        def_id: impl IntoQueryParam<DefId>,
-    ) -> Option<ty::EarlyBinder<'tcx, ty::TraitRef<'tcx>>> {
-        Some(self.impl_trait_header(def_id)?.trait_ref)
-    }
-
-    pub fn impl_polarity(self, def_id: impl IntoQueryParam<DefId>) -> ty::ImplPolarity {
-        self.impl_trait_header(def_id).map_or(ty::ImplPolarity::Positive, |h| h.polarity)
-    }
-
     pub fn needs_coroutine_by_move_body_def_id(self, def_id: DefId) -> bool {
         if let Some(hir::CoroutineKind::Desugared(_, hir::CoroutineSource::Closure)) =
             self.coroutine_kind(def_id)
