@@ -1988,29 +1988,22 @@ impl<'tcx> TyCtxt<'tcx> {
         self.impl_trait_ref(def_id).map(|tr| tr.skip_binder().def_id)
     }
 
+    /// If the given `DefId` is an associated item, returns the `DefId` of the parent trait or impl.
+    pub fn assoc_parent(self, def_id: DefId) -> Option<DefId> {
+        self.def_kind(def_id).is_assoc().then(|| self.parent(def_id))
+    }
+
     /// If the given `DefId` describes an item belonging to a trait,
     /// returns the `DefId` of the trait that the trait item belongs to;
     /// otherwise, returns `None`.
     pub fn trait_of_item(self, def_id: DefId) -> Option<DefId> {
-        if let DefKind::AssocConst | DefKind::AssocFn | DefKind::AssocTy = self.def_kind(def_id) {
-            let parent = self.parent(def_id);
-            if let DefKind::Trait = self.def_kind(parent) {
-                return Some(parent);
-            }
-        }
-        None
+        self.assoc_parent(def_id).filter(|id| self.def_kind(id) == DefKind::Trait)
     }
 
     /// If the given `DefId` describes a method belonging to an impl, returns the
     /// `DefId` of the impl that the method belongs to; otherwise, returns `None`.
     pub fn impl_of_method(self, def_id: DefId) -> Option<DefId> {
-        if let DefKind::AssocConst | DefKind::AssocFn | DefKind::AssocTy = self.def_kind(def_id) {
-            let parent = self.parent(def_id);
-            if let DefKind::Impl { .. } = self.def_kind(parent) {
-                return Some(parent);
-            }
-        }
-        None
+        self.assoc_parent(def_id).filter(|id| matches!(self.def_kind(id), DefKind::Impl { .. }))
     }
 
     pub fn is_exportable(self, def_id: DefId) -> bool {
