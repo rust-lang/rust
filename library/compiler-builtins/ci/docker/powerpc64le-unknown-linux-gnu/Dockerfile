@@ -1,3 +1,4 @@
+# FIXME(ppc): We want 25.04 but get SIGILLs
 ARG IMAGE=ubuntu:24.04
 FROM $IMAGE
 
