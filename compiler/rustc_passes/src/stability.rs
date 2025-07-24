@@ -590,9 +590,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
             // For implementations of traits, check the stability of each item
             // individually as it's possible to have a stable trait with unstable
             // items.
-            hir::ItemKind::Impl(hir::Impl {
-                of_trait: Some(t), self_ty, items, constness, ..
-            }) => {
+            hir::ItemKind::Impl(hir::Impl { of_trait: Some(of_trait), self_ty, items, .. }) => {
                 let features = self.tcx.features();
                 if features.staged_api() {
                     let attrs = self.tcx.hir_attrs(item.hir_id());
@@ -628,7 +626,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
                     {
                         let mut c = CheckTraitImplStable { tcx: self.tcx, fully_stable: true };
                         c.visit_ty_unambig(self_ty);
-                        c.visit_trait_ref(t);
+                        c.visit_trait_ref(&of_trait.trait_ref);
 
                         // Skip the lint if the impl is marked as unstable using
                         // #[unstable_feature_bound(..)]
@@ -641,7 +639,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
 
                         // do not lint when the trait isn't resolved, since resolution error should
                         // be fixed first
-                        if t.path.res != Res::Err
+                        if of_trait.trait_ref.path.res != Res::Err
                             && c.fully_stable
                             && !unstable_feature_bound_in_effect
                         {
@@ -655,7 +653,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
                     }
 
                     if features.const_trait_impl()
-                        && let hir::Constness::Const = constness
+                        && let hir::Constness::Const = of_trait.constness
                     {
                         let stable_or_implied_stable = match const_stab {
                             None => true,
@@ -671,7 +669,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
                             Some(_) => false,
                         };
 
-                        if let Some(trait_id) = t.trait_def_id()
+                        if let Some(trait_id) = of_trait.trait_ref.trait_def_id()
                             && let Some(const_stab) = self.tcx.lookup_const_stability(trait_id)
                         {
                             // the const stability of a trait impl must match the const stability on the trait.
@@ -699,14 +697,18 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
                     }
                 }
 
-                if let hir::Constness::Const = constness
-                    && let Some(def_id) = t.trait_def_id()
+                if let hir::Constness::Const = of_trait.constness
+                    && let Some(def_id) = of_trait.trait_ref.trait_def_id()
                 {
                     // FIXME(const_trait_impl): Improve the span here.
-                    self.tcx.check_const_stability(def_id, t.path.span, t.path.span);
+                    self.tcx.check_const_stability(
+                        def_id,
+                        of_trait.trait_ref.path.span,
+                        of_trait.trait_ref.path.span,
+                    );
                 }
 
-                for impl_item_ref in *items {
+                for impl_item_ref in items {
                     let impl_item = self.tcx.associated_item(impl_item_ref.owner_id);
 
                     if let Some(def_id) = impl_item.trait_item_def_id {

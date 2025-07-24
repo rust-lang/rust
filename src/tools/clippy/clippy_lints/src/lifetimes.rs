@@ -150,7 +150,7 @@ impl<'tcx> LateLintPass<'tcx> for Lifetimes {
         } = item.kind
         {
             check_fn_inner(cx, sig, Some(id), None, generics, item.span, true, self.msrv);
-        } else if let ItemKind::Impl(impl_) = item.kind
+        } else if let ItemKind::Impl(impl_) = &item.kind
             && !item.span.from_expansion()
         {
             report_extra_impl_lifetimes(cx, impl_);
@@ -712,8 +712,8 @@ fn report_extra_impl_lifetimes<'tcx>(cx: &LateContext<'tcx>, impl_: &'tcx Impl<'
     let mut checker = LifetimeChecker::<middle_nested_filter::All>::new(cx, impl_.generics);
 
     walk_generics(&mut checker, impl_.generics);
-    if let Some(ref trait_ref) = impl_.of_trait {
-        walk_trait_ref(&mut checker, trait_ref);
+    if let Some(of_trait) = impl_.of_trait {
+        walk_trait_ref(&mut checker, &of_trait.trait_ref);
     }
     walk_unambig_ty(&mut checker, impl_.self_ty);
     for &item in impl_.items {

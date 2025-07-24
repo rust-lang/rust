@@ -347,10 +347,10 @@ impl<'tcx> LateLintPass<'tcx> for Write {
 
 fn is_debug_impl(cx: &LateContext<'_>, item: &Item<'_>) -> bool {
     if let ItemKind::Impl(Impl {
-        of_trait: Some(trait_ref),
+        of_trait: Some(of_trait),
         ..
     }) = &item.kind
-        && let Some(trait_id) = trait_ref.trait_def_id()
+        && let Some(trait_id) = of_trait.trait_ref.trait_def_id()
     {
         cx.tcx.is_diagnostic_item(sym::Debug, trait_id)
     } else {
