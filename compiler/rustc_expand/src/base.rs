@@ -1224,6 +1224,7 @@ pub struct ExtCtxt<'a> {
     pub(super) expanded_inert_attrs: MarkedAttrs,
     /// `-Zmacro-stats` data.
     pub macro_stats: FxHashMap<(Symbol, MacroKind), MacroStat>,
+    pub nb_macro_errors: usize,
 }
 
 impl<'a> ExtCtxt<'a> {
@@ -1254,6 +1255,7 @@ impl<'a> ExtCtxt<'a> {
             expanded_inert_attrs: MarkedAttrs::new(),
             buffered_early_lint: vec![],
             macro_stats: Default::default(),
+            nb_macro_errors: 0,
         }
     }
 
@@ -1313,6 +1315,12 @@ impl<'a> ExtCtxt<'a> {
     /// Stops backtracing at include! boundary.
     pub fn expansion_cause(&self) -> Option<Span> {
         self.current_expansion.id.expansion_cause()
+    }
+
+    /// This method increases the internal macro errors count and then call `trace_macros_diag`.
+    pub fn macro_error_and_trace_macros_diag(&mut self) {
+        self.nb_macro_errors += 1;
+        self.trace_macros_diag();
     }
 
     pub fn trace_macros_diag(&mut self) {
