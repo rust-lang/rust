@@ -931,6 +931,8 @@ pub const fn downcast_trait_mut<
     match vtable {
         Some(dyn_metadata) => {
             let pointer = ptr::from_raw_parts_mut(t, dyn_metadata);
+            // SAFETY: `t` is a reference to a type, so we know it is valid.
+            // `dyn_metadata` is a vtable for T, implementing the trait of `U`.
             Some(unsafe { &mut *pointer })
         }
         None => None,
