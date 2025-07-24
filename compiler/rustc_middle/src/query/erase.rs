@@ -153,8 +153,8 @@ impl EraseType for Result<mir::ConstAlloc<'_>, mir::interpret::ErrorHandled> {
     type Result = [u8; size_of::<Result<mir::ConstAlloc<'static>, mir::interpret::ErrorHandled>>()];
 }
 
-impl EraseType for Result<mir::ConstValue<'_>, mir::interpret::ErrorHandled> {
-    type Result = [u8; size_of::<Result<mir::ConstValue<'static>, mir::interpret::ErrorHandled>>()];
+impl EraseType for Result<mir::ConstValue, mir::interpret::ErrorHandled> {
+    type Result = [u8; size_of::<Result<mir::ConstValue, mir::interpret::ErrorHandled>>()];
 }
 
 impl EraseType for EvalToValTreeResult<'_> {
@@ -301,6 +301,7 @@ trivial! {
     rustc_middle::middle::resolve_bound_vars::ResolvedArg,
     rustc_middle::middle::stability::DeprecationEntry,
     rustc_middle::mir::ConstQualifs,
+    rustc_middle::mir::ConstValue,
     rustc_middle::mir::interpret::AllocId,
     rustc_middle::mir::interpret::CtfeProvenance,
     rustc_middle::mir::interpret::ErrorHandled,
@@ -362,7 +363,6 @@ tcx_lifetime! {
     rustc_middle::mir::Const,
     rustc_middle::mir::DestructuredConstant,
     rustc_middle::mir::ConstAlloc,
-    rustc_middle::mir::ConstValue,
     rustc_middle::mir::interpret::GlobalId,
     rustc_middle::mir::interpret::LitToConstInput,
     rustc_middle::mir::interpret::EvalStaticInitializerRawResult,
