@@ -9,7 +9,7 @@ error: layout_of(UnsignedAroundZero) = Layout {
                        I16,
                        false,
                    ),
-                   valid_range: 0..=65535,
+                   valid_range: (..=1) | (65535..),
                },
            ),
            fields: Arbitrary {
@@ -20,7 +20,16 @@ error: layout_of(UnsignedAroundZero) = Layout {
                    0,
                ],
            },
-           largest_niche: None,
+           largest_niche: Some(
+               Niche {
+                   offset: Size(0 bytes),
+                   value: Int(
+                       I16,
+                       false,
+                   ),
+                   valid_range: (..=1) | (65535..),
+               },
+           ),
            uninhabited: false,
            variants: Multiple {
                tag: Initialized {
@@ -28,7 +37,7 @@ error: layout_of(UnsignedAroundZero) = Layout {
                        I16,
                        false,
                    ),
-                   valid_range: 0..=65535,
+                   valid_range: (..=1) | (65535..),
                },
                tag_encoding: Direct,
                tag_field: 0,
