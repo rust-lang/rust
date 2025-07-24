@@ -5368,7 +5368,7 @@ pub(super) fn get_explanation_based_on_obligation<'tcx>(
     obligation: &PredicateObligation<'tcx>,
     trait_predicate: ty::PolyTraitPredicate<'tcx>,
     pre_message: String,
-    file: &mut Option<PathBuf>,
+    long_ty_path: &mut Option<PathBuf>,
 ) -> String {
     if let ObligationCauseCode::MainFunctionType = obligation.cause.code() {
         "consider using `()`, or a `Result`".to_owned()
@@ -5387,7 +5387,7 @@ pub(super) fn get_explanation_based_on_obligation<'tcx>(
             format!(
                 "{pre_message}the trait `{}` is not implemented for{desc} `{}`",
                 trait_predicate.print_modifiers_and_trait_path(),
-                tcx.short_string(trait_predicate.self_ty().skip_binder(), file),
+                tcx.short_string(trait_predicate.self_ty().skip_binder(), long_ty_path),
             )
         } else {
             // "the trait bound `T: !Send` is not satisfied" reads better than "`!Send` is

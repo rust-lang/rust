@@ -1604,7 +1604,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         projection_term: ty::AliasTerm<'tcx>,
         normalized_ty: ty::Term<'tcx>,
         expected_ty: ty::Term<'tcx>,
-        file: &mut Option<PathBuf>,
+        long_ty_path: &mut Option<PathBuf>,
     ) -> Option<(String, Span, Option<Span>)> {
         let trait_def_id = projection_term.trait_def_id(self.tcx);
         let self_ty = projection_term.self_ty();
@@ -1644,25 +1644,25 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 };
                 let item = match self_ty.kind() {
                     ty::FnDef(def, _) => self.tcx.item_name(*def).to_string(),
-                    _ => self.tcx.short_string(self_ty, file),
+                    _ => self.tcx.short_string(self_ty, long_ty_path),
                 };
-                let expected_ty = self.tcx.short_string(expected_ty, file);
-                let normalized_ty = self.tcx.short_string(normalized_ty, file);
+                let expected_ty = self.tcx.short_string(expected_ty, long_ty_path);
+                let normalized_ty = self.tcx.short_string(normalized_ty, long_ty_path);
                 Some((format!(
                     "expected `{item}` to return `{expected_ty}`, but it returns `{normalized_ty}`",
                 ), span, closure_span))
             } else if self.tcx.is_lang_item(trait_def_id, LangItem::Future) {
-                let self_ty = self.tcx.short_string(self_ty, file);
-                let expected_ty = self.tcx.short_string(expected_ty, file);
-                let normalized_ty = self.tcx.short_string(normalized_ty, file);
+                let self_ty = self.tcx.short_string(self_ty, long_ty_path);
+                let expected_ty = self.tcx.short_string(expected_ty, long_ty_path);
+                let normalized_ty = self.tcx.short_string(normalized_ty, long_ty_path);
                 Some((format!(
                     "expected `{self_ty}` to be a future that resolves to `{expected_ty}`, but it \
                      resolves to `{normalized_ty}`"
                 ), span, None))
             } else if Some(trait_def_id) == self.tcx.get_diagnostic_item(sym::Iterator) {
-                let self_ty = self.tcx.short_string(self_ty, file);
-                let expected_ty = self.tcx.short_string(expected_ty, file);
-                let normalized_ty = self.tcx.short_string(normalized_ty, file);
+                let self_ty = self.tcx.short_string(self_ty, long_ty_path);
+                let expected_ty = self.tcx.short_string(expected_ty, long_ty_path);
+                let normalized_ty = self.tcx.short_string(normalized_ty, long_ty_path);
                 Some((format!(
                     "expected `{self_ty}` to be an iterator that yields `{expected_ty}`, but it \
                      yields `{normalized_ty}`"
@@ -2514,7 +2514,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         predicate_constness: Option<ty::BoundConstness>,
         append_const_msg: Option<AppendConstMessage>,
         post_message: String,
-        long_ty_file: &mut Option<PathBuf>,
+        long_ty_path: &mut Option<PathBuf>,
     ) -> String {
         message
             .and_then(|cannot_do_this| {
@@ -2540,7 +2540,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     "the trait bound `{}` is not satisfied{post_message}",
                     self.tcx.short_string(
                         trait_predicate.print_with_bound_constness(predicate_constness),
-                        long_ty_file,
+                        long_ty_path,
                     ),
                 )
             })
