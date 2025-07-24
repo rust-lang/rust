@@ -654,9 +654,7 @@ impl Rvalue {
                 )),
                 AggregateKind::Adt(def, _, ref args, _, _) => Ok(def.ty_with_args(args)),
                 AggregateKind::Closure(def, ref args) => Ok(Ty::new_closure(def, args.clone())),
-                AggregateKind::Coroutine(def, ref args, mov) => {
-                    Ok(Ty::new_coroutine(def, args.clone(), mov))
-                }
+                AggregateKind::Coroutine(def, ref args) => Ok(Ty::new_coroutine(def, args.clone())),
                 AggregateKind::CoroutineClosure(def, ref args) => {
                     Ok(Ty::new_coroutine_closure(def, args.clone()))
                 }
@@ -674,8 +672,7 @@ pub enum AggregateKind {
     Tuple,
     Adt(AdtDef, VariantIdx, GenericArgs, Option<UserTypeAnnotationIndex>, Option<FieldIdx>),
     Closure(ClosureDef, GenericArgs),
-    // FIXME(rustc_public): Movability here is redundant
-    Coroutine(CoroutineDef, GenericArgs, Movability),
+    Coroutine(CoroutineDef, GenericArgs),
     CoroutineClosure(CoroutineClosureDef, GenericArgs),
     RawPtr(Ty, Mutability),
 }
