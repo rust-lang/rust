@@ -1258,7 +1258,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             return;
         }
 
-        if self.tcx.extern_mod_stmt_cnum(hir_id.owner).is_none() {
+        if self.tcx.extern_mod_stmt_cnum(hir_id.owner.def_id).is_none() {
             self.tcx.emit_node_span_lint(
                 INVALID_DOC_ATTRIBUTES,
                 hir_id,
