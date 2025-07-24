@@ -9,6 +9,8 @@
 //@ [wasm32-wasip1] needs-llvm-components: webassembly
 
 #![crate_type = "lib"]
+// FIXME(#82232, #143834): temporarily renamed to mitigate `#[align]` nameres ambiguity
+#![feature(rustc_attrs)]
 #![feature(no_core, asm_experimental_arch, f128, linkage, fn_align)]
 #![no_core]
 
@@ -37,7 +39,7 @@ extern "C" fn nop() {
 #[unsafe(naked)]
 #[linkage = "weak"]
 // wasm functions cannot be aligned, so this has no effect
-#[align(32)]
+#[rustc_align(32)]
 extern "C" fn weak_aligned_nop() {
     naked_asm!("nop")
 }
