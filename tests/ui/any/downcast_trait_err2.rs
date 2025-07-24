@@ -20,9 +20,13 @@ fn store(x: &'static Box<i32>) {
 
 fn main() {
     let data = Box::new(Box::new(1i32));
-    downcast_trait::<_, dyn Trait<fn(&'static Box<i32>)>>(&())
-        .unwrap()
-        .call(store, &*data);
-    drop(data);
-    println!("{}", STORAGE.get().unwrap());
+    let dt = downcast_trait::<_, dyn Trait<fn(&'static Box<i32>)>>(&());
+    if let Some(dt) = dt {
+        // unsound path
+        dt.call(store, &*data);
+        drop(data);
+        println!("{}", STORAGE.get().unwrap());
+    } else {
+        println!("success")
+    }
 }
