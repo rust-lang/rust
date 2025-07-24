@@ -17,10 +17,6 @@ pub fn skip_sys_checks(test_name: &str) -> bool {
         "extend_f16_f32",
         "trunc_f32_f16",
         "trunc_f64_f16",
-        // FIXME(#616): re-enable once fix is in nightly
-        // <https://github.com/rust-lang/compiler-builtins/issues/616>
-        "mul_f32",
-        "mul_f64",
     ];
 
     // FIXME(f16_f128): system symbols have incorrect results
