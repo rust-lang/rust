@@ -411,8 +411,8 @@ const PATH_REMAP: &[(&str, &[&str])] = &[
         "tests",
         &[
             // tidy-alphabetical-start
-            "tests/assembly",
-            "tests/codegen",
+            "tests/assembly-llvm",
+            "tests/codegen-llvm",
             "tests/codegen-units",
             "tests/coverage",
             "tests/coverage-run-rustdoc",
@@ -963,6 +963,7 @@ impl<'a> Builder<'a> {
                 tool::RemoteTestServer,
                 tool::RemoteTestClient,
                 tool::RustInstaller,
+                tool::FeaturesStatusDump,
                 tool::Cargo,
                 tool::RustAnalyzer,
                 tool::RustAnalyzerProcMacroSrv,
@@ -984,6 +985,8 @@ impl<'a> Builder<'a> {
                 tool::CoverageDump,
                 tool::LlvmBitcodeLinker,
                 tool::RustcPerf,
+                tool::WasmComponentLd,
+                tool::LldWrapper
             ),
             Kind::Clippy => describe!(
                 clippy::Std,
@@ -1046,9 +1049,9 @@ impl<'a> Builder<'a> {
                 test::Crashes,
                 test::Coverage,
                 test::MirOpt,
-                test::Codegen,
+                test::CodegenLlvm,
                 test::CodegenUnits,
-                test::Assembly,
+                test::AssemblyLlvm,
                 test::Incremental,
                 test::Debuginfo,
                 test::UiFullDeps,

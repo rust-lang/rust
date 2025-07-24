@@ -187,7 +187,7 @@ intrinsics:
     arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}"]
     return_type: "{neon_type[1]}"
     attr: [*neon-stable]
-    assert_instr: [sabdl]
+    assert_instr: [sabdl2]
     safety: safe
     types:
       - [int8x16_t, int16x8_t, int8x8_t, uint8x8_t]
@@ -230,7 +230,7 @@ intrinsics:
           - stable
           - - 'feature = "neon_intrinsics"'
             - 'since = "1.59.0"'
-    assert_instr: [sabdl]
+    assert_instr: [sabdl2]
     safety: safe
     types:
       - [int16x8_t, int32x4_t, int16x4_t, uint16x4_t]
@@ -273,7 +273,7 @@ intrinsics:
           - stable
           - - 'feature = "neon_intrinsics"'
             - 'since = "1.59.0"'
-    assert_instr: [sabdl]
+    assert_instr: [sabdl2]
     safety: safe
     types:
       - [int32x4_t, int64x2_t, int32x2_t, uint32x2_t]
@@ -1462,7 +1462,7 @@ intrinsics:
     arguments: ["a: {neon_type[0]}"]
     return_type: "{neon_type[1]}"
     attr:
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcvtl]]}]]
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcvtl2]]}]]
       - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
     safety: safe
     types:
@@ -1530,7 +1530,7 @@ intrinsics:
     arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}"]
     return_type: "{neon_type[2]}"
     attr:
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcvtn]]}]]
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcvtn2]]}]]
       - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
     safety: safe
     types:
@@ -1582,7 +1582,7 @@ intrinsics:
     arguments: ["a: {type[0]}", "b: {neon_type[1]}"]
     return_type: "{type[2]}"
     attr:
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcvtxn]]}]]
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcvtxn2]]}]]
       - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
     safety: safe
     types:
@@ -5147,7 +5147,7 @@ intrinsics:
     attr:
       - *neon-stable
     safety: safe
-    assert_instr: [pmull]
+    assert_instr: [pmull2]
     types:
       - [poly8x16_t, poly8x8_t, '[8, 9, 10, 11, 12, 13, 14, 15]', poly16x8_t]
     compose:
@@ -5169,7 +5169,7 @@ intrinsics:
       - *neon-aes
       - *neon-stable
     safety: safe
-    assert_instr: [pmull]
+    assert_instr: [pmull2]
     types:
       - [poly64x2_t, "p128"]
     compose:
@@ -5741,7 +5741,7 @@ intrinsics:
     arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}"]
     return_type: "{neon_type[0]}"
     attr: [*neon-stable]
-    assert_instr: [ssubw]
+    assert_instr: [ssubw2]
     safety: safe
     types:
       - [int16x8_t, int8x16_t, int8x8_t, '[8, 9, 10, 11, 12, 13, 14, 15]']
@@ -5762,7 +5762,7 @@ intrinsics:
     arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}"]
     return_type: "{neon_type[0]}"
     attr: [*neon-stable]
-    assert_instr: [usubw]
+    assert_instr: [usubw2]
     safety: safe
     types:
       - [uint16x8_t, uint8x16_t, uint8x8_t, '[8, 9, 10, 11, 12, 13, 14, 15]']
@@ -5783,7 +5783,7 @@ intrinsics:
     arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}"]
     return_type: "{neon_type[1]}"
     attr: [*neon-stable]
-    assert_instr: [ssubl]
+    assert_instr: [ssubl2]
     safety: safe
     types:
       - [int8x16_t, int16x8_t, '[8, 9, 10, 11, 12, 13, 14, 15]', int8x8_t]
@@ -5813,7 +5813,7 @@ intrinsics:
     arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}"]
     return_type: "{neon_type[1]}"
     attr: [*neon-stable]
-    assert_instr: [usubl]
+    assert_instr: [usubl2]
     safety: safe
     types:
       - [uint8x16_t, uint16x8_t, '[8, 9, 10, 11, 12, 13, 14, 15]', uint8x8_t]
@@ -6580,7 +6580,6 @@ intrinsics:
               arch: aarch64,arm64ec
 
 
-
   - name: "vmaxnm{neon_type.no}"
     doc: Floating-point Maximum Number (vector)
     arguments: ["a: {neon_type}", "b: {neon_type}"]
@@ -6592,11 +6591,7 @@ intrinsics:
       - float64x1_t
       - float64x2_t
     compose:
-      - LLVMLink:
-          name: "fmaxnm.{neon_type}"
-          links:
-            - link: "llvm.aarch64.neon.fmaxnm.{neon_type}"
-              arch: aarch64,arm64ec
+      - FnCall: [simd_fmax, [a, b]]
 
 
   - name: "vmaxnmh_{type}"
@@ -6611,11 +6606,7 @@ intrinsics:
     types:
       - f16
     compose:
-      - LLVMLink:
-          name: "vmaxh.{neon_type}"
-          links:
-            - link: "llvm.aarch64.neon.fmaxnm.{type}"
-              arch: aarch64,arm64ec
+      - FnCall: ["f16::max", [a, b]]
 
 
   - name: "vminnmh_{type}"
@@ -6630,11 +6621,7 @@ intrinsics:
     types:
       - f16
     compose:
-      - LLVMLink:
-          name: "vminh.{neon_type}"
-          links:
-            - link: "llvm.aarch64.neon.fminnm.{type}"
-              arch: aarch64,arm64ec
+      - FnCall: ["f16::min", [a, b]]
 
 
   - name: "vmaxnmv{neon_type[0].no}"
@@ -6648,11 +6635,7 @@ intrinsics:
       - [float32x2_t, f32]
       - [float64x2_t, f64]
     compose:
-      - LLVMLink:
-          name: "fmaxnmv.{neon_type[0]}"
-          links:
-            - link: "llvm.aarch64.neon.fmaxnmv.{type[1]}.{neon_type[0]}"
-              arch: aarch64,arm64ec
+      - FnCall: [simd_reduce_max, [a]]
 
   - name: "vmaxnmv{neon_type[0].no}"
     doc: Floating-point maximum number across vector
@@ -6664,11 +6647,7 @@ intrinsics:
     types:
       - [float32x4_t, f32]
     compose:
-      - LLVMLink:
-          name: "fmaxnmv.{neon_type[0]}"
-          links:
-            - link: "llvm.aarch64.neon.fmaxnmv.{type[1]}.{neon_type[0]}"
-              arch: aarch64,arm64ec
+      - FnCall: [simd_reduce_max, [a]]
 
 
   - name: "vmaxnmv{neon_type[0].no}"
@@ -6684,11 +6663,7 @@ intrinsics:
       - [float16x4_t, f16]
       - [float16x8_t, f16]
     compose:
-      - LLVMLink:
-          name: "fmaxnmv.{neon_type[0]}"
-          links:
-            - link: "llvm.aarch64.neon.fmaxnmv.{type[1]}.{neon_type[0]}"
-              arch: aarch64,arm64ec
+      - FnCall: [simd_reduce_max, [a]]
 
 
   - name: "vminnmv{neon_type[0].no}"
@@ -6704,11 +6679,7 @@ intrinsics:
       - [float16x4_t, f16]
       - [float16x8_t, f16]
     compose:
-      - LLVMLink:
-          name: "fminnmv.{neon_type[0]}"
-          links:
-            - link: "llvm.aarch64.neon.fminnmv.{type[1]}.{neon_type[0]}"
-              arch: aarch64,arm64ec
+      - FnCall: [simd_reduce_min, [a]]
 
 
   - name: "vmaxv{neon_type[0].no}"
@@ -6814,11 +6785,7 @@ intrinsics:
       - float64x1_t
       - float64x2_t
     compose:
-      - LLVMLink:
-          name: "fminnm.{neon_type}"
-          links:
-            - link: "llvm.aarch64.neon.fminnm.{neon_type}"
-              arch: aarch64,arm64ec
+      - FnCall: [simd_fmin, [a, b]]
 
   - name: "vminnmv{neon_type[0].no}"
     doc: "Floating-point minimum number across vector"
@@ -6832,11 +6799,7 @@ intrinsics:
       - [float32x2_t, "f32"]
       - [float64x2_t, "f64"]
     compose:
-      - LLVMLink:
-          name: "vminnmv.{neon_type[0]}"
-          links:
-            - link: "llvm.aarch64.neon.fminnmv.{type[1]}.{neon_type[0]}"
-              arch: aarch64,arm64ec
+      - FnCall: [simd_reduce_min, [a]]
 
   - name: "vminnmv{neon_type[0].no}"
     doc: "Floating-point minimum number across vector"
@@ -6849,11 +6812,7 @@ intrinsics:
     types:
       - [float32x4_t, "f32"]
     compose:
-      - LLVMLink:
-          name: "vminnmv.{neon_type[0]}"
-          links:
-            - link: "llvm.aarch64.neon.fminnmv.{type[1]}.{neon_type[0]}"
-              arch: aarch64,arm64ec
+      - FnCall: [simd_reduce_min, [a]]
 
   - name: "vmovl_high{neon_type[0].noq}"
     doc: Vector move
@@ -9950,7 +9909,7 @@ intrinsics:
     return_type: "{neon_type[0]}"
     attr:
       - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
-      - FnCall: [cfg_attr, [{FnCall: [all, [test, {FnCall: [not, ['target_env = "msvc"']]}]]}, {FnCall: [assert_instr, [uabal]]}]]
+      - FnCall: [cfg_attr, [{FnCall: [all, [test, {FnCall: [not, ['target_env = "msvc"']]}]]}, {FnCall: [assert_instr, [uabal2]]}]]
     safety: safe
     types:
       - [uint16x8_t, uint8x16_t, uint8x8_t, '[8, 9, 10, 11, 12, 13, 14, 15]', '[8, 9, 10, 11, 12, 13, 14, 15]']
@@ -9977,7 +9936,7 @@ intrinsics:
     return_type: "{neon_type[0]}"
     attr:
       - *neon-stable
-      - FnCall: [cfg_attr, [{FnCall: [all, [test, {FnCall: [not, ['target_env = "msvc"']]}]]}, {FnCall: [assert_instr, [sabal]]}]]
+      - FnCall: [cfg_attr, [{FnCall: [all, [test, {FnCall: [not, ['target_env = "msvc"']]}]]}, {FnCall: [assert_instr, [sabal2]]}]]
     safety: safe
     types:
       - [int16x8_t, int8x16_t, int8x16_t, '[8, 9, 10, 11, 12, 13, 14, 15]', int8x8_t, uint8x8_t]
@@ -11386,7 +11345,7 @@ intrinsics:
     arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}"]
     return_type: "{neon_type[1]}"
     attr:
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [uabdl]]}]]
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [uabdl2]]}]]
       - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
     safety: safe
     types:
@@ -13023,6 +12982,26 @@ intrinsics:
             - link: "llvm.aarch64.crc32cx"
               arch: aarch64,arm64ec
 
+  - name: "vabsd_s64"
+    doc: "Absolute Value (wrapping)."
+    arguments: ["a: {type[1]}"]
+    return_type: "{type[1]}"
+    attr:
+      - *neon-stable
+    assert_instr: [abs]
+    safety: safe
+    types:
+      - [i64, i64]
+    compose:
+      # This is behaviorally equivalent to `i64::wrapping_abs`, but keeps the value in a SIMD
+      # register. That can be beneficial when combined with other instructions. This LLVM
+      # issue provides some extra context https://github.com/llvm/llvm-project/issues/148388.
+      - LLVMLink:
+          name: "vabsd_s64"
+          links:
+             - link: "llvm.aarch64.neon.abs.i64"
+               arch: aarch64,arm64ec
+
   - name: "{type[0]}"
     doc: "Absolute Value (wrapping)."
     arguments: ["a: {type[1]}"]
@@ -13032,15 +13011,18 @@ intrinsics:
     assert_instr: [abs]
     safety: safe
     types:
-      - ['vabsd_s64', i64, i64]
       - ['vabs_s64', int64x1_t, v1i64]
       - ['vabsq_s64', int64x2_t, v2i64]
     compose:
-      - LLVMLink:
-          name: "{type[0]}"
-          links:
-            - link: "llvm.aarch64.neon.abs.{type[2]}"
-              arch: aarch64,arm64ec
+      - Let:
+          - neg
+          - "{type[1]}"
+          - FnCall: [simd_neg, [a]]
+      - Let:
+          - mask
+          - "{type[1]}"
+          - FnCall: [simd_ge, [a, neg]]
+      - FnCall: [simd_select, [mask, a, neg]]
 
   - name: "vuqadd{neon_type[0].no}"
     doc: "Signed saturating Accumulate of Unsigned value."
@@ -13142,11 +13124,7 @@ intrinsics:
     types:
       - [int64x2_t, i64]
     compose:
-      - FnCall:
-          - transmute
-          - - FnCall:
-                - "vaddvq_u64"
-                - - FnCall: [transmute, [a]]
+      - FnCall: [simd_reduce_add_unordered, [a]]
 
   - name: "vpaddd_u64"
     doc: "Add pairwise"
@@ -13159,7 +13137,7 @@ intrinsics:
     types:
       - [uint64x2_t, u64]
     compose:
-      - FnCall: [vaddvq_u64, [a]]
+      - FnCall: [simd_reduce_add_unordered, [a]]
 
   - name: "vaddv{neon_type[0].no}"
     doc: "Add across vector"
@@ -13176,11 +13154,7 @@ intrinsics:
       - [int16x8_t, i16]
       - [int32x4_t, i32]
     compose:
-      - LLVMLink:
-          name: "vaddv{neon_type[0].no}"
-          links:
-            - link: "llvm.aarch64.neon.saddv.{type[1]}.{neon_type[0]}"
-              arch: aarch64,arm64ec
+      - FnCall: [simd_reduce_add_unordered, [a]]
 
   - name: "vaddv{neon_type[0].no}"
     doc: "Add across vector"
@@ -13193,11 +13167,7 @@ intrinsics:
     types:
       - [int32x2_t, i32]
     compose:
-      - LLVMLink:
-          name: "vaddv{neon_type[0].no}"
-          links:
-            - link: "llvm.aarch64.neon.saddv.i32.{neon_type[0]}"
-              arch: aarch64,arm64ec
+      - FnCall: [simd_reduce_add_unordered, [a]]
 
   - name: "vaddv{neon_type[0].no}"
     doc: "Add across vector"
@@ -13210,11 +13180,7 @@ intrinsics:
     types:
       - [int64x2_t, i64]
     compose:
-      - LLVMLink:
-          name: "vaddv{neon_type[0].no}"
-          links:
-            - link: "llvm.aarch64.neon.saddv.i64.{neon_type[0]}"
-              arch: aarch64,arm64ec
+      - FnCall: [simd_reduce_add_unordered, [a]]
 
   - name: "vaddv{neon_type[0].no}"
     doc: "Add across vector"
@@ -13231,11 +13197,7 @@ intrinsics:
       - [uint16x8_t, u16]
       - [uint32x4_t, u32]
     compose:
-      - LLVMLink:
-          name: "vaddv{neon_type[0].no}"
-          links:
-            - link: "llvm.aarch64.neon.uaddv.{type[1]}.{neon_type[0]}"
-              arch: aarch64,arm64ec
+      - FnCall: [simd_reduce_add_unordered, [a]]
 
   - name: "vaddv{neon_type[0].no}"
     doc: "Add across vector"
@@ -13248,11 +13210,7 @@ intrinsics:
     types:
       - [uint32x2_t, u32, i32]
     compose:
-      - LLVMLink:
-          name: "vaddv{neon_type[0].no}"
-          links:
-            - link: "llvm.aarch64.neon.uaddv.{type[2]}.{neon_type[0]}"
-              arch: aarch64,arm64ec
+      - FnCall: [simd_reduce_add_unordered, [a]]
 
   - name: "vaddv{neon_type[0].no}"
     doc: "Add across vector"
@@ -13265,11 +13223,7 @@ intrinsics:
     types:
       - [uint64x2_t, u64, i64]
     compose:
-      - LLVMLink:
-          name: "vaddv{neon_type[0].no}"
-          links:
-            - link: "llvm.aarch64.neon.uaddv.{type[2]}.{neon_type[0]}"
-              arch: aarch64,arm64ec
+      - FnCall: [simd_reduce_add_unordered, [a]]
 
   - name: "vaddlv{neon_type[0].no}"
     doc: "Signed Add Long across Vector"
@@ -13327,11 +13281,7 @@ intrinsics:
       - [int16x8_t, i16, 'smaxv']
       - [int32x4_t, i32, 'smaxv']
     compose:
-      - LLVMLink:
-          name: "vmaxv{neon_type[0].no}"
-          links:
-            - link: "llvm.aarch64.neon.smaxv.{type[1]}.{neon_type[0]}"
-              arch: aarch64,arm64ec
+      - FnCall: [simd_reduce_max, [a]]
 
   - name: "vmaxv{neon_type[0].no}"
     doc: "Horizontal vector max."
@@ -13349,11 +13299,7 @@ intrinsics:
       - [uint16x8_t, u16, 'umaxv']
       - [uint32x4_t, u32, 'umaxv']
     compose:
-      - LLVMLink:
-          name: "vmaxv{neon_type[0].no}"
-          links:
-            - link: "llvm.aarch64.neon.umaxv.{type[1]}.{neon_type[0]}"
-              arch: aarch64,arm64ec
+      - FnCall: [simd_reduce_max, [a]]
 
   - name: "vmaxv{neon_type[0].no}"
     doc: "Horizontal vector max."
@@ -13390,11 +13336,7 @@ intrinsics:
       - [int16x8_t, i16, 'sminv']
       - [int32x4_t, i32, 'sminv']
     compose:
-      - LLVMLink:
-          name: "vminv{neon_type[0].no}"
-          links:
-            - link: "llvm.aarch64.neon.sminv.{type[1]}.{neon_type[0]}"
-              arch: aarch64,arm64ec
+      - FnCall: [simd_reduce_min, [a]]
 
   - name: "vminv{neon_type[0].no}"
     doc: "Horizontal vector min."
@@ -13412,11 +13354,7 @@ intrinsics:
       - [uint16x8_t, u16, 'uminv']
       - [uint32x4_t, u32, 'uminv']
     compose:
-      - LLVMLink:
-          name: "vminv{neon_type[0].no}"
-          links:
-            - link: "llvm.aarch64.neon.uminv.{type[1]}.{neon_type[0]}"
-              arch: aarch64,arm64ec
+      - FnCall: [simd_reduce_min, [a]]
 
   - name: "vminv{neon_type[0].no}"
     doc: "Horizontal vector min."

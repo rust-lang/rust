@@ -57,8 +57,8 @@ impl TestMode {
 string_enum! {
     #[derive(Clone, Copy, PartialEq, Debug)]
     pub enum TestSuite {
-        Assembly => "assembly",
-        Codegen => "codegen",
+        AssemblyLlvm => "assembly-llvm",
+        CodegenLlvm => "codegen-llvm",
         CodegenUnits => "codegen-units",
         Coverage => "coverage",
         CoverageRunRustdoc => "coverage-run-rustdoc",
@@ -88,11 +88,37 @@ string_enum! {
     }
 }
 
+string_enum! {
+    #[derive(Clone, Copy, PartialEq, Debug, Hash)]
+    pub enum RunResult {
+        Pass => "run-pass",
+        Fail => "run-fail",
+        Crash => "run-crash",
+    }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, PartialOrd)]
+pub enum RunFailMode {
+    /// Running the program must make it exit with a regular failure exit code
+    /// in the range `1..=127`. If the program is terminated by e.g. a signal
+    /// the test will fail.
+    Fail,
+    /// Running the program must result in a crash, e.g. by `SIGABRT` or
+    /// `SIGSEGV` on Unix or on Windows by having an appropriate NTSTATUS high
+    /// bit in the exit code.
+    Crash,
+    /// Running the program must either fail or crash. Useful for e.g. sanitizer
+    /// tests since some sanitizer implementations exit the process with code 1
+    /// to in the face of memory errors while others abort (crash) the process
+    /// in the face of memory errors.
+    FailOrCrash,
+}
+
 #[derive(Copy, Clone, Debug, PartialEq, PartialOrd)]
 pub enum FailMode {
     Check,
     Build,
-    Run,
+    Run(RunFailMode),
 }
 
 string_enum! {
@@ -147,6 +173,36 @@ pub enum Sanitizer {
     ShadowCallStack,
     Thread,
     Hwaddress,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum CodegenBackend {
+    Cranelift,
+    Gcc,
+    Llvm,
+}
+
+impl<'a> TryFrom<&'a str> for CodegenBackend {
+    type Error = &'static str;
+
+    fn try_from(value: &'a str) -> Result<Self, Self::Error> {
+        match value.to_lowercase().as_str() {
+            "cranelift" => Ok(Self::Cranelift),
+            "gcc" => Ok(Self::Gcc),
+            "llvm" => Ok(Self::Llvm),
+            _ => Err("unknown backend"),
+        }
+    }
+}
+
+impl CodegenBackend {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Cranelift => "cranelift",
+            Self::Gcc => "gcc",
+            Self::Llvm => "llvm",
+        }
+    }
 }
 
 /// Configuration for `compiletest` *per invocation*.
@@ -625,6 +681,9 @@ pub struct Config {
     /// need `core` stubs in cross-compilation scenarios that do not otherwise want/need to
     /// `-Zbuild-std`. Used in e.g. ABI tests.
     pub minicore_path: Utf8PathBuf,
+
+    /// Current codegen backend used.
+    pub codegen_backend: CodegenBackend,
 }
 
 impl Config {
@@ -727,6 +786,7 @@ impl Config {
             profiler_runtime: Default::default(),
             diff_command: Default::default(),
             minicore_path: Default::default(),
+            codegen_backend: CodegenBackend::Llvm,
         }
     }
 

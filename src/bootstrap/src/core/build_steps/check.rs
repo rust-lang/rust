@@ -4,7 +4,10 @@ use crate::core::build_steps::compile::{
     add_to_sysroot, run_cargo, rustc_cargo, rustc_cargo_env, std_cargo, std_crates_for_run_make,
 };
 use crate::core::build_steps::tool;
-use crate::core::build_steps::tool::{COMPILETEST_ALLOW_FEATURES, SourceType, prepare_tool_cargo};
+use crate::core::build_steps::tool::{
+    COMPILETEST_ALLOW_FEATURES, SourceType, ToolTargetBuildMode, get_tool_target_compiler,
+    prepare_tool_cargo,
+};
 use crate::core::builder::{
     self, Alias, Builder, Kind, RunConfig, ShouldRun, Step, StepMetadata, crate_description,
 };
@@ -252,8 +255,10 @@ fn prepare_compiler_for_check(
     mode: Mode,
 ) -> Compiler {
     let host = builder.host_target;
+
     match mode {
         Mode::ToolBootstrap => builder.compiler(0, host),
+        Mode::ToolTarget => get_tool_target_compiler(builder, ToolTargetBuildMode::Build(target)),
         Mode::ToolStd => {
             if builder.config.compile_time_deps {
                 // When --compile-time-deps is passed, we can't use any rustc
@@ -350,7 +355,7 @@ impl Step for CodegenBackend {
         cargo
             .arg("--manifest-path")
             .arg(builder.src.join(format!("compiler/rustc_codegen_{backend}/Cargo.toml")));
-        rustc_cargo_env(builder, &mut cargo, target, build_compiler.stage);
+        rustc_cargo_env(builder, &mut cargo, target);
 
         let _guard = builder.msg_check(format!("rustc_codegen_{backend}"), target, None);
 
@@ -365,132 +370,18 @@ impl Step for CodegenBackend {
     }
 }
 
-/// Checks Rust analyzer that links to .rmetas from a checked rustc.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct RustAnalyzer {
-    pub build_compiler: Compiler,
-    pub target: TargetSelection,
-}
-
-impl Step for RustAnalyzer {
-    type Output = ();
-    const ONLY_HOSTS: bool = true;
-    const DEFAULT: bool = true;
-
-    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        let builder = run.builder;
-        run.path("src/tools/rust-analyzer").default_condition(
-            builder
-                .config
-                .tools
-                .as_ref()
-                .is_none_or(|tools| tools.iter().any(|tool| tool == "rust-analyzer")),
-        )
-    }
-
-    fn make_run(run: RunConfig<'_>) {
-        let build_compiler = prepare_compiler_for_check(run.builder, run.target, Mode::ToolRustc);
-        run.builder.ensure(RustAnalyzer { build_compiler, target: run.target });
-    }
-
-    fn run(self, builder: &Builder<'_>) {
-        let build_compiler = self.build_compiler;
-        let target = self.target;
-
-        let mut cargo = prepare_tool_cargo(
-            builder,
-            build_compiler,
-            Mode::ToolRustc,
-            target,
-            builder.kind,
-            "src/tools/rust-analyzer",
-            SourceType::InTree,
-            &["in-rust-tree".to_owned()],
-        );
-
-        cargo.allow_features(crate::core::build_steps::tool::RustAnalyzer::ALLOW_FEATURES);
-
-        cargo.arg("--bins");
-        cargo.arg("--tests");
-        cargo.arg("--benches");
-
-        // Cargo's output path in a given stage, compiled by a particular
-        // compiler for the specified target.
-        let stamp = BuildStamp::new(&builder.cargo_out(build_compiler, Mode::ToolRustc, target))
-            .with_prefix("rust-analyzer-check");
-
-        let _guard = builder.msg_check("rust-analyzer artifacts", target, None);
-        run_cargo(builder, cargo, builder.config.free_args.clone(), &stamp, vec![], true, false);
-    }
-
-    fn metadata(&self) -> Option<StepMetadata> {
-        Some(StepMetadata::check("rust-analyzer", self.target).built_by(self.build_compiler))
-    }
-}
-
-/// Compiletest is implicitly "checked" when it gets built in order to run tests,
-/// so this is mainly for people working on compiletest to run locally.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Compiletest {
-    pub target: TargetSelection,
-}
-
-impl Step for Compiletest {
-    type Output = ();
-    const ONLY_HOSTS: bool = true;
-    const DEFAULT: bool = false;
-
-    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("src/tools/compiletest")
-    }
-
-    fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(Compiletest { target: run.target });
-    }
-
-    fn run(self, builder: &Builder<'_>) {
-        let mode = if builder.config.compiletest_use_stage0_libtest {
-            Mode::ToolBootstrap
-        } else {
-            Mode::ToolStd
-        };
-        let build_compiler = prepare_compiler_for_check(builder, self.target, mode);
-
-        let mut cargo = prepare_tool_cargo(
-            builder,
-            build_compiler,
-            mode,
-            self.target,
-            builder.kind,
-            "src/tools/compiletest",
-            SourceType::InTree,
-            &[],
-        );
-
-        cargo.allow_features(COMPILETEST_ALLOW_FEATURES);
-
-        cargo.arg("--all-targets");
-
-        let stamp = BuildStamp::new(&builder.cargo_out(build_compiler, mode, self.target))
-            .with_prefix("compiletest-check");
-
-        let _guard = builder.msg_check("compiletest artifacts", self.target, None);
-        run_cargo(builder, cargo, builder.config.free_args.clone(), &stamp, vec![], true, false);
-    }
-
-    fn metadata(&self) -> Option<StepMetadata> {
-        Some(StepMetadata::check("compiletest", self.target))
-    }
-}
-
 macro_rules! tool_check_step {
     (
         $name:ident {
             // The part of this path after the final '/' is also used as a display name.
             path: $path:literal
             $(, alt_path: $alt_path:literal )*
-            , mode: $mode:path
+            // Closure that returns `Mode` based on the passed `&Builder<'_>`
+            , mode: $mode:expr
+            // Subset of nightly features that are allowed to be used when checking
             $(, allow_features: $allow_features:expr )?
+            // Features that should be enabled when checking
+            $(, enable_features: [$($enable_features:expr),*] )?
             $(, default: $default:literal )?
             $( , )?
         }
@@ -513,10 +404,13 @@ macro_rules! tool_check_step {
 
             fn make_run(run: RunConfig<'_>) {
                 let target = run.target;
-                let build_compiler = prepare_compiler_for_check(run.builder, target, $mode);
+                let builder = run.builder;
+                let mode = $mode(builder);
+
+                let build_compiler = prepare_compiler_for_check(run.builder, target, mode);
 
                 // It doesn't make sense to cross-check bootstrap tools
-                if $mode == Mode::ToolBootstrap && target != run.builder.host_target {
+                if mode == Mode::ToolBootstrap && target != run.builder.host_target {
                     println!("WARNING: not checking bootstrap tool {} for target {target} as it is a bootstrap (host-only) tool", stringify!($path));
                     return;
                 };
@@ -531,7 +425,9 @@ macro_rules! tool_check_step {
                     $( _value = $allow_features; )?
                     _value
                 };
-                run_tool_check_step(builder, build_compiler, target, $path, $mode, allow_features);
+                let extra_features: &[&str] = &[$($($enable_features),*)?];
+                let mode = $mode(builder);
+                run_tool_check_step(builder, build_compiler, target, $path, mode, allow_features, extra_features);
             }
 
             fn metadata(&self) -> Option<StepMetadata> {
@@ -549,9 +445,11 @@ fn run_tool_check_step(
     path: &str,
     mode: Mode,
     allow_features: &str,
+    extra_features: &[&str],
 ) {
     let display_name = path.rsplit('/').next().unwrap();
 
+    let extra_features = extra_features.iter().map(|f| f.to_string()).collect::<Vec<String>>();
     let mut cargo = prepare_tool_cargo(
         builder,
         build_compiler,
@@ -564,12 +462,19 @@ fn run_tool_check_step(
         // steps should probably be marked non-default so that the default
         // checks aren't affected by toolstate being broken.
         SourceType::InTree,
-        &[],
+        &extra_features,
     );
     cargo.allow_features(allow_features);
 
-    // FIXME: check bootstrap doesn't currently work with --all-targets
-    cargo.arg("--all-targets");
+    // FIXME: check bootstrap doesn't currently work when multiple targets are checked
+    // FIXME: rust-analyzer does not work with --all-targets
+    if display_name == "rust-analyzer" {
+        cargo.arg("--bins");
+        cargo.arg("--tests");
+        cargo.arg("--benches");
+    } else {
+        cargo.arg("--all-targets");
+    }
 
     let stamp = BuildStamp::new(&builder.cargo_out(build_compiler, mode, target))
         .with_prefix(&format!("{display_name}-check"));
@@ -588,43 +493,66 @@ fn run_tool_check_step(
 tool_check_step!(Rustdoc {
     path: "src/tools/rustdoc",
     alt_path: "src/librustdoc",
-    mode: Mode::ToolRustc
+    mode: |_builder| Mode::ToolRustc
 });
 // Clippy, miri and Rustfmt are hybrids. They are external tools, but use a git subtree instead
 // of a submodule. Since the SourceType only drives the deny-warnings
 // behavior, treat it as in-tree so that any new warnings in clippy will be
 // rejected.
-tool_check_step!(Clippy { path: "src/tools/clippy", mode: Mode::ToolRustc });
-tool_check_step!(Miri { path: "src/tools/miri", mode: Mode::ToolRustc });
-tool_check_step!(CargoMiri { path: "src/tools/miri/cargo-miri", mode: Mode::ToolRustc });
-tool_check_step!(Rustfmt { path: "src/tools/rustfmt", mode: Mode::ToolRustc });
+tool_check_step!(Clippy { path: "src/tools/clippy", mode: |_builder| Mode::ToolRustc });
+tool_check_step!(Miri { path: "src/tools/miri", mode: |_builder| Mode::ToolRustc });
+tool_check_step!(CargoMiri { path: "src/tools/miri/cargo-miri", mode: |_builder| Mode::ToolRustc });
+tool_check_step!(Rustfmt { path: "src/tools/rustfmt", mode: |_builder| Mode::ToolRustc });
+tool_check_step!(RustAnalyzer {
+    path: "src/tools/rust-analyzer",
+    mode: |_builder| Mode::ToolRustc,
+    allow_features: tool::RustAnalyzer::ALLOW_FEATURES,
+    enable_features: ["in-rust-tree"],
+});
 tool_check_step!(MiroptTestTools {
     path: "src/tools/miropt-test-tools",
-    mode: Mode::ToolBootstrap
+    mode: |_builder| Mode::ToolBootstrap
 });
 // We want to test the local std
 tool_check_step!(TestFloatParse {
     path: "src/tools/test-float-parse",
-    mode: Mode::ToolStd,
+    mode: |_builder| Mode::ToolStd,
     allow_features: tool::TestFloatParse::ALLOW_FEATURES
 });
 tool_check_step!(FeaturesStatusDump {
     path: "src/tools/features-status-dump",
-    mode: Mode::ToolBootstrap
+    mode: |_builder| Mode::ToolBootstrap
 });
 
-tool_check_step!(Bootstrap { path: "src/bootstrap", mode: Mode::ToolBootstrap, default: false });
+tool_check_step!(Bootstrap {
+    path: "src/bootstrap",
+    mode: |_builder| Mode::ToolBootstrap,
+    default: false
+});
 
 // `run-make-support` will be built as part of suitable run-make compiletest test steps, but support
 // check to make it easier to work on.
 tool_check_step!(RunMakeSupport {
     path: "src/tools/run-make-support",
-    mode: Mode::ToolBootstrap,
+    mode: |_builder| Mode::ToolBootstrap,
     default: false
 });
 
 tool_check_step!(CoverageDump {
     path: "src/tools/coverage-dump",
-    mode: Mode::ToolBootstrap,
+    mode: |_builder| Mode::ToolBootstrap,
     default: false
+});
+
+// Compiletest is implicitly "checked" when it gets built in order to run tests,
+// so this is mainly for people working on compiletest to run locally.
+tool_check_step!(Compiletest {
+    path: "src/tools/compiletest",
+    mode: |builder: &Builder<'_>| if builder.config.compiletest_use_stage0_libtest {
+        Mode::ToolBootstrap
+    } else {
+        Mode::ToolStd
+    },
+    allow_features: COMPILETEST_ALLOW_FEATURES,
+    default: false,
 });

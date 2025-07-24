@@ -119,14 +119,16 @@ impl<'a, 'tcx> CfgChecker<'a, 'tcx> {
     #[track_caller]
     fn fail(&self, location: Location, msg: impl AsRef<str>) {
         // We might see broken MIR when other errors have already occurred.
-        assert!(
-            self.tcx.dcx().has_errors().is_some(),
-            "broken MIR in {:?} ({}) at {:?}:\n{}",
-            self.body.source.instance,
-            self.when,
-            location,
-            msg.as_ref(),
-        );
+        if self.tcx.dcx().has_errors().is_none() {
+            span_bug!(
+                self.body.source_info(location).span,
+                "broken MIR in {:?} ({}) at {:?}:\n{}",
+                self.body.source.instance,
+                self.when,
+                location,
+                msg.as_ref(),
+            );
+        }
     }
 
     fn check_edge(&mut self, location: Location, bb: BasicBlock, edge_kind: EdgeKind) {
@@ -715,6 +717,15 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                                 format!(
                                     "You can't project to field {f:?} of `DynMetadata` because \
                                      layout is weird and thinks it doesn't have fields."
+                                ),
+                            );
+                        }
+
+                        if adt_def.repr().simd() {
+                            self.fail(
+                                location,
+                                format!(
+                                    "Projecting into SIMD type {adt_def:?} is banned by MCP#838"
                                 ),
                             );
                         }

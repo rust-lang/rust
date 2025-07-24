@@ -532,26 +532,15 @@ struct BindingKey {
     /// identifier.
     ident: Ident,
     ns: Namespace,
-    /// When we add an underscore binding (with ident `_`) to some module, this field has
-    /// a non-zero value that uniquely identifies this binding in that module.
-    /// For non-underscore bindings this field is zero.
-    /// When a key is constructed for name lookup (as opposed to name definition), this field is
-    /// also zero, even for underscore names, so for underscores the lookup will never succeed.
+    /// 0 if ident is not `_`, otherwise a value that's unique to the specific
+    /// `_` in the expanded AST that introduced this binding.
     disambiguator: u32,
 }
 
 impl BindingKey {
     fn new(ident: Ident, ns: Namespace) -> Self {
-        BindingKey { ident: ident.normalize_to_macros_2_0(), ns, disambiguator: 0 }
-    }
-
-    fn new_disambiguated(
-        ident: Ident,
-        ns: Namespace,
-        disambiguator: impl FnOnce() -> u32,
-    ) -> BindingKey {
-        let disambiguator = if ident.name == kw::Underscore { disambiguator() } else { 0 };
-        BindingKey { ident: ident.normalize_to_macros_2_0(), ns, disambiguator }
+        let ident = ident.normalize_to_macros_2_0();
+        BindingKey { ident, ns, disambiguator: 0 }
     }
 }
 
@@ -1098,6 +1087,8 @@ pub struct Resolver<'ra, 'tcx> {
     extern_module_map: RefCell<FxIndexMap<DefId, Module<'ra>>>,
     binding_parent_modules: FxHashMap<NameBinding<'ra>, Module<'ra>>,
 
+    underscore_disambiguator: u32,
+
     /// Maps glob imports to the names of items actually imported.
     glob_map: FxIndexMap<LocalDefId, FxIndexSet<Symbol>>,
     glob_error: Option<ErrorGuaranteed>,
@@ -1509,6 +1500,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             extern_crate_map: Default::default(),
             module_children: Default::default(),
             trait_map: NodeMap::default(),
+            underscore_disambiguator: 0,
             empty_module,
             local_module_map,
             extern_module_map: Default::default(),
@@ -1887,6 +1879,17 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             kind = &binding.kind;
         }
         import_ids
+    }
+
+    fn new_disambiguated_key(&mut self, ident: Ident, ns: Namespace) -> BindingKey {
+        let ident = ident.normalize_to_macros_2_0();
+        let disambiguator = if ident.name == kw::Underscore {
+            self.underscore_disambiguator += 1;
+            self.underscore_disambiguator
+        } else {
+            0
+        };
+        BindingKey { ident, ns, disambiguator }
     }
 
     fn resolutions(&mut self, module: Module<'ra>) -> &'ra Resolutions<'ra> {

@@ -117,7 +117,7 @@ human-readable coverage report.
 > directive, so they will be skipped if the profiler runtime has not been
 > [enabled in `bootstrap.toml`](#recommended-configtoml-settings).
 
-Finally, the [`tests/codegen/instrument-coverage/testprog.rs`] test compiles a simple Rust program
+Finally, the [`tests/codegen-llvm/instrument-coverage/testprog.rs`] test compiles a simple Rust program
 with `-C instrument-coverage` and compares the compiled program's LLVM IR to
 expected LLVM IR instructions and structured data for a coverage-enabled
 program, including various checks for Coverage Map-related metadata and the LLVM
@@ -136,4 +136,4 @@ and `mir-opt` tests can be refreshed by running:
 [`tests/coverage`]: https://github.com/rust-lang/rust/tree/master/tests/coverage
 [`src/tools/coverage-dump`]: https://github.com/rust-lang/rust/tree/master/src/tools/coverage-dump
 [`tests/coverage-run-rustdoc`]: https://github.com/rust-lang/rust/tree/master/tests/coverage-run-rustdoc
-[`tests/codegen/instrument-coverage/testprog.rs`]: https://github.com/rust-lang/rust/blob/master/tests/mir-opt/coverage/instrument_coverage.rs
+[`tests/codegen-llvm/instrument-coverage/testprog.rs`]: https://github.com/rust-lang/rust/blob/master/tests/mir-opt/coverage/instrument_coverage.rs

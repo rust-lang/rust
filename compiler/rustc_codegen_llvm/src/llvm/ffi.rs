@@ -1138,6 +1138,11 @@ unsafe extern "C" {
         Count: c_uint,
         Packed: Bool,
     ) -> &'a Value;
+    pub(crate) fn LLVMConstNamedStruct<'a>(
+        StructTy: &'a Type,
+        ConstantVals: *const &'a Value,
+        Count: c_uint,
+    ) -> &'a Value;
     pub(crate) fn LLVMConstVector(ScalarConstantVals: *const &Value, Size: c_uint) -> &Value;
 
     // Constant expressions
@@ -1217,6 +1222,8 @@ unsafe extern "C" {
     ) -> &'a BasicBlock;
 
     // Operations on instructions
+    pub(crate) fn LLVMGetInstructionParent(Inst: &Value) -> &BasicBlock;
+    pub(crate) fn LLVMGetCalledValue(CallInst: &Value) -> Option<&Value>;
     pub(crate) fn LLVMIsAInstruction(Val: &Value) -> Option<&Value>;
     pub(crate) fn LLVMGetFirstBasicBlock(Fn: &Value) -> &BasicBlock;
     pub(crate) fn LLVMGetOperand(Val: &Value, Index: c_uint) -> Option<&Value>;
@@ -2425,6 +2432,7 @@ unsafe extern "C" {
         UseEmulatedTls: bool,
         ArgsCstrBuff: *const c_char,
         ArgsCstrBuffLen: usize,
+        UseWasmEH: bool,
     ) -> *mut TargetMachine;
 
     pub(crate) fn LLVMRustDisposeTargetMachine(T: *mut TargetMachine);
@@ -2556,6 +2564,7 @@ unsafe extern "C" {
 
     pub(crate) fn LLVMRustSetDataLayoutFromTargetMachine<'a>(M: &'a Module, TM: &'a TargetMachine);
 
+    pub(crate) fn LLVMRustPositionBuilderPastAllocas<'a>(B: &Builder<'a>, Fn: &'a Value);
     pub(crate) fn LLVMRustPositionBuilderAtStart<'a>(B: &Builder<'a>, BB: &'a BasicBlock);
 
     pub(crate) fn LLVMRustSetModulePICLevel(M: &Module);

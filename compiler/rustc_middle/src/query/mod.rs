@@ -1363,7 +1363,7 @@ rustc_queries! {
     }
 
     /// Converts a type-level constant value into a MIR constant value.
-    query valtree_to_const_val(key: ty::Value<'tcx>) -> mir::ConstValue<'tcx> {
+    query valtree_to_const_val(key: ty::Value<'tcx>) -> mir::ConstValue {
         desc { "converting type-level constant value to MIR constant value"}
     }
 
@@ -2284,9 +2284,6 @@ rustc_queries! {
 
     query upvars_mentioned(def_id: DefId) -> Option<&'tcx FxIndexMap<hir::HirId, hir::Upvar>> {
         desc { |tcx| "collecting upvars mentioned in `{}`", tcx.def_path_str(def_id) }
-    }
-    query maybe_unused_trait_imports(_: ()) -> &'tcx FxIndexSet<LocalDefId> {
-        desc { "fetching potentially unused trait imports" }
     }
 
     /// All available crates in the graph, including those that should not be user-facing

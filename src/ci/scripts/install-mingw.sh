@@ -43,4 +43,9 @@ if isWindows && isKnownToBeMingwBuild; then
     curl -o mingw.7z "${MIRRORS_BASE}/${mingw_archive}"
     7z x -y mingw.7z > /dev/null
     ciCommandAddPath "$(cygpath -m "$(pwd)/${mingw_dir}/bin")"
+
+    # Initialize mingw for the user.
+    # This should be done by github but isn't for some reason.
+    # (see https://github.com/actions/runner-images/issues/12600)
+    /c/msys64/usr/bin/bash -lc ' '
 fi

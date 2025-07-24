@@ -673,7 +673,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 trace!("Tree Borrows tag {tag:?} exposed in {alloc_id:?}");
                 alloc_extra.borrow_tracker_tb().borrow_mut().expose_tag(tag);
             }
-            AllocKind::Function | AllocKind::VTable | AllocKind::Dead => {
+            AllocKind::Function | AllocKind::VTable | AllocKind::TypeId | AllocKind::Dead => {
                 // No tree borrows on these allocations.
             }
         }

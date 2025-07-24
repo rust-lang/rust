@@ -19,7 +19,7 @@ use serde_derive::Deserialize;
 use tracing::{instrument, span};
 
 use crate::core::build_steps::gcc::{Gcc, add_cg_gcc_cargo_flags};
-use crate::core::build_steps::tool::SourceType;
+use crate::core::build_steps::tool::{SourceType, copy_lld_artifacts};
 use crate::core::build_steps::{dist, llvm};
 use crate::core::builder;
 use crate::core::builder::{
@@ -1316,15 +1316,10 @@ pub fn rustc_cargo(
         cargo.env("RUSTC_WRAPPER", ccache);
     }
 
-    rustc_cargo_env(builder, cargo, target, build_compiler.stage);
+    rustc_cargo_env(builder, cargo, target);
 }
 
-pub fn rustc_cargo_env(
-    builder: &Builder<'_>,
-    cargo: &mut Cargo,
-    target: TargetSelection,
-    build_stage: u32,
-) {
+pub fn rustc_cargo_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetSelection) {
     // Set some configuration variables picked up by build scripts and
     // the compiler alike
     cargo
@@ -1379,18 +1374,24 @@ pub fn rustc_cargo_env(
         cargo.rustflag("--cfg=llvm_enzyme");
     }
 
-    // Note that this is disabled if LLVM itself is disabled or we're in a check
-    // build. If we are in a check build we still go ahead here presuming we've
-    // detected that LLVM is already built and good to go which helps prevent
-    // busting caches (e.g. like #71152).
+    // These conditionals represent a tension between three forces:
+    // - For non-check builds, we need to define some LLVM-related environment
+    //   variables, requiring LLVM to have been built.
+    // - For check builds, we want to avoid building LLVM if possible.
+    // - Check builds and non-check builds should have the same environment if
+    //   possible, to avoid unnecessary rebuilds due to cache-busting.
+    //
+    // Therefore we try to avoid building LLVM for check builds, but only if
+    // building LLVM would be expensive. If "building" LLVM is cheap
+    // (i.e. it's already built or is downloadable), we prefer to maintain a
+    // consistent environment between check and non-check builds.
     if builder.config.llvm_enabled(target) {
-        let building_is_expensive =
+        let building_llvm_is_expensive =
             crate::core::build_steps::llvm::prebuilt_llvm_config(builder, target, false)
                 .should_build();
-        // `top_stage == stage` might be false for `check --stage 1`, if we are building the stage 1 compiler
-        let can_skip_build = builder.kind == Kind::Check && builder.top_stage == build_stage;
-        let should_skip_build = building_is_expensive && can_skip_build;
-        if !should_skip_build {
+
+        let skip_llvm = (builder.kind == Kind::Check) && building_llvm_is_expensive;
+        if !skip_llvm {
             rustc_llvm_env(builder, cargo, target)
         }
     }
@@ -1407,6 +1408,9 @@ pub fn rustc_cargo_env(
 
 /// Pass down configuration from the LLVM build into the build of
 /// rustc_llvm and rustc_codegen_llvm.
+///
+/// Note that this has the side-effect of _building LLVM_, which is sometimes
+/// unwanted (e.g. for check builds).
 fn rustc_llvm_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetSelection) {
     if builder.config.is_rust_llvm(target) {
         cargo.env("LLVM_RUSTLLVM", "1");
@@ -1665,7 +1669,7 @@ impl Step for CodegenBackend {
         cargo
             .arg("--manifest-path")
             .arg(builder.src.join(format!("compiler/rustc_codegen_{backend}/Cargo.toml")));
-        rustc_cargo_env(builder, &mut cargo, target, compiler.stage);
+        rustc_cargo_env(builder, &mut cargo, target);
 
         // Ideally, we'd have a separate step for the individual codegen backends,
         // like we have in tests (test::CodegenGCC) but that would require a lot of restructuring.
@@ -2050,19 +2054,20 @@ impl Step for Assemble {
             }
         }
 
-        let maybe_install_llvm_bitcode_linker = |compiler| {
+        let maybe_install_llvm_bitcode_linker = || {
             if builder.config.llvm_bitcode_linker_enabled {
                 trace!("llvm-bitcode-linker enabled, installing");
-                let llvm_bitcode_linker =
-                    builder.ensure(crate::core::build_steps::tool::LlvmBitcodeLinker {
-                        build_compiler: compiler,
-                        target: target_compiler.host,
-                    });
+                let llvm_bitcode_linker = builder.ensure(
+                    crate::core::build_steps::tool::LlvmBitcodeLinker::from_target_compiler(
+                        builder,
+                        target_compiler,
+                    ),
+                );
 
                 // Copy the llvm-bitcode-linker to the self-contained binary directory
                 let bindir_self_contained = builder
-                    .sysroot(compiler)
-                    .join(format!("lib/rustlib/{}/bin/self-contained", compiler.host));
+                    .sysroot(target_compiler)
+                    .join(format!("lib/rustlib/{}/bin/self-contained", target_compiler.host));
                 let tool_exe = exe("llvm-bitcode-linker", target_compiler.host);
 
                 t!(fs::create_dir_all(&bindir_self_contained));
@@ -2089,9 +2094,9 @@ impl Step for Assemble {
                 builder.info(&format!("Creating a sysroot for stage{stage} compiler (use `rustup toolchain link 'name' build/host/stage{stage}`)", stage = target_compiler.stage));
             }
 
-            let mut precompiled_compiler = target_compiler;
-            precompiled_compiler.forced_compiler(true);
-            maybe_install_llvm_bitcode_linker(precompiled_compiler);
+            // FIXME: this is incomplete, we do not copy a bunch of other stuff to the downloaded
+            // sysroot...
+            maybe_install_llvm_bitcode_linker();
 
             return target_compiler;
         }
@@ -2256,10 +2261,12 @@ impl Step for Assemble {
         copy_codegen_backends_to_sysroot(builder, build_compiler, target_compiler);
 
         if builder.config.lld_enabled {
-            builder.ensure(crate::core::build_steps::tool::LldWrapper {
-                build_compiler,
-                target_compiler,
-            });
+            let lld_wrapper =
+                builder.ensure(crate::core::build_steps::tool::LldWrapper::for_use_by_compiler(
+                    builder,
+                    target_compiler,
+                ));
+            copy_lld_artifacts(builder, lld_wrapper, target_compiler);
         }
 
         if builder.config.llvm_enabled(target_compiler.host) && builder.config.llvm_tools_enabled {
@@ -2284,15 +2291,14 @@ impl Step for Assemble {
         }
 
         // In addition to `rust-lld` also install `wasm-component-ld` when
-        // LLD is enabled. This is a relatively small binary that primarily
-        // delegates to the `rust-lld` binary for linking and then runs
-        // logic to create the final binary. This is used by the
-        // `wasm32-wasip2` target of Rust.
+        // is enabled. This is used by the `wasm32-wasip2` target of Rust.
         if builder.tool_enabled("wasm-component-ld") {
-            let wasm_component = builder.ensure(crate::core::build_steps::tool::WasmComponentLd {
-                compiler: build_compiler,
-                target: target_compiler.host,
-            });
+            let wasm_component = builder.ensure(
+                crate::core::build_steps::tool::WasmComponentLd::for_use_by_compiler(
+                    builder,
+                    target_compiler,
+                ),
+            );
             builder.copy_link(
                 &wasm_component.tool_path,
                 &libdir_bin.join(wasm_component.tool_path.file_name().unwrap()),
@@ -2300,7 +2306,7 @@ impl Step for Assemble {
             );
         }
 
-        maybe_install_llvm_bitcode_linker(target_compiler);
+        maybe_install_llvm_bitcode_linker();
 
         // Ensure that `libLLVM.so` ends up in the newly build compiler directory,
         // so that it can be found when the newly built `rustc` is run.

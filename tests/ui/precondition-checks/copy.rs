@@ -1,4 +1,4 @@
-//@ run-fail
+//@ run-crash
 //@ compile-flags: -Copt-level=3 -Cdebug-assertions=no -Zub-checks=yes
 //@ error-pattern: unsafe precondition(s) violated: ptr::copy requires
 //@ revisions: null_src null_dst misaligned_src misaligned_dst

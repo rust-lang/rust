@@ -226,6 +226,13 @@ pub enum CoverageLevel {
     Mcdc,
 }
 
+// The different settings that the `-Z offload` flag can have.
+#[derive(Clone, Copy, PartialEq, Hash, Debug)]
+pub enum Offload {
+    /// Enable the llvm offload pipeline
+    Enable,
+}
+
 /// The different settings that the `-Z autodiff` flag can have.
 #[derive(Clone, PartialEq, Hash, Debug)]
 pub enum AutoDiff {
@@ -2706,6 +2713,15 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
         )
     }
 
+    if !nightly_options::is_unstable_enabled(matches)
+        && unstable_opts.offload.contains(&Offload::Enable)
+    {
+        early_dcx.early_fatal(
+            "`-Zoffload=Enable` also requires `-Zunstable-options` \
+                and a nightly compiler",
+        )
+    }
+
     let target_triple = parse_target_triple(early_dcx, matches);
 
     // Ensure `-Z unstable-options` is required when using the unstable `-C link-self-contained` and
@@ -3178,7 +3194,7 @@ pub(crate) mod dep_tracking {
         AutoDiff, BranchProtection, CFGuard, CFProtection, CollapseMacroDebuginfo, CoverageOptions,
         CrateType, DebugInfo, DebugInfoCompression, ErrorOutputType, FmtDebug, FunctionReturn,
         InliningThreshold, InstrumentCoverage, InstrumentXRay, LinkerPluginLto, LocationDetail,
-        LtoCli, MirStripDebugInfo, NextSolverConfig, OomStrategy, OptLevel, OutFileName,
+        LtoCli, MirStripDebugInfo, NextSolverConfig, Offload, OomStrategy, OptLevel, OutFileName,
         OutputType, OutputTypes, PatchableFunctionEntry, Polonius, RemapPathScopeComponents,
         ResolveDocLinks, SourceFileHashAlgorithm, SplitDwarfKind, SwitchWithOptPath,
         SymbolManglingVersion, WasiExecModel,
@@ -3225,6 +3241,7 @@ pub(crate) mod dep_tracking {
     impl_dep_tracking_hash_via_hash!(
         (),
         AutoDiff,
+        Offload,
         bool,
         usize,
         NonZero<usize>,

@@ -9,13 +9,21 @@ use super::indentation::Indentation;
 use super::values::value_for_array;
 
 #[derive(Debug, PartialEq, Copy, Clone)]
+pub enum Sign {
+    Signed,
+    Unsigned,
+}
+
+#[derive(Debug, PartialEq, Copy, Clone)]
 pub enum TypeKind {
     BFloat,
     Float,
-    Int,
-    UInt,
+    Int(Sign),
+    Char(Sign),
     Poly,
     Void,
+    Mask,
+    Vector,
 }
 
 impl FromStr for TypeKind {
@@ -23,12 +31,17 @@ impl FromStr for TypeKind {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "bfloat" => Ok(Self::BFloat),
-            "float" => Ok(Self::Float),
-            "int" => Ok(Self::Int),
+            "bfloat" | "BF16" => Ok(Self::BFloat),
+            "float" | "double" | "FP16" | "FP32" | "FP64" => Ok(Self::Float),
+            "int" | "long" | "short" | "SI8" | "SI16" | "SI32" | "SI64" => {
+                Ok(Self::Int(Sign::Signed))
+            }
             "poly" => Ok(Self::Poly),
-            "uint" | "unsigned" => Ok(Self::UInt),
+            "char" => Ok(Self::Char(Sign::Signed)),
+            "uint" | "unsigned" | "UI8" | "UI16" | "UI32" | "UI64" => Ok(Self::Int(Sign::Unsigned)),
             "void" => Ok(Self::Void),
+            "MASK" => Ok(Self::Mask),
+            "M64" | "M128" | "M256" | "M512" => Ok(Self::Vector),
             _ => Err(format!("Impossible to parse argument kind {s}")),
         }
     }
@@ -42,10 +55,14 @@ impl fmt::Display for TypeKind {
             match self {
                 Self::BFloat => "bfloat",
                 Self::Float => "float",
-                Self::Int => "int",
-                Self::UInt => "uint",
+                Self::Int(Sign::Signed) => "int",
+                Self::Int(Sign::Unsigned) => "uint",
                 Self::Poly => "poly",
                 Self::Void => "void",
+                Self::Char(Sign::Signed) => "char",
+                Self::Char(Sign::Unsigned) => "unsigned char",
+                Self::Mask => "mask",
+                Self::Vector => "vector",
             }
         )
     }
@@ -56,9 +73,10 @@ impl TypeKind {
     pub fn c_prefix(&self) -> &str {
         match self {
             Self::Float => "float",
-            Self::Int => "int",
-            Self::UInt => "uint",
+            Self::Int(Sign::Signed) => "int",
+            Self::Int(Sign::Unsigned) => "uint",
             Self::Poly => "poly",
+            Self::Char(Sign::Signed) => "char",
             _ => unreachable!("Not used: {:#?}", self),
         }
     }
@@ -66,10 +84,13 @@ impl TypeKind {
     /// Gets the rust prefix for the type kind i.e. i, u, f.
     pub fn rust_prefix(&self) -> &str {
         match self {
+            Self::BFloat => "bf",
             Self::Float => "f",
-            Self::Int => "i",
-            Self::UInt => "u",
+            Self::Int(Sign::Signed) => "i",
+            Self::Int(Sign::Unsigned) => "u",
             Self::Poly => "u",
+            Self::Char(Sign::Unsigned) => "u",
+            Self::Char(Sign::Signed) => "i",
             _ => unreachable!("Unused type kind: {:#?}", self),
         }
     }
@@ -133,11 +154,14 @@ impl IntrinsicType {
     }
 
     pub fn c_scalar_type(&self) -> String {
-        format!(
-            "{prefix}{bits}_t",
-            prefix = self.kind().c_prefix(),
-            bits = self.inner_size()
-        )
+        match self.kind() {
+            TypeKind::Char(_) => String::from("char"),
+            _ => format!(
+                "{prefix}{bits}_t",
+                prefix = self.kind().c_prefix(),
+                bits = self.inner_size()
+            ),
+        }
     }
 
     pub fn rust_scalar_type(&self) -> String {
@@ -155,8 +179,8 @@ impl IntrinsicType {
                 bit_len: Some(8),
                 ..
             } => match kind {
-                TypeKind::Int => "(int)",
-                TypeKind::UInt => "(unsigned int)",
+                TypeKind::Int(Sign::Signed) => "(int)",
+                TypeKind::Int(Sign::Unsigned) => "(unsigned int)",
                 TypeKind::Poly => "(unsigned int)(uint8_t)",
                 _ => "",
             },
@@ -172,6 +196,21 @@ impl IntrinsicType {
                 128 => "",
                 _ => panic!("invalid bit_len"),
             },
+            IntrinsicType {
+                kind: TypeKind::Float,
+                bit_len: Some(bit_len),
+                ..
+            } => match bit_len {
+                16 => "(float16_t)",
+                32 => "(float)",
+                64 => "(double)",
+                128 => "",
+                _ => panic!("invalid bit_len"),
+            },
+            IntrinsicType {
+                kind: TypeKind::Char(_),
+                ..
+            } => "(char)",
             _ => "",
         }
     }
@@ -185,7 +224,7 @@ impl IntrinsicType {
         match self {
             IntrinsicType {
                 bit_len: Some(bit_len @ (8 | 16 | 32 | 64)),
-                kind: kind @ (TypeKind::Int | TypeKind::UInt | TypeKind::Poly),
+                kind: kind @ (TypeKind::Int(_) | TypeKind::Poly | TypeKind::Char(_)),
                 simd_len,
                 vec_len,
                 ..
@@ -201,7 +240,8 @@ impl IntrinsicType {
                         .format_with(",\n", |i, fmt| {
                             let src = value_for_array(*bit_len, i);
                             assert!(src == 0 || src.ilog2() < *bit_len);
-                            if *kind == TypeKind::Int && (src >> (*bit_len - 1)) != 0 {
+                            if *kind == TypeKind::Int(Sign::Signed) && (src >> (*bit_len - 1)) != 0
+                            {
                                 // `src` is a two's complement representation of a negative value.
                                 let mask = !0u64 >> (64 - *bit_len);
                                 let ones_compl = src ^ mask;
@@ -257,7 +297,7 @@ impl IntrinsicType {
                 ..
             } => false,
             IntrinsicType {
-                kind: TypeKind::Int | TypeKind::UInt | TypeKind::Poly,
+                kind: TypeKind::Int(_) | TypeKind::Poly,
                 ..
             } => true,
             _ => unimplemented!(),
@@ -282,7 +322,9 @@ pub trait IntrinsicTypeDefinition: Deref<Target = IntrinsicType> {
     fn get_lane_function(&self) -> String;
 
     /// can be implemented in an `impl` block
-    fn from_c(_s: &str, _target: &str) -> Result<Box<Self>, String>;
+    fn from_c(_s: &str, _target: &str) -> Result<Self, String>
+    where
+        Self: Sized;
 
     /// Gets a string containing the typename for this type in C format.
     /// can be directly defined in `impl` blocks

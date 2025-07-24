@@ -148,7 +148,7 @@ pub(crate) fn shift_mask_val<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 pub fn asm_const_to_str<'tcx>(
     tcx: TyCtxt<'tcx>,
     sp: Span,
-    const_value: mir::ConstValue<'tcx>,
+    const_value: mir::ConstValue,
     ty_and_layout: TyAndLayout<'tcx>,
 ) -> String {
     let mir::ConstValue::Scalar(scalar) = const_value else {

@@ -62,7 +62,7 @@ enum EnvironmentCmd {
         python: String,
 
         /// Directory where artifacts (like PGO profiles or rustc-perf) of this workflow
-        /// will be stored.
+        /// will be stored. Relative to `checkout_dir`
         #[arg(long, default_value = "opt-artifacts")]
         artifact_dir: Utf8PathBuf,
 
@@ -102,6 +102,15 @@ enum EnvironmentCmd {
         /// Will be LLVM built during the run?
         #[arg(long, default_value_t = true, action(clap::ArgAction::Set))]
         build_llvm: bool,
+
+        /// Set build artifacts dir. Relative to `checkout_dir`, should point to the directory set
+        /// in bootstrap.toml via `build.build-dir` option
+        #[arg(long, default_value = "build")]
+        build_dir: Utf8PathBuf,
+
+        /// Path to custom stage0 root
+        #[arg(long)]
+        stage0_root: Option<Utf8PathBuf>,
     },
     /// Perform an optimized build on Linux CI, from inside Docker.
     LinuxCi {
@@ -138,14 +147,16 @@ fn create_environment(args: Args) -> anyhow::Result<(Environment, Vec<String>)> 
             shared,
             run_tests,
             build_llvm,
+            build_dir,
+            stage0_root,
         } => {
             let env = EnvironmentBuilder::default()
                 .host_tuple(target_triple)
                 .python_binary(python)
                 .checkout_dir(checkout_dir.clone())
                 .host_llvm_dir(llvm_dir)
-                .artifact_dir(artifact_dir)
-                .build_dir(checkout_dir)
+                .artifact_dir(checkout_dir.join(artifact_dir))
+                .build_dir(checkout_dir.join(build_dir))
                 .prebuilt_rustc_perf(rustc_perf_checkout_dir)
                 .shared_llvm(llvm_shared)
                 .use_bolt(use_bolt)
@@ -154,6 +165,7 @@ fn create_environment(args: Args) -> anyhow::Result<(Environment, Vec<String>)> 
                 .run_tests(run_tests)
                 .fast_try_build(is_fast_try_build)
                 .build_llvm(build_llvm)
+                .stage0_root(stage0_root)
                 .build()?;
 
             (env, shared.build_args)
@@ -171,7 +183,7 @@ fn create_environment(args: Args) -> anyhow::Result<(Environment, Vec<String>)> 
                 .checkout_dir(checkout_dir.clone())
                 .host_llvm_dir(Utf8PathBuf::from("/rustroot"))
                 .artifact_dir(Utf8PathBuf::from("/tmp/tmp-multistage/opt-artifacts"))
-                .build_dir(checkout_dir.join("obj"))
+                .build_dir(checkout_dir.join("obj").join("build"))
                 .shared_llvm(true)
                 // FIXME: Enable bolt for aarch64 once it's fixed upstream. Broken as of December 2024.
                 .use_bolt(!is_aarch64)
@@ -194,7 +206,7 @@ fn create_environment(args: Args) -> anyhow::Result<(Environment, Vec<String>)> 
                 .checkout_dir(checkout_dir.clone())
                 .host_llvm_dir(checkout_dir.join("citools").join("clang-rust"))
                 .artifact_dir(checkout_dir.join("opt-artifacts"))
-                .build_dir(checkout_dir)
+                .build_dir(checkout_dir.join("build"))
                 .shared_llvm(false)
                 .use_bolt(false)
                 .skipped_tests(vec![])

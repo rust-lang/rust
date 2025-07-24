@@ -11,11 +11,14 @@ use std::sync::Arc;
 use rustc_ast::visit::{self, AssocCtxt, Visitor, WalkItemKind};
 use rustc_ast::{
     self as ast, AssocItem, AssocItemKind, Block, ConstItem, Delegation, Fn, ForeignItem,
-    ForeignItemKind, Impl, Item, ItemKind, MetaItemKind, NodeId, StaticItem, StmtKind, TyAlias,
+    ForeignItemKind, Impl, Item, ItemKind, NodeId, StaticItem, StmtKind, TyAlias,
 };
+use rustc_attr_data_structures::{AttributeKind, MacroUseArgs};
 use rustc_attr_parsing as attr;
+use rustc_attr_parsing::AttributeParser;
 use rustc_expand::base::ResolverExpand;
 use rustc_expand::expand::AstFragment;
+use rustc_hir::Attribute;
 use rustc_hir::def::{self, *};
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LocalDefId};
 use rustc_index::bit_set::DenseBitSet;
@@ -25,6 +28,7 @@ use rustc_middle::metadata::ModChild;
 use rustc_middle::ty::{Feed, Visibility};
 use rustc_span::hygiene::{ExpnId, LocalExpnId, MacroKind};
 use rustc_span::{Ident, Span, Symbol, kw, sym};
+use thin_vec::ThinVec;
 use tracing::debug;
 
 use crate::Namespace::{MacroNS, TypeNS, ValueNS};
@@ -49,7 +53,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         ns: Namespace,
         binding: NameBinding<'ra>,
     ) {
-        if let Err(old_binding) = self.try_define(parent, ident, ns, binding, false) {
+        let key = self.new_disambiguated_key(ident, ns);
+        if let Err(old_binding) = self.try_define(parent, key, binding, false) {
             self.report_conflict(parent, ident, ns, old_binding, binding);
         }
     }
@@ -441,18 +446,16 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
 
         self.r.indeterminate_imports.push(import);
         match import.kind {
+            // Don't add unresolved underscore imports to modules
+            ImportKind::Single { target: Ident { name: kw::Underscore, .. }, .. } => {}
             ImportKind::Single { target, type_ns_only, .. } => {
-                // Don't add underscore imports to `single_imports`
-                // because they cannot define any usable names.
-                if target.name != kw::Underscore {
-                    self.r.per_ns(|this, ns| {
-                        if !type_ns_only || ns == TypeNS {
-                            let key = BindingKey::new(target, ns);
-                            let mut resolution = this.resolution(current_module, key).borrow_mut();
-                            resolution.single_imports.insert(import);
-                        }
-                    });
-                }
+                self.r.per_ns(|this, ns| {
+                    if !type_ns_only || ns == TypeNS {
+                        let key = BindingKey::new(target, ns);
+                        let mut resolution = this.resolution(current_module, key).borrow_mut();
+                        resolution.single_imports.insert(import);
+                    }
+                });
             }
             // We don't add prelude imports to the globs since they only affect lexical scopes,
             // which are not relevant to import resolution.
@@ -1020,42 +1023,31 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
     /// Returns `true` if we should consider the underlying `extern crate` to be used.
     fn process_macro_use_imports(&mut self, item: &Item, module: Module<'ra>) -> bool {
         let mut import_all = None;
-        let mut single_imports = Vec::new();
-        for attr in &item.attrs {
-            if attr.has_name(sym::macro_use) {
-                if self.parent_scope.module.parent.is_some() {
-                    self.r.dcx().emit_err(errors::ExternCrateLoadingMacroNotAtCrateRoot {
-                        span: item.span,
-                    });
-                }
-                if let ItemKind::ExternCrate(Some(orig_name), _) = item.kind
-                    && orig_name == kw::SelfLower
-                {
-                    self.r.dcx().emit_err(errors::MacroUseExternCrateSelf { span: attr.span });
-                }
-                let ill_formed = |span| {
-                    self.r.dcx().emit_err(errors::BadMacroImport { span });
-                };
-                match attr.meta() {
-                    Some(meta) => match meta.kind {
-                        MetaItemKind::Word => {
-                            import_all = Some(meta.span);
-                            break;
-                        }
-                        MetaItemKind::List(meta_item_inners) => {
-                            for meta_item_inner in meta_item_inners {
-                                match meta_item_inner.ident() {
-                                    Some(ident) if meta_item_inner.is_word() => {
-                                        single_imports.push(ident)
-                                    }
-                                    _ => ill_formed(meta_item_inner.span()),
-                                }
-                            }
-                        }
-                        MetaItemKind::NameValue(..) => ill_formed(meta.span),
-                    },
-                    None => ill_formed(attr.span),
-                }
+        let mut single_imports = ThinVec::new();
+        if let Some(Attribute::Parsed(AttributeKind::MacroUse { span, arguments })) =
+            AttributeParser::parse_limited(
+                self.r.tcx.sess,
+                &item.attrs,
+                sym::macro_use,
+                item.span,
+                item.id,
+                None,
+            )
+        {
+            if self.parent_scope.module.parent.is_some() {
+                self.r
+                    .dcx()
+                    .emit_err(errors::ExternCrateLoadingMacroNotAtCrateRoot { span: item.span });
+            }
+            if let ItemKind::ExternCrate(Some(orig_name), _) = item.kind
+                && orig_name == kw::SelfLower
+            {
+                self.r.dcx().emit_err(errors::MacroUseExternCrateSelf { span });
+            }
+
+            match arguments {
+                MacroUseArgs::UseAll => import_all = Some(span),
+                MacroUseArgs::UseSpecific(imports) => single_imports = imports,
             }
         }
 
@@ -1409,12 +1401,9 @@ impl<'a, 'ra, 'tcx> Visitor<'a> for BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
             let parent = self.parent_scope.module;
             let expansion = self.parent_scope.expansion;
             self.r.define(parent, ident, ns, self.res(def_id), vis, item.span, expansion);
-        } else if !matches!(&item.kind, AssocItemKind::Delegation(deleg) if deleg.from_glob)
-            && ident.name != kw::Underscore
-        {
-            // Don't add underscore names, they cannot be looked up anyway.
+        } else if !matches!(&item.kind, AssocItemKind::Delegation(deleg) if deleg.from_glob) {
             let impl_def_id = self.r.tcx.local_parent(local_def_id);
-            let key = BindingKey::new(ident, ns);
+            let key = BindingKey::new(ident.normalize_to_macros_2_0(), ns);
             self.r.impl_binding_keys.entry(impl_def_id).or_default().insert(key);
         }
 

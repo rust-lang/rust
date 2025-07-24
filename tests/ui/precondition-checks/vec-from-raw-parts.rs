@@ -1,4 +1,4 @@
-//@ run-fail
+//@ run-crash
 //@ compile-flags: -Cdebug-assertions=yes
 //@ error-pattern: unsafe precondition(s) violated: Vec::from_raw_parts_in requires that length <= capacity
 //@ revisions: vec_from_raw_parts vec_from_raw_parts_in string_from_raw_parts

@@ -659,10 +659,7 @@ impl<'a, 'tcx> MirUsedCollector<'a, 'tcx> {
     }
 
     /// Evaluates a *not yet monomorphized* constant.
-    fn eval_constant(
-        &mut self,
-        constant: &mir::ConstOperand<'tcx>,
-    ) -> Option<mir::ConstValue<'tcx>> {
+    fn eval_constant(&mut self, constant: &mir::ConstOperand<'tcx>) -> Option<mir::ConstValue> {
         let const_ = self.monomorphize(constant.const_);
         // Evaluate the constant. This makes const eval failure a collection-time error (rather than
         // a codegen-time error). rustc stops after collection if there was an error, so this
@@ -1355,19 +1352,15 @@ fn visit_mentioned_item<'tcx>(
 #[instrument(skip(tcx, output), level = "debug")]
 fn collect_const_value<'tcx>(
     tcx: TyCtxt<'tcx>,
-    value: mir::ConstValue<'tcx>,
+    value: mir::ConstValue,
     output: &mut MonoItems<'tcx>,
 ) {
     match value {
         mir::ConstValue::Scalar(Scalar::Ptr(ptr, _size)) => {
             collect_alloc(tcx, ptr.provenance.alloc_id(), output)
         }
-        mir::ConstValue::Indirect { alloc_id, .. } => collect_alloc(tcx, alloc_id, output),
-        mir::ConstValue::Slice { data, meta: _ } => {
-            for &prov in data.inner().provenance().ptrs().values() {
-                collect_alloc(tcx, prov.alloc_id(), output);
-            }
-        }
+        mir::ConstValue::Indirect { alloc_id, .. }
+        | mir::ConstValue::Slice { alloc_id, meta: _ } => collect_alloc(tcx, alloc_id, output),
         _ => {}
     }
 }

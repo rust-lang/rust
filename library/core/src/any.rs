@@ -783,7 +783,7 @@ impl TypeId {
 
         // This is a provenance-stripping memcpy.
         for (i, chunk) in self.data.iter().copied().enumerate() {
-            let chunk = chunk.expose_provenance().to_ne_bytes();
+            let chunk = chunk.addr().to_ne_bytes();
             let start = i * chunk.len();
             bytes[start..(start + chunk.len())].copy_from_slice(&chunk);
         }

@@ -36,9 +36,13 @@ use std::{
 };
 
 #[cfg(target_arch = "x86")]
-use {core_arch::arch::x86::*, std_detect::is_x86_feature_detected};
+use core_arch::arch::x86::*;
 #[cfg(target_arch = "x86_64")]
-use {core_arch::arch::x86_64::*, std_detect::is_x86_feature_detected};
+use core_arch::arch::x86_64::*;
+#[cfg(target_arch = "x86")]
+use std::is_x86_feature_detected;
+#[cfg(target_arch = "x86_64")]
+use std::is_x86_feature_detected;
 
 fn main() {
     let mut input = Vec::new();

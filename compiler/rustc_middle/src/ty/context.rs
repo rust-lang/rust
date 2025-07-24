@@ -5,7 +5,7 @@
 pub mod tls;
 
 use std::assert_matches::debug_assert_matches;
-use std::borrow::Borrow;
+use std::borrow::{Borrow, Cow};
 use std::cmp::Ordering;
 use std::env::VarError;
 use std::ffi::OsStr;
@@ -1625,7 +1625,11 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Allocates a read-only byte or string literal for `mir::interpret` with alignment 1.
     /// Returns the same `AllocId` if called again with the same bytes.
-    pub fn allocate_bytes_dedup(self, bytes: &[u8], salt: usize) -> interpret::AllocId {
+    pub fn allocate_bytes_dedup<'a>(
+        self,
+        bytes: impl Into<Cow<'a, [u8]>>,
+        salt: usize,
+    ) -> interpret::AllocId {
         // Create an allocation that just contains these bytes.
         let alloc = interpret::Allocation::from_bytes_byte_aligned_immutable(bytes, ());
         let alloc = self.mk_const_alloc(alloc);
@@ -3428,8 +3432,6 @@ pub struct DeducedParamAttrs {
 }
 
 pub fn provide(providers: &mut Providers) {
-    providers.maybe_unused_trait_imports =
-        |tcx, ()| &tcx.resolutions(()).maybe_unused_trait_imports;
     providers.extern_mod_stmt_cnum =
         |tcx, id| tcx.resolutions(()).extern_crate_map.get(&id).cloned();
     providers.is_panic_runtime =

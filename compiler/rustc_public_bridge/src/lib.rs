@@ -1,6 +1,6 @@
-//! Crate that implements what will become the rustc side of Stable MIR.
+//! Crate that implements what will become the rustc side of rustc_public.
 //!
-//! This crate is responsible for building Stable MIR components from internal components.
+//! This crate serves as a proxy for making calls to rustc queries.
 //!
 //! This crate is not intended to be invoked directly by users.
 //! This crate is the public API of rustc that will be invoked by the `rustc_public` crate.
@@ -29,7 +29,7 @@ use std::hash::Hash;
 use std::ops::Index;
 
 use bridge::*;
-use context::SmirCtxt;
+use context::CompilerCtxt;
 use rustc_data_structures::fx::{self, FxIndexMap};
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::AllocId;
@@ -46,9 +46,9 @@ pub mod context;
 pub mod rustc_internal {}
 
 /// A container which is used for TLS.
-pub struct SmirContainer<'tcx, B: Bridge> {
+pub struct Container<'tcx, B: Bridge> {
     pub tables: RefCell<Tables<'tcx, B>>,
-    pub cx: RefCell<SmirCtxt<'tcx, B>>,
+    pub cx: RefCell<CompilerCtxt<'tcx, B>>,
 }
 
 pub struct Tables<'tcx, B: Bridge> {
@@ -210,7 +210,7 @@ impl<'tcx, B: Bridge> Tables<'tcx, B> {
     }
 }
 
-/// A trait defining types that are used to emulate StableMIR components, which is really
+/// A trait defining types that are used to emulate rustc_public components, which is really
 /// useful when programming in rustc_public-agnostic settings.
 pub trait Bridge: Sized {
     type DefId: Copy + Debug + PartialEq + IndexedVal;
@@ -222,7 +222,7 @@ pub trait Bridge: Sized {
     type MirConstId: Copy + Debug + PartialEq + IndexedVal;
     type Layout: Copy + Debug + PartialEq + IndexedVal;
 
-    type Error: SmirError;
+    type Error: Error;
     type CrateItem: CrateItem<Self>;
     type AdtDef: AdtDef<Self>;
     type ForeignModuleDef: ForeignModuleDef<Self>;
