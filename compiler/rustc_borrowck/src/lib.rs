@@ -436,15 +436,19 @@ fn do_mir_borrowck<'tcx>(
     // Compute and report region errors, if any.
     mbcx.report_region_errors(nll_errors);
 
-    let (mut flow_analysis, flow_entry_states) =
-        get_flow_results(tcx, body, &move_data, &borrow_set, &regioncx);
-    visit_results(
-        body,
-        traversal::reverse_postorder(body).map(|(bb, _)| bb),
-        &mut flow_analysis,
-        &flow_entry_states,
-        &mut mbcx,
-    );
+    if body.basic_blocks.is_cfg_cyclic() {
+        let (mut flow_analysis, flow_entry_states) =
+            get_flow_results(tcx, body, &move_data, &borrow_set, &regioncx);
+        visit_results(
+            body,
+            traversal::reverse_postorder(body).map(|(bb, _)| bb),
+            &mut flow_analysis,
+            &flow_entry_states,
+            &mut mbcx,
+        );
+    } else {
+        compute_dataflow(tcx, body, &move_data, &borrow_set, &regioncx, &mut mbcx);
+    }
 
     mbcx.report_move_errors();
 
@@ -495,6 +499,186 @@ fn do_mir_borrowck<'tcx>(
     debug!("do_mir_borrowck: result = {:#?}", result);
 
     result
+}
+
+fn compute_dataflow<'a, 'tcx>(
+    tcx: TyCtxt<'tcx>,
+    body: &'a Body<'tcx>,
+
+    move_data: &'a MoveData<'tcx>,
+    borrow_set: &'a BorrowSet<'tcx>,
+    regioncx: &RegionInferenceContext<'tcx>,
+
+    vis: &mut MirBorrowckCtxt<'a, '_, 'tcx>,
+) {
+    let borrows = Borrows::new(tcx, body, regioncx, borrow_set);
+    let uninits = MaybeUninitializedPlaces::new(tcx, body, move_data);
+    let ever_inits = EverInitializedPlaces::new(body, move_data);
+
+    let mut analysis = Borrowck { borrows, uninits, ever_inits };
+
+    // Set up lazy state for the CFG
+    use rustc_middle::mir;
+    use rustc_mir_dataflow::JoinSemiLattice;
+
+    let mut results: IndexVec<BasicBlock, Option<BorrowckDomain>> =
+        IndexVec::from_elem_n(None, body.basic_blocks.len());
+
+    // Ensure the start block has some state in it;
+    results[mir::START_BLOCK] = Some(analysis.bottom_value(body));
+    analysis.initialize_start_block(body, results[mir::START_BLOCK].as_mut().unwrap());
+
+    for (_idx, (block, block_data)) in traversal::reverse_postorder(body).enumerate() {
+        // Apply effects in block
+        let mut block_state = results[block].take().unwrap_or_else(|| analysis.bottom_value(body));
+
+        vis.visit_block_start(&mut block_state);
+
+        for (statement_index, statement) in block_data.statements.iter().enumerate() {
+            let location = Location { block, statement_index };
+            analysis.apply_early_statement_effect(&mut block_state, statement, location);
+            vis.visit_after_early_statement_effect(
+                &mut analysis,
+                &block_state,
+                statement,
+                location,
+            );
+
+            analysis.apply_primary_statement_effect(&mut block_state, statement, location);
+            vis.visit_after_primary_statement_effect(
+                &mut analysis,
+                &block_state,
+                statement,
+                location,
+            );
+        }
+        let terminator = block_data.terminator();
+        let location = Location { block, statement_index: block_data.statements.len() };
+        analysis.apply_early_terminator_effect(&mut block_state, terminator, location);
+        vis.visit_after_early_terminator_effect(&mut analysis, &block_state, terminator, location);
+
+        let edges =
+            analysis.apply_primary_terminator_effect(&mut block_state, terminator, location);
+        vis.visit_after_primary_terminator_effect(
+            &mut analysis,
+            &block_state,
+            terminator,
+            location,
+        );
+
+        // notify visitor the block is ready
+        vis.visit_block_end(&mut block_state);
+
+        match edges {
+            TerminatorEdges::None => {}
+            TerminatorEdges::Single(target) => match results[target].as_mut() {
+                None => {
+                    results[target] = Some(block_state);
+                }
+                Some(existing_state) => {
+                    existing_state.join(&block_state);
+                }
+            },
+            TerminatorEdges::Double(target, unwind) if target == unwind => {
+                // wtf
+                match results[target].as_mut() {
+                    None => {
+                        results[target] = Some(block_state);
+                    }
+                    Some(existing_state) => {
+                        existing_state.join(&block_state);
+                    }
+                }
+            }
+            TerminatorEdges::Double(target, unwind) => match results.pick2_mut(target, unwind) {
+                (None, None) => {
+                    results[target] = Some(block_state.clone());
+                    results[unwind] = Some(block_state);
+                }
+                (None, Some(unwind_state)) => {
+                    unwind_state.join(&block_state);
+                    results[target] = Some(block_state);
+                }
+                (Some(target_state), None) => {
+                    target_state.join(&block_state);
+                    results[unwind] = Some(block_state);
+                }
+                (Some(target_state), Some(unwind_state)) => {
+                    target_state.join(&block_state);
+                    unwind_state.join(&block_state);
+                }
+            },
+            TerminatorEdges::AssignOnReturn { return_, cleanup, place } => {
+                // This must be done *first*, otherwise the unwind path will see the assignments.
+                if let Some(cleanup) = cleanup {
+                    match results[cleanup].as_mut() {
+                        None => {
+                            results[cleanup] = Some(block_state.clone());
+                        }
+                        Some(existing_state) => {
+                            existing_state.join(&block_state);
+                        }
+                    }
+                }
+
+                if !return_.is_empty() {
+                    analysis.apply_call_return_effect(&mut block_state, block, place);
+
+                    // fixme: optimize, if we've merged the previous target states instead
+                    // of moving, we don't need to clone it.
+
+                    let target_count = return_.len();
+                    for &target in return_.iter().take(target_count - 1) {
+                        match results[target].as_mut() {
+                            None => {
+                                results[target] = Some(block_state.clone());
+                            }
+                            Some(existing_state) => {
+                                existing_state.join(&block_state);
+                            }
+                        }
+                    }
+
+                    let target = *return_.last().unwrap();
+                    match results[target].as_mut() {
+                        None => {
+                            results[target] = Some(block_state.clone());
+                        }
+                        Some(existing_state) => {
+                            existing_state.join(&block_state);
+                        }
+                    }
+                }
+            }
+            TerminatorEdges::SwitchInt { targets, discr } => {
+                if let Some(_data) = analysis.get_switch_int_data(block, discr) {
+                    todo!("wat. this is unused in tests");
+                } else {
+                    let target_count = targets.all_targets().len();
+                    for &target in targets.all_targets().iter().take(target_count - 1) {
+                        match results[target].as_mut() {
+                            None => {
+                                results[target] = Some(block_state.clone());
+                            }
+                            Some(existing_state) => {
+                                existing_state.join(&block_state);
+                            }
+                        }
+                    }
+
+                    let target = *targets.all_targets().last().unwrap();
+                    match results[target].as_mut() {
+                        None => {
+                            results[target] = Some(block_state.clone());
+                        }
+                        Some(existing_state) => {
+                            existing_state.join(&block_state);
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 fn get_flow_results<'a, 'tcx>(
