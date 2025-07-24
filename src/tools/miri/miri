@@ -15,8 +15,9 @@ if [ -n "$MIRI_IN_RA" ]; then
   CARGO_FLAGS+=("--message-format=json" "-Zroot-dir=$ROOT_DIR")
   TARGET_DIR="$ROOT_DIR"/target
 fi
+
 # Run cargo.
-cargo $TOOLCHAIN build --manifest-path "$ROOT_DIR"/miri-script/Cargo.toml \
+${CARGO:-cargo} $TOOLCHAIN build --manifest-path "$ROOT_DIR"/miri-script/Cargo.toml \
   --target-dir "$TARGET_DIR" "${CARGO_FLAGS[@]}" || \
   ( echo "Failed to build miri-script. Is the 'stable' toolchain installed?"; exit 1 )
 # Instead of doing just `cargo run --manifest-path .. $@`, we invoke miri-script binary directly.

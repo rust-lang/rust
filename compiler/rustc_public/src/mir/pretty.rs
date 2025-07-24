@@ -1,4 +1,4 @@
-//! Implement methods to pretty print stable MIR body.
+//! Implement methods to pretty print rustc_public's IR body.
 use std::fmt::Debug;
 use std::io::Write;
 use std::{fmt, io, iter};

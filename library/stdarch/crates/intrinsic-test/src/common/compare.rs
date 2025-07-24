@@ -2,27 +2,25 @@ use super::cli::FailureReason;
 use rayon::prelude::*;
 use std::process::Command;
 
-pub fn compare_outputs(
-    intrinsic_name_list: &Vec<String>,
-    toolchain: &str,
-    runner: &str,
-    target: &str,
-) -> bool {
+pub fn compare_outputs(intrinsic_name_list: &Vec<String>, runner: &str, target: &str) -> bool {
+    fn runner_command(runner: &str) -> Command {
+        let mut it = runner.split_whitespace();
+        let mut cmd = Command::new(it.next().unwrap());
+        cmd.args(it);
+
+        cmd
+    }
+
     let intrinsics = intrinsic_name_list
         .par_iter()
         .filter_map(|intrinsic_name| {
-            let c = Command::new("sh")
-                .arg("-c")
-                .arg(format!("{runner} ./c_programs/{intrinsic_name}"))
+            let c = runner_command(runner)
+                .arg("./c_programs/intrinsic-test-programs")
+                .arg(intrinsic_name)
                 .output();
 
-            let rust = Command::new("sh")
-                .current_dir("rust_programs")
-                .arg("-c")
-                .arg(format!(
-                    "cargo {toolchain} run --target {target} --bin {intrinsic_name} --release",
-                ))
-                .env("RUSTFLAGS", "-Cdebuginfo=0")
+            let rust = runner_command(runner)
+                .arg(format!("target/{target}/release/{intrinsic_name}"))
                 .output();
 
             let (c, rust) = match (c, rust) {
@@ -42,8 +40,8 @@ pub fn compare_outputs(
             if !rust.status.success() {
                 error!(
                     "Failed to run Rust program for intrinsic {intrinsic_name}\nstdout: {stdout}\nstderr: {stderr}",
-                    stdout = std::str::from_utf8(&rust.stdout).unwrap_or(""),
-                    stderr = std::str::from_utf8(&rust.stderr).unwrap_or(""),
+                    stdout = String::from_utf8_lossy(&rust.stdout),
+                    stderr = String::from_utf8_lossy(&rust.stderr),
                 );
                 return Some(FailureReason::RunRust(intrinsic_name.clone()));
             }

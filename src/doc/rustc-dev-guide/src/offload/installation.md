@@ -40,7 +40,7 @@ This gives you a working LLVM build.
 ## Testing
 run
 ```
-./x test --stage 1 tests/codegen/gpu_offload
+./x test --stage 1 tests/codegen-llvm/gpu_offload
 ```
 
 ## Usage

@@ -7135,13 +7135,8 @@ intrinsics:
       - int32x2_t
       - int32x4_t
     compose:
-      - LLVMLink:
-          name: "smax.{neon_type}"
-          links:
-            - link: "llvm.arm.neon.vmaxs.{neon_type}"
-              arch: arm
-            - link: "llvm.aarch64.neon.smax.{neon_type}"
-              arch: aarch64,arm64ec
+      - Let: [mask, "{neon_type}", {FnCall: [simd_ge, [a, b]]}]
+      - FnCall: [simd_select, [mask, a, b]]
 
   - name: "vmax{neon_type.no}"
     doc: Maximum (vector)
@@ -7162,13 +7157,8 @@ intrinsics:
       - uint32x2_t
       - uint32x4_t
     compose:
-      - LLVMLink:
-          name: "smax.{neon_type}"
-          links:
-            - link: "llvm.arm.neon.vmaxu.{neon_type}"
-              arch: arm
-            - link: "llvm.aarch64.neon.umax.{neon_type}"
-              arch: aarch64,arm64ec
+      - Let: [mask, "{neon_type}", {FnCall: [simd_ge, [a, b]]}]
+      - FnCall: [simd_select, [mask, a, b]]
 
   - name: "vmax{neon_type.no}"
     doc: Maximum (vector)
@@ -7233,13 +7223,7 @@ intrinsics:
       - float32x2_t
       - float32x4_t
     compose:
-      - LLVMLink:
-          name: "fmaxnm.{neon_type}"
-          links:
-            - link: "llvm.arm.neon.vmaxnm.{neon_type}"
-              arch: arm
-            - link: "llvm.aarch64.neon.fmaxnm.{neon_type}"
-              arch: aarch64,arm64ec
+      - FnCall: [simd_fmax, [a, b]]
 
 
   - name: "vmaxnm{neon_type.no}"
@@ -7257,13 +7241,7 @@ intrinsics:
       - float16x4_t
       - float16x8_t
     compose:
-      - LLVMLink:
-          name: "fmaxnm.{neon_type}"
-          links:
-            - link: "llvm.arm.neon.vmaxnm.{neon_type}"
-              arch: arm
-            - link: "llvm.aarch64.neon.fmaxnm.{neon_type}"
-              arch: aarch64,arm64ec
+      - FnCall: [simd_fmax, [a, b]]
 
 
   - name: "vminnm{neon_type.no}"
@@ -7281,13 +7259,7 @@ intrinsics:
       - float16x4_t
       - float16x8_t
     compose:
-      - LLVMLink:
-          name: "fminnm.{neon_type}"
-          links:
-            - link: "llvm.arm.neon.vminnm.{neon_type}"
-              arch: arm
-            - link: "llvm.aarch64.neon.fminnm.{neon_type}"
-              arch: aarch64,arm64ec
+      - FnCall: [simd_fmin, [a, b]]
 
 
   - name: "vmin{neon_type.no}"
@@ -7309,13 +7281,8 @@ intrinsics:
       - int32x2_t
       - int32x4_t
     compose:
-      - LLVMLink:
-          name: "smin.{neon_type}"
-          links:
-            - link: "llvm.arm.neon.vmins.{neon_type}"
-              arch: arm
-            - link: "llvm.aarch64.neon.smin.{neon_type}"
-              arch: aarch64,arm64ec
+      - Let: [mask, "{neon_type}", {FnCall: [simd_le, [a, b]]}]
+      - FnCall: [simd_select, [mask, a, b]]
 
   - name: "vmin{neon_type.no}"
     doc: "Minimum (vector)"
@@ -7336,13 +7303,8 @@ intrinsics:
       - uint32x2_t
       - uint32x4_t
     compose:
-      - LLVMLink:
-          name: "umin.{neon_type}"
-          links:
-            - link: "llvm.arm.neon.vminu.{neon_type}"
-              arch: arm
-            - link: "llvm.aarch64.neon.umin.{neon_type}"
-              arch: aarch64,arm64ec
+      - Let: [mask, "{neon_type}", {FnCall: [simd_le, [a, b]]}]
+      - FnCall: [simd_select, [mask, a, b]]
 
   - name: "vmin{neon_type.no}"
     doc: "Minimum (vector)"
@@ -7408,13 +7370,7 @@ intrinsics:
       - float32x2_t
       - float32x4_t
     compose:
-      - LLVMLink:
-          name: "fminnm.{neon_type}"
-          links:
-            - link: "llvm.arm.neon.vminnm.{neon_type}"
-              arch: arm
-            - link: "llvm.aarch64.neon.fminnm.{neon_type}"
-              arch: aarch64,arm64ec
+      - FnCall: [simd_fmin, [a, b]]
 
   - name: "vpadd{neon_type.no}"
     doc: Floating-point add pairwise
@@ -7874,9 +7830,9 @@ intrinsics:
     static_defs: ['const N: i32']
     safety: safe
     types:
-      - [int16x8_t, int8x8_t, 'N >= 1 && N <= 8', 'const { int16x8_t([-N as i16, -N as i16, -N as i16, -N as i16, -N as i16, -N as i16, -N as i16, -N as i16]) }']
-      - [int32x4_t, int16x4_t, 'N >= 1 && N <= 16', 'const { int32x4_t([-N as i32, -N as i32, -N as i32, -N as i32]) }']
-      - [int64x2_t, int32x2_t, 'N >= 1 && N <= 32', 'const { int64x2_t([-N as i64, -N as i64]) }']
+      - [int16x8_t, int8x8_t, 'N >= 1 && N <= 8', 'const { int16x8_t([-N as i16; 8]) }']
+      - [int32x4_t, int16x4_t, 'N >= 1 && N <= 16', 'const { int32x4_t([-N; 4]) }']
+      - [int64x2_t, int32x2_t, 'N >= 1 && N <= 32', 'const { int64x2_t([-N as i64; 2]) }']
     compose:
       - FnCall: [static_assert!, ["{type[2]}"]]
       - LLVMLink:
@@ -7929,9 +7885,9 @@ intrinsics:
     static_defs: ['const N: i32']
     safety: safe
     types:
-      - [int16x8_t, uint8x8_t, 'N >= 1 && N <= 8', 'const { int16x8_t([-N as i16, -N as i16, -N as i16, -N as i16, -N as i16, -N as i16, -N as i16, -N as i16]) }']
-      - [int32x4_t, uint16x4_t, 'N >= 1 && N <= 16', 'const { int32x4_t([-N as i32, -N as i32, -N as i32, -N as i32]) }']
-      - [int64x2_t, uint32x2_t, 'N >= 1 && N <= 32', 'const { int64x2_t([-N as i64, -N as i64]) }']
+      - [int16x8_t, uint8x8_t, 'N >= 1 && N <= 8', 'const { int16x8_t([-N as i16; 8]) }']
+      - [int32x4_t, uint16x4_t, 'N >= 1 && N <= 16', 'const { int32x4_t([-N; 4]) }']
+      - [int64x2_t, uint32x2_t, 'N >= 1 && N <= 32', 'const { int64x2_t([-N as i64; 2]) }']
     compose:
       - FnCall: [static_assert!, ["{type[2]}"]]
       - LLVMLink:
@@ -8105,9 +8061,9 @@ intrinsics:
     static_defs: ['const N: i32']
     safety: safe
     types:
-      - [int16x8_t, int8x8_t, 'N >= 1 && N <= 8', 'const { int16x8_t([-N as i16, -N as i16, -N as i16, -N as i16, -N as i16, -N as i16, -N as i16, -N as i16]) }']
-      - [int32x4_t, int16x4_t, 'N >= 1 && N <= 16', 'const { int32x4_t([-N as i32, -N as i32, -N as i32, -N as i32]) }']
-      - [int64x2_t, int32x2_t, 'N >= 1 && N <= 32', 'const { int64x2_t([-N as i64, -N as i64]) }']
+      - [int16x8_t, int8x8_t, 'N >= 1 && N <= 8', 'const { int16x8_t([-N as i16; 8]) }']
+      - [int32x4_t, int16x4_t, 'N >= 1 && N <= 16', 'const { int32x4_t([-N; 4]) }']
+      - [int64x2_t, int32x2_t, 'N >= 1 && N <= 32', 'const { int64x2_t([-N as i64; 2]) }']
     compose:
       - FnCall: [static_assert!, ["{type[2]}"]]
       - LLVMLink:
@@ -8215,9 +8171,9 @@ intrinsics:
     static_defs: ['const N: i32']
     safety: safe
     types:
-      - [int16x8_t, uint8x8_t, 'N >= 1 && N <= 8', 'const { int16x8_t([-N as i16, -N as i16, -N as i16, -N as i16, -N as i16, -N as i16, -N as i16, -N as i16]) }']
-      - [int32x4_t, uint16x4_t, 'N >= 1 && N <= 16', 'const { int32x4_t([-N as i32, -N as i32, -N as i32, -N as i32]) }']
-      - [int64x2_t, uint32x2_t, 'N >= 1 && N <= 32', 'const { int64x2_t([-N as i64, -N as i64]) }']
+      - [int16x8_t, uint8x8_t, 'N >= 1 && N <= 8', 'const { int16x8_t([-N as i16; 8]) }']
+      - [int32x4_t, uint16x4_t, 'N >= 1 && N <= 16', 'const { int32x4_t([-N; 4]) }']
+      - [int64x2_t, uint32x2_t, 'N >= 1 && N <= 32', 'const { int64x2_t([-N as i64; 2]) }']
     compose:
       - FnCall: [static_assert!, ["{type[2]}"]]
       - LLVMLink:
@@ -8939,9 +8895,9 @@ intrinsics:
     static_defs: ['const N: i32']
     safety: safe
     types:
-      - [int16x8_t, int8x8_t, 'N >= 1 && N <= 8', 'const { int16x8_t([-N as i16, -N as i16, -N as i16, -N as i16, -N as i16, -N as i16, -N as i16, -N as i16]) }']
-      - [int32x4_t, int16x4_t, 'N >= 1 && N <= 16', 'const { int32x4_t([-N as i32, -N as i32, -N as i32, -N as i32]) }']
-      - [int64x2_t, int32x2_t, 'N >= 1 && N <= 32', 'const { int64x2_t([-N as i64, -N as i64]) }']
+      - [int16x8_t, int8x8_t, 'N >= 1 && N <= 8', 'const { int16x8_t([-N as i16; 8]) }']
+      - [int32x4_t, int16x4_t, 'N >= 1 && N <= 16', 'const { int32x4_t([-N; 4]) }']
+      - [int64x2_t, int32x2_t, 'N >= 1 && N <= 32', 'const { int64x2_t([-N as i64; 2]) }']
     compose:
       - FnCall: [static_assert!, ["{type[2]}"]]
       - LLVMLink:
@@ -9576,7 +9532,8 @@ intrinsics:
     attr:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [vtrn]]}]]
-      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [trn]]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [trn1]]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [trn2]]}]]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     safety: safe
@@ -9617,7 +9574,8 @@ intrinsics:
     attr:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [vtrn]]}]]
-      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [trn]]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [trn1]]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [trn2]]}]]
       - *neon-fp16
       - *neon-unstable-f16
     safety: safe
@@ -9645,7 +9603,8 @@ intrinsics:
     attr:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [vtrn]]}]]
-      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [zip]]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [zip1]]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [zip2]]}]]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     safety: safe
@@ -9673,7 +9632,8 @@ intrinsics:
     attr:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [vorr]]}]]
-      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [zip]]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [zip1]]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [zip2]]}]]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     safety: safe
@@ -9707,7 +9667,8 @@ intrinsics:
     attr:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [vtrn]]}]]
-      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [zip]]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [zip1]]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [zip2]]}]]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     safety: safe
@@ -9735,7 +9696,8 @@ intrinsics:
     attr:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [vzip]]}]]
-      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [zip]]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [zip1]]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [zip2]]}]]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     safety: safe
@@ -9767,7 +9729,8 @@ intrinsics:
     attr:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['"vzip.16"']]}]]
-      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [zip]]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [zip1]]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [zip2]]}]]
       - *neon-fp16
       - *neon-unstable-f16
     safety: safe
@@ -9794,7 +9757,8 @@ intrinsics:
     attr:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [vuzp]]}]]
-      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [uzp]]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [uzp1]]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [uzp2]]}]]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     safety: safe
@@ -9835,7 +9799,8 @@ intrinsics:
     attr:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [vuzp]]}]]
-      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [uzp]]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [uzp1]]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [uzp2]]}]]
       - *neon-fp16
       - *neon-unstable-f16
     safety: safe
@@ -9863,7 +9828,8 @@ intrinsics:
     attr:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [vtrn]]}]]
-      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [zip]]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [zip1]]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [zip2]]}]]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     safety: safe
@@ -12881,13 +12847,16 @@ intrinsics:
       - int16x8_t
       - int32x4_t
     compose:
-      - LLVMLink:
-          name: "vabs{neon_type.no}"
-          links:
-            - link: "llvm.aarch64.neon.abs.{neon_type}"
-              arch: aarch64,arm64ec
-            - link: "llvm.arm.neon.vabs.{neon_type}"
-              arch: arm
+      - Let:
+          - neg
+          - "{neon_type}"
+          - FnCall: [simd_neg, [a]]
+      - Let:
+          - mask
+          - "{neon_type}"
+          - FnCall: [simd_ge, [a, neg]]
+      - FnCall: [simd_select, [mask, a, neg]]
+
 
   - name: "vpmin{neon_type.no}"
     doc: "Folding minimum of adjacent pairs"
@@ -13862,8 +13831,8 @@ intrinsics:
       - [int8x16_t, '8',  '1 <= N && N <= 8',  'v16i8', 'int8x16_t::splat', '-N as i8']
       - [int16x4_t, '16', '1 <= N && N <= 16', 'v4i16', 'int16x4_t::splat', '-N as i16']
       - [int16x8_t, '16', '1 <= N && N <= 16', 'v8i16', 'int16x8_t::splat', '-N as i16']
-      - [int32x2_t, '32', '1 <= N && N <= 32', 'v2i32', 'int32x2_t::splat', '-N as i32']
-      - [int32x4_t, '32', '1 <= N && N <= 32', 'v4i32', 'int32x4_t::splat', '-N as i32']
+      - [int32x2_t, '32', '1 <= N && N <= 32', 'v2i32', 'int32x2_t::splat', '-N']
+      - [int32x4_t, '32', '1 <= N && N <= 32', 'v4i32', 'int32x4_t::splat', '-N']
       - [int64x1_t, '64', '1 <= N && N <= 64', 'v1i64', 'int64x1_t::splat', '-N as i64']
       - [int64x2_t, '64', '1 <= N && N <= 64', 'v2i64', 'int64x2_t::splat', '-N as i64']
     compose:
@@ -13891,8 +13860,8 @@ intrinsics:
       - [uint8x16_t, "neon,v7", '8',  'static_assert_uimm_bits!', 'N, 3',    'v16i8', 'int8x16_t::splat', 'N as i8']
       - [uint16x4_t, "neon,v7", '16', 'static_assert_uimm_bits!', 'N, 4',    'v4i16', 'int16x4_t::splat', 'N as i16']
       - [uint16x8_t, "neon,v7", '16', 'static_assert_uimm_bits!', 'N, 4',    'v8i16', 'int16x8_t::splat', 'N as i16']
-      - [uint32x2_t, "neon,v7", '32', 'static_assert!', 'N >= 0 && N <= 31', 'v2i32', 'int32x2_t::splat', 'N as i32']
-      - [uint32x4_t, "neon,v7", '32', 'static_assert!', 'N >= 0 && N <= 31', 'v4i32', 'int32x4_t::splat', 'N as i32']
+      - [uint32x2_t, "neon,v7", '32', 'static_assert!', 'N >= 0 && N <= 31', 'v2i32', 'int32x2_t::splat', 'N']
+      - [uint32x4_t, "neon,v7", '32', 'static_assert!', 'N >= 0 && N <= 31', 'v4i32', 'int32x4_t::splat', 'N']
       - [uint64x1_t, "neon,v7", '64', 'static_assert!', 'N >= 0 && N <= 63', 'v1i64', 'int64x1_t::splat', 'N as i64']
       - [uint64x2_t, "neon,v7", '64', 'static_assert!', 'N >= 0 && N <= 63', 'v2i64', 'int64x2_t::splat', 'N as i64']
       - [poly8x8_t,  "neon,v7", '8',  'static_assert_uimm_bits!', 'N, 3',     'v8i8', 'int8x8_t::splat',  'N as i8']
@@ -14138,6 +14107,7 @@ intrinsics:
     doc: "Load one single-element structure and Replicate to all lanes (of one register)."
     arguments: ["ptr: {type[1]}"]
     return_type: "{neon_type[2]}"
+    big_endian_inverse: false
     attr:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, { FnCall: [assert_instr, ['"{type[3]}"']] }  ]]
@@ -14147,40 +14117,36 @@ intrinsics:
     safety:
       unsafe: [neon]
     types:
-      - ['vld1_dup_s8', '*const i8', 'int8x8_t', 'vld1.8', 'ld1r', 'vld1_lane_s8::<0>', 'i8x8::splat(0)', '[0, 0, 0, 0, 0, 0, 0, 0]']
-      - ['vld1_dup_u8', '*const u8', 'uint8x8_t', 'vld1.8', 'ld1r', 'vld1_lane_u8::<0>', 'u8x8::splat(0)', '[0, 0, 0, 0, 0, 0, 0, 0]']
-      - ['vld1_dup_p8', '*const p8', 'poly8x8_t', 'vld1.8', 'ld1r', 'vld1_lane_p8::<0>', 'u8x8::splat(0)', '[0, 0, 0, 0, 0, 0, 0, 0]']
+      - ['vld1_dup_s8', '*const i8', 'int8x8_t', 'vld1.8', 'ld1r', 'i8x8::splat']
+      - ['vld1_dup_u8', '*const u8', 'uint8x8_t', 'vld1.8', 'ld1r', 'u8x8::splat']
+      - ['vld1_dup_p8', '*const p8', 'poly8x8_t', 'vld1.8', 'ld1r', 'u8x8::splat']
 
-      - ['vld1q_dup_s8', '*const i8', 'int8x16_t', 'vld1.8', 'ld1r', 'vld1q_lane_s8::<0>', 'i8x16::splat(0)', '[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]']
-      - ['vld1q_dup_u8', '*const u8', 'uint8x16_t', 'vld1.8', 'ld1r', 'vld1q_lane_u8::<0>', 'u8x16::splat(0)', '[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]']
-      - ['vld1q_dup_p8', '*const p8', 'poly8x16_t', 'vld1.8', 'ld1r', 'vld1q_lane_p8::<0>', 'u8x16::splat(0)', '[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]']
+      - ['vld1q_dup_s8', '*const i8', 'int8x16_t', 'vld1.8', 'ld1r', 'i8x16::splat']
+      - ['vld1q_dup_u8', '*const u8', 'uint8x16_t', 'vld1.8', 'ld1r', 'u8x16::splat']
+      - ['vld1q_dup_p8', '*const p8', 'poly8x16_t', 'vld1.8', 'ld1r', 'u8x16::splat']
 
-      - ['vld1_dup_s16', '*const i16', 'int16x4_t', 'vld1.16', 'ld1r', 'vld1_lane_s16::<0>', 'i16x4::splat(0)', '[0, 0, 0, 0]']
-      - ['vld1_dup_u16', '*const u16', 'uint16x4_t', 'vld1.16', 'ld1r', 'vld1_lane_u16::<0>', 'u16x4::splat(0)', '[0, 0, 0, 0]']
-      - ['vld1_dup_p16', '*const p16', 'poly16x4_t', 'vld1.16', 'ld1r', 'vld1_lane_p16::<0>', 'u16x4::splat(0)', '[0, 0, 0, 0]']
+      - ['vld1_dup_s16', '*const i16', 'int16x4_t', 'vld1.16', 'ld1r', 'i16x4::splat']
+      - ['vld1_dup_u16', '*const u16', 'uint16x4_t', 'vld1.16', 'ld1r', 'u16x4::splat']
+      - ['vld1_dup_p16', '*const p16', 'poly16x4_t', 'vld1.16', 'ld1r', 'u16x4::splat']
 
-      - ['vld1q_dup_s16', '*const i16', 'int16x8_t', 'vld1.16', 'ld1r', 'vld1q_lane_s16::<0>', 'i16x8::splat(0)', '[0, 0, 0, 0, 0, 0, 0, 0]']
-      - ['vld1q_dup_u16', '*const u16', 'uint16x8_t', 'vld1.16', 'ld1r', 'vld1q_lane_u16::<0>', 'u16x8::splat(0)', '[0, 0, 0, 0, 0, 0, 0, 0]']
-      - ['vld1q_dup_p16', '*const p16', 'poly16x8_t', 'vld1.16', 'ld1r', 'vld1q_lane_p16::<0>', 'u16x8::splat(0)', '[0, 0, 0, 0, 0, 0, 0, 0]']
+      - ['vld1q_dup_s16', '*const i16', 'int16x8_t', 'vld1.16', 'ld1r', 'i16x8::splat']
+      - ['vld1q_dup_u16', '*const u16', 'uint16x8_t', 'vld1.16', 'ld1r', 'u16x8::splat']
+      - ['vld1q_dup_p16', '*const p16', 'poly16x8_t', 'vld1.16', 'ld1r', 'u16x8::splat']
 
-      - ['vld1_dup_s32', '*const i32', 'int32x2_t', 'vld1.32', 'ld1r', 'vld1_lane_s32::<0>', 'i32x2::splat(0)', '[0, 0]']
-      - ['vld1_dup_u32', '*const u32', 'uint32x2_t', 'vld1.32', 'ld1r', 'vld1_lane_u32::<0>', 'u32x2::splat(0)', '[0, 0]']
-      - ['vld1_dup_f32', '*const f32', 'float32x2_t', 'vld1.32', 'ld1r', 'vld1_lane_f32::<0>', 'f32x2::splat(0.0)', '[0, 0]']
+      - ['vld1_dup_s32', '*const i32', 'int32x2_t', 'vld1.32', 'ld1r', 'i32x2::splat']
+      - ['vld1_dup_u32', '*const u32', 'uint32x2_t', 'vld1.32', 'ld1r', 'u32x2::splat']
+      - ['vld1_dup_f32', '*const f32', 'float32x2_t', 'vld1.32', 'ld1r', 'f32x2::splat']
 
-      - ['vld1q_dup_s32', '*const i32', 'int32x4_t', 'vld1.32', 'ld1r', 'vld1q_lane_s32::<0>', 'i32x4::splat(0)', '[0, 0, 0, 0]']
-      - ['vld1q_dup_u32', '*const u32', 'uint32x4_t', 'vld1.32', 'ld1r', 'vld1q_lane_u32::<0>', 'u32x4::splat(0)', '[0, 0, 0, 0]']
-      - ['vld1q_dup_f32', '*const f32', 'float32x4_t', 'vld1.32', 'ld1r', 'vld1q_lane_f32::<0>', 'f32x4::splat(0.0)', '[0, 0, 0, 0]']
+      - ['vld1q_dup_s32', '*const i32', 'int32x4_t', 'vld1.32', 'ld1r', 'i32x4::splat']
+      - ['vld1q_dup_u32', '*const u32', 'uint32x4_t', 'vld1.32', 'ld1r', 'u32x4::splat']
+      - ['vld1q_dup_f32', '*const f32', 'float32x4_t', 'vld1.32', 'ld1r', 'f32x4::splat']
 
-      - ['vld1q_dup_s64', '*const i64', 'int64x2_t', 'vldr', 'ld1', 'vld1q_lane_s64::<0>', 'i64x2::splat(0)', '[0, 0]']
-      - ['vld1q_dup_u64', '*const u64', 'uint64x2_t', 'vldr', 'ld1', 'vld1q_lane_u64::<0>', 'u64x2::splat(0)', '[0, 0]']
+      - ['vld1q_dup_s64', '*const i64', 'int64x2_t', 'vldr', 'ld1r', 'i64x2::splat']
+      - ['vld1q_dup_u64', '*const u64', 'uint64x2_t', 'vldr', 'ld1r', 'u64x2::splat']
     compose:
-      - Let:
-          - x
-          - FnCall:
-              - '{type[5]}'
-              - - ptr
-                - FnCall: [transmute, ['{type[6]}']]
-      - FnCall: ['simd_shuffle!', [x, x, '{type[7]}']]
+      - FnCall:
+          - transmute
+          - - FnCall: ['{type[5]}', ["*ptr"]]
 
   - name: "{type[0]}"
     doc: "Absolute difference and accumulate (64-bit)"

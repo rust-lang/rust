@@ -15,7 +15,7 @@ pub(crate) fn apply_random_float_error<F: rustc_apfloat::Float>(
     val: F,
     err_scale: i32,
 ) -> F {
-    if !ecx.machine.float_nondet {
+    if !ecx.machine.float_nondet || !ecx.machine.float_rounding_error {
         return val;
     }
 

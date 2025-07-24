@@ -1,8 +1,9 @@
 use std::cell::RefCell;
+use std::ptr::NonNull;
 use std::rc::Rc;
 
 use ipc_channel::ipc;
-use nix::sys::{ptrace, signal};
+use nix::sys::{mman, ptrace, signal};
 use nix::unistd;
 use rustc_const_eval::interpret::InterpResult;
 
@@ -44,6 +45,16 @@ impl Supervisor {
         SUPERVISOR.lock().unwrap().is_some()
     }
 
+    unsafe fn protect_pages(
+        pages: impl Iterator<Item = (NonNull<u8>, usize)>,
+        prot: mman::ProtFlags,
+    ) -> Result<(), nix::errno::Errno> {
+        for (pg, sz) in pages {
+            unsafe { mman::mprotect(pg.cast(), sz, prot)? };
+        }
+        Ok(())
+    }
+
     /// Performs an arbitrary FFI call, enabling tracing from the supervisor.
     /// As this locks the supervisor via a mutex, no other threads may enter FFI
     /// until this function returns.
@@ -60,47 +71,67 @@ impl Supervisor {
 
         // Get pointers to all the pages the supervisor must allow accesses in
         // and prepare the callback stack.
-        let page_ptrs = alloc.borrow().pages().collect();
+        let alloc = alloc.borrow();
+        let page_size = alloc.page_size();
+        let page_ptrs = alloc
+            .pages()
+            .flat_map(|(pg, sz)| {
+                // Convert (page, size) pair into list of pages.
+                let start = pg.expose_provenance().get();
+                (0..sz.strict_div(alloc.page_size()))
+                    .map(move |i| start.strict_add(i.strict_mul(page_size)))
+            })
+            .collect();
         let raw_stack_ptr: *mut [u8; CALLBACK_STACK_SIZE] =
             Box::leak(Box::new([0u8; CALLBACK_STACK_SIZE])).as_mut_ptr().cast();
         let stack_ptr = raw_stack_ptr.expose_provenance();
         let start_info = StartFfiInfo { page_ptrs, stack_ptr };
 
-        // SAFETY: We do not access machine memory past this point until the
-        // supervisor is ready to allow it.
-        unsafe {
-            if alloc.borrow_mut().start_ffi().is_err() {
-                // Don't mess up unwinding by maybe leaving the memory partly protected
-                alloc.borrow_mut().end_ffi();
-                panic!("Cannot protect memory for FFI call!");
+        // Unwinding might be messed up due to partly protected memory, so let's abort if something
+        // breaks inside here.
+        let res = std::panic::abort_unwind(|| {
+            // SAFETY: We do not access machine memory past this point until the
+            // supervisor is ready to allow it.
+            // FIXME: this is sketchy, as technically the memory is still in the Rust Abstract Machine,
+            // and the compiler would be allowed to reorder accesses below this block...
+            unsafe {
+                Self::protect_pages(alloc.pages(), mman::ProtFlags::PROT_NONE).unwrap();
             }
-        }
 
-        // Send over the info.
-        // NB: if we do not wait to receive a blank confirmation response, it is
-        // possible that the supervisor is alerted of the SIGSTOP *before* it has
-        // actually received the start_info, thus deadlocking! This way, we can
-        // enforce an ordering for these events.
-        sv.message_tx.send(TraceRequest::StartFfi(start_info)).unwrap();
-        sv.confirm_rx.recv().unwrap();
-        // We need to be stopped for the supervisor to be able to make certain
-        // modifications to our memory - simply waiting on the recv() doesn't
-        // count.
-        signal::raise(signal::SIGSTOP).unwrap();
+            // Send over the info.
+            // NB: if we do not wait to receive a blank confirmation response, it is
+            // possible that the supervisor is alerted of the SIGSTOP *before* it has
+            // actually received the start_info, thus deadlocking! This way, we can
+            // enforce an ordering for these events.
+            sv.message_tx.send(TraceRequest::StartFfi(start_info)).unwrap();
+            sv.confirm_rx.recv().unwrap();
+            // We need to be stopped for the supervisor to be able to make certain
+            // modifications to our memory - simply waiting on the recv() doesn't
+            // count.
+            signal::raise(signal::SIGSTOP).unwrap();
 
-        let res = f();
+            let res = f();
 
-        // We can't use IPC channels here to signal that FFI mode has ended,
-        // since they might allocate memory which could get us stuck in a SIGTRAP
-        // with no easy way out! While this could be worked around, it is much
-        // simpler and more robust to simply use the signals which are left for
-        // arbitrary usage. Since this will block until we are continued by the
-        // supervisor, we can assume past this point that everything is back to
-        // normal.
-        signal::raise(signal::SIGUSR1).unwrap();
+            // We can't use IPC channels here to signal that FFI mode has ended,
+            // since they might allocate memory which could get us stuck in a SIGTRAP
+            // with no easy way out! While this could be worked around, it is much
+            // simpler and more robust to simply use the signals which are left for
+            // arbitrary usage. Since this will block until we are continued by the
+            // supervisor, we can assume past this point that everything is back to
+            // normal.
+            signal::raise(signal::SIGUSR1).unwrap();
 
-        // This is safe! It just sets memory to normal expected permissions.
-        alloc.borrow_mut().end_ffi();
+            // SAFETY: We set memory back to normal, so this is safe.
+            unsafe {
+                Self::protect_pages(
+                    alloc.pages(),
+                    mman::ProtFlags::PROT_READ | mman::ProtFlags::PROT_WRITE,
+                )
+                .unwrap();
+            }
+
+            res
+        });
 
         // SAFETY: Caller upholds that this pointer was allocated as a box with
         // this type.

@@ -411,8 +411,8 @@ const PATH_REMAP: &[(&str, &[&str])] = &[
         "tests",
         &[
             // tidy-alphabetical-start
-            "tests/assembly",
-            "tests/codegen",
+            "tests/assembly-llvm",
+            "tests/codegen-llvm",
             "tests/codegen-units",
             "tests/coverage",
             "tests/coverage-run-rustdoc",
@@ -1049,9 +1049,9 @@ impl<'a> Builder<'a> {
                 test::Crashes,
                 test::Coverage,
                 test::MirOpt,
-                test::Codegen,
+                test::CodegenLlvm,
                 test::CodegenUnits,
-                test::Assembly,
+                test::AssemblyLlvm,
                 test::Incremental,
                 test::Debuginfo,
                 test::UiFullDeps,
