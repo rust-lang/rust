@@ -15,11 +15,11 @@ pub(super) fn check_impl_item(cx: &LateContext<'_>, item: &ImplItem<'_>, ignored
         && let parent_node = cx.tcx.parent_hir_node(item.hir_id())
         && let Node::Item(parent_item) = parent_node
         && let ItemKind::Impl(Impl {
-            of_trait: Some(trait_ref),
+            of_trait: Some(of_trait),
             ..
         }) = &parent_item.kind
         && let Some(did) = trait_item_def_id_of_impl(cx, item.owner_id)
-        && !is_from_ignored_trait(trait_ref, ignored_traits)
+        && !is_from_ignored_trait(&of_trait.trait_ref, ignored_traits)
     {
         let mut param_idents_iter = cx.tcx.hir_body_param_idents(body_id);
         let mut default_param_idents_iter = cx.tcx.fn_arg_idents(did).iter().copied();

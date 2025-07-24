@@ -531,8 +531,10 @@ pub(crate) fn coerce_unsized_info<'tcx>(
                 }));
             } else if diff_fields.len() > 1 {
                 let item = tcx.hir_expect_item(impl_did);
-                let span = if let ItemKind::Impl(hir::Impl { of_trait: Some(t), .. }) = &item.kind {
-                    t.path.span
+                let span = if let ItemKind::Impl(hir::Impl { of_trait: Some(of_trait), .. }) =
+                    &item.kind
+                {
+                    of_trait.trait_ref.path.span
                 } else {
                     tcx.def_span(impl_did)
                 };

@@ -582,8 +582,8 @@ impl Diagnostics {
         for (_hir_id, parent) in cx.tcx.hir_parent_iter(current_id) {
             debug!(?parent);
             if let hir::Node::Item(hir::Item { kind: hir::ItemKind::Impl(impl_), .. }) = parent
-                && let hir::Impl { of_trait: Some(of_trait), .. } = impl_
-                && let Some(def_id) = of_trait.trait_def_id()
+                && let Some(of_trait) = impl_.of_trait
+                && let Some(def_id) = of_trait.trait_ref.trait_def_id()
                 && let Some(name) = cx.tcx.get_diagnostic_name(def_id)
                 && matches!(name, sym::Diagnostic | sym::Subdiagnostic | sym::LintDiagnostic)
             {

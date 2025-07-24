@@ -460,7 +460,8 @@ pub fn is_expr_unsafe<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> bool {
         }
         fn visit_nested_item(&mut self, id: ItemId) -> Self::Result {
             if let ItemKind::Impl(i) = &self.cx.tcx.hir_item(id).kind
-                && i.safety.is_unsafe()
+                && let Some(of_trait) = i.of_trait
+                && of_trait.safety.is_unsafe()
             {
                 ControlFlow::Break(())
             } else {
