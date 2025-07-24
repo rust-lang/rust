@@ -368,7 +368,12 @@ pub(crate) fn llfn_attrs_from_instance<'ll, 'tcx>(
         (InlineAttr::None, _) if instance.def.requires_inline(cx.tcx) => InlineAttr::Hint,
         (inline, _) => inline,
     };
-    to_add.extend(inline_attr(cx, inline));
+    if cx.tcx.has_inline_always_override(instance) {
+        eprintln!("Applying override");
+        to_add.extend(inline_attr(cx, InlineAttr::Always));
+    } else {
+        to_add.extend(inline_attr(cx, inline));
+    }
 
     if cx.sess().must_emit_unwind_tables() {
         to_add.push(uwtable_attr(cx.llcx, cx.sess().opts.unstable_opts.use_sync_unwind));
