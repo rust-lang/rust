@@ -25,7 +25,7 @@ use rustc_span::{Ident, Span, Symbol, kw, sym};
 use smallvec::SmallVec;
 use tracing::debug;
 
-use crate::Namespace::*;
+use crate::Namespace::{self, *};
 use crate::diagnostics::{DiagMode, Suggestion, import_candidates};
 use crate::errors::{
     CannotBeReexportedCratePublic, CannotBeReexportedCratePublicNS, CannotBeReexportedPrivate,
@@ -338,13 +338,21 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     pub(crate) fn try_define(
         &mut self,
         module: Module<'ra>,
-        key: BindingKey,
+        ident: Ident,
+        ns: Namespace,
         binding: NameBinding<'ra>,
         warn_ambiguity: bool,
     ) -> Result<(), NameBinding<'ra>> {
         let res = binding.res();
-        self.check_reserved_macro_name(key.ident, res);
+        self.check_reserved_macro_name(ident, res);
         self.set_binding_parent_module(binding, module);
+        // Even if underscore names cannot be looked up, we still need to add them to modules,
+        // because they can be fetched by glob imports from those modules, and bring traits
+        // into scope both directly and through glob imports.
+        let key = BindingKey::new_disambiguated(ident, ns, || {
+            module.underscore_disambiguator.update(|d| d + 1);
+            module.underscore_disambiguator.get()
+        });
         self.update_resolution(module, key, warn_ambiguity, |this, resolution| {
             if let Some(old_binding) = resolution.best_binding() {
                 if res == Res::Err && old_binding.res() != Res::Err {
@@ -383,7 +391,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     (old_glob @ true, false) | (old_glob @ false, true) => {
                         let (glob_binding, non_glob_binding) =
                             if old_glob { (old_binding, binding) } else { (binding, old_binding) };
-                        if key.ns == MacroNS
+                        if ns == MacroNS
                             && non_glob_binding.expansion != LocalExpnId::ROOT
                             && glob_binding.res() != non_glob_binding.res()
                         {
@@ -489,10 +497,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             };
             if self.is_accessible_from(binding.vis, scope) {
                 let imported_binding = self.import(binding, *import);
-                let key = BindingKey { ident, ..key };
                 let _ = self.try_define(
                     import.parent_scope.module,
-                    key,
+                    ident,
+                    key.ns,
                     imported_binding,
                     warn_ambiguity,
                 );
@@ -514,11 +522,15 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             let dummy_binding = self.dummy_binding;
             let dummy_binding = self.import(dummy_binding, import);
             self.per_ns(|this, ns| {
-                let key = BindingKey::new(target, ns);
-                let _ = this.try_define(import.parent_scope.module, key, dummy_binding, false);
-                this.update_resolution(import.parent_scope.module, key, false, |_, resolution| {
-                    resolution.single_imports.swap_remove(&import);
-                })
+                let module = import.parent_scope.module;
+                let _ = this.try_define(module, target, ns, dummy_binding, false);
+                // Don't remove underscores from `single_imports`, they were never added.
+                if target.name != kw::Underscore {
+                    let key = BindingKey::new(target, ns);
+                    this.update_resolution(module, key, false, |_, resolution| {
+                        resolution.single_imports.swap_remove(&import);
+                    })
+                }
             });
             self.record_use(target, dummy_binding, Used::Other);
         } else if import.imported_module.get().is_none() {
@@ -895,7 +907,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         PendingBinding::Ready(Some(imported_binding))
                     }
                     Err(Determinacy::Determined) => {
-                        // Don't update the resolution for underscores, because it was never added.
+                        // Don't remove underscores from `single_imports`, they were never added.
                         if target.name != kw::Underscore {
                             let key = BindingKey::new(target, ns);
                             this.update_resolution(parent, key, false, |_, resolution| {
@@ -1510,7 +1522,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     .is_some_and(|binding| binding.warn_ambiguity_recursive());
                 let _ = self.try_define(
                     import.parent_scope.module,
-                    key,
+                    key.ident,
+                    key.ns,
                     imported_binding,
                     warn_ambiguity,
                 );
