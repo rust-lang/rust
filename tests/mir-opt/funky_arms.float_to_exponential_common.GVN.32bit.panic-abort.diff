@@ -78,8 +78,7 @@
       }
   
       bb4: {
--         StorageLive(_8);
-+         nop;
+          StorageLive(_8);
           _8 = copy ((_6 as Some).0: usize);
           StorageLive(_9);
           _9 = copy _1;
@@ -108,8 +107,7 @@
           StorageDead(_11);
           StorageDead(_10);
           StorageDead(_9);
--         StorageDead(_8);
-+         nop;
+          StorageDead(_8);
           goto -> bb8;
       }
   
