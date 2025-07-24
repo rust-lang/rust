@@ -206,7 +206,15 @@ fn configure_and_expand(
         let mut ecx = ExtCtxt::new(sess, cfg, resolver, Some(&lint_store));
         ecx.num_standard_library_imports = num_standard_library_imports;
         // Expand macros now!
-        let krate = sess.time("expand_crate", || ecx.monotonic_expander().expand_crate(krate));
+        let (krate, nb_macro_errors) = sess.time("expand_crate", || {
+            let mut expander = ecx.monotonic_expander();
+            let krate = expander.expand_crate(krate);
+            (krate, ecx.nb_macro_errors)
+        });
+
+        if nb_macro_errors > 0 {
+            sess.dcx().abort_if_errors();
+        }
 
         // The rest is error reporting and stats
 
