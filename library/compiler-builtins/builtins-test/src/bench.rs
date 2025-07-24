@@ -43,9 +43,7 @@ pub fn skip_sys_checks(test_name: &str) -> bool {
         return true;
     }
 
-    if cfg!(all(target_arch = "x86", not(target_feature = "sse")))
-        && X86_NO_SSE_SKIPPED.contains(&test_name)
-    {
+    if cfg!(x86_no_sse) && X86_NO_SSE_SKIPPED.contains(&test_name) {
         return true;
     }
 

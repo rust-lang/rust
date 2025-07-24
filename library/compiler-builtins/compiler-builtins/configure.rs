@@ -100,6 +100,13 @@ pub fn configure_aliases(target: &Target) {
         println!("cargo:rustc-cfg=thumb_1")
     }
 
+    // Config shorthands
+    println!("cargo:rustc-check-cfg=cfg(x86_no_sse)");
+    if target.arch == "x86" && !target.features.iter().any(|f| f == "sse") {
+        // Shorthand to detect i586 targets
+        println!("cargo:rustc-cfg=x86_no_sse");
+    }
+
     /* Not all backends support `f16` and `f128` to the same level on all architectures, so we
      * need to disable things if the compiler may crash. See configuration at:
      * * https://github.com/rust-lang/rust/blob/c65dccabacdfd6c8a7f7439eba13422fdd89b91e/compiler/rustc_codegen_llvm/src/llvm_util.rs#L367-L432
