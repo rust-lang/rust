@@ -10,7 +10,7 @@ use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::mir::interpret::{read_target_uint, write_target_uint};
 use rustc_middle::mir::{self, BinOp, ConstValue, NonDivergingIntrinsic};
 use rustc_middle::ty::layout::TyAndLayout;
-use rustc_middle::ty::{Ty, TyCtxt, Upcast};
+use rustc_middle::ty::{Ty, TyCtxt};
 use rustc_middle::{bug, span_bug, ty};
 use rustc_span::{Symbol, sym};
 use rustc_trait_selection::traits::{Obligation, ObligationCause, ObligationCtxt};
@@ -166,18 +166,13 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let (infcx, param_env) =
                     self.tcx.infer_ctxt().build_with_typing_env(self.typing_env);
 
-                let type_impls_trait = preds.iter().all(|pred| {
-                    let trait_ref = ty::TraitRef::new(tcx, pred.def_id(), [tp_ty]);
-
-                    let ocx = ObligationCtxt::new(&infcx);
-                    ocx.register_obligation(Obligation::new(
-                        tcx,
-                        ObligationCause::dummy(),
-                        param_env,
-                        pred,
-                    ));
-                    ocx.select_all_or_error().is_empty()
-                });
+                let ocx = ObligationCtxt::new(&infcx);
+                ocx.register_obligations(preds.iter().map(|pred| {
+                    let pred = pred.with_self_ty(tcx, tp_ty);
+                    let pred = tcx.erase_regions(pred);
+                    Obligation::new(tcx, ObligationCause::dummy(), param_env, pred)
+                }));
+                let type_impls_trait = ocx.select_all_or_error().is_empty();
 
                 if type_impls_trait {
                     let vtable_ptr = self.get_vtable_ptr(tp_ty, preds)?;
