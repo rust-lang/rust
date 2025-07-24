@@ -8,7 +8,7 @@ mod tests;
 use super::api;
 #[cfg(not(target_vendor = "uwp"))]
 use super::api::WinError;
-use crate::error::Error as StdError;
+use crate::error::Error;
 use crate::ffi::{OsStr, OsString};
 use crate::os::windows::ffi::EncodeWide;
 use crate::os::windows::prelude::*;
@@ -162,12 +162,7 @@ impl fmt::Display for JoinPathsError {
     }
 }
 
-impl StdError for JoinPathsError {
-    #[allow(deprecated)]
-    fn description(&self) -> &str {
-        "failed to join paths"
-    }
-}
+impl Error for JoinPathsError {}
 
 pub fn current_exe() -> io::Result<PathBuf> {
     super::fill_utf16_buf(
