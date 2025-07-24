@@ -23,11 +23,6 @@ pub fn skip_sys_checks(test_name: &str) -> bool {
         "mul_f64",
     ];
 
-    // FIXME(f16_f128): error on LE ppc64. There are more tests that are cfg-ed out completely
-    // in their benchmark modules due to runtime panics.
-    // <https://github.com/rust-lang/compiler-builtins/issues/617#issuecomment-2125914639>
-    const PPC64LE_SKIPPED: &[&str] = &["extend_f32_f128"];
-
     // FIXME(f16_f128): system symbols have incorrect results
     // <https://github.com/rust-lang/compiler-builtins/issues/617#issuecomment-2125914639>
     const X86_NO_SSE_SKIPPED: &[&str] = &[
@@ -54,12 +49,6 @@ pub fn skip_sys_checks(test_name: &str) -> bool {
     }
 
     if ALWAYS_SKIPPED.contains(&test_name) {
-        return true;
-    }
-
-    if cfg!(all(target_arch = "powerpc64", target_endian = "little"))
-        && PPC64LE_SKIPPED.contains(&test_name)
-    {
         return true;
     }
 
