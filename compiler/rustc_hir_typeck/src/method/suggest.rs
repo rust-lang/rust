@@ -380,16 +380,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         rcvr_ty: Ty<'tcx>,
         rcvr_expr: &hir::Expr<'tcx>,
-        mut file: Option<PathBuf>,
+        mut long_ty_path: Option<PathBuf>,
     ) -> Diag<'_> {
         let mut err = struct_span_code_err!(
             self.dcx(),
             rcvr_expr.span,
             E0599,
             "cannot write into `{}`",
-            self.tcx.short_string(rcvr_ty, &mut file),
+            self.tcx.short_string(rcvr_ty, &mut long_ty_path),
         );
-        *err.long_ty_path() = file;
+        *err.long_ty_path() = long_ty_path;
         err.span_note(
             rcvr_expr.span,
             "must implement `io::Write`, `fmt::Write`, or have a `write_fmt` method",
@@ -681,6 +681,29 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut err = if is_write && let SelfSource::MethodCall(rcvr_expr) = source {
             self.suggest_missing_writer(rcvr_ty, rcvr_expr, ty_file)
         } else {
+            // Don't show expanded generic arguments when the method can't be found in any
+            // implementation (#81576).
+            let mut ty = rcvr_ty;
+            if let ty::Adt(def, generics) = rcvr_ty.kind() {
+                if generics.len() > 0 {
+                    let mut autoderef = self.autoderef(span, rcvr_ty).silence_errors();
+                    let candidate_found = autoderef.any(|(ty, _)| {
+                        if let ty::Adt(adt_def, _) = ty.kind() {
+                            self.tcx
+                                .inherent_impls(adt_def.did())
+                                .into_iter()
+                                .any(|def_id| self.associated_value(*def_id, item_ident).is_some())
+                        } else {
+                            false
+                        }
+                    });
+                    let has_deref = autoderef.step_count() > 0;
+                    if !candidate_found && !has_deref && unsatisfied_predicates.is_empty() {
+                        ty = self.tcx.at(span).type_of(def.did()).instantiate_identity();
+                    }
+                }
+            }
+
             let mut err = self.dcx().create_err(NoAssociatedItem {
                 span,
                 item_kind,
@@ -691,7 +714,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 } else {
                     rcvr_ty.prefix_string(self.tcx)
                 },
-                ty: rcvr_ty,
+                ty,
                 trait_missing_method,
             });
 
