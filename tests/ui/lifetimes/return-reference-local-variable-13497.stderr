@@ -1,13 +1,15 @@
 error[E0515]: cannot return value referencing local variable `rawLines`
-  --> $DIR/issue-13497-2.rs:3:5
+  --> $DIR/return-reference-local-variable-13497.rs:5:5
    |
 LL |       rawLines
    |       ^-------
    |       |
    |  _____`rawLines` is borrowed here
    | |
-LL | |         .iter().map(|l| l.trim()).collect()
-   | |___________________________________________^ returns a value referencing data owned by the current function
+LL | |         .iter()
+LL | |         .map(|l| l.trim())
+LL | |         .collect()
+   | |__________________^ returns a value referencing data owned by the current function
 
 error: aborting due to 1 previous error
 

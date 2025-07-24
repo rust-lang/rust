@@ -1,3 +1,5 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/14853
+
 use std::fmt::Debug;
 
 trait Str {}

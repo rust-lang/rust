@@ -1,3 +1,5 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/14901
+
 //@ check-pass
 pub trait Reader {}
 

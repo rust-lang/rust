@@ -1,3 +1,5 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/14229
+
 //@ run-pass
 trait Foo: Sized {
     fn foo(self) {}

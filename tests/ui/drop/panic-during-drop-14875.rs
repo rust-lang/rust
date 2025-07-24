@@ -1,3 +1,5 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/14875
+
 //@ run-pass
 //@ needs-unwind
 //@ ignore-backends: gcc

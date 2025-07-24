@@ -1,3 +1,5 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/13703
+
 //@ check-pass
 
 pub struct Foo<'a, 'b: 'a> { foo: &'a &'b isize }

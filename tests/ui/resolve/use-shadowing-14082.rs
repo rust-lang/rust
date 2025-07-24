@@ -1,3 +1,5 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/14082
+
 //@ check-pass
 
 #![allow(unused_imports, dead_code)]

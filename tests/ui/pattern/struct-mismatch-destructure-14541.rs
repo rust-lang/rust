@@ -1,3 +1,5 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/14541
+
 struct Vec2 { y: f32 }
 struct Vec3 { y: f32, z: f32 }
 

@@ -1,3 +1,5 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/13763
+
 //@ run-pass
 #![allow(dead_code)]
 

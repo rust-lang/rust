@@ -1,5 +1,5 @@
 error[E0621]: explicit lifetime required in the type of `a`
-  --> $DIR/issue-14285.rs:12:5
+  --> $DIR/explicit-lifetime-required-14285.rs:14:5
    |
 LL |     B(a)
    |     ^^^^ lifetime `'a` required
