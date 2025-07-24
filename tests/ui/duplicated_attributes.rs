@@ -1,6 +1,6 @@
 //@aux-build:proc_macro_attr.rs
+#![warn(clippy::duplicated_attributes, clippy::duplicated_attributes)] //~ ERROR: duplicated attribute
 #![feature(rustc_attrs)]
-#![warn(clippy::duplicated_attributes)]
 #![cfg(any(unix, windows))]
 #![allow(dead_code)]
 #![allow(dead_code)] //~ ERROR: duplicated attribute
