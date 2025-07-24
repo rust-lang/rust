@@ -640,3 +640,14 @@ pub(crate) fn add_tt<'ll>(
         llvm::EnzymeTypeTreeToStringFree(c_str.as_ptr());
     }
 }
+
+// Fallback implementation when Enzyme is not available
+#[cfg(not(llvm_enzyme))]
+pub(crate) fn add_tt<'ll>(
+    _llmod: &'ll llvm::Module,
+    _llcx: &'ll llvm::Context,
+    _fn_def: &'ll Value,
+    _tt: FncTree,
+) {
+    unimplemented!()
+}
