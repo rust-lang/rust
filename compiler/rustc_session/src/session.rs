@@ -7,6 +7,7 @@ use std::sync::atomic::AtomicBool;
 use std::{env, fmt, io};
 
 use rand::{RngCore, rng};
+use rustc_ast::ast;
 use rustc_data_structures::base_n::{CASE_INSENSITIVE, ToBaseN};
 use rustc_data_structures::flock;
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
@@ -24,6 +25,8 @@ use rustc_errors::{
     Diag, DiagCtxt, DiagCtxtHandle, DiagMessage, Diagnostic, ErrorGuaranteed, FatalAbort,
     TerminalUrl, fallback_fluent_bundle,
 };
+use rustc_lint_defs::BuiltinLintDiag;
+use rustc_lint_defs::builtin::MUSL_MISSING_CRT_STATIC;
 use rustc_macros::HashStable_Generic;
 pub use rustc_span::def_id::StableCrateId;
 use rustc_span::edition::Edition;
@@ -423,6 +426,15 @@ impl Session {
             // We can't check `#![crate_type = "proc-macro"]` here.
             false
         } else {
+            if self.target.env == "musl" && self.target.crt_static_default {
+                self.psess.opt_span_buffer_lint(
+                    MUSL_MISSING_CRT_STATIC,
+                    None,
+                    ast::CRATE_NODE_ID,
+                    BuiltinLintDiag::MissingCrtStatic,
+                );
+            }
+
             self.target.crt_static_default
         }
     }
