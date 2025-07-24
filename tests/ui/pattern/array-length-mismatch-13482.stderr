@@ -1,5 +1,5 @@
 error[E0527]: pattern requires 0 elements but array has 2
-  --> $DIR/issue-13482.rs:4:5
+  --> $DIR/array-length-mismatch-13482.rs:6:5
    |
 LL |     [] => None,
    |     ^^ expected 2 elements

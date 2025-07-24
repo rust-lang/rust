@@ -1,3 +1,5 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/13482
+
 fn main() {
   let x = [1,2];
   let y = match x {
