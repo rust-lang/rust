@@ -252,8 +252,6 @@ where
             return None;
         }
 
-        // FIXME(-Znext-solver): Add support to merge region constraints in
-        // responses to deal with trait-system-refactor-initiative#27.
         let one = responses[0];
         if responses[1..].iter().all(|&resp| resp == one) {
             return Some(one);

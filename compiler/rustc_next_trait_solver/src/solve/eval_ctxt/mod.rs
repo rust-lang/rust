@@ -447,7 +447,10 @@ where
             ));
         }
 
-        let (orig_values, canonical_goal) = self.canonicalize_goal(goal);
+        let is_hir_typeck_root_goal = matches!(goal_evaluation_kind, GoalEvaluationKind::Root)
+            && self.delegate.in_hir_typeck();
+
+        let (orig_values, canonical_goal) = self.canonicalize_goal(is_hir_typeck_root_goal, goal);
         let mut goal_evaluation =
             self.inspect.new_goal_evaluation(goal, &orig_values, goal_evaluation_kind);
         let canonical_result = self.search_graph.evaluate_goal(

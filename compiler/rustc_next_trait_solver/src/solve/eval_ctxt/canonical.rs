@@ -55,6 +55,7 @@ where
     /// for each bound variable.
     pub(super) fn canonicalize_goal(
         &self,
+        is_hir_typeck_root_goal: bool,
         goal: Goal<I, I::Predicate>,
     ) -> (Vec<I::GenericArg>, CanonicalInput<I, I::Predicate>) {
         // We only care about one entry per `OpaqueTypeKey` here,
@@ -67,6 +68,7 @@ where
         let canonical = Canonicalizer::canonicalize_input(
             self.delegate,
             &mut orig_values,
+            is_hir_typeck_root_goal,
             QueryInput {
                 goal,
                 predefined_opaques_in_body: self
