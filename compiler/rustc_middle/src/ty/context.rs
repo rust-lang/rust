@@ -3377,6 +3377,11 @@ impl<'tcx> TyCtxt<'tcx> {
         self.resolutions(()).module_children.get(&def_id).map_or(&[], |v| &v[..])
     }
 
+    /// Return the crate imported by given use item.
+    pub fn extern_mod_stmt_cnum(self, def_id: LocalDefId) -> Option<CrateNum> {
+        self.resolutions(()).extern_crate_map.get(&def_id).copied()
+    }
+
     pub fn resolver_for_lowering(self) -> &'tcx Steal<(ty::ResolverAstLowering, Arc<ast::Crate>)> {
         self.resolver_for_lowering_raw(()).0
     }
@@ -3414,6 +3419,20 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn do_not_recommend_impl(self, def_id: DefId) -> bool {
         self.get_diagnostic_attr(def_id, sym::do_not_recommend).is_some()
     }
+
+    /// Whether this def is one of the special bin crate entrypoint functions that must have a
+    /// monomorphization and also not be internalized in the bin crate.
+    pub fn is_entrypoint(self, def_id: DefId) -> bool {
+        if self.is_lang_item(def_id, LangItem::Start) {
+            return true;
+        }
+        if let Some((entry_def_id, _)) = self.entry_fn(())
+            && entry_def_id == def_id
+        {
+            return true;
+        }
+        false
+    }
 }
 
 /// Parameter attributes that can only be determined by examining the body of a function instead
@@ -3432,8 +3451,6 @@ pub struct DeducedParamAttrs {
 }
 
 pub fn provide(providers: &mut Providers) {
-    providers.extern_mod_stmt_cnum =
-        |tcx, id| tcx.resolutions(()).extern_crate_map.get(&id).cloned();
     providers.is_panic_runtime =
         |tcx, LocalCrate| contains_name(tcx.hir_krate_attrs(), sym::panic_runtime);
     providers.is_compiler_builtins =

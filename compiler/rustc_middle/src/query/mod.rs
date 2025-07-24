@@ -2152,9 +2152,6 @@ rustc_queries! {
         desc { |tcx| "collecting child items of module `{}`", tcx.def_path_str(def_id) }
         separate_provide_extern
     }
-    query extern_mod_stmt_cnum(def_id: LocalDefId) -> Option<CrateNum> {
-        desc { |tcx| "computing crate imported by `{}`", tcx.def_path_str(def_id) }
-    }
 
     /// Gets the number of definitions in a foreign crate.
     ///
