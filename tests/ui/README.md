@@ -654,10 +654,6 @@ Tests on range patterns where one of the bounds is not a direct value.
 
 Tests for the standard library collection [`std::collections::HashMap`](https://doc.rust-lang.org/std/collections/struct.HashMap.html).
 
-## `tests/ui/hello_world/`
-
-Tests that the basic hello-world program is not somehow broken.
-
 ## `tests/ui/higher-ranked/`
 
 Tests for higher-ranked trait bounds.
