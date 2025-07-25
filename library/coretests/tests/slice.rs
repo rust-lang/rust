@@ -1492,28 +1492,28 @@ mod slice_index {
             // note: using 0 specifically ensures that the result of overflowing is 0..0,
             //       so that `get` doesn't simply return None for the wrong reason.
             bad: data[0 ..= usize::MAX];
-            message: "maximum usize";
+            message: "out of range";
         }
 
         in mod rangetoinclusive_overflow {
             data: [0, 1];
 
             bad: data[..= usize::MAX];
-            message: "maximum usize";
+            message: "out of range";
         }
 
         in mod boundpair_overflow_end {
             data: [0; 1];
 
             bad: data[(Bound::Unbounded, Bound::Included(usize::MAX))];
-            message: "maximum usize";
+            message: "out of range";
         }
 
         in mod boundpair_overflow_start {
             data: [0; 1];
 
             bad: data[(Bound::Excluded(usize::MAX), Bound::Unbounded)];
-            message: "maximum usize";
+            message: "out of range";
         }
     } // panic_cases!
 }
@@ -2008,7 +2008,7 @@ fn test_copy_within_panics_src_inverted() {
     bytes.copy_within(2..1, 0);
 }
 #[test]
-#[should_panic(expected = "attempted to index slice up to maximum usize")]
+#[should_panic(expected = "out of range")]
 fn test_copy_within_panics_src_out_of_bounds() {
     let mut bytes = *b"Hello, World!";
     // an inclusive range ending at usize::MAX would make src_end overflow
