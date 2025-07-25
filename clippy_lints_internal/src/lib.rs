@@ -20,6 +20,7 @@
 #![allow(clippy::missing_clippy_version_attribute)]
 
 extern crate rustc_ast;
+extern crate rustc_attr_data_structures;
 extern crate rustc_attr_parsing;
 extern crate rustc_data_structures;
 extern crate rustc_errors;

@@ -740,7 +740,7 @@ impl<'tcx> LateLintPass<'tcx> for Documentation {
                             );
                         }
                     },
-                    ItemKind::Trait(_, unsafety, ..) => match (headers.safety, unsafety) {
+                    ItemKind::Trait(_, _, unsafety, ..) => match (headers.safety, unsafety) {
                         (false, Safety::Unsafe) => span_lint(
                             cx,
                             MISSING_SAFETY_DOC,

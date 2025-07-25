@@ -1,5 +1,6 @@
 use clippy_config::Conf;
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_hir_and_then};
+use clippy_utils::higher::has_let_expr;
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::SpanRangeExt;
 use clippy_utils::sugg::Sugg;
@@ -646,7 +647,9 @@ impl<'tcx> Visitor<'tcx> for NonminimalBoolVisitor<'_, 'tcx> {
     fn visit_expr(&mut self, e: &'tcx Expr<'_>) {
         if !e.span.from_expansion() {
             match &e.kind {
-                ExprKind::Binary(binop, _, _) if binop.node == BinOpKind::Or || binop.node == BinOpKind::And => {
+                ExprKind::Binary(binop, _, _)
+                    if binop.node == BinOpKind::Or || binop.node == BinOpKind::And && !has_let_expr(e) =>
+                {
                     self.bool_expr(e);
                 },
                 ExprKind::Unary(UnOp::Not, inner) => {

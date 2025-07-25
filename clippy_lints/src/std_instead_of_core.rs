@@ -249,7 +249,7 @@ fn is_stable(cx: &LateContext<'_>, mut def_id: DefId, msrv: Msrv) -> bool {
             let stable = match since {
                 StableSince::Version(v) => msrv.meets(cx, v),
                 StableSince::Current => msrv.current(cx).is_none(),
-                StableSince::Err => false,
+                StableSince::Err(_) => false,
             };
 
             if !stable {
