@@ -6,7 +6,7 @@ pub(crate) fn target() -> Target {
     let mut base = base::linux_musl::opts();
     base.max_atomic_width = Some(128);
     base.supports_xray = true;
-    base.features = "+v8a".into();
+    base.features = "+v8a,+outline-atomics".into();
     base.stack_probes = StackProbeType::Inline;
     base.supported_sanitizers = SanitizerSet::ADDRESS
         | SanitizerSet::CFI
