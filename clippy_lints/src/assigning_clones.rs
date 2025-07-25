@@ -98,7 +98,7 @@ impl<'tcx> LateLintPass<'tcx> for AssigningClones {
             // That is overly conservative - the lint should fire even if there was no initializer,
             // but the variable has been initialized before `lhs` was evaluated.
             && path_to_local(lhs).is_none_or(|lhs| local_is_initialized(cx, lhs))
-            && let Some(resolved_impl) = cx.tcx.impl_of_method(resolved_fn.def_id())
+            && let Some(resolved_impl) = cx.tcx.impl_of_assoc(resolved_fn.def_id())
             // Derived forms don't implement `clone_from`/`clone_into`.
             // See https://github.com/rust-lang/rust/pull/98445#issuecomment-1190681305
             && !cx.tcx.is_builtin_derived(resolved_impl)
