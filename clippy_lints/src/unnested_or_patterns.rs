@@ -385,11 +385,11 @@ fn take_pat(from: &mut Pat) -> Pat {
 /// in `tail_or` if there are any and return if there were.
 fn extend_with_tail_or(target: &mut Pat, tail_or: ThinVec<Pat>) -> bool {
     fn extend(target: &mut Pat, mut tail_or: ThinVec<Pat>) {
-        match target {
+        match &mut target.kind {
             // On an existing or-pattern in the target, append to it.
-            Pat { kind: Or(ps), .. } => ps.append(&mut tail_or),
+            Or(ps) => ps.append(&mut tail_or),
             // Otherwise convert the target to an or-pattern.
-            target => {
+            _ => {
                 let mut init_or = thin_vec![take_pat(target)];
                 init_or.append(&mut tail_or);
                 target.kind = Or(init_or);
