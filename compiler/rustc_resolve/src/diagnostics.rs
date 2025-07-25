@@ -1076,11 +1076,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         }
                     }
                 }
-                Scope::CrateRoot => {
-                    let root_ident = Ident::new(kw::PathRoot, ident.span);
-                    let root_module = this.resolve_crate_root(root_ident);
-                    this.add_module_candidates(root_module, &mut suggestions, filter_fn, None);
-                }
                 Scope::Module(module, _) => {
                     this.add_module_candidates(module, &mut suggestions, filter_fn, None);
                 }
