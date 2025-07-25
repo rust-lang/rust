@@ -657,8 +657,25 @@ unsafe impl<T> const SliceIndex<[T]> for ops::RangeFull {
     }
 }
 
+/// Return `Ok((start, new_len))` if the `RangeInclusive` is valid for a slice of
+/// length `len`, or `Err((start, end))` if it is not.
+#[inline(always)]
+const fn check_inclusive(
+    range: ops::RangeInclusive<usize>,
+    len: usize,
+) -> Result<(usize, usize), (usize, usize)> {
+    let ops::RangeInclusive { mut start, mut end, exhausted } = range;
+    if end < len {
+        end = end + 1;
+        start = if exhausted { end } else { start };
+        if let Some(new_len) = usize::checked_sub(end, start) {
+            return Ok((start, new_len));
+        }
+    }
+    Err((start, end))
+}
+
 /// The methods `index` and `index_mut` panic if:
-/// - the end of the range is `usize::MAX` or
 /// - the start of the range is greater than the end of the range or
 /// - the end of the range is out of bounds.
 #[stable(feature = "inclusive_range", since = "1.26.0")]
@@ -668,12 +685,24 @@ unsafe impl<T> const SliceIndex<[T]> for ops::RangeInclusive<usize> {
 
     #[inline]
     fn get(self, slice: &[T]) -> Option<&[T]> {
-        if *self.end() == usize::MAX { None } else { self.into_slice_range().get(slice) }
+        match check_inclusive(self, slice.len()) {
+            Ok((start, new_len)) => {
+                // SAFETY: We checked that the range is valid above.
+                unsafe { Some(&*get_offset_len_noubcheck(slice, start, new_len)) }
+            }
+            Err(_) => None,
+        }
     }
 
     #[inline]
     fn get_mut(self, slice: &mut [T]) -> Option<&mut [T]> {
-        if *self.end() == usize::MAX { None } else { self.into_slice_range().get_mut(slice) }
+        match check_inclusive(self, slice.len()) {
+            Ok((start, new_len)) => {
+                // SAFETY: We checked that the range is valid above.
+                unsafe { Some(&mut *get_offset_len_mut_noubcheck(slice, start, new_len)) }
+            }
+            Err(_) => None,
+        }
     }
 
     #[inline]
@@ -690,32 +719,24 @@ unsafe impl<T> const SliceIndex<[T]> for ops::RangeInclusive<usize> {
 
     #[inline]
     fn index(self, slice: &[T]) -> &[T] {
-        let Self { mut start, mut end, exhausted } = self;
-        let len = slice.len();
-        if end < len {
-            end = end + 1;
-            start = if exhausted { end } else { start };
-            if let Some(new_len) = usize::checked_sub(end, start) {
-                // SAFETY: `self` is checked to be valid and in bounds above.
-                unsafe { return &*get_offset_len_noubcheck(slice, start, new_len) }
+        match check_inclusive(self, slice.len()) {
+            Ok((start, new_len)) => {
+                // SAFETY: We checked that the range is valid above.
+                unsafe { &*get_offset_len_noubcheck(slice, start, new_len) }
             }
+            Err((start, end)) => slice_index_fail(start, end, slice.len()),
         }
-        slice_index_fail(start, end, slice.len())
     }
 
     #[inline]
     fn index_mut(self, slice: &mut [T]) -> &mut [T] {
-        let Self { mut start, mut end, exhausted } = self;
-        let len = slice.len();
-        if end < len {
-            end = end + 1;
-            start = if exhausted { end } else { start };
-            if let Some(new_len) = usize::checked_sub(end, start) {
-                // SAFETY: `self` is checked to be valid and in bounds above.
-                unsafe { return &mut *get_offset_len_mut_noubcheck(slice, start, new_len) }
+        match check_inclusive(self, slice.len()) {
+            Ok((start, new_len)) => {
+                // SAFETY: We checked that the range is valid above.
+                unsafe { &mut *get_offset_len_mut_noubcheck(slice, start, new_len) }
             }
+            Err((start, end)) => slice_index_fail(start, end, slice.len()),
         }
-        slice_index_fail(start, end, slice.len())
     }
 }
 

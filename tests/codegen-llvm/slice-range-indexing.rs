@@ -43,16 +43,16 @@ tests!(RangeTo<usize>, get_range_to, index_range_to);
 tests!(RangeFrom<usize>, get_range_from, index_range_from);
 
 // CHECK-LABEL: @get_range_inclusive
-// CHECK-COUNT-3: icmp
-// 3 comparisons required: (range.end != usize::MAX) && (range.end < slice.len()) && (range.start <= range.end + 1)
+// CHECK-COUNT-2: icmp
+// 2 comparisons required: (range.end < slice.len()) && (range.start <= range.end + 1)
 // CHECK-LABEL: @index_range_inclusive
 // CHECK-COUNT-2: icmp
 // 2 comparisons required: (range.end < slice.len()) && (range.start <= range.end + 1)
 tests!(RangeInclusive<usize>, get_range_inclusive, index_range_inclusive);
 
 // CHECK-LABEL: @get_range_to_inclusive
-// CHECK-COUNT-2: icmp
-// 2 comparisons required: (range.end != usize::MAX) && (range.end < slice.len())
+// CHECK-COUNT-1: icmp
+// 1 comparison required: (range.end < slice.len())
 // CHECK-LABEL: @index_range_to_inclusive
 // CHECK-COUNT-1: icmp
 // 1 comparison required: (range.end < slice.len())
