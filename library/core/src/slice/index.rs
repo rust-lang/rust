@@ -658,7 +658,6 @@ unsafe impl<T> const SliceIndex<[T]> for ops::RangeFull {
 }
 
 /// The methods `index` and `index_mut` panic if:
-/// - the end of the range is `usize::MAX` or
 /// - the start of the range is greater than the end of the range or
 /// - the end of the range is out of bounds.
 #[stable(feature = "inclusive_range", since = "1.26.0")]
@@ -668,12 +667,12 @@ unsafe impl<T> const SliceIndex<[T]> for ops::RangeInclusive<usize> {
 
     #[inline]
     fn get(self, slice: &[T]) -> Option<&[T]> {
-        if *self.end() == usize::MAX { None } else { self.into_slice_range().get(slice) }
+        if *self.end() >= slice.len() { None } else { self.into_slice_range().get(slice) }
     }
 
     #[inline]
     fn get_mut(self, slice: &mut [T]) -> Option<&mut [T]> {
-        if *self.end() == usize::MAX { None } else { self.into_slice_range().get_mut(slice) }
+        if *self.end() >= slice.len() { None } else { self.into_slice_range().get_mut(slice) }
     }
 
     #[inline]
@@ -697,7 +696,7 @@ unsafe impl<T> const SliceIndex<[T]> for ops::RangeInclusive<usize> {
             start = if exhausted { end } else { start };
             if let Some(new_len) = usize::checked_sub(end, start) {
                 // SAFETY: `self` is checked to be valid and in bounds above.
-                unsafe { return &*get_offset_len_noubcheck(slice, start, new_len) }
+                unsafe { return &*get_offset_len_noubcheck(slice, start, new_len) };
             }
         }
         slice_index_fail(start, end, slice.len())
@@ -712,7 +711,7 @@ unsafe impl<T> const SliceIndex<[T]> for ops::RangeInclusive<usize> {
             start = if exhausted { end } else { start };
             if let Some(new_len) = usize::checked_sub(end, start) {
                 // SAFETY: `self` is checked to be valid and in bounds above.
-                unsafe { return &mut *get_offset_len_mut_noubcheck(slice, start, new_len) }
+                unsafe { return &mut *get_offset_len_mut_noubcheck(slice, start, new_len) };
             }
         }
         slice_index_fail(start, end, slice.len())

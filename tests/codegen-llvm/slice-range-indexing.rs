@@ -58,9 +58,9 @@ tests!(RangeTo<usize>, get_range_to, index_range_to);
 // CHECK: ret
 tests!(RangeFrom<usize>, get_range_from, index_range_from);
 
-// 3 comparisons required: (range.end != usize::MAX) && (range.end < slice.len()) && (range.start <= range.end + 1)
+// 2 comparisons required: (range.end < slice.len()) && (range.start <= range.end + 1)
 // CHECK-LABEL: @get_range_inclusive
-// CHECK-COUNT-3: %{{.+}} = icmp
+// CHECK-COUNT-2: %{{.+}} = icmp
 // CHECK-NOT: %{{.+}} = icmp
 // CHECK: ret
 
@@ -71,9 +71,9 @@ tests!(RangeFrom<usize>, get_range_from, index_range_from);
 // CHECK: ret
 tests!(RangeInclusive<usize>, get_range_inclusive, index_range_inclusive);
 
-// 2 comparisons required: (range.end != usize::MAX) && (range.end < slice.len())
+// 1 comparison required: (range.end < slice.len())
 // CHECK-LABEL: @get_range_to_inclusive
-// CHECK-COUNT-2: %{{.+}} = icmp
+// CHECK-COUNT-1: %{{.+}} = icmp
 // CHECK-NOT: %{{.+}} = icmp
 // CHECK: ret
 
