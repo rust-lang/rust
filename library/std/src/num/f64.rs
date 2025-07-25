@@ -749,7 +749,7 @@ impl f64 {
     /// # Examples
     ///
     /// ```
-    /// let f = std::f64::consts::FRAC_PI_2;
+    /// let f = std::f64::consts::FRAC_PI_4;
     ///
     /// // asin(sin(pi/2))
     /// let abs_difference = (f.sin().asin() - std::f64::consts::FRAC_PI_2).abs();
