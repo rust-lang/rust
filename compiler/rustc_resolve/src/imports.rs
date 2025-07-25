@@ -651,7 +651,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         for module in self.arenas.local_modules().iter() {
             for (key, resolution) in self.resolutions(*module).borrow().iter() {
                 let resolution = resolution.borrow();
-
                 let Some(binding) = resolution.best_binding() else { continue };
 
                 if let NameBindingKind::Import { import, .. } = binding.kind
@@ -1202,41 +1201,39 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             });
 
             return if all_ns_failed {
-                let resolutions = match module {
-                    ModuleOrUniformRoot::Module(module) => Some(self.resolutions(module).borrow()),
-                    _ => None,
-                };
-                let resolutions = resolutions.as_ref().into_iter().flat_map(|r| r.iter());
-                let names = resolutions
-                    .filter_map(|(BindingKey { ident: i, .. }, resolution)| {
-                        if i.name == ident.name {
-                            return None;
-                        } // Never suggest the same name
-                        match *resolution.borrow() {
-                            ref resolution
-                                if let Some(name_binding) = resolution.best_binding() =>
-                            {
-                                match name_binding.kind {
-                                    NameBindingKind::Import { binding, .. } => {
-                                        match binding.kind {
-                                            // Never suggest the name that has binding error
-                                            // i.e., the name that cannot be previously resolved
-                                            NameBindingKind::Res(Res::Err) => None,
-                                            _ => Some(i.name),
+                let names = match module {
+                    ModuleOrUniformRoot::Module(module) => {
+                        self.resolutions(module)
+                            .borrow()
+                            .iter()
+                            .filter_map(|(BindingKey { ident: i, .. }, resolution)| {
+                                if i.name == ident.name {
+                                    return None;
+                                } // Never suggest the same name
+
+                                let resolution = resolution.borrow();
+                                if let Some(name_binding) = resolution.best_binding() {
+                                    match name_binding.kind {
+                                        NameBindingKind::Import { binding, .. } => {
+                                            match binding.kind {
+                                                // Never suggest the name that has binding error
+                                                // i.e., the name that cannot be previously resolved
+                                                NameBindingKind::Res(Res::Err) => None,
+                                                _ => Some(i.name),
+                                            }
                                         }
+                                        _ => Some(i.name),
                                     }
-                                    _ => Some(i.name),
+                                } else if resolution.single_imports.is_empty() {
+                                    None
+                                } else {
+                                    Some(i.name)
                                 }
-                            }
-                            NameResolution { ref single_imports, .. }
-                                if single_imports.is_empty() =>
-                            {
-                                None
-                            }
-                            _ => Some(i.name),
-                        }
-                    })
-                    .collect::<Vec<Symbol>>();
+                            })
+                            .collect()
+                    }
+                    _ => Vec::new(),
+                };
 
                 let lev_suggestion =
                     find_best_match_for_name(&names, ident.name, None).map(|suggestion| {
