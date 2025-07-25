@@ -1,4 +1,4 @@
-FROM ubuntu:25.04
+FROM ubuntu:25.10
 RUN apt-get update && apt-get install -y --no-install-recommends \
   gcc \
   g++ \
@@ -10,7 +10,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   qemu-user \
   make \
   file \
-  clang-19 \
+  clang \
   lld
 
 ENV CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc \

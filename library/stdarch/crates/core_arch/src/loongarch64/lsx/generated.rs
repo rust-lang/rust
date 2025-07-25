@@ -1455,3593 +1455,3593 @@ unsafe extern "unadjusted" {
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsll_b(a: v16i8, b: v16i8) -> v16i8 {
-    __lsx_vsll_b(a, b)
+pub fn lsx_vsll_b(a: v16i8, b: v16i8) -> v16i8 {
+    unsafe { __lsx_vsll_b(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsll_h(a: v8i16, b: v8i16) -> v8i16 {
-    __lsx_vsll_h(a, b)
+pub fn lsx_vsll_h(a: v8i16, b: v8i16) -> v8i16 {
+    unsafe { __lsx_vsll_h(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsll_w(a: v4i32, b: v4i32) -> v4i32 {
-    __lsx_vsll_w(a, b)
+pub fn lsx_vsll_w(a: v4i32, b: v4i32) -> v4i32 {
+    unsafe { __lsx_vsll_w(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsll_d(a: v2i64, b: v2i64) -> v2i64 {
-    __lsx_vsll_d(a, b)
+pub fn lsx_vsll_d(a: v2i64, b: v2i64) -> v2i64 {
+    unsafe { __lsx_vsll_d(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vslli_b<const IMM3: u32>(a: v16i8) -> v16i8 {
+pub fn lsx_vslli_b<const IMM3: u32>(a: v16i8) -> v16i8 {
     static_assert_uimm_bits!(IMM3, 3);
-    __lsx_vslli_b(a, IMM3)
+    unsafe { __lsx_vslli_b(a, IMM3) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vslli_h<const IMM4: u32>(a: v8i16) -> v8i16 {
+pub fn lsx_vslli_h<const IMM4: u32>(a: v8i16) -> v8i16 {
     static_assert_uimm_bits!(IMM4, 4);
-    __lsx_vslli_h(a, IMM4)
+    unsafe { __lsx_vslli_h(a, IMM4) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vslli_w<const IMM5: u32>(a: v4i32) -> v4i32 {
+pub fn lsx_vslli_w<const IMM5: u32>(a: v4i32) -> v4i32 {
     static_assert_uimm_bits!(IMM5, 5);
-    __lsx_vslli_w(a, IMM5)
+    unsafe { __lsx_vslli_w(a, IMM5) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vslli_d<const IMM6: u32>(a: v2i64) -> v2i64 {
+pub fn lsx_vslli_d<const IMM6: u32>(a: v2i64) -> v2i64 {
     static_assert_uimm_bits!(IMM6, 6);
-    __lsx_vslli_d(a, IMM6)
+    unsafe { __lsx_vslli_d(a, IMM6) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsra_b(a: v16i8, b: v16i8) -> v16i8 {
-    __lsx_vsra_b(a, b)
+pub fn lsx_vsra_b(a: v16i8, b: v16i8) -> v16i8 {
+    unsafe { __lsx_vsra_b(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsra_h(a: v8i16, b: v8i16) -> v8i16 {
-    __lsx_vsra_h(a, b)
+pub fn lsx_vsra_h(a: v8i16, b: v8i16) -> v8i16 {
+    unsafe { __lsx_vsra_h(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsra_w(a: v4i32, b: v4i32) -> v4i32 {
-    __lsx_vsra_w(a, b)
+pub fn lsx_vsra_w(a: v4i32, b: v4i32) -> v4i32 {
+    unsafe { __lsx_vsra_w(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsra_d(a: v2i64, b: v2i64) -> v2i64 {
-    __lsx_vsra_d(a, b)
+pub fn lsx_vsra_d(a: v2i64, b: v2i64) -> v2i64 {
+    unsafe { __lsx_vsra_d(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsrai_b<const IMM3: u32>(a: v16i8) -> v16i8 {
+pub fn lsx_vsrai_b<const IMM3: u32>(a: v16i8) -> v16i8 {
     static_assert_uimm_bits!(IMM3, 3);
-    __lsx_vsrai_b(a, IMM3)
+    unsafe { __lsx_vsrai_b(a, IMM3) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsrai_h<const IMM4: u32>(a: v8i16) -> v8i16 {
+pub fn lsx_vsrai_h<const IMM4: u32>(a: v8i16) -> v8i16 {
     static_assert_uimm_bits!(IMM4, 4);
-    __lsx_vsrai_h(a, IMM4)
+    unsafe { __lsx_vsrai_h(a, IMM4) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsrai_w<const IMM5: u32>(a: v4i32) -> v4i32 {
+pub fn lsx_vsrai_w<const IMM5: u32>(a: v4i32) -> v4i32 {
     static_assert_uimm_bits!(IMM5, 5);
-    __lsx_vsrai_w(a, IMM5)
+    unsafe { __lsx_vsrai_w(a, IMM5) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsrai_d<const IMM6: u32>(a: v2i64) -> v2i64 {
+pub fn lsx_vsrai_d<const IMM6: u32>(a: v2i64) -> v2i64 {
     static_assert_uimm_bits!(IMM6, 6);
-    __lsx_vsrai_d(a, IMM6)
+    unsafe { __lsx_vsrai_d(a, IMM6) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsrar_b(a: v16i8, b: v16i8) -> v16i8 {
-    __lsx_vsrar_b(a, b)
+pub fn lsx_vsrar_b(a: v16i8, b: v16i8) -> v16i8 {
+    unsafe { __lsx_vsrar_b(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsrar_h(a: v8i16, b: v8i16) -> v8i16 {
-    __lsx_vsrar_h(a, b)
+pub fn lsx_vsrar_h(a: v8i16, b: v8i16) -> v8i16 {
+    unsafe { __lsx_vsrar_h(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsrar_w(a: v4i32, b: v4i32) -> v4i32 {
-    __lsx_vsrar_w(a, b)
+pub fn lsx_vsrar_w(a: v4i32, b: v4i32) -> v4i32 {
+    unsafe { __lsx_vsrar_w(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsrar_d(a: v2i64, b: v2i64) -> v2i64 {
-    __lsx_vsrar_d(a, b)
+pub fn lsx_vsrar_d(a: v2i64, b: v2i64) -> v2i64 {
+    unsafe { __lsx_vsrar_d(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsrari_b<const IMM3: u32>(a: v16i8) -> v16i8 {
+pub fn lsx_vsrari_b<const IMM3: u32>(a: v16i8) -> v16i8 {
     static_assert_uimm_bits!(IMM3, 3);
-    __lsx_vsrari_b(a, IMM3)
+    unsafe { __lsx_vsrari_b(a, IMM3) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsrari_h<const IMM4: u32>(a: v8i16) -> v8i16 {
+pub fn lsx_vsrari_h<const IMM4: u32>(a: v8i16) -> v8i16 {
     static_assert_uimm_bits!(IMM4, 4);
-    __lsx_vsrari_h(a, IMM4)
+    unsafe { __lsx_vsrari_h(a, IMM4) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsrari_w<const IMM5: u32>(a: v4i32) -> v4i32 {
+pub fn lsx_vsrari_w<const IMM5: u32>(a: v4i32) -> v4i32 {
     static_assert_uimm_bits!(IMM5, 5);
-    __lsx_vsrari_w(a, IMM5)
+    unsafe { __lsx_vsrari_w(a, IMM5) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsrari_d<const IMM6: u32>(a: v2i64) -> v2i64 {
+pub fn lsx_vsrari_d<const IMM6: u32>(a: v2i64) -> v2i64 {
     static_assert_uimm_bits!(IMM6, 6);
-    __lsx_vsrari_d(a, IMM6)
+    unsafe { __lsx_vsrari_d(a, IMM6) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsrl_b(a: v16i8, b: v16i8) -> v16i8 {
-    __lsx_vsrl_b(a, b)
+pub fn lsx_vsrl_b(a: v16i8, b: v16i8) -> v16i8 {
+    unsafe { __lsx_vsrl_b(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsrl_h(a: v8i16, b: v8i16) -> v8i16 {
-    __lsx_vsrl_h(a, b)
+pub fn lsx_vsrl_h(a: v8i16, b: v8i16) -> v8i16 {
+    unsafe { __lsx_vsrl_h(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsrl_w(a: v4i32, b: v4i32) -> v4i32 {
-    __lsx_vsrl_w(a, b)
+pub fn lsx_vsrl_w(a: v4i32, b: v4i32) -> v4i32 {
+    unsafe { __lsx_vsrl_w(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsrl_d(a: v2i64, b: v2i64) -> v2i64 {
-    __lsx_vsrl_d(a, b)
+pub fn lsx_vsrl_d(a: v2i64, b: v2i64) -> v2i64 {
+    unsafe { __lsx_vsrl_d(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsrli_b<const IMM3: u32>(a: v16i8) -> v16i8 {
+pub fn lsx_vsrli_b<const IMM3: u32>(a: v16i8) -> v16i8 {
     static_assert_uimm_bits!(IMM3, 3);
-    __lsx_vsrli_b(a, IMM3)
+    unsafe { __lsx_vsrli_b(a, IMM3) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsrli_h<const IMM4: u32>(a: v8i16) -> v8i16 {
+pub fn lsx_vsrli_h<const IMM4: u32>(a: v8i16) -> v8i16 {
     static_assert_uimm_bits!(IMM4, 4);
-    __lsx_vsrli_h(a, IMM4)
+    unsafe { __lsx_vsrli_h(a, IMM4) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsrli_w<const IMM5: u32>(a: v4i32) -> v4i32 {
+pub fn lsx_vsrli_w<const IMM5: u32>(a: v4i32) -> v4i32 {
     static_assert_uimm_bits!(IMM5, 5);
-    __lsx_vsrli_w(a, IMM5)
+    unsafe { __lsx_vsrli_w(a, IMM5) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsrli_d<const IMM6: u32>(a: v2i64) -> v2i64 {
+pub fn lsx_vsrli_d<const IMM6: u32>(a: v2i64) -> v2i64 {
     static_assert_uimm_bits!(IMM6, 6);
-    __lsx_vsrli_d(a, IMM6)
+    unsafe { __lsx_vsrli_d(a, IMM6) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsrlr_b(a: v16i8, b: v16i8) -> v16i8 {
-    __lsx_vsrlr_b(a, b)
+pub fn lsx_vsrlr_b(a: v16i8, b: v16i8) -> v16i8 {
+    unsafe { __lsx_vsrlr_b(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsrlr_h(a: v8i16, b: v8i16) -> v8i16 {
-    __lsx_vsrlr_h(a, b)
+pub fn lsx_vsrlr_h(a: v8i16, b: v8i16) -> v8i16 {
+    unsafe { __lsx_vsrlr_h(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsrlr_w(a: v4i32, b: v4i32) -> v4i32 {
-    __lsx_vsrlr_w(a, b)
+pub fn lsx_vsrlr_w(a: v4i32, b: v4i32) -> v4i32 {
+    unsafe { __lsx_vsrlr_w(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsrlr_d(a: v2i64, b: v2i64) -> v2i64 {
-    __lsx_vsrlr_d(a, b)
+pub fn lsx_vsrlr_d(a: v2i64, b: v2i64) -> v2i64 {
+    unsafe { __lsx_vsrlr_d(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsrlri_b<const IMM3: u32>(a: v16i8) -> v16i8 {
+pub fn lsx_vsrlri_b<const IMM3: u32>(a: v16i8) -> v16i8 {
     static_assert_uimm_bits!(IMM3, 3);
-    __lsx_vsrlri_b(a, IMM3)
+    unsafe { __lsx_vsrlri_b(a, IMM3) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsrlri_h<const IMM4: u32>(a: v8i16) -> v8i16 {
+pub fn lsx_vsrlri_h<const IMM4: u32>(a: v8i16) -> v8i16 {
     static_assert_uimm_bits!(IMM4, 4);
-    __lsx_vsrlri_h(a, IMM4)
+    unsafe { __lsx_vsrlri_h(a, IMM4) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsrlri_w<const IMM5: u32>(a: v4i32) -> v4i32 {
+pub fn lsx_vsrlri_w<const IMM5: u32>(a: v4i32) -> v4i32 {
     static_assert_uimm_bits!(IMM5, 5);
-    __lsx_vsrlri_w(a, IMM5)
+    unsafe { __lsx_vsrlri_w(a, IMM5) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsrlri_d<const IMM6: u32>(a: v2i64) -> v2i64 {
+pub fn lsx_vsrlri_d<const IMM6: u32>(a: v2i64) -> v2i64 {
     static_assert_uimm_bits!(IMM6, 6);
-    __lsx_vsrlri_d(a, IMM6)
+    unsafe { __lsx_vsrlri_d(a, IMM6) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vbitclr_b(a: v16u8, b: v16u8) -> v16u8 {
-    __lsx_vbitclr_b(a, b)
+pub fn lsx_vbitclr_b(a: v16u8, b: v16u8) -> v16u8 {
+    unsafe { __lsx_vbitclr_b(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vbitclr_h(a: v8u16, b: v8u16) -> v8u16 {
-    __lsx_vbitclr_h(a, b)
+pub fn lsx_vbitclr_h(a: v8u16, b: v8u16) -> v8u16 {
+    unsafe { __lsx_vbitclr_h(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vbitclr_w(a: v4u32, b: v4u32) -> v4u32 {
-    __lsx_vbitclr_w(a, b)
+pub fn lsx_vbitclr_w(a: v4u32, b: v4u32) -> v4u32 {
+    unsafe { __lsx_vbitclr_w(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vbitclr_d(a: v2u64, b: v2u64) -> v2u64 {
-    __lsx_vbitclr_d(a, b)
+pub fn lsx_vbitclr_d(a: v2u64, b: v2u64) -> v2u64 {
+    unsafe { __lsx_vbitclr_d(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vbitclri_b<const IMM3: u32>(a: v16u8) -> v16u8 {
+pub fn lsx_vbitclri_b<const IMM3: u32>(a: v16u8) -> v16u8 {
     static_assert_uimm_bits!(IMM3, 3);
-    __lsx_vbitclri_b(a, IMM3)
+    unsafe { __lsx_vbitclri_b(a, IMM3) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vbitclri_h<const IMM4: u32>(a: v8u16) -> v8u16 {
+pub fn lsx_vbitclri_h<const IMM4: u32>(a: v8u16) -> v8u16 {
     static_assert_uimm_bits!(IMM4, 4);
-    __lsx_vbitclri_h(a, IMM4)
+    unsafe { __lsx_vbitclri_h(a, IMM4) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vbitclri_w<const IMM5: u32>(a: v4u32) -> v4u32 {
+pub fn lsx_vbitclri_w<const IMM5: u32>(a: v4u32) -> v4u32 {
     static_assert_uimm_bits!(IMM5, 5);
-    __lsx_vbitclri_w(a, IMM5)
+    unsafe { __lsx_vbitclri_w(a, IMM5) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vbitclri_d<const IMM6: u32>(a: v2u64) -> v2u64 {
+pub fn lsx_vbitclri_d<const IMM6: u32>(a: v2u64) -> v2u64 {
     static_assert_uimm_bits!(IMM6, 6);
-    __lsx_vbitclri_d(a, IMM6)
+    unsafe { __lsx_vbitclri_d(a, IMM6) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vbitset_b(a: v16u8, b: v16u8) -> v16u8 {
-    __lsx_vbitset_b(a, b)
+pub fn lsx_vbitset_b(a: v16u8, b: v16u8) -> v16u8 {
+    unsafe { __lsx_vbitset_b(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vbitset_h(a: v8u16, b: v8u16) -> v8u16 {
-    __lsx_vbitset_h(a, b)
+pub fn lsx_vbitset_h(a: v8u16, b: v8u16) -> v8u16 {
+    unsafe { __lsx_vbitset_h(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vbitset_w(a: v4u32, b: v4u32) -> v4u32 {
-    __lsx_vbitset_w(a, b)
+pub fn lsx_vbitset_w(a: v4u32, b: v4u32) -> v4u32 {
+    unsafe { __lsx_vbitset_w(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vbitset_d(a: v2u64, b: v2u64) -> v2u64 {
-    __lsx_vbitset_d(a, b)
+pub fn lsx_vbitset_d(a: v2u64, b: v2u64) -> v2u64 {
+    unsafe { __lsx_vbitset_d(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vbitseti_b<const IMM3: u32>(a: v16u8) -> v16u8 {
+pub fn lsx_vbitseti_b<const IMM3: u32>(a: v16u8) -> v16u8 {
     static_assert_uimm_bits!(IMM3, 3);
-    __lsx_vbitseti_b(a, IMM3)
+    unsafe { __lsx_vbitseti_b(a, IMM3) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vbitseti_h<const IMM4: u32>(a: v8u16) -> v8u16 {
+pub fn lsx_vbitseti_h<const IMM4: u32>(a: v8u16) -> v8u16 {
     static_assert_uimm_bits!(IMM4, 4);
-    __lsx_vbitseti_h(a, IMM4)
+    unsafe { __lsx_vbitseti_h(a, IMM4) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vbitseti_w<const IMM5: u32>(a: v4u32) -> v4u32 {
+pub fn lsx_vbitseti_w<const IMM5: u32>(a: v4u32) -> v4u32 {
     static_assert_uimm_bits!(IMM5, 5);
-    __lsx_vbitseti_w(a, IMM5)
+    unsafe { __lsx_vbitseti_w(a, IMM5) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vbitseti_d<const IMM6: u32>(a: v2u64) -> v2u64 {
+pub fn lsx_vbitseti_d<const IMM6: u32>(a: v2u64) -> v2u64 {
     static_assert_uimm_bits!(IMM6, 6);
-    __lsx_vbitseti_d(a, IMM6)
+    unsafe { __lsx_vbitseti_d(a, IMM6) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vbitrev_b(a: v16u8, b: v16u8) -> v16u8 {
-    __lsx_vbitrev_b(a, b)
+pub fn lsx_vbitrev_b(a: v16u8, b: v16u8) -> v16u8 {
+    unsafe { __lsx_vbitrev_b(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vbitrev_h(a: v8u16, b: v8u16) -> v8u16 {
-    __lsx_vbitrev_h(a, b)
+pub fn lsx_vbitrev_h(a: v8u16, b: v8u16) -> v8u16 {
+    unsafe { __lsx_vbitrev_h(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vbitrev_w(a: v4u32, b: v4u32) -> v4u32 {
-    __lsx_vbitrev_w(a, b)
+pub fn lsx_vbitrev_w(a: v4u32, b: v4u32) -> v4u32 {
+    unsafe { __lsx_vbitrev_w(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vbitrev_d(a: v2u64, b: v2u64) -> v2u64 {
-    __lsx_vbitrev_d(a, b)
+pub fn lsx_vbitrev_d(a: v2u64, b: v2u64) -> v2u64 {
+    unsafe { __lsx_vbitrev_d(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vbitrevi_b<const IMM3: u32>(a: v16u8) -> v16u8 {
+pub fn lsx_vbitrevi_b<const IMM3: u32>(a: v16u8) -> v16u8 {
     static_assert_uimm_bits!(IMM3, 3);
-    __lsx_vbitrevi_b(a, IMM3)
+    unsafe { __lsx_vbitrevi_b(a, IMM3) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vbitrevi_h<const IMM4: u32>(a: v8u16) -> v8u16 {
+pub fn lsx_vbitrevi_h<const IMM4: u32>(a: v8u16) -> v8u16 {
     static_assert_uimm_bits!(IMM4, 4);
-    __lsx_vbitrevi_h(a, IMM4)
+    unsafe { __lsx_vbitrevi_h(a, IMM4) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vbitrevi_w<const IMM5: u32>(a: v4u32) -> v4u32 {
+pub fn lsx_vbitrevi_w<const IMM5: u32>(a: v4u32) -> v4u32 {
     static_assert_uimm_bits!(IMM5, 5);
-    __lsx_vbitrevi_w(a, IMM5)
+    unsafe { __lsx_vbitrevi_w(a, IMM5) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vbitrevi_d<const IMM6: u32>(a: v2u64) -> v2u64 {
+pub fn lsx_vbitrevi_d<const IMM6: u32>(a: v2u64) -> v2u64 {
     static_assert_uimm_bits!(IMM6, 6);
-    __lsx_vbitrevi_d(a, IMM6)
+    unsafe { __lsx_vbitrevi_d(a, IMM6) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vadd_b(a: v16i8, b: v16i8) -> v16i8 {
-    __lsx_vadd_b(a, b)
+pub fn lsx_vadd_b(a: v16i8, b: v16i8) -> v16i8 {
+    unsafe { __lsx_vadd_b(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vadd_h(a: v8i16, b: v8i16) -> v8i16 {
-    __lsx_vadd_h(a, b)
+pub fn lsx_vadd_h(a: v8i16, b: v8i16) -> v8i16 {
+    unsafe { __lsx_vadd_h(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vadd_w(a: v4i32, b: v4i32) -> v4i32 {
-    __lsx_vadd_w(a, b)
+pub fn lsx_vadd_w(a: v4i32, b: v4i32) -> v4i32 {
+    unsafe { __lsx_vadd_w(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vadd_d(a: v2i64, b: v2i64) -> v2i64 {
-    __lsx_vadd_d(a, b)
+pub fn lsx_vadd_d(a: v2i64, b: v2i64) -> v2i64 {
+    unsafe { __lsx_vadd_d(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vaddi_bu<const IMM5: u32>(a: v16i8) -> v16i8 {
+pub fn lsx_vaddi_bu<const IMM5: u32>(a: v16i8) -> v16i8 {
     static_assert_uimm_bits!(IMM5, 5);
-    __lsx_vaddi_bu(a, IMM5)
+    unsafe { __lsx_vaddi_bu(a, IMM5) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vaddi_hu<const IMM5: u32>(a: v8i16) -> v8i16 {
+pub fn lsx_vaddi_hu<const IMM5: u32>(a: v8i16) -> v8i16 {
     static_assert_uimm_bits!(IMM5, 5);
-    __lsx_vaddi_hu(a, IMM5)
+    unsafe { __lsx_vaddi_hu(a, IMM5) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vaddi_wu<const IMM5: u32>(a: v4i32) -> v4i32 {
+pub fn lsx_vaddi_wu<const IMM5: u32>(a: v4i32) -> v4i32 {
     static_assert_uimm_bits!(IMM5, 5);
-    __lsx_vaddi_wu(a, IMM5)
+    unsafe { __lsx_vaddi_wu(a, IMM5) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vaddi_du<const IMM5: u32>(a: v2i64) -> v2i64 {
+pub fn lsx_vaddi_du<const IMM5: u32>(a: v2i64) -> v2i64 {
     static_assert_uimm_bits!(IMM5, 5);
-    __lsx_vaddi_du(a, IMM5)
+    unsafe { __lsx_vaddi_du(a, IMM5) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsub_b(a: v16i8, b: v16i8) -> v16i8 {
-    __lsx_vsub_b(a, b)
+pub fn lsx_vsub_b(a: v16i8, b: v16i8) -> v16i8 {
+    unsafe { __lsx_vsub_b(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsub_h(a: v8i16, b: v8i16) -> v8i16 {
-    __lsx_vsub_h(a, b)
+pub fn lsx_vsub_h(a: v8i16, b: v8i16) -> v8i16 {
+    unsafe { __lsx_vsub_h(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsub_w(a: v4i32, b: v4i32) -> v4i32 {
-    __lsx_vsub_w(a, b)
+pub fn lsx_vsub_w(a: v4i32, b: v4i32) -> v4i32 {
+    unsafe { __lsx_vsub_w(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsub_d(a: v2i64, b: v2i64) -> v2i64 {
-    __lsx_vsub_d(a, b)
+pub fn lsx_vsub_d(a: v2i64, b: v2i64) -> v2i64 {
+    unsafe { __lsx_vsub_d(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsubi_bu<const IMM5: u32>(a: v16i8) -> v16i8 {
+pub fn lsx_vsubi_bu<const IMM5: u32>(a: v16i8) -> v16i8 {
     static_assert_uimm_bits!(IMM5, 5);
-    __lsx_vsubi_bu(a, IMM5)
+    unsafe { __lsx_vsubi_bu(a, IMM5) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsubi_hu<const IMM5: u32>(a: v8i16) -> v8i16 {
+pub fn lsx_vsubi_hu<const IMM5: u32>(a: v8i16) -> v8i16 {
     static_assert_uimm_bits!(IMM5, 5);
-    __lsx_vsubi_hu(a, IMM5)
+    unsafe { __lsx_vsubi_hu(a, IMM5) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsubi_wu<const IMM5: u32>(a: v4i32) -> v4i32 {
+pub fn lsx_vsubi_wu<const IMM5: u32>(a: v4i32) -> v4i32 {
     static_assert_uimm_bits!(IMM5, 5);
-    __lsx_vsubi_wu(a, IMM5)
+    unsafe { __lsx_vsubi_wu(a, IMM5) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsubi_du<const IMM5: u32>(a: v2i64) -> v2i64 {
+pub fn lsx_vsubi_du<const IMM5: u32>(a: v2i64) -> v2i64 {
     static_assert_uimm_bits!(IMM5, 5);
-    __lsx_vsubi_du(a, IMM5)
+    unsafe { __lsx_vsubi_du(a, IMM5) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmax_b(a: v16i8, b: v16i8) -> v16i8 {
-    __lsx_vmax_b(a, b)
+pub fn lsx_vmax_b(a: v16i8, b: v16i8) -> v16i8 {
+    unsafe { __lsx_vmax_b(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmax_h(a: v8i16, b: v8i16) -> v8i16 {
-    __lsx_vmax_h(a, b)
+pub fn lsx_vmax_h(a: v8i16, b: v8i16) -> v8i16 {
+    unsafe { __lsx_vmax_h(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmax_w(a: v4i32, b: v4i32) -> v4i32 {
-    __lsx_vmax_w(a, b)
+pub fn lsx_vmax_w(a: v4i32, b: v4i32) -> v4i32 {
+    unsafe { __lsx_vmax_w(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmax_d(a: v2i64, b: v2i64) -> v2i64 {
-    __lsx_vmax_d(a, b)
+pub fn lsx_vmax_d(a: v2i64, b: v2i64) -> v2i64 {
+    unsafe { __lsx_vmax_d(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmaxi_b<const IMM_S5: i32>(a: v16i8) -> v16i8 {
+pub fn lsx_vmaxi_b<const IMM_S5: i32>(a: v16i8) -> v16i8 {
     static_assert_simm_bits!(IMM_S5, 5);
-    __lsx_vmaxi_b(a, IMM_S5)
+    unsafe { __lsx_vmaxi_b(a, IMM_S5) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmaxi_h<const IMM_S5: i32>(a: v8i16) -> v8i16 {
+pub fn lsx_vmaxi_h<const IMM_S5: i32>(a: v8i16) -> v8i16 {
     static_assert_simm_bits!(IMM_S5, 5);
-    __lsx_vmaxi_h(a, IMM_S5)
+    unsafe { __lsx_vmaxi_h(a, IMM_S5) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmaxi_w<const IMM_S5: i32>(a: v4i32) -> v4i32 {
+pub fn lsx_vmaxi_w<const IMM_S5: i32>(a: v4i32) -> v4i32 {
     static_assert_simm_bits!(IMM_S5, 5);
-    __lsx_vmaxi_w(a, IMM_S5)
+    unsafe { __lsx_vmaxi_w(a, IMM_S5) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmaxi_d<const IMM_S5: i32>(a: v2i64) -> v2i64 {
+pub fn lsx_vmaxi_d<const IMM_S5: i32>(a: v2i64) -> v2i64 {
     static_assert_simm_bits!(IMM_S5, 5);
-    __lsx_vmaxi_d(a, IMM_S5)
+    unsafe { __lsx_vmaxi_d(a, IMM_S5) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmax_bu(a: v16u8, b: v16u8) -> v16u8 {
-    __lsx_vmax_bu(a, b)
+pub fn lsx_vmax_bu(a: v16u8, b: v16u8) -> v16u8 {
+    unsafe { __lsx_vmax_bu(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmax_hu(a: v8u16, b: v8u16) -> v8u16 {
-    __lsx_vmax_hu(a, b)
+pub fn lsx_vmax_hu(a: v8u16, b: v8u16) -> v8u16 {
+    unsafe { __lsx_vmax_hu(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmax_wu(a: v4u32, b: v4u32) -> v4u32 {
-    __lsx_vmax_wu(a, b)
+pub fn lsx_vmax_wu(a: v4u32, b: v4u32) -> v4u32 {
+    unsafe { __lsx_vmax_wu(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmax_du(a: v2u64, b: v2u64) -> v2u64 {
-    __lsx_vmax_du(a, b)
+pub fn lsx_vmax_du(a: v2u64, b: v2u64) -> v2u64 {
+    unsafe { __lsx_vmax_du(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmaxi_bu<const IMM5: u32>(a: v16u8) -> v16u8 {
+pub fn lsx_vmaxi_bu<const IMM5: u32>(a: v16u8) -> v16u8 {
     static_assert_uimm_bits!(IMM5, 5);
-    __lsx_vmaxi_bu(a, IMM5)
+    unsafe { __lsx_vmaxi_bu(a, IMM5) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmaxi_hu<const IMM5: u32>(a: v8u16) -> v8u16 {
+pub fn lsx_vmaxi_hu<const IMM5: u32>(a: v8u16) -> v8u16 {
     static_assert_uimm_bits!(IMM5, 5);
-    __lsx_vmaxi_hu(a, IMM5)
+    unsafe { __lsx_vmaxi_hu(a, IMM5) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmaxi_wu<const IMM5: u32>(a: v4u32) -> v4u32 {
+pub fn lsx_vmaxi_wu<const IMM5: u32>(a: v4u32) -> v4u32 {
     static_assert_uimm_bits!(IMM5, 5);
-    __lsx_vmaxi_wu(a, IMM5)
+    unsafe { __lsx_vmaxi_wu(a, IMM5) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmaxi_du<const IMM5: u32>(a: v2u64) -> v2u64 {
+pub fn lsx_vmaxi_du<const IMM5: u32>(a: v2u64) -> v2u64 {
     static_assert_uimm_bits!(IMM5, 5);
-    __lsx_vmaxi_du(a, IMM5)
+    unsafe { __lsx_vmaxi_du(a, IMM5) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmin_b(a: v16i8, b: v16i8) -> v16i8 {
-    __lsx_vmin_b(a, b)
+pub fn lsx_vmin_b(a: v16i8, b: v16i8) -> v16i8 {
+    unsafe { __lsx_vmin_b(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmin_h(a: v8i16, b: v8i16) -> v8i16 {
-    __lsx_vmin_h(a, b)
+pub fn lsx_vmin_h(a: v8i16, b: v8i16) -> v8i16 {
+    unsafe { __lsx_vmin_h(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmin_w(a: v4i32, b: v4i32) -> v4i32 {
-    __lsx_vmin_w(a, b)
+pub fn lsx_vmin_w(a: v4i32, b: v4i32) -> v4i32 {
+    unsafe { __lsx_vmin_w(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmin_d(a: v2i64, b: v2i64) -> v2i64 {
-    __lsx_vmin_d(a, b)
+pub fn lsx_vmin_d(a: v2i64, b: v2i64) -> v2i64 {
+    unsafe { __lsx_vmin_d(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmini_b<const IMM_S5: i32>(a: v16i8) -> v16i8 {
+pub fn lsx_vmini_b<const IMM_S5: i32>(a: v16i8) -> v16i8 {
     static_assert_simm_bits!(IMM_S5, 5);
-    __lsx_vmini_b(a, IMM_S5)
+    unsafe { __lsx_vmini_b(a, IMM_S5) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmini_h<const IMM_S5: i32>(a: v8i16) -> v8i16 {
+pub fn lsx_vmini_h<const IMM_S5: i32>(a: v8i16) -> v8i16 {
     static_assert_simm_bits!(IMM_S5, 5);
-    __lsx_vmini_h(a, IMM_S5)
+    unsafe { __lsx_vmini_h(a, IMM_S5) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmini_w<const IMM_S5: i32>(a: v4i32) -> v4i32 {
+pub fn lsx_vmini_w<const IMM_S5: i32>(a: v4i32) -> v4i32 {
     static_assert_simm_bits!(IMM_S5, 5);
-    __lsx_vmini_w(a, IMM_S5)
+    unsafe { __lsx_vmini_w(a, IMM_S5) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmini_d<const IMM_S5: i32>(a: v2i64) -> v2i64 {
+pub fn lsx_vmini_d<const IMM_S5: i32>(a: v2i64) -> v2i64 {
     static_assert_simm_bits!(IMM_S5, 5);
-    __lsx_vmini_d(a, IMM_S5)
+    unsafe { __lsx_vmini_d(a, IMM_S5) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmin_bu(a: v16u8, b: v16u8) -> v16u8 {
-    __lsx_vmin_bu(a, b)
+pub fn lsx_vmin_bu(a: v16u8, b: v16u8) -> v16u8 {
+    unsafe { __lsx_vmin_bu(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmin_hu(a: v8u16, b: v8u16) -> v8u16 {
-    __lsx_vmin_hu(a, b)
+pub fn lsx_vmin_hu(a: v8u16, b: v8u16) -> v8u16 {
+    unsafe { __lsx_vmin_hu(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmin_wu(a: v4u32, b: v4u32) -> v4u32 {
-    __lsx_vmin_wu(a, b)
+pub fn lsx_vmin_wu(a: v4u32, b: v4u32) -> v4u32 {
+    unsafe { __lsx_vmin_wu(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmin_du(a: v2u64, b: v2u64) -> v2u64 {
-    __lsx_vmin_du(a, b)
+pub fn lsx_vmin_du(a: v2u64, b: v2u64) -> v2u64 {
+    unsafe { __lsx_vmin_du(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmini_bu<const IMM5: u32>(a: v16u8) -> v16u8 {
+pub fn lsx_vmini_bu<const IMM5: u32>(a: v16u8) -> v16u8 {
     static_assert_uimm_bits!(IMM5, 5);
-    __lsx_vmini_bu(a, IMM5)
+    unsafe { __lsx_vmini_bu(a, IMM5) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmini_hu<const IMM5: u32>(a: v8u16) -> v8u16 {
+pub fn lsx_vmini_hu<const IMM5: u32>(a: v8u16) -> v8u16 {
     static_assert_uimm_bits!(IMM5, 5);
-    __lsx_vmini_hu(a, IMM5)
+    unsafe { __lsx_vmini_hu(a, IMM5) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmini_wu<const IMM5: u32>(a: v4u32) -> v4u32 {
+pub fn lsx_vmini_wu<const IMM5: u32>(a: v4u32) -> v4u32 {
     static_assert_uimm_bits!(IMM5, 5);
-    __lsx_vmini_wu(a, IMM5)
+    unsafe { __lsx_vmini_wu(a, IMM5) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmini_du<const IMM5: u32>(a: v2u64) -> v2u64 {
+pub fn lsx_vmini_du<const IMM5: u32>(a: v2u64) -> v2u64 {
     static_assert_uimm_bits!(IMM5, 5);
-    __lsx_vmini_du(a, IMM5)
+    unsafe { __lsx_vmini_du(a, IMM5) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vseq_b(a: v16i8, b: v16i8) -> v16i8 {
-    __lsx_vseq_b(a, b)
+pub fn lsx_vseq_b(a: v16i8, b: v16i8) -> v16i8 {
+    unsafe { __lsx_vseq_b(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vseq_h(a: v8i16, b: v8i16) -> v8i16 {
-    __lsx_vseq_h(a, b)
+pub fn lsx_vseq_h(a: v8i16, b: v8i16) -> v8i16 {
+    unsafe { __lsx_vseq_h(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vseq_w(a: v4i32, b: v4i32) -> v4i32 {
-    __lsx_vseq_w(a, b)
+pub fn lsx_vseq_w(a: v4i32, b: v4i32) -> v4i32 {
+    unsafe { __lsx_vseq_w(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vseq_d(a: v2i64, b: v2i64) -> v2i64 {
-    __lsx_vseq_d(a, b)
+pub fn lsx_vseq_d(a: v2i64, b: v2i64) -> v2i64 {
+    unsafe { __lsx_vseq_d(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vseqi_b<const IMM_S5: i32>(a: v16i8) -> v16i8 {
+pub fn lsx_vseqi_b<const IMM_S5: i32>(a: v16i8) -> v16i8 {
     static_assert_simm_bits!(IMM_S5, 5);
-    __lsx_vseqi_b(a, IMM_S5)
+    unsafe { __lsx_vseqi_b(a, IMM_S5) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vseqi_h<const IMM_S5: i32>(a: v8i16) -> v8i16 {
+pub fn lsx_vseqi_h<const IMM_S5: i32>(a: v8i16) -> v8i16 {
     static_assert_simm_bits!(IMM_S5, 5);
-    __lsx_vseqi_h(a, IMM_S5)
+    unsafe { __lsx_vseqi_h(a, IMM_S5) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vseqi_w<const IMM_S5: i32>(a: v4i32) -> v4i32 {
+pub fn lsx_vseqi_w<const IMM_S5: i32>(a: v4i32) -> v4i32 {
     static_assert_simm_bits!(IMM_S5, 5);
-    __lsx_vseqi_w(a, IMM_S5)
+    unsafe { __lsx_vseqi_w(a, IMM_S5) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vseqi_d<const IMM_S5: i32>(a: v2i64) -> v2i64 {
+pub fn lsx_vseqi_d<const IMM_S5: i32>(a: v2i64) -> v2i64 {
     static_assert_simm_bits!(IMM_S5, 5);
-    __lsx_vseqi_d(a, IMM_S5)
+    unsafe { __lsx_vseqi_d(a, IMM_S5) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vslti_b<const IMM_S5: i32>(a: v16i8) -> v16i8 {
+pub fn lsx_vslti_b<const IMM_S5: i32>(a: v16i8) -> v16i8 {
     static_assert_simm_bits!(IMM_S5, 5);
-    __lsx_vslti_b(a, IMM_S5)
+    unsafe { __lsx_vslti_b(a, IMM_S5) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vslt_b(a: v16i8, b: v16i8) -> v16i8 {
-    __lsx_vslt_b(a, b)
+pub fn lsx_vslt_b(a: v16i8, b: v16i8) -> v16i8 {
+    unsafe { __lsx_vslt_b(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vslt_h(a: v8i16, b: v8i16) -> v8i16 {
-    __lsx_vslt_h(a, b)
+pub fn lsx_vslt_h(a: v8i16, b: v8i16) -> v8i16 {
+    unsafe { __lsx_vslt_h(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vslt_w(a: v4i32, b: v4i32) -> v4i32 {
-    __lsx_vslt_w(a, b)
+pub fn lsx_vslt_w(a: v4i32, b: v4i32) -> v4i32 {
+    unsafe { __lsx_vslt_w(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vslt_d(a: v2i64, b: v2i64) -> v2i64 {
-    __lsx_vslt_d(a, b)
+pub fn lsx_vslt_d(a: v2i64, b: v2i64) -> v2i64 {
+    unsafe { __lsx_vslt_d(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vslti_h<const IMM_S5: i32>(a: v8i16) -> v8i16 {
+pub fn lsx_vslti_h<const IMM_S5: i32>(a: v8i16) -> v8i16 {
     static_assert_simm_bits!(IMM_S5, 5);
-    __lsx_vslti_h(a, IMM_S5)
+    unsafe { __lsx_vslti_h(a, IMM_S5) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vslti_w<const IMM_S5: i32>(a: v4i32) -> v4i32 {
+pub fn lsx_vslti_w<const IMM_S5: i32>(a: v4i32) -> v4i32 {
     static_assert_simm_bits!(IMM_S5, 5);
-    __lsx_vslti_w(a, IMM_S5)
+    unsafe { __lsx_vslti_w(a, IMM_S5) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vslti_d<const IMM_S5: i32>(a: v2i64) -> v2i64 {
+pub fn lsx_vslti_d<const IMM_S5: i32>(a: v2i64) -> v2i64 {
     static_assert_simm_bits!(IMM_S5, 5);
-    __lsx_vslti_d(a, IMM_S5)
+    unsafe { __lsx_vslti_d(a, IMM_S5) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vslt_bu(a: v16u8, b: v16u8) -> v16i8 {
-    __lsx_vslt_bu(a, b)
+pub fn lsx_vslt_bu(a: v16u8, b: v16u8) -> v16i8 {
+    unsafe { __lsx_vslt_bu(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vslt_hu(a: v8u16, b: v8u16) -> v8i16 {
-    __lsx_vslt_hu(a, b)
+pub fn lsx_vslt_hu(a: v8u16, b: v8u16) -> v8i16 {
+    unsafe { __lsx_vslt_hu(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vslt_wu(a: v4u32, b: v4u32) -> v4i32 {
-    __lsx_vslt_wu(a, b)
+pub fn lsx_vslt_wu(a: v4u32, b: v4u32) -> v4i32 {
+    unsafe { __lsx_vslt_wu(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vslt_du(a: v2u64, b: v2u64) -> v2i64 {
-    __lsx_vslt_du(a, b)
+pub fn lsx_vslt_du(a: v2u64, b: v2u64) -> v2i64 {
+    unsafe { __lsx_vslt_du(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vslti_bu<const IMM5: u32>(a: v16u8) -> v16i8 {
+pub fn lsx_vslti_bu<const IMM5: u32>(a: v16u8) -> v16i8 {
     static_assert_uimm_bits!(IMM5, 5);
-    __lsx_vslti_bu(a, IMM5)
+    unsafe { __lsx_vslti_bu(a, IMM5) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vslti_hu<const IMM5: u32>(a: v8u16) -> v8i16 {
+pub fn lsx_vslti_hu<const IMM5: u32>(a: v8u16) -> v8i16 {
     static_assert_uimm_bits!(IMM5, 5);
-    __lsx_vslti_hu(a, IMM5)
+    unsafe { __lsx_vslti_hu(a, IMM5) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vslti_wu<const IMM5: u32>(a: v4u32) -> v4i32 {
+pub fn lsx_vslti_wu<const IMM5: u32>(a: v4u32) -> v4i32 {
     static_assert_uimm_bits!(IMM5, 5);
-    __lsx_vslti_wu(a, IMM5)
+    unsafe { __lsx_vslti_wu(a, IMM5) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vslti_du<const IMM5: u32>(a: v2u64) -> v2i64 {
+pub fn lsx_vslti_du<const IMM5: u32>(a: v2u64) -> v2i64 {
     static_assert_uimm_bits!(IMM5, 5);
-    __lsx_vslti_du(a, IMM5)
+    unsafe { __lsx_vslti_du(a, IMM5) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsle_b(a: v16i8, b: v16i8) -> v16i8 {
-    __lsx_vsle_b(a, b)
+pub fn lsx_vsle_b(a: v16i8, b: v16i8) -> v16i8 {
+    unsafe { __lsx_vsle_b(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsle_h(a: v8i16, b: v8i16) -> v8i16 {
-    __lsx_vsle_h(a, b)
+pub fn lsx_vsle_h(a: v8i16, b: v8i16) -> v8i16 {
+    unsafe { __lsx_vsle_h(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsle_w(a: v4i32, b: v4i32) -> v4i32 {
-    __lsx_vsle_w(a, b)
+pub fn lsx_vsle_w(a: v4i32, b: v4i32) -> v4i32 {
+    unsafe { __lsx_vsle_w(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsle_d(a: v2i64, b: v2i64) -> v2i64 {
-    __lsx_vsle_d(a, b)
+pub fn lsx_vsle_d(a: v2i64, b: v2i64) -> v2i64 {
+    unsafe { __lsx_vsle_d(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vslei_b<const IMM_S5: i32>(a: v16i8) -> v16i8 {
+pub fn lsx_vslei_b<const IMM_S5: i32>(a: v16i8) -> v16i8 {
     static_assert_simm_bits!(IMM_S5, 5);
-    __lsx_vslei_b(a, IMM_S5)
+    unsafe { __lsx_vslei_b(a, IMM_S5) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vslei_h<const IMM_S5: i32>(a: v8i16) -> v8i16 {
+pub fn lsx_vslei_h<const IMM_S5: i32>(a: v8i16) -> v8i16 {
     static_assert_simm_bits!(IMM_S5, 5);
-    __lsx_vslei_h(a, IMM_S5)
+    unsafe { __lsx_vslei_h(a, IMM_S5) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vslei_w<const IMM_S5: i32>(a: v4i32) -> v4i32 {
+pub fn lsx_vslei_w<const IMM_S5: i32>(a: v4i32) -> v4i32 {
     static_assert_simm_bits!(IMM_S5, 5);
-    __lsx_vslei_w(a, IMM_S5)
+    unsafe { __lsx_vslei_w(a, IMM_S5) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vslei_d<const IMM_S5: i32>(a: v2i64) -> v2i64 {
+pub fn lsx_vslei_d<const IMM_S5: i32>(a: v2i64) -> v2i64 {
     static_assert_simm_bits!(IMM_S5, 5);
-    __lsx_vslei_d(a, IMM_S5)
+    unsafe { __lsx_vslei_d(a, IMM_S5) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsle_bu(a: v16u8, b: v16u8) -> v16i8 {
-    __lsx_vsle_bu(a, b)
+pub fn lsx_vsle_bu(a: v16u8, b: v16u8) -> v16i8 {
+    unsafe { __lsx_vsle_bu(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsle_hu(a: v8u16, b: v8u16) -> v8i16 {
-    __lsx_vsle_hu(a, b)
+pub fn lsx_vsle_hu(a: v8u16, b: v8u16) -> v8i16 {
+    unsafe { __lsx_vsle_hu(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsle_wu(a: v4u32, b: v4u32) -> v4i32 {
-    __lsx_vsle_wu(a, b)
+pub fn lsx_vsle_wu(a: v4u32, b: v4u32) -> v4i32 {
+    unsafe { __lsx_vsle_wu(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsle_du(a: v2u64, b: v2u64) -> v2i64 {
-    __lsx_vsle_du(a, b)
+pub fn lsx_vsle_du(a: v2u64, b: v2u64) -> v2i64 {
+    unsafe { __lsx_vsle_du(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vslei_bu<const IMM5: u32>(a: v16u8) -> v16i8 {
+pub fn lsx_vslei_bu<const IMM5: u32>(a: v16u8) -> v16i8 {
     static_assert_uimm_bits!(IMM5, 5);
-    __lsx_vslei_bu(a, IMM5)
+    unsafe { __lsx_vslei_bu(a, IMM5) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vslei_hu<const IMM5: u32>(a: v8u16) -> v8i16 {
+pub fn lsx_vslei_hu<const IMM5: u32>(a: v8u16) -> v8i16 {
     static_assert_uimm_bits!(IMM5, 5);
-    __lsx_vslei_hu(a, IMM5)
+    unsafe { __lsx_vslei_hu(a, IMM5) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vslei_wu<const IMM5: u32>(a: v4u32) -> v4i32 {
+pub fn lsx_vslei_wu<const IMM5: u32>(a: v4u32) -> v4i32 {
     static_assert_uimm_bits!(IMM5, 5);
-    __lsx_vslei_wu(a, IMM5)
+    unsafe { __lsx_vslei_wu(a, IMM5) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vslei_du<const IMM5: u32>(a: v2u64) -> v2i64 {
+pub fn lsx_vslei_du<const IMM5: u32>(a: v2u64) -> v2i64 {
     static_assert_uimm_bits!(IMM5, 5);
-    __lsx_vslei_du(a, IMM5)
+    unsafe { __lsx_vslei_du(a, IMM5) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsat_b<const IMM3: u32>(a: v16i8) -> v16i8 {
+pub fn lsx_vsat_b<const IMM3: u32>(a: v16i8) -> v16i8 {
     static_assert_uimm_bits!(IMM3, 3);
-    __lsx_vsat_b(a, IMM3)
+    unsafe { __lsx_vsat_b(a, IMM3) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsat_h<const IMM4: u32>(a: v8i16) -> v8i16 {
+pub fn lsx_vsat_h<const IMM4: u32>(a: v8i16) -> v8i16 {
     static_assert_uimm_bits!(IMM4, 4);
-    __lsx_vsat_h(a, IMM4)
+    unsafe { __lsx_vsat_h(a, IMM4) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsat_w<const IMM5: u32>(a: v4i32) -> v4i32 {
+pub fn lsx_vsat_w<const IMM5: u32>(a: v4i32) -> v4i32 {
     static_assert_uimm_bits!(IMM5, 5);
-    __lsx_vsat_w(a, IMM5)
+    unsafe { __lsx_vsat_w(a, IMM5) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsat_d<const IMM6: u32>(a: v2i64) -> v2i64 {
+pub fn lsx_vsat_d<const IMM6: u32>(a: v2i64) -> v2i64 {
     static_assert_uimm_bits!(IMM6, 6);
-    __lsx_vsat_d(a, IMM6)
+    unsafe { __lsx_vsat_d(a, IMM6) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsat_bu<const IMM3: u32>(a: v16u8) -> v16u8 {
+pub fn lsx_vsat_bu<const IMM3: u32>(a: v16u8) -> v16u8 {
     static_assert_uimm_bits!(IMM3, 3);
-    __lsx_vsat_bu(a, IMM3)
+    unsafe { __lsx_vsat_bu(a, IMM3) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsat_hu<const IMM4: u32>(a: v8u16) -> v8u16 {
+pub fn lsx_vsat_hu<const IMM4: u32>(a: v8u16) -> v8u16 {
     static_assert_uimm_bits!(IMM4, 4);
-    __lsx_vsat_hu(a, IMM4)
+    unsafe { __lsx_vsat_hu(a, IMM4) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsat_wu<const IMM5: u32>(a: v4u32) -> v4u32 {
+pub fn lsx_vsat_wu<const IMM5: u32>(a: v4u32) -> v4u32 {
     static_assert_uimm_bits!(IMM5, 5);
-    __lsx_vsat_wu(a, IMM5)
+    unsafe { __lsx_vsat_wu(a, IMM5) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsat_du<const IMM6: u32>(a: v2u64) -> v2u64 {
+pub fn lsx_vsat_du<const IMM6: u32>(a: v2u64) -> v2u64 {
     static_assert_uimm_bits!(IMM6, 6);
-    __lsx_vsat_du(a, IMM6)
+    unsafe { __lsx_vsat_du(a, IMM6) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vadda_b(a: v16i8, b: v16i8) -> v16i8 {
-    __lsx_vadda_b(a, b)
+pub fn lsx_vadda_b(a: v16i8, b: v16i8) -> v16i8 {
+    unsafe { __lsx_vadda_b(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vadda_h(a: v8i16, b: v8i16) -> v8i16 {
-    __lsx_vadda_h(a, b)
+pub fn lsx_vadda_h(a: v8i16, b: v8i16) -> v8i16 {
+    unsafe { __lsx_vadda_h(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vadda_w(a: v4i32, b: v4i32) -> v4i32 {
-    __lsx_vadda_w(a, b)
+pub fn lsx_vadda_w(a: v4i32, b: v4i32) -> v4i32 {
+    unsafe { __lsx_vadda_w(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vadda_d(a: v2i64, b: v2i64) -> v2i64 {
-    __lsx_vadda_d(a, b)
+pub fn lsx_vadda_d(a: v2i64, b: v2i64) -> v2i64 {
+    unsafe { __lsx_vadda_d(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsadd_b(a: v16i8, b: v16i8) -> v16i8 {
-    __lsx_vsadd_b(a, b)
+pub fn lsx_vsadd_b(a: v16i8, b: v16i8) -> v16i8 {
+    unsafe { __lsx_vsadd_b(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsadd_h(a: v8i16, b: v8i16) -> v8i16 {
-    __lsx_vsadd_h(a, b)
+pub fn lsx_vsadd_h(a: v8i16, b: v8i16) -> v8i16 {
+    unsafe { __lsx_vsadd_h(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsadd_w(a: v4i32, b: v4i32) -> v4i32 {
-    __lsx_vsadd_w(a, b)
+pub fn lsx_vsadd_w(a: v4i32, b: v4i32) -> v4i32 {
+    unsafe { __lsx_vsadd_w(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsadd_d(a: v2i64, b: v2i64) -> v2i64 {
-    __lsx_vsadd_d(a, b)
+pub fn lsx_vsadd_d(a: v2i64, b: v2i64) -> v2i64 {
+    unsafe { __lsx_vsadd_d(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsadd_bu(a: v16u8, b: v16u8) -> v16u8 {
-    __lsx_vsadd_bu(a, b)
+pub fn lsx_vsadd_bu(a: v16u8, b: v16u8) -> v16u8 {
+    unsafe { __lsx_vsadd_bu(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsadd_hu(a: v8u16, b: v8u16) -> v8u16 {
-    __lsx_vsadd_hu(a, b)
+pub fn lsx_vsadd_hu(a: v8u16, b: v8u16) -> v8u16 {
+    unsafe { __lsx_vsadd_hu(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsadd_wu(a: v4u32, b: v4u32) -> v4u32 {
-    __lsx_vsadd_wu(a, b)
+pub fn lsx_vsadd_wu(a: v4u32, b: v4u32) -> v4u32 {
+    unsafe { __lsx_vsadd_wu(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsadd_du(a: v2u64, b: v2u64) -> v2u64 {
-    __lsx_vsadd_du(a, b)
+pub fn lsx_vsadd_du(a: v2u64, b: v2u64) -> v2u64 {
+    unsafe { __lsx_vsadd_du(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vavg_b(a: v16i8, b: v16i8) -> v16i8 {
-    __lsx_vavg_b(a, b)
+pub fn lsx_vavg_b(a: v16i8, b: v16i8) -> v16i8 {
+    unsafe { __lsx_vavg_b(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vavg_h(a: v8i16, b: v8i16) -> v8i16 {
-    __lsx_vavg_h(a, b)
+pub fn lsx_vavg_h(a: v8i16, b: v8i16) -> v8i16 {
+    unsafe { __lsx_vavg_h(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vavg_w(a: v4i32, b: v4i32) -> v4i32 {
-    __lsx_vavg_w(a, b)
+pub fn lsx_vavg_w(a: v4i32, b: v4i32) -> v4i32 {
+    unsafe { __lsx_vavg_w(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vavg_d(a: v2i64, b: v2i64) -> v2i64 {
-    __lsx_vavg_d(a, b)
+pub fn lsx_vavg_d(a: v2i64, b: v2i64) -> v2i64 {
+    unsafe { __lsx_vavg_d(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vavg_bu(a: v16u8, b: v16u8) -> v16u8 {
-    __lsx_vavg_bu(a, b)
+pub fn lsx_vavg_bu(a: v16u8, b: v16u8) -> v16u8 {
+    unsafe { __lsx_vavg_bu(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vavg_hu(a: v8u16, b: v8u16) -> v8u16 {
-    __lsx_vavg_hu(a, b)
+pub fn lsx_vavg_hu(a: v8u16, b: v8u16) -> v8u16 {
+    unsafe { __lsx_vavg_hu(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vavg_wu(a: v4u32, b: v4u32) -> v4u32 {
-    __lsx_vavg_wu(a, b)
+pub fn lsx_vavg_wu(a: v4u32, b: v4u32) -> v4u32 {
+    unsafe { __lsx_vavg_wu(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vavg_du(a: v2u64, b: v2u64) -> v2u64 {
-    __lsx_vavg_du(a, b)
+pub fn lsx_vavg_du(a: v2u64, b: v2u64) -> v2u64 {
+    unsafe { __lsx_vavg_du(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vavgr_b(a: v16i8, b: v16i8) -> v16i8 {
-    __lsx_vavgr_b(a, b)
+pub fn lsx_vavgr_b(a: v16i8, b: v16i8) -> v16i8 {
+    unsafe { __lsx_vavgr_b(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vavgr_h(a: v8i16, b: v8i16) -> v8i16 {
-    __lsx_vavgr_h(a, b)
+pub fn lsx_vavgr_h(a: v8i16, b: v8i16) -> v8i16 {
+    unsafe { __lsx_vavgr_h(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vavgr_w(a: v4i32, b: v4i32) -> v4i32 {
-    __lsx_vavgr_w(a, b)
+pub fn lsx_vavgr_w(a: v4i32, b: v4i32) -> v4i32 {
+    unsafe { __lsx_vavgr_w(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vavgr_d(a: v2i64, b: v2i64) -> v2i64 {
-    __lsx_vavgr_d(a, b)
+pub fn lsx_vavgr_d(a: v2i64, b: v2i64) -> v2i64 {
+    unsafe { __lsx_vavgr_d(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vavgr_bu(a: v16u8, b: v16u8) -> v16u8 {
-    __lsx_vavgr_bu(a, b)
+pub fn lsx_vavgr_bu(a: v16u8, b: v16u8) -> v16u8 {
+    unsafe { __lsx_vavgr_bu(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vavgr_hu(a: v8u16, b: v8u16) -> v8u16 {
-    __lsx_vavgr_hu(a, b)
+pub fn lsx_vavgr_hu(a: v8u16, b: v8u16) -> v8u16 {
+    unsafe { __lsx_vavgr_hu(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vavgr_wu(a: v4u32, b: v4u32) -> v4u32 {
-    __lsx_vavgr_wu(a, b)
+pub fn lsx_vavgr_wu(a: v4u32, b: v4u32) -> v4u32 {
+    unsafe { __lsx_vavgr_wu(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vavgr_du(a: v2u64, b: v2u64) -> v2u64 {
-    __lsx_vavgr_du(a, b)
+pub fn lsx_vavgr_du(a: v2u64, b: v2u64) -> v2u64 {
+    unsafe { __lsx_vavgr_du(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vssub_b(a: v16i8, b: v16i8) -> v16i8 {
-    __lsx_vssub_b(a, b)
+pub fn lsx_vssub_b(a: v16i8, b: v16i8) -> v16i8 {
+    unsafe { __lsx_vssub_b(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vssub_h(a: v8i16, b: v8i16) -> v8i16 {
-    __lsx_vssub_h(a, b)
+pub fn lsx_vssub_h(a: v8i16, b: v8i16) -> v8i16 {
+    unsafe { __lsx_vssub_h(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vssub_w(a: v4i32, b: v4i32) -> v4i32 {
-    __lsx_vssub_w(a, b)
+pub fn lsx_vssub_w(a: v4i32, b: v4i32) -> v4i32 {
+    unsafe { __lsx_vssub_w(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vssub_d(a: v2i64, b: v2i64) -> v2i64 {
-    __lsx_vssub_d(a, b)
+pub fn lsx_vssub_d(a: v2i64, b: v2i64) -> v2i64 {
+    unsafe { __lsx_vssub_d(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vssub_bu(a: v16u8, b: v16u8) -> v16u8 {
-    __lsx_vssub_bu(a, b)
+pub fn lsx_vssub_bu(a: v16u8, b: v16u8) -> v16u8 {
+    unsafe { __lsx_vssub_bu(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vssub_hu(a: v8u16, b: v8u16) -> v8u16 {
-    __lsx_vssub_hu(a, b)
+pub fn lsx_vssub_hu(a: v8u16, b: v8u16) -> v8u16 {
+    unsafe { __lsx_vssub_hu(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vssub_wu(a: v4u32, b: v4u32) -> v4u32 {
-    __lsx_vssub_wu(a, b)
+pub fn lsx_vssub_wu(a: v4u32, b: v4u32) -> v4u32 {
+    unsafe { __lsx_vssub_wu(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vssub_du(a: v2u64, b: v2u64) -> v2u64 {
-    __lsx_vssub_du(a, b)
+pub fn lsx_vssub_du(a: v2u64, b: v2u64) -> v2u64 {
+    unsafe { __lsx_vssub_du(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vabsd_b(a: v16i8, b: v16i8) -> v16i8 {
-    __lsx_vabsd_b(a, b)
+pub fn lsx_vabsd_b(a: v16i8, b: v16i8) -> v16i8 {
+    unsafe { __lsx_vabsd_b(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vabsd_h(a: v8i16, b: v8i16) -> v8i16 {
-    __lsx_vabsd_h(a, b)
+pub fn lsx_vabsd_h(a: v8i16, b: v8i16) -> v8i16 {
+    unsafe { __lsx_vabsd_h(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vabsd_w(a: v4i32, b: v4i32) -> v4i32 {
-    __lsx_vabsd_w(a, b)
+pub fn lsx_vabsd_w(a: v4i32, b: v4i32) -> v4i32 {
+    unsafe { __lsx_vabsd_w(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vabsd_d(a: v2i64, b: v2i64) -> v2i64 {
-    __lsx_vabsd_d(a, b)
+pub fn lsx_vabsd_d(a: v2i64, b: v2i64) -> v2i64 {
+    unsafe { __lsx_vabsd_d(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vabsd_bu(a: v16u8, b: v16u8) -> v16u8 {
-    __lsx_vabsd_bu(a, b)
+pub fn lsx_vabsd_bu(a: v16u8, b: v16u8) -> v16u8 {
+    unsafe { __lsx_vabsd_bu(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vabsd_hu(a: v8u16, b: v8u16) -> v8u16 {
-    __lsx_vabsd_hu(a, b)
+pub fn lsx_vabsd_hu(a: v8u16, b: v8u16) -> v8u16 {
+    unsafe { __lsx_vabsd_hu(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vabsd_wu(a: v4u32, b: v4u32) -> v4u32 {
-    __lsx_vabsd_wu(a, b)
+pub fn lsx_vabsd_wu(a: v4u32, b: v4u32) -> v4u32 {
+    unsafe { __lsx_vabsd_wu(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vabsd_du(a: v2u64, b: v2u64) -> v2u64 {
-    __lsx_vabsd_du(a, b)
+pub fn lsx_vabsd_du(a: v2u64, b: v2u64) -> v2u64 {
+    unsafe { __lsx_vabsd_du(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmul_b(a: v16i8, b: v16i8) -> v16i8 {
-    __lsx_vmul_b(a, b)
+pub fn lsx_vmul_b(a: v16i8, b: v16i8) -> v16i8 {
+    unsafe { __lsx_vmul_b(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmul_h(a: v8i16, b: v8i16) -> v8i16 {
-    __lsx_vmul_h(a, b)
+pub fn lsx_vmul_h(a: v8i16, b: v8i16) -> v8i16 {
+    unsafe { __lsx_vmul_h(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmul_w(a: v4i32, b: v4i32) -> v4i32 {
-    __lsx_vmul_w(a, b)
+pub fn lsx_vmul_w(a: v4i32, b: v4i32) -> v4i32 {
+    unsafe { __lsx_vmul_w(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmul_d(a: v2i64, b: v2i64) -> v2i64 {
-    __lsx_vmul_d(a, b)
+pub fn lsx_vmul_d(a: v2i64, b: v2i64) -> v2i64 {
+    unsafe { __lsx_vmul_d(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmadd_b(a: v16i8, b: v16i8, c: v16i8) -> v16i8 {
-    __lsx_vmadd_b(a, b, c)
+pub fn lsx_vmadd_b(a: v16i8, b: v16i8, c: v16i8) -> v16i8 {
+    unsafe { __lsx_vmadd_b(a, b, c) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmadd_h(a: v8i16, b: v8i16, c: v8i16) -> v8i16 {
-    __lsx_vmadd_h(a, b, c)
+pub fn lsx_vmadd_h(a: v8i16, b: v8i16, c: v8i16) -> v8i16 {
+    unsafe { __lsx_vmadd_h(a, b, c) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmadd_w(a: v4i32, b: v4i32, c: v4i32) -> v4i32 {
-    __lsx_vmadd_w(a, b, c)
+pub fn lsx_vmadd_w(a: v4i32, b: v4i32, c: v4i32) -> v4i32 {
+    unsafe { __lsx_vmadd_w(a, b, c) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmadd_d(a: v2i64, b: v2i64, c: v2i64) -> v2i64 {
-    __lsx_vmadd_d(a, b, c)
+pub fn lsx_vmadd_d(a: v2i64, b: v2i64, c: v2i64) -> v2i64 {
+    unsafe { __lsx_vmadd_d(a, b, c) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmsub_b(a: v16i8, b: v16i8, c: v16i8) -> v16i8 {
-    __lsx_vmsub_b(a, b, c)
+pub fn lsx_vmsub_b(a: v16i8, b: v16i8, c: v16i8) -> v16i8 {
+    unsafe { __lsx_vmsub_b(a, b, c) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmsub_h(a: v8i16, b: v8i16, c: v8i16) -> v8i16 {
-    __lsx_vmsub_h(a, b, c)
+pub fn lsx_vmsub_h(a: v8i16, b: v8i16, c: v8i16) -> v8i16 {
+    unsafe { __lsx_vmsub_h(a, b, c) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmsub_w(a: v4i32, b: v4i32, c: v4i32) -> v4i32 {
-    __lsx_vmsub_w(a, b, c)
+pub fn lsx_vmsub_w(a: v4i32, b: v4i32, c: v4i32) -> v4i32 {
+    unsafe { __lsx_vmsub_w(a, b, c) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmsub_d(a: v2i64, b: v2i64, c: v2i64) -> v2i64 {
-    __lsx_vmsub_d(a, b, c)
+pub fn lsx_vmsub_d(a: v2i64, b: v2i64, c: v2i64) -> v2i64 {
+    unsafe { __lsx_vmsub_d(a, b, c) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vdiv_b(a: v16i8, b: v16i8) -> v16i8 {
-    __lsx_vdiv_b(a, b)
+pub fn lsx_vdiv_b(a: v16i8, b: v16i8) -> v16i8 {
+    unsafe { __lsx_vdiv_b(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vdiv_h(a: v8i16, b: v8i16) -> v8i16 {
-    __lsx_vdiv_h(a, b)
+pub fn lsx_vdiv_h(a: v8i16, b: v8i16) -> v8i16 {
+    unsafe { __lsx_vdiv_h(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vdiv_w(a: v4i32, b: v4i32) -> v4i32 {
-    __lsx_vdiv_w(a, b)
+pub fn lsx_vdiv_w(a: v4i32, b: v4i32) -> v4i32 {
+    unsafe { __lsx_vdiv_w(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vdiv_d(a: v2i64, b: v2i64) -> v2i64 {
-    __lsx_vdiv_d(a, b)
+pub fn lsx_vdiv_d(a: v2i64, b: v2i64) -> v2i64 {
+    unsafe { __lsx_vdiv_d(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vdiv_bu(a: v16u8, b: v16u8) -> v16u8 {
-    __lsx_vdiv_bu(a, b)
+pub fn lsx_vdiv_bu(a: v16u8, b: v16u8) -> v16u8 {
+    unsafe { __lsx_vdiv_bu(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vdiv_hu(a: v8u16, b: v8u16) -> v8u16 {
-    __lsx_vdiv_hu(a, b)
+pub fn lsx_vdiv_hu(a: v8u16, b: v8u16) -> v8u16 {
+    unsafe { __lsx_vdiv_hu(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vdiv_wu(a: v4u32, b: v4u32) -> v4u32 {
-    __lsx_vdiv_wu(a, b)
+pub fn lsx_vdiv_wu(a: v4u32, b: v4u32) -> v4u32 {
+    unsafe { __lsx_vdiv_wu(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vdiv_du(a: v2u64, b: v2u64) -> v2u64 {
-    __lsx_vdiv_du(a, b)
+pub fn lsx_vdiv_du(a: v2u64, b: v2u64) -> v2u64 {
+    unsafe { __lsx_vdiv_du(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vhaddw_h_b(a: v16i8, b: v16i8) -> v8i16 {
-    __lsx_vhaddw_h_b(a, b)
+pub fn lsx_vhaddw_h_b(a: v16i8, b: v16i8) -> v8i16 {
+    unsafe { __lsx_vhaddw_h_b(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vhaddw_w_h(a: v8i16, b: v8i16) -> v4i32 {
-    __lsx_vhaddw_w_h(a, b)
+pub fn lsx_vhaddw_w_h(a: v8i16, b: v8i16) -> v4i32 {
+    unsafe { __lsx_vhaddw_w_h(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vhaddw_d_w(a: v4i32, b: v4i32) -> v2i64 {
-    __lsx_vhaddw_d_w(a, b)
+pub fn lsx_vhaddw_d_w(a: v4i32, b: v4i32) -> v2i64 {
+    unsafe { __lsx_vhaddw_d_w(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vhaddw_hu_bu(a: v16u8, b: v16u8) -> v8u16 {
-    __lsx_vhaddw_hu_bu(a, b)
+pub fn lsx_vhaddw_hu_bu(a: v16u8, b: v16u8) -> v8u16 {
+    unsafe { __lsx_vhaddw_hu_bu(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vhaddw_wu_hu(a: v8u16, b: v8u16) -> v4u32 {
-    __lsx_vhaddw_wu_hu(a, b)
+pub fn lsx_vhaddw_wu_hu(a: v8u16, b: v8u16) -> v4u32 {
+    unsafe { __lsx_vhaddw_wu_hu(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vhaddw_du_wu(a: v4u32, b: v4u32) -> v2u64 {
-    __lsx_vhaddw_du_wu(a, b)
+pub fn lsx_vhaddw_du_wu(a: v4u32, b: v4u32) -> v2u64 {
+    unsafe { __lsx_vhaddw_du_wu(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vhsubw_h_b(a: v16i8, b: v16i8) -> v8i16 {
-    __lsx_vhsubw_h_b(a, b)
+pub fn lsx_vhsubw_h_b(a: v16i8, b: v16i8) -> v8i16 {
+    unsafe { __lsx_vhsubw_h_b(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vhsubw_w_h(a: v8i16, b: v8i16) -> v4i32 {
-    __lsx_vhsubw_w_h(a, b)
+pub fn lsx_vhsubw_w_h(a: v8i16, b: v8i16) -> v4i32 {
+    unsafe { __lsx_vhsubw_w_h(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vhsubw_d_w(a: v4i32, b: v4i32) -> v2i64 {
-    __lsx_vhsubw_d_w(a, b)
+pub fn lsx_vhsubw_d_w(a: v4i32, b: v4i32) -> v2i64 {
+    unsafe { __lsx_vhsubw_d_w(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vhsubw_hu_bu(a: v16u8, b: v16u8) -> v8i16 {
-    __lsx_vhsubw_hu_bu(a, b)
+pub fn lsx_vhsubw_hu_bu(a: v16u8, b: v16u8) -> v8i16 {
+    unsafe { __lsx_vhsubw_hu_bu(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vhsubw_wu_hu(a: v8u16, b: v8u16) -> v4i32 {
-    __lsx_vhsubw_wu_hu(a, b)
+pub fn lsx_vhsubw_wu_hu(a: v8u16, b: v8u16) -> v4i32 {
+    unsafe { __lsx_vhsubw_wu_hu(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vhsubw_du_wu(a: v4u32, b: v4u32) -> v2i64 {
-    __lsx_vhsubw_du_wu(a, b)
+pub fn lsx_vhsubw_du_wu(a: v4u32, b: v4u32) -> v2i64 {
+    unsafe { __lsx_vhsubw_du_wu(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmod_b(a: v16i8, b: v16i8) -> v16i8 {
-    __lsx_vmod_b(a, b)
+pub fn lsx_vmod_b(a: v16i8, b: v16i8) -> v16i8 {
+    unsafe { __lsx_vmod_b(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmod_h(a: v8i16, b: v8i16) -> v8i16 {
-    __lsx_vmod_h(a, b)
+pub fn lsx_vmod_h(a: v8i16, b: v8i16) -> v8i16 {
+    unsafe { __lsx_vmod_h(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmod_w(a: v4i32, b: v4i32) -> v4i32 {
-    __lsx_vmod_w(a, b)
+pub fn lsx_vmod_w(a: v4i32, b: v4i32) -> v4i32 {
+    unsafe { __lsx_vmod_w(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmod_d(a: v2i64, b: v2i64) -> v2i64 {
-    __lsx_vmod_d(a, b)
+pub fn lsx_vmod_d(a: v2i64, b: v2i64) -> v2i64 {
+    unsafe { __lsx_vmod_d(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmod_bu(a: v16u8, b: v16u8) -> v16u8 {
-    __lsx_vmod_bu(a, b)
+pub fn lsx_vmod_bu(a: v16u8, b: v16u8) -> v16u8 {
+    unsafe { __lsx_vmod_bu(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmod_hu(a: v8u16, b: v8u16) -> v8u16 {
-    __lsx_vmod_hu(a, b)
+pub fn lsx_vmod_hu(a: v8u16, b: v8u16) -> v8u16 {
+    unsafe { __lsx_vmod_hu(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmod_wu(a: v4u32, b: v4u32) -> v4u32 {
-    __lsx_vmod_wu(a, b)
+pub fn lsx_vmod_wu(a: v4u32, b: v4u32) -> v4u32 {
+    unsafe { __lsx_vmod_wu(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmod_du(a: v2u64, b: v2u64) -> v2u64 {
-    __lsx_vmod_du(a, b)
+pub fn lsx_vmod_du(a: v2u64, b: v2u64) -> v2u64 {
+    unsafe { __lsx_vmod_du(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vreplve_b(a: v16i8, b: i32) -> v16i8 {
-    __lsx_vreplve_b(a, b)
+pub fn lsx_vreplve_b(a: v16i8, b: i32) -> v16i8 {
+    unsafe { __lsx_vreplve_b(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vreplve_h(a: v8i16, b: i32) -> v8i16 {
-    __lsx_vreplve_h(a, b)
+pub fn lsx_vreplve_h(a: v8i16, b: i32) -> v8i16 {
+    unsafe { __lsx_vreplve_h(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vreplve_w(a: v4i32, b: i32) -> v4i32 {
-    __lsx_vreplve_w(a, b)
+pub fn lsx_vreplve_w(a: v4i32, b: i32) -> v4i32 {
+    unsafe { __lsx_vreplve_w(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vreplve_d(a: v2i64, b: i32) -> v2i64 {
-    __lsx_vreplve_d(a, b)
+pub fn lsx_vreplve_d(a: v2i64, b: i32) -> v2i64 {
+    unsafe { __lsx_vreplve_d(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vreplvei_b<const IMM4: u32>(a: v16i8) -> v16i8 {
+pub fn lsx_vreplvei_b<const IMM4: u32>(a: v16i8) -> v16i8 {
     static_assert_uimm_bits!(IMM4, 4);
-    __lsx_vreplvei_b(a, IMM4)
+    unsafe { __lsx_vreplvei_b(a, IMM4) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vreplvei_h<const IMM3: u32>(a: v8i16) -> v8i16 {
+pub fn lsx_vreplvei_h<const IMM3: u32>(a: v8i16) -> v8i16 {
     static_assert_uimm_bits!(IMM3, 3);
-    __lsx_vreplvei_h(a, IMM3)
+    unsafe { __lsx_vreplvei_h(a, IMM3) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vreplvei_w<const IMM2: u32>(a: v4i32) -> v4i32 {
+pub fn lsx_vreplvei_w<const IMM2: u32>(a: v4i32) -> v4i32 {
     static_assert_uimm_bits!(IMM2, 2);
-    __lsx_vreplvei_w(a, IMM2)
+    unsafe { __lsx_vreplvei_w(a, IMM2) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vreplvei_d<const IMM1: u32>(a: v2i64) -> v2i64 {
+pub fn lsx_vreplvei_d<const IMM1: u32>(a: v2i64) -> v2i64 {
     static_assert_uimm_bits!(IMM1, 1);
-    __lsx_vreplvei_d(a, IMM1)
+    unsafe { __lsx_vreplvei_d(a, IMM1) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vpickev_b(a: v16i8, b: v16i8) -> v16i8 {
-    __lsx_vpickev_b(a, b)
+pub fn lsx_vpickev_b(a: v16i8, b: v16i8) -> v16i8 {
+    unsafe { __lsx_vpickev_b(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vpickev_h(a: v8i16, b: v8i16) -> v8i16 {
-    __lsx_vpickev_h(a, b)
+pub fn lsx_vpickev_h(a: v8i16, b: v8i16) -> v8i16 {
+    unsafe { __lsx_vpickev_h(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vpickev_w(a: v4i32, b: v4i32) -> v4i32 {
-    __lsx_vpickev_w(a, b)
+pub fn lsx_vpickev_w(a: v4i32, b: v4i32) -> v4i32 {
+    unsafe { __lsx_vpickev_w(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vpickev_d(a: v2i64, b: v2i64) -> v2i64 {
-    __lsx_vpickev_d(a, b)
+pub fn lsx_vpickev_d(a: v2i64, b: v2i64) -> v2i64 {
+    unsafe { __lsx_vpickev_d(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vpickod_b(a: v16i8, b: v16i8) -> v16i8 {
-    __lsx_vpickod_b(a, b)
+pub fn lsx_vpickod_b(a: v16i8, b: v16i8) -> v16i8 {
+    unsafe { __lsx_vpickod_b(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vpickod_h(a: v8i16, b: v8i16) -> v8i16 {
-    __lsx_vpickod_h(a, b)
+pub fn lsx_vpickod_h(a: v8i16, b: v8i16) -> v8i16 {
+    unsafe { __lsx_vpickod_h(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vpickod_w(a: v4i32, b: v4i32) -> v4i32 {
-    __lsx_vpickod_w(a, b)
+pub fn lsx_vpickod_w(a: v4i32, b: v4i32) -> v4i32 {
+    unsafe { __lsx_vpickod_w(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vpickod_d(a: v2i64, b: v2i64) -> v2i64 {
-    __lsx_vpickod_d(a, b)
+pub fn lsx_vpickod_d(a: v2i64, b: v2i64) -> v2i64 {
+    unsafe { __lsx_vpickod_d(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vilvh_b(a: v16i8, b: v16i8) -> v16i8 {
-    __lsx_vilvh_b(a, b)
+pub fn lsx_vilvh_b(a: v16i8, b: v16i8) -> v16i8 {
+    unsafe { __lsx_vilvh_b(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vilvh_h(a: v8i16, b: v8i16) -> v8i16 {
-    __lsx_vilvh_h(a, b)
+pub fn lsx_vilvh_h(a: v8i16, b: v8i16) -> v8i16 {
+    unsafe { __lsx_vilvh_h(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vilvh_w(a: v4i32, b: v4i32) -> v4i32 {
-    __lsx_vilvh_w(a, b)
+pub fn lsx_vilvh_w(a: v4i32, b: v4i32) -> v4i32 {
+    unsafe { __lsx_vilvh_w(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vilvh_d(a: v2i64, b: v2i64) -> v2i64 {
-    __lsx_vilvh_d(a, b)
+pub fn lsx_vilvh_d(a: v2i64, b: v2i64) -> v2i64 {
+    unsafe { __lsx_vilvh_d(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vilvl_b(a: v16i8, b: v16i8) -> v16i8 {
-    __lsx_vilvl_b(a, b)
+pub fn lsx_vilvl_b(a: v16i8, b: v16i8) -> v16i8 {
+    unsafe { __lsx_vilvl_b(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vilvl_h(a: v8i16, b: v8i16) -> v8i16 {
-    __lsx_vilvl_h(a, b)
+pub fn lsx_vilvl_h(a: v8i16, b: v8i16) -> v8i16 {
+    unsafe { __lsx_vilvl_h(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vilvl_w(a: v4i32, b: v4i32) -> v4i32 {
-    __lsx_vilvl_w(a, b)
+pub fn lsx_vilvl_w(a: v4i32, b: v4i32) -> v4i32 {
+    unsafe { __lsx_vilvl_w(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vilvl_d(a: v2i64, b: v2i64) -> v2i64 {
-    __lsx_vilvl_d(a, b)
+pub fn lsx_vilvl_d(a: v2i64, b: v2i64) -> v2i64 {
+    unsafe { __lsx_vilvl_d(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vpackev_b(a: v16i8, b: v16i8) -> v16i8 {
-    __lsx_vpackev_b(a, b)
+pub fn lsx_vpackev_b(a: v16i8, b: v16i8) -> v16i8 {
+    unsafe { __lsx_vpackev_b(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vpackev_h(a: v8i16, b: v8i16) -> v8i16 {
-    __lsx_vpackev_h(a, b)
+pub fn lsx_vpackev_h(a: v8i16, b: v8i16) -> v8i16 {
+    unsafe { __lsx_vpackev_h(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vpackev_w(a: v4i32, b: v4i32) -> v4i32 {
-    __lsx_vpackev_w(a, b)
+pub fn lsx_vpackev_w(a: v4i32, b: v4i32) -> v4i32 {
+    unsafe { __lsx_vpackev_w(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vpackev_d(a: v2i64, b: v2i64) -> v2i64 {
-    __lsx_vpackev_d(a, b)
+pub fn lsx_vpackev_d(a: v2i64, b: v2i64) -> v2i64 {
+    unsafe { __lsx_vpackev_d(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vpackod_b(a: v16i8, b: v16i8) -> v16i8 {
-    __lsx_vpackod_b(a, b)
+pub fn lsx_vpackod_b(a: v16i8, b: v16i8) -> v16i8 {
+    unsafe { __lsx_vpackod_b(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vpackod_h(a: v8i16, b: v8i16) -> v8i16 {
-    __lsx_vpackod_h(a, b)
+pub fn lsx_vpackod_h(a: v8i16, b: v8i16) -> v8i16 {
+    unsafe { __lsx_vpackod_h(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vpackod_w(a: v4i32, b: v4i32) -> v4i32 {
-    __lsx_vpackod_w(a, b)
+pub fn lsx_vpackod_w(a: v4i32, b: v4i32) -> v4i32 {
+    unsafe { __lsx_vpackod_w(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vpackod_d(a: v2i64, b: v2i64) -> v2i64 {
-    __lsx_vpackod_d(a, b)
+pub fn lsx_vpackod_d(a: v2i64, b: v2i64) -> v2i64 {
+    unsafe { __lsx_vpackod_d(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vshuf_h(a: v8i16, b: v8i16, c: v8i16) -> v8i16 {
-    __lsx_vshuf_h(a, b, c)
+pub fn lsx_vshuf_h(a: v8i16, b: v8i16, c: v8i16) -> v8i16 {
+    unsafe { __lsx_vshuf_h(a, b, c) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vshuf_w(a: v4i32, b: v4i32, c: v4i32) -> v4i32 {
-    __lsx_vshuf_w(a, b, c)
+pub fn lsx_vshuf_w(a: v4i32, b: v4i32, c: v4i32) -> v4i32 {
+    unsafe { __lsx_vshuf_w(a, b, c) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vshuf_d(a: v2i64, b: v2i64, c: v2i64) -> v2i64 {
-    __lsx_vshuf_d(a, b, c)
+pub fn lsx_vshuf_d(a: v2i64, b: v2i64, c: v2i64) -> v2i64 {
+    unsafe { __lsx_vshuf_d(a, b, c) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vand_v(a: v16u8, b: v16u8) -> v16u8 {
-    __lsx_vand_v(a, b)
-}
-
-#[inline]
-#[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(1)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vandi_b<const IMM8: u32>(a: v16u8) -> v16u8 {
-    static_assert_uimm_bits!(IMM8, 8);
-    __lsx_vandi_b(a, IMM8)
-}
-
-#[inline]
-#[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vor_v(a: v16u8, b: v16u8) -> v16u8 {
-    __lsx_vor_v(a, b)
+pub fn lsx_vand_v(a: v16u8, b: v16u8) -> v16u8 {
+    unsafe { __lsx_vand_v(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vori_b<const IMM8: u32>(a: v16u8) -> v16u8 {
+pub fn lsx_vandi_b<const IMM8: u32>(a: v16u8) -> v16u8 {
     static_assert_uimm_bits!(IMM8, 8);
-    __lsx_vori_b(a, IMM8)
+    unsafe { __lsx_vandi_b(a, IMM8) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vnor_v(a: v16u8, b: v16u8) -> v16u8 {
-    __lsx_vnor_v(a, b)
+pub fn lsx_vor_v(a: v16u8, b: v16u8) -> v16u8 {
+    unsafe { __lsx_vor_v(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vnori_b<const IMM8: u32>(a: v16u8) -> v16u8 {
+pub fn lsx_vori_b<const IMM8: u32>(a: v16u8) -> v16u8 {
     static_assert_uimm_bits!(IMM8, 8);
-    __lsx_vnori_b(a, IMM8)
+    unsafe { __lsx_vori_b(a, IMM8) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vxor_v(a: v16u8, b: v16u8) -> v16u8 {
-    __lsx_vxor_v(a, b)
+pub fn lsx_vnor_v(a: v16u8, b: v16u8) -> v16u8 {
+    unsafe { __lsx_vnor_v(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vxori_b<const IMM8: u32>(a: v16u8) -> v16u8 {
+pub fn lsx_vnori_b<const IMM8: u32>(a: v16u8) -> v16u8 {
     static_assert_uimm_bits!(IMM8, 8);
-    __lsx_vxori_b(a, IMM8)
+    unsafe { __lsx_vnori_b(a, IMM8) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vbitsel_v(a: v16u8, b: v16u8, c: v16u8) -> v16u8 {
-    __lsx_vbitsel_v(a, b, c)
+pub fn lsx_vxor_v(a: v16u8, b: v16u8) -> v16u8 {
+    unsafe { __lsx_vxor_v(a, b) }
+}
+
+#[inline]
+#[target_feature(enable = "lsx")]
+#[rustc_legacy_const_generics(1)]
+#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+pub fn lsx_vxori_b<const IMM8: u32>(a: v16u8) -> v16u8 {
+    static_assert_uimm_bits!(IMM8, 8);
+    unsafe { __lsx_vxori_b(a, IMM8) }
+}
+
+#[inline]
+#[target_feature(enable = "lsx")]
+#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+pub fn lsx_vbitsel_v(a: v16u8, b: v16u8, c: v16u8) -> v16u8 {
+    unsafe { __lsx_vbitsel_v(a, b, c) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vbitseli_b<const IMM8: u32>(a: v16u8, b: v16u8) -> v16u8 {
+pub fn lsx_vbitseli_b<const IMM8: u32>(a: v16u8, b: v16u8) -> v16u8 {
     static_assert_uimm_bits!(IMM8, 8);
-    __lsx_vbitseli_b(a, b, IMM8)
+    unsafe { __lsx_vbitseli_b(a, b, IMM8) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vshuf4i_b<const IMM8: u32>(a: v16i8) -> v16i8 {
+pub fn lsx_vshuf4i_b<const IMM8: u32>(a: v16i8) -> v16i8 {
     static_assert_uimm_bits!(IMM8, 8);
-    __lsx_vshuf4i_b(a, IMM8)
+    unsafe { __lsx_vshuf4i_b(a, IMM8) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vshuf4i_h<const IMM8: u32>(a: v8i16) -> v8i16 {
+pub fn lsx_vshuf4i_h<const IMM8: u32>(a: v8i16) -> v8i16 {
     static_assert_uimm_bits!(IMM8, 8);
-    __lsx_vshuf4i_h(a, IMM8)
+    unsafe { __lsx_vshuf4i_h(a, IMM8) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vshuf4i_w<const IMM8: u32>(a: v4i32) -> v4i32 {
+pub fn lsx_vshuf4i_w<const IMM8: u32>(a: v4i32) -> v4i32 {
     static_assert_uimm_bits!(IMM8, 8);
-    __lsx_vshuf4i_w(a, IMM8)
+    unsafe { __lsx_vshuf4i_w(a, IMM8) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vreplgr2vr_b(a: i32) -> v16i8 {
-    __lsx_vreplgr2vr_b(a)
+pub fn lsx_vreplgr2vr_b(a: i32) -> v16i8 {
+    unsafe { __lsx_vreplgr2vr_b(a) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vreplgr2vr_h(a: i32) -> v8i16 {
-    __lsx_vreplgr2vr_h(a)
+pub fn lsx_vreplgr2vr_h(a: i32) -> v8i16 {
+    unsafe { __lsx_vreplgr2vr_h(a) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vreplgr2vr_w(a: i32) -> v4i32 {
-    __lsx_vreplgr2vr_w(a)
+pub fn lsx_vreplgr2vr_w(a: i32) -> v4i32 {
+    unsafe { __lsx_vreplgr2vr_w(a) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vreplgr2vr_d(a: i64) -> v2i64 {
-    __lsx_vreplgr2vr_d(a)
+pub fn lsx_vreplgr2vr_d(a: i64) -> v2i64 {
+    unsafe { __lsx_vreplgr2vr_d(a) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vpcnt_b(a: v16i8) -> v16i8 {
-    __lsx_vpcnt_b(a)
+pub fn lsx_vpcnt_b(a: v16i8) -> v16i8 {
+    unsafe { __lsx_vpcnt_b(a) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vpcnt_h(a: v8i16) -> v8i16 {
-    __lsx_vpcnt_h(a)
+pub fn lsx_vpcnt_h(a: v8i16) -> v8i16 {
+    unsafe { __lsx_vpcnt_h(a) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vpcnt_w(a: v4i32) -> v4i32 {
-    __lsx_vpcnt_w(a)
+pub fn lsx_vpcnt_w(a: v4i32) -> v4i32 {
+    unsafe { __lsx_vpcnt_w(a) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vpcnt_d(a: v2i64) -> v2i64 {
-    __lsx_vpcnt_d(a)
+pub fn lsx_vpcnt_d(a: v2i64) -> v2i64 {
+    unsafe { __lsx_vpcnt_d(a) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vclo_b(a: v16i8) -> v16i8 {
-    __lsx_vclo_b(a)
+pub fn lsx_vclo_b(a: v16i8) -> v16i8 {
+    unsafe { __lsx_vclo_b(a) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vclo_h(a: v8i16) -> v8i16 {
-    __lsx_vclo_h(a)
+pub fn lsx_vclo_h(a: v8i16) -> v8i16 {
+    unsafe { __lsx_vclo_h(a) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vclo_w(a: v4i32) -> v4i32 {
-    __lsx_vclo_w(a)
+pub fn lsx_vclo_w(a: v4i32) -> v4i32 {
+    unsafe { __lsx_vclo_w(a) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vclo_d(a: v2i64) -> v2i64 {
-    __lsx_vclo_d(a)
+pub fn lsx_vclo_d(a: v2i64) -> v2i64 {
+    unsafe { __lsx_vclo_d(a) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vclz_b(a: v16i8) -> v16i8 {
-    __lsx_vclz_b(a)
+pub fn lsx_vclz_b(a: v16i8) -> v16i8 {
+    unsafe { __lsx_vclz_b(a) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vclz_h(a: v8i16) -> v8i16 {
-    __lsx_vclz_h(a)
+pub fn lsx_vclz_h(a: v8i16) -> v8i16 {
+    unsafe { __lsx_vclz_h(a) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vclz_w(a: v4i32) -> v4i32 {
-    __lsx_vclz_w(a)
+pub fn lsx_vclz_w(a: v4i32) -> v4i32 {
+    unsafe { __lsx_vclz_w(a) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vclz_d(a: v2i64) -> v2i64 {
-    __lsx_vclz_d(a)
+pub fn lsx_vclz_d(a: v2i64) -> v2i64 {
+    unsafe { __lsx_vclz_d(a) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vpickve2gr_b<const IMM4: u32>(a: v16i8) -> i32 {
+pub fn lsx_vpickve2gr_b<const IMM4: u32>(a: v16i8) -> i32 {
     static_assert_uimm_bits!(IMM4, 4);
-    __lsx_vpickve2gr_b(a, IMM4)
+    unsafe { __lsx_vpickve2gr_b(a, IMM4) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vpickve2gr_h<const IMM3: u32>(a: v8i16) -> i32 {
+pub fn lsx_vpickve2gr_h<const IMM3: u32>(a: v8i16) -> i32 {
     static_assert_uimm_bits!(IMM3, 3);
-    __lsx_vpickve2gr_h(a, IMM3)
+    unsafe { __lsx_vpickve2gr_h(a, IMM3) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vpickve2gr_w<const IMM2: u32>(a: v4i32) -> i32 {
+pub fn lsx_vpickve2gr_w<const IMM2: u32>(a: v4i32) -> i32 {
     static_assert_uimm_bits!(IMM2, 2);
-    __lsx_vpickve2gr_w(a, IMM2)
+    unsafe { __lsx_vpickve2gr_w(a, IMM2) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vpickve2gr_d<const IMM1: u32>(a: v2i64) -> i64 {
+pub fn lsx_vpickve2gr_d<const IMM1: u32>(a: v2i64) -> i64 {
     static_assert_uimm_bits!(IMM1, 1);
-    __lsx_vpickve2gr_d(a, IMM1)
+    unsafe { __lsx_vpickve2gr_d(a, IMM1) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vpickve2gr_bu<const IMM4: u32>(a: v16i8) -> u32 {
+pub fn lsx_vpickve2gr_bu<const IMM4: u32>(a: v16i8) -> u32 {
     static_assert_uimm_bits!(IMM4, 4);
-    __lsx_vpickve2gr_bu(a, IMM4)
+    unsafe { __lsx_vpickve2gr_bu(a, IMM4) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vpickve2gr_hu<const IMM3: u32>(a: v8i16) -> u32 {
+pub fn lsx_vpickve2gr_hu<const IMM3: u32>(a: v8i16) -> u32 {
     static_assert_uimm_bits!(IMM3, 3);
-    __lsx_vpickve2gr_hu(a, IMM3)
+    unsafe { __lsx_vpickve2gr_hu(a, IMM3) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vpickve2gr_wu<const IMM2: u32>(a: v4i32) -> u32 {
+pub fn lsx_vpickve2gr_wu<const IMM2: u32>(a: v4i32) -> u32 {
     static_assert_uimm_bits!(IMM2, 2);
-    __lsx_vpickve2gr_wu(a, IMM2)
+    unsafe { __lsx_vpickve2gr_wu(a, IMM2) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vpickve2gr_du<const IMM1: u32>(a: v2i64) -> u64 {
+pub fn lsx_vpickve2gr_du<const IMM1: u32>(a: v2i64) -> u64 {
     static_assert_uimm_bits!(IMM1, 1);
-    __lsx_vpickve2gr_du(a, IMM1)
+    unsafe { __lsx_vpickve2gr_du(a, IMM1) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vinsgr2vr_b<const IMM4: u32>(a: v16i8, b: i32) -> v16i8 {
+pub fn lsx_vinsgr2vr_b<const IMM4: u32>(a: v16i8, b: i32) -> v16i8 {
     static_assert_uimm_bits!(IMM4, 4);
-    __lsx_vinsgr2vr_b(a, b, IMM4)
+    unsafe { __lsx_vinsgr2vr_b(a, b, IMM4) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vinsgr2vr_h<const IMM3: u32>(a: v8i16, b: i32) -> v8i16 {
+pub fn lsx_vinsgr2vr_h<const IMM3: u32>(a: v8i16, b: i32) -> v8i16 {
     static_assert_uimm_bits!(IMM3, 3);
-    __lsx_vinsgr2vr_h(a, b, IMM3)
+    unsafe { __lsx_vinsgr2vr_h(a, b, IMM3) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vinsgr2vr_w<const IMM2: u32>(a: v4i32, b: i32) -> v4i32 {
+pub fn lsx_vinsgr2vr_w<const IMM2: u32>(a: v4i32, b: i32) -> v4i32 {
     static_assert_uimm_bits!(IMM2, 2);
-    __lsx_vinsgr2vr_w(a, b, IMM2)
+    unsafe { __lsx_vinsgr2vr_w(a, b, IMM2) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vinsgr2vr_d<const IMM1: u32>(a: v2i64, b: i64) -> v2i64 {
+pub fn lsx_vinsgr2vr_d<const IMM1: u32>(a: v2i64, b: i64) -> v2i64 {
     static_assert_uimm_bits!(IMM1, 1);
-    __lsx_vinsgr2vr_d(a, b, IMM1)
+    unsafe { __lsx_vinsgr2vr_d(a, b, IMM1) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vfadd_s(a: v4f32, b: v4f32) -> v4f32 {
-    __lsx_vfadd_s(a, b)
+pub fn lsx_vfadd_s(a: v4f32, b: v4f32) -> v4f32 {
+    unsafe { __lsx_vfadd_s(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vfadd_d(a: v2f64, b: v2f64) -> v2f64 {
-    __lsx_vfadd_d(a, b)
+pub fn lsx_vfadd_d(a: v2f64, b: v2f64) -> v2f64 {
+    unsafe { __lsx_vfadd_d(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vfsub_s(a: v4f32, b: v4f32) -> v4f32 {
-    __lsx_vfsub_s(a, b)
+pub fn lsx_vfsub_s(a: v4f32, b: v4f32) -> v4f32 {
+    unsafe { __lsx_vfsub_s(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vfsub_d(a: v2f64, b: v2f64) -> v2f64 {
-    __lsx_vfsub_d(a, b)
+pub fn lsx_vfsub_d(a: v2f64, b: v2f64) -> v2f64 {
+    unsafe { __lsx_vfsub_d(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vfmul_s(a: v4f32, b: v4f32) -> v4f32 {
-    __lsx_vfmul_s(a, b)
+pub fn lsx_vfmul_s(a: v4f32, b: v4f32) -> v4f32 {
+    unsafe { __lsx_vfmul_s(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vfmul_d(a: v2f64, b: v2f64) -> v2f64 {
-    __lsx_vfmul_d(a, b)
+pub fn lsx_vfmul_d(a: v2f64, b: v2f64) -> v2f64 {
+    unsafe { __lsx_vfmul_d(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vfdiv_s(a: v4f32, b: v4f32) -> v4f32 {
-    __lsx_vfdiv_s(a, b)
+pub fn lsx_vfdiv_s(a: v4f32, b: v4f32) -> v4f32 {
+    unsafe { __lsx_vfdiv_s(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vfdiv_d(a: v2f64, b: v2f64) -> v2f64 {
-    __lsx_vfdiv_d(a, b)
+pub fn lsx_vfdiv_d(a: v2f64, b: v2f64) -> v2f64 {
+    unsafe { __lsx_vfdiv_d(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vfcvt_h_s(a: v4f32, b: v4f32) -> v8i16 {
-    __lsx_vfcvt_h_s(a, b)
+pub fn lsx_vfcvt_h_s(a: v4f32, b: v4f32) -> v8i16 {
+    unsafe { __lsx_vfcvt_h_s(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vfcvt_s_d(a: v2f64, b: v2f64) -> v4f32 {
-    __lsx_vfcvt_s_d(a, b)
+pub fn lsx_vfcvt_s_d(a: v2f64, b: v2f64) -> v4f32 {
+    unsafe { __lsx_vfcvt_s_d(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vfmin_s(a: v4f32, b: v4f32) -> v4f32 {
-    __lsx_vfmin_s(a, b)
+pub fn lsx_vfmin_s(a: v4f32, b: v4f32) -> v4f32 {
+    unsafe { __lsx_vfmin_s(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vfmin_d(a: v2f64, b: v2f64) -> v2f64 {
-    __lsx_vfmin_d(a, b)
+pub fn lsx_vfmin_d(a: v2f64, b: v2f64) -> v2f64 {
+    unsafe { __lsx_vfmin_d(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vfmina_s(a: v4f32, b: v4f32) -> v4f32 {
-    __lsx_vfmina_s(a, b)
+pub fn lsx_vfmina_s(a: v4f32, b: v4f32) -> v4f32 {
+    unsafe { __lsx_vfmina_s(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vfmina_d(a: v2f64, b: v2f64) -> v2f64 {
-    __lsx_vfmina_d(a, b)
+pub fn lsx_vfmina_d(a: v2f64, b: v2f64) -> v2f64 {
+    unsafe { __lsx_vfmina_d(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vfmax_s(a: v4f32, b: v4f32) -> v4f32 {
-    __lsx_vfmax_s(a, b)
+pub fn lsx_vfmax_s(a: v4f32, b: v4f32) -> v4f32 {
+    unsafe { __lsx_vfmax_s(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vfmax_d(a: v2f64, b: v2f64) -> v2f64 {
-    __lsx_vfmax_d(a, b)
+pub fn lsx_vfmax_d(a: v2f64, b: v2f64) -> v2f64 {
+    unsafe { __lsx_vfmax_d(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vfmaxa_s(a: v4f32, b: v4f32) -> v4f32 {
-    __lsx_vfmaxa_s(a, b)
+pub fn lsx_vfmaxa_s(a: v4f32, b: v4f32) -> v4f32 {
+    unsafe { __lsx_vfmaxa_s(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vfmaxa_d(a: v2f64, b: v2f64) -> v2f64 {
-    __lsx_vfmaxa_d(a, b)
+pub fn lsx_vfmaxa_d(a: v2f64, b: v2f64) -> v2f64 {
+    unsafe { __lsx_vfmaxa_d(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vfclass_s(a: v4f32) -> v4i32 {
-    __lsx_vfclass_s(a)
+pub fn lsx_vfclass_s(a: v4f32) -> v4i32 {
+    unsafe { __lsx_vfclass_s(a) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vfclass_d(a: v2f64) -> v2i64 {
-    __lsx_vfclass_d(a)
+pub fn lsx_vfclass_d(a: v2f64) -> v2i64 {
+    unsafe { __lsx_vfclass_d(a) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vfsqrt_s(a: v4f32) -> v4f32 {
-    __lsx_vfsqrt_s(a)
+pub fn lsx_vfsqrt_s(a: v4f32) -> v4f32 {
+    unsafe { __lsx_vfsqrt_s(a) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vfsqrt_d(a: v2f64) -> v2f64 {
-    __lsx_vfsqrt_d(a)
+pub fn lsx_vfsqrt_d(a: v2f64) -> v2f64 {
+    unsafe { __lsx_vfsqrt_d(a) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vfrecip_s(a: v4f32) -> v4f32 {
-    __lsx_vfrecip_s(a)
+pub fn lsx_vfrecip_s(a: v4f32) -> v4f32 {
+    unsafe { __lsx_vfrecip_s(a) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vfrecip_d(a: v2f64) -> v2f64 {
-    __lsx_vfrecip_d(a)
+pub fn lsx_vfrecip_d(a: v2f64) -> v2f64 {
+    unsafe { __lsx_vfrecip_d(a) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx,frecipe")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vfrecipe_s(a: v4f32) -> v4f32 {
-    __lsx_vfrecipe_s(a)
+pub fn lsx_vfrecipe_s(a: v4f32) -> v4f32 {
+    unsafe { __lsx_vfrecipe_s(a) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx,frecipe")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vfrecipe_d(a: v2f64) -> v2f64 {
-    __lsx_vfrecipe_d(a)
+pub fn lsx_vfrecipe_d(a: v2f64) -> v2f64 {
+    unsafe { __lsx_vfrecipe_d(a) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx,frecipe")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vfrsqrte_s(a: v4f32) -> v4f32 {
-    __lsx_vfrsqrte_s(a)
+pub fn lsx_vfrsqrte_s(a: v4f32) -> v4f32 {
+    unsafe { __lsx_vfrsqrte_s(a) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx,frecipe")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vfrsqrte_d(a: v2f64) -> v2f64 {
-    __lsx_vfrsqrte_d(a)
+pub fn lsx_vfrsqrte_d(a: v2f64) -> v2f64 {
+    unsafe { __lsx_vfrsqrte_d(a) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vfrint_s(a: v4f32) -> v4f32 {
-    __lsx_vfrint_s(a)
+pub fn lsx_vfrint_s(a: v4f32) -> v4f32 {
+    unsafe { __lsx_vfrint_s(a) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vfrint_d(a: v2f64) -> v2f64 {
-    __lsx_vfrint_d(a)
+pub fn lsx_vfrint_d(a: v2f64) -> v2f64 {
+    unsafe { __lsx_vfrint_d(a) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vfrsqrt_s(a: v4f32) -> v4f32 {
-    __lsx_vfrsqrt_s(a)
+pub fn lsx_vfrsqrt_s(a: v4f32) -> v4f32 {
+    unsafe { __lsx_vfrsqrt_s(a) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vfrsqrt_d(a: v2f64) -> v2f64 {
-    __lsx_vfrsqrt_d(a)
+pub fn lsx_vfrsqrt_d(a: v2f64) -> v2f64 {
+    unsafe { __lsx_vfrsqrt_d(a) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vflogb_s(a: v4f32) -> v4f32 {
-    __lsx_vflogb_s(a)
+pub fn lsx_vflogb_s(a: v4f32) -> v4f32 {
+    unsafe { __lsx_vflogb_s(a) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vflogb_d(a: v2f64) -> v2f64 {
-    __lsx_vflogb_d(a)
+pub fn lsx_vflogb_d(a: v2f64) -> v2f64 {
+    unsafe { __lsx_vflogb_d(a) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vfcvth_s_h(a: v8i16) -> v4f32 {
-    __lsx_vfcvth_s_h(a)
+pub fn lsx_vfcvth_s_h(a: v8i16) -> v4f32 {
+    unsafe { __lsx_vfcvth_s_h(a) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vfcvth_d_s(a: v4f32) -> v2f64 {
-    __lsx_vfcvth_d_s(a)
+pub fn lsx_vfcvth_d_s(a: v4f32) -> v2f64 {
+    unsafe { __lsx_vfcvth_d_s(a) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vfcvtl_s_h(a: v8i16) -> v4f32 {
-    __lsx_vfcvtl_s_h(a)
+pub fn lsx_vfcvtl_s_h(a: v8i16) -> v4f32 {
+    unsafe { __lsx_vfcvtl_s_h(a) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vfcvtl_d_s(a: v4f32) -> v2f64 {
-    __lsx_vfcvtl_d_s(a)
+pub fn lsx_vfcvtl_d_s(a: v4f32) -> v2f64 {
+    unsafe { __lsx_vfcvtl_d_s(a) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vftint_w_s(a: v4f32) -> v4i32 {
-    __lsx_vftint_w_s(a)
+pub fn lsx_vftint_w_s(a: v4f32) -> v4i32 {
+    unsafe { __lsx_vftint_w_s(a) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vftint_l_d(a: v2f64) -> v2i64 {
-    __lsx_vftint_l_d(a)
+pub fn lsx_vftint_l_d(a: v2f64) -> v2i64 {
+    unsafe { __lsx_vftint_l_d(a) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vftint_wu_s(a: v4f32) -> v4u32 {
-    __lsx_vftint_wu_s(a)
+pub fn lsx_vftint_wu_s(a: v4f32) -> v4u32 {
+    unsafe { __lsx_vftint_wu_s(a) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vftint_lu_d(a: v2f64) -> v2u64 {
-    __lsx_vftint_lu_d(a)
+pub fn lsx_vftint_lu_d(a: v2f64) -> v2u64 {
+    unsafe { __lsx_vftint_lu_d(a) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vftintrz_w_s(a: v4f32) -> v4i32 {
-    __lsx_vftintrz_w_s(a)
+pub fn lsx_vftintrz_w_s(a: v4f32) -> v4i32 {
+    unsafe { __lsx_vftintrz_w_s(a) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vftintrz_l_d(a: v2f64) -> v2i64 {
-    __lsx_vftintrz_l_d(a)
+pub fn lsx_vftintrz_l_d(a: v2f64) -> v2i64 {
+    unsafe { __lsx_vftintrz_l_d(a) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vftintrz_wu_s(a: v4f32) -> v4u32 {
-    __lsx_vftintrz_wu_s(a)
+pub fn lsx_vftintrz_wu_s(a: v4f32) -> v4u32 {
+    unsafe { __lsx_vftintrz_wu_s(a) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vftintrz_lu_d(a: v2f64) -> v2u64 {
-    __lsx_vftintrz_lu_d(a)
+pub fn lsx_vftintrz_lu_d(a: v2f64) -> v2u64 {
+    unsafe { __lsx_vftintrz_lu_d(a) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vffint_s_w(a: v4i32) -> v4f32 {
-    __lsx_vffint_s_w(a)
+pub fn lsx_vffint_s_w(a: v4i32) -> v4f32 {
+    unsafe { __lsx_vffint_s_w(a) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vffint_d_l(a: v2i64) -> v2f64 {
-    __lsx_vffint_d_l(a)
+pub fn lsx_vffint_d_l(a: v2i64) -> v2f64 {
+    unsafe { __lsx_vffint_d_l(a) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vffint_s_wu(a: v4u32) -> v4f32 {
-    __lsx_vffint_s_wu(a)
+pub fn lsx_vffint_s_wu(a: v4u32) -> v4f32 {
+    unsafe { __lsx_vffint_s_wu(a) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vffint_d_lu(a: v2u64) -> v2f64 {
-    __lsx_vffint_d_lu(a)
+pub fn lsx_vffint_d_lu(a: v2u64) -> v2f64 {
+    unsafe { __lsx_vffint_d_lu(a) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vandn_v(a: v16u8, b: v16u8) -> v16u8 {
-    __lsx_vandn_v(a, b)
+pub fn lsx_vandn_v(a: v16u8, b: v16u8) -> v16u8 {
+    unsafe { __lsx_vandn_v(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vneg_b(a: v16i8) -> v16i8 {
-    __lsx_vneg_b(a)
+pub fn lsx_vneg_b(a: v16i8) -> v16i8 {
+    unsafe { __lsx_vneg_b(a) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vneg_h(a: v8i16) -> v8i16 {
-    __lsx_vneg_h(a)
+pub fn lsx_vneg_h(a: v8i16) -> v8i16 {
+    unsafe { __lsx_vneg_h(a) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vneg_w(a: v4i32) -> v4i32 {
-    __lsx_vneg_w(a)
+pub fn lsx_vneg_w(a: v4i32) -> v4i32 {
+    unsafe { __lsx_vneg_w(a) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vneg_d(a: v2i64) -> v2i64 {
-    __lsx_vneg_d(a)
+pub fn lsx_vneg_d(a: v2i64) -> v2i64 {
+    unsafe { __lsx_vneg_d(a) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmuh_b(a: v16i8, b: v16i8) -> v16i8 {
-    __lsx_vmuh_b(a, b)
+pub fn lsx_vmuh_b(a: v16i8, b: v16i8) -> v16i8 {
+    unsafe { __lsx_vmuh_b(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmuh_h(a: v8i16, b: v8i16) -> v8i16 {
-    __lsx_vmuh_h(a, b)
+pub fn lsx_vmuh_h(a: v8i16, b: v8i16) -> v8i16 {
+    unsafe { __lsx_vmuh_h(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmuh_w(a: v4i32, b: v4i32) -> v4i32 {
-    __lsx_vmuh_w(a, b)
+pub fn lsx_vmuh_w(a: v4i32, b: v4i32) -> v4i32 {
+    unsafe { __lsx_vmuh_w(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmuh_d(a: v2i64, b: v2i64) -> v2i64 {
-    __lsx_vmuh_d(a, b)
+pub fn lsx_vmuh_d(a: v2i64, b: v2i64) -> v2i64 {
+    unsafe { __lsx_vmuh_d(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmuh_bu(a: v16u8, b: v16u8) -> v16u8 {
-    __lsx_vmuh_bu(a, b)
+pub fn lsx_vmuh_bu(a: v16u8, b: v16u8) -> v16u8 {
+    unsafe { __lsx_vmuh_bu(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmuh_hu(a: v8u16, b: v8u16) -> v8u16 {
-    __lsx_vmuh_hu(a, b)
+pub fn lsx_vmuh_hu(a: v8u16, b: v8u16) -> v8u16 {
+    unsafe { __lsx_vmuh_hu(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmuh_wu(a: v4u32, b: v4u32) -> v4u32 {
-    __lsx_vmuh_wu(a, b)
+pub fn lsx_vmuh_wu(a: v4u32, b: v4u32) -> v4u32 {
+    unsafe { __lsx_vmuh_wu(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmuh_du(a: v2u64, b: v2u64) -> v2u64 {
-    __lsx_vmuh_du(a, b)
+pub fn lsx_vmuh_du(a: v2u64, b: v2u64) -> v2u64 {
+    unsafe { __lsx_vmuh_du(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsllwil_h_b<const IMM3: u32>(a: v16i8) -> v8i16 {
+pub fn lsx_vsllwil_h_b<const IMM3: u32>(a: v16i8) -> v8i16 {
     static_assert_uimm_bits!(IMM3, 3);
-    __lsx_vsllwil_h_b(a, IMM3)
+    unsafe { __lsx_vsllwil_h_b(a, IMM3) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsllwil_w_h<const IMM4: u32>(a: v8i16) -> v4i32 {
+pub fn lsx_vsllwil_w_h<const IMM4: u32>(a: v8i16) -> v4i32 {
     static_assert_uimm_bits!(IMM4, 4);
-    __lsx_vsllwil_w_h(a, IMM4)
+    unsafe { __lsx_vsllwil_w_h(a, IMM4) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsllwil_d_w<const IMM5: u32>(a: v4i32) -> v2i64 {
+pub fn lsx_vsllwil_d_w<const IMM5: u32>(a: v4i32) -> v2i64 {
     static_assert_uimm_bits!(IMM5, 5);
-    __lsx_vsllwil_d_w(a, IMM5)
+    unsafe { __lsx_vsllwil_d_w(a, IMM5) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsllwil_hu_bu<const IMM3: u32>(a: v16u8) -> v8u16 {
+pub fn lsx_vsllwil_hu_bu<const IMM3: u32>(a: v16u8) -> v8u16 {
     static_assert_uimm_bits!(IMM3, 3);
-    __lsx_vsllwil_hu_bu(a, IMM3)
+    unsafe { __lsx_vsllwil_hu_bu(a, IMM3) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsllwil_wu_hu<const IMM4: u32>(a: v8u16) -> v4u32 {
+pub fn lsx_vsllwil_wu_hu<const IMM4: u32>(a: v8u16) -> v4u32 {
     static_assert_uimm_bits!(IMM4, 4);
-    __lsx_vsllwil_wu_hu(a, IMM4)
+    unsafe { __lsx_vsllwil_wu_hu(a, IMM4) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsllwil_du_wu<const IMM5: u32>(a: v4u32) -> v2u64 {
+pub fn lsx_vsllwil_du_wu<const IMM5: u32>(a: v4u32) -> v2u64 {
     static_assert_uimm_bits!(IMM5, 5);
-    __lsx_vsllwil_du_wu(a, IMM5)
+    unsafe { __lsx_vsllwil_du_wu(a, IMM5) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsran_b_h(a: v8i16, b: v8i16) -> v16i8 {
-    __lsx_vsran_b_h(a, b)
+pub fn lsx_vsran_b_h(a: v8i16, b: v8i16) -> v16i8 {
+    unsafe { __lsx_vsran_b_h(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsran_h_w(a: v4i32, b: v4i32) -> v8i16 {
-    __lsx_vsran_h_w(a, b)
+pub fn lsx_vsran_h_w(a: v4i32, b: v4i32) -> v8i16 {
+    unsafe { __lsx_vsran_h_w(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsran_w_d(a: v2i64, b: v2i64) -> v4i32 {
-    __lsx_vsran_w_d(a, b)
+pub fn lsx_vsran_w_d(a: v2i64, b: v2i64) -> v4i32 {
+    unsafe { __lsx_vsran_w_d(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vssran_b_h(a: v8i16, b: v8i16) -> v16i8 {
-    __lsx_vssran_b_h(a, b)
+pub fn lsx_vssran_b_h(a: v8i16, b: v8i16) -> v16i8 {
+    unsafe { __lsx_vssran_b_h(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vssran_h_w(a: v4i32, b: v4i32) -> v8i16 {
-    __lsx_vssran_h_w(a, b)
+pub fn lsx_vssran_h_w(a: v4i32, b: v4i32) -> v8i16 {
+    unsafe { __lsx_vssran_h_w(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vssran_w_d(a: v2i64, b: v2i64) -> v4i32 {
-    __lsx_vssran_w_d(a, b)
+pub fn lsx_vssran_w_d(a: v2i64, b: v2i64) -> v4i32 {
+    unsafe { __lsx_vssran_w_d(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vssran_bu_h(a: v8u16, b: v8u16) -> v16u8 {
-    __lsx_vssran_bu_h(a, b)
+pub fn lsx_vssran_bu_h(a: v8u16, b: v8u16) -> v16u8 {
+    unsafe { __lsx_vssran_bu_h(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vssran_hu_w(a: v4u32, b: v4u32) -> v8u16 {
-    __lsx_vssran_hu_w(a, b)
+pub fn lsx_vssran_hu_w(a: v4u32, b: v4u32) -> v8u16 {
+    unsafe { __lsx_vssran_hu_w(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vssran_wu_d(a: v2u64, b: v2u64) -> v4u32 {
-    __lsx_vssran_wu_d(a, b)
+pub fn lsx_vssran_wu_d(a: v2u64, b: v2u64) -> v4u32 {
+    unsafe { __lsx_vssran_wu_d(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsrarn_b_h(a: v8i16, b: v8i16) -> v16i8 {
-    __lsx_vsrarn_b_h(a, b)
+pub fn lsx_vsrarn_b_h(a: v8i16, b: v8i16) -> v16i8 {
+    unsafe { __lsx_vsrarn_b_h(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsrarn_h_w(a: v4i32, b: v4i32) -> v8i16 {
-    __lsx_vsrarn_h_w(a, b)
+pub fn lsx_vsrarn_h_w(a: v4i32, b: v4i32) -> v8i16 {
+    unsafe { __lsx_vsrarn_h_w(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsrarn_w_d(a: v2i64, b: v2i64) -> v4i32 {
-    __lsx_vsrarn_w_d(a, b)
+pub fn lsx_vsrarn_w_d(a: v2i64, b: v2i64) -> v4i32 {
+    unsafe { __lsx_vsrarn_w_d(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vssrarn_b_h(a: v8i16, b: v8i16) -> v16i8 {
-    __lsx_vssrarn_b_h(a, b)
+pub fn lsx_vssrarn_b_h(a: v8i16, b: v8i16) -> v16i8 {
+    unsafe { __lsx_vssrarn_b_h(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vssrarn_h_w(a: v4i32, b: v4i32) -> v8i16 {
-    __lsx_vssrarn_h_w(a, b)
+pub fn lsx_vssrarn_h_w(a: v4i32, b: v4i32) -> v8i16 {
+    unsafe { __lsx_vssrarn_h_w(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vssrarn_w_d(a: v2i64, b: v2i64) -> v4i32 {
-    __lsx_vssrarn_w_d(a, b)
+pub fn lsx_vssrarn_w_d(a: v2i64, b: v2i64) -> v4i32 {
+    unsafe { __lsx_vssrarn_w_d(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vssrarn_bu_h(a: v8u16, b: v8u16) -> v16u8 {
-    __lsx_vssrarn_bu_h(a, b)
+pub fn lsx_vssrarn_bu_h(a: v8u16, b: v8u16) -> v16u8 {
+    unsafe { __lsx_vssrarn_bu_h(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vssrarn_hu_w(a: v4u32, b: v4u32) -> v8u16 {
-    __lsx_vssrarn_hu_w(a, b)
+pub fn lsx_vssrarn_hu_w(a: v4u32, b: v4u32) -> v8u16 {
+    unsafe { __lsx_vssrarn_hu_w(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vssrarn_wu_d(a: v2u64, b: v2u64) -> v4u32 {
-    __lsx_vssrarn_wu_d(a, b)
+pub fn lsx_vssrarn_wu_d(a: v2u64, b: v2u64) -> v4u32 {
+    unsafe { __lsx_vssrarn_wu_d(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsrln_b_h(a: v8i16, b: v8i16) -> v16i8 {
-    __lsx_vsrln_b_h(a, b)
+pub fn lsx_vsrln_b_h(a: v8i16, b: v8i16) -> v16i8 {
+    unsafe { __lsx_vsrln_b_h(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsrln_h_w(a: v4i32, b: v4i32) -> v8i16 {
-    __lsx_vsrln_h_w(a, b)
+pub fn lsx_vsrln_h_w(a: v4i32, b: v4i32) -> v8i16 {
+    unsafe { __lsx_vsrln_h_w(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsrln_w_d(a: v2i64, b: v2i64) -> v4i32 {
-    __lsx_vsrln_w_d(a, b)
+pub fn lsx_vsrln_w_d(a: v2i64, b: v2i64) -> v4i32 {
+    unsafe { __lsx_vsrln_w_d(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vssrln_bu_h(a: v8u16, b: v8u16) -> v16u8 {
-    __lsx_vssrln_bu_h(a, b)
+pub fn lsx_vssrln_bu_h(a: v8u16, b: v8u16) -> v16u8 {
+    unsafe { __lsx_vssrln_bu_h(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vssrln_hu_w(a: v4u32, b: v4u32) -> v8u16 {
-    __lsx_vssrln_hu_w(a, b)
+pub fn lsx_vssrln_hu_w(a: v4u32, b: v4u32) -> v8u16 {
+    unsafe { __lsx_vssrln_hu_w(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vssrln_wu_d(a: v2u64, b: v2u64) -> v4u32 {
-    __lsx_vssrln_wu_d(a, b)
+pub fn lsx_vssrln_wu_d(a: v2u64, b: v2u64) -> v4u32 {
+    unsafe { __lsx_vssrln_wu_d(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsrlrn_b_h(a: v8i16, b: v8i16) -> v16i8 {
-    __lsx_vsrlrn_b_h(a, b)
+pub fn lsx_vsrlrn_b_h(a: v8i16, b: v8i16) -> v16i8 {
+    unsafe { __lsx_vsrlrn_b_h(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsrlrn_h_w(a: v4i32, b: v4i32) -> v8i16 {
-    __lsx_vsrlrn_h_w(a, b)
+pub fn lsx_vsrlrn_h_w(a: v4i32, b: v4i32) -> v8i16 {
+    unsafe { __lsx_vsrlrn_h_w(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsrlrn_w_d(a: v2i64, b: v2i64) -> v4i32 {
-    __lsx_vsrlrn_w_d(a, b)
+pub fn lsx_vsrlrn_w_d(a: v2i64, b: v2i64) -> v4i32 {
+    unsafe { __lsx_vsrlrn_w_d(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vssrlrn_bu_h(a: v8u16, b: v8u16) -> v16u8 {
-    __lsx_vssrlrn_bu_h(a, b)
+pub fn lsx_vssrlrn_bu_h(a: v8u16, b: v8u16) -> v16u8 {
+    unsafe { __lsx_vssrlrn_bu_h(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vssrlrn_hu_w(a: v4u32, b: v4u32) -> v8u16 {
-    __lsx_vssrlrn_hu_w(a, b)
+pub fn lsx_vssrlrn_hu_w(a: v4u32, b: v4u32) -> v8u16 {
+    unsafe { __lsx_vssrlrn_hu_w(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vssrlrn_wu_d(a: v2u64, b: v2u64) -> v4u32 {
-    __lsx_vssrlrn_wu_d(a, b)
+pub fn lsx_vssrlrn_wu_d(a: v2u64, b: v2u64) -> v4u32 {
+    unsafe { __lsx_vssrlrn_wu_d(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vfrstpi_b<const IMM5: u32>(a: v16i8, b: v16i8) -> v16i8 {
+pub fn lsx_vfrstpi_b<const IMM5: u32>(a: v16i8, b: v16i8) -> v16i8 {
     static_assert_uimm_bits!(IMM5, 5);
-    __lsx_vfrstpi_b(a, b, IMM5)
+    unsafe { __lsx_vfrstpi_b(a, b, IMM5) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vfrstpi_h<const IMM5: u32>(a: v8i16, b: v8i16) -> v8i16 {
+pub fn lsx_vfrstpi_h<const IMM5: u32>(a: v8i16, b: v8i16) -> v8i16 {
     static_assert_uimm_bits!(IMM5, 5);
-    __lsx_vfrstpi_h(a, b, IMM5)
+    unsafe { __lsx_vfrstpi_h(a, b, IMM5) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vfrstp_b(a: v16i8, b: v16i8, c: v16i8) -> v16i8 {
-    __lsx_vfrstp_b(a, b, c)
+pub fn lsx_vfrstp_b(a: v16i8, b: v16i8, c: v16i8) -> v16i8 {
+    unsafe { __lsx_vfrstp_b(a, b, c) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vfrstp_h(a: v8i16, b: v8i16, c: v8i16) -> v8i16 {
-    __lsx_vfrstp_h(a, b, c)
+pub fn lsx_vfrstp_h(a: v8i16, b: v8i16, c: v8i16) -> v8i16 {
+    unsafe { __lsx_vfrstp_h(a, b, c) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vshuf4i_d<const IMM8: u32>(a: v2i64, b: v2i64) -> v2i64 {
+pub fn lsx_vshuf4i_d<const IMM8: u32>(a: v2i64, b: v2i64) -> v2i64 {
     static_assert_uimm_bits!(IMM8, 8);
-    __lsx_vshuf4i_d(a, b, IMM8)
+    unsafe { __lsx_vshuf4i_d(a, b, IMM8) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vbsrl_v<const IMM5: u32>(a: v16i8) -> v16i8 {
+pub fn lsx_vbsrl_v<const IMM5: u32>(a: v16i8) -> v16i8 {
     static_assert_uimm_bits!(IMM5, 5);
-    __lsx_vbsrl_v(a, IMM5)
+    unsafe { __lsx_vbsrl_v(a, IMM5) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vbsll_v<const IMM5: u32>(a: v16i8) -> v16i8 {
+pub fn lsx_vbsll_v<const IMM5: u32>(a: v16i8) -> v16i8 {
     static_assert_uimm_bits!(IMM5, 5);
-    __lsx_vbsll_v(a, IMM5)
+    unsafe { __lsx_vbsll_v(a, IMM5) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vextrins_b<const IMM8: u32>(a: v16i8, b: v16i8) -> v16i8 {
+pub fn lsx_vextrins_b<const IMM8: u32>(a: v16i8, b: v16i8) -> v16i8 {
     static_assert_uimm_bits!(IMM8, 8);
-    __lsx_vextrins_b(a, b, IMM8)
+    unsafe { __lsx_vextrins_b(a, b, IMM8) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vextrins_h<const IMM8: u32>(a: v8i16, b: v8i16) -> v8i16 {
+pub fn lsx_vextrins_h<const IMM8: u32>(a: v8i16, b: v8i16) -> v8i16 {
     static_assert_uimm_bits!(IMM8, 8);
-    __lsx_vextrins_h(a, b, IMM8)
+    unsafe { __lsx_vextrins_h(a, b, IMM8) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vextrins_w<const IMM8: u32>(a: v4i32, b: v4i32) -> v4i32 {
+pub fn lsx_vextrins_w<const IMM8: u32>(a: v4i32, b: v4i32) -> v4i32 {
     static_assert_uimm_bits!(IMM8, 8);
-    __lsx_vextrins_w(a, b, IMM8)
+    unsafe { __lsx_vextrins_w(a, b, IMM8) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vextrins_d<const IMM8: u32>(a: v2i64, b: v2i64) -> v2i64 {
+pub fn lsx_vextrins_d<const IMM8: u32>(a: v2i64, b: v2i64) -> v2i64 {
     static_assert_uimm_bits!(IMM8, 8);
-    __lsx_vextrins_d(a, b, IMM8)
+    unsafe { __lsx_vextrins_d(a, b, IMM8) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmskltz_b(a: v16i8) -> v16i8 {
-    __lsx_vmskltz_b(a)
+pub fn lsx_vmskltz_b(a: v16i8) -> v16i8 {
+    unsafe { __lsx_vmskltz_b(a) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmskltz_h(a: v8i16) -> v8i16 {
-    __lsx_vmskltz_h(a)
+pub fn lsx_vmskltz_h(a: v8i16) -> v8i16 {
+    unsafe { __lsx_vmskltz_h(a) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmskltz_w(a: v4i32) -> v4i32 {
-    __lsx_vmskltz_w(a)
+pub fn lsx_vmskltz_w(a: v4i32) -> v4i32 {
+    unsafe { __lsx_vmskltz_w(a) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmskltz_d(a: v2i64) -> v2i64 {
-    __lsx_vmskltz_d(a)
+pub fn lsx_vmskltz_d(a: v2i64) -> v2i64 {
+    unsafe { __lsx_vmskltz_d(a) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsigncov_b(a: v16i8, b: v16i8) -> v16i8 {
-    __lsx_vsigncov_b(a, b)
+pub fn lsx_vsigncov_b(a: v16i8, b: v16i8) -> v16i8 {
+    unsafe { __lsx_vsigncov_b(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsigncov_h(a: v8i16, b: v8i16) -> v8i16 {
-    __lsx_vsigncov_h(a, b)
+pub fn lsx_vsigncov_h(a: v8i16, b: v8i16) -> v8i16 {
+    unsafe { __lsx_vsigncov_h(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsigncov_w(a: v4i32, b: v4i32) -> v4i32 {
-    __lsx_vsigncov_w(a, b)
+pub fn lsx_vsigncov_w(a: v4i32, b: v4i32) -> v4i32 {
+    unsafe { __lsx_vsigncov_w(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsigncov_d(a: v2i64, b: v2i64) -> v2i64 {
-    __lsx_vsigncov_d(a, b)
+pub fn lsx_vsigncov_d(a: v2i64, b: v2i64) -> v2i64 {
+    unsafe { __lsx_vsigncov_d(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vfmadd_s(a: v4f32, b: v4f32, c: v4f32) -> v4f32 {
-    __lsx_vfmadd_s(a, b, c)
+pub fn lsx_vfmadd_s(a: v4f32, b: v4f32, c: v4f32) -> v4f32 {
+    unsafe { __lsx_vfmadd_s(a, b, c) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vfmadd_d(a: v2f64, b: v2f64, c: v2f64) -> v2f64 {
-    __lsx_vfmadd_d(a, b, c)
+pub fn lsx_vfmadd_d(a: v2f64, b: v2f64, c: v2f64) -> v2f64 {
+    unsafe { __lsx_vfmadd_d(a, b, c) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vfmsub_s(a: v4f32, b: v4f32, c: v4f32) -> v4f32 {
-    __lsx_vfmsub_s(a, b, c)
+pub fn lsx_vfmsub_s(a: v4f32, b: v4f32, c: v4f32) -> v4f32 {
+    unsafe { __lsx_vfmsub_s(a, b, c) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vfmsub_d(a: v2f64, b: v2f64, c: v2f64) -> v2f64 {
-    __lsx_vfmsub_d(a, b, c)
+pub fn lsx_vfmsub_d(a: v2f64, b: v2f64, c: v2f64) -> v2f64 {
+    unsafe { __lsx_vfmsub_d(a, b, c) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vfnmadd_s(a: v4f32, b: v4f32, c: v4f32) -> v4f32 {
-    __lsx_vfnmadd_s(a, b, c)
+pub fn lsx_vfnmadd_s(a: v4f32, b: v4f32, c: v4f32) -> v4f32 {
+    unsafe { __lsx_vfnmadd_s(a, b, c) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vfnmadd_d(a: v2f64, b: v2f64, c: v2f64) -> v2f64 {
-    __lsx_vfnmadd_d(a, b, c)
+pub fn lsx_vfnmadd_d(a: v2f64, b: v2f64, c: v2f64) -> v2f64 {
+    unsafe { __lsx_vfnmadd_d(a, b, c) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vfnmsub_s(a: v4f32, b: v4f32, c: v4f32) -> v4f32 {
-    __lsx_vfnmsub_s(a, b, c)
+pub fn lsx_vfnmsub_s(a: v4f32, b: v4f32, c: v4f32) -> v4f32 {
+    unsafe { __lsx_vfnmsub_s(a, b, c) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vfnmsub_d(a: v2f64, b: v2f64, c: v2f64) -> v2f64 {
-    __lsx_vfnmsub_d(a, b, c)
+pub fn lsx_vfnmsub_d(a: v2f64, b: v2f64, c: v2f64) -> v2f64 {
+    unsafe { __lsx_vfnmsub_d(a, b, c) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vftintrne_w_s(a: v4f32) -> v4i32 {
-    __lsx_vftintrne_w_s(a)
+pub fn lsx_vftintrne_w_s(a: v4f32) -> v4i32 {
+    unsafe { __lsx_vftintrne_w_s(a) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vftintrne_l_d(a: v2f64) -> v2i64 {
-    __lsx_vftintrne_l_d(a)
+pub fn lsx_vftintrne_l_d(a: v2f64) -> v2i64 {
+    unsafe { __lsx_vftintrne_l_d(a) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vftintrp_w_s(a: v4f32) -> v4i32 {
-    __lsx_vftintrp_w_s(a)
+pub fn lsx_vftintrp_w_s(a: v4f32) -> v4i32 {
+    unsafe { __lsx_vftintrp_w_s(a) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vftintrp_l_d(a: v2f64) -> v2i64 {
-    __lsx_vftintrp_l_d(a)
+pub fn lsx_vftintrp_l_d(a: v2f64) -> v2i64 {
+    unsafe { __lsx_vftintrp_l_d(a) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vftintrm_w_s(a: v4f32) -> v4i32 {
-    __lsx_vftintrm_w_s(a)
+pub fn lsx_vftintrm_w_s(a: v4f32) -> v4i32 {
+    unsafe { __lsx_vftintrm_w_s(a) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vftintrm_l_d(a: v2f64) -> v2i64 {
-    __lsx_vftintrm_l_d(a)
+pub fn lsx_vftintrm_l_d(a: v2f64) -> v2i64 {
+    unsafe { __lsx_vftintrm_l_d(a) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vftint_w_d(a: v2f64, b: v2f64) -> v4i32 {
-    __lsx_vftint_w_d(a, b)
+pub fn lsx_vftint_w_d(a: v2f64, b: v2f64) -> v4i32 {
+    unsafe { __lsx_vftint_w_d(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vffint_s_l(a: v2i64, b: v2i64) -> v4f32 {
-    __lsx_vffint_s_l(a, b)
+pub fn lsx_vffint_s_l(a: v2i64, b: v2i64) -> v4f32 {
+    unsafe { __lsx_vffint_s_l(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vftintrz_w_d(a: v2f64, b: v2f64) -> v4i32 {
-    __lsx_vftintrz_w_d(a, b)
+pub fn lsx_vftintrz_w_d(a: v2f64, b: v2f64) -> v4i32 {
+    unsafe { __lsx_vftintrz_w_d(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vftintrp_w_d(a: v2f64, b: v2f64) -> v4i32 {
-    __lsx_vftintrp_w_d(a, b)
+pub fn lsx_vftintrp_w_d(a: v2f64, b: v2f64) -> v4i32 {
+    unsafe { __lsx_vftintrp_w_d(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vftintrm_w_d(a: v2f64, b: v2f64) -> v4i32 {
-    __lsx_vftintrm_w_d(a, b)
+pub fn lsx_vftintrm_w_d(a: v2f64, b: v2f64) -> v4i32 {
+    unsafe { __lsx_vftintrm_w_d(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vftintrne_w_d(a: v2f64, b: v2f64) -> v4i32 {
-    __lsx_vftintrne_w_d(a, b)
+pub fn lsx_vftintrne_w_d(a: v2f64, b: v2f64) -> v4i32 {
+    unsafe { __lsx_vftintrne_w_d(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vftintl_l_s(a: v4f32) -> v2i64 {
-    __lsx_vftintl_l_s(a)
+pub fn lsx_vftintl_l_s(a: v4f32) -> v2i64 {
+    unsafe { __lsx_vftintl_l_s(a) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vftinth_l_s(a: v4f32) -> v2i64 {
-    __lsx_vftinth_l_s(a)
+pub fn lsx_vftinth_l_s(a: v4f32) -> v2i64 {
+    unsafe { __lsx_vftinth_l_s(a) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vffinth_d_w(a: v4i32) -> v2f64 {
-    __lsx_vffinth_d_w(a)
+pub fn lsx_vffinth_d_w(a: v4i32) -> v2f64 {
+    unsafe { __lsx_vffinth_d_w(a) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vffintl_d_w(a: v4i32) -> v2f64 {
-    __lsx_vffintl_d_w(a)
+pub fn lsx_vffintl_d_w(a: v4i32) -> v2f64 {
+    unsafe { __lsx_vffintl_d_w(a) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vftintrzl_l_s(a: v4f32) -> v2i64 {
-    __lsx_vftintrzl_l_s(a)
+pub fn lsx_vftintrzl_l_s(a: v4f32) -> v2i64 {
+    unsafe { __lsx_vftintrzl_l_s(a) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vftintrzh_l_s(a: v4f32) -> v2i64 {
-    __lsx_vftintrzh_l_s(a)
+pub fn lsx_vftintrzh_l_s(a: v4f32) -> v2i64 {
+    unsafe { __lsx_vftintrzh_l_s(a) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vftintrpl_l_s(a: v4f32) -> v2i64 {
-    __lsx_vftintrpl_l_s(a)
+pub fn lsx_vftintrpl_l_s(a: v4f32) -> v2i64 {
+    unsafe { __lsx_vftintrpl_l_s(a) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vftintrph_l_s(a: v4f32) -> v2i64 {
-    __lsx_vftintrph_l_s(a)
+pub fn lsx_vftintrph_l_s(a: v4f32) -> v2i64 {
+    unsafe { __lsx_vftintrph_l_s(a) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vftintrml_l_s(a: v4f32) -> v2i64 {
-    __lsx_vftintrml_l_s(a)
+pub fn lsx_vftintrml_l_s(a: v4f32) -> v2i64 {
+    unsafe { __lsx_vftintrml_l_s(a) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vftintrmh_l_s(a: v4f32) -> v2i64 {
-    __lsx_vftintrmh_l_s(a)
+pub fn lsx_vftintrmh_l_s(a: v4f32) -> v2i64 {
+    unsafe { __lsx_vftintrmh_l_s(a) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vftintrnel_l_s(a: v4f32) -> v2i64 {
-    __lsx_vftintrnel_l_s(a)
+pub fn lsx_vftintrnel_l_s(a: v4f32) -> v2i64 {
+    unsafe { __lsx_vftintrnel_l_s(a) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vftintrneh_l_s(a: v4f32) -> v2i64 {
-    __lsx_vftintrneh_l_s(a)
+pub fn lsx_vftintrneh_l_s(a: v4f32) -> v2i64 {
+    unsafe { __lsx_vftintrneh_l_s(a) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vfrintrne_s(a: v4f32) -> v4f32 {
-    __lsx_vfrintrne_s(a)
+pub fn lsx_vfrintrne_s(a: v4f32) -> v4f32 {
+    unsafe { __lsx_vfrintrne_s(a) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vfrintrne_d(a: v2f64) -> v2f64 {
-    __lsx_vfrintrne_d(a)
+pub fn lsx_vfrintrne_d(a: v2f64) -> v2f64 {
+    unsafe { __lsx_vfrintrne_d(a) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vfrintrz_s(a: v4f32) -> v4f32 {
-    __lsx_vfrintrz_s(a)
+pub fn lsx_vfrintrz_s(a: v4f32) -> v4f32 {
+    unsafe { __lsx_vfrintrz_s(a) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vfrintrz_d(a: v2f64) -> v2f64 {
-    __lsx_vfrintrz_d(a)
+pub fn lsx_vfrintrz_d(a: v2f64) -> v2f64 {
+    unsafe { __lsx_vfrintrz_d(a) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vfrintrp_s(a: v4f32) -> v4f32 {
-    __lsx_vfrintrp_s(a)
+pub fn lsx_vfrintrp_s(a: v4f32) -> v4f32 {
+    unsafe { __lsx_vfrintrp_s(a) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vfrintrp_d(a: v2f64) -> v2f64 {
-    __lsx_vfrintrp_d(a)
+pub fn lsx_vfrintrp_d(a: v2f64) -> v2f64 {
+    unsafe { __lsx_vfrintrp_d(a) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vfrintrm_s(a: v4f32) -> v4f32 {
-    __lsx_vfrintrm_s(a)
+pub fn lsx_vfrintrm_s(a: v4f32) -> v4f32 {
+    unsafe { __lsx_vfrintrm_s(a) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vfrintrm_d(a: v2f64) -> v2f64 {
-    __lsx_vfrintrm_d(a)
+pub fn lsx_vfrintrm_d(a: v2f64) -> v2f64 {
+    unsafe { __lsx_vfrintrm_d(a) }
 }
 
 #[inline]
@@ -5087,687 +5087,687 @@ pub unsafe fn lsx_vstelm_d<const IMM_S8: i32, const IMM1: u32>(a: v2i64, mem_add
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vaddwev_d_w(a: v4i32, b: v4i32) -> v2i64 {
-    __lsx_vaddwev_d_w(a, b)
+pub fn lsx_vaddwev_d_w(a: v4i32, b: v4i32) -> v2i64 {
+    unsafe { __lsx_vaddwev_d_w(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vaddwev_w_h(a: v8i16, b: v8i16) -> v4i32 {
-    __lsx_vaddwev_w_h(a, b)
+pub fn lsx_vaddwev_w_h(a: v8i16, b: v8i16) -> v4i32 {
+    unsafe { __lsx_vaddwev_w_h(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vaddwev_h_b(a: v16i8, b: v16i8) -> v8i16 {
-    __lsx_vaddwev_h_b(a, b)
+pub fn lsx_vaddwev_h_b(a: v16i8, b: v16i8) -> v8i16 {
+    unsafe { __lsx_vaddwev_h_b(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vaddwod_d_w(a: v4i32, b: v4i32) -> v2i64 {
-    __lsx_vaddwod_d_w(a, b)
+pub fn lsx_vaddwod_d_w(a: v4i32, b: v4i32) -> v2i64 {
+    unsafe { __lsx_vaddwod_d_w(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vaddwod_w_h(a: v8i16, b: v8i16) -> v4i32 {
-    __lsx_vaddwod_w_h(a, b)
+pub fn lsx_vaddwod_w_h(a: v8i16, b: v8i16) -> v4i32 {
+    unsafe { __lsx_vaddwod_w_h(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vaddwod_h_b(a: v16i8, b: v16i8) -> v8i16 {
-    __lsx_vaddwod_h_b(a, b)
+pub fn lsx_vaddwod_h_b(a: v16i8, b: v16i8) -> v8i16 {
+    unsafe { __lsx_vaddwod_h_b(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vaddwev_d_wu(a: v4u32, b: v4u32) -> v2i64 {
-    __lsx_vaddwev_d_wu(a, b)
+pub fn lsx_vaddwev_d_wu(a: v4u32, b: v4u32) -> v2i64 {
+    unsafe { __lsx_vaddwev_d_wu(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vaddwev_w_hu(a: v8u16, b: v8u16) -> v4i32 {
-    __lsx_vaddwev_w_hu(a, b)
+pub fn lsx_vaddwev_w_hu(a: v8u16, b: v8u16) -> v4i32 {
+    unsafe { __lsx_vaddwev_w_hu(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vaddwev_h_bu(a: v16u8, b: v16u8) -> v8i16 {
-    __lsx_vaddwev_h_bu(a, b)
+pub fn lsx_vaddwev_h_bu(a: v16u8, b: v16u8) -> v8i16 {
+    unsafe { __lsx_vaddwev_h_bu(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vaddwod_d_wu(a: v4u32, b: v4u32) -> v2i64 {
-    __lsx_vaddwod_d_wu(a, b)
+pub fn lsx_vaddwod_d_wu(a: v4u32, b: v4u32) -> v2i64 {
+    unsafe { __lsx_vaddwod_d_wu(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vaddwod_w_hu(a: v8u16, b: v8u16) -> v4i32 {
-    __lsx_vaddwod_w_hu(a, b)
+pub fn lsx_vaddwod_w_hu(a: v8u16, b: v8u16) -> v4i32 {
+    unsafe { __lsx_vaddwod_w_hu(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vaddwod_h_bu(a: v16u8, b: v16u8) -> v8i16 {
-    __lsx_vaddwod_h_bu(a, b)
+pub fn lsx_vaddwod_h_bu(a: v16u8, b: v16u8) -> v8i16 {
+    unsafe { __lsx_vaddwod_h_bu(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vaddwev_d_wu_w(a: v4u32, b: v4i32) -> v2i64 {
-    __lsx_vaddwev_d_wu_w(a, b)
+pub fn lsx_vaddwev_d_wu_w(a: v4u32, b: v4i32) -> v2i64 {
+    unsafe { __lsx_vaddwev_d_wu_w(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vaddwev_w_hu_h(a: v8u16, b: v8i16) -> v4i32 {
-    __lsx_vaddwev_w_hu_h(a, b)
+pub fn lsx_vaddwev_w_hu_h(a: v8u16, b: v8i16) -> v4i32 {
+    unsafe { __lsx_vaddwev_w_hu_h(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vaddwev_h_bu_b(a: v16u8, b: v16i8) -> v8i16 {
-    __lsx_vaddwev_h_bu_b(a, b)
+pub fn lsx_vaddwev_h_bu_b(a: v16u8, b: v16i8) -> v8i16 {
+    unsafe { __lsx_vaddwev_h_bu_b(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vaddwod_d_wu_w(a: v4u32, b: v4i32) -> v2i64 {
-    __lsx_vaddwod_d_wu_w(a, b)
+pub fn lsx_vaddwod_d_wu_w(a: v4u32, b: v4i32) -> v2i64 {
+    unsafe { __lsx_vaddwod_d_wu_w(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vaddwod_w_hu_h(a: v8u16, b: v8i16) -> v4i32 {
-    __lsx_vaddwod_w_hu_h(a, b)
+pub fn lsx_vaddwod_w_hu_h(a: v8u16, b: v8i16) -> v4i32 {
+    unsafe { __lsx_vaddwod_w_hu_h(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vaddwod_h_bu_b(a: v16u8, b: v16i8) -> v8i16 {
-    __lsx_vaddwod_h_bu_b(a, b)
+pub fn lsx_vaddwod_h_bu_b(a: v16u8, b: v16i8) -> v8i16 {
+    unsafe { __lsx_vaddwod_h_bu_b(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsubwev_d_w(a: v4i32, b: v4i32) -> v2i64 {
-    __lsx_vsubwev_d_w(a, b)
+pub fn lsx_vsubwev_d_w(a: v4i32, b: v4i32) -> v2i64 {
+    unsafe { __lsx_vsubwev_d_w(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsubwev_w_h(a: v8i16, b: v8i16) -> v4i32 {
-    __lsx_vsubwev_w_h(a, b)
+pub fn lsx_vsubwev_w_h(a: v8i16, b: v8i16) -> v4i32 {
+    unsafe { __lsx_vsubwev_w_h(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsubwev_h_b(a: v16i8, b: v16i8) -> v8i16 {
-    __lsx_vsubwev_h_b(a, b)
+pub fn lsx_vsubwev_h_b(a: v16i8, b: v16i8) -> v8i16 {
+    unsafe { __lsx_vsubwev_h_b(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsubwod_d_w(a: v4i32, b: v4i32) -> v2i64 {
-    __lsx_vsubwod_d_w(a, b)
+pub fn lsx_vsubwod_d_w(a: v4i32, b: v4i32) -> v2i64 {
+    unsafe { __lsx_vsubwod_d_w(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsubwod_w_h(a: v8i16, b: v8i16) -> v4i32 {
-    __lsx_vsubwod_w_h(a, b)
+pub fn lsx_vsubwod_w_h(a: v8i16, b: v8i16) -> v4i32 {
+    unsafe { __lsx_vsubwod_w_h(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsubwod_h_b(a: v16i8, b: v16i8) -> v8i16 {
-    __lsx_vsubwod_h_b(a, b)
+pub fn lsx_vsubwod_h_b(a: v16i8, b: v16i8) -> v8i16 {
+    unsafe { __lsx_vsubwod_h_b(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsubwev_d_wu(a: v4u32, b: v4u32) -> v2i64 {
-    __lsx_vsubwev_d_wu(a, b)
+pub fn lsx_vsubwev_d_wu(a: v4u32, b: v4u32) -> v2i64 {
+    unsafe { __lsx_vsubwev_d_wu(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsubwev_w_hu(a: v8u16, b: v8u16) -> v4i32 {
-    __lsx_vsubwev_w_hu(a, b)
+pub fn lsx_vsubwev_w_hu(a: v8u16, b: v8u16) -> v4i32 {
+    unsafe { __lsx_vsubwev_w_hu(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsubwev_h_bu(a: v16u8, b: v16u8) -> v8i16 {
-    __lsx_vsubwev_h_bu(a, b)
+pub fn lsx_vsubwev_h_bu(a: v16u8, b: v16u8) -> v8i16 {
+    unsafe { __lsx_vsubwev_h_bu(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsubwod_d_wu(a: v4u32, b: v4u32) -> v2i64 {
-    __lsx_vsubwod_d_wu(a, b)
+pub fn lsx_vsubwod_d_wu(a: v4u32, b: v4u32) -> v2i64 {
+    unsafe { __lsx_vsubwod_d_wu(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsubwod_w_hu(a: v8u16, b: v8u16) -> v4i32 {
-    __lsx_vsubwod_w_hu(a, b)
+pub fn lsx_vsubwod_w_hu(a: v8u16, b: v8u16) -> v4i32 {
+    unsafe { __lsx_vsubwod_w_hu(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsubwod_h_bu(a: v16u8, b: v16u8) -> v8i16 {
-    __lsx_vsubwod_h_bu(a, b)
+pub fn lsx_vsubwod_h_bu(a: v16u8, b: v16u8) -> v8i16 {
+    unsafe { __lsx_vsubwod_h_bu(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vaddwev_q_d(a: v2i64, b: v2i64) -> v2i64 {
-    __lsx_vaddwev_q_d(a, b)
+pub fn lsx_vaddwev_q_d(a: v2i64, b: v2i64) -> v2i64 {
+    unsafe { __lsx_vaddwev_q_d(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vaddwod_q_d(a: v2i64, b: v2i64) -> v2i64 {
-    __lsx_vaddwod_q_d(a, b)
+pub fn lsx_vaddwod_q_d(a: v2i64, b: v2i64) -> v2i64 {
+    unsafe { __lsx_vaddwod_q_d(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vaddwev_q_du(a: v2u64, b: v2u64) -> v2i64 {
-    __lsx_vaddwev_q_du(a, b)
+pub fn lsx_vaddwev_q_du(a: v2u64, b: v2u64) -> v2i64 {
+    unsafe { __lsx_vaddwev_q_du(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vaddwod_q_du(a: v2u64, b: v2u64) -> v2i64 {
-    __lsx_vaddwod_q_du(a, b)
+pub fn lsx_vaddwod_q_du(a: v2u64, b: v2u64) -> v2i64 {
+    unsafe { __lsx_vaddwod_q_du(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsubwev_q_d(a: v2i64, b: v2i64) -> v2i64 {
-    __lsx_vsubwev_q_d(a, b)
+pub fn lsx_vsubwev_q_d(a: v2i64, b: v2i64) -> v2i64 {
+    unsafe { __lsx_vsubwev_q_d(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsubwod_q_d(a: v2i64, b: v2i64) -> v2i64 {
-    __lsx_vsubwod_q_d(a, b)
+pub fn lsx_vsubwod_q_d(a: v2i64, b: v2i64) -> v2i64 {
+    unsafe { __lsx_vsubwod_q_d(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsubwev_q_du(a: v2u64, b: v2u64) -> v2i64 {
-    __lsx_vsubwev_q_du(a, b)
+pub fn lsx_vsubwev_q_du(a: v2u64, b: v2u64) -> v2i64 {
+    unsafe { __lsx_vsubwev_q_du(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsubwod_q_du(a: v2u64, b: v2u64) -> v2i64 {
-    __lsx_vsubwod_q_du(a, b)
+pub fn lsx_vsubwod_q_du(a: v2u64, b: v2u64) -> v2i64 {
+    unsafe { __lsx_vsubwod_q_du(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vaddwev_q_du_d(a: v2u64, b: v2i64) -> v2i64 {
-    __lsx_vaddwev_q_du_d(a, b)
+pub fn lsx_vaddwev_q_du_d(a: v2u64, b: v2i64) -> v2i64 {
+    unsafe { __lsx_vaddwev_q_du_d(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vaddwod_q_du_d(a: v2u64, b: v2i64) -> v2i64 {
-    __lsx_vaddwod_q_du_d(a, b)
+pub fn lsx_vaddwod_q_du_d(a: v2u64, b: v2i64) -> v2i64 {
+    unsafe { __lsx_vaddwod_q_du_d(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmulwev_d_w(a: v4i32, b: v4i32) -> v2i64 {
-    __lsx_vmulwev_d_w(a, b)
+pub fn lsx_vmulwev_d_w(a: v4i32, b: v4i32) -> v2i64 {
+    unsafe { __lsx_vmulwev_d_w(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmulwev_w_h(a: v8i16, b: v8i16) -> v4i32 {
-    __lsx_vmulwev_w_h(a, b)
+pub fn lsx_vmulwev_w_h(a: v8i16, b: v8i16) -> v4i32 {
+    unsafe { __lsx_vmulwev_w_h(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmulwev_h_b(a: v16i8, b: v16i8) -> v8i16 {
-    __lsx_vmulwev_h_b(a, b)
+pub fn lsx_vmulwev_h_b(a: v16i8, b: v16i8) -> v8i16 {
+    unsafe { __lsx_vmulwev_h_b(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmulwod_d_w(a: v4i32, b: v4i32) -> v2i64 {
-    __lsx_vmulwod_d_w(a, b)
+pub fn lsx_vmulwod_d_w(a: v4i32, b: v4i32) -> v2i64 {
+    unsafe { __lsx_vmulwod_d_w(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmulwod_w_h(a: v8i16, b: v8i16) -> v4i32 {
-    __lsx_vmulwod_w_h(a, b)
+pub fn lsx_vmulwod_w_h(a: v8i16, b: v8i16) -> v4i32 {
+    unsafe { __lsx_vmulwod_w_h(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmulwod_h_b(a: v16i8, b: v16i8) -> v8i16 {
-    __lsx_vmulwod_h_b(a, b)
+pub fn lsx_vmulwod_h_b(a: v16i8, b: v16i8) -> v8i16 {
+    unsafe { __lsx_vmulwod_h_b(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmulwev_d_wu(a: v4u32, b: v4u32) -> v2i64 {
-    __lsx_vmulwev_d_wu(a, b)
+pub fn lsx_vmulwev_d_wu(a: v4u32, b: v4u32) -> v2i64 {
+    unsafe { __lsx_vmulwev_d_wu(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmulwev_w_hu(a: v8u16, b: v8u16) -> v4i32 {
-    __lsx_vmulwev_w_hu(a, b)
+pub fn lsx_vmulwev_w_hu(a: v8u16, b: v8u16) -> v4i32 {
+    unsafe { __lsx_vmulwev_w_hu(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmulwev_h_bu(a: v16u8, b: v16u8) -> v8i16 {
-    __lsx_vmulwev_h_bu(a, b)
+pub fn lsx_vmulwev_h_bu(a: v16u8, b: v16u8) -> v8i16 {
+    unsafe { __lsx_vmulwev_h_bu(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmulwod_d_wu(a: v4u32, b: v4u32) -> v2i64 {
-    __lsx_vmulwod_d_wu(a, b)
+pub fn lsx_vmulwod_d_wu(a: v4u32, b: v4u32) -> v2i64 {
+    unsafe { __lsx_vmulwod_d_wu(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmulwod_w_hu(a: v8u16, b: v8u16) -> v4i32 {
-    __lsx_vmulwod_w_hu(a, b)
+pub fn lsx_vmulwod_w_hu(a: v8u16, b: v8u16) -> v4i32 {
+    unsafe { __lsx_vmulwod_w_hu(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmulwod_h_bu(a: v16u8, b: v16u8) -> v8i16 {
-    __lsx_vmulwod_h_bu(a, b)
+pub fn lsx_vmulwod_h_bu(a: v16u8, b: v16u8) -> v8i16 {
+    unsafe { __lsx_vmulwod_h_bu(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmulwev_d_wu_w(a: v4u32, b: v4i32) -> v2i64 {
-    __lsx_vmulwev_d_wu_w(a, b)
+pub fn lsx_vmulwev_d_wu_w(a: v4u32, b: v4i32) -> v2i64 {
+    unsafe { __lsx_vmulwev_d_wu_w(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmulwev_w_hu_h(a: v8u16, b: v8i16) -> v4i32 {
-    __lsx_vmulwev_w_hu_h(a, b)
+pub fn lsx_vmulwev_w_hu_h(a: v8u16, b: v8i16) -> v4i32 {
+    unsafe { __lsx_vmulwev_w_hu_h(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmulwev_h_bu_b(a: v16u8, b: v16i8) -> v8i16 {
-    __lsx_vmulwev_h_bu_b(a, b)
+pub fn lsx_vmulwev_h_bu_b(a: v16u8, b: v16i8) -> v8i16 {
+    unsafe { __lsx_vmulwev_h_bu_b(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmulwod_d_wu_w(a: v4u32, b: v4i32) -> v2i64 {
-    __lsx_vmulwod_d_wu_w(a, b)
+pub fn lsx_vmulwod_d_wu_w(a: v4u32, b: v4i32) -> v2i64 {
+    unsafe { __lsx_vmulwod_d_wu_w(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmulwod_w_hu_h(a: v8u16, b: v8i16) -> v4i32 {
-    __lsx_vmulwod_w_hu_h(a, b)
+pub fn lsx_vmulwod_w_hu_h(a: v8u16, b: v8i16) -> v4i32 {
+    unsafe { __lsx_vmulwod_w_hu_h(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmulwod_h_bu_b(a: v16u8, b: v16i8) -> v8i16 {
-    __lsx_vmulwod_h_bu_b(a, b)
+pub fn lsx_vmulwod_h_bu_b(a: v16u8, b: v16i8) -> v8i16 {
+    unsafe { __lsx_vmulwod_h_bu_b(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmulwev_q_d(a: v2i64, b: v2i64) -> v2i64 {
-    __lsx_vmulwev_q_d(a, b)
+pub fn lsx_vmulwev_q_d(a: v2i64, b: v2i64) -> v2i64 {
+    unsafe { __lsx_vmulwev_q_d(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmulwod_q_d(a: v2i64, b: v2i64) -> v2i64 {
-    __lsx_vmulwod_q_d(a, b)
+pub fn lsx_vmulwod_q_d(a: v2i64, b: v2i64) -> v2i64 {
+    unsafe { __lsx_vmulwod_q_d(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmulwev_q_du(a: v2u64, b: v2u64) -> v2i64 {
-    __lsx_vmulwev_q_du(a, b)
+pub fn lsx_vmulwev_q_du(a: v2u64, b: v2u64) -> v2i64 {
+    unsafe { __lsx_vmulwev_q_du(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmulwod_q_du(a: v2u64, b: v2u64) -> v2i64 {
-    __lsx_vmulwod_q_du(a, b)
+pub fn lsx_vmulwod_q_du(a: v2u64, b: v2u64) -> v2i64 {
+    unsafe { __lsx_vmulwod_q_du(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmulwev_q_du_d(a: v2u64, b: v2i64) -> v2i64 {
-    __lsx_vmulwev_q_du_d(a, b)
+pub fn lsx_vmulwev_q_du_d(a: v2u64, b: v2i64) -> v2i64 {
+    unsafe { __lsx_vmulwev_q_du_d(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmulwod_q_du_d(a: v2u64, b: v2i64) -> v2i64 {
-    __lsx_vmulwod_q_du_d(a, b)
+pub fn lsx_vmulwod_q_du_d(a: v2u64, b: v2i64) -> v2i64 {
+    unsafe { __lsx_vmulwod_q_du_d(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vhaddw_q_d(a: v2i64, b: v2i64) -> v2i64 {
-    __lsx_vhaddw_q_d(a, b)
+pub fn lsx_vhaddw_q_d(a: v2i64, b: v2i64) -> v2i64 {
+    unsafe { __lsx_vhaddw_q_d(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vhaddw_qu_du(a: v2u64, b: v2u64) -> v2u64 {
-    __lsx_vhaddw_qu_du(a, b)
+pub fn lsx_vhaddw_qu_du(a: v2u64, b: v2u64) -> v2u64 {
+    unsafe { __lsx_vhaddw_qu_du(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vhsubw_q_d(a: v2i64, b: v2i64) -> v2i64 {
-    __lsx_vhsubw_q_d(a, b)
+pub fn lsx_vhsubw_q_d(a: v2i64, b: v2i64) -> v2i64 {
+    unsafe { __lsx_vhsubw_q_d(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vhsubw_qu_du(a: v2u64, b: v2u64) -> v2u64 {
-    __lsx_vhsubw_qu_du(a, b)
+pub fn lsx_vhsubw_qu_du(a: v2u64, b: v2u64) -> v2u64 {
+    unsafe { __lsx_vhsubw_qu_du(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmaddwev_d_w(a: v2i64, b: v4i32, c: v4i32) -> v2i64 {
-    __lsx_vmaddwev_d_w(a, b, c)
+pub fn lsx_vmaddwev_d_w(a: v2i64, b: v4i32, c: v4i32) -> v2i64 {
+    unsafe { __lsx_vmaddwev_d_w(a, b, c) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmaddwev_w_h(a: v4i32, b: v8i16, c: v8i16) -> v4i32 {
-    __lsx_vmaddwev_w_h(a, b, c)
+pub fn lsx_vmaddwev_w_h(a: v4i32, b: v8i16, c: v8i16) -> v4i32 {
+    unsafe { __lsx_vmaddwev_w_h(a, b, c) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmaddwev_h_b(a: v8i16, b: v16i8, c: v16i8) -> v8i16 {
-    __lsx_vmaddwev_h_b(a, b, c)
+pub fn lsx_vmaddwev_h_b(a: v8i16, b: v16i8, c: v16i8) -> v8i16 {
+    unsafe { __lsx_vmaddwev_h_b(a, b, c) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmaddwev_d_wu(a: v2u64, b: v4u32, c: v4u32) -> v2u64 {
-    __lsx_vmaddwev_d_wu(a, b, c)
+pub fn lsx_vmaddwev_d_wu(a: v2u64, b: v4u32, c: v4u32) -> v2u64 {
+    unsafe { __lsx_vmaddwev_d_wu(a, b, c) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmaddwev_w_hu(a: v4u32, b: v8u16, c: v8u16) -> v4u32 {
-    __lsx_vmaddwev_w_hu(a, b, c)
+pub fn lsx_vmaddwev_w_hu(a: v4u32, b: v8u16, c: v8u16) -> v4u32 {
+    unsafe { __lsx_vmaddwev_w_hu(a, b, c) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmaddwev_h_bu(a: v8u16, b: v16u8, c: v16u8) -> v8u16 {
-    __lsx_vmaddwev_h_bu(a, b, c)
+pub fn lsx_vmaddwev_h_bu(a: v8u16, b: v16u8, c: v16u8) -> v8u16 {
+    unsafe { __lsx_vmaddwev_h_bu(a, b, c) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmaddwod_d_w(a: v2i64, b: v4i32, c: v4i32) -> v2i64 {
-    __lsx_vmaddwod_d_w(a, b, c)
+pub fn lsx_vmaddwod_d_w(a: v2i64, b: v4i32, c: v4i32) -> v2i64 {
+    unsafe { __lsx_vmaddwod_d_w(a, b, c) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmaddwod_w_h(a: v4i32, b: v8i16, c: v8i16) -> v4i32 {
-    __lsx_vmaddwod_w_h(a, b, c)
+pub fn lsx_vmaddwod_w_h(a: v4i32, b: v8i16, c: v8i16) -> v4i32 {
+    unsafe { __lsx_vmaddwod_w_h(a, b, c) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmaddwod_h_b(a: v8i16, b: v16i8, c: v16i8) -> v8i16 {
-    __lsx_vmaddwod_h_b(a, b, c)
+pub fn lsx_vmaddwod_h_b(a: v8i16, b: v16i8, c: v16i8) -> v8i16 {
+    unsafe { __lsx_vmaddwod_h_b(a, b, c) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmaddwod_d_wu(a: v2u64, b: v4u32, c: v4u32) -> v2u64 {
-    __lsx_vmaddwod_d_wu(a, b, c)
+pub fn lsx_vmaddwod_d_wu(a: v2u64, b: v4u32, c: v4u32) -> v2u64 {
+    unsafe { __lsx_vmaddwod_d_wu(a, b, c) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmaddwod_w_hu(a: v4u32, b: v8u16, c: v8u16) -> v4u32 {
-    __lsx_vmaddwod_w_hu(a, b, c)
+pub fn lsx_vmaddwod_w_hu(a: v4u32, b: v8u16, c: v8u16) -> v4u32 {
+    unsafe { __lsx_vmaddwod_w_hu(a, b, c) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmaddwod_h_bu(a: v8u16, b: v16u8, c: v16u8) -> v8u16 {
-    __lsx_vmaddwod_h_bu(a, b, c)
+pub fn lsx_vmaddwod_h_bu(a: v8u16, b: v16u8, c: v16u8) -> v8u16 {
+    unsafe { __lsx_vmaddwod_h_bu(a, b, c) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmaddwev_d_wu_w(a: v2i64, b: v4u32, c: v4i32) -> v2i64 {
-    __lsx_vmaddwev_d_wu_w(a, b, c)
+pub fn lsx_vmaddwev_d_wu_w(a: v2i64, b: v4u32, c: v4i32) -> v2i64 {
+    unsafe { __lsx_vmaddwev_d_wu_w(a, b, c) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmaddwev_w_hu_h(a: v4i32, b: v8u16, c: v8i16) -> v4i32 {
-    __lsx_vmaddwev_w_hu_h(a, b, c)
+pub fn lsx_vmaddwev_w_hu_h(a: v4i32, b: v8u16, c: v8i16) -> v4i32 {
+    unsafe { __lsx_vmaddwev_w_hu_h(a, b, c) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmaddwev_h_bu_b(a: v8i16, b: v16u8, c: v16i8) -> v8i16 {
-    __lsx_vmaddwev_h_bu_b(a, b, c)
+pub fn lsx_vmaddwev_h_bu_b(a: v8i16, b: v16u8, c: v16i8) -> v8i16 {
+    unsafe { __lsx_vmaddwev_h_bu_b(a, b, c) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmaddwod_d_wu_w(a: v2i64, b: v4u32, c: v4i32) -> v2i64 {
-    __lsx_vmaddwod_d_wu_w(a, b, c)
+pub fn lsx_vmaddwod_d_wu_w(a: v2i64, b: v4u32, c: v4i32) -> v2i64 {
+    unsafe { __lsx_vmaddwod_d_wu_w(a, b, c) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmaddwod_w_hu_h(a: v4i32, b: v8u16, c: v8i16) -> v4i32 {
-    __lsx_vmaddwod_w_hu_h(a, b, c)
+pub fn lsx_vmaddwod_w_hu_h(a: v4i32, b: v8u16, c: v8i16) -> v4i32 {
+    unsafe { __lsx_vmaddwod_w_hu_h(a, b, c) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmaddwod_h_bu_b(a: v8i16, b: v16u8, c: v16i8) -> v8i16 {
-    __lsx_vmaddwod_h_bu_b(a, b, c)
+pub fn lsx_vmaddwod_h_bu_b(a: v8i16, b: v16u8, c: v16i8) -> v8i16 {
+    unsafe { __lsx_vmaddwod_h_bu_b(a, b, c) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmaddwev_q_d(a: v2i64, b: v2i64, c: v2i64) -> v2i64 {
-    __lsx_vmaddwev_q_d(a, b, c)
+pub fn lsx_vmaddwev_q_d(a: v2i64, b: v2i64, c: v2i64) -> v2i64 {
+    unsafe { __lsx_vmaddwev_q_d(a, b, c) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmaddwod_q_d(a: v2i64, b: v2i64, c: v2i64) -> v2i64 {
-    __lsx_vmaddwod_q_d(a, b, c)
+pub fn lsx_vmaddwod_q_d(a: v2i64, b: v2i64, c: v2i64) -> v2i64 {
+    unsafe { __lsx_vmaddwod_q_d(a, b, c) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmaddwev_q_du(a: v2u64, b: v2u64, c: v2u64) -> v2u64 {
-    __lsx_vmaddwev_q_du(a, b, c)
+pub fn lsx_vmaddwev_q_du(a: v2u64, b: v2u64, c: v2u64) -> v2u64 {
+    unsafe { __lsx_vmaddwev_q_du(a, b, c) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmaddwod_q_du(a: v2u64, b: v2u64, c: v2u64) -> v2u64 {
-    __lsx_vmaddwod_q_du(a, b, c)
+pub fn lsx_vmaddwod_q_du(a: v2u64, b: v2u64, c: v2u64) -> v2u64 {
+    unsafe { __lsx_vmaddwod_q_du(a, b, c) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmaddwev_q_du_d(a: v2i64, b: v2u64, c: v2i64) -> v2i64 {
-    __lsx_vmaddwev_q_du_d(a, b, c)
+pub fn lsx_vmaddwev_q_du_d(a: v2i64, b: v2u64, c: v2i64) -> v2i64 {
+    unsafe { __lsx_vmaddwev_q_du_d(a, b, c) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmaddwod_q_du_d(a: v2i64, b: v2u64, c: v2i64) -> v2i64 {
-    __lsx_vmaddwod_q_du_d(a, b, c)
+pub fn lsx_vmaddwod_q_du_d(a: v2i64, b: v2u64, c: v2i64) -> v2i64 {
+    unsafe { __lsx_vmaddwod_q_du_d(a, b, c) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vrotr_b(a: v16i8, b: v16i8) -> v16i8 {
-    __lsx_vrotr_b(a, b)
+pub fn lsx_vrotr_b(a: v16i8, b: v16i8) -> v16i8 {
+    unsafe { __lsx_vrotr_b(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vrotr_h(a: v8i16, b: v8i16) -> v8i16 {
-    __lsx_vrotr_h(a, b)
+pub fn lsx_vrotr_h(a: v8i16, b: v8i16) -> v8i16 {
+    unsafe { __lsx_vrotr_h(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vrotr_w(a: v4i32, b: v4i32) -> v4i32 {
-    __lsx_vrotr_w(a, b)
+pub fn lsx_vrotr_w(a: v4i32, b: v4i32) -> v4i32 {
+    unsafe { __lsx_vrotr_w(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vrotr_d(a: v2i64, b: v2i64) -> v2i64 {
-    __lsx_vrotr_d(a, b)
+pub fn lsx_vrotr_d(a: v2i64, b: v2i64) -> v2i64 {
+    unsafe { __lsx_vrotr_d(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vadd_q(a: v2i64, b: v2i64) -> v2i64 {
-    __lsx_vadd_q(a, b)
+pub fn lsx_vadd_q(a: v2i64, b: v2i64) -> v2i64 {
+    unsafe { __lsx_vadd_q(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsub_q(a: v2i64, b: v2i64) -> v2i64 {
-    __lsx_vsub_q(a, b)
+pub fn lsx_vsub_q(a: v2i64, b: v2i64) -> v2i64 {
+    unsafe { __lsx_vsub_q(a, b) }
 }
 
 #[inline]
@@ -5809,555 +5809,555 @@ pub unsafe fn lsx_vldrepl_d<const IMM_S9: i32>(mem_addr: *const i8) -> v2i64 {
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmskgez_b(a: v16i8) -> v16i8 {
-    __lsx_vmskgez_b(a)
+pub fn lsx_vmskgez_b(a: v16i8) -> v16i8 {
+    unsafe { __lsx_vmskgez_b(a) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vmsknz_b(a: v16i8) -> v16i8 {
-    __lsx_vmsknz_b(a)
+pub fn lsx_vmsknz_b(a: v16i8) -> v16i8 {
+    unsafe { __lsx_vmsknz_b(a) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vexth_h_b(a: v16i8) -> v8i16 {
-    __lsx_vexth_h_b(a)
+pub fn lsx_vexth_h_b(a: v16i8) -> v8i16 {
+    unsafe { __lsx_vexth_h_b(a) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vexth_w_h(a: v8i16) -> v4i32 {
-    __lsx_vexth_w_h(a)
+pub fn lsx_vexth_w_h(a: v8i16) -> v4i32 {
+    unsafe { __lsx_vexth_w_h(a) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vexth_d_w(a: v4i32) -> v2i64 {
-    __lsx_vexth_d_w(a)
+pub fn lsx_vexth_d_w(a: v4i32) -> v2i64 {
+    unsafe { __lsx_vexth_d_w(a) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vexth_q_d(a: v2i64) -> v2i64 {
-    __lsx_vexth_q_d(a)
+pub fn lsx_vexth_q_d(a: v2i64) -> v2i64 {
+    unsafe { __lsx_vexth_q_d(a) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vexth_hu_bu(a: v16u8) -> v8u16 {
-    __lsx_vexth_hu_bu(a)
+pub fn lsx_vexth_hu_bu(a: v16u8) -> v8u16 {
+    unsafe { __lsx_vexth_hu_bu(a) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vexth_wu_hu(a: v8u16) -> v4u32 {
-    __lsx_vexth_wu_hu(a)
+pub fn lsx_vexth_wu_hu(a: v8u16) -> v4u32 {
+    unsafe { __lsx_vexth_wu_hu(a) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vexth_du_wu(a: v4u32) -> v2u64 {
-    __lsx_vexth_du_wu(a)
+pub fn lsx_vexth_du_wu(a: v4u32) -> v2u64 {
+    unsafe { __lsx_vexth_du_wu(a) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vexth_qu_du(a: v2u64) -> v2u64 {
-    __lsx_vexth_qu_du(a)
+pub fn lsx_vexth_qu_du(a: v2u64) -> v2u64 {
+    unsafe { __lsx_vexth_qu_du(a) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vrotri_b<const IMM3: u32>(a: v16i8) -> v16i8 {
+pub fn lsx_vrotri_b<const IMM3: u32>(a: v16i8) -> v16i8 {
     static_assert_uimm_bits!(IMM3, 3);
-    __lsx_vrotri_b(a, IMM3)
+    unsafe { __lsx_vrotri_b(a, IMM3) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vrotri_h<const IMM4: u32>(a: v8i16) -> v8i16 {
+pub fn lsx_vrotri_h<const IMM4: u32>(a: v8i16) -> v8i16 {
     static_assert_uimm_bits!(IMM4, 4);
-    __lsx_vrotri_h(a, IMM4)
+    unsafe { __lsx_vrotri_h(a, IMM4) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vrotri_w<const IMM5: u32>(a: v4i32) -> v4i32 {
+pub fn lsx_vrotri_w<const IMM5: u32>(a: v4i32) -> v4i32 {
     static_assert_uimm_bits!(IMM5, 5);
-    __lsx_vrotri_w(a, IMM5)
+    unsafe { __lsx_vrotri_w(a, IMM5) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vrotri_d<const IMM6: u32>(a: v2i64) -> v2i64 {
+pub fn lsx_vrotri_d<const IMM6: u32>(a: v2i64) -> v2i64 {
     static_assert_uimm_bits!(IMM6, 6);
-    __lsx_vrotri_d(a, IMM6)
+    unsafe { __lsx_vrotri_d(a, IMM6) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vextl_q_d(a: v2i64) -> v2i64 {
-    __lsx_vextl_q_d(a)
+pub fn lsx_vextl_q_d(a: v2i64) -> v2i64 {
+    unsafe { __lsx_vextl_q_d(a) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsrlni_b_h<const IMM4: u32>(a: v16i8, b: v16i8) -> v16i8 {
+pub fn lsx_vsrlni_b_h<const IMM4: u32>(a: v16i8, b: v16i8) -> v16i8 {
     static_assert_uimm_bits!(IMM4, 4);
-    __lsx_vsrlni_b_h(a, b, IMM4)
+    unsafe { __lsx_vsrlni_b_h(a, b, IMM4) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsrlni_h_w<const IMM5: u32>(a: v8i16, b: v8i16) -> v8i16 {
+pub fn lsx_vsrlni_h_w<const IMM5: u32>(a: v8i16, b: v8i16) -> v8i16 {
     static_assert_uimm_bits!(IMM5, 5);
-    __lsx_vsrlni_h_w(a, b, IMM5)
+    unsafe { __lsx_vsrlni_h_w(a, b, IMM5) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsrlni_w_d<const IMM6: u32>(a: v4i32, b: v4i32) -> v4i32 {
+pub fn lsx_vsrlni_w_d<const IMM6: u32>(a: v4i32, b: v4i32) -> v4i32 {
     static_assert_uimm_bits!(IMM6, 6);
-    __lsx_vsrlni_w_d(a, b, IMM6)
+    unsafe { __lsx_vsrlni_w_d(a, b, IMM6) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsrlni_d_q<const IMM7: u32>(a: v2i64, b: v2i64) -> v2i64 {
+pub fn lsx_vsrlni_d_q<const IMM7: u32>(a: v2i64, b: v2i64) -> v2i64 {
     static_assert_uimm_bits!(IMM7, 7);
-    __lsx_vsrlni_d_q(a, b, IMM7)
+    unsafe { __lsx_vsrlni_d_q(a, b, IMM7) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsrlrni_b_h<const IMM4: u32>(a: v16i8, b: v16i8) -> v16i8 {
+pub fn lsx_vsrlrni_b_h<const IMM4: u32>(a: v16i8, b: v16i8) -> v16i8 {
     static_assert_uimm_bits!(IMM4, 4);
-    __lsx_vsrlrni_b_h(a, b, IMM4)
+    unsafe { __lsx_vsrlrni_b_h(a, b, IMM4) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsrlrni_h_w<const IMM5: u32>(a: v8i16, b: v8i16) -> v8i16 {
+pub fn lsx_vsrlrni_h_w<const IMM5: u32>(a: v8i16, b: v8i16) -> v8i16 {
     static_assert_uimm_bits!(IMM5, 5);
-    __lsx_vsrlrni_h_w(a, b, IMM5)
+    unsafe { __lsx_vsrlrni_h_w(a, b, IMM5) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsrlrni_w_d<const IMM6: u32>(a: v4i32, b: v4i32) -> v4i32 {
+pub fn lsx_vsrlrni_w_d<const IMM6: u32>(a: v4i32, b: v4i32) -> v4i32 {
     static_assert_uimm_bits!(IMM6, 6);
-    __lsx_vsrlrni_w_d(a, b, IMM6)
+    unsafe { __lsx_vsrlrni_w_d(a, b, IMM6) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsrlrni_d_q<const IMM7: u32>(a: v2i64, b: v2i64) -> v2i64 {
+pub fn lsx_vsrlrni_d_q<const IMM7: u32>(a: v2i64, b: v2i64) -> v2i64 {
     static_assert_uimm_bits!(IMM7, 7);
-    __lsx_vsrlrni_d_q(a, b, IMM7)
+    unsafe { __lsx_vsrlrni_d_q(a, b, IMM7) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vssrlni_b_h<const IMM4: u32>(a: v16i8, b: v16i8) -> v16i8 {
+pub fn lsx_vssrlni_b_h<const IMM4: u32>(a: v16i8, b: v16i8) -> v16i8 {
     static_assert_uimm_bits!(IMM4, 4);
-    __lsx_vssrlni_b_h(a, b, IMM4)
+    unsafe { __lsx_vssrlni_b_h(a, b, IMM4) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vssrlni_h_w<const IMM5: u32>(a: v8i16, b: v8i16) -> v8i16 {
+pub fn lsx_vssrlni_h_w<const IMM5: u32>(a: v8i16, b: v8i16) -> v8i16 {
     static_assert_uimm_bits!(IMM5, 5);
-    __lsx_vssrlni_h_w(a, b, IMM5)
+    unsafe { __lsx_vssrlni_h_w(a, b, IMM5) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vssrlni_w_d<const IMM6: u32>(a: v4i32, b: v4i32) -> v4i32 {
+pub fn lsx_vssrlni_w_d<const IMM6: u32>(a: v4i32, b: v4i32) -> v4i32 {
     static_assert_uimm_bits!(IMM6, 6);
-    __lsx_vssrlni_w_d(a, b, IMM6)
+    unsafe { __lsx_vssrlni_w_d(a, b, IMM6) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vssrlni_d_q<const IMM7: u32>(a: v2i64, b: v2i64) -> v2i64 {
+pub fn lsx_vssrlni_d_q<const IMM7: u32>(a: v2i64, b: v2i64) -> v2i64 {
     static_assert_uimm_bits!(IMM7, 7);
-    __lsx_vssrlni_d_q(a, b, IMM7)
+    unsafe { __lsx_vssrlni_d_q(a, b, IMM7) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vssrlni_bu_h<const IMM4: u32>(a: v16u8, b: v16i8) -> v16u8 {
+pub fn lsx_vssrlni_bu_h<const IMM4: u32>(a: v16u8, b: v16i8) -> v16u8 {
     static_assert_uimm_bits!(IMM4, 4);
-    __lsx_vssrlni_bu_h(a, b, IMM4)
+    unsafe { __lsx_vssrlni_bu_h(a, b, IMM4) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vssrlni_hu_w<const IMM5: u32>(a: v8u16, b: v8i16) -> v8u16 {
+pub fn lsx_vssrlni_hu_w<const IMM5: u32>(a: v8u16, b: v8i16) -> v8u16 {
     static_assert_uimm_bits!(IMM5, 5);
-    __lsx_vssrlni_hu_w(a, b, IMM5)
+    unsafe { __lsx_vssrlni_hu_w(a, b, IMM5) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vssrlni_wu_d<const IMM6: u32>(a: v4u32, b: v4i32) -> v4u32 {
+pub fn lsx_vssrlni_wu_d<const IMM6: u32>(a: v4u32, b: v4i32) -> v4u32 {
     static_assert_uimm_bits!(IMM6, 6);
-    __lsx_vssrlni_wu_d(a, b, IMM6)
+    unsafe { __lsx_vssrlni_wu_d(a, b, IMM6) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vssrlni_du_q<const IMM7: u32>(a: v2u64, b: v2i64) -> v2u64 {
+pub fn lsx_vssrlni_du_q<const IMM7: u32>(a: v2u64, b: v2i64) -> v2u64 {
     static_assert_uimm_bits!(IMM7, 7);
-    __lsx_vssrlni_du_q(a, b, IMM7)
+    unsafe { __lsx_vssrlni_du_q(a, b, IMM7) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vssrlrni_b_h<const IMM4: u32>(a: v16i8, b: v16i8) -> v16i8 {
+pub fn lsx_vssrlrni_b_h<const IMM4: u32>(a: v16i8, b: v16i8) -> v16i8 {
     static_assert_uimm_bits!(IMM4, 4);
-    __lsx_vssrlrni_b_h(a, b, IMM4)
+    unsafe { __lsx_vssrlrni_b_h(a, b, IMM4) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vssrlrni_h_w<const IMM5: u32>(a: v8i16, b: v8i16) -> v8i16 {
+pub fn lsx_vssrlrni_h_w<const IMM5: u32>(a: v8i16, b: v8i16) -> v8i16 {
     static_assert_uimm_bits!(IMM5, 5);
-    __lsx_vssrlrni_h_w(a, b, IMM5)
+    unsafe { __lsx_vssrlrni_h_w(a, b, IMM5) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vssrlrni_w_d<const IMM6: u32>(a: v4i32, b: v4i32) -> v4i32 {
+pub fn lsx_vssrlrni_w_d<const IMM6: u32>(a: v4i32, b: v4i32) -> v4i32 {
     static_assert_uimm_bits!(IMM6, 6);
-    __lsx_vssrlrni_w_d(a, b, IMM6)
+    unsafe { __lsx_vssrlrni_w_d(a, b, IMM6) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vssrlrni_d_q<const IMM7: u32>(a: v2i64, b: v2i64) -> v2i64 {
+pub fn lsx_vssrlrni_d_q<const IMM7: u32>(a: v2i64, b: v2i64) -> v2i64 {
     static_assert_uimm_bits!(IMM7, 7);
-    __lsx_vssrlrni_d_q(a, b, IMM7)
+    unsafe { __lsx_vssrlrni_d_q(a, b, IMM7) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vssrlrni_bu_h<const IMM4: u32>(a: v16u8, b: v16i8) -> v16u8 {
+pub fn lsx_vssrlrni_bu_h<const IMM4: u32>(a: v16u8, b: v16i8) -> v16u8 {
     static_assert_uimm_bits!(IMM4, 4);
-    __lsx_vssrlrni_bu_h(a, b, IMM4)
+    unsafe { __lsx_vssrlrni_bu_h(a, b, IMM4) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vssrlrni_hu_w<const IMM5: u32>(a: v8u16, b: v8i16) -> v8u16 {
+pub fn lsx_vssrlrni_hu_w<const IMM5: u32>(a: v8u16, b: v8i16) -> v8u16 {
     static_assert_uimm_bits!(IMM5, 5);
-    __lsx_vssrlrni_hu_w(a, b, IMM5)
+    unsafe { __lsx_vssrlrni_hu_w(a, b, IMM5) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vssrlrni_wu_d<const IMM6: u32>(a: v4u32, b: v4i32) -> v4u32 {
+pub fn lsx_vssrlrni_wu_d<const IMM6: u32>(a: v4u32, b: v4i32) -> v4u32 {
     static_assert_uimm_bits!(IMM6, 6);
-    __lsx_vssrlrni_wu_d(a, b, IMM6)
+    unsafe { __lsx_vssrlrni_wu_d(a, b, IMM6) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vssrlrni_du_q<const IMM7: u32>(a: v2u64, b: v2i64) -> v2u64 {
+pub fn lsx_vssrlrni_du_q<const IMM7: u32>(a: v2u64, b: v2i64) -> v2u64 {
     static_assert_uimm_bits!(IMM7, 7);
-    __lsx_vssrlrni_du_q(a, b, IMM7)
+    unsafe { __lsx_vssrlrni_du_q(a, b, IMM7) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsrani_b_h<const IMM4: u32>(a: v16i8, b: v16i8) -> v16i8 {
+pub fn lsx_vsrani_b_h<const IMM4: u32>(a: v16i8, b: v16i8) -> v16i8 {
     static_assert_uimm_bits!(IMM4, 4);
-    __lsx_vsrani_b_h(a, b, IMM4)
+    unsafe { __lsx_vsrani_b_h(a, b, IMM4) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsrani_h_w<const IMM5: u32>(a: v8i16, b: v8i16) -> v8i16 {
+pub fn lsx_vsrani_h_w<const IMM5: u32>(a: v8i16, b: v8i16) -> v8i16 {
     static_assert_uimm_bits!(IMM5, 5);
-    __lsx_vsrani_h_w(a, b, IMM5)
+    unsafe { __lsx_vsrani_h_w(a, b, IMM5) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsrani_w_d<const IMM6: u32>(a: v4i32, b: v4i32) -> v4i32 {
+pub fn lsx_vsrani_w_d<const IMM6: u32>(a: v4i32, b: v4i32) -> v4i32 {
     static_assert_uimm_bits!(IMM6, 6);
-    __lsx_vsrani_w_d(a, b, IMM6)
+    unsafe { __lsx_vsrani_w_d(a, b, IMM6) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsrani_d_q<const IMM7: u32>(a: v2i64, b: v2i64) -> v2i64 {
+pub fn lsx_vsrani_d_q<const IMM7: u32>(a: v2i64, b: v2i64) -> v2i64 {
     static_assert_uimm_bits!(IMM7, 7);
-    __lsx_vsrani_d_q(a, b, IMM7)
+    unsafe { __lsx_vsrani_d_q(a, b, IMM7) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsrarni_b_h<const IMM4: u32>(a: v16i8, b: v16i8) -> v16i8 {
+pub fn lsx_vsrarni_b_h<const IMM4: u32>(a: v16i8, b: v16i8) -> v16i8 {
     static_assert_uimm_bits!(IMM4, 4);
-    __lsx_vsrarni_b_h(a, b, IMM4)
+    unsafe { __lsx_vsrarni_b_h(a, b, IMM4) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsrarni_h_w<const IMM5: u32>(a: v8i16, b: v8i16) -> v8i16 {
+pub fn lsx_vsrarni_h_w<const IMM5: u32>(a: v8i16, b: v8i16) -> v8i16 {
     static_assert_uimm_bits!(IMM5, 5);
-    __lsx_vsrarni_h_w(a, b, IMM5)
+    unsafe { __lsx_vsrarni_h_w(a, b, IMM5) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsrarni_w_d<const IMM6: u32>(a: v4i32, b: v4i32) -> v4i32 {
+pub fn lsx_vsrarni_w_d<const IMM6: u32>(a: v4i32, b: v4i32) -> v4i32 {
     static_assert_uimm_bits!(IMM6, 6);
-    __lsx_vsrarni_w_d(a, b, IMM6)
+    unsafe { __lsx_vsrarni_w_d(a, b, IMM6) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vsrarni_d_q<const IMM7: u32>(a: v2i64, b: v2i64) -> v2i64 {
+pub fn lsx_vsrarni_d_q<const IMM7: u32>(a: v2i64, b: v2i64) -> v2i64 {
     static_assert_uimm_bits!(IMM7, 7);
-    __lsx_vsrarni_d_q(a, b, IMM7)
+    unsafe { __lsx_vsrarni_d_q(a, b, IMM7) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vssrani_b_h<const IMM4: u32>(a: v16i8, b: v16i8) -> v16i8 {
+pub fn lsx_vssrani_b_h<const IMM4: u32>(a: v16i8, b: v16i8) -> v16i8 {
     static_assert_uimm_bits!(IMM4, 4);
-    __lsx_vssrani_b_h(a, b, IMM4)
+    unsafe { __lsx_vssrani_b_h(a, b, IMM4) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vssrani_h_w<const IMM5: u32>(a: v8i16, b: v8i16) -> v8i16 {
+pub fn lsx_vssrani_h_w<const IMM5: u32>(a: v8i16, b: v8i16) -> v8i16 {
     static_assert_uimm_bits!(IMM5, 5);
-    __lsx_vssrani_h_w(a, b, IMM5)
+    unsafe { __lsx_vssrani_h_w(a, b, IMM5) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vssrani_w_d<const IMM6: u32>(a: v4i32, b: v4i32) -> v4i32 {
+pub fn lsx_vssrani_w_d<const IMM6: u32>(a: v4i32, b: v4i32) -> v4i32 {
     static_assert_uimm_bits!(IMM6, 6);
-    __lsx_vssrani_w_d(a, b, IMM6)
+    unsafe { __lsx_vssrani_w_d(a, b, IMM6) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vssrani_d_q<const IMM7: u32>(a: v2i64, b: v2i64) -> v2i64 {
+pub fn lsx_vssrani_d_q<const IMM7: u32>(a: v2i64, b: v2i64) -> v2i64 {
     static_assert_uimm_bits!(IMM7, 7);
-    __lsx_vssrani_d_q(a, b, IMM7)
+    unsafe { __lsx_vssrani_d_q(a, b, IMM7) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vssrani_bu_h<const IMM4: u32>(a: v16u8, b: v16i8) -> v16u8 {
+pub fn lsx_vssrani_bu_h<const IMM4: u32>(a: v16u8, b: v16i8) -> v16u8 {
     static_assert_uimm_bits!(IMM4, 4);
-    __lsx_vssrani_bu_h(a, b, IMM4)
+    unsafe { __lsx_vssrani_bu_h(a, b, IMM4) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vssrani_hu_w<const IMM5: u32>(a: v8u16, b: v8i16) -> v8u16 {
+pub fn lsx_vssrani_hu_w<const IMM5: u32>(a: v8u16, b: v8i16) -> v8u16 {
     static_assert_uimm_bits!(IMM5, 5);
-    __lsx_vssrani_hu_w(a, b, IMM5)
+    unsafe { __lsx_vssrani_hu_w(a, b, IMM5) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vssrani_wu_d<const IMM6: u32>(a: v4u32, b: v4i32) -> v4u32 {
+pub fn lsx_vssrani_wu_d<const IMM6: u32>(a: v4u32, b: v4i32) -> v4u32 {
     static_assert_uimm_bits!(IMM6, 6);
-    __lsx_vssrani_wu_d(a, b, IMM6)
+    unsafe { __lsx_vssrani_wu_d(a, b, IMM6) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vssrani_du_q<const IMM7: u32>(a: v2u64, b: v2i64) -> v2u64 {
+pub fn lsx_vssrani_du_q<const IMM7: u32>(a: v2u64, b: v2i64) -> v2u64 {
     static_assert_uimm_bits!(IMM7, 7);
-    __lsx_vssrani_du_q(a, b, IMM7)
+    unsafe { __lsx_vssrani_du_q(a, b, IMM7) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vssrarni_b_h<const IMM4: u32>(a: v16i8, b: v16i8) -> v16i8 {
+pub fn lsx_vssrarni_b_h<const IMM4: u32>(a: v16i8, b: v16i8) -> v16i8 {
     static_assert_uimm_bits!(IMM4, 4);
-    __lsx_vssrarni_b_h(a, b, IMM4)
+    unsafe { __lsx_vssrarni_b_h(a, b, IMM4) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vssrarni_h_w<const IMM5: u32>(a: v8i16, b: v8i16) -> v8i16 {
+pub fn lsx_vssrarni_h_w<const IMM5: u32>(a: v8i16, b: v8i16) -> v8i16 {
     static_assert_uimm_bits!(IMM5, 5);
-    __lsx_vssrarni_h_w(a, b, IMM5)
+    unsafe { __lsx_vssrarni_h_w(a, b, IMM5) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vssrarni_w_d<const IMM6: u32>(a: v4i32, b: v4i32) -> v4i32 {
+pub fn lsx_vssrarni_w_d<const IMM6: u32>(a: v4i32, b: v4i32) -> v4i32 {
     static_assert_uimm_bits!(IMM6, 6);
-    __lsx_vssrarni_w_d(a, b, IMM6)
+    unsafe { __lsx_vssrarni_w_d(a, b, IMM6) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vssrarni_d_q<const IMM7: u32>(a: v2i64, b: v2i64) -> v2i64 {
+pub fn lsx_vssrarni_d_q<const IMM7: u32>(a: v2i64, b: v2i64) -> v2i64 {
     static_assert_uimm_bits!(IMM7, 7);
-    __lsx_vssrarni_d_q(a, b, IMM7)
+    unsafe { __lsx_vssrarni_d_q(a, b, IMM7) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vssrarni_bu_h<const IMM4: u32>(a: v16u8, b: v16i8) -> v16u8 {
+pub fn lsx_vssrarni_bu_h<const IMM4: u32>(a: v16u8, b: v16i8) -> v16u8 {
     static_assert_uimm_bits!(IMM4, 4);
-    __lsx_vssrarni_bu_h(a, b, IMM4)
+    unsafe { __lsx_vssrarni_bu_h(a, b, IMM4) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vssrarni_hu_w<const IMM5: u32>(a: v8u16, b: v8i16) -> v8u16 {
+pub fn lsx_vssrarni_hu_w<const IMM5: u32>(a: v8u16, b: v8i16) -> v8u16 {
     static_assert_uimm_bits!(IMM5, 5);
-    __lsx_vssrarni_hu_w(a, b, IMM5)
+    unsafe { __lsx_vssrarni_hu_w(a, b, IMM5) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vssrarni_wu_d<const IMM6: u32>(a: v4u32, b: v4i32) -> v4u32 {
+pub fn lsx_vssrarni_wu_d<const IMM6: u32>(a: v4u32, b: v4i32) -> v4u32 {
     static_assert_uimm_bits!(IMM6, 6);
-    __lsx_vssrarni_wu_d(a, b, IMM6)
+    unsafe { __lsx_vssrarni_wu_d(a, b, IMM6) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vssrarni_du_q<const IMM7: u32>(a: v2u64, b: v2i64) -> v2u64 {
+pub fn lsx_vssrarni_du_q<const IMM7: u32>(a: v2u64, b: v2i64) -> v2u64 {
     static_assert_uimm_bits!(IMM7, 7);
-    __lsx_vssrarni_du_q(a, b, IMM7)
+    unsafe { __lsx_vssrarni_du_q(a, b, IMM7) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vpermi_w<const IMM8: u32>(a: v4i32, b: v4i32) -> v4i32 {
+pub fn lsx_vpermi_w<const IMM8: u32>(a: v4i32, b: v4i32) -> v4i32 {
     static_assert_uimm_bits!(IMM8, 8);
-    __lsx_vpermi_w(a, b, IMM8)
+    unsafe { __lsx_vpermi_w(a, b, IMM8) }
 }
 
 #[inline]
@@ -6381,66 +6381,66 @@ pub unsafe fn lsx_vst<const IMM_S12: i32>(a: v16i8, mem_addr: *mut i8) {
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vssrlrn_b_h(a: v8i16, b: v8i16) -> v16i8 {
-    __lsx_vssrlrn_b_h(a, b)
+pub fn lsx_vssrlrn_b_h(a: v8i16, b: v8i16) -> v16i8 {
+    unsafe { __lsx_vssrlrn_b_h(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vssrlrn_h_w(a: v4i32, b: v4i32) -> v8i16 {
-    __lsx_vssrlrn_h_w(a, b)
+pub fn lsx_vssrlrn_h_w(a: v4i32, b: v4i32) -> v8i16 {
+    unsafe { __lsx_vssrlrn_h_w(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vssrlrn_w_d(a: v2i64, b: v2i64) -> v4i32 {
-    __lsx_vssrlrn_w_d(a, b)
+pub fn lsx_vssrlrn_w_d(a: v2i64, b: v2i64) -> v4i32 {
+    unsafe { __lsx_vssrlrn_w_d(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vssrln_b_h(a: v8i16, b: v8i16) -> v16i8 {
-    __lsx_vssrln_b_h(a, b)
+pub fn lsx_vssrln_b_h(a: v8i16, b: v8i16) -> v16i8 {
+    unsafe { __lsx_vssrln_b_h(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vssrln_h_w(a: v4i32, b: v4i32) -> v8i16 {
-    __lsx_vssrln_h_w(a, b)
+pub fn lsx_vssrln_h_w(a: v4i32, b: v4i32) -> v8i16 {
+    unsafe { __lsx_vssrln_h_w(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vssrln_w_d(a: v2i64, b: v2i64) -> v4i32 {
-    __lsx_vssrln_w_d(a, b)
+pub fn lsx_vssrln_w_d(a: v2i64, b: v2i64) -> v4i32 {
+    unsafe { __lsx_vssrln_w_d(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vorn_v(a: v16i8, b: v16i8) -> v16i8 {
-    __lsx_vorn_v(a, b)
+pub fn lsx_vorn_v(a: v16i8, b: v16i8) -> v16i8 {
+    unsafe { __lsx_vorn_v(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(0)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vldi<const IMM_S13: i32>() -> v2i64 {
+pub fn lsx_vldi<const IMM_S13: i32>() -> v2i64 {
     static_assert_simm_bits!(IMM_S13, 13);
-    __lsx_vldi(IMM_S13)
+    unsafe { __lsx_vldi(IMM_S13) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vshuf_b(a: v16i8, b: v16i8, c: v16i8) -> v16i8 {
-    __lsx_vshuf_b(a, b, c)
+pub fn lsx_vshuf_b(a: v16i8, b: v16i8, c: v16i8) -> v16i8 {
+    unsafe { __lsx_vshuf_b(a, b, c) }
 }
 
 #[inline]
@@ -6460,420 +6460,420 @@ pub unsafe fn lsx_vstx(a: v16i8, mem_addr: *mut i8, b: i64) {
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vextl_qu_du(a: v2u64) -> v2u64 {
-    __lsx_vextl_qu_du(a)
+pub fn lsx_vextl_qu_du(a: v2u64) -> v2u64 {
+    unsafe { __lsx_vextl_qu_du(a) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_bnz_b(a: v16u8) -> i32 {
-    __lsx_bnz_b(a)
+pub fn lsx_bnz_b(a: v16u8) -> i32 {
+    unsafe { __lsx_bnz_b(a) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_bnz_d(a: v2u64) -> i32 {
-    __lsx_bnz_d(a)
+pub fn lsx_bnz_d(a: v2u64) -> i32 {
+    unsafe { __lsx_bnz_d(a) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_bnz_h(a: v8u16) -> i32 {
-    __lsx_bnz_h(a)
+pub fn lsx_bnz_h(a: v8u16) -> i32 {
+    unsafe { __lsx_bnz_h(a) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_bnz_v(a: v16u8) -> i32 {
-    __lsx_bnz_v(a)
+pub fn lsx_bnz_v(a: v16u8) -> i32 {
+    unsafe { __lsx_bnz_v(a) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_bnz_w(a: v4u32) -> i32 {
-    __lsx_bnz_w(a)
+pub fn lsx_bnz_w(a: v4u32) -> i32 {
+    unsafe { __lsx_bnz_w(a) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_bz_b(a: v16u8) -> i32 {
-    __lsx_bz_b(a)
+pub fn lsx_bz_b(a: v16u8) -> i32 {
+    unsafe { __lsx_bz_b(a) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_bz_d(a: v2u64) -> i32 {
-    __lsx_bz_d(a)
+pub fn lsx_bz_d(a: v2u64) -> i32 {
+    unsafe { __lsx_bz_d(a) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_bz_h(a: v8u16) -> i32 {
-    __lsx_bz_h(a)
+pub fn lsx_bz_h(a: v8u16) -> i32 {
+    unsafe { __lsx_bz_h(a) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_bz_v(a: v16u8) -> i32 {
-    __lsx_bz_v(a)
+pub fn lsx_bz_v(a: v16u8) -> i32 {
+    unsafe { __lsx_bz_v(a) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_bz_w(a: v4u32) -> i32 {
-    __lsx_bz_w(a)
+pub fn lsx_bz_w(a: v4u32) -> i32 {
+    unsafe { __lsx_bz_w(a) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vfcmp_caf_d(a: v2f64, b: v2f64) -> v2i64 {
-    __lsx_vfcmp_caf_d(a, b)
+pub fn lsx_vfcmp_caf_d(a: v2f64, b: v2f64) -> v2i64 {
+    unsafe { __lsx_vfcmp_caf_d(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vfcmp_caf_s(a: v4f32, b: v4f32) -> v4i32 {
-    __lsx_vfcmp_caf_s(a, b)
+pub fn lsx_vfcmp_caf_s(a: v4f32, b: v4f32) -> v4i32 {
+    unsafe { __lsx_vfcmp_caf_s(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vfcmp_ceq_d(a: v2f64, b: v2f64) -> v2i64 {
-    __lsx_vfcmp_ceq_d(a, b)
+pub fn lsx_vfcmp_ceq_d(a: v2f64, b: v2f64) -> v2i64 {
+    unsafe { __lsx_vfcmp_ceq_d(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vfcmp_ceq_s(a: v4f32, b: v4f32) -> v4i32 {
-    __lsx_vfcmp_ceq_s(a, b)
+pub fn lsx_vfcmp_ceq_s(a: v4f32, b: v4f32) -> v4i32 {
+    unsafe { __lsx_vfcmp_ceq_s(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vfcmp_cle_d(a: v2f64, b: v2f64) -> v2i64 {
-    __lsx_vfcmp_cle_d(a, b)
+pub fn lsx_vfcmp_cle_d(a: v2f64, b: v2f64) -> v2i64 {
+    unsafe { __lsx_vfcmp_cle_d(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vfcmp_cle_s(a: v4f32, b: v4f32) -> v4i32 {
-    __lsx_vfcmp_cle_s(a, b)
+pub fn lsx_vfcmp_cle_s(a: v4f32, b: v4f32) -> v4i32 {
+    unsafe { __lsx_vfcmp_cle_s(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vfcmp_clt_d(a: v2f64, b: v2f64) -> v2i64 {
-    __lsx_vfcmp_clt_d(a, b)
+pub fn lsx_vfcmp_clt_d(a: v2f64, b: v2f64) -> v2i64 {
+    unsafe { __lsx_vfcmp_clt_d(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vfcmp_clt_s(a: v4f32, b: v4f32) -> v4i32 {
-    __lsx_vfcmp_clt_s(a, b)
+pub fn lsx_vfcmp_clt_s(a: v4f32, b: v4f32) -> v4i32 {
+    unsafe { __lsx_vfcmp_clt_s(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vfcmp_cne_d(a: v2f64, b: v2f64) -> v2i64 {
-    __lsx_vfcmp_cne_d(a, b)
+pub fn lsx_vfcmp_cne_d(a: v2f64, b: v2f64) -> v2i64 {
+    unsafe { __lsx_vfcmp_cne_d(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vfcmp_cne_s(a: v4f32, b: v4f32) -> v4i32 {
-    __lsx_vfcmp_cne_s(a, b)
+pub fn lsx_vfcmp_cne_s(a: v4f32, b: v4f32) -> v4i32 {
+    unsafe { __lsx_vfcmp_cne_s(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vfcmp_cor_d(a: v2f64, b: v2f64) -> v2i64 {
-    __lsx_vfcmp_cor_d(a, b)
+pub fn lsx_vfcmp_cor_d(a: v2f64, b: v2f64) -> v2i64 {
+    unsafe { __lsx_vfcmp_cor_d(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vfcmp_cor_s(a: v4f32, b: v4f32) -> v4i32 {
-    __lsx_vfcmp_cor_s(a, b)
+pub fn lsx_vfcmp_cor_s(a: v4f32, b: v4f32) -> v4i32 {
+    unsafe { __lsx_vfcmp_cor_s(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vfcmp_cueq_d(a: v2f64, b: v2f64) -> v2i64 {
-    __lsx_vfcmp_cueq_d(a, b)
+pub fn lsx_vfcmp_cueq_d(a: v2f64, b: v2f64) -> v2i64 {
+    unsafe { __lsx_vfcmp_cueq_d(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vfcmp_cueq_s(a: v4f32, b: v4f32) -> v4i32 {
-    __lsx_vfcmp_cueq_s(a, b)
+pub fn lsx_vfcmp_cueq_s(a: v4f32, b: v4f32) -> v4i32 {
+    unsafe { __lsx_vfcmp_cueq_s(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vfcmp_cule_d(a: v2f64, b: v2f64) -> v2i64 {
-    __lsx_vfcmp_cule_d(a, b)
+pub fn lsx_vfcmp_cule_d(a: v2f64, b: v2f64) -> v2i64 {
+    unsafe { __lsx_vfcmp_cule_d(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vfcmp_cule_s(a: v4f32, b: v4f32) -> v4i32 {
-    __lsx_vfcmp_cule_s(a, b)
+pub fn lsx_vfcmp_cule_s(a: v4f32, b: v4f32) -> v4i32 {
+    unsafe { __lsx_vfcmp_cule_s(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vfcmp_cult_d(a: v2f64, b: v2f64) -> v2i64 {
-    __lsx_vfcmp_cult_d(a, b)
+pub fn lsx_vfcmp_cult_d(a: v2f64, b: v2f64) -> v2i64 {
+    unsafe { __lsx_vfcmp_cult_d(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vfcmp_cult_s(a: v4f32, b: v4f32) -> v4i32 {
-    __lsx_vfcmp_cult_s(a, b)
+pub fn lsx_vfcmp_cult_s(a: v4f32, b: v4f32) -> v4i32 {
+    unsafe { __lsx_vfcmp_cult_s(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vfcmp_cun_d(a: v2f64, b: v2f64) -> v2i64 {
-    __lsx_vfcmp_cun_d(a, b)
+pub fn lsx_vfcmp_cun_d(a: v2f64, b: v2f64) -> v2i64 {
+    unsafe { __lsx_vfcmp_cun_d(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vfcmp_cune_d(a: v2f64, b: v2f64) -> v2i64 {
-    __lsx_vfcmp_cune_d(a, b)
+pub fn lsx_vfcmp_cune_d(a: v2f64, b: v2f64) -> v2i64 {
+    unsafe { __lsx_vfcmp_cune_d(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vfcmp_cune_s(a: v4f32, b: v4f32) -> v4i32 {
-    __lsx_vfcmp_cune_s(a, b)
+pub fn lsx_vfcmp_cune_s(a: v4f32, b: v4f32) -> v4i32 {
+    unsafe { __lsx_vfcmp_cune_s(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vfcmp_cun_s(a: v4f32, b: v4f32) -> v4i32 {
-    __lsx_vfcmp_cun_s(a, b)
+pub fn lsx_vfcmp_cun_s(a: v4f32, b: v4f32) -> v4i32 {
+    unsafe { __lsx_vfcmp_cun_s(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vfcmp_saf_d(a: v2f64, b: v2f64) -> v2i64 {
-    __lsx_vfcmp_saf_d(a, b)
+pub fn lsx_vfcmp_saf_d(a: v2f64, b: v2f64) -> v2i64 {
+    unsafe { __lsx_vfcmp_saf_d(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vfcmp_saf_s(a: v4f32, b: v4f32) -> v4i32 {
-    __lsx_vfcmp_saf_s(a, b)
+pub fn lsx_vfcmp_saf_s(a: v4f32, b: v4f32) -> v4i32 {
+    unsafe { __lsx_vfcmp_saf_s(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vfcmp_seq_d(a: v2f64, b: v2f64) -> v2i64 {
-    __lsx_vfcmp_seq_d(a, b)
+pub fn lsx_vfcmp_seq_d(a: v2f64, b: v2f64) -> v2i64 {
+    unsafe { __lsx_vfcmp_seq_d(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vfcmp_seq_s(a: v4f32, b: v4f32) -> v4i32 {
-    __lsx_vfcmp_seq_s(a, b)
+pub fn lsx_vfcmp_seq_s(a: v4f32, b: v4f32) -> v4i32 {
+    unsafe { __lsx_vfcmp_seq_s(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vfcmp_sle_d(a: v2f64, b: v2f64) -> v2i64 {
-    __lsx_vfcmp_sle_d(a, b)
+pub fn lsx_vfcmp_sle_d(a: v2f64, b: v2f64) -> v2i64 {
+    unsafe { __lsx_vfcmp_sle_d(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vfcmp_sle_s(a: v4f32, b: v4f32) -> v4i32 {
-    __lsx_vfcmp_sle_s(a, b)
+pub fn lsx_vfcmp_sle_s(a: v4f32, b: v4f32) -> v4i32 {
+    unsafe { __lsx_vfcmp_sle_s(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vfcmp_slt_d(a: v2f64, b: v2f64) -> v2i64 {
-    __lsx_vfcmp_slt_d(a, b)
+pub fn lsx_vfcmp_slt_d(a: v2f64, b: v2f64) -> v2i64 {
+    unsafe { __lsx_vfcmp_slt_d(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vfcmp_slt_s(a: v4f32, b: v4f32) -> v4i32 {
-    __lsx_vfcmp_slt_s(a, b)
+pub fn lsx_vfcmp_slt_s(a: v4f32, b: v4f32) -> v4i32 {
+    unsafe { __lsx_vfcmp_slt_s(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vfcmp_sne_d(a: v2f64, b: v2f64) -> v2i64 {
-    __lsx_vfcmp_sne_d(a, b)
+pub fn lsx_vfcmp_sne_d(a: v2f64, b: v2f64) -> v2i64 {
+    unsafe { __lsx_vfcmp_sne_d(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vfcmp_sne_s(a: v4f32, b: v4f32) -> v4i32 {
-    __lsx_vfcmp_sne_s(a, b)
+pub fn lsx_vfcmp_sne_s(a: v4f32, b: v4f32) -> v4i32 {
+    unsafe { __lsx_vfcmp_sne_s(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vfcmp_sor_d(a: v2f64, b: v2f64) -> v2i64 {
-    __lsx_vfcmp_sor_d(a, b)
+pub fn lsx_vfcmp_sor_d(a: v2f64, b: v2f64) -> v2i64 {
+    unsafe { __lsx_vfcmp_sor_d(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vfcmp_sor_s(a: v4f32, b: v4f32) -> v4i32 {
-    __lsx_vfcmp_sor_s(a, b)
+pub fn lsx_vfcmp_sor_s(a: v4f32, b: v4f32) -> v4i32 {
+    unsafe { __lsx_vfcmp_sor_s(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vfcmp_sueq_d(a: v2f64, b: v2f64) -> v2i64 {
-    __lsx_vfcmp_sueq_d(a, b)
+pub fn lsx_vfcmp_sueq_d(a: v2f64, b: v2f64) -> v2i64 {
+    unsafe { __lsx_vfcmp_sueq_d(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vfcmp_sueq_s(a: v4f32, b: v4f32) -> v4i32 {
-    __lsx_vfcmp_sueq_s(a, b)
+pub fn lsx_vfcmp_sueq_s(a: v4f32, b: v4f32) -> v4i32 {
+    unsafe { __lsx_vfcmp_sueq_s(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vfcmp_sule_d(a: v2f64, b: v2f64) -> v2i64 {
-    __lsx_vfcmp_sule_d(a, b)
+pub fn lsx_vfcmp_sule_d(a: v2f64, b: v2f64) -> v2i64 {
+    unsafe { __lsx_vfcmp_sule_d(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vfcmp_sule_s(a: v4f32, b: v4f32) -> v4i32 {
-    __lsx_vfcmp_sule_s(a, b)
+pub fn lsx_vfcmp_sule_s(a: v4f32, b: v4f32) -> v4i32 {
+    unsafe { __lsx_vfcmp_sule_s(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vfcmp_sult_d(a: v2f64, b: v2f64) -> v2i64 {
-    __lsx_vfcmp_sult_d(a, b)
+pub fn lsx_vfcmp_sult_d(a: v2f64, b: v2f64) -> v2i64 {
+    unsafe { __lsx_vfcmp_sult_d(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vfcmp_sult_s(a: v4f32, b: v4f32) -> v4i32 {
-    __lsx_vfcmp_sult_s(a, b)
+pub fn lsx_vfcmp_sult_s(a: v4f32, b: v4f32) -> v4i32 {
+    unsafe { __lsx_vfcmp_sult_s(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vfcmp_sun_d(a: v2f64, b: v2f64) -> v2i64 {
-    __lsx_vfcmp_sun_d(a, b)
+pub fn lsx_vfcmp_sun_d(a: v2f64, b: v2f64) -> v2i64 {
+    unsafe { __lsx_vfcmp_sun_d(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vfcmp_sune_d(a: v2f64, b: v2f64) -> v2i64 {
-    __lsx_vfcmp_sune_d(a, b)
+pub fn lsx_vfcmp_sune_d(a: v2f64, b: v2f64) -> v2i64 {
+    unsafe { __lsx_vfcmp_sune_d(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vfcmp_sune_s(a: v4f32, b: v4f32) -> v4i32 {
-    __lsx_vfcmp_sune_s(a, b)
+pub fn lsx_vfcmp_sune_s(a: v4f32, b: v4f32) -> v4i32 {
+    unsafe { __lsx_vfcmp_sune_s(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vfcmp_sun_s(a: v4f32, b: v4f32) -> v4i32 {
-    __lsx_vfcmp_sun_s(a, b)
-}
-
-#[inline]
-#[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(0)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vrepli_b<const IMM_S10: i32>() -> v16i8 {
-    static_assert_simm_bits!(IMM_S10, 10);
-    __lsx_vrepli_b(IMM_S10)
+pub fn lsx_vfcmp_sun_s(a: v4f32, b: v4f32) -> v4i32 {
+    unsafe { __lsx_vfcmp_sun_s(a, b) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(0)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vrepli_d<const IMM_S10: i32>() -> v2i64 {
+pub fn lsx_vrepli_b<const IMM_S10: i32>() -> v16i8 {
     static_assert_simm_bits!(IMM_S10, 10);
-    __lsx_vrepli_d(IMM_S10)
+    unsafe { __lsx_vrepli_b(IMM_S10) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(0)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vrepli_h<const IMM_S10: i32>() -> v8i16 {
+pub fn lsx_vrepli_d<const IMM_S10: i32>() -> v2i64 {
     static_assert_simm_bits!(IMM_S10, 10);
-    __lsx_vrepli_h(IMM_S10)
+    unsafe { __lsx_vrepli_d(IMM_S10) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(0)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lsx_vrepli_w<const IMM_S10: i32>() -> v4i32 {
+pub fn lsx_vrepli_h<const IMM_S10: i32>() -> v8i16 {
     static_assert_simm_bits!(IMM_S10, 10);
-    __lsx_vrepli_w(IMM_S10)
+    unsafe { __lsx_vrepli_h(IMM_S10) }
+}
+
+#[inline]
+#[target_feature(enable = "lsx")]
+#[rustc_legacy_const_generics(0)]
+#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+pub fn lsx_vrepli_w<const IMM_S10: i32>() -> v4i32 {
+    static_assert_simm_bits!(IMM_S10, 10);
+    unsafe { __lsx_vrepli_w(IMM_S10) }
 }

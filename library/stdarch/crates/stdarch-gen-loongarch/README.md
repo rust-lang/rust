@@ -11,7 +11,6 @@ LSX:
 # Generate bindings
 OUT_DIR=`pwd`/crates/stdarch-gen-loongarch cargo run -p stdarch-gen-loongarch -- crates/stdarch-gen-loongarch/lsxintrin.h
 OUT_DIR=`pwd`/crates/core_arch cargo run -p stdarch-gen-loongarch -- crates/stdarch-gen-loongarch/lsx.spec
-rustfmt crates/core_arch/src/loongarch64/lsx/generated.rs
 
 # Generate tests
 OUT_DIR=`pwd`/crates/stdarch-gen-loongarch cargo run -p stdarch-gen-loongarch -- crates/stdarch-gen-loongarch/lsx.spec test
@@ -25,7 +24,6 @@ LASX:
 # Generate bindings
 OUT_DIR=`pwd`/crates/stdarch-gen-loongarch cargo run -p stdarch-gen-loongarch -- crates/stdarch-gen-loongarch/lasxintrin.h
 OUT_DIR=`pwd`/crates/core_arch cargo run -p stdarch-gen-loongarch -- crates/stdarch-gen-loongarch/lasx.spec
-rustfmt crates/core_arch/src/loongarch64/lasx/generated.rs
 
 # Generate tests
 OUT_DIR=`pwd`/crates/stdarch-gen-loongarch cargo run -p stdarch-gen-loongarch -- crates/stdarch-gen-loongarch/lasx.spec test

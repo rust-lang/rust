@@ -33,7 +33,7 @@ fn new_empty_allocation(align: Align) -> Allocation {
 #[allow(rustc::usage_of_qualified_ty)]
 pub(crate) fn new_allocation<'tcx>(
     ty: rustc_middle::ty::Ty<'tcx>,
-    const_value: ConstValue<'tcx>,
+    const_value: ConstValue,
     tables: &mut Tables<'tcx, BridgeTys>,
     cx: &CompilerCtxt<'tcx, BridgeTys>,
 ) -> Allocation {
@@ -44,7 +44,7 @@ pub(crate) fn new_allocation<'tcx>(
 #[allow(rustc::usage_of_qualified_ty)]
 pub(crate) fn try_new_allocation<'tcx>(
     ty: rustc_middle::ty::Ty<'tcx>,
-    const_value: ConstValue<'tcx>,
+    const_value: ConstValue,
     tables: &mut Tables<'tcx, BridgeTys>,
     cx: &CompilerCtxt<'tcx, BridgeTys>,
 ) -> Result<Allocation, Error> {
@@ -54,8 +54,8 @@ pub(crate) fn try_new_allocation<'tcx>(
             alloc::try_new_scalar(layout, scalar, cx).map(|alloc| alloc.stable(tables, cx))
         }
         ConstValue::ZeroSized => Ok(new_empty_allocation(layout.align.abi)),
-        ConstValue::Slice { data, meta } => {
-            alloc::try_new_slice(layout, data, meta, cx).map(|alloc| alloc.stable(tables, cx))
+        ConstValue::Slice { alloc_id, meta } => {
+            alloc::try_new_slice(layout, alloc_id, meta, cx).map(|alloc| alloc.stable(tables, cx))
         }
         ConstValue::Indirect { alloc_id, offset } => {
             let alloc = alloc::try_new_indirect(alloc_id, cx);

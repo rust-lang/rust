@@ -588,7 +588,7 @@ fn asm_tests(env: &Env, args: &TestArg) -> Result<(), String> {
             &"always",
             &"--stage",
             &"0",
-            &"tests/assembly/asm",
+            &"tests/assembly-llvm/asm",
             &"--compiletest-rustc-args",
             &rustc_args,
         ],

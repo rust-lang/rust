@@ -5,7 +5,8 @@ where
     str: Sized,
 {
     [(); { let _a: Option<str> = None; 0 }];
-    //~^ ERROR the type `Option<str>` has an unknown layout
+    //~^ ERROR entering unreachable code
+    //~| NOTE evaluation of `return_str::{constant#0}` failed here
 }
 
 fn main() {}

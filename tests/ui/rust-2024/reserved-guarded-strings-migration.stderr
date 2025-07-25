@@ -5,7 +5,7 @@ LL |     demo3!(## "foo");
    |            ^^
    |
    = warning: this is accepted in the current edition (Rust 2021) but is a hard error in Rust 2024!
-   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/reserved-syntax.html>
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/reserved-syntax.html>
 note: the lint level is defined here
   --> $DIR/reserved-guarded-strings-migration.rs:5:9
    |
@@ -23,7 +23,7 @@ LL |     demo4!(### "foo");
    |            ^^
    |
    = warning: this is accepted in the current edition (Rust 2021) but is a hard error in Rust 2024!
-   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/reserved-syntax.html>
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/reserved-syntax.html>
 help: insert whitespace here to avoid this being parsed as a forbidden token in Rust 2024
    |
 LL |     demo4!(# ## "foo");
@@ -36,7 +36,7 @@ LL |     demo4!(### "foo");
    |             ^^
    |
    = warning: this is accepted in the current edition (Rust 2021) but is a hard error in Rust 2024!
-   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/reserved-syntax.html>
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/reserved-syntax.html>
 help: insert whitespace here to avoid this being parsed as a forbidden token in Rust 2024
    |
 LL |     demo4!(## # "foo");
@@ -49,7 +49,7 @@ LL |     demo4!(## "foo"#);
    |            ^^
    |
    = warning: this is accepted in the current edition (Rust 2021) but is a hard error in Rust 2024!
-   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/reserved-syntax.html>
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/reserved-syntax.html>
 help: insert whitespace here to avoid this being parsed as a forbidden token in Rust 2024
    |
 LL |     demo4!(# # "foo"#);
@@ -62,7 +62,7 @@ LL |     demo6!(### "foo"##);
    |            ^^
    |
    = warning: this is accepted in the current edition (Rust 2021) but is a hard error in Rust 2024!
-   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/reserved-syntax.html>
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/reserved-syntax.html>
 help: insert whitespace here to avoid this being parsed as a forbidden token in Rust 2024
    |
 LL |     demo6!(# ## "foo"##);
@@ -75,7 +75,7 @@ LL |     demo6!(### "foo"##);
    |             ^^
    |
    = warning: this is accepted in the current edition (Rust 2021) but is a hard error in Rust 2024!
-   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/reserved-syntax.html>
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/reserved-syntax.html>
 help: insert whitespace here to avoid this being parsed as a forbidden token in Rust 2024
    |
 LL |     demo6!(## # "foo"##);
@@ -88,7 +88,7 @@ LL |     demo6!(### "foo"##);
    |                     ^^
    |
    = warning: this is accepted in the current edition (Rust 2021) but is a hard error in Rust 2024!
-   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/reserved-syntax.html>
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/reserved-syntax.html>
 help: insert whitespace here to avoid this being parsed as a forbidden token in Rust 2024
    |
 LL |     demo6!(### "foo"# #);
@@ -101,7 +101,7 @@ LL |     demo4!("foo"###);
    |                 ^^
    |
    = warning: this is accepted in the current edition (Rust 2021) but is a hard error in Rust 2024!
-   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/reserved-syntax.html>
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/reserved-syntax.html>
 help: insert whitespace here to avoid this being parsed as a forbidden token in Rust 2024
    |
 LL |     demo4!("foo"# ##);
@@ -114,7 +114,7 @@ LL |     demo4!("foo"###);
    |                  ^^
    |
    = warning: this is accepted in the current edition (Rust 2021) but is a hard error in Rust 2024!
-   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/reserved-syntax.html>
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/reserved-syntax.html>
 help: insert whitespace here to avoid this being parsed as a forbidden token in Rust 2024
    |
 LL |     demo4!("foo"## #);
@@ -127,7 +127,7 @@ LL |     demo2!(#"");
    |            ^^^
    |
    = warning: this is accepted in the current edition (Rust 2021) but is a hard error in Rust 2024!
-   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/reserved-syntax.html>
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/reserved-syntax.html>
 help: insert whitespace here to avoid this being parsed as a guarded string in Rust 2024
    |
 LL |     demo2!(# "");
@@ -140,7 +140,7 @@ LL |     demo3!(#""#);
    |            ^^^^
    |
    = warning: this is accepted in the current edition (Rust 2021) but is a hard error in Rust 2024!
-   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/reserved-syntax.html>
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/reserved-syntax.html>
 help: insert whitespace here to avoid this being parsed as a guarded string in Rust 2024
    |
 LL |     demo3!(# ""#);
@@ -153,7 +153,7 @@ LL |     demo3!(##"");
    |            ^^^^
    |
    = warning: this is accepted in the current edition (Rust 2021) but is a hard error in Rust 2024!
-   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/reserved-syntax.html>
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/reserved-syntax.html>
 help: insert whitespace here to avoid this being parsed as a guarded string in Rust 2024
    |
 LL |     demo3!(# #"");
@@ -166,7 +166,7 @@ LL |     demo3!(##"");
    |             ^^^
    |
    = warning: this is accepted in the current edition (Rust 2021) but is a hard error in Rust 2024!
-   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/reserved-syntax.html>
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/reserved-syntax.html>
 help: insert whitespace here to avoid this being parsed as a guarded string in Rust 2024
    |
 LL |     demo3!(## "");
@@ -179,7 +179,7 @@ LL |     demo2!(#"foo");
    |            ^^^^^^
    |
    = warning: this is accepted in the current edition (Rust 2021) but is a hard error in Rust 2024!
-   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/reserved-syntax.html>
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/reserved-syntax.html>
 help: insert whitespace here to avoid this being parsed as a guarded string in Rust 2024
    |
 LL |     demo2!(# "foo");
@@ -192,7 +192,7 @@ LL |     demo3!(##"foo");
    |            ^^^^^^^
    |
    = warning: this is accepted in the current edition (Rust 2021) but is a hard error in Rust 2024!
-   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/reserved-syntax.html>
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/reserved-syntax.html>
 help: insert whitespace here to avoid this being parsed as a guarded string in Rust 2024
    |
 LL |     demo3!(# #"foo");
@@ -205,7 +205,7 @@ LL |     demo3!(##"foo");
    |             ^^^^^^
    |
    = warning: this is accepted in the current edition (Rust 2021) but is a hard error in Rust 2024!
-   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/reserved-syntax.html>
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/reserved-syntax.html>
 help: insert whitespace here to avoid this being parsed as a guarded string in Rust 2024
    |
 LL |     demo3!(## "foo");
@@ -218,7 +218,7 @@ LL |     demo3!(#"foo"#);
    |            ^^^^^^^
    |
    = warning: this is accepted in the current edition (Rust 2021) but is a hard error in Rust 2024!
-   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/reserved-syntax.html>
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/reserved-syntax.html>
 help: insert whitespace here to avoid this being parsed as a guarded string in Rust 2024
    |
 LL |     demo3!(# "foo"#);
@@ -231,7 +231,7 @@ LL |     demo4!(##"foo"#);
    |            ^^^^^^^^
    |
    = warning: this is accepted in the current edition (Rust 2021) but is a hard error in Rust 2024!
-   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/reserved-syntax.html>
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/reserved-syntax.html>
 help: insert whitespace here to avoid this being parsed as a guarded string in Rust 2024
    |
 LL |     demo4!(# #"foo"#);
@@ -244,7 +244,7 @@ LL |     demo4!(##"foo"#);
    |             ^^^^^^^
    |
    = warning: this is accepted in the current edition (Rust 2021) but is a hard error in Rust 2024!
-   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/reserved-syntax.html>
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/reserved-syntax.html>
 help: insert whitespace here to avoid this being parsed as a guarded string in Rust 2024
    |
 LL |     demo4!(## "foo"#);
@@ -257,7 +257,7 @@ LL |     demo5!(##"foo"##);
    |            ^^^^^^^^^
    |
    = warning: this is accepted in the current edition (Rust 2021) but is a hard error in Rust 2024!
-   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/reserved-syntax.html>
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/reserved-syntax.html>
 help: insert whitespace here to avoid this being parsed as a guarded string in Rust 2024
    |
 LL |     demo5!(# #"foo"##);
@@ -270,7 +270,7 @@ LL |     demo5!(##"foo"##);
    |             ^^^^^^^
    |
    = warning: this is accepted in the current edition (Rust 2021) but is a hard error in Rust 2024!
-   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/reserved-syntax.html>
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/reserved-syntax.html>
 help: insert whitespace here to avoid this being parsed as a guarded string in Rust 2024
    |
 LL |     demo5!(## "foo"##);
@@ -283,7 +283,7 @@ LL |     demo5!(##"foo"##);
    |                   ^^
    |
    = warning: this is accepted in the current edition (Rust 2021) but is a hard error in Rust 2024!
-   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/reserved-syntax.html>
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/reserved-syntax.html>
 help: insert whitespace here to avoid this being parsed as a forbidden token in Rust 2024
    |
 LL |     demo5!(##"foo"# #);

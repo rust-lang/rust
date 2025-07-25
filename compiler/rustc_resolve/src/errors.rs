@@ -816,13 +816,6 @@ pub(crate) struct ExternCrateLoadingMacroNotAtCrateRoot {
 }
 
 #[derive(Diagnostic)]
-#[diag(resolve_bad_macro_import, code = E0466)]
-pub(crate) struct BadMacroImport {
-    #[primary_span]
-    pub(crate) span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag(resolve_extern_crate_self_requires_renaming)]
 pub(crate) struct ExternCrateSelfRequiresRenaming {
     #[primary_span]

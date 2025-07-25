@@ -43,12 +43,13 @@ macro_rules! dump_and_die {
         // rust-lang/rust to test it as well, but sometimes we just gotta keep
         // landing PRs.
         //
-        // aarch64-msvc is broken as its backtraces are truncated.
+        // aarch64-msvc/arm64ec-msvc is broken as its backtraces are truncated.
         // See https://github.com/rust-lang/rust/issues/140489
         if cfg!(any(target_os = "android",
                     all(target_os = "linux", target_arch = "arm"),
                     all(target_env = "msvc", target_arch = "x86"),
                     all(target_env = "msvc", target_arch = "aarch64"),
+                    all(target_env = "msvc", target_arch = "arm64ec"),
                     target_os = "freebsd",
                     target_os = "dragonfly",
                     target_os = "openbsd")) {

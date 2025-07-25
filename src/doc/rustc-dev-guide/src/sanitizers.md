@@ -76,7 +76,7 @@ implementation:
 ## Testing sanitizers
 
 Sanitizers are validated by code generation tests in
-[`tests/codegen/sanitize*.rs`][test-cg] and end-to-end functional tests in
+[`tests/codegen-llvm/sanitize*.rs`][test-cg] and end-to-end functional tests in
 [`tests/ui/sanitizer/`][test-ui] directory.
 
 Testing sanitizer functionality requires the sanitizer runtimes (built when
@@ -85,7 +85,7 @@ sanitizer. When sanitizer is unsupported on given target, sanitizers tests will
 be ignored. This behaviour is controlled by compiletest `needs-sanitizer-*`
 directives.
 
-[test-cg]: https://github.com/rust-lang/rust/tree/master/tests/codegen
+[test-cg]: https://github.com/rust-lang/rust/tree/master/tests/codegen-llvm
 [test-ui]: https://github.com/rust-lang/rust/tree/master/tests/ui/sanitizer
 
 ## Enabling sanitizer on a new target

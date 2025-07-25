@@ -12,7 +12,6 @@ use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::Ty;
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::{mir, ty};
-use rustc_span::Span;
 use rustc_span::def_id::DefId;
 use rustc_target::callconv::FnAbi;
 
@@ -585,27 +584,6 @@ pub trait Machine<'tcx>: Sized {
         _mplace: &MPlaceTy<'tcx, Self::Provenance>,
     ) -> InterpResult<'tcx> {
         interp_ok(())
-    }
-
-    /// Evaluate the given constant. The `eval` function will do all the required evaluation,
-    /// but this hook has the chance to do some pre/postprocessing.
-    #[inline(always)]
-    fn eval_mir_constant<F>(
-        ecx: &InterpCx<'tcx, Self>,
-        val: mir::Const<'tcx>,
-        span: Span,
-        layout: Option<TyAndLayout<'tcx>>,
-        eval: F,
-    ) -> InterpResult<'tcx, OpTy<'tcx, Self::Provenance>>
-    where
-        F: Fn(
-            &InterpCx<'tcx, Self>,
-            mir::Const<'tcx>,
-            Span,
-            Option<TyAndLayout<'tcx>>,
-        ) -> InterpResult<'tcx, OpTy<'tcx, Self::Provenance>>,
-    {
-        eval(ecx, val, span, layout)
     }
 
     /// Returns the salt to be used for a deduplicated global alloation.
