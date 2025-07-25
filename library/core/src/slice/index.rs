@@ -650,7 +650,6 @@ unsafe impl<T> const SliceIndex<[T]> for ops::RangeFull {
 }
 
 /// The methods `index` and `index_mut` panic if:
-/// - the end of the range is `usize::MAX` or
 /// - the start of the range is greater than the end of the range or
 /// - the end of the range is out of bounds.
 #[stable(feature = "inclusive_range", since = "1.26.0")]
@@ -660,12 +659,14 @@ unsafe impl<T> const SliceIndex<[T]> for ops::RangeInclusive<usize> {
 
     #[inline]
     fn get(self, slice: &[T]) -> Option<&[T]> {
-        if *self.end() == usize::MAX { None } else { self.into_slice_range().get(slice) }
+        // `self.into_slice_range()` cannot overflow, because `*self.end() <
+        // slice.len()` implies `*self.end() < usize::MAX`.
+        if *self.end() >= slice.len() { None } else { self.into_slice_range().get(slice) }
     }
 
     #[inline]
     fn get_mut(self, slice: &mut [T]) -> Option<&mut [T]> {
-        if *self.end() == usize::MAX { None } else { self.into_slice_range().get_mut(slice) }
+        if *self.end() >= slice.len() { None } else { self.into_slice_range().get_mut(slice) }
     }
 
     #[inline]
