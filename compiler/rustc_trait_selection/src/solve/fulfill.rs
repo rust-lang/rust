@@ -182,10 +182,11 @@ where
     fn select_where_possible(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<E> {
         assert_eq!(self.usable_in_snapshot, infcx.num_open_snapshots());
         let mut errors = Vec::new();
+        let recursion_limit = infcx.tcx.recursion_limit();
         loop {
             let mut any_changed = false;
             for (mut obligation, stalled_on) in self.obligations.drain_pending(|_| true) {
-                if !infcx.tcx.recursion_limit().value_within_limit(obligation.recursion_depth) {
+                if !recursion_limit.value_within_limit(obligation.recursion_depth) {
                     self.obligations.on_fulfillment_overflow(infcx);
                     // Only return true errors that we have accumulated while processing.
                     return errors;
