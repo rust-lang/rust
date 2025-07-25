@@ -18,7 +18,6 @@ pub(crate) fn collect_enzyme_autodiff_fn<'tcx>(
     };
 
     collect_autodiff_fn_from_arg(instance.args[0], tcx, output);
-    collect_autodiff_fn_from_arg(instance.args[1], tcx, output);
 }
 
 fn collect_autodiff_fn_from_arg<'tcx>(
@@ -27,7 +26,7 @@ fn collect_autodiff_fn_from_arg<'tcx>(
     output: &mut MonoItems<'tcx>,
 ) {
     let (instance, span) = match arg.kind() {
-        rustc_middle::infer::canonical::ir::GenericArgKind::Type(ty) => match ty.kind() {
+        ty::GenericArgKind::Type(ty) => match ty.kind() {
             ty::FnDef(def_id, substs) => {
                 let span = tcx.def_span(def_id);
                 let instance = ty::Instance::expect_resolve(
