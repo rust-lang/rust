@@ -3,10 +3,11 @@ use crate::{
     assist_context::{AssistContext, Assists},
     utils::add_cfg_attrs_to,
 };
-use hir::Semantics;
+use hir::{HasCrate, Semantics};
 use ide_db::{
     RootDatabase,
     assists::{AssistId, AssistKind, ExprFillDefaultMode},
+    famous_defs::FamousDefs,
     syntax_helpers::suggest_name,
 };
 use syntax::{
@@ -84,7 +85,7 @@ pub(crate) fn generate_blanket_trait_impl(
 
             let gendecl = make::generic_param_list([GenericParam::TypeParam(make::type_param(
                 thisname.clone(),
-                apply_sized(has_sized(&traitd), bounds),
+                apply_sized(has_sized(&traitd, &ctx.sema), bounds),
             ))]);
 
             let trait_gen_args =
@@ -160,14 +161,22 @@ fn existing_any_impl(traitd: &ast::Trait, sema: &Semantics<'_, RootDatabase>) ->
         .find(|impl_| impl_.trait_(db).is_some_and(|it| it == traitd))
 }
 
-fn has_sized(traitd: &ast::Trait) -> bool {
+fn has_sized(traitd: &ast::Trait, sema: &Semantics<'_, RootDatabase>) -> bool {
     if let Some(sized) = find_bound("Sized", traitd.type_bound_list()) {
         sized.question_mark_token().is_none()
     } else if let Some(is_sized) = where_clause_sized(traitd.where_clause()) {
         is_sized
     } else {
         contained_owned_self_method(traitd.assoc_item_list())
+            || super_traits_has_sized(traitd, sema) == Some(true)
     }
+}
+
+fn super_traits_has_sized(traitd: &ast::Trait, sema: &Semantics<'_, RootDatabase>) -> Option<bool> {
+    let traitd = sema.to_def(traitd)?;
+    let sized = FamousDefs(sema, traitd.krate(sema.db)).core_marker_Sized()?;
+
+    Some(traitd.all_supertraits(sema.db).contains(&sized))
 }
 
 fn contained_owned_self_method(item_list: Option<ast::AssocItemList>) -> bool {
@@ -387,6 +396,30 @@ trait Foo {
 
 impl<T> Foo for $0T {
     fn foo(&self) -> Self {
+        todo!()
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_gen_blanket_super_sized() {
+        check_assist(
+            generate_blanket_trait_impl,
+            r#"
+//- minicore: default
+trait $0Foo: Default {
+    fn foo(&self);
+}
+"#,
+            r#"
+trait Foo: Default {
+    fn foo(&self);
+}
+
+impl<T: Default> Foo for $0T {
+    fn foo(&self) {
         todo!()
     }
 }
