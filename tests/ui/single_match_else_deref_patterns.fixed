@@ -1,0 +1,53 @@
+#![feature(deref_patterns)]
+#![allow(
+    incomplete_features,
+    clippy::eq_op,
+    clippy::op_ref,
+    clippy::deref_addrof,
+    clippy::borrow_deref_ref,
+    clippy::needless_if
+)]
+#![deny(clippy::single_match_else)]
+
+fn string() {
+    if *"" == *"" {}
+
+    if *&*&*&*"" == *"" {}
+
+    if ***&&"" == *"" {}
+
+    if *&*&*"" == *"" {}
+
+    if **&&*"" == *"" {}
+}
+
+fn int() {
+    if &&&1 == &&&2 { unreachable!() } else {
+        // ok
+    }
+    //~^^^^^^ single_match_else
+    if &&1 == &&2 { unreachable!() } else {
+        // ok
+    }
+    //~^^^^^^ single_match_else
+    if &&1 == &&2 { unreachable!() } else {
+        // ok
+    }
+    //~^^^^^^ single_match_else
+    if &1 == &2 { unreachable!() } else {
+        // ok
+    }
+    //~^^^^^^ single_match_else
+    if &1 == &2 { unreachable!() } else {
+        // ok
+    }
+    //~^^^^^^ single_match_else
+    if 1 == 2 { unreachable!() } else {
+        // ok
+    }
+    //~^^^^^^ single_match_else
+    if 1 == 2 { unreachable!() } else {
+        // ok
+    }
+    //~^^^^^^ single_match_else
+}

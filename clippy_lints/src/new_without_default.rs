@@ -65,11 +65,16 @@ impl<'tcx> LateLintPass<'tcx> for NewWithoutDefault {
             ..
         }) = item.kind
         {
-            for assoc_item in cx.tcx.associated_items(item.owner_id.def_id)
+            for assoc_item in cx
+                .tcx
+                .associated_items(item.owner_id.def_id)
                 .filter_by_name_unhygienic(sym::new)
             {
                 if let AssocKind::Fn { has_self: false, .. } = assoc_item.kind {
-                    let impl_item = cx.tcx.hir_node_by_def_id(assoc_item.def_id.expect_local()).expect_impl_item();
+                    let impl_item = cx
+                        .tcx
+                        .hir_node_by_def_id(assoc_item.def_id.expect_local())
+                        .expect_impl_item();
                     if impl_item.span.in_external_macro(cx.sess().source_map()) {
                         return;
                     }

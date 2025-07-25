@@ -123,7 +123,7 @@ fn test_cow_with_ref(c: &Cow<[i32]>) {}
 //~^ ptr_arg
 
 fn test_cow(c: Cow<[i32]>) {
-    let _c = c;
+    let d = c;
 }
 
 trait Foo2 {
@@ -141,36 +141,36 @@ mod issue_5644 {
     use std::path::PathBuf;
 
     fn allowed(
-        #[allow(clippy::ptr_arg)] _v: &Vec<u32>,
-        #[allow(clippy::ptr_arg)] _s: &String,
-        #[allow(clippy::ptr_arg)] _p: &PathBuf,
-        #[allow(clippy::ptr_arg)] _c: &Cow<[i32]>,
-        #[expect(clippy::ptr_arg)] _expect: &Cow<[i32]>,
+        #[allow(clippy::ptr_arg)] v: &Vec<u32>,
+        #[allow(clippy::ptr_arg)] s: &String,
+        #[allow(clippy::ptr_arg)] p: &PathBuf,
+        #[allow(clippy::ptr_arg)] c: &Cow<[i32]>,
+        #[expect(clippy::ptr_arg)] expect: &Cow<[i32]>,
     ) {
     }
 
-    fn some_allowed(#[allow(clippy::ptr_arg)] _v: &Vec<u32>, _s: &String) {}
+    fn some_allowed(#[allow(clippy::ptr_arg)] v: &Vec<u32>, s: &String) {}
     //~^ ptr_arg
 
     struct S;
     impl S {
         fn allowed(
-            #[allow(clippy::ptr_arg)] _v: &Vec<u32>,
-            #[allow(clippy::ptr_arg)] _s: &String,
-            #[allow(clippy::ptr_arg)] _p: &PathBuf,
-            #[allow(clippy::ptr_arg)] _c: &Cow<[i32]>,
-            #[expect(clippy::ptr_arg)] _expect: &Cow<[i32]>,
+            #[allow(clippy::ptr_arg)] v: &Vec<u32>,
+            #[allow(clippy::ptr_arg)] s: &String,
+            #[allow(clippy::ptr_arg)] p: &PathBuf,
+            #[allow(clippy::ptr_arg)] c: &Cow<[i32]>,
+            #[expect(clippy::ptr_arg)] expect: &Cow<[i32]>,
         ) {
         }
     }
 
     trait T {
         fn allowed(
-            #[allow(clippy::ptr_arg)] _v: &Vec<u32>,
-            #[allow(clippy::ptr_arg)] _s: &String,
-            #[allow(clippy::ptr_arg)] _p: &PathBuf,
-            #[allow(clippy::ptr_arg)] _c: &Cow<[i32]>,
-            #[expect(clippy::ptr_arg)] _expect: &Cow<[i32]>,
+            #[allow(clippy::ptr_arg)] v: &Vec<u32>,
+            #[allow(clippy::ptr_arg)] s: &String,
+            #[allow(clippy::ptr_arg)] p: &PathBuf,
+            #[allow(clippy::ptr_arg)] c: &Cow<[i32]>,
+            #[expect(clippy::ptr_arg)] expect: &Cow<[i32]>,
         ) {
         }
     }
@@ -182,22 +182,22 @@ mod issue6509 {
     fn foo_vec(vec: &Vec<u8>) {
         //~^ ptr_arg
 
-        let _ = vec.clone().pop();
-        let _ = vec.clone().clone();
+        let a = vec.clone().pop();
+        let b = vec.clone().clone();
     }
 
     fn foo_path(path: &PathBuf) {
         //~^ ptr_arg
 
-        let _ = path.clone().pop();
-        let _ = path.clone().clone();
+        let c = path.clone().pop();
+        let d = path.clone().clone();
     }
 
-    fn foo_str(str: &PathBuf) {
+    fn foo_str(str: &String) {
         //~^ ptr_arg
 
-        let _ = str.clone().pop();
-        let _ = str.clone().clone();
+        let e = str.clone().pop();
+        let f = str.clone().clone();
     }
 }
 
@@ -340,8 +340,8 @@ mod issue_13308 {
         ToOwned::clone_into(source, destination);
     }
 
-    fn h1(_: &<String as Deref>::Target) {}
-    fn h2<T: Deref>(_: T, _: &T::Target) {}
+    fn h1(x: &<String as Deref>::Target) {}
+    fn h2<T: Deref>(x: T, y: &T::Target) {}
 
     // Other cases that are still ok to lint and ideally shouldn't regress
     fn good(v1: &String, v2: &String) {
@@ -350,5 +350,93 @@ mod issue_13308 {
 
         h1(v1);
         h2(String::new(), v2);
+    }
+}
+
+mod issue_13489_and_13728 {
+    // This is a no-lint from now on.
+    fn foo(_x: &Vec<i32>) {
+        todo!();
+    }
+
+    // But this still gives us a lint.
+    fn foo_used(x: &Vec<i32>) {
+        //~^ ptr_arg
+
+        todo!();
+    }
+
+    // This is also a no-lint from now on.
+    fn foo_local(x: &Vec<i32>) {
+        let _y = x;
+
+        todo!();
+    }
+
+    // But this still gives us a lint.
+    fn foo_local_used(x: &Vec<i32>) {
+        //~^ ptr_arg
+
+        let y = x;
+
+        todo!();
+    }
+
+    // This only lints once from now on.
+    fn foofoo(_x: &Vec<i32>, y: &String) {
+        //~^ ptr_arg
+
+        todo!();
+    }
+
+    // And this is also a no-lint from now on.
+    fn foofoo_local(_x: &Vec<i32>, y: &String) {
+        let _z = y;
+
+        todo!();
+    }
+}
+
+mod issue_13489_and_13728_mut {
+    // This is a no-lint from now on.
+    fn bar(_x: &mut Vec<u32>) {
+        todo!()
+    }
+
+    // But this still gives us a lint.
+    fn bar_used(x: &mut Vec<u32>) {
+        //~^ ptr_arg
+
+        todo!()
+    }
+
+    // This is also a no-lint from now on.
+    fn bar_local(x: &mut Vec<u32>) {
+        let _y = x;
+
+        todo!()
+    }
+
+    // But this still gives us a lint.
+    fn bar_local_used(x: &mut Vec<u32>) {
+        //~^ ptr_arg
+
+        let y = x;
+
+        todo!()
+    }
+
+    // This only lints once from now on.
+    fn barbar(_x: &mut Vec<u32>, y: &mut String) {
+        //~^ ptr_arg
+
+        todo!()
+    }
+
+    // And this is also a no-lint from now on.
+    fn barbar_local(_x: &mut Vec<u32>, y: &mut String) {
+        let _z = y;
+
+        todo!()
     }
 }

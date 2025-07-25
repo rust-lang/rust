@@ -2,11 +2,12 @@ use clippy_utils::consts::is_zero_integer_const;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::sugg::Sugg;
+use clippy_utils::ty::expr_type_is_certain;
 use rustc_ast::BinOpKind;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::LateContext;
-use rustc_middle::ty;
+use rustc_middle::ty::{self, Ty};
 
 use super::MANUAL_IS_MULTIPLE_OF;
 
@@ -22,9 +23,21 @@ pub(super) fn check<'tcx>(
         && let Some(operand) = uint_compare_to_zero(cx, op, lhs, rhs)
         && let ExprKind::Binary(operand_op, operand_left, operand_right) = operand.kind
         && operand_op.node == BinOpKind::Rem
+        && matches!(
+            cx.typeck_results().expr_ty_adjusted(operand_left).peel_refs().kind(),
+            ty::Uint(_)
+        )
+        && matches!(
+            cx.typeck_results().expr_ty_adjusted(operand_right).peel_refs().kind(),
+            ty::Uint(_)
+        )
+        && expr_type_is_certain(cx, operand_left)
     {
         let mut app = Applicability::MachineApplicable;
-        let divisor = Sugg::hir_with_applicability(cx, operand_right, "_", &mut app);
+        let divisor = deref_sugg(
+            Sugg::hir_with_applicability(cx, operand_right, "_", &mut app),
+            cx.typeck_results().expr_ty_adjusted(operand_right),
+        );
         span_lint_and_sugg(
             cx,
             MANUAL_IS_MULTIPLE_OF,
@@ -63,4 +76,12 @@ fn uint_compare_to_zero<'tcx>(
     };
 
     matches!(cx.typeck_results().expr_ty_adjusted(operand).kind(), ty::Uint(_)).then_some(operand)
+}
+
+fn deref_sugg<'a>(sugg: Sugg<'a>, ty: Ty<'_>) -> Sugg<'a> {
+    if let ty::Ref(_, target_ty, _) = ty.kind() {
+        deref_sugg(sugg.deref(), *target_ty)
+    } else {
+        sugg
+    }
 }
