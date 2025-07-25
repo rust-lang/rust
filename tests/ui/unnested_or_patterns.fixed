@@ -9,6 +9,11 @@
 )]
 #![allow(unreachable_patterns, irrefutable_let_patterns, unused)]
 
+struct S {
+    x: u8,
+    y: u8,
+}
+
 fn main() {
     // Should be ignored by this lint, as nesting requires more characters.
     if let &0 | &2 = &0 {}
@@ -45,10 +50,6 @@ fn main() {
     //~^ unnested_or_patterns
     if let TS(x, ..) | TS(x, 1 | 2) = TS(0, 0) {}
     //~^ unnested_or_patterns
-    struct S {
-        x: u8,
-        y: u8,
-    }
     if let S { x: 0 | 1, y } = (S { x: 0, y: 1 }) {}
     //~^ unnested_or_patterns
     if let S { x: 0, y, .. } | S { y, x: 1 } = (S { x: 0, y: 1 }) {}
@@ -75,5 +76,21 @@ mod issue9952 {
     }
 
     fn or_in_param((x | x | x): i32) {}
+    //~^ unnested_or_patterns
+}
+
+fn issue15219() {
+    struct Foo {
+        x: u8,
+    }
+
+    // the original repro
+    if let Foo { x } | Foo { x } = (Foo { x: 0 }) {}
+
+    // also works with more fields
+    if let S { x, y } | S { x, y } = (S { x: 0, y: 0 }) {}
+
+    // `y` not triggering the lint doesn't stop the `x` from getting flagged
+    if let S { y, x: 0 | 1 } = (S { x: 0, y: 1 }) {}
     //~^ unnested_or_patterns
 }
