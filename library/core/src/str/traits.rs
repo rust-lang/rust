@@ -76,13 +76,6 @@ where
     }
 }
 
-#[inline(never)]
-#[cold]
-#[track_caller]
-const fn str_index_overflow_fail() -> ! {
-    panic!("attempted to index str up to maximum usize");
-}
-
 /// Implements substring slicing with syntax `&self[..]` or `&mut self[..]`.
 ///
 /// Returns a slice of the whole string, i.e., returns `&self` or `&mut
@@ -640,11 +633,11 @@ unsafe impl const SliceIndex<str> for ops::RangeInclusive<usize> {
     type Output = str;
     #[inline]
     fn get(self, slice: &str) -> Option<&Self::Output> {
-        if *self.end() == usize::MAX { None } else { self.into_slice_range().get(slice) }
+        if *self.end() >= slice.len() { None } else { self.into_slice_range().get(slice) }
     }
     #[inline]
     fn get_mut(self, slice: &mut str) -> Option<&mut Self::Output> {
-        if *self.end() == usize::MAX { None } else { self.into_slice_range().get_mut(slice) }
+        if *self.end() >= slice.len() { None } else { self.into_slice_range().get_mut(slice) }
     }
     #[inline]
     unsafe fn get_unchecked(self, slice: *const str) -> *const Self::Output {
@@ -658,17 +651,37 @@ unsafe impl const SliceIndex<str> for ops::RangeInclusive<usize> {
     }
     #[inline]
     fn index(self, slice: &str) -> &Self::Output {
-        if *self.end() == usize::MAX {
-            str_index_overflow_fail();
+        let Self { mut start, mut end, exhausted } = self;
+        let len = slice.len();
+        if end < len {
+            end = end + 1;
+            start = if exhausted { end } else { start };
+            if start <= end && slice.is_char_boundary(start) && slice.is_char_boundary(end) {
+                // SAFETY: just checked that `start` and `end` are on a char boundary,
+                // and we are passing in a safe reference, so the return value will also be one.
+                // We also checked char boundaries, so this is valid UTF-8.
+                unsafe { return &*(start..end).get_unchecked(slice) };
+            }
         }
-        self.into_slice_range().index(slice)
+
+        super::slice_error_fail(slice, start, end);
     }
     #[inline]
     fn index_mut(self, slice: &mut str) -> &mut Self::Output {
-        if *self.end() == usize::MAX {
-            str_index_overflow_fail();
+        let Self { mut start, mut end, exhausted } = self;
+        let len = slice.len();
+        if end < len {
+            end = end + 1;
+            start = if exhausted { end } else { start };
+            if start <= end && slice.is_char_boundary(start) && slice.is_char_boundary(end) {
+                // SAFETY: just checked that `start` and `end` are on a char boundary,
+                // and we are passing in a safe reference, so the return value will also be one.
+                // We also checked char boundaries, so this is valid UTF-8.
+                unsafe { return &mut *(start..end).get_unchecked_mut(slice) };
+            }
         }
-        self.into_slice_range().index_mut(slice)
+
+        super::slice_error_fail(slice, start, end);
     }
 }
 
@@ -678,35 +691,29 @@ unsafe impl const SliceIndex<str> for range::RangeInclusive<usize> {
     type Output = str;
     #[inline]
     fn get(self, slice: &str) -> Option<&Self::Output> {
-        if self.last == usize::MAX { None } else { self.into_slice_range().get(slice) }
+        ops::RangeInclusive::from(self).get(slice)
     }
     #[inline]
     fn get_mut(self, slice: &mut str) -> Option<&mut Self::Output> {
-        if self.last == usize::MAX { None } else { self.into_slice_range().get_mut(slice) }
+        ops::RangeInclusive::from(self).get_mut(slice)
     }
     #[inline]
     unsafe fn get_unchecked(self, slice: *const str) -> *const Self::Output {
         // SAFETY: the caller must uphold the safety contract for `get_unchecked`.
-        unsafe { self.into_slice_range().get_unchecked(slice) }
+        unsafe { ops::RangeInclusive::from(self).get_unchecked(slice) }
     }
     #[inline]
     unsafe fn get_unchecked_mut(self, slice: *mut str) -> *mut Self::Output {
         // SAFETY: the caller must uphold the safety contract for `get_unchecked_mut`.
-        unsafe { self.into_slice_range().get_unchecked_mut(slice) }
+        unsafe { ops::RangeInclusive::from(self).get_unchecked_mut(slice) }
     }
     #[inline]
     fn index(self, slice: &str) -> &Self::Output {
-        if self.last == usize::MAX {
-            str_index_overflow_fail();
-        }
-        self.into_slice_range().index(slice)
+        ops::RangeInclusive::from(self).index(slice)
     }
     #[inline]
     fn index_mut(self, slice: &mut str) -> &mut Self::Output {
-        if self.last == usize::MAX {
-            str_index_overflow_fail();
-        }
-        self.into_slice_range().index_mut(slice)
+        ops::RangeInclusive::from(self).index_mut(slice)
     }
 }
 

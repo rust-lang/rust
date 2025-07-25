@@ -53,23 +53,23 @@ tests!(RangeTo<usize>, get_range_to, index_range_to);
 tests!(RangeFrom<usize>, get_range_from, index_range_from);
 
 // CHECK-LABEL: @get_range_inclusive
-// CHECK-COUNT-9: %{{.+}} = icmp
+// CHECK-COUNT-7: %{{.+}} = icmp
 // CHECK-NOT: %{{.+}} = icmp
 // CHECK: ret
 
 // CHECK-LABEL: @index_range_inclusive
-// CHECK-COUNT-9: %{{.+}} = icmp
+// CHECK-COUNT-7: %{{.+}} = icmp
 // CHECK-NOT: %{{.+}} = icmp
 // CHECK: ret
 tests!(RangeInclusive<usize>, get_range_inclusive, index_range_inclusive);
 
 // CHECK-LABEL: @get_range_to_inclusive
-// CHECK-COUNT-4: %{{.+}} = icmp
+// CHECK-COUNT-3: %{{.+}} = icmp
 // CHECK-NOT: %{{.+}} = icmp
 // CHECK: ret
 
 // CHECK-LABEL: @index_range_to_inclusive
-// CHECK-COUNT-4: %{{.+}} = icmp
+// CHECK-COUNT-3: %{{.+}} = icmp
 // CHECK-NOT: %{{.+}} = icmp
 // CHECK: ret
 tests!(RangeToInclusive<usize>, get_range_to_inclusive, index_range_to_inclusive);
