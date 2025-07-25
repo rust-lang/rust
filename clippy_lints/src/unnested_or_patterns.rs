@@ -10,6 +10,7 @@ use rustc_ast::mut_visit::*;
 use rustc_ast::{self as ast, DUMMY_NODE_ID, Mutability, Pat, PatKind};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::thin_vec::{ThinVec, thin_vec};
+use rustc_data_structures::thinvec::ExtractIf;
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass};
 use rustc_session::impl_lint_pass;
@@ -415,26 +416,14 @@ fn drain_matching(
     let mut tail_or = ThinVec::new();
     let mut idx = 0;
 
-    // If `ThinVec` had the `drain_filter` method, this loop could be rewritten
-    // like so:
-    //
-    //   for pat in alternatives.drain_filter(|p| {
-    //       // Check if we should extract, but only if `idx >= start`.
-    //       idx += 1;
-    //       idx > start && predicate(&p.kind)
-    //   }) {
-    //       tail_or.push(extract(pat.into_inner().kind));
-    //   }
-    let mut i = 0;
-    while i < alternatives.len() {
-        idx += 1;
+    // FIXME: once `thin-vec` releases a new version, change this to `alternatives.extract_if()`
+    // See https://github.com/mozilla/thin-vec/issues/77
+    for pat in ExtractIf::new(alternatives, |p| {
         // Check if we should extract, but only if `idx >= start`.
-        if idx > start && predicate(&alternatives[i].kind) {
-            let pat = alternatives.remove(i);
-            tail_or.push(extract(pat.kind));
-        } else {
-            i += 1;
-        }
+        idx += 1;
+        idx > start && predicate(&p.kind)
+    }) {
+        tail_or.push(extract(pat.kind));
     }
 
     tail_or
