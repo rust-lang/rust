@@ -13,11 +13,12 @@ use super::*;
 
 fn render_outlives_constraint(constraint: &OutlivesConstraint<'_>) -> String {
     if let ConstraintCategory::OutlivesUnnameablePlaceholder(from, to) = constraint.category {
-        return format!("b/c {from:?}: {to:?}");
-    }
-    match constraint.locations {
-        Locations::All(_) => "All(...)".to_string(),
-        Locations::Single(loc) => format!("{loc:?}"),
+        format!("b/c {from:?}: {to:?}")
+    } else {
+        match constraint.locations {
+            Locations::All(_) => "All(...)".to_string(),
+            Locations::Single(loc) => format!("{loc:?}"),
+        }
     }
 }
 

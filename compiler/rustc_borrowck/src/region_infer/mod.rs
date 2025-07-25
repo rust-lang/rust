@@ -1736,7 +1736,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         trace!(scc = ?self.constraint_sccs.scc(fr1));
         trace!(universe = ?self.max_nameable_universe(self.constraint_sccs.scc(fr1)));
         self.constraint_path_to(fr1, |r| {
-            // First look for some `r` such that `fr1: r` and `r` is live at `location`
             trace!(?r, liveness_constraints=?self.liveness_constraints.pretty_print_live_points(r));
             self.liveness_constraints.is_live_at(r, location)
         }, true).unwrap().1
@@ -1796,13 +1795,14 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         // If we are passing through a constraint added because `'lt: 'unnameable`,
         // where cannot name `'unnameable`, redirect search towards `'unnameable`.
-        let path = if let Some((lt, unnameable)) = path.iter().find_map(|c| {
+        let due_to_placeholder_outlives = path.iter().find_map(|c| {
             if let ConstraintCategory::OutlivesUnnameablePlaceholder(lt, unnameable) = c.category {
                 Some((lt, unnameable))
             } else {
                 None
             }
-        }) {
+        });
+        let path = if let Some((lt, unnameable)) = due_to_placeholder_outlives {
             // This the `false` argument is what prevents circular reasoning here!
             self.constraint_path_to(lt, |r| r == unnameable, false).unwrap().0
         } else {
