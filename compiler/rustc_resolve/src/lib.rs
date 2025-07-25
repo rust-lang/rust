@@ -119,7 +119,6 @@ enum Scope<'ra> {
     DeriveHelpers(LocalExpnId),
     DeriveHelpersCompat,
     MacroRules(MacroRulesScopeRef<'ra>),
-    CrateRoot,
     // The node ID is for reporting the `PROC_MACRO_DERIVE_RESOLUTION_FALLBACK`
     // lint if it should be reported.
     Module(Module<'ra>, Option<NodeId>),
@@ -139,8 +138,8 @@ enum Scope<'ra> {
 enum ScopeSet<'ra> {
     /// All scopes with the given namespace.
     All(Namespace),
-    /// Crate root, then extern prelude (used for mixed 2015-2018 mode in macros).
-    AbsolutePath(Namespace),
+    /// A module, then extern prelude (used for mixed 2015-2018 mode in macros).
+    ModuleAndExternPrelude(Namespace, Module<'ra>),
     /// All scopes with macro namespace and the given macro kind restriction.
     Macro(MacroKind),
     /// All scopes with the given namespace, used for partially performing late resolution.
@@ -419,8 +418,10 @@ enum ModuleOrUniformRoot<'ra> {
     /// Regular module.
     Module(Module<'ra>),
 
-    /// Virtual module that denotes resolution in crate root with fallback to extern prelude.
-    CrateRootAndExternPrelude,
+    /// Virtual module that denotes resolution in a module with fallback to extern prelude.
+    /// Used for paths starting with `::` coming from 2015 edition macros
+    /// used in 2018+ edition crates.
+    ModuleAndExternPrelude(Module<'ra>),
 
     /// Virtual module that denotes resolution in extern prelude.
     /// Used for paths starting with `::` on 2018 edition.
