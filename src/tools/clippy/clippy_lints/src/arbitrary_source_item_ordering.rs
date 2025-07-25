@@ -8,11 +8,11 @@ use clippy_utils::diagnostics::span_lint_and_note;
 use clippy_utils::is_cfg_test;
 use rustc_attr_data_structures::AttributeKind;
 use rustc_hir::{
-    Attribute, FieldDef, HirId, IsAuto, ImplItemId, Item, ItemKind, Mod, OwnerId, QPath, TraitItemId, TyKind,
-    Variant, VariantData,
+    Attribute, FieldDef, HirId, ImplItemId, IsAuto, Item, ItemKind, Mod, OwnerId, QPath, TraitItemId, TyKind, Variant,
+    VariantData,
 };
-use rustc_middle::ty::AssocKind;
 use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_middle::ty::AssocKind;
 use rustc_session::impl_lint_pass;
 use rustc_span::Ident;
 
@@ -469,13 +469,14 @@ impl<'tcx> LateLintPass<'tcx> for ArbitrarySourceItemOrdering {
 /// This is implemented here because `rustc_hir` is not a dependency of
 /// `clippy_config`.
 fn convert_assoc_item_kind(cx: &LateContext<'_>, owner_id: OwnerId) -> SourceItemOrderingTraitAssocItemKind {
-    let kind = cx.tcx.associated_item(owner_id.def_id).kind;
-
     #[allow(clippy::enum_glob_use)] // Very local glob use for legibility.
     use SourceItemOrderingTraitAssocItemKind::*;
+
+    let kind = cx.tcx.associated_item(owner_id.def_id).kind;
+
     match kind {
-        AssocKind::Const{..} => Const,
-        AssocKind::Type {..}=> Type,
+        AssocKind::Const { .. } => Const,
+        AssocKind::Type { .. } => Type,
         AssocKind::Fn { .. } => Fn,
     }
 }

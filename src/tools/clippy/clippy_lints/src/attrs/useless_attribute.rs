@@ -36,6 +36,7 @@ pub(super) fn check(cx: &EarlyContext<'_>, item: &Item, attrs: &[Attribute]) {
                                     | sym::unused_braces
                                     | sym::unused_import_braces
                                     | sym::unused_imports
+                                    | sym::redundant_imports
                             )
                         {
                             return;

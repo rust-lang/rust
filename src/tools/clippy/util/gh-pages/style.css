@@ -30,25 +30,31 @@ blockquote { font-size: 1em; }
     background-color: var(--theme-hover);
 }
 
-div.panel div.panel-body button {
+.container > * {
+  margin-bottom: 20px;
+  border-radius: 4px;
+  background: var(--bg);
+  border: 1px solid var(--theme-popup-border);
+  box-shadow: 0 1px 1px rgba(0,0,0,.05);
+}
+
+div.panel-body button {
     background: var(--searchbar-bg);
     color: var(--searchbar-fg);
     border-color: var(--theme-popup-border);
 }
 
-div.panel div.panel-body button:hover {
+div.panel-body button:hover {
     box-shadow: 0 0 3px var(--searchbar-shadow-color);
 }
 
-div.panel div.panel-body  button.open {
+div.panel-body  button.open {
     filter: brightness(90%);
 }
 
 .dropdown-toggle .badge {
     background-color: #777;
 }
-
-.panel-heading { cursor: pointer; }
 
 .lint-title {
     cursor: pointer;
@@ -70,8 +76,8 @@ div.panel div.panel-body  button.open {
 
 .panel-title-name { flex: 1; min-width: 400px;}
 
-.panel .panel-title-name .anchor { display: none; }
-.panel:hover .panel-title-name .anchor { display: inline;}
+.panel-title-name .anchor { display: none; }
+article:hover .panel-title-name .anchor { display: inline;}
 
 .search-control {
     margin-top: 15px;
@@ -111,40 +117,48 @@ div.panel div.panel-body  button.open {
     padding-bottom: 0.3em;
 }
 
-.label-lint-group {
-    min-width: 8em;
-}
-.label-lint-level {
+.lint-level {
     min-width: 4em;
 }
-
-.label-lint-level-allow {
+.level-allow {
     background-color: #5cb85c;
 }
-.label-lint-level-warn {
+.level-warn {
     background-color: #f0ad4e;
 }
-.label-lint-level-deny {
+.level-deny {
     background-color: #d9534f;
 }
-.label-lint-level-none {
+.level-none {
     background-color: #777777;
     opacity: 0.5;
 }
 
-.label-group-deprecated {
+.lint-group {
+    min-width: 8em;
+}
+.group-deprecated {
     opacity: 0.5;
 }
 
-.label-doc-folding {
+.doc-folding {
     color: #000;
     background-color: #fff;
     border: 1px solid var(--theme-popup-border);
 }
-.label-doc-folding:hover {
+.doc-folding:hover {
     background-color: #e6e6e6;
 }
 
+.lint-doc-md {
+    position: relative;
+    display: block;
+    padding: 10px 15px;
+    margin-bottom: -1px;
+    background: 0%;
+    border-bottom: 1px solid var(--theme-popup-border);
+    border-top: 1px solid var(--theme-popup-border);
+}
 .lint-doc-md > h3 {
     border-top: 1px solid var(--theme-popup-border);
     padding: 10px 15px;
@@ -157,32 +171,32 @@ div.panel div.panel-body  button.open {
 }
 
 @media (max-width:749px) {
-    .lint-additional-info-container {
+    .lint-additional-info {
         display: flex;
         flex-flow: column;
     }
-    .lint-additional-info-container > div + div {
+    .lint-additional-info > div + div {
         border-top: 1px solid var(--theme-popup-border);
     }
 }
 @media (min-width:750px) {
-    .lint-additional-info-container {
+    .lint-additional-info {
         display: flex;
         flex-flow: row;
     }
-    .lint-additional-info-container > div + div {
+    .lint-additional-info > div + div {
         border-left: 1px solid var(--theme-popup-border);
     }
 }
 
-.lint-additional-info-container > div {
+.lint-additional-info > div {
     display: inline-flex;
     min-width: 200px;
     flex-grow: 1;
     padding: 9px 5px 5px 15px;
 }
 
-.label-applicability {
+.applicability {
     background-color: #777777;
     margin: auto 5px;
 }
@@ -332,21 +346,12 @@ L4.75,12h2.5l0.5393066-2.1572876  c0.2276001-0.1062012,0.4459839-0.2269287,0.649
     border: 1px solid var(--theme-popup-border);
 }
 .page-header {
-    border-color: var(--theme-popup-border);
+    border: 0;
+    border-bottom: 1px solid var(--theme-popup-border);
+    padding-bottom: 19px;
+    border-radius: 0;
 }
-.panel-default .panel-heading {
-    background: var(--theme-hover);
-    color: var(--fg);
-    border: 1px solid var(--theme-popup-border);
-}
-.panel-default .panel-heading:hover {
-    filter: brightness(90%);
-}
-.list-group-item {
-    background: 0%;
-    border: 1px solid var(--theme-popup-border);
-}
-.panel, pre, hr {
+pre, hr {
     background: var(--bg);
     border: 1px solid var(--theme-popup-border);
 }
@@ -442,14 +447,15 @@ article > label {
 article > input[type="checkbox"] {
     display: none;
 }
-article > input[type="checkbox"] + label .label-doc-folding::before {
+article > input[type="checkbox"] + label .doc-folding::before {
     content: "+";
 }
-article > input[type="checkbox"]:checked + label .label-doc-folding::before {
+article > input[type="checkbox"]:checked + label .doc-folding::before {
     content: "−";
 }
 .lint-docs {
     display: none;
+    margin-bottom: 0;
 }
 article > input[type="checkbox"]:checked ~ .lint-docs {
     display: block;

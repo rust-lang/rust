@@ -100,7 +100,6 @@ pub(crate) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, arg: &Expr<'_>, name:
             match x {
                 UseKind::Return(s) => edits.push((s.with_leading_whitespace(cx).with_ctxt(s.ctxt()), String::new())),
                 UseKind::Borrowed(s) => {
-                    #[expect(clippy::range_plus_one)]
                     let range = s.map_range(cx, |_, src, range| {
                         let src = src.get(range.clone())?;
                         let trimmed = src.trim_start_matches([' ', '\t', '\n', '\r', '(']);
