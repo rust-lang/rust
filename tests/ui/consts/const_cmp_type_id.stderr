@@ -1,5 +1,5 @@
 error[E0015]: cannot call non-const operator in constants
-  --> $DIR/const_cmp_type_id.rs:10:18
+  --> $DIR/const_cmp_type_id.rs:11:18
    |
 LL |         let _a = TypeId::of::<u8>() < TypeId::of::<u16>();
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
