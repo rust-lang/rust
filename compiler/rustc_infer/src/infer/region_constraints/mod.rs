@@ -471,7 +471,9 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
                 // all regions are subregions of static, so we can ignore this
             }
             (ReVar(sub_id), ReVar(sup_id)) => {
-                self.add_constraint(Constraint::VarSubVar(sub_id, sup_id), origin);
+                if sub_id != sup_id {
+                    self.add_constraint(Constraint::VarSubVar(sub_id, sup_id), origin);
+                }
             }
             (_, ReVar(sup_id)) => {
                 self.add_constraint(Constraint::RegSubVar(sub, sup_id), origin);
@@ -480,7 +482,9 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
                 self.add_constraint(Constraint::VarSubReg(sub_id, sup), origin);
             }
             _ => {
-                self.add_constraint(Constraint::RegSubReg(sub, sup), origin);
+                if sub != sup {
+                    self.add_constraint(Constraint::RegSubReg(sub, sup), origin);
+                }
             }
         }
     }
