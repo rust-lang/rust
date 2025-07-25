@@ -848,8 +848,13 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         };
 
         let key = BindingKey::new(ident, ns);
-        let resolution =
-            self.resolution(module, key).try_borrow_mut().map_err(|_| (Determined, Weak::No))?; // This happens when there is a cycle of imports.
+        // `try_borrow_mut` is required to ensure exclusive access, even if the resulting binding
+        // doesn't need to be mutable. It will fail when there is a cycle of imports, and without
+        // the exclusive access infinite recursion will crash the compiler with stack overflow.
+        let resolution = &*self
+            .resolution_or_default(module, key)
+            .try_borrow_mut()
+            .map_err(|_| (Determined, Weak::No))?;
 
         // If the primary binding is unusable, search further and return the shadowed glob
         // binding if it exists. What we really want here is having two separate scopes in

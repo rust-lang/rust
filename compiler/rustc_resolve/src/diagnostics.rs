@@ -2660,8 +2660,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         }
 
         let binding_key = BindingKey::new(ident, MacroNS);
-        let binding =
-            self.resolutions(crate_module).borrow().get(&binding_key)?.borrow().binding()?;
+        let binding = self.resolution(crate_module, binding_key)?.binding()?;
         let Res::Def(DefKind::Macro(MacroKind::Bang), _) = binding.res() else {
             return None;
         };

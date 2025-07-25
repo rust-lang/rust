@@ -469,7 +469,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         // Ensure that `resolution` isn't borrowed when defining in the module's glob importers,
         // during which the resolution might end up getting re-defined via a glob cycle.
         let (binding, t, warn_ambiguity) = {
-            let resolution = &mut *self.resolution(module, key).borrow_mut();
+            let resolution = &mut *self.resolution_or_default(module, key).borrow_mut();
             let old_binding = resolution.binding();
 
             let t = f(self, resolution);
@@ -1514,8 +1514,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 let imported_binding = self.import(binding, import);
                 let warn_ambiguity = self
                     .resolution(import.parent_scope.module, key)
-                    .borrow()
-                    .binding()
+                    .and_then(|r| r.binding())
                     .is_some_and(|binding| binding.warn_ambiguity_recursive());
                 let _ = self.try_define(
                     import.parent_scope.module,
