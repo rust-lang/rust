@@ -9,7 +9,7 @@ use crate::target::{Endian, MachineInfo};
 use crate::ty::{Allocation, Binder, ExistentialTraitRef, Ty};
 use crate::{Error, IndexedVal, with};
 
-/// An allocation in the SMIR global memory can be either a function pointer,
+/// An allocation in the rustc_public's IR global memory can be either a function pointer,
 /// a static, or a "real" allocation with some data in it.
 #[derive(Debug, Clone, Eq, PartialEq, Serialize)]
 pub enum GlobalAlloc {

@@ -1,6 +1,6 @@
 use super::intrinsic::ArmIntrinsicType;
 use crate::common::cli::Language;
-use crate::common::intrinsic_helpers::{IntrinsicType, IntrinsicTypeDefinition, TypeKind};
+use crate::common::intrinsic_helpers::{IntrinsicType, IntrinsicTypeDefinition, Sign, TypeKind};
 
 impl IntrinsicTypeDefinition for ArmIntrinsicType {
     /// Gets a string containing the typename for this type in C format.
@@ -73,8 +73,8 @@ impl IntrinsicTypeDefinition for ArmIntrinsicType {
             format!(
                 "vld{len}{quad}_{type}{size}",
                 type = match k {
-                    TypeKind::UInt => "u",
-                    TypeKind::Int => "s",
+                    TypeKind::Int(Sign::Unsigned) => "u",
+                    TypeKind::Int(Sign::Signed) => "s",
                     TypeKind::Float => "f",
                     // The ACLE doesn't support 64-bit polynomial loads on Armv7
                     // if armv7 and bl == 64, use "s", else "p"
@@ -107,8 +107,8 @@ impl IntrinsicTypeDefinition for ArmIntrinsicType {
             format!(
                 "vget{quad}_lane_{type}{size}",
                 type = match k {
-                    TypeKind::UInt => "u",
-                    TypeKind::Int => "s",
+                    TypeKind::Int(Sign::Unsigned) => "u",
+                    TypeKind::Int(Sign::Signed) => "s",
                     TypeKind::Float => "f",
                     TypeKind::Poly => "p",
                     x => todo!("get_load_function TypeKind: {:#?}", x),
@@ -121,7 +121,7 @@ impl IntrinsicTypeDefinition for ArmIntrinsicType {
         }
     }
 
-    fn from_c(s: &str, target: &str) -> Result<Box<Self>, String> {
+    fn from_c(s: &str, target: &str) -> Result<Self, String> {
         const CONST_STR: &str = "const";
         if let Some(s) = s.strip_suffix('*') {
             let (s, constant) = match s.trim().strip_suffix(CONST_STR) {
@@ -131,9 +131,8 @@ impl IntrinsicTypeDefinition for ArmIntrinsicType {
             let s = s.trim_end();
             let temp_return = ArmIntrinsicType::from_c(s, target);
             temp_return.map(|mut op| {
-                let edited = op.as_mut();
-                edited.0.ptr = true;
-                edited.0.ptr_constant = constant;
+                op.ptr = true;
+                op.ptr_constant = constant;
                 op
             })
         } else {
@@ -163,7 +162,7 @@ impl IntrinsicTypeDefinition for ArmIntrinsicType {
                     ),
                     None => None,
                 };
-                Ok(Box::new(ArmIntrinsicType(IntrinsicType {
+                Ok(ArmIntrinsicType(IntrinsicType {
                     ptr: false,
                     ptr_constant: false,
                     constant,
@@ -172,14 +171,14 @@ impl IntrinsicTypeDefinition for ArmIntrinsicType {
                     simd_len,
                     vec_len,
                     target: target.to_string(),
-                })))
+                }))
             } else {
                 let kind = start.parse::<TypeKind>()?;
                 let bit_len = match kind {
-                    TypeKind::Int => Some(32),
+                    TypeKind::Int(_) => Some(32),
                     _ => None,
                 };
-                Ok(Box::new(ArmIntrinsicType(IntrinsicType {
+                Ok(ArmIntrinsicType(IntrinsicType {
                     ptr: false,
                     ptr_constant: false,
                     constant,
@@ -188,7 +187,7 @@ impl IntrinsicTypeDefinition for ArmIntrinsicType {
                     simd_len: None,
                     vec_len: None,
                     target: target.to_string(),
-                })))
+                }))
             }
         }
     }

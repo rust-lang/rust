@@ -1,7 +1,6 @@
 use std::alloc::Layout;
 use std::ptr::NonNull;
 
-use nix::sys::mman;
 use rustc_index::bit_set::DenseBitSet;
 
 /// How many bytes of memory each bit in the bitset represents.
@@ -42,6 +41,10 @@ impl IsolatedAlloc {
             // See https://www.man7.org/linux/man-pages/man3/sysconf.3.html
             page_size: unsafe { libc::sysconf(libc::_SC_PAGESIZE).try_into().unwrap() },
         }
+    }
+
+    pub fn page_size(&self) -> usize {
+        self.page_size
     }
 
     /// For simplicity, we serve small allocations in multiples of COMPRESSION_FACTOR
@@ -302,50 +305,11 @@ impl IsolatedAlloc {
         }
     }
 
-    /// Returns a list of page addresses managed by the allocator.
-    pub fn pages(&self) -> impl Iterator<Item = usize> {
-        let pages = self.page_ptrs.iter().map(|p| p.expose_provenance().get());
-        pages.chain(self.huge_ptrs.iter().flat_map(|(ptr, size)| {
-            (0..size / self.page_size)
-                .map(|i| ptr.expose_provenance().get().strict_add(i * self.page_size))
-        }))
-    }
-
-    /// Protects all owned memory as `PROT_NONE`, preventing accesses.
-    ///
-    /// SAFETY: Accessing memory after this point will result in a segfault
-    /// unless it is first unprotected.
-    pub unsafe fn start_ffi(&mut self) -> Result<(), nix::errno::Errno> {
-        let prot = mman::ProtFlags::PROT_NONE;
-        unsafe { self.mprotect(prot) }
-    }
-
-    /// Deprotects all owned memory by setting it to RW. Erroring here is very
-    /// likely unrecoverable, so it may panic if applying those permissions
-    /// fails.
-    pub fn end_ffi(&mut self) {
-        let prot = mman::ProtFlags::PROT_READ | mman::ProtFlags::PROT_WRITE;
-        unsafe {
-            self.mprotect(prot).unwrap();
-        }
-    }
-
-    /// Applies `prot` to every page managed by the allocator.
-    ///
-    /// SAFETY: Accessing memory in violation of the protection flags will
-    /// trigger a segfault.
-    unsafe fn mprotect(&mut self, prot: mman::ProtFlags) -> Result<(), nix::errno::Errno> {
-        for &pg in &self.page_ptrs {
-            unsafe {
-                mman::mprotect(pg.cast(), self.page_size, prot)?;
-            }
-        }
-        for &(hpg, size) in &self.huge_ptrs {
-            unsafe {
-                mman::mprotect(hpg.cast(), size.next_multiple_of(self.page_size), prot)?;
-            }
-        }
-        Ok(())
+    /// Returns a list of page ranges managed by the allocator, given in terms of pointers
+    /// and size (in bytes).
+    pub fn pages(&self) -> impl Iterator<Item = (NonNull<u8>, usize)> {
+        let pages = self.page_ptrs.iter().map(|&p| (p, self.page_size));
+        pages.chain(self.huge_ptrs.iter().copied())
     }
 }
 

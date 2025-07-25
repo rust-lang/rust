@@ -869,7 +869,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     let ltext = bx.zext(is_lt, bx.type_i8());
                     bx.unchecked_ssub(gtext, ltext)
                 } else {
-                    // These operations are those expected by `tests/codegen/integer-cmp.rs`,
+                    // These operations are those expected by `tests/codegen-llvm/integer-cmp.rs`,
                     // from <https://github.com/rust-lang/rust/pull/63767>.
                     let is_lt = bx.icmp(pred(mir::BinOp::Lt), lhs, rhs);
                     let is_ne = bx.icmp(pred(mir::BinOp::Ne), lhs, rhs);

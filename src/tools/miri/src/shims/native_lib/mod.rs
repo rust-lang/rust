@@ -8,6 +8,7 @@ use rustc_abi::{BackendRepr, HasDataLayout, Size};
 use rustc_middle::mir::interpret::Pointer;
 use rustc_middle::ty::{self as ty, IntTy, UintTy};
 use rustc_span::Symbol;
+use serde::{Deserialize, Serialize};
 
 #[cfg_attr(
     not(all(
@@ -23,18 +24,14 @@ use crate::*;
 
 /// The final results of an FFI trace, containing every relevant event detected
 /// by the tracer.
-#[allow(dead_code)]
-#[cfg_attr(target_os = "linux", derive(serde::Serialize, serde::Deserialize))]
-#[derive(Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct MemEvents {
     /// An list of memory accesses that occurred, in the order they occurred in.
     pub acc_events: Vec<AccessEvent>,
 }
 
 /// A single memory access.
-#[allow(dead_code)]
-#[cfg_attr(target_os = "linux", derive(serde::Serialize, serde::Deserialize))]
-#[derive(Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum AccessEvent {
     /// A read occurred on this memory range.
     Read(AccessRange),
@@ -56,9 +53,7 @@ impl AccessEvent {
 }
 
 /// The memory touched by a given access.
-#[allow(dead_code)]
-#[cfg_attr(target_os = "linux", derive(serde::Serialize, serde::Deserialize))]
-#[derive(Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct AccessRange {
     /// The base address in memory where an access occurred.
     pub addr: usize,

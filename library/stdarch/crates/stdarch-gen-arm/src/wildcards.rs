@@ -1,8 +1,7 @@
-use lazy_static::lazy_static;
 use regex::Regex;
 use serde_with::{DeserializeFromStr, SerializeDisplay};
-use std::fmt;
 use std::str::FromStr;
+use std::{fmt, sync::LazyLock};
 
 use crate::{
     fn_suffix::SuffixKind,
@@ -66,9 +65,9 @@ impl FromStr for Wildcard {
     type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        lazy_static! {
-            static ref RE: Regex = Regex::new(r"^(?P<wildcard>\w+?)(?:_x(?P<tuple_size>[2-4]))?(?:\[(?P<index>\d+)\])?(?:\.(?P<modifiers>\w+))?(?:\s+as\s+(?P<scale_to>.*?))?$").unwrap();
-        }
+        static RE: LazyLock<Regex> = LazyLock::new(|| {
+            Regex::new(r"^(?P<wildcard>\w+?)(?:_x(?P<tuple_size>[2-4]))?(?:\[(?P<index>\d+)\])?(?:\.(?P<modifiers>\w+))?(?:\s+as\s+(?P<scale_to>.*?))?$").unwrap()
+        });
 
         if let Some(c) = RE.captures(s) {
             let wildcard_name = &c["wildcard"];

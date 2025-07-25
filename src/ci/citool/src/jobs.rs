@@ -1,9 +1,9 @@
 #[cfg(test)]
 mod tests;
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashSet};
 
-use anyhow::Context as _;
+use anyhow::{Context as _, anyhow};
 use serde_yaml::Value;
 
 use crate::GitHubContext;
@@ -85,6 +85,10 @@ impl JobDatabase {
             .cloned()
             .collect()
     }
+
+    fn find_auto_job_by_name(&self, job_name: &str) -> Option<&Job> {
+        self.auto_jobs.iter().find(|job| job.name == job_name)
+    }
 }
 
 pub fn load_job_db(db: &str) -> anyhow::Result<JobDatabase> {
@@ -97,12 +101,116 @@ pub fn load_job_db(db: &str) -> anyhow::Result<JobDatabase> {
         db.apply_merge().context("failed to apply merge keys")
     };
 
-    // Apply merge twice to handle nested merges
+    // Apply merge twice to handle nested merges up to depth 2.
     apply_merge(&mut db)?;
     apply_merge(&mut db)?;
 
-    let db: JobDatabase = serde_yaml::from_value(db).context("failed to parse job database")?;
+    let mut db: JobDatabase = serde_yaml::from_value(db).context("failed to parse job database")?;
+
+    register_pr_jobs_as_auto_jobs(&mut db)?;
+
+    validate_job_database(&db)?;
+
     Ok(db)
+}
+
+/// Maintain invariant that PR CI jobs must be a subset of Auto CI jobs modulo carve-outs.
+///
+/// When PR jobs are auto-registered as Auto jobs, they will have `continue_on_error` overridden to
+/// be `false` to avoid wasting Auto CI resources.
+///
+/// When a job is already both a PR job and a auto job, we will post-validate their "equivalence
+/// modulo certain carve-outs" in [`validate_job_database`].
+///
+/// This invariant is important to make sure that it's not easily possible (without modifying
+/// `citool`) to have PRs with red PR-only CI jobs merged into `master`, causing all subsequent PR
+/// CI runs to be red until the cause is fixed.
+fn register_pr_jobs_as_auto_jobs(db: &mut JobDatabase) -> anyhow::Result<()> {
+    for pr_job in &db.pr_jobs {
+        // It's acceptable to "override" a PR job in Auto job, for instance, `x86_64-gnu-tools` will
+        // receive an additional `DEPLOY_TOOLSTATES_JSON: toolstates-linux.json` env when under Auto
+        // environment versus PR environment.
+        if db.find_auto_job_by_name(&pr_job.name).is_some() {
+            continue;
+        }
+
+        let auto_registered_job = Job { continue_on_error: Some(false), ..pr_job.clone() };
+        db.auto_jobs.push(auto_registered_job);
+    }
+
+    Ok(())
+}
+
+fn validate_job_database(db: &JobDatabase) -> anyhow::Result<()> {
+    fn ensure_no_duplicate_job_names(section: &str, jobs: &Vec<Job>) -> anyhow::Result<()> {
+        let mut job_names = HashSet::new();
+        for job in jobs {
+            let job_name = job.name.as_str();
+            if !job_names.insert(job_name) {
+                return Err(anyhow::anyhow!(
+                    "duplicate job name `{job_name}` in section `{section}`"
+                ));
+            }
+        }
+        Ok(())
+    }
+
+    ensure_no_duplicate_job_names("pr", &db.pr_jobs)?;
+    ensure_no_duplicate_job_names("auto", &db.auto_jobs)?;
+    ensure_no_duplicate_job_names("try", &db.try_jobs)?;
+    ensure_no_duplicate_job_names("optional", &db.optional_jobs)?;
+
+    fn equivalent_modulo_carve_out(pr_job: &Job, auto_job: &Job) -> anyhow::Result<()> {
+        let Job {
+            name,
+            os,
+            only_on_channel,
+            free_disk,
+            doc_url,
+            codebuild,
+
+            // Carve-out configs allowed to be different.
+            env: _,
+            continue_on_error: _,
+        } = pr_job;
+
+        if *name == auto_job.name
+            && *os == auto_job.os
+            && *only_on_channel == auto_job.only_on_channel
+            && *free_disk == auto_job.free_disk
+            && *doc_url == auto_job.doc_url
+            && *codebuild == auto_job.codebuild
+        {
+            Ok(())
+        } else {
+            Err(anyhow!(
+                "PR job `{}` differs from corresponding Auto job `{}` in configuration other than `continue_on_error` and `env`",
+                pr_job.name,
+                auto_job.name
+            ))
+        }
+    }
+
+    for pr_job in &db.pr_jobs {
+        // At this point, any PR job must also be an Auto job, auto-registered or overridden.
+        let auto_job = db
+            .find_auto_job_by_name(&pr_job.name)
+            .expect("PR job must either be auto-registered as Auto job or overridden");
+
+        equivalent_modulo_carve_out(pr_job, auto_job)?;
+    }
+
+    // Auto CI jobs must all "fail-fast" to avoid wasting Auto CI resources. For instance, `tidy`.
+    for auto_job in &db.auto_jobs {
+        if auto_job.continue_on_error == Some(true) {
+            return Err(anyhow!(
+                "Auto job `{}` cannot have `continue_on_error: true`",
+                auto_job.name
+            ));
+        }
+    }
+
+    Ok(())
 }
 
 /// Representation of a job outputted to a GitHub Actions workflow.

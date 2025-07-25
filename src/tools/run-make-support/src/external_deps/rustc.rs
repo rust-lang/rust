@@ -52,12 +52,19 @@ impl Rustc {
     // `rustc` invocation constructor methods
 
     /// Construct a new `rustc` invocation. This will automatically set the library
-    /// search path as `-L cwd()` and also the compilation target.
+    /// search path as `-L cwd()`, configure the compilation target and enable
+    /// dynamic linkage by default on musl hosts.
     /// Use [`bare_rustc`] to avoid this.
     #[track_caller]
     pub fn new() -> Self {
         let mut cmd = setup_common();
         cmd.arg("-L").arg(cwd());
+
+        // FIXME: On musl hosts, we currently default to static linkage, while
+        // for running run-make tests, we rely on dynamic linkage by default
+        if std::env::var("IS_MUSL_HOST").is_ok_and(|i| i == "1") {
+            cmd.arg("-Ctarget-feature=-crt-static");
+        }
 
         // Automatically default to cross-compilation
         Self { cmd, target: Some(target()) }

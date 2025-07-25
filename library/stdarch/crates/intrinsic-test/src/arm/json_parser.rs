@@ -110,7 +110,7 @@ fn json_to_intrinsic(
     Ok(Intrinsic {
         name,
         arguments,
-        results: *results,
+        results: results,
         arch_tags: intr.architectures,
     })
 }
