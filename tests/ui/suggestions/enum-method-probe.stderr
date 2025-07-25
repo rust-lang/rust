@@ -94,6 +94,23 @@ help: consider using `Option::expect` to unwrap the `Foo` value, panicking if th
 LL |     res.expect("REASON").get();
    |        +++++++++++++++++
 
-error: aborting due to 6 previous errors
+error[E0624]: method `len` is private
+  --> $DIR/enum-method-probe.rs:61:9
+   |
+LL |     res.len();
+   |         ^^^ private method
+  --> $SRC_DIR/core/src/option.rs:LL:COL
+   |
+   = note: private method defined here
+   |
+note: the method `len` exists on the type `Vec<{integer}>`
+  --> $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
+help: consider using `Option::expect` to unwrap the `Vec<{integer}>` value, panicking if the value is an `Option::None`
+   |
+LL |     res.expect("REASON").len();
+   |        +++++++++++++++++
 
-For more information about this error, try `rustc --explain E0599`.
+error: aborting due to 7 previous errors
+
+Some errors have detailed explanations: E0599, E0624.
+For more information about an error, try `rustc --explain E0599`.
