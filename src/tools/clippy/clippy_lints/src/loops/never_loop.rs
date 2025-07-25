@@ -276,6 +276,8 @@ fn never_loop_expr<'tcx>(
         ExprKind::OffsetOf(_, _)
         | ExprKind::Yield(_, _)
         | ExprKind::Closure { .. }
+        | ExprKind::InitBlock(_)
+        | ExprKind::InitTail(_)
         | ExprKind::Path(_)
         | ExprKind::ConstBlock(_)
         | ExprKind::Lit(_)

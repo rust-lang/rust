@@ -365,6 +365,7 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
             ExprKind::Closure(..) | ExprKind::Gen(..) => {
                 self.create_def(expr.id, None, DefKind::Closure, expr.span)
             }
+            ExprKind::InitBlock(..) => self.create_def(expr.id, None, DefKind::Init, expr.span),
             ExprKind::ConstBlock(ref constant) => {
                 for attr in &expr.attrs {
                     visit::walk_attribute(self, attr);

@@ -128,6 +128,8 @@ pub fn leading_labeled_expr(mut expr: &ast::Expr) -> bool {
             | Become(..)
             | Break(..)
             | Closure(..)
+            | InitBlock(..)
+            | InitTail(..)
             | ConstBlock(..)
             | Continue(..)
             | FormatArgs(..)
@@ -230,6 +232,8 @@ pub fn expr_trailing_brace(mut expr: &ast::Expr) -> Option<TrailingBrace<'_>> {
             | Use(_, _)
             | Field(_, _)
             | Index(_, _, _)
+            | InitBlock(_)
+            | InitTail(_)
             | Underscore
             | Path(_, _)
             | Continue(_)

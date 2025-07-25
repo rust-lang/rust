@@ -1863,7 +1863,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    fn check_stmt(&self, stmt: &'tcx hir::Stmt<'tcx>) {
+    pub(crate) fn check_stmt(&self, stmt: &'tcx hir::Stmt<'tcx>) {
         // Don't do all the complex logic below for `DeclItem`.
         match stmt.kind {
             hir::StmtKind::Item(..) => return,

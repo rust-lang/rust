@@ -542,6 +542,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
             | ty::FnDef(_, _)
             | ty::FnPtr(..)
             | ty::Dynamic(_, _, _)
+            | ty::Init(..)
             | ty::Closure(..)
             | ty::CoroutineClosure(..)
             | ty::Coroutine(_, _)
@@ -2501,6 +2502,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 FnPtr,
                 UnsafeBinder,
                 Placeholder,
+                Init,
                 Coroutine,
                 CoroutineWitness,
                 Dynamic,

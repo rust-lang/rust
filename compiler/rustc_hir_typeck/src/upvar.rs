@@ -147,6 +147,20 @@ impl<'a, 'tcx> Visitor<'tcx> for InferBorrowKindVisitor<'a, 'tcx> {
                 self.visit_body(body);
                 self.fcx.analyze_closure(expr.hir_id, expr.span, body_id, body, capture_clause);
             }
+            hir::ExprKind::InitBlock(&hir::InitBlock {
+                body: body_id,
+                init_kw_span: move_kw,
+                ..
+            }) => {
+                let body = self.fcx.tcx.hir_body(body_id);
+                self.fcx.analyze_closure(
+                    expr.hir_id,
+                    expr.span,
+                    body_id,
+                    body,
+                    hir::CaptureBy::Value { move_kw },
+                );
+            }
             _ => {}
         }
 
@@ -173,7 +187,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Extract the type of the closure.
         let ty = self.node_ty(closure_hir_id);
         let (closure_def_id, args, infer_kind) = match *ty.kind() {
-            ty::Closure(def_id, args) => {
+            ty::Closure(def_id, args) | ty::Init(def_id, args) => {
                 (def_id, UpvarArgs::Closure(args), self.closure_kind(ty).is_none())
             }
             ty::CoroutineClosure(def_id, args) => {

@@ -737,6 +737,7 @@ where
                 | ty::Placeholder(..)
                 | ty::Closure(..)
                 | ty::CoroutineClosure(..)
+                | ty::Init(..)
                 | ty::Coroutine(..)
                 | ty::UnsafeBinder(_)
                 | ty::CoroutineWitness(..) => {
@@ -1238,6 +1239,7 @@ where
             | ty::CoroutineClosure(..)
             | ty::Coroutine(_, _)
             | ty::CoroutineWitness(..)
+            | ty::Init(..)
             | ty::Never
             | ty::Tuple(_)
             | ty::Adt(_, _)

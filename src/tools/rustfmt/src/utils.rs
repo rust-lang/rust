@@ -488,6 +488,10 @@ pub(crate) fn is_block_expr(context: &RewriteContext<'_>, expr: &ast::Expr, repr
         | ast::ExprKind::Yield(YieldKind::Prefix(Some(ref expr))) => {
             is_block_expr(context, expr, repr)
         }
+        ast::ExprKind::InitBlock(box ast::InitBlock { ref expr, .. })
+        | ast::ExprKind::InitTail(box ast::InitKind::Free(ref expr)) => {
+            is_block_expr(context, expr, repr)
+        }
         ast::ExprKind::Closure(ref closure) => is_block_expr(context, &closure.body, repr),
         // This can only be a string lit
         ast::ExprKind::Lit(_) => {
@@ -518,6 +522,7 @@ pub(crate) fn is_block_expr(context: &RewriteContext<'_>, expr: &ast::Expr, repr
         | ast::ExprKind::Use(..)
         | ast::ExprKind::Type(..)
         | ast::ExprKind::Yield(..)
+        | ast::ExprKind::InitTail(box ast::InitKind::Array(_))
         | ast::ExprKind::Underscore => false,
     }
 }

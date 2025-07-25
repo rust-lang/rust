@@ -257,6 +257,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 | DefKind::LifetimeParam
                 | DefKind::GlobalAsm
                 | DefKind::Closure
+                | DefKind::Init
                 | DefKind::SyntheticCoroutineBody
                 | DefKind::Impl { .. },
                 _,

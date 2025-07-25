@@ -41,6 +41,7 @@ pub enum SimplifiedType<DefId> {
     MarkerTraitObject,
     Trait(DefId),
     Closure(DefId),
+    Init(DefId),
     Coroutine(DefId),
     CoroutineWitness(DefId),
     Function(usize),
@@ -138,6 +139,7 @@ pub fn simplify_type<I: Interner>(
         ty::FnDef(def_id, _) | ty::Closure(def_id, _) | ty::CoroutineClosure(def_id, _) => {
             Some(SimplifiedType::Closure(def_id))
         }
+        ty::Init(def_id, _) => Some(SimplifiedType::Init(def_id)),
         ty::Coroutine(def_id, _) => Some(SimplifiedType::Coroutine(def_id)),
         ty::CoroutineWitness(def_id, _) => Some(SimplifiedType::CoroutineWitness(def_id)),
         ty::Never => Some(SimplifiedType::Never),
@@ -304,6 +306,7 @@ impl<I: Interner, const INSTANTIATE_LHS_WITH_INFER: bool, const INSTANTIATE_RHS_
             | ty::FnDef(..)
             | ty::FnPtr(..)
             | ty::Closure(..)
+            | ty::Init(..)
             | ty::CoroutineClosure(..)
             | ty::Coroutine(..)
             | ty::CoroutineWitness(..)
@@ -435,6 +438,12 @@ impl<I: Interner, const INSTANTIATE_LHS_WITH_INFER: bool, const INSTANTIATE_RHS_
 
             ty::Closure(lhs_def_id, lhs_args) => match rhs.kind() {
                 ty::Closure(rhs_def_id, rhs_args) => {
+                    lhs_def_id == rhs_def_id && self.args_may_unify_inner(lhs_args, rhs_args, depth)
+                }
+                _ => false,
+            },
+            ty::Init(lhs_def_id, lhs_args) => match rhs.kind() {
+                ty::Init(rhs_def_id, rhs_args) => {
                     lhs_def_id == rhs_def_id && self.args_may_unify_inner(lhs_args, rhs_args, depth)
                 }
                 _ => false,

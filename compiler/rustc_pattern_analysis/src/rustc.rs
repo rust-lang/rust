@@ -412,6 +412,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
             | ty::Closure(..)
             | ty::CoroutineClosure(..)
             | ty::Coroutine(_, _)
+            | ty::Init(..)
             | ty::UnsafeBinder(_)
             | ty::Alias(_, _)
             | ty::Param(_)

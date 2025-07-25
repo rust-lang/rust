@@ -165,6 +165,7 @@ impl Visitable for RigidTy {
                 ty.visit(visitor)
             }
             RigidTy::Adt(_, args)
+            | RigidTy::Init(_, args)
             | RigidTy::Closure(_, args)
             | RigidTy::Coroutine(_, args, _)
             | RigidTy::CoroutineWitness(_, args)

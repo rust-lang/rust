@@ -593,6 +593,14 @@ impl<'a> State<'a> {
                 self.space();
                 self.print_expr(body, FixupContext::default());
             }
+            ast::ExprKind::InitBlock(expr) => {
+                self.word_space("init");
+                self.print_expr(&expr.expr, FixupContext::default());
+            }
+            ast::ExprKind::InitTail(kind) => match &**kind {
+                ast::InitKind::Free(expr) => self.print_expr(expr, FixupContext::default()),
+                ast::InitKind::Array(exprs) => self.print_expr_vec(exprs),
+            },
             ast::ExprKind::Block(blk, opt_label) => {
                 if let Some(label) = opt_label {
                     self.print_ident(label.ident);

@@ -188,7 +188,8 @@ where
             | ty::FnDef(def_id, ..)
             | ty::Closure(def_id, ..)
             | ty::CoroutineClosure(def_id, ..)
-            | ty::Coroutine(def_id, ..) => {
+            | ty::Coroutine(def_id, ..)
+            | ty::Init(def_id, ..) => {
                 try_visit!(self.def_id_visitor.visit_def_id(def_id, "type", &ty));
                 if V::SHALLOW {
                     return V::Result::output();
@@ -633,6 +634,7 @@ impl<'tcx> EmbargoVisitor<'tcx> {
             | DefKind::GlobalAsm
             | DefKind::Impl { .. }
             | DefKind::Closure
+            | DefKind::Init
             | DefKind::SyntheticCoroutineBody => (),
         }
     }

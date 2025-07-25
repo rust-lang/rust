@@ -21,6 +21,7 @@ mod diverges;
 mod errors;
 mod expectation;
 mod expr;
+mod init;
 mod inline_asm;
 // Used by clippy;
 pub mod expr_use_visitor;

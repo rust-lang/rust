@@ -300,6 +300,8 @@ fn expr_eagerness<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> EagernessS
                 | ExprKind::If(..)
                 | ExprKind::Match(..)
                 | ExprKind::Closure { .. }
+                | ExprKind::InitTail(_)
+                | ExprKind::InitBlock(_)
                 | ExprKind::Field(..)
                 | ExprKind::AddrOf(..)
                 | ExprKind::Repeat(..)

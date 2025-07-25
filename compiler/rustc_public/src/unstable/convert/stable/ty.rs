@@ -453,6 +453,10 @@ impl<'tcx> Stable<'tcx> for ty::TyKind<'tcx> {
                 tables.closure_def(*def_id),
                 generic_args.stable(tables, cx),
             )),
+            &ty::Init(def_id, generic_args) => TyKind::RigidTy(RigidTy::Init(
+                tables.init_def(def_id),
+                generic_args.stable(tables, cx),
+            )),
             ty::CoroutineClosure(..) => todo!("FIXME(async_closures): Lower these to SMIR"),
             ty::Coroutine(def_id, generic_args) => TyKind::RigidTy(RigidTy::Coroutine(
                 tables.coroutine_def(*def_id),
@@ -966,6 +970,7 @@ impl<'tcx> Stable<'tcx> for ty::Instance<'tcx> {
             | ty::InstanceKind::DropGlue(..)
             | ty::InstanceKind::CloneShim(..)
             | ty::InstanceKind::FnPtrShim(..)
+            | ty::InstanceKind::Init(..)
             | ty::InstanceKind::FutureDropPollShim(..)
             | ty::InstanceKind::AsyncDropGlue(..)
             | ty::InstanceKind::AsyncDropGlueCtorShim(..) => crate::mir::mono::InstanceKind::Shim,

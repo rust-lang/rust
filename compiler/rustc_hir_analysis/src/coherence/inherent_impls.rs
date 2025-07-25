@@ -191,6 +191,7 @@ impl<'tcx> InherentCollect<'tcx> {
                 Err(self.tcx.dcx().emit_err(errors::InherentNominal { span: item_span }))
             }
             ty::FnDef(..)
+            | ty::Init(..)
             | ty::Closure(..)
             | ty::CoroutineClosure(..)
             | ty::Coroutine(..)

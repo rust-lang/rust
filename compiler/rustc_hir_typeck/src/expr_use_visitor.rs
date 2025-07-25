@@ -433,11 +433,12 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                 self.consume_exprs(args)?;
             }
 
-            hir::ExprKind::Struct(_, fields, ref opt_with) => {
+            hir::ExprKind::Struct(_, fields, ref opt_with)
+            | hir::ExprKind::InitTail(&hir::InitKind::Struct(_, fields, ref opt_with)) => {
                 self.walk_struct_expr(fields, opt_with)?;
             }
 
-            hir::ExprKind::Tup(exprs) => {
+            hir::ExprKind::Tup(exprs) | hir::ExprKind::InitTail(&hir::InitKind::Tuple(exprs)) => {
                 self.consume_exprs(exprs)?;
             }
 
@@ -467,7 +468,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                 }
             }
 
-            hir::ExprKind::Array(exprs) => {
+            hir::ExprKind::Array(exprs) | hir::ExprKind::InitTail(&hir::InitKind::Array(exprs)) => {
                 self.consume_exprs(exprs)?;
             }
 
@@ -525,7 +526,8 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                 self.consume_expr(rhs)?;
             }
 
-            hir::ExprKind::Block(blk, _) => {
+            hir::ExprKind::Block(blk, _)
+            | hir::ExprKind::InitTail(&hir::InitKind::Block(blk, _)) => {
                 self.walk_block(blk)?;
             }
 
@@ -561,12 +563,21 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                 self.consume_expr(rhs)?;
             }
 
-            hir::ExprKind::Repeat(base, _) => {
+            hir::ExprKind::Repeat(base, _)
+            | hir::ExprKind::InitTail(&hir::InitKind::Repeat(base, _)) => {
                 self.consume_expr(base)?;
             }
 
             hir::ExprKind::Closure(closure) => {
-                self.walk_captures(closure)?;
+                self.walk_captures(closure.def_id)?;
+            }
+
+            hir::ExprKind::InitBlock(&hir::InitBlock { def_id, .. }) => {
+                self.walk_captures(def_id)?;
+            }
+
+            hir::ExprKind::InitTail(&hir::InitKind::Free(expr)) => {
+                self.consume_expr(expr)?;
             }
 
             hir::ExprKind::Yield(value, _) => {
@@ -1047,7 +1058,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
     /// - When reporting the Place back to the Delegate, ensure that the UpvarId uses the enclosing
     /// closure as the DefId.
     #[instrument(skip(self), level = "debug")]
-    fn walk_captures(&self, closure_expr: &hir::Closure<'_>) -> Result<(), Cx::Error> {
+    fn walk_captures(&self, closure_def_id: LocalDefId) -> Result<(), Cx::Error> {
         fn upvar_is_local_variable(
             upvars: Option<&FxIndexMap<HirId, hir::Upvar>>,
             upvar_id: HirId,
@@ -1057,7 +1068,6 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
         }
 
         let tcx = self.cx.tcx();
-        let closure_def_id = closure_expr.def_id;
         // For purposes of this function, coroutine and closures are equivalent.
         let body_owner_is_closure = matches!(
             tcx.hir_body_owner_kind(self.cx.body_owner_def_id()),
@@ -1413,6 +1423,8 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
             | hir::ExprKind::Assign(..)
             | hir::ExprKind::AssignOp(..)
             | hir::ExprKind::Closure { .. }
+            | hir::ExprKind::InitBlock(..)
+            | hir::ExprKind::InitTail(..)
             | hir::ExprKind::Ret(..)
             | hir::ExprKind::Become(..)
             | hir::ExprKind::Unary(..)

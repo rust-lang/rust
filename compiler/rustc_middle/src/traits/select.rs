@@ -125,6 +125,18 @@ pub enum SelectionCandidate<'tcx> {
         is_const: bool,
     },
 
+    /// Implementation of the `Init` trait by the anonymous types backed by
+    /// `init` blocks.
+    InitCandidate,
+
+    /// Implementation of the `Init` trait by the moving value into the target
+    /// place.
+    TrivialInitCandidate,
+
+    /// Implementation of the `Init` trait through implicit array unsizing
+    /// from a bound in the environment
+    ArrayUnsizeInitCandidate(ty::PolyTraitPredicate<'tcx>),
+
     /// Implementation of an `AsyncFn`-family trait by one of the anonymous types
     /// generated for an `async ||` expression.
     AsyncClosureCandidate,

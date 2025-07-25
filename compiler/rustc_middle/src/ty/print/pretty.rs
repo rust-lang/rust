@@ -942,7 +942,8 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
 
                 p!("}}")
             }
-            ty::Closure(did, args) => {
+            // NOTE: Maybe in the future, give init its own pretty print type header
+            ty::Closure(did, args) | ty::Init(did, args) => {
                 p!(write("{{"));
                 if !self.should_print_verbose() {
                     p!(write("closure"));

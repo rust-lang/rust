@@ -1453,21 +1453,24 @@ impl<'a> State<'a> {
         let ib = self.ibox(INDENT_UNIT);
         self.ann.pre(self, AnnNode::Expr(expr));
         match expr.kind {
-            hir::ExprKind::Array(exprs) => {
+            hir::ExprKind::InitTail(&hir::InitKind::Array(exprs)) | hir::ExprKind::Array(exprs) => {
                 self.print_expr_vec(exprs);
             }
             hir::ExprKind::ConstBlock(ref anon_const) => {
                 self.print_inline_const(anon_const);
             }
-            hir::ExprKind::Repeat(element, ref count) => {
+            hir::ExprKind::InitTail(&hir::InitKind::Repeat(element, count))
+            | hir::ExprKind::Repeat(element, count) => {
                 self.print_expr_repeat(element, count);
             }
-            hir::ExprKind::Struct(qpath, fields, wth) => {
+            hir::ExprKind::InitTail(&hir::InitKind::Struct(qpath, fields, wth))
+            | hir::ExprKind::Struct(qpath, fields, wth) => {
                 self.print_expr_struct(qpath, fields, wth);
             }
-            hir::ExprKind::Tup(exprs) => {
+            hir::ExprKind::InitTail(&hir::InitKind::Tuple(exprs)) | hir::ExprKind::Tup(exprs) => {
                 self.print_expr_tup(exprs);
             }
+            hir::ExprKind::InitTail(&hir::InitKind::Free(expr)) => self.print_expr(expr),
             hir::ExprKind::Call(func, args) => {
                 self.print_expr_call(func, args);
             }
@@ -1576,7 +1579,12 @@ impl<'a> State<'a> {
                 // This is a bare expression.
                 self.ann.nested(self, Nested::Body(body));
             }
-            hir::ExprKind::Block(blk, opt_label) => {
+            hir::ExprKind::InitBlock(block) => {
+                self.word("init");
+                self.ann.nested(self, Nested::Body(block.body));
+            }
+            hir::ExprKind::Block(blk, opt_label)
+            | hir::ExprKind::InitTail(&hir::InitKind::Block(blk, opt_label)) => {
                 if let Some(label) = opt_label {
                     self.print_ident(label.ident);
                     self.word_space(":");

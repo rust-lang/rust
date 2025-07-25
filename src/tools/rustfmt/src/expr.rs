@@ -76,7 +76,8 @@ pub(crate) fn format_expr(
     };
 
     let expr_rw = match expr.kind {
-        ast::ExprKind::Array(ref expr_vec) => rewrite_array(
+        ast::ExprKind::Array(ref expr_vec)
+        | ast::ExprKind::InitTail(box ast::InitKind::Array(ref expr_vec)) => rewrite_array(
             "",
             expr_vec.iter(),
             expr.span,
@@ -414,6 +415,10 @@ pub(crate) fn format_expr(
                 ))
             }
         }
+        ast::ExprKind::InitTail(box ast::InitKind::Free(ref expr)) => {
+            format_expr(expr, expr_type, context, shape)
+        }
+        ast::ExprKind::InitBlock(ref block) => format_expr(&block.expr, expr_type, context, shape),
         ast::ExprKind::Underscore => Ok("_".to_owned()),
         ast::ExprKind::FormatArgs(..)
         | ast::ExprKind::Type(..)

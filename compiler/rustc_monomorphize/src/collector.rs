@@ -953,7 +953,8 @@ fn visit_instance_use<'tcx>(
                 output.push(create_fn_mono_item(tcx, instance, source));
             }
         }
-        ty::InstanceKind::DropGlue(_, Some(_))
+        ty::InstanceKind::Init(_, _)
+        | ty::InstanceKind::DropGlue(_, Some(_))
         | ty::InstanceKind::FutureDropPollShim(..)
         | ty::InstanceKind::AsyncDropGlue(_, _)
         | ty::InstanceKind::AsyncDropGlueCtorShim(_, _)

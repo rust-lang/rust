@@ -837,7 +837,7 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
                 self.out.extend(obligations);
             }
 
-            ty::Closure(did, args) => {
+            ty::Closure(did, args) | ty::Init(did, args) => {
                 // Note that we cannot skip the generic types
                 // types. Normally, within the fn
                 // body where they are created, the generics will

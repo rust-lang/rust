@@ -352,6 +352,18 @@ language_item_table! {
 
     MaybeUninit,             sym::maybe_uninit,        maybe_uninit,               Target::Union,          GenericRequirement::None;
 
+    Init,                    sym::init_trait,          init_trait,                 Target::Trait,          GenericRequirement::Exact(1);
+    InitError,               sym::init_error,          init_error,                 Target::AssocTy,        GenericRequirement::None;
+    InitLayout,              sym::init_layout,         init_layout,                Target::Method(MethodKind::Trait { body: false }), GenericRequirement::Exact(1);
+    InitInit,                sym::init_init,           init_init,                  Target::Method(MethodKind::Trait { body: false }), GenericRequirement::Exact(1);
+    InitGuard,               sym::init_guard,          init_guard,                 Target::Struct,         GenericRequirement::Exact(1);
+    InitGuardNew,            sym::init_guard_new,      init_guard_new,             Target::Method(MethodKind::Inherent), GenericRequirement::Exact(1);
+    InitGuardRelease,        sym::init_guard_release,  init_guard_release,         Target::Method(MethodKind::Inherent), GenericRequirement::Exact(1);
+    InitArrayGuard,          sym::init_array_guard,    init_array_guard,           Target::Struct,         GenericRequirement::Exact(1);
+    InitArrayGuardNew,       sym::init_array_guard_new, init_array_guard_new,      Target::Method(MethodKind::Inherent), GenericRequirement::Exact(1);
+    InitArrayGuardBump,      sym::init_array_guard_bump, init_array_guard_bump,    Target::Method(MethodKind::Inherent), GenericRequirement::Exact(1);
+    InitArrayGuardRelease,   sym::init_array_guard_release, init_array_guard_release, Target::Method(MethodKind::Inherent), GenericRequirement::Exact(1);
+
     Termination,             sym::termination,         termination,                Target::Trait,          GenericRequirement::None;
 
     Try,                     sym::Try,                 try_trait,                  Target::Trait,          GenericRequirement::None;

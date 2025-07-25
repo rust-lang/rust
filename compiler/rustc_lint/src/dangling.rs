@@ -199,6 +199,9 @@ fn is_temporary_rvalue(expr: &Expr<'_>) -> bool {
 
         // Not applicable
         ExprKind::Type(..) | ExprKind::Err(..) => false,
+
+        // In-place thunk are not temporary
+        ExprKind::InitBlock(..) | ExprKind::InitTail(..) => false,
     }
 }
 

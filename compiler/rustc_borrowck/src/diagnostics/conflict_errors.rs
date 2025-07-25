@@ -1500,6 +1500,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 hir::ClosureKind::Closure | hir::ClosureKind::CoroutineClosure(_) => {
                     MoveUseInClosure { var_span }
                 }
+                hir::ClosureKind::Init => MoveUseInInit { var_span },
             }
         });
 
@@ -1566,6 +1567,9 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 }
                 hir::ClosureKind::Closure | hir::ClosureKind::CoroutineClosure(_) => {
                     BorrowUsePlaceClosure { place: desc_place, var_span, is_single_var: true }
+                }
+                hir::ClosureKind::Init => {
+                    BorrowUsePlaceInit { place: desc_place, var_span, is_single_var: true }
                 }
             }
         });
@@ -1729,6 +1733,11 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                                     var_span,
                                     is_single_var: true,
                                 },
+                                hir::ClosureKind::Init => BorrowUsePlaceInit {
+                                    place: desc_place,
+                                    var_span,
+                                    is_single_var: true,
+                                },
                             }
                         },
                     );
@@ -1821,6 +1830,9 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     hir::ClosureKind::Closure | hir::ClosureKind::CoroutineClosure(_) => {
                         BorrowUsePlaceClosure { place: desc_place, var_span, is_single_var: false }
                     }
+                    hir::ClosureKind::Init => {
+                        BorrowUsePlaceInit { place: desc_place, var_span, is_single_var: false }
+                    }
                 }
             });
         } else {
@@ -1835,6 +1847,9 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     hir::ClosureKind::Closure | hir::ClosureKind::CoroutineClosure(_) => {
                         FirstBorrowUsePlaceClosure { place: borrow_place_desc, var_span }
                     }
+                    hir::ClosureKind::Init => {
+                        FirstBorrowUsePlaceInit { place: borrow_place_desc, var_span }
+                    }
                 }
             });
 
@@ -1846,6 +1861,9 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     }
                     hir::ClosureKind::Closure | hir::ClosureKind::CoroutineClosure(_) => {
                         SecondBorrowUsePlaceClosure { place: desc_place, var_span }
+                    }
+                    hir::ClosureKind::Init => {
+                        SecondBorrowUsePlaceInit { place: desc_place, var_span }
                     }
                 }
             });
@@ -3737,6 +3755,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                         hir::ClosureKind::Closure | hir::ClosureKind::CoroutineClosure(_) => {
                             BorrowUseInClosure { var_span }
                         }
+                        hir::ClosureKind::Init => BorrowUseInInit { var_span },
                     }
                 });
 
@@ -3756,6 +3775,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 hir::ClosureKind::Closure | hir::ClosureKind::CoroutineClosure(_) => {
                     BorrowUseInClosure { var_span }
                 }
+                hir::ClosureKind::Init => BorrowUseInInit { var_span },
             }
         });
 

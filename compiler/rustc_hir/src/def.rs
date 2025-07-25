@@ -144,6 +144,8 @@ pub enum DefKind {
     /// The definition of a synthetic coroutine body created by the lowering of a
     /// coroutine-closure, such as an async closure.
     SyntheticCoroutineBody,
+    /// The definition of an `init` thunk created by lowering an `init` expression.
+    Init,
 }
 
 impl DefKind {
@@ -186,6 +188,7 @@ impl DefKind {
             DefKind::Field => "field",
             DefKind::Impl { .. } => "implementation",
             DefKind::Closure => "closure",
+            DefKind::Init => "init block",
             DefKind::ExternCrate => "extern crate",
             DefKind::GlobalAsm => "global assembly block",
             DefKind::SyntheticCoroutineBody => "synthetic mir body",
@@ -244,6 +247,7 @@ impl DefKind {
             | DefKind::LifetimeParam
             | DefKind::ExternCrate
             | DefKind::Closure
+            | DefKind::Init
             | DefKind::Use
             | DefKind::ForeignMod
             | DefKind::GlobalAsm
@@ -290,7 +294,7 @@ impl DefKind {
             DefKind::OpaqueTy => DefPathData::OpaqueTy,
             DefKind::GlobalAsm => DefPathData::GlobalAsm,
             DefKind::Impl { .. } => DefPathData::Impl,
-            DefKind::Closure => DefPathData::Closure,
+            DefKind::Closure | DefKind::Init => DefPathData::Closure,
             DefKind::SyntheticCoroutineBody => DefPathData::SyntheticCoroutineBody,
         }
     }
@@ -316,6 +320,7 @@ impl DefKind {
             | DefKind::AssocFn
             | DefKind::Ctor(..)
             | DefKind::Closure
+            | DefKind::Init
             | DefKind::Static { .. }
             | DefKind::SyntheticCoroutineBody => true,
             DefKind::Mod

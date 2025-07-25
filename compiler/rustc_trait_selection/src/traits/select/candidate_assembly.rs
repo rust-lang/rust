@@ -128,6 +128,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         &mut candidates,
                     );
                 }
+                Some(LangItem::Init) => {
+                    // User defined `Init` comes first but are applicable only on `struct`s and `enums`
+                    self.assemble_candidates_from_impls(obligation, &mut candidates);
+                    self.assemble_candidates_from_object_ty(obligation, &mut candidates);
+                    self.assemble_init_candidates(stack, &mut candidates)?;
+                }
                 _ => {
                     // We re-match here for traits that can have both builtin impls and user written impls.
                     // After the builtin impls we need to also add user written impls, which we do not want to
@@ -253,14 +259,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     /// supplied to find out whether it is listed among them.
     ///
     /// Never affects the inference environment.
-    #[instrument(level = "debug", skip(self, stack, candidates))]
+    #[instrument(level = "debug", skip(self, stack, candidates), fields(?stack.obligation))]
     fn assemble_candidates_from_caller_bounds<'o>(
         &mut self,
         stack: &TraitObligationStack<'o, 'tcx>,
         candidates: &mut SelectionCandidateSet<'tcx>,
     ) -> Result<(), SelectionError<'tcx>> {
-        debug!(?stack.obligation);
-
         let bounds = stack
             .obligation
             .param_env
@@ -584,6 +588,124 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
     }
 
+    #[instrument(level = "debug", skip(self, candidates))]
+    fn assemble_init_candidates<'o>(
+        &mut self,
+        stack: &TraitObligationStack<'o, 'tcx>,
+        candidates: &mut SelectionCandidateSet<'tcx>,
+    ) -> Result<(), SelectionError<'tcx>> {
+        let obligation = stack.obligation;
+        let self_ty = obligation.self_ty().skip_binder();
+        debug!(kind = ?self_ty.kind());
+        let tcx = self.tcx();
+        let bounds =
+            obligation.param_env.caller_bounds().iter().filter_map(|p| p.as_trait_clause()).filter(
+                |p| {
+                    tcx.is_lang_item(p.def_id(), LangItem::Init)
+                        && matches!(p.polarity(), ty::PredicatePolarity::Positive)
+                },
+            );
+        if let ty::Init(_, _) = self_ty.kind() {
+            debug!("init candidate");
+            candidates.vec.push(InitCandidate);
+            // Short circuiting
+            // .. because this is the most specific `Init` impl
+            // there can be.
+            // During the confirmation stage we will figure out whether
+            // an unsizing `Init` should be used
+            return Ok(());
+        }
+        let target_ty = self
+            .infcx
+            .resolve_vars_if_possible(obligation.predicate.skip_binder().trait_ref.args.type_at(1));
+        // Try to take from the typing environment, in order of specificity:
+        let drcx = DeepRejectCtxt::relate_rigid_rigid(tcx);
+        match target_ty.kind() {
+            // 1) S: Init<[T; N]>
+            //    ________________ init_unsize_array
+            //    S: Init<[T]>
+            &ty::Slice(elem_ty) => {
+                // todo
+                let mut candidate = None::<ty::PolyTraitPredicate<'_>>;
+                for bound in bounds {
+                    let target_ty = bound.skip_binder().trait_ref.args.type_at(1);
+                    let &ty::Array(other_elem_ty, _) = target_ty.kind() else {
+                        continue;
+                    };
+                    if !drcx.types_may_unify(self_ty, bound.self_ty().skip_binder())
+                        || !drcx.types_may_unify(elem_ty, other_elem_ty)
+                    {
+                        continue;
+                    }
+
+                    let wc =
+                        self.where_clause_may_apply(stack, bound.map_bound(|b| b.trait_ref))?;
+                    if !wc.may_apply() {
+                        continue;
+                    }
+                    // Okay we have one candidate by unsizing the array
+                    // but rejects when there are multiple different impls.
+                    // There is a potential issue: what if there are multiple `Init<[T; N]>`
+                    // with potentially different `N` or un-unifiable `T`?
+                    // This can become an opportunity to bait-and-switch.
+                    if let Some(candidate) = candidate {
+                        let other_target_ty = candidate.skip_binder().trait_ref.args.type_at(1);
+                        if !drcx.types_may_unify(target_ty, other_target_ty) {
+                            debug!(?candidate, another_candidate = ?bound, "ambiguous array unsizing init");
+                            candidates.ambiguous = true;
+                            return Ok(());
+                        }
+                        // We will keep to the first discovery
+                    } else {
+                        candidate = Some(bound);
+                    }
+                }
+                candidates.vec.extend(candidate.map(ArrayUnsizeInitCandidate));
+            }
+            &ty::Adt(_def, _args) => {
+                // NOTE: unify for unsizing ADTs too
+            }
+            _ => {}
+        }
+        // Next candidate, the identity
+        match self_ty.kind() {
+            ty::Init(_, _) => {}
+            ty::Bool
+            | ty::Char
+            | ty::Int(_)
+            | ty::Uint(_)
+            | ty::Float(_)
+            | ty::Adt(_, _)
+            | ty::Foreign(_)
+            | ty::Str
+            | ty::Array(_, _)
+            | ty::Alias(_, _)
+            | ty::Param(_)
+            | ty::Pat(_, _)
+            | ty::Slice(_)
+            | ty::RawPtr(_, _)
+            | ty::Ref(_, _, _)
+            | ty::FnDef(_, _)
+            | ty::FnPtr(_, _)
+            | ty::UnsafeBinder(_)
+            | ty::Dynamic(_, _, _)
+            | ty::Closure(_, _)
+            | ty::CoroutineClosure(_, _)
+            | ty::Coroutine(_, _)
+            | ty::CoroutineWitness(_, _)
+            | ty::Tuple(_)
+            | ty::Infer(
+                ty::IntVar(_) | ty::FloatVar(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_),
+            )
+            | ty::Bound(_, _) => {
+                debug!("trivial init candidate");
+                candidates.vec.push(TrivialInitCandidate);
+            }
+            ty::Never | ty::Placeholder(_) | ty::Infer(_) | ty::Error(_) => {}
+        }
+        Ok(())
+    }
+
     /// Searches for impls that might apply to `obligation`.
     #[instrument(level = "debug", skip(self, candidates))]
     fn assemble_candidates_from_impls(
@@ -694,6 +816,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 | ty::CoroutineClosure(..)
                 | ty::Coroutine(_, _)
                 | ty::CoroutineWitness(..)
+                | ty::Init(..)
                 | ty::UnsafeBinder(_)
                 | ty::Never
                 | ty::Tuple(_)
@@ -867,6 +990,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 | ty::Closure(..)
                 | ty::CoroutineClosure(..)
                 | ty::Coroutine(..)
+                | ty::Init(..)
                 | ty::Never
                 | ty::Tuple(_)
                 | ty::UnsafeBinder(_) => {
@@ -1172,7 +1296,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
             }
 
-            ty::Closure(_, args) => {
+            ty::Closure(_, args) | ty::Init(_, args) => {
                 let resolved_upvars =
                     self.infcx.shallow_resolve(args.as_closure().tupled_upvars_ty());
                 if resolved_upvars.is_ty_var() {
@@ -1242,6 +1366,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::Array(..)
             | ty::Closure(..)
             | ty::CoroutineClosure(..)
+            | ty::Init(..)
             | ty::Never
             | ty::Error(_) => {
                 candidates.vec.push(SizedCandidate);
@@ -1328,6 +1453,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::CoroutineClosure(..)
             | ty::Coroutine(_, _)
             | ty::CoroutineWitness(..)
+            | ty::Init(..)
             | ty::Never
             | ty::Alias(..)
             | ty::Param(_)
@@ -1367,6 +1493,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::CoroutineClosure(..)
             | ty::Coroutine(..)
             | ty::CoroutineWitness(..)
+            | ty::Init(..)
             | ty::UnsafeBinder(_)
             | ty::Never
             | ty::Tuple(..)
@@ -1420,6 +1547,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::Coroutine(..)
             | ty::UnsafeBinder(_)
             | ty::CoroutineWitness(..)
+            | ty::Init(..)
             | ty::Bound(..) => {
                 candidates.vec.push(BikeshedGuaranteedNoDropCandidate);
             }

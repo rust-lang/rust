@@ -16,8 +16,8 @@ use rustc_ast::visit::{Visitor, walk_expr};
 use rustc_ast::{
     self as ast, AnonConst, Arm, AssignOp, AssignOpKind, AttrStyle, AttrVec, BinOp, BinOpKind,
     BlockCheckMode, CaptureBy, ClosureBinder, DUMMY_NODE_ID, Expr, ExprField, ExprKind, FnDecl,
-    FnRetTy, Label, MacCall, MetaItemLit, Movability, Param, RangeLimits, StmtKind, Ty, TyKind,
-    UnOp, UnsafeBinderCastKind, YieldKind,
+    FnRetTy, InitBlock, InitKind, Label, MacCall, MetaItemLit, Movability, Param, RangeLimits,
+    StmtKind, Ty, TyKind, UnOp, UnsafeBinderCastKind, YieldKind,
 };
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::{Applicability, Diag, PResult, StashKey, Subdiagnostic};
@@ -1462,6 +1462,8 @@ impl<'a> Parser<'a> {
                 this.parse_expr_array_or_repeat(exp!(CloseBracket))
             } else if this.is_builtin() {
                 this.parse_expr_builtin()
+            } else if this.check_init_block() {
+                this.parse_init_block()
             } else if this.check_path() {
                 this.parse_expr_path_start()
             } else if this.check_keyword(exp!(Move))
@@ -1594,9 +1596,18 @@ impl<'a> Parser<'a> {
         let lo = self.token.span;
         self.bump(); // `[` or other open delim
 
-        let kind = if self.eat(close) {
+        let kind = self.parse_expr_array_or_repeat_inner(close)?;
+        let expr = self.mk_expr(lo.to(self.prev_token.span), kind);
+        self.maybe_recover_from_bad_qpath(expr)
+    }
+
+    fn parse_expr_array_or_repeat_inner(
+        &mut self,
+        close: ExpTokenPair<'_>,
+    ) -> PResult<'a, ExprKind> {
+        if self.eat(close) {
             // Empty vector
-            ExprKind::Array(ThinVec::new())
+            Ok(ExprKind::Array(ThinVec::new()))
         } else {
             // Non-empty vector
             let first_expr = self.parse_expr()?;
@@ -1604,21 +1615,19 @@ impl<'a> Parser<'a> {
                 // Repeating array syntax: `[ 0; 512 ]`
                 let count = self.parse_expr_anon_const()?;
                 self.expect(close)?;
-                ExprKind::Repeat(first_expr, count)
+                Ok(ExprKind::Repeat(first_expr, count))
             } else if self.eat(exp!(Comma)) {
                 // Vector with two or more elements.
                 let sep = SeqSep::trailing_allowed(exp!(Comma));
                 let (mut exprs, _) = self.parse_seq_to_end(close, sep, |p| p.parse_expr())?;
                 exprs.insert(0, first_expr);
-                ExprKind::Array(exprs)
+                Ok(ExprKind::Array(exprs))
             } else {
                 // Vector with one element
                 self.expect(close)?;
-                ExprKind::Array(thin_vec![first_expr])
+                Ok(ExprKind::Array(thin_vec![first_expr]))
             }
-        };
-        let expr = self.mk_expr(lo.to(self.prev_token.span), kind);
-        self.maybe_recover_from_bad_qpath(expr)
+        }
     }
 
     fn parse_expr_path_start(&mut self) -> PResult<'a, P<Expr>> {
@@ -2485,6 +2494,53 @@ impl<'a> Parser<'a> {
         self.current_closure = Some(spans);
 
         Ok(closure)
+    }
+
+    /// Parse the tokens following `init # ..`
+    pub(crate) fn parse_init_block(&mut self) -> PResult<'a, P<Expr>> {
+        let init_kw_span = self.token.span;
+        if !self.eat_keyword(exp!(Init)) || !self.eat_noexpect(&TokenKind::Pound) {
+            unreachable!()
+        }
+
+        let expr = self.with_res(self.restrictions - Restrictions::ALLOW_LET, |this| {
+            if this.check(exp!(OpenBracket)) {
+this.bump();
+                match this.parse_expr_array_or_repeat_inner(exp!(CloseBracket))? {
+                    ExprKind::Array(exprs) => {
+                        let span = init_kw_span.to(this.prev_token.span);
+                        self.psess.gated_spans.gate(sym::in_place_initialization, span);
+                        Ok(this.mk_expr(
+                            span,
+                            ExprKind::InitTail(P(InitKind::Array(exprs))),
+                        ))
+                    },
+                    ExprKind::Repeat(_expr, _konst) => todo!("pinit: implement the repeat syntax"),
+                    _ => unreachable!(),
+                }
+            } else if this.check(exp!(OpenParen)) {
+                this.bump();
+                todo!("pinit: this is the path to parsing a tuple")
+            } else if this.check_path() {
+                todo!("pinit: this is the path to parsing a struct with `init` syntax, with unnamed values")
+            } else {
+                let expr = this.parse_expr_bottom()?;
+                let span = init_kw_span.to(this.prev_token.span);
+                self.psess.gated_spans.gate(sym::in_place_initialization, span);
+                Ok(this.mk_expr(span, ExprKind::InitTail(P(InitKind::Free(expr)))))
+            }
+        })?;
+        Ok(self.mk_expr(
+            expr.span,
+            ExprKind::InitBlock(P(InitBlock {
+                init_kw_span,
+                expr,
+                fn_decl: P(FnDecl {
+                    inputs: Default::default(),
+                    output: FnRetTy::Default(init_kw_span.shrink_to_hi()),
+                }),
+            })),
+        ))
     }
 
     /// If an explicit return type is given, require a block to appear (RFC 968).
@@ -4199,6 +4255,8 @@ impl MutVisitor for CondChecker<'_> {
             | ExprKind::Loop(_, _, _)
             | ExprKind::Match(_, _, _)
             | ExprKind::Closure(_)
+            | ExprKind::InitBlock(_)
+            | ExprKind::InitTail(_)
             | ExprKind::Block(_, _)
             | ExprKind::Gen(_, _, _, _)
             | ExprKind::TryBlock(_)

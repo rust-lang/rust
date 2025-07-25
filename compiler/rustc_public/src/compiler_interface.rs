@@ -47,6 +47,7 @@ impl Bridge for BridgeTys {
     type ForeignDef = crate::ty::ForeignDef;
     type FnDef = crate::ty::FnDef;
     type ClosureDef = crate::ty::ClosureDef;
+    type InitDef = crate::ty::InitDef;
     type CoroutineDef = crate::ty::CoroutineDef;
     type CoroutineClosureDef = crate::ty::CoroutineClosureDef;
     type AliasDef = crate::ty::AliasDef;
