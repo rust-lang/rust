@@ -197,6 +197,12 @@ where
                     delegate.compute_goal_fast_path(goal, obligation.cause.span)
                 {
                     match certainty {
+                        // This fast path doesn't depend on region identity so it doesn't
+                        // matter if the goal contains inference variables or not, so we
+                        // don't need to call `push_hir_typeck_potentially_region_dependent_goal`
+                        // here.
+                        //
+                        // Only goals proven via the trait solver should be region dependent.
                         Certainty::Yes => {}
                         Certainty::Maybe(_) => {
                             self.obligations.register(obligation, None);
@@ -234,7 +240,11 @@ where
                 }
 
                 match certainty {
-                    Certainty::Yes => {}
+                    Certainty::Yes => {
+                        if infcx.in_hir_typeck && obligation.has_non_region_infer() {
+                            infcx.push_hir_typeck_potentially_region_dependent_goal(obligation);
+                        }
+                    }
                     Certainty::Maybe(_) => self.obligations.register(obligation, stalled_on),
                 }
             }
