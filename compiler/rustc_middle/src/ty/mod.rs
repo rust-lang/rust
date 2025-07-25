@@ -1993,15 +1993,14 @@ impl<'tcx> TyCtxt<'tcx> {
         self.def_kind(def_id).is_assoc().then(|| self.parent(def_id))
     }
 
-    /// If the given `DefId` describes an item belonging to a trait,
-    /// returns the `DefId` of the trait that the trait item belongs to;
-    /// otherwise, returns `None`.
+    /// If the given `DefId` is an associated item of a trait,
+    /// returns the `DefId` of the trait; otherwise, returns `None`.
     pub fn trait_of_assoc(self, def_id: DefId) -> Option<DefId> {
         self.assoc_parent(def_id).filter(|id| self.def_kind(id) == DefKind::Trait)
     }
 
-    /// If the given `DefId` describes a method belonging to an impl, returns the
-    /// `DefId` of the impl that the method belongs to; otherwise, returns `None`.
+    /// If the given `DefId` is an associated item of an impl,
+    /// returns the `DefId` of the impl; otherwise returns `None`.
     pub fn impl_of_assoc(self, def_id: DefId) -> Option<DefId> {
         self.assoc_parent(def_id).filter(|id| matches!(self.def_kind(id), DefKind::Impl { .. }))
     }
