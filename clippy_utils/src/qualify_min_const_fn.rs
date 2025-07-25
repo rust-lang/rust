@@ -420,7 +420,7 @@ pub fn is_stable_const_fn(cx: &LateContext<'_>, def_id: DefId, msrv: Msrv) -> bo
             .lookup_const_stability(def_id)
             .or_else(|| {
                 cx.tcx
-                    .trait_of_item(def_id)
+                    .trait_of_assoc(def_id)
                     .and_then(|trait_def_id| cx.tcx.lookup_const_stability(trait_def_id))
             })
             .is_none_or(|const_stab| {

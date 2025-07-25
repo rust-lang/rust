@@ -300,7 +300,7 @@ fn check_io_mode(cx: &LateContext<'_>, call: &hir::Expr<'_>) -> Option<IoOp> {
     };
 
     if let Some(method_def_id) = cx.typeck_results().type_dependent_def_id(call.hir_id)
-        && let Some(trait_def_id) = cx.tcx.trait_of_item(method_def_id)
+        && let Some(trait_def_id) = cx.tcx.trait_of_assoc(method_def_id)
     {
         if let Some(diag_name) = cx.tcx.get_diagnostic_name(trait_def_id) {
             match diag_name {
