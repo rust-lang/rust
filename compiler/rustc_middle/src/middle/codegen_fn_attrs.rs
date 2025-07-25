@@ -48,6 +48,7 @@ pub struct CodegenFnAttrs {
     /// switching between multiple instruction sets.
     pub instruction_set: Option<InstructionSetAttr>,
     /// The `#[align(...)]` attribute. Determines the alignment of the function body.
+    // FIXME(#82232, #143834): temporarily renamed to mitigate `#[align]` nameres ambiguity
     pub alignment: Option<Align>,
     /// The `#[patchable_function_entry(...)]` attribute. Indicates how many nops should be around
     /// the function entry.

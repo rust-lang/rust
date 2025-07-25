@@ -289,7 +289,8 @@ fn emit_malformed_attribute(
             | sym::rustc_force_inline
             | sym::rustc_confusables
             | sym::repr
-            | sym::align
+            // FIXME(#82232, #143834): temporarily renamed to mitigate `#[align]` nameres ambiguity
+            | sym::rustc_align
             | sym::deprecated
             | sym::optimize
             | sym::cold

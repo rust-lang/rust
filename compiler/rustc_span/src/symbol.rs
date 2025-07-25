@@ -1806,6 +1806,8 @@ symbols! {
         rust_out,
         rustc,
         rustc_abi,
+        // FIXME(#82232, #143834): temporary name to mitigate `#[align]` nameres ambiguity
+        rustc_align,
         rustc_allocator,
         rustc_allocator_zeroed,
         rustc_allow_const_fn_unstable,
