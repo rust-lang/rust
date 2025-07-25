@@ -46,6 +46,9 @@ use crate::sys::sync as sys;
 ///   storing the guard to a [`Cell`] within [`Drop::drop`] and accessing it
 ///   outside, or vice versa, can affect poisoning status in an unexpected way.
 ///
+/// - Foreign exceptions do not currently trigger poisoning even in absence of
+///   other panics.
+///
 /// While this rarely happens in realistic code, `unsafe` code cannot rely on
 /// poisoning for soundness, since the behavior of poisoning can depend on
 /// outside context. Here's an example of **incorrect** use of poisoning:
