@@ -1,0 +1,42 @@
+// MIR for `<impl at $DIR/derived_ord_debug.rs:6:22: 6:25>::cmp` after PreCodegen
+
+fn <impl at $DIR/derived_ord_debug.rs:6:22: 6:25>::cmp(_1: &MultiField, _2: &MultiField) -> std::cmp::Ordering {
+    debug self => _1;
+    debug other => _2;
+    let mut _0: std::cmp::Ordering;
+    let _3: &char;
+    let _4: &char;
+    let mut _5: std::cmp::Ordering;
+    let mut _6: i8;
+    let _7: &i16;
+    let _8: &i16;
+    scope 1 {
+        debug cmp => _5;
+    }
+
+    bb0: {
+        _3 = &((*_1).0: char);
+        _4 = &((*_2).0: char);
+        _5 = <char as Ord>::cmp(copy _3, copy _4) -> [return: bb1, unwind unreachable];
+    }
+
+    bb1: {
+        _6 = discriminant(_5);
+        switchInt(move _6) -> [0: bb2, otherwise: bb3];
+    }
+
+    bb2: {
+        _7 = &((*_1).1: i16);
+        _8 = &((*_2).1: i16);
+        _0 = <i16 as Ord>::cmp(copy _7, copy _8) -> [return: bb4, unwind unreachable];
+    }
+
+    bb3: {
+        _0 = copy _5;
+        goto -> bb4;
+    }
+
+    bb4: {
+        return;
+    }
+}
