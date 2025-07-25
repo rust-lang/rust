@@ -911,6 +911,7 @@ where
 
         ops::Bound::Excluded(&end) if end > len => slice_index_fail(0, end, len),
         ops::Bound::Excluded(&end) => end,
+
         ops::Bound::Unbounded => len,
     };
 
@@ -966,19 +967,29 @@ where
 {
     let len = bounds.end;
 
-    let start = match range.start_bound() {
-        ops::Bound::Included(&start) => start,
-        ops::Bound::Excluded(start) => start.checked_add(1)?,
-        ops::Bound::Unbounded => 0,
-    };
-
     let end = match range.end_bound() {
-        ops::Bound::Included(end) => end.checked_add(1)?,
+        ops::Bound::Included(&end) if end >= len => return None,
+        // Cannot overflow because `end < len` implies `end < usize::MAX`.
+        ops::Bound::Included(end) => end + 1,
+
+        ops::Bound::Excluded(&end) if end > len => return None,
         ops::Bound::Excluded(&end) => end,
+
         ops::Bound::Unbounded => len,
     };
 
-    if start > end || end > len { None } else { Some(ops::Range { start, end }) }
+    let start = match range.start_bound() {
+        ops::Bound::Excluded(&start) if start >= end => return None,
+        // Cannot overflow because `start < end` implies `start < usize::MAX`.
+        ops::Bound::Excluded(&start) => start + 1,
+
+        ops::Bound::Included(&start) if start > end => return None,
+        ops::Bound::Included(&start) => start,
+
+        ops::Bound::Unbounded => 0,
+    };
+
+    Some(ops::Range { start, end })
 }
 
 /// Converts a pair of `ops::Bound`s into `ops::Range` without performing any
@@ -1007,21 +1018,27 @@ pub(crate) fn into_range(
     len: usize,
     (start, end): (ops::Bound<usize>, ops::Bound<usize>),
 ) -> Option<ops::Range<usize>> {
-    use ops::Bound;
-    let start = match start {
-        Bound::Included(start) => start,
-        Bound::Excluded(start) => start.checked_add(1)?,
-        Bound::Unbounded => 0,
-    };
-
     let end = match end {
-        Bound::Included(end) => end.checked_add(1)?,
-        Bound::Excluded(end) => end,
-        Bound::Unbounded => len,
+        ops::Bound::Included(end) if end >= len => return None,
+        // Cannot overflow because `end < len` implies `end < usize::MAX`.
+        ops::Bound::Included(end) => end + 1,
+
+        ops::Bound::Excluded(end) if end > len => return None,
+        ops::Bound::Excluded(end) => end,
+
+        ops::Bound::Unbounded => len,
     };
 
-    // Don't bother with checking `start < end` and `end <= len`
-    // since these checks are handled by `Range` impls
+    let start = match start {
+        ops::Bound::Excluded(start) if start >= end => return None,
+        // Cannot overflow because `start < end` implies `start < usize::MAX`.
+        ops::Bound::Excluded(start) => start + 1,
+
+        ops::Bound::Included(start) if start > end => return None,
+        ops::Bound::Included(start) => start,
+
+        ops::Bound::Unbounded => 0,
+    };
 
     Some(start..end)
 }
