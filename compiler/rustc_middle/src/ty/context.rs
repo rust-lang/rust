@@ -1044,8 +1044,8 @@ const NUM_PREINTERNED_FRESH_FLOAT_TYS: u32 = 3;
 
 // This number may seem high, but it is reached in all but the smallest crates.
 const NUM_PREINTERNED_RE_VARS: u32 = 500;
-const NUM_PREINTERNED_RE_LATE_BOUNDS_I: u32 = 2;
-const NUM_PREINTERNED_RE_LATE_BOUNDS_V: u32 = 20;
+const NUM_PREINTERNED_ANON_RE_BOUNDS_I: u32 = 3;
+const NUM_PREINTERNED_ANON_RE_BOUNDS_V: u32 = 20;
 
 pub struct CommonTypes<'tcx> {
     pub unit: Ty<'tcx>,
@@ -1101,9 +1101,9 @@ pub struct CommonLifetimes<'tcx> {
     pub re_vars: Vec<Region<'tcx>>,
 
     /// Pre-interned values of the form:
-    /// `ReBound(DebruijnIndex(i), BoundRegion { var: v, kind: BrAnon })`
+    /// `ReBound(DebruijnIndex(i), BoundRegion { var: v, kind: BoundRegionKind::Anon })`
     /// for small values of `i` and `v`.
-    pub re_late_bounds: Vec<Vec<Region<'tcx>>>,
+    pub anon_re_bounds: Vec<Vec<Region<'tcx>>>,
 }
 
 pub struct CommonConsts<'tcx> {
@@ -1176,9 +1176,9 @@ impl<'tcx> CommonLifetimes<'tcx> {
         let re_vars =
             (0..NUM_PREINTERNED_RE_VARS).map(|n| mk(ty::ReVar(ty::RegionVid::from(n)))).collect();
 
-        let re_late_bounds = (0..NUM_PREINTERNED_RE_LATE_BOUNDS_I)
+        let anon_re_bounds = (0..NUM_PREINTERNED_ANON_RE_BOUNDS_I)
             .map(|i| {
-                (0..NUM_PREINTERNED_RE_LATE_BOUNDS_V)
+                (0..NUM_PREINTERNED_ANON_RE_BOUNDS_V)
                     .map(|v| {
                         mk(ty::ReBound(
                             ty::DebruijnIndex::from(i),
@@ -1196,7 +1196,7 @@ impl<'tcx> CommonLifetimes<'tcx> {
             re_static: mk(ty::ReStatic),
             re_erased: mk(ty::ReErased),
             re_vars,
-            re_late_bounds,
+            anon_re_bounds,
         }
     }
 }
