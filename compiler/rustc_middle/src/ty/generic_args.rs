@@ -96,14 +96,12 @@ impl<'tcx> rustc_type_ir::inherent::GenericArgs<TyCtxt<'tcx>> for ty::GenericArg
                 signature_parts_ty,
                 tupled_upvars_ty,
                 coroutine_captures_by_ref_ty,
-                coroutine_witness_ty,
             ] => ty::CoroutineClosureArgsParts {
                 parent_args,
                 closure_kind_ty: closure_kind_ty.expect_ty(),
                 signature_parts_ty: signature_parts_ty.expect_ty(),
                 tupled_upvars_ty: tupled_upvars_ty.expect_ty(),
                 coroutine_captures_by_ref_ty: coroutine_captures_by_ref_ty.expect_ty(),
-                coroutine_witness_ty: coroutine_witness_ty.expect_ty(),
             },
             _ => bug!("closure args missing synthetics"),
         }
@@ -111,23 +109,16 @@ impl<'tcx> rustc_type_ir::inherent::GenericArgs<TyCtxt<'tcx>> for ty::GenericArg
 
     fn split_coroutine_args(self) -> ty::CoroutineArgsParts<TyCtxt<'tcx>> {
         match self[..] {
-            [
-                ref parent_args @ ..,
-                kind_ty,
-                resume_ty,
-                yield_ty,
-                return_ty,
-                witness,
-                tupled_upvars_ty,
-            ] => ty::CoroutineArgsParts {
-                parent_args,
-                kind_ty: kind_ty.expect_ty(),
-                resume_ty: resume_ty.expect_ty(),
-                yield_ty: yield_ty.expect_ty(),
-                return_ty: return_ty.expect_ty(),
-                witness: witness.expect_ty(),
-                tupled_upvars_ty: tupled_upvars_ty.expect_ty(),
-            },
+            [ref parent_args @ .., kind_ty, resume_ty, yield_ty, return_ty, tupled_upvars_ty] => {
+                ty::CoroutineArgsParts {
+                    parent_args,
+                    kind_ty: kind_ty.expect_ty(),
+                    resume_ty: resume_ty.expect_ty(),
+                    yield_ty: yield_ty.expect_ty(),
+                    return_ty: return_ty.expect_ty(),
+                    tupled_upvars_ty: tupled_upvars_ty.expect_ty(),
+                }
+            }
             _ => bug!("coroutine args missing synthetics"),
         }
     }

@@ -330,7 +330,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for StalledOnCoroutines<'tcx> {
             return ControlFlow::Continue(());
         }
 
-        if let ty::CoroutineWitness(def_id, _) = *ty.kind()
+        if let ty::Coroutine(def_id, _) = *ty.kind()
             && def_id.as_local().is_some_and(|def_id| self.stalled_coroutines.contains(&def_id))
         {
             ControlFlow::Break(())

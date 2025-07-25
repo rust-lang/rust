@@ -9,10 +9,6 @@
                     std::future::ResumeTy,
                     (),
                     (),
-                    CoroutineWitness(
-                        DefId(0:5 ~ async_await[ccf8]::a::{closure#0}),
-                        [],
-                    ),
                     (),
                 ],
             ),
@@ -30,10 +26,6 @@
                     std::future::ResumeTy,
                     (),
                     (),
-                    CoroutineWitness(
-                        DefId(0:5 ~ async_await[ccf8]::a::{closure#0}),
-                        [],
-                    ),
                     (),
                 ],
             ),

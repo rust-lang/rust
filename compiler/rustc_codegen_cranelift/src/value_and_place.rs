@@ -973,19 +973,6 @@ pub(crate) fn assert_assignable<'tcx>(
                 }
             }
         }
-        (&ty::CoroutineWitness(def_id_a, args_a), &ty::CoroutineWitness(def_id_b, args_b))
-            if def_id_a == def_id_b =>
-        {
-            let mut types_a = args_a.types();
-            let mut types_b = args_b.types();
-            loop {
-                match (types_a.next(), types_b.next()) {
-                    (Some(a), Some(b)) => assert_assignable(fx, a, b, limit - 1),
-                    (None, None) => return,
-                    (Some(_), None) | (None, Some(_)) => panic!("{:#?}/{:#?}", from_ty, to_ty),
-                }
-            }
-        }
         _ => {
             assert_eq!(
                 from_ty,
