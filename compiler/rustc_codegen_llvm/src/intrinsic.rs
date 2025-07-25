@@ -15,6 +15,7 @@ use rustc_middle::mir::BinOp;
 use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, HasTypingEnv, LayoutOf};
 use rustc_middle::ty::{self, GenericArgsRef, Instance, Ty, TyCtxt, TypingEnv};
 use rustc_middle::{bug, span_bug};
+use rustc_session::config::Lto;
 use rustc_span::{Span, Symbol, sym};
 use rustc_symbol_mangling::{mangle_internal_symbol, symbol_name_for_instance_in_crate};
 use rustc_target::callconv::PassMode;
@@ -25,6 +26,7 @@ use crate::abi::FnAbiLlvmExt;
 use crate::builder::Builder;
 use crate::builder::autodiff::{adjust_activity_to_abi, generate_enzyme_call};
 use crate::context::CodegenCx;
+use crate::errors::{AutoDiffWithoutEnable, AutoDiffWithoutLTO};
 use crate::llvm::{self, Metadata};
 use crate::type_::Type;
 use crate::type_of::LayoutLlvmExt;
@@ -1128,6 +1130,14 @@ fn codegen_enzyme_autodiff<'ll, 'tcx>(
     args: &[OperandRef<'tcx, &'ll Value>],
     result: PlaceRef<'tcx, &'ll Value>,
 ) {
+    if !tcx.sess.opts.unstable_opts.autodiff.contains(&rustc_session::config::AutoDiff::Enable) {
+        let _ = tcx.dcx().emit_almost_fatal(AutoDiffWithoutEnable);
+    }
+
+    if tcx.sess.lto() != Lto::Fat {
+        let _ = tcx.dcx().emit_almost_fatal(AutoDiffWithoutLTO);
+    }
+
     let fn_args = instance.args;
     let callee_ty = instance.ty(tcx, bx.typing_env());
 
