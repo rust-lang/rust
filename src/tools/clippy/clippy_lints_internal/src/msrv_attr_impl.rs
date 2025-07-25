@@ -1,6 +1,7 @@
 use crate::internal_paths;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet;
+use clippy_utils::sym;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass, LintContext};
@@ -40,7 +41,9 @@ impl LateLintPass<'_> for MsrvAttrImpl {
                     .filter(|t| matches!(t.kind(), GenericArgKind::Type(_)))
                     .any(|t| internal_paths::MSRV_STACK.matches_ty(cx, t.expect_ty()))
             })
-            && !items.iter().any(|item| item.ident.name.as_str() == "check_attributes")
+            && !items
+                .iter()
+                .any(|&item| cx.tcx.item_name(item.owner_id) == sym::check_attributes)
         {
             let span = cx.sess().source_map().span_through_char(item.span, '{');
             span_lint_and_sugg(
