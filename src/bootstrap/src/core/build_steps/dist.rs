@@ -1068,6 +1068,8 @@ impl Step for PlainSourceTarball {
             "bootstrap.example.toml",
             "configure",
             "license-metadata.json",
+            "package-lock.json",
+            "package.json",
             "x",
             "x.ps1",
             "x.py",

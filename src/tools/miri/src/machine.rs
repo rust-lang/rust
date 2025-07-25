@@ -4,7 +4,6 @@
 use std::any::Any;
 use std::borrow::Cow;
 use std::cell::{Cell, RefCell};
-use std::collections::hash_map::Entry;
 use std::path::Path;
 use std::rc::Rc;
 use std::{fmt, process};
@@ -70,12 +69,6 @@ pub struct FrameExtra<'tcx> {
     /// This is used by `MiriMachine::current_span` and `MiriMachine::caller_span`
     pub is_user_relevant: bool,
 
-    /// We have a cache for the mapping from [`mir::Const`] to resulting [`AllocId`].
-    /// However, we don't want all frames to always get the same result, so we insert
-    /// an additional bit of "salt" into the cache key. This salt is fixed per-frame
-    /// so that within a call, a const will have a stable address.
-    salt: usize,
-
     /// Data race detector per-frame data.
     pub data_race: Option<data_race::FrameState>,
 }
@@ -88,14 +81,12 @@ impl<'tcx> std::fmt::Debug for FrameExtra<'tcx> {
             catch_unwind,
             timing: _,
             is_user_relevant,
-            salt,
             data_race,
         } = self;
         f.debug_struct("FrameData")
             .field("borrow_tracker", borrow_tracker)
             .field("catch_unwind", catch_unwind)
             .field("is_user_relevant", is_user_relevant)
-            .field("salt", salt)
             .field("data_race", data_race)
             .finish()
     }
@@ -108,7 +99,6 @@ impl VisitProvenance for FrameExtra<'_> {
             borrow_tracker,
             timing: _,
             is_user_relevant: _,
-            salt: _,
             data_race: _,
         } = self;
 
@@ -578,11 +568,6 @@ pub struct MiriMachine<'tcx> {
     /// diagnostics.
     pub(crate) allocation_spans: RefCell<FxHashMap<AllocId, (Span, Option<Span>)>>,
 
-    /// Maps MIR consts to their evaluated result. We combine the const with a "salt" (`usize`)
-    /// that is fixed per stack frame; this lets us have sometimes different results for the
-    /// same const while ensuring consistent results within a single call.
-    const_cache: RefCell<FxHashMap<(mir::Const<'tcx>, usize), OpTy<'tcx>>>,
-
     /// For each allocation, an offset inside that allocation that was deemed aligned even for
     /// symbolic alignment checks. This cannot be stored in `AllocExtra` since it needs to be
     /// tracked for vtables and function allocations as well as regular allocations.
@@ -764,7 +749,6 @@ impl<'tcx> MiriMachine<'tcx> {
             stack_size,
             collect_leak_backtraces: config.collect_leak_backtraces,
             allocation_spans: RefCell::new(FxHashMap::default()),
-            const_cache: RefCell::new(FxHashMap::default()),
             symbolic_alignment: RefCell::new(FxHashMap::default()),
             union_data_ranges: FxHashMap::default(),
             pthread_mutex_sanity: Cell::new(false),
@@ -941,7 +925,6 @@ impl VisitProvenance for MiriMachine<'_> {
             stack_size: _,
             collect_leak_backtraces: _,
             allocation_spans: _,
-            const_cache: _,
             symbolic_alignment: _,
             union_data_ranges: _,
             pthread_mutex_sanity: _,
@@ -1578,7 +1561,6 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
             catch_unwind: None,
             timing,
             is_user_relevant: ecx.machine.is_user_relevant(&frame),
-            salt: ecx.machine.rng.borrow_mut().random_range(0..ADDRS_PER_ANON_GLOBAL),
             data_race: ecx
                 .machine
                 .data_race
@@ -1735,33 +1717,6 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
             );
         }
         interp_ok(())
-    }
-
-    fn eval_mir_constant<F>(
-        ecx: &InterpCx<'tcx, Self>,
-        val: mir::Const<'tcx>,
-        span: Span,
-        layout: Option<TyAndLayout<'tcx>>,
-        eval: F,
-    ) -> InterpResult<'tcx, OpTy<'tcx>>
-    where
-        F: Fn(
-            &InterpCx<'tcx, Self>,
-            mir::Const<'tcx>,
-            Span,
-            Option<TyAndLayout<'tcx>>,
-        ) -> InterpResult<'tcx, OpTy<'tcx>>,
-    {
-        let frame = ecx.active_thread_stack().last().unwrap();
-        let mut cache = ecx.machine.const_cache.borrow_mut();
-        match cache.entry((val, frame.extra.salt)) {
-            Entry::Vacant(ve) => {
-                let op = eval(ecx, val, span, layout)?;
-                ve.insert(op.clone());
-                interp_ok(op)
-            }
-            Entry::Occupied(oe) => interp_ok(oe.get().clone()),
-        }
     }
 
     fn get_global_alloc_salt(

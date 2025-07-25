@@ -58,7 +58,7 @@
 //! We don't actually use the `/INCLUDE` linker flag here like the article
 //! mentions because the Rust compiler doesn't propagate linker flags, but
 //! instead we use a shim function which performs a volatile 1-byte load from
-//! the address of the symbol to ensure it sticks around.
+//! the address of the _tls_used symbol to ensure it sticks around.
 //!
 //! [1]: https://www.codeproject.com/Articles/8113/Thread-Local-Storage-The-C-Way
 //! [2]: https://github.com/ChromiumWebApps/chromium/blob/master/base/threading/thread_local_storage_win.cc#L42
@@ -68,9 +68,20 @@ use core::ffi::c_void;
 use crate::ptr;
 use crate::sys::c;
 
+unsafe extern "C" {
+    #[link_name = "_tls_used"]
+    static TLS_USED: u8;
+}
 pub fn enable() {
-    // When destructors are used, we don't want LLVM eliminating CALLBACK for any
-    // reason. Once the symbol makes it to the linker, it will do the rest.
+    // When destructors are used, we need to add a reference to the _tls_used
+    // symbol provided by the CRT, otherwise the TLS support code will get
+    // GC'd by the linker and our callback won't be called.
+    unsafe { ptr::from_ref(&TLS_USED).read_volatile() };
+    // We also need to reference CALLBACK to make sure it does not get GC'd
+    // by the compiler/LLVM. The callback will end up inside the TLS
+    // callback array pointed to by _TLS_USED through linker shenanigans,
+    // but as far as the compiler is concerned, it looks like the data is
+    // unused, so we need this hack to prevent it from disappearing.
     unsafe { ptr::from_ref(&CALLBACK).read_volatile() };
 }
 

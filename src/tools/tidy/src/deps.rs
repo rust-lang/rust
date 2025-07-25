@@ -378,6 +378,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "serde",
     "serde_derive",
     "serde_json",
+    "serde_path_to_error",
     "sha1",
     "sha2",
     "sharded-slab",

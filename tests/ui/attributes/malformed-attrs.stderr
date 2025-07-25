@@ -154,21 +154,6 @@ error: malformed `no_link` attribute input
 LL | #[no_link()]
    | ^^^^^^^^^^^^ help: must be of the form: `#[no_link]`
 
-error: malformed `macro_use` attribute input
-  --> $DIR/malformed-attrs.rs:210:1
-   |
-LL | #[macro_use = 1]
-   | ^^^^^^^^^^^^^^^^
-   |
-help: the following are the possible correct uses
-   |
-LL - #[macro_use = 1]
-LL + #[macro_use(name1, name2, ...)]
-   |
-LL - #[macro_use = 1]
-LL + #[macro_use]
-   |
-
 error: malformed `macro_export` attribute input
   --> $DIR/malformed-attrs.rs:215:1
    |
@@ -566,6 +551,12 @@ LL | #[non_exhaustive = 1]
    | |                |
    | |                didn't expect any arguments here
    | help: must be of the form: `#[non_exhaustive]`
+
+error: valid forms for the attribute are `#[macro_use(name1, name2, ...)]` and `#[macro_use]`
+  --> $DIR/malformed-attrs.rs:210:1
+   |
+LL | #[macro_use = 1]
+   | ^^^^^^^^^^^^^^^^
 
 error[E0565]: malformed `type_const` attribute input
   --> $DIR/malformed-attrs.rs:144:5

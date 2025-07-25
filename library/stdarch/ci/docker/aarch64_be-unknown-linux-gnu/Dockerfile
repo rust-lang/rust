@@ -1,4 +1,4 @@
-FROM ubuntu:25.04
+FROM ubuntu:25.10
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
   gcc \
@@ -9,15 +9,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   qemu-user \
   make \
   file \
-  clang-19 \
+  clang \
   curl \
   xz-utils \
   lld
 
-ENV TOOLCHAIN="arm-gnu-toolchain-14.2.rel1-x86_64-aarch64_be-none-linux-gnu"
+ENV TOOLCHAIN="arm-gnu-toolchain-14.3.rel1-x86_64-aarch64_be-none-linux-gnu"
 
 # Download the aarch64_be gcc toolchain
-RUN curl -L "https://developer.arm.com/-/media/Files/downloads/gnu/14.2.rel1/binrel/${TOOLCHAIN}.tar.xz" -o "${TOOLCHAIN}.tar.xz"
+RUN curl -L "https://developer.arm.com/-/media/Files/downloads/gnu/14.3.rel1/binrel/${TOOLCHAIN}.tar.xz" -o "${TOOLCHAIN}.tar.xz"
 RUN tar -xvf "${TOOLCHAIN}.tar.xz"
 RUN mkdir /toolchains && mv "./${TOOLCHAIN}" /toolchains
 

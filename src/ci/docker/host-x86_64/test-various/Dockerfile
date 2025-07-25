@@ -65,14 +65,14 @@ ENV WASM_SCRIPT python3 /checkout/x.py --stage 2 test --host='' --target $WASM_T
   tests/ui \
   tests/mir-opt \
   tests/codegen-units \
-  tests/codegen \
-  tests/assembly \
+  tests/codegen-llvm \
+  tests/assembly-llvm \
   library/core
 
 ENV NVPTX_TARGETS=nvptx64-nvidia-cuda
 ENV NVPTX_SCRIPT python3 /checkout/x.py --stage 2 test --host='' --target $NVPTX_TARGETS \
   tests/run-make \
-  tests/assembly
+  tests/assembly-llvm
 
 ENV MUSL_TARGETS=x86_64-unknown-linux-musl \
     CC_x86_64_unknown_linux_musl=x86_64-linux-musl-gcc \

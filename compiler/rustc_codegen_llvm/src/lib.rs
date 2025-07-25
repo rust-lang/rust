@@ -22,6 +22,7 @@
 use std::any::Any;
 use std::ffi::CStr;
 use std::mem::ManuallyDrop;
+use std::path::PathBuf;
 
 use back::owned_target_machine::OwnedTargetMachine;
 use back::write::{create_informational_target_machine, create_target_machine};
@@ -176,11 +177,13 @@ impl WriteBackendMethods for LlvmCodegenBackend {
     }
     fn run_and_optimize_fat_lto(
         cgcx: &CodegenContext<Self>,
+        exported_symbols_for_lto: &[String],
+        each_linked_rlib_for_lto: &[PathBuf],
         modules: Vec<FatLtoInput<Self>>,
-        cached_modules: Vec<(SerializedModule<Self::ModuleBuffer>, WorkProduct)>,
         diff_fncs: Vec<AutoDiffItem>,
     ) -> Result<ModuleCodegen<Self::Module>, FatalError> {
-        let mut module = back::lto::run_fat(cgcx, modules, cached_modules)?;
+        let mut module =
+            back::lto::run_fat(cgcx, exported_symbols_for_lto, each_linked_rlib_for_lto, modules)?;
 
         if !diff_fncs.is_empty() {
             builder::autodiff::differentiate(&module, cgcx, diff_fncs)?;
@@ -194,10 +197,18 @@ impl WriteBackendMethods for LlvmCodegenBackend {
     }
     fn run_thin_lto(
         cgcx: &CodegenContext<Self>,
+        exported_symbols_for_lto: &[String],
+        each_linked_rlib_for_lto: &[PathBuf],
         modules: Vec<(String, Self::ThinBuffer)>,
         cached_modules: Vec<(SerializedModule<Self::ModuleBuffer>, WorkProduct)>,
     ) -> Result<(Vec<ThinModule<Self>>, Vec<WorkProduct>), FatalError> {
-        back::lto::run_thin(cgcx, modules, cached_modules)
+        back::lto::run_thin(
+            cgcx,
+            exported_symbols_for_lto,
+            each_linked_rlib_for_lto,
+            modules,
+            cached_modules,
+        )
     }
     fn optimize(
         cgcx: &CodegenContext<Self>,

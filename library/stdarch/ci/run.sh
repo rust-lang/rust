@@ -78,20 +78,12 @@ cargo_test() {
 }
 
 CORE_ARCH="--manifest-path=crates/core_arch/Cargo.toml"
-STD_DETECT="--manifest-path=crates/std_detect/Cargo.toml"
 STDARCH_EXAMPLES="--manifest-path=examples/Cargo.toml"
 INTRINSIC_TEST="--manifest-path=crates/intrinsic-test/Cargo.toml"
 
 cargo_test "${CORE_ARCH} ${PROFILE}"
 
 if [ "$NOSTD" != "1" ]; then
-    cargo_test "${STD_DETECT} ${PROFILE}"
-
-    cargo_test "${STD_DETECT} --no-default-features"
-    cargo_test "${STD_DETECT} --no-default-features --features=std_detect_file_io"
-    cargo_test "${STD_DETECT} --no-default-features --features=std_detect_dlsym_getauxval"
-    cargo_test "${STD_DETECT} --no-default-features --features=std_detect_dlsym_getauxval,std_detect_file_io"
-
     cargo_test "${STDARCH_EXAMPLES} ${PROFILE}"
 fi
 
@@ -139,26 +131,26 @@ case ${TARGET} in
         cargo_test "${PROFILE}"
         ;;
 
-    # Setup aarch64 & armv7 specific variables, the runner, along with some 
+    # Setup aarch64 & armv7 specific variables, the runner, along with some
     # tests to skip
     aarch64-unknown-linux-gnu*)
         TEST_CPPFLAGS="-fuse-ld=lld -I/usr/aarch64-linux-gnu/include/ -I/usr/aarch64-linux-gnu/include/c++/9/aarch64-linux-gnu/"
         TEST_SKIP_INTRINSICS=crates/intrinsic-test/missing_aarch64.txt
-        TEST_CXX_COMPILER="clang++-19"
+        TEST_CXX_COMPILER="clang++"
         TEST_RUNNER="${CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_RUNNER}"
         ;;
 
     aarch64_be-unknown-linux-gnu*)
         TEST_CPPFLAGS="-fuse-ld=lld"
         TEST_SKIP_INTRINSICS=crates/intrinsic-test/missing_aarch64.txt
-        TEST_CXX_COMPILER="clang++-19"
+        TEST_CXX_COMPILER="clang++"
         TEST_RUNNER="${CARGO_TARGET_AARCH64_BE_UNKNOWN_LINUX_GNU_RUNNER}"
         ;;
 
     armv7-unknown-linux-gnueabihf*)
         TEST_CPPFLAGS="-fuse-ld=lld -I/usr/arm-linux-gnueabihf/include/ -I/usr/arm-linux-gnueabihf/include/c++/9/arm-linux-gnueabihf/"
         TEST_SKIP_INTRINSICS=crates/intrinsic-test/missing_arm.txt
-        TEST_CXX_COMPILER="clang++-19"
+        TEST_CXX_COMPILER="clang++"
         TEST_RUNNER="${CARGO_TARGET_ARMV7_UNKNOWN_LINUX_GNUEABIHF_RUNNER}"
         ;;
     *)

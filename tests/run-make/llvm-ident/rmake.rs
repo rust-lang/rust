@@ -27,7 +27,7 @@ fn main() {
 
     // Check LLVM IR files (including temporary outputs) have `!llvm.ident`
     // named metadata, reusing the related codegen test.
-    let llvm_ident_path = source_root().join("tests/codegen/llvm-ident.rs");
+    let llvm_ident_path = source_root().join("tests/codegen-llvm/llvm-ident.rs");
     let files = shallow_find_files(".", |path| has_extension(path, "ll"));
     for file in files {
         llvm_filecheck().input_file(file).arg(&llvm_ident_path).run();
