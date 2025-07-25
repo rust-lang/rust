@@ -285,6 +285,11 @@ fn parse_cfg_name_directive<'a>(
         if name == "gdb-version" {
             outcome = MatchOutcome::External;
         }
+
+        // Don't error out for ignore-backends,as it is handled elsewhere.
+        if name == "backends" {
+            outcome = MatchOutcome::External;
+        }
     }
 
     ParsedNameDirective {
