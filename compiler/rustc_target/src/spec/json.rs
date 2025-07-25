@@ -245,19 +245,17 @@ impl ToJson for Target {
         target.update_to_cli();
 
         macro_rules! target_val {
-            ($attr:ident) => {{
-                let name = (stringify!($attr)).replace("_", "-");
-                d.insert(name, target.$attr.to_json());
+            ($attr:ident) => {
+                target_val!($attr, (stringify!($attr)).replace("_", "-"))
+            };
+            ($attr:ident, $json_name:expr) => {{
+                let name = $json_name;
+                d.insert(name.into(), target.$attr.to_json());
             }};
         }
 
         macro_rules! target_option_val {
-            ($attr:ident) => {{
-                let name = (stringify!($attr)).replace("_", "-");
-                if default.$attr != target.$attr {
-                    d.insert(name, target.$attr.to_json());
-                }
-            }};
+            ($attr:ident) => {{ target_option_val!($attr, (stringify!($attr)).replace("_", "-")) }};
             ($attr:ident, $json_name:expr) => {{
                 let name = $json_name;
                 if default.$attr != target.$attr {
@@ -290,7 +288,7 @@ impl ToJson for Target {
 
         target_val!(llvm_target);
         target_val!(metadata);
-        d.insert("target-pointer-width".to_string(), self.pointer_width.to_string().to_json());
+        target_val!(pointer_width, "target-pointer-width");
         target_val!(arch);
         target_val!(data_layout);
 
