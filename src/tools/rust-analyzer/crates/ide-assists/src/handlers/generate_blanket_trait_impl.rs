@@ -3,7 +3,9 @@ use crate::{
     assist_context::{AssistContext, Assists},
     utils::add_cfg_attrs_to,
 };
+use hir::Semantics;
 use ide_db::{
+    RootDatabase,
     assists::{AssistId, AssistKind, ExprFillDefaultMode},
     syntax_helpers::suggest_name,
 };
@@ -60,6 +62,11 @@ pub(crate) fn generate_blanket_trait_impl(
 ) -> Option<()> {
     let name = ctx.find_node_at_offset::<ast::Name>()?;
     let traitd = ast::Trait::cast(name.syntax().parent()?)?;
+
+    if existing_any_impl(&traitd, &ctx.sema).is_some() {
+        cov_mark::hit!(existing_any_impl);
+        return None;
+    }
 
     acc.add(
         AssistId("generate_blanket_trait_impl", AssistKind::Generate, None),
@@ -141,6 +148,16 @@ pub(crate) fn generate_blanket_trait_impl(
     );
 
     Some(())
+}
+
+fn existing_any_impl(traitd: &ast::Trait, sema: &Semantics<'_, RootDatabase>) -> Option<hir::Impl> {
+    let db = sema.db;
+    let traitd = sema.to_def(traitd)?;
+    traitd
+        .module(db)
+        .impl_defs(db)
+        .into_iter()
+        .find(|impl_| impl_.trait_(db).is_some_and(|it| it == traitd))
 }
 
 fn has_sized(traitd: &ast::Trait) -> bool {
@@ -1418,6 +1435,51 @@ where
         println!("{}", self.foo());
     }
 }
+"#,
+        );
+    }
+
+    #[test]
+    fn test_gen_blanket_existing_impl() {
+        cov_mark::check!(existing_any_impl);
+        check_assist_not_applicable(
+            generate_blanket_trait_impl,
+            r#"
+trait $0Foo: Default {
+    fn foo(&self) -> Self;
+}
+impl Foo for () {}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_gen_blanket_existing_other_impl() {
+        check_assist(
+            generate_blanket_trait_impl,
+            r#"
+trait $0Foo: Default {
+    fn foo(&self) -> Self;
+}
+trait Bar: Default {
+    fn bar(&self) -> Self;
+}
+impl Bar for () {}
+"#,
+            r#"
+trait Foo: Default {
+    fn foo(&self) -> Self;
+}
+
+impl<T: Default> Foo for $0T {
+    fn foo(&self) -> Self {
+        todo!()
+    }
+}
+trait Bar: Default {
+    fn bar(&self) -> Self;
+}
+impl Bar for () {}
 "#,
         );
     }
