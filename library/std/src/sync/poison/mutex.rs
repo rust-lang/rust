@@ -35,8 +35,20 @@ use crate::sys::sync as sys;
 ///
 /// In addition, the panic detection is not ideal, so even unpoisoned mutexes
 /// need to be handled with care, since certain panics may have been skipped.
-/// Therefore, `unsafe` code cannot rely on poisoning for soundness. Here's an
-/// example of **incorrect** use of poisoning:
+/// Here is a non-exhaustive list of situations where this might occur:
+///
+/// - If a mutex is locked while a panic is underway, e.g. within a [`Drop`]
+///   implementation or a [panic hook], panicking for the second time while the
+///   lock is held will leave the mutex unpoisoned. Note that while double panic
+///   usually aborts the program, [`catch_unwind`] can prevent this.
+///
+/// - Locking and unlocking the mutex across different panic contexts, e.g. by
+///   storing the guard to a [`Cell`] within [`Drop::drop`] and accessing it
+///   outside, or vice versa, can affect poisoning status in an unexpected way.
+///
+/// While this rarely happens in realistic code, `unsafe` code cannot rely on
+/// poisoning for soundness, since the behavior of poisoning can depend on
+/// outside context. Here's an example of **incorrect** use of poisoning:
 ///
 /// ```rust
 /// use std::sync::Mutex;
@@ -58,8 +70,8 @@ use crate::sys::sync as sys;
 ///         // panics, `*ptr` keeps pointing at a dropped value. The intention
 ///         // is that this will poison the mutex, so the following calls to
 ///         // `replace_with` will panic without reading `*ptr`. But since
-///         // poisoning is not guaranteed to occur, this can lead to
-///         // use-after-free.
+///         // poisoning is not guaranteed to occur if this is run from a panic
+///         // hook, this can lead to use-after-free.
 ///         unsafe {
 ///             (*ptr).write(f((*ptr).read()));
 ///         }
@@ -73,6 +85,9 @@ use crate::sys::sync as sys;
 /// [`unwrap()`]: Result::unwrap
 /// [`PoisonError`]: super::PoisonError
 /// [`into_inner`]: super::PoisonError::into_inner
+/// [panic hook]: crate::panic::set_hook
+/// [`catch_unwind`]: crate::panic::catch_unwind
+/// [`Cell`]: crate::cell::Cell
 ///
 /// # Examples
 ///
