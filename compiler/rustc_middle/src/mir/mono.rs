@@ -539,8 +539,8 @@ impl<'tcx> CodegenUnit<'tcx> {
                             // the codegen tests and can even make item order
                             // unstable.
                             InstanceKind::Item(def) => {
-                                def.as_local().map(|def_id|tcx.def_span(def_id))
-                            },
+                                def.as_local().map(|def_id| tcx.def_span(def_id))
+                            }
                             InstanceKind::VTableShim(..)
                             | InstanceKind::ReifyShim(..)
                             | InstanceKind::Intrinsic(..)
@@ -557,7 +557,9 @@ impl<'tcx> CodegenUnit<'tcx> {
                             | InstanceKind::AsyncDropGlueCtorShim(..) => None,
                         }
                     }
-                    MonoItem::Static(def_id) => def_id.as_local().map(|def_id|tcx.def_span(def_id)),
+                    MonoItem::Static(def_id) => {
+                        def_id.as_local().map(|def_id| tcx.def_span(def_id))
+                    }
                     MonoItem::GlobalAsm(item_id) => Some(tcx.def_span(item_id.owner_id.def_id)),
                 },
                 item.symbol_name(tcx),
