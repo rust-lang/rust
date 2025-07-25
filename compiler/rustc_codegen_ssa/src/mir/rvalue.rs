@@ -288,7 +288,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         // valid ranges. For example, `char`s are passed as just `i32`, with no
         // way for LLVM to know that they're 0x10FFFF at most. Thus we assume
         // the range of the input value too, not just the output range.
-        assume_scalar_range(bx, imm, from_scalar, from_backend_ty);
+        assume_scalar_range(bx, imm, from_scalar, from_backend_ty, None);
 
         imm = match (from_scalar.primitive(), to_scalar.primitive()) {
             (Int(_, is_signed), Int(..)) => bx.intcast(imm, to_backend_ty, is_signed),
@@ -1064,7 +1064,7 @@ pub(super) fn transmute_scalar<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     // That said, last time we tried removing this, it didn't actually help
     // the rustc-perf results, so might as well keep doing it
     // <https://github.com/rust-lang/rust/pull/135610#issuecomment-2599275182>
-    assume_scalar_range(bx, imm, from_scalar, from_backend_ty);
+    assume_scalar_range(bx, imm, from_scalar, from_backend_ty, Some(&to_scalar));
 
     imm = match (from_scalar.primitive(), to_scalar.primitive()) {
         (Int(..) | Float(_), Int(..) | Float(_)) => bx.bitcast(imm, to_backend_ty),
@@ -1092,20 +1092,40 @@ pub(super) fn transmute_scalar<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     // since it's never passed to something with parameter metadata (especially
     // after MIR inlining) so the only way to tell the backend about the
     // constraint that the `transmute` introduced is to `assume` it.
-    assume_scalar_range(bx, imm, to_scalar, to_backend_ty);
+    assume_scalar_range(bx, imm, to_scalar, to_backend_ty, Some(&from_scalar));
 
     imm = bx.to_immediate_scalar(imm, to_scalar);
     imm
 }
 
+/// Emits an `assume` call that `imm`'s value is within the known range of `scalar`.
+///
+/// If `known` is `Some`, only emits the assume if it's more specific than
+/// whatever is already known from the range of *that* scalar.
 fn assume_scalar_range<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,
     imm: Bx::Value,
     scalar: abi::Scalar,
     backend_ty: Bx::Type,
+    known: Option<&abi::Scalar>,
 ) {
-    if matches!(bx.cx().sess().opts.optimize, OptLevel::No) || scalar.is_always_valid(bx.cx()) {
+    if matches!(bx.cx().sess().opts.optimize, OptLevel::No) {
         return;
+    }
+
+    match (scalar, known) {
+        (abi::Scalar::Union { .. }, _) => return,
+        (_, None) => {
+            if scalar.is_always_valid(bx.cx()) {
+                return;
+            }
+        }
+        (abi::Scalar::Initialized { valid_range, .. }, Some(known)) => {
+            let known_range = known.valid_range(bx.cx());
+            if valid_range.contains_range(known_range, scalar.size(bx.cx())) {
+                return;
+            }
+        }
     }
 
     match scalar.primitive() {

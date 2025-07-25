@@ -181,10 +181,10 @@ pub(crate) struct ImportData<'ra> {
     ///
     /// | `module_path` | `imported_module` | remark |
     /// |-|-|-|
-    /// |`use prefix::foo`| `ModuleOrUniformRoot::Module(prefix)`               | - |
-    /// |`use ::foo`      | `ModuleOrUniformRoot::ExternPrelude`                | 2018+ editions |
-    /// |`use ::foo`      | `ModuleOrUniformRoot::CrateRootAndExternPrelude`    | a special case in 2015 edition |
-    /// |`use foo`        | `ModuleOrUniformRoot::CurrentScope`                 | - |
+    /// |`use prefix::foo`| `ModuleOrUniformRoot::Module(prefix)`         | - |
+    /// |`use ::foo`      | `ModuleOrUniformRoot::ExternPrelude`          | 2018+ editions |
+    /// |`use ::foo`      | `ModuleOrUniformRoot::ModuleAndExternPrelude` | a special case in 2015 edition |
+    /// |`use foo`        | `ModuleOrUniformRoot::CurrentScope`           | - |
     pub imported_module: Cell<Option<ModuleOrUniformRoot<'ra>>>,
     pub vis: Visibility,
 }
