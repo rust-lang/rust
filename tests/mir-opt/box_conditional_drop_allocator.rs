@@ -1,5 +1,6 @@
 // skip-filecheck
 //@ test-mir-pass: ElaborateDrops
+//@ needs-unwind
 #![feature(allocator_api)]
 
 // Regression test for #131082.
