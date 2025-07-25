@@ -656,7 +656,7 @@ fn characteristic_def_id_of_mono_item<'tcx>(
                 return characteristic_def_id_of_type(self_ty).or(Some(def_id));
             }
 
-            if let Some(impl_def_id) = tcx.impl_of_method(def_id) {
+            if let Some(impl_def_id) = tcx.impl_of_assoc(def_id) {
                 if tcx.sess.opts.incremental.is_some()
                     && tcx
                         .trait_id_of_impl(impl_def_id)

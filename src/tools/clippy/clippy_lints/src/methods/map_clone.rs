@@ -23,7 +23,7 @@ fn should_run_lint(cx: &LateContext<'_>, e: &hir::Expr<'_>, method_id: DefId) ->
         return true;
     }
     // We check if it's an `Option` or a `Result`.
-    if let Some(id) = cx.tcx.impl_of_method(method_id) {
+    if let Some(id) = cx.tcx.impl_of_assoc(method_id) {
         let identity = cx.tcx.type_of(id).instantiate_identity();
         if !is_type_diagnostic_item(cx, identity, sym::Option) && !is_type_diagnostic_item(cx, identity, sym::Result) {
             return false;

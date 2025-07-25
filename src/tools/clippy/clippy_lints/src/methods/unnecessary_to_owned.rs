@@ -694,7 +694,7 @@ fn check_if_applicable_to_argument<'tcx>(cx: &LateContext<'tcx>, arg: &Expr<'tcx
             sym::to_string => cx.tcx.is_diagnostic_item(sym::to_string_method, method_def_id),
             sym::to_vec => cx
                 .tcx
-                .impl_of_method(method_def_id)
+                .impl_of_assoc(method_def_id)
                 .filter(|&impl_did| cx.tcx.type_of(impl_did).instantiate_identity().is_slice())
                 .is_some(),
             _ => false,

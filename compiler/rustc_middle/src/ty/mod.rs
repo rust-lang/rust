@@ -2002,7 +2002,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// If the given `DefId` describes a method belonging to an impl, returns the
     /// `DefId` of the impl that the method belongs to; otherwise, returns `None`.
-    pub fn impl_of_method(self, def_id: DefId) -> Option<DefId> {
+    pub fn impl_of_assoc(self, def_id: DefId) -> Option<DefId> {
         self.assoc_parent(def_id).filter(|id| matches!(self.def_kind(id), DefKind::Impl { .. }))
     }
 
