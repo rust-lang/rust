@@ -26,12 +26,12 @@ fn square2(x: &f64) -> f64 {
 
 // CHECK:; identical_fnc::main
 // CHECK-NEXT:; Function Attrs:
-// CHECK-NEXT:define internal void @_ZN13identical_fnc4main17hf4dbc69c8d2f9130E()
+// CHECK-NEXT:define internal void @_ZN13identical_fnc4main17h6009e4f751bf9407E()
 // CHECK-NEXT:start:
 // CHECK-NOT:br
 // CHECK-NOT:ret
-// CHECK:call fastcc void @diffe_ZN13identical_fnc6square17hdfa1c645848284b7E(double %x.val, ptr %dx1)
-// CHECK-NEXT:call fastcc void @diffe_ZN13identical_fnc6square17hdfa1c645848284b7E(double %x.val, ptr %dx2)
+// CHECK:call fastcc void @diffe_ZN13identical_fnc6square17h67c6eccd3051fb4cE(double %x.val, ptr %dx1)
+// CHECK-NEXT:call fastcc void @diffe_ZN13identical_fnc6square17h67c6eccd3051fb4cE(double %x.val, ptr %dx2)
 
 fn main() {
     let x = std::hint::black_box(3.0);

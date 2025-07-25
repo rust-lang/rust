@@ -276,7 +276,7 @@ pub(crate) fn generate_enzyme_call<'ll, 'tcx>(
     //  %0 = fmul double %x, %x
     //  ret double %0
     // }
-    // ```
+    //
     // define double @dsquare(double %x) {
     //  return 0.0;
     // }
