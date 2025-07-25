@@ -27,10 +27,6 @@ COPY scripts/nodejs.sh /scripts/
 RUN sh /scripts/nodejs.sh /node
 ENV PATH="/node/bin:${PATH}"
 
-# Install es-check
-# Pin its version to prevent unrelated CI failures due to future es-check versions.
-RUN npm install es-check@6.1.1 eslint@8.6.0 typescript@5.7.3 -g
-
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
@@ -52,7 +48,4 @@ ENV SCRIPT \
   python3 ../x.py check --set build.optimized-compiler-builtins=false core alloc std --target=aarch64-unknown-linux-gnu,i686-pc-windows-msvc,i686-unknown-linux-gnu,x86_64-apple-darwin,x86_64-pc-windows-gnu,x86_64-pc-windows-msvc && \
   /scripts/validate-toolstate.sh && \
   reuse --include-submodules lint && \
-  python3 ../x.py test collect-license-metadata && \
-  # Runs checks to ensure that there are no issues in our JS code.
-  es-check es2019 ../src/librustdoc/html/static/js/*.js && \
-  tsc --project ../src/librustdoc/html/static/js/tsconfig.json
+  python3 ../x.py test collect-license-metadata

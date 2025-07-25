@@ -9,9 +9,7 @@ use rustc_span::{DUMMY_SP, Span, Symbol};
 use rustc_type_ir::TypeVisitableExt;
 
 use super::interpret::ReportedErrorInfo;
-use crate::mir::interpret::{
-    AllocId, AllocRange, ConstAllocation, ErrorHandled, GlobalAlloc, Scalar, alloc_range,
-};
+use crate::mir::interpret::{AllocId, AllocRange, ErrorHandled, GlobalAlloc, Scalar, alloc_range};
 use crate::mir::{Promoted, pretty_print_const_value};
 use crate::ty::print::{pretty_print_const, with_no_trimmed_paths};
 use crate::ty::{self, ConstKind, GenericArgsRef, ScalarInt, Ty, TyCtxt};
@@ -33,8 +31,8 @@ pub struct ConstAlloc<'tcx> {
 /// Represents a constant value in Rust. `Scalar` and `Slice` are optimizations for
 /// array length computations, enum discriminants and the pattern matching logic.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, TyEncodable, TyDecodable, Hash)]
-#[derive(HashStable, Lift)]
-pub enum ConstValue<'tcx> {
+#[derive(HashStable)]
+pub enum ConstValue {
     /// Used for types with `layout::abi::Scalar` ABI.
     ///
     /// Not using the enum `Value` to encode that this must not be `Uninit`.
@@ -52,7 +50,7 @@ pub enum ConstValue<'tcx> {
     Slice {
         /// The allocation storing the slice contents.
         /// This always points to the beginning of the allocation.
-        data: ConstAllocation<'tcx>,
+        alloc_id: AllocId,
         /// The metadata field of the reference.
         /// This is a "target usize", so we use `u64` as in the interpreter.
         meta: u64,
@@ -75,9 +73,9 @@ pub enum ConstValue<'tcx> {
 }
 
 #[cfg(target_pointer_width = "64")]
-rustc_data_structures::static_assert_size!(ConstValue<'_>, 24);
+rustc_data_structures::static_assert_size!(ConstValue, 24);
 
-impl<'tcx> ConstValue<'tcx> {
+impl ConstValue {
     #[inline]
     pub fn try_to_scalar(&self) -> Option<Scalar> {
         match *self {
@@ -98,11 +96,11 @@ impl<'tcx> ConstValue<'tcx> {
         self.try_to_scalar_int()?.try_into().ok()
     }
 
-    pub fn try_to_target_usize(&self, tcx: TyCtxt<'tcx>) -> Option<u64> {
+    pub fn try_to_target_usize(&self, tcx: TyCtxt<'_>) -> Option<u64> {
         Some(self.try_to_scalar_int()?.to_target_usize(tcx))
     }
 
-    pub fn try_to_bits_for_ty(
+    pub fn try_to_bits_for_ty<'tcx>(
         &self,
         tcx: TyCtxt<'tcx>,
         typing_env: ty::TypingEnv<'tcx>,
@@ -132,12 +130,15 @@ impl<'tcx> ConstValue<'tcx> {
     }
 
     /// Must only be called on constants of type `&str` or `&[u8]`!
-    pub fn try_get_slice_bytes_for_diagnostics(&self, tcx: TyCtxt<'tcx>) -> Option<&'tcx [u8]> {
-        let (data, start, end) = match self {
+    pub fn try_get_slice_bytes_for_diagnostics<'tcx>(
+        &self,
+        tcx: TyCtxt<'tcx>,
+    ) -> Option<&'tcx [u8]> {
+        let (alloc_id, start, len) = match self {
             ConstValue::Scalar(_) | ConstValue::ZeroSized => {
                 bug!("`try_get_slice_bytes` on non-slice constant")
             }
-            &ConstValue::Slice { data, meta } => (data, 0, meta),
+            &ConstValue::Slice { alloc_id, meta } => (alloc_id, 0, meta),
             &ConstValue::Indirect { alloc_id, offset } => {
                 // The reference itself is stored behind an indirection.
                 // Load the reference, and then load the actual slice contents.
@@ -170,26 +171,29 @@ impl<'tcx> ConstValue<'tcx> {
                 // Non-empty slice, must have memory. We know this is a relative pointer.
                 let (inner_prov, offset) =
                     ptr.into_pointer_or_addr().ok()?.prov_and_relative_offset();
-                let data = tcx.global_alloc(inner_prov.alloc_id()).unwrap_memory();
-                (data, offset.bytes(), offset.bytes() + len)
+                (inner_prov.alloc_id(), offset.bytes(), len)
             }
         };
 
+        let data = tcx.global_alloc(alloc_id).unwrap_memory();
+
         // This is for diagnostics only, so we are okay to use `inspect_with_uninit_and_ptr_outside_interpreter`.
         let start = start.try_into().unwrap();
-        let end = end.try_into().unwrap();
+        let end = start + usize::try_from(len).unwrap();
         Some(data.inner().inspect_with_uninit_and_ptr_outside_interpreter(start..end))
     }
 
     /// Check if a constant may contain provenance information. This is used by MIR opts.
     /// Can return `true` even if there is no provenance.
-    pub fn may_have_provenance(&self, tcx: TyCtxt<'tcx>, size: Size) -> bool {
+    pub fn may_have_provenance(&self, tcx: TyCtxt<'_>, size: Size) -> bool {
         match *self {
             ConstValue::ZeroSized | ConstValue::Scalar(Scalar::Int(_)) => return false,
             ConstValue::Scalar(Scalar::Ptr(..)) => return true,
             // It's hard to find out the part of the allocation we point to;
             // just conservatively check everything.
-            ConstValue::Slice { data, meta: _ } => !data.inner().provenance().ptrs().is_empty(),
+            ConstValue::Slice { alloc_id, meta: _ } => {
+                !tcx.global_alloc(alloc_id).unwrap_memory().inner().provenance().ptrs().is_empty()
+            }
             ConstValue::Indirect { alloc_id, offset } => !tcx
                 .global_alloc(alloc_id)
                 .unwrap_memory()
@@ -200,7 +204,7 @@ impl<'tcx> ConstValue<'tcx> {
     }
 
     /// Check if a constant only contains uninitialized bytes.
-    pub fn all_bytes_uninit(&self, tcx: TyCtxt<'tcx>) -> bool {
+    pub fn all_bytes_uninit(&self, tcx: TyCtxt<'_>) -> bool {
         let ConstValue::Indirect { alloc_id, .. } = self else {
             return false;
         };
@@ -247,7 +251,7 @@ pub enum Const<'tcx> {
 
     /// This constant cannot go back into the type system, as it represents
     /// something the type system cannot handle (e.g. pointers).
-    Val(ConstValue<'tcx>, Ty<'tcx>),
+    Val(ConstValue, Ty<'tcx>),
 }
 
 impl<'tcx> Const<'tcx> {
@@ -343,7 +347,7 @@ impl<'tcx> Const<'tcx> {
         tcx: TyCtxt<'tcx>,
         typing_env: ty::TypingEnv<'tcx>,
         span: Span,
-    ) -> Result<ConstValue<'tcx>, ErrorHandled> {
+    ) -> Result<ConstValue, ErrorHandled> {
         match self {
             Const::Ty(_, c) => {
                 if c.has_non_region_param() {
@@ -440,7 +444,7 @@ impl<'tcx> Const<'tcx> {
     }
 
     #[inline]
-    pub fn from_value(val: ConstValue<'tcx>, ty: Ty<'tcx>) -> Self {
+    pub fn from_value(val: ConstValue, ty: Ty<'tcx>) -> Self {
         Self::Val(val, ty)
     }
 
@@ -487,9 +491,8 @@ impl<'tcx> Const<'tcx> {
     /// taking into account even pointer identity tests.
     pub fn is_deterministic(&self) -> bool {
         // Some constants may generate fresh allocations for pointers they contain,
-        // so using the same constant twice can yield two different results:
-        // - valtrees purposefully generate new allocations
-        // - ConstValue::Slice also generate new allocations
+        // so using the same constant twice can yield two different results.
+        // Notably, valtrees purposefully generate new allocations.
         match self {
             Const::Ty(_, c) => match c.kind() {
                 ty::ConstKind::Param(..) => true,
@@ -507,11 +510,11 @@ impl<'tcx> Const<'tcx> {
                 | ty::ConstKind::Placeholder(..) => bug!(),
             },
             Const::Unevaluated(..) => false,
-            // If the same slice appears twice in the MIR, we cannot guarantee that we will
-            // give the same `AllocId` to the data.
-            Const::Val(ConstValue::Slice { .. }, _) => false,
             Const::Val(
-                ConstValue::ZeroSized | ConstValue::Scalar(_) | ConstValue::Indirect { .. },
+                ConstValue::Slice { .. }
+                | ConstValue::ZeroSized
+                | ConstValue::Scalar(_)
+                | ConstValue::Indirect { .. },
                 _,
             ) => true,
         }
@@ -574,7 +577,7 @@ impl<'tcx> Display for Const<'tcx> {
 /// Const-related utilities
 
 impl<'tcx> TyCtxt<'tcx> {
-    pub fn span_as_caller_location(self, span: Span) -> ConstValue<'tcx> {
+    pub fn span_as_caller_location(self, span: Span) -> ConstValue {
         let topmost = span.ctxt().outer_expn().expansion_cause().unwrap_or(span);
         let caller = self.sess.source_map().lookup_char_pos(topmost.lo());
         self.const_caller_location(

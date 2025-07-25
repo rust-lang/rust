@@ -126,23 +126,29 @@ pub(super) fn report_suspicious_mismatch_block(
     }
 }
 
-pub(crate) fn make_unclosed_delims_error(
-    unmatched: UnmatchedDelim,
-    psess: &ParseSess,
-) -> Option<Diag<'_>> {
-    // `None` here means an `Eof` was found. We already emit those errors elsewhere, we add them to
-    // `unmatched_delims` only for error recovery in the `Parser`.
-    let found_delim = unmatched.found_delim?;
-    let mut spans = vec![unmatched.found_span];
-    if let Some(sp) = unmatched.unclosed_span {
-        spans.push(sp);
-    };
-    let err = psess.dcx().create_err(MismatchedClosingDelimiter {
-        spans,
-        delimiter: pprust::token_kind_to_string(&found_delim.as_close_token_kind()).to_string(),
-        unmatched: unmatched.found_span,
-        opening_candidate: unmatched.candidate_span,
-        unclosed: unmatched.unclosed_span,
-    });
-    Some(err)
+pub(crate) fn make_errors_for_mismatched_closing_delims<'psess>(
+    unmatcheds: &[UnmatchedDelim],
+    psess: &'psess ParseSess,
+) -> Vec<Diag<'psess>> {
+    unmatcheds
+        .iter()
+        .filter_map(|unmatched| {
+            // `None` here means an `Eof` was found. We already emit those errors elsewhere, we add them to
+            // `unmatched_delims` only for error recovery in the `Parser`.
+            let found_delim = unmatched.found_delim?;
+            let mut spans = vec![unmatched.found_span];
+            if let Some(sp) = unmatched.unclosed_span {
+                spans.push(sp);
+            };
+            let err = psess.dcx().create_err(MismatchedClosingDelimiter {
+                spans,
+                delimiter: pprust::token_kind_to_string(&found_delim.as_close_token_kind())
+                    .to_string(),
+                unmatched: unmatched.found_span,
+                opening_candidate: unmatched.candidate_span,
+                unclosed: unmatched.unclosed_span,
+            });
+            Some(err)
+        })
+        .collect()
 }

@@ -815,3 +815,10 @@ pub struct AsyncDropTypesInDependency {
     pub extern_crate: Symbol,
     pub local_crate: Symbol,
 }
+
+#[derive(Diagnostic)]
+#[diag(metadata_raw_dylib_malformed)]
+pub struct RawDylibMalformed {
+    #[primary_span]
+    pub span: Span,
+}

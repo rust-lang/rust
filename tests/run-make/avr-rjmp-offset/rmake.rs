@@ -6,7 +6,7 @@
 //! loop instruction to be missed. This test therefore contains a simple loop
 //! with trivial instructions in it, to see, where the label is placed.
 //!
-//! This must be a `rmake`-test and cannot be a `tests/assembly`-test, since the
+//! This must be a `rmake`-test and cannot be a `tests/assembly-llvm/`-test, since the
 //! wrong output is only produced with direct assembly generation, but not when
 //! "emit-asm" is used, as described in the issue description of #129301:
 //! https://github.com/rust-lang/rust/issues/129301#issue-2475070770

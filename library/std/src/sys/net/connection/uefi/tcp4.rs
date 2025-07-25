@@ -67,6 +67,24 @@ impl Tcp4 {
         if r.is_error() { Err(crate::io::Error::from_raw_os_error(r.as_usize())) } else { Ok(()) }
     }
 
+    pub(crate) fn get_mode_data(&self) -> io::Result<tcp4::ConfigData> {
+        let mut config_data = tcp4::ConfigData::default();
+        let protocol = self.protocol.as_ptr();
+
+        let r = unsafe {
+            ((*protocol).get_mode_data)(
+                protocol,
+                crate::ptr::null_mut(),
+                &mut config_data,
+                crate::ptr::null_mut(),
+                crate::ptr::null_mut(),
+                crate::ptr::null_mut(),
+            )
+        };
+
+        if r.is_error() { Err(io::Error::from_raw_os_error(r.as_usize())) } else { Ok(config_data) }
+    }
+
     pub(crate) fn connect(&self, timeout: Option<Duration>) -> io::Result<()> {
         let evt = unsafe { self.create_evt() }?;
         let completion_token =

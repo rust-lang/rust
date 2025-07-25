@@ -63,7 +63,7 @@ impl<'tcx, B: Bridge> CompilerCtxt<'tcx, B> {
         self.tcx.coroutine_movability(def_id)
     }
 
-    pub fn valtree_to_const_val(&self, key: ty::Value<'tcx>) -> ConstValue<'tcx> {
+    pub fn valtree_to_const_val(&self, key: ty::Value<'tcx>) -> ConstValue {
         self.tcx.valtree_to_const_val(key)
     }
 
@@ -675,10 +675,7 @@ impl<'tcx, B: Bridge> CompilerCtxt<'tcx, B> {
     }
 
     /// Try to evaluate an instance into a constant.
-    pub fn eval_instance(
-        &self,
-        instance: ty::Instance<'tcx>,
-    ) -> Result<ConstValue<'tcx>, ErrorHandled> {
+    pub fn eval_instance(&self, instance: ty::Instance<'tcx>) -> Result<ConstValue, ErrorHandled> {
         self.tcx.const_eval_instance(
             self.fully_monomorphized(),
             instance,

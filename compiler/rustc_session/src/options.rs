@@ -1296,7 +1296,7 @@ pub mod parse {
     }
 
     pub(crate) fn parse_linker_flavor(slot: &mut Option<LinkerFlavorCli>, v: Option<&str>) -> bool {
-        match v.and_then(LinkerFlavorCli::from_str) {
+        match v.and_then(|v| LinkerFlavorCli::from_str(v).ok()) {
             Some(lf) => *slot = Some(lf),
             _ => return false,
         }

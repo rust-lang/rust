@@ -143,10 +143,8 @@ impl<'tcx> MonoItem<'tcx> {
         };
 
         // Similarly, the executable entrypoint must be instantiated exactly once.
-        if let Some((entry_def_id, _)) = tcx.entry_fn(()) {
-            if instance.def_id() == entry_def_id {
-                return InstantiationMode::GloballyShared { may_conflict: false };
-            }
+        if tcx.is_entrypoint(instance.def_id()) {
+            return InstantiationMode::GloballyShared { may_conflict: false };
         }
 
         // If the function is #[naked] or contains any other attribute that requires exactly-once
