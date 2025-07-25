@@ -299,7 +299,7 @@ pub struct Config {
     /// Whether to use the precompiled stage0 libtest with compiletest.
     pub compiletest_use_stage0_libtest: bool,
     /// Default value for `--extra-checks`
-    pub tidy_extra_checks: Option<String>,
+    pub tidy_extra_checks: String,
     pub is_running_on_ci: bool,
 
     /// Cache for determining path modifications
@@ -1014,7 +1014,8 @@ impl Config {
             optimized_compiler_builtins.unwrap_or(config.channel != "dev");
         config.compiletest_diff_tool = compiletest_diff_tool;
         config.compiletest_use_stage0_libtest = compiletest_use_stage0_libtest.unwrap_or(true);
-        config.tidy_extra_checks = tidy_extra_checks;
+        config.tidy_extra_checks = tidy_extra_checks
+            .unwrap_or_else(|| "auto:js,auto:cpp,auto:py,auto:spellcheck".to_string());
 
         let download_rustc = config.download_rustc_commit.is_some();
         config.explicit_stage_from_cli = flags_stage.is_some();
