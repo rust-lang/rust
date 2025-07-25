@@ -913,9 +913,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                         " yield_ty=",
                         print(args.as_coroutine().yield_ty()),
                         " return_ty=",
-                        print(args.as_coroutine().return_ty()),
-                        " witness=",
-                        print(args.as_coroutine().witness())
+                        print(args.as_coroutine().return_ty())
                     );
                 }
 
@@ -1035,9 +1033,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                         " upvar_tys=",
                         print(args.as_coroutine_closure().tupled_upvars_ty()),
                         " coroutine_captures_by_ref_ty=",
-                        print(args.as_coroutine_closure().coroutine_captures_by_ref_ty()),
-                        " coroutine_witness_ty=",
-                        print(args.as_coroutine_closure().coroutine_witness_ty())
+                        print(args.as_coroutine_closure().coroutine_captures_by_ref_ty())
                     );
                 }
                 p!("}}");

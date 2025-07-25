@@ -2196,7 +2196,11 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                                 args.as_coroutine()
                                     .upvar_tys()
                                     .iter()
-                                    .chain([args.as_coroutine().witness()])
+                                    .chain([Ty::new_coroutine_witness(
+                                        self.tcx(),
+                                        coroutine_def_id,
+                                        self.tcx().mk_args(args.as_coroutine().parent_args()),
+                                    )])
                                     .collect::<Vec<_>>(),
                             )
                         } else {
@@ -2327,9 +2331,13 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 ty::Binder::dummy(AutoImplConstituents { types: vec![ty], assumptions: vec![] })
             }
 
-            ty::Coroutine(_, args) => {
+            ty::Coroutine(def_id, args) => {
                 let ty = self.infcx.shallow_resolve(args.as_coroutine().tupled_upvars_ty());
-                let witness = args.as_coroutine().witness();
+                let witness = Ty::new_coroutine_witness(
+                    self.tcx(),
+                    def_id,
+                    self.tcx().mk_args(args.as_coroutine().parent_args()),
+                );
                 ty::Binder::dummy(AutoImplConstituents {
                     types: [ty].into_iter().chain(iter::once(witness)).collect(),
                     assumptions: vec![],
