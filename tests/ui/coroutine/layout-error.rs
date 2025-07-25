@@ -17,7 +17,6 @@ impl<F: Future> Task<F> {
 }
 
 pub type F = impl Future;
-//~^ ERROR cycle detected when computing type of `F::{opaque#0}`
 
 #[define_opaque(F)]
 fn foo()
@@ -33,5 +32,7 @@ where
 
 // Check that statics are inhabited computes they layout.
 static POOL: Task<F> = Task::new();
+//~^ ERROR cycle detected when computing type of `POOL`
+//~| ERROR cycle detected when computing type of `POOL`
 
 fn main() {}

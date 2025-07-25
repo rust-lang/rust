@@ -4,7 +4,6 @@
 // Regression test for #80998.
 //
 //@ aux-build:metadata-sufficient-for-layout.rs
-//@ check-pass
 
 #![feature(type_alias_impl_trait, rustc_attrs)]
 #![feature(coroutine_trait)]
@@ -23,5 +22,6 @@ mod helper {
 
 // Static queries the layout of the coroutine.
 static A: Option<helper::F> = None;
+//~^ ERROR cycle detected when computing type of `A`
 
 fn main() {}

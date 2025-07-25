@@ -1,6 +1,6 @@
 //! See docs in build/expr/mod.rs
 
-use rustc_abi::{BackendRepr, Size};
+use rustc_abi::Size;
 use rustc_ast as ast;
 use rustc_hir::LangItem;
 use rustc_middle::mir::interpret::{CTFE_ALLOC_SALT, LitToConstInput, Scalar};
@@ -8,7 +8,7 @@ use rustc_middle::mir::*;
 use rustc_middle::thir::*;
 use rustc_middle::ty::{
     self, CanonicalUserType, CanonicalUserTypeAnnotation, Ty, TyCtxt, TypeVisitableExt as _,
-    TypingEnv, UserTypeAnnotationIndex,
+    UserTypeAnnotationIndex,
 };
 use rustc_middle::{bug, mir, span_bug};
 use tracing::{instrument, trace};
@@ -19,27 +19,32 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Compile `expr`, yielding a compile-time constant. Assumes that
     /// `expr` is a valid compile-time constant!
     pub(crate) fn as_constant(&mut self, expr: &Expr<'tcx>) -> ConstOperand<'tcx> {
+        let this = self;
+        let tcx = this.tcx;
         let Expr { ty, temp_lifetime: _, span, ref kind } = *expr;
         match kind {
             ExprKind::Scope { region_scope: _, lint_level: _, value } => {
-                self.as_constant(&self.thir[*value])
+                this.as_constant(&this.thir[*value])
             }
-            _ => as_constant_inner(self.tcx, self.typing_env(), expr, |user_ty| {
-                Some(self.canonical_user_type_annotations.push(CanonicalUserTypeAnnotation {
-                    span,
-                    user_ty: user_ty.clone(),
-                    inferred_ty: ty,
-                }))
-            }),
+            _ => as_constant_inner(
+                expr,
+                |user_ty| {
+                    Some(this.canonical_user_type_annotations.push(CanonicalUserTypeAnnotation {
+                        span,
+                        user_ty: user_ty.clone(),
+                        inferred_ty: ty,
+                    }))
+                },
+                tcx,
+            ),
         }
     }
 }
 
 pub(crate) fn as_constant_inner<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    typing_env: TypingEnv<'tcx>,
     expr: &Expr<'tcx>,
     push_cuta: impl FnMut(&Box<CanonicalUserType<'tcx>>) -> Option<UserTypeAnnotationIndex>,
+    tcx: TyCtxt<'tcx>,
 ) -> ConstOperand<'tcx> {
     let Expr { ty, temp_lifetime: _, span, ref kind } = *expr;
     match *kind {
@@ -83,23 +88,8 @@ pub(crate) fn as_constant_inner<'tcx>(
             ConstOperand { user_ty: None, span, const_ }
         }
         ExprKind::StaticRef { alloc_id, ty, .. } => {
-            let layout = tcx.layout_of(typing_env.as_query_input(ty));
-            let const_ = if let Ok(layout) = layout
-                && let BackendRepr::Scalar(..) = layout.backend_repr
-            {
-                let const_val = ConstValue::Scalar(Scalar::from_pointer(alloc_id.into(), &tcx));
-                Const::Val(const_val, ty)
-            } else {
-                // Ill-formed code may produce instances where `pointee` is not `Sized`.
-                // This should be reported by wfcheck on the static itself.
-                // Still, producing a single scalar constant would be inconsistent, as pointers to
-                // non-`Sized` types are scalar pairs. Avoid an ICE by producing an error constant.
-                let guar = tcx.dcx().span_delayed_bug(
-                    span,
-                    format!("pointer to static's type `{ty}` is not scalar"),
-                );
-                Const::Ty(ty, ty::Const::new_error(tcx, guar))
-            };
+            let const_val = ConstValue::Scalar(Scalar::from_pointer(alloc_id.into(), &tcx));
+            let const_ = Const::Val(const_val, ty);
 
             ConstOperand { span, user_ty: None, const_ }
         }

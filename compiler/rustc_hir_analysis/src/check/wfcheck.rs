@@ -1180,12 +1180,12 @@ fn check_item_fn(
 }
 
 #[instrument(level = "debug", skip(tcx))]
-pub(super) fn check_static_item(
-    tcx: TyCtxt<'_>,
+pub(crate) fn check_static_item<'tcx>(
+    tcx: TyCtxt<'tcx>,
     item_id: LocalDefId,
+    ty: Ty<'tcx>,
 ) -> Result<(), ErrorGuaranteed> {
     enter_wf_checking_ctxt(tcx, item_id, |wfcx| {
-        let ty = tcx.type_of(item_id).instantiate_identity();
         let span = tcx.ty_span(item_id);
         let item_ty = wfcx.deeply_normalize(span, Some(WellFormedLoc::Ty(item_id)), ty);
 

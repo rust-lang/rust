@@ -1,0 +1,38 @@
+error[E0391]: cycle detected when computing type of `A`
+  --> $DIR/metadata-sufficient-for-layout.rs:24:11
+   |
+LL | static A: Option<helper::F> = None;
+   |           ^^^^^^^^^^^^^^^^^
+   |
+   = note: ...which requires evaluating trait selection obligation `core::option::Option<helper::F>: core::marker::Sync`...
+note: ...which requires computing type of opaque `helper::F::{opaque#0}`...
+  --> $DIR/metadata-sufficient-for-layout.rs:15:18
+   |
+LL |     pub type F = impl Coroutine<(), Yield = (), Return = ()>;
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: ...which requires borrow-checking `helper::f`...
+  --> $DIR/metadata-sufficient-for-layout.rs:18:5
+   |
+LL |     fn f() -> F {
+   |     ^^^^^^^^^^^
+note: ...which requires computing type of opaque `helper::F::{opaque#0}` via HIR typeck...
+  --> $DIR/metadata-sufficient-for-layout.rs:15:18
+   |
+LL |     pub type F = impl Coroutine<(), Yield = (), Return = ()>;
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: ...which requires computing the opaque types defined by `A`...
+  --> $DIR/metadata-sufficient-for-layout.rs:24:1
+   |
+LL | static A: Option<helper::F> = None;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: ...which again requires computing type of `A`, completing the cycle
+note: cycle used when checking that `A` is well-formed
+  --> $DIR/metadata-sufficient-for-layout.rs:24:1
+   |
+LL | static A: Option<helper::F> = None;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0391`.

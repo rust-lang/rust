@@ -4,10 +4,7 @@
 
 static mut S: [i8] = ["Some thing"; 1];
 //~^ ERROR the size for values of type `[i8]` cannot be known
-//~| ERROR mismatched types
-//~| ERROR mismatched types
 
 fn main() {
     assert_eq!(S, [0; 1]);
-    //~^ ERROR use of mutable static is unsafe
 }

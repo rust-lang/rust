@@ -1,0 +1,113 @@
+error[E0391]: cycle detected when computing type of `_BAR`
+  --> $DIR/type-alias-impl-trait-const.rs:11:14
+   |
+LL | static _BAR: Foo = 22_i32;
+   |              ^^^
+   |
+   = note: ...which requires evaluating trait selection obligation `Foo: core::marker::Sync`...
+note: ...which requires computing type of opaque `Foo::{opaque#0}`...
+  --> $DIR/type-alias-impl-trait-const.rs:5:16
+   |
+LL | pub type Foo = impl Debug;
+   |                ^^^^^^^^^^
+note: ...which requires borrow-checking `_FOO`...
+  --> $DIR/type-alias-impl-trait-const.rs:8:1
+   |
+LL | const _FOO: Foo = 5;
+   | ^^^^^^^^^^^^^^^
+note: ...which requires computing type of opaque `Foo::{opaque#0}` via HIR typeck...
+  --> $DIR/type-alias-impl-trait-const.rs:5:16
+   |
+LL | pub type Foo = impl Debug;
+   |                ^^^^^^^^^^
+note: ...which requires computing the opaque types defined by `_BAR`...
+  --> $DIR/type-alias-impl-trait-const.rs:11:1
+   |
+LL | static _BAR: Foo = 22_i32;
+   | ^^^^^^^^^^^^^^^^
+   = note: ...which again requires computing type of `_BAR`, completing the cycle
+note: cycle used when checking that `_BAR` is well-formed
+  --> $DIR/type-alias-impl-trait-const.rs:11:1
+   |
+LL | static _BAR: Foo = 22_i32;
+   | ^^^^^^^^^^^^^^^^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+
+error[E0391]: cycle detected when computing type of `_BAR`
+  --> $DIR/type-alias-impl-trait-const.rs:11:14
+   |
+LL | static _BAR: Foo = 22_i32;
+   |              ^^^
+   |
+   = note: ...which requires evaluating trait selection obligation `Foo: core::marker::Sync`...
+note: ...which requires computing type of opaque `Foo::{opaque#0}`...
+  --> $DIR/type-alias-impl-trait-const.rs:5:16
+   |
+LL | pub type Foo = impl Debug;
+   |                ^^^^^^^^^^
+note: ...which requires borrow-checking `_FOO`...
+  --> $DIR/type-alias-impl-trait-const.rs:8:1
+   |
+LL | const _FOO: Foo = 5;
+   | ^^^^^^^^^^^^^^^
+note: ...which requires computing type of opaque `Foo::{opaque#0}` via HIR typeck...
+  --> $DIR/type-alias-impl-trait-const.rs:5:16
+   |
+LL | pub type Foo = impl Debug;
+   |                ^^^^^^^^^^
+note: ...which requires type-checking `_BAR`...
+  --> $DIR/type-alias-impl-trait-const.rs:11:1
+   |
+LL | static _BAR: Foo = 22_i32;
+   | ^^^^^^^^^^^^^^^^
+   = note: ...which again requires computing type of `_BAR`, completing the cycle
+note: cycle used when checking that `_BAR` is well-formed
+  --> $DIR/type-alias-impl-trait-const.rs:11:1
+   |
+LL | static _BAR: Foo = 22_i32;
+   | ^^^^^^^^^^^^^^^^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+
+error[E0391]: cycle detected when computing type of `_BAR`
+  --> $DIR/type-alias-impl-trait-const.rs:11:14
+   |
+LL | static _BAR: Foo = 22_i32;
+   |              ^^^
+   |
+   = note: ...which requires evaluating trait selection obligation `Foo: core::marker::Sync`...
+note: ...which requires computing type of opaque `Foo::{opaque#0}`...
+  --> $DIR/type-alias-impl-trait-const.rs:5:16
+   |
+LL | pub type Foo = impl Debug;
+   |                ^^^^^^^^^^
+note: ...which requires borrow-checking `_BAR`...
+  --> $DIR/type-alias-impl-trait-const.rs:11:1
+   |
+LL | static _BAR: Foo = 22_i32;
+   | ^^^^^^^^^^^^^^^^
+note: ...which requires promoting constants in MIR for `_BAR`...
+  --> $DIR/type-alias-impl-trait-const.rs:11:1
+   |
+LL | static _BAR: Foo = 22_i32;
+   | ^^^^^^^^^^^^^^^^
+note: ...which requires const checking `_BAR`...
+  --> $DIR/type-alias-impl-trait-const.rs:11:1
+   |
+LL | static _BAR: Foo = 22_i32;
+   | ^^^^^^^^^^^^^^^^
+note: ...which requires building MIR for `_BAR`...
+  --> $DIR/type-alias-impl-trait-const.rs:11:1
+   |
+LL | static _BAR: Foo = 22_i32;
+   | ^^^^^^^^^^^^^^^^
+   = note: ...which again requires computing type of `_BAR`, completing the cycle
+note: cycle used when checking that `_BAR` is well-formed
+  --> $DIR/type-alias-impl-trait-const.rs:11:1
+   |
+LL | static _BAR: Foo = 22_i32;
+   | ^^^^^^^^^^^^^^^^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0391`.

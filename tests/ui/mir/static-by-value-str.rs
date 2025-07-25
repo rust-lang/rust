@@ -9,8 +9,6 @@ enum E {
 
 static C: (E, u16, str) = (E::V16(0xDEAD), 0x600D, 0xBAD);
 //~^ ERROR the size for values of type `str` cannot be known
-//~| ERROR the size for values of type `str` cannot be known
-//~| ERROR mismatched types
 
 pub fn main() {
     let (_, n, _) = C;
