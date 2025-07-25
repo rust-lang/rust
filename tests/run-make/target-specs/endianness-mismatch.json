@@ -4,7 +4,7 @@
     "linker-flavor": "gcc",
     "llvm-target": "x86_64-unknown-linux-gnu",
     "target-endian": "big",
-    "target-pointer-width": "64",
+    "target-pointer-width": 64,
     "arch": "x86_64",
     "os": "linux"
 }
