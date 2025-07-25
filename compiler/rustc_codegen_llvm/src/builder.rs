@@ -15,6 +15,7 @@ use rustc_codegen_ssa::mir::place::PlaceRef;
 use rustc_codegen_ssa::traits::*;
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_hir::def_id::DefId;
+use rustc_middle::bug;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::ty::layout::{
     FnAbiError, FnAbiOfHelpers, FnAbiRequest, HasTypingEnv, LayoutError, LayoutOfHelpers,
@@ -24,7 +25,7 @@ use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_sanitizers::{cfi, kcfi};
 use rustc_session::config::OptLevel;
 use rustc_span::Span;
-use rustc_target::callconv::FnAbi;
+use rustc_target::callconv::{FnAbi, PassMode};
 use rustc_target::spec::{HasTargetSpec, SanitizerSet, Target};
 use smallvec::SmallVec;
 use tracing::{debug, instrument};
@@ -1429,6 +1430,28 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
             fn_abi.apply_attrs_callsite(self, call);
         }
         call
+    }
+
+    fn tail_call(
+        &mut self,
+        llty: Self::Type,
+        fn_attrs: Option<&CodegenFnAttrs>,
+        fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
+        llfn: Self::Value,
+        args: &[Self::Value],
+        funclet: Option<&Self::Funclet>,
+        instance: Option<Instance<'tcx>>,
+    ) {
+        let call = self.call(llty, fn_attrs, Some(fn_abi), llfn, args, funclet, instance);
+        llvm::LLVMRustSetTailCallKind(call, llvm::TailCallKind::MustTail);
+
+        match &fn_abi.ret.mode {
+            PassMode::Ignore | PassMode::Indirect { .. } => self.ret_void(),
+            PassMode::Direct(_) | PassMode::Pair { .. } => self.ret(call),
+            mode @ PassMode::Cast { .. } => {
+                bug!("Encountered `PassMode::{mode:?}` during codegen")
+            }
+        }
     }
 
     fn zext(&mut self, val: &'ll Value, dest_ty: &'ll Type) -> &'ll Value {
