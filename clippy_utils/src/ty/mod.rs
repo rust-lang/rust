@@ -492,10 +492,7 @@ pub fn peel_mid_ty_refs_is_mutable(ty: Ty<'_>) -> (Ty<'_>, usize, Mutability) {
 
 /// Returns `true` if the given type is an `unsafe` function.
 pub fn type_is_unsafe_function<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
-    match ty.kind() {
-        ty::FnDef(..) | ty::FnPtr(..) => ty.fn_sig(cx.tcx).safety().is_unsafe(),
-        _ => false,
-    }
+    ty.is_fn() && ty.fn_sig(cx.tcx).safety().is_unsafe()
 }
 
 /// Returns the base type for HIR references and pointers.

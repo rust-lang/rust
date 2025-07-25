@@ -10,7 +10,7 @@ use rustc_span::{Span, sym};
 
 use clippy_utils::attrs::is_proc_macro;
 use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_then};
-use clippy_utils::source::SpanRangeExt;
+use clippy_utils::source::snippet_indent;
 use clippy_utils::ty::is_must_use_ty;
 use clippy_utils::visitors::for_each_expr_without_closures;
 use clippy_utils::{return_ty, trait_ref_of_method};
@@ -28,6 +28,7 @@ pub(super) fn check_item<'tcx>(cx: &LateContext<'tcx>, item: &'tcx hir::Item<'_>
     if let hir::ItemKind::Fn {
         ref sig,
         body: ref body_id,
+        ident,
         ..
     } = item.kind
     {
@@ -51,8 +52,8 @@ pub(super) fn check_item<'tcx>(cx: &LateContext<'tcx>, item: &'tcx hir::Item<'_>
                 sig.decl,
                 cx.tcx.hir_body(*body_id),
                 item.span,
+                ident.span,
                 item.owner_id,
-                item.span.with_hi(sig.decl.output.span().hi()),
                 "this function could have a `#[must_use]` attribute",
             );
         }
@@ -84,8 +85,8 @@ pub(super) fn check_impl_item<'tcx>(cx: &LateContext<'tcx>, item: &'tcx hir::Imp
                 sig.decl,
                 cx.tcx.hir_body(*body_id),
                 item.span,
+                item.ident.span,
                 item.owner_id,
-                item.span.with_hi(sig.decl.output.span().hi()),
                 "this method could have a `#[must_use]` attribute",
             );
         }
@@ -120,8 +121,8 @@ pub(super) fn check_trait_item<'tcx>(cx: &LateContext<'tcx>, item: &'tcx hir::Tr
                     sig.decl,
                     body,
                     item.span,
+                    item.ident.span,
                     item.owner_id,
-                    item.span.with_hi(sig.decl.output.span().hi()),
                     "this method could have a `#[must_use]` attribute",
                 );
             }
@@ -198,8 +199,8 @@ fn check_must_use_candidate<'tcx>(
     decl: &'tcx hir::FnDecl<'_>,
     body: &'tcx hir::Body<'_>,
     item_span: Span,
+    ident_span: Span,
     item_id: hir::OwnerId,
-    fn_span: Span,
     msg: &'static str,
 ) {
     if has_mutable_arg(cx, body)
@@ -208,18 +209,18 @@ fn check_must_use_candidate<'tcx>(
         || returns_unit(decl)
         || !cx.effective_visibilities.is_exported(item_id.def_id)
         || is_must_use_ty(cx, return_ty(cx, item_id))
+        || item_span.from_expansion()
     {
         return;
     }
-    span_lint_and_then(cx, MUST_USE_CANDIDATE, fn_span, msg, |diag| {
-        if let Some(snippet) = fn_span.get_source_text(cx) {
-            diag.span_suggestion(
-                fn_span,
-                "add the attribute",
-                format!("#[must_use] {snippet}"),
-                Applicability::MachineApplicable,
-            );
-        }
+    span_lint_and_then(cx, MUST_USE_CANDIDATE, ident_span, msg, |diag| {
+        let indent = snippet_indent(cx, item_span).unwrap_or_default();
+        diag.span_suggestion(
+            item_span.shrink_to_lo(),
+            "add the attribute",
+            format!("#[must_use] \n{indent}"),
+            Applicability::MachineApplicable,
+        );
     });
 }
 
