@@ -27,13 +27,13 @@ fn all_symbols_are_used() -> Result<()> {
     // Load all symbols defined in `SYM_FILE`.
     let content = fs::read_to_string(SYM_FILE)?;
     let content = content
-        .split_once("generate! {")
+        .split_once("extra_symbols! {")
         .ok_or("cannot find symbols start")?
         .1
         .split_once("\n}\n")
         .ok_or("cannot find symbols end")?
         .0;
-    let mut interned: HashSet<String> = Regex::new(r"(?m)^    (\w+)")
+    let mut interned: HashSet<String> = Regex::new(r"(?m)^ {8}(\w+)")
         .unwrap()
         .captures_iter(content)
         .map(|m| m[1].to_owned())

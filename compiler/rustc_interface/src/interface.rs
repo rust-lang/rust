@@ -350,9 +350,9 @@ pub struct Config {
     /// the list of queries.
     pub override_queries: Option<fn(&Session, &mut Providers)>,
 
-    /// An extra set of symbols to add to the symbol interner, the symbol indices
-    /// will start at [`PREDEFINED_SYMBOLS_COUNT`](rustc_span::symbol::PREDEFINED_SYMBOLS_COUNT)
-    pub extra_symbols: Vec<&'static str>,
+    /// Replaces the default list of preinterned symbols, should be set to the `PREINTERNED_SYMBOLS`
+    /// expanded from [`rustc_span::extra_symbols`]
+    pub preinterned_symbols: Option<&'static [&'static str]>,
 
     /// This is a callback from the driver that is called to create a codegen backend.
     ///
@@ -418,7 +418,7 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
         &early_dcx,
         config.opts.edition,
         config.opts.unstable_opts.threads,
-        &config.extra_symbols,
+        config.preinterned_symbols,
         SourceMapInputs { file_loader, path_mapping, hash_kind, checksum_hash_kind },
         |current_gcx, jobserver_proxy| {
             // The previous `early_dcx` can't be reused here because it doesn't

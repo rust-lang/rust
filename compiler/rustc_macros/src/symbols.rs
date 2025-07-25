@@ -25,12 +25,13 @@
 //! ```
 
 use std::collections::HashMap;
+use std::collections::hash_map::Entry;
 
 use proc_macro2::{Span, TokenStream};
 use quote::quote;
 use syn::parse::{Parse, ParseStream, Result};
 use syn::punctuated::Punctuated;
-use syn::{Expr, Ident, Lit, LitStr, Macro, Token, braced};
+use syn::{Expr, Ident, Lit, LitStr, Macro, Token, braced, bracketed};
 
 #[cfg(test)]
 mod tests;
@@ -147,25 +148,44 @@ struct Predefined {
     span_of_name: Span,
 }
 
+struct Duplicate {
+    name: String,
+    span_of_name: Span,
+}
+
 struct Entries {
     map: HashMap<String, Predefined>,
+    prefill_stream: TokenStream,
 }
 
 impl Entries {
     fn with_capacity(capacity: usize) -> Self {
-        Entries { map: HashMap::with_capacity(capacity) }
+        Entries { map: HashMap::with_capacity(capacity), prefill_stream: TokenStream::new() }
     }
 
-    fn insert(&mut self, span: Span, s: &str, errors: &mut Errors) -> u32 {
-        if let Some(prev) = self.map.get(s) {
-            errors.error(span, format!("Symbol `{s}` is duplicated"));
-            errors.error(prev.span_of_name, "location of previous definition".to_string());
-            prev.idx
-        } else {
-            let idx = self.len();
-            self.map.insert(s.to_string(), Predefined { idx, span_of_name: span });
-            idx
+    fn try_insert(&mut self, span: Span, s: String) -> (u32, Option<Duplicate>) {
+        let len = self.len();
+        match self.map.entry(s) {
+            Entry::Occupied(entry) => {
+                let Predefined { idx, span_of_name } = *entry.get();
+                (idx, Some(Duplicate { name: entry.key().clone(), span_of_name }))
+            }
+            Entry::Vacant(entry) => {
+                let s = entry.key().as_str();
+                self.prefill_stream.extend(quote! { #s, });
+                entry.insert(Predefined { idx: len, span_of_name: span });
+                (len, None)
+            }
         }
+    }
+
+    fn insert(&mut self, span: Span, s: String, errors: &mut Errors) -> u32 {
+        let (idx, duplicate) = self.try_insert(span, s);
+        if let Some(Duplicate { name, span_of_name }) = duplicate {
+            errors.error(span, format!("Symbol `{name}` is duplicated"));
+            errors.error(span_of_name, "location of previous definition".to_string());
+        }
+        idx
     }
 
     fn len(&self) -> u32 {
@@ -188,18 +208,13 @@ fn symbols_with_errors(input: TokenStream) -> (TokenStream, Vec<syn::Error>) {
 
     let mut keyword_stream = quote! {};
     let mut symbols_stream = quote! {};
-    let mut prefill_stream = quote! {};
     let mut entries = Entries::with_capacity(input.keywords.len() + input.symbols.len() + 10);
 
     // Generate the listed keywords.
     for keyword in input.keywords.iter() {
         let name = &keyword.name;
-        let value = &keyword.value;
-        let value_string = value.value();
-        let idx = entries.insert(keyword.name.span(), &value_string, &mut errors);
-        prefill_stream.extend(quote! {
-            #value,
-        });
+        let value_string = keyword.value.value();
+        let idx = entries.insert(keyword.name.span(), value_string, &mut errors);
         keyword_stream.extend(quote! {
             pub const #name: Symbol = Symbol::new(#idx);
         });
@@ -224,11 +239,7 @@ fn symbols_with_errors(input: TokenStream) -> (TokenStream, Vec<syn::Error>) {
                 continue;
             }
         };
-        let idx = entries.insert(symbol.name.span(), &value, &mut errors);
-
-        prefill_stream.extend(quote! {
-            #value,
-        });
+        let idx = entries.insert(symbol.name.span(), value, &mut errors);
         symbols_stream.extend(quote! {
             pub const #name: Symbol = Symbol::new(#idx);
         });
@@ -236,11 +247,7 @@ fn symbols_with_errors(input: TokenStream) -> (TokenStream, Vec<syn::Error>) {
 
     // Generate symbols for the strings "0", "1", ..., "9".
     for n in 0..10 {
-        let n = n.to_string();
-        entries.insert(Span::call_site(), &n, &mut errors);
-        prefill_stream.extend(quote! {
-            #n,
-        });
+        entries.insert(Span::call_site(), n.to_string(), &mut errors);
     }
 
     // Symbols whose value comes from an environment variable. It's allowed for
@@ -267,16 +274,8 @@ fn symbols_with_errors(input: TokenStream) -> (TokenStream, Vec<syn::Error>) {
             }
         };
 
-        let idx = if let Some(prev) = entries.map.get(&value) {
-            prev.idx
-        } else {
-            prefill_stream.extend(quote! {
-                #value,
-            });
-            entries.insert(symbol.name.span(), &value, &mut errors)
-        };
-
         let name = &symbol.name;
+        let (idx, _) = entries.try_insert(name.span(), value);
         symbols_stream.extend(quote! {
             pub const #name: Symbol = Symbol::new(#idx);
         });
@@ -284,6 +283,7 @@ fn symbols_with_errors(input: TokenStream) -> (TokenStream, Vec<syn::Error>) {
 
     let symbol_digits_base = entries.map["0"].idx;
     let predefined_symbols_count = entries.len();
+    let prefill_stream = entries.prefill_stream;
     let output = quote! {
         const SYMBOL_DIGITS_BASE: u32 = #symbol_digits_base;
 
@@ -309,14 +309,124 @@ fn symbols_with_errors(input: TokenStream) -> (TokenStream, Vec<syn::Error>) {
         impl Interner {
             /// Creates an `Interner` with the predefined symbols from the `symbols!` macro and
             /// any extra symbols provided by external drivers such as Clippy
-            pub(crate) fn with_extra_symbols(extra_symbols: &[&'static str]) -> Self {
+            pub(crate) fn new(driver_symbols: Option<&[&'static str]>) -> Self {
                 Interner::prefill(
-                    &[#prefill_stream],
-                    extra_symbols,
+                    driver_symbols.unwrap_or(&[#prefill_stream])
                 )
             }
+        }
+
+        /// Allows drivers to define extra preinterned symbols, the expanded `PREINTERNED_SYMBOLS`
+        /// is to be provided to `rustc_interface::Config`
+        #[macro_export]
+        macro_rules! extra_symbols {
+            ($(#[macro_export] $further_symbols:ident;)? Symbols { $($tt:tt)* }) => {
+                rustc_macros::extra_symbols_impl! {
+                    $($further_symbols)? [#prefill_stream] $($tt)*
+                }
+            };
         }
     };
 
     (output, errors.list)
+}
+
+#[derive(Default)]
+struct ExtraSymbols {
+    macro_ident: Option<Ident>,
+    predefined: Punctuated<LitStr, Token![,]>,
+    extra_symbols: Punctuated<Symbol, Token![,]>,
+}
+
+impl Parse for ExtraSymbols {
+    fn parse(input: ParseStream<'_>) -> Result<Self> {
+        let macro_ident: Option<Ident> = input.parse()?;
+
+        let content;
+        bracketed!(content in input);
+        let predefined = Punctuated::parse_terminated(&content)?;
+
+        let extra_symbols = Punctuated::parse_terminated(&input)?;
+
+        Ok(ExtraSymbols { macro_ident, predefined, extra_symbols })
+    }
+}
+
+pub(super) fn extra_symbols(input: TokenStream) -> TokenStream {
+    let mut errors = Errors::default();
+
+    let input: ExtraSymbols = match syn::parse2(input) {
+        Ok(input) => input,
+        Err(e) => {
+            errors.list.push(e);
+            Default::default()
+        }
+    };
+
+    let mut symbol_stream = TokenStream::new();
+    let mut duplicate_symbols = TokenStream::new();
+
+    let mut entries = Entries::with_capacity(input.predefined.len() + input.extra_symbols.len());
+    for lit in &input.predefined {
+        entries.insert(lit.span(), lit.value(), &mut errors);
+    }
+
+    for symbol in input.extra_symbols {
+        let value = match symbol.value {
+            Value::SameAsName => symbol.name.to_string(),
+            Value::String(lit) => lit.value(),
+            _ => {
+                errors.error(
+                    symbol.name.span(),
+                    "unsupported expression for extra symbol value".to_string(),
+                );
+                continue;
+            }
+        };
+
+        let name = &symbol.name;
+        let (idx, duplicate) = entries.try_insert(name.span(), value);
+        if duplicate.is_some() {
+            duplicate_symbols.extend(quote! { #name, });
+        }
+        symbol_stream.extend(quote! {
+            pub const #name: Symbol = Symbol::new(#idx);
+        });
+    }
+
+    let prefill_stream = entries.prefill_stream;
+
+    let further_symbols = if let Some(macro_ident) = input.macro_ident {
+        quote! {
+            #[macro_export]
+            macro_rules! #macro_ident {
+                ($(#[macro_export] $further_symbols:ident;)? Symbols { $($tt:tt)* }) => {
+                    rustc_macros::extra_symbols_impl! {
+                        $($further_symbols)? [#prefill_stream] $($tt)*
+                    }
+                };
+            }
+        }
+    } else {
+        TokenStream::new()
+    };
+
+    let mut output = quote! {
+        /// To be supplied to `rustc_interface::Config`
+        pub const PREINTERNED_SYMBOLS: &[&str] = &[
+            #prefill_stream
+        ];
+
+        pub const DUPLICATE_SYMBOLS: &[Symbol] = &[
+            #duplicate_symbols
+        ];
+
+        #symbol_stream
+
+        #further_symbols
+    };
+
+    output.extend(errors.list.into_iter().map(|e| e.into_compile_error()));
+
+    output
 }
