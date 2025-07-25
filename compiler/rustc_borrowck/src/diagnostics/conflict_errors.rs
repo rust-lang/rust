@@ -2384,7 +2384,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         if let Some(body_expr) = finder.body_expr
             && let Some(loop_span) = finder.loop_span
             && let Some(def_id) = typeck_results.type_dependent_def_id(body_expr.hir_id)
-            && let Some(trait_did) = tcx.trait_of_item(def_id)
+            && let Some(trait_did) = tcx.trait_of_assoc(def_id)
             && tcx.is_diagnostic_item(sym::Iterator, trait_did)
         {
             if let Some(loop_bind) = finder.loop_bind {

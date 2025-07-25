@@ -429,7 +429,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
             Node::TraitItem(trait_item) => {
                 // mark the trait live
                 let trait_item_id = trait_item.owner_id.to_def_id();
-                if let Some(trait_id) = self.tcx.trait_of_item(trait_item_id) {
+                if let Some(trait_id) = self.tcx.trait_of_assoc(trait_item_id) {
                     self.check_def_id(trait_id);
                 }
                 intravisit::walk_trait_item(self, trait_item);

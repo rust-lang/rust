@@ -938,7 +938,7 @@ impl<'tcx> BorrowedContentSource<'tcx> {
     fn from_call(func: Ty<'tcx>, tcx: TyCtxt<'tcx>) -> Option<Self> {
         match *func.kind() {
             ty::FnDef(def_id, args) => {
-                let trait_id = tcx.trait_of_item(def_id)?;
+                let trait_id = tcx.trait_of_assoc(def_id)?;
 
                 if tcx.is_lang_item(trait_id, LangItem::Deref)
                     || tcx.is_lang_item(trait_id, LangItem::DerefMut)

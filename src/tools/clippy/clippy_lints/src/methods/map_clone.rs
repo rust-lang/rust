@@ -69,7 +69,7 @@ pub(super) fn check(cx: &LateContext<'_>, e: &hir::Expr<'_>, recv: &hir::Expr<'_
                             hir::ExprKind::MethodCall(method, obj, [], _) => {
                                 if ident_eq(name, obj) && method.ident.name == sym::clone
                                 && let Some(fn_id) = cx.typeck_results().type_dependent_def_id(closure_expr.hir_id)
-                                && let Some(trait_id) = cx.tcx.trait_of_item(fn_id)
+                                && let Some(trait_id) = cx.tcx.trait_of_assoc(fn_id)
                                 && cx.tcx.lang_items().clone_trait() == Some(trait_id)
                                 // no autoderefs
                                 && !cx.typeck_results().expr_adjustments(obj).iter()

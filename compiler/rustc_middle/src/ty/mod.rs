@@ -1996,7 +1996,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// If the given `DefId` describes an item belonging to a trait,
     /// returns the `DefId` of the trait that the trait item belongs to;
     /// otherwise, returns `None`.
-    pub fn trait_of_item(self, def_id: DefId) -> Option<DefId> {
+    pub fn trait_of_assoc(self, def_id: DefId) -> Option<DefId> {
         self.assoc_parent(def_id).filter(|id| self.def_kind(id) == DefKind::Trait)
     }
 
@@ -2174,7 +2174,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     #[inline]
     pub fn is_const_default_method(self, def_id: DefId) -> bool {
-        matches!(self.trait_of_item(def_id), Some(trait_id) if self.is_const_trait(trait_id))
+        matches!(self.trait_of_assoc(def_id), Some(trait_id) if self.is_const_trait(trait_id))
     }
 
     pub fn impl_method_has_trait_impl_trait_tys(self, def_id: DefId) -> bool {

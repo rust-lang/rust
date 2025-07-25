@@ -111,7 +111,7 @@ fn get_open_options(
                     // This might be a user defined extension trait with a method like `truncate_write`
                     // which would be a false positive
                     if let Some(method_def_id) = cx.typeck_results().type_dependent_def_id(argument.hir_id)
-                        && cx.tcx.trait_of_item(method_def_id).is_some()
+                        && cx.tcx.trait_of_assoc(method_def_id).is_some()
                     {
                         return false;
                     }

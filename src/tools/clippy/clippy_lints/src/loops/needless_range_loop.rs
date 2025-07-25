@@ -317,7 +317,7 @@ impl<'tcx> Visitor<'tcx> for VarVisitor<'_, 'tcx> {
                 .cx
                 .typeck_results()
                 .type_dependent_def_id(expr.hir_id)
-                .and_then(|def_id| self.cx.tcx.trait_of_item(def_id))
+                .and_then(|def_id| self.cx.tcx.trait_of_assoc(def_id))
             && ((meth.ident.name == sym::index && self.cx.tcx.lang_items().index_trait() == Some(trait_id))
                 || (meth.ident.name == sym::index_mut && self.cx.tcx.lang_items().index_mut_trait() == Some(trait_id)))
             && !self.check(args_1, args_0, expr)

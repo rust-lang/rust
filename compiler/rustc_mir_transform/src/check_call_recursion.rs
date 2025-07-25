@@ -21,7 +21,7 @@ impl<'tcx> MirLint<'tcx> for CheckCallRecursion {
 
         if let DefKind::Fn | DefKind::AssocFn = tcx.def_kind(def_id) {
             // If this is trait/impl method, extract the trait's args.
-            let trait_args = match tcx.trait_of_item(def_id.to_def_id()) {
+            let trait_args = match tcx.trait_of_assoc(def_id.to_def_id()) {
                 Some(trait_def_id) => {
                     let trait_args_count = tcx.generics_of(trait_def_id).count();
                     &GenericArgs::identity_for_item(tcx, def_id)[..trait_args_count]
