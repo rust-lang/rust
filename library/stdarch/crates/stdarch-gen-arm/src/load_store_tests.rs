@@ -2,6 +2,7 @@ use std::fs::File;
 use std::io::Write;
 use std::path::PathBuf;
 use std::str::FromStr;
+use std::sync::LazyLock;
 
 use crate::format_code;
 use crate::input::InputType;
@@ -10,7 +11,6 @@ use crate::typekinds::BaseType;
 use crate::typekinds::{ToRepr, TypeKind};
 
 use itertools::Itertools;
-use lazy_static::lazy_static;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 
@@ -639,8 +639,8 @@ impl LdIntrCharacteristics {
     }
 }
 
-lazy_static! {
-    static ref PREAMBLE: String = format!(
+static PREAMBLE: LazyLock<String> = LazyLock::new(|| {
+    format!(
         r#"#![allow(unused)]
 
 use super::*;
@@ -801,13 +801,11 @@ fn assert_vector_matches_u64(vector: svuint64_t, expected: svuint64_t) {{
     assert!(!svptest_any(defined, cmp))
 }}
 "#
-    );
-}
+    )
+});
 
-lazy_static! {
-    static ref MANUAL_TESTS: String = format!(
-        "#[simd_test(enable = \"sve\")]
-unsafe fn test_ffr() {{
+const MANUAL_TESTS: &str = "#[simd_test(enable = \"sve\")]
+unsafe fn test_ffr() {
     svsetffr();
     let ffr = svrdffr();
     assert_vector_matches_u8(svdup_n_u8_z(ffr, 1), svindex_u8(1, 0));
@@ -816,7 +814,5 @@ unsafe fn test_ffr() {{
     svwrffr(pred);
     let ffr = svrdffr_z(svptrue_b8());
     assert_vector_matches_u8(svdup_n_u8_z(ffr, 1), svdup_n_u8_z(pred, 1));
-}}
-"
-    );
 }
+";

@@ -444,7 +444,7 @@ fn add_exe_suffix(input: String, target: &TargetTuple) -> String {
     let exe_suffix = match target {
         TargetTuple::TargetTuple(_) => Target::expect_builtin(target).options.exe_suffix,
         TargetTuple::TargetJson { contents, .. } => {
-            Target::from_json(contents.parse().unwrap()).unwrap().0.options.exe_suffix
+            Target::from_json(contents).unwrap().0.options.exe_suffix
         }
     };
     input + &exe_suffix

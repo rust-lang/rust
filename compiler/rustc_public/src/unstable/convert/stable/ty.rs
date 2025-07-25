@@ -457,7 +457,6 @@ impl<'tcx> Stable<'tcx> for ty::TyKind<'tcx> {
             ty::Coroutine(def_id, generic_args) => TyKind::RigidTy(RigidTy::Coroutine(
                 tables.coroutine_def(*def_id),
                 generic_args.stable(tables, cx),
-                cx.coroutine_movability(*def_id).stable(tables, cx),
             )),
             ty::Never => TyKind::RigidTy(RigidTy::Never),
             ty::Tuple(fields) => TyKind::RigidTy(RigidTy::Tuple(

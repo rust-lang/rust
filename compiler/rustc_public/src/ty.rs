@@ -60,8 +60,8 @@ impl Ty {
     }
 
     /// Create a new coroutine type.
-    pub fn new_coroutine(def: CoroutineDef, args: GenericArgs, mov: Movability) -> Ty {
-        Ty::from_rigid_kind(RigidTy::Coroutine(def, args, mov))
+    pub fn new_coroutine(def: CoroutineDef, args: GenericArgs) -> Ty {
+        Ty::from_rigid_kind(RigidTy::Coroutine(def, args))
     }
 
     /// Create a new closure type.
@@ -560,8 +560,7 @@ pub enum RigidTy {
     FnDef(FnDef, GenericArgs),
     FnPtr(PolyFnSig),
     Closure(ClosureDef, GenericArgs),
-    // FIXME(rustc_public): Movability here is redundant
-    Coroutine(CoroutineDef, GenericArgs, Movability),
+    Coroutine(CoroutineDef, GenericArgs),
     CoroutineClosure(CoroutineClosureDef, GenericArgs),
     Dynamic(Vec<Binder<ExistentialPredicate>>, Region, DynKind),
     Never,

@@ -1113,6 +1113,12 @@ impl Step for Tidy {
             8 * std::thread::available_parallelism().map_or(1, std::num::NonZeroUsize::get) as u32
         });
         cmd.arg(jobs.to_string());
+        // pass the path to the npm command used for installing js deps.
+        if let Some(npm) = &builder.config.npm {
+            cmd.arg(npm);
+        } else {
+            cmd.arg("npm");
+        }
         if builder.is_verbose() {
             cmd.arg("--verbose");
         }
@@ -1342,7 +1348,12 @@ test!(Ui { path: "tests/ui", mode: "ui", suite: "ui", default: true });
 
 test!(Crashes { path: "tests/crashes", mode: "crashes", suite: "crashes", default: true });
 
-test!(Codegen { path: "tests/codegen", mode: "codegen", suite: "codegen", default: true });
+test!(CodegenLlvm {
+    path: "tests/codegen-llvm",
+    mode: "codegen",
+    suite: "codegen-llvm",
+    default: true
+});
 
 test!(CodegenUnits {
     path: "tests/codegen-units",
@@ -1407,7 +1418,12 @@ test!(Pretty {
 
 test!(RunMake { path: "tests/run-make", mode: "run-make", suite: "run-make", default: true });
 
-test!(Assembly { path: "tests/assembly", mode: "assembly", suite: "assembly", default: true });
+test!(AssemblyLlvm {
+    path: "tests/assembly-llvm",
+    mode: "assembly",
+    suite: "assembly-llvm",
+    default: true
+});
 
 /// Runs the coverage test suite at `tests/coverage` in some or all of the
 /// coverage test modes.
@@ -1615,7 +1631,7 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         let suite_path = self.path;
 
         // Skip codegen tests if they aren't enabled in configuration.
-        if !builder.config.codegen_tests && suite == "codegen" {
+        if !builder.config.codegen_tests && mode == "codegen" {
             return;
         }
 
@@ -1812,7 +1828,7 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         let mut flags = if is_rustdoc { Vec::new() } else { vec!["-Crpath".to_string()] };
         flags.push(format!(
             "-Cdebuginfo={}",
-            if suite == "codegen" {
+            if mode == "codegen" {
                 // codegen tests typically check LLVM IR and are sensitive to additional debuginfo.
                 // So do not apply `rust.debuginfo-level-tests` for codegen tests.
                 if builder.config.rust_debuginfo_level_tests

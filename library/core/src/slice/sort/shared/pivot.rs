@@ -1,6 +1,6 @@
 //! This module contains the logic for pivot selection.
 
-use crate::intrinsics;
+use crate::{hint, intrinsics};
 
 // Recursively select a pseudomedian if above this threshold.
 const PSEUDO_MEDIAN_REC_THRESHOLD: usize = 64;
@@ -9,6 +9,7 @@ const PSEUDO_MEDIAN_REC_THRESHOLD: usize = 64;
 ///
 /// This chooses a pivot by sampling an adaptive amount of points, approximating
 /// the quality of a median of sqrt(n) elements.
+#[inline]
 pub fn choose_pivot<T, F: FnMut(&T, &T) -> bool>(v: &[T], is_less: &mut F) -> usize {
     // We use unsafe code and raw pointers here because we're dealing with
     // heavy recursion. Passing safe slices around would involve a lot of
@@ -22,7 +23,7 @@ pub fn choose_pivot<T, F: FnMut(&T, &T) -> bool>(v: &[T], is_less: &mut F) -> us
     // SAFETY: a, b, c point to initialized regions of len_div_8 elements,
     // satisfying median3 and median3_rec's preconditions as v_base points
     // to an initialized region of n = len elements.
-    unsafe {
+    let index = unsafe {
         let v_base = v.as_ptr();
         let len_div_8 = len / 8;
 
@@ -35,6 +36,11 @@ pub fn choose_pivot<T, F: FnMut(&T, &T) -> bool>(v: &[T], is_less: &mut F) -> us
         } else {
             median3_rec(a, b, c, len_div_8, is_less).offset_from_unsigned(v_base)
         }
+    };
+    // SAFETY: preconditions must have been met for offset_from_unsigned()
+    unsafe {
+        hint::assert_unchecked(index < v.len());
+        index
     }
 }
 

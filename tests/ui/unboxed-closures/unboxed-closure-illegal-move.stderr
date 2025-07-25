@@ -2,9 +2,11 @@ error[E0507]: cannot move out of `x`, a captured variable in an `Fn` closure
   --> $DIR/unboxed-closure-illegal-move.rs:15:31
    |
 LL |         let x = Box::new(0);
-   |             - captured outer variable
+   |             -   ----------- move occurs because `x` has type `Box<i32>`, which does not implement the `Copy` trait
+   |             |
+   |             captured outer variable
 LL |         let f = to_fn(|| drop(x));
-   |                       --      ^ move occurs because `x` has type `Box<i32>`, which does not implement the `Copy` trait
+   |                       --      ^ `x` is moved here
    |                       |
    |                       captured by this `Fn` closure
    |
@@ -17,9 +19,11 @@ error[E0507]: cannot move out of `x`, a captured variable in an `FnMut` closure
   --> $DIR/unboxed-closure-illegal-move.rs:19:35
    |
 LL |         let x = Box::new(0);
-   |             - captured outer variable
+   |             -   ----------- move occurs because `x` has type `Box<i32>`, which does not implement the `Copy` trait
+   |             |
+   |             captured outer variable
 LL |         let f = to_fn_mut(|| drop(x));
-   |                           --      ^ move occurs because `x` has type `Box<i32>`, which does not implement the `Copy` trait
+   |                           --      ^ `x` is moved here
    |                           |
    |                           captured by this `FnMut` closure
    |
@@ -32,9 +36,11 @@ error[E0507]: cannot move out of `x`, a captured variable in an `Fn` closure
   --> $DIR/unboxed-closure-illegal-move.rs:28:36
    |
 LL |         let x = Box::new(0);
-   |             - captured outer variable
+   |             -   ----------- move occurs because `x` has type `Box<i32>`, which does not implement the `Copy` trait
+   |             |
+   |             captured outer variable
 LL |         let f = to_fn(move || drop(x));
-   |                       -------      ^ move occurs because `x` has type `Box<i32>`, which does not implement the `Copy` trait
+   |                       -------      ^ `x` is moved here
    |                       |
    |                       captured by this `Fn` closure
 
@@ -42,9 +48,11 @@ error[E0507]: cannot move out of `x`, a captured variable in an `FnMut` closure
   --> $DIR/unboxed-closure-illegal-move.rs:32:40
    |
 LL |         let x = Box::new(0);
-   |             - captured outer variable
+   |             -   ----------- move occurs because `x` has type `Box<i32>`, which does not implement the `Copy` trait
+   |             |
+   |             captured outer variable
 LL |         let f = to_fn_mut(move || drop(x));
-   |                           -------      ^ move occurs because `x` has type `Box<i32>`, which does not implement the `Copy` trait
+   |                           -------      ^ `x` is moved here
    |                           |
    |                           captured by this `FnMut` closure
 

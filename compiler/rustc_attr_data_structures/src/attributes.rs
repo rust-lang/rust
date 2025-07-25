@@ -157,6 +157,19 @@ pub enum UsedBy {
     Linker,
 }
 
+#[derive(Encodable, Decodable, Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(HashStable_Generic, PrintAttribute)]
+pub enum MacroUseArgs {
+    UseAll,
+    UseSpecific(ThinVec<Ident>),
+}
+
+impl Default for MacroUseArgs {
+    fn default() -> Self {
+        Self::UseSpecific(ThinVec::new())
+    }
+}
+
 #[derive(Debug, Clone, Encodable, Decodable, HashStable_Generic)]
 pub struct StrippedCfgItem<ModId = DefId> {
     pub parent_module: ModId,
@@ -351,8 +364,14 @@ pub enum AttributeKind {
     /// Represents `#[loop_match]`.
     LoopMatch(Span),
 
+    /// Represents `#[macro_escape]`.
+    MacroEscape(Span),
+
     /// Represents `#[rustc_macro_transparency]`.
     MacroTransparency(Transparency),
+
+    /// Represents `#[macro_use]`.
+    MacroUse { span: Span, arguments: MacroUseArgs },
 
     /// Represents `#[marker]`.
     Marker(Span),
