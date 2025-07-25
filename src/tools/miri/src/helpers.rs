@@ -1465,7 +1465,7 @@ pub struct MaybeEnteredTraceSpan {
 #[macro_export]
 macro_rules! enter_trace_span {
     ($name:ident :: $subname:ident $($tt:tt)*) => {{
-        enter_trace_span!(stringify!($name), $name = %stringify!(subname) $($tt)*)
+        enter_trace_span!(stringify!($name), $name = %stringify!($subname) $($tt)*)
     }};
 
     ($($tt:tt)*) => {
