@@ -237,7 +237,7 @@ pub fn assoc_item_list(
     let body_indent = if is_break_braces { "    ".to_owned() } else { String::new() };
 
     let body = match body {
-        Some(bd) => bd.iter().map(|elem| elem.to_string()).join(""),
+        Some(bd) => bd.iter().map(|elem| elem.to_string()).join("\n\n    "),
         None => String::new(),
     };
     ast_from_text(&format!("impl C for D {{{body_newline}{body_indent}{body}{body_newline}}}"))

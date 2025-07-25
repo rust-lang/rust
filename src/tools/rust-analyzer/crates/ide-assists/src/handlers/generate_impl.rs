@@ -167,25 +167,33 @@ pub(crate) fn generate_impl_trait(acc: &mut Assists, ctx: &AssistContext<'_>) ->
                 DefaultMethods::No,
                 IgnoreAssocItems::DocHiddenAttrPresent,
             );
-            let impl_ = make::impl_trait(
-                trait_.unsafe_token().is_some(),
-                None,
-                trait_.generic_param_list().map(|list| {
-                    make::generic_arg_list(list.generic_params().map(|_| holder_arg.clone()))
-                }),
-                None,
-                None,
-                false,
-                make::ty(&name.text()),
-                make::ty_placeholder(),
-                None,
-                None,
-                None,
-            )
-            .clone_for_update();
 
-            if !missing_items.is_empty() {
-                utils::add_trait_assoc_items_to_impl(
+            let trait_gen_args = trait_.generic_param_list().map(|list| {
+                make::generic_arg_list(list.generic_params().map(|_| holder_arg.clone()))
+            });
+
+            let make_impl_ = |body| {
+                make::impl_trait(
+                    trait_.unsafe_token().is_some(),
+                    None,
+                    trait_gen_args.clone(),
+                    None,
+                    None,
+                    false,
+                    make::ty(&name.text()),
+                    make::ty_placeholder(),
+                    None,
+                    None,
+                    body,
+                )
+                .clone_for_update()
+            };
+
+            let impl_ = if missing_items.is_empty() {
+                make_impl_(None)
+            } else {
+                let impl_ = make_impl_(None);
+                let assoc_items = utils::add_trait_assoc_items_to_impl(
                     &ctx.sema,
                     ctx.config,
                     &missing_items,
@@ -193,7 +201,10 @@ pub(crate) fn generate_impl_trait(acc: &mut Assists, ctx: &AssistContext<'_>) ->
                     &impl_,
                     &target_scope,
                 );
-            }
+                let assoc_items = assoc_items.into_iter().map(either::Either::Right).collect();
+                let assoc_item_list = make::assoc_item_list(Some(assoc_items));
+                make_impl_(Some(assoc_item_list))
+            };
 
             if let Some(cap) = ctx.config.snippet_cap {
                 if let Some(generics) = impl_.trait_().and_then(|it| it.generic_arg_list()) {
