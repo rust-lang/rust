@@ -68,6 +68,13 @@ struct PageLayout<'a> {
     display_krate_version_extra: &'a str,
 }
 
+impl PageLayout<'_> {
+    /// See [`may_remove_crossorigin`].
+    fn static_root_path_may_remove_crossorigin(&self) -> bool {
+        may_remove_crossorigin(&self.static_root_path)
+    }
+}
+
 pub(crate) use crate::html::render::sidebar::filters;
 
 pub(crate) fn render<T: Display, S: Display>(
@@ -133,4 +140,51 @@ pub(crate) fn redirect(url: &str) -> String {
 </body>
 </html>"##,
     )
+}
+
+/// Conservatively determines if `href` is relative to the current origin,
+/// so that `crossorigin` may be safely removed from `<link>` elements.
+pub(crate) fn may_remove_crossorigin(href: &str) -> bool {
+    // Reject scheme-relative URLs (`//example.com/`).
+    if href.starts_with("//") {
+        return false;
+    }
+    // URL is interpreted as having a scheme iff: it starts with an ascii alpha, and only
+    // contains ascii alphanumeric or `+` `-` `.` up to the `:`.
+    // https://url.spec.whatwg.org/#url-parsing
+    let has_scheme = href.split_once(':').is_some_and(|(scheme, _rest)| {
+        let mut chars = scheme.chars();
+        chars.next().is_some_and(|c| c.is_ascii_alphabetic())
+            && chars.all(|c| c.is_ascii_alphanumeric() || c == '+' || c == '-' || c == '.')
+    });
+    // Reject anything with a scheme (`http:`, etc.).
+    !has_scheme
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_may_remove_crossorigin() {
+        use super::may_remove_crossorigin;
+
+        assert!(may_remove_crossorigin("font.woff2"));
+        assert!(may_remove_crossorigin("/font.woff2"));
+        assert!(may_remove_crossorigin("./font.woff2"));
+        assert!(may_remove_crossorigin(":D/font.woff2"));
+        assert!(may_remove_crossorigin("../font.woff2"));
+
+        assert!(!may_remove_crossorigin("//example.com/static.files"));
+        assert!(!may_remove_crossorigin("http://example.com/static.files"));
+        assert!(!may_remove_crossorigin("https://example.com/static.files"));
+        assert!(!may_remove_crossorigin("https://example.com:8080/static.files"));
+
+        assert!(!may_remove_crossorigin("ftp://example.com/static.files"));
+        assert!(!may_remove_crossorigin("blob:http://example.com/static.files"));
+        assert!(!may_remove_crossorigin("javascript:alert('Hello, world!')"));
+        assert!(!may_remove_crossorigin("//./C:"));
+        assert!(!may_remove_crossorigin("file:////C:"));
+        assert!(!may_remove_crossorigin("file:///./C:"));
+        assert!(!may_remove_crossorigin("data:,Hello%2C%20World%21"));
+        assert!(!may_remove_crossorigin("hi...:hello"));
+    }
 }
