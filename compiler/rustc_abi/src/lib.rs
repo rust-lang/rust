@@ -315,7 +315,7 @@ pub enum TargetDataLayoutErrors<'a> {
     MissingAlignment { cause: &'a str },
     InvalidAlignment { cause: &'a str, err: AlignFromBytesError },
     InconsistentTargetArchitecture { dl: &'a str, target: &'a str },
-    InconsistentTargetPointerWidth { pointer_size: u64, target: u32 },
+    InconsistentTargetPointerWidth { pointer_size: u64, target: u16 },
     InvalidBitsSize { err: String },
     UnknownPointerSpecification { err: String },
 }

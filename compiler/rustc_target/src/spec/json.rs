@@ -25,10 +25,7 @@ impl Target {
         let mut base = Target {
             llvm_target: json.llvm_target,
             metadata: Default::default(),
-            pointer_width: json
-                .target_pointer_width
-                .parse()
-                .map_err(|err| format!("invalid target-pointer-width: {err}"))?,
+            pointer_width: json.target_pointer_width,
             data_layout: json.data_layout,
             arch: json.arch,
             options: Default::default(),
@@ -461,7 +458,7 @@ struct TargetSpecJsonMetadata {
 #[serde(deny_unknown_fields)]
 struct TargetSpecJson {
     llvm_target: StaticCow<str>,
-    target_pointer_width: String,
+    target_pointer_width: u16,
     data_layout: StaticCow<str>,
     arch: StaticCow<str>,
 
