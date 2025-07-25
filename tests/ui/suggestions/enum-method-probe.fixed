@@ -56,4 +56,11 @@ fn test_option_in_unit_return() {
     //~| HELP consider using `Option::expect` to unwrap the `Foo` value, panicking if the value is an `Option::None`
 }
 
+fn test_option_private_method() {
+    let res: Option<_> = Some(vec![1, 2, 3]);
+    res.expect("REASON").len();
+    //~^ ERROR method `len` is private
+    //~| HELP consider using `Option::expect` to unwrap the `Vec<{integer}>` value, panicking if the value is an `Option::None`
+}
+
 fn main() {}
