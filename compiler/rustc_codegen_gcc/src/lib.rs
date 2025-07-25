@@ -93,7 +93,6 @@ use gccjit::{CType, Context, OptimizationLevel};
 #[cfg(feature = "master")]
 use gccjit::{TargetInfo, Version};
 use rustc_ast::expand::allocator::AllocatorKind;
-use rustc_ast::expand::autodiff_attrs::AutoDiffItem;
 use rustc_codegen_ssa::back::lto::{SerializedModule, ThinModule};
 use rustc_codegen_ssa::back::write::{
     CodegenContext, FatLtoInput, ModuleConfig, TargetMachineFactoryFn,
@@ -363,12 +362,7 @@ impl WriteBackendMethods for GccCodegenBackend {
         _exported_symbols_for_lto: &[String],
         each_linked_rlib_for_lto: &[PathBuf],
         modules: Vec<FatLtoInput<Self>>,
-        diff_functions: Vec<AutoDiffItem>,
     ) -> Result<ModuleCodegen<Self::Module>, FatalError> {
-        if !diff_functions.is_empty() {
-            unimplemented!();
-        }
-
         back::lto::run_fat(cgcx, each_linked_rlib_for_lto, modules)
     }
 
