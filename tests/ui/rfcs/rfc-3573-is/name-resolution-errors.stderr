@@ -2,44 +2,191 @@ error[E0425]: cannot find value `x` in this scope
   --> $DIR/name-resolution-errors.rs:9:8
    |
 LL |     if x
-   |        ^ not found in this scope
+   |        ^ help: a function with a similar name exists: `f`
+...
+LL |     fn f(_a: bool, _b: bool) {}
+   |     ------------------------ similarly named function `f` defined here
 
 error[E0425]: cannot find value `x` in this scope
-  --> $DIR/name-resolution-errors.rs:15:5
-   |
-LL |     x;
-   |     ^ not found in this scope
-
-error[E0425]: cannot find value `x` in this scope
-  --> $DIR/name-resolution-errors.rs:18:8
-   |
-LL |     if x
-   |        ^ not found in this scope
-
-error[E0425]: cannot find value `x` in this scope
-  --> $DIR/name-resolution-errors.rs:20:12
-   |
-LL |         && x
-   |            ^ not found in this scope
-
-error[E0425]: cannot find value `x` in this scope
-  --> $DIR/name-resolution-errors.rs:21:31
-   |
-LL |         && (is!(true is x) || x)
-   |                               ^ not found in this scope
-
-error[E0425]: cannot find value `x` in this scope
-  --> $DIR/name-resolution-errors.rs:23:9
+  --> $DIR/name-resolution-errors.rs:15:9
    |
 LL |         x;
-   |         ^ not found in this scope
+   |         ^ help: a function with a similar name exists: `f`
+...
+LL |     fn f(_a: bool, _b: bool) {}
+   |     ------------------------ similarly named function `f` defined here
 
 error[E0425]: cannot find value `x` in this scope
-  --> $DIR/name-resolution-errors.rs:26:5
+  --> $DIR/name-resolution-errors.rs:17:5
    |
 LL |     x;
-   |     ^ not found in this scope
+   |     ^ help: a function with a similar name exists: `f`
+...
+LL |     fn f(_a: bool, _b: bool) {}
+   |     ------------------------ similarly named function `f` defined here
 
-error: aborting due to 7 previous errors
+error[E0425]: cannot find value `x` in this scope
+  --> $DIR/name-resolution-errors.rs:20:8
+   |
+LL |     if x
+   |        ^ help: a function with a similar name exists: `f`
+...
+LL |     fn f(_a: bool, _b: bool) {}
+   |     ------------------------ similarly named function `f` defined here
+
+error[E0425]: cannot find value `x` in this scope
+  --> $DIR/name-resolution-errors.rs:22:12
+   |
+LL |         && x
+   |            ^ help: a function with a similar name exists: `f`
+...
+LL |     fn f(_a: bool, _b: bool) {}
+   |     ------------------------ similarly named function `f` defined here
+
+error[E0425]: cannot find value `x` in this scope
+  --> $DIR/name-resolution-errors.rs:23:31
+   |
+LL |         && (is!(true is x) || x)
+   |                               ^ help: a function with a similar name exists: `f`
+...
+LL |     fn f(_a: bool, _b: bool) {}
+   |     ------------------------ similarly named function `f` defined here
+
+error[E0425]: cannot find value `x` in this scope
+  --> $DIR/name-resolution-errors.rs:24:32
+   |
+LL |         && (!is!(true is x) || x)
+   |                                ^ help: a function with a similar name exists: `f`
+...
+LL |     fn f(_a: bool, _b: bool) {}
+   |     ------------------------ similarly named function `f` defined here
+
+error[E0425]: cannot find value `x` in this scope
+  --> $DIR/name-resolution-errors.rs:25:30
+   |
+LL |         && (is!(true is x) & x)
+   |                              ^ help: a function with a similar name exists: `f`
+...
+LL |     fn f(_a: bool, _b: bool) {}
+   |     ------------------------ similarly named function `f` defined here
+
+error[E0425]: cannot find value `x` in this scope
+  --> $DIR/name-resolution-errors.rs:27:9
+   |
+LL |         x;
+   |         ^ help: a function with a similar name exists: `f`
+...
+LL |     fn f(_a: bool, _b: bool) {}
+   |     ------------------------ similarly named function `f` defined here
+
+error[E0425]: cannot find value `x` in this scope
+  --> $DIR/name-resolution-errors.rs:31:16
+   |
+LL |         _ => { x; }
+   |                ^ help: a function with a similar name exists: `f`
+...
+LL |     fn f(_a: bool, _b: bool) {}
+   |     ------------------------ similarly named function `f` defined here
+
+error[E0425]: cannot find value `x` in this scope
+  --> $DIR/name-resolution-errors.rs:36:15
+   |
+LL |         () if x => {}
+   |               ^ help: a function with a similar name exists: `f`
+...
+LL |     fn f(_a: bool, _b: bool) {}
+   |     ------------------------ similarly named function `f` defined here
+
+error[E0425]: cannot find value `x` in this scope
+  --> $DIR/name-resolution-errors.rs:41:17
+   |
+LL |         () => { x; }
+   |                 ^ help: a function with a similar name exists: `f`
+...
+LL |     fn f(_a: bool, _b: bool) {}
+   |     ------------------------ similarly named function `f` defined here
+
+error[E0425]: cannot find value `x` in this scope
+  --> $DIR/name-resolution-errors.rs:46:23
+   |
+LL |     fn f(_a: bool, _b: bool) {}
+   |     ------------------------ similarly named function `f` defined here
+LL |     f(is!(true is x) && x, true);
+LL |     f(is!(true is x), x);
+   |                       ^ help: a function with a similar name exists: `f`
+
+error[E0425]: cannot find value `x` in this scope
+  --> $DIR/name-resolution-errors.rs:47:28
+   |
+LL |     fn f(_a: bool, _b: bool) {}
+   |     ------------------------ similarly named function `f` defined here
+...
+LL |     f(is!(true is x) && x, x);
+   |                            ^ help: a function with a similar name exists: `f`
+
+error[E0425]: cannot find value `x` in this scope
+  --> $DIR/name-resolution-errors.rs:50:9
+   |
+LL |     fn f(_a: bool, _b: bool) {}
+   |     ------------------------ similarly named function `f` defined here
+...
+LL |         x;
+   |         ^ help: a function with a similar name exists: `f`
+
+error[E0425]: cannot find value `x` in this scope
+  --> $DIR/name-resolution-errors.rs:52:9
+   |
+LL |     fn f(_a: bool, _b: bool) {}
+   |     ------------------------ similarly named function `f` defined here
+...
+LL |         x;
+   |         ^ help: a function with a similar name exists: `f`
+
+error[E0425]: cannot find value `x` in this scope
+  --> $DIR/name-resolution-errors.rs:57:12
+   |
+LL |     fn f(_a: bool, _b: bool) {}
+   |     ------------------------ similarly named function `f` defined here
+...
+LL |         && x
+   |            ^ help: a function with a similar name exists: `f`
+
+error[E0425]: cannot find value `x` in this scope
+  --> $DIR/name-resolution-errors.rs:59:9
+   |
+LL |     fn f(_a: bool, _b: bool) {}
+   |     ------------------------ similarly named function `f` defined here
+...
+LL |         x;
+   |         ^ help: a function with a similar name exists: `f`
+
+error[E0425]: cannot find value `x` in this scope
+  --> $DIR/name-resolution-errors.rs:66:5
+   |
+LL |     fn f(_a: bool, _b: bool) {}
+   |     ------------------------ similarly named function `f` defined here
+...
+LL |     x;
+   |     ^ help: a function with a similar name exists: `f`
+
+error[E0425]: cannot find value `x` in this scope
+  --> $DIR/name-resolution-errors.rs:69:5
+   |
+LL |     fn f(_a: bool, _b: bool) {}
+   |     ------------------------ similarly named function `f` defined here
+...
+LL |     x;
+   |     ^ help: a function with a similar name exists: `f`
+
+error[E0425]: cannot find value `x` in this scope
+  --> $DIR/name-resolution-errors.rs:72:5
+   |
+LL |     fn f(_a: bool, _b: bool) {}
+   |     ------------------------ similarly named function `f` defined here
+...
+LL |     x;
+   |     ^ help: a function with a similar name exists: `f`
+
+error: aborting due to 21 previous errors
 
 For more information about this error, try `rustc --explain E0425`.
