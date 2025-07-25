@@ -135,6 +135,7 @@ const EXCEPTIONS_CARGO: ExceptionList = &[
     ("libz-rs-sys", "Zlib"),
     ("normalize-line-endings", "Apache-2.0"),
     ("openssl", "Apache-2.0"),
+    ("ring", "Apache-2.0 AND ISC"),
     ("ryu", "Apache-2.0 OR BSL-1.0"), // BSL is not acceptble, but we use it under Apache-2.0
     ("similar", "Apache-2.0"),
     ("sized-chunks", "MPL-2.0+"),
