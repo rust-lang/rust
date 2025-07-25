@@ -237,7 +237,6 @@ use rustc_span::source_map::{Spanned, dummy_spanned, respan};
 use rustc_span::{DUMMY_SP, Span};
 use tracing::{debug, instrument, trace};
 
-#[cfg(llvm_enzyme)]
 use crate::collector::autodiff::collect_enzyme_autodiff_fn;
 use crate::errors::{
     self, EncounteredErrorWhileInstantiating, EncounteredErrorWhileInstantiatingGlobalAsm,
@@ -915,7 +914,6 @@ fn visit_instance_use<'tcx>(
         return;
     }
     if let Some(intrinsic) = tcx.intrinsic(instance.def_id()) {
-        #[cfg(llvm_enzyme)]
         collect_enzyme_autodiff_fn(tcx, instance, intrinsic, output);
 
         if let Some(_requirement) = ValidityRequirement::from_intrinsic(intrinsic.name) {
