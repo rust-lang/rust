@@ -158,6 +158,7 @@
 #[cfg(all(test, not(any(target_os = "emscripten", target_os = "wasi"))))]
 mod tests;
 
+use crate::alloc::System;
 use crate::any::Any;
 use crate::cell::UnsafeCell;
 use crate::ffi::CStr;
@@ -1465,7 +1466,10 @@ impl Inner {
 ///
 /// [`thread::current`]: current::current
 pub struct Thread {
-    inner: Pin<Arc<Inner>>,
+    // We use the System allocator such that creating or dropping this handle
+    // does not interfere with a potential Global allocator using thread-local
+    // storage.
+    inner: Pin<Arc<Inner, System>>,
 }
 
 impl Thread {
@@ -1478,7 +1482,7 @@ impl Thread {
         // SAFETY: We pin the Arc immediately after creation, so its address never
         // changes.
         let inner = unsafe {
-            let mut arc = Arc::<Inner>::new_uninit();
+            let mut arc = Arc::<Inner, _>::new_uninit_in(System);
             let ptr = Arc::get_mut_unchecked(&mut arc).as_mut_ptr();
             (&raw mut (*ptr).name).write(name);
             (&raw mut (*ptr).id).write(id);
@@ -1649,7 +1653,7 @@ impl Thread {
     pub fn into_raw(self) -> *const () {
         // Safety: We only expose an opaque pointer, which maintains the `Pin` invariant.
         let inner = unsafe { Pin::into_inner_unchecked(self.inner) };
-        Arc::into_raw(inner) as *const ()
+        Arc::into_raw_with_allocator(inner).0 as *const ()
     }
 
     /// Constructs a `Thread` from a raw pointer.
@@ -1671,7 +1675,9 @@ impl Thread {
     #[unstable(feature = "thread_raw", issue = "97523")]
     pub unsafe fn from_raw(ptr: *const ()) -> Thread {
         // Safety: Upheld by caller.
-        unsafe { Thread { inner: Pin::new_unchecked(Arc::from_raw(ptr as *const Inner)) } }
+        unsafe {
+            Thread { inner: Pin::new_unchecked(Arc::from_raw_in(ptr as *const Inner, System)) }
+        }
     }
 
     fn cname(&self) -> Option<&CStr> {
