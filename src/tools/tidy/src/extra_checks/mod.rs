@@ -86,7 +86,7 @@ fn check_impl(
         std::env::var("TIDY_PRINT_DIFF").is_ok_and(|v| v.eq_ignore_ascii_case("true") || v == "1");
 
     // Split comma-separated args up
-    let lint_args = match extra_checks {
+    let mut lint_args = match extra_checks {
         Some(s) => s
             .strip_prefix("--extra-checks=")
             .unwrap()
@@ -99,11 +99,7 @@ fn check_impl(
             })
             .filter_map(|(res, src)| match res {
                 Ok(arg) => {
-                    if arg.is_inactive_auto(ci_info) {
-                        None
-                    } else {
-                        Some(arg)
-                    }
+                    Some(arg)
                 }
                 Err(err) => {
                     // only warn because before bad extra checks would be silently ignored.
@@ -114,6 +110,11 @@ fn check_impl(
             .collect(),
         None => vec![],
     };
+    if lint_args.iter().any(|ck| ck.auto) {
+        crate::files_modified_batch_filter(ci_info, &mut lint_args, |ck, path| {
+            ck.is_non_auto_or_matches(path)
+        });
+    }
 
     macro_rules! extra_check {
         ($lang:ident, $kind:ident) => {
@@ -721,10 +722,10 @@ impl ExtraCheckArg {
         self.lang == lang && self.kind.map(|k| k == kind).unwrap_or(true)
     }
 
-    /// Returns `true` if this is an auto arg and the relevant files are not modified.
-    fn is_inactive_auto(&self, ci_info: &CiInfo) -> bool {
+    /// Returns `false` if this is an auto arg and the passed filename does not trigger the auto rule
+    fn is_non_auto_or_matches(&self, filepath: &str) -> bool {
         if !self.auto {
-            return false;
+            return true;
         }
         let ext = match self.lang {
             ExtraCheckLang::Py => ".py",
@@ -732,12 +733,15 @@ impl ExtraCheckArg {
             ExtraCheckLang::Shell => ".sh",
             ExtraCheckLang::Js => ".js",
             ExtraCheckLang::Spellcheck => {
-                return !crate::files_modified(ci_info, |s| {
-                    SPELLCHECK_DIRS.iter().any(|dir| Path::new(s).starts_with(dir))
-                });
+                for dir in SPELLCHECK_DIRS {
+                    if Path::new(filepath).starts_with(dir) {
+                        return true;
+                    }
+                }
+                return false;
             }
         };
-        !crate::files_modified(ci_info, |s| s.ends_with(ext))
+        filepath.ends_with(ext)
     }
 
     fn has_supported_kind(&self) -> bool {
