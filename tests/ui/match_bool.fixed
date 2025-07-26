@@ -61,4 +61,17 @@ fn issue14099() {
     } }
 }
 
+fn issue15351() {
+    let mut d = false;
+    match d {
+        false => println!("foo"),
+        ref mut d => *d = false,
+    }
+
+    match d {
+        false => println!("foo"),
+        e => println!("{e}"),
+    }
+}
+
 fn main() {}
