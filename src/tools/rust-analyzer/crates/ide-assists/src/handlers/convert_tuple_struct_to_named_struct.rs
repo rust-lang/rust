@@ -1,10 +1,10 @@
 use either::Either;
 use ide_db::defs::{Definition, NameRefClass};
 use syntax::{
-    SyntaxKind, SyntaxNode,
+    SyntaxKind, SyntaxNode, T,
     ast::{self, AstNode, HasAttrs, HasGenericParams, HasVisibility},
     match_ast,
-    syntax_editor::{Position, SyntaxEditor},
+    syntax_editor::{Element, Position, SyntaxEditor},
 };
 
 use crate::{AssistContext, AssistId, Assists, assist_context::SourceChangeBuilder};
@@ -72,7 +72,7 @@ pub(crate) fn convert_tuple_struct_to_named_struct(
         Either::Right(v) => Either::Right(ctx.sema.to_def(v)?),
     };
     let target = strukt_or_variant.as_ref().either(|s| s.syntax(), |v| v.syntax()).text_range();
-
+    let syntax = strukt_or_variant.as_ref().either(|s| s.syntax(), |v| v.syntax());
     acc.add(
         AssistId::refactor_rewrite("convert_tuple_struct_to_named_struct"),
         "Convert to named struct",
@@ -81,58 +81,53 @@ pub(crate) fn convert_tuple_struct_to_named_struct(
             let names = generate_names(tuple_fields.fields());
             edit_field_references(ctx, edit, tuple_fields.fields(), &names);
             edit_struct_references(ctx, edit, strukt_def, &names);
-            edit_struct_def(ctx, edit, &strukt_or_variant, tuple_fields, names);
+            let mut editor = edit.make_editor(syntax);
+            edit_struct_def(&mut editor, &strukt_or_variant, tuple_fields, names);
+            edit.add_file_edits(ctx.vfs_file_id(), editor);
         },
     )
 }
 
 fn edit_struct_def(
-    ctx: &AssistContext<'_>,
-    edit: &mut SourceChangeBuilder,
+    editor: &mut SyntaxEditor,
     strukt: &Either<ast::Struct, ast::Variant>,
     tuple_fields: ast::TupleFieldList,
     names: Vec<ast::Name>,
 ) {
     let record_fields = tuple_fields.fields().zip(names).filter_map(|(f, name)| {
         let field = ast::make::record_field(f.visibility(), name, f.ty()?);
-        let mut editor = SyntaxEditor::new(field.syntax().clone());
-        editor.insert_all(
+        let mut field_editor = SyntaxEditor::new(field.syntax().clone());
+        field_editor.insert_all(
             Position::first_child_of(field.syntax()),
             f.attrs().map(|attr| attr.syntax().clone_subtree().clone_for_update().into()).collect(),
         );
-        ast::RecordField::cast(editor.finish().new_root().clone())
+        ast::RecordField::cast(field_editor.finish().new_root().clone())
     });
-    let record_fields = ast::make::record_field_list(record_fields);
-    let tuple_fields_text_range = tuple_fields.syntax().text_range();
-
-    edit.edit_file(ctx.vfs_file_id());
+    let record_fields = ast::make::record_field_list(record_fields).clone_for_update();
+    let tuple_fields_before = Position::before(tuple_fields.syntax());
 
     if let Either::Left(strukt) = strukt {
         if let Some(w) = strukt.where_clause() {
-            edit.delete(w.syntax().text_range());
-            edit.insert(
-                tuple_fields_text_range.start(),
-                ast::make::tokens::single_newline().text(),
-            );
-            edit.insert(tuple_fields_text_range.start(), w.syntax().text());
+            editor.delete(w.syntax());
+            let mut insert_element = Vec::new();
+            insert_element.push(ast::make::tokens::single_newline().syntax_element());
+            insert_element.push(w.syntax().clone_for_update().syntax_element());
             if w.syntax().last_token().is_none_or(|t| t.kind() != SyntaxKind::COMMA) {
-                edit.insert(tuple_fields_text_range.start(), ",");
+                insert_element.push(ast::make::token(T![,]).into());
             }
-            edit.insert(
-                tuple_fields_text_range.start(),
-                ast::make::tokens::single_newline().text(),
-            );
+            insert_element.push(ast::make::tokens::single_newline().syntax_element());
+            editor.insert_all(tuple_fields_before, insert_element);
         } else {
-            edit.insert(tuple_fields_text_range.start(), ast::make::tokens::single_space().text());
+            editor.insert(tuple_fields_before, ast::make::tokens::single_space());
         }
         if let Some(t) = strukt.semicolon_token() {
-            edit.delete(t.text_range());
+            editor.delete(t);
         }
     } else {
-        edit.insert(tuple_fields_text_range.start(), ast::make::tokens::single_space().text());
+        editor.insert(tuple_fields_before, ast::make::tokens::single_space());
     }
 
-    edit.replace(tuple_fields_text_range, record_fields.to_string());
+    editor.replace(tuple_fields.syntax(), record_fields.syntax());
 }
 
 fn edit_struct_references(
@@ -1015,8 +1010,7 @@ where
 pub struct $0Foo(#[my_custom_attr] u32);
 "#,
             r#"
-pub struct Foo { #[my_custom_attr]
-field1: u32 }
+pub struct Foo { #[my_custom_attr]field1: u32 }
 "#,
         );
     }
