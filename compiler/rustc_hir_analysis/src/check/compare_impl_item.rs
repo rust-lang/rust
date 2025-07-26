@@ -425,7 +425,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for RemapLateParam<'tcx> {
 ///
 /// trait Foo {
 ///     fn bar() -> impl Deref<Target = impl Sized>;
-///              // ^- RPITIT #1        ^- RPITIT #2
+///     //          ^- RPITIT #1        ^- RPITIT #2
 /// }
 ///
 /// impl Foo for () {

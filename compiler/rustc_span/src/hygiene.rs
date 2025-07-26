@@ -756,7 +756,9 @@ impl SyntaxContext {
     ///
     /// ```rust
     /// #![feature(decl_macro)]
-    /// mod foo { pub fn f() {} } // `f`'s `SyntaxContext` is empty.
+    /// mod foo {
+    ///     pub fn f() {} // `f`'s `SyntaxContext` is empty.
+    /// }
     /// m!(f);
     /// macro m($f:ident) {
     ///     mod bar {

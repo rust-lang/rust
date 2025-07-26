@@ -3778,8 +3778,8 @@ impl<T, A: Allocator> Vec<T, A> {
     /// while i < vec.len() - end_items {
     ///     if some_predicate(&mut vec[i]) {
     ///         let val = vec.remove(i);
-    /// #         extracted.push(val);
     ///         // your code here
+    /// #         extracted.push(val);
     ///     } else {
     ///         i += 1;
     ///     }

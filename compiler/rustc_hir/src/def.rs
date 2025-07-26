@@ -417,7 +417,7 @@ pub enum Res<Id = hir::HirId> {
     /// }
     ///
     /// impl Foo for Bar {
-    ///     fn foo() -> Box<Self> { // SelfTyAlias
+    ///     fn foo() -> Box<Self /* SelfTyAlias */> {
     ///         let _: Self;        // SelfTyAlias
     ///
     ///         todo!()
