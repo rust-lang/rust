@@ -98,6 +98,7 @@
 #![feature(char_internals)]
 #![feature(clone_to_uninit)]
 #![feature(coerce_unsized)]
+#![feature(comparable_trait)]
 #![feature(const_clone)]
 #![feature(const_cmp)]
 #![feature(const_convert)]
