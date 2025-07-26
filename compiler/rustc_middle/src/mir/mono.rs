@@ -525,45 +525,12 @@ impl<'tcx> CodegenUnit<'tcx> {
         tcx: TyCtxt<'tcx>,
     ) -> Vec<(MonoItem<'tcx>, MonoItemData)> {
         // The codegen tests rely on items being process in the same order as
-        // they appear in the file, so for local items, we sort by node_id first
+        // they appear in the file, so for local items, we sort by span first
         #[derive(PartialEq, Eq, PartialOrd, Ord, Debug)]
         struct ItemSortKey<'tcx>(Option<Span>, SymbolName<'tcx>);
 
         fn item_sort_key<'tcx>(tcx: TyCtxt<'tcx>, item: MonoItem<'tcx>) -> ItemSortKey<'tcx> {
-            ItemSortKey(
-                match item {
-                    MonoItem::Fn(ref instance) => {
-                        match instance.def {
-                            // We only want to take HirIds of user-defined
-                            // instances into account. The others don't matter for
-                            // the codegen tests and can even make item order
-                            // unstable.
-                            InstanceKind::Item(def) => {
-                                def.as_local().map(|def_id| tcx.def_span(def_id))
-                            }
-                            InstanceKind::VTableShim(..)
-                            | InstanceKind::ReifyShim(..)
-                            | InstanceKind::Intrinsic(..)
-                            | InstanceKind::FnPtrShim(..)
-                            | InstanceKind::Virtual(..)
-                            | InstanceKind::ClosureOnceShim { .. }
-                            | InstanceKind::ConstructCoroutineInClosureShim { .. }
-                            | InstanceKind::DropGlue(..)
-                            | InstanceKind::CloneShim(..)
-                            | InstanceKind::ThreadLocalShim(..)
-                            | InstanceKind::FnPtrAddrShim(..)
-                            | InstanceKind::AsyncDropGlue(..)
-                            | InstanceKind::FutureDropPollShim(..)
-                            | InstanceKind::AsyncDropGlueCtorShim(..) => None,
-                        }
-                    }
-                    MonoItem::Static(def_id) => {
-                        def_id.as_local().map(|def_id| tcx.def_span(def_id))
-                    }
-                    MonoItem::GlobalAsm(item_id) => Some(tcx.def_span(item_id.owner_id.def_id)),
-                },
-                item.symbol_name(tcx),
-            )
+            ItemSortKey(item.local_span(tcx), item.symbol_name(tcx))
         }
 
         let mut items: Vec<_> = self.items().iter().map(|(&i, &data)| (i, data)).collect();
