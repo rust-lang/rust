@@ -15,14 +15,7 @@ fn panic_handler(_info: &panic::PanicInfo) -> ! {
 
 #[export_name = "efi_main"]
 pub extern "C" fn main(_h: Handle, st: *mut SystemTable) -> Status {
-    let s = [
-        0x0048u16, 0x0065u16, 0x006cu16, 0x006cu16, 0x006fu16, // "Hello"
-        0x0020u16, //                                             " "
-        0x0057u16, 0x006fu16, 0x0072u16, 0x006cu16, 0x0064u16, // "World"
-        0x0021u16, //                                             "!"
-        0x000au16, //                                             "\n"
-        0x0000u16, //                                             NUL
-    ];
+    let s = b"Hello World!\n\0".map(|c| u16::from(c));
 
     // Print "Hello World!".
     let r = unsafe { ((*(*st).con_out).output_string)((*st).con_out, s.as_ptr() as *mut Char16) };

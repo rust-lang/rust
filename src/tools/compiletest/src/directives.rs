@@ -992,6 +992,7 @@ const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     "only-stable",
     "only-thumb",
     "only-tvos",
+    "only-uefi",
     "only-unix",
     "only-visionos",
     "only-wasm32",
