@@ -149,21 +149,6 @@ LL |     use_expr!((let 0 = 1));
    = note: only supported directly in conditions of `if` and `while` expressions
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-error: no rules expected keyword `let`
-  --> $DIR/feature-gate.rs:67:15
-   |
-LL |     macro_rules! use_expr {
-   |     --------------------- when calling this macro
-...
-LL |     use_expr!(let 0 = 1);
-   |               ^^^ no rules expected this token in macro call
-   |
-note: while trying to match meta-variable `$e:expr`
-  --> $DIR/feature-gate.rs:48:10
-   |
-LL |         ($e:expr) => {
-   |          ^^^^^^^
-
 error[E0658]: `if let` guards are experimental
   --> $DIR/feature-gate.rs:7:12
    |
@@ -230,6 +215,6 @@ LL |         () if let 0 = 1 => {}
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
    = help: you can write `if matches!(<expr>, <pattern>)` instead of `if let <pattern> = <expr>`
 
-error: aborting due to 20 previous errors
+error: aborting due to 19 previous errors
 
 For more information about this error, try `rustc --explain E0658`.
