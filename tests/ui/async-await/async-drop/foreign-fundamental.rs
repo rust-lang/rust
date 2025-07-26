@@ -1,7 +1,7 @@
 //@ edition: 2018
 
-#![feature(async_drop)]
-//~^ WARN the feature `async_drop` is incomplete
+#![allow(incomplete_features)]
+#![feature(async_drop, async_drop_lib)]
 
 use std::future::AsyncDrop;
 use std::pin::Pin;

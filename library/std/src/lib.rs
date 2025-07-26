@@ -256,6 +256,7 @@
 #![deny(ffi_unwind_calls)]
 // std may use features in a platform-specific way
 #![allow(unused_features)]
+#![allow(incomplete_features)]
 //
 // Features:
 #![cfg_attr(test, feature(internal_output_capture, print_internals, update_panic_count, rt))]
@@ -276,6 +277,7 @@
 #![feature(allow_internal_unsafe)]
 #![feature(allow_internal_unstable)]
 #![feature(asm_experimental_arch)]
+#![feature(async_drop_lib)]
 #![feature(autodiff)]
 #![feature(cfg_sanitizer_cfi)]
 #![feature(cfg_target_thread_local)]

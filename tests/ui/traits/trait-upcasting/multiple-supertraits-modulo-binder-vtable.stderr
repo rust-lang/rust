@@ -1,5 +1,6 @@
 error: vtable entries: [
            MetadataDropInPlace,
+           MetadataAsyncDropInPlace,
            MetadataSize,
            MetadataAlign,
            Method(<dyn for<'a> Trait<&(), &'a ()> as Supertrait<&()>>::_print_numbers - shim(reify)),
@@ -12,6 +13,7 @@ LL | type First = dyn for<'a> Trait<&'static (), &'a ()>;
 
 error: vtable entries: [
            MetadataDropInPlace,
+           MetadataAsyncDropInPlace,
            MetadataSize,
            MetadataAlign,
            Method(<dyn Trait<&(), &()> as Supertrait<&()>>::_print_numbers - shim(reify)),

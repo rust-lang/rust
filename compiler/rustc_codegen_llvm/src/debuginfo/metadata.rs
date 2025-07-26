@@ -1475,6 +1475,9 @@ fn build_vtable_type_di_node<'ll, 'tcx>(
                         ty::VtblEntry::MetadataDropInPlace => {
                             ("drop_in_place".to_string(), void_pointer_type_di_node)
                         }
+                        ty::VtblEntry::MetadataAsyncDropInPlace => {
+                            ("async_drop_in_place".to_string(), void_pointer_type_di_node)
+                        }
                         ty::VtblEntry::Method(_) => {
                             // Note: This code does not try to give a proper name to each method
                             //       because their might be multiple methods with the same name

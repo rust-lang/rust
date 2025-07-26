@@ -1,23 +1,14 @@
 //@ run-pass
 //@ check-run-results
-// struct `Foo` has both sync and async drop.
-// `Foo` is always inside `Box`
-// Sync version is called in sync context, async version is called in async function.
-
-//@ known-bug: #143658
-// async version is never actually called
+// Test async drop of coroutine `bar` (with internal async drop),
+// stopped at the middle of execution, with AsyncDrop object Foo active.
 
 #![feature(async_drop, async_drop_lib)]
 #![allow(incomplete_features)]
 
-use std::mem::ManuallyDrop;
-
 //@ edition: 2021
 
-#[inline(never)]
-fn myprintln(msg: &str, my_resource_handle: usize) {
-    println!("{} : {}", msg, my_resource_handle);
-}
+use std::mem::ManuallyDrop;
 
 use std::{
     future::{Future, async_drop_in_place, AsyncDrop},
@@ -35,39 +26,72 @@ impl Foo {
         let out = Foo {
             my_resource_handle,
         };
-        myprintln("Foo::new()", my_resource_handle);
+        println!("Foo::new({})", my_resource_handle);
         out
     }
 }
 
 impl Drop for Foo {
     fn drop(&mut self) {
-        myprintln("Foo::drop()", self.my_resource_handle);
+        println!("Foo::drop({})", self.my_resource_handle);
     }
 }
 
 impl AsyncDrop for Foo {
     async fn drop(self: Pin<&mut Self>) {
-        myprintln("Foo::async drop()", self.my_resource_handle);
+        println!("Foo::async drop({})", self.my_resource_handle);
     }
 }
 
 fn main() {
-    {
-        let _ = Box::new(Foo::new(7));
+    block_on_and_drop_in_the_middle(bar(10));
+    println!("done")
+}
+
+pub struct MiddleFuture {
+    first_call: bool,
+}
+impl MiddleFuture {
+    fn create() -> Box<dyn Future<Output = ()> + Unpin> {
+        Box::new(MiddleFuture { first_call: true })
     }
-    println!("Middle");
-    block_on(bar(10));
-    println!("Done")
+}
+
+impl Drop for MiddleFuture {
+    fn drop(&mut self) {
+        println!("MiddleFuture::drop()");
+    }
+}
+
+impl AsyncDrop for MiddleFuture {
+    async fn drop(self: Pin<&mut Self>) {
+        println!("MiddleFuture::async drop()");
+    }
+}
+
+impl Future for MiddleFuture {
+    type Output = ();
+    fn poll(mut self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Self::Output> {
+        if self.first_call {
+            println!("MiddleFuture first poll");
+            self.first_call = false;
+            Poll::Pending
+        } else {
+            println!("MiddleFuture Ready");
+            Poll::Ready(())
+        }
+    }
 }
 
 async fn bar(ident_base: usize) {
-    let _first = Box::new(Foo::new(ident_base));
+    let middle = MiddleFuture::create();
+    let mut _first = Foo::new(ident_base);
+    middle.await; // Hanging `bar` future before Foo drop
 }
 
-fn block_on<F>(fut_unpin: F) -> F::Output
+fn block_on_and_drop_in_the_middle<F>(fut_unpin: F) -> F::Output
 where
-    F: Future,
+    F: Future<Output = ()>,
 {
     let mut fut_pin = pin!(ManuallyDrop::new(fut_unpin));
     let mut fut: Pin<&mut F> = unsafe {
@@ -75,13 +99,9 @@ where
     };
     let (waker, rx) = simple_waker();
     let mut context = Context::from_waker(&waker);
-    let rv = loop {
-        match fut.as_mut().poll(&mut context) {
-            Poll::Ready(out) => break out,
-            // expect wake in polls
-            Poll::Pending => rx.try_recv().unwrap(),
-        }
-    };
+    let poll1 = fut.as_mut().poll(&mut context);
+    assert!(poll1.is_pending());
+
     let drop_fut_unpin = unsafe { async_drop_in_place(fut.get_unchecked_mut()) };
     let mut drop_fut: Pin<&mut _> = pin!(drop_fut_unpin);
     loop {
@@ -90,7 +110,6 @@ where
             Poll::Pending => rx.try_recv().unwrap(),
         }
     }
-    rv
 }
 
 fn simple_waker() -> (Waker, mpsc::Receiver<()>) {

@@ -4,7 +4,7 @@
 // It's used as the allocator of a `Box` which is conditionally moved out of.
 // Sync version is called in sync context, async version is called in async function.
 
-#![feature(async_drop, allocator_api)]
+#![feature(async_drop, async_drop_lib, allocator_api)]
 #![allow(incomplete_features)]
 
 use std::mem::ManuallyDrop;
