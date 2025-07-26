@@ -1023,40 +1023,39 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         node_id: NodeId,
     ) {
         let span = path.span;
-        if let Some(stability) = &ext.stability {
-            if let StabilityLevel::Unstable { reason, issue, is_soft, implied_by, .. } =
+        if let Some(stability) = &ext.stability
+            && let StabilityLevel::Unstable { reason, issue, is_soft, implied_by, .. } =
                 stability.level
-            {
-                let feature = stability.feature;
+        {
+            let feature = stability.feature;
 
-                let is_allowed =
-                    |feature| self.tcx.features().enabled(feature) || span.allows_unstable(feature);
-                let allowed_by_implication = implied_by.is_some_and(|feature| is_allowed(feature));
-                if !is_allowed(feature) && !allowed_by_implication {
-                    let lint_buffer = &mut self.lint_buffer;
-                    let soft_handler = |lint, span, msg: String| {
-                        lint_buffer.buffer_lint(
-                            lint,
-                            node_id,
-                            span,
-                            BuiltinLintDiag::UnstableFeature(
-                                // FIXME make this translatable
-                                msg.into(),
-                            ),
-                        )
-                    };
-                    stability::report_unstable(
-                        self.tcx.sess,
-                        feature,
-                        reason.to_opt_reason(),
-                        issue,
-                        None,
-                        is_soft,
+            let is_allowed =
+                |feature| self.tcx.features().enabled(feature) || span.allows_unstable(feature);
+            let allowed_by_implication = implied_by.is_some_and(|feature| is_allowed(feature));
+            if !is_allowed(feature) && !allowed_by_implication {
+                let lint_buffer = &mut self.lint_buffer;
+                let soft_handler = |lint, span, msg: String| {
+                    lint_buffer.buffer_lint(
+                        lint,
+                        node_id,
                         span,
-                        soft_handler,
-                        stability::UnstableKind::Regular,
-                    );
-                }
+                        BuiltinLintDiag::UnstableFeature(
+                            // FIXME make this translatable
+                            msg.into(),
+                        ),
+                    )
+                };
+                stability::report_unstable(
+                    self.tcx.sess,
+                    feature,
+                    reason.to_opt_reason(),
+                    issue,
+                    None,
+                    is_soft,
+                    span,
+                    soft_handler,
+                    stability::UnstableKind::Regular,
+                );
             }
         }
         if let Some(depr) = &ext.deprecation {
