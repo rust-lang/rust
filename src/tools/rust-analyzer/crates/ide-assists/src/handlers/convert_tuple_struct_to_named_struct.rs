@@ -3,7 +3,8 @@ use ide_db::defs::{Definition, NameRefClass};
 use syntax::{
     SyntaxKind, SyntaxNode,
     ast::{self, AstNode, HasAttrs, HasGenericParams, HasVisibility},
-    match_ast, ted,
+    match_ast,
+    syntax_editor::{Position, SyntaxEditor},
 };
 
 use crate::{AssistContext, AssistId, Assists, assist_context::SourceChangeBuilder};
@@ -93,12 +94,13 @@ fn edit_struct_def(
     names: Vec<ast::Name>,
 ) {
     let record_fields = tuple_fields.fields().zip(names).filter_map(|(f, name)| {
-        let field = ast::make::record_field(f.visibility(), name, f.ty()?).clone_for_update();
-        ted::insert_all(
-            ted::Position::first_child_of(field.syntax()),
+        let field = ast::make::record_field(f.visibility(), name, f.ty()?);
+        let mut editor = SyntaxEditor::new(field.syntax().clone());
+        editor.insert_all(
+            Position::first_child_of(field.syntax()),
             f.attrs().map(|attr| attr.syntax().clone_subtree().clone_for_update().into()).collect(),
         );
-        Some(field)
+        ast::RecordField::cast(editor.finish().new_root().clone())
     });
     let record_fields = ast::make::record_field_list(record_fields);
     let tuple_fields_text_range = tuple_fields.syntax().text_range();
