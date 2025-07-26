@@ -690,4 +690,21 @@ type Foo<T, U> = foo<fold arglist><
 "#,
         )
     }
+
+    #[test]
+    fn test_fold_doc_comments_with_multiline_paramlist_function() {
+        check(
+            r#"
+<fold comment>/// A very very very very very very very very very very very very very very very
+/// very very very long description</fold>
+<fold function>fn foo<fold arglist>(
+    very_long_parameter_name: u32,
+    another_very_long_parameter_name: u32,
+    third_very_long_parm: u32,
+)</fold> <fold block>{
+    todo!()
+}</fold></fold>
+"#,
+        );
+    }
 }
