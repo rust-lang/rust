@@ -86,9 +86,11 @@ macro_rules! target_spec_enum {
     ) => {
         $( #[$attr] )*
         #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, PartialOrd, Ord)]
+        #[derive(schemars::JsonSchema)]
         pub enum $name {
             $(
                 $( #[$variant_attr] )*
+                #[serde(rename = $string)] // for JSON schema generation only
                 $variant,
             )*
         }
