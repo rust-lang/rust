@@ -69,6 +69,7 @@ mod json;
 pub use abi_map::{AbiMap, AbiMapping};
 pub use base::apple;
 pub use base::avr::ef_avr_arch;
+pub use json::json_schema;
 
 /// Linker is called through a C/C++ compiler.
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
@@ -522,6 +523,20 @@ linker_flavor_cli_impls! {
 }
 
 crate::json::serde_deserialize_from_str!(LinkerFlavorCli);
+impl schemars::JsonSchema for LinkerFlavorCli {
+    fn schema_name() -> std::borrow::Cow<'static, str> {
+        "LinkerFlavor".into()
+    }
+    fn json_schema(_: &mut schemars::SchemaGenerator) -> schemars::Schema {
+        let all: Vec<&'static str> =
+            Self::all().iter().map(|flavor| flavor.desc()).collect::<Vec<_>>();
+        schemars::json_schema! ({
+            "type": "string",
+            "enum": all
+        })
+        .into()
+    }
+}
 
 impl ToJson for LinkerFlavorCli {
     fn to_json(&self) -> Json {
@@ -575,6 +590,18 @@ impl FromStr for LinkSelfContainedDefault {
 }
 
 crate::json::serde_deserialize_from_str!(LinkSelfContainedDefault);
+impl schemars::JsonSchema for LinkSelfContainedDefault {
+    fn schema_name() -> std::borrow::Cow<'static, str> {
+        "LinkSelfContainedDefault".into()
+    }
+    fn json_schema(_: &mut schemars::SchemaGenerator) -> schemars::Schema {
+        schemars::json_schema! ({
+            "type": "string",
+            "enum": ["false", "true", "wasm", "musl", "mingw"]
+        })
+        .into()
+    }
+}
 
 impl ToJson for LinkSelfContainedDefault {
     fn to_json(&self) -> Json {
@@ -707,6 +734,20 @@ impl FromStr for LinkSelfContainedComponents {
 }
 
 crate::json::serde_deserialize_from_str!(LinkSelfContainedComponents);
+impl schemars::JsonSchema for LinkSelfContainedComponents {
+    fn schema_name() -> std::borrow::Cow<'static, str> {
+        "LinkSelfContainedComponents".into()
+    }
+    fn json_schema(_: &mut schemars::SchemaGenerator) -> schemars::Schema {
+        let all =
+            Self::all_components().iter().map(|component| component.as_str()).collect::<Vec<_>>();
+        schemars::json_schema! ({
+            "type": "string",
+            "enum": all,
+        })
+        .into()
+    }
+}
 
 impl ToJson for LinkSelfContainedComponents {
     fn to_json(&self) -> Json {
@@ -839,7 +880,6 @@ crate::target_spec_enum! {
     parse_error_type = "symbol visibility";
 }
 
-
 #[derive(Clone, Debug, PartialEq, Hash)]
 pub enum SmallDataThresholdSupport {
     None,
@@ -867,6 +907,18 @@ impl FromStr for SmallDataThresholdSupport {
 }
 
 crate::json::serde_deserialize_from_str!(SmallDataThresholdSupport);
+impl schemars::JsonSchema for SmallDataThresholdSupport {
+    fn schema_name() -> std::borrow::Cow<'static, str> {
+        "SmallDataThresholdSupport".into()
+    }
+    fn json_schema(_: &mut schemars::SchemaGenerator) -> schemars::Schema {
+        schemars::json_schema! ({
+            "type": "string",
+            "pattern": r#"^none|default-for-arch|llvm-module-flag=.+|llvm-arg=.+$"#,
+        })
+        .into()
+    }
+}
 
 impl ToJson for SmallDataThresholdSupport {
     fn to_json(&self) -> Value {
@@ -1065,7 +1117,7 @@ crate::target_spec_enum! {
     parse_error_type = "split debuginfo";
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, serde_derive::Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, serde_derive::Deserialize, schemars::JsonSchema)]
 #[serde(tag = "kind")]
 #[serde(rename_all = "kebab-case")]
 pub enum StackProbeType {
@@ -1226,6 +1278,19 @@ impl FromStr for SanitizerSet {
 }
 
 crate::json::serde_deserialize_from_str!(SanitizerSet);
+impl schemars::JsonSchema for SanitizerSet {
+    fn schema_name() -> std::borrow::Cow<'static, str> {
+        "SanitizerSet".into()
+    }
+    fn json_schema(_: &mut schemars::SchemaGenerator) -> schemars::Schema {
+        let all = Self::all().iter().map(|sanitizer| sanitizer.as_str()).collect::<Vec<_>>();
+        schemars::json_schema! ({
+            "type": "string",
+            "enum": all,
+        })
+        .into()
+    }
+}
 
 impl ToJson for SanitizerSet {
     fn to_json(&self) -> Json {
@@ -1316,7 +1381,6 @@ impl BinaryFormat {
         }
     }
 }
-
 
 impl ToJson for Align {
     fn to_json(&self) -> Json {
