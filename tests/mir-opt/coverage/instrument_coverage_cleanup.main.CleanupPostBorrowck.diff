@@ -10,8 +10,8 @@
       coverage Code { bcb: bcb0 } => $DIR/instrument_coverage_cleanup.rs:13:1: 13:10 (#0);
       coverage Code { bcb: bcb0 } => $DIR/instrument_coverage_cleanup.rs:14:8: 14:36 (#0);
       coverage Code { bcb: bcb3 } => $DIR/instrument_coverage_cleanup.rs:14:37: 14:39 (#0);
-      coverage Code { bcb: bcb1 } => $DIR/instrument_coverage_cleanup.rs:14:38: 14:39 (#0);
-      coverage Code { bcb: bcb2 } => $DIR/instrument_coverage_cleanup.rs:15:1: 15:2 (#0);
+      coverage Code { bcb: bcb1 } => $DIR/instrument_coverage_cleanup.rs:14:39: 14:39 (#0);
+      coverage Code { bcb: bcb2 } => $DIR/instrument_coverage_cleanup.rs:15:2: 15:2 (#0);
       coverage Branch { true_bcb: bcb3, false_bcb: bcb1 } => $DIR/instrument_coverage_cleanup.rs:14:8: 14:36 (#0);
   
       bb0: {
