@@ -767,6 +767,8 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
                 DefKind::Static { .. } => {
                     check_static_inhabited(tcx, def_id);
                     check_static_linkage(tcx, def_id);
+                    let ty = tcx.type_of(def_id).instantiate_identity();
+                    res = res.and(wfcheck::check_static_item(tcx, def_id, ty, true));
                 }
                 DefKind::Const => res = res.and(wfcheck::check_const_item(tcx, def_id)),
                 _ => unreachable!(),

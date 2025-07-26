@@ -1184,6 +1184,7 @@ pub(crate) fn check_static_item<'tcx>(
     tcx: TyCtxt<'tcx>,
     item_id: LocalDefId,
     ty: Ty<'tcx>,
+    should_check_for_sync: bool,
 ) -> Result<(), ErrorGuaranteed> {
     enter_wf_checking_ctxt(tcx, item_id, |wfcx| {
         let span = tcx.ty_span(item_id);
@@ -1212,9 +1213,9 @@ pub(crate) fn check_static_item<'tcx>(
         }
 
         // Ensure that the end result is `Sync` in a non-thread local `static`.
-        let should_check_for_sync = tcx.static_mutability(item_id.to_def_id())
-            == Some(hir::Mutability::Not)
+        let should_check_for_sync = should_check_for_sync
             && !is_foreign_item
+            && tcx.static_mutability(item_id.to_def_id()) == Some(hir::Mutability::Not)
             && !tcx.is_thread_local_static(item_id.to_def_id());
 
         if should_check_for_sync {

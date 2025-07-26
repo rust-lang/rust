@@ -221,7 +221,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
                     let ty = icx.lower_ty(ty);
                     // MIR relies on references to statics being scalars.
                     // Verify that here to avoid ill-formed MIR.
-                    match check_static_item(tcx, def_id, ty) {
+                    match check_static_item(tcx, def_id, ty, false) {
                         Ok(()) => ty,
                         Err(guar) => Ty::new_error(tcx, guar),
                     }
@@ -286,7 +286,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
                 let ty = icx.lower_ty(ty);
                 // MIR relies on references to statics being scalars.
                 // Verify that here to avoid ill-formed MIR.
-                match check_static_item(tcx, def_id, ty) {
+                match check_static_item(tcx, def_id, ty, false) {
                     Ok(()) => ty,
                     Err(guar) => Ty::new_error(tcx, guar),
                 }
