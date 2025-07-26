@@ -1,5 +1,6 @@
 //@ run-pass
 //@ needs-unwind
+//@ ignore-backends: gcc
 //@ revisions: edition2021 edition2024
 //@ [edition2021] edition: 2021
 //@ [edition2024] edition: 2024

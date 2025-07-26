@@ -27,6 +27,15 @@ LL |     drop(d);
    |          - value moved here
 LL |     d.x = 10;
    |     ^^^^^^^^ value assigned here after move
+   |
+note: if `D` implemented `Clone`, you could clone the value
+  --> $DIR/issue-21232-partial-init-and-erroneous-use.rs:11:1
+   |
+LL | struct D {
+   | ^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |     drop(d);
+   |          - you could clone this value
 
 error[E0381]: partially assigned binding `d` isn't fully initialized
   --> $DIR/issue-21232-partial-init-and-erroneous-use.rs:45:5
@@ -57,6 +66,15 @@ LL |     drop(d);
    |          - value moved here
 LL |     d.s.y = 20;
    |     ^^^^^^^^^^ value partially assigned here after move
+   |
+note: if `D` implemented `Clone`, you could clone the value
+  --> $DIR/issue-21232-partial-init-and-erroneous-use.rs:11:1
+   |
+LL | struct D {
+   | ^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |     drop(d);
+   |          - you could clone this value
 
 error: aborting due to 6 previous errors
 
