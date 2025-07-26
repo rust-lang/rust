@@ -195,6 +195,12 @@ use self::spec_extend::SpecExtend;
 #[cfg(not(no_global_oom_handling))]
 mod spec_extend;
 
+#[cfg(not(no_global_oom_handling))]
+use self::spec_extend_with::SpecExtendWith;
+
+#[cfg(not(no_global_oom_handling))]
+mod spec_extend_with;
+
 #[cfg(all(target_arch = "aarch64", target_feature = "sve"))]
 mod sve_retain;
 
@@ -3689,7 +3695,7 @@ impl<T: Clone, A: Allocator> Vec<T, A> {
     #[cfg(not(no_global_oom_handling))]
     #[inline]
     fn extend_with(&mut self, n: usize, value: T) {
-        self.extend_trusted(iter::repeat_n(value, n));
+        <Self as SpecExtendWith<T>>::spec_extend_with(self, n, value);
     }
 }
 
