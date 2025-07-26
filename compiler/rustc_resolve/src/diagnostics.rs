@@ -2659,10 +2659,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             return None;
         }
 
-        let resolutions = self.resolutions(crate_module).borrow();
         let binding_key = BindingKey::new(ident, MacroNS);
-        let resolution = resolutions.get(&binding_key)?;
-        let binding = resolution.borrow().binding()?;
+        let binding = self.resolution(crate_module, binding_key)?.binding()?;
         let Res::Def(DefKind::Macro(MacroKind::Bang), _) = binding.res() else {
             return None;
         };

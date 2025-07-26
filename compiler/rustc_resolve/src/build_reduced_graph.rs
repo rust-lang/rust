@@ -452,8 +452,10 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                     self.r.per_ns(|this, ns| {
                         if !type_ns_only || ns == TypeNS {
                             let key = BindingKey::new(target, ns);
-                            let mut resolution = this.resolution(current_module, key).borrow_mut();
-                            resolution.single_imports.insert(import);
+                            this.resolution_or_default(current_module, key)
+                                .borrow_mut()
+                                .single_imports
+                                .insert(import);
                         }
                     });
                 }

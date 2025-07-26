@@ -21,7 +21,7 @@
 #![recursion_limit = "256"]
 // tidy-alphabetical-end
 
-use std::cell::{Cell, RefCell};
+use std::cell::{Cell, Ref, RefCell};
 use std::collections::BTreeSet;
 use std::fmt;
 use std::sync::Arc;
@@ -1905,9 +1905,16 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         &mut self,
         module: Module<'ra>,
         key: BindingKey,
+    ) -> Option<Ref<'ra, NameResolution<'ra>>> {
+        self.resolutions(module).borrow().get(&key).map(|resolution| resolution.borrow())
+    }
+
+    fn resolution_or_default(
+        &mut self,
+        module: Module<'ra>,
+        key: BindingKey,
     ) -> &'ra RefCell<NameResolution<'ra>> {
-        *self
-            .resolutions(module)
+        self.resolutions(module)
             .borrow_mut()
             .entry(key)
             .or_insert_with(|| self.arenas.alloc_name_resolution())
