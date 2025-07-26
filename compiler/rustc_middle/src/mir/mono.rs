@@ -526,7 +526,7 @@ impl<'tcx> CodegenUnit<'tcx> {
     ) -> Vec<(MonoItem<'tcx>, MonoItemData)> {
         // The codegen tests rely on items being process in the same order as
         // they appear in the file, so for local items, we sort by span first
-        #[derive(PartialEq, Eq, PartialOrd, Ord, Debug)]
+        #[derive(PartialEq, Eq, PartialOrd, Ord)]
         struct ItemSortKey<'tcx>(Option<Span>, SymbolName<'tcx>);
 
         fn item_sort_key<'tcx>(tcx: TyCtxt<'tcx>, item: MonoItem<'tcx>) -> ItemSortKey<'tcx> {
