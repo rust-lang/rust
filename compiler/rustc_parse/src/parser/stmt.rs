@@ -515,8 +515,8 @@ impl<'a> Parser<'a> {
     fn error_block_no_opening_brace_msg(&mut self, msg: Cow<'static, str>) -> Diag<'a> {
         let prev = self.prev_token.span;
         let sp = self.token.span;
-        let mut e = self.dcx().struct_span_err(sp, msg);
-        self.label_expected_raw_ref(&mut e);
+        let mut err = self.dcx().struct_span_err(sp, msg);
+        self.label_expected_raw_ref(&mut err);
 
         let do_not_suggest_help = self.token.is_keyword(kw::In)
             || self.token == token::Colon
@@ -558,20 +558,19 @@ impl<'a> Parser<'a> {
                     stmt.span
                 };
                 self.suggest_fixes_misparsed_for_loop_head(
-                    &mut e,
+                    &mut err,
                     prev.between(sp),
                     stmt_span,
                     &stmt.kind,
                 );
             }
             Err(e) => {
-                self.recover_stmt_(SemiColonMode::Break, BlockMode::Ignore);
-                e.cancel();
+                e.delay_as_bug();
             }
             _ => {}
         }
-        e.span_label(sp, "expected `{`");
-        e
+        err.span_label(sp, "expected `{`");
+        err
     }
 
     fn suggest_fixes_misparsed_for_loop_head(
@@ -714,7 +713,7 @@ impl<'a> Parser<'a> {
 
     /// Parses the rest of a block expression or function body.
     /// Precondition: already parsed the '{'.
-    pub(crate) fn parse_block_tail(
+    pub fn parse_block_tail(
         &mut self,
         lo: Span,
         s: BlockCheckMode,
@@ -799,7 +798,7 @@ impl<'a> Parser<'a> {
         }
         if self.prev_token.is_reserved_ident() && self.prev_token.is_ident_named(kw::Await) {
             // Likely `foo.await bar`
-        } else if !self.prev_token.is_reserved_ident() && self.prev_token.is_ident() {
+        } else if self.prev_token.is_non_reserved_ident() {
             // Likely `foo bar`
         } else if self.prev_token.kind == token::Question {
             // `foo? bar`
@@ -879,7 +878,12 @@ impl<'a> Parser<'a> {
             {
                 // Just check for errors and recover; do not eat semicolon yet.
 
-                let expect_result = self.expect_one_of(&[], &[exp!(Semi), exp!(CloseBrace)]);
+                let expect_result =
+                    if let Err(e) = self.maybe_recover_from_ternary_operator(Some(expr.span)) {
+                        Err(e)
+                    } else {
+                        self.expect_one_of(&[], &[exp!(Semi), exp!(CloseBrace)])
+                    };
 
                 // Try to both emit a better diagnostic, and avoid further errors by replacing
                 // the `expr` with `ExprKind::Err`.

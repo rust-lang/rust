@@ -503,6 +503,7 @@ impl AsciiChar {
     /// something useful. It might be tightened before stabilization.)
     #[unstable(feature = "ascii_char", issue = "110998")]
     #[inline]
+    #[track_caller]
     pub const unsafe fn digit_unchecked(d: u8) -> Self {
         assert_unsafe_precondition!(
             check_language_ub,
@@ -545,7 +546,8 @@ macro_rules! into_int_impl {
     ($($ty:ty)*) => {
         $(
             #[unstable(feature = "ascii_char", issue = "110998")]
-            impl From<AsciiChar> for $ty {
+            #[rustc_const_unstable(feature = "const_try", issue = "74935")]
+            impl const From<AsciiChar> for $ty {
                 #[inline]
                 fn from(chr: AsciiChar) -> $ty {
                     chr as u8 as $ty

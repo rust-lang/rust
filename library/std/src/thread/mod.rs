@@ -897,8 +897,31 @@ pub fn sleep(dur: Duration) {
 ///
 /// # Platform-specific behavior
 ///
-/// This function uses [`sleep`] internally, see its platform-specific behavior.
+/// In most cases this function will call an OS specific function. Where that
+/// is not supported [`sleep`] is used. Those platforms are referred to as other
+/// in the table below.
 ///
+/// # Underlying System calls
+///
+/// The following system calls are [currently] being used:
+///
+/// |  Platform |               System call                                            |
+/// |-----------|----------------------------------------------------------------------|
+/// | Linux     | [clock_nanosleep] (Monotonic clock)                                  |
+/// | BSD except OpenBSD | [clock_nanosleep] (Monotonic Clock)]                        |
+/// | Android   | [clock_nanosleep] (Monotonic Clock)]                                 |
+/// | Solaris   | [clock_nanosleep] (Monotonic Clock)]                                 |
+/// | Illumos   | [clock_nanosleep] (Monotonic Clock)]                                 |
+/// | Dragonfly | [clock_nanosleep] (Monotonic Clock)]                                 |
+/// | Hurd      | [clock_nanosleep] (Monotonic Clock)]                                 |
+/// | Fuchsia   | [clock_nanosleep] (Monotonic Clock)]                                 |
+/// | Vxworks   | [clock_nanosleep] (Monotonic Clock)]                                 |
+/// | Other     | `sleep_until` uses [`sleep`] and does not issue a syscall itself     |
+///
+/// [currently]: crate::io#platform-specific-behavior
+/// [clock_nanosleep]: https://linux.die.net/man/3/clock_nanosleep
+///
+/// **Disclaimer:** These system calls might change over time.
 ///
 /// # Examples
 ///
@@ -923,9 +946,9 @@ pub fn sleep(dur: Duration) {
 /// }
 /// ```
 ///
-/// A slow api we must not call too fast and which takes a few
+/// A slow API we must not call too fast and which takes a few
 /// tries before succeeding. By using `sleep_until` the time the
-/// api call takes does not influence when we retry or when we give up
+/// API call takes does not influence when we retry or when we give up
 ///
 /// ```no_run
 /// #![feature(thread_sleep_until)]
@@ -960,11 +983,7 @@ pub fn sleep(dur: Duration) {
 /// ```
 #[unstable(feature = "thread_sleep_until", issue = "113752")]
 pub fn sleep_until(deadline: Instant) {
-    let now = Instant::now();
-
-    if let Some(delay) = deadline.checked_duration_since(now) {
-        sleep(delay);
-    }
+    imp::Thread::sleep_until(deadline)
 }
 
 /// Used to ensure that `park` and `park_timeout` do not unwind, as that can
@@ -1380,6 +1399,11 @@ where
 }
 
 /// The internal representation of a `Thread` handle
+///
+/// We explicitly set the alignment for our guarantee in Thread::into_raw. This
+/// allows applications to stuff extra metadata bits into the alignment, which
+/// can be rather useful when working with atomics.
+#[repr(align(8))]
 struct Inner {
     name: Option<ThreadNameString>,
     id: ThreadId,
@@ -1563,7 +1587,8 @@ impl Thread {
     /// Consumes the `Thread`, returning a raw pointer.
     ///
     /// To avoid a memory leak the pointer must be converted
-    /// back into a `Thread` using [`Thread::from_raw`].
+    /// back into a `Thread` using [`Thread::from_raw`]. The pointer is
+    /// guaranteed to be aligned to at least 8 bytes.
     ///
     /// # Examples
     ///
@@ -1676,7 +1701,7 @@ impl fmt::Debug for Thread {
 /// [`Result`]: crate::result::Result
 /// [`std::panic::resume_unwind`]: crate::panic::resume_unwind
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(not(bootstrap), doc(search_unbox))]
+#[doc(search_unbox)]
 pub type Result<T> = crate::result::Result<T, Box<dyn Any + Send + 'static>>;
 
 // This packet is used to communicate the return value between the spawned

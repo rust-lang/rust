@@ -56,7 +56,8 @@ pub fn check(root_path: &Path, bad: &mut bool) {
             let line = line.trim();
             let is_test = || line.contains("#[test]") && !line.contains("`#[test]");
             let is_bench = || line.contains("#[bench]") && !line.contains("`#[bench]");
-            if !line.starts_with("//") && (is_test() || is_bench()) {
+            let manual_skip = line.contains("//tidy:skip");
+            if !line.starts_with("//") && (is_test() || is_bench()) && !manual_skip {
                 let explanation = if is_core {
                     "`core` unit tests and benchmarks must be placed into `coretests`"
                 } else if is_alloc {

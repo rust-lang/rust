@@ -575,7 +575,7 @@ impl<T> Channel<T> {
         // After this point `head.block` is not modified again and it will be deallocated if it's
         // non-null. The `Drop` code of the channel, which runs after this function, also attempts
         // to deallocate `head.block` if it's non-null. Therefore this function must maintain the
-        // invariant that if a deallocation of head.block is attemped then it must also be set to
+        // invariant that if a deallocation of head.block is attempted then it must also be set to
         // NULL. Failing to do so will lead to the Drop code attempting a double free. For this
         // reason both reads above do an atomic swap instead of a simple atomic load.
 

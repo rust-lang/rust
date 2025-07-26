@@ -46,11 +46,13 @@ pub(super) fn is_relevant_trait(cx: &LateContext<'_>, item: &TraitItem<'_>) -> b
 }
 
 fn is_relevant_block(cx: &LateContext<'_>, typeck_results: &ty::TypeckResults<'_>, block: &Block<'_>) -> bool {
-    block.stmts.first().map_or(
-        block
-            .expr
-            .as_ref()
-            .is_some_and(|e| is_relevant_expr(cx, typeck_results, e)),
+    block.stmts.first().map_or_else(
+        || {
+            block
+                .expr
+                .as_ref()
+                .is_some_and(|e| is_relevant_expr(cx, typeck_results, e))
+        },
         |stmt| match &stmt.kind {
             StmtKind::Let(_) => true,
             StmtKind::Expr(expr) | StmtKind::Semi(expr) => is_relevant_expr(cx, typeck_results, expr),

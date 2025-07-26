@@ -6,6 +6,9 @@
 
 #![allow(dead_code)]
 
+#[cfg(test)]
+mod tests;
+
 use std::env;
 use std::ffi::OsString;
 use std::fs::OpenOptions;
@@ -20,7 +23,7 @@ use std::str::FromStr;
 /// Returns the environment variable which the dynamic library lookup path
 /// resides in for this platform.
 pub fn dylib_path_var() -> &'static str {
-    if cfg!(target_os = "windows") {
+    if cfg!(any(target_os = "windows", target_os = "cygwin")) {
         "PATH"
     } else if cfg!(target_vendor = "apple") {
         "DYLD_LIBRARY_PATH"
@@ -46,7 +49,16 @@ pub fn dylib_path() -> Vec<std::path::PathBuf> {
 /// Given an executable called `name`, return the filename for the
 /// executable for a particular target.
 pub fn exe(name: &str, target: &str) -> String {
-    if target.contains("windows") {
+    // On Cygwin, the decision to append .exe or not is not as straightforward.
+    // Executable files do actually have .exe extensions so on hosts other than
+    // Cygwin it is necessary.  But on a Cygwin host there is magic happening
+    // that redirects requests for file X to file X.exe if it exists, and
+    // furthermore /proc/self/exe (and thus std::env::current_exe) always
+    // returns the name *without* the .exe extension.  For comparisons against
+    // that to match, we therefore do not append .exe for Cygwin targets on
+    // a Cygwin host.
+    if target.contains("windows") || (cfg!(not(target_os = "cygwin")) && target.contains("cygwin"))
+    {
         format!("{name}.exe")
     } else if target.contains("uefi") {
         format!("{name}.efi")
@@ -90,7 +102,7 @@ pub fn maybe_dump(dump_name: String, cmd: &Command) {
 
         let mut file = OpenOptions::new().create(true).append(true).open(dump_file).unwrap();
 
-        let cmd_dump = format!("{:?}\n", cmd);
+        let cmd_dump = format!("{cmd:?}\n");
         let cmd_dump = cmd_dump.replace(&env::var("BUILD_OUT").unwrap(), "${BUILD_OUT}");
         let cmd_dump = cmd_dump.replace(&env::var("CARGO_HOME").unwrap(), "${CARGO_HOME}");
 

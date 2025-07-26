@@ -61,7 +61,7 @@ fn is_used_as_unaligned(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
     };
     match parent.kind {
         ExprKind::MethodCall(name, self_arg, ..) if self_arg.hir_id == e.hir_id => {
-            if matches!(name.ident.as_str(), "read_unaligned" | "write_unaligned")
+            if matches!(name.ident.name, sym::read_unaligned | sym::write_unaligned)
                 && let Some(def_id) = cx.typeck_results().type_dependent_def_id(parent.hir_id)
                 && let Some(def_id) = cx.tcx.impl_of_method(def_id)
                 && cx.tcx.type_of(def_id).instantiate_identity().is_raw_ptr()

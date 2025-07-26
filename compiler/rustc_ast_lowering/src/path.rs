@@ -1,13 +1,13 @@
 use std::sync::Arc;
 
 use rustc_ast::{self as ast, *};
-use rustc_hir::def::{DefKind, PartialRes, Res};
+use rustc_hir::def::{DefKind, PartialRes, PerNS, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, GenericArg};
 use rustc_middle::{span_bug, ty};
 use rustc_session::parse::add_feature_diagnostics;
 use rustc_span::{BytePos, DUMMY_SP, DesugaringKind, Ident, Span, Symbol, sym};
-use smallvec::{SmallVec, smallvec};
+use smallvec::smallvec;
 use tracing::{debug, instrument};
 
 use super::errors::{
@@ -226,11 +226,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
     pub(crate) fn lower_use_path(
         &mut self,
-        res: SmallVec<[Res; 3]>,
+        res: PerNS<Option<Res>>,
         p: &Path,
         param_mode: ParamMode,
     ) -> &'hir hir::UsePath<'hir> {
-        assert!((1..=3).contains(&res.len()));
+        assert!(!res.is_empty());
         self.arena.alloc(hir::UsePath {
             res,
             segments: self.arena.alloc_from_iter(p.segments.iter().map(|segment| {

@@ -2,21 +2,26 @@
 
 pub(super) mod structural_traits;
 
+use std::cell::Cell;
+use std::ops::ControlFlow;
+
 use derive_where::derive_where;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::TraitSolverLangItem;
+use rustc_type_ir::solve::SizedTraitKind;
 use rustc_type_ir::{
-    self as ty, Interner, TypeFoldable, TypeVisitableExt as _, TypingMode, Upcast as _, elaborate,
+    self as ty, Interner, TypeFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt as _,
+    TypeVisitor, TypingMode, Upcast as _, elaborate,
 };
 use tracing::{debug, instrument};
 
-use super::has_only_region_constraints;
 use super::trait_goals::TraitGoalProvenVia;
+use super::{has_only_region_constraints, inspect};
 use crate::delegate::SolverDelegate;
 use crate::solve::inspect::ProbeKind;
 use crate::solve::{
     BuiltinImplSource, CandidateSource, CanonicalResponse, Certainty, EvalCtxt, Goal, GoalSource,
-    MaybeCause, NoSolution, QueryResult,
+    MaybeCause, NoSolution, ParamEnvSource, QueryResult,
 };
 
 enum AliasBoundKind {
@@ -48,18 +53,6 @@ where
     fn with_self_ty(self, cx: I, self_ty: I::Ty) -> Self;
 
     fn trait_def_id(self, cx: I) -> I::DefId;
-
-    /// Try equating an assumption predicate against a goal's predicate. If it
-    /// holds, then execute the `then` callback, which should do any additional
-    /// work, then produce a response (typically by executing
-    /// [`EvalCtxt::evaluate_added_goals_and_make_canonical_response`]).
-    fn probe_and_match_goal_against_assumption(
-        ecx: &mut EvalCtxt<'_, D>,
-        source: CandidateSource<I>,
-        goal: Goal<I, Self>,
-        assumption: I::Clause,
-        then: impl FnOnce(&mut EvalCtxt<'_, D>) -> QueryResult<I>,
-    ) -> Result<Candidate<I>, NoSolution>;
 
     /// Consider a clause, which consists of a "assumption" and some "requirements",
     /// to satisfy a goal. If the requirements hold, then attempt to satisfy our
@@ -119,6 +112,66 @@ where
         alias_ty: ty::AliasTy<I>,
     ) -> Vec<Candidate<I>>;
 
+    fn probe_and_consider_param_env_candidate(
+        ecx: &mut EvalCtxt<'_, D>,
+        goal: Goal<I, Self>,
+        assumption: I::Clause,
+    ) -> Result<Candidate<I>, NoSolution> {
+        Self::fast_reject_assumption(ecx, goal, assumption)?;
+
+        // Dealing with `ParamEnv` candidates is a bit of a mess as we need to lazily
+        // check whether the candidate is global while considering normalization.
+        //
+        // We need to write into `source` inside of `match_assumption`, but need to access it
+        // in `probe` even if the candidate does not apply before we get there. We handle this
+        // by using a `Cell` here. We only ever write into it inside of `match_assumption`.
+        let source = Cell::new(CandidateSource::ParamEnv(ParamEnvSource::Global));
+        ecx.probe(|result: &QueryResult<I>| inspect::ProbeKind::TraitCandidate {
+            source: source.get(),
+            result: *result,
+        })
+        .enter(|ecx| {
+            Self::match_assumption(ecx, goal, assumption, |ecx| {
+                source.set(ecx.characterize_param_env_assumption(goal.param_env, assumption)?);
+                ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+            })
+        })
+        .map(|result| Candidate { source: source.get(), result })
+    }
+
+    /// Try equating an assumption predicate against a goal's predicate. If it
+    /// holds, then execute the `then` callback, which should do any additional
+    /// work, then produce a response (typically by executing
+    /// [`EvalCtxt::evaluate_added_goals_and_make_canonical_response`]).
+    fn probe_and_match_goal_against_assumption(
+        ecx: &mut EvalCtxt<'_, D>,
+        source: CandidateSource<I>,
+        goal: Goal<I, Self>,
+        assumption: I::Clause,
+        then: impl FnOnce(&mut EvalCtxt<'_, D>) -> QueryResult<I>,
+    ) -> Result<Candidate<I>, NoSolution> {
+        Self::fast_reject_assumption(ecx, goal, assumption)?;
+
+        ecx.probe_trait_candidate(source)
+            .enter(|ecx| Self::match_assumption(ecx, goal, assumption, then))
+    }
+
+    /// Try to reject the assumption based off of simple heuristics, such as [`ty::ClauseKind`]
+    /// and `DefId`.
+    fn fast_reject_assumption(
+        ecx: &mut EvalCtxt<'_, D>,
+        goal: Goal<I, Self>,
+        assumption: I::Clause,
+    ) -> Result<(), NoSolution>;
+
+    /// Relate the goal and assumption.
+    fn match_assumption(
+        ecx: &mut EvalCtxt<'_, D>,
+        goal: Goal<I, Self>,
+        assumption: I::Clause,
+        then: impl FnOnce(&mut EvalCtxt<'_, D>) -> QueryResult<I>,
+    ) -> QueryResult<I>;
+
     fn consider_impl_candidate(
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
@@ -151,13 +204,15 @@ where
         goal: Goal<I, Self>,
     ) -> Result<Candidate<I>, NoSolution>;
 
-    /// A type is `Sized` if its tail component is `Sized`.
+    /// A type is `Sized` if its tail component is `Sized` and a type is `MetaSized` if its tail
+    /// component is `MetaSized`.
     ///
     /// These components are given by built-in rules from
-    /// [`structural_traits::instantiate_constituent_tys_for_sized_trait`].
-    fn consider_builtin_sized_candidate(
+    /// [`structural_traits::instantiate_constituent_tys_for_sizedness_trait`].
+    fn consider_builtin_sizedness_candidates(
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
+        sizedness: SizedTraitKind,
     ) -> Result<Candidate<I>, NoSolution>;
 
     /// A type is `Copy` or `Clone` if its components are `Copy` or `Clone`.
@@ -328,10 +383,10 @@ where
 
         let mut candidates = vec![];
 
-        if let TypingMode::Coherence = self.typing_mode() {
-            if let Ok(candidate) = self.consider_coherence_unknowable_candidate(goal) {
-                return vec![candidate];
-            }
+        if let TypingMode::Coherence = self.typing_mode()
+            && let Ok(candidate) = self.consider_coherence_unknowable_candidate(goal)
+        {
+            return vec![candidate];
         }
 
         self.assemble_alias_bound_candidates(goal, &mut candidates);
@@ -414,7 +469,15 @@ where
             G::consider_trait_alias_candidate(self, goal)
         } else {
             match cx.as_lang_item(trait_def_id) {
-                Some(TraitSolverLangItem::Sized) => G::consider_builtin_sized_candidate(self, goal),
+                Some(TraitSolverLangItem::Sized) => {
+                    G::consider_builtin_sizedness_candidates(self, goal, SizedTraitKind::Sized)
+                }
+                Some(TraitSolverLangItem::MetaSized) => {
+                    G::consider_builtin_sizedness_candidates(self, goal, SizedTraitKind::MetaSized)
+                }
+                Some(TraitSolverLangItem::PointeeSized) => {
+                    unreachable!("`PointeeSized` is removed during lowering");
+                }
                 Some(TraitSolverLangItem::Copy | TraitSolverLangItem::Clone) => {
                     G::consider_builtin_copy_clone_candidate(self, goal)
                 }
@@ -500,14 +563,8 @@ where
         goal: Goal<I, G>,
         candidates: &mut Vec<Candidate<I>>,
     ) {
-        for (i, assumption) in goal.param_env.caller_bounds().iter().enumerate() {
-            candidates.extend(G::probe_and_consider_implied_clause(
-                self,
-                CandidateSource::ParamEnv(i),
-                goal,
-                assumption,
-                [],
-            ));
+        for assumption in goal.param_env.caller_bounds().iter() {
+            candidates.extend(G::probe_and_consider_param_env_candidate(self, goal, assumption));
         }
     }
 
@@ -940,6 +997,113 @@ where
                 } else {
                     self.flounder(&responses)
                 }
+            }
+        }
+    }
+
+    /// Compute whether a param-env assumption is global or non-global after normalizing it.
+    ///
+    /// This is necessary because, for example, given:
+    ///
+    /// ```ignore,rust
+    /// where
+    ///     T: Trait<Assoc = u32>,
+    ///     i32: From<T::Assoc>,
+    /// ```
+    ///
+    /// The `i32: From<T::Assoc>` bound is non-global before normalization, but is global after.
+    /// Since the old trait solver normalized param-envs eagerly, we want to emulate this
+    /// behavior lazily.
+    fn characterize_param_env_assumption(
+        &mut self,
+        param_env: I::ParamEnv,
+        assumption: I::Clause,
+    ) -> Result<CandidateSource<I>, NoSolution> {
+        // FIXME: This should be fixed, but it also requires changing the behavior
+        // in the old solver which is currently relied on.
+        if assumption.has_bound_vars() {
+            return Ok(CandidateSource::ParamEnv(ParamEnvSource::NonGlobal));
+        }
+
+        match assumption.visit_with(&mut FindParamInClause {
+            ecx: self,
+            param_env,
+            universes: vec![],
+        }) {
+            ControlFlow::Break(Err(NoSolution)) => Err(NoSolution),
+            ControlFlow::Break(Ok(())) => Ok(CandidateSource::ParamEnv(ParamEnvSource::NonGlobal)),
+            ControlFlow::Continue(()) => Ok(CandidateSource::ParamEnv(ParamEnvSource::Global)),
+        }
+    }
+}
+
+struct FindParamInClause<'a, 'b, D: SolverDelegate<Interner = I>, I: Interner> {
+    ecx: &'a mut EvalCtxt<'b, D>,
+    param_env: I::ParamEnv,
+    universes: Vec<Option<ty::UniverseIndex>>,
+}
+
+impl<D, I> TypeVisitor<I> for FindParamInClause<'_, '_, D, I>
+where
+    D: SolverDelegate<Interner = I>,
+    I: Interner,
+{
+    type Result = ControlFlow<Result<(), NoSolution>>;
+
+    fn visit_binder<T: TypeVisitable<I>>(&mut self, t: &ty::Binder<I, T>) -> Self::Result {
+        self.universes.push(None);
+        t.super_visit_with(self)?;
+        self.universes.pop();
+        ControlFlow::Continue(())
+    }
+
+    fn visit_ty(&mut self, ty: I::Ty) -> Self::Result {
+        let ty = self.ecx.replace_bound_vars(ty, &mut self.universes);
+        let Ok(ty) = self.ecx.structurally_normalize_ty(self.param_env, ty) else {
+            return ControlFlow::Break(Err(NoSolution));
+        };
+
+        if let ty::Placeholder(p) = ty.kind() {
+            if p.universe() == ty::UniverseIndex::ROOT {
+                ControlFlow::Break(Ok(()))
+            } else {
+                ControlFlow::Continue(())
+            }
+        } else {
+            ty.super_visit_with(self)
+        }
+    }
+
+    fn visit_const(&mut self, ct: I::Const) -> Self::Result {
+        let ct = self.ecx.replace_bound_vars(ct, &mut self.universes);
+        let Ok(ct) = self.ecx.structurally_normalize_const(self.param_env, ct) else {
+            return ControlFlow::Break(Err(NoSolution));
+        };
+
+        if let ty::ConstKind::Placeholder(p) = ct.kind() {
+            if p.universe() == ty::UniverseIndex::ROOT {
+                ControlFlow::Break(Ok(()))
+            } else {
+                ControlFlow::Continue(())
+            }
+        } else {
+            ct.super_visit_with(self)
+        }
+    }
+
+    fn visit_region(&mut self, r: I::Region) -> Self::Result {
+        match self.ecx.eager_resolve_region(r).kind() {
+            ty::ReStatic | ty::ReError(_) | ty::ReBound(..) => ControlFlow::Continue(()),
+            ty::RePlaceholder(p) => {
+                if p.universe() == ty::UniverseIndex::ROOT {
+                    ControlFlow::Break(Ok(()))
+                } else {
+                    ControlFlow::Continue(())
+                }
+            }
+            ty::ReVar(_) => ControlFlow::Break(Ok(())),
+            ty::ReErased | ty::ReEarlyParam(_) | ty::ReLateParam(_) => {
+                unreachable!("unexpected region in param-env clause")
             }
         }
     }

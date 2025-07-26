@@ -5,7 +5,6 @@
 use std::pat::pattern_type;
 
 const NONE: pattern_type!(u8 is 1..0) = unsafe { std::mem::transmute(3_u8) };
-//~^ NOTE: exclusive range end at minimum value of type
-//~| ERROR: evaluation of constant value failed
+//~^ ERROR: exclusive range end at minimum value of type
 
 fn main() {}

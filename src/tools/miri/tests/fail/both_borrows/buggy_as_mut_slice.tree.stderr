@@ -2,7 +2,7 @@ error: Undefined Behavior: write access through <TAG> at ALLOC[0x4] is forbidden
   --> tests/fail/both_borrows/buggy_as_mut_slice.rs:LL:CC
    |
 LL |     v2[1] = 7;
-   |     ^^^^^^^^^ write access through <TAG> at ALLOC[0x4] is forbidden
+   |     ^^^^^^^^^ Undefined Behavior occurred here
    |
    = help: this indicates a potential bug in the program: it performed an invalid operation, but the Tree Borrows rules it violated are still experimental
    = help: the accessed tag <TAG> has state Disabled which forbids this child write access

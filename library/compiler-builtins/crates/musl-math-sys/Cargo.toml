@@ -1,0 +1,14 @@
+[package]
+name = "musl-math-sys"
+version = "0.1.0"
+edition = "2024"
+publish = false
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+
+[dev-dependencies]
+libm = { path = "../../libm" }
+
+[build-dependencies]
+cc = "1.2.29"

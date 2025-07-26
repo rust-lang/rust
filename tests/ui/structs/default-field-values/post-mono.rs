@@ -5,7 +5,7 @@
 
 struct Z<const X: usize> {
     post_mono: usize = X / 0,
-    //~^ ERROR evaluation of `Z::<1>::post_mono::{constant#0}` failed
+    //~^ ERROR attempt to divide `1_usize` by zero
 }
 
 fn indirect<const X: usize>() {

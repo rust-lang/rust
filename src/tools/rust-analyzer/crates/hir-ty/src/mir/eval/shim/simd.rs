@@ -31,7 +31,7 @@ impl Evaluator<'_> {
                     Some(len) => len,
                     _ => {
                         if let AdtId::StructId(id) = id.0 {
-                            let struct_data = self.db.variant_fields(id.into());
+                            let struct_data = id.fields(self.db);
                             let fields = struct_data.fields();
                             let Some((first_field, _)) = fields.iter().next() else {
                                 not_supported!("simd type with no field");

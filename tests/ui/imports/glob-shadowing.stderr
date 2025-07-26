@@ -9,8 +9,8 @@ LL |         let x = env!("PATH");
 note: `env` could also refer to the macro imported here
   --> $DIR/glob-shadowing.rs:9:9
    |
-LL |     use m::*;
-   |         ^^^^
+LL |     use crate::m::*;
+   |         ^^^^^^^^^^^
    = help: consider adding an explicit import of `env` to disambiguate
    = help: or use `self::env` to refer to this macro unambiguously
 
@@ -25,8 +25,8 @@ LL |             let x = env!("PATH");
 note: `env` could also refer to the macro imported here
   --> $DIR/glob-shadowing.rs:17:13
    |
-LL |         use m::*;
-   |             ^^^^
+LL |         use crate::m::*;
+   |             ^^^^^^^^^^^
    = help: consider adding an explicit import of `env` to disambiguate
 
 error[E0659]: `fenv` is ambiguous
@@ -39,8 +39,8 @@ LL |             let x = fenv!();
 note: `fenv` could refer to the macro imported here
   --> $DIR/glob-shadowing.rs:27:13
    |
-LL |         use m::*;
-   |             ^^^^
+LL |         use crate::m::*;
+   |             ^^^^^^^^^^^
    = help: consider adding an explicit import of `fenv` to disambiguate
 note: `fenv` could also refer to the macro defined here
   --> $DIR/glob-shadowing.rs:25:5

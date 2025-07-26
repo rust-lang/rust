@@ -19,13 +19,16 @@ extern "Rust" {}
 
 #[target_feature = "+sse2"]
 //~^ ERROR malformed `target_feature` attribute
+//~| NOTE expected this to be a list
 #[target_feature(enable = "foo")]
 //~^ ERROR not valid for this target
 //~| NOTE `foo` is not valid for this target
 #[target_feature(bar)]
 //~^ ERROR malformed `target_feature` attribute
+//~| NOTE expected this to be of the form `enable = "..."`
 #[target_feature(disable = "baz")]
 //~^ ERROR malformed `target_feature` attribute
+//~| NOTE expected this to be of the form `enable = "..."`
 unsafe fn foo() {}
 
 #[target_feature(enable = "sse2")]
@@ -117,3 +120,8 @@ fn main() {
     || {};
     //~^ NOTE not a function
 }
+
+#[target_feature(enable = "+sse2")]
+//~^ ERROR `+sse2` is not valid for this target
+//~| NOTE `+sse2` is not valid for this target
+unsafe fn hey() {}

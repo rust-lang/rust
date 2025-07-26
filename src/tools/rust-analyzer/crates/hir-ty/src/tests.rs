@@ -132,7 +132,7 @@ fn check_impl(
             None => continue,
         };
         let def_map = module.def_map(&db);
-        visit_module(&db, &def_map, module.local_id, &mut |it| {
+        visit_module(&db, def_map, module.local_id, &mut |it| {
             let def = match it {
                 ModuleDefId::FunctionId(it) => it.into(),
                 ModuleDefId::EnumVariantId(it) => it.into(),
@@ -168,7 +168,7 @@ fn check_impl(
         let inference_result = db.infer(def);
 
         for (pat, mut ty) in inference_result.type_of_pat.iter() {
-            if let Pat::Bind { id, .. } = body.pats[pat] {
+            if let Pat::Bind { id, .. } = body[pat] {
                 ty = &inference_result.type_of_binding[id];
             }
             let node = match pat_node(&body_source_map, pat, &db) {
@@ -316,7 +316,7 @@ fn infer_with_mismatches(content: &str, include_mismatches: bool) -> String {
         }
 
         for (pat, mut ty) in inference_result.type_of_pat.iter() {
-            if let Pat::Bind { id, .. } = body.pats[pat] {
+            if let Pat::Bind { id, .. } = body[pat] {
                 ty = &inference_result.type_of_binding[id];
             }
             let node = match body_source_map.pat_syntax(pat) {
@@ -391,7 +391,7 @@ fn infer_with_mismatches(content: &str, include_mismatches: bool) -> String {
     let def_map = module.def_map(&db);
 
     let mut defs: Vec<(DefWithBodyId, Crate)> = Vec::new();
-    visit_module(&db, &def_map, module.local_id, &mut |it| {
+    visit_module(&db, def_map, module.local_id, &mut |it| {
         let def = match it {
             ModuleDefId::FunctionId(it) => it.into(),
             ModuleDefId::EnumVariantId(it) => it.into(),
@@ -437,7 +437,7 @@ pub(crate) fn visit_module(
 ) {
     visit_scope(db, crate_def_map, &crate_def_map[module_id].scope, cb);
     for impl_id in crate_def_map[module_id].scope.impls() {
-        let impl_data = db.impl_items(impl_id);
+        let impl_data = impl_id.impl_items(db);
         for &(_, item) in impl_data.items.iter() {
             match item {
                 AssocItemId::FunctionId(it) => {
@@ -479,14 +479,14 @@ pub(crate) fn visit_module(
                     visit_body(db, &body, cb);
                 }
                 ModuleDefId::AdtId(hir_def::AdtId::EnumId(it)) => {
-                    db.enum_variants(it).variants.iter().for_each(|&(it, _)| {
+                    it.enum_variants(db).variants.iter().for_each(|&(it, _, _)| {
                         let body = db.body(it.into());
                         cb(it.into());
                         visit_body(db, &body, cb);
                     });
                 }
                 ModuleDefId::TraitId(it) => {
-                    let trait_data = db.trait_items(it);
+                    let trait_data = it.trait_items(db);
                     for &(_, item) in trait_data.items.iter() {
                         match item {
                             AssocItemId::FunctionId(it) => cb(it.into()),
@@ -504,7 +504,7 @@ pub(crate) fn visit_module(
     fn visit_body(db: &TestDB, body: &Body, cb: &mut dyn FnMut(ModuleDefId)) {
         for (_, def_map) in body.blocks(db) {
             for (mod_id, _) in def_map.modules() {
-                visit_module(db, &def_map, mod_id, cb);
+                visit_module(db, def_map, mod_id, cb);
             }
         }
     }
@@ -570,7 +570,7 @@ fn salsa_bug() {
 
     let module = db.module_for_file(pos.file_id.file_id(&db));
     let crate_def_map = module.def_map(&db);
-    visit_module(&db, &crate_def_map, module.local_id, &mut |def| {
+    visit_module(&db, crate_def_map, module.local_id, &mut |def| {
         db.infer(match def {
             ModuleDefId::FunctionId(it) => it.into(),
             ModuleDefId::EnumVariantId(it) => it.into(),
@@ -609,7 +609,7 @@ fn salsa_bug() {
 
     let module = db.module_for_file(pos.file_id.file_id(&db));
     let crate_def_map = module.def_map(&db);
-    visit_module(&db, &crate_def_map, module.local_id, &mut |def| {
+    visit_module(&db, crate_def_map, module.local_id, &mut |def| {
         db.infer(match def {
             ModuleDefId::FunctionId(it) => it.into(),
             ModuleDefId::EnumVariantId(it) => it.into(),

@@ -11,7 +11,7 @@ fn closure<F, T>(x: F) -> Result<T, ()>
 }
 
 fn foo() -> Result<(), ()> {
-    try!(closure(|| bar(core::ptr::null_mut()))); //~ ERROR cannot find function `bar` in this scope
+    closure(|| bar(core::ptr::null_mut()))?; //~ ERROR cannot find function `bar` in this scope
     Ok(())
 }
 

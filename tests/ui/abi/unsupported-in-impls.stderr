@@ -1,0 +1,27 @@
+error[E0570]: "rust-invalid" is not a supported ABI for the current target
+  --> $DIR/unsupported-in-impls.rs:15:21
+   |
+LL |     pub ptr: extern "rust-invalid" fn(),
+   |                     ^^^^^^^^^^^^^^
+
+error[E0570]: "rust-invalid" is not a supported ABI for the current target
+  --> $DIR/unsupported-in-impls.rs:20:16
+   |
+LL |     pub extern "rust-invalid" fn inherent_fn(self) {
+   |                ^^^^^^^^^^^^^^
+
+error[E0570]: "rust-invalid" is not a supported ABI for the current target
+  --> $DIR/unsupported-in-impls.rs:27:12
+   |
+LL |     extern "rust-invalid" fn trait_fn(self);
+   |            ^^^^^^^^^^^^^^
+
+error[E0570]: "rust-invalid" is not a supported ABI for the current target
+  --> $DIR/unsupported-in-impls.rs:32:12
+   |
+LL |     extern "rust-invalid" fn trait_fn(self) {
+   |            ^^^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0570`.

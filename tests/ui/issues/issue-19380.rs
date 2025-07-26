@@ -15,6 +15,5 @@ struct Bar {
 const FOO : Foo = Foo;
 const BAR : Bar = Bar { foos: &[&FOO]};
 //~^ ERROR E0038
-//~| ERROR E0038
 
 fn main() { }

@@ -34,24 +34,6 @@ LL | pub trait Fetcher: Send + Sync {
 LL |     fn get<'a>(self: &'a Box<Self>) -> Pin<Box<dyn Future<Output = Vec<u8>> + 'a>>
    |                      ^^^^^^^^^^^^^ ...because method `get`'s `self` parameter cannot be dispatched on
 
-error[E0038]: the trait `Fetcher` is not dyn compatible
-  --> $DIR/undispatchable-receiver-and-wc-references-Self.rs:27:13
-   |
-LL |     fn get<'a>(self: &'a Box<Self>) -> Pin<Box<dyn Future<Output = Vec<u8>> + 'a>>
-   |                      ------------- help: consider changing method `get`'s `self` parameter to be `&self`: `&Self`
-...
-LL |     let _ = fetcher.get();
-   |             ^^^^^^^^^^^^^ `Fetcher` is not dyn compatible
-   |
-note: for a trait to be dyn compatible it needs to allow building a vtable
-      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
-  --> $DIR/undispatchable-receiver-and-wc-references-Self.rs:11:22
-   |
-LL | pub trait Fetcher: Send + Sync {
-   |           ------- this trait is not dyn compatible...
-LL |     fn get<'a>(self: &'a Box<Self>) -> Pin<Box<dyn Future<Output = Vec<u8>> + 'a>>
-   |                      ^^^^^^^^^^^^^ ...because method `get`'s `self` parameter cannot be dispatched on
-
-error: aborting due to 3 previous errors
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0038`.

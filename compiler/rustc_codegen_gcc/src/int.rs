@@ -2,12 +2,14 @@
 //! This module exists because some integer types are not supported on some gcc platforms, e.g.
 //! 128-bit integers on 32-bit platforms and thus require to be handled manually.
 
+// cSpell:words cmpti divti modti mulodi muloti udivti umodti
+
 use gccjit::{BinaryOp, ComparisonOp, FunctionType, Location, RValue, ToRValue, Type, UnaryOp};
-use rustc_abi::{Endian, ExternAbi};
+use rustc_abi::{CanonAbi, Endian, ExternAbi};
 use rustc_codegen_ssa::common::{IntPredicate, TypeKind};
 use rustc_codegen_ssa::traits::{BackendTypes, BaseTypeCodegenMethods, BuilderMethods, OverflowOp};
 use rustc_middle::ty::{self, Ty};
-use rustc_target::callconv::{ArgAbi, ArgAttributes, Conv, FnAbi, PassMode};
+use rustc_target::callconv::{ArgAbi, ArgAttributes, FnAbi, PassMode};
 
 use crate::builder::{Builder, ToGccComp};
 use crate::common::{SignType, TypeReflection};
@@ -397,7 +399,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             ret: arg_abi,
             c_variadic: false,
             fixed_count: 3,
-            conv: Conv::C,
+            conv: CanonAbi::C,
             can_unwind: false,
         };
         fn_abi.adjust_for_foreign_abi(self.cx, ExternAbi::C { unwind: false });
@@ -913,9 +915,11 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
 
         debug_assert!(value_type.dyncast_array().is_some());
         let name_suffix = match self.type_kind(dest_typ) {
+            // cSpell:disable
             TypeKind::Float => "tisf",
             TypeKind::Double => "tidf",
-            TypeKind::FP128 => "tixf",
+            TypeKind::FP128 => "titf",
+            // cSpell:enable
             kind => panic!("cannot cast a non-native integer to type {:?}", kind),
         };
         let sign = if signed { "" } else { "un" };
@@ -957,8 +961,10 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
 
         debug_assert!(dest_typ.dyncast_array().is_some());
         let name_suffix = match self.type_kind(value_type) {
+            // cSpell:disable
             TypeKind::Float => "sfti",
             TypeKind::Double => "dfti",
+            // cSpell:enable
             kind => panic!("cannot cast a {:?} to non-native integer", kind),
         };
         let sign = if signed { "" } else { "uns" };

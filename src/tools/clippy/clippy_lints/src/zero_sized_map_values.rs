@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_help;
-use clippy_utils::ty::{is_normalizable, is_type_diagnostic_item, ty_from_hir_ty};
+use clippy_utils::ty::{is_type_diagnostic_item, ty_from_hir_ty};
 use rustc_hir::{self as hir, AmbigArg, HirId, ItemKind, Node};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::layout::LayoutOf as _;
@@ -51,11 +51,11 @@ impl LateLintPass<'_> for ZeroSizedMapValues {
             && (is_type_diagnostic_item(cx, ty, sym::HashMap) || is_type_diagnostic_item(cx, ty, sym::BTreeMap))
             && let ty::Adt(_, args) = ty.kind()
             && let ty = args.type_at(1)
-            // Fixes https://github.com/rust-lang/rust-clippy/issues/7447 because of
-            // https://github.com/rust-lang/rust/blob/master/compiler/rustc_middle/src/ty/sty.rs#L968
-            && !ty.has_escaping_bound_vars()
-            // Do this to prevent `layout_of` crashing, being unable to fully normalize `ty`.
-            && is_normalizable(cx, cx.param_env, ty)
+            // Ensure that no type information is missing, to avoid a delayed bug in the compiler if this is not the case.
+            // This might happen when computing a reference/pointer metadata on a type for which we
+            // cannot check if it is `Sized` or not, such as an incomplete associated type in a
+            // type alias. See an example in `issue14822()` of `tests/ui/zero_sized_hashmap_values.rs`.
+            && !ty.has_non_region_param()
             && let Ok(layout) = cx.layout_of(ty)
             && layout.is_zst()
         {

@@ -1,8 +1,8 @@
 use ide_db::defs::{Definition, NameRefClass};
 use syntax::{
     AstNode, SyntaxNode,
-    ast::{self, HasName, Name},
-    ted,
+    ast::{self, HasName, Name, syntax_factory::SyntaxFactory},
+    syntax_editor::SyntaxEditor,
 };
 
 use crate::{
@@ -121,34 +121,36 @@ fn find_extracted_variable(ctx: &AssistContext<'_>, arm: &ast::MatchArm) -> Opti
 
 // Rename `extracted` with `binding` in `pat`.
 fn rename_variable(pat: &ast::Pat, extracted: &[Name], binding: ast::Pat) -> SyntaxNode {
-    let syntax = pat.syntax().clone_for_update();
+    let syntax = pat.syntax().clone_subtree();
+    let mut editor = SyntaxEditor::new(syntax.clone());
+    let make = SyntaxFactory::with_mappings();
     let extracted = extracted
         .iter()
-        .map(|e| syntax.covering_element(e.syntax().text_range()))
+        .map(|e| e.syntax().text_range() - pat.syntax().text_range().start())
+        .map(|r| syntax.covering_element(r))
         .collect::<Vec<_>>();
     for extracted_syntax in extracted {
         // If `extracted` variable is a record field, we should rename it to `binding`,
         // otherwise we just need to replace `extracted` with `binding`.
-
         if let Some(record_pat_field) =
             extracted_syntax.ancestors().find_map(ast::RecordPatField::cast)
         {
             if let Some(name_ref) = record_pat_field.field_name() {
-                ted::replace(
+                editor.replace(
                     record_pat_field.syntax(),
-                    ast::make::record_pat_field(
-                        ast::make::name_ref(&name_ref.text()),
-                        binding.clone(),
+                    make.record_pat_field(
+                        make.name_ref(&name_ref.text()),
+                        binding.clone_for_update(),
                     )
-                    .syntax()
-                    .clone_for_update(),
+                    .syntax(),
                 );
             }
         } else {
-            ted::replace(extracted_syntax, binding.clone().syntax().clone_for_update());
+            editor.replace(extracted_syntax, binding.syntax().clone_for_update());
         }
     }
-    syntax
+    editor.add_mappings(make.finish_with_mappings());
+    editor.finish().new_root().clone()
 }
 
 #[cfg(test)]

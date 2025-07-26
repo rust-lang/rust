@@ -1,5 +1,5 @@
 error[E0428]: the name `foo` is defined multiple times
-  --> $DIR/tied-features-no-implication.rs:27:1
+  --> $DIR/tied-features-no-implication.rs:33:1
    |
 LL | fn foo() {}
    | -------- previous definition of the value `foo` here

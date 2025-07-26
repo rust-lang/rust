@@ -312,3 +312,49 @@ fn issue_13470() {
     let _: u64 = 1u64 + ((x as i32 + y as i32) as u64 + 0u64);
     //~^ identity_op
 }
+
+fn issue_14932() {
+    let _ = 0usize + &Default::default(); // no error
+
+    0usize + &Default::default(); // no error
+
+    0usize + &<usize as Default>::default();
+    //~^ identity_op
+
+    let _ = 0usize + &usize::default();
+    //~^ identity_op
+
+    let _n: usize = 0usize + &Default::default();
+    //~^ identity_op
+}
+
+// Expr's type can be inferred by the function's return type
+fn issue_14932_2() -> usize {
+    0usize + &Default::default()
+    //~^ identity_op
+}
+
+trait Def {
+    fn def() -> Self;
+}
+
+impl Def for usize {
+    fn def() -> Self {
+        0
+    }
+}
+
+fn issue_14932_3() {
+    let _ = 0usize + &Def::def(); // no error
+
+    0usize + &Def::def(); // no error
+
+    0usize + &<usize as Def>::def();
+    //~^ identity_op
+
+    let _ = 0usize + &usize::def();
+    //~^ identity_op
+
+    let _n: usize = 0usize + &Def::def();
+    //~^ identity_op
+}

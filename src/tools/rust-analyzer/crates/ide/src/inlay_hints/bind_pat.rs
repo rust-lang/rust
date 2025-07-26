@@ -380,9 +380,9 @@ fn main() {
     let foo = foo3();
      // ^^^ impl Fn(f64, f64) -> u32
     let foo = foo4();
-     // ^^^ &'static (dyn Fn(f64, f64) -> u32 + 'static)
+     // ^^^ &'static dyn Fn(f64, f64) -> u32
     let foo = foo5();
-     // ^^^ &'static (dyn Fn(&(dyn Fn(f64, f64) -> u32 + 'static), f64) -> u32 + 'static)
+     // ^^^ &'static dyn Fn(&dyn Fn(f64, f64) -> u32, f64) -> u32
     let foo = foo6();
      // ^^^ impl Fn(f64, f64) -> u32
     let foo = foo7();
@@ -413,7 +413,7 @@ fn main() {
     let foo = foo3();
      // ^^^ impl Fn(f64, f64) -> u32
     let foo = foo4();
-     // ^^^ &'static (dyn Fn(f64, f64) -> u32 + 'static)
+     // ^^^ &'static dyn Fn(f64, f64) -> u32
     let foo = foo5();
     let foo = foo6();
     let foo = foo7();

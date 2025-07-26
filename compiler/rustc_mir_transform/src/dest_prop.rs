@@ -171,7 +171,7 @@ impl<'tcx> crate::MirPass<'tcx> for DestinationPropagation {
 
         let live = MaybeLiveLocals.iterate_to_fixpoint(tcx, body, Some("MaybeLiveLocals-DestProp"));
         let points = DenseLocationMap::new(body);
-        let mut live = save_as_intervals(&points, body, live);
+        let mut live = save_as_intervals(&points, body, live.analysis, live.results);
 
         // In order to avoid having to collect data for every single pair of locals in the body, we
         // do not allow doing more than one merge for places that are derived from the same local at

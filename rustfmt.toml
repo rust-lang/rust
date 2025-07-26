@@ -14,7 +14,7 @@ ignore = [
     "/vendor/",
 
     # Some tests are not formatted, for various reasons.
-    "/tests/codegen/simd-intrinsic/", # Many types like `u8x64` are better hand-formatted.
+    "/tests/codegen-llvm/simd-intrinsic/", # Many types like `u8x64` are better hand-formatted.
     "/tests/crashes/",                # Many of these tests contain syntax errors.
     "/tests/debuginfo/",              # These tests are somewhat sensitive to source code layout.
     "/tests/incremental/",            # These tests are somewhat sensitive to source code layout.
@@ -29,6 +29,7 @@ ignore = [
 
     # Do not format submodules.
     "library/backtrace",
+    "library/compiler-builtins",
     "library/portable-simd",
     "library/stdarch",
     "src/doc/book",
@@ -57,5 +58,5 @@ ignore = [
 
     # Rustfmt doesn't support use closures yet
     "tests/mir-opt/ergonomic-clones/closure.rs",
-    "tests/codegen/ergonomic-clones/closure.rs",
+    "tests/codegen-llvm/ergonomic-clones/closure.rs",
 ]

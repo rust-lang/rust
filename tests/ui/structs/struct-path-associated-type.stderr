@@ -48,19 +48,37 @@ error[E0223]: ambiguous associated type
   --> $DIR/struct-path-associated-type.rs:32:13
    |
 LL |     let s = S::A {};
-   |             ^^^^ help: use fully-qualified syntax: `<S as Tr>::A`
+   |             ^^^^
+   |
+help: use fully-qualified syntax
+   |
+LL -     let s = S::A {};
+LL +     let s = <S as Tr>::A {};
+   |
 
 error[E0223]: ambiguous associated type
   --> $DIR/struct-path-associated-type.rs:33:13
    |
 LL |     let z = S::A::<u8> {};
-   |             ^^^^ help: use fully-qualified syntax: `<S as Tr>::A`
+   |             ^^^^
+   |
+help: use fully-qualified syntax
+   |
+LL -     let z = S::A::<u8> {};
+LL +     let z = <S as Tr>::A::<u8> {};
+   |
 
 error[E0223]: ambiguous associated type
   --> $DIR/struct-path-associated-type.rs:35:9
    |
 LL |         S::A {} => {}
-   |         ^^^^ help: use fully-qualified syntax: `<S as Tr>::A`
+   |         ^^^^
+   |
+help: use fully-qualified syntax
+   |
+LL -         S::A {} => {}
+LL +         <S as Tr>::A {} => {}
+   |
 
 error: aborting due to 8 previous errors
 

@@ -24,8 +24,8 @@ impl flags::Codegen {
                 grammar::generate(self.check);
                 assists_doc_tests::generate(self.check);
                 parser_inline_tests::generate(self.check);
-                feature_docs::generate(self.check)
-                // diagnostics_docs::generate(self.check) doesn't generate any tests
+                feature_docs::generate(self.check);
+                diagnostics_docs::generate(self.check);
                 // lints::generate(self.check) Updating clones the rust repo, so don't run it unless
                 // explicitly asked for
             }

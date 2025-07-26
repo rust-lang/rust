@@ -66,7 +66,6 @@
 )]
 #![doc(cfg_hide(
     not(test),
-    not(any(test, bootstrap)),
     no_global_oom_handling,
     not(no_global_oom_handling),
     not(no_rc),
@@ -108,8 +107,10 @@
 #![feature(char_max_len)]
 #![feature(clone_to_uninit)]
 #![feature(coerce_unsized)]
+#![feature(const_default)]
 #![feature(const_eval_select)]
 #![feature(const_heap)]
+#![feature(const_trait_impl)]
 #![feature(core_intrinsics)]
 #![feature(deprecated_suggestion)]
 #![feature(deref_pure_trait)]
@@ -132,11 +133,9 @@
 #![feature(local_waker)]
 #![feature(maybe_uninit_slice)]
 #![feature(maybe_uninit_uninit_array_transpose)]
-#![feature(nonnull_provenance)]
 #![feature(panic_internals)]
 #![feature(pattern)]
 #![feature(pin_coerce_unsized_trait)]
-#![feature(pointer_like_trait)]
 #![feature(ptr_alignment_type)]
 #![feature(ptr_internals)]
 #![feature(ptr_metadata)]
@@ -156,6 +155,7 @@
 #![feature(try_trait_v2)]
 #![feature(try_with_capacity)]
 #![feature(tuple_trait)]
+#![feature(ub_checks)]
 #![feature(unicode_internals)]
 #![feature(unsize)]
 #![feature(unwrap_infallible)]

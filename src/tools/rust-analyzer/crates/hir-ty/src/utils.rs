@@ -1,7 +1,7 @@
 //! Helper functions for working with def, which don't need to be a separate
 //! query, but can't be computed directly from `*Data` (ie, which need a `db`).
 
-use std::iter;
+use std::{cell::LazyCell, iter};
 
 use base_db::Crate;
 use chalk_ir::{
@@ -161,11 +161,12 @@ impl Iterator for ClauseElaborator<'_> {
 }
 
 fn direct_super_traits_cb(db: &dyn DefDatabase, trait_: TraitId, cb: impl FnMut(TraitId)) {
-    let resolver = trait_.resolver(db);
+    let resolver = LazyCell::new(|| trait_.resolver(db));
     let (generic_params, store) = db.generic_params_and_store(trait_.into());
     let trait_self = generic_params.trait_self_param();
     generic_params
         .where_predicates()
+        .iter()
         .filter_map(|pred| match pred {
             WherePredicate::ForLifetime { target, bound, .. }
             | WherePredicate::TypeBound { target, bound } => {
@@ -218,7 +219,7 @@ pub(super) fn associated_type_by_name_including_super_traits(
     name: &Name,
 ) -> Option<(TraitRef, TypeAliasId)> {
     all_super_trait_refs(db, trait_ref, |t| {
-        let assoc_type = db.trait_items(t.hir_trait_id()).associated_type_by_name(name)?;
+        let assoc_type = t.hir_trait_id().trait_items(db).associated_type_by_name(name)?;
         Some((t, assoc_type))
     })
 }
@@ -293,9 +294,7 @@ pub fn is_fn_unsafe_to_call(
     let loc = func.lookup(db);
     match loc.container {
         hir_def::ItemContainerId::ExternBlockId(block) => {
-            let id = block.lookup(db).id;
-            let is_intrinsic_block =
-                id.item_tree(db)[id.value].abi.as_ref() == Some(&sym::rust_dash_intrinsic);
+            let is_intrinsic_block = block.abi(db) == Some(sym::rust_dash_intrinsic);
             if is_intrinsic_block {
                 // legacy intrinsics
                 // extern "rust-intrinsic" intrinsics are unsafe unless they have the rustc_safe_intrinsic attribute
@@ -357,7 +356,7 @@ pub(crate) fn detect_variant_from_bytes<'a>(
     let (var_id, var_layout) = match &layout.variants {
         hir_def::layout::Variants::Empty => unreachable!(),
         hir_def::layout::Variants::Single { index } => {
-            (db.enum_variants(e).variants[index.0].0, layout)
+            (e.enum_variants(db).variants[index.0].0, layout)
         }
         hir_def::layout::Variants::Multiple { tag, tag_encoding, variants, .. } => {
             let size = tag.size(target_data_layout).bytes_usize();
@@ -367,7 +366,7 @@ pub(crate) fn detect_variant_from_bytes<'a>(
                 TagEncoding::Direct => {
                     let (var_idx, layout) =
                         variants.iter_enumerated().find_map(|(var_idx, v)| {
-                            let def = db.enum_variants(e).variants[var_idx.0].0;
+                            let def = e.enum_variants(db).variants[var_idx.0].0;
                             (db.const_eval_discriminant(def) == Ok(tag)).then_some((def, v))
                         })?;
                     (var_idx, layout)
@@ -380,7 +379,7 @@ pub(crate) fn detect_variant_from_bytes<'a>(
                         .filter(|x| x != untagged_variant)
                         .nth(candidate_tag)
                         .unwrap_or(*untagged_variant);
-                    (db.enum_variants(e).variants[variant.0].0, &variants[variant])
+                    (e.enum_variants(db).variants[variant.0].0, &variants[variant])
                 }
             }
         }

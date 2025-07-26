@@ -110,7 +110,7 @@ pub struct SsrMatches {
 pub struct MatchFinder<'db> {
     /// Our source of information about the user's code.
     sema: Semantics<'db, ide_db::RootDatabase>,
-    rules: Vec<ResolvedRule>,
+    rules: Vec<ResolvedRule<'db>>,
     resolution_scope: resolving::ResolutionScope<'db>,
     restrict_ranges: Vec<ide_db::FileRange>,
 }
@@ -287,7 +287,7 @@ impl<'db> MatchFinder<'db> {
                 if let Some(expanded) = self.sema.expand_macro_call(&macro_call) {
                     if let Some(tt) = macro_call.token_tree() {
                         self.output_debug_for_nodes_at_range(
-                            &expanded,
+                            &expanded.value,
                             range,
                             &Some(self.sema.original_range(tt.syntax())),
                             out,

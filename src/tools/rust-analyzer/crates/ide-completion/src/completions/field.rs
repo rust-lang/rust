@@ -8,7 +8,7 @@ use crate::{
 pub(crate) fn complete_field_list_tuple_variant(
     acc: &mut Completions,
     ctx: &CompletionContext<'_>,
-    path_ctx: &PathCompletionCtx,
+    path_ctx: &PathCompletionCtx<'_>,
 ) {
     if ctx.qualifier_ctx.vis_node.is_some() {
     } else if let PathCompletionCtx {

@@ -171,8 +171,7 @@ impl<'a, 'b, 'tcx, Bx: BuilderMethods<'b, 'tcx>> Visitor<'tcx> for LocalAnalyzer
         if let Some(local) = place.as_local() {
             self.define(local, DefLocation::Assignment(location));
             if self.locals[local] != LocalKind::Memory {
-                let decl_span = self.fx.mir.local_decls[local].source_info.span;
-                if !self.fx.rvalue_creates_operand(rvalue, decl_span) {
+                if !self.fx.rvalue_creates_operand(rvalue) {
                     self.locals[local] = LocalKind::Memory;
                 }
             }

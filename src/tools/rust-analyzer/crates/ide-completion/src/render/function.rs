@@ -22,13 +22,13 @@ use crate::{
 
 #[derive(Debug)]
 enum FuncKind<'ctx> {
-    Function(&'ctx PathCompletionCtx),
-    Method(&'ctx DotAccess, Option<SmolStr>),
+    Function(&'ctx PathCompletionCtx<'ctx>),
+    Method(&'ctx DotAccess<'ctx>, Option<SmolStr>),
 }
 
 pub(crate) fn render_fn(
     ctx: RenderContext<'_>,
-    path_ctx: &PathCompletionCtx,
+    path_ctx: &PathCompletionCtx<'_>,
     local_name: Option<hir::Name>,
     func: hir::Function,
 ) -> Builder {
@@ -38,7 +38,7 @@ pub(crate) fn render_fn(
 
 pub(crate) fn render_method(
     ctx: RenderContext<'_>,
-    dot_access: &DotAccess,
+    dot_access: &DotAccess<'_>,
     receiver: Option<SmolStr>,
     local_name: Option<hir::Name>,
     func: hir::Function,
@@ -186,8 +186,8 @@ fn render(
 fn compute_return_type_match(
     db: &dyn HirDatabase,
     ctx: &RenderContext<'_>,
-    self_type: hir::Type,
-    ret_type: &hir::Type,
+    self_type: hir::Type<'_>,
+    ret_type: &hir::Type<'_>,
 ) -> CompletionRelevanceReturnType {
     if match_types(ctx.completion, &self_type, ret_type).is_some() {
         // fn([..]) -> Self
@@ -217,8 +217,8 @@ pub(super) fn add_call_parens<'b>(
     name: SmolStr,
     escaped_name: SmolStr,
     self_param: Option<hir::SelfParam>,
-    params: Vec<hir::Param>,
-    ret_type: &hir::Type,
+    params: Vec<hir::Param<'_>>,
+    ret_type: &hir::Type<'_>,
 ) -> &'b mut Builder {
     cov_mark::hit!(inserts_parens_for_function_calls);
 
@@ -288,7 +288,7 @@ pub(super) fn add_call_parens<'b>(
     builder.label(SmolStr::from_iter([&name, label_suffix])).insert_snippet(cap, snippet)
 }
 
-fn ref_of_param(ctx: &CompletionContext<'_>, arg: &str, ty: &hir::Type) -> &'static str {
+fn ref_of_param(ctx: &CompletionContext<'_>, arg: &str, ty: &hir::Type<'_>) -> &'static str {
     if let Some(derefed_ty) = ty.remove_ref() {
         for (name, local) in ctx.locals.iter().sorted_by_key(|&(k, _)| k.clone()) {
             if name.as_str() == arg {
@@ -369,12 +369,12 @@ fn params_display(ctx: &CompletionContext<'_>, detail: &mut String, func: hir::F
     }
 }
 
-fn params(
-    ctx: &CompletionContext<'_>,
+fn params<'db>(
+    ctx: &CompletionContext<'db>,
     func: hir::Function,
     func_kind: &FuncKind<'_>,
     has_dot_receiver: bool,
-) -> Option<(Option<hir::SelfParam>, Vec<hir::Param>)> {
+) -> Option<(Option<hir::SelfParam>, Vec<hir::Param<'db>>)> {
     ctx.config.callable.as_ref()?;
 
     // Don't add parentheses if the expected type is a function reference with the same signature.

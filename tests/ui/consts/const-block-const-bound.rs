@@ -3,7 +3,7 @@
 
 use std::marker::Destruct;
 
-const fn f<T: ~const Destruct>(x: T) {}
+const fn f<T: [const] Destruct>(x: T) {}
 
 struct UnconstDrop;
 

@@ -8,7 +8,7 @@ use std::time::Duration;
 use serde::Deserialize;
 use walkdir::{DirEntry, WalkDir};
 
-use crate::{Crate, LINTCHECK_DOWNLOADS, LINTCHECK_SOURCES};
+use crate::{Crate, lintcheck_sources, target_dir};
 
 const DEFAULT_DOCS_LINK: &str = "https://docs.rs/{krate}/{version}/src/{krate_}/{file}.html#{line}";
 const DEFAULT_GITHUB_LINK: &str = "{url}/blob/{hash}/src/{file}#L{line}";
@@ -201,8 +201,10 @@ impl CrateWithSource {
         let file_link = &self.file_link;
         match &self.source {
             CrateSource::CratesIo { version } => {
-                let extract_dir = PathBuf::from(LINTCHECK_SOURCES);
-                let krate_download_dir = PathBuf::from(LINTCHECK_DOWNLOADS);
+                let extract_dir = PathBuf::from(lintcheck_sources());
+                // Keep constant downloads path to avoid repeating work and
+                // filling up disk space unnecessarily.
+                let krate_download_dir = PathBuf::from("target/lintcheck/downloads/");
 
                 // url to download the crate from crates.io
                 let url = format!("https://crates.io/api/v1/crates/{name}/{version}/download");
@@ -211,7 +213,7 @@ impl CrateWithSource {
 
                 let krate_file_path = krate_download_dir.join(format!("{name}-{version}.crate.tar.gz"));
                 // don't download/extract if we already have done so
-                if !krate_file_path.is_file() {
+                if !krate_file_path.is_file() || !extract_dir.join(format!("{name}-{version}")).exists() {
                     // create a file path to download and write the crate data into
                     let mut krate_dest = fs::File::create(&krate_file_path).unwrap();
                     let mut krate_req = get(&url).unwrap().into_reader();
@@ -236,7 +238,7 @@ impl CrateWithSource {
             },
             CrateSource::Git { url, commit } => {
                 let repo_path = {
-                    let mut repo_path = PathBuf::from(LINTCHECK_SOURCES);
+                    let mut repo_path = PathBuf::from(lintcheck_sources());
                     // add a -git suffix in case we have the same crate from crates.io and a git repo
                     repo_path.push(format!("{name}-git"));
                     repo_path
@@ -286,7 +288,7 @@ impl CrateWithSource {
                 // copy path into the dest_crate_root but skip directories that contain a CACHEDIR.TAG file.
                 // The target/ directory contains a CACHEDIR.TAG file so it is the most commonly skipped directory
                 // as a result of this filter.
-                let dest_crate_root = PathBuf::from(LINTCHECK_SOURCES).join(name);
+                let dest_crate_root = PathBuf::from(lintcheck_sources()).join(name);
                 if dest_crate_root.exists() {
                     println!("Deleting existing directory at `{}`", dest_crate_root.display());
                     fs::remove_dir_all(&dest_crate_root).unwrap();
@@ -326,15 +328,16 @@ impl CrateWithSource {
 ///
 /// This function panics if creating one of the dirs fails.
 fn create_dirs(krate_download_dir: &Path, extract_dir: &Path) {
-    fs::create_dir("target/lintcheck/").unwrap_or_else(|err| {
+    fs::create_dir(format!("{}/lintcheck/", target_dir())).unwrap_or_else(|err| {
         assert_eq!(
             err.kind(),
             ErrorKind::AlreadyExists,
             "cannot create lintcheck target dir"
         );
     });
-    fs::create_dir(krate_download_dir).unwrap_or_else(|err| {
-        assert_eq!(err.kind(), ErrorKind::AlreadyExists, "cannot create crate download dir");
+    fs::create_dir_all(krate_download_dir).unwrap_or_else(|err| {
+        // We are allowed to reuse download dirs
+        assert_ne!(err.kind(), ErrorKind::AlreadyExists);
     });
     fs::create_dir(extract_dir).unwrap_or_else(|err| {
         assert_eq!(

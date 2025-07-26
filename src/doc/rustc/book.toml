@@ -6,6 +6,8 @@ title = "The rustc book"
 [output.html]
 git-repository-url = "https://github.com/rust-lang/rust/tree/master/src/doc/rustc"
 edit-url-template = "https://github.com/rust-lang/rust/edit/master/src/doc/rustc/{path}"
+additional-css = ["theme/pagetoc.css"]
+additional-js = ["theme/pagetoc.js"]
 
 [output.html.search]
 use-boolean-and = true

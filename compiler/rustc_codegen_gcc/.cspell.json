@@ -1,0 +1,27 @@
+{
+    "allowCompoundWords": true,
+    "dictionaries": ["cpp", "rust-extra", "rustc_codegen_gcc"],
+    "dictionaryDefinitions": [
+        {
+            "name": "rust-extra",
+            "path": "tools/cspell_dicts/rust.txt",
+            "addWords": true
+        },
+        {
+            "name": "rustc_codegen_gcc",
+            "path": "tools/cspell_dicts/rustc_codegen_gcc.txt",
+            "addWords": true
+        }
+    ],
+    "files": [
+        "src/**/*.rs"
+    ],
+    "ignorePaths": [
+        "src/intrinsic/archs.rs",
+        "src/intrinsic/llvm.rs"
+    ],
+    "ignoreRegExpList": [
+        "/(FIXME|NOTE|TODO)\\([^)]+\\)/",
+        "__builtin_\\w*"
+    ]
+}

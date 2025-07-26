@@ -3,14 +3,14 @@ use clippy_utils::macros::matching_root_macro_call;
 use clippy_utils::msrvs::Msrv;
 use clippy_utils::source::snippet;
 use clippy_utils::visitors::{for_each_expr_without_closures, is_local_used};
-use clippy_utils::{is_in_const_context, path_to_local};
+use clippy_utils::{is_in_const_context, path_to_local, sym};
 use rustc_ast::{BorrowKind, LitKind};
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{Arm, BinOpKind, Expr, ExprKind, MatchSource, Node, PatKind, UnOp};
 use rustc_lint::LateContext;
 use rustc_span::symbol::Ident;
-use rustc_span::{Span, sym};
+use rustc_span::{Span, Symbol};
 use std::borrow::Cow;
 use std::ops::ControlFlow;
 
@@ -95,7 +95,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'tcx>], msrv:
         } else if let ExprKind::MethodCall(path, recv, args, ..) = guard.kind
             && let Some(binding) = get_pat_binding(cx, recv, outer_arm)
         {
-            check_method_calls(cx, outer_arm, path.ident.name.as_str(), recv, args, guard, &binding);
+            check_method_calls(cx, outer_arm, path.ident.name, recv, args, guard, &binding);
         }
     }
 }
@@ -103,7 +103,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'tcx>], msrv:
 fn check_method_calls<'tcx>(
     cx: &LateContext<'tcx>,
     arm: &Arm<'tcx>,
-    method: &str,
+    method: Symbol,
     recv: &Expr<'_>,
     args: &[Expr<'_>],
     if_expr: &Expr<'_>,
@@ -112,7 +112,7 @@ fn check_method_calls<'tcx>(
     let ty = cx.typeck_results().expr_ty(recv).peel_refs();
     let slice_like = ty.is_slice() || ty.is_array();
 
-    let sugg = if method == "is_empty" {
+    let sugg = if method == sym::is_empty {
         // `s if s.is_empty()` becomes ""
         // `arr if arr.is_empty()` becomes []
 
@@ -137,9 +137,9 @@ fn check_method_calls<'tcx>(
 
         if needles.is_empty() {
             sugg.insert_str(1, "..");
-        } else if method == "starts_with" {
+        } else if method == sym::starts_with {
             sugg.insert_str(sugg.len() - 1, ", ..");
-        } else if method == "ends_with" {
+        } else if method == sym::ends_with {
             sugg.insert_str(1, ".., ");
         } else {
             return;

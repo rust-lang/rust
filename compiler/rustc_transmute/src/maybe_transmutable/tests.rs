@@ -3,17 +3,17 @@ extern crate test;
 use itertools::Itertools;
 
 use super::query_context::test::{Def, UltraMinimal};
-use crate::{Answer, Assume, Reason, layout};
+use crate::{Answer, Assume, Condition, Reason, layout};
 
-type Tree = layout::Tree<Def, !>;
-type Dfa = layout::Dfa<!>;
+type Tree = layout::Tree<Def, !, !>;
+type Dfa = layout::Dfa<!, !>;
 
 trait Representation {
-    fn is_transmutable(src: Self, dst: Self, assume: Assume) -> Answer<!>;
+    fn is_transmutable(src: Self, dst: Self, assume: Assume) -> Answer<!, !>;
 }
 
 impl Representation for Tree {
-    fn is_transmutable(src: Self, dst: Self, assume: Assume) -> Answer<!> {
+    fn is_transmutable(src: Self, dst: Self, assume: Assume) -> Answer<!, !> {
         crate::maybe_transmutable::MaybeTransmutableQuery::new(
             src,
             dst,
@@ -25,7 +25,7 @@ impl Representation for Tree {
 }
 
 impl Representation for Dfa {
-    fn is_transmutable(src: Self, dst: Self, assume: Assume) -> Answer<!> {
+    fn is_transmutable(src: Self, dst: Self, assume: Assume) -> Answer<!, !> {
         crate::maybe_transmutable::MaybeTransmutableQuery::new(
             src,
             dst,
@@ -40,7 +40,7 @@ fn is_transmutable<R: Representation + Clone>(
     src: &R,
     dst: &R,
     assume: Assume,
-) -> crate::Answer<!> {
+) -> crate::Answer<!, !> {
     let src = src.clone();
     let dst = dst.clone();
     // The only dimension of the transmutability analysis we want to test
@@ -53,7 +53,7 @@ mod safety {
     use super::*;
     use crate::Answer;
 
-    const DST_HAS_SAFETY_INVARIANTS: Answer<!> =
+    const DST_HAS_SAFETY_INVARIANTS: Answer<!, !> =
         Answer::No(crate::Reason::DstMayHaveSafetyInvariants);
 
     #[test]
@@ -177,14 +177,15 @@ mod bool {
 
     #[test]
     fn should_permit_validity_expansion_and_reject_contraction() {
-        let b0 = layout::Tree::<Def, !>::byte(0);
-        let b1 = layout::Tree::<Def, !>::byte(1);
-        let b2 = layout::Tree::<Def, !>::byte(2);
+        let b0 = layout::Tree::<Def, !, !>::byte(0);
+        let b1 = layout::Tree::<Def, !, !>::byte(1);
+        let b2 = layout::Tree::<Def, !, !>::byte(2);
 
         let alts = [b0, b1, b2];
 
         let into_layout = |alts: Vec<_>| {
-            alts.into_iter().fold(layout::Tree::<Def, !>::uninhabited(), layout::Tree::<Def, !>::or)
+            alts.into_iter()
+                .fold(layout::Tree::<Def, !, !>::uninhabited(), layout::Tree::<Def, !, !>::or)
         };
 
         let into_set = |alts: Vec<_>| {
@@ -277,7 +278,7 @@ mod alt {
 
     #[test]
     fn should_permit_identity_transmutation() {
-        type Tree = layout::Tree<Def, !>;
+        type Tree = layout::Tree<Def, !, !>;
 
         let x = Tree::Seq(vec![Tree::byte(0), Tree::byte(0)]);
         let y = Tree::Seq(vec![Tree::bool(), Tree::byte(1)]);
@@ -331,7 +332,7 @@ mod char {
     fn should_permit_valid_transmutation() {
         for order in [Endian::Big, Endian::Little] {
             use Answer::*;
-            let char_layout = layout::Tree::<Def, !>::char(order);
+            let char_layout = layout::Tree::<Def, !, !>::char(order);
 
             // `char`s can be in the following ranges:
             // - [0, 0xD7FF]
@@ -353,7 +354,7 @@ mod char {
                 (0xFFFFFFFF, no),
             ] {
                 let src_layout =
-                    layout::tree::Tree::<Def, !>::from_big_endian(order, src.to_be_bytes());
+                    layout::tree::Tree::<Def, !, !>::from_big_endian(order, src.to_be_bytes());
 
                 let a = is_transmutable(&src_layout, &char_layout, Assume::default());
                 assert_eq!(a, answer, "endian:{order:?},\nsrc:{src:x}");
@@ -371,7 +372,7 @@ mod nonzero {
     #[test]
     fn should_permit_identity_transmutation() {
         for width in NONZERO_BYTE_WIDTHS {
-            let layout = layout::Tree::<Def, !>::nonzero(width);
+            let layout = layout::Tree::<Def, !, !>::nonzero(width);
             assert_eq!(is_transmutable(&layout, &layout, Assume::default()), Answer::Yes);
         }
     }
@@ -381,8 +382,8 @@ mod nonzero {
         for width in NONZERO_BYTE_WIDTHS {
             use Answer::*;
 
-            let num = layout::Tree::<Def, !>::number(width);
-            let nz = layout::Tree::<Def, !>::nonzero(width);
+            let num = layout::Tree::<Def, !, !>::number(width);
+            let nz = layout::Tree::<Def, !, !>::nonzero(width);
 
             let a = is_transmutable(&num, &nz, Assume::default());
             assert_eq!(a, No(Reason::DstIsBitIncompatible), "width:{width}");
@@ -395,13 +396,23 @@ mod nonzero {
 
 mod r#ref {
     use super::*;
+    use crate::layout::Reference;
 
     #[test]
     fn should_permit_identity_transmutation() {
-        type Tree = crate::layout::Tree<Def, [(); 1]>;
+        type Tree = crate::layout::Tree<Def, usize, ()>;
 
         for validity in [false, true] {
-            let layout = Tree::Seq(vec![Tree::byte(0x00), Tree::Ref([()])]);
+            let layout = Tree::Seq(vec![
+                Tree::byte(0x00),
+                Tree::Ref(Reference {
+                    region: 42,
+                    is_mut: false,
+                    referent: (),
+                    referent_size: 0,
+                    referent_align: 1,
+                }),
+            ]);
 
             let assume = Assume { validity, ..Assume::default() };
 
@@ -414,7 +425,11 @@ mod r#ref {
             .answer();
             assert_eq!(
                 answer,
-                Answer::If(crate::Condition::IfTransmutable { src: [()], dst: [()] })
+                Answer::If(Condition::IfAll(vec![
+                    Condition::Transmutable { src: (), dst: () },
+                    Condition::Outlives { long: 42, short: 42 },
+                    Condition::Immutable { ty: () },
+                ]))
             );
         }
     }

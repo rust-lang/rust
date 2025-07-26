@@ -33,3 +33,12 @@ fn main() {
         b = true;
     }
 }
+
+fn issue15063(x: bool, y: bool) {
+    let mut z = false;
+
+    if x && y {
+        todo!()
+    } else { z = x || y; }
+    //~^^^^^ needless_bool_assign
+}

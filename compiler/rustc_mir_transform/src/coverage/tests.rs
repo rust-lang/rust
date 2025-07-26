@@ -68,14 +68,13 @@ impl<'tcx> MockBlocks<'tcx> {
             BytePos(1)
         };
         let next_hi = next_lo + BytePos(1);
-        self.blocks.push(BasicBlockData {
-            statements: vec![],
-            terminator: Some(Terminator {
+        self.blocks.push(BasicBlockData::new(
+            Some(Terminator {
                 source_info: SourceInfo::outermost(Span::with_root_ctxt(next_lo, next_hi)),
                 kind,
             }),
-            is_cleanup: false,
-        })
+            false,
+        ))
     }
 
     fn link(&mut self, from_block: BasicBlock, to_block: BasicBlock) {

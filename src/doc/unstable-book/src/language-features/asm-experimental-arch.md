@@ -19,6 +19,7 @@ This feature tracks `asm!` and `global_asm!` support for the following architect
 - M68k
 - CSKY
 - SPARC
+- LoongArch32
 
 ## Register classes
 
@@ -53,6 +54,8 @@ This feature tracks `asm!` and `global_asm!` support for the following architect
 | CSKY         | `freg`         | `f[0-31]`                          | `f`                  |
 | SPARC        | `reg`          | `r[2-29]`                          | `r`                  |
 | SPARC        | `yreg`         | `y`                                | Only clobbers        |
+| LoongArch32  | `reg`          | `$r1`, `$r[4-20]`, `$r[23,30]`     | `r`                  |
+| LoongArch32  | `freg`         | `$f[0-31]`                         | `f`                  |
 
 > **Notes**:
 > - NVPTX doesn't have a fixed register set, so named registers are not supported.
@@ -91,6 +94,8 @@ This feature tracks `asm!` and `global_asm!` support for the following architect
 | CSKY         | `freg`                          | None           | `f32`,                                  |
 | SPARC        | `reg`                           | None           | `i8`, `i16`, `i32`, `i64` (SPARC64 only) |
 | SPARC        | `yreg`                          | N/A            | Only clobbers                           |
+| LoongArch32  | `reg`                           | None           | `i8`, `i16`, `i32`, `f32`               |
+| LoongArch32  | `freg`                          | None           | `f32`, `f64`                            |
 
 ## Register aliases
 

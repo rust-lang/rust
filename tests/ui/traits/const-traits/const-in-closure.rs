@@ -3,13 +3,14 @@
 
 #![feature(const_trait_impl)]
 
-#[const_trait] trait Trait {
+#[const_trait]
+trait Trait {
     fn method();
 }
 
 const fn foo<T: Trait>() {
     let _ = || {
-        // Make sure this doesn't enforce `T: ~const Trait`
+        // Make sure this doesn't enforce `T: [const] Trait`
         T::method();
     };
 }
@@ -17,7 +18,9 @@ const fn foo<T: Trait>() {
 fn bar<T: const Trait>() {
     let _ = || {
         // Make sure unconditionally const bounds propagate from parent.
-        const { T::method(); };
+        const {
+            T::method();
+        };
     };
 }
 

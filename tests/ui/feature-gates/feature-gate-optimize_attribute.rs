@@ -11,5 +11,5 @@ fn none() {}
 
 #[optimize(banana)]
 //~^ ERROR the `#[optimize]` attribute is an experimental feature
-//~| ERROR E0722
+//~| ERROR malformed `optimize` attribute input [E0539]
 fn not_known() {}

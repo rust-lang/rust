@@ -3,7 +3,7 @@ use clippy_utils::source::{snippet_indent, snippet_with_context};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::is_type_diagnostic_item;
 
-use clippy_utils::{can_mut_borrow_both, eq_expr_value, is_in_const_context, std_or_core};
+use clippy_utils::{can_mut_borrow_both, eq_expr_value, is_in_const_context, path_to_local, std_or_core};
 use itertools::Itertools;
 
 use rustc_data_structures::fx::FxIndexSet;
@@ -350,12 +350,21 @@ impl<'tcx> IndexBinding<'_, 'tcx> {
                 format!("{lhs_snippet}{rhs_snippet}")
             },
             ExprKind::Path(QPath::Resolved(_, path)) => {
-                let init = self.cx.expr_or_init(expr);
-
                 let Some(first_segment) = path.segments.first() else {
                     return String::new();
                 };
-                if !self.suggest_span.contains(init.span) || !self.is_used_other_than_swapping(first_segment.ident) {
+
+                let init = self.cx.expr_or_init(expr);
+
+                // We skip suggesting a variable binding in any of these cases:
+                // - Variable initialization is outside the suggestion span
+                // - Variable declaration is outside the suggestion span
+                // - Variable is not used as an index or elsewhere later
+                if !self.suggest_span.contains(init.span)
+                    || path_to_local(expr)
+                        .is_some_and(|hir_id| !self.suggest_span.contains(self.cx.tcx.hir_span(hir_id)))
+                    || !self.is_used_other_than_swapping(first_segment.ident)
+                {
                     return String::new();
                 }
 

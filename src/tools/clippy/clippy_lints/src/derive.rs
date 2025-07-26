@@ -2,7 +2,7 @@ use std::ops::ControlFlow;
 
 use clippy_utils::diagnostics::{span_lint_and_note, span_lint_and_then, span_lint_hir_and_then};
 use clippy_utils::ty::{implements_trait, implements_trait_with_env, is_copy};
-use clippy_utils::{has_non_exhaustive_attr, is_lint_allowed, match_def_path, paths};
+use clippy_utils::{has_non_exhaustive_attr, is_lint_allowed, paths};
 use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{FnKind, Visitor, walk_expr, walk_fn, walk_item};
@@ -345,7 +345,7 @@ fn check_copy_clone<'tcx>(cx: &LateContext<'tcx>, item: &Item<'_>, trait_ref: &h
     if ty_adt.repr().packed()
         && ty_subs
             .iter()
-            .any(|arg| matches!(arg.unpack(), GenericArgKind::Type(_) | GenericArgKind::Const(_)))
+            .any(|arg| matches!(arg.kind(), GenericArgKind::Type(_) | GenericArgKind::Const(_)))
     {
         return;
     }
@@ -377,7 +377,7 @@ fn check_unsafe_derive_deserialize<'tcx>(
     }
 
     if let Some(trait_def_id) = trait_ref.trait_def_id()
-        && match_def_path(cx, trait_def_id, &paths::SERDE_DESERIALIZE)
+        && paths::SERDE_DESERIALIZE.matches(cx, trait_def_id)
         && let ty::Adt(def, _) = ty.kind()
         && let Some(local_def_id) = def.did().as_local()
         && let adt_hir_id = cx.tcx.local_def_id_to_hir_id(local_def_id)
@@ -432,6 +432,11 @@ impl<'tcx> Visitor<'tcx> for UnsafeVisitor<'_, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) -> Self::Result {
         if let ExprKind::Block(block, _) = expr.kind
             && block.rules == BlockCheckMode::UnsafeBlock(UnsafeSource::UserProvided)
+            && block
+                .span
+                .source_callee()
+                .and_then(|expr| expr.macro_def_id)
+                .is_none_or(|did| !self.cx.tcx.is_diagnostic_item(sym::pin_macro, did))
         {
             return ControlFlow::Break(());
         }

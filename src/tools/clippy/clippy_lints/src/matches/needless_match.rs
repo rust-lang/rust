@@ -74,7 +74,7 @@ fn check_all_arms(cx: &LateContext<'_>, match_expr: &Expr<'_>, arms: &[Arm<'_>])
         }
 
         if let PatKind::Wild = arm.pat.kind {
-            if !eq_expr_value(cx, match_expr, strip_return(arm_expr)) {
+            if !eq_expr_value(cx, match_expr, arm_expr) {
                 return false;
             }
         } else if !pat_same_as_expr(arm.pat, arm_expr) {
@@ -103,25 +103,16 @@ fn check_if_let_inner(cx: &LateContext<'_>, if_let: &higher::IfLet<'_>) -> bool 
             if matches!(else_expr.kind, ExprKind::Block(..)) {
                 return false;
             }
-            let ret = strip_return(else_expr);
             let let_expr_ty = cx.typeck_results().expr_ty(if_let.let_expr);
             if is_type_diagnostic_item(cx, let_expr_ty, sym::Option) {
-                return is_res_lang_ctor(cx, path_res(cx, ret), OptionNone) || eq_expr_value(cx, if_let.let_expr, ret);
+                return is_res_lang_ctor(cx, path_res(cx, else_expr), OptionNone)
+                    || eq_expr_value(cx, if_let.let_expr, else_expr);
             }
-            return eq_expr_value(cx, if_let.let_expr, ret);
+            return eq_expr_value(cx, if_let.let_expr, else_expr);
         }
     }
 
     false
-}
-
-/// Strip `return` keyword if the expression type is `ExprKind::Ret`.
-fn strip_return<'hir>(expr: &'hir Expr<'hir>) -> &'hir Expr<'hir> {
-    if let ExprKind::Ret(Some(ret)) = expr.kind {
-        ret
-    } else {
-        expr
-    }
 }
 
 /// Manually check for coercion casting by checking if the type of the match operand or let expr
@@ -161,7 +152,6 @@ fn expr_ty_matches_p_ty(cx: &LateContext<'_>, expr: &Expr<'_>, p_expr: &Expr<'_>
 }
 
 fn pat_same_as_expr(pat: &Pat<'_>, expr: &Expr<'_>) -> bool {
-    let expr = strip_return(expr);
     match (&pat.kind, &expr.kind) {
         // Example: `Some(val) => Some(val)`
         (PatKind::TupleStruct(QPath::Resolved(_, path), tuple_params, _), ExprKind::Call(call_expr, call_params)) => {

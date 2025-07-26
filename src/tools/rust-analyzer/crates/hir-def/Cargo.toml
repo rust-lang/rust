@@ -10,6 +10,7 @@ license.workspace = true
 rust-version.workspace = true
 
 [lib]
+doctest = false
 
 [dependencies]
 arrayvec.workspace = true
@@ -25,7 +26,7 @@ rustc-hash.workspace = true
 tracing.workspace = true
 smallvec.workspace = true
 triomphe.workspace = true
-rustc_apfloat = "0.2.2"
+rustc_apfloat = "0.2.3"
 text-size.workspace = true
 salsa.workspace = true
 salsa-macros.workspace = true

@@ -8,9 +8,7 @@ error[E0575]: expected method or associated constant, found associated type `A::
   --> $DIR/path-missing.rs:12:5
    |
 LL |     <T as A>::bad(..): Send,
-   |     ^^^^^^^^^^^^^^^^^
-   |
-   = note: can't use a type alias as a constructor
+   |     ^^^^^^^^^^^^^^^^^ not a method or associated constant
 
 error[E0220]: associated function `method` not found for `T`
   --> $DIR/path-missing.rs:19:8

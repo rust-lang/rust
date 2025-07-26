@@ -13,7 +13,7 @@ pub fn run_tests(env: &Environment) -> anyhow::Result<()> {
     // and then use that extracted rustc as a stage0 compiler.
     // Then we run a subset of tests using that compiler, to have a basic smoke test which checks
     // whether the optimization pipeline hasn't broken something.
-    let build_dir = env.build_root().join("build");
+    let build_dir = env.build_root();
     let dist_dir = build_dir.join("dist");
     let unpacked_dist_dir = build_dir.join("unpacked-dist");
     std::fs::create_dir_all(&unpacked_dist_dir)?;
@@ -72,6 +72,8 @@ change-id = 115898
 [rust]
 channel = "{channel}"
 verbose-tests = true
+# rust-lld cannot be combined with an external LLVM
+lld = false
 
 [build]
 rustc = "{rustc}"
@@ -98,13 +100,16 @@ llvm-config = "{llvm_config}"
             env.host_tuple(),
             "--stage",
             "0",
-            "tests/assembly",
-            "tests/codegen",
+            "tests/assembly-llvm",
+            "tests/codegen-llvm",
             "tests/codegen-units",
             "tests/incremental",
             "tests/mir-opt",
             "tests/pretty",
+            // Make sure that we don't use too new GLIBC symbols on x64
             "tests/run-make/glibc-symbols-x86_64-unknown-linux-gnu",
+            // Make sure that we use LLD by default on x64
+            "tests/run-make/rust-lld-x86_64-unknown-linux-gnu-dist",
             "tests/ui",
             "tests/crashes",
         ];

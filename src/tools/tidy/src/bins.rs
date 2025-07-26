@@ -75,7 +75,7 @@ mod os_impl {
                         return ReadOnlyFs;
                     }
 
-                    panic!("unable to create temporary file `{:?}`: {:?}", path, e);
+                    panic!("unable to create temporary file `{path:?}`: {e:?}");
                 }
             }
         }
@@ -83,12 +83,7 @@ mod os_impl {
         for &source_dir in sources {
             match check_dir(source_dir) {
                 Unsupported => return false,
-                ReadOnlyFs => {
-                    return match check_dir(output) {
-                        Supported => true,
-                        _ => false,
-                    };
-                }
+                ReadOnlyFs => return matches!(check_dir(output), Supported),
                 _ => {}
             }
         }
@@ -139,7 +134,7 @@ mod os_impl {
                     return;
                 }
 
-                if t!(is_executable(&file), file) {
+                if t!(is_executable(file), file) {
                     let rel_path = file.strip_prefix(path).unwrap();
                     let git_friendly_path = rel_path.to_str().unwrap().replace("\\", "/");
 

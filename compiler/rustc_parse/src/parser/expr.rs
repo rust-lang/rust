@@ -834,7 +834,7 @@ impl<'a> Parser<'a> {
         // guides recovery in case we write `&raw expr`.
         if borrow_kind == ast::BorrowKind::Ref
             && mutbl == ast::Mutability::Not
-            && matches!(&expr.kind, ExprKind::Path(None, p) if p.is_ident(kw::Raw))
+            && matches!(&expr.kind, ExprKind::Path(None, p) if *p == kw::Raw)
         {
             self.expected_token_types.insert(TokenType::KwMut);
             self.expected_token_types.insert(TokenType::KwConst);
@@ -847,7 +847,7 @@ impl<'a> Parser<'a> {
         self.dcx().emit_err(errors::LifetimeInBorrowExpression { span, lifetime_span: lt_span });
     }
 
-    /// Parse `mut?` or `raw [ const | mut ]`.
+    /// Parse `mut?` or `[ raw | pin ] [ const | mut ]`.
     fn parse_borrow_modifiers(&mut self) -> (ast::BorrowKind, ast::Mutability) {
         if self.check_keyword(exp!(Raw)) && self.look_ahead(1, Token::is_mutability) {
             // `raw [ const | mut ]`.
@@ -855,6 +855,11 @@ impl<'a> Parser<'a> {
             assert!(found_raw);
             let mutability = self.parse_const_or_mut().unwrap();
             (ast::BorrowKind::Raw, mutability)
+        } else if let Some((ast::Pinnedness::Pinned, mutbl)) = self.parse_pin_and_mut() {
+            // `pin [ const | mut ]`.
+            // `pin` has been gated in `self.parse_pin_and_mut()` so we don't
+            // need to gate it here.
+            (ast::BorrowKind::Pin, mutbl)
         } else {
             // `mut?`
             (ast::BorrowKind::Ref, self.parse_mutability())
@@ -1119,7 +1124,7 @@ impl<'a> Parser<'a> {
     /// Parse the field access used in offset_of, matched by `$(e:expr)+`.
     /// Currently returns a list of idents. However, it should be possible in
     /// future to also do array indices, which might be arbitrary expressions.
-    fn parse_floating_field_access(&mut self) -> PResult<'a, P<[Ident]>> {
+    fn parse_floating_field_access(&mut self) -> PResult<'a, Vec<Ident>> {
         let mut fields = Vec::new();
         let mut trailing_dot = None;
 
@@ -1520,22 +1525,20 @@ impl<'a> Parser<'a> {
                 Ok(this.mk_expr(this.prev_token.span, ExprKind::Underscore))
             } else if this.token_uninterpolated_span().at_least_rust_2018() {
                 // `Span::at_least_rust_2018()` is somewhat expensive; don't get it repeatedly.
+                let at_async = this.check_keyword(exp!(Async));
+                // check for `gen {}` and `gen move {}`
+                // or `async gen {}` and `async gen move {}`
+                // FIXME: (async) gen closures aren't yet parsed.
+                // FIXME(gen_blocks): Parse `gen async` and suggest swap
                 if this.token_uninterpolated_span().at_least_rust_2024()
-                    // check for `gen {}` and `gen move {}`
-                    // or `async gen {}` and `async gen move {}`
-                    && (this.is_gen_block(kw::Gen, 0)
-                        || (this.check_keyword(exp!(Async)) && this.is_gen_block(kw::Gen, 1)))
+                    && this.is_gen_block(kw::Gen, at_async as usize)
                 {
-                    // FIXME: (async) gen closures aren't yet parsed.
                     this.parse_gen_block()
-                } else if this.check_keyword(exp!(Async)) {
-                    // FIXME(gen_blocks): Parse `gen async` and suggest swap
-                    if this.is_gen_block(kw::Async, 0) {
-                        // Check for `async {` and `async move {`,
-                        this.parse_gen_block()
-                    } else {
-                        this.parse_expr_closure()
-                    }
+                // Check for `async {` and `async move {`,
+                } else if this.is_gen_block(kw::Async, 0) {
+                    this.parse_gen_block()
+                } else if at_async {
+                    this.parse_expr_closure()
                 } else if this.eat_keyword_noexpect(kw::Await) {
                     this.recover_incorrect_await_syntax(lo)
                 } else {
@@ -2406,6 +2409,14 @@ impl<'a> Parser<'a> {
         } else {
             None
         };
+
+        if let ClosureBinder::NotPresent = binder
+            && coroutine_kind.is_some()
+        {
+            // coroutine closures and generators can have the same qualifiers, so we might end up
+            // in here if there is a missing `|` but also no `{`. Adjust the expectations in that case.
+            self.expected_token_types.insert(TokenType::OpenBrace);
+        }
 
         let capture_clause = self.parse_capture_clause()?;
         let (fn_decl, fn_arg_span) = self.parse_fn_block_decl()?;
@@ -3311,26 +3322,44 @@ impl<'a> Parser<'a> {
                             let sm = this.psess.source_map();
                             if let Ok(expr_lines) = sm.span_to_lines(expr_span)
                                 && let Ok(arm_start_lines) = sm.span_to_lines(arm_start_span)
-                                && arm_start_lines.lines[0].end_col == expr_lines.lines[0].end_col
                                 && expr_lines.lines.len() == 2
                             {
-                                // We check whether there's any trailing code in the parse span,
-                                // if there isn't, we very likely have the following:
-                                //
-                                // X |     &Y => "y"
-                                //   |        --    - missing comma
-                                //   |        |
-                                //   |        arrow_span
-                                // X |     &X => "x"
-                                //   |      - ^^ self.token.span
-                                //   |      |
-                                //   |      parsed until here as `"y" & X`
-                                err.span_suggestion_short(
-                                    arm_start_span.shrink_to_hi(),
-                                    "missing a comma here to end this `match` arm",
-                                    ",",
-                                    Applicability::MachineApplicable,
-                                );
+                                if arm_start_lines.lines[0].end_col == expr_lines.lines[0].end_col {
+                                    // We check whether there's any trailing code in the parse span,
+                                    // if there isn't, we very likely have the following:
+                                    //
+                                    // X |     &Y => "y"
+                                    //   |        --    - missing comma
+                                    //   |        |
+                                    //   |        arrow_span
+                                    // X |     &X => "x"
+                                    //   |      - ^^ self.token.span
+                                    //   |      |
+                                    //   |      parsed until here as `"y" & X`
+                                    err.span_suggestion_short(
+                                        arm_start_span.shrink_to_hi(),
+                                        "missing a comma here to end this `match` arm",
+                                        ",",
+                                        Applicability::MachineApplicable,
+                                    );
+                                } else if arm_start_lines.lines[0].end_col + rustc_span::CharPos(1)
+                                    == expr_lines.lines[0].end_col
+                                {
+                                    // similar to the above, but we may typo a `.` or `/` at the end of the line
+                                    let comma_span = arm_start_span
+                                        .shrink_to_hi()
+                                        .with_hi(arm_start_span.hi() + rustc_span::BytePos(1));
+                                    if let Ok(res) = sm.span_to_snippet(comma_span)
+                                        && (res == "." || res == "/")
+                                    {
+                                        err.span_suggestion_short(
+                                            comma_span,
+                                            "you might have meant to write a `,` to end this `match` arm",
+                                            ",",
+                                            Applicability::MachineApplicable,
+                                        );
+                                    }
+                                }
                             }
                         } else {
                             err.span_label(
@@ -3450,10 +3479,8 @@ impl<'a> Parser<'a> {
                 // Detect and recover from `($pat if $cond) => $arm`.
                 // FIXME(guard_patterns): convert this to a normal guard instead
                 let span = pat.span;
-                let ast::PatKind::Paren(subpat) = pat.into_inner().kind else { unreachable!() };
-                let ast::PatKind::Guard(_, mut cond) = subpat.into_inner().kind else {
-                    unreachable!()
-                };
+                let ast::PatKind::Paren(subpat) = pat.kind else { unreachable!() };
+                let ast::PatKind::Guard(_, mut cond) = subpat.kind else { unreachable!() };
                 self.psess.gated_spans.ungate_last(sym::guard_patterns, cond.span);
                 CondChecker::new(self, LetChainsPolicy::AlwaysAllowed).visit_expr(&mut cond);
                 let right = self.prev_token.span;
@@ -3828,7 +3855,7 @@ impl<'a> Parser<'a> {
         // Convert `label` -> `'label`,
         // so that nameres doesn't complain about non-existing label
         let label = format!("'{}", ident.name);
-        let ident = Ident { name: Symbol::intern(&label), span: ident.span };
+        let ident = Ident::new(Symbol::intern(&label), ident.span);
 
         self.dcx().emit_err(errors::ExpectedLabelFoundIdent {
             span: ident.span,
@@ -3848,8 +3875,7 @@ impl<'a> Parser<'a> {
             // Check if a colon exists one ahead. This means we're parsing a fieldname.
             let is_shorthand = !this.look_ahead(1, |t| t == &token::Colon || t == &token::Eq);
             // Proactively check whether parsing the field will be incorrect.
-            let is_wrong = this.token.is_ident()
-                && !this.token.is_reserved_ident()
+            let is_wrong = this.token.is_non_reserved_ident()
                 && !this.look_ahead(1, |t| {
                     t == &token::Colon
                         || t == &token::Eq
@@ -4065,7 +4091,7 @@ impl<'a> CondChecker<'a> {
 }
 
 impl MutVisitor for CondChecker<'_> {
-    fn visit_expr(&mut self, e: &mut P<Expr>) {
+    fn visit_expr(&mut self, e: &mut Expr) {
         self.depth += 1;
         use ForbiddenLetReason::*;
 
@@ -4091,7 +4117,7 @@ impl MutVisitor for CondChecker<'_> {
                         LetChainsPolicy::AlwaysAllowed => (),
                         LetChainsPolicy::EditionDependent { current_edition } => {
                             if !current_edition.at_least_rust_2024() || !span.at_least_rust_2024() {
-                                self.parser.psess.gated_spans.gate(sym::let_chains, span);
+                                self.parser.dcx().emit_err(errors::LetChainPre2024 { span });
                             }
                         }
                     }

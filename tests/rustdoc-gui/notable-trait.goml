@@ -244,10 +244,6 @@ click: ".sidebar-menu-toggle"
 assert: "//*[@class='sidebar shown']"
 assert-count: ("//*[@class='tooltip popover']", 0)
 assert-false: "#method\.create_an_iterator_from_read .tooltip:focus"
-// Clicking a notable trait tooltip popover should close the sidebar.
-click: "//*[@id='method.create_an_iterator_from_read']//*[@class='tooltip']"
-assert-count: ("//*[@class='tooltip popover']", 1)
-assert-false: "//*[@class='sidebar shown']"
 
 // Also check the focus handling for the settings button.
 set-window-size: (1100, 600)

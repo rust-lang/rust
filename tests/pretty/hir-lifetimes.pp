@@ -7,7 +7,7 @@
 #![allow(unused)]
 #[prelude_import]
 use ::std::prelude::rust_2015::*;
-#[macro_use]
+#[attr = MacroUse {arguments: UseAll}]
 extern crate std;
 
 struct Foo<'a> {
@@ -69,7 +69,7 @@ type Q<'a> = dyn MyTrait<'a, 'a> + 'a;
 fn h<'b, F>(f: F, y: Foo<'b>) where F: for<'d> MyTrait<'d, 'b> { }
 
 // FIXME(?): attr printing is weird
-#[attr = Repr([ReprC])]
+#[attr = Repr {reprs: [ReprC]}]
 struct S<'a>(&'a u32);
 
 extern "C" {

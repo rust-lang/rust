@@ -329,7 +329,7 @@ struct Generalizer<'me, 'tcx> {
 impl<'tcx> Generalizer<'_, 'tcx> {
     /// Create an error that corresponds to the term kind in `root_term`
     fn cyclic_term_error(&self) -> TypeError<'tcx> {
-        match self.root_term.unpack() {
+        match self.root_term.kind() {
             ty::TermKind::Ty(ty) => TypeError::CyclicTy(ty),
             ty::TermKind::Const(ct) => TypeError::CyclicConst(ct),
         }
@@ -603,10 +603,9 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for Generalizer<'_, 'tcx> {
             }
         }
 
-        Ok(self.infcx.next_region_var_in_universe(
-            RegionVariableOrigin::MiscVariable(self.span),
-            self.for_universe,
-        ))
+        Ok(self
+            .infcx
+            .next_region_var_in_universe(RegionVariableOrigin::Misc(self.span), self.for_universe))
     }
 
     #[instrument(level = "debug", skip(self, c2), ret)]

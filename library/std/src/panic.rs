@@ -356,7 +356,7 @@ pub use core::panic::abort_unwind;
 /// ```
 #[stable(feature = "catch_unwind", since = "1.9.0")]
 pub fn catch_unwind<F: FnOnce() -> R + UnwindSafe, R>(f: F) -> Result<R> {
-    unsafe { panicking::r#try(f) }
+    unsafe { panicking::catch_unwind(f) }
 }
 
 /// Triggers a panic without invoking the panic hook.

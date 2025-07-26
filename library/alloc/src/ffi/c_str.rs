@@ -714,6 +714,8 @@ impl ops::Deref for CString {
     }
 }
 
+/// Delegates to the [`CStr`] implementation of [`fmt::Debug`],
+/// showing invalid UTF-8 as hex escapes.
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Debug for CString {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -1097,6 +1099,46 @@ impl From<&CStr> for CString {
     }
 }
 
+#[stable(feature = "c_string_eq_c_str", since = "CURRENT_RUSTC_VERSION")]
+impl PartialEq<CStr> for CString {
+    #[inline]
+    fn eq(&self, other: &CStr) -> bool {
+        **self == *other
+    }
+
+    #[inline]
+    fn ne(&self, other: &CStr) -> bool {
+        **self != *other
+    }
+}
+
+#[stable(feature = "c_string_eq_c_str", since = "CURRENT_RUSTC_VERSION")]
+impl PartialEq<&CStr> for CString {
+    #[inline]
+    fn eq(&self, other: &&CStr) -> bool {
+        **self == **other
+    }
+
+    #[inline]
+    fn ne(&self, other: &&CStr) -> bool {
+        **self != **other
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
+#[stable(feature = "c_string_eq_c_str", since = "CURRENT_RUSTC_VERSION")]
+impl PartialEq<Cow<'_, CStr>> for CString {
+    #[inline]
+    fn eq(&self, other: &Cow<'_, CStr>) -> bool {
+        **self == **other
+    }
+
+    #[inline]
+    fn ne(&self, other: &Cow<'_, CStr>) -> bool {
+        **self != **other
+    }
+}
+
 #[stable(feature = "cstring_asref", since = "1.7.0")]
 impl ops::Index<ops::RangeFull> for CString {
     type Output = CStr;
@@ -1176,6 +1218,75 @@ impl CStr {
     #[stable(feature = "into_boxed_c_str", since = "1.20.0")]
     pub fn into_c_string(self: Box<Self>) -> CString {
         CString::from(self)
+    }
+}
+
+#[stable(feature = "c_string_eq_c_str", since = "CURRENT_RUSTC_VERSION")]
+impl PartialEq<CString> for CStr {
+    #[inline]
+    fn eq(&self, other: &CString) -> bool {
+        *self == **other
+    }
+
+    #[inline]
+    fn ne(&self, other: &CString) -> bool {
+        *self != **other
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
+#[stable(feature = "c_string_eq_c_str", since = "CURRENT_RUSTC_VERSION")]
+impl PartialEq<Cow<'_, Self>> for CStr {
+    #[inline]
+    fn eq(&self, other: &Cow<'_, Self>) -> bool {
+        *self == **other
+    }
+
+    #[inline]
+    fn ne(&self, other: &Cow<'_, Self>) -> bool {
+        *self != **other
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
+#[stable(feature = "c_string_eq_c_str", since = "CURRENT_RUSTC_VERSION")]
+impl PartialEq<CStr> for Cow<'_, CStr> {
+    #[inline]
+    fn eq(&self, other: &CStr) -> bool {
+        **self == *other
+    }
+
+    #[inline]
+    fn ne(&self, other: &CStr) -> bool {
+        **self != *other
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
+#[stable(feature = "c_string_eq_c_str", since = "CURRENT_RUSTC_VERSION")]
+impl PartialEq<&CStr> for Cow<'_, CStr> {
+    #[inline]
+    fn eq(&self, other: &&CStr) -> bool {
+        **self == **other
+    }
+
+    #[inline]
+    fn ne(&self, other: &&CStr) -> bool {
+        **self != **other
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
+#[stable(feature = "c_string_eq_c_str", since = "CURRENT_RUSTC_VERSION")]
+impl PartialEq<CString> for Cow<'_, CStr> {
+    #[inline]
+    fn eq(&self, other: &CString) -> bool {
+        **self == **other
+    }
+
+    #[inline]
+    fn ne(&self, other: &CString) -> bool {
+        **self != **other
     }
 }
 

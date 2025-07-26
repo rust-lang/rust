@@ -1,0 +1,72 @@
+error: there is no parameter `unknown` on trait `MultiLine`
+  --> $DIR/multiline_spans.rs:7:43
+   |
+LL | ...                   {unknown}")]
+   |                        ^^^^^^^
+   |
+   = help: expect either a generic argument name or `{Self}` as format argument
+note: the lint level is defined here
+  --> $DIR/multiline_spans.rs:2:9
+   |
+LL | #![deny(unknown_or_malformed_diagnostic_attributes)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: `#[deny(malformed_diagnostic_format_literals)]` implied by `#[deny(unknown_or_malformed_diagnostic_attributes)]`
+
+error: there is no parameter `unknown` on trait `MultiLine2`
+  --> $DIR/multiline_spans.rs:12:60
+   |
+LL | ...                   multiline string {unknown}")]
+   |                                         ^^^^^^^
+   |
+   = help: expect either a generic argument name or `{Self}` as format argument
+
+error: there is no parameter `unknown` on trait `MultiLine3`
+  --> $DIR/multiline_spans.rs:17:23
+   |
+LL |     multiline string {unknown}")]
+   |                       ^^^^^^^
+   |
+   = help: expect either a generic argument name or `{Self}` as format argument
+
+error: there is no parameter `unknown` on trait `MultiLine4`
+  --> $DIR/multiline_spans.rs:27:23
+   |
+LL |     multiline string {unknown}")]
+   |                       ^^^^^^^
+   |
+   = help: expect either a generic argument name or `{Self}` as format argument
+
+error: invalid format specifier
+  --> $DIR/multiline_spans.rs:33:47
+   |
+LL | ...                   {Self:+}")]
+   |                            ^^
+   |
+   = help: no format specifier are supported in this position
+
+error: invalid format specifier
+  --> $DIR/multiline_spans.rs:38:64
+   |
+LL | ...                   multiline string {Self:X}")]
+   |                                             ^^
+   |
+   = help: no format specifier are supported in this position
+
+error: invalid format specifier
+  --> $DIR/multiline_spans.rs:43:27
+   |
+LL |     multiline string {Self:#}")]
+   |                           ^^
+   |
+   = help: no format specifier are supported in this position
+
+error: invalid format specifier
+  --> $DIR/multiline_spans.rs:53:27
+   |
+LL |     multiline string {Self:?}")]
+   |                           ^^
+   |
+   = help: no format specifier are supported in this position
+
+error: aborting due to 8 previous errors
+

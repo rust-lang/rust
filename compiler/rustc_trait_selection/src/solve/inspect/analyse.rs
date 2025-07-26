@@ -11,16 +11,17 @@
 
 use std::assert_matches::assert_matches;
 
-use rustc_infer::infer::{DefineOpaqueTypes, InferCtxt, InferOk};
+use rustc_infer::infer::InferCtxt;
+use rustc_infer::traits::Obligation;
 use rustc_macros::extension;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::traits::solve::{Certainty, Goal, GoalSource, NoSolution, QueryResult};
-use rustc_middle::ty::{TyCtxt, TypeFoldable, VisitorResult, try_visit};
+use rustc_middle::ty::{TyCtxt, VisitorResult, try_visit};
 use rustc_middle::{bug, ty};
-use rustc_next_trait_solver::resolve::EagerResolver;
+use rustc_next_trait_solver::resolve::eager_resolve_vars;
 use rustc_next_trait_solver::solve::inspect::{self, instantiate_canonical_state};
-use rustc_next_trait_solver::solve::{GenerateProofTree, MaybeCause, SolverDelegateEvalExt as _};
-use rustc_span::{DUMMY_SP, Span};
+use rustc_next_trait_solver::solve::{MaybeCause, SolverDelegateEvalExt as _};
+use rustc_span::Span;
 use tracing::instrument;
 
 use crate::solve::delegate::SolverDelegate;
@@ -36,7 +37,7 @@ pub struct InspectGoal<'a, 'tcx> {
     orig_values: Vec<ty::GenericArg<'tcx>>,
     goal: Goal<'tcx, ty::Predicate<'tcx>>,
     result: Result<Certainty, NoSolution>,
-    evaluation_kind: inspect::CanonicalGoalEvaluationKind<TyCtxt<'tcx>>,
+    evaluation_kind: inspect::GoalEvaluationKind<TyCtxt<'tcx>>,
     normalizes_to_term_hack: Option<NormalizesToTermHack<'tcx>>,
     source: GoalSource,
 }
@@ -60,28 +61,29 @@ impl<'tcx> NormalizesToTermHack<'tcx> {
     /// Relate the `term` with the new `unconstrained_term` created
     /// when computing the proof tree for this `NormalizesTo` goals.
     /// This handles nested obligations.
-    fn constrain(
-        self,
+    fn constrain_and(
+        &self,
         infcx: &InferCtxt<'tcx>,
         span: Span,
         param_env: ty::ParamEnv<'tcx>,
+        f: impl FnOnce(&ObligationCtxt<'_, 'tcx>),
     ) -> Result<Certainty, NoSolution> {
-        infcx
-            .at(&ObligationCause::dummy_with_span(span), param_env)
-            .eq(DefineOpaqueTypes::Yes, self.term, self.unconstrained_term)
-            .map_err(|_| NoSolution)
-            .and_then(|InferOk { value: (), obligations }| {
-                let ocx = ObligationCtxt::new(infcx);
-                ocx.register_obligations(obligations);
-                let errors = ocx.select_all_or_error();
-                if errors.is_empty() {
-                    Ok(Certainty::Yes)
-                } else if errors.iter().all(|e| !e.is_true_error()) {
-                    Ok(Certainty::AMBIGUOUS)
-                } else {
-                    Err(NoSolution)
-                }
-            })
+        let ocx = ObligationCtxt::new(infcx);
+        ocx.eq(
+            &ObligationCause::dummy_with_span(span),
+            param_env,
+            self.term,
+            self.unconstrained_term,
+        )?;
+        f(&ocx);
+        let errors = ocx.select_all_or_error();
+        if errors.is_empty() {
+            Ok(Certainty::Yes)
+        } else if errors.iter().all(|e| !e.is_true_error()) {
+            Ok(Certainty::AMBIGUOUS)
+        } else {
+            Err(NoSolution)
+        }
     }
 }
 
@@ -133,45 +135,25 @@ impl<'a, 'tcx> InspectCandidate<'a, 'tcx> {
     /// Instantiate the nested goals for the candidate without rolling back their
     /// inference constraints. This function modifies the state of the `infcx`.
     ///
-    /// See [`Self::instantiate_nested_goals_and_opt_impl_args`] if you need the impl args too.
-    pub fn instantiate_nested_goals(&self, span: Span) -> Vec<InspectGoal<'a, 'tcx>> {
-        self.instantiate_nested_goals_and_opt_impl_args(span).0
-    }
-
-    /// Instantiate the nested goals for the candidate without rolling back their
-    /// inference constraints, and optionally the args of an impl if this candidate
-    /// came from a `CandidateSource::Impl`. This function modifies the state of the
-    /// `infcx`.
+    /// See [`Self::instantiate_impl_args`] if you need the impl args too.
     #[instrument(
         level = "debug",
         skip_all,
         fields(goal = ?self.goal.goal, steps = ?self.steps)
     )]
-    pub fn instantiate_nested_goals_and_opt_impl_args(
-        &self,
-        span: Span,
-    ) -> (Vec<InspectGoal<'a, 'tcx>>, Option<ty::GenericArgsRef<'tcx>>) {
+    pub fn instantiate_nested_goals(&self, span: Span) -> Vec<InspectGoal<'a, 'tcx>> {
         let infcx = self.goal.infcx;
         let param_env = self.goal.goal.param_env;
         let mut orig_values = self.goal.orig_values.to_vec();
 
         let mut instantiated_goals = vec![];
-        let mut opt_impl_args = None;
         for step in &self.steps {
             match **step {
                 inspect::ProbeStep::AddGoal(source, goal) => instantiated_goals.push((
                     source,
                     instantiate_canonical_state(infcx, span, param_env, &mut orig_values, goal),
                 )),
-                inspect::ProbeStep::RecordImplArgs { impl_args } => {
-                    opt_impl_args = Some(instantiate_canonical_state(
-                        infcx,
-                        span,
-                        param_env,
-                        &mut orig_values,
-                        impl_args,
-                    ));
-                }
+                inspect::ProbeStep::RecordImplArgs { .. } => {}
                 inspect::ProbeStep::MakeCanonicalResponse { .. }
                 | inspect::ProbeStep::NestedProbe(_) => unreachable!(),
             }
@@ -180,22 +162,66 @@ impl<'a, 'tcx> InspectCandidate<'a, 'tcx> {
         let () =
             instantiate_canonical_state(infcx, span, param_env, &mut orig_values, self.final_state);
 
-        if let Some(term_hack) = self.goal.normalizes_to_term_hack {
+        if let Some(term_hack) = &self.goal.normalizes_to_term_hack {
             // FIXME: We ignore the expected term of `NormalizesTo` goals
             // when computing the result of its candidates. This is
             // scuffed.
-            let _ = term_hack.constrain(infcx, span, param_env);
+            let _ = term_hack.constrain_and(infcx, span, param_env, |_| {});
         }
 
-        let opt_impl_args =
-            opt_impl_args.map(|impl_args| impl_args.fold_with(&mut EagerResolver::new(infcx)));
-
-        let goals = instantiated_goals
+        instantiated_goals
             .into_iter()
             .map(|(source, goal)| self.instantiate_proof_tree_for_nested_goal(source, goal, span))
-            .collect();
+            .collect()
+    }
 
-        (goals, opt_impl_args)
+    /// Instantiate the args of an impl if this candidate came from a
+    /// `CandidateSource::Impl`. This function modifies the state of the
+    /// `infcx`.
+    #[instrument(
+        level = "debug",
+        skip_all,
+        fields(goal = ?self.goal.goal, steps = ?self.steps)
+    )]
+    pub fn instantiate_impl_args(&self, span: Span) -> ty::GenericArgsRef<'tcx> {
+        let infcx = self.goal.infcx;
+        let param_env = self.goal.goal.param_env;
+        let mut orig_values = self.goal.orig_values.to_vec();
+
+        for step in &self.steps {
+            match **step {
+                inspect::ProbeStep::RecordImplArgs { impl_args } => {
+                    let impl_args = instantiate_canonical_state(
+                        infcx,
+                        span,
+                        param_env,
+                        &mut orig_values,
+                        impl_args,
+                    );
+
+                    let () = instantiate_canonical_state(
+                        infcx,
+                        span,
+                        param_env,
+                        &mut orig_values,
+                        self.final_state,
+                    );
+
+                    // No reason we couldn't support this, but we don't need to for select.
+                    assert!(
+                        self.goal.normalizes_to_term_hack.is_none(),
+                        "cannot use `instantiate_impl_args` with a `NormalizesTo` goal"
+                    );
+
+                    return eager_resolve_vars(infcx, impl_args);
+                }
+                inspect::ProbeStep::AddGoal(..) => {}
+                inspect::ProbeStep::MakeCanonicalResponse { .. }
+                | inspect::ProbeStep::NestedProbe(_) => unreachable!(),
+            }
+        }
+
+        bug!("expected impl args probe step for `instantiate_impl_args`");
     }
 
     pub fn instantiate_proof_tree_for_nested_goal(
@@ -207,10 +233,7 @@ impl<'a, 'tcx> InspectCandidate<'a, 'tcx> {
         let infcx = self.goal.infcx;
         match goal.predicate.kind().no_bound_vars() {
             Some(ty::PredicateKind::NormalizesTo(ty::NormalizesTo { alias, term })) => {
-                let unconstrained_term = match term.unpack() {
-                    ty::TermKind::Ty(_) => infcx.next_ty_var(span).into(),
-                    ty::TermKind::Const(_) => infcx.next_const_var(span).into(),
-                };
+                let unconstrained_term = infcx.next_term_var_of_kind(term, span);
                 let goal =
                     goal.with(infcx.tcx, ty::NormalizesTo { alias, term: unconstrained_term });
                 // We have to use a `probe` here as evaluating a `NormalizesTo` can constrain the
@@ -219,13 +242,37 @@ impl<'a, 'tcx> InspectCandidate<'a, 'tcx> {
                 // building their proof tree, the expected term was unconstrained, but when
                 // instantiating the candidate it is already constrained to the result of another
                 // candidate.
-                let proof_tree =
-                    infcx.probe(|_| infcx.evaluate_root_goal_raw(goal, GenerateProofTree::Yes).1);
+                let normalizes_to_term_hack = NormalizesToTermHack { term, unconstrained_term };
+                let (proof_tree, nested_goals_result) = infcx.probe(|_| {
+                    // Here, if we have any nested goals, then we make sure to apply them
+                    // considering the constrained RHS, and pass the resulting certainty to
+                    // `InspectGoal::new` so that the goal has the right result (and maintains
+                    // the impression that we don't do this normalizes-to infer hack at all).
+                    let (nested, proof_tree) = infcx.evaluate_root_goal_for_proof_tree(goal, span);
+                    let nested_goals_result = nested.and_then(|(nested, _)| {
+                        normalizes_to_term_hack.constrain_and(
+                            infcx,
+                            span,
+                            proof_tree.uncanonicalized_goal.param_env,
+                            |ocx| {
+                                ocx.register_obligations(nested.0.into_iter().map(|(_, goal)| {
+                                    Obligation::new(
+                                        infcx.tcx,
+                                        ObligationCause::dummy_with_span(span),
+                                        goal.param_env,
+                                        goal.predicate,
+                                    )
+                                }));
+                            },
+                        )
+                    });
+                    (proof_tree, nested_goals_result)
+                });
                 InspectGoal::new(
                     infcx,
                     self.goal.depth + 1,
-                    proof_tree.unwrap(),
-                    Some(NormalizesToTermHack { term, unconstrained_term }),
+                    proof_tree,
+                    Some((normalizes_to_term_hack, nested_goals_result)),
                     source,
                 )
             }
@@ -235,9 +282,8 @@ impl<'a, 'tcx> InspectCandidate<'a, 'tcx> {
                 // into another candidate who ends up with different inference
                 // constraints, we get an ICE if we already applied the constraints
                 // from the chosen candidate.
-                let proof_tree = infcx
-                    .probe(|_| infcx.evaluate_root_goal(goal, GenerateProofTree::Yes, span).1)
-                    .unwrap();
+                let proof_tree =
+                    infcx.probe(|_| infcx.evaluate_root_goal_for_proof_tree(goal, span).1);
                 InspectGoal::new(infcx, self.goal.depth + 1, proof_tree, None, source)
             }
         }
@@ -347,8 +393,8 @@ impl<'a, 'tcx> InspectGoal<'a, 'tcx> {
         let mut candidates = vec![];
         let last_eval_step = match &self.evaluation_kind {
             // An annoying edge case in case the recursion limit is 0.
-            inspect::CanonicalGoalEvaluationKind::Overflow => return vec![],
-            inspect::CanonicalGoalEvaluationKind::Evaluation { final_revision } => final_revision,
+            inspect::GoalEvaluationKind::Overflow => return vec![],
+            inspect::GoalEvaluationKind::Evaluation { final_revision } => final_revision,
         };
 
         let mut nested_goals = vec![];
@@ -372,30 +418,31 @@ impl<'a, 'tcx> InspectGoal<'a, 'tcx> {
         infcx: &'a InferCtxt<'tcx>,
         depth: usize,
         root: inspect::GoalEvaluation<TyCtxt<'tcx>>,
-        normalizes_to_term_hack: Option<NormalizesToTermHack<'tcx>>,
+        term_hack_and_nested_certainty: Option<(
+            NormalizesToTermHack<'tcx>,
+            Result<Certainty, NoSolution>,
+        )>,
         source: GoalSource,
     ) -> Self {
         let infcx = <&SolverDelegate<'tcx>>::from(infcx);
 
-        let inspect::GoalEvaluation { uncanonicalized_goal, orig_values, evaluation } = root;
-        let result = evaluation.result.and_then(|ok| {
-            if let Some(term_hack) = normalizes_to_term_hack {
-                infcx
-                    .probe(|_| term_hack.constrain(infcx, DUMMY_SP, uncanonicalized_goal.param_env))
-                    .map(|certainty| ok.value.certainty.unify_with(certainty))
-            } else {
-                Ok(ok.value.certainty)
-            }
+        let inspect::GoalEvaluation { uncanonicalized_goal, orig_values, kind, result } = root;
+        // If there's a normalizes-to goal, AND the evaluation result with the result of
+        // constraining the normalizes-to RHS and computing the nested goals.
+        let result = result.and_then(|ok| {
+            let nested_goals_certainty =
+                term_hack_and_nested_certainty.map_or(Ok(Certainty::Yes), |(_, c)| c)?;
+            Ok(ok.value.certainty.and(nested_goals_certainty))
         });
 
         InspectGoal {
             infcx,
             depth,
             orig_values,
-            goal: uncanonicalized_goal.fold_with(&mut EagerResolver::new(infcx)),
+            goal: eager_resolve_vars(infcx, uncanonicalized_goal),
             result,
-            evaluation_kind: evaluation.kind,
-            normalizes_to_term_hack,
+            evaluation_kind: kind,
+            normalizes_to_term_hack: term_hack_and_nested_certainty.map(|(n, _)| n),
             source,
         }
     }
@@ -438,12 +485,8 @@ impl<'tcx> InferCtxt<'tcx> {
         depth: usize,
         visitor: &mut V,
     ) -> V::Result {
-        let (_, proof_tree) = <&SolverDelegate<'tcx>>::from(self).evaluate_root_goal(
-            goal,
-            GenerateProofTree::Yes,
-            visitor.span(),
-        );
-        let proof_tree = proof_tree.unwrap();
+        let (_, proof_tree) = <&SolverDelegate<'tcx>>::from(self)
+            .evaluate_root_goal_for_proof_tree(goal, visitor.span());
         visitor.visit_goal(&InspectGoal::new(self, depth, proof_tree, None, GoalSource::Misc))
     }
 }

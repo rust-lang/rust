@@ -8,10 +8,11 @@ use rustc_abi as abi;
 use rustc_abi::{BackendRepr, HasDataLayout, Size};
 use rustc_hir::def::Namespace;
 use rustc_middle::mir::interpret::ScalarSizeMismatch;
-use rustc_middle::ty::layout::{HasTyCtxt, HasTypingEnv, LayoutOf, TyAndLayout};
+use rustc_middle::ty::layout::{HasTyCtxt, HasTypingEnv, TyAndLayout};
 use rustc_middle::ty::print::{FmtPrinter, PrettyPrinter};
 use rustc_middle::ty::{ConstInt, ScalarInt, Ty, TyCtxt};
 use rustc_middle::{bug, mir, span_bug, ty};
+use rustc_span::DUMMY_SP;
 use tracing::trace;
 
 use super::{
@@ -307,10 +308,10 @@ impl<'tcx, Prov: Provenance> ImmTy<'tcx, Prov> {
     #[inline]
     pub fn from_ordering(c: std::cmp::Ordering, tcx: TyCtxt<'tcx>) -> Self {
         // Can use any typing env, since `Ordering` is always monomorphic.
-        let ty = tcx.ty_ordering_enum(None);
+        let ty = tcx.ty_ordering_enum(DUMMY_SP);
         let layout =
             tcx.layout_of(ty::TypingEnv::fully_monomorphized().as_query_input(ty)).unwrap();
-        Self::from_scalar(Scalar::from_i8(c as i8), layout)
+        Self::from_scalar(Scalar::Int(c.into()), layout)
     }
 
     pub fn from_pair(a: Self, b: Self, cx: &(impl HasTypingEnv<'tcx> + HasTyCtxt<'tcx>)) -> Self {
@@ -835,7 +836,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
     pub(crate) fn const_val_to_op(
         &self,
-        val_val: mir::ConstValue<'tcx>,
+        val_val: mir::ConstValue,
         ty: Ty<'tcx>,
         layout: Option<TyAndLayout<'tcx>>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
@@ -859,9 +860,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             }
             mir::ConstValue::Scalar(x) => adjust_scalar(x)?.into(),
             mir::ConstValue::ZeroSized => Immediate::Uninit,
-            mir::ConstValue::Slice { data, meta } => {
+            mir::ConstValue::Slice { alloc_id, meta } => {
                 // This is const data, no mutation allowed.
-                let alloc_id = self.tcx.reserve_and_set_memory_alloc(data);
                 let ptr = Pointer::new(CtfeProvenance::from(alloc_id).as_immutable(), Size::ZERO);
                 Immediate::new_slice(self.global_root_pointer(ptr)?.into(), meta, self)
             }
@@ -877,9 +877,9 @@ mod size_asserts {
 
     use super::*;
     // tidy-alphabetical-start
-    static_assert_size!(Immediate, 48);
     static_assert_size!(ImmTy<'_>, 64);
-    static_assert_size!(Operand, 56);
+    static_assert_size!(Immediate, 48);
     static_assert_size!(OpTy<'_>, 72);
+    static_assert_size!(Operand, 56);
     // tidy-alphabetical-end
 }

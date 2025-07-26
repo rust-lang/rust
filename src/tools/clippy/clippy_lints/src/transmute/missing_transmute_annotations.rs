@@ -74,7 +74,7 @@ pub(super) fn check<'tcx>(
         last.ident.span.with_hi(path.span.hi()),
         "transmute used without annotations",
         "consider adding missing annotations",
-        format!("{}::<{from_ty}, {to_ty}>", last.ident.as_str()),
+        format!("{}::<{from_ty}, {to_ty}>", last.ident),
         Applicability::MaybeIncorrect,
     );
     true

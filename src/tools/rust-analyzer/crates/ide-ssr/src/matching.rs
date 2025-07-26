@@ -84,12 +84,12 @@ pub(crate) struct MatchFailed {
 /// Checks if `code` matches the search pattern found in `search_scope`, returning information about
 /// the match, if it does. Since we only do matching in this module and searching is done by the
 /// parent module, we don't populate nested matches.
-pub(crate) fn get_match(
+pub(crate) fn get_match<'db>(
     debug_active: bool,
-    rule: &ResolvedRule,
+    rule: &ResolvedRule<'db>,
     code: &SyntaxNode,
     restrict_range: &Option<FileRange>,
-    sema: &Semantics<'_, ide_db::RootDatabase>,
+    sema: &Semantics<'db, ide_db::RootDatabase>,
 ) -> Result<Match, MatchFailed> {
     record_match_fails_reasons_scope(debug_active, || {
         Matcher::try_match(rule, code, restrict_range, sema)
@@ -102,7 +102,7 @@ struct Matcher<'db, 'sema> {
     /// If any placeholders come from anywhere outside of this range, then the match will be
     /// rejected.
     restrict_range: Option<FileRange>,
-    rule: &'sema ResolvedRule,
+    rule: &'sema ResolvedRule<'db>,
 }
 
 /// Which phase of matching we're currently performing. We do two phases because most attempted
@@ -117,7 +117,7 @@ enum Phase<'a> {
 
 impl<'db, 'sema> Matcher<'db, 'sema> {
     fn try_match(
-        rule: &ResolvedRule,
+        rule: &ResolvedRule<'db>,
         code: &SyntaxNode,
         restrict_range: &Option<FileRange>,
         sema: &'sema Semantics<'db, ide_db::RootDatabase>,
@@ -535,7 +535,7 @@ impl<'db, 'sema> Matcher<'db, 'sema> {
     fn attempt_match_ufcs_to_method_call(
         &self,
         phase: &mut Phase<'_>,
-        pattern_ufcs: &UfcsCallInfo,
+        pattern_ufcs: &UfcsCallInfo<'db>,
         code: &ast::MethodCallExpr,
     ) -> Result<(), MatchFailed> {
         use ast::HasArgList;
@@ -597,7 +597,7 @@ impl<'db, 'sema> Matcher<'db, 'sema> {
     fn attempt_match_ufcs_to_ufcs(
         &self,
         phase: &mut Phase<'_>,
-        pattern_ufcs: &UfcsCallInfo,
+        pattern_ufcs: &UfcsCallInfo<'db>,
         code: &ast::CallExpr,
     ) -> Result<(), MatchFailed> {
         use ast::HasArgList;
@@ -615,7 +615,7 @@ impl<'db, 'sema> Matcher<'db, 'sema> {
     /// times. Returns the number of times it needed to be dereferenced.
     fn check_expr_type(
         &self,
-        pattern_type: &hir::Type,
+        pattern_type: &hir::Type<'db>,
         expr: &ast::Expr,
     ) -> Result<usize, MatchFailed> {
         use hir::HirDisplay;
@@ -656,10 +656,10 @@ impl<'db, 'sema> Matcher<'db, 'sema> {
 }
 
 impl Match {
-    fn render_template_paths(
+    fn render_template_paths<'db>(
         &mut self,
-        template: &ResolvedPattern,
-        sema: &Semantics<'_, ide_db::RootDatabase>,
+        template: &ResolvedPattern<'db>,
+        sema: &Semantics<'db, ide_db::RootDatabase>,
     ) -> Result<(), MatchFailed> {
         let module = sema
             .scope(&self.matched_node)

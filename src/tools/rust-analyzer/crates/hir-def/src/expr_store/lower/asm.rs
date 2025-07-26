@@ -10,7 +10,7 @@ use tt::TextRange;
 
 use crate::{
     expr_store::lower::{ExprCollector, FxIndexSet},
-    hir::{AsmOperand, AsmOptions, Expr, ExprId, InlineAsm, InlineAsmRegOrRegClass},
+    hir::{AsmOperand, AsmOptions, Expr, ExprId, InlineAsm, InlineAsmKind, InlineAsmRegOrRegClass},
 };
 
 impl ExprCollector<'_> {
@@ -224,7 +224,7 @@ impl ExprCollector<'_> {
 
                     curarg = parser.curarg;
 
-                    let to_span = |inner_span: rustc_parse_format::InnerSpan| {
+                    let to_span = |inner_span: std::ops::Range<usize>| {
                         is_direct_literal.then(|| {
                             TextRange::new(
                                 inner_span.start.try_into().unwrap(),
@@ -269,11 +269,20 @@ impl ExprCollector<'_> {
                     }
                 })
         };
+
+        let kind = if asm.global_asm_token().is_some() {
+            InlineAsmKind::GlobalAsm
+        } else if asm.naked_asm_token().is_some() {
+            InlineAsmKind::NakedAsm
+        } else {
+            InlineAsmKind::Asm
+        };
+
         let idx = self.alloc_expr(
-            Expr::InlineAsm(InlineAsm { operands: operands.into_boxed_slice(), options }),
+            Expr::InlineAsm(InlineAsm { operands: operands.into_boxed_slice(), options, kind }),
             syntax_ptr,
         );
-        self.source_map
+        self.store
             .template_map
             .get_or_insert_with(Default::default)
             .asm_to_captures

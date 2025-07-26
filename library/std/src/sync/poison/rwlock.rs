@@ -481,7 +481,7 @@ impl<T: ?Sized> RwLock<T> {
     /// in the returned error.
     ///
     /// This function will return the [`WouldBlock`] error if the `RwLock` could
-    /// not be acquired because it was already locked exclusively.
+    /// not be acquired because it was already locked.
     ///
     /// [`Poisoned`]: TryLockError::Poisoned
     /// [`WouldBlock`]: TryLockError::WouldBlock
@@ -633,6 +633,17 @@ impl<T: ?Sized> RwLock<T> {
     pub fn get_mut(&mut self) -> LockResult<&mut T> {
         let data = self.data.get_mut();
         poison::map_result(self.poison.borrow(), |()| data)
+    }
+
+    /// Returns a raw pointer to the underlying data.
+    ///
+    /// The returned pointer is always non-null and properly aligned, but it is
+    /// the user's responsibility to ensure that any reads and writes through it
+    /// are properly synchronized to avoid data races, and that it is not read
+    /// or written through after the lock is dropped.
+    #[unstable(feature = "rwlock_data_ptr", issue = "140368")]
+    pub fn data_ptr(&self) -> *mut T {
+        self.data.get()
     }
 }
 

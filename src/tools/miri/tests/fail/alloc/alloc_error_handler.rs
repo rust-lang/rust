@@ -1,5 +1,5 @@
 //@error-in-other-file: aborted
-//@normalize-stderr-test: "unsafe \{ libc::abort\(\) \}|crate::intrinsics::abort\(\);" -> "ABORT();"
+//@normalize-stderr-test: "\|.*::abort\(\).*" -> "| ABORT()"
 //@normalize-stderr-test: "\| +\^+" -> "| ^"
 #![feature(allocator_api)]
 

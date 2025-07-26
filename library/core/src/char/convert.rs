@@ -21,7 +21,8 @@ pub(super) const fn from_u32(i: u32) -> Option<char> {
 /// Converts a `u32` to a `char`, ignoring validity. See [`char::from_u32_unchecked`].
 #[inline]
 #[must_use]
-#[cfg_attr(not(bootstrap), allow(unnecessary_transmutes))]
+#[allow(unnecessary_transmutes)]
+#[track_caller]
 pub(super) const unsafe fn from_u32_unchecked(i: u32) -> char {
     // SAFETY: the caller must guarantee that `i` is a valid char value.
     unsafe {
@@ -35,7 +36,8 @@ pub(super) const unsafe fn from_u32_unchecked(i: u32) -> char {
 }
 
 #[stable(feature = "char_convert", since = "1.13.0")]
-impl From<char> for u32 {
+#[rustc_const_unstable(feature = "const_try", issue = "74935")]
+impl const From<char> for u32 {
     /// Converts a [`char`] into a [`u32`].
     ///
     /// # Examples
@@ -52,7 +54,8 @@ impl From<char> for u32 {
 }
 
 #[stable(feature = "more_char_conversions", since = "1.51.0")]
-impl From<char> for u64 {
+#[rustc_const_unstable(feature = "const_try", issue = "74935")]
+impl const From<char> for u64 {
     /// Converts a [`char`] into a [`u64`].
     ///
     /// # Examples
@@ -71,7 +74,8 @@ impl From<char> for u64 {
 }
 
 #[stable(feature = "more_char_conversions", since = "1.51.0")]
-impl From<char> for u128 {
+#[rustc_const_unstable(feature = "const_try", issue = "74935")]
+impl const From<char> for u128 {
     /// Converts a [`char`] into a [`u128`].
     ///
     /// # Examples
@@ -156,7 +160,8 @@ impl TryFrom<char> for u16 {
 /// for a superset of Windows-1252 that fills the remaining blanks with corresponding
 /// C0 and C1 control codes.
 #[stable(feature = "char_convert", since = "1.13.0")]
-impl From<u8> for char {
+#[rustc_const_unstable(feature = "const_try", issue = "74935")]
+impl const From<u8> for char {
     /// Converts a [`u8`] into a [`char`].
     ///
     /// # Examples
@@ -222,7 +227,7 @@ impl FromStr for char {
 }
 
 #[inline]
-#[cfg_attr(not(bootstrap), allow(unnecessary_transmutes))]
+#[allow(unnecessary_transmutes)]
 const fn char_try_from_u32(i: u32) -> Result<char, CharTryFromError> {
     // This is an optimized version of the check
     // (i > MAX as u32) || (i >= 0xD800 && i <= 0xDFFF),
@@ -246,7 +251,8 @@ const fn char_try_from_u32(i: u32) -> Result<char, CharTryFromError> {
 }
 
 #[stable(feature = "try_from", since = "1.34.0")]
-impl TryFrom<u32> for char {
+#[rustc_const_unstable(feature = "const_try", issue = "74935")]
+impl const TryFrom<u32> for char {
     type Error = CharTryFromError;
 
     #[inline]

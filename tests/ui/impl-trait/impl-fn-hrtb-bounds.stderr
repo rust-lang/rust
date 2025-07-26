@@ -1,5 +1,5 @@
 error[E0106]: missing lifetime specifier
-  --> $DIR/impl-fn-hrtb-bounds.rs:20:38
+  --> $DIR/impl-fn-hrtb-bounds.rs:19:38
    |
 LL | fn d() -> impl Fn() -> (impl Debug + '_) {
    |                                      ^^ expected named lifetime parameter
@@ -10,14 +10,6 @@ help: consider using the `'static` lifetime, but this is uncommon unless you're 
 LL - fn d() -> impl Fn() -> (impl Debug + '_) {
 LL + fn d() -> impl Fn() -> (impl Debug + 'static) {
    |
-
-warning: elided lifetime has a name
-  --> $DIR/impl-fn-hrtb-bounds.rs:14:52
-   |
-LL | fn c() -> impl for<'a> Fn(&'a u8) -> (impl Debug + '_) {
-   |                    -- lifetime `'a` declared here  ^^ this elided lifetime gets resolved as `'a`
-   |
-   = note: `#[warn(elided_named_lifetimes)]` on by default
 
 error[E0657]: `impl Trait` cannot capture higher-ranked lifetime from outer `impl Trait`
   --> $DIR/impl-fn-hrtb-bounds.rs:4:41
@@ -55,7 +47,7 @@ note: lifetime declared here
 LL | fn c() -> impl for<'a> Fn(&'a u8) -> (impl Debug + '_) {
    |                    ^^
 
-error: aborting due to 4 previous errors; 1 warning emitted
+error: aborting due to 4 previous errors
 
 Some errors have detailed explanations: E0106, E0657.
 For more information about an error, try `rustc --explain E0106`.

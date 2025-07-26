@@ -62,6 +62,11 @@ LL | / fn foo() -> Bar
 LL | | where
 LL | |     Bar: Send,
    | |______________^
+note: ...which requires computing revealed normalized predicates of `foo::{constant#0}`...
+  --> $DIR/in-where-clause.rs:13:9
+   |
+LL |     [0; 1 + 2]
+   |         ^^^^^
    = note: ...which requires revealing opaque types in `[Binder { value: TraitPredicate(<Bar as core::marker::Send>, polarity:Positive), bound_vars: [] }]`...
 note: ...which requires computing type of `Bar::{opaque#0}`...
   --> $DIR/in-where-clause.rs:5:12

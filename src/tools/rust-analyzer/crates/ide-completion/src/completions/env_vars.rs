@@ -13,6 +13,7 @@ use crate::{
 const CARGO_DEFINED_VARS: &[(&str, &str)] = &[
     ("CARGO", "Path to the cargo binary performing the build"),
     ("CARGO_MANIFEST_DIR", "The directory containing the manifest of your package"),
+    ("CARGO_MANIFEST_PATH", "The path to the manifest of your package"),
     ("CARGO_PKG_VERSION", "The full version of your package"),
     ("CARGO_PKG_VERSION_MAJOR", "The major version of your package"),
     ("CARGO_PKG_VERSION_MINOR", "The minor version of your package"),

@@ -1,9 +1,10 @@
 mod block;
 
-use crate::{DefWithBodyId, ModuleDefId, hir::MatchArm, test_db::TestDB};
+use crate::{DefWithBodyId, ModuleDefId, hir::MatchArm, nameres::crate_def_map, test_db::TestDB};
 use expect_test::{Expect, expect};
 use la_arena::RawIdx;
 use test_fixture::WithFixture;
+use triomphe::Arc;
 
 use super::super::*;
 
@@ -11,7 +12,7 @@ fn lower(#[rust_analyzer::rust_fixture] ra_fixture: &str) -> (TestDB, Arc<Body>,
     let db = TestDB::with_files(ra_fixture);
 
     let krate = db.fetch_test_crate();
-    let def_map = db.crate_def_map(krate);
+    let def_map = crate_def_map(&db, krate);
     let mut fn_def = None;
     'outer: for (_, module) in def_map.modules() {
         for decl in module.scope.declarations() {
@@ -177,14 +178,14 @@ fn main() {
 }
 
 #[test]
-fn desugar_builtin_format_args() {
+fn desugar_builtin_format_args_before_1_89_0() {
     let (db, body, def) = lower(
         r#"
-//- minicore: fmt
+//- minicore: fmt_before_1_89_0
 fn main() {
     let are = "are";
     let count = 10;
-    builtin#format_args("\u{1b}hello {count:02} {} friends, we {are:?} {0}{last}", "fancy", last = "!");
+    builtin#format_args("\u{1b}hello {count:02} {} friends, we {are:?} {0}{last}", "fancy", orphan = (), last = "!");
 }
 "#,
     );
@@ -248,10 +249,96 @@ fn main() {
                         builtin#lang(Count::Implied),
                     ),
                 ],
-                unsafe {
-                    builtin#lang(UnsafeArg::new)()
+                {
+                    ();
+                    unsafe {
+                        builtin#lang(UnsafeArg::new)()
+                    }
                 },
             );
+        }"#]]
+    .assert_eq(&body.pretty_print(&db, def, Edition::CURRENT))
+}
+
+#[test]
+fn desugar_builtin_format_args() {
+    let (db, body, def) = lower(
+        r#"
+//- minicore: fmt
+fn main() {
+    let are = "are";
+    let count = 10;
+    builtin#format_args("\u{1b}hello {count:02} {} friends, we {are:?} {0}{last}", "fancy", orphan = (), last = "!");
+}
+"#,
+    );
+
+    expect![[r#"
+        fn main() {
+            let are = "are";
+            let count = 10;
+            {
+                let args = (&"fancy", &(), &"!", &count, &are, );
+                let args = [
+                    builtin#lang(Argument::new_display)(
+                        args.3,
+                    ), builtin#lang(Argument::new_display)(
+                        args.0,
+                    ), builtin#lang(Argument::new_debug)(
+                        args.4,
+                    ), builtin#lang(Argument::new_display)(
+                        args.2,
+                    ),
+                ];
+                unsafe {
+                    builtin#lang(Arguments::new_v1_formatted)(
+                        &[
+                            "\u{1b}hello ", " ", " friends, we ", " ", "",
+                        ],
+                        &args,
+                        &[
+                            builtin#lang(Placeholder::new)(
+                                0usize,
+                                ' ',
+                                builtin#lang(Alignment::Unknown),
+                                8u32,
+                                builtin#lang(Count::Implied),
+                                builtin#lang(Count::Is)(
+                                    2,
+                                ),
+                            ), builtin#lang(Placeholder::new)(
+                                1usize,
+                                ' ',
+                                builtin#lang(Alignment::Unknown),
+                                0u32,
+                                builtin#lang(Count::Implied),
+                                builtin#lang(Count::Implied),
+                            ), builtin#lang(Placeholder::new)(
+                                2usize,
+                                ' ',
+                                builtin#lang(Alignment::Unknown),
+                                0u32,
+                                builtin#lang(Count::Implied),
+                                builtin#lang(Count::Implied),
+                            ), builtin#lang(Placeholder::new)(
+                                1usize,
+                                ' ',
+                                builtin#lang(Alignment::Unknown),
+                                0u32,
+                                builtin#lang(Count::Implied),
+                                builtin#lang(Count::Implied),
+                            ), builtin#lang(Placeholder::new)(
+                                3usize,
+                                ' ',
+                                builtin#lang(Alignment::Unknown),
+                                0u32,
+                                builtin#lang(Count::Implied),
+                                builtin#lang(Count::Implied),
+                            ),
+                        ],
+                    )
+                }
+            };
         }"#]]
     .assert_eq(&body.pretty_print(&db, def, Edition::CURRENT))
 }
@@ -294,29 +381,31 @@ impl SsrError {
     expect![[r#"
         fn main() {
             _ = ra_test_fixture::error::SsrError::new(
-                builtin#lang(Arguments::new_v1_formatted)(
-                    &[
-                        "Failed to resolve path `", "`",
-                    ],
-                    &[
+                {
+                    let args = [
                         builtin#lang(Argument::new_display)(
                             &node.text(),
                         ),
-                    ],
-                    &[
-                        builtin#lang(Placeholder::new)(
-                            0usize,
-                            ' ',
-                            builtin#lang(Alignment::Unknown),
-                            0u32,
-                            builtin#lang(Count::Implied),
-                            builtin#lang(Count::Implied),
-                        ),
-                    ],
+                    ];
                     unsafe {
-                        builtin#lang(UnsafeArg::new)()
-                    },
-                ),
+                        builtin#lang(Arguments::new_v1_formatted)(
+                            &[
+                                "Failed to resolve path `", "`",
+                            ],
+                            &args,
+                            &[
+                                builtin#lang(Placeholder::new)(
+                                    0usize,
+                                    ' ',
+                                    builtin#lang(Alignment::Unknown),
+                                    0u32,
+                                    builtin#lang(Count::Implied),
+                                    builtin#lang(Count::Implied),
+                                ),
+                            ],
+                        )
+                    }
+                },
             );
         }"#]]
     .assert_eq(&body.pretty_print(&db, def, Edition::CURRENT))
@@ -326,7 +415,7 @@ impl SsrError {
 fn regression_10300() {
     let (db, body, def) = lower(
         r#"
-//- minicore: concat, panic
+//- minicore: concat, panic, fmt_before_1_89_0
 mod private {
     pub use core::concat;
 }
@@ -419,9 +508,9 @@ fn f() {
 }
     "#,
     );
-    assert_eq!(body.bindings.len(), 1, "should have a binding for `B`");
+    assert_eq!(body.assert_expr_only().bindings.len(), 1, "should have a binding for `B`");
     assert_eq!(
-        body.bindings[BindingId::from_raw(RawIdx::from_u32(0))].name.as_str(),
+        body[BindingId::from_raw(RawIdx::from_u32(0))].name.as_str(),
         "B",
         "should have a binding for `B`",
     );
@@ -477,6 +566,7 @@ const fn f(x: i32) -> i32 {
     );
 
     let mtch_arms = body
+        .assert_expr_only()
         .exprs
         .iter()
         .find_map(|(_, expr)| {
@@ -489,10 +579,10 @@ const fn f(x: i32) -> i32 {
         .unwrap();
 
     let MatchArm { pat, .. } = mtch_arms[1];
-    match body.pats[pat] {
+    match body[pat] {
         Pat::Range { start, end } => {
-            let hir_start = &body.exprs[start.unwrap()];
-            let hir_end = &body.exprs[end.unwrap()];
+            let hir_start = &body[start.unwrap()];
+            let hir_end = &body[end.unwrap()];
 
             assert!(matches!(hir_start, Expr::Path { .. }));
             assert!(matches!(hir_end, Expr::Path { .. }));

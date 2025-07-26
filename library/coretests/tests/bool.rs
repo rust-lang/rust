@@ -105,3 +105,11 @@ fn test_bool_to_option() {
     assert_eq!(D, Some(0));
     */
 }
+
+#[test]
+fn test_bool_to_result() {
+    assert_eq!(false.ok_or(0), Err(0));
+    assert_eq!(true.ok_or(0), Ok(()));
+    assert_eq!(false.ok_or_else(|| 0), Err(0));
+    assert_eq!(true.ok_or_else(|| 0), Ok(()));
+}

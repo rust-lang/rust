@@ -25,15 +25,14 @@ pub use generic_args::{GenericArgKind, TermKind, *};
 pub use generics::*;
 pub use intrinsic::IntrinsicDef;
 use rustc_abi::{Align, FieldIdx, Integer, IntegerType, ReprFlags, ReprOptions, VariantIdx};
-use rustc_ast::expand::StrippedCfgItem;
 use rustc_ast::node_id::NodeMap;
 pub use rustc_ast_ir::{Movability, Mutability, try_visit};
-use rustc_attr_data_structures::AttributeKind;
+use rustc_attr_data_structures::{AttributeKind, StrippedCfgItem, find_attr};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::steal::Steal;
-use rustc_data_structures::unord::UnordMap;
+use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::{Diag, ErrorGuaranteed};
 use rustc_hir::LangItem;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, DocLinkResMap, LifetimeRes, Res};
@@ -52,6 +51,7 @@ pub use rustc_session::lint::RegisteredTools;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::{DUMMY_SP, ExpnId, ExpnKind, Ident, Span, Symbol, kw, sym};
 pub use rustc_type_ir::data_structures::{DelayedMap, DelayedSet};
+pub use rustc_type_ir::fast_reject::DeepRejectCtxt;
 #[allow(
     hidden_glob_reexports,
     rustc::usage_of_type_ir_inherent,
@@ -59,6 +59,7 @@ pub use rustc_type_ir::data_structures::{DelayedMap, DelayedSet};
 )]
 use rustc_type_ir::inherent;
 pub use rustc_type_ir::relate::VarianceDiagInfo;
+pub use rustc_type_ir::solve::SizedTraitKind;
 pub use rustc_type_ir::*;
 #[allow(hidden_glob_reexports, unused_imports)]
 use rustc_type_ir::{InferCtxtLike, Interner};
@@ -73,8 +74,8 @@ pub use self::closure::{
     place_to_string_for_capture,
 };
 pub use self::consts::{
-    Const, ConstInt, ConstKind, Expr, ExprKind, ScalarInt, UnevaluatedConst, ValTree, ValTreeKind,
-    Value,
+    AnonConstKind, AtomicOrdering, Const, ConstInt, ConstKind, ConstToValTreeResult, Expr,
+    ExprKind, ScalarInt, UnevaluatedConst, ValTree, ValTreeKind, Value,
 };
 pub use self::context::{
     CtxtInterners, CurrentGcx, DeducedParamAttrs, Feed, FreeRegionInfo, GlobalCtxt, Lift, TyCtxt,
@@ -87,7 +88,7 @@ pub use self::opaque_types::OpaqueTypeKey;
 pub use self::parameterized::ParameterizedOverTcx;
 pub use self::pattern::{Pattern, PatternKind};
 pub use self::predicate::{
-    AliasTerm, Clause, ClauseKind, CoercePredicate, ExistentialPredicate,
+    AliasTerm, ArgOutlivesPredicate, Clause, ClauseKind, CoercePredicate, ExistentialPredicate,
     ExistentialPredicateStableCmpExt, ExistentialProjection, ExistentialTraitRef,
     HostEffectPredicate, NormalizesTo, OutlivesPredicate, PolyCoercePredicate,
     PolyExistentialPredicate, PolyExistentialProjection, PolyExistentialTraitRef,
@@ -120,6 +121,7 @@ use crate::ty;
 use crate::ty::codec::{TyDecoder, TyEncoder};
 pub use crate::ty::diagnostics::*;
 use crate::ty::fast_reject::SimplifiedType;
+use crate::ty::layout::LayoutError;
 use crate::ty::util::Discr;
 use crate::ty::walk::TypeWalker;
 
@@ -173,11 +175,11 @@ pub struct ResolverOutputs {
     pub ast_lowering: ResolverAstLowering,
 }
 
-#[derive(Debug)]
+#[derive(Debug, HashStable)]
 pub struct ResolverGlobalCtxt {
     pub visibilities_for_hashing: Vec<(LocalDefId, Visibility)>,
     /// Item with a given `LocalDefId` was defined during macro expansion with ID `ExpnId`.
-    pub expn_that_defined: FxHashMap<LocalDefId, ExpnId>,
+    pub expn_that_defined: UnordMap<LocalDefId, ExpnId>,
     pub effective_visibilities: EffectiveVisibilities,
     pub extern_crate_map: UnordMap<LocalDefId, CrateNum>,
     pub maybe_unused_trait_imports: FxIndexSet<LocalDefId>,
@@ -193,8 +195,8 @@ pub struct ResolverGlobalCtxt {
     pub confused_type_with_std_module: FxIndexMap<Span, Span>,
     pub doc_link_resolutions: FxIndexMap<LocalDefId, DocLinkResMap>,
     pub doc_link_traits_in_scope: FxIndexMap<LocalDefId, Vec<DefId>>,
-    pub all_macro_rules: FxHashSet<Symbol>,
-    pub stripped_cfg_items: Steal<Vec<StrippedCfgItem>>,
+    pub all_macro_rules: UnordSet<Symbol>,
+    pub stripped_cfg_items: Vec<StrippedCfgItem>,
 }
 
 /// Resolutions that should only be used for lowering.
@@ -240,7 +242,7 @@ pub struct DelegationFnSig {
     pub target_feature: bool,
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, HashStable)]
 pub struct MainDefinition {
     pub res: Res<ast::NodeId>,
     pub is_import: bool,
@@ -309,7 +311,10 @@ impl Visibility {
                 } else if restricted_id == tcx.parent_module_from_def_id(def_id).to_local_def_id() {
                     "pub(self)".to_string()
                 } else {
-                    format!("pub({})", tcx.item_name(restricted_id.to_def_id()))
+                    format!(
+                        "pub(in crate{})",
+                        tcx.def_path(restricted_id.to_def_id()).to_string_no_crate_verbose()
+                    )
                 }
             }
             ty::Visibility::Public => "pub".to_string(),
@@ -468,7 +473,7 @@ impl<'tcx> rustc_type_ir::Flags for Ty<'tcx> {
 impl EarlyParamRegion {
     /// Does this early bound region have a name? Early bound regions normally
     /// always have names except when using anonymous lifetimes (`'_`).
-    pub fn has_name(&self) -> bool {
+    pub fn is_named(&self) -> bool {
         self.name != kw::UnderscoreLifetime
     }
 }
@@ -499,7 +504,7 @@ impl<'tcx> rustc_type_ir::inherent::IntoKind for Term<'tcx> {
     type Kind = TermKind<'tcx>;
 
     fn kind(self) -> Self::Kind {
-        self.unpack()
+        self.kind()
     }
 }
 
@@ -516,7 +521,7 @@ unsafe impl<'tcx> Sync for Term<'tcx> where &'tcx (Ty<'tcx>, Const<'tcx>): Sync 
 
 impl Debug for Term<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self.unpack() {
+        match self.kind() {
             TermKind::Ty(ty) => write!(f, "Term::Ty({ty:?})"),
             TermKind::Const(ct) => write!(f, "Term::Const({ct:?})"),
         }
@@ -537,7 +542,7 @@ impl<'tcx> From<Const<'tcx>> for Term<'tcx> {
 
 impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for Term<'tcx> {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-        self.unpack().hash_stable(hcx, hasher);
+        self.kind().hash_stable(hcx, hasher);
     }
 }
 
@@ -546,14 +551,14 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for Term<'tcx> {
         self,
         folder: &mut F,
     ) -> Result<Self, F::Error> {
-        match self.unpack() {
+        match self.kind() {
             ty::TermKind::Ty(ty) => ty.try_fold_with(folder).map(Into::into),
             ty::TermKind::Const(ct) => ct.try_fold_with(folder).map(Into::into),
         }
     }
 
     fn fold_with<F: TypeFolder<TyCtxt<'tcx>>>(self, folder: &mut F) -> Self {
-        match self.unpack() {
+        match self.kind() {
             ty::TermKind::Ty(ty) => ty.fold_with(folder).into(),
             ty::TermKind::Const(ct) => ct.fold_with(folder).into(),
         }
@@ -562,7 +567,7 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for Term<'tcx> {
 
 impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for Term<'tcx> {
     fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> V::Result {
-        match self.unpack() {
+        match self.kind() {
             ty::TermKind::Ty(ty) => ty.visit_with(visitor),
             ty::TermKind::Const(ct) => ct.visit_with(visitor),
         }
@@ -571,7 +576,7 @@ impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for Term<'tcx> {
 
 impl<'tcx, E: TyEncoder<'tcx>> Encodable<E> for Term<'tcx> {
     fn encode(&self, e: &mut E) {
-        self.unpack().encode(e)
+        self.kind().encode(e)
     }
 }
 
@@ -584,7 +589,7 @@ impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for Term<'tcx> {
 
 impl<'tcx> Term<'tcx> {
     #[inline]
-    pub fn unpack(self) -> TermKind<'tcx> {
+    pub fn kind(self) -> TermKind<'tcx> {
         let ptr =
             unsafe { self.ptr.map_addr(|addr| NonZero::new_unchecked(addr.get() & !TAG_MASK)) };
         // SAFETY: use of `Interned::new_unchecked` here is ok because these
@@ -604,7 +609,7 @@ impl<'tcx> Term<'tcx> {
     }
 
     pub fn as_type(&self) -> Option<Ty<'tcx>> {
-        if let TermKind::Ty(ty) = self.unpack() { Some(ty) } else { None }
+        if let TermKind::Ty(ty) = self.kind() { Some(ty) } else { None }
     }
 
     pub fn expect_type(&self) -> Ty<'tcx> {
@@ -612,7 +617,7 @@ impl<'tcx> Term<'tcx> {
     }
 
     pub fn as_const(&self) -> Option<Const<'tcx>> {
-        if let TermKind::Const(c) = self.unpack() { Some(c) } else { None }
+        if let TermKind::Const(c) = self.kind() { Some(c) } else { None }
     }
 
     pub fn expect_const(&self) -> Const<'tcx> {
@@ -620,14 +625,14 @@ impl<'tcx> Term<'tcx> {
     }
 
     pub fn into_arg(self) -> GenericArg<'tcx> {
-        match self.unpack() {
+        match self.kind() {
             TermKind::Ty(ty) => ty.into(),
             TermKind::Const(c) => c.into(),
         }
     }
 
     pub fn to_alias_term(self) -> Option<AliasTerm<'tcx>> {
-        match self.unpack() {
+        match self.kind() {
             TermKind::Ty(ty) => match *ty.kind() {
                 ty::Alias(_kind, alias_ty) => Some(alias_ty.into()),
                 _ => None,
@@ -640,9 +645,16 @@ impl<'tcx> Term<'tcx> {
     }
 
     pub fn is_infer(&self) -> bool {
-        match self.unpack() {
+        match self.kind() {
             TermKind::Ty(ty) => ty.is_ty_var(),
             TermKind::Const(ct) => ct.is_ct_infer(),
+        }
+    }
+
+    pub fn is_trivially_wf(&self, tcx: TyCtxt<'tcx>) -> bool {
+        match self.kind() {
+            TermKind::Ty(ty) => ty.is_trivially_wf(tcx),
+            TermKind::Const(ct) => ct.is_trivially_wf(),
         }
     }
 
@@ -901,34 +913,12 @@ pub struct Placeholder<T> {
     pub universe: UniverseIndex,
     pub bound: T,
 }
-impl Placeholder<BoundVar> {
-    pub fn find_const_ty_from_env<'tcx>(self, env: ParamEnv<'tcx>) -> Ty<'tcx> {
-        let mut candidates = env.caller_bounds().iter().filter_map(|clause| {
-            // `ConstArgHasType` are never desugared to be higher ranked.
-            match clause.kind().skip_binder() {
-                ty::ClauseKind::ConstArgHasType(placeholder_ct, ty) => {
-                    assert!(!(placeholder_ct, ty).has_escaping_bound_vars());
-
-                    match placeholder_ct.kind() {
-                        ty::ConstKind::Placeholder(placeholder_ct) if placeholder_ct == self => {
-                            Some(ty)
-                        }
-                        _ => None,
-                    }
-                }
-                _ => None,
-            }
-        });
-
-        let ty = candidates.next().unwrap();
-        assert!(candidates.next().is_none());
-        ty
-    }
-}
 
 pub type PlaceholderRegion = Placeholder<BoundRegion>;
 
-impl rustc_type_ir::inherent::PlaceholderLike for PlaceholderRegion {
+impl<'tcx> rustc_type_ir::inherent::PlaceholderLike<TyCtxt<'tcx>> for PlaceholderRegion {
+    type Bound = BoundRegion;
+
     fn universe(self) -> UniverseIndex {
         self.universe
     }
@@ -941,14 +931,20 @@ impl rustc_type_ir::inherent::PlaceholderLike for PlaceholderRegion {
         Placeholder { universe: ui, ..self }
     }
 
-    fn new(ui: UniverseIndex, var: BoundVar) -> Self {
+    fn new(ui: UniverseIndex, bound: BoundRegion) -> Self {
+        Placeholder { universe: ui, bound }
+    }
+
+    fn new_anon(ui: UniverseIndex, var: BoundVar) -> Self {
         Placeholder { universe: ui, bound: BoundRegion { var, kind: BoundRegionKind::Anon } }
     }
 }
 
 pub type PlaceholderType = Placeholder<BoundTy>;
 
-impl rustc_type_ir::inherent::PlaceholderLike for PlaceholderType {
+impl<'tcx> rustc_type_ir::inherent::PlaceholderLike<TyCtxt<'tcx>> for PlaceholderType {
+    type Bound = BoundTy;
+
     fn universe(self) -> UniverseIndex {
         self.universe
     }
@@ -961,7 +957,11 @@ impl rustc_type_ir::inherent::PlaceholderLike for PlaceholderType {
         Placeholder { universe: ui, ..self }
     }
 
-    fn new(ui: UniverseIndex, var: BoundVar) -> Self {
+    fn new(ui: UniverseIndex, bound: BoundTy) -> Self {
+        Placeholder { universe: ui, bound }
+    }
+
+    fn new_anon(ui: UniverseIndex, var: BoundVar) -> Self {
         Placeholder { universe: ui, bound: BoundTy { var, kind: BoundTyKind::Anon } }
     }
 }
@@ -975,7 +975,9 @@ pub struct BoundConst<'tcx> {
 
 pub type PlaceholderConst = Placeholder<BoundVar>;
 
-impl rustc_type_ir::inherent::PlaceholderLike for PlaceholderConst {
+impl<'tcx> rustc_type_ir::inherent::PlaceholderLike<TyCtxt<'tcx>> for PlaceholderConst {
+    type Bound = BoundVar;
+
     fn universe(self) -> UniverseIndex {
         self.universe
     }
@@ -988,7 +990,11 @@ impl rustc_type_ir::inherent::PlaceholderLike for PlaceholderConst {
         Placeholder { universe: ui, ..self }
     }
 
-    fn new(ui: UniverseIndex, var: BoundVar) -> Self {
+    fn new(ui: UniverseIndex, bound: BoundVar) -> Self {
+        Placeholder { universe: ui, bound }
+    }
+
+    fn new_anon(ui: UniverseIndex, var: BoundVar) -> Self {
         Placeholder { universe: ui, bound: var }
     }
 }
@@ -1111,10 +1117,7 @@ impl<'tcx> TypingEnv<'tcx> {
     }
 
     pub fn post_analysis(tcx: TyCtxt<'tcx>, def_id: impl IntoQueryParam<DefId>) -> TypingEnv<'tcx> {
-        TypingEnv {
-            typing_mode: TypingMode::PostAnalysis,
-            param_env: tcx.param_env_normalized_for_post_analysis(def_id),
-        }
+        tcx.typing_env_normalized_for_post_analysis(def_id)
     }
 
     /// Modify the `typing_mode` to `PostAnalysis` and eagerly reveal all
@@ -1128,7 +1131,7 @@ impl<'tcx> TypingEnv<'tcx> {
         // No need to reveal opaques with the new solver enabled,
         // since we have lazy norm.
         let param_env = if tcx.next_trait_solver_globally() {
-            ParamEnv::new(param_env.caller_bounds())
+            param_env
         } else {
             ParamEnv::new(tcx.reveal_opaque_types_in_bounds(param_env.caller_bounds()))
         };
@@ -1145,12 +1148,16 @@ impl<'tcx> TypingEnv<'tcx> {
     {
         // FIXME(#132279): We should assert that the value does not contain any placeholders
         // as these placeholders are also local to the current inference context. However, we
-        // currently use pseudo-canonical queries in the trait solver which replaces params with
-        // placeholders. We should also simply not use pseudo-canonical queries in the trait
-        // solver, at which point we can readd this assert. As of writing this comment, this is
-        // only used by `fn layout_is_pointer_like` when calling `layout_of`.
+        // currently use pseudo-canonical queries in the trait solver, which replaces params
+        // with placeholders during canonicalization. We should also simply not use pseudo-
+        // canonical queries in the trait solver, at which point we can readd this assert.
         //
-        // debug_assert!(!value.has_placeholders());
+        // As of writing this comment, this is only used when normalizing consts that mention
+        // params.
+        /* debug_assert!(
+            !value.has_placeholders(),
+            "{value:?} which has placeholder shouldn't be pseudo-canonicalized"
+        ); */
         PseudoCanonicalInput { typing_env: self, value }
     }
 }
@@ -1181,7 +1188,7 @@ pub struct Destructor {
 #[derive(Copy, Clone, Debug, HashStable, Encodable, Decodable)]
 pub struct AsyncDestructor {
     /// The `DefId` of the `impl AsyncDrop`
-    pub impl_did: LocalDefId,
+    pub impl_did: DefId,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, HashStable, TyEncodable, TyDecodable)]
@@ -1517,7 +1524,8 @@ impl<'tcx> TyCtxt<'tcx> {
             field_shuffle_seed ^= user_seed;
         }
 
-        if let Some(reprs) = attr::find_attr!(self.get_all_attrs(did), AttributeKind::Repr(r) => r)
+        if let Some(reprs) =
+            attr::find_attr!(self.get_all_attrs(did), AttributeKind::Repr { reprs, .. } => reprs)
         {
             for (r, _) in reprs {
                 flags.insert(match *r {
@@ -1558,10 +1566,6 @@ impl<'tcx> TyCtxt<'tcx> {
                         max_align = max_align.max(Some(align));
                         ReprFlags::empty()
                     }
-                    attr::ReprEmpty => {
-                        /* skip these, they're just for diagnostics */
-                        ReprFlags::empty()
-                    }
                 });
             }
         }
@@ -1585,7 +1589,8 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     /// Look up the name of a definition across crates. This does not look at HIR.
-    pub fn opt_item_name(self, def_id: DefId) -> Option<Symbol> {
+    pub fn opt_item_name(self, def_id: impl IntoQueryParam<DefId>) -> Option<Symbol> {
+        let def_id = def_id.into_query_param();
         if let Some(cnum) = def_id.as_crate_root() {
             Some(self.crate_name(cnum))
         } else {
@@ -1605,7 +1610,8 @@ impl<'tcx> TyCtxt<'tcx> {
     /// [`opt_item_name`] instead.
     ///
     /// [`opt_item_name`]: Self::opt_item_name
-    pub fn item_name(self, id: DefId) -> Symbol {
+    pub fn item_name(self, id: impl IntoQueryParam<DefId>) -> Symbol {
+        let id = id.into_query_param();
         self.opt_item_name(id).unwrap_or_else(|| {
             bug!("item_name: no name for {:?}", self.def_path(id));
         })
@@ -1614,7 +1620,8 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Look up the name and span of a definition.
     ///
     /// See [`item_name`][Self::item_name] for more information.
-    pub fn opt_item_ident(self, def_id: DefId) -> Option<Ident> {
+    pub fn opt_item_ident(self, def_id: impl IntoQueryParam<DefId>) -> Option<Ident> {
+        let def_id = def_id.into_query_param();
         let def = self.opt_item_name(def_id)?;
         let span = self
             .def_ident_span(def_id)
@@ -1625,7 +1632,8 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Look up the name and span of a definition.
     ///
     /// See [`item_name`][Self::item_name] for more information.
-    pub fn item_ident(self, def_id: DefId) -> Ident {
+    pub fn item_ident(self, def_id: impl IntoQueryParam<DefId>) -> Ident {
+        let def_id = def_id.into_query_param();
         self.opt_item_ident(def_id).unwrap_or_else(|| {
             bug!("item_ident: no name for {:?}", self.def_path(def_id));
         })
@@ -1777,21 +1785,18 @@ impl<'tcx> TyCtxt<'tcx> {
         did: impl Into<DefId>,
         attr: Symbol,
     ) -> impl Iterator<Item = &'tcx hir::Attribute> {
-        self.get_all_attrs(did).filter(move |a: &&hir::Attribute| a.has_name(attr))
+        self.get_all_attrs(did).iter().filter(move |a: &&hir::Attribute| a.has_name(attr))
     }
 
     /// Gets all attributes.
     ///
     /// To see if an item has a specific attribute, you should use [`rustc_attr_data_structures::find_attr!`] so you can use matching.
-    pub fn get_all_attrs(
-        self,
-        did: impl Into<DefId>,
-    ) -> impl Iterator<Item = &'tcx hir::Attribute> {
+    pub fn get_all_attrs(self, did: impl Into<DefId>) -> &'tcx [hir::Attribute] {
         let did: DefId = did.into();
         if let Some(did) = did.as_local() {
-            self.hir_attrs(self.local_def_id_to_hir_id(did)).iter()
+            self.hir_attrs(self.local_def_id_to_hir_id(did))
         } else {
-            self.attrs_for_def(did).iter()
+            self.attrs_for_def(did)
         }
     }
 
@@ -1874,6 +1879,11 @@ impl<'tcx> TyCtxt<'tcx> {
         self.def_kind(trait_def_id) == DefKind::TraitAlias
     }
 
+    /// Arena-alloc of LayoutError for coroutine layout
+    fn layout_error(self, err: LayoutError<'tcx>) -> &'tcx LayoutError<'tcx> {
+        self.arena.alloc(err)
+    }
+
     /// Returns layout of a non-async-drop coroutine. Layout might be unavailable if the
     /// coroutine is tainted by errors.
     ///
@@ -1882,12 +1892,14 @@ impl<'tcx> TyCtxt<'tcx> {
     fn ordinary_coroutine_layout(
         self,
         def_id: DefId,
-        coroutine_kind_ty: Ty<'tcx>,
-    ) -> Option<&'tcx CoroutineLayout<'tcx>> {
+        args: GenericArgsRef<'tcx>,
+    ) -> Result<&'tcx CoroutineLayout<'tcx>, &'tcx LayoutError<'tcx>> {
+        let coroutine_kind_ty = args.as_coroutine().kind_ty();
         let mir = self.optimized_mir(def_id);
+        let ty = || Ty::new_coroutine(self, def_id, args);
         // Regular coroutine
         if coroutine_kind_ty.is_unit() {
-            mir.coroutine_layout_raw()
+            mir.coroutine_layout_raw().ok_or_else(|| self.layout_error(LayoutError::Unknown(ty())))
         } else {
             // If we have a `Coroutine` that comes from an coroutine-closure,
             // then it may be a by-move or by-ref body.
@@ -1901,6 +1913,7 @@ impl<'tcx> TyCtxt<'tcx> {
             // a by-ref coroutine.
             if identity_kind_ty == coroutine_kind_ty {
                 mir.coroutine_layout_raw()
+                    .ok_or_else(|| self.layout_error(LayoutError::Unknown(ty())))
             } else {
                 assert_matches!(coroutine_kind_ty.to_opt_closure_kind(), Some(ClosureKind::FnOnce));
                 assert_matches!(
@@ -1909,6 +1922,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 );
                 self.optimized_mir(self.coroutine_by_move_body_def_id(def_id))
                     .coroutine_layout_raw()
+                    .ok_or_else(|| self.layout_error(LayoutError::Unknown(ty())))
             }
         }
     }
@@ -1920,9 +1934,15 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         def_id: DefId,
         args: GenericArgsRef<'tcx>,
-    ) -> Option<&'tcx CoroutineLayout<'tcx>> {
+    ) -> Result<&'tcx CoroutineLayout<'tcx>, &'tcx LayoutError<'tcx>> {
+        let ty = || Ty::new_coroutine(self, def_id, args);
+        if args[0].has_placeholders() || args[0].has_non_region_param() {
+            return Err(self.layout_error(LayoutError::TooGeneric(ty())));
+        }
         let instance = InstanceKind::AsyncDropGlue(def_id, Ty::new_coroutine(self, def_id, args));
-        self.mir_shims(instance).coroutine_layout_raw()
+        self.mir_shims(instance)
+            .coroutine_layout_raw()
+            .ok_or_else(|| self.layout_error(LayoutError::Unknown(ty())))
     }
 
     /// Returns layout of a coroutine. Layout might be unavailable if the
@@ -1931,7 +1951,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         def_id: DefId,
         args: GenericArgsRef<'tcx>,
-    ) -> Option<&'tcx CoroutineLayout<'tcx>> {
+    ) -> Result<&'tcx CoroutineLayout<'tcx>, &'tcx LayoutError<'tcx>> {
         if self.is_async_drop_in_place_coroutine(def_id) {
             // layout of `async_drop_in_place<T>::{closure}` in case,
             // when T is a coroutine, contains this internal coroutine's ptr in upvars
@@ -1953,12 +1973,12 @@ impl<'tcx> TyCtxt<'tcx> {
                     variant_source_info,
                     storage_conflicts: BitMatrix::new(0, 0),
                 };
-                return Some(self.arena.alloc(proxy_layout));
+                return Ok(self.arena.alloc(proxy_layout));
             } else {
                 self.async_drop_coroutine_layout(def_id, args)
             }
         } else {
-            self.ordinary_coroutine_layout(def_id, args.as_coroutine().kind_ty())
+            self.ordinary_coroutine_layout(def_id, args)
         }
     }
 
@@ -2014,7 +2034,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Check if the given `DefId` is `#\[automatically_derived\]`.
     pub fn is_automatically_derived(self, def_id: DefId) -> bool {
-        self.has_attr(def_id, sym::automatically_derived)
+        find_attr!(self.get_all_attrs(def_id), AttributeKind::AutomaticallyDerived(..))
     }
 
     /// Looks up the span of `impl_did` if the impl is local; otherwise returns `Err`
@@ -2120,7 +2140,7 @@ impl<'tcx> TyCtxt<'tcx> {
             },
             DefKind::Closure => {
                 // Closures and RPITs will eventually have const conditions
-                // for `~const` bounds.
+                // for `[const]` bounds.
                 false
             }
             DefKind::Ctor(_, CtorKind::Const)

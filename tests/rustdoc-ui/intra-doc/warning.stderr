@@ -69,29 +69,19 @@ LL | bar [BarC] bar
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
 
 warning: unresolved link to `BarD`
-  --> $DIR/warning.rs:45:9
+  --> $DIR/warning.rs:45:20
    |
 LL | #[doc = "Foo\nbar [BarD] bar\nbaz"]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                    ^^^^ no item named `BarD` in scope
    |
-   = note: the link appears in this line:
-           
-           bar [BarD] bar
-                ^^^^
-   = note: no item named `BarD` in scope
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
 
 warning: unresolved link to `BarF`
-  --> $DIR/warning.rs:54:4
+  --> $DIR/warning.rs:54:15
    |
 LL | f!("Foo\nbar [BarF] bar\nbaz");
-   |    ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |               ^^^^ no item named `BarF` in scope
    |
-   = note: the link appears in this line:
-           
-           bar [BarF] bar
-                ^^^^
-   = note: no item named `BarF` in scope
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
    = note: this warning originates in the macro `f` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -112,29 +102,19 @@ LL |  * time to introduce a link [error]
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
 
 warning: unresolved link to `error`
-  --> $DIR/warning.rs:68:9
+  --> $DIR/warning.rs:68:23
    |
 LL | #[doc = "single line [error]"]
-   |         ^^^^^^^^^^^^^^^^^^^^^
+   |                       ^^^^^ no item named `error` in scope
    |
-   = note: the link appears in this line:
-           
-           single line [error]
-                        ^^^^^
-   = note: no item named `error` in scope
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
 
 warning: unresolved link to `error`
-  --> $DIR/warning.rs:71:9
+  --> $DIR/warning.rs:71:41
    |
 LL | #[doc = "single line with \"escaping\" [error]"]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                         ^^^^^ no item named `error` in scope
    |
-   = note: the link appears in this line:
-           
-           single line with "escaping" [error]
-                                        ^^^^^
-   = note: no item named `error` in scope
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
 
 warning: unresolved link to `error`

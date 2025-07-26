@@ -80,41 +80,11 @@ approachable and practical; it may make sense to direct users to an RFC or some
 other issue for the full details. The issue also serves as a place where users
 can comment with questions or other concerns.
 
-A template for these breaking-change tracking issues can be found below. An
-example of how such an issue should look can be [found
+A template for these breaking-change tracking issues can be found
+[here][template]. An example of how such an issue should look can be [found
 here][breaking-change-issue].
 
-The issue should be tagged with (at least) `B-unstable` and `T-compiler`.
-
-### Tracking issue template
-
-This is a template to use for tracking issues:
-
-```
-This is the **summary issue** for the `YOUR_LINT_NAME_HERE`
-future-compatibility warning and other related errors. The goal of
-this page is describe why this change was made and how you can fix
-code that is affected by it. It also provides a place to ask questions
-or register a complaint if you feel the change should not be made. For
-more information on the policy around future-compatibility warnings,
-see our [breaking change policy guidelines][guidelines].
-
-[guidelines]: LINK_TO_THIS_RFC
-
-#### What is the warning for?
-
-*Describe the conditions that trigger the warning and how they can be
-fixed. Also explain why the change was made.**
-
-#### When will this warning become a hard error?
-
-At the beginning of each 6-week release cycle, the Rust compiler team
-will review the set of outstanding future compatibility warnings and
-nominate some of them for **Final Comment Period**. Toward the end of
-the cycle, we will review any comments and make a final determination
-whether to convert the warning into a hard error or remove it
-entirely.
-```
+[template]: https://github.com/rust-lang/rust/issues/new?template=tracking_issue_future.md
 
 ### Issuing future compatibility warnings
 

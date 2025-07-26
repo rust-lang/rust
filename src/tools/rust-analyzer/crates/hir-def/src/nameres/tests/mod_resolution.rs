@@ -839,6 +839,7 @@ mod foo;
 #[path = "./foo.rs"]
 mod foo;
 "#,
+        |_| (),
     );
 
     compute_crate_def_map(
@@ -852,6 +853,7 @@ mod bar;
 #[path = "./foo.rs"]
 mod foo;
 "#,
+        |_| (),
     );
 }
 
@@ -893,4 +895,150 @@ struct AlsoShouldNotAppear;
             crate
         "#]],
     )
+}
+
+#[test]
+fn invalid_imports() {
+    check(
+        r#"
+//- /main.rs
+mod module;
+
+use self::module::S::new;
+use self::module::unresolved;
+use self::module::C::const_based;
+use self::module::Enum::Variant::NoAssoc;
+
+//- /module.rs
+pub struct S;
+impl S {
+    pub fn new() {}
+}
+pub const C: () = ();
+pub enum Enum {
+    Variant,
+}
+        "#,
+        expect![[r#"
+            crate
+            NoAssoc: _
+            const_based: _
+            module: t
+            new: _
+            unresolved: _
+
+            crate::module
+            C: v
+            Enum: t
+            S: t v
+        "#]],
+    );
+}
+
+#[test]
+fn trait_item_imports_same_crate() {
+    check(
+        r#"
+//- /main.rs
+mod module;
+
+use self::module::Trait::{AssocType, ASSOC_CONST, MACRO_CONST, method};
+
+//- /module.rs
+macro_rules! m {
+    ($name:ident) => { const $name: () = (); };
+}
+pub trait Trait {
+    type AssocType;
+    const ASSOC_CONST: ();
+    fn method(&self);
+    m!(MACRO_CONST);
+}
+        "#,
+        expect![[r#"
+            crate
+            ASSOC_CONST: _
+            AssocType: _
+            MACRO_CONST: _
+            method: _
+            module: t
+
+            crate::module
+            Trait: t
+        "#]],
+    );
+    check(
+        r#"
+//- /main.rs
+mod module;
+
+use self::module::Trait::*;
+
+//- /module.rs
+macro_rules! m {
+    ($name:ident) => { const $name: () = (); };
+}
+pub trait Trait {
+    type AssocType;
+    const ASSOC_CONST: ();
+    fn method(&self);
+    m!(MACRO_CONST);
+}
+        "#,
+        expect![[r#"
+            crate
+            module: t
+
+            crate::module
+            Trait: t
+        "#]],
+    );
+}
+
+#[test]
+fn trait_item_imports_differing_crate() {
+    check(
+        r#"
+//- /main.rs deps:lib crate:main
+use lib::Trait::{AssocType, ASSOC_CONST, MACRO_CONST, method};
+
+//- /lib.rs crate:lib
+macro_rules! m {
+    ($name:ident) => { const $name: () = (); };
+}
+pub trait Trait {
+    type AssocType;
+    const ASSOC_CONST: ();
+    fn method(&self);
+    m!(MACRO_CONST);
+}
+        "#,
+        expect![[r#"
+            crate
+            ASSOC_CONST: _
+            AssocType: _
+            MACRO_CONST: _
+            method: _
+        "#]],
+    );
+    check(
+        r#"
+//- /main.rs deps:lib crate:main
+use lib::Trait::*;
+
+//- /lib.rs crate:lib
+macro_rules! m {
+    ($name:ident) => { const $name: () = (); };
+}
+pub trait Trait {
+    type AssocType;
+    const ASSOC_CONST: ();
+    fn method(&self);
+    m!(MACRO_CONST);
+}
+        "#,
+        expect![[r#"
+            crate
+        "#]],
+    );
 }

@@ -2,7 +2,7 @@ error: Undefined Behavior: trying to join an already joined thread
   --> tests/fail-dep/concurrency/libc_pthread_join_joined.rs:LL:CC
    |
 LL |         assert_eq!(libc::pthread_join(native, ptr::null_mut()), 0);
-   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ trying to join an already joined thread
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Undefined Behavior occurred here
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

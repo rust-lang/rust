@@ -144,3 +144,9 @@ mod issue14577 {
         }
     }
 }
+
+mod pr14962 {
+    #[allow(unused_parens)]
+    type UnusedParensButNoUnit = Box<dyn (Fn())>;
+}
+

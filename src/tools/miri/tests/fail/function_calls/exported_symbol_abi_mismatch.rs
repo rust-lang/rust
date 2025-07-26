@@ -12,7 +12,7 @@ fn main() {
     #[cfg(fn_ptr)]
     unsafe {
         std::mem::transmute::<unsafe fn(), unsafe extern "C" fn()>(foo)();
-        //~[fn_ptr]^ ERROR: calling a function with calling convention Rust using calling convention C
+        //~[fn_ptr]^ ERROR: calling a function with calling convention "Rust" using calling convention "C"
     }
 
     // `Instance` caching should not suppress ABI check.
@@ -28,8 +28,8 @@ fn main() {
         }
         unsafe {
             foo();
-            //~[no_cache]^ ERROR: calling a function with calling convention Rust using calling convention C
-            //~[cache]| ERROR: calling a function with calling convention Rust using calling convention C
+            //~[no_cache]^ ERROR: calling a function with calling convention "Rust" using calling convention "C"
+            //~[cache]| ERROR: calling a function with calling convention "Rust" using calling convention "C"
         }
     }
 }

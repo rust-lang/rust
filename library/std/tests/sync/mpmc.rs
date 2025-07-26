@@ -462,31 +462,36 @@ fn oneshot_single_thread_recv_timeout() {
 #[test]
 fn stress_recv_timeout_two_threads() {
     let (tx, rx) = channel();
-    let stress = stress_factor() + 100;
-    let timeout = Duration::from_millis(100);
+    let stress = stress_factor() + 50;
+    let timeout = Duration::from_millis(10);
 
     thread::spawn(move || {
         for i in 0..stress {
             if i % 2 == 0 {
-                thread::sleep(timeout * 2);
+                thread::sleep(timeout * 4);
             }
             tx.send(1usize).unwrap();
         }
     });
 
     let mut recv_count = 0;
+    let mut got_timeout = false;
     loop {
         match rx.recv_timeout(timeout) {
             Ok(n) => {
                 assert_eq!(n, 1usize);
                 recv_count += 1;
             }
-            Err(RecvTimeoutError::Timeout) => continue,
+            Err(RecvTimeoutError::Timeout) => {
+                got_timeout = true;
+                continue;
+            }
             Err(RecvTimeoutError::Disconnected) => break,
         }
     }
 
     assert_eq!(recv_count, stress);
+    assert!(got_timeout);
 }
 
 #[test]

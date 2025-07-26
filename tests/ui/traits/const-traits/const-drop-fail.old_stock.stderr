@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `NonTrivialDrop: const Destruct` is not satisfied
-  --> $DIR/const-drop-fail.rs:33:5
+  --> $DIR/const-drop-fail.rs:34:5
    |
 LL |         const _: () = check($exp);
    |                       ----- required by a bound introduced by this call
@@ -8,13 +8,13 @@ LL |     NonTrivialDrop,
    |     ^^^^^^^^^^^^^^
    |
 note: required by a bound in `check`
-  --> $DIR/const-drop-fail.rs:24:19
+  --> $DIR/const-drop-fail.rs:25:19
    |
-LL | const fn check<T: ~const Destruct>(_: T) {}
-   |                   ^^^^^^^^^^^^^^^ required by this bound in `check`
+LL | const fn check<T: [const] Destruct>(_: T) {}
+   |                   ^^^^^^^^^^^^^^^^ required by this bound in `check`
 
 error[E0277]: the trait bound `NonTrivialDrop: const Destruct` is not satisfied
-  --> $DIR/const-drop-fail.rs:35:5
+  --> $DIR/const-drop-fail.rs:36:5
    |
 LL |         const _: () = check($exp);
    |                       ----- required by a bound introduced by this call
@@ -23,10 +23,10 @@ LL |     ConstImplWithDropGlue(NonTrivialDrop),
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: required by a bound in `check`
-  --> $DIR/const-drop-fail.rs:24:19
+  --> $DIR/const-drop-fail.rs:25:19
    |
-LL | const fn check<T: ~const Destruct>(_: T) {}
-   |                   ^^^^^^^^^^^^^^^ required by this bound in `check`
+LL | const fn check<T: [const] Destruct>(_: T) {}
+   |                   ^^^^^^^^^^^^^^^^ required by this bound in `check`
 
 error: aborting due to 2 previous errors
 

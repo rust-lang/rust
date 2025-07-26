@@ -188,7 +188,7 @@ fn detect_lint(cx: &LateContext<'_>, expr: &Expr<'_>, recv: &Expr<'_>, arg: &Exp
 
 fn expr_borrows(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     let ty = cx.typeck_results().expr_ty(expr);
-    matches!(ty.kind(), ty::Ref(..)) || ty.walk().any(|arg| matches!(arg.unpack(), GenericArgKind::Lifetime(_)))
+    matches!(ty.kind(), ty::Ref(..)) || ty.walk().any(|arg| matches!(arg.kind(), GenericArgKind::Lifetime(_)))
 }
 
 pub(super) fn check<'tcx>(

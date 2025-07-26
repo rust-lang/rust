@@ -129,9 +129,8 @@ impl InferenceContext<'_> {
                         if let Some(index_trait) =
                             LangItem::IndexMut.resolve_trait(self.db, self.table.trait_env.krate)
                         {
-                            if let Some(index_fn) = self
-                                .db
-                                .trait_items(index_trait)
+                            if let Some(index_fn) = index_trait
+                                .trait_items(self.db)
                                 .method_by_name(&Name::new_symbol_root(sym::index_mut))
                             {
                                 *f = index_fn;
@@ -194,9 +193,8 @@ impl InferenceContext<'_> {
                             });
                             if is_mut_ptr {
                                 mutability = Mutability::Not;
-                            } else if let Some(deref_fn) = self
-                                .db
-                                .trait_items(deref_trait)
+                            } else if let Some(deref_fn) = deref_trait
+                                .trait_items(self.db)
                                 .method_by_name(&Name::new_symbol_root(sym::deref_mut))
                             {
                                 *f = deref_fn;
@@ -275,7 +273,7 @@ impl InferenceContext<'_> {
     fn pat_bound_mutability(&self, pat: PatId) -> Mutability {
         let mut r = Mutability::Not;
         self.body.walk_bindings_in_pat(pat, |b| {
-            if self.body.bindings[b].mode == BindingAnnotation::RefMut {
+            if self.body[b].mode == BindingAnnotation::RefMut {
                 r = Mutability::Mut;
             }
         });

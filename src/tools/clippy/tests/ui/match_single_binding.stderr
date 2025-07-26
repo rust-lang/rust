@@ -378,5 +378,38 @@ LL ~     let id!(b) = dbg!(3);
 LL +     let id!(_a) = dbg!(b + 1);
    |
 
-error: aborting due to 27 previous errors
+error: this match could be written as a `let` statement
+  --> tests/ui/match_single_binding.rs:255:21
+   |
+LL |           inner: [(); match 1 {
+   |  _____________________^
+LL | |
+LL | |             _n => 42,
+LL | |         }],
+   | |_________^
+   |
+help: consider using a `let` statement
+   |
+LL ~         inner: [(); {
+LL +             let _n = 1;
+LL +             42
+LL ~         }],
+   |
+
+error: this match could be written as a `let` statement
+  --> tests/ui/match_single_binding.rs:263:13
+   |
+LL | /             match 1 {
+LL | |
+LL | |                 _n => 42,
+LL | |             }
+   | |_____________^
+   |
+help: consider using a `let` statement
+   |
+LL ~             let _n = 1;
+LL +             42
+   |
+
+error: aborting due to 29 previous errors
 

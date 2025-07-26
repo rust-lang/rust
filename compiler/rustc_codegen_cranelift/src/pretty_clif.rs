@@ -8,40 +8,41 @@
 //! target x86_64
 //!
 //! function u0:22(i64) -> i8, i8 system_v {
-//! ; symbol _ZN97_$LT$example..IsNotEmpty$u20$as$u20$mini_core..FnOnce$LT$$LP$$RF$$RF$$u5b$u16$u5d$$C$$RP$$GT$$GT$9call_once17hd517c453d67c0915E
-//! ; instance Instance { def: Item(WithOptConstParam { did: DefId(0:42 ~ example[4e51]::{impl#0}::call_once), const_param_did: None }), args: [ReErased, ReErased] }
-//! ; abi FnAbi { args: [ArgAbi { layout: TyAndLayout { ty: IsNotEmpty, layout: Layout { size: Size(0 bytes), align: AbiAndPrefAlign { abi: Align(1 bytes), pref: Align(8 bytes) }, abi: Aggregate { sized: true }, fields: Arbitrary { offsets: [], memory_index: [] }, largest_niche: None, variants: Single { index: 0 } } }, mode: Ignore }, ArgAbi { layout: TyAndLayout { ty: &&[u16], layout: Layout { size: Size(8 bytes), align: AbiAndPrefAlign { abi: Align(8 bytes), pref: Align(8 bytes) }, abi: Scalar(Initialized { value: Pointer(AddressSpace(0)), valid_range: 1..=18446744073709551615 }), fields: Primitive, largest_niche: Some(Niche { offset: Size(0 bytes), value: Pointer(AddressSpace(0)), valid_range: 1..=18446744073709551615 }), variants: Single { index: 0 } } }, mode: Direct(ArgAttributes { regular: NonNull | NoUndef, arg_ext: None, pointee_size: Size(0 bytes), pointee_align: Some(Align(8 bytes)) }) }], ret: ArgAbi { layout: TyAndLayout { ty: (u8, u8), layout: Layout { size: Size(2 bytes), align: AbiAndPrefAlign { abi: Align(1 bytes), pref: Align(8 bytes) }, abi: ScalarPair(Initialized { value: Int(I8, false), valid_range: 0..=255 }, Initialized { value: Int(I8, false), valid_range: 0..=255 }), fields: Arbitrary { offsets: [Size(0 bytes), Size(1 bytes)], memory_index: [0, 1] }, largest_niche: None, variants: Single { index: 0 } } }, mode: Pair(ArgAttributes { regular: NoUndef, arg_ext: None, pointee_size: Size(0 bytes), pointee_align: None }, ArgAttributes { regular: NoUndef, arg_ext: None, pointee_size: Size(0 bytes), pointee_align: None }) }, c_variadic: false, fixed_count: 1, conv: Rust, can_unwind: false }
+//! ; symbol _ZN97_$LT$example..IsNotEmpty$u20$as$u20$mini_core..FnOnce$LT$$LP$$RF$$RF$$u5b$u16$u5d$$C$$RP$$GT$$GT$9call_once17hd361e9f5c3d1c4deE
+//! ; instance Instance { def: Item(DefId(0:42 ~ example[3895]::{impl#0}::call_once)), args: ['{erased}, '{erased}] }
+//! ; abi FnAbi { args: [ArgAbi { layout: TyAndLayout { ty: IsNotEmpty, layout: Layout { size: Size(0 bytes), align: AbiAndPrefAlign { abi: Align(1 bytes), pref: Align(8 bytes) }, backend_repr: Memory { sized: true }, fields: Arbitrary { offsets: [], memory_index: [] }, largest_niche: None, uninhabited: false, variants: Single { index: 0 }, max_repr_align: None, unadjusted_abi_align: Align(1 bytes), randomization_seed: 12266848898570219025 } }, mode: Ignore }, ArgAbi { layout: TyAndLayout { ty: &&[u16], layout: Layout { size: Size(8 bytes), align: AbiAndPrefAlign { abi: Align(8 bytes), pref: Align(8 bytes) }, backend_repr: Scalar(Initialized { value: Pointer(AddressSpace(0)), valid_range: 1..=18446744073709551615 }), fields: Primitive, largest_niche: Some(Niche { offset: Size(0 bytes), value: Pointer(AddressSpace(0)), valid_range: 1..=18446744073709551615 }), uninhabited: false, variants: Single { index: 0 }, max_repr_align: None, unadjusted_abi_align: Align(8 bytes), randomization_seed: 281492156579847 } }, mode: Direct(ArgAttributes { regular: NonNull | NoUndef, arg_ext: None, pointee_size: Size(0 bytes), pointee_align: Some(Align(8 bytes)) }) }], ret: ArgAbi { layout: TyAndLayout { ty: (u8, u8), layout: Layout { size: Size(2 bytes), align: AbiAndPrefAlign { abi: Align(1 bytes), pref: Align(8 bytes) }, backend_repr: ScalarPair(Initialized { value: Int(I8, false), valid_range: 0..=255 }, Initialized { value: Int(I8, false), valid_range: 0..=255 }), fields: Arbitrary { offsets: [Size(0 bytes), Size(1 bytes)], memory_index: [0, 1] }, largest_niche: None, uninhabited: false, variants: Single { index: 0 }, max_repr_align: None, unadjusted_abi_align: Align(1 bytes), randomization_seed: 71776127651151873 } }, mode: Pair(ArgAttributes { regular: NoUndef, arg_ext: None, pointee_size: Size(0 bytes), pointee_align: None }, ArgAttributes { regular: NoUndef, arg_ext: None, pointee_size: Size(0 bytes), pointee_align: None }) }, c_variadic: false, fixed_count: 1, conv: Rust, can_unwind: false }
 //!
 //! ; kind  loc.idx   param    pass mode                            ty
-//! ; ssa   _0    (u8, u8)                          2b 1, 8              var=(0, 1)
+//! ; ssa   _0    (u8, u8)                          2b 1                var=(0, 1)
 //! ; ret   _0      -          Pair(ArgAttributes { regular: NoUndef, arg_ext: None, pointee_size: Size(0 bytes), pointee_align: None }, ArgAttributes { regular: NoUndef, arg_ext: None, pointee_size: Size(0 bytes), pointee_align: None }) (u8, u8)
 //! ; arg   _1      -          Ignore                               IsNotEmpty
-//! ; arg   _2.0    = v0       Direct(ArgAttributes { regular: NonNull | NoUndef, arg_ext: None, pointee_size: Size(0 bytes), pointee_align: Some(Align(8 bytes)) }) &&[u16]
+//! ; arg   _2.0    = v0       Direct(ArgAttributes { regular: NonNull | NoUndef, arg_ext: None, pointee_size: Size(0 bytes), pointee_align: Some(Align(8 bytes)) }) &'{erased} &'{erased} [u16]
 //!
-//! ; kind  local ty                              size align (abi,pref)
-//! ; zst   _1    IsNotEmpty                        0b 1, 8              align=8,offset=
-//! ; stack _2    (&&[u16],)                        8b 8, 8              storage=ss0
-//! ; ssa   _3    &mut IsNotEmpty                   8b 8, 8              var=2
+//! ; kind  local ty                              size align (abi)
+//! ; zst   _1    IsNotEmpty                        0b 1                align=1,offset=
+//! ; stack _2    (&'{erased} &'{erased} [u16],)    8b 8                storage=ss0
+//! ; ssa   _3    &'{erased} mut IsNotEmpty         8b 8                var=2
 //!
-//!     ss0 = explicit_slot 16
+//!     ss0 = explicit_slot 16, align = 16
 //!     sig0 = (i64, i64) -> i8, i8 system_v
-//!     fn0 = colocated u0:23 sig0 ; Instance { def: Item(WithOptConstParam { did: DefId(0:46 ~ example[4e51]::{impl#1}::call_mut), const_param_did: None }), args: [ReErased, ReErased] }
+//!     fn0 = colocated u0:23 sig0 ; Instance { def: Item(DefId(0:46 ~ example[3895]::{impl#1}::call_mut)), args: ['{erased}, '{erased}] }
 //!
 //! block0(v0: i64):
 //!     nop
-//! ; write_cvalue: Addr(Pointer { base: Stack(ss0), offset: Offset32(0) }, None): &&[u16] <- ByVal(v0): &&[u16]
+//! ; write_cvalue: Addr(Pointer { base: Stack(ss0), offset: Offset32(0) }, None): &'{erased} &'{erased} [u16] <- ByVal(v0): &'{erased} &'{erased} [u16]
 //!     stack_store v0, ss0
 //!     jump block1
 //!
 //! block1:
 //!     nop
 //! ; _3 = &mut _1
-//!     v1 = iconst.i64 8
-//! ; write_cvalue: Var(_3, var2): &mut IsNotEmpty <- ByVal(v1): &mut IsNotEmpty
+//!     v1 = iconst.i64 1
+//! ; write_cvalue: Var(_3, var2): &'{erased} mut IsNotEmpty <- ByVal(v1): &'{erased} mut IsNotEmpty
 //! ;
-//! ; _0 = <IsNotEmpty as mini_core::FnMut<(&&[u16],)>>::call_mut(move _3, _2)
+//! ; _0 = <IsNotEmpty as mini_core::FnMut<(&&[u16],)>>::call_mut(move _3, copy _2)
 //!     v2 = stack_load.i64 ss0
-//!     v3, v4 = call fn0(v1, v2)  ; v1 = 8
+//! ; abi: FnAbi { args: [ArgAbi { layout: TyAndLayout { ty: &mut IsNotEmpty, layout: Layout { size: Size(8 bytes), align: AbiAndPrefAlign { abi: Align(8 bytes), pref: Align(8 bytes) }, backend_repr: Scalar(Initialized { value: Pointer(AddressSpace(0)), valid_range: 1..=18446744073709551615 }), fields: Primitive, largest_niche: Some(Niche { offset: Size(0 bytes), value: Pointer(AddressSpace(0)), valid_range: 1..=18446744073709551615 }), uninhabited: false, variants: Single { index: 0 }, max_repr_align: None, unadjusted_abi_align: Align(8 bytes), randomization_seed: 281492156579847 } }, mode: Direct(ArgAttributes { regular: NonNull | NoUndef, arg_ext: None, pointee_size: Size(0 bytes), pointee_align: Some(Align(1 bytes)) }) }, ArgAbi { layout: TyAndLayout { ty: &&[u16], layout: Layout { size: Size(8 bytes), align: AbiAndPrefAlign { abi: Align(8 bytes), pref: Align(8 bytes) }, backend_repr: Scalar(Initialized { value: Pointer(AddressSpace(0)), valid_range: 1..=18446744073709551615 }), fields: Primitive, largest_niche: Some(Niche { offset: Size(0 bytes), value: Pointer(AddressSpace(0)), valid_range: 1..=18446744073709551615 }), uninhabited: false, variants: Single { index: 0 }, max_repr_align: None, unadjusted_abi_align: Align(8 bytes), randomization_seed: 281492156579847 } }, mode: Direct(ArgAttributes { regular: NonNull | NoUndef, arg_ext: None, pointee_size: Size(0 bytes), pointee_align: Some(Align(8 bytes)) }) }], ret: ArgAbi { layout: TyAndLayout { ty: (u8, u8), layout: Layout { size: Size(2 bytes), align: AbiAndPrefAlign { abi: Align(1 bytes), pref: Align(8 bytes) }, backend_repr: ScalarPair(Initialized { value: Int(I8, false), valid_range: 0..=255 }, Initialized { value: Int(I8, false), valid_range: 0..=255 }), fields: Arbitrary { offsets: [Size(0 bytes), Size(1 bytes)], memory_index: [0, 1] }, largest_niche: None, uninhabited: false, variants: Single { index: 0 }, max_repr_align: None, unadjusted_abi_align: Align(1 bytes), randomization_seed: 71776127651151873 } }, mode: Pair(ArgAttributes { regular: NoUndef, arg_ext: None, pointee_size: Size(0 bytes), pointee_align: None }, ArgAttributes { regular: NoUndef, arg_ext: None, pointee_size: Size(0 bytes), pointee_align: None }) }, c_variadic: false, fixed_count: 1, conv: Rust, can_unwind: false }
+//!     v3, v4 = call fn0(v1, v2)  ; v1 = 1
 //!     v5 -> v3
 //!     v6 -> v4
 //! ; write_cvalue: VarPair(_0, var0, var1): (u8, u8) <- ByValPair(v3, v4): (u8, u8)
@@ -73,6 +74,7 @@ pub(crate) struct CommentWriter {
     enabled: bool,
     global_comments: Vec<String>,
     entity_comments: FxHashMap<AnyEntity, String>,
+    inst_post_comments: FxHashMap<Inst, String>,
 }
 
 impl CommentWriter {
@@ -95,7 +97,12 @@ impl CommentWriter {
             vec![]
         };
 
-        CommentWriter { enabled, global_comments, entity_comments: FxHashMap::default() }
+        CommentWriter {
+            enabled,
+            global_comments,
+            entity_comments: FxHashMap::default(),
+            inst_post_comments: FxHashMap::default(),
+        }
     }
 }
 
@@ -118,6 +125,25 @@ impl CommentWriter {
 
         use std::collections::hash_map::Entry;
         match self.entity_comments.entry(entity.into()) {
+            Entry::Occupied(mut occ) => {
+                occ.get_mut().push('\n');
+                occ.get_mut().push_str(comment.as_ref());
+            }
+            Entry::Vacant(vac) => {
+                vac.insert(comment.into());
+            }
+        }
+    }
+
+    pub(crate) fn add_post_comment<S: Into<String> + AsRef<str>>(
+        &mut self,
+        entity: Inst,
+        comment: S,
+    ) {
+        debug_assert!(self.enabled);
+
+        use std::collections::hash_map::Entry;
+        match self.inst_post_comments.entry(entity) {
             Entry::Occupied(mut occ) => {
                 occ.get_mut().push('\n');
                 occ.get_mut().push_str(comment.as_ref());
@@ -188,8 +214,11 @@ impl FuncWriter for &'_ CommentWriter {
         inst: Inst,
         indent: usize,
     ) -> fmt::Result {
-        PlainWriter.write_instruction(w, func, aliases, inst, indent)?;
         if let Some(comment) = self.entity_comments.get(&inst.into()) {
+            writeln!(w, "; {}", comment.replace('\n', "\n; "))?;
+        }
+        PlainWriter.write_instruction(w, func, aliases, inst, indent)?;
+        if let Some(comment) = self.inst_post_comments.get(&inst) {
             writeln!(w, "; {}", comment.replace('\n', "\n; "))?;
         }
         Ok(())
@@ -207,6 +236,14 @@ impl FunctionCx<'_, '_, '_> {
         comment: S,
     ) {
         self.clif_comments.add_comment(entity, comment);
+    }
+
+    pub(crate) fn add_post_comment<S: Into<String> + AsRef<str>>(
+        &mut self,
+        entity: Inst,
+        comment: S,
+    ) {
+        self.clif_comments.add_post_comment(entity, comment);
     }
 }
 

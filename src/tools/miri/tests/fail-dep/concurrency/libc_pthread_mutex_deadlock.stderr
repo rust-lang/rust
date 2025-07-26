@@ -1,17 +1,17 @@
-error: deadlock: the evaluated program deadlocked
+error: the evaluated program deadlocked
   --> tests/fail-dep/concurrency/libc_pthread_mutex_deadlock.rs:LL:CC
    |
 LL |             assert_eq!(libc::pthread_mutex_lock(lock_copy.0.get() as *mut _), 0);
-   |                                                                            ^ the evaluated program deadlocked
+   |                                                                            ^ this thread got stuck here
    |
    = note: BACKTRACE on thread `unnamed-ID`:
    = note: inside closure at tests/fail-dep/concurrency/libc_pthread_mutex_deadlock.rs:LL:CC
 
-error: deadlock: the evaluated program deadlocked
+error: the evaluated program deadlocked
   --> RUSTLIB/std/src/sys/pal/PLATFORM/thread.rs:LL:CC
    |
 LL |         let ret = unsafe { libc::pthread_join(id, ptr::null_mut()) };
-   |                                                                  ^ the evaluated program deadlocked
+   |                                                                  ^ this thread got stuck here
    |
    = note: BACKTRACE:
    = note: inside `std::sys::pal::PLATFORM::thread::Thread::join` at RUSTLIB/std/src/sys/pal/PLATFORM/thread.rs:LL:CC

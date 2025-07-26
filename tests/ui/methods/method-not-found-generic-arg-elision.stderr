@@ -23,7 +23,7 @@ error[E0599]: no method named `extend` found for struct `Map` in the current sco
   --> $DIR/method-not-found-generic-arg-elision.rs:87:67
    |
 LL |     v.iter().map(Box::new(|x| x * x) as Box<dyn Fn(&i32) -> i32>).extend(std::iter::once(100));
-   |                                                                   ^^^^^^ method not found in `Map<Iter<'_, i32>, Box<dyn Fn(&i32) -> i32>>`
+   |                                                                   ^^^^^^ method not found in `Map<std::slice::Iter<'_, i32>, Box<dyn for<'a> Fn(&'a i32) -> i32>>`
 
 error[E0599]: no method named `method` found for struct `Wrapper<bool>` in the current scope
   --> $DIR/method-not-found-generic-arg-elision.rs:90:13

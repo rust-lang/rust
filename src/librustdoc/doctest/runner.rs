@@ -12,6 +12,7 @@ use crate::html::markdown::{Ignore, LangString};
 /// Convenient type to merge compatible doctests into one.
 pub(crate) struct DocTestRunner {
     crate_attrs: FxIndexSet<String>,
+    global_crate_attrs: FxIndexSet<String>,
     ids: String,
     output: String,
     output_merged_tests: String,
@@ -23,6 +24,7 @@ impl DocTestRunner {
     pub(crate) fn new() -> Self {
         Self {
             crate_attrs: FxIndexSet::default(),
+            global_crate_attrs: FxIndexSet::default(),
             ids: String::new(),
             output: String::new(),
             output_merged_tests: String::new(),
@@ -45,6 +47,9 @@ impl DocTestRunner {
         if !ignore {
             for line in doctest.crate_attrs.split('\n') {
                 self.crate_attrs.insert(line.to_string());
+            }
+            for line in &doctest.global_crate_attrs {
+                self.global_crate_attrs.insert(line.to_string());
             }
         }
         self.ids.push_str(&format!(
@@ -85,7 +90,7 @@ impl DocTestRunner {
             code_prefix.push('\n');
         }
 
-        if opts.attrs.is_empty() {
+        if self.global_crate_attrs.is_empty() {
             // If there aren't any attributes supplied by #![doc(test(attr(...)))], then allow some
             // lints that are commonly triggered in doctests. The crate-level test attributes are
             // commonly used to make tests fail in case they trigger warnings, so having this there in
@@ -93,8 +98,8 @@ impl DocTestRunner {
             code_prefix.push_str("#![allow(unused)]\n");
         }
 
-        // Next, any attributes that came from the crate root via #![doc(test(attr(...)))].
-        for attr in &opts.attrs {
+        // Next, any attributes that came from #![doc(test(attr(...)))].
+        for attr in &self.global_crate_attrs {
             code_prefix.push_str(&format!("#![{attr}]\n"));
         }
 

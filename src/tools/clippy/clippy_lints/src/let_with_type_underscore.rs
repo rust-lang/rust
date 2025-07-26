@@ -1,5 +1,6 @@
-use clippy_utils::diagnostics::span_lint_and_help;
+use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::is_from_proc_macro;
+use rustc_errors::Applicability;
 use rustc_hir::{LetStmt, TyKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
@@ -32,13 +33,19 @@ impl<'tcx> LateLintPass<'tcx> for UnderscoreTyped {
             && !local.span.in_external_macro(cx.tcx.sess.source_map())
             && !is_from_proc_macro(cx, ty)
         {
-            span_lint_and_help(
+            span_lint_and_then(
                 cx,
                 LET_WITH_TYPE_UNDERSCORE,
                 local.span,
                 "variable declared with type underscore",
-                Some(ty.span.with_lo(local.pat.span.hi())),
-                "remove the explicit type `_` declaration",
+                |diag| {
+                    diag.span_suggestion_verbose(
+                        ty.span.with_lo(local.pat.span.hi()),
+                        "remove the explicit type `_` declaration",
+                        "",
+                        Applicability::MachineApplicable,
+                    );
+                },
             );
         }
     }

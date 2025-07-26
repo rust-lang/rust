@@ -1,11 +1,42 @@
-error[E0195]: lifetime parameters or bounds on associated function `bar` do not match the trait declaration
-  --> $DIR/E0195.rs:9:11
+error[E0195]: lifetime parameters do not match the trait definition
+  --> $DIR/E0195.rs:16:12
    |
+LL |     fn bar<'a,'b>(x: &'a str, y: &'b str) {
+   |            ^^ ^^
+   |
+   = note: lifetime parameters differ in whether they are early- or late-bound
+note: `'a` differs between the trait and impl
+  --> $DIR/E0195.rs:4:12
+   |
+LL | trait Trait {
+   | ----------- in this trait...
+...
 LL |     fn bar<'a,'b:'a>(x: &'a str, y: &'b str);
-   |           ---------- lifetimes in impl do not match this associated function in trait
+   |            ^^    -- this lifetime bound makes `'a` early-bound
+   |            |
+   |            `'a` is early-bound
+...
+LL | impl Trait for Foo {
+   | ------------------ in this impl...
 ...
 LL |     fn bar<'a,'b>(x: &'a str, y: &'b str) {
-   |           ^^^^^^^ lifetimes do not match associated function in trait
+   |            ^^ `'a` is late-bound
+note: `'b` differs between the trait and impl
+  --> $DIR/E0195.rs:4:15
+   |
+LL | trait Trait {
+   | ----------- in this trait...
+...
+LL |     fn bar<'a,'b:'a>(x: &'a str, y: &'b str);
+   |               ^^ -- this lifetime bound makes `'b` early-bound
+   |               |
+   |               `'b` is early-bound
+...
+LL | impl Trait for Foo {
+   | ------------------ in this impl...
+...
+LL |     fn bar<'a,'b>(x: &'a str, y: &'b str) {
+   |               ^^ `'b` is late-bound
 
 error: aborting due to 1 previous error
 

@@ -1,23 +1,38 @@
 warning: expected a macro, found a primitive type
-  --> $DIR/tests/ui-toml/toml_invalid_path/clippy.toml:4:1
+  --> $DIR/tests/ui-toml/toml_invalid_path/clippy.toml:1:1
    |
 LL | / [[disallowed-macros]]
 LL | | path = "bool"
    | |_____________^
+   |
+   = help: add `allow-invalid = true` to the entry to suppress this warning
 
-warning: `std::process::current_exe` does not refer to an existing function
-  --> $DIR/tests/ui-toml/toml_invalid_path/clippy.toml:7:1
+warning: `std::process::current_exe` does not refer to a reachable function
+  --> $DIR/tests/ui-toml/toml_invalid_path/clippy.toml:4:1
    |
 LL | / [[disallowed-methods]]
 LL | | path = "std::process::current_exe"
    | |__________________________________^
+   |
+   = help: add `allow-invalid = true` to the entry to suppress this warning
 
-warning: expected a type, found a tuple variant
-  --> $DIR/tests/ui-toml/toml_invalid_path/clippy.toml:1:1
+warning: `` does not refer to a reachable function
+  --> $DIR/tests/ui-toml/toml_invalid_path/clippy.toml:7:1
+   |
+LL | / [[disallowed-methods]]
+LL | | path = ""
+   | |_________^
+   |
+   = help: add `allow-invalid = true` to the entry to suppress this warning
+
+warning: expected a type, found a variant
+  --> $DIR/tests/ui-toml/toml_invalid_path/clippy.toml:10:1
    |
 LL | / [[disallowed-types]]
 LL | | path = "std::result::Result::Err"
    | |_________________________________^
+   |
+   = help: add `allow-invalid = true` to the entry to suppress this warning
 
-warning: 3 warnings emitted
+warning: 4 warnings emitted
 

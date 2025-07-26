@@ -27,7 +27,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lock;
 use rustc_macros::{HashStable, TypeFoldable, TypeVisitable};
 pub use rustc_type_ir as ir;
-pub use rustc_type_ir::{CanonicalTyVarKind, CanonicalVarKind};
+pub use rustc_type_ir::CanonicalTyVarKind;
 use smallvec::SmallVec;
 
 use crate::mir::ConstraintCategory;
@@ -35,9 +35,9 @@ use crate::ty::{self, GenericArg, List, Ty, TyCtxt, TypeFlags, TypeVisitableExt}
 
 pub type CanonicalQueryInput<'tcx, V> = ir::CanonicalQueryInput<TyCtxt<'tcx>, V>;
 pub type Canonical<'tcx, V> = ir::Canonical<TyCtxt<'tcx>, V>;
-pub type CanonicalVarInfo<'tcx> = ir::CanonicalVarInfo<TyCtxt<'tcx>>;
+pub type CanonicalVarKind<'tcx> = ir::CanonicalVarKind<TyCtxt<'tcx>>;
 pub type CanonicalVarValues<'tcx> = ir::CanonicalVarValues<TyCtxt<'tcx>>;
-pub type CanonicalVarInfos<'tcx> = &'tcx List<CanonicalVarInfo<'tcx>>;
+pub type CanonicalVarKinds<'tcx> = &'tcx List<CanonicalVarKind<'tcx>>;
 
 /// When we canonicalize a value to form a query, we wind up replacing
 /// various parts of it with canonical variables. This struct stores
@@ -81,13 +81,18 @@ pub struct QueryResponse<'tcx, R> {
 #[derive(HashStable, TypeFoldable, TypeVisitable)]
 pub struct QueryRegionConstraints<'tcx> {
     pub outlives: Vec<QueryOutlivesConstraint<'tcx>>,
+    pub assumptions: Vec<ty::ArgOutlivesPredicate<'tcx>>,
 }
 
 impl QueryRegionConstraints<'_> {
-    /// Represents an empty (trivially true) set of region
-    /// constraints.
+    /// Represents an empty (trivially true) set of region constraints.
+    ///
+    /// FIXME(higher_ranked_auto): This could still just be true if there are only assumptions?
+    /// Because I don't expect for us to get cases where an assumption from one query would
+    /// discharge a requirement from another query, which is a potential problem if we did throw
+    /// away these assumptions because there were no constraints.
     pub fn is_empty(&self) -> bool {
-        self.outlives.is_empty()
+        self.outlives.is_empty() && self.assumptions.is_empty()
     }
 }
 
@@ -130,8 +135,7 @@ impl<'tcx, R> QueryResponse<'tcx, R> {
     }
 }
 
-pub type QueryOutlivesConstraint<'tcx> =
-    (ty::OutlivesPredicate<'tcx, GenericArg<'tcx>>, ConstraintCategory<'tcx>);
+pub type QueryOutlivesConstraint<'tcx> = (ty::ArgOutlivesPredicate<'tcx>, ConstraintCategory<'tcx>);
 
 #[derive(Default)]
 pub struct CanonicalParamEnvCache<'tcx> {

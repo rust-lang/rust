@@ -132,6 +132,7 @@ impl Iterator for ReadDir {
             let mut wfd = mem::zeroed();
             loop {
                 if c::FindNextFileW(handle.0, &mut wfd) == 0 {
+                    self.handle = None;
                     match api::get_last_error() {
                         WinError::NO_MORE_FILES => return None,
                         WinError { code } => {
@@ -415,10 +416,7 @@ impl File {
 
         match result {
             Ok(_) => Ok(()),
-            Err(err)
-                if err.raw_os_error() == Some(c::ERROR_IO_PENDING as i32)
-                    || err.raw_os_error() == Some(c::ERROR_LOCK_VIOLATION as i32) =>
-            {
+            Err(err) if err.raw_os_error() == Some(c::ERROR_LOCK_VIOLATION as i32) => {
                 Err(TryLockError::WouldBlock)
             }
             Err(err) => Err(TryLockError::Error(err)),
@@ -440,10 +438,7 @@ impl File {
 
         match result {
             Ok(_) => Ok(()),
-            Err(err)
-                if err.raw_os_error() == Some(c::ERROR_IO_PENDING as i32)
-                    || err.raw_os_error() == Some(c::ERROR_LOCK_VIOLATION as i32) =>
-            {
+            Err(err) if err.raw_os_error() == Some(c::ERROR_LOCK_VIOLATION as i32) => {
                 Err(TryLockError::WouldBlock)
             }
             Err(err) => Err(TryLockError::Error(err)),
@@ -620,6 +615,14 @@ impl File {
         let mut newpos = 0;
         cvt(unsafe { c::SetFilePointerEx(self.handle.as_raw_handle(), pos, &mut newpos, whence) })?;
         Ok(newpos as u64)
+    }
+
+    pub fn size(&self) -> Option<io::Result<u64>> {
+        let mut result = 0;
+        Some(
+            cvt(unsafe { c::GetFileSizeEx(self.handle.as_raw_handle(), &mut result) })
+                .map(|_| result as u64),
+        )
     }
 
     pub fn tell(&self) -> io::Result<u64> {

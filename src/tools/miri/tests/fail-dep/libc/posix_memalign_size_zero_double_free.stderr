@@ -2,7 +2,7 @@ error: Undefined Behavior: memory access failed: ALLOC has been freed, so this p
   --> tests/fail-dep/libc/posix_memalign_size_zero_double_free.rs:LL:CC
    |
 LL |         libc::free(ptr);
-   |         ^^^^^^^^^^^^^^^ memory access failed: ALLOC has been freed, so this pointer is dangling
+   |         ^^^^^^^^^^^^^^^ Undefined Behavior occurred here
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

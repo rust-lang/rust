@@ -1,3 +1,5 @@
+//@ needs-target-std
+//
 // When a compilation failure deals with seemingly identical types, some helpful
 // errors should be printed.
 // The main use case of this error is when there are two crates

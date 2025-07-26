@@ -228,6 +228,7 @@ pub enum InlineAsmArch {
     RiscV64,
     Nvptx64,
     Hexagon,
+    LoongArch32,
     LoongArch64,
     Mips,
     Mips64,
@@ -263,6 +264,7 @@ impl FromStr for InlineAsmArch {
             "powerpc" => Ok(Self::PowerPC),
             "powerpc64" => Ok(Self::PowerPC64),
             "hexagon" => Ok(Self::Hexagon),
+            "loongarch32" => Ok(Self::LoongArch32),
             "loongarch64" => Ok(Self::LoongArch64),
             "mips" | "mips32r6" => Ok(Self::Mips),
             "mips64" | "mips64r6" => Ok(Self::Mips64),
@@ -372,7 +374,9 @@ impl InlineAsmReg {
                 Self::PowerPC(PowerPCInlineAsmReg::parse(name)?)
             }
             InlineAsmArch::Hexagon => Self::Hexagon(HexagonInlineAsmReg::parse(name)?),
-            InlineAsmArch::LoongArch64 => Self::LoongArch(LoongArchInlineAsmReg::parse(name)?),
+            InlineAsmArch::LoongArch32 | InlineAsmArch::LoongArch64 => {
+                Self::LoongArch(LoongArchInlineAsmReg::parse(name)?)
+            }
             InlineAsmArch::Mips | InlineAsmArch::Mips64 => {
                 Self::Mips(MipsInlineAsmReg::parse(name)?)
             }
@@ -669,7 +673,9 @@ impl InlineAsmRegClass {
                 Self::PowerPC(PowerPCInlineAsmRegClass::parse(name)?)
             }
             InlineAsmArch::Hexagon => Self::Hexagon(HexagonInlineAsmRegClass::parse(name)?),
-            InlineAsmArch::LoongArch64 => Self::LoongArch(LoongArchInlineAsmRegClass::parse(name)?),
+            InlineAsmArch::LoongArch32 | InlineAsmArch::LoongArch64 => {
+                Self::LoongArch(LoongArchInlineAsmRegClass::parse(name)?)
+            }
             InlineAsmArch::Mips | InlineAsmArch::Mips64 => {
                 Self::Mips(MipsInlineAsmRegClass::parse(name)?)
             }
@@ -879,7 +885,7 @@ pub fn allocatable_registers(
             hexagon::fill_reg_map(arch, reloc_model, target_features, target, &mut map);
             map
         }
-        InlineAsmArch::LoongArch64 => {
+        InlineAsmArch::LoongArch32 | InlineAsmArch::LoongArch64 => {
             let mut map = loongarch::regclass_map();
             loongarch::fill_reg_map(arch, reloc_model, target_features, target, &mut map);
             map
@@ -1016,7 +1022,7 @@ impl InlineAsmClobberAbi {
                 "C" | "system" => Ok(InlineAsmClobberAbi::Avr),
                 _ => Err(&["C", "system"]),
             },
-            InlineAsmArch::LoongArch64 => match name {
+            InlineAsmArch::LoongArch32 | InlineAsmArch::LoongArch64 => match name {
                 "C" | "system" => Ok(InlineAsmClobberAbi::LoongArch),
                 _ => Err(&["C", "system"]),
             },

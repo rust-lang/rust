@@ -1,0 +1,20 @@
+error[E0277]: the trait bound `&Chars: Trait` is not satisfied
+  --> $DIR/suggest-remove-deref-issue-140166.rs:14:26
+   |
+LL |     format_args!("{:?}", FlatMap(&Chars));
+   |                   ----   ^^^^^^^^^^^^^^^ the trait `Trait` is not implemented for `&Chars`
+   |                   |
+   |                   required by this formatting parameter
+   |
+   = help: the trait `Trait` is implemented for `Chars`
+note: required for `FlatMap<&Chars>` to implement `Debug`
+  --> $DIR/suggest-remove-deref-issue-140166.rs:7:16
+   |
+LL | impl<T: Trait> std::fmt::Debug for FlatMap<T> {
+   |         -----  ^^^^^^^^^^^^^^^     ^^^^^^^^^^
+   |         |
+   |         unsatisfied trait bound introduced here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

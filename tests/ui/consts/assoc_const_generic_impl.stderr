@@ -1,8 +1,8 @@
-error[E0080]: evaluation of `<u32 as ZeroSized>::I_AM_ZERO_SIZED` failed
-  --> $DIR/assoc_const_generic_impl.rs:9:34
+error[E0080]: index out of bounds: the length is 1 but the index is 4
+  --> $DIR/assoc_const_generic_impl.rs:9:33
    |
-LL |     const I_AM_ZERO_SIZED: ()  = [()][std::mem::size_of::<Self>()];
-   |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ index out of bounds: the length is 1 but the index is 4
+LL |     const I_AM_ZERO_SIZED: () = [()][std::mem::size_of::<Self>()];
+   |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `<u32 as ZeroSized>::I_AM_ZERO_SIZED` failed here
 
 note: erroneous constant encountered
   --> $DIR/assoc_const_generic_impl.rs:11:9

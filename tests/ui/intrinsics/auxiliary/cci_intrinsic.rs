@@ -1,11 +1,12 @@
-#![feature(intrinsics)]
+#![feature(intrinsics, adt_const_params)]
 
-pub mod rusti {
+mod rusti {
     #[rustc_intrinsic]
-    pub unsafe fn atomic_xchg_seqcst<T>(dst: *mut T, src: T) -> T;
+    pub unsafe fn size_of_val<T: ?Sized>(ptr: *const T) -> usize;
 }
 
+// A monomorphic function, inlined cross-crate, referencing an intrinsic.
 #[inline(always)]
-pub fn atomic_xchg_seqcst(dst: *mut isize, src: isize) -> isize {
-    unsafe { rusti::atomic_xchg_seqcst(dst, src) }
+pub fn size_of_val(val: &[u8]) -> usize {
+    unsafe { rusti::size_of_val(val) }
 }

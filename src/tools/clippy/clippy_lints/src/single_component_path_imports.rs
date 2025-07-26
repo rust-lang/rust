@@ -219,22 +219,21 @@ impl SingleComponentPathImports {
                             }
                         }
                     }
-                } else {
-                    // keep track of `use self::some_module` usages
-                    if segments[0].ident.name == kw::SelfLower {
-                        // simple case such as `use self::module::SomeStruct`
-                        if segments.len() > 1 {
-                            imports_reused_with_self.push(segments[1].ident.name);
-                            return;
-                        }
+                }
+                // keep track of `use self::some_module` usages
+                else if segments[0].ident.name == kw::SelfLower {
+                    // simple case such as `use self::module::SomeStruct`
+                    if segments.len() > 1 {
+                        imports_reused_with_self.push(segments[1].ident.name);
+                        return;
+                    }
 
-                        // nested case such as `use self::{module1::Struct1, module2::Struct2}`
-                        if let UseTreeKind::Nested { items, .. } = &use_tree.kind {
-                            for tree in items {
-                                let segments = &tree.0.prefix.segments;
-                                if !segments.is_empty() {
-                                    imports_reused_with_self.push(segments[0].ident.name);
-                                }
+                    // nested case such as `use self::{module1::Struct1, module2::Struct2}`
+                    if let UseTreeKind::Nested { items, .. } = &use_tree.kind {
+                        for tree in items {
+                            let segments = &tree.0.prefix.segments;
+                            if !segments.is_empty() {
+                                imports_reused_with_self.push(segments[0].ident.name);
                             }
                         }
                     }

@@ -1,7 +1,7 @@
 #![allow(unused)]
 #![warn(clippy::impl_trait_in_params)]
 
-//@no-rustfix
+//@no-rustfix: has placeholders
 pub trait Trait {}
 pub trait AnotherTrait<T> {}
 

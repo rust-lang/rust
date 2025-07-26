@@ -1,8 +1,0 @@
-error: cannot find macro `iamnotanextensionthatexists` in this scope
-  --> $DIR/ext-nonexistent.rs:1:13
-   |
-LL | fn main() { iamnotanextensionthatexists!(""); }
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: aborting due to 1 previous error
-

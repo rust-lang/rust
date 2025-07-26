@@ -5,6 +5,7 @@
 use std::{mem, ops::RangeInclusive};
 
 use parser::T;
+use rowan::TextSize;
 
 use crate::{
     SyntaxElement, SyntaxKind, SyntaxNode, SyntaxToken,
@@ -73,6 +74,12 @@ impl Position {
             None => PositionRepr::FirstChild(node),
         };
         Position { repr }
+    }
+    pub fn offset(&self) -> TextSize {
+        match &self.repr {
+            PositionRepr::FirstChild(node) => node.text_range().start(),
+            PositionRepr::After(elem) => elem.text_range().end(),
+        }
     }
 }
 
@@ -204,6 +211,13 @@ fn ws_between(left: &SyntaxElement, right: &SyntaxElement) -> Option<SyntaxToken
         let mut indent = IndentLevel::from_element(left);
         if left.kind() == SyntaxKind::USE {
             indent.0 = IndentLevel::from_element(right).0.max(indent.0);
+        }
+        return Some(make::tokens::whitespace(&format!("\n{indent}")));
+    }
+    if left.kind() == SyntaxKind::ATTR {
+        let mut indent = IndentLevel::from_element(right);
+        if right.kind() == SyntaxKind::ATTR {
+            indent.0 = IndentLevel::from_element(left).0.max(indent.0);
         }
         return Some(make::tokens::whitespace(&format!("\n{indent}")));
     }

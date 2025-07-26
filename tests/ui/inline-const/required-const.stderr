@@ -1,8 +1,8 @@
-error[E0080]: evaluation of `foo::<i32>::{constant#0}` failed
+error[E0080]: evaluation panicked: explicit panic
   --> $DIR/required-const.rs:6:17
    |
 LL |         const { panic!() }
-   |                 ^^^^^^^^ evaluation panicked: explicit panic
+   |                 ^^^^^^^^ evaluation of `foo::<i32>::{constant#0}` failed here
 
 note: erroneous constant encountered
   --> $DIR/required-const.rs:6:9

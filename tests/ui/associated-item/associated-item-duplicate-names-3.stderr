@@ -13,7 +13,13 @@ error[E0223]: ambiguous associated type
   --> $DIR/associated-item-duplicate-names-3.rs:18:12
    |
 LL |     let x: Baz::Bar = 5;
-   |            ^^^^^^^^ help: use fully-qualified syntax: `<Baz as Foo>::Bar`
+   |            ^^^^^^^^
+   |
+help: use fully-qualified syntax
+   |
+LL -     let x: Baz::Bar = 5;
+LL +     let x: <Baz as Foo>::Bar = 5;
+   |
 
 error: aborting due to 2 previous errors
 

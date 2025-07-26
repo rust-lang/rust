@@ -1,13 +1,13 @@
 // Checks sidebar resizing
 go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
-assert-property: (".sidebar", {"clientWidth": "200"})
+assert-property: (".sidebar", {"clientWidth": "199"})
 show-text: true
 // normal resizing
 drag-and-drop: ((205, 100), (185, 100))
-assert-property: (".sidebar", {"clientWidth": "182"})
+assert-property: (".sidebar", {"clientWidth": "181"})
 // resize past maximum (don't grow past 500)
 drag-and-drop: ((185, 100), (600, 100))
-assert-property: (".sidebar", {"clientWidth": "500"})
+assert-property: (".sidebar", {"clientWidth": "499"})
 // resize past minimum (hide sidebar)
 drag-and-drop: ((501, 100), (5, 100))
 assert-property: (".sidebar", {"clientWidth": "0"})

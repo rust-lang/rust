@@ -6,9 +6,8 @@ LL | union EmptyUnion {}
 
 error: layout_of(E) = Layout {
            size: Size(12 bytes),
-           align: AbiAndPrefAlign {
+           align: AbiAlign {
                abi: Align(4 bytes),
-               pref: $SOME_ALIGN,
            },
            backend_repr: Memory {
                sized: true,
@@ -45,9 +44,8 @@ error: layout_of(E) = Layout {
                variants: [
                    Layout {
                        size: Size(4 bytes),
-                       align: AbiAndPrefAlign {
+                       align: AbiAlign {
                            abi: Align(1 bytes),
-                           pref: $SOME_ALIGN,
                        },
                        backend_repr: Memory {
                            sized: true,
@@ -67,9 +65,8 @@ error: layout_of(E) = Layout {
                    },
                    Layout {
                        size: Size(12 bytes),
-                       align: AbiAndPrefAlign {
+                       align: AbiAlign {
                            abi: Align(4 bytes),
-                           pref: $SOME_ALIGN,
                        },
                        backend_repr: Memory {
                            sized: true,
@@ -108,9 +105,8 @@ LL | enum E { Foo, Bar(!, i32, i32) }
 
 error: layout_of(S) = Layout {
            size: Size(8 bytes),
-           align: AbiAndPrefAlign {
+           align: AbiAlign {
                abi: Align(4 bytes),
-               pref: $SOME_ALIGN,
            },
            backend_repr: ScalarPair(
                Initialized {
@@ -156,9 +152,8 @@ LL | struct S { f1: i32, f2: (), f3: i32 }
 
 error: layout_of(U) = Layout {
            size: Size(8 bytes),
-           align: AbiAndPrefAlign {
+           align: AbiAlign {
                abi: Align(4 bytes),
-               pref: $SOME_ALIGN,
            },
            backend_repr: Memory {
                sized: true,
@@ -182,9 +177,8 @@ LL | union U { f1: (i32, i32), f3: i32 }
 
 error: layout_of(Result<i32, i32>) = Layout {
            size: Size(8 bytes),
-           align: AbiAndPrefAlign {
+           align: AbiAlign {
                abi: Align(4 bytes),
-               pref: $SOME_ALIGN,
            },
            backend_repr: ScalarPair(
                Initialized {
@@ -234,9 +228,8 @@ error: layout_of(Result<i32, i32>) = Layout {
                variants: [
                    Layout {
                        size: Size(8 bytes),
-                       align: AbiAndPrefAlign {
+                       align: AbiAlign {
                            abi: Align(4 bytes),
-                           pref: $SOME_ALIGN,
                        },
                        backend_repr: ScalarPair(
                            Initialized {
@@ -273,9 +266,8 @@ error: layout_of(Result<i32, i32>) = Layout {
                    },
                    Layout {
                        size: Size(8 bytes),
-                       align: AbiAndPrefAlign {
+                       align: AbiAlign {
                            abi: Align(4 bytes),
-                           pref: $SOME_ALIGN,
                        },
                        backend_repr: ScalarPair(
                            Initialized {
@@ -323,9 +315,8 @@ LL | type Test = Result<i32, i32>;
 
 error: layout_of(i32) = Layout {
            size: Size(4 bytes),
-           align: AbiAndPrefAlign {
+           align: AbiAlign {
                abi: Align(4 bytes),
-               pref: $SOME_ALIGN,
            },
            backend_repr: Scalar(
                Initialized {
@@ -353,9 +344,8 @@ LL | type T = impl std::fmt::Debug;
 
 error: layout_of(V) = Layout {
            size: Size(2 bytes),
-           align: AbiAndPrefAlign {
+           align: AbiAlign {
                abi: Align(2 bytes),
-               pref: $SOME_ALIGN,
            },
            backend_repr: Memory {
                sized: true,
@@ -379,9 +369,8 @@ LL | pub union V {
 
 error: layout_of(W) = Layout {
            size: Size(2 bytes),
-           align: AbiAndPrefAlign {
+           align: AbiAlign {
                abi: Align(2 bytes),
-               pref: $SOME_ALIGN,
            },
            backend_repr: Memory {
                sized: true,
@@ -405,9 +394,8 @@ LL | pub union W {
 
 error: layout_of(Y) = Layout {
            size: Size(0 bytes),
-           align: AbiAndPrefAlign {
+           align: AbiAlign {
                abi: Align(2 bytes),
-               pref: $SOME_ALIGN,
            },
            backend_repr: Memory {
                sized: true,
@@ -431,9 +419,8 @@ LL | pub union Y {
 
 error: layout_of(P1) = Layout {
            size: Size(4 bytes),
-           align: AbiAndPrefAlign {
+           align: AbiAlign {
                abi: Align(1 bytes),
-               pref: $SOME_ALIGN,
            },
            backend_repr: Memory {
                sized: true,
@@ -457,9 +444,8 @@ LL | union P1 { x: u32 }
 
 error: layout_of(P2) = Layout {
            size: Size(8 bytes),
-           align: AbiAndPrefAlign {
+           align: AbiAlign {
                abi: Align(1 bytes),
-               pref: $SOME_ALIGN,
            },
            backend_repr: Memory {
                sized: true,
@@ -483,9 +469,8 @@ LL | union P2 { x: (u32, u32) }
 
 error: layout_of(P3) = Layout {
            size: Size(16 bytes),
-           align: AbiAndPrefAlign {
+           align: AbiAlign {
                abi: Align(1 bytes),
-               pref: $SOME_ALIGN,
            },
            backend_repr: Memory {
                sized: true,
@@ -509,9 +494,8 @@ LL | union P3 { x: F32x4 }
 
 error: layout_of(P4) = Layout {
            size: Size(12 bytes),
-           align: AbiAndPrefAlign {
+           align: AbiAlign {
                abi: Align(1 bytes),
-               pref: $SOME_ALIGN,
            },
            backend_repr: Memory {
                sized: true,
@@ -535,9 +519,8 @@ LL | union P4 { x: E }
 
 error: layout_of(P5) = Layout {
            size: Size(1 bytes),
-           align: AbiAndPrefAlign {
+           align: AbiAlign {
                abi: Align(1 bytes),
-               pref: $SOME_ALIGN,
            },
            backend_repr: Scalar(
                Union {
@@ -566,9 +549,8 @@ LL | union P5 { zst: [u16; 0], byte: u8 }
 
 error: layout_of(MaybeUninit<u8>) = Layout {
            size: Size(1 bytes),
-           align: AbiAndPrefAlign {
+           align: AbiAlign {
                abi: Align(1 bytes),
-               pref: $SOME_ALIGN,
            },
            backend_repr: Scalar(
                Union {

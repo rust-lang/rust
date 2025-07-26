@@ -52,7 +52,7 @@ pub fn find_path(
             ignore_local_imports,
             is_std_item: item_module.krate().data(db).origin.is_lang(),
             from,
-            from_def_map: &from.def_map(db),
+            from_def_map: from.def_map(db),
             fuel: Cell::new(FIND_PATH_FUEL),
         },
         item,
@@ -137,7 +137,7 @@ fn find_path_inner(ctx: &FindPathCtx<'_>, item: ItemInNs, max_len: usize) -> Opt
         let loc = variant.lookup(ctx.db);
         if let Some(mut path) = find_path_inner(ctx, ItemInNs::Types(loc.parent.into()), max_len) {
             path.push_segment(
-                ctx.db.enum_variants(loc.parent).variants[loc.index as usize].1.clone(),
+                loc.parent.enum_variants(ctx.db).variants[loc.index as usize].1.clone(),
             );
             return Some(path);
         }
@@ -615,6 +615,7 @@ fn find_local_import_locations(
                         cov_mark::hit!(discount_private_imports);
                         false
                     }
+                    Visibility::PubCrate(_) => true,
                     Visibility::Public => true,
                 };
 
@@ -691,7 +692,7 @@ mod tests {
         let (def_map, local_def_map) = module.local_def_map(&db);
         let resolved = def_map
             .resolve_path(
-                &local_def_map,
+                local_def_map,
                 &db,
                 module.local_id,
                 &mod_path,
@@ -1286,7 +1287,6 @@ $0
 
     #[test]
     fn explicit_private_imports_crate() {
-        cov_mark::check!(explicit_private_imports);
         check_found_path(
             r#"
 //- /main.rs

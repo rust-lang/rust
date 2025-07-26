@@ -30,12 +30,6 @@ error[E0121]: the placeholder `_` is not allowed within types on item signatures
    |
 LL | fn mainIterator<_ = _> {}
    |                     ^ not allowed in type signatures
-   |
-help: use type parameters instead
-   |
-LL - fn mainIterator<_ = _> {}
-LL + fn mainIterator<T = T> {}
-   |
 
 error: aborting due to 4 previous errors
 

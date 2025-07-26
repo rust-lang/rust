@@ -31,16 +31,16 @@ LL | use self::B as OtherB;
 error[E0255]: the name `D` is defined multiple times
   --> $DIR/issue-19498.rs:11:5
    |
-LL |     use C::D;
-   |         ---- previous import of the module `D` here
+LL |     use crate::C::D;
+   |         ----------- previous import of the module `D` here
 LL |     mod D {}
    |     ^^^^^ `D` redefined here
    |
    = note: `D` must be defined only once in the type namespace of this module
 help: you can use `as` to change the binding name of the import
    |
-LL |     use C::D as OtherD;
-   |              +++++++++
+LL |     use crate::C::D as OtherD;
+   |                     +++++++++
 
 error: aborting due to 3 previous errors
 

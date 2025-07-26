@@ -1,6 +1,7 @@
 use clippy_config::Conf;
 use clippy_config::types::{DisallowedPath, create_disallowed_map};
 use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::paths::PathNS;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefIdMap;
 use rustc_hir::{Expr, ExprKind};
@@ -33,6 +34,9 @@ declare_clippy_lint! {
     ///     { path = "std::vec::Vec::leak", reason = "no leaking memory" },
     ///     # Can also add a `replacement` that will be offered as a suggestion.
     ///     { path = "std::sync::Mutex::new", reason = "prefer faster & simpler non-poisonable mutex", replacement = "parking_lot::Mutex::new" },
+    ///     # This would normally error if the path is incorrect, but with `allow-invalid` = `true`,
+    ///     # it will be silently ignored
+    ///     { path = "std::fs::InvalidPath", reason = "use alternative instead", allow-invalid = true },
     /// ]
     /// ```
     ///
@@ -66,6 +70,7 @@ impl DisallowedMethods {
         let (disallowed, _) = create_disallowed_map(
             tcx,
             &conf.disallowed_methods,
+            PathNS::Value,
             |def_kind| {
                 matches!(
                     def_kind,

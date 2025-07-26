@@ -108,7 +108,7 @@ fn find_match_true<'tcx>(
 fn try_get_generic_ty(ty: Ty<'_>, index: usize) -> Option<Ty<'_>> {
     if let ty::Adt(_, subs) = ty.kind()
         && let Some(sub) = subs.get(index)
-        && let GenericArgKind::Type(sub_ty) = sub.unpack()
+        && let GenericArgKind::Type(sub_ty) = sub.kind()
     {
         Some(sub_ty)
     } else {
@@ -273,7 +273,7 @@ pub(super) fn check_match<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, op
         let node_pair = (&arms[0].pat.kind, &arms[1].pat.kind);
 
         if let Some((good_method, maybe_guard)) = found_good_method(cx, arms, node_pair) {
-            let span = is_expn_of(expr.span, "matches").unwrap_or(expr.span.to(op.span));
+            let span = is_expn_of(expr.span, sym::matches).unwrap_or(expr.span.to(op.span));
             let result_expr = match &op.kind {
                 ExprKind::AddrOf(_, _, borrowed) => borrowed,
                 _ => op,

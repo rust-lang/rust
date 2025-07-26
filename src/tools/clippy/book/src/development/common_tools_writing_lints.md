@@ -86,7 +86,7 @@ arguments have to be checked separately.
 
 ```rust
 use clippy_utils::ty::{is_type_diagnostic_item, is_type_lang_item};
-use clippy_utils::{paths, match_def_path};
+use clippy_utils::paths;
 use rustc_span::symbol::sym;
 use rustc_hir::LangItem;
 
@@ -108,7 +108,7 @@ impl LateLintPass<'_> for MyStructLint {
 
         // 3. Using the type path
         // This method should be avoided if possible
-        if match_def_path(cx, def_id, &paths::RESULT) {
+        if paths::RESULT.matches_ty(cx, ty) {
             // The type is a `core::result::Result`
         }
     }

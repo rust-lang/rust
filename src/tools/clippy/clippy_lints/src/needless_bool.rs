@@ -3,7 +3,7 @@ use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::{
     SpanlessEq, get_parent_expr, higher, is_block_like, is_else_clause, is_expn_of, is_parent_stmt,
-    is_receiver_of_method_call, peel_blocks, peel_blocks_with_stmt, span_extract_comment,
+    is_receiver_of_method_call, peel_blocks, peel_blocks_with_stmt, span_extract_comment, sym,
 };
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
@@ -199,11 +199,16 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessBool {
                 let mut applicability = Applicability::MachineApplicable;
                 let cond = Sugg::hir_with_applicability(cx, cond, "..", &mut applicability);
                 let lhs = snippet_with_applicability(cx, lhs_a.span, "..", &mut applicability);
-                let sugg = if a == b {
+                let mut sugg = if a == b {
                     format!("{cond}; {lhs} = {a:?};")
                 } else {
                     format!("{lhs} = {};", if a { cond } else { !cond })
                 };
+
+                if is_else_clause(cx.tcx, e) {
+                    sugg = format!("{{ {sugg} }}");
+                }
+
                 span_lint_and_sugg(
                     cx,
                     NEEDLESS_BOOL_ASSIGN,
@@ -320,7 +325,7 @@ fn check_comparison<'a, 'tcx>(
             cx.typeck_results().expr_ty(left_side),
             cx.typeck_results().expr_ty(right_side),
         );
-        if is_expn_of(left_side.span, "cfg").is_some() || is_expn_of(right_side.span, "cfg").is_some() {
+        if is_expn_of(left_side.span, sym::cfg).is_some() || is_expn_of(right_side.span, sym::cfg).is_some() {
             return;
         }
         if l_ty.is_bool() && r_ty.is_bool() {

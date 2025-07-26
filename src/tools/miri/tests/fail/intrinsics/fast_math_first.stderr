@@ -2,7 +2,7 @@ error: Undefined Behavior: `frem_fast` intrinsic called with non-finite value as
   --> tests/fail/intrinsics/fast_math_first.rs:LL:CC
    |
 LL | ...   let _x: f32 = core::intrinsics::frem_fast(f32::NAN, 3.2);
-   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `frem_fast` intrinsic called with non-finite value as first parameter
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Undefined Behavior occurred here
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

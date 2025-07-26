@@ -497,7 +497,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                 |r| {
                     debug!(?r);
                     let region_vid = {
-                        let name = r.get_name_or_anon();
+                        let name = r.get_name_or_anon(self.infcx.tcx);
                         self.infcx.next_nll_region_var(FR, || RegionCtxt::LateBound(name))
                     };
 
@@ -523,7 +523,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                 let kind = ty::LateParamRegionKind::from_bound(ty::BoundVar::from_usize(idx), kind);
                 let r = ty::Region::new_late_param(self.infcx.tcx, self.mir_def.to_def_id(), kind);
                 let region_vid = {
-                    let name = r.get_name_or_anon();
+                    let name = r.get_name_or_anon(self.infcx.tcx);
                     self.infcx.next_nll_region_var(FR, || RegionCtxt::LateBound(name))
                 };
 
@@ -544,10 +544,10 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
         // (as it's created inside the body itself, not passed in from outside).
         if let DefiningTy::FnDef(def_id, _) = defining_ty {
             if self.infcx.tcx.fn_sig(def_id).skip_binder().c_variadic() {
-                let va_list_did = self.infcx.tcx.require_lang_item(
-                    LangItem::VaList,
-                    Some(self.infcx.tcx.def_span(self.mir_def)),
-                );
+                let va_list_did = self
+                    .infcx
+                    .tcx
+                    .require_lang_item(LangItem::VaList, self.infcx.tcx.def_span(self.mir_def));
 
                 let reg_vid = self
                     .infcx
@@ -861,7 +861,7 @@ impl<'tcx> BorrowckInferCtxt<'tcx> {
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
         fold_regions(self.infcx.tcx, value, |region, _depth| {
-            let name = region.get_name_or_anon();
+            let name = region.get_name_or_anon(self.infcx.tcx);
             debug!(?region, ?name);
 
             self.next_nll_region_var(origin, || RegionCtxt::Free(name))

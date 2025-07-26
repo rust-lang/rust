@@ -16,7 +16,7 @@ use rustc_hir::{
     PatExprKind, PatKind, expr_needs_parens,
 };
 use rustc_hir_analysis::autoderef::report_autoderef_recursion_limit_error;
-use rustc_infer::infer;
+use rustc_infer::infer::RegionVariableOrigin;
 use rustc_middle::traits::PatternOriginExpr;
 use rustc_middle::ty::{self, Ty, TypeVisitableExt};
 use rustc_middle::{bug, span_bug};
@@ -24,7 +24,6 @@ use rustc_session::lint::builtin::NON_EXHAUSTIVE_OMITTED_PATTERNS;
 use rustc_session::parse::feature_err;
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::edition::Edition;
-use rustc_span::hygiene::DesugaringKind;
 use rustc_span::source_map::Spanned;
 use rustc_span::{BytePos, DUMMY_SP, Ident, Span, kw, sym};
 use rustc_trait_selection::infer::InferCtxtExt;
@@ -650,14 +649,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         match &pat.kind {
             // Type checking these product-like types successfully always require
             // that the expected type be of those types and not reference types.
-            PatKind::Tuple(..)
-            | PatKind::Range(..)
-            | PatKind::Slice(..) => AdjustMode::peel_all(),
+            PatKind::Tuple(..) | PatKind::Range(..) | PatKind::Slice(..) => AdjustMode::peel_all(),
             // When checking an explicit deref pattern, only peel reference types.
             // FIXME(deref_patterns): If box patterns and deref patterns need to coexist, box
             // patterns may want `PeelKind::Implicit`, stopping on encountering a box.
-            | PatKind::Box(_)
-            | PatKind::Deref(_) => AdjustMode::Peel { kind: PeelKind::ExplicitDerefPat },
+            PatKind::Box(_) | PatKind::Deref(_) => {
+                AdjustMode::Peel { kind: PeelKind::ExplicitDerefPat }
+            }
             // A never pattern behaves somewhat like a literal or unit variant.
             PatKind::Never => AdjustMode::peel_all(),
             // For patterns with paths, how we peel the scrutinee depends on the path's resolution.
@@ -679,7 +677,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     && self.tcx.features().deref_patterns()
                     && !matches!(lt.kind, PatExprKind::Lit { .. })
                 {
-                    span_bug!(lt.span, "FIXME(deref_patterns): adjust mode unimplemented for {:?}", lt.kind);
+                    span_bug!(
+                        lt.span,
+                        "FIXME(deref_patterns): adjust mode unimplemented for {:?}",
+                        lt.kind
+                    );
                 }
                 // Call `resolve_vars_if_possible` here for inline const blocks.
                 let lit_ty = self.resolve_vars_if_possible(self.check_pat_expr_unadjusted(lt));
@@ -687,17 +689,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if self.tcx.features().deref_patterns() {
                     let mut peeled_ty = lit_ty;
                     let mut pat_ref_layers = 0;
-                    while let ty::Ref(_, inner_ty, mutbl) = *peeled_ty.kind() {
+                    while let ty::Ref(_, inner_ty, mutbl) =
+                        *self.try_structurally_resolve_type(pat.span, peeled_ty).kind()
+                    {
                         // We rely on references at the head of constants being immutable.
                         debug_assert!(mutbl.is_not());
                         pat_ref_layers += 1;
                         peeled_ty = inner_ty;
                     }
-                    AdjustMode::Peel { kind: PeelKind::Implicit { until_adt: None, pat_ref_layers } }
+                    AdjustMode::Peel {
+                        kind: PeelKind::Implicit { until_adt: None, pat_ref_layers },
+                    }
                 } else {
                     if lit_ty.is_ref() { AdjustMode::Pass } else { AdjustMode::peel_all() }
                 }
-            },
+            }
 
             // Ref patterns are complicated, we handle them in `check_pat_ref`.
             PatKind::Ref(..)
@@ -716,7 +722,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // This is maximally flexible, allowing e.g., `Some(mut x) | &Some(mut x)`.
             // In that example, `Some(mut x)` results in `Peel` whereas `&Some(mut x)` in `Reset`.
             | PatKind::Or(_)
-            // Like or-patterns, guard patterns just propogate to their subpatterns.
+            // Like or-patterns, guard patterns just propagate to their subpatterns.
             | PatKind::Guard(..) => AdjustMode::Pass,
         }
     }
@@ -789,7 +795,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if *negated {
                     self.register_bound(
                         ty,
-                        self.tcx.require_lang_item(LangItem::Neg, Some(lt.span)),
+                        self.tcx.require_lang_item(LangItem::Neg, lt.span),
                         ObligationCause::dummy_with_span(lt.span),
                     );
                 }
@@ -895,16 +901,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // then that's equivalent to there existing a LUB.
         let cause = self.pattern_cause(ti, span);
         if let Err(err) = self.demand_suptype_with_origin(&cause, expected, pat_ty) {
-            err.emit_unless(
-                ti.span
-                    .filter(|&s| {
-                        // In the case of `if`- and `while`-expressions we've already checked
-                        // that `scrutinee: bool`. We know that the pattern is `true`,
-                        // so an error here would be a duplicate and from the wrong POV.
-                        s.is_desugaring(DesugaringKind::CondTemporary)
-                    })
-                    .is_some(),
-            );
+            err.emit();
         }
 
         pat_ty
@@ -928,6 +925,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // be peeled to `str` while ty here is still `&str`, if we don't
                 // err early here, a rather confusing unification error will be
                 // emitted instead).
+                let ty = self.try_structurally_resolve_type(expr.span, ty);
                 let fail =
                     !(ty.is_numeric() || ty.is_char() || ty.is_ty_var() || ty.references_error());
                 Some((fail, ty, expr.span))
@@ -2545,13 +2543,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let tcx = self.tcx;
         self.register_bound(
             source_ty,
-            tcx.require_lang_item(hir::LangItem::DerefPure, Some(span)),
+            tcx.require_lang_item(hir::LangItem::DerefPure, span),
             self.misc(span),
         );
         // The expected type for the deref pat's inner pattern is `<expected as Deref>::Target`.
         let target_ty = Ty::new_projection(
             tcx,
-            tcx.require_lang_item(hir::LangItem::DerefTarget, Some(span)),
+            tcx.require_lang_item(hir::LangItem::DerefTarget, span),
             [source_ty],
         );
         let target_ty = self.normalize(span, target_ty);
@@ -2572,7 +2570,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             for mutably_derefed_ty in derefed_tys {
                 self.register_bound(
                     mutably_derefed_ty,
-                    self.tcx.require_lang_item(hir::LangItem::DerefMut, Some(span)),
+                    self.tcx.require_lang_item(hir::LangItem::DerefMut, span),
                     self.misc(span),
                 );
             }
@@ -2769,7 +2767,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     /// Create a reference type with a fresh region variable.
     fn new_ref_ty(&self, span: Span, mutbl: Mutability, ty: Ty<'tcx>) -> Ty<'tcx> {
-        let region = self.next_region_var(infer::PatternRegion(span));
+        let region = self.next_region_var(RegionVariableOrigin::PatternRegion(span));
         Ty::new_ref(self.tcx, region, ty, mutbl)
     }
 

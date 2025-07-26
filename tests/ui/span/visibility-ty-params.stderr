@@ -1,20 +1,20 @@
 error: unexpected generic arguments in path
-  --> $DIR/visibility-ty-params.rs:6:6
+  --> $DIR/visibility-ty-params.rs:6:13
    |
-LL | m!{ S<u8> }
-   |      ^^^^
+LL | m!{ crate::S<u8> }
+   |             ^^^^
 
 error[E0433]: failed to resolve: `S` is a struct, not a module
-  --> $DIR/visibility-ty-params.rs:6:5
+  --> $DIR/visibility-ty-params.rs:6:12
    |
-LL | m!{ S<u8> }
-   |     ^ `S` is a struct, not a module
+LL | m!{ crate::S<u8> }
+   |            ^ `S` is a struct, not a module
 
 error: unexpected generic arguments in path
-  --> $DIR/visibility-ty-params.rs:10:10
+  --> $DIR/visibility-ty-params.rs:10:17
    |
-LL |     m!{ m<> }
-   |          ^^
+LL |     m!{ crate::m<> }
+   |                 ^^
 
 error: aborting due to 3 previous errors
 

@@ -124,3 +124,34 @@ fn pf_local_with_inferred_type_issue7053() {
 }
 
 fn main() {}
+
+mod issue14873 {
+    fn foo() -> i32 {
+        todo!()
+    }
+
+    macro_rules! qux {
+        ($a:ident, $b:ident, $condition:expr) => {
+            let $a: i32 = foo();
+            let $b: i32 = foo();
+            if $condition { "." } else { "" }
+        };
+    }
+
+    fn share_on_top() {
+        if false {
+            qux!(a, b, a == b);
+        } else {
+            qux!(a, b, a != b);
+        };
+
+        if false {
+            //~^ branches_sharing_code
+            let x = 1;
+            qux!(a, b, a == b);
+        } else {
+            let x = 1;
+            qux!(a, b, a != b);
+        }
+    }
+}

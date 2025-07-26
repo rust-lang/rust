@@ -22,6 +22,7 @@ pub struct AssistConfig {
     pub term_search_borrowck: bool,
     pub code_action_grouping: bool,
     pub expr_fill_default: ExprFillDefaultMode,
+    pub prefer_self_ty: bool,
 }
 
 impl AssistConfig {

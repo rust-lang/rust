@@ -1,0 +1,30 @@
+error: `derive` cannot be used on items with type macros
+  --> $DIR/nonsense-input-to-debug.rs:7:22
+   |
+LL |     should_be_vec_t: vec![T],
+   |                      ^^^^^^^
+
+error: expected type, found `expr` metavariable
+  --> $DIR/nonsense-input-to-debug.rs:7:22
+   |
+LL |     should_be_vec_t: vec![T],
+   |                      ^^^^^^^
+   |                      |
+   |                      expected type
+   |                      in this macro invocation
+   |                      this macro call doesn't expand to a type
+   |
+   = note: this error originates in the macro `vec` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0392]: type parameter `T` is never used
+  --> $DIR/nonsense-input-to-debug.rs:5:17
+   |
+LL | struct Nonsense<T> {
+   |                 ^ unused type parameter
+   |
+   = help: consider removing `T`, referring to it in a field, or using a marker such as `PhantomData`
+   = help: if you intended `T` to be a const parameter, use `const T: /* Type */` instead
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0392`.

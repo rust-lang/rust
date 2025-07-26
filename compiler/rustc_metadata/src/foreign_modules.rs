@@ -19,7 +19,7 @@ pub(crate) fn collect(tcx: TyCtxt<'_>, LocalCrate: LocalCrate) -> FxIndexMap<Def
         let item = tcx.hir_item(id);
 
         if let hir::ItemKind::ForeignMod { abi, items } = item.kind {
-            let foreign_items = items.iter().map(|it| it.id.owner_id.to_def_id()).collect();
+            let foreign_items = items.iter().map(|it| it.owner_id.to_def_id()).collect();
             modules.insert(def_id, ForeignModule { def_id, abi, foreign_items });
         }
     }

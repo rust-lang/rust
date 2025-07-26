@@ -66,7 +66,6 @@ mod for_windows {
             // Enable the Windows Error Reporting dialog which msys disables,
             // so we can JIT debug rustc
             let mode = SetErrorMode(THREAD_ERROR_MODE::default());
-            let mode = THREAD_ERROR_MODE(mode);
             SetErrorMode(mode & !SEM_NOGPFAULTERRORBOX);
 
             // Create a new job object for us to use

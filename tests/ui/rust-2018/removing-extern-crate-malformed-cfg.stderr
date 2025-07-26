@@ -1,0 +1,76 @@
+error: expected identifier, found `"macro_use"`
+  --> $DIR/removing-extern-crate-malformed-cfg.rs:7:18
+   |
+LL | #[cfg_attr(test, "macro_use")]
+   |                  ^^^^^^^^^^^ expected identifier
+   |
+   = help: the valid syntax is `#[cfg_attr(condition, attribute, other_attribute, ...)]`
+   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg_attr-attribute>
+
+error: expected one of `(`, `,`, `::`, or `=`, found `<eof>`
+  --> $DIR/removing-extern-crate-malformed-cfg.rs:12:16
+   |
+LL |     #[cfg_attr(test)]
+   |                ^^^^ expected one of `(`, `,`, `::`, or `=`
+   |
+   = help: the valid syntax is `#[cfg_attr(condition, attribute, other_attribute, ...)]`
+   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg_attr-attribute>
+
+warning: unused extern crate
+  --> $DIR/removing-extern-crate-malformed-cfg.rs:8:1
+   |
+LL | extern crate remove_extern_crate as foo;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unused
+   |
+note: the lint level is defined here
+  --> $DIR/removing-extern-crate-malformed-cfg.rs:5:9
+   |
+LL | #![warn(rust_2018_idioms)]
+   |         ^^^^^^^^^^^^^^^^
+   = note: `#[warn(unused_extern_crates)]` implied by `#[warn(rust_2018_idioms)]`
+help: remove the unused `extern crate`
+   |
+LL - #[cfg_attr(test, "macro_use")]
+LL - extern crate remove_extern_crate as foo;
+LL +
+   |
+
+warning: unused extern crate
+  --> $DIR/removing-extern-crate-malformed-cfg.rs:9:1
+   |
+LL | extern crate core;
+   | ^^^^^^^^^^^^^^^^^^ unused
+   |
+help: remove the unused `extern crate`
+   |
+LL - extern crate core;
+LL +
+   |
+
+warning: unused extern crate
+  --> $DIR/removing-extern-crate-malformed-cfg.rs:13:5
+   |
+LL |     extern crate remove_extern_crate as foo;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unused
+   |
+help: remove the unused `extern crate`
+   |
+LL -     #[cfg_attr(test)]
+LL -     extern crate remove_extern_crate as foo;
+LL +
+   |
+
+warning: unused extern crate
+  --> $DIR/removing-extern-crate-malformed-cfg.rs:14:5
+   |
+LL |     extern crate core;
+   |     ^^^^^^^^^^^^^^^^^^ unused
+   |
+help: remove the unused `extern crate`
+   |
+LL -     extern crate core;
+LL +
+   |
+
+error: aborting due to 2 previous errors; 4 warnings emitted
+

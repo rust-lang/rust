@@ -1,8 +1,8 @@
-error[E0080]: it is undefined behavior to use this value
+error[E0080]: constructing invalid value at .1: encountered a dangling reference (going beyond the bounds of its allocation)
   --> $DIR/issue-79690.rs:30:1
    |
 LL | const G: Fat = unsafe { Transmute { t: FOO }.u };
-   | ^^^^^^^^^^^^ constructing invalid value at .1: encountered a dangling reference (going beyond the bounds of its allocation)
+   | ^^^^^^^^^^^^ it is undefined behavior to use this value
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: 16, align: 8) {

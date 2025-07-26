@@ -6,7 +6,7 @@ use rustc_ast as ast;
 use rustc_ast::entry::EntryPointType;
 use rustc_ast::mut_visit::*;
 use rustc_ast::ptr::P;
-use rustc_ast::visit::{Visitor, walk_item};
+use rustc_ast::visit::Visitor;
 use rustc_ast::{ModKind, attr};
 use rustc_errors::DiagCtxtHandle;
 use rustc_expand::base::{ExtCtxt, ResolverExpand};
@@ -128,9 +128,7 @@ impl<'a> MutVisitor for TestHarnessGenerator<'a> {
         c.items.push(mk_main(&mut self.cx));
     }
 
-    fn visit_item(&mut self, item: &mut P<ast::Item>) {
-        let item = &mut **item;
-
+    fn visit_item(&mut self, item: &mut ast::Item) {
         if let Some(name) = get_test_name(&item) {
             debug!("this is a test item");
 
@@ -148,11 +146,11 @@ impl<'a> MutVisitor for TestHarnessGenerator<'a> {
         ) = item.kind
         {
             let prev_tests = mem::take(&mut self.tests);
-            walk_item_kind(&mut item.kind, item.span, item.id, &mut item.vis, (), self);
+            ast::mut_visit::walk_item(self, item);
             self.add_test_cases(item.id, span, prev_tests);
         } else {
             // But in those cases, we emit a lint to warn the user of these missing tests.
-            walk_item(&mut InnerItemLinter { sess: self.cx.ext_cx.sess }, &item);
+            ast::visit::walk_item(&mut InnerItemLinter { sess: self.cx.ext_cx.sess }, &item);
         }
     }
 }
@@ -193,7 +191,7 @@ struct EntryPointCleaner<'a> {
 }
 
 impl<'a> MutVisitor for EntryPointCleaner<'a> {
-    fn visit_item(&mut self, item: &mut P<ast::Item>) {
+    fn visit_item(&mut self, item: &mut ast::Item) {
         self.depth += 1;
         ast::mut_visit::walk_item(self, item);
         self.depth -= 1;
@@ -229,7 +227,7 @@ fn generate_test_harness(
     panic_strategy: PanicStrategy,
     test_runner: Option<ast::Path>,
 ) {
-    let econfig = ExpansionConfig::default("test".to_string(), features);
+    let econfig = ExpansionConfig::default(sym::test, features);
     let ext_cx = ExtCtxt::new(sess, econfig, resolver, None);
 
     let expn_id = ext_cx.resolver.expansion_for_ast_pass(

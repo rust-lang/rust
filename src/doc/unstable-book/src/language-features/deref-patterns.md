@@ -60,8 +60,7 @@ Like [`box_patterns`], deref patterns may move out of boxes:
 # #![feature(deref_patterns)]
 # #![allow(incomplete_features)]
 struct NoCopy;
-// Match exhaustiveness analysis is not yet implemented.
-let deref!(x) = Box::new(NoCopy) else { unreachable!() };
+let deref!(x) = Box::new(NoCopy);
 drop::<NoCopy>(x);
 ```
 

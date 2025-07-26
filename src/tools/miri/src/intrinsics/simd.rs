@@ -3,7 +3,6 @@ use rand::Rng;
 use rustc_abi::{Endian, HasDataLayout};
 use rustc_apfloat::{Float, Round};
 use rustc_middle::ty::FloatTy;
-use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::{mir, ty};
 use rustc_span::{Symbol, sym};
 
@@ -37,6 +36,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             | "ceil"
             | "floor"
             | "round"
+            | "round_ties_even"
             | "trunc"
             | "fsqrt"
             | "fsin"
@@ -72,6 +72,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     "ceil" => Op::Round(rustc_apfloat::Round::TowardPositive),
                     "floor" => Op::Round(rustc_apfloat::Round::TowardNegative),
                     "round" => Op::Round(rustc_apfloat::Round::NearestTiesToAway),
+                    "round_ties_even" => Op::Round(rustc_apfloat::Round::NearestTiesToEven),
                     "trunc" => Op::Round(rustc_apfloat::Round::TowardZero),
                     "ctlz" => Op::Numeric(sym::ctlz),
                     "ctpop" => Op::Numeric(sym::ctpop),
@@ -306,7 +307,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     let c = this.read_scalar(&this.project_index(&c, i)?)?;
                     let dest = this.project_index(&dest, i)?;
 
-                    let fuse: bool = intrinsic_name == "fma" || this.machine.rng.get_mut().random();
+                    let fuse: bool = intrinsic_name == "fma"
+                        || (this.machine.float_nondet && this.machine.rng.get_mut().random());
 
                     // Works for f32 and f64.
                     // FIXME: using host floats to work around https://github.com/rust-lang/miri/issues/2468.
@@ -320,7 +322,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                             let b = b.to_f32()?;
                             let c = c.to_f32()?;
                             let res = if fuse {
-                                a.to_host().mul_add(b.to_host(), c.to_host()).to_soft()
+                                a.mul_add(b, c).value
                             } else {
                                 ((a * b).value + c).value
                             };
@@ -332,7 +334,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                             let b = b.to_f64()?;
                             let c = c.to_f64()?;
                             let res = if fuse {
-                                a.to_host().mul_add(b.to_host(), c.to_host()).to_soft()
+                                a.mul_add(b, c).value
                             } else {
                                 ((a * b).value + c).value
                             };
@@ -634,7 +636,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let index_len = index.len();
 
                 assert_eq!(left_len, right_len);
-                assert_eq!(index_len as u64, dest_len);
+                assert_eq!(u64::try_from(index_len).unwrap(), dest_len);
 
                 for i in 0..dest_len {
                     let src_index: u64 =

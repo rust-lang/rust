@@ -12,11 +12,11 @@ trait Bar {}
 #[const_trait]
 trait Foo {
     fn a();
-    fn b() where Self: ~const Bar;
-    fn c<T: ~const Bar>();
+    fn b() where Self: [const] Bar;
+    fn c<T: [const] Bar>();
 }
 
-const fn test1<T: ~const Foo + Bar>() {
+const fn test1<T: [const] Foo + Bar>() {
     T::a();
     T::b();
     //~^ ERROR the trait bound
@@ -24,7 +24,7 @@ const fn test1<T: ~const Foo + Bar>() {
     //~^ ERROR the trait bound
 }
 
-const fn test2<T: ~const Foo + ~const Bar>() {
+const fn test2<T: [const] Foo + [const] Bar>() {
     T::a();
     T::b();
     T::c::<T>();

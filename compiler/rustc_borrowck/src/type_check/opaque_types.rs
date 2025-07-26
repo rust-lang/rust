@@ -221,7 +221,7 @@ fn register_member_constraints<'tcx>(
         .iter()
         .enumerate()
         .filter(|(i, _)| variances[*i] == ty::Invariant)
-        .filter_map(|(_, arg)| match arg.unpack() {
+        .filter_map(|(_, arg)| match arg.kind() {
             GenericArgKind::Lifetime(r) => Some(typeck.to_region_vid(r)),
             GenericArgKind::Type(_) | GenericArgKind::Const(_) => None,
         })
@@ -266,10 +266,6 @@ impl<'tcx, OP> TypeVisitor<TyCtxt<'tcx>> for ConstrainOpaqueTypeRegionVisitor<'t
 where
     OP: FnMut(ty::Region<'tcx>),
 {
-    fn visit_binder<T: TypeVisitable<TyCtxt<'tcx>>>(&mut self, t: &ty::Binder<'tcx, T>) {
-        t.super_visit_with(self);
-    }
-
     fn visit_region(&mut self, r: ty::Region<'tcx>) {
         match r.kind() {
             // ignore bound regions, keep visiting

@@ -11,7 +11,7 @@ pub fn clone<A, B>(f: fn(A, B)) -> fn(A, B) {
 // EMIT_MIR inline_shims.drop.Inline.diff
 pub fn drop<A, B>(a: *mut Vec<A>, b: *mut Option<B>) {
     // CHECK-LABEL: fn drop(
-    // CHECK: (inlined std::ptr::drop_in_place::<Option<B>> - shim(Some(Option<B>)))
+    // CHECK: (inlined drop_in_place::<Option<B>> - shim(Some(Option<B>)))
     unsafe { std::ptr::drop_in_place(a) }
     unsafe { std::ptr::drop_in_place(b) }
 }

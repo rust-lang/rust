@@ -81,7 +81,7 @@ pub fn check_opaque_type_parameter_valid<'tcx>(
     }
 
     for (i, arg) in opaque_type_key.iter_captured_args(tcx) {
-        let arg_is_param = match arg.unpack() {
+        let arg_is_param = match arg.kind() {
             GenericArgKind::Lifetime(lt) => match defining_scope_kind {
                 DefiningScopeKind::HirTypeck => continue,
                 DefiningScopeKind::MirBorrowck => {

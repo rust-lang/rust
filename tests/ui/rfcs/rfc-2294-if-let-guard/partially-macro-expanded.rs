@@ -2,7 +2,6 @@
 //@ check-pass
 
 #![feature(if_let_guard)]
-#![feature(let_chains)]
 
 macro_rules! m {
     (pattern $i:ident) => { Some($i) };

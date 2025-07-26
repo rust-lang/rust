@@ -6,7 +6,7 @@ use rustc_errors::codes::*;
 use rustc_errors::{Diag, IntoDiagArg};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Namespace, Res};
-use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{Body, Closure, Expr, ExprKind, FnRetTy, HirId, LetStmt, LocalSource};
 use rustc_middle::bug;
@@ -17,7 +17,7 @@ use rustc_middle::ty::{
     self, GenericArg, GenericArgKind, GenericArgsRef, InferConst, IsSuggestable, Term, TermKind,
     Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt, TypeckResults,
 };
-use rustc_span::{BytePos, DUMMY_SP, FileName, Ident, Span, sym};
+use rustc_span::{BytePos, DUMMY_SP, Ident, Span, sym};
 use tracing::{debug, instrument, warn};
 
 use super::nice_region_error::placeholder_error::Highlighted;
@@ -215,7 +215,7 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for ClosureEraser<'a, 'tcx> {
                                 // `_` because then we'd end up with `Vec<_, _>`, instead of
                                 // `Vec<_>`.
                                 arg
-                            } else if let GenericArgKind::Type(_) = arg.unpack() {
+                            } else if let GenericArgKind::Type(_) = arg.kind() {
                                 // We don't replace lifetime or const params, only type params.
                                 self.new_infer().into()
                             } else {
@@ -347,7 +347,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         highlight: ty::print::RegionHighlightMode<'tcx>,
     ) -> InferenceDiagnosticsData {
         let tcx = self.tcx;
-        match term.unpack() {
+        match term.kind() {
             TermKind::Ty(ty) => {
                 if let ty::Infer(ty::TyVar(ty_vid)) = *ty.kind() {
                     let var_origin = self.infcx.type_var_origin(ty_vid);
@@ -438,7 +438,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 bad_label,
                 was_written: false,
                 path: Default::default(),
-                time_version: false,
             }),
             TypeAnnotationNeeded::E0283 => self.dcx().create_err(AmbiguousImpl {
                 span,
@@ -569,7 +568,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                 return arg;
                             }
 
-                            match arg.unpack() {
+                            match arg.kind() {
                                 GenericArgKind::Lifetime(_) => bug!("unexpected lifetime"),
                                 GenericArgKind::Type(_) => self.next_ty_var(DUMMY_SP).into(),
                                 GenericArgKind::Const(_) => self.next_const_var(DUMMY_SP).into(),
@@ -630,10 +629,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 }
             }
         }
-
-        let time_version =
-            self.detect_old_time_crate_version(failure_span, &kind, &mut infer_subdiags);
-
         match error_code {
             TypeAnnotationNeeded::E0282 => self.dcx().create_err(AnnotationRequired {
                 span,
@@ -645,7 +640,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 bad_label: None,
                 was_written: path.is_some(),
                 path: path.unwrap_or_default(),
-                time_version,
             }),
             TypeAnnotationNeeded::E0283 => self.dcx().create_err(AmbiguousImpl {
                 span,
@@ -670,42 +664,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 path: path.unwrap_or_default(),
             }),
         }
-    }
-
-    /// Detect the inference regression on crate `time` <= 0.3.35 and emit a more targeted error.
-    /// <https://github.com/rust-lang/rust/issues/127343>
-    // FIXME: we should figure out a more generic version of doing this, ideally in cargo itself.
-    fn detect_old_time_crate_version(
-        &self,
-        span: Option<Span>,
-        kind: &InferSourceKind<'_>,
-        // We will clear the non-actionable suggestion from the error to reduce noise.
-        infer_subdiags: &mut Vec<SourceKindSubdiag<'_>>,
-    ) -> bool {
-        // FIXME(#129461): We are time-boxing this code in the compiler. It'll start failing
-        // compilation once we promote 1.89 to beta, which will happen in 9 months from now.
-        #[cfg(not(version("1.89")))]
-        const fn version_check() {}
-        #[cfg(version("1.89"))]
-        const fn version_check() {
-            panic!("remove this check as presumably the ecosystem has moved from needing it");
-        }
-        const { version_check() };
-        // Only relevant when building the `time` crate.
-        if self.infcx.tcx.crate_name(LOCAL_CRATE) == sym::time
-            && let Some(span) = span
-            && let InferSourceKind::LetBinding { pattern_name, .. } = kind
-            && let Some(name) = pattern_name
-            && name.as_str() == "items"
-            && let FileName::Real(file) = self.infcx.tcx.sess.source_map().span_to_filename(span)
-        {
-            let path = file.local_path_if_available().to_string_lossy();
-            if path.contains("format_description") && path.contains("parse") {
-                infer_subdiags.clear();
-                return true;
-            }
-        }
-        false
     }
 }
 
@@ -845,7 +803,7 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
         }
         impl<'tcx> CostCtxt<'tcx> {
             fn arg_cost(self, arg: GenericArg<'tcx>) -> usize {
-                match arg.unpack() {
+                match arg.kind() {
                     GenericArgKind::Lifetime(_) => 0, // erased
                     GenericArgKind::Type(ty) => self.ty_cost(ty),
                     GenericArgKind::Const(_) => 3, // some non-zero value
@@ -940,7 +898,7 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
             return true;
         }
 
-        match (arg.unpack(), self.target.unpack()) {
+        match (arg.kind(), self.target.kind()) {
             (GenericArgKind::Type(inner_ty), TermKind::Ty(target_ty)) => {
                 use ty::{Infer, TyVar};
                 match (inner_ty.kind(), target_ty.kind()) {
@@ -951,11 +909,11 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
                 }
             }
             (GenericArgKind::Const(inner_ct), TermKind::Const(target_ct)) => {
-                use ty::InferConst::*;
                 match (inner_ct.kind(), target_ct.kind()) {
-                    (ty::ConstKind::Infer(Var(a_vid)), ty::ConstKind::Infer(Var(b_vid))) => {
-                        self.tecx.root_const_var(a_vid) == self.tecx.root_const_var(b_vid)
-                    }
+                    (
+                        ty::ConstKind::Infer(ty::InferConst::Var(a_vid)),
+                        ty::ConstKind::Infer(ty::InferConst::Var(b_vid)),
+                    ) => self.tecx.root_const_var(a_vid) == self.tecx.root_const_var(b_vid),
                     _ => false,
                 }
             }
@@ -971,7 +929,7 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
             if self.generic_arg_is_target(inner) {
                 return true;
             }
-            match inner.unpack() {
+            match inner.kind() {
                 GenericArgKind::Lifetime(_) => {}
                 GenericArgKind::Type(ty) => {
                     if matches!(

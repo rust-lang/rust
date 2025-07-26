@@ -4,12 +4,12 @@
 
 use std::assert_matches::assert_matches;
 
-use rustc_abi::Size;
+use rustc_abi::{FieldIdx, HasDataLayout, Size};
 use rustc_apfloat::ieee::{Double, Half, Quad, Single};
-use rustc_hir::def_id::DefId;
+use rustc_middle::mir::interpret::{CTFE_ALLOC_SALT, read_target_uint, write_target_uint};
 use rustc_middle::mir::{self, BinOp, ConstValue, NonDivergingIntrinsic};
-use rustc_middle::ty::layout::{LayoutOf as _, TyAndLayout, ValidityRequirement};
-use rustc_middle::ty::{GenericArgsRef, Ty, TyCtxt};
+use rustc_middle::ty::layout::TyAndLayout;
+use rustc_middle::ty::{Ty, TyCtxt};
 use rustc_middle::{bug, ty};
 use rustc_span::{Symbol, sym};
 use tracing::trace;
@@ -17,94 +17,98 @@ use tracing::trace;
 use super::memory::MemoryKind;
 use super::util::ensure_monomorphic_enough;
 use super::{
-    Allocation, CheckInAllocMsg, ConstAllocation, GlobalId, ImmTy, InterpCx, InterpResult,
-    MPlaceTy, Machine, OpTy, Pointer, PointerArithmetic, Provenance, Scalar, err_inval,
-    err_ub_custom, err_unsup_format, interp_ok, throw_inval, throw_ub_custom, throw_ub_format,
+    AllocId, CheckInAllocMsg, ImmTy, InterpCx, InterpResult, Machine, OpTy, PlaceTy, Pointer,
+    PointerArithmetic, Provenance, Scalar, err_ub_custom, err_unsup_format, interp_ok, throw_inval,
+    throw_ub_custom, throw_ub_format,
 };
 use crate::fluent_generated as fluent;
 
 /// Directly returns an `Allocation` containing an absolute path representation of the given type.
-pub(crate) fn alloc_type_name<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> ConstAllocation<'tcx> {
+pub(crate) fn alloc_type_name<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> (AllocId, u64) {
     let path = crate::util::type_name(tcx, ty);
-    let alloc = Allocation::from_bytes_byte_aligned_immutable(path.into_bytes());
-    tcx.mk_const_alloc(alloc)
+    let bytes = path.into_bytes();
+    let len = bytes.len().try_into().unwrap();
+    (tcx.allocate_bytes_dedup(bytes, CTFE_ALLOC_SALT), len)
 }
-
-/// The logic for all nullary intrinsics is implemented here. These intrinsics don't get evaluated
-/// inside an `InterpCx` and instead have their value computed directly from rustc internal info.
-pub(crate) fn eval_nullary_intrinsic<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    typing_env: ty::TypingEnv<'tcx>,
-    def_id: DefId,
-    args: GenericArgsRef<'tcx>,
-) -> InterpResult<'tcx, ConstValue<'tcx>> {
-    let tp_ty = args.type_at(0);
-    let name = tcx.item_name(def_id);
-    interp_ok(match name {
-        sym::type_name => {
-            ensure_monomorphic_enough(tcx, tp_ty)?;
-            let alloc = alloc_type_name(tcx, tp_ty);
-            ConstValue::Slice { data: alloc, meta: alloc.inner().size().bytes() }
-        }
-        sym::needs_drop => {
-            ensure_monomorphic_enough(tcx, tp_ty)?;
-            ConstValue::from_bool(tp_ty.needs_drop(tcx, typing_env))
-        }
-        sym::pref_align_of => {
-            // Correctly handles non-monomorphic calls, so there is no need for ensure_monomorphic_enough.
-            let layout = tcx
-                .layout_of(typing_env.as_query_input(tp_ty))
-                .map_err(|e| err_inval!(Layout(*e)))?;
-            ConstValue::from_target_usize(layout.align.pref.bytes(), &tcx)
-        }
-        sym::type_id => {
-            ensure_monomorphic_enough(tcx, tp_ty)?;
-            ConstValue::from_u128(tcx.type_id_hash(tp_ty).as_u128())
-        }
-        sym::variant_count => match match tp_ty.kind() {
-            // Pattern types have the same number of variants as their base type.
-            // Even if we restrict e.g. which variants are valid, the variants are essentially just uninhabited.
-            // And `Result<(), !>` still has two variants according to `variant_count`.
-            ty::Pat(base, _) => *base,
-            _ => tp_ty,
-        }
-        .kind()
-        {
-            // Correctly handles non-monomorphic calls, so there is no need for ensure_monomorphic_enough.
-            ty::Adt(adt, _) => ConstValue::from_target_usize(adt.variants().len() as u64, &tcx),
-            ty::Alias(..) | ty::Param(_) | ty::Placeholder(_) | ty::Infer(_) => {
-                throw_inval!(TooGeneric)
-            }
-            ty::Pat(..) => unreachable!(),
-            ty::Bound(_, _) => bug!("bound ty during ctfe"),
-            ty::Bool
-            | ty::Char
-            | ty::Int(_)
-            | ty::Uint(_)
-            | ty::Float(_)
-            | ty::Foreign(_)
-            | ty::Str
-            | ty::Array(_, _)
-            | ty::Slice(_)
-            | ty::RawPtr(_, _)
-            | ty::Ref(_, _, _)
-            | ty::FnDef(_, _)
-            | ty::FnPtr(..)
-            | ty::Dynamic(_, _, _)
-            | ty::Closure(_, _)
-            | ty::CoroutineClosure(_, _)
-            | ty::Coroutine(_, _)
-            | ty::CoroutineWitness(..)
-            | ty::UnsafeBinder(_)
-            | ty::Never
-            | ty::Tuple(_)
-            | ty::Error(_) => ConstValue::from_target_usize(0u64, &tcx),
-        },
-        other => bug!("`{}` is not a zero arg intrinsic", other),
-    })
-}
-
 impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
+    /// Generates a value of `TypeId` for `ty` in-place.
+    fn write_type_id(
+        &mut self,
+        ty: Ty<'tcx>,
+        dest: &PlaceTy<'tcx, M::Provenance>,
+    ) -> InterpResult<'tcx, ()> {
+        let tcx = self.tcx;
+        let type_id_hash = tcx.type_id_hash(ty).as_u128();
+        let op = self.const_val_to_op(
+            ConstValue::Scalar(Scalar::from_u128(type_id_hash)),
+            tcx.types.u128,
+            None,
+        )?;
+        self.copy_op_allow_transmute(&op, dest)?;
+
+        // Give the each pointer-sized chunk provenance that knows about the type id.
+        // Here we rely on `TypeId` being a newtype around an array of pointers, so we
+        // first project to its only field and then the array elements.
+        let alloc_id = tcx.reserve_and_set_type_id_alloc(ty);
+        let arr = self.project_field(dest, FieldIdx::ZERO)?;
+        let mut elem_iter = self.project_array_fields(&arr)?;
+        while let Some((_, elem)) = elem_iter.next(self)? {
+            // Decorate this part of the hash with provenance; leave the integer part unchanged.
+            let hash_fragment = self.read_scalar(&elem)?.to_target_usize(&tcx)?;
+            let ptr = Pointer::new(alloc_id.into(), Size::from_bytes(hash_fragment));
+            let ptr = self.global_root_pointer(ptr)?;
+            let val = Scalar::from_pointer(ptr, &tcx);
+            self.write_scalar(val, &elem)?;
+        }
+        interp_ok(())
+    }
+
+    /// Read a value of type `TypeId`, returning the type it represents.
+    pub(crate) fn read_type_id(
+        &self,
+        op: &OpTy<'tcx, M::Provenance>,
+    ) -> InterpResult<'tcx, Ty<'tcx>> {
+        // `TypeId` is a newtype around an array of pointers. All pointers must have the same
+        // provenance, and that provenance represents the type.
+        let ptr_size = self.pointer_size().bytes_usize();
+        let arr = self.project_field(op, FieldIdx::ZERO)?;
+
+        let mut ty_and_hash = None;
+        let mut elem_iter = self.project_array_fields(&arr)?;
+        while let Some((idx, elem)) = elem_iter.next(self)? {
+            let elem = self.read_pointer(&elem)?;
+            let (elem_ty, elem_hash) = self.get_ptr_type_id(elem)?;
+            // If this is the first element, remember the type and its hash.
+            // If this is not the first element, ensure it is consistent with the previous ones.
+            let full_hash = match ty_and_hash {
+                None => {
+                    let hash = self.tcx.type_id_hash(elem_ty).as_u128();
+                    let mut hash_bytes = [0u8; 16];
+                    write_target_uint(self.data_layout().endian, &mut hash_bytes, hash).unwrap();
+                    ty_and_hash = Some((elem_ty, hash_bytes));
+                    hash_bytes
+                }
+                Some((ty, hash_bytes)) => {
+                    if ty != elem_ty {
+                        throw_ub_format!(
+                            "invalid `TypeId` value: not all bytes carry the same type id metadata"
+                        );
+                    }
+                    hash_bytes
+                }
+            };
+            // Ensure the elem_hash matches the corresponding part of the full hash.
+            let hash_frag = &full_hash[(idx as usize) * ptr_size..][..ptr_size];
+            if read_target_uint(self.data_layout().endian, hash_frag).unwrap() != elem_hash.into() {
+                throw_ub_format!(
+                    "invalid `TypeId` value: the hash does not match the type id metadata"
+                );
+            }
+        }
+
+        interp_ok(ty_and_hash.unwrap().0)
+    }
+
     /// Returns `true` if emulation happened.
     /// Here we implement the intrinsics that are common to all Miri instances; individual machines can add their own
     /// intrinsic handling.
@@ -112,13 +116,85 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         &mut self,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx, M::Provenance>],
-        dest: &MPlaceTy<'tcx, M::Provenance>,
+        dest: &PlaceTy<'tcx, M::Provenance>,
         ret: Option<mir::BasicBlock>,
     ) -> InterpResult<'tcx, bool> {
         let instance_args = instance.args;
         let intrinsic_name = self.tcx.item_name(instance.def_id());
+        let tcx = self.tcx.tcx;
 
         match intrinsic_name {
+            sym::type_name => {
+                let tp_ty = instance.args.type_at(0);
+                ensure_monomorphic_enough(tcx, tp_ty)?;
+                let (alloc_id, meta) = alloc_type_name(tcx, tp_ty);
+                let val = ConstValue::Slice { alloc_id, meta };
+                let val = self.const_val_to_op(val, dest.layout.ty, Some(dest.layout))?;
+                self.copy_op(&val, dest)?;
+            }
+            sym::needs_drop => {
+                let tp_ty = instance.args.type_at(0);
+                ensure_monomorphic_enough(tcx, tp_ty)?;
+                let val = ConstValue::from_bool(tp_ty.needs_drop(tcx, self.typing_env));
+                let val = self.const_val_to_op(val, tcx.types.bool, Some(dest.layout))?;
+                self.copy_op(&val, dest)?;
+            }
+            sym::type_id => {
+                let tp_ty = instance.args.type_at(0);
+                ensure_monomorphic_enough(tcx, tp_ty)?;
+                self.write_type_id(tp_ty, dest)?;
+            }
+            sym::type_id_eq => {
+                let a_ty = self.read_type_id(&args[0])?;
+                let b_ty = self.read_type_id(&args[1])?;
+                self.write_scalar(Scalar::from_bool(a_ty == b_ty), dest)?;
+            }
+            sym::variant_count => {
+                let tp_ty = instance.args.type_at(0);
+                let ty = match tp_ty.kind() {
+                    // Pattern types have the same number of variants as their base type.
+                    // Even if we restrict e.g. which variants are valid, the variants are essentially just uninhabited.
+                    // And `Result<(), !>` still has two variants according to `variant_count`.
+                    ty::Pat(base, _) => *base,
+                    _ => tp_ty,
+                };
+                let val = match ty.kind() {
+                    // Correctly handles non-monomorphic calls, so there is no need for ensure_monomorphic_enough.
+                    ty::Adt(adt, _) => {
+                        ConstValue::from_target_usize(adt.variants().len() as u64, &tcx)
+                    }
+                    ty::Alias(..) | ty::Param(_) | ty::Placeholder(_) | ty::Infer(_) => {
+                        throw_inval!(TooGeneric)
+                    }
+                    ty::Pat(..) => unreachable!(),
+                    ty::Bound(_, _) => bug!("bound ty during ctfe"),
+                    ty::Bool
+                    | ty::Char
+                    | ty::Int(_)
+                    | ty::Uint(_)
+                    | ty::Float(_)
+                    | ty::Foreign(_)
+                    | ty::Str
+                    | ty::Array(_, _)
+                    | ty::Slice(_)
+                    | ty::RawPtr(_, _)
+                    | ty::Ref(_, _, _)
+                    | ty::FnDef(_, _)
+                    | ty::FnPtr(..)
+                    | ty::Dynamic(_, _, _)
+                    | ty::Closure(_, _)
+                    | ty::CoroutineClosure(_, _)
+                    | ty::Coroutine(_, _)
+                    | ty::CoroutineWitness(..)
+                    | ty::UnsafeBinder(_)
+                    | ty::Never
+                    | ty::Tuple(_)
+                    | ty::Error(_) => ConstValue::from_target_usize(0u64, &tcx),
+                };
+                let val = self.const_val_to_op(val, dest.layout.ty, Some(dest.layout))?;
+                self.copy_op(&val, dest)?;
+            }
+
             sym::caller_location => {
                 let span = self.find_closest_untracked_caller_location();
                 let val = self.tcx.span_as_caller_location(span);
@@ -127,40 +203,21 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 self.copy_op(&val, dest)?;
             }
 
-            sym::min_align_of_val | sym::size_of_val => {
+            sym::align_of_val | sym::size_of_val => {
                 // Avoid `deref_pointer` -- this is not a deref, the ptr does not have to be
                 // dereferenceable!
                 let place = self.ref_to_mplace(&self.read_immediate(&args[0])?)?;
                 let (size, align) = self
-                    .size_and_align_of_mplace(&place)?
+                    .size_and_align_of_val(&place)?
                     .ok_or_else(|| err_unsup_format!("`extern type` does not have known layout"))?;
 
                 let result = match intrinsic_name {
-                    sym::min_align_of_val => align.bytes(),
+                    sym::align_of_val => align.bytes(),
                     sym::size_of_val => size.bytes(),
                     _ => bug!(),
                 };
 
                 self.write_scalar(Scalar::from_target_usize(result, self), dest)?;
-            }
-
-            sym::pref_align_of
-            | sym::needs_drop
-            | sym::type_id
-            | sym::type_name
-            | sym::variant_count => {
-                let gid = GlobalId { instance, promoted: None };
-                let ty = match intrinsic_name {
-                    sym::pref_align_of | sym::variant_count => self.tcx.types.usize,
-                    sym::needs_drop => self.tcx.types.bool,
-                    sym::type_id => self.tcx.types.u128,
-                    sym::type_name => Ty::new_static_str(self.tcx.tcx),
-                    _ => bug!(),
-                };
-                let val = self
-                    .ctfe_query(|tcx| tcx.const_eval_global_id(self.typing_env, gid, tcx.span))?;
-                let val = self.const_val_to_op(val, ty, Some(dest.layout))?;
-                self.copy_op(&val, dest)?;
             }
 
             sym::fadd_algebraic
@@ -397,41 +454,6 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 self.exact_div(&val, &size, dest)?;
             }
 
-            sym::assert_inhabited
-            | sym::assert_zero_valid
-            | sym::assert_mem_uninitialized_valid => {
-                let ty = instance.args.type_at(0);
-                let requirement = ValidityRequirement::from_intrinsic(intrinsic_name).unwrap();
-
-                let should_panic = !self
-                    .tcx
-                    .check_validity_requirement((requirement, self.typing_env.as_query_input(ty)))
-                    .map_err(|_| err_inval!(TooGeneric))?;
-
-                if should_panic {
-                    let layout = self.layout_of(ty)?;
-
-                    let msg = match requirement {
-                        // For *all* intrinsics we first check `is_uninhabited` to give a more specific
-                        // error message.
-                        _ if layout.is_uninhabited() => format!(
-                            "aborted execution: attempted to instantiate uninhabited type `{ty}`"
-                        ),
-                        ValidityRequirement::Inhabited => bug!("handled earlier"),
-                        ValidityRequirement::Zero => format!(
-                            "aborted execution: attempted to zero-initialize type `{ty}`, which is invalid"
-                        ),
-                        ValidityRequirement::UninitMitigated0x01Fill => format!(
-                            "aborted execution: attempted to leave type `{ty}` uninitialized, which is invalid"
-                        ),
-                        ValidityRequirement::Uninit => bug!("assert_uninit_valid doesn't exist"),
-                    };
-
-                    M::panic_nounwind(self, &msg)?;
-                    // Skip the `return_to_block` at the end (we panicked, we do not return).
-                    return interp_ok(true);
-                }
-            }
             sym::simd_insert => {
                 let index = u64::from(self.read_scalar(&args[1])?.to_u32()?);
                 let elem = &args[2];
@@ -493,10 +515,20 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             sym::minnumf64 => self.float_min_intrinsic::<Double>(args, dest)?,
             sym::minnumf128 => self.float_min_intrinsic::<Quad>(args, dest)?,
 
+            sym::minimumf16 => self.float_minimum_intrinsic::<Half>(args, dest)?,
+            sym::minimumf32 => self.float_minimum_intrinsic::<Single>(args, dest)?,
+            sym::minimumf64 => self.float_minimum_intrinsic::<Double>(args, dest)?,
+            sym::minimumf128 => self.float_minimum_intrinsic::<Quad>(args, dest)?,
+
             sym::maxnumf16 => self.float_max_intrinsic::<Half>(args, dest)?,
             sym::maxnumf32 => self.float_max_intrinsic::<Single>(args, dest)?,
             sym::maxnumf64 => self.float_max_intrinsic::<Double>(args, dest)?,
             sym::maxnumf128 => self.float_max_intrinsic::<Quad>(args, dest)?,
+
+            sym::maximumf16 => self.float_maximum_intrinsic::<Half>(args, dest)?,
+            sym::maximumf32 => self.float_maximum_intrinsic::<Single>(args, dest)?,
+            sym::maximumf64 => self.float_maximum_intrinsic::<Double>(args, dest)?,
+            sym::maximumf128 => self.float_maximum_intrinsic::<Quad>(args, dest)?,
 
             sym::copysignf16 => self.float_copysign_intrinsic::<Half>(args, dest)?,
             sym::copysignf32 => self.float_copysign_intrinsic::<Single>(args, dest)?,
@@ -507,6 +539,103 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             sym::fabsf32 => self.float_abs_intrinsic::<Single>(args, dest)?,
             sym::fabsf64 => self.float_abs_intrinsic::<Double>(args, dest)?,
             sym::fabsf128 => self.float_abs_intrinsic::<Quad>(args, dest)?,
+
+            sym::floorf16 => self.float_round_intrinsic::<Half>(
+                args,
+                dest,
+                rustc_apfloat::Round::TowardNegative,
+            )?,
+            sym::floorf32 => self.float_round_intrinsic::<Single>(
+                args,
+                dest,
+                rustc_apfloat::Round::TowardNegative,
+            )?,
+            sym::floorf64 => self.float_round_intrinsic::<Double>(
+                args,
+                dest,
+                rustc_apfloat::Round::TowardNegative,
+            )?,
+            sym::floorf128 => self.float_round_intrinsic::<Quad>(
+                args,
+                dest,
+                rustc_apfloat::Round::TowardNegative,
+            )?,
+
+            sym::ceilf16 => self.float_round_intrinsic::<Half>(
+                args,
+                dest,
+                rustc_apfloat::Round::TowardPositive,
+            )?,
+            sym::ceilf32 => self.float_round_intrinsic::<Single>(
+                args,
+                dest,
+                rustc_apfloat::Round::TowardPositive,
+            )?,
+            sym::ceilf64 => self.float_round_intrinsic::<Double>(
+                args,
+                dest,
+                rustc_apfloat::Round::TowardPositive,
+            )?,
+            sym::ceilf128 => self.float_round_intrinsic::<Quad>(
+                args,
+                dest,
+                rustc_apfloat::Round::TowardPositive,
+            )?,
+
+            sym::truncf16 => {
+                self.float_round_intrinsic::<Half>(args, dest, rustc_apfloat::Round::TowardZero)?
+            }
+            sym::truncf32 => {
+                self.float_round_intrinsic::<Single>(args, dest, rustc_apfloat::Round::TowardZero)?
+            }
+            sym::truncf64 => {
+                self.float_round_intrinsic::<Double>(args, dest, rustc_apfloat::Round::TowardZero)?
+            }
+            sym::truncf128 => {
+                self.float_round_intrinsic::<Quad>(args, dest, rustc_apfloat::Round::TowardZero)?
+            }
+
+            sym::roundf16 => self.float_round_intrinsic::<Half>(
+                args,
+                dest,
+                rustc_apfloat::Round::NearestTiesToAway,
+            )?,
+            sym::roundf32 => self.float_round_intrinsic::<Single>(
+                args,
+                dest,
+                rustc_apfloat::Round::NearestTiesToAway,
+            )?,
+            sym::roundf64 => self.float_round_intrinsic::<Double>(
+                args,
+                dest,
+                rustc_apfloat::Round::NearestTiesToAway,
+            )?,
+            sym::roundf128 => self.float_round_intrinsic::<Quad>(
+                args,
+                dest,
+                rustc_apfloat::Round::NearestTiesToAway,
+            )?,
+
+            sym::round_ties_even_f16 => self.float_round_intrinsic::<Half>(
+                args,
+                dest,
+                rustc_apfloat::Round::NearestTiesToEven,
+            )?,
+            sym::round_ties_even_f32 => self.float_round_intrinsic::<Single>(
+                args,
+                dest,
+                rustc_apfloat::Round::NearestTiesToEven,
+            )?,
+            sym::round_ties_even_f64 => self.float_round_intrinsic::<Double>(
+                args,
+                dest,
+                rustc_apfloat::Round::NearestTiesToEven,
+            )?,
+            sym::round_ties_even_f128 => self.float_round_intrinsic::<Quad>(
+                args,
+                dest,
+                rustc_apfloat::Round::NearestTiesToEven,
+            )?,
 
             // Unsupported intrinsic: skip the return_to_block below.
             _ => return interp_ok(false),
@@ -577,7 +706,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         &mut self,
         a: &ImmTy<'tcx, M::Provenance>,
         b: &ImmTy<'tcx, M::Provenance>,
-        dest: &MPlaceTy<'tcx, M::Provenance>,
+        dest: &PlaceTy<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx> {
         assert_eq!(a.layout.ty, b.layout.ty);
         assert_matches!(a.layout.ty.kind(), ty::Int(..) | ty::Uint(..));
@@ -791,7 +920,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     fn float_min_intrinsic<F>(
         &mut self,
         args: &[OpTy<'tcx, M::Provenance>],
-        dest: &MPlaceTy<'tcx, M::Provenance>,
+        dest: &PlaceTy<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx, ()>
     where
         F: rustc_apfloat::Float + rustc_apfloat::FloatConvert<F> + Into<Scalar<M::Provenance>>,
@@ -812,7 +941,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     fn float_max_intrinsic<F>(
         &mut self,
         args: &[OpTy<'tcx, M::Provenance>],
-        dest: &MPlaceTy<'tcx, M::Provenance>,
+        dest: &PlaceTy<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx, ()>
     where
         F: rustc_apfloat::Float + rustc_apfloat::FloatConvert<F> + Into<Scalar<M::Provenance>>,
@@ -830,10 +959,42 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         interp_ok(())
     }
 
+    fn float_minimum_intrinsic<F>(
+        &mut self,
+        args: &[OpTy<'tcx, M::Provenance>],
+        dest: &PlaceTy<'tcx, M::Provenance>,
+    ) -> InterpResult<'tcx, ()>
+    where
+        F: rustc_apfloat::Float + rustc_apfloat::FloatConvert<F> + Into<Scalar<M::Provenance>>,
+    {
+        let a: F = self.read_scalar(&args[0])?.to_float()?;
+        let b: F = self.read_scalar(&args[1])?.to_float()?;
+        let res = a.minimum(b);
+        let res = self.adjust_nan(res, &[a, b]);
+        self.write_scalar(res, dest)?;
+        interp_ok(())
+    }
+
+    fn float_maximum_intrinsic<F>(
+        &mut self,
+        args: &[OpTy<'tcx, M::Provenance>],
+        dest: &PlaceTy<'tcx, M::Provenance>,
+    ) -> InterpResult<'tcx, ()>
+    where
+        F: rustc_apfloat::Float + rustc_apfloat::FloatConvert<F> + Into<Scalar<M::Provenance>>,
+    {
+        let a: F = self.read_scalar(&args[0])?.to_float()?;
+        let b: F = self.read_scalar(&args[1])?.to_float()?;
+        let res = a.maximum(b);
+        let res = self.adjust_nan(res, &[a, b]);
+        self.write_scalar(res, dest)?;
+        interp_ok(())
+    }
+
     fn float_copysign_intrinsic<F>(
         &mut self,
         args: &[OpTy<'tcx, M::Provenance>],
-        dest: &MPlaceTy<'tcx, M::Provenance>,
+        dest: &PlaceTy<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx, ()>
     where
         F: rustc_apfloat::Float + rustc_apfloat::FloatConvert<F> + Into<Scalar<M::Provenance>>,
@@ -848,7 +1009,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     fn float_abs_intrinsic<F>(
         &mut self,
         args: &[OpTy<'tcx, M::Provenance>],
-        dest: &MPlaceTy<'tcx, M::Provenance>,
+        dest: &PlaceTy<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx, ()>
     where
         F: rustc_apfloat::Float + rustc_apfloat::FloatConvert<F> + Into<Scalar<M::Provenance>>,
@@ -856,6 +1017,22 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         let x: F = self.read_scalar(&args[0])?.to_float()?;
         // bitwise, no NaN adjustments
         self.write_scalar(x.abs(), dest)?;
+        interp_ok(())
+    }
+
+    fn float_round_intrinsic<F>(
+        &mut self,
+        args: &[OpTy<'tcx, M::Provenance>],
+        dest: &PlaceTy<'tcx, M::Provenance>,
+        mode: rustc_apfloat::Round,
+    ) -> InterpResult<'tcx, ()>
+    where
+        F: rustc_apfloat::Float + rustc_apfloat::FloatConvert<F> + Into<Scalar<M::Provenance>>,
+    {
+        let x: F = self.read_scalar(&args[0])?.to_float()?;
+        let res = x.round_to_integral(mode).value;
+        let res = self.adjust_nan(res, &[x]);
+        self.write_scalar(res, dest)?;
         interp_ok(())
     }
 }

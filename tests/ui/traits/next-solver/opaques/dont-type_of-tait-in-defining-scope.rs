@@ -14,7 +14,7 @@ fn needs_send<T: Send>() {}
 #[define_opaque(Foo)]
 fn test(_: Foo) {
     needs_send::<Foo>();
-    //~^ ERROR type annotations needed: cannot satisfy `Foo == _`
+    //~^ ERROR type annotations needed
 }
 
 #[define_opaque(Foo)]

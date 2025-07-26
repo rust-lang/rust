@@ -95,7 +95,7 @@ error: try not to call a closure in the expression where it is declared
   --> tests/ui/redundant_closure_call_fixable.rs:63:13
    |
 LL |     let a = (|| || || 123)();
-   |             ^^^^^^^^^^^^^^^^ help: try doing something like: `(|| || 123)`
+   |             ^^^^^^^^^^^^^^^^ help: try doing something like: `|| || 123`
 
 error: try not to call a closure in the expression where it is declared
   --> tests/ui/redundant_closure_call_fixable.rs:68:13
@@ -145,5 +145,29 @@ error: try not to call a closure in the expression where it is declared
 LL |     std::convert::identity((|| 13_i32 + 36_i32)()).leading_zeros();
    |                            ^^^^^^^^^^^^^^^^^^^^^^ help: try doing something like: `13_i32 + 36_i32`
 
-error: aborting due to 17 previous errors
+error: try not to call a closure in the expression where it is declared
+  --> tests/ui/redundant_closure_call_fixable.rs:150:5
+   |
+LL |     (|| { Some(true) })() == Some(true);
+   |     ^^^^^^^^^^^^^^^^^^^^^ help: try doing something like: `Some(true)`
+
+error: try not to call a closure in the expression where it is declared
+  --> tests/ui/redundant_closure_call_fixable.rs:152:5
+   |
+LL |     (|| Some(true))() == Some(true);
+   |     ^^^^^^^^^^^^^^^^^ help: try doing something like: `Some(true)`
+
+error: try not to call a closure in the expression where it is declared
+  --> tests/ui/redundant_closure_call_fixable.rs:154:5
+   |
+LL |     (|| { Some(if 1 > 2 {1} else {2}) })() == Some(2);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try doing something like: `Some(if 1 > 2 {1} else {2})`
+
+error: try not to call a closure in the expression where it is declared
+  --> tests/ui/redundant_closure_call_fixable.rs:156:5
+   |
+LL |     (|| { Some( 1 > 2 ) })() == Some(true);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^ help: try doing something like: `Some( 1 > 2 )`
+
+error: aborting due to 21 previous errors
 

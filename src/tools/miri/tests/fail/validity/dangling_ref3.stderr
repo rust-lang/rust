@@ -2,7 +2,7 @@ error: Undefined Behavior: constructing invalid value: encountered a dangling re
   --> tests/fail/validity/dangling_ref3.rs:LL:CC
    |
 LL |     let _x: &i32 = unsafe { mem::transmute(dangling()) };
-   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered a dangling reference (use-after-free)
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^ Undefined Behavior occurred here
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

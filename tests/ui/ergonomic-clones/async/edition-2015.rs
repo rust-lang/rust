@@ -1,3 +1,4 @@
+//@ edition:2015
 #![feature(ergonomic_clones)]
 #![allow(incomplete_features)]
 

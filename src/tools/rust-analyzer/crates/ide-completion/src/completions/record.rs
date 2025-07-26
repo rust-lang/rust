@@ -88,7 +88,7 @@ pub(crate) fn complete_record_expr_fields(
 pub(crate) fn add_default_update(
     acc: &mut Completions,
     ctx: &CompletionContext<'_>,
-    ty: Option<hir::TypeInfo>,
+    ty: Option<hir::TypeInfo<'_>>,
 ) {
     let default_trait = ctx.famous_defs().core_default_Default();
     let impls_default_trait = default_trait
@@ -117,7 +117,7 @@ pub(crate) fn add_default_update(
 fn complete_fields(
     acc: &mut Completions,
     ctx: &CompletionContext<'_>,
-    missing_fields: Vec<(hir::Field, hir::Type)>,
+    missing_fields: Vec<(hir::Field, hir::Type<'_>)>,
 ) {
     for (field, ty) in missing_fields {
         // This should call something else, we shouldn't be synthesizing a DotAccess here

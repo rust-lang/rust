@@ -1,16 +1,16 @@
 error[E0308]: mismatched types
-  --> $DIR/dont-suggest-through-inner-const.rs:4:9
-   |
-LL |         0
-   |         ^ expected `()`, found integer
-
-error[E0308]: mismatched types
   --> $DIR/dont-suggest-through-inner-const.rs:1:17
    |
 LL | const fn f() -> usize {
    |          -      ^^^^^ expected `usize`, found `()`
    |          |
    |          implicitly returns `()` as its body has no tail or `return` expression
+
+error[E0308]: mismatched types
+  --> $DIR/dont-suggest-through-inner-const.rs:4:9
+   |
+LL |         0
+   |         ^ expected `()`, found integer
 
 error: aborting due to 2 previous errors
 

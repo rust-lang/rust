@@ -173,7 +173,7 @@ impl<'a, 'b> PathLoweringContext<'a, 'b> {
                         self.skip_resolved_segment();
                         let segment = self.current_or_prev_segment;
                         let found =
-                            self.ctx.db.trait_items(trait_).associated_type_by_name(segment.name);
+                            trait_.trait_items(self.ctx.db).associated_type_by_name(segment.name);
 
                         match found {
                             Some(associated_ty) => {
@@ -1018,8 +1018,12 @@ fn check_generic_args_len(
     }
 
     let lifetime_args_len = def_generics.len_lifetimes_self();
-    if provided_lifetimes_count == 0 && lifetime_args_len > 0 && !lowering_assoc_type_generics {
-        // In generic associated types, we never allow inferring the lifetimes.
+    if provided_lifetimes_count == 0
+        && lifetime_args_len > 0
+        && (!lowering_assoc_type_generics || infer_args)
+    {
+        // In generic associated types, we never allow inferring the lifetimes, but only in type context, that is
+        // when `infer_args == false`. In expression/pattern context we always allow inferring them, even for GATs.
         match lifetime_elision {
             &LifetimeElisionKind::AnonymousCreateParameter { report_in_path } => {
                 ctx.report_elided_lifetimes_in_path(def, lifetime_args_len as u32, report_in_path);

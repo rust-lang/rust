@@ -7,7 +7,7 @@ mod A {} //~ ERROR the name `A` is defined multiple times
 pub mod B {} //~ ERROR the name `B` is defined multiple times
 //~| NOTE `B` redefined here
 mod C {
-    use C::D;
+    use crate::C::D;
     mod D {} //~ ERROR the name `D` is defined multiple times
     //~| NOTE `D` redefined here
 }

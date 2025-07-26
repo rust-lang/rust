@@ -1,4 +1,4 @@
-use crate::spec::{LinkerFlavor, Lld, Target, TargetMetadata, add_link_args, base};
+use crate::spec::{FramePointer, LinkerFlavor, Lld, Target, TargetMetadata, add_link_args, base};
 
 pub(crate) fn target() -> Target {
     let mut base = base::windows_msvc::opts();
@@ -9,6 +9,12 @@ pub(crate) fn target() -> Target {
         LinkerFlavor::Msvc(Lld::No),
         &["/machine:arm64ec", "softintrin.lib"],
     );
+
+    // Microsoft recommends enabling frame pointers on Arm64 Windows.
+    // From https://learn.microsoft.com/en-us/cpp/build/arm64-windows-abi-conventions?view=msvc-170#integer-registers
+    // "The frame pointer (x29) is required for compatibility with fast stack walking used by ETW
+    // and other services. It must point to the previous {x29, x30} pair on the stack."
+    base.frame_pointer = FramePointer::NonLeaf;
 
     Target {
         llvm_target: "arm64ec-pc-windows-msvc".into(),

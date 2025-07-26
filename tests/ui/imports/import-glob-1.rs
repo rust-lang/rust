@@ -21,7 +21,7 @@ mod bar {
 }
 
 mod foo {
-    use bar::Baz::{Baz1, Baz2};
+    use crate::bar::Baz::{Baz1, Baz2};
 }
 
 fn main() {}

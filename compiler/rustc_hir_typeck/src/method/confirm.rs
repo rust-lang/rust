@@ -9,7 +9,9 @@ use rustc_hir_analysis::hir_ty_lowering::generics::{
 use rustc_hir_analysis::hir_ty_lowering::{
     FeedConstTy, GenericArgsLowerer, HirTyLowerer, IsMethodCall, RegionInferReason,
 };
-use rustc_infer::infer::{self, DefineOpaqueTypes, InferOk};
+use rustc_infer::infer::{
+    BoundRegionConversionTime, DefineOpaqueTypes, InferOk, RegionVariableOrigin,
+};
 use rustc_lint::builtin::SUPERTRAIT_ITEM_SHADOWING_USAGE;
 use rustc_middle::traits::ObligationCauseCode;
 use rustc_middle::ty::adjustment::{
@@ -194,7 +196,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
 
         match pick.autoref_or_ptr_adjustment {
             Some(probe::AutorefOrPtrAdjustment::Autoref { mutbl, unsize }) => {
-                let region = self.next_region_var(infer::Autoref(self.span));
+                let region = self.next_region_var(RegionVariableOrigin::Autoref(self.span));
                 // Type we're wrapping in a reference, used later for unsizing
                 let base_ty = target;
 
@@ -239,7 +241,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
             }
 
             Some(probe::AutorefOrPtrAdjustment::ReborrowPin(mutbl)) => {
-                let region = self.next_region_var(infer::Autoref(self.span));
+                let region = self.next_region_var(RegionVariableOrigin::Autoref(self.span));
 
                 target = match target.kind() {
                     ty::Adt(pin, args) if self.tcx.is_lang_item(pin.did(), hir::LangItem::Pin) => {
@@ -290,6 +292,14 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
 
             probe::ObjectPick => {
                 let trait_def_id = pick.item.container_id(self.tcx);
+
+                // If the trait is not object safe (specifically, we care about when
+                // the receiver is not valid), then there's a chance that we will not
+                // actually be able to recover the object by derefing the receiver like
+                // we should if it were valid.
+                if !self.tcx.is_dyn_compatible(trait_def_id) {
+                    return ty::GenericArgs::extend_with_error(self.tcx, trait_def_id, &[]);
+                }
 
                 // This shouldn't happen for non-region error kinds, but may occur
                 // when we have error regions. Specifically, since we canonicalize
@@ -578,7 +588,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         let def_id = pick.item.def_id;
         let method_predicates = self.tcx.predicates_of(def_id).instantiate(self.tcx, all_args);
 
-        debug!("method_predicates after instantitation = {:?}", method_predicates);
+        debug!("method_predicates after instantiation = {:?}", method_predicates);
 
         let sig = self.tcx.fn_sig(def_id).instantiate(self.tcx, all_args);
         debug!("type scheme instantiated, sig={:?}", sig);
@@ -744,6 +754,10 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
     where
         T: TypeFoldable<TyCtxt<'tcx>> + Copy,
     {
-        self.fcx.instantiate_binder_with_fresh_vars(self.span, infer::FnCall, value)
+        self.fcx.instantiate_binder_with_fresh_vars(
+            self.span,
+            BoundRegionConversionTime::FnCall,
+            value,
+        )
     }
 }

@@ -151,5 +151,15 @@ LL | |             None
 LL | |         }
    | |_________^ help: replace it with: `A`
 
-error: aborting due to 14 previous errors
+error: this match expression is unnecessary
+  --> tests/ui/needless_match.rs:373:13
+   |
+LL |       let x = match t {
+   |  _____________^
+LL | |         Ok(v) => Ok::<_, &'static str>(v),
+LL | |         err @ Err(_) => err,
+LL | |     };
+   | |_____^ help: replace it with: `t`
+
+error: aborting due to 15 previous errors
 

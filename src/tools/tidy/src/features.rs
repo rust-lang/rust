@@ -54,6 +54,7 @@ pub struct Feature {
     pub tracking_issue: Option<NonZeroU32>,
     pub file: PathBuf,
     pub line: usize,
+    pub description: Option<String>,
 }
 impl Feature {
     fn tracking_issue_display(&self) -> impl fmt::Display {
@@ -124,8 +125,8 @@ pub fn check(
                 let gate_test_str = "gate-test-";
 
                 let feature_name = match line.find(gate_test_str) {
-                    // NB: the `splitn` always succeeds, even if the delimiter is not present.
-                    Some(i) => line[i + gate_test_str.len()..].splitn(2, ' ').next().unwrap(),
+                    // `split` always contains at least 1 element, even if the delimiter is not present.
+                    Some(i) => line[i + gate_test_str.len()..].split(' ').next().unwrap(),
                     None => continue,
                 };
                 match features.get_mut(feature_name) {
@@ -134,16 +135,14 @@ pub fn check(
                             err(&format!(
                                 "The file is already marked as gate test \
                                       through its name, no need for a \
-                                      'gate-test-{}' comment",
-                                feature_name
+                                      'gate-test-{feature_name}' comment"
                             ));
                         }
                         f.has_gate_test = true;
                     }
                     None => {
                         err(&format!(
-                            "gate-test test found referencing a nonexistent feature '{}'",
-                            feature_name
+                            "gate-test test found referencing a nonexistent feature '{feature_name}'"
                         ));
                     }
                 }
@@ -169,8 +168,7 @@ pub fn check(
         );
         println!(
             "Hint: If you already have such a test and don't want to rename it,\
-                \n      you can also add a // gate-test-{} line to the test file.",
-            name
+                \n      you can also add a // gate-test-{name} line to the test file."
         );
     }
 
@@ -230,7 +228,7 @@ pub fn check(
 fn get_version_and_channel(src_path: &Path) -> (Version, String) {
     let version_str = t!(std::fs::read_to_string(src_path.join("version")));
     let version_str = version_str.trim();
-    let version = t!(std::str::FromStr::from_str(&version_str).map_err(|e| format!("{e:?}")));
+    let version = t!(std::str::FromStr::from_str(version_str).map_err(|e| format!("{e:?}")));
     let channel_str = t!(std::fs::read_to_string(src_path.join("ci").join("channel")));
     (version, channel_str.trim().to_owned())
 }
@@ -296,6 +294,7 @@ fn collect_lang_features_in(features: &mut Features, base: &Path, file: &str, ba
     let mut prev_names = vec![];
 
     let lines = contents.lines().zip(1..);
+    let mut doc_comments: Vec<String> = Vec::new();
     for (line, line_number) in lines {
         let line = line.trim();
 
@@ -329,6 +328,11 @@ fn collect_lang_features_in(features: &mut Features, base: &Path, file: &str, ba
         } else if line.starts_with(FEATURE_GROUP_END_PREFIX) {
             in_feature_group = false;
             prev_names = vec![];
+            continue;
+        }
+
+        if in_feature_group && let Some(doc_comment) = line.strip_prefix("///") {
+            doc_comments.push(doc_comment.trim().to_string());
             continue;
         }
 
@@ -438,9 +442,15 @@ fn collect_lang_features_in(features: &mut Features, base: &Path, file: &str, ba
                     tracking_issue,
                     file: path.to_path_buf(),
                     line: line_number,
+                    description: if doc_comments.is_empty() {
+                        None
+                    } else {
+                        Some(doc_comments.join(" "))
+                    },
                 });
             }
         }
+        doc_comments.clear();
     }
 }
 
@@ -453,22 +463,23 @@ fn get_and_check_lib_features(
     map_lib_features(base_src_path, &mut |res, file, line| match res {
         Ok((name, f)) => {
             let mut check_features = |f: &Feature, list: &Features, display: &str| {
-                if let Some(ref s) = list.get(name) {
-                    if f.tracking_issue != s.tracking_issue && f.level != Status::Accepted {
-                        tidy_error!(
-                            bad,
-                            "{}:{}: feature gate {} has inconsistent `issue`: \"{}\" mismatches the {} `issue` of \"{}\"",
-                            file.display(),
-                            line,
-                            name,
-                            f.tracking_issue_display(),
-                            display,
-                            s.tracking_issue_display(),
-                        );
-                    }
+                if let Some(s) = list.get(name)
+                    && f.tracking_issue != s.tracking_issue
+                    && f.level != Status::Accepted
+                {
+                    tidy_error!(
+                        bad,
+                        "{}:{}: feature gate {} has inconsistent `issue`: \"{}\" mismatches the {} `issue` of \"{}\"",
+                        file.display(),
+                        line,
+                        name,
+                        f.tracking_issue_display(),
+                        display,
+                        s.tracking_issue_display(),
+                    );
                 }
             };
-            check_features(&f, &lang_features, "corresponding lang feature");
+            check_features(&f, lang_features, "corresponding lang feature");
             check_features(&f, &lib_features, "previous");
             lib_features.insert(name.to_owned(), f);
         }
@@ -528,7 +539,7 @@ fn map_lib_features(
                     continue;
                 }
 
-                if let Some((ref name, ref mut f)) = becoming_feature {
+                if let Some((name, ref mut f)) = becoming_feature {
                     if f.tracking_issue.is_none() {
                         f.tracking_issue = find_attr_val(line, "issue").and_then(handle_issue_none);
                     }
@@ -564,6 +575,7 @@ fn map_lib_features(
                         tracking_issue: find_attr_val(line, "issue").and_then(handle_issue_none),
                         file: file.to_path_buf(),
                         line: i + 1,
+                        description: None,
                     };
                     mf(Ok((feature_name, feature)), file, i + 1);
                     continue;
@@ -600,6 +612,7 @@ fn map_lib_features(
                     tracking_issue,
                     file: file.to_path_buf(),
                     line: i + 1,
+                    description: None,
                 };
                 if line.contains(']') {
                     mf(Ok((feature_name, feature)), file, i + 1);

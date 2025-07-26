@@ -28,16 +28,16 @@ use rustc_span::{FileLines, FileName, SourceFile, Span, char_width, str_width};
 use termcolor::{Buffer, BufferWriter, Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
 use tracing::{debug, instrument, trace, warn};
 
-use crate::diagnostic::DiagLocation;
 use crate::registry::Registry;
 use crate::snippet::{
     Annotation, AnnotationColumn, AnnotationType, Line, MultilineAnnotation, Style, StyledString,
 };
 use crate::styled_buffer::StyledBuffer;
-use crate::translation::{Translate, to_fluent_args};
+use crate::timings::TimingRecord;
+use crate::translation::{Translator, to_fluent_args};
 use crate::{
-    CodeSuggestion, DiagInner, DiagMessage, ErrCode, FluentBundle, LazyFallbackBundle, Level,
-    MultiSpan, Subdiag, SubstitutionHighlight, SuggestionStyle, TerminalUrl,
+    CodeSuggestion, DiagInner, DiagMessage, ErrCode, Level, MultiSpan, Subdiag,
+    SubstitutionHighlight, SuggestionStyle, TerminalUrl,
 };
 
 /// Default column width, used in tests and when terminal dimensions cannot be determined.
@@ -164,18 +164,27 @@ impl Margin {
     }
 }
 
+pub enum TimingEvent {
+    Start,
+    End,
+}
+
 const ANONYMIZED_LINE_NUM: &str = "LL";
 
 pub type DynEmitter = dyn Emitter + DynSend;
 
-/// Emitter trait for emitting errors.
-pub trait Emitter: Translate {
+/// Emitter trait for emitting errors and other structured information.
+pub trait Emitter {
     /// Emit a structured diagnostic.
     fn emit_diagnostic(&mut self, diag: DiagInner, registry: &Registry);
 
     /// Emit a notification that an artifact has been output.
     /// Currently only supported for the JSON format.
     fn emit_artifact_notification(&mut self, _path: &Path, _artifact_type: &str) {}
+
+    /// Emit a timestamp with start/end of a timing section.
+    /// Currently only supported for the JSON format.
+    fn emit_timing_section(&mut self, _record: TimingRecord, _event: TimingEvent) {}
 
     /// Emit a report about future breakage.
     /// Currently only supported for the JSON format.
@@ -202,6 +211,8 @@ pub trait Emitter: Translate {
 
     fn source_map(&self) -> Option<&SourceMap>;
 
+    fn translator(&self) -> &Translator;
+
     /// Formats the substitutions of the primary_span
     ///
     /// There are a lot of conditions to this method, but in short:
@@ -214,13 +225,17 @@ pub trait Emitter: Translate {
     /// * If the current `DiagInner` has multiple suggestions,
     ///   we leave `primary_span` and the suggestions untouched.
     fn primary_span_formatted(
-        &mut self,
+        &self,
         primary_span: &mut MultiSpan,
         suggestions: &mut Vec<CodeSuggestion>,
         fluent_args: &FluentArgs<'_>,
     ) {
         if let Some((sugg, rest)) = suggestions.split_first() {
-            let msg = self.translate_message(&sugg.msg, fluent_args).map_err(Report::new).unwrap();
+            let msg = self
+                .translator()
+                .translate_message(&sugg.msg, fluent_args)
+                .map_err(Report::new)
+                .unwrap();
             if rest.is_empty()
                // ^ if there is only one suggestion
                // don't display multi-suggestions as labels
@@ -481,16 +496,6 @@ pub trait Emitter: Translate {
     }
 }
 
-impl Translate for HumanEmitter {
-    fn fluent_bundle(&self) -> Option<&FluentBundle> {
-        self.fluent_bundle.as_deref()
-    }
-
-    fn fallback_fluent_bundle(&self) -> &FluentBundle {
-        &self.fallback_bundle
-    }
-}
-
 impl Emitter for HumanEmitter {
     fn source_map(&self) -> Option<&SourceMap> {
         self.sm.as_deref()
@@ -498,6 +503,10 @@ impl Emitter for HumanEmitter {
 
     fn emit_diagnostic(&mut self, mut diag: DiagInner, _registry: &Registry) {
         let fluent_args = to_fluent_args(diag.args.iter());
+
+        if self.track_diagnostics && diag.span.has_primary_spans() && !diag.span.is_dummy() {
+            diag.children.insert(0, diag.emitted_at_sub_diag());
+        }
 
         let mut suggestions = diag.suggestions.unwrap_tag();
         self.primary_span_formatted(&mut diag.span, &mut suggestions, &fluent_args);
@@ -517,7 +526,6 @@ impl Emitter for HumanEmitter {
             &diag.span,
             &diag.children,
             &suggestions,
-            self.track_diagnostics.then_some(&diag.emitted_at),
         );
     }
 
@@ -528,25 +536,41 @@ impl Emitter for HumanEmitter {
     fn supports_color(&self) -> bool {
         self.dst.supports_color()
     }
+
+    fn translator(&self) -> &Translator {
+        &self.translator
+    }
 }
 
 /// An emitter that does nothing when emitting a non-fatal diagnostic.
 /// Fatal diagnostics are forwarded to `fatal_emitter` to avoid silent
 /// failures of rustc, as witnessed e.g. in issue #89358.
-pub struct SilentEmitter {
+pub struct FatalOnlyEmitter {
     pub fatal_emitter: Box<dyn Emitter + DynSend>,
     pub fatal_note: Option<String>,
-    pub emit_fatal_diagnostic: bool,
 }
 
-impl Translate for SilentEmitter {
-    fn fluent_bundle(&self) -> Option<&FluentBundle> {
+impl Emitter for FatalOnlyEmitter {
+    fn source_map(&self) -> Option<&SourceMap> {
         None
     }
 
-    fn fallback_fluent_bundle(&self) -> &FluentBundle {
-        self.fatal_emitter.fallback_fluent_bundle()
+    fn emit_diagnostic(&mut self, mut diag: DiagInner, registry: &Registry) {
+        if diag.level == Level::Fatal {
+            if let Some(fatal_note) = &self.fatal_note {
+                diag.sub(Level::Note, fatal_note.clone(), MultiSpan::new());
+            }
+            self.fatal_emitter.emit_diagnostic(diag, registry);
+        }
     }
+
+    fn translator(&self) -> &Translator {
+        self.fatal_emitter.translator()
+    }
+}
+
+pub struct SilentEmitter {
+    pub translator: Translator,
 }
 
 impl Emitter for SilentEmitter {
@@ -554,13 +578,10 @@ impl Emitter for SilentEmitter {
         None
     }
 
-    fn emit_diagnostic(&mut self, mut diag: DiagInner, registry: &Registry) {
-        if self.emit_fatal_diagnostic && diag.level == Level::Fatal {
-            if let Some(fatal_note) = &self.fatal_note {
-                diag.sub(Level::Note, fatal_note.clone(), MultiSpan::new());
-            }
-            self.fatal_emitter.emit_diagnostic(diag, registry);
-        }
+    fn emit_diagnostic(&mut self, _diag: DiagInner, _registry: &Registry) {}
+
+    fn translator(&self) -> &Translator {
+        &self.translator
     }
 }
 
@@ -605,9 +626,8 @@ pub struct HumanEmitter {
     #[setters(skip)]
     dst: IntoDynSyncSend<Destination>,
     sm: Option<Arc<SourceMap>>,
-    fluent_bundle: Option<Arc<FluentBundle>>,
     #[setters(skip)]
-    fallback_bundle: LazyFallbackBundle,
+    translator: Translator,
     short_message: bool,
     ui_testing: bool,
     ignored_directories_in_source_blocks: Vec<String>,
@@ -627,12 +647,11 @@ pub(crate) struct FileWithAnnotatedLines {
 }
 
 impl HumanEmitter {
-    pub fn new(dst: Destination, fallback_bundle: LazyFallbackBundle) -> HumanEmitter {
+    pub fn new(dst: Destination, translator: Translator) -> HumanEmitter {
         HumanEmitter {
             dst: IntoDynSyncSend(dst),
             sm: None,
-            fluent_bundle: None,
-            fallback_bundle,
+            translator,
             short_message: false,
             ui_testing: false,
             ignored_directories_in_source_blocks: Vec::new(),
@@ -1423,7 +1442,7 @@ impl HumanEmitter {
         //                very *weird* formats
         //                see?
         for (text, style) in msgs.iter() {
-            let text = self.translate_message(text, args).map_err(Report::new).unwrap();
+            let text = self.translator.translate_message(text, args).map_err(Report::new).unwrap();
             let text = &normalize_whitespace(&text);
             let lines = text.split('\n').collect::<Vec<_>>();
             if lines.len() > 1 {
@@ -1451,7 +1470,6 @@ impl HumanEmitter {
         level: &Level,
         max_line_num_len: usize,
         is_secondary: bool,
-        emitted_at: Option<&DiagLocation>,
         is_cont: bool,
     ) -> io::Result<()> {
         let mut buffer = StyledBuffer::new();
@@ -1518,7 +1536,8 @@ impl HumanEmitter {
             }
             let mut line = 0;
             for (text, style) in msgs.iter() {
-                let text = self.translate_message(text, args).map_err(Report::new).unwrap();
+                let text =
+                    self.translator.translate_message(text, args).map_err(Report::new).unwrap();
                 // Account for newlines to align output to its label.
                 for text in normalize_whitespace(&text).lines() {
                     buffer.append(
@@ -1550,7 +1569,7 @@ impl HumanEmitter {
                     .into_iter()
                     .filter_map(|label| match label.label {
                         Some(msg) if label.is_primary => {
-                            let text = self.translate_message(&msg, args).ok()?;
+                            let text = self.translator.translate_message(&msg, args).ok()?;
                             if !text.trim().is_empty() { Some(text.to_string()) } else { None }
                         }
                         _ => None,
@@ -1960,12 +1979,6 @@ impl HumanEmitter {
             trace!("buffer: {:#?}", buffer.render());
         }
 
-        if let Some(tracked) = emitted_at {
-            let track = format!("-Ztrack-diagnostics: created at {tracked}");
-            let len = buffer.num_lines();
-            buffer.append(len, &track, Style::NoStyle);
-        }
-
         // final step: take our styled buffer, render it, then output it
         emit_to_destination(&buffer.render(), level, &mut self.dst, self.short_message)?;
 
@@ -2060,7 +2073,9 @@ impl HumanEmitter {
                 // file name, saving in verbosity, but if it *isn't* we do need it, otherwise we're
                 // telling users to make a change but not clarifying *where*.
                 let loc = sm.lookup_char_pos(parts[0].span.lo());
-                if loc.file.name != sm.span_to_filename(span) && loc.file.name.is_real() {
+                if (span.is_dummy() || loc.file.name != sm.span_to_filename(span))
+                    && loc.file.name.is_real()
+                {
                     // --> file.rs:line:col
                     //  |
                     let arrow = self.file_start();
@@ -2431,17 +2446,22 @@ impl HumanEmitter {
                     | DisplaySuggestion::Underline => row_num - 1,
                     DisplaySuggestion::None => row_num,
                 };
-                self.draw_col_separator_end(&mut buffer, row, max_line_num_len + 1);
+                if other_suggestions > 0 {
+                    self.draw_col_separator_no_space(&mut buffer, row, max_line_num_len + 1);
+                } else {
+                    self.draw_col_separator_end(&mut buffer, row, max_line_num_len + 1);
+                }
                 row_num = row + 1;
             }
         }
         if other_suggestions > 0 {
+            self.draw_note_separator(&mut buffer, row_num, max_line_num_len + 1, false);
             let msg = format!(
                 "and {} other candidate{}",
                 other_suggestions,
                 pluralize!(other_suggestions)
             );
-            buffer.puts(row_num, max_line_num_len + 3, &msg, Style::NoStyle);
+            buffer.append(row_num, &msg, Style::NoStyle);
         }
 
         emit_to_destination(&buffer.render(), level, &mut self.dst, self.short_message)?;
@@ -2458,7 +2478,6 @@ impl HumanEmitter {
         span: &MultiSpan,
         children: &[Subdiag],
         suggestions: &[CodeSuggestion],
-        emitted_at: Option<&DiagLocation>,
     ) {
         let max_line_num_len = if self.ui_testing {
             ANONYMIZED_LINE_NUM.len()
@@ -2475,7 +2494,6 @@ impl HumanEmitter {
             level,
             max_line_num_len,
             false,
-            emitted_at,
             !children.is_empty()
                 || suggestions.iter().any(|s| s.style != SuggestionStyle::CompletelyHidden),
         ) {
@@ -2521,7 +2539,6 @@ impl HumanEmitter {
                             &child.level,
                             max_line_num_len,
                             true,
-                            None,
                             !should_close,
                         ) {
                             panic!("failed to emit error: {err}");
@@ -2541,7 +2558,6 @@ impl HumanEmitter {
                                     &Level::Help,
                                     max_line_num_len,
                                     true,
-                                    None,
                                     // FIXME: this needs to account for the suggestion type,
                                     //        some don't take any space.
                                     i + 1 != suggestions.len(),
@@ -3094,7 +3110,11 @@ impl FileWithAnnotatedLines {
 
                 let label = label.as_ref().map(|m| {
                     normalize_whitespace(
-                        &emitter.translate_message(m, args).map_err(Report::new).unwrap(),
+                        &emitter
+                            .translator()
+                            .translate_message(m, args)
+                            .map_err(Report::new)
+                            .unwrap(),
                     )
                 });
 
@@ -3511,7 +3531,7 @@ pub fn is_case_difference(sm: &SourceMap, suggested: &str, sp: Span) -> bool {
     // All the chars that differ in capitalization are confusable (above):
     let confusable = iter::zip(found.chars(), suggested.chars())
         .filter(|(f, s)| f != s)
-        .all(|(f, s)| (ascii_confusables.contains(&f) || ascii_confusables.contains(&s)));
+        .all(|(f, s)| ascii_confusables.contains(&f) || ascii_confusables.contains(&s));
     confusable && found.to_lowercase() == suggested.to_lowercase()
             // FIXME: We sometimes suggest the same thing we already have, which is a
             //        bug, but be defensive against that here.

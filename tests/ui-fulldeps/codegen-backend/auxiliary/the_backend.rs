@@ -33,17 +33,10 @@ impl CodegenBackend for TheBackend {
         ""
     }
 
-    fn codegen_crate<'a, 'tcx>(
-        &self,
-        tcx: TyCtxt<'tcx>,
-        metadata: EncodedMetadata,
-        _need_metadata_module: bool,
-    ) -> Box<dyn Any> {
+    fn codegen_crate(&self, tcx: TyCtxt<'_>) -> Box<dyn Any> {
         Box::new(CodegenResults {
             modules: vec![],
             allocator_module: None,
-            metadata_module: None,
-            metadata,
             crate_info: CrateInfo::new(tcx, "fake_target_cpu".to_string()),
         })
     }
@@ -60,7 +53,13 @@ impl CodegenBackend for TheBackend {
         (*codegen_results, FxIndexMap::default())
     }
 
-    fn link(&self, sess: &Session, codegen_results: CodegenResults, outputs: &OutputFilenames) {
+    fn link(
+        &self,
+        sess: &Session,
+        codegen_results: CodegenResults,
+        _metadata: EncodedMetadata,
+        outputs: &OutputFilenames,
+    ) {
         use std::io::Write;
 
         use rustc_session::config::{CrateType, OutFileName};

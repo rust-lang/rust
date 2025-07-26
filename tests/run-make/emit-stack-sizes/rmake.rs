@@ -6,8 +6,8 @@
 // this diagnostics information should be located.
 // See https://github.com/rust-lang/rust/pull/51946
 
-//@ ignore-windows
-//@ ignore-apple
+//@ needs-target-std
+//@ only-elf
 // Reason: this feature only works when the output object format is ELF.
 // This won't be the case on Windows/OSX - for example, OSX produces a Mach-O binary.
 

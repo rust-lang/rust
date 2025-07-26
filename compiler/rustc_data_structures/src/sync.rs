@@ -22,8 +22,6 @@
 //! |                         |                     | `parking_lot::Mutex<T>`         |
 //! | `RwLock<T>`             | `RefCell<T>`        | `parking_lot::RwLock<T>`        |
 //! | `MTLock<T>`        [^1] | `T`                 | `Lock<T>`                       |
-//! |                         |                     |                                 |
-//! | `ParallelIterator`      | `Iterator`          | `rayon::iter::ParallelIterator` |
 //!
 //! [^1]: `MTLock` is similar to `Lock`, but the serial version avoids the cost
 //! of a `RefCell`. This is appropriate when interior mutability is not
@@ -43,7 +41,7 @@ pub use self::freeze::{FreezeLock, FreezeReadGuard, FreezeWriteGuard};
 pub use self::lock::{Lock, LockGuard, Mode};
 pub use self::mode::{is_dyn_thread_safe, set_dyn_thread_safe_mode};
 pub use self::parallel::{
-    join, par_for_each_in, par_map, parallel_guard, scope, spawn, try_par_for_each_in,
+    broadcast, join, par_for_each_in, par_map, parallel_guard, scope, spawn, try_par_for_each_in,
 };
 pub use self::vec::{AppendOnlyIndexVec, AppendOnlyVec};
 pub use self::worker_local::{Registry, WorkerLocal};

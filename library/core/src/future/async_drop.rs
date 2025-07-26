@@ -24,7 +24,6 @@ use crate::task::{Context, Poll};
 /// are `Copy` get implicitly duplicated by the compiler, making it very
 /// hard to predict when, and how often destructors will be executed. As such,
 /// these types cannot have destructors.
-#[cfg(not(bootstrap))]
 #[unstable(feature = "async_drop", issue = "126482")]
 #[lang = "async_drop"]
 pub trait AsyncDrop {
@@ -42,7 +41,6 @@ pub trait AsyncDrop {
 }
 
 /// Async drop.
-#[cfg(not(bootstrap))]
 #[unstable(feature = "async_drop", issue = "126482")]
 #[lang = "async_drop_in_place"]
 pub async unsafe fn async_drop_in_place<T: ?Sized>(_to_drop: *mut T) {

@@ -1,4 +1,3 @@
-#![feature(result_flattening)]
 #![allow(
     clippy::let_underscore_untyped,
     clippy::missing_docs_in_private_items,

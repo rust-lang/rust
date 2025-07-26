@@ -16,10 +16,10 @@ pub fn is_windows() -> bool {
     target().contains("windows")
 }
 
-/// Check if target uses msvc.
+/// Check if target is windows-msvc.
 #[must_use]
-pub fn is_msvc() -> bool {
-    target().contains("msvc")
+pub fn is_windows_msvc() -> bool {
+    target().ends_with("windows-msvc")
 }
 
 /// Check if target is windows-gnu.

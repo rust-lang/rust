@@ -123,3 +123,40 @@ fn issue14189() {
         *b = !*b;
     }
 }
+
+mod issue14685 {
+    use std::ops::{Index, IndexMut};
+
+    #[derive(Clone)]
+    struct ZipList<T>(T);
+
+    impl<T> ZipList<T> {
+        fn len(&self) -> usize {
+            todo!()
+        }
+
+        fn is_empty(&self) -> bool {
+            todo!()
+        }
+    }
+
+    impl<T> Index<usize> for ZipList<T> {
+        type Output = T;
+
+        fn index(&self, _: usize) -> &Self::Output {
+            todo!()
+        }
+    }
+
+    impl<T> IndexMut<usize> for ZipList<T> {
+        fn index_mut(&mut self, _: usize) -> &mut Self::Output {
+            todo!()
+        }
+    }
+
+    fn index_mut(mut zl: ZipList<usize>) {
+        for i in 0..zl.len() {
+            zl[i] = 6;
+        }
+    }
+}

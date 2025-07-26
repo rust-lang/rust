@@ -1,6 +1,8 @@
 //@ compile-flags: -Cdebuginfo=2
+#![allow(sized_hierarchy_migration)]
+#![feature(sized_hierarchy)] // added to keep parameters unconstrained
 
-pub trait Functor
+pub trait Functor: std::marker::PointeeSized
 {
     type With<T>: Functor;
 }
@@ -17,20 +19,20 @@ impl<T> Functor for Vec<T> {
 
 pub struct Compose<F1, F2, T>(F1::With<F2::With<T>>)
 where
-    F1: Functor + ?Sized,
-    F2: Functor + ?Sized;
+    F1: Functor + std::marker::PointeeSized,
+    F2: Functor + std::marker::PointeeSized;
 
 impl<F1, F2, T> Functor for Compose<F1, F2, T>
 where
-    F1: Functor + ?Sized,
-    F2: Functor + ?Sized
+    F1: Functor + std::marker::PointeeSized,
+    F2: Functor + std::marker::PointeeSized,
 {
     type With<T2> = F1::With<F2::With<T2>> ;
 }
 
 pub enum Value<F>
 where
-    F: Functor + ?Sized,
+    F: Functor + std::marker::PointeeSized,
 {
     SignedInt(*mut F::With<i64>),
     Array(*mut Value<Compose<F, Vec<()>, ()>>),

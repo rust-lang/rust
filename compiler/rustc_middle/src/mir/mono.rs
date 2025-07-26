@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::fmt;
 use std::hash::Hash;
 
@@ -142,16 +143,14 @@ impl<'tcx> MonoItem<'tcx> {
         };
 
         // Similarly, the executable entrypoint must be instantiated exactly once.
-        if let Some((entry_def_id, _)) = tcx.entry_fn(()) {
-            if instance.def_id() == entry_def_id {
-                return InstantiationMode::GloballyShared { may_conflict: false };
-            }
+        if tcx.is_entrypoint(instance.def_id()) {
+            return InstantiationMode::GloballyShared { may_conflict: false };
         }
 
         // If the function is #[naked] or contains any other attribute that requires exactly-once
         // instantiation:
         // We emit an unused_attributes lint for this case, which should be kept in sync if possible.
-        let codegen_fn_attrs = tcx.codegen_fn_attrs(instance.def_id());
+        let codegen_fn_attrs = tcx.codegen_instance_attrs(instance.def);
         if codegen_fn_attrs.contains_extern_indicator()
             || codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::NAKED)
         {
@@ -218,7 +217,7 @@ impl<'tcx> MonoItem<'tcx> {
         // functions the same as those that unconditionally get LocalCopy codegen. It's only when
         // we get here that we can at least not codegen a #[inline(never)] generic function in all
         // of our CGUs.
-        if let InlineAttr::Never = tcx.codegen_fn_attrs(instance.def_id()).inline
+        if let InlineAttr::Never = codegen_fn_attrs.inline
             && self.is_generic_fn()
         {
             return InstantiationMode::GloballyShared { may_conflict: true };
@@ -233,14 +232,13 @@ impl<'tcx> MonoItem<'tcx> {
     }
 
     pub fn explicit_linkage(&self, tcx: TyCtxt<'tcx>) -> Option<Linkage> {
-        let def_id = match *self {
-            MonoItem::Fn(ref instance) => instance.def_id(),
-            MonoItem::Static(def_id) => def_id,
+        let instance_kind = match *self {
+            MonoItem::Fn(ref instance) => instance.def,
+            MonoItem::Static(def_id) => InstanceKind::Item(def_id),
             MonoItem::GlobalAsm(..) => return None,
         };
 
-        let codegen_fn_attrs = tcx.codegen_fn_attrs(def_id);
-        codegen_fn_attrs.linkage
+        tcx.codegen_instance_attrs(instance_kind).linkage
     }
 
     /// Returns `true` if this instance is instantiable - whether it has no unsatisfied
@@ -468,6 +466,29 @@ impl<'tcx> CodegenUnit<'tcx> {
         hash.as_u128().to_base_fixed_len(CASE_INSENSITIVE)
     }
 
+    pub fn shorten_name(human_readable_name: &str) -> Cow<'_, str> {
+        // Set a limit a somewhat below the common platform limits for file names.
+        const MAX_CGU_NAME_LENGTH: usize = 200;
+        const TRUNCATED_NAME_PREFIX: &str = "-trunc-";
+        if human_readable_name.len() > MAX_CGU_NAME_LENGTH {
+            let mangled_name = Self::mangle_name(human_readable_name);
+            // Determine a safe byte offset to truncate the name to
+            let truncate_to = human_readable_name.floor_char_boundary(
+                MAX_CGU_NAME_LENGTH - TRUNCATED_NAME_PREFIX.len() - mangled_name.len(),
+            );
+            format!(
+                "{}{}{}",
+                &human_readable_name[..truncate_to],
+                TRUNCATED_NAME_PREFIX,
+                mangled_name
+            )
+            .into()
+        } else {
+            // If the name is short enough, we can just return it as is.
+            human_readable_name.into()
+        }
+    }
+
     pub fn compute_size_estimate(&mut self) {
         // The size of a codegen unit as the sum of the sizes of the items
         // within it.
@@ -604,7 +625,7 @@ impl<'tcx> CodegenUnitNameBuilder<'tcx> {
         let cgu_name = self.build_cgu_name_no_mangle(cnum, components, special_suffix);
 
         if self.tcx.sess.opts.unstable_opts.human_readable_cgu_names {
-            cgu_name
+            Symbol::intern(&CodegenUnit::shorten_name(cgu_name.as_str()))
         } else {
             Symbol::intern(&CodegenUnit::mangle_name(cgu_name.as_str()))
         }

@@ -5,6 +5,7 @@ use std::cmp::{self, Ordering};
 
 use chalk_ir::TyKind;
 use hir_def::{
+    CrateRootModuleId,
     builtin_type::{BuiltinInt, BuiltinUint},
     resolver::HasResolver,
 };
@@ -64,9 +65,7 @@ impl Evaluator<'_> {
                 Some(abi) => *abi == sym::rust_dash_intrinsic,
                 None => match def.lookup(self.db).container {
                     hir_def::ItemContainerId::ExternBlockId(block) => {
-                        let id = block.lookup(self.db).id;
-                        id.item_tree(self.db)[id.value].abi.as_ref()
-                            == Some(&sym::rust_dash_intrinsic)
+                        block.abi(self.db) == Some(sym::rust_dash_intrinsic)
                     }
                     _ => false,
                 },
@@ -85,10 +84,7 @@ impl Evaluator<'_> {
             );
         }
         let is_extern_c = match def.lookup(self.db).container {
-            hir_def::ItemContainerId::ExternBlockId(block) => {
-                let id = block.lookup(self.db).id;
-                id.item_tree(self.db)[id.value].abi.as_ref() == Some(&sym::C)
-            }
+            hir_def::ItemContainerId::ExternBlockId(block) => block.abi(self.db) == Some(sym::C),
             _ => false,
         };
         if is_extern_c {
@@ -153,7 +149,7 @@ impl Evaluator<'_> {
     ) -> Result<Option<FunctionId>> {
         // `PanicFmt` is redirected to `ConstPanicFmt`
         if let Some(LangItem::PanicFmt) = self.db.lang_attr(def.into()) {
-            let resolver = self.db.crate_def_map(self.crate_id).crate_root().resolver(self.db);
+            let resolver = CrateRootModuleId::from(self.crate_id).resolver(self.db);
 
             let Some(const_panic_fmt) =
                 LangItem::ConstPanicFmt.resolve_function(self.db, resolver.krate())
@@ -763,7 +759,9 @@ impl Evaluator<'_> {
                 let size = self.size_of_sized(ty, locals, "size_of arg")?;
                 destination.write_from_bytes(self, &size.to_le_bytes()[0..destination.size])
             }
-            "min_align_of" | "pref_align_of" => {
+            // FIXME: `min_align_of` was renamed to `align_of` in Rust 1.89
+            // (https://github.com/rust-lang/rust/pull/142410)
+            "min_align_of" | "align_of" => {
                 let Some(ty) =
                     generic_args.as_slice(Interner).first().and_then(|it| it.ty(Interner))
                 else {
@@ -795,17 +793,19 @@ impl Evaluator<'_> {
                     destination.write_from_bytes(self, &size.to_le_bytes())
                 }
             }
-            "min_align_of_val" => {
+            // FIXME: `min_align_of_val` was renamed to `align_of_val` in Rust 1.89
+            // (https://github.com/rust-lang/rust/pull/142410)
+            "min_align_of_val" | "align_of_val" => {
                 let Some(ty) =
                     generic_args.as_slice(Interner).first().and_then(|it| it.ty(Interner))
                 else {
                     return Err(MirEvalError::InternalError(
-                        "min_align_of_val generic arg is not provided".into(),
+                        "align_of_val generic arg is not provided".into(),
                     ));
                 };
                 let [arg] = args else {
                     return Err(MirEvalError::InternalError(
-                        "min_align_of_val args are not provided".into(),
+                        "align_of_val args are not provided".into(),
                     ));
                 };
                 if let Some((_, align)) = self.size_align_of(ty, locals)? {
@@ -1120,7 +1120,7 @@ impl Evaluator<'_> {
                 // We don't call any drop glue yet, so there is nothing here
                 Ok(())
             }
-            "transmute" => {
+            "transmute" | "transmute_unchecked" => {
                 let [arg] = args else {
                     return Err(MirEvalError::InternalError(
                         "transmute arg is not provided".into(),
@@ -1257,9 +1257,8 @@ impl Evaluator<'_> {
                     args.push(IntervalAndTy::new(addr, field, self, locals)?);
                 }
                 if let Some(target) = LangItem::FnOnce.resolve_trait(self.db, self.crate_id) {
-                    if let Some(def) = self
-                        .db
-                        .trait_items(target)
+                    if let Some(def) = target
+                        .trait_items(self.db)
                         .method_by_name(&Name::new_symbol_root(sym::call_once))
                     {
                         self.exec_fn_trait(

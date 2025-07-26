@@ -7,7 +7,7 @@
 #![crate_type = "rlib"]
 
 pub static C: u32 = 0 - 1;
-//~^ ERROR could not evaluate static initializer
+//~^ ERROR attempt to compute `0_u32 - 1_u32`, which would overflow
 
 //~? RAW aborting due to `-Z treat-err-as-bug=1`
 //~? RAW [eval_static_initializer] evaluating initializer of static `C`

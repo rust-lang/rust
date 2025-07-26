@@ -14,8 +14,8 @@ use crate::{array, ptr, ub_checks};
 /// * `data` must be non-null, [valid] for reads for `len * size_of::<T>()` many bytes,
 ///   and it must be properly aligned. This means in particular:
 ///
-///     * The entire memory range of this slice must be contained within a single allocated object!
-///       Slices can never span across multiple allocated objects. See [below](#incorrect-usage)
+///     * The entire memory range of this slice must be contained within a single allocation!
+///       Slices can never span across multiple allocations. See [below](#incorrect-usage)
 ///       for an example incorrectly not taking this into account.
 ///     * `data` must be non-null and aligned even for zero-length slices or slices of ZSTs. One
 ///       reason for this is that enum layout optimizations may rely on references
@@ -65,14 +65,14 @@ use crate::{array, ptr, ub_checks};
 ///     assert_eq!(fst_end, snd_start, "Slices must be contiguous!");
 ///     unsafe {
 ///         // The assertion above ensures `fst` and `snd` are contiguous, but they might
-///         // still be contained within _different allocated objects_, in which case
+///         // still be contained within _different allocations_, in which case
 ///         // creating this slice is undefined behavior.
 ///         slice::from_raw_parts(fst.as_ptr(), fst.len() + snd.len())
 ///     }
 /// }
 ///
 /// fn main() {
-///     // `a` and `b` are different allocated objects...
+///     // `a` and `b` are different allocations...
 ///     let a = 42;
 ///     let b = 27;
 ///     // ... which may nevertheless be laid out contiguously in memory: | a | b |
@@ -120,6 +120,7 @@ use crate::{array, ptr, ub_checks};
 #[rustc_const_stable(feature = "const_slice_from_raw_parts", since = "1.64.0")]
 #[must_use]
 #[rustc_diagnostic_item = "slice_from_raw_parts"]
+#[track_caller]
 pub const unsafe fn from_raw_parts<'a, T>(data: *const T, len: usize) -> &'a [T] {
     // SAFETY: the caller must uphold the safety contract for `from_raw_parts`.
     unsafe {
@@ -149,8 +150,8 @@ pub const unsafe fn from_raw_parts<'a, T>(data: *const T, len: usize) -> &'a [T]
 /// * `data` must be non-null, [valid] for both reads and writes for `len * size_of::<T>()` many bytes,
 ///   and it must be properly aligned. This means in particular:
 ///
-///     * The entire memory range of this slice must be contained within a single allocated object!
-///       Slices can never span across multiple allocated objects.
+///     * The entire memory range of this slice must be contained within a single allocation!
+///       Slices can never span across multiple allocations.
 ///     * `data` must be non-null and aligned even for zero-length slices or slices of ZSTs. One
 ///       reason for this is that enum layout optimizations may rely on references
 ///       (including slices of any length) being aligned and non-null to distinguish
@@ -174,6 +175,7 @@ pub const unsafe fn from_raw_parts<'a, T>(data: *const T, len: usize) -> &'a [T]
 #[rustc_const_stable(feature = "const_slice_from_raw_parts_mut", since = "1.83.0")]
 #[must_use]
 #[rustc_diagnostic_item = "slice_from_raw_parts_mut"]
+#[track_caller]
 pub const unsafe fn from_raw_parts_mut<'a, T>(data: *mut T, len: usize) -> &'a mut [T] {
     // SAFETY: the caller must uphold the safety contract for `from_raw_parts_mut`.
     unsafe {
@@ -196,6 +198,7 @@ pub const unsafe fn from_raw_parts_mut<'a, T>(data: *mut T, len: usize) -> &'a m
 /// Converts a reference to T into a slice of length 1 (without copying).
 #[stable(feature = "from_ref", since = "1.28.0")]
 #[rustc_const_stable(feature = "const_slice_from_ref_shared", since = "1.63.0")]
+#[rustc_diagnostic_item = "slice_from_ref"]
 #[must_use]
 pub const fn from_ref<T>(s: &T) -> &[T] {
     array::from_ref(s)
@@ -226,8 +229,8 @@ pub const fn from_mut<T>(s: &mut T) -> &mut [T] {
 ///   the last element, such that the offset from the end to the start pointer is
 ///   the length of the slice.
 ///
-/// * The entire memory range of this slice must be contained within a single allocated object!
-///   Slices can never span across multiple allocated objects.
+/// * The entire memory range of this slice must be contained within a single allocation!
+///   Slices can never span across multiple allocations.
 ///
 /// * The range must contain `N` consecutive properly initialized values of type `T`.
 ///
@@ -270,6 +273,7 @@ pub const fn from_mut<T>(s: &mut T) -> &mut [T] {
 /// [valid]: ptr#safety
 #[unstable(feature = "slice_from_ptr_range", issue = "89792")]
 #[rustc_const_unstable(feature = "const_slice_from_ptr_range", issue = "89792")]
+#[track_caller]
 pub const unsafe fn from_ptr_range<'a, T>(range: Range<*const T>) -> &'a [T] {
     // SAFETY: the caller must uphold the safety contract for `from_ptr_range`.
     unsafe { from_raw_parts(range.start, range.end.offset_from_unsigned(range.start)) }
@@ -295,8 +299,8 @@ pub const unsafe fn from_ptr_range<'a, T>(range: Range<*const T>) -> &'a [T] {
 ///   the last element, such that the offset from the end to the start pointer is
 ///   the length of the slice.
 ///
-/// * The entire memory range of this slice must be contained within a single allocated object!
-///   Slices can never span across multiple allocated objects.
+/// * The entire memory range of this slice must be contained within a single allocation!
+///   Slices can never span across multiple allocations.
 ///
 /// * The range must contain `N` consecutive properly initialized values of type `T`.
 ///

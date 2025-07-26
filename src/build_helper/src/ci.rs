@@ -9,7 +9,7 @@ pub enum CiEnv {
 impl CiEnv {
     /// Obtains the current CI environment.
     pub fn current() -> CiEnv {
-        if std::env::var("GITHUB_ACTIONS").map_or(false, |e| e == "true") {
+        if std::env::var("GITHUB_ACTIONS").is_ok_and(|e| e == "true") {
             CiEnv::GitHubActions
         } else {
             CiEnv::None
@@ -17,7 +17,11 @@ impl CiEnv {
     }
 
     pub fn is_ci() -> bool {
-        Self::current() != CiEnv::None
+        Self::current().is_running_in_ci()
+    }
+
+    pub fn is_running_in_ci(self) -> bool {
+        self != CiEnv::None
     }
 
     /// Checks if running in rust-lang/rust managed CI job.

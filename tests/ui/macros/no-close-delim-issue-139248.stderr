@@ -1,33 +1,27 @@
 error: expected `{`, found `)`
-  --> $DIR/no-close-delim-issue-139248.rs:10:27
+  --> $DIR/no-close-delim-issue-139248.rs:9:27
    |
 LL | m! { static a : () = (if b) }
    |                           ^ expected `{`
    |
 note: the `if` expression is missing a block after this condition
-  --> $DIR/no-close-delim-issue-139248.rs:10:26
+  --> $DIR/no-close-delim-issue-139248.rs:9:26
    |
 LL | m! { static a : () = (if b) }
    |                          ^
 
 error: expected `{`, found `)`
-  --> $DIR/no-close-delim-issue-139248.rs:10:27
+  --> $DIR/no-close-delim-issue-139248.rs:9:27
    |
 LL | m! { static a : () = (if b) }
    |                           ^ expected `{`
    |
 note: the `if` expression is missing a block after this condition
-  --> $DIR/no-close-delim-issue-139248.rs:10:26
+  --> $DIR/no-close-delim-issue-139248.rs:9:26
    |
 LL | m! { static a : () = (if b) }
    |                          ^
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-error: macro expansion ends with an incomplete expression: expected expression
-  --> $DIR/no-close-delim-issue-139248.rs:5:28
-   |
-LL |         static a : () = $e;
-   |                            ^ expected expression
-
-error: aborting due to 3 previous errors
+error: aborting due to 2 previous errors
 

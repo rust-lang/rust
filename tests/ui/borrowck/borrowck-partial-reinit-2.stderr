@@ -7,6 +7,15 @@ LL |     let mut u = Test { a: 2, b: Some(Box::new(t))};
    |                                               - value moved here
 LL |     t.b = Some(Box::new(u));
    |     ^^^ value assigned here after move
+   |
+note: if `Test` implemented `Clone`, you could clone the value
+  --> $DIR/borrowck-partial-reinit-2.rs:1:1
+   |
+LL | struct Test {
+   | ^^^^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |     let mut u = Test { a: 2, b: Some(Box::new(t))};
+   |                                               - you could clone this value
 
 error: aborting due to 1 previous error
 

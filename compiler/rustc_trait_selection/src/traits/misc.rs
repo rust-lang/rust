@@ -157,7 +157,7 @@ pub fn type_allowed_to_implement_const_param_ty<'tcx>(
             parent_cause.clone(),
             param_env,
             inner_ty,
-            tcx.require_lang_item(lang_item, Some(parent_cause.span)),
+            tcx.require_lang_item(lang_item, parent_cause.span),
         );
 
         let errors = ocx.select_all_or_error();
@@ -193,7 +193,7 @@ pub fn all_fields_implement_trait<'tcx>(
     parent_cause: ObligationCause<'tcx>,
     lang_item: LangItem,
 ) -> Result<(), Vec<(&'tcx ty::FieldDef, Ty<'tcx>, InfringingFieldsReason<'tcx>)>> {
-    let trait_def_id = tcx.require_lang_item(lang_item, Some(parent_cause.span));
+    let trait_def_id = tcx.require_lang_item(lang_item, parent_cause.span);
 
     let mut infringing = Vec::new();
     for variant in adt.variants() {

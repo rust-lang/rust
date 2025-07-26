@@ -23,4 +23,12 @@ struct MyTupleStruct(usize, String); // should not trigger lint
 struct MySingleTupleStruct(usize); // should not trigger lint
 struct MyUnitLikeStruct; // should not trigger lint
 
+macro_rules! empty_struct {
+    ($s:ident) => {
+        struct $s {}
+    };
+}
+
+empty_struct!(FromMacro);
+
 fn main() {}

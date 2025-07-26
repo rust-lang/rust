@@ -32,21 +32,22 @@ impl<'a> DescriptionCtx<'a> {
                 } else {
                     tcx.def_span(scope)
                 };
-                if br.has_name() {
+                if br.is_named() {
                     (Some(span), "as_defined", br.name.to_string())
                 } else {
                     (Some(span), "as_defined_anon", String::new())
                 }
             }
             ty::ReLateParam(ref fr) => {
-                if !fr.kind.is_named()
+                if !fr.kind.is_named(tcx)
                     && let Some((ty, _)) = find_anon_type(tcx, generic_param_scope, region)
                 {
                     (Some(ty.span), "defined_here", String::new())
                 } else {
                     let scope = fr.scope.expect_local();
                     match fr.kind {
-                        ty::LateParamRegionKind::Named(_, name) => {
+                        ty::LateParamRegionKind::Named(def_id) => {
+                            let name = tcx.item_name(def_id);
                             let span = if let Some(param) = tcx
                                 .hir_get_generics(scope)
                                 .and_then(|generics| generics.get_named(name))
@@ -163,12 +164,14 @@ impl RegionExplanation<'_> {
 
 impl Subdiagnostic for RegionExplanation<'_> {
     fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
+        diag.store_args();
         diag.arg("pref_kind", self.prefix);
         diag.arg("suff_kind", self.suffix);
         diag.arg("desc_kind", self.desc.kind);
         diag.arg("desc_arg", self.desc.arg);
 
         let msg = diag.eagerly_translate(fluent::trait_selection_region_explanation);
+        diag.restore_args();
         if let Some(span) = self.desc.span {
             diag.span_note(span, msg);
         } else {

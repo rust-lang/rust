@@ -28,6 +28,7 @@ pub(crate) fn unresolved_module(
         },
         d.decl.map(|it| it.into()),
     )
+    .stable()
     .with_fixes(fixes(ctx, d))
 }
 

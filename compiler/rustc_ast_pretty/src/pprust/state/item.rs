@@ -28,7 +28,7 @@ impl<'a> State<'a> {
         }
     }
 
-    fn print_foreign_item(&mut self, item: &ast::ForeignItem) {
+    pub(crate) fn print_foreign_item(&mut self, item: &ast::ForeignItem) {
         let ast::Item { id, span, ref attrs, ref kind, ref vis, tokens: _ } = *item;
         self.ann.pre(self, AnnNode::SubItem(id));
         self.hardbreak_if_not_bol();
@@ -298,14 +298,14 @@ impl<'a> State<'a> {
                     *defaultness,
                 );
             }
-            ast::ItemKind::Enum(ident, enum_definition, params) => {
-                self.print_enum_def(enum_definition, params, *ident, item.span, &item.vis);
+            ast::ItemKind::Enum(ident, generics, enum_definition) => {
+                self.print_enum_def(enum_definition, generics, *ident, item.span, &item.vis);
             }
-            ast::ItemKind::Struct(ident, struct_def, generics) => {
+            ast::ItemKind::Struct(ident, generics, struct_def) => {
                 let (cb, ib) = self.head(visibility_qualified(&item.vis, "struct"));
                 self.print_struct(struct_def, generics, *ident, item.span, true, cb, ib);
             }
-            ast::ItemKind::Union(ident, struct_def, generics) => {
+            ast::ItemKind::Union(ident, generics, struct_def) => {
                 let (cb, ib) = self.head(visibility_qualified(&item.vis, "union"));
                 self.print_struct(struct_def, generics, *ident, item.span, true, cb, ib);
             }
@@ -357,6 +357,7 @@ impl<'a> State<'a> {
                 self.bclose(item.span, empty, cb);
             }
             ast::ItemKind::Trait(box ast::Trait {
+                constness,
                 safety,
                 is_auto,
                 ident,
@@ -366,6 +367,7 @@ impl<'a> State<'a> {
             }) => {
                 let (cb, ib) = self.head("");
                 self.print_visibility(&item.vis);
+                self.print_constness(*constness);
                 self.print_safety(*safety);
                 self.print_is_auto(*is_auto);
                 self.word_nbsp("trait");
@@ -548,7 +550,7 @@ impl<'a> State<'a> {
         }
     }
 
-    fn print_assoc_item(&mut self, item: &ast::AssocItem) {
+    pub(crate) fn print_assoc_item(&mut self, item: &ast::AssocItem) {
         let ast::Item { id, span, ref attrs, ref kind, ref vis, tokens: _ } = *item;
         self.ann.pre(self, AnnNode::SubItem(id));
         self.hardbreak_if_not_bol();

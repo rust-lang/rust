@@ -5,10 +5,10 @@ struct S1 {
     bar: i32,
 }
 mod m1 {
-    pub use ::f1; //~ ERROR `f1` is only public within the crate, and cannot be re-exported outside
-    pub use ::S1; //~ ERROR `S1` is only public within the crate, and cannot be re-exported outside
-    pub use ::E1; //~ ERROR `E1` is only public within the crate, and cannot be re-exported outside
-    pub use ::E1::V; //~ ERROR `V` is only public within the crate, and cannot be re-exported outside
+    pub use crate::f1; //~ ERROR `f1` is only public within the crate, and cannot be re-exported outside
+    pub use crate::S1; //~ ERROR `S1` is only public within the crate, and cannot be re-exported outside
+    pub use crate::E1; //~ ERROR `E1` is only public within the crate, and cannot be re-exported outside
+    pub use crate::E1::V; //~ ERROR `V` is only public within the crate, and cannot be re-exported outside
 }
 
 pub(crate) fn f2() {}
@@ -20,10 +20,10 @@ pub(crate) struct S2 {
     bar: i32,
 }
 mod m2 {
-    pub use ::f2; //~ ERROR `f2` is only public within the crate, and cannot be re-exported outside
-    pub use ::S2; //~ ERROR `S2` is only public within the crate, and cannot be re-exported outside
-    pub use ::E2; //~ ERROR `E2` is only public within the crate, and cannot be re-exported outside
-    pub use ::E2::V; //~ ERROR `V` is only public within the crate, and cannot be re-exported outside
+    pub use crate::f2; //~ ERROR `f2` is only public within the crate, and cannot be re-exported outside
+    pub use crate::S2; //~ ERROR `S2` is only public within the crate, and cannot be re-exported outside
+    pub use crate::E2; //~ ERROR `E2` is only public within the crate, and cannot be re-exported outside
+    pub use crate::E2::V; //~ ERROR `V` is only public within the crate, and cannot be re-exported outside
 }
 
 mod m3 {
@@ -42,7 +42,7 @@ pub use m3::E3; //~ ERROR `E3` is only public within the crate, and cannot be re
 pub use m3::E3::V; //~ ERROR `V` is only public within the crate, and cannot be re-exported outside
 
 pub(self) fn f4() {}
-pub use ::f4 as f5; //~ ERROR `f4` is only public within the crate, and cannot be re-exported outside
+pub use crate::f4 as f5; //~ ERROR `f4` is only public within the crate, and cannot be re-exported outside
 
 pub mod m10 {
     pub mod m {

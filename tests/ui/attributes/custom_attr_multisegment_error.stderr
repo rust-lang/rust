@@ -1,0 +1,9 @@
+error[E0433]: failed to resolve: could not find `nonexistent` in `existent`
+  --> $DIR/custom_attr_multisegment_error.rs:5:13
+   |
+LL | #[existent::nonexistent]
+   |             ^^^^^^^^^^^ could not find `nonexistent` in `existent`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0433`.

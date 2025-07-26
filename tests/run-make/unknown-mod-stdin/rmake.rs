@@ -1,3 +1,5 @@
+//@ needs-target-std
+//
 // Rustc displays a compilation error when it finds a `mod` (module)
 // statement referencing a file that does not exist. However, a bug from 2019
 // caused invalid `mod` statements to silently insert empty inline modules

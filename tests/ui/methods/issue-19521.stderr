@@ -2,7 +2,7 @@ error[E0599]: no method named `homura` found for reference `&'static str` in the
   --> $DIR/issue-19521.rs:2:8
    |
 LL |     "".homura()();
-   |        ^^^^^^ method not found in `&str`
+   |        ^^^^^^ method not found in `&'static str`
 
 error: aborting due to 1 previous error
 

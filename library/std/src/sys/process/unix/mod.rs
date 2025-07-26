@@ -11,6 +11,7 @@ cfg_if::cfg_if! {
     } else if #[cfg(any(target_os = "espidf", target_os = "horizon", target_os = "vita", target_os = "nuttx"))] {
         mod unsupported;
         use unsupported as imp;
+        pub use unsupported::output;
     } else {
         mod unix;
         use unix as imp;

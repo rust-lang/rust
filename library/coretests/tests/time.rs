@@ -46,16 +46,25 @@ fn from_weeks_overflow() {
 }
 
 #[test]
-fn constructors() {
+fn constructor_weeks() {
     assert_eq!(Duration::from_weeks(1), Duration::from_secs(7 * 24 * 60 * 60));
     assert_eq!(Duration::from_weeks(0), Duration::ZERO);
+}
 
+#[test]
+fn constructor_days() {
     assert_eq!(Duration::from_days(1), Duration::from_secs(86_400));
     assert_eq!(Duration::from_days(0), Duration::ZERO);
+}
 
+#[test]
+fn constructor_hours() {
     assert_eq!(Duration::from_hours(1), Duration::from_secs(3_600));
     assert_eq!(Duration::from_hours(0), Duration::ZERO);
+}
 
+#[test]
+fn constructor_minutes() {
     assert_eq!(Duration::from_mins(1), Duration::from_secs(60));
     assert_eq!(Duration::from_mins(0), Duration::ZERO);
 }

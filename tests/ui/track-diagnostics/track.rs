@@ -1,5 +1,5 @@
 //@ compile-flags: -Z track-diagnostics
-//@ error-pattern: created at
+//@ dont-require-annotations: NOTE
 //@ rustc-env:RUST_BACKTRACE=0
 //@ failure-status: 101
 
@@ -16,6 +16,9 @@
 fn main() {
     break rust
     //~^ ERROR cannot find value `rust` in this scope
+    //~| NOTE created at
     //~| ERROR `break` outside of a loop or labeled block
+    //~| NOTE created at
     //~| ERROR It looks like you're trying to break rust; would you like some ICE?
+    //~| NOTE created at
 }

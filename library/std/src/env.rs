@@ -1046,6 +1046,7 @@ pub mod consts {
     /// * `"sparc"`
     /// * `"sparc64"`
     /// * `"hexagon"`
+    /// * `"loongarch32"`
     /// * `"loongarch64"`
     ///
     /// </details>

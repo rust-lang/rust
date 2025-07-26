@@ -1,6 +1,5 @@
 use std::sync::OnceLock;
 
-use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::graph;
 use rustc_data_structures::graph::dominators::{Dominators, dominators};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -10,7 +9,7 @@ use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use smallvec::SmallVec;
 
 use crate::mir::traversal::Postorder;
-use crate::mir::{BasicBlock, BasicBlockData, START_BLOCK, Terminator, TerminatorKind};
+use crate::mir::{BasicBlock, BasicBlockData, START_BLOCK};
 
 #[derive(Clone, TyEncodable, TyDecodable, Debug, HashStable, TypeFoldable, TypeVisitable)]
 pub struct BasicBlocks<'tcx> {
@@ -20,15 +19,6 @@ pub struct BasicBlocks<'tcx> {
 
 // Typically 95%+ of basic blocks have 4 or fewer predecessors.
 type Predecessors = IndexVec<BasicBlock, SmallVec<[BasicBlock; 4]>>;
-
-/// Each `(target, switch)` entry in the map contains a list of switch values
-/// that lead to a `target` block from a `switch` block.
-///
-/// Note: this type is currently never instantiated, because it's only used for
-/// `BasicBlocks::switch_sources`, which is only called by backwards analyses
-/// that do `SwitchInt` handling, and we don't have any of those, not even in
-/// tests. See #95120 and #94576.
-type SwitchSources = FxHashMap<(BasicBlock, BasicBlock), SmallVec<[SwitchTargetValue; 1]>>;
 
 #[derive(Debug, Clone, Copy)]
 pub enum SwitchTargetValue {
@@ -41,7 +31,6 @@ pub enum SwitchTargetValue {
 #[derive(Clone, Default, Debug)]
 struct Cache {
     predecessors: OnceLock<Predecessors>,
-    switch_sources: OnceLock<SwitchSources>,
     reverse_postorder: OnceLock<Vec<BasicBlock>>,
     dominators: OnceLock<Dominators<BasicBlock>>,
 }
@@ -83,33 +72,6 @@ impl<'tcx> BasicBlocks<'tcx> {
             let mut rpo: Vec<_> = Postorder::new(&self.basic_blocks, START_BLOCK, None).collect();
             rpo.reverse();
             rpo
-        })
-    }
-
-    /// Returns info about switch values that lead from one block to another
-    /// block. See `SwitchSources`.
-    #[inline]
-    pub fn switch_sources(&self) -> &SwitchSources {
-        self.cache.switch_sources.get_or_init(|| {
-            let mut switch_sources: SwitchSources = FxHashMap::default();
-            for (bb, data) in self.basic_blocks.iter_enumerated() {
-                if let Some(Terminator {
-                    kind: TerminatorKind::SwitchInt { targets, .. }, ..
-                }) = &data.terminator
-                {
-                    for (value, target) in targets.iter() {
-                        switch_sources
-                            .entry((target, bb))
-                            .or_default()
-                            .push(SwitchTargetValue::Normal(value));
-                    }
-                    switch_sources
-                        .entry((targets.otherwise(), bb))
-                        .or_default()
-                        .push(SwitchTargetValue::Otherwise);
-                }
-            }
-            switch_sources
         })
     }
 

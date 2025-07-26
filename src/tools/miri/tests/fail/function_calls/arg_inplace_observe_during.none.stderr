@@ -1,8 +1,8 @@
-error: Undefined Behavior: using uninitialized data, but this operation requires initialized memory
+error: Undefined Behavior: reading memory at ALLOC[0x0..0x4], but memory is uninitialized at [0x0..0x4], and this operation requires initialized memory
   --> tests/fail/function_calls/arg_inplace_observe_during.rs:LL:CC
    |
 LL |     unsafe { ptr.read() };
-   |              ^^^^^^^^^^ using uninitialized data, but this operation requires initialized memory
+   |              ^^^^^^^^^^ Undefined Behavior occurred here
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
@@ -13,6 +13,11 @@ note: inside `main`
    |
 LL |             Call(_unit = change_arg(Move(*ptr), ptr), ReturnTo(after_call), UnwindContinue())
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Uninitialized memory occurred at ALLOC[0x0..0x4], in this allocation:
+ALLOC (stack variable, size: 4, align: 4) {
+    __ __ __ __                                     │ ░░░░
+}
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

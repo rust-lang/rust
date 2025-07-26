@@ -3,7 +3,7 @@ use std::time::Duration;
 use std::{cmp, iter};
 
 use rand::RngCore;
-use rustc_abi::{Align, ExternAbi, FieldIdx, FieldsShape, Size, Variants};
+use rustc_abi::{Align, CanonAbi, ExternAbi, FieldIdx, FieldsShape, Size, Variants};
 use rustc_apfloat::Float;
 use rustc_apfloat::ieee::{Double, Half, Quad, Single};
 use rustc_hir::Safety;
@@ -13,12 +13,12 @@ use rustc_index::IndexVec;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::middle::exported_symbols::ExportedSymbol;
-use rustc_middle::ty::layout::{FnAbiOf, LayoutOf, MaybeResult, TyAndLayout};
+use rustc_middle::ty::layout::{LayoutOf, MaybeResult, TyAndLayout};
 use rustc_middle::ty::{self, Binder, FloatTy, FnSig, IntTy, Ty, TyCtxt, UintTy};
 use rustc_session::config::CrateType;
 use rustc_span::{Span, Symbol};
 use rustc_symbol_mangling::mangle_internal_symbol;
-use rustc_target::callconv::{Conv, FnAbi};
+use rustc_target::callconv::FnAbi;
 
 use crate::*;
 
@@ -135,7 +135,7 @@ pub fn iter_exported_symbols<'tcx>(
             let codegen_attrs = tcx.codegen_fn_attrs(def_id);
             codegen_attrs.contains_extern_indicator()
                 || codegen_attrs.flags.contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL)
-                || codegen_attrs.flags.contains(CodegenFnAttrFlags::USED)
+                || codegen_attrs.flags.contains(CodegenFnAttrFlags::USED_COMPILER)
                 || codegen_attrs.flags.contains(CodegenFnAttrFlags::USED_LINKER)
         };
         if exported {
@@ -162,7 +162,7 @@ pub fn iter_exported_symbols<'tcx>(
 
         // We can ignore `_export_info` here: we are a Rust crate, and everything is exported
         // from a Rust crate.
-        for &(symbol, _export_info) in tcx.exported_symbols(cnum) {
+        for &(symbol, _export_info) in tcx.exported_non_generic_symbols(cnum) {
             if let ExportedSymbol::NonGeneric(def_id) = symbol {
                 f(cnum, def_id)?;
             }
@@ -326,7 +326,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx, Option<P>> {
         let this = self.eval_context_ref();
         let adt = base.layout().ty.ty_adt_def().unwrap();
-        for (idx, field) in adt.non_enum_variant().fields.iter().enumerate() {
+        for (idx, field) in adt.non_enum_variant().fields.iter_enumerated() {
             if field.name.as_str() == name {
                 return interp_ok(Some(this.project_field(base, idx)?));
             }
@@ -376,6 +376,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         for (idx, &val) in values.iter().enumerate() {
+            let idx = FieldIdx::from_usize(idx);
             let field = this.project_field(dest, idx)?;
             this.write_int(val, &field)?;
         }
@@ -443,7 +444,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         caller_abi: ExternAbi,
         args: &[ImmTy<'tcx>],
         dest: Option<&MPlaceTy<'tcx>>,
-        stack_pop: StackPopCleanup,
+        cont: ReturnContinuation,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
@@ -470,8 +471,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             caller_fn_abi,
             &args.iter().map(|a| FnArg::Copy(a.clone().into())).collect::<Vec<_>>(),
             /*with_caller_location*/ false,
-            &dest,
-            stack_pop,
+            &dest.into(),
+            cont,
         )
     }
 
@@ -488,7 +489,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         trace!("visit_frozen(place={:?}, size={:?})", *place, size);
         debug_assert_eq!(
             size,
-            this.size_and_align_of_mplace(place)?
+            this.size_and_align_of_val(place)?
                 .map(|(size, _)| size)
                 .unwrap_or_else(|| place.layout.size)
         );
@@ -529,7 +530,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     trace!("unsafe_cell_action on {:?}", place.ptr());
                     // We need a size to go on.
                     let unsafe_cell_size = this
-                        .size_and_align_of_mplace(place)?
+                        .size_and_align_of_val(place)?
                         .map(|(size, _)| size)
                         // for extern types, just cover what we can
                         .unwrap_or_else(|| place.layout.size);
@@ -593,10 +594,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     interp_ok(())
                 } else if matches!(v.layout.fields, FieldsShape::Union(..)) {
                     // A (non-frozen) union. We fall back to whatever the type says.
-                    (self.unsafe_cell_action)(v)
-                } else if matches!(v.layout.ty.kind(), ty::Dynamic(_, _, ty::DynStar)) {
-                    // This needs to read the vtable pointer to proceed type-driven, but we don't
-                    // want to reentrantly read from memory here.
                     (self.unsafe_cell_action)(v)
                 } else {
                     // We want to not actually read from memory for this visit. So, before
@@ -763,10 +760,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// `EINVAL` in this case.
     fn read_timespec(&mut self, tp: &MPlaceTy<'tcx>) -> InterpResult<'tcx, Option<Duration>> {
         let this = self.eval_context_mut();
-        let seconds_place = this.project_field(tp, 0)?;
+        let seconds_place = this.project_field(tp, FieldIdx::ZERO)?;
         let seconds_scalar = this.read_scalar(&seconds_place)?;
         let seconds = seconds_scalar.to_target_isize(this)?;
-        let nanoseconds_place = this.project_field(tp, 1)?;
+        let nanoseconds_place = this.project_field(tp, FieldIdx::ONE)?;
         let nanoseconds_scalar = this.read_scalar(&nanoseconds_place)?;
         let nanoseconds = nanoseconds_scalar.to_target_isize(this)?;
 
@@ -932,12 +929,15 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         self.read_c_str_with_char_size(ptr, wchar_t.size, wchar_t.align.abi)
     }
 
-    /// Check that the ABI is what we expect.
-    fn check_abi<'a>(&self, fn_abi: &FnAbi<'tcx, Ty<'tcx>>, exp_abi: Conv) -> InterpResult<'a, ()> {
+    /// Check that the calling convention is what we expect.
+    fn check_callconv<'a>(
+        &self,
+        fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
+        exp_abi: CanonAbi,
+    ) -> InterpResult<'a, ()> {
         if fn_abi.conv != exp_abi {
             throw_ub_format!(
-                "calling a function with ABI {:?} using caller ABI {:?}",
-                exp_abi,
+                r#"calling a function with calling convention "{exp_abi}" using caller calling convention "{}""#,
                 fn_abi.conv
             );
         }
@@ -970,10 +970,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn check_abi_and_shim_symbol_clash(
         &mut self,
         abi: &FnAbi<'tcx, Ty<'tcx>>,
-        exp_abi: Conv,
+        exp_abi: CanonAbi,
         link_name: Symbol,
     ) -> InterpResult<'tcx, ()> {
-        self.check_abi(abi, exp_abi)?;
+        self.check_callconv(abi, exp_abi)?;
         if let Some((body, instance)) = self.eval_context_mut().lookup_exported_symbol(link_name)? {
             // If compiler-builtins is providing the symbol, then don't treat it as a clash.
             // We'll use our built-in implementation in `emulate_foreign_item_inner` for increased
@@ -995,7 +995,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn check_shim<'a, const N: usize>(
         &mut self,
         abi: &FnAbi<'tcx, Ty<'tcx>>,
-        exp_abi: Conv,
+        exp_abi: CanonAbi,
         link_name: Symbol,
         args: &'a [OpTy<'tcx>],
     ) -> InterpResult<'tcx, &'a [OpTy<'tcx>; N]> {
@@ -1095,7 +1095,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn check_shim_variadic<'a, const N: usize>(
         &mut self,
         abi: &FnAbi<'tcx, Ty<'tcx>>,
-        exp_abi: Conv,
+        exp_abi: CanonAbi,
         link_name: Symbol,
         args: &'a [OpTy<'tcx>],
     ) -> InterpResult<'tcx, (&'a [OpTy<'tcx>; N], &'a [OpTy<'tcx>])>
@@ -1235,8 +1235,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         interp_ok(())
     }
 
-    /// Lookup an array of immediates stored as a linker section of name `name`.
-    fn lookup_link_section(&mut self, name: &str) -> InterpResult<'tcx, Vec<ImmTy<'tcx>>> {
+    /// Lookup an array of immediates from any linker sections matching the provided predicate.
+    fn lookup_link_section(
+        &mut self,
+        include_name: impl Fn(&str) -> bool,
+    ) -> InterpResult<'tcx, Vec<ImmTy<'tcx>>> {
         let this = self.eval_context_mut();
         let tcx = this.tcx.tcx;
 
@@ -1247,7 +1250,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             let Some(link_section) = attrs.link_section else {
                 return interp_ok(());
             };
-            if link_section.as_str() == name {
+            if include_name(link_section.as_str()) {
                 let instance = ty::Instance::mono(tcx, def_id);
                 let const_val = this.eval_global(instance).unwrap_or_else(|err| {
                     panic!(
@@ -1333,7 +1336,6 @@ where
 
 /// Check that the number of varargs is at least the minimum what we expect.
 /// Fixed args should not be included.
-/// Use `check_vararg_fixed_arg_count` to extract the varargs slice from full function arguments.
 pub fn check_min_vararg_count<'a, 'tcx, const N: usize>(
     name: &'a str,
     args: &'a [OpTy<'tcx>],
@@ -1408,4 +1410,68 @@ pub(crate) fn windows_check_buffer_size((success, len): (bool, u64)) -> u32 {
         // required to hold the string and its terminating null character.
         u32::try_from(len).unwrap()
     }
+}
+
+/// We don't support 16-bit systems, so let's have ergonomic conversion from `u32` to `usize`.
+pub trait ToUsize {
+    fn to_usize(self) -> usize;
+}
+
+impl ToUsize for u32 {
+    fn to_usize(self) -> usize {
+        self.try_into().unwrap()
+    }
+}
+
+/// Similarly, a maximum address size of `u64` is assumed widely here, so let's have ergonomic
+/// converion from `usize` to `u64`.
+pub trait ToU64 {
+    fn to_u64(self) -> u64;
+}
+
+impl ToU64 for usize {
+    fn to_u64(self) -> u64 {
+        self.try_into().unwrap()
+    }
+}
+
+/// This struct is needed to enforce `#[must_use]` on values produced by [enter_trace_span] even
+/// when the "tracing" feature is not enabled.
+#[must_use]
+pub struct MaybeEnteredTraceSpan {
+    #[cfg(feature = "tracing")]
+    pub _entered_span: tracing::span::EnteredSpan,
+}
+
+/// Enters a [tracing::info_span] only if the "tracing" feature is enabled, otherwise does nothing.
+/// This is like [rustc_const_eval::enter_trace_span] except that it does not depend on the
+/// [Machine] trait to check if tracing is enabled, because from the Miri codebase we can directly
+/// check whether the "tracing" feature is enabled, unlike from the rustc_const_eval codebase.
+///
+/// In addition to the syntax accepted by [tracing::span!], this macro optionally allows passing
+/// the span name (i.e. the first macro argument) in the form `NAME::SUBNAME` (without quotes) to
+/// indicate that the span has name "NAME" (usually the name of the component) and has an additional
+/// more specific name "SUBNAME" (usually the function name). The latter is passed to the [tracing]
+/// infrastructure as a span field with the name "NAME". This allows not being distracted by
+/// subnames when looking at the trace in <https://ui.perfetto.dev>, but when deeper introspection
+/// is needed within a component, it's still possible to view the subnames directly in the UI by
+/// selecting a span, clicking on the "NAME" argument on the right, and clicking on "Visualize
+/// argument values".
+/// ```rust
+/// // for example, the first will expand to the second
+/// enter_trace_span!(borrow_tracker::on_stack_pop, /* ... */)
+/// enter_trace_span!("borrow_tracker", borrow_tracker = "on_stack_pop", /* ... */)
+/// ```
+#[macro_export]
+macro_rules! enter_trace_span {
+    ($name:ident :: $subname:ident $($tt:tt)*) => {{
+        enter_trace_span!(stringify!($name), $name = %stringify!(subname) $($tt)*)
+    }};
+
+    ($($tt:tt)*) => {
+        $crate::MaybeEnteredTraceSpan {
+            #[cfg(feature = "tracing")]
+            _entered_span: tracing::info_span!($($tt)*).entered()
+        }
+    };
 }

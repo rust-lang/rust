@@ -23,14 +23,16 @@ error[E0277]: `()` is not a future
   --> $DIR/unnecessary-await.rs:28:10
    |
 LL |     e!().await;
-   |         -^^^^^
-   |         ||
-   |         |`()` is not a future
-   |         help: remove the `.await`
+   |          ^^^^^ `()` is not a future
    |
    = help: the trait `Future` is not implemented for `()`
    = note: () must be a future or must implement `IntoFuture` to be awaited
    = note: required for `()` to implement `IntoFuture`
+help: remove the `.await`
+   |
+LL -     e!().await;
+LL +     e!();
+   |
 
 error[E0277]: `()` is not a future
   --> $DIR/unnecessary-await.rs:22:15
@@ -53,14 +55,16 @@ error[E0277]: `()` is not a future
   --> $DIR/unnecessary-await.rs:36:20
    |
 LL |     for x in [] {}.await
-   |                   -^^^^^
-   |                   ||
-   |                   |`()` is not a future
-   |                   help: remove the `.await`
+   |                    ^^^^^ `()` is not a future
    |
    = help: the trait `Future` is not implemented for `()`
    = note: () must be a future or must implement `IntoFuture` to be awaited
    = note: required for `()` to implement `IntoFuture`
+help: remove the `.await`
+   |
+LL -     for x in [] {}.await
+LL +     for x in [] {}
+   |
 
 error: aborting due to 4 previous errors
 

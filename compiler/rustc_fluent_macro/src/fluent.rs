@@ -25,9 +25,6 @@ fn invocation_relative_path_to_absolute(span: Span, path: &str) -> PathBuf {
         path.to_path_buf()
     } else {
         // `/a/b/c/foo/bar.rs` contains the current macro invocation
-        #[cfg(bootstrap)]
-        let mut source_file_path = span.source_file().path();
-        #[cfg(not(bootstrap))]
         let mut source_file_path = span.local_file().unwrap();
         // `/a/b/c/foo/`
         source_file_path.pop();

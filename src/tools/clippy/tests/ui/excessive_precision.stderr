@@ -157,7 +157,7 @@ LL +     let bad_bige32: f32 = 1.123_456_8E-10;
    |
 
 error: float has excessive precision
-  --> tests/ui/excessive_precision.rs:83:13
+  --> tests/ui/excessive_precision.rs:86:13
    |
 LL |     let _ = 2.225_073_858_507_201_1e-308_f64;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -169,7 +169,7 @@ LL +     let _ = 2.225_073_858_507_201e-308_f64;
    |
 
 error: float has excessive precision
-  --> tests/ui/excessive_precision.rs:87:13
+  --> tests/ui/excessive_precision.rs:90:13
    |
 LL |     let _ = 1.000_000_000_000_001e-324_f64;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -181,7 +181,7 @@ LL +     let _ = 0_f64;
    |
 
 error: float has excessive precision
-  --> tests/ui/excessive_precision.rs:98:20
+  --> tests/ui/excessive_precision.rs:101:20
    |
 LL |     const _: f64 = 3.0000000000000000e+00;
    |                    ^^^^^^^^^^^^^^^^^^^^^^

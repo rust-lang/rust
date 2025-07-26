@@ -9,8 +9,8 @@ use chalk_ir::{
 };
 use chalk_solve::rust_ir::InlineBound;
 use hir_def::{
-    AssocItemId, ConstId, FunctionId, GenericDefId, HasModule, TraitId, TypeAliasId,
-    lang_item::LangItem, signatures::TraitFlags,
+    AssocItemId, ConstId, CrateRootModuleId, FunctionId, GenericDefId, HasModule, TraitId,
+    TypeAliasId, lang_item::LangItem, signatures::TraitFlags,
 };
 use rustc_hash::FxHashSet;
 use smallvec::SmallVec;
@@ -101,7 +101,7 @@ where
 
     // rustc checks for non-lifetime binders here, but we don't support HRTB yet
 
-    let trait_data = db.trait_items(trait_);
+    let trait_data = trait_.trait_items(db);
     for (_, assoc_item) in &trait_data.items {
         dyn_compatibility_violation_for_assoc_item(db, trait_, *assoc_item, cb)?;
     }
@@ -122,7 +122,7 @@ pub fn dyn_compatibility_of_trait_query(
     res
 }
 
-fn generics_require_sized_self(db: &dyn HirDatabase, def: GenericDefId) -> bool {
+pub fn generics_require_sized_self(db: &dyn HirDatabase, def: GenericDefId) -> bool {
     let krate = def.module(db).krate();
     let Some(sized) = LangItem::Sized.resolve_trait(db, krate) else {
         return false;
@@ -164,7 +164,7 @@ fn predicates_reference_self(db: &dyn HirDatabase, trait_: TraitId) -> bool {
 
 // Same as the above, `predicates_reference_self`
 fn bounds_reference_self(db: &dyn HirDatabase, trait_: TraitId) -> bool {
-    let trait_data = db.trait_items(trait_);
+    let trait_data = trait_.trait_items(db);
     trait_data
         .items
         .iter()
@@ -343,7 +343,7 @@ where
             })
         }
         AssocItemId::TypeAliasId(it) => {
-            let def_map = db.crate_def_map(trait_.krate(db));
+            let def_map = CrateRootModuleId::from(trait_.krate(db)).def_map(db);
             if def_map.is_unstable_feature_enabled(&intern::sym::generic_associated_type_extended) {
                 ControlFlow::Continue(())
             } else {

@@ -4,9 +4,9 @@ use std::{fs, io};
 use rustc_data_structures::temp_dir::MaybeTempDir;
 use rustc_fs_util::TempDirBuilder;
 use rustc_middle::ty::TyCtxt;
+use rustc_session::Session;
 use rustc_session::config::{CrateType, OutFileName, OutputType};
 use rustc_session::output::filename_for_metadata;
-use rustc_session::{MetadataKind, Session};
 
 use crate::errors::{
     BinaryOutputToTty, FailedCopyToStdout, FailedCreateEncodedMetadata, FailedCreateFile,
@@ -22,13 +22,8 @@ pub const METADATA_FILENAME: &str = "lib.rmeta";
 /// building an `.rlib` (stomping over one another), or writing an `.rmeta` into a
 /// directory being searched for `extern crate` (observing an incomplete file).
 /// The returned path is the temporary file containing the complete metadata.
-pub fn emit_wrapper_file(
-    sess: &Session,
-    data: &[u8],
-    tmpdir: &MaybeTempDir,
-    name: &str,
-) -> PathBuf {
-    let out_filename = tmpdir.as_ref().join(name);
+pub fn emit_wrapper_file(sess: &Session, data: &[u8], tmpdir: &Path, name: &str) -> PathBuf {
+    let out_filename = tmpdir.join(name);
     let result = fs::write(&out_filename, data);
 
     if let Err(err) = result {
@@ -38,7 +33,7 @@ pub fn emit_wrapper_file(
     out_filename
 }
 
-pub fn encode_and_write_metadata(tcx: TyCtxt<'_>) -> (EncodedMetadata, bool) {
+pub fn encode_and_write_metadata(tcx: TyCtxt<'_>) -> EncodedMetadata {
     let out_filename = filename_for_metadata(tcx.sess, tcx.output_filenames(()));
     // To avoid races with another rustc process scanning the output directory,
     // we need to write the file somewhere else and atomically move it to its
@@ -59,25 +54,20 @@ pub fn encode_and_write_metadata(tcx: TyCtxt<'_>) -> (EncodedMetadata, bool) {
         None
     };
 
-    // Always create a file at `metadata_filename`, even if we have nothing to write to it.
-    // This simplifies the creation of the output `out_filename` when requested.
-    let metadata_kind = tcx.metadata_kind();
-    match metadata_kind {
-        MetadataKind::None => {
-            std::fs::File::create(&metadata_filename).unwrap_or_else(|err| {
-                tcx.dcx().emit_fatal(FailedCreateFile { filename: &metadata_filename, err });
+    if tcx.needs_metadata() {
+        encode_metadata(tcx, &metadata_filename, metadata_stub_filename.as_deref());
+    } else {
+        // Always create a file at `metadata_filename`, even if we have nothing to write to it.
+        // This simplifies the creation of the output `out_filename` when requested.
+        std::fs::File::create(&metadata_filename).unwrap_or_else(|err| {
+            tcx.dcx().emit_fatal(FailedCreateFile { filename: &metadata_filename, err });
+        });
+        if let Some(metadata_stub_filename) = &metadata_stub_filename {
+            std::fs::File::create(metadata_stub_filename).unwrap_or_else(|err| {
+                tcx.dcx().emit_fatal(FailedCreateFile { filename: &metadata_stub_filename, err });
             });
-            if let Some(metadata_stub_filename) = &metadata_stub_filename {
-                std::fs::File::create(metadata_stub_filename).unwrap_or_else(|err| {
-                    tcx.dcx()
-                        .emit_fatal(FailedCreateFile { filename: &metadata_stub_filename, err });
-                });
-            }
         }
-        MetadataKind::Uncompressed | MetadataKind::Compressed => {
-            encode_metadata(tcx, &metadata_filename, metadata_stub_filename.as_deref())
-        }
-    };
+    }
 
     let _prof_timer = tcx.sess.prof.generic_activity("write_crate_metadata");
 
@@ -118,9 +108,7 @@ pub fn encode_and_write_metadata(tcx: TyCtxt<'_>) -> (EncodedMetadata, bool) {
                 tcx.dcx().emit_fatal(FailedCreateEncodedMetadata { err });
             });
 
-    let need_metadata_module = metadata_kind == MetadataKind::Compressed;
-
-    (metadata, need_metadata_module)
+    metadata
 }
 
 #[cfg(not(target_os = "linux"))]

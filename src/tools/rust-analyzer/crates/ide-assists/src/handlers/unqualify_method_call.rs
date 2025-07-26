@@ -1,4 +1,3 @@
-use ide_db::imports::insert_use::ImportScope;
 use syntax::{
     TextRange,
     ast::{self, AstNode, HasArgList, prec::ExprPrecedence},
@@ -114,11 +113,7 @@ fn add_import(
         );
 
         if let Some(scope) = scope {
-            let scope = match scope {
-                ImportScope::File(it) => ImportScope::File(edit.make_mut(it)),
-                ImportScope::Module(it) => ImportScope::Module(edit.make_mut(it)),
-                ImportScope::Block(it) => ImportScope::Block(edit.make_mut(it)),
-            };
+            let scope = edit.make_import_scope_mut(scope);
             ide_db::imports::insert_use::insert_use(&scope, import, &ctx.config.insert_use);
         }
     }

@@ -1,0 +1,12 @@
+error[E0599]: no variant or associated item named `Hsl` found for enum `Color` in the current scope
+  --> $DIR/pattern-match-invalid-variant.rs:14:16
+   |
+LL | enum Color {
+   | ---------- variant or associated item `Hsl` not found for this enum
+...
+LL |         Color::Hsl(h, s, l) => {
+   |                ^^^ variant or associated item not found in `Color`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0599`.

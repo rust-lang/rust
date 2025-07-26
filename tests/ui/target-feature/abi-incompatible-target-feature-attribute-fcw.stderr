@@ -1,0 +1,31 @@
+error: enabling the `neon` target feature on the current target is unsound due to ABI issues
+  --> $DIR/abi-incompatible-target-feature-attribute-fcw.rs:17:18
+   |
+LL | #[target_feature(enable = "neon")]
+   |                  ^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #134375 <https://github.com/rust-lang/rust/issues/134375>
+note: the lint level is defined here
+  --> $DIR/abi-incompatible-target-feature-attribute-fcw.rs:6:9
+   |
+LL | #![deny(aarch64_softfloat_neon)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+Future incompatibility report: Future breakage diagnostic:
+error: enabling the `neon` target feature on the current target is unsound due to ABI issues
+  --> $DIR/abi-incompatible-target-feature-attribute-fcw.rs:17:18
+   |
+LL | #[target_feature(enable = "neon")]
+   |                  ^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #134375 <https://github.com/rust-lang/rust/issues/134375>
+note: the lint level is defined here
+  --> $DIR/abi-incompatible-target-feature-attribute-fcw.rs:6:9
+   |
+LL | #![deny(aarch64_softfloat_neon)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^
+

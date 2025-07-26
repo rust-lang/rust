@@ -4,8 +4,8 @@
 
 /* eslint-disable */
 declare global {
-    /** Map from crate name to directory structure, for source view */
-    declare var srcIndex: Map<string, rustdoc.Dir>;
+    /** Search engine data used by main.js and search.js */
+    declare var searchState: rustdoc.SearchState;
     /** Defined and documented in `storage.js` */
     declare function nonnull(x: T|null, msg: string|undefined);
     /** Defined and documented in `storage.js` */
@@ -19,8 +19,6 @@ declare global {
         RUSTDOC_TOOLTIP_HOVER_MS: number;
         /** Used by the popover tooltip code. */
         RUSTDOC_TOOLTIP_HOVER_EXIT_MS: number;
-        /** Search engine data used by main.js and search.js */
-        searchState: rustdoc.SearchState;
         /** Global option, with a long list of "../"'s */
         rootPath: string|null;
         /**
@@ -64,7 +62,7 @@ declare global {
          * create's the sidebar in source code view.
          * called in generated `src-files.js`.
          */
-        createSrcSidebar?: function(),
+        createSrcSidebar?: function(string),
         /**
          * Set up event listeners for a scraped source example.
          */
@@ -104,20 +102,22 @@ declare namespace rustdoc {
         currentTab: number;
         focusedByTab: [number|null, number|null, number|null];
         clearInputTimeout: function;
-        outputElement: function(): HTMLElement|null;
-        focus: function();
-        defocus: function();
-        showResults: function(HTMLElement|null|undefined);
-        removeQueryParameters: function();
-        hideResults: function();
-        getQueryStringParams: function(): Object.<any, string>;
+        outputElement(): HTMLElement|null;
+        focus();
+        defocus();
+        // note: an optional param is not the same as
+        // a nullable/undef-able param.
+        showResults(elem?: HTMLElement|null);
+        removeQueryParameters();
+        hideResults();
+        getQueryStringParams(): Object.<any, string>;
         origPlaceholder: string;
         setup: function();
-        setLoadingSearch: function();
+        setLoadingSearch();
         descShards: Map<string, SearchDescShard[]>;
         loadDesc: function({descShard: SearchDescShard, descIndex: number}): Promise<string|null>;
-        loadedDescShard: function(string, number, string);
-        isDisplayed: function(): boolean,
+        loadedDescShard(string, number, string);
+        isDisplayed(): boolean,
     }
 
     interface SearchDescShard {
@@ -129,7 +129,7 @@ declare namespace rustdoc {
 
     /**
      * A single parsed "atom" in a search query. For example,
-     * 
+     *
      *     std::fmt::Formatter, Write -> Result<()>
      *     ┏━━━━━━━━━━━━━━━━━━  ┌────    ┏━━━━━┅┅┅┅┄┄┄┄┄┄┄┄┄┄┄┄┄┄┐
      *     ┃                    │        ┗ QueryElement {        ┊
@@ -219,6 +219,8 @@ declare namespace rustdoc {
         crate: string,
         descShard: SearchDescShard,
         id: number,
+        // This is the name of the item. For doc aliases, if you want the name of the aliased
+        // item, take a look at `Row.original.name`.
         name: string,
         normalizedName: string,
         word: string,
@@ -227,6 +229,11 @@ declare namespace rustdoc {
         path: string,
         ty: number,
         type: FunctionSearchType | null,
+        descIndex: number,
+        bitIndex: number,
+        implDisambiguator: String | null,
+        is_alias?: boolean,
+        original?: Row,
     }
 
     /**
@@ -239,7 +246,7 @@ declare namespace rustdoc {
         query: ParsedQuery,
     }
 
-    type Results = Map<String, ResultObject>;
+    type Results = { max_dist?: number } & Map<number, ResultObject>
 
     /**
      * An annotated `Row`, used in the viewmodel.
@@ -464,7 +471,7 @@ declare namespace rustdoc {
 
     /**
      * Maps from crate names to trait implementation data.
-     * Provied by generated `trait.impl` files.
+     * Provided by generated `trait.impl` files.
      */
     type Implementors = {
         [key: string]: Array<[string, number, Array<string>]>

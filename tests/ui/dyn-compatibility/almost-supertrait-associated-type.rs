@@ -6,7 +6,6 @@ use std::marker::PhantomData;
 fn transmute<T, U>(t: T) -> U {
     (&PhantomData::<T> as &dyn Foo<T, U>).transmute(t)
     //~^ ERROR the trait `Foo` is not dyn compatible
-    //~| ERROR the trait `Foo` is not dyn compatible
 }
 
 struct ActuallySuper;

@@ -95,7 +95,7 @@ pub(crate) struct StrictCoherenceNeedsNegativeCoherence {
 #[diag(middle_requires_lang_item)]
 pub(crate) struct RequiresLangItem {
     #[primary_span]
-    pub span: Option<Span>,
+    pub span: Span,
     pub name: Symbol,
 }
 
@@ -169,4 +169,21 @@ pub(crate) struct TypeLengthLimit {
     pub was_written: bool,
     pub path: PathBuf,
     pub type_length: usize,
+}
+
+#[derive(Diagnostic)]
+#[diag(middle_max_num_nodes_in_valtree)]
+pub(crate) struct MaxNumNodesInValtree {
+    #[primary_span]
+    pub span: Span,
+    pub global_const_id: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(middle_invalid_const_in_valtree)]
+#[note]
+pub(crate) struct InvalidConstInValtree {
+    #[primary_span]
+    pub span: Span,
+    pub global_const_id: String,
 }

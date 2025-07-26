@@ -2,10 +2,7 @@ error: Undefined Behavior: trying to retag from <TAG> for SharedReadOnly permiss
   --> tests/fail/stacked_borrows/zst_slice.rs:LL:CC
    |
 LL |         assert_eq!(*s.as_ptr().add(1), 2);
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |         |
-   |         trying to retag from <TAG> for SharedReadOnly permission at ALLOC[0x4], but that tag does not exist in the borrow stack for this location
-   |         this error occurs as part of retag at ALLOC[0x4..0x8]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this error occurs as part of retag at ALLOC[0x4..0x8]
    |
    = help: this indicates a potential bug in the program: it performed an invalid operation, but the Stacked Borrows rules it violated are still experimental
    = help: see https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/stacked-borrows.md for further information

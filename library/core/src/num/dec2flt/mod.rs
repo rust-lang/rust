@@ -58,7 +58,7 @@
 //!
 //! There are unit tests but they are woefully inadequate at ensuring correctness, they only cover
 //! a small percentage of possible errors. Far more extensive tests are located in the directory
-//! `src/etc/test-float-parse` as a Rust program.
+//! `src/tools/test-float-parse` as a Rust program.
 //!
 //! A note on integer overflow: Many parts of this file perform arithmetic with the decimal
 //! exponent `e`. Primarily, we shift the decimal point around: Before the first decimal digit,
@@ -171,8 +171,24 @@ macro_rules! from_str_float_impl {
         }
     };
 }
+
+#[cfg(target_has_reliable_f16)]
+from_str_float_impl!(f16);
 from_str_float_impl!(f32);
 from_str_float_impl!(f64);
+
+// FIXME(f16_f128): A fallback is used when the backend+target does not support f16 well, in order
+// to avoid ICEs.
+
+#[cfg(not(target_has_reliable_f16))]
+impl FromStr for f16 {
+    type Err = ParseFloatError;
+
+    #[inline]
+    fn from_str(_src: &str) -> Result<Self, ParseFloatError> {
+        unimplemented!("requires target_has_reliable_f16")
+    }
+}
 
 /// An error which can be returned when parsing a float.
 ///

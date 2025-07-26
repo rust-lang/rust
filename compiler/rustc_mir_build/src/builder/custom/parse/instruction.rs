@@ -323,9 +323,9 @@ impl<'a, 'tcx> ParseCtxt<'a, 'tcx> {
     fn parse_place_inner(&self, expr_id: ExprId) -> PResult<(Place<'tcx>, PlaceTy<'tcx>)> {
         let (parent, proj) = parse_by_kind!(self, expr_id, expr, "place",
             @call(mir_field, args) => {
-                let (parent, ty) = self.parse_place_inner(args[0])?;
+                let (parent, place_ty) = self.parse_place_inner(args[0])?;
                 let field = FieldIdx::from_u32(self.parse_integer_literal(args[1])? as u32);
-                let field_ty = ty.field_ty(self.tcx, field);
+                let field_ty = PlaceTy::field_ty(self.tcx, place_ty.ty, place_ty.variant_index, field);
                 let proj = PlaceElem::Field(field, field_ty);
                 let place = parent.project_deeper(&[proj], self.tcx);
                 return Ok((place, PlaceTy::from_ty(field_ty)));

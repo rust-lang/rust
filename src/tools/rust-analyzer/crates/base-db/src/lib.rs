@@ -14,8 +14,9 @@ pub use crate::{
     input::{
         BuiltCrateData, BuiltDependency, Crate, CrateBuilder, CrateBuilderId, CrateDataBuilder,
         CrateDisplayName, CrateGraphBuilder, CrateName, CrateOrigin, CratesIdMap, CratesMap,
-        DependencyBuilder, Env, ExtraCrateData, LangCrateOrigin, ProcMacroPaths, ReleaseChannel,
-        SourceRoot, SourceRootId, TargetLayoutLoadResult, UniqueCrateData,
+        DependencyBuilder, Env, ExtraCrateData, LangCrateOrigin, ProcMacroLoadingError,
+        ProcMacroPaths, ReleaseChannel, SourceRoot, SourceRootId, TargetLayoutLoadResult,
+        UniqueCrateData,
     },
 };
 use dashmap::{DashMap, mapref::entry::Entry};
@@ -28,10 +29,13 @@ use syntax::{Parse, SyntaxError, ast};
 use triomphe::Arc;
 pub use vfs::{AnchoredPath, AnchoredPathBuf, FileId, VfsPath, file_set::FileSet};
 
+pub type FxIndexSet<T> = indexmap::IndexSet<T, rustc_hash::FxBuildHasher>;
+
 #[macro_export]
 macro_rules! impl_intern_key {
     ($id:ident, $loc:ident) => {
-        #[salsa_macros::interned(no_lifetime)]
+        #[salsa_macros::interned(no_lifetime, revisions = usize::MAX)]
+        #[derive(PartialOrd, Ord)]
         pub struct $id {
             pub loc: $loc,
         }
@@ -40,7 +44,7 @@ macro_rules! impl_intern_key {
         impl ::std::fmt::Debug for $id {
             fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
                 f.debug_tuple(stringify!($id))
-                    .field(&format_args!("{:04x}", self.0.as_u32()))
+                    .field(&format_args!("{:04x}", self.0.index()))
                     .finish()
             }
         }
@@ -164,7 +168,8 @@ impl Files {
     }
 }
 
-#[salsa_macros::interned(no_lifetime, debug, constructor=from_span)]
+#[salsa_macros::interned(no_lifetime, debug, constructor=from_span, revisions = usize::MAX)]
+#[derive(PartialOrd, Ord)]
 pub struct EditionedFileId {
     pub editioned_file_id: span::EditionedFileId,
 }
@@ -356,7 +361,7 @@ fn parse(db: &dyn RootQueryDb, file_id: EditionedFileId) -> Parse<ast::SourceFil
 }
 
 fn parse_errors(db: &dyn RootQueryDb, file_id: EditionedFileId) -> Option<&[SyntaxError]> {
-    #[salsa_macros::tracked(return_ref)]
+    #[salsa_macros::tracked(returns(ref))]
     fn parse_errors(db: &dyn RootQueryDb, file_id: EditionedFileId) -> Option<Box<[SyntaxError]>> {
         let errors = db.parse(file_id).errors();
         match &*errors {

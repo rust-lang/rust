@@ -65,12 +65,6 @@ pub(crate) struct EncounteredErrorWhileInstantiating {
 pub(crate) struct StartNotFound;
 
 #[derive(Diagnostic)]
-#[diag(monomorphize_unknown_cgu_collection_mode)]
-pub(crate) struct UnknownCguCollectionMode<'a> {
-    pub mode: &'a str,
-}
-
-#[derive(Diagnostic)]
 #[diag(monomorphize_abi_error_disabled_vector_type)]
 #[help]
 pub(crate) struct AbiErrorDisabledVectorType<'a> {
@@ -103,15 +97,6 @@ pub(crate) struct AbiRequiredTargetFeature<'a> {
     pub span: Span,
     pub required_feature: &'a str,
     pub abi: &'a str,
-    /// Whether this is a problem at a call site or at a declaration.
-    pub is_call: bool,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(monomorphize_wasm_c_abi_transition)]
-#[help]
-pub(crate) struct WasmCAbiTransition<'a> {
-    pub ty: Ty<'a>,
     /// Whether this is a problem at a call site or at a declaration.
     pub is_call: bool,
 }

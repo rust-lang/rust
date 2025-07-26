@@ -379,5 +379,47 @@ error: this operation has no effect
 LL |     let _: u64 = 1u64 + ((x as i32 + y as i32) as u64 + 0u64);
    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider reducing it to: `((x as i32 + y as i32) as u64)`
 
-error: aborting due to 63 previous errors
+error: this operation has no effect
+  --> tests/ui/identity_op.rs:321:5
+   |
+LL |     0usize + &<usize as Default>::default();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider reducing it to: `<usize as Default>::default()`
+
+error: this operation has no effect
+  --> tests/ui/identity_op.rs:324:13
+   |
+LL |     let _ = 0usize + &usize::default();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider reducing it to: `usize::default()`
+
+error: this operation has no effect
+  --> tests/ui/identity_op.rs:327:21
+   |
+LL |     let _n: usize = 0usize + &Default::default();
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider reducing it to: `Default::default()`
+
+error: this operation has no effect
+  --> tests/ui/identity_op.rs:333:5
+   |
+LL |     0usize + &Default::default()
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider reducing it to: `Default::default()`
+
+error: this operation has no effect
+  --> tests/ui/identity_op.rs:352:5
+   |
+LL |     0usize + &<usize as Def>::def();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider reducing it to: `<usize as Def>::def()`
+
+error: this operation has no effect
+  --> tests/ui/identity_op.rs:355:13
+   |
+LL |     let _ = 0usize + &usize::def();
+   |             ^^^^^^^^^^^^^^^^^^^^^^ help: consider reducing it to: `usize::def()`
+
+error: this operation has no effect
+  --> tests/ui/identity_op.rs:358:21
+   |
+LL |     let _n: usize = 0usize + &Def::def();
+   |                     ^^^^^^^^^^^^^^^^^^^^ help: consider reducing it to: `Def::def()`
+
+error: aborting due to 70 previous errors
 

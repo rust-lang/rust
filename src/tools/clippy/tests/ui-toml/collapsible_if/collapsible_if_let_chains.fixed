@@ -1,4 +1,3 @@
-#![feature(let_chains)]
 #![warn(clippy::collapsible_if)]
 
 fn main() {

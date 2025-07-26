@@ -12,11 +12,11 @@
 //! "pinned," in that it has been permanently (until the end of its lifespan) attached to its
 //! location in memory, as though pinned to a pinboard. Pinning a value is an incredibly useful
 //! building block for [`unsafe`] code to be able to reason about whether a raw pointer to the
-//! pinned value is still valid. [As we'll see later][drop-guarantee], this is necessarily from the
-//! time the value is first pinned until the end of its lifespan. This concept of "pinning" is
-//! necessary to implement safe interfaces on top of things like self-referential types and
-//! intrusive data structures which cannot currently be modeled in fully safe Rust using only
-//! borrow-checked [references][reference].
+//! pinned value is still valid. [As we'll see later][drop-guarantee], once a value is pinned,
+//! it is necessarily valid at its memory location until the end of its lifespan. This concept
+//! of "pinning" is necessary to implement safe interfaces on top of things like self-referential
+//! types and intrusive data structures which cannot currently be modeled in fully safe Rust using
+//! only borrow-checked [references][reference].
 //!
 //! "Pinning" allows us to put a *value* which exists at some location in memory into a state where
 //! safe code cannot *move* that value to a different location in memory or otherwise invalidate it
@@ -137,10 +137,10 @@
 //! 2. An operation causes the value to depend on its own address not changing
 //!     * e.g. calling [`poll`] for the first time on the produced [`Future`]
 //! 3. Further pieces of the safe interface of the type use internal [`unsafe`] operations which
-//! assume that the address of the value is stable
+//!    assume that the address of the value is stable
 //!     * e.g. subsequent calls to [`poll`]
 //! 4. Before the value is invalidated (e.g. deallocated), it is *dropped*, giving it a chance to
-//! notify anything with pointers to itself that those pointers will be invalidated
+//!    notify anything with pointers to itself that those pointers will be invalidated
 //!     * e.g. [`drop`]ping the [`Future`] [^pin-drop-future]
 //!
 //! There are two possible ways to ensure the invariants required for 2. and 3. above (which
@@ -148,8 +148,8 @@
 //!
 //! 1. Have the value detect when it is moved and update all the pointers that point to itself.
 //! 2. Guarantee that the address of the value does not change (and that memory is not re-used
-//! for anything else) during the time that the pointers to it are expected to be valid to
-//! dereference.
+//!    for anything else) during the time that the pointers to it are expected to be valid to
+//!    dereference.
 //!
 //! Since, as we discussed, Rust can move values without notifying them that they have moved, the
 //! first option is ruled out.
@@ -160,11 +160,11 @@
 //! be able to enforce this invariant in Rust:
 //!
 //! 1. Offer a wholly `unsafe` API to interact with the object, thus requiring every caller to
-//! uphold the invariant themselves
+//!    uphold the invariant themselves
 //! 2. Store the value that must not be moved behind a carefully managed pointer internal to
-//! the object
+//!    the object
 //! 3. Leverage the type system to encode and enforce this invariant by presenting a restricted
-//! API surface to interact with *any* object that requires these invariants
+//!    API surface to interact with *any* object that requires these invariants
 //!
 //! The first option is quite obviously undesirable, as the [`unsafe`]ty of the interface will
 //! become viral throughout all code that interacts with the object.
@@ -530,7 +530,7 @@
 //! but it also implies that,
 //!
 //! 2. The memory location that stores the value must not get invalidated or otherwise repurposed
-//! during the lifespan of the pinned value until its [`drop`] returns or panics
+//!    during the lifespan of the pinned value until its [`drop`] returns or panics
 //!
 //! This point is subtle but required for intrusive data structures to be implemented soundly.
 //!
@@ -792,7 +792,7 @@
 //!
 //! 1.  *Structural [`Unpin`].* A struct can be [`Unpin`] only if all of its
 //!     structurally-pinned fields are, too. This is [`Unpin`]'s behavior by default.
-//!     However, as a libray author, it is your responsibility not to write something like
+//!     However, as a library author, it is your responsibility not to write something like
 //!     <code>impl\<T> [Unpin] for Struct\<T> {}</code> and then offer a method that provides
 //!     structural pinning to an inner field of `T`, which may not be [`Unpin`]! (Adding *any*
 //!     projection operation requires unsafe code, so the fact that [`Unpin`] is a safe trait does
@@ -1092,10 +1092,6 @@ pub use self::unsafe_pinned::UnsafePinned;
 #[rustc_pub_transparent]
 #[derive(Copy, Clone)]
 pub struct Pin<Ptr> {
-    /// Only public for bootstrap.
-    #[cfg(bootstrap)]
-    pub pointer: Ptr,
-    #[cfg(not(bootstrap))]
     pointer: Ptr,
 }
 
@@ -1422,7 +1418,7 @@ impl<Ptr: DerefMut> Pin<Ptr> {
     #[stable(feature = "pin_deref_mut", since = "1.84.0")]
     #[must_use = "`self` will be dropped if the result is not used"]
     #[inline(always)]
-    pub fn as_deref_mut(self: Pin<&mut Pin<Ptr>>) -> Pin<&mut Ptr::Target> {
+    pub fn as_deref_mut(self: Pin<&mut Self>) -> Pin<&mut Ptr::Target> {
         // SAFETY: What we're asserting here is that going from
         //
         //     Pin<&mut Pin<Ptr>>
@@ -1936,22 +1932,16 @@ unsafe impl<T: ?Sized> PinCoerceUnsized for *mut T {}
 /// constructor.
 ///
 /// [`Box::pin`]: ../../std/boxed/struct.Box.html#method.pin
-#[cfg(not(bootstrap))]
 #[stable(feature = "pin_macro", since = "1.68.0")]
 #[rustc_macro_transparency = "semitransparent"]
 #[allow_internal_unstable(super_let)]
+#[rustc_diagnostic_item = "pin_macro"]
+// `super` gets removed by rustfmt
+#[rustfmt::skip]
 pub macro pin($value:expr $(,)?) {
     {
         super let mut pinned = $value;
         // SAFETY: The value is pinned: it is the local above which cannot be named outside this macro.
         unsafe { $crate::pin::Pin::new_unchecked(&mut pinned) }
     }
-}
-
-/// Only for bootstrap.
-#[cfg(bootstrap)]
-#[stable(feature = "pin_macro", since = "1.68.0")]
-#[rustc_macro_transparency = "semitransparent"]
-pub macro pin($value:expr $(,)?) {
-    $crate::pin::Pin::<&mut _> { pointer: &mut { $value } }
 }

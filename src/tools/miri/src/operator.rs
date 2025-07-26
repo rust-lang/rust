@@ -76,6 +76,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     }
 
     fn generate_nan<F1: Float + FloatConvert<F2>, F2: Float>(&self, inputs: &[F1]) -> F2 {
+        let this = self.eval_context_ref();
+        if !this.machine.float_nondet {
+            return F2::NAN;
+        }
+
         /// Make the given NaN a signaling NaN.
         /// Returns `None` if this would not result in a NaN.
         fn make_signaling<F: Float>(f: F) -> Option<F> {
@@ -89,7 +94,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             if f.is_nan() { Some(f) } else { None }
         }
 
-        let this = self.eval_context_ref();
         let mut rand = this.machine.rng.borrow_mut();
         // Assemble an iterator of possible NaNs: preferred, quieting propagation, unchanged propagation.
         // On some targets there are more possibilities; for now we just generate those options that
@@ -118,6 +122,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
     fn equal_float_min_max<F: Float>(&self, a: F, b: F) -> F {
         let this = self.eval_context_ref();
+        if !this.machine.float_nondet {
+            return a;
+        }
         // Return one side non-deterministically.
         let mut rand = this.machine.rng.borrow_mut();
         if rand.random() { a } else { b }

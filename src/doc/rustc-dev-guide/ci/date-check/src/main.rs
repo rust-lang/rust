@@ -114,7 +114,7 @@ fn filter_dates(
 fn main() {
     let mut args = env::args();
     if args.len() == 1 {
-        eprintln!("error: expected root Markdown directory as CLI argument");
+        eprintln!("error: expected root of Markdown directory as CLI argument");
         process::exit(1);
     }
     let root_dir = args.nth(1).unwrap();

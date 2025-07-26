@@ -1,5 +1,3 @@
-//@ compile-flags:-Zprint-mono-items=lazy
-
 // rust-lang/rust#90405
 // Ensure implicit panic calls are collected
 
@@ -30,8 +28,14 @@ fn panic_div_overflow() -> ! {
     loop {}
 }
 
+#[lang = "pointee_sized"]
+pub trait PointeeSized {}
+
+#[lang = "meta_sized"]
+pub trait MetaSized: PointeeSized {}
+
 #[lang = "sized"]
-trait Sized {}
+pub trait Sized: MetaSized {}
 
 #[lang = "copy"]
 trait Copy {}

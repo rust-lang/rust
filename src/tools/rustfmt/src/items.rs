@@ -63,6 +63,11 @@ impl Rewrite for ast::Local {
             return Err(RewriteError::SkipFormatting);
         }
 
+        // FIXME(super_let): Implement formatting
+        if self.super_.is_some() {
+            return Err(RewriteError::SkipFormatting);
+        }
+
         let attrs_str = self.attrs.rewrite_result(context, shape)?;
         let mut result = if attrs_str.is_empty() {
             "let ".to_owned()
@@ -1105,10 +1110,10 @@ impl<'a> StructParts<'a> {
 
     pub(crate) fn from_item(item: &'a ast::Item) -> Self {
         let (prefix, def, ident, generics) = match item.kind {
-            ast::ItemKind::Struct(ident, ref def, ref generics) => {
+            ast::ItemKind::Struct(ident, ref generics, ref def) => {
                 ("struct ", def, ident, generics)
             }
-            ast::ItemKind::Union(ident, ref def, ref generics) => ("union ", def, ident, generics),
+            ast::ItemKind::Union(ident, ref generics, ref def) => ("union ", def, ident, generics),
             _ => unreachable!(),
         };
         StructParts {
@@ -1167,6 +1172,7 @@ pub(crate) fn format_trait(
         unreachable!();
     };
     let ast::Trait {
+        constness,
         is_auto,
         safety,
         ident,
@@ -1177,7 +1183,8 @@ pub(crate) fn format_trait(
 
     let mut result = String::with_capacity(128);
     let header = format!(
-        "{}{}{}trait ",
+        "{}{}{}{}trait ",
+        format_constness(constness),
         format_visibility(context, &item.vis),
         format_safety(safety),
         format_auto(is_auto),

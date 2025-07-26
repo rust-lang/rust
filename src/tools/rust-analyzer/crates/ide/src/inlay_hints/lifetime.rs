@@ -6,7 +6,6 @@ use std::iter;
 
 use ide_db::{FxHashMap, famous_defs::FamousDefs, syntax_helpers::node_ext::walk_ty};
 use itertools::Itertools;
-use span::EditionedFileId;
 use syntax::{SmolStr, format_smolstr};
 use syntax::{
     SyntaxKind, SyntaxToken,
@@ -23,7 +22,6 @@ pub(super) fn fn_hints(
     ctx: &mut InlayHintCtx,
     fd: &FamousDefs<'_, '_>,
     config: &InlayHintsConfig,
-    file_id: EditionedFileId,
     func: ast::Fn,
 ) -> Option<()> {
     if config.lifetime_elision_hints == LifetimeElisionHints::Never {
@@ -40,7 +38,6 @@ pub(super) fn fn_hints(
         ctx,
         fd,
         config,
-        file_id,
         param_list.params().filter_map(|it| {
             Some((
                 it.pat().and_then(|it| match it {
@@ -74,7 +71,6 @@ pub(super) fn fn_ptr_hints(
     ctx: &mut InlayHintCtx,
     fd: &FamousDefs<'_, '_>,
     config: &InlayHintsConfig,
-    file_id: EditionedFileId,
     func: ast::FnPtrType,
 ) -> Option<()> {
     if config.lifetime_elision_hints == LifetimeElisionHints::Never {
@@ -97,7 +93,6 @@ pub(super) fn fn_ptr_hints(
         ctx,
         fd,
         config,
-        file_id,
         param_list.params().filter_map(|it| {
             Some((
                 it.pat().and_then(|it| match it {
@@ -140,8 +135,7 @@ pub(super) fn fn_path_hints(
     ctx: &mut InlayHintCtx,
     fd: &FamousDefs<'_, '_>,
     config: &InlayHintsConfig,
-    file_id: EditionedFileId,
-    func: ast::PathType,
+    func: &ast::PathType,
 ) -> Option<()> {
     if config.lifetime_elision_hints == LifetimeElisionHints::Never {
         return None;
@@ -163,7 +157,6 @@ pub(super) fn fn_path_hints(
         ctx,
         fd,
         config,
-        file_id,
         param_list.type_args().filter_map(|it| Some((None, it.ty()?))),
         generic_param_list,
         ret_type,
@@ -202,7 +195,6 @@ fn hints_(
     ctx: &mut InlayHintCtx,
     FamousDefs(_, _): &FamousDefs<'_, '_>,
     config: &InlayHintsConfig,
-    _file_id: EditionedFileId,
     params: impl Iterator<Item = (Option<ast::Name>, ast::Type)>,
     generic_param_list: Option<ast::GenericParamList>,
     ret_type: Option<ast::RetType>,

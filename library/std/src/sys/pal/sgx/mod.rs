@@ -112,11 +112,14 @@ pub fn abort_internal() -> ! {
     abi::usercalls::exit(true)
 }
 
-// This function is needed by the panic runtime. The symbol is named in
+// This function is needed by libunwind. The symbol is named in
 // pre-link args for the target specification, so keep that in sync.
+// Note: contrary to the `__rust_abort` in `crate::rt`, this uses `no_mangle`
+//       because it is actually used from C code. Because symbols annotated with
+//       #[rustc_std_internal_symbol] get mangled, this will not lead to linker
+//       conflicts.
 #[cfg(not(test))]
 #[unsafe(no_mangle)]
-// NB. used by both libunwind and libpanic_abort
 pub extern "C" fn __rust_abort() {
     abort_internal();
 }

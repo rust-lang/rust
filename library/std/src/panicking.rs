@@ -499,13 +499,13 @@ pub use realstd::rt::panic_count;
 
 /// Invoke a closure, capturing the cause of an unwinding panic if one occurs.
 #[cfg(feature = "panic_immediate_abort")]
-pub unsafe fn r#try<R, F: FnOnce() -> R>(f: F) -> Result<R, Box<dyn Any + Send>> {
+pub unsafe fn catch_unwind<R, F: FnOnce() -> R>(f: F) -> Result<R, Box<dyn Any + Send>> {
     Ok(f())
 }
 
 /// Invoke a closure, capturing the cause of an unwinding panic if one occurs.
 #[cfg(not(feature = "panic_immediate_abort"))]
-pub unsafe fn r#try<R, F: FnOnce() -> R>(f: F) -> Result<R, Box<dyn Any + Send>> {
+pub unsafe fn catch_unwind<R, F: FnOnce() -> R>(f: F) -> Result<R, Box<dyn Any + Send>> {
     union Data<F, R> {
         f: ManuallyDrop<F>,
         r: ManuallyDrop<R>,
@@ -541,7 +541,7 @@ pub unsafe fn r#try<R, F: FnOnce() -> R>(f: F) -> Result<R, Box<dyn Any + Send>>
     let data_ptr = (&raw mut data) as *mut u8;
     // SAFETY:
     //
-    // Access to the union's fields: this is `std` and we know that the `r#try`
+    // Access to the union's fields: this is `std` and we know that the `catch_unwind`
     // intrinsic fills in the `r` or `p` union field based on its return value.
     //
     // The call to `intrinsics::catch_unwind` is made safe by:
@@ -602,7 +602,7 @@ pub unsafe fn r#try<R, F: FnOnce() -> R>(f: F) -> Result<R, Box<dyn Any + Send>>
     // This function cannot be marked as `unsafe` because `intrinsics::catch_unwind`
     // expects normal function pointers.
     #[inline]
-    #[rustc_nounwind] // `intrinsic::r#try` requires catch fn to be nounwind
+    #[rustc_nounwind] // `intrinsic::catch_unwind` requires catch fn to be nounwind
     fn do_catch<F: FnOnce() -> R, R>(data: *mut u8, payload: *mut u8) {
         // SAFETY: this is the responsibility of the caller, see above.
         //

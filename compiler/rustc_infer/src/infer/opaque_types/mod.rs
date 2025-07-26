@@ -1,5 +1,4 @@
 use hir::def_id::{DefId, LocalDefId};
-use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir as hir;
 use rustc_middle::bug;
 use rustc_middle::traits::ObligationCause;
@@ -19,8 +18,7 @@ use crate::traits::{self, Obligation, PredicateObligations};
 
 mod table;
 
-pub(crate) type OpaqueTypeMap<'tcx> = FxIndexMap<OpaqueTypeKey<'tcx>, OpaqueHiddenType<'tcx>>;
-pub(crate) use table::{OpaqueTypeStorage, OpaqueTypeTable};
+pub use table::{OpaqueTypeStorage, OpaqueTypeStorageEntries, OpaqueTypeTable};
 
 impl<'tcx> InferCtxt<'tcx> {
     /// This is a backwards compatibility hack to prevent breaking changes from
@@ -264,9 +262,7 @@ impl<'tcx> InferCtxt<'tcx> {
                         .type_of_opaque_hir_typeck(opaque_type_key.def_id)
                         .instantiate(self.tcx, opaque_type_key.args);
                     let actual = ty::fold_regions(tcx, actual, |re, _dbi| match re.kind() {
-                        ty::ReErased => {
-                            self.next_region_var(RegionVariableOrigin::MiscVariable(span))
-                        }
+                        ty::ReErased => self.next_region_var(RegionVariableOrigin::Misc(span)),
                         _ => re,
                     });
                     actual

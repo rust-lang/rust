@@ -22,11 +22,11 @@ fn _assert_is_dyn_compatible(_: &dyn Iterator<Item = ()>) {}
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_on_unimplemented(
     on(
-        _Self = "core::ops::range::RangeTo<Idx>",
+        Self = "core::ops::range::RangeTo<Idx>",
         note = "you might have meant to use a bounded `Range`"
     ),
     on(
-        _Self = "core::ops::range::RangeToInclusive<Idx>",
+        Self = "core::ops::range::RangeToInclusive<Idx>",
         note = "you might have meant to use a bounded `RangeInclusive`"
     ),
     label = "`{Self}` is not an iterator",
@@ -294,13 +294,39 @@ pub trait Iterator {
     #[inline]
     #[unstable(feature = "iter_advance_by", reason = "recently added", issue = "77404")]
     fn advance_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
-        for i in 0..n {
-            if self.next().is_none() {
-                // SAFETY: `i` is always less than `n`.
-                return Err(unsafe { NonZero::new_unchecked(n - i) });
+        /// Helper trait to specialize `advance_by` via `try_fold` for `Sized` iterators.
+        trait SpecAdvanceBy {
+            fn spec_advance_by(&mut self, n: usize) -> Result<(), NonZero<usize>>;
+        }
+
+        impl<I: Iterator + ?Sized> SpecAdvanceBy for I {
+            default fn spec_advance_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
+                for i in 0..n {
+                    if self.next().is_none() {
+                        // SAFETY: `i` is always less than `n`.
+                        return Err(unsafe { NonZero::new_unchecked(n - i) });
+                    }
+                }
+                Ok(())
             }
         }
-        Ok(())
+
+        impl<I: Iterator> SpecAdvanceBy for I {
+            fn spec_advance_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
+                let Some(n) = NonZero::new(n) else {
+                    return Ok(());
+                };
+
+                let res = self.try_fold(n, |n, _| NonZero::new(n.get() - 1));
+
+                match res {
+                    None => Ok(()),
+                    Some(n) => Err(n),
+                }
+            }
+        }
+
+        self.spec_advance_by(n)
     }
 
     /// Returns the `n`th element of the iterator.
@@ -3388,10 +3414,10 @@ pub trait Iterator {
     /// ```
     #[stable(feature = "iter_copied", since = "1.36.0")]
     #[rustc_diagnostic_item = "iter_copied"]
-    fn copied<'a, T: 'a>(self) -> Copied<Self>
+    fn copied<'a, T>(self) -> Copied<Self>
     where
+        T: Copy + 'a,
         Self: Sized + Iterator<Item = &'a T>,
-        T: Copy,
     {
         Copied::new(self)
     }
@@ -3436,10 +3462,10 @@ pub trait Iterator {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_diagnostic_item = "iter_cloned"]
-    fn cloned<'a, T: 'a>(self) -> Cloned<Self>
+    fn cloned<'a, T>(self) -> Cloned<Self>
     where
+        T: Clone + 'a,
         Self: Sized + Iterator<Item = &'a T>,
-        T: Clone,
     {
         Cloned::new(self)
     }

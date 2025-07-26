@@ -1,0 +1,11 @@
+error[E0308]: mismatched types
+  --> $DIR/deprecated-expr-precedence.rs:6:19
+   |
+LL | pub fn public() {
+   |                - help: try adding a return type: `-> i32`
+LL |     #[deprecated] 0
+   |                   ^ expected `()`, found integer
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0308`.

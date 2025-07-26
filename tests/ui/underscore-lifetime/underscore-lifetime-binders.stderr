@@ -15,12 +15,16 @@ error[E0637]: `'_` cannot be used here
    |
 LL | fn foo<'_>
    |        ^^ `'_` is a reserved lifetime name
+   |
+   = help: use another lifetime specifier
 
 error[E0637]: `'_` cannot be used here
   --> $DIR/underscore-lifetime-binders.rs:10:25
    |
 LL | fn meh() -> Box<dyn for<'_> Meh<'_>>
    |                         ^^ `'_` is a reserved lifetime name
+   |
+   = help: use another lifetime specifier
 
 error[E0106]: missing lifetime specifier
   --> $DIR/underscore-lifetime-binders.rs:10:33

@@ -26,14 +26,16 @@ impl Error for TryFromIntError {
 }
 
 #[stable(feature = "try_from", since = "1.34.0")]
-impl From<Infallible> for TryFromIntError {
+#[rustc_const_unstable(feature = "const_try", issue = "74935")]
+impl const From<Infallible> for TryFromIntError {
     fn from(x: Infallible) -> TryFromIntError {
         match x {}
     }
 }
 
 #[unstable(feature = "never_type", issue = "35121")]
-impl From<!> for TryFromIntError {
+#[rustc_const_unstable(feature = "const_try", issue = "74935")]
+impl const From<!> for TryFromIntError {
     #[inline]
     fn from(never: !) -> TryFromIntError {
         // Match rather than coerce to make sure that code like
@@ -45,8 +47,11 @@ impl From<!> for TryFromIntError {
 
 /// An error which can be returned when parsing an integer.
 ///
-/// This error is used as the error type for the `from_str_radix()` functions
-/// on the primitive integer types, such as [`i8::from_str_radix`].
+/// For example, this error is returned by the `from_str_radix()` functions
+/// on the primitive integer types (such as [`i8::from_str_radix`])
+/// and is used as the error type in their [`FromStr`] implementations.
+///
+/// [`FromStr`]: crate::str::FromStr
 ///
 /// # Potential causes
 ///
@@ -79,7 +84,7 @@ pub struct ParseIntError {
 /// # }
 /// ```
 #[stable(feature = "int_error_matching", since = "1.55.0")]
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Copy, Hash)]
 #[non_exhaustive]
 pub enum IntErrorKind {
     /// Value being parsed is empty.

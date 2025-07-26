@@ -29,7 +29,7 @@ impl X for Y {
     fn line_stream<'a, Repr>(&'a self) -> Self::LineStreamFut<'a, Repr> {}
     //~^ ERROR method `line_stream` is not a member of trait `X`
     //[current]~^^ ERROR `()` is not a future
-    //[next]~^^^ ERROR type mismatch resolving `<Y as X>::LineStreamFut<'a, Repr> == ()`
+    //[next]~^^^ ERROR type mismatch resolving `<Y as X>::LineStreamFut<'a, Repr> normalizes-to ()`
     //[next]~| ERROR type mismatch resolving `<Y as X>::LineStreamFut<'a, Repr> normalizes-to _`
     //[next]~| ERROR type mismatch resolving `<Y as X>::LineStreamFut<'a, Repr> normalizes-to _`
 }

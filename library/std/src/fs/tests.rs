@@ -367,6 +367,28 @@ fn file_lock_blocking_async() {
 }
 
 #[test]
+#[cfg(windows)]
+fn file_try_lock_async() {
+    const FILE_FLAG_OVERLAPPED: u32 = 0x40000000;
+
+    let tmpdir = tmpdir();
+    let filename = &tmpdir.join("file_try_lock_async.txt");
+    let f1 = check!(File::create(filename));
+    let f2 =
+        check!(OpenOptions::new().custom_flags(FILE_FLAG_OVERLAPPED).write(true).open(filename));
+
+    // Check that shared locks block exclusive locks
+    check!(f1.lock_shared());
+    assert_matches!(f2.try_lock(), Err(TryLockError::WouldBlock));
+    check!(f1.unlock());
+
+    // Check that exclusive locks block all locks
+    check!(f1.lock());
+    assert_matches!(f2.try_lock(), Err(TryLockError::WouldBlock));
+    assert_matches!(f2.try_lock_shared(), Err(TryLockError::WouldBlock));
+}
+
+#[test]
 fn file_test_io_seek_shakedown() {
     //                   01234567890123
     let initial_msg = "qwer-asdf-zxcv";
@@ -730,6 +752,10 @@ fn recursive_mkdir_empty() {
 }
 
 #[test]
+#[cfg_attr(
+    all(windows, target_arch = "aarch64"),
+    ignore = "SymLinks not enabled on Arm64 Windows runners https://github.com/actions/partner-runner-images/issues/94"
+)]
 fn recursive_rmdir() {
     let tmpdir = tmpdir();
     let d1 = tmpdir.join("d1");
@@ -749,6 +775,10 @@ fn recursive_rmdir() {
 }
 
 #[test]
+#[cfg_attr(
+    all(windows, target_arch = "aarch64"),
+    ignore = "SymLinks not enabled on Arm64 Windows runners https://github.com/actions/partner-runner-images/issues/94"
+)]
 fn recursive_rmdir_of_symlink() {
     // test we do not recursively delete a symlink but only dirs.
     let tmpdir = tmpdir();
@@ -1533,6 +1563,10 @@ fn file_open_not_found() {
 }
 
 #[test]
+#[cfg_attr(
+    all(windows, target_arch = "aarch64"),
+    ignore = "SymLinks not enabled on Arm64 Windows runners https://github.com/actions/partner-runner-images/issues/94"
+)]
 fn create_dir_all_with_junctions() {
     let tmpdir = tmpdir();
     let target = tmpdir.join("target");
@@ -1748,8 +1782,30 @@ fn test_eq_windows_file_type() {
     // Change the readonly attribute of one file.
     let mut perms = file1.metadata().unwrap().permissions();
     perms.set_readonly(true);
-    file1.set_permissions(perms).unwrap();
+    file1.set_permissions(perms.clone()).unwrap();
+    #[cfg(target_vendor = "win7")]
+    let _g = ReadonlyGuard { file: &file1, perms };
     assert_eq!(file1.metadata().unwrap().file_type(), file2.metadata().unwrap().file_type());
+
+    // Reset the attribute before the `TmpDir`'s drop that removes the
+    // associated directory, which fails with a `PermissionDenied` error when
+    // running under Windows 7.
+    #[cfg(target_vendor = "win7")]
+    struct ReadonlyGuard<'f> {
+        file: &'f File,
+        perms: fs::Permissions,
+    }
+    #[cfg(target_vendor = "win7")]
+    impl<'f> Drop for ReadonlyGuard<'f> {
+        fn drop(&mut self) {
+            self.perms.set_readonly(false);
+            let res = self.file.set_permissions(self.perms.clone());
+
+            if !thread::panicking() {
+                res.unwrap();
+            }
+        }
+    }
 }
 
 /// Regression test for https://github.com/rust-lang/rust/issues/50619.
@@ -2011,6 +2067,10 @@ fn test_rename_symlink() {
 
 #[test]
 #[cfg(windows)]
+#[cfg_attr(
+    all(windows, target_arch = "aarch64"),
+    ignore = "SymLinks not enabled on Arm64 Windows runners https://github.com/actions/partner-runner-images/issues/94"
+)]
 fn test_rename_junction() {
     let tmpdir = tmpdir();
     let original = tmpdir.join("original");

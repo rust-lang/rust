@@ -41,13 +41,12 @@ fn insert_null_check<'tcx>(
     let const_raw_ptr = Ty::new_imm_ptr(tcx, tcx.types.unit);
     let rvalue = Rvalue::Cast(CastKind::PtrToPtr, Operand::Copy(pointer), const_raw_ptr);
     let thin_ptr = local_decls.push(LocalDecl::with_source_info(const_raw_ptr, source_info)).into();
-    stmts
-        .push(Statement { source_info, kind: StatementKind::Assign(Box::new((thin_ptr, rvalue))) });
+    stmts.push(Statement::new(source_info, StatementKind::Assign(Box::new((thin_ptr, rvalue)))));
 
     // Transmute the pointer to a usize (equivalent to `ptr.addr()`).
     let rvalue = Rvalue::Cast(CastKind::Transmute, Operand::Copy(thin_ptr), tcx.types.usize);
     let addr = local_decls.push(LocalDecl::with_source_info(tcx.types.usize, source_info)).into();
-    stmts.push(Statement { source_info, kind: StatementKind::Assign(Box::new((addr, rvalue))) });
+    stmts.push(Statement::new(source_info, StatementKind::Assign(Box::new((addr, rvalue)))));
 
     let zero = Operand::Constant(Box::new(ConstOperand {
         span: source_info.span,
@@ -71,24 +70,24 @@ fn insert_null_check<'tcx>(
             let rvalue = Rvalue::NullaryOp(NullOp::SizeOf, pointee_ty);
             let sizeof_pointee =
                 local_decls.push(LocalDecl::with_source_info(tcx.types.usize, source_info)).into();
-            stmts.push(Statement {
+            stmts.push(Statement::new(
                 source_info,
-                kind: StatementKind::Assign(Box::new((sizeof_pointee, rvalue))),
-            });
+                StatementKind::Assign(Box::new((sizeof_pointee, rvalue))),
+            ));
 
             // Check that the pointee is not a ZST.
             let is_pointee_not_zst =
                 local_decls.push(LocalDecl::with_source_info(tcx.types.bool, source_info)).into();
-            stmts.push(Statement {
+            stmts.push(Statement::new(
                 source_info,
-                kind: StatementKind::Assign(Box::new((
+                StatementKind::Assign(Box::new((
                     is_pointee_not_zst,
                     Rvalue::BinaryOp(
                         BinOp::Ne,
                         Box::new((Operand::Copy(sizeof_pointee), zero.clone())),
                     ),
                 ))),
-            });
+            ));
 
             // Pointer needs to be checked only if pointee is not a ZST.
             Operand::Copy(is_pointee_not_zst)
@@ -97,38 +96,38 @@ fn insert_null_check<'tcx>(
 
     // Check whether the pointer is null.
     let is_null = local_decls.push(LocalDecl::with_source_info(tcx.types.bool, source_info)).into();
-    stmts.push(Statement {
+    stmts.push(Statement::new(
         source_info,
-        kind: StatementKind::Assign(Box::new((
+        StatementKind::Assign(Box::new((
             is_null,
             Rvalue::BinaryOp(BinOp::Eq, Box::new((Operand::Copy(addr), zero))),
         ))),
-    });
+    ));
 
     // We want to throw an exception if the pointer is null and the pointee is not unconditionally
     // allowed (which for all non-borrow place uses, is when the pointee is ZST).
     let should_throw_exception =
         local_decls.push(LocalDecl::with_source_info(tcx.types.bool, source_info)).into();
-    stmts.push(Statement {
+    stmts.push(Statement::new(
         source_info,
-        kind: StatementKind::Assign(Box::new((
+        StatementKind::Assign(Box::new((
             should_throw_exception,
             Rvalue::BinaryOp(
                 BinOp::BitAnd,
                 Box::new((Operand::Copy(is_null), pointee_should_be_checked)),
             ),
         ))),
-    });
+    ));
 
     // The final condition whether this pointer usage is ok or not.
     let is_ok = local_decls.push(LocalDecl::with_source_info(tcx.types.bool, source_info)).into();
-    stmts.push(Statement {
+    stmts.push(Statement::new(
         source_info,
-        kind: StatementKind::Assign(Box::new((
+        StatementKind::Assign(Box::new((
             is_ok,
             Rvalue::UnaryOp(UnOp::Not, Operand::Copy(should_throw_exception)),
         ))),
-    });
+    ));
 
     // Emit a PointerCheck that asserts on the condition and otherwise triggers
     // a AssertKind::NullPointerDereference.

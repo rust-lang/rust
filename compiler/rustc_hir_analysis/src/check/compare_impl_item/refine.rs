@@ -427,7 +427,7 @@ fn report_mismatched_rpitit_captures<'tcx>(
     };
 
     trait_captured_args
-        .sort_by_cached_key(|arg| !matches!(arg.unpack(), ty::GenericArgKind::Lifetime(_)));
+        .sort_by_cached_key(|arg| !matches!(arg.kind(), ty::GenericArgKind::Lifetime(_)));
     let suggestion = format!("use<{}>", trait_captured_args.iter().join(", "));
 
     tcx.emit_node_span_lint(

@@ -1,8 +1,8 @@
-error[E0080]: evaluation of `assert_zst::F::<u32>::V` failed
+error[E0080]: evaluation panicked: assertion failed: std::mem::size_of::<T>() == 0
   --> $DIR/post_monomorphization_error_backtrace.rs:6:23
    |
 LL |         const V: () = assert!(std::mem::size_of::<T>() == 0);
-   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation panicked: assertion failed: std::mem::size_of::<T>() == 0
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `assert_zst::F::<u32>::V` failed here
 
 note: erroneous constant encountered
   --> $DIR/post_monomorphization_error_backtrace.rs:14:5
@@ -16,11 +16,11 @@ note: the above error was encountered while instantiating `fn assert_zst::<u32>`
 LL |     assert_zst::<U>()
    |     ^^^^^^^^^^^^^^^^^
 
-error[E0080]: evaluation of `assert_zst::F::<i32>::V` failed
+error[E0080]: evaluation panicked: assertion failed: std::mem::size_of::<T>() == 0
   --> $DIR/post_monomorphization_error_backtrace.rs:6:23
    |
 LL |         const V: () = assert!(std::mem::size_of::<T>() == 0);
-   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation panicked: assertion failed: std::mem::size_of::<T>() == 0
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `assert_zst::F::<i32>::V` failed here
 
 note: erroneous constant encountered
   --> $DIR/post_monomorphization_error_backtrace.rs:14:5

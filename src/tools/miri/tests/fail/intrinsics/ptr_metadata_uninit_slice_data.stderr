@@ -1,8 +1,8 @@
-error: Undefined Behavior: using uninitialized data, but this operation requires initialized memory
+error: Undefined Behavior: reading memory at ALLOC[0xX..0xY], but memory is uninitialized at [0xX..0xY], and this operation requires initialized memory
   --> tests/fail/intrinsics/ptr_metadata_uninit_slice_data.rs:LL:CC
    |
 LL |             RET = PtrMetadata(*p);
-   |             ^^^^^^^^^^^^^^^^^^^^^ using uninitialized data, but this operation requires initialized memory
+   |             ^^^^^^^^^^^^^^^^^^^^^ Undefined Behavior occurred here
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
@@ -13,6 +13,9 @@ note: inside `main`
    |
 LL |         let _meta = deref_meta(p.as_ptr().cast());
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Uninitialized memory occurred at ALLOC[0xX..0xY], in this allocation:
+ALLOC DUMP
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

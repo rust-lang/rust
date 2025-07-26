@@ -17,7 +17,7 @@ pub(crate) fn gen_trait_fn_body(
     func: &ast::Fn,
     trait_path: &ast::Path,
     adt: &ast::Adt,
-    trait_ref: Option<TraitRef>,
+    trait_ref: Option<TraitRef<'_>>,
 ) -> Option<()> {
     match trait_path.segment()?.name_ref()?.text().as_str() {
         "Clone" => gen_clone_impl(adt, func),
@@ -405,7 +405,7 @@ fn gen_hash_impl(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
 }
 
 /// Generate a `PartialEq` impl based on the fields and members of the target type.
-fn gen_partial_eq(adt: &ast::Adt, func: &ast::Fn, trait_ref: Option<TraitRef>) -> Option<()> {
+fn gen_partial_eq(adt: &ast::Adt, func: &ast::Fn, trait_ref: Option<TraitRef<'_>>) -> Option<()> {
     stdx::always!(func.name().is_some_and(|name| name.text() == "eq"));
     fn gen_eq_chain(expr: Option<ast::Expr>, cmp: ast::Expr) -> Option<ast::Expr> {
         match expr {
@@ -599,7 +599,7 @@ fn gen_partial_eq(adt: &ast::Adt, func: &ast::Fn, trait_ref: Option<TraitRef>) -
     Some(())
 }
 
-fn gen_partial_ord(adt: &ast::Adt, func: &ast::Fn, trait_ref: Option<TraitRef>) -> Option<()> {
+fn gen_partial_ord(adt: &ast::Adt, func: &ast::Fn, trait_ref: Option<TraitRef<'_>>) -> Option<()> {
     stdx::always!(func.name().is_some_and(|name| name.text() == "partial_cmp"));
     fn gen_partial_eq_match(match_target: ast::Expr) -> Option<ast::Stmt> {
         let mut arms = vec![];

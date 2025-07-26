@@ -1,3 +1,9 @@
+error[E0077]: SIMD vector element type should be a primitive scalar (integer/float/pointer) type
+  --> $DIR/array-trait.rs:22:1
+   |
+LL | pub struct T<S: Simd>([S::Lane; S::SIZE]);
+   | ^^^^^^^^^^^^^^^^^^^^^
+
 error: unconstrained generic constant
   --> $DIR/array-trait.rs:22:23
    |
@@ -8,12 +14,6 @@ help: try adding a `where` bound
    |
 LL | pub struct T<S: Simd>([S::Lane; S::SIZE]) where [(); S::SIZE]:;
    |                                           ++++++++++++++++++++
-
-error[E0077]: SIMD vector element type should be a primitive scalar (integer/float/pointer) type
-  --> $DIR/array-trait.rs:22:1
-   |
-LL | pub struct T<S: Simd>([S::Lane; S::SIZE]);
-   | ^^^^^^^^^^^^^^^^^^^^^
 
 error: unconstrained generic constant
   --> $DIR/array-trait.rs:22:23

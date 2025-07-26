@@ -1,24 +1,22 @@
 use std::collections::HashMap;
 use std::ffi::OsStr;
+#[cfg(unix)]
+use std::os::unix::process::CommandExt;
 use std::path::PathBuf;
 
 use crate::config::ConfigInfo;
-use crate::utils::{
-    get_toolchain, run_command_with_output_and_env_no_err, rustc_toolchain_version_info,
-    rustc_version_info,
-};
+use crate::utils::{get_toolchain, rustc_toolchain_version_info, rustc_version_info};
 
 fn args(command: &str) -> Result<Option<Vec<String>>, String> {
     // We skip the binary and the "cargo"/"rustc" option.
-    if let Some("--help") = std::env::args().skip(2).next().as_deref() {
+    if let Some("--help") = std::env::args().nth(2).as_deref() {
         usage(command);
         return Ok(None);
     }
     let args = std::env::args().skip(2).collect::<Vec<_>>();
     if args.is_empty() {
         return Err(format!(
-            "Expected at least one argument for `{}` subcommand, found none",
-            command
+            "Expected at least one argument for `{command}` subcommand, found none"
         ));
     }
     Ok(Some(args))
@@ -27,12 +25,11 @@ fn args(command: &str) -> Result<Option<Vec<String>>, String> {
 fn usage(command: &str) {
     println!(
         r#"
-`{}` command help:
+`{command}` command help:
 
     [args]     : Arguments to be passed to the cargo command
     --help     : Show this help
 "#,
-        command,
     )
 }
 
@@ -51,10 +48,10 @@ impl RustcTools {
         // expected.
         let current_dir = std::env::current_dir()
             .and_then(|path| path.canonicalize())
-            .map_err(|error| format!("Failed to get current directory path: {:?}", error))?;
+            .map_err(|error| format!("Failed to get current directory path: {error:?}"))?;
         let current_exe = std::env::current_exe()
             .and_then(|path| path.canonicalize())
-            .map_err(|error| format!("Failed to get current exe path: {:?}", error))?;
+            .map_err(|error| format!("Failed to get current exe path: {error:?}"))?;
         let mut parent_dir =
             current_exe.components().map(|comp| comp.as_os_str()).collect::<Vec<_>>();
         // We run this script from "build_system/target/release/y", so we need to remove these elements.
@@ -68,7 +65,7 @@ impl RustcTools {
                 ));
             }
         }
-        let parent_dir = PathBuf::from(parent_dir.join(&OsStr::new("/")));
+        let parent_dir = PathBuf::from(parent_dir.join(OsStr::new("/")));
         std::env::set_current_dir(&parent_dir).map_err(|error| {
             format!("Failed to go to `{}` folder: {:?}", parent_dir.display(), error)
         })?;
@@ -92,8 +89,28 @@ impl RustcTools {
         std::env::set_current_dir(&current_dir).map_err(|error| {
             format!("Failed to go back to `{}` folder: {:?}", current_dir.display(), error)
         })?;
-        let toolchain = format!("+{}", toolchain);
+        let toolchain = format!("+{toolchain}");
         Ok(Some(Self { toolchain, args, env, config }))
+    }
+}
+
+fn exec(input: &[&dyn AsRef<OsStr>], env: &HashMap<String, String>) -> Result<(), String> {
+    #[cfg(unix)]
+    {
+        // We use `exec` to call the `execvp` syscall instead of creating a new process where the
+        // command will be executed because very few signals can actually kill a current process,
+        // so if segmentation fault (SIGSEGV signal) happens and we raise to the current process,
+        // it will simply do nothing and we won't have the nice error message for the shell.
+        let error = crate::utils::get_command_inner(input, None, Some(env)).exec();
+        eprintln!("execvp syscall failed: {error:?}");
+        std::process::exit(1);
+    }
+    #[cfg(not(unix))]
+    {
+        if crate::utils::run_command_with_output_and_env_no_err(input, None, Some(env)).is_err() {
+            std::process::exit(1);
+        }
+        Ok(())
     }
 }
 
@@ -105,11 +122,7 @@ pub fn run_cargo() -> Result<(), String> {
     for arg in &tools.args {
         command.push(arg);
     }
-    if run_command_with_output_and_env_no_err(&command, None, Some(&tools.env)).is_err() {
-        std::process::exit(1);
-    }
-
-    Ok(())
+    exec(&command, &tools.env)
 }
 
 pub fn run_rustc() -> Result<(), String> {
@@ -118,8 +131,5 @@ pub fn run_rustc() -> Result<(), String> {
     for arg in &tools.args {
         command.push(arg);
     }
-    if run_command_with_output_and_env_no_err(&command, None, Some(&tools.env)).is_err() {
-        std::process::exit(1);
-    }
-    Ok(())
+    exec(&command, &tools.env)
 }

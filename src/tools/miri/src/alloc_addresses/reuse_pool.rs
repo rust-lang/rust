@@ -4,6 +4,7 @@ use rand::Rng;
 use rustc_abi::{Align, Size};
 
 use crate::concurrency::VClock;
+use crate::helpers::ToUsize as _;
 use crate::{MemoryKind, MiriConfig, ThreadId};
 
 const MAX_POOL_SIZE: usize = 64;
@@ -46,7 +47,7 @@ impl ReusePool {
     }
 
     fn subpool(&mut self, align: Align) -> &mut Vec<(u64, Size, ThreadId, VClock)> {
-        let pool_idx: usize = align.bytes().trailing_zeros().try_into().unwrap();
+        let pool_idx: usize = align.bytes().trailing_zeros().to_usize();
         if self.pool.len() <= pool_idx {
             self.pool.resize(pool_idx + 1, Vec::new());
         }
@@ -128,7 +129,7 @@ impl ReusePool {
         let idx = rng.random_range(begin..end);
         // Remove it from the pool and return.
         let (chosen_addr, chosen_size, chosen_thread, clock) = subpool.remove(idx);
-        debug_assert!(chosen_size >= size && chosen_addr % align.bytes() == 0);
+        debug_assert!(chosen_size >= size && chosen_addr.is_multiple_of(align.bytes()));
         debug_assert!(cross_thread_reuse || chosen_thread == thread);
         // No synchronization needed if we reused from the current thread.
         Some((chosen_addr, if chosen_thread == thread { None } else { Some(clock) }))

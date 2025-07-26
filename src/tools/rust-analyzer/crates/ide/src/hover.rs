@@ -58,6 +58,7 @@ pub struct MemoryLayoutHoverConfig {
     pub size: Option<MemoryLayoutHoverRenderKind>,
     pub offset: Option<MemoryLayoutHoverRenderKind>,
     pub alignment: Option<MemoryLayoutHoverRenderKind>,
+    pub padding: Option<MemoryLayoutHoverRenderKind>,
     pub niches: bool,
 }
 
@@ -199,7 +200,7 @@ fn hover_offset(
         });
     }
 
-    if let Some((range, resolution)) =
+    if let Some((range, _, _, resolution)) =
         sema.check_for_format_args_template(original_token.clone(), offset)
     {
         let res = hover_for_definition(
@@ -425,7 +426,7 @@ pub(crate) fn hover_for_definition(
     sema: &Semantics<'_, RootDatabase>,
     file_id: FileId,
     def: Definition,
-    subst: Option<GenericSubstitution>,
+    subst: Option<GenericSubstitution<'_>>,
     scope_node: &SyntaxNode,
     macro_arm: Option<u32>,
     render_extras: bool,
@@ -456,7 +457,7 @@ pub(crate) fn hover_for_definition(
     let notable_traits = def_ty.map(|ty| notable_traits(db, &ty)).unwrap_or_default();
     let subst_types = subst.map(|subst| subst.types(db));
 
-    let markup = render::definition(
+    let (markup, range_map) = render::definition(
         sema.db,
         def,
         famous_defs.as_ref(),
@@ -469,7 +470,7 @@ pub(crate) fn hover_for_definition(
         display_target,
     );
     HoverResult {
-        markup: render::process_markup(sema.db, def, &markup, config),
+        markup: render::process_markup(sema.db, def, &markup, range_map, config),
         actions: [
             show_fn_references_action(sema.db, def),
             show_implementations_action(sema.db, def),
@@ -482,10 +483,10 @@ pub(crate) fn hover_for_definition(
     }
 }
 
-fn notable_traits(
-    db: &RootDatabase,
-    ty: &hir::Type,
-) -> Vec<(hir::Trait, Vec<(Option<hir::Type>, hir::Name)>)> {
+fn notable_traits<'db>(
+    db: &'db RootDatabase,
+    ty: &hir::Type<'db>,
+) -> Vec<(hir::Trait, Vec<(Option<hir::Type<'db>>, hir::Name)>)> {
     db.notable_traits_in_deps(ty.krate(db).into())
         .iter()
         .flat_map(|it| &**it)
@@ -566,8 +567,8 @@ fn runnable_action(
 fn goto_type_action_for_def(
     db: &RootDatabase,
     def: Definition,
-    notable_traits: &[(hir::Trait, Vec<(Option<hir::Type>, hir::Name)>)],
-    subst_types: Option<Vec<(hir::Symbol, hir::Type)>>,
+    notable_traits: &[(hir::Trait, Vec<(Option<hir::Type<'_>>, hir::Name)>)],
+    subst_types: Option<Vec<(hir::Symbol, hir::Type<'_>)>>,
     edition: Edition,
 ) -> Option<HoverAction> {
     let mut targets: Vec<hir::ModuleDef> = Vec::new();
@@ -621,7 +622,7 @@ fn goto_type_action_for_def(
 
 fn walk_and_push_ty(
     db: &RootDatabase,
-    ty: &hir::Type,
+    ty: &hir::Type<'_>,
     push_new_def: &mut dyn FnMut(hir::ModuleDef),
 ) {
     ty.walk(db, |t| {

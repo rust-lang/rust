@@ -51,6 +51,7 @@ use std::path::PathBuf;
 use std::{cmp, fmt, iter};
 
 use rustc_abi::ExternAbi;
+use rustc_ast::join_path_syms;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_errors::{
     Applicability, Diag, DiagStyledString, IntoDiagArg, MultiSpan, StringPart, pluralize,
@@ -73,7 +74,7 @@ use rustc_middle::ty::{
     TypeVisitableExt,
 };
 use rustc_span::def_id::LOCAL_CRATE;
-use rustc_span::{BytePos, DesugaringKind, Pos, Span, sym};
+use rustc_span::{BytePos, DUMMY_SP, DesugaringKind, Pos, Span, Symbol, sym};
 use tracing::{debug, instrument};
 
 use crate::error_reporting::TypeErrCtxt;
@@ -82,9 +83,7 @@ use crate::infer;
 use crate::infer::relate::{self, RelateResult, TypeRelation};
 use crate::infer::{InferCtxt, InferCtxtExt as _, TypeTrace, ValuePairs};
 use crate::solve::deeply_normalize_for_diagnostics;
-use crate::traits::{
-    IfExpressionCause, MatchExpressionArmCause, ObligationCause, ObligationCauseCode,
-};
+use crate::traits::{MatchExpressionArmCause, ObligationCause, ObligationCauseCode};
 
 mod note_and_explain;
 mod suggest;
@@ -194,7 +193,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             _ => return None,
         };
 
-        let future_trait = self.tcx.require_lang_item(LangItem::Future, None);
+        let future_trait = self.tcx.require_lang_item(LangItem::Future, DUMMY_SP);
         let item_def_id = self.tcx.associated_item_def_ids(future_trait)[0];
 
         self.tcx
@@ -227,7 +226,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
         struct AbsolutePathPrinter<'tcx> {
             tcx: TyCtxt<'tcx>,
-            segments: Vec<String>,
+            segments: Vec<Symbol>,
         }
 
         impl<'tcx> Printer<'tcx> for AbsolutePathPrinter<'tcx> {
@@ -255,7 +254,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             }
 
             fn path_crate(&mut self, cnum: CrateNum) -> Result<(), PrintError> {
-                self.segments = vec![self.tcx.crate_name(cnum).to_string()];
+                self.segments = vec![self.tcx.crate_name(cnum)];
                 Ok(())
             }
             fn path_qualified(
@@ -281,7 +280,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 disambiguated_data: &DisambiguatedDefPathData,
             ) -> Result<(), PrintError> {
                 print_prefix(self)?;
-                self.segments.push(disambiguated_data.to_string());
+                self.segments.push(disambiguated_data.as_sym(true));
                 Ok(())
             }
             fn path_generic_args(
@@ -316,7 +315,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 // known" by the same name, we use the "absolute path" which uses the original
                 // crate name instead.
                 let (expected, found) = if expected_str == found_str {
-                    (expected_abs.join("::"), found_abs.join("::"))
+                    (join_path_syms(&expected_abs), join_path_syms(&found_abs))
                 } else {
                     (expected_str.clone(), found_str.clone())
                 };
@@ -613,18 +612,28 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     }
                 }
             },
-            ObligationCauseCode::IfExpression(box IfExpressionCause {
-                then_id,
-                else_id,
-                then_ty,
-                else_ty,
-                outer_span,
-                ..
-            }) => {
-                let then_span = self.find_block_span_from_hir_id(then_id);
-                let else_span = self.find_block_span_from_hir_id(else_id);
-                if let hir::Node::Expr(e) = self.tcx.hir_node(else_id)
-                    && let hir::ExprKind::If(_cond, _then, None) = e.kind
+            ObligationCauseCode::IfExpression { expr_id, .. } => {
+                let hir::Node::Expr(&hir::Expr {
+                    kind: hir::ExprKind::If(cond_expr, then_expr, Some(else_expr)),
+                    span: expr_span,
+                    ..
+                }) = self.tcx.hir_node(expr_id)
+                else {
+                    return;
+                };
+                let then_span = self.find_block_span_from_hir_id(then_expr.hir_id);
+                let then_ty = self
+                    .typeck_results
+                    .as_ref()
+                    .expect("if expression only expected inside FnCtxt")
+                    .expr_ty(then_expr);
+                let else_span = self.find_block_span_from_hir_id(else_expr.hir_id);
+                let else_ty = self
+                    .typeck_results
+                    .as_ref()
+                    .expect("if expression only expected inside FnCtxt")
+                    .expr_ty(else_expr);
+                if let hir::ExprKind::If(_cond, _then, None) = else_expr.kind
                     && else_ty.is_unit()
                 {
                     // Account for `let x = if a { 1 } else if b { 2 };`
@@ -632,9 +641,32 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     err.note("consider adding an `else` block that evaluates to the expected type");
                 }
                 err.span_label(then_span, "expected because of this");
+
+                let outer_span = if self.tcx.sess.source_map().is_multiline(expr_span) {
+                    if then_span.hi() == expr_span.hi() || else_span.hi() == expr_span.hi() {
+                        // Point at condition only if either block has the same end point as
+                        // the whole expression, since that'll cause awkward overlapping spans.
+                        Some(expr_span.shrink_to_lo().to(cond_expr.peel_drop_temps().span))
+                    } else {
+                        Some(expr_span)
+                    }
+                } else {
+                    None
+                };
                 if let Some(sp) = outer_span {
                     err.span_label(sp, "`if` and `else` have incompatible types");
                 }
+
+                let then_id = if let hir::ExprKind::Block(then_blk, _) = then_expr.kind {
+                    then_blk.hir_id
+                } else {
+                    then_expr.hir_id
+                };
+                let else_id = if let hir::ExprKind::Block(else_blk, _) = else_expr.kind {
+                    else_blk.hir_id
+                } else {
+                    else_expr.hir_id
+                };
                 if let Some(subdiag) = self.suggest_remove_semi_or_return_binding(
                     Some(then_id),
                     then_ty,
@@ -738,7 +770,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 value.push_normal(", ");
             }
 
-            match arg.unpack() {
+            match arg.kind() {
                 ty::GenericArgKind::Lifetime(lt) => {
                     let s = lt.to_string();
                     value.push_normal(if s.is_empty() { "'_" } else { &s });
@@ -1166,7 +1198,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
                     for (i, (arg1, arg2)) in sub1.iter().zip(sub2).enumerate().take(len) {
                         self.push_comma(&mut values.0, &mut values.1, i);
-                        match arg1.unpack() {
+                        match arg1.kind() {
                             // At one point we'd like to elide all lifetimes here, they are
                             // irrelevant for all diagnostics that use this output.
                             //
@@ -1509,7 +1541,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 }
                 let (is_simple_error, exp_found) = match values {
                     ValuePairs::Terms(ExpectedFound { expected, found }) => {
-                        match (expected.unpack(), found.unpack()) {
+                        match (expected.kind(), found.kind()) {
                             (ty::TermKind::Ty(expected), ty::TermKind::Ty(found)) => {
                                 let is_simple_err =
                                     expected.is_simple_text() && found.is_simple_text();
@@ -2026,7 +2058,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 }
                 LetVisitor { span }.visit_body(body).break_value()
             }
-            hir::Node::Item(hir::Item { kind: hir::ItemKind::Const(_, ty, _, _), .. }) => {
+            hir::Node::Item(hir::Item { kind: hir::ItemKind::Const(_, _, ty, _), .. }) => {
                 Some(&ty.peel_refs().kind)
             }
             _ => None,
@@ -2156,7 +2188,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             return None;
         }
 
-        Some(match (exp_found.expected.unpack(), exp_found.found.unpack()) {
+        Some(match (exp_found.expected.kind(), exp_found.found.kind()) {
             (ty::TermKind::Ty(expected), ty::TermKind::Ty(found)) => {
                 let (mut exp, mut fnd) = self.cmp(expected, found);
                 // Use the terminal width as the basis to determine when to compress the printed

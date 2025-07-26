@@ -124,7 +124,13 @@ pub(crate) fn base(
         // to v4, so we do the same.
         // https://github.com/llvm/llvm-project/blob/378778a0d10c2f8d5df8ceff81f95b6002984a4b/clang/lib/Driver/ToolChains/Darwin.cpp#L1203
         default_dwarf_version: 4,
-        frame_pointer: FramePointer::Always,
+        frame_pointer: match arch {
+            // clang ignores `-fomit-frame-pointer` for Armv7, it only accepts `-momit-leaf-frame-pointer`
+            Armv7k | Armv7s => FramePointer::Always,
+            // clang supports omitting frame pointers for the rest, but... don't?
+            Arm64 | Arm64e | Arm64_32 => FramePointer::NonLeaf,
+            I386 | I686 | X86_64 | X86_64h => FramePointer::Always,
+        },
         has_rpath: true,
         dll_suffix: ".dylib".into(),
         archive_format: "darwin".into(),

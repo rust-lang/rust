@@ -59,7 +59,7 @@ mod reuse {
 
     pub fn check<u16>() {
         assert_eq!(size_of::<u8>(), 8);
-        assert_eq!(size_of::<::u64>(), 0);
+        assert_eq!(size_of::<crate::u64>(), 0);
         assert_eq!(size_of::<i16>(), 3 * size_of::<*const ()>());
         assert_eq!(size_of::<u16>(), 0);
     }

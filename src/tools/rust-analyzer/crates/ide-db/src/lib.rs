@@ -92,9 +92,7 @@ pub struct RootDatabase {
 impl std::panic::RefUnwindSafe for RootDatabase {}
 
 #[salsa_macros::db]
-impl salsa::Database for RootDatabase {
-    fn salsa_event(&self, _event: &dyn Fn() -> salsa::Event) {}
-}
+impl salsa::Database for RootDatabase {}
 
 impl Drop for RootDatabase {
     fn drop(&mut self) {

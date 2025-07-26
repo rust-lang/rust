@@ -1,10 +1,14 @@
 error[E0621]: explicit lifetime required in the type of `a`
   --> $DIR/issue-14285.rs:12:5
    |
-LL | fn foo<'a>(a: &dyn Foo) -> B<'a> {
-   |               -------- help: add explicit lifetime `'a` to the type of `a`: `&'a (dyn Foo + 'a)`
 LL |     B(a)
    |     ^^^^ lifetime `'a` required
+   |
+help: add explicit lifetime `'a` to the type of `a`
+   |
+LL - fn foo<'a>(a: &dyn Foo) -> B<'a> {
+LL + fn foo<'a>(a: &'a (dyn Foo + 'a)) -> B<'a> {
+   |
 
 error: aborting due to 1 previous error
 

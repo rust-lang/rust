@@ -233,7 +233,7 @@ pub(super) fn specialization_enabled_in(tcx: TyCtxt<'_>, _: LocalCrate) -> bool 
 ///
 /// For the purposes of const traits, we also check that the specializing
 /// impl is not more restrictive than the parent impl. That is, if the
-/// `parent_impl_def_id` is a const impl (conditionally based off of some `~const`
+/// `parent_impl_def_id` is a const impl (conditionally based off of some `[const]`
 /// bounds), then `specializing_impl_def_id` must also be const for the same
 /// set of types.
 #[instrument(skip(tcx), level = "debug")]

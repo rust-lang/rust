@@ -436,14 +436,15 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
                 && over(lb, rb, eq_generic_bound)
                 && both(lt.as_ref(), rt.as_ref(), |l, r| eq_ty(l, r))
         },
-        (Enum(li, le, lg), Enum(ri, re, rg)) => {
-            eq_id(*li, *ri) && over(&le.variants, &re.variants, eq_variant) && eq_generics(lg, rg)
+        (Enum(li, lg, le), Enum(ri, rg, re)) => {
+            eq_id(*li, *ri) && eq_generics(lg, rg) && over(&le.variants, &re.variants, eq_variant)
         },
-        (Struct(li, lv, lg), Struct(ri, rv, rg)) | (Union(li, lv, lg), Union(ri, rv, rg)) => {
-            eq_id(*li, *ri) && eq_variant_data(lv, rv) && eq_generics(lg, rg)
+        (Struct(li, lg, lv), Struct(ri, rg, rv)) | (Union(li, lg, lv), Union(ri, rg, rv)) => {
+            eq_id(*li, *ri) && eq_generics(lg, rg) && eq_variant_data(lv, rv)
         },
         (
             Trait(box ast::Trait {
+                constness: lc,
                 is_auto: la,
                 safety: lu,
                 ident: li,
@@ -452,6 +453,7 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
                 items: lis,
             }),
             Trait(box ast::Trait {
+                constness: rc,
                 is_auto: ra,
                 safety: ru,
                 ident: ri,
@@ -460,7 +462,8 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
                 items: ris,
             }),
         ) => {
-            la == ra
+            matches!(lc, ast::Const::No) == matches!(rc, ast::Const::No)
+                && la == ra
                 && matches!(lu, Safety::Default) == matches!(ru, Safety::Default)
                 && eq_id(*li, *ri)
                 && eq_generics(lg, rg)
@@ -838,7 +841,7 @@ pub fn eq_ty(l: &Ty, r: &Ty) -> bool {
         (PinnedRef(ll, l), PinnedRef(rl, r)) => {
             both(ll.as_ref(), rl.as_ref(), |l, r| eq_id(l.ident, r.ident)) && l.mutbl == r.mutbl && eq_ty(&l.ty, &r.ty)
         },
-        (BareFn(l), BareFn(r)) => {
+        (FnPtr(l), FnPtr(r)) => {
             l.safety == r.safety
                 && eq_ext(&l.ext, &r.ext)
                 && over(&l.generic_params, &r.generic_params, eq_generic_param)
@@ -886,13 +889,13 @@ pub fn eq_generic_param(l: &GenericParam, r: &GenericParam) -> bool {
             (
                 Const {
                     ty: lt,
-                    kw_span: _,
                     default: ld,
+                    span: _,
                 },
                 Const {
                     ty: rt,
-                    kw_span: _,
                     default: rd,
+                    span: _,
                 },
             ) => eq_ty(lt, rt) && both(ld.as_ref(), rd.as_ref(), eq_anon_const),
             _ => false,
@@ -960,5 +963,7 @@ pub fn eq_attr_args(l: &AttrArgs, r: &AttrArgs) -> bool {
 }
 
 pub fn eq_delim_args(l: &DelimArgs, r: &DelimArgs) -> bool {
-    l.delim == r.delim && l.tokens.eq_unspanned(&r.tokens)
+    l.delim == r.delim
+        && l.tokens.len() == r.tokens.len()
+        && l.tokens.iter().zip(r.tokens.iter()).all(|(a, b)| a.eq_unspanned(b))
 }

@@ -8,7 +8,7 @@ use clippy_utils::ty::implements_trait;
 use clippy_utils::visitors::is_const_evaluatable;
 use clippy_utils::{
     MaybePath, eq_expr_value, is_diag_trait_item, is_in_const_context, is_trait_method, path_res, path_to_local_id,
-    peel_blocks, peel_blocks_with_stmt,
+    peel_blocks, peel_blocks_with_stmt, sym,
 };
 use itertools::Itertools;
 use rustc_errors::{Applicability, Diag};
@@ -18,7 +18,6 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::Ty;
 use rustc_session::impl_lint_pass;
 use rustc_span::Span;
-use rustc_span::symbol::sym;
 use std::cmp::Ordering;
 use std::ops::Deref;
 
@@ -299,9 +298,9 @@ fn is_max_min_pattern<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> O
         && (cx.typeck_results().expr_ty_adjusted(input).is_floating_point() || is_trait_method(cx, receiver, sym::Ord))
     {
         let is_float = cx.typeck_results().expr_ty_adjusted(input).is_floating_point();
-        let (min, max) = match (seg_first.ident.as_str(), seg_second.ident.as_str()) {
-            ("min", "max") => (arg_second, arg_first),
-            ("max", "min") => (arg_first, arg_second),
+        let (min, max) = match (seg_first.ident.name, seg_second.ident.name) {
+            (sym::min, sym::max) => (arg_second, arg_first),
+            (sym::max, sym::min) => (arg_first, arg_second),
             _ => return None,
         };
         Some(ClampSuggestion {

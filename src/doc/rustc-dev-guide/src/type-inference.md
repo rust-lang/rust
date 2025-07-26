@@ -19,7 +19,7 @@ Here, the type of `things` is *inferred* to be `Vec<&str>` because of the value
 we push into `things`.
 
 The type inference is based on the standard Hindley-Milner (HM) type inference
-algorithm, but extended in various way to accommodate subtyping, region
+algorithm, but extended in various ways to accommodate subtyping, region
 inference, and higher-ranked types.
 
 ## A note on terminology

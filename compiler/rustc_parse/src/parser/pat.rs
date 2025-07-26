@@ -1086,7 +1086,7 @@ impl<'a> Parser<'a> {
         if matches!(pat.kind, PatKind::Ident(BindingMode(ByRef::Yes(_), Mutability::Mut), ..)) {
             self.psess.gated_spans.gate(sym::mut_ref, pat.span);
         }
-        Ok(pat.into_inner().kind)
+        Ok(pat.kind)
     }
 
     /// Turn all by-value immutable bindings in a pattern into mutable bindings.
@@ -1094,7 +1094,7 @@ impl<'a> Parser<'a> {
     fn make_all_value_bindings_mutable(pat: &mut P<Pat>) -> bool {
         struct AddMut(bool);
         impl MutVisitor for AddMut {
-            fn visit_pat(&mut self, pat: &mut P<Pat>) {
+            fn visit_pat(&mut self, pat: &mut Pat) {
                 if let PatKind::Ident(BindingMode(ByRef::No, m @ Mutability::Not), ..) =
                     &mut pat.kind
                 {

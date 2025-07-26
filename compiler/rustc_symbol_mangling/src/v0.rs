@@ -20,7 +20,7 @@ use rustc_middle::ty::{
     self, FloatTy, GenericArg, GenericArgKind, Instance, IntTy, ReifyReason, Ty, TyCtxt,
     TypeVisitable, TypeVisitableExt, UintTy,
 };
-use rustc_span::kw;
+use rustc_span::sym;
 
 pub(super) fn mangle<'tcx>(
     tcx: TyCtxt<'tcx>,
@@ -85,10 +85,6 @@ pub fn mangle_internal_symbol<'tcx>(tcx: TyCtxt<'tcx>, item_name: &str) -> Strin
     if item_name == "rust_eh_personality" {
         // rust_eh_personality must not be renamed as LLVM hard-codes the name
         return "rust_eh_personality".to_owned();
-    } else if item_name == "__rust_no_alloc_shim_is_unstable" {
-        // Temporary back compat hack to give people the chance to migrate to
-        // include #[rustc_std_internal_symbol].
-        return "__rust_no_alloc_shim_is_unstable".to_owned();
     }
 
     let prefix = "_R";
@@ -580,8 +576,6 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
             ty::Dynamic(predicates, r, kind) => {
                 self.push(match kind {
                     ty::Dyn => "D",
-                    // FIXME(dyn-star): need to update v0 mangling docs
-                    ty::DynStar => "D*",
                 });
                 self.print_dyn_existential(predicates)?;
                 r.print(self)?;
@@ -646,7 +640,7 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
                         let name = cx.tcx.associated_item(projection.def_id).name();
                         cx.push("p");
                         cx.push_ident(name.as_str());
-                        match projection.term.unpack() {
+                        match projection.term.kind() {
                             ty::TermKind::Ty(ty) => ty.print(cx),
                             ty::TermKind::Const(c) => c.print(cx),
                         }?;
@@ -890,6 +884,7 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
             | DefPathData::Impl
             | DefPathData::MacroNs(_)
             | DefPathData::LifetimeNs(_)
+            | DefPathData::OpaqueLifetime(_)
             | DefPathData::AnonAssocTy(..) => {
                 bug!("symbol_names: unexpected DefPathData: {:?}", disambiguated_data.data)
             }
@@ -901,7 +896,7 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
             print_prefix,
             ns,
             disambiguated_data.disambiguator as u64,
-            name.unwrap_or(kw::Empty).as_str(),
+            name.unwrap_or(sym::empty).as_str(),
         )
     }
 
@@ -911,11 +906,11 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
         args: &[GenericArg<'tcx>],
     ) -> Result<(), PrintError> {
         // Don't print any regions if they're all erased.
-        let print_regions = args.iter().any(|arg| match arg.unpack() {
+        let print_regions = args.iter().any(|arg| match arg.kind() {
             GenericArgKind::Lifetime(r) => !r.is_erased(),
             _ => false,
         });
-        let args = args.iter().cloned().filter(|arg| match arg.unpack() {
+        let args = args.iter().cloned().filter(|arg| match arg.kind() {
             GenericArgKind::Lifetime(_) => print_regions,
             _ => true,
         });
@@ -927,7 +922,7 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
         self.push("I");
         print_prefix(self)?;
         for arg in args {
-            match arg.unpack() {
+            match arg.kind() {
                 GenericArgKind::Lifetime(lt) => {
                     lt.print(self)?;
                 }

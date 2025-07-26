@@ -1,3 +1,5 @@
+// cSpell:ignoreRegExp [afkspqvwy]reg
+
 use std::borrow::Cow;
 
 use gccjit::{LValue, RValue, ToRValue, Type};
@@ -138,7 +140,7 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
         // `outputs.len() + inputs.len()`.
         let mut labels = vec![];
 
-        // Clobbers collected from `out("explicit register") _` and `inout("expl_reg") var => _`
+        // Clobbers collected from `out("explicit register") _` and `inout("explicit_reg") var => _`
         let mut clobbers = vec![];
 
         // We're trying to preallocate space for the template
@@ -203,7 +205,7 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                                 // is also used as an in register, do not add it to the clobbers list.
                                 // it will be treated as a lateout register with `out_place: None`
                                 if !late {
-                                    bug!("input registers can only be used as lateout regisers");
+                                    bug!("input registers can only be used as lateout registers");
                                 }
                                 ("r", dummy_output_type(self.cx, reg.reg_class()))
                             } else {
@@ -641,7 +643,8 @@ fn explicit_reg_to_gcc(reg: InlineAsmReg) -> &'static str {
                 },
             }
         }
-
+        InlineAsmReg::Arm(reg) => reg.name(),
+        InlineAsmReg::AArch64(reg) => reg.name(),
         _ => unimplemented!(),
     }
 }

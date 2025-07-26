@@ -38,7 +38,7 @@ use crate::{
     infer::{BreakableKind, CoerceMany, Diverges, coerce::CoerceNever},
     make_binders,
     mir::{BorrowKind, MirSpan, MutBorrowKind, ProjectionElem},
-    to_chalk_trait_id,
+    to_assoc_type_id, to_chalk_trait_id,
     traits::FnTrait,
     utils::{self, elaborate_clause_supertraits},
 };
@@ -245,7 +245,7 @@ impl InferenceContext<'_> {
     }
 
     fn deduce_closure_kind_from_predicate_clauses(
-        &self,
+        &mut self,
         expected_ty: &Ty,
         clauses: impl DoubleEndedIterator<Item = WhereClause>,
         closure_kind: ClosureKind,
@@ -378,7 +378,7 @@ impl InferenceContext<'_> {
     }
 
     fn deduce_sig_from_projection(
-        &self,
+        &mut self,
         closure_kind: ClosureKind,
         projection_ty: &ProjectionTy,
         projected_ty: &Ty,
@@ -392,13 +392,16 @@ impl InferenceContext<'_> {
 
         // For now, we only do signature deduction based off of the `Fn` and `AsyncFn` traits,
         // for closures and async closures, respectively.
-        match closure_kind {
-            ClosureKind::Closure | ClosureKind::Async
-                if self.fn_trait_kind_from_trait_id(trait_).is_some() =>
-            {
-                self.extract_sig_from_projection(projection_ty, projected_ty)
-            }
-            _ => None,
+        let fn_trait_kind = self.fn_trait_kind_from_trait_id(trait_)?;
+        if !matches!(closure_kind, ClosureKind::Closure | ClosureKind::Async) {
+            return None;
+        }
+        if fn_trait_kind.is_async() {
+            // If the expected trait is `AsyncFn(...) -> X`, we don't know what the return type is,
+            // but we do know it must implement `Future<Output = X>`.
+            self.extract_async_fn_sig_from_projection(projection_ty, projected_ty)
+        } else {
+            self.extract_sig_from_projection(projection_ty, projected_ty)
         }
     }
 
@@ -420,6 +423,39 @@ impl InferenceContext<'_> {
             input_tys.iter(Interner).map(|t| t.cast(Interner)).chain(Some(GenericArg::new(
                 Interner,
                 chalk_ir::GenericArgData::Ty(ret_param_ty.clone()),
+            ))),
+        )))
+    }
+
+    fn extract_async_fn_sig_from_projection(
+        &mut self,
+        projection_ty: &ProjectionTy,
+        projected_ty: &Ty,
+    ) -> Option<FnSubst<Interner>> {
+        let arg_param_ty = projection_ty.substitution.as_slice(Interner)[1].assert_ty_ref(Interner);
+
+        let TyKind::Tuple(_, input_tys) = arg_param_ty.kind(Interner) else {
+            return None;
+        };
+
+        let ret_param_future_output = projected_ty;
+        let ret_param_future = self.table.new_type_var();
+        let future_output =
+            LangItem::FutureOutput.resolve_type_alias(self.db, self.resolver.krate())?;
+        let future_projection = crate::AliasTy::Projection(crate::ProjectionTy {
+            associated_ty_id: to_assoc_type_id(future_output),
+            substitution: Substitution::from1(Interner, ret_param_future.clone()),
+        });
+        self.table.register_obligation(
+            crate::AliasEq { alias: future_projection, ty: ret_param_future_output.clone() }
+                .cast(Interner),
+        );
+
+        Some(FnSubst(Substitution::from_iter(
+            Interner,
+            input_tys.iter(Interner).map(|t| t.cast(Interner)).chain(Some(GenericArg::new(
+                Interner,
+                chalk_ir::GenericArgData::Ty(ret_param_future),
             ))),
         )))
     }
@@ -641,7 +677,7 @@ impl CapturedItem {
             match proj {
                 ProjectionElem::Deref => {}
                 ProjectionElem::Field(Either::Left(f)) => {
-                    let variant_data = f.parent.variant_data(db);
+                    let variant_data = f.parent.fields(db);
                     match variant_data.shape {
                         FieldsShape::Record => {
                             result.push('_');
@@ -684,7 +720,7 @@ impl CapturedItem {
                 // In source code autoderef kicks in.
                 ProjectionElem::Deref => {}
                 ProjectionElem::Field(Either::Left(f)) => {
-                    let variant_data = f.parent.variant_data(db);
+                    let variant_data = f.parent.fields(db);
                     match variant_data.shape {
                         FieldsShape::Record => format_to!(
                             result,
@@ -746,7 +782,7 @@ impl CapturedItem {
                     if field_need_paren {
                         result = format!("({result})");
                     }
-                    let variant_data = f.parent.variant_data(db);
+                    let variant_data = f.parent.fields(db);
                     let field = match variant_data.shape {
                         FieldsShape::Record => {
                             variant_data.fields()[f.local_id].name.as_str().to_owned()
@@ -1174,9 +1210,8 @@ impl InferenceContext<'_> {
                         if let Some(deref_trait) =
                             self.resolve_lang_item(LangItem::DerefMut).and_then(|it| it.as_trait())
                         {
-                            if let Some(deref_fn) = self
-                                .db
-                                .trait_items(deref_trait)
+                            if let Some(deref_fn) = deref_trait
+                                .trait_items(self.db)
                                 .method_by_name(&Name::new_symbol_root(sym::deref_mut))
                             {
                                 break 'b deref_fn == f;
@@ -1194,11 +1229,16 @@ impl InferenceContext<'_> {
                     self.select_from_expr(*expr);
                 }
             }
+            Expr::Let { pat, expr } => {
+                self.walk_expr(*expr);
+                if let Some(place) = self.place_of_expr(*expr) {
+                    self.consume_with_pat(place, *pat);
+                }
+            }
             Expr::UnaryOp { expr, op: _ }
             | Expr::Array(Array::Repeat { initializer: expr, repeat: _ })
             | Expr::Await { expr }
             | Expr::Loop { body: expr, label: _ }
-            | Expr::Let { pat: _, expr }
             | Expr::Box { expr }
             | Expr::Cast { expr, type_ref: _ } => {
                 self.consume_expr(*expr);
@@ -1324,7 +1364,7 @@ impl InferenceContext<'_> {
                 if let Some(variant) = self.result.variant_resolution_for_pat(p) {
                     let adt = variant.adt_id(self.db);
                     let is_multivariant = match adt {
-                        hir_def::AdtId::EnumId(e) => self.db.enum_variants(e).variants.len() != 1,
+                        hir_def::AdtId::EnumId(e) => e.enum_variants(self.db).variants.len() != 1,
                         _ => false,
                     };
                     if is_multivariant {
@@ -1520,7 +1560,7 @@ impl InferenceContext<'_> {
                             self.consume_place(place)
                         }
                         VariantId::StructId(s) => {
-                            let vd = &*self.db.variant_fields(s.into());
+                            let vd = s.fields(self.db);
                             for field_pat in args.iter() {
                                 let arg = field_pat.pat;
                                 let Some(local_id) = vd.field(&field_pat.name) else {
@@ -1572,7 +1612,7 @@ impl InferenceContext<'_> {
                             self.consume_place(place)
                         }
                         VariantId::StructId(s) => {
-                            let vd = &*self.db.variant_fields(s.into());
+                            let vd = s.fields(self.db);
                             let (al, ar) =
                                 args.split_at(ellipsis.map_or(args.len(), |it| it as usize));
                             let fields = vd.fields().iter();

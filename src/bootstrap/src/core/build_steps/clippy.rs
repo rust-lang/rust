@@ -1,8 +1,8 @@
 //! Implementation of running clippy on the compiler, standard library and various tools.
 
+use super::check;
 use super::compile::{run_cargo, rustc_cargo, std_cargo};
 use super::tool::{SourceType, prepare_tool_cargo};
-use super::{check, compile};
 use crate::builder::{Builder, ShouldRun};
 use crate::core::build_steps::compile::std_crates_for_run_make;
 use crate::core::builder;
@@ -19,6 +19,7 @@ const IGNORED_RULES_FOR_STD_AND_RUSTC: &[&str] = &[
     "too_many_arguments",
     "needless_lifetimes", // people want to keep the lifetimes
     "wrong_self_convention",
+    "approx_constant", // libcore is what defines those
 ];
 
 fn lint_args(builder: &Builder<'_>, config: &LintConfig, ignored_rules: &[&str]) -> Vec<String> {
@@ -59,7 +60,7 @@ fn lint_args(builder: &Builder<'_>, config: &LintConfig, ignored_rules: &[&str])
     let all_args = std::env::args().collect::<Vec<_>>();
     args.extend(get_clippy_rules_in_order(&all_args, config));
 
-    args.extend(ignored_rules.iter().map(|lint| format!("-Aclippy::{}", lint)));
+    args.extend(ignored_rules.iter().map(|lint| format!("-Aclippy::{lint}")));
     args.extend(builder.config.free_args.clone());
     args
 }
@@ -141,10 +142,8 @@ impl Step for Std {
     }
 
     fn run(self, builder: &Builder<'_>) {
-        builder.require_submodule("library/stdarch", None);
-
         let target = self.target;
-        let compiler = builder.compiler(builder.top_stage, builder.config.build);
+        let compiler = builder.compiler(builder.top_stage, builder.config.host_target);
 
         let mut cargo = builder::Cargo::new(
             builder,
@@ -204,19 +203,21 @@ impl Step for Rustc {
     /// This will lint the compiler for a particular stage of the build using
     /// the `compiler` targeting the `target` architecture.
     fn run(self, builder: &Builder<'_>) {
-        let compiler = builder.compiler(builder.top_stage, builder.config.build);
+        let compiler = builder.compiler(builder.top_stage, builder.config.host_target);
         let target = self.target;
 
-        if compiler.stage != 0 {
-            // If we're not in stage 0, then we won't have a std from the beta
-            // compiler around. That means we need to make sure there's one in
-            // the sysroot for the compiler to find. Otherwise, we're going to
-            // fail when building crates that need to generate code (e.g., build
-            // scripts and their dependencies).
-            builder.ensure(compile::Std::new(compiler, compiler.host));
-            builder.ensure(compile::Std::new(compiler, target));
-        } else {
-            builder.ensure(check::Std::new(target).build_kind(Some(Kind::Check)));
+        if !builder.download_rustc() {
+            if compiler.stage != 0 {
+                // If we're not in stage 0, then we won't have a std from the beta
+                // compiler around. That means we need to make sure there's one in
+                // the sysroot for the compiler to find. Otherwise, we're going to
+                // fail when building crates that need to generate code (e.g., build
+                // scripts and their dependencies).
+                builder.std(compiler, compiler.host);
+                builder.std(compiler, target);
+            } else {
+                builder.ensure(check::Std::new(compiler, target));
+            }
         }
 
         let mut cargo = builder::Cargo::new(
@@ -283,10 +284,12 @@ macro_rules! lint_any {
             }
 
             fn run(self, builder: &Builder<'_>) -> Self::Output {
-                let compiler = builder.compiler(builder.top_stage, builder.config.build);
+                let compiler = builder.compiler(builder.top_stage, builder.config.host_target);
                 let target = self.target;
 
-                builder.ensure(check::Rustc::new(target, builder).build_kind(Some(Kind::Check)));
+                if !builder.download_rustc() {
+                    builder.ensure(check::Rustc::new(builder, compiler, target));
+                };
 
                 let cargo = prepare_tool_cargo(
                     builder,
@@ -351,7 +354,7 @@ lint_any!(
     Rustfmt, "src/tools/rustfmt", "rustfmt";
     RustInstaller, "src/tools/rust-installer", "rust-installer";
     Tidy, "src/tools/tidy", "tidy";
-    TestFloatParse, "src/etc/test-float-parse", "test-float-parse";
+    TestFloatParse, "src/tools/test-float-parse", "test-float-parse";
 );
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

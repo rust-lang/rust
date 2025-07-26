@@ -1,3 +1,5 @@
+//@ needs-target-std
+//
 // The compilation error caused by calling on an unimported crate
 // should have a suggestion to write, say, crate::bar::Foo instead
 // of just bar::Foo. However, this suggestion used to only appear for

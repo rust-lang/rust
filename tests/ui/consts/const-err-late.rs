@@ -12,8 +12,8 @@ struct S<T>(T);
 
 impl<T> S<T> {
     const FOO: u8 = [5u8][1];
-    //~^ ERROR evaluation of `S::<i32>::FOO` failed
-    //~| ERROR evaluation of `S::<u32>::FOO` failed
+    //~^ ERROR index out of bounds: the length is 1 but the index is 1
+    //~| ERROR index out of bounds: the length is 1 but the index is 1
 }
 
 fn main() {

@@ -14,23 +14,6 @@ LL |     const X: usize;
    |           ^ ...because it contains this associated `const`
    = help: consider moving `X` to another trait
 
-error[E0038]: the trait `Bar` is not dyn compatible
-  --> $DIR/associated-consts.rs:10:5
-   |
-LL |     t
-   |     ^ `Bar` is not dyn compatible
-   |
-note: for a trait to be dyn compatible it needs to allow building a vtable
-      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
-  --> $DIR/associated-consts.rs:5:11
-   |
-LL | trait Bar {
-   |       --- this trait is not dyn compatible...
-LL |     const X: usize;
-   |           ^ ...because it contains this associated `const`
-   = help: consider moving `X` to another trait
-   = note: required for the cast from `&T` to `&dyn Bar`
-
-error: aborting due to 2 previous errors
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0038`.

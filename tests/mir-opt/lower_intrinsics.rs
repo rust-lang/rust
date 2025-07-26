@@ -1,8 +1,10 @@
 //@ test-mir-pass: LowerIntrinsics
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 
-#![feature(core_intrinsics, intrinsics, rustc_attrs)]
+#![feature(core_intrinsics)]
 #![crate_type = "lib"]
+
+use std::intrinsics::copy_nonoverlapping;
 
 // EMIT_MIR lower_intrinsics.wrapping.LowerIntrinsics.diff
 pub fn wrapping(a: i32, b: i32) {
@@ -49,7 +51,7 @@ pub fn size_of<T>() -> usize {
 pub fn align_of<T>() -> usize {
     // CHECK-LABEL: fn align_of(
     // CHECK: {{_.*}} = AlignOf(T);
-    core::intrinsics::min_align_of::<T>()
+    core::intrinsics::align_of::<T>()
 }
 
 // EMIT_MIR lower_intrinsics.forget.LowerIntrinsics.diff
@@ -152,11 +154,6 @@ pub fn discriminant<T>(t: T) {
     core::intrinsics::discriminant_value(&());
     core::intrinsics::discriminant_value(&E::B);
 }
-
-// Cannot use `std::intrinsics::copy_nonoverlapping` as that is a wrapper function
-#[rustc_nounwind]
-#[rustc_intrinsic]
-unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize);
 
 // EMIT_MIR lower_intrinsics.f_copy_nonoverlapping.LowerIntrinsics.diff
 pub fn f_copy_nonoverlapping() {
@@ -265,4 +262,25 @@ pub fn get_metadata(a: *const i32, b: *const [u8], c: *const dyn std::fmt::Debug
     let _unit = ptr_metadata(a);
     let _usize = ptr_metadata(b);
     let _vtable = ptr_metadata(c);
+}
+
+// EMIT_MIR lower_intrinsics.slice_get.LowerIntrinsics.diff
+pub unsafe fn slice_get<'a, 'b>(
+    r: &'a [i8],
+    rm: &'b mut [i16],
+    p: *const [i32],
+    pm: *mut [i64],
+    i: usize,
+) -> (&'a i8, &'b mut i16, *const i32, *mut i64) {
+    use std::intrinsics::slice_get_unchecked;
+    // CHECK: = &(*_{{[0-9]+}})[_{{[0-9]+}}]
+    // CHECK: = &mut (*_{{[0-9]+}})[_{{[0-9]+}}]
+    // CHECK: = &raw const (*_{{[0-9]+}})[_{{[0-9]+}}]
+    // CHECK: = &raw mut (*_{{[0-9]+}})[_{{[0-9]+}}]
+    (
+        slice_get_unchecked(r, i),
+        slice_get_unchecked(rm, i),
+        slice_get_unchecked(p, i),
+        slice_get_unchecked(pm, i),
+    )
 }

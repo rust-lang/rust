@@ -8,7 +8,7 @@
 
 // The suggestion span should include the attribute.
 
-#[cfg(not(FALSE))] //~ HELP remove it
+#[cfg(not(FALSE))] //~ HELP remove
 extern crate edition_lint_paths;
 //~^ ERROR unused extern crate
 

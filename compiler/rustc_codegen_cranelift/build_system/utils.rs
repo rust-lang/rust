@@ -213,11 +213,13 @@ pub(crate) fn copy_dir_recursively(from: &Path, to: &Path) {
         if filename == "." || filename == ".." {
             continue;
         }
+        let src = from.join(&filename);
+        let dst = to.join(&filename);
         if entry.metadata().unwrap().is_dir() {
-            fs::create_dir(to.join(&filename)).unwrap();
-            copy_dir_recursively(&from.join(&filename), &to.join(&filename));
+            fs::create_dir(&dst).unwrap_or_else(|e| panic!("failed to create {dst:?}: {e}"));
+            copy_dir_recursively(&src, &dst);
         } else {
-            fs::copy(from.join(&filename), to.join(&filename)).unwrap();
+            fs::copy(&src, &dst).unwrap_or_else(|e| panic!("failed to copy {src:?}->{dst:?}: {e}"));
         }
     }
 }

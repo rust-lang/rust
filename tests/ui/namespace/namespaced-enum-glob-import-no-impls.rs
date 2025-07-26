@@ -12,11 +12,11 @@ mod m2 {
 }
 
 mod m {
-    pub use m2::Foo::*;
+    pub use crate::m2::Foo::*;
 }
 
 pub fn main() {
-    use m2::Foo::*;
+    use crate::m2::Foo::*;
 
     foo(); //~ ERROR cannot find function `foo` in this scope
     m::foo(); //~ ERROR cannot find function `foo` in module `m`

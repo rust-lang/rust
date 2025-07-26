@@ -38,10 +38,28 @@ pub(crate) fn create_static_alloc<'tcx>(
     static_def_id: LocalDefId,
     layout: TyAndLayout<'tcx>,
 ) -> InterpResult<'tcx, MPlaceTy<'tcx>> {
-    let alloc = Allocation::try_new(layout.size, layout.align.abi, AllocInit::Uninit)?;
+    let alloc = Allocation::try_new(layout.size, layout.align.abi, AllocInit::Uninit, ())?;
     let alloc_id = ecx.tcx.reserve_and_set_static_alloc(static_def_id.into());
     assert_eq!(ecx.machine.static_root_ids, None);
     ecx.machine.static_root_ids = Some((alloc_id, static_def_id));
     assert!(ecx.memory.alloc_map.insert(alloc_id, (MemoryKind::Stack, alloc)).is_none());
     interp_ok(ecx.ptr_to_mplace(Pointer::from(alloc_id).into(), layout))
+}
+
+/// A marker trait returned by [crate::interpret::Machine::enter_trace_span], identifying either a
+/// real [tracing::span::EnteredSpan] in case tracing is enabled, or the dummy type `()` when
+/// tracing is disabled.
+pub trait EnteredTraceSpan {}
+impl EnteredTraceSpan for () {}
+impl EnteredTraceSpan for tracing::span::EnteredSpan {}
+
+/// Shortand for calling [crate::interpret::Machine::enter_trace_span] on a [tracing::info_span].
+/// This is supposed to be compiled out when [crate::interpret::Machine::enter_trace_span] has the
+/// default implementation (i.e. when it does not actually enter the span but instead returns `()`).
+/// Note: the result of this macro **must be used** because the span is exited when it's dropped.
+#[macro_export]
+macro_rules! enter_trace_span {
+    ($machine:ident, $($tt:tt)*) => {
+        $machine::enter_trace_span(|| tracing::info_span!($($tt)*))
+    }
 }

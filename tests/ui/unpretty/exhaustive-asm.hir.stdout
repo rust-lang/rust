@@ -1,6 +1,6 @@
 #[prelude_import]
 use std::prelude::rust_2024::*;
-#[macro_use]
+#[attr = MacroUse {arguments: UseAll}]
 extern crate std;
 //@ revisions: expanded hir
 //@[expanded]compile-flags: -Zunpretty=expanded
@@ -26,7 +26,7 @@ mod expressions {
 
 mod items {
     /// ItemKind::GlobalAsm
-    mod item_global_asm {/// ItemKind::GlobalAsm
+    mod item_global_asm {
         global_asm! (".globl my_asm_func");
     }
 }

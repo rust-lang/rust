@@ -2,7 +2,7 @@ error[E0277]: `&Packed<Two>` cannot be safely transmuted into `&Packed<Four>`
   --> $DIR/reject_extension.rs:48:37
    |
 LL |     assert::is_transmutable::<&Src, &Dst>();
-   |                                     ^^^^ the referent size of `&Packed<Two>` (2 bytes) is smaller than that of `&Packed<Four>` (4 bytes)
+   |                                     ^^^^ the size of `Packed<Two>` (2 bytes) is smaller than that of `Packed<Four>` (4 bytes)
    |
 note: required by a bound in `is_transmutable`
   --> $DIR/reject_extension.rs:13:14

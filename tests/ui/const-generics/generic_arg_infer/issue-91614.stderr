@@ -1,5 +1,5 @@
 error[E0284]: type annotations needed for `Mask<_, _>`
-  --> $DIR/issue-91614.rs:6:9
+  --> $DIR/issue-91614.rs:5:9
    |
 LL |     let y = Mask::<_, _>::splat(false);
    |         ^   ------------ type must be known at this point
@@ -12,7 +12,7 @@ LL |     let y: Mask<_, N> = Mask::<_, _>::splat(false);
    |          ++++++++++++
 
 error[E0284]: type annotations needed for `Mask<_, _>`
-  --> $DIR/issue-91614.rs:6:9
+  --> $DIR/issue-91614.rs:5:9
    |
 LL |     let y = Mask::<_, _>::splat(false);
    |         ^   -------------------------- type must be known at this point

@@ -143,7 +143,7 @@ impl LateLintPass<'_> for SemicolonBlock {
             StmtKind::Expr(Expr {
                 kind: ExprKind::Block(block, _),
                 ..
-            }) if !block.span.from_expansion() => {
+            }) if !block.span.from_expansion() && stmt.span.contains(block.span) => {
                 let Block {
                     expr: None,
                     stmts: [.., stmt],

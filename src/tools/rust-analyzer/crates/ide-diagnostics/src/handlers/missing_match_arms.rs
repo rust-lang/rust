@@ -13,6 +13,7 @@ pub(crate) fn missing_match_arms(
         format!("missing match arm: {}", d.uncovered_patterns),
         d.scrutinee_expr.map(Into::into),
     )
+    .stable()
 }
 
 #[cfg(test)]

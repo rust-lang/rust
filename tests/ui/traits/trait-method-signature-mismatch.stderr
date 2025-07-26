@@ -1,0 +1,13 @@
+error[E0050]: method `foo` has 2 parameters but the declaration in trait `Foo::foo` has 3
+  --> $DIR/trait-method-signature-mismatch.rs:12:9
+   |
+LL |       fn foo(&mut self, x: i32, y: i32) -> i32;
+   |              ------------------------- trait requires 3 parameters
+...
+LL | /         &mut self,
+LL | |         x: i32,
+   | |______________^ expected 3 parameters, found 2
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0050`.

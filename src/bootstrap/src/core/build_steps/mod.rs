@@ -11,7 +11,6 @@ pub(crate) mod llvm;
 pub(crate) mod perf;
 pub(crate) mod run;
 pub(crate) mod setup;
-pub(crate) mod suggest;
 pub(crate) mod synthetic_targets;
 pub(crate) mod test;
 pub(crate) mod tool;

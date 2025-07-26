@@ -4,6 +4,7 @@ use smallvec::smallvec;
 
 use crate::data_structures::HashSet;
 use crate::inherent::*;
+use crate::lang_items::TraitSolverLangItem;
 use crate::outlives::{Component, push_outlives_components};
 use crate::{self as ty, Interner, Upcast as _};
 
@@ -18,11 +19,18 @@ pub struct Elaborator<I: Interner, O> {
     stack: Vec<O>,
     visited: HashSet<ty::Binder<I, ty::PredicateKind<I>>>,
     mode: Filter,
+    elaborate_sized: ElaborateSized,
 }
 
 enum Filter {
     All,
     OnlySelf,
+}
+
+#[derive(Eq, PartialEq)]
+enum ElaborateSized {
+    Yes,
+    No,
 }
 
 /// Describes how to elaborate an obligation into a sub-obligation.
@@ -77,13 +85,19 @@ pub fn elaborate<I: Interner, O: Elaboratable<I>>(
     cx: I,
     obligations: impl IntoIterator<Item = O>,
 ) -> Elaborator<I, O> {
-    let mut elaborator =
-        Elaborator { cx, stack: Vec::new(), visited: HashSet::default(), mode: Filter::All };
+    let mut elaborator = Elaborator {
+        cx,
+        stack: Vec::new(),
+        visited: HashSet::default(),
+        mode: Filter::All,
+        elaborate_sized: ElaborateSized::No,
+    };
     elaborator.extend_deduped(obligations);
     elaborator
 }
 
 impl<I: Interner, O: Elaboratable<I>> Elaborator<I, O> {
+    /// Adds `obligations` to the stack.
     fn extend_deduped(&mut self, obligations: impl IntoIterator<Item = O>) {
         // Only keep those bounds that we haven't already seen.
         // This is necessary to prevent infinite recursion in some
@@ -103,6 +117,13 @@ impl<I: Interner, O: Elaboratable<I>> Elaborator<I, O> {
         self
     }
 
+    /// Start elaborating `Sized` - reqd during coherence checking, normally skipped to improve
+    /// compiler performance.
+    pub fn elaborate_sized(mut self) -> Self {
+        self.elaborate_sized = ElaborateSized::Yes;
+        self
+    }
+
     fn elaborate(&mut self, elaboratable: &O) {
         let cx = self.cx;
 
@@ -110,6 +131,19 @@ impl<I: Interner, O: Elaboratable<I>> Elaborator<I, O> {
         let Some(clause) = elaboratable.predicate().as_clause() else {
             return;
         };
+
+        // PERF(sized-hierarchy): To avoid iterating over sizedness supertraits in
+        // parameter environments, as an optimisation, sizedness supertraits aren't
+        // elaborated, so check if a `Sized` obligation is being elaborated to a
+        // `MetaSized` obligation and emit it. Candidate assembly and confirmation
+        // are modified to check for the `Sized` subtrait when a `MetaSized` obligation
+        // is present.
+        if self.elaborate_sized == ElaborateSized::No
+            && let Some(did) = clause.as_trait_clause().map(|c| c.def_id())
+            && self.cx.is_lang_item(did, TraitSolverLangItem::Sized)
+        {
+            return;
+        }
 
         let bound_clause = clause.kind();
         match bound_clause.skip_binder() {
@@ -145,7 +179,7 @@ impl<I: Interner, O: Elaboratable<I>> Elaborator<I, O> {
                     ),
                 };
             }
-            // `T: ~const Trait` implies `T: ~const Supertrait`.
+            // `T: [const] Trait` implies `T: [const] Supertrait`.
             ty::ClauseKind::HostEffect(data) => self.extend_deduped(
                 cx.explicit_implied_const_bounds(data.def_id()).iter_identity().map(|trait_ref| {
                     elaboratable.child(
@@ -198,6 +232,9 @@ impl<I: Interner, O: Elaboratable<I>> Elaborator<I, O> {
                 // predicates.
             }
             ty::ClauseKind::ConstArgHasType(..) => {
+                // Nothing to elaborate
+            }
+            ty::ClauseKind::UnstableFeature(_) => {
                 // Nothing to elaborate
             }
         }
@@ -286,10 +323,10 @@ pub fn supertrait_def_ids<I: Interner>(
         let trait_def_id = stack.pop()?;
 
         for (predicate, _) in cx.explicit_super_predicates_of(trait_def_id).iter_identity() {
-            if let ty::ClauseKind::Trait(data) = predicate.kind().skip_binder() {
-                if set.insert(data.def_id()) {
-                    stack.push(data.def_id());
-                }
+            if let ty::ClauseKind::Trait(data) = predicate.kind().skip_binder()
+                && set.insert(data.def_id())
+            {
+                stack.push(data.def_id());
             }
         }
 
@@ -333,4 +370,55 @@ impl<I: Interner, It: Iterator<Item = I::Clause>> Iterator for FilterToTraits<I,
         let (_, upper) = self.base_iterator.size_hint();
         (0, upper)
     }
+}
+
+pub fn elaborate_outlives_assumptions<I: Interner>(
+    cx: I,
+    assumptions: impl IntoIterator<Item = ty::OutlivesPredicate<I, I::GenericArg>>,
+) -> HashSet<ty::OutlivesPredicate<I, I::GenericArg>> {
+    let mut collected = HashSet::default();
+
+    for ty::OutlivesPredicate(arg1, r2) in assumptions {
+        collected.insert(ty::OutlivesPredicate(arg1, r2));
+        match arg1.kind() {
+            // Elaborate the components of an type, since we may have substituted a
+            // generic coroutine with a more specific type.
+            ty::GenericArgKind::Type(ty1) => {
+                let mut components = smallvec![];
+                push_outlives_components(cx, ty1, &mut components);
+                for c in components {
+                    match c {
+                        Component::Region(r1) => {
+                            if !r1.is_bound() {
+                                collected.insert(ty::OutlivesPredicate(r1.into(), r2));
+                            }
+                        }
+
+                        Component::Param(p) => {
+                            let ty = Ty::new_param(cx, p);
+                            collected.insert(ty::OutlivesPredicate(ty.into(), r2));
+                        }
+
+                        Component::Placeholder(p) => {
+                            let ty = Ty::new_placeholder(cx, p);
+                            collected.insert(ty::OutlivesPredicate(ty.into(), r2));
+                        }
+
+                        Component::Alias(alias_ty) => {
+                            collected.insert(ty::OutlivesPredicate(alias_ty.to_ty(cx).into(), r2));
+                        }
+
+                        Component::UnresolvedInferenceVariable(_) | Component::EscapingAlias(_) => {
+                        }
+                    }
+                }
+            }
+            // Nothing to elaborate for a region.
+            ty::GenericArgKind::Lifetime(_) => {}
+            // Consts don't really participate in outlives.
+            ty::GenericArgKind::Const(_) => {}
+        }
+    }
+
+    collected
 }

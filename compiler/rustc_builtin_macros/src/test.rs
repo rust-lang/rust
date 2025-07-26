@@ -5,7 +5,7 @@ use std::assert_matches::assert_matches;
 use std::iter;
 
 use rustc_ast::ptr::P;
-use rustc_ast::{self as ast, GenericParamKind, attr};
+use rustc_ast::{self as ast, GenericParamKind, attr, join_path_idents};
 use rustc_ast_pretty::pprust;
 use rustc_errors::{Applicability, Diag, Level};
 use rustc_expand::base::*;
@@ -40,7 +40,7 @@ pub(crate) fn expand_test_case(
     let (mut item, is_stmt) = match anno_item {
         Annotatable::Item(item) => (item, false),
         Annotatable::Stmt(stmt) if let ast::StmtKind::Item(_) = stmt.kind => {
-            if let ast::StmtKind::Item(i) = stmt.into_inner().kind {
+            if let ast::StmtKind::Item(i) = stmt.kind {
                 (i, true)
             } else {
                 unreachable!()
@@ -118,14 +118,7 @@ pub(crate) fn expand_test_or_bench(
 
     let (item, is_stmt) = match item {
         Annotatable::Item(i) => (i, false),
-        Annotatable::Stmt(stmt) if matches!(stmt.kind, ast::StmtKind::Item(_)) => {
-            // FIXME: Use an 'if let' guard once they are implemented
-            if let ast::StmtKind::Item(i) = stmt.into_inner().kind {
-                (i, true)
-            } else {
-                unreachable!()
-            }
-        }
+        Annotatable::Stmt(box ast::Stmt { kind: ast::StmtKind::Item(i), .. }) => (i, true),
         other => {
             not_testable_error(cx, attr_sp, None);
             return vec![other];
@@ -381,10 +374,7 @@ pub(crate) fn expand_test_or_bench(
                 .into(),
             ),
         );
-    test_const = test_const.map(|mut tc| {
-        tc.vis.kind = ast::VisibilityKind::Public;
-        tc
-    });
+    test_const.vis.kind = ast::VisibilityKind::Public;
 
     // extern crate test
     let test_extern =
@@ -456,12 +446,7 @@ fn get_location_info(cx: &ExtCtxt<'_>, fn_: &ast::Fn) -> (Symbol, usize, usize, 
 }
 
 fn item_path(mod_path: &[Ident], item_ident: &Ident) -> String {
-    mod_path
-        .iter()
-        .chain(iter::once(item_ident))
-        .map(|x| x.to_string())
-        .collect::<Vec<String>>()
-        .join("::")
+    join_path_idents(mod_path.iter().chain(iter::once(item_ident)))
 }
 
 enum ShouldPanic {

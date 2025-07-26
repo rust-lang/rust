@@ -181,11 +181,14 @@ use std::{iter, vec};
 pub(crate) use StaticFields::*;
 pub(crate) use SubstructureFields::*;
 use rustc_ast::ptr::P;
+use rustc_ast::token::{IdentIsRaw, LitKind, Token, TokenKind};
+use rustc_ast::tokenstream::{DelimSpan, Spacing, TokenTree};
 use rustc_ast::{
-    self as ast, AnonConst, BindingMode, ByRef, EnumDef, Expr, GenericArg, GenericParamKind,
-    Generics, Mutability, PatKind, VariantData,
+    self as ast, AnonConst, AttrArgs, BindingMode, ByRef, DelimArgs, EnumDef, Expr, GenericArg,
+    GenericParamKind, Generics, Mutability, PatKind, Safety, VariantData,
 };
-use rustc_attr_parsing::{AttributeKind, AttributeParser, ReprPacked};
+use rustc_attr_data_structures::{AttributeKind, ReprPacked};
+use rustc_attr_parsing::AttributeParser;
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_hir::Attribute;
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
@@ -221,6 +224,8 @@ pub(crate) struct TraitDef<'a> {
     pub associated_types: Vec<(Ident, Ty)>,
 
     pub is_const: bool,
+
+    pub is_staged_api_crate: bool,
 }
 
 pub(crate) struct MethodDef<'a> {
@@ -283,6 +288,7 @@ pub(crate) struct FieldInfo {
     /// The expressions corresponding to references to this field in
     /// the other selflike arguments.
     pub other_selflike_exprs: Vec<P<Expr>>,
+    pub maybe_scalar: bool,
 }
 
 #[derive(Copy, Clone)]
@@ -412,12 +418,12 @@ fn find_type_parameters(
     impl<'a, 'b> visit::Visitor<'a> for Visitor<'a, 'b> {
         fn visit_ty(&mut self, ty: &'a ast::Ty) {
             let stack_len = self.bound_generic_params_stack.len();
-            if let ast::TyKind::BareFn(bare_fn) = &ty.kind
-                && !bare_fn.generic_params.is_empty()
+            if let ast::TyKind::FnPtr(fn_ptr) = &ty.kind
+                && !fn_ptr.generic_params.is_empty()
             {
                 // Given a field `x: for<'a> fn(T::SomeType<'a>)`, we wan't to account for `'a` so
                 // that we generate `where for<'a> T::SomeType<'a>: ::core::clone::Clone`. #122622
-                self.bound_generic_params_stack.extend(bare_fn.generic_params.iter().cloned());
+                self.bound_generic_params_stack.extend(fn_ptr.generic_params.iter().cloned());
             }
 
             if let ast::TyKind::Path(_, path) = &ty.kind
@@ -482,12 +488,12 @@ impl<'a> TraitDef<'a> {
         match item {
             Annotatable::Item(item) => {
                 let is_packed = matches!(
-                    AttributeParser::parse_limited(cx.sess, &item.attrs, sym::repr, item.span, true),
-                    Some(Attribute::Parsed(AttributeKind::Repr(r))) if r.iter().any(|(x, _)| matches!(x, ReprPacked(..)))
+                    AttributeParser::parse_limited(cx.sess, &item.attrs, sym::repr, item.span, item.id, None),
+                    Some(Attribute::Parsed(AttributeKind::Repr { reprs, .. })) if reprs.iter().any(|(x, _)| matches!(x, ReprPacked(..)))
                 );
 
                 let newitem = match &item.kind {
-                    ast::ItemKind::Struct(ident, struct_def, generics) => self.expand_struct_def(
+                    ast::ItemKind::Struct(ident, generics, struct_def) => self.expand_struct_def(
                         cx,
                         struct_def,
                         *ident,
@@ -495,7 +501,7 @@ impl<'a> TraitDef<'a> {
                         from_scratch,
                         is_packed,
                     ),
-                    ast::ItemKind::Enum(ident, enum_def, generics) => {
+                    ast::ItemKind::Enum(ident, generics, enum_def) => {
                         // We ignore `is_packed` here, because `repr(packed)`
                         // enums cause an error later on.
                         //
@@ -503,7 +509,7 @@ impl<'a> TraitDef<'a> {
                         // downstream in blatantly illegal code, so it is fine.
                         self.expand_enum_def(cx, enum_def, *ident, generics, from_scratch)
                     }
-                    ast::ItemKind::Union(ident, struct_def, generics) => {
+                    ast::ItemKind::Union(ident, generics, struct_def) => {
                         if self.supports_unions {
                             self.expand_struct_def(
                                 cx,
@@ -662,10 +668,10 @@ impl<'a> TraitDef<'a> {
 
                     cx.typaram(param.ident.span.with_ctxt(ctxt), param.ident, bounds, None)
                 }
-                GenericParamKind::Const { ty, kw_span, .. } => {
+                GenericParamKind::Const { ty, span, .. } => {
                     let const_nodefault_kind = GenericParamKind::Const {
                         ty: ty.clone(),
-                        kw_span: kw_span.with_ctxt(ctxt),
+                        span: span.with_ctxt(ctxt),
 
                         // We can't have default values inside impl block
                         default: None,
@@ -782,8 +788,45 @@ impl<'a> TraitDef<'a> {
         // Create the type of `self`.
         let path = cx.path_all(self.span, false, vec![type_ident], self_params);
         let self_type = cx.ty_path(path);
+        let rustc_const_unstable =
+            cx.path_ident(self.span, Ident::new(sym::rustc_const_unstable, self.span));
 
-        let attrs = thin_vec![cx.attr_word(sym::automatically_derived, self.span),];
+        let mut attrs = thin_vec![cx.attr_word(sym::automatically_derived, self.span),];
+
+        // Only add `rustc_const_unstable` attributes if `derive_const` is used within libcore/libstd,
+        // Other crates don't need stability attributes, so adding them is not useful, but libcore needs them
+        // on all const trait impls.
+        if self.is_const && self.is_staged_api_crate {
+            attrs.push(
+                cx.attr_nested(
+                    rustc_ast::AttrItem {
+                        unsafety: Safety::Default,
+                        path: rustc_const_unstable,
+                        args: AttrArgs::Delimited(DelimArgs {
+                            dspan: DelimSpan::from_single(self.span),
+                            delim: rustc_ast::token::Delimiter::Parenthesis,
+                            tokens: [
+                                TokenKind::Ident(sym::feature, IdentIsRaw::No),
+                                TokenKind::Eq,
+                                TokenKind::lit(LitKind::Str, sym::derive_const, None),
+                                TokenKind::Comma,
+                                TokenKind::Ident(sym::issue, IdentIsRaw::No),
+                                TokenKind::Eq,
+                                TokenKind::lit(LitKind::Str, sym::derive_const_issue, None),
+                            ]
+                            .into_iter()
+                            .map(|kind| {
+                                TokenTree::Token(Token { kind, span: self.span }, Spacing::Alone)
+                            })
+                            .collect(),
+                        }),
+                        tokens: None,
+                    },
+                    self.span,
+                ),
+            )
+        }
+
         let opt_trait_ref = Some(trait_ref);
 
         cx.item(
@@ -1219,7 +1262,8 @@ impl<'a> MethodDef<'a> {
 
             let self_expr = discr_exprs.remove(0);
             let other_selflike_exprs = discr_exprs;
-            let discr_field = FieldInfo { span, name: None, self_expr, other_selflike_exprs };
+            let discr_field =
+                FieldInfo { span, name: None, self_expr, other_selflike_exprs, maybe_scalar: true };
 
             let discr_let_stmts: ThinVec<_> = iter::zip(&discr_idents, &selflike_args)
                 .map(|(&ident, selflike_arg)| {
@@ -1532,6 +1576,7 @@ impl<'a> TraitDef<'a> {
                     name: struct_field.ident,
                     self_expr,
                     other_selflike_exprs,
+                    maybe_scalar: struct_field.ty.peel_refs().kind.maybe_scalar(),
                 }
             })
             .collect()

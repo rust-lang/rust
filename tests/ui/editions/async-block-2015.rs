@@ -1,3 +1,4 @@
+//@ edition:2015
 async fn foo() {
 //~^ ERROR `async fn` is not permitted in Rust 2015
 //~| NOTE to use `async fn`, switch to Rust 2018 or later

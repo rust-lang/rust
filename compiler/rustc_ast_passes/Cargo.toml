@@ -18,5 +18,6 @@ rustc_macros = { path = "../rustc_macros" }
 rustc_parse = { path = "../rustc_parse" }
 rustc_session = { path = "../rustc_session" }
 rustc_span = { path = "../rustc_span" }
+rustc_target = { path = "../rustc_target" }
 thin-vec = "0.2.12"
 # tidy-alphabetical-end

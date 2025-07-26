@@ -38,7 +38,7 @@ fn infinite_iters() {
     //~^ infinite_iter
 
     // infinite iter
-    (0_u64..).filter(|x| x % 2 == 0).last();
+    (0_u64..).filter(|x| x.is_multiple_of(2)).last();
     //~^ infinite_iter
 
     // not an infinite, because ranges are double-ended

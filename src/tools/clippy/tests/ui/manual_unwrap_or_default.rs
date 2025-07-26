@@ -147,3 +147,16 @@ fn allowed_manual_unwrap_or_zero() -> u32 {
         0
     }
 }
+
+mod issue14716 {
+    struct Foo {
+        name: Option<String>,
+    }
+
+    fn bar(project: &Foo) {
+        let _name = match project.name {
+            Some(ref x) => x,
+            None => "",
+        };
+    }
+}

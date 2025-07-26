@@ -6,7 +6,6 @@ LL |     let x = t.get();
    |
    = help: the trait `Sized` is not implemented for `<T as Get>::Value`
    = note: all local variables must have a statically known size
-   = help: unsized locals are gated as an unstable feature
 help: consider further restricting the associated type
    |
 LL | fn foo<T:Get>(t: T) where <T as Get>::Value: Sized {

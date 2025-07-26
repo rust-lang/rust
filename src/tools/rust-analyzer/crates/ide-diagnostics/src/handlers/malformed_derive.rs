@@ -14,6 +14,7 @@ pub(crate) fn malformed_derive(
         "malformed derive input, derive attributes are of the form `#[derive(Derive1, Derive2, ...)]`",
         display_range,
     )
+    .stable()
 }
 
 #[cfg(test)]

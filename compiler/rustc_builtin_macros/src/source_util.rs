@@ -4,8 +4,8 @@ use std::sync::Arc;
 
 use rustc_ast as ast;
 use rustc_ast::ptr::P;
-use rustc_ast::token;
 use rustc_ast::tokenstream::TokenStream;
+use rustc_ast::{join_path_idents, token};
 use rustc_ast_pretty::pprust;
 use rustc_expand::base::{
     DummyResult, ExpandResult, ExtCtxt, MacEager, MacResult, MacroExpanderResult, resolve_path,
@@ -16,7 +16,7 @@ use rustc_parse::parser::{ForceCollect, Parser};
 use rustc_parse::{new_parser_from_file, unwrap_or_emit_fatal, utf8_error};
 use rustc_session::lint::builtin::INCOMPLETE_INCLUDE;
 use rustc_span::source_map::SourceMap;
-use rustc_span::{Pos, Span, Symbol};
+use rustc_span::{ByteSymbol, Pos, Span, Symbol};
 use smallvec::SmallVec;
 
 use crate::errors;
@@ -100,7 +100,7 @@ pub(crate) fn expand_mod(
     let sp = cx.with_def_site_ctxt(sp);
     check_zero_tts(cx, sp, tts, "module_path!");
     let mod_path = &cx.current_expansion.module.mod_path;
-    let string = mod_path.iter().map(|x| x.to_string()).collect::<Vec<String>>().join("::");
+    let string = join_path_idents(mod_path);
 
     ExpandResult::Ready(MacEager::expr(cx.expr_str(sp, Symbol::intern(&string))))
 }
@@ -237,7 +237,7 @@ pub(crate) fn expand_include_bytes(
         Ok((bytes, _bsp)) => {
             // Don't care about getting the span for the raw bytes,
             // because the console can't really show them anyway.
-            let expr = cx.expr(sp, ast::ExprKind::IncludedBytes(bytes));
+            let expr = cx.expr(sp, ast::ExprKind::IncludedBytes(ByteSymbol::intern(&bytes)));
             MacEager::expr(expr)
         }
         Err(dummy) => dummy,

@@ -50,6 +50,7 @@ pub struct Query {
     case_sensitive: bool,
     only_types: bool,
     libs: bool,
+    exclude_imports: bool,
 }
 
 impl Query {
@@ -63,6 +64,7 @@ impl Query {
             mode: SearchMode::Fuzzy,
             assoc_mode: AssocSearchMode::Include,
             case_sensitive: false,
+            exclude_imports: false,
         }
     }
 
@@ -93,6 +95,10 @@ impl Query {
 
     pub fn case_sensitive(&mut self) {
         self.case_sensitive = true;
+    }
+
+    pub fn exclude_imports(&mut self) {
+        self.exclude_imports = true;
     }
 }
 
@@ -362,6 +368,9 @@ impl Query {
                     if ignore_underscore_prefixed && symbol_name.starts_with("__") {
                         continue;
                     }
+                    if self.exclude_imports && symbol.is_import {
+                        continue;
+                    }
                     if self.mode.check(&self.query, self.case_sensitive, symbol_name) {
                         if let Some(b) = cb(symbol).break_value() {
                             return Some(b);
@@ -385,7 +394,8 @@ impl Query {
 mod tests {
 
     use expect_test::expect_file;
-    use test_fixture::WithFixture;
+    use salsa::Durability;
+    use test_fixture::{WORKSPACE, WithFixture};
 
     use super::*;
 
@@ -505,5 +515,32 @@ struct Duplicate;
             .collect();
 
         expect_file!["./test_data/test_doc_alias.txt"].assert_debug_eq(&symbols);
+    }
+
+    #[test]
+    fn test_exclude_imports() {
+        let (mut db, _) = RootDatabase::with_many_files(
+            r#"
+//- /lib.rs
+mod foo;
+pub use foo::Foo;
+
+//- /foo.rs
+pub struct Foo;
+"#,
+        );
+
+        let mut local_roots = FxHashSet::default();
+        local_roots.insert(WORKSPACE);
+        db.set_local_roots_with_durability(Arc::new(local_roots), Durability::HIGH);
+
+        let mut query = Query::new("Foo".to_owned());
+        let mut symbols = world_symbols(&db, query.clone());
+        symbols.sort_by_key(|x| x.is_import);
+        expect_file!["./test_data/test_symbols_with_imports.txt"].assert_debug_eq(&symbols);
+
+        query.exclude_imports();
+        let symbols = world_symbols(&db, query);
+        expect_file!["./test_data/test_symbols_exclude_imports.txt"].assert_debug_eq(&symbols);
     }
 }

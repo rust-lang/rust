@@ -34,9 +34,9 @@ jobs:
     - name: Rustfmt
       run: |
         cargo fmt --check
-        rustfmt --check build_system/main.rs
-        rustfmt --check example/*
-        rustfmt --check scripts/*.rs
+        rustfmt --check --edition 2024 build_system/main.rs
+        rustfmt --check --edition 2024 example/*
+        rustfmt --check --edition 2024 scripts/*.rs
 
 
   test:

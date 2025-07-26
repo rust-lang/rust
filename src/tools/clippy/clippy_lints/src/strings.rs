@@ -334,7 +334,7 @@ impl<'tcx> LateLintPass<'tcx> for StringLitAsBytes {
         if let ExprKind::MethodCall(path, recv, [], _) = &e.kind
             && path.ident.name == sym::into_bytes
             && let ExprKind::MethodCall(path, recv, [], _) = &recv.kind
-            && matches!(path.ident.name.as_str(), "to_owned" | "to_string")
+            && matches!(path.ident.name, sym::to_owned | sym::to_string)
             && let ExprKind::Lit(lit) = &recv.kind
             && let LitKind::Str(lit_content, _) = &lit.node
             && lit_content.as_str().is_ascii()
@@ -560,7 +560,7 @@ impl<'tcx> LateLintPass<'tcx> for TrimSplitWhitespace {
             && let Some(split_ws_def_id) = tyckres.type_dependent_def_id(expr.hir_id)
             && cx.tcx.is_diagnostic_item(sym::str_split_whitespace, split_ws_def_id)
             && let ExprKind::MethodCall(path, _trim_recv, [], trim_span) = split_recv.kind
-            && let trim_fn_name @ ("trim" | "trim_start" | "trim_end") = path.ident.name.as_str()
+            && let trim_fn_name @ (sym::trim | sym::trim_start | sym::trim_end) = path.ident.name
             && let Some(trim_def_id) = tyckres.type_dependent_def_id(split_recv.hir_id)
             && is_one_of_trim_diagnostic_items(cx, trim_def_id)
         {

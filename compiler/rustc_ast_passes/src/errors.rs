@@ -1,5 +1,6 @@
 //! Errors emitted by ast_passes.
 
+use rustc_abi::ExternAbi;
 use rustc_ast::ParamKindOrd;
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, Diag, EmissionGuarantee, Subdiagnostic};
@@ -224,8 +225,8 @@ pub(crate) struct InvalidSafetyOnItem {
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_passes_bare_fn_invalid_safety)]
-pub(crate) struct InvalidSafetyOnBareFn {
+#[diag(ast_passes_fn_ptr_invalid_safety)]
+pub(crate) struct InvalidSafetyOnFnPtr {
     #[primary_span]
     pub span: Span,
 }
@@ -566,22 +567,6 @@ pub(crate) struct NestedLifetimes {
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_passes_optional_trait_supertrait)]
-#[note]
-pub(crate) struct OptionalTraitSupertrait {
-    #[primary_span]
-    pub span: Span,
-    pub path_str: String,
-}
-
-#[derive(Diagnostic)]
-#[diag(ast_passes_optional_trait_object)]
-pub(crate) struct OptionalTraitObject {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag(ast_passes_const_bound_trait_object)]
 pub(crate) struct ConstBoundTraitObject {
     #[primary_span]
@@ -589,7 +574,7 @@ pub(crate) struct ConstBoundTraitObject {
 }
 
 // FIXME(const_trait_impl): Consider making the note/reason the message of the diagnostic.
-// FIXME(const_trait_impl): Provide structured suggestions (e.g., add `const` / `#[const_trait]` here).
+// FIXME(const_trait_impl): Provide structured suggestions (e.g., add `const` here).
 #[derive(Diagnostic)]
 #[diag(ast_passes_tilde_const_disallowed)]
 pub(crate) struct TildeConstDisallowed {
@@ -823,4 +808,81 @@ pub(crate) struct MissingAbi {
     #[primary_span]
     #[suggestion(code = "extern \"<abi>\"", applicability = "has-placeholders")]
     pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(ast_passes_abi_custom_safe_foreign_function)]
+pub(crate) struct AbiCustomSafeForeignFunction {
+    #[primary_span]
+    pub span: Span,
+
+    #[suggestion(
+        ast_passes_suggestion,
+        applicability = "maybe-incorrect",
+        code = "",
+        style = "verbose"
+    )]
+    pub safe_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(ast_passes_abi_custom_safe_function)]
+pub(crate) struct AbiCustomSafeFunction {
+    #[primary_span]
+    pub span: Span,
+    pub abi: ExternAbi,
+
+    #[suggestion(
+        ast_passes_suggestion,
+        applicability = "maybe-incorrect",
+        code = "unsafe ",
+        style = "verbose"
+    )]
+    pub unsafe_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(ast_passes_abi_cannot_be_coroutine)]
+pub(crate) struct AbiCannotBeCoroutine {
+    #[primary_span]
+    pub span: Span,
+    pub abi: ExternAbi,
+
+    #[suggestion(
+        ast_passes_suggestion,
+        applicability = "maybe-incorrect",
+        code = "",
+        style = "verbose"
+    )]
+    pub coroutine_kind_span: Span,
+    pub coroutine_kind_str: &'static str,
+}
+
+#[derive(Diagnostic)]
+#[diag(ast_passes_abi_must_not_have_parameters_or_return_type)]
+#[note]
+pub(crate) struct AbiMustNotHaveParametersOrReturnType {
+    #[primary_span]
+    pub spans: Vec<Span>,
+    pub abi: ExternAbi,
+
+    #[suggestion(
+        ast_passes_suggestion,
+        applicability = "maybe-incorrect",
+        code = "{padding}fn {symbol}()",
+        style = "verbose"
+    )]
+    pub suggestion_span: Span,
+    pub symbol: Symbol,
+    pub padding: &'static str,
+}
+
+#[derive(Diagnostic)]
+#[diag(ast_passes_abi_must_not_have_return_type)]
+#[note]
+pub(crate) struct AbiMustNotHaveReturnType {
+    #[primary_span]
+    #[help]
+    pub span: Span,
+    pub abi: ExternAbi,
 }

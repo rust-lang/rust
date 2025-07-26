@@ -18,10 +18,6 @@
 	path = src/doc/rust-by-example
 	url = https://github.com/rust-lang/rust-by-example.git
 	shallow = true
-[submodule "library/stdarch"]
-	path = library/stdarch
-	url = https://github.com/rust-lang/stdarch.git
-	shallow = true
 [submodule "src/doc/edition-guide"]
 	path = src/doc/edition-guide
 	url = https://github.com/rust-lang/edition-guide.git
@@ -44,7 +40,7 @@
 	shallow = true
 [submodule "src/tools/enzyme"]
 	path = src/tools/enzyme
-	url = https://github.com/rust-lang/Enzyme.git
+	url = https://github.com/rust-lang/enzyme.git
 	shallow = true
 [submodule "src/gcc"]
 	path = src/gcc

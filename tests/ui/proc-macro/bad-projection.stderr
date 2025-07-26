@@ -10,6 +10,19 @@ help: this trait has no implementations, consider adding one
 LL | trait Project {
    | ^^^^^^^^^^^^^
 
+error[E0277]: the trait bound `(): Project` is not satisfied
+  --> $DIR/bad-projection.rs:14:17
+   |
+LL | pub fn uwu() -> <() as Project>::Assoc {}
+   |                 ^^^^^^^^^^^^^^^^^^^^^^ the trait `Project` is not implemented for `()`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/bad-projection.rs:9:1
+   |
+LL | trait Project {
+   | ^^^^^^^^^^^^^
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
 error[E0593]: function is expected to take 1 argument, but it takes 0 arguments
   --> $DIR/bad-projection.rs:14:1
    |
@@ -46,19 +59,6 @@ help: this trait has no implementations, consider adding one
    |
 LL | trait Project {
    | ^^^^^^^^^^^^^
-
-error[E0277]: the trait bound `(): Project` is not satisfied
-  --> $DIR/bad-projection.rs:14:17
-   |
-LL | pub fn uwu() -> <() as Project>::Assoc {}
-   |                 ^^^^^^^^^^^^^^^^^^^^^^ the trait `Project` is not implemented for `()`
-   |
-help: this trait has no implementations, consider adding one
-  --> $DIR/bad-projection.rs:9:1
-   |
-LL | trait Project {
-   | ^^^^^^^^^^^^^
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: aborting due to 5 previous errors
 

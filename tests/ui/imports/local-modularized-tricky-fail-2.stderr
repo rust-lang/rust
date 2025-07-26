@@ -1,8 +1,8 @@
 error: macro-expanded `macro_export` macros from the current crate cannot be referred to by absolute paths
   --> $DIR/local-modularized-tricky-fail-2.rs:13:9
    |
-LL |     use exported;
-   |         ^^^^^^^^
+LL |     use crate::exported;
+   |         ^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #52234 <https://github.com/rust-lang/rust/issues/52234>
@@ -22,8 +22,8 @@ LL |   define_exported!();
 error: macro-expanded `macro_export` macros from the current crate cannot be referred to by absolute paths
   --> $DIR/local-modularized-tricky-fail-2.rs:19:5
    |
-LL |     ::exported!();
-   |     ^^^^^^^^^^
+LL |     crate::exported!();
+   |     ^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #52234 <https://github.com/rust-lang/rust/issues/52234>

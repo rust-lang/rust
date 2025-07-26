@@ -4,7 +4,7 @@
 struct Bar;
 
 mod non_constants {
-    use Bar;
+    use crate::Bar;
 
     fn no_impl_copy_empty_value_multiple_elements() {
         let x = None;

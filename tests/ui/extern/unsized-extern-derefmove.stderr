@@ -1,0 +1,16 @@
+error[E0277]: the size for values of type `Device` cannot be known at compilation time
+  --> $DIR/unsized-extern-derefmove.rs:14:9
+   |
+LL |     let d: Device = unsafe { *make_device() };
+   |         ^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `Device`
+   = note: all local variables must have a statically known size
+help: consider borrowing here
+   |
+LL |     let d: &Device = unsafe { *make_device() };
+   |            +
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

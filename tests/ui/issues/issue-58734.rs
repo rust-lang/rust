@@ -18,8 +18,7 @@ fn main() {
     Trait::exists(());
     // no dyn-compatibility error
     Trait::nonexistent(());
-    //~^ ERROR no function or associated item named `nonexistent` found
-    //~| WARN trait objects without an explicit `dyn` are deprecated
+    //~^ WARN trait objects without an explicit `dyn` are deprecated
     //~| WARN this is accepted in the current edition
     //~| ERROR the trait `Trait` is not dyn compatible
 }

@@ -1,5 +1,5 @@
 error: use of a disallowed method `regex::Regex::new`
-  --> tests/ui-toml/toml_disallowed_methods/conf_disallowed_methods.rs:33:14
+  --> tests/ui-toml/toml_disallowed_methods/conf_disallowed_methods.rs:36:14
    |
 LL |     let re = Regex::new(r"ab.*c").unwrap();
    |              ^^^^^^^^^^
@@ -8,7 +8,7 @@ LL |     let re = Regex::new(r"ab.*c").unwrap();
    = help: to override `-D warnings` add `#[allow(clippy::disallowed_methods)]`
 
 error: use of a disallowed method `regex::Regex::is_match`
-  --> tests/ui-toml/toml_disallowed_methods/conf_disallowed_methods.rs:35:8
+  --> tests/ui-toml/toml_disallowed_methods/conf_disallowed_methods.rs:38:8
    |
 LL |     re.is_match("abc");
    |        ^^^^^^^^
@@ -16,76 +16,88 @@ LL |     re.is_match("abc");
    = note: no matching allowed
 
 error: use of a disallowed method `std::iter::Iterator::sum`
-  --> tests/ui-toml/toml_disallowed_methods/conf_disallowed_methods.rs:39:14
+  --> tests/ui-toml/toml_disallowed_methods/conf_disallowed_methods.rs:42:14
    |
 LL |     a.iter().sum::<i32>();
    |              ^^^
 
 error: use of a disallowed method `slice::sort_unstable`
-  --> tests/ui-toml/toml_disallowed_methods/conf_disallowed_methods.rs:42:7
+  --> tests/ui-toml/toml_disallowed_methods/conf_disallowed_methods.rs:45:7
    |
 LL |     a.sort_unstable();
    |       ^^^^^^^^^^^^^
 
 error: use of a disallowed method `f32::clamp`
-  --> tests/ui-toml/toml_disallowed_methods/conf_disallowed_methods.rs:46:20
+  --> tests/ui-toml/toml_disallowed_methods/conf_disallowed_methods.rs:49:20
    |
 LL |     let _ = 2.0f32.clamp(3.0f32, 4.0f32);
    |                    ^^^^^
 
 error: use of a disallowed method `regex::Regex::new`
-  --> tests/ui-toml/toml_disallowed_methods/conf_disallowed_methods.rs:50:61
+  --> tests/ui-toml/toml_disallowed_methods/conf_disallowed_methods.rs:53:61
    |
 LL |     let indirect: fn(&str) -> Result<Regex, regex::Error> = Regex::new;
    |                                                             ^^^^^^^^^^
 
 error: use of a disallowed method `f32::clamp`
-  --> tests/ui-toml/toml_disallowed_methods/conf_disallowed_methods.rs:54:28
+  --> tests/ui-toml/toml_disallowed_methods/conf_disallowed_methods.rs:57:28
    |
 LL |     let in_call = Box::new(f32::clamp);
    |                            ^^^^^^^^^^
 
 error: use of a disallowed method `regex::Regex::new`
-  --> tests/ui-toml/toml_disallowed_methods/conf_disallowed_methods.rs:56:53
+  --> tests/ui-toml/toml_disallowed_methods/conf_disallowed_methods.rs:59:53
    |
 LL |     let in_method_call = ["^", "$"].into_iter().map(Regex::new);
    |                                                     ^^^^^^^^^^
 
 error: use of a disallowed method `futures::stream::select_all`
-  --> tests/ui-toml/toml_disallowed_methods/conf_disallowed_methods.rs:60:31
+  --> tests/ui-toml/toml_disallowed_methods/conf_disallowed_methods.rs:63:31
    |
 LL |     let same_name_as_module = select_all(vec![empty::<()>()]);
    |                               ^^^^^^^^^^
 
 error: use of a disallowed method `conf_disallowed_methods::local_fn`
-  --> tests/ui-toml/toml_disallowed_methods/conf_disallowed_methods.rs:63:5
+  --> tests/ui-toml/toml_disallowed_methods/conf_disallowed_methods.rs:66:5
    |
 LL |     local_fn();
    |     ^^^^^^^^
 
 error: use of a disallowed method `conf_disallowed_methods::local_mod::f`
-  --> tests/ui-toml/toml_disallowed_methods/conf_disallowed_methods.rs:65:5
+  --> tests/ui-toml/toml_disallowed_methods/conf_disallowed_methods.rs:68:5
    |
 LL |     local_mod::f();
    |     ^^^^^^^^^^^^
 
 error: use of a disallowed method `conf_disallowed_methods::Struct::method`
-  --> tests/ui-toml/toml_disallowed_methods/conf_disallowed_methods.rs:68:7
+  --> tests/ui-toml/toml_disallowed_methods/conf_disallowed_methods.rs:71:7
    |
 LL |     s.method();
    |       ^^^^^^
 
 error: use of a disallowed method `conf_disallowed_methods::Trait::provided_method`
-  --> tests/ui-toml/toml_disallowed_methods/conf_disallowed_methods.rs:70:7
+  --> tests/ui-toml/toml_disallowed_methods/conf_disallowed_methods.rs:73:7
    |
 LL |     s.provided_method();
    |       ^^^^^^^^^^^^^^^
 
 error: use of a disallowed method `conf_disallowed_methods::Trait::implemented_method`
-  --> tests/ui-toml/toml_disallowed_methods/conf_disallowed_methods.rs:72:7
+  --> tests/ui-toml/toml_disallowed_methods/conf_disallowed_methods.rs:75:7
    |
 LL |     s.implemented_method();
    |       ^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 14 previous errors
+error: use of a disallowed method `conf_disallowed_methods::identity`
+  --> tests/ui-toml/toml_disallowed_methods/conf_disallowed_methods.rs:78:5
+   |
+LL |     identity(());
+   |     ^^^^^^^^
+
+error: use of a disallowed method `conf_disallowed_methods::renamed`
+  --> tests/ui-toml/toml_disallowed_methods/conf_disallowed_methods.rs:80:5
+   |
+LL |     renamed(1);
+   |     ^^^^^^^
+
+error: aborting due to 16 previous errors
 

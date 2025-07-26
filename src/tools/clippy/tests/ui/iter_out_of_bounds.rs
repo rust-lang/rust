@@ -1,5 +1,3 @@
-//@no-rustfix
-
 #![deny(clippy::iter_out_of_bounds)]
 #![allow(clippy::useless_vec)]
 

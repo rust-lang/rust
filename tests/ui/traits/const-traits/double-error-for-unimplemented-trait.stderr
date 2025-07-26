@@ -14,8 +14,8 @@ LL | trait Trait {
 note: required by a bound in `needs_const`
   --> $DIR/double-error-for-unimplemented-trait.rs:10:25
    |
-LL | const fn needs_const<T: ~const Trait>(_: &T) {}
-   |                         ^^^^^^^^^^^^ required by this bound in `needs_const`
+LL | const fn needs_const<T: [const] Trait>(_: &T) {}
+   |                         ^^^^^^^^^^^^^ required by this bound in `needs_const`
 
 error[E0277]: the trait bound `(): Trait` is not satisfied
   --> $DIR/double-error-for-unimplemented-trait.rs:18:15
@@ -33,8 +33,8 @@ LL | trait Trait {
 note: required by a bound in `needs_const`
   --> $DIR/double-error-for-unimplemented-trait.rs:10:25
    |
-LL | const fn needs_const<T: ~const Trait>(_: &T) {}
-   |                         ^^^^^^^^^^^^ required by this bound in `needs_const`
+LL | const fn needs_const<T: [const] Trait>(_: &T) {}
+   |                         ^^^^^^^^^^^^^ required by this bound in `needs_const`
 
 error: aborting due to 2 previous errors
 

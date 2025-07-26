@@ -24,7 +24,7 @@ fn forward_loop(_1: u32, _2: u32, _3: impl Fn(u32)) -> () {
                 let mut _8: u32;
                 scope 6 {
                     scope 8 (inlined <u32 as Step>::forward_unchecked) {
-                        scope 9 (inlined core::num::<impl u32>::unchecked_add) {
+                        scope 9 (inlined #[track_caller] core::num::<impl u32>::unchecked_add) {
                             scope 10 (inlined core::ub_checks::check_language_ub) {
                                 scope 11 (inlined core::ub_checks::check_language_ub::runtime) {
                                 }

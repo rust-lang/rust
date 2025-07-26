@@ -88,16 +88,17 @@ fn test_dup() {
     let name_ptr = name.as_bytes().as_ptr().cast::<libc::c_char>();
     unsafe {
         let fd = libc::open(name_ptr, libc::O_RDONLY);
+        let new_fd = libc::dup(fd);
+        let new_fd2 = libc::dup2(fd, 8);
+
         let mut first_buf = [0u8; 4];
         libc::read(fd, first_buf.as_mut_ptr() as *mut libc::c_void, 4);
         assert_eq!(&first_buf, b"dup ");
 
-        let new_fd = libc::dup(fd);
         let mut second_buf = [0u8; 4];
         libc::read(new_fd, second_buf.as_mut_ptr() as *mut libc::c_void, 4);
         assert_eq!(&second_buf, b"and ");
 
-        let new_fd2 = libc::dup2(fd, 8);
         let mut third_buf = [0u8; 4];
         libc::read(new_fd2, third_buf.as_mut_ptr() as *mut libc::c_void, 4);
         assert_eq!(&third_buf, b"dup2");

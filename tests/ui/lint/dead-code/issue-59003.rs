@@ -4,8 +4,8 @@
 
 #![deny(dead_code)]
 
+#[allow(dead_code)]
 struct Foo {
-    #[allow(dead_code)]
     inner: u32,
 }
 

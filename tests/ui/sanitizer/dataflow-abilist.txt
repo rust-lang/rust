@@ -503,3 +503,4 @@ fun:__rust_realloc=uninstrumented
 fun:_ZN4core*=uninstrumented
 fun:_ZN3std*=uninstrumented
 fun:rust_eh_personality=uninstrumented
+fun:_R*__rustc*=uninstrumented

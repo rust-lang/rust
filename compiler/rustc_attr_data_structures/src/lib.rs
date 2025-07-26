@@ -1,23 +1,30 @@
+//! Data structures for representing parsed attributes in the Rust compiler.
+//! For detailed documentation about attribute processing,
+//! see [rustc_attr_parsing](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_attr_parsing/index.html).
+
 // tidy-alphabetical-start
 #![allow(internal_features)]
-#![cfg_attr(bootstrap, feature(let_chains))]
 #![doc(rust_logo)]
 #![feature(rustdoc_internals)]
 // tidy-alphabetical-end
 
 mod attributes;
+mod encode_cross_crate;
 mod stability;
 mod version;
+
+pub mod lints;
 
 use std::num::NonZero;
 
 pub use attributes::*;
+pub use encode_cross_crate::EncodeCrossCrate;
 use rustc_abi::Align;
 use rustc_ast::token::CommentKind;
 use rustc_ast::{AttrStyle, IntTy, UintTy};
 use rustc_ast_pretty::pp::Printer;
 use rustc_span::hygiene::Transparency;
-use rustc_span::{Span, Symbol};
+use rustc_span::{ErrorGuaranteed, Ident, Span, Symbol};
 pub use stability::*;
 use thin_vec::ThinVec;
 pub use version::*;
@@ -40,6 +47,16 @@ pub trait PrintAttribute {
     fn should_render(&self) -> bool;
 
     fn print_attribute(&self, p: &mut Printer);
+}
+
+impl PrintAttribute for u128 {
+    fn should_render(&self) -> bool {
+        true
+    }
+
+    fn print_attribute(&self, p: &mut Printer) {
+        p.word(self.to_string())
+    }
 }
 
 impl<T: PrintAttribute> PrintAttribute for &T {
@@ -153,9 +170,9 @@ macro_rules! print_tup {
 }
 
 print_tup!(A B C D E F G H);
-print_skip!(Span, ());
+print_skip!(Span, (), ErrorGuaranteed);
 print_disp!(u16, bool, NonZero<u32>);
-print_debug!(Symbol, UintTy, IntTy, Align, AttrStyle, CommentKind, Transparency);
+print_debug!(Symbol, Ident, UintTy, IntTy, Align, AttrStyle, CommentKind, Transparency);
 
 /// Finds attributes in sequences of attributes by pattern matching.
 ///

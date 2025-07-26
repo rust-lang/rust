@@ -7,14 +7,13 @@ use smallvec::smallvec;
 
 /// Tracks the `T: 'a` or `'a: 'a` predicates that we have inferred
 /// must be added to the struct header.
-pub(crate) type RequiredPredicates<'tcx> =
-    FxIndexMap<ty::OutlivesPredicate<'tcx, ty::GenericArg<'tcx>>, Span>;
+pub(crate) type RequiredPredicates<'tcx> = FxIndexMap<ty::ArgOutlivesPredicate<'tcx>, Span>;
 
 /// Given a requirement `T: 'a` or `'b: 'a`, deduce the
 /// outlives_component and add it to `required_predicates`
 pub(crate) fn insert_outlives_predicate<'tcx>(
     tcx: TyCtxt<'tcx>,
-    kind: GenericArg<'tcx>,
+    arg: GenericArg<'tcx>,
     outlived_region: Region<'tcx>,
     span: Span,
     required_predicates: &mut RequiredPredicates<'tcx>,
@@ -25,7 +24,7 @@ pub(crate) fn insert_outlives_predicate<'tcx>(
         return;
     }
 
-    match kind.unpack() {
+    match arg.kind() {
         GenericArgKind::Type(ty) => {
             // `T: 'outlived_region` for some type `T`
             // But T could be a lot of things:
@@ -135,7 +134,7 @@ pub(crate) fn insert_outlives_predicate<'tcx>(
             if !is_free_region(r) {
                 return;
             }
-            required_predicates.entry(ty::OutlivesPredicate(kind, outlived_region)).or_insert(span);
+            required_predicates.entry(ty::OutlivesPredicate(arg, outlived_region)).or_insert(span);
         }
 
         GenericArgKind::Const(_) => {

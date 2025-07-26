@@ -1,5 +1,5 @@
 error[E0282]: type annotations needed
-  --> $DIR/recursive-coroutine-boxed.rs:14:23
+  --> $DIR/recursive-coroutine-boxed.rs:11:23
    |
 LL |         let mut gen = Box::pin(foo());
    |                       ^^^^^^^^ cannot infer type of the type parameter `T` declared on the struct `Box`

@@ -1,5 +1,4 @@
-#![feature(repr128, proc_macro_quote, proc_macro_span)]
-#![allow(incomplete_features)]
+#![feature(proc_macro_quote, proc_macro_span)]
 #![allow(clippy::field_reassign_with_default)]
 #![allow(clippy::eq_op)]
 #![allow(clippy::literal_string_with_formatting_args)]
@@ -17,7 +16,7 @@ pub fn derive(_: TokenStream) -> TokenStream {
     let output = quote! {
         // Should not trigger `useless_attribute`
         #[allow(dead_code)]
-        extern crate rustc_middle;
+        extern crate core;
     };
     output
 }

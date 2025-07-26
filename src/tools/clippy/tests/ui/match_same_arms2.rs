@@ -23,7 +23,7 @@ fn match_same_arms() {
             a = -31 - a;
             a
         },
-        //~^^^^^^^^^ match_same_arms
+        //~v match_same_arms
         _ => {
             foo();
             let mut a = 42 + [23].len() as i32;
@@ -37,15 +37,15 @@ fn match_same_arms() {
 
     let _ = match 42 {
         42 => foo(),
-        51 => foo(),
         //~^ match_same_arms
+        51 => foo(),
         _ => true,
     };
 
     let _ = match Some(42) {
         Some(_) => 24,
-        None => 24,
         //~^ match_same_arms
+        None => 24,
     };
 
     let _ = match Some(42) {
@@ -67,8 +67,8 @@ fn match_same_arms() {
 
     match (Some(42), Some(42)) {
         (Some(a), None) => bar(a),
-        (None, Some(a)) => bar(a),
         //~^ match_same_arms
+        (None, Some(a)) => bar(a),
         _ => (),
     }
 
@@ -82,8 +82,8 @@ fn match_same_arms() {
 
     let _ = match (Some(42), Some(42)) {
         (Some(a), None) if a == 42 => a,
-        (None, Some(a)) if a == 42 => a,
         //~^ match_same_arms
+        (None, Some(a)) if a == 42 => a,
         _ => 0,
     };
 
@@ -140,8 +140,8 @@ fn match_same_arms() {
     match x {
         Ok(_tmp) => println!("ok"),
         Ok(3) => println!("ok"),
-        Ok(_) => println!("ok"),
         //~^ match_same_arms
+        Ok(_) => println!("ok"),
         Err(_) => {
             unreachable!();
         },
@@ -168,10 +168,10 @@ fn match_same_arms() {
         0 => {
             empty!(0);
         },
+        //~^^^ match_same_arms
         1 => {
             empty!(0);
         },
-        //~^^^ match_same_arms
         x => {
             empty!(x);
         },
@@ -229,9 +229,9 @@ fn main() {
     // Suggest moving `Foo::X(0)` down.
     let _ = match Foo::X(0) {
         Foo::X(0) => 1,
+        //~^ match_same_arms
         Foo::Y(_) | Foo::Z(0) => 2,
         Foo::Z(_) => 1,
-        //~^ match_same_arms
         _ => 0,
     };
 
@@ -252,10 +252,10 @@ fn main() {
     // Lint.
     let _ = match None {
         Some(Bar { x: 0, y: 5, .. }) => 1,
+        //~^ match_same_arms
         Some(Bar { y: 10, z: 0, .. }) => 2,
         None => 50,
         Some(Bar { y: 0, x: 5, .. }) => 1,
-        //~^ match_same_arms
         _ => 200,
     };
 
@@ -269,8 +269,8 @@ fn main() {
 
     let _ = match 0 {
         0 => cfg!(not_enable),
-        1 => cfg!(not_enable),
         //~^ match_same_arms
+        1 => cfg!(not_enable),
         _ => false,
     };
 }
@@ -286,9 +286,36 @@ mod with_lifetime {
         fn get(&self) -> &'a str {
             match *self {
                 MaybeStaticStr::Static(s) => s,
-                MaybeStaticStr::Borrowed(s) => s,
                 //~^ match_same_arms
+                MaybeStaticStr::Borrowed(s) => s,
             }
         }
     }
+}
+
+fn lint_levels() {
+    match 1 {
+        0 => "a",
+        1 => "b",
+        #[expect(clippy::match_same_arms)]
+        _ => "b",
+    };
+
+    match 2 {
+        0 => "a",
+        1 => "b",
+        //~^ match_same_arms
+        2 => "b",
+        #[allow(clippy::match_same_arms)]
+        _ => "b",
+    };
+
+    match 3 {
+        0 => "a",
+        1 => "b",
+        //~^ match_same_arms
+        2 => "b",
+        #[expect(clippy::match_same_arms)]
+        _ => "b",
+    };
 }

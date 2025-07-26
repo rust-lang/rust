@@ -80,7 +80,7 @@ pub fn bolt_optimize(
         // Move jump tables to a separate section
         .arg("-jump-tables=move")
         // Fold functions with identical code
-        .arg("-icf=1")
+        .arg("-icf=all")
         // The following flag saves about 50 MiB of libLLVM.so size.
         // However, it succeeds very non-deterministically. To avoid frequent artifact size swings,
         // it is kept disabled for now.

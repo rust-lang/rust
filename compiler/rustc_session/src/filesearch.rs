@@ -3,9 +3,8 @@
 use std::path::{Path, PathBuf};
 use std::{env, fs};
 
-use rustc_fs_util::{fix_windows_verbatim_for_gcc, try_canonicalize};
+use rustc_fs_util::try_canonicalize;
 use rustc_target::spec::Target;
-use smallvec::{SmallVec, smallvec};
 
 use crate::search_paths::{PathKind, SearchPath};
 
@@ -78,12 +77,16 @@ fn current_dll_path() -> Result<PathBuf, String> {
                 if libc::dladdr(addr, &mut info) == 0 {
                     return Err("dladdr failed".into());
                 }
-                if info.dli_fname.is_null() {
-                    return Err("dladdr returned null pointer".into());
-                }
-                let bytes = CStr::from_ptr(info.dli_fname).to_bytes();
+                #[cfg(target_os = "cygwin")]
+                let fname_ptr = info.dli_fname.as_ptr();
+                #[cfg(not(target_os = "cygwin"))]
+                let fname_ptr = {
+                    assert!(!info.dli_fname.is_null(), "dli_fname cannot be null");
+                    info.dli_fname
+                };
+                let bytes = CStr::from_ptr(fname_ptr).to_bytes();
                 let os = OsStr::from_bytes(bytes);
-                Ok(PathBuf::from(os))
+                try_canonicalize(Path::new(os)).map_err(|e| e.to_string())
             }
 
             #[cfg(target_os = "aix")]
@@ -118,7 +121,7 @@ fn current_dll_path() -> Result<PathBuf, String> {
                     if (data_base..data_end).contains(&addr) {
                         let bytes = CStr::from_ptr(&(*current).ldinfo_filename[0]).to_bytes();
                         let os = OsStr::from_bytes(bytes);
-                        return Ok(PathBuf::from(os));
+                        return try_canonicalize(Path::new(os)).map_err(|e| e.to_string());
                     }
                     if (*current).ldinfo_next == 0 {
                         break;
@@ -165,62 +168,24 @@ fn current_dll_path() -> Result<PathBuf, String> {
 
     filename.truncate(n);
 
-    Ok(OsString::from_wide(&filename).into())
+    let path = try_canonicalize(OsString::from_wide(&filename)).map_err(|e| e.to_string())?;
+
+    // See comments on this target function, but the gist is that
+    // gcc chokes on verbatim paths which fs::canonicalize generates
+    // so we try to avoid those kinds of paths.
+    Ok(rustc_fs_util::fix_windows_verbatim_for_gcc(&path))
 }
 
-pub fn sysroot_candidates() -> SmallVec<[PathBuf; 2]> {
-    let target = crate::config::host_tuple();
-    let mut sysroot_candidates: SmallVec<[PathBuf; 2]> = smallvec![get_or_default_sysroot()];
-    let path = current_dll_path().and_then(|s| try_canonicalize(s).map_err(|e| e.to_string()));
-    if let Ok(dll) = path {
-        // use `parent` twice to chop off the file name and then also the
-        // directory containing the dll which should be either `lib` or `bin`.
-        if let Some(path) = dll.parent().and_then(|p| p.parent()) {
-            // The original `path` pointed at the `rustc_driver` crate's dll.
-            // Now that dll should only be in one of two locations. The first is
-            // in the compiler's libdir, for example `$sysroot/lib/*.dll`. The
-            // other is the target's libdir, for example
-            // `$sysroot/lib/rustlib/$target/lib/*.dll`.
-            //
-            // We don't know which, so let's assume that if our `path` above
-            // ends in `$target` we *could* be in the target libdir, and always
-            // assume that we may be in the main libdir.
-            sysroot_candidates.push(path.to_owned());
-
-            if path.ends_with(target) {
-                sysroot_candidates.extend(
-                    path.parent() // chop off `$target`
-                        .and_then(|p| p.parent()) // chop off `rustlib`
-                        .and_then(|p| p.parent()) // chop off `lib`
-                        .map(|s| s.to_owned()),
-                );
-            }
-        }
-    }
-
-    sysroot_candidates
-}
-
-/// Returns the provided sysroot or calls [`get_or_default_sysroot`] if it's none.
-/// Panics if [`get_or_default_sysroot`]  returns an error.
-pub fn materialize_sysroot(maybe_sysroot: Option<PathBuf>) -> PathBuf {
-    maybe_sysroot.unwrap_or_else(|| get_or_default_sysroot())
+#[cfg(target_os = "wasi")]
+fn current_dll_path() -> Result<PathBuf, String> {
+    Err("current_dll_path is not supported on WASI".to_string())
 }
 
 /// This function checks if sysroot is found using env::args().next(), and if it
 /// is not found, finds sysroot from current rustc_driver dll.
-pub fn get_or_default_sysroot() -> PathBuf {
-    // Follow symlinks. If the resolved path is relative, make it absolute.
-    fn canonicalize(path: PathBuf) -> PathBuf {
-        let path = try_canonicalize(&path).unwrap_or(path);
-        // See comments on this target function, but the gist is that
-        // gcc chokes on verbatim paths which fs::canonicalize generates
-        // so we try to avoid those kinds of paths.
-        fix_windows_verbatim_for_gcc(&path)
-    }
-
+pub(crate) fn default_sysroot() -> PathBuf {
     fn default_from_rustc_driver_dll() -> Result<PathBuf, String> {
-        let dll = current_dll_path().map(|s| canonicalize(s))?;
+        let dll = current_dll_path()?;
 
         // `dll` will be in one of the following two:
         // - compiler's libdir: $sysroot/lib/*.dll
@@ -228,12 +193,11 @@ pub fn get_or_default_sysroot() -> PathBuf {
         //
         // use `parent` twice to chop off the file name and then also the
         // directory containing the dll
-        let dir = dll.parent().and_then(|p| p.parent()).ok_or(format!(
-            "Could not move 2 levels upper using `parent()` on {}",
-            dll.display()
-        ))?;
+        let dir = dll.parent().and_then(|p| p.parent()).ok_or_else(|| {
+            format!("Could not move 2 levels upper using `parent()` on {}", dll.display())
+        })?;
 
-        // if `dir` points target's dir, move up to the sysroot
+        // if `dir` points to target's dir, move up to the sysroot
         let mut sysroot_dir = if dir.ends_with(crate::config::host_tuple()) {
             dir.parent() // chop off `$target`
                 .and_then(|p| p.parent()) // chop off `rustlib`
@@ -284,5 +248,6 @@ pub fn get_or_default_sysroot() -> PathBuf {
         rustlib_path.exists().then_some(p)
     }
 
-    from_env_args_next().unwrap_or(default_from_rustc_driver_dll().expect("Failed finding sysroot"))
+    from_env_args_next()
+        .unwrap_or_else(|| default_from_rustc_driver_dll().expect("Failed finding sysroot"))
 }

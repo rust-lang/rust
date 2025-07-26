@@ -3,6 +3,7 @@ use std::marker::PhantomData;
 use rustc_data_structures::obligation_forest::{
     Error, ForestObligation, ObligationForest, ObligationProcessor, Outcome, ProcessResult,
 };
+use rustc_hir::def_id::LocalDefId;
 use rustc_infer::infer::DefineOpaqueTypes;
 use rustc_infer::traits::{
     FromSolverError, PolyTraitObligation, PredicateObligations, ProjectionCacheKey, SelectionError,
@@ -11,8 +12,12 @@ use rustc_infer::traits::{
 use rustc_middle::bug;
 use rustc_middle::ty::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
-use rustc_middle::ty::{self, Binder, Const, GenericArgsRef, TypeVisitableExt, TypingMode};
-use thin_vec::ThinVec;
+use rustc_middle::ty::{
+    self, Binder, Const, GenericArgsRef, TypeVisitable, TypeVisitableExt, TypingMode,
+    may_use_unstable_feature,
+};
+use rustc_span::DUMMY_SP;
+use thin_vec::{ThinVec, thin_vec};
 use tracing::{debug, debug_span, instrument};
 
 use super::effects::{self, HostEffectObligation};
@@ -20,10 +25,11 @@ use super::project::{self, ProjectAndUnifyResult};
 use super::select::SelectionContext;
 use super::{
     EvaluationResult, FulfillmentError, FulfillmentErrorCode, PredicateObligation,
-    ScrubbedTraitError, Unimplemented, const_evaluatable, wf,
+    ScrubbedTraitError, const_evaluatable, wf,
 };
 use crate::error_reporting::InferCtxtErrorExt;
 use crate::infer::{InferCtxt, TyOrConstInferVar};
+use crate::solve::StalledOnCoroutines;
 use crate::traits::normalize::normalize_with_depth_to;
 use crate::traits::project::{PolyProjectionObligation, ProjectionCacheKeyExt as _};
 use crate::traits::query::evaluate_obligation::InferCtxtExt;
@@ -166,8 +172,25 @@ where
         &mut self,
         infcx: &InferCtxt<'tcx>,
     ) -> PredicateObligations<'tcx> {
-        let mut processor =
-            DrainProcessor { removed_predicates: PredicateObligations::new(), infcx };
+        let stalled_coroutines = match infcx.typing_mode() {
+            TypingMode::Analysis { defining_opaque_types_and_generators } => {
+                defining_opaque_types_and_generators
+            }
+            TypingMode::Coherence
+            | TypingMode::Borrowck { defining_opaque_types: _ }
+            | TypingMode::PostBorrowckAnalysis { defined_opaque_types: _ }
+            | TypingMode::PostAnalysis => return Default::default(),
+        };
+
+        if stalled_coroutines.is_empty() {
+            return Default::default();
+        }
+
+        let mut processor = DrainProcessor {
+            infcx,
+            removed_predicates: PredicateObligations::new(),
+            stalled_coroutines,
+        };
         let outcome: Outcome<_, _> = self.predicates.process_obligations(&mut processor);
         assert!(outcome.errors.is_empty());
         return processor.removed_predicates;
@@ -175,6 +198,7 @@ where
         struct DrainProcessor<'a, 'tcx> {
             infcx: &'a InferCtxt<'tcx>,
             removed_predicates: PredicateObligations<'tcx>,
+            stalled_coroutines: &'tcx ty::List<LocalDefId>,
         }
 
         impl<'tcx> ObligationProcessor for DrainProcessor<'_, 'tcx> {
@@ -183,10 +207,14 @@ where
             type OUT = Outcome<Self::Obligation, Self::Error>;
 
             fn needs_process_obligation(&self, pending_obligation: &Self::Obligation) -> bool {
-                pending_obligation
-                    .stalled_on
-                    .iter()
-                    .any(|&var| self.infcx.ty_or_const_infer_var_changed(var))
+                self.infcx
+                    .resolve_vars_if_possible(pending_obligation.obligation.predicate)
+                    .visit_with(&mut StalledOnCoroutines {
+                        stalled_coroutines: self.stalled_coroutines,
+                        span: DUMMY_SP,
+                        cache: Default::default(),
+                    })
+                    .is_break()
             }
 
             fn process_obligation(
@@ -335,8 +363,8 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
 
         let infcx = self.selcx.infcx;
 
-        if sizedness_fast_path(infcx.tcx, obligation.predicate) {
-            return ProcessResult::Changed(thin_vec::thin_vec![]);
+        if sizedness_fast_path(infcx.tcx, obligation.predicate, obligation.param_env) {
+            return ProcessResult::Changed(thin_vec![]);
         }
 
         if obligation.predicate.has_aliases() {
@@ -404,6 +432,9 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                 ty::PredicateKind::AliasRelate(..) => {
                     bug!("AliasRelate is only used by the new solver")
                 }
+                ty::PredicateKind::Clause(ty::ClauseKind::UnstableFeature(_)) => {
+                   unreachable!("unexpected higher ranked `UnstableFeature` goal")
+                }
             },
             Some(pred) => match pred {
                 ty::PredicateKind::Clause(ty::ClauseKind::Trait(data)) => {
@@ -428,7 +459,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
 
                 ty::PredicateKind::Clause(ty::ClauseKind::RegionOutlives(data)) => {
                     if infcx.considering_regions {
-                        infcx.region_outlives_predicate(&obligation.cause, Binder::dummy(data));
+                        infcx.register_region_outlives_constraint(data, &obligation.cause);
                     }
 
                     ProcessResult::Changed(Default::default())
@@ -439,7 +470,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                     r_b,
                 ))) => {
                     if infcx.considering_regions {
-                        infcx.register_region_obligation_with_cause(t_a, r_b, &obligation.cause);
+                        infcx.register_type_outlives_constraint(t_a, r_b, &obligation.cause);
                     }
                     ProcessResult::Changed(Default::default())
                 }
@@ -456,7 +487,9 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
 
                 ty::PredicateKind::DynCompatible(trait_def_id) => {
                     if !self.selcx.tcx().is_dyn_compatible(trait_def_id) {
-                        ProcessResult::Error(FulfillmentErrorCode::Select(Unimplemented))
+                        ProcessResult::Error(FulfillmentErrorCode::Select(
+                            SelectionError::Unimplemented,
+                        ))
                     } else {
                         ProcessResult::Changed(Default::default())
                     }
@@ -507,7 +540,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                         }
                         ty::ConstKind::Bound(_, _) => bug!("escaping bound vars in {:?}", ct),
                         ty::ConstKind::Param(param_ct) => {
-                            param_ct.find_ty_from_env(obligation.param_env)
+                            param_ct.find_const_ty_from_env(obligation.param_env)
                         }
                     };
 
@@ -541,6 +574,10 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                 }
 
                 ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(term)) => {
+                    if term.is_trivially_wf(self.selcx.tcx()) {
+                        return ProcessResult::Changed(thin_vec![]);
+                    }
+
                     match wf::obligations(
                         self.selcx.infcx,
                         obligation.param_env,
@@ -759,6 +796,13 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                                 ))
                             }
                         }
+                    }
+                }
+                ty::PredicateKind::Clause(ty::ClauseKind::UnstableFeature(symbol)) => {
+                    if may_use_unstable_feature(self.selcx.infcx, obligation.param_env, symbol) {
+                        ProcessResult::Changed(Default::default())
+                    } else {
+                        ProcessResult::Unchanged
                     }
                 }
             },

@@ -1,11 +1,11 @@
-error[E0658]: the target feature `avx512bw` is currently unstable
-  --> $DIR/gate.rs:30:18
+error[E0658]: the target feature `x87` is currently unstable
+  --> $DIR/gate.rs:29:18
    |
-LL | #[target_feature(enable = "avx512bw")]
-   |                  ^^^^^^^^^^^^^^^^^^^
+LL | #[target_feature(enable = "x87")]
+   |                  ^^^^^^^^^^^^^^
    |
    = note: see issue #44839 <https://github.com/rust-lang/rust/issues/44839> for more information
-   = help: add `#![feature(avx512_target_feature)]` to the crate attributes to enable
+   = help: add `#![feature(x87_target_feature)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error: aborting due to 1 previous error

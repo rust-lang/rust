@@ -4,6 +4,7 @@ use rustc_hir::lang_items::LangItem;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_span::DUMMY_SP;
 use rustc_trait_selection::traits;
 
 fn is_copy_raw<'tcx>(tcx: TyCtxt<'tcx>, query: ty::PseudoCanonicalInput<'tcx, Ty<'tcx>>) -> bool {
@@ -42,7 +43,7 @@ fn is_item_raw<'tcx>(
     item: LangItem,
 ) -> bool {
     let (infcx, param_env) = tcx.infer_ctxt().build_with_typing_env(query.typing_env);
-    let trait_def_id = tcx.require_lang_item(item, None);
+    let trait_def_id = tcx.require_lang_item(item, DUMMY_SP);
     traits::type_known_to_meet_bound_modulo_regions(&infcx, param_env, query.value, trait_def_id)
 }
 

@@ -4,7 +4,9 @@ use std::sync::Arc;
 use rustc_codegen_ssa::CodegenResults;
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_data_structures::svh::Svh;
+use rustc_errors::timings::TimingSection;
 use rustc_hir::def_id::LOCAL_CRATE;
+use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::DepGraph;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
@@ -18,6 +20,7 @@ pub struct Linker {
     output_filenames: Arc<OutputFilenames>,
     // Only present when incr. comp. is enabled.
     crate_hash: Option<Svh>,
+    metadata: EncodedMetadata,
     ongoing_codegen: Box<dyn Any>,
 }
 
@@ -26,7 +29,7 @@ impl Linker {
         tcx: TyCtxt<'_>,
         codegen_backend: &dyn CodegenBackend,
     ) -> Linker {
-        let ongoing_codegen = passes::start_codegen(codegen_backend, tcx);
+        let (ongoing_codegen, metadata) = passes::start_codegen(codegen_backend, tcx);
 
         Linker {
             dep_graph: tcx.dep_graph.clone(),
@@ -36,14 +39,29 @@ impl Linker {
             } else {
                 None
             },
+            metadata,
             ongoing_codegen,
         }
     }
 
     pub fn link(self, sess: &Session, codegen_backend: &dyn CodegenBackend) {
-        let (codegen_results, work_products) = sess.time("finish_ongoing_codegen", || {
+        let (codegen_results, mut work_products) = sess.time("finish_ongoing_codegen", || {
             codegen_backend.join_codegen(self.ongoing_codegen, sess, &self.output_filenames)
         });
+        sess.timings.end_section(sess.dcx(), TimingSection::Codegen);
+
+        if sess.opts.incremental.is_some()
+            && let Some(path) = self.metadata.path()
+            && let Some((id, product)) =
+                rustc_incremental::copy_cgu_workproduct_to_incr_comp_cache_dir(
+                    sess,
+                    "metadata",
+                    &[("rmeta", path)],
+                    &[],
+                )
+        {
+            work_products.insert(id, product);
+        }
 
         sess.dcx().abort_if_errors();
 
@@ -75,6 +93,7 @@ impl Linker {
                 sess,
                 &rlink_file,
                 &codegen_results,
+                &self.metadata,
                 &*self.output_filenames,
             )
             .unwrap_or_else(|error| {
@@ -84,6 +103,7 @@ impl Linker {
         }
 
         let _timer = sess.prof.verbose_generic_activity("link_crate");
-        codegen_backend.link(sess, codegen_results, &self.output_filenames)
+        let _timing = sess.timings.section_guard(sess.dcx(), TimingSection::Linking);
+        codegen_backend.link(sess, codegen_results, self.metadata, &self.output_filenames)
     }
 }

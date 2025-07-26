@@ -7,7 +7,7 @@ use def_path_hash_map::DefPathHashMapRef;
 use encoder::EncodeContext;
 pub use encoder::{EncodedMetadata, encode_metadata, rendered_const};
 use rustc_abi::{FieldIdx, ReprOptions, VariantIdx};
-use rustc_ast::expand::StrippedCfgItem;
+use rustc_attr_data_structures::StrippedCfgItem;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::svh::Svh;
 use rustc_hir::PreciseCapturingArgKind;
@@ -40,7 +40,7 @@ use rustc_span::hygiene::{ExpnIndex, MacroKind, SyntaxContextKey};
 use rustc_span::{self, ExpnData, ExpnHash, ExpnId, Ident, Span, Symbol};
 use rustc_target::spec::{PanicStrategy, TargetTuple};
 use table::TableBuilder;
-use {rustc_ast as ast, rustc_attr_parsing as attr, rustc_hir as hir};
+use {rustc_ast as ast, rustc_attr_data_structures as attrs, rustc_hir as hir};
 
 use crate::creader::CrateMetadataRef;
 
@@ -200,7 +200,7 @@ type ExpnHashTable = LazyTable<ExpnIndex, Option<LazyValue<ExpnHash>>>;
 #[derive(MetadataEncodable, MetadataDecodable)]
 pub(crate) struct ProcMacroData {
     proc_macro_decls_static: DefIndex,
-    stability: Option<attr::Stability>,
+    stability: Option<attrs::Stability>,
     macros: LazyArray<DefIndex>,
 }
 
@@ -282,7 +282,8 @@ pub(crate) struct CrateRoot {
 
     exportable_items: LazyArray<DefIndex>,
     stable_order_of_exportable_impls: LazyArray<(DefIndex, usize)>,
-    exported_symbols: LazyArray<(ExportedSymbol<'static>, SymbolExportInfo)>,
+    exported_non_generic_symbols: LazyArray<(ExportedSymbol<'static>, SymbolExportInfo)>,
+    exported_generic_symbols: LazyArray<(ExportedSymbol<'static>, SymbolExportInfo)>,
 
     syntax_contexts: SyntaxContextTable,
     expn_data: ExpnDataTable,
@@ -402,7 +403,6 @@ define_tables! {
     explicit_implied_predicates_of: Table<DefIndex, LazyArray<(ty::Clause<'static>, Span)>>,
     explicit_implied_const_bounds: Table<DefIndex, LazyArray<(ty::PolyTraitRef<'static>, Span)>>,
     inherent_impls: Table<DefIndex, LazyArray<DefIndex>>,
-    associated_types_for_impl_traits_in_associated_fn: Table<DefIndex, LazyArray<DefId>>,
     opt_rpitit_info: Table<DefIndex, Option<LazyValue<ty::ImplTraitInTraitData>>>,
     // Reexported names are not associated with individual `DefId`s,
     // e.g. a glob import can introduce a lot of names, all with the same `DefId`.
@@ -422,10 +422,10 @@ define_tables! {
     safety: Table<DefIndex, hir::Safety>,
     def_span: Table<DefIndex, LazyValue<Span>>,
     def_ident_span: Table<DefIndex, LazyValue<Span>>,
-    lookup_stability: Table<DefIndex, LazyValue<attr::Stability>>,
-    lookup_const_stability: Table<DefIndex, LazyValue<attr::ConstStability>>,
-    lookup_default_body_stability: Table<DefIndex, LazyValue<attr::DefaultBodyStability>>,
-    lookup_deprecation_entry: Table<DefIndex, LazyValue<attr::Deprecation>>,
+    lookup_stability: Table<DefIndex, LazyValue<attrs::Stability>>,
+    lookup_const_stability: Table<DefIndex, LazyValue<attrs::ConstStability>>,
+    lookup_default_body_stability: Table<DefIndex, LazyValue<attrs::DefaultBodyStability>>,
+    lookup_deprecation_entry: Table<DefIndex, LazyValue<attrs::Deprecation>>,
     explicit_predicates_of: Table<DefIndex, LazyValue<ty::GenericPredicates<'static>>>,
     generics_of: Table<DefIndex, LazyValue<ty::Generics>>,
     type_of: Table<DefIndex, LazyValue<ty::EarlyBinder<'static, Ty<'static>>>>,
@@ -480,6 +480,8 @@ define_tables! {
     doc_link_traits_in_scope: Table<DefIndex, LazyArray<DefId>>,
     assumed_wf_types_for_rpitit: Table<DefIndex, LazyArray<(Ty<'static>, Span)>>,
     opaque_ty_origin: Table<DefIndex, LazyValue<hir::OpaqueTyOrigin<DefId>>>,
+    anon_const_kind: Table<DefIndex, LazyValue<ty::AnonConstKind>>,
+    associated_types_for_impl_traits_in_trait_or_impl: Table<DefIndex, LazyValue<DefIdMap<Vec<DefId>>>>,
 }
 
 #[derive(TyEncodable, TyDecodable)]

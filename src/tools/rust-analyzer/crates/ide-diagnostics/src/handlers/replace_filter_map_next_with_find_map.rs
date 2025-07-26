@@ -21,6 +21,7 @@ pub(crate) fn replace_filter_map_next_with_find_map(
         "replace filter_map(..).next() with find_map(..)",
         InFile::new(d.file, d.next_expr.into()),
     )
+    .stable()
     .with_fixes(fixes(ctx, d))
 }
 

@@ -9,8 +9,7 @@ use minicore::*;
 
 extern "stdcall" {
     fn printf(_: *const u8, ...);
-    //~^ ERROR: C-variadic function must have a compatible calling convention,
-    // like C, cdecl, win64, sysv64 or efiapi
+    //~^ ERROR: C-variadic functions with the "stdcall" calling convention are not supported
 }
 
 extern "C" {

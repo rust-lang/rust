@@ -1,4 +1,6 @@
-//@ compile-flags: -Znext-solver
+//@ check-pass
+//@ revisions: current next
+//@[next] compile-flags: -Znext-solver
 
 // Demonstrates what's needed to make use of `?` in const contexts.
 
@@ -13,14 +15,12 @@ struct TryMe;
 struct Error;
 
 impl const FromResidual<Error> for TryMe {
-    //~^ ERROR const `impl` for trait `FromResidual` which is not marked with `#[const_trait]`
     fn from_residual(residual: Error) -> Self {
         TryMe
     }
 }
 
 impl const Try for TryMe {
-    //~^ ERROR const `impl` for trait `Try` which is not marked with `#[const_trait]`
     type Output = ();
     type Residual = Error;
     fn from_output(output: Self::Output) -> Self {
@@ -33,8 +33,6 @@ impl const Try for TryMe {
 
 const fn t() -> TryMe {
     TryMe?;
-    //~^ ERROR `?` is not allowed on
-    //~| ERROR `?` is not allowed on
     TryMe
 }
 

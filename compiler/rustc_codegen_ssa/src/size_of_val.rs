@@ -5,6 +5,7 @@ use rustc_hir::LangItem;
 use rustc_middle::bug;
 use rustc_middle::ty::print::{with_no_trimmed_paths, with_no_visible_paths};
 use rustc_middle::ty::{self, Ty};
+use rustc_span::DUMMY_SP;
 use tracing::{debug, trace};
 
 use crate::common::IntPredicate;
@@ -62,7 +63,7 @@ pub fn size_and_align_of_dst<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
             // Obtain the panic entry point.
             let (fn_abi, llfn, _instance) =
-                common::build_langcall(bx, None, LangItem::PanicNounwind);
+                common::build_langcall(bx, DUMMY_SP, LangItem::PanicNounwind);
 
             // Generate the call. Cannot use `do_call` since we don't have a MIR terminator so we
             // can't create a `TerminationCodegenHelper`. (But we are in good company, this code is

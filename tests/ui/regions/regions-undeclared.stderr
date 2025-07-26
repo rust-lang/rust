@@ -7,35 +7,46 @@ LL | static c_x: &'blk isize = &22;
 error[E0261]: use of undeclared lifetime name `'a`
   --> $DIR/regions-undeclared.rs:4:10
    |
-LL | enum EnumDecl {
-   |              - help: consider introducing lifetime `'a` here: `<'a>`
 LL |     Foo(&'a isize),
    |          ^^ undeclared lifetime
+   |
+help: consider introducing lifetime `'a` here
+   |
+LL | enum EnumDecl<'a> {
+   |              ++++
 
 error[E0261]: use of undeclared lifetime name `'a`
   --> $DIR/regions-undeclared.rs:5:10
    |
-LL | enum EnumDecl {
-   |              - help: consider introducing lifetime `'a` here: `<'a>`
-LL |     Foo(&'a isize),
 LL |     Bar(&'a isize),
    |          ^^ undeclared lifetime
+   |
+help: consider introducing lifetime `'a` here
+   |
+LL | enum EnumDecl<'a> {
+   |              ++++
 
 error[E0261]: use of undeclared lifetime name `'a`
   --> $DIR/regions-undeclared.rs:8:15
    |
 LL | fn fnDecl(x: &'a isize,
-   |          -    ^^ undeclared lifetime
-   |          |
-   |          help: consider introducing lifetime `'a` here: `<'a>`
+   |               ^^ undeclared lifetime
+   |
+help: consider introducing lifetime `'a` here
+   |
+LL | fn fnDecl<'a>(x: &'a isize,
+   |          ++++
 
 error[E0261]: use of undeclared lifetime name `'a`
   --> $DIR/regions-undeclared.rs:9:15
    |
-LL | fn fnDecl(x: &'a isize,
-   |          - help: consider introducing lifetime `'a` here: `<'a>`
 LL |           y: &'a isize)
    |               ^^ undeclared lifetime
+   |
+help: consider introducing lifetime `'a` here
+   |
+LL | fn fnDecl<'a>(x: &'a isize,
+   |          ++++
 
 error: aborting due to 5 previous errors
 

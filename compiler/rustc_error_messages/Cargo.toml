@@ -5,8 +5,8 @@ edition = "2024"
 
 [dependencies]
 # tidy-alphabetical-start
-fluent-bundle = "0.15.2"
-fluent-syntax = "0.11"
+fluent-bundle = "0.16"
+fluent-syntax = "0.12"
 icu_list = "1.2"
 icu_locid = "1.2"
 icu_provider_adapters = "1.2"

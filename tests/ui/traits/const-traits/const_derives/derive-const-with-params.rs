@@ -1,8 +1,7 @@
-//@ known-bug: #110395
-// FIXME(const_trait_impl) check-pass
+//@ check-pass
 
 #![feature(derive_const)]
-#![feature(const_trait_impl)]
+#![feature(const_trait_impl, const_cmp)]
 
 #[derive_const(PartialEq)]
 pub struct Reverse<T>(T);

@@ -171,7 +171,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
             _ if ty.references_error() => return None,
             ty::Adt(adt, args) if self.tcx().is_lang_item(adt.did(), LangItem::MaybeUninit) => {
                 let fields = &adt.non_enum_variant().fields;
-                let ty = fields[FieldIdx::from_u32(1)].ty(self.tcx(), args);
+                let ty = fields[FieldIdx::ONE].ty(self.tcx(), args);
                 // FIXME: Are we just trying to map to the `T` in `MaybeUninit<T>`?
                 // If so, just get it from the args.
                 let ty::Adt(ty, args) = ty.kind() else {

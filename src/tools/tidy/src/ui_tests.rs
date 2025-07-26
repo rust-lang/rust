@@ -1,23 +1,11 @@
 //! Tidy check to ensure below in UI test directories:
-//! - the number of entries in each directory must be less than `ENTRY_LIMIT`
 //! - there are no stray `.stderr` files
 
-use std::collections::{BTreeSet, HashMap};
+use std::collections::BTreeSet;
 use std::ffi::OsStr;
 use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
-
-use ignore::Walk;
-
-// FIXME: GitHub's UI truncates file lists that exceed 1000 entries, so these
-// should all be 1000 or lower. Limits significantly smaller than 1000 are also
-// desirable, because large numbers of files are unwieldy in general. See issue
-// #73494.
-const ENTRY_LIMIT: u32 = 901;
-// FIXME: The following limits should be reduced eventually.
-
-const ISSUES_ENTRY_LIMIT: u32 = 1624;
 
 const EXPECTED_TEST_FILE_EXTENSIONS: &[&str] = &[
     "rs",     // test source files
@@ -54,44 +42,6 @@ const EXTENSION_EXCEPTION_PATHS: &[&str] = &[
     "tests/ui/std/windows-bat-args3.bat", // tests escaping arguments through batch files
 ];
 
-fn check_entries(tests_path: &Path, bad: &mut bool) {
-    let mut directories: HashMap<PathBuf, u32> = HashMap::new();
-
-    for dir in Walk::new(&tests_path.join("ui")) {
-        if let Ok(entry) = dir {
-            let parent = entry.path().parent().unwrap().to_path_buf();
-            *directories.entry(parent).or_default() += 1;
-        }
-    }
-
-    let (mut max, mut max_issues) = (0, 0);
-    for (dir_path, count) in directories {
-        let is_issues_dir = tests_path.join("ui/issues") == dir_path;
-        let (limit, maxcnt) = if is_issues_dir {
-            (ISSUES_ENTRY_LIMIT, &mut max_issues)
-        } else {
-            (ENTRY_LIMIT, &mut max)
-        };
-        *maxcnt = (*maxcnt).max(count);
-        if count > limit {
-            tidy_error!(
-                bad,
-                "following path contains more than {} entries, \
-                    you should move the test to some relevant subdirectory (current: {}): {}",
-                limit,
-                count,
-                dir_path.display()
-            );
-        }
-    }
-    if ISSUES_ENTRY_LIMIT > max_issues {
-        tidy_error!(
-            bad,
-            "`ISSUES_ENTRY_LIMIT` is too high (is {ISSUES_ENTRY_LIMIT}, should be {max_issues})"
-        );
-    }
-}
-
 pub fn check(root_path: &Path, bless: bool, bad: &mut bool) {
     let issues_txt_header = r#"============================================================
     ⚠️⚠️⚠️NOTHING SHOULD EVER BE ADDED TO THIS LIST⚠️⚠️⚠️
@@ -99,7 +49,6 @@ pub fn check(root_path: &Path, bless: bool, bad: &mut bool) {
 "#;
 
     let path = &root_path.join("tests");
-    check_entries(&path, bad);
 
     // the list of files in ui tests that are allowed to start with `issue-XXXX`
     // BTreeSet because we would like a stable ordering so --bless works
@@ -109,13 +58,12 @@ pub fn check(root_path: &Path, bless: bool, bad: &mut bool) {
         .strip_prefix(issues_txt_header)
         .unwrap()
         .lines()
-        .map(|line| {
+        .inspect(|&line| {
             if prev_line > line {
                 is_sorted = false;
             }
 
             prev_line = line;
-            line
         })
         .collect();
 
@@ -164,31 +112,32 @@ pub fn check(root_path: &Path, bless: bool, bad: &mut bool) {
                     tidy_error!(bad, "Stray file with UI testing output: {:?}", file_path);
                 }
 
-                if let Ok(metadata) = fs::metadata(file_path) {
-                    if metadata.len() == 0 {
-                        tidy_error!(bad, "Empty file with UI testing output: {:?}", file_path);
-                    }
+                if let Ok(metadata) = fs::metadata(file_path)
+                    && metadata.len() == 0
+                {
+                    tidy_error!(bad, "Empty file with UI testing output: {:?}", file_path);
                 }
             }
 
-            if ext == "rs" {
-                if let Some(test_name) = static_regex!(r"^issues?[-_]?(\d{3,})").captures(testname)
-                {
-                    // these paths are always relative to the passed `path` and always UTF8
-                    let stripped_path = file_path
-                        .strip_prefix(path)
-                        .unwrap()
-                        .to_str()
-                        .unwrap()
-                        .replace(std::path::MAIN_SEPARATOR_STR, "/");
+            if ext == "rs"
+                && let Some(test_name) = static_regex!(r"^issues?[-_]?(\d{3,})").captures(testname)
+            {
+                // these paths are always relative to the passed `path` and always UTF8
+                let stripped_path = file_path
+                    .strip_prefix(path)
+                    .unwrap()
+                    .to_str()
+                    .unwrap()
+                    .replace(std::path::MAIN_SEPARATOR_STR, "/");
 
-                    if !remaining_issue_names.remove(stripped_path.as_str()) {
-                        tidy_error!(
-                            bad,
-                            "file `tests/{stripped_path}` must begin with a descriptive name, consider `{{reason}}-issue-{issue_n}.rs`",
-                            issue_n = &test_name[1],
-                        );
-                    }
+                if !remaining_issue_names.remove(stripped_path.as_str())
+                    && !stripped_path.starts_with("ui/issues/")
+                {
+                    tidy_error!(
+                        bad,
+                        "file `tests/{stripped_path}` must begin with a descriptive name, consider `{{reason}}-issue-{issue_n}.rs`",
+                        issue_n = &test_name[1],
+                    );
                 }
             }
         }
@@ -203,7 +152,7 @@ pub fn check(root_path: &Path, bless: bool, bad: &mut bool) {
         // so we don't bork things on panic or a contributor using Ctrl+C
         let blessed_issues_path = tidy_src.join("issues_blessed.txt");
         let mut blessed_issues_txt = fs::File::create(&blessed_issues_path).unwrap();
-        blessed_issues_txt.write(issues_txt_header.as_bytes()).unwrap();
+        blessed_issues_txt.write_all(issues_txt_header.as_bytes()).unwrap();
         // If we changed paths to use the OS separator, reassert Unix chauvinism for blessing.
         for filename in allowed_issue_names.difference(&remaining_issue_names) {
             writeln!(blessed_issues_txt, "{filename}").unwrap();

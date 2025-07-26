@@ -168,7 +168,8 @@ fn build_llvm_sysroot_for_triple(compiler: Compiler) -> SysrootTarget {
         let file_name_str = file.file_name().unwrap().to_str().unwrap();
         if (file_name_str.contains("rustc_")
             && !file_name_str.contains("rustc_std_workspace_")
-            && !file_name_str.contains("rustc_demangle"))
+            && !file_name_str.contains("rustc_demangle")
+            && !file_name_str.contains("rustc_literal_escaper"))
             || file_name_str.contains("chalk")
             || file_name_str.contains("tracing")
             || file_name_str.contains("regex")
@@ -234,7 +235,7 @@ fn build_clif_sysroot_for_triple(
     compiler.rustflags.extend(rustflags);
     let mut build_cmd = STANDARD_LIBRARY.build(&compiler, dirs);
     build_cmd.arg("--release");
-    build_cmd.arg("--features").arg("backtrace panic-unwind compiler-builtins-no-f16-f128");
+    build_cmd.arg("--features").arg("backtrace panic-unwind");
     build_cmd.arg(format!("-Zroot-dir={}", STDLIB_SRC.to_path(dirs).display()));
     build_cmd.env("CARGO_PROFILE_RELEASE_DEBUG", "true");
     build_cmd.env("__CARGO_DEFAULT_LIB_METADATA", "cg_clif");

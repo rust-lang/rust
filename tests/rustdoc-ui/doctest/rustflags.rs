@@ -1,5 +1,5 @@
 //@ check-pass
-//@ compile-flags: --test -Zunstable-options --doctest-compilation-args=--cfg=testcase_must_be_present
+//@ compile-flags: --test -Zunstable-options --doctest-build-arg=--cfg=testcase_must_be_present
 //@ normalize-stdout: "tests/rustdoc-ui/doctest" -> "$$DIR"
 //@ normalize-stdout: "finished in \d+\.\d+s" -> "finished in $$TIME"
 

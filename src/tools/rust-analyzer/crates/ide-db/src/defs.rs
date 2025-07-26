@@ -6,7 +6,7 @@
 // FIXME: this badly needs rename/rewrite (matklad, 2020-02-06).
 
 use crate::RootDatabase;
-use crate::documentation::{Documentation, HasDocs};
+use crate::documentation::{DocsRangeMap, Documentation, HasDocs};
 use crate::famous_defs::FamousDefs;
 use arrayvec::ArrayVec;
 use either::Either;
@@ -21,7 +21,7 @@ use hir::{
 use span::Edition;
 use stdx::{format_to, impl_from};
 use syntax::{
-    SyntaxKind, SyntaxNode, SyntaxToken,
+    SyntaxKind, SyntaxNode, SyntaxToken, TextSize,
     ast::{self, AstNode},
     match_ast,
 };
@@ -210,29 +210,40 @@ impl Definition {
         famous_defs: Option<&FamousDefs<'_, '_>>,
         display_target: DisplayTarget,
     ) -> Option<Documentation> {
+        self.docs_with_rangemap(db, famous_defs, display_target).map(|(docs, _)| docs)
+    }
+
+    pub fn docs_with_rangemap(
+        &self,
+        db: &RootDatabase,
+        famous_defs: Option<&FamousDefs<'_, '_>>,
+        display_target: DisplayTarget,
+    ) -> Option<(Documentation, Option<DocsRangeMap>)> {
         let docs = match self {
-            Definition::Macro(it) => it.docs(db),
-            Definition::Field(it) => it.docs(db),
-            Definition::Module(it) => it.docs(db),
-            Definition::Crate(it) => it.docs(db),
-            Definition::Function(it) => it.docs(db),
-            Definition::Adt(it) => it.docs(db),
-            Definition::Variant(it) => it.docs(db),
-            Definition::Const(it) => it.docs(db),
-            Definition::Static(it) => it.docs(db),
-            Definition::Trait(it) => it.docs(db),
-            Definition::TraitAlias(it) => it.docs(db),
+            Definition::Macro(it) => it.docs_with_rangemap(db),
+            Definition::Field(it) => it.docs_with_rangemap(db),
+            Definition::Module(it) => it.docs_with_rangemap(db),
+            Definition::Crate(it) => it.docs_with_rangemap(db),
+            Definition::Function(it) => it.docs_with_rangemap(db),
+            Definition::Adt(it) => it.docs_with_rangemap(db),
+            Definition::Variant(it) => it.docs_with_rangemap(db),
+            Definition::Const(it) => it.docs_with_rangemap(db),
+            Definition::Static(it) => it.docs_with_rangemap(db),
+            Definition::Trait(it) => it.docs_with_rangemap(db),
+            Definition::TraitAlias(it) => it.docs_with_rangemap(db),
             Definition::TypeAlias(it) => {
-                it.docs(db).or_else(|| {
+                it.docs_with_rangemap(db).or_else(|| {
                     // docs are missing, try to fall back to the docs of the aliased item.
                     let adt = it.ty(db).as_adt()?;
-                    let docs = adt.docs(db)?;
-                    let docs = format!(
-                        "*This is the documentation for* `{}`\n\n{}",
-                        adt.display(db, display_target),
-                        docs.as_str()
+                    let (docs, range_map) = adt.docs_with_rangemap(db)?;
+                    let header_docs = format!(
+                        "*This is the documentation for* `{}`\n\n",
+                        adt.display(db, display_target)
                     );
-                    Some(Documentation::new(docs))
+                    let offset = TextSize::new(header_docs.len() as u32);
+                    let range_map = range_map.shift_docstring_line_range(offset);
+                    let docs = header_docs + docs.as_str();
+                    Some((Documentation::new(docs), range_map))
                 })
             }
             Definition::BuiltinType(it) => {
@@ -241,17 +252,17 @@ impl Definition {
                     let primitive_mod =
                         format!("prim_{}", it.name().display(fd.0.db, display_target.edition));
                     let doc_owner = find_std_module(fd, &primitive_mod, display_target.edition)?;
-                    doc_owner.docs(fd.0.db)
+                    doc_owner.docs_with_rangemap(fd.0.db)
                 })
             }
             Definition::BuiltinLifetime(StaticLifetime) => None,
             Definition::Local(_) => None,
             Definition::SelfType(impl_def) => {
-                impl_def.self_ty(db).as_adt().map(|adt| adt.docs(db))?
+                impl_def.self_ty(db).as_adt().map(|adt| adt.docs_with_rangemap(db))?
             }
             Definition::GenericParam(_) => None,
             Definition::Label(_) => None,
-            Definition::ExternCrateDecl(it) => it.docs(db),
+            Definition::ExternCrateDecl(it) => it.docs_with_rangemap(db),
 
             Definition::BuiltinAttr(it) => {
                 let name = it.name(db);
@@ -276,7 +287,8 @@ impl Definition {
                         name_value_str
                     );
                 }
-                Some(Documentation::new(docs.replace('*', "\\*")))
+
+                return Some((Documentation::new(docs.replace('*', "\\*")), None));
             }
             Definition::ToolModule(_) => None,
             Definition::DeriveHelper(_) => None,
@@ -291,8 +303,9 @@ impl Definition {
             let trait_ = assoc.implemented_trait(db)?;
             let name = Some(assoc.name(db)?);
             let item = trait_.items(db).into_iter().find(|it| it.name(db) == name)?;
-            item.docs(db)
+            item.docs_with_rangemap(db)
         })
+        .map(|(docs, range_map)| (docs, Some(range_map)))
     }
 
     pub fn label(&self, db: &RootDatabase, display_target: DisplayTarget) -> String {
@@ -372,17 +385,17 @@ fn find_std_module(
 
 // FIXME: IdentClass as a name no longer fits
 #[derive(Debug)]
-pub enum IdentClass {
-    NameClass(NameClass),
-    NameRefClass(NameRefClass),
+pub enum IdentClass<'db> {
+    NameClass(NameClass<'db>),
+    NameRefClass(NameRefClass<'db>),
     Operator(OperatorClass),
 }
 
-impl IdentClass {
+impl<'db> IdentClass<'db> {
     pub fn classify_node(
-        sema: &Semantics<'_, RootDatabase>,
+        sema: &Semantics<'db, RootDatabase>,
         node: &SyntaxNode,
-    ) -> Option<IdentClass> {
+    ) -> Option<IdentClass<'db>> {
         match_ast! {
             match node {
                 ast::Name(name) => NameClass::classify(sema, &name).map(IdentClass::NameClass),
@@ -405,23 +418,23 @@ impl IdentClass {
     }
 
     pub fn classify_token(
-        sema: &Semantics<'_, RootDatabase>,
+        sema: &Semantics<'db, RootDatabase>,
         token: &SyntaxToken,
-    ) -> Option<IdentClass> {
+    ) -> Option<IdentClass<'db>> {
         let parent = token.parent()?;
         Self::classify_node(sema, &parent)
     }
 
     pub fn classify_lifetime(
-        sema: &Semantics<'_, RootDatabase>,
+        sema: &Semantics<'db, RootDatabase>,
         lifetime: &ast::Lifetime,
-    ) -> Option<IdentClass> {
+    ) -> Option<IdentClass<'db>> {
         NameRefClass::classify_lifetime(sema, lifetime)
             .map(IdentClass::NameRefClass)
             .or_else(|| NameClass::classify_lifetime(sema, lifetime).map(IdentClass::NameClass))
     }
 
-    pub fn definitions(self) -> ArrayVec<(Definition, Option<GenericSubstitution>), 2> {
+    pub fn definitions(self) -> ArrayVec<(Definition, Option<GenericSubstitution<'db>>), 2> {
         let mut res = ArrayVec::new();
         match self {
             IdentClass::NameClass(NameClass::Definition(it) | NameClass::ConstReference(it)) => {
@@ -505,7 +518,7 @@ impl IdentClass {
 ///
 /// A model special case is `None` constant in pattern.
 #[derive(Debug)]
-pub enum NameClass {
+pub enum NameClass<'db> {
     Definition(Definition),
     /// `None` in `if let None = Some(82) {}`.
     /// Syntactically, it is a name, but semantically it is a reference.
@@ -515,11 +528,11 @@ pub enum NameClass {
     PatFieldShorthand {
         local_def: Local,
         field_ref: Field,
-        adt_subst: GenericSubstitution,
+        adt_subst: GenericSubstitution<'db>,
     },
 }
 
-impl NameClass {
+impl<'db> NameClass<'db> {
     /// `Definition` defined by this name.
     pub fn defined(self) -> Option<Definition> {
         let res = match self {
@@ -532,7 +545,10 @@ impl NameClass {
         Some(res)
     }
 
-    pub fn classify(sema: &Semantics<'_, RootDatabase>, name: &ast::Name) -> Option<NameClass> {
+    pub fn classify(
+        sema: &Semantics<'db, RootDatabase>,
+        name: &ast::Name,
+    ) -> Option<NameClass<'db>> {
         let _p = tracing::info_span!("NameClass::classify").entered();
 
         let parent = name.syntax().parent()?;
@@ -584,10 +600,10 @@ impl NameClass {
             Some(definition)
         }
 
-        fn classify_ident_pat(
-            sema: &Semantics<'_, RootDatabase>,
+        fn classify_ident_pat<'db>(
+            sema: &Semantics<'db, RootDatabase>,
             ident_pat: ast::IdentPat,
-        ) -> Option<NameClass> {
+        ) -> Option<NameClass<'db>> {
             if let Some(def) = sema.resolve_bind_pat_to_const(&ident_pat) {
                 return Some(NameClass::ConstReference(Definition::from(def)));
             }
@@ -625,9 +641,9 @@ impl NameClass {
     }
 
     pub fn classify_lifetime(
-        sema: &Semantics<'_, RootDatabase>,
+        sema: &Semantics<'db, RootDatabase>,
         lifetime: &ast::Lifetime,
-    ) -> Option<NameClass> {
+    ) -> Option<NameClass<'db>> {
         let _p = tracing::info_span!("NameClass::classify_lifetime", ?lifetime).entered();
         let parent = lifetime.syntax().parent()?;
 
@@ -710,12 +726,12 @@ impl OperatorClass {
 /// A model special case is field shorthand syntax, which uses a single
 /// reference to point to two different defs.
 #[derive(Debug)]
-pub enum NameRefClass {
-    Definition(Definition, Option<GenericSubstitution>),
+pub enum NameRefClass<'db> {
+    Definition(Definition, Option<GenericSubstitution<'db>>),
     FieldShorthand {
         local_ref: Local,
         field_ref: Field,
-        adt_subst: GenericSubstitution,
+        adt_subst: GenericSubstitution<'db>,
     },
     /// The specific situation where we have an extern crate decl without a rename
     /// Here we have both a declaration and a reference.
@@ -728,13 +744,13 @@ pub enum NameRefClass {
     },
 }
 
-impl NameRefClass {
+impl<'db> NameRefClass<'db> {
     // Note: we don't have unit-tests for this rather important function.
     // It is primarily exercised via goto definition tests in `ide`.
     pub fn classify(
-        sema: &Semantics<'_, RootDatabase>,
+        sema: &Semantics<'db, RootDatabase>,
         name_ref: &ast::NameRef,
-    ) -> Option<NameRefClass> {
+    ) -> Option<NameRefClass<'db>> {
         let _p = tracing::info_span!("NameRefClass::classify", ?name_ref).entered();
 
         let parent = name_ref.syntax().parent()?;
@@ -853,9 +869,9 @@ impl NameRefClass {
     }
 
     pub fn classify_lifetime(
-        sema: &Semantics<'_, RootDatabase>,
+        sema: &Semantics<'db, RootDatabase>,
         lifetime: &ast::Lifetime,
-    ) -> Option<NameRefClass> {
+    ) -> Option<NameRefClass<'db>> {
         let _p = tracing::info_span!("NameRefClass::classify_lifetime", ?lifetime).entered();
         if lifetime.text() == "'static" {
             return Some(NameRefClass::Definition(

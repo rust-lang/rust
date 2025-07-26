@@ -10,24 +10,6 @@ LL -         (0 if guard(0)) => {},
 LL +         0 if guard(0) => {},
    |
 
-error[E0425]: cannot find value `x` in this scope
-  --> $DIR/feature-gate-guard-patterns.rs:23:22
-   |
-LL |     let ((x if guard(x)) | x) = 0;
-   |                      ^ not found in this scope
-
-error[E0425]: cannot find value `x` in this scope
-  --> $DIR/feature-gate-guard-patterns.rs:38:45
-   |
-LL | fn even_as_function_parameters(((x if guard(x), _) | (_, x)): (i32, i32)) {}
-   |                                             ^
-   |
-help: the binding `x` is available in a different scope in the same function
-  --> $DIR/feature-gate-guard-patterns.rs:23:11
-   |
-LL |     let ((x if guard(x)) | x) = 0;
-   |           ^
-
 error[E0658]: guard patterns are experimental
   --> $DIR/feature-gate-guard-patterns.rs:18:15
    |
@@ -51,7 +33,7 @@ LL |     let ((x if guard(x)) | x) = 0;
    = help: consider using match arm guards
 
 error[E0658]: guard patterns are experimental
-  --> $DIR/feature-gate-guard-patterns.rs:27:18
+  --> $DIR/feature-gate-guard-patterns.rs:26:18
    |
 LL |     if let (x if guard(x)) = 0 {}
    |                  ^^^^^^^^
@@ -62,7 +44,7 @@ LL |     if let (x if guard(x)) = 0 {}
    = help: consider using match arm guards
 
 error[E0658]: guard patterns are experimental
-  --> $DIR/feature-gate-guard-patterns.rs:30:21
+  --> $DIR/feature-gate-guard-patterns.rs:29:21
    |
 LL |     while let (x if guard(x)) = 0 {}
    |                     ^^^^^^^^
@@ -73,7 +55,7 @@ LL |     while let (x if guard(x)) = 0 {}
    = help: consider using match arm guards
 
 error[E0658]: guard patterns are experimental
-  --> $DIR/feature-gate-guard-patterns.rs:34:21
+  --> $DIR/feature-gate-guard-patterns.rs:33:21
    |
 LL |     while let (x if guard(x)) = 0 {}
    |                     ^^^^^^^^
@@ -84,7 +66,7 @@ LL |     while let (x if guard(x)) = 0 {}
    = help: consider using match arm guards
 
 error[E0658]: guard patterns are experimental
-  --> $DIR/feature-gate-guard-patterns.rs:38:39
+  --> $DIR/feature-gate-guard-patterns.rs:37:39
    |
 LL | fn even_as_function_parameters(((x if guard(x), _) | (_, x)): (i32, i32)) {}
    |                                       ^^^^^^^^
@@ -94,7 +76,6 @@ LL | fn even_as_function_parameters(((x if guard(x), _) | (_, x)): (i32, i32)) {
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
    = help: consider using match arm guards
 
-error: aborting due to 9 previous errors
+error: aborting due to 7 previous errors
 
-Some errors have detailed explanations: E0425, E0658.
-For more information about an error, try `rustc --explain E0425`.
+For more information about this error, try `rustc --explain E0658`.

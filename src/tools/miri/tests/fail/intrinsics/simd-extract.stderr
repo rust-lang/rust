@@ -2,7 +2,7 @@ error: Undefined Behavior: `simd_extract` index 4 is out-of-bounds of vector wit
   --> tests/fail/intrinsics/simd-extract.rs:LL:CC
    |
 LL |     let _x: i32 = unsafe { std::intrinsics::simd::simd_extract(v, 4) };
-   |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `simd_extract` index 4 is out-of-bounds of vector with length 4
+   |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Undefined Behavior occurred here
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

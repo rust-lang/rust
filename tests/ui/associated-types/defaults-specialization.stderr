@@ -31,7 +31,7 @@ error[E0053]: method `make` has an incompatible type for trait
   --> $DIR/defaults-specialization.rs:35:18
    |
 LL |     default type Ty = bool;
-   |     ----------------------- associated type is `default` and may be overridden
+   |     --------------- associated type is `default` and may be overridden
 LL |
 LL |     fn make() -> bool { true }
    |                  ^^^^ expected associated type, found `bool`
@@ -53,7 +53,7 @@ error[E0308]: mismatched types
   --> $DIR/defaults-specialization.rs:10:9
    |
 LL |     type Ty = u8;
-   |     ------------- associated type defaults can't be assumed inside the trait defining them
+   |     ------- associated type defaults can't be assumed inside the trait defining them
 LL |
 LL |     fn make() -> Self::Ty {
    |                  -------- expected `<Self as Tr>::Ty` because of return type
@@ -80,7 +80,7 @@ error[E0308]: mismatched types
   --> $DIR/defaults-specialization.rs:44:29
    |
 LL |     default type Ty = bool;
-   |     ----------------------- associated type is `default` and may be overridden
+   |     --------------- associated type is `default` and may be overridden
 LL |
 LL |     fn make() -> Self::Ty { true }
    |                  --------   ^^^^ expected associated type, found `bool`

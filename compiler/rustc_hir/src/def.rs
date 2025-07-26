@@ -295,6 +295,12 @@ impl DefKind {
         }
     }
 
+    /// This is a "module" in name resolution sense.
+    #[inline]
+    pub fn is_module_like(self) -> bool {
+        matches!(self, DefKind::Mod | DefKind::Enum | DefKind::Trait)
+    }
+
     #[inline]
     pub fn is_fn_like(self) -> bool {
         matches!(
@@ -584,7 +590,7 @@ impl<CTX: crate::HashStableContext> ToStableHashKey<CTX> for Namespace {
 }
 
 /// Just a helper ‒ separate structure for each namespace.
-#[derive(Copy, Clone, Default, Debug)]
+#[derive(Copy, Clone, Default, Debug, HashStable_Generic)]
 pub struct PerNS<T> {
     pub value_ns: T,
     pub type_ns: T,
@@ -596,10 +602,16 @@ impl<T> PerNS<T> {
         PerNS { value_ns: f(self.value_ns), type_ns: f(self.type_ns), macro_ns: f(self.macro_ns) }
     }
 
+    /// Note: Do you really want to use this? Often you know which namespace a
+    /// name will belong in, and you can consider just that namespace directly,
+    /// rather than iterating through all of them.
     pub fn into_iter(self) -> IntoIter<T, 3> {
         [self.value_ns, self.type_ns, self.macro_ns].into_iter()
     }
 
+    /// Note: Do you really want to use this? Often you know which namespace a
+    /// name will belong in, and you can consider just that namespace directly,
+    /// rather than iterating through all of them.
     pub fn iter(&self) -> IntoIter<&T, 3> {
         [&self.value_ns, &self.type_ns, &self.macro_ns].into_iter()
     }
@@ -634,6 +646,10 @@ impl<T> PerNS<Option<T>> {
     }
 
     /// Returns an iterator over the items which are `Some`.
+    ///
+    /// Note: Do you really want to use this? Often you know which namespace a
+    /// name will belong in, and you can consider just that namespace directly,
+    /// rather than iterating through all of them.
     pub fn present_items(self) -> impl Iterator<Item = T> {
         [self.type_ns, self.value_ns, self.macro_ns].into_iter().flatten()
     }
@@ -706,6 +722,15 @@ impl<Id> Res<Id> {
     pub fn mod_def_id(&self) -> Option<DefId> {
         match *self {
             Res::Def(DefKind::Mod, id) => Some(id),
+            _ => None,
+        }
+    }
+
+    /// If this is a "module" in name resolution sense, return its `DefId`.
+    #[inline]
+    pub fn module_like_def_id(&self) -> Option<DefId> {
+        match self {
+            Res::Def(def_kind, def_id) if def_kind.is_module_like() => Some(*def_id),
             _ => None,
         }
     }
@@ -821,7 +846,7 @@ pub enum LifetimeRes {
         /// Id of the introducing place. That can be:
         /// - an item's id, for the item's generic parameters;
         /// - a TraitRef's ref_id, identifying the `for<...>` binder;
-        /// - a BareFn type's id.
+        /// - a FnPtr type's id.
         ///
         /// This information is used for impl-trait lifetime captures, to know when to or not to
         /// capture any given lifetime.
@@ -842,12 +867,7 @@ pub enum LifetimeRes {
     /// late resolution. Those lifetimes will be inferred by typechecking.
     Infer,
     /// `'static` lifetime.
-    Static {
-        /// We do not want to emit `elided_named_lifetimes`
-        /// when we are inside of a const item or a static,
-        /// because it would get too annoying.
-        suppress_elision_warning: bool,
-    },
+    Static,
     /// Resolution failure.
     Error,
     /// HACK: This is used to recover the NodeId of an elided lifetime.

@@ -7,7 +7,7 @@ edition = "2024"
 # tidy-alphabetical-start
 rustc_abi = { path = "../rustc_abi" }
 rustc_ast = { path = "../rustc_ast" }
-rustc_attr_parsing = { path = "../rustc_attr_parsing" }
+rustc_attr_data_structures = { path = "../rustc_attr_data_structures" }
 rustc_data_structures = { path = "../rustc_data_structures" }
 rustc_errors = { path = "../rustc_errors" }
 rustc_fluent_macro = { path = "../rustc_fluent_macro" }

@@ -429,18 +429,18 @@ trait Tr<T> {
 impl Tr<$0
     "#,
         expect![[r#"
-            en Enum                        Enum
-            ma makro!(…)     macro_rules! makro
+            en Enum                    Enum
+            ma makro!(…) macro_rules! makro
             md module
-            sp Self dyn Tr<{unknown}> + 'static
-            st Record                    Record
-            st S                              S
-            st Tuple                      Tuple
-            st Unit                        Unit
+            sp Self       dyn Tr<{unknown}>
+            st Record                Record
+            st S                          S
+            st Tuple                  Tuple
+            st Unit                    Unit
             tt Tr
             tt Trait
-            un Union                      Union
-            bt u32                          u32
+            un Union                  Union
+            bt u32                      u32
             kw crate::
             kw self::
         "#]],

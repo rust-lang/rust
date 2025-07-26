@@ -58,6 +58,16 @@ pub enum OptEnum {
     }
 }
 
+// Default field values may not be used on `union`s (at least, this is not described in the accepted
+// RFC, and it's not currently clear how to extend the design to do so). We emit a feature gate
+// error when the feature is not enabled, but syntactically reject default field values when used
+// with unions when the feature is enabled. This can be adjusted if there's an acceptable design
+// extension, or just unconditionally reject always.
+union U {
+    x: i32 = 0,   //~ ERROR default values on fields are experimental
+    y: f32 = 0.0, //~ ERROR default values on fields are experimental
+}
+
 fn main () {
     let x = Foo { .. }; //~ ERROR base expression required after `..`
     let y = Foo::default();

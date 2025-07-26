@@ -15,7 +15,7 @@ This flag is equivalent to:
 - `-fmin-function-alignment` for [GCC](https://gcc.gnu.org/onlinedocs/gcc/Optimize-Options.html#index-fmin-function-alignment_003dn)
 - `-falign-functions` for [Clang](https://clang.llvm.org/docs/ClangCommandLineReference.html#cmdoption-clang1-falign-functions)
 
-The specified alignment is a minimum. A higher alignment can be specified for specific functions by using the [`repr(align(...))`](https://github.com/rust-lang/rust/issues/82232) feature and annotating the function with a `#[repr(align(<align>))]` attribute. The attribute's value is ignored when it is lower than the value passed to `min-function-alignment`.
+The specified alignment is a minimum. A higher alignment can be specified for specific functions by using the [`align(...)`](https://github.com/rust-lang/rust/issues/82232) feature and annotating the function with a `#[align(<align>)]` attribute. The attribute's value is ignored when it is lower than the value passed to `min-function-alignment`.
 
 There are two additional edge cases for this flag:
 

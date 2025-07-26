@@ -197,6 +197,10 @@ fn invocation_fixtures(
                                         builder.push(tt::Leaf::Punct(*it))
                                     }
                                 }
+                                Separator::Lifetime(punct, ident) => {
+                                    builder.push(tt::Leaf::Punct(*punct));
+                                    builder.push(tt::Leaf::Ident(ident.clone()));
+                                }
                             };
                         }
                     }

@@ -281,6 +281,14 @@ impl Socket {
         self.0.duplicate().map(Socket)
     }
 
+    pub fn send_with_flags(&self, buf: &[u8], flags: c_int) -> io::Result<usize> {
+        let len = cmp::min(buf.len(), <wrlen_t>::MAX as usize) as wrlen_t;
+        let ret = cvt(unsafe {
+            libc::send(self.as_raw_fd(), buf.as_ptr() as *const c_void, len, flags)
+        })?;
+        Ok(ret as usize)
+    }
+
     fn recv_with_flags(&self, mut buf: BorrowedCursor<'_>, flags: c_int) -> io::Result<()> {
         let ret = cvt(unsafe {
             libc::recv(
@@ -512,6 +520,21 @@ impl Socket {
             unsafe { core::slice::from_raw_parts(arg.af_name.as_ptr() as *const u8, 16) };
         let name = CStr::from_bytes_with_nul(s).unwrap();
         Ok(name)
+    }
+
+    #[cfg(any(target_os = "solaris", target_os = "illumos"))]
+    pub fn set_exclbind(&self, excl: bool) -> io::Result<()> {
+        // not yet on libc crate
+        const SO_EXCLBIND: i32 = 0x1015;
+        setsockopt(self, libc::SOL_SOCKET, SO_EXCLBIND, excl)
+    }
+
+    #[cfg(any(target_os = "solaris", target_os = "illumos"))]
+    pub fn exclbind(&self) -> io::Result<bool> {
+        // not yet on libc crate
+        const SO_EXCLBIND: i32 = 0x1015;
+        let raw: c_int = getsockopt(self, libc::SOL_SOCKET, SO_EXCLBIND)?;
+        Ok(raw != 0)
     }
 
     #[cfg(any(target_os = "android", target_os = "linux",))]

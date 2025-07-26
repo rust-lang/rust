@@ -2,6 +2,7 @@ use core::ops::ControlFlow;
 
 use rustc_abi::{FieldIdx, VariantIdx};
 use rustc_apfloat::Float;
+use rustc_attr_data_structures::{AttributeKind, find_attr};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Diag;
 use rustc_hir as hir;
@@ -15,7 +16,7 @@ use rustc_middle::ty::{
 };
 use rustc_middle::{mir, span_bug};
 use rustc_span::def_id::DefId;
-use rustc_span::{Span, sym};
+use rustc_span::{DUMMY_SP, Span};
 use rustc_trait_selection::traits::ObligationCause;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use tracing::{debug, instrument, trace};
@@ -131,7 +132,7 @@ impl<'tcx> ConstToPat<'tcx> {
                     .dcx()
                     .create_err(ConstPatternDependsOnGenericParameter { span: self.span });
                 for arg in uv.args {
-                    if let ty::GenericArgKind::Type(ty) = arg.unpack()
+                    if let ty::GenericArgKind::Type(ty) = arg.kind()
                         && let ty::Param(param_ty) = ty.kind()
                     {
                         let def_id = self.tcx.hir_enclosing_body_owner(self.id);
@@ -365,11 +366,11 @@ fn extend_type_not_partial_eq<'tcx>(
     struct UsedParamsNeedInstantiationVisitor<'tcx> {
         tcx: TyCtxt<'tcx>,
         typing_env: ty::TypingEnv<'tcx>,
-        /// The user has written `impl PartialEq for Ty` which means it's non-structual.
+        /// The user has written `impl PartialEq for Ty` which means it's non-structural.
         adts_with_manual_partialeq: FxHashSet<Span>,
         /// The type has no `PartialEq` implementation, neither manual or derived.
         adts_without_partialeq: FxHashSet<Span>,
-        /// The user has written `impl PartialEq for Ty` which means it's non-structual,
+        /// The user has written `impl PartialEq for Ty` which means it's non-structural,
         /// but we don't have a span to point at, so we'll just add them as a `note`.
         manual: FxHashSet<Ty<'tcx>>,
         /// The type has no `PartialEq` implementation, neither manual or derived, but
@@ -382,6 +383,9 @@ fn extend_type_not_partial_eq<'tcx>(
         fn visit_ty(&mut self, ty: Ty<'tcx>) -> Self::Result {
             match ty.kind() {
                 ty::Dynamic(..) => return ControlFlow::Break(()),
+                // Unsafe binders never implement `PartialEq`, so avoid walking into them
+                // which would require instantiating its binder with placeholders too.
+                ty::UnsafeBinder(..) => return ControlFlow::Break(()),
                 ty::FnPtr(..) => return ControlFlow::Continue(()),
                 ty::Adt(def, _args) => {
                     let ty_def_id = def.did();
@@ -477,8 +481,9 @@ fn type_has_partial_eq_impl<'tcx>(
     // (If there isn't, then we can safely issue a hard
     // error, because that's never worked, due to compiler
     // using `PartialEq::eq` in this scenario in the past.)
-    let partial_eq_trait_id = tcx.require_lang_item(hir::LangItem::PartialEq, None);
-    let structural_partial_eq_trait_id = tcx.require_lang_item(hir::LangItem::StructuralPeq, None);
+    let partial_eq_trait_id = tcx.require_lang_item(hir::LangItem::PartialEq, DUMMY_SP);
+    let structural_partial_eq_trait_id =
+        tcx.require_lang_item(hir::LangItem::StructuralPeq, DUMMY_SP);
 
     let partial_eq_obligation = Obligation::new(
         tcx,
@@ -491,7 +496,8 @@ fn type_has_partial_eq_impl<'tcx>(
     let mut structural_peq = false;
     let mut impl_def_id = None;
     for def_id in tcx.non_blanket_impls_for_ty(partial_eq_trait_id, ty) {
-        automatically_derived = tcx.has_attr(def_id, sym::automatically_derived);
+        automatically_derived =
+            find_attr!(tcx.get_all_attrs(def_id), AttributeKind::AutomaticallyDerived(..));
         impl_def_id = Some(def_id);
     }
     for _ in tcx.non_blanket_impls_for_ty(structural_partial_eq_trait_id, ty) {

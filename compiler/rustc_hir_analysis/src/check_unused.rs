@@ -1,16 +1,11 @@
 use rustc_data_structures::unord::{ExtendUnord, UnordSet};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
-use rustc_middle::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::lint;
 use tracing::debug;
 
-pub(crate) fn provide(providers: &mut Providers) {
-    *providers = Providers { check_unused_traits, ..*providers };
-}
-
-fn check_unused_traits(tcx: TyCtxt<'_>, (): ()) {
+pub(super) fn check_unused_traits(tcx: TyCtxt<'_>, (): ()) {
     let mut used_trait_imports = UnordSet::<LocalDefId>::default();
 
     // FIXME: Use `tcx.hir_par_body_owners()` when we implement creating `DefId`s
@@ -23,7 +18,7 @@ fn check_unused_traits(tcx: TyCtxt<'_>, (): ()) {
         used_trait_imports.extend_unord(imports.items().copied());
     }
 
-    for &id in tcx.maybe_unused_trait_imports(()) {
+    for &id in tcx.resolutions(()).maybe_unused_trait_imports.iter() {
         debug_assert_eq!(tcx.def_kind(id), DefKind::Use);
         if tcx.visibility(id).is_public() {
             continue;

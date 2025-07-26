@@ -5,8 +5,7 @@
 fn foo() {}
 
 static C: () = foo();
-//~^ ERROR could not evaluate static initializer
-//~| NOTE calling non-const function `foo`
+//~^ ERROR calling non-const function `foo`
 
 fn main() {}
 

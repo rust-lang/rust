@@ -816,13 +816,6 @@ pub(crate) struct ExternCrateLoadingMacroNotAtCrateRoot {
 }
 
 #[derive(Diagnostic)]
-#[diag(resolve_bad_macro_import, code = E0466)]
-pub(crate) struct BadMacroImport {
-    #[primary_span]
-    pub(crate) span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag(resolve_extern_crate_self_requires_renaming)]
 pub(crate) struct ExternCrateSelfRequiresRenaming {
     #[primary_span]
@@ -878,12 +871,12 @@ pub(crate) struct MacroExpandedExternCrateCannotShadowExternArguments {
 
 #[derive(Diagnostic)]
 #[diag(resolve_elided_anonymous_lifetime_report_error, code = E0637)]
-pub(crate) struct ElidedAnonymousLivetimeReportError {
+pub(crate) struct ElidedAnonymousLifetimeReportError {
     #[primary_span]
     #[label]
     pub(crate) span: Span,
     #[subdiagnostic]
-    pub(crate) suggestion: Option<ElidedAnonymousLivetimeReportErrorSuggestion>,
+    pub(crate) suggestion: Option<ElidedAnonymousLifetimeReportErrorSuggestion>,
 }
 
 #[derive(Diagnostic)]
@@ -897,7 +890,7 @@ pub(crate) struct LendingIteratorReportError {
 
 #[derive(Diagnostic)]
 #[diag(resolve_anonymous_lifetime_non_gat_report_error)]
-pub(crate) struct AnonymousLivetimeNonGatReportError {
+pub(crate) struct AnonymousLifetimeNonGatReportError {
     #[primary_span]
     #[label]
     pub(crate) lifetime: Span,
@@ -908,7 +901,7 @@ pub(crate) struct AnonymousLivetimeNonGatReportError {
     resolve_elided_anonymous_lifetime_report_error_suggestion,
     applicability = "machine-applicable"
 )]
-pub(crate) struct ElidedAnonymousLivetimeReportErrorSuggestion {
+pub(crate) struct ElidedAnonymousLifetimeReportErrorSuggestion {
     #[suggestion_part(code = "for<'a> ")]
     pub(crate) lo: Span,
     #[suggestion_part(code = "'a ")]
@@ -917,7 +910,7 @@ pub(crate) struct ElidedAnonymousLivetimeReportErrorSuggestion {
 
 #[derive(Diagnostic)]
 #[diag(resolve_explicit_anonymous_lifetime_report_error, code = E0637)]
-pub(crate) struct ExplicitAnonymousLivetimeReportError {
+pub(crate) struct ExplicitAnonymousLifetimeReportError {
     #[primary_span]
     #[label]
     pub(crate) span: Span,
@@ -934,6 +927,7 @@ pub(crate) struct ImplicitElidedLifetimeNotAllowedHere {
 
 #[derive(Diagnostic)]
 #[diag(resolve_underscore_lifetime_is_reserved, code = E0637)]
+#[help]
 pub(crate) struct UnderscoreLifetimeIsReserved {
     #[primary_span]
     #[label]
@@ -978,6 +972,7 @@ pub(crate) struct VariableNotInAllPatterns {
 pub(crate) struct NameDefinedMultipleTime {
     #[primary_span]
     pub(crate) span: Span,
+    pub(crate) name: Symbol,
     pub(crate) descr: &'static str,
     pub(crate) container: &'static str,
     #[subdiagnostic]
@@ -992,13 +987,11 @@ pub(crate) enum NameDefinedMultipleTimeLabel {
     Reimported {
         #[primary_span]
         span: Span,
-        name: Symbol,
     },
     #[label(resolve_name_defined_multiple_time_redefined)]
     Redefined {
         #[primary_span]
         span: Span,
-        name: Symbol,
     },
 }
 
@@ -1008,14 +1001,12 @@ pub(crate) enum NameDefinedMultipleTimeOldBindingLabel {
     Import {
         #[primary_span]
         span: Span,
-        name: Symbol,
         old_kind: &'static str,
     },
     #[label(resolve_name_defined_multiple_time_old_binding_definition)]
     Definition {
         #[primary_span]
         span: Span,
-        name: Symbol,
         old_kind: &'static str,
     },
 }

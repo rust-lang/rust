@@ -5,6 +5,7 @@ use rustc_middle::ty::{
 };
 
 use super::{FixupError, FixupResult, InferCtxt};
+use crate::infer::TyOrConstInferVar;
 
 ///////////////////////////////////////////////////////////////////////////
 // OPPORTUNISTIC VAR RESOLVER
@@ -54,6 +55,14 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for OpportunisticVarResolver<'a, 'tcx> {
             let ct = self.infcx.shallow_resolve_const(ct);
             ct.super_fold_with(self)
         }
+    }
+
+    fn fold_predicate(&mut self, p: ty::Predicate<'tcx>) -> ty::Predicate<'tcx> {
+        if !p.has_non_region_infer() { p } else { p.super_fold_with(self) }
+    }
+
+    fn fold_clauses(&mut self, c: ty::Clauses<'tcx>) -> ty::Clauses<'tcx> {
+        if !c.has_non_region_infer() { c } else { c.super_fold_with(self) }
     }
 }
 
@@ -136,13 +145,17 @@ impl<'a, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for FullTypeResolver<'a, 'tcx> {
         if !t.has_infer() {
             Ok(t) // micro-optimize -- if there is nothing in this type that this fold affects...
         } else {
-            use super::TyOrConstInferVar::*;
-
             let t = self.infcx.shallow_resolve(t);
             match *t.kind() {
-                ty::Infer(ty::TyVar(vid)) => Err(FixupError { unresolved: Ty(vid) }),
-                ty::Infer(ty::IntVar(vid)) => Err(FixupError { unresolved: TyInt(vid) }),
-                ty::Infer(ty::FloatVar(vid)) => Err(FixupError { unresolved: TyFloat(vid) }),
+                ty::Infer(ty::TyVar(vid)) => {
+                    Err(FixupError { unresolved: TyOrConstInferVar::Ty(vid) })
+                }
+                ty::Infer(ty::IntVar(vid)) => {
+                    Err(FixupError { unresolved: TyOrConstInferVar::TyInt(vid) })
+                }
+                ty::Infer(ty::FloatVar(vid)) => {
+                    Err(FixupError { unresolved: TyOrConstInferVar::TyFloat(vid) })
+                }
                 ty::Infer(_) => {
                     bug!("Unexpected type in full type resolver: {:?}", t);
                 }

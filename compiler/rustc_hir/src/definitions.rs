@@ -140,7 +140,9 @@ impl DefKey {
     pub(crate) fn compute_stable_hash(&self, parent: DefPathHash) -> DefPathHash {
         let mut hasher = StableHasher::new();
 
-        parent.hash(&mut hasher);
+        // The new path is in the same crate as `parent`, and will contain the stable_crate_id.
+        // Therefore, we only need to include information of the parent's local hash.
+        parent.local_hash().hash(&mut hasher);
 
         let DisambiguatedDefPathData { ref data, disambiguator } = self.disambiguated_data;
 
@@ -181,29 +183,23 @@ pub struct DisambiguatedDefPathData {
 }
 
 impl DisambiguatedDefPathData {
-    pub fn fmt_maybe_verbose(&self, writer: &mut impl Write, verbose: bool) -> fmt::Result {
+    pub fn as_sym(&self, verbose: bool) -> Symbol {
         match self.data.name() {
             DefPathDataName::Named(name) => {
                 if verbose && self.disambiguator != 0 {
-                    write!(writer, "{}#{}", name, self.disambiguator)
+                    Symbol::intern(&format!("{}#{}", name, self.disambiguator))
                 } else {
-                    writer.write_str(name.as_str())
+                    name
                 }
             }
             DefPathDataName::Anon { namespace } => {
                 if let DefPathData::AnonAssocTy(method) = self.data {
-                    write!(writer, "{}::{{{}#{}}}", method, namespace, self.disambiguator)
+                    Symbol::intern(&format!("{}::{{{}#{}}}", method, namespace, self.disambiguator))
                 } else {
-                    write!(writer, "{{{}#{}}}", namespace, self.disambiguator)
+                    Symbol::intern(&format!("{{{}#{}}}", namespace, self.disambiguator))
                 }
             }
         }
-    }
-}
-
-impl fmt::Display for DisambiguatedDefPathData {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.fmt_maybe_verbose(f, true)
     }
 }
 
@@ -250,7 +246,7 @@ impl DefPath {
         let mut s = String::with_capacity(self.data.len() * 16);
 
         for component in &self.data {
-            write!(s, "::{component}").unwrap();
+            write!(s, "::{}", component.as_sym(true)).unwrap();
         }
 
         s
@@ -266,7 +262,7 @@ impl DefPath {
         for component in &self.data {
             s.extend(opt_delimiter);
             opt_delimiter = Some('-');
-            write!(s, "{component}").unwrap();
+            write!(s, "{}", component.as_sym(true)).unwrap();
         }
 
         s
@@ -309,6 +305,8 @@ pub enum DefPathData {
     /// An existential `impl Trait` type node.
     /// Argument position `impl Trait` have a `TypeNs` with their pretty-printed name.
     OpaqueTy,
+    /// Used for remapped captured lifetimes in an existential `impl Trait` type node.
+    OpaqueLifetime(Symbol),
     /// An anonymous associated type from an RPITIT. The symbol refers to the name of the method
     /// that defined the type.
     AnonAssocTy(Symbol),
@@ -359,8 +357,16 @@ impl Definitions {
             },
         };
 
-        let parent_hash = DefPathHash::new(stable_crate_id, Hash64::ZERO);
-        let def_path_hash = key.compute_stable_hash(parent_hash);
+        // We want *both* halves of a DefPathHash to depend on the crate-id of the defining crate.
+        // The crate-id can be more easily changed than the DefPath of an item, so, in the case of
+        // a crate-local DefPathHash collision, the user can simply "roll the dice again" for all
+        // DefPathHashes in the crate by changing the crate disambiguator (e.g. via bumping the
+        // crate's version number).
+        //
+        // Children paths will only hash the local portion, and still inherit the change to the
+        // root hash.
+        let def_path_hash =
+            DefPathHash::new(stable_crate_id, Hash64::new(stable_crate_id.as_u64()));
 
         // Create the root definition.
         let mut table = DefPathTable::new(stable_crate_id);
@@ -445,7 +451,8 @@ impl DefPathData {
     pub fn get_opt_name(&self) -> Option<Symbol> {
         use self::DefPathData::*;
         match *self {
-            TypeNs(name) | ValueNs(name) | MacroNs(name) | LifetimeNs(name) => Some(name),
+            TypeNs(name) | ValueNs(name) | MacroNs(name) | LifetimeNs(name)
+            | OpaqueLifetime(name) => Some(name),
 
             Impl
             | ForeignMod
@@ -465,9 +472,8 @@ impl DefPathData {
     fn hashed_symbol(&self) -> Option<Symbol> {
         use self::DefPathData::*;
         match *self {
-            TypeNs(name) | ValueNs(name) | MacroNs(name) | LifetimeNs(name) | AnonAssocTy(name) => {
-                Some(name)
-            }
+            TypeNs(name) | ValueNs(name) | MacroNs(name) | LifetimeNs(name) | AnonAssocTy(name)
+            | OpaqueLifetime(name) => Some(name),
 
             Impl
             | ForeignMod
@@ -486,9 +492,8 @@ impl DefPathData {
     pub fn name(&self) -> DefPathDataName {
         use self::DefPathData::*;
         match *self {
-            TypeNs(name) | ValueNs(name) | MacroNs(name) | LifetimeNs(name) => {
-                DefPathDataName::Named(name)
-            }
+            TypeNs(name) | ValueNs(name) | MacroNs(name) | LifetimeNs(name)
+            | OpaqueLifetime(name) => DefPathDataName::Named(name),
             // Note that this does not show up in user print-outs.
             CrateRoot => DefPathDataName::Anon { namespace: kw::Crate },
             Impl => DefPathDataName::Anon { namespace: kw::Impl },

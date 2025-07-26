@@ -74,13 +74,13 @@ pub(crate) const WORKSPACES: &[(&str, ExceptionList, Option<(&[&str], &[&str])>,
     ("compiler/rustc_codegen_gcc", EXCEPTIONS_GCC, None, &[]),
     ("src/bootstrap", EXCEPTIONS_BOOTSTRAP, None, &[]),
     ("src/ci/docker/host-x86_64/test-various/uefi_qemu_test", EXCEPTIONS_UEFI_QEMU_TEST, None, &[]),
-    ("src/etc/test-float-parse", EXCEPTIONS, None, &[]),
     ("src/tools/cargo", EXCEPTIONS_CARGO, None, &["src/tools/cargo"]),
     //("src/tools/miri/test-cargo-miri", &[], None), // FIXME uncomment once all deps are vendored
     //("src/tools/miri/test_dependencies", &[], None), // FIXME uncomment once all deps are vendored
     ("src/tools/rust-analyzer", EXCEPTIONS_RUST_ANALYZER, None, &[]),
     ("src/tools/rustbook", EXCEPTIONS_RUSTBOOK, None, &["src/doc/book", "src/doc/reference"]),
     ("src/tools/rustc-perf", EXCEPTIONS_RUSTC_PERF, None, &["src/tools/rustc-perf"]),
+    ("src/tools/test-float-parse", EXCEPTIONS, None, &[]),
     // tidy-alphabetical-end
 ];
 
@@ -135,6 +135,7 @@ const EXCEPTIONS_CARGO: ExceptionList = &[
     ("libz-rs-sys", "Zlib"),
     ("normalize-line-endings", "Apache-2.0"),
     ("openssl", "Apache-2.0"),
+    ("ring", "Apache-2.0 AND ISC"),
     ("ryu", "Apache-2.0 OR BSL-1.0"), // BSL is not acceptble, but we use it under Apache-2.0
     ("similar", "Apache-2.0"),
     ("sized-chunks", "MPL-2.0+"),
@@ -200,11 +201,13 @@ const EXCEPTIONS_CRANELIFT: ExceptionList = &[
     ("cranelift-module", "Apache-2.0 WITH LLVM-exception"),
     ("cranelift-native", "Apache-2.0 WITH LLVM-exception"),
     ("cranelift-object", "Apache-2.0 WITH LLVM-exception"),
+    ("cranelift-srcgen", "Apache-2.0 WITH LLVM-exception"),
     ("foldhash", "Zlib"),
     ("mach2", "BSD-2-Clause OR MIT OR Apache-2.0"),
     ("regalloc2", "Apache-2.0 WITH LLVM-exception"),
     ("target-lexicon", "Apache-2.0 WITH LLVM-exception"),
     ("wasmtime-jit-icache-coherence", "Apache-2.0 WITH LLVM-exception"),
+    ("wasmtime-math", "Apache-2.0 WITH LLVM-exception"),
     // tidy-alphabetical-end
 ];
 
@@ -355,6 +358,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "rand",
     "rand_chacha",
     "rand_core",
+    "rand_xorshift", // dependency for doc-tests in rustc_thread_pool
     "rand_xoshiro",
     "redox_syscall",
     "regex",
@@ -363,7 +367,6 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "rustc-demangle",
     "rustc-hash",
     "rustc-literal-escaper",
-    "rustc-rayon-core",
     "rustc-stable-hash",
     "rustc_apfloat",
     "rustix",
@@ -372,9 +375,11 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "scoped-tls",
     "scopeguard",
     "self_cell",
+    "semver",
     "serde",
     "serde_derive",
     "serde_json",
+    "serde_path_to_error",
     "sha1",
     "sha2",
     "sharded-slab",
@@ -429,14 +434,18 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "winapi-util",
     "winapi-x86_64-pc-windows-gnu",
     "windows",
+    "windows-collections",
     "windows-core",
+    "windows-future",
     "windows-implement",
     "windows-interface",
     "windows-link",
+    "windows-numerics",
     "windows-result",
     "windows-strings",
     "windows-sys",
     "windows-targets",
+    "windows-threading",
     "windows_aarch64_gnullvm",
     "windows_aarch64_msvc",
     "windows_i686_gnu",
@@ -522,6 +531,7 @@ const PERMITTED_CRANELIFT_DEPENDENCIES: &[&str] = &[
     "cranelift-module",
     "cranelift-native",
     "cranelift-object",
+    "cranelift-srcgen",
     "crc32fast",
     "equivalent",
     "fallible-iterator",
@@ -531,6 +541,7 @@ const PERMITTED_CRANELIFT_DEPENDENCIES: &[&str] = &[
     "indexmap",
     "libc",
     "libloading",
+    "libm",
     "log",
     "mach2",
     "memchr",
@@ -548,6 +559,7 @@ const PERMITTED_CRANELIFT_DEPENDENCIES: &[&str] = &[
     "target-lexicon",
     "unicode-ident",
     "wasmtime-jit-icache-coherence",
+    "wasmtime-math",
     "windows-sys",
     "windows-targets",
     "windows_aarch64_gnullvm",
@@ -614,7 +626,7 @@ fn check_proc_macro_dep_list(root: &Path, cargo: &Path, bless: bool, bad: &mut b
     let is_proc_macro_pkg = |pkg: &Package| pkg.targets.iter().any(|target| target.is_proc_macro());
 
     let mut proc_macro_deps = HashSet::new();
-    for pkg in metadata.packages.iter().filter(|pkg| is_proc_macro_pkg(*pkg)) {
+    for pkg in metadata.packages.iter().filter(|pkg| is_proc_macro_pkg(pkg)) {
         deps_of(&metadata, &pkg.id, &mut proc_macro_deps);
     }
     // Remove the proc-macro crates themselves

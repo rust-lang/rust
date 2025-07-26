@@ -1,13 +1,11 @@
 // tidy-alphabetical-start
 #![allow(rustc::diagnostic_outside_of_impl)]
 #![allow(rustc::untranslatable_diagnostic)]
-#![cfg_attr(bootstrap, feature(let_chains))]
-#![feature(array_windows)]
+#![feature(assert_matches)]
 #![feature(box_patterns)]
 #![feature(if_let_guard)]
 #![feature(iter_intersperse)]
 #![feature(never_type)]
-#![feature(try_blocks)]
 // tidy-alphabetical-end
 
 mod _match;
@@ -30,8 +28,11 @@ mod fallback;
 mod fn_ctxt;
 mod gather_locals;
 mod intrinsicck;
+mod loops;
 mod method;
+mod naked_functions;
 mod op;
+mod opaque_types;
 mod pat;
 mod place_op;
 mod rvalue_scopes;
@@ -41,13 +42,14 @@ mod writeback;
 
 pub use coercion::can_coerce;
 use fn_ctxt::FnCtxt;
+use rustc_attr_data_structures::{AttributeKind, find_attr};
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, ErrorGuaranteed, pluralize, struct_span_code_err};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{HirId, HirIdMap, Node};
-use rustc_hir_analysis::check::check_abi;
+use rustc_hir_analysis::check::{check_abi, check_custom_abi};
 use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
 use rustc_infer::traits::{ObligationCauseCode, ObligationInspector, WellFormedLoc};
 use rustc_middle::query::Providers;
@@ -137,7 +139,7 @@ fn typeck_with_inspect<'tcx>(
         // for visit the asm expr of the body.
         let ty = fcx.check_expr(body.value);
         fcx.write_ty(id, ty);
-    } else if let Some(hir::FnSig { header, decl, .. }) = node.fn_sig() {
+    } else if let Some(hir::FnSig { header, decl, span: fn_sig_span }) = node.fn_sig() {
         let fn_sig = if decl.output.is_suggestable_infer_ty().is_some() {
             // In the case that we're recovering `fn() -> W<_>` or some other return
             // type that has an infer in it, lower the type directly so that it'll
@@ -148,7 +150,10 @@ fn typeck_with_inspect<'tcx>(
             tcx.fn_sig(def_id).instantiate_identity()
         };
 
-        check_abi(tcx, span, fn_sig.abi());
+        check_abi(tcx, id, span, fn_sig.abi());
+        check_custom_abi(tcx, def_id, fn_sig.skip_binder(), *fn_sig_span);
+
+        loops::check(tcx, def_id, body);
 
         // Compute the function signature from point of view of inside the fn.
         let mut fn_sig = tcx.liberate_late_bound_regions(def_id.to_def_id(), fn_sig);
@@ -169,6 +174,10 @@ fn typeck_with_inspect<'tcx>(
                 .map(|(idx, ty)| fcx.normalize(arg_span(idx), ty)),
         );
 
+        if find_attr!(tcx.get_all_attrs(def_id), AttributeKind::Naked(..)) {
+            naked_functions::typeck_naked_fn(tcx, def_id, body);
+        }
+
         check_fn(&mut fcx, fn_sig, None, decl, def_id, body, tcx.features().unsized_fn_params());
     } else {
         let expected_type = if let Some(infer_ty) = infer_type_if_missing(&fcx, node) {
@@ -185,6 +194,8 @@ fn typeck_with_inspect<'tcx>(
             tcx.type_of(def_id).instantiate_identity()
         };
 
+        loops::check(tcx, def_id, body);
+
         let expected_type = fcx.normalize(body.value.span, expected_type);
 
         let wf_code = ObligationCauseCode::WellFormed(Some(WellFormedLoc::Ty(def_id)));
@@ -195,13 +206,16 @@ fn typeck_with_inspect<'tcx>(
         fcx.write_ty(id, expected_type);
     };
 
-    // Whether to check repeat exprs before/after inference fallback is somewhat arbitrary of a decision
-    // as neither option is strictly more permissive than the other. However, we opt to check repeat exprs
-    // first as errors from not having inferred array lengths yet seem less confusing than errors from inference
-    // fallback arbitrarily inferring something incompatible with `Copy` inference side effects.
+    // Whether to check repeat exprs before/after inference fallback is somewhat
+    // arbitrary of a decision as neither option is strictly more permissive than
+    // the other. However, we opt to check repeat exprs first as errors from not
+    // having inferred array lengths yet seem less confusing than errors from inference
+    // fallback arbitrarily inferring something incompatible with `Copy` inference
+    // side effects.
     //
-    // This should also be forwards compatible with moving repeat expr checks to a custom goal kind or using
-    // marker traits in the future.
+    // FIXME(#140855): This should also be forwards compatible with moving
+    // repeat expr checks to a custom goal kind or using marker traits in
+    // the future.
     fcx.check_repeat_exprs();
 
     fcx.type_inference_fallback();
@@ -245,9 +259,7 @@ fn typeck_with_inspect<'tcx>(
 
     let typeck_results = fcx.resolve_type_vars_in_body(body);
 
-    // We clone the defined opaque types during writeback in the new solver
-    // because we have to use them during normalization.
-    let _ = fcx.infcx.take_opaque_types();
+    fcx.detect_opaque_types_added_during_writeback();
 
     // Consistency check our TypeckResults instance can hold all ItemLocalIds
     // it will need to hold.
@@ -416,11 +428,9 @@ fn report_unexpected_variant_res(
                 }
                 hir::Node::Expr(hir::Expr { kind: hir::ExprKind::Binary(..), hir_id, .. }) => {
                     suggestion.push((expr.span.shrink_to_lo(), "(".to_string()));
-                    if let hir::Node::Expr(drop_temps) = tcx.parent_hir_node(*hir_id)
-                        && let hir::ExprKind::DropTemps(_) = drop_temps.kind
-                        && let hir::Node::Expr(parent) = tcx.parent_hir_node(drop_temps.hir_id)
+                    if let hir::Node::Expr(parent) = tcx.parent_hir_node(*hir_id)
                         && let hir::ExprKind::If(condition, block, None) = parent.kind
-                        && condition.hir_id == drop_temps.hir_id
+                        && condition.hir_id == *hir_id
                         && let hir::ExprKind::Block(block, _) = block.kind
                         && block.stmts.is_empty()
                         && let Some(expr) = block.expr
@@ -524,7 +534,12 @@ fn fatally_break_rust(tcx: TyCtxt<'_>, span: Span) -> ! {
     diag.emit()
 }
 
+/// Adds query implementations to the [Providers] vtable, see [`rustc_middle::query`]
 pub fn provide(providers: &mut Providers) {
-    method::provide(providers);
-    *providers = Providers { typeck, used_trait_imports, ..*providers };
+    *providers = Providers {
+        method_autoderef_steps: method::probe::method_autoderef_steps,
+        typeck,
+        used_trait_imports,
+        ..*providers
+    };
 }

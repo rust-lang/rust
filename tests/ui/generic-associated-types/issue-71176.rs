@@ -18,6 +18,5 @@ fn main() {
     Holder {
         inner: Box::new(()),
         //~^ ERROR: the trait `Provider` is not dyn compatible
-        //~| ERROR: the trait `Provider` is not dyn compatible
     };
 }

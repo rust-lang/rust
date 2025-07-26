@@ -168,7 +168,7 @@ impl DocFolder for Stripper<'_, '_> {
                 self.update_retained = old;
                 if ret.item_id == clean::ItemId::DefId(CRATE_DEF_ID.into()) {
                     // We don't strip the current crate, even if it has `#[doc(hidden)]`.
-                    debug!("strip_hidden: Not strippping local crate");
+                    debug!("strip_hidden: Not stripping local crate");
                     Some(ret)
                 } else {
                     Some(strip_item(ret))

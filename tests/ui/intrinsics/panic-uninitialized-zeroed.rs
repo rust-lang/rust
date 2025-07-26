@@ -4,6 +4,7 @@
 //@ revisions: default strict
 //@ [strict]compile-flags: -Zstrict-init-checks
 //@ needs-subprocess
+//@ ignore-backends: gcc
 
 #![allow(deprecated, invalid_value)]
 #![feature(never_type)]

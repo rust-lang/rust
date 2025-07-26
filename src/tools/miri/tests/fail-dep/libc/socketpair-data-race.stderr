@@ -1,8 +1,8 @@
-error: Undefined Behavior: Data race detected between (1) non-atomic write on thread `unnamed-ID` and (2) non-atomic read on thread `main` at ALLOC. (2) just happened here
+error: Undefined Behavior: Data race detected between (1) non-atomic write on thread `unnamed-ID` and (2) non-atomic read on thread `main` at ALLOC
   --> tests/fail-dep/libc/socketpair-data-race.rs:LL:CC
    |
 LL |     unsafe { assert_eq!({ VAL }, 1) };
-   |                           ^^^ Data race detected between (1) non-atomic write on thread `unnamed-ID` and (2) non-atomic read on thread `main` at ALLOC. (2) just happened here
+   |                           ^^^ (2) just happened here
    |
 help: and (1) occurred earlier here
   --> tests/fail-dep/libc/socketpair-data-race.rs:LL:CC

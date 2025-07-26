@@ -47,8 +47,8 @@ where
 pub(crate) fn complete_expr_path(
     acc: &mut Completions,
     ctx: &CompletionContext<'_>,
-    path_ctx @ PathCompletionCtx { qualified, .. }: &PathCompletionCtx,
-    expr_ctx: &PathExprCtx,
+    path_ctx @ PathCompletionCtx { qualified, .. }: &PathCompletionCtx<'_>,
+    expr_ctx: &PathExprCtx<'_>,
 ) {
     let _p = tracing::info_span!("complete_expr_path").entered();
     if !ctx.qualifier_ctx.none() {
@@ -145,10 +145,16 @@ pub(crate) fn complete_expr_path(
             });
             match resolution {
                 hir::PathResolution::Def(hir::ModuleDef::Module(module)) => {
-                    // Set visible_from to None so private items are returned.
-                    // They will be possibly filtered out in add_path_resolution()
-                    // via def_is_visible().
-                    let module_scope = module.scope(ctx.db, None);
+                    let visible_from = if ctx.config.enable_private_editable {
+                        // Set visible_from to None so private items are returned.
+                        // They will be possibly filtered out in add_path_resolution()
+                        // via def_is_visible().
+                        None
+                    } else {
+                        Some(ctx.module)
+                    };
+
+                    let module_scope = module.scope(ctx.db, visible_from);
                     for (name, def) in module_scope {
                         if scope_def_applicable(def) {
                             acc.add_path_resolution(

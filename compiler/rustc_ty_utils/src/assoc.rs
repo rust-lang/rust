@@ -1,20 +1,20 @@
-use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, DefIdMap, LocalDefId};
 use rustc_hir::definitions::{DefPathData, DisambiguatorState};
 use rustc_hir::intravisit::{self, Visitor};
-use rustc_hir::{self as hir, AmbigArg};
+use rustc_hir::{self as hir, ItemKind};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, ImplTraitInTraitData, TyCtxt};
 use rustc_middle::{bug, span_bug};
+use rustc_span::Ident;
+use rustc_span::symbol::kw;
 
 pub(crate) fn provide(providers: &mut Providers) {
     *providers = Providers {
         associated_item,
         associated_item_def_ids,
         associated_items,
-        associated_types_for_impl_traits_in_associated_fn,
-        associated_type_for_impl_trait_in_trait,
+        associated_types_for_impl_traits_in_trait_or_impl,
         impl_item_implementor_ids,
         ..*providers
     };
@@ -24,54 +24,28 @@ fn associated_item_def_ids(tcx: TyCtxt<'_>, def_id: LocalDefId) -> &[DefId] {
     let item = tcx.hir_expect_item(def_id);
     match item.kind {
         hir::ItemKind::Trait(.., trait_item_refs) => {
-            // We collect RPITITs for each trait method's return type and create a
-            // corresponding associated item using associated_types_for_impl_traits_in_associated_fn
+            // We collect RPITITs for each trait method's return type and create a corresponding
+            // associated item using the associated_types_for_impl_traits_in_trait_or_impl
             // query.
-            tcx.arena.alloc_from_iter(
-                trait_item_refs
-                    .iter()
-                    .map(|trait_item_ref| trait_item_ref.id.owner_id.to_def_id())
-                    .chain(
-                        trait_item_refs
-                            .iter()
-                            .filter(|trait_item_ref| {
-                                matches!(trait_item_ref.kind, hir::AssocItemKind::Fn { .. })
-                            })
-                            .flat_map(|trait_item_ref| {
-                                let trait_fn_def_id = trait_item_ref.id.owner_id.def_id.to_def_id();
-                                tcx.associated_types_for_impl_traits_in_associated_fn(
-                                    trait_fn_def_id,
-                                )
-                            })
-                            .copied(),
-                    ),
-            )
+            let rpitit_items = tcx.associated_types_for_impl_traits_in_trait_or_impl(def_id);
+            tcx.arena.alloc_from_iter(trait_item_refs.iter().flat_map(|trait_item_ref| {
+                let item_def_id = trait_item_ref.owner_id.to_def_id();
+                [item_def_id]
+                    .into_iter()
+                    .chain(rpitit_items.get(&item_def_id).into_iter().flatten().copied())
+            }))
         }
         hir::ItemKind::Impl(impl_) => {
             // We collect RPITITs for each trait method's return type, on the impl side too and
             // create a corresponding associated item using
-            // associated_types_for_impl_traits_in_associated_fn query.
-            tcx.arena.alloc_from_iter(
-                impl_
-                    .items
-                    .iter()
-                    .map(|impl_item_ref| impl_item_ref.id.owner_id.to_def_id())
-                    .chain(impl_.of_trait.iter().flat_map(|_| {
-                        impl_
-                            .items
-                            .iter()
-                            .filter(|impl_item_ref| {
-                                matches!(impl_item_ref.kind, hir::AssocItemKind::Fn { .. })
-                            })
-                            .flat_map(|impl_item_ref| {
-                                let impl_fn_def_id = impl_item_ref.id.owner_id.def_id.to_def_id();
-                                tcx.associated_types_for_impl_traits_in_associated_fn(
-                                    impl_fn_def_id,
-                                )
-                            })
-                            .copied()
-                    })),
-            )
+            // associated_types_for_impl_traits_in_trait_or_impl query.
+            let rpitit_items = tcx.associated_types_for_impl_traits_in_trait_or_impl(def_id);
+            tcx.arena.alloc_from_iter(impl_.items.iter().flat_map(|impl_item_ref| {
+                let item_def_id = impl_item_ref.owner_id.to_def_id();
+                [item_def_id]
+                    .into_iter()
+                    .chain(rpitit_items.get(&item_def_id).into_iter().flatten().copied())
+            }))
         }
         _ => span_bug!(item.span, "associated_item_def_ids: not impl or trait"),
     }
@@ -94,46 +68,33 @@ fn impl_item_implementor_ids(tcx: TyCtxt<'_>, impl_id: DefId) -> DefIdMap<DefId>
 }
 
 fn associated_item(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::AssocItem {
-    let id = tcx.local_def_id_to_hir_id(def_id);
-    let parent_def_id = tcx.hir_get_parent_item(id);
-    let parent_item = tcx.hir_expect_item(parent_def_id.def_id);
-    match parent_item.kind {
-        hir::ItemKind::Impl(impl_) => {
-            if let Some(impl_item_ref) = impl_.items.iter().find(|i| i.id.owner_id.def_id == def_id)
-            {
-                let assoc_item = associated_item_from_impl_item_ref(impl_item_ref);
-                debug_assert_eq!(assoc_item.def_id.expect_local(), def_id);
-                return assoc_item;
-            }
-        }
-
-        hir::ItemKind::Trait(.., trait_item_refs) => {
-            if let Some(trait_item_ref) =
-                trait_item_refs.iter().find(|i| i.id.owner_id.def_id == def_id)
-            {
-                let assoc_item = associated_item_from_trait_item_ref(trait_item_ref);
-                debug_assert_eq!(assoc_item.def_id.expect_local(), def_id);
-                return assoc_item;
-            }
-        }
-
-        _ => {}
-    }
-
-    span_bug!(
-        parent_item.span,
-        "unexpected parent of trait or impl item or item not found: {:?}",
-        parent_item.kind
-    )
+    let assoc_item = match tcx.hir_node_by_def_id(def_id) {
+        hir::Node::TraitItem(ti) => associated_item_from_trait_item(tcx, ti),
+        hir::Node::ImplItem(ii) => associated_item_from_impl_item(tcx, ii),
+        node => span_bug!(tcx.def_span(def_id), "impl item or item not found: {:?}", node,),
+    };
+    debug_assert_eq!(assoc_item.def_id.expect_local(), def_id);
+    assoc_item
 }
 
-fn associated_item_from_trait_item_ref(trait_item_ref: &hir::TraitItemRef) -> ty::AssocItem {
-    let owner_id = trait_item_ref.id.owner_id;
-    let name = trait_item_ref.ident.name;
-    let kind = match trait_item_ref.kind {
-        hir::AssocItemKind::Const => ty::AssocKind::Const { name },
-        hir::AssocItemKind::Fn { has_self } => ty::AssocKind::Fn { name, has_self },
-        hir::AssocItemKind::Type => ty::AssocKind::Type { data: ty::AssocTypeData::Normal(name) },
+fn fn_has_self_parameter(tcx: TyCtxt<'_>, owner_id: hir::OwnerId) -> bool {
+    matches!(tcx.fn_arg_idents(owner_id.def_id), [Some(Ident { name: kw::SelfLower, .. }), ..])
+}
+
+fn associated_item_from_trait_item(
+    tcx: TyCtxt<'_>,
+    trait_item: &hir::TraitItem<'_>,
+) -> ty::AssocItem {
+    let owner_id = trait_item.owner_id;
+    let name = trait_item.ident.name;
+    let kind = match trait_item.kind {
+        hir::TraitItemKind::Const { .. } => ty::AssocKind::Const { name },
+        hir::TraitItemKind::Fn { .. } => {
+            ty::AssocKind::Fn { name, has_self: fn_has_self_parameter(tcx, owner_id) }
+        }
+        hir::TraitItemKind::Type { .. } => {
+            ty::AssocKind::Type { data: ty::AssocTypeData::Normal(name) }
+        }
     };
 
     ty::AssocItem {
@@ -144,89 +105,109 @@ fn associated_item_from_trait_item_ref(trait_item_ref: &hir::TraitItemRef) -> ty
     }
 }
 
-fn associated_item_from_impl_item_ref(impl_item_ref: &hir::ImplItemRef) -> ty::AssocItem {
-    let def_id = impl_item_ref.id.owner_id;
-    let name = impl_item_ref.ident.name;
-    let kind = match impl_item_ref.kind {
-        hir::AssocItemKind::Const => ty::AssocKind::Const { name },
-        hir::AssocItemKind::Fn { has_self } => ty::AssocKind::Fn { name, has_self },
-        hir::AssocItemKind::Type => ty::AssocKind::Type { data: ty::AssocTypeData::Normal(name) },
+fn associated_item_from_impl_item(tcx: TyCtxt<'_>, impl_item: &hir::ImplItem<'_>) -> ty::AssocItem {
+    let owner_id = impl_item.owner_id;
+    let name = impl_item.ident.name;
+    let kind = match impl_item.kind {
+        hir::ImplItemKind::Const { .. } => ty::AssocKind::Const { name },
+        hir::ImplItemKind::Fn { .. } => {
+            ty::AssocKind::Fn { name, has_self: fn_has_self_parameter(tcx, owner_id) }
+        }
+        hir::ImplItemKind::Type { .. } => {
+            ty::AssocKind::Type { data: ty::AssocTypeData::Normal(name) }
+        }
     };
 
     ty::AssocItem {
         kind,
-        def_id: def_id.to_def_id(),
-        trait_item_def_id: impl_item_ref.trait_item_def_id,
+        def_id: owner_id.to_def_id(),
+        trait_item_def_id: impl_item.trait_item_def_id,
         container: ty::AssocItemContainer::Impl,
     }
 }
-struct RPITVisitor {
-    rpits: FxIndexSet<LocalDefId>,
+struct RPITVisitor<'a, 'tcx> {
+    tcx: TyCtxt<'tcx>,
+    synthetics: Vec<LocalDefId>,
+    data: DefPathData,
+    disambiguator: &'a mut DisambiguatorState,
 }
 
-impl<'tcx> Visitor<'tcx> for RPITVisitor {
-    fn visit_ty(&mut self, ty: &'tcx hir::Ty<'tcx, AmbigArg>) {
-        if let hir::TyKind::OpaqueDef(opaq) = ty.kind
-            && self.rpits.insert(opaq.def_id)
-        {
-            for bound in opaq.bounds {
-                intravisit::walk_param_bound(self, bound);
-            }
-        }
-        intravisit::walk_ty(self, ty)
+impl<'tcx> Visitor<'tcx> for RPITVisitor<'_, 'tcx> {
+    fn visit_opaque_ty(&mut self, opaque: &'tcx hir::OpaqueTy<'tcx>) -> Self::Result {
+        self.synthetics.push(associated_type_for_impl_trait_in_trait(
+            self.tcx,
+            opaque.def_id,
+            self.data,
+            &mut self.disambiguator,
+        ));
+        intravisit::walk_opaque_ty(self, opaque)
     }
 }
 
-/// Given an `fn_def_id` of a trait or a trait implementation:
-///
-/// if `fn_def_id` is a function defined inside a trait, then it synthesizes
-/// a new def id corresponding to a new associated type for each return-
-/// position `impl Trait` in the signature.
-///
-/// if `fn_def_id` is a function inside of an impl, then for each synthetic
-/// associated type generated for the corresponding trait function described
-/// above, synthesize a corresponding associated type in the impl.
-fn associated_types_for_impl_traits_in_associated_fn(
-    tcx: TyCtxt<'_>,
-    fn_def_id: LocalDefId,
-) -> &'_ [DefId] {
-    let parent_def_id = tcx.local_parent(fn_def_id);
-
-    match tcx.def_kind(parent_def_id) {
-        DefKind::Trait => {
-            let mut visitor = RPITVisitor { rpits: FxIndexSet::default() };
-
-            if let Some(output) = tcx.hir_get_fn_output(fn_def_id) {
+fn associated_types_for_impl_traits_in_trait_or_impl<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def_id: LocalDefId,
+) -> DefIdMap<Vec<DefId>> {
+    let item = tcx.hir_expect_item(def_id);
+    let disambiguator = &mut DisambiguatorState::new();
+    match item.kind {
+        ItemKind::Trait(.., trait_item_refs) => trait_item_refs
+            .iter()
+            .filter_map(move |item| {
+                if !matches!(tcx.def_kind(item.owner_id), DefKind::AssocFn) {
+                    return None;
+                }
+                let fn_def_id = item.owner_id.def_id;
+                let Some(output) = tcx.hir_get_fn_output(fn_def_id) else {
+                    return Some((fn_def_id.to_def_id(), vec![]));
+                };
+                let def_name = tcx.item_name(fn_def_id.to_def_id());
+                let data = DefPathData::AnonAssocTy(def_name);
+                let mut visitor = RPITVisitor { tcx, synthetics: vec![], data, disambiguator };
                 visitor.visit_fn_ret_ty(output);
-
-                tcx.arena.alloc_from_iter(visitor.rpits.iter().map(|opaque_ty_def_id| {
-                    tcx.associated_type_for_impl_trait_in_trait(opaque_ty_def_id).to_def_id()
-                }))
-            } else {
-                &[]
-            }
-        }
-
-        DefKind::Impl { .. } => {
-            let Some(trait_fn_def_id) = tcx.associated_item(fn_def_id).trait_item_def_id else {
-                return &[];
+                let defs = visitor
+                    .synthetics
+                    .into_iter()
+                    .map(|def_id| def_id.to_def_id())
+                    .collect::<Vec<_>>();
+                Some((fn_def_id.to_def_id(), defs))
+            })
+            .collect(),
+        ItemKind::Impl(impl_) => {
+            let Some(trait_ref) = impl_.of_trait else {
+                return Default::default();
             };
-
-            tcx.arena.alloc_from_iter(
-                tcx.associated_types_for_impl_traits_in_associated_fn(trait_fn_def_id).iter().map(
-                    move |&trait_assoc_def_id| {
-                        associated_type_for_impl_trait_in_impl(tcx, trait_assoc_def_id, fn_def_id)
+            let Some(trait_def_id) = trait_ref.trait_def_id() else {
+                return Default::default();
+            };
+            let in_trait_def = tcx.associated_types_for_impl_traits_in_trait_or_impl(trait_def_id);
+            impl_
+                .items
+                .iter()
+                .filter_map(|item| {
+                    if !matches!(tcx.def_kind(item.owner_id), DefKind::AssocFn) {
+                        return None;
+                    }
+                    let did = item.owner_id.def_id.to_def_id();
+                    let item = tcx.hir_impl_item(*item);
+                    let Some(trait_item_def_id) = item.trait_item_def_id else {
+                        return Some((did, vec![]));
+                    };
+                    let iter = in_trait_def[&trait_item_def_id].iter().map(|&id| {
+                        associated_type_for_impl_trait_in_impl(tcx, id, item, disambiguator)
                             .to_def_id()
-                    },
-                ),
+                    });
+                    Some((did, iter.collect()))
+                })
+                .collect()
+        }
+        _ => {
+            bug!(
+                "associated_types_for_impl_traits_in_trait_or_impl: {:?} should be Trait or Impl but is {:?}",
+                def_id,
+                tcx.def_kind(def_id)
             )
         }
-
-        def_kind => bug!(
-            "associated_types_for_impl_traits_in_associated_fn: {:?} should be Trait or Impl but is {:?}",
-            parent_def_id,
-            def_kind
-        ),
     }
 }
 
@@ -236,6 +217,8 @@ fn associated_types_for_impl_traits_in_associated_fn(
 fn associated_type_for_impl_trait_in_trait(
     tcx: TyCtxt<'_>,
     opaque_ty_def_id: LocalDefId,
+    data: DefPathData,
+    disambiguator: &mut DisambiguatorState,
 ) -> LocalDefId {
     let (hir::OpaqueTyOrigin::FnReturn { parent: fn_def_id, .. }
     | hir::OpaqueTyOrigin::AsyncFn { parent: fn_def_id, .. }) =
@@ -246,22 +229,15 @@ fn associated_type_for_impl_trait_in_trait(
     let trait_def_id = tcx.local_parent(fn_def_id);
     assert_eq!(tcx.def_kind(trait_def_id), DefKind::Trait);
 
-    // Collect all opaque types in return position for the method and use
-    // the index as the disambiguator to make an unique def path.
-    let mut visitor = RPITVisitor { rpits: FxIndexSet::default() };
-    visitor.visit_fn_ret_ty(tcx.hir_get_fn_output(fn_def_id).unwrap());
-    let disambiguator = visitor.rpits.get_index_of(&opaque_ty_def_id).unwrap().try_into().unwrap();
-
     let span = tcx.def_span(opaque_ty_def_id);
     // Also use the method name to create an unique def path.
-    let data = DefPathData::AnonAssocTy(tcx.item_name(fn_def_id.to_def_id()));
     let trait_assoc_ty = tcx.at(span).create_def(
         trait_def_id,
         // No name because this is an anonymous associated type.
         None,
         DefKind::AssocTy,
         Some(data),
-        &mut DisambiguatorState::with(trait_def_id, data, disambiguator),
+        disambiguator,
     );
 
     let local_def_id = trait_assoc_ty.def_id();
@@ -298,19 +274,20 @@ fn associated_type_for_impl_trait_in_trait(
 
 /// Given an `trait_assoc_def_id` corresponding to an associated item synthesized
 /// from an `impl Trait` in an associated function from a trait, and an
-/// `impl_fn_def_id` that represents an implementation of the associated function
+/// `impl_fn` that represents an implementation of the associated function
 /// that the `impl Trait` comes from, synthesize an associated type for that `impl Trait`
 /// that inherits properties that we infer from the method and the associated type.
 fn associated_type_for_impl_trait_in_impl(
     tcx: TyCtxt<'_>,
     trait_assoc_def_id: DefId,
-    impl_fn_def_id: LocalDefId,
+    impl_fn: &hir::ImplItem<'_>,
+    disambiguator: &mut DisambiguatorState,
 ) -> LocalDefId {
-    let impl_local_def_id = tcx.local_parent(impl_fn_def_id);
+    let impl_local_def_id = tcx.local_parent(impl_fn.owner_id.def_id);
 
-    let decl = tcx.hir_node_by_def_id(impl_fn_def_id).fn_decl().expect("expected decl");
-    let span = match decl.output {
-        hir::FnRetTy::DefaultReturn(_) => tcx.def_span(impl_fn_def_id),
+    let hir::ImplItemKind::Fn(fn_sig, _) = impl_fn.kind else { bug!("expected decl") };
+    let span = match fn_sig.decl.output {
+        hir::FnRetTy::DefaultReturn(_) => tcx.def_span(impl_fn.owner_id),
         hir::FnRetTy::Return(ty) => ty.span,
     };
 
@@ -327,7 +304,7 @@ fn associated_type_for_impl_trait_in_impl(
         None,
         DefKind::AssocTy,
         Some(data),
-        &mut DisambiguatorState::with(impl_local_def_id, data, disambiguated_data.disambiguator),
+        disambiguator,
     );
 
     let local_def_id = impl_assoc_ty.def_id();
@@ -341,7 +318,7 @@ fn associated_type_for_impl_trait_in_impl(
     impl_assoc_ty.associated_item(ty::AssocItem {
         kind: ty::AssocKind::Type {
             data: ty::AssocTypeData::Rpitit(ImplTraitInTraitData::Impl {
-                fn_def_id: impl_fn_def_id.to_def_id(),
+                fn_def_id: impl_fn.owner_id.to_def_id(),
             }),
         },
         def_id,
@@ -350,10 +327,10 @@ fn associated_type_for_impl_trait_in_impl(
     });
 
     // Copy visility of the containing function.
-    impl_assoc_ty.visibility(tcx.visibility(impl_fn_def_id));
+    impl_assoc_ty.visibility(tcx.visibility(impl_fn.owner_id));
 
     // Copy defaultness of the containing function.
-    impl_assoc_ty.defaultness(tcx.defaultness(impl_fn_def_id));
+    impl_assoc_ty.defaultness(tcx.defaultness(impl_fn.owner_id));
 
     // Copy generics_of the trait's associated item but the impl as the parent.
     // FIXME: This may be detrimental to diagnostics, as we resolve the early-bound vars

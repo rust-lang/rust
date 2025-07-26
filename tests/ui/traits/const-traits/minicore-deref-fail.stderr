@@ -1,5 +1,5 @@
-error[E0277]: the trait bound `Ty: ~const minicore::Deref` is not satisfied
-  --> $DIR/minicore-deref-fail.rs:18:5
+error[E0277]: the trait bound `Ty: [const] minicore::Deref` is not satisfied
+  --> $DIR/minicore-deref-fail.rs:20:5
    |
 LL |     *Ty;
    |     ^^^

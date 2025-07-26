@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `NonConstAdd: ~const Add` is not satisfied
+error[E0277]: the trait bound `NonConstAdd: [const] Add` is not satisfied
   --> $DIR/assoc-type.rs:37:16
    |
 LL |     type Bar = NonConstAdd;
@@ -7,8 +7,8 @@ LL |     type Bar = NonConstAdd;
 note: required by a bound in `Foo::Bar`
   --> $DIR/assoc-type.rs:33:15
    |
-LL |     type Bar: ~const Add;
-   |               ^^^^^^^^^^ required by this bound in `Foo::Bar`
+LL |     type Bar: [const] Add;
+   |               ^^^^^^^^^^^ required by this bound in `Foo::Bar`
 
 error: aborting due to 1 previous error
 

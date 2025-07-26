@@ -122,7 +122,7 @@ fn lifetime_bounds(p: &mut Parser<'_>) {
 }
 
 // test type_param_bounds
-// struct S<T: 'a + ?Sized + (Copy) + ~const Drop>;
+// struct S<T: 'a + ?Sized + (Copy) + [const] Drop>;
 pub(super) fn bounds(p: &mut Parser<'_>) {
     p.expect(T![:]);
     bounds_without_colon(p);
@@ -187,6 +187,11 @@ fn type_bound(p: &mut Parser<'_>) -> bool {
                     p.bump_any();
                     p.expect(T![const]);
                 }
+                T!['['] => {
+                    p.bump_any();
+                    p.expect(T![const]);
+                    p.expect(T![']']);
+                }
                 // test const_trait_bound
                 // const fn foo(_: impl const Trait) {}
                 T![const] => {
@@ -201,6 +206,17 @@ fn type_bound(p: &mut Parser<'_>) -> bool {
             }
             if paths::is_use_path_start(p) {
                 types::path_type_bounds(p, false);
+                // test_err type_bounds_macro_call_recovery
+                // fn foo<T: T![], T: T!, T: T!{}>() -> Box<T! + T!{}> {}
+                if p.at(T![!]) {
+                    let m = p.start();
+                    p.bump(T![!]);
+                    p.error("unexpected `!` in type path, macro calls are not allowed here");
+                    if p.at_ts(TokenSet::new(&[T!['{'], T!['['], T!['(']])) {
+                        items::token_tree(p);
+                    }
+                    m.complete(p, ERROR);
+                }
             } else {
                 m.abandon(p);
                 return false;

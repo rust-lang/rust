@@ -16,14 +16,13 @@ use rustc_middle::bug;
 use rustc_middle::mir::interpret::{InterpResult, Scalar};
 use rustc_middle::mir::visit::{MutVisitor, PlaceContext, Visitor};
 use rustc_middle::mir::*;
-use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_mir_dataflow::fmt::DebugWithContext;
 use rustc_mir_dataflow::lattice::{FlatSet, HasBottom};
 use rustc_mir_dataflow::value_analysis::{
     Map, PlaceIndex, State, TrackElem, ValueOrPlace, debug_with_context,
 };
-use rustc_mir_dataflow::{Analysis, Results, ResultsVisitor};
+use rustc_mir_dataflow::{Analysis, ResultsVisitor, visit_reachable_results};
 use rustc_span::DUMMY_SP;
 use tracing::{debug, debug_span, instrument};
 
@@ -61,13 +60,14 @@ impl<'tcx> crate::MirPass<'tcx> for DataflowConstProp {
         let map = Map::new(tcx, body, place_limit);
 
         // Perform the actual dataflow analysis.
-        let analysis = ConstAnalysis::new(tcx, body, map);
-        let mut results =
-            debug_span!("analyze").in_scope(|| analysis.iterate_to_fixpoint(tcx, body, None));
+        let mut const_ = debug_span!("analyze")
+            .in_scope(|| ConstAnalysis::new(tcx, body, map).iterate_to_fixpoint(tcx, body, None));
 
         // Collect results and patch the body afterwards.
         let mut visitor = Collector::new(tcx, &body.local_decls);
-        debug_span!("collect").in_scope(|| results.visit_reachable_with(body, &mut visitor));
+        debug_span!("collect").in_scope(|| {
+            visit_reachable_results(body, &mut const_.analysis, &const_.results, &mut visitor)
+        });
         let mut patch = visitor.patch;
         debug_span!("patch").in_scope(|| patch.visit_body_preserves_cfg(body));
     }
@@ -615,7 +615,7 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
             place,
             operand,
             &mut |elem, op| match elem {
-                TrackElem::Field(idx) => self.ecx.project_field(op, idx.as_usize()).discard_err(),
+                TrackElem::Field(idx) => self.ecx.project_field(op, idx).discard_err(),
                 TrackElem::Variant(idx) => self.ecx.project_downcast(op, idx).discard_err(),
                 TrackElem::Discriminant => {
                     let variant = self.ecx.read_discriminant(op).discard_err()?;
@@ -889,7 +889,8 @@ fn try_write_constant<'tcx>(
 
         ty::Tuple(elem_tys) => {
             for (i, elem) in elem_tys.iter().enumerate() {
-                let Some(field) = map.apply(place, TrackElem::Field(FieldIdx::from_usize(i))) else {
+                let i = FieldIdx::from_usize(i);
+                let Some(field) = map.apply(place, TrackElem::Field(i)) else {
                     throw_machine_stop_str!("missing field in tuple")
                 };
                 let field_dest = ecx.project_field(dest, i)?;
@@ -927,7 +928,7 @@ fn try_write_constant<'tcx>(
                 let Some(field) = map.apply(variant_place, TrackElem::Field(i)) else {
                     throw_machine_stop_str!("missing field in ADT")
                 };
-                let field_dest = ecx.project_field(&variant_dest, i.as_usize())?;
+                let field_dest = ecx.project_field(&variant_dest, i)?;
                 try_write_constant(ecx, &field_dest, field, ty, state, map)?;
             }
             ecx.write_discriminant(variant_idx, dest)?;
@@ -959,10 +960,10 @@ fn try_write_constant<'tcx>(
 }
 
 impl<'tcx> ResultsVisitor<'tcx, ConstAnalysis<'_, 'tcx>> for Collector<'_, 'tcx> {
-    #[instrument(level = "trace", skip(self, results, statement))]
+    #[instrument(level = "trace", skip(self, analysis, statement))]
     fn visit_after_early_statement_effect(
         &mut self,
-        results: &mut Results<'tcx, ConstAnalysis<'_, 'tcx>>,
+        analysis: &mut ConstAnalysis<'_, 'tcx>,
         state: &State<FlatSet<Scalar>>,
         statement: &Statement<'tcx>,
         location: Location,
@@ -972,8 +973,8 @@ impl<'tcx> ResultsVisitor<'tcx, ConstAnalysis<'_, 'tcx>> for Collector<'_, 'tcx>
                 OperandCollector {
                     state,
                     visitor: self,
-                    ecx: &mut results.analysis.ecx,
-                    map: &results.analysis.map,
+                    ecx: &mut analysis.ecx,
+                    map: &analysis.map,
                 }
                 .visit_rvalue(rvalue, location);
             }
@@ -981,10 +982,10 @@ impl<'tcx> ResultsVisitor<'tcx, ConstAnalysis<'_, 'tcx>> for Collector<'_, 'tcx>
         }
     }
 
-    #[instrument(level = "trace", skip(self, results, statement))]
+    #[instrument(level = "trace", skip(self, analysis, statement))]
     fn visit_after_primary_statement_effect(
         &mut self,
-        results: &mut Results<'tcx, ConstAnalysis<'_, 'tcx>>,
+        analysis: &mut ConstAnalysis<'_, 'tcx>,
         state: &State<FlatSet<Scalar>>,
         statement: &Statement<'tcx>,
         location: Location,
@@ -994,12 +995,9 @@ impl<'tcx> ResultsVisitor<'tcx, ConstAnalysis<'_, 'tcx>> for Collector<'_, 'tcx>
                 // Don't overwrite the assignment if it already uses a constant (to keep the span).
             }
             StatementKind::Assign(box (place, _)) => {
-                if let Some(value) = self.try_make_constant(
-                    &mut results.analysis.ecx,
-                    place,
-                    state,
-                    &results.analysis.map,
-                ) {
+                if let Some(value) =
+                    self.try_make_constant(&mut analysis.ecx, place, state, &analysis.map)
+                {
                     self.patch.assignments.insert(location, value);
                 }
             }
@@ -1009,18 +1007,13 @@ impl<'tcx> ResultsVisitor<'tcx, ConstAnalysis<'_, 'tcx>> for Collector<'_, 'tcx>
 
     fn visit_after_early_terminator_effect(
         &mut self,
-        results: &mut Results<'tcx, ConstAnalysis<'_, 'tcx>>,
+        analysis: &mut ConstAnalysis<'_, 'tcx>,
         state: &State<FlatSet<Scalar>>,
         terminator: &Terminator<'tcx>,
         location: Location,
     ) {
-        OperandCollector {
-            state,
-            visitor: self,
-            ecx: &mut results.analysis.ecx,
-            map: &results.analysis.map,
-        }
-        .visit_terminator(terminator, location);
+        OperandCollector { state, visitor: self, ecx: &mut analysis.ecx, map: &analysis.map }
+            .visit_terminator(terminator, location);
     }
 }
 

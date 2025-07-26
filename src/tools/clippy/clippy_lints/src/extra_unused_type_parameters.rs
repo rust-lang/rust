@@ -273,7 +273,7 @@ impl<'tcx> LateLintPass<'tcx> for ExtraUnusedTypeParameters {
         // Only lint on inherent methods, not trait methods.
         if let ImplItemKind::Fn(.., body_id) = item.kind
             && !item.generics.params.is_empty()
-            && trait_ref_of_method(cx, item.owner_id.def_id).is_none()
+            && trait_ref_of_method(cx, item.owner_id).is_none()
             && !is_empty_body(cx, body_id)
             && (!self.avoid_breaking_exported_api || !cx.effective_visibilities.is_exported(item.owner_id.def_id))
             && !item.span.in_external_macro(cx.sess().source_map())

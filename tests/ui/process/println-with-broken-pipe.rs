@@ -5,6 +5,7 @@
 //@ ignore-fuchsia
 //@ ignore-horizon
 //@ ignore-android
+//@ ignore-backends: gcc
 //@ normalize-stderr: ".rs:\d+:\d+" -> ".rs:LL:CC"
 //@ compile-flags: -Zon-broken-pipe=error
 

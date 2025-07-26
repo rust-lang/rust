@@ -8,7 +8,8 @@ In stable Rust, there is no way to create new identifiers by joining identifiers
  `#![feature(macro_metavar_expr_concat)]` introduces a way to do this, using the concat metavariable expression.
 
 > This feature uses the syntax from [`macro_metavar_expr`] but is otherwise
-> independent. It replaces the old unstable feature [`concat_idents`].
+> independent. It replaces the since-removed unstable feature
+> [`concat_idents`].
 
 > This is an experimental feature; it and its syntax will require a RFC before stabilization.
 
@@ -126,8 +127,7 @@ test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; fini
 
 [`paste`]: https://crates.io/crates/paste
 [RFC 3086]: https://rust-lang.github.io/rfcs/3086-macro-metavar-expr.html
-[`concat_idents!`]: https://doc.rust-lang.org/nightly/std/macro.concat_idents.html
 [`macro_metavar_expr`]: ../language-features/macro-metavar-expr.md
-[`concat_idents`]: ../library-features/concat-idents.md
+[`concat_idents`]: https://github.com/rust-lang/rust/issues/29599
 [#124225]: https://github.com/rust-lang/rust/issues/124225
 [declarative macros]: https://doc.rust-lang.org/stable/reference/macros-by-example.html

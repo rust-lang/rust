@@ -5,7 +5,7 @@ LL | pub struct Iterate<T, F> {
    | ------------------------ method `iter` not found for this struct
 ...
 LL |     println!("{:?}", a.iter().take(10).collect::<Vec<usize>>());
-   |                        ^^^^ method not found in `Iterate<{integer}, {closure@issue-41880.rs:26:24}>`
+   |                        ^^^^ method not found in `Iterate<{integer}, {closure@$DIR/issue-41880.rs:26:24: 26:27}>`
 
 error: aborting due to 1 previous error
 

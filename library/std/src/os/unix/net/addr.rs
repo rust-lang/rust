@@ -1,3 +1,4 @@
+use crate::bstr::ByteStr;
 use crate::ffi::OsStr;
 #[cfg(any(doc, target_os = "android", target_os = "linux"))]
 use crate::os::net::linux_ext;
@@ -61,7 +62,7 @@ pub(super) fn sockaddr_un(path: &Path) -> io::Result<(libc::sockaddr_un, libc::s
 enum AddressKind<'a> {
     Unnamed,
     Pathname(&'a Path),
-    Abstract(&'a [u8]),
+    Abstract(&'a ByteStr),
 }
 
 /// An address associated with a Unix socket.
@@ -245,7 +246,7 @@ impl SocketAddr {
         {
             AddressKind::Unnamed
         } else if self.addr.sun_path[0] == 0 {
-            AddressKind::Abstract(&path[1..len])
+            AddressKind::Abstract(ByteStr::from_bytes(&path[1..len]))
         } else {
             AddressKind::Pathname(OsStr::from_bytes(&path[..len - 1]).as_ref())
         }
@@ -260,7 +261,7 @@ impl Sealed for SocketAddr {}
 #[stable(feature = "unix_socket_abstract", since = "1.70.0")]
 impl linux_ext::addr::SocketAddrExt for SocketAddr {
     fn as_abstract_name(&self) -> Option<&[u8]> {
-        if let AddressKind::Abstract(name) = self.address() { Some(name) } else { None }
+        if let AddressKind::Abstract(name) = self.address() { Some(name.as_bytes()) } else { None }
     }
 
     fn from_abstract_name<N>(name: N) -> crate::io::Result<Self>
@@ -295,7 +296,7 @@ impl fmt::Debug for SocketAddr {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.address() {
             AddressKind::Unnamed => write!(fmt, "(unnamed)"),
-            AddressKind::Abstract(name) => write!(fmt, "\"{}\" (abstract)", name.escape_ascii()),
+            AddressKind::Abstract(name) => write!(fmt, "{name:?} (abstract)"),
             AddressKind::Pathname(path) => write!(fmt, "{path:?} (pathname)"),
         }
     }

@@ -63,6 +63,12 @@ impl Command {
         }
     }
 
+    // Internal-only.
+    pub(crate) fn into_raw_command(mut self) -> std::process::Command {
+        self.drop_bomb.defuse();
+        self.cmd
+    }
+
     /// Specify a stdin input buffer. This is a convenience helper,
     pub fn stdin_buf<I: AsRef<[u8]>>(&mut self, input: I) -> &mut Self {
         self.stdin_buf = Some(input.as_ref().to_vec().into_boxed_slice());

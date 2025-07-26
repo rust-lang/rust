@@ -6,7 +6,8 @@ where
     str: std::ptr::Pointee<Metadata = str>,
 {
     [(); { let _a: Option<&str> = None; 0 }];
-    //~^ ERROR evaluation of constant value failed
+    //~^ ERROR entering unreachable code
+    //~| NOTE evaluation of `return_str::{constant#0}` failed here
 }
 
 fn main() {}

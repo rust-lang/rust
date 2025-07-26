@@ -25,7 +25,7 @@ LL ~     v
 LL +
 LL +         .into_iter()
 LL +         .map(|i| i * 2)
-LL +         .filter(|i| i % 2 == 0)
+LL +         .filter(|i| i.is_multiple_of(2))
 LL +         .map(|_| ())
 LL +         .next()
 LL +         .unwrap();

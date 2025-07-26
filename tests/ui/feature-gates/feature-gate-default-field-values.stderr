@@ -124,8 +124,28 @@ LL |         optional: () = (),
    = help: add `#![feature(default_field_values)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
+error[E0658]: default values on fields are experimental
+  --> $DIR/feature-gate-default-field-values.rs:67:11
+   |
+LL |     x: i32 = 0,
+   |           ^^^^
+   |
+   = note: see issue #132162 <https://github.com/rust-lang/rust/issues/132162> for more information
+   = help: add `#![feature(default_field_values)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: default values on fields are experimental
+  --> $DIR/feature-gate-default-field-values.rs:68:11
+   |
+LL |     y: f32 = 0.0,
+   |           ^^^^^^
+   |
+   = note: see issue #132162 <https://github.com/rust-lang/rust/issues/132162> for more information
+   = help: add `#![feature(default_field_values)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
 error[E0797]: base expression required after `..`
-  --> $DIR/feature-gate-default-field-values.rs:62:21
+  --> $DIR/feature-gate-default-field-values.rs:72:21
    |
 LL |     let x = Foo { .. };
    |                     ^
@@ -140,7 +160,7 @@ LL |     let x = Foo { ../* expr */ };
    |                     ++++++++++
 
 error[E0797]: base expression required after `..`
-  --> $DIR/feature-gate-default-field-values.rs:64:29
+  --> $DIR/feature-gate-default-field-values.rs:74:29
    |
 LL |     let z = Foo { baz: 1, .. };
    |                             ^
@@ -155,7 +175,7 @@ LL |     let z = Foo { baz: 1, ../* expr */ };
    |                             ++++++++++
 
 error[E0797]: base expression required after `..`
-  --> $DIR/feature-gate-default-field-values.rs:70:26
+  --> $DIR/feature-gate-default-field-values.rs:80:26
    |
 LL |     let x = Bar::Foo { .. };
    |                          ^
@@ -170,7 +190,7 @@ LL |     let x = Bar::Foo { ../* expr */ };
    |                          ++++++++++
 
 error[E0797]: base expression required after `..`
-  --> $DIR/feature-gate-default-field-values.rs:72:34
+  --> $DIR/feature-gate-default-field-values.rs:82:34
    |
 LL |     let z = Bar::Foo { baz: 1, .. };
    |                                  ^
@@ -185,7 +205,7 @@ LL |     let z = Bar::Foo { baz: 1, ../* expr */ };
    |                                  ++++++++++
 
 error[E0797]: base expression required after `..`
-  --> $DIR/feature-gate-default-field-values.rs:78:31
+  --> $DIR/feature-gate-default-field-values.rs:88:31
    |
 LL |     let x = Qux::<i32, 4> { .. };
    |                               ^
@@ -200,7 +220,7 @@ LL |     let x = Qux::<i32, 4> { ../* expr */ };
    |                               ++++++++++
 
 error[E0797]: base expression required after `..`
-  --> $DIR/feature-gate-default-field-values.rs:79:73
+  --> $DIR/feature-gate-default-field-values.rs:89:73
    |
 LL |     assert!(matches!(Qux::<i32, 4> { bar: S, baz: 42, bat: 2, bay: 4, .. }, x));
    |                                                                         ^
@@ -215,7 +235,7 @@ LL |     assert!(matches!(Qux::<i32, 4> { bar: S, baz: 42, bat: 2, bay: 4, ../* 
    |                                                                         ++++++++++
 
 error[E0797]: base expression required after `..`
-  --> $DIR/feature-gate-default-field-values.rs:82:38
+  --> $DIR/feature-gate-default-field-values.rs:92:38
    |
 LL |     let y = Opt { mandatory: None, .. };
    |                                      ^
@@ -230,7 +250,7 @@ LL |     let y = Opt { mandatory: None, ../* expr */ };
    |                                      ++++++++++
 
 error[E0797]: base expression required after `..`
-  --> $DIR/feature-gate-default-field-values.rs:86:47
+  --> $DIR/feature-gate-default-field-values.rs:96:47
    |
 LL |     assert!(matches!(Opt { mandatory: None, .. }, z));
    |                                               ^
@@ -245,7 +265,7 @@ LL |     assert!(matches!(Opt { mandatory: None, ../* expr */ }, z));
    |                                               ++++++++++
 
 error[E0797]: base expression required after `..`
-  --> $DIR/feature-gate-default-field-values.rs:88:30
+  --> $DIR/feature-gate-default-field-values.rs:98:30
    |
 LL |     assert!(matches!(Opt { .. }, z));
    |                              ^
@@ -256,7 +276,7 @@ LL |     assert!(matches!(Opt { ../* expr */ }, z));
    |                              ++++++++++
 
 error[E0797]: base expression required after `..`
-  --> $DIR/feature-gate-default-field-values.rs:90:44
+  --> $DIR/feature-gate-default-field-values.rs:100:44
    |
 LL |     assert!(matches!(Opt { optional: (), .. }, z));
    |                                            ^
@@ -267,7 +287,7 @@ LL |     assert!(matches!(Opt { optional: (), ../* expr */ }, z));
    |                                            ++++++++++
 
 error[E0797]: base expression required after `..`
-  --> $DIR/feature-gate-default-field-values.rs:92:61
+  --> $DIR/feature-gate-default-field-values.rs:102:61
    |
 LL |     assert!(matches!(Opt { optional: (), mandatory: None, .. }, z));
    |                                                             ^
@@ -279,7 +299,7 @@ LL +     assert!(matches!(Opt { optional: (), mandatory: None,  }, z));
    |
 
 error[E0797]: base expression required after `..`
-  --> $DIR/feature-gate-default-field-values.rs:94:51
+  --> $DIR/feature-gate-default-field-values.rs:104:51
    |
 LL |     let y = OptEnum::Variant { mandatory: None, .. };
    |                                                   ^
@@ -294,7 +314,7 @@ LL |     let y = OptEnum::Variant { mandatory: None, ../* expr */ };
    |                                                   ++++++++++
 
 error[E0797]: base expression required after `..`
-  --> $DIR/feature-gate-default-field-values.rs:98:60
+  --> $DIR/feature-gate-default-field-values.rs:108:60
    |
 LL |     assert!(matches!(OptEnum::Variant { mandatory: None, .. }, z));
    |                                                            ^
@@ -309,7 +329,7 @@ LL |     assert!(matches!(OptEnum::Variant { mandatory: None, ../* expr */ }, z)
    |                                                            ++++++++++
 
 error[E0797]: base expression required after `..`
-  --> $DIR/feature-gate-default-field-values.rs:100:43
+  --> $DIR/feature-gate-default-field-values.rs:110:43
    |
 LL |     assert!(matches!(OptEnum::Variant { .. }, z));
    |                                           ^
@@ -320,7 +340,7 @@ LL |     assert!(matches!(OptEnum::Variant { ../* expr */ }, z));
    |                                           ++++++++++
 
 error[E0797]: base expression required after `..`
-  --> $DIR/feature-gate-default-field-values.rs:102:57
+  --> $DIR/feature-gate-default-field-values.rs:112:57
    |
 LL |     assert!(matches!(OptEnum::Variant { optional: (), .. }, z));
    |                                                         ^
@@ -331,7 +351,7 @@ LL |     assert!(matches!(OptEnum::Variant { optional: (), ../* expr */ }, z));
    |                                                         ++++++++++
 
 error[E0797]: base expression required after `..`
-  --> $DIR/feature-gate-default-field-values.rs:104:74
+  --> $DIR/feature-gate-default-field-values.rs:114:74
    |
 LL |     assert!(matches!(OptEnum::Variant { optional: (), mandatory: None, .. }, z));
    |                                                                          ^
@@ -342,7 +362,7 @@ LL -     assert!(matches!(OptEnum::Variant { optional: (), mandatory: None, .. }
 LL +     assert!(matches!(OptEnum::Variant { optional: (), mandatory: None,  }, z));
    |
 
-error: aborting due to 29 previous errors
+error: aborting due to 31 previous errors
 
 Some errors have detailed explanations: E0658, E0797.
 For more information about an error, try `rustc --explain E0658`.

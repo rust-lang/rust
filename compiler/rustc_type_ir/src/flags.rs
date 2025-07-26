@@ -130,6 +130,12 @@ bitflags::bitflags! {
 
         /// Does this have any binders with bound vars (e.g. that need to be anonymized)?
         const HAS_BINDER_VARS             = 1 << 23;
+
+        /// Does this type have any coroutine witnesses in it?
+        // FIXME: This should probably be changed to track whether the type has any
+        // *coroutines* in it, though this will happen if we remove coroutine witnesses
+        // altogether.
+        const HAS_TY_CORO                 = 1 << 24;
     }
 }
 
@@ -240,10 +246,12 @@ impl<I: Interner> FlagComputation<I> {
                 self.add_flags(TypeFlags::HAS_TY_PARAM);
             }
 
-            ty::Closure(_, args)
-            | ty::Coroutine(_, args)
-            | ty::CoroutineClosure(_, args)
-            | ty::CoroutineWitness(_, args) => {
+            ty::Closure(_, args) | ty::Coroutine(_, args) | ty::CoroutineClosure(_, args) => {
+                self.add_args(args.as_slice());
+            }
+
+            ty::CoroutineWitness(_, args) => {
+                self.add_flags(TypeFlags::HAS_TY_CORO);
                 self.add_args(args.as_slice());
             }
 
@@ -401,7 +409,6 @@ impl<I: Interner> FlagComputation<I> {
                 self.add_const(expected);
                 self.add_const(found);
             }
-            ty::PredicateKind::Ambiguous => {}
             ty::PredicateKind::NormalizesTo(ty::NormalizesTo { alias, term }) => {
                 self.add_alias_term(alias);
                 self.add_term(term);
@@ -410,6 +417,8 @@ impl<I: Interner> FlagComputation<I> {
                 self.add_term(t1);
                 self.add_term(t2);
             }
+            ty::PredicateKind::Clause(ty::ClauseKind::UnstableFeature(_sym)) => {}
+            ty::PredicateKind::Ambiguous => {}
         }
     }
 
@@ -479,8 +488,8 @@ impl<I: Interner> FlagComputation<I> {
     }
 
     fn add_args(&mut self, args: &[I::GenericArg]) {
-        for kind in args {
-            match kind.kind() {
+        for arg in args {
+            match arg.kind() {
                 ty::GenericArgKind::Type(ty) => self.add_ty(ty),
                 ty::GenericArgKind::Lifetime(lt) => self.add_region(lt),
                 ty::GenericArgKind::Const(ct) => self.add_const(ct),

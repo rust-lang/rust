@@ -46,7 +46,7 @@ pub(super) fn codegen_with_call_return_arg<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
     ret_arg_abi: &ArgAbi<'tcx, Ty<'tcx>>,
     ret_place: CPlace<'tcx>,
-    f: impl FnOnce(&mut FunctionCx<'_, '_, 'tcx>, Option<Value>) -> Inst,
+    f: impl FnOnce(&mut FunctionCx<'_, '_, 'tcx>, Option<Value>) -> SmallVec<[Value; 2]>,
 ) {
     let (ret_temp_place, return_ptr) = match ret_arg_abi.mode {
         PassMode::Ignore => (None, None),
@@ -67,23 +67,21 @@ pub(super) fn codegen_with_call_return_arg<'tcx>(
         PassMode::Direct(_) | PassMode::Pair(_, _) | PassMode::Cast { .. } => (None, None),
     };
 
-    let call_inst = f(fx, return_ptr);
+    let results = f(fx, return_ptr);
 
     match ret_arg_abi.mode {
         PassMode::Ignore => {}
         PassMode::Direct(_) => {
-            let ret_val = fx.bcx.inst_results(call_inst)[0];
+            let ret_val = results[0];
             ret_place.write_cvalue(fx, CValue::by_val(ret_val, ret_arg_abi.layout));
         }
         PassMode::Pair(_, _) => {
-            let ret_val_a = fx.bcx.inst_results(call_inst)[0];
-            let ret_val_b = fx.bcx.inst_results(call_inst)[1];
+            let ret_val_a = results[0];
+            let ret_val_b = results[1];
             ret_place
                 .write_cvalue(fx, CValue::by_val_pair(ret_val_a, ret_val_b, ret_arg_abi.layout));
         }
         PassMode::Cast { ref cast, .. } => {
-            let results =
-                fx.bcx.inst_results(call_inst).iter().copied().collect::<SmallVec<[Value; 2]>>();
             let result =
                 super::pass_mode::from_casted_value(fx, &results, ret_place.layout(), cast);
             ret_place.write_cvalue(fx, result);

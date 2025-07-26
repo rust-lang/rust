@@ -1,0 +1,32 @@
+error[E0599]: no method named `owned` found for reference `&dyn Foo` in the current scope
+  --> $DIR/trait-object-method-receiver-rules.rs:12:7
+   |
+LL |     fn owned(self: Box<Self>);
+   |                    --------- the method might not be found because of this arbitrary self type
+...
+LL |     x.owned();
+   |       ^^^^^
+   |
+help: there is a method `to_owned` with a similar name
+   |
+LL |     x.to_owned();
+   |       +++
+
+error[E0599]: no method named `owned` found for mutable reference `&mut dyn Foo` in the current scope
+  --> $DIR/trait-object-method-receiver-rules.rs:18:7
+   |
+LL |     fn owned(self: Box<Self>);
+   |                    --------- the method might not be found because of this arbitrary self type
+...
+LL |     x.owned();
+   |       ^^^^^ method not found in `&mut dyn Foo`
+
+error[E0599]: no method named `managed` found for struct `Box<(dyn Foo + 'static)>` in the current scope
+  --> $DIR/trait-object-method-receiver-rules.rs:24:7
+   |
+LL |     x.managed();
+   |       ^^^^^^^ method not found in `Box<(dyn Foo + 'static)>`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0599`.

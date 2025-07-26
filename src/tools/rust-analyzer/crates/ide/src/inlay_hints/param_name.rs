@@ -87,10 +87,10 @@ pub(super) fn hints(
     Some(())
 }
 
-fn get_callable(
-    sema: &Semantics<'_, RootDatabase>,
+fn get_callable<'db>(
+    sema: &Semantics<'db, RootDatabase>,
     expr: &ast::Expr,
-) -> Option<(hir::Callable, ast::ArgList)> {
+) -> Option<(hir::Callable<'db>, ast::ArgList)> {
     match expr {
         ast::Expr::CallExpr(expr) => {
             let descended = sema.descend_node_into_attributes(expr.clone()).pop();

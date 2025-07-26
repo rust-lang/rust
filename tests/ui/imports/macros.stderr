@@ -8,8 +8,8 @@ LL |     m! {
 note: `m` could refer to the macro imported here
   --> $DIR/macros.rs:17:13
    |
-LL |         use foo::m;
-   |             ^^^^^^
+LL |         use crate::foo::m;
+   |             ^^^^^^^^^^^^^
 note: `m` could also refer to the macro imported here
   --> $DIR/macros.rs:15:9
    |

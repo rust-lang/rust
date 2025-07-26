@@ -41,7 +41,7 @@ declare_lint_pass!(PartialPubFields => [PARTIAL_PUB_FIELDS]);
 
 impl EarlyLintPass for PartialPubFields {
     fn check_item(&mut self, cx: &EarlyContext<'_>, item: &Item) {
-        let ItemKind::Struct(_, ref st, _) = item.kind else {
+        let ItemKind::Struct(_, _, ref st) = item.kind else {
             return;
         };
 

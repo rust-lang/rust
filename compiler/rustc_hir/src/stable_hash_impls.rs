@@ -6,6 +6,7 @@ use crate::hir::{
     AttributeMap, BodyId, Crate, ForeignItemId, ImplItemId, ItemId, OwnerNodes, TraitItemId,
 };
 use crate::hir_id::{HirId, ItemLocalId};
+use crate::lints::DelayedLints;
 
 /// Requirements for a `StableHashingContext` to be used in this crate.
 /// This is a hack to allow using the `HashStable_Generic` derive macro
@@ -99,6 +100,13 @@ impl<'tcx, HirCtx: crate::HashStableContext> HashStable<HirCtx> for OwnerNodes<'
         // `hash_stable` results.
         let OwnerNodes { opt_hash_including_bodies, nodes: _, bodies: _ } = *self;
         opt_hash_including_bodies.unwrap().hash_stable(hcx, hasher);
+    }
+}
+
+impl<HirCtx: crate::HashStableContext> HashStable<HirCtx> for DelayedLints {
+    fn hash_stable(&self, hcx: &mut HirCtx, hasher: &mut StableHasher) {
+        let DelayedLints { opt_hash, .. } = *self;
+        opt_hash.unwrap().hash_stable(hcx, hasher);
     }
 }
 

@@ -9,5 +9,16 @@ LL |     let _ = Some::<FnPtr>(func) == Some(func as unsafe extern "C" fn());
    = note: for more information visit <https://doc.rust-lang.org/nightly/core/ptr/fn.fn_addr_eq.html>
    = note: `#[warn(unpredictable_function_pointer_comparisons)]` on by default
 
-warning: 1 warning emitted
+warning: function pointer comparisons do not produce meaningful results since their addresses are not guaranteed to be unique
+  --> $DIR/fn-ptr-comparisons-some.rs:15:5
+   |
+LL |     assert_eq!(Some::<FnPtr>(func), Some(func as unsafe extern "C" fn()));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the address of the same function can vary between different codegen units
+   = note: furthermore, different functions could have the same address after being merged together
+   = note: for more information visit <https://doc.rust-lang.org/nightly/core/ptr/fn.fn_addr_eq.html>
+   = note: this warning originates in the macro `assert_eq` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: 2 warnings emitted
 

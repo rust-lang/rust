@@ -1,0 +1,15 @@
+error[E0599]: no method named `struct_impl_method` found for struct `Box<dyn MyTrait>` in the current scope
+  --> $DIR/trait-object-method-error.rs:19:9
+   |
+LL |     obj.struct_impl_method();
+   |         ^^^^^^^^^^^^^^^^^^
+   |
+help: there is a method `trait_method` with a similar name
+   |
+LL -     obj.struct_impl_method();
+LL +     obj.trait_method();
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0599`.

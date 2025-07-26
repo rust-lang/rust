@@ -25,7 +25,7 @@ use triomphe::Arc;
 use typed_arena::Arena;
 
 use crate::{
-    Adjust, InferenceResult, Interner, Ty, TyExt, TyKind,
+    Adjust, InferenceResult, Interner, TraitEnvironment, Ty, TyExt, TyKind,
     db::HirDatabase,
     diagnostics::match_check::{
         self,
@@ -74,8 +74,9 @@ impl BodyValidationDiagnostic {
         let _p = tracing::info_span!("BodyValidationDiagnostic::collect").entered();
         let infer = db.infer(owner);
         let body = db.body(owner);
+        let env = db.trait_environment_for_body(owner);
         let mut validator =
-            ExprValidator { owner, body, infer, diagnostics: Vec::new(), validate_lints };
+            ExprValidator { owner, body, infer, diagnostics: Vec::new(), validate_lints, env };
         validator.validate_body(db);
         validator.diagnostics
     }
@@ -85,6 +86,7 @@ struct ExprValidator {
     owner: DefWithBodyId,
     body: Arc<Body>,
     infer: Arc<InferenceResult>,
+    env: Arc<TraitEnvironment>,
     diagnostics: Vec<BodyValidationDiagnostic>,
     validate_lints: bool,
 }
@@ -99,7 +101,7 @@ impl ExprValidator {
             self.check_for_trailing_return(body.body_expr, &body);
         }
 
-        for (id, expr) in body.exprs.iter() {
+        for (id, expr) in body.exprs() {
             if let Some((variant, missed_fields, true)) =
                 record_literal_missing_fields(db, &self.infer, id, expr)
             {
@@ -130,7 +132,7 @@ impl ExprValidator {
             }
         }
 
-        for (id, pat) in body.pats.iter() {
+        for (id, pat) in body.pats() {
             if let Some((variant, missed_fields, true)) =
                 record_pattern_missing_fields(db, &self.infer, id, pat)
             {
@@ -190,7 +192,7 @@ impl ExprValidator {
             return;
         }
 
-        let cx = MatchCheckCtx::new(self.owner.module(db), self.owner, db);
+        let cx = MatchCheckCtx::new(self.owner.module(db), self.owner, db, self.env.clone());
 
         let pattern_arena = Arena::new();
         let mut m_arms = Vec::with_capacity(arms.len());
@@ -317,11 +319,14 @@ impl ExprValidator {
             return;
         };
         let pattern_arena = Arena::new();
-        let cx = MatchCheckCtx::new(self.owner.module(db), self.owner, db);
+        let cx = MatchCheckCtx::new(self.owner.module(db), self.owner, db, self.env.clone());
         for stmt in &**statements {
             let &Statement::Let { pat, initializer, else_branch: None, .. } = stmt else {
                 continue;
             };
+            if self.infer.type_mismatch_for_pat(pat).is_some() {
+                continue;
+            }
             let Some(initializer) = initializer else { continue };
             let ty = &self.infer[initializer];
             if ty.contains_unknown() {
@@ -384,7 +389,7 @@ impl ExprValidator {
         if !self.validate_lints {
             return;
         }
-        match &body.exprs[body_expr] {
+        match &body[body_expr] {
             Expr::Block { statements, tail, .. } => {
                 let last_stmt = tail.or_else(|| match statements.last()? {
                     Statement::Expr { expr, .. } => Some(*expr),
@@ -423,7 +428,7 @@ impl ExprValidator {
             if else_branch.is_none() {
                 return;
             }
-            if let Expr::Block { statements, tail, .. } = &self.body.exprs[*then_branch] {
+            if let Expr::Block { statements, tail, .. } = &self.body[*then_branch] {
                 let last_then_expr = tail.or_else(|| match statements.last()? {
                     Statement::Expr { expr, .. } => Some(*expr),
                     _ => None,
@@ -480,7 +485,7 @@ struct FilterMapNextChecker {
 }
 
 impl FilterMapNextChecker {
-    fn new(resolver: &hir_def::resolver::Resolver, db: &dyn HirDatabase) -> Self {
+    fn new(resolver: &hir_def::resolver::Resolver<'_>, db: &dyn HirDatabase) -> Self {
         // Find and store the FunctionIds for Iterator::filter_map and Iterator::next
         let (next_function_id, filter_map_function_id) = match LangItem::IteratorNext
             .resolve_function(db, resolver.krate())
@@ -489,7 +494,7 @@ impl FilterMapNextChecker {
                 Some(next_function_id),
                 match next_function_id.lookup(db).container {
                     ItemContainerId::TraitId(iterator_trait_id) => {
-                        let iterator_trait_items = &db.trait_items(iterator_trait_id).items;
+                        let iterator_trait_items = &iterator_trait_id.trait_items(db).items;
                         iterator_trait_items.iter().find_map(|(name, it)| match it {
                             &AssocItemId::FunctionId(id) if *name == sym::filter_map => Some(id),
                             _ => None,
@@ -553,7 +558,7 @@ pub fn record_literal_missing_fields(
         return None;
     }
 
-    let variant_data = variant_def.variant_data(db);
+    let variant_data = variant_def.fields(db);
 
     let specified_fields: FxHashSet<_> = fields.iter().map(|f| &f.name).collect();
     let missed_fields: Vec<LocalFieldId> = variant_data
@@ -583,7 +588,7 @@ pub fn record_pattern_missing_fields(
         return None;
     }
 
-    let variant_data = variant_def.variant_data(db);
+    let variant_data = variant_def.fields(db);
 
     let specified_fields: FxHashSet<_> = fields.iter().map(|f| &f.name).collect();
     let missed_fields: Vec<LocalFieldId> = variant_data
@@ -637,7 +642,7 @@ fn missing_match_arms<'p>(
     }
 
     let non_empty_enum = match scrut_ty.as_adt() {
-        Some((AdtId::EnumId(e), _)) => !cx.db.enum_variants(e).variants.is_empty(),
+        Some((AdtId::EnumId(e), _)) => !e.enum_variants(cx.db).variants.is_empty(),
         _ => false,
     };
     let display_target = DisplayTarget::from_crate(cx.db, krate);

@@ -12,7 +12,10 @@ error[E0433]: failed to resolve: use of unresolved module or unlinked crate `mod
 LL |     assert_eq!(mod_file_aux::bar(), 10);
    |                ^^^^^^^^^^^^ use of unresolved module or unlinked crate `mod_file_aux`
    |
-   = help: you might be missing a crate named `mod_file_aux`
+help: to make use of source file $DIR/mod_file_aux.rs, use `mod mod_file_aux` in this file to declare the module
+   |
+LL + mod mod_file_aux;
+   |
 
 error: aborting due to 2 previous errors
 

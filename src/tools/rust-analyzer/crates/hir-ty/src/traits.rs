@@ -291,4 +291,9 @@ impl FnTrait {
     pub fn get_id(self, db: &dyn HirDatabase, krate: Crate) -> Option<TraitId> {
         self.lang_item().resolve_trait(db, krate)
     }
+
+    #[inline]
+    pub(crate) fn is_async(self) -> bool {
+        matches!(self, FnTrait::AsyncFn | FnTrait::AsyncFnMut | FnTrait::AsyncFnOnce)
+    }
 }

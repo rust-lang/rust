@@ -597,7 +597,7 @@ where
         // from disk. Re-hashing results is fairly expensive, so we can't
         // currently afford to verify every hash. This subset should still
         // give us some coverage of potential bugs though.
-        let try_verify = prev_fingerprint.split().1.as_u64() % 32 == 0;
+        let try_verify = prev_fingerprint.split().1.as_u64().is_multiple_of(32);
         if std::intrinsics::unlikely(
             try_verify || qcx.dep_context().sess().opts.unstable_opts.incremental_verify_ich,
         ) {
@@ -720,7 +720,7 @@ fn incremental_verify_ich_failed<Tcx>(
         static INSIDE_VERIFY_PANIC: Cell<bool> = const { Cell::new(false) };
     };
 
-    let old_in_panic = INSIDE_VERIFY_PANIC.with(|in_panic| in_panic.replace(true));
+    let old_in_panic = INSIDE_VERIFY_PANIC.replace(true);
 
     if old_in_panic {
         tcx.sess().dcx().emit_err(crate::error::Reentrant);
@@ -739,7 +739,7 @@ fn incremental_verify_ich_failed<Tcx>(
         panic!("Found unstable fingerprints for {dep_node:?}: {}", result());
     }
 
-    INSIDE_VERIFY_PANIC.with(|in_panic| in_panic.set(old_in_panic));
+    INSIDE_VERIFY_PANIC.set(old_in_panic);
 }
 
 /// Ensure that either this query has all green inputs or been executed.

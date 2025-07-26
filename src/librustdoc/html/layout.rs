@@ -1,4 +1,4 @@
-use std::fmt::{self, Display};
+use std::fmt::Display;
 use std::path::PathBuf;
 
 use askama::Template;
@@ -8,7 +8,6 @@ use super::static_files::{STATIC_FILES, StaticFiles};
 use crate::externalfiles::ExternalHtml;
 use crate::html::render::{StylePath, ensure_trailing_slash};
 
-#[derive(Clone)]
 pub(crate) struct Layout {
     pub(crate) logo: String,
     pub(crate) favicon: String,
@@ -70,23 +69,6 @@ struct PageLayout<'a> {
 }
 
 pub(crate) use crate::html::render::sidebar::filters;
-
-/// Implements [`Display`] for a function that accepts a mutable reference to a [`String`], and (optionally) writes to it.
-///
-/// The wrapped function will receive an empty string, and can modify it,
-/// and the `Display` implementation will write the contents of the string after the function has finished.
-pub(crate) struct BufDisplay<F>(pub F);
-
-impl<F> Display for BufDisplay<F>
-where
-    F: Fn(&mut String),
-{
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut buf = String::new();
-        self.0(&mut buf);
-        f.write_str(&buf)
-    }
-}
 
 pub(crate) fn render<T: Display, S: Display>(
     layout: &Layout,
@@ -150,6 +132,5 @@ pub(crate) fn redirect(url: &str) -> String {
     <script>location.replace("{url}" + location.search + location.hash);</script>
 </body>
 </html>"##,
-        url = url,
     )
 }

@@ -23,7 +23,10 @@ pub trait SocketAddrExt: Sealed {
     ///
     /// ```no_run
     /// use std::os::unix::net::{UnixListener, SocketAddr};
+    /// #[cfg(target_os = "linux")]
     /// use std::os::linux::net::SocketAddrExt;
+    /// #[cfg(target_os = "android")]
+    /// use std::os::android::net::SocketAddrExt;
     ///
     /// fn main() -> std::io::Result<()> {
     ///     let addr = SocketAddr::from_abstract_name(b"hidden")?;
@@ -48,7 +51,10 @@ pub trait SocketAddrExt: Sealed {
     ///
     /// ```no_run
     /// use std::os::unix::net::{UnixListener, SocketAddr};
+    /// #[cfg(target_os = "linux")]
     /// use std::os::linux::net::SocketAddrExt;
+    /// #[cfg(target_os = "android")]
+    /// use std::os::android::net::SocketAddrExt;
     ///
     /// fn main() -> std::io::Result<()> {
     ///     let name = b"hidden";

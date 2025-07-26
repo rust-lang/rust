@@ -1,4 +1,4 @@
-// Regression test for issue #105056.
+// issue: <https://github.com/rust-lang/rust/issues/105056>
 //@ edition: 2021
 
 fn f(_: impl Trait<T = Copy>) {}
@@ -22,5 +22,12 @@ type Obj = dyn Trait<T = Clone>;
 //~| HELP you can add the `dyn` keyword if you want a trait object
 
 trait Trait { type T; }
+
+// Don't suggest assoc ty bounds when we have parenthesized args (the underlying assoc type
+// binding `Output` isn't introduced by `=` but by `->`, suggesting `:` wouldn't be valid).
+// issue: <https://github.com/rust-lang/rust/issues/140543>
+fn i(_: impl Fn() -> std::fmt::Debug) {}
+//~^ ERROR expected a type, found a trait
+//~| HELP you can add the `dyn` keyword if you want a trait object
 
 fn main() {}

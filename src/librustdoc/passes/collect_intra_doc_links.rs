@@ -22,6 +22,7 @@ use rustc_resolve::rustdoc::{
     MalformedGenerics, has_primitive_or_keyword_docs, prepare_to_doc_link_resolution,
     source_span_for_markdown_range, strip_generics_from_path,
 };
+use rustc_session::config::CrateType;
 use rustc_session::lint::Lint;
 use rustc_span::BytePos;
 use rustc_span::hygiene::MacroKind;
@@ -59,12 +60,7 @@ fn filter_assoc_items_by_name_and_namespace(
     ident: Ident,
     ns: Namespace,
 ) -> impl Iterator<Item = &ty::AssocItem> {
-    let iter: Box<dyn Iterator<Item = &ty::AssocItem>> = if !ident.name.is_empty() {
-        Box::new(tcx.associated_items(assoc_items_of).filter_by_name_unhygienic(ident.name))
-    } else {
-        Box::new([].iter())
-    };
-    iter.filter(move |item| {
+    tcx.associated_items(assoc_items_of).filter_by_name_unhygienic(ident.name).filter(move |item| {
         item.namespace() == ns && tcx.hygienic_eq(ident, item.ident(tcx), assoc_items_of)
     })
 }
@@ -278,7 +274,7 @@ impl From<DiagnosticInfo<'_>> for OwnedDiagnosticInfo {
 }
 
 impl OwnedDiagnosticInfo {
-    pub(crate) fn into_info(&self) -> DiagnosticInfo<'_> {
+    pub(crate) fn as_info(&self) -> DiagnosticInfo<'_> {
         DiagnosticInfo {
             item: &self.item,
             ori_link: &self.ori_link,
@@ -496,12 +492,21 @@ impl<'tcx> LinkCollector<'_, 'tcx> {
 
         // Try looking for methods and associated items.
         // NB: `path_root` could be empty when resolving in the root namespace (e.g. `::std`).
-        let (path_root, item_str) = path_str.rsplit_once("::").ok_or_else(|| {
-            // If there's no `::`, it's not an associated item.
-            // So we can be sure that `rustc_resolve` was accurate when it said it wasn't resolved.
-            debug!("found no `::`, assuming {path_str} was correctly not in scope");
-            UnresolvedPath { item_id, module_id, partial_res: None, unresolved: path_str.into() }
-        })?;
+        let (path_root, item_str) = match path_str.rsplit_once("::") {
+            Some(res @ (_path_root, item_str)) if !item_str.is_empty() => res,
+            _ => {
+                // If there's no `::`, or the `::` is at the end (e.g. `String::`) it's not an
+                // associated item. So we can be sure that `rustc_resolve` was accurate when it
+                // said it wasn't resolved.
+                debug!("`::` missing or at end, assuming {path_str} was not in scope");
+                return Err(UnresolvedPath {
+                    item_id,
+                    module_id,
+                    partial_res: None,
+                    unresolved: path_str.into(),
+                });
+            }
+        };
         let item_name = Symbol::intern(item_str);
 
         // FIXME(#83862): this arbitrarily gives precedence to primitives over modules to support
@@ -1165,7 +1170,6 @@ impl LinkCollector<'_, '_> {
     #[allow(rustc::potential_query_instability)]
     pub(crate) fn resolve_ambiguities(&mut self) {
         let mut ambiguous_links = mem::take(&mut self.ambiguous_links);
-
         for ((item_id, path_str), info_items) in ambiguous_links.iter_mut() {
             for info in info_items {
                 info.resolved.retain(|(res, _)| match res {
@@ -1173,7 +1177,7 @@ impl LinkCollector<'_, '_> {
                     // Primitive types are always valid.
                     Res::Primitive(_) => true,
                 });
-                let diag_info = info.diag_info.into_info();
+                let diag_info = info.diag_info.as_info();
                 match info.resolved.len() {
                     1 => {
                         let (res, fragment) = info.resolved.pop().unwrap();
@@ -1239,17 +1243,16 @@ impl LinkCollector<'_, '_> {
             disambiguator,
             None | Some(Disambiguator::Namespace(Namespace::TypeNS) | Disambiguator::Primitive)
         ) && !matches!(res, Res::Primitive(_))
+            && let Some(prim) = resolve_primitive(path_str, TypeNS)
         {
-            if let Some(prim) = resolve_primitive(path_str, TypeNS) {
-                // `prim@char`
-                if matches!(disambiguator, Some(Disambiguator::Primitive)) {
-                    res = prim;
-                } else {
-                    // `[char]` when a `char` module is in scope
-                    let candidates = &[(res, res.def_id(self.cx.tcx)), (prim, None)];
-                    ambiguity_error(self.cx, &diag_info, path_str, candidates, true);
-                    return None;
-                }
+            // `prim@char`
+            if matches!(disambiguator, Some(Disambiguator::Primitive)) {
+                res = prim;
+            } else {
+                // `[char]` when a `char` module is in scope
+                let candidates = &[(res, res.def_id(self.cx.tcx)), (prim, None)];
+                ambiguity_error(self.cx, &diag_info, path_str, candidates, true);
+                return None;
             }
         }
 
@@ -1383,13 +1386,15 @@ impl LinkCollector<'_, '_> {
         ori_link: &MarkdownLinkRange,
         item: &Item,
     ) {
-        let span = source_span_for_markdown_range(
+        let span = match source_span_for_markdown_range(
             self.cx.tcx,
             dox,
             ori_link.inner_range(),
             &item.attrs.doc_strings,
-        )
-        .unwrap_or_else(|| item.attr_span(self.cx.tcx));
+        ) {
+            Some((sp, _)) => sp,
+            None => item.attr_span(self.cx.tcx),
+        };
         rustc_session::parse::feature_err(
             self.cx.tcx.sess,
             sym::intra_doc_pointers,
@@ -1832,7 +1837,7 @@ fn report_diagnostic(
                 let mut md_range = md_range.clone();
                 let sp =
                     source_span_for_markdown_range(tcx, dox, &md_range, &item.attrs.doc_strings)
-                        .map(|mut sp| {
+                        .map(|(mut sp, _)| {
                             while dox.as_bytes().get(md_range.start) == Some(&b' ')
                                 || dox.as_bytes().get(md_range.start) == Some(&b'`')
                             {
@@ -1850,7 +1855,8 @@ fn report_diagnostic(
                 (sp, MarkdownLinkRange::Destination(md_range))
             }
             MarkdownLinkRange::WholeLink(md_range) => (
-                source_span_for_markdown_range(tcx, dox, md_range, &item.attrs.doc_strings),
+                source_span_for_markdown_range(tcx, dox, md_range, &item.attrs.doc_strings)
+                    .map(|(sp, _)| sp),
                 link_range.clone(),
             ),
         };
@@ -2223,15 +2229,35 @@ fn ambiguity_error(
     emit_error: bool,
 ) -> bool {
     let mut descrs = FxHashSet::default();
-    let kinds = candidates
+    // proc macro can exist in multiple namespaces at once, so we need to compare `DefIds`
+    //  to remove the candidate in the fn namespace.
+    let mut possible_proc_macro_id = None;
+    let is_proc_macro_crate = cx.tcx.crate_types() == [CrateType::ProcMacro];
+    let mut kinds = candidates
         .iter()
-        .map(
-            |(res, def_id)| {
-                if let Some(def_id) = def_id { Res::from_def_id(cx.tcx, *def_id) } else { *res }
-            },
-        )
-        .filter(|res| descrs.insert(res.descr()))
+        .map(|(res, def_id)| {
+            let r =
+                if let Some(def_id) = def_id { Res::from_def_id(cx.tcx, *def_id) } else { *res };
+            if is_proc_macro_crate && let Res::Def(DefKind::Macro(_), id) = r {
+                possible_proc_macro_id = Some(id);
+            }
+            r
+        })
         .collect::<Vec<_>>();
+    // In order to properly dedup proc macros, we have to do it in two passes:
+    // 1. Completing the full traversal to find the possible duplicate in the macro namespace,
+    // 2. Another full traversal to eliminate the candidate in the fn namespace.
+    //
+    // Thus, we have to do an iteration after collection is finished.
+    //
+    // As an optimization, we only deduplicate if we're in a proc-macro crate,
+    // and only if we already found something that looks like a proc macro.
+    if is_proc_macro_crate && let Some(macro_id) = possible_proc_macro_id {
+        kinds.retain(|res| !matches!(res, Res::Def(DefKind::Fn, fn_id) if macro_id == *fn_id));
+    }
+
+    kinds.retain(|res| descrs.insert(res.descr()));
+
     if descrs.len() == 1 {
         // There is no way for users to disambiguate at this point, so better return the first
         // candidate and not show a warning.

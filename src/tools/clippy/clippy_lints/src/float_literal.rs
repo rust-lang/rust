@@ -126,7 +126,7 @@ impl<'tcx> LateLintPass<'tcx> for FloatLiteral {
                         },
                     );
                 }
-            } else if digits > max as usize && float_str.len() < sym_str.len() {
+            } else if digits > max as usize && count_digits(&float_str) < count_digits(sym_str) {
                 span_lint_and_then(
                     cx,
                     EXCESSIVE_PRECISION,

@@ -1,7 +1,7 @@
 //! Bindings to the LLVM-C API (`LLVM*`), and to our own `extern "C"` wrapper
 //! functions around the unstable LLVM C++ API (`LLVMRust*`).
 //!
-//! ## Passing pointer/length strings as `*const c_uchar`
+//! ## Passing pointer/length strings as `*const c_uchar` (PTR_LEN_STR)
 //!
 //! Normally it's a good idea for Rust-side bindings to match the corresponding
 //! C-side function declarations as closely as possible. But when passing `&str`
@@ -15,6 +15,7 @@
 
 use std::fmt::Debug;
 use std::marker::PhantomData;
+use std::num::NonZero;
 use std::ptr;
 
 use bitflags::bitflags;
@@ -415,6 +416,7 @@ impl AtomicRmwBinOp {
 pub(crate) enum AtomicOrdering {
     #[allow(dead_code)]
     NotAtomic = 0,
+    #[allow(dead_code)]
     Unordered = 1,
     Monotonic = 2,
     // Consume = 3,  // Not specified yet.
@@ -425,15 +427,14 @@ pub(crate) enum AtomicOrdering {
 }
 
 impl AtomicOrdering {
-    pub(crate) fn from_generic(ao: rustc_codegen_ssa::common::AtomicOrdering) -> Self {
-        use rustc_codegen_ssa::common::AtomicOrdering as Common;
+    pub(crate) fn from_generic(ao: rustc_middle::ty::AtomicOrdering) -> Self {
+        use rustc_middle::ty::AtomicOrdering as Common;
         match ao {
-            Common::Unordered => Self::Unordered,
             Common::Relaxed => Self::Monotonic,
             Common::Acquire => Self::Acquire,
             Common::Release => Self::Release,
-            Common::AcquireRelease => Self::AcquireRelease,
-            Common::SequentiallyConsistent => Self::SequentiallyConsistent,
+            Common::AcqRel => Self::AcquireRelease,
+            Common::SeqCst => Self::SequentiallyConsistent,
         }
     }
 }
@@ -471,7 +472,7 @@ pub(crate) enum MetadataType {
     MD_kcfi_type = 36,
 }
 
-/// LLVMRustAsmDialect
+/// Must match the layout of `LLVMInlineAsmDialect`.
 #[derive(Copy, Clone, PartialEq)]
 #[repr(C)]
 pub(crate) enum AsmDialect {
@@ -1008,14 +1009,31 @@ unsafe extern "C" {
         ModuleID: *const c_char,
         C: &Context,
     ) -> &Module;
-    pub(crate) fn LLVMCloneModule(M: &Module) -> &Module;
+    pub(crate) safe fn LLVMCloneModule(M: &Module) -> &Module;
 
     /// Data layout. See Module::getDataLayout.
     pub(crate) fn LLVMGetDataLayoutStr(M: &Module) -> *const c_char;
     pub(crate) fn LLVMSetDataLayout(M: &Module, Triple: *const c_char);
 
-    /// See Module::setModuleInlineAsm.
-    pub(crate) fn LLVMAppendModuleInlineAsm(M: &Module, Asm: *const c_char, Len: size_t);
+    /// Append inline assembly to a module. See `Module::appendModuleInlineAsm`.
+    pub(crate) fn LLVMAppendModuleInlineAsm(
+        M: &Module,
+        Asm: *const c_uchar, // See "PTR_LEN_STR".
+        Len: size_t,
+    );
+
+    /// Create the specified uniqued inline asm string. See `InlineAsm::get()`.
+    pub(crate) fn LLVMGetInlineAsm<'ll>(
+        Ty: &'ll Type,
+        AsmString: *const c_uchar, // See "PTR_LEN_STR".
+        AsmStringSize: size_t,
+        Constraints: *const c_uchar, // See "PTR_LEN_STR".
+        ConstraintsSize: size_t,
+        HasSideEffects: llvm::Bool,
+        IsAlignStack: llvm::Bool,
+        Dialect: AsmDialect,
+        CanThrow: llvm::Bool,
+    ) -> &'ll Value;
 
     // Operations on integer types
     pub(crate) fn LLVMInt1TypeInContext(C: &Context) -> &Type;
@@ -1060,8 +1078,6 @@ unsafe extern "C" {
 
     // Operations on other types
     pub(crate) fn LLVMVoidTypeInContext(C: &Context) -> &Type;
-    pub(crate) fn LLVMTokenTypeInContext(C: &Context) -> &Type;
-    pub(crate) fn LLVMMetadataTypeInContext(C: &Context) -> &Type;
 
     // Operations on all values
     pub(crate) fn LLVMTypeOf(Val: &Value) -> &Type;
@@ -1122,6 +1138,11 @@ unsafe extern "C" {
         Count: c_uint,
         Packed: Bool,
     ) -> &'a Value;
+    pub(crate) fn LLVMConstNamedStruct<'a>(
+        StructTy: &'a Type,
+        ConstantVals: *const &'a Value,
+        Count: c_uint,
+    ) -> &'a Value;
     pub(crate) fn LLVMConstVector(ScalarConstantVals: *const &Value, Size: c_uint) -> &Value;
 
     // Constant expressions
@@ -1152,18 +1173,18 @@ unsafe extern "C" {
     pub(crate) fn LLVMGlobalGetValueType(Global: &Value) -> &Type;
 
     // Operations on global variables
-    pub(crate) fn LLVMIsAGlobalVariable(GlobalVar: &Value) -> Option<&Value>;
+    pub(crate) safe fn LLVMIsAGlobalVariable(GlobalVar: &Value) -> Option<&Value>;
     pub(crate) fn LLVMAddGlobal<'a>(M: &'a Module, Ty: &'a Type, Name: *const c_char) -> &'a Value;
     pub(crate) fn LLVMGetNamedGlobal(M: &Module, Name: *const c_char) -> Option<&Value>;
     pub(crate) fn LLVMGetFirstGlobal(M: &Module) -> Option<&Value>;
     pub(crate) fn LLVMGetNextGlobal(GlobalVar: &Value) -> Option<&Value>;
     pub(crate) fn LLVMDeleteGlobal(GlobalVar: &Value);
-    pub(crate) fn LLVMGetInitializer(GlobalVar: &Value) -> Option<&Value>;
+    pub(crate) safe fn LLVMGetInitializer(GlobalVar: &Value) -> Option<&Value>;
     pub(crate) fn LLVMSetInitializer<'a>(GlobalVar: &'a Value, ConstantVal: &'a Value);
-    pub(crate) fn LLVMIsThreadLocal(GlobalVar: &Value) -> Bool;
+    pub(crate) safe fn LLVMIsThreadLocal(GlobalVar: &Value) -> Bool;
     pub(crate) fn LLVMSetThreadLocalMode(GlobalVar: &Value, Mode: ThreadLocalMode);
-    pub(crate) fn LLVMIsGlobalConstant(GlobalVar: &Value) -> Bool;
-    pub(crate) fn LLVMSetGlobalConstant(GlobalVar: &Value, IsConstant: Bool);
+    pub(crate) safe fn LLVMIsGlobalConstant(GlobalVar: &Value) -> Bool;
+    pub(crate) safe fn LLVMSetGlobalConstant(GlobalVar: &Value, IsConstant: Bool);
     pub(crate) safe fn LLVMSetTailCall(CallInst: &Value, IsTailCall: Bool);
 
     // Operations on attributes
@@ -1177,6 +1198,15 @@ unsafe extern "C" {
 
     // Operations on functions
     pub(crate) fn LLVMSetFunctionCallConv(Fn: &Value, CC: c_uint);
+
+    // Operations about llvm intrinsics
+    pub(crate) fn LLVMLookupIntrinsicID(Name: *const c_char, NameLen: size_t) -> c_uint;
+    pub(crate) fn LLVMGetIntrinsicDeclaration<'a>(
+        Mod: &'a Module,
+        ID: NonZero<c_uint>,
+        ParamTypes: *const &'a Type,
+        ParamCount: size_t,
+    ) -> &'a Value;
 
     // Operations on parameters
     pub(crate) fn LLVMIsAArgument(Val: &Value) -> Option<&Value>;
@@ -1192,6 +1222,8 @@ unsafe extern "C" {
     ) -> &'a BasicBlock;
 
     // Operations on instructions
+    pub(crate) fn LLVMGetInstructionParent(Inst: &Value) -> &BasicBlock;
+    pub(crate) fn LLVMGetCalledValue(CallInst: &Value) -> Option<&Value>;
     pub(crate) fn LLVMIsAInstruction(Val: &Value) -> Option<&Value>;
     pub(crate) fn LLVMGetFirstBasicBlock(Fn: &Value) -> &BasicBlock;
     pub(crate) fn LLVMGetOperand(Val: &Value, Index: c_uint) -> Option<&Value>;
@@ -1467,12 +1499,6 @@ unsafe extern "C" {
         Ty: &'a Type,
         Name: *const c_char,
     ) -> &'a Value;
-    pub(crate) fn LLVMBuildArrayAlloca<'a>(
-        B: &Builder<'a>,
-        Ty: &'a Type,
-        Val: &'a Value,
-        Name: *const c_char,
-    ) -> &'a Value;
     pub(crate) fn LLVMBuildLoad2<'a>(
         B: &Builder<'a>,
         Ty: &'a Type,
@@ -1699,7 +1725,7 @@ unsafe extern "C" {
 
     pub(crate) safe fn LLVMMetadataAsValue<'a>(C: &'a Context, MD: &'a Metadata) -> &'a Value;
 
-    pub(crate) fn LLVMSetUnnamedAddress(Global: &Value, UnnamedAddr: UnnamedAddr);
+    pub(crate) safe fn LLVMSetUnnamedAddress(Global: &Value, UnnamedAddr: UnnamedAddr);
 
     pub(crate) fn LLVMIsAConstantInt(value_ref: &Value) -> Option<&ConstantInt>;
 
@@ -1766,7 +1792,7 @@ unsafe extern "C" {
     pub(crate) fn LLVMDIBuilderCreateNameSpace<'ll>(
         Builder: &DIBuilder<'ll>,
         ParentScope: Option<&'ll Metadata>,
-        Name: *const c_uchar,
+        Name: *const c_uchar, // See "PTR_LEN_STR".
         NameLen: size_t,
         ExportSymbols: llvm::Bool,
     ) -> &'ll Metadata;
@@ -1955,12 +1981,12 @@ unsafe extern "C" {
     pub(crate) fn LLVMRustBuildMinNum<'a>(
         B: &Builder<'a>,
         LHS: &'a Value,
-        LHS: &'a Value,
+        RHS: &'a Value,
     ) -> &'a Value;
     pub(crate) fn LLVMRustBuildMaxNum<'a>(
         B: &Builder<'a>,
         LHS: &'a Value,
-        LHS: &'a Value,
+        RHS: &'a Value,
     ) -> &'a Value;
 
     // Atomic Operations
@@ -1994,21 +2020,9 @@ unsafe extern "C" {
     /// Prints the statistics collected by `-Zprint-codegen-stats`.
     pub(crate) fn LLVMRustPrintStatistics(OutStr: &RustString);
 
-    /// Prepares inline assembly.
-    pub(crate) fn LLVMRustInlineAsm(
-        Ty: &Type,
-        AsmString: *const c_char,
-        AsmStringLen: size_t,
-        Constraints: *const c_char,
-        ConstraintsLen: size_t,
-        SideEffects: Bool,
-        AlignStack: Bool,
-        Dialect: AsmDialect,
-        CanThrow: Bool,
-    ) -> &Value;
     pub(crate) fn LLVMRustInlineAsmVerify(
         Ty: &Type,
-        Constraints: *const c_char,
+        Constraints: *const c_uchar, // See "PTR_LEN_STR".
         ConstraintsLen: size_t,
     ) -> bool;
 
@@ -2418,6 +2432,7 @@ unsafe extern "C" {
         UseEmulatedTls: bool,
         ArgsCstrBuff: *const c_char,
         ArgsCstrBuffLen: usize,
+        UseWasmEH: bool,
     ) -> *mut TargetMachine;
 
     pub(crate) fn LLVMRustDisposeTargetMachine(T: *mut TargetMachine);
@@ -2549,6 +2564,7 @@ unsafe extern "C" {
 
     pub(crate) fn LLVMRustSetDataLayoutFromTargetMachine<'a>(M: &'a Module, TM: &'a TargetMachine);
 
+    pub(crate) fn LLVMRustPositionBuilderPastAllocas<'a>(B: &Builder<'a>, Fn: &'a Value);
     pub(crate) fn LLVMRustPositionBuilderAtStart<'a>(B: &Builder<'a>, BB: &'a BasicBlock);
 
     pub(crate) fn LLVMRustSetModulePICLevel(M: &Module);

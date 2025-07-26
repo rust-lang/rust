@@ -7,8 +7,14 @@
 
 pub static STATIC_BOOL: bool = true;
 
+#[lang = "pointee_sized"]
+pub trait PointeeSized {}
+
+#[lang = "meta_sized"]
+pub trait MetaSized: PointeeSized {}
+
 #[lang = "sized"]
-trait Sized {}
+trait Sized: MetaSized {}
 
 #[lang = "copy"]
 trait Copy {}

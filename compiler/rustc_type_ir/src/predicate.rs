@@ -682,6 +682,13 @@ impl<I: Interner> AliasTerm<I> {
     pub fn trait_ref(self, interner: I) -> TraitRef<I> {
         self.trait_ref_and_own_args(interner).0
     }
+
+    /// Extract the own args from this projection.
+    /// For example, if this is a projection of `<T as StreamingIterator>::Item<'a>`,
+    /// then this function would return the slice `['a]` as the own args.
+    pub fn own_args(self, interner: I) -> I::GenericArgsSlice {
+        self.trait_ref_and_own_args(interner).1
+    }
 }
 
 /// The following methods work only with inherent associated term projections.
@@ -904,7 +911,7 @@ pub enum BoundConstness {
     ///
     /// A bound is required to be unconditionally const, even in a runtime function.
     Const,
-    /// `Type: ~const Trait`
+    /// `Type: [const] Trait`
     ///
     /// Requires resolving to const only when we are in a const context.
     Maybe,
@@ -922,7 +929,7 @@ impl BoundConstness {
     pub fn as_str(self) -> &'static str {
         match self {
             Self::Const => "const",
-            Self::Maybe => "~const",
+            Self::Maybe => "[const]",
         }
     }
 }
@@ -931,7 +938,7 @@ impl fmt::Display for BoundConstness {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Const => f.write_str("const"),
-            Self::Maybe => f.write_str("~const"),
+            Self::Maybe => f.write_str("[const]"),
         }
     }
 }

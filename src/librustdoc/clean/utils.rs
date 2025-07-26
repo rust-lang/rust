@@ -1,8 +1,9 @@
 use std::assert_matches::debug_assert_matches;
 use std::fmt::{self, Display, Write as _};
-use std::mem;
 use std::sync::LazyLock as Lazy;
+use std::{ascii, mem};
 
+use rustc_ast::join_path_idents;
 use rustc_ast::tokenstream::TokenTree;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
@@ -61,7 +62,7 @@ pub(crate) fn krate(cx: &mut DocContext<'_>) -> Crate {
     let keywords = local_crate.keywords(cx.tcx);
     {
         let ItemKind::ModuleItem(m) = &mut module.inner.kind else { unreachable!() };
-        m.items.extend(primitives.iter().map(|&(def_id, prim)| {
+        m.items.extend(primitives.map(|(def_id, prim)| {
             Item::from_def_id_and_parts(
                 def_id,
                 Some(prim.as_sym()),
@@ -69,7 +70,7 @@ pub(crate) fn krate(cx: &mut DocContext<'_>) -> Crate {
                 cx,
             )
         }));
-        m.items.extend(keywords.into_iter().map(|(def_id, kw)| {
+        m.items.extend(keywords.map(|(def_id, kw)| {
             Item::from_def_id_and_parts(def_id, Some(kw), ItemKind::KeywordItem, cx)
         }));
     }
@@ -124,10 +125,10 @@ pub(crate) fn clean_middle_generic_args<'tcx>(
             elision_has_failed_once_before = true;
         }
 
-        match arg.skip_binder().unpack() {
-            GenericArgKind::Lifetime(lt) => {
-                Some(GenericArg::Lifetime(clean_middle_region(lt).unwrap_or(Lifetime::elided())))
-            }
+        match arg.skip_binder().kind() {
+            GenericArgKind::Lifetime(lt) => Some(GenericArg::Lifetime(
+                clean_middle_region(lt, cx).unwrap_or(Lifetime::elided()),
+            )),
             GenericArgKind::Type(ty) => Some(GenericArg::Type(clean_middle_ty(
                 arg.rebind(ty),
                 cx,
@@ -161,7 +162,7 @@ fn can_elide_generic_arg<'tcx>(
     default: ty::Binder<'tcx, ty::GenericArg<'tcx>>,
 ) -> bool {
     debug_assert_matches!(
-        (actual.skip_binder().unpack(), default.skip_binder().unpack()),
+        (actual.skip_binder().kind(), default.skip_binder().kind()),
         (ty::GenericArgKind::Lifetime(_), ty::GenericArgKind::Lifetime(_))
             | (ty::GenericArgKind::Type(_), ty::GenericArgKind::Type(_))
             | (ty::GenericArgKind::Const(_), ty::GenericArgKind::Const(_))
@@ -251,20 +252,7 @@ pub(crate) fn qpath_to_string(p: &hir::QPath<'_>) -> String {
         hir::QPath::LangItem(lang_item, ..) => return lang_item.name().to_string(),
     };
 
-    fmt::from_fn(|f| {
-        segments
-            .iter()
-            .map(|seg| {
-                fmt::from_fn(|f| {
-                    if seg.ident.name != kw::PathRoot {
-                        write!(f, "{}", seg.ident)?;
-                    }
-                    Ok(())
-                })
-            })
-            .joined("::", f)
-    })
-    .to_string()
+    join_path_idents(segments.iter().map(|seg| seg.ident))
 }
 
 pub(crate) fn build_deref_target_impls(
@@ -355,13 +343,11 @@ pub(crate) fn name_from_pat(p: &hir::Pat<'_>) -> Symbol {
 pub(crate) fn print_const(cx: &DocContext<'_>, n: ty::Const<'_>) -> String {
     match n.kind() {
         ty::ConstKind::Unevaluated(ty::UnevaluatedConst { def, args: _ }) => {
-            let s = if let Some(def) = def.as_local() {
+            if let Some(def) = def.as_local() {
                 rendered_const(cx.tcx, cx.tcx.hir_body_owned_by(def), def)
             } else {
                 inline::print_inlined_const(cx.tcx, def)
-            };
-
-            s
+            }
         }
         // array lengths are obviously usize
         ty::ConstKind::Value(cv) if *cv.ty.kind() == ty::Uint(ty::UintTy::Usize) => {
@@ -391,30 +377,12 @@ pub(crate) fn print_evaluated_const(
     })
 }
 
-fn format_integer_with_underscore_sep(num: &str) -> String {
-    let num_chars: Vec<_> = num.chars().collect();
-    let mut num_start_index = if num_chars.first() == Some(&'-') { 1 } else { 0 };
-    let chunk_size = match &num.as_bytes()[num_start_index..] {
-        [b'0', b'b' | b'x', ..] => {
-            num_start_index += 2;
-            4
-        }
-        [b'0', b'o', ..] => {
-            num_start_index += 2;
-            let remaining_chars = num_chars.len() - num_start_index;
-            if remaining_chars <= 6 {
-                // don't add underscores to Unix permissions like 0755 or 100755
-                return num.to_string();
-            }
-            3
-        }
-        _ => 3,
-    };
-
-    num_chars[..num_start_index]
-        .iter()
-        .chain(num_chars[num_start_index..].rchunks(chunk_size).rev().intersperse(&['_']).flatten())
-        .collect()
+fn format_integer_with_underscore_sep(num: u128, is_negative: bool) -> String {
+    let num = num.to_string();
+    let chars = num.as_ascii().unwrap();
+    let mut result = if is_negative { "-".to_string() } else { String::new() };
+    result.extend(chars.rchunks(3).rev().intersperse(&[ascii::Char::LowLine]).flatten());
+    result
 }
 
 fn print_const_with_custom_print_scalar<'tcx>(
@@ -428,7 +396,10 @@ fn print_const_with_custom_print_scalar<'tcx>(
     match (ct, ct.ty().kind()) {
         (mir::Const::Val(mir::ConstValue::Scalar(int), _), ty::Uint(ui)) => {
             let mut output = if with_underscores {
-                format_integer_with_underscore_sep(&int.to_string())
+                format_integer_with_underscore_sep(
+                    int.assert_scalar_int().to_bits_unchecked(),
+                    false,
+                )
             } else {
                 int.to_string()
             };
@@ -445,7 +416,10 @@ fn print_const_with_custom_print_scalar<'tcx>(
                 .size;
             let sign_extended_data = int.assert_scalar_int().to_int(size);
             let mut output = if with_underscores {
-                format_integer_with_underscore_sep(&sign_extended_data.to_string())
+                format_integer_with_underscore_sep(
+                    sign_extended_data.unsigned_abs(),
+                    sign_extended_data.is_negative(),
+                )
             } else {
                 sign_extended_data.to_string()
             };

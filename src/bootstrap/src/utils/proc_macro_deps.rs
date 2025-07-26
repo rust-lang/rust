@@ -30,7 +30,6 @@ pub static CRATES: &[&str] = &[
     "memchr",
     "minimal-lexical",
     "nom",
-    "once_cell",
     "pest",
     "pest_generator",
     "pest_meta",

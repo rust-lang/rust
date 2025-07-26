@@ -1,12 +1,12 @@
 codegen_ssa_L4Bender_exporting_symbols_unimplemented = exporting symbols not implemented yet for L4Bender
 
+codegen_ssa_aarch64_softfloat_neon = enabling the `neon` target feature on the current target is unsound due to ABI issues
+
 codegen_ssa_add_native_library = failed to add native library {$library_path}: {$error}
 
 codegen_ssa_aix_strip_not_used = using host's `strip` binary to cross-compile to AIX which is not guaranteed to work
 
 codegen_ssa_archive_build_failure = failed to build archive at `{$path}`: {$error}
-
-codegen_ssa_atomic_compare_exchange = Atomic compare-exchange intrinsic missing failure memory ordering
 
 codegen_ssa_autodiff_without_lto = using the autodiff feature requires using fat-lto
 
@@ -35,6 +35,10 @@ codegen_ssa_dlltool_fail_import_library =
     {$stdout}
     {$stderr}
 
+codegen_ssa_dynamic_linking_with_lto =
+    cannot prefer dynamic linking when performing LTO
+    .note = only 'staticlib', 'bin', and 'cdylib' outputs are supported with LTO
+
 codegen_ssa_error_calling_dlltool =
     Error calling dlltool '{$dlltool_path}': {$error}
 
@@ -47,10 +51,6 @@ codegen_ssa_error_writing_def_file =
     Error writing .DEF file: {$error}
 
 codegen_ssa_expected_name_value_pair = expected name value pair
-
-codegen_ssa_expected_one_argument = expected one argument
-
-codegen_ssa_expected_used_symbol = expected `used`, `used(compiler)` or `used(linker)`
 
 codegen_ssa_extern_funcs_not_found = some `extern` functions couldn't be found; some native libraries may need to be installed or have their path specified
 
@@ -66,7 +66,16 @@ codegen_ssa_failed_to_get_layout = failed to get layout for {$ty}: {$err}
 
 codegen_ssa_failed_to_write = failed to write {$path}: {$error}
 
+codegen_ssa_feature_not_valid = the feature named `{$feature}` is not valid for this target
+    .label = `{$feature}` is not valid for this target
+    .help = consider removing the leading `+` in the feature name
+
 codegen_ssa_field_associated_value_expected = associated value expected for `{$name}`
+
+codegen_ssa_forbidden_ctarget_feature =
+    target feature `{$feature}` cannot be {$enabled} with `-Ctarget-feature`: {$reason}
+    .note = this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+codegen_ssa_forbidden_ctarget_feature_issue = for more information, see issue #116344 <https://github.com/rust-lang/rust/issues/116344>
 
 codegen_ssa_forbidden_target_feature_attr =
     target feature `{$feature}` cannot be enabled with `#[target_feature]`: {$reason}
@@ -74,9 +83,6 @@ codegen_ssa_forbidden_target_feature_attr =
 codegen_ssa_ignoring_emit_path = ignoring emit path because multiple .{$extension} files were produced
 
 codegen_ssa_ignoring_output = ignoring -o because multiple .{$extension} files were produced
-
-codegen_ssa_illegal_link_ordinal_format = illegal ordinal format in `link_ordinal`
-    .note = an unsuffixed integer value, e.g., `1`, is expected
 
 codegen_ssa_incorrect_cgu_reuse_type =
     CGU-reuse for `{$cgu_user_name}` is `{$actual_reuse}` but should be {$at_least ->
@@ -86,13 +92,7 @@ codegen_ssa_incorrect_cgu_reuse_type =
 
 codegen_ssa_insufficient_vs_code_product = VS Code is a different product, and is not sufficient.
 
-codegen_ssa_invalid_argument = invalid argument
-    .help = valid inline arguments are `always` and `never`
-
 codegen_ssa_invalid_instruction_set = invalid instruction set specified
-
-codegen_ssa_invalid_link_ordinal_nargs = incorrect number of arguments to `#[link_ordinal]`
-    .note = the attribute requires exactly one argument
 
 codegen_ssa_invalid_literal_value = invalid literal value
     .label = value must be an integer between `0` and `255`
@@ -195,24 +195,21 @@ codegen_ssa_linker_unsupported_modifier = `as-needed` modifier not supported for
 
 codegen_ssa_linking_failed = linking with `{$linker_path}` failed: {$exit_status}
 
+codegen_ssa_lto_disallowed = lto can only be run for executables, cdylibs and static library outputs
+
+codegen_ssa_lto_dylib = lto cannot be used for `dylib` crate type without `-Zdylib-lto`
+
+codegen_ssa_lto_proc_macro = lto cannot be used for `proc-macro` crate type without `-Zdylib-lto`
+
 codegen_ssa_malformed_cgu_name =
     found malformed codegen unit name `{$user_path}`. codegen units names must always start with the name of the crate (`{$crate_name}` in this case).
-
-codegen_ssa_metadata_object_file_write = error writing metadata object file: {$error}
 
 codegen_ssa_missing_cpp_build_tool_component = or a necessary component may be missing from the "C++ build tools" workload
 
 codegen_ssa_missing_features = add the missing features in a `target_feature` attribute
 
-codegen_ssa_missing_memory_ordering = Atomic intrinsic missing memory ordering
-
 codegen_ssa_missing_query_depgraph =
     found CGU-reuse attribute but `-Zquery-dep-graph` was not specified
-
-codegen_ssa_mixed_export_name_and_no_mangle = `{$no_mangle_attr}` attribute may not be used in combination with `#[export_name]`
-    .label = `{$no_mangle_attr}` is ignored
-    .note = `#[export_name]` takes precedence
-    .suggestion = remove the `{$no_mangle_attr}` attribute
 
 codegen_ssa_msvc_missing_linker = the msvc targets depend on the msvc linker but `link.exe` was not found
 
@@ -225,14 +222,14 @@ codegen_ssa_multiple_main_functions = entry symbol `main` declared multiple time
 
 codegen_ssa_no_field = no field `{$name}`
 
+codegen_ssa_no_mangle_nameless = `#[no_mangle]` cannot be used on {$definition} as it has no name
+
 codegen_ssa_no_module_named =
     no module named `{$user_path}` (mangled: {$cgu_name}). available modules: {$cgu_names}
 
 codegen_ssa_no_natvis_directory = error enumerating natvis directory: {$error}
 
 codegen_ssa_no_saved_object_file = cached cgu {$cgu_name} should have an object file, but doesn't
-
-codegen_ssa_null_on_export = `export_name` may not contain null characters
 
 codegen_ssa_out_of_range_integer = integer value out of range
     .label = value must be between `0` and `255`
@@ -300,7 +297,7 @@ codegen_ssa_thorin_missing_referenced_unit = unit {$unit} referenced by executab
 
 codegen_ssa_thorin_missing_required_section = input object missing required section `{$section}`
 
-codegen_ssa_thorin_mixed_input_encodings = input objects haved mixed encodings
+codegen_ssa_thorin_mixed_input_encodings = input objects have mixed encodings
 
 codegen_ssa_thorin_multiple_debug_info_section = multiple `.debug_info.dwo` sections
 
@@ -372,11 +369,21 @@ codegen_ssa_unexpected_parameter_name = unexpected parameter name
 codegen_ssa_unknown_archive_kind =
     Don't know how to build archive of type: {$kind}
 
-codegen_ssa_unknown_atomic_operation = unknown atomic operation
+codegen_ssa_unknown_ctarget_feature =
+    unknown and unstable feature specified for `-Ctarget-feature`: `{$feature}`
+    .note = it is still passed through to the codegen backend, but use of this feature might be unsound and the behavior of this feature can change in the future
+    .possible_feature = you might have meant: `{$rust_feature}`
+    .consider_filing_feature_request = consider filing a feature request
 
-codegen_ssa_unknown_atomic_ordering = unknown ordering in atomic intrinsic
+codegen_ssa_unknown_ctarget_feature_prefix =
+    unknown feature specified for `-Ctarget-feature`: `{$feature}`
+    .note = features must begin with a `+` to enable or `-` to disable it
 
 codegen_ssa_unknown_reuse_kind = unknown cgu-reuse-kind `{$kind}` specified
+
+codegen_ssa_unstable_ctarget_feature =
+    unstable feature specified for `-Ctarget-feature`: `{$feature}`
+    .note = this feature is not stably supported; its behavior can change in the future
 
 codegen_ssa_unsupported_instruction_set = target does not support `#[instruction_set]`
 
