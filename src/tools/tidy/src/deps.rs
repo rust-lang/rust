@@ -633,8 +633,8 @@ fn check_proc_macro_dep_list(root: &Path, cargo: &Path, bless: bool, bad: &mut b
     proc_macro_deps.retain(|pkg| !is_proc_macro_pkg(&metadata[pkg]));
 
     let proc_macro_deps: HashSet<_> =
-        proc_macro_deps.into_iter().map(|dep| metadata[dep].name.clone()).collect();
-    let expected = proc_macro_deps::CRATES.iter().map(|s| s.to_string()).collect::<HashSet<_>>();
+        proc_macro_deps.into_iter().map(|dep| metadata[dep].name.as_ref()).collect();
+    let expected = proc_macro_deps::CRATES.iter().copied().collect::<HashSet<_>>();
 
     let needs_blessing = proc_macro_deps.difference(&expected).next().is_some()
         || expected.difference(&proc_macro_deps).next().is_some();
@@ -718,7 +718,7 @@ fn check_runtime_license_exceptions(metadata: &Metadata, bad: &mut bool) {
             // See https://github.com/rust-lang/rust/issues/62620 for more.
             // In general, these should never be added and this exception
             // should not be taken as precedent for any new target.
-            if pkg.name == "fortanix-sgx-abi" && pkg.license.as_deref() == Some("MPL-2.0") {
+            if *pkg.name == "fortanix-sgx-abi" && pkg.license.as_deref() == Some("MPL-2.0") {
                 continue;
             }
 
@@ -734,7 +734,7 @@ fn check_license_exceptions(metadata: &Metadata, exceptions: &[(&str, &str)], ba
     // Validate the EXCEPTIONS list hasn't changed.
     for (name, license) in exceptions {
         // Check that the package actually exists.
-        if !metadata.packages.iter().any(|p| p.name == *name) {
+        if !metadata.packages.iter().any(|p| *p.name == *name) {
             tidy_error!(
                 bad,
                 "could not find exception package `{}`\n\
@@ -743,7 +743,7 @@ fn check_license_exceptions(metadata: &Metadata, exceptions: &[(&str, &str)], ba
             );
         }
         // Check that the license hasn't changed.
-        for pkg in metadata.packages.iter().filter(|p| p.name == *name) {
+        for pkg in metadata.packages.iter().filter(|p| *p.name == *name) {
             match &pkg.license {
                 None => {
                     if *license == NON_STANDARD_LICENSE
@@ -818,9 +818,9 @@ fn check_permitted_dependencies(
                 let Ok(version) = Version::parse(version) else {
                     return false;
                 };
-                pkg.name == name && pkg.version == version
+                *pkg.name == name && pkg.version == version
             } else {
-                pkg.name == permitted
+                *pkg.name == permitted
             }
         }
         if !deps.iter().any(|dep_id| compare(pkg_from_id(metadata, dep_id), permitted)) {
@@ -868,7 +868,7 @@ fn check_permitted_dependencies(
 
 /// Finds a package with the given name.
 fn pkg_from_name<'a>(metadata: &'a Metadata, name: &'static str) -> &'a Package {
-    let mut i = metadata.packages.iter().filter(|p| p.name == name);
+    let mut i = metadata.packages.iter().filter(|p| *p.name == name);
     let result =
         i.next().unwrap_or_else(|| panic!("could not find package `{name}` in package list"));
     assert!(i.next().is_none(), "more than one package found for `{name}`");
