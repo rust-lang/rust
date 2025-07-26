@@ -1854,12 +1854,12 @@ fn effective_visibilities(tcx: TyCtxt<'_>, (): ()) -> &EffectiveVisibilities {
     tcx.arena.alloc(visitor.effective_visibilities)
 }
 
-fn check_private_in_public(tcx: TyCtxt<'_>, (): ()) {
+fn check_private_in_public(tcx: TyCtxt<'_>, module_def_id: LocalModDefId) {
     let effective_visibilities = tcx.effective_visibilities(());
     // Check for private types in public interfaces.
     let mut checker = PrivateItemsInPublicInterfacesChecker { tcx, effective_visibilities };
 
-    let crate_items = tcx.hir_crate_items(());
+    let crate_items = tcx.hir_module_items(module_def_id);
     for id in crate_items.free_items() {
         checker.check_item(id);
     }

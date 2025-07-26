@@ -1147,7 +1147,9 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) {
 
                 parallel!(
                     {
-                        tcx.ensure_ok().check_private_in_public(());
+                        tcx.par_hir_for_each_module(|module| {
+                            tcx.ensure_ok().check_private_in_public(module)
+                        })
                     },
                     {
                         tcx.par_hir_for_each_module(|module| {

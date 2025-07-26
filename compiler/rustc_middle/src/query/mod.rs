@@ -1390,8 +1390,11 @@ rustc_queries! {
         eval_always
         desc { "checking effective visibilities" }
     }
-    query check_private_in_public(_: ()) {
-        desc { "checking for private elements in public interfaces" }
+    query check_private_in_public(module_def_id: LocalModDefId) {
+        desc { |tcx|
+            "checking for private elements in public interfaces for {}",
+            describe_as_module(module_def_id, tcx)
+        }
     }
 
     query reachable_set(_: ()) -> &'tcx LocalDefIdSet {
