@@ -3132,7 +3132,11 @@ impl Step for Bootstrap {
     }
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("src/bootstrap")
+        // Bootstrap tests might not be perfectly self-contained and can depend on the external
+        // environment, submodules that are checked out, etc.
+        // Therefore we only run them by default on CI.
+        let runs_on_ci = run.builder.config.is_running_on_ci;
+        run.path("src/bootstrap").default_condition(runs_on_ci)
     }
 
     fn make_run(run: RunConfig<'_>) {
