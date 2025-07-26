@@ -27,6 +27,7 @@ use syntax::{
         make,
         syntax_factory::SyntaxFactory,
     },
+    syntax_editor::SyntaxEditor,
     ted,
 };
 
@@ -329,7 +330,7 @@ fn invert_special_case(make: &SyntaxFactory, expr: &ast::Expr) -> Option<ast::Ex
 fn invert_special_case_legacy(expr: &ast::Expr) -> Option<ast::Expr> {
     match expr {
         ast::Expr::BinExpr(bin) => {
-            let bin = bin.clone_for_update();
+            let bin = bin.clone_subtree();
             let op_token = bin.op_token()?;
             let rev_token = match op_token.kind() {
                 T![==] => T![!=],
@@ -345,8 +346,9 @@ fn invert_special_case_legacy(expr: &ast::Expr) -> Option<ast::Expr> {
                     );
                 }
             };
-            ted::replace(op_token, make::token(rev_token));
-            Some(bin.into())
+            let mut bin_editor = SyntaxEditor::new(bin.syntax().clone());
+            bin_editor.replace(op_token, make::token(rev_token));
+            ast::Expr::cast(bin_editor.finish().new_root().clone())
         }
         ast::Expr::MethodCallExpr(mce) => {
             let receiver = mce.receiver()?;
