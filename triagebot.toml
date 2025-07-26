@@ -28,6 +28,7 @@ allow-unauthenticated = [
     "llvm-*",
     "needs-fcp",
     "relnotes",
+    "release-blog-post",
     "requires-*",
     "regression-*",
     "rla-*",
@@ -1096,7 +1097,7 @@ cc = ["@jieyouxu"]
 message = "The list of allowed third-party dependencies may have been modified! You must ensure that any new dependencies have compatible licenses before merging."
 cc = ["@davidtwco", "@wesleywiser"]
 
-[mentions."src/tools/tidy/src/ext_tool_checks.rs"]
+[mentions."src/tools/tidy/src/extra_checks"]
 message = "`tidy` extra checks were modified."
 cc = ["@lolbinarycat"]
 

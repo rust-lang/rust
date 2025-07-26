@@ -1461,15 +1461,17 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
             if let PathResult::Module(ModuleOrUniformRoot::Module(module)) =
                 self.resolve_path(mod_path, None, None)
             {
-                let resolutions = self.r.resolutions(module).borrow();
-                let targets: Vec<_> = resolutions
+                let targets: Vec<_> = self
+                    .r
+                    .resolutions(module)
+                    .borrow()
                     .iter()
                     .filter_map(|(key, resolution)| {
                         resolution
                             .borrow()
                             .best_binding()
                             .map(|binding| binding.res())
-                            .and_then(|res| if filter_fn(res) { Some((key, res)) } else { None })
+                            .and_then(|res| if filter_fn(res) { Some((*key, res)) } else { None })
                     })
                     .collect();
                 if let [target] = targets.as_slice() {
@@ -2300,8 +2302,9 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
             return None;
         }
 
-        let resolutions = self.r.resolutions(*module);
-        let targets = resolutions
+        let targets = self
+            .r
+            .resolutions(*module)
             .borrow()
             .iter()
             .filter_map(|(key, res)| {
