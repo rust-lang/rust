@@ -1258,21 +1258,45 @@ impl ThreadId {
                 }
             }
             _ => {
-                use crate::sync::{Mutex, PoisonError};
+                use crate::cell::SyncUnsafeCell;
+                use crate::hint::spin_loop;
+                use crate::sync::atomic::{Atomic, AtomicBool};
+                use crate::thread::yield_now;
 
-                static COUNTER: Mutex<u64> = Mutex::new(0);
+                // If we don't have a 64-bit atomic we use a small spinlock. We don't use Mutex
+                // here as we might be trying to get the current thread id in the global allocator,
+                // and on some platforms Mutex requires allocation.
+                static COUNTER_LOCKED: Atomic<bool> = AtomicBool::new(false);
+                static COUNTER: SyncUnsafeCell<u64> = SyncUnsafeCell::new(0);
 
-                let mut counter = COUNTER.lock().unwrap_or_else(PoisonError::into_inner);
-                let Some(id) = counter.checked_add(1) else {
-                    // in case the panic handler ends up calling `ThreadId::new()`,
-                    // avoid reentrant lock acquire.
-                    drop(counter);
-                    exhausted();
+                // Acquire lock.
+                let mut spin = 0;
+                while COUNTER_LOCKED.compare_exchange_weak(false, true, Ordering::Acquire, Ordering::Relaxed).is_err() {
+                    if spin <= 3 {
+                        for _ in 0..(1 << spin) {
+                            spin_loop();
+                        }
+                    } else {
+                        yield_now();
+                    }
+                    spin += 1;
+                }
+
+                let id;
+                // SAFETY: we have an exclusive lock on the counter.
+                unsafe {
+                    id = (*COUNTER.get()).saturating_add(1);
+                    (*COUNTER.get()) = id;
                 };
 
-                *counter = id;
-                drop(counter);
-                ThreadId(NonZero::new(id).unwrap())
+                // Release the lock.
+                COUNTER_LOCKED.store(false, Ordering::Release);
+
+                if id == u64::MAX {
+                    exhausted()
+                } else {
+                    ThreadId(NonZero::new(id).unwrap())
+                }
             }
         }
     }
