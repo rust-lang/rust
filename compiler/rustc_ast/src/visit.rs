@@ -375,6 +375,7 @@ macro_rules! common_visitor_and_walkers {
             std::borrow::Cow<'_, str>,
             Symbol,
             u8,
+            u16,
             usize,
         );
         // `Span` is only a no-op for the non-mutable visitor.
@@ -436,6 +437,8 @@ macro_rules! common_visitor_and_walkers {
             FormatArgument,
             FormatArgumentKind,
             FormatArguments,
+            FormatCount,
+            FormatOptions,
             FormatPlaceholder,
             GenericParamKind,
             Impl,

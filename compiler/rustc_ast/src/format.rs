@@ -180,7 +180,6 @@ pub struct FormatPlaceholder {
     #[visitable(ignore)]
     pub format_trait: FormatTrait,
     /// `{}` or `{:.5}` or `{:-^20}`, etc.
-    #[visitable(ignore)]
     pub format_options: FormatOptions,
 }
 
@@ -229,23 +228,26 @@ pub enum FormatTrait {
     UpperHex,
 }
 
-#[derive(Clone, Encodable, Decodable, Default, Debug, PartialEq, Eq)]
+#[derive(Clone, Encodable, Decodable, Default, Debug, PartialEq, Eq, Walkable)]
 pub struct FormatOptions {
     /// The width. E.g. `{:5}` or `{:width$}`.
     pub width: Option<FormatCount>,
     /// The precision. E.g. `{:.5}` or `{:.precision$}`.
     pub precision: Option<FormatCount>,
     /// The alignment. E.g. `{:>}` or `{:<}` or `{:^}`.
+    #[visitable(ignore)]
     pub alignment: Option<FormatAlignment>,
     /// The fill character. E.g. the `.` in `{:.>10}`.
     pub fill: Option<char>,
     /// The `+` or `-` flag.
+    #[visitable(ignore)]
     pub sign: Option<FormatSign>,
     /// The `#` flag.
     pub alternate: bool,
     /// The `0` flag. E.g. the `0` in `{:02x}`.
     pub zero_pad: bool,
     /// The `x` or `X` flag (for `Debug` only). E.g. the `x` in `{:x?}`.
+    #[visitable(ignore)]
     pub debug_hex: Option<FormatDebugHex>,
 }
 
@@ -275,7 +277,7 @@ pub enum FormatAlignment {
     Center,
 }
 
-#[derive(Clone, Encodable, Decodable, Debug, PartialEq, Eq)]
+#[derive(Clone, Encodable, Decodable, Debug, PartialEq, Eq, Walkable)]
 pub enum FormatCount {
     /// `{:5}` or `{:.5}`
     Literal(u16),
