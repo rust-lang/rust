@@ -537,8 +537,13 @@ fn inline(
     if let Some(generic_arg_list) = generic_arg_list.clone() {
         if let Some((target, source)) = &sema.scope(node.syntax()).zip(sema.scope(fn_body.syntax()))
         {
-            PathTransform::function_call(target, source, function, generic_arg_list)
-                .apply(body.syntax());
+            body.reindent_to(IndentLevel(0));
+            if let Some(new_body) = ast::BlockExpr::cast(
+                PathTransform::function_call(target, source, function, generic_arg_list)
+                    .apply(body.syntax()),
+            ) {
+                body = new_body;
+            }
         }
     }
 

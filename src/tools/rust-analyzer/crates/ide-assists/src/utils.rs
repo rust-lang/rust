@@ -191,7 +191,7 @@ pub fn add_trait_assoc_items_to_impl(
     original_items
         .iter()
         .map(|InFile { file_id, value: original_item }| {
-            let cloned_item = {
+            let mut cloned_item = {
                 if let Some(macro_file) = file_id.macro_file() {
                     let span_map = sema.db.expansion_span_map(macro_file);
                     let item_prettified = prettify_macro_expansion(
@@ -207,17 +207,18 @@ pub fn add_trait_assoc_items_to_impl(
                     }
                 }
                 original_item.clone_for_update()
-            };
+            }
+            .reset_indent();
 
             if let Some(source_scope) = sema.scope(original_item.syntax()) {
                 // FIXME: Paths in nested macros are not handled well. See
                 // `add_missing_impl_members::paths_in_nested_macro_should_get_transformed` test.
                 let transform =
                     PathTransform::trait_impl(target_scope, &source_scope, trait_, impl_.clone());
-                transform.apply(cloned_item.syntax());
+                cloned_item = ast::AssocItem::cast(transform.apply(cloned_item.syntax())).unwrap();
             }
             cloned_item.remove_attrs_and_docs();
-            cloned_item.reset_indent()
+            cloned_item
         })
         .map(|item| {
             match &item {
