@@ -1233,6 +1233,10 @@ Exercises sanitizer support. See [Sanitizer | The rustc book](https://doc.rust-l
 
 Tests with erroneous ways of using `self`, such as using `this.x` syntax as seen in other languages, having it not be the first argument, or using it in a non-associated function (no `impl` or `trait`). It also contains correct uses of `self` which have previously been observed to cause ICEs.
 
+## `tests/ui/self-profile/`: self-profiling
+
+Tests related to the self-profiler (`-Zself-profile`) functionality of rustc.
+
 ## `tests/ui/sepcomp/`: Separate Compilation
 
 In this directory, multiple crates are compiled, but some of them have `inline` functions, meaning they must be inlined into a different crate despite having been compiled separately.
