@@ -46,8 +46,10 @@ fn cross_crate_inlinable(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
     // #[inline(never)] to force code generation.
     match codegen_fn_attrs.inline {
         InlineAttr::Never => return false,
-        InlineAttr::Hint | InlineAttr::Always | InlineAttr::Force { .. } => return true,
-        _ => {}
+        InlineAttr::Hint | InlineAttr::Always | InlineAttr::Early | InlineAttr::Force { .. } => {
+            return true;
+        }
+        InlineAttr::None => {}
     }
 
     // If the crate is likely to be mostly unused, use cross-crate inlining to defer codegen until
@@ -77,7 +79,7 @@ fn cross_crate_inlinable(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
     // enabled. This ensures that we do inference even if someone only passes -Zinline-mir,
     // which is less confusing than having to also enable -Copt-level=1.
     let inliner_will_run = pm::should_run_pass(tcx, &inline::Inline, pm::Optimizations::Allowed)
-        || inline::ForceInline::should_run_pass_for_callee(tcx, def_id.to_def_id());
+        || inline::ForceInline::applies_for_resolved_callee(tcx, def_id.to_def_id());
     if matches!(tcx.sess.opts.optimize, OptLevel::No) && !inliner_will_run {
         return false;
     }

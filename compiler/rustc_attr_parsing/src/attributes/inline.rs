@@ -93,3 +93,16 @@ impl<S: Stage> SingleAttributeParser<S> for RustcForceInlineParser {
         ))
     }
 }
+
+pub(crate) struct RustcEarlyInlineParser;
+
+impl<S: Stage> SingleAttributeParser<S> for RustcEarlyInlineParser {
+    const PATH: &'static [Symbol] = &[sym::rustc_early_inline];
+    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::WarnButFutureError;
+    const TEMPLATE: AttributeTemplate = template!(Word);
+
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, _args: &ArgParser<'_>) -> Option<AttributeKind> {
+        Some(AttributeKind::Inline(InlineAttr::Early, cx.attr_span))
+    }
+}

@@ -76,8 +76,12 @@ impl<'tcx> crate::MirPass<'tcx> for Inline {
 pub struct ForceInline;
 
 impl ForceInline {
-    pub fn should_run_pass_for_callee<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> bool {
+    pub fn needs_callgraph_for_callee<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> bool {
         matches!(tcx.codegen_fn_attrs(def_id).inline, InlineAttr::Force { .. })
+    }
+
+    pub fn applies_for_resolved_callee<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> bool {
+        matches!(tcx.codegen_fn_attrs(def_id).inline, InlineAttr::Force { .. } | InlineAttr::Early)
     }
 }
 
@@ -117,7 +121,7 @@ trait Inliner<'tcx> {
     fn changed(self) -> bool;
 
     /// Should inlining happen for a given callee?
-    fn should_inline_for_callee(&self, def_id: DefId) -> bool;
+    fn should_inline_for_callee(&self, instance_kind: &InstanceKind<'tcx>) -> bool;
 
     fn check_codegen_attributes_extra(
         &self,
@@ -187,15 +191,22 @@ impl<'tcx> Inliner<'tcx> for ForceInliner<'tcx> {
         self.changed
     }
 
-    fn should_inline_for_callee(&self, def_id: DefId) -> bool {
-        ForceInline::should_run_pass_for_callee(self.tcx(), def_id)
+    fn should_inline_for_callee(&self, instance_kind: &InstanceKind<'tcx>) -> bool {
+        if let InstanceKind::Item(def_id) = instance_kind
+            && let InlineAttr::Force { .. } | InlineAttr::Early =
+                self.tcx().codegen_fn_attrs(def_id).inline
+        {
+            true
+        } else {
+            false
+        }
     }
 
     fn check_codegen_attributes_extra(
         &self,
         callee_attrs: &CodegenFnAttrs,
     ) -> Result<(), &'static str> {
-        debug_assert_matches!(callee_attrs.inline, InlineAttr::Force { .. });
+        debug_assert_matches!(callee_attrs.inline, InlineAttr::Force { .. } | InlineAttr::Early);
         Ok(())
     }
 
@@ -247,23 +258,26 @@ impl<'tcx> Inliner<'tcx> for ForceInliner<'tcx> {
 
     fn on_inline_failure(&self, callsite: &CallSite<'tcx>, reason: &'static str) {
         let tcx = self.tcx();
-        let InlineAttr::Force { attr_span, reason: justification } =
-            tcx.codegen_fn_attrs(callsite.callee.def_id()).inline
-        else {
-            bug!("called on item without required inlining");
-        };
-
-        let call_span = callsite.source_info.span;
-        tcx.dcx().emit_err(crate::errors::ForceInlineFailure {
-            call_span,
-            attr_span,
-            caller_span: tcx.def_span(self.def_id),
-            caller: tcx.def_path_str(self.def_id),
-            callee_span: tcx.def_span(callsite.callee.def_id()),
-            callee: tcx.def_path_str(callsite.callee.def_id()),
-            reason,
-            justification: justification.map(|sym| crate::errors::ForceInlineJustification { sym }),
-        });
+        match tcx.codegen_fn_attrs(callsite.callee.def_id()).inline {
+            InlineAttr::Early => {
+                // Ok, we don't actually mind if this fails.
+            }
+            InlineAttr::Force { attr_span, reason: justification } => {
+                let call_span = callsite.source_info.span;
+                tcx.dcx().emit_err(crate::errors::ForceInlineFailure {
+                    call_span,
+                    attr_span,
+                    caller_span: tcx.def_span(self.def_id),
+                    caller: tcx.def_path_str(self.def_id),
+                    callee_span: tcx.def_span(callsite.callee.def_id()),
+                    callee: tcx.def_path_str(callsite.callee.def_id()),
+                    reason,
+                    justification: justification
+                        .map(|sym| crate::errors::ForceInlineJustification { sym }),
+                });
+            }
+            _ => bug!("called on item without required inlining"),
+        }
     }
 }
 
@@ -334,7 +348,7 @@ impl<'tcx> Inliner<'tcx> for NormalInliner<'tcx> {
         self.changed
     }
 
-    fn should_inline_for_callee(&self, _: DefId) -> bool {
+    fn should_inline_for_callee(&self, _: &InstanceKind<'tcx>) -> bool {
         true
     }
 
@@ -556,15 +570,15 @@ fn resolve_callsite<'tcx, I: Inliner<'tcx>>(
     if let TerminatorKind::Call { ref func, fn_span, .. } = terminator.kind {
         let func_ty = func.ty(caller_body, tcx);
         if let ty::FnDef(def_id, args) = *func_ty.kind() {
-            if !inliner.should_inline_for_callee(def_id) {
-                debug!("not enabled");
-                return None;
-            }
-
             // To resolve an instance its args have to be fully normalized.
             let args = tcx.try_normalize_erasing_regions(inliner.typing_env(), args).ok()?;
             let callee =
                 Instance::try_resolve(tcx, inliner.typing_env(), def_id, args).ok().flatten()?;
+
+            if !inliner.should_inline_for_callee(&callee.def) {
+                debug!("not enabled");
+                return None;
+            }
 
             if let InstanceKind::Virtual(..) | InstanceKind::Intrinsic(_) = callee.def {
                 return None;

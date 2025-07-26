@@ -277,6 +277,7 @@ pub fn check_builtin_meta_item(
                 | sym::rustc_as_ptr
                 | sym::rustc_pub_transparent
                 | sym::rustc_const_stable_indirect
+                | sym::rustc_early_inline
                 | sym::rustc_force_inline
                 | sym::rustc_confusables
                 | sym::rustc_skip_during_method_dispatch

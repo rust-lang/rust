@@ -1124,6 +1124,11 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         "`#[rustc_no_mir_inline]` prevents the MIR inliner from inlining a function while not affecting codegen"
     ),
     rustc_attr!(
+        rustc_early_inline, Normal, template!(Word), WarnFollowing, EncodeCrossCrate::Yes,
+        "`#[rustc_early_inline]` inlines non-generic calls to trivial methods even in debug, \
+         while still allowing them to be codegen'd for generic calls"
+    ),
+    rustc_attr!(
         rustc_force_inline, Normal, template!(Word, NameValueStr: "reason"), WarnFollowing, EncodeCrossCrate::Yes,
         "`#[rustc_force_inline]` forces a free function to be inlined"
     ),

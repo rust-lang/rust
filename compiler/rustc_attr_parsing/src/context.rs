@@ -24,7 +24,7 @@ use crate::attributes::codegen_attrs::{
 use crate::attributes::confusables::ConfusablesParser;
 use crate::attributes::deprecation::DeprecationParser;
 use crate::attributes::dummy::DummyParser;
-use crate::attributes::inline::{InlineParser, RustcForceInlineParser};
+use crate::attributes::inline::{InlineParser, RustcEarlyInlineParser, RustcForceInlineParser};
 use crate::attributes::link_attrs::{
     ExportStableParser, FfiConstParser, FfiPureParser, LinkNameParser, LinkOrdinalParser,
     LinkSectionParser, StdInternalSymbolParser,
@@ -152,6 +152,7 @@ attribute_parsers!(
         Single<MustUseParser>,
         Single<OptimizeParser>,
         Single<PathAttributeParser>,
+        Single<RustcEarlyInlineParser>,
         Single<RustcForceInlineParser>,
         Single<RustcLayoutScalarValidRangeEnd>,
         Single<RustcLayoutScalarValidRangeStart>,

@@ -1,0 +1,23 @@
+- // MIR for `do_stuff` before ForceInline
++ // MIR for `do_stuff` after ForceInline
+  
+  fn do_stuff(_1: &MyThing) -> MyThing {
+      debug mine => _1;
+      let mut _0: MyThing;
+      let mut _2: &MyThing;
++     scope 1 (inlined <MyThing as Clone>::clone) {
++     }
+  
+      bb0: {
+          StorageLive(_2);
+          _2 = copy _1;
+-         _0 = <MyThing as Clone>::clone(move _2) -> [return: bb1, unwind continue];
+-     }
+- 
+-     bb1: {
++         _0 = copy (*_2);
+          StorageDead(_2);
+          return;
+      }
+  }
+  
