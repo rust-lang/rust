@@ -73,11 +73,13 @@ pub(crate) fn folding_ranges(file: &SourceFile) -> Vec<Fold> {
                             }
 
                             if fn_node.body().is_some() {
+                                // Get the actual start of the function (excluding doc comments)
+                                let fn_start = fn_node
+                                    .fn_token()
+                                    .map(|token| token.text_range().start())
+                                    .unwrap_or(node.text_range().start());
                                 res.push(Fold {
-                                    range: TextRange::new(
-                                        node.text_range().start(),
-                                        node.text_range().end(),
-                                    ),
+                                    range: TextRange::new(fn_start, node.text_range().end()),
                                     kind: FoldKind::Function,
                                 });
                                 continue;
