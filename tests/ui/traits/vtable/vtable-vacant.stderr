@@ -1,5 +1,6 @@
 error: vtable entries: [
            MetadataDropInPlace,
+           MetadataAsyncDropInPlace,
            MetadataSize,
            MetadataAlign,
            Method(<S as A>::foo_a1),
@@ -12,6 +13,7 @@ LL | impl A for S {}
 
 error: vtable entries: [
            MetadataDropInPlace,
+           MetadataAsyncDropInPlace,
            MetadataSize,
            MetadataAlign,
            Method(<S as A>::foo_a1),

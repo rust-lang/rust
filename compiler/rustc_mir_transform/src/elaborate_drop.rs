@@ -202,7 +202,7 @@ where
     }
 
     // Generates three blocks:
-    // * #1:pin_obj_bb:   call Pin<ObjTy>::new_unchecked(&mut obj)
+    // * #1:start_bb:   call Pin<ObjTy>::new_unchecked(&mut obj)
     // * #2:call_drop_bb: fut = call obj.<AsyncDrop::drop>() OR call async_drop_in_place<T>(obj)
     // * #3:drop_term_bb: drop (obj, fut, ...)
     // We keep async drop unexpanded to poll-loop here, to expand it later, at StateTransform -
@@ -221,7 +221,7 @@ where
         let tcx = self.tcx();
         let span = self.source_info.span;
 
-        let pin_obj_bb = bb.unwrap_or_else(|| {
+        let start_bb = bb.unwrap_or_else(|| {
             self.elaborator.patch().new_block(BasicBlockData::new(
                 Some(Terminator {
                     // Temporary terminator, will be replaced by patch
@@ -231,6 +231,55 @@ where
                 false,
             ))
         });
+        let fill_storage_deads = |patch: &mut MirPatch<'tcx>, local: Local| {
+            // StorageDead(fut) in self.succ block (at the begin)
+            patch.add_statement(
+                Location { block: succ, statement_index: 0 },
+                StatementKind::StorageDead(local),
+            );
+            // StorageDead(fut) in unwind block (at the begin)
+            if let Unwind::To(block) = unwind {
+                patch.add_statement(
+                    Location { block, statement_index: 0 },
+                    StatementKind::StorageDead(local),
+                );
+            }
+            // StorageDead(fut) in dropline block (at the begin)
+            if let Some(block) = dropline {
+                patch.add_statement(
+                    Location { block, statement_index: 0 },
+                    StatementKind::StorageDead(local),
+                );
+            }
+        };
+
+        if drop_ty.is_trait() {
+            assert!(!call_destructor_only);
+            // For dyn call we construct async drop future using Drop terminator,
+            // later expanded in codegen into vtable call
+            // fut_ty here is Pin<Box<dyn Future<Output = ()>>>
+            let drop_fn_def_id = tcx.require_lang_item(LangItem::AsyncDropInPlaceDyn, span);
+            let trait_args = tcx.mk_args(&[drop_ty.into()]);
+            let sig = tcx.fn_sig(drop_fn_def_id).instantiate(tcx, trait_args);
+            let sig = tcx.instantiate_bound_regions_with_erased(sig);
+            let fut_ty = sig.output();
+            let fut = Place::from(self.new_temp(fut_ty));
+            self.elaborator.patch().patch_terminator(
+                start_bb,
+                TerminatorKind::Drop {
+                    place,
+                    target: succ,
+                    unwind: unwind.into_action(),
+                    replace: false,
+                    drop: dropline,
+                    async_fut: Some(fut.local),
+                },
+            );
+            let term_loc = self.elaborator.terminator_loc(start_bb);
+            self.elaborator.patch().add_statement(term_loc, StatementKind::StorageLive(fut.local));
+            fill_storage_deads(self.elaborator.patch(), fut.local);
+            return start_bb;
+        }
 
         let (fut_ty, drop_fn_def_id, trait_args) = if call_destructor_only {
             // Resolving obj.<AsyncDrop::drop>()
@@ -270,7 +319,7 @@ where
                     "AsyncDrop type without correct `async fn drop(...)`.",
                 );
                 self.elaborator.patch().patch_terminator(
-                    pin_obj_bb,
+                    start_bb,
                     TerminatorKind::Drop {
                         place,
                         target: succ,
@@ -280,14 +329,13 @@ where
                         async_fut: None,
                     },
                 );
-                return pin_obj_bb;
+                return start_bb;
             };
             let drop_fn = Ty::new_fn_def(tcx, drop_fn_def_id, trait_args);
             let sig = drop_fn.fn_sig(tcx);
             let sig = tcx.instantiate_bound_regions_with_erased(sig);
             (sig.output(), drop_fn_def_id, trait_args)
         } else {
-            // Resolving async_drop_in_place<T> function for drop_ty
             let drop_fn_def_id = tcx.require_lang_item(LangItem::AsyncDropInPlace, span);
             let trait_args = tcx.mk_args(&[drop_ty.into()]);
             let sig = tcx.fn_sig(drop_fn_def_id).instantiate(tcx, trait_args);
@@ -297,11 +345,11 @@ where
 
         let fut = Place::from(self.new_temp(fut_ty));
 
-        // #1:pin_obj_bb >>> obj_ref = &mut obj
+        // #1:start_bb >>> obj_ref = &mut obj
         let obj_ref_ty = Ty::new_mut_ref(tcx, tcx.lifetimes.re_erased, drop_ty);
         let obj_ref_place = Place::from(self.new_temp(obj_ref_ty));
 
-        let term_loc = self.elaborator.terminator_loc(pin_obj_bb);
+        let term_loc = self.elaborator.terminator_loc(start_bb);
         self.elaborator.patch().add_assign(
             term_loc,
             obj_ref_place,
@@ -382,29 +430,9 @@ where
             },
         );
 
-        // StorageDead(fut) in self.succ block (at the begin)
-        self.elaborator.patch().add_statement(
-            Location { block: self.succ, statement_index: 0 },
-            StatementKind::StorageDead(fut.local),
-        );
-        // StorageDead(fut) in unwind block (at the begin)
-        if let Unwind::To(block) = unwind {
-            self.elaborator.patch().add_statement(
-                Location { block, statement_index: 0 },
-                StatementKind::StorageDead(fut.local),
-            );
-        }
-        // StorageDead(fut) in dropline block (at the begin)
-        if let Some(block) = dropline {
-            self.elaborator.patch().add_statement(
-                Location { block, statement_index: 0 },
-                StatementKind::StorageDead(fut.local),
-            );
-        }
-
-        // #1:pin_obj_bb >>> call Pin<ObjTy>::new_unchecked(&mut obj)
+        // #1:start_bb >>> call Pin<ObjTy>::new_unchecked(&mut obj)
         self.elaborator.patch().patch_terminator(
-            pin_obj_bb,
+            start_bb,
             TerminatorKind::Call {
                 func: pin_obj_new_unchecked_fn,
                 args: [dummy_spanned(Operand::Move(obj_ref_place))].into(),
@@ -415,7 +443,8 @@ where
                 fn_span: span,
             },
         );
-        pin_obj_bb
+        fill_storage_deads(self.elaborator.patch(), fut.local);
+        start_bb
     }
 
     fn build_drop(&mut self, bb: BasicBlock) {

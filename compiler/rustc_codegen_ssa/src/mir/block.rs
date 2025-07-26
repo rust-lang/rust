@@ -624,7 +624,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 //                \-------/
                 //
                 let virtual_drop = Instance {
-                    def: ty::InstanceKind::Virtual(drop_fn.def_id(), 0), // idx 0: the drop function
+                    def: ty::InstanceKind::Virtual(
+                        drop_fn.def_id(),
+                        ty::COMMON_VTABLE_ENTRIES_DROPINPLACE,
+                    ),
                     args: drop_fn.args,
                 };
                 debug!("ty = {:?}", ty);
@@ -675,6 +678,87 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             Some(drop_instance),
             CallKind::Normal,
             !maybe_null && mergeable_succ,
+        )
+    }
+
+    #[tracing::instrument(level = "trace", skip(self, helper, bx))]
+    fn codegen_async_drop_dyn(
+        &mut self,
+        helper: TerminatorCodegenHelper<'tcx>,
+        bx: &mut Bx,
+        source_info: &mir::SourceInfo,
+        dropee: mir::Place<'tcx>,
+        destination: mir::Place<'tcx>,
+        target: mir::BasicBlock,
+        unwind: mir::UnwindAction,
+        mergeable_succ: bool,
+    ) -> MergingSucc {
+        let ty = dropee.ty(self.mir, bx.tcx()).ty;
+        let ty = self.monomorphize(ty);
+        let drop_fn = Instance::resolve_async_drop_in_place_dyn(bx.tcx(), ty).unwrap();
+        let place = self.codegen_place(bx, dropee.as_ref());
+
+        let (args1, args2);
+        let mut args = if let Some(llextra) = place.val.llextra {
+            args2 = [place.val.llval, llextra];
+            &args2[..]
+        } else {
+            args1 = [place.val.llval];
+            &args1[..]
+        };
+
+        let (drop_fn, fn_abi, drop_instance) = match ty.kind() {
+            ty::Dynamic(_, _, ty::Dyn) => {
+                let virtual_drop = Instance {
+                    def: ty::InstanceKind::Virtual(
+                        drop_fn.def_id(),
+                        ty::COMMON_VTABLE_ENTRIES_ASYNCDROPINPLACE,
+                    ),
+                    args: drop_fn.args,
+                };
+                let fn_abi = bx.fn_abi_of_instance(virtual_drop, ty::List::empty());
+                let vtable = args[1];
+                // Truncate vtable off of args list
+                args = &args[..1];
+                (
+                    meth::VirtualIndex::from_index(ty::COMMON_VTABLE_ENTRIES_ASYNCDROPINPLACE)
+                        .get_optional_fn(bx, vtable, ty, fn_abi),
+                    fn_abi,
+                    virtual_drop,
+                )
+            }
+            _ => bug!("Non-virtual call for async drop terminator (ty is not dyn or dyn*)"),
+        };
+        // We generate a null check for the drop_fn. This saves a bunch of relocations being
+        // generated for no-op drops.
+        // FIXME: do we need it for dyn async drop?
+        {
+            let is_not_null = bx.append_sibling_block("is_not_null");
+            let llty = bx.fn_ptr_backend_type(fn_abi);
+            let null = bx.const_null(llty);
+            let non_null =
+                bx.icmp(base::bin_op_to_icmp_predicate(mir::BinOp::Ne, false), drop_fn, null);
+            bx.cond_br(non_null, is_not_null, helper.llbb_with_cleanup(self, target));
+            bx.switch_to_block(is_not_null);
+            self.set_debug_loc(bx, *source_info);
+        }
+        assert!(!fn_abi.ret.is_indirect());
+        let mut llargs = Vec::new();
+        let return_dest = self.make_return_dest(bx, destination, &fn_abi.ret, &mut llargs);
+        assert!(llargs.is_empty());
+
+        helper.do_call(
+            self,
+            bx,
+            fn_abi,
+            drop_fn,
+            args,
+            Some((return_dest, target)),
+            unwind,
+            &[],
+            Some(drop_instance),
+            CallKind::Normal,
+            false,
         )
     }
 
@@ -898,6 +982,21 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         let (instance, mut llfn) = match *callee.layout.ty.kind() {
             ty::FnDef(def_id, generic_args) => {
+                if bx.tcx().is_lang_item(def_id, LangItem::AsyncDropInPlaceDyn) {
+                    let mir::Operand::Move(dropee) = args[0].node else {
+                        bug!();
+                    };
+                    return self.codegen_async_drop_dyn(
+                        helper,
+                        bx,
+                        &terminator.source_info,
+                        dropee,
+                        destination,
+                        target.unwrap(),
+                        unwind,
+                        mergeable_succ,
+                    );
+                }
                 let instance = ty::Instance::expect_resolve(
                     bx.tcx(),
                     bx.typing_env(),

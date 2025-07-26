@@ -1,5 +1,7 @@
 //! Drops and async drops related logic for coroutine transformation pass
 
+use rustc_span::source_map::Spanned;
+
 use super::*;
 
 // Fix return Poll<Rv>::Pending statement into Poll<()>::Pending for async drop function
@@ -248,6 +250,197 @@ pub(super) fn has_expandable_async_drops<'tcx>(
     return false;
 }
 
+// Compute Poll<> (aka Poll with void return) and add such a local
+fn add_poll_unit_local<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    body: &mut Body<'tcx>,
+    source_info: SourceInfo,
+) -> (Place<'tcx>, Ty<'tcx>) {
+    let poll_adt_ref = tcx.adt_def(tcx.require_lang_item(LangItem::Poll, source_info.span));
+    let poll_enum = Ty::new_adt(tcx, poll_adt_ref, tcx.mk_args(&[tcx.types.unit.into()]));
+    let poll_decl = LocalDecl::new(poll_enum, source_info.span);
+    (Place::from(body.local_decls.push(poll_decl)), poll_enum)
+}
+
+fn prepare_yield_value<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    body: &mut Body<'tcx>,
+    coroutine_kind: hir::CoroutineKind,
+    source_info: SourceInfo,
+) -> Operand<'tcx> {
+    if matches!(coroutine_kind, CoroutineKind::Desugared(CoroutineDesugaring::AsyncGen, _)) {
+        // For AsyncGen we need `yield Poll<OptRet>::Pending`
+        let full_yield_ty = body.yield_ty().unwrap();
+        let ty::Adt(_poll_adt, args) = *full_yield_ty.kind() else { bug!() };
+        let ty::Adt(_option_adt, args) = *args.type_at(0).kind() else { bug!() };
+        let yield_ty = args.type_at(0);
+        Operand::Constant(Box::new(ConstOperand {
+            span: source_info.span,
+            const_: Const::Unevaluated(
+                UnevaluatedConst::new(
+                    tcx.require_lang_item(LangItem::AsyncGenPending, source_info.span),
+                    tcx.mk_args(&[yield_ty.into()]),
+                ),
+                full_yield_ty,
+            ),
+            user_ty: None,
+        }))
+    } else {
+        // value needed only for return-yields or gen-coroutines, so just const false here
+        Operand::Constant(Box::new(ConstOperand {
+            span: source_info.span,
+            user_ty: None,
+            const_: Const::from_bool(tcx, false),
+        }))
+    }
+}
+
+/// Generate async drop polling
+fn generate_async_drop_polling<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    body: &mut Body<'tcx>,
+    bb: BasicBlock,
+    context_mut_ref: Ty<'tcx>,
+    coroutine_kind: hir::CoroutineKind,
+    is_dropline_bb: bool,
+) -> BasicBlock {
+    let TerminatorKind::Drop {
+        place: _,
+        target,
+        unwind,
+        replace: _,
+        drop: dropline,
+        async_fut: Some(fut_local),
+    } = body[bb].terminator().kind
+    else {
+        bug!()
+    };
+    let fut_place = Place::from(fut_local);
+    let fut_ty = fut_place.ty(&body.local_decls, tcx).ty;
+
+    // poll-code:
+    // state_call_drop:
+    // #bb_pin: fut_pin = Pin<FutT>::new_unchecked(&mut fut)
+    // #bb_call: rv = call fut.poll() (or future_drop_poll(fut) for internal future drops)
+    // #bb_check: match (rv)
+    //  pending => return rv (yield)
+    //  ready => *continue_bb|drop_bb*
+
+    let source_info = body[bb].terminator.as_ref().unwrap().source_info;
+    let (poll_unit_place, poll_enum) = add_poll_unit_local(tcx, body, source_info);
+
+    // First state-loop yield for mainline
+    let context_ref_place =
+        Place::from(body.local_decls.push(LocalDecl::new(context_mut_ref, source_info.span)));
+    let arg = Rvalue::Use(Operand::Move(Place::from(CTX_ARG)));
+    body[bb].statements.push(Statement::new(
+        source_info,
+        StatementKind::Assign(Box::new((context_ref_place, arg))),
+    ));
+    // `kind` replaced later to Yield
+    let bb_yield = insert_term_block(body, TerminatorKind::Unreachable);
+    let (bb_pin, fut_pin_place) =
+        build_pin_fut(tcx, body, fut_place.clone(), UnwindAction::Continue);
+    let bb_check =
+        build_poll_switch(tcx, body, poll_enum, &poll_unit_place, &fut_pin_place, target, bb_yield);
+    let bb_call = build_poll_call(
+        tcx,
+        body,
+        &poll_unit_place,
+        bb_check,
+        &fut_pin_place,
+        fut_ty,
+        &context_ref_place,
+        unwind,
+    );
+
+    // Second state-loop yield for transition to dropline.
+    // When coroutine async drop started, we continue to poll this 'fut_place',
+    //  but target block (where to go after) is changed to 'dropline',
+    //  where other required drops will be executed.
+    // FIXME: Maybe, we can optimize it with bool flag like 'IWasAskedToDropTransition'.
+    //  And perform 'if IWasAskedToDropTransition goto dropline else goto target' after poll-loop.
+    let mut bb_dropline_transition: Option<BasicBlock> = None;
+    let mut bb_dropline_yield: Option<BasicBlock> = None;
+    let mut bb_dropline_call: Option<BasicBlock> = None;
+    let mut dropline_context_ref: Option<Place<'_>> = None;
+
+    if !is_dropline_bb {
+        let context_ref_place2: Place<'_> =
+            Place::from(body.local_decls.push(LocalDecl::new(context_mut_ref, source_info.span)));
+        // `kind` replaced later to Yield
+        let bb_drop_yield = insert_term_block(body, TerminatorKind::Unreachable);
+        let (bb_drop_pin, fut_pin_place2) =
+            build_pin_fut(tcx, body, fut_place, UnwindAction::Continue);
+        let bb_drop_switch = build_poll_switch(
+            tcx,
+            body,
+            poll_enum,
+            &poll_unit_place,
+            &fut_pin_place2,
+            dropline.unwrap(),
+            bb_drop_yield,
+        );
+        let bb_drop_call = build_poll_call(
+            tcx,
+            body,
+            &poll_unit_place,
+            bb_drop_switch,
+            &fut_pin_place2,
+            fut_ty,
+            &context_ref_place2,
+            unwind,
+        );
+        bb_dropline_transition = Some(bb_drop_pin);
+        bb_dropline_yield = Some(bb_drop_yield);
+        bb_dropline_call = Some(bb_drop_call);
+        dropline_context_ref = Some(context_ref_place2);
+    }
+    let value = prepare_yield_value(tcx, body, coroutine_kind, source_info);
+
+    use rustc_middle::mir::AssertKind::ResumedAfterDrop;
+    let bb_panic = insert_panic_block(tcx, body, ResumedAfterDrop(coroutine_kind));
+
+    if is_dropline_bb {
+        body[bb_yield].terminator_mut().kind = TerminatorKind::Yield {
+            value: value.clone(),
+            resume: bb_panic,
+            resume_arg: context_ref_place,
+            drop: Some(bb_pin),
+        };
+    } else {
+        body[bb_yield].terminator_mut().kind = TerminatorKind::Yield {
+            value: value.clone(),
+            resume: bb_pin,
+            resume_arg: context_ref_place,
+            drop: bb_dropline_transition,
+        };
+        body[bb_dropline_yield.unwrap()].terminator_mut().kind = TerminatorKind::Yield {
+            value,
+            resume: bb_panic,
+            resume_arg: dropline_context_ref.unwrap(),
+            drop: bb_dropline_transition,
+        };
+    }
+    // fix bb_pin -> bb_call link
+    if let TerminatorKind::Call { ref mut target, .. } = body[bb_pin].terminator_mut().kind {
+        *target = Some(bb_call);
+    } else {
+        bug!()
+    }
+    if !is_dropline_bb {
+        // fix bb_drop_pin -> bb_drop_call link
+        if let TerminatorKind::Call { ref mut target, .. } =
+            body[bb_dropline_transition.unwrap()].terminator_mut().kind
+        {
+            *target = bb_dropline_call;
+        } else {
+            bug!()
+        }
+    }
+    bb_pin
+}
+
 /// Expand Drop terminator for async drops into mainline poll-switch and dropline poll-switch
 pub(super) fn expand_async_drops<'tcx>(
     tcx: TyCtxt<'tcx>,
@@ -278,14 +471,15 @@ pub(super) fn expand_async_drops<'tcx>(
             remove_asyncness(&mut body[bb]);
             continue;
         }
-        let TerminatorKind::Drop { place, target, unwind, replace: _, drop, async_fut } =
+        let TerminatorKind::Drop { place, target: _, unwind, replace: _, drop, async_fut } =
             body[bb].terminator().kind
         else {
             continue;
         };
+        let dropee = place;
 
-        let place_ty = place.ty(&body.local_decls, tcx).ty;
-        if place_ty == coroutine_ty {
+        let dropee_ty = dropee.ty(&body.local_decls, tcx).ty;
+        if dropee_ty == coroutine_ty {
             remove_asyncness(&mut body[bb]);
             continue;
         }
@@ -302,162 +496,41 @@ pub(super) fn expand_async_drops<'tcx>(
             continue;
         }
 
-        let fut_place = Place::from(fut_local);
-        let fut_ty = fut_place.ty(&body.local_decls, tcx).ty;
-
-        // poll-code:
-        // state_call_drop:
-        // #bb_pin: fut_pin = Pin<FutT>::new_unchecked(&mut fut)
-        // #bb_call: rv = call fut.poll() (or future_drop_poll(fut) for internal future drops)
-        // #bb_check: match (rv)
-        //  pending => return rv (yield)
-        //  ready => *continue_bb|drop_bb*
-
-        let source_info = body[bb].terminator.as_ref().unwrap().source_info;
-
-        // Compute Poll<> (aka Poll with void return)
-        let poll_adt_ref = tcx.adt_def(tcx.require_lang_item(LangItem::Poll, source_info.span));
-        let poll_enum = Ty::new_adt(tcx, poll_adt_ref, tcx.mk_args(&[tcx.types.unit.into()]));
-        let poll_decl = LocalDecl::new(poll_enum, source_info.span);
-        let poll_unit_place = Place::from(body.local_decls.push(poll_decl));
-
-        // First state-loop yield for mainline
-        let context_ref_place =
-            Place::from(body.local_decls.push(LocalDecl::new(context_mut_ref, source_info.span)));
-        let arg = Rvalue::Use(Operand::Move(Place::from(CTX_ARG)));
-        body[bb].statements.push(Statement::new(
-            source_info,
-            StatementKind::Assign(Box::new((context_ref_place, arg))),
-        ));
-        let yield_block = insert_term_block(body, TerminatorKind::Unreachable); // `kind` replaced later to yield
-        let (pin_bb, fut_pin_place) =
-            build_pin_fut(tcx, body, fut_place.clone(), UnwindAction::Continue);
-        let switch_block = build_poll_switch(
+        let bb_pin = generate_async_drop_polling(
             tcx,
             body,
-            poll_enum,
-            &poll_unit_place,
-            &fut_pin_place,
-            target,
-            yield_block,
+            bb,
+            context_mut_ref,
+            coroutine_kind,
+            is_dropline_bb,
         );
-        let call_bb = build_poll_call(
-            tcx,
-            body,
-            &poll_unit_place,
-            switch_block,
-            &fut_pin_place,
-            fut_ty,
-            &context_ref_place,
-            unwind,
-        );
-
-        // Second state-loop yield for transition to dropline (when coroutine async drop started)
-        let mut dropline_transition_bb: Option<BasicBlock> = None;
-        let mut dropline_yield_bb: Option<BasicBlock> = None;
-        let mut dropline_context_ref: Option<Place<'_>> = None;
-        let mut dropline_call_bb: Option<BasicBlock> = None;
-        if !is_dropline_bb {
-            let context_ref_place2: Place<'_> = Place::from(
-                body.local_decls.push(LocalDecl::new(context_mut_ref, source_info.span)),
-            );
-            let drop_yield_block = insert_term_block(body, TerminatorKind::Unreachable); // `kind` replaced later to yield
-            let (pin_bb2, fut_pin_place2) =
-                build_pin_fut(tcx, body, fut_place, UnwindAction::Continue);
-            let drop_switch_block = build_poll_switch(
+        if dropee_ty.is_trait() {
+            let source_info = body[bb].terminator.as_ref().unwrap().source_info;
+            // dyn processing is a bit different:
+            // Drop terminator is replaced to Call terminator for 'async_drop_in_place_dyn' func
+            //  (providing async drop future as a `Pin<Box<dyn Future>>`).
+            // Call terminator will be codegen'ed into vtable call to set async future to poll.
+            let async_drop_dyn_def_id =
+                tcx.require_lang_item(LangItem::AsyncDropInPlaceDyn, source_info.span);
+            let func = Operand::function_handle(
                 tcx,
-                body,
-                poll_enum,
-                &poll_unit_place,
-                &fut_pin_place2,
-                drop.unwrap(),
-                drop_yield_block,
+                async_drop_dyn_def_id,
+                [dropee_ty.into()],
+                source_info.span,
             );
-            let drop_call_bb = build_poll_call(
-                tcx,
-                body,
-                &poll_unit_place,
-                drop_switch_block,
-                &fut_pin_place2,
-                fut_ty,
-                &context_ref_place2,
+            body[bb].terminator_mut().kind = TerminatorKind::Call {
+                func,
+                args: [Spanned { node: Operand::Move(dropee), span: source_info.span }].into(),
+                destination: Place::from(fut_local),
+                target: Some(bb_pin),
                 unwind,
-            );
-            dropline_transition_bb = Some(pin_bb2);
-            dropline_yield_bb = Some(drop_yield_block);
-            dropline_context_ref = Some(context_ref_place2);
-            dropline_call_bb = Some(drop_call_bb);
-        }
-
-        let value =
-            if matches!(coroutine_kind, CoroutineKind::Desugared(CoroutineDesugaring::AsyncGen, _))
-            {
-                // For AsyncGen we need `yield Poll<OptRet>::Pending`
-                let full_yield_ty = body.yield_ty().unwrap();
-                let ty::Adt(_poll_adt, args) = *full_yield_ty.kind() else { bug!() };
-                let ty::Adt(_option_adt, args) = *args.type_at(0).kind() else { bug!() };
-                let yield_ty = args.type_at(0);
-                Operand::Constant(Box::new(ConstOperand {
-                    span: source_info.span,
-                    const_: Const::Unevaluated(
-                        UnevaluatedConst::new(
-                            tcx.require_lang_item(LangItem::AsyncGenPending, source_info.span),
-                            tcx.mk_args(&[yield_ty.into()]),
-                        ),
-                        full_yield_ty,
-                    ),
-                    user_ty: None,
-                }))
-            } else {
-                // value needed only for return-yields or gen-coroutines, so just const here
-                Operand::Constant(Box::new(ConstOperand {
-                    span: source_info.span,
-                    user_ty: None,
-                    const_: Const::from_bool(tcx, false),
-                }))
+                call_source: CallSource::Misc,
+                fn_span: source_info.span,
             };
-
-        use rustc_middle::mir::AssertKind::ResumedAfterDrop;
-        let panic_bb = insert_panic_block(tcx, body, ResumedAfterDrop(coroutine_kind));
-
-        if is_dropline_bb {
-            body[yield_block].terminator_mut().kind = TerminatorKind::Yield {
-                value: value.clone(),
-                resume: panic_bb,
-                resume_arg: context_ref_place,
-                drop: Some(pin_bb),
-            };
+            continue;
         } else {
-            body[yield_block].terminator_mut().kind = TerminatorKind::Yield {
-                value: value.clone(),
-                resume: pin_bb,
-                resume_arg: context_ref_place,
-                drop: dropline_transition_bb,
-            };
-            body[dropline_yield_bb.unwrap()].terminator_mut().kind = TerminatorKind::Yield {
-                value,
-                resume: panic_bb,
-                resume_arg: dropline_context_ref.unwrap(),
-                drop: dropline_transition_bb,
-            };
+            body[bb].terminator_mut().kind = TerminatorKind::Goto { target: bb_pin };
         }
-
-        if let TerminatorKind::Call { ref mut target, .. } = body[pin_bb].terminator_mut().kind {
-            *target = Some(call_bb);
-        } else {
-            bug!()
-        }
-        if !is_dropline_bb {
-            if let TerminatorKind::Call { ref mut target, .. } =
-                body[dropline_transition_bb.unwrap()].terminator_mut().kind
-            {
-                *target = dropline_call_bb;
-            } else {
-                bug!()
-            }
-        }
-
-        body[bb].terminator_mut().kind = TerminatorKind::Goto { target: pin_bb };
     }
 }
 
@@ -630,6 +703,7 @@ pub(super) fn create_coroutine_drop_shim_async<'tcx>(
     // Take the coroutine info out of the body, since the drop shim is
     // not a coroutine body itself; it just has its drop built out of it.
     let _ = body.coroutine.take();
+    body.arg_count = 2; // Restoring context arg if it was removed for Gen coroutine
 
     FixReturnPendingVisitor { tcx }.visit_body(&mut body);
 
@@ -675,15 +749,7 @@ pub(super) fn create_coroutine_drop_shim_async<'tcx>(
     body.local_decls[RETURN_PLACE] = LocalDecl::with_source_info(poll_enum, source_info);
 
     make_coroutine_state_argument_indirect(tcx, &mut body);
-
-    match transform.coroutine_kind {
-        // Iterator::next doesn't accept a pinned argument,
-        // unlike for all other coroutine kinds.
-        CoroutineKind::Desugared(CoroutineDesugaring::Gen, _) => {}
-        _ => {
-            make_coroutine_state_argument_pinned(tcx, &mut body);
-        }
-    }
+    make_coroutine_state_argument_pinned(tcx, &mut body);
 
     // Make sure we remove dead blocks to remove
     // unrelated code from the resume part of the function
@@ -714,6 +780,11 @@ pub(super) fn create_coroutine_drop_shim_proxy_async<'tcx>(
     let basic_blocks: IndexVec<BasicBlock, BasicBlockData<'tcx>> = IndexVec::new();
     body.basic_blocks = BasicBlocks::new(basic_blocks);
     body.var_debug_info.clear();
+
+    // Async drop for coroutine has args for standart async poll.
+    // Restoring args (may be removed for Gen coroutine)
+    body.arg_count = 2;
+    body.local_decls[CTX_ARG].ty = Ty::new_task_context(tcx);
 
     // Keeping return value and args
     body.local_decls.truncate(1 + body.arg_count);

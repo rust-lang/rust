@@ -1,5 +1,5 @@
 //@ edition: 2024
-#![feature(async_drop)]
+#![feature(async_drop, async_drop_lib)]
 #![allow(incomplete_features)]
 #![crate_type = "lib"]
 

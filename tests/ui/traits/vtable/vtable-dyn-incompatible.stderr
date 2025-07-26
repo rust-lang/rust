@@ -1,5 +1,6 @@
 error: vtable entries: [
            MetadataDropInPlace,
+           MetadataAsyncDropInPlace,
            MetadataSize,
            MetadataAlign,
            Method(<dyn A<Item = u8> as Iterator>::next - shim(reify)),

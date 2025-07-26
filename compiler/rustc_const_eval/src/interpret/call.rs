@@ -812,6 +812,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // only supports calling `VtblEntry::Method`; it would choke on a `MetadataDropInPlace`. So
         // instead we do the virtual call stuff ourselves. It's easier here than in `eval_fn_call`
         // since we can just get a place of the underlying type and use `mplace_to_ref`.
+        // FIXME: Support AsyncDrop (async_drop_in_place) here
         let place = match place.layout.ty.kind() {
             ty::Dynamic(data, _, ty::Dyn) => {
                 // Dropping a trait object. Need to find actual drop fn.

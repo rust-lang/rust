@@ -1,5 +1,6 @@
 error: vtable entries: [
            MetadataDropInPlace,
+           MetadataAsyncDropInPlace,
            MetadataSize,
            MetadataAlign,
            Method(<S as A>::foo_a),
@@ -11,6 +12,7 @@ LL | impl A for S {}
 
 error: vtable entries: [
            MetadataDropInPlace,
+           MetadataAsyncDropInPlace,
            MetadataSize,
            MetadataAlign,
            Method(<S as B>::foo_b),
@@ -22,6 +24,7 @@ LL | impl B for S {}
 
 error: vtable entries: [
            MetadataDropInPlace,
+           MetadataAsyncDropInPlace,
            MetadataSize,
            MetadataAlign,
            Method(<S as A>::foo_a),
@@ -36,6 +39,7 @@ LL | impl C for S {}
 
 error: vtable entries: [
            MetadataDropInPlace,
+           MetadataAsyncDropInPlace,
            MetadataSize,
            MetadataAlign,
            Method(<S as D>::foo_d),
@@ -47,6 +51,7 @@ LL | impl D for S {}
 
 error: vtable entries: [
            MetadataDropInPlace,
+           MetadataAsyncDropInPlace,
            MetadataSize,
            MetadataAlign,
            Method(<S as E>::foo_e),
@@ -58,6 +63,7 @@ LL | impl E for S {}
 
 error: vtable entries: [
            MetadataDropInPlace,
+           MetadataAsyncDropInPlace,
            MetadataSize,
            MetadataAlign,
            Method(<S as D>::foo_d),
@@ -72,6 +78,7 @@ LL | impl F for S {}
 
 error: vtable entries: [
            MetadataDropInPlace,
+           MetadataAsyncDropInPlace,
            MetadataSize,
            MetadataAlign,
            Method(<S as A>::foo_a),
@@ -93,6 +100,7 @@ LL | impl G for S {}
 
 error: vtable entries: [
            MetadataDropInPlace,
+           MetadataAsyncDropInPlace,
            MetadataSize,
            MetadataAlign,
            Method(<S as H>::foo_h),
@@ -104,6 +112,7 @@ LL | impl H for S {}
 
 error: vtable entries: [
            MetadataDropInPlace,
+           MetadataAsyncDropInPlace,
            MetadataSize,
            MetadataAlign,
            Method(<S as I>::foo_i),
@@ -115,6 +124,7 @@ LL | impl I for S {}
 
 error: vtable entries: [
            MetadataDropInPlace,
+           MetadataAsyncDropInPlace,
            MetadataSize,
            MetadataAlign,
            Method(<S as H>::foo_h),
@@ -129,6 +139,7 @@ LL | impl J for S {}
 
 error: vtable entries: [
            MetadataDropInPlace,
+           MetadataAsyncDropInPlace,
            MetadataSize,
            MetadataAlign,
            Method(<S as K>::foo_k),
@@ -140,6 +151,7 @@ LL | impl K for S {}
 
 error: vtable entries: [
            MetadataDropInPlace,
+           MetadataAsyncDropInPlace,
            MetadataSize,
            MetadataAlign,
            Method(<S as L>::foo_l),
@@ -151,6 +163,7 @@ LL | impl L for S {}
 
 error: vtable entries: [
            MetadataDropInPlace,
+           MetadataAsyncDropInPlace,
            MetadataSize,
            MetadataAlign,
            Method(<S as K>::foo_k),
@@ -165,6 +178,7 @@ LL | impl M for S {}
 
 error: vtable entries: [
            MetadataDropInPlace,
+           MetadataAsyncDropInPlace,
            MetadataSize,
            MetadataAlign,
            Method(<S as H>::foo_h),
@@ -186,6 +200,7 @@ LL | impl N for S {}
 
 error: vtable entries: [
            MetadataDropInPlace,
+           MetadataAsyncDropInPlace,
            MetadataSize,
            MetadataAlign,
            Method(<S as A>::foo_a),

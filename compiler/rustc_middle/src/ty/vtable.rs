@@ -13,6 +13,8 @@ use crate::ty::{self, Instance, TraitRef, Ty, TyCtxt};
 pub enum VtblEntry<'tcx> {
     /// destructor of this type (used in vtable header)
     MetadataDropInPlace,
+    /// async destructor of this type, function returns Pin<Box<Future>>> (used in vtable header)
+    MetadataAsyncDropInPlace,
     /// layout size of this type (used in vtable header)
     MetadataSize,
     /// layout align of this type (used in vtable header)
@@ -31,6 +33,7 @@ impl<'tcx> fmt::Debug for VtblEntry<'tcx> {
         // so we implement this manually.
         match self {
             VtblEntry::MetadataDropInPlace => write!(f, "MetadataDropInPlace"),
+            VtblEntry::MetadataAsyncDropInPlace => write!(f, "MetadataAsyncDropInPlace"),
             VtblEntry::MetadataSize => write!(f, "MetadataSize"),
             VtblEntry::MetadataAlign => write!(f, "MetadataAlign"),
             VtblEntry::Vacant => write!(f, "Vacant"),
@@ -42,13 +45,18 @@ impl<'tcx> fmt::Debug for VtblEntry<'tcx> {
 
 // Needs to be associated with the `'tcx` lifetime
 impl<'tcx> TyCtxt<'tcx> {
-    pub const COMMON_VTABLE_ENTRIES: &'tcx [VtblEntry<'tcx>] =
-        &[VtblEntry::MetadataDropInPlace, VtblEntry::MetadataSize, VtblEntry::MetadataAlign];
+    pub const COMMON_VTABLE_ENTRIES: &'tcx [VtblEntry<'tcx>] = &[
+        VtblEntry::MetadataDropInPlace,
+        VtblEntry::MetadataAsyncDropInPlace,
+        VtblEntry::MetadataSize,
+        VtblEntry::MetadataAlign,
+    ];
 }
 
 pub const COMMON_VTABLE_ENTRIES_DROPINPLACE: usize = 0;
-pub const COMMON_VTABLE_ENTRIES_SIZE: usize = 1;
-pub const COMMON_VTABLE_ENTRIES_ALIGN: usize = 2;
+pub const COMMON_VTABLE_ENTRIES_ASYNCDROPINPLACE: usize = 1;
+pub const COMMON_VTABLE_ENTRIES_SIZE: usize = 2;
+pub const COMMON_VTABLE_ENTRIES_ALIGN: usize = 3;
 
 // Note that we don't have access to a self type here, this has to be purely based on the trait (and
 // supertrait) definitions. That means we can't call into the same vtable_entries code since that
@@ -122,6 +130,18 @@ pub(super) fn vtable_allocation_provider<'tcx>(
             VtblEntry::MetadataDropInPlace => {
                 if ty.needs_drop(tcx, ty::TypingEnv::fully_monomorphized()) {
                     let instance = ty::Instance::resolve_drop_in_place(tcx, ty);
+                    let fn_alloc_id = tcx.reserve_and_set_fn_alloc(instance, CTFE_ALLOC_SALT);
+                    let fn_ptr = Pointer::from(fn_alloc_id);
+                    Scalar::from_pointer(fn_ptr, &tcx)
+                } else {
+                    Scalar::from_maybe_pointer(Pointer::null(), &tcx)
+                }
+            }
+            VtblEntry::MetadataAsyncDropInPlace => {
+                if tcx.features().async_drop()
+                    && ty.needs_async_drop(tcx, ty::TypingEnv::fully_monomorphized())
+                    && let Some(instance) = ty::Instance::resolve_async_drop_in_place_dyn(tcx, ty)
+                {
                     let fn_alloc_id = tcx.reserve_and_set_fn_alloc(instance, CTFE_ALLOC_SALT);
                     let fn_ptr = Pointer::from(fn_alloc_id);
                     Scalar::from_pointer(fn_ptr, &tcx)

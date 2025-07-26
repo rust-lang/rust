@@ -866,6 +866,18 @@ fn visit_drop_use<'tcx>(
     visit_instance_use(tcx, instance, is_direct_call, source, output);
 }
 
+fn visit_async_drop_use<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    ty: Ty<'tcx>,
+    is_direct_call: bool,
+    source: Span,
+    output: &mut MonoItems<'tcx>,
+) {
+    if let Some(instance) = Instance::resolve_async_drop_in_place_dyn(tcx, ty) {
+        visit_instance_use(tcx, instance, is_direct_call, source, output);
+    }
+}
+
 /// For every call of this function in the visitor, make sure there is a matching call in the
 /// `mentioned_items` pass!
 fn visit_fn_use<'tcx>(
@@ -1152,6 +1164,7 @@ fn create_mono_items_for_vtable_methods<'tcx>(
             .iter()
             .filter_map(|entry| match entry {
                 VtblEntry::MetadataDropInPlace
+                | VtblEntry::MetadataAsyncDropInPlace
                 | VtblEntry::MetadataSize
                 | VtblEntry::MetadataAlign
                 | VtblEntry::Vacant => None,
@@ -1173,6 +1186,9 @@ fn create_mono_items_for_vtable_methods<'tcx>(
     // if we don't need drop we're not adding an actual pointer to the vtable.
     if impl_ty.needs_drop(tcx, ty::TypingEnv::fully_monomorphized()) {
         visit_drop_use(tcx, impl_ty, false, source, output);
+    }
+    if impl_ty.needs_async_drop(tcx, ty::TypingEnv::fully_monomorphized()) {
+        visit_async_drop_use(tcx, impl_ty, false, source, output);
     }
 }
 

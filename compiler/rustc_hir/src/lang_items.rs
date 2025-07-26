@@ -193,6 +193,8 @@ language_item_table! {
     Destruct,                sym::destruct,            destruct_trait,             Target::Trait,          GenericRequirement::None;
     AsyncDrop,               sym::async_drop,          async_drop_trait,           Target::Trait,          GenericRequirement::None;
     AsyncDropInPlace,        sym::async_drop_in_place, async_drop_in_place_fn,     Target::Fn,             GenericRequirement::Exact(1);
+    AsyncDropInPlaceDyn,     sym::async_drop_in_place_dyn, async_drop_in_place_dyn_fn, Target::Fn,         GenericRequirement::Exact(1);
+    AsyncDropInPlaceSelf,    sym::async_drop_in_place_self, async_drop_in_place_self_fn, Target::Fn,       GenericRequirement::None;
 
     CoerceUnsized,           sym::coerce_unsized,      coerce_unsized_trait,       Target::Trait,          GenericRequirement::Minimum(1);
     DispatchFromDyn,         sym::dispatch_from_dyn,   dispatch_from_dyn_trait,    Target::Trait,          GenericRequirement::Minimum(1);

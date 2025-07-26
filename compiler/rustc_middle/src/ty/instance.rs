@@ -753,6 +753,30 @@ impl<'tcx> Instance<'tcx> {
         )
     }
 
+    // async_drop_in_place, with return value converted into Pin<Box<Future>>, for usage in vtable.
+    // May returns None for core lib compilation (before lang item definition in alloc lib).
+    pub fn resolve_async_drop_in_place_dyn(
+        tcx: TyCtxt<'tcx>,
+        ty: Ty<'tcx>,
+    ) -> Option<ty::Instance<'tcx>> {
+        // `async_drop_in_place<T>::{closure}` is a special case, because such coroutine is its async drop future itself.
+        // To drop this coroutine we need to continue poll it.
+        // So, it async drop constructor function in vtable returns its address (from argument), boxed and pinned.
+        let (item, args) = if ty.is_async_drop_in_place_coroutine(tcx) {
+            (LangItem::AsyncDropInPlaceSelf, tcx.mk_args(&[]))
+        } else {
+            (LangItem::AsyncDropInPlaceDyn, tcx.mk_args(&[ty.into()]))
+        };
+        let Some(def_id) = tcx.lang_items().get(item) else { return None };
+        Some(Instance::expect_resolve(
+            tcx,
+            ty::TypingEnv::fully_monomorphized(),
+            def_id,
+            args,
+            ty.ty_adt_def().and_then(|adt| tcx.hir_span_if_local(adt.did())).unwrap_or(DUMMY_SP),
+        ))
+    }
+
     pub fn resolve_async_drop_in_place_poll(
         tcx: TyCtxt<'tcx>,
         def_id: DefId,

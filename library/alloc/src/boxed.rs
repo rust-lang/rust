@@ -189,7 +189,7 @@ use core::clone::CloneToUninit;
 use core::cmp::Ordering;
 use core::error::{self, Error};
 use core::fmt;
-use core::future::{AsyncDrop, Future};
+use core::future::{AsyncDrop, Future, async_drop_in_place};
 use core::hash::{Hash, Hasher};
 use core::marker::{Tuple, Unsize};
 use core::mem::{self, SizedTypeProperties};
@@ -1684,6 +1684,27 @@ unsafe impl<#[may_dangle] T: ?Sized, A: Allocator> AsyncDrop for Box<T, A> {
             }
         }
     }
+}
+
+/// Async drop for usage in vtable
+#[unstable(feature = "async_drop_lib", issue = "126482")]
+#[lang = "async_drop_in_place_dyn"]
+pub unsafe fn async_drop_in_place_dyn<T: ?Sized + 'static>(
+    to_drop: *mut T,
+) -> Pin<Box<dyn Future<Output = ()>>> {
+    Box::pin(unsafe { async_drop_in_place(to_drop) })
+}
+
+/// Async drop for usage in vtable, for dropping `async_drop_in_place<T>::{closure}` coroutine.
+/// `async_drop_in_place<T>::{closure}` is a special case, because to async drop such a coroutine,
+/// we just need to continue poll it.
+/// So vtable call should return argument as a return value.
+#[unstable(feature = "async_drop_lib", issue = "126482")]
+#[lang = "async_drop_in_place_self"]
+pub unsafe fn async_drop_in_place_self(
+    to_drop: *mut dyn Future<Output = ()>,
+) -> Pin<Box<dyn Future<Output = ()>>> {
+    Box::into_pin(unsafe { Box::from_raw(to_drop) })
 }
 
 #[cfg(not(no_global_oom_handling))]

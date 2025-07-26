@@ -62,24 +62,24 @@ impl V for S {
 }
 
 fn taking_t(t: &dyn T) -> i32 {
-    // CHECK: @llvm.type.checked.load({{.*}}, i32 24, metadata !"[[MANGLED_TYPE0:[0-9a-zA-Z_]+]]")
+    // CHECK: @llvm.type.checked.load({{.*}}, i32 32, metadata !"[[MANGLED_TYPE0:[0-9a-zA-Z_]+]]")
     t.used()
 }
 
 fn taking_rc_t(t: Rc<dyn T>) -> i32 {
-    // CHECK: @llvm.type.checked.load({{.*}}, i32 40, metadata !"[[MANGLED_TYPE0:[0-9a-zA-Z_]+]]")
+    // CHECK: @llvm.type.checked.load({{.*}}, i32 48, metadata !"[[MANGLED_TYPE0:[0-9a-zA-Z_]+]]")
     t.by_rc()
 }
 
 fn taking_u(u: &dyn U) -> i32 {
-    // CHECK: @llvm.type.checked.load({{.*}}, i32 64, metadata !"[[MANGLED_TYPE1:[0-9a-zA-Z_]+]]")
-    // CHECK: @llvm.type.checked.load({{.*}}, i32 24, metadata !"[[MANGLED_TYPE1:[0-9a-zA-Z_]+]]")
+    // CHECK: @llvm.type.checked.load({{.*}}, i32 72, metadata !"[[MANGLED_TYPE1:[0-9a-zA-Z_]+]]")
     // CHECK: @llvm.type.checked.load({{.*}}, i32 32, metadata !"[[MANGLED_TYPE1:[0-9a-zA-Z_]+]]")
+    // CHECK: @llvm.type.checked.load({{.*}}, i32 40, metadata !"[[MANGLED_TYPE1:[0-9a-zA-Z_]+]]")
     u.subtrait_used() + u.used() + u.used_through_sub_trait()
 }
 
 pub fn taking_v(v: &dyn V) -> i32 {
-    // CHECK: @llvm.type.checked.load({{.*}}, i32 24, metadata !"NtC[[CRATE_IDENT:[a-zA-Z0-9]{12}]]_28virtual_function_elimination1V")
+    // CHECK: @llvm.type.checked.load({{.*}}, i32 32, metadata !"NtC[[CRATE_IDENT:[a-zA-Z0-9]{12}]]_28virtual_function_elimination1V")
     v.public_function()
 }
 

@@ -1,5 +1,6 @@
 error: vtable entries: [
            MetadataDropInPlace,
+           MetadataAsyncDropInPlace,
            MetadataSize,
            MetadataAlign,
            Method(<() as Supertrait<()>>::_print_numbers),
@@ -12,6 +13,7 @@ LL | impl Trait for () {}
 
 error: vtable entries: [
            MetadataDropInPlace,
+           MetadataAsyncDropInPlace,
            MetadataSize,
            MetadataAlign,
            Method(<dyn Middle<()> as Supertrait<()>>::_print_numbers - shim(reify)),

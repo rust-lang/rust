@@ -501,6 +501,8 @@ symbols! {
         async_closure,
         async_drop,
         async_drop_in_place,
+        async_drop_in_place_dyn,
+        async_drop_in_place_self,
         async_drop_lib,
         async_fn,
         async_fn_in_dyn_trait,
