@@ -8,6 +8,14 @@ LL |     let mut copy: Vec<U> = map.clone().into_values().collect();
    |
 note: `HashMap::<K, V, S>::into_values` takes ownership of the receiver `self`, which moves value
   --> $SRC_DIR/std/src/collections/hash/map.rs:LL:COL
+note: if `Hash128_1` implemented `Clone`, you could clone the value
+  --> $DIR/suggest-clone-when-some-obligation-is-unmet.rs:8:1
+   |
+LL | pub struct Hash128_1;
+   | ^^^^^^^^^^^^^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |     let mut copy: Vec<U> = map.clone().into_values().collect();
+   |                            ----------- you could clone this value
 help: you could `clone` the value and consume it, if the `Hash128_1: Clone` trait bound could be satisfied
    |
 LL -     let mut copy: Vec<U> = map.clone().into_values().collect();
