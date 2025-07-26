@@ -2604,12 +2604,12 @@ impl<T> const ops::Try for Option<T> {
     type Output = T;
     type Residual = Option<convert::Infallible>;
 
-    #[inline]
+    #[rustc_early_inline]
     fn from_output(output: Self::Output) -> Self {
         Some(output)
     }
 
-    #[inline]
+    #[rustc_early_inline]
     fn branch(self) -> ControlFlow<Self::Residual, Self::Output> {
         match self {
             Some(v) => ControlFlow::Continue(v),
@@ -2623,7 +2623,7 @@ impl<T> const ops::Try for Option<T> {
 // Note: manually specifying the residual type instead of using the default to work around
 // https://github.com/rust-lang/rust/issues/99940
 impl<T> const ops::FromResidual<Option<convert::Infallible>> for Option<T> {
-    #[inline]
+    #[rustc_early_inline]
     fn from_residual(residual: Option<convert::Infallible>) -> Self {
         match residual {
             None => None,

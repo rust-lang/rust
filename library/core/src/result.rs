@@ -2061,12 +2061,12 @@ impl<T, E> const ops::Try for Result<T, E> {
     type Output = T;
     type Residual = Result<convert::Infallible, E>;
 
-    #[inline]
+    #[rustc_early_inline]
     fn from_output(output: Self::Output) -> Self {
         Ok(output)
     }
 
-    #[inline]
+    #[rustc_early_inline]
     fn branch(self) -> ControlFlow<Self::Residual, Self::Output> {
         match self {
             Ok(v) => ControlFlow::Continue(v),

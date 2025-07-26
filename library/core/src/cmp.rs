@@ -1928,7 +1928,7 @@ mod impls {
         ($($t:ty)*) => ($(
             #[stable(feature = "rust1", since = "1.0.0")]
             impl PartialOrd for $t {
-                #[inline]
+                #[rustc_early_inline]
                 fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
                     Some(crate::intrinsics::three_way_compare(*self, *other))
                 }
@@ -1938,7 +1938,7 @@ mod impls {
 
             #[stable(feature = "rust1", since = "1.0.0")]
             impl Ord for $t {
-                #[inline]
+                #[rustc_early_inline]
                 fn cmp(&self, other: &Self) -> Ordering {
                     crate::intrinsics::three_way_compare(*self, *other)
                 }
