@@ -566,10 +566,10 @@ impl<'tcx> AdtDef<'tcx> {
         let mut prev_discr = None::<Discr<'tcx>>;
         self.variants().iter_enumerated().map(move |(i, v)| {
             let mut discr = prev_discr.map_or(initial, |d| d.wrap_incr(tcx));
-            if let VariantDiscr::Explicit(expr_did) = v.discr {
-                if let Ok(new_discr) = self.eval_explicit_discr(tcx, expr_did) {
-                    discr = new_discr;
-                }
+            if let VariantDiscr::Explicit(expr_did) = v.discr
+                && let Ok(new_discr) = self.eval_explicit_discr(tcx, expr_did)
+            {
+                discr = new_discr;
             }
             prev_discr = Some(discr);
 

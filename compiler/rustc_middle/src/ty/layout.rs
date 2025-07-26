@@ -1055,11 +1055,11 @@ where
                     _ => Some(this),
                 };
 
-                if let Some(variant) = data_variant {
+                if let Some(variant) = data_variant
                     // We're not interested in any unions.
-                    if let FieldsShape::Union(_) = variant.fields {
-                        data_variant = None;
-                    }
+                    && let FieldsShape::Union(_) = variant.fields
+                {
+                    data_variant = None;
                 }
 
                 let mut result = None;
