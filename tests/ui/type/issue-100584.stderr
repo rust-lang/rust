@@ -2,7 +2,7 @@ error: unused variable: `xyza`
   --> $DIR/issue-100584.rs:2:8
    |
 LL | fn foo(xyza: &str) {
-   |        ^^^^ unused variable
+   |        ^^^^
 LL |
 LL |     let _ = "{xyza}";
    |             -------- you might have meant to use string interpolation in this string literal
@@ -26,7 +26,7 @@ error: unused variable: `xyza`
   --> $DIR/issue-100584.rs:7:9
    |
 LL | fn foo3(xyza: &str) {
-   |         ^^^^ unused variable
+   |         ^^^^
 LL |
 LL |     let _ = "aaa{xyza}bbb";
    |             -------------- you might have meant to use string interpolation in this string literal
