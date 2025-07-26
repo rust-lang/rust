@@ -172,6 +172,12 @@ use self::spec_extend::SpecExtend;
 #[cfg(not(no_global_oom_handling))]
 mod spec_extend;
 
+#[cfg(not(no_global_oom_handling))]
+use self::spec_extend_with::SpecExtendWith;
+
+#[cfg(not(no_global_oom_handling))]
+mod spec_extend_with;
+
 /// A contiguous growable array type, written as `Vec<T>`, short for 'vector'.
 ///
 /// # Examples
@@ -3448,7 +3454,7 @@ impl<T: Clone, A: Allocator> Vec<T, A> {
     #[cfg(not(no_global_oom_handling))]
     /// Extend the vector by `n` clones of value.
     fn extend_with(&mut self, n: usize, value: T) {
-        self.extend_trusted(iter::repeat_n(value, n));
+        <Self as SpecExtendWith<T>>::spec_extend_with(self, n, value);
     }
 }
 
