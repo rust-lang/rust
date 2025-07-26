@@ -4,6 +4,8 @@ fn issue_77355_opt(_1: Foo) -> u64 {
     debug num => _1;
     let mut _0: u64;
     let mut _2: isize;
+    scope 1 {
+    }
 
     bb0: {
         _2 = discriminant(_1);
