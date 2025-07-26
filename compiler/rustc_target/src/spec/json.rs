@@ -408,12 +408,12 @@ impl ToJson for Target {
     }
 }
 
-#[derive(serde_derive::Deserialize)]
+#[derive(serde_derive::Deserialize, schemars::JsonSchema)]
 struct LinkSelfContainedComponentsWrapper {
     components: Vec<LinkSelfContainedComponents>,
 }
 
-#[derive(serde_derive::Deserialize)]
+#[derive(serde_derive::Deserialize, schemars::JsonSchema)]
 #[serde(untagged)]
 enum TargetFamiliesJson {
     Array(StaticCow<[StaticCow<str>]>),
@@ -429,6 +429,18 @@ impl FromStr for EndianWrapper {
     }
 }
 crate::json::serde_deserialize_from_str!(EndianWrapper);
+impl schemars::JsonSchema for EndianWrapper {
+    fn schema_name() -> std::borrow::Cow<'static, str> {
+        "Endian".into()
+    }
+    fn json_schema(_: &mut schemars::SchemaGenerator) -> schemars::Schema {
+        schemars::json_schema! ({
+            "type": "string",
+            "enum": ["big", "little"]
+        })
+        .into()
+    }
+}
 
 /// `ExternAbi` is in `rustc_abi`, which doesn't have access to the macro and serde.
 struct ExternAbiWrapper(rustc_abi::ExternAbi);
@@ -441,8 +453,22 @@ impl FromStr for ExternAbiWrapper {
     }
 }
 crate::json::serde_deserialize_from_str!(ExternAbiWrapper);
+impl schemars::JsonSchema for ExternAbiWrapper {
+    fn schema_name() -> std::borrow::Cow<'static, str> {
+        "ExternAbi".into()
+    }
+    fn json_schema(_: &mut schemars::SchemaGenerator) -> schemars::Schema {
+        let all =
+            rustc_abi::ExternAbi::ALL_VARIANTS.iter().map(|abi| abi.as_str()).collect::<Vec<_>>();
+        schemars::json_schema! ({
+            "type": "string",
+            "enum": all,
+        })
+        .into()
+    }
+}
 
-#[derive(serde_derive::Deserialize)]
+#[derive(serde_derive::Deserialize, schemars::JsonSchema)]
 struct TargetSpecJsonMetadata {
     description: Option<StaticCow<str>>,
     tier: Option<u64>,
@@ -450,7 +476,7 @@ struct TargetSpecJsonMetadata {
     std: Option<bool>,
 }
 
-#[derive(serde_derive::Deserialize)]
+#[derive(serde_derive::Deserialize, schemars::JsonSchema)]
 #[serde(rename_all = "kebab-case")]
 // Ensure that all unexpected fields get turned into errors.
 // This helps users stay up to date when the schema changes instead of silently
@@ -592,4 +618,8 @@ struct TargetSpecJson {
     entry_name: Option<StaticCow<str>>,
     supports_xray: Option<bool>,
     entry_abi: Option<ExternAbiWrapper>,
+}
+
+pub fn json_schema() -> schemars::Schema {
+    schemars::schema_for!(TargetSpecJson)
 }
