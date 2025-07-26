@@ -90,11 +90,10 @@ dependencies = [
 
 [[package]]
 name = "fortanix-sgx-abi"
-version = "0.5.0"
+version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "57cafc2274c10fab234f176b25903ce17e690fca7597090d50880e047a0389c5"
+checksum = "5efc85edd5b83e8394f4371dd0da6859dff63dd387dab8568fece6af4cde6f84"
 dependencies = [
- "compiler_builtins",
  "rustc-std-workspace-core",
 ]
 
