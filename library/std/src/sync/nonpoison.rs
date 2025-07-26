@@ -33,5 +33,8 @@ impl fmt::Display for WouldBlock {
 pub use self::mutex::MappedMutexGuard;
 #[unstable(feature = "nonpoison_mutex", issue = "134645")]
 pub use self::mutex::{Mutex, MutexGuard};
+#[unstable(feature = "nonpoison_once", issue = "134645")]
+pub use self::once::Once;
 
 mod mutex;
+pub(crate) mod once;
