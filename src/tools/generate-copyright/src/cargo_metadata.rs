@@ -92,7 +92,8 @@ pub fn get_metadata(
                 continue;
             }
             // otherwise it's an out-of-tree dependency
-            let package_id = Package { name: package.name, version: package.version.to_string() };
+            let package_id =
+                Package { name: package.name.to_string(), version: package.version.to_string() };
             output.insert(
                 package_id,
                 PackageMetadata {
