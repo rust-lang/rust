@@ -97,7 +97,7 @@ use rustc_session::lint::LintExpectationId;
 use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::source_map::Spanned;
 use rustc_span::{DUMMY_SP, Span, Symbol};
-use rustc_target::spec::{PanicStrategy, SanitizerSet};
+use rustc_target::spec::PanicStrategy;
 use {rustc_abi as abi, rustc_ast as ast, rustc_hir as hir};
 
 pub use self::keys::{AsLocalKey, Key, LocalCrate};
@@ -105,7 +105,7 @@ pub use self::plumbing::{IntoQueryParam, TyCtxtAt, TyCtxtEnsureDone, TyCtxtEnsur
 use crate::infer::canonical::{self, Canonical};
 use crate::lint::LintExpectation;
 use crate::metadata::ModChild;
-use crate::middle::codegen_fn_attrs::CodegenFnAttrs;
+use crate::middle::codegen_fn_attrs::{CodegenFnAttrs, SanitizerFnAttrs};
 use crate::middle::debugger_visualizer::DebuggerVisualizerFile;
 use crate::middle::deduced_param_attrs::DeducedParamAttrs;
 use crate::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo};
@@ -2735,8 +2735,8 @@ rustc_queries! {
     /// `#[sanitize(xyz = "on")]` on this def and any enclosing defs, up to the
     /// crate root.
     ///
-    /// Returns the set of sanitizers that is explicitly disabled for this def.
-    query disabled_sanitizers_for(key: LocalDefId) -> SanitizerSet {
+    /// Returns the sanitizer settings for this def.
+    query sanitizer_settings_for(key: LocalDefId) -> SanitizerFnAttrs {
         desc { |tcx| "checking what set of sanitizers are enabled on `{}`", tcx.def_path_str(key) }
         feedable
     }

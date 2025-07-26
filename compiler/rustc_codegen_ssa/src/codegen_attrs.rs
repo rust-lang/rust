@@ -8,7 +8,7 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::{self as hir, Attribute, LangItem, find_attr, lang_items};
 use rustc_middle::middle::codegen_fn_attrs::{
-    CodegenFnAttrFlags, CodegenFnAttrs, PatchableFunctionEntry,
+    CodegenFnAttrFlags, CodegenFnAttrs, PatchableFunctionEntry, SanitizerFnAttrs,
 };
 use rustc_middle::query::Providers;
 use rustc_middle::span_bug;
@@ -16,7 +16,6 @@ use rustc_middle::ty::{self as ty, TyCtxt};
 use rustc_session::lint;
 use rustc_session::parse::feature_err;
 use rustc_span::{Ident, Span, sym};
-use rustc_target::spec::SanitizerSet;
 
 use crate::errors;
 use crate::target_features::{
@@ -351,7 +350,8 @@ fn apply_overrides(tcx: TyCtxt<'_>, did: LocalDefId, codegen_fn_attrs: &mut Code
         Ord::max(codegen_fn_attrs.alignment, tcx.sess.opts.unstable_opts.min_function_alignment);
 
     // Compute the disabled sanitizers.
-    codegen_fn_attrs.no_sanitize |= tcx.disabled_sanitizers_for(did);
+    codegen_fn_attrs.sanitizers.disabled |=
+        tcx.sanitizer_settings_for(did).disabled;
     // On trait methods, inherit the `#[align]` of the trait's method prototype.
     codegen_fn_attrs.alignment = Ord::max(codegen_fn_attrs.alignment, tcx.inherited_align(did));
 
@@ -455,14 +455,14 @@ fn check_result(
     }
 
     // warn that inline has no effect when no_sanitize is present
-    if !codegen_fn_attrs.no_sanitize.is_empty()
+    if codegen_fn_attrs.sanitizers != SanitizerFnAttrs::default()
         && codegen_fn_attrs.inline.always()
-        && let (Some(no_sanitize_span), Some(inline_span)) =
+        && let (Some(sanitize_span), Some(inline_span)) =
             (interesting_spans.sanitize, interesting_spans.inline)
     {
         let hir_id = tcx.local_def_id_to_hir_id(did);
-        tcx.node_span_lint(lint::builtin::INLINE_NO_SANITIZE, hir_id, no_sanitize_span, |lint| {
-            lint.primary_message("setting `sanitize` off will have no effect after inlining");
+        tcx.node_span_lint(lint::builtin::INLINE_NO_SANITIZE, hir_id, sanitize_span, |lint| {
+            lint.primary_message("non-default `sanitize` will have no effect after inlining");
             lint.span_note(inline_span, "inlining requested here");
         })
     }
@@ -576,14 +576,14 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
     codegen_fn_attrs
 }
 
-fn disabled_sanitizers_for(tcx: TyCtxt<'_>, did: LocalDefId) -> SanitizerSet {
+fn sanitizer_settings_for(tcx: TyCtxt<'_>, did: LocalDefId) -> SanitizerFnAttrs {
     // Backtrack to the crate root.
-    let mut disabled = match tcx.opt_local_parent(did) {
+    let mut settings = match tcx.opt_local_parent(did) {
         // Check the parent (recursively).
-        Some(parent) => tcx.disabled_sanitizers_for(parent),
+        Some(parent) => tcx.sanitizer_settings_for(parent),
         // We reached the crate root without seeing an attribute, so
         // there is no sanitizers to exclude.
-        None => SanitizerSet::empty(),
+        None => SanitizerFnAttrs::default(),
     };
 
     // Check for a sanitize annotation directly on this def.
@@ -591,15 +591,15 @@ fn disabled_sanitizers_for(tcx: TyCtxt<'_>, did: LocalDefId) -> SanitizerSet {
     {
         // the on set is the set of sanitizers explicitly enabled.
         // we mask those out since we want the set of disabled sanitizers here
-        disabled &= !*on_set;
+        settings.disabled &= !*on_set;
         // the off set is the set of sanitizers explicitly disabled.
         // we or those in here.
-        disabled |= *off_set;
+        settings.disabled |= *off_set;
         // the on set and off set are distjoint since there's a third option: unset.
         // a node may not set the sanitizer setting in which case it inherits from parents.
         // the code above in this function does this backtracking
     }
-    disabled
+    settings
 }
 
 /// Checks if the provided DefId is a method in a trait impl for a trait which has track_caller
@@ -731,7 +731,7 @@ pub(crate) fn provide(providers: &mut Providers) {
         codegen_fn_attrs,
         should_inherit_track_caller,
         inherited_align,
-        disabled_sanitizers_for,
+        sanitizer_settings_for,
         ..*providers
     };
 }
