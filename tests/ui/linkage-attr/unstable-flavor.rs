@@ -4,9 +4,9 @@
 //
 //@ revisions: bpf ptx
 //@ [bpf] compile-flags: --target=bpfel-unknown-none -C linker-flavor=bpf --crate-type=rlib
-//@ [bpf] needs-llvm-components:
+//@ [bpf] needs-llvm-components: bpf
 //@ [ptx] compile-flags: --target=nvptx64-nvidia-cuda -C linker-flavor=ptx --crate-type=rlib
-//@ [ptx] needs-llvm-components:
+//@ [ptx] needs-llvm-components: nvptx
 
 #![feature(no_core)]
 #![no_core]

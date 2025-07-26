@@ -6,7 +6,7 @@
 //@ needs-llvm-components: x86
 
 //@ revisions: ok ok_explicit error
-//@[ok] compile-flags:
+// [ok] no extra compile-flags
 //@[ok_explicit] compile-flags: -Zreg-struct-return=false
 //@[error] compile-flags: -Zreg-struct-return=true
 //@[ok] check-pass
