@@ -15,12 +15,13 @@ use syntax::{
     ted,
 };
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 struct AstSubsts {
     types_and_consts: Vec<TypeOrConst>,
     lifetimes: Vec<ast::LifetimeArg>,
 }
 
+#[derive(Debug)]
 enum TypeOrConst {
     Either(ast::TypeArg), // indistinguishable type or const param
     Const(ast::ConstArg),
