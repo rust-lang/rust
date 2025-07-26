@@ -861,6 +861,7 @@ const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     "ignore-openbsd",
     "ignore-pass",
     "ignore-powerpc",
+    "ignore-powerpc64",
     "ignore-remote",
     "ignore-riscv64",
     "ignore-rustc-debug-assertions",
