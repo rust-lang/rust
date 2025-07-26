@@ -356,7 +356,7 @@ impl DefKind {
 /// For example, everything prefixed with `/* Res */` in this example has
 /// an associated `Res`:
 ///
-/// ```
+/// ```ignore (illustrative)
 /// fn str_to_string(s: & /* Res */ str) -> /* Res */ String {
 ///     /* Res */ String::from(/* Res */ s)
 /// }
