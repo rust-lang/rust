@@ -52,6 +52,10 @@ jobs:
       HOST_TARGET: ${{ matrix.host_target }}
     steps:
       - uses: actions/checkout@v4
+      - name: apt update
+        if: ${{ startsWith(matrix.os, 'ubuntu') }}
+        # The runners seem to have outdated apt repos sometimes
+        run: sudo apt update
       - name: install qemu
         if: ${{ matrix.qemu }}
         run: sudo apt install qemu-user qemu-user-binfmt
