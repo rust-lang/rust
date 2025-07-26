@@ -46,7 +46,7 @@ name = "bootstrap"
 version = "0.0.0"
 dependencies = [
  "build_helper",
- "cc 1.2.21-v810",
+ "cc 1.2.30-v810",
  "clap",
  "clap_complete",
  "cmake",
@@ -108,8 +108,8 @@ dependencies = [
 
 [[package]]
 name = "cc"
-version = "1.2.21-v810"
-source = "git+https://github.com/SupernaviX/cc-rs.git?rev=99f1bbe#99f1bbe806ebfcfb24450dd101a3862c01a7c61e"
+version = "1.2.30-v810"
+source = "git+https://github.com/SupernaviX/cc-rs.git?tag=1.2.30-v810#c93f2a84fe7f463d28b08a100909c53ad51d6ac9"
 dependencies = [
  "shlex",
 ]
@@ -173,7 +173,7 @@ version = "0.1.54"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e7caa3f9de89ddbe2c607f4101924c5abec803763ae9534e4f4d7d8f84aa81f0"
 dependencies = [
- "cc 1.2.17",
+ "cc 1.2.23",
 ]
 
 [[package]]
@@ -427,7 +427,7 @@ version = "0.1.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5fda04ab3764e6cde78b9974eec4f779acaba7c4e84b36eca3cf77c581b85d27"
 dependencies = [
- "cc 1.2.17",
+ "cc 1.2.23",
  "libc",
  "pkg-config",
 ]

@@ -1006,9 +1006,12 @@ impl Config {
             );
         }
 
+        /*
+        It breaks my workflow to disable this
         if config.lld_enabled && config.is_system_llvm(config.host_target) {
             panic!("Cannot enable LLD with `rust.lld = true` when using external llvm-config.");
         }
+         */
 
         config.optimized_compiler_builtins =
             optimized_compiler_builtins.unwrap_or(config.channel != "dev");
