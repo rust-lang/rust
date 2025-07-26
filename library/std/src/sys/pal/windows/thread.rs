@@ -20,7 +20,11 @@ pub struct Thread {
 impl Thread {
     // unsafe: see thread::Builder::spawn_unchecked for safety requirements
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
-    pub unsafe fn new(stack: usize, p: Box<dyn FnOnce()>) -> io::Result<Thread> {
+    pub unsafe fn new(
+        stack: usize,
+        _name: Option<&str>,
+        p: Box<dyn FnOnce()>,
+    ) -> io::Result<Thread> {
         let p = Box::into_raw(Box::new(p));
 
         // CreateThread rounds up values for the stack size to the nearest page size (at least 4kb).
