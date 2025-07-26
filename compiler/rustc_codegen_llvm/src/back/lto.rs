@@ -505,10 +505,10 @@ fn thin_lto(
 
         // Save the current ThinLTO import information for the next compilation
         // session, overwriting the previous serialized data (if any).
-        if let Some(path) = key_map_path {
-            if let Err(err) = curr_key_map.save_to_file(&path) {
-                return Err(write::llvm_err(dcx, LlvmError::WriteThinLtoKey { err }));
-            }
+        if let Some(path) = key_map_path
+            && let Err(err) = curr_key_map.save_to_file(&path)
+        {
+            return Err(write::llvm_err(dcx, LlvmError::WriteThinLtoKey { err }));
         }
 
         Ok((opt_jobs, copy_jobs))

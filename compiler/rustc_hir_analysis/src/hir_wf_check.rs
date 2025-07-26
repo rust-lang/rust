@@ -103,16 +103,15 @@ pub(super) fn diagnostic_hir_wf_check<'tcx>(
                     // over less-specific types (e.g. `Option<MyStruct<u8>>`)
                     if self.depth >= self.cause_depth {
                         self.cause = Some(error.obligation.cause);
-                        if let hir::TyKind::TraitObject(..) = ty.kind {
-                            if let DefKind::AssocTy | DefKind::AssocConst | DefKind::AssocFn =
+                        if let hir::TyKind::TraitObject(..) = ty.kind
+                            && let DefKind::AssocTy | DefKind::AssocConst | DefKind::AssocFn =
                                 self.tcx.def_kind(self.def_id)
-                            {
-                                self.cause = Some(ObligationCause::new(
-                                    ty.span,
-                                    self.def_id,
-                                    ObligationCauseCode::DynCompatible(ty.span),
-                                ));
-                            }
+                        {
+                            self.cause = Some(ObligationCause::new(
+                                ty.span,
+                                self.def_id,
+                                ObligationCauseCode::DynCompatible(ty.span),
+                            ));
                         }
                         self.cause_depth = self.depth
                     }

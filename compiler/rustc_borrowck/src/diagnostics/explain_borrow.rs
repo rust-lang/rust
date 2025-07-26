@@ -917,30 +917,29 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
 
                 if let TerminatorKind::Call { destination, target: Some(block), args, .. } =
                     &terminator.kind
+                    && let Some(dest) = destination.as_local()
                 {
-                    if let Some(dest) = destination.as_local() {
-                        debug!(
-                            "was_captured_by_trait_object: target={:?} dest={:?} args={:?}",
-                            target, dest, args
-                        );
-                        // Check if one of the arguments to this function is the target place.
-                        let found_target = args.iter().any(|arg| {
-                            if let Operand::Move(place) = arg.node {
-                                if let Some(potential) = place.as_local() {
-                                    potential == target
-                                } else {
-                                    false
-                                }
+                    debug!(
+                        "was_captured_by_trait_object: target={:?} dest={:?} args={:?}",
+                        target, dest, args
+                    );
+                    // Check if one of the arguments to this function is the target place.
+                    let found_target = args.iter().any(|arg| {
+                        if let Operand::Move(place) = arg.node {
+                            if let Some(potential) = place.as_local() {
+                                potential == target
                             } else {
                                 false
                             }
-                        });
-
-                        // If it is, follow this to the next block and update the target.
-                        if found_target {
-                            target = dest;
-                            queue.push(block.start_location());
+                        } else {
+                            false
                         }
+                    });
+
+                    // If it is, follow this to the next block and update the target.
+                    if found_target {
+                        target = dest;
+                        queue.push(block.start_location());
                     }
                 }
             }
