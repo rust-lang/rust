@@ -24,13 +24,20 @@ pub enum InlineAttr {
         attr_span: Span,
         reason: Option<Symbol>,
     },
+    /// `#[rustc_early_inline]` will always inline calls to a known impl in MIR.
+    ///
+    /// You can think of this as either
+    /// - Force, but without the "do not codegen as a function ever" restriction.
+    /// - Always, but only for MIR.
+    Early,
 }
 
 impl InlineAttr {
-    pub fn always(&self) -> bool {
+    pub fn always_in_codegen(&self) -> bool {
         match self {
-            InlineAttr::Always | InlineAttr::Force { .. } => true,
-            InlineAttr::None | InlineAttr::Hint | InlineAttr::Never => false,
+            InlineAttr::Always => true,
+            InlineAttr::None | InlineAttr::Hint | InlineAttr::Early | InlineAttr::Never => false,
+            InlineAttr::Force { .. } => panic!("Shouldn't be codegen'ing {self:?}"),
         }
     }
 }
@@ -342,7 +349,7 @@ pub enum AttributeKind {
         reason: Option<Symbol>,
     },
 
-    /// Represents `#[inline]` and `#[rustc_force_inline]`.
+    /// Represents `#[inline]` and `#[rustc_force_inline]` and `#[rustc_early_inline]`.
     Inline(InlineAttr, Span),
 
     /// Represents `#[link_name]`.

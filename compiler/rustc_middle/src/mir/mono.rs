@@ -205,7 +205,7 @@ impl<'tcx> MonoItem<'tcx> {
 
         // To ensure that #[inline(always)] can be inlined as much as possible, especially in unoptimized
         // builds, we always select LocalCopy.
-        if codegen_fn_attrs.inline.always() {
+        if codegen_fn_attrs.inline.always_in_codegen() {
             return InstantiationMode::LocalCopy;
         }
 
