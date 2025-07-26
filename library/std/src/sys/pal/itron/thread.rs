@@ -86,7 +86,11 @@ impl Thread {
     /// # Safety
     ///
     /// See `thread::Builder::spawn_unchecked` for safety requirements.
-    pub unsafe fn new(stack: usize, p: Box<dyn FnOnce()>) -> io::Result<Thread> {
+    pub unsafe fn new(
+        stack: usize,
+        _name: Option<&str>,
+        p: Box<dyn FnOnce()>,
+    ) -> io::Result<Thread> {
         let inner = Box::new(ThreadInner {
             start: UnsafeCell::new(ManuallyDrop::new(p)),
             lifecycle: AtomicUsize::new(LIFECYCLE_INIT),

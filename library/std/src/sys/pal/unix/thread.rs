@@ -22,6 +22,11 @@ pub const DEFAULT_MIN_STACK_SIZE: usize = 256 * 1024;
 #[cfg(any(target_os = "espidf", target_os = "nuttx"))]
 pub const DEFAULT_MIN_STACK_SIZE: usize = 0; // 0 indicates that the stack size configured in the ESP-IDF/NuttX menuconfig system should be used
 
+struct ThreadData {
+    name: Option<Box<str>>,
+    f: Box<dyn FnOnce()>,
+}
+
 pub struct Thread {
     id: libc::pthread_t,
 }
@@ -34,8 +39,12 @@ unsafe impl Sync for Thread {}
 impl Thread {
     // unsafe: see thread::Builder::spawn_unchecked for safety requirements
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
-    pub unsafe fn new(stack: usize, p: Box<dyn FnOnce()>) -> io::Result<Thread> {
-        let p = Box::into_raw(Box::new(p));
+    pub unsafe fn new(
+        stack: usize,
+        name: Option<&str>,
+        f: Box<dyn FnOnce()>,
+    ) -> io::Result<Thread> {
+        let data = Box::into_raw(Box::new(ThreadData { name: name.map(Box::from), f }));
         let mut native: libc::pthread_t = mem::zeroed();
         let mut attr: mem::MaybeUninit<libc::pthread_attr_t> = mem::MaybeUninit::uninit();
         assert_eq!(libc::pthread_attr_init(attr.as_mut_ptr()), 0);
@@ -73,7 +82,7 @@ impl Thread {
             };
         }
 
-        let ret = libc::pthread_create(&mut native, attr.as_ptr(), thread_start, p as *mut _);
+        let ret = libc::pthread_create(&mut native, attr.as_ptr(), thread_start, data as *mut _);
         // Note: if the thread creation fails and this assert fails, then p will
         // be leaked. However, an alternative design could cause double-free
         // which is clearly worse.
@@ -82,19 +91,20 @@ impl Thread {
         return if ret != 0 {
             // The thread failed to start and as a result p was not consumed. Therefore, it is
             // safe to reconstruct the box so that it gets deallocated.
-            drop(Box::from_raw(p));
+            drop(Box::from_raw(data));
             Err(io::Error::from_raw_os_error(ret))
         } else {
             Ok(Thread { id: native })
         };
 
-        extern "C" fn thread_start(main: *mut libc::c_void) -> *mut libc::c_void {
+        extern "C" fn thread_start(data: *mut libc::c_void) -> *mut libc::c_void {
             unsafe {
+                let data = Box::from_raw(data as *mut ThreadData);
                 // Next, set up our stack overflow handler which may get triggered if we run
                 // out of stack.
-                let _handler = stack_overflow::Handler::new();
+                let _handler = stack_overflow::Handler::new(data.name);
                 // Finally, let's run some code.
-                Box::from_raw(main as *mut Box<dyn FnOnce()>)();
+                (data.f)();
             }
             ptr::null_mut()
         }

@@ -73,7 +73,7 @@ impl Thread {
     // unsafe: see thread::Builder::spawn_unchecked for safety requirements
     cfg_if::cfg_if! {
         if #[cfg(target_feature = "atomics")] {
-            pub unsafe fn new(stack: usize, p: Box<dyn FnOnce()>) -> io::Result<Thread> {
+            pub unsafe fn new(stack: usize, _name: Option<&str>, p: Box<dyn FnOnce()>) -> io::Result<Thread> {
                 let p = Box::into_raw(Box::new(p));
                 let mut native: libc::pthread_t = unsafe { mem::zeroed() };
                 let mut attr: libc::pthread_attr_t = unsafe { mem::zeroed() };
@@ -120,7 +120,7 @@ impl Thread {
                 }
             }
         } else {
-            pub unsafe fn new(_stack: usize, _p: Box<dyn FnOnce()>) -> io::Result<Thread> {
+            pub unsafe fn new(_stack: usize, _name: Option<&str>, _p: Box<dyn FnOnce()>) -> io::Result<Thread> {
                 crate::sys::unsupported()
             }
         }

@@ -595,7 +595,7 @@ impl Builder {
             // Similarly, the `sys` implementation must guarantee that no references to the closure
             // exist after the thread has terminated, which is signaled by `Thread::join`
             // returning.
-            native: unsafe { imp::Thread::new(stack_size, main)? },
+            native: unsafe { imp::Thread::new(stack_size, my_thread.name(), main)? },
             thread: my_thread,
             packet: my_packet,
         })
