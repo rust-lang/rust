@@ -1603,6 +1603,46 @@ impl<'a> LintDiagnostic<'a, ()> for DropGlue<'_> {
     }
 }
 
+// transmute.rs
+#[derive(LintDiagnostic)]
+#[diag(lint_int_to_ptr_transmutes)]
+#[note]
+#[note(lint_note_exposed_provenance)]
+#[help(lint_suggestion_without_provenance_mut)]
+#[help(lint_help_transmute)]
+#[help(lint_help_exposed_provenance)]
+pub(crate) struct IntegerToPtrTransmutes<'tcx> {
+    #[subdiagnostic]
+    pub suggestion: IntegerToPtrTransmutesSuggestion<'tcx>,
+}
+
+#[derive(Subdiagnostic)]
+// FIXME: recommend `with_exposed_provenance` when it's const-stable
+pub(crate) enum IntegerToPtrTransmutesSuggestion<'tcx> {
+    #[multipart_suggestion(lint_suggestion_as, applicability = "machine-applicable")]
+    ToPtr {
+        dst: Ty<'tcx>,
+        paren_left: &'static str,
+        paren_right: &'static str,
+        #[suggestion_part(code = "{paren_left}")]
+        start_call: Span,
+        #[suggestion_part(code = "{paren_right} as {dst}")]
+        end_call: Span,
+    },
+    #[multipart_suggestion(lint_suggestion_as, applicability = "machine-applicable")]
+    ToRef {
+        dst: Ty<'tcx>,
+        ptr_mutbl: &'static str,
+        ref_mutbl: &'static str,
+        paren_left: &'static str,
+        paren_right: &'static str,
+        #[suggestion_part(code = "&{ref_mutbl}*({paren_left}")]
+        start_call: Span,
+        #[suggestion_part(code = "{paren_right} as *{ptr_mutbl} {dst})")]
+        end_call: Span,
+    },
+}
+
 // types.rs
 #[derive(LintDiagnostic)]
 #[diag(lint_range_endpoint_out_of_range)]

@@ -1,0 +1,37 @@
+// Checks for the `integer_to_pointer_transmutes` lint
+
+//@ check-pass
+//@ run-rustfix
+
+#![allow(unused_unsafe)]
+#![allow(dead_code)]
+
+unsafe fn should_lint(a: usize) {
+    let _ptr = unsafe { std::mem::transmute::<usize, *const u8>(a) };
+    //~^ WARN transmuting an integer to a pointer
+    let _ptr = unsafe { std::mem::transmute::<usize, &'static u8>(a) };
+    //~^ WARN transmuting an integer to a pointer
+    let _ptr = unsafe { std::mem::transmute::<usize, *const u8>(42usize) };
+    //~^ WARN transmuting an integer to a pointer
+    let _ptr = unsafe { std::mem::transmute::<usize, *const u8>(a + a) };
+    //~^ WARN transmuting an integer to a pointer
+}
+
+const unsafe fn should_lintin_const(a: usize) {
+    let _ptr = unsafe { std::mem::transmute::<usize, *const u8>(a) };
+    //~^ WARN transmuting an integer to a pointer
+    let _ptr = unsafe { std::mem::transmute::<usize, &'static u8>(a) };
+    //~^ WARN transmuting an integer to a pointer
+    let _ptr = unsafe { std::mem::transmute::<usize, *const u8>(42usize) };
+    //~^ WARN transmuting an integer to a pointer
+    let _ptr = unsafe { std::mem::transmute::<usize, *const u8>(a + a) };
+    //~^ WARN transmuting an integer to a pointer
+}
+
+unsafe fn should_not_lint(a: usize) {
+    let _ptr = unsafe { std::mem::transmute::<usize, *const u8>(0usize) }; // linted by other lints
+    let _ptr = unsafe { std::mem::transmute::<usize, *const ()>(a) }; // inner type is a ZST
+    let _ptr = unsafe { std::mem::transmute::<usize, fn()>(a) }; // omit fn-ptr for now
+}
+
+fn main() {}
