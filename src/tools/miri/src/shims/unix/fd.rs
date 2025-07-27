@@ -7,8 +7,8 @@ use std::io::ErrorKind;
 use rand::Rng;
 use rustc_abi::Size;
 
-use crate::helpers::check_min_vararg_count;
 use crate::shims::files::FileDescription;
+use crate::shims::sig::check_min_vararg_count;
 use crate::shims::unix::linux_like::epoll::EpollReadyEvents;
 use crate::shims::unix::*;
 use crate::*;

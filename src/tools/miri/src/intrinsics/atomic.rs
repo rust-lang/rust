@@ -2,7 +2,7 @@ use rustc_middle::mir::BinOp;
 use rustc_middle::ty::AtomicOrdering;
 use rustc_middle::{mir, ty};
 
-use self::helpers::check_intrinsic_arg_count;
+use super::check_intrinsic_arg_count;
 use crate::*;
 
 pub enum AtomicOp {
