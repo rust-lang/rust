@@ -1079,6 +1079,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             .position(|b| !b)
         {
             throw_ub!(AbiMismatchArgument {
+                arg_idx: index,
                 caller_ty: caller_fn_abi.args[index].layout.ty,
                 callee_ty: callee_fn_abi.args[index].layout.ty
             });
