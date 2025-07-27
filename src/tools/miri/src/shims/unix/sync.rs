@@ -297,14 +297,13 @@ fn condattr_clock_offset<'tcx>(ecx: &MiriInterpCx<'tcx>) -> InterpResult<'tcx, u
 fn condattr_get_clock_id<'tcx>(
     ecx: &MiriInterpCx<'tcx>,
     attr_ptr: &OpTy<'tcx>,
-) -> InterpResult<'tcx, i32> {
+) -> InterpResult<'tcx, Scalar> {
     ecx.deref_pointer_and_read(
         attr_ptr,
         condattr_clock_offset(ecx)?,
         ecx.libc_ty_layout("pthread_condattr_t"),
         ecx.machine.layouts.i32,
-    )?
-    .to_i32()
+    )
 }
 
 fn condattr_set_clock_id<'tcx>(
@@ -319,20 +318,6 @@ fn condattr_set_clock_id<'tcx>(
         ecx.libc_ty_layout("pthread_condattr_t"),
         ecx.machine.layouts.i32,
     )
-}
-
-/// Translates the clock from what is stored in pthread_condattr_t to our enum.
-fn condattr_translate_clock_id<'tcx>(
-    ecx: &MiriInterpCx<'tcx>,
-    raw_id: i32,
-) -> InterpResult<'tcx, ClockId> {
-    interp_ok(if raw_id == ecx.eval_libc_i32("CLOCK_REALTIME") {
-        ClockId::Realtime
-    } else if raw_id == ecx.eval_libc_i32("CLOCK_MONOTONIC") {
-        ClockId::Monotonic
-    } else {
-        throw_unsup_format!("unsupported clock id: {raw_id}");
-    })
 }
 
 // # pthread_cond_t
@@ -363,22 +348,16 @@ fn cond_init_offset<'tcx>(ecx: &MiriInterpCx<'tcx>) -> InterpResult<'tcx, Size> 
     interp_ok(offset)
 }
 
-#[derive(Debug, Clone, Copy)]
-enum ClockId {
-    Realtime,
-    Monotonic,
-}
-
 #[derive(Debug, Clone)]
 struct PthreadCondvar {
     condvar_ref: CondvarRef,
-    clock: ClockId,
+    clock: TimeoutClock,
 }
 
 fn cond_create<'tcx>(
     ecx: &mut MiriInterpCx<'tcx>,
     cond_ptr: &OpTy<'tcx>,
-    clock: ClockId,
+    clock: TimeoutClock,
 ) -> InterpResult<'tcx, PthreadCondvar> {
     let cond = ecx.deref_pointer_as(cond_ptr, ecx.libc_ty_layout("pthread_cond_t"))?;
     let data = PthreadCondvar { condvar_ref: CondvarRef::new(), clock };
@@ -407,7 +386,10 @@ where
                 throw_unsup_format!("unsupported static initializer used for `pthread_cond_t`");
             }
             // This used the static initializer. The clock there is always CLOCK_REALTIME.
-            interp_ok(PthreadCondvar { condvar_ref: CondvarRef::new(), clock: ClockId::Realtime })
+            interp_ok(PthreadCondvar {
+                condvar_ref: CondvarRef::new(),
+                clock: TimeoutClock::RealTime,
+            })
         },
     )
 }
@@ -742,11 +724,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
-        let clock_id = this.read_scalar(clock_id_op)?.to_i32()?;
-        if clock_id == this.eval_libc_i32("CLOCK_REALTIME")
-            || clock_id == this.eval_libc_i32("CLOCK_MONOTONIC")
-        {
-            condattr_set_clock_id(this, attr_op, clock_id)?;
+        let clock_id = this.read_scalar(clock_id_op)?;
+        if this.parse_clockid(clock_id).is_some() {
+            condattr_set_clock_id(this, attr_op, clock_id.to_i32()?)?;
         } else {
             let einval = this.eval_libc_i32("EINVAL");
             return interp_ok(Scalar::from_i32(einval));
@@ -764,7 +744,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         let clock_id = condattr_get_clock_id(this, attr_op)?;
         this.write_scalar(
-            Scalar::from_i32(clock_id),
+            clock_id,
             &this.deref_pointer_as(clk_id_op, this.libc_ty_layout("clockid_t"))?,
         )?;
 
@@ -799,13 +779,16 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let attr = this.read_pointer(attr_op)?;
         // Default clock if `attr` is null, and on macOS where there is no clock attribute.
         let clock_id = if this.ptr_is_null(attr)? || this.tcx.sess.target.os == "macos" {
-            this.eval_libc_i32("CLOCK_REALTIME")
+            this.eval_libc("CLOCK_REALTIME")
         } else {
             condattr_get_clock_id(this, attr_op)?
         };
-        let clock_id = condattr_translate_clock_id(this, clock_id)?;
+        let Some(clock) = this.parse_clockid(clock_id) else {
+            // This is UB since this situation cannot arise when using pthread_condattr_setclock.
+            throw_ub_format!("pthread_cond_init: invalid attributes (unsupported clock)")
+        };
 
-        cond_create(this, cond_op, clock_id)?;
+        cond_create(this, cond_op, clock)?;
 
         interp_ok(())
     }
@@ -870,18 +853,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 return interp_ok(());
             }
         };
-        let timeout_clock = match data.clock {
-            ClockId::Realtime => {
-                this.check_no_isolation("`pthread_cond_timedwait` with `CLOCK_REALTIME`")?;
-                TimeoutClock::RealTime
-            }
-            ClockId::Monotonic => TimeoutClock::Monotonic,
-        };
+        if data.clock == TimeoutClock::RealTime {
+            this.check_no_isolation("`pthread_cond_timedwait` with `CLOCK_REALTIME`")?;
+        }
 
         this.condvar_wait(
             data.condvar_ref,
             mutex_ref,
-            Some((timeout_clock, TimeoutAnchor::Absolute, duration)),
+            Some((data.clock, TimeoutAnchor::Absolute, duration)),
             Scalar::from_i32(0),
             this.eval_libc("ETIMEDOUT"), // retval_timeout
             dest.clone(),
