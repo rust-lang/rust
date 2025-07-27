@@ -10,13 +10,11 @@ error[E0437]: type `c` is not a member of trait `AsyncDrop`
 LL |     type c = ();
    |     ^^^^^^^^^^^^ not a member of trait `AsyncDrop`
 
-error[E0046]: not all trait items implemented, missing: `drop`
+error[E0046]: not all trait items implemented, missing one of: `drop`, `pin_drop`
   --> $DIR/unexpected-sort.rs:9:1
    |
 LL | impl Drop for a {
-   | ^^^^^^^^^^^^^^^ missing `drop` in implementation
-   |
-   = help: implement the missing item: `fn drop(&mut self) { todo!() }`
+   | ^^^^^^^^^^^^^^^ missing one of `drop`, `pin_drop` in implementation
 
 error[E0046]: not all trait items implemented, missing: `drop`
   --> $DIR/unexpected-sort.rs:12:1
