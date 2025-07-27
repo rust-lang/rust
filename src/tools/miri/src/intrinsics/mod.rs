@@ -14,10 +14,27 @@ use rustc_middle::ty::{self, FloatTy, ScalarInt};
 use rustc_span::{Symbol, sym};
 
 use self::atomic::EvalContextExt as _;
-use self::helpers::{ToHost, ToSoft, check_intrinsic_arg_count};
+use self::helpers::{ToHost, ToSoft};
 use self::simd::EvalContextExt as _;
 use crate::math::{IeeeExt, apply_random_float_error_ulp};
 use crate::*;
+
+/// Check that the number of args is what we expect.
+fn check_intrinsic_arg_count<'a, 'tcx, const N: usize>(
+    args: &'a [OpTy<'tcx>],
+) -> InterpResult<'tcx, &'a [OpTy<'tcx>; N]>
+where
+    &'a [OpTy<'tcx>; N]: TryFrom<&'a [OpTy<'tcx>]>,
+{
+    if let Ok(ops) = args.try_into() {
+        return interp_ok(ops);
+    }
+    throw_ub_format!(
+        "incorrect number of arguments for intrinsic: got {}, expected {}",
+        args.len(),
+        N
+    )
+}
 
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
 pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
@@ -114,7 +131,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 ));
             }
             "catch_unwind" => {
-                this.handle_catch_unwind(args, dest, ret)?;
+                let [try_fn, data, catch_fn] = check_intrinsic_arg_count(args)?;
+                this.handle_catch_unwind(try_fn, data, catch_fn, dest, ret)?;
                 // This pushed a stack frame, don't jump to `ret`.
                 return interp_ok(EmulateItemResult::AlreadyJumped);
             }
