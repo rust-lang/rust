@@ -1316,14 +1316,17 @@ fn cargo_to_crate_graph(
             public_deps.add_to_crate_graph(crate_graph, from);
 
             // Add dep edge of all targets to the package's lib target
-            if let Some((to, name)) = lib_tgt.clone() {
-                match to != from && kind != TargetKind::BuildScript {
-                    true => {
-                        let name = CrateName::normalize_dashes(&name);
-                        add_dep(crate_graph, from, name, to);
-                    }
-                    false => (),
-                }
+            if let Some((to, name)) = lib_tgt.clone()
+                && to != from
+                && kind != TargetKind::BuildScript
+            {
+                // (build script can not depend on its library target)
+
+                // For root projects with dashes in their name,
+                // cargo metadata does not do any normalization,
+                // so we do it ourselves currently
+                let name = CrateName::normalize_dashes(&name);
+                add_dep(crate_graph, from, name, to);
             }
         }
     }

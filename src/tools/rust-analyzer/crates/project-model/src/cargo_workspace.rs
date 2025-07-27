@@ -601,7 +601,6 @@ impl FetchMetadata {
         }
         command.current_dir(current_dir);
 
-        let mut needs_nightly = false;
         let mut other_options = vec![];
         // cargo metadata only supports a subset of flags of what cargo usually accepts, and usually
         // the only relevant flags for metadata here are unstable ones, so we pass those along
@@ -611,7 +610,6 @@ impl FetchMetadata {
             if arg == "-Z"
                 && let Some(arg) = extra_args.next()
             {
-                needs_nightly = true;
                 other_options.push("-Z".to_owned());
                 other_options.push(arg.to_owned());
             }
@@ -619,7 +617,6 @@ impl FetchMetadata {
 
         let mut lockfile_path = None;
         if cargo_toml.is_rust_manifest() {
-            needs_nightly = true;
             other_options.push("-Zscript".to_owned());
         } else if config
             .toolchain_version
@@ -636,10 +633,6 @@ impl FetchMetadata {
         }
 
         command.other_options(other_options.clone());
-
-        if needs_nightly {
-            command.env("__CARGO_TEST_CHANNEL_OVERRIDE_DO_NOT_USE_THIS", "nightly");
-        }
 
         // Pre-fetch basic metadata using `--no-deps`, which:
         // - avoids fetching registries like crates.io,
@@ -710,7 +703,7 @@ impl FetchMetadata {
             other_options.push(target_lockfile.to_string());
             using_lockfile_copy = true;
         }
-        if using_lockfile_copy {
+        if using_lockfile_copy || other_options.iter().any(|it| it.starts_with("-Z")) {
             command.env("__CARGO_TEST_CHANNEL_OVERRIDE_DO_NOT_USE_THIS", "nightly");
             other_options.push("-Zunstable-options".to_owned());
         }
