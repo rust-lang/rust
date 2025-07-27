@@ -852,6 +852,43 @@ download-rustc = false
     }
 }
 
+/// Only should be used for pre config initialization downloads.
+pub(crate) struct DownloadContext<'a> {
+    host_target: TargetSelection,
+    out: &'a Path,
+    patch_binaries_for_nix: Option<bool>,
+    exec_ctx: &'a ExecutionContext,
+    verbose: bool,
+    stage0_metadata: &'a build_helper::stage0_parser::Stage0,
+    llvm_assertions: bool,
+    bootstrap_cache_path: &'a Option<PathBuf>,
+    is_running_on_ci: bool,
+    dry_run: bool,
+}
+
+impl<'a> AsRef<DownloadContext<'a>> for DownloadContext<'a> {
+    fn as_ref(&self) -> &DownloadContext<'a> {
+        self
+    }
+}
+
+impl<'a> From<&'a Config> for DownloadContext<'a> {
+    fn from(value: &'a Config) -> Self {
+        DownloadContext {
+            host_target: value.host_target,
+            out: &value.out,
+            patch_binaries_for_nix: value.patch_binaries_for_nix,
+            exec_ctx: &value.exec_ctx,
+            verbose: value.verbose > 0,
+            stage0_metadata: &value.stage0_metadata,
+            llvm_assertions: value.llvm_assertions,
+            bootstrap_cache_path: &value.bootstrap_cache_path,
+            is_running_on_ci: value.is_running_on_ci,
+            dry_run: value.dry_run(),
+        }
+    }
+}
+
 fn path_is_dylib(path: &Path) -> bool {
     // The .so is not necessarily the extension, it might be libLLVM.so.18.1
     path.to_str().is_some_and(|path| path.contains(".so"))
