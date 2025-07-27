@@ -156,6 +156,7 @@ smallvec = { version = "1.15.1", features = [
   "const_generics",
 ] }
 smol_str = "0.3.2"
+temp-dir = "0.1.16"
 text-size = "1.1.1"
 tracing = "0.1.41"
 tracing-tree = "0.4.0"

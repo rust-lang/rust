@@ -1679,6 +1679,7 @@ dependencies = [
  "serde_json",
  "span",
  "stdx",
+ "temp-dir",
  "toolchain",
  "tracing",
  "triomphe",
@@ -2283,6 +2284,12 @@ dependencies = [
  "test-utils",
  "tt",
 ]
+
+[[package]]
+name = "temp-dir"
+version = "0.1.16"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "83176759e9416cf81ee66cb6508dbfe9c96f20b8b56265a39917551c23c70964"
 
 [[package]]
 name = "tenthash"

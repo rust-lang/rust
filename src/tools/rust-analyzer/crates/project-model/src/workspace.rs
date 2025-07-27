@@ -1905,7 +1905,8 @@ fn cargo_target_dir(
     meta.manifest_path(manifest);
     // `--no-deps` doesn't (over)write lockfiles as it doesn't do any package resolve.
     // So we can use it to get `target_directory` before copying lockfiles
-    let mut other_options = vec!["--no-deps".to_owned()];
+    meta.no_deps();
+    let mut other_options = vec![];
     if manifest.is_rust_manifest() {
         meta.env("RUSTC_BOOTSTRAP", "1");
         other_options.push("-Zscript".to_owned());
