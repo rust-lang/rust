@@ -485,7 +485,15 @@ impl<'tcx> Ty<'tcx> {
         index: ty::DebruijnIndex,
         bound_ty: ty::BoundTy,
     ) -> Ty<'tcx> {
-        Ty::new(tcx, Bound(index, bound_ty))
+        // Use a pre-interned one when possible.
+        if let ty::BoundTy { var, kind: ty::BoundTyKind::Anon } = bound_ty
+            && let Some(inner) = tcx.types.anon_bound_tys.get(index.as_usize())
+            && let Some(ty) = inner.get(var.as_usize()).copied()
+        {
+            ty
+        } else {
+            Ty::new(tcx, Bound(index, bound_ty))
+        }
     }
 
     #[inline]
