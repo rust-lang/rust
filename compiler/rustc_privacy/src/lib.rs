@@ -1594,7 +1594,7 @@ impl<'tcx> PrivateItemsInPublicInterfacesChecker<'_, 'tcx> {
         self.effective_visibilities.effective_vis(def_id).copied()
     }
 
-    fn check_item(&mut self, id: ItemId) {
+    fn check_item(&self, id: ItemId) {
         let tcx = self.tcx;
         let def_id = id.owner_id.def_id;
         let item_visibility = tcx.local_visibility(def_id);
@@ -1722,7 +1722,7 @@ impl<'tcx> PrivateItemsInPublicInterfacesChecker<'_, 'tcx> {
         }
     }
 
-    fn check_foreign_item(&mut self, id: ForeignItemId) {
+    fn check_foreign_item(&self, id: ForeignItemId) {
         let tcx = self.tcx;
         let def_id = id.owner_id.def_id;
         let item_visibility = tcx.local_visibility(def_id);
@@ -1857,13 +1857,9 @@ fn effective_visibilities(tcx: TyCtxt<'_>, (): ()) -> &EffectiveVisibilities {
 fn check_private_in_public(tcx: TyCtxt<'_>, module_def_id: LocalModDefId) {
     let effective_visibilities = tcx.effective_visibilities(());
     // Check for private types in public interfaces.
-    let mut checker = PrivateItemsInPublicInterfacesChecker { tcx, effective_visibilities };
+    let checker = PrivateItemsInPublicInterfacesChecker { tcx, effective_visibilities };
 
     let crate_items = tcx.hir_module_items(module_def_id);
-    for id in crate_items.free_items() {
-        checker.check_item(id);
-    }
-    for id in crate_items.foreign_items() {
-        checker.check_foreign_item(id);
-    }
+    let _ = crate_items.par_items(|id| Ok(checker.check_item(id)));
+    let _ = crate_items.par_foreign_items(|id| Ok(checker.check_foreign_item(id)));
 }
