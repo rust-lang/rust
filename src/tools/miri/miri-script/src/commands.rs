@@ -534,8 +534,8 @@ impl Command {
                 if ty.is_file() {
                     name.ends_with(".rs")
                 } else {
-                    // dir or symlink. skip `target` and `.git`.
-                    &name != "target" && &name != ".git"
+                    // dir or symlink. skip `target`, `.git` and `genmc-src*`
+                    &name != "target" && &name != ".git" && !name.starts_with("genmc-src")
                 }
             })
             .filter_ok(|item| item.file_type().is_file())
