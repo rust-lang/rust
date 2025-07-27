@@ -15,6 +15,9 @@ def unwrap_unique_or_non_null(unique_or_nonnull):
     # BACKCOMPAT: rust 1.60
     # https://github.com/rust-lang/rust/commit/2a91eeac1a2d27dd3de1bf55515d765da20fd86f
     ptr = unique_or_nonnull["pointer"]
+    if ptr.type.code == gdb.TYPE_CODE_TYPEDEF:
+        ptr = ptr.cast(ptr.type.strip_typedefs())
+
     return ptr if ptr.type.code == gdb.TYPE_CODE_PTR else ptr[ptr.type.fields()[0]]
 
 
