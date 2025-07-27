@@ -20,6 +20,15 @@ impl<T> Argument<T>
 where
     T: IntrinsicTypeDefinition,
 {
+    pub fn new(pos: usize, name: String, ty: T, constraint: Option<Constraint>) -> Self {
+        Argument {
+            pos,
+            name,
+            ty,
+            constraint,
+        }
+    }
+
     pub fn to_c_type(&self) -> String {
         self.ty.c_type()
     }
@@ -34,14 +43,6 @@ where
 
     pub fn has_constraint(&self) -> bool {
         self.constraint.is_some()
-    }
-
-    pub fn type_and_name_from_c(arg: &str) -> (&str, &str) {
-        let split_index = arg
-            .rfind([' ', '*'])
-            .expect("Couldn't split type and argname");
-
-        (arg[..split_index + 1].trim_end(), &arg[split_index + 1..])
     }
 
     /// The binding keyword (e.g. "const" or "let") for the array of possible test inputs.
@@ -59,25 +60,6 @@ where
             format!("{}_VALS", self.name.to_uppercase())
         } else {
             format!("{}_vals", self.name.to_lowercase())
-        }
-    }
-
-    pub fn from_c(
-        pos: usize,
-        arg: &str,
-        target: &str,
-        constraint: Option<Constraint>,
-    ) -> Argument<T> {
-        let (ty, var_name) = Self::type_and_name_from_c(arg);
-
-        let ty =
-            T::from_c(ty, target).unwrap_or_else(|_| panic!("Failed to parse argument '{arg}'"));
-
-        Argument {
-            pos,
-            name: String::from(var_name),
-            ty: ty,
-            constraint,
         }
     }
 
