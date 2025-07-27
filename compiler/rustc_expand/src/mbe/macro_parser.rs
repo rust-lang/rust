@@ -299,6 +299,7 @@ enum EofMatcherPositions {
 }
 
 /// Represents the possible results of an attempted parse.
+#[derive(Debug)]
 pub(crate) enum ParseResult<T, F> {
     /// Parsed successfully.
     Success(T),
