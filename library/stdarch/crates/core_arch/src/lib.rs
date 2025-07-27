@@ -18,8 +18,6 @@
     rustc_attrs,
     staged_api,
     doc_cfg,
-    tbm_target_feature,
-    sse4a_target_feature,
     riscv_target_feature,
     arm_target_feature,
     mips_target_feature,
