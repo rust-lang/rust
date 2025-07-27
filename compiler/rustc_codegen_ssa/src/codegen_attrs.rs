@@ -210,14 +210,6 @@ fn process_builtin_attrs(
     let mut interesting_spans = InterestingAttributeDiagnosticSpans::default();
     let rust_target_features = tcx.rust_target_features(LOCAL_CRATE);
 
-    // If our rustc version supports autodiff/enzyme, then we call our handler
-    // to check for any `#[rustc_autodiff(...)]` attributes.
-    // FIXME(jdonszelmann): merge with loop below
-    if cfg!(llvm_enzyme) {
-        let ad = autodiff_attrs(tcx, did.into());
-        codegen_fn_attrs.autodiff_item = ad;
-    }
-
     for attr in attrs.iter() {
         if let hir::Attribute::Parsed(p) = attr {
             match p {
