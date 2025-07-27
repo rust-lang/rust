@@ -8,10 +8,9 @@ import type { Disposable } from "vscode";
 
 export type RunnableEnvCfgItem = {
     mask?: string;
-    env: Record<string, string>;
+    env: { [key: string]: { toString(): string } | null };
     platform?: string | string[];
 };
-export type RunnableEnvCfg = Record<string, string> | RunnableEnvCfgItem[];
 
 type ShowStatusBar = "always" | "never" | { documentSelector: vscode.DocumentSelector };
 
@@ -261,18 +260,9 @@ export class Config {
         return this.get<boolean | undefined>("testExplorer");
     }
 
-    runnablesExtraEnv(label: string): Record<string, string> | undefined {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const item = this.get<any>("runnables.extraEnv") ?? this.get<any>("runnableEnv");
-        if (!item) return undefined;
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const fixRecord = (r: Record<string, any>) => {
-            for (const key in r) {
-                if (typeof r[key] !== "string") {
-                    r[key] = String(r[key]);
-                }
-            }
-        };
+    runnablesExtraEnv(label: string): Env {
+        let extraEnv = this.get<RunnableEnvCfgItem[] | { [key: string]: { toString(): string } | null } | null>("runnables.extraEnv") ?? {};
+        if (!extraEnv) return {};
 
         const platform = process.platform;
         const checkPlatform = (it: RunnableEnvCfgItem) => {
@@ -283,19 +273,24 @@ export class Config {
             return true;
         };
 
-        if (item instanceof Array) {
+        if (extraEnv instanceof Array) {
             const env = {};
-            for (const it of item) {
+            for (const it of extraEnv) {
                 const masked = !it.mask || new RegExp(it.mask).test(label);
                 if (masked && checkPlatform(it)) {
                     Object.assign(env, it.env);
                 }
             }
-            fixRecord(env);
-            return env;
+            extraEnv = env;
         }
-        fixRecord(item);
-        return item;
+        return substituteVariablesInEnv(
+            Object.fromEntries(
+                Object.entries(extraEnv).map(([k, v]) => [
+                    k,
+                    typeof v === "string" ? v : v?.toString(),
+                ]),
+            ),
+        );
     }
 
     get restartServerOnConfigChange() {
@@ -490,11 +485,11 @@ function computeVscodeVar(varName: string): string | null {
             folder === undefined
                 ? "" // no workspace opened
                 : // could use currently opened document to detect the correct
-                  // workspace. However, that would be determined by the document
-                  // user has opened on Editor startup. Could lead to
-                  // unpredictable workspace selection in practice.
-                  // It's better to pick the first one
-                  normalizeDriveLetter(folder.uri.fsPath);
+                // workspace. However, that would be determined by the document
+                // user has opened on Editor startup. Could lead to
+                // unpredictable workspace selection in practice.
+                // It's better to pick the first one
+                normalizeDriveLetter(folder.uri.fsPath);
         return fsPath;
     };
     // https://code.visualstudio.com/docs/editor/variables-reference

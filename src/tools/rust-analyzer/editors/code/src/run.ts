@@ -7,7 +7,7 @@ import type { CtxInit } from "./ctx";
 import { makeDebugConfig } from "./debug";
 import type { Config } from "./config";
 import type { LanguageClient } from "vscode-languageclient/node";
-import { log, unwrapUndefinable, type RustEditor } from "./util";
+import { Env, log, unwrapUndefinable, type RustEditor } from "./util";
 
 const quickPickButtons = [
     { iconPath: new vscode.ThemeIcon("save"), tooltip: "Save as a launch.json configuration." },
@@ -124,9 +124,9 @@ export class RunnableQuickPick implements vscode.QuickPickItem {
 
 export function prepareBaseEnv(
     inheritEnv: boolean,
-    base?: Record<string, string>,
-): Record<string, string> {
-    const env: Record<string, string> = { RUST_BACKTRACE: "short" };
+    base?: Env,
+): Env {
+    const env: Env = { RUST_BACKTRACE: "short" };
     if (inheritEnv) {
         Object.assign(env, process.env);
     }
@@ -138,9 +138,9 @@ export function prepareBaseEnv(
 
 export function prepareEnv(
     inheritEnv: boolean,
-    runnableEnv?: Record<string, string>,
-    runnableEnvCfg?: Record<string, string>,
-): Record<string, string> {
+    runnableEnv?: Env,
+    runnableEnvCfg?: Env,
+): Env {
     const env = prepareBaseEnv(inheritEnv, runnableEnv);
 
     if (runnableEnvCfg) {
