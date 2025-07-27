@@ -35,7 +35,7 @@ pub struct WorkspaceBuildScripts {
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub enum ProcMacroDylibPath {
     Path(AbsPathBuf),
-    DylibNotFound(Box<[Utf8PathBuf]>),
+    DylibNotFound,
     NotProcMacro,
     #[default]
     NotBuilt,
@@ -251,7 +251,7 @@ impl WorkspaceBuildScripts {
                     }) {
                         match proc_macro_dylibs.iter().find(|(name, _)| *name == package.name) {
                             Some((_, path)) => ProcMacroDylibPath::Path(path.clone()),
-                            _ => ProcMacroDylibPath::DylibNotFound(Box::default()),
+                            _ => ProcMacroDylibPath::DylibNotFound,
                         }
                     } else {
                         ProcMacroDylibPath::NotProcMacro
@@ -386,7 +386,11 @@ impl WorkspaceBuildScripts {
                             if data.proc_macro_dylib_path == ProcMacroDylibPath::NotBuilt {
                                 data.proc_macro_dylib_path = ProcMacroDylibPath::NotProcMacro;
                             }
-                            if message.target.kind.contains(&cargo_metadata::TargetKind::ProcMacro)
+                            if !matches!(data.proc_macro_dylib_path, ProcMacroDylibPath::Path(_))
+                                && message
+                                    .target
+                                    .kind
+                                    .contains(&cargo_metadata::TargetKind::ProcMacro)
                             {
                                 data.proc_macro_dylib_path =
                                     match message.filenames.iter().find(|file| is_dylib(file)) {
@@ -394,9 +398,7 @@ impl WorkspaceBuildScripts {
                                             let filename = AbsPath::assert(filename);
                                             ProcMacroDylibPath::Path(filename.to_owned())
                                         }
-                                        None => ProcMacroDylibPath::DylibNotFound(
-                                            message.filenames.clone().into_boxed_slice(),
-                                        ),
+                                        None => ProcMacroDylibPath::DylibNotFound,
                                     };
                             }
                         });

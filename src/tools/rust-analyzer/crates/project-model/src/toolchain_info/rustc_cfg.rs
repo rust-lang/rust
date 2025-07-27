@@ -65,6 +65,7 @@ fn rustc_print_cfg(
     let (sysroot, current_dir) = match config {
         QueryConfig::Cargo(sysroot, cargo_toml, _) => {
             let mut cmd = sysroot.tool(Tool::Cargo, cargo_toml.parent(), extra_env);
+            cmd.env("__CARGO_TEST_CHANNEL_OVERRIDE_DO_NOT_USE_THIS", "nightly");
             cmd.args(["rustc", "-Z", "unstable-options"]).args(RUSTC_ARGS);
             if let Some(target) = target {
                 cmd.args(["--target", target]);

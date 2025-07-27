@@ -31,7 +31,7 @@ pub enum ProcMacroLoadingError {
     Disabled,
     FailedToBuild,
     ExpectedProcMacroArtifact,
-    MissingDylibPath(Box<[String]>),
+    MissingDylibPath,
     NotYetBuilt,
     NoProcMacros,
     ProcMacroSrvError(Box<str>),
@@ -42,7 +42,7 @@ impl ProcMacroLoadingError {
             ProcMacroLoadingError::Disabled | ProcMacroLoadingError::NotYetBuilt => false,
             ProcMacroLoadingError::ExpectedProcMacroArtifact
             | ProcMacroLoadingError::FailedToBuild
-            | ProcMacroLoadingError::MissingDylibPath(_)
+            | ProcMacroLoadingError::MissingDylibPath
             | ProcMacroLoadingError::NoProcMacros
             | ProcMacroLoadingError::ProcMacroSrvError(_) => true,
         }
@@ -58,17 +58,10 @@ impl fmt::Display for ProcMacroLoadingError {
             }
             ProcMacroLoadingError::Disabled => write!(f, "proc-macro expansion is disabled"),
             ProcMacroLoadingError::FailedToBuild => write!(f, "proc-macro failed to build"),
-            ProcMacroLoadingError::MissingDylibPath(candidates) if candidates.is_empty() => {
+            ProcMacroLoadingError::MissingDylibPath => {
                 write!(
                     f,
                     "proc-macro crate built but the dylib path is missing, this indicates a problem with your build system."
-                )
-            }
-            ProcMacroLoadingError::MissingDylibPath(candidates) => {
-                write!(
-                    f,
-                    "proc-macro crate built but the dylib path is missing, this indicates a problem with your build system. Candidates not considered due to not having a dynamic library extension: {}",
-                    candidates.join(", ")
                 )
             }
             ProcMacroLoadingError::NotYetBuilt => write!(f, "proc-macro not yet built"),
