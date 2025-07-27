@@ -221,7 +221,9 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
                     let ty = icx.lower_ty(ty);
                     // MIR relies on references to statics being scalars.
                     // Verify that here to avoid ill-formed MIR.
-                    match check_static_item(tcx, def_id, ty, false) {
+                    // We skip the `Sync` check to avoid cycles for type-alias-impl-trait,
+                    // relying on the fact that non-Sync statics don't ICE the rest of the compiler.
+                    match check_static_item(tcx, def_id, ty, /* should_check_for_sync */ false) {
                         Ok(()) => ty,
                         Err(guar) => Ty::new_error(tcx, guar),
                     }
@@ -286,7 +288,9 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
                 let ty = icx.lower_ty(ty);
                 // MIR relies on references to statics being scalars.
                 // Verify that here to avoid ill-formed MIR.
-                match check_static_item(tcx, def_id, ty, false) {
+                // We skip the `Sync` check to avoid cycles for type-alias-impl-trait,
+                // relying on the fact that non-Sync statics don't ICE the rest of the compiler.
+                match check_static_item(tcx, def_id, ty, /* should_check_for_sync */ false) {
                     Ok(()) => ty,
                     Err(guar) => Ty::new_error(tcx, guar),
                 }
