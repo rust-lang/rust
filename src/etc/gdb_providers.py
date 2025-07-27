@@ -138,8 +138,9 @@ class StdVecProvider(printer_base):
         self._valobj = valobj
         self._length = int(valobj["len"])
         self._data_ptr = unwrap_unique_or_non_null(valobj["buf"]["inner"]["ptr"])
-        ptr_ty = gdb.Type.pointer(valobj.type.template_argument(0))
-        self._data_ptr = self._data_ptr.reinterpret_cast(ptr_ty)
+        self._data_ptr = self._data_ptr.cast(self._data_ptr.type.strip_typedefs())
+        ptr_ty = valobj.type.template_argument(0).pointer()
+        self._data_ptr = self._data_ptr.cast(ptr_ty)
 
     def to_string(self):
         return "Vec(size={})".format(self._length)
@@ -165,8 +166,9 @@ class StdVecDequeProvider(printer_base):
             cap = cap[ZERO_FIELD]
         self._cap = int(cap)
         self._data_ptr = unwrap_unique_or_non_null(valobj["buf"]["inner"]["ptr"])
-        ptr_ty = gdb.Type.pointer(valobj.type.template_argument(0))
-        self._data_ptr = self._data_ptr.reinterpret_cast(ptr_ty)
+        self._data_ptr = self._data_ptr.cast(self._data_ptr.type.strip_typedefs())
+        ptr_ty = valobj.type.template_argument(0).pointer()
+        self._data_ptr = self._data_ptr.cast(ptr_ty)
 
     def to_string(self):
         return "VecDeque(size={})".format(self._size)
