@@ -16,6 +16,7 @@ use la_arena::ArenaMap;
 use paths::{AbsPath, AbsPathBuf, Utf8PathBuf};
 use rustc_hash::{FxHashMap, FxHashSet};
 use serde::Deserialize as _;
+use stdx::{always, never};
 use toolchain::Tool;
 
 use crate::{
@@ -28,6 +29,15 @@ use crate::{
 pub struct WorkspaceBuildScripts {
     outputs: ArenaMap<Package, BuildScriptOutput>,
     error: Option<String>,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub enum ProcMacroDylibPath {
+    Path(AbsPathBuf),
+    DylibNotFound(Box<[Utf8PathBuf]>),
+    NotProcMacro,
+    #[default]
+    NotBuilt,
 }
 
 /// Output of the build script and proc-macro building step for a concrete package.
@@ -43,7 +53,7 @@ pub(crate) struct BuildScriptOutput {
     /// Directory where a build script might place its output.
     pub(crate) out_dir: Option<AbsPathBuf>,
     /// Path to the proc-macro library file if this package exposes proc-macros.
-    pub(crate) proc_macro_dylib_path: Option<AbsPathBuf>,
+    pub(crate) proc_macro_dylib_path: ProcMacroDylibPath,
 }
 
 impl BuildScriptOutput {
@@ -51,7 +61,7 @@ impl BuildScriptOutput {
         self.cfgs.is_empty()
             && self.envs.is_empty()
             && self.out_dir.is_none()
-            && self.proc_macro_dylib_path.is_none()
+            && self.proc_macro_dylib_path == ProcMacroDylibPath::NotBuilt
     }
 }
 
@@ -126,6 +136,8 @@ impl WorkspaceBuildScripts {
             |package, cb| {
                 if let Some(&(package, workspace)) = by_id.get(package) {
                     cb(&workspaces[workspace][package].name, &mut res[workspace].outputs[package]);
+                } else {
+                    never!("Received compiler message for unknown package: {}", package);
                 }
             },
             progress,
@@ -140,12 +152,9 @@ impl WorkspaceBuildScripts {
         if tracing::enabled!(tracing::Level::INFO) {
             for (idx, workspace) in workspaces.iter().enumerate() {
                 for package in workspace.packages() {
-                    let package_build_data = &mut res[idx].outputs[package];
+                    let package_build_data: &mut BuildScriptOutput = &mut res[idx].outputs[package];
                     if !package_build_data.is_empty() {
-                        tracing::info!(
-                            "{}: {package_build_data:?}",
-                            workspace[package].manifest.parent(),
-                        );
+                        tracing::info!("{}: {package_build_data:?}", workspace[package].manifest,);
                     }
                 }
             }
@@ -198,10 +207,33 @@ impl WorkspaceBuildScripts {
                         let path = dir_entry.path();
                         let extension = path.extension()?;
                         if extension == std::env::consts::DLL_EXTENSION {
-                            let name = path.file_stem()?.to_str()?.split_once('-')?.0.to_owned();
-                            let path = AbsPathBuf::try_from(Utf8PathBuf::from_path_buf(path).ok()?)
-                                .ok()?;
-                            return Some((name, path));
+                            let name = path
+                                .file_stem()?
+                                .to_str()?
+                                .split_once('-')?
+                                .0
+                                .trim_start_matches("lib")
+                                .to_owned();
+                            let path = match Utf8PathBuf::from_path_buf(path) {
+                                Ok(path) => path,
+                                Err(path) => {
+                                    tracing::warn!(
+                                        "Proc-macro dylib path contains non-UTF8 characters: {:?}",
+                                        path.display()
+                                    );
+                                    return None;
+                                }
+                            };
+                            return match AbsPathBuf::try_from(path) {
+                                Ok(path) => Some((name, path)),
+                                Err(path) => {
+                                    tracing::error!(
+                                        "proc-macro dylib path is not absolute: {:?}",
+                                        path
+                                    );
+                                    None
+                                }
+                            };
                         }
                     }
                     None
@@ -209,28 +241,24 @@ impl WorkspaceBuildScripts {
                 .collect();
             for p in rustc.packages() {
                 let package = &rustc[p];
-                if package
-                    .targets
-                    .iter()
-                    .any(|&it| matches!(rustc[it].kind, TargetKind::Lib { is_proc_macro: true }))
-                {
-                    if let Some((_, path)) = proc_macro_dylibs
-                        .iter()
-                        .find(|(name, _)| *name.trim_start_matches("lib") == package.name)
-                    {
-                        bs.outputs[p].proc_macro_dylib_path = Some(path.clone());
+                bs.outputs[p].proc_macro_dylib_path =
+                    if package.targets.iter().any(|&it| {
+                        matches!(rustc[it].kind, TargetKind::Lib { is_proc_macro: true })
+                    }) {
+                        match proc_macro_dylibs.iter().find(|(name, _)| *name == package.name) {
+                            Some((_, path)) => ProcMacroDylibPath::Path(path.clone()),
+                            _ => ProcMacroDylibPath::DylibNotFound(Box::default()),
+                        }
+                    } else {
+                        ProcMacroDylibPath::NotProcMacro
                     }
-                }
             }
 
             if tracing::enabled!(tracing::Level::INFO) {
                 for package in rustc.packages() {
                     let package_build_data = &bs.outputs[package];
                     if !package_build_data.is_empty() {
-                        tracing::info!(
-                            "{}: {package_build_data:?}",
-                            rustc[package].manifest.parent(),
-                        );
+                        tracing::info!("{}: {package_build_data:?}", rustc[package].manifest,);
                     }
                 }
             }
@@ -263,6 +291,12 @@ impl WorkspaceBuildScripts {
             |package, cb| {
                 if let Some(&package) = by_id.get(package) {
                     cb(&workspace[package].name, &mut outputs[package]);
+                } else {
+                    never!(
+                        "Received compiler message for unknown package: {}\n {}",
+                        package,
+                        by_id.keys().join(", ")
+                    );
                 }
             },
             progress,
@@ -272,10 +306,7 @@ impl WorkspaceBuildScripts {
             for package in workspace.packages() {
                 let package_build_data = &outputs[package];
                 if !package_build_data.is_empty() {
-                    tracing::info!(
-                        "{}: {package_build_data:?}",
-                        workspace[package].manifest.parent(),
-                    );
+                    tracing::info!("{}: {package_build_data:?}", workspace[package].manifest,);
                 }
             }
         }
@@ -348,15 +379,25 @@ impl WorkspaceBuildScripts {
                             progress(format!(
                                 "building compile-time-deps: proc-macro {name} built"
                             ));
+                            always!(
+                                data.proc_macro_dylib_path == ProcMacroDylibPath::NotBuilt,
+                                "received multiple compiler artifacts for the same package: {message:?}"
+                            );
+                            if data.proc_macro_dylib_path == ProcMacroDylibPath::NotBuilt {
+                                data.proc_macro_dylib_path = ProcMacroDylibPath::NotProcMacro;
+                            }
                             if message.target.kind.contains(&cargo_metadata::TargetKind::ProcMacro)
                             {
-                                // Skip rmeta file
-                                if let Some(filename) =
-                                    message.filenames.iter().find(|file| is_dylib(file))
-                                {
-                                    let filename = AbsPath::assert(filename);
-                                    data.proc_macro_dylib_path = Some(filename.to_owned());
-                                }
+                                data.proc_macro_dylib_path =
+                                    match message.filenames.iter().find(|file| is_dylib(file)) {
+                                        Some(filename) => {
+                                            let filename = AbsPath::assert(filename);
+                                            ProcMacroDylibPath::Path(filename.to_owned())
+                                        }
+                                        None => ProcMacroDylibPath::DylibNotFound(
+                                            message.filenames.clone().into_boxed_slice(),
+                                        ),
+                                    };
                             }
                         });
                     }

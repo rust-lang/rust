@@ -245,7 +245,7 @@ pub enum TargetKind {
 }
 
 impl TargetKind {
-    fn new(kinds: &[cargo_metadata::TargetKind]) -> TargetKind {
+    pub fn new(kinds: &[cargo_metadata::TargetKind]) -> TargetKind {
         for kind in kinds {
             return match kind {
                 cargo_metadata::TargetKind::Bin => TargetKind::Bin,
@@ -604,12 +604,12 @@ impl FetchMetadata {
         // but nothing else
         let mut extra_args = config.extra_args.iter();
         while let Some(arg) = extra_args.next() {
-            if arg == "-Z" {
-                if let Some(arg) = extra_args.next() {
-                    needs_nightly = true;
-                    other_options.push("-Z".to_owned());
-                    other_options.push(arg.to_owned());
-                }
+            if arg == "-Z"
+                && let Some(arg) = extra_args.next()
+            {
+                needs_nightly = true;
+                other_options.push("-Z".to_owned());
+                other_options.push(arg.to_owned());
             }
         }
 

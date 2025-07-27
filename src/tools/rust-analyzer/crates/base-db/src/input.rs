@@ -30,7 +30,8 @@ pub type ProcMacroPaths =
 pub enum ProcMacroLoadingError {
     Disabled,
     FailedToBuild,
-    MissingDylibPath,
+    ExpectedProcMacroArtifact,
+    MissingDylibPath(Box<[String]>),
     NotYetBuilt,
     NoProcMacros,
     ProcMacroSrvError(Box<str>),
@@ -39,8 +40,9 @@ impl ProcMacroLoadingError {
     pub fn is_hard_error(&self) -> bool {
         match self {
             ProcMacroLoadingError::Disabled | ProcMacroLoadingError::NotYetBuilt => false,
-            ProcMacroLoadingError::FailedToBuild
-            | ProcMacroLoadingError::MissingDylibPath
+            ProcMacroLoadingError::ExpectedProcMacroArtifact
+            | ProcMacroLoadingError::FailedToBuild
+            | ProcMacroLoadingError::MissingDylibPath(_)
             | ProcMacroLoadingError::NoProcMacros
             | ProcMacroLoadingError::ProcMacroSrvError(_) => true,
         }
@@ -51,10 +53,23 @@ impl Error for ProcMacroLoadingError {}
 impl fmt::Display for ProcMacroLoadingError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            ProcMacroLoadingError::ExpectedProcMacroArtifact => {
+                write!(f, "proc-macro crate did not build proc-macro artifact")
+            }
             ProcMacroLoadingError::Disabled => write!(f, "proc-macro expansion is disabled"),
             ProcMacroLoadingError::FailedToBuild => write!(f, "proc-macro failed to build"),
-            ProcMacroLoadingError::MissingDylibPath => {
-                write!(f, "proc-macro crate build data is missing a dylib path")
+            ProcMacroLoadingError::MissingDylibPath(candidates) if candidates.is_empty() => {
+                write!(
+                    f,
+                    "proc-macro crate built but the dylib path is missing, this indicates a problem with your build system."
+                )
+            }
+            ProcMacroLoadingError::MissingDylibPath(candidates) => {
+                write!(
+                    f,
+                    "proc-macro crate built but the dylib path is missing, this indicates a problem with your build system. Candidates not considered due to not having a dynamic library extension: {}",
+                    candidates.join(", ")
+                )
             }
             ProcMacroLoadingError::NotYetBuilt => write!(f, "proc-macro not yet built"),
             ProcMacroLoadingError::NoProcMacros => {
