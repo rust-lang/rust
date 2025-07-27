@@ -15,16 +15,18 @@ use span::Edition;
 use stdx::process::spawn_with_streaming_output;
 use toolchain::Tool;
 
+use crate::cargo_config_file::make_lockfile_copy;
 use crate::{CfgOverrides, InvocationStrategy};
 use crate::{ManifestPath, Sysroot};
 
-const MINIMUM_TOOLCHAIN_VERSION_SUPPORTING_LOCKFILE_PATH: semver::Version = semver::Version {
-    major: 1,
-    minor: 82,
-    patch: 0,
-    pre: semver::Prerelease::EMPTY,
-    build: semver::BuildMetadata::EMPTY,
-};
+pub(crate) const MINIMUM_TOOLCHAIN_VERSION_SUPPORTING_LOCKFILE_PATH: semver::Version =
+    semver::Version {
+        major: 1,
+        minor: 82,
+        patch: 0,
+        pre: semver::Prerelease::EMPTY,
+        build: semver::BuildMetadata::EMPTY,
+    };
 
 /// [`CargoWorkspace`] represents the logical structure of, well, a Cargo
 /// workspace. It pretty closely mirrors `cargo metadata` output.
@@ -552,8 +554,10 @@ impl CargoWorkspace {
 
 pub(crate) struct FetchMetadata {
     command: cargo_metadata::MetadataCommand,
+    #[expect(dead_code)]
     manifest_path: ManifestPath,
     lockfile_path: Option<Utf8PathBuf>,
+    #[expect(dead_code)]
     kind: &'static str,
     no_deps: bool,
     no_deps_result: anyhow::Result<cargo_metadata::Metadata>,
@@ -634,7 +638,7 @@ impl FetchMetadata {
         command.other_options(other_options.clone());
 
         if needs_nightly {
-            command.env("RUSTC_BOOTSTRAP", "1");
+            command.env("__CARGO_TEST_CHANNEL_OVERRIDE_DO_NOT_USE_THIS", "nightly");
         }
 
         // Pre-fetch basic metadata using `--no-deps`, which:
@@ -681,11 +685,12 @@ impl FetchMetadata {
         locked: bool,
         progress: &dyn Fn(String),
     ) -> anyhow::Result<(cargo_metadata::Metadata, Option<anyhow::Error>)> {
+        _ = target_dir;
         let Self {
             mut command,
-            manifest_path,
+            manifest_path: _,
             lockfile_path,
-            kind,
+            kind: _,
             no_deps,
             no_deps_result,
             mut other_options,
@@ -696,54 +701,18 @@ impl FetchMetadata {
         }
 
         let mut using_lockfile_copy = false;
-        let mut _temp_dir_guard = None;
-        // The manifest is a rust file, so this means its a script manifest
-        if let Some(lockfile) = lockfile_path {
-            _temp_dir_guard = temp_dir::TempDir::with_prefix("rust-analyzer").ok();
-            let target_lockfile = _temp_dir_guard
-                .and_then(|tmp| tmp.path().join("Cargo.lock").try_into().ok())
-                .unwrap_or_else(|| {
-                    // When multiple workspaces share the same target dir, they might overwrite into a
-                    // single lockfile path.
-                    // See https://github.com/rust-lang/rust-analyzer/issues/20189#issuecomment-3073520255
-                    let manifest_path_hash = std::hash::BuildHasher::hash_one(
-                        &std::hash::BuildHasherDefault::<rustc_hash::FxHasher>::default(),
-                        &manifest_path,
-                    );
-                    let disambiguator = format!(
-                        "{}_{manifest_path_hash}",
-                        manifest_path.components().nth_back(1).map_or("", |c| c.as_str())
-                    );
-
-                    target_dir
-                        .join("rust-analyzer")
-                        .join("metadata")
-                        .join(kind)
-                        .join(disambiguator)
-                        .join("Cargo.lock")
-                });
-            match std::fs::copy(&lockfile, &target_lockfile) {
-                Ok(_) => {
-                    using_lockfile_copy = true;
-                    other_options.push("--lockfile-path".to_owned());
-                    other_options.push(target_lockfile.to_string());
-                }
-                Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
-                    // There exists no lockfile yet
-                    using_lockfile_copy = true;
-                    other_options.push("--lockfile-path".to_owned());
-                    other_options.push(target_lockfile.to_string());
-                }
-                Err(e) => {
-                    tracing::warn!(
-                        "Failed to copy lock file from `{lockfile}` to `{target_lockfile}`: {e}",
-                    );
-                }
-            }
+        let mut _temp_dir_guard;
+        if let Some(lockfile) = lockfile_path
+            && let Some((temp_dir, target_lockfile)) = make_lockfile_copy(&lockfile)
+        {
+            _temp_dir_guard = temp_dir;
+            other_options.push("--lockfile-path".to_owned());
+            other_options.push(target_lockfile.to_string());
+            using_lockfile_copy = true;
         }
         if using_lockfile_copy {
+            command.env("__CARGO_TEST_CHANNEL_OVERRIDE_DO_NOT_USE_THIS", "nightly");
             other_options.push("-Zunstable-options".to_owned());
-            command.env("RUSTC_BOOTSTRAP", "1");
         }
         // No need to lock it if we copied the lockfile, we won't modify the original after all/
         // This way cargo cannot error out on us if the lockfile requires updating.
@@ -752,13 +721,11 @@ impl FetchMetadata {
         }
         command.other_options(other_options);
 
-        // FIXME: Fetching metadata is a slow process, as it might require
-        // calling crates.io. We should be reporting progress here, but it's
-        // unclear whether cargo itself supports it.
         progress("cargo metadata: started".to_owned());
 
         let res = (|| -> anyhow::Result<(_, _)> {
             let mut errored = false;
+            tracing::debug!("Running `{:?}`", command.cargo_command());
             let output =
                 spawn_with_streaming_output(command.cargo_command(), &mut |_| (), &mut |line| {
                     errored = errored || line.starts_with("error") || line.starts_with("warning");

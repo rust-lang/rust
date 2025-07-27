@@ -16,12 +16,13 @@ use la_arena::ArenaMap;
 use paths::{AbsPath, AbsPathBuf, Utf8PathBuf};
 use rustc_hash::{FxHashMap, FxHashSet};
 use serde::Deserialize as _;
-use stdx::{always, never};
+use stdx::never;
 use toolchain::Tool;
 
 use crate::{
     CargoConfig, CargoFeatures, CargoWorkspace, InvocationStrategy, ManifestPath, Package, Sysroot,
-    TargetKind, utf8_stdout,
+    TargetKind, cargo_config_file::make_lockfile_copy,
+    cargo_workspace::MINIMUM_TOOLCHAIN_VERSION_SUPPORTING_LOCKFILE_PATH, utf8_stdout,
 };
 
 /// Output of the build script and proc-macro building steps for a workspace.
@@ -77,7 +78,7 @@ impl WorkspaceBuildScripts {
         let current_dir = workspace.workspace_root();
 
         let allowed_features = workspace.workspace_features();
-        let cmd = Self::build_command(
+        let (_guard, cmd) = Self::build_command(
             config,
             &allowed_features,
             workspace.manifest_path(),
@@ -98,7 +99,7 @@ impl WorkspaceBuildScripts {
     ) -> io::Result<Vec<WorkspaceBuildScripts>> {
         assert_eq!(config.invocation_strategy, InvocationStrategy::Once);
 
-        let cmd = Self::build_command(
+        let (_guard, cmd) = Self::build_command(
             config,
             &Default::default(),
             // This is not gonna be used anyways, so just construct a dummy here
@@ -379,10 +380,6 @@ impl WorkspaceBuildScripts {
                             progress(format!(
                                 "building compile-time-deps: proc-macro {name} built"
                             ));
-                            always!(
-                                data.proc_macro_dylib_path == ProcMacroDylibPath::NotBuilt,
-                                "received multiple compiler artifacts for the same package: {message:?}"
-                            );
                             if data.proc_macro_dylib_path == ProcMacroDylibPath::NotBuilt {
                                 data.proc_macro_dylib_path = ProcMacroDylibPath::NotProcMacro;
                             }
@@ -434,14 +431,15 @@ impl WorkspaceBuildScripts {
         current_dir: &AbsPath,
         sysroot: &Sysroot,
         toolchain: Option<&semver::Version>,
-    ) -> io::Result<Command> {
+    ) -> io::Result<(Option<temp_dir::TempDir>, Command)> {
         match config.run_build_script_command.as_deref() {
             Some([program, args @ ..]) => {
                 let mut cmd = toolchain::command(program, current_dir, &config.extra_env);
                 cmd.args(args);
-                Ok(cmd)
+                Ok((None, cmd))
             }
             _ => {
+                let mut requires_unstable_options = false;
                 let mut cmd = sysroot.tool(Tool::Cargo, current_dir, &config.extra_env);
 
                 cmd.args(["check", "--quiet", "--workspace", "--message-format=json"]);
@@ -457,7 +455,19 @@ impl WorkspaceBuildScripts {
                 if let Some(target) = &config.target {
                     cmd.args(["--target", target]);
                 }
-
+                let mut temp_dir_guard = None;
+                if toolchain
+                    .is_some_and(|v| *v >= MINIMUM_TOOLCHAIN_VERSION_SUPPORTING_LOCKFILE_PATH)
+                {
+                    let lockfile_path =
+                        <_ as AsRef<Utf8Path>>::as_ref(manifest_path).with_extension("lock");
+                    if let Some((temp_dir, target_lockfile)) = make_lockfile_copy(&lockfile_path) {
+                        temp_dir_guard = Some(temp_dir);
+                        cmd.arg("--lockfile-path");
+                        cmd.arg(target_lockfile.as_str());
+                        requires_unstable_options = true;
+                    }
+                }
                 match &config.features {
                     CargoFeatures::All => {
                         cmd.arg("--all-features");
@@ -479,6 +489,7 @@ impl WorkspaceBuildScripts {
                 }
 
                 if manifest_path.is_rust_manifest() {
+                    requires_unstable_options = true;
                     cmd.arg("-Zscript");
                 }
 
@@ -488,7 +499,7 @@ impl WorkspaceBuildScripts {
                 // available in current toolchain's cargo, use it to build compile time deps only.
                 const COMP_TIME_DEPS_MIN_TOOLCHAIN_VERSION: semver::Version = semver::Version {
                     major: 1,
-                    minor: 89,
+                    minor: 189,
                     patch: 0,
                     pre: semver::Prerelease::EMPTY,
                     build: semver::BuildMetadata::EMPTY,
@@ -498,8 +509,7 @@ impl WorkspaceBuildScripts {
                     toolchain.is_some_and(|v| *v >= COMP_TIME_DEPS_MIN_TOOLCHAIN_VERSION);
 
                 if cargo_comp_time_deps_available {
-                    cmd.env("__CARGO_TEST_CHANNEL_OVERRIDE_DO_NOT_USE_THIS", "nightly");
-                    cmd.arg("-Zunstable-options");
+                    requires_unstable_options = true;
                     cmd.arg("--compile-time-deps");
                     // we can pass this unconditionally, because we won't actually build the
                     // binaries, and as such, this will succeed even on targets without libtest
@@ -522,7 +532,11 @@ impl WorkspaceBuildScripts {
                         cmd.env("RA_RUSTC_WRAPPER", "1");
                     }
                 }
-                Ok(cmd)
+                if requires_unstable_options {
+                    cmd.env("__CARGO_TEST_CHANNEL_OVERRIDE_DO_NOT_USE_THIS", "nightly");
+                    cmd.arg("-Zunstable-options");
+                }
+                Ok((temp_dir_guard, cmd))
             }
         }
     }
