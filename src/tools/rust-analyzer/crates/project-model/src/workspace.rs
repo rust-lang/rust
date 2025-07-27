@@ -1639,7 +1639,7 @@ fn add_target_crate_root(
                 match proc_macro_dylib_path {
                     ProcMacroDylibPath::Path(path) => Ok((cargo_name.to_owned(), path.clone())),
                     ProcMacroDylibPath::NotBuilt => Err(ProcMacroLoadingError::NotYetBuilt),
-                    ProcMacroDylibPath::NotProcMacro | ProcMacroDylibPath::DylibNotFound(_)
+                    ProcMacroDylibPath::NotProcMacro | ProcMacroDylibPath::DylibNotFound
                         if has_errors =>
                     {
                         Err(ProcMacroLoadingError::FailedToBuild)
@@ -1647,10 +1647,8 @@ fn add_target_crate_root(
                     ProcMacroDylibPath::NotProcMacro => {
                         Err(ProcMacroLoadingError::ExpectedProcMacroArtifact)
                     }
-                    ProcMacroDylibPath::DylibNotFound(candidates) => {
-                        Err(ProcMacroLoadingError::MissingDylibPath(
-                            candidates.iter().map(ToString::to_string).collect(),
-                        ))
+                    ProcMacroDylibPath::DylibNotFound => {
+                        Err(ProcMacroLoadingError::MissingDylibPath)
                     }
                 }
             }
