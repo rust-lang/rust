@@ -245,6 +245,21 @@ pub fn identity_when_valid(_attr: TokenStream, item: TokenStream) -> TokenStream
         }
     }
 
+    for (_, module) in def_map.modules() {
+        let Some(src) = module.declaration_source(&db) else {
+            continue;
+        };
+        if let Some(macro_file) = src.file_id.macro_file() {
+            let pp = pretty_print_macro_expansion(
+                src.value.syntax().clone(),
+                db.span_map(macro_file.into()).as_ref(),
+                false,
+                false,
+            );
+            format_to!(expanded_text, "\n{}", pp)
+        }
+    }
+
     for impl_id in def_map[local_id].scope.impls() {
         let src = impl_id.lookup(&db).source(&db);
         if let Some(macro_file) = src.file_id.macro_file()

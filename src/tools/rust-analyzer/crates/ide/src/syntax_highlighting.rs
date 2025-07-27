@@ -199,7 +199,7 @@ pub(crate) fn highlight(
     let sema = Semantics::new(db);
     let file_id = sema
         .attach_first_edition(file_id)
-        .unwrap_or_else(|| EditionedFileId::current_edition(db, file_id));
+        .unwrap_or_else(|| EditionedFileId::current_edition_guess_origin(db, file_id));
 
     // Determine the root based on the given range.
     let (root, range_to_highlight) = {

@@ -15,6 +15,7 @@ use base_db::Crate;
 use hir_def::{
     AssocItemId, BlockId, ConstId, FunctionId, GenericParamId, HasModule, ImplId, ItemContainerId,
     ModuleId, TraitId,
+    attrs::AttrFlags,
     expr_store::path::GenericArgs as HirGenericArgs,
     hir::ExprId,
     nameres::{DefMap, block_def_map, crate_def_map},
@@ -509,9 +510,8 @@ fn crates_containing_incoherent_inherent_impls(db: &dyn HirDatabase) -> Box<[Cra
 pub fn incoherent_inherent_impls(db: &dyn HirDatabase, self_ty: SimplifiedType) -> &[ImplId] {
     let has_incoherent_impls = match self_ty.def() {
         Some(def_id) => match def_id.try_into() {
-            Ok(def_id) => {
-                db.attrs(def_id).by_key(sym::rustc_has_incoherent_inherent_impls).exists()
-            }
+            Ok(def_id) => AttrFlags::query(db, def_id)
+                .contains(AttrFlags::RUSTC_HAS_INCOHERENT_INHERENT_IMPLS),
             Err(()) => true,
         },
         _ => true,
@@ -715,7 +715,9 @@ impl TraitImpls {
                     // FIXME: Reservation impls should be considered during coherence checks. If we are
                     // (ever) to implement coherence checks, this filtering should be done by the trait
                     // solver.
-                    if db.attrs(impl_id.into()).by_key(sym::rustc_reservation_impl).exists() {
+                    if AttrFlags::query(db, impl_id.into())
+                        .contains(AttrFlags::RUSTC_RESERVATION_IMPL)
+                    {
                         continue;
                     }
                     let trait_ref = match db.impl_trait(impl_id) {

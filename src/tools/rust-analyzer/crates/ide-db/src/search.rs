@@ -12,7 +12,7 @@ use either::Either;
 use hir::{
     Adt, AsAssocItem, DefWithBody, EditionedFileId, FileRange, FileRangeWrapper, HasAttrs,
     HasContainer, HasSource, InFile, InFileWrapper, InRealFile, InlineAsmOperand, ItemContainer,
-    ModuleSource, PathResolution, Semantics, Visibility, sym,
+    ModuleSource, PathResolution, Semantics, Visibility,
 };
 use memchr::memmem::Finder;
 use parser::SyntaxKind;
@@ -169,7 +169,7 @@ impl SearchScope {
             entries.extend(
                 source_root
                     .iter()
-                    .map(|id| (EditionedFileId::new(db, id, crate_data.edition), None)),
+                    .map(|id| (EditionedFileId::new(db, id, crate_data.edition, krate), None)),
             );
         }
         SearchScope { entries }
@@ -183,11 +183,9 @@ impl SearchScope {
 
             let source_root = db.file_source_root(root_file).source_root_id(db);
             let source_root = db.source_root(source_root).source_root(db);
-            entries.extend(
-                source_root
-                    .iter()
-                    .map(|id| (EditionedFileId::new(db, id, rev_dep.edition(db)), None)),
-            );
+            entries.extend(source_root.iter().map(|id| {
+                (EditionedFileId::new(db, id, rev_dep.edition(db), rev_dep.into()), None)
+            }));
         }
         SearchScope { entries }
     }
@@ -201,7 +199,7 @@ impl SearchScope {
         SearchScope {
             entries: source_root
                 .iter()
-                .map(|id| (EditionedFileId::new(db, id, of.edition(db)), None))
+                .map(|id| (EditionedFileId::new(db, id, of.edition(db), of.into()), None))
                 .collect(),
         }
     }
@@ -368,7 +366,7 @@ impl Definition {
         if let Definition::Macro(macro_def) = self {
             return match macro_def.kind(db) {
                 hir::MacroKind::Declarative => {
-                    if macro_def.attrs(db).by_key(sym::macro_export).exists() {
+                    if macro_def.attrs(db).is_macro_export() {
                         SearchScope::reverse_dependencies(db, module.krate())
                     } else {
                         SearchScope::krate(db, module.krate())
