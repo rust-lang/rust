@@ -74,5 +74,6 @@ struct PresentDrop;
 
 impl Drop for PresentDrop {
     //~ MONO_ITEM fn <PresentDrop as std::ops::Drop>::drop @@ non_generic_closures-cgu.0[External]
+    //~ MONO_ITEM fn <PresentDrop as std::ops::Drop>::pin_drop @@ non_generic_closures-cgu.0[External]
     fn drop(&mut self) {}
 }

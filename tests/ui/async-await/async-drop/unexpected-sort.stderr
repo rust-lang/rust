@@ -1,11 +1,11 @@
 error[E0407]: method `b` is not a member of trait `Drop`
-  --> $DIR/unexpected-sort.rs:10:5
+  --> $DIR/unexpected-sort.rs:11:5
    |
 LL |     fn b() {}
    |     ^^^^^^^^^ not a member of trait `Drop`
 
 error[E0437]: type `c` is not a member of trait `AsyncDrop`
-  --> $DIR/unexpected-sort.rs:13:5
+  --> $DIR/unexpected-sort.rs:15:5
    |
 LL |     type c = ();
    |     ^^^^^^^^^^^^ not a member of trait `AsyncDrop`
@@ -13,13 +13,20 @@ LL |     type c = ();
 error[E0046]: not all trait items implemented, missing: `drop`
   --> $DIR/unexpected-sort.rs:9:1
    |
-LL | impl Drop for a {
-   | ^^^^^^^^^^^^^^^ missing `drop` in implementation
+LL | / impl Drop for a {
+LL | |
+LL | |     fn b() {}
+LL | | }
+   | |_^
    |
-   = help: implement the missing item: `fn drop(&mut self) { todo!() }`
+   = note: default implementation of `drop` is unstable
+   = note: use of unstable library feature `pin_ergonomics`
+   = note: see issue #130494 <https://github.com/rust-lang/rust/issues/130494> for more information
+   = help: add `#![feature(pin_ergonomics)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0046]: not all trait items implemented, missing: `drop`
-  --> $DIR/unexpected-sort.rs:12:1
+  --> $DIR/unexpected-sort.rs:13:1
    |
 LL | impl AsyncDrop for a {
    | ^^^^^^^^^^^^^^^^^^^^ missing `drop` in implementation
