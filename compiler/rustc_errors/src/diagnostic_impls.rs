@@ -11,6 +11,7 @@ use rustc_ast_pretty::pprust;
 use rustc_attr_data_structures::RustcVersion;
 use rustc_macros::Subdiagnostic;
 use rustc_span::edition::Edition;
+use rustc_span::symbol::LabelSymbol;
 use rustc_span::{Ident, MacroRulesNormalizedIdent, Span, Symbol};
 use rustc_target::spec::{PanicStrategy, SplitDebuginfo, StackProtector, TargetTuple};
 use rustc_type_ir::{ClosureKind, FloatTy};
@@ -165,6 +166,12 @@ impl IntoDiagArg for Vec<char> {
 impl IntoDiagArg for Symbol {
     fn into_diag_arg(self, path: &mut Option<std::path::PathBuf>) -> DiagArgValue {
         self.to_ident_string().into_diag_arg(path)
+    }
+}
+
+impl IntoDiagArg for LabelSymbol {
+    fn into_diag_arg(self, path: &mut Option<std::path::PathBuf>) -> DiagArgValue {
+        self.to_string().into_diag_arg(path)
     }
 }
 

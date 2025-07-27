@@ -812,6 +812,7 @@ symbols! {
         default_field_values,
         default_fn,
         default_lib_allocator,
+        default_lifetime: "'a",
         default_method_body_is_const,
         // --------------------------
         // Lang items which are used only for experiments with auto traits with default bounds.
@@ -2477,6 +2478,10 @@ impl Ident {
     pub fn as_str(&self) -> &str {
         self.name.as_str()
     }
+
+    pub fn as_lifetime(&self) -> Option<Ident> {
+        self.name.as_lifetime().map(|sym| Ident::with_dummy_span(sym))
+    }
 }
 
 impl PartialEq for Ident {
@@ -2546,6 +2551,14 @@ impl IdentPrinter {
 
 impl fmt::Display for IdentPrinter {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if let Some(lifetime) = self.symbol.as_lifetime() {
+            f.write_str("'")?;
+            if self.is_raw {
+                f.write_str("r#")?;
+            }
+            return fmt::Display::fmt(&lifetime, f);
+        }
+
         if self.is_raw {
             f.write_str("r#")?;
         } else if self.symbol == kw::DollarCrate {
@@ -2638,6 +2651,11 @@ impl Symbol {
 
     pub fn is_empty(self) -> bool {
         self == sym::empty
+    }
+
+    pub fn as_lifetime(self) -> Option<Symbol> {
+        let name = self.as_str();
+        name.strip_prefix("'").map(Symbol::intern)
     }
 
     /// This method is supposed to be used in error messages, so it's expected to be
@@ -2946,7 +2964,13 @@ impl Ident {
     /// We see this identifier in a normal identifier position, like variable name or a type.
     /// How was it written originally? Did it use the raw form? Let's try to guess.
     pub fn is_raw_guess(self) -> bool {
-        self.name.can_be_raw() && self.is_reserved()
+        if self.name == kw::StaticLifetime || self.name == kw::UnderscoreLifetime {
+            false
+        } else if let Some(lifetime) = self.as_lifetime() {
+            lifetime.is_raw_guess()
+        } else {
+            self.name.can_be_raw() && self.is_reserved()
+        }
     }
 
     /// Whether this would be the identifier for a tuple field like `self.0`, as
@@ -2971,4 +2995,28 @@ pub fn used_keywords(edition: impl Copy + FnOnce() -> Edition) -> Vec<Symbol> {
             }
         })
         .collect()
+}
+
+/// A newtype around `Symbol` specifically for label printing.
+/// This ensures type safety when dealing with labels and provides
+/// specialized formatting behavior for label contexts.
+#[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
+pub struct LabelSymbol(Symbol);
+
+impl fmt::Display for LabelSymbol {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0.as_str())
+    }
+}
+
+impl From<Symbol> for LabelSymbol {
+    fn from(symbol: Symbol) -> Self {
+        LabelSymbol(symbol)
+    }
+}
+
+impl From<Ident> for LabelSymbol {
+    fn from(ident: Ident) -> Self {
+        LabelSymbol(ident.name)
+    }
 }

@@ -1,45 +1,55 @@
-error[E0261]: use of undeclared lifetime name `'fn`
+error[E0261]: use of undeclared lifetime name `'r#fn`
   --> $DIR/error-lifetime-name-issue-143150.rs:2:21
    |
 LL | fn a(_: dyn Trait + 'r#fn) {
-   |     -               ^^^^^ undeclared lifetime
-   |     |
-   |     help: consider introducing lifetime `'fn` here: `<'fn>`
+   |                     ^^^^^ undeclared lifetime
+   |
+help: consider introducing lifetime `'r#fn` here
+   |
+LL | fn a<'r#fn>(_: dyn Trait + 'r#fn) {
+   |     +++++++
 
-error[E0261]: use of undeclared lifetime name `'fn`
+error[E0261]: use of undeclared lifetime name `'r#fn`
   --> $DIR/error-lifetime-name-issue-143150.rs:10:9
    |
-LL | struct Test {
-   |            - help: consider introducing lifetime `'fn` here: `<'fn>`
-LL |     a: &'r#fn str, 
+LL |     a: &'r#fn str,
    |         ^^^^^ undeclared lifetime
+   |
+help: consider introducing lifetime `'r#fn` here
+   |
+LL | struct Test<'r#fn> {
+   |            +++++++
 
-error[E0261]: use of undeclared lifetime name `'fn`
+error[E0261]: use of undeclared lifetime name `'r#fn`
   --> $DIR/error-lifetime-name-issue-143150.rs:10:9
    |
 LL | #[derive(Eq, PartialEq)]
-   |          -- lifetime `'fn` is missing in item created through this procedural macro
+   |          -- lifetime `'r#fn` is missing in item created through this procedural macro
 LL | struct Test {
-   |            - help: consider introducing lifetime `'fn` here: `<'fn>`
-LL |     a: &'r#fn str, 
+LL |     a: &'r#fn str,
    |         ^^^^^ undeclared lifetime
+   |
+help: consider introducing lifetime `'r#fn` here
+   |
+LL | struct Test<'r#fn> {
+   |            +++++++
 
-error[E0261]: use of undeclared lifetime name `'fn`
+error[E0261]: use of undeclared lifetime name `'r#fn`
   --> $DIR/error-lifetime-name-issue-143150.rs:16:32
    |
 LL |   where T: for<'a> Trait1<T> + 'r#fn { }
    |                                ^^^^^ undeclared lifetime
    |
    = note: for more information on higher-ranked polymorphism, visit https://doc.rust-lang.org/nomicon/hrtb.html
-help: consider making the bound lifetime-generic with a new `'fn` lifetime
+help: consider making the bound lifetime-generic with a new `'r#fn` lifetime
    |
 LL -   where T: for<'a> Trait1<T> + 'r#fn { }
-LL +   where for<'fn, 'a> T: Trait1<T> + 'r#fn { }
+LL +   where for<'r#fn, 'a> T: Trait1<T> + 'r#fn { }
    |
-help: consider introducing lifetime `'fn` here
+help: consider introducing lifetime `'r#fn` here
    |
-LL | trait Trait1<'fn, T>
-   |              ++++
+LL | trait Trait1<'r#fn, T>
+   |              ++++++
 
 error: aborting due to 4 previous errors
 
