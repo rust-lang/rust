@@ -1141,7 +1141,7 @@ pub trait ResolverExpand {
 
     /// Names of specific methods to which glob delegation expands.
     fn glob_delegation_suffixes(
-        &mut self,
+        &self,
         trait_def_id: DefId,
         impl_def_id: LocalDefId,
     ) -> Result<Vec<(Ident, Option<Ident>)>, Indeterminate>;

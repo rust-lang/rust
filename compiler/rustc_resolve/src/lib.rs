@@ -656,11 +656,23 @@ impl<'ra> ModuleData<'ra> {
 }
 
 impl<'ra> Module<'ra> {
-    fn for_each_child<'tcx, R, F>(self, resolver: &mut R, mut f: F)
-    where
-        R: AsMut<Resolver<'ra, 'tcx>>,
-        F: FnMut(&mut R, Ident, Namespace, NameBinding<'ra>),
-    {
+    fn for_each_child<'tcx, R: AsRef<Resolver<'ra, 'tcx>>>(
+        self,
+        resolver: &R,
+        mut f: impl FnMut(&R, Ident, Namespace, NameBinding<'ra>),
+    ) {
+        for (key, name_resolution) in resolver.as_ref().resolutions(self).borrow().iter() {
+            if let Some(binding) = name_resolution.borrow().best_binding() {
+                f(resolver, key.ident, key.ns, binding);
+            }
+        }
+    }
+
+    fn for_each_child_mut<'tcx, R: AsMut<Resolver<'ra, 'tcx>>>(
+        self,
+        resolver: &mut R,
+        mut f: impl FnMut(&mut R, Ident, Namespace, NameBinding<'ra>),
+    ) {
         for (key, name_resolution) in resolver.as_mut().resolutions(self).borrow().iter() {
             if let Some(binding) = name_resolution.borrow().best_binding() {
                 f(resolver, key.ident, key.ns, binding);
@@ -669,10 +681,7 @@ impl<'ra> Module<'ra> {
     }
 
     /// This modifies `self` in place. The traits will be stored in `self.traits`.
-    fn ensure_traits<'tcx, R>(self, resolver: &mut R)
-    where
-        R: AsMut<Resolver<'ra, 'tcx>>,
-    {
+    fn ensure_traits<'tcx>(self, resolver: &impl AsRef<Resolver<'ra, 'tcx>>) {
         let mut traits = self.traits.borrow_mut();
         if traits.is_none() {
             let mut collected_traits = Vec::new();
@@ -681,7 +690,7 @@ impl<'ra> Module<'ra> {
                     return;
                 }
                 if let Res::Def(DefKind::Trait | DefKind::TraitAlias, def_id) = binding.res() {
-                    collected_traits.push((name, binding, r.as_mut().get_module(def_id)))
+                    collected_traits.push((name, binding, r.as_ref().get_module(def_id)))
                 }
             });
             *traits = Some(collected_traits.into_boxed_slice());
@@ -1340,6 +1349,12 @@ impl<'ra, 'tcx> AsMut<Resolver<'ra, 'tcx>> for Resolver<'ra, 'tcx> {
     }
 }
 
+impl<'ra, 'tcx> AsRef<Resolver<'ra, 'tcx>> for Resolver<'ra, 'tcx> {
+    fn as_ref(&self) -> &Resolver<'ra, 'tcx> {
+        self
+    }
+}
+
 impl<'tcx> Resolver<'_, 'tcx> {
     fn opt_local_def_id(&self, node: NodeId) -> Option<LocalDefId> {
         self.opt_feed(node).map(|f| f.key())
@@ -1861,7 +1876,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     // We don't reject trait aliases (`trait_module == None`) because we don't have access to their
     // associated items.
     fn trait_may_have_item(
-        &mut self,
+        &self,
         trait_module: Option<Module<'ra>>,
         assoc_item: Option<(Symbol, Namespace)>,
     ) -> bool {
@@ -1893,7 +1908,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         import_ids
     }
 
-    fn resolutions(&mut self, module: Module<'ra>) -> &'ra Resolutions<'ra> {
+    fn resolutions(&self, module: Module<'ra>) -> &'ra Resolutions<'ra> {
         if module.populate_on_access.get() {
             module.populate_on_access.set(false);
             self.build_reduced_graph_external(module);
@@ -1902,7 +1917,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     }
 
     fn resolution(
-        &mut self,
+        &self,
         module: Module<'ra>,
         key: BindingKey,
     ) -> Option<Ref<'ra, NameResolution<'ra>>> {
@@ -1910,7 +1925,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     }
 
     fn resolution_or_default(
-        &mut self,
+        &self,
         module: Module<'ra>,
         key: BindingKey,
     ) -> &'ra RefCell<NameResolution<'ra>> {
