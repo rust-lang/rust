@@ -497,16 +497,9 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                     let rw = self.with_context(|ctx| format_trait(ctx, item, block_indent));
                     self.push_rewrite(item.span, rw);
                 }
-                ast::ItemKind::TraitAlias(ident, ref generics, ref generic_bounds) => {
+                ast::ItemKind::TraitAlias(ref ta) => {
                     let shape = Shape::indented(self.block_indent, self.config);
-                    let rw = format_trait_alias(
-                        &self.get_context(),
-                        ident,
-                        &item.vis,
-                        generics,
-                        generic_bounds,
-                        shape,
-                    );
+                    let rw = format_trait_alias(&self.get_context(), ta, &item.vis, shape);
                     self.push_rewrite(item.span, rw);
                 }
                 ast::ItemKind::ExternCrate(..) => {

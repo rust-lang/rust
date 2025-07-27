@@ -2678,7 +2678,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 );
             }
 
-            ItemKind::TraitAlias(_, ref generics, ref bounds) => {
+            ItemKind::TraitAlias(box TraitAlias { ref generics, ref bounds, .. }) => {
                 // Create a new rib for the trait-wide type parameters.
                 self.with_generic_param_rib(
                     &generics.params,
@@ -5191,7 +5191,7 @@ impl<'ast> Visitor<'ast> for ItemInfoCollector<'_, '_, '_> {
             | ItemKind::Union(_, generics, _)
             | ItemKind::Impl(box Impl { generics, .. })
             | ItemKind::Trait(box Trait { generics, .. })
-            | ItemKind::TraitAlias(_, generics, _) => {
+            | ItemKind::TraitAlias(box TraitAlias { generics, .. }) => {
                 if let ItemKind::Fn(box Fn { sig, .. }) = &item.kind {
                     self.collect_fn_info(sig.header, &sig.decl, item.id, &item.attrs);
                 }
