@@ -1,4 +1,4 @@
-#![allow(clippy::iter_next_slice, clippy::needless_return)]
+#![allow(clippy::iter_next_slice, clippy::needless_return, clippy::redundant_pattern_matching)]
 
 fn no_break_or_continue_loop() {
     for i in [1, 2, 3].iter() {
