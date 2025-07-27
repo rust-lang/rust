@@ -4,6 +4,7 @@
     dead_code,
     clippy::borrow_as_ptr,
     unnecessary_transmutes,
+    integer_to_ptr_transmutes,
     clippy::needless_lifetimes,
     clippy::missing_transmute_annotations
 )]
@@ -60,12 +61,10 @@ fn useless() {
         //~^ useless_transmute
 
         let _: *const usize = std::mem::transmute(5_isize);
-        //~^ useless_transmute
 
         let _ = std::ptr::dangling::<usize>();
 
         let _: *const usize = std::mem::transmute(1 + 1usize);
-        //~^ useless_transmute
 
         let _ = (1 + 1_usize) as *const usize;
     }
