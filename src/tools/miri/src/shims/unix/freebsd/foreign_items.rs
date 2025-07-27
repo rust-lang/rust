@@ -24,7 +24,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         match link_name.as_str() {
             // Threading
             "pthread_setname_np" => {
-                let [thread, name] = this.check_shim(abi, CanonAbi::C, link_name, args)?;
+                let [thread, name] =
+                    this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
                 let max_len = u64::MAX; // FreeBSD does not seem to have a limit.
                 let res = match this.pthread_setname_np(
                     this.read_scalar(thread)?,
@@ -39,7 +40,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_scalar(res, dest)?;
             }
             "pthread_getname_np" => {
-                let [thread, name, len] = this.check_shim(abi, CanonAbi::C, link_name, args)?;
+                let [thread, name, len] =
+                    this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
                 // FreeBSD's pthread_getname_np uses strlcpy, which truncates the resulting value,
                 // but always adds a null terminator (except for zero-sized buffers).
                 // https://github.com/freebsd/freebsd-src/blob/c2d93a803acef634bd0eede6673aeea59e90c277/lib/libthr/thread/thr_info.c#L119-L144
@@ -57,7 +59,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_scalar(res, dest)?;
             }
             "pthread_getthreadid_np" => {
-                let [] = this.check_shim(abi, CanonAbi::C, link_name, args)?;
+                let [] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
                 let result = this.unix_gettid(link_name.as_str())?;
                 this.write_scalar(result, dest)?;
             }
@@ -65,7 +67,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "cpuset_getaffinity" => {
                 // The "same" kind of api as `sched_getaffinity` but more fine grained control for FreeBSD specifically.
                 let [level, which, id, set_size, mask] =
-                    this.check_shim(abi, CanonAbi::C, link_name, args)?;
+                    this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
 
                 let level = this.read_scalar(level)?.to_i32()?;
                 let which = this.read_scalar(which)?.to_i32()?;
@@ -129,7 +131,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // Synchronization primitives
             "_umtx_op" => {
                 let [obj, op, val, uaddr, uaddr2] =
-                    this.check_shim(abi, CanonAbi::C, link_name, args)?;
+                    this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
                 this._umtx_op(obj, op, val, uaddr, uaddr2, dest)?;
             }
 
@@ -137,29 +139,30 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // For those, we both intercept `func` and `call@FBSD_1.0` symbols cases
             // since freebsd 12 the former form can be expected.
             "stat" | "stat@FBSD_1.0" => {
-                let [path, buf] = this.check_shim(abi, CanonAbi::C, link_name, args)?;
+                let [path, buf] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
                 let result = this.macos_fbsd_solarish_stat(path, buf)?;
                 this.write_scalar(result, dest)?;
             }
             "lstat" | "lstat@FBSD_1.0" => {
-                let [path, buf] = this.check_shim(abi, CanonAbi::C, link_name, args)?;
+                let [path, buf] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
                 let result = this.macos_fbsd_solarish_lstat(path, buf)?;
                 this.write_scalar(result, dest)?;
             }
             "fstat" | "fstat@FBSD_1.0" => {
-                let [fd, buf] = this.check_shim(abi, CanonAbi::C, link_name, args)?;
+                let [fd, buf] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
                 let result = this.macos_fbsd_solarish_fstat(fd, buf)?;
                 this.write_scalar(result, dest)?;
             }
             "readdir_r" | "readdir_r@FBSD_1.0" => {
-                let [dirp, entry, result] = this.check_shim(abi, CanonAbi::C, link_name, args)?;
+                let [dirp, entry, result] =
+                    this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
                 let result = this.macos_fbsd_readdir_r(dirp, entry, result)?;
                 this.write_scalar(result, dest)?;
             }
 
             // Miscellaneous
             "__error" => {
-                let [] = this.check_shim(abi, CanonAbi::C, link_name, args)?;
+                let [] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
                 let errno_place = this.last_error_place()?;
                 this.write_scalar(errno_place.to_ref(this).to_scalar(), dest)?;
             }
@@ -167,7 +170,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // Incomplete shims that we "stub out" just to get pre-main initialization code to work.
             // These shims are enabled only when the caller is in the standard library.
             "pthread_attr_get_np" if this.frame_in_std() => {
-                let [_thread, _attr] = this.check_shim(abi, CanonAbi::C, link_name, args)?;
+                let [_thread, _attr] =
+                    this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
                 this.write_null(dest)?;
             }
 
