@@ -37,9 +37,13 @@ pub(crate) fn check_legal_trait_for_method_call(
     receiver: Option<Span>,
     expr_span: Span,
     trait_id: DefId,
-    _body_id: DefId,
+    body_id: DefId,
 ) -> Result<(), ErrorGuaranteed> {
-    if tcx.is_lang_item(trait_id, LangItem::Drop) {
+    if tcx.is_lang_item(trait_id, LangItem::Drop)
+        // Allow calling `Drop::pin_drop` in `Drop::drop`
+        && let Some(parent) = tcx.opt_parent(body_id)
+        && !tcx.is_lang_item(parent, LangItem::Drop)
+    {
         let sugg = if let Some(receiver) = receiver.filter(|s| !s.is_empty()) {
             errors::ExplicitDestructorCallSugg::Snippet {
                 lo: expr_span.shrink_to_lo(),
