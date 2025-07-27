@@ -2365,9 +2365,11 @@ impl<'db> InferenceContext<'_, 'db> {
         };
 
         let data = self.db.function_signature(func);
-        let Some(legacy_const_generics_indices) = &data.legacy_const_generics_indices else {
+        let Some(legacy_const_generics_indices) = data.legacy_const_generics_indices(self.db, func)
+        else {
             return Default::default();
         };
+        let mut legacy_const_generics_indices = Box::<[u32]>::from(legacy_const_generics_indices);
 
         // only use legacy const generics if the param count matches with them
         if data.params.len() + legacy_const_generics_indices.len() != args.len() {
@@ -2376,9 +2378,8 @@ impl<'db> InferenceContext<'_, 'db> {
             } else {
                 // there are more parameters than there should be without legacy
                 // const params; use them
-                let mut indices = legacy_const_generics_indices.as_ref().clone();
-                indices.sort();
-                return indices;
+                legacy_const_generics_indices.sort_unstable();
+                return legacy_const_generics_indices;
             }
         }
 
@@ -2391,9 +2392,8 @@ impl<'db> InferenceContext<'_, 'db> {
             self.infer_expr(args[arg_idx as usize], &expected, ExprIsRead::Yes);
             // FIXME: evaluate and unify with the const
         }
-        let mut indices = legacy_const_generics_indices.as_ref().clone();
-        indices.sort();
-        indices
+        legacy_const_generics_indices.sort_unstable();
+        legacy_const_generics_indices
     }
 
     /// Dereferences a single level of immutable referencing.

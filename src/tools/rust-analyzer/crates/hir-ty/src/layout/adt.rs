@@ -4,9 +4,9 @@ use std::{cmp, ops::Bound};
 
 use hir_def::{
     AdtId, VariantId,
+    attrs::AttrFlags,
     signatures::{StructFlags, VariantFields},
 };
-use intern::sym;
 use rustc_abi::{Integer, ReprOptions, TargetDataLayout};
 use rustc_index::IndexVec;
 use smallvec::SmallVec;
@@ -44,15 +44,15 @@ pub fn layout_of_adt_query<'db>(
             r.push(handle_variant(s.into(), s.fields(db))?);
             (
                 r,
-                sig.repr.unwrap_or_default(),
+                AttrFlags::repr(db, s.into()).unwrap_or_default(),
                 sig.flags.intersects(StructFlags::IS_UNSAFE_CELL | StructFlags::IS_UNSAFE_PINNED),
             )
         }
         AdtId::UnionId(id) => {
-            let data = db.union_signature(id);
+            let repr = AttrFlags::repr(db, id.into());
             let mut r = SmallVec::new();
             r.push(handle_variant(id.into(), id.fields(db))?);
-            (r, data.repr.unwrap_or_default(), false)
+            (r, repr.unwrap_or_default(), false)
         }
         AdtId::EnumId(e) => {
             let variants = e.enum_variants(db);
@@ -61,7 +61,7 @@ pub fn layout_of_adt_query<'db>(
                 .iter()
                 .map(|&(v, _, _)| handle_variant(v.into(), v.fields(db)))
                 .collect::<Result<SmallVec<_>, _>>()?;
-            (r, db.enum_signature(e).repr.unwrap_or_default(), false)
+            (r, AttrFlags::repr(db, e.into()).unwrap_or_default(), false)
         }
     };
     let variants = variants
@@ -105,27 +105,12 @@ pub(crate) fn layout_of_adt_cycle_result<'db>(
 }
 
 fn layout_scalar_valid_range(db: &dyn HirDatabase, def: AdtId) -> (Bound<u128>, Bound<u128>) {
-    let attrs = db.attrs(def.into());
-    let get = |name| {
-        let attr = attrs.by_key(name).tt_values();
-        for tree in attr {
-            if let Some(it) = tree.iter().next_as_view() {
-                let text = it.to_string().replace('_', "");
-                let (text, base) = match text.as_bytes() {
-                    [b'0', b'x', ..] => (&text[2..], 16),
-                    [b'0', b'o', ..] => (&text[2..], 8),
-                    [b'0', b'b', ..] => (&text[2..], 2),
-                    _ => (&*text, 10),
-                };
-
-                if let Ok(it) = u128::from_str_radix(text, base) {
-                    return Bound::Included(it);
-                }
-            }
-        }
-        Bound::Unbounded
+    let range = AttrFlags::rustc_layout_scalar_valid_range(db, def);
+    let get = |value| match value {
+        Some(it) => Bound::Included(it),
+        None => Bound::Unbounded,
     };
-    (get(sym::rustc_layout_scalar_valid_range_start), get(sym::rustc_layout_scalar_valid_range_end))
+    (get(range.start), get(range.end))
 }
 
 /// Finds the appropriate Integer type and signedness for the given

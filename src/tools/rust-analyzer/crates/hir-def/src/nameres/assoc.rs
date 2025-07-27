@@ -4,7 +4,8 @@ use std::mem;
 
 use cfg::CfgOptions;
 use hir_expand::{
-    AstId, ExpandTo, HirFileId, InFile, Intern, Lookup, MacroCallKind, MacroDefKind,
+    AstId, AttrMacroAttrIds, ExpandTo, HirFileId, InFile, Intern, Lookup, MacroCallKind,
+    MacroDefKind,
     mod_path::ModPath,
     name::{AsName, Name},
     span_map::SpanMap,
@@ -21,8 +22,8 @@ use triomphe::Arc;
 use crate::{
     AssocItemId, AstIdWithPath, ConstLoc, FunctionId, FunctionLoc, ImplId, ItemContainerId,
     ItemLoc, MacroCallId, ModuleId, TraitId, TypeAliasId, TypeAliasLoc,
-    attr::Attrs,
     db::DefDatabase,
+    item_tree::AttrsOrCfg,
     macro_call_as_call_id,
     nameres::{
         DefMap, LocalDefMap, MacroSubNs,
@@ -191,19 +192,22 @@ impl<'a> AssocItemCollector<'a> {
 
     fn collect_item(&mut self, item: ast::AssocItem) {
         let ast_id = self.ast_id_map.ast_id(&item);
-        let attrs = Attrs::new(self.db, &item, self.span_map.as_ref(), self.cfg_options);
-        if let Err(cfg) = attrs.is_cfg_enabled(self.cfg_options) {
-            self.diagnostics.push(DefDiagnostic::unconfigured_code(
-                self.module_id.local_id,
-                InFile::new(self.file_id, ast_id.erase()),
-                cfg,
-                self.cfg_options.clone(),
-            ));
-            return;
-        }
+        let attrs =
+            match AttrsOrCfg::lower(self.db, &item, &|| self.cfg_options, self.span_map.as_ref()) {
+                AttrsOrCfg::Enabled { attrs } => attrs,
+                AttrsOrCfg::CfgDisabled(cfg) => {
+                    self.diagnostics.push(DefDiagnostic::unconfigured_code(
+                        self.module_id.local_id,
+                        InFile::new(self.file_id, ast_id.erase()),
+                        cfg.0,
+                        self.cfg_options.clone(),
+                    ));
+                    return;
+                }
+            };
         let ast_id = InFile::new(self.file_id, ast_id.upcast());
 
-        'attrs: for attr in &*attrs {
+        'attrs: for (attr_id, attr) in attrs.as_ref().iter() {
             let ast_id_with_path = AstIdWithPath { path: attr.path.clone(), ast_id };
 
             match self.def_map.resolve_attr_macro(
@@ -212,6 +216,7 @@ impl<'a> AssocItemCollector<'a> {
                 self.module_id.local_id,
                 ast_id_with_path,
                 attr,
+                attr_id,
             ) {
                 Ok(ResolvedAttr::Macro(call_id)) => {
                     let loc = self.db.lookup_intern_macro_call(call_id);
@@ -240,8 +245,12 @@ impl<'a> AssocItemCollector<'a> {
                 Err(_) => {
                     self.diagnostics.push(DefDiagnostic::unresolved_macro_call(
                         self.module_id.local_id,
-                        MacroCallKind::Attr { ast_id, attr_args: None, invoc_attr_index: attr.id },
-                        attr.path().clone(),
+                        MacroCallKind::Attr {
+                            ast_id,
+                            attr_args: None,
+                            censored_attr_ids: AttrMacroAttrIds::from_one(attr_id),
+                        },
+                        (*attr.path).clone(),
                     ));
                 }
             }

@@ -7,8 +7,8 @@ use span::{Edition, ErasedFileAstId};
 use crate::{
     item_tree::{
         Const, DefDatabase, Enum, ExternBlock, ExternCrate, FieldsShape, Function, Impl, ItemTree,
-        Macro2, MacroCall, MacroRules, Mod, ModItemId, ModKind, RawAttrs, RawVisibilityId, Static,
-        Struct, Trait, TypeAlias, Union, Use, UseTree, UseTreeKind,
+        Macro2, MacroCall, MacroRules, Mod, ModItemId, ModKind, RawVisibilityId, Static, Struct,
+        Trait, TypeAlias, Union, Use, UseTree, UseTreeKind, attrs::AttrsOrCfg,
     },
     visibility::RawVisibility,
 };
@@ -85,9 +85,13 @@ impl Printer<'_> {
         }
     }
 
-    fn print_attrs(&mut self, attrs: &RawAttrs, inner: bool, separated_by: &str) {
+    fn print_attrs(&mut self, attrs: &AttrsOrCfg, inner: bool, separated_by: &str) {
+        let AttrsOrCfg::Enabled { attrs } = attrs else {
+            w!(self, "#[cfg(false)]{separated_by}");
+            return;
+        };
         let inner = if inner { "!" } else { "" };
-        for attr in &**attrs {
+        for attr in &*attrs.as_ref() {
             w!(
                 self,
                 "#{}[{}{}]{}",

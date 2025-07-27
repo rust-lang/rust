@@ -9,6 +9,7 @@ use base_db::{
 };
 use hir_def::{
     EnumId, EnumVariantId, FunctionId, Lookup, TraitId,
+    attrs::AttrFlags,
     db::DefDatabase,
     hir::generics::WherePredicate,
     lang_item::LangItem,
@@ -119,7 +120,7 @@ pub fn target_feature_is_safe_in_target(target: &TargetData) -> TargetFeatureIsS
 pub fn is_fn_unsafe_to_call(
     db: &dyn HirDatabase,
     func: FunctionId,
-    caller_target_features: &TargetFeatures,
+    caller_target_features: &TargetFeatures<'_>,
     call_edition: Edition,
     target_feature_is_safe: TargetFeatureIsSafeInTarget,
 ) -> Unsafety {
@@ -130,8 +131,7 @@ pub fn is_fn_unsafe_to_call(
 
     if data.has_target_feature() && target_feature_is_safe == TargetFeatureIsSafeInTarget::No {
         // RFC 2396 <https://rust-lang.github.io/rfcs/2396-target-feature-1.1.html>.
-        let callee_target_features =
-            TargetFeatures::from_attrs_no_implications(&db.attrs(func.into()));
+        let callee_target_features = TargetFeatures::from_fn_no_implications(db, func);
         if !caller_target_features.enabled.is_superset(&callee_target_features.enabled) {
             return Unsafety::Unsafe;
         }
@@ -152,7 +152,7 @@ pub fn is_fn_unsafe_to_call(
             if is_intrinsic_block {
                 // legacy intrinsics
                 // extern "rust-intrinsic" intrinsics are unsafe unless they have the rustc_safe_intrinsic attribute
-                if db.attrs(func.into()).by_key(sym::rustc_safe_intrinsic).exists() {
+                if AttrFlags::query(db, func.into()).contains(AttrFlags::RUSTC_SAFE_INTRINSIC) {
                     Unsafety::Safe
                 } else {
                     Unsafety::Unsafe

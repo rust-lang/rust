@@ -45,11 +45,12 @@ use arrayvec::ArrayVec;
 use base_db::{CrateDisplayName, CrateOrigin, LangCrateOrigin};
 use either::Either;
 use hir_def::{
-    AdtId, AssocItemId, AssocItemLoc, AttrDefId, CallableDefId, ConstId, ConstParamId,
-    CrateRootModuleId, DefWithBodyId, EnumId, EnumVariantId, ExternBlockId, ExternCrateId,
-    FunctionId, GenericDefId, GenericParamId, HasModule, ImplId, ItemContainerId, LifetimeParamId,
+    AdtId, AssocItemId, AssocItemLoc, CallableDefId, ConstId, ConstParamId, CrateRootModuleId,
+    DefWithBodyId, EnumId, EnumVariantId, ExternBlockId, ExternCrateId, FunctionId, GenericDefId,
+    GenericParamId, HasModule, ImplId, InternedModuleId, ItemContainerId, LifetimeParamId,
     LocalFieldId, Lookup, MacroExpander, MacroId, ModuleId, StaticId, StructId, SyntheticSyntax,
     TupleId, TypeAliasId, TypeOrConstParamId, TypeParamId, UnionId,
+    attrs::AttrFlags,
     expr_store::{ExpressionStoreDiagnostics, ExpressionStoreSourceMap},
     hir::{
         BindingAnnotation, BindingId, Expr, ExprId, ExprOrPatId, LabelId, Pat,
@@ -63,13 +64,12 @@ use hir_def::{
     },
     per_ns::PerNs,
     resolver::{HasResolver, Resolver},
-    signatures::{ImplFlags, StaticFlags, StructFlags, TraitFlags, VariantFields},
+    signatures::{EnumSignature, ImplFlags, StaticFlags, StructFlags, TraitFlags, VariantFields},
     src::HasSource as _,
     visibility::visibility_from_ast,
 };
 use hir_expand::{
-    AstId, MacroCallKind, RenderedExpandError, ValueResult, attrs::collect_attrs,
-    proc_macro::ProcMacroKind,
+    AstId, MacroCallKind, RenderedExpandError, ValueResult, proc_macro::ProcMacroKind,
 };
 use hir_ty::{
     TraitEnvironment, TyDefId, TyLoweringDiagnostic, ValueTyDefId, all_super_traits, autoderef,
@@ -98,8 +98,8 @@ use smallvec::SmallVec;
 use span::{AstIdNode, Edition, FileId};
 use stdx::{format_to, impl_from, never};
 use syntax::{
-    AstNode, AstPtr, SmolStr, SyntaxNode, SyntaxNodePtr, T, TextRange, ToSmolStr,
-    ast::{self, HasAttrs as _, HasName, HasVisibility as _},
+    AstNode, AstPtr, SmolStr, SyntaxNode, SyntaxNodePtr, TextRange, ToSmolStr,
+    ast::{self, HasName, HasVisibility as _},
     format_smolstr,
 };
 use triomphe::{Arc, ThinArc};
@@ -107,7 +107,7 @@ use triomphe::{Arc, ThinArc};
 use crate::db::{DefDatabase, HirDatabase};
 
 pub use crate::{
-    attrs::{HasAttrs, resolve_doc_path_on},
+    attrs::{AttrsWithOwner, HasAttrs, resolve_doc_path_on},
     diagnostics::*,
     has_source::HasSource,
     semantics::{
@@ -130,7 +130,7 @@ pub use {
     hir_def::{
         Complete,
         FindPathConfig,
-        attr::{AttrSourceMap, Attrs, AttrsWithOwner},
+        attrs::{Docs, IsInnerDoc},
         find_path::PrefixKind,
         import_map,
         lang_item::LangItem,
@@ -144,7 +144,6 @@ pub use {
     },
     hir_expand::{
         EditionedFileId, ExpandResult, HirFileId, MacroCallId, MacroKind,
-        attrs::{Attr, AttrId},
         change::ChangeWithProcMacros,
         files::{
             FilePosition, FilePositionWrapper, FileRange, FileRangeWrapper, HirFilePosition,
@@ -290,11 +289,10 @@ impl Crate {
     }
 
     /// Try to get the root URL of the documentation of a crate.
-    pub fn get_html_root_url(self: &Crate, db: &dyn HirDatabase) -> Option<String> {
+    pub fn get_html_root_url(self, db: &dyn HirDatabase) -> Option<String> {
         // Look for #![doc(html_root_url = "...")]
-        let attrs = db.attrs(AttrDefId::ModuleId(self.root_module().into()));
-        let doc_url = attrs.by_key(sym::doc).find_string_value_in_tt(sym::html_root_url);
-        doc_url.map(|s| s.trim_matches('"').trim_end_matches('/').to_owned() + "/")
+        let doc_url = AttrFlags::doc_html_root_url(db, self.id);
+        doc_url.as_ref().map(|s| s.trim_matches('"').trim_end_matches('/').to_owned() + "/")
     }
 
     pub fn cfg<'db>(&self, db: &'db dyn HirDatabase) -> &'db CfgOptions {
@@ -639,7 +637,7 @@ impl Module {
                 // FIXME: This is accidentally quadratic.
                 continue;
             }
-            emit_def_diagnostic(db, acc, diag, edition);
+            emit_def_diagnostic(db, acc, diag, edition, def_map.krate());
         }
 
         if !self.id.is_block_module() {
@@ -658,8 +656,9 @@ impl Module {
                     acc.extend(def.diagnostics(db, style_lints))
                 }
                 ModuleDef::Trait(t) => {
+                    let krate = t.krate(db);
                     for diag in TraitItems::query_with_diagnostics(db, t.id).1.iter() {
-                        emit_def_diagnostic(db, acc, diag, edition);
+                        emit_def_diagnostic(db, acc, diag, edition, krate.id);
                     }
 
                     for item in t.items(db) {
@@ -777,7 +776,7 @@ impl Module {
             let ast_id_map = db.ast_id_map(file_id);
 
             for diag in impl_def.id.impl_items_with_diagnostics(db).1.iter() {
-                emit_def_diagnostic(db, acc, diag, edition);
+                emit_def_diagnostic(db, acc, diag, edition, loc.container.krate());
             }
 
             if inherent_impls.invalid_impls().contains(&impl_def.id) {
@@ -808,21 +807,10 @@ impl Module {
                     return None;
                 }
                 let parent = impl_def.id.into();
-                let generic_params = db.generic_params(parent);
-                let lifetime_params = generic_params.iter_lt().map(|(local_id, _)| {
-                    GenericParamId::LifetimeParamId(LifetimeParamId { parent, local_id })
-                });
-                let type_params = generic_params
-                    .iter_type_or_consts()
-                    .filter(|(_, it)| it.type_param().is_some())
-                    .map(|(local_id, _)| {
-                        GenericParamId::TypeParamId(TypeParamId::from_unchecked(
-                            TypeOrConstParamId { parent, local_id },
-                        ))
-                    });
-                let res = type_params.chain(lifetime_params).any(|p| {
-                    db.attrs(AttrDefId::GenericParamId(p)).by_key(sym::may_dangle).exists()
-                });
+                let (lifetimes_attrs, type_and_consts_attrs) =
+                    AttrFlags::query_generic_params(db, parent);
+                let res = lifetimes_attrs.values().any(|it| it.contains(AttrFlags::MAY_DANGLE))
+                    || type_and_consts_attrs.values().any(|it| it.contains(AttrFlags::MAY_DANGLE));
                 Some(res)
             })()
             .unwrap_or(false);
@@ -983,6 +971,17 @@ impl Module {
     ) -> Option<ModPath> {
         hir_def::find_path::find_path(db, item.into().into(), self.into(), prefix_kind, true, cfg)
     }
+
+    #[inline]
+    pub fn doc_keyword(self, db: &dyn HirDatabase) -> Option<Symbol> {
+        AttrFlags::doc_keyword(db, InternedModuleId::new(db, self.id))
+    }
+
+    /// Whether it has `#[path = "..."]` attribute.
+    #[inline]
+    pub fn has_path(&self, db: &dyn HirDatabase) -> bool {
+        self.attrs(db).attrs.contains(AttrFlags::HAS_PATH)
+    }
 }
 
 fn macro_call_diagnostics<'db>(
@@ -997,31 +996,19 @@ fn macro_call_diagnostics<'db>(
     if let Some(err) = err {
         let loc = db.lookup_intern_macro_call(macro_call_id);
         let file_id = loc.kind.file_id();
-        let node =
-            InFile::new(file_id, db.ast_id_map(file_id).get_erased(loc.kind.erased_ast_id()));
+        let mut range = precise_macro_call_location(&loc.kind, db, loc.krate);
         let RenderedExpandError { message, error, kind } = err.render_to_string(db);
-        let editioned_file_id = EditionedFileId::from_span(db, err.span().anchor.file_id);
-        let precise_location = if editioned_file_id == file_id {
-            Some(
-                err.span().range
-                    + db.ast_id_map(editioned_file_id.into())
-                        .get_erased(err.span().anchor.ast_id)
-                        .text_range()
-                        .start(),
-            )
-        } else {
-            None
-        };
-        acc.push(MacroError { node, precise_location, message, error, kind }.into());
+        if Some(err.span().anchor.file_id) == file_id.file_id().map(|it| it.editioned_file_id(db)) {
+            range.value = err.span().range
+                + db.ast_id_map(file_id).get_erased(err.span().anchor.ast_id).text_range().start();
+        }
+        acc.push(MacroError { range, message, error, kind }.into());
     }
 
     if !parse_errors.is_empty() {
         let loc = db.lookup_intern_macro_call(macro_call_id);
-        let (node, precise_location) = precise_macro_call_location(&loc.kind, db);
-        acc.push(
-            MacroExpansionParseError { node, precise_location, errors: parse_errors.clone() }
-                .into(),
-        )
+        let range = precise_macro_call_location(&loc.kind, db, loc.krate);
+        acc.push(MacroExpansionParseError { range, errors: parse_errors.clone() }.into())
     }
 }
 
@@ -1045,6 +1032,7 @@ fn emit_macro_def_diagnostics<'db>(
             acc,
             &DefDiagnosticKind::MacroDefError { ast, message: e.to_string() },
             edition,
+            m.krate(db).id,
         );
     }
 }
@@ -1054,8 +1042,9 @@ fn emit_def_diagnostic<'db>(
     acc: &mut Vec<AnyDiagnostic<'db>>,
     diag: &DefDiagnostic,
     edition: Edition,
+    krate: base_db::Crate,
 ) {
-    emit_def_diagnostic_(db, acc, &diag.kind, edition)
+    emit_def_diagnostic_(db, acc, &diag.kind, edition, krate)
 }
 
 fn emit_def_diagnostic_<'db>(
@@ -1063,6 +1052,7 @@ fn emit_def_diagnostic_<'db>(
     acc: &mut Vec<AnyDiagnostic<'db>>,
     diag: &DefDiagnosticKind,
     edition: Edition,
+    krate: base_db::Crate,
 ) {
     match diag {
         DefDiagnosticKind::UnresolvedModule { ast: declaration, candidates } => {
@@ -1085,8 +1075,7 @@ fn emit_def_diagnostic_<'db>(
             let RenderedExpandError { message, error, kind } = err.render_to_string(db);
             acc.push(
                 MacroError {
-                    node: InFile::new(ast.file_id, item.syntax_node_ptr()),
-                    precise_location: None,
+                    range: InFile::new(ast.file_id, item.text_range()),
                     message: format!("{}: {message}", path.display(db, edition)),
                     error,
                     kind,
@@ -1116,11 +1105,10 @@ fn emit_def_diagnostic_<'db>(
             );
         }
         DefDiagnosticKind::UnresolvedMacroCall { ast, path } => {
-            let (node, precise_location) = precise_macro_call_location(ast, db);
+            let location = precise_macro_call_location(ast, db, krate);
             acc.push(
                 UnresolvedMacroCall {
-                    macro_call: node,
-                    precise_location,
+                    range: location,
                     path: path.clone(),
                     is_bang: matches!(ast, MacroCallKind::FnLike { .. }),
                 }
@@ -1139,34 +1127,12 @@ fn emit_def_diagnostic_<'db>(
             );
         }
         DefDiagnosticKind::InvalidDeriveTarget { ast, id } => {
-            let node = ast.to_node(db);
-            let derive = node.attrs().nth(*id);
-            match derive {
-                Some(derive) => {
-                    acc.push(
-                        InvalidDeriveTarget {
-                            node: ast.with_value(SyntaxNodePtr::from(AstPtr::new(&derive))),
-                        }
-                        .into(),
-                    );
-                }
-                None => stdx::never!("derive diagnostic on item without derive attribute"),
-            }
+            let derive = id.find_attr_range(db, krate, *ast).3.path_range();
+            acc.push(InvalidDeriveTarget { range: ast.with_value(derive) }.into());
         }
         DefDiagnosticKind::MalformedDerive { ast, id } => {
-            let node = ast.to_node(db);
-            let derive = node.attrs().nth(*id);
-            match derive {
-                Some(derive) => {
-                    acc.push(
-                        MalformedDerive {
-                            node: ast.with_value(SyntaxNodePtr::from(AstPtr::new(&derive))),
-                        }
-                        .into(),
-                    );
-                }
-                None => stdx::never!("derive diagnostic on item without derive attribute"),
-            }
+            let derive = id.find_attr_range(db, krate, *ast).2;
+            acc.push(MalformedDerive { range: ast.with_value(derive) }.into());
         }
         DefDiagnosticKind::MacroDefError { ast, message } => {
             let node = ast.to_node(db);
@@ -1185,61 +1151,28 @@ fn emit_def_diagnostic_<'db>(
 fn precise_macro_call_location(
     ast: &MacroCallKind,
     db: &dyn HirDatabase,
-) -> (InFile<SyntaxNodePtr>, Option<TextRange>) {
+    krate: base_db::Crate,
+) -> InFile<TextRange> {
     // FIXME: maybe we actually want slightly different ranges for the different macro diagnostics
     // - e.g. the full attribute for macro errors, but only the name for name resolution
     match ast {
         MacroCallKind::FnLike { ast_id, .. } => {
             let node = ast_id.to_node(db);
-            (
-                ast_id.with_value(SyntaxNodePtr::from(AstPtr::new(&node))),
-                node.path()
-                    .and_then(|it| it.segment())
-                    .and_then(|it| it.name_ref())
-                    .map(|it| it.syntax().text_range()),
-            )
+            let range = node
+                .path()
+                .and_then(|it| it.segment())
+                .and_then(|it| it.name_ref())
+                .map(|it| it.syntax().text_range());
+            let range = range.unwrap_or_else(|| node.syntax().text_range());
+            ast_id.with_value(range)
         }
         MacroCallKind::Derive { ast_id, derive_attr_index, derive_index, .. } => {
-            let node = ast_id.to_node(db);
-            // Compute the precise location of the macro name's token in the derive
-            // list.
-            let token = (|| {
-                let derive_attr = collect_attrs(&node)
-                    .nth(derive_attr_index.ast_index())
-                    .and_then(|x| Either::left(x.1))?;
-                let token_tree = derive_attr.meta()?.token_tree()?;
-                let chunk_by = token_tree
-                    .syntax()
-                    .children_with_tokens()
-                    .filter_map(|elem| match elem {
-                        syntax::NodeOrToken::Token(tok) => Some(tok),
-                        _ => None,
-                    })
-                    .chunk_by(|t| t.kind() == T![,]);
-                let (_, mut group) = chunk_by
-                    .into_iter()
-                    .filter(|&(comma, _)| !comma)
-                    .nth(*derive_index as usize)?;
-                group.find(|t| t.kind() == T![ident])
-            })();
-            (
-                ast_id.with_value(SyntaxNodePtr::from(AstPtr::new(&node))),
-                token.as_ref().map(|tok| tok.text_range()),
-            )
+            let range = derive_attr_index.find_derive_range(db, krate, *ast_id, *derive_index);
+            ast_id.with_value(range)
         }
-        MacroCallKind::Attr { ast_id, invoc_attr_index, .. } => {
-            let node = ast_id.to_node(db);
-            let attr = collect_attrs(&node)
-                .nth(invoc_attr_index.ast_index())
-                .and_then(|x| Either::left(x.1))
-                .unwrap_or_else(|| {
-                    panic!("cannot find attribute #{}", invoc_attr_index.ast_index())
-                });
-
-            (
-                ast_id.with_value(SyntaxNodePtr::from(AstPtr::new(&attr))),
-                Some(attr.syntax().text_range()),
-            )
+        MacroCallKind::Attr { ast_id, censored_attr_ids: attr_ids, .. } => {
+            let attr_range = attr_ids.invoc_attr().find_attr_range(db, krate, *ast_id).2;
+            ast_id.with_value(attr_range)
         }
     }
 }
@@ -1437,7 +1370,7 @@ impl Struct {
     }
 
     pub fn repr(self, db: &dyn HirDatabase) -> Option<ReprOptions> {
-        db.struct_signature(self.id).repr
+        AttrFlags::repr(db, self.id.into())
     }
 
     pub fn kind(self, db: &dyn HirDatabase) -> StructKind {
@@ -1453,7 +1386,7 @@ impl Struct {
     }
 
     pub fn is_unstable(self, db: &dyn HirDatabase) -> bool {
-        db.attrs(self.id.into()).is_unstable()
+        AttrFlags::query(db, self.id.into()).contains(AttrFlags::IS_UNSTABLE)
     }
 
     pub fn instantiate_infer<'db>(self, infer_ctxt: &InferCtxt<'db>) -> InstantiatedStruct<'db> {
@@ -1542,7 +1475,7 @@ impl Union {
             .collect()
     }
     pub fn is_unstable(self, db: &dyn HirDatabase) -> bool {
-        db.attrs(self.id.into()).is_unstable()
+        AttrFlags::query(db, self.id.into()).contains(AttrFlags::IS_UNSTABLE)
     }
 }
 
@@ -1577,7 +1510,7 @@ impl Enum {
     }
 
     pub fn repr(self, db: &dyn HirDatabase) -> Option<ReprOptions> {
-        db.enum_signature(self.id).repr
+        AttrFlags::repr(db, self.id.into())
     }
 
     pub fn ty<'db>(self, db: &'db dyn HirDatabase) -> Type<'db> {
@@ -1593,7 +1526,7 @@ impl Enum {
         let interner = DbInterner::new_with(db, None, None);
         Type::new_for_crate(
             self.id.lookup(db).container.krate(),
-            match db.enum_signature(self.id).variant_body_type() {
+            match EnumSignature::variant_body_type(db, self.id) {
                 layout::IntegerType::Pointer(sign) => match sign {
                     true => Ty::new_int(interner, rustc_type_ir::IntTy::Isize),
                     false => Ty::new_uint(interner, rustc_type_ir::UintTy::Usize),
@@ -1634,7 +1567,7 @@ impl Enum {
     }
 
     pub fn is_unstable(self, db: &dyn HirDatabase) -> bool {
-        db.attrs(self.id.into()).is_unstable()
+        AttrFlags::query(db, self.id.into()).contains(AttrFlags::IS_UNSTABLE)
     }
 }
 
@@ -1735,7 +1668,7 @@ impl Variant {
     }
 
     pub fn is_unstable(self, db: &dyn HirDatabase) -> bool {
-        db.attrs(self.id.into()).is_unstable()
+        AttrFlags::query(db, self.id.into()).contains(AttrFlags::IS_UNSTABLE)
     }
 
     pub fn instantiate_infer<'db>(self, infer_ctxt: &InferCtxt<'db>) -> InstantiatedVariant<'db> {
@@ -2220,8 +2153,7 @@ fn expr_store_diagnostics<'db>(
                 InactiveCode { node: *node, cfg: cfg.clone(), opts: opts.clone() }.into()
             }
             ExpressionStoreDiagnostics::UnresolvedMacroCall { node, path } => UnresolvedMacroCall {
-                macro_call: (*node).map(|ast_ptr| ast_ptr.into()),
-                precise_location: None,
+                range: node.map(|ptr| ptr.text_range()),
                 path: path.clone(),
                 is_bang: true,
             }
@@ -2446,33 +2378,33 @@ impl Function {
 
     /// Does this function have `#[test]` attribute?
     pub fn is_test(self, db: &dyn HirDatabase) -> bool {
-        db.attrs(self.id.into()).is_test()
+        self.attrs(db).is_test()
     }
 
     /// is this a `fn main` or a function with an `export_name` of `main`?
     pub fn is_main(self, db: &dyn HirDatabase) -> bool {
-        db.attrs(self.id.into()).export_name() == Some(&sym::main)
+        self.exported_main(db)
             || self.module(db).is_crate_root() && db.function_signature(self.id).name == sym::main
     }
 
     /// Is this a function with an `export_name` of `main`?
     pub fn exported_main(self, db: &dyn HirDatabase) -> bool {
-        db.attrs(self.id.into()).export_name() == Some(&sym::main)
+        AttrFlags::query(db, self.id.into()).contains(AttrFlags::IS_EXPORT_NAME_MAIN)
     }
 
     /// Does this function have the ignore attribute?
     pub fn is_ignore(self, db: &dyn HirDatabase) -> bool {
-        db.attrs(self.id.into()).is_ignore()
+        AttrFlags::query(db, self.id.into()).contains(AttrFlags::IS_IGNORE)
     }
 
     /// Does this function have `#[bench]` attribute?
     pub fn is_bench(self, db: &dyn HirDatabase) -> bool {
-        db.attrs(self.id.into()).is_bench()
+        AttrFlags::query(db, self.id.into()).contains(AttrFlags::IS_BENCH)
     }
 
     /// Is this function marked as unstable with `#[feature]` attribute?
     pub fn is_unstable(self, db: &dyn HirDatabase) -> bool {
-        db.attrs(self.id.into()).is_unstable()
+        AttrFlags::query(db, self.id.into()).contains(AttrFlags::IS_UNSTABLE)
     }
 
     pub fn is_unsafe_to_call(
@@ -2483,8 +2415,7 @@ impl Function {
     ) -> bool {
         let (target_features, target_feature_is_safe_in_target) = caller
             .map(|caller| {
-                let target_features =
-                    hir_ty::TargetFeatures::from_attrs(&db.attrs(caller.id.into()));
+                let target_features = hir_ty::TargetFeatures::from_fn(db, caller.id);
                 let target_feature_is_safe_in_target =
                     match &caller.krate(db).id.workspace_data(db).target {
                         Ok(target) => hir_ty::target_feature_is_safe_in_target(target),
@@ -2515,14 +2446,6 @@ impl Function {
     }
 
     pub fn as_proc_macro(self, db: &dyn HirDatabase) -> Option<Macro> {
-        let attrs = db.attrs(self.id.into());
-        // FIXME: Store this in FunctionData flags?
-        if !(attrs.is_proc_macro()
-            || attrs.is_proc_macro_attribute()
-            || attrs.is_proc_macro_derive())
-        {
-            return None;
-        }
         let def_map = crate_def_map(db, HasModule::krate(&self.id, db));
         def_map.fn_as_proc_macro(self.id).map(|id| Macro { id: id.into() })
     }
@@ -2975,7 +2898,7 @@ impl Trait {
 
     /// `#[rust_analyzer::completions(...)]` mode.
     pub fn complete(self, db: &dyn HirDatabase) -> Complete {
-        Complete::extract(true, &self.attrs(db))
+        Complete::extract(true, self.attrs(db).attrs)
     }
 }
 
@@ -3146,10 +3069,10 @@ impl Macro {
                 let loc = id.lookup(db);
                 let source = loc.source(db);
                 match loc.kind {
-                    ProcMacroKind::CustomDerive => db
-                        .attrs(id.into())
-                        .parse_proc_macro_derive()
-                        .map_or_else(|| as_name_opt(source.value.name()), |(it, _)| it),
+                    ProcMacroKind::CustomDerive => AttrFlags::derive_info(db, self.id).map_or_else(
+                        || as_name_opt(source.value.name()),
+                        |info| Name::new_symbol_root(info.trait_name.clone()),
+                    ),
                     ProcMacroKind::Bang | ProcMacroKind::Attr => as_name_opt(source.value.name()),
                 }
             }
@@ -3157,7 +3080,7 @@ impl Macro {
     }
 
     pub fn is_macro_export(self, db: &dyn HirDatabase) -> bool {
-        matches!(self.id, MacroId::MacroRulesId(_) if db.attrs(self.id.into()).by_key(sym::macro_export).exists())
+        matches!(self.id, MacroId::MacroRulesId(_) if AttrFlags::query(db, self.id.into()).contains(AttrFlags::IS_MACRO_EXPORT))
     }
 
     pub fn is_proc_macro(self) -> bool {
@@ -3981,18 +3904,10 @@ impl DeriveHelper {
     }
 
     pub fn name(&self, db: &dyn HirDatabase) -> Name {
-        match self.derive {
-            makro @ MacroId::Macro2Id(_) => db
-                .attrs(makro.into())
-                .parse_rustc_builtin_macro()
-                .and_then(|(_, helpers)| helpers.get(self.idx as usize).cloned()),
-            MacroId::MacroRulesId(_) => None,
-            makro @ MacroId::ProcMacroId(_) => db
-                .attrs(makro.into())
-                .parse_proc_macro_derive()
-                .and_then(|(_, helpers)| helpers.get(self.idx as usize).cloned()),
-        }
-        .unwrap_or_else(Name::missing)
+        AttrFlags::derive_info(db, self.derive)
+            .and_then(|it| it.helpers.get(self.idx as usize))
+            .map(|helper| Name::new_symbol_root(helper.clone()))
+            .unwrap_or_else(Name::missing)
     }
 }
 
@@ -4213,7 +4128,7 @@ impl TypeParam {
     }
 
     pub fn is_unstable(self, db: &dyn HirDatabase) -> bool {
-        db.attrs(GenericParamId::from(self.id).into()).is_unstable()
+        self.attrs(db).is_unstable()
     }
 }
 

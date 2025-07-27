@@ -12,7 +12,8 @@ use span::Edition;
 use syntax::ast::HasName;
 
 use crate::{
-    AdtId, DefWithBodyId, GenericDefId, TypeParamId, VariantId,
+    AdtId, DefWithBodyId, FunctionId, GenericDefId, StructId, TypeParamId, VariantId,
+    attrs::AttrFlags,
     expr_store::path::{GenericArg, GenericArgs},
     hir::{
         Array, BindingAnnotation, CaptureBy, ClosureKind, Literal, Movability, Statement,
@@ -167,7 +168,7 @@ pub fn print_signature(db: &dyn DefDatabase, owner: GenericDefId, edition: Editi
         GenericDefId::AdtId(id) => match id {
             AdtId::StructId(id) => {
                 let signature = db.struct_signature(id);
-                print_struct(db, &signature, edition)
+                print_struct(db, id, &signature, edition)
             }
             AdtId::UnionId(id) => {
                 format!("unimplemented {id:?}")
@@ -179,7 +180,7 @@ pub fn print_signature(db: &dyn DefDatabase, owner: GenericDefId, edition: Editi
         GenericDefId::ConstId(id) => format!("unimplemented {id:?}"),
         GenericDefId::FunctionId(id) => {
             let signature = db.function_signature(id);
-            print_function(db, &signature, edition)
+            print_function(db, id, &signature, edition)
         }
         GenericDefId::ImplId(id) => format!("unimplemented {id:?}"),
         GenericDefId::StaticId(id) => format!("unimplemented {id:?}"),
@@ -208,7 +209,8 @@ pub fn print_path(
 
 pub fn print_struct(
     db: &dyn DefDatabase,
-    StructSignature { name, generic_params, store, flags, shape, repr }: &StructSignature,
+    id: StructId,
+    StructSignature { name, generic_params, store, flags, shape }: &StructSignature,
     edition: Edition,
 ) -> String {
     let mut p = Printer {
@@ -219,7 +221,7 @@ pub fn print_struct(
         line_format: LineFormat::Newline,
         edition,
     };
-    if let Some(repr) = repr {
+    if let Some(repr) = AttrFlags::repr(db, id.into()) {
         if repr.c() {
             wln!(p, "#[repr(C)]");
         }
@@ -255,7 +257,8 @@ pub fn print_struct(
 
 pub fn print_function(
     db: &dyn DefDatabase,
-    FunctionSignature {
+    id: FunctionId,
+    signature @ FunctionSignature {
         name,
         generic_params,
         store,
@@ -263,10 +266,10 @@ pub fn print_function(
         ret_type,
         abi,
         flags,
-        legacy_const_generics_indices,
     }: &FunctionSignature,
     edition: Edition,
 ) -> String {
+    let legacy_const_generics_indices = signature.legacy_const_generics_indices(db, id);
     let mut p = Printer {
         db,
         store,
@@ -298,7 +301,7 @@ pub fn print_function(
         if i != 0 {
             w!(p, ", ");
         }
-        if legacy_const_generics_indices.as_ref().is_some_and(|idx| idx.contains(&(i as u32))) {
+        if legacy_const_generics_indices.is_some_and(|idx| idx.contains(&(i as u32))) {
             w!(p, "const: ");
         }
         p.print_type_ref(*param);

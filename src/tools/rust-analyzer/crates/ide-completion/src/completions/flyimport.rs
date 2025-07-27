@@ -266,7 +266,7 @@ fn import_on_the_fly(
             let original_item = &import.original_item;
             !ctx.is_item_hidden(&import.item_to_import)
                 && !ctx.is_item_hidden(original_item)
-                && ctx.check_stability(original_item.attrs(ctx.db).as_deref())
+                && ctx.check_stability(original_item.attrs(ctx.db).as_ref())
         })
         .filter(|import| filter_excluded_flyimport(ctx, import))
         .sorted_by(|a, b| {
@@ -313,7 +313,7 @@ fn import_on_the_fly_pat_(
             let original_item = &import.original_item;
             !ctx.is_item_hidden(&import.item_to_import)
                 && !ctx.is_item_hidden(original_item)
-                && ctx.check_stability(original_item.attrs(ctx.db).as_deref())
+                && ctx.check_stability(original_item.attrs(ctx.db).as_ref())
         })
         .sorted_by(|a, b| {
             let key = |import_path| {

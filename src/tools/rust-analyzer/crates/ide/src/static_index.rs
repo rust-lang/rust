@@ -42,7 +42,8 @@ pub struct ReferenceData {
 
 #[derive(Debug)]
 pub struct TokenStaticData {
-    pub documentation: Option<Documentation>,
+    // FIXME: Make this have the lifetime of the database.
+    pub documentation: Option<Documentation<'static>>,
     pub hover: Option<HoverResult>,
     pub definition: Option<FileRange>,
     pub references: Vec<ReferenceData>,
@@ -109,7 +110,7 @@ fn documentation_for_definition(
     sema: &Semantics<'_, RootDatabase>,
     def: Definition,
     scope_node: &SyntaxNode,
-) -> Option<Documentation> {
+) -> Option<Documentation<'static>> {
     let famous_defs = match &def {
         Definition::BuiltinType(_) => Some(FamousDefs(sema, sema.scope(scope_node)?.krate())),
         _ => None,
@@ -124,6 +125,7 @@ fn documentation_for_definition(
             })
             .to_display_target(sema.db),
     )
+    .map(Documentation::into_owned)
 }
 
 // FIXME: This is a weird function

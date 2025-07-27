@@ -5,8 +5,10 @@
 
 // FIXME: this badly needs rename/rewrite (matklad, 2020-02-06).
 
+use std::borrow::Cow;
+
 use crate::RootDatabase;
-use crate::documentation::{DocsRangeMap, Documentation, HasDocs};
+use crate::documentation::{Documentation, HasDocs};
 use crate::famous_defs::FamousDefs;
 use arrayvec::ArrayVec;
 use either::Either;
@@ -21,7 +23,7 @@ use hir::{
 use span::Edition;
 use stdx::{format_to, impl_from};
 use syntax::{
-    SyntaxKind, SyntaxNode, SyntaxToken, TextSize,
+    SyntaxKind, SyntaxNode, SyntaxToken,
     ast::{self, AstNode},
     match_ast,
 };
@@ -199,21 +201,25 @@ impl Definition {
         Some(name)
     }
 
-    pub fn docs(
+    pub fn docs<'db>(
         &self,
-        db: &RootDatabase,
+        db: &'db RootDatabase,
         famous_defs: Option<&FamousDefs<'_, '_>>,
         display_target: DisplayTarget,
-    ) -> Option<Documentation> {
-        self.docs_with_rangemap(db, famous_defs, display_target).map(|(docs, _)| docs)
+    ) -> Option<Documentation<'db>> {
+        self.docs_with_rangemap(db, famous_defs, display_target).map(|docs| match docs {
+            Either::Left(Cow::Borrowed(docs)) => Documentation::new_borrowed(docs.docs()),
+            Either::Left(Cow::Owned(docs)) => Documentation::new_owned(docs.into_docs()),
+            Either::Right(docs) => docs,
+        })
     }
 
-    pub fn docs_with_rangemap(
+    pub fn docs_with_rangemap<'db>(
         &self,
-        db: &RootDatabase,
+        db: &'db RootDatabase,
         famous_defs: Option<&FamousDefs<'_, '_>>,
         display_target: DisplayTarget,
-    ) -> Option<(Documentation, Option<DocsRangeMap>)> {
+    ) -> Option<Either<Cow<'db, hir::Docs>, Documentation<'db>>> {
         let docs = match self {
             Definition::Macro(it) => it.docs_with_rangemap(db),
             Definition::Field(it) => it.docs_with_rangemap(db),
@@ -229,15 +235,13 @@ impl Definition {
                 it.docs_with_rangemap(db).or_else(|| {
                     // docs are missing, try to fall back to the docs of the aliased item.
                     let adt = it.ty(db).as_adt()?;
-                    let (docs, range_map) = adt.docs_with_rangemap(db)?;
+                    let mut docs = adt.docs_with_rangemap(db)?.into_owned();
                     let header_docs = format!(
                         "*This is the documentation for* `{}`\n\n",
                         adt.display(db, display_target)
                     );
-                    let offset = TextSize::new(header_docs.len() as u32);
-                    let range_map = range_map.shift_docstring_line_range(offset);
-                    let docs = header_docs + docs.as_str();
-                    Some((Documentation::new(docs), range_map))
+                    docs.prepend_str(&header_docs);
+                    Some(Cow::Owned(docs))
                 })
             }
             Definition::BuiltinType(it) => {
@@ -246,7 +250,7 @@ impl Definition {
                     let primitive_mod =
                         format!("prim_{}", it.name().display(fd.0.db, display_target.edition));
                     let doc_owner = find_std_module(fd, &primitive_mod, display_target.edition)?;
-                    doc_owner.docs_with_rangemap(fd.0.db)
+                    doc_owner.docs_with_rangemap(db)
                 })
             }
             Definition::BuiltinLifetime(StaticLifetime) => None,
@@ -282,7 +286,7 @@ impl Definition {
                     );
                 }
 
-                return Some((Documentation::new(docs.replace('*', "\\*")), None));
+                return Some(Either::Right(Documentation::new_owned(docs.replace('*', "\\*"))));
             }
             Definition::ToolModule(_) => None,
             Definition::DeriveHelper(_) => None,
@@ -299,7 +303,7 @@ impl Definition {
             let item = trait_.items(db).into_iter().find(|it| it.name(db) == name)?;
             item.docs_with_rangemap(db)
         })
-        .map(|(docs, range_map)| (docs, Some(range_map)))
+        .map(Either::Left)
     }
 
     pub fn label(&self, db: &RootDatabase, display_target: DisplayTarget) -> String {

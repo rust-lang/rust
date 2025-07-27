@@ -26,7 +26,8 @@ pub use self::{
     generated::{nodes::*, tokens::*},
     node_ext::{
         AttrKind, FieldKind, Macro, NameLike, NameOrNameRef, PathSegmentKind, SelfParamKind,
-        SlicePatComponents, StructKind, TypeBoundKind, TypeOrConstParam, VisibilityKind,
+        SlicePatComponents, StructKind, TokenTreeChildren, TypeBoundKind, TypeOrConstParam,
+        VisibilityKind,
     },
     operators::{ArithOp, BinaryOp, CmpOp, LogicOp, Ordering, RangeOp, UnaryOp},
     token_ext::{
@@ -35,6 +36,7 @@ pub use self::{
     traits::{
         AttrDocCommentIter, DocCommentIter, HasArgList, HasAttrs, HasDocComments, HasGenericArgs,
         HasGenericParams, HasLoopBody, HasModuleItem, HasName, HasTypeBounds, HasVisibility,
+        attrs_including_inner,
     },
 };
 
