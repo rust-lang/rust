@@ -9,6 +9,7 @@ struct StructWithDtor(u32);
 
 impl Drop for StructWithDtor {
     //~ MONO_ITEM fn <StructWithDtor as std::ops::Drop>::drop
+    //~ MONO_ITEM fn <StructWithDtor as std::ops::Drop>::pin_drop
     fn drop(&mut self) {}
 }
 
