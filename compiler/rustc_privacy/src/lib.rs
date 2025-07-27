@@ -1423,8 +1423,6 @@ impl SearchInterfaceForPrivateItemsVisitor<'_> {
         };
 
         let vis = self.tcx.local_visibility(local_def_id);
-        let span = self.tcx.def_span(self.item_def_id.to_def_id());
-        let vis_span = self.tcx.def_span(def_id);
         if self.in_assoc_ty && !vis.is_at_least(self.required_visibility, self.tcx) {
             let vis_descr = match vis {
                 ty::Visibility::Public => "public",
@@ -1441,6 +1439,8 @@ impl SearchInterfaceForPrivateItemsVisitor<'_> {
                 }
             };
 
+            let span = self.tcx.def_span(self.item_def_id.to_def_id());
+            let vis_span = self.tcx.def_span(def_id);
             self.tcx.dcx().emit_err(InPublicInterface {
                 span,
                 vis_descr,
@@ -1463,6 +1463,8 @@ impl SearchInterfaceForPrivateItemsVisitor<'_> {
             } else {
                 lint::builtin::PRIVATE_BOUNDS
             };
+            let span = self.tcx.def_span(self.item_def_id.to_def_id());
+            let vis_span = self.tcx.def_span(def_id);
             self.tcx.emit_node_span_lint(
                 lint,
                 self.tcx.local_def_id_to_hir_id(self.item_def_id),
