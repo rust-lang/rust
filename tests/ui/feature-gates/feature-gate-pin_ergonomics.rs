@@ -11,6 +11,12 @@ impl Foo {
     fn foo_sugar_const(&pin const self) {} //~ ERROR pinned reference syntax is experimental
 }
 
+impl Drop for Foo {
+    //~^ ERROR not all trait items implemented, missing: `drop`
+    fn pin_drop(&pin mut self) {} //~ ERROR pinned reference syntax is experimental
+    //~^ ERROR use of unstable library feature `pin_ergonomics` [E0658]
+}
+
 fn foo(mut x: Pin<&mut Foo>) {
     Foo::foo_sugar(x.as_mut());
     Foo::foo_sugar_const(x.as_ref());
@@ -69,6 +75,10 @@ mod not_compiled {
         fn foo(self: Pin<&mut Self>) {}
         fn foo_sugar(&pin mut self) {} //~ ERROR pinned reference syntax is experimental
         fn foo_sugar_const(&pin const self) {} //~ ERROR pinned reference syntax is experimental
+    }
+
+    impl Drop for Foo {
+        fn pin_drop(&pin mut self) {} //~ ERROR pinned reference syntax is experimental
     }
 
     fn foo(mut x: Pin<&mut Foo>) {
