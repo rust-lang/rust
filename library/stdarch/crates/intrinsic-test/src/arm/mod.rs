@@ -1,10 +1,11 @@
+mod argument;
 mod compile;
 mod config;
 mod intrinsic;
 mod json_parser;
 mod types;
 
-use std::fs::File;
+use std::fs::{self, File};
 
 use rayon::prelude::*;
 
@@ -72,6 +73,7 @@ impl SupportedArchitectureTest for ArmArchitectureTest {
         let cpp_compiler = compile::build_cpp_compilation(&self.cli_options).unwrap();
 
         let notice = &build_notices("// ");
+        fs::create_dir_all("c_programs").unwrap();
         self.intrinsics
             .par_chunks(chunk_size)
             .enumerate()
