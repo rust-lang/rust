@@ -62,7 +62,10 @@ impl BuildScriptOutput {
         self.cfgs.is_empty()
             && self.envs.is_empty()
             && self.out_dir.is_none()
-            && self.proc_macro_dylib_path == ProcMacroDylibPath::NotBuilt
+            && matches!(
+                self.proc_macro_dylib_path,
+                ProcMacroDylibPath::NotBuilt | ProcMacroDylibPath::NotProcMacro
+            )
     }
 }
 
@@ -462,10 +465,10 @@ impl WorkspaceBuildScripts {
                     let lockfile_path =
                         <_ as AsRef<Utf8Path>>::as_ref(manifest_path).with_extension("lock");
                     if let Some((temp_dir, target_lockfile)) = make_lockfile_copy(&lockfile_path) {
+                        requires_unstable_options = true;
                         temp_dir_guard = Some(temp_dir);
                         cmd.arg("--lockfile-path");
                         cmd.arg(target_lockfile.as_str());
-                        requires_unstable_options = true;
                     }
                 }
                 match &config.features {
@@ -499,7 +502,7 @@ impl WorkspaceBuildScripts {
                 // available in current toolchain's cargo, use it to build compile time deps only.
                 const COMP_TIME_DEPS_MIN_TOOLCHAIN_VERSION: semver::Version = semver::Version {
                     major: 1,
-                    minor: 189,
+                    minor: 89,
                     patch: 0,
                     pre: semver::Prerelease::EMPTY,
                     build: semver::BuildMetadata::EMPTY,
