@@ -38,7 +38,7 @@ export class Cargo {
     constructor(
         readonly rootFolder: string,
         readonly env: Env,
-    ) { }
+    ) {}
 
     // Made public for testing purposes
     static artifactSpec(cargoArgs: string[], executableArgs?: string[]): ArtifactSpec {

@@ -122,10 +122,7 @@ export class RunnableQuickPick implements vscode.QuickPickItem {
     }
 }
 
-export function prepareBaseEnv(
-    inheritEnv: boolean,
-    base?: Env,
-): Env {
+export function prepareBaseEnv(inheritEnv: boolean, base?: Env): Env {
     const env: Env = { RUST_BACKTRACE: "short" };
     if (inheritEnv) {
         Object.assign(env, process.env);
@@ -136,11 +133,7 @@ export function prepareBaseEnv(
     return env;
 }
 
-export function prepareEnv(
-    inheritEnv: boolean,
-    runnableEnv?: Env,
-    runnableEnvCfg?: Env,
-): Env {
+export function prepareEnv(inheritEnv: boolean, runnableEnv?: Env, runnableEnvCfg?: Env): Env {
     const env = prepareBaseEnv(inheritEnv, runnableEnv);
 
     if (runnableEnvCfg) {

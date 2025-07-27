@@ -134,11 +134,9 @@ export async function targetToExecution(
     }
     return new vscode.ProcessExecution(command, args, {
         cwd: options?.cwd,
-        env:
-            Object.fromEntries(
-                Object.entries(options?.env ?? {}).map(([key, value]) => [key, value ?? ""])
-            )
-        ,
+        env: Object.fromEntries(
+            Object.entries(options?.env ?? {}).map(([key, value]) => [key, value ?? ""]),
+        ),
     });
 }
 

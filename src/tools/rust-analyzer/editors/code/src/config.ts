@@ -261,8 +261,12 @@ export class Config {
     }
 
     runnablesExtraEnv(label: string): Env {
-        let extraEnv = this.get<RunnableEnvCfgItem[] | { [key: string]: { toString(): string } | null } | null>("runnables.extraEnv") ?? {};
-        if (!extraEnv) return {};
+        const serverEnv = this.serverExtraEnv;
+        let extraEnv =
+            this.get<
+                RunnableEnvCfgItem[] | { [key: string]: { toString(): string } | null } | null
+            >("runnables.extraEnv") ?? {};
+        if (!extraEnv) return serverEnv;
 
         const platform = process.platform;
         const checkPlatform = (it: RunnableEnvCfgItem) => {
@@ -283,7 +287,7 @@ export class Config {
             }
             extraEnv = env;
         }
-        return substituteVariablesInEnv(
+        const runnableExtraEnv = substituteVariablesInEnv(
             Object.fromEntries(
                 Object.entries(extraEnv).map(([k, v]) => [
                     k,
@@ -291,6 +295,7 @@ export class Config {
                 ]),
             ),
         );
+        return { ...runnableExtraEnv, ...serverEnv };
     }
 
     get restartServerOnConfigChange() {
@@ -485,11 +490,11 @@ function computeVscodeVar(varName: string): string | null {
             folder === undefined
                 ? "" // no workspace opened
                 : // could use currently opened document to detect the correct
-                // workspace. However, that would be determined by the document
-                // user has opened on Editor startup. Could lead to
-                // unpredictable workspace selection in practice.
-                // It's better to pick the first one
-                normalizeDriveLetter(folder.uri.fsPath);
+                  // workspace. However, that would be determined by the document
+                  // user has opened on Editor startup. Could lead to
+                  // unpredictable workspace selection in practice.
+                  // It's better to pick the first one
+                  normalizeDriveLetter(folder.uri.fsPath);
         return fsPath;
     };
     // https://code.visualstudio.com/docs/editor/variables-reference

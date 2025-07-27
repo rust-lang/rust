@@ -6,7 +6,14 @@ import type * as ra from "./lsp_ext";
 import { Cargo } from "./toolchain";
 import type { Ctx } from "./ctx";
 import { createTaskFromRunnable, prepareEnv } from "./run";
-import { execute, isCargoRunnableArgs, unwrapUndefinable, log, normalizeDriveLetter, Env } from "./util";
+import {
+    execute,
+    isCargoRunnableArgs,
+    unwrapUndefinable,
+    log,
+    normalizeDriveLetter,
+    Env,
+} from "./util";
 import type { Config } from "./config";
 
 // Here we want to keep track on everything that's currently running
@@ -108,9 +115,9 @@ async function getDebugConfiguration(
 
         await vscode.window.showErrorMessage(
             `Install [CodeLLDB](command:${commandCodeLLDB} "Open CodeLLDB")` +
-            `, [lldb-dap](command:${commandLLDBDap} "Open lldb-dap")` +
-            `, [C/C++](command:${commandCCpp} "Open C/C++") ` +
-            `or [Native Debug](command:${commandNativeDebug} "Open Native Debug") for debugging.`,
+                `, [lldb-dap](command:${commandLLDBDap} "Open lldb-dap")` +
+                `, [C/C++](command:${commandCCpp} "Open C/C++") ` +
+                `or [Native Debug](command:${commandNativeDebug} "Open Native Debug") for debugging.`,
         );
         return;
     }
@@ -124,7 +131,7 @@ async function getDebugConfiguration(
         !isMultiFolderWorkspace || !runnableArgs.workspaceRoot
             ? firstWorkspace
             : workspaceFolders.find((w) => runnableArgs.workspaceRoot?.includes(w.uri.fsPath)) ||
-            firstWorkspace;
+              firstWorkspace;
 
     const workspace = unwrapUndefinable(maybeWorkspace);
     const wsFolder = normalizeDriveLetter(path.normalize(workspace.uri.fsPath));
@@ -206,10 +213,7 @@ type SourceFileMap = {
     destination: string;
 };
 
-async function discoverSourceFileMap(
-    env: Env,
-    cwd: string,
-): Promise<SourceFileMap | undefined> {
+async function discoverSourceFileMap(env: Env, cwd: string): Promise<SourceFileMap | undefined> {
     const sysroot = env["RUSTC_TOOLCHAIN"];
     if (sysroot) {
         // let's try to use the default toolchain
@@ -304,10 +308,7 @@ const knownEngines: {
     },
 };
 
-async function getDebugExecutable(
-    runnableArgs: ra.CargoRunnableArgs,
-    env: Env,
-): Promise<string> {
+async function getDebugExecutable(runnableArgs: ra.CargoRunnableArgs, env: Env): Promise<string> {
     const cargo = new Cargo(runnableArgs.workspaceRoot || ".", env);
     const executable = await cargo.executableFromArgs(runnableArgs);
 
