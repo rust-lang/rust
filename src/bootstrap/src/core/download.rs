@@ -491,6 +491,31 @@ pub(crate) fn is_download_ci_available(target_triple: &str, llvm_assertions: boo
     }
 }
 
+#[cfg(test)]
+pub(crate) fn download_beta_toolchain<'a>(dwn_ctx: impl AsRef<DownloadContext<'a>>) {}
+
+#[cfg(not(test))]
+pub(crate) fn download_beta_toolchain<'a>(dwn_ctx: impl AsRef<DownloadContext<'a>>) {
+    let dwn_ctx = dwn_ctx.as_ref();
+    if dwn_ctx.verbose {
+        println!("downloading stage0 beta artifacts");
+    }
+
+    let date = dwn_ctx.stage0_metadata.compiler.date.clone();
+    let version = dwn_ctx.stage0_metadata.compiler.version.clone();
+    let extra_components = ["cargo"];
+    let sysroot = "stage0";
+    download_toolchain(
+        dwn_ctx,
+        &version,
+        sysroot,
+        &date,
+        &extra_components,
+        "stage0",
+        DownloadSource::Dist,
+    );
+}
+
 fn download_toolchain<'a>(
     dwn_ctx: impl AsRef<DownloadContext<'a>>,
     version: &str,
