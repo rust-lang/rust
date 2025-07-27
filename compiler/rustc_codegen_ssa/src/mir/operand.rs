@@ -921,9 +921,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         match self.locals[place_ref.local] {
             LocalRef::Operand(mut o) => {
-                // Moves out of scalar and scalar pair fields are trivial.
-                for elem in place_ref.projection.iter() {
-                    match elem {
+                // We only need to handle the projections that
+                // `LocalAnalyzer::process_place` let make it here.
+                for elem in place_ref.projection {
+                    match *elem {
                         mir::ProjectionElem::Field(f, _) => {
                             assert!(
                                 !o.layout.ty.is_any_ptr(),
@@ -932,17 +933,18 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             );
                             o = o.extract_field(self, bx, f.index());
                         }
-                        mir::ProjectionElem::Index(_)
-                        | mir::ProjectionElem::ConstantIndex { .. } => {
-                            // ZSTs don't require any actual memory access.
-                            // FIXME(eddyb) deduplicate this with the identical
-                            // checks in `codegen_consume` and `extract_field`.
-                            let elem = o.layout.field(bx.cx(), 0);
-                            if elem.is_zst() {
-                                o = OperandRef::zero_sized(elem);
-                            } else {
-                                return None;
-                            }
+                        mir::PlaceElem::Downcast(_, vidx) => {
+                            debug_assert_eq!(
+                                o.layout.variants,
+                                abi::Variants::Single { index: vidx },
+                            );
+                            let layout = o.layout.for_variant(bx.cx(), vidx);
+                            o = OperandRef { val: o.val, layout }
+                        }
+                        mir::PlaceElem::Subtype(subtype_ty) => {
+                            let subtype_ty = self.monomorphize(subtype_ty);
+                            let layout = self.cx.layout_of(subtype_ty);
+                            o = OperandRef { val: o.val, layout }
                         }
                         _ => return None,
                     }
