@@ -130,6 +130,12 @@ pub fn compile_rust_programs(toolchain: Option<&str>, target: &str, linker: Opti
     /* If there has been a linker explicitly set from the command line then
      * we want to set it via setting it in the RUSTFLAGS*/
 
+    // This is done because `toolchain` is None when
+    // the --generate-only flag is passed
+    if toolchain.is_none() {
+        return true;
+    }
+
     trace!("Building cargo command");
 
     let mut cargo_command = Command::new("cargo");
@@ -138,10 +144,8 @@ pub fn compile_rust_programs(toolchain: Option<&str>, target: &str, linker: Opti
     // Do not use the target directory of the workspace please.
     cargo_command.env("CARGO_TARGET_DIR", "target");
 
-    if let Some(toolchain) = toolchain
-        && !toolchain.is_empty()
-    {
-        cargo_command.arg(toolchain);
+    if toolchain.is_some_and(|val| !val.is_empty()) {
+        cargo_command.arg(toolchain.unwrap());
     }
     cargo_command.args(["build", "--target", target, "--release"]);
 
