@@ -700,7 +700,7 @@ type Foo<T, U> = foo<fold arglist><
 <fold function>fn foo<fold arglist>(
     very_long_parameter_name: u32,
     another_very_long_parameter_name: u32,
-    third_very_long_parm: u32,
+    third_very_long_param: u32,
 )</fold> <fold block>{
     todo!()
 }</fold></fold>
