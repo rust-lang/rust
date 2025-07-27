@@ -227,21 +227,14 @@ impl VisitProvenance for GenmcCtx {
 }
 
 impl GenmcConfig {
-    pub fn parse_arg(_genmc_config: &mut Option<GenmcConfig>, trimmed_arg: &str) {
-        // FIXME(genmc,macos): Add `target_os = "macos"` once `https://github.com/dtolnay/cxx/issues/1535` is fixed.
-        if cfg!(all(
-            feature = "genmc",
-            any(target_os = "linux", target_os = "macos"),
-            target_pointer_width = "64",
-            target_endian = "little"
-        )) {
-            unimplemented!(
-                "GenMC is disabled, cannot handle argument: \"-Zmiri-genmc{trimmed_arg}\""
-            );
+    pub fn parse_arg(
+        _genmc_config: &mut Option<GenmcConfig>,
+        trimmed_arg: &str,
+    ) -> Result<(), String> {
+        if cfg!(feature = "genmc") {
+            Err(format!("GenMC is disabled in this build of Miri"))
         } else {
-            unimplemented!(
-                "GenMC mode is not supported on this platform, cannot handle argument: \"-Zmiri-genmc{trimmed_arg}\""
-            );
+            Err(format!("GenMC is not supported on this target"))
         }
     }
 

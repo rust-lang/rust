@@ -6,7 +6,7 @@ use std::str::FromStr;
 
 /// Path where the downloaded GenMC repository will be stored (relative to the `genmc-sys` directory).
 /// Note that this directory is *not* cleaned up automatically by `cargo clean`.
-const GENMC_DOWNLOAD_PATH: &str = "./genmc-src/genmc/";
+const GENMC_DOWNLOAD_PATH: &str = "./genmc-src/";
 
 /// Name of the library of the GenMC model checker.
 const GENMC_MODEL_CHECKER: &str = "genmc_lib";
@@ -122,11 +122,9 @@ mod downloading {
             return;
         }
 
-        println!(
-            "HINT: For local development, set the environment variable 'GENMC_SRC_PATH' to the path of a GenMC repository.",
-        );
         panic!(
-            "Downloaded GenMC repository at path '{GENMC_DOWNLOAD_PATH}' has been modified. Please undo any changes made, or delete the '{GENMC_DOWNLOAD_PATH}' directory to have it downloaded again."
+            "Downloaded GenMC repository at path '{GENMC_DOWNLOAD_PATH}' has been modified. Please undo any changes made, or delete the '{GENMC_DOWNLOAD_PATH}' directory to have it downloaded again.\n\
+            HINT: For local development, set the environment variable 'GENMC_SRC_PATH' to the path of a GenMC repository."
         );
     }
 }
@@ -194,7 +192,7 @@ fn compile_cpp_dependencies(genmc_path: &Path) {
     // The actual compilation happens here:
     let genmc_install_dir = config.build();
 
-    // Add the model checker library to be linked and tell GenMC where to find it:
+    // Add the model checker library to be linked and tell rustc where to find it:
     let cmake_lib_dir = genmc_install_dir.join("lib").join("genmc");
     println!("cargo::rustc-link-search=native={}", cmake_lib_dir.display());
     println!("cargo::rustc-link-lib=static={GENMC_MODEL_CHECKER}");
@@ -260,9 +258,10 @@ fn main() {
     compile_cpp_dependencies(&genmc_path);
 
     // Only rebuild if anything changes:
-    // Note that we don't add the downloaded GenMC repo, since that should never be modified manually.
-    // Adding that path here would also trigger an unnecessary rebuild after the repo is cloned (since cargo detects that as a file modification).
+    // Note that we don't add the downloaded GenMC repo, since that should never be modified
+    // manually. Adding that path here would also trigger an unnecessary rebuild after the repo is
+    // cloned (since cargo detects that as a file modification).
     println!("cargo::rerun-if-changed={RUST_CXX_BRIDGE_FILE_PATH}");
+    println!("cargo::rerun-if-changed=./src");
     println!("cargo::rerun-if-changed=./src_cpp");
-    println!("cargo::rerun-if-env-changed=GENMC_SRC_PATH");
 }

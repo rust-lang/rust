@@ -596,7 +596,9 @@ fn main() {
         } else if arg == "-Zmiri-many-seeds-keep-going" {
             many_seeds_keep_going = true;
         } else if let Some(trimmed_arg) = arg.strip_prefix("-Zmiri-genmc") {
-            GenmcConfig::parse_arg(&mut miri_config.genmc_config, trimmed_arg);
+            if let Err(msg) = GenmcConfig::parse_arg(&mut miri_config.genmc_config, trimmed_arg) {
+                fatal_error!("{msg}");
+            }
         } else if let Some(param) = arg.strip_prefix("-Zmiri-env-forward=") {
             miri_config.forwarded_env_vars.push(param.to_owned());
         } else if let Some(param) = arg.strip_prefix("-Zmiri-env-set=") {
@@ -732,18 +734,15 @@ fn main() {
 
     // Validate settings for data race detection and GenMC mode.
     if miri_config.genmc_config.is_some() {
-        // FIXME(genmc): Add checks for currently supported platforms (64bit, target == host)
         if !miri_config.data_race_detector {
             fatal_error!("Cannot disable data race detection in GenMC mode (currently)");
         } else if !miri_config.weak_memory_emulation {
             fatal_error!("Cannot disable weak memory emulation in GenMC mode");
         }
-        // FIXME(genmc): Remove once GenMC mode is compatible with borrow tracking:
         if miri_config.borrow_tracker.is_some() {
             eprintln!(
-                "warning: Borrow tracking has been disabled, it is not (yet) supported in GenMC mode."
+                "warning: borrow tracking has been disabled, it is not (yet) supported in GenMC mode."
             );
-            eprintln!();
             miri_config.borrow_tracker = None;
         }
     } else if miri_config.weak_memory_emulation && !miri_config.data_race_detector {

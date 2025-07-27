@@ -1,5 +1,7 @@
 # **(WIP)** Documentation for Miri-GenMC
+
 [GenMC](https://github.com/MPI-SWS/genmc) is a stateless model checker for exploring concurrent executions of a program.
+Miri-GenMC integrates that model checker into Miri.
 
 **NOTE: Currently, no actual GenMC functionality is part of Miri, this is still WIP.**
 
@@ -7,9 +9,7 @@
 
 ## Usage
 
-**IMPORTANT: The license of GenMC and thus the `genmc-sys` crate in the Miri repo is currently "GPL-3.0-or-later", which is NOT compatible with Miri's "MIT OR Apache" license.**
-
-**IMPORTANT: There should be no distribution of Miri-GenMC until all licensing questions are clarified (the `genmc` feature of Miri is OFF-BY-DEFAULT and should be OFF for all Miri releases).**
+**IMPORTANT: The license of GenMC and thus the `genmc-sys` crate in the Miri repo is currently "GPL-3.0-or-later", so a binary produced with the `genmc` feature is subject to the requirements of the GPL. As long as that remains the case, the `genmc` feature of Miri is OFF-BY-DEFAULT and must be OFF for all Miri releases.**
 
 For testing/developing Miri-GenMC (while keeping in mind the licensing issues):
 - clone the Miri repo.
@@ -35,44 +35,28 @@ Some or all of these limitations might get removed in the future:
 
 - Borrow tracking is currently incompatible (stacked/tree borrows).
 - Only Linux is supported for now.
-- No 32-bit platform support.
-- No cross-platform interpretation.
+- No support for 32-bit or big-endian targets.
+- No cross-target interpretation.
 
 <!-- FIXME(genmc): document remaining limitations -->
 
 ## Development
 
 GenMC is written in C++, which complicates development a bit.
-For Rust-C++ interop, Miri uses [CXX.rs](https://cxx.rs/), and all handling of C++ code is contained in the `genmc-sys` crate (located in the Miri repository root directory: `miri/genmc-sys/`).
+The prerequisites for building Miri-GenMC are:
+- A compiler with C++23 support.
+- LLVM developments headers and clang.
+  <!-- FIXME(genmc,llvm): remove once LLVM dependency is no longer required. -->
 
-Building GenMC requires a compiler with C++23 support.
-<!-- FIXME(genmc,llvm): remove once LLVM dependency is no longer required. -->
-Currently, building GenMC also requires linking to LLVM, which needs to be installed manually.
+The actual code for GenMC is not contained in the Miri repo itself, but in a [separate GenMC repo](https://github.com/MPI-SWS/genmc) (with its own maintainers).
+These sources need to be available to build Miri-GenMC.
+The process for obtaining them is as follows:
+- By default, a fixed commit of GenMC is downloaded to `genmc-sys/genmc-src` and built automatically.
+  (The commit is determined by `GENMC_COMMIT` in `genmc-sys/build.rs`.)
+- If you want to overwrite that, set the `GENMC_SRC_PATH` environment variable to a path that contains the GenMC sources.
+  If you place this directory inside the Miri folder, it is recommended to call it `genmc-src` as that tells `./miri fmt` to avoid
+  formatting the Rust files inside that folder.
 
-The actual code for GenMC is not contained in the Miri repo itself, but in a [separate GenMC repo](https://github.com/MPI-SWS/genmc) (with different maintainers).
-Note that this repo is just a mirror repo.
-<!-- FIXME(genmc): define how submitting code to GenMC should be handled. -->
+<!-- FIXME(genmc): explain how submitting code to GenMC should be handled. -->
 
 <!-- FIXME(genmc): explain development. -->
-
-### Building the GenMC Library
-The build script in the `genmc-sys` crate handles locating, downloading, building and linking the GenMC library.
-
-To determine which GenMC repo path will be used, the following steps are taken:
-- If the env var `GENMC_SRC_PATH` is set, it's value is used as a path to a directory with a GenMC repo (e.g., `GENMC_SRC_PATH="path/to/miri/genmc-sys/genmc-sys-local"`).
-  - Note that this variable must be set wherever Miri is built, e.g., in the terminal, or in the Rust Analyzer settings.
-- If the path `genmc-sys/genmc-src/genmc` exists, try to set the GenMC repo there to the commit we need.
-- If the downloaded repo doesn't exist or is missing the commit, the build script will fetch the commit over the network.
-  - Note that the build script will *not* access the network if any of the steps previous steps succeeds.
-
-Once we get the path to the repo, the compilation proceeds in two steps:
-- Compile GenMC into a library (using cmake).
-- Compile the cxx.rs bridge to connect the library to the Rust code.
-The first step is where all build settings are made, the relevant ones are then stored in a `config.h` file that can be included in the second compilation step.
-
-#### Code Formatting
-Note that all directories with names starting with `genmc-src` are ignored by `./miri fmt` on purpose.
-GenMC also contains Rust files, but they should not be formatted with Miri's formatting rules.
-For working on Miri-GenMC locally, placing the GenMC repo into such a path (e.g., `miri/genmc-sys/genmc-src-local`) ensures that it is also exempt from formatting.
-
-<!-- FIXME(genmc): Decide on formatting rules for Miri-GenMC interface C++ code. -->
