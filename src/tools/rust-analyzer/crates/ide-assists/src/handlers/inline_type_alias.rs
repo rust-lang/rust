@@ -322,7 +322,10 @@ fn create_replacement(
 
                 replacements.push((syntax.clone(), new_lifetime.syntax().clone_for_update()));
             }
-        } else if let Some(replacement_syntax) = const_and_type_map.0.get(syntax_str) {
+        } else if let Some(name_ref) = ast::NameRef::cast(syntax.clone()) {
+            let Some(replacement_syntax) = const_and_type_map.0.get(&name_ref.to_string()) else {
+                continue;
+            };
             let new_string = replacement_syntax.to_string();
             let new = if new_string == "_" {
                 make::wildcard_pat().syntax().clone_for_update()
