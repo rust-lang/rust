@@ -1708,3 +1708,31 @@ pub(crate) struct AsyncDropWithoutSyncDrop {
     #[primary_span]
     pub span: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_conflict_impl_drop_and_pin_drop)]
+pub(crate) struct ConflictImplDropAndPinDrop {
+    #[primary_span]
+    pub span: Span,
+    #[label(hir_analysis_drop_label)]
+    pub drop_span: Span,
+    #[label(hir_analysis_pin_drop_label)]
+    pub pin_drop_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_pin_v2_without_pin_drop)]
+#[help]
+pub(crate) struct PinV2WithoutPinDrop {
+    #[primary_span]
+    #[suggestion(
+        hir_analysis_pin_drop_sugg,
+        code = "fn pin_drop(&pin mut self)",
+        applicability = "maybe-incorrect"
+    )]
+    pub span: Span,
+    #[note]
+    #[suggestion(hir_analysis_remove_pin_v2_sugg, code = "", applicability = "maybe-incorrect")]
+    pub pin_v2_span: Option<Span>,
+    pub adt_name: Symbol,
+}

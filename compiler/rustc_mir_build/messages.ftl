@@ -26,6 +26,9 @@ mir_build_borrow_of_moved_value = borrow of moved value
     .value_borrowed_label = value borrowed here after move
     .suggestion = borrow this binding in the pattern to avoid moving the value
 
+mir_build_call_drop_explicitly_requires_unsafe =
+    call `{$function}` explicitly is unsafe and requires unsafe block
+
 mir_build_call_to_deprecated_safe_fn_requires_unsafe =
     call to deprecated safe function `{$function}` is unsafe and requires unsafe block
     .note = consult the function's documentation for information on how to avoid undefined behavior
