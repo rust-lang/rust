@@ -193,6 +193,7 @@ pub(crate) const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     "only-bpf",
     "only-cdb",
     "only-dist",
+    "only-eabihf",
     "only-elf",
     "only-emscripten",
     "only-gnu",
