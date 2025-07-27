@@ -437,7 +437,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// For now, arguments must be scalars (so that the caller does not have to know the layout).
     ///
     /// If you do not provide a return place, a dangling zero-sized place will be created
-    /// for your convenience.
+    /// for your convenience. This is only valid if the return type is `()`.
     fn call_function(
         &mut self,
         f: ty::Instance<'tcx>,
@@ -452,7 +452,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let mir = this.load_mir(f.def, None)?;
         let dest = match dest {
             Some(dest) => dest.clone(),
-            None => MPlaceTy::fake_alloc_zst(this.layout_of(mir.return_ty())?),
+            None => MPlaceTy::fake_alloc_zst(this.machine.layouts.unit),
         };
 
         // Construct a function pointer type representing the caller perspective.
@@ -465,6 +465,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         );
         let caller_fn_abi = this.fn_abi_of_fn_ptr(ty::Binder::dummy(sig), ty::List::empty())?;
 
+        // This will also show proper errors if there is any ABI mismatch.
         this.init_stack_frame(
             f,
             mir,
