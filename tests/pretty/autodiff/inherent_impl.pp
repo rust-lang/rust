@@ -33,7 +33,7 @@ impl MyTrait for Foo {
     }
     #[rustc_autodiff(Reverse, 1, Const, Active, Active)]
     fn df(&self, x: f64, dret: f64) -> (f64, f64) {
-        std::intrinsics::enzyme_autodiff(Self::f::<>, Self::df::<>,
+        ::core::intrinsics::enzyme_autodiff(Self::f::<>, Self::df::<>,
             (self, x, dret))
     }
 }

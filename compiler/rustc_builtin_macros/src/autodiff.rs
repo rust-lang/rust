@@ -21,7 +21,7 @@ mod llvm_enzyme {
         MetaItemInner, PatKind, Path, PathSegment, TyKind, Visibility,
     };
     use rustc_expand::base::{Annotatable, ExtCtxt};
-    use rustc_span::{Ident, Span, Symbol, kw, sym};
+    use rustc_span::{Ident, Span, Symbol, sym};
     use thin_vec::{ThinVec, thin_vec};
     use tracing::{debug, trace};
 
@@ -183,11 +183,8 @@ mod llvm_enzyme {
     }
 
     /// We expand the autodiff macro to generate a new placeholder function which passes
-    /// type-checking and can be called by users. The function body of the placeholder function will
-    /// later be replaced on LLVM-IR level, so the design of the body is less important and for now
-    /// should just prevent early inlining and optimizations which alter the function signature.
-    /// The exact signature of the generated function depends on the configuration provided by the
-    /// user, but here is an example:
+    /// type-checking and can be called by users. The exact signature of the generated function
+    /// depends on the configuration provided by the user, but here is an example:
     ///
     /// ```
     /// #[autodiff(cos_box, Reverse, Duplicated, Active)]
@@ -203,14 +200,8 @@ mod llvm_enzyme {
     ///     f32::sin(**x)
     /// }
     /// #[rustc_autodiff(Reverse, Duplicated, Active)]
-    /// #[inline(never)]
     /// fn cos_box(x: &Box<f32>, dx: &mut Box<f32>, dret: f32) -> f32 {
-    ///     unsafe {
-    ///         asm!("NOP");
-    ///     };
-    ///     ::core::hint::black_box(sin(x));
-    ///     ::core::hint::black_box((dx, dret));
-    ///     ::core::hint::black_box(sin(x))
+    ///     std::intrinsics::enzyme_autodiff(sin::<>, cos_box::<>, (x, dx, dret))
     /// }
     /// ```
     /// FIXME(ZuseZ4): Once autodiff is enabled by default, make this a doc comment which is checked
@@ -330,22 +321,20 @@ mod llvm_enzyme {
         }
         let span = ecx.with_def_site_ctxt(expand_span);
 
-        let (d_sig, idents, errored) = gen_enzyme_decl(ecx, &sig, &x, span);
+        let d_sig = gen_enzyme_decl(ecx, &sig, &x, span);
 
         let d_body = gen_enzyme_body(
             ecx,
             &d_sig,
             primal,
             span,
-            idents,
-            errored,
             first_ident(&meta_item_vec[0]),
             &generics,
             impl_of_trait,
         );
 
         // The first element of it is the name of the function to be generated
-        let asdf = Box::new(ast::Fn {
+        let d_fn = Box::new(ast::Fn {
             defaultness: ast::Defaultness::Final,
             sig: d_sig,
             ident: first_ident(&meta_item_vec[0]),
@@ -442,7 +431,7 @@ mod llvm_enzyme {
         let d_attr = outer_normal_attr(&rustc_ad_attr, new_id, span);
         let d_annotatable = match &item {
             Annotatable::AssocItem(_, _) => {
-                let assoc_item: AssocItemKind = ast::AssocItemKind::Fn(asdf);
+                let assoc_item: AssocItemKind = ast::AssocItemKind::Fn(d_fn);
                 let d_fn = P(ast::AssocItem {
                     attrs: thin_vec![d_attr],
                     id: ast::DUMMY_NODE_ID,
@@ -454,13 +443,13 @@ mod llvm_enzyme {
                 Annotatable::AssocItem(d_fn, Impl { of_trait: false })
             }
             Annotatable::Item(_) => {
-                let mut d_fn = ecx.item(span, thin_vec![d_attr], ItemKind::Fn(asdf));
+                let mut d_fn = ecx.item(span, thin_vec![d_attr], ItemKind::Fn(d_fn));
                 d_fn.vis = vis;
 
                 Annotatable::Item(d_fn)
             }
             Annotatable::Stmt(_) => {
-                let mut d_fn = ecx.item(span, thin_vec![d_attr], ItemKind::Fn(asdf));
+                let mut d_fn = ecx.item(span, thin_vec![d_attr], ItemKind::Fn(d_fn));
                 d_fn.vis = vis;
 
                 Annotatable::Stmt(P(ast::Stmt {
@@ -525,14 +514,8 @@ mod llvm_enzyme {
                 .into(),
         );
 
-        let enzyme_path = ecx.path(
-            span,
-            vec![
-                Ident::from_str("std"),
-                Ident::from_str("intrinsics"),
-                Ident::with_dummy_span(sym::enzyme_autodiff),
-            ],
-        );
+        let enzyme_path_idents = ecx.std_path(&[sym::intrinsics, sym::enzyme_autodiff]);
+        let enzyme_path = ecx.path(span, enzyme_path_idents);
         let call_expr = ecx.expr_call(
             span,
             ecx.expr_path(enzyme_path),
@@ -591,25 +574,6 @@ mod llvm_enzyme {
         ecx.expr_path(path)
     }
 
-    // Will generate a body of the type:
-    // ```
-    //   primal(args);
-    //   std::intrinsics::enzyme_autodiff(primal, diff, (args))
-    // }
-    // ```
-    fn init_body_helper(
-        ecx: &ExtCtxt<'_>,
-        span: Span,
-        primal: Ident,
-        idents: &[Ident],
-        _errored: bool,
-        generics: &Generics,
-    ) -> P<ast::Block> {
-        let _primal_call = gen_primal_call(ecx, span, primal, idents, generics);
-        let body = ecx.block(span, ThinVec::new());
-        body
-    }
-
     /// We only want this function to type-check, since we will replace the body
     /// later on llvm level. Using `loop {}` does not cover all return types anymore,
     /// so instead we manually build something that should pass the type checker.
@@ -623,8 +587,6 @@ mod llvm_enzyme {
         d_sig: &ast::FnSig,
         primal: Ident,
         span: Span,
-        idents: Vec<Ident>,
-        errored: bool,
         diff_ident: Ident,
         generics: &Generics,
         is_impl: bool,
@@ -633,85 +595,20 @@ mod llvm_enzyme {
 
         // Add a call to the primal function to prevent it from being inlined
         // and call `enzyme_autodiff` intrinsic (this also covers the return type)
-        let mut body = init_body_helper(ecx, span, primal, &idents, errored, generics);
-
-        body.stmts.push(call_enzyme_autodiff(
-            ecx,
-            primal,
-            diff_ident,
-            new_decl_span,
-            d_sig,
-            generics,
-            is_impl,
-        ));
+        let body = ecx.block(
+            span,
+            thin_vec![call_enzyme_autodiff(
+                ecx,
+                primal,
+                diff_ident,
+                new_decl_span,
+                d_sig,
+                generics,
+                is_impl,
+            )],
+        );
 
         body
-    }
-
-    fn gen_primal_call(
-        ecx: &ExtCtxt<'_>,
-        span: Span,
-        primal: Ident,
-        idents: &[Ident],
-        generics: &Generics,
-    ) -> P<ast::Expr> {
-        let has_self = idents.len() > 0 && idents[0].name == kw::SelfLower;
-
-        if has_self {
-            let args: ThinVec<_> =
-                idents[1..].iter().map(|arg| ecx.expr_path(ecx.path_ident(span, *arg))).collect();
-            let self_expr = ecx.expr_self(span);
-            ecx.expr_method_call(span, self_expr, primal, args)
-        } else {
-            let args: ThinVec<_> =
-                idents.iter().map(|arg| ecx.expr_path(ecx.path_ident(span, *arg))).collect();
-            let mut primal_path = ecx.path_ident(span, primal);
-
-            let is_generic = !generics.params.is_empty();
-
-            match (is_generic, primal_path.segments.last_mut()) {
-                (true, Some(function_path)) => {
-                    let primal_generic_types = generics
-                        .params
-                        .iter()
-                        .filter(|param| matches!(param.kind, ast::GenericParamKind::Type { .. }));
-
-                    let generated_generic_types = primal_generic_types
-                        .map(|type_param| {
-                            let generic_param = TyKind::Path(
-                                None,
-                                ast::Path {
-                                    span,
-                                    segments: thin_vec![ast::PathSegment {
-                                        ident: type_param.ident,
-                                        args: None,
-                                        id: ast::DUMMY_NODE_ID,
-                                    }],
-                                    tokens: None,
-                                },
-                            );
-
-                            ast::AngleBracketedArg::Arg(ast::GenericArg::Type(P(ast::Ty {
-                                id: type_param.id,
-                                span,
-                                kind: generic_param,
-                                tokens: None,
-                            })))
-                        })
-                        .collect();
-
-                    function_path.args =
-                        Some(P(ast::GenericArgs::AngleBracketed(ast::AngleBracketedArgs {
-                            span,
-                            args: generated_generic_types,
-                        })));
-                }
-                _ => {}
-            }
-
-            let primal_call_expr = ecx.expr_path(primal_path);
-            ecx.expr_call(span, primal_call_expr, args)
-        }
     }
 
     // Generate the new function declaration. Const arguments are kept as is. Duplicated arguments must
@@ -730,7 +627,7 @@ mod llvm_enzyme {
         sig: &ast::FnSig,
         x: &AutoDiffAttrs,
         span: Span,
-    ) -> (ast::FnSig, Vec<Ident>, bool) {
+    ) -> ast::FnSig {
         let dcx = ecx.sess.dcx();
         let has_ret = has_ret(&sig.decl.output);
         let sig_args = sig.decl.inputs.len() + if has_ret { 1 } else { 0 };
@@ -742,7 +639,7 @@ mod llvm_enzyme {
                 found: num_activities,
             });
             // This is not the right signature, but we can continue parsing.
-            return (sig.clone(), vec![], true);
+            return sig.clone();
         }
         assert!(sig.decl.inputs.len() == x.input_activity.len());
         assert!(has_ret == x.has_ret_activity());
@@ -785,7 +682,7 @@ mod llvm_enzyme {
 
         if errors {
             // This is not the right signature, but we can continue parsing.
-            return (sig.clone(), idents, true);
+            return sig.clone();
         }
 
         let unsafe_activities = x
@@ -993,7 +890,7 @@ mod llvm_enzyme {
         }
         let d_sig = FnSig { header: d_header, decl: d_decl, span };
         trace!("Generated signature: {:?}", d_sig);
-        (d_sig, idents, false)
+        d_sig
     }
 }
 
