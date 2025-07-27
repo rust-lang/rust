@@ -492,6 +492,72 @@ pub(crate) fn is_download_ci_available(target_triple: &str, llvm_assertions: boo
 }
 
 #[cfg(test)]
+pub(crate) fn maybe_download_rustfmt<'a>(
+    dwn_ctx: impl AsRef<DownloadContext<'a>>,
+) -> Option<PathBuf> {
+    Some(PathBuf::new())
+}
+
+/// NOTE: rustfmt is a completely different toolchain than the bootstrap compiler, so it can't
+/// reuse target directories or artifacts
+#[cfg(not(test))]
+pub(crate) fn maybe_download_rustfmt<'a>(
+    dwn_ctx: impl AsRef<DownloadContext<'a>>,
+) -> Option<PathBuf> {
+    use build_helper::stage0_parser::VersionMetadata;
+
+    let dwn_ctx = dwn_ctx.as_ref();
+
+    if dwn_ctx.dry_run {
+        return Some(PathBuf::new());
+    }
+
+    let VersionMetadata { date, version } = dwn_ctx.stage0_metadata.rustfmt.as_ref()?;
+    let channel = format!("{version}-{date}");
+
+    let host = dwn_ctx.host_target;
+    let bin_root = dwn_ctx.out.join(host).join("rustfmt");
+    let rustfmt_path = bin_root.join("bin").join(exe("rustfmt", host));
+    let rustfmt_stamp = BuildStamp::new(&bin_root).with_prefix("rustfmt").add_stamp(channel);
+    if rustfmt_path.exists() && rustfmt_stamp.is_up_to_date() {
+        return Some(rustfmt_path);
+    }
+
+    download_component(
+        dwn_ctx,
+        DownloadSource::Dist,
+        format!("rustfmt-{version}-{build}.tar.xz", build = host.triple),
+        "rustfmt-preview",
+        date,
+        "rustfmt",
+    );
+
+    download_component(
+        dwn_ctx,
+        DownloadSource::Dist,
+        format!("rustc-{version}-{build}.tar.xz", build = host.triple),
+        "rustc",
+        date,
+        "rustfmt",
+    );
+
+    if should_fix_bins_and_dylibs(dwn_ctx.patch_binaries_for_nix, dwn_ctx.exec_ctx) {
+        fix_bin_or_dylib(dwn_ctx.out, &bin_root.join("bin").join("rustfmt"), dwn_ctx.exec_ctx);
+        fix_bin_or_dylib(dwn_ctx.out, &bin_root.join("bin").join("cargo-fmt"), dwn_ctx.exec_ctx);
+        let lib_dir = bin_root.join("lib");
+        for lib in t!(fs::read_dir(&lib_dir), lib_dir.display().to_string()) {
+            let lib = t!(lib);
+            if path_is_dylib(&lib.path()) {
+                fix_bin_or_dylib(dwn_ctx.out, &lib.path(), dwn_ctx.exec_ctx);
+            }
+        }
+    }
+
+    t!(rustfmt_stamp.write());
+    Some(rustfmt_path)
+}
+
+#[cfg(test)]
 pub(crate) fn download_beta_toolchain<'a>(dwn_ctx: impl AsRef<DownloadContext<'a>>) {}
 
 #[cfg(not(test))]
