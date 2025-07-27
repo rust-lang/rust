@@ -90,7 +90,10 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
     /// string, to hold the function name passed to LLVM intrinsic
     /// `instrprof.increment()`. The `Value` is only created once per instance.
     /// Multiple invocations with the same instance return the same `Value`.
-    fn get_pgo_func_name_var(&self, instance: Instance<'tcx>) -> &'ll llvm::Value {
+    ///
+    /// This has the side-effect of causing coverage codegen to consider this
+    /// function "used", making it eligible to emit an associated covfun record.
+    fn ensure_pgo_func_name_var(&self, instance: Instance<'tcx>) -> &'ll llvm::Value {
         debug!("getting pgo_func_name_var for instance={:?}", instance);
         let mut pgo_func_name_var_map = self.coverage_cx().pgo_func_name_var_map.borrow_mut();
         pgo_func_name_var_map.entry(instance).or_insert_with(|| {
@@ -114,7 +117,7 @@ impl<'tcx> CoverageInfoBuilderMethods<'tcx> for Builder<'_, '_, 'tcx> {
             return;
         }
 
-        let fn_name = self.get_pgo_func_name_var(instance);
+        let fn_name = self.ensure_pgo_func_name_var(instance);
         let hash = self.const_u64(function_coverage_info.function_source_hash);
         let bitmap_bits = self.const_u32(function_coverage_info.mcdc_bitmap_bits as u32);
         self.mcdc_parameters(fn_name, hash, bitmap_bits);
@@ -170,7 +173,7 @@ impl<'tcx> CoverageInfoBuilderMethods<'tcx> for Builder<'_, '_, 'tcx> {
             CoverageKind::VirtualCounter { bcb }
                 if let Some(&id) = ids_info.phys_counter_for_node.get(&bcb) =>
             {
-                let fn_name = bx.get_pgo_func_name_var(instance);
+                let fn_name = bx.ensure_pgo_func_name_var(instance);
                 let hash = bx.const_u64(function_coverage_info.function_source_hash);
                 let num_counters = bx.const_u32(ids_info.num_counters);
                 let index = bx.const_u32(id.as_u32());
@@ -200,7 +203,7 @@ impl<'tcx> CoverageInfoBuilderMethods<'tcx> for Builder<'_, '_, 'tcx> {
                     "bitmap index of the decision out of range"
                 );
 
-                let fn_name = bx.get_pgo_func_name_var(instance);
+                let fn_name = bx.ensure_pgo_func_name_var(instance);
                 let hash = bx.const_u64(function_coverage_info.function_source_hash);
                 let bitmap_index = bx.const_u32(bitmap_idx);
                 bx.mcdc_tvbitmap_update(fn_name, hash, bitmap_index, cond_bitmap);
