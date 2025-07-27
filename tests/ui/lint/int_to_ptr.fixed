@@ -7,21 +7,31 @@
 #![allow(dead_code)]
 
 unsafe fn should_lint(a: usize) {
-    let _ptr = unsafe { a as *const u8 };
+    let _ptr: *const u8 = unsafe { std::ptr::with_exposed_provenance::<u8>(a) };
     //~^ WARN transmuting an integer to a pointer
-    let _ptr = unsafe { &*(a as *const u8) };
+    let _ptr: *mut u8 = unsafe { std::ptr::with_exposed_provenance_mut::<u8>(a) };
     //~^ WARN transmuting an integer to a pointer
-    let _ptr = unsafe { 42usize as *const u8 };
+    let _ref: &'static u8 = unsafe { &*std::ptr::with_exposed_provenance::<u8>(a) };
     //~^ WARN transmuting an integer to a pointer
-    let _ptr = unsafe { (a + a) as *const u8 };
+    let _ref: &'static mut u8 = unsafe { &mut *std::ptr::with_exposed_provenance_mut::<u8>(a) };
+    //~^ WARN transmuting an integer to a pointer
+
+    let _ptr = unsafe { std::ptr::with_exposed_provenance::<u8>(42usize) };
+    //~^ WARN transmuting an integer to a pointer
+    let _ptr = unsafe { std::ptr::with_exposed_provenance::<u8>(a + a) };
     //~^ WARN transmuting an integer to a pointer
 }
 
 const unsafe fn should_lintin_const(a: usize) {
-    let _ptr = unsafe { a as *const u8 };
+    let _ptr: *const u8 = unsafe { a as *const u8 };
     //~^ WARN transmuting an integer to a pointer
-    let _ptr = unsafe { &*(a as *const u8) };
+    let _ptr: *mut u8 = unsafe { a as *mut u8 };
     //~^ WARN transmuting an integer to a pointer
+    let _ref: &'static u8 = unsafe { &*(a as *const u8) };
+    //~^ WARN transmuting an integer to a pointer
+    let _ref: &'static mut u8 = unsafe { &mut *(a as *mut u8) };
+    //~^ WARN transmuting an integer to a pointer
+
     let _ptr = unsafe { 42usize as *const u8 };
     //~^ WARN transmuting an integer to a pointer
     let _ptr = unsafe { (a + a) as *const u8 };

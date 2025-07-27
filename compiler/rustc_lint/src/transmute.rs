@@ -90,13 +90,15 @@ declare_lint! {
     /// Any attempt to use the resulting pointers are undefined behavior as the resulting
     /// pointers won't have any provenance.
     ///
-    /// Alternatively, `as` casts should be used, as they do not carry the provenance
-    /// requirement or if the wanting to create pointers without provenance
-    /// `ptr::without_provenance_mut` should be used.
+    /// Alternatively, [`std::ptr::with_exposed_provenance`] or `as` casts should be used,
+    /// as they do not carry the provenance requirement. If the wanting to create pointers
+    /// without provenance [`std::ptr::without_provenance`] should be used instead.
     ///
-    /// See [std::mem::transmute] in the reference for more details.
+    /// See [`std::mem::transmute`] in the reference for more details.
     ///
-    /// [std::mem::transmute]: https://doc.rust-lang.org/std/mem/fn.transmute.html
+    /// [`std::mem::transmute`]: https://doc.rust-lang.org/std/mem/fn.transmute.html
+    /// [`std::ptr::with_exposed_provenance`]: https://doc.rust-lang.org/std/ptr/fn.with_exposed_provenance.html
+    /// [`std::ptr::without_provenance`]: https://doc.rust-lang.org/std/ptr/fn.without_provenance.html
     pub INTEGER_TO_PTR_TRANSMUTES,
     Warn,
     "detects integer to pointer transmutes",
@@ -152,36 +154,56 @@ fn check_int_to_ptr_transmute<'tcx>(
             .layout_of(cx.typing_env().as_query_input(*inner_ty))
             .is_ok_and(|layout| !layout.is_1zst())
     {
-        // does the argument needs parenthesis
-        let mut paren_left = "";
-        let mut paren_right = "";
-        if matches!(arg.kind, hir::ExprKind::Binary(..)) {
-            paren_left = "(";
-            paren_right = ")";
-        }
-
         cx.tcx.emit_node_span_lint(
             INTEGER_TO_PTR_TRANSMUTES,
             expr.hir_id,
             expr.span,
             IntegerToPtrTransmutes {
-                suggestion: if dst.is_ref() {
-                    IntegerToPtrTransmutesSuggestion::ToRef {
-                        dst: *inner_ty,
-                        ref_mutbl: mutbl.prefix_str(),
-                        ptr_mutbl: mutbl.ptr_str(),
-                        paren_left,
-                        paren_right,
-                        start_call: expr.span.shrink_to_lo().until(arg.span),
-                        end_call: arg.span.shrink_to_hi().until(expr.span.shrink_to_hi()),
+                // FIXME: once https://github.com/rust-lang/rust/issues/144538 finishes,
+                // we can recommend the method in const context too.
+                suggestion: if !cx.tcx.hir_is_inside_const_context(expr.hir_id) {
+                    let suffix = if mutbl.is_mut() { "_mut" } else { "" };
+                    if dst.is_ref() {
+                        IntegerToPtrTransmutesSuggestion::ToRef {
+                            dst: *inner_ty,
+                            suffix,
+                            ref_mutbl: mutbl.prefix_str(),
+                            start_call: expr.span.shrink_to_lo().until(arg.span),
+                        }
+                    } else {
+                        IntegerToPtrTransmutesSuggestion::ToPtr {
+                            dst: *inner_ty,
+                            suffix,
+                            start_call: expr.span.shrink_to_lo().until(arg.span),
+                        }
                     }
                 } else {
-                    IntegerToPtrTransmutesSuggestion::ToPtr {
-                        dst,
-                        paren_left,
-                        paren_right,
-                        start_call: expr.span.shrink_to_lo().until(arg.span),
-                        end_call: arg.span.shrink_to_hi().until(expr.span.shrink_to_hi()),
+                    // does the argument needs parenthesis
+                    let mut paren_left = "";
+                    let mut paren_right = "";
+                    if matches!(arg.kind, hir::ExprKind::Binary(..)) {
+                        paren_left = "(";
+                        paren_right = ")";
+                    }
+
+                    if dst.is_ref() {
+                        IntegerToPtrTransmutesSuggestion::ToRefInConst {
+                            dst: *inner_ty,
+                            ref_mutbl: mutbl.prefix_str(),
+                            ptr_mutbl: mutbl.ptr_str(),
+                            paren_left,
+                            paren_right,
+                            start_call: expr.span.shrink_to_lo().until(arg.span),
+                            end_call: arg.span.shrink_to_hi().until(expr.span.shrink_to_hi()),
+                        }
+                    } else {
+                        IntegerToPtrTransmutesSuggestion::ToPtrInConst {
+                            dst,
+                            paren_left,
+                            paren_right,
+                            start_call: expr.span.shrink_to_lo().until(arg.span),
+                            end_call: arg.span.shrink_to_hi().until(expr.span.shrink_to_hi()),
+                        }
                     }
                 },
             },

@@ -7,10 +7,15 @@
 #![allow(dead_code)]
 
 unsafe fn should_lint(a: usize) {
-    let _ptr = unsafe { std::mem::transmute::<usize, *const u8>(a) };
+    let _ptr: *const u8 = unsafe { std::mem::transmute::<usize, *const u8>(a) };
     //~^ WARN transmuting an integer to a pointer
-    let _ptr = unsafe { std::mem::transmute::<usize, &'static u8>(a) };
+    let _ptr: *mut u8 = unsafe { std::mem::transmute::<usize, *mut u8>(a) };
     //~^ WARN transmuting an integer to a pointer
+    let _ref: &'static u8 = unsafe { std::mem::transmute::<usize, &'static u8>(a) };
+    //~^ WARN transmuting an integer to a pointer
+    let _ref: &'static mut u8 = unsafe { std::mem::transmute::<usize, &'static mut u8>(a) };
+    //~^ WARN transmuting an integer to a pointer
+
     let _ptr = unsafe { std::mem::transmute::<usize, *const u8>(42usize) };
     //~^ WARN transmuting an integer to a pointer
     let _ptr = unsafe { std::mem::transmute::<usize, *const u8>(a + a) };
@@ -18,10 +23,15 @@ unsafe fn should_lint(a: usize) {
 }
 
 const unsafe fn should_lintin_const(a: usize) {
-    let _ptr = unsafe { std::mem::transmute::<usize, *const u8>(a) };
+    let _ptr: *const u8 = unsafe { std::mem::transmute::<usize, *const u8>(a) };
     //~^ WARN transmuting an integer to a pointer
-    let _ptr = unsafe { std::mem::transmute::<usize, &'static u8>(a) };
+    let _ptr: *mut u8 = unsafe { std::mem::transmute::<usize, *mut u8>(a) };
     //~^ WARN transmuting an integer to a pointer
+    let _ref: &'static u8 = unsafe { std::mem::transmute::<usize, &'static u8>(a) };
+    //~^ WARN transmuting an integer to a pointer
+    let _ref: &'static mut u8 = unsafe { std::mem::transmute::<usize, &'static mut u8>(a) };
+    //~^ WARN transmuting an integer to a pointer
+
     let _ptr = unsafe { std::mem::transmute::<usize, *const u8>(42usize) };
     //~^ WARN transmuting an integer to a pointer
     let _ptr = unsafe { std::mem::transmute::<usize, *const u8>(a + a) };

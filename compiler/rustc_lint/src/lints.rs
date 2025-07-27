@@ -1617,10 +1617,27 @@ pub(crate) struct IntegerToPtrTransmutes<'tcx> {
 }
 
 #[derive(Subdiagnostic)]
-// FIXME: recommend `with_exposed_provenance` when it's const-stable
+// FIXME: always recommend `with_exposed_provenance` when it's const-stable
 pub(crate) enum IntegerToPtrTransmutesSuggestion<'tcx> {
     #[multipart_suggestion(lint_suggestion_as, applicability = "machine-applicable")]
     ToPtr {
+        dst: Ty<'tcx>,
+        suffix: &'static str,
+        #[suggestion_part(code = "std::ptr::with_exposed_provenance{suffix}::<{dst}>(")]
+        start_call: Span,
+    },
+    #[multipart_suggestion(lint_suggestion_as, applicability = "machine-applicable")]
+    ToRef {
+        dst: Ty<'tcx>,
+        suffix: &'static str,
+        ref_mutbl: &'static str,
+        #[suggestion_part(
+            code = "&{ref_mutbl}*std::ptr::with_exposed_provenance{suffix}::<{dst}>("
+        )]
+        start_call: Span,
+    },
+    #[multipart_suggestion(lint_suggestion_as, applicability = "machine-applicable")]
+    ToPtrInConst {
         dst: Ty<'tcx>,
         paren_left: &'static str,
         paren_right: &'static str,
@@ -1630,7 +1647,7 @@ pub(crate) enum IntegerToPtrTransmutesSuggestion<'tcx> {
         end_call: Span,
     },
     #[multipart_suggestion(lint_suggestion_as, applicability = "machine-applicable")]
-    ToRef {
+    ToRefInConst {
         dst: Ty<'tcx>,
         ptr_mutbl: &'static str,
         ref_mutbl: &'static str,
