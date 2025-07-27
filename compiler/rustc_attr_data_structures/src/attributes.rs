@@ -416,11 +416,23 @@ pub enum AttributeKind {
     /// Represents `#[pointee]`
     Pointee(Span),
 
+    /// Represents `#[proc_macro]`
+    ProcMacro(Span),
+
+    /// Represents `#[proc_macro_attribute]`
+    ProcMacroAttribute(Span),
+
+    /// Represents `#[proc_macro_derive]`
+    ProcMacroDerive { trait_name: Symbol, helper_attrs: ThinVec<Symbol>, span: Span },
+
     /// Represents `#[rustc_pub_transparent]` (used by the `repr_transparent_external_private_fields` lint).
     PubTransparent(Span),
 
     /// Represents [`#[repr]`](https://doc.rust-lang.org/stable/reference/type-layout.html#representations).
     Repr { reprs: ThinVec<(ReprAttr, Span)>, first_span: Span },
+
+    /// Represents `#[rustc_builtin_macro]`.
+    RustcBuiltinMacro { builtin_name: Option<Symbol>, helper_attrs: ThinVec<Symbol>, span: Span },
 
     /// Represents `#[rustc_layout_scalar_valid_range_end]`.
     RustcLayoutScalarValidRangeEnd(Box<u128>, Span),
