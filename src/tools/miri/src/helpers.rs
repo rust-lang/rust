@@ -1087,8 +1087,21 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         "failed to evaluate static in required link_section: {def_id:?}\n{err:?}"
                     )
                 });
-                let val = this.read_immediate(&const_val)?;
-                array.push(val);
+                match const_val.layout.ty.kind() {
+                    ty::FnPtr(..) => {
+                        array.push(this.read_immediate(&const_val)?);
+                    }
+                    ty::Array(elem_ty, _) if matches!(elem_ty.kind(), ty::FnPtr(..)) => {
+                        let mut elems = this.project_array_fields(&const_val)?;
+                        while let Some((_idx, elem)) = elems.next(this)? {
+                            array.push(this.read_immediate(&elem)?);
+                        }
+                    }
+                    _ =>
+                        throw_unsup_format!(
+                            "only function pointers and arrays of function pointers are supported in well-known linker sections"
+                        ),
+                }
             }
             interp_ok(())
         })?;
