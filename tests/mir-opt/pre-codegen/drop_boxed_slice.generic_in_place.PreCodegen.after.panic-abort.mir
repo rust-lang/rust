@@ -1,0 +1,111 @@
+// MIR for `generic_in_place` after PreCodegen
+
+fn generic_in_place(_1: *mut Box<[T]>) -> () {
+    debug ptr => _1;
+    let mut _0: ();
+    scope 1 (inlined drop_in_place::<Box<[T]>> - shim(Some(Box<[T]>))) {
+        scope 2 (inlined <Box<[T]> as Drop>::drop) {
+            let _2: std::ptr::NonNull<[T]>;
+            let mut _3: *mut [T];
+            let mut _4: *const [T];
+            let _12: ();
+            scope 3 {
+                scope 4 {
+                    scope 12 (inlined Layout::size) {
+                    }
+                    scope 13 (inlined Unique::<[T]>::cast::<u8>) {
+                        scope 14 (inlined NonNull::<[T]>::cast::<u8>) {
+                            scope 15 (inlined NonNull::<[T]>::as_ptr) {
+                            }
+                        }
+                    }
+                    scope 16 (inlined <NonNull<u8> as From<Unique<u8>>>::from) {
+                        scope 17 (inlined Unique::<u8>::as_non_null_ptr) {
+                        }
+                    }
+                    scope 18 (inlined <std::alloc::Global as Allocator>::deallocate) {
+                        let mut _8: *mut u8;
+                        scope 19 (inlined Layout::size) {
+                        }
+                        scope 20 (inlined NonNull::<u8>::as_ptr) {
+                        }
+                        scope 21 (inlined std::alloc::dealloc) {
+                            let mut _11: usize;
+                            scope 22 (inlined Layout::size) {
+                            }
+                            scope 23 (inlined Layout::align) {
+                                scope 24 (inlined std::ptr::Alignment::as_usize) {
+                                    let _9: std::ptr::alignment::AlignmentEnum;
+                                    let mut _10: u32;
+                                }
+                            }
+                        }
+                    }
+                }
+                scope 5 (inlined Unique::<[T]>::as_ptr) {
+                    scope 6 (inlined NonNull::<[T]>::as_ptr) {
+                    }
+                }
+                scope 7 (inlined Layout::for_value_raw::<[T]>) {
+                    let mut _5: usize;
+                    let mut _6: usize;
+                    scope 8 {
+                        scope 11 (inlined #[track_caller] Layout::from_size_align_unchecked) {
+                            let mut _7: std::ptr::Alignment;
+                        }
+                    }
+                    scope 9 (inlined size_of_val_raw::<[T]>) {
+                    }
+                    scope 10 (inlined align_of_val_raw::<[T]>) {
+                    }
+                }
+            }
+        }
+    }
+
+    bb0: {
+        StorageLive(_2);
+        _2 = copy (((*_1).0: std::ptr::Unique<[T]>).0: std::ptr::NonNull<[T]>);
+        StorageLive(_4);
+        _3 = copy _2 as *mut [T] (Transmute);
+        _4 = copy _2 as *const [T] (Transmute);
+        StorageLive(_6);
+        _5 = std::intrinsics::size_of_val::<[T]>(copy _4) -> [return: bb1, unwind unreachable];
+    }
+
+    bb1: {
+        _6 = std::intrinsics::align_of_val::<[T]>(move _4) -> [return: bb2, unwind unreachable];
+    }
+
+    bb2: {
+        _7 = copy _6 as std::ptr::Alignment (Transmute);
+        StorageDead(_6);
+        StorageDead(_4);
+        switchInt(copy _5) -> [0: bb5, otherwise: bb3];
+    }
+
+    bb3: {
+        StorageLive(_8);
+        _8 = copy _3 as *mut u8 (PtrToPtr);
+        StorageLive(_11);
+        StorageLive(_10);
+        StorageLive(_9);
+        _9 = copy (_7.0: std::ptr::alignment::AlignmentEnum);
+        _10 = discriminant(_9);
+        _11 = move _10 as usize (IntToInt);
+        StorageDead(_9);
+        StorageDead(_10);
+        _12 = alloc::alloc::__rust_dealloc(move _8, move _5, move _11) -> [return: bb4, unwind unreachable];
+    }
+
+    bb4: {
+        StorageDead(_11);
+        StorageDead(_8);
+        goto -> bb5;
+    }
+
+    bb5: {
+        StorageDead(_2);
+        return;
+    }
+}
