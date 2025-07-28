@@ -57,6 +57,17 @@ help: you can add the `dyn` keyword if you want a trait object
 LL | type Obj = dyn Trait<T = dyn Clone>;
    |                          +++
 
-error: aborting due to 4 previous errors
+error[E0782]: expected a type, found a trait
+  --> $DIR/suggest-assoc-ty-bound-on-eq-bound.rs:29:22
+   |
+LL | fn i(_: impl Fn() -> std::fmt::Debug) {}
+   |                      ^^^^^^^^^^^^^^^
+   |
+help: you can add the `dyn` keyword if you want a trait object
+   |
+LL | fn i(_: impl Fn() -> dyn std::fmt::Debug) {}
+   |                      +++
+
+error: aborting due to 5 previous errors
 
 For more information about this error, try `rustc --explain E0782`.

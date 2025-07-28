@@ -5,7 +5,7 @@
 pub mod tls;
 
 use std::assert_matches::debug_assert_matches;
-use std::borrow::Borrow;
+use std::borrow::{Borrow, Cow};
 use std::cmp::Ordering;
 use std::env::VarError;
 use std::ffi::OsStr;
@@ -1041,11 +1041,13 @@ const NUM_PREINTERNED_TY_VARS: u32 = 100;
 const NUM_PREINTERNED_FRESH_TYS: u32 = 20;
 const NUM_PREINTERNED_FRESH_INT_TYS: u32 = 3;
 const NUM_PREINTERNED_FRESH_FLOAT_TYS: u32 = 3;
+const NUM_PREINTERNED_ANON_BOUND_TYS_I: u32 = 3;
+const NUM_PREINTERNED_ANON_BOUND_TYS_V: u32 = 20;
 
 // This number may seem high, but it is reached in all but the smallest crates.
 const NUM_PREINTERNED_RE_VARS: u32 = 500;
-const NUM_PREINTERNED_RE_LATE_BOUNDS_I: u32 = 2;
-const NUM_PREINTERNED_RE_LATE_BOUNDS_V: u32 = 20;
+const NUM_PREINTERNED_ANON_RE_BOUNDS_I: u32 = 3;
+const NUM_PREINTERNED_ANON_RE_BOUNDS_V: u32 = 20;
 
 pub struct CommonTypes<'tcx> {
     pub unit: Ty<'tcx>,
@@ -1088,6 +1090,11 @@ pub struct CommonTypes<'tcx> {
 
     /// Pre-interned `Infer(ty::FreshFloatTy(n))` for small values of `n`.
     pub fresh_float_tys: Vec<Ty<'tcx>>,
+
+    /// Pre-interned values of the form:
+    /// `Bound(DebruijnIndex(i), BoundTy { var: v, kind: BoundTyKind::Anon})`
+    /// for small values of `i` and `v`.
+    pub anon_bound_tys: Vec<Vec<Ty<'tcx>>>,
 }
 
 pub struct CommonLifetimes<'tcx> {
@@ -1101,9 +1108,9 @@ pub struct CommonLifetimes<'tcx> {
     pub re_vars: Vec<Region<'tcx>>,
 
     /// Pre-interned values of the form:
-    /// `ReBound(DebruijnIndex(i), BoundRegion { var: v, kind: BrAnon })`
+    /// `ReBound(DebruijnIndex(i), BoundRegion { var: v, kind: BoundRegionKind::Anon })`
     /// for small values of `i` and `v`.
-    pub re_late_bounds: Vec<Vec<Region<'tcx>>>,
+    pub anon_re_bounds: Vec<Vec<Region<'tcx>>>,
 }
 
 pub struct CommonConsts<'tcx> {
@@ -1130,6 +1137,19 @@ impl<'tcx> CommonTypes<'tcx> {
             (0..NUM_PREINTERNED_FRESH_INT_TYS).map(|n| mk(Infer(ty::FreshIntTy(n)))).collect();
         let fresh_float_tys: Vec<_> =
             (0..NUM_PREINTERNED_FRESH_FLOAT_TYS).map(|n| mk(Infer(ty::FreshFloatTy(n)))).collect();
+
+        let anon_bound_tys = (0..NUM_PREINTERNED_ANON_BOUND_TYS_I)
+            .map(|i| {
+                (0..NUM_PREINTERNED_ANON_BOUND_TYS_V)
+                    .map(|v| {
+                        mk(ty::Bound(
+                            ty::DebruijnIndex::from(i),
+                            ty::BoundTy { var: ty::BoundVar::from(v), kind: ty::BoundTyKind::Anon },
+                        ))
+                    })
+                    .collect()
+            })
+            .collect();
 
         CommonTypes {
             unit: mk(Tuple(List::empty())),
@@ -1161,6 +1181,7 @@ impl<'tcx> CommonTypes<'tcx> {
             fresh_tys,
             fresh_int_tys,
             fresh_float_tys,
+            anon_bound_tys,
         }
     }
 }
@@ -1176,9 +1197,9 @@ impl<'tcx> CommonLifetimes<'tcx> {
         let re_vars =
             (0..NUM_PREINTERNED_RE_VARS).map(|n| mk(ty::ReVar(ty::RegionVid::from(n)))).collect();
 
-        let re_late_bounds = (0..NUM_PREINTERNED_RE_LATE_BOUNDS_I)
+        let anon_re_bounds = (0..NUM_PREINTERNED_ANON_RE_BOUNDS_I)
             .map(|i| {
-                (0..NUM_PREINTERNED_RE_LATE_BOUNDS_V)
+                (0..NUM_PREINTERNED_ANON_RE_BOUNDS_V)
                     .map(|v| {
                         mk(ty::ReBound(
                             ty::DebruijnIndex::from(i),
@@ -1196,7 +1217,7 @@ impl<'tcx> CommonLifetimes<'tcx> {
             re_static: mk(ty::ReStatic),
             re_erased: mk(ty::ReErased),
             re_vars,
-            re_late_bounds,
+            anon_re_bounds,
         }
     }
 }
@@ -1625,7 +1646,11 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Allocates a read-only byte or string literal for `mir::interpret` with alignment 1.
     /// Returns the same `AllocId` if called again with the same bytes.
-    pub fn allocate_bytes_dedup(self, bytes: &[u8], salt: usize) -> interpret::AllocId {
+    pub fn allocate_bytes_dedup<'a>(
+        self,
+        bytes: impl Into<Cow<'a, [u8]>>,
+        salt: usize,
+    ) -> interpret::AllocId {
         // Create an allocation that just contains these bytes.
         let alloc = interpret::Allocation::from_bytes_byte_aligned_immutable(bytes, ());
         let alloc = self.mk_const_alloc(alloc);
@@ -3373,6 +3398,11 @@ impl<'tcx> TyCtxt<'tcx> {
         self.resolutions(()).module_children.get(&def_id).map_or(&[], |v| &v[..])
     }
 
+    /// Return the crate imported by given use item.
+    pub fn extern_mod_stmt_cnum(self, def_id: LocalDefId) -> Option<CrateNum> {
+        self.resolutions(()).extern_crate_map.get(&def_id).copied()
+    }
+
     pub fn resolver_for_lowering(self) -> &'tcx Steal<(ty::ResolverAstLowering, Arc<ast::Crate>)> {
         self.resolver_for_lowering_raw(()).0
     }
@@ -3410,6 +3440,20 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn do_not_recommend_impl(self, def_id: DefId) -> bool {
         self.get_diagnostic_attr(def_id, sym::do_not_recommend).is_some()
     }
+
+    /// Whether this def is one of the special bin crate entrypoint functions that must have a
+    /// monomorphization and also not be internalized in the bin crate.
+    pub fn is_entrypoint(self, def_id: DefId) -> bool {
+        if self.is_lang_item(def_id, LangItem::Start) {
+            return true;
+        }
+        if let Some((entry_def_id, _)) = self.entry_fn(())
+            && entry_def_id == def_id
+        {
+            return true;
+        }
+        false
+    }
 }
 
 /// Parameter attributes that can only be determined by examining the body of a function instead
@@ -3428,8 +3472,6 @@ pub struct DeducedParamAttrs {
 }
 
 pub fn provide(providers: &mut Providers) {
-    providers.extern_mod_stmt_cnum =
-        |tcx, id| tcx.resolutions(()).extern_crate_map.get(&id).cloned();
     providers.is_panic_runtime =
         |tcx, LocalCrate| contains_name(tcx.hir_krate_attrs(), sym::panic_runtime);
     providers.is_compiler_builtins =

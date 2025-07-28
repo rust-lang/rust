@@ -157,7 +157,8 @@ pub fn get_commit_date() -> Option<String> {
 
 #[must_use]
 pub fn get_compiler_version() -> Option<String> {
-    get_output("rustc", &["-V"])
+    let compiler = std::option_env!("RUSTC").unwrap_or("rustc");
+    get_output(compiler, &["-V"])
 }
 
 #[must_use]
@@ -172,6 +173,8 @@ pub fn get_channel(compiler_version: Option<String>) -> String {
             return String::from("beta");
         } else if rustc_output.contains("nightly") {
             return String::from("nightly");
+        } else if rustc_output.contains("dev") {
+            return String::from("dev");
         }
     }
 

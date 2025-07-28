@@ -152,7 +152,7 @@ pub(crate) fn mk_eval_cx_to_read_const_val<'tcx>(
 pub fn mk_eval_cx_for_const_val<'tcx>(
     tcx: TyCtxtAt<'tcx>,
     typing_env: ty::TypingEnv<'tcx>,
-    val: mir::ConstValue<'tcx>,
+    val: mir::ConstValue,
     ty: Ty<'tcx>,
 ) -> Option<(CompileTimeInterpCx<'tcx>, OpTy<'tcx>)> {
     let ecx = mk_eval_cx_to_read_const_val(tcx.tcx, tcx.span, typing_env, CanAccessMutGlobal::No);
@@ -172,7 +172,7 @@ pub(super) fn op_to_const<'tcx>(
     ecx: &CompileTimeInterpCx<'tcx>,
     op: &OpTy<'tcx>,
     for_diagnostics: bool,
-) -> ConstValue<'tcx> {
+) -> ConstValue {
     // Handle ZST consistently and early.
     if op.layout.is_zst() {
         return ConstValue::ZeroSized;
@@ -241,10 +241,9 @@ pub(super) fn op_to_const<'tcx>(
                 let (prov, offset) =
                     ptr.into_pointer_or_addr().expect(msg).prov_and_relative_offset();
                 let alloc_id = prov.alloc_id();
-                let data = ecx.tcx.global_alloc(alloc_id).unwrap_memory();
                 assert!(offset == abi::Size::ZERO, "{}", msg);
                 let meta = b.to_target_usize(ecx).expect(msg);
-                ConstValue::Slice { data, meta }
+                ConstValue::Slice { alloc_id, meta }
             }
             Immediate::Uninit => bug!("`Uninit` is not a valid value for {}", op.layout.ty),
         },
@@ -256,7 +255,7 @@ pub(crate) fn turn_into_const_value<'tcx>(
     tcx: TyCtxt<'tcx>,
     constant: ConstAlloc<'tcx>,
     key: ty::PseudoCanonicalInput<'tcx, GlobalId<'tcx>>,
-) -> ConstValue<'tcx> {
+) -> ConstValue {
     let cid = key.value;
     let def_id = cid.instance.def.def_id();
     let is_static = tcx.is_static(def_id);

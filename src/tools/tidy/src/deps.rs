@@ -73,7 +73,6 @@ pub(crate) const WORKSPACES: &[(&str, ExceptionList, Option<(&[&str], &[&str])>,
     // tidy-alphabetical-start
     ("compiler/rustc_codegen_gcc", EXCEPTIONS_GCC, None, &[]),
     ("src/bootstrap", EXCEPTIONS_BOOTSTRAP, None, &[]),
-    ("src/ci/docker/host-x86_64/test-various/uefi_qemu_test", EXCEPTIONS_UEFI_QEMU_TEST, None, &[]),
     ("src/tools/cargo", EXCEPTIONS_CARGO, None, &["src/tools/cargo"]),
     //("src/tools/miri/test-cargo-miri", &[], None), // FIXME uncomment once all deps are vendored
     //("src/tools/miri/test_dependencies", &[], None), // FIXME uncomment once all deps are vendored
@@ -81,6 +80,7 @@ pub(crate) const WORKSPACES: &[(&str, ExceptionList, Option<(&[&str], &[&str])>,
     ("src/tools/rustbook", EXCEPTIONS_RUSTBOOK, None, &["src/doc/book", "src/doc/reference"]),
     ("src/tools/rustc-perf", EXCEPTIONS_RUSTC_PERF, None, &["src/tools/rustc-perf"]),
     ("src/tools/test-float-parse", EXCEPTIONS, None, &[]),
+    ("tests/run-make/uefi-qemu/uefi_qemu_test", EXCEPTIONS_UEFI_QEMU_TEST, None, &[]),
     // tidy-alphabetical-end
 ];
 
@@ -135,6 +135,7 @@ const EXCEPTIONS_CARGO: ExceptionList = &[
     ("libz-rs-sys", "Zlib"),
     ("normalize-line-endings", "Apache-2.0"),
     ("openssl", "Apache-2.0"),
+    ("ring", "Apache-2.0 AND ISC"),
     ("ryu", "Apache-2.0 OR BSL-1.0"), // BSL is not acceptble, but we use it under Apache-2.0
     ("similar", "Apache-2.0"),
     ("sized-chunks", "MPL-2.0+"),
@@ -378,6 +379,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "serde",
     "serde_derive",
     "serde_json",
+    "serde_path_to_error",
     "sha1",
     "sha2",
     "sharded-slab",

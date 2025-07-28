@@ -1363,7 +1363,7 @@ rustc_queries! {
     }
 
     /// Converts a type-level constant value into a MIR constant value.
-    query valtree_to_const_val(key: ty::Value<'tcx>) -> mir::ConstValue<'tcx> {
+    query valtree_to_const_val(key: ty::Value<'tcx>) -> mir::ConstValue {
         desc { "converting type-level constant value to MIR constant value"}
     }
 
@@ -2151,9 +2151,6 @@ rustc_queries! {
     query module_children(def_id: DefId) -> &'tcx [ModChild] {
         desc { |tcx| "collecting child items of module `{}`", tcx.def_path_str(def_id) }
         separate_provide_extern
-    }
-    query extern_mod_stmt_cnum(def_id: LocalDefId) -> Option<CrateNum> {
-        desc { |tcx| "computing crate imported by `{}`", tcx.def_path_str(def_id) }
     }
 
     /// Gets the number of definitions in a foreign crate.

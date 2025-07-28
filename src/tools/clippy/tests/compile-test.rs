@@ -162,6 +162,10 @@ impl TestContext {
                     // however has some staging logic that is hurting us here, so to work around
                     // that we set both the "real" and "staging" rustc to TEST_RUSTC, including the
                     // associated library paths.
+                    #[expect(
+                        clippy::option_env_unwrap,
+                        reason = "TEST_RUSTC will ensure that the requested env vars are set during compile time"
+                    )]
                     if let Some(rustc) = option_env!("TEST_RUSTC") {
                         let libdir = option_env!("TEST_RUSTC_LIB").unwrap();
                         let sysroot = option_env!("TEST_SYSROOT").unwrap();
@@ -169,10 +173,7 @@ impl TestContext {
                         p.envs.push(("RUSTC_REAL_LIBDIR".into(), Some(libdir.into())));
                         p.envs.push(("RUSTC_SNAPSHOT".into(), Some(rustc.into())));
                         p.envs.push(("RUSTC_SNAPSHOT_LIBDIR".into(), Some(libdir.into())));
-                        p.envs.push((
-                            "RUSTC_SYSROOT".into(),
-                            Some(sysroot.into()),
-                        ));
+                        p.envs.push(("RUSTC_SYSROOT".into(), Some(sysroot.into())));
                     }
                     p
                 },

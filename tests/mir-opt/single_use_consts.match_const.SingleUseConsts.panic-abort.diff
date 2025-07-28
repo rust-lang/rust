@@ -34,3 +34,15 @@
       }
   }
   
+  ALLOC0 (size: 5, align: 1) {
+      77 6f 72 6c 64                                  │ world
+  }
+  
+  ALLOC1 (size: 5, align: 1) {
+      74 6f 77 65 6c                                  │ towel
+  }
+  
+  ALLOC2 (size: 5, align: 1) {
+      68 65 6c 6c 6f                                  │ hello
+  }
+  

@@ -700,8 +700,21 @@ impl<'tcx> Collector<'tcx> {
             .link_ordinal
             .map_or(import_name_type, |ord| Some(PeImportNameType::Ordinal(ord)));
 
+        let name = codegen_fn_attrs.link_name.unwrap_or_else(|| self.tcx.item_name(item));
+
+        if self.tcx.sess.target.binary_format == BinaryFormat::Elf {
+            let name = name.as_str();
+            if name.contains('\0') {
+                self.tcx.dcx().emit_err(errors::RawDylibMalformed { span });
+            } else if let Some((left, right)) = name.split_once('@')
+                && (left.is_empty() || right.is_empty() || right.contains('@'))
+            {
+                self.tcx.dcx().emit_err(errors::RawDylibMalformed { span });
+            }
+        }
+
         DllImport {
-            name: codegen_fn_attrs.link_name.unwrap_or_else(|| self.tcx.item_name(item)),
+            name,
             import_name_type,
             calling_convention,
             span,

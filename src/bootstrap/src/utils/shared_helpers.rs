@@ -1,13 +1,17 @@
 //! This module serves two purposes:
-//!     1. It is part of the `utils` module and used in other parts of bootstrap.
-//!     2. It is embedded inside bootstrap shims to avoid a dependency on the bootstrap library.
-//!        Therefore, this module should never use any other bootstrap module. This reduces binary
-//!        size and improves compilation time by minimizing linking time.
+//!
+//! 1. It is part of the `utils` module and used in other parts of bootstrap.
+//! 2. It is embedded inside bootstrap shims to avoid a dependency on the bootstrap library.
+//!    Therefore, this module should never use any other bootstrap module. This reduces binary size
+//!    and improves compilation time by minimizing linking time.
+
+// # Note on tests
+//
+// If we were to declare a tests submodule here, the shim binaries that include this module via
+// `#[path]` would fail to find it, which breaks `./x check bootstrap`. So instead the unit tests
+// for this module are in `super::tests::shared_helpers_tests`.
 
 #![allow(dead_code)]
-
-#[cfg(test)]
-mod tests;
 
 use std::env;
 use std::ffi::OsString;
@@ -15,10 +19,6 @@ use std::fs::OpenOptions;
 use std::io::Write;
 use std::process::Command;
 use std::str::FromStr;
-
-// If we were to declare a tests submodule here, the shim binaries that include this
-// module via `#[path]` would fail to find it, which breaks `./x check bootstrap`.
-// So instead the unit tests for this module are in `super::tests::shared_helpers_tests`.
 
 /// Returns the environment variable which the dynamic library lookup path
 /// resides in for this platform.

@@ -1376,6 +1376,28 @@ impl WrappingRange {
         }
     }
 
+    /// Returns `true` if all the values in `other` are contained in this range,
+    /// when the values are considered as having width `size`.
+    #[inline(always)]
+    pub fn contains_range(&self, other: Self, size: Size) -> bool {
+        if self.is_full_for(size) {
+            true
+        } else {
+            let trunc = |x| size.truncate(x);
+
+            let delta = self.start;
+            let max = trunc(self.end.wrapping_sub(delta));
+
+            let other_start = trunc(other.start.wrapping_sub(delta));
+            let other_end = trunc(other.end.wrapping_sub(delta));
+
+            // Having shifted both input ranges by `delta`, now we only need to check
+            // whether `0..=max` contains `other_start..=other_end`, which can only
+            // happen if the other doesn't wrap since `self` isn't everything.
+            (other_start <= other_end) && (other_end <= max)
+        }
+    }
+
     /// Returns `self` with replaced `start`
     #[inline(always)]
     fn with_start(mut self, start: u128) -> Self {

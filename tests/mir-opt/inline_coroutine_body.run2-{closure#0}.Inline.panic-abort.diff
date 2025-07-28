@@ -251,7 +251,7 @@
 +         StorageLive(_50);
 +         _50 = discriminant(_43);
 +         switchInt(move _50) -> [0: bb11, 1: bb12, otherwise: bb5];
-+     }
+      }
 + 
 +     bb5: {
 +         unreachable;
@@ -329,6 +329,11 @@
 +         StorageDead(_19);
 +         _25 = discriminant(_18);
 +         switchInt(move _25) -> [0: bb7, 1: bb6, otherwise: bb5];
-      }
++     }
++ }
++ 
++ ALLOC0 (size: 31, align: 1) {
++     0x00 │ 60 52 65 61 64 79 60 20 70 6f 6c 6c 65 64 20 61 │ `Ready` polled a
++     0x10 │ 66 74 65 72 20 63 6f 6d 70 6c 65 74 69 6f 6e    │ fter completion
   }
   

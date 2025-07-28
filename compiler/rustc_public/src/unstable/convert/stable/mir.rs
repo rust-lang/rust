@@ -653,7 +653,6 @@ impl<'tcx> Stable<'tcx> for mir::AggregateKind<'tcx> {
                 crate::mir::AggregateKind::Coroutine(
                     tables.coroutine_def(*def_id),
                     generic_arg.stable(tables, cx),
-                    cx.coroutine_movability(*def_id).stable(tables, cx),
                 )
             }
             mir::AggregateKind::CoroutineClosure(def_id, generic_args) => {

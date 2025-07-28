@@ -603,12 +603,6 @@ fn layout_of_uncached<'tcx>(
                     .flatten()
             };
 
-            let dont_niche_optimize_enum = def.repr().inhibit_enum_layout_opt()
-                || def
-                    .variants()
-                    .iter_enumerated()
-                    .any(|(i, v)| v.discr != ty::VariantDiscr::Relative(i.as_u32()));
-
             let maybe_unsized = def.is_struct()
                 && def.non_enum_variant().tail_opt().is_some_and(|last_field| {
                     let typing_env = ty::TypingEnv::post_analysis(tcx, def.did());
@@ -625,7 +619,6 @@ fn layout_of_uncached<'tcx>(
                     tcx.layout_scalar_valid_range(def.did()),
                     get_discriminant_type,
                     discriminants_iter(),
-                    dont_niche_optimize_enum,
                     !maybe_unsized,
                 )
                 .map_err(|err| map_error(cx, ty, err))?;
@@ -651,7 +644,6 @@ fn layout_of_uncached<'tcx>(
                     tcx.layout_scalar_valid_range(def.did()),
                     get_discriminant_type,
                     discriminants_iter(),
-                    dont_niche_optimize_enum,
                     !maybe_unsized,
                 ) else {
                     bug!("failed to compute unsized layout of {ty:?}");

@@ -308,10 +308,11 @@ fn local_item_child_by_name(tcx: TyCtxt<'_>, local_id: LocalDefId, ns: PathNS, n
                 None
             }
         }),
-        ItemKind::Impl(..) | ItemKind::Trait(..)
-            => tcx.associated_items(local_id).filter_by_name_unhygienic(name)
-                .find(|assoc_item| ns.matches(Some(assoc_item.namespace())))
-                .map(|assoc_item| assoc_item.def_id),
+        ItemKind::Impl(..) | ItemKind::Trait(..) => tcx
+            .associated_items(local_id)
+            .filter_by_name_unhygienic(name)
+            .find(|assoc_item| ns.matches(Some(assoc_item.namespace())))
+            .map(|assoc_item| assoc_item.def_id),
         _ => None,
     }
 }

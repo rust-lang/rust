@@ -146,6 +146,15 @@ LL |         m!((ref mut borrow, mov) = tup0);
 ...
 LL |     drop(&tup0);
    |          ^^^^^ value borrowed here after move
+   |
+note: if `S` implemented `Clone`, you could clone the value
+  --> $DIR/move-ref-patterns-closure-captures-inside.rs:2:5
+   |
+LL |     struct S; // Not `Copy`.
+   |     ^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |         m!((ref mut borrow, mov) = tup0);
+   |                                    ---- you could clone this value
 
 error[E0382]: borrow of moved value: `tup1`
   --> $DIR/move-ref-patterns-closure-captures-inside.rs:76:10
@@ -161,6 +170,15 @@ LL |         m!((mov, _, ref mut borrow) = tup1);
 ...
 LL |     drop(&tup1);
    |          ^^^^^ value borrowed here after move
+   |
+note: if `S` implemented `Clone`, you could clone the value
+  --> $DIR/move-ref-patterns-closure-captures-inside.rs:2:5
+   |
+LL |     struct S; // Not `Copy`.
+   |     ^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |         m!((mov, _, ref mut borrow) = tup1);
+   |                                       ---- you could clone this value
 
 error[E0382]: borrow of moved value: `tup2`
   --> $DIR/move-ref-patterns-closure-captures-inside.rs:77:10
@@ -176,6 +194,15 @@ LL |         m!((ref borrow, mov) = tup2);
 ...
 LL |     drop(&tup2);
    |          ^^^^^ value borrowed here after move
+   |
+note: if `S` implemented `Clone`, you could clone the value
+  --> $DIR/move-ref-patterns-closure-captures-inside.rs:2:5
+   |
+LL |     struct S; // Not `Copy`.
+   |     ^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |         m!((ref borrow, mov) = tup2);
+   |                                ---- you could clone this value
 
 error[E0382]: borrow of moved value: `tup3`
   --> $DIR/move-ref-patterns-closure-captures-inside.rs:78:10
@@ -191,6 +218,15 @@ LL |         m!((mov, _, ref borrow) = tup3);
 ...
 LL |     drop(&tup3);
    |          ^^^^^ value borrowed here after move
+   |
+note: if `S` implemented `Clone`, you could clone the value
+  --> $DIR/move-ref-patterns-closure-captures-inside.rs:2:5
+   |
+LL |     struct S; // Not `Copy`.
+   |     ^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |         m!((mov, _, ref borrow) = tup3);
+   |                                   ---- you could clone this value
 
 error[E0382]: borrow of moved value: `tup4`
   --> $DIR/move-ref-patterns-closure-captures-inside.rs:79:21
@@ -206,6 +242,15 @@ LL |         m!((ref borrow, mov) = tup4);
 ...
 LL |     m!((ref x, _) = &tup4);
    |                     ^^^^^ value borrowed here after move
+   |
+note: if `S` implemented `Clone`, you could clone the value
+  --> $DIR/move-ref-patterns-closure-captures-inside.rs:2:5
+   |
+LL |     struct S; // Not `Copy`.
+   |     ^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |         m!((ref borrow, mov) = tup4);
+   |                                ---- you could clone this value
 
 error[E0382]: borrow of moved value: `arr0`
   --> $DIR/move-ref-patterns-closure-captures-inside.rs:80:10
@@ -221,6 +266,15 @@ LL |         m!([mov @ .., ref borrow] = arr0);
 ...
 LL |     drop(&arr0);
    |          ^^^^^ value borrowed here after move
+   |
+note: if `S` implemented `Clone`, you could clone the value
+  --> $DIR/move-ref-patterns-closure-captures-inside.rs:2:5
+   |
+LL |     struct S; // Not `Copy`.
+   |     ^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |         m!([mov @ .., ref borrow] = arr0);
+   |                                     ---- you could clone this value
 
 error[E0382]: borrow of moved value: `arr1`
   --> $DIR/move-ref-patterns-closure-captures-inside.rs:81:35
@@ -236,6 +290,15 @@ LL |         m!([_, ref mut borrow @ .., _, mov] = arr1);
 ...
 LL |     m!([_, mov1, mov2, mov3, _] = &arr1);
    |                                   ^^^^^ value borrowed here after move
+   |
+note: if `S` implemented `Clone`, you could clone the value
+  --> $DIR/move-ref-patterns-closure-captures-inside.rs:2:5
+   |
+LL |     struct S; // Not `Copy`.
+   |     ^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |         m!([_, ref mut borrow @ .., _, mov] = arr1);
+   |                                               ---- you could clone this value
 
 error[E0382]: borrow of moved value: `arr2`
   --> $DIR/move-ref-patterns-closure-captures-inside.rs:82:10
@@ -251,6 +314,15 @@ LL |         m!([mov @ .., ref borrow] = arr2);
 ...
 LL |     drop(&arr2);
    |          ^^^^^ value borrowed here after move
+   |
+note: if `S` implemented `Clone`, you could clone the value
+  --> $DIR/move-ref-patterns-closure-captures-inside.rs:2:5
+   |
+LL |     struct S; // Not `Copy`.
+   |     ^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |         m!([mov @ .., ref borrow] = arr2);
+   |                                     ---- you could clone this value
 
 error[E0382]: borrow of moved value: `arr3`
   --> $DIR/move-ref-patterns-closure-captures-inside.rs:83:35
@@ -265,6 +337,15 @@ LL |         m!([_, ref borrow @ .., _, mov] = arr3);
 ...
 LL |     m!([_, mov1, mov2, mov3, _] = &arr3);
    |                                   ^^^^^ value borrowed here after move
+   |
+note: if `S` implemented `Clone`, you could clone the value
+  --> $DIR/move-ref-patterns-closure-captures-inside.rs:2:5
+   |
+LL |     struct S; // Not `Copy`.
+   |     ^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |         m!([_, ref borrow @ .., _, mov] = arr3);
+   |                                           ---- you could clone this value
 
 error[E0382]: borrow of moved value: `tup0`
   --> $DIR/move-ref-patterns-closure-captures-inside.rs:111:10
