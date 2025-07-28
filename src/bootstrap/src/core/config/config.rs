@@ -797,6 +797,11 @@ impl Config {
             );
         }
 
+        config.patch_binaries_for_nix = patch_binaries_for_nix;
+        config.bootstrap_cache_path = bootstrap_cache_path;
+        config.llvm_assertions =
+            toml.llvm.as_ref().is_some_and(|llvm| llvm.assertions.unwrap_or(false));
+
         config.initial_rustc = if let Some(rustc) = rustc {
             if !flags_skip_stage0_validation {
                 config.check_stage0_version(&rustc, "rustc");
@@ -867,7 +872,6 @@ impl Config {
         config.reuse = reuse.map(PathBuf::from);
         config.submodules = submodules;
         config.android_ndk = android_ndk;
-        config.bootstrap_cache_path = bootstrap_cache_path;
         set(&mut config.low_priority, low_priority);
         set(&mut config.compiler_docs, compiler_docs);
         set(&mut config.library_docs_private_items, library_docs_private_items);
@@ -886,7 +890,6 @@ impl Config {
         set(&mut config.local_rebuild, local_rebuild);
         set(&mut config.print_step_timings, print_step_timings);
         set(&mut config.print_step_rusage, print_step_rusage);
-        config.patch_binaries_for_nix = patch_binaries_for_nix;
 
         config.verbose = cmp::max(config.verbose, flags_verbose as usize);
 
@@ -894,9 +897,6 @@ impl Config {
         config.verbose_tests = config.is_verbose();
 
         config.apply_install_config(toml.install);
-
-        config.llvm_assertions =
-            toml.llvm.as_ref().is_some_and(|llvm| llvm.assertions.unwrap_or(false));
 
         let file_content = t!(fs::read_to_string(config.src.join("src/ci/channel")));
         let ci_channel = file_content.trim_end();
