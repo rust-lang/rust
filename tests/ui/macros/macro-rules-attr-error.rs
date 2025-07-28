@@ -10,4 +10,6 @@ macro_rules! local_attr {
 fn main() {
     #[local_attr]
     struct S;
+
+    local_attr!(arg); //~ ERROR: invoked macro has no invocation rules
 }

@@ -7,7 +7,7 @@ use rustc_macros::Subdiagnostic;
 use rustc_parse::parser::{Parser, Recovery, token_descr};
 use rustc_session::parse::ParseSess;
 use rustc_span::source_map::SourceMap;
-use rustc_span::{ErrorGuaranteed, Ident, Span};
+use rustc_span::{DUMMY_SP, ErrorGuaranteed, Ident, Span};
 use tracing::debug;
 
 use super::macro_rules::{MacroRule, NoopTracker, parser_from_cx};
@@ -25,6 +25,12 @@ pub(super) fn failed_to_match_macro(
     rules: &[MacroRule],
 ) -> (Span, ErrorGuaranteed) {
     debug!("failed to match macro");
+    let def_head_span = if !def_span.is_dummy() && !psess.source_map().is_imported(def_span) {
+        psess.source_map().guess_head_span(def_span)
+    } else {
+        DUMMY_SP
+    };
+
     // An error occurred, try the expansion again, tracking the expansion closely for better
     // diagnostics.
     let mut tracker = CollectTrackerAndEmitter::new(psess.dcx(), sp);
@@ -47,6 +53,13 @@ pub(super) fn failed_to_match_macro(
 
     let Some(BestFailure { token, msg: label, remaining_matcher, .. }) = tracker.best_failure
     else {
+        if !rules.iter().any(|rule| matches!(rule, MacroRule::Func { .. })) {
+            let mut err = psess.dcx().struct_span_err(sp, "invoked macro has no invocation rules");
+            if !def_head_span.is_dummy() {
+                err.span_label(def_head_span, "this macro has no rules to invoke");
+            }
+            return (sp, err.emit());
+        }
         return (sp, psess.dcx().span_delayed_bug(sp, "failed to match a macro"));
     };
 
@@ -54,8 +67,8 @@ pub(super) fn failed_to_match_macro(
 
     let mut err = psess.dcx().struct_span_err(span, parse_failure_msg(&token, None));
     err.span_label(span, label);
-    if !def_span.is_dummy() && !psess.source_map().is_imported(def_span) {
-        err.span_label(psess.source_map().guess_head_span(def_span), "when calling this macro");
+    if !def_head_span.is_dummy() {
+        err.span_label(def_head_span, "when calling this macro");
     }
 
     annotate_doc_comment(&mut err, psess.source_map(), span);
