@@ -799,7 +799,7 @@ fn main_args(early_dcx: &mut EarlyDiagCtxt, at_args: &[String]) {
 
     // Note that we discard any distinction between different non-zero exit
     // codes from `from_matches` here.
-    let (input, options, render_options) =
+    let (input, options, render_options, loaded_paths) =
         match config::Options::from_matches(early_dcx, &matches, args) {
             Some(opts) => opts,
             None => return,
@@ -869,6 +869,12 @@ fn main_args(early_dcx: &mut EarlyDiagCtxt, at_args: &[String]) {
 
     interface::run_compiler(config, |compiler| {
         let sess = &compiler.sess;
+
+        // Register the loaded external files in the source map so they show up in depinfo.
+        // We can't load them via the source map because it gets created after we process the options.
+        for external_path in &loaded_paths {
+            let _ = sess.source_map().load_file(external_path);
+        }
 
         if sess.opts.describe_lints {
             rustc_driver::describe_lints(sess, registered_lints);
