@@ -21,7 +21,8 @@ pub(super) fn failed_to_match_macro(
     sp: Span,
     def_span: Span,
     name: Ident,
-    arg: TokenStream,
+    attr_args: Option<&TokenStream>,
+    body: &TokenStream,
     rules: &[MacroRule],
 ) -> (Span, ErrorGuaranteed) {
     debug!("failed to match macro");
@@ -35,7 +36,11 @@ pub(super) fn failed_to_match_macro(
     // diagnostics.
     let mut tracker = CollectTrackerAndEmitter::new(psess.dcx(), sp);
 
-    let try_success_result = try_match_macro(psess, name, &arg, rules, &mut tracker);
+    let try_success_result = if let Some(attr_args) = attr_args {
+        try_match_macro_attr(psess, name, attr_args, body, rules, &mut tracker)
+    } else {
+        try_match_macro(psess, name, body, rules, &mut tracker)
+    };
 
     if try_success_result.is_ok() {
         // Nonterminal parser recovery might turn failed matches into successful ones,
@@ -53,7 +58,7 @@ pub(super) fn failed_to_match_macro(
 
     let Some(BestFailure { token, msg: label, remaining_matcher, .. }) = tracker.best_failure
     else {
-        if !rules.iter().any(|rule| matches!(rule, MacroRule::Func { .. })) {
+        if attr_args.is_none() && !rules.iter().any(|rule| matches!(rule, MacroRule::Func { .. })) {
             let mut err = psess.dcx().struct_span_err(sp, "invoked macro has no invocation rules");
             if !def_head_span.is_dummy() {
                 err.span_label(def_head_span, "this macro has no rules to invoke");
@@ -92,10 +97,12 @@ pub(super) fn failed_to_match_macro(
     }
 
     // Check whether there's a missing comma in this macro call, like `println!("{}" a);`
-    if let Some((arg, comma_span)) = arg.add_comma() {
+    if attr_args.is_none()
+        && let Some((body, comma_span)) = body.add_comma()
+    {
         for rule in rules {
             let MacroRule::Func { lhs, .. } = rule else { continue };
-            let parser = parser_from_cx(psess, arg.clone(), Recovery::Allowed);
+            let parser = parser_from_cx(psess, body.clone(), Recovery::Allowed);
             let mut tt_parser = TtParser::new(name);
 
             if let Success(_) =
@@ -116,70 +123,6 @@ pub(super) fn failed_to_match_macro(
     }
     let guar = err.emit();
     (sp, guar)
-}
-
-pub(super) fn failed_to_match_macro_attr(
-    psess: &ParseSess,
-    sp: Span,
-    def_span: Span,
-    name: Ident,
-    args: TokenStream,
-    body: TokenStream,
-    rules: &[MacroRule],
-) -> ErrorGuaranteed {
-    // An error occurred, try the expansion again, tracking the expansion closely for better
-    // diagnostics.
-    let mut tracker = CollectTrackerAndEmitter::new(psess.dcx(), sp);
-
-    let result = try_match_macro_attr(psess, name, &args, &body, rules, &mut tracker);
-    if result.is_ok() {
-        // Nonterminal parser recovery might turn failed matches into successful ones,
-        // but for that it must have emitted an error already
-        assert!(
-            tracker.dcx.has_errors().is_some(),
-            "Macro matching returned a success on the second try"
-        );
-    }
-
-    if let Some((_, guar)) = tracker.result {
-        // An irrecoverable error occurred and has been emitted.
-        return guar;
-    }
-
-    let Some(BestFailure { token, msg: label, remaining_matcher, .. }) = tracker.best_failure
-    else {
-        return psess.dcx().span_delayed_bug(sp, "failed to match a macro attr");
-    };
-
-    let span = token.span.substitute_dummy(sp);
-
-    let mut err = psess.dcx().struct_span_err(span, parse_failure_msg(&token, None));
-    err.span_label(span, label);
-    if !def_span.is_dummy() && !psess.source_map().is_imported(def_span) {
-        err.span_label(psess.source_map().guess_head_span(def_span), "when calling this macro");
-    }
-
-    annotate_doc_comment(&mut err, psess.source_map(), span);
-
-    if let Some(span) = remaining_matcher.span() {
-        err.span_note(span, format!("while trying to match {remaining_matcher}"));
-    } else {
-        err.note(format!("while trying to match {remaining_matcher}"));
-    }
-
-    if let MatcherLoc::Token { token: expected_token } = &remaining_matcher
-        && (matches!(expected_token.kind, token::OpenInvisible(_))
-            || matches!(token.kind, token::OpenInvisible(_)))
-    {
-        err.note("captured metavariables except for `:tt`, `:ident` and `:lifetime` cannot be compared to other tokens");
-        err.note("see <https://doc.rust-lang.org/nightly/reference/macros-by-example.html#forwarding-a-matched-fragment> for more information");
-
-        if !def_span.is_dummy() && !psess.source_map().is_imported(def_span) {
-            err.help("try using `:tt` instead in the macro definition");
-        }
-    }
-
-    err.emit()
 }
 
 /// The tracker used for the slow error path that collects useful info for diagnostics.

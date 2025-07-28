@@ -28,7 +28,7 @@ use rustc_span::hygiene::Transparency;
 use rustc_span::{Ident, Span, kw, sym};
 use tracing::{debug, instrument, trace, trace_span};
 
-use super::diagnostics::{failed_to_match_macro, failed_to_match_macro_attr};
+use super::diagnostics::failed_to_match_macro;
 use super::macro_parser::{NamedMatches, NamedParseResult};
 use super::{SequenceRepetition, diagnostics};
 use crate::base::{
@@ -308,7 +308,8 @@ fn expand_macro<'cx>(
         }
         Err(CanRetry::Yes) => {
             // Retry and emit a better error.
-            let (span, guar) = failed_to_match_macro(cx.psess(), sp, def_span, name, arg, rules);
+            let (span, guar) =
+                failed_to_match_macro(cx.psess(), sp, def_span, name, None, &arg, rules);
             cx.macro_error_and_trace_macros_diag();
             DummyResult::any(span, guar)
         }
@@ -370,8 +371,8 @@ fn expand_macro_attr(
         Err(CanRetry::No(guar)) => Err(guar),
         Err(CanRetry::Yes) => {
             // Retry and emit a better error.
-            let guar =
-                failed_to_match_macro_attr(cx.psess(), sp, def_span, name, args, body, rules);
+            let (_, guar) =
+                failed_to_match_macro(cx.psess(), sp, def_span, name, Some(&args), &body, rules);
             cx.trace_macros_diag();
             Err(guar)
         }
