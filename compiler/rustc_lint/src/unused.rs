@@ -185,7 +185,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
         let mut op_warned = false;
 
         if let Some(must_use_op) = must_use_op {
-            let span = expr.span.find_oldest_ancestor_in_same_ctxt();
+            let span = expr.span.find_ancestor_not_from_macro().unwrap_or(expr.span);
             cx.emit_span_lint(
                 UNUSED_MUST_USE,
                 expr.span,
@@ -511,7 +511,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                     );
                 }
                 MustUsePath::Def(span, def_id, reason) => {
-                    let span = span.find_oldest_ancestor_in_same_ctxt();
+                    let span = span.find_ancestor_not_from_macro().unwrap_or(*span);
                     cx.emit_span_lint(
                         UNUSED_MUST_USE,
                         span,
