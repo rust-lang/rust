@@ -500,7 +500,7 @@ impl<'a> ReportErrorExt for UndefinedBehaviorInfo<'a> {
             InvalidNichedEnumVariantWritten { .. } => {
                 const_eval_invalid_niched_enum_variant_written
             }
-            AbiMismatchArgument { .. } => const_eval_incompatible_types,
+            AbiMismatchArgument { .. } => const_eval_incompatible_arg_types,
             AbiMismatchReturn { .. } => const_eval_incompatible_return_types,
         }
     }
@@ -625,12 +625,16 @@ impl<'a> ReportErrorExt for UndefinedBehaviorInfo<'a> {
                 diag.arg("data_size", info.data_size);
             }
             InvalidNichedEnumVariantWritten { enum_ty } => {
-                diag.arg("ty", enum_ty.to_string());
+                diag.arg("ty", enum_ty);
             }
-            AbiMismatchArgument { caller_ty, callee_ty }
-            | AbiMismatchReturn { caller_ty, callee_ty } => {
-                diag.arg("caller_ty", caller_ty.to_string());
-                diag.arg("callee_ty", callee_ty.to_string());
+            AbiMismatchArgument { arg_idx, caller_ty, callee_ty } => {
+                diag.arg("arg_idx", arg_idx + 1); // adjust for 1-indexed lists in output
+                diag.arg("caller_ty", caller_ty);
+                diag.arg("callee_ty", callee_ty);
+            }
+            AbiMismatchReturn { caller_ty, callee_ty } => {
+                diag.arg("caller_ty", caller_ty);
+                diag.arg("callee_ty", callee_ty);
             }
         }
     }

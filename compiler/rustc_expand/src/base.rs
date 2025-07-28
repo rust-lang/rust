@@ -861,7 +861,7 @@ impl SyntaxExtension {
     /// | (unspecified) | no  | if-ext        | if-ext   | yes |
     /// | external      | no  | if-ext        | if-ext   | yes |
     /// | yes           | yes | yes           | yes      | yes |
-    fn get_collapse_debuginfo(sess: &Session, attrs: &[impl AttributeExt], ext: bool) -> bool {
+    fn get_collapse_debuginfo(sess: &Session, attrs: &[hir::Attribute], ext: bool) -> bool {
         let flag = sess.opts.cg.collapse_macro_debuginfo;
         let attr = ast::attr::find_by_name(attrs, sym::collapse_debuginfo)
             .and_then(|attr| {
@@ -872,7 +872,7 @@ impl SyntaxExtension {
                     .ok()
             })
             .unwrap_or_else(|| {
-                if ast::attr::contains_name(attrs, sym::rustc_builtin_macro) {
+                if find_attr!(attrs, AttributeKind::RustcBuiltinMacro { .. }) {
                     CollapseMacroDebuginfo::Yes
                 } else {
                     CollapseMacroDebuginfo::Unspecified
@@ -915,16 +915,18 @@ impl SyntaxExtension {
         let collapse_debuginfo = Self::get_collapse_debuginfo(sess, attrs, !is_local);
         tracing::debug!(?name, ?local_inner_macros, ?collapse_debuginfo, ?allow_internal_unsafe);
 
-        let (builtin_name, helper_attrs) = ast::attr::find_by_name(attrs, sym::rustc_builtin_macro)
-            .map(|attr| {
-                // Override `helper_attrs` passed above if it's a built-in macro,
-                // marking `proc_macro_derive` macros as built-in is not a realistic use case.
-                parse_macro_name_and_helper_attrs(sess.dcx(), attr, "built-in").map_or_else(
-                    || (Some(name), Vec::new()),
-                    |(name, helper_attrs)| (Some(name), helper_attrs),
-                )
-            })
-            .unwrap_or_else(|| (None, helper_attrs));
+        let (builtin_name, helper_attrs) = match find_attr!(attrs, AttributeKind::RustcBuiltinMacro { builtin_name, helper_attrs, .. } => (builtin_name, helper_attrs))
+        {
+            // Override `helper_attrs` passed above if it's a built-in macro,
+            // marking `proc_macro_derive` macros as built-in is not a realistic use case.
+            Some((Some(name), helper_attrs)) => {
+                (Some(*name), helper_attrs.iter().copied().collect())
+            }
+            Some((None, _)) => (Some(name), Vec::new()),
+
+            // Not a built-in macro
+            None => (None, helper_attrs),
+        };
 
         let stability = find_attr!(attrs, AttributeKind::Stability { stability, .. } => *stability);
 
@@ -1388,80 +1390,6 @@ pub fn resolve_path(sess: &Session, path: impl Into<PathBuf>, span: Span) -> PRe
             _ => Ok(path),
         }
     }
-}
-
-pub fn parse_macro_name_and_helper_attrs(
-    dcx: DiagCtxtHandle<'_>,
-    attr: &impl AttributeExt,
-    macro_type: &str,
-) -> Option<(Symbol, Vec<Symbol>)> {
-    // Once we've located the `#[proc_macro_derive]` attribute, verify
-    // that it's of the form `#[proc_macro_derive(Foo)]` or
-    // `#[proc_macro_derive(Foo, attributes(A, ..))]`
-    let list = attr.meta_item_list()?;
-    let ([trait_attr] | [trait_attr, _]) = list.as_slice() else {
-        dcx.emit_err(errors::AttrNoArguments { span: attr.span() });
-        return None;
-    };
-    let Some(trait_attr) = trait_attr.meta_item() else {
-        dcx.emit_err(errors::NotAMetaItem { span: trait_attr.span() });
-        return None;
-    };
-    let trait_ident = match trait_attr.ident() {
-        Some(trait_ident) if trait_attr.is_word() => trait_ident,
-        _ => {
-            dcx.emit_err(errors::OnlyOneWord { span: trait_attr.span });
-            return None;
-        }
-    };
-
-    if !trait_ident.name.can_be_raw() {
-        dcx.emit_err(errors::CannotBeNameOfMacro {
-            span: trait_attr.span,
-            trait_ident,
-            macro_type,
-        });
-    }
-
-    let attributes_attr = list.get(1);
-    let proc_attrs: Vec<_> = if let Some(attr) = attributes_attr {
-        if !attr.has_name(sym::attributes) {
-            dcx.emit_err(errors::ArgumentNotAttributes { span: attr.span() });
-        }
-        attr.meta_item_list()
-            .unwrap_or_else(|| {
-                dcx.emit_err(errors::AttributesWrongForm { span: attr.span() });
-                &[]
-            })
-            .iter()
-            .filter_map(|attr| {
-                let Some(attr) = attr.meta_item() else {
-                    dcx.emit_err(errors::AttributeMetaItem { span: attr.span() });
-                    return None;
-                };
-
-                let ident = match attr.ident() {
-                    Some(ident) if attr.is_word() => ident,
-                    _ => {
-                        dcx.emit_err(errors::AttributeSingleWord { span: attr.span });
-                        return None;
-                    }
-                };
-                if !ident.name.can_be_raw() {
-                    dcx.emit_err(errors::HelperAttributeNameInvalid {
-                        span: attr.span,
-                        name: ident,
-                    });
-                }
-
-                Some(ident.name)
-            })
-            .collect()
-    } else {
-        Vec::new()
-    };
-
-    Some((trait_ident.name, proc_attrs))
 }
 
 /// If this item looks like a specific enums from `rental`, emit a fatal error.

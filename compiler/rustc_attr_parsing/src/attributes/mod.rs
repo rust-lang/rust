@@ -41,6 +41,7 @@ pub(crate) mod must_use;
 pub(crate) mod no_implicit_prelude;
 pub(crate) mod non_exhaustive;
 pub(crate) mod path;
+pub(crate) mod proc_macro_attrs;
 pub(crate) mod repr;
 pub(crate) mod rustc_internal;
 pub(crate) mod semantics;
