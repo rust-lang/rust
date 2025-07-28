@@ -215,7 +215,7 @@ install!((self, builder, _config),
     };
     Cargo, alias = "cargo", Self::should_build(_config), only_hosts: true, {
         let tarball = builder
-            .ensure(dist::Cargo { compiler: self.compiler, target: self.target })
+            .ensure(dist::Cargo { build_compiler: self.compiler, target: self.target })
             .expect("missing cargo");
         install_sh(builder, "cargo", self.compiler.stage, Some(self.target), &tarball);
     };

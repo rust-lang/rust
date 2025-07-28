@@ -806,8 +806,16 @@ impl Step for Rustdoc {
 /// Note that it can be built using a stable compiler.
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct Cargo {
-    pub compiler: Compiler,
-    pub target: TargetSelection,
+    build_compiler: Compiler,
+    target: TargetSelection,
+}
+
+impl Cargo {
+    /// Returns `Cargo` that will be **compiled** by the passed compiler, for the given
+    /// `target`.
+    pub fn from_build_compiler(build_compiler: Compiler, target: TargetSelection) -> Self {
+        Self { build_compiler, target }
+    }
 }
 
 impl Step for Cargo {
@@ -822,7 +830,10 @@ impl Step for Cargo {
 
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(Cargo {
-            compiler: get_tool_target_compiler(run.builder, ToolTargetBuildMode::Build(run.target)),
+            build_compiler: get_tool_target_compiler(
+                run.builder,
+                ToolTargetBuildMode::Build(run.target),
+            ),
             target: run.target,
         });
     }
@@ -831,7 +842,7 @@ impl Step for Cargo {
         builder.build.require_submodule("src/tools/cargo", None);
 
         builder.ensure(ToolBuild {
-            build_compiler: self.compiler,
+            build_compiler: self.build_compiler,
             target: self.target,
             tool: "cargo",
             mode: Mode::ToolTarget,
@@ -845,7 +856,7 @@ impl Step for Cargo {
     }
 
     fn metadata(&self) -> Option<StepMetadata> {
-        Some(StepMetadata::build("cargo", self.target).built_by(self.compiler))
+        Some(StepMetadata::build("cargo", self.target).built_by(self.build_compiler))
     }
 }
 

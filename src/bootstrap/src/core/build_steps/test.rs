@@ -258,7 +258,7 @@ impl Step for Cargotest {
         // both their behavior together.
         // We can build cargo with the earlier stage compiler though.
         let cargo =
-            builder.ensure(tool::Cargo { compiler: self.build_compiler, target: self.host });
+            builder.ensure(tool::Cargo::from_build_compiler(self.build_compiler, self.host));
         let tested_compiler = builder.compiler(self.build_compiler.stage + 1, self.host);
         builder.std(tested_compiler, self.host);
 
@@ -332,7 +332,7 @@ impl Step for Cargo {
 
         let compiler = builder.compiler(stage, self.host);
 
-        let cargo = builder.ensure(tool::Cargo { compiler, target: self.host });
+        let cargo = builder.ensure(tool::Cargo::from_build_compiler(compiler, self.host));
         let compiler = cargo.build_compiler;
 
         let cargo = tool::prepare_tool_cargo(
@@ -1751,7 +1751,7 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
                 // If we're using `--stage 0`, we should provide the bootstrap cargo.
                 builder.initial_cargo.clone()
             } else {
-                builder.ensure(tool::Cargo { compiler, target: compiler.host }).tool_path
+                builder.ensure(tool::Cargo::from_build_compiler(compiler, compiler.host)).tool_path
             };
 
             cmd.arg("--cargo-path").arg(cargo_path);

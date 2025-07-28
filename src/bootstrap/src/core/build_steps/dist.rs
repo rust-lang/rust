@@ -1173,7 +1173,7 @@ impl Step for PlainSourceTarball {
 
 #[derive(Debug, PartialOrd, Ord, Clone, Hash, PartialEq, Eq)]
 pub struct Cargo {
-    pub compiler: Compiler,
+    pub build_compiler: Compiler,
     pub target: TargetSelection,
 }
 
@@ -1189,7 +1189,7 @@ impl Step for Cargo {
 
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(Cargo {
-            compiler: run.builder.compiler_for(
+            build_compiler: run.builder.compiler_for(
                 run.builder.top_stage,
                 run.builder.config.host_target,
                 run.target,
@@ -1199,12 +1199,10 @@ impl Step for Cargo {
     }
 
     fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
-        let compiler = self.compiler;
+        let build_compiler = self.build_compiler;
         let target = self.target;
 
-        builder.ensure(compile::Rustc::new(compiler, target));
-
-        let cargo = builder.ensure(tool::Cargo { compiler, target });
+        let cargo = builder.ensure(tool::Cargo::from_build_compiler(build_compiler, target));
         let src = builder.src.join("src/tools/cargo");
         let etc = src.join("src/etc");
 
@@ -1563,7 +1561,7 @@ impl Step for Extended {
 
         add_component!("rust-docs" => Docs { host: target });
         add_component!("rust-json-docs" => JsonDocs { host: target });
-        add_component!("cargo" => Cargo { compiler, target });
+        add_component!("cargo" => Cargo { build_compiler: compiler, target });
         add_component!("rustfmt" => Rustfmt { build_compiler: compiler, target });
         add_component!("rust-analyzer" => RustAnalyzer { build_compiler: compiler, target });
         add_component!("llvm-components" => LlvmTools { target });
