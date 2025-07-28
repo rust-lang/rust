@@ -3168,6 +3168,29 @@ pub const unsafe fn copysignf128(x: f128, y: f128) -> f128;
 /// - `G`: The derivative function. Must be a function item.
 /// - `T`: A tuple of arguments passed to `df`.
 /// - `R`: The return type of the derivative function.
+///
+/// This shows where the `enzyme_autodiff` intrinsic is used during macro expansion:
+///
+/// ```rust,ignore (macro example)
+/// #[autodiff_forward(df1, Dual, Const, Dual)]
+/// pub fn f1(x: &[f64], y: f64) -> f64 {
+///     unimplemented!()
+/// }
+/// ```
+///
+/// expands to:
+///
+/// ```rust,ignore (macro example)
+/// #[rustc_autodiff]
+/// #[inline(never)]
+/// pub fn f1(x: &[f64], y: f64) -> f64 {
+///     ::core::panicking::panic("not implemented")
+/// }
+/// #[rustc_autodiff(Forward, 1, Dual, Const, Dual)]
+/// pub fn df1(x: &[f64], bx_0: &[f64], y: f64) -> (f64, f64) {
+///     ::core::intrinsics::enzyme_autodiff(f1::<>, df1::<>, (x, bx_0, y))
+/// }
+/// ```
 #[rustc_nounwind]
 #[rustc_intrinsic]
 pub const fn enzyme_autodiff<F, G, T: crate::marker::Tuple, R>(f: F, df: G, args: T) -> R;
