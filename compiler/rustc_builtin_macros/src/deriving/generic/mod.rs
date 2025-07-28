@@ -1096,6 +1096,7 @@ impl<'a> MethodDef<'a> {
                 contract: None,
                 body: Some(body_block),
                 define_opaque: None,
+                eii_impls: ThinVec::new(),
             })),
             tokens: None,
         })
