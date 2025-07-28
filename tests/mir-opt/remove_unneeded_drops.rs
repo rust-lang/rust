@@ -22,9 +22,16 @@ fn cannot_opt_generic<T>(x: T) {
     drop(x);
 }
 
+// EMIT_MIR remove_unneeded_drops.slice_in_place.RemoveUnneededDrops.diff
+unsafe fn slice_in_place(ptr: *mut [char]) {
+    std::ptr::drop_in_place(ptr)
+}
+
 fn main() {
     opt(true);
     opt_generic_copy(42);
     cannot_opt_generic(42);
     dont_opt(vec![true]);
+    let mut a = ['o', 'k'];
+    unsafe { slice_in_place(&raw mut a) };
 }
