@@ -158,7 +158,7 @@ impl<T> Default for VecDeque<T> {
 impl<T, A: Allocator> VecDeque<T, A> {
     /// Marginally more convenient
     #[inline]
-    fn ptr(&self) -> *mut T {
+    const fn ptr(&self) -> *mut T {
         self.buf.ptr()
     }
 
@@ -168,7 +168,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     ///
     /// May only be called if `deque.len() < deque.capacity()`
     #[inline]
-    unsafe fn push_unchecked(&mut self, element: T) {
+    const unsafe fn push_unchecked(&mut self, element: T) {
         // SAFETY: Because of the precondition, it's guaranteed that there is space
         // in the logical array after the last element.
         unsafe { self.buffer_write(self.to_physical_idx(self.len), element) };
@@ -178,13 +178,13 @@ impl<T, A: Allocator> VecDeque<T, A> {
 
     /// Moves an element out of the buffer
     #[inline]
-    unsafe fn buffer_read(&mut self, off: usize) -> T {
+    const unsafe fn buffer_read(&mut self, off: usize) -> T {
         unsafe { ptr::read(self.ptr().add(off)) }
     }
 
     /// Writes an element into the buffer, moving it.
     #[inline]
-    unsafe fn buffer_write(&mut self, off: usize, value: T) {
+    const unsafe fn buffer_write(&mut self, off: usize, value: T) {
         unsafe {
             ptr::write(self.ptr().add(off), value);
         }
@@ -193,7 +193,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// Returns a slice pointer into the buffer.
     /// `range` must lie inside `0..self.capacity()`.
     #[inline]
-    unsafe fn buffer_range(&self, range: Range<usize>) -> *mut [T] {
+    const unsafe fn buffer_range(&self, range: Range<usize>) -> *mut [T] {
         unsafe {
             ptr::slice_from_raw_parts_mut(self.ptr().add(range.start), range.end - range.start)
         }
@@ -201,26 +201,26 @@ impl<T, A: Allocator> VecDeque<T, A> {
 
     /// Returns `true` if the buffer is at full capacity.
     #[inline]
-    fn is_full(&self) -> bool {
+    const fn is_full(&self) -> bool {
         self.len == self.capacity()
     }
 
     /// Returns the index in the underlying buffer for a given logical element
     /// index + addend.
     #[inline]
-    fn wrap_add(&self, idx: usize, addend: usize) -> usize {
+    const fn wrap_add(&self, idx: usize, addend: usize) -> usize {
         wrap_index(idx.wrapping_add(addend), self.capacity())
     }
 
     #[inline]
-    fn to_physical_idx(&self, idx: usize) -> usize {
+    const fn to_physical_idx(&self, idx: usize) -> usize {
         self.wrap_add(self.head, idx)
     }
 
     /// Returns the index in the underlying buffer for a given logical element
     /// index - subtrahend.
     #[inline]
-    fn wrap_sub(&self, idx: usize, subtrahend: usize) -> usize {
+    const fn wrap_sub(&self, idx: usize, subtrahend: usize) -> usize {
         wrap_index(idx.wrapping_sub(subtrahend).wrapping_add(self.capacity()), self.capacity())
     }
 
@@ -683,7 +683,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(buf.get(1), Some(&4));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn get(&self, index: usize) -> Option<&T> {
+    #[rustc_const_stable(feature = "const_vecdeque_methods", since = "1.90.0")]
+    pub const fn get(&self, index: usize) -> Option<&T> {
         if index < self.len {
             let idx = self.to_physical_idx(index);
             unsafe { Some(&*self.ptr().add(idx)) }
@@ -713,7 +714,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(buf[1], 7);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn get_mut(&mut self, index: usize) -> Option<&mut T> {
+    #[rustc_const_stable(feature = "const_vecdeque_methods", since = "1.90.0")]
+    pub const fn get_mut(&mut self, index: usize) -> Option<&mut T> {
         if index < self.len {
             let idx = self.to_physical_idx(index);
             unsafe { Some(&mut *self.ptr().add(idx)) }
@@ -746,7 +748,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(buf, [5, 4, 3]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn swap(&mut self, i: usize, j: usize) {
+    #[rustc_const_stable(feature = "const_vecdeque_methods", since = "1.90.0")]
+    pub const fn swap(&mut self, i: usize, j: usize) {
         assert!(i < self.len());
         assert!(j < self.len());
         let ri = self.to_physical_idx(i);
@@ -767,7 +770,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn capacity(&self) -> usize {
+    #[rustc_const_stable(feature = "const_vecdeque_capacity", since = "1.90.0")]
+    pub const fn capacity(&self) -> usize {
         if T::IS_ZST { usize::MAX } else { self.buf.capacity() }
     }
 
@@ -1413,7 +1417,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_confusables("length", "size")]
-    pub fn len(&self) -> usize {
+    #[rustc_const_stable(feature = "const_vecdeque_methods", since = "1.90.0")]
+    pub const fn len(&self) -> usize {
         self.len
     }
 
@@ -1430,7 +1435,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert!(!deque.is_empty());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn is_empty(&self) -> bool {
+    #[rustc_const_stable(feature = "const_vecdeque_methods", since = "1.90.0")]
+    pub const fn is_empty(&self) -> bool {
         self.len == 0
     }
 
@@ -1696,7 +1702,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_confusables("first")]
-    pub fn front(&self) -> Option<&T> {
+    #[rustc_const_stable(feature = "const_vecdeque_methods", since = "1.90.0")]
+    pub const fn front(&self) -> Option<&T> {
         self.get(0)
     }
 
@@ -1720,7 +1727,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(d.front(), Some(&9));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn front_mut(&mut self) -> Option<&mut T> {
+    #[rustc_const_stable(feature = "const_vecdeque_methods", since = "1.90.0")]
+    pub const fn front_mut(&mut self) -> Option<&mut T> {
         self.get_mut(0)
     }
 
@@ -1741,7 +1749,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_confusables("last")]
-    pub fn back(&self) -> Option<&T> {
+    #[rustc_const_stable(feature = "const_vecdeque_methods", since = "1.90.0")]
+    pub const fn back(&self) -> Option<&T> {
         self.get(self.len.wrapping_sub(1))
     }
 
@@ -1765,7 +1774,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(d.back(), Some(&9));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn back_mut(&mut self) -> Option<&mut T> {
+    #[rustc_const_stable(feature = "const_vecdeque_methods", since = "1.90.0")]
+    pub const fn back_mut(&mut self) -> Option<&mut T> {
         self.get_mut(self.len.wrapping_sub(1))
     }
 
@@ -1786,7 +1796,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(d.pop_front(), None);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn pop_front(&mut self) -> Option<T> {
+    #[rustc_const_stable(feature = "const_vecdeque_methods", since = "1.90.0")]
+    pub const fn pop_front(&mut self) -> Option<T> {
         if self.is_empty() {
             None
         } else {
@@ -1815,7 +1826,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(buf.pop_back(), Some(3));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn pop_back(&mut self) -> Option<T> {
+    #[rustc_const_stable(feature = "const_vecdeque_methods", since = "1.90.0")]
+    pub const fn pop_back(&mut self) -> Option<T> {
         if self.is_empty() {
             None
         } else {
@@ -1925,7 +1937,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     }
 
     #[inline]
-    fn is_contiguous(&self) -> bool {
+    const fn is_contiguous(&self) -> bool {
         // Do the calculation like this to avoid overflowing if len + head > usize::MAX
         self.head <= self.capacity() - self.len
     }
@@ -2920,7 +2932,7 @@ impl<T: Clone, A: Allocator> VecDeque<T, A> {
 
 /// Returns the index in the underlying buffer for a given logical element index.
 #[inline]
-fn wrap_index(logical_index: usize, capacity: usize) -> usize {
+const fn wrap_index(logical_index: usize, capacity: usize) -> usize {
     debug_assert!(
         (logical_index == 0 && capacity == 0)
             || logical_index < capacity
