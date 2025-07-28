@@ -38,7 +38,7 @@ impl Config {
     }
 
     pub(crate) fn remove(&self, f: &Path) {
-        remove(self.dry_run(), f);
+        remove(&self.exec_ctx, f);
     }
 
     /// Create a temporary directory in `out` and return its path.
@@ -74,13 +74,13 @@ impl Config {
     }
 
     fn unpack(&self, tarball: &Path, dst: &Path, pattern: &str) {
-        unpack(self.verbose > 0, tarball, dst, pattern);
+        unpack(&self.exec_ctx, tarball, dst, pattern);
     }
 
     /// Returns whether the SHA256 checksum of `path` matches `expected`.
     #[cfg(test)]
     pub(crate) fn verify(&self, path: &Path, expected: &str) -> bool {
-        verify(self.verbose > 0, self.dry_run(), path, expected)
+        verify(&self.exec_ctx, path, expected)
     }
 }
 
@@ -414,12 +414,10 @@ pub(crate) struct DownloadContext<'a> {
     out: &'a Path,
     patch_binaries_for_nix: Option<bool>,
     exec_ctx: &'a ExecutionContext,
-    verbose: bool,
     stage0_metadata: &'a build_helper::stage0_parser::Stage0,
     llvm_assertions: bool,
     bootstrap_cache_path: &'a Option<PathBuf>,
     is_running_on_ci: bool,
-    dry_run: bool,
 }
 
 impl<'a> AsRef<DownloadContext<'a>> for DownloadContext<'a> {
@@ -435,12 +433,10 @@ impl<'a> From<&'a Config> for DownloadContext<'a> {
             out: &value.out,
             patch_binaries_for_nix: value.patch_binaries_for_nix,
             exec_ctx: &value.exec_ctx,
-            verbose: value.verbose > 0,
             stage0_metadata: &value.stage0_metadata,
             llvm_assertions: value.llvm_assertions,
             bootstrap_cache_path: &value.bootstrap_cache_path,
             is_running_on_ci: value.is_running_on_ci,
-            dry_run: value.dry_run(),
         }
     }
 }
@@ -508,7 +504,7 @@ pub(crate) fn maybe_download_rustfmt<'a>(
 
     let dwn_ctx = dwn_ctx.as_ref();
 
-    if dwn_ctx.dry_run {
+    if dwn_ctx.exec_ctx.dry_run() {
         return Some(PathBuf::new());
     }
 
@@ -563,9 +559,9 @@ pub(crate) fn download_beta_toolchain<'a>(dwn_ctx: impl AsRef<DownloadContext<'a
 #[cfg(not(test))]
 pub(crate) fn download_beta_toolchain<'a>(dwn_ctx: impl AsRef<DownloadContext<'a>>) {
     let dwn_ctx = dwn_ctx.as_ref();
-    if dwn_ctx.verbose {
+    dwn_ctx.exec_ctx.verbose(|| {
         println!("downloading stage0 beta artifacts");
-    }
+    });
 
     let date = dwn_ctx.stage0_metadata.compiler.date.clone();
     let version = dwn_ctx.stage0_metadata.compiler.version.clone();
@@ -634,8 +630,8 @@ fn download_toolchain<'a>(
     }
 }
 
-pub(crate) fn remove(dry_run: bool, f: &Path) {
-    if dry_run {
+pub(crate) fn remove(exec_ctx: &ExecutionContext, f: &Path) {
+    if exec_ctx.dry_run() {
         return;
     }
     fs::remove_file(f).unwrap_or_else(|_| panic!("failed to remove {f:?}"));
@@ -757,7 +753,7 @@ fn download_component<'a>(
 ) {
     let dwn_ctx = dwn_ctx.as_ref();
 
-    if dwn_ctx.dry_run {
+    if dwn_ctx.exec_ctx.dry_run() {
         return;
     }
 
@@ -802,22 +798,22 @@ fn download_component<'a>(
         );
         let sha256 = dwn_ctx.stage0_metadata.checksums_sha256.get(&url).expect(&error);
         if tarball.exists() {
-            if verify(dwn_ctx.verbose, dwn_ctx.dry_run, &tarball, sha256) {
-                unpack(dwn_ctx.verbose, &tarball, &bin_root, prefix);
+            if verify(dwn_ctx.exec_ctx, &tarball, sha256) {
+                unpack(dwn_ctx.exec_ctx, &tarball, &bin_root, prefix);
                 return;
             } else {
-                if dwn_ctx.verbose {
+                dwn_ctx.exec_ctx.verbose(|| {
                     println!(
                         "ignoring cached file {} due to failed verification",
                         tarball.display()
                     )
-                }
-                remove(dwn_ctx.dry_run, &tarball);
+                });
+                remove(dwn_ctx.exec_ctx, &tarball);
             }
         }
         Some(sha256)
     } else if tarball.exists() {
-        unpack(dwn_ctx.verbose, &tarball, &bin_root, prefix);
+        unpack(dwn_ctx.exec_ctx, &tarball, &bin_root, prefix);
         return;
     } else {
         None
@@ -836,22 +832,22 @@ download-rustc = false
     }
     download_file(dwn_ctx, &format!("{base_url}/{url}"), &tarball, help_on_error);
     if let Some(sha256) = checksum
-        && !verify(dwn_ctx.verbose, dwn_ctx.dry_run, &tarball, sha256)
+        && !verify(dwn_ctx.exec_ctx, &tarball, sha256)
     {
         panic!("failed to verify {}", tarball.display());
     }
 
-    unpack(dwn_ctx.verbose, &tarball, &bin_root, prefix);
+    unpack(dwn_ctx.exec_ctx, &tarball, &bin_root, prefix);
 }
 
-pub(crate) fn verify(verbose: bool, dry_run: bool, path: &Path, expected: &str) -> bool {
+pub(crate) fn verify(exec_ctx: &ExecutionContext, path: &Path, expected: &str) -> bool {
     use sha2::Digest;
 
-    if verbose {
+    exec_ctx.verbose(|| {
         println!("verifying {}", path.display());
-    }
+    });
 
-    if dry_run {
+    if exec_ctx.dry_run() {
         return false;
     }
 
@@ -885,7 +881,7 @@ pub(crate) fn verify(verbose: bool, dry_run: bool, path: &Path, expected: &str) 
     verified
 }
 
-fn unpack(verbose: bool, tarball: &Path, dst: &Path, pattern: &str) {
+fn unpack(exec_ctx: &ExecutionContext, tarball: &Path, dst: &Path, pattern: &str) {
     eprintln!("extracting {} to {}", tarball.display(), dst.display());
     if !dst.exists() {
         t!(fs::create_dir_all(dst));
@@ -927,9 +923,10 @@ fn unpack(verbose: bool, tarball: &Path, dst: &Path, pattern: &str) {
         }
         short_path = short_path.strip_prefix(pattern).unwrap_or(short_path);
         let dst_path = dst.join(short_path);
-        if verbose {
+
+        exec_ctx.verbose(|| {
             println!("extracting {} to {}", original_path.display(), dst.display());
-        }
+        });
 
         if !t!(member.unpack_in(dst)) {
             panic!("path traversal attack ??");
@@ -957,9 +954,9 @@ fn download_file<'a>(
 ) {
     let dwn_ctx = dwn_ctx.as_ref();
 
-    if dwn_ctx.verbose {
+    dwn_ctx.exec_ctx.verbose(|| {
         println!("download {url}");
-    }
+    });
     // Use a temporary file in case we crash while downloading, to avoid a corrupt download in cache/.
     let tempfile = tempdir(dwn_ctx.out).join(dest_path.file_name().unwrap());
     // While bootstrap itself only supports http and https downloads, downstream forks might
