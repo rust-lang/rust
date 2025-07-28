@@ -25,7 +25,7 @@ rustup toolchain install nightly # enables -Z unstable-options
 You can then run our test cases:
 
 ```bash
-./x test --stage 1 tests/codegen/autodiff
+./x test --stage 1 tests/codegen-llvm/autodiff
 ./x test --stage 1 tests/pretty/autodiff
 ./x test --stage 1 tests/ui/autodiff
 ./x test --stage 1 tests/ui/feature-gates/feature-gate-autodiff.rs

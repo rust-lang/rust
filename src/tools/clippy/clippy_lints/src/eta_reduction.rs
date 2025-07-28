@@ -29,12 +29,6 @@ declare_clippy_lint! {
     /// Needlessly creating a closure adds code for no benefit
     /// and gives the optimizer more work.
     ///
-    /// ### Known problems
-    /// If creating the closure inside the closure has a side-
-    /// effect then moving the closure creation out will change when that side-
-    /// effect runs.
-    /// See [#1439](https://github.com/rust-lang/rust-clippy/issues/1439) for more details.
-    ///
     /// ### Example
     /// ```rust,ignore
     /// xs.map(|x| foo(x))

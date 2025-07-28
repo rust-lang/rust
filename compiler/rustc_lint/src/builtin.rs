@@ -1654,7 +1654,7 @@ declare_lint! {
     "`...` range patterns are deprecated",
     @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::EditionError(Edition::Edition2021),
-        reference: "<https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>",
+        reference: "<https://doc.rust-lang.org/edition-guide/rust-2021/warnings-promoted-to-error.html>",
     };
 }
 
@@ -1835,7 +1835,7 @@ declare_lint! {
     "detects edition keywords being used as an identifier",
     @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::EditionError(Edition::Edition2024),
-        reference: "<https://doc.rust-lang.org/nightly/edition-guide/rust-2024/gen-keyword.html>",
+        reference: "<https://doc.rust-lang.org/edition-guide/rust-2024/gen-keyword.html>",
     };
 }
 
@@ -2870,7 +2870,7 @@ impl<'tcx> LateLintPass<'tcx> for AsmLabels {
         if let hir::Expr {
             kind:
                 hir::ExprKind::InlineAsm(hir::InlineAsm {
-                    asm_macro: AsmMacro::Asm | AsmMacro::NakedAsm,
+                    asm_macro: asm_macro @ (AsmMacro::Asm | AsmMacro::NakedAsm),
                     template_strs,
                     options,
                     ..
@@ -2878,6 +2878,15 @@ impl<'tcx> LateLintPass<'tcx> for AsmLabels {
             ..
         } = expr
         {
+            // Non-generic naked functions are allowed to define arbitrary
+            // labels.
+            if *asm_macro == AsmMacro::NakedAsm {
+                let def_id = expr.hir_id.owner.def_id;
+                if !cx.tcx.generics_of(def_id).requires_monomorphization(cx.tcx) {
+                    return;
+                }
+            }
+
             // asm with `options(raw)` does not do replacement with `{` and `}`.
             let raw = options.contains(InlineAsmOptions::RAW);
 

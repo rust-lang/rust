@@ -5,11 +5,7 @@ pub struct CompilationCommandBuilder {
     cxx_toolchain_dir: Option<String>,
     arch_flags: Vec<String>,
     optimization: String,
-    include_paths: Vec<String>,
     project_root: Option<String>,
-    output: String,
-    input: String,
-    linker: Option<String>,
     extra_flags: Vec<String>,
 }
 
@@ -21,11 +17,7 @@ impl CompilationCommandBuilder {
             cxx_toolchain_dir: None,
             arch_flags: Vec::new(),
             optimization: "2".to_string(),
-            include_paths: Vec::new(),
             project_root: None,
-            output: String::new(),
-            input: String::new(),
-            linker: None,
             extra_flags: Vec::new(),
         }
     }
@@ -57,34 +49,9 @@ impl CompilationCommandBuilder {
         self
     }
 
-    /// Sets a list of include paths for compilation.
-    /// The paths that are passed must be relative to the
-    /// "cxx_toolchain_dir" directory path.
-    pub fn set_include_paths(mut self, paths: Vec<&str>) -> Self {
-        self.include_paths = paths.into_iter().map(|path| path.to_string()).collect();
-        self
-    }
-
     /// Sets the root path of all the generated test files.
     pub fn set_project_root(mut self, path: &str) -> Self {
         self.project_root = Some(path.to_string());
-        self
-    }
-
-    /// The name of the output executable, without any suffixes
-    pub fn set_output_name(mut self, path: &str) -> Self {
-        self.output = path.to_string();
-        self
-    }
-
-    /// The name of the input C file, without any suffixes
-    pub fn set_input_name(mut self, path: &str) -> Self {
-        self.input = path.to_string();
-        self
-    }
-
-    pub fn set_linker(mut self, linker: String) -> Self {
-        self.linker = Some(linker);
         self
     }
 
@@ -100,55 +67,69 @@ impl CompilationCommandBuilder {
 }
 
 impl CompilationCommandBuilder {
-    pub fn make_string(self) -> String {
-        let arch_flags = self.arch_flags.join("+");
-        let flags = std::env::var("CPPFLAGS").unwrap_or("".into());
-        let project_root = self.project_root.unwrap_or_default();
-        let project_root_str = project_root.as_str();
-        let mut output = self.output.clone();
-        if self.linker.is_some() {
-            output += ".o"
-        };
-        let mut command = format!(
-            "{} {flags} -march={arch_flags} \
-            -O{} \
-            -o {project_root}/{} \
-            {project_root}/{}.cpp",
-            self.compiler, self.optimization, output, self.input,
-        );
+    pub fn into_cpp_compilation(self) -> CppCompilation {
+        let mut cpp_compiler = std::process::Command::new(self.compiler);
 
-        command = command + " " + self.extra_flags.join(" ").as_str();
+        if let Some(project_root) = self.project_root {
+            cpp_compiler.current_dir(project_root);
+        }
+
+        let flags = std::env::var("CPPFLAGS").unwrap_or("".into());
+        cpp_compiler.args(flags.split_whitespace());
+
+        cpp_compiler.arg(format!("-march={}", self.arch_flags.join("+")));
+
+        cpp_compiler.arg(format!("-O{}", self.optimization));
+
+        cpp_compiler.args(self.extra_flags);
 
         if let Some(target) = &self.target {
-            command = command + " --target=" + target;
+            cpp_compiler.arg(format!("--target={target}"));
         }
 
-        if let (Some(linker), Some(cxx_toolchain_dir)) = (&self.linker, &self.cxx_toolchain_dir) {
-            let include_args = self
-                .include_paths
-                .iter()
-                .map(|path| "--include-directory=".to_string() + cxx_toolchain_dir + path)
-                .collect::<Vec<_>>()
-                .join(" ");
+        CppCompilation(cpp_compiler)
+    }
+}
 
-            command = command
-                + " -c "
-                + include_args.as_str()
-                + " && "
-                + linker
-                + " "
-                + project_root_str
-                + "/"
-                + &output
-                + " -o "
-                + project_root_str
-                + "/"
-                + &self.output
-                + " && rm "
-                + project_root_str
-                + "/"
-                + &output;
-        }
-        command
+pub struct CppCompilation(std::process::Command);
+
+fn clone_command(command: &std::process::Command) -> std::process::Command {
+    let mut cmd = std::process::Command::new(command.get_program());
+    if let Some(current_dir) = command.get_current_dir() {
+        cmd.current_dir(current_dir);
+    }
+    cmd.args(command.get_args());
+
+    for (key, val) in command.get_envs() {
+        cmd.env(key, val.unwrap_or_default());
+    }
+
+    cmd
+}
+
+impl CppCompilation {
+    pub fn command_mut(&mut self) -> &mut std::process::Command {
+        &mut self.0
+    }
+
+    pub fn compile_object_file(
+        &self,
+        input: &str,
+        output: &str,
+    ) -> std::io::Result<std::process::Output> {
+        let mut cmd = clone_command(&self.0);
+        cmd.args([input, "-c", "-o", output]);
+        cmd.output()
+    }
+
+    pub fn link_executable(
+        &self,
+        inputs: impl Iterator<Item = String>,
+        output: &str,
+    ) -> std::io::Result<std::process::Output> {
+        let mut cmd = clone_command(&self.0);
+        cmd.args(inputs);
+        cmd.args(["-o", output]);
+        cmd.output()
     }
 }

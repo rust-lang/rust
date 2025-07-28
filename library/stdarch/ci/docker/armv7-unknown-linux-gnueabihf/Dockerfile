@@ -10,7 +10,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   qemu-user \
   make \
   file \
-  clang-19 \
+  clang \
   lld
 ENV CARGO_TARGET_ARMV7_UNKNOWN_LINUX_GNUEABIHF_LINKER=arm-linux-gnueabihf-gcc \
     CARGO_TARGET_ARMV7_UNKNOWN_LINUX_GNUEABIHF_RUNNER="qemu-arm -cpu max -L /usr/arm-linux-gnueabihf" \

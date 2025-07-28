@@ -6,6 +6,8 @@ use core::num::fmt::{Formatted, Part};
 use std::mem::MaybeUninit;
 use std::{fmt, str};
 
+use crate::num::{ldexp_f32, ldexp_f64};
+
 mod estimator;
 mod strategy {
     mod dragon;
@@ -73,24 +75,6 @@ macro_rules! try_fixed {
                       expected = (str::from_utf8($expected).unwrap(), $expectedk),
                       $($key = $val),*);
     })
-}
-
-#[cfg(target_has_reliable_f16)]
-fn ldexp_f16(a: f16, b: i32) -> f16 {
-    ldexp_f64(a as f64, b) as f16
-}
-
-fn ldexp_f32(a: f32, b: i32) -> f32 {
-    ldexp_f64(a as f64, b) as f32
-}
-
-fn ldexp_f64(a: f64, b: i32) -> f64 {
-    unsafe extern "C" {
-        fn ldexp(x: f64, n: i32) -> f64;
-    }
-    // SAFETY: assuming a correct `ldexp` has been supplied, the given arguments cannot possibly
-    // cause undefined behavior
-    unsafe { ldexp(a, b) }
 }
 
 fn check_exact<F, T>(mut f: F, v: T, vstr: &str, expected: &[u8], expectedk: i16)
@@ -268,7 +252,7 @@ where
     // 10^2 * 0.31984375
     // 10^2 * 0.32
     // 10^2 * 0.3203125
-    check_shortest!(f(ldexp_f16(1.0, 5)) => b"32", 2);
+    check_shortest!(f(crate::num::ldexp_f16(1.0, 5)) => b"32", 2);
 
     // 10^5 * 0.65472
     // 10^5 * 0.65504
@@ -283,7 +267,7 @@ where
     // 10^-9 * 0
     // 10^-9 * 0.59604644775390625
     // 10^-8 * 0.11920928955078125
-    let minf16 = ldexp_f16(1.0, -24);
+    let minf16 = crate::num::ldexp_f16(1.0, -24);
     check_shortest!(f(minf16) => b"6", -7);
 }
 
@@ -292,7 +276,7 @@ pub fn f16_exact_sanity_test<F>(mut f: F)
 where
     F: for<'a> FnMut(&Decoded, &'a mut [MaybeUninit<u8>], i16) -> (&'a [u8], i16),
 {
-    let minf16 = ldexp_f16(1.0, -24);
+    let minf16 = crate::num::ldexp_f16(1.0, -24);
 
     check_exact!(f(0.1f16)            => b"999755859375     ", -1);
     check_exact!(f(0.5f16)            => b"5                ", 0);
@@ -642,7 +626,7 @@ where
         assert_eq!(to_string(f, f16::MAX, Minus, 1), "65500.0");
         assert_eq!(to_string(f, f16::MAX, Minus, 8), "65500.00000000");
 
-        let minf16 = ldexp_f16(1.0, -24);
+        let minf16 = crate::num::ldexp_f16(1.0, -24);
         assert_eq!(to_string(f, minf16, Minus, 0), "0.00000006");
         assert_eq!(to_string(f, minf16, Minus, 8), "0.00000006");
         assert_eq!(to_string(f, minf16, Minus, 9), "0.000000060");
@@ -766,7 +750,7 @@ where
         assert_eq!(to_string(f, f16::MAX, Minus, (-4, 4), false), "6.55e4");
         assert_eq!(to_string(f, f16::MAX, Minus, (-5, 5), false), "65500");
 
-        let minf16 = ldexp_f16(1.0, -24);
+        let minf16 = crate::num::ldexp_f16(1.0, -24);
         assert_eq!(to_string(f, minf16, Minus, (-2, 2), false), "6e-8");
         assert_eq!(to_string(f, minf16, Minus, (-7, 7), false), "6e-8");
         assert_eq!(to_string(f, minf16, Minus, (-8, 8), false), "0.00000006");
@@ -922,7 +906,7 @@ where
         assert_eq!(to_string(f, f16::MAX, Minus, 6, false), "6.55040e4");
         assert_eq!(to_string(f, f16::MAX, Minus, 16, false), "6.550400000000000e4");
 
-        let minf16 = ldexp_f16(1.0, -24);
+        let minf16 = crate::num::ldexp_f16(1.0, -24);
         assert_eq!(to_string(f, minf16, Minus, 1, false), "6e-8");
         assert_eq!(to_string(f, minf16, Minus, 2, false), "6.0e-8");
         assert_eq!(to_string(f, minf16, Minus, 4, false), "5.960e-8");
@@ -1229,7 +1213,7 @@ where
 
     #[cfg(target_has_reliable_f16)]
     {
-        let minf16 = ldexp_f16(1.0, -24);
+        let minf16 = crate::num::ldexp_f16(1.0, -24);
         assert_eq!(to_string(f, minf16, Minus, 0), "0");
         assert_eq!(to_string(f, minf16, Minus, 1), "0.0");
         assert_eq!(to_string(f, minf16, Minus, 2), "0.00");

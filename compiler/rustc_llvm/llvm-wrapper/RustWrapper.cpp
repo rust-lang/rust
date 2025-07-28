@@ -1591,10 +1591,47 @@ extern "C" LLVMValueRef LLVMRustBuildMemSet(LLVMBuilderRef B, LLVMValueRef Dst,
                                       MaybeAlign(DstAlign), IsVolatile));
 }
 
+extern "C" void LLVMRustPositionBuilderPastAllocas(LLVMBuilderRef B,
+                                                   LLVMValueRef Fn) {
+  Function *F = unwrap<Function>(Fn);
+  unwrap(B)->SetInsertPointPastAllocas(F);
+}
 extern "C" void LLVMRustPositionBuilderAtStart(LLVMBuilderRef B,
                                                LLVMBasicBlockRef BB) {
   auto Point = unwrap(BB)->getFirstInsertionPt();
   unwrap(B)->SetInsertPoint(unwrap(BB), Point);
+}
+
+extern "C" void LLVMRustPositionBefore(LLVMBuilderRef B, LLVMValueRef Instr) {
+  if (auto I = dyn_cast<Instruction>(unwrap<Value>(Instr))) {
+    unwrap(B)->SetInsertPoint(I);
+  }
+}
+
+extern "C" void LLVMRustPositionAfter(LLVMBuilderRef B, LLVMValueRef Instr) {
+  if (auto I = dyn_cast<Instruction>(unwrap<Value>(Instr))) {
+    auto J = I->getNextNode();
+    unwrap(B)->SetInsertPoint(J);
+  }
+}
+
+extern "C" LLVMValueRef
+LLVMRustGetFunctionCall(LLVMValueRef Fn, const char *Name, size_t NameLen) {
+  auto targetName = StringRef(Name, NameLen);
+  Function *F = unwrap<Function>(Fn);
+  for (auto &BB : *F) {
+    for (auto &I : BB) {
+      if (auto *callInst = llvm::dyn_cast<llvm::CallBase>(&I)) {
+        const llvm::Function *calledFunc = callInst->getCalledFunction();
+        if (calledFunc && calledFunc->getName() == targetName) {
+          // Found a call to the target function
+          return wrap(callInst);
+        }
+      }
+    }
+  }
+
+  return nullptr;
 }
 
 extern "C" bool LLVMRustConstIntGetZExtValue(LLVMValueRef CV, uint64_t *value) {

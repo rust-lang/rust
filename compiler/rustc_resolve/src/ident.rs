@@ -93,20 +93,21 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         // 6. Language prelude: builtin attributes (closed, controlled).
 
         let rust_2015 = ctxt.edition().is_rust_2015();
-        let (ns, macro_kind, is_absolute_path) = match scope_set {
-            ScopeSet::All(ns) => (ns, None, false),
-            ScopeSet::AbsolutePath(ns) => (ns, None, true),
-            ScopeSet::Macro(macro_kind) => (MacroNS, Some(macro_kind), false),
-            ScopeSet::Late(ns, ..) => (ns, None, false),
+        let (ns, macro_kind) = match scope_set {
+            ScopeSet::All(ns)
+            | ScopeSet::ModuleAndExternPrelude(ns, _)
+            | ScopeSet::Late(ns, ..) => (ns, None),
+            ScopeSet::Macro(macro_kind) => (MacroNS, Some(macro_kind)),
         };
         let module = match scope_set {
             // Start with the specified module.
-            ScopeSet::Late(_, module, _) => module,
+            ScopeSet::Late(_, module, _) | ScopeSet::ModuleAndExternPrelude(_, module) => module,
             // Jump out of trait or enum modules, they do not act as scopes.
             _ => parent_scope.module.nearest_item_scope(),
         };
+        let module_and_extern_prelude = matches!(scope_set, ScopeSet::ModuleAndExternPrelude(..));
         let mut scope = match ns {
-            _ if is_absolute_path => Scope::CrateRoot,
+            _ if module_and_extern_prelude => Scope::Module(module, None),
             TypeNS | ValueNS => Scope::Module(module, None),
             MacroNS => Scope::DeriveHelpers(parent_scope.expansion),
         };
@@ -134,11 +135,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     }
                     true
                 }
-                Scope::CrateRoot => true,
                 Scope::Module(..) => true,
                 Scope::MacroUsePrelude => use_prelude || rust_2015,
                 Scope::BuiltinAttrs => true,
-                Scope::ExternPrelude => use_prelude || is_absolute_path,
+                Scope::ExternPrelude => use_prelude || module_and_extern_prelude,
                 Scope::ToolPrelude => use_prelude,
                 Scope::StdLibPrelude => use_prelude || ns == MacroNS,
                 Scope::BuiltinTypes => true,
@@ -174,7 +174,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     }
                     MacroRulesScope::Empty => Scope::Module(module, None),
                 },
-                Scope::CrateRoot => match ns {
+                Scope::Module(..) if module_and_extern_prelude => match ns {
                     TypeNS => {
                         ctxt.adjust(ExpnId::root());
                         Scope::ExternPrelude
@@ -203,7 +203,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 }
                 Scope::MacroUsePrelude => Scope::StdLibPrelude,
                 Scope::BuiltinAttrs => break, // nowhere else to search
-                Scope::ExternPrelude if is_absolute_path => break,
+                Scope::ExternPrelude if module_and_extern_prelude => break,
                 Scope::ExternPrelude => Scope::ToolPrelude,
                 Scope::ToolPrelude => Scope::StdLibPrelude,
                 Scope::StdLibPrelude => match ns {
@@ -404,10 +404,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         }
 
         let (ns, macro_kind) = match scope_set {
-            ScopeSet::All(ns) => (ns, None),
-            ScopeSet::AbsolutePath(ns) => (ns, None),
+            ScopeSet::All(ns)
+            | ScopeSet::ModuleAndExternPrelude(ns, _)
+            | ScopeSet::Late(ns, ..) => (ns, None),
             ScopeSet::Macro(macro_kind) => (MacroNS, Some(macro_kind)),
-            ScopeSet::Late(ns, ..) => (ns, None),
         };
 
         // This is *the* result, resolution from the scope closest to the resolved identifier.
@@ -487,31 +487,16 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         MacroRulesScope::Invocation(_) => Err(Determinacy::Undetermined),
                         _ => Err(Determinacy::Determined),
                     },
-                    Scope::CrateRoot => {
-                        let root_ident = Ident::new(kw::PathRoot, ident.span);
-                        let root_module = this.resolve_crate_root(root_ident);
-                        let binding = this.resolve_ident_in_module(
-                            ModuleOrUniformRoot::Module(root_module),
-                            ident,
-                            ns,
-                            parent_scope,
-                            finalize,
-                            ignore_binding,
-                            ignore_import,
-                        );
-                        match binding {
-                            Ok(binding) => Ok((binding, Flags::MODULE | Flags::MISC_SUGGEST_CRATE)),
-                            Err((Determinacy::Undetermined, Weak::No)) => {
-                                return Some(Err(Determinacy::determined(force)));
-                            }
-                            Err((Determinacy::Undetermined, Weak::Yes)) => {
-                                Err(Determinacy::Undetermined)
-                            }
-                            Err((Determinacy::Determined, _)) => Err(Determinacy::Determined),
-                        }
-                    }
                     Scope::Module(module, derive_fallback_lint_id) => {
-                        let adjusted_parent_scope = &ParentScope { module, ..*parent_scope };
+                        let (adjusted_parent_scope, finalize) =
+                            if matches!(scope_set, ScopeSet::ModuleAndExternPrelude(..)) {
+                                (parent_scope, finalize)
+                            } else {
+                                (
+                                    &ParentScope { module, ..*parent_scope },
+                                    finalize.map(|f| Finalize { used: Used::Scope, ..f }),
+                                )
+                            };
                         let binding = this.resolve_ident_in_module_unadjusted(
                             ModuleOrUniformRoot::Module(module),
                             ident,
@@ -522,7 +507,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             } else {
                                 Shadowing::Restricted
                             },
-                            finalize.map(|finalize| Finalize { used: Used::Scope, ..finalize }),
+                            finalize,
                             ignore_binding,
                             ignore_import,
                         );
@@ -776,7 +761,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             ModuleOrUniformRoot::ExternPrelude => {
                 ident.span.normalize_to_macros_2_0_and_adjust(ExpnId::root());
             }
-            ModuleOrUniformRoot::CrateRootAndExternPrelude | ModuleOrUniformRoot::CurrentScope => {
+            ModuleOrUniformRoot::ModuleAndExternPrelude(..) | ModuleOrUniformRoot::CurrentScope => {
                 // No adjustments
             }
         }
@@ -810,11 +795,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     ) -> Result<NameBinding<'ra>, (Determinacy, Weak)> {
         let module = match module {
             ModuleOrUniformRoot::Module(module) => module,
-            ModuleOrUniformRoot::CrateRootAndExternPrelude => {
+            ModuleOrUniformRoot::ModuleAndExternPrelude(module) => {
                 assert_eq!(shadowing, Shadowing::Unrestricted);
                 let binding = self.early_resolve_ident_in_lexical_scope(
                     ident,
-                    ScopeSet::AbsolutePath(ns),
+                    ScopeSet::ModuleAndExternPrelude(ns, module),
                     parent_scope,
                     finalize,
                     finalize.is_some(),
@@ -863,8 +848,13 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         };
 
         let key = BindingKey::new(ident, ns);
-        let resolution =
-            self.resolution(module, key).try_borrow_mut().map_err(|_| (Determined, Weak::No))?; // This happens when there is a cycle of imports.
+        // `try_borrow_mut` is required to ensure exclusive access, even if the resulting binding
+        // doesn't need to be mutable. It will fail when there is a cycle of imports, and without
+        // the exclusive access infinite recursion will crash the compiler with stack overflow.
+        let resolution = &*self
+            .resolution_or_default(module, key)
+            .try_borrow_mut()
+            .map_err(|_| (Determined, Weak::No))?;
 
         // If the primary binding is unusable, search further and return the shadowed glob
         // binding if it exists. What we really want here is having two separate scopes in
@@ -1531,7 +1521,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         && self.tcx.sess.at_least_rust_2018()
                     {
                         // `::a::b` from 2015 macro on 2018 global edition
-                        module = Some(ModuleOrUniformRoot::CrateRootAndExternPrelude);
+                        let crate_root = self.resolve_crate_root(ident);
+                        module = Some(ModuleOrUniformRoot::ModuleAndExternPrelude(crate_root));
                         continue;
                     }
                     if name == kw::PathRoot || name == kw::Crate || name == kw::DollarCrate {

@@ -4,7 +4,7 @@ use libc::{c_char, c_uint};
 
 use super::MetadataKindId;
 use super::ffi::{AttributeKind, BasicBlock, Metadata, Module, Type, Value};
-use crate::llvm::Bool;
+use crate::llvm::{Bool, Builder};
 
 #[link(name = "llvm-wrapper", kind = "static")]
 unsafe extern "C" {
@@ -31,6 +31,14 @@ unsafe extern "C" {
         index: c_uint,
         kind: AttributeKind,
     );
+    pub(crate) fn LLVMRustPositionBefore<'a>(B: &'a Builder<'_>, I: &'a Value);
+    pub(crate) fn LLVMRustPositionAfter<'a>(B: &'a Builder<'_>, I: &'a Value);
+    pub(crate) fn LLVMRustGetFunctionCall(
+        F: &Value,
+        name: *const c_char,
+        NameLen: libc::size_t,
+    ) -> Option<&Value>;
+
 }
 
 unsafe extern "C" {

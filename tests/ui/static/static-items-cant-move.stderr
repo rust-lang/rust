@@ -3,6 +3,15 @@ error[E0507]: cannot move out of static item `BAR`
    |
 LL |     test(BAR);
    |          ^^^ move occurs because `BAR` has type `Foo`, which does not implement the `Copy` trait
+   |
+note: if `Foo` implemented `Clone`, you could clone the value
+  --> $DIR/static-items-cant-move.rs:5:1
+   |
+LL | struct Foo {
+   | ^^^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |     test(BAR);
+   |          --- you could clone this value
 
 error: aborting due to 1 previous error
 

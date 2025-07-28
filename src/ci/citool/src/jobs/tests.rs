@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use std::path::Path;
 
 use super::Job;
@@ -145,4 +146,223 @@ fn validate_jobs() {
             errors.into_iter().map(|e| format!("- {e}")).collect::<Vec<_>>().join("\n");
         panic!("Job validation failed:\n{error_messages}");
     }
+}
+
+#[test]
+fn pr_job_implies_auto_job() {
+    let db = load_job_db(
+        r#"
+envs:
+  pr:
+  try:
+  auto:
+  optional:
+
+pr:
+    - name: pr-ci-a
+      os: ubuntu
+      env: {}
+try:
+auto:
+optional:
+"#,
+    )
+    .unwrap();
+
+    assert_eq!(db.auto_jobs.iter().map(|j| j.name.as_str()).collect::<Vec<_>>(), vec!["pr-ci-a"])
+}
+
+#[test]
+fn implied_auto_job_keeps_env_and_fails_fast() {
+    let db = load_job_db(
+        r#"
+envs:
+  pr:
+  try:
+  auto:
+  optional:
+
+pr:
+    - name: tidy
+      env:
+        DEPLOY_TOOLSTATES_JSON: toolstates-linux.json
+      continue_on_error: true
+      os: ubuntu
+try:
+auto:
+optional:
+"#,
+    )
+    .unwrap();
+
+    assert_eq!(db.auto_jobs.iter().map(|j| j.name.as_str()).collect::<Vec<_>>(), vec!["tidy"]);
+    assert_eq!(db.auto_jobs[0].continue_on_error, Some(false));
+    assert_eq!(
+        db.auto_jobs[0].env,
+        BTreeMap::from([(
+            "DEPLOY_TOOLSTATES_JSON".to_string(),
+            serde_yaml::Value::String("toolstates-linux.json".to_string())
+        )])
+    );
+}
+
+#[test]
+#[should_panic = "duplicate"]
+fn duplicate_job_name() {
+    let _ = load_job_db(
+        r#"
+envs:
+  pr:
+  try:
+  auto:
+
+
+pr:
+    - name: pr-ci-a
+      os: ubuntu
+      env: {}
+    - name: pr-ci-a
+      os: ubuntu
+      env: {}
+try:
+auto:
+optional:
+"#,
+    )
+    .unwrap();
+}
+
+#[test]
+fn auto_job_can_override_pr_job_spec() {
+    let db = load_job_db(
+        r#"
+envs:
+  pr:
+  try:
+  auto:
+  optional:
+
+pr:
+    - name: tidy
+      os: ubuntu
+      env: {}
+try:
+auto:
+    - name: tidy
+      env:
+        DEPLOY_TOOLSTATES_JSON: toolstates-linux.json
+      continue_on_error: false
+      os: ubuntu
+optional:
+"#,
+    )
+    .unwrap();
+
+    assert_eq!(db.auto_jobs.iter().map(|j| j.name.as_str()).collect::<Vec<_>>(), vec!["tidy"]);
+    assert_eq!(db.auto_jobs[0].continue_on_error, Some(false));
+    assert_eq!(
+        db.auto_jobs[0].env,
+        BTreeMap::from([(
+            "DEPLOY_TOOLSTATES_JSON".to_string(),
+            serde_yaml::Value::String("toolstates-linux.json".to_string())
+        )])
+    );
+}
+
+#[test]
+fn compatible_divergence_pr_auto_job() {
+    let db = load_job_db(
+        r#"
+envs:
+  pr:
+  try:
+  auto:
+  optional:
+
+pr:
+    - name: tidy
+      continue_on_error: true
+      env:
+        ENV_ALLOWED_TO_DIFFER: "hello world"
+      os: ubuntu
+try:
+auto:
+    - name: tidy
+      continue_on_error: false
+      env:
+        ENV_ALLOWED_TO_DIFFER: "goodbye world"
+      os: ubuntu
+optional:
+"#,
+    )
+    .unwrap();
+
+    // `continue_on_error` and `env` are carve-outs *allowed* to diverge between PR and Auto job of
+    // the same name. Should load successfully.
+
+    assert_eq!(db.auto_jobs.iter().map(|j| j.name.as_str()).collect::<Vec<_>>(), vec!["tidy"]);
+    assert_eq!(db.auto_jobs[0].continue_on_error, Some(false));
+    assert_eq!(
+        db.auto_jobs[0].env,
+        BTreeMap::from([(
+            "ENV_ALLOWED_TO_DIFFER".to_string(),
+            serde_yaml::Value::String("goodbye world".to_string())
+        )])
+    );
+}
+
+#[test]
+#[should_panic = "differs"]
+fn incompatible_divergence_pr_auto_job() {
+    // `os` is not one of the carve-out options allowed to diverge. This should fail.
+    let _ = load_job_db(
+        r#"
+envs:
+  pr:
+  try:
+  auto:
+  optional:
+
+pr:
+    - name: tidy
+      continue_on_error: true
+      env:
+        ENV_ALLOWED_TO_DIFFER: "hello world"
+      os: ubuntu
+try:
+auto:
+    - name: tidy
+      continue_on_error: false
+      env:
+        ENV_ALLOWED_TO_DIFFER: "goodbye world"
+      os: windows
+optional:
+"#,
+    )
+    .unwrap();
+}
+
+#[test]
+#[should_panic = "cannot have `continue_on_error: true`"]
+fn auto_job_continue_on_error() {
+    // Auto CI jobs must fail-fast.
+    let _ = load_job_db(
+        r#"
+envs:
+  pr:
+  try:
+  auto:
+  optional:
+
+pr:
+try:
+auto:
+    - name: tidy
+      continue_on_error: true
+      os: windows
+      env: {}
+optional:
+"#,
+    )
+    .unwrap();
 }

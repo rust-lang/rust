@@ -313,7 +313,6 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         scalar_valid_range: (Bound<u128>, Bound<u128>),
         discr_range_of_repr: impl Fn(i128, i128) -> (Integer, bool),
         discriminants: impl Iterator<Item = (VariantIdx, i128)>,
-        dont_niche_optimize_enum: bool,
         always_sized: bool,
     ) -> LayoutCalculatorResult<FieldIdx, VariantIdx, F> {
         let (present_first, present_second) = {
@@ -352,13 +351,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
             // structs. (We have also handled univariant enums
             // that allow representation optimization.)
             assert!(is_enum);
-            self.layout_of_enum(
-                repr,
-                variants,
-                discr_range_of_repr,
-                discriminants,
-                dont_niche_optimize_enum,
-            )
+            self.layout_of_enum(repr, variants, discr_range_of_repr, discriminants)
         }
     }
 
@@ -599,7 +592,6 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         variants: &IndexSlice<VariantIdx, IndexVec<FieldIdx, F>>,
         discr_range_of_repr: impl Fn(i128, i128) -> (Integer, bool),
         discriminants: impl Iterator<Item = (VariantIdx, i128)>,
-        dont_niche_optimize_enum: bool,
     ) -> LayoutCalculatorResult<FieldIdx, VariantIdx, F> {
         // Until we've decided whether to use the tagged or
         // niche filling LayoutData, we don't want to intern the
@@ -618,7 +610,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         }
 
         let calculate_niche_filling_layout = || -> Option<TmpLayout<FieldIdx, VariantIdx>> {
-            if dont_niche_optimize_enum {
+            if repr.inhibit_enum_layout_opt() {
                 return None;
             }
 

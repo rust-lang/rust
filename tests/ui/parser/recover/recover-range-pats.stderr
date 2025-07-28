@@ -339,7 +339,7 @@ LL |     if let 0...3 = 0 {}
    |             ^^^ help: use `..=` for an inclusive range
    |
    = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
-   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/warnings-promoted-to-error.html>
 note: the lint level is defined here
   --> $DIR/recover-range-pats.rs:6:9
    |
@@ -353,7 +353,7 @@ LL |     if let 0...Y = 0 {}
    |             ^^^ help: use `..=` for an inclusive range
    |
    = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
-   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/warnings-promoted-to-error.html>
 
 error: `...` range patterns are deprecated
   --> $DIR/recover-range-pats.rs:46:13
@@ -362,7 +362,7 @@ LL |     if let X...3 = 0 {}
    |             ^^^ help: use `..=` for an inclusive range
    |
    = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
-   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/warnings-promoted-to-error.html>
 
 error: `...` range patterns are deprecated
   --> $DIR/recover-range-pats.rs:49:13
@@ -371,7 +371,7 @@ LL |     if let X...Y = 0 {}
    |             ^^^ help: use `..=` for an inclusive range
    |
    = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
-   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/warnings-promoted-to-error.html>
 
 error: `...` range patterns are deprecated
   --> $DIR/recover-range-pats.rs:52:16
@@ -380,7 +380,7 @@ LL |     if let true...Y = 0 {}
    |                ^^^ help: use `..=` for an inclusive range
    |
    = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
-   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/warnings-promoted-to-error.html>
 
 error: `...` range patterns are deprecated
   --> $DIR/recover-range-pats.rs:55:13
@@ -389,7 +389,7 @@ LL |     if let X...true = 0 {}
    |             ^^^ help: use `..=` for an inclusive range
    |
    = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
-   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/warnings-promoted-to-error.html>
 
 error: `...` range patterns are deprecated
   --> $DIR/recover-range-pats.rs:58:14
@@ -398,7 +398,7 @@ LL |     if let .0...Y = 0 {}
    |              ^^^ help: use `..=` for an inclusive range
    |
    = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
-   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/warnings-promoted-to-error.html>
 
 error: `...` range patterns are deprecated
   --> $DIR/recover-range-pats.rs:62:13
@@ -407,7 +407,7 @@ LL |     if let X... .0 = 0 {}
    |             ^^^ help: use `..=` for an inclusive range
    |
    = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
-   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/warnings-promoted-to-error.html>
 
 error: `...` range patterns are deprecated
   --> $DIR/recover-range-pats.rs:137:20
@@ -419,7 +419,7 @@ LL |     mac2!(0, 1);
    |     ----------- in this macro invocation
    |
    = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
-   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/warnings-promoted-to-error.html>
    = note: this error originates in the macro `mac2` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0029]: only `char` and numeric types are allowed in range patterns

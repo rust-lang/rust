@@ -739,7 +739,6 @@ impl Step for CompiletestTest {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Clippy {
-    stage: u32,
     host: TargetSelection,
 }
 
@@ -753,33 +752,23 @@ impl Step for Clippy {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        // If stage is explicitly set or not lower than 2, keep it. Otherwise, make sure it's at least 2
-        // as tests for this step don't work with a lower stage.
-        let stage = if run.builder.config.is_explicit_stage() || run.builder.top_stage >= 2 {
-            run.builder.top_stage
-        } else {
-            2
-        };
-
-        run.builder.ensure(Clippy { stage, host: run.target });
+        run.builder.ensure(Clippy { host: run.target });
     }
 
     /// Runs `cargo test` for clippy.
     fn run(self, builder: &Builder<'_>) {
-        let stage = self.stage;
+        let stage = builder.top_stage;
         let host = self.host;
-        let compiler = builder.compiler(stage, host);
+        // We need to carefully distinguish the compiler that builds clippy, and the compiler
+        // that is linked into the clippy being tested. `target_compiler` is the latter,
+        // and it must also be used by clippy's test runner to build tests and their dependencies.
+        let target_compiler = builder.compiler(stage, host);
 
-        if stage < 2 {
-            eprintln!("WARNING: clippy tests on stage {stage} may not behave well.");
-            eprintln!("HELP: consider using stage 2");
-        }
-
-        let tool_result = builder.ensure(tool::Clippy { compiler, target: self.host });
-        let compiler = tool_result.build_compiler;
+        let tool_result = builder.ensure(tool::Clippy { compiler: target_compiler, target: host });
+        let tool_compiler = tool_result.build_compiler;
         let mut cargo = tool::prepare_tool_cargo(
             builder,
-            compiler,
+            tool_compiler,
             Mode::ToolRustc,
             host,
             Kind::Test,
@@ -788,10 +777,16 @@ impl Step for Clippy {
             &[],
         );
 
-        cargo.env("RUSTC_TEST_SUITE", builder.rustc(compiler));
-        cargo.env("RUSTC_LIB_PATH", builder.rustc_libdir(compiler));
-        let host_libs = builder.stage_out(compiler, Mode::ToolRustc).join(builder.cargo_dir());
+        cargo.env("RUSTC_TEST_SUITE", builder.rustc(tool_compiler));
+        cargo.env("RUSTC_LIB_PATH", builder.rustc_libdir(tool_compiler));
+        let host_libs = builder.stage_out(tool_compiler, Mode::ToolRustc).join(builder.cargo_dir());
         cargo.env("HOST_LIBS", host_libs);
+
+        // Build the standard library that the tests can use.
+        builder.std(target_compiler, host);
+        cargo.env("TEST_SYSROOT", builder.sysroot(target_compiler));
+        cargo.env("TEST_RUSTC", builder.rustc(target_compiler));
+        cargo.env("TEST_RUSTC_LIB", builder.rustc_libdir(target_compiler));
 
         // Collect paths of tests to run
         'partially_test: {
@@ -813,7 +808,8 @@ impl Step for Clippy {
         cargo.add_rustc_lib_path(builder);
         let cargo = prepare_cargo_test(cargo, &[], &[], host, builder);
 
-        let _guard = builder.msg_sysroot_tool(Kind::Test, compiler.stage, "clippy", host, host);
+        let _guard =
+            builder.msg_sysroot_tool(Kind::Test, tool_compiler.stage, "clippy", host, host);
 
         // Clippy reports errors if it blessed the outputs
         if cargo.allow_failure().run(builder) {
@@ -1117,6 +1113,12 @@ impl Step for Tidy {
             8 * std::thread::available_parallelism().map_or(1, std::num::NonZeroUsize::get) as u32
         });
         cmd.arg(jobs.to_string());
+        // pass the path to the npm command used for installing js deps.
+        if let Some(npm) = &builder.config.npm {
+            cmd.arg(npm);
+        } else {
+            cmd.arg("npm");
+        }
         if builder.is_verbose() {
             cmd.arg("--verbose");
         }
@@ -1346,7 +1348,12 @@ test!(Ui { path: "tests/ui", mode: "ui", suite: "ui", default: true });
 
 test!(Crashes { path: "tests/crashes", mode: "crashes", suite: "crashes", default: true });
 
-test!(Codegen { path: "tests/codegen", mode: "codegen", suite: "codegen", default: true });
+test!(CodegenLlvm {
+    path: "tests/codegen-llvm",
+    mode: "codegen",
+    suite: "codegen-llvm",
+    default: true
+});
 
 test!(CodegenUnits {
     path: "tests/codegen-units",
@@ -1411,7 +1418,12 @@ test!(Pretty {
 
 test!(RunMake { path: "tests/run-make", mode: "run-make", suite: "run-make", default: true });
 
-test!(Assembly { path: "tests/assembly", mode: "assembly", suite: "assembly", default: true });
+test!(AssemblyLlvm {
+    path: "tests/assembly-llvm",
+    mode: "assembly",
+    suite: "assembly-llvm",
+    default: true
+});
 
 /// Runs the coverage test suite at `tests/coverage` in some or all of the
 /// coverage test modes.
@@ -1619,7 +1631,7 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         let suite_path = self.path;
 
         // Skip codegen tests if they aren't enabled in configuration.
-        if !builder.config.codegen_tests && suite == "codegen" {
+        if !builder.config.codegen_tests && mode == "codegen" {
             return;
         }
 
@@ -1816,7 +1828,7 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         let mut flags = if is_rustdoc { Vec::new() } else { vec!["-Crpath".to_string()] };
         flags.push(format!(
             "-Cdebuginfo={}",
-            if suite == "codegen" {
+            if mode == "codegen" {
                 // codegen tests typically check LLVM IR and are sensitive to additional debuginfo.
                 // So do not apply `rust.debuginfo-level-tests` for codegen tests.
                 if builder.config.rust_debuginfo_level_tests
@@ -3120,7 +3132,11 @@ impl Step for Bootstrap {
     }
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("src/bootstrap")
+        // Bootstrap tests might not be perfectly self-contained and can depend on the external
+        // environment, submodules that are checked out, etc.
+        // Therefore we only run them by default on CI.
+        let runs_on_ci = run.builder.config.is_running_on_ci;
+        run.path("src/bootstrap").default_condition(runs_on_ci)
     }
 
     fn make_run(run: RunConfig<'_>) {

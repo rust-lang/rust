@@ -28,6 +28,7 @@ allow-unauthenticated = [
     "llvm-*",
     "needs-fcp",
     "relnotes",
+    "release-blog-post",
     "requires-*",
     "regression-*",
     "rla-*",
@@ -302,9 +303,9 @@ trigger_files = [
     "compiler",
 
     # Tests
-    "tests/assembly",
+    "tests/assembly-llvm",
     "tests/auxiliary",
-    "tests/codegen",
+    "tests/codegen-llvm",
     "tests/codegen-units",
     "tests/COMPILER_TESTS.md",
     "tests/coverage",
@@ -558,10 +559,10 @@ trigger_files = [
     "src/doc/unstable-book/src/language-features/cfg-sanitize.md",
     "src/doc/unstable-book/src/language-features/cfi-encoding.md",
     "src/doc/unstable-book/src/language-features/no-sanitize.md",
-    "tests/codegen/sanitizer",
-    "tests/codegen/split-lto-unit.rs",
-    "tests/codegen/stack-probes-inline.rs",
-    "tests/codegen/stack-protector.rs",
+    "tests/codegen-llvm/sanitizer",
+    "tests/codegen-llvm/split-lto-unit.rs",
+    "tests/codegen-llvm/stack-probes-inline.rs",
+    "tests/codegen-llvm/stack-protector.rs",
     "tests/ui/sanitizer",
     "tests/ui/stack-protector"
 ]
@@ -1096,7 +1097,7 @@ cc = ["@jieyouxu"]
 message = "The list of allowed third-party dependencies may have been modified! You must ensure that any new dependencies have compatible licenses before merging."
 cc = ["@davidtwco", "@wesleywiser"]
 
-[mentions."src/tools/tidy/src/ext_tool_checks.rs"]
+[mentions."src/tools/tidy/src/extra_checks"]
 message = "`tidy` extra checks were modified."
 cc = ["@lolbinarycat"]
 
@@ -1147,6 +1148,12 @@ cc = ["@nnethercote"]
 message = "Changes to the size of AST and/or HIR nodes."
 cc = ["@nnethercote"]
 
+[mentions."tests/ui/issues"]
+message = """
+This PR modifies `tests/ui/issues/`. If this PR is adding new tests to `tests/ui/issues/`,
+please refrain from doing so, and instead add it to more descriptive subdirectories.
+"""
+
 [mentions."compiler/rustc_sanitizers"]
 cc = ["@rcvalle"]
 
@@ -1183,16 +1190,16 @@ cc = ["@Urgau"]
 [mentions."src/doc/rustc/src/platform-support"]
 cc = ["@Noratrieb"]
 
-[mentions."tests/codegen/sanitizer"]
+[mentions."tests/codegen-llvm/sanitizer"]
 cc = ["@rcvalle"]
 
-[mentions."tests/codegen/split-lto-unit.rs"]
+[mentions."tests/codegen-llvm/split-lto-unit.rs"]
 cc = ["@rust-lang/project-exploit-mitigations", "@rcvalle"]
 
-[mentions."tests/codegen/stack-probes-inline.rs"]
+[mentions."tests/codegen-llvm/stack-probes-inline.rs"]
 cc = ["@rust-lang/project-exploit-mitigations", "@rcvalle"]
 
-[mentions."tests/codegen/stack-protector.rs"]
+[mentions."tests/codegen-llvm/stack-protector.rs"]
 cc = ["@rust-lang/project-exploit-mitigations", "@rcvalle"]
 
 [mentions."tests/ui/sanitizer"]

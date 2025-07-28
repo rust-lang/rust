@@ -151,7 +151,32 @@ impl TestContext {
         defaults.set_custom(
             "dependencies",
             DependencyBuilder {
-                program: CommandBuilder::cargo(),
+                program: {
+                    let mut p = CommandBuilder::cargo();
+                    // If we run in bootstrap, we need to use the right compiler for building the
+                    // tests -- not the compiler that built clippy, but the compiler that got linked
+                    // into clippy. Just invoking TEST_RUSTC does not work because LD_LIBRARY_PATH
+                    // is set in a way that makes it pick the wrong sysroot. Sadly due to
+                    // <https://github.com/rust-lang/cargo/issues/4423> we cannot use RUSTFLAGS to
+                    // set `--sysroot`, so we need to use bootstrap's rustc wrapper. That wrapper
+                    // however has some staging logic that is hurting us here, so to work around
+                    // that we set both the "real" and "staging" rustc to TEST_RUSTC, including the
+                    // associated library paths.
+                    #[expect(
+                        clippy::option_env_unwrap,
+                        reason = "TEST_RUSTC will ensure that the requested env vars are set during compile time"
+                    )]
+                    if let Some(rustc) = option_env!("TEST_RUSTC") {
+                        let libdir = option_env!("TEST_RUSTC_LIB").unwrap();
+                        let sysroot = option_env!("TEST_SYSROOT").unwrap();
+                        p.envs.push(("RUSTC_REAL".into(), Some(rustc.into())));
+                        p.envs.push(("RUSTC_REAL_LIBDIR".into(), Some(libdir.into())));
+                        p.envs.push(("RUSTC_SNAPSHOT".into(), Some(rustc.into())));
+                        p.envs.push(("RUSTC_SNAPSHOT_LIBDIR".into(), Some(libdir.into())));
+                        p.envs.push(("RUSTC_SYSROOT".into(), Some(sysroot.into())));
+                    }
+                    p
+                },
                 crate_manifest_path: Path::new("clippy_test_deps").join("Cargo.toml"),
                 build_std: None,
                 bless_lockfile: self.args.bless,
@@ -191,6 +216,9 @@ impl TestContext {
         if let Some(host_libs) = option_env!("HOST_LIBS") {
             let dep = format!("-Ldependency={}", Path::new(host_libs).join("deps").display());
             config.program.args.push(dep.into());
+        }
+        if let Some(sysroot) = option_env!("TEST_SYSROOT") {
+            config.program.args.push(format!("--sysroot={sysroot}").into());
         }
 
         config.program.program = profile_path.join(if cfg!(windows) {

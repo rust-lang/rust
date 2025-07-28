@@ -173,6 +173,9 @@ pub(crate) struct Options {
 
     /// Arguments to be used when compiling doctests.
     pub(crate) doctest_build_args: Vec<String>,
+
+    /// Target modifiers.
+    pub(crate) target_modifiers: BTreeMap<OptionsTargetModifiers, String>,
 }
 
 impl fmt::Debug for Options {
@@ -846,6 +849,7 @@ impl Options {
             unstable_features,
             expanded_args: args,
             doctest_build_args,
+            target_modifiers,
         };
         let render_options = RenderOptions {
             output,

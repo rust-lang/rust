@@ -64,8 +64,8 @@ impl<'tcx> LateLintPass<'tcx> for FallibleImplFrom {
 }
 
 fn lint_impl_body(cx: &LateContext<'_>, item_def_id: hir::OwnerId, impl_span: Span) {
-    use rustc_hir::intravisit::{self, Visitor};
     use rustc_hir::Expr;
+    use rustc_hir::intravisit::{self, Visitor};
 
     struct FindPanicUnwrap<'a, 'tcx> {
         lcx: &'a LateContext<'tcx>,
@@ -96,10 +96,12 @@ fn lint_impl_body(cx: &LateContext<'_>, item_def_id: hir::OwnerId, impl_span: Sp
         }
     }
 
-    for impl_item in cx.tcx.associated_items(item_def_id)
+    for impl_item in cx
+        .tcx
+        .associated_items(item_def_id)
         .filter_by_name_unhygienic_and_kind(sym::from, ty::AssocTag::Fn)
     {
-        let impl_item_def_id= impl_item.def_id.expect_local();
+        let impl_item_def_id = impl_item.def_id.expect_local();
 
         // check the body for `begin_panic` or `unwrap`
         let body = cx.tcx.hir_body_owned_by(impl_item_def_id);

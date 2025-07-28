@@ -338,12 +338,6 @@ than building it.
 
         // Make sure musl-root is valid.
         if target.contains("musl") && !target.contains("unikraft") {
-            // If this is a native target (host is also musl) and no musl-root is given,
-            // fall back to the system toolchain in /usr before giving up
-            if build.musl_root(*target).is_none() && build.config.is_host_target(*target) {
-                let target = build.config.target_config.entry(*target).or_default();
-                target.musl_root = Some("/usr".into());
-            }
             match build.musl_libdir(*target) {
                 Some(libdir) => {
                     if fs::metadata(libdir.join("libc.a")).is_err() {

@@ -6,6 +6,7 @@
 //@ edition: 2021
 //@ no-prefer-dynamic
 //@ only-x86_64-unknown-linux-gnu
+//@ ignore-backends: gcc
 //@ build-pass
 
 trait Iterable {

@@ -15,19 +15,6 @@ pub(crate) struct CopyBitcode {
 }
 
 #[derive(Diagnostic)]
-#[diag(codegen_gcc_dynamic_linking_with_lto)]
-#[note]
-pub(crate) struct DynamicLinkingWithLTO;
-
-#[derive(Diagnostic)]
-#[diag(codegen_gcc_lto_disallowed)]
-pub(crate) struct LtoDisallowed;
-
-#[derive(Diagnostic)]
-#[diag(codegen_gcc_lto_dylib)]
-pub(crate) struct LtoDylib;
-
-#[derive(Diagnostic)]
 #[diag(codegen_gcc_lto_bitcode_from_rlib)]
 pub(crate) struct LtoBitcodeFromRlib {
     pub gcc_err: String,

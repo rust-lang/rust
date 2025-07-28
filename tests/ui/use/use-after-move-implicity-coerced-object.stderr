@@ -17,6 +17,14 @@ LL |     fn push(&mut self, n: Box<dyn ToString + 'static>) {
    |        ----               ^^^^^^^^^^^^^^^^^^^^^^^^^^^ this parameter takes ownership of the value
    |        |
    |        in this method
+note: if `Number` implemented `Clone`, you could clone the value
+  --> $DIR/use-after-move-implicity-coerced-object.rs:3:1
+   |
+LL | struct Number {
+   | ^^^^^^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |     l.push(n);
+   |            - you could clone this value
 
 error: aborting due to 1 previous error
 

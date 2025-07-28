@@ -1294,3 +1294,20 @@ pub(crate) struct FeatureNotValid<'a> {
     #[help]
     pub plus_hint: bool,
 }
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_lto_disallowed)]
+pub(crate) struct LtoDisallowed;
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_lto_dylib)]
+pub(crate) struct LtoDylib;
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_lto_proc_macro)]
+pub(crate) struct LtoProcMacro;
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_dynamic_linking_with_lto)]
+#[note]
+pub(crate) struct DynamicLinkingWithLTO;

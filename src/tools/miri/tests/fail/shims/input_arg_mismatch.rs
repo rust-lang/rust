@@ -16,6 +16,6 @@ fn main() {
     } as u32;
     let _ = unsafe {
         close(fd);
-        //~^ ERROR: calling a function with argument of type i32 passing data of type u32
+        //~^ ERROR: type i32 passing argument of type u32
     };
 }

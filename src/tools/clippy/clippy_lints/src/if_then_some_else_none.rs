@@ -5,7 +5,8 @@ use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::{
-    contains_return, higher, is_else_clause, is_in_const_context, is_res_lang_ctor, path_res, peel_blocks,
+    contains_return, expr_adjustment_requires_coercion, higher, is_else_clause, is_in_const_context, is_res_lang_ctor,
+    path_res, peel_blocks,
 };
 use rustc_errors::Applicability;
 use rustc_hir::LangItem::{OptionNone, OptionSome};
@@ -92,6 +93,10 @@ impl<'tcx> LateLintPass<'tcx> for IfThenSomeElseNone {
                 expr.span,
                 format!("this could be simplified with `bool::{method_name}`"),
                 |diag| {
+                    if expr_adjustment_requires_coercion(cx, then_arg) {
+                        return;
+                    }
+
                     let mut app = Applicability::MachineApplicable;
                     let cond_snip = Sugg::hir_with_context(cx, cond, expr.span.ctxt(), "[condition]", &mut app)
                         .maybe_paren()

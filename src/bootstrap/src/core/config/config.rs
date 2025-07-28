@@ -942,6 +942,7 @@ impl Config {
         config.rust_profile_use = flags_rust_profile_use;
         config.rust_profile_generate = flags_rust_profile_generate;
 
+        config.apply_target_config(toml.target);
         config.apply_rust_config(toml.rust, flags_warnings);
 
         config.reproducible_artifacts = flags_reproducible_artifact;
@@ -966,8 +967,6 @@ impl Config {
         config.apply_llvm_config(toml.llvm);
 
         config.apply_gcc_config(toml.gcc);
-
-        config.apply_target_config(toml.target);
 
         match ccache {
             Some(StringOrBool::String(ref s)) => config.ccache = Some(s.to_string()),

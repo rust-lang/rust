@@ -66,7 +66,9 @@ impl<'tcx> LateLintPass<'tcx> for MissingTraitMethods {
             }) = item.kind
             && let Some(trait_id) = trait_ref.trait_def_id()
         {
-            let trait_item_ids: DefIdSet = cx.tcx.associated_items(item.owner_id)
+            let trait_item_ids: DefIdSet = cx
+                .tcx
+                .associated_items(item.owner_id)
                 .in_definition_order()
                 .filter_map(|assoc_item| assoc_item.trait_item_def_id)
                 .collect();

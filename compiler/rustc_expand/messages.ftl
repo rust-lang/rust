@@ -1,25 +1,7 @@
-expand_arg_not_attributes =
-    second argument must be `attributes`
-
-expand_attr_no_arguments =
-    attribute must have either one or two arguments
-
-expand_attribute_meta_item =
-    attribute must be a meta item, not a literal
-
-expand_attribute_single_word =
-    attribute must only be a single word
-
 expand_attributes_on_expressions_experimental =
     attributes on expressions are experimental
     .help_outer_doc = `///` is used for outer documentation comments; for a plain comment, use `//`
     .help_inner_doc = `//!` is used for inner documentation comments; for a plain comment, use `//` by removing the `!` or inserting a space in between them: `// !`
-
-expand_attributes_wrong_form =
-    attribute must be of form: `attributes(foo, bar)`
-
-expand_cannot_be_name_of_macro =
-    `{$trait_ident}` cannot be a name of {$macro_type} macro
 
 expand_collapse_debuginfo_illegal =
     illegal value for attribute #[collapse_debuginfo(no|external|yes)]
@@ -70,9 +52,6 @@ expand_glob_delegation_outside_impls =
 
 expand_glob_delegation_traitless_qpath =
     qualified path without a trait in glob delegation
-
-expand_helper_attribute_name_invalid =
-    `{$name}` cannot be a name of derive helper attribute
 
 expand_incomplete_parse =
     macro expansion ignores {$descr} and any tokens following
@@ -164,12 +143,6 @@ expand_mve_unrecognized_var =
 
 expand_non_inline_modules_in_proc_macro_input_are_unstable =
     non-inline modules in proc macro input are unstable
-
-expand_not_a_meta_item =
-    not a meta item
-
-expand_only_one_word =
-    must only be one word
 
 expand_proc_macro_back_compat = using an old version of `{$crate_name}`
     .note = older versions of the `{$crate_name}` crate no longer compile; please update to `{$crate_name}` v{$fixed_version}, or switch to one of the `{$crate_name}` alternatives

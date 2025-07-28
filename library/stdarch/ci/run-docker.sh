@@ -37,7 +37,6 @@ run() {
       --env NORUN \
       --env RUSTFLAGS \
       --env CARGO_UNSTABLE_BUILD_STD \
-      --env RUST_STD_DETECT_UNSTABLE \
       --volume "${HOME}/.cargo":/cargo \
       --volume "$(rustc --print sysroot)":/rust:ro \
       --volume "$(pwd)":/checkout:ro \

@@ -1,5 +1,5 @@
 //@ edition:2018
-//@ aux-build:../removing-extern-crate.rs
+//@ aux-build: remove-extern-crate.rs
 //@ run-rustfix
 
 #![warn(rust_2018_idioms)]

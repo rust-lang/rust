@@ -1329,23 +1329,33 @@ impl Build {
         }
     }
 
-    /// Returns the "musl root" for this `target`, if defined
+    /// Returns the "musl root" for this `target`, if defined.
+    ///
+    /// If this is a native target (host is also musl) and no musl-root is given,
+    /// it falls back to the system toolchain in /usr.
     fn musl_root(&self, target: TargetSelection) -> Option<&Path> {
-        self.config
+        let configured_root = self
+            .config
             .target_config
             .get(&target)
             .and_then(|t| t.musl_root.as_ref())
             .or(self.config.musl_root.as_ref())
-            .map(|p| &**p)
+            .map(|p| &**p);
+
+        if self.config.is_host_target(target) && configured_root.is_none() {
+            Some(Path::new("/usr"))
+        } else {
+            configured_root
+        }
     }
 
     /// Returns the "musl libdir" for this `target`.
     fn musl_libdir(&self, target: TargetSelection) -> Option<PathBuf> {
-        let t = self.config.target_config.get(&target)?;
-        if let libdir @ Some(_) = &t.musl_libdir {
-            return libdir.clone();
-        }
-        self.musl_root(target).map(|root| root.join("lib"))
+        self.config
+            .target_config
+            .get(&target)
+            .and_then(|t| t.musl_libdir.clone())
+            .or_else(|| self.musl_root(target).map(|root| root.join("lib")))
     }
 
     /// Returns the `lib` directory for the WASI target specified, if
