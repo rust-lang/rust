@@ -2,7 +2,7 @@
 #![allow(rustc::untranslatable_diagnostic)]
 
 use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::{Applicability, Diag};
+use rustc_errors::{Applicability, Diag, MultiSpan};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::{self as hir, CaptureBy, ExprKind, HirId, Node};
 use rustc_middle::bug;
@@ -508,7 +508,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 );
 
                 let closure_span = tcx.def_span(def_id);
-                let mut clause_span = DUMMY_SP;
+                let mut clause_span: MultiSpan = DUMMY_SP.into();
                 let typck_result = self.infcx.tcx.typeck(self.mir_def_id());
                 if let Some(closure_def_id) = def_id.as_local()
                     && let hir::Node::Expr(expr) = tcx.hir_node_by_def_id(closure_def_id)
@@ -538,7 +538,11 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 {
                     // We point at the `Fn()` or `FnMut()` bound that coerced the closure, which
                     // could be changed to `FnOnce()` to avoid the move error.
-                    clause_span = *span;
+                    clause_span = (*span).into();
+                    if fn_def_id.is_local() {
+                        clause_span
+                            .push_span_label(*span, "consider changing this bound to be `FnOnce`");
+                    }
                 }
 
                 self.cannot_move_out_of(span, &place_description)

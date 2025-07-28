@@ -42,7 +42,7 @@ help: `Fn` and `FnMut` closures require captured values to be able to be consume
   --> $DIR/option-content-move3.rs:6:12
    |
 LL | fn func<F: FnMut() -> H, H: FnMut()>(_: F) {}
-   |            ^^^^^^^^^^^^
+   |            ^^^^^^^^^^^^ consider changing this bound to be `FnOnce`
 note: if `NotCopyable` implemented `Clone`, you could clone the value
   --> $DIR/option-content-move3.rs:2:1
    |
@@ -88,7 +88,7 @@ help: `Fn` and `FnMut` closures require captured values to be able to be consume
   --> $DIR/option-content-move3.rs:6:12
    |
 LL | fn func<F: FnMut() -> H, H: FnMut()>(_: F) {}
-   |            ^^^^^^^^^^^^
+   |            ^^^^^^^^^^^^ consider changing this bound to be `FnOnce`
 help: consider cloning the value before moving it into the closure
    |
 LL ~         {

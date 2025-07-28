@@ -14,7 +14,7 @@ help: `Fn` and `FnMut` closures require captured values to be able to be consume
   --> $DIR/issue-87456-point-to-closure.rs:3:24
    |
 LL | fn take_mut(_val: impl FnMut()) {}
-   |                        ^^^^^^^
+   |                        ^^^^^^^ consider changing this bound to be `FnOnce`
 help: consider borrowing here
    |
 LL |         let _foo: String = &val;

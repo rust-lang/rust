@@ -16,7 +16,7 @@ help: `Fn` and `FnMut` closures require captured values to be able to be consume
   --> $DIR/move-into-closure.rs:13:18
    |
 LL | fn consume_fn<F: Fn()>(_f: F) { }
-   |                  ^^^^
+   |                  ^^^^ consider changing this bound to be `FnOnce`
 help: consider borrowing here
    |
 LL |         let X(_t) = &x;
@@ -41,7 +41,7 @@ help: `Fn` and `FnMut` closures require captured values to be able to be consume
   --> $DIR/move-into-closure.rs:13:18
    |
 LL | fn consume_fn<F: Fn()>(_f: F) { }
-   |                  ^^^^
+   |                  ^^^^ consider changing this bound to be `FnOnce`
 help: consider borrowing here
    |
 LL |         if let Either::One(_t) = &e { }
@@ -66,7 +66,7 @@ help: `Fn` and `FnMut` closures require captured values to be able to be consume
   --> $DIR/move-into-closure.rs:13:18
    |
 LL | fn consume_fn<F: Fn()>(_f: F) { }
-   |                  ^^^^
+   |                  ^^^^ consider changing this bound to be `FnOnce`
 help: consider borrowing here
    |
 LL |         while let Either::One(_t) = &e { }
@@ -94,7 +94,7 @@ help: `Fn` and `FnMut` closures require captured values to be able to be consume
   --> $DIR/move-into-closure.rs:13:18
    |
 LL | fn consume_fn<F: Fn()>(_f: F) { }
-   |                  ^^^^
+   |                  ^^^^ consider changing this bound to be `FnOnce`
 help: consider borrowing here
    |
 LL |         match &e {
@@ -122,7 +122,7 @@ help: `Fn` and `FnMut` closures require captured values to be able to be consume
   --> $DIR/move-into-closure.rs:13:18
    |
 LL | fn consume_fn<F: Fn()>(_f: F) { }
-   |                  ^^^^
+   |                  ^^^^ consider changing this bound to be `FnOnce`
 help: consider borrowing here
    |
 LL |         match &e {
@@ -147,7 +147,7 @@ help: `Fn` and `FnMut` closures require captured values to be able to be consume
   --> $DIR/move-into-closure.rs:13:18
    |
 LL | fn consume_fn<F: Fn()>(_f: F) { }
-   |                  ^^^^
+   |                  ^^^^ consider changing this bound to be `FnOnce`
 help: consider borrowing here
    |
 LL |         let X(mut _t) = &x;
@@ -172,7 +172,7 @@ help: `Fn` and `FnMut` closures require captured values to be able to be consume
   --> $DIR/move-into-closure.rs:13:18
    |
 LL | fn consume_fn<F: Fn()>(_f: F) { }
-   |                  ^^^^
+   |                  ^^^^ consider changing this bound to be `FnOnce`
 help: consider borrowing here
    |
 LL |         if let Either::One(mut _t) = &em { }
@@ -197,7 +197,7 @@ help: `Fn` and `FnMut` closures require captured values to be able to be consume
   --> $DIR/move-into-closure.rs:13:18
    |
 LL | fn consume_fn<F: Fn()>(_f: F) { }
-   |                  ^^^^
+   |                  ^^^^ consider changing this bound to be `FnOnce`
 help: consider borrowing here
    |
 LL |         while let Either::One(mut _t) = &em { }
@@ -225,7 +225,7 @@ help: `Fn` and `FnMut` closures require captured values to be able to be consume
   --> $DIR/move-into-closure.rs:13:18
    |
 LL | fn consume_fn<F: Fn()>(_f: F) { }
-   |                  ^^^^
+   |                  ^^^^ consider changing this bound to be `FnOnce`
 help: consider borrowing here
    |
 LL |         match &em {
@@ -253,7 +253,7 @@ help: `Fn` and `FnMut` closures require captured values to be able to be consume
   --> $DIR/move-into-closure.rs:13:18
    |
 LL | fn consume_fn<F: Fn()>(_f: F) { }
-   |                  ^^^^
+   |                  ^^^^ consider changing this bound to be `FnOnce`
 help: consider borrowing here
    |
 LL |         match &em {
@@ -277,7 +277,7 @@ help: `Fn` and `FnMut` closures require captured values to be able to be consume
   --> $DIR/move-into-closure.rs:25:21
    |
 LL | fn consume_fnmut<F: FnMut()>(_f: F) { }
-   |                     ^^^^^^^
+   |                     ^^^^^^^ consider changing this bound to be `FnOnce`
 help: consider borrowing here
    |
 LL |         let X(_t) = &x;
@@ -302,7 +302,7 @@ help: `Fn` and `FnMut` closures require captured values to be able to be consume
   --> $DIR/move-into-closure.rs:25:21
    |
 LL | fn consume_fnmut<F: FnMut()>(_f: F) { }
-   |                     ^^^^^^^
+   |                     ^^^^^^^ consider changing this bound to be `FnOnce`
 help: consider borrowing here
    |
 LL |         if let Either::One(_t) = &e { }
@@ -327,7 +327,7 @@ help: `Fn` and `FnMut` closures require captured values to be able to be consume
   --> $DIR/move-into-closure.rs:25:21
    |
 LL | fn consume_fnmut<F: FnMut()>(_f: F) { }
-   |                     ^^^^^^^
+   |                     ^^^^^^^ consider changing this bound to be `FnOnce`
 help: consider borrowing here
    |
 LL |         while let Either::One(_t) = &e { }
@@ -355,7 +355,7 @@ help: `Fn` and `FnMut` closures require captured values to be able to be consume
   --> $DIR/move-into-closure.rs:25:21
    |
 LL | fn consume_fnmut<F: FnMut()>(_f: F) { }
-   |                     ^^^^^^^
+   |                     ^^^^^^^ consider changing this bound to be `FnOnce`
 help: consider borrowing here
    |
 LL |         match &e {
@@ -383,7 +383,7 @@ help: `Fn` and `FnMut` closures require captured values to be able to be consume
   --> $DIR/move-into-closure.rs:25:21
    |
 LL | fn consume_fnmut<F: FnMut()>(_f: F) { }
-   |                     ^^^^^^^
+   |                     ^^^^^^^ consider changing this bound to be `FnOnce`
 help: consider borrowing here
    |
 LL |         match &e {
@@ -408,7 +408,7 @@ help: `Fn` and `FnMut` closures require captured values to be able to be consume
   --> $DIR/move-into-closure.rs:25:21
    |
 LL | fn consume_fnmut<F: FnMut()>(_f: F) { }
-   |                     ^^^^^^^
+   |                     ^^^^^^^ consider changing this bound to be `FnOnce`
 help: consider borrowing here
    |
 LL |         let X(mut _t) = &x;
@@ -433,7 +433,7 @@ help: `Fn` and `FnMut` closures require captured values to be able to be consume
   --> $DIR/move-into-closure.rs:25:21
    |
 LL | fn consume_fnmut<F: FnMut()>(_f: F) { }
-   |                     ^^^^^^^
+   |                     ^^^^^^^ consider changing this bound to be `FnOnce`
 help: consider borrowing here
    |
 LL |         if let Either::One(mut _t) = &em { }
@@ -458,7 +458,7 @@ help: `Fn` and `FnMut` closures require captured values to be able to be consume
   --> $DIR/move-into-closure.rs:25:21
    |
 LL | fn consume_fnmut<F: FnMut()>(_f: F) { }
-   |                     ^^^^^^^
+   |                     ^^^^^^^ consider changing this bound to be `FnOnce`
 help: consider borrowing here
    |
 LL |         while let Either::One(mut _t) = &em { }
@@ -486,7 +486,7 @@ help: `Fn` and `FnMut` closures require captured values to be able to be consume
   --> $DIR/move-into-closure.rs:25:21
    |
 LL | fn consume_fnmut<F: FnMut()>(_f: F) { }
-   |                     ^^^^^^^
+   |                     ^^^^^^^ consider changing this bound to be `FnOnce`
 help: consider borrowing here
    |
 LL |         match &em {
@@ -514,7 +514,7 @@ help: `Fn` and `FnMut` closures require captured values to be able to be consume
   --> $DIR/move-into-closure.rs:25:21
    |
 LL | fn consume_fnmut<F: FnMut()>(_f: F) { }
-   |                     ^^^^^^^
+   |                     ^^^^^^^ consider changing this bound to be `FnOnce`
 help: consider borrowing here
    |
 LL |         match &em {
@@ -542,7 +542,7 @@ help: `Fn` and `FnMut` closures require captured values to be able to be consume
   --> $DIR/move-into-closure.rs:25:21
    |
 LL | fn consume_fnmut<F: FnMut()>(_f: F) { }
-   |                     ^^^^^^^
+   |                     ^^^^^^^ consider changing this bound to be `FnOnce`
 help: consider borrowing here
    |
 LL |         match &em {
