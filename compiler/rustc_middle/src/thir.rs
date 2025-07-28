@@ -832,17 +832,20 @@ pub enum PatKind<'tcx> {
     },
 
     /// One of the following:
-    /// * `&str` (represented as a valtree), which will be handled as a string pattern and thus
+    /// * `&str`, which will be handled as a string pattern and thus
     ///   exhaustiveness checking will detect if you use the same string twice in different
     ///   patterns.
-    /// * integer, bool, char or float (represented as a valtree), which will be handled by
+    /// * integer, bool, char or float, which will be handled by
     ///   exhaustiveness to cover exactly its own value, similar to `&str`, but these values are
     ///   much simpler.
     /// * raw pointers derived from integers, other raw pointers will have already resulted in an
     //    error.
     /// * `String`, if `string_deref_patterns` is enabled.
     Constant {
-        value: mir::Const<'tcx>,
+        // Not using `ty::Value` since this is conceptually not a type-level constant. In
+        // particular, it can have raw pointers.
+        ty: Ty<'tcx>,
+        value: ty::ValTree<'tcx>,
     },
 
     /// Pattern obtained by converting a constant (inline or named) to its pattern

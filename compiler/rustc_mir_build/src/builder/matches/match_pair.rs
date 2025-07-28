@@ -146,7 +146,11 @@ impl<'tcx> MatchPairTree<'tcx> {
                 }
             }
 
-            PatKind::Constant { value } => Some(TestCase::Constant { value }),
+            PatKind::Constant { ty: value_ty, value } => {
+                // FIXME: `TestCase::Constant` should probably represent that it is always a `ValTree`.
+                let value = Const::Ty(value_ty, ty::Const::new_value(cx.tcx, value, value_ty));
+                Some(TestCase::Constant { value })
+            }
 
             PatKind::AscribeUserType {
                 ascription: Ascription { ref annotation, variance },
