@@ -525,12 +525,20 @@ impl<'tcx> CodegenUnit<'tcx> {
         tcx: TyCtxt<'tcx>,
     ) -> Vec<(MonoItem<'tcx>, MonoItemData)> {
         // The codegen tests rely on items being process in the same order as
-        // they appear in the file, so for local items, we sort by span first
+        // they appear in the file, so for local items, we sort by span and def_path first
         #[derive(PartialEq, Eq, PartialOrd, Ord)]
-        struct ItemSortKey<'tcx>(Option<Span>, SymbolName<'tcx>);
+        struct ItemSortKey<'tcx>(Option<Span>, Option<String>, SymbolName<'tcx>);
 
         fn item_sort_key<'tcx>(tcx: TyCtxt<'tcx>, item: MonoItem<'tcx>) -> ItemSortKey<'tcx> {
-            ItemSortKey(item.local_span(tcx), item.symbol_name(tcx))
+            ItemSortKey(
+                // For codegen tests purposes, we don't care about non-local items' order,
+                // so we just sort non-local items by symbol names.
+                item.local_span(tcx),
+                item.def_id()
+                    .as_local()
+                    .map(|_| tcx.def_path(item.def_id()).to_string_no_crate_verbose()),
+                item.symbol_name(tcx),
+            )
         }
 
         let mut items: Vec<_> = self.items().iter().map(|(&i, &data)| (i, data)).collect();

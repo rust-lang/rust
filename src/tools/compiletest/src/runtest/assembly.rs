@@ -42,7 +42,6 @@ impl TestCx<'_> {
             LinkToAux::Yes,
             Vec::new(),
         );
-
         let proc_res = self.compose_and_run_compiler(rustc, None, self.testpaths);
         (proc_res, output_path)
     }

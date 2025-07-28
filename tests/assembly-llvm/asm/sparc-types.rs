@@ -24,24 +24,6 @@ extern "C" {
     static extern_static: u8;
 }
 
-macro_rules! check { ($func:ident, $ty:ty, $class:ident, $mov:literal) => {
-    #[no_mangle]
-    pub unsafe fn $func(x: $ty) -> $ty {
-        let y;
-        asm!(concat!($mov," {}, {}"), in($class) x, out($class) y);
-        y
-    }
-};}
-
-macro_rules! check_reg { ($func:ident, $ty:ty, $reg:tt, $mov:literal) => {
-    #[no_mangle]
-    pub unsafe fn $func(x: $ty) -> $ty {
-        let y;
-        asm!(concat!($mov, " %", $reg, ", %", $reg), in($reg) x, lateout($reg) y);
-        y
-    }
-};}
-
 // CHECK-LABEL: sym_fn_32:
 // CHECK: !APP
 // CHECK-NEXT: call extern_func
@@ -60,11 +42,23 @@ pub unsafe fn sym_static() {
     asm!("call {}", sym extern_static);
 }
 
-// CHECK-LABEL: reg_i8:
-// CHECK: !APP
-// CHECK-NEXT: mov %{{[goli]}}{{[0-9]+}}, %{{[goli]}}{{[0-9]+}}
-// CHECK-NEXT: !NO_APP
-check!(reg_i8, i8, reg, "mov");
+macro_rules! check { ($func:ident, $ty:ty, $class:ident, $mov:literal) => {
+    #[no_mangle]
+    pub unsafe fn $func(x: $ty) -> $ty {
+        let y;
+        asm!(concat!($mov," {}, {}"), in($class) x, out($class) y);
+        y
+    }
+};}
+
+macro_rules! check_reg { ($func:ident, $ty:ty, $reg:tt, $mov:literal) => {
+    #[no_mangle]
+    pub unsafe fn $func(x: $ty) -> $ty {
+        let y;
+        asm!(concat!($mov, " %", $reg, ", %", $reg), in($reg) x, lateout($reg) y);
+        y
+    }
+};}
 
 // CHECK-LABEL: reg_i16:
 // CHECK: !APP
@@ -86,17 +80,17 @@ check!(reg_i32, i32, reg, "mov");
 #[cfg(sparc64)]
 check!(reg_i64, i64, reg, "mov");
 
+// CHECK-LABEL: reg_i8:
+// CHECK: !APP
+// CHECK-NEXT: mov %{{[goli]}}{{[0-9]+}}, %{{[goli]}}{{[0-9]+}}
+// CHECK-NEXT: !NO_APP
+check!(reg_i8, i8, reg, "mov");
+
 // CHECK-LABEL: reg_ptr:
 // CHECK: !APP
 // CHECK-NEXT: mov %{{[goli]}}{{[0-9]+}}, %{{[goli]}}{{[0-9]+}}
 // CHECK-NEXT: !NO_APP
 check!(reg_ptr, ptr, reg, "mov");
-
-// CHECK-LABEL: o0_i8:
-// CHECK: !APP
-// CHECK-NEXT: mov %o0, %o0
-// CHECK-NEXT: !NO_APP
-check_reg!(o0_i8, i8, "o0", "mov");
 
 // CHECK-LABEL: o0_i16:
 // CHECK: !APP
@@ -118,11 +112,11 @@ check_reg!(o0_i32, i32, "o0", "mov");
 #[cfg(sparc64)]
 check_reg!(o0_i64, i64, "o0", "mov");
 
-// CHECK-LABEL: r9_i8:
+// CHECK-LABEL: o0_i8:
 // CHECK: !APP
-// CHECK-NEXT: mov %o1, %o1
+// CHECK-NEXT: mov %o0, %o0
 // CHECK-NEXT: !NO_APP
-check_reg!(r9_i8, i8, "r9", "mov");
+check_reg!(o0_i8, i8, "o0", "mov");
 
 // CHECK-LABEL: r9_i16:
 // CHECK: !APP
@@ -143,3 +137,9 @@ check_reg!(r9_i32, i32, "r9", "mov");
 // sparc64-NEXT: !NO_APP
 #[cfg(sparc64)]
 check_reg!(r9_i64, i64, "r9", "mov");
+
+// CHECK-LABEL: r9_i8:
+// CHECK: !APP
+// CHECK-NEXT: mov %o1, %o1
+// CHECK-NEXT: !NO_APP
+check_reg!(r9_i8, i8, "r9", "mov");

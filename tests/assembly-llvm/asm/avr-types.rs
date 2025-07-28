@@ -13,50 +13,6 @@ use minicore::*;
 
 type ptr = *const u64;
 
-macro_rules! check {
-    ($func:ident $ty:ident $class:ident) => {
-        #[no_mangle]
-        pub unsafe fn $func(x: $ty) -> $ty {
-            let y;
-            asm!("mov {}, {}", lateout($class) y, in($class) x);
-            y
-        }
-    };
-}
-
-macro_rules! checkw {
-    ($func:ident $ty:ident $class:ident) => {
-        #[no_mangle]
-        pub unsafe fn $func(x: $ty) -> $ty {
-            let y;
-            asm!("movw {}, {}", lateout($class) y, in($class) x);
-            y
-        }
-    };
-}
-
-macro_rules! check_reg {
-    ($func:ident $ty:ident $reg:tt) => {
-        #[no_mangle]
-        pub unsafe fn $func(x: $ty) -> $ty {
-            let y;
-            asm!(concat!("mov ", $reg, ", ", $reg), lateout($reg) y, in($reg) x);
-            y
-        }
-    };
-}
-
-macro_rules! check_regw {
-    ($func:ident $ty:ident $reg:tt $reg_lit:tt) => {
-        #[no_mangle]
-        pub unsafe fn $func(x: $ty) -> $ty {
-            let y;
-            asm!(concat!("movw ", $reg_lit, ", ", $reg_lit), lateout($reg) y, in($reg) x);
-            y
-        }
-    };
-}
-
 extern "C" {
     fn extern_func();
     static extern_static: i8;
@@ -144,6 +100,50 @@ pub unsafe fn muls_clobber(x: i8, y: i8) -> i16 {
     z
 }
 
+macro_rules! check {
+    ($func:ident $ty:ident $class:ident) => {
+        #[no_mangle]
+        pub unsafe fn $func(x: $ty) -> $ty {
+            let y;
+            asm!("mov {}, {}", lateout($class) y, in($class) x);
+            y
+        }
+    };
+}
+
+macro_rules! checkw {
+    ($func:ident $ty:ident $class:ident) => {
+        #[no_mangle]
+        pub unsafe fn $func(x: $ty) -> $ty {
+            let y;
+            asm!("movw {}, {}", lateout($class) y, in($class) x);
+            y
+        }
+    };
+}
+
+macro_rules! check_reg {
+    ($func:ident $ty:ident $reg:tt) => {
+        #[no_mangle]
+        pub unsafe fn $func(x: $ty) -> $ty {
+            let y;
+            asm!(concat!("mov ", $reg, ", ", $reg), lateout($reg) y, in($reg) x);
+            y
+        }
+    };
+}
+
+macro_rules! check_regw {
+    ($func:ident $ty:ident $reg:tt $reg_lit:tt) => {
+        #[no_mangle]
+        pub unsafe fn $func(x: $ty) -> $ty {
+            let y;
+            asm!(concat!("movw ", $reg_lit, ", ", $reg_lit), lateout($reg) y, in($reg) x);
+            y
+        }
+    };
+}
+
 // CHECK-LABEL: reg_i8:
 // CHECK: ;APP
 // CHECK: mov r{{[0-9]+}}, r{{[0-9]+}}
@@ -156,17 +156,17 @@ check!(reg_i8 i8 reg);
 // CHECK: ;NO_APP
 check!(reg_upper_i8 i8 reg_upper);
 
-// CHECK-LABEL: reg_pair_i16:
-// CHECK: ;APP
-// CHECK: movw r{{[0-9]+}}, r{{[0-9]+}}
-// CHECK: ;NO_APP
-checkw!(reg_pair_i16 i16 reg_pair);
-
 // CHECK-LABEL: reg_iw_i16:
 // CHECK: ;APP
 // CHECK: movw r{{[0-9]+}}, r{{[0-9]+}}
 // CHECK: ;NO_APP
 checkw!(reg_iw_i16 i16 reg_iw);
+
+// CHECK-LABEL: reg_pair_i16:
+// CHECK: ;APP
+// CHECK: movw r{{[0-9]+}}, r{{[0-9]+}}
+// CHECK: ;NO_APP
+checkw!(reg_pair_i16 i16 reg_pair);
 
 // CHECK-LABEL: reg_ptr_i16:
 // CHECK: ;APP
@@ -180,26 +180,25 @@ checkw!(reg_ptr_i16 i16 reg_ptr);
 // CHECK: ;NO_APP
 check_reg!(r2_i8 i8 "r2");
 
+// CHECK-LABEL: xh_i8:
+// CHECK: ;APP
+// CHECK: mov r27, r27
+// CHECK: ;NO_APP
+check_reg!(xh_i8 i8 "XH");
 // CHECK-LABEL: xl_i8:
 // CHECK: ;APP
 // CHECK: mov r26, r26
 // CHECK: ;NO_APP
 check_reg!(xl_i8 i8 "XL");
 
-// CHECK-LABEL: xh_i8:
+// CHECK-LABEL: r25r24_i16:
 // CHECK: ;APP
-// CHECK: mov r27, r27
+// CHECK: movw r24, r24
 // CHECK: ;NO_APP
-check_reg!(xh_i8 i8 "XH");
+check_regw!(r25r24_i16 i16 "r25r24" "r24");
 
 // CHECK-LABEL: x_i16:
 // CHECK: ;APP
 // CHECK: movw r26, r26
 // CHECK: ;NO_APP
 check_regw!(x_i16 i16 "X" "X");
-
-// CHECK-LABEL: r25r24_i16:
-// CHECK: ;APP
-// CHECK: movw r24, r24
-// CHECK: ;NO_APP
-check_regw!(r25r24_i16 i16 "r25r24" "r24");

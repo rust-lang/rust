@@ -24,17 +24,17 @@ macro_rules! check {
     };
 }
 
-// CHECK-LABEL: reg_pair_modifiers:
-// CHECK: ;APP
-// CHECK: mov r{{[1-9]?[13579]}}, r{{[1-9]?[24680]}}
-// CHECK: ;NO_APP
-check!(reg_pair_modifiers "h" "l" reg_pair);
-
 // CHECK-LABEL: reg_iw_modifiers:
 // CHECK: ;APP
 // CHECK: mov r{{[1-9]?[13579]}}, r{{[1-9]?[24680]}}
 // CHECK: ;NO_APP
 check!(reg_iw_modifiers "h" "l" reg_iw);
+
+// CHECK-LABEL: reg_pair_modifiers:
+// CHECK: ;APP
+// CHECK: mov r{{[1-9]?[13579]}}, r{{[1-9]?[24680]}}
+// CHECK: ;NO_APP
+check!(reg_pair_modifiers "h" "l" reg_pair);
 
 // CHECK-LABEL: reg_ptr_modifiers:
 // CHECK: ;APP

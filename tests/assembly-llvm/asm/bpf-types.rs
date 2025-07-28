@@ -13,6 +13,19 @@ use minicore::*;
 
 type ptr = *const u64;
 
+extern "C" {
+    fn extern_func();
+}
+
+// CHECK-LABEL: sym_fn
+// CHECK: #APP
+// CHECK: call extern_func
+// CHECK: #NO_APP
+#[no_mangle]
+pub unsafe fn sym_fn() {
+    asm!("call {}", sym extern_func);
+}
+
 macro_rules! check {
     ($func:ident $ty:ident $class:ident) => {
         #[no_mangle]
@@ -35,25 +48,6 @@ macro_rules! check_reg {
     };
 }
 
-extern "C" {
-    fn extern_func();
-}
-
-// CHECK-LABEL: sym_fn
-// CHECK: #APP
-// CHECK: call extern_func
-// CHECK: #NO_APP
-#[no_mangle]
-pub unsafe fn sym_fn() {
-    asm!("call {}", sym extern_func);
-}
-
-// CHECK-LABEL: reg_i8:
-// CHECK: #APP
-// CHECK: r{{[0-9]+}} = r{{[0-9]+}}
-// CHECK: #NO_APP
-check!(reg_i8 i8 reg);
-
 // CHECK-LABEL: reg_i16:
 // CHECK: #APP
 // CHECK: r{{[0-9]+}} = r{{[0-9]+}}
@@ -72,11 +66,11 @@ check!(reg_i32 i32 reg);
 // CHECK: #NO_APP
 check!(reg_i64 i64 reg);
 
-// CHECK-LABEL: wreg_i8:
+// CHECK-LABEL: reg_i8:
 // CHECK: #APP
-// CHECK: w{{[0-9]+}} = w{{[0-9]+}}
+// CHECK: r{{[0-9]+}} = r{{[0-9]+}}
 // CHECK: #NO_APP
-check!(wreg_i8 i8 wreg);
+check!(reg_i8 i8 reg);
 
 // CHECK-LABEL: wreg_i16:
 // CHECK: #APP
@@ -90,11 +84,11 @@ check!(wreg_i16 i16 wreg);
 // CHECK: #NO_APP
 check!(wreg_i32 i32 wreg);
 
-// CHECK-LABEL: r0_i8:
+// CHECK-LABEL: wreg_i8:
 // CHECK: #APP
-// CHECK: r0 = r0
+// CHECK: w{{[0-9]+}} = w{{[0-9]+}}
 // CHECK: #NO_APP
-check_reg!(r0_i8 i8 "r0");
+check!(wreg_i8 i8 wreg);
 
 // CHECK-LABEL: r0_i16:
 // CHECK: #APP
@@ -114,11 +108,11 @@ check_reg!(r0_i32 i32 "r0");
 // CHECK: #NO_APP
 check_reg!(r0_i64 i64 "r0");
 
-// CHECK-LABEL: w0_i8:
+// CHECK-LABEL: r0_i8:
 // CHECK: #APP
-// CHECK: w0 = w0
+// CHECK: r0 = r0
 // CHECK: #NO_APP
-check_reg!(w0_i8 i8 "w0");
+check_reg!(r0_i8 i8 "r0");
 
 // CHECK-LABEL: w0_i16:
 // CHECK: #APP
@@ -131,3 +125,9 @@ check_reg!(w0_i16 i16 "w0");
 // CHECK: w0 = w0
 // CHECK: #NO_APP
 check_reg!(w0_i32 i32 "w0");
+
+// CHECK-LABEL: w0_i8:
+// CHECK: #APP
+// CHECK: w0 = w0
+// CHECK: #NO_APP
+check_reg!(w0_i8 i8 "w0");
