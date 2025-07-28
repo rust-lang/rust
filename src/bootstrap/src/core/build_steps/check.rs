@@ -376,7 +376,7 @@ macro_rules! tool_check_step {
             // The part of this path after the final '/' is also used as a display name.
             path: $path:literal
             $(, alt_path: $alt_path:literal )*
-            // Closure that returns `Mode` based on the passed `&Builder<'_>`
+            // Under which tool mode should the tool be checked with?
             , mode: $mode:expr
             // Subset of nightly features that are allowed to be used when checking
             $(, allow_features: $allow_features:expr )?
@@ -404,8 +404,7 @@ macro_rules! tool_check_step {
 
             fn make_run(run: RunConfig<'_>) {
                 let target = run.target;
-                let builder = run.builder;
-                let mode = $mode(builder);
+                let mode = $mode;
 
                 let build_compiler = prepare_compiler_for_check(run.builder, target, mode);
 
@@ -426,7 +425,7 @@ macro_rules! tool_check_step {
                     _value
                 };
                 let extra_features: &[&str] = &[$($($enable_features),*)?];
-                let mode = $mode(builder);
+                let mode = $mode;
                 run_tool_check_step(builder, build_compiler, target, $path, mode, allow_features, extra_features);
             }
 
@@ -493,54 +492,50 @@ fn run_tool_check_step(
 tool_check_step!(Rustdoc {
     path: "src/tools/rustdoc",
     alt_path: "src/librustdoc",
-    mode: |_builder| Mode::ToolRustc
+    mode: Mode::ToolRustc
 });
 // Clippy, miri and Rustfmt are hybrids. They are external tools, but use a git subtree instead
 // of a submodule. Since the SourceType only drives the deny-warnings
 // behavior, treat it as in-tree so that any new warnings in clippy will be
 // rejected.
-tool_check_step!(Clippy { path: "src/tools/clippy", mode: |_builder| Mode::ToolRustc });
-tool_check_step!(Miri { path: "src/tools/miri", mode: |_builder| Mode::ToolRustc });
-tool_check_step!(CargoMiri { path: "src/tools/miri/cargo-miri", mode: |_builder| Mode::ToolRustc });
-tool_check_step!(Rustfmt { path: "src/tools/rustfmt", mode: |_builder| Mode::ToolRustc });
+tool_check_step!(Clippy { path: "src/tools/clippy", mode: Mode::ToolRustc });
+tool_check_step!(Miri { path: "src/tools/miri", mode: Mode::ToolRustc });
+tool_check_step!(CargoMiri { path: "src/tools/miri/cargo-miri", mode: Mode::ToolRustc });
+tool_check_step!(Rustfmt { path: "src/tools/rustfmt", mode: Mode::ToolRustc });
 tool_check_step!(RustAnalyzer {
     path: "src/tools/rust-analyzer",
-    mode: |_builder| Mode::ToolRustc,
+    mode: Mode::ToolRustc,
     allow_features: tool::RustAnalyzer::ALLOW_FEATURES,
     enable_features: ["in-rust-tree"],
 });
 tool_check_step!(MiroptTestTools {
     path: "src/tools/miropt-test-tools",
-    mode: |_builder| Mode::ToolBootstrap
+    mode: Mode::ToolBootstrap
 });
 // We want to test the local std
 tool_check_step!(TestFloatParse {
     path: "src/tools/test-float-parse",
-    mode: |_builder| Mode::ToolStd,
+    mode: Mode::ToolStd,
     allow_features: tool::TestFloatParse::ALLOW_FEATURES
 });
 tool_check_step!(FeaturesStatusDump {
     path: "src/tools/features-status-dump",
-    mode: |_builder| Mode::ToolBootstrap
+    mode: Mode::ToolBootstrap
 });
 
-tool_check_step!(Bootstrap {
-    path: "src/bootstrap",
-    mode: |_builder| Mode::ToolBootstrap,
-    default: false
-});
+tool_check_step!(Bootstrap { path: "src/bootstrap", mode: Mode::ToolBootstrap, default: false });
 
 // `run-make-support` will be built as part of suitable run-make compiletest test steps, but support
 // check to make it easier to work on.
 tool_check_step!(RunMakeSupport {
     path: "src/tools/run-make-support",
-    mode: |_builder| Mode::ToolBootstrap,
+    mode: Mode::ToolBootstrap,
     default: false
 });
 
 tool_check_step!(CoverageDump {
     path: "src/tools/coverage-dump",
-    mode: |_builder| Mode::ToolBootstrap,
+    mode: Mode::ToolBootstrap,
     default: false
 });
 
@@ -548,11 +543,10 @@ tool_check_step!(CoverageDump {
 // so this is mainly for people working on compiletest to run locally.
 tool_check_step!(Compiletest {
     path: "src/tools/compiletest",
-    mode: |builder: &Builder<'_>| if builder.config.compiletest_use_stage0_libtest {
-        Mode::ToolBootstrap
-    } else {
-        Mode::ToolStd
-    },
+    // Note: compiletest currently still depends on `#![feature(internal_output_capture)]`, so
+    // should be considered a `ToolStd` tool for robustness, as it is *possible* for that internal
+    // library feature to be changed.
+    mode: Mode::ToolStd,
     allow_features: COMPILETEST_ALLOW_FEATURES,
     default: false,
 });

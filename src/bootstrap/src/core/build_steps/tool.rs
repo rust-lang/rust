@@ -491,13 +491,12 @@ macro_rules! bootstrap_tool {
                 )*
 
                 let is_unstable = false $(|| $unstable)*;
-                let compiletest_wants_stage0 = $tool_name == "compiletest" && builder.config.compiletest_use_stage0_libtest;
 
                 builder.ensure(ToolBuild {
                     build_compiler: self.compiler,
                     target: self.target,
                     tool: $tool_name,
-                    mode: if is_unstable && !compiletest_wants_stage0 {
+                    mode: if is_unstable {
                         // use in-tree libraries for unstable features
                         Mode::ToolStd
                     } else {

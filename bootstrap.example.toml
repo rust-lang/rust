@@ -465,9 +465,6 @@
 # What custom diff tool to use for displaying compiletest tests.
 #build.compiletest-diff-tool = <none>
 
-# Whether to use the precompiled stage0 libtest with compiletest.
-#build.compiletest-use-stage0-libtest = true
-
 # Default value for the `--extra-checks` flag of tidy.
 #
 # See `./x test tidy --help` for details.
