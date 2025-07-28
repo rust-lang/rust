@@ -107,6 +107,7 @@ fn check_shim_abi<'tcx>(
     {
         if !this.check_argument_compat(caller_arg, callee_arg)? {
             throw_ub!(AbiMismatchArgument {
+                arg_idx: idx,
                 caller_ty: caller_abi.args[idx].layout.ty,
                 callee_ty: callee_abi.args[idx].layout.ty
             });

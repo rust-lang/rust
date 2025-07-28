@@ -1,3 +1,5 @@
+//@ ignore-backends: gcc
+
 mod unclosed_delim_mod;
 
 fn main() {

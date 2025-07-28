@@ -2849,7 +2849,7 @@ impl InlineAsmOperand {
     }
 }
 
-#[derive(Clone, Copy, Encodable, Decodable, Debug, HashStable_Generic, Walkable)]
+#[derive(Clone, Copy, Encodable, Decodable, Debug, HashStable_Generic, Walkable, PartialEq, Eq)]
 pub enum AsmMacro {
     /// The `asm!` macro
     Asm,

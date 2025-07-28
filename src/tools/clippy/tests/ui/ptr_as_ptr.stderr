@@ -201,5 +201,11 @@ error: `as` casting between raw pointers without changing their constness
 LL |         core::ptr::null() as _
    |         ^^^^^^^^^^^^^^^^^^^^^^ help: try call directly: `core::ptr::null()`
 
-error: aborting due to 33 previous errors
+error: `as` casting between raw pointers without changing their constness
+  --> tests/ui/ptr_as_ptr.rs:226:43
+   |
+LL |         let _: fn() = std::mem::transmute(std::ptr::null::<()>() as *const u8);
+   |                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try call directly: `std::ptr::null::<u8>()`
+
+error: aborting due to 34 previous errors
 

@@ -89,8 +89,8 @@ use std::sync::{Mutex, MutexGuard, OnceLock};
 
 use itertools::Itertools;
 use rustc_abi::Integer;
-use rustc_ast::join_path_syms;
 use rustc_ast::ast::{self, LitKind, RangeLimits};
+use rustc_ast::join_path_syms;
 use rustc_attr_data_structures::{AttributeKind, find_attr};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::packed::Pu128;
@@ -114,7 +114,7 @@ use rustc_middle::hir::nested_filter;
 use rustc_middle::hir::place::PlaceBase;
 use rustc_middle::lint::LevelAndSource;
 use rustc_middle::mir::{AggregateKind, Operand, RETURN_PLACE, Rvalue, StatementKind, TerminatorKind};
-use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow};
+use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, PointerCoercion};
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::{
     self as rustc_ty, Binder, BorrowKind, ClosureKind, EarlyBinder, GenericArgKind, GenericArgsRef, IntTy, Ty, TyCtxt,
@@ -1897,6 +1897,7 @@ pub fn is_must_use_func_call(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
 /// * `|x| { return x }`
 /// * `|x| { return x; }`
 /// * `|(x, y)| (x, y)`
+/// * `|[x, y]| [x, y]`
 ///
 /// Consider calling [`is_expr_untyped_identity_function`] or [`is_expr_identity_function`] instead.
 fn is_body_identity_function(cx: &LateContext<'_>, func: &Body<'_>) -> bool {
@@ -1907,9 +1908,9 @@ fn is_body_identity_function(cx: &LateContext<'_>, func: &Body<'_>) -> bool {
             .get(pat.hir_id)
             .is_some_and(|mode| matches!(mode.0, ByRef::Yes(_)))
         {
-            // If a tuple `(x, y)` is of type `&(i32, i32)`, then due to match ergonomics,
-            // the inner patterns become references. Don't consider this the identity function
-            // as that changes types.
+            // If the parameter is `(x, y)` of type `&(T, T)`, or `[x, y]` of type `&[T; 2]`, then
+            // due to match ergonomics, the inner patterns become references. Don't consider this
+            // the identity function as that changes types.
             return false;
         }
 
@@ -1921,6 +1922,13 @@ fn is_body_identity_function(cx: &LateContext<'_>, func: &Body<'_>) -> bool {
                 if dotdot.as_opt_usize().is_none() && pats.len() == tup.len() =>
             {
                 pats.iter().zip(tup).all(|(pat, expr)| check_pat(cx, pat, expr))
+            },
+            (PatKind::Slice(before, slice, after), ExprKind::Array(arr))
+                if slice.is_none() && before.len() + after.len() == arr.len() =>
+            {
+                (before.iter().chain(after))
+                    .zip(arr)
+                    .all(|(pat, expr)| check_pat(cx, pat, expr))
             },
             _ => false,
         }
@@ -3269,15 +3277,13 @@ fn maybe_get_relative_path(from: &DefPath, to: &DefPath, max_super: usize) -> St
 
     if go_up_by > max_super {
         // `super` chain would be too long, just use the absolute path instead
-        join_path_syms(
-            once(kw::Crate).chain(to.data.iter().filter_map(|el| {
-                if let DefPathData::TypeNs(sym) = el.data {
-                    Some(sym)
-                } else {
-                    None
-                }
-            }))
-        )
+        join_path_syms(once(kw::Crate).chain(to.data.iter().filter_map(|el| {
+            if let DefPathData::TypeNs(sym) = el.data {
+                Some(sym)
+            } else {
+                None
+            }
+        })))
     } else {
         join_path_syms(repeat_n(kw::Super, go_up_by).chain(path))
     }
@@ -3559,4 +3565,15 @@ pub fn potential_return_of_enclosing_body(cx: &LateContext<'_>, expr: &Expr<'_>)
     // `expr` is used as part of "something" and is not returned directly from its
     // enclosing body.
     false
+}
+
+/// Checks if the expression has adjustments that require coercion, for example: dereferencing with
+/// overloaded deref, coercing pointers and `dyn` objects.
+pub fn expr_adjustment_requires_coercion(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
+    cx.typeck_results().expr_adjustments(expr).iter().any(|adj| {
+        matches!(
+            adj.kind,
+            Adjust::Deref(Some(_)) | Adjust::Pointer(PointerCoercion::Unsize) | Adjust::NeverToAny
+        )
+    })
 }

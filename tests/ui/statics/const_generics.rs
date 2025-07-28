@@ -3,6 +3,7 @@
 //! This is not an intentional guarantee, it just describes the status quo.
 
 //@ run-pass
+//@ ignore-backends: gcc
 // With optimizations, LLVM will deduplicate the constant `X` whose
 // value is `&42` to just be a reference to the static. This is correct,
 // but obscures the issue we're trying to show.

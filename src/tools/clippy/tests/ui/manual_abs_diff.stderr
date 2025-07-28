@@ -79,5 +79,16 @@ error: manual absolute difference pattern without using `abs_diff`
 LL |     let _ = if a > b { (a - b) as u32 } else { (b - a) as u32 };
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with `abs_diff`: `a.abs_diff(b)`
 
-error: aborting due to 11 previous errors
+error: manual absolute difference pattern without using `abs_diff`
+  --> tests/ui/manual_abs_diff.rs:119:5
+   |
+LL | /     if a < b {
+LL | |
+LL | |         b - a
+LL | |     } else {
+LL | |         a - b
+LL | |     }
+   | |_____^ help: replace with `abs_diff`: `b.abs_diff(*a)`
+
+error: aborting due to 12 previous errors
 

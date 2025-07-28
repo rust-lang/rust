@@ -3,6 +3,7 @@
 //@ aux-build:exit-success-if-unwind.rs
 //@ no-prefer-dynamic
 //@ needs-subprocess
+//@ ignore-backends: gcc
 
 extern crate exit_success_if_unwind;
 

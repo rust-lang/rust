@@ -439,7 +439,7 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
     ChangeInfo {
         change_id: 143255,
         severity: ChangeSeverity::Warning,
-        summary: "`llvm.lld` is no longer enabled by default for the dist profile.",
+        summary: "`rust.lld` is no longer enabled by default for the dist profile.",
     },
     ChangeInfo {
         change_id: 143251,

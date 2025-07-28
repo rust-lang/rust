@@ -1,3 +1,4 @@
+//@ ignore-backends: gcc
 //@ compile-flags: -Z ui-testing=no
 
 use std::{
