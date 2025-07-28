@@ -111,7 +111,18 @@ impl fmt::Display for FlycheckConfig {
         match self {
             FlycheckConfig::CargoCommand { command, .. } => write!(f, "cargo {command}"),
             FlycheckConfig::CustomCommand { command, args, .. } => {
-                write!(f, "{command} {}", args.join(" "))
+                // Don't show `my_custom_check --foo $saved_file` literally to the user, as it
+                // looks like we've forgotten to substitute $saved_file.
+                //
+                // Instead, show `my_custom_check --foo ...`. The
+                // actual path is often too long to be worth showing
+                // in the IDE (e.g. in the VS Code status bar).
+                let display_args = args
+                    .iter()
+                    .map(|arg| if arg == SAVED_FILE_PLACEHOLDER { "..." } else { arg })
+                    .collect::<Vec<_>>();
+
+                write!(f, "{command} {}", display_args.join(" "))
             }
         }
     }
