@@ -112,6 +112,13 @@ where
         alias_ty: ty::AliasTy<I>,
     ) -> Vec<Candidate<I>>;
 
+    fn assemble_param_env_candidates_fast_path(
+        _ecx: &mut EvalCtxt<'_, D>,
+        _goal: Goal<I, Self>,
+    ) -> Option<Candidate<I>> {
+        None
+    }
+
     fn probe_and_consider_param_env_candidate(
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
@@ -583,8 +590,13 @@ where
         goal: Goal<I, G>,
         candidates: &mut Vec<Candidate<I>>,
     ) {
-        for assumption in goal.param_env.caller_bounds().iter() {
-            candidates.extend(G::probe_and_consider_param_env_candidate(self, goal, assumption));
+        if let Some(candidate) = G::assemble_param_env_candidates_fast_path(self, goal) {
+            candidates.push(candidate);
+        } else {
+            for assumption in goal.param_env.caller_bounds().iter() {
+                candidates
+                    .extend(G::probe_and_consider_param_env_candidate(self, goal, assumption));
+            }
         }
     }
 
@@ -1034,7 +1046,7 @@ where
     /// The `i32: From<T::Assoc>` bound is non-global before normalization, but is global after.
     /// Since the old trait solver normalized param-envs eagerly, we want to emulate this
     /// behavior lazily.
-    fn characterize_param_env_assumption(
+    pub(super) fn characterize_param_env_assumption(
         &mut self,
         param_env: I::ParamEnv,
         assumption: I::Clause,
