@@ -1,0 +1,19 @@
+warning: unnecessary braces around `return` value
+  --> $DIR/unused-braces-respect-parent-block-issue-141783.rs:7:12
+   |
+LL |     return { return };
+   |            ^^      ^^
+   |
+note: the lint level is defined here
+  --> $DIR/unused-braces-respect-parent-block-issue-141783.rs:4:8
+   |
+LL | #[warn(unused_braces)]
+   |        ^^^^^^^^^^^^^
+help: remove these braces
+   |
+LL -     return { return };
+LL +     return return;
+   |
+
+warning: 1 warning emitted
+
