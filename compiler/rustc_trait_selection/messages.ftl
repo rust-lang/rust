@@ -171,8 +171,6 @@ trait_selection_fps_remove_ref = consider removing the reference
 trait_selection_fps_use_ref = consider using a reference
 trait_selection_fulfill_req_lifetime = the type `{$ty}` does not fulfill the required lifetime
 
-trait_selection_full_type_written = the full type name has been written to '{$path}'
-
 trait_selection_ignored_diagnostic_option = `{$option_name}` is ignored due to previous definition of `{$option_name}`
     .other_label = `{$option_name}` is first declared here
     .label = `{$option_name}` is already declared here
