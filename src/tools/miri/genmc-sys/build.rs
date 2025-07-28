@@ -215,8 +215,10 @@ fn compile_cpp_dependencies(genmc_path: &Path) {
     if enable_genmc_debug {
         bridge.define("ENABLE_GENMC_DEBUG", None);
     }
+    for definition in definitions {
+        bridge.flag(definition);
+    }
     bridge
-        .flags(definitions)
         .opt_level(2)
         .debug(true) // Same settings that GenMC uses (default for cmake `RelWithDebInfo`)
         .warnings(false) // NOTE: enabling this produces a lot of warnings.
