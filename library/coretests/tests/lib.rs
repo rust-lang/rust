@@ -2,7 +2,6 @@
 #![cfg_attr(target_has_atomic = "128", feature(integer_atomics))]
 #![cfg_attr(test, feature(cfg_select))]
 #![feature(alloc_layout_extra)]
-#![feature(array_chunks)]
 #![feature(array_ptr_get)]
 #![feature(array_try_from_fn)]
 #![feature(array_windows)]
