@@ -6,11 +6,9 @@
 #![feature(rustc_attrs)]
 #![feature(eii_internals)]
 
-#[eii_macro_for(bar)]
-#[rustc_builtin_macro(eii_macro)]
-macro foo() {
-
-}
+#[eii_extern_target(bar)]
+#[rustc_builtin_macro(eii_shared_macro)]
+macro foo() {}
 
 unsafe extern "Rust" {
     safe fn bar<'a>(x: &'static u64) -> &'a u64;
@@ -18,7 +16,7 @@ unsafe extern "Rust" {
 
 #[foo]
 fn other<'a>(x: &'a u64) -> &'static u64 {
-//~^ ERROR lifetime parameters or bounds of `other` do not match the declaration
+    //~^ ERROR lifetime parameters or bounds of `other` do not match the declaration
     &0
 }
 
