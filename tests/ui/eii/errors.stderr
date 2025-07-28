@@ -1,0 +1,98 @@
+error: `#[eii_macro_for(...)]` is only valid on macros
+  --> $DIR/errors.rs:7:1
+   |
+LL | #[eii_macro_for(bar)]
+   | ^^^^^^^^^^^^^^^^^^^^^
+
+error: `#[eii_macro_for(...)]` is only valid on macros
+  --> $DIR/errors.rs:9:5
+   |
+LL |     #[eii_macro_for(bar)]
+   |     ^^^^^^^^^^^^^^^^^^^^^
+
+error: `#[eii_macro_for(...)]` expects a list of one or two elements
+  --> $DIR/errors.rs:13:1
+   |
+LL | #[eii_macro_for]
+   | ^^^^^^^^^^^^^^^^
+
+error: `#[eii_macro_for(...)]` expects a list of one or two elements
+  --> $DIR/errors.rs:14:1
+   |
+LL | #[eii_macro_for()]
+   | ^^^^^^^^^^^^^^^^^^
+
+error: expected this argument to be "unsafe"
+  --> $DIR/errors.rs:15:22
+   |
+LL | #[eii_macro_for(bar, hello)]
+   |                      ^^^^^
+   |
+note: the second argument is optional
+  --> $DIR/errors.rs:15:22
+   |
+LL | #[eii_macro_for(bar, hello)]
+   |                      ^^^^^
+
+error: `#[eii_macro_for(...)]` expects a list of one or two elements
+  --> $DIR/errors.rs:16:1
+   |
+LL | #[eii_macro_for(bar, "unsafe", hello)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `#[eii_macro_for(...)]` expects a list of one or two elements
+  --> $DIR/errors.rs:17:1
+   |
+LL | #[eii_macro_for(bar, hello, "unsafe")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `#[eii_macro_for(...)]` expects a list of one or two elements
+  --> $DIR/errors.rs:18:1
+   |
+LL | #[eii_macro_for = "unsafe"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `#[foo]` is only valid on functions
+  --> $DIR/errors.rs:27:1
+   |
+LL | #[foo]
+   | ^^^^^^
+
+error: `#[foo]` is only valid on functions
+  --> $DIR/errors.rs:29:1
+   |
+LL | #[foo]
+   | ^^^^^^
+
+error: `#[foo]` is only valid on functions
+  --> $DIR/errors.rs:31:1
+   |
+LL | #[foo]
+   | ^^^^^^
+
+error: `#[foo]` expected no arguments or a single argument: `#[foo(default)]`
+  --> $DIR/errors.rs:34:1
+   |
+LL | #[foo()]
+   | ^^^^^^^^
+
+error: `#[foo]` expected no arguments or a single argument: `#[foo(default)]`
+  --> $DIR/errors.rs:36:1
+   |
+LL | #[foo(default, bar)]
+   | ^^^^^^^^^^^^^^^^^^^^
+
+error: `#[foo]` expected no arguments or a single argument: `#[foo(default)]`
+  --> $DIR/errors.rs:38:1
+   |
+LL | #[foo("default")]
+   | ^^^^^^^^^^^^^^^^^
+
+error: `#[foo]` expected no arguments or a single argument: `#[foo(default)]`
+  --> $DIR/errors.rs:40:1
+   |
+LL | #[foo = "default"]
+   | ^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 15 previous errors
+
