@@ -1,7 +1,5 @@
 # Compiletest directives
 
-<!-- toc -->
-
 <!--
 FIXME(jieyouxu) completely revise this chapter.
 -->

@@ -6,8 +6,6 @@
 
 Once an unstable feature has been well-tested with no outstanding concerns, anyone may push for its stabilization, though involving the people who have worked on it is prudent. Follow these steps:
 
-<!-- toc -->
-
 ## Write an RFC, if needed
 
 If the feature was part of a [lang experiment], the lang team generally will want to first accept an RFC before stabilization.

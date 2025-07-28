@@ -1,7 +1,5 @@
 # UI tests
 
-<!-- toc -->
-
 UI tests are a particular [test suite](compiletest.md#test-suites) of
 compiletest.
 
