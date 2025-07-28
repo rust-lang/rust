@@ -702,8 +702,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
         // These modules are generally cheap and won't throw off scheduling.
         let cost = 0;
         submit_codegened_module_to_llvm(
-            &backend,
-            &ongoing_codegen.coordinator.sender,
+            &ongoing_codegen.coordinator,
             ModuleCodegen::new_allocator(llmod_id, module_llvm),
             cost,
         );
@@ -800,18 +799,12 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
                 // compilation hang on post-monomorphization errors.
                 tcx.dcx().abort_if_errors();
 
-                submit_codegened_module_to_llvm(
-                    &backend,
-                    &ongoing_codegen.coordinator.sender,
-                    module,
-                    cost,
-                );
+                submit_codegened_module_to_llvm(&ongoing_codegen.coordinator, module, cost);
             }
             CguReuse::PreLto => {
                 submit_pre_lto_module_to_llvm(
-                    &backend,
                     tcx,
-                    &ongoing_codegen.coordinator.sender,
+                    &ongoing_codegen.coordinator,
                     CachedModuleCodegen {
                         name: cgu.name().to_string(),
                         source: cgu.previous_work_product(tcx),
@@ -820,8 +813,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
             }
             CguReuse::PostLto => {
                 submit_post_lto_module_to_llvm(
-                    &backend,
-                    &ongoing_codegen.coordinator.sender,
+                    &ongoing_codegen.coordinator,
                     CachedModuleCodegen {
                         name: cgu.name().to_string(),
                         source: cgu.previous_work_product(tcx),

@@ -5,7 +5,7 @@ use rustc_abi::Size;
 use rustc_codegen_ssa::traits::{
     BuilderMethods, ConstCodegenMethods, CoverageInfoBuilderMethods, MiscCodegenMethods,
 };
-use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
+use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_middle::mir::coverage::CoverageKind;
 use rustc_middle::ty::Instance;
 use tracing::{debug, instrument};
@@ -20,9 +20,14 @@ mod mapgen;
 
 /// Extra per-CGU context/state needed for coverage instrumentation.
 pub(crate) struct CguCoverageContext<'ll, 'tcx> {
-    /// Coverage data for each instrumented function identified by DefId.
-    pub(crate) instances_used: RefCell<FxIndexSet<Instance<'tcx>>>,
-    pub(crate) pgo_func_name_var_map: RefCell<FxHashMap<Instance<'tcx>, &'ll llvm::Value>>,
+    /// Associates function instances with an LLVM global that holds the
+    /// function's symbol name, as needed by LLVM coverage intrinsics.
+    ///
+    /// Instances in this map are also considered "used" for the purposes of
+    /// emitting covfun records. Every covfun record holds a hash of its
+    /// symbol name, and `llvm-cov` will exit fatally if it can't resolve that
+    /// hash back to an entry in the binary's `__llvm_prf_names` linker section.
+    pub(crate) pgo_func_name_var_map: RefCell<FxIndexMap<Instance<'tcx>, &'ll llvm::Value>>,
     pub(crate) mcdc_condition_bitmap_map: RefCell<FxHashMap<Instance<'tcx>, Vec<&'ll llvm::Value>>>,
 
     covfun_section_name: OnceCell<CString>,
@@ -31,7 +36,6 @@ pub(crate) struct CguCoverageContext<'ll, 'tcx> {
 impl<'ll, 'tcx> CguCoverageContext<'ll, 'tcx> {
     pub(crate) fn new() -> Self {
         Self {
-            instances_used: RefCell::<FxIndexSet<_>>::default(),
             pgo_func_name_var_map: Default::default(),
             mcdc_condition_bitmap_map: Default::default(),
             covfun_section_name: Default::default(),
@@ -52,6 +56,14 @@ impl<'ll, 'tcx> CguCoverageContext<'ll, 'tcx> {
             .get(instance)
             .and_then(|bitmap_map| bitmap_map.get(decision_depth as usize))
             .copied() // Dereference Option<&&Value> to Option<&Value>
+    }
+
+    /// Returns the list of instances considered "used" in this CGU, as
+    /// inferred from the keys of `pgo_func_name_var_map`.
+    pub(crate) fn instances_used(&self) -> Vec<Instance<'tcx>> {
+        // Collecting into a Vec is way easier than trying to juggle RefCell
+        // projections, and this should only run once per CGU anyway.
+        self.pgo_func_name_var_map.borrow().keys().copied().collect::<Vec<_>>()
     }
 }
 
@@ -78,7 +90,10 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
     /// string, to hold the function name passed to LLVM intrinsic
     /// `instrprof.increment()`. The `Value` is only created once per instance.
     /// Multiple invocations with the same instance return the same `Value`.
-    fn get_pgo_func_name_var(&self, instance: Instance<'tcx>) -> &'ll llvm::Value {
+    ///
+    /// This has the side-effect of causing coverage codegen to consider this
+    /// function "used", making it eligible to emit an associated covfun record.
+    fn ensure_pgo_func_name_var(&self, instance: Instance<'tcx>) -> &'ll llvm::Value {
         debug!("getting pgo_func_name_var for instance={:?}", instance);
         let mut pgo_func_name_var_map = self.coverage_cx().pgo_func_name_var_map.borrow_mut();
         pgo_func_name_var_map.entry(instance).or_insert_with(|| {
@@ -102,7 +117,7 @@ impl<'tcx> CoverageInfoBuilderMethods<'tcx> for Builder<'_, '_, 'tcx> {
             return;
         }
 
-        let fn_name = self.get_pgo_func_name_var(instance);
+        let fn_name = self.ensure_pgo_func_name_var(instance);
         let hash = self.const_u64(function_coverage_info.function_source_hash);
         let bitmap_bits = self.const_u32(function_coverage_info.mcdc_bitmap_bits as u32);
         self.mcdc_parameters(fn_name, hash, bitmap_bits);
@@ -151,11 +166,6 @@ impl<'tcx> CoverageInfoBuilderMethods<'tcx> for Builder<'_, '_, 'tcx> {
             return;
         };
 
-        // Mark the instance as used in this CGU, for coverage purposes.
-        // This includes functions that were not partitioned into this CGU,
-        // but were MIR-inlined into one of this CGU's functions.
-        coverage_cx.instances_used.borrow_mut().insert(instance);
-
         match *kind {
             CoverageKind::SpanMarker | CoverageKind::BlockMarker { .. } => unreachable!(
                 "marker statement {kind:?} should have been removed by CleanupPostBorrowck"
@@ -163,7 +173,7 @@ impl<'tcx> CoverageInfoBuilderMethods<'tcx> for Builder<'_, '_, 'tcx> {
             CoverageKind::VirtualCounter { bcb }
                 if let Some(&id) = ids_info.phys_counter_for_node.get(&bcb) =>
             {
-                let fn_name = bx.get_pgo_func_name_var(instance);
+                let fn_name = bx.ensure_pgo_func_name_var(instance);
                 let hash = bx.const_u64(function_coverage_info.function_source_hash);
                 let num_counters = bx.const_u32(ids_info.num_counters);
                 let index = bx.const_u32(id.as_u32());
@@ -193,7 +203,7 @@ impl<'tcx> CoverageInfoBuilderMethods<'tcx> for Builder<'_, '_, 'tcx> {
                     "bitmap index of the decision out of range"
                 );
 
-                let fn_name = bx.get_pgo_func_name_var(instance);
+                let fn_name = bx.ensure_pgo_func_name_var(instance);
                 let hash = bx.const_u64(function_coverage_info.function_source_hash);
                 let bitmap_index = bx.const_u32(bitmap_idx);
                 bx.mcdc_tvbitmap_update(fn_name, hash, bitmap_index, cond_bitmap);
