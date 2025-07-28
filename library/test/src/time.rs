@@ -167,7 +167,7 @@ impl TestTimeOptions {
         match test.test_type {
             TestType::UnitTest => self.unit_threshold.warn,
             TestType::IntegrationTest => self.integration_threshold.warn,
-            TestType::DocTest => self.doctest_threshold.warn,
+            TestType::DocTest { merged: _ } => self.doctest_threshold.warn,
             TestType::Unknown => time_constants::UNKNOWN_WARN,
         }
     }
@@ -176,7 +176,7 @@ impl TestTimeOptions {
         match test.test_type {
             TestType::UnitTest => self.unit_threshold.critical,
             TestType::IntegrationTest => self.integration_threshold.critical,
-            TestType::DocTest => self.doctest_threshold.critical,
+            TestType::DocTest { merged: _ } => self.doctest_threshold.critical,
             TestType::Unknown => time_constants::UNKNOWN_CRITICAL,
         }
     }

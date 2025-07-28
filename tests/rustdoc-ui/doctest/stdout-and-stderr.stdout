@@ -1,5 +1,5 @@
 
-running 3 tests
+running 3 merged doctests
 test $DIR/stdout-and-stderr.rs - (line 17) ... FAILED
 test $DIR/stdout-and-stderr.rs - (line 22) ... FAILED
 test $DIR/stdout-and-stderr.rs - (line 26) ... FAILED
