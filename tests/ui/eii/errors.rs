@@ -5,9 +5,9 @@
 #![feature(rustc_attrs)]
 #![feature(eii_internals)]
 
-#[eii_macro_for(bar)] //~ ERROR `#[eii_macro_for(...)]` is only valid on macros
+#[eii_extern_target(bar)] //~ ERROR `#[eii_extern_target(...)]` is only valid on macros
 fn hello() {
-    #[eii_macro_for(bar)] //~ ERROR `#[eii_macro_for(...)]` is only valid on macros
+    #[eii_extern_target(bar)] //~ ERROR `#[eii_extern_target(...)]` is only valid on macros
     let x = 3 + 3;
 }
 
@@ -18,7 +18,7 @@ fn hello() {
 #[eii_extern_target(bar, hello, "unsafe")] //~ ERROR `#[eii_extern_target(...)]` expects a list of one or two elements
 #[eii_extern_target = "unsafe"] //~ ERROR `#[eii_extern_target(...)]` expects a list of one or two elements
 #[eii_extern_target(bar)]
-#[rustc_builtin_macro(eii_macro)]
+#[rustc_builtin_macro(eii_shared_macro)]
 macro foo() {}
 
 unsafe extern "Rust" {

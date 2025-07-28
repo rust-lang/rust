@@ -6,7 +6,7 @@
 #![feature(eii_internals)]
 
 #[eii_extern_target(bar)]
-#[rustc_builtin_macro(eii_macro)]
+#[rustc_builtin_macro(eii_shared_macro)]
 pub macro foo() {}
 
 unsafe extern "Rust" {
