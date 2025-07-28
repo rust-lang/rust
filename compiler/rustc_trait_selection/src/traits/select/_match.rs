@@ -64,9 +64,7 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for MatchAgainstFreshVars<'tcx> {
         match (a.kind(), b.kind()) {
             (
                 _,
-                &ty::Infer(ty::FreshTy(_))
-                | &ty::Infer(ty::FreshIntTy(_))
-                | &ty::Infer(ty::FreshFloatTy(_)),
+                &ty::Infer(ty::FreshTy) | &ty::Infer(ty::FreshIntTy) | &ty::Infer(ty::FreshFloatTy),
             ) => Ok(a),
 
             (&ty::Infer(_), _) | (_, &ty::Infer(_)) => {
@@ -90,7 +88,7 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for MatchAgainstFreshVars<'tcx> {
         }
 
         match (a.kind(), b.kind()) {
-            (_, ty::ConstKind::Infer(InferConst::Fresh(_))) => {
+            (_, ty::ConstKind::Infer(InferConst::Fresh)) => {
                 return Ok(a);
             }
 

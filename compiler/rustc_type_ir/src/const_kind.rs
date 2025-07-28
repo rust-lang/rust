@@ -97,26 +97,24 @@ pub enum InferConst {
     /// Infer the value of the const.
     Var(ConstVid),
     /// A fresh const variable. See `infer::freshen` for more details.
-    Fresh(u32),
+    Fresh,
 }
 
 impl fmt::Debug for InferConst {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             InferConst::Var(var) => write!(f, "{var:?}"),
-            InferConst::Fresh(var) => write!(f, "Fresh({var:?})"),
+            InferConst::Fresh => write!(f, "Fresh"),
         }
     }
 }
 
 #[cfg(feature = "nightly")]
 impl<CTX> HashStable<CTX> for InferConst {
-    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
+    fn hash_stable(&self, _hcx: &mut CTX, _hasher: &mut StableHasher) {
         match self {
-            InferConst::Var(_) => {
-                panic!("const variables should not be hashed: {self:?}")
-            }
-            InferConst::Fresh(i) => i.hash_stable(hcx, hasher),
+            InferConst::Var(_) => panic!("const variables should not be hashed: {self:?}"),
+            InferConst::Fresh => {}
         }
     }
 }

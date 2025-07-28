@@ -754,9 +754,7 @@ where
                 }
 
                 ty::Bound(..)
-                | ty::Infer(
-                    ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_),
-                ) => {
+                | ty::Infer(ty::TyVar(_) | ty::FreshTy | ty::FreshIntTy | ty::FreshFloatTy) => {
                     panic!("unexpected type `{ty:?}`")
                 }
             }

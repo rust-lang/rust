@@ -716,7 +716,7 @@ where
                 todo!()
             }
 
-            ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_))
+            ty::Infer(ty::TyVar(_) | ty::FreshTy | ty::FreshIntTy | ty::FreshFloatTy)
             | ty::Bound(..) => panic!(
                 "unexpected self ty `{:?}` when normalizing `<T as Pointee>::Metadata`",
                 goal.predicate.self_ty()
@@ -934,7 +934,7 @@ where
                 });
             }
 
-            ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_))
+            ty::Infer(ty::TyVar(_) | ty::FreshTy | ty::FreshIntTy | ty::FreshFloatTy)
             | ty::Bound(..) => panic!(
                 "unexpected self ty `{:?}` when normalizing `<T as DiscriminantKind>::Discriminant`",
                 goal.predicate.self_ty()

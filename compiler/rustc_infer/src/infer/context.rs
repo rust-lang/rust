@@ -117,9 +117,9 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
                                     if inner.float_unification_table().find(vid) == vid
                             )
                         }
-                        ty::InferTy::FreshTy(_)
-                        | ty::InferTy::FreshIntTy(_)
-                        | ty::InferTy::FreshFloatTy(_) => true,
+                        ty::InferTy::FreshTy
+                        | ty::InferTy::FreshIntTy
+                        | ty::InferTy::FreshFloatTy => true,
                     }
                 } else {
                     true
@@ -131,7 +131,7 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
                         ty::InferConst::Var(vid) => !self
                             .probe_const_var(vid)
                             .is_err_and(|_| self.root_const_var(vid) == vid),
-                        ty::InferConst::Fresh(_) => true,
+                        ty::InferConst::Fresh => true,
                     }
                 } else {
                     true

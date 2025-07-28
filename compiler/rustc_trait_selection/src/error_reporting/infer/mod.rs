@@ -446,7 +446,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 let expected_ty = self.resolve_vars_if_possible(root_ty);
                 if !matches!(
                     expected_ty.kind(),
-                    ty::Infer(ty::InferTy::TyVar(_) | ty::InferTy::FreshTy(_))
+                    ty::Infer(ty::InferTy::TyVar(_) | ty::InferTy::FreshTy)
                 ) {
                     // don't show type `_`
                     if span.desugaring_kind() == Some(DesugaringKind::ForLoop)

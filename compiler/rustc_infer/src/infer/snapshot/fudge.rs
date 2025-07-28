@@ -207,7 +207,7 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for InferenceFudger<'a, 'tcx> {
                         ty
                     }
                 }
-                ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_) => {
+                ty::FreshTy | ty::FreshIntTy | ty::FreshFloatTy => {
                     unreachable!("unexpected fresh infcx var")
                 }
             }
@@ -244,7 +244,7 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for InferenceFudger<'a, 'tcx> {
                         ct
                     }
                 }
-                ty::InferConst::Fresh(_) => {
+                ty::InferConst::Fresh => {
                     unreachable!("unexpected fresh infcx var")
                 }
             }

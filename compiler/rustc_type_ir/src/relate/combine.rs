@@ -105,8 +105,8 @@ where
                     -- they should have been handled earlier"
             )
         }
-        (_, ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)))
-        | (ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)), _)
+        (_, ty::Infer(ty::FreshTy | ty::FreshIntTy | ty::FreshFloatTy))
+        | (ty::Infer(ty::FreshTy | ty::FreshIntTy | ty::FreshFloatTy), _)
             if infcx.next_trait_solver() =>
         {
             panic!("We do not expect to encounter `Fresh` variables in the new solver")

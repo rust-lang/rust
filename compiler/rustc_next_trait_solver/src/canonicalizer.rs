@@ -335,7 +335,7 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
                     );
                     CanonicalVarKind::Ty(CanonicalTyVarKind::Float)
                 }
-                ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_) => {
+                ty::FreshTy | ty::FreshIntTy | ty::FreshFloatTy => {
                     panic!("fresh vars not expected in canonicalization")
                 }
             },
@@ -504,7 +504,7 @@ impl<D: SolverDelegate<Interner = I>, I: Interner> TypeFolder<I> for Canonicaliz
                         }
                     }
                 }
-                ty::InferConst::Fresh(_) => todo!(),
+                ty::InferConst::Fresh => todo!(),
             },
             ty::ConstKind::Placeholder(placeholder) => match self.canonicalize_mode {
                 CanonicalizeMode::Input { .. } => CanonicalVarKind::PlaceholderConst(

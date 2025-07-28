@@ -613,7 +613,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
             ty::CoroutineWitness(..) => (),
 
             // These variants should not exist as a self type.
-            ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_))
+            ty::Infer(ty::TyVar(_) | ty::FreshTy | ty::FreshIntTy | ty::FreshFloatTy)
             | ty::Param(_)
             | ty::Bound(_, _) => bug!("unexpected self type: {self_ty}"),
         }
@@ -1038,9 +1038,6 @@ impl<'tcx> CtxtInterners<'tcx> {
 // slightly more complex and no faster.
 
 const NUM_PREINTERNED_TY_VARS: u32 = 100;
-const NUM_PREINTERNED_FRESH_TYS: u32 = 20;
-const NUM_PREINTERNED_FRESH_INT_TYS: u32 = 3;
-const NUM_PREINTERNED_FRESH_FLOAT_TYS: u32 = 3;
 const NUM_PREINTERNED_ANON_BOUND_TYS_I: u32 = 3;
 const NUM_PREINTERNED_ANON_BOUND_TYS_V: u32 = 20;
 
@@ -1076,20 +1073,20 @@ pub struct CommonTypes<'tcx> {
     /// Dummy type used for the `Self` of a `TraitRef` created for converting
     /// a trait object, and which gets removed in `ExistentialTraitRef`.
     /// This type must not appear anywhere in other converted types.
-    /// `Infer(ty::FreshTy(0))` does the job.
+    /// `Infer(ty::FreshTy)` does the job.
     pub trait_object_dummy_self: Ty<'tcx>,
 
     /// Pre-interned `Infer(ty::TyVar(n))` for small values of `n`.
     pub ty_vars: Vec<Ty<'tcx>>,
 
-    /// Pre-interned `Infer(ty::FreshTy(n))` for small values of `n`.
-    pub fresh_tys: Vec<Ty<'tcx>>,
+    /// Pre-interned `Infer(ty::FreshTy)`.
+    pub fresh_ty: Ty<'tcx>,
 
-    /// Pre-interned `Infer(ty::FreshIntTy(n))` for small values of `n`.
-    pub fresh_int_tys: Vec<Ty<'tcx>>,
+    /// Pre-interned `Infer(ty::FreshIntTy)`.
+    pub fresh_int_ty: Ty<'tcx>,
 
-    /// Pre-interned `Infer(ty::FreshFloatTy(n))` for small values of `n`.
-    pub fresh_float_tys: Vec<Ty<'tcx>>,
+    /// Pre-interned `Infer(ty::FreshFloatTy)`.
+    pub fresh_float_ty: Ty<'tcx>,
 
     /// Pre-interned values of the form:
     /// `Bound(DebruijnIndex(i), BoundTy { var: v, kind: BoundTyKind::Anon})`
@@ -1117,6 +1114,9 @@ pub struct CommonConsts<'tcx> {
     pub unit: Const<'tcx>,
     pub true_: Const<'tcx>,
     pub false_: Const<'tcx>,
+
+    pub fresh_const: Const<'tcx>,
+
     /// Use [`ty::ValTree::zst`] instead.
     pub(crate) valtree_zst: ValTree<'tcx>,
 }
@@ -1131,12 +1131,9 @@ impl<'tcx> CommonTypes<'tcx> {
 
         let ty_vars =
             (0..NUM_PREINTERNED_TY_VARS).map(|n| mk(Infer(ty::TyVar(TyVid::from(n))))).collect();
-        let fresh_tys: Vec<_> =
-            (0..NUM_PREINTERNED_FRESH_TYS).map(|n| mk(Infer(ty::FreshTy(n)))).collect();
-        let fresh_int_tys: Vec<_> =
-            (0..NUM_PREINTERNED_FRESH_INT_TYS).map(|n| mk(Infer(ty::FreshIntTy(n)))).collect();
-        let fresh_float_tys: Vec<_> =
-            (0..NUM_PREINTERNED_FRESH_FLOAT_TYS).map(|n| mk(Infer(ty::FreshFloatTy(n)))).collect();
+        let fresh_ty = mk(Infer(ty::FreshTy));
+        let fresh_int_ty = mk(Infer(ty::FreshIntTy));
+        let fresh_float_ty = mk(Infer(ty::FreshFloatTy));
 
         let anon_bound_tys = (0..NUM_PREINTERNED_ANON_BOUND_TYS_I)
             .map(|i| {
@@ -1175,12 +1172,12 @@ impl<'tcx> CommonTypes<'tcx> {
             str_: mk(Str),
             self_param: mk(ty::Param(ty::ParamTy { index: 0, name: kw::SelfUpper })),
 
-            trait_object_dummy_self: fresh_tys[0],
+            trait_object_dummy_self: fresh_ty,
 
             ty_vars,
-            fresh_tys,
-            fresh_int_tys,
-            fresh_float_tys,
+            fresh_ty,
+            fresh_int_ty,
+            fresh_float_ty,
             anon_bound_tys,
         }
     }
@@ -1259,6 +1256,7 @@ impl<'tcx> CommonConsts<'tcx> {
                 ty: types.bool,
                 valtree: valtree_false,
             })),
+            fresh_const: mk_const(ty::ConstKind::Infer(ty::InferConst::Fresh)),
             valtree_zst,
         }
     }

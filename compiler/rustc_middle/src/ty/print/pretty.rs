@@ -3248,7 +3248,7 @@ define_print! {
 
     ty::ExistentialTraitRef<'tcx> {
         // Use a type that can't appear in defaults of type parameters.
-        let dummy_self = Ty::new_fresh(cx.tcx(), 0);
+        let dummy_self = cx.tcx().types.fresh_ty;
         let trait_ref = self.with_self_ty(cx.tcx(), dummy_self);
         p!(print(trait_ref.print_only_trait_path()))
     }

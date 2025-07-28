@@ -265,7 +265,7 @@ impl<I: Interner> FlagComputation<I> {
             }
 
             ty::Infer(infer) => match infer {
-                ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_) => {
+                ty::FreshTy | ty::FreshIntTy | ty::FreshFloatTy => {
                     self.add_flags(TypeFlags::HAS_TY_FRESH)
                 }
 
@@ -452,7 +452,7 @@ impl<I: Interner> FlagComputation<I> {
                 self.add_flags(TypeFlags::HAS_CT_PROJECTION);
             }
             ty::ConstKind::Infer(infer) => match infer {
-                ty::InferConst::Fresh(_) => self.add_flags(TypeFlags::HAS_CT_FRESH),
+                ty::InferConst::Fresh => self.add_flags(TypeFlags::HAS_CT_FRESH),
                 ty::InferConst::Var(_) => self.add_flags(TypeFlags::HAS_CT_INFER),
             },
             ty::ConstKind::Bound(debruijn, _) => {

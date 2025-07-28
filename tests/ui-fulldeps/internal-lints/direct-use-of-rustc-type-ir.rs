@@ -19,7 +19,7 @@ fn foo<I: rustc_type_ir::Interner>(cx: I, did: I::DefId) {
 }
 
 fn main() {
-    let _ = rustc_type_ir::InferConst::Fresh(42);
+    let _ = rustc_type_ir::InferConst::Fresh;
 //~^ ERROR: do not use `rustc_type_ir` unless you are implementing type system internals
     let _: rustc_type_ir::InferConst;
 //~^ ERROR: do not use `rustc_type_ir` unless you are implementing type system internals

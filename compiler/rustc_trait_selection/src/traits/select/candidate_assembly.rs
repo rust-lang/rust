@@ -810,7 +810,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     }
                 }
 
-                ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
+                ty::Infer(ty::FreshTy | ty::FreshIntTy | ty::FreshFloatTy) => {
                     bug!(
                         "asked to assemble auto trait candidates of unexpected type: {:?}",
                         self_ty
@@ -1212,7 +1212,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // Only appears when assembling higher-ranked `for<T> T: Clone`.
             ty::Bound(..) => {}
 
-            ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
+            ty::Infer(ty::FreshTy | ty::FreshIntTy | ty::FreshFloatTy) => {
                 bug!("asked to assemble builtin bounds of unexpected type: {:?}", self_ty);
             }
         }
@@ -1280,7 +1280,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // Only appears when assembling higher-ranked `for<T> T: Sized`.
             ty::Bound(..) => {}
 
-            ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
+            ty::Infer(ty::FreshTy | ty::FreshIntTy | ty::FreshFloatTy) => {
                 bug!("asked to assemble builtin bounds of unexpected type: {:?}", self_ty);
             }
         }
@@ -1377,10 +1377,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::Infer(
                 ty::InferTy::IntVar(_)
                 | ty::InferTy::FloatVar(_)
-                | ty::InferTy::FreshIntTy(_)
-                | ty::InferTy::FreshFloatTy(_),
+                | ty::InferTy::FreshIntTy
+                | ty::InferTy::FreshFloatTy,
             ) => {}
-            ty::Infer(ty::InferTy::TyVar(_) | ty::InferTy::FreshTy(_)) => {
+            ty::Infer(ty::InferTy::TyVar(_) | ty::InferTy::FreshTy) => {
                 candidates.ambiguous = true;
             }
         }
@@ -1424,7 +1424,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 candidates.vec.push(BikeshedGuaranteedNoDropCandidate);
             }
 
-            ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
+            ty::Infer(ty::TyVar(_) | ty::FreshTy | ty::FreshIntTy | ty::FreshFloatTy) => {
                 candidates.ambiguous = true;
             }
         }

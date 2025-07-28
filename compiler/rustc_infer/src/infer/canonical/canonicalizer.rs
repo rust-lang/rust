@@ -386,7 +386,7 @@ impl<'cx, 'tcx> TypeFolder<TyCtxt<'tcx>> for Canonicalizer<'cx, 'tcx> {
                 }
             }
 
-            ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
+            ty::Infer(ty::FreshTy | ty::FreshIntTy | ty::FreshFloatTy) => {
                 bug!("encountered a fresh type during canonicalization")
             }
 
@@ -470,7 +470,7 @@ impl<'cx, 'tcx> TypeFolder<TyCtxt<'tcx>> for Canonicalizer<'cx, 'tcx> {
                     }
                 }
             }
-            ty::ConstKind::Infer(InferConst::Fresh(_)) => {
+            ty::ConstKind::Infer(InferConst::Fresh) => {
                 bug!("encountered a fresh const during canonicalization")
             }
             ty::ConstKind::Bound(debruijn, _) => {

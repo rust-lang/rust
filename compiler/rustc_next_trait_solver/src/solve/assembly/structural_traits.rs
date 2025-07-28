@@ -149,7 +149,7 @@ where
         ty::Alias(..) | ty::Param(_) | ty::Placeholder(..) => Err(NoSolution),
 
         ty::Bound(..)
-        | ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
+        | ty::Infer(ty::TyVar(_) | ty::FreshTy | ty::FreshIntTy | ty::FreshFloatTy) => {
             panic!("unexpected type `{ty:?}`")
         }
 
@@ -223,7 +223,7 @@ where
         | ty::Placeholder(..) => Err(NoSolution),
 
         ty::Bound(..)
-        | ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
+        | ty::Infer(ty::TyVar(_) | ty::FreshTy | ty::FreshIntTy | ty::FreshFloatTy) => {
             panic!("unexpected type `{ty:?}`")
         }
 
@@ -395,7 +395,7 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_callable<I: Intern
         | ty::Error(_) => Err(NoSolution),
 
         ty::Bound(..)
-        | ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
+        | ty::Infer(ty::TyVar(_) | ty::FreshTy | ty::FreshIntTy | ty::FreshFloatTy) => {
             panic!("unexpected type `{self_ty:?}`")
         }
     }
@@ -568,7 +568,7 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_async_callable<I: 
         | ty::Error(_) => Err(NoSolution),
 
         ty::Bound(..)
-        | ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
+        | ty::Infer(ty::TyVar(_) | ty::FreshTy | ty::FreshIntTy | ty::FreshFloatTy) => {
             panic!("unexpected type `{self_ty:?}`")
         }
     }
@@ -718,7 +718,7 @@ pub(in crate::solve) fn extract_fn_def_from_const_callable<I: Interner>(
         | ty::UnsafeBinder(_) => return Err(NoSolution),
 
         ty::Bound(..)
-        | ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
+        | ty::Infer(ty::TyVar(_) | ty::FreshTy | ty::FreshIntTy | ty::FreshFloatTy) => {
             panic!("unexpected type `{self_ty:?}`")
         }
     }
@@ -799,7 +799,7 @@ pub(in crate::solve) fn const_conditions_for_destruct<I: Interner>(
         }
 
         ty::Bound(..)
-        | ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
+        | ty::Infer(ty::TyVar(_) | ty::FreshTy | ty::FreshIntTy | ty::FreshFloatTy) => {
             panic!("unexpected type `{self_ty:?}`")
         }
     }

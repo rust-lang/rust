@@ -521,8 +521,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
                 ty::Infer(ty::TyVar(_)) => false,
 
-                ty::Bound(..)
-                | ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
+                ty::Bound(..) | ty::Infer(ty::FreshTy | ty::FreshIntTy | ty::FreshFloatTy) => {
                     bug!("`is_very_trivially_sized` applied to unexpected type: {}", ty)
                 }
             }

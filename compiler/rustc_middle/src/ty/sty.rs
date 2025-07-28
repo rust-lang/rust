@@ -445,36 +445,6 @@ impl<'tcx> Ty<'tcx> {
     }
 
     #[inline]
-    pub fn new_fresh(tcx: TyCtxt<'tcx>, n: u32) -> Ty<'tcx> {
-        // Use a pre-interned one when possible.
-        tcx.types
-            .fresh_tys
-            .get(n as usize)
-            .copied()
-            .unwrap_or_else(|| Ty::new_infer(tcx, ty::FreshTy(n)))
-    }
-
-    #[inline]
-    pub fn new_fresh_int(tcx: TyCtxt<'tcx>, n: u32) -> Ty<'tcx> {
-        // Use a pre-interned one when possible.
-        tcx.types
-            .fresh_int_tys
-            .get(n as usize)
-            .copied()
-            .unwrap_or_else(|| Ty::new_infer(tcx, ty::FreshIntTy(n)))
-    }
-
-    #[inline]
-    pub fn new_fresh_float(tcx: TyCtxt<'tcx>, n: u32) -> Ty<'tcx> {
-        // Use a pre-interned one when possible.
-        tcx.types
-            .fresh_float_tys
-            .get(n as usize)
-            .copied()
-            .unwrap_or_else(|| Ty::new_infer(tcx, ty::FreshFloatTy(n)))
-    }
-
-    #[inline]
     pub fn new_param(tcx: TyCtxt<'tcx>, index: u32, name: Symbol) -> Ty<'tcx> {
         Ty::new(tcx, Param(ParamTy { index, name }))
     }
@@ -1361,12 +1331,12 @@ impl<'tcx> Ty<'tcx> {
 
     #[inline]
     pub fn is_fresh_ty(self) -> bool {
-        matches!(self.kind(), Infer(FreshTy(_)))
+        matches!(self.kind(), Infer(FreshTy))
     }
 
     #[inline]
     pub fn is_fresh(self) -> bool {
-        matches!(self.kind(), Infer(FreshTy(_) | FreshIntTy(_) | FreshFloatTy(_)))
+        matches!(self.kind(), Infer(FreshTy | FreshIntTy | FreshFloatTy))
     }
 
     #[inline]
@@ -1597,7 +1567,7 @@ impl<'tcx> Ty<'tcx> {
 
             ty::Bound(..)
             | ty::Placeholder(_)
-            | ty::Infer(FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
+            | ty::Infer(FreshTy | ty::FreshIntTy | ty::FreshFloatTy) => {
                 bug!("`discriminant_ty` applied to unexpected type: {:?}", self)
             }
         }
@@ -1656,7 +1626,7 @@ impl<'tcx> Ty<'tcx> {
             | ty::Pat(..)
             | ty::Bound(..)
             | ty::Placeholder(..)
-            | ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => bug!(
+            | ty::Infer(ty::FreshTy | ty::FreshIntTy | ty::FreshFloatTy) => bug!(
                 "`ptr_metadata_ty_or_tail` applied to unexpected type: {self:?} (tail = {tail:?})"
             ),
         }
@@ -1842,7 +1812,7 @@ impl<'tcx> Ty<'tcx> {
 
             ty::Infer(ty::TyVar(_)) => false,
 
-            ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
+            ty::Infer(ty::FreshTy | ty::FreshIntTy | ty::FreshFloatTy) => {
                 bug!("`has_trivial_sizedness` applied to unexpected type: {:?}", self)
             }
         }
@@ -1933,7 +1903,7 @@ impl<'tcx> Ty<'tcx> {
             ty::Infer(infer) => match infer {
                 ty::TyVar(_) => false,
                 ty::IntVar(_) | ty::FloatVar(_) => true,
-                ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_) => true,
+                ty::FreshTy | ty::FreshIntTy | ty::FreshFloatTy => true,
             },
 
             ty::Adt(_, _)

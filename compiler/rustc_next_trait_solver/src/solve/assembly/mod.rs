@@ -629,7 +629,7 @@ where
             | ty::Placeholder(..)
             | ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
             | ty::Error(_) => return,
-            ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) | ty::Bound(..) => {
+            ty::Infer(ty::FreshTy | ty::FreshIntTy | ty::FreshFloatTy) | ty::Bound(..) => {
                 panic!("unexpected self type for `{goal:?}`")
             }
 
@@ -743,7 +743,7 @@ where
             | ty::Placeholder(..)
             | ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
             | ty::Error(_) => return,
-            ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_))
+            ty::Infer(ty::TyVar(_) | ty::FreshTy | ty::FreshIntTy | ty::FreshFloatTy)
             | ty::Bound(..) => panic!("unexpected self type for `{goal:?}`"),
             ty::Dynamic(bounds, ..) => bounds,
         };

@@ -186,7 +186,7 @@ impl<'a, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for FullTypeResolver<'a, 'tcx> {
                 ty::ConstKind::Infer(InferConst::Var(vid)) => {
                     return Err(FixupError { unresolved: super::TyOrConstInferVar::Const(vid) });
                 }
-                ty::ConstKind::Infer(InferConst::Fresh(_)) => {
+                ty::ConstKind::Infer(InferConst::Fresh) => {
                     bug!("Unexpected const in full const resolver: {:?}", c);
                 }
                 _ => {}

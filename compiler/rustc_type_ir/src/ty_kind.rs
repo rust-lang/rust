@@ -759,11 +759,11 @@ pub enum InferTy {
     /// `rustc_infer::infer::freshen` for more details.
     ///
     /// Compare with [`TyVar`][Self::TyVar].
-    FreshTy(u32),
+    FreshTy,
     /// Like [`FreshTy`][Self::FreshTy], but as a replacement for [`IntVar`][Self::IntVar].
-    FreshIntTy(u32),
+    FreshIntTy,
     /// Like [`FreshTy`][Self::FreshTy], but as a replacement for [`FloatVar`][Self::FloatVar].
-    FreshFloatTy(u32),
+    FreshFloatTy,
 }
 
 impl UnifyValue for IntVarValue {
@@ -841,7 +841,7 @@ impl<CTX> HashStable<CTX> for InferTy {
             TyVar(_) | IntVar(_) | FloatVar(_) => {
                 panic!("type variables should not be hashed: {self:?}")
             }
-            FreshTy(v) | FreshIntTy(v) | FreshFloatTy(v) => v.hash_stable(ctx, hasher),
+            FreshTy | FreshIntTy | FreshFloatTy => {}
         }
     }
 }
@@ -853,9 +853,9 @@ impl fmt::Display for InferTy {
             TyVar(_) => write!(f, "_"),
             IntVar(_) => write!(f, "{}", "{integer}"),
             FloatVar(_) => write!(f, "{}", "{float}"),
-            FreshTy(v) => write!(f, "FreshTy({v})"),
-            FreshIntTy(v) => write!(f, "FreshIntTy({v})"),
-            FreshFloatTy(v) => write!(f, "FreshFloatTy({v})"),
+            FreshTy => write!(f, "FreshTy"),
+            FreshIntTy => write!(f, "FreshIntTy"),
+            FreshFloatTy => write!(f, "FreshFloatTy"),
         }
     }
 }
@@ -885,9 +885,9 @@ impl fmt::Debug for InferTy {
             TyVar(ref v) => v.fmt(f),
             IntVar(ref v) => v.fmt(f),
             FloatVar(ref v) => v.fmt(f),
-            FreshTy(v) => write!(f, "FreshTy({v:?})"),
-            FreshIntTy(v) => write!(f, "FreshIntTy({v:?})"),
-            FreshFloatTy(v) => write!(f, "FreshFloatTy({v:?})"),
+            FreshTy => write!(f, "FreshTy"),
+            FreshIntTy => write!(f, "FreshIntTy"),
+            FreshFloatTy => write!(f, "FreshFloatTy"),
         }
     }
 }

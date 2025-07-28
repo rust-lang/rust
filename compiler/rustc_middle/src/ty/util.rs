@@ -1495,8 +1495,8 @@ pub fn needs_drop_components_with_async<'tcx>(
     asyncness: Asyncness,
 ) -> Result<SmallVec<[Ty<'tcx>; 2]>, AlwaysRequiresDrop> {
     match *ty.kind() {
-        ty::Infer(ty::FreshIntTy(_))
-        | ty::Infer(ty::FreshFloatTy(_))
+        ty::Infer(ty::FreshIntTy)
+        | ty::Infer(ty::FreshFloatTy)
         | ty::Bool
         | ty::Int(_)
         | ty::Uint(_)

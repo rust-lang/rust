@@ -462,7 +462,7 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for Generalizer<'_, 'tcx> {
         // subtyping. This is basically our "occurs check", preventing
         // us from creating infinitely sized types.
         let g = match *t.kind() {
-            ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
+            ty::Infer(ty::FreshTy | ty::FreshIntTy | ty::FreshFloatTy) => {
                 bug!("unexpected infer type: {t}")
             }
 

@@ -80,11 +80,6 @@ impl<'tcx> Const<'tcx> {
     }
 
     #[inline]
-    pub fn new_fresh(tcx: TyCtxt<'tcx>, fresh: u32) -> Const<'tcx> {
-        Const::new(tcx, ty::ConstKind::Infer(ty::InferConst::Fresh(fresh)))
-    }
-
-    #[inline]
     pub fn new_infer(tcx: TyCtxt<'tcx>, infer: ty::InferConst) -> Const<'tcx> {
         Const::new(tcx, ty::ConstKind::Infer(infer))
     }

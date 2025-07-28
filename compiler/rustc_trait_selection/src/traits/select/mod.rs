@@ -2150,7 +2150,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             ty::Alias(..)
             | ty::Param(_)
             | ty::Placeholder(..)
-            | ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_))
+            | ty::Infer(ty::TyVar(_) | ty::FreshTy | ty::FreshIntTy | ty::FreshFloatTy)
             | ty::Bound(..) => {
                 bug!("asked to assemble `Sized` of unexpected type: {:?}", self_ty);
             }
@@ -2234,7 +2234,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             | ty::Placeholder(..)
             | ty::Bound(..)
             | ty::Ref(_, _, ty::Mutability::Mut)
-            | ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
+            | ty::Infer(ty::TyVar(_) | ty::FreshTy | ty::FreshIntTy | ty::FreshFloatTy) => {
                 bug!("asked to assemble builtin bounds of unexpected type: {:?}", self_ty);
             }
         }
@@ -2297,7 +2297,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             | ty::Param(..)
             | ty::Alias(ty::Projection | ty::Inherent | ty::Free, ..)
             | ty::Bound(..)
-            | ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
+            | ty::Infer(ty::TyVar(_) | ty::FreshTy | ty::FreshIntTy | ty::FreshFloatTy) => {
                 bug!("asked to assemble constituent types of unexpected type: {:?}", t);
             }
 
