@@ -1901,39 +1901,6 @@ pub fn is_must_use_func_call(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
 ///
 /// Consider calling [`is_expr_untyped_identity_function`] or [`is_expr_identity_function`] instead.
 fn is_body_identity_function(cx: &LateContext<'_>, func: &Body<'_>) -> bool {
-    fn check_pat(cx: &LateContext<'_>, pat: &Pat<'_>, expr: &Expr<'_>) -> bool {
-        if cx
-            .typeck_results()
-            .pat_binding_modes()
-            .get(pat.hir_id)
-            .is_some_and(|mode| matches!(mode.0, ByRef::Yes(_)))
-        {
-            // If the parameter is `(x, y)` of type `&(T, T)`, or `[x, y]` of type `&[T; 2]`, then
-            // due to match ergonomics, the inner patterns become references. Don't consider this
-            // the identity function as that changes types.
-            return false;
-        }
-
-        match (pat.kind, expr.kind) {
-            (PatKind::Binding(_, id, _, _), _) => {
-                path_to_local_id(expr, id) && cx.typeck_results().expr_adjustments(expr).is_empty()
-            },
-            (PatKind::Tuple(pats, dotdot), ExprKind::Tup(tup))
-                if dotdot.as_opt_usize().is_none() && pats.len() == tup.len() =>
-            {
-                pats.iter().zip(tup).all(|(pat, expr)| check_pat(cx, pat, expr))
-            },
-            (PatKind::Slice(before, slice, after), ExprKind::Array(arr))
-                if slice.is_none() && before.len() + after.len() == arr.len() =>
-            {
-                (before.iter().chain(after))
-                    .zip(arr)
-                    .all(|(pat, expr)| check_pat(cx, pat, expr))
-            },
-            _ => false,
-        }
-    }
-
     let [param] = func.params else {
         return false;
     };
@@ -1966,8 +1933,53 @@ fn is_body_identity_function(cx: &LateContext<'_>, func: &Body<'_>) -> bool {
                     return false;
                 }
             },
-            _ => return check_pat(cx, param.pat, expr),
+            _ => return is_expr_identity_of_pat(cx, param.pat, expr, true),
         }
+    }
+}
+
+/// Checks if the given expression is an identity representation of the given pattern:
+/// * `x` is the identity representation of `x`
+/// * `(x, y)` is the identity representation of `(x, y)`
+/// * `[x, y]` is the identity representation of `[x, y]`
+///
+/// Note that `by_hir` is used to determine bindings are checked by their `HirId` or by their name.
+/// This can be useful when checking patterns in `let` bindings or `match` arms.
+pub fn is_expr_identity_of_pat(cx: &LateContext<'_>, pat: &Pat<'_>, expr: &Expr<'_>, by_hir: bool) -> bool {
+    if cx
+        .typeck_results()
+        .pat_binding_modes()
+        .get(pat.hir_id)
+        .is_some_and(|mode| matches!(mode.0, ByRef::Yes(_)))
+    {
+        // If the parameter is `(x, y)` of type `&(T, T)`, or `[x, y]` of type `&[T; 2]`, then
+        // due to match ergonomics, the inner patterns become references. Don't consider this
+        // the identity function as that changes types.
+        return false;
+    }
+
+    match (pat.kind, expr.kind) {
+        (PatKind::Binding(_, id, _, _), _) if by_hir => {
+            path_to_local_id(expr, id) && cx.typeck_results().expr_adjustments(expr).is_empty()
+        },
+        (PatKind::Binding(_, _, ident, _), ExprKind::Path(QPath::Resolved(_, path))) => {
+            matches!(path.segments, [ segment] if segment.ident.name == ident.name)
+        },
+        (PatKind::Tuple(pats, dotdot), ExprKind::Tup(tup))
+            if dotdot.as_opt_usize().is_none() && pats.len() == tup.len() =>
+        {
+            pats.iter()
+                .zip(tup)
+                .all(|(pat, expr)| is_expr_identity_of_pat(cx, pat, expr, by_hir))
+        },
+        (PatKind::Slice(before, slice, after), ExprKind::Array(arr))
+            if slice.is_none() && before.len() + after.len() == arr.len() =>
+        {
+            (before.iter().chain(after))
+                .zip(arr)
+                .all(|(pat, expr)| is_expr_identity_of_pat(cx, pat, expr, by_hir))
+        },
+        _ => false,
     }
 }
 
