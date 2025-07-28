@@ -11,8 +11,29 @@ struct X(Y);
 struct Y;
 
 fn consume_fn<F: Fn()>(_f: F) { }
+//~^ HELP `Fn` and `FnMut` closures
+//~| HELP `Fn` and `FnMut` closures
+//~| HELP `Fn` and `FnMut` closures
+//~| HELP `Fn` and `FnMut` closures
+//~| HELP `Fn` and `FnMut` closures
+//~| HELP `Fn` and `FnMut` closures
+//~| HELP `Fn` and `FnMut` closures
+//~| HELP `Fn` and `FnMut` closures
+//~| HELP `Fn` and `FnMut` closures
+//~| HELP `Fn` and `FnMut` closures
 
 fn consume_fnmut<F: FnMut()>(_f: F) { }
+//~^ HELP `Fn` and `FnMut` closures
+//~| HELP `Fn` and `FnMut` closures
+//~| HELP `Fn` and `FnMut` closures
+//~| HELP `Fn` and `FnMut` closures
+//~| HELP `Fn` and `FnMut` closures
+//~| HELP `Fn` and `FnMut` closures
+//~| HELP `Fn` and `FnMut` closures
+//~| HELP `Fn` and `FnMut` closures
+//~| HELP `Fn` and `FnMut` closures
+//~| HELP `Fn` and `FnMut` closures
+//~| HELP `Fn` and `FnMut` closures
 
 pub fn main() { }
 
