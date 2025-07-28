@@ -22,7 +22,7 @@
    LL|       |#[cfg_attr(on, automatically_derived)]
    LL|       |#[cfg_attr(on, coverage(on))]
    LL|       |impl MyTrait for MyStruct {
-   LL|       |    fn my_assoc_fn() {
+   LL|      1|    fn my_assoc_fn() {
    LL|      1|        fn inner_fn() {
    LL|      1|            say("in inner fn");
    LL|      1|        }
@@ -36,10 +36,10 @@
    LL|      1|            say("in closure");
    LL|      1|        };
    LL|       |
-   LL|       |        closure();
-   LL|       |        inner_fn();
-   LL|       |        inner_fn_on();
-   LL|       |    }
+   LL|      1|        closure();
+   LL|      1|        inner_fn();
+   LL|      1|        inner_fn_on();
+   LL|      1|    }
    LL|       |}
    LL|       |
    LL|       |#[coverage(off)]

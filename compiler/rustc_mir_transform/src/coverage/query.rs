@@ -32,16 +32,6 @@ fn is_eligible_for_coverage(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
         return false;
     }
 
-    // Don't instrument functions with `#[automatically_derived]` on their
-    // enclosing impl block, on the assumption that most users won't care about
-    // coverage for derived impls.
-    if let Some(impl_of) = tcx.impl_of_assoc(def_id.to_def_id())
-        && tcx.is_automatically_derived(impl_of)
-    {
-        trace!("InstrumentCoverage skipped for {def_id:?} (automatically derived)");
-        return false;
-    }
-
     if tcx.codegen_fn_attrs(def_id).flags.contains(CodegenFnAttrFlags::NAKED) {
         trace!("InstrumentCoverage skipped for {def_id:?} (`#[naked]`)");
         return false;
@@ -66,6 +56,15 @@ fn coverage_attr_on(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
             CoverageAttrKind::Off => return false,
         }
     };
+
+    // Treat `#[automatically_derived]` as an implied `#[coverage(off)]`, on
+    // the assumption that most users won't want coverage for derived impls.
+    //
+    // This affects not just the associated items of an impl block, but also
+    // any closures and other nested functions within those associated items.
+    if tcx.is_automatically_derived(def_id.to_def_id()) {
+        return false;
+    }
 
     // Check the parent def (and so on recursively) until we find an
     // enclosing attribute or reach the crate root.

@@ -23,18 +23,18 @@
    LL|       |#[cfg_attr(on, coverage(on))]
    LL|       |impl MyTrait for MyStruct {
    LL|       |    fn my_assoc_fn() {
-   LL|      1|        fn inner_fn() {
-   LL|      1|            say("in inner fn");
-   LL|      1|        }
+   LL|       |        fn inner_fn() {
+   LL|       |            say("in inner fn");
+   LL|       |        }
    LL|       |
    LL|       |        #[coverage(on)]
    LL|      1|        fn inner_fn_on() {
    LL|      1|            say("in inner fn (on)");
    LL|      1|        }
    LL|       |
-   LL|      1|        let closure = || {
-   LL|      1|            say("in closure");
-   LL|      1|        };
+   LL|       |        let closure = || {
+   LL|       |            say("in closure");
+   LL|       |        };
    LL|       |
    LL|       |        closure();
    LL|       |        inner_fn();
