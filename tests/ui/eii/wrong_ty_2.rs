@@ -5,11 +5,9 @@
 #![feature(rustc_attrs)]
 #![feature(eii_internals)]
 
-#[eii_macro_for(bar)]
-#[rustc_builtin_macro(eii_macro)]
-macro foo() {
-
-}
+#[eii_extern_target(bar)]
+#[rustc_builtin_macro(eii_shared_macro)]
+macro foo() {}
 
 unsafe extern "Rust" {
     safe fn bar(x: u64) -> u64;
@@ -17,7 +15,7 @@ unsafe extern "Rust" {
 
 #[foo]
 fn other() -> u64 {
-//~^ ERROR `other` has 0 parameters but #[foo] requires it to have
+    //~^ ERROR `other` has 0 parameters but #[foo] requires it to have
     3
 }
 

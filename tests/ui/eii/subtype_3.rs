@@ -7,11 +7,9 @@
 #![feature(rustc_attrs)]
 #![feature(eii_internals)]
 
-#[eii_macro_for(bar)]
-#[rustc_builtin_macro(eii_macro)]
-macro foo() {
-
-}
+#[eii_extern_target(bar)]
+#[rustc_builtin_macro(eii_shared_macro)]
+macro foo() {}
 
 unsafe extern "Rust" {
     safe fn bar<'a>(x: &'a u64) -> &'a u64;

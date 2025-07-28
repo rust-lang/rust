@@ -10,7 +10,7 @@ error: `#[eii_extern_target(...)]` is only valid on macros
 LL |     #[eii_extern_target(bar)]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: `#[eii_macro_for(...)]` expects a list of one or two elements
+error: `#[eii_extern_target(...)]` expects a list of one or two elements
   --> $DIR/errors.rs:14:1
    |
 LL | #[eii_extern_target]
@@ -34,13 +34,13 @@ note: the second argument is optional
 LL | #[eii_extern_target(bar, hello)]
    |                          ^^^^^
 
-error: `#[eii_macro_for(...)]` expects a list of one or two elements
+error: `#[eii_extern_target(...)]` expects a list of one or two elements
   --> $DIR/errors.rs:17:1
    |
 LL | #[eii_extern_target(bar, "unsafe", hello)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: `#[eii_macro_for(...)]` expects a list of one or two elements
+error: `#[eii_extern_target(...)]` expects a list of one or two elements
   --> $DIR/errors.rs:18:1
    |
 LL | #[eii_extern_target(bar, hello, "unsafe")]
