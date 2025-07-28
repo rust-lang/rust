@@ -13,6 +13,15 @@ LL |         move || {
 LL |
 LL |             var = Some(NotCopyable);
    |             --- variable moved due to use in closure
+   |
+note: if `NotCopyable` implemented `Clone`, you could clone the value
+  --> $DIR/option-content-move2.rs:1:1
+   |
+LL | struct NotCopyable;
+   | ^^^^^^^^^^^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |             var = Some(NotCopyable);
+   |             --- you could clone this value
 
 error[E0507]: cannot move out of `var`, a captured variable in an `FnMut` closure
   --> $DIR/option-content-move2.rs:21:9

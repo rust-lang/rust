@@ -264,6 +264,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     err.span_label(within_macro_span, "due to this macro variable");
                 }
                 self.suggest_valid_traits(&mut err, item_name, out_of_scope_traits, true);
+                self.suggest_unwrapping_inner_self(&mut err, source, rcvr_ty, item_name);
                 err.emit()
             }
 

@@ -405,6 +405,8 @@ fn update_target_reliable_float_cfg(sess: &Session, cfg: &mut TargetConfig) {
         ("mips64" | "mips64r6", _) => false,
         // Selection bug <https://github.com/llvm/llvm-project/issues/95471>
         ("nvptx64", _) => false,
+        // Unsupported https://github.com/llvm/llvm-project/issues/121122
+        ("amdgpu", _) => false,
         // ABI bugs <https://github.com/rust-lang/rust/issues/125109> et al. (full
         // list at <https://github.com/rust-lang/rust/issues/116909>)
         ("powerpc" | "powerpc64", _) => false,
@@ -433,6 +435,9 @@ fn update_target_reliable_float_cfg(sess: &Session, cfg: &mut TargetConfig) {
         // This rules out anything that doesn't have `long double` = `binary128`; <= 32 bits
         // (ld is `f64`), anything other than Linux (Windows and MacOS use `f64`), and `x86`
         // (ld is 80-bit extended precision).
+        //
+        // musl does not implement the symbols required for f128 math at all.
+        _ if target_env == "musl" => false,
         ("x86_64", _) => false,
         (_, "linux") if target_pointer_width == 64 => true,
         _ => false,

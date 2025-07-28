@@ -334,8 +334,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     }
 
     /// Define the name or return the existing binding if there is a collision.
-    /// `update` indicates if the definition is a redefinition of an existing binding.
-    pub(crate) fn try_define(
+    pub(crate) fn try_define_local(
         &mut self,
         module: Module<'ra>,
         ident: Ident,
@@ -353,7 +352,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             module.underscore_disambiguator.update(|d| d + 1);
             module.underscore_disambiguator.get()
         });
-        self.update_resolution(module, key, warn_ambiguity, |this, resolution| {
+        self.update_local_resolution(module, key, warn_ambiguity, |this, resolution| {
             if let Some(old_binding) = resolution.best_binding() {
                 if res == Res::Err && old_binding.res() != Res::Err {
                     // Do not override real bindings with `Res::Err`s from error recovery.
@@ -456,7 +455,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
     // Use `f` to mutate the resolution of the name in the module.
     // If the resolution becomes a success, define it in the module's glob importers.
-    fn update_resolution<T, F>(
+    fn update_local_resolution<T, F>(
         &mut self,
         module: Module<'ra>,
         key: BindingKey,
@@ -469,7 +468,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         // Ensure that `resolution` isn't borrowed when defining in the module's glob importers,
         // during which the resolution might end up getting re-defined via a glob cycle.
         let (binding, t, warn_ambiguity) = {
-            let resolution = &mut *self.resolution(module, key).borrow_mut();
+            let resolution = &mut *self.resolution_or_default(module, key).borrow_mut();
             let old_binding = resolution.binding();
 
             let t = f(self, resolution);
@@ -497,7 +496,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             };
             if self.is_accessible_from(binding.vis, scope) {
                 let imported_binding = self.import(binding, *import);
-                let _ = self.try_define(
+                let _ = self.try_define_local(
                     import.parent_scope.module,
                     ident,
                     key.ns,
@@ -523,11 +522,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             let dummy_binding = self.import(dummy_binding, import);
             self.per_ns(|this, ns| {
                 let module = import.parent_scope.module;
-                let _ = this.try_define(module, target, ns, dummy_binding, false);
+                let _ = this.try_define_local(module, target, ns, dummy_binding, false);
                 // Don't remove underscores from `single_imports`, they were never added.
                 if target.name != kw::Underscore {
                     let key = BindingKey::new(target, ns);
-                    this.update_resolution(module, key, false, |_, resolution| {
+                    this.update_local_resolution(module, key, false, |_, resolution| {
                         resolution.single_imports.swap_remove(&import);
                     })
                 }
@@ -651,7 +650,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         for module in self.arenas.local_modules().iter() {
             for (key, resolution) in self.resolutions(*module).borrow().iter() {
                 let resolution = resolution.borrow();
-
                 let Some(binding) = resolution.best_binding() else { continue };
 
                 if let NameBindingKind::Import { import, .. } = binding.kind
@@ -903,14 +901,14 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         }
                         // We need the `target`, `source` can be extracted.
                         let imported_binding = this.import(binding, import);
-                        this.define_binding(parent, target, ns, imported_binding);
+                        this.define_binding_local(parent, target, ns, imported_binding);
                         PendingBinding::Ready(Some(imported_binding))
                     }
                     Err(Determinacy::Determined) => {
                         // Don't remove underscores from `single_imports`, they were never added.
                         if target.name != kw::Underscore {
                             let key = BindingKey::new(target, ns);
-                            this.update_resolution(parent, key, false, |_, resolution| {
+                            this.update_local_resolution(parent, key, false, |_, resolution| {
                                 resolution.single_imports.swap_remove(&import);
                             });
                         }
@@ -1202,41 +1200,39 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             });
 
             return if all_ns_failed {
-                let resolutions = match module {
-                    ModuleOrUniformRoot::Module(module) => Some(self.resolutions(module).borrow()),
-                    _ => None,
-                };
-                let resolutions = resolutions.as_ref().into_iter().flat_map(|r| r.iter());
-                let names = resolutions
-                    .filter_map(|(BindingKey { ident: i, .. }, resolution)| {
-                        if i.name == ident.name {
-                            return None;
-                        } // Never suggest the same name
-                        match *resolution.borrow() {
-                            ref resolution
-                                if let Some(name_binding) = resolution.best_binding() =>
-                            {
-                                match name_binding.kind {
-                                    NameBindingKind::Import { binding, .. } => {
-                                        match binding.kind {
-                                            // Never suggest the name that has binding error
-                                            // i.e., the name that cannot be previously resolved
-                                            NameBindingKind::Res(Res::Err) => None,
-                                            _ => Some(i.name),
+                let names = match module {
+                    ModuleOrUniformRoot::Module(module) => {
+                        self.resolutions(module)
+                            .borrow()
+                            .iter()
+                            .filter_map(|(BindingKey { ident: i, .. }, resolution)| {
+                                if i.name == ident.name {
+                                    return None;
+                                } // Never suggest the same name
+
+                                let resolution = resolution.borrow();
+                                if let Some(name_binding) = resolution.best_binding() {
+                                    match name_binding.kind {
+                                        NameBindingKind::Import { binding, .. } => {
+                                            match binding.kind {
+                                                // Never suggest the name that has binding error
+                                                // i.e., the name that cannot be previously resolved
+                                                NameBindingKind::Res(Res::Err) => None,
+                                                _ => Some(i.name),
+                                            }
                                         }
+                                        _ => Some(i.name),
                                     }
-                                    _ => Some(i.name),
+                                } else if resolution.single_imports.is_empty() {
+                                    None
+                                } else {
+                                    Some(i.name)
                                 }
-                            }
-                            NameResolution { ref single_imports, .. }
-                                if single_imports.is_empty() =>
-                            {
-                                None
-                            }
-                            _ => Some(i.name),
-                        }
-                    })
-                    .collect::<Vec<Symbol>>();
+                            })
+                            .collect()
+                    }
+                    _ => Vec::new(),
+                };
 
                 let lev_suggestion =
                     find_best_match_for_name(&names, ident.name, None).map(|suggestion| {
@@ -1517,10 +1513,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 let imported_binding = self.import(binding, import);
                 let warn_ambiguity = self
                     .resolution(import.parent_scope.module, key)
-                    .borrow()
-                    .binding()
+                    .and_then(|r| r.binding())
                     .is_some_and(|binding| binding.warn_ambiguity_recursive());
-                let _ = self.try_define(
+                let _ = self.try_define_local(
                     import.parent_scope.module,
                     key.ident,
                     key.ns,

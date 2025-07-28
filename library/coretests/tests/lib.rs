@@ -76,6 +76,7 @@
 #![feature(min_specialization)]
 #![feature(never_type)]
 #![feature(next_index)]
+#![feature(non_exhaustive_omitted_patterns_lint)]
 #![feature(numfmt)]
 #![feature(pattern)]
 #![feature(pointer_is_aligned_to)]

@@ -219,3 +219,11 @@ mod null_entire_infer {
         //~^ ptr_as_ptr
     }
 }
+
+#[allow(clippy::transmute_null_to_fn)]
+fn issue15283() {
+    unsafe {
+        let _: fn() = std::mem::transmute(std::ptr::null::<()>() as *const u8);
+        //~^ ptr_as_ptr
+    }
+}

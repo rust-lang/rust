@@ -13,7 +13,7 @@ macro_rules! check {
         compile_error!("ty");
     };
     (const $Trait:path) => {};
-    ([const] $Trait:path) => {};
+    ([const] $Trait:path) => { [const] Trait };
 }
 
 check! { const Trait }

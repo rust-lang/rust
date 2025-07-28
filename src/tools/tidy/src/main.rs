@@ -177,7 +177,7 @@ fn main() {
         check!(unstable_book, &src_path, collected);
 
         check!(
-            ext_tool_checks,
+            extra_checks,
             &root_path,
             &output_directory,
             &ci_info,

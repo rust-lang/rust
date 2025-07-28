@@ -100,7 +100,9 @@ use tracing::{debug, instrument};
 
 use super::matches::BuiltMatchTree;
 use crate::builder::{BlockAnd, BlockAndExtension, BlockFrame, Builder, CFG};
-use crate::errors::{ConstContinueBadConst, ConstContinueUnknownJumpTarget};
+use crate::errors::{
+    ConstContinueBadConst, ConstContinueNotMonomorphicConst, ConstContinueUnknownJumpTarget,
+};
 
 #[derive(Debug)]
 pub(crate) struct Scopes<'tcx> {
@@ -867,7 +869,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             span_bug!(span, "break value must be a scope")
         };
 
-        let constant = match &self.thir[value].kind {
+        let expr = &self.thir[value];
+        let constant = match &expr.kind {
             ExprKind::Adt(box AdtExpr { variant_index, fields, base, .. }) => {
                 assert!(matches!(base, AdtExprBase::None));
                 assert!(fields.is_empty());
@@ -887,7 +890,27 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     ),
                 }
             }
-            _ => self.as_constant(&self.thir[value]),
+
+            ExprKind::Literal { .. }
+            | ExprKind::NonHirLiteral { .. }
+            | ExprKind::ZstLiteral { .. }
+            | ExprKind::NamedConst { .. } => self.as_constant(&self.thir[value]),
+
+            other => {
+                use crate::errors::ConstContinueNotMonomorphicConstReason as Reason;
+
+                let span = expr.span;
+                let reason = match other {
+                    ExprKind::ConstParam { .. } => Reason::ConstantParameter { span },
+                    ExprKind::ConstBlock { .. } => Reason::ConstBlock { span },
+                    _ => Reason::Other { span },
+                };
+
+                self.tcx
+                    .dcx()
+                    .emit_err(ConstContinueNotMonomorphicConst { span: expr.span, reason });
+                return block.unit();
+            }
         };
 
         let break_index = self

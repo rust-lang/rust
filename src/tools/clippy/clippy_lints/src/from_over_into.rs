@@ -9,7 +9,7 @@ use clippy_utils::source::SpanRangeExt;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{Visitor, walk_path};
 use rustc_hir::{
-    FnRetTy, GenericArg, GenericArgs, HirId, Impl, ImplItemKind, ImplItemId, Item, ItemKind, PatKind, Path,
+    FnRetTy, GenericArg, GenericArgs, HirId, Impl, ImplItemId, ImplItemKind, Item, ItemKind, PatKind, Path,
     PathSegment, Ty, TyKind,
 };
 use rustc_lint::{LateContext, LateLintPass};

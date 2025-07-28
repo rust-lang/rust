@@ -280,7 +280,7 @@ fn expand_macro<'cx>(
             // Retry and emit a better error.
             let (span, guar) =
                 diagnostics::failed_to_match_macro(cx.psess(), sp, def_span, name, arg, rules);
-            cx.trace_macros_diag();
+            cx.macro_error_and_trace_macros_diag();
             DummyResult::any(span, guar)
         }
     }

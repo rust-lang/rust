@@ -6,7 +6,7 @@ fn main() {
     //   the error should point to `become g(x)`,
     //   but tail calls mess up the backtrace it seems like...
     f(0);
-    //~^ error: Undefined Behavior: calling a function with argument of type i32 passing data of type u32
+    //~^ error: type i32 passing argument of type u32
 }
 
 fn f(x: u32) {

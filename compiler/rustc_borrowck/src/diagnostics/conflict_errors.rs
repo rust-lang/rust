@@ -1290,6 +1290,58 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 span,
                 format!("if `{ty}` implemented `Clone`, you could clone the value"),
             );
+        } else if let ty::Adt(_, _) = ty.kind()
+            && let Some(clone_trait) = self.infcx.tcx.lang_items().clone_trait()
+        {
+            // For cases like `Option<NonClone>`, where `Option<T>: Clone` if `T: Clone`, we point
+            // at the types that should be `Clone`.
+            let ocx = ObligationCtxt::new_with_diagnostics(self.infcx);
+            let cause = ObligationCause::misc(expr.span, self.mir_def_id());
+            ocx.register_bound(cause, self.infcx.param_env, ty, clone_trait);
+            let errors = ocx.select_all_or_error();
+            if errors.iter().all(|error| {
+                match error.obligation.predicate.as_clause().and_then(|c| c.as_trait_clause()) {
+                    Some(clause) => match clause.self_ty().skip_binder().kind() {
+                        ty::Adt(def, _) => def.did().is_local() && clause.def_id() == clone_trait,
+                        _ => false,
+                    },
+                    None => false,
+                }
+            }) {
+                let mut type_spans = vec![];
+                let mut types = FxIndexSet::default();
+                for clause in errors
+                    .iter()
+                    .filter_map(|e| e.obligation.predicate.as_clause())
+                    .filter_map(|c| c.as_trait_clause())
+                {
+                    let ty::Adt(def, _) = clause.self_ty().skip_binder().kind() else { continue };
+                    type_spans.push(self.infcx.tcx.def_span(def.did()));
+                    types.insert(
+                        self.infcx
+                            .tcx
+                            .short_string(clause.self_ty().skip_binder(), &mut err.long_ty_path()),
+                    );
+                }
+                let mut span: MultiSpan = type_spans.clone().into();
+                for sp in type_spans {
+                    span.push_span_label(sp, "consider implementing `Clone` for this type");
+                }
+                span.push_span_label(expr.span, "you could clone this value");
+                let types: Vec<_> = types.into_iter().collect();
+                let msg = match &types[..] {
+                    [only] => format!("`{only}`"),
+                    [head @ .., last] => format!(
+                        "{} and `{last}`",
+                        head.iter().map(|t| format!("`{t}`")).collect::<Vec<_>>().join(", ")
+                    ),
+                    [] => unreachable!(),
+                };
+                err.span_note(
+                    span,
+                    format!("if {msg} implemented `Clone`, you could clone the value"),
+                );
+            }
         }
     }
 
