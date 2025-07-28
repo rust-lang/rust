@@ -17,6 +17,7 @@ exclude_titles = [ # exclude syncs from subtree in rust-lang/rust
     "sync from downstream",
     "Sync from rust",
     "sync from rust",
+    "Rustc pull update",
 ]
 labels = ["has-merge-commits", "S-waiting-on-author"]
 
