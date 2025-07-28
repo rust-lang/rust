@@ -27,7 +27,7 @@ use rustc_middle::metadata::ModChild;
 use rustc_middle::ty::{Feed, Visibility};
 use rustc_middle::{bug, span_bug};
 use rustc_span::hygiene::{ExpnId, LocalExpnId, MacroKind};
-use rustc_span::{Ident, Span, Symbol, kw, sym};
+use rustc_span::{Ident, Macros20NormalizedIdent, Span, Symbol, kw, sym};
 use thin_vec::ThinVec;
 use tracing::debug;
 
@@ -969,7 +969,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
         self.r.potentially_unused_imports.push(import);
         let imported_binding = self.r.import(binding, import);
         if parent == self.r.graph_root {
-            let ident = ident.normalize_to_macros_2_0();
+            let ident = Macros20NormalizedIdent::new(ident);
             if let Some(entry) = self.r.extern_prelude.get(&ident)
                 && expansion != LocalExpnId::ROOT
                 && orig_name.is_some()

@@ -71,7 +71,7 @@ use rustc_query_system::ich::StableHashingContext;
 use rustc_session::lint::builtin::PRIVATE_MACRO_USE;
 use rustc_session::lint::{BuiltinLintDiag, LintBuffer};
 use rustc_span::hygiene::{ExpnId, LocalExpnId, MacroKind, SyntaxContext, Transparency};
-use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
+use rustc_span::{DUMMY_SP, Ident, Macros20NormalizedIdent, Span, Symbol, kw, sym};
 use smallvec::{SmallVec, smallvec};
 use tracing::debug;
 
@@ -531,7 +531,7 @@ impl ModuleKind {
 struct BindingKey {
     /// The identifier for the binding, always the `normalize_to_macros_2_0` version of the
     /// identifier.
-    ident: Ident,
+    ident: Macros20NormalizedIdent,
     ns: Namespace,
     /// When we add an underscore binding (with ident `_`) to some module, this field has
     /// a non-zero value that uniquely identifies this binding in that module.
@@ -543,7 +543,7 @@ struct BindingKey {
 
 impl BindingKey {
     fn new(ident: Ident, ns: Namespace) -> Self {
-        BindingKey { ident: ident.normalize_to_macros_2_0(), ns, disambiguator: 0 }
+        BindingKey { ident: Macros20NormalizedIdent::new(ident), ns, disambiguator: 0 }
     }
 
     fn new_disambiguated(
@@ -552,7 +552,7 @@ impl BindingKey {
         disambiguator: impl FnOnce() -> u32,
     ) -> BindingKey {
         let disambiguator = if ident.name == kw::Underscore { disambiguator() } else { 0 };
-        BindingKey { ident: ident.normalize_to_macros_2_0(), ns, disambiguator }
+        BindingKey { ident: Macros20NormalizedIdent::new(ident), ns, disambiguator }
     }
 }
 
@@ -659,7 +659,7 @@ impl<'ra> Module<'ra> {
     fn for_each_child<'tcx, R: AsRef<Resolver<'ra, 'tcx>>>(
         self,
         resolver: &R,
-        mut f: impl FnMut(&R, Ident, Namespace, NameBinding<'ra>),
+        mut f: impl FnMut(&R, Macros20NormalizedIdent, Namespace, NameBinding<'ra>),
     ) {
         for (key, name_resolution) in resolver.as_ref().resolutions(self).borrow().iter() {
             if let Some(binding) = name_resolution.borrow().best_binding() {
@@ -671,7 +671,7 @@ impl<'ra> Module<'ra> {
     fn for_each_child_mut<'tcx, R: AsMut<Resolver<'ra, 'tcx>>>(
         self,
         resolver: &mut R,
-        mut f: impl FnMut(&mut R, Ident, Namespace, NameBinding<'ra>),
+        mut f: impl FnMut(&mut R, Macros20NormalizedIdent, Namespace, NameBinding<'ra>),
     ) {
         for (key, name_resolution) in resolver.as_mut().resolutions(self).borrow().iter() {
             if let Some(binding) = name_resolution.borrow().best_binding() {
@@ -690,7 +690,7 @@ impl<'ra> Module<'ra> {
                     return;
                 }
                 if let Res::Def(DefKind::Trait | DefKind::TraitAlias, def_id) = binding.res() {
-                    collected_traits.push((name, binding, r.as_ref().get_module(def_id)))
+                    collected_traits.push((name.0, binding, r.as_ref().get_module(def_id)))
                 }
             });
             *traits = Some(collected_traits.into_boxed_slice());
@@ -1049,7 +1049,7 @@ pub struct Resolver<'ra, 'tcx> {
     graph_root: Module<'ra>,
 
     prelude: Option<Module<'ra>>,
-    extern_prelude: FxIndexMap<Ident, ExternPreludeEntry<'ra>>,
+    extern_prelude: FxIndexMap<Macros20NormalizedIdent, ExternPreludeEntry<'ra>>,
 
     /// N.B., this is used only for better diagnostics, not name resolution itself.
     field_names: LocalDefIdMap<Vec<Ident>>,
@@ -1482,19 +1482,28 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let mut invocation_parents = FxHashMap::default();
         invocation_parents.insert(LocalExpnId::ROOT, InvocationParent::ROOT);
 
-        let mut extern_prelude: FxIndexMap<Ident, ExternPreludeEntry<'_>> = tcx
+        let mut extern_prelude: FxIndexMap<Macros20NormalizedIdent, ExternPreludeEntry<'_>> = tcx
             .sess
             .opts
             .externs
             .iter()
             .filter(|(_, entry)| entry.add_prelude)
-            .map(|(name, _)| (Ident::from_str(name), Default::default()))
+            .map(|(name, _)| {
+                (
+                    unsafe {
+                        Macros20NormalizedIdent::new_without_normalize(Ident::from_str(name))
+                    },
+                    Default::default(),
+                )
+            })
             .collect();
 
         if !attr::contains_name(attrs, sym::no_core) {
-            extern_prelude.insert(Ident::with_dummy_span(sym::core), Default::default());
+            extern_prelude
+                .insert(Macros20NormalizedIdent::with_dummy_span(sym::core), Default::default());
             if !attr::contains_name(attrs, sym::no_std) {
-                extern_prelude.insert(Ident::with_dummy_span(sym::std), Default::default());
+                extern_prelude
+                    .insert(Macros20NormalizedIdent::with_dummy_span(sym::std), Default::default());
             }
         }
 
@@ -2005,7 +2014,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             // Avoid marking `extern crate` items that refer to a name from extern prelude,
             // but not introduce it, as used if they are accessed from lexical scope.
             if used == Used::Scope {
-                if let Some(entry) = self.extern_prelude.get(&ident.normalize_to_macros_2_0()) {
+                if let Some(entry) = self.extern_prelude.get(&Macros20NormalizedIdent::new(ident)) {
                     if !entry.introduced_by_item && entry.binding == Some(used_binding) {
                         return;
                     }
@@ -2168,7 +2177,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             return None;
         }
 
-        let norm_ident = ident.normalize_to_macros_2_0();
+        let norm_ident = Macros20NormalizedIdent::new(ident);
         let binding = self.extern_prelude.get(&norm_ident).cloned().and_then(|entry| {
             Some(if let Some(binding) = entry.binding {
                 if finalize {
