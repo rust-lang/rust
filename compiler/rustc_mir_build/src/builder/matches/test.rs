@@ -35,7 +35,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
             TestCase::Constant { .. } if match_pair.pattern_ty.is_bool() => TestKind::If,
             TestCase::Constant { .. } if is_switch_ty(match_pair.pattern_ty) => TestKind::SwitchInt,
-            TestCase::Constant { value } => TestKind::Eq { value, ty: match_pair.pattern_ty },
+            TestCase::Constant { value, ty: value_ty } => {
+                TestKind::Eq { value, value_ty, cast_ty: match_pair.pattern_ty }
+            }
 
             TestCase::Range(ref range) => {
                 assert_eq!(range.ty, match_pair.pattern_ty);
@@ -135,17 +137,18 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 self.cfg.terminate(block, self.source_info(match_start_span), terminator);
             }
 
-            TestKind::Eq { value, mut ty } => {
+            TestKind::Eq { value, value_ty, mut cast_ty } => {
                 let tcx = self.tcx;
                 let success_block = target_block(TestBranch::Success);
                 let fail_block = target_block(TestBranch::Failure);
 
-                let mut expect_ty = value.ty();
+                let mut expect_ty = value_ty;
+                let value = Const::Ty(value_ty, ty::Const::new_value(tcx, value, value_ty));
                 let mut expect = self.literal_operand(test.span, value);
 
                 let mut place = place;
                 let mut block = block;
-                match ty.kind() {
+                match cast_ty.kind() {
                     ty::Str => {
                         // String literal patterns may have type `str` if `deref_patterns` is
                         // enabled, in order to allow `deref!("..."): String`. In this case, `value`
@@ -167,7 +170,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             Rvalue::Ref(re_erased, BorrowKind::Shared, place),
                         );
                         place = ref_place;
-                        ty = ref_str_ty;
+                        cast_ty = ref_str_ty;
                     }
                     ty::Adt(def, _) if tcx.is_lang_item(def.did(), LangItem::String) => {
                         if !tcx.features().string_deref_patterns() {
@@ -186,7 +189,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             eq_block,
                             place,
                             Mutability::Not,
-                            ty,
+                            cast_ty,
                             ref_str,
                             test.span,
                         );
@@ -195,10 +198,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         // Similarly, the normal test code should be generated for the `&str`, instead of the `String`.
                         block = eq_block;
                         place = ref_str;
-                        ty = ref_str_ty;
+                        cast_ty = ref_str_ty;
                     }
                     &ty::Pat(base, _) => {
-                        assert_eq!(ty, value.ty());
+                        assert_eq!(cast_ty, value_ty);
                         assert!(base.is_trivially_pure_clone_copy());
 
                         let transmuted_place = self.temp(base, test.span);
@@ -219,14 +222,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                         place = transmuted_place;
                         expect = Operand::Copy(transmuted_expect);
-                        ty = base;
+                        cast_ty = base;
                         expect_ty = base;
                     }
                     _ => {}
                 }
 
-                assert_eq!(expect_ty, ty);
-                if !ty.is_scalar() {
+                assert_eq!(expect_ty, cast_ty);
+                if !cast_ty.is_scalar() {
                     // Use `PartialEq::eq` instead of `BinOp::Eq`
                     // (the binop can only handle primitives)
                     // Make sure that we do *not* call any user-defined code here.
@@ -234,10 +237,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     // comparison defined in `core`.
                     // (Interestingly this means that exhaustiveness analysis relies, for soundness,
                     // on the `PartialEq` impl for `str` to b correct!)
-                    match *ty.kind() {
+                    match *cast_ty.kind() {
                         ty::Ref(_, deref_ty, _) if deref_ty == self.tcx.types.str_ => {}
                         _ => {
-                            span_bug!(source_info.span, "invalid type for non-scalar compare: {ty}")
+                            span_bug!(
+                                source_info.span,
+                                "invalid type for non-scalar compare: {cast_ty}"
+                            )
                         }
                     };
                     self.string_compare(
@@ -276,6 +282,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 };
 
                 if let Some(lo) = range.lo.as_finite() {
+                    let lo = Const::Ty(range.ty, ty::Const::new_value(self.tcx, lo, range.ty));
                     let lo = self.literal_operand(test.span, lo);
                     self.compare(
                         block,
@@ -289,6 +296,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 };
 
                 if let Some(hi) = range.hi.as_finite() {
+                    let hi = Const::Ty(range.ty, ty::Const::new_value(self.tcx, hi, range.ty));
                     let hi = self.literal_operand(test.span, hi);
                     let op = match range.end {
                         RangeEnd::Included => BinOp::Le,
@@ -545,7 +553,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             //
             // FIXME(#29623) we could use PatKind::Range to rule
             // things out here, in some cases.
-            (TestKind::SwitchInt, &TestCase::Constant { value })
+            (TestKind::SwitchInt, &TestCase::Constant { value, .. })
                 if is_switch_ty(match_pair.pattern_ty) =>
             {
                 // An important invariant of candidate sorting is that a candidate
@@ -555,10 +563,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // not to add such values here.
                 let is_covering_range = |test_case: &TestCase<'tcx>| {
                     test_case.as_range().is_some_and(|range| {
-                        matches!(
-                            range.contains(value, self.tcx, self.typing_env()),
-                            None | Some(true)
-                        )
+                        matches!(range.contains(value, self.tcx), None | Some(true))
                     })
                 };
                 let is_conflicting_candidate = |candidate: &&mut Candidate<'tcx>| {
@@ -575,7 +580,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     None
                 } else {
                     fully_matched = true;
-                    let bits = value.eval_bits(self.tcx, self.typing_env());
+                    let bits = value.unwrap_leaf().to_bits_unchecked();
                     Some(TestBranch::Constant(value, bits))
                 }
             }
@@ -585,12 +590,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // the values being tested. (This restricts what values can be
                 // added to the test by subsequent candidates.)
                 fully_matched = false;
-                let not_contained =
-                    sorted_candidates.keys().filter_map(|br| br.as_constant()).copied().all(
-                        |val| {
-                            matches!(range.contains(val, self.tcx, self.typing_env()), Some(false))
-                        },
-                    );
+                let not_contained = sorted_candidates
+                    .keys()
+                    .filter_map(|br| br.as_constant())
+                    .all(|val| matches!(range.contains(val, self.tcx), Some(false)));
 
                 not_contained.then(|| {
                     // No switch values are contained in the pattern range,
@@ -599,9 +602,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 })
             }
 
-            (TestKind::If, TestCase::Constant { value }) => {
+            (TestKind::If, TestCase::Constant { value, .. }) => {
                 fully_matched = true;
-                let value = value.try_eval_bool(self.tcx, self.typing_env()).unwrap_or_else(|| {
+                let value = value.unwrap_leaf().try_to_bool().unwrap_or_else(|_| {
                     span_bug!(test.span, "expected boolean value but got {value:?}")
                 });
                 Some(if value { TestBranch::Success } else { TestBranch::Failure })
@@ -681,16 +684,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     fully_matched = false;
                     // If the testing range does not overlap with pattern range,
                     // the pattern can be matched only if this test fails.
-                    if !test.overlaps(pat, self.tcx, self.typing_env())? {
-                        Some(TestBranch::Failure)
-                    } else {
-                        None
-                    }
+                    if !test.overlaps(pat, self.tcx)? { Some(TestBranch::Failure) } else { None }
                 }
             }
-            (TestKind::Range(range), &TestCase::Constant { value }) => {
+            (TestKind::Range(range), &TestCase::Constant { value, .. }) => {
                 fully_matched = false;
-                if !range.contains(value, self.tcx, self.typing_env())? {
+                if !range.contains(value, self.tcx)? {
                     // `value` is not contained in the testing range,
                     // so `value` can be matched only if this test fails.
                     Some(TestBranch::Failure)
@@ -699,7 +698,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 }
             }
 
-            (TestKind::Eq { value: test_val, .. }, TestCase::Constant { value: case_val }) => {
+            (TestKind::Eq { value: test_val, .. }, TestCase::Constant { value: case_val, .. }) => {
                 if test_val == case_val {
                     fully_matched = true;
                     Some(TestBranch::Success)

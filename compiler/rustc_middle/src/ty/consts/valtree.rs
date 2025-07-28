@@ -2,10 +2,12 @@ use std::fmt;
 use std::ops::Deref;
 
 use rustc_data_structures::intern::Interned;
+use rustc_hir::def::Namespace;
 use rustc_macros::{HashStable, Lift, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 
 use super::ScalarInt;
 use crate::mir::interpret::{ErrorHandled, Scalar};
+use crate::ty::print::{FmtPrinter, PrettyPrinter};
 use crate::ty::{self, Ty, TyCtxt};
 
 /// This datastructure is used to represent the value of constants used in the type system.
@@ -201,5 +203,16 @@ impl<'tcx> rustc_type_ir::inherent::ValueConst<TyCtxt<'tcx>> for Value<'tcx> {
 
     fn valtree(self) -> ValTree<'tcx> {
         self.valtree
+    }
+}
+
+impl<'tcx> fmt::Display for Value<'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        ty::tls::with(move |tcx| {
+            let cv = tcx.lift(*self).unwrap();
+            let mut p = FmtPrinter::new(tcx, Namespace::ValueNS);
+            p.pretty_print_const_valtree(cv, /*print_ty*/ true)?;
+            f.write_str(&p.into_buffer())
+        })
     }
 }

@@ -21,7 +21,7 @@ use rustc_middle::thir::{
 use rustc_middle::ty::adjustment::{PatAdjust, PatAdjustment};
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::{self, CanonicalUserTypeAnnotation, Ty, TyCtxt, TypingMode};
-use rustc_middle::{bug, mir, span_bug};
+use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::DefId;
 use rustc_span::{ErrorGuaranteed, Span};
 use tracing::{debug, instrument};
@@ -161,11 +161,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 format!("found bad range pattern endpoint `{expr:?}` outside of error recovery");
             return Err(self.tcx.dcx().span_delayed_bug(expr.span, msg));
         };
-        // FIXME: `Finite` should probably take a `ValTree` or even a `ScalarInt`
-        // (but it should also be the same type as what `TestCase::Constant` uses, or at least
-        // easy to convert).
-        let value = mir::Const::Ty(ty, ty::Const::new_value(self.tcx, value, ty));
-        Ok(Some(PatRangeBoundary::Finite(value)))
+        Ok(Some(PatRangeBoundary::Finite(ty, value)))
     }
 
     /// Overflowing literals are linted against in a late pass. This is mostly fine, except when we
@@ -238,7 +234,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         let lo = lower_endpoint(lo_expr)?.unwrap_or(PatRangeBoundary::NegInfinity);
         let hi = lower_endpoint(hi_expr)?.unwrap_or(PatRangeBoundary::PosInfinity);
 
-        let cmp = lo.compare_with(hi, ty, self.tcx, self.typing_env);
+        let cmp = lo.compare_with(hi, ty, self.tcx);
         let mut kind = PatKind::Range(Arc::new(PatRange { lo, hi, end, ty }));
         match (end, cmp) {
             // `x..y` where `x < y`.
@@ -247,9 +243,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             (RangeEnd::Included, Some(Ordering::Less)) => {}
             // `x..=y` where `x == y` and `x` and `y` are finite.
             (RangeEnd::Included, Some(Ordering::Equal)) if lo.is_finite() && hi.is_finite() => {
-                // FIXME: silly conversion because not all pattern stuff uses valtrees yet.
-                let mir::Const::Ty(ty, val) = lo.as_finite().unwrap() else { unreachable!() };
-                kind = PatKind::Constant { ty, value: val.to_value().valtree };
+                kind = PatKind::Constant { ty, value: lo.as_finite().unwrap() };
             }
             // `..=x` where `x == ty::MIN`.
             (RangeEnd::Included, Some(Ordering::Equal)) if !lo.is_finite() => {}

@@ -12,7 +12,6 @@ use rustc_hir::def_id::LocalDefId;
 use rustc_span::source_map::Spanned;
 use rustc_type_ir::{ConstKind, TypeFolder, VisitorResult, try_visit};
 
-use super::print::PrettyPrinter;
 use super::{GenericArg, GenericArgKind, Pattern, Region};
 use crate::mir::PlaceElem;
 use crate::ty::print::{FmtPrinter, Printer, with_no_trimmed_paths};
@@ -168,15 +167,11 @@ impl<'tcx> fmt::Debug for ty::Const<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // If this is a value, we spend some effort to make it look nice.
         if let ConstKind::Value(cv) = self.kind() {
-            return ty::tls::with(move |tcx| {
-                let cv = tcx.lift(cv).unwrap();
-                let mut p = FmtPrinter::new(tcx, Namespace::ValueNS);
-                p.pretty_print_const_valtree(cv, /*print_ty*/ true)?;
-                f.write_str(&p.into_buffer())
-            });
+            write!(f, "{}", cv)
+        } else {
+            // Fall back to something verbose.
+            write!(f, "{:?}", self.kind())
         }
-        // Fall back to something verbose.
-        write!(f, "{:?}", self.kind())
     }
 }
 
