@@ -345,6 +345,7 @@ fn mk_main(cx: &mut TestCtxt<'_>) -> Box<ast::Item> {
         contract: None,
         body: Some(main_body),
         define_opaque: None,
+        eii_impls: ThinVec::new(),
     }));
 
     let main = Box::new(ast::Item {
