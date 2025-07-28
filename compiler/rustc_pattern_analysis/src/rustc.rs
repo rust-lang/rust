@@ -429,8 +429,8 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
     ) -> MaybeInfiniteInt {
         match bdy {
             PatRangeBoundary::NegInfinity => MaybeInfiniteInt::NegInfinity,
-            PatRangeBoundary::Finite(value) => {
-                let bits = value.eval_bits(self.tcx, self.typing_env);
+            PatRangeBoundary::Finite(_ty, value) => {
+                let bits = value.unwrap_leaf().to_bits_unchecked();
                 match *ty.kind() {
                     ty::Int(ity) => {
                         let size = Integer::from_int_ty(&self.tcx, ity).size().bits();
@@ -614,8 +614,8 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                     }
                     ty::Float(fty) => {
                         use rustc_apfloat::Float;
-                        let lo = lo.as_finite().map(|c| c.eval_bits(cx.tcx, cx.typing_env));
-                        let hi = hi.as_finite().map(|c| c.eval_bits(cx.tcx, cx.typing_env));
+                        let lo = lo.as_finite().map(|c| c.unwrap_leaf().to_bits_unchecked());
+                        let hi = hi.as_finite().map(|c| c.unwrap_leaf().to_bits_unchecked());
                         match fty {
                             ty::FloatTy::F16 => {
                                 use rustc_apfloat::ieee::Half;
@@ -723,8 +723,8 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                 };
                 match ScalarInt::try_from_uint(bits, size) {
                     Some(scalar) => {
-                        let value = mir::Const::from_scalar(tcx, scalar.into(), ty.inner());
-                        PatRangeBoundary::Finite(value)
+                        let value = ty::ValTree::from_scalar_int(tcx, scalar);
+                        PatRangeBoundary::Finite(ty.inner(), value)
                     }
                     // The value doesn't fit. Since `x >= 0` and 0 always encodes the minimum value
                     // for a type, the problem isn't that the value is too small. So it must be too
@@ -745,7 +745,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
         } else if range.is_singleton() {
             let lo = cx.hoist_pat_range_bdy(range.lo, ty);
             let value = lo.as_finite().unwrap();
-            value.to_string()
+            ty::Value { ty: ty.inner(), valtree: value }.to_string()
         } else {
             // We convert to an inclusive range for diagnostics.
             let mut end = rustc_hir::RangeEnd::Included;
@@ -756,7 +756,9 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                 // fictitious values after `{u,i}size::MAX` (see [`IntRange::split`] for why we do
                 // this). We show this to the user as `usize::MAX..` which is slightly incorrect but
                 // probably clear enough.
-                lo = PatRangeBoundary::Finite(ty.numeric_max_val(cx.tcx).unwrap());
+                let max = ty.numeric_max_val(cx.tcx).unwrap();
+                let max = ty::ValTree::from_scalar_int(cx.tcx, max.try_to_scalar_int().unwrap());
+                lo = PatRangeBoundary::Finite(ty.inner(), max);
             }
             let hi = if let Some(hi) = range.hi.minus_one() {
                 hi
