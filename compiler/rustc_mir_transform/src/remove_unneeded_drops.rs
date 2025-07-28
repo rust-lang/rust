@@ -5,6 +5,7 @@
 //! `TypingMode::PostAnalysis` to provide more precise type information, especially about opaque
 //! types.
 
+use rustc_hir::LangItem;
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
 use tracing::{debug, trace};
@@ -21,15 +22,25 @@ impl<'tcx> crate::MirPass<'tcx> for RemoveUnneededDrops {
         let mut should_simplify = false;
         for block in body.basic_blocks.as_mut() {
             let terminator = block.terminator_mut();
-            if let TerminatorKind::Drop { place, target, .. } = terminator.kind {
-                let ty = place.ty(&body.local_decls, tcx);
-                if ty.ty.needs_drop(tcx, typing_env) {
-                    continue;
+            let (ty, target) = match terminator.kind {
+                TerminatorKind::Drop { place, target, .. } => {
+                    (place.ty(&body.local_decls, tcx).ty, target)
                 }
-                debug!("SUCCESS: replacing `drop` with goto({:?})", target);
-                terminator.kind = TerminatorKind::Goto { target };
-                should_simplify = true;
+                TerminatorKind::Call { ref func, target: Some(target), .. }
+                    if let Some((def_id, generics)) = func.const_fn_def()
+                        && tcx.is_lang_item(def_id, LangItem::DropInPlace) =>
+                {
+                    (generics.type_at(0), target)
+                }
+                _ => continue,
+            };
+
+            if ty.needs_drop(tcx, typing_env) {
+                continue;
             }
+            debug!("SUCCESS: replacing `drop` with goto({:?})", target);
+            terminator.kind = TerminatorKind::Goto { target };
+            should_simplify = true;
         }
 
         // if we applied optimizations, we potentially have some cfg to cleanup to
