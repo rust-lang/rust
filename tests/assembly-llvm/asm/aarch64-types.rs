@@ -445,7 +445,6 @@ check!(vreg_low16_ptr ptr vreg_low16 "fmov" "s");
 // CHECK: //NO_APP
 check!(vreg_ptr ptr vreg "fmov" "s");
 
-
 // CHECK-LABEL: {{("#)?}}v0_f128{{"?}}
 // CHECK: //APP
 // CHECK: fmov s0, s0

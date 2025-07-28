@@ -13,7 +13,6 @@ use minicore::*;
 
 type ptr = *const i16;
 
-
 extern "C" {
     fn extern_func();
     static extern_static: i8;
@@ -128,6 +127,7 @@ checkb!(reg_i8b i8 reg);
 // CHECK: mov r5, r5
 // CHECK: ;NO_APP
 check_reg!(r5_i16 i16 "r5");
+
 // CHECK-LABEL: r5_i8:
 // CHECK: ;APP
 // CHECK: mov r5, r5
