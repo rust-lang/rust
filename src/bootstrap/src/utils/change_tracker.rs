@@ -486,4 +486,9 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Warning,
         summary: "Removed `rust.description` and `llvm.ccache` as it was deprecated in #137723 and #136941 long time ago.",
     },
+    ChangeInfo {
+        change_id: 144563,
+        severity: ChangeSeverity::Warning,
+        summary: "Removed `build.compiletest-use-stage0-libtest` as `compiletest` is now considered a staged `ToolStd` tool. The possibility to run `compiletest`-managed test suites or `compiletest` unit tests against a stage 0 compiler is retained, but instead of `COMPILETEST_FORCE_STAGE0` env var, it is now a proper config option `build.compiletest-force-stage0`.",
+    },
 ];
