@@ -3163,6 +3163,17 @@ pub const unsafe fn copysignf64(x: f64, y: f64) -> f64;
 #[rustc_intrinsic]
 pub const unsafe fn copysignf128(x: f128, y: f128) -> f128;
 
+/// Generates the LLVM body for the automatic differentiation of `f` using Enzyme,
+/// with `df` as the derivative function and `args` as its arguments.
+///
+/// Used internally as the body of `df` when expanding the `#[autodiff_forward]`
+/// and `#[autodiff_reverse]` attribute macros.
+///
+/// Type Parameters:
+/// - `F`: The original function to differentiate. Must be a function item.
+/// - `G`: The derivative function. Must be a function item.
+/// - `T`: A tuple of arguments passed to `df`.
+/// - `R`: The return type of the derivative function.
 #[rustc_nounwind]
 #[rustc_intrinsic]
 pub const fn enzyme_autodiff<F, G, T: crate::marker::Tuple, R>(f: F, df: G, args: T) -> R;
