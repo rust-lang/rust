@@ -13,7 +13,6 @@ edition = "2024"
 
 [dependencies]
 itertools = "0.14.0"
-lazy_static = "1.4.0"
 proc-macro2 = "1.0"
 quote = "1.0"
 regex = "1.5"

@@ -10,7 +10,7 @@ use crate::ty::{
 };
 use crate::{Error, Opaque, Span, Symbol};
 
-/// The SMIR representation of a single function.
+/// The rustc_public's IR representation of a single function.
 #[derive(Clone, Debug, Serialize)]
 pub struct Body {
     pub blocks: Vec<BasicBlock>,
@@ -654,9 +654,7 @@ impl Rvalue {
                 )),
                 AggregateKind::Adt(def, _, ref args, _, _) => Ok(def.ty_with_args(args)),
                 AggregateKind::Closure(def, ref args) => Ok(Ty::new_closure(def, args.clone())),
-                AggregateKind::Coroutine(def, ref args, mov) => {
-                    Ok(Ty::new_coroutine(def, args.clone(), mov))
-                }
+                AggregateKind::Coroutine(def, ref args) => Ok(Ty::new_coroutine(def, args.clone())),
                 AggregateKind::CoroutineClosure(def, ref args) => {
                     Ok(Ty::new_coroutine_closure(def, args.clone()))
                 }
@@ -674,8 +672,7 @@ pub enum AggregateKind {
     Tuple,
     Adt(AdtDef, VariantIdx, GenericArgs, Option<UserTypeAnnotationIndex>, Option<FieldIdx>),
     Closure(ClosureDef, GenericArgs),
-    // FIXME(rustc_public): Movability here is redundant
-    Coroutine(CoroutineDef, GenericArgs, Movability),
+    Coroutine(CoroutineDef, GenericArgs),
     CoroutineClosure(CoroutineClosureDef, GenericArgs),
     RawPtr(Ty, Mutability),
 }
@@ -771,8 +768,8 @@ pub enum VarDebugInfoContents {
 // In MIR ProjectionElem is parameterized on the second Field argument and the Index argument. This
 // is so it can be used for both Places (for which the projection elements are of type
 // ProjectionElem<Local, Ty>) and user-provided type annotations (for which the projection elements
-// are of type ProjectionElem<(), ()>). In SMIR we don't need this generality, so we just use
-// ProjectionElem for Places.
+// are of type ProjectionElem<(), ()>).
+// In rustc_public's IR we don't need this generality, so we just use ProjectionElem for Places.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub enum ProjectionElem {
     /// Dereference projections (e.g. `*_1`) project to the address referenced by the base place.

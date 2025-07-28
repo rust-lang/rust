@@ -176,8 +176,10 @@ LL | |     }
    |
 help: if you need the first element of the iterator, try writing
    |
-LL -     for v in 0..10 {
-LL +     if let Some(v) = (0..10).next() {
+LL ~     if let Some(v) = (0..10).next() {
+LL |
+LL ~         
+LL ~         
    |
 
 error: this loop never actually loops
@@ -232,5 +234,68 @@ LL | |             break 'inner;
 LL | |         }
    | |_________^
 
-error: aborting due to 21 previous errors
+error: this loop never actually loops
+  --> tests/ui/never_loop.rs:471:5
+   |
+LL | /     'a: for _ in 0..1 {
+LL | |
+LL | |         break 'a;
+LL | |     }
+   | |_____^
+   |
+help: if you need the first element of the iterator, try writing
+   |
+LL ~     if let Some(_) = (0..1).next() {
+LL |
+LL ~         
+   |
+
+error: this loop never actually loops
+  --> tests/ui/never_loop.rs:477:5
+   |
+LL | /     'a: for i in 0..1 {
+LL | |
+LL | |         match i {
+LL | |             0 => {
+...  |
+LL | |     }
+   | |_____^
+   |
+help: if you need the first element of the iterator, try writing
+   |
+LL ~     if let Some(i) = (0..1).next() {
+LL |
+...
+LL |                 b *= 2;
+LL ~                 
+LL |             },
+LL |             x => {
+LL |                 b += x;
+LL ~                 
+   |
+
+error: this loop never actually loops
+  --> tests/ui/never_loop.rs:492:5
+   |
+LL | /     for v in 0..10 {
+LL | |
+LL | |         break;
+LL | |         println!("{v}");
+...  |
+LL | |         ()
+LL | |     }
+   | |_____^
+   |
+help: if you need the first element of the iterator, try writing
+   |
+LL ~     if let Some(v) = (0..10).next() {
+LL |
+LL ~         
+LL ~         
+LL |         // This is comment and should be kept
+LL ~         
+LL ~         
+   |
+
+error: aborting due to 24 previous errors
 

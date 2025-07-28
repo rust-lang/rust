@@ -137,7 +137,7 @@ impl<'tcx> ValTreeCreationError<'tcx> {
 
 pub type EvalToAllocationRawResult<'tcx> = Result<ConstAlloc<'tcx>, ErrorHandled>;
 pub type EvalStaticInitializerRawResult<'tcx> = Result<ConstAllocation<'tcx>, ErrorHandled>;
-pub type EvalToConstValueResult<'tcx> = Result<ConstValue<'tcx>, ErrorHandled>;
+pub type EvalToConstValueResult<'tcx> = Result<ConstValue, ErrorHandled>;
 pub type EvalToValTreeResult<'tcx> = Result<ValTree<'tcx>, ValTreeCreationError<'tcx>>;
 
 #[cfg(target_pointer_width = "64")]
@@ -426,7 +426,12 @@ pub enum UndefinedBehaviorInfo<'tcx> {
     /// Trying to set discriminant to the niched variant, but the value does not match.
     InvalidNichedEnumVariantWritten { enum_ty: Ty<'tcx> },
     /// ABI-incompatible argument types.
-    AbiMismatchArgument { caller_ty: Ty<'tcx>, callee_ty: Ty<'tcx> },
+    AbiMismatchArgument {
+        /// The index of the argument whose type is wrong.
+        arg_idx: usize,
+        caller_ty: Ty<'tcx>,
+        callee_ty: Ty<'tcx>,
+    },
     /// ABI-incompatible return types.
     AbiMismatchReturn { caller_ty: Ty<'tcx>, callee_ty: Ty<'tcx> },
 }

@@ -1,5 +1,6 @@
 //@ run-pass
 //@ needs-unwind
+//@ ignore-backends: gcc
 
 use std::cell::RefCell;
 use std::panic;

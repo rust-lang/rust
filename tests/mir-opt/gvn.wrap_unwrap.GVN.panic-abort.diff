@@ -47,3 +47,5 @@
       }
   }
   
+  ALLOC0 (size: 14, align: 1) { .. }
+  

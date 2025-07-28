@@ -73,7 +73,6 @@ pub(crate) const WORKSPACES: &[(&str, ExceptionList, Option<(&[&str], &[&str])>,
     // tidy-alphabetical-start
     ("compiler/rustc_codegen_gcc", EXCEPTIONS_GCC, None, &[]),
     ("src/bootstrap", EXCEPTIONS_BOOTSTRAP, None, &[]),
-    ("src/ci/docker/host-x86_64/test-various/uefi_qemu_test", EXCEPTIONS_UEFI_QEMU_TEST, None, &[]),
     ("src/tools/cargo", EXCEPTIONS_CARGO, None, &["src/tools/cargo"]),
     //("src/tools/miri/test-cargo-miri", &[], None), // FIXME uncomment once all deps are vendored
     //("src/tools/miri/test_dependencies", &[], None), // FIXME uncomment once all deps are vendored
@@ -81,6 +80,7 @@ pub(crate) const WORKSPACES: &[(&str, ExceptionList, Option<(&[&str], &[&str])>,
     ("src/tools/rustbook", EXCEPTIONS_RUSTBOOK, None, &["src/doc/book", "src/doc/reference"]),
     ("src/tools/rustc-perf", EXCEPTIONS_RUSTC_PERF, None, &["src/tools/rustc-perf"]),
     ("src/tools/test-float-parse", EXCEPTIONS, None, &[]),
+    ("tests/run-make/uefi-qemu/uefi_qemu_test", EXCEPTIONS_UEFI_QEMU_TEST, None, &[]),
     // tidy-alphabetical-end
 ];
 
@@ -135,6 +135,7 @@ const EXCEPTIONS_CARGO: ExceptionList = &[
     ("libz-rs-sys", "Zlib"),
     ("normalize-line-endings", "Apache-2.0"),
     ("openssl", "Apache-2.0"),
+    ("ring", "Apache-2.0 AND ISC"),
     ("ryu", "Apache-2.0 OR BSL-1.0"), // BSL is not acceptble, but we use it under Apache-2.0
     ("similar", "Apache-2.0"),
     ("sized-chunks", "MPL-2.0+"),
@@ -378,6 +379,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "serde",
     "serde_derive",
     "serde_json",
+    "serde_path_to_error",
     "sha1",
     "sha2",
     "sharded-slab",
@@ -631,8 +633,8 @@ fn check_proc_macro_dep_list(root: &Path, cargo: &Path, bless: bool, bad: &mut b
     proc_macro_deps.retain(|pkg| !is_proc_macro_pkg(&metadata[pkg]));
 
     let proc_macro_deps: HashSet<_> =
-        proc_macro_deps.into_iter().map(|dep| metadata[dep].name.clone()).collect();
-    let expected = proc_macro_deps::CRATES.iter().map(|s| s.to_string()).collect::<HashSet<_>>();
+        proc_macro_deps.into_iter().map(|dep| metadata[dep].name.as_ref()).collect();
+    let expected = proc_macro_deps::CRATES.iter().copied().collect::<HashSet<_>>();
 
     let needs_blessing = proc_macro_deps.difference(&expected).next().is_some()
         || expected.difference(&proc_macro_deps).next().is_some();
@@ -716,7 +718,7 @@ fn check_runtime_license_exceptions(metadata: &Metadata, bad: &mut bool) {
             // See https://github.com/rust-lang/rust/issues/62620 for more.
             // In general, these should never be added and this exception
             // should not be taken as precedent for any new target.
-            if pkg.name == "fortanix-sgx-abi" && pkg.license.as_deref() == Some("MPL-2.0") {
+            if *pkg.name == "fortanix-sgx-abi" && pkg.license.as_deref() == Some("MPL-2.0") {
                 continue;
             }
 
@@ -732,7 +734,7 @@ fn check_license_exceptions(metadata: &Metadata, exceptions: &[(&str, &str)], ba
     // Validate the EXCEPTIONS list hasn't changed.
     for (name, license) in exceptions {
         // Check that the package actually exists.
-        if !metadata.packages.iter().any(|p| p.name == *name) {
+        if !metadata.packages.iter().any(|p| *p.name == *name) {
             tidy_error!(
                 bad,
                 "could not find exception package `{}`\n\
@@ -741,7 +743,7 @@ fn check_license_exceptions(metadata: &Metadata, exceptions: &[(&str, &str)], ba
             );
         }
         // Check that the license hasn't changed.
-        for pkg in metadata.packages.iter().filter(|p| p.name == *name) {
+        for pkg in metadata.packages.iter().filter(|p| *p.name == *name) {
             match &pkg.license {
                 None => {
                     if *license == NON_STANDARD_LICENSE
@@ -816,9 +818,9 @@ fn check_permitted_dependencies(
                 let Ok(version) = Version::parse(version) else {
                     return false;
                 };
-                pkg.name == name && pkg.version == version
+                *pkg.name == name && pkg.version == version
             } else {
-                pkg.name == permitted
+                *pkg.name == permitted
             }
         }
         if !deps.iter().any(|dep_id| compare(pkg_from_id(metadata, dep_id), permitted)) {
@@ -866,7 +868,7 @@ fn check_permitted_dependencies(
 
 /// Finds a package with the given name.
 fn pkg_from_name<'a>(metadata: &'a Metadata, name: &'static str) -> &'a Package {
-    let mut i = metadata.packages.iter().filter(|p| p.name == name);
+    let mut i = metadata.packages.iter().filter(|p| *p.name == name);
     let result =
         i.next().unwrap_or_else(|| panic!("could not find package `{name}` in package list"));
     assert!(i.next().is_none(), "more than one package found for `{name}`");

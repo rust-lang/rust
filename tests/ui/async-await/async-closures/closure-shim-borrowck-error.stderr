@@ -1,14 +1,13 @@
 error[E0507]: cannot move out of `x` which is behind a mutable reference
   --> $DIR/closure-shim-borrowck-error.rs:11:18
    |
+LL | fn hello(x: Ty) {
+   |             -- move occurs because `x` has type `Ty`, which does not implement the `Copy` trait
 LL |     needs_fn_mut(async || {
    |                  ^^^^^^^^ `x` is moved here
 LL |
 LL |         x.hello();
-   |         -
-   |         |
-   |         variable moved due to use in coroutine
-   |         move occurs because `x` has type `Ty`, which does not implement the `Copy` trait
+   |         - variable moved due to use in coroutine
    |
 note: if `Ty` implemented `Clone`, you could clone the value
   --> $DIR/closure-shim-borrowck-error.rs:17:1

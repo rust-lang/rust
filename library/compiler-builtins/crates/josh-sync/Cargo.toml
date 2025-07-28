@@ -1,8 +1,0 @@
-[package]
-name = "josh-sync"
-edition = "2024"
-publish = false
-
-[dependencies]
-directories = "6.0.0"
-regex-lite = "0.1.6"

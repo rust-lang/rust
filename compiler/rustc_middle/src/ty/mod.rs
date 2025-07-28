@@ -2024,7 +2024,10 @@ impl<'tcx> TyCtxt<'tcx> {
             && let Some(def_id) = def_id.as_local()
             && let outer = self.def_span(def_id).ctxt().outer_expn_data()
             && matches!(outer.kind, ExpnKind::Macro(MacroKind::Derive, _))
-            && self.has_attr(outer.macro_def_id.unwrap(), sym::rustc_builtin_macro)
+            && find_attr!(
+                self.get_all_attrs(outer.macro_def_id.unwrap()),
+                AttributeKind::RustcBuiltinMacro { .. }
+            )
         {
             true
         } else {

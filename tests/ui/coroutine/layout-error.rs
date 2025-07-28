@@ -17,6 +17,7 @@ impl<F: Future> Task<F> {
 }
 
 pub type F = impl Future;
+
 #[define_opaque(F)]
 fn foo()
 where

@@ -27,7 +27,7 @@
 //! it's usually never invoked in this way.
 
 use rustc_middle::mir::{Body, START_BLOCK, TerminatorKind};
-use rustc_middle::ty::{TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{TyCtxt, TypeFlags, TypeVisitableExt};
 use rustc_trait_selection::traits;
 use tracing::trace;
 
@@ -36,14 +36,23 @@ use crate::pass_manager::MirPass;
 pub(crate) struct ImpossiblePredicates;
 
 impl<'tcx> MirPass<'tcx> for ImpossiblePredicates {
+    #[tracing::instrument(level = "trace", skip(self, tcx, body))]
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-        let predicates = tcx
-            .predicates_of(body.source.def_id())
-            .predicates
-            .iter()
-            .filter_map(|(p, _)| if p.is_global() { Some(*p) } else { None });
-        if traits::impossible_predicates(tcx, traits::elaborate(tcx, predicates).collect()) {
-            trace!("found unsatisfiable predicates for {:?}", body.source);
+        tracing::trace!(def_id = ?body.source.def_id());
+        let predicates = tcx.predicates_of(body.source.def_id()).instantiate_identity(tcx);
+        tracing::trace!(?predicates);
+        let predicates = predicates.predicates.into_iter().filter(|p| {
+            !p.has_type_flags(
+                // Only consider global clauses to simplify.
+                TypeFlags::HAS_FREE_LOCAL_NAMES
+                // Clauses that refer to unevaluated constants as they cause cycles.
+                | TypeFlags::HAS_CT_PROJECTION,
+            )
+        });
+        let predicates: Vec<_> = traits::elaborate(tcx, predicates).collect();
+        tracing::trace!(?predicates);
+        if predicates.references_error() || traits::impossible_predicates(tcx, predicates) {
+            trace!("found unsatisfiable predicates");
             // Clear the body to only contain a single `unreachable` statement.
             let bbs = body.basic_blocks.as_mut();
             bbs.raw.truncate(1);

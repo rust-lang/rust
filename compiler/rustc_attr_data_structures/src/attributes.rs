@@ -157,6 +157,19 @@ pub enum UsedBy {
     Linker,
 }
 
+#[derive(Encodable, Decodable, Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(HashStable_Generic, PrintAttribute)]
+pub enum MacroUseArgs {
+    UseAll,
+    UseSpecific(ThinVec<Ident>),
+}
+
+impl Default for MacroUseArgs {
+    fn default() -> Self {
+        Self::UseSpecific(ThinVec::new())
+    }
+}
+
 #[derive(Debug, Clone, Encodable, Decodable, HashStable_Generic)]
 pub struct StrippedCfgItem<ModId = DefId> {
     pub parent_module: ModId,
@@ -234,6 +247,7 @@ pub enum CfgEntry {
 pub enum AttributeKind {
     // tidy-alphabetical-start
     /// Represents `#[align(N)]`.
+    // FIXME(#82232, #143834): temporarily renamed to mitigate `#[align]` nameres ambiguity
     Align { align: Align, span: Span },
 
     /// Represents `#[rustc_allow_const_fn_unstable]`.
@@ -350,8 +364,14 @@ pub enum AttributeKind {
     /// Represents `#[loop_match]`.
     LoopMatch(Span),
 
+    /// Represents `#[macro_escape]`.
+    MacroEscape(Span),
+
     /// Represents `#[rustc_macro_transparency]`.
     MacroTransparency(Transparency),
+
+    /// Represents `#[macro_use]`.
+    MacroUse { span: Span, arguments: MacroUseArgs },
 
     /// Represents `#[marker]`.
     Marker(Span),
@@ -396,11 +416,23 @@ pub enum AttributeKind {
     /// Represents `#[pointee]`
     Pointee(Span),
 
+    /// Represents `#[proc_macro]`
+    ProcMacro(Span),
+
+    /// Represents `#[proc_macro_attribute]`
+    ProcMacroAttribute(Span),
+
+    /// Represents `#[proc_macro_derive]`
+    ProcMacroDerive { trait_name: Symbol, helper_attrs: ThinVec<Symbol>, span: Span },
+
     /// Represents `#[rustc_pub_transparent]` (used by the `repr_transparent_external_private_fields` lint).
     PubTransparent(Span),
 
     /// Represents [`#[repr]`](https://doc.rust-lang.org/stable/reference/type-layout.html#representations).
     Repr { reprs: ThinVec<(ReprAttr, Span)>, first_span: Span },
+
+    /// Represents `#[rustc_builtin_macro]`.
+    RustcBuiltinMacro { builtin_name: Option<Symbol>, helper_attrs: ThinVec<Symbol>, span: Span },
 
     /// Represents `#[rustc_layout_scalar_valid_range_end]`.
     RustcLayoutScalarValidRangeEnd(Box<u128>, Span),

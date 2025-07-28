@@ -2,6 +2,8 @@
 // FIXME: broken codegen on big-endian (https://github.com/rust-lang/rust/issues/127205)
 // This should be merged into `simd-bitmask` once that's fixed.
 //@ ignore-endian-big
+//@ ignore-backends: gcc
+
 #![feature(repr_simd, core_intrinsics)]
 
 #[path = "../../auxiliary/minisimd.rs"]

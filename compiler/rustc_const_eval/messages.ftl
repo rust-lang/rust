@@ -128,14 +128,14 @@ const_eval_frame_note_inner = inside {$where_ ->
 
 const_eval_frame_note_last = the failure occurred here
 
+const_eval_incompatible_arg_types =
+    calling a function whose parameter #{$arg_idx} has type {$callee_ty} passing argument of type {$caller_ty}
+
 const_eval_incompatible_calling_conventions =
     calling a function with calling convention "{$callee_conv}" using calling convention "{$caller_conv}"
 
 const_eval_incompatible_return_types =
     calling a function with return type {$callee_ty} passing return place of type {$caller_ty}
-
-const_eval_incompatible_types =
-    calling a function with argument of type {$callee_ty} passing data of type {$caller_ty}
 
 const_eval_interior_mutable_borrow_escaping =
     interior mutable shared borrows of temporaries that have their lifetime extended until the end of the program are not allowed

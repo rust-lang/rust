@@ -20,6 +20,7 @@
     "rust-analyzer.cargo.buildScripts.overrideCommand": [
         "./miri",
         "check",
+        "--no-default-features",
         "--message-format=json",
     ],
 }

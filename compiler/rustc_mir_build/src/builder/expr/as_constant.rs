@@ -3,7 +3,7 @@
 use rustc_abi::Size;
 use rustc_ast as ast;
 use rustc_hir::LangItem;
-use rustc_middle::mir::interpret::{Allocation, CTFE_ALLOC_SALT, LitToConstInput, Scalar};
+use rustc_middle::mir::interpret::{CTFE_ALLOC_SALT, LitToConstInput, Scalar};
 use rustc_middle::mir::*;
 use rustc_middle::thir::*;
 use rustc_middle::ty::{
@@ -120,17 +120,18 @@ fn lit_to_mir_constant<'tcx>(tcx: TyCtxt<'tcx>, lit_input: LitToConstInput<'tcx>
 
     let value = match (lit, lit_ty.kind()) {
         (ast::LitKind::Str(s, _), ty::Ref(_, inner_ty, _)) if inner_ty.is_str() => {
-            let s = s.as_str();
-            let allocation = Allocation::from_bytes_byte_aligned_immutable(s.as_bytes(), ());
-            let allocation = tcx.mk_const_alloc(allocation);
-            ConstValue::Slice { data: allocation, meta: allocation.inner().size().bytes() }
+            let s = s.as_str().as_bytes();
+            let len = s.len();
+            let allocation = tcx.allocate_bytes_dedup(s, CTFE_ALLOC_SALT);
+            ConstValue::Slice { alloc_id: allocation, meta: len.try_into().unwrap() }
         }
-        (ast::LitKind::ByteStr(data, _), ty::Ref(_, inner_ty, _))
+        (ast::LitKind::ByteStr(byte_sym, _), ty::Ref(_, inner_ty, _))
             if matches!(inner_ty.kind(), ty::Slice(_)) =>
         {
-            let allocation = Allocation::from_bytes_byte_aligned_immutable(data.as_byte_str(), ());
-            let allocation = tcx.mk_const_alloc(allocation);
-            ConstValue::Slice { data: allocation, meta: allocation.inner().size().bytes() }
+            let data = byte_sym.as_byte_str();
+            let len = data.len();
+            let allocation = tcx.allocate_bytes_dedup(data, CTFE_ALLOC_SALT);
+            ConstValue::Slice { alloc_id: allocation, meta: len.try_into().unwrap() }
         }
         (ast::LitKind::ByteStr(byte_sym, _), ty::Ref(_, inner_ty, _)) if inner_ty.is_array() => {
             let id = tcx.allocate_bytes_dedup(byte_sym.as_byte_str(), CTFE_ALLOC_SALT);
@@ -138,10 +139,10 @@ fn lit_to_mir_constant<'tcx>(tcx: TyCtxt<'tcx>, lit_input: LitToConstInput<'tcx>
         }
         (ast::LitKind::CStr(byte_sym, _), ty::Ref(_, inner_ty, _)) if matches!(inner_ty.kind(), ty::Adt(def, _) if tcx.is_lang_item(def.did(), LangItem::CStr)) =>
         {
-            let allocation =
-                Allocation::from_bytes_byte_aligned_immutable(byte_sym.as_byte_str(), ());
-            let allocation = tcx.mk_const_alloc(allocation);
-            ConstValue::Slice { data: allocation, meta: allocation.inner().size().bytes() }
+            let data = byte_sym.as_byte_str();
+            let len = data.len();
+            let allocation = tcx.allocate_bytes_dedup(data, CTFE_ALLOC_SALT);
+            ConstValue::Slice { alloc_id: allocation, meta: len.try_into().unwrap() }
         }
         (ast::LitKind::Byte(n), ty::Uint(ty::UintTy::U8)) => {
             ConstValue::Scalar(Scalar::from_uint(n, Size::from_bytes(1)))

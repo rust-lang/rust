@@ -59,9 +59,8 @@ fn get_const_name_and_ty_name(
 
 pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, cast_expr: &Expr<'_>, cast_from: Ty<'_>, cast_to: Ty<'_>) {
     // We allow casts from any function type to any function type.
-    match cast_to.kind() {
-        ty::FnDef(..) | ty::FnPtr(..) => return,
-        _ => { /* continue to checks */ },
+    if cast_to.is_fn() {
+        return;
     }
 
     if let ty::FnDef(def_id, generics) = cast_from.kind()
