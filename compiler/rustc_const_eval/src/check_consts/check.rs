@@ -714,10 +714,10 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
 
     fn visit_operand(&mut self, op: &Operand<'tcx>, location: Location) {
         self.super_operand(op, location);
-        if let Operand::Constant(c) = op {
-            if let Some(def_id) = c.check_static_ptr(self.tcx) {
-                self.check_static(def_id, self.span);
-            }
+        if let Operand::Constant(c) = op
+            && let Some(def_id) = c.check_static_ptr(self.tcx)
+        {
+            self.check_static(def_id, self.span);
         }
     }
 

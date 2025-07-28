@@ -204,12 +204,10 @@ where
                 // Something like `fn() {my_method}` type of the method
                 // `impl Pub<Priv> { pub fn my_method() {} }` is considered a private type,
                 // so we need to visit the self type additionally.
-                if let Some(assoc_item) = tcx.opt_associated_item(def_id) {
-                    if let Some(impl_def_id) = assoc_item.impl_container(tcx) {
-                        try_visit!(
-                            tcx.type_of(impl_def_id).instantiate_identity().visit_with(self)
-                        );
-                    }
+                if let Some(assoc_item) = tcx.opt_associated_item(def_id)
+                    && let Some(impl_def_id) = assoc_item.impl_container(tcx)
+                {
+                    try_visit!(tcx.type_of(impl_def_id).instantiate_identity().visit_with(self));
                 }
             }
             ty::Alias(kind @ (ty::Inherent | ty::Free | ty::Projection), data) => {
@@ -734,6 +732,7 @@ impl<'tcx> Visitor<'tcx> for EmbargoVisitor<'tcx> {
                         if let Some(ctor_def_id) = variant.data.ctor_def_id() {
                             self.update(ctor_def_id, variant_ev, Level::Reachable);
                         }
+
                         for field in variant.data.fields() {
                             self.update(field.def_id, variant_ev, Level::Reachable);
                             self.reach(field.def_id, variant_ev).ty();

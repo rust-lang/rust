@@ -562,20 +562,19 @@ declare_lint_pass!(PathStatements => [PATH_STATEMENTS]);
 
 impl<'tcx> LateLintPass<'tcx> for PathStatements {
     fn check_stmt(&mut self, cx: &LateContext<'_>, s: &hir::Stmt<'_>) {
-        if let hir::StmtKind::Semi(expr) = s.kind {
-            if let hir::ExprKind::Path(_) = expr.kind {
-                let ty = cx.typeck_results().expr_ty(expr);
-                if ty.needs_drop(cx.tcx, cx.typing_env()) {
-                    let sub = if let Ok(snippet) = cx.sess().source_map().span_to_snippet(expr.span)
-                    {
-                        PathStatementDropSub::Suggestion { span: s.span, snippet }
-                    } else {
-                        PathStatementDropSub::Help { span: s.span }
-                    };
-                    cx.emit_span_lint(PATH_STATEMENTS, s.span, PathStatementDrop { sub })
+        if let hir::StmtKind::Semi(expr) = s.kind
+            && let hir::ExprKind::Path(_) = expr.kind
+        {
+            let ty = cx.typeck_results().expr_ty(expr);
+            if ty.needs_drop(cx.tcx, cx.typing_env()) {
+                let sub = if let Ok(snippet) = cx.sess().source_map().span_to_snippet(expr.span) {
+                    PathStatementDropSub::Suggestion { span: s.span, snippet }
                 } else {
-                    cx.emit_span_lint(PATH_STATEMENTS, s.span, PathStatementNoEffect);
-                }
+                    PathStatementDropSub::Help { span: s.span }
+                };
+                cx.emit_span_lint(PATH_STATEMENTS, s.span, PathStatementDrop { sub })
+            } else {
+                cx.emit_span_lint(PATH_STATEMENTS, s.span, PathStatementNoEffect);
             }
         }
     }
@@ -1517,21 +1516,19 @@ impl UnusedDelimLint for UnusedBraces {
                 //      let _: A<{produces_literal!()}>;
                 //      ```
                 // FIXME(const_generics): handle paths when #67075 is fixed.
-                if let [stmt] = inner.stmts.as_slice() {
-                    if let ast::StmtKind::Expr(ref expr) = stmt.kind {
-                        if !Self::is_expr_delims_necessary(expr, ctx, followed_by_block)
-                            && (ctx != UnusedDelimsCtx::AnonConst
-                                || (matches!(expr.kind, ast::ExprKind::Lit(_))
-                                    && !expr.span.from_expansion()))
-                            && ctx != UnusedDelimsCtx::ClosureBody
-                            && !cx.sess().source_map().is_multiline(value.span)
-                            && value.attrs.is_empty()
-                            && !value.span.from_expansion()
-                            && !inner.span.from_expansion()
-                        {
-                            self.emit_unused_delims_expr(cx, value, ctx, left_pos, right_pos, is_kw)
-                        }
-                    }
+                if let [stmt] = inner.stmts.as_slice()
+                    && let ast::StmtKind::Expr(ref expr) = stmt.kind
+                    && !Self::is_expr_delims_necessary(expr, ctx, followed_by_block)
+                    && (ctx != UnusedDelimsCtx::AnonConst
+                        || (matches!(expr.kind, ast::ExprKind::Lit(_))
+                            && !expr.span.from_expansion()))
+                    && ctx != UnusedDelimsCtx::ClosureBody
+                    && !cx.sess().source_map().is_multiline(value.span)
+                    && value.attrs.is_empty()
+                    && !value.span.from_expansion()
+                    && !inner.span.from_expansion()
+                {
+                    self.emit_unused_delims_expr(cx, value, ctx, left_pos, right_pos, is_kw)
                 }
             }
             ast::ExprKind::Let(_, ref expr, _, _) => {

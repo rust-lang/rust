@@ -1973,21 +1973,21 @@ impl<'a> Parser<'a> {
                     format!("expected `,`, or `}}`, found {}", super::token_descr(&self.token));
 
                 // Try to recover extra trailing angle brackets
-                if let TyKind::Path(_, Path { segments, .. }) = &a_var.ty.kind {
-                    if let Some(last_segment) = segments.last() {
-                        let guar = self.check_trailing_angle_brackets(
-                            last_segment,
-                            &[exp!(Comma), exp!(CloseBrace)],
-                        );
-                        if let Some(_guar) = guar {
-                            // Handle a case like `Vec<u8>>,` where we can continue parsing fields
-                            // after the comma
-                            let _ = self.eat(exp!(Comma));
+                if let TyKind::Path(_, Path { segments, .. }) = &a_var.ty.kind
+                    && let Some(last_segment) = segments.last()
+                {
+                    let guar = self.check_trailing_angle_brackets(
+                        last_segment,
+                        &[exp!(Comma), exp!(CloseBrace)],
+                    );
+                    if let Some(_guar) = guar {
+                        // Handle a case like `Vec<u8>>,` where we can continue parsing fields
+                        // after the comma
+                        let _ = self.eat(exp!(Comma));
 
-                            // `check_trailing_angle_brackets` already emitted a nicer error, as
-                            // proven by the presence of `_guar`. We can continue parsing.
-                            return Ok(a_var);
-                        }
+                        // `check_trailing_angle_brackets` already emitted a nicer error, as
+                        // proven by the presence of `_guar`. We can continue parsing.
+                        return Ok(a_var);
                     }
                 }
 
@@ -3034,18 +3034,16 @@ impl<'a> Parser<'a> {
 
                 if let Ok(t) = &ty {
                     // Check for trailing angle brackets
-                    if let TyKind::Path(_, Path { segments, .. }) = &t.kind {
-                        if let Some(segment) = segments.last() {
-                            if let Some(guar) =
-                                this.check_trailing_angle_brackets(segment, &[exp!(CloseParen)])
-                            {
-                                return Ok((
-                                    dummy_arg(segment.ident, guar),
-                                    Trailing::No,
-                                    UsePreAttrPos::No,
-                                ));
-                            }
-                        }
+                    if let TyKind::Path(_, Path { segments, .. }) = &t.kind
+                        && let Some(segment) = segments.last()
+                        && let Some(guar) =
+                            this.check_trailing_angle_brackets(segment, &[exp!(CloseParen)])
+                    {
+                        return Ok((
+                            dummy_arg(segment.ident, guar),
+                            Trailing::No,
+                            UsePreAttrPos::No,
+                        ));
                     }
 
                     if this.token != token::Comma && this.token != token::CloseParen {

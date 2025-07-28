@@ -105,11 +105,11 @@ impl<'tcx> ThirBuildCx<'tcx> {
         //   // ^ error message points at this expression.
         // }
         let mut adjust_span = |expr: &mut Expr<'tcx>| {
-            if let ExprKind::Block { block } = expr.kind {
-                if let Some(last_expr) = self.thir[block].expr {
-                    span = self.thir[last_expr].span;
-                    expr.span = span;
-                }
+            if let ExprKind::Block { block } = expr.kind
+                && let Some(last_expr) = self.thir[block].expr
+            {
+                span = self.thir[last_expr].span;
+                expr.span = span;
             }
         };
 
@@ -956,10 +956,10 @@ impl<'tcx> ThirBuildCx<'tcx> {
                     };
 
                     fn local(expr: &rustc_hir::Expr<'_>) -> Option<hir::HirId> {
-                        if let hir::ExprKind::Path(hir::QPath::Resolved(_, path)) = expr.kind {
-                            if let Res::Local(hir_id) = path.res {
-                                return Some(hir_id);
-                            }
+                        if let hir::ExprKind::Path(hir::QPath::Resolved(_, path)) = expr.kind
+                            && let Res::Local(hir_id) = path.res
+                        {
+                            return Some(hir_id);
                         }
 
                         None
