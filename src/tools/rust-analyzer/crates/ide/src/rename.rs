@@ -12,6 +12,7 @@ use ide_db::{
     source_change::SourceChangeBuilder,
 };
 use itertools::Itertools;
+use std::fmt::Write;
 use stdx::{always, never};
 use syntax::{AstNode, SyntaxKind, SyntaxNode, TextRange, TextSize, ast};
 
@@ -459,35 +460,22 @@ fn rename_self_to_param(
 }
 
 fn text_edit_from_self_param(self_param: &ast::SelfParam, new_name: String) -> Option<TextEdit> {
-    fn target_type_name(impl_def: &ast::Impl) -> Option<String> {
-        if let Some(ast::Type::PathType(p)) = impl_def.self_ty() {
-            return Some(p.path()?.segment()?.name_ref()?.text().to_string());
-        }
-        None
+    let mut replacement_text = new_name;
+    replacement_text.push_str(": ");
+
+    if self_param.amp_token().is_some() {
+        replacement_text.push('&');
+    }
+    if let Some(lifetime) = self_param.lifetime() {
+        write!(replacement_text, "{lifetime} ").unwrap();
+    }
+    if self_param.amp_token().and(self_param.mut_token()).is_some() {
+        replacement_text.push_str("mut ");
     }
 
-    match self_param.syntax().ancestors().find_map(ast::Impl::cast) {
-        Some(impl_def) => {
-            let type_name = target_type_name(&impl_def)?;
+    replacement_text.push_str("Self");
 
-            let mut replacement_text = new_name;
-            replacement_text.push_str(": ");
-            match (self_param.amp_token(), self_param.mut_token()) {
-                (Some(_), None) => replacement_text.push('&'),
-                (Some(_), Some(_)) => replacement_text.push_str("&mut "),
-                (_, _) => (),
-            };
-            replacement_text.push_str(type_name.as_str());
-
-            Some(TextEdit::replace(self_param.syntax().text_range(), replacement_text))
-        }
-        None => {
-            cov_mark::hit!(rename_self_outside_of_methods);
-            let mut replacement_text = new_name;
-            replacement_text.push_str(": _");
-            Some(TextEdit::replace(self_param.syntax().text_range(), replacement_text))
-        }
-    }
+    Some(TextEdit::replace(self_param.syntax().text_range(), replacement_text))
 }
 
 #[cfg(test)]
@@ -2069,7 +2057,7 @@ impl Foo {
 struct Foo { i: i32 }
 
 impl Foo {
-    fn f(foo: &mut Foo) -> i32 {
+    fn f(foo: &mut Self) -> i32 {
         foo.i
     }
 }
@@ -2095,7 +2083,33 @@ impl Foo {
 struct Foo { i: i32 }
 
 impl Foo {
-    fn f(foo: Foo) -> i32 {
+    fn f(foo: Self) -> i32 {
+        foo.i
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_owned_self_to_parameter_with_lifetime() {
+        cov_mark::check!(rename_self_to_param);
+        check(
+            "foo",
+            r#"
+struct Foo<'a> { i: &'a i32 }
+
+impl<'a> Foo<'a> {
+    fn f(&'a $0self) -> i32 {
+        self.i
+    }
+}
+"#,
+            r#"
+struct Foo<'a> { i: &'a i32 }
+
+impl<'a> Foo<'a> {
+    fn f(foo: &'a Self) -> i32 {
         foo.i
     }
 }
@@ -2105,7 +2119,6 @@ impl Foo {
 
     #[test]
     fn test_self_outside_of_methods() {
-        cov_mark::check!(rename_self_outside_of_methods);
         check(
             "foo",
             r#"
@@ -2114,7 +2127,7 @@ fn f($0self) -> i32 {
 }
 "#,
             r#"
-fn f(foo: _) -> i32 {
+fn f(foo: Self) -> i32 {
     foo.i
 }
 "#,
@@ -2159,7 +2172,7 @@ impl Foo {
 struct Foo { i: i32 }
 
 impl Foo {
-    fn f(foo: &Foo) -> i32 {
+    fn f(foo: &Self) -> i32 {
         let self_var = 1;
         foo.i
     }

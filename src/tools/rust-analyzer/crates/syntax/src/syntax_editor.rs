@@ -5,7 +5,7 @@
 //! [`SyntaxEditor`]: https://github.com/dotnet/roslyn/blob/43b0b05cc4f492fd5de00f6f6717409091df8daa/src/Workspaces/Core/Portable/Editing/SyntaxEditor.cs
 
 use std::{
-    fmt,
+    fmt, iter,
     num::NonZeroU32,
     ops::RangeInclusive,
     sync::atomic::{AtomicU32, Ordering},
@@ -39,6 +39,15 @@ impl SyntaxEditor {
 
     pub fn add_annotation(&mut self, element: impl Element, annotation: SyntaxAnnotation) {
         self.annotations.push((element.syntax_element(), annotation))
+    }
+
+    pub fn add_annotation_all(
+        &mut self,
+        elements: Vec<impl Element>,
+        annotation: SyntaxAnnotation,
+    ) {
+        self.annotations
+            .extend(elements.into_iter().map(|e| e.syntax_element()).zip(iter::repeat(annotation)));
     }
 
     pub fn merge(&mut self, mut other: SyntaxEditor) {

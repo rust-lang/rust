@@ -1881,6 +1881,29 @@ impl<T: Clone> Ctx<T> {$0}
 }
 
 #[test]
+fn doctest_generate_impl_trait() {
+    check_doc_test(
+        "generate_impl_trait",
+        r#####"
+trait $0Foo {
+    fn foo(&self) -> i32;
+}
+"#####,
+        r#####"
+trait Foo {
+    fn foo(&self) -> i32;
+}
+
+impl Foo for ${1:_} {
+    fn foo(&self) -> i32 {
+        $0todo!()
+    }
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_generate_is_empty_from_len() {
     check_doc_test(
         "generate_is_empty_from_len",

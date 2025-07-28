@@ -17,6 +17,7 @@ exclude_titles = [ # exclude syncs from subtree in rust-lang/rust
     "sync from downstream",
     "Sync from rust",
     "sync from rust",
+    "Rustc pull update",
 ]
 labels = ["has-merge-commits", "S-waiting-on-author"]
 
@@ -27,3 +28,6 @@ labels = ["has-merge-commits", "S-waiting-on-author"]
 
 # Prevents mentions in commits to avoid users being spammed
 [no-mentions]
+
+# Automatically close and reopen PRs made by bots to run CI on them
+[bot-pull-requests]
