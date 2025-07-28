@@ -517,78 +517,57 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                     ),
                 }
             }
-            PatKind::Constant { value } => {
+            PatKind::Constant { ty: value_ty, value } => {
                 match ty.kind() {
                     ty::Bool => {
-                        ctor = match value.try_eval_bool(cx.tcx, cx.typing_env) {
-                            Some(b) => Bool(b),
-                            None => Opaque(OpaqueId::new()),
-                        };
+                        ctor = Bool(value.unwrap_leaf().try_to_bool().unwrap());
                         fields = vec![];
                         arity = 0;
                     }
                     ty::Char | ty::Int(_) | ty::Uint(_) => {
-                        ctor = match value.try_eval_bits(cx.tcx, cx.typing_env) {
-                            Some(bits) => {
-                                let x = match *ty.kind() {
-                                    ty::Int(ity) => {
-                                        let size = Integer::from_int_ty(&cx.tcx, ity).size().bits();
-                                        MaybeInfiniteInt::new_finite_int(bits, size)
-                                    }
-                                    _ => MaybeInfiniteInt::new_finite_uint(bits),
-                                };
-                                IntRange(IntRange::from_singleton(x))
-                            }
-                            None => Opaque(OpaqueId::new()),
+                        ctor = {
+                            let bits = value.unwrap_leaf().to_bits_unchecked();
+                            let x = match *ty.kind() {
+                                ty::Int(ity) => {
+                                    let size = Integer::from_int_ty(&cx.tcx, ity).size().bits();
+                                    MaybeInfiniteInt::new_finite_int(bits, size)
+                                }
+                                _ => MaybeInfiniteInt::new_finite_uint(bits),
+                            };
+                            IntRange(IntRange::from_singleton(x))
                         };
                         fields = vec![];
                         arity = 0;
                     }
                     ty::Float(ty::FloatTy::F16) => {
-                        ctor = match value.try_eval_bits(cx.tcx, cx.typing_env) {
-                            Some(bits) => {
-                                use rustc_apfloat::Float;
-                                let value = rustc_apfloat::ieee::Half::from_bits(bits);
-                                F16Range(value, value, RangeEnd::Included)
-                            }
-                            None => Opaque(OpaqueId::new()),
-                        };
+                        use rustc_apfloat::Float;
+                        let bits = value.unwrap_leaf().to_u16();
+                        let value = rustc_apfloat::ieee::Half::from_bits(bits.into());
+                        ctor = F16Range(value, value, RangeEnd::Included);
                         fields = vec![];
                         arity = 0;
                     }
                     ty::Float(ty::FloatTy::F32) => {
-                        ctor = match value.try_eval_bits(cx.tcx, cx.typing_env) {
-                            Some(bits) => {
-                                use rustc_apfloat::Float;
-                                let value = rustc_apfloat::ieee::Single::from_bits(bits);
-                                F32Range(value, value, RangeEnd::Included)
-                            }
-                            None => Opaque(OpaqueId::new()),
-                        };
+                        use rustc_apfloat::Float;
+                        let bits = value.unwrap_leaf().to_u32();
+                        let value = rustc_apfloat::ieee::Single::from_bits(bits.into());
+                        ctor = F32Range(value, value, RangeEnd::Included);
                         fields = vec![];
                         arity = 0;
                     }
                     ty::Float(ty::FloatTy::F64) => {
-                        ctor = match value.try_eval_bits(cx.tcx, cx.typing_env) {
-                            Some(bits) => {
-                                use rustc_apfloat::Float;
-                                let value = rustc_apfloat::ieee::Double::from_bits(bits);
-                                F64Range(value, value, RangeEnd::Included)
-                            }
-                            None => Opaque(OpaqueId::new()),
-                        };
+                        use rustc_apfloat::Float;
+                        let bits = value.unwrap_leaf().to_u64();
+                        let value = rustc_apfloat::ieee::Double::from_bits(bits.into());
+                        ctor = F64Range(value, value, RangeEnd::Included);
                         fields = vec![];
                         arity = 0;
                     }
                     ty::Float(ty::FloatTy::F128) => {
-                        ctor = match value.try_eval_bits(cx.tcx, cx.typing_env) {
-                            Some(bits) => {
-                                use rustc_apfloat::Float;
-                                let value = rustc_apfloat::ieee::Quad::from_bits(bits);
-                                F128Range(value, value, RangeEnd::Included)
-                            }
-                            None => Opaque(OpaqueId::new()),
-                        };
+                        use rustc_apfloat::Float;
+                        let bits = value.unwrap_leaf().to_u128();
+                        let value = rustc_apfloat::ieee::Quad::from_bits(bits);
+                        ctor = F128Range(value, value, RangeEnd::Included);
                         fields = vec![];
                         arity = 0;
                     }
@@ -601,7 +580,12 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                         // subfields.
                         // Note: `t` is `str`, not `&str`.
                         let ty = self.reveal_opaque_ty(*t);
-                        let subpattern = DeconstructedPat::new(Str(*value), Vec::new(), 0, ty, pat);
+                        // FIXME: why does `Str` need a `mir::Value`?
+                        let val = mir::Const::Ty(
+                            *value_ty,
+                            ty::Const::new_value(self.tcx, *value, *value_ty),
+                        );
+                        let subpattern = DeconstructedPat::new(Str(val), Vec::new(), 0, ty, pat);
                         ctor = Ref;
                         fields = vec![subpattern.at_index(0)];
                         arity = 1;

@@ -21,7 +21,7 @@ use rustc_middle::thir::{
 use rustc_middle::ty::adjustment::{PatAdjust, PatAdjustment};
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::{self, CanonicalUserTypeAnnotation, Ty, TyCtxt, TypingMode};
-use rustc_middle::{bug, span_bug};
+use rustc_middle::{bug, mir, span_bug};
 use rustc_span::def_id::DefId;
 use rustc_span::{ErrorGuaranteed, Span};
 use tracing::{debug, instrument};
@@ -156,12 +156,15 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         }
 
         // The unpeeled kind should now be a constant, giving us the endpoint value.
-        let PatKind::Constant { value } = kind else {
+        let PatKind::Constant { ty, value } = kind else {
             let msg =
                 format!("found bad range pattern endpoint `{expr:?}` outside of error recovery");
             return Err(self.tcx.dcx().span_delayed_bug(expr.span, msg));
         };
-
+        // FIXME: `Finite` should probably take a `ValTree` or even a `ScalarInt`
+        // (but it should also be the same type as what `TestCase::Constant` uses, or at least
+        // easy to convert).
+        let value = mir::Const::Ty(ty, ty::Const::new_value(self.tcx, value, ty));
         Ok(Some(PatRangeBoundary::Finite(value)))
     }
 
@@ -244,7 +247,9 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             (RangeEnd::Included, Some(Ordering::Less)) => {}
             // `x..=y` where `x == y` and `x` and `y` are finite.
             (RangeEnd::Included, Some(Ordering::Equal)) if lo.is_finite() && hi.is_finite() => {
-                kind = PatKind::Constant { value: lo.as_finite().unwrap() };
+                // FIXME: silly conversion because not all pattern stuff uses valtrees yet.
+                let mir::Const::Ty(ty, val) = lo.as_finite().unwrap() else { unreachable!() };
+                kind = PatKind::Constant { ty, value: val.to_value().valtree };
             }
             // `..=x` where `x == ty::MIN`.
             (RangeEnd::Included, Some(Ordering::Equal)) if !lo.is_finite() => {}
