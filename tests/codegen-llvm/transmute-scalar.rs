@@ -1,5 +1,6 @@
 //@ add-core-stubs
-//@ compile-flags: -C opt-level=0 -C no-prepopulate-passes
+//@ compile-flags: -C opt-level=0 -C no-prepopulate-passes --target=x86_64-unknown-linux-gnu
+//@ needs-llvm-components: x86
 
 #![crate_type = "lib"]
 #![feature(no_core, repr_simd, arm_target_feature, mips_target_feature, s390x_target_feature)]
