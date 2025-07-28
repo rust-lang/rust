@@ -563,8 +563,8 @@ impl AtomicBool {
     ///   `align_of::<AtomicBool>() == 1`).
     /// * `ptr` must be [valid] for both reads and writes for the whole lifetime `'a`.
     /// * You must adhere to the [Memory model for atomic accesses]. In particular, it is not
-    ///   allowed to mix atomic and non-atomic accesses, or atomic accesses of different sizes,
-    ///   without synchronization.
+    ///   allowed to mix conflicting atomic and non-atomic accesses, or atomic accesses of different
+    ///   sizes, without synchronization.
     ///
     /// [valid]: crate::ptr#safety
     /// [Memory model for atomic accesses]: self#memory-model-for-atomic-accesses
@@ -1246,7 +1246,7 @@ impl AtomicBool {
     /// atomic types work with interior mutability. All modifications of an atomic change the value
     /// through a shared reference, and can do so safely as long as they use atomic operations. Any
     /// use of the returned raw pointer requires an `unsafe` block and still has to uphold the same
-    /// restriction: operations on it must be atomic.
+    /// restriction in [Memory model for atomic accesses].
     ///
     /// # Examples
     ///
@@ -1264,6 +1264,8 @@ impl AtomicBool {
     /// }
     /// # }
     /// ```
+    ///
+    /// [Memory model for atomic accesses]: self#memory-model-for-atomic-accesses
     #[inline]
     #[stable(feature = "atomic_as_ptr", since = "1.70.0")]
     #[rustc_const_stable(feature = "atomic_as_ptr", since = "1.70.0")]
@@ -1519,8 +1521,8 @@ impl<T> AtomicPtr<T> {
     ///   can be bigger than `align_of::<*mut T>()`).
     /// * `ptr` must be [valid] for both reads and writes for the whole lifetime `'a`.
     /// * You must adhere to the [Memory model for atomic accesses]. In particular, it is not
-    ///   allowed to mix atomic and non-atomic accesses, or atomic accesses of different sizes,
-    ///   without synchronization.
+    ///   allowed to mix conflicting atomic and non-atomic accesses, or atomic accesses of different
+    ///   sizes, without synchronization.
     ///
     /// [valid]: crate::ptr#safety
     /// [Memory model for atomic accesses]: self#memory-model-for-atomic-accesses
@@ -2488,7 +2490,7 @@ impl<T> AtomicPtr<T> {
     /// atomic types work with interior mutability. All modifications of an atomic change the value
     /// through a shared reference, and can do so safely as long as they use atomic operations. Any
     /// use of the returned raw pointer requires an `unsafe` block and still has to uphold the same
-    /// restriction: operations on it must be atomic.
+    /// restriction in [Memory model for atomic accesses].
     ///
     /// # Examples
     ///
@@ -2507,6 +2509,8 @@ impl<T> AtomicPtr<T> {
     ///     my_atomic_op(atomic.as_ptr());
     /// }
     /// ```
+    ///
+    /// [Memory model for atomic accesses]: self#memory-model-for-atomic-accesses
     #[inline]
     #[stable(feature = "atomic_as_ptr", since = "1.70.0")]
     #[rustc_const_stable(feature = "atomic_as_ptr", since = "1.70.0")]
@@ -2698,8 +2702,8 @@ macro_rules! atomic_int {
             }]
             /// * `ptr` must be [valid] for both reads and writes for the whole lifetime `'a`.
             /// * You must adhere to the [Memory model for atomic accesses]. In particular, it is not
-            ///   allowed to mix atomic and non-atomic accesses, or atomic accesses of different sizes,
-            ///   without synchronization.
+            ///   allowed to mix conflicting atomic and non-atomic accesses, or atomic accesses of different
+            ///   sizes, without synchronization.
             ///
             /// [valid]: crate::ptr#safety
             /// [Memory model for atomic accesses]: self#memory-model-for-atomic-accesses
@@ -3620,7 +3624,7 @@ macro_rules! atomic_int {
             /// atomic types work with interior mutability. All modifications of an atomic change the value
             /// through a shared reference, and can do so safely as long as they use atomic operations. Any
             /// use of the returned raw pointer requires an `unsafe` block and still has to uphold the same
-            /// restriction: operations on it must be atomic.
+            /// restriction in [Memory model for atomic accesses].
             ///
             /// # Examples
             ///
@@ -3640,6 +3644,8 @@ macro_rules! atomic_int {
             /// }
             /// # }
             /// ```
+            ///
+            /// [Memory model for atomic accesses]: self#memory-model-for-atomic-accesses
             #[inline]
             #[stable(feature = "atomic_as_ptr", since = "1.70.0")]
             #[rustc_const_stable(feature = "atomic_as_ptr", since = "1.70.0")]
