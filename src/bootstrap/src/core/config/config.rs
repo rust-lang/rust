@@ -45,7 +45,9 @@ use crate::core::config::{
     DebuginfoLevel, DryRun, GccCiMode, LlvmLibunwind, Merge, ReplaceOpt, RustcLto, SplitDebuginfo,
     StringOrBool, set, threads_from_config,
 };
-use crate::core::download::is_download_ci_available;
+use crate::core::download::{
+    DownloadContext, download_beta_toolchain, is_download_ci_available, maybe_download_rustfmt,
+};
 use crate::utils::channel;
 use crate::utils::exec::{ExecutionContext, command};
 use crate::utils::helpers::{exe, get_host_target};
@@ -801,7 +803,8 @@ impl Config {
             }
             rustc
         } else {
-            config.download_beta_toolchain();
+            let dwn_ctx = DownloadContext::from(&config);
+            download_beta_toolchain(dwn_ctx);
             config
                 .out
                 .join(config.host_target)
@@ -827,7 +830,8 @@ impl Config {
             }
             cargo
         } else {
-            config.download_beta_toolchain();
+            let dwn_ctx = DownloadContext::from(&config);
+            download_beta_toolchain(dwn_ctx);
             config.initial_sysroot.join("bin").join(exe("cargo", config.host_target))
         };
 
@@ -994,8 +998,12 @@ impl Config {
 
         config.apply_dist_config(toml.dist);
 
-        config.initial_rustfmt =
-            if let Some(r) = rustfmt { Some(r) } else { config.maybe_download_rustfmt() };
+        config.initial_rustfmt = if let Some(r) = rustfmt {
+            Some(r)
+        } else {
+            let dwn_ctx = DownloadContext::from(&config);
+            maybe_download_rustfmt(dwn_ctx)
+        };
 
         if matches!(config.lld_mode, LldMode::SelfContained)
             && !config.lld_enabled

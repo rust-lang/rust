@@ -128,13 +128,6 @@ impl Config {
         cargo_clippy
     }
 
-    /// NOTE: rustfmt is a completely different toolchain than the bootstrap compiler, so it can't
-    /// reuse target directories or artifacts
-    pub(crate) fn maybe_download_rustfmt(&self) -> Option<PathBuf> {
-        let dwn_ctx: DownloadContext<'_> = self.into();
-        maybe_download_rustfmt(dwn_ctx)
-    }
-
     pub(crate) fn ci_rust_std_contents(&self) -> Vec<String> {
         self.ci_component_contents(".rust-std-contents")
     }
@@ -170,11 +163,6 @@ impl Config {
             &extra_components,
             Self::download_ci_component,
         );
-    }
-
-    pub(crate) fn download_beta_toolchain(&self) {
-        let dwn_ctx: DownloadContext<'_> = self.into();
-        download_beta_toolchain(dwn_ctx);
     }
 
     fn download_toolchain(
