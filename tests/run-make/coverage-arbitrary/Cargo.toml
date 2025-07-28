@@ -1,0 +1,9 @@
+[workspace]
+resolver = "2"
+
+[package]
+name = "coverage-arbitrary-crate"
+edition = "2024"
+
+[dependencies]
+arbitrary = { version = "1.4.1", features = ["derive"] }

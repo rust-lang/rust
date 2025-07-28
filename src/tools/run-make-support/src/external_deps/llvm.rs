@@ -17,6 +17,13 @@ pub fn llvm_profdata() -> LlvmProfdata {
     LlvmProfdata::new()
 }
 
+/// Constructs a new `llvm-cov` invocation.
+/// This assumes that `llvm-cov` is available at `$LLVM_BIN_DIR/llvm-cov`.
+#[track_caller]
+pub fn llvm_cov() -> LlvmCov {
+    LlvmCov::new()
+}
+
 /// Construct a new `llvm-filecheck` invocation. This assumes that `llvm-filecheck` is available
 /// at `$LLVM_FILECHECK`.
 #[track_caller]
@@ -86,6 +93,13 @@ pub struct LlvmProfdata {
     cmd: Command,
 }
 
+/// An `llvm-cov` invocation builder.
+#[derive(Debug)]
+#[must_use]
+pub struct LlvmCov {
+    cmd: Command,
+}
+
 /// A `llvm-filecheck` invocation builder.
 #[derive(Debug)]
 #[must_use]
@@ -151,6 +165,7 @@ pub struct LlvmObjcopy {
 
 crate::macros::impl_common_helpers!(LlvmReadobj);
 crate::macros::impl_common_helpers!(LlvmProfdata);
+crate::macros::impl_common_helpers!(LlvmCov);
 crate::macros::impl_common_helpers!(LlvmFilecheck);
 crate::macros::impl_common_helpers!(LlvmObjdump);
 crate::macros::impl_common_helpers!(LlvmAr);
@@ -256,6 +271,17 @@ impl LlvmProfdata {
     pub fn merge(&mut self) -> &mut Self {
         self.cmd.arg("merge");
         self
+    }
+}
+
+impl LlvmCov {
+    /// Constructs a new `llvm-cov` invocation.
+    /// This assumes that `llvm-cov` is available at `$LLVM_BIN_DIR/llvm-cov`.
+    #[track_caller]
+    pub fn new() -> Self {
+        let llvm_cov = llvm_bin_dir().join("llvm-cov");
+        let cmd = Command::new(llvm_cov);
+        Self { cmd }
     }
 }
 
