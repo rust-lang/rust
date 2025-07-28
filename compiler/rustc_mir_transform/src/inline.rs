@@ -4,7 +4,9 @@ use std::assert_matches::debug_assert_matches;
 use std::iter;
 use std::ops::{Range, RangeFrom};
 
+use either::Either;
 use rustc_abi::{ExternAbi, FieldIdx};
+use rustc_hir::LangItem;
 use rustc_hir::attrs::{InlineAttr, OptimizeAttr};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
@@ -116,6 +118,9 @@ trait Inliner<'tcx> {
     /// Has the caller body been changed?
     fn changed(self) -> bool;
 
+    /// Whether to also attempt to inline `Drop` terminators (not just `Call`s)
+    fn consider_drops(&self) -> bool;
+
     /// Should inlining happen for a given callee?
     fn should_inline_for_callee(&self, def_id: DefId) -> bool;
 
@@ -185,6 +190,10 @@ impl<'tcx> Inliner<'tcx> for ForceInliner<'tcx> {
 
     fn changed(self) -> bool {
         self.changed
+    }
+
+    fn consider_drops(&self) -> bool {
+        false
     }
 
     fn should_inline_for_callee(&self, def_id: DefId) -> bool {
@@ -272,6 +281,7 @@ struct NormalInliner<'tcx> {
     typing_env: ty::TypingEnv<'tcx>,
     /// `DefId` of caller.
     def_id: DefId,
+    caller_is_coroutine: bool,
     /// Stack of inlined instances.
     /// We only check the `DefId` and not the args because we want to
     /// avoid inlining cases of polymorphic recursion.
@@ -304,6 +314,7 @@ impl<'tcx> Inliner<'tcx> for NormalInliner<'tcx> {
             tcx,
             typing_env,
             def_id,
+            caller_is_coroutine: tcx.is_coroutine(def_id),
             history: Vec::new(),
             top_down_counter: 0,
             changed: false,
@@ -332,6 +343,10 @@ impl<'tcx> Inliner<'tcx> for NormalInliner<'tcx> {
 
     fn changed(self) -> bool {
         self.changed
+    }
+
+    fn consider_drops(&self) -> bool {
+        !self.caller_is_coroutine
     }
 
     fn should_inline_for_callee(&self, _: DefId) -> bool {
@@ -542,6 +557,59 @@ fn process_blocks<'tcx, I: Inliner<'tcx>>(
     }
 }
 
+/// Returns a value indicating whether it's worth trying to inline a `drop` for `ty`.
+///
+/// We only want to bother inlining things that have a change to need to do something.
+/// The `RemoveUnneededDrops` pass will handle things that obviously don't need
+/// dropping, and will do it more efficiently since it doesn't need to add inlining
+/// metadata, defensively add new blocks, etc.
+///
+/// But this isn't the same as `needs_drop` because we want the opposite fallback:
+/// while `needs_drop` is true for a (non-Copy) type parameter, here we don't
+/// want to attempt inlining its drop because that'll never work.
+fn should_attempt_inline_drop_for_type<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    typing_env: ty::TypingEnv<'tcx>,
+    ty: Ty<'tcx>,
+) -> bool {
+    match ty.kind() {
+        ty::Tuple(elems) if elems.is_empty() => false,
+
+        // Even if these might have drops later, we can't inline them now.
+        ty::Param(..) | ty::Alias(..) | ty::Dynamic(..) | ty::Foreign(..) => false,
+
+        ty::Array(..)
+        | ty::Adt(..)
+        | ty::Slice(..)
+        | ty::Tuple(..)
+        | ty::Closure(..)
+        | ty::CoroutineClosure(..)
+        | ty::Coroutine(..)
+        | ty::CoroutineWitness(..) => ty.needs_drop(tcx, typing_env),
+
+        // Primitives we obviously don't need to inline a drop method
+        ty::Error(..)
+        | ty::Bool
+        | ty::Int(..)
+        | ty::Uint(..)
+        | ty::Float(..)
+        | ty::Never
+        | ty::FnDef(..)
+        | ty::FnPtr(..)
+        | ty::Char
+        | ty::RawPtr(..)
+        | ty::Ref(..)
+        | ty::Str => false,
+
+        // FIXME: Unsure what to do with this, but not attempting inlining is safe
+        ty::Pat(..) | ty::UnsafeBinder(..) => false,
+
+        ty::Infer(..) | ty::Placeholder(..) | ty::Bound(..) => {
+            bug!("weird type while inlining: {ty:?}")
+        }
+    }
+}
+
 fn resolve_callsite<'tcx, I: Inliner<'tcx>>(
     inliner: &I,
     caller_body: &Body<'tcx>,
@@ -549,50 +617,73 @@ fn resolve_callsite<'tcx, I: Inliner<'tcx>>(
     bb_data: &BasicBlockData<'tcx>,
 ) -> Option<CallSite<'tcx>> {
     let tcx = inliner.tcx();
-    // Only consider direct calls to functions
     let terminator = bb_data.terminator();
 
     // FIXME(explicit_tail_calls): figure out if we can inline tail calls
-    if let TerminatorKind::Call { ref func, fn_span, .. } = terminator.kind {
-        let func_ty = func.ty(caller_body, tcx);
-        if let ty::FnDef(def_id, args) = *func_ty.kind() {
-            if !inliner.should_inline_for_callee(def_id) {
-                debug!("not enabled");
+    let (def_id, args, fn_span) = match &terminator.kind {
+        TerminatorKind::Call { func, fn_span, .. } => {
+            let func_ty = func.ty(caller_body, tcx);
+            if let ty::FnDef(def_id, args) = *func_ty.kind() {
+                if !inliner.should_inline_for_callee(def_id) {
+                    debug!("not enabled");
+                    return None;
+                }
+
+                // Allow RemoveUnneededDrops to handle these, rather than inlining,
+                // since it doesn't add the extra locals nor the metadata.
+                if inliner.consider_drops()
+                    && tcx.is_lang_item(def_id, LangItem::DropInPlace)
+                    && let drop_ty = args.type_at(0)
+                    && !should_attempt_inline_drop_for_type(tcx, inliner.typing_env(), drop_ty)
+                {
+                    return None;
+                }
+
+                (def_id, args, *fn_span)
+            } else {
                 return None;
             }
-
-            // To resolve an instance its args have to be fully normalized.
-            let args = tcx.try_normalize_erasing_regions(inliner.typing_env(), args).ok()?;
-            let callee =
-                Instance::try_resolve(tcx, inliner.typing_env(), def_id, args).ok().flatten()?;
-
-            if let InstanceKind::Virtual(..) | InstanceKind::Intrinsic(_) = callee.def {
-                return None;
-            }
-
-            if inliner.history().contains(&callee.def_id()) {
-                return None;
-            }
-
-            let fn_sig = tcx.fn_sig(def_id).instantiate(tcx, args);
-
-            // Additionally, check that the body that we're inlining actually agrees
-            // with the ABI of the trait that the item comes from.
-            if let InstanceKind::Item(instance_def_id) = callee.def
-                && tcx.def_kind(instance_def_id) == DefKind::AssocFn
-                && let instance_fn_sig = tcx.fn_sig(instance_def_id).skip_binder()
-                && instance_fn_sig.abi() != fn_sig.abi()
-            {
-                return None;
-            }
-
-            let source_info = SourceInfo { span: fn_span, ..terminator.source_info };
-
-            return Some(CallSite { callee, fn_sig, block: bb, source_info });
         }
+        TerminatorKind::Drop { place, .. } if inliner.consider_drops() => {
+            let drop_ty = place.ty(&caller_body.local_decls, tcx).ty;
+            if !should_attempt_inline_drop_for_type(tcx, inliner.typing_env(), drop_ty) {
+                return None;
+            }
+
+            let drop_def_id =
+                tcx.require_lang_item(LangItem::DropInPlace, terminator.source_info.span);
+            let args = tcx.mk_args(&[drop_ty.into()]);
+            (drop_def_id, args, rustc_span::DUMMY_SP)
+        }
+        _ => return None,
+    };
+
+    // To resolve an instance its args have to be fully normalized.
+    let args = tcx.try_normalize_erasing_regions(inliner.typing_env(), args).ok()?;
+    let callee = Instance::try_resolve(tcx, inliner.typing_env(), def_id, args).ok().flatten()?;
+
+    if let InstanceKind::Virtual(..) | InstanceKind::Intrinsic(_) = callee.def {
+        return None;
     }
 
-    None
+    if inliner.history().contains(&callee.def_id()) {
+        return None;
+    }
+
+    let fn_sig = tcx.fn_sig(def_id).instantiate(tcx, args);
+
+    // Additionally, check that the body that we're inlining actually agrees
+    // with the ABI of the trait that the item comes from.
+    if let InstanceKind::Item(instance_def_id) = callee.def
+        && tcx.def_kind(instance_def_id) == DefKind::AssocFn
+        && let instance_fn_sig = tcx.fn_sig(instance_def_id).skip_binder()
+        && instance_fn_sig.abi() != fn_sig.abi()
+    {
+        return None;
+    }
+
+    let source_info = SourceInfo { span: fn_span, ..terminator.source_info };
+    Some(CallSite { callee, fn_sig, block: bb, source_info })
 }
 
 /// Attempts to inline a callsite into the caller body. When successful returns basic blocks
@@ -604,6 +695,7 @@ fn try_inlining<'tcx, I: Inliner<'tcx>>(
     callsite: &CallSite<'tcx>,
 ) -> Result<std::ops::Range<BasicBlock>, &'static str> {
     let tcx = inliner.tcx();
+
     check_mir_is_available(inliner, caller_body, callsite.callee)?;
 
     let callee_attrs = tcx.codegen_fn_attrs(callsite.callee.def_id());
@@ -611,16 +703,30 @@ fn try_inlining<'tcx, I: Inliner<'tcx>>(
     check_codegen_attributes(inliner, callsite, callee_attrs)?;
     inliner.check_codegen_attributes_extra(callee_attrs)?;
 
-    let terminator = caller_body[callsite.block].terminator.as_ref().unwrap();
-    let TerminatorKind::Call { args, destination, .. } = &terminator.kind else { bug!() };
-    let destination_ty = destination.ty(&caller_body.local_decls, tcx).ty;
-    for arg in args {
-        if !arg.node.ty(&caller_body.local_decls, tcx).is_sized(tcx, inliner.typing_env()) {
-            // We do not allow inlining functions with unsized params. Inlining these functions
-            // could create unsized locals, which are unsound and being phased out.
-            return Err("call has unsized argument");
+    let (arg_tys_iter, destination_ty) = match &caller_body[callsite.block].terminator().kind {
+        TerminatorKind::Call { args, destination, .. } => {
+            for arg in args {
+                if !arg.node.ty(&caller_body.local_decls, tcx).is_sized(tcx, inliner.typing_env()) {
+                    // We do not allow inlining functions with unsized params. Inlining these functions
+                    // could create unsized locals, which are unsound and being phased out.
+                    return Err("call has unsized argument");
+                }
+            }
+            (
+                Either::Left(args.iter().map(|arg| arg.node.ty(&caller_body.local_decls, tcx))),
+                destination.ty(&caller_body.local_decls, tcx).ty,
+            )
         }
-    }
+        TerminatorKind::Drop { place, .. } => {
+            let place_ty = place.ty(&caller_body.local_decls, tcx).ty;
+            let arg_ty = Ty::new_mut_ptr(tcx, place_ty);
+            // We cheat a bit here. Obviously there *is* an argument to the
+            // `drop_in_place`, but all the checks that look at it are ok to skip
+            // since we're generating them with always the correct type.
+            (Either::Right(std::iter::once(arg_ty)), tcx.types.unit)
+        }
+        _ => bug!(),
+    };
 
     let callee_body = try_instance_mir(tcx, callsite.callee.def)?;
     check_inline::is_inline_valid_on_body(tcx, callee_body)?;
@@ -651,15 +757,15 @@ fn try_inlining<'tcx, I: Inliner<'tcx>>(
         return Err("implementation limitation -- return type mismatch");
     }
     if callsite.fn_sig.abi() == ExternAbi::RustCall {
-        let (self_arg, arg_tuple) = match &args[..] {
-            [arg_tuple] => (None, arg_tuple),
-            [self_arg, arg_tuple] => (Some(self_arg), arg_tuple),
-            _ => bug!("Expected `rust-call` to have 1 or 2 args"),
+        let (self_arg_ty, arg_tuple_ty) = {
+            let mut arg_tys_iter = arg_tys_iter.fuse();
+            match (arg_tys_iter.next(), arg_tys_iter.next(), arg_tys_iter.next()) {
+                (Some(arg_tuple), None, None) => (None, arg_tuple),
+                (Some(self_arg), Some(arg_tuple), None) => (Some(self_arg), arg_tuple),
+                _ => bug!("Expected `rust-call` to have 1 or 2 args"),
+            }
         };
 
-        let self_arg_ty = self_arg.map(|self_arg| self_arg.node.ty(&caller_body.local_decls, tcx));
-
-        let arg_tuple_ty = arg_tuple.node.ty(&caller_body.local_decls, tcx);
         let arg_tys = if callee_body.spread_arg.is_some() {
             std::slice::from_ref(&arg_tuple_ty)
         } else {
@@ -680,14 +786,66 @@ fn try_inlining<'tcx, I: Inliner<'tcx>>(
             }
         }
     } else {
-        for (arg, input) in args.iter().zip(callee_body.args_iter()) {
+        for (arg_ty, input) in arg_tys_iter.zip(callee_body.args_iter()) {
             let input_type = callee_body.local_decls[input].ty;
-            let arg_ty = arg.node.ty(&caller_body.local_decls, tcx);
             if !util::sub_types(tcx, inliner.typing_env(), input_type, arg_ty) {
                 trace!(?arg_ty, ?input_type);
                 debug!("failed to normalize argument type");
                 return Err("implementation limitation -- arg mismatch");
             }
+        }
+    }
+
+    if inliner.consider_drops() {
+        let block_mut = &mut caller_body.basic_blocks.as_mut()[callsite.block];
+        let terminator = block_mut.terminator.as_mut().unwrap();
+        if let TerminatorKind::Drop {
+            place,
+            target,
+            unwind,
+            replace: _,
+            drop: None,
+            async_fut: None,
+        } = terminator.kind
+        {
+            // Rather than updating everything after here to also handle `Drop`,
+            // just replace the terminator with a `Call`, since we'll need things
+            // like the local for the argument anyway.
+            let source_info = terminator.source_info;
+            let drop_ty = place.ty(&caller_body.local_decls, tcx).ty;
+
+            // We shouldn't have gotten here if the shim is empty, though it's
+            // not actually a *problem* if we do -- it's easy to inline nothing.
+            debug_assert!(drop_ty.needs_drop(tcx, inliner.typing_env()));
+
+            let drop_ty_mut = Ty::new_mut_ptr(tcx, drop_ty);
+            let arg = caller_body.local_decls.push(LocalDecl::new(drop_ty_mut, source_info.span));
+            block_mut.statements.push(Statement::new(
+                source_info,
+                StatementKind::Assign(Box::new((
+                    Place::from(arg),
+                    Rvalue::RawPtr(RawPtrKind::Mut, place),
+                ))),
+            ));
+            let unit_local =
+                caller_body.local_decls.push(LocalDecl::new(tcx.types.unit, source_info.span));
+            terminator.kind = TerminatorKind::Call {
+                func: Operand::function_handle(
+                    tcx,
+                    callsite.callee.def_id(),
+                    [drop_ty.into()],
+                    source_info.span,
+                ),
+                args: Box::new([Spanned {
+                    node: Operand::Move(Place::from(arg)),
+                    span: source_info.span,
+                }]),
+                destination: Place::from(unit_local),
+                target: Some(target),
+                unwind,
+                call_source: CallSource::Misc,
+                fn_span: source_info.span,
+            };
         }
     }
 
