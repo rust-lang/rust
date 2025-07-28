@@ -987,7 +987,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     else {
                         return false;
                     };
-                    if self.tcx.trait_of_item(did) != Some(clone_trait) {
+                    if self.tcx.trait_of_assoc(did) != Some(clone_trait) {
                         return false;
                     }
                     Some(ident.span)

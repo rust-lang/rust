@@ -295,6 +295,10 @@ impl DefKind {
         }
     }
 
+    pub fn is_assoc(self) -> bool {
+        matches!(self, DefKind::AssocConst | DefKind::AssocFn | DefKind::AssocTy)
+    }
+
     /// This is a "module" in name resolution sense.
     #[inline]
     pub fn is_module_like(self) -> bool {

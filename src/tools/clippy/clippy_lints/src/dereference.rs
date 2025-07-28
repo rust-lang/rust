@@ -364,7 +364,7 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing<'tcx> {
                                 // * `&self` methods on `&T` can have auto-borrow, but `&self` methods on `T` will take
                                 //   priority.
                                 if let Some(fn_id) = typeck.type_dependent_def_id(hir_id)
-                                    && let Some(trait_id) = cx.tcx.trait_of_item(fn_id)
+                                    && let Some(trait_id) = cx.tcx.trait_of_assoc(fn_id)
                                     && let arg_ty = cx.tcx.erase_regions(adjusted_ty)
                                     && let ty::Ref(_, sub_ty, _) = *arg_ty.kind()
                                     && let args =

@@ -1761,7 +1761,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 );
 
                 assert!(!matches!(
-                    tcx.impl_of_method(def_id).map(|imp| tcx.def_kind(imp)),
+                    tcx.impl_of_assoc(def_id).map(|imp| tcx.def_kind(imp)),
                     Some(DefKind::Impl { of_trait: true })
                 ));
                 self.prove_predicates(

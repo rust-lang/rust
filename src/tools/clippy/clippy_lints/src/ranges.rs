@@ -380,7 +380,7 @@ fn can_switch_ranges<'tcx>(
     if let ExprKind::MethodCall(_, receiver, _, _) = parent_expr.kind
         && receiver.hir_id == use_ctxt.child_id
         && let Some(method_did) = cx.typeck_results().type_dependent_def_id(parent_expr.hir_id)
-        && let Some(trait_did) = cx.tcx.trait_of_item(method_did)
+        && let Some(trait_did) = cx.tcx.trait_of_assoc(method_did)
         && matches!(
             cx.tcx.get_diagnostic_name(trait_did),
             Some(sym::Iterator | sym::IntoIterator | sym::RangeBounds)
