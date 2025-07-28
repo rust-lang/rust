@@ -280,8 +280,7 @@ fn clean_region_outlives_constraints<'tcx>(
     // `Region`s are encountered, we've computed a final constraint, and add it to our list.
     // Since we make sure to never re-add deleted items, this process will always finish.
     while !map.is_empty() {
-        let target = *map.keys().next().unwrap();
-        let deps = map.swap_remove(&target).unwrap();
+        let (target, deps) = map.drain().next().unwrap();
 
         for smaller in &deps.smaller {
             for larger in &deps.larger {
