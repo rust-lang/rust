@@ -40,7 +40,8 @@ ENV RUST_CONFIGURE_ARGS \
     --enable-sanitizers \
     --disable-docs \
     --set llvm.download-ci-llvm=false \
-    --set rust.llvm-tools=false
+    --set rust.llvm-tools=false \
+    --set target.aarch64-pc-windows-gnullvm.crt-static=false
 # LLVM cross tools are not installed into expected location so copying fails.
 # Probably will solve itself once this target can host itself on Windows.
 # --enable-full-tools \
