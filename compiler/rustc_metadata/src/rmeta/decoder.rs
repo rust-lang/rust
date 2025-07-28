@@ -1530,7 +1530,7 @@ impl<'a> CrateMetadataRef<'a> {
                     .get((self, tcx), id)
                     .unwrap()
                     .decode((self, tcx));
-                ast::MacroDef { macro_rules, body: Box::new(body) }
+                ast::MacroDef { macro_rules, body: Box::new(body), eii_extern_target: None }
             }
             _ => bug!(),
         }

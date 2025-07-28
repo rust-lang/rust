@@ -435,7 +435,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 );
                 hir::ItemKind::TraitAlias(constness, ident, generics, bounds)
             }
-            ItemKind::MacroDef(ident, MacroDef { body, macro_rules }) => {
+            ItemKind::MacroDef(ident, MacroDef { body, macro_rules, eii_extern_target: _ }) => {
                 let ident = self.lower_ident(*ident);
                 let body = Box::new(self.lower_delim_args(body));
                 let def_id = self.local_def_id(id);
@@ -446,7 +446,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         def_kind.descr(def_id.to_def_id())
                     );
                 };
-                let macro_def = self.arena.alloc(ast::MacroDef { body, macro_rules: *macro_rules });
+                let macro_def = self.arena.alloc(ast::MacroDef {
+                    body,
+                    macro_rules: *macro_rules,
+                    eii_extern_target: None,
+                });
                 hir::ItemKind::Macro(ident, macro_def, macro_kinds)
             }
             ItemKind::Delegation(box delegation) => {
