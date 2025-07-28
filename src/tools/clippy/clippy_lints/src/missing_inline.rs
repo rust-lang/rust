@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint;
 use rustc_attr_data_structures::{AttributeKind, find_attr};
-use rustc_hir as hir;
-use rustc_hir::Attribute;
+use rustc_hir::def_id::DefId;
+use rustc_hir::{self as hir, Attribute};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::ty::AssocItemContainer;
 use rustc_session::declare_lint_pass;
@@ -97,11 +97,23 @@ impl<'tcx> LateLintPass<'tcx> for MissingInline {
         }
         match it.kind {
             hir::ItemKind::Fn { .. } => {
+                if fn_is_externally_exported(cx, it.owner_id.to_def_id()) {
+                    return;
+                }
+
                 let desc = "a function";
                 let attrs = cx.tcx.hir_attrs(it.hir_id());
                 check_missing_inline_attrs(cx, attrs, it.span, desc);
             },
-            hir::ItemKind::Trait(ref _constness, ref _is_auto, ref _unsafe, _ident, _generics, _bounds, trait_items) => {
+            hir::ItemKind::Trait(
+                ref _constness,
+                ref _is_auto,
+                ref _unsafe,
+                _ident,
+                _generics,
+                _bounds,
+                trait_items,
+            ) => {
                 // note: we need to check if the trait is exported so we can't use
                 // `LateLintPass::check_trait_item` here.
                 for &tit in trait_items {
@@ -172,4 +184,11 @@ impl<'tcx> LateLintPass<'tcx> for MissingInline {
         let attrs = cx.tcx.hir_attrs(impl_item.hir_id());
         check_missing_inline_attrs(cx, attrs, impl_item.span, desc);
     }
+}
+
+/// Checks if this function is externally exported, where #[inline] wouldn't have the desired effect
+/// and a rustc warning would be triggered, see #15301
+fn fn_is_externally_exported(cx: &LateContext<'_>, def_id: DefId) -> bool {
+    let attrs = cx.tcx.codegen_fn_attrs(def_id);
+    attrs.contains_extern_indicator()
 }

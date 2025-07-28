@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use rustc_ast::expand::autodiff_attrs::AutoDiffItem;
 use rustc_errors::{DiagCtxtHandle, FatalError};
 use rustc_middle::dep_graph::WorkProduct;
@@ -24,8 +26,9 @@ pub trait WriteBackendMethods: Clone + 'static {
     /// if necessary and running any further optimizations
     fn run_and_optimize_fat_lto(
         cgcx: &CodegenContext<Self>,
+        exported_symbols_for_lto: &[String],
+        each_linked_rlib_for_lto: &[PathBuf],
         modules: Vec<FatLtoInput<Self>>,
-        cached_modules: Vec<(SerializedModule<Self::ModuleBuffer>, WorkProduct)>,
         diff_fncs: Vec<AutoDiffItem>,
     ) -> Result<ModuleCodegen<Self::Module>, FatalError>;
     /// Performs thin LTO by performing necessary global analysis and returning two
@@ -33,6 +36,8 @@ pub trait WriteBackendMethods: Clone + 'static {
     /// can simply be copied over from the incr. comp. cache.
     fn run_thin_lto(
         cgcx: &CodegenContext<Self>,
+        exported_symbols_for_lto: &[String],
+        each_linked_rlib_for_lto: &[PathBuf],
         modules: Vec<(String, Self::ThinBuffer)>,
         cached_modules: Vec<(SerializedModule<Self::ModuleBuffer>, WorkProduct)>,
     ) -> Result<(Vec<ThinModule<Self>>, Vec<WorkProduct>), FatalError>;

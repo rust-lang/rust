@@ -1,60 +1,47 @@
-use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::str::FromStr;
 
-use rustc_abi::{Align, AlignFromBytesError, ExternAbi};
-use serde_json::Value;
+use rustc_abi::{Align, AlignFromBytesError};
 
-use super::{Target, TargetKind, TargetOptions, TargetWarnings};
+use super::crt_objects::CrtObjects;
+use super::{
+    BinaryFormat, CodeModel, DebuginfoKind, FloatAbi, FramePointer, LinkArgsCli,
+    LinkSelfContainedComponents, LinkSelfContainedDefault, LinkerFlavorCli, LldFlavor,
+    MergeFunctions, PanicStrategy, RelocModel, RelroLevel, RustcAbi, SanitizerSet,
+    SmallDataThresholdSupport, SplitDebuginfo, StackProbeType, StaticCow, SymbolVisibility, Target,
+    TargetKind, TargetOptions, TargetWarnings, TlsModel,
+};
 use crate::json::{Json, ToJson};
 use crate::spec::AbiMap;
 
 impl Target {
     /// Loads a target descriptor from a JSON object.
-    pub fn from_json(obj: Json) -> Result<(Target, TargetWarnings), String> {
-        // While ugly, this code must remain this way to retain
-        // compatibility with existing JSON fields and the internal
-        // expected naming of the Target and TargetOptions structs.
-        // To ensure compatibility is retained, the built-in targets
-        // are round-tripped through this code to catch cases where
-        // the JSON parser is not updated to match the structs.
+    pub fn from_json(json: &str) -> Result<(Target, TargetWarnings), String> {
+        let json_deserializer = &mut serde_json::Deserializer::from_str(json);
 
-        let mut obj = match obj {
-            Value::Object(obj) => obj,
-            _ => return Err("Expected JSON object for target")?,
-        };
-
-        let mut get_req_field = |name: &str| {
-            obj.remove(name)
-                .and_then(|j| j.as_str().map(str::to_string))
-                .ok_or_else(|| format!("Field {name} in target specification is required"))
-        };
+        let json: TargetSpecJson =
+            serde_path_to_error::deserialize(json_deserializer).map_err(|err| err.to_string())?;
 
         let mut base = Target {
-            llvm_target: get_req_field("llvm-target")?.into(),
+            llvm_target: json.llvm_target,
             metadata: Default::default(),
-            pointer_width: get_req_field("target-pointer-width")?
-                .parse::<u32>()
-                .map_err(|_| "target-pointer-width must be an integer".to_string())?,
-            data_layout: get_req_field("data-layout")?.into(),
-            arch: get_req_field("arch")?.into(),
+            pointer_width: json
+                .target_pointer_width
+                .parse()
+                .map_err(|err| format!("invalid target-pointer-width: {err}"))?,
+            data_layout: json.data_layout,
+            arch: json.arch,
             options: Default::default(),
         };
 
         // FIXME: This doesn't properly validate anything and just ignores the data if it's invalid.
         // That's okay for now, the only use of this is when generating docs, which we don't do for
         // custom targets.
-        if let Some(Json::Object(mut metadata)) = obj.remove("metadata") {
-            base.metadata.description = metadata
-                .remove("description")
-                .and_then(|desc| desc.as_str().map(|desc| desc.to_owned().into()));
-            base.metadata.tier = metadata
-                .remove("tier")
-                .and_then(|tier| tier.as_u64())
-                .filter(|tier| (1..=3).contains(tier));
-            base.metadata.host_tools =
-                metadata.remove("host_tools").and_then(|host| host.as_bool());
-            base.metadata.std = metadata.remove("std").and_then(|host| host.as_bool());
+        if let Some(metadata) = json.metadata {
+            base.metadata.description = metadata.description;
+            base.metadata.tier = metadata.tier.filter(|tier| (1..=3).contains(tier));
+            base.metadata.host_tools = metadata.host_tools;
+            base.metadata.std = metadata.std;
         }
 
         let alignment_error = |field_name: &str, error: AlignFromBytesError| -> String {
@@ -65,640 +52,188 @@ impl Target {
             format!("`{}` bits is not a valid value for {field_name}: {msg}", error.align() * 8)
         };
 
-        let mut incorrect_type = vec![];
-
-        macro_rules! key {
-            ($key_name:ident) => ( {
-                let name = (stringify!($key_name)).replace("_", "-");
-                if let Some(s) = obj.remove(&name).and_then(|s| s.as_str().map(str::to_string).map(Cow::from)) {
-                    base.$key_name = s;
+        macro_rules! forward {
+            ($name:ident) => {
+                if let Some($name) = json.$name {
+                    base.$name = $name;
                 }
-            } );
-            ($key_name:ident = $json_name:expr) => ( {
-                let name = $json_name;
-                if let Some(s) = obj.remove(name).and_then(|s| s.as_str().map(str::to_string).map(Cow::from)) {
-                    base.$key_name = s;
+            };
+        }
+        macro_rules! forward_opt {
+            ($name:ident) => {
+                if let Some($name) = json.$name {
+                    base.$name = Some($name);
                 }
-            } );
-            ($key_name:ident = $json_name:expr, u64 as $int_ty:ty) => ( {
-                let name = $json_name;
-                if let Some(s) = obj.remove(name).and_then(|b| b.as_u64()) {
-                    base.$key_name = s as $int_ty;
-                }
-            } );
-            ($key_name:ident, bool) => ( {
-                let name = (stringify!($key_name)).replace("_", "-");
-                if let Some(s) = obj.remove(&name).and_then(|b| b.as_bool()) {
-                    base.$key_name = s;
-                }
-            } );
-            ($key_name:ident = $json_name:expr, bool) => ( {
-                let name = $json_name;
-                if let Some(s) = obj.remove(name).and_then(|b| b.as_bool()) {
-                    base.$key_name = s;
-                }
-            } );
-            ($key_name:ident, u32) => ( {
-                let name = (stringify!($key_name)).replace("_", "-");
-                if let Some(s) = obj.remove(&name).and_then(|b| b.as_u64()) {
-                    if s < 1 || s > 5 {
-                        return Err("Not a valid DWARF version number".into());
-                    }
-                    base.$key_name = s as u32;
-                }
-            } );
-            ($key_name:ident, Option<bool>) => ( {
-                let name = (stringify!($key_name)).replace("_", "-");
-                if let Some(s) = obj.remove(&name).and_then(|b| b.as_bool()) {
-                    base.$key_name = Some(s);
-                }
-            } );
-            ($key_name:ident, Option<u64>) => ( {
-                let name = (stringify!($key_name)).replace("_", "-");
-                if let Some(s) = obj.remove(&name).and_then(|b| b.as_u64()) {
-                    base.$key_name = Some(s);
-                }
-            } );
-            ($key_name:ident, Option<StaticCow<str>>) => ( {
-                let name = (stringify!($key_name)).replace("_", "-");
-                if let Some(s) = obj.remove(&name).and_then(|b| Some(b.as_str()?.to_string())) {
-                    base.$key_name = Some(s.into());
-                }
-            } );
-            ($key_name:ident, Option<Align>) => ( {
-                let name = (stringify!($key_name)).replace("_", "-");
-                if let Some(b) = obj.remove(&name).and_then(|b| b.as_u64()) {
-                    match Align::from_bits(b) {
-                        Ok(align) => base.$key_name = Some(align),
-                        Err(e) => return Err(alignment_error(&name, e)),
-                    }
-                }
-            } );
-            ($key_name:ident, BinaryFormat) => ( {
-                let name = (stringify!($key_name)).replace("_", "-");
-                obj.remove(&name).and_then(|f| f.as_str().and_then(|s| {
-                    match s.parse::<super::BinaryFormat>() {
-                        Ok(binary_format) => base.$key_name = binary_format,
-                        _ => return Some(Err(format!(
-                            "'{s}' is not a valid value for binary_format. \
-                            Use 'coff', 'elf', 'mach-o', 'wasm' or 'xcoff' "
-                        ))),
-                    }
-                    Some(Ok(()))
-                })).unwrap_or(Ok(()))
-            } );
-            ($key_name:ident, MergeFunctions) => ( {
-                let name = (stringify!($key_name)).replace("_", "-");
-                obj.remove(&name).and_then(|o| o.as_str().and_then(|s| {
-                    match s.parse::<super::MergeFunctions>() {
-                        Ok(mergefunc) => base.$key_name = mergefunc,
-                        _ => return Some(Err(format!("'{}' is not a valid value for \
-                                                      merge-functions. Use 'disabled', \
-                                                      'trampolines', or 'aliases'.",
-                                                      s))),
-                    }
-                    Some(Ok(()))
-                })).unwrap_or(Ok(()))
-            } );
-            ($key_name:ident, FloatAbi) => ( {
-                let name = (stringify!($key_name)).replace("_", "-");
-                obj.remove(&name).and_then(|o| o.as_str().and_then(|s| {
-                    match s.parse::<super::FloatAbi>() {
-                        Ok(float_abi) => base.$key_name = Some(float_abi),
-                        _ => return Some(Err(format!("'{}' is not a valid value for \
-                                                      llvm-floatabi. Use 'soft' or 'hard'.",
-                                                      s))),
-                    }
-                    Some(Ok(()))
-                })).unwrap_or(Ok(()))
-            } );
-            ($key_name:ident, RustcAbi) => ( {
-                let name = (stringify!($key_name)).replace("_", "-");
-                obj.remove(&name).and_then(|o| o.as_str().and_then(|s| {
-                    match s.parse::<super::RustcAbi>() {
-                        Ok(rustc_abi) => base.$key_name = Some(rustc_abi),
-                        _ => return Some(Err(format!(
-                            "'{s}' is not a valid value for rustc-abi. \
-                            Use 'x86-softfloat' or leave the field unset."
-                        ))),
-                    }
-                    Some(Ok(()))
-                })).unwrap_or(Ok(()))
-            } );
-            ($key_name:ident, RelocModel) => ( {
-                let name = (stringify!($key_name)).replace("_", "-");
-                obj.remove(&name).and_then(|o| o.as_str().and_then(|s| {
-                    match s.parse::<super::RelocModel>() {
-                        Ok(relocation_model) => base.$key_name = relocation_model,
-                        _ => return Some(Err(format!("'{}' is not a valid relocation model. \
-                                                      Run `rustc --print relocation-models` to \
-                                                      see the list of supported values.", s))),
-                    }
-                    Some(Ok(()))
-                })).unwrap_or(Ok(()))
-            } );
-            ($key_name:ident, CodeModel) => ( {
-                let name = (stringify!($key_name)).replace("_", "-");
-                obj.remove(&name).and_then(|o| o.as_str().and_then(|s| {
-                    match s.parse::<super::CodeModel>() {
-                        Ok(code_model) => base.$key_name = Some(code_model),
-                        _ => return Some(Err(format!("'{}' is not a valid code model. \
-                                                      Run `rustc --print code-models` to \
-                                                      see the list of supported values.", s))),
-                    }
-                    Some(Ok(()))
-                })).unwrap_or(Ok(()))
-            } );
-            ($key_name:ident, TlsModel) => ( {
-                let name = (stringify!($key_name)).replace("_", "-");
-                obj.remove(&name).and_then(|o| o.as_str().and_then(|s| {
-                    match s.parse::<super::TlsModel>() {
-                        Ok(tls_model) => base.$key_name = tls_model,
-                        _ => return Some(Err(format!("'{}' is not a valid TLS model. \
-                                                      Run `rustc --print tls-models` to \
-                                                      see the list of supported values.", s))),
-                    }
-                    Some(Ok(()))
-                })).unwrap_or(Ok(()))
-            } );
-            ($key_name:ident, SmallDataThresholdSupport) => ( {
-                obj.remove("small-data-threshold-support").and_then(|o| o.as_str().and_then(|s| {
-                    match s.parse::<super::SmallDataThresholdSupport>() {
-                        Ok(support) => base.small_data_threshold_support = support,
-                        _ => return Some(Err(format!("'{s}' is not a valid value for small-data-threshold-support."))),
-                    }
-                    Some(Ok(()))
-                })).unwrap_or(Ok(()))
-            } );
-            ($key_name:ident, PanicStrategy) => ( {
-                let name = (stringify!($key_name)).replace("_", "-");
-                obj.remove(&name).and_then(|o| o.as_str().and_then(|s| {
-                    match s {
-                        "unwind" => base.$key_name = super::PanicStrategy::Unwind,
-                        "abort" => base.$key_name = super::PanicStrategy::Abort,
-                        _ => return Some(Err(format!("'{}' is not a valid value for \
-                                                      panic-strategy. Use 'unwind' or 'abort'.",
-                                                     s))),
-                }
-                Some(Ok(()))
-            })).unwrap_or(Ok(()))
-            } );
-            ($key_name:ident, RelroLevel) => ( {
-                let name = (stringify!($key_name)).replace("_", "-");
-                obj.remove(&name).and_then(|o| o.as_str().and_then(|s| {
-                    match s.parse::<super::RelroLevel>() {
-                        Ok(level) => base.$key_name = level,
-                        _ => return Some(Err(format!("'{}' is not a valid value for \
-                                                      relro-level. Use 'full', 'partial, or 'off'.",
-                                                      s))),
-                    }
-                    Some(Ok(()))
-                })).unwrap_or(Ok(()))
-            } );
-            ($key_name:ident, Option<SymbolVisibility>) => ( {
-                let name = (stringify!($key_name)).replace("_", "-");
-                obj.remove(&name).and_then(|o| o.as_str().and_then(|s| {
-                    match s.parse::<super::SymbolVisibility>() {
-                        Ok(level) => base.$key_name = Some(level),
-                        _ => return Some(Err(format!("'{}' is not a valid value for \
-                                                      symbol-visibility. Use 'hidden', 'protected, or 'interposable'.",
-                                                      s))),
-                    }
-                    Some(Ok(()))
-                })).unwrap_or(Ok(()))
-            } );
-            ($key_name:ident, DebuginfoKind) => ( {
-                let name = (stringify!($key_name)).replace("_", "-");
-                obj.remove(&name).and_then(|o| o.as_str().and_then(|s| {
-                    match s.parse::<super::DebuginfoKind>() {
-                        Ok(level) => base.$key_name = level,
-                        _ => return Some(Err(
-                            format!("'{s}' is not a valid value for debuginfo-kind. Use 'dwarf', \
-                                  'dwarf-dsym' or 'pdb'.")
-                        )),
-                    }
-                    Some(Ok(()))
-                })).unwrap_or(Ok(()))
-            } );
-            ($key_name:ident, SplitDebuginfo) => ( {
-                let name = (stringify!($key_name)).replace("_", "-");
-                obj.remove(&name).and_then(|o| o.as_str().and_then(|s| {
-                    match s.parse::<super::SplitDebuginfo>() {
-                        Ok(level) => base.$key_name = level,
-                        _ => return Some(Err(format!("'{}' is not a valid value for \
-                                                      split-debuginfo. Use 'off' or 'dsymutil'.",
-                                                      s))),
-                    }
-                    Some(Ok(()))
-                })).unwrap_or(Ok(()))
-            } );
-            ($key_name:ident, list) => ( {
-                let name = (stringify!($key_name)).replace("_", "-");
-                if let Some(j) = obj.remove(&name) {
-                    if let Some(v) = j.as_array() {
-                        base.$key_name = v.iter()
-                            .map(|a| a.as_str().unwrap().to_string().into())
-                            .collect();
-                    } else {
-                        incorrect_type.push(name)
-                    }
-                }
-            } );
-            ($key_name:ident, opt_list) => ( {
-                let name = (stringify!($key_name)).replace("_", "-");
-                if let Some(j) = obj.remove(&name) {
-                    if let Some(v) = j.as_array() {
-                        base.$key_name = Some(v.iter()
-                            .map(|a| a.as_str().unwrap().to_string().into())
-                            .collect());
-                    } else {
-                        incorrect_type.push(name)
-                    }
-                }
-            } );
-            ($key_name:ident, fallible_list) => ( {
-                let name = (stringify!($key_name)).replace("_", "-");
-                obj.remove(&name).and_then(|j| {
-                    if let Some(v) = j.as_array() {
-                        match v.iter().map(|a| FromStr::from_str(a.as_str().unwrap())).collect() {
-                            Ok(l) => { base.$key_name = l },
-                            // FIXME: `fallible_list` can't re-use the `key!` macro for list
-                            // elements and the error messages from that macro, so it has a bad
-                            // generic message instead
-                            Err(_) => return Some(Err(
-                                format!("`{:?}` is not a valid value for `{}`", j, name)
-                            )),
-                        }
-                    } else {
-                        incorrect_type.push(name)
-                    }
-                    Some(Ok(()))
-                }).unwrap_or(Ok(()))
-            } );
-            ($key_name:ident, optional) => ( {
-                let name = (stringify!($key_name)).replace("_", "-");
-                if let Some(o) = obj.remove(&name) {
-                    base.$key_name = o
-                        .as_str()
-                        .map(|s| s.to_string().into());
-                }
-            } );
-            ($key_name:ident = $json_name:expr, LldFlavor) => ( {
-                let name = $json_name;
-                obj.remove(name).and_then(|o| o.as_str().and_then(|s| {
-                    if let Some(flavor) = super::LldFlavor::from_str(&s) {
-                        base.$key_name = flavor;
-                    } else {
-                        return Some(Err(format!(
-                            "'{}' is not a valid value for lld-flavor. \
-                             Use 'darwin', 'gnu', 'link' or 'wasm'.",
-                            s)))
-                    }
-                    Some(Ok(()))
-                })).unwrap_or(Ok(()))
-            } );
-            ($key_name:ident = $json_name:expr, LinkerFlavorCli) => ( {
-                let name = $json_name;
-                obj.remove(name).and_then(|o| o.as_str().and_then(|s| {
-                    match super::LinkerFlavorCli::from_str(s) {
-                        Some(linker_flavor) => base.$key_name = linker_flavor,
-                        _ => return Some(Err(format!("'{}' is not a valid value for linker-flavor. \
-                                                      Use {}", s, super::LinkerFlavorCli::one_of()))),
-                    }
-                    Some(Ok(()))
-                })).unwrap_or(Ok(()))
-            } );
-            ($key_name:ident, StackProbeType) => ( {
-                let name = (stringify!($key_name)).replace("_", "-");
-                obj.remove(&name).and_then(|o| match super::StackProbeType::from_json(&o) {
-                    Ok(v) => {
-                        base.$key_name = v;
-                        Some(Ok(()))
-                    },
-                    Err(s) => Some(Err(
-                        format!("`{:?}` is not a valid value for `{}`: {}", o, name, s)
-                    )),
-                }).unwrap_or(Ok(()))
-            } );
-            ($key_name:ident, SanitizerSet) => ( {
-                let name = (stringify!($key_name)).replace("_", "-");
-                if let Some(o) = obj.remove(&name) {
-                    if let Some(a) = o.as_array() {
-                        for s in a {
-                            use super::SanitizerSet;
-                            base.$key_name |= match s.as_str() {
-                                Some("address") => SanitizerSet::ADDRESS,
-                                Some("cfi") => SanitizerSet::CFI,
-                                Some("dataflow") => SanitizerSet::DATAFLOW,
-                                Some("kcfi") => SanitizerSet::KCFI,
-                                Some("kernel-address") => SanitizerSet::KERNELADDRESS,
-                                Some("leak") => SanitizerSet::LEAK,
-                                Some("memory") => SanitizerSet::MEMORY,
-                                Some("memtag") => SanitizerSet::MEMTAG,
-                                Some("safestack") => SanitizerSet::SAFESTACK,
-                                Some("shadow-call-stack") => SanitizerSet::SHADOWCALLSTACK,
-                                Some("thread") => SanitizerSet::THREAD,
-                                Some("hwaddress") => SanitizerSet::HWADDRESS,
-                                Some(s) => return Err(format!("unknown sanitizer {}", s)),
-                                _ => return Err(format!("not a string: {:?}", s)),
-                            };
-                        }
-                    } else {
-                        incorrect_type.push(name)
-                    }
-                }
-                Ok::<(), String>(())
-            } );
-            ($key_name:ident, link_self_contained_components) => ( {
-                // Skeleton of what needs to be parsed:
-                //
-                // ```
-                // $name: {
-                //     "components": [
-                //         <array of strings>
-                //     ]
-                // }
-                // ```
-                let name = (stringify!($key_name)).replace("_", "-");
-                if let Some(o) = obj.remove(&name) {
-                    if let Some(o) = o.as_object() {
-                        let component_array = o.get("components")
-                            .ok_or_else(|| format!("{name}: expected a \
-                                JSON object with a `components` field."))?;
-                        let component_array = component_array.as_array()
-                            .ok_or_else(|| format!("{name}.components: expected a JSON array"))?;
-                        let mut components = super::LinkSelfContainedComponents::empty();
-                        for s in component_array {
-                            components |= match s.as_str() {
-                                Some(s) => {
-                                    super::LinkSelfContainedComponents::from_str(s)
-                                        .ok_or_else(|| format!("unknown \
-                                        `-Clink-self-contained` component: {s}"))?
-                                },
-                                _ => return Err(format!("not a string: {:?}", s)),
-                            };
-                        }
-                        base.$key_name = super::LinkSelfContainedDefault::WithComponents(components);
-                    } else {
-                        incorrect_type.push(name)
-                    }
-                }
-                Ok::<(), String>(())
-            } );
-            ($key_name:ident = $json_name:expr, link_self_contained_backwards_compatible) => ( {
-                let name = $json_name;
-                obj.remove(name).and_then(|o| o.as_str().and_then(|s| {
-                    match s.parse::<super::LinkSelfContainedDefault>() {
-                        Ok(lsc_default) => base.$key_name = lsc_default,
-                        _ => return Some(Err(format!("'{}' is not a valid `-Clink-self-contained` default. \
-                                                      Use 'false', 'true', 'musl' or 'mingw'", s))),
-                    }
-                    Some(Ok(()))
-                })).unwrap_or(Ok(()))
-            } );
-            ($key_name:ident = $json_name:expr, link_objects) => ( {
-                let name = $json_name;
-                if let Some(val) = obj.remove(name) {
-                    let obj = val.as_object().ok_or_else(|| format!("{}: expected a \
-                        JSON object with fields per CRT object kind.", name))?;
-                    let mut args = super::CrtObjects::new();
-                    for (k, v) in obj {
-                        let kind = super::LinkOutputKind::from_str(&k).ok_or_else(|| {
-                            format!("{}: '{}' is not a valid value for CRT object kind. \
-                                     Use '(dynamic,static)-(nopic,pic)-exe' or \
-                                     '(dynamic,static)-dylib' or 'wasi-reactor-exe'", name, k)
-                        })?;
-
-                        let v = v.as_array().ok_or_else(||
-                            format!("{}.{}: expected a JSON array", name, k)
-                        )?.iter().enumerate()
-                            .map(|(i,s)| {
-                                let s = s.as_str().ok_or_else(||
-                                    format!("{}.{}[{}]: expected a JSON string", name, k, i))?;
-                                Ok(s.to_string().into())
-                            })
-                            .collect::<Result<Vec<_>, String>>()?;
-
-                        args.insert(kind, v);
-                    }
-                    base.$key_name = args;
-                }
-            } );
-            ($key_name:ident = $json_name:expr, link_args) => ( {
-                let name = $json_name;
-                if let Some(val) = obj.remove(name) {
-                    let obj = val.as_object().ok_or_else(|| format!("{}: expected a \
-                        JSON object with fields per linker-flavor.", name))?;
-                    let mut args = super::LinkArgsCli::new();
-                    for (k, v) in obj {
-                        let flavor = super::LinkerFlavorCli::from_str(&k).ok_or_else(|| {
-                            format!("{}: '{}' is not a valid value for linker-flavor. \
-                                     Use 'em', 'gcc', 'ld' or 'msvc'", name, k)
-                        })?;
-
-                        let v = v.as_array().ok_or_else(||
-                            format!("{}.{}: expected a JSON array", name, k)
-                        )?.iter().enumerate()
-                            .map(|(i,s)| {
-                                let s = s.as_str().ok_or_else(||
-                                    format!("{}.{}[{}]: expected a JSON string", name, k, i))?;
-                                Ok(s.to_string().into())
-                            })
-                            .collect::<Result<Vec<_>, String>>()?;
-
-                        args.insert(flavor, v);
-                    }
-                    base.$key_name = args;
-                }
-            } );
-            ($key_name:ident, env) => ( {
-                let name = (stringify!($key_name)).replace("_", "-");
-                if let Some(o) = obj.remove(&name) {
-                    if let Some(a) = o.as_array() {
-                        for o in a {
-                            if let Some(s) = o.as_str() {
-                                if let [k, v] = *s.split('=').collect::<Vec<_>>() {
-                                    base.$key_name
-                                        .to_mut()
-                                        .push((k.to_string().into(), v.to_string().into()))
-                                }
-                            }
-                        }
-                    } else {
-                        incorrect_type.push(name)
-                    }
-                }
-            } );
-            ($key_name:ident, target_families) => ( {
-                if let Some(value) = obj.remove("target-family") {
-                    if let Some(v) = value.as_array() {
-                        base.$key_name = v.iter()
-                            .map(|a| a.as_str().unwrap().to_string().into())
-                            .collect();
-                    } else if let Some(v) = value.as_str() {
-                        base.$key_name = vec![v.to_string().into()].into();
-                    }
-                }
-            } );
+            };
         }
 
-        if let Some(j) = obj.remove("target-endian") {
-            if let Some(s) = j.as_str() {
-                base.endian = s.parse()?;
-            } else {
-                incorrect_type.push("target-endian".into())
-            }
+        if let Some(target_endian) = json.target_endian {
+            base.endian = target_endian.0;
         }
 
-        if let Some(fp) = obj.remove("frame-pointer") {
-            if let Some(s) = fp.as_str() {
-                base.frame_pointer = s
-                    .parse()
-                    .map_err(|()| format!("'{s}' is not a valid value for frame-pointer"))?;
-            } else {
-                incorrect_type.push("frame-pointer".into())
-            }
-        }
+        forward!(frame_pointer);
+        forward!(c_int_width);
+        forward_opt!(c_enum_min_bits); // if None, matches c_int_width
+        forward!(os);
+        forward!(env);
+        forward!(abi);
+        forward!(vendor);
+        forward_opt!(linker);
+        forward!(linker_flavor_json);
+        forward!(lld_flavor_json);
+        forward!(linker_is_gnu_json);
+        forward!(pre_link_objects);
+        forward!(post_link_objects);
+        forward!(pre_link_objects_self_contained);
+        forward!(post_link_objects_self_contained);
 
-        key!(c_int_width = "target-c-int-width", u64 as u16);
-        key!(c_enum_min_bits, Option<u64>); // if None, matches c_int_width
-        key!(os);
-        key!(env);
-        key!(abi);
-        key!(vendor);
-        key!(linker, optional);
-        key!(linker_flavor_json = "linker-flavor", LinkerFlavorCli)?;
-        key!(lld_flavor_json = "lld-flavor", LldFlavor)?;
-        key!(linker_is_gnu_json = "linker-is-gnu", bool);
-        key!(pre_link_objects = "pre-link-objects", link_objects);
-        key!(post_link_objects = "post-link-objects", link_objects);
-        key!(pre_link_objects_self_contained = "pre-link-objects-fallback", link_objects);
-        key!(post_link_objects_self_contained = "post-link-objects-fallback", link_objects);
         // Deserializes the backwards-compatible variants of `-Clink-self-contained`
-        key!(
-            link_self_contained = "crt-objects-fallback",
-            link_self_contained_backwards_compatible
-        )?;
+        if let Some(link_self_contained) = json.link_self_contained_backwards_compatible {
+            base.link_self_contained = link_self_contained;
+        }
         // Deserializes the components variant of `-Clink-self-contained`
-        key!(link_self_contained, link_self_contained_components)?;
-        key!(pre_link_args_json = "pre-link-args", link_args);
-        key!(late_link_args_json = "late-link-args", link_args);
-        key!(late_link_args_dynamic_json = "late-link-args-dynamic", link_args);
-        key!(late_link_args_static_json = "late-link-args-static", link_args);
-        key!(post_link_args_json = "post-link-args", link_args);
-        key!(link_script, optional);
-        key!(link_env, env);
-        key!(link_env_remove, list);
-        key!(asm_args, list);
-        key!(cpu);
-        key!(need_explicit_cpu, bool);
-        key!(features);
-        key!(dynamic_linking, bool);
-        key!(direct_access_external_data, Option<bool>);
-        key!(dll_tls_export, bool);
-        key!(only_cdylib, bool);
-        key!(executables, bool);
-        key!(relocation_model, RelocModel)?;
-        key!(code_model, CodeModel)?;
-        key!(tls_model, TlsModel)?;
-        key!(disable_redzone, bool);
-        key!(function_sections, bool);
-        key!(dll_prefix);
-        key!(dll_suffix);
-        key!(exe_suffix);
-        key!(staticlib_prefix);
-        key!(staticlib_suffix);
-        key!(families, target_families);
-        key!(abi_return_struct_as_int, bool);
-        key!(is_like_aix, bool);
-        key!(is_like_darwin, bool);
-        key!(is_like_solaris, bool);
-        key!(is_like_windows, bool);
-        key!(is_like_msvc, bool);
-        key!(is_like_wasm, bool);
-        key!(is_like_android, bool);
-        key!(binary_format, BinaryFormat)?;
-        key!(default_dwarf_version, u32);
-        key!(allows_weak_linkage, bool);
-        key!(has_rpath, bool);
-        key!(no_default_libraries, bool);
-        key!(position_independent_executables, bool);
-        key!(static_position_independent_executables, bool);
-        key!(plt_by_default, bool);
-        key!(relro_level, RelroLevel)?;
-        key!(archive_format);
-        key!(allow_asm, bool);
-        key!(main_needs_argc_argv, bool);
-        key!(has_thread_local, bool);
-        key!(obj_is_bitcode, bool);
-        key!(bitcode_llvm_cmdline);
-        key!(max_atomic_width, Option<u64>);
-        key!(min_atomic_width, Option<u64>);
-        key!(atomic_cas, bool);
-        key!(panic_strategy, PanicStrategy)?;
-        key!(crt_static_allows_dylibs, bool);
-        key!(crt_static_default, bool);
-        key!(crt_static_respected, bool);
-        key!(stack_probes, StackProbeType)?;
-        key!(min_global_align, Option<Align>);
-        key!(default_codegen_units, Option<u64>);
-        key!(default_codegen_backend, Option<StaticCow<str>>);
-        key!(trap_unreachable, bool);
-        key!(requires_lto, bool);
-        key!(singlethread, bool);
-        key!(no_builtins, bool);
-        key!(default_visibility, Option<SymbolVisibility>)?;
-        key!(emit_debug_gdb_scripts, bool);
-        key!(requires_uwtable, bool);
-        key!(default_uwtable, bool);
-        key!(simd_types_indirect, bool);
-        key!(limit_rdylib_exports, bool);
-        key!(override_export_symbols, opt_list);
-        key!(merge_functions, MergeFunctions)?;
-        key!(mcount = "target-mcount");
-        key!(llvm_mcount_intrinsic, optional);
-        key!(llvm_abiname);
-        key!(llvm_floatabi, FloatAbi)?;
-        key!(rustc_abi, RustcAbi)?;
-        key!(relax_elf_relocations, bool);
-        key!(llvm_args, list);
-        key!(use_ctors_section, bool);
-        key!(eh_frame_header, bool);
-        key!(has_thumb_interworking, bool);
-        key!(debuginfo_kind, DebuginfoKind)?;
-        key!(split_debuginfo, SplitDebuginfo)?;
-        key!(supported_split_debuginfo, fallible_list)?;
-        key!(supported_sanitizers, SanitizerSet)?;
-        key!(generate_arange_section, bool);
-        key!(supports_stack_protector, bool);
-        key!(small_data_threshold_support, SmallDataThresholdSupport)?;
-        key!(entry_name);
-        key!(supports_xray, bool);
+        if let Some(link_self_contained) = json.link_self_contained {
+            let components = link_self_contained
+                .components
+                .into_iter()
+                .fold(LinkSelfContainedComponents::empty(), |a, b| a | b);
+            base.link_self_contained = LinkSelfContainedDefault::WithComponents(components);
+        }
+
+        forward!(pre_link_args_json);
+        forward!(late_link_args_json);
+        forward!(late_link_args_dynamic_json);
+        forward!(late_link_args_static_json);
+        forward!(post_link_args_json);
+        forward_opt!(link_script);
+
+        if let Some(link_env) = json.link_env {
+            for s in link_env {
+                if let [k, v] = *s.split('=').collect::<Vec<_>>() {
+                    base.link_env.to_mut().push((k.to_string().into(), v.to_string().into()))
+                } else {
+                    return Err(format!("link-env value '{s}' must be of the pattern 'KEY=VALUE'"));
+                }
+            }
+        }
+
+        forward!(link_env_remove);
+        forward!(asm_args);
+        forward!(cpu);
+        forward!(need_explicit_cpu);
+        forward!(features);
+        forward!(dynamic_linking);
+        forward_opt!(direct_access_external_data);
+        forward!(dll_tls_export);
+        forward!(only_cdylib);
+        forward!(executables);
+        forward!(relocation_model);
+        forward_opt!(code_model);
+        forward!(tls_model);
+        forward!(disable_redzone);
+        forward!(function_sections);
+        forward!(dll_prefix);
+        forward!(dll_suffix);
+        forward!(exe_suffix);
+        forward!(staticlib_prefix);
+        forward!(staticlib_suffix);
+
+        if let Some(target_family) = json.target_family {
+            match target_family {
+                TargetFamiliesJson::Array(families) => base.families = families,
+                TargetFamiliesJson::String(family) => base.families = vec![family].into(),
+            }
+        }
+
+        forward!(abi_return_struct_as_int);
+        forward!(is_like_aix);
+        forward!(is_like_darwin);
+        forward!(is_like_solaris);
+        forward!(is_like_windows);
+        forward!(is_like_msvc);
+        forward!(is_like_wasm);
+        forward!(is_like_android);
+        forward!(binary_format);
+        forward!(default_dwarf_version);
+        forward!(allows_weak_linkage);
+        forward!(has_rpath);
+        forward!(no_default_libraries);
+        forward!(position_independent_executables);
+        forward!(static_position_independent_executables);
+        forward!(plt_by_default);
+        forward!(relro_level);
+        forward!(archive_format);
+        forward!(allow_asm);
+        forward!(main_needs_argc_argv);
+        forward!(has_thread_local);
+        forward!(obj_is_bitcode);
+        forward!(bitcode_llvm_cmdline);
+        forward_opt!(max_atomic_width);
+        forward_opt!(min_atomic_width);
+        forward!(atomic_cas);
+        forward!(panic_strategy);
+        forward!(crt_static_allows_dylibs);
+        forward!(crt_static_default);
+        forward!(crt_static_respected);
+        forward!(stack_probes);
+
+        if let Some(min_global_align) = json.min_global_align {
+            match Align::from_bits(min_global_align) {
+                Ok(align) => base.min_global_align = Some(align),
+                Err(e) => return Err(alignment_error("min-global-align", e)),
+            }
+        }
+
+        forward_opt!(default_codegen_units);
+        forward_opt!(default_codegen_backend);
+        forward!(trap_unreachable);
+        forward!(requires_lto);
+        forward!(singlethread);
+        forward!(no_builtins);
+        forward_opt!(default_visibility);
+        forward!(emit_debug_gdb_scripts);
+        forward!(requires_uwtable);
+        forward!(default_uwtable);
+        forward!(simd_types_indirect);
+        forward!(limit_rdylib_exports);
+        forward_opt!(override_export_symbols);
+        forward!(merge_functions);
+        forward!(mcount);
+        forward_opt!(llvm_mcount_intrinsic);
+        forward!(llvm_abiname);
+        forward_opt!(llvm_floatabi);
+        forward_opt!(rustc_abi);
+        forward!(relax_elf_relocations);
+        forward!(llvm_args);
+        forward!(use_ctors_section);
+        forward!(eh_frame_header);
+        forward!(has_thumb_interworking);
+        forward!(debuginfo_kind);
+        forward!(split_debuginfo);
+        forward!(supported_split_debuginfo);
+
+        if let Some(supported_sanitizers) = json.supported_sanitizers {
+            base.supported_sanitizers =
+                supported_sanitizers.into_iter().fold(SanitizerSet::empty(), |a, b| a | b);
+        }
+
+        forward!(generate_arange_section);
+        forward!(supports_stack_protector);
+        forward!(small_data_threshold_support);
+        forward!(entry_name);
+        forward!(supports_xray);
 
         // we're going to run `update_from_cli`, but that won't change the target's AbiMap
         // FIXME: better factor the Target definition so we enforce this on a type level
         let abi_map = AbiMap::from_target(&base);
-
-        if let Some(abi_str) = obj.remove("entry-abi") {
-            if let Json::String(abi_str) = abi_str {
-                match abi_str.parse::<ExternAbi>() {
-                    Ok(abi) => base.options.entry_abi = abi_map.canonize_abi(abi, false).unwrap(),
-                    Err(_) => return Err(format!("{abi_str} is not a valid ExternAbi")),
-                }
-            } else {
-                incorrect_type.push("entry-abi".to_owned())
-            }
+        if let Some(entry_abi) = json.entry_abi {
+            base.options.entry_abi = abi_map.canonize_abi(entry_abi.0, false).unwrap();
         }
 
         base.update_from_cli();
         base.check_consistency(TargetKind::Json)?;
 
-        // Each field should have been read using `Json::remove` so any keys remaining are unused.
-        let remaining_keys = obj.keys();
-        Ok((
-            base,
-            TargetWarnings { unused_fields: remaining_keys.cloned().collect(), incorrect_type },
-        ))
+        Ok((base, TargetWarnings { unused_fields: vec![] }))
     }
 }
 
@@ -876,4 +411,190 @@ impl ToJson for Target {
 
         Json::Object(d)
     }
+}
+
+#[derive(serde_derive::Deserialize)]
+struct LinkSelfContainedComponentsWrapper {
+    components: Vec<LinkSelfContainedComponents>,
+}
+
+#[derive(serde_derive::Deserialize)]
+#[serde(untagged)]
+enum TargetFamiliesJson {
+    Array(StaticCow<[StaticCow<str>]>),
+    String(StaticCow<str>),
+}
+
+/// `Endian` is in `rustc_abi`, which doesn't have access to the macro and serde.
+struct EndianWrapper(rustc_abi::Endian);
+impl FromStr for EndianWrapper {
+    type Err = String;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        rustc_abi::Endian::from_str(s).map(Self)
+    }
+}
+crate::json::serde_deserialize_from_str!(EndianWrapper);
+
+/// `ExternAbi` is in `rustc_abi`, which doesn't have access to the macro and serde.
+struct ExternAbiWrapper(rustc_abi::ExternAbi);
+impl FromStr for ExternAbiWrapper {
+    type Err = String;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        rustc_abi::ExternAbi::from_str(s)
+            .map(Self)
+            .map_err(|_| format!("{s} is not a valid extern ABI"))
+    }
+}
+crate::json::serde_deserialize_from_str!(ExternAbiWrapper);
+
+#[derive(serde_derive::Deserialize)]
+struct TargetSpecJsonMetadata {
+    description: Option<StaticCow<str>>,
+    tier: Option<u64>,
+    host_tools: Option<bool>,
+    std: Option<bool>,
+}
+
+#[derive(serde_derive::Deserialize)]
+#[serde(rename_all = "kebab-case")]
+// Ensure that all unexpected fields get turned into errors.
+// This helps users stay up to date when the schema changes instead of silently
+// ignoring their old values.
+#[serde(deny_unknown_fields)]
+struct TargetSpecJson {
+    llvm_target: StaticCow<str>,
+    target_pointer_width: String,
+    data_layout: StaticCow<str>,
+    arch: StaticCow<str>,
+
+    metadata: Option<TargetSpecJsonMetadata>,
+
+    // options:
+    target_endian: Option<EndianWrapper>,
+    frame_pointer: Option<FramePointer>,
+    #[serde(rename = "target-c-int-width")]
+    c_int_width: Option<u16>,
+    c_enum_min_bits: Option<u64>,
+    os: Option<StaticCow<str>>,
+    env: Option<StaticCow<str>>,
+    abi: Option<StaticCow<str>>,
+    vendor: Option<StaticCow<str>>,
+    linker: Option<StaticCow<str>>,
+    #[serde(rename = "linker-flavor")]
+    linker_flavor_json: Option<LinkerFlavorCli>,
+    #[serde(rename = "lld-flavor")]
+    lld_flavor_json: Option<LldFlavor>,
+    #[serde(rename = "linker-is-gnu")]
+    linker_is_gnu_json: Option<bool>,
+    #[serde(rename = "pre-link-objects")]
+    pre_link_objects: Option<CrtObjects>,
+    #[serde(rename = "post-link-objects")]
+    post_link_objects: Option<CrtObjects>,
+    #[serde(rename = "pre-link-objects-fallback")]
+    pre_link_objects_self_contained: Option<CrtObjects>,
+    #[serde(rename = "post-link-objects-fallback")]
+    post_link_objects_self_contained: Option<CrtObjects>,
+    #[serde(rename = "crt-objects-fallback")]
+    link_self_contained_backwards_compatible: Option<LinkSelfContainedDefault>,
+    link_self_contained: Option<LinkSelfContainedComponentsWrapper>,
+    #[serde(rename = "pre-link-args")]
+    pre_link_args_json: Option<LinkArgsCli>,
+    #[serde(rename = "late-link-args")]
+    late_link_args_json: Option<LinkArgsCli>,
+    #[serde(rename = "late-link-args-dynamic")]
+    late_link_args_dynamic_json: Option<LinkArgsCli>,
+    #[serde(rename = "late-link-args-static")]
+    late_link_args_static_json: Option<LinkArgsCli>,
+    #[serde(rename = "post-link-args")]
+    post_link_args_json: Option<LinkArgsCli>,
+    link_script: Option<StaticCow<str>>,
+    link_env: Option<Vec<StaticCow<str>>>,
+    link_env_remove: Option<StaticCow<[StaticCow<str>]>>,
+    asm_args: Option<StaticCow<[StaticCow<str>]>>,
+    cpu: Option<StaticCow<str>>,
+    need_explicit_cpu: Option<bool>,
+    features: Option<StaticCow<str>>,
+    dynamic_linking: Option<bool>,
+    direct_access_external_data: Option<bool>,
+    dll_tls_export: Option<bool>,
+    only_cdylib: Option<bool>,
+    executables: Option<bool>,
+    relocation_model: Option<RelocModel>,
+    code_model: Option<CodeModel>,
+    tls_model: Option<TlsModel>,
+    disable_redzone: Option<bool>,
+    function_sections: Option<bool>,
+    dll_prefix: Option<StaticCow<str>>,
+    dll_suffix: Option<StaticCow<str>>,
+    exe_suffix: Option<StaticCow<str>>,
+    staticlib_prefix: Option<StaticCow<str>>,
+    staticlib_suffix: Option<StaticCow<str>>,
+    target_family: Option<TargetFamiliesJson>,
+    abi_return_struct_as_int: Option<bool>,
+    is_like_aix: Option<bool>,
+    is_like_darwin: Option<bool>,
+    is_like_solaris: Option<bool>,
+    is_like_windows: Option<bool>,
+    is_like_msvc: Option<bool>,
+    is_like_wasm: Option<bool>,
+    is_like_android: Option<bool>,
+    binary_format: Option<BinaryFormat>,
+    default_dwarf_version: Option<u32>,
+    allows_weak_linkage: Option<bool>,
+    has_rpath: Option<bool>,
+    no_default_libraries: Option<bool>,
+    position_independent_executables: Option<bool>,
+    static_position_independent_executables: Option<bool>,
+    plt_by_default: Option<bool>,
+    relro_level: Option<RelroLevel>,
+    archive_format: Option<StaticCow<str>>,
+    allow_asm: Option<bool>,
+    main_needs_argc_argv: Option<bool>,
+    has_thread_local: Option<bool>,
+    obj_is_bitcode: Option<bool>,
+    bitcode_llvm_cmdline: Option<StaticCow<str>>,
+    max_atomic_width: Option<u64>,
+    min_atomic_width: Option<u64>,
+    atomic_cas: Option<bool>,
+    panic_strategy: Option<PanicStrategy>,
+    crt_static_allows_dylibs: Option<bool>,
+    crt_static_default: Option<bool>,
+    crt_static_respected: Option<bool>,
+    stack_probes: Option<StackProbeType>,
+    min_global_align: Option<u64>,
+    default_codegen_units: Option<u64>,
+    default_codegen_backend: Option<StaticCow<str>>,
+    trap_unreachable: Option<bool>,
+    requires_lto: Option<bool>,
+    singlethread: Option<bool>,
+    no_builtins: Option<bool>,
+    default_visibility: Option<SymbolVisibility>,
+    emit_debug_gdb_scripts: Option<bool>,
+    requires_uwtable: Option<bool>,
+    default_uwtable: Option<bool>,
+    simd_types_indirect: Option<bool>,
+    limit_rdylib_exports: Option<bool>,
+    override_export_symbols: Option<StaticCow<[StaticCow<str>]>>,
+    merge_functions: Option<MergeFunctions>,
+    #[serde(rename = "target-mcount")]
+    mcount: Option<StaticCow<str>>,
+    llvm_mcount_intrinsic: Option<StaticCow<str>>,
+    llvm_abiname: Option<StaticCow<str>>,
+    llvm_floatabi: Option<FloatAbi>,
+    rustc_abi: Option<RustcAbi>,
+    relax_elf_relocations: Option<bool>,
+    llvm_args: Option<StaticCow<[StaticCow<str>]>>,
+    use_ctors_section: Option<bool>,
+    eh_frame_header: Option<bool>,
+    has_thumb_interworking: Option<bool>,
+    debuginfo_kind: Option<DebuginfoKind>,
+    split_debuginfo: Option<SplitDebuginfo>,
+    supported_split_debuginfo: Option<StaticCow<[SplitDebuginfo]>>,
+    supported_sanitizers: Option<Vec<SanitizerSet>>,
+    generate_arange_section: Option<bool>,
+    supports_stack_protector: Option<bool>,
+    small_data_threshold_support: Option<SmallDataThresholdSupport>,
+    entry_name: Option<StaticCow<str>>,
+    supports_xray: Option<bool>,
+    entry_abi: Option<ExternAbiWrapper>,
 }

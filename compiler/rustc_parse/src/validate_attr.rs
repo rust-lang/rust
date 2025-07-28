@@ -1,11 +1,14 @@
 //! Meta-syntax validation logic of attributes for post-expansion.
 
+use std::slice;
+
 use rustc_ast::token::Delimiter;
 use rustc_ast::tokenstream::DelimSpan;
 use rustc_ast::{
     self as ast, AttrArgs, Attribute, DelimArgs, MetaItem, MetaItemInner, MetaItemKind, NodeId,
     Path, Safety,
 };
+use rustc_attr_parsing::{AttributeParser, Late};
 use rustc_errors::{Applicability, DiagCtxtHandle, FatalError, PResult};
 use rustc_feature::{AttributeSafety, AttributeTemplate, BUILTIN_ATTRIBUTE_MAP, BuiltinAttribute};
 use rustc_session::errors::report_lit_error;
@@ -266,64 +269,7 @@ pub fn check_builtin_meta_item(
 ) {
     if !is_attr_template_compatible(&template, &meta.kind) {
         // attrs with new parsers are locally validated so excluded here
-        if matches!(
-            name,
-            sym::inline
-                | sym::export_stable
-                | sym::ffi_const
-                | sym::ffi_pure
-                | sym::rustc_std_internal_symbol
-                | sym::may_dangle
-                | sym::rustc_as_ptr
-                | sym::rustc_pub_transparent
-                | sym::rustc_const_stable_indirect
-                | sym::rustc_force_inline
-                | sym::rustc_confusables
-                | sym::rustc_skip_during_method_dispatch
-                | sym::rustc_pass_by_value
-                | sym::rustc_deny_explicit_impl
-                | sym::rustc_do_not_implement_via_object
-                | sym::rustc_coinductive
-                | sym::const_trait
-                | sym::rustc_specialization_trait
-                | sym::rustc_unsafe_specialization_marker
-                | sym::rustc_allow_incoherent_impl
-                | sym::rustc_coherence_is_core
-                | sym::marker
-                | sym::fundamental
-                | sym::rustc_paren_sugar
-                | sym::type_const
-                | sym::repr
-                // FIXME(#82232, #143834): temporarily renamed to mitigate `#[align]` nameres
-                // ambiguity
-                | sym::rustc_align
-                | sym::deprecated
-                | sym::optimize
-                | sym::pointee
-                | sym::cold
-                | sym::target_feature
-                | sym::rustc_allow_const_fn_unstable
-                | sym::macro_use
-                | sym::macro_escape
-                | sym::naked
-                | sym::no_mangle
-                | sym::non_exhaustive
-                | sym::omit_gdb_pretty_printer_section
-                | sym::path
-                | sym::ignore
-                | sym::must_use
-                | sym::track_caller
-                | sym::link_name
-                | sym::link_ordinal
-                | sym::export_name
-                | sym::rustc_macro_transparency
-                | sym::link_section
-                | sym::rustc_layout_scalar_valid_range_start
-                | sym::rustc_layout_scalar_valid_range_end
-                | sym::no_implicit_prelude
-                | sym::automatically_derived
-                | sym::coverage
-        ) {
+        if AttributeParser::<Late>::is_parsed_attribute(slice::from_ref(&name)) {
             return;
         }
         emit_malformed_attribute(psess, style, meta.span, name, template);

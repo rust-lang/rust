@@ -38,11 +38,10 @@ pub fn try_new_scalar<'tcx, B: Bridge>(
 
 pub fn try_new_slice<'tcx, B: Bridge>(
     layout: TyAndLayout<'tcx, Ty<'tcx>>,
-    data: ConstAllocation<'tcx>,
+    alloc_id: AllocId,
     meta: u64,
     cx: &CompilerCtxt<'tcx, B>,
 ) -> Result<Allocation, B::Error> {
-    let alloc_id = cx.tcx.reserve_and_set_memory_alloc(data);
     let ptr = Pointer::new(alloc_id.into(), Size::ZERO);
     let scalar_ptr = Scalar::from_pointer(ptr, &cx.tcx);
     let scalar_meta: Scalar = Scalar::from_target_usize(meta, &cx.tcx);

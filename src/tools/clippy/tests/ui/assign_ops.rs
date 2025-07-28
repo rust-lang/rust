@@ -84,6 +84,7 @@ mod issue14871 {
         const ONE: Self;
     }
 
+    #[rustfmt::skip] // rustfmt doesn't understand the order of pub const on traits (yet)
     pub const trait NumberConstants {
         fn constant(value: usize) -> Self;
     }

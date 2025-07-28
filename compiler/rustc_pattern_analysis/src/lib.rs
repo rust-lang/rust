@@ -57,6 +57,13 @@ pub trait PatCx: Sized + fmt::Debug {
 
     fn is_exhaustive_patterns_feature_on(&self) -> bool;
 
+    /// Whether to ensure the non-exhaustiveness witnesses we report for a complete set. This is
+    /// `false` by default to avoid some exponential blowup cases such as
+    /// <https://github.com/rust-lang/rust/issues/118437>.
+    fn exhaustive_witnesses(&self) -> bool {
+        false
+    }
+
     /// The number of fields for this constructor.
     fn ctor_arity(&self, ctor: &Constructor<Self>, ty: &Self::Ty) -> usize;
 

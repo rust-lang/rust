@@ -54,7 +54,7 @@ impl<'tcx> Region<'tcx> {
     ) -> Region<'tcx> {
         // Use a pre-interned one when possible.
         if let ty::BoundRegion { var, kind: ty::BoundRegionKind::Anon } = bound_region
-            && let Some(inner) = tcx.lifetimes.re_late_bounds.get(debruijn.as_usize())
+            && let Some(inner) = tcx.lifetimes.anon_re_bounds.get(debruijn.as_usize())
             && let Some(re) = inner.get(var.as_usize()).copied()
         {
             re

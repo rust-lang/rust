@@ -511,15 +511,6 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
         err.emit();
     }
 
-    // Any linkage to LLVM intrinsics for now forcibly marks them all as never
-    // unwinds since LLVM sometimes can't handle codegen which `invoke`s
-    // intrinsic functions.
-    if let Some(name) = &codegen_fn_attrs.link_name
-        && name.as_str().starts_with("llvm.")
-    {
-        codegen_fn_attrs.flags |= CodegenFnAttrFlags::NEVER_UNWIND;
-    }
-
     if let Some(features) = check_tied_features(
         tcx.sess,
         &codegen_fn_attrs

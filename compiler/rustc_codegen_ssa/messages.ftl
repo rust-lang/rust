@@ -35,6 +35,10 @@ codegen_ssa_dlltool_fail_import_library =
     {$stdout}
     {$stderr}
 
+codegen_ssa_dynamic_linking_with_lto =
+    cannot prefer dynamic linking when performing LTO
+    .note = only 'staticlib', 'bin', and 'cdylib' outputs are supported with LTO
+
 codegen_ssa_error_calling_dlltool =
     Error calling dlltool '{$dlltool_path}': {$error}
 
@@ -190,6 +194,12 @@ codegen_ssa_linker_output = {$inner}
 codegen_ssa_linker_unsupported_modifier = `as-needed` modifier not supported for current linker
 
 codegen_ssa_linking_failed = linking with `{$linker_path}` failed: {$exit_status}
+
+codegen_ssa_lto_disallowed = lto can only be run for executables, cdylibs and static library outputs
+
+codegen_ssa_lto_dylib = lto cannot be used for `dylib` crate type without `-Zdylib-lto`
+
+codegen_ssa_lto_proc_macro = lto cannot be used for `proc-macro` crate type without `-Zdylib-lto`
 
 codegen_ssa_malformed_cgu_name =
     found malformed codegen unit name `{$user_path}`. codegen units names must always start with the name of the crate (`{$crate_name}` in this case).
