@@ -110,18 +110,10 @@ pub enum DeprecatedSince {
     Err,
 }
 
-#[derive(
-    Copy,
-    Debug,
-    Eq,
-    PartialEq,
-    Encodable,
-    Decodable,
-    Clone,
-    HashStable_Generic,
-    PrintAttribute
-)]
-pub enum CoverageStatus {
+/// Successfully-parsed value of a `#[coverage(..)]` attribute.
+#[derive(Copy, Debug, Eq, PartialEq, Encodable, Decodable, Clone)]
+#[derive(HashStable_Generic, PrintAttribute)]
+pub enum CoverageAttrKind {
     On,
     Off,
 }
@@ -304,8 +296,8 @@ pub enum AttributeKind {
     /// Represents `#[const_trait]`.
     ConstTrait(Span),
 
-    /// Represents `#[coverage]`.
-    Coverage(Span, CoverageStatus),
+    /// Represents `#[coverage(..)]`.
+    Coverage(Span, CoverageAttrKind),
 
     ///Represents `#[rustc_deny_explicit_impl]`.
     DenyExplicitImpl(Span),

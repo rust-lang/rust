@@ -1,4 +1,4 @@
-use rustc_attr_data_structures::{AttributeKind, CoverageStatus, find_attr};
+use rustc_attr_data_structures::{AttributeKind, CoverageAttrKind, find_attr};
 use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::coverage::{BasicCoverageBlock, CoverageIdsInfo, CoverageKind, MappingKind};
@@ -57,20 +57,23 @@ fn is_eligible_for_coverage(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
 
 /// Query implementation for `coverage_attr_on`.
 fn coverage_attr_on(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
-    // Check for annotations directly on this def.
-    if let Some(coverage_status) =
-        find_attr!(tcx.get_all_attrs(def_id), AttributeKind::Coverage(_, status) => status)
+    // Check for a `#[coverage(..)]` attribute on this def.
+    if let Some(kind) =
+        find_attr!(tcx.get_all_attrs(def_id), AttributeKind::Coverage(_sp, kind) => kind)
     {
-        *coverage_status == CoverageStatus::On
-    } else {
-        match tcx.opt_local_parent(def_id) {
-            // Check the parent def (and so on recursively) until we find an
-            // enclosing attribute or reach the crate root.
-            Some(parent) => tcx.coverage_attr_on(parent),
-            // We reached the crate root without seeing a coverage attribute, so
-            // allow coverage instrumentation by default.
-            None => true,
+        match kind {
+            CoverageAttrKind::On => return true,
+            CoverageAttrKind::Off => return false,
         }
+    };
+
+    // Check the parent def (and so on recursively) until we find an
+    // enclosing attribute or reach the crate root.
+    match tcx.opt_local_parent(def_id) {
+        Some(parent) => tcx.coverage_attr_on(parent),
+        // We reached the crate root without seeing a coverage attribute, so
+        // allow coverage instrumentation by default.
+        None => true,
     }
 }
 
