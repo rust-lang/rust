@@ -35,7 +35,7 @@ LL |     let mut x = Vec::new();
    |         ^^^^^ `x` of type `Vec<_>` that has method `push` defined earlier here
 ...
 LL |     let mut x = VecDeque::new();
-   |         ----- earlier `x` shadowed here with type `VecDeque`
+   |         ----- earlier `x` shadowed here with type `VecDeque<_>`
 help: you might have meant to use `push_back`
    |
 LL |     x.push_back(1);

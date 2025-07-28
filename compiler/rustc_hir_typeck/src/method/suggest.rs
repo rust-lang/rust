@@ -407,11 +407,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         self_source: SelfSource<'tcx>,
         method_name: Ident,
-        unsatisfied_predicates: &[(
-            ty::Predicate<'tcx>,
-            Option<ty::Predicate<'tcx>>,
-            Option<ObligationCause<'tcx>>,
-        )],
         ty: Ty<'tcx>,
         err: &mut Diag<'_>,
     ) {
@@ -487,7 +482,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
 
                 // If the shadowed binding has an itializer expression,
-                // use the initializer expression'ty to try to find the method again.
+                // use the initializer expression's ty to try to find the method again.
                 // For example like:  `let mut x = Vec::new();`,
                 // `Vec::new()` is the itializer expression.
                 if let Some(self_ty) = self.fcx.node_ty_opt(binding.init_hir_id)
@@ -576,34 +571,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     span.push_span_label(sugg_let.span,
                             format!("`{rcvr_name}` of type `{self_ty}` that has method `{method_name}` defined earlier here"));
 
-                    // Don't show generic arguments when the method can't be found in any implementation (#81576).
-                    let mut ty_str = None;
-                    if let ty::Adt(_, generics) = ty.kind() {
-                        if generics.len() > 0 {
-                            let mut autoderef = self.autoderef(DUMMY_SP, ty).silence_errors();
-                            let candidate_found = autoderef.any(|(ty, _)| {
-                                if let ty::Adt(adt_def, _) = ty.kind() {
-                                    self.tcx.inherent_impls(adt_def.did()).into_iter().any(
-                                        |def_id| {
-                                            self.associated_value(*def_id, method_name).is_some()
-                                        },
-                                    )
-                                } else {
-                                    false
-                                }
-                            });
-                            let has_deref = autoderef.step_count() > 0;
-                            if !candidate_found && !has_deref && unsatisfied_predicates.is_empty() {
-                                let t = with_forced_trimmed_paths!(ty.to_string());
-                                if let Some((path_string, _)) = t.split_once('<') {
-                                    ty_str = Some(path_string.to_string());
-                                }
-                            }
-                        }
-                    }
-
-                    let ty =
-                        ty_str.unwrap_or_else(|| self.tcx.short_string(ty, err.long_ty_path()));
+                    let ty = self.tcx.short_string(ty, err.long_ty_path());
                     span.push_span_label(
                         self.tcx.hir_span(recv_id),
                         format!("earlier `{rcvr_name}` shadowed here with type `{ty}`"),
@@ -720,11 +688,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             if is_method {
                 self.suggest_use_shadowed_binding_with_method(
-                    source,
-                    item_ident,
-                    &unsatisfied_predicates,
-                    rcvr_ty,
-                    &mut err,
+                    source, item_ident, rcvr_ty, &mut err,
                 );
             }
 
