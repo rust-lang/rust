@@ -8,7 +8,7 @@ fn generic_in_place(_1: *mut Box<[T]>) -> () {
             let _2: std::ptr::NonNull<[T]>;
             let mut _3: *mut [T];
             let mut _4: *const [T];
-            let _12: ();
+            let _9: ();
             scope 3 {
                 scope 4 {
                     scope 12 (inlined Layout::size) {
@@ -30,14 +30,9 @@ fn generic_in_place(_1: *mut Box<[T]>) -> () {
                         scope 20 (inlined NonNull::<u8>::as_ptr) {
                         }
                         scope 21 (inlined std::alloc::dealloc) {
-                            let mut _11: usize;
                             scope 22 (inlined Layout::size) {
                             }
-                            scope 23 (inlined Layout::align) {
-                                scope 24 (inlined std::ptr::Alignment::as_usize) {
-                                    let _9: std::ptr::alignment::AlignmentEnum;
-                                    let mut _10: u32;
-                                }
+                            scope 23 (inlined Layout::alignment) {
                             }
                         }
                     }
@@ -87,19 +82,10 @@ fn generic_in_place(_1: *mut Box<[T]>) -> () {
     bb3: {
         StorageLive(_8);
         _8 = copy _3 as *mut u8 (PtrToPtr);
-        StorageLive(_11);
-        StorageLive(_10);
-        StorageLive(_9);
-        _9 = copy (_7.0: std::ptr::alignment::AlignmentEnum);
-        _10 = discriminant(_9);
-        _11 = move _10 as usize (IntToInt);
-        StorageDead(_9);
-        StorageDead(_10);
-        _12 = alloc::alloc::__rust_dealloc(move _8, move _5, move _11) -> [return: bb4, unwind unreachable];
+        _9 = alloc::alloc::__rust_dealloc(move _8, move _5, move _7) -> [return: bb4, unwind unreachable];
     }
 
     bb4: {
-        StorageDead(_11);
         StorageDead(_8);
         goto -> bb5;
     }
