@@ -1,0 +1,13 @@
+error: local_attr: struct S;
+  --> $DIR/macro-rules-attr-error.rs:5:9
+   |
+LL |         compile_error!(concat!("local_attr: ", stringify!($($body)*)));
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL |     #[local_attr]
+   |     ------------- in this attribute macro expansion
+   |
+   = note: this error originates in the attribute macro `local_attr` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 1 previous error
+
