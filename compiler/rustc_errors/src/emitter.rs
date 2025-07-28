@@ -409,7 +409,7 @@ pub trait Emitter {
                 if !redundant_span || always_backtrace {
                     let msg: Cow<'static, _> = match trace.kind {
                         ExpnKind::Macro(MacroKind::Attr, _) => {
-                            "this procedural macro expansion".into()
+                            "this attribute macro expansion".into()
                         }
                         ExpnKind::Macro(MacroKind::Derive, _) => {
                             "this derive macro expansion".into()
