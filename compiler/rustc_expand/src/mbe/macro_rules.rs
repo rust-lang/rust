@@ -628,11 +628,12 @@ pub fn compile_declarative_macro(
     // Return the number of rules for unused rule linting, if this is a local macro.
     let nrules = if is_defined_in_current_crate(node_id) { rules.len() } else { 0 };
 
-    let expander =
-        Arc::new(MacroRulesMacroExpander { name: ident, span, node_id, transparency, rules });
-    let opt_attr_ext =
-        has_attr_rules.then(|| Arc::new(mk_syn_ext(SyntaxExtensionKind::Attr(expander.clone()))));
-    (mk_bang_ext(expander), opt_attr_ext, nrules)
+    let exp = Arc::new(MacroRulesMacroExpander { name: ident, span, node_id, transparency, rules });
+    let opt_attr_ext = has_attr_rules.then(|| {
+        let exp = Arc::clone(&exp);
+        Arc::new(mk_syn_ext(SyntaxExtensionKind::Attr(exp)))
+    });
+    (mk_bang_ext(exp), opt_attr_ext, nrules)
 }
 
 fn check_no_eof(sess: &Session, p: &Parser<'_>, msg: &'static str) -> Option<ErrorGuaranteed> {

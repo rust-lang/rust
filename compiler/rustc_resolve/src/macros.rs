@@ -835,8 +835,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 _ => None,
             },
             None => self.get_macro(res).map(|macro_data| match kind {
-                Some(MacroKind::Attr) if let Some(ref ext) = macro_data.attr_ext => ext.clone(),
-                _ => macro_data.ext.clone(),
+                Some(MacroKind::Attr) if let Some(ref ext) = macro_data.attr_ext => Arc::clone(ext),
+                _ => Arc::clone(&macro_data.ext),
             }),
         };
         Ok((ext, res))
