@@ -715,6 +715,7 @@ lint_path_statement_drop = path statement drops value
     .suggestion = use `drop` to clarify the intent
 
 lint_path_statement_no_effect = path statement with no effect
+    .suggestion = remove this statement
 
 lint_pattern_in_bodiless = patterns aren't allowed in functions without bodies
     .label = pattern not allowed in function without body
