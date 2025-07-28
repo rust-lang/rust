@@ -99,7 +99,7 @@ fn lint_unnested_or_patterns(cx: &EarlyContext<'_>, pat: &Pat) {
         return;
     }
 
-    let mut pat = Box::new(pat.clone());
+    let mut pat = pat.clone();
 
     // Nix all the paren patterns everywhere so that they aren't in our way.
     remove_all_parens(&mut pat);
@@ -121,7 +121,7 @@ fn lint_unnested_or_patterns(cx: &EarlyContext<'_>, pat: &Pat) {
 }
 
 /// Remove all `(p)` patterns in `pat`.
-fn remove_all_parens(pat: &mut Box<Pat>) {
+fn remove_all_parens(pat: &mut Pat) {
     #[derive(Default)]
     struct Visitor {
         /// If is not in the outer most pattern. This is needed to avoid removing the outermost
@@ -144,7 +144,7 @@ fn remove_all_parens(pat: &mut Box<Pat>) {
 }
 
 /// Insert parens where necessary according to Rust's precedence rules for patterns.
-fn insert_necessary_parens(pat: &mut Box<Pat>) {
+fn insert_necessary_parens(pat: &mut Pat) {
     struct Visitor;
     impl MutVisitor for Visitor {
         fn visit_pat(&mut self, pat: &mut Pat) {
@@ -164,7 +164,7 @@ fn insert_necessary_parens(pat: &mut Box<Pat>) {
 
 /// Unnest or-patterns `p0 | ... | p1` in the pattern `pat`.
 /// For example, this would transform `Some(0) | FOO | Some(2)` into `Some(0 | 2) | FOO`.
-fn unnest_or_patterns(pat: &mut Box<Pat>) -> bool {
+fn unnest_or_patterns(pat: &mut Pat) -> bool {
     struct Visitor {
         changed: bool,
     }
