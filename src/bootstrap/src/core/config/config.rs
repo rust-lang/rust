@@ -293,6 +293,10 @@ pub struct Config {
     /// `paths=["foo", "bar"]`.
     pub paths: Vec<PathBuf>,
 
+    /// Force `compiletest` to be built and tested with stage 0 (compiler, library). Note that
+    /// `compiletest`'s own unit tests are not guaranteed to pass against stage 0 (compiler,
+    /// library)!
+    pub compiletest_force_stage0: bool,
     /// Command for visual diff display, e.g. `diff-tool --color=always`.
     pub compiletest_diff_tool: Option<String>,
 
@@ -744,6 +748,7 @@ impl Config {
             android_ndk,
             optimized_compiler_builtins,
             jobs,
+            compiletest_force_stage0,
             compiletest_diff_tool,
             tidy_extra_checks,
             ccache,
@@ -1009,7 +1014,10 @@ impl Config {
 
         config.optimized_compiler_builtins =
             optimized_compiler_builtins.unwrap_or(config.channel != "dev");
+
+        config.compiletest_force_stage0 = compiletest_force_stage0.unwrap_or(false);
         config.compiletest_diff_tool = compiletest_diff_tool;
+
         config.tidy_extra_checks = tidy_extra_checks;
 
         let download_rustc = config.download_rustc_commit.is_some();

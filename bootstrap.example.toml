@@ -462,6 +462,14 @@
 # passed to cargo invocations.
 #build.jobs = 0
 
+# Whether to force `compiletest` to be built and run against the stage 0
+# toolchain (i.e. stage 0 compiler and library).
+#
+# Both `compiletest`-managed test suites and `compiletest`'s own unit tests are
+# **not an explicitly supported configuration**, and almost certainly will incur
+# test failures against the stage 0 compiler and library.
+#build.compiletest-force-stage0 = false
+
 # What custom diff tool to use for displaying compiletest tests.
 #build.compiletest-diff-tool = <none>
 

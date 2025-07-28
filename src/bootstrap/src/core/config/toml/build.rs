@@ -67,6 +67,7 @@ define_config! {
         android_ndk: Option<PathBuf> = "android-ndk",
         optimized_compiler_builtins: Option<bool> = "optimized-compiler-builtins",
         jobs: Option<u32> = "jobs",
+        compiletest_force_stage0: Option<bool> = "compiletest-force-stage0",
         compiletest_diff_tool: Option<String> = "compiletest-diff-tool",
         tidy_extra_checks: Option<String> = "tidy-extra-checks",
         ccache: Option<StringOrBool> = "ccache",

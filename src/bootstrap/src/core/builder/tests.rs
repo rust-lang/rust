@@ -1531,22 +1531,32 @@ mod snapshot {
         insta::assert_snapshot!(
             ctx.config("check")
                 .path("compiletest")
-                .render_steps(), @"[check] rustc 0 <host> -> Compiletest 1 <host>");
-    }
-
-    #[test]
-    fn check_compiletest_stage1_libtest() {
-        let ctx = TestCtx::new();
-        insta::assert_snapshot!(
-            ctx.config("check")
-                .path("compiletest")
-                .args(&["--set", "build.compiletest-use-stage0-libtest=false"])
                 .render_steps(), @r"
         [build] llvm <host>
         [build] rustc 0 <host> -> rustc 1 <host>
         [build] rustc 1 <host> -> std 1 <host>
         [check] rustc 1 <host> -> Compiletest 2 <host>
         ");
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_compiletest_stage0_no_force() {
+        let ctx = TestCtx::new();
+        ctx.config("test").path("compiletest").stage(0).run();
+    }
+
+    #[test]
+    fn test_compiletest_force_stage0() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("test")
+                .path("compiletest")
+                .stage(0)
+                .args(&[
+                    "--set", "build.compiletest-force-stage0=true"
+                ])
+                .render_steps(), @"[build] rustdoc 0 <host>");
     }
 
     #[test]

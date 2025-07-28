@@ -8,6 +8,8 @@ use std::ffi::{OsStr, OsString};
 use std::path::{Path, PathBuf};
 use std::{env, fs, iter};
 
+use build_helper::exit;
+
 use crate::core::build_steps::compile::{Std, run_cargo};
 use crate::core::build_steps::doc::DocumentationFormat;
 use crate::core::build_steps::gcc::{Gcc, add_cg_gcc_cargo_flags};
@@ -714,17 +716,24 @@ impl Step for CompiletestTest {
 
     /// Runs `cargo test` for compiletest.
     fn run(self, builder: &Builder<'_>) {
+        if builder.top_stage == 0 && !builder.config.compiletest_force_stage0 {
+            eprintln!(
+                "`compiletest` unit tests cannot be run against stage 0 unless `build.compiletest-force-stage0` override is specified"
+            );
+            exit!(1);
+        }
+
         let host = self.host;
         let compiler = builder.compiler(builder.top_stage, host);
 
-        // We need `ToolStd` for the locally-built sysroot because
-        // compiletest uses unstable features of the `test` crate.
+        // We need `ToolStd` for the locally-built sysroot because compiletest uses unstable
+        // features of the `test` crate.
         builder.std(compiler, host);
         let mut cargo = tool::prepare_tool_cargo(
             builder,
             compiler,
-            // compiletest uses libtest internals; make it use the in-tree std to make sure it never breaks
-            // when std sources change.
+            // compiletest uses libtest internals; make it use the in-tree std to make sure it never
+            // breaks when std sources change.
             Mode::ToolStd,
             host,
             Kind::Test,
@@ -1612,12 +1621,11 @@ impl Step for Compiletest {
             return;
         }
 
-        if builder.top_stage == 0 && env::var("COMPILETEST_FORCE_STAGE0").is_err() {
+        if builder.top_stage == 0 && !builder.config.compiletest_force_stage0 {
             eprintln!("\
-ERROR: `--stage 0` runs compiletest on the stage0 (precompiled) compiler, not your local changes, and will almost always cause tests to fail
-HELP: to test the compiler, use `--stage 1` instead
-HELP: to test the standard library, use `--stage 0 library/std` instead
-NOTE: if you're sure you want to do this, please open an issue as to why. In the meantime, you can override this with `COMPILETEST_FORCE_STAGE0=1`."
+ERROR: `--stage 0` runs `compiletest` on the stage0 (precompiled) compiler, not your local changes, and will almost always cause tests to fail
+HELP: to test the staged compiler/library, use `--stage 1` instead
+NOTE: if you're sure you want to do this, please open an issue as to why. In the meantime, you can override this with `--set build.compiletest-force-stage0=true`."
             );
             crate::exit!(1);
         }

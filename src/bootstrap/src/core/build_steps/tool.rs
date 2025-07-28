@@ -496,7 +496,7 @@ macro_rules! bootstrap_tool {
                     build_compiler: self.compiler,
                     target: self.target,
                     tool: $tool_name,
-                    mode: if is_unstable {
+                    mode: if is_unstable || !builder.config.compiletest_force_stage0 {
                         // use in-tree libraries for unstable features
                         Mode::ToolStd
                     } else {
