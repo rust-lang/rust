@@ -6,21 +6,101 @@
       let mut _0: ();
       let _2: ();
       let mut _3: std::vec::Vec<bool>;
+      let mut _4: *mut std::vec::Vec<bool>;
+      let mut _5: ();
       scope 1 (inlined std::mem::drop::<Vec<bool>>) {
+          scope 2 (inlined drop_in_place::<Vec<bool>> - shim(Some(Vec<bool>))) {
+              let mut _6: &mut std::vec::Vec<bool>;
+              let mut _7: ();
+              scope 3 (inlined <Vec<bool> as Drop>::drop) {
+                  let mut _8: *mut [bool];
+                  let mut _9: *mut bool;
+                  let mut _10: usize;
+                  scope 4 (inlined Vec::<bool>::as_mut_ptr) {
+                      scope 5 (inlined alloc::raw_vec::RawVec::<bool>::ptr) {
+                          scope 6 (inlined alloc::raw_vec::RawVecInner::ptr::<bool>) {
+                              scope 7 (inlined alloc::raw_vec::RawVecInner::non_null::<bool>) {
+                                  let mut _11: std::ptr::NonNull<u8>;
+                                  scope 8 (inlined Unique::<u8>::cast::<bool>) {
+                                      scope 9 (inlined NonNull::<u8>::cast::<bool>) {
+                                          scope 10 (inlined NonNull::<u8>::as_ptr) {
+                                          }
+                                      }
+                                  }
+                                  scope 11 (inlined Unique::<bool>::as_non_null_ptr) {
+                                  }
+                              }
+                              scope 12 (inlined NonNull::<bool>::as_ptr) {
+                              }
+                          }
+                      }
+                  }
+                  scope 13 (inlined slice_from_raw_parts_mut::<bool>) {
+                      scope 14 (inlined std::ptr::from_raw_parts_mut::<[bool], bool>) {
+                      }
+                  }
+                  scope 15 (inlined drop_in_place::<[bool]> - shim(Some([bool]))) {
+                      let mut _12: usize;
+                      let mut _13: *mut bool;
+                      let mut _14: bool;
+                  }
+              }
+          }
       }
   
       bb0: {
-          nop;
+-         nop;
           StorageLive(_3);
           _3 = move _1;
-          drop(_3) -> [return: bb1, unwind unreachable];
+          _4 = &raw mut _3;
+          StorageLive(_6);
+-         nop;
+          _6 = &mut (*_4);
+          StorageLive(_10);
+          StorageLive(_8);
+          StorageLive(_9);
+          StorageLive(_11);
+          _11 = copy (((((*_6).0: alloc::raw_vec::RawVec<bool>).0: alloc::raw_vec::RawVecInner).0: std::ptr::Unique<u8>).0: std::ptr::NonNull<u8>);
+          _9 = copy _11 as *mut bool (Transmute);
+          StorageDead(_11);
+          _10 = copy ((*_6).1: usize);
+          _8 = *mut [bool] from (copy _9, copy _10);
+          StorageDead(_9);
+          StorageLive(_12);
+          StorageLive(_13);
+          StorageLive(_14);
+          _12 = const 0_usize;
+          goto -> bb4;
       }
   
       bb1: {
+-         nop;
+          StorageDead(_6);
           StorageDead(_3);
-          nop;
-          nop;
+-         nop;
+-         nop;
           return;
+      }
+  
+      bb2: {
+          StorageDead(_14);
+          StorageDead(_13);
+          StorageDead(_12);
+          StorageDead(_8);
+          StorageDead(_10);
+          drop(((*_4).0: alloc::raw_vec::RawVec<bool>)) -> [return: bb1, unwind unreachable];
+      }
+  
+      bb3: {
+          _13 = &raw mut (*_8)[_12];
+          _12 = Add(move _12, const 1_usize);
+-         drop((*_13)) -> [return: bb4, unwind unreachable];
++         goto -> bb4;
+      }
+  
+      bb4: {
+          _14 = Eq(copy _12, copy _10);
+          switchInt(move _14) -> [0: bb3, otherwise: bb2];
       }
   }
   

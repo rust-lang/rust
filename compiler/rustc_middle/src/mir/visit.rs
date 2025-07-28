@@ -1328,9 +1328,9 @@ pub enum NonMutatingUseContext {
 pub enum MutatingUseContext {
     /// Appears as LHS of an assignment.
     Store,
-    /// Appears on `SetDiscriminant`
+    /// Appears on [`StatementKind::SetDiscriminant`]
     SetDiscriminant,
-    /// Appears on `Deinit`
+    /// Appears on [`StatementKind::Deinit`]
     Deinit,
     /// Output operand of an inline assembly block.
     AsmOutput,
