@@ -4,7 +4,7 @@ use crate::ops::{Deref, DerefMut};
 
 /// Wrap a value and run a closure when dropped.
 ///
-/// This is useful for quickly creating desructors inline.
+/// This is useful for quickly creating destructors inline.
 ///
 /// # Examples
 ///
