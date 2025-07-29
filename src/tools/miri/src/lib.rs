@@ -7,6 +7,7 @@
 #![feature(never_type)]
 #![feature(try_blocks)]
 #![feature(io_error_more)]
+#![feature(if_let_guard)]
 #![feature(variant_count)]
 #![feature(yeet_expr)]
 #![feature(nonzero_ops)]
@@ -158,6 +159,7 @@ pub use crate::shims::foreign_items::{DynSym, EvalContextExt as _};
 pub use crate::shims::io_error::{EvalContextExt as _, IoError, LibcError};
 pub use crate::shims::os_str::EvalContextExt as _;
 pub use crate::shims::panic::EvalContextExt as _;
+pub use crate::shims::sig::EvalContextExt as _;
 pub use crate::shims::time::EvalContextExt as _;
 pub use crate::shims::tls::TlsData;
 pub use crate::shims::unwind::{CatchUnwindData, EvalContextExt as _};

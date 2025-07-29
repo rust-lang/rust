@@ -3,6 +3,7 @@
 /// See <https://github.com/rust-lang/rust/issues/134863>
 pub static CRATES: &[&str] = &[
     // tidy-alphabetical-start
+    "allocator-api2",
     "annotate-snippets",
     "anstyle",
     "askama_parser",
@@ -16,13 +17,17 @@ pub static CRATES: &[&str] = &[
     "darling_core",
     "derive_builder_core",
     "digest",
+    "equivalent",
     "fluent-bundle",
     "fluent-langneg",
     "fluent-syntax",
     "fnv",
+    "foldhash",
     "generic-array",
+    "hashbrown",
     "heck",
     "ident_case",
+    "indexmap",
     "intl-memoizer",
     "intl_pluralrules",
     "libc",

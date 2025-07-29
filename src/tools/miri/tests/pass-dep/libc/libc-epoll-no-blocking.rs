@@ -2,6 +2,9 @@
 
 use std::convert::TryInto;
 
+#[path = "../../utils/libc.rs"]
+mod libc_utils;
+
 fn main() {
     test_epoll_socketpair();
     test_epoll_socketpair_both_sides();
@@ -64,7 +67,7 @@ fn test_epoll_socketpair() {
 
     // Write to fd[0]
     let data = "abcde".as_bytes().as_ptr();
-    let res = unsafe { libc::write(fds[0], data as *const libc::c_void, 5) };
+    let res = unsafe { libc_utils::write_all(fds[0], data as *const libc::c_void, 5) };
     assert_eq!(res, 5);
 
     // Register fd[1] with EPOLLIN|EPOLLOUT|EPOLLET|EPOLLRDHUP
@@ -85,7 +88,7 @@ fn test_epoll_socketpair() {
 
     // Write some more to fd[0].
     let data = "abcde".as_bytes().as_ptr();
-    let res = unsafe { libc::write(fds[0], data as *const libc::c_void, 5) };
+    let res = unsafe { libc_utils::write_all(fds[0], data as *const libc::c_void, 5) };
     assert_eq!(res, 5);
 
     // This did not change the readiness of fd[1]. And yet, we're seeing the event reported
@@ -153,7 +156,7 @@ fn test_epoll_ctl_del() {
 
     // Write to fd[0]
     let data = "abcde".as_bytes().as_ptr();
-    let res = unsafe { libc::write(fds[0], data as *const libc::c_void, 5) };
+    let res = unsafe { libc_utils::write_all(fds[0], data as *const libc::c_void, 5) };
     assert_eq!(res, 5);
 
     // Register fd[1] with EPOLLIN|EPOLLOUT|EPOLLET
@@ -182,7 +185,7 @@ fn test_two_epoll_instance() {
 
     // Write to the socketpair.
     let data = "abcde".as_bytes().as_ptr();
-    let res = unsafe { libc::write(fds[0], data as *const libc::c_void, 5) };
+    let res = unsafe { libc_utils::write_all(fds[0], data as *const libc::c_void, 5) };
     assert_eq!(res, 5);
 
     // Register one side of the socketpair with EPOLLIN | EPOLLOUT | EPOLLET.
@@ -224,7 +227,7 @@ fn test_two_same_fd_in_same_epoll_instance() {
 
     // Write to the socketpair.
     let data = "abcde".as_bytes().as_ptr();
-    let res = unsafe { libc::write(fds[0], data as *const libc::c_void, 5) };
+    let res = unsafe { libc_utils::write_all(fds[0], data as *const libc::c_void, 5) };
     assert_eq!(res, 5);
 
     //Two notification should be received.
@@ -243,7 +246,7 @@ fn test_epoll_eventfd() {
 
     // Write to the eventfd instance.
     let sized_8_data: [u8; 8] = 1_u64.to_ne_bytes();
-    let res = unsafe { libc::write(fd, sized_8_data.as_ptr() as *const libc::c_void, 8) };
+    let res = unsafe { libc_utils::write_all(fd, sized_8_data.as_ptr() as *const libc::c_void, 8) };
     assert_eq!(res, 8);
 
     // Create an epoll instance.
@@ -282,7 +285,7 @@ fn test_epoll_socketpair_both_sides() {
 
     // Write to fds[1].
     let data = "abcde".as_bytes().as_ptr();
-    let res = unsafe { libc::write(fds[1], data as *const libc::c_void, 5) };
+    let res = unsafe { libc_utils::write_all(fds[1], data as *const libc::c_void, 5) };
     assert_eq!(res, 5);
 
     //Two notification should be received.
@@ -297,7 +300,8 @@ fn test_epoll_socketpair_both_sides() {
 
     // Read from fds[0].
     let mut buf: [u8; 5] = [0; 5];
-    let res = unsafe { libc::read(fds[0], buf.as_mut_ptr().cast(), buf.len() as libc::size_t) };
+    let res =
+        unsafe { libc_utils::read_all(fds[0], buf.as_mut_ptr().cast(), buf.len() as libc::size_t) };
     assert_eq!(res, 5);
     assert_eq!(buf, "abcde".as_bytes());
 
@@ -325,7 +329,7 @@ fn test_closed_fd() {
 
     // Write to the eventfd instance.
     let sized_8_data: [u8; 8] = 1_u64.to_ne_bytes();
-    let res = unsafe { libc::write(fd, sized_8_data.as_ptr() as *const libc::c_void, 8) };
+    let res = unsafe { libc_utils::write_all(fd, sized_8_data.as_ptr() as *const libc::c_void, 8) };
     assert_eq!(res, 8);
 
     // Close the eventfd.
@@ -371,7 +375,8 @@ fn test_not_fully_closed_fd() {
 
     // Write to the eventfd instance to produce notification.
     let sized_8_data: [u8; 8] = 1_u64.to_ne_bytes();
-    let res = unsafe { libc::write(newfd, sized_8_data.as_ptr() as *const libc::c_void, 8) };
+    let res =
+        unsafe { libc_utils::write_all(newfd, sized_8_data.as_ptr() as *const libc::c_void, 8) };
     assert_eq!(res, 8);
 
     // Close the dupped fd.
@@ -391,7 +396,7 @@ fn test_event_overwrite() {
 
     // Write to the eventfd instance.
     let sized_8_data: [u8; 8] = 1_u64.to_ne_bytes();
-    let res = unsafe { libc::write(fd, sized_8_data.as_ptr() as *const libc::c_void, 8) };
+    let res = unsafe { libc_utils::write_all(fd, sized_8_data.as_ptr() as *const libc::c_void, 8) };
     assert_eq!(res, 8);
 
     // Create an epoll instance.
@@ -445,7 +450,7 @@ fn test_socketpair_read() {
 
     // Write 5 bytes to fds[1].
     let data = "abcde".as_bytes().as_ptr();
-    let res = unsafe { libc::write(fds[1], data as *const libc::c_void, 5) };
+    let res = unsafe { libc_utils::write_all(fds[1], data as *const libc::c_void, 5) };
     assert_eq!(res, 5);
 
     //Two notification should be received.
@@ -460,7 +465,8 @@ fn test_socketpair_read() {
 
     // Read 3 bytes from fds[0].
     let mut buf: [u8; 3] = [0; 3];
-    let res = unsafe { libc::read(fds[0], buf.as_mut_ptr().cast(), buf.len() as libc::size_t) };
+    let res =
+        unsafe { libc_utils::read_all(fds[0], buf.as_mut_ptr().cast(), buf.len() as libc::size_t) };
     assert_eq!(res, 3);
     assert_eq!(buf, "abc".as_bytes());
 
@@ -478,7 +484,8 @@ fn test_socketpair_read() {
 
     // Read until the buffer is empty.
     let mut buf: [u8; 2] = [0; 2];
-    let res = unsafe { libc::read(fds[0], buf.as_mut_ptr().cast(), buf.len() as libc::size_t) };
+    let res =
+        unsafe { libc_utils::read_all(fds[0], buf.as_mut_ptr().cast(), buf.len() as libc::size_t) };
     assert_eq!(res, 2);
     assert_eq!(buf, "de".as_bytes());
 
@@ -510,8 +517,9 @@ fn test_no_notification_for_unregister_flag() {
 
     // Write to fd[1].
     let data = "abcde".as_bytes().as_ptr();
-    let res: i32 =
-        unsafe { libc::write(fds[1], data as *const libc::c_void, 5).try_into().unwrap() };
+    let res: i32 = unsafe {
+        libc_utils::write_all(fds[1], data as *const libc::c_void, 5).try_into().unwrap()
+    };
     assert_eq!(res, 5);
 
     // Check result from epoll_wait. Since we didn't register EPOLLIN flag, the notification won't
@@ -546,7 +554,7 @@ fn test_socketpair_epollerr() {
 
     // Write to fd[0]
     let data = "abcde".as_bytes().as_ptr();
-    let res = unsafe { libc::write(fds[0], data as *const libc::c_void, 5) };
+    let res = unsafe { libc_utils::write_all(fds[0], data as *const libc::c_void, 5) };
     assert_eq!(res, 5);
 
     // Close fds[1].
@@ -717,6 +725,6 @@ fn test_issue_3858() {
 
     // Write to the eventfd instance.
     let sized_8_data: [u8; 8] = 1_u64.to_ne_bytes();
-    let res = unsafe { libc::write(fd, sized_8_data.as_ptr() as *const libc::c_void, 8) };
+    let res = unsafe { libc_utils::write_all(fd, sized_8_data.as_ptr() as *const libc::c_void, 8) };
     assert_eq!(res, 8);
 }

@@ -13,9 +13,9 @@ use rustc_abi::Size;
 use rustc_data_structures::fx::FxHashMap;
 
 use self::shims::time::system_time_to_duration;
-use crate::helpers::check_min_vararg_count;
 use crate::shims::files::FileHandle;
 use crate::shims::os_str::bytes_to_os_str;
+use crate::shims::sig::check_min_vararg_count;
 use crate::shims::unix::fd::{FlockOp, UnixFileDescription};
 use crate::*;
 
