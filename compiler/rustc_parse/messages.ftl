@@ -1017,3 +1017,21 @@ parse_where_generics = generic parameters on `where` clauses are reserved for fu
 
 parse_zero_chars = empty character literal
     .label = {parse_zero_chars}
+
+parse_expected_one_of_found = expected one of {$expected}, found {$found}
+
+parse_expected_one_of_found_much = expected one of {$expected}, found {$found}
+
+parse_expected_found = expected {$expected}, found {$found}
+
+parse_unexpected_token = unexpected token: {$found}
+
+parse_expected_comma_or_gt = expected one of `,` or `>`, found {$found}
+    .label = expected one of `,` or `>`
+
+
+parse_expected_expression_found = expected expression, found {$found}
+    .label = expected expression
+
+parse_expected_expression_found_eof = expected expression, found end of {$origin}
+    .label = expected expression

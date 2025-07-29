@@ -35,15 +35,16 @@ use crate::errors::{
     AwaitSuggestion, BadQPathStage2, BadTypePlus, BadTypePlusSub, ColonAsSemi,
     ComparisonOperatorsCannotBeChained, ComparisonOperatorsCannotBeChainedSugg,
     ConstGenericWithoutBraces, ConstGenericWithoutBracesSugg, DocCommentDoesNotDocumentAnything,
-    DocCommentOnParamType, DoubleColonInBound, ExpectedIdentifier, ExpectedSemi, ExpectedSemiSugg,
-    GenericParamsWithoutAngleBrackets, GenericParamsWithoutAngleBracketsSugg,
+    DocCommentOnParamType, DoubleColonInBound, ExpectedExpressionFound, ExpectedExpressionFoundEof,
+    ExpectedFound, ExpectedIdentifier, ExpectedOneOfFound, ExpectedOneOfFoundMuch, ExpectedSemi,
+    ExpectedSemiSugg, GenericParamsWithoutAngleBrackets, GenericParamsWithoutAngleBracketsSugg,
     HelpIdentifierStartsWithNumber, HelpUseLatestEdition, InInTypo, IncorrectAwait,
     IncorrectSemicolon, IncorrectUseOfAwait, IncorrectUseOfUse, PatternMethodParamWithoutBody,
     QuestionMarkInType, QuestionMarkInTypeSugg, SelfParamNotFirst, StructLiteralBodyWithoutPath,
     StructLiteralBodyWithoutPathSugg, SuggAddMissingLetStmt, SuggEscapeIdentifier, SuggRemoveComma,
     TernaryOperator, TernaryOperatorSuggestion, UnexpectedConstInGenericParam,
-    UnexpectedConstParamDeclaration, UnexpectedConstParamDeclarationSugg, UnmatchedAngleBrackets,
-    UseEqInstead, WrapType,
+    UnexpectedConstParamDeclaration, UnexpectedConstParamDeclarationSugg, UnexpectedToken,
+    UnmatchedAngleBrackets, UseEqInstead, WrapType,
 };
 use crate::parser::attr::InnerAttrPolicy;
 use crate::{exp, fluent_generated as fluent};
@@ -584,30 +585,32 @@ impl<'a> Parser<'a> {
             }
         }
 
-        let expect = tokens_to_string(&expected);
-        let actual = super::token_descr(&self.token);
-        let (msg_exp, (label_sp, label_exp)) = if expected.len() > 1 {
-            let fmt = format!("expected one of {expect}, found {actual}");
-            let short_expect = if expected.len() > 6 {
-                format!("{} possible tokens", expected.len())
+        let count = expected.len();
+        let expected_str = tokens_to_string(&expected);
+        let found = super::token_descr(&self.token);
+        let span = self.token.span;
+
+        // Create appropriate error based on expected token count
+        let (mut err, label_sp, label_exp) = if count > 1 {
+            let expected = expected_str.clone();
+            let (err, short_expect) = if count > 6 {
+                let err = self.dcx().create_err(ExpectedOneOfFoundMuch { span, expected, found });
+                (err, format!("{count} possible tokens"))
             } else {
-                expect
+                let err = self.dcx().create_err(ExpectedOneOfFound { span, expected, found });
+                (err, expected_str.clone())
             };
-            (fmt, (self.prev_token.span.shrink_to_hi(), format!("expected one of {short_expect}")))
+            (err, self.prev_token.span.shrink_to_hi(), format!("expected one of {short_expect}"))
         } else if expected.is_empty() {
-            (
-                format!("unexpected token: {actual}"),
-                (self.prev_token.span, "unexpected token after this".to_string()),
-            )
+            let err = self.dcx().create_err(UnexpectedToken { span, found });
+            (err, self.prev_token.span, "unexpected token after this".to_string())
         } else {
-            (
-                format!("expected {expect}, found {actual}"),
-                (self.prev_token.span.shrink_to_hi(), format!("expected {expect}")),
-            )
+            let expected = expected_str.clone();
+            let err = self.dcx().create_err(ExpectedFound { span, expected, found });
+            (err, self.prev_token.span.shrink_to_hi(), format!("expected {expected_str}"))
         };
+
         self.last_unexpected_token_span = Some(self.token.span);
-        // FIXME: translation requires list formatting (for `expect`)
-        let mut err = self.dcx().struct_span_err(self.token.span, msg_exp);
 
         self.label_expected_raw_ref(&mut err);
 
@@ -2399,22 +2402,24 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn expected_expression_found(&self) -> Diag<'a> {
-        let (span, msg) = match (&self.token.kind, self.subparser_name) {
+        let mut err = match (&self.token.kind, self.subparser_name) {
             (&token::Eof, Some(origin)) => {
                 let sp = self.prev_token.span.shrink_to_hi();
-                (sp, format!("expected expression, found end of {origin}"))
+                self.dcx()
+                    .create_err(ExpectedExpressionFoundEof { span: sp, origin: origin.to_string() })
             }
-            _ => (
-                self.token.span,
-                format!("expected expression, found {}", super::token_descr(&self.token)),
-            ),
+            _ => {
+                let found = super::token_descr(&self.token);
+                self.dcx().create_err(ExpectedExpressionFound {
+                    span: self.token.span,
+                    found: found.to_string(),
+                })
+            }
         };
-        let mut err = self.dcx().struct_span_err(span, msg);
         let sp = self.psess.source_map().start_point(self.token.span);
         if let Some(sp) = self.psess.ambiguous_block_expr_parse.borrow().get(&sp) {
             err.subdiagnostic(ExprParenthesesNeeded::surrounding(*sp));
         }
-        err.span_label(span, "expected expression");
         err
     }
 
@@ -2478,10 +2483,10 @@ impl<'a> Parser<'a> {
         // We are causing this error here exclusively in case that a `const` expression
         // could be recovered from the current parser state, even if followed by more
         // arguments after a comma.
-        let mut err = self.dcx().struct_span_err(
-            self.token.span,
-            format!("expected one of `,` or `>`, found {}", super::token_descr(&self.token)),
-        );
+        let mut err = self
+            .dcx()
+            .struct_span_err(self.token.span, crate::fluent_generated::parse_expected_comma_or_gt);
+        err.arg("found", super::token_descr(&self.token));
         err.span_label(self.token.span, "expected one of `,` or `>`");
         match self.recover_const_arg(arg.span(), err) {
             Ok(arg) => {

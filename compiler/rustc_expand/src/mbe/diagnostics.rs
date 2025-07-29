@@ -2,7 +2,7 @@ use std::borrow::Cow;
 
 use rustc_ast::token::{self, Token};
 use rustc_ast::tokenstream::TokenStream;
-use rustc_errors::{Applicability, Diag, DiagCtxtHandle, DiagMessage};
+use rustc_errors::{Applicability, Diag, DiagArgValue, DiagCtxtHandle, DiagMessage};
 use rustc_macros::Subdiagnostic;
 use rustc_parse::parser::{Parser, Recovery, token_descr};
 use rustc_session::parse::ParseSess;
@@ -203,16 +203,35 @@ pub(super) fn emit_frag_parse_err(
     arm_span: Span,
     kind: AstFragmentKind,
 ) -> ErrorGuaranteed {
-    // FIXME(davidtwco): avoid depending on the error message text
+    // Transform macro expansion error messages for better user experience
+    // When a macro expansion ends with EOF (incomplete expression), we convert
+    // the generic "expected X, found <eof>" message into a more specific
+    // "macro expansion ends with an incomplete expression: expected X" message
     if parser.token == token::Eof
-        && let DiagMessage::Str(message) = &e.messages[0].0
-        && message.ends_with(", found `<eof>`")
+        && let DiagMessage::FluentIdentifier(_, _) = e.messages[0].0
+        && let Some(DiagArgValue::Str(found)) = e.args.get("found")
+        && found.contains("<eof>")
     {
+        // Format the expected tokens for the transformed message
+        let expected_tokens = match e.args.get("expected") {
+            Some(rustc_errors::DiagArgValue::Str(s)) => {
+                if s.contains(" ") {
+                    // For multiple tokens, use "expected one of" format
+                    format!("expected one of {}", s)
+                } else {
+                    // For single token, use "expected" format
+                    format!("expected {}", s)
+                }
+            }
+            _ => "expected expression".to_string(),
+        };
+
+        // Replace the original error message with the transformed one
         let msg = &e.messages[0];
         e.messages[0] = (
             DiagMessage::from(format!(
                 "macro expansion ends with an incomplete expression: {}",
-                message.replace(", found `<eof>`", ""),
+                expected_tokens,
             )),
             msg.1,
         );

@@ -3610,3 +3610,58 @@ pub(crate) struct ExpectedRegisterClassOrExplicitRegister {
     #[primary_span]
     pub(crate) span: Span,
 }
+
+// Expression parsing errors
+#[derive(Diagnostic)]
+#[diag(parse_expected_expression_found)]
+pub(crate) struct ExpectedExpressionFound {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    pub found: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_expected_expression_found_eof)]
+pub(crate) struct ExpectedExpressionFoundEof {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    pub origin: String,
+}
+
+// Expected tokens error structures
+#[derive(Diagnostic)]
+#[diag(parse_expected_one_of_found)]
+pub(crate) struct ExpectedOneOfFound {
+    #[primary_span]
+    pub span: Span,
+    pub expected: String,
+    pub found: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_expected_one_of_found_much)]
+pub(crate) struct ExpectedOneOfFoundMuch {
+    #[primary_span]
+    pub span: Span,
+    pub expected: String,
+    pub found: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_expected_found)]
+pub(crate) struct ExpectedFound {
+    #[primary_span]
+    pub span: Span,
+    pub expected: String,
+    pub found: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_unexpected_token)]
+pub(crate) struct UnexpectedToken {
+    #[primary_span]
+    pub span: Span,
+    pub found: String,
+}
