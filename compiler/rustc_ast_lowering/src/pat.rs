@@ -71,7 +71,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             None,
                         );
                         let kind = hir::PatExprKind::Path(qpath);
-                        let span = self.lower_span(pattern.span);
+                        let span = pattern.span;
                         let expr = hir::PatExpr { hir_id: pat_hir_id, span, kind };
                         let expr = self.arena.alloc(expr);
                         return hir::Pat {
@@ -98,10 +98,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
                             hir::PatField {
                                 hir_id,
-                                ident: self.lower_ident(f.ident),
+                                ident: f.ident,
                                 pat: self.lower_pat(&f.pat),
                                 is_shorthand: f.is_shorthand,
-                                span: self.lower_span(f.span),
+                                span: f.span,
                             }
                         }));
                         break hir::PatKind::Struct(
@@ -306,27 +306,21 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         hir_id
                     }
                 };
-                hir::PatKind::Binding(
-                    annotation,
-                    binding_id,
-                    self.lower_ident(ident),
-                    lower_sub(self),
-                )
+                hir::PatKind::Binding(annotation, binding_id, ident, lower_sub(self))
             }
             Some(res) => {
                 let res = self.lower_res(res);
-                let span = self.lower_span(ident.span);
                 hir::PatKind::Expr(self.arena.alloc(hir::PatExpr {
                     kind: hir::PatExprKind::Path(hir::QPath::Resolved(
                         None,
                         self.arena.alloc(hir::Path {
-                            span,
+                            span: ident.span,
                             res,
-                            segments: arena_vec![self; hir::PathSegment::new(self.lower_ident(ident), self.next_id(), res)],
+                            segments: arena_vec![self; hir::PathSegment::new(ident, self.next_id(), res)],
                         }),
                     )),
                     hir_id: self.next_id(),
-                    span,
+                    span: ident.span,
                 }))
             }
         }
@@ -343,7 +337,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         kind: hir::PatKind<'hir>,
         hir_id: hir::HirId,
     ) -> hir::Pat<'hir> {
-        hir::Pat { hir_id, kind, span: self.lower_span(p.span), default_binding_modes: true }
+        hir::Pat { hir_id, kind, span: p.span, default_binding_modes: true }
     }
 
     /// Emit a friendly error for extra `..` patterns in a tuple/tuple struct/slice pattern.
@@ -389,7 +383,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         expr: &Expr,
         allow_paths: bool,
     ) -> &'hir hir::PatExpr<'hir> {
-        let span = self.lower_span(expr.span);
+        let span = expr.span;
         let err =
             |guar| hir::PatExprKind::Lit { lit: respan(span, LitKind::Err(guar)), negated: false };
         let kind = match &expr.kind {
@@ -468,13 +462,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             TyPatKind::Err(guar) => hir::TyPatKind::Err(*guar),
         };
 
-        hir::TyPat { hir_id: pat_hir_id, kind: node, span: self.lower_span(pattern.span) }
+        hir::TyPat { hir_id: pat_hir_id, kind: node, span: pattern.span }
     }
 
     /// Lowers the range end of an exclusive range (`2..5`) to an inclusive range 2..=(5 - 1).
     /// This way the type system doesn't have to handle the distinction between inclusive/exclusive ranges.
     fn lower_excluded_range_end(&mut self, e: &AnonConst) -> &'hir hir::ConstArg<'hir> {
-        let span = self.lower_span(e.value.span);
+        let span = e.value.span;
         let unstable_span = self.mark_span_with_reason(
             DesugaringKind::PatTyRange,
             span,
@@ -529,10 +523,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         let unstable_span = self.mark_span_with_reason(
             DesugaringKind::PatTyRange,
-            self.lower_span(span),
+            span,
             Some(Arc::clone(&self.allow_pattern_type)),
         );
-        let span = self.lower_span(base_type);
+        let span = base_type;
 
         let path_expr = hir::Expr {
             hir_id: self.next_id(),
