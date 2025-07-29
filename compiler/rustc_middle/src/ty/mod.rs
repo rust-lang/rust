@@ -170,11 +170,6 @@ mod visit;
 
 // Data types
 
-pub struct ResolverOutputs {
-    pub global_ctxt: ResolverGlobalCtxt,
-    pub ast_lowering: ResolverAstLowering,
-}
-
 #[derive(Debug, HashStable)]
 pub struct ResolverGlobalCtxt {
     pub visibilities_for_hashing: Vec<(LocalDefId, Visibility)>,
