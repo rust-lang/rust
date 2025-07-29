@@ -333,9 +333,11 @@ pub(crate) fn run(
 pub(crate) fn load_call_locations(
     with_examples: Vec<String>,
     dcx: DiagCtxtHandle<'_>,
+    loaded_paths: &mut Vec<PathBuf>,
 ) -> AllCallLocations {
     let mut all_calls: AllCallLocations = FxIndexMap::default();
     for path in with_examples {
+        loaded_paths.push(path.clone().into());
         let bytes = match fs::read(&path) {
             Ok(bytes) => bytes,
             Err(e) => dcx.fatal(format!("failed to load examples: {e}")),
