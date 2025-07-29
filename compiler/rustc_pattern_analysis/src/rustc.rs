@@ -429,8 +429,8 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
     ) -> MaybeInfiniteInt {
         match bdy {
             PatRangeBoundary::NegInfinity => MaybeInfiniteInt::NegInfinity,
-            PatRangeBoundary::Finite(_ty, value) => {
-                let bits = value.unwrap_leaf().to_bits_unchecked();
+            PatRangeBoundary::Finite(value) => {
+                let bits = value.try_to_scalar_int().unwrap().to_bits_unchecked();
                 match *ty.kind() {
                     ty::Int(ity) => {
                         let size = Integer::from_int_ty(&self.tcx, ity).size().bits();
@@ -517,16 +517,16 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                     ),
                 }
             }
-            PatKind::Constant { ty: value_ty, value } => {
+            PatKind::Constant { value } => {
                 match ty.kind() {
                     ty::Bool => {
-                        ctor = Bool(value.unwrap_leaf().try_to_bool().unwrap());
+                        ctor = Bool(value.try_to_bool().unwrap());
                         fields = vec![];
                         arity = 0;
                     }
                     ty::Char | ty::Int(_) | ty::Uint(_) => {
                         ctor = {
-                            let bits = value.unwrap_leaf().to_bits_unchecked();
+                            let bits = value.try_to_scalar_int().unwrap().to_bits_unchecked();
                             let x = match *ty.kind() {
                                 ty::Int(ity) => {
                                     let size = Integer::from_int_ty(&cx.tcx, ity).size().bits();
@@ -541,7 +541,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                     }
                     ty::Float(ty::FloatTy::F16) => {
                         use rustc_apfloat::Float;
-                        let bits = value.unwrap_leaf().to_u16();
+                        let bits = value.try_to_scalar_int().unwrap().to_u16();
                         let value = rustc_apfloat::ieee::Half::from_bits(bits.into());
                         ctor = F16Range(value, value, RangeEnd::Included);
                         fields = vec![];
@@ -549,7 +549,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                     }
                     ty::Float(ty::FloatTy::F32) => {
                         use rustc_apfloat::Float;
-                        let bits = value.unwrap_leaf().to_u32();
+                        let bits = value.try_to_scalar_int().unwrap().to_u32();
                         let value = rustc_apfloat::ieee::Single::from_bits(bits.into());
                         ctor = F32Range(value, value, RangeEnd::Included);
                         fields = vec![];
@@ -557,7 +557,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                     }
                     ty::Float(ty::FloatTy::F64) => {
                         use rustc_apfloat::Float;
-                        let bits = value.unwrap_leaf().to_u64();
+                        let bits = value.try_to_scalar_int().unwrap().to_u64();
                         let value = rustc_apfloat::ieee::Double::from_bits(bits.into());
                         ctor = F64Range(value, value, RangeEnd::Included);
                         fields = vec![];
@@ -565,7 +565,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                     }
                     ty::Float(ty::FloatTy::F128) => {
                         use rustc_apfloat::Float;
-                        let bits = value.unwrap_leaf().to_u128();
+                        let bits = value.try_to_scalar_int().unwrap().to_u128();
                         let value = rustc_apfloat::ieee::Quad::from_bits(bits);
                         ctor = F128Range(value, value, RangeEnd::Included);
                         fields = vec![];
@@ -580,11 +580,8 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                         // subfields.
                         // Note: `t` is `str`, not `&str`.
                         let ty = self.reveal_opaque_ty(*t);
-                        // FIXME: why does `Str` need a `mir::Value`?
-                        let val = mir::Const::Ty(
-                            *value_ty,
-                            ty::Const::new_value(self.tcx, *value, *value_ty),
-                        );
+                        // FIXME: why does `Str` need a `mir::Const`?
+                        let val = mir::Const::from_ty_value(self.tcx, *value);
                         let subpattern = DeconstructedPat::new(Str(val), Vec::new(), 0, ty, pat);
                         ctor = Ref;
                         fields = vec![subpattern.at_index(0)];
@@ -614,8 +611,12 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                     }
                     ty::Float(fty) => {
                         use rustc_apfloat::Float;
-                        let lo = lo.as_finite().map(|c| c.unwrap_leaf().to_bits_unchecked());
-                        let hi = hi.as_finite().map(|c| c.unwrap_leaf().to_bits_unchecked());
+                        let lo = lo
+                            .as_finite()
+                            .map(|c| c.try_to_scalar_int().unwrap().to_bits_unchecked());
+                        let hi = hi
+                            .as_finite()
+                            .map(|c| c.try_to_scalar_int().unwrap().to_bits_unchecked());
                         match fty {
                             ty::FloatTy::F16 => {
                                 use rustc_apfloat::ieee::Half;
@@ -723,8 +724,8 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                 };
                 match ScalarInt::try_from_uint(bits, size) {
                     Some(scalar) => {
-                        let value = ty::ValTree::from_scalar_int(tcx, scalar);
-                        PatRangeBoundary::Finite(ty.inner(), value)
+                        let valtree = ty::ValTree::from_scalar_int(tcx, scalar);
+                        PatRangeBoundary::Finite(ty::Value { ty: ty.inner(), valtree })
                     }
                     // The value doesn't fit. Since `x >= 0` and 0 always encodes the minimum value
                     // for a type, the problem isn't that the value is too small. So it must be too
@@ -745,7 +746,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
         } else if range.is_singleton() {
             let lo = cx.hoist_pat_range_bdy(range.lo, ty);
             let value = lo.as_finite().unwrap();
-            ty::Value { ty: ty.inner(), valtree: value }.to_string()
+            value.to_string()
         } else {
             // We convert to an inclusive range for diagnostics.
             let mut end = rustc_hir::RangeEnd::Included;
@@ -758,7 +759,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                 // probably clear enough.
                 let max = ty.numeric_max_val(cx.tcx).unwrap();
                 let max = ty::ValTree::from_scalar_int(cx.tcx, max.try_to_scalar_int().unwrap());
-                lo = PatRangeBoundary::Finite(ty.inner(), max);
+                lo = PatRangeBoundary::Finite(ty::Value { ty: ty.inner(), valtree: max });
             }
             let hi = if let Some(hi) = range.hi.minus_one() {
                 hi

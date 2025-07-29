@@ -375,7 +375,7 @@ impl<'a, 'tcx> IsThirPolymorphic<'a, 'tcx> {
         }
 
         match pat.kind {
-            thir::PatKind::Constant { value, .. } => value.has_non_region_param(),
+            thir::PatKind::Constant { value } => value.has_non_region_param(),
             thir::PatKind::Range(ref range) => {
                 let &thir::PatRange { lo, hi, .. } = range.as_ref();
                 lo.has_non_region_param() || hi.has_non_region_param()

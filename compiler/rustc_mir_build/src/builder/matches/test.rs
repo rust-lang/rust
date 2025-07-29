@@ -35,9 +35,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
             TestCase::Constant { .. } if match_pair.pattern_ty.is_bool() => TestKind::If,
             TestCase::Constant { .. } if is_switch_ty(match_pair.pattern_ty) => TestKind::SwitchInt,
-            TestCase::Constant { value, ty: value_ty } => {
-                TestKind::Eq { value, value_ty, cast_ty: match_pair.pattern_ty }
-            }
+            TestCase::Constant { value } => TestKind::Eq { value, cast_ty: match_pair.pattern_ty },
 
             TestCase::Range(ref range) => {
                 assert_eq!(range.ty, match_pair.pattern_ty);
@@ -137,14 +135,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 self.cfg.terminate(block, self.source_info(match_start_span), terminator);
             }
 
-            TestKind::Eq { value, value_ty, mut cast_ty } => {
+            TestKind::Eq { value, mut cast_ty } => {
                 let tcx = self.tcx;
                 let success_block = target_block(TestBranch::Success);
                 let fail_block = target_block(TestBranch::Failure);
 
-                let mut expect_ty = value_ty;
-                let value = Const::Ty(value_ty, ty::Const::new_value(tcx, value, value_ty));
-                let mut expect = self.literal_operand(test.span, value);
+                let mut expect_ty = value.ty;
+                let mut expect = self.literal_operand(test.span, Const::from_ty_value(tcx, value));
 
                 let mut place = place;
                 let mut block = block;
@@ -201,7 +198,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         cast_ty = ref_str_ty;
                     }
                     &ty::Pat(base, _) => {
-                        assert_eq!(cast_ty, value_ty);
+                        assert_eq!(cast_ty, value.ty);
                         assert!(base.is_trivially_pure_clone_copy());
 
                         let transmuted_place = self.temp(base, test.span);
@@ -282,8 +279,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 };
 
                 if let Some(lo) = range.lo.as_finite() {
-                    let lo = Const::Ty(range.ty, ty::Const::new_value(self.tcx, lo, range.ty));
-                    let lo = self.literal_operand(test.span, lo);
+                    let lo = self.literal_operand(test.span, Const::from_ty_value(self.tcx, lo));
                     self.compare(
                         block,
                         intermediate_block,
@@ -296,8 +292,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 };
 
                 if let Some(hi) = range.hi.as_finite() {
-                    let hi = Const::Ty(range.ty, ty::Const::new_value(self.tcx, hi, range.ty));
-                    let hi = self.literal_operand(test.span, hi);
+                    let hi = self.literal_operand(test.span, Const::from_ty_value(self.tcx, hi));
                     let op = match range.end {
                         RangeEnd::Included => BinOp::Le,
                         RangeEnd::Excluded => BinOp::Lt,
@@ -553,7 +548,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             //
             // FIXME(#29623) we could use PatKind::Range to rule
             // things out here, in some cases.
-            (TestKind::SwitchInt, &TestCase::Constant { value, .. })
+            (TestKind::SwitchInt, &TestCase::Constant { value })
                 if is_switch_ty(match_pair.pattern_ty) =>
             {
                 // An important invariant of candidate sorting is that a candidate
@@ -580,7 +575,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     None
                 } else {
                     fully_matched = true;
-                    let bits = value.unwrap_leaf().to_bits_unchecked();
+                    let bits = value.try_to_scalar_int().unwrap().to_bits_unchecked();
                     Some(TestBranch::Constant(value, bits))
                 }
             }
@@ -602,9 +597,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 })
             }
 
-            (TestKind::If, TestCase::Constant { value, .. }) => {
+            (TestKind::If, TestCase::Constant { value }) => {
                 fully_matched = true;
-                let value = value.unwrap_leaf().try_to_bool().unwrap_or_else(|_| {
+                let value = value.try_to_bool().unwrap_or_else(|| {
                     span_bug!(test.span, "expected boolean value but got {value:?}")
                 });
                 Some(if value { TestBranch::Success } else { TestBranch::Failure })
@@ -687,7 +682,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     if !test.overlaps(pat, self.tcx)? { Some(TestBranch::Failure) } else { None }
                 }
             }
-            (TestKind::Range(range), &TestCase::Constant { value, .. }) => {
+            (TestKind::Range(range), &TestCase::Constant { value }) => {
                 fully_matched = false;
                 if !range.contains(value, self.tcx)? {
                     // `value` is not contained in the testing range,

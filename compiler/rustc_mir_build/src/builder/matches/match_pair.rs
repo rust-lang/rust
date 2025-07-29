@@ -146,7 +146,7 @@ impl<'tcx> MatchPairTree<'tcx> {
                 }
             }
 
-            PatKind::Constant { ty, value } => Some(TestCase::Constant { ty, value }),
+            PatKind::Constant { value } => Some(TestCase::Constant { value }),
 
             PatKind::AscribeUserType {
                 ascription: Ascription { ref annotation, variance },

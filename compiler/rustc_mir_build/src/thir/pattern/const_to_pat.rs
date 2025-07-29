@@ -288,12 +288,12 @@ impl<'tcx> ConstToPat<'tcx> {
                 // when lowering to MIR in `Builder::perform_test`, treat the constant as a `&str`.
                 // This works because `str` and `&str` have the same valtree representation.
                 let ref_str_ty = Ty::new_imm_ref(tcx, tcx.lifetimes.re_erased, ty);
-                PatKind::Constant { ty: ref_str_ty, value: cv }
+                PatKind::Constant { value: ty::Value { ty: ref_str_ty, valtree: cv } }
             }
             ty::Ref(_, pointee_ty, ..) => match *pointee_ty.kind() {
                 // `&str` is represented as a valtree, let's keep using this
                 // optimization for now.
-                ty::Str => PatKind::Constant { ty, value: cv },
+                ty::Str => PatKind::Constant { value: ty::Value { ty, valtree: cv } },
                 // All other references are converted into deref patterns and then recursively
                 // convert the dereferenced constant to a pattern that is the sub-pattern of the
                 // deref pattern.
@@ -322,13 +322,13 @@ impl<'tcx> ConstToPat<'tcx> {
                     // Also see <https://github.com/rust-lang/rfcs/pull/3535>.
                     return self.mk_err(tcx.dcx().create_err(NaNPattern { span }), ty);
                 } else {
-                    PatKind::Constant { ty, value: cv }
+                    PatKind::Constant { value: ty::Value { ty, valtree: cv } }
                 }
             }
             ty::Pat(..) | ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::RawPtr(..) => {
                 // The raw pointers we see here have been "vetted" by valtree construction to be
                 // just integers, so we simply allow them.
-                PatKind::Constant { ty, value: cv }
+                PatKind::Constant { value: ty::Value { ty, valtree: cv } }
             }
             ty::FnPtr(..) => {
                 unreachable!(

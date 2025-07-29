@@ -156,12 +156,12 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         }
 
         // The unpeeled kind should now be a constant, giving us the endpoint value.
-        let PatKind::Constant { ty, value } = kind else {
+        let PatKind::Constant { value } = kind else {
             let msg =
                 format!("found bad range pattern endpoint `{expr:?}` outside of error recovery");
             return Err(self.tcx.dcx().span_delayed_bug(expr.span, msg));
         };
-        Ok(Some(PatRangeBoundary::Finite(ty, value)))
+        Ok(Some(PatRangeBoundary::Finite(value)))
     }
 
     /// Overflowing literals are linted against in a late pass. This is mostly fine, except when we
@@ -243,7 +243,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             (RangeEnd::Included, Some(Ordering::Less)) => {}
             // `x..=y` where `x == y` and `x` and `y` are finite.
             (RangeEnd::Included, Some(Ordering::Equal)) if lo.is_finite() && hi.is_finite() => {
-                kind = PatKind::Constant { ty, value: lo.as_finite().unwrap() };
+                kind = PatKind::Constant { value: lo.as_finite().unwrap() };
             }
             // `..=x` where `x == ty::MIN`.
             (RangeEnd::Included, Some(Ordering::Equal)) if !lo.is_finite() => {}

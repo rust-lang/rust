@@ -146,9 +146,9 @@ impl<'a, 'tcx> ParseCtxt<'a, 'tcx> {
         for arm in rest {
             let arm = &self.thir[*arm];
             let value = match arm.pattern.kind {
-                PatKind::Constant { value, .. } => value,
+                PatKind::Constant { value } => value,
                 PatKind::ExpandedConstant { ref subpattern, def_id: _ }
-                    if let PatKind::Constant { value, .. } = subpattern.kind =>
+                    if let PatKind::Constant { value } = subpattern.kind =>
                 {
                     value
                 }
@@ -160,7 +160,7 @@ impl<'a, 'tcx> ParseCtxt<'a, 'tcx> {
                     });
                 }
             };
-            values.push(value.unwrap_leaf().to_bits_unchecked());
+            values.push(value.try_to_scalar_int().unwrap().to_bits_unchecked());
             targets.push(self.parse_block(arm.body)?);
         }
 
