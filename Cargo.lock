@@ -466,6 +466,8 @@ version = "1.2.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "be714c154be609ec7f5dad223a33bf1482fff90472de28f7362806e6d4832b8c"
 dependencies = [
+ "jobserver",
+ "libc",
  "shlex",
 ]
 
@@ -653,6 +655,26 @@ dependencies = [
  "itertools",
  "rustc_apfloat",
  "serde",
+]
+
+[[package]]
+name = "cmake"
+version = "0.1.54"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e7caa3f9de89ddbe2c607f4101924c5abec803763ae9534e4f4d7d8f84aa81f0"
+dependencies = [
+ "cc",
+]
+
+[[package]]
+name = "codespan-reporting"
+version = "0.12.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fe6d2e5af09e8c8ad56c969f2157a3d4238cebc7c55f0a517728c38f7b200f81"
+dependencies = [
+ "serde",
+ "termcolor",
+ "unicode-width 0.2.1",
 ]
 
 [[package]]
@@ -911,6 +933,68 @@ dependencies = [
  "pkg-config",
  "vcpkg",
  "windows-sys 0.59.0",
+]
+
+[[package]]
+name = "cxx"
+version = "1.0.161"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a3523cc02ad831111491dd64b27ad999f1ae189986728e477604e61b81f828df"
+dependencies = [
+ "cc",
+ "cxxbridge-cmd",
+ "cxxbridge-flags",
+ "cxxbridge-macro",
+ "foldhash",
+ "link-cplusplus",
+]
+
+[[package]]
+name = "cxx-build"
+version = "1.0.161"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "212b754247a6f07b10fa626628c157593f0abf640a3dd04cce2760eca970f909"
+dependencies = [
+ "cc",
+ "codespan-reporting",
+ "indexmap",
+ "proc-macro2",
+ "quote",
+ "scratch",
+ "syn 2.0.104",
+]
+
+[[package]]
+name = "cxxbridge-cmd"
+version = "1.0.161"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f426a20413ec2e742520ba6837c9324b55ffac24ead47491a6e29f933c5b135a"
+dependencies = [
+ "clap",
+ "codespan-reporting",
+ "indexmap",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.104",
+]
+
+[[package]]
+name = "cxxbridge-flags"
+version = "1.0.161"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a258b6069020b4e5da6415df94a50ee4f586a6c38b037a180e940a43d06a070d"
+
+[[package]]
+name = "cxxbridge-macro"
+version = "1.0.161"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e8dec184b52be5008d6eaf7e62fc1802caf1ad1227d11b3b7df2c409c7ffc3f4"
+dependencies = [
+ "indexmap",
+ "proc-macro2",
+ "quote",
+ "rustversion",
+ "syn 2.0.104",
 ]
 
 [[package]]
@@ -1374,6 +1458,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "genmc-sys"
+version = "0.1.0"
+dependencies = [
+ "cc",
+ "cmake",
+ "cxx",
+ "cxx-build",
+ "git2",
+]
+
+[[package]]
 name = "getopts"
 version = "0.2.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1425,6 +1520,21 @@ dependencies = [
  "fallible-iterator",
  "indexmap",
  "stable_deref_trait",
+]
+
+[[package]]
+name = "git2"
+version = "0.20.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2deb07a133b1520dc1a5690e9bd08950108873d7ed5de38dcc74d3b5ebffa110"
+dependencies = [
+ "bitflags",
+ "libc",
+ "libgit2-sys",
+ "log",
+ "openssl-probe",
+ "openssl-sys",
+ "url",
 ]
 
 [[package]]
@@ -2061,6 +2171,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "libgit2-sys"
+version = "0.18.2+1.9.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1c42fe03df2bd3c53a3a9c7317ad91d80c81cd1fb0caec8d7cc4cd2bfa10c222"
+dependencies = [
+ "cc",
+ "libc",
+ "libz-sys",
+ "openssl-sys",
+ "pkg-config",
+]
+
+[[package]]
 name = "libloading"
 version = "0.8.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2097,6 +2220,15 @@ dependencies = [
  "libc",
  "pkg-config",
  "vcpkg",
+]
+
+[[package]]
+name = "link-cplusplus"
+version = "1.0.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4a6f6da007f968f9def0d65a05b187e2960183de70c160204ecfccf0ee330212"
+dependencies = [
+ "cc",
 ]
 
 [[package]]
@@ -2308,6 +2440,7 @@ dependencies = [
  "chrono-tz",
  "colored 3.0.0",
  "directories",
+ "genmc-sys",
  "getrandom 0.3.3",
  "ipc-channel",
  "libc",
@@ -4876,6 +5009,12 @@ name = "scopeguard"
 version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "94143f37725109f92c262ed2cf5e59bce7498c01bcc1502d7b9afe439a4e9f49"
+
+[[package]]
+name = "scratch"
+version = "1.0.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9f6280af86e5f559536da57a45ebc84948833b3bee313a7dd25232e09c878a52"
 
 [[package]]
 name = "self_cell"

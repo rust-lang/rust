@@ -67,8 +67,6 @@ use crate::log::setup::{deinit_loggers, init_early_loggers, init_late_loggers};
 struct MiriCompilerCalls {
     miri_config: Option<MiriConfig>,
     many_seeds: Option<ManySeedsConfig>,
-    /// Settings for using GenMC with Miri.
-    genmc_config: Option<GenmcConfig>,
 }
 
 struct ManySeedsConfig {
@@ -77,12 +75,8 @@ struct ManySeedsConfig {
 }
 
 impl MiriCompilerCalls {
-    fn new(
-        miri_config: MiriConfig,
-        many_seeds: Option<ManySeedsConfig>,
-        genmc_config: Option<GenmcConfig>,
-    ) -> Self {
-        Self { miri_config: Some(miri_config), many_seeds, genmc_config }
+    fn new(miri_config: MiriConfig, many_seeds: Option<ManySeedsConfig>) -> Self {
+        Self { miri_config: Some(miri_config), many_seeds }
     }
 }
 
@@ -192,8 +186,8 @@ impl rustc_driver::Callbacks for MiriCompilerCalls {
                     optimizations is usually marginal at best.");
         }
 
-        if let Some(genmc_config) = &self.genmc_config {
-            let _genmc_ctx = Rc::new(GenmcCtx::new(&config, genmc_config));
+        if let Some(_genmc_config) = &config.genmc_config {
+            let _genmc_ctx = Rc::new(GenmcCtx::new(&config));
 
             todo!("GenMC mode not yet implemented");
         };
@@ -487,7 +481,6 @@ fn main() {
     let mut many_seeds_keep_going = false;
     let mut miri_config = MiriConfig::default();
     miri_config.env = env_snapshot;
-    let mut genmc_config = None;
 
     let mut rustc_args = vec![];
     let mut after_dashdash = false;
@@ -603,9 +596,9 @@ fn main() {
         } else if arg == "-Zmiri-many-seeds-keep-going" {
             many_seeds_keep_going = true;
         } else if let Some(trimmed_arg) = arg.strip_prefix("-Zmiri-genmc") {
-            // FIXME(GenMC): Currently, GenMC mode is incompatible with aliasing model checking.
-            miri_config.borrow_tracker = None;
-            GenmcConfig::parse_arg(&mut genmc_config, trimmed_arg);
+            if let Err(msg) = GenmcConfig::parse_arg(&mut miri_config.genmc_config, trimmed_arg) {
+                fatal_error!("{msg}");
+            }
         } else if let Some(param) = arg.strip_prefix("-Zmiri-env-forward=") {
             miri_config.forwarded_env_vars.push(param.to_owned());
         } else if let Some(param) = arg.strip_prefix("-Zmiri-env-set=") {
@@ -740,12 +733,17 @@ fn main() {
         many_seeds.map(|seeds| ManySeedsConfig { seeds, keep_going: many_seeds_keep_going });
 
     // Validate settings for data race detection and GenMC mode.
-    assert_eq!(genmc_config.is_some(), miri_config.genmc_mode);
-    if genmc_config.is_some() {
+    if miri_config.genmc_config.is_some() {
         if !miri_config.data_race_detector {
             fatal_error!("Cannot disable data race detection in GenMC mode (currently)");
         } else if !miri_config.weak_memory_emulation {
             fatal_error!("Cannot disable weak memory emulation in GenMC mode");
+        }
+        if miri_config.borrow_tracker.is_some() {
+            eprintln!(
+                "warning: borrow tracking has been disabled, it is not (yet) supported in GenMC mode."
+            );
+            miri_config.borrow_tracker = None;
         }
     } else if miri_config.weak_memory_emulation && !miri_config.data_race_detector {
         fatal_error!(
@@ -765,8 +763,5 @@ fn main() {
             );
         }
     }
-    run_compiler_and_exit(
-        &rustc_args,
-        &mut MiriCompilerCalls::new(miri_config, many_seeds, genmc_config),
-    )
+    run_compiler_and_exit(&rustc_args, &mut MiriCompilerCalls::new(miri_config, many_seeds))
 }
