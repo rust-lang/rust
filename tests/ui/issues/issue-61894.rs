@@ -17,5 +17,5 @@ impl<M> Bar<M> {
 }
 
 fn main() {
-    assert_eq!(Bar(()).foo(), "issue_61894::Bar<_>::foo::f");
+    assert_eq!(Bar(()).foo(), "issue_61894::Bar<M>::foo::f");
 }
