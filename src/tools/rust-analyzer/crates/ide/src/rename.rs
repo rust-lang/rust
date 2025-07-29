@@ -35,13 +35,8 @@ pub(crate) fn prepare_rename(
     let syntax = source_file.syntax();
 
     let res = find_definitions(&sema, syntax, position, &Name::new_symbol_root(sym::underscore))?
-        .map(|(frange, kind, def, _, _)| {
-            // ensure all ranges are valid
-
-            if def.range_for_rename(&sema).is_none() {
-                bail!("No references found at position")
-            }
-
+        .filter(|(_, _, def, _, _)| def.range_for_rename(&sema).is_some())
+        .map(|(frange, kind, _, _, _)| {
             always!(
                 frange.range.contains_inclusive(position.offset)
                     && frange.file_id == position.file_id
