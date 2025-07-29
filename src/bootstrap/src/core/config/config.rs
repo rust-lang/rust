@@ -1226,6 +1226,13 @@ impl Config {
         self.out.join(self.host_target).join("ci-rustc")
     }
 
+    pub(crate) fn libgccjit_root(&self) -> PathBuf {
+        match self.gcc_ci_mode {
+            GccCiMode::BuildLocally => self.out.join(self.host_target).join("gcc/install/lib"),
+            GccCiMode::DownloadFromCi => self.out.join(self.host_target).join("ci-gcc/lib"),
+        }
+    }
+
     /// Determine whether llvm should be linked dynamically.
     ///
     /// If `false`, llvm should be linked statically.

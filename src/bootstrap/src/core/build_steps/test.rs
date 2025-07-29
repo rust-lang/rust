@@ -1769,7 +1769,9 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         cmd.arg("--host").arg(&*compiler.host.triple);
         cmd.arg("--llvm-filecheck").arg(builder.llvm_filecheck(builder.config.host_target));
 
-        if let Some(codegen_backend) = builder.config.default_codegen_backend(compiler.host) {
+        if let Some(codegen_backend) = builder.config.codegen_backends(compiler.host).first() {
+            cmd.arg("--codegen-backend").arg(codegen_backend);
+        } else if let Some(codegen_backend) = builder.config.default_codegen_backend(compiler.host) {
             cmd.arg("--codegen-backend").arg(&codegen_backend);
         }
 
