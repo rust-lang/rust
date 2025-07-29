@@ -2792,7 +2792,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) {
         if let SelfSource::MethodCall(expr) = source {
             let mod_id = self.tcx.parent_module(expr.hir_id).to_def_id();
-            for (fields, args) in self.get_field_candidates_considering_privacy_for_diag(
+            for fields in self.get_field_candidates_considering_privacy_for_diag(
                 span,
                 actual,
                 mod_id,
@@ -2831,7 +2831,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 })
                             },
                             candidate_field,
-                            args,
                             vec![],
                             mod_id,
                             expr.hir_id,
