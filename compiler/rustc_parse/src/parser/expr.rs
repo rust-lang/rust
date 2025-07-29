@@ -785,9 +785,13 @@ impl<'a> Parser<'a> {
                     ExprKind::Call(_, _) => "a function call",
                     ExprKind::Await(_, _) => "`.await`",
                     ExprKind::Use(_, _) => "`.use`",
+                    ExprKind::Yield(YieldKind::Postfix(_)) => "`.yield`",
                     ExprKind::Match(_, _, MatchKind::Postfix) => "a postfix match",
                     ExprKind::Err(_) => return Ok(with_postfix),
-                    _ => unreachable!("parse_dot_or_call_expr_with_ shouldn't produce this"),
+                    _ => unreachable!(
+                        "did not expect {:?} as an illegal postfix operator following cast",
+                        with_postfix.kind
+                    ),
                 }
             );
             let mut err = self.dcx().struct_span_err(span, msg);
