@@ -166,7 +166,7 @@ jobs:
       shell: bash
     - run: echo "RUST_COMPILER_RT_ROOT=$(realpath ./compiler-rt)" >> "$GITHUB_ENV"
       shell: bash
-      
+
     - name: Download musl source
       run: ./ci/update-musl.sh
       shell: bash
@@ -278,7 +278,7 @@ jobs:
       with:
         name: ${{ env.BASELINE_NAME }}
         path: ${{ env.BASELINE_NAME }}.tar.xz
-    
+
     - name: Run wall time benchmarks
       run: |
         # Always use the same seed for benchmarks. Ideally we should switch to a

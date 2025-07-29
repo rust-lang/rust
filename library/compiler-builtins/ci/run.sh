@@ -161,7 +161,7 @@ else
     mflags+=(--workspace --target "$target")
     cmd=(cargo test "${mflags[@]}")
     profile_flag="--profile"
-    
+
     # If nextest is available, use that
     command -v cargo-nextest && nextest=1 || nextest=0
     if [ "$nextest" = "1" ]; then
@@ -204,7 +204,7 @@ else
     "${cmd[@]}" "$profile_flag" release-checked --features unstable-intrinsics --benches
 
     # Ensure that the routines do not panic.
-    # 
+    #
     # `--tests` must be passed because no-panic is only enabled as a dev
     # dependency. The `release-opt` profile must be used to enable LTO and a
     # single CGU.
