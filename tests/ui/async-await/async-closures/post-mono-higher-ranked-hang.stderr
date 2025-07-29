@@ -1,4 +1,4 @@
-error: reached the recursion limit while instantiating `ToChain<'_, '_>::perm_pairs<{async closure@$DIR/post-mono-higher-ranked-hang.rs:43:45: 43:67}>`
+error: reached the recursion limit while instantiating `ToChain::<'_, '_>::perm_pairs::<{async closure@$DIR/post-mono-higher-ranked-hang.rs:43:45: 43:67}>`
   --> $DIR/post-mono-higher-ranked-hang.rs:43:21
    |
 LL | /                     self.perm_pairs(l, &mut async move |left_pair| {

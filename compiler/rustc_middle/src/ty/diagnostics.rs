@@ -7,7 +7,7 @@ use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::{
     Applicability, Diag, DiagArgValue, IntoDiagArg, into_diag_arg_using_display, listify, pluralize,
 };
-use rustc_hir::def::DefKind;
+use rustc_hir::def::{DefKind, Namespace};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, AmbigArg, LangItem, PredicateOrigin, WherePredicateKind};
 use rustc_span::{BytePos, Span};
@@ -31,7 +31,7 @@ impl IntoDiagArg for Ty<'_> {
 impl IntoDiagArg for Instance<'_> {
     fn into_diag_arg(self, path: &mut Option<std::path::PathBuf>) -> rustc_errors::DiagArgValue {
         ty::tls::with(|tcx| {
-            let instance = tcx.short_string(self, path);
+            let instance = tcx.short_string_namespace(self, path, Namespace::ValueNS);
             rustc_errors::DiagArgValue::Str(std::borrow::Cow::Owned(instance))
         })
     }

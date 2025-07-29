@@ -10,7 +10,7 @@ note: erroneous constant encountered
 LL |         let _ = Fail::<T>::C;
    |                 ^^^^^^^^^^^^
 
-note: the above error was encountered while instantiating `fn called<i32>`
+note: the above error was encountered while instantiating `fn called::<i32>`
   --> $DIR/collect-in-called-fn.rs:24:5
    |
 LL |     called::<i32>();

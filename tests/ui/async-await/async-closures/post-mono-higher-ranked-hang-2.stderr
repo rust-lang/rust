@@ -1,4 +1,4 @@
-error: reached the recursion limit while instantiating `recur<{async closure@$DIR/post-mono-higher-ranked-hang-2.rs:13:24: 13:32}>`
+error: reached the recursion limit while instantiating `recur::<{async closure@$DIR/post-mono-higher-ranked-hang-2.rs:13:24: 13:32}>`
   --> $DIR/post-mono-higher-ranked-hang-2.rs:13:17
    |
 LL |           let _ = recur(&async || {

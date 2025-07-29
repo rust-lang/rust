@@ -10,7 +10,7 @@ note: erroneous constant encountered
 LL |     const { assert!(std::mem::size_of::<T>() == 0); }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-note: the above error was encountered while instantiating `fn foo<i32>`
+note: the above error was encountered while instantiating `fn foo::<i32>`
   --> $DIR/const-expr-generic-err.rs:12:5
    |
 LL |     foo::<i32>();
@@ -36,7 +36,7 @@ LL |     const { N - 1 }
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-note: the above error was encountered while instantiating `fn bar<0>`
+note: the above error was encountered while instantiating `fn bar::<0>`
   --> $DIR/const-expr-generic-err.rs:13:5
    |
 LL |     bar::<0>();

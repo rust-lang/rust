@@ -10,7 +10,7 @@ note: erroneous constant encountered
 LL |     let _ = PrintName::<T>::VOID;
    |             ^^^^^^^^^^^^^^^^^^^^
 
-note: the above error was encountered while instantiating `fn f<()>`
+note: the above error was encountered while instantiating `fn f::<()>`
   --> $DIR/index-out-of-bounds-never-type.rs:20:5
    |
 LL |     f::<()>();

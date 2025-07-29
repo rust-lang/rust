@@ -17,7 +17,7 @@ error: reached the recursion limit finding the struct tail for `[u8; 256]`
    = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]`
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-note: the above error was encountered while instantiating `fn virtualize_my_trait<VirtualWrapper<..., 1>>`
+note: the above error was encountered while instantiating `fn virtualize_my_trait::<VirtualWrapper<..., 1>>`
   --> $DIR/infinite-instantiation-struct-tail-ice-114484.rs:25:18
    |
 LL |         unsafe { virtualize_my_trait(L, self) }
@@ -45,7 +45,7 @@ error: reached the recursion limit finding the struct tail for `SomeData<256>`
    = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]`
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-note: the above error was encountered while instantiating `fn virtualize_my_trait<VirtualWrapper<..., 1>>`
+note: the above error was encountered while instantiating `fn virtualize_my_trait::<VirtualWrapper<..., 1>>`
   --> $DIR/infinite-instantiation-struct-tail-ice-114484.rs:25:18
    |
 LL |         unsafe { virtualize_my_trait(L, self) }
@@ -73,7 +73,7 @@ error: reached the recursion limit finding the struct tail for `VirtualWrapper<S
    = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]`
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-note: the above error was encountered while instantiating `fn virtualize_my_trait<VirtualWrapper<..., 1>>`
+note: the above error was encountered while instantiating `fn virtualize_my_trait::<VirtualWrapper<..., 1>>`
   --> $DIR/infinite-instantiation-struct-tail-ice-114484.rs:25:18
    |
 LL |         unsafe { virtualize_my_trait(L, self) }

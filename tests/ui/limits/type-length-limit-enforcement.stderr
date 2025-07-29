@@ -1,4 +1,4 @@
-error: reached the type-length limit while instantiating `drop<Option<((..., ..., ...), ..., ...)>>`
+error: reached the type-length limit while instantiating `drop::<Option<((..., ..., ...), ..., ...)>>`
   --> $DIR/type-length-limit-enforcement.rs:34:5
    |
 LL |     drop::<Option<A>>(None);

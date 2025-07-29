@@ -7,7 +7,7 @@
 fn generic<T>() { //~ WARN function cannot return without recursing
     generic::<Option<T>>();
 }
-//~^^ ERROR reached the recursion limit while instantiating `generic<Option<
+//~^^ ERROR reached the recursion limit while instantiating `generic::<Option<
 
 
 fn main () {
