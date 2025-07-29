@@ -26,16 +26,15 @@ use crate::fmt;
 /// are explained below.
 /// Note that, should the destructor panic, the whole process will be [aborted].
 /// On platforms where initialization requires memory allocation, this is
-/// performed directly through [`System`], allowing the [`global allocator`]
+/// performed directly through [`System`], allowing the [global allocator]
 /// to make use of thread local storage.
-///
-/// [`System`]: crate::alloc::System
-/// [`global allocator`]: crate::alloc
 ///
 /// A `LocalKey`'s initializer cannot recursively depend on itself. Using a
 /// `LocalKey` in this way may cause panics, aborts or infinite recursion on
 /// the first call to `with`.
 ///
+/// [`System`]: crate::alloc::System
+/// [global allocator]: crate::alloc
 /// [aborted]: crate::process::abort
 ///
 /// # Single-thread Synchronization
