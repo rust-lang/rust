@@ -15,6 +15,12 @@ error[E0609]: no field `2` on type `({integer}, {integer})`
    |
 LL |     tuple.2;
    |           ^ unknown field
+   |
+help: a field with a similar name exists
+   |
+LL -     tuple.2;
+LL +     tuple.0;
+   |
 
 error: aborting due to 2 previous errors
 

@@ -3321,18 +3321,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         } else {
             (base_ty, "")
         };
-        for (found_fields, args) in
+        for found_fields in
             self.get_field_candidates_considering_privacy_for_diag(span, ty, mod_id, expr.hir_id)
         {
-            let field_names = found_fields.iter().map(|field| field.name).collect::<Vec<_>>();
+            let field_names = found_fields.iter().map(|field| field.0.name).collect::<Vec<_>>();
             let mut candidate_fields: Vec<_> = found_fields
                 .into_iter()
                 .filter_map(|candidate_field| {
                     self.check_for_nested_field_satisfying_condition_for_diag(
                         span,
-                        &|candidate_field, _| candidate_field.ident(self.tcx()) == field,
+                        &|candidate_field, _| candidate_field == field,
                         candidate_field,
-                        args,
                         vec![],
                         mod_id,
                         expr.hir_id,
@@ -3396,7 +3395,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         base_ty: Ty<'tcx>,
         mod_id: DefId,
         hir_id: HirId,
-    ) -> Vec<(Vec<&'tcx ty::FieldDef>, GenericArgsRef<'tcx>)> {
+    ) -> Vec<Vec<(Ident, Ty<'tcx>)>> {
         debug!("get_field_candidates(span: {:?}, base_t: {:?}", span, base_ty);
 
         let mut autoderef = self.autoderef(span, base_ty).silence_errors();
@@ -3422,7 +3421,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         if fields.iter().all(|field| !field.vis.is_accessible_from(mod_id, tcx)) {
                             return None;
                         }
-                        return Some((
+                        return Some(
                             fields
                                 .iter()
                                 .filter(move |field| {
@@ -3431,9 +3430,25 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 })
                                 // For compile-time reasons put a limit on number of fields we search
                                 .take(100)
+                                .map(|field_def| {
+                                    (
+                                        field_def.ident(self.tcx).normalize_to_macros_2_0(),
+                                        field_def.ty(self.tcx, args),
+                                    )
+                                })
                                 .collect::<Vec<_>>(),
-                            *args,
-                        ));
+                        );
+                    }
+                    ty::Tuple(types) => {
+                        return Some(
+                            types
+                                .iter()
+                                .enumerate()
+                                // For compile-time reasons put a limit on number of fields we search
+                                .take(100)
+                                .map(|(i, ty)| (Ident::from_str(&i.to_string()), ty))
+                                .collect::<Vec<_>>(),
+                        );
                     }
                     _ => None,
                 }
@@ -3446,9 +3461,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(crate) fn check_for_nested_field_satisfying_condition_for_diag(
         &self,
         span: Span,
-        matches: &impl Fn(&ty::FieldDef, Ty<'tcx>) -> bool,
-        candidate_field: &ty::FieldDef,
-        subst: GenericArgsRef<'tcx>,
+        matches: &impl Fn(Ident, Ty<'tcx>) -> bool,
+        candidate_field: (Ident, Ty<'tcx>),
         mut field_path: Vec<Ident>,
         mod_id: DefId,
         hir_id: HirId,
@@ -3463,16 +3477,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // up to a depth of three
             None
         } else {
-            field_path.push(candidate_field.ident(self.tcx).normalize_to_macros_2_0());
-            let field_ty = candidate_field.ty(self.tcx, subst);
-            if matches(candidate_field, field_ty) {
+            field_path.push(candidate_field.0);
+            let field_ty = candidate_field.1;
+            if matches(candidate_field.0, field_ty) {
                 return Some(field_path);
             } else {
-                for (nested_fields, subst) in self
-                    .get_field_candidates_considering_privacy_for_diag(
-                        span, field_ty, mod_id, hir_id,
-                    )
-                {
+                for nested_fields in self.get_field_candidates_considering_privacy_for_diag(
+                    span, field_ty, mod_id, hir_id,
+                ) {
                     // recursively search fields of `candidate_field` if it's a ty::Adt
                     for field in nested_fields {
                         if let Some(field_path) = self
@@ -3480,7 +3492,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 span,
                                 matches,
                                 field,
-                                subst,
                                 field_path.clone(),
                                 mod_id,
                                 hir_id,
