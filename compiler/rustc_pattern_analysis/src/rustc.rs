@@ -525,7 +525,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                     }
                     ty::Char | ty::Int(_) | ty::Uint(_) => {
                         ctor = {
-                            let bits = value.try_to_scalar_int().unwrap().to_bits_unchecked();
+                            let bits = value.valtree.unwrap_leaf().to_bits_unchecked();
                             let x = match *ty.kind() {
                                 ty::Int(ity) => {
                                     let size = Integer::from_int_ty(&cx.tcx, ity).size().bits();
@@ -540,7 +540,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                     }
                     ty::Float(ty::FloatTy::F16) => {
                         use rustc_apfloat::Float;
-                        let bits = value.try_to_scalar_int().unwrap().to_u16();
+                        let bits = value.valtree.unwrap_leaf().to_u16();
                         let value = rustc_apfloat::ieee::Half::from_bits(bits.into());
                         ctor = F16Range(value, value, RangeEnd::Included);
                         fields = vec![];
@@ -548,7 +548,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                     }
                     ty::Float(ty::FloatTy::F32) => {
                         use rustc_apfloat::Float;
-                        let bits = value.try_to_scalar_int().unwrap().to_u32();
+                        let bits = value.valtree.unwrap_leaf().to_u32();
                         let value = rustc_apfloat::ieee::Single::from_bits(bits.into());
                         ctor = F32Range(value, value, RangeEnd::Included);
                         fields = vec![];
@@ -556,7 +556,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                     }
                     ty::Float(ty::FloatTy::F64) => {
                         use rustc_apfloat::Float;
-                        let bits = value.try_to_scalar_int().unwrap().to_u64();
+                        let bits = value.valtree.unwrap_leaf().to_u64();
                         let value = rustc_apfloat::ieee::Double::from_bits(bits.into());
                         ctor = F64Range(value, value, RangeEnd::Included);
                         fields = vec![];
@@ -564,7 +564,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                     }
                     ty::Float(ty::FloatTy::F128) => {
                         use rustc_apfloat::Float;
-                        let bits = value.try_to_scalar_int().unwrap().to_u128();
+                        let bits = value.valtree.unwrap_leaf().to_u128();
                         let value = rustc_apfloat::ieee::Quad::from_bits(bits);
                         ctor = F128Range(value, value, RangeEnd::Included);
                         fields = vec![];

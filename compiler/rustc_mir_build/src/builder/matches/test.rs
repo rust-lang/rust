@@ -113,7 +113,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let switch_targets = SwitchTargets::new(
                     target_blocks.iter().filter_map(|(&branch, &block)| {
                         if let TestBranch::Constant(value) = branch {
-                            let bits = value.try_to_scalar_int().unwrap().to_bits_unchecked();
+                            let bits = value.valtree.unwrap_leaf().to_bits_unchecked();
                             Some((bits, block))
                         } else {
                             None
