@@ -30,6 +30,7 @@
 #![feature(core_private_diy_float)]
 #![feature(cstr_display)]
 #![feature(dec2flt)]
+#![feature(drop_guard)]
 #![feature(duration_constants)]
 #![feature(duration_constructors)]
 #![feature(duration_constructors_lite)]
