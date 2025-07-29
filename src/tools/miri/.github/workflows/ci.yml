@@ -169,7 +169,13 @@ jobs:
         run: rustup toolchain install nightly --profile minimal
       - name: Install rustup-toolchain-install-master
         run: cargo install -f rustup-toolchain-install-master
-      - name: Push changes to a branch and create PR
+      # Create a token for the next step so it can create a PR that actually runs CI.
+      - uses: actions/create-github-app-token@v2
+        id: app-token
+        with:
+          app-id: ${{ vars.APP_CLIENT_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+      - name: pull changes from rustc and create PR
         run: |
           # Make it easier to see what happens.
           set -x
@@ -200,7 +206,7 @@ jobs:
           git push -u origin $BRANCH
           gh pr create -B master --title 'Automatic Rustup' --body 'Please close and re-open this PR to trigger CI, then enable auto-merge.'
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
 
   cron-fail-notify:
     name: cronjob failure notification
