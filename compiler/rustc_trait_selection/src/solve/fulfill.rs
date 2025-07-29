@@ -207,7 +207,7 @@ where
 
                 let result = delegate.evaluate_root_goal(goal, obligation.cause.span, stalled_on);
                 self.inspect_evaluated_obligation(infcx, &obligation, &result);
-                let GoalEvaluation { certainty, has_changed, stalled_on } = match result {
+                let GoalEvaluation { goal, certainty, has_changed, stalled_on } = match result {
                     Ok(result) => result,
                     Err(NoSolution) => {
                         errors.push(E::from_solver_error(
@@ -218,6 +218,10 @@ where
                     }
                 };
 
+                // We've resolved the goal in `evaluate_root_goal`, avoid redoing this work
+                // in the next iteration. This does not resolve the inference variables
+                // constrained by evaluating the goal.
+                obligation.predicate = goal.predicate;
                 if has_changed == HasChanged::Yes {
                     // We increment the recursion depth here to track the number of times
                     // this goal has resulted in inference progress. This doesn't precisely

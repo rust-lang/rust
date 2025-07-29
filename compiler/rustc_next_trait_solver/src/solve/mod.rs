@@ -386,6 +386,10 @@ fn response_no_constraints_raw<I: Interner>(
 
 /// The result of evaluating a goal.
 pub struct GoalEvaluation<I: Interner> {
+    /// The goal we've evaluated. This is the input goal, but potentially with its
+    /// inference variables resolved. This never applies any inference constraints
+    /// from evaluating the goal.
+    pub goal: Goal<I, I::Predicate>,
     pub certainty: Certainty,
     pub has_changed: HasChanged,
     /// If the [`Certainty`] was `Maybe`, then keep track of whether the goal has changed
