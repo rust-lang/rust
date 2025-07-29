@@ -111,6 +111,7 @@ nonpoison_and_poison_unwrap_test!(
                 self.0.fetch_add(1, Ordering::SeqCst);
             }
         }
+
         let num_drops = Arc::new(AtomicUsize::new(0));
         let m = Mutex::new(Foo(num_drops.clone()));
         assert_eq!(num_drops.load(Ordering::SeqCst), 0);
@@ -169,6 +170,28 @@ nonpoison_and_poison_unwrap_test!(
 );
 
 // Ensure that old values that are replaced by `set` are correctly dropped.
+nonpoison_and_poison_unwrap_test!(
+    name: test_set_drop,
+    test_body: {
+        use locks::Mutex;
+
+        struct Foo(Arc<AtomicUsize>);
+        impl Drop for Foo {
+            fn drop(&mut self) {
+                self.0.fetch_add(1, Ordering::SeqCst);
+            }
+        }
+
+        let num_drops = Arc::new(AtomicUsize::new(0));
+        let m = Mutex::new(Foo(num_drops.clone()));
+        assert_eq!(num_drops.load(Ordering::SeqCst), 0);
+
+        let different = Foo(Arc::new(AtomicUsize::new(42)));
+        maybe_unwrap(m.set(different));
+        assert_eq!(num_drops.load(Ordering::SeqCst), 1);
+    }
+);
+
 nonpoison_and_poison_unwrap_test!(
     name: test_replace,
     test_body: {
@@ -274,6 +297,63 @@ nonpoison_and_poison_unwrap_test!(
         guard[0] = 42;
         drop(guard);
         assert_eq!(*maybe_unwrap(lock.lock()), [0, 42, 0, 0]);
+    }
+);
+
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
+nonpoison_and_poison_unwrap_test!(
+    name: test_panics,
+    test_body: {
+        use locks::Mutex;
+
+        let mutex = Mutex::new(42);
+
+        let catch_unwind_result1 = panic::catch_unwind(AssertUnwindSafe(|| {
+            let _guard1 = maybe_unwrap(mutex.lock());
+
+            panic!("test panic with mutex once");
+        }));
+        assert!(catch_unwind_result1.is_err());
+
+        let catch_unwind_result2 = panic::catch_unwind(AssertUnwindSafe(|| {
+            let _guard2 = maybe_unwrap(mutex.lock());
+
+            panic!("test panic with mutex twice");
+        }));
+        assert!(catch_unwind_result2.is_err());
+
+        let catch_unwind_result3 = panic::catch_unwind(AssertUnwindSafe(|| {
+            let _guard3 = maybe_unwrap(mutex.lock());
+
+            panic!("test panic with mutex thrice");
+        }));
+        assert!(catch_unwind_result3.is_err());
+    }
+);
+
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
+nonpoison_and_poison_unwrap_test!(
+    name: test_mutex_arc_access_in_unwind,
+    test_body: {
+        use locks::Mutex;
+
+        let arc = Arc::new(Mutex::new(1));
+        let arc2 = arc.clone();
+        let _ = thread::spawn(move || -> () {
+            struct Unwinder {
+                i: Arc<Mutex<i32>>,
+            }
+            impl Drop for Unwinder {
+                fn drop(&mut self) {
+                    *maybe_unwrap(self.i.lock()) += 1;
+                }
+            }
+            let _u = Unwinder { i: arc2 };
+            panic!();
+        })
+        .join();
+        let lock = maybe_unwrap(arc.lock());
+        assert_eq!(*lock, 2);
     }
 );
 
@@ -438,28 +518,6 @@ fn test_mutex_arc_poison_mapped() {
     .join();
     assert!(arc.lock().is_err());
     assert!(arc.is_poisoned());
-}
-
-#[test]
-#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
-fn test_mutex_arc_access_in_unwind() {
-    let arc = Arc::new(Mutex::new(1));
-    let arc2 = arc.clone();
-    let _ = thread::spawn(move || -> () {
-        struct Unwinder {
-            i: Arc<Mutex<i32>>,
-        }
-        impl Drop for Unwinder {
-            fn drop(&mut self) {
-                *self.i.lock().unwrap() += 1;
-            }
-        }
-        let _u = Unwinder { i: arc2 };
-        panic!();
-    })
-    .join();
-    let lock = arc.lock().unwrap();
-    assert_eq!(*lock, 2);
 }
 
 #[test]
