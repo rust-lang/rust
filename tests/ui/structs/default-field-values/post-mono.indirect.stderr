@@ -18,7 +18,7 @@ LL |     let x: Z<X> = Z { .. };
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-note: the above error was encountered while instantiating `fn indirect::<1>`
+note: the above error was encountered while instantiating `fn indirect<1>`
   --> $DIR/post-mono.rs:22:5
    |
 LL |     indirect::<1>();

@@ -1,4 +1,5 @@
 //@ build-fail
+//@ compile-flags: --diagnostic-width=100 -Zwrite-long-types-to-disk=yes
 
 trait ToOpt: Sized {
     fn to_option(&self) -> Option<Self>;
@@ -19,7 +20,7 @@ impl<T:Clone> ToOpt for Option<T> {
 fn function<T:ToOpt + Clone>(counter: usize, t: T) {
     if counter > 0 {
         function(counter - 1, t.to_option());
-        //~^ ERROR reached the recursion limit while instantiating `function::<Option<
+        //~^ ERROR reached the recursion limit while instantiating `function<Option<
     }
 }
 

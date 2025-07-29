@@ -14,7 +14,7 @@ use rustc_span::{BytePos, Span};
 use rustc_type_ir::TyKind::*;
 
 use crate::ty::{
-    self, AliasTy, Const, ConstKind, FallibleTypeFolder, InferConst, InferTy, Opaque,
+    self, AliasTy, Const, ConstKind, FallibleTypeFolder, InferConst, InferTy, Instance, Opaque,
     PolyTraitPredicate, Projection, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable,
     TypeSuperVisitable, TypeVisitable, TypeVisitor,
 };
@@ -24,6 +24,15 @@ impl IntoDiagArg for Ty<'_> {
         ty::tls::with(|tcx| {
             let ty = tcx.short_string(self, path);
             rustc_errors::DiagArgValue::Str(std::borrow::Cow::Owned(ty))
+        })
+    }
+}
+
+impl IntoDiagArg for Instance<'_> {
+    fn into_diag_arg(self, path: &mut Option<std::path::PathBuf>) -> rustc_errors::DiagArgValue {
+        ty::tls::with(|tcx| {
+            let instance = tcx.short_string(self, path);
+            rustc_errors::DiagArgValue::Str(std::borrow::Cow::Owned(instance))
         })
     }
 }

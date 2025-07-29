@@ -1,6 +1,5 @@
 use std::assert_matches::assert_matches;
 use std::fmt;
-use std::path::PathBuf;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::ErrorGuaranteed;
@@ -17,7 +16,7 @@ use tracing::{debug, instrument};
 use crate::error;
 use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::ty::normalize_erasing_regions::NormalizationError;
-use crate::ty::print::{FmtPrinter, Printer, shrunk_instance_name};
+use crate::ty::print::{FmtPrinter, Printer};
 use crate::ty::{
     self, EarlyBinder, GenericArgs, GenericArgsRef, Ty, TyCtxt, TypeFoldable, TypeSuperVisitable,
     TypeVisitable, TypeVisitableExt, TypeVisitor,
@@ -431,14 +430,6 @@ pub fn fmt_instance(
     }
 }
 
-pub struct ShortInstance<'tcx>(pub Instance<'tcx>, pub usize);
-
-impl<'tcx> fmt::Display for ShortInstance<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt_instance(f, self.0, Some(rustc_session::Limit(self.1)))
-    }
-}
-
 impl<'tcx> fmt::Display for Instance<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt_instance(f, *self, None)
@@ -610,23 +601,12 @@ impl<'tcx> Instance<'tcx> {
             Ok(None) => {
                 let type_length = type_length(args);
                 if !tcx.type_length_limit().value_within_limit(type_length) {
-                    let (shrunk, written_to_path) =
-                        shrunk_instance_name(tcx, Instance::new_raw(def_id, args));
-                    let mut path = PathBuf::new();
-                    let was_written = if let Some(path2) = written_to_path {
-                        path = path2;
-                        true
-                    } else {
-                        false
-                    };
                     tcx.dcx().emit_fatal(error::TypeLengthLimit {
                         // We don't use `def_span(def_id)` so that diagnostics point
                         // to the crate root during mono instead of to foreign items.
                         // This is arguably better.
                         span: span_or_local_def_span(),
-                        shrunk,
-                        was_written,
-                        path,
+                        instance: Instance::new_raw(def_id, args),
                         type_length,
                     });
                 } else {

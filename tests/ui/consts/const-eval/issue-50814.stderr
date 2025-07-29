@@ -40,7 +40,7 @@ LL |     &Sum::<U8, U8>::MAX
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-note: the above error was encountered while instantiating `fn foo::<i32>`
+note: the above error was encountered while instantiating `fn foo<i32>`
   --> $DIR/issue-50814.rs:27:5
    |
 LL |     foo(0);

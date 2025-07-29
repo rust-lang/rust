@@ -3,7 +3,7 @@
 //! Checks the enforcement of the type-length limit
 //! and its configurability via `#![type_length_limit]`.
 
-//@ compile-flags: -Copt-level=0 -Zenforce-type-length-limit
+//@ compile-flags: -Copt-level=0 -Zenforce-type-length-limit --diagnostic-width=100 -Zwrite-long-types-to-disk=yes
 
 //@ build-fail
 
