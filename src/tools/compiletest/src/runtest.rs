@@ -2678,8 +2678,8 @@ impl<'test> TestCx<'test> {
         //
         // It's not possible to detect paths in the error messages generally, but this is a
         // decent enough heuristic.
-        static_regex!(
-                r#"(?x)
+        let re = static_regex!(
+            r#"(?x)
                 (?:
                   # Match paths that don't include spaces.
                   (?:\\[\pL\pN\.\-_']+)+\.\pL+
@@ -2687,11 +2687,8 @@ impl<'test> TestCx<'test> {
                   # If the path starts with a well-known root, then allow spaces and no file extension.
                   \$(?:DIR|SRC_DIR|TEST_BUILD_DIR|BUILD_DIR|LIB_DIR)(?:\\[\pL\pN\.\-_'\ ]+)+
                 )"#
-            )
-            .replace_all(&output, |caps: &Captures<'_>| {
-                println!("{}", &caps[0]);
-                caps[0].replace(r"\", "/")
-            })
+        );
+        re.replace_all(&output, |caps: &Captures<'_>| caps[0].replace(r"\", "/"))
             .replace("\r\n", "\n")
     }
 
