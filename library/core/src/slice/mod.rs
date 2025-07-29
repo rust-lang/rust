@@ -1230,7 +1230,7 @@ impl<T> [T] {
     ///
     /// [`chunks`]: slice::chunks
     /// [`rchunks_exact`]: slice::rchunks_exact
-    /// [`as_chunks`]: slice::chunks
+    /// [`as_chunks`]: slice::as_chunks
     #[stable(feature = "chunks_exact", since = "1.31.0")]
     #[rustc_const_unstable(feature = "const_slice_make_iter", issue = "137737")]
     #[inline]
