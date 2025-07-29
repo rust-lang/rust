@@ -2,13 +2,13 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 
 static COUNT: AtomicUsize = AtomicUsize::new(0);
 
-unsafe extern "C" fn ctor() {
-    COUNT.fetch_add(1, Ordering::Relaxed);
+unsafe extern "C" fn ctor<const N: usize>() {
+    COUNT.fetch_add(N, Ordering::Relaxed);
 }
 
 #[rustfmt::skip]
 macro_rules! ctor {
-    ($ident:ident = $ctor:ident) => {
+    ($ident:ident: $ty:ty = $ctor:expr) => {
         #[cfg_attr(
             all(any(
                 target_os = "linux",
@@ -33,14 +33,13 @@ macro_rules! ctor {
             link_section = "__DATA,__mod_init_func"
         )]
         #[used]
-        static $ident: unsafe extern "C" fn() = $ctor;
+        static $ident: $ty = $ctor;
     };
 }
 
-ctor! { CTOR1 = ctor }
-ctor! { CTOR2 = ctor }
-ctor! { CTOR3 = ctor }
+ctor! { CTOR1: unsafe extern "C" fn() = ctor::<1> }
+ctor! { CTOR2: [unsafe extern "C" fn(); 2] = [ctor::<2>, ctor::<3>] }
 
 fn main() {
-    assert_eq!(COUNT.load(Ordering::Relaxed), 3, "ctors did not run");
+    assert_eq!(COUNT.load(Ordering::Relaxed), 6, "ctors did not run");
 }

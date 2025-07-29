@@ -45,7 +45,9 @@ use crate::core::config::{
     DebuginfoLevel, DryRun, GccCiMode, LlvmLibunwind, Merge, ReplaceOpt, RustcLto, SplitDebuginfo,
     StringOrBool, set, threads_from_config,
 };
-use crate::core::download::is_download_ci_available;
+use crate::core::download::{
+    DownloadContext, download_beta_toolchain, is_download_ci_available, maybe_download_rustfmt,
+};
 use crate::utils::channel;
 use crate::utils::exec::{ExecutionContext, command};
 use crate::utils::helpers::{exe, get_host_target};
@@ -795,13 +797,19 @@ impl Config {
             );
         }
 
+        config.patch_binaries_for_nix = patch_binaries_for_nix;
+        config.bootstrap_cache_path = bootstrap_cache_path;
+        config.llvm_assertions =
+            toml.llvm.as_ref().is_some_and(|llvm| llvm.assertions.unwrap_or(false));
+
         config.initial_rustc = if let Some(rustc) = rustc {
             if !flags_skip_stage0_validation {
                 config.check_stage0_version(&rustc, "rustc");
             }
             rustc
         } else {
-            config.download_beta_toolchain();
+            let dwn_ctx = DownloadContext::from(&config);
+            download_beta_toolchain(dwn_ctx);
             config
                 .out
                 .join(config.host_target)
@@ -827,7 +835,8 @@ impl Config {
             }
             cargo
         } else {
-            config.download_beta_toolchain();
+            let dwn_ctx = DownloadContext::from(&config);
+            download_beta_toolchain(dwn_ctx);
             config.initial_sysroot.join("bin").join(exe("cargo", config.host_target))
         };
 
@@ -863,7 +872,6 @@ impl Config {
         config.reuse = reuse.map(PathBuf::from);
         config.submodules = submodules;
         config.android_ndk = android_ndk;
-        config.bootstrap_cache_path = bootstrap_cache_path;
         set(&mut config.low_priority, low_priority);
         set(&mut config.compiler_docs, compiler_docs);
         set(&mut config.library_docs_private_items, library_docs_private_items);
@@ -882,7 +890,6 @@ impl Config {
         set(&mut config.local_rebuild, local_rebuild);
         set(&mut config.print_step_timings, print_step_timings);
         set(&mut config.print_step_rusage, print_step_rusage);
-        config.patch_binaries_for_nix = patch_binaries_for_nix;
 
         config.verbose = cmp::max(config.verbose, flags_verbose as usize);
 
@@ -890,9 +897,6 @@ impl Config {
         config.verbose_tests = config.is_verbose();
 
         config.apply_install_config(toml.install);
-
-        config.llvm_assertions =
-            toml.llvm.as_ref().is_some_and(|llvm| llvm.assertions.unwrap_or(false));
 
         let file_content = t!(fs::read_to_string(config.src.join("src/ci/channel")));
         let ci_channel = file_content.trim_end();
@@ -994,8 +998,12 @@ impl Config {
 
         config.apply_dist_config(toml.dist);
 
-        config.initial_rustfmt =
-            if let Some(r) = rustfmt { Some(r) } else { config.maybe_download_rustfmt() };
+        config.initial_rustfmt = if let Some(r) = rustfmt {
+            Some(r)
+        } else {
+            let dwn_ctx = DownloadContext::from(&config);
+            maybe_download_rustfmt(dwn_ctx)
+        };
 
         if matches!(config.lld_mode, LldMode::SelfContained)
             && !config.lld_enabled

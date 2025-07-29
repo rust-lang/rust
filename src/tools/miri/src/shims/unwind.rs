@@ -16,7 +16,6 @@ use rustc_abi::ExternAbi;
 use rustc_middle::mir;
 use rustc_target::spec::PanicStrategy;
 
-use self::helpers::check_intrinsic_arg_count;
 use crate::*;
 
 /// Holds all of the relevant data for when unwinding hits a `try` frame.
@@ -60,7 +59,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// Handles the `catch_unwind` intrinsic.
     fn handle_catch_unwind(
         &mut self,
-        args: &[OpTy<'tcx>],
+        try_fn: &OpTy<'tcx>,
+        data: &OpTy<'tcx>,
+        catch_fn: &OpTy<'tcx>,
         dest: &MPlaceTy<'tcx>,
         ret: Option<mir::BasicBlock>,
     ) -> InterpResult<'tcx> {
@@ -78,7 +79,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // a pointer to `Box<dyn Any + Send + 'static>`.
 
         // Get all the arguments.
-        let [try_fn, data, catch_fn] = check_intrinsic_arg_count(args)?;
         let try_fn = this.read_pointer(try_fn)?;
         let data = this.read_immediate(data)?;
         let catch_fn = this.read_pointer(catch_fn)?;

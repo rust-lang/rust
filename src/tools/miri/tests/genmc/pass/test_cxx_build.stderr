@@ -1,0 +1,5 @@
+warning: borrow tracking has been disabled, it is not (yet) supported in GenMC mode.
+C++: GenMC handle created!
+Miri: GenMC handle creation successful!
+C++: GenMC handle destroyed!
+Miri: Dropping GenMC handle successful!

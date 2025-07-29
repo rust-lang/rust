@@ -1,9 +1,9 @@
 //! Implements the various phases of `cargo miri run/test`.
 
 use std::env;
-use std::fs::{self, File};
+use std::fs::File;
 use std::io::BufReader;
-use std::path::{Path, PathBuf};
+use std::path::{self, Path, PathBuf};
 use std::process::Command;
 
 use rustc_version::VersionMeta;
@@ -222,12 +222,12 @@ pub fn phase_cargo_miri(mut args: impl Iterator<Item = String>) {
     // that to be the Miri driver, but acting as rustc, in host mode.
     //
     // In `main`, we need the value of `RUSTC` to distinguish RUSTC_WRAPPER invocations from rustdoc
-    // or TARGET_RUNNER invocations, so we canonicalize it here to make it exceedingly unlikely that
+    // or TARGET_RUNNER invocations, so we make it absolute to make it exceedingly unlikely that
     // there would be a collision with other invocations of cargo-miri (as rustdoc or as runner). We
     // explicitly do this even if RUSTC_STAGE is set, since for these builds we do *not* want the
     // bootstrap `rustc` thing in our way! Instead, we have MIRI_HOST_SYSROOT to use for host
     // builds.
-    cmd.env("RUSTC", fs::canonicalize(find_miri()).unwrap());
+    cmd.env("RUSTC", path::absolute(find_miri()).unwrap());
     // In case we get invoked as RUSTC without the wrapper, let's be a host rustc. This makes no
     // sense for cross-interpretation situations, but without the wrapper, this will use the host
     // sysroot, so asking it to behave like a target build makes even less sense.

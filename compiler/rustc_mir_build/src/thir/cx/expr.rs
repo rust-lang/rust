@@ -955,9 +955,13 @@ impl<'tcx> ThirBuildCx<'tcx> {
                         dcx.emit_fatal(LoopMatchBadRhs { span: block_body_expr.span })
                     };
 
-                    fn local(expr: &rustc_hir::Expr<'_>) -> Option<hir::HirId> {
+                    fn local(
+                        cx: &mut ThirBuildCx<'_>,
+                        expr: &rustc_hir::Expr<'_>,
+                    ) -> Option<hir::HirId> {
                         if let hir::ExprKind::Path(hir::QPath::Resolved(_, path)) = expr.kind
                             && let Res::Local(hir_id) = path.res
+                            && !cx.is_upvar(hir_id)
                         {
                             return Some(hir_id);
                         }
@@ -965,11 +969,11 @@ impl<'tcx> ThirBuildCx<'tcx> {
                         None
                     }
 
-                    let Some(scrutinee_hir_id) = local(scrutinee) else {
+                    let Some(scrutinee_hir_id) = local(self, scrutinee) else {
                         dcx.emit_fatal(LoopMatchInvalidMatch { span: scrutinee.span })
                     };
 
-                    if local(state) != Some(scrutinee_hir_id) {
+                    if local(self, state) != Some(scrutinee_hir_id) {
                         dcx.emit_fatal(LoopMatchInvalidUpdate {
                             scrutinee: scrutinee.span,
                             lhs: state.span,
@@ -1260,10 +1264,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
     fn convert_var(&mut self, var_hir_id: hir::HirId) -> ExprKind<'tcx> {
         // We want upvars here not captures.
         // Captures will be handled in MIR.
-        let is_upvar = self
-            .tcx
-            .upvars_mentioned(self.body_owner)
-            .is_some_and(|upvars| upvars.contains_key(&var_hir_id));
+        let is_upvar = self.is_upvar(var_hir_id);
 
         debug!(
             "convert_var({:?}): is_upvar={}, body_owner={:?}",
@@ -1441,6 +1442,12 @@ impl<'tcx> ThirBuildCx<'tcx> {
                 }
             }
         }
+    }
+
+    fn is_upvar(&mut self, var_hir_id: hir::HirId) -> bool {
+        self.tcx
+            .upvars_mentioned(self.body_owner)
+            .is_some_and(|upvars| upvars.contains_key(&var_hir_id))
     }
 
     /// Converts a list of named fields (i.e., for struct-like struct/enum ADTs) into FieldExpr.
