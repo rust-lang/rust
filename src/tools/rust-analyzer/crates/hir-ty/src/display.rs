@@ -620,19 +620,19 @@ impl HirDisplay for ProjectionTy {
                         .generic_predicates(id.parent)
                         .iter()
                         .map(|pred| pred.clone().substitute(Interner, &substs))
-                        .filter(|wc| match wc.skip_binders() {
-                            WhereClause::Implemented(tr) => {
-                                matches!(
-                                    tr.self_type_parameter(Interner).kind(Interner),
-                                    TyKind::Alias(_)
-                                )
-                            }
-                            WhereClause::TypeOutlives(t) => {
-                                matches!(t.ty.kind(Interner), TyKind::Alias(_))
-                            }
-                            // We shouldn't be here if these exist
-                            WhereClause::AliasEq(_) => false,
-                            WhereClause::LifetimeOutlives(_) => false,
+                        .filter(|wc| {
+                            let ty = match wc.skip_binders() {
+                                WhereClause::Implemented(tr) => tr.self_type_parameter(Interner),
+                                WhereClause::TypeOutlives(t) => t.ty.clone(),
+                                // We shouldn't be here if these exist
+                                WhereClause::AliasEq(_) | WhereClause::LifetimeOutlives(_) => {
+                                    return false;
+                                }
+                            };
+                            let TyKind::Alias(AliasTy::Projection(proj)) = ty.kind(Interner) else {
+                                return false;
+                            };
+                            proj == self
                         })
                         .collect::<Vec<_>>();
                     if !bounds.is_empty() {
