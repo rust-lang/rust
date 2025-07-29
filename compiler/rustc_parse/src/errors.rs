@@ -3346,15 +3346,6 @@ pub(crate) struct KwBadCase<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag(parse_meta_bad_delim)]
-pub(crate) struct MetaBadDelim {
-    #[primary_span]
-    pub span: Span,
-    #[subdiagnostic]
-    pub sugg: MetaBadDelimSugg,
-}
-
-#[derive(Diagnostic)]
 #[diag(parse_cfg_attr_bad_delim)]
 pub(crate) struct CfgAttrBadDelim {
     #[primary_span]
@@ -3491,38 +3482,6 @@ pub(crate) struct ExprRArrowCall {
 pub(crate) struct DotDotRangeAttribute {
     #[primary_span]
     pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(parse_invalid_attr_unsafe)]
-#[note]
-pub(crate) struct InvalidAttrUnsafe {
-    #[primary_span]
-    #[label]
-    pub span: Span,
-    pub name: Path,
-}
-
-#[derive(Diagnostic)]
-#[diag(parse_unsafe_attr_outside_unsafe)]
-pub(crate) struct UnsafeAttrOutsideUnsafe {
-    #[primary_span]
-    #[label]
-    pub span: Span,
-    #[subdiagnostic]
-    pub suggestion: UnsafeAttrOutsideUnsafeSuggestion,
-}
-
-#[derive(Subdiagnostic)]
-#[multipart_suggestion(
-    parse_unsafe_attr_outside_unsafe_suggestion,
-    applicability = "machine-applicable"
-)]
-pub(crate) struct UnsafeAttrOutsideUnsafeSuggestion {
-    #[suggestion_part(code = "unsafe(")]
-    pub left: Span,
-    #[suggestion_part(code = ")")]
-    pub right: Span,
 }
 
 #[derive(Diagnostic)]

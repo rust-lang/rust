@@ -1,6 +1,6 @@
 use std::num::IntErrorKind;
 
-use rustc_ast::{self as ast, AttrStyle};
+use rustc_ast::{self as ast, AttrStyle, Path};
 use rustc_errors::codes::*;
 use rustc_errors::{
     Applicability, Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level,
@@ -736,4 +736,57 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for AttributeParseError {
 
         diag
     }
+}
+
+#[derive(Diagnostic)]
+#[diag(attr_parsing_invalid_attr_unsafe)]
+#[note]
+pub(crate) struct InvalidAttrUnsafe {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    pub name: Path,
+}
+
+#[derive(Diagnostic)]
+#[diag(attr_parsing_unsafe_attr_outside_unsafe)]
+pub(crate) struct UnsafeAttrOutsideUnsafe {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    #[subdiagnostic]
+    pub suggestion: UnsafeAttrOutsideUnsafeSuggestion,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(
+    attr_parsing_unsafe_attr_outside_unsafe_suggestion,
+    applicability = "machine-applicable"
+)]
+pub(crate) struct UnsafeAttrOutsideUnsafeSuggestion {
+    #[suggestion_part(code = "unsafe(")]
+    pub left: Span,
+    #[suggestion_part(code = ")")]
+    pub right: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(attr_parsing_meta_bad_delim)]
+pub(crate) struct MetaBadDelim {
+    #[primary_span]
+    pub span: Span,
+    #[subdiagnostic]
+    pub sugg: MetaBadDelimSugg,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(
+    attr_parsing_meta_bad_delim_suggestion,
+    applicability = "machine-applicable"
+)]
+pub(crate) struct MetaBadDelimSugg {
+    #[suggestion_part(code = "(")]
+    pub open: Span,
+    #[suggestion_part(code = ")")]
+    pub close: Span,
 }
