@@ -151,17 +151,13 @@ impl<'tcx> Value<'tcx> {
     /// or an aggregate).
     #[inline]
     pub fn try_to_bits(self, tcx: TyCtxt<'tcx>, typing_env: ty::TypingEnv<'tcx>) -> Option<u128> {
-        let scalar = self.try_to_scalar_int()?;
-        let input = typing_env.with_post_analysis_normalized(tcx).as_query_input(self.ty);
-        let size = tcx.layout_of(input).ok()?.size;
-        Some(scalar.to_bits(size))
-    }
-
-    pub fn try_to_scalar_int(self) -> Option<ScalarInt> {
         let (ty::Bool | ty::Char | ty::Uint(_) | ty::Int(_) | ty::Float(_)) = self.ty.kind() else {
             return None;
         };
-        self.valtree.try_to_scalar_int()
+        let scalar = self.valtree.try_to_scalar_int()?;
+        let input = typing_env.with_post_analysis_normalized(tcx).as_query_input(self.ty);
+        let size = tcx.layout_of(input).ok()?.size;
+        Some(scalar.to_bits(size))
     }
 
     pub fn try_to_bool(self) -> Option<bool> {
