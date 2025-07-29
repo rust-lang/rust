@@ -3585,6 +3585,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.tcx.lang_items().deref_trait(),
                 self.tcx.lang_items().deref_mut_trait(),
                 self.tcx.lang_items().drop_trait(),
+                self.tcx.lang_items().pin_type(),
                 self.tcx.get_diagnostic_item(sym::AsRef),
             ];
             // Try alternative arbitrary self types that could fulfill this call.
@@ -3670,7 +3671,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         )
                     {
                         debug!("try_alt_rcvr: pick candidate {:?}", pick);
-                        let did = Some(pick.item.container_id(self.tcx));
+                        let did = pick.item.trait_container(self.tcx);
                         // We don't want to suggest a container type when the missing
                         // method is `.clone()` or `.deref()` otherwise we'd suggest
                         // `Arc::new(foo).clone()`, which is far from what the user wants.
@@ -3734,6 +3735,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // We skip some common traits that we don't want to consider because autoderefs
                     // would take care of them.
                     && !skippable.contains(&Some(pick.item.container_id(self.tcx)))
+                    && !skippable.contains(&pick.item.impl_container(self.tcx).and_then(|did| {
+                        match self.tcx.type_of(did).instantiate_identity().kind() {
+                            ty::Adt(def, _) => Some(def.did()),
+                            _ => None,
+                        }
+                    }))
                     // We don't want to go through derefs.
                     && pick.autoderefs == 0
                     // Check that the method of the same name that was found on the new `Pin<T>`

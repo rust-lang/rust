@@ -1,5 +1,5 @@
 error[E0599]: no method named `get_ref` found for struct `F` in the current scope
-  --> $DIR/missing-field-access.rs:7:15
+  --> $DIR/missing-field-access.rs:11:15
    |
 LL | struct F(BufReader<File>);
    | -------- method `get_ref` not found for this struct
@@ -11,14 +11,9 @@ help: one of the expressions' fields has a method of the same name
    |
 LL |     let x = f.0.get_ref();
    |               ++
-help: consider pinning the expression
-   |
-LL ~     let mut pinned = std::pin::pin!(f);
-LL ~     let x = pinned.as_ref().get_ref();
-   |
 
 error[E0599]: no method named `get_ref` found for tuple `(BufReader<File>,)` in the current scope
-  --> $DIR/missing-field-access.rs:11:15
+  --> $DIR/missing-field-access.rs:14:15
    |
 LL |     let x = f.get_ref();
    |               ^^^^^^^ method not found in `(BufReader<File>,)`
@@ -27,11 +22,6 @@ help: one of the expressions' fields has a method of the same name
    |
 LL |     let x = f.0.get_ref();
    |               ++
-help: consider pinning the expression
-   |
-LL ~     let mut pinned = std::pin::pin!(f);
-LL ~     let x = pinned.as_ref().get_ref();
-   |
 
 error: aborting due to 2 previous errors
 
