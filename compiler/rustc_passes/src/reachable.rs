@@ -183,7 +183,8 @@ impl<'tcx> ReachableContext<'tcx> {
             } else {
                 CodegenFnAttrs::EMPTY
             };
-            let is_extern = codegen_attrs.contains_extern_indicator();
+            let is_extern =
+                codegen_attrs.contains_extern_indicator() && !self.tcx.is_foreign_item(search_item);
             if is_extern {
                 self.reachable_symbols.insert(search_item);
             }
@@ -417,12 +418,17 @@ fn check_item<'tcx>(
 }
 
 fn has_custom_linkage(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
+    if tcx.is_foreign_item(def_id) {
+        return false;
+    }
+
     // Anything which has custom linkage gets thrown on the worklist no
     // matter where it is in the crate, along with "special std symbols"
     // which are currently akin to allocator symbols.
     if !tcx.def_kind(def_id).has_codegen_attrs() {
         return false;
     }
+
     let codegen_attrs = tcx.codegen_fn_attrs(def_id);
     codegen_attrs.contains_extern_indicator()
         // FIXME(nbdd0121): `#[used]` are marked as reachable here so it's picked up by
