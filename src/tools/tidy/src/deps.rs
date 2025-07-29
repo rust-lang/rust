@@ -226,20 +226,6 @@ const EXCEPTIONS_UEFI_QEMU_TEST: ExceptionList = &[
     ("r-efi", "MIT OR Apache-2.0 OR LGPL-2.1-or-later"), // LGPL is not acceptable, but we use it under MIT OR Apache-2.0
 ];
 
-/// Placeholder for non-standard license file.
-const NON_STANDARD_LICENSE: &str = "NON_STANDARD_LICENSE";
-
-/// These dependencies have non-standard licenses but are genenrally permitted.
-const EXCEPTIONS_NON_STANDARD_LICENSE_DEPS: &[&str] = &[
-    // `ring` is included because it is an optional dependency of `hyper`,
-    // which is a training data in rustc-perf for optimized build.
-    // The license of it is generally `ISC AND MIT AND OpenSSL`,
-    // though the `package.license` field is not set.
-    //
-    // See https://github.com/briansmith/ring/issues/902
-    "ring",
-];
-
 const PERMITTED_DEPS_LOCATION: &str = concat!(file!(), ":", line!());
 
 /// Crates rustc is allowed to depend on. Avoid adding to the list if possible.
@@ -751,11 +737,6 @@ fn check_license_exceptions(
         for pkg in metadata.packages.iter().filter(|p| *p.name == *name) {
             match &pkg.license {
                 None => {
-                    if *license == NON_STANDARD_LICENSE
-                        && EXCEPTIONS_NON_STANDARD_LICENSE_DEPS.contains(&pkg.name.as_str())
-                    {
-                        continue;
-                    }
                     tidy_error!(
                         bad,
                         "dependency exception `{}` in workspace `{workspace}` does not declare a license expression",
