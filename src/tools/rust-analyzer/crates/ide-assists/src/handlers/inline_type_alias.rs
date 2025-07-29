@@ -9,10 +9,11 @@ use ide_db::{
     search::FileReference,
 };
 use itertools::Itertools;
+use syntax::ast::syntax_factory::SyntaxFactory;
 use syntax::syntax_editor::SyntaxEditor;
 use syntax::{
     AstNode, NodeOrToken, SyntaxNode,
-    ast::{self, HasGenericParams, HasName, make},
+    ast::{self, HasGenericParams, HasName},
 };
 
 use crate::{
@@ -206,8 +207,8 @@ impl LifetimeMap {
         alias_generics: &ast::GenericParamList,
     ) -> Option<Self> {
         let mut inner = FxHashMap::default();
-
-        let wildcard_lifetime = make::lifetime("'_");
+        let make = SyntaxFactory::without_mappings();
+        let wildcard_lifetime = make.lifetime("'_");
         let lifetimes = alias_generics
             .lifetime_params()
             .filter_map(|lp| lp.lifetime())
@@ -334,9 +335,10 @@ fn create_replacement(
             };
             let new_string = replacement_syntax.to_string();
             let new = if new_string == "_" {
-                make::wildcard_pat().syntax().clone_for_update()
+                let make = SyntaxFactory::without_mappings();
+                make.wildcard_pat().syntax().clone()
             } else {
-                replacement_syntax.clone_for_update()
+                replacement_syntax.clone()
             };
 
             replacements.push((syntax.clone(), new));
@@ -385,12 +387,15 @@ impl ConstOrTypeGeneric {
     }
 
     fn replacement_value(&self) -> Option<SyntaxNode> {
-        Some(match self {
-            ConstOrTypeGeneric::ConstArg(ca) => ca.expr()?.syntax().clone(),
-            ConstOrTypeGeneric::TypeArg(ta) => ta.syntax().clone(),
-            ConstOrTypeGeneric::ConstParam(cp) => cp.default_val()?.syntax().clone(),
-            ConstOrTypeGeneric::TypeParam(tp) => tp.default_type()?.syntax().clone(),
-        })
+        Some(
+            match self {
+                ConstOrTypeGeneric::ConstArg(ca) => ca.expr()?.syntax().clone(),
+                ConstOrTypeGeneric::TypeArg(ta) => ta.syntax().clone(),
+                ConstOrTypeGeneric::ConstParam(cp) => cp.default_val()?.syntax().clone(),
+                ConstOrTypeGeneric::TypeParam(tp) => tp.default_type()?.syntax().clone(),
+            }
+            .clone_for_update(),
+        )
     }
 }
 
