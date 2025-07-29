@@ -1065,4 +1065,34 @@ fn bar() {
 "#,
         );
     }
+
+    #[test]
+    fn regression_20239() {
+        check_with_config(
+            InlayHintsConfig { parameter_hints: true, type_hints: true, ..DISABLED_CONFIG },
+            r#"
+//- minicore: fn
+trait Iterator {
+    type Item;
+    fn map<B, F: FnMut(Self::Item) -> B>(self, f: F);
+}
+trait ToString {
+    fn to_string(&self);
+}
+
+fn check_tostr_eq<L, R>(left: L, right: R)
+where
+    L: Iterator,
+    L::Item: ToString,
+    R: Iterator,
+    R::Item: ToString,
+{
+    left.map(|s| s.to_string());
+           // ^ impl ToString
+    right.map(|s| s.to_string());
+            // ^ impl ToString
+}
+        "#,
+        );
+    }
 }
