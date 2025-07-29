@@ -599,7 +599,7 @@ pub fn check(root: &Path, cargo: &Path, bless: bool, bad: &mut bool) {
             .other_options(vec!["--locked".to_owned()]);
         let metadata = t!(cmd.exec());
 
-        check_license_exceptions(&metadata, exceptions, bad);
+        check_license_exceptions(&metadata, workspace, exceptions, bad);
         if let Some((crates, permitted_deps)) = permitted_deps {
             check_permitted_dependencies(&metadata, workspace, permitted_deps, crates, bad);
         }
@@ -730,14 +730,19 @@ fn check_runtime_license_exceptions(metadata: &Metadata, bad: &mut bool) {
 /// Check that all licenses of tool dependencies are in the valid list in `LICENSES`.
 ///
 /// Packages listed in `exceptions` are allowed for tools.
-fn check_license_exceptions(metadata: &Metadata, exceptions: &[(&str, &str)], bad: &mut bool) {
+fn check_license_exceptions(
+    metadata: &Metadata,
+    workspace: &str,
+    exceptions: &[(&str, &str)],
+    bad: &mut bool,
+) {
     // Validate the EXCEPTIONS list hasn't changed.
     for (name, license) in exceptions {
         // Check that the package actually exists.
         if !metadata.packages.iter().any(|p| *p.name == *name) {
             tidy_error!(
                 bad,
-                "could not find exception package `{}`\n\
+                "could not find exception package `{}` in workspace `{workspace}`\n\
                 Remove from EXCEPTIONS list if it is no longer used.",
                 name
             );
@@ -753,13 +758,15 @@ fn check_license_exceptions(metadata: &Metadata, exceptions: &[(&str, &str)], ba
                     }
                     tidy_error!(
                         bad,
-                        "dependency exception `{}` does not declare a license expression",
+                        "dependency exception `{}` in workspace `{workspace}` does not declare a license expression",
                         pkg.id
                     );
                 }
                 Some(pkg_license) => {
                     if pkg_license.as_str() != *license {
-                        println!("dependency exception `{name}` license has changed");
+                        println!(
+                            "dependency exception `{name}` license in workspace `{workspace}` has changed"
+                        );
                         println!("    previously `{license}` now `{pkg_license}`");
                         println!("    update EXCEPTIONS for the new license");
                         *bad = true;
@@ -783,12 +790,21 @@ fn check_license_exceptions(metadata: &Metadata, exceptions: &[(&str, &str)], ba
         let license = match &pkg.license {
             Some(license) => license,
             None => {
-                tidy_error!(bad, "dependency `{}` does not define a license expression", pkg.id);
+                tidy_error!(
+                    bad,
+                    "dependency `{}` in workspace `{workspace}` does not define a license expression",
+                    pkg.id
+                );
                 continue;
             }
         };
         if !LICENSES.contains(&license.as_str()) {
-            tidy_error!(bad, "invalid license `{}` in `{}`", license, pkg.id);
+            tidy_error!(
+                bad,
+                "invalid license `{}` for package `{}` in workspace `{workspace}`",
+                license,
+                pkg.id
+            );
         }
     }
 }
