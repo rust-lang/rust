@@ -270,15 +270,16 @@ fn init_current(current: *mut ()) -> Thread {
         // extra TLS write above shouldn't matter. The alternative is nearly always
         // a stack overflow.
 
-        // If you came across this message, contact the author of your allocator.
-        // If you are said author: A surprising amount of functions inside the
-        // standard library (e.g. `Mutex`, `thread_local!`, `File` when using long
-        // paths, even `panic!` when using unwinding), need memory allocation, so
-        // you'll get circular dependencies all over the place when using them.
-        // I (joboet) highly recommend using only APIs from core in your allocator
-        // and implementing your own system abstractions. Still, if you feel that
-        // a particular API should be entirely allocation-free, feel free to open
-        // an issue on the Rust repository, we'll see what we can do.
+        // If you came across this message, contact the author of your
+        // allocator. If you are said author: A surprising amount of functions
+        // inside the standard library (e.g. `Mutex`, `File` when using long
+        // paths, even `panic!` when using unwinding), need memory allocation,
+        // so you'll get circular dependencies all over the place when using
+        // them. I (joboet) highly recommend using only APIs from core in your
+        // allocator and implementing your own system abstractions. Still, if
+        // you feel that a particular API should be entirely allocation-free,
+        // feel free to open an issue on the Rust repository, we'll see what we
+        // can do.
         rtabort!(
             "\n\
             Attempted to access thread-local data while allocating said data.\n\
