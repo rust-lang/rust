@@ -3,7 +3,6 @@
 //@ needs-enzyme
 
 #![feature(autodiff)]
-#![feature(core_intrinsics)]
 #[prelude_import]
 use ::std::prelude::rust_2015::*;
 #[macro_use]
