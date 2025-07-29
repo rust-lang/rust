@@ -39,9 +39,9 @@ fn collect_autodiff_fn_from_arg<'tcx>(
 
                 (instance, span)
             }
-            _ => bug!("expected function"),
+            _ => bug!("expected autodiff function"),
         },
-        _ => bug!("expected type"),
+        _ => bug!("expected type when matching autodiff arg"),
     };
 
     output.push(create_fn_mono_item(tcx, instance, span));

@@ -74,12 +74,10 @@ mod llvm_enzyme {
     }
 
     // Get information about the function the macro is applied to
-    fn extract_item_info(
-        iitem: &P<ast::Item>,
-    ) -> Option<(Visibility, FnSig, Ident, Generics, bool)> {
+    fn extract_item_info(iitem: &P<ast::Item>) -> Option<(Visibility, FnSig, Ident, Generics)> {
         match &iitem.kind {
             ItemKind::Fn(box ast::Fn { sig, ident, generics, .. }) => {
-                Some((iitem.vis.clone(), sig.clone(), ident.clone(), generics.clone(), false))
+                Some((iitem.vis.clone(), sig.clone(), ident.clone(), generics.clone()))
             }
             _ => None,
         }
@@ -223,9 +221,13 @@ mod llvm_enzyme {
         // parameters.
         // these will be used to generate the differentiated version of the function
         let Some((vis, sig, primal, generics, impl_of_trait)) = (match &item {
-            Annotatable::Item(iitem) => extract_item_info(iitem),
+            Annotatable::Item(iitem) => {
+                extract_item_info(iitem).map(|(v, s, p, g)| (v, s, p, g, false))
+            }
             Annotatable::Stmt(stmt) => match &stmt.kind {
-                ast::StmtKind::Item(iitem) => extract_item_info(iitem),
+                ast::StmtKind::Item(iitem) => {
+                    extract_item_info(iitem).map(|(v, s, p, g)| (v, s, p, g, false))
+                }
                 _ => None,
             },
             Annotatable::AssocItem(assoc_item, Impl { of_trait }) => match &assoc_item.kind {

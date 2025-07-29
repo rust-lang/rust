@@ -1145,25 +1145,51 @@ fn codegen_enzyme_autodiff<'ll, 'tcx>(
     // Get source, diff, and attrs
     let (source_id, source_args) = match fn_args.into_type_list(tcx)[0].kind() {
         ty::FnDef(def_id, source_params) => (def_id, source_params),
-        _ => bug!("invalid args"),
+        _ => bug!("invalid autodiff intrinsic args"),
     };
-    let fn_source =
-        Instance::try_resolve(tcx, bx.cx.typing_env(), *source_id, source_args).unwrap().unwrap();
+
+    let fn_source = match Instance::try_resolve(tcx, bx.cx.typing_env(), *source_id, source_args) {
+        Ok(Some(instance)) => instance,
+        Ok(None) => bug!(
+            "could not resolve ({:?}, {:?}) to a specific autodiff instance",
+            source_id,
+            source_args
+        ),
+        Err(_) => {
+            // An error has already been emitted
+            return;
+        }
+    };
+
     let source_symbol = symbol_name_for_instance_in_crate(tcx, fn_source.clone(), LOCAL_CRATE);
-    let fn_to_diff: Option<&'ll llvm::Value> = bx.cx.get_function(&source_symbol);
-    let Some(fn_to_diff) = fn_to_diff else { bug!("could not find source function") };
+    let Some(fn_to_diff) = bx.cx.get_function(&source_symbol) else {
+        bug!("could not find source function")
+    };
 
     let (diff_id, diff_args) = match fn_args.into_type_list(tcx)[1].kind() {
         ty::FnDef(def_id, diff_args) => (def_id, diff_args),
         _ => bug!("invalid args"),
     };
-    let fn_diff =
-        Instance::try_resolve(tcx, bx.cx.typing_env(), *diff_id, diff_args).unwrap().unwrap();
-    let val_arr: Vec<&'ll Value> = get_args_from_tuple(bx, args[2], fn_diff);
+
+    let fn_diff = match Instance::try_resolve(tcx, bx.cx.typing_env(), *diff_id, diff_args) {
+        Ok(Some(instance)) => instance,
+        Ok(None) => bug!(
+            "could not resolve ({:?}, {:?}) to a specific autodiff instance",
+            diff_id,
+            diff_args
+        ),
+        Err(_) => {
+            // An error has already been emitted
+            return;
+        }
+    };
+
+    let val_arr = get_args_from_tuple(bx, args[2], fn_diff);
     let diff_symbol = symbol_name_for_instance_in_crate(tcx, fn_diff.clone(), LOCAL_CRATE);
 
-    let diff_attrs = autodiff_attrs(tcx, fn_diff.def_id());
-    let Some(mut diff_attrs) = diff_attrs else { bug!("could not find autodiff attrs") };
+    let Some(mut diff_attrs) = autodiff_attrs(tcx, fn_diff.def_id()) else {
+        bug!("could not find autodiff attrs")
+    };
 
     adjust_activity_to_abi(
         tcx,
