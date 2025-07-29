@@ -62,6 +62,7 @@ rm -r tests/run-make/embed-source-dwarf # embedding sources in debuginfo
 rm -r tests/run-make/used-proc-macro # used(linker) isn't supported yet
 rm tests/ui/linking/no-gc-encapsulation-symbols.rs # same
 rm tests/ui/attributes/fn-align-dyn.rs # per-function alignment not supported
+rm -r tests/ui/c-variadic/same-program-multiple-abis.rs # variadics for calling conventions other than C unsupported
 
 # requires LTO
 rm -r tests/run-make/cdylib
