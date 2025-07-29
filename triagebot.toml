@@ -50,6 +50,21 @@ remove_labels = ["S-waiting-on-author"]
 # Those labels are added when PR author requests a review from an assignee
 add_labels = ["S-waiting-on-review"]
 
+# [backport.*] sections autonominate pull requests for a backport
+# see: https://forge.rust-lang.org/triagebot/backport.html
+
+[backport.t-compiler-beta-backport]
+# The pull request MUST have one of these labels
+required-pr-labels = ["T-compiler"]
+# The regression MUST have this label
+required-issue-label = "regression-from-stable-to-beta"
+# if the above conditions matches, the PR will receive these labels
+add-labels = ["beta-nominated"]
+
+[backport.t-compiler-stable-backport]
+required-pr-labels = ["T-compiler"]
+required-issue-label = "regression-from-stable-to-stable"
+add-labels = ["stable-nominated"]
 
 # ------------------------------------------------------------------------------
 # Ping groups
