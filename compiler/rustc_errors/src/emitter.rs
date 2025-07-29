@@ -3408,7 +3408,6 @@ pub(crate) fn emit_to_destination(
     short_message: bool,
 ) -> io::Result<()> {
     use crate::lock;
-    const RESET: anstyle::Reset = anstyle::Reset;
 
     // In order to prevent error message interleaving, where multiple error lines get intermixed
     // when multiple compiler processes error simultaneously, we emit errors with additional
@@ -3426,7 +3425,7 @@ pub(crate) fn emit_to_destination(
     for (pos, line) in rendered_buffer.iter().enumerate() {
         for part in line {
             let style = part.style.anstyle(*lvl);
-            write!(dst, "{RESET}{style}{}{RESET}", part.text)?;
+            write!(dst, "{style}{}{style:#}", part.text)?;
         }
         if !short_message && (!lvl.is_failure_note() || pos != rendered_buffer.len() - 1) {
             writeln!(dst)?;
