@@ -627,6 +627,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 } else {
                     // For non-empty lists we can just drop all the data, the prefix is already
                     // present in HIR as a part of nested imports.
+                    let span = self.lower_span(span);
                     self.arena.alloc(hir::UsePath { res: PerNS::default(), segments: &[], span })
                 };
                 hir::ItemKind::Use(path, hir::UseKind::ListStem)
@@ -1567,7 +1568,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         attrs: &[hir::Attribute],
     ) -> hir::FnHeader {
         let asyncness = if let Some(CoroutineKind::Async { span, .. }) = h.coroutine_kind {
-            hir::IsAsync::Async(span)
+            hir::IsAsync::Async(self.lower_span(span))
         } else {
             hir::IsAsync::NotAsync
         };
@@ -1804,7 +1805,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let res = Res::Def(DefKind::TyParam, def_id);
                 let ident = self.lower_ident(ident);
                 let ty_path = self.arena.alloc(hir::Path {
-                    span: param_span,
+                    span: self.lower_span(param_span),
                     res,
                     segments: self
                         .arena
