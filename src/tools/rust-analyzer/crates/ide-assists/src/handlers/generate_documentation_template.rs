@@ -313,12 +313,28 @@ fn crate_name(ast_func: &ast::Fn, ctx: &AssistContext<'_>) -> Option<String> {
 /// `None` if function without a body; some bool to guess if function can panic
 fn can_panic(ast_func: &ast::Fn) -> Option<bool> {
     let body = ast_func.body()?.to_string();
-    let can_panic = body.contains("panic!(")
-        // FIXME it would be better to not match `debug_assert*!` macro invocations
-        || body.contains("assert!(")
-        || body.contains(".unwrap()")
-        || body.contains(".expect(");
-    Some(can_panic)
+    let mut iter = body.chars();
+    let assert_postfix = |s| {
+        ["!(", "_eq!(", "_ne!(", "_matches!("].iter().any(|postfix| str::starts_with(s, postfix))
+    };
+
+    while !iter.as_str().is_empty() {
+        let s = iter.as_str();
+        iter.next();
+        if s.strip_prefix("debug_assert").is_some_and(assert_postfix) {
+            iter.nth(10);
+            continue;
+        }
+        if s.strip_prefix("assert").is_some_and(assert_postfix)
+            || s.starts_with("panic!(")
+            || s.starts_with(".unwrap()")
+            || s.starts_with(".expect(")
+        {
+            return Some(true);
+        }
+    }
+
+    Some(false)
 }
 
 /// Helper function to get the name that should be given to `self` arguments
@@ -678,6 +694,24 @@ pub fn panics_if(a: bool) {
     }
 
     #[test]
+    fn guesses_debug_assert_macro_cannot_panic() {
+        check_assist(
+            generate_documentation_template,
+            r#"
+pub fn $0debug_panics_if_not(a: bool) {
+    debug_assert!(a == true);
+}
+"#,
+            r#"
+/// .
+pub fn debug_panics_if_not(a: bool) {
+    debug_assert!(a == true);
+}
+"#,
+        );
+    }
+
+    #[test]
     fn guesses_assert_macro_can_panic() {
         check_assist(
             generate_documentation_template,
@@ -694,6 +728,28 @@ pub fn $0panics_if_not(a: bool) {
 /// Panics if .
 pub fn panics_if_not(a: bool) {
     assert!(a == true);
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn guesses_assert_eq_macro_can_panic() {
+        check_assist(
+            generate_documentation_template,
+            r#"
+pub fn $0panics_if_not(a: bool) {
+    assert_eq!(a, true);
+}
+"#,
+            r#"
+/// .
+///
+/// # Panics
+///
+/// Panics if .
+pub fn panics_if_not(a: bool) {
+    assert_eq!(a, true);
 }
 "#,
         );
