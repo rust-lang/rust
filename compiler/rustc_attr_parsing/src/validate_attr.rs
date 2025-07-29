@@ -8,16 +8,16 @@ use rustc_ast::{
     self as ast, AttrArgs, Attribute, DelimArgs, MetaItem, MetaItemInner, MetaItemKind, NodeId,
     Path, Safety,
 };
-use rustc_attr_parsing::{AttributeParser, Late};
 use rustc_errors::{Applicability, DiagCtxtHandle, FatalError, PResult};
 use rustc_feature::{AttributeSafety, AttributeTemplate, BUILTIN_ATTRIBUTE_MAP, BuiltinAttribute};
+use rustc_parse::parse_in;
 use rustc_session::errors::report_lit_error;
 use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::lint::builtin::{ILL_FORMED_ATTRIBUTE_INPUT, UNSAFE_ATTR_OUTSIDE_UNSAFE};
 use rustc_session::parse::ParseSess;
 use rustc_span::{Span, Symbol, sym};
 
-use crate::{errors, parse_in};
+use crate::{AttributeParser, Late, session_diagnostics as errors};
 
 pub fn check_attr(psess: &ParseSess, attr: &Attribute, id: NodeId) {
     if attr.is_doc_comment() || attr.has_name(sym::cfg_trace) || attr.has_name(sym::cfg_attr_trace)
@@ -128,16 +128,6 @@ fn check_meta_bad_delim(psess: &ParseSess, span: DelimSpan, delim: Delimiter) {
         return;
     }
     psess.dcx().emit_err(errors::MetaBadDelim {
-        span: span.entire(),
-        sugg: errors::MetaBadDelimSugg { open: span.open, close: span.close },
-    });
-}
-
-pub(super) fn check_cfg_attr_bad_delim(psess: &ParseSess, span: DelimSpan, delim: Delimiter) {
-    if let Delimiter::Parenthesis = delim {
-        return;
-    }
-    psess.dcx().emit_err(errors::CfgAttrBadDelim {
         span: span.entire(),
         sugg: errors::MetaBadDelimSugg { open: span.open, close: span.close },
     });
