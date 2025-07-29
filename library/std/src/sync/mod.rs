@@ -184,6 +184,8 @@ pub use alloc_crate::sync::{Arc, Weak};
 #[unstable(feature = "mpmc_channel", issue = "126840")]
 pub mod mpmc;
 pub mod mpsc;
+#[unstable(feature = "oneshot_channel", issue = "143674")]
+pub mod oneshot;
 
 pub(crate) mod once; // `pub(crate)` for the `sys::sync::once` implementations and `LazyLock`.
 
