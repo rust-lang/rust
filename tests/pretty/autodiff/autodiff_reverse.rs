@@ -1,7 +1,6 @@
 //@ needs-enzyme
 
 #![feature(autodiff)]
-#![feature(core_intrinsics)]
 //@ pretty-mode:expanded
 //@ pretty-compare-only
 //@ pp-exact:autodiff_reverse.pp

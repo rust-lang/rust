@@ -5,7 +5,6 @@
 // Just check it does not crash for now
 // CHECK: ;
 #![feature(autodiff)]
-#![feature(core_intrinsics)]
 
 use std::autodiff::autodiff_reverse;
 

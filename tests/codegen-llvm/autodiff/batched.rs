@@ -10,7 +10,6 @@
 // reduce this test to only match the first lines and the ret instructions.
 
 #![feature(autodiff)]
-#![feature(core_intrinsics)]
 
 use std::autodiff::autodiff_forward;
 

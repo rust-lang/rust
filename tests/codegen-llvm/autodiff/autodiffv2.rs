@@ -25,7 +25,6 @@
 // in our frontend and in the llvm backend to avoid these issues.
 
 #![feature(autodiff)]
-#![feature(core_intrinsics)]
 
 use std::autodiff::autodiff_forward;
 

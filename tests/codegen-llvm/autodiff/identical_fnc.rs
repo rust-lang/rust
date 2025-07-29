@@ -10,7 +10,6 @@
 // We also explicetly test that we keep running merge_function after AD, by checking for two
 // identical function calls in the LLVM-IR, while having two different calls in the Rust code.
 #![feature(autodiff)]
-#![feature(core_intrinsics)]
 
 use std::autodiff::autodiff_reverse;
 
