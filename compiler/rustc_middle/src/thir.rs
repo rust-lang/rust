@@ -959,9 +959,9 @@ impl<'tcx> PatRange<'tcx> {
     #[inline]
     pub fn contains(&self, value: ty::Value<'tcx>, tcx: TyCtxt<'tcx>) -> Option<bool> {
         use Ordering::*;
-        debug_assert_eq!(self.ty, value.ty);
+        debug_assert_eq!(value.ty, self.ty);
         let ty = self.ty;
-        let value = PatRangeBoundary::Finite(value);
+        let value = PatRangeBoundary::Finite(value.valtree);
         // For performance, it's important to only do the second comparison if necessary.
         Some(
             match self.lo.compare_with(value, ty, tcx)? {
@@ -996,11 +996,13 @@ impl<'tcx> PatRange<'tcx> {
 
 impl<'tcx> fmt::Display for PatRange<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if let PatRangeBoundary::Finite(value) = &self.lo {
+        if let &PatRangeBoundary::Finite(valtree) = &self.lo {
+            let value = ty::Value { ty: self.ty, valtree };
             write!(f, "{value}")?;
         }
-        if let PatRangeBoundary::Finite(value) = &self.hi {
+        if let &PatRangeBoundary::Finite(valtree) = &self.hi {
             write!(f, "{}", self.end)?;
+            let value = ty::Value { ty: self.ty, valtree };
             write!(f, "{value}")?;
         } else {
             // `0..` is parsed as an inclusive range, we must display it correctly.
@@ -1014,7 +1016,8 @@ impl<'tcx> fmt::Display for PatRange<'tcx> {
 /// If present, the const must be of a numeric type.
 #[derive(Copy, Clone, Debug, PartialEq, HashStable, TypeVisitable)]
 pub enum PatRangeBoundary<'tcx> {
-    Finite(ty::Value<'tcx>),
+    /// The type of this valtree is stored in the surrounding `PatRange`.
+    Finite(ty::ValTree<'tcx>),
     NegInfinity,
     PosInfinity,
 }
@@ -1025,7 +1028,7 @@ impl<'tcx> PatRangeBoundary<'tcx> {
         matches!(self, Self::Finite(..))
     }
     #[inline]
-    pub fn as_finite(self) -> Option<ty::Value<'tcx>> {
+    pub fn as_finite(self) -> Option<ty::ValTree<'tcx>> {
         match self {
             Self::Finite(value) => Some(value),
             Self::NegInfinity | Self::PosInfinity => None,

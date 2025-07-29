@@ -1357,8 +1357,8 @@ pub(crate) struct Test<'tcx> {
 enum TestBranch<'tcx> {
     /// Success branch, used for tests with two possible outcomes.
     Success,
-    /// Branch corresponding to this constant.
-    Constant(ty::Value<'tcx>, u128),
+    /// Branch corresponding to this constant. Must be a scalar.
+    Constant(ty::Value<'tcx>),
     /// Branch corresponding to this variant.
     Variant(VariantIdx),
     /// Failure branch for tests with two possible outcomes, and "otherwise" branch for other tests.
@@ -1367,7 +1367,7 @@ enum TestBranch<'tcx> {
 
 impl<'tcx> TestBranch<'tcx> {
     fn as_constant(&self) -> Option<ty::Value<'tcx>> {
-        if let Self::Constant(v, _) = self { Some(*v) } else { None }
+        if let Self::Constant(v) = self { Some(*v) } else { None }
     }
 }
 
