@@ -8,7 +8,6 @@ use rustc_hir::HirId;
 use rustc_hir::def_id::DefId;
 use rustc_index::{Idx, IndexVec};
 use rustc_middle::middle::stability::EvalResult;
-use rustc_middle::mir::{self, Const};
 use rustc_middle::thir::{self, Pat, PatKind, PatRange, PatRangeBoundary};
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::{
@@ -580,9 +579,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                         // subfields.
                         // Note: `t` is `str`, not `&str`.
                         let ty = self.reveal_opaque_ty(*t);
-                        // FIXME: why does `Str` need a `mir::Const`?
-                        let val = mir::Const::from_ty_value(self.tcx, *value);
-                        let subpattern = DeconstructedPat::new(Str(val), Vec::new(), 0, ty, pat);
+                        let subpattern = DeconstructedPat::new(Str(*value), Vec::new(), 0, ty, pat);
                         ctor = Ref;
                         fields = vec![subpattern.at_index(0)];
                         arity = 1;
@@ -894,7 +891,7 @@ impl<'p, 'tcx: 'p> PatCx for RustcPatCtxt<'p, 'tcx> {
     type Ty = RevealedTy<'tcx>;
     type Error = ErrorGuaranteed;
     type VariantIdx = VariantIdx;
-    type StrLit = Const<'tcx>;
+    type StrLit = ty::Value<'tcx>;
     type ArmData = HirId;
     type PatData = &'p Pat<'tcx>;
 
