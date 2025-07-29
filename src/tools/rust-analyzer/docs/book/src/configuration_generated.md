@@ -2,8 +2,7 @@
 
 Default: `false`
 
-Whether to insert #[must_use] when generating `as_` methods
-for enum variants.
+Insert #[must_use] when generating `as_` methods for enum variants.
 
 
 ## rust-analyzer.assist.expressionFillDefault {#assist.expressionFillDefault}
@@ -17,14 +16,15 @@ Placeholder expression to use for missing expressions in assists.
 
 Default: `false`
 
-When inserting a type (e.g. in "fill match arms" assist), prefer to use `Self` over the type name where possible.
+Prefer to use `Self` over the type name when inserting a type (e.g. in "fill match arms" assist).
 
 
 ## rust-analyzer.assist.termSearch.borrowcheck {#assist.termSearch.borrowcheck}
 
 Default: `true`
 
-Enable borrow checking for term search code assists. If set to false, also there will be more suggestions, but some of them may not borrow-check.
+Enable borrow checking for term search code assists. If set to false, also there will be
+more suggestions, but some of them may not borrow-check.
 
 
 ## rust-analyzer.assist.termSearch.fuel {#assist.termSearch.fuel}
@@ -45,7 +45,8 @@ Warm up caches on project load.
 
 Default: `"physical"`
 
-How many worker threads to handle priming caches. The default `0` means to pick automatically.
+How many worker threads to handle priming caches. The default `0` means to pick
+automatically.
 
 
 ## rust-analyzer.cargo.allTargets {#cargo.allTargets}
@@ -358,7 +359,7 @@ check will be performed.
 
 Default: `true`
 
-Whether to automatically add a semicolon when completing unit-returning functions.
+Automatically add a semicolon when completing unit-returning functions.
 
 In `match` arms it completes a comma instead.
 
@@ -367,22 +368,26 @@ In `match` arms it completes a comma instead.
 
 Default: `true`
 
-Toggles the additional completions that automatically show method calls and field accesses with `await` prefixed to them when completing on a future.
+Show method calls and field accesses completions with `await` prefixed to them when
+completing on a future.
 
 
 ## rust-analyzer.completion.autoIter.enable {#completion.autoIter.enable}
 
 Default: `true`
 
-Toggles the additional completions that automatically show method calls with `iter()` or `into_iter()` prefixed to them when completing on a type that has them.
+Show method call completions with `iter()` or `into_iter()` prefixed to them when
+completing on a type that has them.
 
 
 ## rust-analyzer.completion.autoimport.enable {#completion.autoimport.enable}
 
 Default: `true`
 
-Toggles the additional completions that automatically add imports when completed.
-Note that your client must specify the `additionalTextEdits` LSP client capability to truly have this feature enabled.
+Show completions that automatically add imports when completed.
+
+Note that your client must specify the `additionalTextEdits` LSP client capability to
+truly have this feature enabled.
 
 
 ## rust-analyzer.completion.autoimport.exclude {#completion.autoimport.exclude}
@@ -406,10 +411,11 @@ A list of full paths to items to exclude from auto-importing completions.
 Traits in this list won't have their methods suggested in completions unless the trait
 is in scope.
 
-You can either specify a string path which defaults to type "always" or use the more verbose
-form `{ "path": "path::to::item", type: "always" }`.
+You can either specify a string path which defaults to type "always" or use the more
+verbose form `{ "path": "path::to::item", type: "always" }`.
 
-For traits the type "methods" can be used to only exclude the methods but not the trait itself.
+For traits the type "methods" can be used to only exclude the methods but not the trait
+itself.
 
 This setting also inherits `#rust-analyzer.completion.excludeTraits#`.
 
@@ -418,15 +424,15 @@ This setting also inherits `#rust-analyzer.completion.excludeTraits#`.
 
 Default: `true`
 
-Toggles the additional completions that automatically show method calls and field accesses
-with `self` prefixed to them when inside a method.
+Show method calls and field access completions with `self` prefixed to them when
+inside a method.
 
 
 ## rust-analyzer.completion.callable.snippets {#completion.callable.snippets}
 
 Default: `"fill_arguments"`
 
-Whether to add parenthesis and argument snippets when completing function.
+Add parenthesis and argument snippets when completing function.
 
 
 ## rust-analyzer.completion.excludeTraits {#completion.excludeTraits}
@@ -435,7 +441,9 @@ Default: `[]`
 
 A list of full paths to traits whose methods to exclude from completion.
 
-Methods from these traits won't be completed, even if the trait is in scope. However, they will still be suggested on expressions whose type is `dyn Trait`, `impl Trait` or `T where T: Trait`.
+Methods from these traits won't be completed, even if the trait is in scope. However,
+they will still be suggested on expressions whose type is `dyn Trait`, `impl Trait` or
+`T where T: Trait`.
 
 Note that the trait themselves can still be completed.
 
@@ -444,14 +452,15 @@ Note that the trait themselves can still be completed.
 
 Default: `false`
 
-Whether to show full function/method signatures in completion docs.
+Show full function / method signatures in completion docs.
 
 
 ## rust-analyzer.completion.hideDeprecated {#completion.hideDeprecated}
 
 Default: `false`
 
-Whether to omit deprecated items from autocompletion. By default they are marked as deprecated but not hidden.
+Omit deprecated items from completions. By default they are marked as deprecated but not
+hidden.
 
 
 ## rust-analyzer.completion.limit {#completion.limit}
@@ -465,14 +474,15 @@ Maximum number of completions to return. If `None`, the limit is infinite.
 
 Default: `true`
 
-Whether to show postfix snippets like `dbg`, `if`, `not`, etc.
+Show postfix snippets like `dbg`, `if`, `not`, etc.
 
 
 ## rust-analyzer.completion.privateEditable.enable {#completion.privateEditable.enable}
 
 Default: `false`
 
-Enables completions of private items and fields that are defined in the current workspace even if they are not visible at the current position.
+Show completions of private items and fields that are defined in the current workspace
+even if they are not visible at the current position.
 
 
 ## rust-analyzer.completion.snippets.custom {#completion.snippets.custom}
@@ -529,7 +539,7 @@ Custom completion snippets.
 
 Default: `false`
 
-Whether to enable term search based snippets like `Some(foo.bar().baz())`.
+Enable term search based snippets like `Some(foo.bar().baz())`.
 
 
 ## rust-analyzer.completion.termSearch.fuel {#completion.termSearch.fuel}
@@ -550,30 +560,30 @@ List of rust-analyzer diagnostics to disable.
 
 Default: `true`
 
-Whether to show native rust-analyzer diagnostics.
+Show native rust-analyzer diagnostics.
 
 
 ## rust-analyzer.diagnostics.experimental.enable {#diagnostics.experimental.enable}
 
 Default: `false`
 
-Whether to show experimental rust-analyzer diagnostics that might
-have more false positives than usual.
+Show experimental rust-analyzer diagnostics that might have more false positives than
+usual.
 
 
 ## rust-analyzer.diagnostics.remapPrefix {#diagnostics.remapPrefix}
 
 Default: `{}`
 
-Map of prefixes to be substituted when parsing diagnostic file paths.
-This should be the reverse mapping of what is passed to `rustc` as `--remap-path-prefix`.
+Map of prefixes to be substituted when parsing diagnostic file paths. This should be the
+reverse mapping of what is passed to `rustc` as `--remap-path-prefix`.
 
 
 ## rust-analyzer.diagnostics.styleLints.enable {#diagnostics.styleLints.enable}
 
 Default: `false`
 
-Whether to run additional style lints.
+Run additional style lints.
 
 
 ## rust-analyzer.diagnostics.warningsAsHint {#diagnostics.warningsAsHint}
@@ -582,8 +592,8 @@ Default: `[]`
 
 List of warnings that should be displayed with hint severity.
 
-The warnings will be indicated by faded text or three dots in code
-and will not show up in the `Problems Panel`.
+The warnings will be indicated by faded text or three dots in code and will not show up
+in the `Problems Panel`.
 
 
 ## rust-analyzer.diagnostics.warningsAsInfo {#diagnostics.warningsAsInfo}
@@ -592,17 +602,19 @@ Default: `[]`
 
 List of warnings that should be displayed with info severity.
 
-The warnings will be indicated by a blue squiggly underline in code
-and a blue icon in the `Problems Panel`.
+The warnings will be indicated by a blue squiggly underline in code and a blue icon in
+the `Problems Panel`.
 
 
 ## rust-analyzer.files.exclude {#files.exclude}
 
 Default: `[]`
 
-These paths (file/directories) will be ignored by rust-analyzer. They are
-relative to the workspace root, and globs are not supported. You may
-also need to add the folders to Code's `files.watcherExclude`.
+List of files to ignore
+
+These paths (file/directories) will be ignored by rust-analyzer. They are relative to
+the workspace root, and globs are not supported. You may also need to add the folders to
+Code's `files.watcherExclude`.
 
 
 ## rust-analyzer.files.watcher {#files.watcher}
@@ -616,64 +628,67 @@ Controls file watching implementation.
 
 Default: `true`
 
-Enables highlighting of related return values while the cursor is on any `match`, `if`, or match arm arrow (`=>`).
+Highlight related return values while the cursor is on any `match`, `if`, or match arm
+arrow (`=>`).
 
 
 ## rust-analyzer.highlightRelated.breakPoints.enable {#highlightRelated.breakPoints.enable}
 
 Default: `true`
 
-Enables highlighting of related references while the cursor is on `break`, `loop`, `while`, or `for` keywords.
+Highlight related references while the cursor is on `break`, `loop`, `while`, or `for`
+keywords.
 
 
 ## rust-analyzer.highlightRelated.closureCaptures.enable {#highlightRelated.closureCaptures.enable}
 
 Default: `true`
 
-Enables highlighting of all captures of a closure while the cursor is on the `|` or move keyword of a closure.
+Highlight all captures of a closure while the cursor is on the `|` or move keyword of a closure.
 
 
 ## rust-analyzer.highlightRelated.exitPoints.enable {#highlightRelated.exitPoints.enable}
 
 Default: `true`
 
-Enables highlighting of all exit points while the cursor is on any `return`, `?`, `fn`, or return type arrow (`->`).
+Highlight all exit points while the cursor is on any `return`, `?`, `fn`, or return type
+arrow (`->`).
 
 
 ## rust-analyzer.highlightRelated.references.enable {#highlightRelated.references.enable}
 
 Default: `true`
 
-Enables highlighting of related references while the cursor is on any identifier.
+Highlight related references while the cursor is on any identifier.
 
 
 ## rust-analyzer.highlightRelated.yieldPoints.enable {#highlightRelated.yieldPoints.enable}
 
 Default: `true`
 
-Enables highlighting of all break points for a loop or block context while the cursor is on any `async` or `await` keywords.
+Highlight all break points for a loop or block context while the cursor is on any
+`async` or `await` keywords.
 
 
 ## rust-analyzer.hover.actions.debug.enable {#hover.actions.debug.enable}
 
 Default: `true`
 
-Whether to show `Debug` action. Only applies when
-`#rust-analyzer.hover.actions.enable#` is set.
+Show `Debug` action. Only applies when `#rust-analyzer.hover.actions.enable#` is set.
 
 
 ## rust-analyzer.hover.actions.enable {#hover.actions.enable}
 
 Default: `true`
 
-Whether to show HoverActions in Rust files.
+Show HoverActions in Rust files.
 
 
 ## rust-analyzer.hover.actions.gotoTypeDef.enable {#hover.actions.gotoTypeDef.enable}
 
 Default: `true`
 
-Whether to show `Go to Type Definition` action. Only applies when
+Show `Go to Type Definition` action. Only applies when
 `#rust-analyzer.hover.actions.enable#` is set.
 
 
@@ -681,46 +696,45 @@ Whether to show `Go to Type Definition` action. Only applies when
 
 Default: `true`
 
-Whether to show `Implementations` action. Only applies when
-`#rust-analyzer.hover.actions.enable#` is set.
+Show `Implementations` action. Only applies when `#rust-analyzer.hover.actions.enable#`
+is set.
 
 
 ## rust-analyzer.hover.actions.references.enable {#hover.actions.references.enable}
 
 Default: `false`
 
-Whether to show `References` action. Only applies when
-`#rust-analyzer.hover.actions.enable#` is set.
+Show `References` action. Only applies when `#rust-analyzer.hover.actions.enable#` is
+set.
 
 
 ## rust-analyzer.hover.actions.run.enable {#hover.actions.run.enable}
 
 Default: `true`
 
-Whether to show `Run` action. Only applies when
-`#rust-analyzer.hover.actions.enable#` is set.
+Show `Run` action. Only applies when `#rust-analyzer.hover.actions.enable#` is set.
 
 
 ## rust-analyzer.hover.actions.updateTest.enable {#hover.actions.updateTest.enable}
 
 Default: `true`
 
-Whether to show `Update Test` action. Only applies when
-`#rust-analyzer.hover.actions.enable#` and `#rust-analyzer.hover.actions.run.enable#` are set.
+Show `Update Test` action. Only applies when `#rust-analyzer.hover.actions.enable#` and
+`#rust-analyzer.hover.actions.run.enable#` are set.
 
 
 ## rust-analyzer.hover.documentation.enable {#hover.documentation.enable}
 
 Default: `true`
 
-Whether to show documentation on hover.
+Show documentation on hover.
 
 
 ## rust-analyzer.hover.documentation.keywords.enable {#hover.documentation.keywords.enable}
 
 Default: `true`
 
-Whether to show keyword hover popups. Only applies when
+Show keyword hover popups. Only applies when
 `#rust-analyzer.hover.documentation.enable#` is set.
 
 
@@ -728,7 +742,7 @@ Whether to show keyword hover popups. Only applies when
 
 Default: `true`
 
-Whether to show drop glue information on hover.
+Show drop glue information on hover.
 
 
 ## rust-analyzer.hover.links.enable {#hover.links.enable}
@@ -742,9 +756,11 @@ Use markdown syntax for links on hover.
 
 Default: `20`
 
-Whether to show what types are used as generic arguments in calls etc. on hover, and what is their max length to show such types, beyond it they will be shown with ellipsis.
+Show what types are used as generic arguments in calls etc. on hover, and limit the max
+length to show such types, beyond which they will be shown with ellipsis.
 
-This can take three values: `null` means "unlimited", the string `"hide"` means to not show generic substitutions at all, and a number means to limit them to X characters.
+This can take three values: `null` means "unlimited", the string `"hide"` means to not
+show generic substitutions at all, and a number means to limit them to X characters.
 
 The default is 20 characters.
 
@@ -760,7 +776,7 @@ How to render the align information in a memory layout hover.
 
 Default: `true`
 
-Whether to show memory layout data on hover.
+Show memory layout data on hover.
 
 
 ## rust-analyzer.hover.memoryLayout.niches {#hover.memoryLayout.niches}
@@ -802,7 +818,8 @@ How many variants of an enum to display when hovering on. Show none if empty.
 
 Default: `5`
 
-How many fields of a struct, variant or union to display when hovering on. Show none if empty.
+How many fields of a struct, variant or union to display when hovering on. Show none if
+empty.
 
 
 ## rust-analyzer.hover.show.traitAssocItems {#hover.show.traitAssocItems}
@@ -816,7 +833,8 @@ How many associated items of a trait to display when hovering a trait.
 
 Default: `false`
 
-Whether to enforce the import granularity setting for all files. If set to false rust-analyzer will try to keep import styles consistent per file.
+Enforce the import granularity setting for all files. If set to false rust-analyzer will
+try to keep import styles consistent per file.
 
 
 ## rust-analyzer.imports.granularity.group {#imports.granularity.group}
@@ -830,14 +848,17 @@ How imports should be grouped into use statements.
 
 Default: `true`
 
-Group inserted imports by the [following order](https://rust-analyzer.github.io/book/features.html#auto-import). Groups are separated by newlines.
+Group inserted imports by the [following
+order](https://rust-analyzer.github.io/book/features.html#auto-import). Groups are
+separated by newlines.
 
 
 ## rust-analyzer.imports.merge.glob {#imports.merge.glob}
 
 Default: `true`
 
-Whether to allow import insertion to merge new imports into single path glob imports like `use std::fmt::*;`.
+Allow import insertion to merge new imports into single path glob imports like `use
+std::fmt::*;`.
 
 
 ## rust-analyzer.imports.preferNoStd {#imports.preferNoStd}
@@ -851,7 +872,7 @@ Prefer to unconditionally use imports of the core and alloc crate, over the std 
 
 Default: `false`
 
-Whether to prefer import paths containing a `prelude` module.
+Prefer import paths containing a `prelude` module.
 
 
 ## rust-analyzer.imports.prefix {#imports.prefix}
@@ -865,28 +886,30 @@ The path structure for newly inserted paths to use.
 
 Default: `false`
 
-Whether to prefix external (including std, core) crate imports with `::`. e.g. "use ::std::io::Read;".
+Prefix external (including std, core) crate imports with `::`.
+
+E.g. `use ::std::io::Read;`.
 
 
 ## rust-analyzer.inlayHints.bindingModeHints.enable {#inlayHints.bindingModeHints.enable}
 
 Default: `false`
 
-Whether to show inlay type hints for binding modes.
+Show inlay type hints for binding modes.
 
 
 ## rust-analyzer.inlayHints.chainingHints.enable {#inlayHints.chainingHints.enable}
 
 Default: `true`
 
-Whether to show inlay type hints for method chains.
+Show inlay type hints for method chains.
 
 
 ## rust-analyzer.inlayHints.closingBraceHints.enable {#inlayHints.closingBraceHints.enable}
 
 Default: `true`
 
-Whether to show inlay hints after a closing `}` to indicate what item it belongs to.
+Show inlay hints after a closing `}` to indicate what item it belongs to.
 
 
 ## rust-analyzer.inlayHints.closingBraceHints.minLines {#inlayHints.closingBraceHints.minLines}
@@ -901,14 +924,14 @@ to always show them).
 
 Default: `false`
 
-Whether to show inlay hints for closure captures.
+Show inlay hints for closure captures.
 
 
 ## rust-analyzer.inlayHints.closureReturnTypeHints.enable {#inlayHints.closureReturnTypeHints.enable}
 
 Default: `"never"`
 
-Whether to show inlay type hints for return types of closures.
+Show inlay type hints for return types of closures.
 
 
 ## rust-analyzer.inlayHints.closureStyle {#inlayHints.closureStyle}
@@ -922,77 +945,77 @@ Closure notation in type and chaining inlay hints.
 
 Default: `"never"`
 
-Whether to show enum variant discriminant hints.
+Show enum variant discriminant hints.
 
 
 ## rust-analyzer.inlayHints.expressionAdjustmentHints.enable {#inlayHints.expressionAdjustmentHints.enable}
 
 Default: `"never"`
 
-Whether to show inlay hints for type adjustments.
+Show inlay hints for type adjustments.
 
 
 ## rust-analyzer.inlayHints.expressionAdjustmentHints.hideOutsideUnsafe {#inlayHints.expressionAdjustmentHints.hideOutsideUnsafe}
 
 Default: `false`
 
-Whether to hide inlay hints for type adjustments outside of `unsafe` blocks.
+Hide inlay hints for type adjustments outside of `unsafe` blocks.
 
 
 ## rust-analyzer.inlayHints.expressionAdjustmentHints.mode {#inlayHints.expressionAdjustmentHints.mode}
 
 Default: `"prefix"`
 
-Whether to show inlay hints as postfix ops (`.*` instead of `*`, etc).
+Show inlay hints as postfix ops (`.*` instead of `*`, etc).
 
 
 ## rust-analyzer.inlayHints.genericParameterHints.const.enable {#inlayHints.genericParameterHints.const.enable}
 
 Default: `true`
 
-Whether to show const generic parameter name inlay hints.
+Show const generic parameter name inlay hints.
 
 
 ## rust-analyzer.inlayHints.genericParameterHints.lifetime.enable {#inlayHints.genericParameterHints.lifetime.enable}
 
 Default: `false`
 
-Whether to show generic lifetime parameter name inlay hints.
+Show generic lifetime parameter name inlay hints.
 
 
 ## rust-analyzer.inlayHints.genericParameterHints.type.enable {#inlayHints.genericParameterHints.type.enable}
 
 Default: `false`
 
-Whether to show generic type parameter name inlay hints.
+Show generic type parameter name inlay hints.
 
 
 ## rust-analyzer.inlayHints.implicitDrops.enable {#inlayHints.implicitDrops.enable}
 
 Default: `false`
 
-Whether to show implicit drop hints.
+Show implicit drop hints.
 
 
 ## rust-analyzer.inlayHints.implicitSizedBoundHints.enable {#inlayHints.implicitSizedBoundHints.enable}
 
 Default: `false`
 
-Whether to show inlay hints for the implied type parameter `Sized` bound.
+Show inlay hints for the implied type parameter `Sized` bound.
 
 
 ## rust-analyzer.inlayHints.lifetimeElisionHints.enable {#inlayHints.lifetimeElisionHints.enable}
 
 Default: `"never"`
 
-Whether to show inlay type hints for elided lifetimes in function signatures.
+Show inlay type hints for elided lifetimes in function signatures.
 
 
 ## rust-analyzer.inlayHints.lifetimeElisionHints.useParameterNames {#inlayHints.lifetimeElisionHints.useParameterNames}
 
 Default: `false`
 
-Whether to prefer using parameter names as the name for elided lifetime hints if possible.
+Prefer using parameter names as the name for elided lifetime hints if possible.
 
 
 ## rust-analyzer.inlayHints.maxLength {#inlayHints.maxLength}
@@ -1006,23 +1029,24 @@ Maximum length for inlay hints. Set to null to have an unlimited length.
 
 Default: `true`
 
-Whether to show function parameter name inlay hints at the call
-site.
+Show function parameter name inlay hints at the call site.
 
 
 ## rust-analyzer.inlayHints.rangeExclusiveHints.enable {#inlayHints.rangeExclusiveHints.enable}
 
 Default: `false`
 
-Whether to show exclusive range inlay hints.
+Show exclusive range inlay hints.
 
 
 ## rust-analyzer.inlayHints.reborrowHints.enable {#inlayHints.reborrowHints.enable}
 
 Default: `"never"`
 
-Whether to show inlay hints for compiler inserted reborrows.
-This setting is deprecated in favor of #rust-analyzer.inlayHints.expressionAdjustmentHints.enable#.
+Show inlay hints for compiler inserted reborrows.
+
+This setting is deprecated in favor of
+#rust-analyzer.inlayHints.expressionAdjustmentHints.enable#.
 
 
 ## rust-analyzer.inlayHints.renderColons {#inlayHints.renderColons}
@@ -1036,36 +1060,38 @@ Whether to render leading colons for type hints, and trailing colons for paramet
 
 Default: `true`
 
-Whether to show inlay type hints for variables.
+Show inlay type hints for variables.
 
 
 ## rust-analyzer.inlayHints.typeHints.hideClosureInitialization {#inlayHints.typeHints.hideClosureInitialization}
 
 Default: `false`
 
-Whether to hide inlay type hints for `let` statements that initialize to a closure.
-Only applies to closures with blocks, same as `#rust-analyzer.inlayHints.closureReturnTypeHints.enable#`.
+Hide inlay type hints for `let` statements that initialize to a closure.
+
+Only applies to closures with blocks, same as
+`#rust-analyzer.inlayHints.closureReturnTypeHints.enable#`.
 
 
 ## rust-analyzer.inlayHints.typeHints.hideClosureParameter {#inlayHints.typeHints.hideClosureParameter}
 
 Default: `false`
 
-Whether to hide inlay parameter type hints for closures.
+Hide inlay parameter type hints for closures.
 
 
 ## rust-analyzer.inlayHints.typeHints.hideNamedConstructor {#inlayHints.typeHints.hideNamedConstructor}
 
 Default: `false`
 
-Whether to hide inlay type hints for constructors.
+Hide inlay type hints for constructors.
 
 
 ## rust-analyzer.interpret.tests {#interpret.tests}
 
 Default: `false`
 
-Enables the experimental support for interpreting tests.
+Enable the experimental support for interpreting tests.
 
 
 ## rust-analyzer.joinLines.joinAssignments {#joinLines.joinAssignments}
@@ -1100,23 +1126,21 @@ Join lines unwraps trivial blocks.
 
 Default: `true`
 
-Whether to show `Debug` lens. Only applies when
-`#rust-analyzer.lens.enable#` is set.
+Show `Debug` lens. Only applies when `#rust-analyzer.lens.enable#` is set.
 
 
 ## rust-analyzer.lens.enable {#lens.enable}
 
 Default: `true`
 
-Whether to show CodeLens in Rust files.
+Show CodeLens in Rust files.
 
 
 ## rust-analyzer.lens.implementations.enable {#lens.implementations.enable}
 
 Default: `true`
 
-Whether to show `Implementations` lens. Only applies when
-`#rust-analyzer.lens.enable#` is set.
+Show `Implementations` lens. Only applies when `#rust-analyzer.lens.enable#` is set.
 
 
 ## rust-analyzer.lens.location {#lens.location}
@@ -1130,60 +1154,56 @@ Where to render annotations.
 
 Default: `false`
 
-Whether to show `References` lens for Struct, Enum, and Union.
-Only applies when `#rust-analyzer.lens.enable#` is set.
+Show `References` lens for Struct, Enum, and Union. Only applies when
+`#rust-analyzer.lens.enable#` is set.
 
 
 ## rust-analyzer.lens.references.enumVariant.enable {#lens.references.enumVariant.enable}
 
 Default: `false`
 
-Whether to show `References` lens for Enum Variants.
-Only applies when `#rust-analyzer.lens.enable#` is set.
+Show `References` lens for Enum Variants. Only applies when
+`#rust-analyzer.lens.enable#` is set.
 
 
 ## rust-analyzer.lens.references.method.enable {#lens.references.method.enable}
 
 Default: `false`
 
-Whether to show `Method References` lens. Only applies when
-`#rust-analyzer.lens.enable#` is set.
+Show `Method References` lens. Only applies when `#rust-analyzer.lens.enable#` is set.
 
 
 ## rust-analyzer.lens.references.trait.enable {#lens.references.trait.enable}
 
 Default: `false`
 
-Whether to show `References` lens for Trait.
-Only applies when `#rust-analyzer.lens.enable#` is set.
+Show `References` lens for Trait. Only applies when `#rust-analyzer.lens.enable#` is
+set.
 
 
 ## rust-analyzer.lens.run.enable {#lens.run.enable}
 
 Default: `true`
 
-Whether to show `Run` lens. Only applies when
-`#rust-analyzer.lens.enable#` is set.
+Show `Run` lens. Only applies when `#rust-analyzer.lens.enable#` is set.
 
 
 ## rust-analyzer.lens.updateTest.enable {#lens.updateTest.enable}
 
 Default: `true`
 
-Whether to show `Update Test` lens. Only applies when
-`#rust-analyzer.lens.enable#` and `#rust-analyzer.lens.run.enable#` are set.
+Show `Update Test` lens. Only applies when `#rust-analyzer.lens.enable#` and
+`#rust-analyzer.lens.run.enable#` are set.
 
 
 ## rust-analyzer.linkedProjects {#linkedProjects}
 
 Default: `[]`
 
-Disable project auto-discovery in favor of explicitly specified set
-of projects.
+Disable project auto-discovery in favor of explicitly specified set of projects.
 
-Elements must be paths pointing to `Cargo.toml`,
-`rust-project.json`, `.rs` files (which will be treated as standalone files) or JSON
-objects in `rust-project.json` format.
+Elements must be paths pointing to `Cargo.toml`, `rust-project.json`, `.rs` files (which
+will be treated as standalone files) or JSON objects in `rust-project.json` format.
 
 
 ## rust-analyzer.lru.capacity {#lru.capacity}
@@ -1197,21 +1217,22 @@ Number of syntax trees rust-analyzer keeps in memory. Defaults to 128.
 
 Default: `{}`
 
-Sets the LRU capacity of the specified queries.
+The LRU capacity of the specified queries.
 
 
 ## rust-analyzer.notifications.cargoTomlNotFound {#notifications.cargoTomlNotFound}
 
 Default: `true`
 
-Whether to show `can't find Cargo.toml` error message.
+Show `can't find Cargo.toml` error message.
 
 
 ## rust-analyzer.numThreads {#numThreads}
 
 Default: `null`
 
-How many worker threads in the main loop. The default `null` means to pick automatically.
+The number of worker threads in the main loop. The default `null` means to pick
+automatically.
 
 
 ## rust-analyzer.procMacro.attributes.enable {#procMacro.attributes.enable}
@@ -1346,7 +1367,10 @@ doc links.
 
 Default: `true`
 
-Whether the server is allowed to emit non-standard tokens and modifiers.
+Emit non-standard tokens and modifiers
+
+When enabled, rust-analyzer will emit tokens and modifiers that are not part of the
+standard set of semantic tokens.
 
 
 ## rust-analyzer.semanticHighlighting.operator.enable {#semanticHighlighting.operator.enable}
@@ -1427,11 +1451,15 @@ Show documentation.
 Default: `"=."`
 
 Specify the characters allowed to invoke special on typing triggers.
-- typing `=` after `let` tries to smartly add `;` if `=` is followed by an existing expression
+
+- typing `=` after `let` tries to smartly add `;` if `=` is followed by an existing
+  expression
 - typing `=` between two expressions adds `;` when in statement position
-- typing `=` to turn an assignment into an equality comparison removes `;` when in expression position
+- typing `=` to turn an assignment into an equality comparison removes `;` when in
+  expression position
 - typing `.` in a chain method call auto-indents
-- typing `{` or `(` in front of an expression inserts a closing `}` or `)` after the expression
+- typing `{` or `(` in front of an expression inserts a closing `}` or `)` after the
+  expression
 - typing `{` in a use item adds a closing `}` in the right place
 - typing `>` to complete a return type `->` will insert a whitespace after it
 - typing `<` in a path or type position inserts a closing `>` after the path or type.
@@ -1475,8 +1503,8 @@ Below is an example of a valid configuration:
 
 **Warning**: This format is provisional and subject to change.
 
-[`DiscoverWorkspaceConfig::command`] *must* return a JSON object
-corresponding to `DiscoverProjectData::Finished`:
+[`DiscoverWorkspaceConfig::command`] *must* return a JSON object corresponding to
+`DiscoverProjectData::Finished`:
 
 ```norun
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -1506,12 +1534,11 @@ As JSON, `DiscoverProjectData::Finished` is:
 }
 ```
 
-It is encouraged, but not required, to use the other variants on
-`DiscoverProjectData` to provide a more polished end-user experience.
+It is encouraged, but not required, to use the other variants on `DiscoverProjectData`
+to provide a more polished end-user experience.
 
-`DiscoverWorkspaceConfig::command` may *optionally* include an `{arg}`,
-which will be substituted with the JSON-serialized form of the following
-enum:
+`DiscoverWorkspaceConfig::command` may *optionally* include an `{arg}`, which will be
+substituted with the JSON-serialized form of the following enum:
 
 ```norun
 #[derive(PartialEq, Clone, Debug, Serialize)]
@@ -1538,11 +1565,10 @@ Similarly, the JSON representation of `DiscoverArgument::Buildfile` is:
 }
 ```
 
-`DiscoverArgument::Path` is used to find and generate a `rust-project.json`,
-and therefore, a workspace, whereas `DiscoverArgument::buildfile` is used to
-to update an existing workspace. As a reference for implementors,
-buck2's `rust-project` will likely be useful:
-https://github.com/facebook/buck2/tree/main/integrations/rust-project.
+`DiscoverArgument::Path` is used to find and generate a `rust-project.json`, and
+therefore, a workspace, whereas `DiscoverArgument::buildfile` is used to to update an
+existing workspace. As a reference for implementors, buck2's `rust-project` will likely
+be useful: https://github.com/facebook/buck2/tree/main/integrations/rust-project.
 
 
 ## rust-analyzer.workspace.symbol.search.excludeImports {#workspace.symbol.search.excludeImports}
