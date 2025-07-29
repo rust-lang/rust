@@ -378,6 +378,33 @@ impl SerializedSearchIndex {
                                     }
                                     _ => unreachable!(),
                                 }
+                                if let Some(generics) = &mut ty.generics {
+                                    for generic in generics {
+                                        map_fn_sig_item(map_other_pathid_to_self_pathid, generic);
+                                    }
+                                }
+                                if let Some(bindings) = &mut ty.bindings {
+                                    for (param, constraints) in bindings {
+                                        *param = match *param {
+                                            param @ RenderTypeId::Index(generic) if generic < 0 => {
+                                                param
+                                            }
+                                            RenderTypeId::Index(id) => {
+                                                let id = usize::try_from(id).unwrap();
+                                                let id = map_other_pathid_to_self_pathid[id];
+                                                assert!(id != !0);
+                                                RenderTypeId::Index(isize::try_from(id).unwrap())
+                                            }
+                                            _ => unreachable!(),
+                                        };
+                                        for constraint in constraints {
+                                            map_fn_sig_item(
+                                                map_other_pathid_to_self_pathid,
+                                                constraint,
+                                            );
+                                        }
+                                    }
+                                }
                             }
                             for input in &mut func.inputs {
                                 map_fn_sig_item(&mut map_other_pathid_to_self_pathid, input);
@@ -432,6 +459,147 @@ impl SerializedSearchIndex {
             }
         }
         self
+    }
+
+    pub(crate) fn sort(self) -> SerializedSearchIndex {
+        let mut idlist: Vec<usize> = (0..self.names.len()).collect();
+        // nameless entries are tombstones, and will be removed after sorting
+        // sort shorter names first, so that we can present them in order out of search.js
+        idlist.sort_by_key(|&id| {
+            (
+                self.names[id].is_empty(),
+                self.names[id].len(),
+                &self.names[id],
+                self.entry_data[id].as_ref().map_or("", |entry| self.names[entry.krate].as_str()),
+                self.path_data[id].as_ref().map_or(&[][..], |entry| &entry.module_path[..]),
+            )
+        });
+        let map = FxHashMap::from_iter(
+            idlist.iter().enumerate().map(|(new_id, &old_id)| (old_id, new_id)),
+        );
+        let mut new = SerializedSearchIndex::default();
+        for &id in &idlist {
+            if self.names[id].is_empty() {
+                break;
+            }
+            new.push(
+                self.names[id].clone(),
+                self.path_data[id].clone(),
+                self.entry_data[id].as_ref().map(
+                    |EntryData {
+                         krate,
+                         ty,
+                         module_path,
+                         exact_module_path,
+                         parent,
+                         deprecated,
+                         associated_item_disambiguator,
+                     }| EntryData {
+                        krate: *map.get(krate).unwrap(),
+                        ty: *ty,
+                        module_path: module_path.and_then(|path_id| map.get(&path_id).copied()),
+                        exact_module_path: exact_module_path
+                            .and_then(|path_id| map.get(&path_id).copied()),
+                        parent: parent.and_then(|path_id| map.get(&path_id).copied()),
+                        deprecated: *deprecated,
+                        associated_item_disambiguator: associated_item_disambiguator.clone(),
+                    },
+                ),
+                self.descs[id].clone(),
+                self.function_data[id].as_ref().map(
+                    |FunctionData { function_signature, param_names }| FunctionData {
+                        function_signature: {
+                            let (mut func, _offset) =
+                                IndexItemFunctionType::read_from_string_without_param_names(
+                                    function_signature.as_bytes(),
+                                );
+                            fn map_fn_sig_item(map: &FxHashMap<usize, usize>, ty: &mut RenderType) {
+                                match ty.id {
+                                    None => {}
+                                    Some(RenderTypeId::Index(generic)) if generic < 0 => {}
+                                    Some(RenderTypeId::Index(id)) => {
+                                        let id = usize::try_from(id).unwrap();
+                                        let id = *map.get(&id).unwrap();
+                                        assert!(id != !0);
+                                        ty.id =
+                                            Some(RenderTypeId::Index(isize::try_from(id).unwrap()));
+                                    }
+                                    _ => unreachable!(),
+                                }
+                                if let Some(generics) = &mut ty.generics {
+                                    for generic in generics {
+                                        map_fn_sig_item(map, generic);
+                                    }
+                                }
+                                if let Some(bindings) = &mut ty.bindings {
+                                    for (param, constraints) in bindings {
+                                        *param = match *param {
+                                            param @ RenderTypeId::Index(generic) if generic < 0 => {
+                                                param
+                                            }
+                                            RenderTypeId::Index(id) => {
+                                                let id = usize::try_from(id).unwrap();
+                                                let id = *map.get(&id).unwrap();
+                                                assert!(id != !0);
+                                                RenderTypeId::Index(isize::try_from(id).unwrap())
+                                            }
+                                            _ => unreachable!(),
+                                        };
+                                        for constraint in constraints {
+                                            map_fn_sig_item(map, constraint);
+                                        }
+                                    }
+                                }
+                            }
+                            for input in &mut func.inputs {
+                                map_fn_sig_item(&map, input);
+                            }
+                            for output in &mut func.output {
+                                map_fn_sig_item(&map, output);
+                            }
+                            for clause in &mut func.where_clause {
+                                for entry in clause {
+                                    map_fn_sig_item(&map, entry);
+                                }
+                            }
+                            let mut result = String::with_capacity(function_signature.len());
+                            func.write_to_string_without_param_names(&mut result);
+                            result
+                        },
+                        param_names: param_names.clone(),
+                    },
+                ),
+                self.type_data[id].as_ref().map(
+                    |TypeData { search_unbox, inverted_function_signature_index }| {
+                        let mut inverted_function_signature_index: Vec<u32> =
+                            inverted_function_signature_index
+                                .iter()
+                                .copied()
+                                .map(|id| {
+                                    u32::try_from(*map.get(&usize::try_from(id).unwrap()).unwrap())
+                                        .unwrap()
+                                })
+                                .collect();
+                        inverted_function_signature_index.sort();
+                        TypeData { search_unbox: *search_unbox, inverted_function_signature_index }
+                    },
+                ),
+                self.alias_pointers[id].and_then(|alias| map.get(&alias).copied()),
+            );
+        }
+        new.generic_inverted_index = self
+            .generic_inverted_index
+            .into_iter()
+            .map(|old_list| {
+                let mut new_list: Vec<u32> = old_list
+                    .into_iter()
+                    .filter_map(|id| u32::try_from(*map.get(&usize::try_from(id).ok()?)?).ok())
+                    .collect();
+                new_list.sort();
+                new_list
+            })
+            .collect();
+        new
     }
 
     pub(crate) fn write_to(self, doc_root: &Path, resource_suffix: &str) -> Result<(), Error> {
@@ -1544,7 +1712,7 @@ pub(crate) fn build_index(
         }
     }
 
-    Ok(serialized_index)
+    Ok(serialized_index.sort())
 }
 
 pub(crate) fn get_function_type_for_search(

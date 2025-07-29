@@ -161,6 +161,7 @@ fn write_rendered_cross_crate_info(
         crates
             .iter()
             .fold(SerializedSearchIndex::default(), |a, b| a.union(&b.search_index))
+            .sort()
             .write_to(dst, resource_suffix)?;
         write_rendered_cci::<AllCratesPart, _>(AllCratesPart::blank, dst, crates, m)?;
     }
