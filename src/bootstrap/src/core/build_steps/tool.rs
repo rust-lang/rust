@@ -841,6 +841,7 @@ impl Step for Cargo {
     fn run(self, builder: &Builder<'_>) -> ToolBuildResult {
         builder.build.require_submodule("src/tools/cargo", None);
 
+        builder.std(self.build_compiler, self.target);
         builder.ensure(ToolBuild {
             build_compiler: self.build_compiler,
             target: self.target,
@@ -849,7 +850,11 @@ impl Step for Cargo {
             path: "src/tools/cargo",
             source_type: SourceType::Submodule,
             extra_features: Vec::new(),
-            allow_features: "",
+            // Cargo is compilable with a stable compiler, but since we run in bootstrap,
+            // with RUSTC_BOOTSTRAP being set, some "clever" build scripts enable specialization
+            // based on this, which breaks stuff. We thus have to explicitly allow these features
+            // here.
+            allow_features: "min_specialization,specialization",
             cargo_args: Vec::new(),
             artifact_kind: ToolArtifactKind::Binary,
         })

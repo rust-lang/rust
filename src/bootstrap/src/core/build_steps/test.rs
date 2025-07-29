@@ -18,7 +18,8 @@ use crate::core::build_steps::llvm::get_llvm_version;
 use crate::core::build_steps::run::get_completion_paths;
 use crate::core::build_steps::synthetic_targets::MirOptPanicAbortSyntheticTarget;
 use crate::core::build_steps::tool::{
-    self, COMPILETEST_ALLOW_FEATURES, RustcPrivateCompilers, SourceType, Tool,
+    self, COMPILETEST_ALLOW_FEATURES, RustcPrivateCompilers, SourceType, Tool, ToolTargetBuildMode,
+    get_tool_target_compiler,
 };
 use crate::core::build_steps::toolstate::ToolState;
 use crate::core::build_steps::{compile, dist, llvm};
@@ -293,7 +294,7 @@ impl Step for Cargotest {
 /// Runs `cargo test` for cargo itself.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Cargo {
-    stage: u32,
+    build_compiler: Compiler,
     host: TargetSelection,
 }
 
@@ -310,35 +311,29 @@ impl Step for Cargo {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        // If stage is explicitly set or not lower than 2, keep it. Otherwise, make sure it's at least 2
-        // as tests for this step don't work with a lower stage.
-        let stage = if run.builder.config.is_explicit_stage() || run.builder.top_stage >= 2 {
-            run.builder.top_stage
-        } else {
-            2
-        };
-
-        run.builder.ensure(Cargo { stage, host: run.target });
+        run.builder.ensure(Cargo {
+            build_compiler: get_tool_target_compiler(
+                run.builder,
+                ToolTargetBuildMode::Build(run.target),
+            ),
+            host: run.target,
+        });
     }
 
     /// Runs `cargo test` for `cargo` packaged with Rust.
     fn run(self, builder: &Builder<'_>) {
-        let stage = self.stage;
-
-        if stage < 2 {
-            eprintln!("WARNING: cargo tests on stage {stage} may not behave well.");
-            eprintln!("HELP: consider using stage 2");
-        }
-
-        let compiler = builder.compiler(stage, self.host);
-
-        let cargo = builder.ensure(tool::Cargo::from_build_compiler(compiler, self.host));
-        let compiler = cargo.build_compiler;
+        // FIXME: we now use the same compiler to build cargo and then we also test that compiler
+        // using cargo.
+        // We could build cargo using a different compiler, but that complicates some things,
+        // because when we run cargo tests, the crates that are being compiled are accessing the
+        // sysroot of the build compiler, rather than the compiler being tested.
+        // Since these two compilers are currently the same, it works.
+        builder.ensure(tool::Cargo::from_build_compiler(self.build_compiler, self.host));
 
         let cargo = tool::prepare_tool_cargo(
             builder,
-            compiler,
-            Mode::ToolRustc,
+            self.build_compiler,
+            Mode::ToolTarget,
             self.host,
             Kind::Test,
             Self::CRATE_PATH,
@@ -355,7 +350,7 @@ impl Step for Cargo {
         // Forcibly disable tests using nightly features since any changes to
         // those features won't be able to land.
         cargo.env("CARGO_TEST_DISABLE_NIGHTLY", "1");
-        cargo.env("PATH", path_for_cargo(builder, compiler));
+        cargo.env("PATH", path_for_cargo(builder, self.build_compiler));
         // Cargo's test suite uses `CARGO_RUSTC_CURRENT_DIR` to determine the path that `file!` is
         // relative to. Cargo no longer sets this env var, so we have to do that. This has to be the
         // same value as `-Zroot-dir`.
@@ -367,7 +362,7 @@ impl Step for Cargo {
                 crates: vec!["cargo".into()],
                 target: self.host.triple.to_string(),
                 host: self.host.triple.to_string(),
-                stage,
+                stage: self.build_compiler.stage + 1,
             },
             builder,
         );

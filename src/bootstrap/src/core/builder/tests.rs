@@ -1606,12 +1606,8 @@ mod snapshot {
             ctx.config("test")
                 .path("cargo")
                 .render_steps(), @r"
-        [build] llvm <host>
-        [build] rustc 0 <host> -> rustc 1 <host>
-        [build] rustc 1 <host> -> std 1 <host>
-        [build] rustc 1 <host> -> rustc 2 <host>
-        [build] rustc 2 <host> -> cargo 3 <host>
-        [build] rustdoc 2 <host>
+        [build] rustc 0 <host> -> cargo 1 <host>
+        [build] rustdoc 0 <host>
         ");
     }
 
@@ -1626,9 +1622,8 @@ mod snapshot {
         [build] llvm <host>
         [build] rustc 0 <host> -> rustc 1 <host>
         [build] rustc 1 <host> -> std 1 <host>
-        [build] rustc 1 <host> -> rustc 2 <host>
-        [build] rustc 2 <host> -> cargo 3 <host>
-        [build] rustdoc 2 <host>
+        [build] rustc 1 <host> -> cargo 2 <host>
+        [build] rustdoc 1 <host>
         ");
     }
 
