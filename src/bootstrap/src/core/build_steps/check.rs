@@ -556,3 +556,9 @@ tool_check_step!(Compiletest {
     allow_features: COMPILETEST_ALLOW_FEATURES,
     default: false,
 });
+
+tool_check_step!(Linkchecker {
+    path: "src/tools/linkchecker",
+    mode: |_builder| Mode::ToolBootstrap,
+    default: false
+});
