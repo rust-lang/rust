@@ -6,7 +6,6 @@ use anstyle::{AnsiColor, Effects, Style};
 use crate::markdown::{MdStream, MdTree};
 
 const DEFAULT_COLUMN_WIDTH: usize = 140;
-const RESET: anstyle::Reset = anstyle::Reset;
 
 thread_local! {
     /// Track the position of viewable characters in our buffer
@@ -31,53 +30,52 @@ fn write_stream(
     default: Option<Style>,
     indent: usize,
 ) -> io::Result<()> {
-    match default {
-        Some(c) => write!(buf, "{c:#}{c}")?,
-        None => write!(buf, "{RESET}")?,
-    }
-
     for tt in stream {
         write_tt(tt, buf, default, indent)?;
-        if let Some(c) = default {
-            write!(buf, "{c:#}{c}")?;
-        }
     }
+    reset_opt_style(buf, default)?;
 
-    write!(buf, "{RESET}")?;
     Ok(())
 }
 
 fn write_tt(
     tt: &MdTree<'_>,
     buf: &mut Vec<u8>,
-    _default: Option<Style>,
+    default: Option<Style>,
     indent: usize,
 ) -> io::Result<()> {
     match tt {
         MdTree::CodeBlock { txt, lang: _ } => {
-            write!(buf, "{RESET}")?;
+            reset_opt_style(buf, default)?;
             let style = Style::new().effects(Effects::DIMMED);
-            write!(buf, "{style}{txt}")?;
+            write!(buf, "{style}{txt}{style:#}")?;
+            render_opt_style(buf, default)?;
         }
         MdTree::CodeInline(txt) => {
-            write!(buf, "{RESET}")?;
-            let style = Style::new().effects(Effects::DIMMED);
-            write_wrapping(buf, txt, indent, None, Some(style))?;
+            reset_opt_style(buf, default)?;
+            write_wrapping(buf, txt, indent, None, Some(Style::new().effects(Effects::DIMMED)))?;
+            render_opt_style(buf, default)?;
         }
         MdTree::Strong(txt) => {
-            write!(buf, "{RESET}")?;
-            let style = Style::new().effects(Effects::BOLD);
-            write_wrapping(buf, txt, indent, None, Some(style))?;
+            reset_opt_style(buf, default)?;
+            write_wrapping(buf, txt, indent, None, Some(Style::new().effects(Effects::BOLD)))?;
+            render_opt_style(buf, default)?;
         }
         MdTree::Emphasis(txt) => {
-            write!(buf, "{RESET}")?;
-            let style = Style::new().effects(Effects::ITALIC);
-            write_wrapping(buf, txt, indent, None, Some(style))?;
+            reset_opt_style(buf, default)?;
+            write_wrapping(buf, txt, indent, None, Some(Style::new().effects(Effects::ITALIC)))?;
+            render_opt_style(buf, default)?;
         }
         MdTree::Strikethrough(txt) => {
-            write!(buf, "{RESET}")?;
-            let style = Style::new().effects(Effects::STRIKETHROUGH);
-            write_wrapping(buf, txt, indent, None, Some(style))?;
+            reset_opt_style(buf, default)?;
+            write_wrapping(
+                buf,
+                txt,
+                indent,
+                None,
+                Some(Style::new().effects(Effects::STRIKETHROUGH)),
+            )?;
+            render_opt_style(buf, default)?;
         }
         MdTree::PlainText(txt) => {
             write_wrapping(buf, txt, indent, None, None)?;
@@ -105,7 +103,11 @@ fn write_tt(
                 4.. => AnsiColor::Cyan.on_default().effects(Effects::UNDERLINE | Effects::ITALIC),
                 0 => unreachable!(),
             };
+            reset_opt_style(buf, default)?;
+            write!(buf, "{cs}")?;
             write_stream(stream, buf, Some(cs), 0)?;
+            write!(buf, "{cs:#}")?;
+            render_opt_style(buf, default)?;
             buf.write_all(b"\n")?;
         }
         MdTree::OrderedListItem(n, stream) => {
@@ -122,8 +124,20 @@ fn write_tt(
         MdTree::Comment(_) | MdTree::LinkDef { .. } | MdTree::RefLink { .. } => unreachable!(),
     }
 
-    write!(buf, "{RESET}")?;
+    Ok(())
+}
 
+fn render_opt_style(buf: &mut Vec<u8>, style: Option<Style>) -> io::Result<()> {
+    if let Some(style) = &style {
+        write!(buf, "{style}")?;
+    }
+    Ok(())
+}
+
+fn reset_opt_style(buf: &mut Vec<u8>, style: Option<Style>) -> io::Result<()> {
+    if let Some(style) = &style {
+        write!(buf, "{style:#}")?;
+    }
     Ok(())
 }
 
@@ -141,9 +155,8 @@ fn write_wrapping(
     link_url: Option<&str>,
     style: Option<Style>,
 ) -> io::Result<()> {
-    if let Some(style) = &style {
-        write!(buf, "{style}")?;
-    }
+    render_opt_style(buf, style)?;
+
     let ind_ws = &b"          "[..indent];
     let mut to_write = text;
     if let Some(url) = link_url {
@@ -191,6 +204,7 @@ fn write_wrapping(
         if link_url.is_some() {
             buf.write_all(b"\x1b]8;;\x1b\\")?;
         }
+        reset_opt_style(buf, style)?;
         Ok(())
     })
 }
