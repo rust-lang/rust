@@ -491,7 +491,7 @@ auto:
       NO_LLVM_ASSERTIONS: 1
       NO_DEBUG_ASSERTIONS: 1
       NO_OVERFLOW_CHECKS: 1
-    <<: *job-macos
+    <<: *job-macos-m1
 
   - name: x86_64-apple-1
     env:
