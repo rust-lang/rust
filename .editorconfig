@@ -7,8 +7,11 @@ root = true
 [*]
 end_of_line = lf
 charset = utf-8
-trim_trailing_whitespace = true
 insert_final_newline = true
+
+# some tests need trailing whitespace in output snapshots
+[!tests/]
+trim_trailing_whitespace = true
 
 [!src/llvm-project]
 indent_style = space
