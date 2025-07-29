@@ -169,12 +169,13 @@ jobs:
         run: rustup toolchain install nightly --profile minimal
       - name: Install rustup-toolchain-install-master
         run: cargo install -f rustup-toolchain-install-master
+      # Create a token for the next step so it can create a PR that actually runs CI.
       - uses: actions/create-github-app-token@v2
         id: app-token
         with:
           app-id: ${{ vars.APP_CLIENT_ID }}
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
-      - name: Push changes to a branch and create PR
+      - name: pull changes from rustc and create PR
         run: |
           # Make it easier to see what happens.
           set -x
