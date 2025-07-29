@@ -160,8 +160,8 @@ mod uninit;
 ///
 /// Violating this property is a logic error. The behavior resulting from a logic error is not
 /// specified, but users of the trait must ensure that such logic errors do *not* result in
-/// undefined behavior. This means that `unsafe` code **must not** rely on the correctness of these
-/// methods.
+/// undefined behavior. This means that `unsafe` code **must not** rely on this property
+/// being satisfied.
 ///
 /// ## Additional implementors
 ///
