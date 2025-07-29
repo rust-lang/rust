@@ -4,7 +4,9 @@ use ide_db::defs::{Definition, NameRefClass};
 use std::ops::RangeInclusive;
 use syntax::{
     SyntaxElement, SyntaxKind, SyntaxNode, T, TextSize,
-    ast::{self, AstNode, HasAttrs, HasGenericParams, HasVisibility},
+    ast::{
+        self, AstNode, HasAttrs, HasGenericParams, HasVisibility, syntax_factory::SyntaxFactory,
+    },
     match_ast,
     syntax_editor::{Element, Position, SyntaxEditor},
 };
@@ -105,7 +107,8 @@ fn edit_struct_def(
         );
         ast::RecordField::cast(field_editor.finish().new_root().clone())
     });
-    let record_fields = ast::make::record_field_list(record_fields).clone_for_update();
+    let make = SyntaxFactory::without_mappings();
+    let record_fields = make.record_field_list(record_fields);
     let tuple_fields_before = Position::before(tuple_fields.syntax());
 
     if let Either::Left(strukt) = strukt {
@@ -145,10 +148,11 @@ fn edit_struct_references(
     let usages = strukt_def.usages(&ctx.sema).include_self_refs().all();
 
     let edit_node = |node: SyntaxNode| -> Option<SyntaxNode> {
+        let make = SyntaxFactory::without_mappings();
         match_ast! {
             match node {
                 ast::TupleStructPat(tuple_struct_pat) => {
-                    Some(ast::make::record_pat_with_fields(
+                    Some(make.record_pat_with_fields(
                         tuple_struct_pat.path()?,
                         ast::make::record_pat_field_list(tuple_struct_pat.fields().zip(names).map(
                             |(pat, name)| {
@@ -158,7 +162,7 @@ fn edit_struct_references(
                                 )
                             },
                         ), None),
-                    ).syntax().clone_for_update())
+                    ).syntax().clone())
                 },
                 // for tuple struct creations like Foo(42)
                 ast::CallExpr(call_expr) => {
@@ -174,9 +178,8 @@ fn edit_struct_references(
                     }
 
                     let arg_list = call_expr.syntax().descendants().find_map(ast::ArgList::cast)?;
-
                     Some(
-                        ast::make::record_expr(
+                        make.record_expr(
                             path,
                             ast::make::record_expr_field_list(arg_list.args().zip(names).map(
                                 |(expr, name)| {
@@ -186,7 +189,7 @@ fn edit_struct_references(
                                     )
                                 },
                             )),
-                        ).syntax().clone_for_update()
+                        ).syntax().clone()
                     )
                 },
                 _ => return None,
@@ -271,11 +274,12 @@ fn edit_field_references(
 }
 
 fn generate_names(fields: impl Iterator<Item = ast::TupleField>) -> Vec<ast::Name> {
+    let make = SyntaxFactory::without_mappings();
     fields
         .enumerate()
         .map(|(i, _)| {
             let idx = i + 1;
-            ast::make::name(&format!("field{idx}")).clone_for_update()
+            make.name(&format!("field{idx}"))
         })
         .collect()
 }
