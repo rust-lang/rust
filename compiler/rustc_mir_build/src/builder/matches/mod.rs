@@ -1260,7 +1260,7 @@ struct Ascription<'tcx> {
 #[derive(Debug, Clone)]
 enum TestCase<'tcx> {
     Variant { adt_def: ty::AdtDef<'tcx>, variant_index: VariantIdx },
-    Constant { ty: Ty<'tcx>, value: ty::ValTree<'tcx> },
+    Constant { value: ty::Value<'tcx> },
     Range(Arc<PatRange<'tcx>>),
     Slice { len: usize, variable_length: bool },
     Deref { temp: Place<'tcx>, mutability: Mutability },
@@ -1333,8 +1333,7 @@ enum TestKind<'tcx> {
     /// Test for equality with value, possibly after an unsizing coercion to
     /// `ty`,
     Eq {
-        value: ty::ValTree<'tcx>,
-        value_ty: Ty<'tcx>,
+        value: ty::Value<'tcx>,
         // Integer types are handled by `SwitchInt`, and constants with ADT
         // types and `&[T]` types are converted back into patterns, so this can
         // only be `&str` or `f*`.
@@ -1374,7 +1373,7 @@ enum TestBranch<'tcx> {
     /// Success branch, used for tests with two possible outcomes.
     Success,
     /// Branch corresponding to this constant.
-    Constant(ty::ValTree<'tcx>, u128),
+    Constant(ty::Value<'tcx>, u128),
     /// Branch corresponding to this variant.
     Variant(VariantIdx),
     /// Failure branch for tests with two possible outcomes, and "otherwise" branch for other tests.
@@ -1382,7 +1381,7 @@ enum TestBranch<'tcx> {
 }
 
 impl<'tcx> TestBranch<'tcx> {
-    fn as_constant(&self) -> Option<ty::ValTree<'tcx>> {
+    fn as_constant(&self) -> Option<ty::Value<'tcx>> {
         if let Self::Constant(v, _) = self { Some(*v) } else { None }
     }
 }

@@ -135,6 +135,8 @@ pub type ConstToValTreeResult<'tcx> = Result<Result<ValTree<'tcx>, Ty<'tcx>>, Er
 /// A type-level constant value.
 ///
 /// Represents a typed, fully evaluated constant.
+/// Note that this is used by pattern elaboration to represent values which cannot occur in types,
+/// such as raw pointers and floats.
 #[derive(Copy, Clone, Debug, Hash, Eq, PartialEq)]
 #[derive(HashStable, TyEncodable, TyDecodable, TypeFoldable, TypeVisitable, Lift)]
 pub struct Value<'tcx> {
@@ -149,13 +151,17 @@ impl<'tcx> Value<'tcx> {
     /// or an aggregate).
     #[inline]
     pub fn try_to_bits(self, tcx: TyCtxt<'tcx>, typing_env: ty::TypingEnv<'tcx>) -> Option<u128> {
-        let (ty::Bool | ty::Char | ty::Uint(_) | ty::Int(_) | ty::Float(_)) = self.ty.kind() else {
-            return None;
-        };
-        let scalar = self.valtree.try_to_scalar_int()?;
+        let scalar = self.try_to_scalar_int()?;
         let input = typing_env.with_post_analysis_normalized(tcx).as_query_input(self.ty);
         let size = tcx.layout_of(input).ok()?.size;
         Some(scalar.to_bits(size))
+    }
+
+    pub fn try_to_scalar_int(self) -> Option<ScalarInt> {
+        let (ty::Bool | ty::Char | ty::Uint(_) | ty::Int(_) | ty::Float(_)) = self.ty.kind() else {
+            return None;
+        };
+        self.valtree.try_to_scalar_int()
     }
 
     pub fn try_to_bool(self) -> Option<bool> {

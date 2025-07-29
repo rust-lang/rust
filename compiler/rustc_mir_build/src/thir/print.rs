@@ -761,10 +761,9 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
                 self.print_pat(subpattern, depth_lvl + 2);
                 print_indented!(self, "}", depth_lvl + 1);
             }
-            PatKind::Constant { value, ty } => {
+            PatKind::Constant { value } => {
                 print_indented!(self, "Constant {", depth_lvl + 1);
-                print_indented!(self, format!("ty: {:?}", ty), depth_lvl + 2);
-                print_indented!(self, format!("value: {:?}", value), depth_lvl + 2);
+                print_indented!(self, format!("value: {}", value), depth_lvl + 2);
                 print_indented!(self, "}", depth_lvl + 1);
             }
             PatKind::ExpandedConstant { def_id, subpattern } => {

@@ -840,10 +840,7 @@ pub enum PatKind<'tcx> {
     ///   much simpler.
     /// * `String`, if `string_deref_patterns` is enabled.
     Constant {
-        // Not using `ty::Value` since this is conceptually not a type-level constant. In
-        // particular, it can have raw pointers.
-        ty: Ty<'tcx>,
-        value: ty::ValTree<'tcx>,
+        value: ty::Value<'tcx>,
     },
 
     /// Pattern obtained by converting a constant (inline or named) to its pattern
@@ -935,8 +932,8 @@ impl<'tcx> PatRange<'tcx> {
         // Also, for performance, it's important to only do the second `try_to_bits` if necessary.
         let lo_is_min = match self.lo {
             PatRangeBoundary::NegInfinity => true,
-            PatRangeBoundary::Finite(_ty, value) => {
-                let lo = value.unwrap_leaf().to_bits(size) ^ bias;
+            PatRangeBoundary::Finite(value) => {
+                let lo = value.try_to_scalar_int().unwrap().to_bits(size) ^ bias;
                 lo <= min
             }
             PatRangeBoundary::PosInfinity => false,
@@ -944,8 +941,8 @@ impl<'tcx> PatRange<'tcx> {
         if lo_is_min {
             let hi_is_max = match self.hi {
                 PatRangeBoundary::NegInfinity => false,
-                PatRangeBoundary::Finite(_ty, value) => {
-                    let hi = value.unwrap_leaf().to_bits(size) ^ bias;
+                PatRangeBoundary::Finite(value) => {
+                    let hi = value.try_to_scalar_int().unwrap().to_bits(size) ^ bias;
                     hi > max || hi == max && self.end == RangeEnd::Included
                 }
                 PatRangeBoundary::PosInfinity => true,
@@ -958,10 +955,11 @@ impl<'tcx> PatRange<'tcx> {
     }
 
     #[inline]
-    pub fn contains(&self, value: ty::ValTree<'tcx>, tcx: TyCtxt<'tcx>) -> Option<bool> {
+    pub fn contains(&self, value: ty::Value<'tcx>, tcx: TyCtxt<'tcx>) -> Option<bool> {
         use Ordering::*;
+        debug_assert_eq!(self.ty, value.ty);
         let ty = self.ty;
-        let value = PatRangeBoundary::Finite(ty, value);
+        let value = PatRangeBoundary::Finite(value);
         // For performance, it's important to only do the second comparison if necessary.
         Some(
             match self.lo.compare_with(value, ty, tcx)? {
@@ -996,13 +994,10 @@ impl<'tcx> PatRange<'tcx> {
 
 impl<'tcx> fmt::Display for PatRange<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if let &PatRangeBoundary::Finite(ty, value) = &self.lo {
-            // `ty::Value` has a reasonable pretty-printing implementation.
-            let value = ty::Value { ty, valtree: value };
+        if let PatRangeBoundary::Finite(value) = &self.lo {
             write!(f, "{value}")?;
         }
-        if let &PatRangeBoundary::Finite(ty, value) = &self.hi {
-            let value = ty::Value { ty, valtree: value };
+        if let PatRangeBoundary::Finite(value) = &self.hi {
             write!(f, "{}", self.end)?;
             write!(f, "{value}")?;
         } else {
@@ -1017,7 +1012,7 @@ impl<'tcx> fmt::Display for PatRange<'tcx> {
 /// If present, the const must be of a numeric type.
 #[derive(Copy, Clone, Debug, PartialEq, HashStable, TypeVisitable)]
 pub enum PatRangeBoundary<'tcx> {
-    Finite(Ty<'tcx>, ty::ValTree<'tcx>),
+    Finite(ty::Value<'tcx>),
     NegInfinity,
     PosInfinity,
 }
@@ -1028,15 +1023,15 @@ impl<'tcx> PatRangeBoundary<'tcx> {
         matches!(self, Self::Finite(..))
     }
     #[inline]
-    pub fn as_finite(self) -> Option<ty::ValTree<'tcx>> {
+    pub fn as_finite(self) -> Option<ty::Value<'tcx>> {
         match self {
-            Self::Finite(_ty, value) => Some(value),
+            Self::Finite(value) => Some(value),
             Self::NegInfinity | Self::PosInfinity => None,
         }
     }
     pub fn eval_bits(self, ty: Ty<'tcx>, tcx: TyCtxt<'tcx>) -> u128 {
         match self {
-            Self::Finite(_ty, value) => value.unwrap_leaf().to_bits_unchecked(),
+            Self::Finite(value) => value.try_to_scalar_int().unwrap().to_bits_unchecked(),
             Self::NegInfinity => {
                 // Unwrap is ok because the type is known to be numeric.
                 ty.numeric_min_and_max_as_bits(tcx).unwrap().0
@@ -1063,9 +1058,7 @@ impl<'tcx> PatRangeBoundary<'tcx> {
             // we can do scalar comparisons. E.g. `unicode-normalization` has
             // many ranges such as '\u{037A}'..='\u{037F}', and chars can be compared
             // in this way.
-            (Finite(_, a), Finite(_, b))
-                if matches!(ty.kind(), ty::Int(_) | ty::Uint(_) | ty::Char) =>
-            {
+            (Finite(a), Finite(b)) if matches!(ty.kind(), ty::Int(_) | ty::Uint(_) | ty::Char) => {
                 if let (Some(a), Some(b)) = (a.try_to_scalar_int(), b.try_to_scalar_int()) {
                     let sz = ty.primitive_size(tcx);
                     let cmp = match ty.kind() {
