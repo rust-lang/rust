@@ -50,7 +50,6 @@ jobs:
           os: ubuntu-24.04-arm
         - target: aarch64-pc-windows-msvc
           os: windows-2025
-          test_verbatim: 1
           build_only: 1
         - target: arm-unknown-linux-gnueabi
           os: ubuntu-24.04
@@ -92,10 +91,8 @@ jobs:
           os: macos-13
         - target: i686-pc-windows-msvc
           os: windows-2025
-          test_verbatim: 1
         - target: x86_64-pc-windows-msvc
           os: windows-2025
-          test_verbatim: 1
         - target: i686-pc-windows-gnu
           os: windows-2025
           channel: nightly-i686-gnu
@@ -106,7 +103,6 @@ jobs:
     needs: [calculate_vars]
     env:
       BUILD_ONLY: ${{ matrix.build_only }}
-      TEST_VERBATIM: ${{ matrix.test_verbatim }}
       MAY_SKIP_LIBM_CI: ${{ needs.calculate_vars.outputs.may_skip_libm_ci }}
     steps:
     - name: Print $HOME
