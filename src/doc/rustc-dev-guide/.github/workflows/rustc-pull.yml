@@ -9,7 +9,7 @@ on:
 jobs:
   pull:
     if: github.repository == 'rust-lang/rustc-dev-guide'
-    uses: rust-lang/josh-sync/.github/workflows/rustc-pull.yml@ci-gh-app
+    uses: rust-lang/josh-sync/.github/workflows/rustc-pull.yml@main
     with:
       github-app-id: ${{ vars.APP_CLIENT_ID }}
       zulip-stream-id: 196385
