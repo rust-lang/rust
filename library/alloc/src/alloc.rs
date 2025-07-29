@@ -6,7 +6,7 @@
 #[doc(inline)]
 pub use core::alloc::*;
 use core::hint;
-use core::ptr::{self, NonNull};
+use core::ptr::{self, Alignment, NonNull};
 
 unsafe extern "Rust" {
     // These are the magic symbols to call the global allocator. rustc generates
@@ -17,19 +17,19 @@ unsafe extern "Rust" {
     #[rustc_allocator]
     #[rustc_nounwind]
     #[rustc_std_internal_symbol]
-    fn __rust_alloc(size: usize, align: usize) -> *mut u8;
+    fn __rust_alloc(size: usize, align: Alignment) -> *mut u8;
     #[rustc_deallocator]
     #[rustc_nounwind]
     #[rustc_std_internal_symbol]
-    fn __rust_dealloc(ptr: *mut u8, size: usize, align: usize);
+    fn __rust_dealloc(ptr: *mut u8, size: usize, align: Alignment);
     #[rustc_reallocator]
     #[rustc_nounwind]
     #[rustc_std_internal_symbol]
-    fn __rust_realloc(ptr: *mut u8, old_size: usize, align: usize, new_size: usize) -> *mut u8;
+    fn __rust_realloc(ptr: *mut u8, old_size: usize, align: Alignment, new_size: usize) -> *mut u8;
     #[rustc_allocator_zeroed]
     #[rustc_nounwind]
     #[rustc_std_internal_symbol]
-    fn __rust_alloc_zeroed(size: usize, align: usize) -> *mut u8;
+    fn __rust_alloc_zeroed(size: usize, align: Alignment) -> *mut u8;
 
     #[rustc_nounwind]
     #[rustc_std_internal_symbol]
@@ -91,7 +91,7 @@ pub unsafe fn alloc(layout: Layout) -> *mut u8 {
         // stable code until it is actually stabilized.
         __rust_no_alloc_shim_is_unstable_v2();
 
-        __rust_alloc(layout.size(), layout.align())
+        __rust_alloc(layout.size(), layout.alignment())
     }
 }
 
@@ -111,7 +111,7 @@ pub unsafe fn alloc(layout: Layout) -> *mut u8 {
 #[inline]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 pub unsafe fn dealloc(ptr: *mut u8, layout: Layout) {
-    unsafe { __rust_dealloc(ptr, layout.size(), layout.align()) }
+    unsafe { __rust_dealloc(ptr, layout.size(), layout.alignment()) }
 }
 
 /// Reallocates memory with the global allocator.
@@ -131,7 +131,7 @@ pub unsafe fn dealloc(ptr: *mut u8, layout: Layout) {
 #[inline]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 pub unsafe fn realloc(ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 {
-    unsafe { __rust_realloc(ptr, layout.size(), layout.align(), new_size) }
+    unsafe { __rust_realloc(ptr, layout.size(), layout.alignment(), new_size) }
 }
 
 /// Allocates zero-initialized memory with the global allocator.
@@ -174,7 +174,7 @@ pub unsafe fn alloc_zeroed(layout: Layout) -> *mut u8 {
         // stable code until it is actually stabilized.
         __rust_no_alloc_shim_is_unstable_v2();
 
-        __rust_alloc_zeroed(layout.size(), layout.align())
+        __rust_alloc_zeroed(layout.size(), layout.alignment())
     }
 }
 
