@@ -769,7 +769,6 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
 
         let discr_type = repr.discr_type();
         let discr_int = Integer::from_attr(dl, discr_type);
-        let bits = discr_int.size().bits();
         // Because we can only represent one range of valid values, we'll look for the
         // largest range of invalid values and pick everything else as the range of valid
         // values.
@@ -780,7 +779,8 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
             .map(|(_, val)| {
                 if discr_type.is_signed() {
                     // sign extend the raw representation to be an i128
-                    (val << (128 - bits)) >> (128 - bits)
+                    // FIXME: do this at the discriminant iterator creation sites
+                    discr_int.size().sign_extend(val as u128)
                 } else {
                     val
                 }
