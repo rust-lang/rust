@@ -112,7 +112,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let otherwise_block = target_block(TestBranch::Failure);
                 let switch_targets = SwitchTargets::new(
                     target_blocks.iter().filter_map(|(&branch, &block)| {
-                        if let TestBranch::Constant(_, bits) = branch {
+                        if let TestBranch::Constant(value) = branch {
+                            let bits = value.try_to_scalar_int().unwrap().to_bits_unchecked();
                             Some((bits, block))
                         } else {
                             None
@@ -279,6 +280,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 };
 
                 if let Some(lo) = range.lo.as_finite() {
+                    let lo = ty::Value { ty: range.ty, valtree: lo };
                     let lo = self.literal_operand(test.span, Const::from_ty_value(self.tcx, lo));
                     self.compare(
                         block,
@@ -292,6 +294,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 };
 
                 if let Some(hi) = range.hi.as_finite() {
+                    let hi = ty::Value { ty: range.ty, valtree: hi };
                     let hi = self.literal_operand(test.span, Const::from_ty_value(self.tcx, hi));
                     let op = match range.end {
                         RangeEnd::Included => BinOp::Le,
@@ -575,8 +578,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     None
                 } else {
                     fully_matched = true;
-                    let bits = value.try_to_scalar_int().unwrap().to_bits_unchecked();
-                    Some(TestBranch::Constant(value, bits))
+                    Some(TestBranch::Constant(value))
                 }
             }
             (TestKind::SwitchInt, TestCase::Range(range)) => {
