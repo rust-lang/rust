@@ -278,14 +278,31 @@ fn runtime_dll_dist(rust_root: &Path, target: TargetSelection, builder: &Builder
         return;
     }
 
-    let (bin_path, _) = get_cc_search_dirs(target, builder);
+    let (bin_path, libs_path) = get_cc_search_dirs(target, builder);
 
-    let mut rustc_dlls = vec!["libwinpthread-1.dll"];
-    if target.starts_with("i686-") {
-        rustc_dlls.push("libgcc_s_dw2-1.dll");
+    let mut rustc_dlls = vec![];
+    // windows-gnu and windows-gnullvm require different runtime libs
+    if target.ends_with("windows-gnu") {
+        rustc_dlls.push("libwinpthread-1.dll");
+        if target.starts_with("i686-") {
+            rustc_dlls.push("libgcc_s_dw2-1.dll");
+        } else {
+            rustc_dlls.push("libgcc_s_seh-1.dll");
+        }
+    } else if target.ends_with("windows-gnullvm") {
+        rustc_dlls.push("libunwind.dll");
     } else {
-        rustc_dlls.push("libgcc_s_seh-1.dll");
+        panic!("Vendoring of runtime DLLs for `{target}` is not supported`");
     }
+    // FIXME(#144656): Remove this whole `let ...`
+    let bin_path = if target.ends_with("windows-gnullvm") && builder.host_target != target {
+        bin_path
+            .into_iter()
+            .chain(libs_path.iter().map(|path| path.with_file_name("bin")))
+            .collect()
+    } else {
+        bin_path
+    };
     let rustc_dlls = find_files(&rustc_dlls, &bin_path);
 
     // Copy runtime dlls next to rustc.exe
@@ -408,7 +425,7 @@ impl Step for Rustc {
         // anything requiring us to distribute a license, but it's likely the
         // install will *also* include the rust-mingw package, which also needs
         // licenses, so to be safe we just include it here in all MinGW packages.
-        if host.ends_with("pc-windows-gnu") && builder.config.dist_include_mingw_linker {
+        if host.contains("pc-windows-gnu") && builder.config.dist_include_mingw_linker {
             runtime_dll_dist(tarball.image_dir(), host, builder);
             tarball.add_dir(builder.src.join("src/etc/third-party"), "share/doc");
         }
