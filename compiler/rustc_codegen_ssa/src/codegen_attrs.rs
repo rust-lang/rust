@@ -443,6 +443,27 @@ fn apply_overrides(tcx: TyCtxt<'_>, did: LocalDefId, codegen_fn_attrs: &mut Code
     if tcx.should_inherit_track_caller(did) {
         codegen_fn_attrs.flags |= CodegenFnAttrFlags::TRACK_CALLER;
     }
+
+    // Foreign items by default use no mangling for their symbol name.
+    if tcx.is_foreign_item(did) {
+        // There's a few exceptions to this rule though:
+        if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL) {
+            // * `#[rustc_std_internal_symbol]` mangles the symbol name in a special way
+            //   both for exports and imports through foreign items. This is handled further,
+            //   during symbol mangling logic.
+        } else if codegen_fn_attrs.link_name.is_some() {
+            // * This can be overridden with the `#[link_name]` attribute
+        } else {
+            // NOTE: there's one more exception that we cannot apply here. On wasm,
+            // some items cannot be `no_mangle`.
+            // However, we don't have enough information here to determine that.
+            // As such, no_mangle foreign items on wasm that have the same defid as some
+            // import will *still* be mangled despite this.
+            //
+            // if none of the exceptions apply; apply no_mangle
+            codegen_fn_attrs.flags |= CodegenFnAttrFlags::NO_MANGLE;
+        }
+    }
 }
 
 fn check_result(

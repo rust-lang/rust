@@ -561,7 +561,24 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         match target {
             Target::Fn
             | Target::Closure
-            | Target::Method(MethodKind::Trait { body: true } | MethodKind::Inherent) => {}
+            | Target::Method(MethodKind::Trait { body: true } | MethodKind::Inherent) => {
+                // `#[inline]` is ignored if the symbol must be codegened upstream because it's exported.
+                if let Some(did) = hir_id.as_owner()
+                    && self.tcx.def_kind(did).has_codegen_attrs()
+                    && kind != &InlineAttr::Never
+                {
+                    let attrs = self.tcx.codegen_fn_attrs(did);
+                    // Not checking naked as `#[inline]` is forbidden for naked functions anyways.
+                    if attrs.contains_extern_indicator(self.tcx, did.into()) {
+                        self.tcx.emit_node_span_lint(
+                            UNUSED_ATTRIBUTES,
+                            hir_id,
+                            attr_span,
+                            errors::InlineIgnoredForExported {},
+                        );
+                    }
+                }
+            }
             Target::Method(MethodKind::Trait { body: false }) | Target::ForeignFn => {
                 self.tcx.emit_node_span_lint(
                     UNUSED_ATTRIBUTES,
@@ -586,23 +603,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             }
             _ => {
                 self.dcx().emit_err(errors::InlineNotFnOrClosure { attr_span, defn_span });
-            }
-        }
-
-        // `#[inline]` is ignored if the symbol must be codegened upstream because it's exported.
-        if let Some(did) = hir_id.as_owner()
-            && self.tcx.def_kind(did).has_codegen_attrs()
-            && kind != &InlineAttr::Never
-        {
-            let attrs = self.tcx.codegen_fn_attrs(did);
-            // Not checking naked as `#[inline]` is forbidden for naked functions anyways.
-            if attrs.contains_extern_indicator() {
-                self.tcx.emit_node_span_lint(
-                    UNUSED_ATTRIBUTES,
-                    hir_id,
-                    attr_span,
-                    errors::InlineIgnoredForExported {},
-                );
             }
         }
     }
