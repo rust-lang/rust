@@ -324,6 +324,14 @@ pub struct EarlyParamRegion {
     pub name: Symbol,
 }
 
+impl EarlyParamRegion {
+    /// Does this early bound region have a name? Early bound regions normally
+    /// always have names except when using anonymous lifetimes (`'_`).
+    pub fn is_named(&self) -> bool {
+        self.name != kw::UnderscoreLifetime
+    }
+}
+
 impl rustc_type_ir::inherent::ParamLike for EarlyParamRegion {
     fn index(self) -> u32 {
         self.index

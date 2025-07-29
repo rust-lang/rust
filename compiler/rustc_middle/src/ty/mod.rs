@@ -49,7 +49,7 @@ use rustc_serialize::{Decodable, Encodable};
 use rustc_session::lint::LintBuffer;
 pub use rustc_session::lint::RegisteredTools;
 use rustc_span::hygiene::MacroKind;
-use rustc_span::{DUMMY_SP, ExpnId, ExpnKind, Ident, Span, Symbol, kw, sym};
+use rustc_span::{DUMMY_SP, ExpnId, ExpnKind, Ident, Span, Symbol, sym};
 pub use rustc_type_ir::data_structures::{DelayedMap, DelayedSet};
 pub use rustc_type_ir::fast_reject::DeepRejectCtxt;
 #[allow(
@@ -450,14 +450,6 @@ impl<'tcx> rustc_type_ir::Flags for Ty<'tcx> {
 
     fn outer_exclusive_binder(&self) -> DebruijnIndex {
         self.0.outer_exclusive_binder
-    }
-}
-
-impl EarlyParamRegion {
-    /// Does this early bound region have a name? Early bound regions normally
-    /// always have names except when using anonymous lifetimes (`'_`).
-    pub fn is_named(&self) -> bool {
-        self.name != kw::UnderscoreLifetime
     }
 }
 
