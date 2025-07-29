@@ -90,5 +90,20 @@ error: called `is_none()` after searching an `Iterator` with `find`
 LL |     let _ = (0..1).find(some_closure).is_none();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `!(0..1).any(some_closure)`
 
-error: aborting due to 8 previous errors
+error: called `is_some()` after searching an `Iterator` with `find`
+  --> tests/ui/search_is_some.rs:94:20
+   |
+LL |       let has_even = values
+   |  ____________________^
+LL | |
+LL | |         .iter()
+LL | |         .find(|v| match v {
+...  |
+LL | |         })
+LL | |         .is_some();
+   | |__________________^
+   |
+   = help: this is more succinctly expressed by calling `any()`
+
+error: aborting due to 9 previous errors
 

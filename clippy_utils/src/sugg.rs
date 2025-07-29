@@ -6,9 +6,9 @@ use crate::ty::expr_sig;
 use crate::{get_parent_expr_for_hir, higher};
 use rustc_ast::ast;
 use rustc_ast::util::parser::AssocOp;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
-use rustc_hir as hir;
-use rustc_hir::{Closure, ExprKind, HirId, MutTy, TyKind};
+use rustc_hir::{self as hir, Closure, ExprKind, HirId, MutTy, Node, TyKind};
 use rustc_hir_typeck::expr_use_visitor::{Delegate, ExprUseVisitor, PlaceBase, PlaceWithHirId};
 use rustc_lint::{EarlyContext, LateContext, LintContext};
 use rustc_middle::hir::place::ProjectionKind;
@@ -753,8 +753,10 @@ pub fn deref_closure_args(cx: &LateContext<'_>, closure: &hir::Expr<'_>) -> Opti
         let mut visitor = DerefDelegate {
             cx,
             closure_span: closure.span,
+            closure_arg_id: closure_body.params[0].pat.hir_id,
             closure_arg_is_type_annotated_double_ref,
             next_pos: closure.span.lo(),
+            checked_borrows: FxHashSet::default(),
             suggestion_start: String::new(),
             applicability: Applicability::MachineApplicable,
         };
@@ -780,10 +782,15 @@ struct DerefDelegate<'a, 'tcx> {
     cx: &'a LateContext<'tcx>,
     /// The span of the input closure to adapt
     closure_span: Span,
+    /// The `hir_id` of the closure argument being checked
+    closure_arg_id: HirId,
     /// Indicates if the arg of the closure is a type annotated double reference
     closure_arg_is_type_annotated_double_ref: bool,
     /// last position of the span to gradually build the suggestion
     next_pos: BytePos,
+    /// `hir_id`s that has been checked. This is used to avoid checking the same `hir_id` multiple
+    /// times when inside macro expansions.
+    checked_borrows: FxHashSet<HirId>,
     /// starting part of the gradually built suggestion
     suggestion_start: String,
     /// confidence on the built suggestion
@@ -847,9 +854,15 @@ impl<'tcx> Delegate<'tcx> for DerefDelegate<'_, 'tcx> {
 
     fn use_cloned(&mut self, _: &PlaceWithHirId<'tcx>, _: HirId) {}
 
+    #[expect(clippy::too_many_lines)]
     fn borrow(&mut self, cmt: &PlaceWithHirId<'tcx>, _: HirId, _: ty::BorrowKind) {
         if let PlaceBase::Local(id) = cmt.place.base {
             let span = self.cx.tcx.hir_span(cmt.hir_id);
+            if !self.checked_borrows.insert(cmt.hir_id) {
+                // already checked this span and hir_id, skip
+                return;
+            }
+
             let start_span = Span::new(self.next_pos, span.lo(), span.ctxt(), None);
             let mut start_snip = snippet_with_applicability(self.cx, start_span, "..", &mut self.applicability);
 
@@ -858,7 +871,12 @@ impl<'tcx> Delegate<'tcx> for DerefDelegate<'_, 'tcx> {
             // full identifier that includes projection (i.e.: `fp.field`)
             let ident_str_with_proj = snippet(self.cx, span, "..").to_string();
 
-            if cmt.place.projections.is_empty() {
+            // Make sure to get in all projections if we're on a `matches!`
+            if let Node::Pat(pat) = self.cx.tcx.hir_node(id)
+                && pat.hir_id != self.closure_arg_id
+            {
+                let _ = write!(self.suggestion_start, "{start_snip}{ident_str_with_proj}");
+            } else if cmt.place.projections.is_empty() {
                 // handle item without any projection, that needs an explicit borrowing
                 // i.e.: suggest `&x` instead of `x`
                 let _: fmt::Result = write!(self.suggestion_start, "{start_snip}&{ident_str}");
