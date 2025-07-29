@@ -673,21 +673,6 @@ impl<'tcx> TermKind<'tcx> {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
-pub enum ParamTerm {
-    Ty(ParamTy),
-    Const(ParamConst),
-}
-
-impl ParamTerm {
-    pub fn index(self) -> usize {
-        match self {
-            ParamTerm::Ty(ty) => ty.index as usize,
-            ParamTerm::Const(ct) => ct.index as usize,
-        }
-    }
-}
-
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
 pub enum TermVid {
     Ty(ty::TyVid),
