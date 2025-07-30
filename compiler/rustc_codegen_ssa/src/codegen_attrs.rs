@@ -527,14 +527,14 @@ fn handle_lang_items(
     attrs: &[Attribute],
     codegen_fn_attrs: &mut CodegenFnAttrs,
 ) {
+    let lang_item = lang_items::extract(attrs).and_then(|(name, _)| LangItem::from_name(name));
+
     // Weak lang items have the same semantics as "std internal" symbols in the
     // sense that they're preserved through all our LTO passes and only
     // strippable by the linker.
     //
     // Additionally weak lang items have predetermined symbol names.
-    if let Some((name, _)) = lang_items::extract(attrs)
-        && let Some(lang_item) = LangItem::from_name(name)
-    {
+    if let Some(lang_item) = lang_item {
         if WEAK_LANG_ITEMS.contains(&lang_item) {
             codegen_fn_attrs.flags |= CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL;
         }
@@ -548,8 +548,6 @@ fn handle_lang_items(
     if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL)
         && codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::NO_MANGLE)
     {
-        let lang_item =
-            lang_items::extract(attrs).map_or(None, |(name, _span)| LangItem::from_name(name));
         let mut err = tcx
             .dcx()
             .struct_span_err(
