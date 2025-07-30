@@ -17,19 +17,14 @@ fn primal(x: f32, y: f32) -> f64 {
     (x * x * y) as f64
 }
 
-// CHECK: define internal fastcc { double, float, float } @diffeprimal(float noundef %x, float noundef %y)
-// CHECK-NEXT: invertstart:
-// CHECK-NEXT: %_4 = fmul float %x, %x
-// CHECK-NEXT: %_3 = fmul float %_4, %y
-// CHECK-NEXT: %_0 = fpext float %_3 to double
-// CHECK-NEXT: %0 = fadd fast float %y, %y
-// CHECK-NEXT: %1 = fmul fast float %0, %x
-// CHECK-NEXT: %2 = insertvalue { double, float, float } undef, double %_0, 0
-// CHECK-NEXT: %3 = insertvalue { double, float, float } %2, float %1, 1
-// CHECK-NEXT: %4 = insertvalue { double, float, float } %3, float %_4, 2
-// CHECK-NEXT: ret { double, float, float } %4
-// CHECK-NEXT: }
-
+// CHECK: %_4.i = fmul float %x, %x
+// CHECK-NEXT: %_3.i = fmul float %_4.i, %y
+// CHECK-NEXT: %_0.i = fpext float %_3.i to double
+// CHECK-NEXT: %3 = fadd fast float %y, %y
+// CHECK-NEXT: %4 = fmul fast float %3, %x
+// CHECK-NEXT: store double %_0.i, ptr %r1, align 8
+// CHECK-NEXT: store float %4, ptr %r2, align 4
+// CHECK-NEXT: store float %_4.i, ptr %r3, align 4
 fn main() {
     let x = std::hint::black_box(3.0);
     let y = std::hint::black_box(2.5);

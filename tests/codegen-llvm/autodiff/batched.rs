@@ -21,74 +21,39 @@ fn square(x: &f32) -> f32 {
     x * x
 }
 
-// d_square2
-// CHECK: define internal fastcc [4 x float] @fwddiffe4square(float %x.0.val, [4 x ptr] %"x'")
-// CHECK-NEXT: start:
-// CHECK-NEXT:   %0 = extractvalue [4 x ptr] %"x'", 0
-// CHECK-NEXT:   %"_2'ipl" = load float, ptr %0, align 4
-// CHECK-NEXT:   %1 = extractvalue [4 x ptr] %"x'", 1
-// CHECK-NEXT:   %"_2'ipl1" = load float, ptr %1, align 4
-// CHECK-NEXT:   %2 = extractvalue [4 x ptr] %"x'", 2
-// CHECK-NEXT:   %"_2'ipl2" = load float, ptr %2, align 4
-// CHECK-NEXT:   %3 = extractvalue [4 x ptr] %"x'", 3
-// CHECK-NEXT:   %"_2'ipl3" = load float, ptr %3, align 4
-// CHECK-NEXT:   %4 = fadd fast float %"_2'ipl", %"_2'ipl"
-// CHECK-NEXT:   %5 = fmul fast float %4, %x.0.val
-// CHECK-NEXT:   %6 = insertvalue [4 x float] undef, float %5, 0
-// CHECK-NEXT:   %7 = fadd fast float %"_2'ipl1", %"_2'ipl1"
-// CHECK-NEXT:   %8 = fmul fast float %7, %x.0.val
-// CHECK-NEXT:   %9 = insertvalue [4 x float] %6, float %8, 1
-// CHECK-NEXT:   %10 = fadd fast float %"_2'ipl2", %"_2'ipl2"
-// CHECK-NEXT:   %11 = fmul fast float %10, %x.0.val
-// CHECK-NEXT:   %12 = insertvalue [4 x float] %9, float %11, 2
-// CHECK-NEXT:   %13 = fadd fast float %"_2'ipl3", %"_2'ipl3"
-// CHECK-NEXT:   %14 = fmul fast float %13, %x.0.val
-// CHECK-NEXT:   %15 = insertvalue [4 x float] %12, float %14, 3
-// CHECK-NEXT:   ret [4 x float] %15
-// CHECK-NEXT:   }
-
-// d_square3, the extra float is the original return value (x * x)
-// CHECK: define internal fastcc { float, [4 x float] } @fwddiffe4square.1(float %x.0.val, [4 x ptr] %"x'")
-// CHECK-NEXT: start:
-// CHECK-NEXT:   %0 = extractvalue [4 x ptr] %"x'", 0
-// CHECK-NEXT:   %"_2'ipl" = load float, ptr %0, align 4
-// CHECK-NEXT:   %1 = extractvalue [4 x ptr] %"x'", 1
-// CHECK-NEXT:   %"_2'ipl1" = load float, ptr %1, align 4
-// CHECK-NEXT:   %2 = extractvalue [4 x ptr] %"x'", 2
-// CHECK-NEXT:   %"_2'ipl2" = load float, ptr %2, align 4
-// CHECK-NEXT:   %3 = extractvalue [4 x ptr] %"x'", 3
-// CHECK-NEXT:   %"_2'ipl3" = load float, ptr %3, align 4
-// CHECK-NEXT:   %_0 = fmul float %x.0.val, %x.0.val
-// CHECK-NEXT:   %4 = fadd fast float %"_2'ipl", %"_2'ipl"
-// CHECK-NEXT:   %5 = fmul fast float %4, %x.0.val
-// CHECK-NEXT:   %6 = insertvalue [4 x float] undef, float %5, 0
-// CHECK-NEXT:   %7 = fadd fast float %"_2'ipl1", %"_2'ipl1"
-// CHECK-NEXT:   %8 = fmul fast float %7, %x.0.val
-// CHECK-NEXT:   %9 = insertvalue [4 x float] %6, float %8, 1
-// CHECK-NEXT:   %10 = fadd fast float %"_2'ipl2", %"_2'ipl2"
-// CHECK-NEXT:   %11 = fmul fast float %10, %x.0.val
-// CHECK-NEXT:   %12 = insertvalue [4 x float] %9, float %11, 2
-// CHECK-NEXT:   %13 = fadd fast float %"_2'ipl3", %"_2'ipl3"
-// CHECK-NEXT:   %14 = fmul fast float %13, %x.0.val
-// CHECK-NEXT:   %15 = insertvalue [4 x float] %12, float %14, 3
-// CHECK-NEXT:   %16 = insertvalue { float, [4 x float] } undef, float %_0, 0
-// CHECK-NEXT:   %17 = insertvalue { float, [4 x float] } %16, [4 x float] %15, 1
-// CHECK-NEXT:   ret { float, [4 x float] } %17
-// CHECK-NEXT:   }
-
 fn main() {
     let x = std::hint::black_box(3.0);
+
+    // square(&x)
+    // CHECK: %_0.i = fmul float %_2.i, %_2.i
+    // CHECK-NEXT: store float %_0.i, ptr %output, align 4
     let output = square(&x);
     dbg!(&output);
     assert_eq!(9.0, output);
+
+    // square(&x)
+    // CHECK: %_2.i26 = load float, ptr %x, align 4
+    // CHECK-NEXT: %_0.i27 = fmul float %_2.i26, %_2.i26
     dbg!(square(&x));
 
     let mut df_dx1 = 1.0;
     let mut df_dx2 = 2.0;
     let mut df_dx3 = 3.0;
     let mut df_dx4 = 0.0;
+
+    // [o1, o2, o3, o4] (o4 is being optimized away as its smth * 0.0)
+    // CHECK: %x.val = load float, ptr %x, align 4
+    // CHECK-NEXT: %13 = fmul fast float %x.val, 2.000000e+00
+    // CHECK-NEXT: %14 = fmul fast float %x.val, 4.000000e+00
+    // CHECK-NEXT: %15 = fmul fast float %x.val, 6.000000e+00
     let [o1, o2, o3, o4] = d_square2(&x, &mut df_dx1, &mut df_dx2, &mut df_dx3, &mut df_dx4);
     dbg!(o1, o2, o3, o4);
+
+    // [output2, o1, o2, o3, o4] (o4 is being optimized away as its smth * 0.0)
+    // CHECK: %_0.i45 = fmul float %x.val35, %x.val35
+    // CHECK-NEXT: %40 = fmul fast float %x.val35, 2.000000e+00
+    // CHECK-NEXT: %41 = fmul fast float %x.val35, 4.000000e+00
+    // CHECK-NEXT: %42 = fmul fast float %x.val35, 6.000000e+00
     let [output2, o1, o2, o3, o4] =
         d_square1(&x, &mut df_dx1, &mut df_dx2, &mut df_dx3, &mut df_dx4);
     dbg!(o1, o2, o3, o4);
@@ -101,8 +66,22 @@ fn main() {
     assert_eq!(2.0, df_dx2);
     assert_eq!(3.0, df_dx3);
     assert_eq!(0.0, df_dx4);
+
+    // d_square3(&x, &mut df_dx1)
+    // CHECK: %x.val39 = load float, ptr %x, align 4
+    // CHECK-NEXT: %72 = fmul fast float %x.val39, 2.000000e+00
     assert_eq!(d_square3(&x, &mut df_dx1), 2.0 * o1);
+
+    // d_square3(&x, &mut df_dx2)
+    // CHECK: %74 = fmul fast float %x.val39, 4.000000e+00
+    // CHECK-NEXT: store float %74, ptr %_191, align 4
     assert_eq!(d_square3(&x, &mut df_dx2), 2.0 * o2);
+
+    // d_square3(&x, &mut df_dx3)
+    // CHECK: %76 = fmul fast float %x.val39, 6.000000e+00
+    // CHECK-NEXT: store float %76, ptr %_200, align 4
     assert_eq!(d_square3(&x, &mut df_dx3), 2.0 * o3);
+
+    // d_square3(&x, &mut df_dx3) is being optimized away as it's smth * 0.0
     assert_eq!(d_square3(&x, &mut df_dx4), 2.0 * o4);
 }

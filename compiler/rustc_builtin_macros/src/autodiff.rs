@@ -348,28 +348,10 @@ mod llvm_enzyme {
         let mut rustc_ad_attr =
             P(ast::NormalAttr::from_ident(Ident::with_dummy_span(sym::rustc_autodiff)));
 
-        let ts2: Vec<TokenTree> = vec![TokenTree::Token(
-            Token::new(TokenKind::Ident(sym::never, false.into()), span),
-            Spacing::Joint,
-        )];
-        let never_arg = ast::DelimArgs {
-            dspan: DelimSpan::from_single(span),
-            delim: ast::token::Delimiter::Parenthesis,
-            tokens: TokenStream::from_iter(ts2),
-        };
-        let inline_item = ast::AttrItem {
-            unsafety: ast::Safety::Default,
-            path: ast::Path::from_ident(Ident::with_dummy_span(sym::inline)),
-            args: ast::AttrArgs::Delimited(never_arg),
-            tokens: None,
-        };
-        let inline_never_attr = P(ast::NormalAttr { item: inline_item, tokens: None });
         let new_id = ecx.sess.psess.attr_id_generator.mk_attr_id();
         let attr = outer_normal_attr(&rustc_ad_attr, new_id, span);
-        let new_id = ecx.sess.psess.attr_id_generator.mk_attr_id();
-        let inline_never = outer_normal_attr(&inline_never_attr, new_id, span);
 
-        // We're avoid duplicating the attributes `#[rustc_autodiff]` and `#[inline(never)]`.
+        // We're avoid duplicating the attribute `#[rustc_autodiff]`.
         fn same_attribute(attr: &ast::AttrKind, item: &ast::AttrKind) -> bool {
             match (attr, item) {
                 (ast::AttrKind::Normal(a), ast::AttrKind::Normal(b)) => {
@@ -388,17 +370,11 @@ mod llvm_enzyme {
                 if !iitem.attrs.iter().any(|a| same_attribute(&a.kind, &attr.kind)) {
                     iitem.attrs.push(attr);
                 }
-                if !iitem.attrs.iter().any(|a| same_attribute(&a.kind, &inline_never.kind)) {
-                    iitem.attrs.push(inline_never.clone());
-                }
                 Annotatable::Item(iitem.clone())
             }
             Annotatable::AssocItem(ref mut assoc_item, i @ Impl { .. }) => {
                 if !assoc_item.attrs.iter().any(|a| same_attribute(&a.kind, &attr.kind)) {
                     assoc_item.attrs.push(attr);
-                }
-                if !assoc_item.attrs.iter().any(|a| same_attribute(&a.kind, &inline_never.kind)) {
-                    assoc_item.attrs.push(inline_never.clone());
                 }
                 Annotatable::AssocItem(assoc_item.clone(), i)
             }
@@ -407,10 +383,6 @@ mod llvm_enzyme {
                     ast::StmtKind::Item(ref mut iitem) => {
                         if !iitem.attrs.iter().any(|a| same_attribute(&a.kind, &attr.kind)) {
                             iitem.attrs.push(attr);
-                        }
-                        if !iitem.attrs.iter().any(|a| same_attribute(&a.kind, &inline_never.kind))
-                        {
-                            iitem.attrs.push(inline_never.clone());
                         }
                     }
                     _ => unreachable!("stmt kind checked previously"),

@@ -26,7 +26,6 @@ trait MyTrait {
 
 impl MyTrait for Foo {
     #[rustc_autodiff]
-    #[inline(never)]
     fn f(&self, x: f64) -> f64 {
         self.a * 0.25 * (x * x - 1.0 - 2.0 * x.ln())
     }

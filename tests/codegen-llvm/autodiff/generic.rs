@@ -10,23 +10,13 @@ fn square<T: std::ops::Mul<Output = T> + Copy>(x: &T) -> T {
     *x * *x
 }
 
-// Ensure that `d_square::<f32>` code is generated
+// Ensure that `square::<f32>` code is generated
 //
-// CHECK: ; generic::square
-// CHECK-NEXT: ; Function Attrs: {{.*}}
-// CHECK-NEXT: define internal {{.*}} float
-// CHECK-NEXT: start:
-// CHECK-NOT: ret
-// CHECK: fmul float
+// CHECK: %1 = fmul float %xf32, %xf32
 
 // Ensure that `d_square::<f64>` code is generated even if `square::<f64>` was never called
 //
-// CHECK: ; generic::square
-// CHECK-NEXT: ; Function Attrs:
-// CHECK-NEXT: define internal {{.*}} double
-// CHECK-NEXT: start:
-// CHECK-NOT: ret
-// CHECK: fmul double
+// CHECK: define internal { double } @diffe_ZN7generic6square17he5c855620985cd59E
 
 fn main() {
     let xf32: f32 = std::hint::black_box(3.0);

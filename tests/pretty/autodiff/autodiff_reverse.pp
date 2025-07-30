@@ -16,7 +16,6 @@ extern crate std;
 use std::autodiff::autodiff_reverse;
 
 #[rustc_autodiff]
-#[inline(never)]
 pub fn f1(x: &[f64], y: f64) -> f64 {
 
     // Not the most interesting derivative, but who are we to judge
@@ -33,12 +32,10 @@ pub fn df1(x: &[f64], dx_0: &mut [f64], y: f64, dret: f64) -> f64 {
     ::core::intrinsics::enzyme_autodiff(f1::<>, df1::<>, (x, dx_0, y, dret))
 }
 #[rustc_autodiff]
-#[inline(never)]
 pub fn f2() {}
 #[rustc_autodiff(Reverse, 1, None)]
 pub fn df2() { ::core::intrinsics::enzyme_autodiff(f2::<>, df2::<>, ()) }
 #[rustc_autodiff]
-#[inline(never)]
 pub fn f3(x: &[f64], y: f64) -> f64 {
     ::core::panicking::panic("not implemented")
 }
@@ -49,14 +46,12 @@ pub fn df3(x: &[f64], dx_0: &mut [f64], y: f64, dret: f64) -> f64 {
 enum Foo { Reverse, }
 use Foo::Reverse;
 #[rustc_autodiff]
-#[inline(never)]
 pub fn f4(x: f32) { ::core::panicking::panic("not implemented") }
 #[rustc_autodiff(Reverse, 1, Const, None)]
 pub fn df4(x: f32) {
     ::core::intrinsics::enzyme_autodiff(f4::<>, df4::<>, (x,))
 }
 #[rustc_autodiff]
-#[inline(never)]
 pub fn f5(x: *const f32, y: &f32) {
     ::core::panicking::panic("not implemented")
 }
