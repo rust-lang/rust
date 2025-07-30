@@ -533,7 +533,7 @@ impl ProcMacroExpander for Expander {
             current_dir,
         ) {
             Ok(Ok(subtree)) => Ok(subtree),
-            Ok(Err(err)) => Err(ProcMacroExpansionError::Panic(err.0)),
+            Ok(Err(err)) => Err(ProcMacroExpansionError::Panic(err)),
             Err(err) => Err(ProcMacroExpansionError::System(err.to_string())),
         }
     }

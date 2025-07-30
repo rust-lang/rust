@@ -41,9 +41,11 @@ use std::{
 };
 
 use paths::{Utf8Path, Utf8PathBuf};
-use span::{Span, TokenId};
+use span::Span;
 
 use crate::server_impl::TokenStream;
+
+pub use crate::server_impl::token_id::SpanId;
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
 pub enum ProcMacroKind {
@@ -159,8 +161,8 @@ pub trait ProcMacroSrvSpan: Copy + Send {
     fn make_server(call_site: Self, def_site: Self, mixed_site: Self) -> Self::Server;
 }
 
-impl ProcMacroSrvSpan for TokenId {
-    type Server = server_impl::token_id::TokenIdServer;
+impl ProcMacroSrvSpan for SpanId {
+    type Server = server_impl::token_id::SpanIdServer;
 
     fn make_server(call_site: Self, def_site: Self, mixed_site: Self) -> Self::Server {
         Self::Server { call_site, def_site, mixed_site }

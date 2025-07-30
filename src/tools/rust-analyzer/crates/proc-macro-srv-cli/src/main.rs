@@ -9,6 +9,7 @@ extern crate rustc_driver as _;
 
 #[cfg(any(feature = "sysroot-abi", rust_analyzer))]
 mod main_loop;
+use clap::{Command, ValueEnum};
 #[cfg(any(feature = "sysroot-abi", rust_analyzer))]
 use main_loop::run;
 
@@ -23,12 +24,46 @@ fn main() -> std::io::Result<()> {
         );
         std::process::exit(122);
     }
+    let matches = Command::new("proc-macro-srv")
+        .args(&[clap::Arg::new("format")
+            .long("format")
+            .action(clap::ArgAction::Set)
+            .default_value("json")
+            .value_parser(clap::builder::EnumValueParser::<ProtocolFormat>::new())])
+        .get_matches();
+    let &format =
+        matches.get_one::<ProtocolFormat>("format").expect("format value should always be present");
+    run(format)
+}
 
-    run()
+#[derive(Copy, Clone)]
+enum ProtocolFormat {
+    Json,
+    Postcard,
+}
+
+impl ValueEnum for ProtocolFormat {
+    fn value_variants<'a>() -> &'a [Self] {
+        &[ProtocolFormat::Json]
+    }
+
+    fn to_possible_value(&self) -> Option<clap::builder::PossibleValue> {
+        match self {
+            ProtocolFormat::Json => Some(clap::builder::PossibleValue::new("json")),
+            ProtocolFormat::Postcard => Some(clap::builder::PossibleValue::new("postcard")),
+        }
+    }
+    fn from_str(input: &str, _ignore_case: bool) -> Result<Self, String> {
+        match input {
+            "json" => Ok(ProtocolFormat::Json),
+            "postcard" => Ok(ProtocolFormat::Postcard),
+            _ => Err(format!("unknown protocol format: {input}")),
+        }
+    }
 }
 
 #[cfg(not(any(feature = "sysroot-abi", rust_analyzer)))]
-fn run() -> std::io::Result<()> {
+fn run(_: ProtocolFormat) -> std::io::Result<()> {
     Err(std::io::Error::new(
         std::io::ErrorKind::Unsupported,
         "proc-macro-srv-cli needs to be compiled with the `sysroot-abi` feature to function"
