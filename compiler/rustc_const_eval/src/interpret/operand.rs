@@ -213,7 +213,23 @@ impl<Prov: Provenance> std::fmt::Display for ImmTy<'_, Prov> {
                     write!(f, "{:x}: {}", s, self.layout.ty)
                 }
                 Immediate::ScalarPair(a, b) => {
-                    // FIXME(oli-obk): at least print tuples and slices nicely
+                    // Try to print slices nicely first
+                    // It's *only* printed for internal debugging
+                    if let Some(ty) = tcx.lift(self.layout.ty)
+                        && let ty::Slice(element_ty) = ty.kind()
+                    {
+                        // For slices, the first scalar is the pointer, second is the length
+                        let ptr_str = FmtPrinter::print_string(tcx, Namespace::ValueNS, |cx| {
+                            p(cx, a, Ty::new_ptr(tcx, *element_ty, ty::Mutability::Not))
+                        })?;
+                        let len_str = FmtPrinter::print_string(tcx, Namespace::ValueNS, |cx| {
+                            p(cx, b, tcx.types.usize)
+                        })?;
+
+                        write!(f, "&[{}; {}]: {}", ptr_str, len_str, ty)?;
+                        return Ok(());
+                    }
+                    // Fallback to the original format if we can't pretty print
                     write!(f, "({:x}, {:x}): {}", a, b, self.layout.ty)
                 }
                 Immediate::Uninit => {
