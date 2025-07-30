@@ -38,6 +38,7 @@ use crate::core::config::toml::TomlConfig;
 use crate::core::config::toml::build::{Build, Tool};
 use crate::core::config::toml::change_id::ChangeId;
 use crate::core::config::toml::dist::Dist;
+use crate::core::config::toml::install::Install;
 use crate::core::config::toml::rust::{
     LldMode, RustOptimize, check_incompatible_options_for_ci_rustc, validate_codegen_backends,
 };
@@ -906,7 +907,16 @@ impl Config {
         // Verbose flag is a good default for `rust.verbose-tests`.
         config.verbose_tests = config.is_verbose();
 
-        config.apply_install_config(toml.install);
+        if let Some(install) = toml.install {
+            let Install { prefix, sysconfdir, docdir, bindir, libdir, mandir, datadir } = install;
+            config.prefix = prefix.map(PathBuf::from);
+            config.sysconfdir = sysconfdir.map(PathBuf::from);
+            config.datadir = datadir.map(PathBuf::from);
+            config.docdir = docdir.map(PathBuf::from);
+            set(&mut config.bindir, bindir.map(PathBuf::from));
+            config.libdir = libdir.map(PathBuf::from);
+            config.mandir = mandir.map(PathBuf::from);
+        }
 
         let file_content = t!(fs::read_to_string(config.src.join("src/ci/channel")));
         let ci_channel = file_content.trim_end();
