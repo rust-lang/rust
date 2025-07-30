@@ -723,8 +723,8 @@ impl Step for CompiletestTest {
         let mut cargo = tool::prepare_tool_cargo(
             builder,
             compiler,
-            // compiletest uses libtest internals; make it use the in-tree std to make sure it never breaks
-            // when std sources change.
+            // compiletest uses libtest internals; make it use the in-tree std to make sure it never
+            // breaks when std sources change.
             Mode::ToolStd,
             host,
             Kind::Test,
@@ -1612,12 +1612,11 @@ impl Step for Compiletest {
             return;
         }
 
-        if builder.top_stage == 0 && env::var("COMPILETEST_FORCE_STAGE0").is_err() {
+        if builder.top_stage == 0 && !builder.config.compiletest_allow_stage0 {
             eprintln!("\
 ERROR: `--stage 0` runs compiletest on the stage0 (precompiled) compiler, not your local changes, and will almost always cause tests to fail
-HELP: to test the compiler, use `--stage 1` instead
-HELP: to test the standard library, use `--stage 0 library/std` instead
-NOTE: if you're sure you want to do this, please open an issue as to why. In the meantime, you can override this with `COMPILETEST_FORCE_STAGE0=1`."
+HELP: to test the compiler or standard library, omit the stage or explicitly use `--stage 1` instead
+NOTE: if you're sure you want to do this, please open an issue as to why. In the meantime, you can override this with `--set build.compiletest-allow-stage0=true`."
             );
             crate::exit!(1);
         }
