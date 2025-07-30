@@ -50,7 +50,7 @@ where
 
     fn trait_ref(self, cx: I) -> ty::TraitRef<I>;
 
-    fn with_self_ty(self, cx: I, self_ty: I::Ty) -> Self;
+    fn with_replaced_self_ty(self, cx: I, self_ty: I::Ty) -> Self;
 
     fn trait_def_id(self, cx: I) -> I::DefId;
 
@@ -376,8 +376,8 @@ where
             return self.forced_ambiguity(MaybeCause::Ambiguity).into_iter().collect();
         }
 
-        let goal: Goal<I, G> =
-            goal.with(self.cx(), goal.predicate.with_self_ty(self.cx(), normalized_self_ty));
+        let goal: Goal<I, G> = goal
+            .with(self.cx(), goal.predicate.with_replaced_self_ty(self.cx(), normalized_self_ty));
         // Vars that show up in the rest of the goal substs may have been constrained by
         // normalizing the self type as well, since type variables are not uniquified.
         let goal = self.resolve_vars_if_possible(goal);

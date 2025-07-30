@@ -581,7 +581,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         let trait_args = trait_ref
             .instantiate_identity()
             // Replace the explicit self type with `Self` for better suggestion rendering
-            .with_self_ty(self.tcx, Ty::new_param(self.tcx, 0, kw::SelfUpper))
+            .with_replaced_self_ty(self.tcx, Ty::new_param(self.tcx, 0, kw::SelfUpper))
             .args;
         let trait_item_args = ty::GenericArgs::identity_for_item(self.tcx, impl_item_def_id)
             .rebase_onto(self.tcx, impl_def_id, trait_args);

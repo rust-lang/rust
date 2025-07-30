@@ -99,8 +99,8 @@ where
         self.alias.trait_ref(cx)
     }
 
-    fn with_self_ty(self, cx: I, self_ty: I::Ty) -> Self {
-        self.with_self_ty(cx, self_ty)
+    fn with_replaced_self_ty(self, cx: I, self_ty: I::Ty) -> Self {
+        self.with_replaced_self_ty(cx, self_ty)
     }
 
     fn trait_def_id(self, cx: I) -> I::DefId {
