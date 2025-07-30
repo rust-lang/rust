@@ -59,7 +59,7 @@ use core::cmp::Ordering;
 use core::hash::{Hash, Hasher};
 #[cfg(not(no_global_oom_handling))]
 use core::iter;
-use core::marker::PhantomData;
+use core::marker::{PhantomData, Move};
 use core::mem::{self, ManuallyDrop, MaybeUninit, SizedTypeProperties};
 use core::ops::{self, Index, IndexMut, Range, RangeBounds};
 use core::ptr::{self, NonNull};
@@ -3907,6 +3907,9 @@ unsafe impl<#[may_dangle] T, A: Allocator> Drop for Vec<T, A> {
         // RawVec handles deallocation
     }
 }
+
+#[unstable(feature = "move_trait", issue = "none")]
+unsafe impl<T> Move for Vec<T> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_default", issue = "143894")]

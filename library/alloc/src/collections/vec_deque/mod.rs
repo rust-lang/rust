@@ -3025,6 +3025,9 @@ impl<T, A: Allocator> IndexMut<usize> for VecDeque<T, A> {
     }
 }
 
+#[unstable(feature = "move_trait", issue = "none")]
+unsafe impl<T, A: Allocator> core::marker::Move for VecDeque<T, A> {}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> FromIterator<T> for VecDeque<T> {
     #[track_caller]

@@ -190,6 +190,9 @@ unsafe impl<#[may_dangle] K, #[may_dangle] V, A: Allocator + Clone> Drop for BTr
     }
 }
 
+#[unstable(feature = "move_trait", issue = "none")]
+unsafe impl<K, V, A: Allocator + Clone> core::marker::Move for BTreeMap<K, V, A> {}
+
 // FIXME: This implementation is "wrong", but changing it would be a breaking change.
 // (The bounds of the automatic `UnwindSafe` implementation have been like this since Rust 1.50.)
 // Maybe we can fix it nonetheless with a crater run, or if the `UnwindSafe`

@@ -1046,6 +1046,14 @@ where
 {
 }
 
+#[unstable(feature = "move_trait", issue = "none")]
+unsafe impl<T, S> core::marker::Move for HashSet<T, S>
+where
+    T: Eq + Hash,
+    S: BuildHasher,
+{
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T, S> fmt::Debug for HashSet<T, S>
 where

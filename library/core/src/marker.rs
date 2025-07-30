@@ -1366,3 +1366,19 @@ pub macro CoercePointee($item:item) {
 pub trait CoercePointeeValidated {
     /* compiler built-in */
 }
+
+/// Types that do not require a stable memory address, and so can be freely
+/// `move`d.
+#[unstable(feature = "move_trait", issue = "none")]
+pub unsafe auto trait Move {
+    // empty.
+}
+marker_impls! {
+    #[unstable(feature = "move_trait", issue = "none")]
+    unsafe Move for
+        {T: ?Sized} PhantomData<T>,
+        {T: ?Sized} *const T,
+        {T: ?Sized} *mut T,
+        {T: ?Sized} &T,
+        {T: ?Sized} &mut T,
+}
