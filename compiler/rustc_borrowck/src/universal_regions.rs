@@ -969,13 +969,28 @@ fn for_each_late_bound_region_in_item<'tcx>(
     mir_def_id: LocalDefId,
     mut f: impl FnMut(ty::Region<'tcx>),
 ) {
-    if !tcx.def_kind(mir_def_id).is_fn_like() {
-        return;
-    }
+    let bound_vars = match tcx.def_kind(mir_def_id) {
+        DefKind::Fn | DefKind::AssocFn => {
+            tcx.late_bound_vars(tcx.local_def_id_to_hir_id(mir_def_id))
+        }
+        // We extract the bound vars from the deduced closure signature, since we may have
+        // only deduced that a param in the closure signature is late-bound from a constraint
+        // that we discover during typeck.
+        DefKind::Closure => {
+            let ty = tcx.type_of(mir_def_id).instantiate_identity();
+            match *ty.kind() {
+                ty::Closure(_, args) => args.as_closure().sig().bound_vars(),
+                ty::CoroutineClosure(_, args) => {
+                    args.as_coroutine_closure().coroutine_closure_sig().bound_vars()
+                }
+                ty::Coroutine(_, _) | ty::Error(_) => return,
+                _ => unreachable!("unexpected type for closure: {ty}"),
+            }
+        }
+        _ => return,
+    };
 
-    for (idx, bound_var) in
-        tcx.late_bound_vars(tcx.local_def_id_to_hir_id(mir_def_id)).iter().enumerate()
-    {
+    for (idx, bound_var) in bound_vars.iter().enumerate() {
         if let ty::BoundVariableKind::Region(kind) = bound_var {
             let kind = ty::LateParamRegionKind::from_bound(ty::BoundVar::from_usize(idx), kind);
             let liberated_region = ty::Region::new_late_param(tcx, mir_def_id.to_def_id(), kind);

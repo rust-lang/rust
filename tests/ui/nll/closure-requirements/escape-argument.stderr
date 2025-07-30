@@ -9,6 +9,8 @@ LL |         let mut closure = expect_sig(|p, y| *p = y);
                for<Region(BrAnon), Region(BrAnon)> extern "rust-call" fn((&'^0 mut &'^1 i32, &'^1 i32)),
                (),
            ]
+   = note: late-bound region is '?1
+   = note: late-bound region is '?2
 
 note: no external requirements
   --> $DIR/escape-argument.rs:20:1
