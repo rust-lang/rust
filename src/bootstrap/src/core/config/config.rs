@@ -454,9 +454,7 @@ impl Config {
         } = flags;
 
         let mut config = Config::default_opts();
-        let mut exec_ctx = ExecutionContext::new();
-        exec_ctx.set_verbose(flags_verbose);
-        exec_ctx.set_fail_fast(flags_cmd.fail_fast());
+        let exec_ctx = ExecutionContext::new(flags_verbose, flags_cmd.fail_fast());
 
         config.exec_ctx = exec_ctx;
 

@@ -550,7 +550,7 @@ impl Default for CommandOutput {
 #[derive(Clone, Default)]
 pub struct ExecutionContext {
     dry_run: DryRun,
-    verbose: u8,
+    verbosity: u8,
     pub fail_fast: bool,
     delayed_failures: Arc<Mutex<Vec<String>>>,
     command_cache: Arc<CommandCache>,
@@ -603,8 +603,8 @@ impl CommandCache {
 }
 
 impl ExecutionContext {
-    pub fn new() -> Self {
-        ExecutionContext::default()
+    pub fn new(verbosity: u8, fail_fast: bool) -> Self {
+        Self { verbosity, fail_fast, ..Default::default() }
     }
 
     pub fn dry_run(&self) -> bool {
@@ -629,7 +629,7 @@ impl ExecutionContext {
     }
 
     pub fn is_verbose(&self) -> bool {
-        self.verbose > 0
+        self.verbosity > 0
     }
 
     pub fn fail_fast(&self) -> bool {
@@ -641,7 +641,7 @@ impl ExecutionContext {
     }
 
     pub fn set_verbose(&mut self, value: u8) {
-        self.verbose = value;
+        self.verbosity = value;
     }
 
     pub fn set_fail_fast(&mut self, value: bool) {
