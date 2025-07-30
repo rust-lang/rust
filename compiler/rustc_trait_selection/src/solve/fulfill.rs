@@ -241,6 +241,17 @@ where
 
                 match certainty {
                     Certainty::Yes => {
+                        // Goals may depend on structural identity. Region uniquification at the
+                        // start of MIR borrowck may cause things to no longer be so, potentially
+                        // causing an ICE.
+                        //
+                        // While we uniquify root goals in HIR this does not handle cases where
+                        // regions are hidden inside of a type or const inference variable.
+                        //
+                        // FIXME(-Znext-solver): This does not handle inference variables hidden
+                        // inside of an opaque type, e.g. if there's `Opaque = (?x, ?x)` in the
+                        // storage, we can also rely on structural identity of `?x` even if we
+                        // later uniquify it in MIR borrowck.
                         if infcx.in_hir_typeck && obligation.has_non_region_infer() {
                             infcx.push_hir_typeck_potentially_region_dependent_goal(obligation);
                         }
