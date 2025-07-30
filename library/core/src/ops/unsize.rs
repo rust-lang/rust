@@ -116,7 +116,7 @@ impl<T: PointeeSized + Unsize<U>, U: PointeeSized> CoerceUnsized<*const U> for *
 /// [^1]: Formerly known as *object safety*.
 #[unstable(feature = "dispatch_from_dyn", issue = "none")]
 #[lang = "dispatch_from_dyn"]
-pub trait DispatchFromDyn<T> {
+pub trait DispatchFromDyn<T: ?Move> {
     // Empty.
 }
 
