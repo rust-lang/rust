@@ -89,10 +89,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // TODO: Use gettid? I'm (LorrensP-2158466) not that familiar with this api .
                 let id = match id {
                     -1 => this.active_thread(),
-                    _ =>
-                        throw_unsup_format!(
-                            "`cpuset_getaffinity` is only supported with a pid of -1 (indicating the current thread)"
-                        ),
+                    _ => throw_unsup_format!(
+                        "`cpuset_getaffinity` is only supported with a pid of -1 (indicating the current thread)"
+                    ),
                 };
 
                 if this.ptr_is_null(mask)? {

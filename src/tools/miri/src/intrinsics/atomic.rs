@@ -242,12 +242,15 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
         }
 
         let old = match atomic_op {
-            AtomicOp::Min =>
-                this.atomic_min_max_scalar(&place, rhs, /* min */ true, atomic)?,
-            AtomicOp::Max =>
-                this.atomic_min_max_scalar(&place, rhs, /* min */ false, atomic)?,
-            AtomicOp::MirOp(op, not) =>
-                this.atomic_rmw_op_immediate(&place, &rhs, op, not, atomic)?,
+            AtomicOp::Min => {
+                this.atomic_min_max_scalar(&place, rhs, /* min */ true, atomic)?
+            }
+            AtomicOp::Max => {
+                this.atomic_min_max_scalar(&place, rhs, /* min */ false, atomic)?
+            }
+            AtomicOp::MirOp(op, not) => {
+                this.atomic_rmw_op_immediate(&place, &rhs, op, not, atomic)?
+            }
         };
         this.write_immediate(*old, dest)?; // old value is returned
         interp_ok(())

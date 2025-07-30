@@ -209,16 +209,18 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let handle = this.read_scalar(handle)?;
         match Handle::try_from_scalar(handle, this)? {
             Ok(handle) => interp_ok(handle),
-            Err(HandleError::InvalidHandle) =>
+            Err(HandleError::InvalidHandle) => {
                 throw_machine_stop!(TerminationInfo::Abort(format!(
                     "invalid handle {} passed to {function_name}",
                     handle.to_target_isize(this)?,
-                ))),
-            Err(HandleError::ThreadNotFound(_)) =>
+                )))
+            }
+            Err(HandleError::ThreadNotFound(_)) => {
                 throw_machine_stop!(TerminationInfo::Abort(format!(
                     "invalid thread ID {} passed to {function_name}",
                     handle.to_target_isize(this)?,
-                ))),
+                )))
+            }
         }
     }
 
@@ -331,7 +333,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.detach_thread(thread, /*allow_terminated_joined*/ true)?;
                 this.eval_windows("c", "TRUE")
             }
-            Handle::File(fd_num) =>
+            Handle::File(fd_num) => {
                 if let Some(fd) = this.machine.fds.remove(fd_num) {
                     let err = fd.close_ref(this.machine.communicate(), this)?;
                     if let Err(e) = err {
@@ -342,7 +344,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     }
                 } else {
                     this.invalid_handle("CloseHandle")?
-                },
+                }
+            }
             _ => this.invalid_handle("CloseHandle")?,
         };
 

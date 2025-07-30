@@ -45,7 +45,7 @@ impl<'s, I: Iterator<Item = Cow<'s, str>>> Iterator for ArgSplitFlagValue<'_, I>
         }
         // These branches cannot be merged if we want to avoid the allocation in the `Borrowed` branch.
         match &arg {
-            Cow::Borrowed(arg) =>
+            Cow::Borrowed(arg) => {
                 if let Some(suffix) = arg.strip_prefix(self.name) {
                     // Strip leading `name`.
                     if suffix.is_empty() {
@@ -55,8 +55,9 @@ impl<'s, I: Iterator<Item = Cow<'s, str>>> Iterator for ArgSplitFlagValue<'_, I>
                         // This argument is `name=value`; get the value.
                         return Some(Ok(Cow::Borrowed(suffix)));
                     }
-                },
-            Cow::Owned(arg) =>
+                }
+            }
+            Cow::Owned(arg) => {
                 if let Some(suffix) = arg.strip_prefix(self.name) {
                     // Strip leading `name`.
                     if suffix.is_empty() {
@@ -67,7 +68,8 @@ impl<'s, I: Iterator<Item = Cow<'s, str>>> Iterator for ArgSplitFlagValue<'_, I>
                         // here as a `String` cannot be subsliced (what would the lifetime be?).
                         return Some(Ok(Cow::Owned(suffix.to_owned())));
                     }
-                },
+                }
+            }
         }
         Some(Err(arg))
     }
@@ -78,11 +80,9 @@ impl<'a, I: Iterator<Item = String> + 'a> ArgSplitFlagValue<'a, I> {
         args: I,
         name: &'a str,
     ) -> impl Iterator<Item = Result<String, String>> + 'a {
-        ArgSplitFlagValue::new(args.map(Cow::Owned), name).map(|x| {
-            match x {
-                Ok(s) => Ok(s.into_owned()),
-                Err(s) => Err(s.into_owned()),
-            }
+        ArgSplitFlagValue::new(args.map(Cow::Owned), name).map(|x| match x {
+            Ok(s) => Ok(s.into_owned()),
+            Err(s) => Err(s.into_owned()),
         })
     }
 }
@@ -92,12 +92,10 @@ impl<'x: 'a, 'a, I: Iterator<Item = &'x str> + 'a> ArgSplitFlagValue<'a, I> {
         args: I,
         name: &'a str,
     ) -> impl Iterator<Item = Result<&'x str, &'x str>> + 'a {
-        ArgSplitFlagValue::new(args.map(Cow::Borrowed), name).map(|x| {
-            match x {
-                Ok(Cow::Borrowed(s)) => Ok(s),
-                Err(Cow::Borrowed(s)) => Err(s),
-                _ => panic!("iterator converted borrowed to owned"),
-            }
+        ArgSplitFlagValue::new(args.map(Cow::Borrowed), name).map(|x| match x {
+            Ok(Cow::Borrowed(s)) => Ok(s),
+            Err(Cow::Borrowed(s)) => Err(s),
+            _ => panic!("iterator converted borrowed to owned"),
         })
     }
 }

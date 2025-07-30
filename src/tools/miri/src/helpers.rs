@@ -582,8 +582,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             fn visit_value(&mut self, v: &MPlaceTy<'tcx>) -> InterpResult<'tcx> {
                 trace!("UnsafeCellVisitor: {:?} {:?}", *v, v.layout.ty);
                 let is_unsafe_cell = match v.layout.ty.kind() {
-                    ty::Adt(adt, _) =>
-                        Some(adt.did()) == self.ecx.tcx.lang_items().unsafe_cell_type(),
+                    ty::Adt(adt, _) => {
+                        Some(adt.did()) == self.ecx.tcx.lang_items().unsafe_cell_type()
+                    }
                     _ => false,
                 };
                 if is_unsafe_cell {
@@ -990,12 +991,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     (Scalar::from_int(res.value, int_size), res.status)
                 }
                 // Nothing else
-                _ =>
-                    span_bug!(
-                        ecx.cur_span(),
-                        "attempted float-to-int conversion with non-int output type {}",
-                        cast_to.ty,
-                    ),
+                _ => span_bug!(
+                    ecx.cur_span(),
+                    "attempted float-to-int conversion with non-int output type {}",
+                    cast_to.ty,
+                ),
             }
         }
 
@@ -1004,14 +1004,18 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         };
 
         let (val, status) = match fty {
-            FloatTy::F16 =>
-                float_to_int_inner::<Half>(this, src.to_scalar().to_f16()?, cast_to, round),
-            FloatTy::F32 =>
-                float_to_int_inner::<Single>(this, src.to_scalar().to_f32()?, cast_to, round),
-            FloatTy::F64 =>
-                float_to_int_inner::<Double>(this, src.to_scalar().to_f64()?, cast_to, round),
-            FloatTy::F128 =>
-                float_to_int_inner::<Quad>(this, src.to_scalar().to_f128()?, cast_to, round),
+            FloatTy::F16 => {
+                float_to_int_inner::<Half>(this, src.to_scalar().to_f16()?, cast_to, round)
+            }
+            FloatTy::F32 => {
+                float_to_int_inner::<Single>(this, src.to_scalar().to_f32()?, cast_to, round)
+            }
+            FloatTy::F64 => {
+                float_to_int_inner::<Double>(this, src.to_scalar().to_f64()?, cast_to, round)
+            }
+            FloatTy::F128 => {
+                float_to_int_inner::<Quad>(this, src.to_scalar().to_f128()?, cast_to, round)
+            }
         };
 
         if status.intersects(
@@ -1097,10 +1101,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                             array.push(this.read_immediate(&elem)?);
                         }
                     }
-                    _ =>
-                        throw_unsup_format!(
-                            "only function pointers and arrays of function pointers are supported in well-known linker sections"
-                        ),
+                    _ => throw_unsup_format!(
+                        "only function pointers and arrays of function pointers are supported in well-known linker sections"
+                    ),
                 }
             }
             interp_ok(())

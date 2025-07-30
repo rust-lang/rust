@@ -497,14 +497,18 @@ fn apply_random_float_error_to_imm<'tcx>(
 ) -> InterpResult<'tcx, ImmTy<'tcx>> {
     let scalar = val.to_scalar_int()?;
     let res: ScalarInt = match val.layout.ty.kind() {
-        ty::Float(FloatTy::F16) =>
-            apply_random_float_error_ulp(ecx, scalar.to_f16(), ulp_exponent).into(),
-        ty::Float(FloatTy::F32) =>
-            apply_random_float_error_ulp(ecx, scalar.to_f32(), ulp_exponent).into(),
-        ty::Float(FloatTy::F64) =>
-            apply_random_float_error_ulp(ecx, scalar.to_f64(), ulp_exponent).into(),
-        ty::Float(FloatTy::F128) =>
-            apply_random_float_error_ulp(ecx, scalar.to_f128(), ulp_exponent).into(),
+        ty::Float(FloatTy::F16) => {
+            apply_random_float_error_ulp(ecx, scalar.to_f16(), ulp_exponent).into()
+        }
+        ty::Float(FloatTy::F32) => {
+            apply_random_float_error_ulp(ecx, scalar.to_f32(), ulp_exponent).into()
+        }
+        ty::Float(FloatTy::F64) => {
+            apply_random_float_error_ulp(ecx, scalar.to_f64(), ulp_exponent).into()
+        }
+        ty::Float(FloatTy::F128) => {
+            apply_random_float_error_ulp(ecx, scalar.to_f128(), ulp_exponent).into()
+        }
         _ => bug!("intrinsic called with non-float input type"),
     };
 
@@ -607,11 +611,13 @@ fn fixed_powi_float_value<S: Semantics>(
 fn clamp_float_value<S: Semantics>(intrinsic_name: &str, val: IeeeFloat<S>) -> IeeeFloat<S> {
     match intrinsic_name {
         // sin and cos: [-1, 1]
-        "sinf32" | "cosf32" | "sinf64" | "cosf64" =>
-            val.clamp(IeeeFloat::<S>::one().neg(), IeeeFloat::<S>::one()),
+        "sinf32" | "cosf32" | "sinf64" | "cosf64" => {
+            val.clamp(IeeeFloat::<S>::one().neg(), IeeeFloat::<S>::one())
+        }
         // exp: [0, +INF]
-        "expf32" | "exp2f32" | "expf64" | "exp2f64" =>
-            IeeeFloat::<S>::maximum(val, IeeeFloat::<S>::ZERO),
+        "expf32" | "exp2f32" | "expf64" | "exp2f64" => {
+            IeeeFloat::<S>::maximum(val, IeeeFloat::<S>::ZERO)
+        }
         _ => val,
     }
 }

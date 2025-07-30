@@ -69,29 +69,29 @@ impl fmt::Display for TerminationInfo {
             Abort(msg) => write!(f, "{msg}"),
             Interrupted => write!(f, "interpretation was interrupted"),
             UnsupportedInIsolation(msg) => write!(f, "{msg}"),
-            Int2PtrWithStrictProvenance =>
-                write!(
-                    f,
-                    "integer-to-pointer casts and `ptr::with_exposed_provenance` are not supported with `-Zmiri-strict-provenance`"
-                ),
+            Int2PtrWithStrictProvenance => write!(
+                f,
+                "integer-to-pointer casts and `ptr::with_exposed_provenance` are not supported with `-Zmiri-strict-provenance`"
+            ),
             StackedBorrowsUb { msg, .. } => write!(f, "{msg}"),
             TreeBorrowsUb { title, .. } => write!(f, "{title}"),
             Deadlock => write!(f, "the evaluated program deadlocked"),
             GenmcStuckExecution => write!(f, "GenMC determined that the execution got stuck"),
-            MultipleSymbolDefinitions { link_name, .. } =>
-                write!(f, "multiple definitions of symbol `{link_name}`"),
-            SymbolShimClashing { link_name, .. } =>
-                write!(f, "found `{link_name}` symbol definition that clashes with a built-in shim",),
-            DataRace { involves_non_atomic, ptr, op1, op2, .. } =>
-                write!(
-                    f,
-                    "{} detected between (1) {} on {} and (2) {} on {} at {ptr:?}",
-                    if *involves_non_atomic { "Data race" } else { "Race condition" },
-                    op1.action,
-                    op1.thread_info,
-                    op2.action,
-                    op2.thread_info
-                ),
+            MultipleSymbolDefinitions { link_name, .. } => {
+                write!(f, "multiple definitions of symbol `{link_name}`")
+            }
+            SymbolShimClashing { link_name, .. } => {
+                write!(f, "found `{link_name}` symbol definition that clashes with a built-in shim",)
+            }
+            DataRace { involves_non_atomic, ptr, op1, op2, .. } => write!(
+                f,
+                "{} detected between (1) {} on {} and (2) {} on {} at {ptr:?}",
+                if *involves_non_atomic { "Data race" } else { "Race condition" },
+                op1.action,
+                op1.thread_info,
+                op2.action,
+                op2.thread_info
+            ),
             UnsupportedForeignItem(msg) => write!(f, "{msg}"),
         }
     }
@@ -235,10 +235,12 @@ pub fn report_error<'tcx>(
             &Exit { code, leak_check } => return Some((code, leak_check)),
             Abort(_) => Some("abnormal termination"),
             Interrupted => None,
-            UnsupportedInIsolation(_) | Int2PtrWithStrictProvenance | UnsupportedForeignItem(_) =>
-                Some("unsupported operation"),
-            StackedBorrowsUb { .. } | TreeBorrowsUb { .. } | DataRace { .. } =>
-                Some("Undefined Behavior"),
+            UnsupportedInIsolation(_) | Int2PtrWithStrictProvenance | UnsupportedForeignItem(_) => {
+                Some("unsupported operation")
+            }
+            StackedBorrowsUb { .. } | TreeBorrowsUb { .. } | DataRace { .. } => {
+                Some("Undefined Behavior")
+            }
             Deadlock => {
                 labels.push(format!("this thread got stuck here"));
                 None
@@ -626,51 +628,59 @@ impl<'tcx> MiriMachine<'tcx> {
         let (stacktrace, _was_pruned) = prune_stacktrace(stacktrace, self);
 
         let (label, diag_level) = match &e {
-            RejectedIsolatedOp(_) =>
-                ("operation rejected by isolation".to_string(), DiagLevel::Warning),
+            RejectedIsolatedOp(_) => {
+                ("operation rejected by isolation".to_string(), DiagLevel::Warning)
+            }
             Int2Ptr { .. } => ("integer-to-pointer cast".to_string(), DiagLevel::Warning),
-            NativeCallSharedMem { .. } =>
-                ("sharing memory with a native function".to_string(), DiagLevel::Warning),
-            ExternTypeReborrow =>
-                ("reborrow of reference to `extern type`".to_string(), DiagLevel::Warning),
+            NativeCallSharedMem { .. } => {
+                ("sharing memory with a native function".to_string(), DiagLevel::Warning)
+            }
+            ExternTypeReborrow => {
+                ("reborrow of reference to `extern type`".to_string(), DiagLevel::Warning)
+            }
             CreatedPointerTag(..)
             | PoppedPointerTag(..)
             | CreatedAlloc(..)
             | AccessedAlloc(..)
             | FreedAlloc(..)
             | ProgressReport { .. }
-            | WeakMemoryOutdatedLoad { .. } =>
-                ("tracking was triggered here".to_string(), DiagLevel::Note),
+            | WeakMemoryOutdatedLoad { .. } => {
+                ("tracking was triggered here".to_string(), DiagLevel::Note)
+            }
         };
 
         let title = match &e {
             CreatedPointerTag(tag, None, _) => format!("created base tag {tag:?}"),
-            CreatedPointerTag(tag, Some(perm), None) =>
-                format!("created {tag:?} with {perm} derived from unknown tag"),
-            CreatedPointerTag(tag, Some(perm), Some((alloc_id, range, orig_tag))) =>
-                format!(
-                    "created tag {tag:?} with {perm} at {alloc_id:?}{range:?} derived from {orig_tag:?}"
-                ),
+            CreatedPointerTag(tag, Some(perm), None) => {
+                format!("created {tag:?} with {perm} derived from unknown tag")
+            }
+            CreatedPointerTag(tag, Some(perm), Some((alloc_id, range, orig_tag))) => format!(
+                "created tag {tag:?} with {perm} at {alloc_id:?}{range:?} derived from {orig_tag:?}"
+            ),
             PoppedPointerTag(item, cause) => format!("popped tracked tag for item {item:?}{cause}"),
-            CreatedAlloc(AllocId(id), size, align, kind) =>
-                format!(
-                    "created {kind} allocation of {size} bytes (alignment {align} bytes) with id {id}",
-                    size = size.bytes(),
-                    align = align.bytes(),
-                ),
-            AccessedAlloc(AllocId(id), access_kind) =>
-                format!("{access_kind} to allocation with id {id}"),
+            CreatedAlloc(AllocId(id), size, align, kind) => format!(
+                "created {kind} allocation of {size} bytes (alignment {align} bytes) with id {id}",
+                size = size.bytes(),
+                align = align.bytes(),
+            ),
+            AccessedAlloc(AllocId(id), access_kind) => {
+                format!("{access_kind} to allocation with id {id}")
+            }
             FreedAlloc(AllocId(id)) => format!("freed allocation with id {id}"),
             RejectedIsolatedOp(op) => format!("{op} was made to return an error due to isolation"),
-            ProgressReport { .. } =>
-                format!("progress report: current operation being executed is here"),
+            ProgressReport { .. } => {
+                format!("progress report: current operation being executed is here")
+            }
             Int2Ptr { .. } => format!("integer-to-pointer cast"),
-            NativeCallSharedMem { .. } =>
-                format!("sharing memory with a native function called via FFI"),
-            WeakMemoryOutdatedLoad { ptr } =>
-                format!("weak memory emulation: outdated value returned from load at {ptr}"),
-            ExternTypeReborrow =>
-                format!("reborrow of a reference to `extern type` is not properly supported"),
+            NativeCallSharedMem { .. } => {
+                format!("sharing memory with a native function called via FFI")
+            }
+            WeakMemoryOutdatedLoad { ptr } => {
+                format!("weak memory emulation: outdated value returned from load at {ptr}")
+            }
+            ExternTypeReborrow => {
+                format!("reborrow of a reference to `extern type` is not properly supported")
+            }
         };
 
         let notes = match &e {
@@ -712,7 +722,7 @@ impl<'tcx> MiriMachine<'tcx> {
                 }
                 v
             }
-            NativeCallSharedMem { tracing } =>
+            NativeCallSharedMem { tracing } => {
                 if *tracing {
                     vec![
                         note!(
@@ -746,7 +756,8 @@ impl<'tcx> MiriMachine<'tcx> {
                             "what this means is that Miri will easily miss Undefined Behavior related to incorrect usage of this shared memory, so you should not take a clean Miri run as a signal that your FFI code is UB-free"
                         ),
                     ]
-                },
+                }
+            }
             ExternTypeReborrow => {
                 assert!(self.borrow_tracker.as_ref().is_some_and(|b| {
                     matches!(

@@ -516,10 +516,9 @@ fn main() {
                 Some(BorrowTrackerMethod::TreeBorrows(params)) => {
                     params.precise_interior_mut = false;
                 }
-                _ =>
-                    fatal_error!(
-                        "`-Zmiri-tree-borrows` is required before `-Zmiri-tree-borrows-no-precise-interior-mut`"
-                    ),
+                _ => fatal_error!(
+                    "`-Zmiri-tree-borrows` is required before `-Zmiri-tree-borrows-no-precise-interior-mut`"
+                ),
             };
         } else if arg == "-Zmiri-disable-data-race-detector" {
             miri_config.data_race_detector = false;
@@ -541,12 +540,12 @@ fn main() {
                 "abort" => miri::IsolatedOp::Reject(miri::RejectOpWith::Abort),
                 "hide" => miri::IsolatedOp::Reject(miri::RejectOpWith::NoWarning),
                 "warn" => miri::IsolatedOp::Reject(miri::RejectOpWith::Warning),
-                "warn-nobacktrace" =>
-                    miri::IsolatedOp::Reject(miri::RejectOpWith::WarningWithoutBacktrace),
-                _ =>
-                    fatal_error!(
-                        "-Zmiri-isolation-error must be `abort`, `hide`, `warn`, or `warn-nobacktrace`"
-                    ),
+                "warn-nobacktrace" => {
+                    miri::IsolatedOp::Reject(miri::RejectOpWith::WarningWithoutBacktrace)
+                }
+                _ => fatal_error!(
+                    "-Zmiri-isolation-error must be `abort`, `hide`, `warn`, or `warn-nobacktrace`"
+                ),
             };
         } else if arg == "-Zmiri-ignore-leaks" {
             miri_config.ignore_leaks = true;

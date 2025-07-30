@@ -145,12 +145,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             .to_bits(Size::from_bytes(size))?;
 
         let futex = this
-            .get_sync_or_init(ptr, |_| {
-                MacOsFutex {
-                    futex: Default::default(),
-                    size: Cell::new(size),
-                    shared: Cell::new(is_shared),
-                }
+            .get_sync_or_init(ptr, |_| MacOsFutex {
+                futex: Default::default(),
+                size: Cell::new(size),
+                shared: Cell::new(is_shared),
             })
             .unwrap();
 
@@ -230,12 +228,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         let is_shared = flags == shared;
 
-        let Some(futex) = this.get_sync_or_init(ptr, |_| {
-            MacOsFutex {
-                futex: Default::default(),
-                size: Cell::new(size),
-                shared: Cell::new(is_shared),
-            }
+        let Some(futex) = this.get_sync_or_init(ptr, |_| MacOsFutex {
+            futex: Default::default(),
+            size: Cell::new(size),
+            shared: Cell::new(is_shared),
         }) else {
             // No AllocId, or no live allocation at that AllocId. Return an
             // error code. (That seems nicer than silently doing something

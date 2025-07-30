@@ -67,14 +67,15 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             0 => {
                 throw_unsup_format!("miri_get_backtrace: v0 is not supported any more");
             }
-            1 =>
+            1 => {
                 for (i, ptr) in ptrs.into_iter().enumerate() {
                     let offset = ptr_layout.size.checked_mul(i.to_u64(), this).unwrap();
 
                     let op_place = buf_place.offset(offset, ptr_layout, this)?;
 
                     this.write_pointer(ptr, &op_place)?;
-                },
+                }
+            }
             _ => throw_unsup_format!("unknown `miri_get_backtrace` flags {}", flags),
         };
 

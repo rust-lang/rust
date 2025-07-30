@@ -74,11 +74,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.check_no_isolation("`clock_gettime` with `REALTIME` clocks")?;
                 system_time_to_duration(&SystemTime::now())?
             }
-            Some(TimeoutClock::Monotonic) =>
-                this.machine
-                    .monotonic_clock
-                    .now()
-                    .duration_since(this.machine.monotonic_clock.epoch()),
+            Some(TimeoutClock::Monotonic) => this
+                .machine
+                .monotonic_clock
+                .now()
+                .duration_since(this.machine.monotonic_clock.epoch()),
             None => {
                 return this.set_last_error_and_return(LibcError("EINVAL"), dest);
             }

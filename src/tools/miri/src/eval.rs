@@ -257,37 +257,35 @@ impl<'tcx> MainThreadState<'tcx> {
             Running => {
                 *self = TlsDtors(Default::default());
             }
-            TlsDtors(state) =>
-                match state.on_stack_empty(this)? {
-                    Poll::Pending => {} // just keep going
-                    Poll::Ready(()) => {
-                        if this.machine.data_race.as_genmc_ref().is_some() {
-                            // In GenMC mode, we don't yield at the end of the main thread.
-                            // Instead, the `GenmcCtx` will ensure that unfinished threads get a chance to run at this point.
-                            *self = Done;
+            TlsDtors(state) => match state.on_stack_empty(this)? {
+                Poll::Pending => {} // just keep going
+                Poll::Ready(()) => {
+                    if this.machine.data_race.as_genmc_ref().is_some() {
+                        // In GenMC mode, we don't yield at the end of the main thread.
+                        // Instead, the `GenmcCtx` will ensure that unfinished threads get a chance to run at this point.
+                        *self = Done;
+                    } else {
+                        // Give background threads a chance to finish by yielding the main thread a
+                        // couple of times -- but only if we would also preempt threads randomly.
+                        if this.machine.preemption_rate > 0.0 {
+                            // There is a non-zero chance they will yield back to us often enough to
+                            // make Miri terminate eventually.
+                            *self = Yield { remaining: MAIN_THREAD_YIELDS_AT_SHUTDOWN };
                         } else {
-                            // Give background threads a chance to finish by yielding the main thread a
-                            // couple of times -- but only if we would also preempt threads randomly.
-                            if this.machine.preemption_rate > 0.0 {
-                                // There is a non-zero chance they will yield back to us often enough to
-                                // make Miri terminate eventually.
-                                *self = Yield { remaining: MAIN_THREAD_YIELDS_AT_SHUTDOWN };
-                            } else {
-                                // The other threads did not get preempted, so no need to yield back to
-                                // them.
-                                *self = Done;
-                            }
+                            // The other threads did not get preempted, so no need to yield back to
+                            // them.
+                            *self = Done;
                         }
                     }
-                },
-            Yield { remaining } =>
-                match remaining.checked_sub(1) {
-                    None => *self = Done,
-                    Some(new_remaining) => {
-                        *remaining = new_remaining;
-                        this.yield_active_thread();
-                    }
-                },
+                }
+            },
+            Yield { remaining } => match remaining.checked_sub(1) {
+                None => *self = Done,
+                Some(new_remaining) => {
+                    *remaining = new_remaining;
+                    this.yield_active_thread();
+                }
+            },
             Done => {
                 // Figure out exit code.
                 let ret_place = this.machine.main_fn_ret_place.clone().unwrap();

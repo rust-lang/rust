@@ -96,8 +96,9 @@ impl fmt::Display for InvalidationCause {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             InvalidationCause::Access(kind) => write!(f, "{kind}"),
-            InvalidationCause::Retag(perm, info) =>
-                write!(f, "{perm:?} {retag}", retag = info.summary()),
+            InvalidationCause::Retag(perm, info) => {
+                write!(f, "{perm:?} {retag}", retag = info.summary())
+            }
         }
     }
 }
@@ -250,7 +251,7 @@ impl<'history, 'ecx, 'tcx> DiagnosticCx<'history, 'ecx, 'tcx> {
             None => {
                 last_creation.retag.permission = Some(perm);
             }
-            Some(previous) =>
+            Some(previous) => {
                 if previous != perm {
                     // 'Split up' the creation event.
                     let previous_range = last_creation.retag.range;
@@ -259,7 +260,8 @@ impl<'history, 'ecx, 'tcx> DiagnosticCx<'history, 'ecx, 'tcx> {
                     new_event.retag.range = alloc_range(self.offset, previous_range.end());
                     new_event.retag.permission = Some(perm);
                     self.history.creations.push(new_event);
-                },
+                }
+            }
         }
     }
 
@@ -281,8 +283,9 @@ impl<'history, 'ecx, 'tcx> DiagnosticCx<'history, 'ecx, 'tcx> {
                 }
                 (*range, InvalidationCause::Retag(permission.unwrap(), *info))
             }
-            Operation::Access(AccessOp { kind, range, .. }) =>
-                (*range, InvalidationCause::Access(*kind)),
+            Operation::Access(AccessOp { kind, range, .. }) => {
+                (*range, InvalidationCause::Access(*kind))
+            }
             Operation::Dealloc(_) => {
                 // This can be reached, but never be relevant later since the entire allocation is
                 // gone now.
@@ -434,17 +437,17 @@ impl<'history, 'ecx, 'tcx> DiagnosticCx<'history, 'ecx, 'tcx> {
             ProtectorKind::StrongProtector => "strongly protected",
         };
         match self.operation {
-            Operation::Dealloc(_) =>
-                err_sb_ub(format!("deallocating while item {item:?} is {protected}",), vec![], None),
+            Operation::Dealloc(_) => {
+                err_sb_ub(format!("deallocating while item {item:?} is {protected}",), vec![], None)
+            }
             Operation::Retag(RetagOp { orig_tag: tag, .. })
-            | Operation::Access(AccessOp { tag, .. }) =>
-                err_sb_ub(
-                    format!(
-                        "not granting access to tag {tag:?} because that would remove {item:?} which is {protected}",
-                    ),
-                    vec![],
-                    tag.and_then(|tag| self.get_logs_relevant_to(tag, Some(item.tag()))),
+            | Operation::Access(AccessOp { tag, .. }) => err_sb_ub(
+                format!(
+                    "not granting access to tag {tag:?} because that would remove {item:?} which is {protected}",
                 ),
+                vec![],
+                tag.and_then(|tag| self.get_logs_relevant_to(tag, Some(item.tag()))),
+            ),
         }
     }
 
@@ -472,8 +475,9 @@ impl<'history, 'ecx, 'tcx> DiagnosticCx<'history, 'ecx, 'tcx> {
         }
         let cause = match self.operation {
             Operation::Dealloc(_) => format!(" due to deallocation"),
-            Operation::Access(AccessOp { kind, tag, .. }) =>
-                format!(" due to {kind:?} access for {tag:?}"),
+            Operation::Access(AccessOp { kind, tag, .. }) => {
+                format!(" due to {kind:?} access for {tag:?}")
+            }
             Operation::Retag(RetagOp { orig_tag, permission, new_tag, .. }) => {
                 let permission = permission
                     .expect("start_grant should set the current permission before popping a tag");

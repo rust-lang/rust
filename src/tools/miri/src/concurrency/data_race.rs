@@ -1041,8 +1041,9 @@ impl VClockAlloc {
                 | MiriMemoryKind::ExternStatic
                 | MiriMemoryKind::Tls,
             )
-            | MemoryKind::CallerLocation =>
-                (VTimestamp::ZERO, global.thread_index(ThreadId::MAIN_THREAD)),
+            | MemoryKind::CallerLocation => {
+                (VTimestamp::ZERO, global.thread_index(ThreadId::MAIN_THREAD))
+            }
         };
         VClockAlloc {
             alloc_ranges: RefCell::new(DedupRangeMap::new(

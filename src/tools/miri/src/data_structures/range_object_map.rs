@@ -83,14 +83,15 @@ impl<T> RangeObjectMap<T> {
                 // Start of the range doesn't belong to an existing object
                 match self.find_offset(range.end() - Size::from_bytes(1)) {
                     // Neither does the end
-                    Err(end_pos) =>
+                    Err(end_pos) => {
                         if pos == end_pos {
                             // There's nothing between the start and the end, so the range thing is empty
                             AccessType::Empty(pos)
                         } else {
                             // Otherwise we have entirely covered an existing object
                             AccessType::ImperfectlyOverlapping(pos..end_pos)
-                        },
+                        }
+                    }
                     // Otherwise at least part of it overlaps with something else
                     Ok(end_pos) => AccessType::ImperfectlyOverlapping(pos..end_pos + 1),
                 }

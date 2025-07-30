@@ -144,12 +144,13 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     let ptr = Pointer::new(Provenance::Wildcard, Size::from_bytes(x.addr()));
                     Scalar::from_pointer(ptr, this)
                 }
-                _ =>
+                _ => {
                     return Err(err_unsup_format!(
                         "unsupported return type for native call: {:?}",
                         link_name
                     ))
-                    .into(),
+                    .into();
+                }
             };
             interp_ok(ImmTy::from_scalar(scalar, dest.layout))
         })
@@ -443,15 +444,17 @@ fn imm_to_carg<'tcx>(v: &ImmTy<'tcx>, cx: &impl HasDataLayout) -> InterpResult<'
         ty::Int(IntTy::I16) => CArg::Int16(v.to_scalar().to_i16()?),
         ty::Int(IntTy::I32) => CArg::Int32(v.to_scalar().to_i32()?),
         ty::Int(IntTy::I64) => CArg::Int64(v.to_scalar().to_i64()?),
-        ty::Int(IntTy::Isize) =>
-            CArg::ISize(v.to_scalar().to_target_isize(cx)?.try_into().unwrap()),
+        ty::Int(IntTy::Isize) => {
+            CArg::ISize(v.to_scalar().to_target_isize(cx)?.try_into().unwrap())
+        }
         // the uints
         ty::Uint(UintTy::U8) => CArg::UInt8(v.to_scalar().to_u8()?),
         ty::Uint(UintTy::U16) => CArg::UInt16(v.to_scalar().to_u16()?),
         ty::Uint(UintTy::U32) => CArg::UInt32(v.to_scalar().to_u32()?),
         ty::Uint(UintTy::U64) => CArg::UInt64(v.to_scalar().to_u64()?),
-        ty::Uint(UintTy::Usize) =>
-            CArg::USize(v.to_scalar().to_target_usize(cx)?.try_into().unwrap()),
+        ty::Uint(UintTy::Usize) => {
+            CArg::USize(v.to_scalar().to_target_usize(cx)?.try_into().unwrap())
+        }
         ty::RawPtr(..) => {
             let s = v.to_scalar().to_pointer(cx)?.addr();
             // This relies on the `expose_provenance` in the `visit_reachable_allocs` callback

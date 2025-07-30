@@ -105,12 +105,13 @@ impl UnixFileDescription for FileHandle {
         match res {
             Ok(()) => interp_ok(Ok(())),
             Err(TryLockError::Error(err)) => interp_ok(Err(err)),
-            Err(TryLockError::WouldBlock) =>
+            Err(TryLockError::WouldBlock) => {
                 if nonblocking {
                     interp_ok(Err(ErrorKind::WouldBlock.into()))
                 } else {
                     throw_unsup_format!("blocking `flock` is not currently supported");
-                },
+                }
+            }
         }
     }
 }
@@ -186,21 +187,26 @@ trait EvalContextExtPrivate<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 match () {
                     _ if file_type.is_dir() => interp_ok(this.eval_libc("DT_DIR").to_u8()?.into()),
                     _ if file_type.is_file() => interp_ok(this.eval_libc("DT_REG").to_u8()?.into()),
-                    _ if file_type.is_symlink() =>
-                        interp_ok(this.eval_libc("DT_LNK").to_u8()?.into()),
+                    _ if file_type.is_symlink() => {
+                        interp_ok(this.eval_libc("DT_LNK").to_u8()?.into())
+                    }
                     // Certain file types are only supported when the host is a Unix system.
                     #[cfg(unix)]
-                    _ if file_type.is_block_device() =>
-                        interp_ok(this.eval_libc("DT_BLK").to_u8()?.into()),
+                    _ if file_type.is_block_device() => {
+                        interp_ok(this.eval_libc("DT_BLK").to_u8()?.into())
+                    }
                     #[cfg(unix)]
-                    _ if file_type.is_char_device() =>
-                        interp_ok(this.eval_libc("DT_CHR").to_u8()?.into()),
+                    _ if file_type.is_char_device() => {
+                        interp_ok(this.eval_libc("DT_CHR").to_u8()?.into())
+                    }
                     #[cfg(unix)]
-                    _ if file_type.is_fifo() =>
-                        interp_ok(this.eval_libc("DT_FIFO").to_u8()?.into()),
+                    _ if file_type.is_fifo() => {
+                        interp_ok(this.eval_libc("DT_FIFO").to_u8()?.into())
+                    }
                     #[cfg(unix)]
-                    _ if file_type.is_socket() =>
-                        interp_ok(this.eval_libc("DT_SOCK").to_u8()?.into()),
+                    _ if file_type.is_socket() => {
+                        interp_ok(this.eval_libc("DT_SOCK").to_u8()?.into())
+                    }
                     // Fallback
                     _ => interp_ok(this.eval_libc("DT_UNKNOWN").to_u8()?.into()),
                 }
@@ -1502,17 +1508,16 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     let fd = this.machine.fds.insert_new(FileHandle { file: f, writable: true });
                     return interp_ok(Scalar::from_i32(fd));
                 }
-                Err(e) =>
-                    match e.kind() {
-                        // If the random file already exists, keep trying.
-                        ErrorKind::AlreadyExists => continue,
-                        // Any other errors are returned to the caller.
-                        _ => {
-                            // "On error, -1 is returned, and errno is set to
-                            // indicate the error"
-                            return this.set_last_error_and_return_i32(e);
-                        }
-                    },
+                Err(e) => match e.kind() {
+                    // If the random file already exists, keep trying.
+                    ErrorKind::AlreadyExists => continue,
+                    // Any other errors are returned to the caller.
+                    _ => {
+                        // "On error, -1 is returned, and errno is set to
+                        // indicate the error"
+                        return this.set_last_error_and_return_i32(e);
+                    }
+                },
             }
         }
 
