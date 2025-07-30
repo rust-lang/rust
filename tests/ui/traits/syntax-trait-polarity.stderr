@@ -6,6 +6,14 @@ LL | impl !TestType {}
    |      |
    |      negative because of this
 
+error: inherent impls cannot be negative
+  --> $DIR/syntax-trait-polarity.rs:18:10
+   |
+LL | impl<T> !TestType2<T> {}
+   |         -^^^^^^^^^^^^ inherent impl for this type
+   |         |
+   |         negative because of this
+
 error[E0198]: negative impls cannot be unsafe
   --> $DIR/syntax-trait-polarity.rs:12:13
    |
@@ -14,14 +22,6 @@ LL | unsafe impl !Send for TestType {}
    | |           |
    | |           negative because of this
    | unsafe because of this
-
-error: inherent impls cannot be negative
-  --> $DIR/syntax-trait-polarity.rs:18:10
-   |
-LL | impl<T> !TestType2<T> {}
-   |         -^^^^^^^^^^^^ inherent impl for this type
-   |         |
-   |         negative because of this
 
 error[E0198]: negative impls cannot be unsafe
   --> $DIR/syntax-trait-polarity.rs:21:16
