@@ -401,7 +401,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // to put the "frame" span on a separate trace thread/line than other spans, to make the
         // visualization in <https://ui.perfetto.dev> easier to interpret. It is set to a value of
         // [tracing::field::Empty] so that other tracing layers (e.g. the logger) will ignore it.
-        let span = info_span!("frame", tracing_separate_thread = Empty, "{}", instance);
+        let span = info_span!("frame", tracing_separate_thread = Empty, frame = %instance);
         self.frame_mut().tracing_span.enter(span);
 
         interp_ok(())
