@@ -1,4 +1,4 @@
-
+//@ compile-flags: --diagnostic-width=145
 // ignore-tidy-linelength
 
 fn main() {
