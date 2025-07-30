@@ -1,7 +1,6 @@
 #![allow(nonstandard_style)]
 
 use crate::alloc::{Layout, alloc, dealloc};
-use crate::borrow::Cow;
 use crate::ffi::{OsStr, OsString, c_void};
 use crate::fs::TryLockError;
 use crate::io::{self, BorrowedCursor, Error, IoSlice, IoSliceMut, SeekFrom};
@@ -869,7 +868,7 @@ impl DirBuff {
         self.buffer.0.as_mut_ptr().cast()
     }
     /// Returns a `DirBuffIter`.
-    fn iter(&self) -> DirBuffIter<'_> {
+    fn iter(&mut self) -> DirBuffIter<'_> {
         DirBuffIter::new(self)
     }
 }
@@ -883,18 +882,45 @@ impl AsRef<[MaybeUninit<u8>]> for DirBuff {
 ///
 /// Currently only returns file names (UTF-16 encoded).
 struct DirBuffIter<'a> {
-    buffer: Option<&'a [MaybeUninit<u8>]>,
+    buffer: Option<&'a mut [MaybeUninit<u8>]>,
     cursor: usize,
 }
 impl<'a> DirBuffIter<'a> {
-    fn new(buffer: &'a DirBuff) -> Self {
-        Self { buffer: Some(buffer.as_ref()), cursor: 0 }
+    fn new(buffer: &'a mut DirBuff) -> Self {
+        Self { buffer: Some(&mut buffer.buffer.0), cursor: 0 }
     }
 }
+
 impl<'a> Iterator for DirBuffIter<'a> {
-    type Item = (Cow<'a, [u16]>, bool);
+    type Item = (&'a [u16], bool);
     fn next(&mut self) -> Option<Self::Item> {
-        let buffer = &self.buffer?[self.cursor..];
+        let buffer = self.buffer.as_mut()?;
+
+        const ALIGNMENT: usize = align_of::<c::FILE_ID_BOTH_DIR_INFO>();
+        debug_assert_eq!(self.cursor % ALIGNMENT, 0);
+        let buffer = if self.cursor.is_multiple_of(ALIGNMENT) {
+            &buffer[self.cursor..]
+        } else {
+            // While the file information is guaranteed to be aligned in documentation for
+            // https://docs.microsoft.com/en-us/windows/win32/api/winbase/ns-winbase-file_id_both_dir_info
+            // it does not seem that reality is so kind.
+            // In some cases crashes could be caused by security software that hooks system APIs
+            // but doesn't uphold the documented alignment.
+            // See https://github.com/rust-lang/rust/issues/104530
+            unsafe {
+                // SAFETY: the FILE_ID_BOTH_DIR_INFO struct has been correctly initialized (if not aligned).
+                let info = buffer.as_ptr().byte_add(self.cursor).cast::<c::FILE_ID_BOTH_DIR_INFO>();
+                let name_offset = mem::offset_of!(c::FILE_ID_BOTH_DIR_INFO, FileName);
+                let name_length = (&raw const (*info).FileNameLength).read_unaligned() as usize;
+                // Copy the data to the start of the buffer, which we've guaranteed to be aligned.
+                ptr::copy(
+                    info.cast::<u8>(),
+                    buffer.as_mut_ptr().cast::<u8>(),
+                    name_offset + name_length,
+                );
+            }
+            &buffer[..]
+        };
 
         // Get the name and next entry from the buffer.
         // SAFETY:
@@ -905,17 +931,16 @@ impl<'a> Iterator for DirBuffIter<'a> {
         //   `FILE_ID_BOTH_DIR_INFO` and the trailing filename (for at least
         //   `FileNameLength` bytes)
         let (name, is_directory, next_entry) = unsafe {
-            let info = buffer.as_ptr().cast::<c::FILE_ID_BOTH_DIR_INFO>();
-            // While this is guaranteed to be aligned in documentation for
-            // https://docs.microsoft.com/en-us/windows/win32/api/winbase/ns-winbase-file_id_both_dir_info
-            // it does not seem that reality is so kind, and assuming this
-            // caused crashes in some cases (https://github.com/rust-lang/rust/issues/104530)
-            // presumably, this can be blamed on buggy filesystem drivers, but who knows.
-            let next_entry = (&raw const (*info).NextEntryOffset).read_unaligned() as usize;
-            let length = (&raw const (*info).FileNameLength).read_unaligned() as usize;
-            let attrs = (&raw const (*info).FileAttributes).read_unaligned();
-            let name = from_maybe_unaligned(
-                (&raw const (*info).FileName).cast::<u16>(),
+            let info_ptr = buffer.as_ptr().cast::<c::FILE_ID_BOTH_DIR_INFO>();
+            // WARNING: use `info_ptr` to access the variable length FileName field.
+            // This reference only spans the header and first item of the FileName array.
+            let info = &*info_ptr;
+
+            let next_entry = usize::try_from(info.NextEntryOffset).unwrap();
+            let length = usize::try_from(info.FileNameLength).unwrap();
+            let attrs = info.FileAttributes;
+            let name = slice::from_raw_parts(
+                (&raw const (*info_ptr).FileName).cast::<u16>(),
                 length / size_of::<u16>(),
             );
             let is_directory = (attrs & c::FILE_ATTRIBUTE_DIRECTORY) != 0;
@@ -934,16 +959,6 @@ impl<'a> Iterator for DirBuffIter<'a> {
         match &name[..] {
             [DOT] | [DOT, DOT] => self.next(),
             _ => Some((name, is_directory)),
-        }
-    }
-}
-
-unsafe fn from_maybe_unaligned<'a>(p: *const u16, len: usize) -> Cow<'a, [u16]> {
-    unsafe {
-        if p.is_aligned() {
-            Cow::Borrowed(crate::slice::from_raw_parts(p, len))
-        } else {
-            Cow::Owned((0..len).map(|i| p.add(i).read_unaligned()).collect())
         }
     }
 }
