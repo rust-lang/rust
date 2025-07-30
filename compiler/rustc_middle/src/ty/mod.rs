@@ -673,24 +673,6 @@ impl<'tcx> TermKind<'tcx> {
     }
 }
 
-#[derive(Copy, Clone, Eq, PartialEq, Debug)]
-pub enum TermVid {
-    Ty(ty::TyVid),
-    Const(ty::ConstVid),
-}
-
-impl From<ty::TyVid> for TermVid {
-    fn from(value: ty::TyVid) -> Self {
-        TermVid::Ty(value)
-    }
-}
-
-impl From<ty::ConstVid> for TermVid {
-    fn from(value: ty::ConstVid) -> Self {
-        TermVid::Const(value)
-    }
-}
-
 /// Represents the bounds declared on a particular set of type
 /// parameters. Should eventually be generalized into a flag list of
 /// where-clauses. You can obtain an `InstantiatedPredicates` list from a
