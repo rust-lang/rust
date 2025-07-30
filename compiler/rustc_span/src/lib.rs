@@ -66,7 +66,8 @@ pub use span_encoding::{DUMMY_SP, Span};
 
 pub mod symbol;
 pub use symbol::{
-    ByteSymbol, Ident, MacroRulesNormalizedIdent, STDLIB_STABLE_CRATES, Symbol, kw, sym,
+    ByteSymbol, Ident, MacroRulesNormalizedIdent, Macros20NormalizedIdent, STDLIB_STABLE_CRATES,
+    Symbol, kw, sym,
 };
 
 mod analyze_source_file;

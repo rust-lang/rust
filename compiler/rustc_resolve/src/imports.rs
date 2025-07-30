@@ -498,7 +498,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 let imported_binding = self.import(binding, *import);
                 let _ = self.try_define_local(
                     import.parent_scope.module,
-                    ident,
+                    ident.0,
                     key.ns,
                     imported_binding,
                     warn_ambiguity,
@@ -1517,7 +1517,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     .is_some_and(|binding| binding.warn_ambiguity_recursive());
                 let _ = self.try_define_local(
                     import.parent_scope.module,
-                    key.ident,
+                    key.ident.0,
                     key.ns,
                     imported_binding,
                     warn_ambiguity,
@@ -1550,7 +1550,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     next_binding = binding;
                 }
 
-                children.push(ModChild { ident, res, vis: binding.vis, reexport_chain });
+                children.push(ModChild { ident: ident.0, res, vis: binding.vis, reexport_chain });
             }
         });
 
