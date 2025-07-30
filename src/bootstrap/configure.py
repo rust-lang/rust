@@ -320,6 +320,7 @@ o(
     "build three compilers instead of two (not recommended except for testing reproducible builds)",
 )
 o("extended", "build.extended", "build an extended rust tool set")
+o("reproducible", "build.reproducible", "perform a reproducibility check by building the compiler twice")
 
 v("bootstrap-cache-path", None, "use provided path for the bootstrap cache")
 v("tools", None, "List of extended tools will be installed")

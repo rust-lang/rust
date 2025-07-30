@@ -35,7 +35,13 @@ compiler. What actually happens when you invoke bootstrap is:
    and the compiler, and then these binaries are then copied to the `stage1`
    directory. That compiler is then used to generate the stage1 artifacts which
    are then copied to the stage2 directory, and then finally, the stage2
-   artifacts are generated using that compiler.
+   artifacts are generated using that compiler. A full stage 2 build (producing
+   a complete, self-contained compiler) can be executed with:
+
+   ```bash
+   ./x.py build --stage 2 compiler/rustc
+   ```
+   This builds the compiler through all bootstrap stages.
 
 The goal of each stage is to (a) leverage Cargo as much as possible and failing
 that (b) leverage Rust as much as possible!
@@ -154,6 +160,32 @@ build/
     stage2/
     stage3/
 ```
+## Verifying Build Reproducibility
+
+To ensure the compiler produces identical output across builds (important for
+security and deterministic builds), you can verify build reproducibility:
+
+```bash
+./x.py build --reproducible
+```
+Or set in `bootstrap.toml`:
+```toml
+[build]
+build.reproducible = true
+```
+
+This will:
+1. Build the compiler in two separate directories
+2. Compare critical artifacts (binaries, libraries)
+3. Report any differences
+Note: Requires significant time and disk space as it performs two complete builds.
+Verification compares:
+- Rustc binaries (`bin/`)
+- Standard library (`lib/*.so`)
+- Compiler RLIBs (`lib/rustlib/`)
+
+For a detailed HTML report, use the --html flag:
+./x.py build --reproducible --html report.html
 
 ## Extending bootstrap
 
