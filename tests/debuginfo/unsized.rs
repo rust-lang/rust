@@ -37,7 +37,6 @@
 // cdb-check:    [...] vtable           : 0x[...] [Type: unsigned [...]int[...] (*)[4]]
 
 // cdb-command:dx _box
-// cdb-check:
 // cdb-check:_box             [Type: alloc::boxed::Box<unsized::Foo<dyn$<core::fmt::Debug> >,alloc::alloc::Global>]
 // cdb-check:[+0x000] pointer          : 0x[...] [Type: unsized::Foo<dyn$<core::fmt::Debug> > *]
 // cdb-check:[...] vtable           : 0x[...] [Type: unsigned [...]int[...] (*)[4]]
