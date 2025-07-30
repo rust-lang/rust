@@ -453,10 +453,20 @@ impl Config {
             skip_std_check_if_no_download_rustc: flags_skip_std_check_if_no_download_rustc,
         } = flags;
 
+        // First initialize the bare minimum that we need for further operation - source directory
+        // and execution context.
         let mut config = Config::default_opts();
         let exec_ctx = ExecutionContext::new(flags_verbose, flags_cmd.fail_fast());
 
         config.exec_ctx = exec_ctx;
+
+        if let Some(src) = compute_src_directory(flags_src, &config.exec_ctx) {
+            config.src = src;
+        }
+
+        // Now load the TOML config, as soon as possible
+        let (mut toml, toml_path) = load_toml_config(&config.src, flags_config, &get_toml);
+        config.config = toml_path.clone();
 
         // Set flags.
         config.paths = std::mem::take(&mut flags_paths);
@@ -501,53 +511,6 @@ impl Config {
 
         // Infer the rest of the configuration.
 
-        if let Some(src) = flags_src {
-            config.src = src
-        } else {
-            // Infer the source directory. This is non-trivial because we want to support a downloaded bootstrap binary,
-            // running on a completely different machine from where it was compiled.
-            let mut cmd = helpers::git(None);
-            // NOTE: we cannot support running from outside the repository because the only other path we have available
-            // is set at compile time, which can be wrong if bootstrap was downloaded rather than compiled locally.
-            // We still support running outside the repository if we find we aren't in a git directory.
-
-            // NOTE: We get a relative path from git to work around an issue on MSYS/mingw. If we used an absolute path,
-            // and end up using MSYS's git rather than git-for-windows, we would get a unix-y MSYS path. But as bootstrap
-            // has already been (kinda-cross-)compiled to Windows land, we require a normal Windows path.
-            cmd.arg("rev-parse").arg("--show-cdup");
-            // Discard stderr because we expect this to fail when building from a tarball.
-            let output = cmd.allow_failure().run_capture_stdout(&config);
-            if output.is_success() {
-                let git_root_relative = output.stdout();
-                // We need to canonicalize this path to make sure it uses backslashes instead of forward slashes,
-                // and to resolve any relative components.
-                let git_root = env::current_dir()
-                    .unwrap()
-                    .join(PathBuf::from(git_root_relative.trim()))
-                    .canonicalize()
-                    .unwrap();
-                let s = git_root.to_str().unwrap();
-
-                // Bootstrap is quite bad at handling /? in front of paths
-                let git_root = match s.strip_prefix("\\\\?\\") {
-                    Some(p) => PathBuf::from(p),
-                    None => git_root,
-                };
-                // If this doesn't have at least `stage0`, we guessed wrong. This can happen when,
-                // for example, the build directory is inside of another unrelated git directory.
-                // In that case keep the original `CARGO_MANIFEST_DIR` handling.
-                //
-                // NOTE: this implies that downloadable bootstrap isn't supported when the build directory is outside
-                // the source directory. We could fix that by setting a variable from all three of python, ./x, and x.ps1.
-                if git_root.join("src").join("stage0").exists() {
-                    config.src = git_root;
-                }
-            } else {
-                // We're building from a tarball, not git sources.
-                // We don't support pre-downloaded bootstrap in this case.
-            }
-        }
-
         if cfg!(test) {
             // Use the build directory of the original x.py invocation, so that we can set `initial_rustc` properly.
             config.out = Path::new(
@@ -559,47 +522,6 @@ impl Config {
         }
 
         config.stage0_metadata = build_helper::stage0_parser::parse_stage0_file();
-
-        // Locate the configuration file using the following priority (first match wins):
-        // 1. `--config <path>` (explicit flag)
-        // 2. `RUST_BOOTSTRAP_CONFIG` environment variable
-        // 3. `./bootstrap.toml` (local file)
-        // 4. `<root>/bootstrap.toml`
-        // 5. `./config.toml` (fallback for backward compatibility)
-        // 6. `<root>/config.toml`
-        let toml_path = flags_config
-            .clone()
-            .or_else(|| env::var_os("RUST_BOOTSTRAP_CONFIG").map(PathBuf::from));
-        let using_default_path = toml_path.is_none();
-        let mut toml_path = toml_path.unwrap_or_else(|| PathBuf::from("bootstrap.toml"));
-
-        if using_default_path && !toml_path.exists() {
-            toml_path = config.src.join(PathBuf::from("bootstrap.toml"));
-            if !toml_path.exists() {
-                toml_path = PathBuf::from("config.toml");
-                if !toml_path.exists() {
-                    toml_path = config.src.join(PathBuf::from("config.toml"));
-                }
-            }
-        }
-
-        // Give a hard error if `--config` or `RUST_BOOTSTRAP_CONFIG` are set to a missing path,
-        // but not if `bootstrap.toml` hasn't been created.
-        let mut toml = if !using_default_path || toml_path.exists() {
-            config.config = Some(if cfg!(not(test)) {
-                toml_path = toml_path.canonicalize().unwrap();
-                toml_path.clone()
-            } else {
-                toml_path.clone()
-            });
-            get_toml(&toml_path).unwrap_or_else(|e| {
-                eprintln!("ERROR: Failed to parse '{}': {e}", toml_path.display());
-                exit!(2);
-            })
-        } else {
-            config.config = None;
-            TomlConfig::default()
-        };
 
         if cfg!(test) {
             // When configuring bootstrap for tests, make sure to set the rustc and Cargo to the
@@ -622,7 +544,12 @@ impl Config {
         // This must be handled before applying the `profile` since `include`s should always take
         // precedence over `profile`s.
         for include_path in toml.include.clone().unwrap_or_default().iter().rev() {
-            let include_path = toml_path.parent().unwrap().join(include_path);
+            let include_path = toml_path
+                .as_ref()
+                .expect("include found in default TOML config")
+                .parent()
+                .unwrap()
+                .join(include_path);
 
             let included_toml = get_toml(&include_path).unwrap_or_else(|e| {
                 eprintln!("ERROR: Failed to parse '{}': {e}", include_path.display());
@@ -2307,5 +2234,106 @@ impl Config {
 impl AsRef<ExecutionContext> for Config {
     fn as_ref(&self) -> &ExecutionContext {
         &self.exec_ctx
+    }
+}
+
+fn compute_src_directory(src_dir: Option<PathBuf>, exec_ctx: &ExecutionContext) -> Option<PathBuf> {
+    if let Some(src) = src_dir {
+        return Some(src);
+    } else {
+        // Infer the source directory. This is non-trivial because we want to support a downloaded bootstrap binary,
+        // running on a completely different machine from where it was compiled.
+        let mut cmd = helpers::git(None);
+        // NOTE: we cannot support running from outside the repository because the only other path we have available
+        // is set at compile time, which can be wrong if bootstrap was downloaded rather than compiled locally.
+        // We still support running outside the repository if we find we aren't in a git directory.
+
+        // NOTE: We get a relative path from git to work around an issue on MSYS/mingw. If we used an absolute path,
+        // and end up using MSYS's git rather than git-for-windows, we would get a unix-y MSYS path. But as bootstrap
+        // has already been (kinda-cross-)compiled to Windows land, we require a normal Windows path.
+        cmd.arg("rev-parse").arg("--show-cdup");
+        // Discard stderr because we expect this to fail when building from a tarball.
+        let output = cmd.allow_failure().run_capture_stdout(exec_ctx);
+        if output.is_success() {
+            let git_root_relative = output.stdout();
+            // We need to canonicalize this path to make sure it uses backslashes instead of forward slashes,
+            // and to resolve any relative components.
+            let git_root = env::current_dir()
+                .unwrap()
+                .join(PathBuf::from(git_root_relative.trim()))
+                .canonicalize()
+                .unwrap();
+            let s = git_root.to_str().unwrap();
+
+            // Bootstrap is quite bad at handling /? in front of paths
+            let git_root = match s.strip_prefix("\\\\?\\") {
+                Some(p) => PathBuf::from(p),
+                None => git_root,
+            };
+            // If this doesn't have at least `stage0`, we guessed wrong. This can happen when,
+            // for example, the build directory is inside of another unrelated git directory.
+            // In that case keep the original `CARGO_MANIFEST_DIR` handling.
+            //
+            // NOTE: this implies that downloadable bootstrap isn't supported when the build directory is outside
+            // the source directory. We could fix that by setting a variable from all three of python, ./x, and x.ps1.
+            if git_root.join("src").join("stage0").exists() {
+                return Some(git_root);
+            }
+        } else {
+            // We're building from a tarball, not git sources.
+            // We don't support pre-downloaded bootstrap in this case.
+        }
+    };
+    None
+}
+
+/// Loads bootstrap TOML config and returns the config together with a path from where
+/// it was loaded.
+/// `src` is the source root directory, and `config_path` is an optionally provided path to the
+/// config.
+fn load_toml_config(
+    src: &Path,
+    config_path: Option<PathBuf>,
+    get_toml: &impl Fn(&Path) -> Result<TomlConfig, toml::de::Error>,
+) -> (TomlConfig, Option<PathBuf>) {
+    // Locate the configuration file using the following priority (first match wins):
+    // 1. `--config <path>` (explicit flag)
+    // 2. `RUST_BOOTSTRAP_CONFIG` environment variable
+    // 3. `./bootstrap.toml` (local file)
+    // 4. `<root>/bootstrap.toml`
+    // 5. `./config.toml` (fallback for backward compatibility)
+    // 6. `<root>/config.toml`
+    let toml_path = config_path.or_else(|| env::var_os("RUST_BOOTSTRAP_CONFIG").map(PathBuf::from));
+    let using_default_path = toml_path.is_none();
+    let mut toml_path = toml_path.unwrap_or_else(|| PathBuf::from("bootstrap.toml"));
+
+    if using_default_path && !toml_path.exists() {
+        toml_path = src.join(PathBuf::from("bootstrap.toml"));
+        if !toml_path.exists() {
+            toml_path = PathBuf::from("config.toml");
+            if !toml_path.exists() {
+                toml_path = src.join(PathBuf::from("config.toml"));
+            }
+        }
+    }
+
+    // Give a hard error if `--config` or `RUST_BOOTSTRAP_CONFIG` are set to a missing path,
+    // but not if `bootstrap.toml` hasn't been created.
+    if !using_default_path || toml_path.exists() {
+        let path = Some(if cfg!(not(test)) {
+            toml_path = toml_path.canonicalize().unwrap();
+            toml_path.clone()
+        } else {
+            toml_path.clone()
+        });
+        (
+            get_toml(&toml_path).unwrap_or_else(|e| {
+                eprintln!("ERROR: Failed to parse '{}': {e}", toml_path.display());
+                exit!(2);
+            }),
+            path,
+        )
+    } else {
+        (TomlConfig::default(), None)
     }
 }
