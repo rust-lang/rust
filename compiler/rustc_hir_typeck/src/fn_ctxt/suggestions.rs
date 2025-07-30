@@ -1302,7 +1302,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 None => ".clone()".to_string(),
             };
 
-            let span = expr.span.find_oldest_ancestor_in_same_ctxt().shrink_to_hi();
+            let span = expr.span.find_ancestor_not_from_macro().unwrap_or(expr.span).shrink_to_hi();
 
             diag.span_suggestion_verbose(
                 span,
@@ -1395,7 +1395,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .macro_backtrace()
                 .any(|x| matches!(x.kind, ExpnKind::Macro(MacroKind::Attr | MacroKind::Derive, ..)))
         {
-            let span = expr.span.find_oldest_ancestor_in_same_ctxt();
+            let span = expr
+                .span
+                .find_ancestor_not_from_extern_macro(&self.tcx.sess.source_map())
+                .unwrap_or(expr.span);
 
             let mut sugg = if self.precedence(expr) >= ExprPrecedence::Unambiguous {
                 vec![(span.shrink_to_hi(), ".into()".to_owned())]
@@ -2062,7 +2065,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             None => sugg.to_string(),
         };
 
-        let span = expr.span.find_oldest_ancestor_in_same_ctxt();
+        let span = expr
+            .span
+            .find_ancestor_not_from_extern_macro(&self.tcx.sess.source_map())
+            .unwrap_or(expr.span);
         err.span_suggestion_verbose(span.shrink_to_hi(), msg, sugg, Applicability::HasPlaceholders);
         true
     }

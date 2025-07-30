@@ -716,11 +716,16 @@ impl Span {
         (!ctxt.is_root()).then(|| ctxt.outer_expn_data().call_site)
     }
 
-    /// Walk down the expansion ancestors to find a span that's contained within `outer`.
+    /// Find the first ancestor span that's contained within `outer`.
     ///
-    /// The span returned by this method may have a different [`SyntaxContext`] as `outer`.
+    /// This method traverses the macro expansion ancestors until it finds the first span
+    /// that's contained within `outer`.
+    ///
+    /// The span returned by this method may have a different [`SyntaxContext`] than `outer`.
     /// If you need to extend the span, use [`find_ancestor_inside_same_ctxt`] instead,
     /// because joining spans with different syntax contexts can create unexpected results.
+    ///
+    /// This is used to find the span of the macro call when a parent expr span, i.e. `outer`, is known.
     ///
     /// [`find_ancestor_inside_same_ctxt`]: Self::find_ancestor_inside_same_ctxt
     pub fn find_ancestor_inside(mut self, outer: Span) -> Option<Span> {
@@ -730,8 +735,10 @@ impl Span {
         Some(self)
     }
 
-    /// Walk down the expansion ancestors to find a span with the same [`SyntaxContext`] as
-    /// `other`.
+    /// Find the first ancestor span with the same [`SyntaxContext`] as `other`.
+    ///
+    /// This method traverses the macro expansion ancestors until it finds a span
+    /// that has the same [`SyntaxContext`] as `other`.
     ///
     /// Like [`find_ancestor_inside_same_ctxt`], but specifically for when spans might not
     /// overlap. Take care when using this, and prefer [`find_ancestor_inside`] or
@@ -747,8 +754,11 @@ impl Span {
         Some(self)
     }
 
-    /// Walk down the expansion ancestors to find a span that's contained within `outer` and
+    /// Find the first ancestor span that's contained within `outer` and
     /// has the same [`SyntaxContext`] as `outer`.
+    ///
+    /// This method traverses the macro expansion ancestors until it finds a span
+    /// that is both contained within `outer` and has the same [`SyntaxContext`] as `outer`.
     ///
     /// This method is the combination of [`find_ancestor_inside`] and
     /// [`find_ancestor_in_same_ctxt`] and should be preferred when extending the returned span.
@@ -763,43 +773,43 @@ impl Span {
         Some(self)
     }
 
-    /// Recursively walk down the expansion ancestors to find the oldest ancestor span with the same
-    /// [`SyntaxContext`] the initial span.
+    /// Find the first ancestor span that does not come from an external macro.
     ///
-    /// This method is suitable for peeling through *local* macro expansions to find the "innermost"
-    /// span that is still local and shares the same [`SyntaxContext`]. For example, given
+    /// This method traverses the macro expansion ancestors until it finds a span
+    /// that is either from user-written code or from a local macro (defined in the current crate).
     ///
-    /// ```ignore (illustrative example, contains type error)
-    ///  macro_rules! outer {
-    ///      ($x: expr) => {
-    ///          inner!($x)
-    ///      }
-    ///  }
+    /// External macros are those defined in dependencies or the standard library.
+    /// This method is useful for reporting errors in user-controllable code and avoiding
+    /// diagnostics inside external macros.
     ///
-    ///  macro_rules! inner {
-    ///      ($x: expr) => {
-    ///          format!("error: {}", $x)
-    ///          //~^ ERROR mismatched types
-    ///      }
-    ///  }
+    /// # See also
     ///
-    ///  fn bar(x: &str) -> Result<(), Box<dyn std::error::Error>> {
-    ///      Err(outer!(x))
-    ///  }
-    /// ```
-    ///
-    /// if provided the initial span of `outer!(x)` inside `bar`, this method will recurse
-    /// the parent callsites until we reach `format!("error: {}", $x)`, at which point it is the
-    /// oldest ancestor span that is both still local and shares the same [`SyntaxContext`] as the
-    /// initial span.
-    pub fn find_oldest_ancestor_in_same_ctxt(self) -> Span {
-        let mut cur = self;
-        while cur.eq_ctxt(self)
-            && let Some(parent_callsite) = cur.parent_callsite()
-        {
-            cur = parent_callsite;
+    /// - [`Self::find_ancestor_not_from_macro`]
+    /// - [`Self::in_external_macro`]
+    pub fn find_ancestor_not_from_extern_macro(mut self, sm: &SourceMap) -> Option<Span> {
+        while self.in_external_macro(sm) {
+            self = self.parent_callsite()?;
         }
-        cur
+        Some(self)
+    }
+
+    /// Find the first ancestor span that does not come from any macro expansion.
+    ///
+    /// This method traverses the macro expansion ancestors until it finds a span
+    /// that originates from user-written code rather than any macro-generated code.
+    ///
+    /// This method is useful for reporting errors at the exact location users wrote code
+    /// and providing suggestions at directly editable locations.
+    ///
+    /// # See also
+    ///
+    /// - [`Self::find_ancestor_not_from_extern_macro`]
+    /// - [`Span::from_expansion`]
+    pub fn find_ancestor_not_from_macro(mut self) -> Option<Span> {
+        while self.from_expansion() {
+            self = self.parent_callsite()?;
+        }
+        Some(self)
     }
 
     /// Edition of the crate from which this span came.
