@@ -12,6 +12,7 @@ import re
 import subprocess as sp
 import sys
 from dataclasses import dataclass
+from functools import cache
 from glob import glob
 from inspect import cleandoc
 from os import getenv
@@ -62,7 +63,7 @@ IGNORE_FILES = [
 
 # libm PR CI takes a long time and doesn't need to run unless relevant files have been
 # changed. Anything matching this regex pattern will trigger a run.
-TRIGGER_LIBM_PR_CI = ".*(libm|musl).*"
+TRIGGER_LIBM_CI_FILE_PAT = ".*(libm|musl).*"
 
 TYPES = ["f16", "f32", "f64", "f128"]
 
@@ -125,8 +126,18 @@ class PrInfo:
     cfg: PrCfg
 
     @classmethod
-    def load(cls, pr_number: int | str) -> Self:
-        """For a given PR number, query the body and commit list"""
+    def from_env(cls) -> Self | None:
+        """Create a PR object from the PR_NUMBER environment if set, `None` otherwise."""
+        pr_env = os.environ.get("PR_NUMBER")
+        if pr_env is not None and len(pr_env) > 0:
+            return cls.from_pr(pr_env)
+
+        return None
+
+    @classmethod
+    @cache  # Cache so we don't print info messages multiple times
+    def from_pr(cls, pr_number: int | str) -> Self:
+        """For a given PR number, query the body and commit list."""
         pr_info = sp.check_output(
             [
                 "gh",
@@ -238,22 +249,23 @@ class Context:
         """If this is a PR and no libm files were changed, allow skipping libm
         jobs."""
 
-        if self.is_pr():
-            return all(not re.match(TRIGGER_LIBM_PR_CI, str(f)) for f in self.changed)
+        # Always run on merge CI
+        if not self.is_pr():
+            return False
 
-        return False
+        # By default, run if there are any changed files matching the pattern
+        return all(not re.match(TRIGGER_LIBM_CI_FILE_PAT, str(f)) for f in self.changed)
 
     def emit_workflow_output(self):
         """Create a JSON object a list items for each type's changed files, if any
         did change, and the routines that were affected by the change.
         """
 
-        pr_number = os.environ.get("PR_NUMBER")
         skip_tests = False
         error_on_many_tests = False
 
-        if pr_number is not None and len(pr_number) > 0:
-            pr = PrInfo.load(pr_number)
+        pr = PrInfo.from_env()
+        if pr is not None:
             skip_tests = pr.cfg.skip_extensive
             error_on_many_tests = not pr.cfg.allow_many_extensive
 
@@ -398,7 +410,7 @@ def handle_bench_regressions(args: list[str]):
             eprint(USAGE)
             exit(1)
 
-    pr = PrInfo.load(pr_number)
+    pr = PrInfo.from_pr(pr_number)
     if pr.cfg.allow_regressions:
         eprint("PR allows regressions")
         return
