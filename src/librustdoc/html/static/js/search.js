@@ -3896,9 +3896,9 @@ class DocSearch {
                                 }
                             }
                         }
-                    }
-                    if (yield* flush(substringResults)) {
-                        return;
+                        if (yield* flush(substringResults)) {
+                            return;
+                        }
                     }
                 }
             }
