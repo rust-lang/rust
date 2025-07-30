@@ -26,7 +26,7 @@ use rustc_ast::visit::{AssocCtxt, BoundKind, FnCtxt, FnKind, Visitor, walk_list}
 use rustc_ast::*;
 use rustc_ast_pretty::pprust::{self, State};
 use rustc_data_structures::fx::FxIndexMap;
-use rustc_errors::DiagCtxtHandle;
+use rustc_errors::{DiagCtxtHandle, E0197};
 use rustc_feature::Features;
 use rustc_parse::validate_attr;
 use rustc_session::Session;
@@ -1016,12 +1016,16 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     errors::VisibilityNotPermittedNote::IndividualImplItems,
                 );
                 if let &Safety::Unsafe(span) = safety {
-                    self.dcx().emit_err(errors::InherentImplCannotUnsafe {
-                        span: self_ty.span,
-                        annotation_span: span,
-                        annotation: "unsafe",
-                        self_ty: self_ty.span,
-                    });
+                    self.dcx()
+                        .create_err(errors::InherentImplCannot {
+                            span: self_ty.span,
+                            annotation_span: span,
+                            annotation: "unsafe",
+                            self_ty: self_ty.span,
+                            only_trait: true,
+                        })
+                        .with_code(E0197)
+                        .emit();
                 }
                 if let &ImplPolarity::Negative(span) = polarity {
                     self.dcx().emit_err(error(span, "negative", false));
