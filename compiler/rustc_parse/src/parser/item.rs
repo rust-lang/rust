@@ -667,36 +667,27 @@ impl<'a> Parser<'a> {
             }
             None => {
                 let self_ty = ty_first;
-                let error = |annotation_span, annotation, only_trait| {
-                    errors::TraitImplModifierInInherentImpl {
+                let error = |modifier, modifier_name, modifier_span| {
+                    self.dcx().create_err(errors::TraitImplModifierInInherentImpl {
                         span: self_ty.span,
-                        annotation_span,
-                        annotation,
+                        modifier,
+                        modifier_name,
+                        modifier_span,
                         self_ty: self_ty.span,
-                        only_trait,
-                    }
+                    })
                 };
 
                 if let Safety::Unsafe(span) = safety {
-                    self.dcx()
-                        .create_err(errors::TraitImplModifierInInherentImpl {
-                            span: self_ty.span,
-                            annotation_span: span,
-                            annotation: "unsafe",
-                            self_ty: self_ty.span,
-                            only_trait: true,
-                        })
-                        .with_code(E0197)
-                        .emit();
+                    error("unsafe", "unsafe", span).with_code(E0197).emit();
                 }
                 if let ImplPolarity::Negative(span) = polarity {
-                    self.dcx().emit_err(error(span, "negative", false));
+                    error("!", "negative", span).emit();
                 }
                 if let Defaultness::Default(def_span) = defaultness {
-                    self.dcx().emit_err(error(def_span, "`default`", true));
+                    error("default", "default", def_span).emit();
                 }
                 if let Const::Yes(span) = constness {
-                    self.dcx().emit_err(error(span, "`const`", true));
+                    error("const", "const", span).emit();
                 }
                 (None, self_ty)
             }

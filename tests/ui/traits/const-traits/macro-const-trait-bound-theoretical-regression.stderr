@@ -1,4 +1,4 @@
-error: inherent impls cannot be `const`
+error: inherent impls cannot be const
   --> $DIR/macro-const-trait-bound-theoretical-regression.rs:10:40
    |
 LL |     (impl $c:ident Trait) => { impl $c Trait {} };
@@ -7,7 +7,7 @@ LL |     (impl $c:ident Trait) => { impl $c Trait {} };
 LL | demo! { impl const Trait }
    | --------------------------
    | |            |
-   | |            `const` because of this
+   | |            const because of this
    | in this macro invocation
    |
    = note: only trait implementations may be annotated with `const`
