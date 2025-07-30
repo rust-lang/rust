@@ -977,8 +977,8 @@ impl<'tcx> rustc_type_ir::inherent::BoundVarLike<TyCtxt<'tcx>> for BoundConst {
         self.var
     }
 
-    fn assert_eq(self, _var: ty::BoundVariableKind) {
-        unreachable!()
+    fn assert_eq(self, var: ty::BoundVariableKind) {
+        var.expect_const()
     }
 }
 
