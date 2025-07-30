@@ -41,7 +41,7 @@ const PIO2_3T: f64 = 8.47842766036889956997e-32; /* 0x397B839A, 0x252049C1 */
 // use rem_pio2_large() for large x
 //
 // caller must handle the case when reduction is not needed: |x| ~<= pi/4 */
-#[cfg_attr(all(test, assert_no_panic), no_panic::no_panic)]
+#[cfg_attr(assert_no_panic, no_panic::no_panic)]
 pub(crate) fn rem_pio2(x: f64) -> (i32, f64, f64) {
     let x1p24 = f64::from_bits(0x4170000000000000);
 
