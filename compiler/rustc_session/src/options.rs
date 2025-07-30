@@ -2170,6 +2170,8 @@ options! {
         "emit runtime checks for contract pre- and post-conditions (default: no)"),
     coverage_options: CoverageOptions = (CoverageOptions::default(), parse_coverage_options, [TRACKED],
         "control details of coverage instrumentation"),
+    codegen_source_order: bool = (false, parse_bool, [UNTRACKED],
+        "emit mono items in the order of spans in source files (default: no)"),
     crate_attr: Vec<String> = (Vec::new(), parse_string_push, [TRACKED],
         "inject the given attribute in the crate"),
     cross_crate_inline_threshold: InliningThreshold = (InliningThreshold::Sometimes(100), parse_inlining_threshold, [TRACKED],
