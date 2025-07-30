@@ -79,6 +79,7 @@ lld = false
 rustc = "{rustc}"
 cargo = "{cargo}"
 local-rebuild = true
+compiletest-allow-stage0=true
 
 [target.{host_triple}]
 llvm-config = "{llvm_config}"
@@ -117,7 +118,6 @@ llvm-config = "{llvm_config}"
             args.extend(["--skip", test_path]);
         }
         cmd(&args)
-            .env("COMPILETEST_FORCE_STAGE0", "1")
             // Also run dist-only tests
             .env("COMPILETEST_ENABLE_DIST_TESTS", "1")
             .run()

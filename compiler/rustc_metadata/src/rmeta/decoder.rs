@@ -1937,9 +1937,13 @@ impl CrateMetadata {
         self.root.decode_target_modifiers(&self.blob).collect()
     }
 
-    pub(crate) fn update_extern_crate(&mut self, new_extern_crate: ExternCrate) -> bool {
+    /// Keep `new_extern_crate` if it looks better in diagnostics
+    pub(crate) fn update_extern_crate_diagnostics(
+        &mut self,
+        new_extern_crate: ExternCrate,
+    ) -> bool {
         let update =
-            Some(new_extern_crate.rank()) > self.extern_crate.as_ref().map(ExternCrate::rank);
+            self.extern_crate.as_ref().is_none_or(|old| old.rank() < new_extern_crate.rank());
         if update {
             self.extern_crate = Some(new_extern_crate);
         }
