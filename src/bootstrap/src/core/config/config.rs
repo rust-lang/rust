@@ -446,12 +446,22 @@ impl Config {
             enable_bolt_settings: flags_enable_bolt_settings,
             skip_stage0_validation: flags_skip_stage0_validation,
             reproducible_artifact: flags_reproducible_artifact,
-            paths: mut flags_paths,
+            paths: flags_paths,
             set: flags_set,
-            free_args: mut flags_free_args,
+            free_args: flags_free_args,
             ci: flags_ci,
             skip_std_check_if_no_download_rustc: flags_skip_std_check_if_no_download_rustc,
         } = flags;
+
+        #[cfg(feature = "tracing")]
+        span!(
+            target: "CONFIG_HANDLING",
+            tracing::Level::TRACE,
+            "collecting paths and path exclusions",
+            "flags.paths" = ?flags_paths,
+            "flags.skip" = ?flags_skip,
+            "flags.exclude" = ?flags_exclude
+        );
 
         // First initialize the bare minimum that we need for further operation - source directory
         // and execution context.
@@ -576,26 +586,13 @@ impl Config {
             }
         }
 
-        #[cfg(feature = "tracing")]
-        span!(
-            target: "CONFIG_HANDLING",
-            tracing::Level::TRACE,
-            "collecting paths and path exclusions",
-            "flags.paths" = ?flags_paths,
-            "flags.skip" = ?flags_skip,
-            "flags.exclude" = ?flags_exclude
-        );
+        let mut paths: Vec<PathBuf> = flags_skip.into_iter().chain(flags_exclude).collect();
+        if let Some(exclude) = exclude {
+            paths.extend(exclude);
+        }
 
-        #[cfg(feature = "tracing")]
-        span!(
-            target: "CONFIG_HANDLING",
-            tracing::Level::TRACE,
-            "normalizing and combining `flag.skip`/`flag.exclude` paths",
-            "config.skip" = ?config.skip,
-        );
-
-        // Set flags.
-        config.paths = std::mem::take(&mut flags_paths);
+        // Set config values based on flags.
+        config.paths = flags_paths;
         config.include_default_paths = flags_include_default_paths;
         config.rustc_error_format = flags_rustc_error_format;
         config.json_output = flags_json_output;
@@ -608,7 +605,7 @@ impl Config {
         config.keep_stage = flags_keep_stage;
         config.keep_stage_std = flags_keep_stage_std;
         config.color = flags_color;
-        config.free_args = std::mem::take(&mut flags_free_args);
+        config.free_args = flags_free_args;
         config.llvm_profile_use = flags_llvm_profile_use;
         config.llvm_profile_generate = flags_llvm_profile_generate;
         config.enable_bolt_settings = flags_enable_bolt_settings;
@@ -632,12 +629,6 @@ impl Config {
 
         config.change_id = toml.change_id.inner;
 
-        let mut paths: Vec<PathBuf> = flags_skip.into_iter().chain(flags_exclude).collect();
-
-        if let Some(exclude) = exclude {
-            paths.extend(exclude);
-        }
-
         config.skip = paths
             .into_iter()
             .map(|p| {
@@ -651,6 +642,14 @@ impl Config {
                 }
             })
             .collect();
+
+        #[cfg(feature = "tracing")]
+        span!(
+            target: "CONFIG_HANDLING",
+            tracing::Level::TRACE,
+            "normalizing and combining `flag.skip`/`flag.exclude` paths",
+            "config.skip" = ?config.skip,
+        );
 
         config.jobs = Some(threads_from_config(jobs.unwrap_or(0)));
         if let Some(build) = build {
