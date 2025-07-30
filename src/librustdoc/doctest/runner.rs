@@ -1,4 +1,5 @@
 use std::fmt::Write;
+use std::time::Duration;
 
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_span::edition::Edition;
@@ -67,6 +68,10 @@ impl DocTestRunner {
         self.nb_tests += 1;
     }
 
+    /// Returns a tuple containing the `Duration` of the compilation and the `Result` of the test.
+    ///
+    /// If compilation failed, it will return `Err`, otherwise it will return `Ok` containing if
+    /// the test ran successfully.
     pub(crate) fn run_merged_tests(
         &mut self,
         test_options: IndividualTestOptions,
@@ -74,7 +79,7 @@ impl DocTestRunner {
         opts: &GlobalTestOptions,
         test_args: &[String],
         rustdoc_options: &RustdocOptions,
-    ) -> Result<bool, ()> {
+    ) -> (Duration, Result<bool, ()>) {
         let mut code = "\
 #![allow(unused_extern_crates)]
 #![allow(internal_features)]
@@ -204,9 +209,9 @@ std::process::Termination::report(test::test_main(test_args, tests, None))
             no_run: false,
             merged_test_code: Some(code),
         };
-        let ret =
+        let (duration, ret) =
             run_test(runnable_test, rustdoc_options, self.supports_color, |_: UnusedExterns| {});
-        if let Err(TestFailure::CompileError) = ret { Err(()) } else { Ok(ret.is_ok()) }
+        (duration, if let Err(TestFailure::CompileError) = ret { Err(()) } else { Ok(ret.is_ok()) })
     }
 }
 
