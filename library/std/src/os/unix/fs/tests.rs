@@ -1,4 +1,6 @@
 use super::*;
+use crate::bstr::ByteStr;
+use crate::io::Seek;
 
 #[test]
 fn read_vectored_at() {
@@ -39,13 +41,16 @@ fn write_vectored_at() {
         file.write_all(msg).unwrap();
     }
     let expected = {
-        let file = fs::File::options().write(true).open(&filename).unwrap();
+        // Open in append mode to test that positioned writes bypass O_APPEND.
+        let mut file = fs::File::options().append(true).open(&filename).unwrap();
         let buf0 = b"    ";
         let buf1 = b"great  ";
 
         let iovec = [io::IoSlice::new(buf0), io::IoSlice::new(buf1)];
 
+        assert_eq!(file.stream_position().unwrap(), 0);
         let n = file.write_vectored_at(&iovec, 11).unwrap();
+        assert_eq!(file.stream_position().unwrap(), 0);
 
         assert!(n == 4 || n == 11);
 
@@ -53,7 +58,7 @@ fn write_vectored_at() {
     };
 
     let content = fs::read(&filename).unwrap();
-    assert_eq!(&content, expected);
+    assert_eq!(ByteStr::new(&content), ByteStr::new(expected));
 }
 
 #[test]
