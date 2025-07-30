@@ -343,6 +343,7 @@ trivial! {
     rustc_span::Symbol,
     rustc_span::Ident,
     rustc_target::spec::PanicStrategy,
+    rustc_target::spec::SanitizerSet,
     rustc_type_ir::Variance,
     u32,
     usize,
