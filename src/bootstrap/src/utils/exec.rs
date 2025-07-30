@@ -550,7 +550,7 @@ impl Default for CommandOutput {
 #[derive(Clone, Default)]
 pub struct ExecutionContext {
     dry_run: DryRun,
-    verbosity: u8,
+    pub verbosity: u8,
     pub fail_fast: bool,
     delayed_failures: Arc<Mutex<Vec<String>>>,
     command_cache: Arc<CommandCache>,
@@ -640,7 +640,7 @@ impl ExecutionContext {
         self.dry_run = value;
     }
 
-    pub fn set_verbose(&mut self, value: u8) {
+    pub fn set_verbosity(&mut self, value: u8) {
         self.verbosity = value;
     }
 

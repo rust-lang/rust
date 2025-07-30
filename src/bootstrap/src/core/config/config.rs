@@ -93,7 +93,6 @@ pub struct Config {
     pub ccache: Option<String>,
     /// Call Build::ninja() instead of this.
     pub ninja_in_file: bool,
-    pub verbose: usize,
     pub submodules: Option<bool>,
     pub compiler_docs: bool,
     pub library_docs_private_items: bool,
@@ -528,7 +527,7 @@ impl Config {
             extended,
             tools,
             tool,
-            verbose,
+            verbose: build_verbose,
             sanitizers,
             profiler,
             cargo_native_static,
@@ -585,6 +584,12 @@ impl Config {
                 check_stage0_version(&cargo, "cargo", &config.src, config.exec_ctx());
             }
         }
+
+        // Prefer CLI verbosity flags if set (`flags_verbose` > 0), otherwise take the value from
+        // TOML.
+        config
+            .exec_ctx
+            .set_verbosity(cmp::max(build_verbose.unwrap_or_default() as u8, flags_verbose));
 
         let mut paths: Vec<PathBuf> = flags_skip.into_iter().chain(flags_exclude).collect();
         if let Some(exclude) = exclude {
@@ -741,7 +746,6 @@ impl Config {
         set(&mut config.extended, extended);
         config.tools = tools;
         set(&mut config.tool, tool);
-        set(&mut config.verbose, verbose);
         set(&mut config.sanitizers, sanitizers);
         set(&mut config.profiler, profiler);
         set(&mut config.cargo_native_static, cargo_native_static);
@@ -749,8 +753,6 @@ impl Config {
         set(&mut config.local_rebuild, local_rebuild);
         set(&mut config.print_step_timings, print_step_timings);
         set(&mut config.print_step_rusage, print_step_rusage);
-
-        config.verbose = cmp::max(config.verbose, flags_verbose as usize);
 
         // Verbose flag is a good default for `rust.verbose-tests`.
         config.verbose_tests = config.is_verbose();
