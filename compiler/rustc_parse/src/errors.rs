@@ -73,16 +73,16 @@ pub(crate) struct BadQPathStage2 {
 
 #[derive(Diagnostic)]
 #[diag(parse_trait_impl_modifier_in_inherent_impl)]
-pub(crate) struct TraitImplModifierInInherentImpl<'a> {
+#[note]
+pub(crate) struct TraitImplModifierInInherentImpl {
     #[primary_span]
     pub span: Span,
+    pub modifier: &'static str,
+    pub modifier_name: &'static str,
     #[label(parse_because)]
-    pub annotation_span: Span,
-    pub annotation: &'a str,
+    pub modifier_span: Span,
     #[label(parse_type)]
     pub self_ty: Span,
-    #[note(parse_only_trait)]
-    pub only_trait: bool,
 }
 
 #[derive(Subdiagnostic)]
