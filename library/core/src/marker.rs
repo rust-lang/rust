@@ -237,7 +237,7 @@ pub trait PointeeSized {
 #[lang = "unsize"]
 #[rustc_deny_explicit_impl]
 #[rustc_do_not_implement_via_object]
-pub trait Unsize<T: PointeeSized>: PointeeSized {
+pub trait Unsize<T: PointeeSized + ?crate::marker::Move>: PointeeSized {
     // Empty.
 }
 
