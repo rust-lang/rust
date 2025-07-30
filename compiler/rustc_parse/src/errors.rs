@@ -71,6 +71,20 @@ pub(crate) struct BadQPathStage2 {
     pub wrap: WrapType,
 }
 
+#[derive(Diagnostic)]
+#[diag(parse_trait_impl_modifier_in_inherent_impl)]
+pub(crate) struct TraitImplModifierInInherentImpl<'a> {
+    #[primary_span]
+    pub span: Span,
+    #[label(parse_because)]
+    pub annotation_span: Span,
+    pub annotation: &'a str,
+    #[label(parse_type)]
+    pub self_ty: Span,
+    #[note(parse_only_trait)]
+    pub only_trait: bool,
+}
+
 #[derive(Subdiagnostic)]
 #[multipart_suggestion(parse_suggestion, applicability = "machine-applicable")]
 pub(crate) struct WrapType {

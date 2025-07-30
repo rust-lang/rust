@@ -465,20 +465,6 @@ pub(crate) struct UnsafeNegativeImpl {
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_passes_inherent_cannot_be)]
-pub(crate) struct InherentImplCannot<'a> {
-    #[primary_span]
-    pub span: Span,
-    #[label(ast_passes_because)]
-    pub annotation_span: Span,
-    pub annotation: &'a str,
-    #[label(ast_passes_type)]
-    pub self_ty: Span,
-    #[note(ast_passes_only_trait)]
-    pub only_trait: bool,
-}
-
-#[derive(Diagnostic)]
 #[diag(ast_passes_unsafe_item)]
 pub(crate) struct UnsafeItem {
     #[primary_span]

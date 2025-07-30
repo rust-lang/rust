@@ -26,7 +26,7 @@ use rustc_ast::visit::{AssocCtxt, BoundKind, FnCtxt, FnKind, Visitor, walk_list}
 use rustc_ast::*;
 use rustc_ast_pretty::pprust::{self, State};
 use rustc_data_structures::fx::FxIndexMap;
-use rustc_errors::{DiagCtxtHandle, E0197};
+use rustc_errors::DiagCtxtHandle;
 use rustc_feature::Features;
 use rustc_parse::validate_attr;
 use rustc_session::Session;
@@ -993,49 +993,20 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 });
             }
             ItemKind::Impl(box Impl {
-                safety,
-                polarity,
-                defaultness,
-                constness,
+                safety: _,
+                polarity: _,
+                defaultness: _,
+                constness: _,
                 generics,
                 of_trait: None,
                 self_ty,
                 items,
             }) => {
-                let error = |annotation_span, annotation, only_trait| errors::InherentImplCannot {
-                    span: self_ty.span,
-                    annotation_span,
-                    annotation,
-                    self_ty: self_ty.span,
-                    only_trait,
-                };
-
                 self.visit_attrs_vis(&item.attrs, &item.vis);
                 self.visibility_not_permitted(
                     &item.vis,
                     errors::VisibilityNotPermittedNote::IndividualImplItems,
                 );
-                if let &Safety::Unsafe(span) = safety {
-                    self.dcx()
-                        .create_err(errors::InherentImplCannot {
-                            span: self_ty.span,
-                            annotation_span: span,
-                            annotation: "unsafe",
-                            self_ty: self_ty.span,
-                            only_trait: true,
-                        })
-                        .with_code(E0197)
-                        .emit();
-                }
-                if let &ImplPolarity::Negative(span) = polarity {
-                    self.dcx().emit_err(error(span, "negative", false));
-                }
-                if let &Defaultness::Default(def_span) = defaultness {
-                    self.dcx().emit_err(error(def_span, "`default`", true));
-                }
-                if let &Const::Yes(span) = constness {
-                    self.dcx().emit_err(error(span, "`const`", true));
-                }
 
                 self.with_tilde_const(Some(TildeConstReason::Impl { span: item.span }), |this| {
                     this.visit_generics(generics)

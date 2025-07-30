@@ -665,7 +665,41 @@ impl<'a> Parser<'a> {
 
                 (Some(trait_ref), ty_second)
             }
-            None => (None, ty_first), // impl Type
+            None => {
+                let self_ty = ty_first;
+                let error = |annotation_span, annotation, only_trait| {
+                    errors::TraitImplModifierInInherentImpl {
+                        span: self_ty.span,
+                        annotation_span,
+                        annotation,
+                        self_ty: self_ty.span,
+                        only_trait,
+                    }
+                };
+
+                if let Safety::Unsafe(span) = safety {
+                    self.dcx()
+                        .create_err(errors::TraitImplModifierInInherentImpl {
+                            span: self_ty.span,
+                            annotation_span: span,
+                            annotation: "unsafe",
+                            self_ty: self_ty.span,
+                            only_trait: true,
+                        })
+                        .with_code(E0197)
+                        .emit();
+                }
+                if let ImplPolarity::Negative(span) = polarity {
+                    self.dcx().emit_err(error(span, "negative", false));
+                }
+                if let Defaultness::Default(def_span) = defaultness {
+                    self.dcx().emit_err(error(def_span, "`default`", true));
+                }
+                if let Const::Yes(span) = constness {
+                    self.dcx().emit_err(error(span, "`const`", true));
+                }
+                (None, self_ty)
+            }
         };
         Ok(ItemKind::Impl(Box::new(Impl {
             safety,
