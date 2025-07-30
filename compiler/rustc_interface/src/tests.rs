@@ -689,6 +689,7 @@ fn test_unstable_options_tracking_hash() {
     // Make sure that changing an [UNTRACKED] option leaves the hash unchanged.
     // tidy-alphabetical-start
     untracked!(assert_incr_state, Some(String::from("loaded")));
+    untracked!(codegen_source_order, true);
     untracked!(deduplicate_diagnostics, false);
     untracked!(dump_dep_graph, true);
     untracked!(dump_mir, Some(String::from("abc")));
