@@ -41,6 +41,7 @@ mod debuginfo;
 mod incremental;
 mod js_doc;
 mod mir_opt;
+mod parallel;
 mod pretty;
 mod run_make;
 mod rustdoc;
@@ -272,6 +273,7 @@ impl<'test> TestCx<'test> {
             TestMode::CoverageMap => self.run_coverage_map_test(), // see self::coverage
             TestMode::CoverageRun => self.run_coverage_run_test(), // see self::coverage
             TestMode::Crashes => self.run_crash_test(),
+            TestMode::Parallel => self.run_parallel_test(),
         }
     }
 
@@ -1519,8 +1521,10 @@ impl<'test> TestCx<'test> {
         };
         rustc.arg(input_file);
 
-        // Use a single thread for efficiency and a deterministic error message order
-        rustc.arg("-Zthreads=1");
+        if self.config.mode != TestMode::Parallel {
+            // Use a single thread for efficiency and a deterministic error message order
+            rustc.arg("-Zthreads=1");
+        }
 
         // Hide libstd sources from ui tests to make sure we generate the stderr
         // output that users will see.
@@ -1706,7 +1710,8 @@ impl<'test> TestCx<'test> {
             | TestMode::Rustdoc
             | TestMode::RustdocJson
             | TestMode::RunMake
-            | TestMode::RustdocJs => {
+            | TestMode::RustdocJs
+            | TestMode::Parallel => {
                 // do not use JSON output
             }
         }

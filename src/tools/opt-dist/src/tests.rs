@@ -105,6 +105,7 @@ llvm-config = "{llvm_config}"
             "tests/codegen-units",
             "tests/incremental",
             "tests/mir-opt",
+            "tests/parallel",
             "tests/pretty",
             // Make sure that we don't use too new GLIBC symbols on x64
             "tests/run-make/glibc-symbols-x86_64-unknown-linux-gnu",

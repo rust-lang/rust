@@ -1408,6 +1408,8 @@ test!(RustdocJson {
     only_hosts: true,
 });
 
+test!(Parallel { path: "tests/parallel", mode: "parallel", suite: "parallel", default: true });
+
 test!(Pretty {
     path: "tests/pretty",
     mode: "pretty",

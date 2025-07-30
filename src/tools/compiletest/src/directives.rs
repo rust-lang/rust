@@ -150,6 +150,9 @@ pub struct TestProps {
     // empty before the test starts. Incremental mode tests will reuse the
     // incremental directory between passes in the same test.
     pub incremental: bool,
+    // Number of times to run the test, for the parallel front-end test suit.
+    // Repeat tests to ensure no ICEs occur.
+    pub iteration_count: Option<usize>,
     // If `true`, this test is a known bug.
     //
     // When set, some requirements are relaxed. Currently, this only means no
@@ -238,6 +241,7 @@ mod directives {
     pub const ASSEMBLY_OUTPUT: &'static str = "assembly-output";
     pub const STDERR_PER_BITWIDTH: &'static str = "stderr-per-bitwidth";
     pub const INCREMENTAL: &'static str = "incremental";
+    pub const ITERATION_COUNT: &'static str = "iteration-count";
     pub const KNOWN_BUG: &'static str = "known-bug";
     pub const TEST_MIR_PASS: &'static str = "test-mir-pass";
     pub const REMAP_SRC_BASE: &'static str = "remap-src-base";
@@ -280,6 +284,7 @@ impl TestProps {
             forbid_output: vec![],
             incremental_dir: None,
             incremental: false,
+            iteration_count: None,
             known_bug: false,
             pass_mode: None,
             fail_mode: None,
@@ -540,6 +545,16 @@ impl TestProps {
                         &mut self.stderr_per_bitwidth,
                     );
                     config.set_name_directive(ln, INCREMENTAL, &mut self.incremental);
+                    config.set_name_value_directive(
+                        ln,
+                        ITERATION_COUNT,
+                        &mut self.iteration_count,
+                        |s| {
+                            s.trim()
+                                .parse()
+                                .expect("The value of iteration-count must be a positive integer.")
+                        },
+                    );
 
                     // Unlike the other `name_value_directive`s this needs to be handled manually,
                     // because it sets a `bool` flag.
@@ -900,6 +915,7 @@ const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     "ignore-x86_64-pc-windows-gnu",
     "ignore-x86_64-unknown-linux-gnu",
     "incremental",
+    "iteration-count",
     "known-bug",
     "llvm-cov-flags",
     "max-llvm-major-version",
