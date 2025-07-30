@@ -1208,8 +1208,8 @@ impl<'tcx> InferCtxt<'tcx> {
             fn replace_ty(&mut self, bt: ty::BoundTy) -> Ty<'tcx> {
                 self.args[bt.var.index()].expect_ty()
             }
-            fn replace_const(&mut self, bv: ty::BoundVar) -> ty::Const<'tcx> {
-                self.args[bv.index()].expect_const()
+            fn replace_const(&mut self, bc: ty::BoundConst) -> ty::Const<'tcx> {
+                self.args[bc.var.index()].expect_const()
             }
         }
         let delegate = ToFreshVars { args };

@@ -535,7 +535,10 @@ fn plug_infer_with_placeholders<'tcx>(
                         ct,
                         ty::Const::new_placeholder(
                             self.infcx.tcx,
-                            ty::Placeholder { universe: self.universe, bound: self.next_var() },
+                            ty::Placeholder {
+                                universe: self.universe,
+                                bound: ty::BoundConst { var: self.next_var() },
+                            },
                         ),
                     )
                 else {

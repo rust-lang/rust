@@ -968,34 +968,43 @@ impl<'tcx> rustc_type_ir::inherent::PlaceholderLike<TyCtxt<'tcx>> for Placeholde
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, HashStable)]
 #[derive(TyEncodable, TyDecodable)]
-pub struct BoundConst<'tcx> {
+pub struct BoundConst {
     pub var: BoundVar,
-    pub ty: Ty<'tcx>,
 }
 
-pub type PlaceholderConst = Placeholder<BoundVar>;
+impl<'tcx> rustc_type_ir::inherent::BoundVarLike<TyCtxt<'tcx>> for BoundConst {
+    fn var(self) -> BoundVar {
+        self.var
+    }
+
+    fn assert_eq(self, _var: ty::BoundVariableKind) {
+        unreachable!()
+    }
+}
+
+pub type PlaceholderConst = Placeholder<BoundConst>;
 
 impl<'tcx> rustc_type_ir::inherent::PlaceholderLike<TyCtxt<'tcx>> for PlaceholderConst {
-    type Bound = BoundVar;
+    type Bound = BoundConst;
 
     fn universe(self) -> UniverseIndex {
         self.universe
     }
 
     fn var(self) -> BoundVar {
-        self.bound
+        self.bound.var
     }
 
     fn with_updated_universe(self, ui: UniverseIndex) -> Self {
         Placeholder { universe: ui, ..self }
     }
 
-    fn new(ui: UniverseIndex, bound: BoundVar) -> Self {
+    fn new(ui: UniverseIndex, bound: BoundConst) -> Self {
         Placeholder { universe: ui, bound }
     }
 
     fn new_anon(ui: UniverseIndex, var: BoundVar) -> Self {
-        Placeholder { universe: ui, bound: var }
+        Placeholder { universe: ui, bound: BoundConst { var } }
     }
 }
 
