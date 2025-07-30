@@ -311,7 +311,6 @@ dependencies = [
  "addr2line",
  "alloc",
  "cfg-if",
- "compiler_builtins",
  "core",
  "dlmalloc",
  "fortanix-sgx-abi",
