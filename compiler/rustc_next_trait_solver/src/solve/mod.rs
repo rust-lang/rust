@@ -389,6 +389,19 @@ pub struct GoalEvaluation<I: Interner> {
     /// The goal we've evaluated. This is the input goal, but potentially with its
     /// inference variables resolved. This never applies any inference constraints
     /// from evaluating the goal.
+    ///
+    /// We rely on this to check whether root goals in HIR typeck had an unresolved
+    /// type inference variable in the input. We must not resolve this after evaluating
+    /// the goal as even if the inference variable has been resolved by evaluating the
+    /// goal itself, this goal may still end up failing due to region uniquification
+    /// later on.
+    ///
+    /// This is used as a minor optimization to avoid re-resolving inference variables
+    /// when reevaluating ambiguous goals. E.g. if we've got a goal `?x: Trait` with `?x`
+    /// already being constrained to `Vec<?y>`, then the first evaluation resolves it to
+    /// `Vec<?y>: Trait`. If this goal is still ambiguous and we later resolve `?y` to `u32`,
+    /// then reevaluating this goal now only needs to resolve `?y` while it would otherwise
+    /// have to resolve both `?x` and `?y`,
     pub goal: Goal<I, I::Predicate>,
     pub certainty: Certainty,
     pub has_changed: HasChanged,
