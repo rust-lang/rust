@@ -3585,7 +3585,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.tcx.lang_items().deref_trait(),
                 self.tcx.lang_items().deref_mut_trait(),
                 self.tcx.lang_items().drop_trait(),
-                self.tcx.lang_items().pin_type(),
                 self.tcx.get_diagnostic_item(sym::AsRef),
             ];
             // Try alternative arbitrary self types that could fulfill this call.
@@ -3720,8 +3719,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     && !alt_rcvr_sugg
                     // `T: !Unpin`
                     && !unpin
-                    // The method isn't `as_ref`, as it would provide a wrong suggestion for `Pin`.
-                    && sym::as_ref != item_name.name
                     // Either `Pin::as_ref` or `Pin::as_mut`.
                     && let Some(pin_call) = pin_call
                     // Search for `item_name` as a method accessible on `Pin<T>`.
@@ -3735,12 +3732,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // We skip some common traits that we don't want to consider because autoderefs
                     // would take care of them.
                     && !skippable.contains(&Some(pick.item.container_id(self.tcx)))
-                    && !skippable.contains(&pick.item.impl_container(self.tcx).and_then(|did| {
-                        match self.tcx.type_of(did).instantiate_identity().kind() {
-                            ty::Adt(def, _) => Some(def.did()),
-                            _ => None,
+                    // Do not suggest pinning when the method is directly on `Pin`.
+                    && pick.item.impl_container(self.tcx).map_or(true, |did| {
+                        match self.tcx.type_of(did).skip_binder().kind() {
+                            ty::Adt(def, _) => Some(def.did()) != self.tcx.lang_items().pin_type(),
+                            _ => true,
                         }
-                    }))
+                    })
                     // We don't want to go through derefs.
                     && pick.autoderefs == 0
                     // Check that the method of the same name that was found on the new `Pin<T>`

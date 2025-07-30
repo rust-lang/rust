@@ -3462,52 +3462,46 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     /// This method is called after we have encountered a missing field error to recursively
     /// search for the field
+    #[instrument(skip(self, matches, mod_id, hir_id), level = "debug")]
     pub(crate) fn check_for_nested_field_satisfying_condition_for_diag(
         &self,
         span: Span,
         matches: &impl Fn(Ident, Ty<'tcx>) -> bool,
-        candidate_field: (Ident, Ty<'tcx>),
+        (candidate_name, candidate_ty): (Ident, Ty<'tcx>),
         mut field_path: Vec<Ident>,
         mod_id: DefId,
         hir_id: HirId,
     ) -> Option<Vec<Ident>> {
-        debug!(
-            "check_for_nested_field_satisfying(span: {:?}, candidate_field: {:?}, field_path: {:?}",
-            span, candidate_field, field_path
-        );
-
         if field_path.len() > 3 {
             // For compile-time reasons and to avoid infinite recursion we only check for fields
             // up to a depth of three
-            None
-        } else {
-            field_path.push(candidate_field.0);
-            let field_ty = candidate_field.1;
-            if matches(candidate_field.0, field_ty) {
-                return Some(field_path);
-            } else {
-                for nested_fields in self.get_field_candidates_considering_privacy_for_diag(
-                    span, field_ty, mod_id, hir_id,
+            return None;
+        }
+        field_path.push(candidate_name);
+        if matches(candidate_name, candidate_ty) {
+            return Some(field_path);
+        }
+        for nested_fields in self.get_field_candidates_considering_privacy_for_diag(
+            span,
+            candidate_ty,
+            mod_id,
+            hir_id,
+        ) {
+            // recursively search fields of `candidate_field` if it's a ty::Adt
+            for field in nested_fields {
+                if let Some(field_path) = self.check_for_nested_field_satisfying_condition_for_diag(
+                    span,
+                    matches,
+                    field,
+                    field_path.clone(),
+                    mod_id,
+                    hir_id,
                 ) {
-                    // recursively search fields of `candidate_field` if it's a ty::Adt
-                    for field in nested_fields {
-                        if let Some(field_path) = self
-                            .check_for_nested_field_satisfying_condition_for_diag(
-                                span,
-                                matches,
-                                field,
-                                field_path.clone(),
-                                mod_id,
-                                hir_id,
-                            )
-                        {
-                            return Some(field_path);
-                        }
-                    }
+                    return Some(field_path);
                 }
             }
-            None
         }
+        None
     }
 
     fn check_expr_index(
