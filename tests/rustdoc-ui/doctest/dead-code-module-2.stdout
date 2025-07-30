@@ -1,16 +1,16 @@
 
 running 1 test
-test $DIR/dead-code-module-2.rs - g (line 24) - compile ... ok
+test $DIR/dead-code-module-2.rs:24 - g - compile ... ok
 
 test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in $TIME
 
 
 running 1 test
-test $DIR/dead-code-module-2.rs - my_mod::f (line 16) - compile ... FAILED
+test $DIR/dead-code-module-2.rs:16 - my_mod::f - compile ... FAILED
 
 failures:
 
----- $DIR/dead-code-module-2.rs - my_mod::f (line 16) stdout ----
+---- $DIR/dead-code-module-2.rs:16 - my_mod::f stdout ----
 error: trait `T` is never used
   --> $DIR/dead-code-module-2.rs:17:7
    |
@@ -29,7 +29,7 @@ error: aborting due to 1 previous error
 Couldn't compile the test.
 
 failures:
-    $DIR/dead-code-module-2.rs - my_mod::f (line 16)
+    $DIR/dead-code-module-2.rs:16 - my_mod::f
 
 test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in $TIME
 

@@ -1,10 +1,10 @@
 
 running 1 test
-test $DIR/unparseable-doc-test.rs - foo (line 7) ... FAILED
+test $DIR/unparseable-doc-test.rs:7 - foo ... FAILED
 
 failures:
 
----- $DIR/unparseable-doc-test.rs - foo (line 7) stdout ----
+---- $DIR/unparseable-doc-test.rs:7 - foo stdout ----
 error[E0765]: unterminated double quote string
   --> $DIR/unparseable-doc-test.rs:9:1
    |
@@ -17,7 +17,7 @@ For more information about this error, try `rustc --explain E0765`.
 Couldn't compile the test.
 
 failures:
-    $DIR/unparseable-doc-test.rs - foo (line 7)
+    $DIR/unparseable-doc-test.rs:7 - foo
 
 test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in $TIME
 
