@@ -1011,12 +1011,6 @@ pub struct ParamEnvAnd<'tcx, T> {
     pub value: T,
 }
 
-impl<'tcx, T> ParamEnvAnd<'tcx, T> {
-    pub fn into_parts(self) -> (ParamEnv<'tcx>, T) {
-        (self.param_env, self.value)
-    }
-}
-
 /// The environment in which to do trait solving.
 ///
 /// Most of the time you only need to care about the `ParamEnv`
