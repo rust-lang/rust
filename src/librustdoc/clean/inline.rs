@@ -217,7 +217,7 @@ pub(crate) fn try_inline_glob(
 }
 
 pub(crate) fn load_attrs<'hir>(cx: &DocContext<'hir>, did: DefId) -> &'hir [hir::Attribute] {
-    cx.tcx.get_attrs_unchecked(did)
+    cx.tcx.get_all_attrs(did)
 }
 
 pub(crate) fn item_relative_path(tcx: TyCtxt<'_>, def_id: DefId) -> Vec<Symbol> {
