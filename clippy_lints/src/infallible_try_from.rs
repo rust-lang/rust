@@ -13,7 +13,7 @@ declare_clippy_lint! {
     ///
     /// ### Why is this bad?
     ///
-    /// Infalliable conversions should be implemented via `From` with the blanket conversion.
+    /// Infallible conversions should be implemented via `From` with the blanket conversion.
     ///
     /// ### Example
     /// ```no_run
