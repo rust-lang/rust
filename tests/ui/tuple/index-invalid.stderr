@@ -4,11 +4,7 @@ error[E0609]: no field `1` on type `(((),),)`
 LL |     let _ = (((),),).1.0;
    |                      ^ unknown field
    |
-help: a field with a similar name exists
-   |
-LL -     let _ = (((),),).1.0;
-LL +     let _ = (((),),).0.0;
-   |
+   = note: available field is: `0`
 
 error[E0609]: no field `1` on type `((),)`
   --> $DIR/index-invalid.rs:4:24
@@ -16,11 +12,7 @@ error[E0609]: no field `1` on type `((),)`
 LL |     let _ = (((),),).0.1;
    |                        ^ unknown field
    |
-help: a field with a similar name exists
-   |
-LL -     let _ = (((),),).0.1;
-LL +     let _ = (((),),).0.0;
-   |
+   = note: available field is: `0`
 
 error[E0609]: no field `000` on type `(((),),)`
   --> $DIR/index-invalid.rs:6:22
