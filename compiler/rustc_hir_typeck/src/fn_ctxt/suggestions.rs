@@ -1600,7 +1600,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         match expr.kind {
             ExprKind::Struct(QPath::LangItem(LangItem::Range, ..), [start, end], _) => {
                 err.span_suggestion_verbose(
-                    start.span.shrink_to_hi().with_hi(end.span.lo()),
+                    start.expr.span.shrink_to_hi().with_hi(end.expr.span.lo()),
                     "remove the unnecessary `.` operator for a floating point literal",
                     '.',
                     Applicability::MaybeIncorrect,
@@ -1608,8 +1608,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 true
             }
             ExprKind::Struct(QPath::LangItem(LangItem::RangeFrom, ..), [start], _) => {
+                let range_span = expr.span.parent_callsite().unwrap();
                 err.span_suggestion_verbose(
-                    expr.span.with_lo(start.span.hi()),
+                    range_span.with_lo(start.expr.span.hi()),
                     "remove the unnecessary `.` operator for a floating point literal",
                     '.',
                     Applicability::MaybeIncorrect,
@@ -1617,8 +1618,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 true
             }
             ExprKind::Struct(QPath::LangItem(LangItem::RangeTo, ..), [end], _) => {
+                let range_span = expr.span.parent_callsite().unwrap();
                 err.span_suggestion_verbose(
-                    expr.span.until(end.span),
+                    range_span.until(end.expr.span),
                     "remove the unnecessary `.` operator and add an integer part for a floating point literal",
                     "0.",
                     Applicability::MaybeIncorrect,
@@ -2627,7 +2629,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         bool, /* suggest `&` or `&mut` type annotation */
     )> {
         let sess = self.sess();
-        let sp = expr.span;
+        let sp = expr.range_span().unwrap_or(expr.span);
         let sm = sess.source_map();
 
         // If the span is from an external macro, there's no suggestion we can make.

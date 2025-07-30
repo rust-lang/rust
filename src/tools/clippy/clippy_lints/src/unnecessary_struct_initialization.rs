@@ -5,6 +5,7 @@ use clippy_utils::{get_parent_expr, is_mutable, path_to_local};
 use rustc_hir::{Expr, ExprField, ExprKind, Path, QPath, StructTailExpr, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
+use rustc_span::{DesugaringKind, Ident};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -51,7 +52,8 @@ impl LateLintPass<'_> for UnnecessaryStruct {
             return;
         };
 
-        if expr.span.from_expansion() {
+        let expr_span = expr.range_span().unwrap_or(expr.span);
+        if expr_span.from_expansion() {
             // Prevent lint from hitting inside macro code
             return;
         }
@@ -79,7 +81,7 @@ impl LateLintPass<'_> for UnnecessaryStruct {
         span_lint_and_sugg(
             cx,
             UNNECESSARY_STRUCT_INITIALIZATION,
-            expr.span,
+            expr_span,
             "unnecessary struct building",
             "replace with",
             snippet(cx, sugg, "..").into_owned(),
@@ -129,7 +131,7 @@ fn same_path_in_all_fields<'tcx>(
             // expression type matches
             && ty == cx.typeck_results().expr_ty(src_expr)
             // field name matches
-            && f.ident == ident
+            && ident_without_range_desugaring(f.ident) == ident
             // assigned from a path expression
             && let ExprKind::Path(QPath::Resolved(None, src_path)) = src_expr.kind
         {
@@ -195,4 +197,15 @@ fn path_matches_base(path: &Path<'_>, base: &Expr<'_>) -> bool {
         _ => return false,
     };
     path.res == base_path.res
+}
+
+fn ident_without_range_desugaring(ident: Ident) -> Ident {
+    if ident.span.desugaring_kind() == Some(DesugaringKind::RangeExpr) {
+        Ident {
+            span: ident.span.parent_callsite().unwrap(),
+            ..ident
+        }
+    } else {
+        ident
+    }
 }
