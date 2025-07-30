@@ -2745,6 +2745,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let available_field_names = self.available_field_names(variant, expr, skip_fields);
                 if let Some(field_name) =
                     find_best_match_for_name(&available_field_names, field.ident.name, None)
+                    && !(field.ident.name.as_str().parse::<usize>().is_ok()
+                        && field_name.as_str().parse::<usize>().is_ok())
                 {
                     err.span_label(field.ident.span, "unknown field");
                     err.span_suggestion_verbose(
@@ -3360,6 +3362,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 );
             } else if let Some(field_name) =
                 find_best_match_for_name(&field_names, field.name, None)
+                && !(field.name.as_str().parse::<usize>().is_ok()
+                    && field_name.as_str().parse::<usize>().is_ok())
             {
                 err.span_suggestion_verbose(
                     field.span,
