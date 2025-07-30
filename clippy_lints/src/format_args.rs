@@ -222,7 +222,7 @@ declare_clippy_lint! {
     /// ```
     ///
     /// [pointer format]: https://doc.rust-lang.org/std/fmt/index.html#formatting-traits
-    #[clippy::version = "1.88.0"]
+    #[clippy::version = "1.89.0"]
     pub POINTER_FORMAT,
     restriction,
     "formatting a pointer"
