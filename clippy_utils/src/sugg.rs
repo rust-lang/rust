@@ -4,8 +4,8 @@
 use crate::source::{snippet, snippet_opt, snippet_with_applicability, snippet_with_context};
 use crate::ty::expr_sig;
 use crate::{get_parent_expr_for_hir, higher};
-use rustc_ast::ast;
 use rustc_ast::util::parser::AssocOp;
+use rustc_ast::{UnOp, ast};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir::{self as hir, Closure, ExprKind, HirId, MutTy, Node, TyKind};
@@ -29,6 +29,11 @@ pub enum Sugg<'a> {
     /// A binary operator expression, including `as`-casts and explicit type
     /// coercion.
     BinOp(AssocOp, Cow<'a, str>, Cow<'a, str>),
+    /// A unary operator expression. This is used to sometimes represent `!`
+    /// or `-`, but only if the type with and without the operator is kept identical.
+    /// It means that doubling the operator can be used to remove it instead, in
+    /// order to provide better suggestions.
+    UnOp(UnOp, Box<Sugg<'a>>),
 }
 
 /// Literal constant `0`, for convenience.
@@ -40,9 +45,10 @@ pub const EMPTY: Sugg<'static> = Sugg::NonParen(Cow::Borrowed(""));
 
 impl Display for Sugg<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
-        match *self {
-            Sugg::NonParen(ref s) | Sugg::MaybeParen(ref s) => s.fmt(f),
-            Sugg::BinOp(op, ref lhs, ref rhs) => binop_to_string(op, lhs, rhs).fmt(f),
+        match self {
+            Sugg::NonParen(s) | Sugg::MaybeParen(s) => s.fmt(f),
+            Sugg::BinOp(op, lhs, rhs) => binop_to_string(*op, lhs, rhs).fmt(f),
+            Sugg::UnOp(op, inner) => write!(f, "{}{}", op.as_str(), inner.clone().maybe_inner_paren()),
         }
     }
 }
@@ -100,9 +106,19 @@ impl<'a> Sugg<'a> {
         applicability: &mut Applicability,
     ) -> Self {
         if expr.span.ctxt() == ctxt {
-            Self::hir_from_snippet(expr, |span| {
-                snippet_with_context(cx, span, ctxt, default, applicability).0
-            })
+            if let ExprKind::Unary(op, inner) = expr.kind
+                && matches!(op, UnOp::Neg | UnOp::Not)
+                && cx.typeck_results().expr_ty(expr) == cx.typeck_results().expr_ty(inner)
+            {
+                Sugg::UnOp(
+                    op,
+                    Box::new(Self::hir_with_context(cx, inner, ctxt, default, applicability)),
+                )
+            } else {
+                Self::hir_from_snippet(expr, |span| {
+                    snippet_with_context(cx, span, ctxt, default, applicability).0
+                })
+            }
         } else {
             let (snip, _) = snippet_with_context(cx, expr.span, ctxt, default, applicability);
             Sugg::NonParen(snip)
@@ -341,6 +357,7 @@ impl<'a> Sugg<'a> {
                 let sugg = binop_to_string(op, &lhs, &rhs);
                 Sugg::NonParen(format!("({sugg})").into())
             },
+            Sugg::UnOp(op, inner) => Sugg::NonParen(format!("({}{})", op.as_str(), inner.maybe_inner_paren()).into()),
         }
     }
 
@@ -348,6 +365,26 @@ impl<'a> Sugg<'a> {
         match self {
             Sugg::NonParen(p) | Sugg::MaybeParen(p) => p.into_owned(),
             Sugg::BinOp(b, l, r) => binop_to_string(b, &l, &r),
+            Sugg::UnOp(op, inner) => format!("{}{}", op.as_str(), inner.maybe_inner_paren()),
+        }
+    }
+
+    /// Checks if `self` starts with a unary operator.
+    fn starts_with_unary_op(&self) -> bool {
+        match self {
+            Sugg::UnOp(..) => true,
+            Sugg::BinOp(..) => false,
+            Sugg::MaybeParen(s) | Sugg::NonParen(s) => s.starts_with(['*', '!', '-', '&']),
+        }
+    }
+
+    /// Call `maybe_paren` on `self` if it doesn't start with a unary operator,
+    /// don't touch it otherwise.
+    fn maybe_inner_paren(self) -> Self {
+        if self.starts_with_unary_op() {
+            self
+        } else {
+            self.maybe_paren()
         }
     }
 }
@@ -430,10 +467,11 @@ impl Sub for &Sugg<'_> {
 forward_binop_impls_to_ref!(impl Add, add for Sugg<'_>, type Output = Sugg<'static>);
 forward_binop_impls_to_ref!(impl Sub, sub for Sugg<'_>, type Output = Sugg<'static>);
 
-impl Neg for Sugg<'_> {
-    type Output = Sugg<'static>;
-    fn neg(self) -> Sugg<'static> {
-        match &self {
+impl<'a> Neg for Sugg<'a> {
+    type Output = Sugg<'a>;
+    fn neg(self) -> Self::Output {
+        match self {
+            Self::UnOp(UnOp::Neg, sugg) => *sugg,
             Self::BinOp(AssocOp::Cast, ..) => Sugg::MaybeParen(format!("-({self})").into()),
             _ => make_unop("-", self),
         }
@@ -446,19 +484,21 @@ impl<'a> Not for Sugg<'a> {
         use AssocOp::Binary;
         use ast::BinOpKind::{Eq, Ge, Gt, Le, Lt, Ne};
 
-        if let Sugg::BinOp(op, lhs, rhs) = self {
-            let to_op = match op {
-                Binary(Eq) => Binary(Ne),
-                Binary(Ne) => Binary(Eq),
-                Binary(Lt) => Binary(Ge),
-                Binary(Ge) => Binary(Lt),
-                Binary(Gt) => Binary(Le),
-                Binary(Le) => Binary(Gt),
-                _ => return make_unop("!", Sugg::BinOp(op, lhs, rhs)),
-            };
-            Sugg::BinOp(to_op, lhs, rhs)
-        } else {
-            make_unop("!", self)
+        match self {
+            Sugg::BinOp(op, lhs, rhs) => {
+                let to_op = match op {
+                    Binary(Eq) => Binary(Ne),
+                    Binary(Ne) => Binary(Eq),
+                    Binary(Lt) => Binary(Ge),
+                    Binary(Ge) => Binary(Lt),
+                    Binary(Gt) => Binary(Le),
+                    Binary(Le) => Binary(Gt),
+                    _ => return make_unop("!", Sugg::BinOp(op, lhs, rhs)),
+                };
+                Sugg::BinOp(to_op, lhs, rhs)
+            },
+            Sugg::UnOp(UnOp::Not, expr) => *expr,
+            _ => make_unop("!", self),
         }
     }
 }
@@ -491,20 +531,11 @@ impl<T: Display> Display for ParenHelper<T> {
 /// Builds the string for `<op><expr>` adding parenthesis when necessary.
 ///
 /// For convenience, the operator is taken as a string because all unary
-/// operators have the same
-/// precedence.
+/// operators have the same precedence.
 pub fn make_unop(op: &str, expr: Sugg<'_>) -> Sugg<'static> {
-    // If the `expr` starts with `op` already, do not add wrap it in
+    // If the `expr` starts with a unary operator already, do not wrap it in
     // parentheses.
-    let expr = if let Sugg::MaybeParen(ref sugg) = expr
-        && !has_enclosing_paren(sugg)
-        && sugg.starts_with(op)
-    {
-        expr
-    } else {
-        expr.maybe_paren()
-    };
-    Sugg::MaybeParen(format!("{op}{expr}").into())
+    Sugg::MaybeParen(format!("{op}{}", expr.maybe_inner_paren()).into())
 }
 
 /// Builds the string for `<lhs> <op> <rhs>` adding parenthesis when necessary.
