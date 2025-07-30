@@ -194,14 +194,14 @@ $ rustdoc src/lib.rs --test
 This flag will run your code examples as tests. For more, see [the chapter
 on documentation tests](write-documentation/documentation-tests.md).
 
-See also `--test-args` and `--test-run-directory`.
+See also `--test-arg` and `--test-run-directory`.
 
-## `--test-args`: pass options to test runner
+## `--test-arg`: pass an option to the test runner
 
 Using this flag looks like this:
 
 ```bash
-$ rustdoc src/lib.rs --test --test-args ignored
+$ rustdoc src/lib.rs --test --test-arg ignored --test-arg --show-output
 ```
 
 This flag will pass options to the test runner when running documentation tests.
@@ -452,6 +452,10 @@ If you specify `@path` on the command-line, then it will open `path` and read
 command line options from it. These options are one per line; a blank line indicates
 an empty option. The file can use Unix or Windows style line endings, and must be
 encoded as UTF-8.
+
+## `--test-args`: pass options to the test runner
+
+This flag is **deprecated**, use `--test-arg` instead.
 
 ## `--passes`: add more rustdoc passes
 

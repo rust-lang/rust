@@ -34,8 +34,8 @@ Options:
         --document-hidden-items 
                         document items that have doc(hidden)
         --test          run code examples as tests
-        --test-args ARGS
-                        arguments to pass to the test runner
+        --test-arg ARG  One argument (of possibly many) to pass to the test
+                        runner
         --test-run-directory PATH
                         The working directory in which to run tests
         --target TRIPLE target triple to document
@@ -194,6 +194,9 @@ Options:
         --disable-minification 
                         disable the minification of CSS/JS files
                         (perma-unstable, do not use with cached files)
+        --test-args ARGS
+                        Arguments to pass to the test runner. This option is
+                        deprecated, use `--test-arg` instead
         --plugin-path DIR
                         removed, see issue #44136
                         <https://github.com/rust-lang/rust/issues/44136> for
