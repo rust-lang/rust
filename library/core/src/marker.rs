@@ -1370,6 +1370,7 @@ pub trait CoercePointeeValidated {
 /// Types that do not require a stable memory address, and so can be freely
 /// `move`d.
 #[lang = "default_trait1"]
+#[rustc_unsafe_specialization_marker]
 #[unstable(feature = "move_trait", issue = "none")]
 pub unsafe auto trait Move {
     // empty.
