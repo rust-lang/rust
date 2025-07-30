@@ -282,8 +282,6 @@ class Context:
         may_skip = str(self.may_skip_libm_ci()).lower()
         print(f"extensive_matrix={ext_matrix}")
         print(f"may_skip_libm_ci={may_skip}")
-        eprint(f"extensive_matrix={ext_matrix}")
-        eprint(f"may_skip_libm_ci={may_skip}")
         eprint(f"total extensive tests: {total_to_test}")
 
         if error_on_many_tests and total_to_test > PrCfg.MANY_EXTENSIVE_THRESHOLD:

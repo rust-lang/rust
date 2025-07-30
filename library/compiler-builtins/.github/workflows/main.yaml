@@ -34,7 +34,7 @@ jobs:
       - name: Fetch pull request ref
         run: git fetch origin "$GITHUB_REF:$GITHUB_REF"
         if: github.event_name == 'pull_request'
-      - run: python3 ci/ci-util.py generate-matrix >> "$GITHUB_OUTPUT"
+      - run: set -e; python3 ci/ci-util.py generate-matrix | tee "$GITHUB_OUTPUT"
         id: script
 
   test:
