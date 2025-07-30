@@ -1257,25 +1257,11 @@ pub struct MaybeEnteredTraceSpan {
 /// This is like [rustc_const_eval::enter_trace_span] except that it does not depend on the
 /// [Machine] trait to check if tracing is enabled, because from the Miri codebase we can directly
 /// check whether the "tracing" feature is enabled, unlike from the rustc_const_eval codebase.
-///
-/// In addition to the syntax accepted by [tracing::span!], this macro optionally allows passing
-/// the span name (i.e. the first macro argument) in the form `NAME::SUBNAME` (without quotes) to
-/// indicate that the span has name "NAME" (usually the name of the component) and has an additional
-/// more specific name "SUBNAME" (usually the function name). The latter is passed to the [tracing]
-/// infrastructure as a span field with the name "NAME". This allows not being distracted by
-/// subnames when looking at the trace in <https://ui.perfetto.dev>, but when deeper introspection
-/// is needed within a component, it's still possible to view the subnames directly in the UI by
-/// selecting a span, clicking on the "NAME" argument on the right, and clicking on "Visualize
-/// argument values".
-/// ```rust
-/// // for example, the first will expand to the second
-/// enter_trace_span!(borrow_tracker::on_stack_pop, /* ... */)
-/// enter_trace_span!("borrow_tracker", borrow_tracker = "on_stack_pop", /* ... */)
-/// ```
+/// Look at [rustc_const_eval::enter_trace_span] for complete documentation, examples and tips.
 #[macro_export]
 macro_rules! enter_trace_span {
     ($name:ident :: $subname:ident $($tt:tt)*) => {{
-        enter_trace_span!(stringify!($name), $name = %stringify!($subname) $($tt)*)
+        $crate::enter_trace_span!(stringify!($name), $name = %stringify!($subname) $($tt)*)
     }};
 
     ($($tt:tt)*) => {
