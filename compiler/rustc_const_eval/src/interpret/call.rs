@@ -19,6 +19,7 @@ use super::{
     Projectable, Provenance, ReturnAction, ReturnContinuation, Scalar, StackPopInfo, interp_ok,
     throw_ub, throw_ub_custom, throw_unsup_format,
 };
+use crate::interpret::EnteredTraceSpan;
 use crate::{enter_trace_span, fluent_generated as fluent};
 
 /// An argument passed to a function.
@@ -527,8 +528,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         unwind: mir::UnwindAction,
     ) -> InterpResult<'tcx> {
         let _span =
-            enter_trace_span!(M, step::init_fn_call, tracing_separate_thread = Empty, ?fn_val);
-        trace!("init_fn_call: {:#?}", fn_val);
+            enter_trace_span!(M, step::init_fn_call, tracing_separate_thread = Empty, ?fn_val)
+                .or_if_tracing_disabled(|| trace!("init_fn_call: {:#?}", fn_val));
 
         let instance = match fn_val {
             FnVal::Instance(instance) => instance,

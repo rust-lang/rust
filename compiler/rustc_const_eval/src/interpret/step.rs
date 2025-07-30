@@ -16,6 +16,7 @@ use super::{
     FnArg, FnVal, ImmTy, Immediate, InterpCx, InterpResult, Machine, MemPlaceMeta, PlaceTy,
     Projectable, Scalar, interp_ok, throw_ub, throw_unsup_format,
 };
+use crate::interpret::EnteredTraceSpan;
 use crate::{enter_trace_span, util};
 
 struct EvaluatedCalleeAndArgs<'tcx, M: Machine<'tcx>> {
@@ -81,8 +82,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             stmt = ?stmt.kind,
             span = ?stmt.source_info.span,
             tracing_separate_thread = Empty,
-        );
-        info!(stmt = ?stmt.kind);
+        )
+        .or_if_tracing_disabled(|| info!(stmt = ?stmt.kind));
 
         use rustc_middle::mir::StatementKind::*;
 
@@ -470,8 +471,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             terminator = ?terminator.kind,
             span = ?terminator.source_info.span,
             tracing_separate_thread = Empty,
-        );
-        info!(terminator = ?terminator.kind);
+        )
+        .or_if_tracing_disabled(|| info!(terminator = ?terminator.kind));
 
         use rustc_middle::mir::TerminatorKind::*;
         match terminator.kind {
