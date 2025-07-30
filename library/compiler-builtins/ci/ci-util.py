@@ -93,10 +93,14 @@ class PrCfg:
     # Max number of extensive tests to run by default
     MANY_EXTENSIVE_THRESHOLD: int = 20
 
+    # Run tests for `libm` that may otherwise be skipped due to no changed files.
+    always_test_libm: bool = False
+
     # String values of directive names
     DIR_ALLOW_REGRESSIONS: str = "allow-regressions"
     DIR_SKIP_EXTENSIVE: str = "skip-extensive"
     DIR_ALLOW_MANY_EXTENSIVE: str = "allow-many-extensive"
+    DIR_TEST_LIBM: str = "test-libm"
 
     def __init__(self, body: str):
         directives = re.finditer(r"^\s*ci:\s*(?P<dir_name>\S*)", body, re.MULTILINE)
@@ -108,6 +112,8 @@ class PrCfg:
                 self.skip_extensive = True
             elif name == self.DIR_ALLOW_MANY_EXTENSIVE:
                 self.allow_many_extensive = True
+            elif name == self.DIR_TEST_LIBM:
+                self.always_test_libm = True
             else:
                 eprint(f"Found unexpected directive `{name}`")
                 exit(1)
@@ -251,6 +257,13 @@ class Context:
 
         # Always run on merge CI
         if not self.is_pr():
+            return False
+
+        pr = PrInfo.from_env()
+        assert pr is not None, "Is a PR but couldn't load PrInfo"
+
+        # Allow opting in to libm tests
+        if pr.cfg.always_test_libm:
             return False
 
         # By default, run if there are any changed files matching the pattern
