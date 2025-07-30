@@ -298,8 +298,16 @@ pub struct Config {
     /// Command for visual diff display, e.g. `diff-tool --color=always`.
     pub compiletest_diff_tool: Option<String>,
 
+    /// Whether to allow running both `compiletest` self-tests and `compiletest`-managed test suites
+    /// against the stage 0 (rustc, std).
+    ///
+    /// This is only intended to be used when the stage 0 compiler is actually built from in-tree
+    /// sources.
+    pub compiletest_allow_stage0: bool,
+
     /// Whether to use the precompiled stage0 libtest with compiletest.
     pub compiletest_use_stage0_libtest: bool,
+
     /// Default value for `--extra-checks`
     pub tidy_extra_checks: Option<String>,
     pub is_running_on_ci: bool,
@@ -749,6 +757,7 @@ impl Config {
             optimized_compiler_builtins,
             jobs,
             compiletest_diff_tool,
+            compiletest_allow_stage0,
             compiletest_use_stage0_libtest,
             tidy_extra_checks,
             ccache,
@@ -1020,8 +1029,12 @@ impl Config {
 
         config.optimized_compiler_builtins =
             optimized_compiler_builtins.unwrap_or(config.channel != "dev");
+
         config.compiletest_diff_tool = compiletest_diff_tool;
+
+        config.compiletest_allow_stage0 = compiletest_allow_stage0.unwrap_or(false);
         config.compiletest_use_stage0_libtest = compiletest_use_stage0_libtest.unwrap_or(true);
+
         config.tidy_extra_checks = tidy_extra_checks;
 
         let download_rustc = config.download_rustc_commit.is_some();
