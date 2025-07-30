@@ -63,17 +63,34 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
         goal: Goal<'tcx, ty::Predicate<'tcx>>,
         span: Span,
     ) -> Option<Certainty> {
-        if let Some(trait_pred) = goal.predicate.as_trait_clause() {
-            if self.shallow_resolve(trait_pred.self_ty().skip_binder()).is_ty_var()
+        let self_ty = match goal.predicate.kind().skip_binder() {
+            ty::PredicateKind::Clause(ty::ClauseKind::Trait(trait_pred)) => {
+                Some(trait_pred.self_ty())
+            }
+            ty::PredicateKind::Clause(ty::ClauseKind::Projection(proj_pred)) => {
+                Some(proj_pred.self_ty())
+            }
+            ty::PredicateKind::NormalizesTo(normalizes_to)
+                if matches!(
+                    normalizes_to.alias.kind(self.tcx),
+                    ty::AliasTermKind::ProjectionTy | ty::AliasTermKind::ProjectionConst
+                ) =>
+            {
+                Some(normalizes_to.self_ty())
+            }
+            _ => None,
+        };
+        if let Some(self_ty) = self_ty && self.shallow_resolve(self_ty).is_ty_var()
                 // We don't do this fast path when opaques are defined since we may
                 // eventually use opaques to incompletely guide inference via ty var
                 // self types.
                 // FIXME: Properly consider opaques here.
                 && self.inner.borrow_mut().opaque_types().is_empty()
-            {
-                return Some(Certainty::AMBIGUOUS);
-            }
+        {
+            return Some(Certainty::AMBIGUOUS);
+        }
 
+        if let Some(trait_pred) = goal.predicate.as_trait_clause() {
             if trait_pred.polarity() == ty::PredicatePolarity::Positive {
                 match self.0.tcx.as_lang_item(trait_pred.def_id()) {
                     Some(LangItem::Sized) | Some(LangItem::MetaSized) => {
