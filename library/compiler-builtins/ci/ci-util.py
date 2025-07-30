@@ -7,6 +7,7 @@ git history.
 
 import json
 import os
+import pprint
 import re
 import subprocess as sp
 import sys
@@ -50,15 +51,6 @@ GIT = ["git", "-C", REPO_ROOT]
 DEFAULT_BRANCH = "master"
 WORKFLOW_NAME = "CI"  # Workflow that generates the benchmark artifacts
 ARTIFACT_PREFIX = "baseline-icount*"
-# Place this in a PR body to skip regression checks (must be at the start of a line).
-REGRESSION_DIRECTIVE = "ci: allow-regressions"
-# Place this in a PR body to skip extensive tests
-SKIP_EXTENSIVE_DIRECTIVE = "ci: skip-extensive"
-# Place this in a PR body to allow running a large number of extensive tests. If not
-# set, this script will error out if a threshold is exceeded in order to avoid
-# accidentally spending huge amounts of CI time.
-ALLOW_MANY_EXTENSIVE_DIRECTIVE = "ci: allow-many-extensive"
-MANY_EXTENSIVE_THRESHOLD = 20
 
 # Don't run exhaustive tests if these files change, even if they contaiin a function
 # definition.
@@ -80,6 +72,48 @@ def eprint(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
 
 
+@dataclass(init=False)
+class PrCfg:
+    """Directives that we allow in the commit body to control test behavior.
+
+    These are of the form `ci: foo`, at the start of a line.
+    """
+
+    # Skip regression checks (must be at the start of a line).
+    allow_regressions: bool = False
+    # Don't run extensive tests
+    skip_extensive: bool = False
+
+    # Allow running a large number of extensive tests. If not set, this script
+    # will error out if a threshold is exceeded in order to avoid accidentally
+    # spending huge amounts of CI time.
+    allow_many_extensive: bool = False
+
+    # Max number of extensive tests to run by default
+    MANY_EXTENSIVE_THRESHOLD: int = 20
+
+    # String values of directive names
+    DIR_ALLOW_REGRESSIONS: str = "allow-regressions"
+    DIR_SKIP_EXTENSIVE: str = "skip-extensive"
+    DIR_ALLOW_MANY_EXTENSIVE: str = "allow-many-extensive"
+
+    def __init__(self, body: str):
+        directives = re.finditer(r"^\s*ci:\s*(?P<dir_name>\S*)", body, re.MULTILINE)
+        for dir in directives:
+            name = dir.group("dir_name")
+            if name == self.DIR_ALLOW_REGRESSIONS:
+                self.allow_regressions = True
+            elif name == self.DIR_SKIP_EXTENSIVE:
+                self.skip_extensive = True
+            elif name == self.DIR_ALLOW_MANY_EXTENSIVE:
+                self.allow_many_extensive = True
+            else:
+                eprint(f"Found unexpected directive `{name}`")
+                exit(1)
+
+        pprint.pp(self)
+
+
 @dataclass
 class PrInfo:
     """GitHub response for PR query"""
@@ -88,6 +122,7 @@ class PrInfo:
     commits: list[str]
     created_at: str
     number: int
+    cfg: PrCfg
 
     @classmethod
     def load(cls, pr_number: int | str) -> Self:
@@ -104,13 +139,9 @@ class PrInfo:
             ],
             text=True,
         )
-        eprint("PR info:", json.dumps(pr_info, indent=4))
-        return cls(**json.loads(pr_info))
-
-    def contains_directive(self, directive: str) -> bool:
-        """Return true if the provided directive is on a line in the PR body"""
-        lines = self.body.splitlines()
-        return any(line.startswith(directive) for line in lines)
+        pr_json = json.loads(pr_info)
+        eprint("PR info:", json.dumps(pr_json, indent=4))
+        return cls(**json.loads(pr_info), cfg=PrCfg(pr_json["body"]))
 
 
 class FunctionDef(TypedDict):
@@ -223,10 +254,8 @@ class Context:
 
         if pr_number is not None and len(pr_number) > 0:
             pr = PrInfo.load(pr_number)
-            skip_tests = pr.contains_directive(SKIP_EXTENSIVE_DIRECTIVE)
-            error_on_many_tests = not pr.contains_directive(
-                ALLOW_MANY_EXTENSIVE_DIRECTIVE
-            )
+            skip_tests = pr.cfg.skip_extensive
+            error_on_many_tests = not pr.cfg.allow_many_extensive
 
             if skip_tests:
                 eprint("Skipping all extensive tests")
@@ -257,12 +286,12 @@ class Context:
         eprint(f"may_skip_libm_ci={may_skip}")
         eprint(f"total extensive tests: {total_to_test}")
 
-        if error_on_many_tests and total_to_test > MANY_EXTENSIVE_THRESHOLD:
+        if error_on_many_tests and total_to_test > PrCfg.MANY_EXTENSIVE_THRESHOLD:
             eprint(
-                f"More than {MANY_EXTENSIVE_THRESHOLD} tests would be run; add"
-                f" `{ALLOW_MANY_EXTENSIVE_DIRECTIVE}` to the PR body if this is"
+                f"More than {PrCfg.MANY_EXTENSIVE_THRESHOLD} tests would be run; add"
+                f" `{PrCfg.DIR_ALLOW_MANY_EXTENSIVE}` to the PR body if this is"
                 " intentional. If this is refactoring that happens to touch a lot of"
-                f" files, `{SKIP_EXTENSIVE_DIRECTIVE}` can be used instead."
+                f" files, `{PrCfg.DIR_SKIP_EXTENSIVE}` can be used instead."
             )
             exit(1)
 
@@ -372,7 +401,7 @@ def handle_bench_regressions(args: list[str]):
             exit(1)
 
     pr = PrInfo.load(pr_number)
-    if pr.contains_directive(REGRESSION_DIRECTIVE):
+    if pr.cfg.allow_regressions:
         eprint("PR allows regressions")
         return
 
