@@ -1,7 +1,7 @@
 //@ compile-flags: --document-private-items
 
 //@ set exported_id = "$.index[?(@.name=='exported')].id"
-//@ is "$.index[?(@.name=='exported')].attrs" '[{"other": "#[macro_export]"}]'
+//@ is "$.index[?(@.name=='exported')].attrs" '["macro_export"]'
 //@ is "$.index[?(@.name=='exported')].visibility" '"public"'
 
 #[macro_export]
@@ -19,7 +19,7 @@ macro_rules! not_exported {
 //@ set module_id = "$.index[?(@.name=='module')].id"
 pub mod module {
     //@ set exported_from_mod_id = "$.index[?(@.name=='exported_from_mod')].id"
-    //@ is "$.index[?(@.name=='exported_from_mod')].attrs" '[{"other": "#[macro_export]"}]'
+    //@ is "$.index[?(@.name=='exported_from_mod')].attrs" '["macro_export"]'
     //@ is "$.index[?(@.name=='exported_from_mod')].visibility" '"public"'
     #[macro_export]
     macro_rules! exported_from_mod {
