@@ -39,7 +39,7 @@ use crate::core::config::toml::build::{Build, Tool};
 use crate::core::config::toml::change_id::ChangeId;
 use crate::core::config::toml::dist::Dist;
 use crate::core::config::toml::rust::{
-    LldMode, RustOptimize, check_incompatible_options_for_ci_rustc,
+    LldMode, RustOptimize, check_incompatible_options_for_ci_rustc, validate_codegen_backends,
 };
 use crate::core::config::toml::target::Target;
 use crate::core::config::{
@@ -956,7 +956,68 @@ impl Config {
         config.rust_profile_use = flags_rust_profile_use;
         config.rust_profile_generate = flags_rust_profile_generate;
 
-        config.apply_target_config(toml.target);
+        if let Some(t) = toml.target {
+            for (triple, cfg) in t {
+                let mut target = Target::from_triple(&triple);
+
+                if let Some(ref s) = cfg.llvm_config {
+                    if config.download_rustc_commit.is_some()
+                        && triple == *config.host_target.triple
+                    {
+                        panic!(
+                            "setting llvm_config for the host is incompatible with download-rustc"
+                        );
+                    }
+                    target.llvm_config = Some(config.src.join(s));
+                }
+                if let Some(patches) = cfg.llvm_has_rust_patches {
+                    assert!(
+                        config.submodules == Some(false) || cfg.llvm_config.is_some(),
+                        "use of `llvm-has-rust-patches` is restricted to cases where either submodules are disabled or llvm-config been provided"
+                    );
+                    target.llvm_has_rust_patches = Some(patches);
+                }
+                if let Some(ref s) = cfg.llvm_filecheck {
+                    target.llvm_filecheck = Some(config.src.join(s));
+                }
+                target.llvm_libunwind = cfg.llvm_libunwind.as_ref().map(|v| {
+                    v.parse().unwrap_or_else(|_| {
+                        panic!("failed to parse target.{triple}.llvm-libunwind")
+                    })
+                });
+                if let Some(s) = cfg.no_std {
+                    target.no_std = s;
+                }
+                target.cc = cfg.cc.map(PathBuf::from);
+                target.cxx = cfg.cxx.map(PathBuf::from);
+                target.ar = cfg.ar.map(PathBuf::from);
+                target.ranlib = cfg.ranlib.map(PathBuf::from);
+                target.linker = cfg.linker.map(PathBuf::from);
+                target.crt_static = cfg.crt_static;
+                target.musl_root = cfg.musl_root.map(PathBuf::from);
+                target.musl_libdir = cfg.musl_libdir.map(PathBuf::from);
+                target.wasi_root = cfg.wasi_root.map(PathBuf::from);
+                target.qemu_rootfs = cfg.qemu_rootfs.map(PathBuf::from);
+                target.runner = cfg.runner;
+                target.sanitizers = cfg.sanitizers;
+                target.profiler = cfg.profiler;
+                target.rpath = cfg.rpath;
+                target.optimized_compiler_builtins = cfg.optimized_compiler_builtins;
+                target.jemalloc = cfg.jemalloc;
+                if let Some(backends) = cfg.codegen_backends {
+                    target.codegen_backends =
+                        Some(validate_codegen_backends(backends, &format!("target.{triple}")))
+                }
+
+                target.split_debuginfo = cfg.split_debuginfo.as_ref().map(|v| {
+                    v.parse().unwrap_or_else(|_| {
+                        panic!("invalid value for target.{triple}.split-debuginfo")
+                    })
+                });
+
+                config.target_config.insert(TargetSelection::from_user(&triple), target);
+            }
+        }
         config.apply_rust_config(toml.rust, flags_warnings);
 
         config.reproducible_artifacts = flags_reproducible_artifact;
