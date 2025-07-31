@@ -1,5 +1,5 @@
 //@ min-lldb-version: 1800
-//@ compile-flags:-g -Z thinlto
+//@ compile-flags:-g -Clto=thin
 
 // === GDB TESTS ===================================================================================
 
@@ -25,7 +25,7 @@
 #[derive(Debug)]
 enum ABC {
     TheA { x: i64, y: i64 },
-    TheB (i64, i32, i32),
+    TheB(i64, i32, i32),
 }
 
 fn main() {
@@ -40,4 +40,6 @@ fn f(abc: &ABC) {
     println!("{:?}", abc);
 }
 
-fn zzz() {()}
+fn zzz() {
+    ()
+}

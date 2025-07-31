@@ -883,7 +883,7 @@ Tests on [AST lowering](https://rustc-dev-guide.rust-lang.org/ast-lowering.html)
 
 ## `tests/ui/lto/`
 
-Exercise *Link-Time Optimization* (LTO), involving the flags `-C lto` or `-Z thinlto`.
+Exercise *Link-Time Optimization* (LTO), involving the `-C lto` flag.
 
 ## `tests/ui/lub-glb/`: LUB/GLB algorithm update
 

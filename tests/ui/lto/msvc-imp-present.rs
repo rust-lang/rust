@@ -1,7 +1,7 @@
 //@ run-pass
 
 //@ aux-build:msvc-imp-present.rs
-//@ compile-flags: -Z thinlto -C codegen-units=8
+//@ compile-flags: -Clto=thin -C codegen-units=8
 //@ no-prefer-dynamic
 
 // On MSVC we have a "hack" where we emit symbols that look like `_imp_$name`

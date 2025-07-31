@@ -673,16 +673,6 @@ impl Session {
             return config::Lto::No;
         }
 
-        // If `-Z thinlto` specified process that, but note that this is mostly
-        // a deprecated option now that `-C lto=thin` exists.
-        if let Some(enabled) = self.opts.unstable_opts.thinlto {
-            if enabled {
-                return config::Lto::ThinLocal;
-            } else {
-                return config::Lto::No;
-            }
-        }
-
         // If there's only one codegen unit and LTO isn't enabled then there's
         // no need for ThinLTO so just return false.
         if self.codegen_units().as_usize() == 1 {

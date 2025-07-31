@@ -1,6 +1,6 @@
 //@ run-pass
 
-//@ compile-flags: -C codegen-units=8 -Z thinlto
+//@ compile-flags: -C codegen-units=8 -Clto=thin
 //@ ignore-i686-pc-windows-gnu
 //@ ignore-x86_64-pc-windows-gnu
 
