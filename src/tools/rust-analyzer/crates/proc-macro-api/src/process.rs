@@ -63,16 +63,25 @@ impl ProcMacroServerProcess {
         let mut srv = create_srv()?;
         tracing::info!("sending proc-macro server version check");
         match srv.version_check() {
-            Ok(v) if v > version::CURRENT_API_VERSION => Err(io::Error::other(
-                format!( "The version of the proc-macro server ({v}) in your Rust toolchain is newer than the version supported by your rust-analyzer ({}).
-                        This will prevent proc-macro expansion from working. Please consider updating your rust-analyzer to ensure compatibility with your current toolchain."
-                        ,version::CURRENT_API_VERSION
-                    ),
-                )),
+            Ok(v) if v > version::CURRENT_API_VERSION => {
+                #[allow(clippy::disallowed_methods)]
+                let process_version = Command::new(process_path)
+                    .arg("--version")
+                    .output()
+                    .map(|output| String::from_utf8_lossy(&output.stdout).trim().to_owned())
+                    .unwrap_or_else(|_| "unknown version".to_owned());
+                Err(io::Error::other(format!(
+                    "Your installed proc-macro server is too new for your rust-analyzer. API version: {}, server version: {process_version}. \
+                        This will prevent proc-macro expansion from working. Please consider updating your rust-analyzer to ensure compatibility with your current toolchain.",
+                    version::CURRENT_API_VERSION
+                )))
+            }
             Ok(v) => {
                 tracing::info!("Proc-macro server version: {v}");
                 srv.version = v;
-                if srv.version >= version::RUST_ANALYZER_SPAN_SUPPORT && let Ok(mode) = srv.enable_rust_analyzer_spans() {
+                if srv.version >= version::RUST_ANALYZER_SPAN_SUPPORT
+                    && let Ok(mode) = srv.enable_rust_analyzer_spans()
+                {
                     srv.protocol = Protocol::LegacyJson { mode };
                 }
                 tracing::info!("Proc-macro server protocol: {:?}", srv.protocol);
@@ -80,9 +89,7 @@ impl ProcMacroServerProcess {
             }
             Err(e) => {
                 tracing::info!(%e, "proc-macro version check failed");
-                Err(
-                    io::Error::other(format!("proc-macro server version check failed: {e}")),
-                )
+                Err(io::Error::other(format!("proc-macro server version check failed: {e}")))
             }
         }
     }

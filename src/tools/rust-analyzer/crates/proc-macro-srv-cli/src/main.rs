@@ -2,10 +2,12 @@
 //! Driver for proc macro server
 #![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
 #![cfg_attr(not(feature = "sysroot-abi"), allow(unused_crate_dependencies))]
-#![allow(clippy::print_stderr)]
+#![allow(clippy::print_stdout, clippy::print_stderr)]
 
 #[cfg(feature = "in-rust-tree")]
 extern crate rustc_driver as _;
+
+mod version;
 
 #[cfg(any(feature = "sysroot-abi", rust_analyzer))]
 mod main_loop;
@@ -25,12 +27,22 @@ fn main() -> std::io::Result<()> {
         std::process::exit(122);
     }
     let matches = Command::new("proc-macro-srv")
-        .args(&[clap::Arg::new("format")
-            .long("format")
-            .action(clap::ArgAction::Set)
-            .default_value("json")
-            .value_parser(clap::builder::EnumValueParser::<ProtocolFormat>::new())])
+        .args(&[
+            clap::Arg::new("format")
+                .long("format")
+                .action(clap::ArgAction::Set)
+                .default_value("json")
+                .value_parser(clap::builder::EnumValueParser::<ProtocolFormat>::new()),
+            clap::Arg::new("version")
+                .long("version")
+                .action(clap::ArgAction::SetTrue)
+                .help("Prints the version of the proc-macro-srv"),
+        ])
         .get_matches();
+    if matches.get_flag("version") {
+        println!("rust-analyzer-proc-macro-srv {}", version::version());
+        return Ok(());
+    }
     let &format =
         matches.get_one::<ProtocolFormat>("format").expect("format value should always be present");
     run(format)
