@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use rustc_ast as ast;
 use rustc_ast::NodeId;
 use rustc_errors::DiagCtxtHandle;
@@ -49,27 +51,44 @@ impl<'sess> AttributeParser<'sess, Early> {
         target_node_id: NodeId,
         features: Option<&'sess Features>,
     ) -> Option<Attribute> {
-        let mut p = Self {
-            features,
-            tools: Vec::new(),
-            parse_only: Some(sym),
+        let mut parsed = Self::parse_limited_all(
             sess,
-            stage: Early { emit_errors: ShouldEmit::Nothing },
-        };
-        let mut parsed = p.parse_attribute_list(
+            attrs,
+            Some(sym),
+            Target::Crate, // Does not matter, we're not going to emit errors anyways
+            target_span,
+            target_node_id,
+            features,
+            ShouldEmit::Nothing,
+        );
+        assert!(parsed.len() <= 1);
+        parsed.pop()
+    }
+
+    pub fn parse_limited_all(
+        sess: &'sess Session,
+        attrs: &[ast::Attribute],
+        parse_only: Option<Symbol>,
+        target: Target,
+        target_span: Span,
+        target_node_id: NodeId,
+        features: Option<&'sess Features>,
+        emit_errors: ShouldEmit,
+    ) -> Vec<Attribute> {
+        let mut p =
+            Self { features, tools: Vec::new(), parse_only, sess, stage: Early { emit_errors } };
+        p.parse_attribute_list(
             attrs,
             target_span,
             target_node_id,
-            Target::Crate, // Does not matter, we're not going to emit errors anyways
+            target,
             OmitDoc::Skip,
             std::convert::identity,
             |_lint| {
-                panic!("can't emit lints here for now (nothing uses this atm)");
+                // FIXME: Can't emit lints here for now
+                // This branch can be hit when an attribute produces a warning during early parsing (such as attributes on macro calls)
             },
-        );
-        assert!(parsed.len() <= 1);
-
-        parsed.pop()
+        )
     }
 
     pub fn parse_single<T>(
@@ -79,9 +98,9 @@ impl<'sess> AttributeParser<'sess, Early> {
         target_node_id: NodeId,
         features: Option<&'sess Features>,
         emit_errors: ShouldEmit,
-        parse_fn: fn(cx: &mut AcceptContext<'_, '_, Early>, item: &ArgParser<'_>) -> T,
+        parse_fn: fn(cx: &mut AcceptContext<'_, '_, Early>, item: &ArgParser<'_>) -> Option<T>,
         template: &AttributeTemplate,
-    ) -> T {
+    ) -> Option<T> {
         let mut parser = Self {
             features,
             tools: Vec::new(),
@@ -92,7 +111,9 @@ impl<'sess> AttributeParser<'sess, Early> {
         let ast::AttrKind::Normal(normal_attr) = &attr.kind else {
             panic!("parse_single called on a doc attr")
         };
-        let meta_parser = MetaItemParser::from_attr(normal_attr, parser.dcx());
+        let parts =
+            normal_attr.item.path.segments.iter().map(|seg| seg.ident.name).collect::<Vec<_>>();
+        let meta_parser = MetaItemParser::from_attr(normal_attr, &parts, &sess.psess, emit_errors)?;
         let path = meta_parser.path();
         let args = meta_parser.args();
         let mut cx: AcceptContext<'_, 'sess, Early> = AcceptContext {
@@ -199,14 +220,22 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
                 //     }))
                 // }
                 ast::AttrKind::Normal(n) => {
-                    attr_paths.push(PathParser::Ast(&n.item.path));
+                    attr_paths.push(PathParser(Cow::Borrowed(&n.item.path)));
 
-                    let parser = MetaItemParser::from_attr(n, self.dcx());
-                    let path = parser.path();
-                    let args = parser.args();
-                    let path_parts = path.segments().map(|i| i.name).collect::<Vec<_>>();
+                    let parts =
+                        n.item.path.segments.iter().map(|seg| seg.ident.name).collect::<Vec<_>>();
 
-                    if let Some(accepts) = S::parsers().accepters.get(path_parts.as_slice()) {
+                    if let Some(accepts) = S::parsers().accepters.get(parts.as_slice()) {
+                        let Some(parser) = MetaItemParser::from_attr(
+                            n,
+                            &parts,
+                            &self.sess.psess,
+                            self.stage.should_emit(),
+                        ) else {
+                            continue;
+                        };
+                        let path = parser.path();
+                        let args = parser.args();
                         for accept in accepts {
                             let mut cx: AcceptContext<'_, 'sess, S> = AcceptContext {
                                 shared: SharedContext {
