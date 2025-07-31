@@ -141,7 +141,7 @@ pub trait Step: 'static + Clone + Debug + PartialEq + Eq + Hash {
 #[allow(unused)]
 #[derive(Debug, PartialEq, Eq)]
 pub struct StepMetadata {
-    name: &'static str,
+    name: String,
     kind: Kind,
     target: TargetSelection,
     built_by: Option<Compiler>,
@@ -151,28 +151,28 @@ pub struct StepMetadata {
 }
 
 impl StepMetadata {
-    pub fn build(name: &'static str, target: TargetSelection) -> Self {
+    pub fn build(name: &str, target: TargetSelection) -> Self {
         Self::new(name, target, Kind::Build)
     }
 
-    pub fn check(name: &'static str, target: TargetSelection) -> Self {
+    pub fn check(name: &str, target: TargetSelection) -> Self {
         Self::new(name, target, Kind::Check)
     }
 
-    pub fn doc(name: &'static str, target: TargetSelection) -> Self {
+    pub fn doc(name: &str, target: TargetSelection) -> Self {
         Self::new(name, target, Kind::Doc)
     }
 
-    pub fn dist(name: &'static str, target: TargetSelection) -> Self {
+    pub fn dist(name: &str, target: TargetSelection) -> Self {
         Self::new(name, target, Kind::Dist)
     }
 
-    pub fn test(name: &'static str, target: TargetSelection) -> Self {
+    pub fn test(name: &str, target: TargetSelection) -> Self {
         Self::new(name, target, Kind::Test)
     }
 
-    fn new(name: &'static str, target: TargetSelection, kind: Kind) -> Self {
-        Self { name, kind, target, built_by: None, stage: None, metadata: None }
+    fn new(name: &str, target: TargetSelection, kind: Kind) -> Self {
+        Self { name: name.to_string(), kind, target, built_by: None, stage: None, metadata: None }
     }
 
     pub fn built_by(mut self, compiler: Compiler) -> Self {
