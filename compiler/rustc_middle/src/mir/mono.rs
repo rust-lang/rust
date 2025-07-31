@@ -528,37 +528,42 @@ impl<'tcx> CodegenUnit<'tcx> {
         // The codegen tests rely on items being process in the same order as
         // they appear in the file, so for local items, we sort by node_id first
         #[derive(PartialEq, Eq, PartialOrd, Ord)]
-        struct ItemSortKey<'tcx>(Option<usize>, SymbolName<'tcx>);
+        struct ItemSortKey<'tcx>(Option<Span>, Option<String>, SymbolName<'tcx>);
 
+        // We only want to take HirIds of user-defined
+        // instances into account. The others don't matter for
+        // the codegen tests and can even make item order
+        // unstable.
+        fn local_item_query<'tcx, T>(
+            item: MonoItem<'tcx>,
+            op: impl FnOnce(DefId) -> T,
+        ) -> Option<T> {
+            match item {
+                MonoItem::Fn(ref instance) => match instance.def {
+                    InstanceKind::Item(def) => def.as_local().map(op),
+                    InstanceKind::VTableShim(..)
+                    | InstanceKind::ReifyShim(..)
+                    | InstanceKind::Intrinsic(..)
+                    | InstanceKind::FnPtrShim(..)
+                    | InstanceKind::Virtual(..)
+                    | InstanceKind::ClosureOnceShim { .. }
+                    | InstanceKind::ConstructCoroutineInClosureShim { .. }
+                    | InstanceKind::DropGlue(..)
+                    | InstanceKind::CloneShim(..)
+                    | InstanceKind::ThreadLocalShim(..)
+                    | InstanceKind::FnPtrAddrShim(..)
+                    | InstanceKind::AsyncDropGlue(..)
+                    | InstanceKind::FutureDropPollShim(..)
+                    | InstanceKind::AsyncDropGlueCtorShim(..) => None,
+                },
+                MonoItem::Static(def_id) => def_id.as_local().map(op),
+                MonoItem::GlobalAsm(item_id) => Some(op(item_id.owner_id.def_id)),
+            }
+        }
         fn item_sort_key<'tcx>(tcx: TyCtxt<'tcx>, item: MonoItem<'tcx>) -> ItemSortKey<'tcx> {
             ItemSortKey(
-                match item {
-                    MonoItem::Fn(ref instance) => {
-                        match instance.def {
-                            // We only want to take HirIds of user-defined
-                            // instances into account. The others don't matter for
-                            // the codegen tests and can even make item order
-                            // unstable.
-                            InstanceKind::Item(def) => def.as_local().map(Idx::index),
-                            InstanceKind::VTableShim(..)
-                            | InstanceKind::ReifyShim(..)
-                            | InstanceKind::Intrinsic(..)
-                            | InstanceKind::FnPtrShim(..)
-                            | InstanceKind::Virtual(..)
-                            | InstanceKind::ClosureOnceShim { .. }
-                            | InstanceKind::ConstructCoroutineInClosureShim { .. }
-                            | InstanceKind::DropGlue(..)
-                            | InstanceKind::CloneShim(..)
-                            | InstanceKind::ThreadLocalShim(..)
-                            | InstanceKind::FnPtrAddrShim(..)
-                            | InstanceKind::AsyncDropGlue(..)
-                            | InstanceKind::FutureDropPollShim(..)
-                            | InstanceKind::AsyncDropGlueCtorShim(..) => None,
-                        }
-                    }
-                    MonoItem::Static(def_id) => def_id.as_local().map(Idx::index),
-                    MonoItem::GlobalAsm(item_id) => Some(item_id.owner_id.def_id.index()),
-                },
+                local_item_query(item, |def_id| tcx.def_span(def_id)),
+                local_item_query(item, |def_id| tcx.def_path(id).to_string_no_crate_verbose()),
                 item.symbol_name(tcx),
             )
         }
