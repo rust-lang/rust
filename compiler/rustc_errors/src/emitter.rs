@@ -2988,7 +2988,7 @@ impl HumanEmitter {
     fn secondary_file_start(&self) -> &'static str {
         match self.theme {
             OutputTheme::Ascii => "::: ",
-            OutputTheme::Unicode => " ⸬ ",
+            OutputTheme::Unicode => " ⸬  ",
         }
     }
 

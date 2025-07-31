@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::numeric_literal;
-use rustc_ast::ast::{self, LitFloatType, LitKind};
+use rustc_ast::ast::{LitFloatType, LitKind};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass};
@@ -75,10 +75,10 @@ impl<'tcx> LateLintPass<'tcx> for FloatLiteral {
             let digits = count_digits(sym_str);
             let max = max_digits(fty);
             let type_suffix = match lit_float_ty {
-                LitFloatType::Suffixed(ast::FloatTy::F16) => Some("f16"),
-                LitFloatType::Suffixed(ast::FloatTy::F32) => Some("f32"),
-                LitFloatType::Suffixed(ast::FloatTy::F64) => Some("f64"),
-                LitFloatType::Suffixed(ast::FloatTy::F128) => Some("f128"),
+                LitFloatType::Suffixed(FloatTy::F16) => Some("f16"),
+                LitFloatType::Suffixed(FloatTy::F32) => Some("f32"),
+                LitFloatType::Suffixed(FloatTy::F64) => Some("f64"),
+                LitFloatType::Suffixed(FloatTy::F128) => Some("f128"),
                 LitFloatType::Unsuffixed => None,
             };
             let (is_whole, is_inf, mut float_str) = match fty {

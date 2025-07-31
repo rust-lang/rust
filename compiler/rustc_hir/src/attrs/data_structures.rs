@@ -1,12 +1,15 @@
+pub use ReprAttr::*;
 use rustc_abi::Align;
 use rustc_ast::token::CommentKind;
-use rustc_ast::{self as ast, AttrStyle};
+use rustc_ast::{AttrStyle, ast};
 use rustc_macros::{Decodable, Encodable, HashStable_Generic, PrintAttribute};
+use rustc_span::def_id::DefId;
 use rustc_span::hygiene::Transparency;
 use rustc_span::{Ident, Span, Symbol};
 use thin_vec::ThinVec;
 
-use crate::{DefaultBodyStability, PartialConstStability, PrintAttribute, RustcVersion, Stability};
+use crate::attrs::pretty_printing::PrintAttribute;
+use crate::{DefaultBodyStability, PartialConstStability, RustcVersion, Stability};
 
 #[derive(Copy, Clone, PartialEq, Encodable, Decodable, Debug, HashStable_Generic, PrintAttribute)]
 pub enum InlineAttr {
@@ -68,8 +71,6 @@ pub enum ReprAttr {
     ReprTransparent,
     ReprAlign(Align),
 }
-pub use ReprAttr::*;
-use rustc_span::def_id::DefId;
 
 pub enum TransparencyError {
     UnknownTransparency(Symbol, Span),

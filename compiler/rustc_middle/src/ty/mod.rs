@@ -27,17 +27,17 @@ pub use intrinsic::IntrinsicDef;
 use rustc_abi::{Align, FieldIdx, Integer, IntegerType, ReprFlags, ReprOptions, VariantIdx};
 use rustc_ast::node_id::NodeMap;
 pub use rustc_ast_ir::{Movability, Mutability, try_visit};
-use rustc_attr_data_structures::{AttributeKind, StrippedCfgItem, find_attr};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::{Diag, ErrorGuaranteed};
-use rustc_hir::LangItem;
+use rustc_hir::attrs::{AttributeKind, StrippedCfgItem};
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, DocLinkResMap, LifetimeRes, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LocalDefIdMap};
 use rustc_hir::definitions::DisambiguatorState;
+use rustc_hir::{LangItem, attrs as attr, find_attr};
 use rustc_index::IndexVec;
 use rustc_index::bit_set::BitMatrix;
 use rustc_macros::{
@@ -65,7 +65,7 @@ pub use rustc_type_ir::*;
 use rustc_type_ir::{InferCtxtLike, Interner};
 use tracing::{debug, instrument};
 pub use vtable::*;
-use {rustc_ast as ast, rustc_attr_data_structures as attr, rustc_hir as hir};
+use {rustc_ast as ast, rustc_hir as hir};
 
 pub use self::closure::{
     BorrowKind, CAPTURE_STRUCT_LOCAL, CaptureInfo, CapturedPlace, ClosureTypeInfo,
@@ -1459,7 +1459,7 @@ impl<'tcx> TyCtxt<'tcx> {
         }
 
         if let Some(reprs) =
-            attr::find_attr!(self.get_all_attrs(did), AttributeKind::Repr { reprs, .. } => reprs)
+            find_attr!(self.get_all_attrs(did), AttributeKind::Repr { reprs, .. } => reprs)
         {
             for (r, _) in reprs {
                 flags.insert(match *r {
@@ -1716,7 +1716,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Gets all attributes.
     ///
     /// To see if an item has a specific attribute, you should use
-    /// [`rustc_attr_data_structures::find_attr!`] so you can use matching.
+    /// [`rustc_hir::find_attr!`] so you can use matching.
     pub fn get_all_attrs(self, did: impl Into<DefId>) -> &'tcx [hir::Attribute] {
         let did: DefId = did.into();
         if let Some(did) = did.as_local() {
@@ -2121,59 +2121,6 @@ impl<'tcx> TyCtxt<'tcx> {
         return !self
             .associated_types_for_impl_traits_in_associated_fn(trait_item_def_id)
             .is_empty();
-    }
-}
-
-pub fn int_ty(ity: ast::IntTy) -> IntTy {
-    match ity {
-        ast::IntTy::Isize => IntTy::Isize,
-        ast::IntTy::I8 => IntTy::I8,
-        ast::IntTy::I16 => IntTy::I16,
-        ast::IntTy::I32 => IntTy::I32,
-        ast::IntTy::I64 => IntTy::I64,
-        ast::IntTy::I128 => IntTy::I128,
-    }
-}
-
-pub fn uint_ty(uty: ast::UintTy) -> UintTy {
-    match uty {
-        ast::UintTy::Usize => UintTy::Usize,
-        ast::UintTy::U8 => UintTy::U8,
-        ast::UintTy::U16 => UintTy::U16,
-        ast::UintTy::U32 => UintTy::U32,
-        ast::UintTy::U64 => UintTy::U64,
-        ast::UintTy::U128 => UintTy::U128,
-    }
-}
-
-pub fn float_ty(fty: ast::FloatTy) -> FloatTy {
-    match fty {
-        ast::FloatTy::F16 => FloatTy::F16,
-        ast::FloatTy::F32 => FloatTy::F32,
-        ast::FloatTy::F64 => FloatTy::F64,
-        ast::FloatTy::F128 => FloatTy::F128,
-    }
-}
-
-pub fn ast_int_ty(ity: IntTy) -> ast::IntTy {
-    match ity {
-        IntTy::Isize => ast::IntTy::Isize,
-        IntTy::I8 => ast::IntTy::I8,
-        IntTy::I16 => ast::IntTy::I16,
-        IntTy::I32 => ast::IntTy::I32,
-        IntTy::I64 => ast::IntTy::I64,
-        IntTy::I128 => ast::IntTy::I128,
-    }
-}
-
-pub fn ast_uint_ty(uty: UintTy) -> ast::UintTy {
-    match uty {
-        UintTy::Usize => ast::UintTy::Usize,
-        UintTy::U8 => ast::UintTy::U8,
-        UintTy::U16 => ast::UintTy::U16,
-        UintTy::U32 => ast::UintTy::U32,
-        UintTy::U64 => ast::UintTy::U64,
-        UintTy::U128 => ast::UintTy::U128,
     }
 }
 

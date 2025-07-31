@@ -1,10 +1,10 @@
 //! Checks validity of naked functions.
 
-use rustc_attr_data_structures::{AttributeKind, find_attr};
 use rustc_hir as hir;
+use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::Visitor;
-use rustc_hir::{ExprKind, HirIdSet, StmtKind};
+use rustc_hir::{ExprKind, HirIdSet, StmtKind, find_attr};
 use rustc_middle::span_bug;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::Span;

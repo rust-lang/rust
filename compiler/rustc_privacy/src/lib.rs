@@ -23,10 +23,12 @@ use rustc_ast::visit::{VisitorResult, try_visit};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::intern::Interned;
 use rustc_errors::{MultiSpan, listify};
+use rustc_hir as hir;
+use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LocalDefId, LocalModDefId};
 use rustc_hir::intravisit::{self, InferKind, Visitor};
-use rustc_hir::{AmbigArg, ForeignItemId, ItemId, PatKind};
+use rustc_hir::{AmbigArg, ForeignItemId, ItemId, PatKind, find_attr};
 use rustc_middle::middle::privacy::{EffectiveVisibilities, EffectiveVisibility, Level};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::print::PrintTraitRefExt as _;
@@ -39,7 +41,6 @@ use rustc_session::lint;
 use rustc_span::hygiene::Transparency;
 use rustc_span::{Ident, Span, Symbol, sym};
 use tracing::debug;
-use {rustc_attr_data_structures as attrs, rustc_hir as hir};
 
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 
@@ -495,7 +496,7 @@ impl<'tcx> EmbargoVisitor<'tcx> {
         let hir_id = self.tcx.local_def_id_to_hir_id(local_def_id);
         let attrs = self.tcx.hir_attrs(hir_id);
 
-        if attrs::find_attr!(attrs, attrs::AttributeKind::MacroTransparency(x) => *x)
+        if find_attr!(attrs, AttributeKind::MacroTransparency(x) => *x)
             .unwrap_or(Transparency::fallback(md.macro_rules))
             != Transparency::Opaque
         {

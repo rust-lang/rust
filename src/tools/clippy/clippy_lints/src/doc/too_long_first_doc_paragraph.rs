@@ -1,4 +1,4 @@
-use rustc_attr_data_structures::AttributeKind;
+use rustc_hir::attrs::AttributeKind;
 use rustc_errors::Applicability;
 use rustc_hir::{Attribute, Item, ItemKind};
 use rustc_lint::LateContext;
