@@ -114,11 +114,11 @@ impl EnteredTraceSpan for tracing::span::EnteredSpan {}
 /// ```
 #[macro_export]
 macro_rules! enter_trace_span {
-    ($machine:ident, $name:ident :: $subname:ident $($tt:tt)*) => {{
+    ($machine:ty, $name:ident :: $subname:ident $($tt:tt)*) => {
         $crate::enter_trace_span!($machine, stringify!($name), $name = %stringify!($subname) $($tt)*)
-    }};
+    };
 
-    ($machine:ident, $($tt:tt)*) => {
+    ($machine:ty, $($tt:tt)*) => {
         <$machine as $crate::interpret::Machine>::enter_trace_span(|| tracing::info_span!($($tt)*))
-    }
+    };
 }
