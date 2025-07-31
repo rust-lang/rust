@@ -929,10 +929,10 @@ struct CheckTraitImplStable<'tcx> {
 
 impl<'tcx> Visitor<'tcx> for CheckTraitImplStable<'tcx> {
     fn visit_path(&mut self, path: &hir::Path<'tcx>, _id: hir::HirId) {
-        if let Some(def_id) = path.res.opt_def_id() {
-            if let Some(stab) = self.tcx.lookup_stability(def_id) {
-                self.fully_stable &= stab.level.is_stable();
-            }
+        if let Some(def_id) = path.res.opt_def_id()
+            && let Some(stab) = self.tcx.lookup_stability(def_id)
+        {
+            self.fully_stable &= stab.level.is_stable();
         }
         intravisit::walk_path(self, path)
     }
@@ -1055,10 +1055,10 @@ pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
             // implications from this crate.
             remaining_implications.remove(&feature);
 
-            if let FeatureStability::Unstable { old_name: Some(alias) } = stability {
-                if let Some(span) = remaining_lib_features.swap_remove(&alias) {
-                    tcx.dcx().emit_err(errors::RenamedFeature { span, feature, alias });
-                }
+            if let FeatureStability::Unstable { old_name: Some(alias) } = stability
+                && let Some(span) = remaining_lib_features.swap_remove(&alias)
+            {
+                tcx.dcx().emit_err(errors::RenamedFeature { span, feature, alias });
             }
 
             if remaining_lib_features.is_empty() && remaining_implications.is_empty() {

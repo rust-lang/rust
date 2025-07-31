@@ -13,7 +13,9 @@
 //! depend on the primitive. See [#Overview] below.
 //!
 //! For the alternative implementations that do not employ poisoning,
-//! see `std::sync::nonpoisoning`.
+//! see [`std::sync::nonpoison`].
+//!
+//! [`std::sync::nonpoison`]: crate::sync::nonpoison
 //!
 //! # Overview
 //!
@@ -55,8 +57,6 @@
 //!   Note, however, that an `RwLock` may only be poisoned if a panic occurs
 //!   while it is locked exclusively (write mode). If a panic occurs in any reader,
 //!   then the lock will not be poisoned.
-
-// FIXME(sync_nonpoison) add links to sync::nonpoison to the doc comment above.
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::condvar::{Condvar, WaitTimeoutResult};

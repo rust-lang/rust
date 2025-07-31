@@ -31,6 +31,7 @@ pub(crate) enum InvocationStrategy {
 pub(crate) struct CargoOptions {
     pub(crate) target_tuples: Vec<String>,
     pub(crate) all_targets: bool,
+    pub(crate) set_test: bool,
     pub(crate) no_default_features: bool,
     pub(crate) all_features: bool,
     pub(crate) features: Vec<String>,
@@ -54,7 +55,13 @@ impl CargoOptions {
             cmd.args(["--target", target.as_str()]);
         }
         if self.all_targets {
-            cmd.arg("--all-targets");
+            if self.set_test {
+                cmd.arg("--all-targets");
+            } else {
+                // No --benches unfortunately, as this implies --tests (see https://github.com/rust-lang/cargo/issues/6454),
+                // and users setting `cfg.seTest = false` probably prefer disabling benches than enabling tests.
+                cmd.args(["--lib", "--bins", "--examples"]);
+            }
         }
         if self.all_features {
             cmd.arg("--all-features");
@@ -104,7 +111,18 @@ impl fmt::Display for FlycheckConfig {
         match self {
             FlycheckConfig::CargoCommand { command, .. } => write!(f, "cargo {command}"),
             FlycheckConfig::CustomCommand { command, args, .. } => {
-                write!(f, "{command} {}", args.join(" "))
+                // Don't show `my_custom_check --foo $saved_file` literally to the user, as it
+                // looks like we've forgotten to substitute $saved_file.
+                //
+                // Instead, show `my_custom_check --foo ...`. The
+                // actual path is often too long to be worth showing
+                // in the IDE (e.g. in the VS Code status bar).
+                let display_args = args
+                    .iter()
+                    .map(|arg| if arg == SAVED_FILE_PLACEHOLDER { "..." } else { arg })
+                    .collect::<Vec<_>>();
+
+                write!(f, "{command} {}", display_args.join(" "))
             }
         }
     }

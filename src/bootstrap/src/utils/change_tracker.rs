@@ -439,7 +439,7 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
     ChangeInfo {
         change_id: 143255,
         severity: ChangeSeverity::Warning,
-        summary: "`llvm.lld` is no longer enabled by default for the dist profile.",
+        summary: "`rust.lld` is no longer enabled by default for the dist profile.",
     },
     ChangeInfo {
         change_id: 143251,
@@ -485,5 +485,10 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         change_id: 143926,
         severity: ChangeSeverity::Warning,
         summary: "Removed `rust.description` and `llvm.ccache` as it was deprecated in #137723 and #136941 long time ago.",
+    },
+    ChangeInfo {
+        change_id: 144675,
+        severity: ChangeSeverity::Warning,
+        summary: "Added `build.compiletest-allow-stage0` flag instead of `COMPILETEST_FORCE_STAGE0` env var, and reject running `compiletest` self tests against stage 0 rustc unless explicitly allowed.",
     },
 ];

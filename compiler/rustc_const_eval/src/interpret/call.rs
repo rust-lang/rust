@@ -270,6 +270,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             Item = (&'x FnArg<'tcx, M::Provenance>, &'y ArgAbi<'tcx, Ty<'tcx>>),
         >,
         callee_abi: &ArgAbi<'tcx, Ty<'tcx>>,
+        callee_arg_idx: usize,
         callee_arg: &mir::Place<'tcx>,
         callee_ty: Ty<'tcx>,
         already_live: bool,
@@ -298,6 +299,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // Check compatibility
         if !self.check_argument_compat(caller_abi, callee_abi)? {
             throw_ub!(AbiMismatchArgument {
+                arg_idx: callee_arg_idx,
                 caller_ty: caller_abi.layout.ty,
                 callee_ty: callee_abi.layout.ty
             });
@@ -424,7 +426,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             // this is a single iterator (that handles `spread_arg`), then
             // `pass_argument` would be the loop body. It takes care to
             // not advance `caller_iter` for ignored arguments.
-            let mut callee_args_abis = callee_fn_abi.args.iter();
+            let mut callee_args_abis = callee_fn_abi.args.iter().enumerate();
             for local in body.args_iter() {
                 // Construct the destination place for this argument. At this point all
                 // locals are still dead, so we cannot construct a `PlaceTy`.
@@ -445,10 +447,11 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                             &[mir::ProjectionElem::Field(FieldIdx::from_usize(i), field_ty)],
                             *self.tcx,
                         );
-                        let callee_abi = callee_args_abis.next().unwrap();
+                        let (idx, callee_abi) = callee_args_abis.next().unwrap();
                         self.pass_argument(
                             &mut caller_args,
                             callee_abi,
+                            idx,
                             &dest,
                             field_ty,
                             /* already_live */ true,
@@ -456,10 +459,11 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     }
                 } else {
                     // Normal argument. Cannot mark it as live yet, it might be unsized!
-                    let callee_abi = callee_args_abis.next().unwrap();
+                    let (idx, callee_abi) = callee_args_abis.next().unwrap();
                     self.pass_argument(
                         &mut caller_args,
                         callee_abi,
+                        idx,
                         &dest,
                         ty,
                         /* already_live */ false,
@@ -721,7 +725,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     ) {
         let tcx = *self.tcx;
 
-        let trait_def_id = tcx.trait_of_item(def_id).unwrap();
+        let trait_def_id = tcx.trait_of_assoc(def_id).unwrap();
         let virtual_trait_ref = ty::TraitRef::from_method(tcx, trait_def_id, virtual_instance.args);
         let existential_trait_ref = ty::ExistentialTraitRef::erase_self_ty(tcx, virtual_trait_ref);
         let concrete_trait_ref = existential_trait_ref.with_self_ty(tcx, dyn_ty);

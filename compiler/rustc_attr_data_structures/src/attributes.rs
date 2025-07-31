@@ -110,18 +110,10 @@ pub enum DeprecatedSince {
     Err,
 }
 
-#[derive(
-    Copy,
-    Debug,
-    Eq,
-    PartialEq,
-    Encodable,
-    Decodable,
-    Clone,
-    HashStable_Generic,
-    PrintAttribute
-)]
-pub enum CoverageStatus {
+/// Successfully-parsed value of a `#[coverage(..)]` attribute.
+#[derive(Copy, Debug, Eq, PartialEq, Encodable, Decodable, Clone)]
+#[derive(HashStable_Generic, PrintAttribute)]
+pub enum CoverageAttrKind {
     On,
     Off,
 }
@@ -155,6 +147,19 @@ impl Deprecation {
 pub enum UsedBy {
     Compiler,
     Linker,
+}
+
+#[derive(Encodable, Decodable, Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(HashStable_Generic, PrintAttribute)]
+pub enum MacroUseArgs {
+    UseAll,
+    UseSpecific(ThinVec<Ident>),
+}
+
+impl Default for MacroUseArgs {
+    fn default() -> Self {
+        Self::UseSpecific(ThinVec::new())
+    }
 }
 
 #[derive(Debug, Clone, Encodable, Decodable, HashStable_Generic)]
@@ -291,8 +296,8 @@ pub enum AttributeKind {
     /// Represents `#[const_trait]`.
     ConstTrait(Span),
 
-    /// Represents `#[coverage]`.
-    Coverage(Span, CoverageStatus),
+    /// Represents `#[coverage(..)]`.
+    Coverage(Span, CoverageAttrKind),
 
     ///Represents `#[rustc_deny_explicit_impl]`.
     DenyExplicitImpl(Span),
@@ -351,8 +356,14 @@ pub enum AttributeKind {
     /// Represents `#[loop_match]`.
     LoopMatch(Span),
 
+    /// Represents `#[macro_escape]`.
+    MacroEscape(Span),
+
     /// Represents `#[rustc_macro_transparency]`.
     MacroTransparency(Transparency),
+
+    /// Represents `#[macro_use]`.
+    MacroUse { span: Span, arguments: MacroUseArgs },
 
     /// Represents `#[marker]`.
     Marker(Span),
@@ -397,11 +408,23 @@ pub enum AttributeKind {
     /// Represents `#[pointee]`
     Pointee(Span),
 
+    /// Represents `#[proc_macro]`
+    ProcMacro(Span),
+
+    /// Represents `#[proc_macro_attribute]`
+    ProcMacroAttribute(Span),
+
+    /// Represents `#[proc_macro_derive]`
+    ProcMacroDerive { trait_name: Symbol, helper_attrs: ThinVec<Symbol>, span: Span },
+
     /// Represents `#[rustc_pub_transparent]` (used by the `repr_transparent_external_private_fields` lint).
     PubTransparent(Span),
 
     /// Represents [`#[repr]`](https://doc.rust-lang.org/stable/reference/type-layout.html#representations).
     Repr { reprs: ThinVec<(ReprAttr, Span)>, first_span: Span },
+
+    /// Represents `#[rustc_builtin_macro]`.
+    RustcBuiltinMacro { builtin_name: Option<Symbol>, helper_attrs: ThinVec<Symbol>, span: Span },
 
     /// Represents `#[rustc_layout_scalar_valid_range_end]`.
     RustcLayoutScalarValidRangeEnd(Box<u128>, Span),

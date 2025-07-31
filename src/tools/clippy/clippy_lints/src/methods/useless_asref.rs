@@ -79,7 +79,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, call_name: Symbo
                 applicability,
             );
         }
-    } else if let Some(impl_id) = cx.tcx.impl_of_method(def_id)
+    } else if let Some(impl_id) = cx.tcx.impl_of_assoc(def_id)
         && let Some(adt) = cx.tcx.type_of(impl_id).instantiate_identity().ty_adt_def()
         && matches!(cx.tcx.get_diagnostic_name(adt.did()), Some(sym::Option | sym::Result))
     {
@@ -131,7 +131,7 @@ fn is_calling_clone(cx: &LateContext<'_>, arg: &hir::Expr<'_>) -> bool {
                 hir::ExprKind::MethodCall(method, obj, [], _) => {
                     if method.ident.name == sym::clone
                         && let Some(fn_id) = cx.typeck_results().type_dependent_def_id(closure_expr.hir_id)
-                        && let Some(trait_id) = cx.tcx.trait_of_item(fn_id)
+                        && let Some(trait_id) = cx.tcx.trait_of_assoc(fn_id)
                         // We check it's the `Clone` trait.
                         && cx.tcx.lang_items().clone_trait().is_some_and(|id| id == trait_id)
                         // no autoderefs

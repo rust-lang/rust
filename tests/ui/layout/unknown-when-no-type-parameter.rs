@@ -9,9 +9,8 @@ where
     (): Project,
 {
     [(); size_of::<<() as Project>::Assoc>()];
-    //~^ ERROR the type `<() as Project>::Assoc` has an unknown layout
-    //~| NOTE inside `std::mem::size_of::<<() as Project>::Assoc>`
-    //~| NOTE failed inside this call
+    //~^ ERROR entering unreachable code
+    //~| NOTE evaluation of `foo::{constant#0}` failed here
 }
 
 fn main() {}

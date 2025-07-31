@@ -100,8 +100,8 @@ LL |     let _ = value <= u16::MAX as u32 && value as i32 == 5;
 error: checked cast can be simplified
   --> tests/ui/checked_conversions.rs:104:13
    |
-LL |     let _ = value <= (u32::MAX as i64) && value >= 0;
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `u32::try_from(value).is_ok()`
+LL |     let _ = value <= (u32::max_value() as i64) && value >= 0;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `u32::try_from(value).is_ok()`
 
 error: aborting due to 17 previous errors
 

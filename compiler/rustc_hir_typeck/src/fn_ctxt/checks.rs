@@ -2136,10 +2136,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             )
         };
 
-        if let hir::ExprKind::If(_, _, Some(el)) = expr.kind {
-            if let Some(rslt) = check_in_progress(el) {
-                return rslt;
-            }
+        if let hir::ExprKind::If(_, _, Some(el)) = expr.kind
+            && let Some(rslt) = check_in_progress(el)
+        {
+            return rslt;
         }
 
         if let hir::ExprKind::Match(_, arms, _) = expr.kind {

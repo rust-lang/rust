@@ -229,8 +229,18 @@ pub fn ty_fn_ptr<I: Iterator<Item = Param>>(
     }
 }
 
-pub fn assoc_item_list() -> ast::AssocItemList {
-    ast_from_text("impl C for D {}")
+pub fn assoc_item_list(
+    body: Option<Vec<either::Either<ast::Attr, ast::AssocItem>>>,
+) -> ast::AssocItemList {
+    let is_break_braces = body.is_some();
+    let body_newline = if is_break_braces { "\n".to_owned() } else { String::new() };
+    let body_indent = if is_break_braces { "    ".to_owned() } else { String::new() };
+
+    let body = match body {
+        Some(bd) => bd.iter().map(|elem| elem.to_string()).join("\n\n    "),
+        None => String::new(),
+    };
+    ast_from_text(&format!("impl C for D {{{body_newline}{body_indent}{body}{body_newline}}}"))
 }
 
 fn merge_gen_params(
@@ -273,7 +283,7 @@ pub fn impl_(
     generic_args: Option<ast::GenericArgList>,
     path_type: ast::Type,
     where_clause: Option<ast::WhereClause>,
-    body: Option<Vec<either::Either<ast::Attr, ast::AssocItem>>>,
+    body: Option<ast::AssocItemList>,
 ) -> ast::Impl {
     let gen_args = generic_args.map_or_else(String::new, |it| it.to_string());
 
@@ -281,20 +291,13 @@ pub fn impl_(
 
     let body_newline =
         if where_clause.is_some() && body.is_none() { "\n".to_owned() } else { String::new() };
-
     let where_clause = match where_clause {
         Some(pr) => format!("\n{pr}\n"),
         None => " ".to_owned(),
     };
 
-    let body = match body {
-        Some(bd) => bd.iter().map(|elem| elem.to_string()).join(""),
-        None => String::new(),
-    };
-
-    ast_from_text(&format!(
-        "impl{gen_params} {path_type}{gen_args}{where_clause}{{{body_newline}{body}}}"
-    ))
+    let body = body.map_or_else(|| format!("{{{body_newline}}}"), |it| it.to_string());
+    ast_from_text(&format!("impl{gen_params} {path_type}{gen_args}{where_clause}{body}"))
 }
 
 pub fn impl_trait(
@@ -308,7 +311,7 @@ pub fn impl_trait(
     ty: ast::Type,
     trait_where_clause: Option<ast::WhereClause>,
     ty_where_clause: Option<ast::WhereClause>,
-    body: Option<Vec<either::Either<ast::Attr, ast::AssocItem>>>,
+    body: Option<ast::AssocItemList>,
 ) -> ast::Impl {
     let is_unsafe = if is_unsafe { "unsafe " } else { "" };
 
@@ -330,13 +333,10 @@ pub fn impl_trait(
     let where_clause = merge_where_clause(ty_where_clause, trait_where_clause)
         .map_or_else(|| " ".to_owned(), |wc| format!("\n{wc}\n"));
 
-    let body = match body {
-        Some(bd) => bd.iter().map(|elem| elem.to_string()).join(""),
-        None => String::new(),
-    };
+    let body = body.map_or_else(|| format!("{{{body_newline}}}"), |it| it.to_string());
 
     ast_from_text(&format!(
-        "{is_unsafe}impl{gen_params} {is_negative}{path_type}{trait_gen_args} for {ty}{type_gen_args}{where_clause}{{{body_newline}{body}}}"
+        "{is_unsafe}impl{gen_params} {is_negative}{path_type}{trait_gen_args} for {ty}{type_gen_args}{where_clause}{body}"
     ))
 }
 

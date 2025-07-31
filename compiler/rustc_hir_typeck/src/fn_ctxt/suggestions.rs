@@ -615,31 +615,31 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
     ) -> bool {
-        if let (ty::FnPtr(..), ty::Closure(def_id, _)) = (expected.kind(), found.kind()) {
-            if let Some(upvars) = self.tcx.upvars_mentioned(*def_id) {
-                // Report upto four upvars being captured to reduce the amount error messages
-                // reported back to the user.
-                let spans_and_labels = upvars
-                    .iter()
-                    .take(4)
-                    .map(|(var_hir_id, upvar)| {
-                        let var_name = self.tcx.hir_name(*var_hir_id).to_string();
-                        let msg = format!("`{var_name}` captured here");
-                        (upvar.span, msg)
-                    })
-                    .collect::<Vec<_>>();
+        if let (ty::FnPtr(..), ty::Closure(def_id, _)) = (expected.kind(), found.kind())
+            && let Some(upvars) = self.tcx.upvars_mentioned(*def_id)
+        {
+            // Report upto four upvars being captured to reduce the amount error messages
+            // reported back to the user.
+            let spans_and_labels = upvars
+                .iter()
+                .take(4)
+                .map(|(var_hir_id, upvar)| {
+                    let var_name = self.tcx.hir_name(*var_hir_id).to_string();
+                    let msg = format!("`{var_name}` captured here");
+                    (upvar.span, msg)
+                })
+                .collect::<Vec<_>>();
 
-                let mut multi_span: MultiSpan =
-                    spans_and_labels.iter().map(|(sp, _)| *sp).collect::<Vec<_>>().into();
-                for (sp, label) in spans_and_labels {
-                    multi_span.push_span_label(sp, label);
-                }
-                err.span_note(
-                    multi_span,
-                    "closures can only be coerced to `fn` types if they do not capture any variables"
-                );
-                return true;
+            let mut multi_span: MultiSpan =
+                spans_and_labels.iter().map(|(sp, _)| *sp).collect::<Vec<_>>().into();
+            for (sp, label) in spans_and_labels {
+                multi_span.push_span_label(sp, label);
             }
+            err.span_note(
+                multi_span,
+                "closures can only be coerced to `fn` types if they do not capture any variables",
+            );
+            return true;
         }
         false
     }
@@ -1302,8 +1302,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 None => ".clone()".to_string(),
             };
 
+            let span = expr.span.find_ancestor_not_from_macro().unwrap_or(expr.span).shrink_to_hi();
+
             diag.span_suggestion_verbose(
-                expr.span.shrink_to_hi(),
+                span,
                 "consider using clone here",
                 suggestion,
                 Applicability::MachineApplicable,
@@ -1393,7 +1395,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .macro_backtrace()
                 .any(|x| matches!(x.kind, ExpnKind::Macro(MacroKind::Attr | MacroKind::Derive, ..)))
         {
-            let span = expr.span.find_oldest_ancestor_in_same_ctxt();
+            let span = expr
+                .span
+                .find_ancestor_not_from_extern_macro(&self.tcx.sess.source_map())
+                .unwrap_or(expr.span);
 
             let mut sugg = if self.precedence(expr) >= ExprPrecedence::Unambiguous {
                 vec![(span.shrink_to_hi(), ".into()".to_owned())]
@@ -2060,7 +2065,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             None => sugg.to_string(),
         };
 
-        let span = expr.span.find_oldest_ancestor_in_same_ctxt();
+        let span = expr
+            .span
+            .find_ancestor_not_from_extern_macro(&self.tcx.sess.source_map())
+            .unwrap_or(expr.span);
         err.span_suggestion_verbose(span.shrink_to_hi(), msg, sugg, Applicability::HasPlaceholders);
         true
     }
@@ -3006,13 +3014,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     /// Returns whether the given expression is an `else if`.
     fn is_else_if_block(&self, expr: &hir::Expr<'_>) -> bool {
-        if let hir::ExprKind::If(..) = expr.kind {
-            if let Node::Expr(hir::Expr {
-                kind: hir::ExprKind::If(_, _, Some(else_expr)), ..
-            }) = self.tcx.parent_hir_node(expr.hir_id)
-            {
-                return else_expr.hir_id == expr.hir_id;
-            }
+        if let hir::ExprKind::If(..) = expr.kind
+            && let Node::Expr(hir::Expr { kind: hir::ExprKind::If(_, _, Some(else_expr)), .. }) =
+                self.tcx.parent_hir_node(expr.hir_id)
+        {
+            return else_expr.hir_id == expr.hir_id;
         }
         false
     }

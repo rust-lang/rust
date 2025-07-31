@@ -3369,12 +3369,12 @@ fn warn_if_linked_with_gold(sess: &Session, path: &Path) -> Result<(), Box<dyn s
 
         let section =
             elf.sections(endian, data)?.section_by_name(endian, b".note.gnu.gold-version");
-        if let Some((_, section)) = section {
-            if let Some(mut notes) = section.notes(endian, data)? {
-                return Ok(notes.any(|note| {
-                    note.is_ok_and(|note| note.n_type(endian) == elf::NT_GNU_GOLD_VERSION)
-                }));
-            }
+        if let Some((_, section)) = section
+            && let Some(mut notes) = section.notes(endian, data)?
+        {
+            return Ok(notes.any(|note| {
+                note.is_ok_and(|note| note.n_type(endian) == elf::NT_GNU_GOLD_VERSION)
+            }));
         }
 
         Ok(false)

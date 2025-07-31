@@ -994,7 +994,8 @@ impl<Cx: PatCx> PlaceInfo<Cx> {
         if !missing_ctors.is_empty() && !report_individual_missing_ctors {
             // Report `_` as missing.
             missing_ctors = vec![Constructor::Wildcard];
-        } else if missing_ctors.iter().any(|c| c.is_non_exhaustive()) {
+        } else if missing_ctors.iter().any(|c| c.is_non_exhaustive()) && !cx.exhaustive_witnesses()
+        {
             // We need to report a `_` anyway, so listing other constructors would be redundant.
             // `NonExhaustive` is displayed as `_` just like `Wildcard`, but it will be picked
             // up by diagnostics to add a note about why `_` is required here.
@@ -1747,7 +1748,9 @@ fn compute_exhaustiveness_and_usefulness<'a, 'p, Cx: PatCx>(
         // `ctor` is *irrelevant* if there's another constructor in `split_ctors` that matches
         // strictly fewer rows. In that case we can sometimes skip it. See the top of the file for
         // details.
-        let ctor_is_relevant = matches!(ctor, Constructor::Missing) || missing_ctors.is_empty();
+        let ctor_is_relevant = matches!(ctor, Constructor::Missing)
+            || missing_ctors.is_empty()
+            || mcx.tycx.exhaustive_witnesses();
         let mut spec_matrix = matrix.specialize_constructor(pcx, &ctor, ctor_is_relevant)?;
         let mut witnesses = ensure_sufficient_stack(|| {
             compute_exhaustiveness_and_usefulness(mcx, &mut spec_matrix)

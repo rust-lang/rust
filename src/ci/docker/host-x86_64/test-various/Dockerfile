@@ -40,9 +40,9 @@ WORKDIR /
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
-RUN curl -L https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-25/wasi-sdk-25.0-x86_64-linux.tar.gz | \
+RUN curl -L https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-27/wasi-sdk-27.0-x86_64-linux.tar.gz | \
   tar -xz
-ENV WASI_SDK_PATH=/wasi-sdk-25.0-x86_64-linux
+ENV WASI_SDK_PATH=/wasi-sdk-27.0-x86_64-linux
 
 ENV RUST_CONFIGURE_ARGS \
   --musl-root-x86_64=/usr/local/x86_64-linux-musl \
@@ -79,7 +79,6 @@ ENV MUSL_TARGETS=x86_64-unknown-linux-musl \
     CXX_x86_64_unknown_linux_musl=x86_64-linux-musl-g++
 ENV MUSL_SCRIPT python3 /checkout/x.py --stage 2 test --host='' --target $MUSL_TARGETS
 
-COPY host-x86_64/test-various/uefi_qemu_test /uefi_qemu_test
 ENV UEFI_TARGETS=aarch64-unknown-uefi,i686-unknown-uefi,x86_64-unknown-uefi \
     CC_aarch64_unknown_uefi=clang-11 \
     CXX_aarch64_unknown_uefi=clang++-11 \
@@ -88,6 +87,8 @@ ENV UEFI_TARGETS=aarch64-unknown-uefi,i686-unknown-uefi,x86_64-unknown-uefi \
     CC_x86_64_unknown_uefi=clang-11 \
     CXX_x86_64_unknown_uefi=clang++-11
 ENV UEFI_SCRIPT python3 /checkout/x.py --stage 2 build --host='' --target $UEFI_TARGETS && \
-  python3 -u /uefi_qemu_test/run.py
+  python3 /checkout/x.py --stage 2 test tests/run-make/uefi-qemu/rmake.rs --target aarch64-unknown-uefi && \
+  python3 /checkout/x.py --stage 2 test tests/run-make/uefi-qemu/rmake.rs --target i686-unknown-uefi && \
+  python3 /checkout/x.py --stage 2 test tests/run-make/uefi-qemu/rmake.rs --target x86_64-unknown-uefi
 
 ENV SCRIPT $WASM_SCRIPT && $NVPTX_SCRIPT && $MUSL_SCRIPT && $UEFI_SCRIPT

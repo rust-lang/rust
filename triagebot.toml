@@ -28,6 +28,7 @@ allow-unauthenticated = [
     "llvm-*",
     "needs-fcp",
     "relnotes",
+    "release-blog-post",
     "requires-*",
     "regression-*",
     "rla-*",
@@ -49,6 +50,21 @@ remove_labels = ["S-waiting-on-author"]
 # Those labels are added when PR author requests a review from an assignee
 add_labels = ["S-waiting-on-review"]
 
+# [backport.*] sections autonominate pull requests for a backport
+# see: https://forge.rust-lang.org/triagebot/backport.html
+
+[backport.t-compiler-beta-backport]
+# The pull request MUST have one of these labels
+required-pr-labels = ["T-compiler"]
+# The regression MUST have this label
+required-issue-label = "regression-from-stable-to-beta"
+# if the above conditions matches, the PR will receive these labels
+add-labels = ["beta-nominated"]
+
+[backport.t-compiler-stable-backport]
+required-pr-labels = ["T-compiler"]
+required-issue-label = "regression-from-stable-to-stable"
+add-labels = ["stable-nominated"]
 
 # ------------------------------------------------------------------------------
 # Ping groups
@@ -1096,7 +1112,7 @@ cc = ["@jieyouxu"]
 message = "The list of allowed third-party dependencies may have been modified! You must ensure that any new dependencies have compatible licenses before merging."
 cc = ["@davidtwco", "@wesleywiser"]
 
-[mentions."src/tools/tidy/src/ext_tool_checks.rs"]
+[mentions."src/tools/tidy/src/extra_checks"]
 message = "`tidy` extra checks were modified."
 cc = ["@lolbinarycat"]
 
@@ -1146,6 +1162,12 @@ cc = ["@nnethercote"]
 [mentions."tests/ui/stats/input-stats.stderr"]
 message = "Changes to the size of AST and/or HIR nodes."
 cc = ["@nnethercote"]
+
+[mentions."tests/ui/issues"]
+message = """
+This PR modifies `tests/ui/issues/`. If this PR is adding new tests to `tests/ui/issues/`,
+please refrain from doing so, and instead add it to more descriptive subdirectories.
+"""
 
 [mentions."compiler/rustc_sanitizers"]
 cc = ["@rcvalle"]

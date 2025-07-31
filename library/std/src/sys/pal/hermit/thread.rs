@@ -58,7 +58,11 @@ impl Thread {
         }
     }
 
-    pub unsafe fn new(stack: usize, p: Box<dyn FnOnce()>) -> io::Result<Thread> {
+    pub unsafe fn new(
+        stack: usize,
+        _name: Option<&str>,
+        p: Box<dyn FnOnce()>,
+    ) -> io::Result<Thread> {
         unsafe {
             Thread::new_with_coreid(stack, p, -1 /* = no specific core */)
         }

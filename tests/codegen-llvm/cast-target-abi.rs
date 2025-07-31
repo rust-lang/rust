@@ -4,7 +4,7 @@
 //@ compile-flags: -Copt-level=3 -Cno-prepopulate-passes -Zlint-llvm-ir
 
 //@[aarch64] compile-flags: --target aarch64-unknown-linux-gnu
-//@[aarch64] needs-llvm-components: arm
+//@[aarch64] needs-llvm-components: aarch64
 //@[loongarch64] compile-flags: --target loongarch64-unknown-linux-gnu
 //@[loongarch64] needs-llvm-components: loongarch
 //@[powerpc64] compile-flags: --target powerpc64-unknown-linux-gnu

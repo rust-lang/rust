@@ -89,8 +89,8 @@ use std::sync::{Mutex, MutexGuard, OnceLock};
 
 use itertools::Itertools;
 use rustc_abi::Integer;
-use rustc_ast::join_path_syms;
 use rustc_ast::ast::{self, LitKind, RangeLimits};
+use rustc_ast::join_path_syms;
 use rustc_attr_data_structures::{AttributeKind, find_attr};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::packed::Pu128;
@@ -114,7 +114,7 @@ use rustc_middle::hir::nested_filter;
 use rustc_middle::hir::place::PlaceBase;
 use rustc_middle::lint::LevelAndSource;
 use rustc_middle::mir::{AggregateKind, Operand, RETURN_PLACE, Rvalue, StatementKind, TerminatorKind};
-use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow};
+use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, PointerCoercion};
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::{
     self as rustc_ty, Binder, BorrowKind, ClosureKind, EarlyBinder, GenericArgKind, GenericArgsRef, IntTy, Ty, TyCtxt,
@@ -349,7 +349,7 @@ pub fn is_ty_alias(qpath: &QPath<'_>) -> bool {
 /// Checks if the given method call expression calls an inherent method.
 pub fn is_inherent_method_call(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     if let Some(method_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id) {
-        cx.tcx.trait_of_item(method_id).is_none()
+        cx.tcx.trait_of_assoc(method_id).is_none()
     } else {
         false
     }
@@ -357,7 +357,7 @@ pub fn is_inherent_method_call(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
 
 /// Checks if a method is defined in an impl of a diagnostic item
 pub fn is_diag_item_method(cx: &LateContext<'_>, def_id: DefId, diag_item: Symbol) -> bool {
-    if let Some(impl_did) = cx.tcx.impl_of_method(def_id)
+    if let Some(impl_did) = cx.tcx.impl_of_assoc(def_id)
         && let Some(adt) = cx.tcx.type_of(impl_did).instantiate_identity().ty_adt_def()
     {
         return cx.tcx.is_diagnostic_item(diag_item, adt.did());
@@ -367,7 +367,7 @@ pub fn is_diag_item_method(cx: &LateContext<'_>, def_id: DefId, diag_item: Symbo
 
 /// Checks if a method is in a diagnostic item trait
 pub fn is_diag_trait_item(cx: &LateContext<'_>, def_id: DefId, diag_item: Symbol) -> bool {
-    if let Some(trait_did) = cx.tcx.trait_of_item(def_id) {
+    if let Some(trait_did) = cx.tcx.trait_of_assoc(def_id) {
         return cx.tcx.is_diagnostic_item(diag_item, trait_did);
     }
     false
@@ -620,7 +620,7 @@ fn is_default_equivalent_ctor(cx: &LateContext<'_>, def_id: DefId, path: &QPath<
 
     if let QPath::TypeRelative(_, method) = path
         && method.ident.name == sym::new
-        && let Some(impl_did) = cx.tcx.impl_of_method(def_id)
+        && let Some(impl_did) = cx.tcx.impl_of_assoc(def_id)
         && let Some(adt) = cx.tcx.type_of(impl_did).instantiate_identity().ty_adt_def()
     {
         return std_types_symbols.iter().any(|&symbol| {
@@ -1897,6 +1897,7 @@ pub fn is_must_use_func_call(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
 /// * `|x| { return x }`
 /// * `|x| { return x; }`
 /// * `|(x, y)| (x, y)`
+/// * `|[x, y]| [x, y]`
 ///
 /// Consider calling [`is_expr_untyped_identity_function`] or [`is_expr_identity_function`] instead.
 fn is_body_identity_function(cx: &LateContext<'_>, func: &Body<'_>) -> bool {
@@ -1907,9 +1908,9 @@ fn is_body_identity_function(cx: &LateContext<'_>, func: &Body<'_>) -> bool {
             .get(pat.hir_id)
             .is_some_and(|mode| matches!(mode.0, ByRef::Yes(_)))
         {
-            // If a tuple `(x, y)` is of type `&(i32, i32)`, then due to match ergonomics,
-            // the inner patterns become references. Don't consider this the identity function
-            // as that changes types.
+            // If the parameter is `(x, y)` of type `&(T, T)`, or `[x, y]` of type `&[T; 2]`, then
+            // due to match ergonomics, the inner patterns become references. Don't consider this
+            // the identity function as that changes types.
             return false;
         }
 
@@ -1921,6 +1922,13 @@ fn is_body_identity_function(cx: &LateContext<'_>, func: &Body<'_>) -> bool {
                 if dotdot.as_opt_usize().is_none() && pats.len() == tup.len() =>
             {
                 pats.iter().zip(tup).all(|(pat, expr)| check_pat(cx, pat, expr))
+            },
+            (PatKind::Slice(before, slice, after), ExprKind::Array(arr))
+                if slice.is_none() && before.len() + after.len() == arr.len() =>
+            {
+                (before.iter().chain(after))
+                    .zip(arr)
+                    .all(|(pat, expr)| check_pat(cx, pat, expr))
             },
             _ => false,
         }
@@ -3269,15 +3277,13 @@ fn maybe_get_relative_path(from: &DefPath, to: &DefPath, max_super: usize) -> St
 
     if go_up_by > max_super {
         // `super` chain would be too long, just use the absolute path instead
-        join_path_syms(
-            once(kw::Crate).chain(to.data.iter().filter_map(|el| {
-                if let DefPathData::TypeNs(sym) = el.data {
-                    Some(sym)
-                } else {
-                    None
-                }
-            }))
-        )
+        join_path_syms(once(kw::Crate).chain(to.data.iter().filter_map(|el| {
+            if let DefPathData::TypeNs(sym) = el.data {
+                Some(sym)
+            } else {
+                None
+            }
+        })))
     } else {
         join_path_syms(repeat_n(kw::Super, go_up_by).chain(path))
     }
@@ -3559,4 +3565,15 @@ pub fn potential_return_of_enclosing_body(cx: &LateContext<'_>, expr: &Expr<'_>)
     // `expr` is used as part of "something" and is not returned directly from its
     // enclosing body.
     false
+}
+
+/// Checks if the expression has adjustments that require coercion, for example: dereferencing with
+/// overloaded deref, coercing pointers and `dyn` objects.
+pub fn expr_adjustment_requires_coercion(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
+    cx.typeck_results().expr_adjustments(expr).iter().any(|adj| {
+        matches!(
+            adj.kind,
+            Adjust::Deref(Some(_)) | Adjust::Pointer(PointerCoercion::Unsize) | Adjust::NeverToAny
+        )
+    })
 }

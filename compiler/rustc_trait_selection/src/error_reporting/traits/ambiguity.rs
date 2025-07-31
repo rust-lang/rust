@@ -360,7 +360,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             },
                         ] = path.segments
                         && data.trait_ref.def_id == *trait_id
-                        && self.tcx.trait_of_item(*item_id) == Some(*trait_id)
+                        && self.tcx.trait_of_assoc(*item_id) == Some(*trait_id)
                         && let None = self.tainted_by_errors()
                     {
                         let assoc_item = self.tcx.associated_item(item_id);

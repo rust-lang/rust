@@ -1,4 +1,4 @@
-use rustc_attr_data_structures::{AttributeKind, CoverageStatus, find_attr};
+use rustc_attr_data_structures::{AttributeKind, CoverageAttrKind, find_attr};
 use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::coverage::{BasicCoverageBlock, CoverageIdsInfo, CoverageKind, MappingKind};
@@ -32,16 +32,6 @@ fn is_eligible_for_coverage(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
         return false;
     }
 
-    // Don't instrument functions with `#[automatically_derived]` on their
-    // enclosing impl block, on the assumption that most users won't care about
-    // coverage for derived impls.
-    if let Some(impl_of) = tcx.impl_of_method(def_id.to_def_id())
-        && tcx.is_automatically_derived(impl_of)
-    {
-        trace!("InstrumentCoverage skipped for {def_id:?} (automatically derived)");
-        return false;
-    }
-
     if tcx.codegen_fn_attrs(def_id).flags.contains(CodegenFnAttrFlags::NAKED) {
         trace!("InstrumentCoverage skipped for {def_id:?} (`#[naked]`)");
         return false;
@@ -57,20 +47,32 @@ fn is_eligible_for_coverage(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
 
 /// Query implementation for `coverage_attr_on`.
 fn coverage_attr_on(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
-    // Check for annotations directly on this def.
-    if let Some(coverage_status) =
-        find_attr!(tcx.get_all_attrs(def_id), AttributeKind::Coverage(_, status) => status)
+    // Check for a `#[coverage(..)]` attribute on this def.
+    if let Some(kind) =
+        find_attr!(tcx.get_all_attrs(def_id), AttributeKind::Coverage(_sp, kind) => kind)
     {
-        *coverage_status == CoverageStatus::On
-    } else {
-        match tcx.opt_local_parent(def_id) {
-            // Check the parent def (and so on recursively) until we find an
-            // enclosing attribute or reach the crate root.
-            Some(parent) => tcx.coverage_attr_on(parent),
-            // We reached the crate root without seeing a coverage attribute, so
-            // allow coverage instrumentation by default.
-            None => true,
+        match kind {
+            CoverageAttrKind::On => return true,
+            CoverageAttrKind::Off => return false,
         }
+    };
+
+    // Treat `#[automatically_derived]` as an implied `#[coverage(off)]`, on
+    // the assumption that most users won't want coverage for derived impls.
+    //
+    // This affects not just the associated items of an impl block, but also
+    // any closures and other nested functions within those associated items.
+    if tcx.is_automatically_derived(def_id.to_def_id()) {
+        return false;
+    }
+
+    // Check the parent def (and so on recursively) until we find an
+    // enclosing attribute or reach the crate root.
+    match tcx.opt_local_parent(def_id) {
+        Some(parent) => tcx.coverage_attr_on(parent),
+        // We reached the crate root without seeing a coverage attribute, so
+        // allow coverage instrumentation by default.
+        None => true,
     }
 }
 

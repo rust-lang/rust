@@ -572,10 +572,10 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
     }
 
     fn maybe_print_trailing_comment(&mut self, span: rustc_span::Span, next_pos: Option<BytePos>) {
-        if let Some(cmnts) = self.comments_mut() {
-            if let Some(cmnt) = cmnts.trailing_comment(span, next_pos) {
-                self.print_comment(cmnt);
-            }
+        if let Some(cmnts) = self.comments_mut()
+            && let Some(cmnt) = cmnts.trailing_comment(span, next_pos)
+        {
+            self.print_comment(cmnt);
         }
     }
 

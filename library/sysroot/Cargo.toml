@@ -6,6 +6,8 @@ version = "0.0.0"
 edition = "2024"
 
 [lib]
+test = false
+bench = false
 # make sure this crate isn't included in public standard library docs
 doc = false
 
@@ -23,9 +25,7 @@ backtrace = ["std/backtrace"]
 backtrace-trace-only = ["std/backtrace-trace-only"]
 compiler-builtins-c = ["std/compiler-builtins-c"]
 compiler-builtins-mem = ["std/compiler-builtins-mem"]
-compiler-builtins-no-asm = ["std/compiler-builtins-no-asm"]
 compiler-builtins-no-f16-f128 = ["std/compiler-builtins-no-f16-f128"]
-compiler-builtins-mangled-names = ["std/compiler-builtins-mangled-names"]
 debug_refcell = ["std/debug_refcell"]
 llvm-libunwind = ["std/llvm-libunwind"]
 system-llvm-libunwind = ["std/system-llvm-libunwind"]

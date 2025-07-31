@@ -37,7 +37,7 @@ fn get_const_name_and_ty_name(
         } else {
             return None;
         }
-    } else if let Some(impl_id) = cx.tcx.impl_of_method(method_def_id)
+    } else if let Some(impl_id) = cx.tcx.impl_of_assoc(method_def_id)
         && let Some(ty_name) = get_primitive_ty_name(cx.tcx.type_of(impl_id).instantiate_identity())
         && matches!(
             method_name,
@@ -59,9 +59,8 @@ fn get_const_name_and_ty_name(
 
 pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, cast_expr: &Expr<'_>, cast_from: Ty<'_>, cast_to: Ty<'_>) {
     // We allow casts from any function type to any function type.
-    match cast_to.kind() {
-        ty::FnDef(..) | ty::FnPtr(..) => return,
-        _ => { /* continue to checks */ },
+    if cast_to.is_fn() {
+        return;
     }
 
     if let ty::FnDef(def_id, generics) = cast_from.kind()

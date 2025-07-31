@@ -20,11 +20,6 @@ pub(crate) struct SymbolAlreadyDefined<'a> {
 #[diag(codegen_llvm_sanitizer_memtag_requires_mte)]
 pub(crate) struct SanitizerMemtagRequiresMte;
 
-#[derive(Diagnostic)]
-#[diag(codegen_llvm_dynamic_linking_with_lto)]
-#[note]
-pub(crate) struct DynamicLinkingWithLTO;
-
 pub(crate) struct ParseTargetMachineConfig<'a>(pub LlvmError<'a>);
 
 impl<G: EmissionGuarantee> Diagnostic<'_, G> for ParseTargetMachineConfig<'_> {
@@ -42,21 +37,9 @@ impl<G: EmissionGuarantee> Diagnostic<'_, G> for ParseTargetMachineConfig<'_> {
 pub(crate) struct AutoDiffWithoutEnable;
 
 #[derive(Diagnostic)]
-#[diag(codegen_llvm_lto_disallowed)]
-pub(crate) struct LtoDisallowed;
-
-#[derive(Diagnostic)]
-#[diag(codegen_llvm_lto_dylib)]
-pub(crate) struct LtoDylib;
-
-#[derive(Diagnostic)]
-#[diag(codegen_llvm_lto_proc_macro)]
-pub(crate) struct LtoProcMacro;
-
-#[derive(Diagnostic)]
 #[diag(codegen_llvm_lto_bitcode_from_rlib)]
 pub(crate) struct LtoBitcodeFromRlib {
-    pub llvm_err: String,
+    pub err: String,
 }
 
 #[derive(Diagnostic)]

@@ -1610,7 +1610,7 @@ extern "C" void LLVMRustPositionBefore(LLVMBuilderRef B, LLVMValueRef Instr) {
 
 extern "C" void LLVMRustPositionAfter(LLVMBuilderRef B, LLVMValueRef Instr) {
   if (auto I = dyn_cast<Instruction>(unwrap<Value>(Instr))) {
-    auto J = I->getNextNonDebugInstruction();
+    auto J = I->getNextNode();
     unwrap(B)->SetInsertPoint(J);
   }
 }

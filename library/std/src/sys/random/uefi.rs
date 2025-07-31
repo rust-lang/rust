@@ -138,12 +138,11 @@ mod rdrand {
     }
 
     unsafe fn rdrand_exact(dest: &mut [u8]) -> Option<()> {
-        let mut chunks = dest.array_chunks_mut();
-        for chunk in &mut chunks {
+        let (chunks, tail) = dest.as_chunks_mut();
+        for chunk in chunks {
             *chunk = unsafe { rdrand() }?.to_ne_bytes();
         }
 
-        let tail = chunks.into_remainder();
         let n = tail.len();
         if n > 0 {
             let src = unsafe { rdrand() }?.to_ne_bytes();

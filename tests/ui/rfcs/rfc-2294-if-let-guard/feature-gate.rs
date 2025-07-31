@@ -64,8 +64,6 @@ fn _macros() {
         //~^ ERROR `if let` guards are experimental
         _ => {}
     }
-    use_expr!(let 0 = 1);
-    //~^ ERROR no rules expected keyword `let`
 }
 
 fn main() {}

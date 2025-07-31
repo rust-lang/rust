@@ -208,6 +208,10 @@ fn configure_and_expand(
         // Expand macros now!
         let krate = sess.time("expand_crate", || ecx.monotonic_expander().expand_crate(krate));
 
+        if ecx.nb_macro_errors > 0 {
+            sess.dcx().abort_if_errors();
+        }
+
         // The rest is error reporting and stats
 
         sess.psess.buffered_lints.with_lock(|buffered_lints: &mut Vec<BufferedEarlyLint>| {

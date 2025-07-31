@@ -1,6 +1,9 @@
 //@ compile-flags: -Copt-level=3 -Zmerge-functions=disabled
 //@ min-llvm-version: 20
 //@ only-64bit
+//@ revisions: LLVM20 LLVM21
+//@ [LLVM21] min-llvm-version: 21
+//@ [LLVM20] max-llvm-major-version: 20
 
 // The `derive(PartialEq)` on enums with field-less variants compares discriminants,
 // so make sure we emit that in some reasonable way.
@@ -137,17 +140,20 @@ pub fn mid_nz32_eq_discr(a: Mid<NonZero<u32>>, b: Mid<NonZero<u32>>) -> bool {
 pub fn mid_ac_eq_discr(a: Mid<AC>, b: Mid<AC>) -> bool {
     // CHECK-LABEL: @mid_ac_eq_discr(
 
-    // CHECK: %[[A_REL_DISCR:.+]] = xor i8 %a, -128
+    // LLVM20: %[[A_REL_DISCR:.+]] = xor i8 %a, -128
     // CHECK: %[[A_IS_NICHE:.+]] = icmp slt i8 %a, 0
     // CHECK: %[[A_NOT_HOLE:.+]] = icmp ne i8 %a, -127
     // CHECK: tail call void @llvm.assume(i1 %[[A_NOT_HOLE]])
-    // CHECK: %[[A_DISCR:.+]] = select i1 %[[A_IS_NICHE]], i8 %[[A_REL_DISCR]], i8 1
+    // LLVM20: %[[A_DISCR:.+]] = select i1 %[[A_IS_NICHE]], i8 %[[A_REL_DISCR]], i8 1
 
-    // CHECK: %[[B_REL_DISCR:.+]] = xor i8 %b, -128
+    // LLVM20: %[[B_REL_DISCR:.+]] = xor i8 %b, -128
     // CHECK: %[[B_IS_NICHE:.+]] = icmp slt i8 %b, 0
     // CHECK: %[[B_NOT_HOLE:.+]] = icmp ne i8 %b, -127
     // CHECK: tail call void @llvm.assume(i1 %[[B_NOT_HOLE]])
-    // CHECK: %[[B_DISCR:.+]] = select i1 %[[B_IS_NICHE]], i8 %[[B_REL_DISCR]], i8 1
+    // LLVM20: %[[B_DISCR:.+]] = select i1 %[[B_IS_NICHE]], i8 %[[B_REL_DISCR]], i8 1
+
+    // LLVM21: %[[A_DISCR:.+]] = select i1 %[[A_IS_NICHE]], i8 %a, i8 -127
+    // LLVM21: %[[B_DISCR:.+]] = select i1 %[[B_IS_NICHE]], i8 %b, i8 -127
 
     // CHECK: %[[R:.+]] = icmp eq i8 %[[A_DISCR]], %[[B_DISCR]]
     // CHECK: ret i1 %[[R]]

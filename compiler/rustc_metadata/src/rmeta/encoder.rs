@@ -5,7 +5,7 @@ use std::io::{Read, Seek, Write};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use rustc_attr_data_structures::EncodeCrossCrate;
+use rustc_attr_data_structures::{AttributeKind, EncodeCrossCrate, find_attr};
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::memmap::{Mmap, MmapMut};
 use rustc_data_structures::sync::{join, par_for_each_in};
@@ -1965,18 +1965,13 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 // Proc-macros may have attributes like `#[allow_internal_unstable]`,
                 // so downstream crates need access to them.
                 let attrs = tcx.hir_attrs(proc_macro);
-                let macro_kind = if ast::attr::contains_name(attrs, sym::proc_macro) {
+                let macro_kind = if find_attr!(attrs, AttributeKind::ProcMacro(..)) {
                     MacroKind::Bang
-                } else if ast::attr::contains_name(attrs, sym::proc_macro_attribute) {
+                } else if find_attr!(attrs, AttributeKind::ProcMacroAttribute(..)) {
                     MacroKind::Attr
-                } else if let Some(attr) = ast::attr::find_by_name(attrs, sym::proc_macro_derive) {
-                    // This unwrap chain should have been checked by the proc-macro harness.
-                    name = attr.meta_item_list().unwrap()[0]
-                        .meta_item()
-                        .unwrap()
-                        .ident()
-                        .unwrap()
-                        .name;
+                } else if let Some(trait_name) = find_attr!(attrs, AttributeKind::ProcMacroDerive { trait_name, ..} => trait_name)
+                {
+                    name = *trait_name;
                     MacroKind::Derive
                 } else {
                     bug!("Unknown proc-macro type for item {:?}", id);
@@ -2124,10 +2119,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             };
             let def_id = id.owner_id.to_def_id();
 
-            self.tables.defaultness.set_some(def_id.index, tcx.defaultness(def_id));
-
             if of_trait && let Some(header) = tcx.impl_trait_header(def_id) {
                 record!(self.tables.impl_trait_header[def_id] <- header);
+
+                self.tables.defaultness.set_some(def_id.index, tcx.defaultness(def_id));
 
                 let trait_ref = header.trait_ref.instantiate_identity();
                 let simplified_self_ty = fast_reject::simplify_type(
@@ -2141,10 +2136,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     .push((id.owner_id.def_id.local_def_index, simplified_self_ty));
 
                 let trait_def = tcx.trait_def(trait_ref.def_id);
-                if let Ok(mut an) = trait_def.ancestors(tcx, def_id) {
-                    if let Some(specialization_graph::Node::Impl(parent)) = an.nth(1) {
-                        self.tables.impl_parent.set_some(def_id.index, parent.into());
-                    }
+                if let Ok(mut an) = trait_def.ancestors(tcx, def_id)
+                    && let Some(specialization_graph::Node::Impl(parent)) = an.nth(1)
+                {
+                    self.tables.impl_parent.set_some(def_id.index, parent.into());
                 }
 
                 // if this is an impl of `CoerceUnsized`, create its

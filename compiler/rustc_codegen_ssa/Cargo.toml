@@ -8,8 +8,8 @@ edition = "2024"
 ar_archive_writer = "0.4.2"
 bitflags = "2.4.1"
 bstr = "1.11.3"
-# Pinned so `cargo update` bumps don't cause breakage. Please also update the
-# `cc` in `rustc_llvm` if you update the `cc` here.
+# `cc` updates often break things, so we pin it here. Cargo enforces "max 1 semver-compat version
+# per crate", so if you change this, you need to also change it in `rustc_llvm`.
 cc = "=1.2.16"
 itertools = "0.12"
 pathdiff = "0.2.0"

@@ -59,7 +59,7 @@ use paths::{AbsPath, AbsPathBuf, Utf8PathBuf};
 use rustc_hash::FxHashSet;
 
 pub use crate::{
-    build_dependencies::WorkspaceBuildScripts,
+    build_dependencies::{ProcMacroDylibPath, WorkspaceBuildScripts},
     cargo_workspace::{
         CargoConfig, CargoFeatures, CargoMetadataConfig, CargoWorkspace, Package, PackageData,
         PackageDependency, RustLibSource, Target, TargetData, TargetKind,
@@ -139,21 +139,22 @@ impl ProjectManifest {
         }
 
         fn find_in_parent_dirs(path: &AbsPath, target_file_name: &str) -> Option<ManifestPath> {
-            if path.file_name().unwrap_or_default() == target_file_name {
-                if let Ok(manifest) = ManifestPath::try_from(path.to_path_buf()) {
-                    return Some(manifest);
-                }
+            if path.file_name().unwrap_or_default() == target_file_name
+                && let Ok(manifest) = ManifestPath::try_from(path.to_path_buf())
+            {
+                return Some(manifest);
             }
 
             let mut curr = Some(path);
 
             while let Some(path) = curr {
                 let candidate = path.join(target_file_name);
-                if fs::metadata(&candidate).is_ok() {
-                    if let Ok(manifest) = ManifestPath::try_from(candidate) {
-                        return Some(manifest);
-                    }
+                if fs::metadata(&candidate).is_ok()
+                    && let Ok(manifest) = ManifestPath::try_from(candidate)
+                {
+                    return Some(manifest);
                 }
+
                 curr = path.parent();
             }
 

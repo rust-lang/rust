@@ -309,7 +309,9 @@ fn main((ؼ
 
 Use `//~?` to match an error without line information.
 `//~?` is precise and will not match errors if their line information is available.
-It should be preferred to using `error-pattern`, which is imprecise and non-exhaustive.
+It should be preferred over `//@ error-pattern`
+for tests wishing to match against compiler diagnostics,
+due to `//@ error-pattern` being imprecise and non-exhaustive.
 
 ```rust,ignore
 //@ compile-flags: --print yyyy
@@ -319,8 +321,8 @@ It should be preferred to using `error-pattern`, which is imprecise and non-exha
 
 ### `error-pattern`
 
-The `error-pattern` [directive](directives.md) can be used for runtime messages, which don't
-have a specific span, or in exceptional cases, for compile time messages.
+The `error-pattern` [directive](directives.md) can be used for runtime messages which don't
+have a specific span, or, in exceptional cases, for compile time messages.
 
 Let's think about this test:
 
@@ -347,8 +349,6 @@ fn main() {
 }
 ```
 
-Use of `error-pattern` is not recommended in general.
-
 For strict testing of compile time output, try to use the line annotations `//~` as much as
 possible, including `//~?` annotations for diagnostics without spans.
 
@@ -359,7 +359,8 @@ Some of the compiler messages can stay uncovered by annotations in this mode.
 
 For checking runtime output, `//@ check-run-results` may be preferable.
 
-Only use `error-pattern` if none of the above works.
+Only use `error-pattern` if none of the above works, such as when finding a
+specific string pattern in a runtime panic output.
 
 Line annotations `//~` and `error-pattern` are compatible and can be used in the same test.
 

@@ -25,7 +25,7 @@ fn main() {
     let another_item = std::sync::Mutex::new(Struct { p: 42_u32 });
 
     another_item.lock().unwrap().method();
-    //~^ ERROR no method named `method` found for struct `Mutex` in the current scope [E0599]
+    //~^ ERROR no method named `method` found for struct `std::sync::Mutex` in the current scope [E0599]
     //~| HELP use `.lock().unwrap()` to borrow the `Struct<u32>`, blocking the current thread until it can be acquired
 
     let another_item = std::sync::RwLock::new(Struct { p: 42_u32 });

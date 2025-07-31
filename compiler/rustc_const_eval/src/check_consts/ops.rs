@@ -295,21 +295,18 @@ fn build_error_for_const_call<'tcx>(
                             }
                             let deref = "*".repeat(num_refs);
 
-                            if let Ok(call_str) = ccx.tcx.sess.source_map().span_to_snippet(span) {
-                                if let Some(eq_idx) = call_str.find("==") {
-                                    if let Some(rhs_idx) =
-                                        call_str[(eq_idx + 2)..].find(|c: char| !c.is_whitespace())
-                                    {
-                                        let rhs_pos =
-                                            span.lo() + BytePos::from_usize(eq_idx + 2 + rhs_idx);
-                                        let rhs_span = span.with_lo(rhs_pos).with_hi(rhs_pos);
-                                        sugg = Some(errors::ConsiderDereferencing {
-                                            deref,
-                                            span: span.shrink_to_lo(),
-                                            rhs_span,
-                                        });
-                                    }
-                                }
+                            if let Ok(call_str) = ccx.tcx.sess.source_map().span_to_snippet(span)
+                                && let Some(eq_idx) = call_str.find("==")
+                                && let Some(rhs_idx) =
+                                    call_str[(eq_idx + 2)..].find(|c: char| !c.is_whitespace())
+                            {
+                                let rhs_pos = span.lo() + BytePos::from_usize(eq_idx + 2 + rhs_idx);
+                                let rhs_span = span.with_lo(rhs_pos).with_hi(rhs_pos);
+                                sugg = Some(errors::ConsiderDereferencing {
+                                    deref,
+                                    span: span.shrink_to_lo(),
+                                    rhs_span,
+                                });
                             }
                         }
                         _ => {}

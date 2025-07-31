@@ -26,29 +26,30 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         match link_name.as_str() {
             // epoll, eventfd
             "epoll_create1" => {
-                let [flag] = this.check_shim(abi, CanonAbi::C, link_name, args)?;
+                let [flag] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
                 let result = this.epoll_create1(flag)?;
                 this.write_scalar(result, dest)?;
             }
             "epoll_ctl" => {
-                let [epfd, op, fd, event] = this.check_shim(abi, CanonAbi::C, link_name, args)?;
+                let [epfd, op, fd, event] =
+                    this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
                 let result = this.epoll_ctl(epfd, op, fd, event)?;
                 this.write_scalar(result, dest)?;
             }
             "epoll_wait" => {
                 let [epfd, events, maxevents, timeout] =
-                    this.check_shim(abi, CanonAbi::C, link_name, args)?;
+                    this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
                 this.epoll_wait(epfd, events, maxevents, timeout, dest)?;
             }
             "eventfd" => {
-                let [val, flag] = this.check_shim(abi, CanonAbi::C, link_name, args)?;
+                let [val, flag] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
                 let result = this.eventfd(val, flag)?;
                 this.write_scalar(result, dest)?;
             }
 
             // Miscellaneous
             "__errno" => {
-                let [] = this.check_shim(abi, CanonAbi::C, link_name, args)?;
+                let [] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
                 let errno_place = this.last_error_place()?;
                 this.write_scalar(errno_place.to_ref(this).to_scalar(), dest)?;
             }
