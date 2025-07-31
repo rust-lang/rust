@@ -682,7 +682,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         }
         let my_def = self.body.source.def_id();
         let Some(td) =
-            self.infcx.tcx.impl_of_method(my_def).and_then(|x| self.infcx.tcx.trait_id_of_impl(x))
+            self.infcx.tcx.impl_of_assoc(my_def).and_then(|x| self.infcx.tcx.trait_id_of_impl(x))
         else {
             return (false, false, None);
         };
@@ -880,7 +880,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                         let opt_suggestions = tcx
                             .typeck(path_segment.hir_id.owner.def_id)
                             .type_dependent_def_id(expr.hir_id)
-                            .and_then(|def_id| tcx.impl_of_method(def_id))
+                            .and_then(|def_id| tcx.impl_of_assoc(def_id))
                             .map(|def_id| tcx.associated_items(def_id))
                             .map(|assoc_items| {
                                 assoc_items
@@ -1056,7 +1056,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                         .tcx
                         .typeck(path_segment.hir_id.owner.def_id)
                         .type_dependent_def_id(cur_expr.hir_id)
-                        .and_then(|def_id| self.infcx.tcx.impl_of_method(def_id))
+                        .and_then(|def_id| self.infcx.tcx.impl_of_assoc(def_id))
                         .map(|def_id| self.infcx.tcx.associated_items(def_id))
                         .map(|assoc_items| {
                             assoc_items.filter_by_name_unhygienic(sym::iter_mut).peekable()

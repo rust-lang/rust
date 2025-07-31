@@ -24,7 +24,7 @@ use crate::{
     CargoConfig, CargoWorkspace, CfgOverrides, InvocationStrategy, ManifestPath, Package,
     ProjectJson, ProjectManifest, RustSourceWorkspaceConfig, Sysroot, TargetData, TargetKind,
     WorkspaceBuildScripts,
-    build_dependencies::BuildScriptOutput,
+    build_dependencies::{BuildScriptOutput, ProcMacroDylibPath},
     cargo_config_file,
     cargo_workspace::{CargoMetadataConfig, DepKind, FetchMetadata, PackageData, RustLibSource},
     env::{cargo_config_env, inject_cargo_env, inject_cargo_package_env, inject_rustc_tool_env},
@@ -424,12 +424,12 @@ impl ProjectWorkspace {
             sysroot.set_workspace(loaded_sysroot);
         }
 
-        if !cargo.requires_rustc_private() {
-            if let Err(e) = &mut rustc {
-                // We don't need the rustc sources here,
-                // so just discard the error.
-                _ = e.take();
-            }
+        if !cargo.requires_rustc_private()
+            && let Err(e) = &mut rustc
+        {
+            // We don't need the rustc sources here,
+            // so just discard the error.
+            _ = e.take();
         }
 
         Ok(ProjectWorkspace {
@@ -1163,17 +1163,15 @@ fn project_json_to_crate_graph(
                     crate = display_name.as_ref().map(|name| name.canonical_name().as_str()),
                     "added root to crate graph"
                 );
-                if *is_proc_macro {
-                    if let Some(path) = proc_macro_dylib_path.clone() {
-                        let node = Ok((
-                            display_name
-                                .as_ref()
-                                .map(|it| it.canonical_name().as_str().to_owned())
-                                .unwrap_or_else(|| format!("crate{}", idx.0)),
-                            path,
-                        ));
-                        proc_macros.insert(crate_graph_crate_id, node);
-                    }
+                if *is_proc_macro && let Some(path) = proc_macro_dylib_path.clone() {
+                    let node = Ok((
+                        display_name
+                            .as_ref()
+                            .map(|it| it.canonical_name().as_str().to_owned())
+                            .unwrap_or_else(|| format!("crate{}", idx.0)),
+                        path,
+                    ));
+                    proc_macros.insert(crate_graph_crate_id, node);
                 }
                 (idx, crate_graph_crate_id)
             },
@@ -1318,16 +1316,17 @@ fn cargo_to_crate_graph(
             public_deps.add_to_crate_graph(crate_graph, from);
 
             // Add dep edge of all targets to the package's lib target
-            if let Some((to, name)) = lib_tgt.clone() {
-                if to != from && kind != TargetKind::BuildScript {
-                    // (build script can not depend on its library target)
+            if let Some((to, name)) = lib_tgt.clone()
+                && to != from
+                && kind != TargetKind::BuildScript
+            {
+                // (build script can not depend on its library target)
 
-                    // For root projects with dashes in their name,
-                    // cargo metadata does not do any normalization,
-                    // so we do it ourselves currently
-                    let name = CrateName::normalize_dashes(&name);
-                    add_dep(crate_graph, from, name, to);
-                }
+                // For root projects with dashes in their name,
+                // cargo metadata does not do any normalization,
+                // so we do it ourselves currently
+                let name = CrateName::normalize_dashes(&name);
+                add_dep(crate_graph, from, name, to);
             }
         }
     }
@@ -1638,9 +1637,19 @@ fn add_target_crate_root(
         let proc_macro = match build_data {
             Some((BuildScriptOutput { proc_macro_dylib_path, .. }, has_errors)) => {
                 match proc_macro_dylib_path {
-                    Some(path) => Ok((cargo_name.to_owned(), path.clone())),
-                    None if has_errors => Err(ProcMacroLoadingError::FailedToBuild),
-                    None => Err(ProcMacroLoadingError::MissingDylibPath),
+                    ProcMacroDylibPath::Path(path) => Ok((cargo_name.to_owned(), path.clone())),
+                    ProcMacroDylibPath::NotBuilt => Err(ProcMacroLoadingError::NotYetBuilt),
+                    ProcMacroDylibPath::NotProcMacro | ProcMacroDylibPath::DylibNotFound
+                        if has_errors =>
+                    {
+                        Err(ProcMacroLoadingError::FailedToBuild)
+                    }
+                    ProcMacroDylibPath::NotProcMacro => {
+                        Err(ProcMacroLoadingError::ExpectedProcMacroArtifact)
+                    }
+                    ProcMacroDylibPath::DylibNotFound => {
+                        Err(ProcMacroLoadingError::MissingDylibPath)
+                    }
                 }
             }
             None => Err(ProcMacroLoadingError::NotYetBuilt),
@@ -1905,7 +1914,8 @@ fn cargo_target_dir(
     meta.manifest_path(manifest);
     // `--no-deps` doesn't (over)write lockfiles as it doesn't do any package resolve.
     // So we can use it to get `target_directory` before copying lockfiles
-    let mut other_options = vec!["--no-deps".to_owned()];
+    meta.no_deps();
+    let mut other_options = vec![];
     if manifest.is_rust_manifest() {
         meta.env("RUSTC_BOOTSTRAP", "1");
         other_options.push("-Zscript".to_owned());

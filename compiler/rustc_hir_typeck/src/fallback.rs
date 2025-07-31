@@ -694,7 +694,7 @@ impl<'tcx> Visitor<'tcx> for AnnotateUnitFallbackVisitor<'_, 'tcx> {
         // i.e. changing `Default::default()` to `<() as Default>::default()`.
         if let hir::ExprKind::Path(hir::QPath::Resolved(None, path)) = expr.kind
             && let Res::Def(DefKind::AssocFn, def_id) = path.res
-            && self.fcx.tcx.trait_of_item(def_id).is_some()
+            && self.fcx.tcx.trait_of_assoc(def_id).is_some()
             && let Some(args) = self.fcx.typeck_results.borrow().node_args_opt(expr.hir_id)
             && let self_ty = args.type_at(0)
             && let Some(vid) = self.fcx.root_vid(self_ty)

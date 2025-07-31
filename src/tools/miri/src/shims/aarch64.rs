@@ -20,7 +20,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let unprefixed_name = link_name.as_str().strip_prefix("llvm.aarch64.").unwrap();
         match unprefixed_name {
             "isb" => {
-                let [arg] = this.check_shim(abi, CanonAbi::C, link_name, args)?;
+                let [arg] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
                 let arg = this.read_scalar(arg)?.to_i32()?;
                 match arg {
                     // SY ("full system scope")
@@ -38,7 +38,8 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // `left` input, the second half of the output from the `right` input.
             // https://developer.arm.com/architectures/instruction-sets/intrinsics/vpmaxq_u8
             "neon.umaxp.v16i8" => {
-                let [left, right] = this.check_shim(abi, CanonAbi::C, link_name, args)?;
+                let [left, right] =
+                    this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
 
                 let (left, left_len) = this.project_to_simd(left)?;
                 let (right, right_len) = this.project_to_simd(right)?;

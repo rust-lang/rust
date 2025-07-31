@@ -15,16 +15,18 @@ use span::Edition;
 use stdx::process::spawn_with_streaming_output;
 use toolchain::Tool;
 
+use crate::cargo_config_file::make_lockfile_copy;
 use crate::{CfgOverrides, InvocationStrategy};
 use crate::{ManifestPath, Sysroot};
 
-const MINIMUM_TOOLCHAIN_VERSION_SUPPORTING_LOCKFILE_PATH: semver::Version = semver::Version {
-    major: 1,
-    minor: 82,
-    patch: 0,
-    pre: semver::Prerelease::EMPTY,
-    build: semver::BuildMetadata::EMPTY,
-};
+pub(crate) const MINIMUM_TOOLCHAIN_VERSION_SUPPORTING_LOCKFILE_PATH: semver::Version =
+    semver::Version {
+        major: 1,
+        minor: 82,
+        patch: 0,
+        pre: semver::Prerelease::EMPTY,
+        build: semver::BuildMetadata::EMPTY,
+    };
 
 /// [`CargoWorkspace`] represents the logical structure of, well, a Cargo
 /// workspace. It pretty closely mirrors `cargo metadata` output.
@@ -245,7 +247,7 @@ pub enum TargetKind {
 }
 
 impl TargetKind {
-    fn new(kinds: &[cargo_metadata::TargetKind]) -> TargetKind {
+    pub fn new(kinds: &[cargo_metadata::TargetKind]) -> TargetKind {
         for kind in kinds {
             return match kind {
                 cargo_metadata::TargetKind::Bin => TargetKind::Bin,
@@ -552,7 +554,10 @@ impl CargoWorkspace {
 
 pub(crate) struct FetchMetadata {
     command: cargo_metadata::MetadataCommand,
+    #[expect(dead_code)]
+    manifest_path: ManifestPath,
     lockfile_path: Option<Utf8PathBuf>,
+    #[expect(dead_code)]
     kind: &'static str,
     no_deps: bool,
     no_deps_result: anyhow::Result<cargo_metadata::Metadata>,
@@ -596,25 +601,22 @@ impl FetchMetadata {
         }
         command.current_dir(current_dir);
 
-        let mut needs_nightly = false;
         let mut other_options = vec![];
         // cargo metadata only supports a subset of flags of what cargo usually accepts, and usually
         // the only relevant flags for metadata here are unstable ones, so we pass those along
         // but nothing else
         let mut extra_args = config.extra_args.iter();
         while let Some(arg) = extra_args.next() {
-            if arg == "-Z" {
-                if let Some(arg) = extra_args.next() {
-                    needs_nightly = true;
-                    other_options.push("-Z".to_owned());
-                    other_options.push(arg.to_owned());
-                }
+            if arg == "-Z"
+                && let Some(arg) = extra_args.next()
+            {
+                other_options.push("-Z".to_owned());
+                other_options.push(arg.to_owned());
             }
         }
 
         let mut lockfile_path = None;
         if cargo_toml.is_rust_manifest() {
-            needs_nightly = true;
             other_options.push("-Zscript".to_owned());
         } else if config
             .toolchain_version
@@ -631,10 +633,6 @@ impl FetchMetadata {
         }
 
         command.other_options(other_options.clone());
-
-        if needs_nightly {
-            command.env("RUSTC_BOOTSTRAP", "1");
-        }
 
         // Pre-fetch basic metadata using `--no-deps`, which:
         // - avoids fetching registries like crates.io,
@@ -655,7 +653,15 @@ impl FetchMetadata {
         }
         .with_context(|| format!("Failed to run `{cargo_command:?}`"));
 
-        Self { command, lockfile_path, kind: config.kind, no_deps, no_deps_result, other_options }
+        Self {
+            manifest_path: cargo_toml.clone(),
+            command,
+            lockfile_path,
+            kind: config.kind,
+            no_deps,
+            no_deps_result,
+            other_options,
+        }
     }
 
     pub(crate) fn no_deps_metadata(&self) -> Option<&cargo_metadata::Metadata> {
@@ -672,40 +678,34 @@ impl FetchMetadata {
         locked: bool,
         progress: &dyn Fn(String),
     ) -> anyhow::Result<(cargo_metadata::Metadata, Option<anyhow::Error>)> {
-        let Self { mut command, lockfile_path, kind, no_deps, no_deps_result, mut other_options } =
-            self;
+        _ = target_dir;
+        let Self {
+            mut command,
+            manifest_path: _,
+            lockfile_path,
+            kind: _,
+            no_deps,
+            no_deps_result,
+            mut other_options,
+        } = self;
 
         if no_deps {
             return no_deps_result.map(|m| (m, None));
         }
 
         let mut using_lockfile_copy = false;
-        // The manifest is a rust file, so this means its a script manifest
-        if let Some(lockfile) = lockfile_path {
-            let target_lockfile =
-                target_dir.join("rust-analyzer").join("metadata").join(kind).join("Cargo.lock");
-            match std::fs::copy(&lockfile, &target_lockfile) {
-                Ok(_) => {
-                    using_lockfile_copy = true;
-                    other_options.push("--lockfile-path".to_owned());
-                    other_options.push(target_lockfile.to_string());
-                }
-                Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
-                    // There exists no lockfile yet
-                    using_lockfile_copy = true;
-                    other_options.push("--lockfile-path".to_owned());
-                    other_options.push(target_lockfile.to_string());
-                }
-                Err(e) => {
-                    tracing::warn!(
-                        "Failed to copy lock file from `{lockfile}` to `{target_lockfile}`: {e}",
-                    );
-                }
-            }
+        let mut _temp_dir_guard;
+        if let Some(lockfile) = lockfile_path
+            && let Some((temp_dir, target_lockfile)) = make_lockfile_copy(&lockfile)
+        {
+            _temp_dir_guard = temp_dir;
+            other_options.push("--lockfile-path".to_owned());
+            other_options.push(target_lockfile.to_string());
+            using_lockfile_copy = true;
         }
-        if using_lockfile_copy {
+        if using_lockfile_copy || other_options.iter().any(|it| it.starts_with("-Z")) {
+            command.env("__CARGO_TEST_CHANNEL_OVERRIDE_DO_NOT_USE_THIS", "nightly");
             other_options.push("-Zunstable-options".to_owned());
-            command.env("RUSTC_BOOTSTRAP", "1");
         }
         // No need to lock it if we copied the lockfile, we won't modify the original after all/
         // This way cargo cannot error out on us if the lockfile requires updating.
@@ -714,13 +714,11 @@ impl FetchMetadata {
         }
         command.other_options(other_options);
 
-        // FIXME: Fetching metadata is a slow process, as it might require
-        // calling crates.io. We should be reporting progress here, but it's
-        // unclear whether cargo itself supports it.
         progress("cargo metadata: started".to_owned());
 
         let res = (|| -> anyhow::Result<(_, _)> {
             let mut errored = false;
+            tracing::debug!("Running `{:?}`", command.cargo_command());
             let output =
                 spawn_with_streaming_output(command.cargo_command(), &mut |_| (), &mut |line| {
                     errored = errored || line.starts_with("error") || line.starts_with("warning");

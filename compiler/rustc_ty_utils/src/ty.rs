@@ -109,10 +109,10 @@ fn adt_sizedness_constraint<'tcx>(
     tcx: TyCtxt<'tcx>,
     (def_id, sizedness): (DefId, SizedTraitKind),
 ) -> Option<ty::EarlyBinder<'tcx, Ty<'tcx>>> {
-    if let Some(def_id) = def_id.as_local() {
-        if let ty::Representability::Infinite(_) = tcx.representability(def_id) {
-            return None;
-        }
+    if let Some(def_id) = def_id.as_local()
+        && let ty::Representability::Infinite(_) = tcx.representability(def_id)
+    {
+        return None;
     }
     let def = tcx.adt_def(def_id);
 

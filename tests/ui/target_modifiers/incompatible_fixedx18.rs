@@ -5,7 +5,7 @@
 //@ revisions:allow_match allow_mismatch error_generated
 //@[allow_match] compile-flags: -Zfixed-x18
 //@[allow_mismatch] compile-flags: -Cunsafe-allow-abi-mismatch=fixed-x18
-//@[error_generated] compile-flags:
+// [error_generated] no extra compile-flags
 //@[allow_mismatch] check-pass
 //@[allow_match] check-pass
 

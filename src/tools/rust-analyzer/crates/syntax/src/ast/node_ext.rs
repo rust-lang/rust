@@ -805,9 +805,7 @@ impl ast::SelfParam {
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum TypeBoundKind {
     /// Trait
-    PathType(ast::PathType),
-    /// for<'a> ...
-    ForType(ast::ForType),
+    PathType(Option<ast::ForBinder>, ast::PathType),
     /// use
     Use(ast::UseBoundGenericArgs),
     /// 'a
@@ -817,9 +815,7 @@ pub enum TypeBoundKind {
 impl ast::TypeBound {
     pub fn kind(&self) -> TypeBoundKind {
         if let Some(path_type) = support::children(self.syntax()).next() {
-            TypeBoundKind::PathType(path_type)
-        } else if let Some(for_type) = support::children(self.syntax()).next() {
-            TypeBoundKind::ForType(for_type)
+            TypeBoundKind::PathType(self.for_binder(), path_type)
         } else if let Some(args) = self.use_bound_generic_args() {
             TypeBoundKind::Use(args)
         } else if let Some(lifetime) = self.lifetime() {

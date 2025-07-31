@@ -7,27 +7,27 @@
 // signal errors, making it incompatible with the "warnings only"
 // nature of issue-43106-gating-of-builtin-attrs.rs
 
-#[proc_macro_derive()]
+#[proc_macro_derive(Test)]
 //~^ ERROR the `#[proc_macro_derive]` attribute may only be used on bare functions
 mod proc_macro_derive1 {
-    mod inner { #![proc_macro_derive()] }
+    mod inner { #![proc_macro_derive(Test)] }
     // (no error issued here if there was one on outer module)
 }
 
 mod proc_macro_derive2 {
-    mod inner { #![proc_macro_derive()] }
+    mod inner { #![proc_macro_derive(Test)] }
     //~^ ERROR the `#[proc_macro_derive]` attribute may only be used on bare functions
 
-    #[proc_macro_derive()] fn f() { }
+    #[proc_macro_derive(Test)] fn f() { }
     //~^ ERROR the `#[proc_macro_derive]` attribute is only usable with crates of the `proc-macro`
 
-    #[proc_macro_derive()] struct S;
+    #[proc_macro_derive(Test)] struct S;
     //~^ ERROR the `#[proc_macro_derive]` attribute may only be used on bare functions
 
-    #[proc_macro_derive()] type T = S;
+    #[proc_macro_derive(Test)] type T = S;
     //~^ ERROR the `#[proc_macro_derive]` attribute may only be used on bare functions
 
-    #[proc_macro_derive()] impl S { }
+    #[proc_macro_derive(Test)] impl S { }
     //~^ ERROR the `#[proc_macro_derive]` attribute may only be used on bare functions
 }
 

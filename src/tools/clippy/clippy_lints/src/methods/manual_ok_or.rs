@@ -18,7 +18,7 @@ pub(super) fn check<'tcx>(
     map_expr: &'tcx Expr<'_>,
 ) {
     if let Some(method_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id)
-        && let Some(impl_id) = cx.tcx.impl_of_method(method_id)
+        && let Some(impl_id) = cx.tcx.impl_of_assoc(method_id)
         && is_type_diagnostic_item(cx, cx.tcx.type_of(impl_id).instantiate_identity(), sym::Option)
         && let ExprKind::Call(err_path, [err_arg]) = or_expr.kind
         && is_res_lang_ctor(cx, path_res(cx, err_path), ResultErr)

@@ -669,17 +669,17 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
 
     fn check_for_illegal_method_calls(&self, pick: &probe::Pick<'_>) {
         // Disallow calls to the method `drop` defined in the `Drop` trait.
-        if let Some(trait_def_id) = pick.item.trait_container(self.tcx) {
-            if let Err(e) = callee::check_legal_trait_for_method_call(
+        if let Some(trait_def_id) = pick.item.trait_container(self.tcx)
+            && let Err(e) = callee::check_legal_trait_for_method_call(
                 self.tcx,
                 self.span,
                 Some(self.self_expr.span),
                 self.call_expr.span,
                 trait_def_id,
                 self.body_id.to_def_id(),
-            ) {
-                self.set_tainted_by_errors(e);
-            }
+            )
+        {
+            self.set_tainted_by_errors(e);
         }
     }
 

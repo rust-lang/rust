@@ -530,13 +530,12 @@ impl<'tcx> HirTyLowerer<'tcx> for ItemCtxt<'tcx> {
             .iter()
             .enumerate()
             .map(|(i, a)| {
-                if let hir::TyKind::Infer(()) = a.kind {
-                    if let Some(suggested_ty) =
+                if let hir::TyKind::Infer(()) = a.kind
+                    && let Some(suggested_ty) =
                         self.lowerer().suggest_trait_fn_ty_for_impl_fn_infer(hir_id, Some(i))
-                    {
-                        infer_replacements.push((a.span, suggested_ty.to_string()));
-                        return Ty::new_error_with_message(tcx, a.span, suggested_ty.to_string());
-                    }
+                {
+                    infer_replacements.push((a.span, suggested_ty.to_string()));
+                    return Ty::new_error_with_message(tcx, a.span, suggested_ty.to_string());
                 }
 
                 self.lowerer().lower_ty(a)

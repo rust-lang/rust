@@ -486,4 +486,9 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Warning,
         summary: "Removed `rust.description` and `llvm.ccache` as it was deprecated in #137723 and #136941 long time ago.",
     },
+    ChangeInfo {
+        change_id: 144675,
+        severity: ChangeSeverity::Warning,
+        summary: "Added `build.compiletest-allow-stage0` flag instead of `COMPILETEST_FORCE_STAGE0` env var, and reject running `compiletest` self tests against stage 0 rustc unless explicitly allowed.",
+    },
 ];

@@ -285,8 +285,8 @@ pub(super) fn build_type_with_children<'ll, 'tcx>(
         //     Item(T),
         // }
         // ```
-        let is_expanding_recursive =
-            debug_context(cx).adt_stack.borrow().iter().any(|(parent_def_id, parent_args)| {
+        let is_expanding_recursive = adt_def.is_enum()
+            && debug_context(cx).adt_stack.borrow().iter().any(|(parent_def_id, parent_args)| {
                 if def_id == *parent_def_id {
                     args.iter().zip(parent_args.iter()).any(|(arg, parent_arg)| {
                         if let (Some(arg), Some(parent_arg)) = (arg.as_type(), parent_arg.as_type())

@@ -164,11 +164,11 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
     fn visit_item(&mut self, i: &'hir Item<'hir>) {
         debug_assert_eq!(i.owner_id, self.owner);
         self.with_parent(i.hir_id(), |this| {
-            if let ItemKind::Struct(_, _, struct_def) = &i.kind {
+            if let ItemKind::Struct(_, _, struct_def) = &i.kind
                 // If this is a tuple or unit-like struct, register the constructor.
-                if let Some(ctor_hir_id) = struct_def.ctor_hir_id() {
-                    this.insert(i.span, ctor_hir_id, Node::Ctor(struct_def));
-                }
+                && let Some(ctor_hir_id) = struct_def.ctor_hir_id()
+            {
+                this.insert(i.span, ctor_hir_id, Node::Ctor(struct_def));
             }
             intravisit::walk_item(this, i);
         });

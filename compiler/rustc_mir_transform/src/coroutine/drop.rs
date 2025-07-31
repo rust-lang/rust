@@ -23,10 +23,10 @@ impl<'tcx> MutVisitor<'tcx> for FixReturnPendingVisitor<'tcx> {
         }
 
         // Converting `_0 = Poll::<Rv>::Pending` to `_0 = Poll::<()>::Pending`
-        if let Rvalue::Aggregate(kind, _) = rvalue {
-            if let AggregateKind::Adt(_, _, ref mut args, _, _) = **kind {
-                *args = self.tcx.mk_args(&[self.tcx.types.unit.into()]);
-            }
+        if let Rvalue::Aggregate(kind, _) = rvalue
+            && let AggregateKind::Adt(_, _, ref mut args, _, _) = **kind
+        {
+            *args = self.tcx.mk_args(&[self.tcx.types.unit.into()]);
         }
     }
 }

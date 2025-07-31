@@ -225,10 +225,10 @@ impl<'tcx> RegionHighlightMode<'tcx> {
         region: Option<ty::Region<'tcx>>,
         number: Option<usize>,
     ) {
-        if let Some(k) = region {
-            if let Some(n) = number {
-                self.highlighting_region(k, n);
-            }
+        if let Some(k) = region
+            && let Some(n) = number
+        {
+            self.highlighting_region(k, n);
         }
     }
 

@@ -255,7 +255,6 @@ fn generate_impl(
     delegee: &Delegee,
     edition: Edition,
 ) -> Option<ast::Impl> {
-    let delegate: ast::Impl;
     let db = ctx.db();
     let ast_strukt = &strukt.strukt;
     let strukt_ty = make::ty_path(make::ext::ident_path(&strukt.name.to_string()));
@@ -266,7 +265,7 @@ fn generate_impl(
             let bound_def = ctx.sema.source(delegee.to_owned())?.value;
             let bound_params = bound_def.generic_param_list();
 
-            delegate = make::impl_trait(
+            let delegate = make::impl_trait(
                 delegee.is_unsafe(db),
                 bound_params.clone(),
                 bound_params.map(|params| params.to_generic_args()),
@@ -304,7 +303,7 @@ fn generate_impl(
             let target_scope = ctx.sema.scope(strukt.strukt.syntax())?;
             let source_scope = ctx.sema.scope(bound_def.syntax())?;
             let transform = PathTransform::generic_transformation(&target_scope, &source_scope);
-            transform.apply(delegate.syntax());
+            ast::Impl::cast(transform.apply(delegate.syntax()))
         }
         Delegee::Impls(trait_, old_impl) => {
             let old_impl = ctx.sema.source(old_impl.to_owned())?.value;
@@ -358,20 +357,28 @@ fn generate_impl(
 
             // 2.3) Instantiate generics with `transform_impl`, this step also
             // remove unused params.
-            let mut trait_gen_args = old_impl.trait_()?.generic_arg_list();
-            if let Some(trait_args) = &mut trait_gen_args {
-                *trait_args = trait_args.clone_for_update();
-                transform_impl(ctx, ast_strukt, &old_impl, &transform_args, trait_args.syntax())?;
-            }
+            let trait_gen_args = old_impl.trait_()?.generic_arg_list().and_then(|trait_args| {
+                let trait_args = &mut trait_args.clone_for_update();
+                if let Some(new_args) = transform_impl(
+                    ctx,
+                    ast_strukt,
+                    &old_impl,
+                    &transform_args,
+                    trait_args.clone_subtree(),
+                ) {
+                    *trait_args = new_args.clone_subtree();
+                    Some(new_args)
+                } else {
+                    None
+                }
+            });
 
             let type_gen_args = strukt_params.clone().map(|params| params.to_generic_args());
-
             let path_type =
                 make::ty(&trait_.name(db).display_no_db(edition).to_smolstr()).clone_for_update();
-            transform_impl(ctx, ast_strukt, &old_impl, &transform_args, path_type.syntax())?;
-
+            let path_type = transform_impl(ctx, ast_strukt, &old_impl, &transform_args, path_type)?;
             // 3) Generate delegate trait impl
-            delegate = make::impl_trait(
+            let delegate = make::impl_trait(
                 trait_.is_unsafe(db),
                 trait_gen_params,
                 trait_gen_args,
@@ -385,7 +392,6 @@ fn generate_impl(
                 None,
             )
             .clone_for_update();
-
             // Goto link : https://doc.rust-lang.org/reference/paths.html#qualified-paths
             let qualified_path_type =
                 make::path_from_text(&format!("<{} as {}>", field_ty, delegate.trait_()?));
@@ -398,7 +404,7 @@ fn generate_impl(
                 .filter(|item| matches!(item, AssocItem::MacroCall(_)).not())
             {
                 let item = item.clone_for_update();
-                transform_impl(ctx, ast_strukt, &old_impl, &transform_args, item.syntax())?;
+                let item = transform_impl(ctx, ast_strukt, &old_impl, &transform_args, item)?;
 
                 let assoc = process_assoc_item(item, qualified_path_type.clone(), field_name)?;
                 delegate_assoc_items.add_item(assoc);
@@ -408,19 +414,18 @@ fn generate_impl(
             if let Some(wc) = delegate.where_clause() {
                 remove_useless_where_clauses(&delegate.trait_()?, &delegate.self_ty()?, wc);
             }
+            Some(delegate)
         }
     }
-
-    Some(delegate)
 }
 
-fn transform_impl(
+fn transform_impl<N: ast::AstNode>(
     ctx: &AssistContext<'_>,
     strukt: &ast::Struct,
     old_impl: &ast::Impl,
     args: &Option<GenericArgList>,
-    syntax: &syntax::SyntaxNode,
-) -> Option<()> {
+    syntax: N,
+) -> Option<N> {
     let source_scope = ctx.sema.scope(old_impl.self_ty()?.syntax())?;
     let target_scope = ctx.sema.scope(strukt.syntax())?;
     let hir_old_impl = ctx.sema.to_impl_def(old_impl)?;
@@ -437,8 +442,7 @@ fn transform_impl(
         },
     );
 
-    transform.apply(syntax);
-    Some(())
+    N::cast(transform.apply(syntax.syntax()))
 }
 
 fn remove_instantiated_params(
@@ -570,9 +574,7 @@ where
     let scope = ctx.sema.scope(item.syntax())?;
 
     let transform = PathTransform::adt_transformation(&scope, &scope, hir_adt, args.clone());
-    transform.apply(item.syntax());
-
-    Some(item)
+    N::cast(transform.apply(item.syntax()))
 }
 
 fn has_self_type(trait_: hir::Trait, ctx: &AssistContext<'_>) -> Option<()> {
@@ -767,7 +769,7 @@ fn func_assoc_item(
     )
     .clone_for_update();
 
-    Some(AssocItem::Fn(func.indent(edit::IndentLevel(1)).clone_for_update()))
+    Some(AssocItem::Fn(func.indent(edit::IndentLevel(1))))
 }
 
 fn ty_assoc_item(item: syntax::ast::TypeAlias, qual_path_ty: Path) -> Option<AssocItem> {

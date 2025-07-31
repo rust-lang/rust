@@ -16,8 +16,9 @@ use syntax::{
     SyntaxKind::*,
     SyntaxNode, T,
     ast::{
-        self, AstNode, HasAttrs, HasGenericParams, HasName, HasVisibility, edit::IndentLevel,
-        edit_in_place::Indent, make,
+        self, AstNode, HasAttrs, HasGenericParams, HasName, HasVisibility,
+        edit::{AstNodeEdit, IndentLevel},
+        make,
     },
     match_ast, ted,
 };
@@ -110,20 +111,30 @@ pub(crate) fn extract_struct_from_enum_variant(
             let generics = generic_params.as_ref().map(|generics| generics.clone_for_update());
 
             // resolve GenericArg in field_list to actual type
-            let field_list = field_list.clone_for_update();
-            if let Some((target_scope, source_scope)) =
+            let field_list = if let Some((target_scope, source_scope)) =
                 ctx.sema.scope(enum_ast.syntax()).zip(ctx.sema.scope(field_list.syntax()))
             {
-                PathTransform::generic_transformation(&target_scope, &source_scope)
-                    .apply(field_list.syntax());
-            }
+                let field_list = field_list.reset_indent();
+                let field_list =
+                    PathTransform::generic_transformation(&target_scope, &source_scope)
+                        .apply(field_list.syntax());
+                match_ast! {
+                    match field_list {
+                        ast::RecordFieldList(field_list) => Either::Left(field_list),
+                        ast::TupleFieldList(field_list) => Either::Right(field_list),
+                        _ => unreachable!(),
+                    }
+                }
+            } else {
+                field_list.clone_for_update()
+            };
 
             let def =
                 create_struct_def(variant_name.clone(), &variant, &field_list, generics, &enum_ast);
 
             let enum_ast = variant.parent_enum();
             let indent = enum_ast.indent_level();
-            def.reindent_to(indent);
+            let def = def.indent(indent);
 
             ted::insert_all(
                 ted::Position::before(enum_ast.syntax()),
@@ -279,7 +290,7 @@ fn create_struct_def(
             field_list.clone().into()
         }
     };
-    field_list.reindent_to(IndentLevel::single());
+    let field_list = field_list.indent(IndentLevel::single());
 
     let strukt = make::struct_(enum_vis, name, generics, field_list).clone_for_update();
 
