@@ -18,6 +18,7 @@ use rustc_span::{DUMMY_SP, Span};
 use rustc_trait_selection::traits::{ObligationCause, ObligationCtxt};
 use tracing::debug;
 
+use crate::typeck_root_ctxt::InferVarInfo;
 use crate::{FnCtxt, errors};
 
 #[derive(Copy, Clone)]
@@ -345,7 +346,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
                 .map(|(_, info)| *info)
                 .collect();
 
-            let found_infer_var_info = ty::InferVarInfo {
+            let found_infer_var_info = InferVarInfo {
                 self_in_trait: infer_var_infos.items().any(|info| info.self_in_trait),
                 output: infer_var_infos.items().any(|info| info.output),
             };

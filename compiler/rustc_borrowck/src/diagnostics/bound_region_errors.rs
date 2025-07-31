@@ -277,7 +277,7 @@ where
         // `QueryNormalizeExt::query_normalize` used in the query and `normalize` called below:
         // the former fails to normalize the `nll/relate_tys/impl-fn-ignore-binder-via-bottom.rs`
         // test. Check after #85499 lands to see if its fixes have erased this difference.
-        let (param_env, value) = key.into_parts();
+        let ty::ParamEnvAnd { param_env, value } = key;
         let _ = ocx.normalize(&cause, param_env, value.value);
 
         let diag = try_extract_error_from_fulfill_cx(
@@ -324,7 +324,7 @@ where
             mbcx.infcx.tcx.infer_ctxt().build_with_canonical(cause.span, &self.canonical_query);
         let ocx = ObligationCtxt::new(&infcx);
 
-        let (param_env, value) = key.into_parts();
+        let ty::ParamEnvAnd { param_env, value } = key;
         let _ = ocx.deeply_normalize(&cause, param_env, value.value);
 
         let diag = try_extract_error_from_fulfill_cx(
