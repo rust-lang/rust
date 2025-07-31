@@ -304,7 +304,7 @@ impl f64 {
     /// ```
     /// let x = 2.0_f64;
     /// let abs_difference = (x.powi(2) - (x * x)).abs();
-    /// assert!(abs_difference <= 1e-10);
+    /// assert!(abs_difference <= 1e-14);
     ///
     /// assert_eq!(f64::powi(f64::NAN, 0), 1.0);
     /// ```
@@ -328,7 +328,7 @@ impl f64 {
     /// ```
     /// let x = 2.0_f64;
     /// let abs_difference = (x.powf(2.0) - (x * x)).abs();
-    /// assert!(abs_difference <= 1e-10);
+    /// assert!(abs_difference <= 1e-14);
     ///
     /// assert_eq!(f64::powf(1.0, f64::NAN), 1.0);
     /// assert_eq!(f64::powf(f64::NAN, 0.0), 1.0);
@@ -725,7 +725,7 @@ impl f64 {
     /// let x = std::f64::consts::FRAC_PI_4;
     /// let abs_difference = (x.tan() - 1.0).abs();
     ///
-    /// assert!(abs_difference < 1e-10);
+    /// assert!(abs_difference < 1e-14);
     /// ```
     #[rustc_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
@@ -754,7 +754,7 @@ impl f64 {
     /// // asin(sin(pi/2))
     /// let abs_difference = (f.sin().asin() - std::f64::consts::FRAC_PI_2).abs();
     ///
-    /// assert!(abs_difference < 1e-5);
+    /// assert!(abs_difference < 1e-7);
     /// ```
     #[doc(alias = "arcsin")]
     #[rustc_allow_incoherent_impl]
@@ -914,7 +914,7 @@ impl f64 {
     /// let approx = x + x * x / 2.0;
     /// let abs_difference = (x.exp_m1() - approx).abs();
     ///
-    /// assert!(abs_difference < 1e-10);
+    /// assert!(abs_difference < 1e-20);
     /// ```
     #[rustc_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
@@ -945,7 +945,7 @@ impl f64 {
     /// let approx = x - x * x / 2.0;
     /// let abs_difference = (x.ln_1p() - approx).abs();
     ///
-    /// assert!(abs_difference < 1e-10);
+    /// assert!(abs_difference < 1e-20);
     /// ```
     ///
     /// Out-of-range values:
