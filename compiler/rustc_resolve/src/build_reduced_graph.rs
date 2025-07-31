@@ -994,7 +994,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
             // Binding from `extern crate` item in source code can replace
             // a binding from `--extern` on command line here.
             if !entry.is_import() {
-                entry.binding.set(crate::EpeBinding::Item(imported_binding));
+                entry.binding.set(crate::EpeBinding::Item(imported_binding, false));
             } else if ident.name != kw::Underscore {
                 self.r.dcx().span_delayed_bug(
                     item.span,

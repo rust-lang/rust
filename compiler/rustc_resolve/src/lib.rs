@@ -1011,9 +1011,9 @@ impl<'ra> NameBindingData<'ra> {
 enum EpeBinding<'ra> {
     #[default]
     OptPending,
-    OptReadyOk(NameBinding<'ra>),
-    OptReadyErr,
-    Item(NameBinding<'ra>),
+    OptReadyOk(NameBinding<'ra>, bool),
+    OptReadyErr(bool),
+    Item(NameBinding<'ra>, bool),
 }
 
 #[derive(Default, Clone)]
@@ -2021,7 +2021,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             if used == Used::Scope {
                 if let Some(entry) = self.extern_prelude.get(&ident.normalize_to_macros_2_0()) {
                     if !entry.introduced_by_item
-                        && entry.binding.get() == EpeBinding::Item(used_binding)
+                        && matches!(entry.binding.get(), EpeBinding::Item(b, _) if b == used_binding)
                     {
                         return;
                     }
@@ -2187,23 +2187,23 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let norm_ident = ident.normalize_to_macros_2_0();
         let entry = self.extern_prelude.get(&norm_ident).cloned();
         let binding = entry.map(|entry| match entry.binding.get() {
-            EpeBinding::Item(binding) => {
-                if finalize && entry.introduced_by_item {
+            EpeBinding::Item(binding, finalized) => {
+                if finalize && !finalized && entry.introduced_by_item {
                     self.record_use(ident, binding, Used::Other);
                 }
-                EpeBinding::Item(binding)
+                EpeBinding::Item(binding, finalize)
             }
-            EpeBinding::OptReadyOk(binding) => {
-                if finalize {
+            EpeBinding::OptReadyOk(binding, finalized) => {
+                if finalize && !finalized {
                     self.cstore_mut().process_path_extern(self.tcx, ident.name, ident.span);
                 }
-                EpeBinding::OptReadyOk(binding)
+                EpeBinding::OptReadyOk(binding, finalize)
             }
-            EpeBinding::OptReadyErr => {
-                if finalize {
+            EpeBinding::OptReadyErr(finalized) => {
+                if finalize && !finalized {
                     self.cstore_mut().process_path_extern(self.tcx, ident.name, ident.span);
                 }
-                EpeBinding::OptReadyErr
+                EpeBinding::OptReadyErr(finalize)
             }
             EpeBinding::OptPending => {
                 let crate_id = if finalize {
@@ -2213,19 +2213,19 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 };
                 let res = match crate_id {
                     Some(crate_id) => Res::Def(DefKind::Mod, crate_id.as_def_id()),
-                    None => return EpeBinding::OptReadyErr,
+                    None => return EpeBinding::OptReadyErr(finalize),
                 };
                 let binding = self.arenas.new_pub_res_binding(res, DUMMY_SP, LocalExpnId::ROOT);
-                EpeBinding::OptReadyOk(binding)
+                EpeBinding::OptReadyOk(binding, finalize)
             }
         });
 
         binding.and_then(|binding| {
             self.extern_prelude[&norm_ident].binding.set(binding);
             match binding {
-                EpeBinding::Item(binding) | EpeBinding::OptReadyOk(binding) => Some(binding),
-                EpeBinding::OptReadyErr if finalize => Some(self.dummy_binding),
-                EpeBinding::OptReadyErr => None,
+                EpeBinding::Item(binding, _) | EpeBinding::OptReadyOk(binding, _) => Some(binding),
+                EpeBinding::OptReadyErr(_) if finalize => Some(self.dummy_binding),
+                EpeBinding::OptReadyErr(_) => None,
                 EpeBinding::OptPending => unreachable!(),
             }
         })
