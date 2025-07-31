@@ -1,7 +1,8 @@
 use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::source::snippet;
 use hir::def::{DefKind, Res};
-use rustc_attr_data_structures::{AttributeKind, find_attr};
+use rustc_hir::attrs::{AttributeKind};
+use rustc_hir::find_attr;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir::{self as hir, AmbigArg};
