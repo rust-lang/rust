@@ -4,7 +4,7 @@ error[E0624]: method `method` is private
 LL │     s.method();
    │       ━━━━━━ private method
    │
-   ⸬ $DIR/auxiliary/close_window.rs:3:5
+   ⸬  $DIR/auxiliary/close_window.rs:3:5
    │
 LL │     fn method(&self) {}
    ╰╴    ──────────────── private method defined here
