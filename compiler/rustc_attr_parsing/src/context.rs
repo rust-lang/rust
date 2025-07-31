@@ -5,10 +5,10 @@ use std::sync::LazyLock;
 
 use private::Sealed;
 use rustc_ast::{self as ast, LitKind, MetaItemLit, NodeId};
-use rustc_attr_data_structures::AttributeKind;
-use rustc_attr_data_structures::lints::{AttributeLint, AttributeLintKind};
 use rustc_errors::{DiagCtxtHandle, Diagnostic};
 use rustc_feature::{AttributeTemplate, Features};
+use rustc_hir::attrs::AttributeKind;
+use rustc_hir::lints::{AttributeLint, AttributeLintKind};
 use rustc_hir::{AttrArgs, AttrItem, AttrPath, Attribute, HashIgnoredAttrId, HirId};
 use rustc_session::Session;
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, Symbol, sym};

@@ -17,7 +17,8 @@ use rustc_ast::{
     FormatArgPosition, FormatArgPositionKind, FormatArgsPiece, FormatArgumentKind, FormatCount, FormatOptions,
     FormatPlaceholder, FormatTrait,
 };
-use rustc_attr_data_structures::{AttributeKind, RustcVersion, find_attr};
+use rustc_hir::attrs::{AttributeKind};
+use rustc_hir::{find_attr,RustcVersion};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::Applicability;
 use rustc_errors::SuggestionStyle::{CompletelyHidden, ShowCode};

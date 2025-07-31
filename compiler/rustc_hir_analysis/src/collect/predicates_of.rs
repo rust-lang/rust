@@ -1,11 +1,12 @@
 use std::assert_matches::assert_matches;
 
 use hir::Node;
-use rustc_attr_data_structures::{AttributeKind, find_attr};
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir as hir;
+use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::find_attr;
 use rustc_middle::ty::{
     self, GenericPredicates, ImplTraitInTraitData, Ty, TyCtxt, TypeVisitable, TypeVisitor, Upcast,
 };

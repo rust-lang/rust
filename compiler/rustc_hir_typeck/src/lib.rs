@@ -42,13 +42,13 @@ mod writeback;
 
 pub use coercion::can_coerce;
 use fn_ctxt::FnCtxt;
-use rustc_attr_data_structures::{AttributeKind, find_attr};
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, ErrorGuaranteed, pluralize, struct_span_code_err};
 use rustc_hir as hir;
+use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::{HirId, HirIdMap, Node};
+use rustc_hir::{HirId, HirIdMap, Node, find_attr};
 use rustc_hir_analysis::check::{check_abi, check_custom_abi};
 use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
 use rustc_infer::traits::{ObligationCauseCode, ObligationInspector, WellFormedLoc};

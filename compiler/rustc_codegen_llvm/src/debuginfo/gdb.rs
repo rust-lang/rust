@@ -1,9 +1,10 @@
 // .debug_gdb_scripts binary section.
 
-use rustc_attr_data_structures::{AttributeKind, find_attr};
 use rustc_codegen_ssa::base::collect_debugger_visualizers_transitive;
 use rustc_codegen_ssa::traits::*;
+use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def_id::LOCAL_CRATE;
+use rustc_hir::find_attr;
 use rustc_middle::bug;
 use rustc_middle::middle::debugger_visualizer::DebuggerVisualizerType;
 use rustc_session::config::{CrateType, DebugInfo};

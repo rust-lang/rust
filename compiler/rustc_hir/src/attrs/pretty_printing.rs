@@ -1,38 +1,12 @@
-//! Data structures for representing parsed attributes in the Rust compiler.
-//! For detailed documentation about attribute processing,
-//! see [rustc_attr_parsing](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_attr_parsing/index.html).
-
-// tidy-alphabetical-start
-#![allow(internal_features)]
-#![doc(rust_logo)]
-#![feature(rustdoc_internals)]
-// tidy-alphabetical-end
-
-mod attributes;
-mod encode_cross_crate;
-mod stability;
-mod version;
-
-pub mod lints;
-
 use std::num::NonZero;
 
-pub use attributes::*;
-pub use encode_cross_crate::EncodeCrossCrate;
 use rustc_abi::Align;
 use rustc_ast::token::CommentKind;
 use rustc_ast::{AttrStyle, IntTy, UintTy};
 use rustc_ast_pretty::pp::Printer;
 use rustc_span::hygiene::Transparency;
 use rustc_span::{ErrorGuaranteed, Ident, Span, Symbol};
-pub use stability::*;
 use thin_vec::ThinVec;
-pub use version::*;
-
-/// Requirements for a `StableHashingContext` to be used in this crate.
-/// This is a hack to allow using the `HashStable_Generic` derive macro
-/// instead of implementing everything in `rustc_middle`.
-pub trait HashStableContext: rustc_ast::HashStableContext + rustc_abi::HashStableContext {}
 
 /// This trait is used to print attributes in `rustc_hir_pretty`.
 ///
@@ -173,44 +147,3 @@ print_tup!(A B C D E F G H);
 print_skip!(Span, (), ErrorGuaranteed);
 print_disp!(u16, bool, NonZero<u32>);
 print_debug!(Symbol, Ident, UintTy, IntTy, Align, AttrStyle, CommentKind, Transparency);
-
-/// Finds attributes in sequences of attributes by pattern matching.
-///
-/// A little like `matches` but for attributes.
-///
-/// ```rust,ignore (illustrative)
-/// // finds the repr attribute
-/// if let Some(r) = find_attr!(attrs, AttributeKind::Repr(r) => r) {
-///
-/// }
-///
-/// // checks if one has matched
-/// if find_attr!(attrs, AttributeKind::Repr(_)) {
-///
-/// }
-/// ```
-///
-/// Often this requires you to first end up with a list of attributes.
-/// A common way to get those is through `tcx.get_all_attrs(did)`
-#[macro_export]
-macro_rules! find_attr {
-    ($attributes_list: expr, $pattern: pat $(if $guard: expr)?) => {{
-        $crate::find_attr!($attributes_list, $pattern $(if $guard)? => ()).is_some()
-    }};
-
-    ($attributes_list: expr, $pattern: pat $(if $guard: expr)? => $e: expr) => {{
-        'done: {
-            for i in $attributes_list {
-                let i: &rustc_hir::Attribute = i;
-                match i {
-                    rustc_hir::Attribute::Parsed($pattern) $(if $guard)? => {
-                        break 'done Some($e);
-                    }
-                    _ => {}
-                }
-            }
-
-            None
-        }
-    }};
-}

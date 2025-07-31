@@ -2,7 +2,7 @@ use std::any::Any;
 use std::mem;
 use std::sync::Arc;
 
-use rustc_attr_data_structures::Deprecation;
+use rustc_hir::attrs::Deprecation;
 use rustc_hir::def::{CtorKind, DefKind};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LOCAL_CRATE};
 use rustc_hir::definitions::{DefKey, DefPath, DefPathHash};

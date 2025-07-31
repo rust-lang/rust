@@ -3,7 +3,8 @@ use std::num::NonZero;
 use rustc_macros::{Decodable, Encodable, HashStable_Generic, PrintAttribute};
 use rustc_span::{ErrorGuaranteed, Symbol, sym};
 
-use crate::{PrintAttribute, RustcVersion};
+use crate::RustcVersion;
+use crate::attrs::PrintAttribute;
 
 /// The version placeholder that recently stabilized features contain inside the
 /// `since` field of the `#[stable]` attribute.

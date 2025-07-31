@@ -6,14 +6,12 @@ use std::{fmt, iter};
 use arrayvec::ArrayVec;
 use itertools::Either;
 use rustc_abi::{ExternAbi, VariantIdx};
-use rustc_attr_data_structures::{
-    AttributeKind, ConstStability, Deprecation, Stability, StableSince, find_attr,
-};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
+use rustc_hir::attrs::{AttributeKind, DeprecatedSince, Deprecation};
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::lang_items::LangItem;
-use rustc_hir::{BodyId, Mutability};
+use rustc_hir::{BodyId, ConstStability, Mutability, Stability, StableSince, find_attr};
 use rustc_index::IndexVec;
 use rustc_metadata::rendered_const;
 use rustc_middle::span_bug;
@@ -387,13 +385,13 @@ impl Item {
             // versions; the paths that are exposed through it are "deprecated" because they
             // were never supposed to work at all.
             let stab = self.stability(tcx)?;
-            if let rustc_attr_data_structures::StabilityLevel::Stable {
+            if let rustc_hir::StabilityLevel::Stable {
                 allowed_through_unstable_modules: Some(note),
                 ..
             } = stab.level
             {
                 Some(Deprecation {
-                    since: rustc_attr_data_structures::DeprecatedSince::Unspecified,
+                    since: DeprecatedSince::Unspecified,
                     note: Some(note),
                     suggestion: None,
                 })

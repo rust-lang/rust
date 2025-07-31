@@ -1,6 +1,6 @@
 use rustc_ast::attr::{AttributeExt, first_attr_value_str_by_name};
-use rustc_attr_data_structures::RustcVersion;
 use rustc_feature::is_builtin_attr_name;
+use rustc_hir::RustcVersion;
 use rustc_span::{Symbol, sym};
 
 /// Parse a rustc version number written inside string literal in an attribute,

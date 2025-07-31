@@ -41,7 +41,6 @@ use rustc_ast::{
     self as ast, AngleBracketedArg, CRATE_NODE_ID, Crate, Expr, ExprKind, GenericArg, GenericArgs,
     LitKind, NodeId, Path, attr,
 };
-use rustc_attr_data_structures::StrippedCfgItem;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::steal::Steal;
@@ -50,6 +49,7 @@ use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::{Applicability, Diag, ErrCode, ErrorGuaranteed};
 use rustc_expand::base::{DeriveResolution, SyntaxExtension, SyntaxExtensionKind};
 use rustc_feature::BUILTIN_ATTRIBUTES;
+use rustc_hir::attrs::StrippedCfgItem;
 use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{
     self, CtorOf, DefKind, DocLinkResMap, LifetimeRes, NonMacroAttrKind, PartialRes, PerNS,

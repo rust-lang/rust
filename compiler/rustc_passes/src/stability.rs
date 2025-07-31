@@ -4,17 +4,18 @@
 use std::num::NonZero;
 
 use rustc_ast_lowering::stability::extern_abi_stability;
-use rustc_attr_data_structures::{
-    self as attrs, AttributeKind, ConstStability, DefaultBodyStability, DeprecatedSince, Stability,
-    StabilityLevel, StableSince, UnstableReason, VERSION_PLACEHOLDER, find_attr,
-};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::unord::{ExtendUnord, UnordMap, UnordSet};
 use rustc_feature::{EnabledLangFeature, EnabledLibFeature};
+use rustc_hir::attrs::{AttributeKind, DeprecatedSince};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CRATE_DEF_ID, LOCAL_CRATE, LocalDefId, LocalModDefId};
 use rustc_hir::intravisit::{self, Visitor, VisitorExt};
-use rustc_hir::{self as hir, AmbigArg, FieldDef, Item, ItemKind, TraitRef, Ty, TyKind, Variant};
+use rustc_hir::{
+    self as hir, AmbigArg, ConstStability, DefaultBodyStability, FieldDef, Item, ItemKind,
+    Stability, StabilityLevel, StableSince, TraitRef, Ty, TyKind, UnstableReason,
+    VERSION_PLACEHOLDER, Variant, find_attr,
+};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::lib_features::{FeatureStability, LibFeatures};
 use rustc_middle::middle::privacy::EffectiveVisibilities;
@@ -96,7 +97,7 @@ fn annotation_kind(tcx: TyCtxt<'_>, def_id: LocalDefId) -> AnnotationKind {
 
 fn lookup_deprecation_entry(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<DeprecationEntry> {
     let attrs = tcx.hir_attrs(tcx.local_def_id_to_hir_id(def_id));
-    let depr = attrs::find_attr!(attrs,
+    let depr = find_attr!(attrs,
         AttributeKind::Deprecation { deprecation, span: _ } => *deprecation
     );
 
@@ -128,7 +129,7 @@ fn inherit_stability(def_kind: DefKind) -> bool {
 /// while maintaining the invariant that all sysroot crates are unstable
 /// by default and are unable to be used.
 const FORCE_UNSTABLE: Stability = Stability {
-    level: attrs::StabilityLevel::Unstable {
+    level: StabilityLevel::Unstable {
         reason: UnstableReason::Default,
         issue: NonZero::new(27812),
         is_soft: false,
@@ -161,8 +162,7 @@ fn lookup_stability(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<Stability> {
 
     // # Regular stability
     let attrs = tcx.hir_attrs(tcx.local_def_id_to_hir_id(def_id));
-    let stab =
-        attrs::find_attr!(attrs, AttributeKind::Stability { stability, span: _ } => *stability);
+    let stab = find_attr!(attrs, AttributeKind::Stability { stability, span: _ } => *stability);
 
     if let Some(stab) = stab {
         return Some(stab);
@@ -197,7 +197,7 @@ fn lookup_default_body_stability(
 
     let attrs = tcx.hir_attrs(tcx.local_def_id_to_hir_id(def_id));
     // FIXME: check that this item can have body stability
-    attrs::find_attr!(attrs, AttributeKind::BodyStability { stability, .. } => *stability)
+    find_attr!(attrs, AttributeKind::BodyStability { stability, .. } => *stability)
 }
 
 #[instrument(level = "debug", skip(tcx))]
@@ -224,7 +224,8 @@ fn lookup_const_stability(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<ConstSt
 
     let attrs = tcx.hir_attrs(tcx.local_def_id_to_hir_id(def_id));
     let const_stability_indirect = find_attr!(attrs, AttributeKind::ConstStabilityIndirect);
-    let const_stab = attrs::find_attr!(attrs, AttributeKind::ConstStability { stability, span: _ } => *stability);
+    let const_stab =
+        find_attr!(attrs, AttributeKind::ConstStability { stability, span: _ } => *stability);
 
     // After checking the immediate attributes, get rid of the span and compute implied
     // const stability: inherit feature gate from regular stability.
@@ -376,7 +377,7 @@ impl<'tcx> MissingStabilityAnnotations<'tcx> {
         macro_rules! find_attr_span {
             ($name:ident) => {{
                 let attrs = self.tcx.hir_attrs(self.tcx.local_def_id_to_hir_id(def_id));
-                attrs::find_attr!(attrs, AttributeKind::$name { span, .. } => *span)
+                find_attr!(attrs, AttributeKind::$name { span, .. } => *span)
             }}
         }
 
@@ -403,7 +404,7 @@ impl<'tcx> MissingStabilityAnnotations<'tcx> {
             // this is *almost surely* an accident.
             if let Some(depr) = depr
                 && let DeprecatedSince::RustcVersion(dep_since) = depr.attr.since
-                && let attrs::StabilityLevel::Stable { since: stab_since, .. } = stab.level
+                && let StabilityLevel::Stable { since: stab_since, .. } = stab.level
                 && let Some(span) = find_attr_span!(Stability)
             {
                 let item_sp = self.tcx.def_span(def_id);
@@ -644,10 +645,10 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
                 let features = self.tcx.features();
                 if features.staged_api() {
                     let attrs = self.tcx.hir_attrs(item.hir_id());
-                    let stab = attrs::find_attr!(attrs, AttributeKind::Stability{stability, span} => (*stability, *span));
+                    let stab = find_attr!(attrs, AttributeKind::Stability{stability, span} => (*stability, *span));
 
                     // FIXME(jdonszelmann): make it impossible to miss the or_else in the typesystem
-                    let const_stab = attrs::find_attr!(attrs, AttributeKind::ConstStability{stability, ..} => *stability);
+                    let const_stab = find_attr!(attrs, AttributeKind::ConstStability{stability, ..} => *stability);
 
                     let unstable_feature_stab =
                         find_attr!(attrs, AttributeKind::UnstableFeatureBound(i) => i)
@@ -670,7 +671,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
                     // impl Foo for Bar {}
                     // ```
                     if let Some((
-                        Stability { level: attrs::StabilityLevel::Unstable { .. }, feature },
+                        Stability { level: StabilityLevel::Unstable { .. }, feature },
                         span,
                     )) = stab
                     {

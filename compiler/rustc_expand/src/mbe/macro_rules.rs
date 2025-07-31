@@ -10,11 +10,12 @@ use rustc_ast::token::{self, NonterminalKind, Token, TokenKind};
 use rustc_ast::tokenstream::{DelimSpan, TokenStream};
 use rustc_ast::{self as ast, DUMMY_NODE_ID, NodeId};
 use rustc_ast_pretty::pprust;
-use rustc_attr_data_structures::{AttributeKind, find_attr};
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_errors::{Applicability, Diag, ErrorGuaranteed};
 use rustc_feature::Features;
 use rustc_hir as hir;
+use rustc_hir::attrs::AttributeKind;
+use rustc_hir::find_attr;
 use rustc_lint_defs::BuiltinLintDiag;
 use rustc_lint_defs::builtin::{
     RUST_2021_INCOMPATIBLE_OR_PATTERNS, SEMICOLON_IN_EXPRESSIONS_FROM_MACROS,
