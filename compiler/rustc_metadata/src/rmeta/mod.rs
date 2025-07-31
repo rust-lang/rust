@@ -6,6 +6,7 @@ use decoder::{DecodeContext, Metadata};
 use def_path_hash_map::DefPathHashMapRef;
 use encoder::EncodeContext;
 pub use encoder::{EncodedMetadata, encode_metadata, rendered_const};
+pub(crate) use parameterized::ParameterizedOverTcx;
 use rustc_abi::{FieldIdx, ReprOptions, VariantIdx};
 use rustc_attr_data_structures::StrippedCfgItem;
 use rustc_data_structures::fx::FxHashMap;
@@ -26,12 +27,10 @@ use rustc_middle::middle::debugger_visualizer::DebuggerVisualizerFile;
 use rustc_middle::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo};
 use rustc_middle::middle::lib_features::FeatureStability;
 use rustc_middle::middle::resolve_bound_vars::ObjectLifetimeDefault;
+use rustc_middle::mir;
 use rustc_middle::ty::fast_reject::SimplifiedType;
-use rustc_middle::ty::{
-    self, DeducedParamAttrs, ParameterizedOverTcx, Ty, TyCtxt, UnusedGenericParams,
-};
+use rustc_middle::ty::{self, DeducedParamAttrs, Ty, TyCtxt, UnusedGenericParams};
 use rustc_middle::util::Providers;
-use rustc_middle::{mir, trivially_parameterized_over_tcx};
 use rustc_serialize::opaque::FileEncoder;
 use rustc_session::config::{SymbolManglingVersion, TargetModifier};
 use rustc_session::cstore::{CrateDepKind, ForeignModule, LinkagePreference, NativeLib};
@@ -47,6 +46,7 @@ use crate::creader::CrateMetadataRef;
 mod decoder;
 mod def_path_hash_map;
 mod encoder;
+mod parameterized;
 mod table;
 
 pub(crate) fn rustc_version(cfg_version: &'static str) -> String {
@@ -86,10 +86,6 @@ struct LazyValue<T> {
     _marker: PhantomData<fn() -> T>,
 }
 
-impl<T: ParameterizedOverTcx> ParameterizedOverTcx for LazyValue<T> {
-    type Value<'tcx> = LazyValue<T::Value<'tcx>>;
-}
-
 impl<T> LazyValue<T> {
     fn from_position(position: NonZero<usize>) -> LazyValue<T> {
         LazyValue { position, _marker: PhantomData }
@@ -110,10 +106,6 @@ struct LazyArray<T> {
     position: NonZero<usize>,
     num_elems: usize,
     _marker: PhantomData<fn() -> T>,
-}
-
-impl<T: ParameterizedOverTcx> ParameterizedOverTcx for LazyArray<T> {
-    type Value<'tcx> = LazyArray<T::Value<'tcx>>;
 }
 
 impl<T> Default for LazyArray<T> {
@@ -141,10 +133,6 @@ struct LazyTable<I, T> {
     /// How many elements are in the table.
     len: usize,
     _marker: PhantomData<fn(I) -> T>,
-}
-
-impl<I: 'static, T: ParameterizedOverTcx> ParameterizedOverTcx for LazyTable<I, T> {
-    type Value<'tcx> = LazyTable<I, T::Value<'tcx>>;
 }
 
 impl<I, T> LazyTable<I, T> {
@@ -593,15 +581,4 @@ const SYMBOL_PREDEFINED: u8 = 2;
 pub fn provide(providers: &mut Providers) {
     encoder::provide(providers);
     decoder::provide(providers);
-}
-
-trivially_parameterized_over_tcx! {
-    VariantData,
-    RawDefId,
-    TraitImpls,
-    IncoherentImpls,
-    CrateHeader,
-    CrateRoot,
-    CrateDep,
-    AttrFlags,
 }
