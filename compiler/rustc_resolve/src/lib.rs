@@ -1007,15 +1007,24 @@ impl<'ra> NameBindingData<'ra> {
     }
 }
 
+#[derive(Default, Clone, Copy, PartialEq)]
+enum EpeBinding<'ra> {
+    #[default]
+    OptPending,
+    OptReadyOk(NameBinding<'ra>),
+    OptReadyErr,
+    Item(NameBinding<'ra>),
+}
+
 #[derive(Default, Clone)]
 struct ExternPreludeEntry<'ra> {
-    binding: Cell<Option<NameBinding<'ra>>>,
+    binding: Cell<EpeBinding<'ra>>,
     introduced_by_item: bool,
 }
 
 impl ExternPreludeEntry<'_> {
     fn is_import(&self) -> bool {
-        self.binding.get().is_some_and(|binding| binding.is_import())
+        matches!(self.binding.get(), EpeBinding::Item(..))
     }
 }
 
@@ -2011,7 +2020,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             // but not introduce it, as used if they are accessed from lexical scope.
             if used == Used::Scope {
                 if let Some(entry) = self.extern_prelude.get(&ident.normalize_to_macros_2_0()) {
-                    if !entry.introduced_by_item && entry.binding.get() == Some(used_binding) {
+                    if !entry.introduced_by_item
+                        && entry.binding.get() == EpeBinding::Item(used_binding)
+                    {
                         return;
                     }
                 }
@@ -2174,37 +2185,50 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         }
 
         let norm_ident = ident.normalize_to_macros_2_0();
-        let binding = self.extern_prelude.get(&norm_ident).cloned().and_then(|entry| {
-            Some(if let Some(binding) = entry.binding.get() {
-                if finalize {
-                    if !entry.is_import() {
-                        self.cstore_mut().process_path_extern(self.tcx, ident.name, ident.span);
-                    } else if entry.introduced_by_item {
-                        self.record_use(ident, binding, Used::Other);
-                    }
+        let entry = self.extern_prelude.get(&norm_ident).cloned();
+        let binding = entry.map(|entry| match entry.binding.get() {
+            EpeBinding::Item(binding) => {
+                if finalize && entry.introduced_by_item {
+                    self.record_use(ident, binding, Used::Other);
                 }
-                binding
-            } else {
+                EpeBinding::Item(binding)
+            }
+            EpeBinding::OptReadyOk(binding) => {
+                if finalize {
+                    self.cstore_mut().process_path_extern(self.tcx, ident.name, ident.span);
+                }
+                EpeBinding::OptReadyOk(binding)
+            }
+            EpeBinding::OptReadyErr => {
+                if finalize {
+                    self.cstore_mut().process_path_extern(self.tcx, ident.name, ident.span);
+                }
+                EpeBinding::OptReadyErr
+            }
+            EpeBinding::OptPending => {
                 let crate_id = if finalize {
-                    let Some(crate_id) =
-                        self.cstore_mut().process_path_extern(self.tcx, ident.name, ident.span)
-                    else {
-                        return Some(self.dummy_binding);
-                    };
-                    crate_id
+                    self.cstore_mut().process_path_extern(self.tcx, ident.name, ident.span)
                 } else {
-                    self.cstore_mut().maybe_process_path_extern(self.tcx, ident.name)?
+                    self.cstore_mut().maybe_process_path_extern(self.tcx, ident.name)
                 };
-                let res = Res::Def(DefKind::Mod, crate_id.as_def_id());
-                self.arenas.new_pub_res_binding(res, DUMMY_SP, LocalExpnId::ROOT)
-            })
+                let res = match crate_id {
+                    Some(crate_id) => Res::Def(DefKind::Mod, crate_id.as_def_id()),
+                    None => return EpeBinding::OptReadyErr,
+                };
+                let binding = self.arenas.new_pub_res_binding(res, DUMMY_SP, LocalExpnId::ROOT);
+                EpeBinding::OptReadyOk(binding)
+            }
         });
 
-        if let Some(entry) = self.extern_prelude.get(&norm_ident) {
-            entry.binding.set(binding);
-        }
-
-        binding
+        binding.and_then(|binding| {
+            self.extern_prelude[&norm_ident].binding.set(binding);
+            match binding {
+                EpeBinding::Item(binding) | EpeBinding::OptReadyOk(binding) => Some(binding),
+                EpeBinding::OptReadyErr if finalize => Some(self.dummy_binding),
+                EpeBinding::OptReadyErr => None,
+                EpeBinding::OptPending => unreachable!(),
+            }
+        })
     }
 
     /// Rustdoc uses this to resolve doc link paths in a recoverable way. `PathResult<'a>`
