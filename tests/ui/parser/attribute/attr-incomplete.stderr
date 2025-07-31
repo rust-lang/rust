@@ -1,0 +1,32 @@
+error: expected one of `(`, `,`, `::`, or `=`, found `-`
+  --> $DIR/attr-incomplete.rs:1:13
+   |
+LL | #[cfg(target-os = "windows")]
+   |             ^ expected one of `(`, `,`, `::`, or `=`
+
+error: expected a literal (`1u8`, `1.0f32`, `"string"`, etc.) here, found `%`
+  --> $DIR/attr-incomplete.rs:5:19
+   |
+LL | #[cfg(target_os = %)]
+   |                   ^
+
+error: expected one of `(`, `,`, `::`, or `=`, found `?`
+  --> $DIR/attr-incomplete.rs:9:16
+   |
+LL | #[cfg(target_os?)]
+   |                ^ expected one of `(`, `,`, `::`, or `=`
+
+error: wrong meta list delimiters
+  --> $DIR/attr-incomplete.rs:13:6
+   |
+LL | #[cfg[target_os]]
+   |      ^^^^^^^^^^^
+   |
+help: the delimiters should be `(` and `)`
+   |
+LL - #[cfg[target_os]]
+LL + #[cfg(target_os)]
+   |
+
+error: aborting due to 4 previous errors
+
