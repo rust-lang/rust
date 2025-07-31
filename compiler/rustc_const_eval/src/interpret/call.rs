@@ -18,7 +18,7 @@ use super::{
     Projectable, Provenance, ReturnAction, ReturnContinuation, Scalar, StackPopInfo, interp_ok,
     throw_ub, throw_ub_custom, throw_unsup_format,
 };
-use crate::fluent_generated as fluent;
+use crate::{enter_trace_span, fluent_generated as fluent};
 
 /// An argument passed to a function.
 #[derive(Clone, Debug)]
@@ -730,6 +730,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         let existential_trait_ref = ty::ExistentialTraitRef::erase_self_ty(tcx, virtual_trait_ref);
         let concrete_trait_ref = existential_trait_ref.with_self_ty(tcx, dyn_ty);
 
+        let _span = enter_trace_span!(M, resolve::expect_resolve_for_vtable, ?def_id);
         let concrete_method = Instance::expect_resolve_for_vtable(
             tcx,
             self.typing_env,
@@ -819,7 +820,10 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 place
             }
         };
-        let instance = ty::Instance::resolve_drop_in_place(*self.tcx, place.layout.ty);
+        let instance = {
+            let _span = enter_trace_span!(M, resolve::resolve_drop_in_place, ty = ?place.layout.ty);
+            ty::Instance::resolve_drop_in_place(*self.tcx, place.layout.ty)
+        };
         let fn_abi = self.fn_abi_of_instance(instance, ty::List::empty())?;
 
         let arg = self.mplace_to_ref(&place)?;
