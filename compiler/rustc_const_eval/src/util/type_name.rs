@@ -4,7 +4,7 @@ use rustc_data_structures::intern::Interned;
 use rustc_hir::def_id::CrateNum;
 use rustc_hir::definitions::DisambiguatedDefPathData;
 use rustc_middle::bug;
-use rustc_middle::ty::print::{PrettyPrinter, Print, PrintError, Printer};
+use rustc_middle::ty::print::{PrettyPrinter, PrintError, Printer};
 use rustc_middle::ty::{self, GenericArg, GenericArgKind, Ty, TyCtxt};
 
 struct AbsolutePathPrinter<'tcx> {
@@ -137,19 +137,6 @@ impl<'tcx> Printer<'tcx> for AbsolutePathPrinter<'tcx> {
 impl<'tcx> PrettyPrinter<'tcx> for AbsolutePathPrinter<'tcx> {
     fn should_print_region(&self, _region: ty::Region<'_>) -> bool {
         false
-    }
-    fn comma_sep<T>(&mut self, mut elems: impl Iterator<Item = T>) -> Result<(), PrintError>
-    where
-        T: Print<'tcx, Self>,
-    {
-        if let Some(first) = elems.next() {
-            first.print(self)?;
-            for elem in elems {
-                self.path.push_str(", ");
-                elem.print(self)?;
-            }
-        }
-        Ok(())
     }
 
     fn generic_delimiters(
