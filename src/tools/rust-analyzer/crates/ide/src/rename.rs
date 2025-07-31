@@ -494,10 +494,10 @@ mod tests {
     ) {
         let ra_fixture_after = &trim_indent(ra_fixture_after);
         let (analysis, position) = fixture::position(ra_fixture_before);
-        if !ra_fixture_after.starts_with("error: ") {
-            if let Err(err) = analysis.prepare_rename(position).unwrap() {
-                panic!("Prepare rename to '{new_name}' was failed: {err}")
-            }
+        if !ra_fixture_after.starts_with("error: ")
+            && let Err(err) = analysis.prepare_rename(position).unwrap()
+        {
+            panic!("Prepare rename to '{new_name}' was failed: {err}")
         }
         let rename_result = analysis
             .rename(position, new_name)

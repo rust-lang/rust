@@ -175,18 +175,18 @@ fn remove_items_visibility(item: &ast::AssocItem) {
 }
 
 fn strip_body(item: &ast::AssocItem) {
-    if let ast::AssocItem::Fn(f) = item {
-        if let Some(body) = f.body() {
-            // In contrast to function bodies, we want to see no ws before a semicolon.
-            // So let's remove them if we see any.
-            if let Some(prev) = body.syntax().prev_sibling_or_token() {
-                if prev.kind() == SyntaxKind::WHITESPACE {
-                    ted::remove(prev);
-                }
-            }
-
-            ted::replace(body.syntax(), make::tokens::semicolon());
+    if let ast::AssocItem::Fn(f) = item
+        && let Some(body) = f.body()
+    {
+        // In contrast to function bodies, we want to see no ws before a semicolon.
+        // So let's remove them if we see any.
+        if let Some(prev) = body.syntax().prev_sibling_or_token()
+            && prev.kind() == SyntaxKind::WHITESPACE
+        {
+            ted::remove(prev);
         }
+
+        ted::replace(body.syntax(), make::tokens::semicolon());
     };
 }
 

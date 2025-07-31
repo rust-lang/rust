@@ -287,24 +287,22 @@ fn expand(
                 &spec_attr,
                 fake_ident_token.clone(),
             ),
-        ) {
-            if let Some((fake_mapped_token, _)) =
-                fake_mapped_tokens.into_iter().min_by_key(|(_, rank)| *rank)
-            {
-                return Some(ExpansionResult {
-                    original_file: original_file.value,
-                    speculative_file,
-                    original_offset,
-                    speculative_offset: fake_ident_token.text_range().start(),
-                    fake_ident_token,
-                    derive_ctx: Some((
-                        actual_expansion,
-                        fake_expansion,
-                        fake_mapped_token.text_range().start(),
-                        orig_attr,
-                    )),
-                });
-            }
+        ) && let Some((fake_mapped_token, _)) =
+            fake_mapped_tokens.into_iter().min_by_key(|(_, rank)| *rank)
+        {
+            return Some(ExpansionResult {
+                original_file: original_file.value,
+                speculative_file,
+                original_offset,
+                speculative_offset: fake_ident_token.text_range().start(),
+                fake_ident_token,
+                derive_ctx: Some((
+                    actual_expansion,
+                    fake_expansion,
+                    fake_mapped_token.text_range().start(),
+                    orig_attr,
+                )),
+            });
         }
 
         if let Some(spec_adt) =
@@ -535,14 +533,13 @@ fn analyze<'db>(
                     NameRefKind::Path(PathCompletionCtx { kind: PathKind::Expr { .. }, path, .. }, ..),
                 ..
             } = &nameref_ctx
+                && is_in_token_of_for_loop(path)
             {
-                if is_in_token_of_for_loop(path) {
-                    // for pat $0
-                    // there is nothing to complete here except `in` keyword
-                    // don't bother populating the context
-                    // Ideally this special casing wouldn't be needed, but the parser recovers
-                    return None;
-                }
+                // for pat $0
+                // there is nothing to complete here except `in` keyword
+                // don't bother populating the context
+                // Ideally this special casing wouldn't be needed, but the parser recovers
+                return None;
             }
 
             qual_ctx = qualifier_ctx;
@@ -951,29 +948,26 @@ fn classify_name_ref<'db>(
     let inbetween_body_and_decl_check = |node: SyntaxNode| {
         if let Some(NodeOrToken::Node(n)) =
             syntax::algo::non_trivia_sibling(node.into(), syntax::Direction::Prev)
+            && let Some(item) = ast::Item::cast(n)
         {
-            if let Some(item) = ast::Item::cast(n) {
-                let is_inbetween = match &item {
-                    ast::Item::Const(it) => it.body().is_none() && it.semicolon_token().is_none(),
-                    ast::Item::Enum(it) => it.variant_list().is_none(),
-                    ast::Item::ExternBlock(it) => it.extern_item_list().is_none(),
-                    ast::Item::Fn(it) => it.body().is_none() && it.semicolon_token().is_none(),
-                    ast::Item::Impl(it) => it.assoc_item_list().is_none(),
-                    ast::Item::Module(it) => {
-                        it.item_list().is_none() && it.semicolon_token().is_none()
-                    }
-                    ast::Item::Static(it) => it.body().is_none(),
-                    ast::Item::Struct(it) => {
-                        it.field_list().is_none() && it.semicolon_token().is_none()
-                    }
-                    ast::Item::Trait(it) => it.assoc_item_list().is_none(),
-                    ast::Item::TypeAlias(it) => it.ty().is_none() && it.semicolon_token().is_none(),
-                    ast::Item::Union(it) => it.record_field_list().is_none(),
-                    _ => false,
-                };
-                if is_inbetween {
-                    return Some(item);
+            let is_inbetween = match &item {
+                ast::Item::Const(it) => it.body().is_none() && it.semicolon_token().is_none(),
+                ast::Item::Enum(it) => it.variant_list().is_none(),
+                ast::Item::ExternBlock(it) => it.extern_item_list().is_none(),
+                ast::Item::Fn(it) => it.body().is_none() && it.semicolon_token().is_none(),
+                ast::Item::Impl(it) => it.assoc_item_list().is_none(),
+                ast::Item::Module(it) => it.item_list().is_none() && it.semicolon_token().is_none(),
+                ast::Item::Static(it) => it.body().is_none(),
+                ast::Item::Struct(it) => {
+                    it.field_list().is_none() && it.semicolon_token().is_none()
                 }
+                ast::Item::Trait(it) => it.assoc_item_list().is_none(),
+                ast::Item::TypeAlias(it) => it.ty().is_none() && it.semicolon_token().is_none(),
+                ast::Item::Union(it) => it.record_field_list().is_none(),
+                _ => false,
+            };
+            if is_inbetween {
+                return Some(item);
             }
         }
         None
@@ -1502,10 +1496,10 @@ fn classify_name_ref<'db>(
                 }
             };
         }
-    } else if let Some(segment) = path.segment() {
-        if segment.coloncolon_token().is_some() {
-            path_ctx.qualified = Qualified::Absolute;
-        }
+    } else if let Some(segment) = path.segment()
+        && segment.coloncolon_token().is_some()
+    {
+        path_ctx.qualified = Qualified::Absolute;
     }
 
     let mut qualifier_ctx = QualifierCtx::default();
@@ -1530,38 +1524,30 @@ fn classify_name_ref<'db>(
         if let Some(top) = top_node {
             if let Some(NodeOrToken::Node(error_node)) =
                 syntax::algo::non_trivia_sibling(top.clone().into(), syntax::Direction::Prev)
+                && error_node.kind() == SyntaxKind::ERROR
             {
-                if error_node.kind() == SyntaxKind::ERROR {
-                    for token in
-                        error_node.children_with_tokens().filter_map(NodeOrToken::into_token)
-                    {
-                        match token.kind() {
-                            SyntaxKind::UNSAFE_KW => qualifier_ctx.unsafe_tok = Some(token),
-                            SyntaxKind::ASYNC_KW => qualifier_ctx.async_tok = Some(token),
-                            SyntaxKind::SAFE_KW => qualifier_ctx.safe_tok = Some(token),
-                            _ => {}
-                        }
+                for token in error_node.children_with_tokens().filter_map(NodeOrToken::into_token) {
+                    match token.kind() {
+                        SyntaxKind::UNSAFE_KW => qualifier_ctx.unsafe_tok = Some(token),
+                        SyntaxKind::ASYNC_KW => qualifier_ctx.async_tok = Some(token),
+                        SyntaxKind::SAFE_KW => qualifier_ctx.safe_tok = Some(token),
+                        _ => {}
                     }
-                    qualifier_ctx.vis_node = error_node.children().find_map(ast::Visibility::cast);
                 }
+                qualifier_ctx.vis_node = error_node.children().find_map(ast::Visibility::cast);
             }
 
-            if let PathKind::Item { .. } = path_ctx.kind {
-                if qualifier_ctx.none() {
-                    if let Some(t) = top.first_token() {
-                        if let Some(prev) = t
-                            .prev_token()
-                            .and_then(|t| syntax::algo::skip_trivia_token(t, Direction::Prev))
-                        {
-                            if ![T![;], T!['}'], T!['{']].contains(&prev.kind()) {
-                                // This was inferred to be an item position path, but it seems
-                                // to be part of some other broken node which leaked into an item
-                                // list
-                                return None;
-                            }
-                        }
-                    }
-                }
+            if let PathKind::Item { .. } = path_ctx.kind
+                && qualifier_ctx.none()
+                && let Some(t) = top.first_token()
+                && let Some(prev) =
+                    t.prev_token().and_then(|t| syntax::algo::skip_trivia_token(t, Direction::Prev))
+                && ![T![;], T!['}'], T!['{']].contains(&prev.kind())
+            {
+                // This was inferred to be an item position path, but it seems
+                // to be part of some other broken node which leaked into an item
+                // list
+                return None;
             }
         }
     }

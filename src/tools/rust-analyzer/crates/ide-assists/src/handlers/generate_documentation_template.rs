@@ -148,11 +148,11 @@ fn make_example_for_fn(ast_func: &ast::Fn, ctx: &AssistContext<'_>) -> Option<St
     let self_name = self_name(ast_func);
 
     format_to!(example, "use {use_path};\n\n");
-    if let Some(self_name) = &self_name {
-        if let Some(mut_) = is_ref_mut_self(ast_func) {
-            let mut_ = if mut_ { "mut " } else { "" };
-            format_to!(example, "let {mut_}{self_name} = ;\n");
-        }
+    if let Some(self_name) = &self_name
+        && let Some(mut_) = is_ref_mut_self(ast_func)
+    {
+        let mut_ = if mut_ { "mut " } else { "" };
+        format_to!(example, "let {mut_}{self_name} = ;\n");
     }
     for param_name in &ref_mut_params {
         format_to!(example, "let mut {param_name} = ;\n");
@@ -170,10 +170,10 @@ fn make_example_for_fn(ast_func: &ast::Fn, ctx: &AssistContext<'_>) -> Option<St
         format_to!(example, "{function_call};\n");
     }
     // Check the mutated values
-    if let Some(self_name) = &self_name {
-        if is_ref_mut_self(ast_func) == Some(true) {
-            format_to!(example, "assert_eq!({self_name}, );");
-        }
+    if let Some(self_name) = &self_name
+        && is_ref_mut_self(ast_func) == Some(true)
+    {
+        format_to!(example, "assert_eq!({self_name}, );");
     }
     for param_name in &ref_mut_params {
         format_to!(example, "assert_eq!({param_name}, );");

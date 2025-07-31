@@ -50,10 +50,10 @@ pub(crate) fn convert_from_to_tryfrom(acc: &mut Assists, ctx: &AssistContext<'_>
 
     let associated_items = impl_.assoc_item_list()?;
     let from_fn = associated_items.assoc_items().find_map(|item| {
-        if let ast::AssocItem::Fn(f) = item {
-            if f.name()?.text() == "from" {
-                return Some(f);
-            }
+        if let ast::AssocItem::Fn(f) = item
+            && f.name()?.text() == "from"
+        {
+            return Some(f);
         };
         None
     })?;
@@ -110,12 +110,11 @@ pub(crate) fn convert_from_to_tryfrom(acc: &mut Assists, ctx: &AssistContext<'_>
             ))
             .clone_for_update();
 
-            if let Some(cap) = ctx.config.snippet_cap {
-                if let ast::AssocItem::TypeAlias(type_alias) = &error_type {
-                    if let Some(ty) = type_alias.ty() {
-                        builder.add_placeholder_snippet(cap, ty);
-                    }
-                }
+            if let Some(cap) = ctx.config.snippet_cap
+                && let ast::AssocItem::TypeAlias(type_alias) = &error_type
+                && let Some(ty) = type_alias.ty()
+            {
+                builder.add_placeholder_snippet(cap, ty);
             }
 
             associated_items.add_item_at_start(error_type);

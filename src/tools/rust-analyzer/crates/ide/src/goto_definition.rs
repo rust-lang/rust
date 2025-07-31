@@ -94,18 +94,17 @@ pub(crate) fn goto_definition(
             let parent = token.value.parent()?;
 
             let token_file_id = token.file_id;
-            if let Some(token) = ast::String::cast(token.value.clone()) {
-                if let Some(x) =
+            if let Some(token) = ast::String::cast(token.value.clone())
+                && let Some(x) =
                     try_lookup_include_path(sema, InFile::new(token_file_id, token), file_id)
-                {
-                    return Some(vec![x]);
-                }
+            {
+                return Some(vec![x]);
             }
 
-            if ast::TokenTree::can_cast(parent.kind()) {
-                if let Some(x) = try_lookup_macro_def_in_macro_use(sema, token.value) {
-                    return Some(vec![x]);
-                }
+            if ast::TokenTree::can_cast(parent.kind())
+                && let Some(x) = try_lookup_macro_def_in_macro_use(sema, token.value)
+            {
+                return Some(vec![x]);
             }
 
             Some(
@@ -245,12 +244,11 @@ fn try_lookup_macro_def_in_macro_use(
     let krate = extern_crate.resolved_crate(sema.db)?;
 
     for mod_def in krate.root_module().declarations(sema.db) {
-        if let ModuleDef::Macro(mac) = mod_def {
-            if mac.name(sema.db).as_str() == token.text() {
-                if let Some(nav) = mac.try_to_nav(sema.db) {
-                    return Some(nav.call_site);
-                }
-            }
+        if let ModuleDef::Macro(mac) = mod_def
+            && mac.name(sema.db).as_str() == token.text()
+            && let Some(nav) = mac.try_to_nav(sema.db)
+        {
+            return Some(nav.call_site);
         }
     }
 

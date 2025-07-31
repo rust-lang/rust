@@ -227,12 +227,11 @@ fn get_default_constructor(
     // Look for a ::new() associated function
     let has_new_func = ty
         .iterate_assoc_items(ctx.sema.db, krate, |assoc_item| {
-            if let AssocItem::Function(func) = assoc_item {
-                if func.name(ctx.sema.db) == sym::new
-                    && func.assoc_fn_params(ctx.sema.db).is_empty()
-                {
-                    return Some(());
-                }
+            if let AssocItem::Function(func) = assoc_item
+                && func.name(ctx.sema.db) == sym::new
+                && func.assoc_fn_params(ctx.sema.db).is_empty()
+            {
+                return Some(());
             }
 
             None

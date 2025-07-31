@@ -514,20 +514,19 @@ fn module_def_doctest(db: &RootDatabase, def: Definition) -> Option<Runnable> {
             .flat_map(|it| it.name(db))
             .for_each(|name| format_to!(path, "{}::", name.display(db, edition)));
         // This probably belongs to canonical_path?
-        if let Some(assoc_item) = def.as_assoc_item(db) {
-            if let Some(ty) = assoc_item.implementing_ty(db) {
-                if let Some(adt) = ty.as_adt() {
-                    let name = adt.name(db);
-                    let mut ty_args = ty.generic_parameters(db, display_target).peekable();
-                    format_to!(path, "{}", name.display(db, edition));
-                    if ty_args.peek().is_some() {
-                        format_to!(path, "<{}>", ty_args.format_with(",", |ty, cb| cb(&ty)));
-                    }
-                    format_to!(path, "::{}", def_name.display(db, edition));
-                    path.retain(|c| c != ' ');
-                    return Some(path);
-                }
+        if let Some(assoc_item) = def.as_assoc_item(db)
+            && let Some(ty) = assoc_item.implementing_ty(db)
+            && let Some(adt) = ty.as_adt()
+        {
+            let name = adt.name(db);
+            let mut ty_args = ty.generic_parameters(db, display_target).peekable();
+            format_to!(path, "{}", name.display(db, edition));
+            if ty_args.peek().is_some() {
+                format_to!(path, "<{}>", ty_args.format_with(",", |ty, cb| cb(&ty)));
             }
+            format_to!(path, "::{}", def_name.display(db, edition));
+            path.retain(|c| c != ' ');
+            return Some(path);
         }
         format_to!(path, "{}", def_name.display(db, edition));
         Some(path)
@@ -697,14 +696,13 @@ impl UpdateTest {
                     continue;
                 };
                 for item in items {
-                    if let hir::ItemInNs::Macros(makro) = item {
-                        if Definition::Macro(makro)
+                    if let hir::ItemInNs::Macros(makro) = item
+                        && Definition::Macro(makro)
                             .usages(sema)
                             .in_scope(&search_scope)
                             .at_least_one()
-                        {
-                            return true;
-                        }
+                    {
+                        return true;
                     }
                 }
             }

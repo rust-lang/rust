@@ -3904,17 +3904,16 @@ mod tests {
         for idx in url_offsets {
             let link = &schema[idx..];
             // matching on whitespace to ignore normal links
-            if let Some(link_end) = link.find([' ', '[']) {
-                if link.chars().nth(link_end) == Some('[') {
-                    if let Some(link_text_end) = link.find(']') {
-                        let link_text = link[link_end..(link_text_end + 1)].to_string();
+            if let Some(link_end) = link.find([' ', '['])
+                && link.chars().nth(link_end) == Some('[')
+                && let Some(link_text_end) = link.find(']')
+            {
+                let link_text = link[link_end..(link_text_end + 1)].to_string();
 
-                        schema.replace_range((idx + link_end)..(idx + link_text_end + 1), "");
-                        schema.insert(idx, '(');
-                        schema.insert(idx + link_end + 1, ')');
-                        schema.insert_str(idx, &link_text);
-                    }
-                }
+                schema.replace_range((idx + link_end)..(idx + link_text_end + 1), "");
+                schema.insert(idx, '(');
+                schema.insert(idx + link_end + 1, ')');
+                schema.insert_str(idx, &link_text);
             }
         }
 

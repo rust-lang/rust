@@ -576,13 +576,13 @@ impl InlayHintLabel {
     }
 
     pub fn append_part(&mut self, part: InlayHintLabelPart) {
-        if part.linked_location.is_none() && part.tooltip.is_none() {
-            if let Some(InlayHintLabelPart { text, linked_location: None, tooltip: None }) =
+        if part.linked_location.is_none()
+            && part.tooltip.is_none()
+            && let Some(InlayHintLabelPart { text, linked_location: None, tooltip: None }) =
                 self.parts.last_mut()
-            {
-                text.push_str(&part.text);
-                return;
-            }
+        {
+            text.push_str(&part.text);
+            return;
         }
         self.parts.push(part);
     }

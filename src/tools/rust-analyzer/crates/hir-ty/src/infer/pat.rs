@@ -498,12 +498,12 @@ impl InferenceContext<'_> {
 
         // If `expected` is an infer ty, we try to equate it to an array if the given pattern
         // allows it. See issue #16609
-        if self.pat_is_irrefutable(decl) && expected.is_ty_var() {
-            if let Some(resolved_array_ty) =
+        if self.pat_is_irrefutable(decl)
+            && expected.is_ty_var()
+            && let Some(resolved_array_ty) =
                 self.try_resolve_slice_ty_to_array_ty(prefix, suffix, slice)
-            {
-                self.unify(&expected, &resolved_array_ty);
-            }
+        {
+            self.unify(&expected, &resolved_array_ty);
         }
 
         let expected = self.resolve_ty_shallow(&expected);
@@ -539,17 +539,16 @@ impl InferenceContext<'_> {
 
     fn infer_lit_pat(&mut self, expr: ExprId, expected: &Ty) -> Ty {
         // Like slice patterns, byte string patterns can denote both `&[u8; N]` and `&[u8]`.
-        if let Expr::Literal(Literal::ByteString(_)) = self.body[expr] {
-            if let Some((inner, ..)) = expected.as_reference() {
-                let inner = self.resolve_ty_shallow(inner);
-                if matches!(inner.kind(Interner), TyKind::Slice(_)) {
-                    let elem_ty = TyKind::Scalar(Scalar::Uint(UintTy::U8)).intern(Interner);
-                    let slice_ty = TyKind::Slice(elem_ty).intern(Interner);
-                    let ty =
-                        TyKind::Ref(Mutability::Not, static_lifetime(), slice_ty).intern(Interner);
-                    self.write_expr_ty(expr, ty.clone());
-                    return ty;
-                }
+        if let Expr::Literal(Literal::ByteString(_)) = self.body[expr]
+            && let Some((inner, ..)) = expected.as_reference()
+        {
+            let inner = self.resolve_ty_shallow(inner);
+            if matches!(inner.kind(Interner), TyKind::Slice(_)) {
+                let elem_ty = TyKind::Scalar(Scalar::Uint(UintTy::U8)).intern(Interner);
+                let slice_ty = TyKind::Slice(elem_ty).intern(Interner);
+                let ty = TyKind::Ref(Mutability::Not, static_lifetime(), slice_ty).intern(Interner);
+                self.write_expr_ty(expr, ty.clone());
+                return ty;
             }
         }
 

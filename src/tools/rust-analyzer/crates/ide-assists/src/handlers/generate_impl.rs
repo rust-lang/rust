@@ -58,11 +58,11 @@ pub(crate) fn generate_impl(acc: &mut Assists, ctx: &AssistContext<'_>) -> Optio
 
             let mut editor = edit.make_editor(nominal.syntax());
             // Add a tabstop after the left curly brace
-            if let Some(cap) = ctx.config.snippet_cap {
-                if let Some(l_curly) = impl_.assoc_item_list().and_then(|it| it.l_curly_token()) {
-                    let tabstop = edit.make_tabstop_after(cap);
-                    editor.add_annotation(l_curly, tabstop);
-                }
+            if let Some(cap) = ctx.config.snippet_cap
+                && let Some(l_curly) = impl_.assoc_item_list().and_then(|it| it.l_curly_token())
+            {
+                let tabstop = edit.make_tabstop_after(cap);
+                editor.add_annotation(l_curly, tabstop);
             }
 
             insert_impl(&mut editor, &impl_, &nominal);

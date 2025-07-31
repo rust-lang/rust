@@ -383,10 +383,10 @@ impl ast::GenericParamList {
 
 impl ast::WhereClause {
     pub fn add_predicate(&self, predicate: ast::WherePred) {
-        if let Some(pred) = self.predicates().last() {
-            if !pred.syntax().siblings_with_tokens(Direction::Next).any(|it| it.kind() == T![,]) {
-                ted::append_child_raw(self.syntax(), make::token(T![,]));
-            }
+        if let Some(pred) = self.predicates().last()
+            && !pred.syntax().siblings_with_tokens(Direction::Next).any(|it| it.kind() == T![,])
+        {
+            ted::append_child_raw(self.syntax(), make::token(T![,]));
         }
         ted::append_child(self.syntax(), predicate.syntax());
     }
@@ -744,10 +744,10 @@ impl ast::LetStmt {
                 }
 
                 if let Some(existing_ty) = self.ty() {
-                    if let Some(sibling) = existing_ty.syntax().prev_sibling_or_token() {
-                        if sibling.kind() == SyntaxKind::WHITESPACE {
-                            ted::remove(sibling);
-                        }
+                    if let Some(sibling) = existing_ty.syntax().prev_sibling_or_token()
+                        && sibling.kind() == SyntaxKind::WHITESPACE
+                    {
+                        ted::remove(sibling);
                     }
 
                     ted::remove(existing_ty.syntax());
@@ -823,19 +823,18 @@ impl ast::RecordExprField {
             return;
         }
         // this is a shorthand
-        if let Some(ast::Expr::PathExpr(path_expr)) = self.expr() {
-            if let Some(path) = path_expr.path() {
-                if let Some(name_ref) = path.as_single_name_ref() {
-                    path_expr.syntax().detach();
-                    let children = vec![
-                        name_ref.syntax().clone().into(),
-                        ast::make::token(T![:]).into(),
-                        ast::make::tokens::single_space().into(),
-                        expr.syntax().clone().into(),
-                    ];
-                    ted::insert_all_raw(Position::last_child_of(self.syntax()), children);
-                }
-            }
+        if let Some(ast::Expr::PathExpr(path_expr)) = self.expr()
+            && let Some(path) = path_expr.path()
+            && let Some(name_ref) = path.as_single_name_ref()
+        {
+            path_expr.syntax().detach();
+            let children = vec![
+                name_ref.syntax().clone().into(),
+                ast::make::token(T![:]).into(),
+                ast::make::tokens::single_space().into(),
+                expr.syntax().clone().into(),
+            ];
+            ted::insert_all_raw(Position::last_child_of(self.syntax()), children);
         }
     }
 }

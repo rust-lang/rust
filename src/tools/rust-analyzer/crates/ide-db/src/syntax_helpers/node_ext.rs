@@ -79,14 +79,13 @@ pub fn preorder_expr_with_ctx_checker(
                 continue;
             }
         };
-        if let Some(let_stmt) = node.parent().and_then(ast::LetStmt::cast) {
-            if let_stmt.initializer().map(|it| it.syntax() != &node).unwrap_or(true)
-                && let_stmt.let_else().map(|it| it.syntax() != &node).unwrap_or(true)
-            {
-                // skipping potential const pat expressions in  let statements
-                preorder.skip_subtree();
-                continue;
-            }
+        if let Some(let_stmt) = node.parent().and_then(ast::LetStmt::cast)
+            && let_stmt.initializer().map(|it| it.syntax() != &node).unwrap_or(true)
+            && let_stmt.let_else().map(|it| it.syntax() != &node).unwrap_or(true)
+        {
+            // skipping potential const pat expressions in  let statements
+            preorder.skip_subtree();
+            continue;
         }
 
         match ast::Stmt::cast(node.clone()) {
@@ -306,10 +305,10 @@ pub fn for_each_tail_expr(expr: &ast::Expr, cb: &mut dyn FnMut(&ast::Expr)) {
                 Some(ast::BlockModifier::AsyncGen(_)) => (),
                 None => (),
             }
-            if let Some(stmt_list) = b.stmt_list() {
-                if let Some(e) = stmt_list.tail_expr() {
-                    for_each_tail_expr(&e, cb);
-                }
+            if let Some(stmt_list) = b.stmt_list()
+                && let Some(e) = stmt_list.tail_expr()
+            {
+                for_each_tail_expr(&e, cb);
             }
         }
         ast::Expr::IfExpr(if_) => {
