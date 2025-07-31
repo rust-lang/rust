@@ -298,6 +298,7 @@ See [Pretty-printer](compiletest.md#pretty-printer-tests).
 - [`should-ice`](compiletest.md#incremental-tests) — incremental cfail should
       ICE
 - [`reference`] — an annotation linking to a rule in the reference
+- `no-debug-pretty-printers` — disable pretty printers for debuginfo tests
 
 [`reference`]: https://github.com/rust-lang/reference/blob/master/docs/authoring.md#test-rule-annotations
 

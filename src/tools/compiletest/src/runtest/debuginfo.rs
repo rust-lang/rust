@@ -259,7 +259,9 @@ impl TestCx<'_> {
                 Some(version) => {
                     println!("NOTE: compiletest thinks it is using GDB version {}", version);
 
-                    if version > extract_gdb_version("7.4").unwrap() {
+                    if self.props.debug_pretty_printers
+                        && version > extract_gdb_version("7.4").unwrap()
+                    {
                         // Add the directory containing the pretty printers to
                         // GDB's script auto loading safe path
                         script_str.push_str(&format!(
@@ -399,13 +401,15 @@ impl TestCx<'_> {
         // Switch LLDB into "Rust mode".
         let rust_pp_module_abs_path = self.config.src_root.join("src/etc");
 
-        script_str.push_str(&format!(
-            "command script import {}/lldb_lookup.py\n",
-            rust_pp_module_abs_path
-        ));
-        File::open(rust_pp_module_abs_path.join("lldb_commands"))
-            .and_then(|mut file| file.read_to_string(&mut script_str))
-            .expect("Failed to read lldb_commands");
+        if self.props.debug_pretty_printers {
+            script_str.push_str(&format!(
+                "command script import {}/lldb_lookup.py\n",
+                rust_pp_module_abs_path
+            ));
+            File::open(rust_pp_module_abs_path.join("lldb_commands"))
+                .and_then(|mut file| file.read_to_string(&mut script_str))
+                .expect("Failed to read lldb_commands");
+        }
 
         // Set breakpoints on every line that contains the string "#break"
         let source_file_name = self.testpaths.file.file_name().unwrap();
