@@ -34,7 +34,7 @@ use crate::clean::utils::find_nearest_parent_module;
 use crate::clean::{self, Crate, Item, ItemId, ItemLink, PrimitiveType};
 use crate::core::DocContext;
 use crate::html::markdown::{MarkdownLink, MarkdownLinkRange, markdown_links};
-use crate::lint::{BROKEN_INTRA_DOC_LINKS, PRIVATE_INTRA_DOC_LINKS};
+use crate::lint::{BROKEN_INTRA_DOC_LINKS, HIDDEN_INTRA_DOC_LINKS, PRIVATE_INTRA_DOC_LINKS};
 use crate::passes::Pass;
 use crate::visit::DocVisitor;
 
@@ -1341,13 +1341,18 @@ impl LinkCollector<'_, '_> {
                 }
             }
 
+        let src_def_id = diag_info.item.item_id.expect_def_id();
         // item can be non-local e.g. when using `#[rustc_doc_primitive = "pointer"]`
         if let Some(dst_id) = id.as_local()
-            && let Some(src_id) = diag_info.item.item_id.expect_def_id().as_local()
+            && let Some(src_id) = src_def_id.as_local()
             && self.cx.tcx.effective_visibilities(()).is_exported(src_id)
             && !self.cx.tcx.effective_visibilities(()).is_exported(dst_id)
         {
-            privacy_error(self.cx, diag_info, path_str);
+            privacy_error(self.cx, diag_info, path_str, PrivacyErrorKind::Private);
+        }
+
+        if self.cx.tcx.is_doc_hidden(id) && !self.cx.tcx.is_doc_hidden(src_def_id) {
+            privacy_error(self.cx, diag_info, path_str, PrivacyErrorKind::Hidden);
         }
 
         Some(())
@@ -2334,8 +2339,20 @@ fn suggest_disambiguator(
     }
 }
 
+#[derive(Copy, Clone)]
+enum PrivacyErrorKind {
+    Private,
+    Hidden,
+}
+
 /// Report a link from a public item to a private one.
-fn privacy_error(cx: &DocContext<'_>, diag_info: &DiagnosticInfo<'_>, path_str: &str) {
+fn privacy_error(
+    cx: &DocContext<'_>,
+    diag_info: &DiagnosticInfo<'_>,
+    path_str: &str,
+    kind: PrivacyErrorKind,
+) {
+    use PrivacyErrorKind::*;
     let sym;
     let item_name = match diag_info.item.name {
         Some(name) => {
@@ -2344,17 +2361,22 @@ fn privacy_error(cx: &DocContext<'_>, diag_info: &DiagnosticInfo<'_>, path_str: 
         }
         None => "<unknown>",
     };
-    let msg = format!("public documentation for `{item_name}` links to private item `{path_str}`");
+    let (public, private, flag, lint) = match kind {
+        Private => ("public", "private", "--document-private-items", PRIVATE_INTRA_DOC_LINKS),
+        Hidden => ("non-hidden", "hidden", "--document-hidden-items", HIDDEN_INTRA_DOC_LINKS),
+    };
+    let msg =
+        format!("{public} documentation for `{item_name}` links to {private} item `{path_str}`");
 
-    report_diagnostic(cx.tcx, PRIVATE_INTRA_DOC_LINKS, msg, diag_info, |diag, sp, _link_range| {
+    report_diagnostic(cx.tcx, lint, msg, diag_info, |diag, sp, _link_range| {
         if let Some(sp) = sp {
-            diag.span_label(sp, "this item is private");
+            diag.span_label(sp, format!("this item is {private}"));
         }
 
         let note_msg = if cx.render_options.document_private {
-            "this link resolves only because you passed `--document-private-items`, but will break without"
+            format!("this link resolves only because you passed `{flag}`, but will break without")
         } else {
-            "this link will resolve properly if you pass `--document-private-items`"
+            format!("this link will resolve properly if you pass `{flag}`")
         };
         diag.note(note_msg);
     });

@@ -98,6 +98,17 @@ declare_rustdoc_lint! {
 }
 
 declare_rustdoc_lint! {
+    /// This is a subset of `broken_intra_doc_links` that warns when linking from
+    /// a non-hidden item to a hidden one. This is a `rustdoc` only lint, see the
+    /// documentation in the [rustdoc book].
+    ///
+    /// [rustdoc book]: ../../../rustdoc/lints.html#hidden_intra_doc_links
+    HIDDEN_INTRA_DOC_LINKS,
+    Warn,
+    "linking from a non-hidden item to a hidden one"
+}
+
+declare_rustdoc_lint! {
     /// The `invalid_codeblock_attributes` lint detects code block attributes
     /// in documentation examples that have potentially mis-typed values. This
     /// is a `rustdoc` only lint, see the documentation in the [rustdoc book].
@@ -199,6 +210,7 @@ declare_rustdoc_lint! {
 pub(crate) static RUSTDOC_LINTS: Lazy<Vec<&'static Lint>> = Lazy::new(|| {
     vec![
         BROKEN_INTRA_DOC_LINKS,
+        HIDDEN_INTRA_DOC_LINKS,
         PRIVATE_INTRA_DOC_LINKS,
         MISSING_DOC_CODE_EXAMPLES,
         PRIVATE_DOC_TESTS,
