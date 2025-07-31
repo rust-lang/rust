@@ -27,7 +27,6 @@ extern crate ra_ap_rustc_lexer as rustc_lexer;
 extern crate rustc_lexer;
 
 mod dylib;
-mod proc_macros;
 mod server_impl;
 
 use std::{
@@ -81,16 +80,17 @@ impl ProcMacroSrv<'_> {
         lib: impl AsRef<Utf8Path>,
         env: &[(String, String)],
         current_dir: Option<impl AsRef<Path>>,
-        macro_name: String,
+        macro_name: &str,
         macro_body: tt::TopSubtree<S>,
         attribute: Option<tt::TopSubtree<S>>,
         def_site: S,
         call_site: S,
         mixed_site: S,
-    ) -> Result<Vec<tt::TokenTree<S>>, String> {
+    ) -> Result<Vec<tt::TokenTree<S>>, PanicMessage> {
         let snapped_env = self.env;
-        let expander =
-            self.expander(lib.as_ref()).map_err(|err| format!("failed to load macro: {err}"))?;
+        let expander = self.expander(lib.as_ref()).map_err(|err| PanicMessage {
+            message: Some(format!("failed to load macro: {err}")),
+        })?;
 
         let prev_env = EnvChange::apply(snapped_env, env, current_dir.as_ref().map(<_>::as_ref));
 
@@ -99,11 +99,11 @@ impl ProcMacroSrv<'_> {
         let result = thread::scope(|s| {
             let thread = thread::Builder::new()
                 .stack_size(EXPANDER_STACK_SIZE)
-                .name(macro_name.clone())
+                .name(macro_name.to_owned())
                 .spawn_scoped(s, move || {
                     expander
                         .expand(
-                            &macro_name,
+                            macro_name,
                             server_impl::TopSubtree(macro_body.0.into_vec()),
                             attribute.map(|it| server_impl::TopSubtree(it.0.into_vec())),
                             def_site,
@@ -112,12 +112,7 @@ impl ProcMacroSrv<'_> {
                         )
                         .map(|tt| tt.0)
                 });
-            let res = match thread {
-                Ok(handle) => handle.join(),
-                Err(e) => return Err(e.to_string()),
-            };
-
-            match res {
+            match thread.unwrap().join() {
                 Ok(res) => res,
                 Err(e) => std::panic::resume_unwind(e),
             }
@@ -132,7 +127,7 @@ impl ProcMacroSrv<'_> {
         dylib_path: &Utf8Path,
     ) -> Result<Vec<(String, ProcMacroKind)>, String> {
         let expander = self.expander(dylib_path)?;
-        Ok(expander.list_macros())
+        Ok(expander.list_macros().map(|(k, v)| (k.to_owned(), v)).collect())
     }
 
     fn expander(&self, path: &Utf8Path) -> Result<Arc<dylib::Expander>, String> {
@@ -186,6 +181,8 @@ impl ProcMacroSrvSpan for Span {
         }
     }
 }
+
+#[derive(Debug, Clone)]
 pub struct PanicMessage {
     message: Option<String>,
 }
@@ -265,14 +262,14 @@ impl Drop for EnvChange<'_> {
             }
         }
 
-        if let Some(dir) = &self.prev_working_dir {
-            if let Err(err) = std::env::set_current_dir(dir) {
-                eprintln!(
-                    "Failed to set the current working dir to {}. Error: {:?}",
-                    dir.display(),
-                    err
-                )
-            }
+        if let Some(dir) = &self.prev_working_dir
+            && let Err(err) = std::env::set_current_dir(dir)
+        {
+            eprintln!(
+                "Failed to set the current working dir to {}. Error: {:?}",
+                dir.display(),
+                err
+            )
         }
     }
 }

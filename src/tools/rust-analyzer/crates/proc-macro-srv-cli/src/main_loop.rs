@@ -24,13 +24,13 @@ impl SpanTransformer for SpanTrans {
         _: &mut Self::Table,
         span: Self::Span,
     ) -> proc_macro_api::legacy_protocol::SpanId {
-        proc_macro_api::legacy_protocol::SpanId(span.0 as u32)
+        proc_macro_api::legacy_protocol::SpanId(span.0)
     }
     fn span_for_token_id(
         _: &Self::Table,
         id: proc_macro_api::legacy_protocol::SpanId,
     ) -> Self::Span {
-        SpanId(id.0 as u32)
+        SpanId(id.0)
     }
 }
 
@@ -99,7 +99,7 @@ fn run_json() -> io::Result<()> {
                             lib,
                             &env,
                             current_dir,
-                            macro_name,
+                            &macro_name,
                             macro_body,
                             attributes,
                             def_site,
@@ -112,6 +112,7 @@ fn run_json() -> io::Result<()> {
                                 CURRENT_API_VERSION,
                             )
                         })
+                        .map_err(|e| e.into_string().unwrap_or_default())
                         .map_err(msg::PanicMessage)
                     }),
                     SpanMode::RustAnalyzer => msg::Response::ExpandMacroExtended({
@@ -130,7 +131,7 @@ fn run_json() -> io::Result<()> {
                             lib,
                             &env,
                             current_dir,
-                            macro_name,
+                            &macro_name,
                             macro_body,
                             attributes,
                             def_site,
@@ -151,6 +152,7 @@ fn run_json() -> io::Result<()> {
                             tree,
                             span_data_table,
                         })
+                        .map_err(|e| e.into_string().unwrap_or_default())
                         .map_err(msg::PanicMessage)
                     }),
                 }
