@@ -432,11 +432,7 @@ where
         // args have changed. Otherwise, we don't need to re-run the goal because it'll remain
         // stalled, since it'll canonicalize the same way and evaluation is pure.
         if let Some(stalled_on) = stalled_on
-            && !stalled_on.stalled_vars.iter().any(|value| self.delegate.is_changed_arg(*value))
-            && !self
-                .delegate
-                .opaque_types_storage_num_entries()
-                .needs_reevaluation(stalled_on.num_opaques)
+            && self.delegate.is_still_stalled(&stalled_on)
         {
             return Ok((
                 NestedNormalizationGoals::empty(),

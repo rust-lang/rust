@@ -5,16 +5,16 @@ LL |     build(x)
    |     ^^^^^^^^ cannot normalize `build<_>::{opaque#0}`
 
 error[E0271]: type mismatch resolving `build2<(_,)>::{opaque#0} normalizes-to _`
-  --> $DIR/recursive-in-exhaustiveness.rs:30:6
-   |
-LL |     (build2(x),)
-   |      ^^^^^^^^^ types differ
-
-error[E0271]: type mismatch resolving `build2<(_,)>::{opaque#0} normalizes-to _`
   --> $DIR/recursive-in-exhaustiveness.rs:30:5
    |
 LL |     (build2(x),)
    |     ^^^^^^^^^^^^ types differ
+
+error[E0271]: type mismatch resolving `build2<(_,)>::{opaque#0} normalizes-to _`
+  --> $DIR/recursive-in-exhaustiveness.rs:30:6
+   |
+LL |     (build2(x),)
+   |      ^^^^^^^^^ types differ
 
 error[E0277]: the size for values of type `(impl Sized,)` cannot be known at compilation time
   --> $DIR/recursive-in-exhaustiveness.rs:30:5
