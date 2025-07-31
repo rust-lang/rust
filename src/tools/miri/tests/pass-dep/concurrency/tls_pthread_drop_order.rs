@@ -53,6 +53,7 @@ unsafe extern "C" fn dtor(ptr: *mut u64) {
     // The correct sequence is: First key 0, then key 1, then key 0.
     // Note that this relies on dtor order, which is not specified by POSIX, but seems to be
     // consistent between Miri and Linux currently (as of Aug 2022).
+    #[expect(leading_zeros_in_decimal_literals)]
     if RECORD == 0_1_0 {
         drop(Box::from_raw(CANARY));
         CANARY = ptr::null_mut();

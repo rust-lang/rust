@@ -182,6 +182,7 @@ early_lint_methods!(
             Expr2024: Expr2024,
             Precedence: Precedence,
             DoubleNegations: DoubleNegations,
+            LeadingZerosInDecimals: LeadingZerosInDecimals,
         ]
     ]
 );
