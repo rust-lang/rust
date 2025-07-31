@@ -176,7 +176,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                 }
                 self.format_missing(stmt.span().hi());
             }
-            ast::StmtKind::Empty => (),
+            ast::StmtKind::Empty(_) => (),
         }
     }
 
@@ -908,7 +908,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
             let include_next_empty = if stmts.len() > 1 {
                 matches!(
                     (&stmts[0].as_ast_node().kind, &stmts[1].as_ast_node().kind),
-                    (ast::StmtKind::Item(_), ast::StmtKind::Empty)
+                    (ast::StmtKind::Item(_), ast::StmtKind::Empty(_))
                 )
             } else {
                 false

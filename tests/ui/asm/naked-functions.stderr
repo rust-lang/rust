@@ -156,7 +156,7 @@ LL | pub extern "C" fn too_many_asm_blocks() {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 ...
 LL |     naked_asm!("");
-   |     -------------- multiple `naked_asm!` invocations are not allowed in naked functions
+   |     --------------- multiple `naked_asm!` invocations are not allowed in naked functions
 
 error: referencing function parameters is not allowed in naked functions
   --> $DIR/naked-functions.rs:96:11

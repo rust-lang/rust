@@ -1074,30 +1074,6 @@ impl SourceMap {
         let source_file = &self.files()[source_file_index];
         source_file.is_imported()
     }
-
-    /// Gets the span of a statement. If the statement is a macro expansion, the
-    /// span in the context of the block span is found. The trailing semicolon is included
-    /// on a best-effort basis.
-    pub fn stmt_span(&self, stmt_span: Span, block_span: Span) -> Span {
-        if !stmt_span.from_expansion() {
-            return stmt_span;
-        }
-        let mac_call = original_sp(stmt_span, block_span);
-        self.mac_call_stmt_semi_span(mac_call).map_or(mac_call, |s| mac_call.with_hi(s.hi()))
-    }
-
-    /// Tries to find the span of the semicolon of a macro call statement.
-    /// The input must be the *call site* span of a statement from macro expansion.
-    /// ```ignore (illustrative)
-    /// //       v output
-    ///    mac!();
-    /// // ^^^^^^ input
-    /// ```
-    pub fn mac_call_stmt_semi_span(&self, mac_call: Span) -> Option<Span> {
-        let span = self.span_extend_while_whitespace(mac_call);
-        let span = self.next_point(span);
-        if self.span_to_snippet(span).as_deref() == Ok(";") { Some(span) } else { None }
-    }
 }
 
 pub fn get_source_map() -> Option<Arc<SourceMap>> {

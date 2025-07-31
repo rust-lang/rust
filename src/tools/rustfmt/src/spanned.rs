@@ -75,7 +75,7 @@ impl Spanned for ast::Stmt {
                     mk_sp(mac_stmt.attrs[0].span.lo(), self.span.hi())
                 }
             }
-            ast::StmtKind::Empty => self.span,
+            ast::StmtKind::Empty(_) => self.span,
         }
     }
 }

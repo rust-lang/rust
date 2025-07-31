@@ -1446,7 +1446,7 @@ impl<'a> State<'a> {
                 self.print_expr_outer_attr_style(expr, false, FixupContext::new_stmt());
                 self.word(";");
             }
-            ast::StmtKind::Empty => {
+            ast::StmtKind::Empty(_) => {
                 self.space_if_not_bol();
                 self.word(";");
             }
@@ -1454,7 +1454,7 @@ impl<'a> State<'a> {
                 self.space_if_not_bol();
                 self.print_outer_attributes(&mac.attrs);
                 self.print_mac(&mac.mac);
-                if mac.style == ast::MacStmtStyle::Semicolon {
+                if matches!(mac.style, ast::MacStmtStyle::Semicolon(_)) {
                     self.word(";");
                 }
             }

@@ -1204,7 +1204,7 @@ macro_rules! assign_id {
 }
 
 enum AddSemicolon {
-    Yes,
+    Yes(Span),
     No,
 }
 
@@ -1687,7 +1687,7 @@ impl InvocationCollectorNode for ast::Stmt {
             StmtKind::Item(item) => matches!(item.kind, ItemKind::MacCall(..)),
             StmtKind::Semi(expr) => matches!(expr.kind, ExprKind::MacCall(..)),
             StmtKind::Expr(..) => unreachable!(),
-            StmtKind::Let(..) | StmtKind::Empty => false,
+            StmtKind::Let(..) | StmtKind::Empty(_) => false,
         }
     }
     fn take_mac_call(self) -> (P<ast::MacCall>, ast::AttrVec, AddSemicolon) {
@@ -1696,23 +1696,32 @@ impl InvocationCollectorNode for ast::Stmt {
         let (add_semicolon, mac, attrs) = match self.kind {
             StmtKind::MacCall(mac) => {
                 let ast::MacCallStmt { mac, style, attrs, .. } = *mac;
-                (style == MacStmtStyle::Semicolon, mac, attrs)
+                let add_semicolon = match style {
+                    MacStmtStyle::Semicolon(span) => AddSemicolon::Yes(span),
+                    MacStmtStyle::Braces | MacStmtStyle::NoBraces => AddSemicolon::No,
+                };
+                (add_semicolon, mac, attrs)
             }
             StmtKind::Item(item) => match *item {
                 ast::Item { kind: ItemKind::MacCall(mac), attrs, .. } => {
-                    (mac.args.need_semicolon(), mac, attrs)
+                    (AddSemicolon::No, mac, attrs)
                 }
                 _ => unreachable!(),
             },
             StmtKind::Semi(expr) => match *expr {
-                ast::Expr { kind: ExprKind::MacCall(mac), attrs, .. } => {
-                    (mac.args.need_semicolon(), mac, attrs)
+                ast::Expr { kind: ExprKind::MacCall(mac), attrs, span: expr_span, .. } => {
+                    let add_semicolon = if mac.args.need_semicolon() {
+                        AddSemicolon::Yes(expr_span.shrink_to_hi().to(self.span))
+                    } else {
+                        AddSemicolon::No
+                    };
+                    (add_semicolon, mac, attrs)
                 }
                 _ => unreachable!(),
             },
             _ => unreachable!(),
         };
-        (mac, attrs, if add_semicolon { AddSemicolon::Yes } else { AddSemicolon::No })
+        (mac, attrs, add_semicolon)
     }
     fn delegation(&self) -> Option<(&ast::DelegationMac, &ast::Item<Self::ItemKind>)> {
         match &self.kind {
@@ -1735,9 +1744,9 @@ impl InvocationCollectorNode for ast::Stmt {
     fn post_flat_map_node_collect_bang(stmts: &mut Self::OutputTy, add_semicolon: AddSemicolon) {
         // If this is a macro invocation with a semicolon, then apply that
         // semicolon to the final statement produced by expansion.
-        if matches!(add_semicolon, AddSemicolon::Yes) {
+        if let AddSemicolon::Yes(semi_span) = add_semicolon {
             if let Some(stmt) = stmts.pop() {
-                stmts.push(stmt.add_trailing_semicolon());
+                stmts.push(stmt.add_trailing_semicolon(semi_span));
             }
         }
     }

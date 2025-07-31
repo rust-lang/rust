@@ -1,4 +1,4 @@
-use rustc_ast::{Block, StmtKind};
+use rustc_ast::{Block, EmptyFromMacro, StmtKind};
 use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::Span;
 
@@ -33,8 +33,10 @@ impl EarlyLintPass for RedundantSemicolons {
         let mut seq = None;
         for stmt in block.stmts.iter() {
             match (&stmt.kind, &mut seq) {
-                (StmtKind::Empty, None) => seq = Some((stmt.span, false)),
-                (StmtKind::Empty, Some(seq)) => *seq = (seq.0.to(stmt.span), true),
+                (StmtKind::Empty(EmptyFromMacro::No), None) => seq = Some((stmt.span, false)),
+                (StmtKind::Empty(EmptyFromMacro::No), Some(seq)) => {
+                    *seq = (seq.0.to(stmt.span), true)
+                }
                 (_, seq) => maybe_lint_redundant_semis(cx, seq),
             }
         }
@@ -44,10 +46,6 @@ impl EarlyLintPass for RedundantSemicolons {
 
 fn maybe_lint_redundant_semis(cx: &EarlyContext<'_>, seq: &mut Option<(Span, bool)>) {
     if let Some((span, multiple)) = seq.take() {
-        if span == rustc_span::DUMMY_SP {
-            return;
-        }
-
         // Ignore redundant semicolons inside macro expansion.(issue #142143)
         let suggestion = if span.from_expansion() {
             None

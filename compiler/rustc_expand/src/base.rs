@@ -124,7 +124,7 @@ impl Annotatable {
             Annotatable::AssocItem(node, _) => TokenStream::from_ast(node),
             Annotatable::ForeignItem(node) => TokenStream::from_ast(node),
             Annotatable::Stmt(node) => {
-                assert!(!matches!(node.kind, ast::StmtKind::Empty));
+                assert!(!matches!(node.kind, ast::StmtKind::Empty(_)));
                 TokenStream::from_ast(node)
             }
             Annotatable::Expr(node) => TokenStream::from_ast(node),

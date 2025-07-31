@@ -28,8 +28,9 @@ error[E0308]: mismatched types
   --> $DIR/liveness-return-last-stmt-semi.rs:3:41
    |
 LL | macro_rules! test { () => { fn foo() -> i32 { 1; } } }
-   |                                ---      ^^^ expected `i32`, found `()`
-   |                                |
+   |                                ---      ^^^    - help: remove this semicolon to return this value
+   |                                |        |
+   |                                |        expected `i32`, found `()`
    |                                implicitly returns `()` as its body has no tail or `return` expression
 ...
 LL |     test!();

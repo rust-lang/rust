@@ -1185,7 +1185,7 @@ impl Stmt {
     pub fn has_trailing_semicolon(&self) -> bool {
         match &self.kind {
             StmtKind::Semi(_) => true,
-            StmtKind::MacCall(mac) => matches!(mac.style, MacStmtStyle::Semicolon),
+            StmtKind::MacCall(mac) => matches!(mac.style, MacStmtStyle::Semicolon(_)),
             _ => false,
         }
     }
@@ -1197,11 +1197,14 @@ impl Stmt {
     /// `LazyAttrTokenStream`. The parser is responsible for calling
     /// `ToAttrTokenStream::add_trailing_semi` when there is actually
     /// a semicolon in the tokenstream.
-    pub fn add_trailing_semicolon(mut self) -> Self {
+    pub fn add_trailing_semicolon(mut self, semi_span: Span) -> Self {
+        if let Some(mac_span) = self.span.find_ancestor_in_same_ctxt(semi_span) {
+            self.span = mac_span.to(semi_span);
+        }
         self.kind = match self.kind {
             StmtKind::Expr(expr) => StmtKind::Semi(expr),
             StmtKind::MacCall(mut mac) => {
-                mac.style = MacStmtStyle::Semicolon;
+                mac.style = MacStmtStyle::Semicolon(semi_span);
                 StmtKind::MacCall(mac)
             }
             kind => kind,
@@ -1231,9 +1234,15 @@ pub enum StmtKind {
     /// Expr with a trailing semi-colon.
     Semi(P<Expr>),
     /// Just a trailing semi-colon.
-    Empty,
+    Empty(EmptyFromMacro),
     /// Macro.
     MacCall(P<MacCallStmt>),
+}
+
+#[derive(Clone, Encodable, Decodable, Debug, Walkable)]
+pub enum EmptyFromMacro {
+    Yes,
+    No,
 }
 
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]
@@ -1248,7 +1257,7 @@ pub struct MacCallStmt {
 pub enum MacStmtStyle {
     /// The macro statement had a trailing semicolon (e.g., `foo! { ... };`
     /// `foo!(...);`, `foo![...];`).
-    Semicolon,
+    Semicolon(Span),
     /// The macro statement had braces (e.g., `foo! { ... }`).
     Braces,
     /// The macro statement had parentheses or brackets and no semicolon (e.g.,

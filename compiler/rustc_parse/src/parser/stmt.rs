@@ -3,13 +3,13 @@ use std::mem;
 use std::ops::Bound;
 
 use ast::Label;
-use rustc_ast as ast;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, InvisibleOrigin, MetaVarKind, TokenKind};
 use rustc_ast::util::classify::{self, TrailingBrace};
 use rustc_ast::{
-    AttrStyle, AttrVec, Block, BlockCheckMode, DUMMY_NODE_ID, Expr, ExprKind, HasAttrs, Local,
-    LocalKind, MacCall, MacCallStmt, MacStmtStyle, Recovered, Stmt, StmtKind,
+    self as ast, AttrStyle, AttrVec, Block, BlockCheckMode, DUMMY_NODE_ID, EmptyFromMacro, Expr,
+    ExprKind, HasAttrs, Local, LocalKind, MacCall, MacCallStmt, MacStmtStyle, Recovered, Stmt,
+    StmtKind,
 };
 use rustc_errors::{Applicability, Diag, PResult};
 use rustc_span::{BytePos, ErrorGuaranteed, Ident, Span, kw, sym};
@@ -161,7 +161,7 @@ impl<'a> Parser<'a> {
         } else if self.eat(exp!(Semi)) {
             // Do not attempt to parse an expression if we're done here.
             self.error_outer_attrs(attrs);
-            self.mk_stmt(lo, StmtKind::Empty)
+            self.mk_stmt(lo, StmtKind::Empty(EmptyFromMacro::No))
         } else if self.token != token::CloseBrace {
             // Remainder are line-expr stmts. This is similar to the `parse_stmt_path_start` case
             // above.
@@ -548,7 +548,7 @@ impl<'a> Parser<'a> {
                     && self.look_ahead(1, |t| t == &token::OpenBrace))
                     || do_not_suggest_help => {}
             // Do not suggest `if foo println!("") {;}` (as would be seen in test for #46836).
-            Ok(Some(Stmt { kind: StmtKind::Empty, .. })) => {}
+            Ok(Some(Stmt { kind: StmtKind::Empty(_), .. })) => {}
             Ok(Some(stmt)) => {
                 let stmt_own_line = self.psess.source_map().is_line_before_span_empty(sp);
                 let stmt_span = if stmt_own_line && self.eat(exp!(Semi)) {
@@ -1032,13 +1032,13 @@ impl<'a> Parser<'a> {
                 }
                 eat_semi = false;
             }
-            StmtKind::Empty | StmtKind::Item(_) | StmtKind::Let(_) | StmtKind::Semi(_) => {
+            StmtKind::Empty(_) | StmtKind::Item(_) | StmtKind::Let(_) | StmtKind::Semi(_) => {
                 eat_semi = false
             }
         }
 
         if add_semi_to_stmt || (eat_semi && self.eat(exp!(Semi))) {
-            stmt = stmt.add_trailing_semicolon();
+            stmt = stmt.add_trailing_semicolon(self.prev_token.span);
         }
 
         stmt.span = stmt.span.to(self.prev_token.span);

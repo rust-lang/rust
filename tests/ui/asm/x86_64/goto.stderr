@@ -10,7 +10,7 @@ LL | |             options(noreturn)
 LL | |         );
    | |_________- any code following this expression is unreachable
 LL |           unreachable!();
-   |           ^^^^^^^^^^^^^^ unreachable statement
+   |           ^^^^^^^^^^^^^^^ unreachable statement
    |
 note: the lint level is defined here
   --> $DIR/goto.rs:133:8

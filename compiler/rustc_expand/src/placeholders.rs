@@ -2,7 +2,7 @@ use rustc_ast::mut_visit::*;
 use rustc_ast::ptr::P;
 use rustc_ast::token::Delimiter;
 use rustc_ast::visit::AssocCtxt;
-use rustc_ast::{self as ast, Safety};
+use rustc_ast::{self as ast, EmptyFromMacro, Safety};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_span::{DUMMY_SP, Ident};
 use smallvec::{SmallVec, smallvec};
@@ -359,7 +359,7 @@ impl MutVisitor for PlaceholderExpander {
             _ => return walk_flat_map_stmt(self, stmt),
         };
 
-        if style == ast::MacStmtStyle::Semicolon {
+        if let ast::MacStmtStyle::Semicolon(semi_span) = style {
             // Implement the proposal described in
             // https://github.com/rust-lang/rust/issues/61733#issuecomment-509626449
             //
@@ -379,17 +379,18 @@ impl MutVisitor for PlaceholderExpander {
             // If it does have a semicolon, then 'parse' the trailing semicolon
             // from the invocation as a new StmtKind::Empty
 
-            // FIXME: We will need to preserve the original semicolon token and
-            // span as part of #15701
-            let empty_stmt =
-                ast::Stmt { id: ast::DUMMY_NODE_ID, kind: ast::StmtKind::Empty, span: DUMMY_SP };
+            let empty_stmt = ast::Stmt {
+                id: ast::DUMMY_NODE_ID,
+                kind: ast::StmtKind::Empty(EmptyFromMacro::Yes),
+                span: semi_span,
+            };
 
             if let Some(stmt) = stmts.pop() {
                 if stmt.has_trailing_semicolon() {
                     stmts.push(stmt);
                     stmts.push(empty_stmt);
                 } else {
-                    stmts.push(stmt.add_trailing_semicolon());
+                    stmts.push(stmt.add_trailing_semicolon(semi_span));
                 }
             } else {
                 stmts.push(empty_stmt);
