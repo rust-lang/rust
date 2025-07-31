@@ -380,7 +380,7 @@ fn generate_thin_lto_work<B: ExtraBackendMethods>(
     each_linked_rlib_for_lto: &[PathBuf],
     needs_thin_lto: Vec<(String, B::ThinBuffer)>,
     import_only_modules: Vec<(SerializedModule<B::ModuleBuffer>, WorkProduct)>,
-) -> Vec<(WorkItem<B>, u64)> {
+) -> Vec<(ThinLtoWorkItem<B>, u64)> {
     let _prof_timer = cgcx.prof.generic_activity("codegen_thin_generate_lto_work");
 
     let (lto_modules, copy_jobs) = B::run_thin_lto(
@@ -394,11 +394,11 @@ fn generate_thin_lto_work<B: ExtraBackendMethods>(
         .into_iter()
         .map(|module| {
             let cost = module.cost();
-            (WorkItem::ThinLto(module), cost)
+            (ThinLtoWorkItem::ThinLto(module), cost)
         })
         .chain(copy_jobs.into_iter().map(|wp| {
             (
-                WorkItem::CopyPostLtoArtifacts(CachedModuleCodegen {
+                ThinLtoWorkItem::CopyPostLtoArtifacts(CachedModuleCodegen {
                     name: wp.cgu_name.clone(),
                     source: wp,
                 }),
@@ -703,6 +703,12 @@ pub(crate) enum WorkItem<B: WriteBackendMethods> {
     /// Copy the post-LTO artifacts from the incremental cache to the output
     /// directory.
     CopyPostLtoArtifacts(CachedModuleCodegen),
+}
+
+enum ThinLtoWorkItem<B: WriteBackendMethods> {
+    /// Copy the post-LTO artifacts from the incremental cache to the output
+    /// directory.
+    CopyPostLtoArtifacts(CachedModuleCodegen),
     /// Performs thin-LTO on the given module.
     ThinLto(lto::ThinModule<B>),
 }
@@ -752,7 +758,18 @@ impl<B: WriteBackendMethods> WorkItem<B> {
         match self {
             WorkItem::Optimize(m) => desc("opt", "optimize module", &m.name),
             WorkItem::CopyPostLtoArtifacts(m) => desc("cpy", "copy LTO artifacts for", &m.name),
-            WorkItem::ThinLto(m) => desc("lto", "thin-LTO module", m.name()),
+        }
+    }
+}
+
+impl<B: WriteBackendMethods> ThinLtoWorkItem<B> {
+    /// Generate a short description of this work item suitable for use as a thread name.
+    fn short_description(&self) -> String {
+        match self {
+            ThinLtoWorkItem::CopyPostLtoArtifacts(m) => {
+                desc("cpy", "copy LTO artifacts for", &m.name)
+            }
+            ThinLtoWorkItem::ThinLto(m) => desc("lto", "thin-LTO module", m.name()),
         }
     }
 }
@@ -883,7 +900,7 @@ fn execute_optimize_work_item<B: ExtraBackendMethods>(
 fn execute_copy_from_cache_work_item<B: ExtraBackendMethods>(
     cgcx: &CodegenContext<B>,
     module: CachedModuleCodegen,
-) -> WorkItemResult<B> {
+) -> CompiledModule {
     let _timer = cgcx
         .prof
         .generic_activity_with_arg("codegen_copy_artifacts_from_incr_cache", &*module.name);
@@ -956,7 +973,7 @@ fn execute_copy_from_cache_work_item<B: ExtraBackendMethods>(
         cgcx.create_dcx().handle().emit_fatal(errors::NoSavedObjectFile { cgu_name: &module.name })
     }
 
-    WorkItemResult::Finished(CompiledModule {
+    CompiledModule {
         links_from_incr_cache,
         kind: ModuleKind::Regular,
         name: module.name,
@@ -965,7 +982,7 @@ fn execute_copy_from_cache_work_item<B: ExtraBackendMethods>(
         bytecode,
         assembly,
         llvm_ir,
-    })
+    }
 }
 
 fn do_fat_lto<B: ExtraBackendMethods>(
@@ -1015,7 +1032,7 @@ fn do_thin_lto<'a, B: ExtraBackendMethods>(
     let coordinator_send2 = coordinator_send.clone();
     let helper = jobserver::client()
         .into_helper_thread(move |token| {
-            drop(coordinator_send2.send(Message::Token::<B>(token)));
+            drop(coordinator_send2.send(ThinLtoMessage::Token(token)));
         })
         .expect("failed to spawn helper thread");
 
@@ -1069,7 +1086,7 @@ fn do_thin_lto<'a, B: ExtraBackendMethods>(
             while used_token_count < tokens.len() + 1
                 && let Some((item, _)) = work_items.pop()
             {
-                spawn_work(&cgcx, coordinator_send.clone(), llvm_start_time, item);
+                spawn_thin_lto_work(&cgcx, coordinator_send.clone(), llvm_start_time, item);
                 used_token_count += 1;
             }
         } else {
@@ -1087,7 +1104,7 @@ fn do_thin_lto<'a, B: ExtraBackendMethods>(
             // Save the token locally and the next turn of the loop will use
             // this to spawn a new unit of work, or it may get dropped
             // immediately if we have no more work to spawn.
-            Message::Token(token) => match token {
+            ThinLtoMessage::Token(token) => match token {
                 Ok(token) => {
                     tokens.push(token);
                 }
@@ -1098,14 +1115,7 @@ fn do_thin_lto<'a, B: ExtraBackendMethods>(
                 }
             },
 
-            Message::CodegenDone { .. }
-            | Message::CodegenComplete
-            | Message::CodegenAborted
-            | Message::AddImportOnlyModule { .. } => {
-                unreachable!()
-            }
-
-            Message::WorkItem { result } => {
+            ThinLtoMessage::WorkItem { result } => {
                 // If a thread exits successfully then we drop a token associated
                 // with that worker and update our `used_token_count` count.
                 // We may later re-acquire a token to continue running more work.
@@ -1114,12 +1124,7 @@ fn do_thin_lto<'a, B: ExtraBackendMethods>(
                 used_token_count -= 1;
 
                 match result {
-                    Ok(WorkItemResult::Finished(compiled_module)) => {
-                        compiled_modules.push(compiled_module);
-                    }
-                    Ok(WorkItemResult::NeedsFatLto(_)) | Ok(WorkItemResult::NeedsThinLto(_, _)) => {
-                        unreachable!()
-                    }
+                    Ok(compiled_module) => compiled_modules.push(compiled_module),
                     Err(Some(WorkerFatalError)) => {
                         // Like `CodegenAborted`, wait for remaining work to finish.
                         codegen_aborted = Some(FatalError);
@@ -1144,12 +1149,11 @@ fn do_thin_lto<'a, B: ExtraBackendMethods>(
 fn execute_thin_lto_work_item<B: ExtraBackendMethods>(
     cgcx: &CodegenContext<B>,
     module: lto::ThinModule<B>,
-) -> WorkItemResult<B> {
+) -> CompiledModule {
     let _timer = cgcx.prof.generic_activity_with_arg("codegen_module_perform_lto", module.name());
 
     let module = B::optimize_thin(cgcx, module);
-    let module = B::codegen(cgcx, module, &cgcx.module_config);
-    WorkItemResult::Finished(module)
+    B::codegen(cgcx, module, &cgcx.module_config)
 }
 
 /// Messages sent to the coordinator.
@@ -1181,6 +1185,17 @@ pub(crate) enum Message<B: WriteBackendMethods> {
     /// Some normal-ish compiler error occurred, and codegen should be wound
     /// down. Sent from the main thread.
     CodegenAborted,
+}
+
+/// Messages sent to the coordinator.
+pub(crate) enum ThinLtoMessage {
+    /// A jobserver token has become available. Sent from the jobserver helper
+    /// thread.
+    Token(io::Result<Acquired>),
+
+    /// The backend has finished processing a work item for a codegen unit.
+    /// Sent from a backend worker thread.
+    WorkItem { result: Result<CompiledModule, Option<WorkerFatalError>> },
 }
 
 /// A message sent from the coordinator thread to the main thread telling it to
@@ -1839,8 +1854,9 @@ fn spawn_work<'a, B: ExtraBackendMethods>(
     B::spawn_named_thread(cgcx.time_trace, work.short_description(), move || {
         let result = std::panic::catch_unwind(AssertUnwindSafe(|| match work {
             WorkItem::Optimize(m) => execute_optimize_work_item(&cgcx, m),
-            WorkItem::CopyPostLtoArtifacts(m) => execute_copy_from_cache_work_item(&cgcx, m),
-            WorkItem::ThinLto(m) => execute_thin_lto_work_item(&cgcx, m),
+            WorkItem::CopyPostLtoArtifacts(m) => {
+                WorkItemResult::Finished(execute_copy_from_cache_work_item(&cgcx, m))
+            }
         }));
 
         let msg = match result {
@@ -1854,6 +1870,41 @@ fn spawn_work<'a, B: ExtraBackendMethods>(
             }
 
             Err(_) => Message::WorkItem::<B> { result: Err(None) },
+        };
+        drop(coordinator_send.send(msg));
+    })
+    .expect("failed to spawn work thread");
+}
+
+fn spawn_thin_lto_work<'a, B: ExtraBackendMethods>(
+    cgcx: &'a CodegenContext<B>,
+    coordinator_send: Sender<ThinLtoMessage>,
+    llvm_start_time: &mut Option<VerboseTimingGuard<'a>>,
+    work: ThinLtoWorkItem<B>,
+) {
+    if llvm_start_time.is_none() {
+        *llvm_start_time = Some(cgcx.prof.verbose_generic_activity("LLVM_passes"));
+    }
+
+    let cgcx = cgcx.clone();
+
+    B::spawn_named_thread(cgcx.time_trace, work.short_description(), move || {
+        let result = std::panic::catch_unwind(AssertUnwindSafe(|| match work {
+            ThinLtoWorkItem::CopyPostLtoArtifacts(m) => execute_copy_from_cache_work_item(&cgcx, m),
+            ThinLtoWorkItem::ThinLto(m) => execute_thin_lto_work_item(&cgcx, m),
+        }));
+
+        let msg = match result {
+            Ok(result) => ThinLtoMessage::WorkItem { result: Ok(result) },
+
+            // We ignore any `FatalError` coming out of `execute_work_item`, as a
+            // diagnostic was already sent off to the main thread - just surface
+            // that there was an error in this worker.
+            Err(err) if err.is::<FatalErrorMarker>() => {
+                ThinLtoMessage::WorkItem { result: Err(Some(WorkerFatalError)) }
+            }
+
+            Err(_) => ThinLtoMessage::WorkItem { result: Err(None) },
         };
         drop(coordinator_send.send(msg));
     })
