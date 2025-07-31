@@ -99,7 +99,7 @@ pub(crate) fn add_tgt_offload_entry<'ll>(cx: &'ll SimpleCx<'_>) -> &'ll llvm::Ty
     offload_entry_ty
 }
 
-fn gen_tgt_kernel_global<'ll>(cx: &'ll SimpleCx<'_>) -> &'ll llvm::Type {
+fn gen_tgt_kernel_global<'ll>(cx: &'ll SimpleCx<'_>) -> (&'ll llvm::Type, Vec<&'ll llvm::Type>) {
     let kernel_arguments_ty = cx.type_named_struct("struct.__tgt_kernel_arguments");
     let tptr = cx.type_ptr();
     let ti64 = cx.type_i64();
@@ -134,7 +134,7 @@ fn gen_tgt_kernel_global<'ll>(cx: &'ll SimpleCx<'_>) -> &'ll llvm::Type {
         vec![ti32, ti32, tptr, tptr, tptr, tptr, tptr, tptr, ti64, ti64, tarr, tarr, ti32];
 
     cx.set_struct_body(kernel_arguments_ty, &kernel_elements, false);
-    kernel_arguments_ty
+    (kernel_arguments_ty, kernel_elements)
     // For now we don't handle kernels, so for now we just add a global dummy
     // to make sure that the __tgt_offload_entry is defined and handled correctly.
     //cx.declare_global("my_struct_global2", kernel_arguments_ty);
@@ -312,7 +312,7 @@ fn gen_call_handling<'ll>(
     let tgt_bin_desc = cx.type_named_struct("struct.__tgt_bin_desc");
     cx.set_struct_body(tgt_bin_desc, &tgt_bin_desc_ty, false);
 
-    let tgt_kernel_decl = gen_tgt_kernel_global(&cx);
+    let (tgt_kernel_decl, tgt_kernel_types) = gen_tgt_kernel_global(&cx);
     let (begin_mapper_decl, _, end_mapper_decl, fn_ty) = gen_tgt_data_mappers(&cx);
 
     let main_fn = cx.get_function("main");
@@ -470,22 +470,25 @@ fn gen_call_handling<'ll>(
     //store i32 0, ptr %40, align 4
     // FIXME(offload): launch kernels
     let mut values = vec![];
-    values.push(cx.get_const_i32(3));
-    values.push(cx.get_const_i32(3));
-    values.push(geps.0);
-    values.push(geps.1);
-    values.push(geps.2);
-    values.push(o_types[0]);
-    values.push(cx.const_null(cx.type_ptr()));
-    values.push(cx.const_null(cx.type_ptr()));
-    values.push(cx.get_const_i64(0));
-    values.push(cx.get_const_i64(0));
-    values.push();
-    values.push();
-    values.push(cx.get_const_i32(0));
-    for (value, i) in values.enumerate() {
-        let gep1 = builder.inbounds_gep(ty, a1, &[i32_0, cx.get_const_i32(i)]);
-        builder.store(p, alloca, Align::EIGHT);
+    values.push((4, cx.get_const_i32(3)));
+    values.push((4, cx.get_const_i32(3)));
+    values.push((8, geps.0));
+    values.push((8, geps.1));
+    values.push((8, geps.2));
+    values.push((8, o_types[0]));
+    values.push((8, cx.const_null(cx.type_ptr())));
+    values.push((8, cx.const_null(cx.type_ptr())));
+    values.push((8, cx.get_const_i64(0)));
+    values.push((8, cx.get_const_i64(0)));
+    let ti32 = cx.type_i32();
+    let ci32_0 = cx.get_const_i32(0);
+    values.push((8, cx.const_array(ti32, &vec![cx.get_const_i32(2097152), ci32_0, ci32_0])));
+    values.push((8, cx.const_array(ti32, &vec![cx.get_const_i32(256), ci32_0, ci32_0])));
+    values.push((4, cx.get_const_i32(0)));
+
+    for (i, value) in values.iter().enumerate() {
+        let ptr = builder.inbounds_gep(tgt_kernel_decl, a5, &[i32_0, cx.get_const_i32(i as u64)]);
+        builder.store(value.1, ptr, Align::from_bytes(value.0).unwrap());
     }
 
     // Step 4)
