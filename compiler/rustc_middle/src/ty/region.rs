@@ -495,3 +495,15 @@ impl BoundRegionKind {
         }
     }
 }
+
+// Some types are used a lot. Make sure they don't unintentionally get bigger.
+#[cfg(target_pointer_width = "64")]
+mod size_asserts {
+    use rustc_data_structures::static_assert_size;
+
+    use super::*;
+    // tidy-alphabetical-start
+    static_assert_size!(RegionKind<'_>, 20);
+    static_assert_size!(ty::WithCachedTypeInfo<RegionKind<'_>>, 48);
+    // tidy-alphabetical-end
+}

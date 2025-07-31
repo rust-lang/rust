@@ -2238,15 +2238,3 @@ pub struct DestructuredConst<'tcx> {
     pub variant: Option<VariantIdx>,
     pub fields: &'tcx [ty::Const<'tcx>],
 }
-
-// Some types are used a lot. Make sure they don't unintentionally get bigger.
-#[cfg(target_pointer_width = "64")]
-mod size_asserts {
-    use rustc_data_structures::static_assert_size;
-
-    use super::*;
-    // tidy-alphabetical-start
-    static_assert_size!(PredicateKind<'_>, 32);
-    static_assert_size!(WithCachedTypeInfo<TyKind<'_>>, 48);
-    // tidy-alphabetical-end
-}
