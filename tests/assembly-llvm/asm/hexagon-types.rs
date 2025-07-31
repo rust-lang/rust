@@ -19,28 +19,6 @@ extern "C" {
     static extern_static: u8;
 }
 
-macro_rules! check {
-    ($func:ident $ty:ident $class:ident) => {
-        #[no_mangle]
-        pub unsafe fn $func(x: $ty) -> $ty {
-            let y;
-            asm!("{} = {}", out($class) y, in($class) x);
-            y
-        }
-    };
-}
-
-macro_rules! check_reg {
-    ($func:ident $ty:ident $reg:tt) => {
-        #[no_mangle]
-        pub unsafe fn $func(x: $ty) -> $ty {
-            let y;
-            asm!(concat!($reg, " = ", $reg), lateout($reg) y, in($reg) x);
-            y
-        }
-    };
-}
-
 // CHECK-LABEL: sym_static:
 // CHECK: InlineAsm Start
 // CHECK: r0 = {{#+}}extern_static
@@ -78,11 +56,27 @@ pub unsafe fn packet() {
     }}", out(reg) _, in(reg) &val);
 }
 
-// CHECK-LABEL: reg_ptr:
-// CHECK: InlineAsm Start
-// CHECK: r{{[0-9]+}} = r{{[0-9]+}}
-// CHECK: InlineAsm End
-check!(reg_ptr ptr reg);
+macro_rules! check {
+    ($func:ident $ty:ident $class:ident) => {
+        #[no_mangle]
+        pub unsafe fn $func(x: $ty) -> $ty {
+            let y;
+            asm!("{} = {}", out($class) y, in($class) x);
+            y
+        }
+    };
+}
+
+macro_rules! check_reg {
+    ($func:ident $ty:ident $reg:tt) => {
+        #[no_mangle]
+        pub unsafe fn $func(x: $ty) -> $ty {
+            let y;
+            asm!(concat!($reg, " = ", $reg), lateout($reg) y, in($reg) x);
+            y
+        }
+    };
+}
 
 // CHECK-LABEL: reg_f32:
 // CHECK: InlineAsm Start
@@ -90,6 +84,11 @@ check!(reg_ptr ptr reg);
 // CHECK: InlineAsm End
 check!(reg_f32 f32 reg);
 
+// CHECK-LABEL: reg_i16:
+// CHECK: InlineAsm Start
+// CHECK: r{{[0-9]+}} = r{{[0-9]+}}
+// CHECK: InlineAsm End
+check!(reg_i16 i16 reg);
 // CHECK-LABEL: reg_i32:
 // CHECK: InlineAsm Start
 // CHECK: r{{[0-9]+}} = r{{[0-9]+}}
@@ -102,23 +101,23 @@ check!(reg_i32 i32 reg);
 // CHECK: InlineAsm End
 check!(reg_i8 i8 reg);
 
-// CHECK-LABEL: reg_i16:
+// CHECK-LABEL: reg_ptr:
 // CHECK: InlineAsm Start
 // CHECK: r{{[0-9]+}} = r{{[0-9]+}}
 // CHECK: InlineAsm End
-check!(reg_i16 i16 reg);
-
-// CHECK-LABEL: r0_ptr:
-// CHECK: InlineAsm Start
-// CHECK: r0 = r0
-// CHECK: InlineAsm End
-check_reg!(r0_ptr ptr "r0");
+check!(reg_ptr ptr reg);
 
 // CHECK-LABEL: r0_f32:
 // CHECK: InlineAsm Start
 // CHECK: r0 = r0
 // CHECK: InlineAsm End
 check_reg!(r0_f32 f32 "r0");
+
+// CHECK-LABEL: r0_i16:
+// CHECK: InlineAsm Start
+// CHECK: r0 = r0
+// CHECK: InlineAsm End
+check_reg!(r0_i16 i16 "r0");
 
 // CHECK-LABEL: r0_i32:
 // CHECK: InlineAsm Start
@@ -132,8 +131,8 @@ check_reg!(r0_i32 i32 "r0");
 // CHECK: InlineAsm End
 check_reg!(r0_i8 i8 "r0");
 
-// CHECK-LABEL: r0_i16:
+// CHECK-LABEL: r0_ptr:
 // CHECK: InlineAsm Start
 // CHECK: r0 = r0
 // CHECK: InlineAsm End
-check_reg!(r0_i16 i16 "r0");
+check_reg!(r0_ptr ptr "r0");

@@ -12,7 +12,6 @@ use rustc_hashes::Hash128;
 use rustc_hir::ItemId;
 use rustc_hir::attrs::InlineAttr;
 use rustc_hir::def_id::{CrateNum, DefId, DefIdSet, LOCAL_CRATE};
-use rustc_index::Idx;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_query_system::ich::StableHashingContext;
 use rustc_session::config::OptLevel;
@@ -540,7 +539,7 @@ impl<'tcx> CodegenUnit<'tcx> {
         ) -> Option<T> {
             match item {
                 MonoItem::Fn(ref instance) => match instance.def {
-                    InstanceKind::Item(def) => def.as_local().map(op),
+                    InstanceKind::Item(def) => def.as_local().map(|_| op(def)),
                     InstanceKind::VTableShim(..)
                     | InstanceKind::ReifyShim(..)
                     | InstanceKind::Intrinsic(..)
@@ -556,14 +555,14 @@ impl<'tcx> CodegenUnit<'tcx> {
                     | InstanceKind::FutureDropPollShim(..)
                     | InstanceKind::AsyncDropGlueCtorShim(..) => None,
                 },
-                MonoItem::Static(def_id) => def_id.as_local().map(op),
-                MonoItem::GlobalAsm(item_id) => Some(op(item_id.owner_id.def_id)),
+                MonoItem::Static(def_id) => def_id.as_local().map(|_| op(def_id)),
+                MonoItem::GlobalAsm(item_id) => Some(op(item_id.owner_id.def_id.to_def_id())),
             }
         }
         fn item_sort_key<'tcx>(tcx: TyCtxt<'tcx>, item: MonoItem<'tcx>) -> ItemSortKey<'tcx> {
             ItemSortKey(
                 local_item_query(item, |def_id| tcx.def_span(def_id)),
-                local_item_query(item, |def_id| tcx.def_path(id).to_string_no_crate_verbose()),
+                local_item_query(item, |def_id| tcx.def_path(def_id).to_string_no_crate_verbose()),
                 item.symbol_name(tcx),
             )
         }

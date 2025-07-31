@@ -88,7 +88,7 @@ pub(crate) fn compile_codegen_unit(
                 cx.codegen_unit.items_in_deterministic_order(cx.tcx)
             } else {
                 // The `items` has a deterministic order, so we can use it directly.
-                cx.codegen_unit.items().iter().cloned().collect()
+                cx.codegen_unit.items().iter().map(|(item, data)| (*item, *data)).collect()
             };
             for &(mono_item, data) in &mono_items {
                 mono_item.predefine::<Builder<'_, '_, '_>>(
