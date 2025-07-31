@@ -1428,6 +1428,21 @@ where
         &mut self,
         goal: Goal<I, TraitPredicate<I>>,
     ) -> Result<(CanonicalResponse<I>, Option<TraitGoalProvenVia>), NoSolution> {
+        if goal
+            .param_env
+            .caller_bounds()
+            .iter()
+            .filter_map(|c| c.as_trait_clause())
+            .filter_map(|c| c.no_bound_vars())
+            .any(|p| p == goal.predicate)
+        {
+            let candidate = self
+                .probe_trait_candidate(CandidateSource::ParamEnv(ParamEnvSource::NonGlobal))
+                .enter(|ecx| ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes))
+                .unwrap();
+            return Ok((candidate.result, Some(TraitGoalProvenVia::ParamEnv)));
+        }
+
         let candidates = self.assemble_and_evaluate_candidates(goal, AssembleCandidatesFrom::All);
         self.merge_trait_candidates(candidates)
     }

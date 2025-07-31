@@ -247,6 +247,7 @@ pub struct InferCtxt<'tcx> {
     /// the root universe. Most notably, this is used during hir typeck as region
     /// solving is left to borrowck instead.
     pub considering_regions: bool,
+    pub in_hir_typeck: bool,
 
     /// If set, this flag causes us to skip the 'leak check' during
     /// higher-ranked subtyping operations. This flag is a temporary one used
@@ -506,6 +507,7 @@ pub struct TypeOutlivesConstraint<'tcx> {
 pub struct InferCtxtBuilder<'tcx> {
     tcx: TyCtxt<'tcx>,
     considering_regions: bool,
+    in_hir_typeck: bool,
     skip_leak_check: bool,
     /// Whether we should use the new trait solver in the local inference context,
     /// which affects things like which solver is used in `predicate_may_hold`.
@@ -518,6 +520,7 @@ impl<'tcx> TyCtxt<'tcx> {
         InferCtxtBuilder {
             tcx: self,
             considering_regions: true,
+            in_hir_typeck: false,
             skip_leak_check: false,
             next_trait_solver: self.next_trait_solver_globally(),
         }
@@ -532,6 +535,11 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
 
     pub fn ignoring_regions(mut self) -> Self {
         self.considering_regions = false;
+        self
+    }
+
+    pub fn in_hir_typeck(mut self) -> Self {
+        self.in_hir_typeck = true;
         self
     }
 
@@ -568,12 +576,18 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
     }
 
     pub fn build(&mut self, typing_mode: TypingMode<'tcx>) -> InferCtxt<'tcx> {
-        let InferCtxtBuilder { tcx, considering_regions, skip_leak_check, next_trait_solver } =
-            *self;
+        let InferCtxtBuilder {
+            tcx,
+            considering_regions,
+            in_hir_typeck,
+            skip_leak_check,
+            next_trait_solver,
+        } = *self;
         InferCtxt {
             tcx,
             typing_mode,
             considering_regions,
+            in_hir_typeck,
             skip_leak_check,
             inner: RefCell::new(InferCtxtInner::new()),
             lexical_region_resolutions: RefCell::new(None),

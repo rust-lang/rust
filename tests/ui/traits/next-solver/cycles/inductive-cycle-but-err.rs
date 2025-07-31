@@ -41,10 +41,8 @@ where
 // These overflow errors will disappear once we treat these cycles as either
 // productive or an error.
 impl Trait for MultipleNested
-//~^ ERROR overflow evaluating the requirement `MultipleNested: Trait`
 where
     MultipleCandidates: Trait,
-    //~^ ERROR overflow evaluating the requirement `MultipleCandidates: Trait`
     DoesNotImpl: Trait,
 {}
 

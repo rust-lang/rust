@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/lifetime-incomplete-prefer-sized-builtin-over-wc.rs:20:5
+  --> $DIR/lifetime-incomplete-prefer-sized-builtin-over-wc.rs:27:5
    |
 LL | fn foo<'a, T: ?Sized>()
    |        -- lifetime `'a` defined here
