@@ -756,22 +756,22 @@ impl<'tcx> LateContext<'tcx> {
             }
 
             fn print_region(&mut self, _region: ty::Region<'_>) -> Result<(), PrintError> {
-                Ok(())
+                unreachable!(); // because `path_generic_args` ignores the `GenericArgs`
             }
 
             fn print_type(&mut self, _ty: Ty<'tcx>) -> Result<(), PrintError> {
-                Ok(())
+                unreachable!(); // because `path_generic_args` ignores the `GenericArgs`
             }
 
             fn print_dyn_existential(
                 &mut self,
                 _predicates: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
             ) -> Result<(), PrintError> {
-                Ok(())
+                unreachable!(); // because `path_generic_args` ignores the `GenericArgs`
             }
 
             fn print_const(&mut self, _ct: ty::Const<'tcx>) -> Result<(), PrintError> {
-                Ok(())
+                unreachable!(); // because `path_generic_args` ignores the `GenericArgs`
             }
 
             fn path_crate(&mut self, cnum: CrateNum) -> Result<(), PrintError> {
@@ -784,10 +784,10 @@ impl<'tcx> LateContext<'tcx> {
                 self_ty: Ty<'tcx>,
                 trait_ref: Option<ty::TraitRef<'tcx>>,
             ) -> Result<(), PrintError> {
-                if trait_ref.is_none() {
-                    if let ty::Adt(def, args) = self_ty.kind() {
-                        return self.print_def_path(def.did(), args);
-                    }
+                if trait_ref.is_none()
+                    && let ty::Adt(def, args) = self_ty.kind()
+                {
+                    return self.print_def_path(def.did(), args);
                 }
 
                 // This shouldn't ever be needed, but just in case:
