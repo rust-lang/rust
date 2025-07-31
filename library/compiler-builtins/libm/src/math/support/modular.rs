@@ -14,7 +14,6 @@ use crate::support::{DInt, HInt, Int};
 
 /// Compute the remainder `(x << e) % y` with unbounded integers.
 /// Requires `x < 2y` and `y.leading_zeros() >= 2`
-#[allow(dead_code)]
 pub fn linear_mul_reduction<U>(x: U, mut e: u32, mut y: U) -> U
 where
     U: HInt + Int<Unsigned = U>,

@@ -29,9 +29,7 @@ pub use hex_float::hf16;
 pub use hex_float::hf128;
 #[allow(unused_imports)]
 pub use hex_float::{hf32, hf64};
-#[allow(unused_imports)]
 pub use int_traits::{CastFrom, CastInto, DInt, HInt, Int, MinInt, NarrowingDiv};
-#[allow(unused_imports)]
 pub use modular::linear_mul_reduction;
 
 /// Hint to the compiler that the current path is cold.
