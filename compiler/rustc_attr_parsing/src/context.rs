@@ -213,7 +213,6 @@ mod private {
 #[allow(private_interfaces)]
 pub trait Stage: Sized + 'static + Sealed {
     type Id: Copy;
-    const SHOULD_EMIT_LINTS: bool;
 
     fn parsers() -> &'static group_type!(Self);
 
@@ -222,13 +221,14 @@ pub trait Stage: Sized + 'static + Sealed {
         sess: &'sess Session,
         diag: impl for<'x> Diagnostic<'x>,
     ) -> ErrorGuaranteed;
+
+    fn should_emit(&self) -> ShouldEmit;
 }
 
 // allow because it's a sealed trait
 #[allow(private_interfaces)]
 impl Stage for Early {
     type Id = NodeId;
-    const SHOULD_EMIT_LINTS: bool = false;
 
     fn parsers() -> &'static group_type!(Self) {
         &early::ATTRIBUTE_PARSERS
@@ -244,13 +244,16 @@ impl Stage for Early {
             sess.dcx().create_err(diag).delay_as_bug()
         }
     }
+
+    fn should_emit(&self) -> ShouldEmit {
+        self.emit_errors
+    }
 }
 
 // allow because it's a sealed trait
 #[allow(private_interfaces)]
 impl Stage for Late {
     type Id = HirId;
-    const SHOULD_EMIT_LINTS: bool = true;
 
     fn parsers() -> &'static group_type!(Self) {
         &late::ATTRIBUTE_PARSERS
@@ -261,6 +264,10 @@ impl Stage for Late {
         diag: impl for<'x> Diagnostic<'x>,
     ) -> ErrorGuaranteed {
         tcx.dcx().emit_err(diag)
+    }
+
+    fn should_emit(&self) -> ShouldEmit {
+        ShouldEmit::ErrorsAndLints
     }
 }
 
@@ -300,7 +307,7 @@ impl<'f, 'sess: 'f, S: Stage> SharedContext<'f, 'sess, S> {
     /// must be delayed until after HIR is built. This method will take care of the details of
     /// that.
     pub(crate) fn emit_lint(&mut self, lint: AttributeLintKind, span: Span) {
-        if !S::SHOULD_EMIT_LINTS {
+        if !self.stage.should_emit().should_emit() {
             return;
         }
         let id = self.target_id;
@@ -657,14 +664,31 @@ impl<'sess> AttributeParser<'sess, Early> {
         target_node_id: NodeId,
         features: Option<&'sess Features>,
     ) -> Option<Attribute> {
-        let mut p = Self {
-            features,
-            tools: Vec::new(),
-            parse_only: Some(sym),
+        let mut parsed = Self::parse_limited_all(
             sess,
-            stage: Early { emit_errors: ShouldEmit::Nothing },
-        };
-        let mut parsed = p.parse_attribute_list(
+            attrs,
+            Some(sym),
+            target_span,
+            target_node_id,
+            features,
+            ShouldEmit::Nothing,
+        );
+        assert!(parsed.len() <= 1);
+        parsed.pop()
+    }
+
+    pub fn parse_limited_all(
+        sess: &'sess Session,
+        attrs: &[ast::Attribute],
+        parse_only: Option<Symbol>,
+        target_span: Span,
+        target_node_id: NodeId,
+        features: Option<&'sess Features>,
+        emit_errors: ShouldEmit,
+    ) -> Vec<Attribute> {
+        let mut p =
+            Self { features, tools: Vec::new(), parse_only, sess, stage: Early { emit_errors } };
+        p.parse_attribute_list(
             attrs,
             target_span,
             target_node_id,
@@ -673,10 +697,7 @@ impl<'sess> AttributeParser<'sess, Early> {
             |_lint| {
                 panic!("can't emit lints here for now (nothing uses this atm)");
             },
-        );
-        assert!(parsed.len() <= 1);
-
-        parsed.pop()
+        )
     }
 
     pub fn parse_single<T>(
