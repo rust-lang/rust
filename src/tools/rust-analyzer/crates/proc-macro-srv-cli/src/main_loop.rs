@@ -37,6 +37,7 @@ impl SpanTransformer for SpanTrans {
 pub(crate) fn run(format: ProtocolFormat) -> io::Result<()> {
     match format {
         ProtocolFormat::Json => run_json(),
+        #[cfg(feature = "postcard")]
         ProtocolFormat::Postcard => unimplemented!(),
     }
 }
@@ -96,7 +97,7 @@ fn run_json() -> io::Result<()> {
 
                         srv.expand(
                             lib,
-                            env,
+                            &env,
                             current_dir,
                             macro_name,
                             macro_body,
@@ -127,7 +128,7 @@ fn run_json() -> io::Result<()> {
                         });
                         srv.expand(
                             lib,
-                            env,
+                            &env,
                             current_dir,
                             macro_name,
                             macro_body,

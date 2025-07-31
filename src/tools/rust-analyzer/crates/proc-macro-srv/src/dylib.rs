@@ -4,6 +4,7 @@ mod version;
 
 use proc_macro::bridge;
 use std::{fmt, fs, io, time::SystemTime};
+use temp_dir::TempDir;
 
 use libloading::Library;
 use object::Object;
@@ -141,13 +142,16 @@ pub(crate) struct Expander {
 }
 
 impl Expander {
-    pub(crate) fn new(lib: &Utf8Path) -> Result<Expander, LoadProcMacroDylibError> {
+    pub(crate) fn new(
+        temp_dir: &TempDir,
+        lib: &Utf8Path,
+    ) -> Result<Expander, LoadProcMacroDylibError> {
         // Some libraries for dynamic loading require canonicalized path even when it is
         // already absolute
         let lib = lib.canonicalize_utf8()?;
         let modified_time = fs::metadata(&lib).and_then(|it| it.modified())?;
 
-        let path = ensure_file_with_lock_free_access(&lib)?;
+        let path = ensure_file_with_lock_free_access(temp_dir, &lib)?;
         let library = ProcMacroLibrary::open(path.as_ref())?;
 
         Ok(Expander { inner: library, _remove_on_drop: RemoveFileOnDrop(path), modified_time })
@@ -221,7 +225,10 @@ impl Drop for RemoveFileOnDrop {
 
 /// Copy the dylib to temp directory to prevent locking in Windows
 #[cfg(windows)]
-fn ensure_file_with_lock_free_access(path: &Utf8Path) -> io::Result<Utf8PathBuf> {
+fn ensure_file_with_lock_free_access(
+    temp_dir: &TempDir,
+    path: &Utf8Path,
+) -> io::Result<Utf8PathBuf> {
     use std::collections::hash_map::RandomState;
     use std::hash::{BuildHasher, Hasher};
 
@@ -229,9 +236,7 @@ fn ensure_file_with_lock_free_access(path: &Utf8Path) -> io::Result<Utf8PathBuf>
         return Ok(path.to_path_buf());
     }
 
-    let mut to = Utf8PathBuf::from_path_buf(std::env::temp_dir()).unwrap();
-    to.push("rust-analyzer-proc-macros");
-    _ = fs::create_dir(&to);
+    let mut to = Utf8Path::from_path(temp_dir.path()).unwrap().to_owned();
 
     let file_name = path.file_stem().ok_or_else(|| {
         io::Error::new(io::ErrorKind::InvalidInput, format!("File path is invalid: {path}"))
@@ -248,6 +253,9 @@ fn ensure_file_with_lock_free_access(path: &Utf8Path) -> io::Result<Utf8PathBuf>
 }
 
 #[cfg(unix)]
-fn ensure_file_with_lock_free_access(path: &Utf8Path) -> io::Result<Utf8PathBuf> {
+fn ensure_file_with_lock_free_access(
+    _temp_dir: &TempDir,
+    path: &Utf8Path,
+) -> io::Result<Utf8PathBuf> {
     Ok(path.to_owned())
 }

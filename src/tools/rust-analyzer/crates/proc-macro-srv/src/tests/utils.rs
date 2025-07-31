@@ -55,7 +55,7 @@ fn assert_expand_impl(
     expect_spanned: Expect,
 ) {
     let path = proc_macro_test_dylib_path();
-    let expander = dylib::Expander::new(&path).unwrap();
+    let expander = dylib::Expander::new(&temp_dir::TempDir::new().unwrap(), &path).unwrap();
 
     let def_site = SpanId(0);
     let call_site = SpanId(1);

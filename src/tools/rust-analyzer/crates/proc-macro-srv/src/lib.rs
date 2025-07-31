@@ -42,6 +42,7 @@ use std::{
 
 use paths::{Utf8Path, Utf8PathBuf};
 use span::Span;
+use temp_dir::TempDir;
 
 use crate::server_impl::TokenStream;
 
@@ -59,11 +60,16 @@ pub const RUSTC_VERSION_STRING: &str = env!("RUSTC_VERSION");
 pub struct ProcMacroSrv<'env> {
     expanders: Mutex<HashMap<Utf8PathBuf, Arc<dylib::Expander>>>,
     env: &'env EnvSnapshot,
+    temp_dir: TempDir,
 }
 
 impl<'env> ProcMacroSrv<'env> {
     pub fn new(env: &'env EnvSnapshot) -> Self {
-        Self { expanders: Default::default(), env }
+        Self {
+            expanders: Default::default(),
+            env,
+            temp_dir: TempDir::with_prefix("proc-macro-srv").unwrap(),
+        }
     }
 }
 
@@ -73,7 +79,7 @@ impl ProcMacroSrv<'_> {
     pub fn expand<S: ProcMacroSrvSpan>(
         &self,
         lib: impl AsRef<Utf8Path>,
-        env: Vec<(String, String)>,
+        env: &[(String, String)],
         current_dir: Option<impl AsRef<Path>>,
         macro_name: String,
         macro_body: tt::TopSubtree<S>,
@@ -131,7 +137,7 @@ impl ProcMacroSrv<'_> {
 
     fn expander(&self, path: &Utf8Path) -> Result<Arc<dylib::Expander>, String> {
         let expander = || {
-            let expander = dylib::Expander::new(path)
+            let expander = dylib::Expander::new(&self.temp_dir, path)
                 .map_err(|err| format!("Cannot create expander for {path}: {err}",));
             expander.map(Arc::new)
         };
@@ -203,7 +209,7 @@ impl Default for EnvSnapshot {
 static ENV_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
 struct EnvChange<'snap> {
-    changed_vars: Vec<String>,
+    changed_vars: Vec<&'snap str>,
     prev_working_dir: Option<PathBuf>,
     snap: &'snap EnvSnapshot,
     _guard: std::sync::MutexGuard<'snap, ()>,
@@ -212,7 +218,7 @@ struct EnvChange<'snap> {
 impl<'snap> EnvChange<'snap> {
     fn apply(
         snap: &'snap EnvSnapshot,
-        new_vars: Vec<(String, String)>,
+        new_vars: &'snap [(String, String)],
         current_dir: Option<&Path>,
     ) -> EnvChange<'snap> {
         let guard = ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
@@ -232,11 +238,11 @@ impl<'snap> EnvChange<'snap> {
         EnvChange {
             snap,
             changed_vars: new_vars
-                .into_iter()
+                .iter()
                 .map(|(k, v)| {
                     // SAFETY: We have acquired the environment lock
-                    unsafe { env::set_var(&k, v) };
-                    k
+                    unsafe { env::set_var(k, v) };
+                    &**k
                 })
                 .collect(),
             prev_working_dir,

@@ -39,6 +39,7 @@ fn main() -> std::io::Result<()> {
 #[derive(Copy, Clone)]
 enum ProtocolFormat {
     Json,
+    #[cfg(feature = "postcard")]
     Postcard,
 }
 
@@ -50,12 +51,14 @@ impl ValueEnum for ProtocolFormat {
     fn to_possible_value(&self) -> Option<clap::builder::PossibleValue> {
         match self {
             ProtocolFormat::Json => Some(clap::builder::PossibleValue::new("json")),
+            #[cfg(feature = "postcard")]
             ProtocolFormat::Postcard => Some(clap::builder::PossibleValue::new("postcard")),
         }
     }
     fn from_str(input: &str, _ignore_case: bool) -> Result<Self, String> {
         match input {
             "json" => Ok(ProtocolFormat::Json),
+            #[cfg(feature = "postcard")]
             "postcard" => Ok(ProtocolFormat::Postcard),
             _ => Err(format!("unknown protocol format: {input}")),
         }
