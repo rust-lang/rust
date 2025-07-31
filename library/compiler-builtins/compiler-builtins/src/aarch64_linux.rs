@@ -24,33 +24,12 @@
 use core::sync::atomic::{AtomicU8, Ordering};
 
 /// non-zero if the host supports LSE atomics.
-#[cfg(not(feature = "c"))]
 static HAVE_LSE_ATOMICS: AtomicU8 = AtomicU8::new(0);
 
-/// outline-atomics are only enabled with glibc support, add a .init_array entry to
-/// check and enable LSE via getauxval. This behavior is similar to compiler rt.
-#[cfg(target_env = "gnu")]
-#[unsafe(link_section = ".init_array.90")]
-pub static RUST_LSE_INIT: extern "C" fn() = {
-    extern "C" fn aarch64_rust_init_lse_atomics() {
-        const AT_HWCAP: core::ffi::c_ulong = 16;
-        const HWCAP_ATOMICS: core::ffi::c_ulong = 0x100;
-        let hwcap;
-
-        // The most straightforward path to querying for LSE support is the host's libc.
-        // We can't use the libc crate here, we are a dependency.
-        unsafe extern "C" {
-            fn getauxval(num: core::ffi::c_ulong) -> core::ffi::c_ulong;
-        }
-        unsafe {
-            hwcap = getauxval(AT_HWCAP);
-        }
-        if hwcap & HWCAP_ATOMICS != 0 {
-            HAVE_LSE_ATOMICS.store(1, Ordering::Relaxed);
-        }
-    }
-    aarch64_rust_init_lse_atomics
-};
+/// Call to enable LSE atomic operations.
+pub fn enable_lse() {
+    HAVE_LSE_ATOMICS.store(1, Ordering::Relaxed);
+}
 
 /// Translate a byte size to a Rust type.
 #[rustfmt::skip]
