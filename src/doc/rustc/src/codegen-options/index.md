@@ -162,6 +162,10 @@ This option allows you to put extra data in each output filename. It takes a
 string to add as a suffix to the filename. See the [`--emit`
 flag][option-emit] for more information.
 
+## experimental-relative-rust-abi-vtables
+
+This option uses the relative layout for vtables.
+
 ## force-frame-pointers
 
 This flag forces the use of frame pointers. It takes one of the following
