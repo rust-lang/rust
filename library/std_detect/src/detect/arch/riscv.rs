@@ -73,6 +73,7 @@ features! {
     /// * Zihintpause: `"zihintpause"`
     /// * Zihpm: `"zihpm"`
     /// * Zimop: `"zimop"`
+    /// * Zabha: `"zabha"`
     /// * Zacas: `"zacas"`
     /// * Zawrs: `"zawrs"`
     /// * Zfa: `"zfa"`
@@ -195,6 +196,8 @@ features! {
     /// "Zaamo" Extension for Atomic Memory Operations
     @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] zawrs: "zawrs";
     /// "Zawrs" Extension for Wait-on-Reservation-Set Instructions
+    @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] zabha: "zabha";
+    /// "Zabha" Extension for Byte and Halfword Atomic Memory Operations
     @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] zacas: "zacas";
     /// "Zacas" Extension for Atomic Compare-and-Swap (CAS) Instructions
     @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] zam: "zam";
