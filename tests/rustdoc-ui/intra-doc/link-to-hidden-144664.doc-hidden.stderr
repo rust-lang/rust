@@ -1,0 +1,70 @@
+error: non-hidden documentation for `link_to_hidden_144664` links to hidden item `crate::local_public_hidden_fn`
+  --> $DIR/link-to-hidden-144664.rs:14:8
+   |
+LL | //! * [crate::local_public_hidden_fn]
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this item is hidden
+   |
+   = note: this link will resolve properly if you pass `--document-hidden-items`
+note: the lint level is defined here
+  --> $DIR/link-to-hidden-144664.rs:10:9
+   |
+LL | #![deny(rustdoc::hidden_intra_doc_links)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: public documentation for `link_to_hidden_144664` links to private item `crate::local_private_hidden_fn`
+  --> $DIR/link-to-hidden-144664.rs:16:8
+   |
+LL | //! * [crate::local_private_hidden_fn]
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this item is private
+   |
+   = note: this link will resolve properly if you pass `--document-private-items`
+note: the lint level is defined here
+  --> $DIR/link-to-hidden-144664.rs:9:9
+   |
+LL | #![deny(rustdoc::private_intra_doc_links)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: non-hidden documentation for `link_to_hidden_144664` links to hidden item `crate::local_private_hidden_fn`
+  --> $DIR/link-to-hidden-144664.rs:16:8
+   |
+LL | //! * [crate::local_private_hidden_fn]
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this item is hidden
+   |
+   = note: this link will resolve properly if you pass `--document-hidden-items`
+
+error: public documentation for `link_to_hidden_144664` links to private item `crate::local_private_non_hidden_fn`
+  --> $DIR/link-to-hidden-144664.rs:19:8
+   |
+LL | //! * [crate::local_private_non_hidden_fn]
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this item is private
+   |
+   = note: this link will resolve properly if you pass `--document-private-items`
+
+error: non-hidden documentation for `link_to_hidden_144664` links to hidden item `nonlocal::public_hidden_fn`
+  --> $DIR/link-to-hidden-144664.rs:21:8
+   |
+LL | //! * [nonlocal::public_hidden_fn]
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^ this item is hidden
+   |
+   = note: this link will resolve properly if you pass `--document-hidden-items`
+
+error: unresolved link to `nonlocal::private_hidden_fn`
+  --> $DIR/link-to-hidden-144664.rs:24:8
+   |
+LL | //! * [nonlocal::private_hidden_fn]
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^ no item named `private_hidden_fn` in module `hidden`
+   |
+note: the lint level is defined here
+  --> $DIR/link-to-hidden-144664.rs:11:9
+   |
+LL | #![deny(rustdoc::broken_intra_doc_links)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: unresolved link to `nonlocal::private_non_hidden_fn`
+  --> $DIR/link-to-hidden-144664.rs:26:8
+   |
+LL | //! * [nonlocal::private_non_hidden_fn]
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no item named `private_non_hidden_fn` in module `hidden`
+
+error: aborting due to 7 previous errors
+
