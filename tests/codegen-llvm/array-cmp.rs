@@ -46,7 +46,7 @@ pub fn array_of_tuple_le(a: &[(i16, u16); 2], b: &[(i16, u16); 2]) -> bool {
     // CHECK: %[[B01:.+]] = load i16, ptr %[[PB01]]
     // CHECK-NOT: cmp
     // CHECK: %[[EQ01:.+]] = icmp eq i16 %[[A01]], %[[B01]]
-    // CHECK-NEXT: br i1 %[[EQ01]], label %[[L10:.+]], label %[[EXIT_U:.+]]
+    // CHECK-NEXT: br i1 %[[EQ01]], label %[[L10:.+]], label %[[EXIT_U:.+]]{{(, !llvm.loop ![0-9+])?}}
 
     // CHECK: [[L10]]:
     // CHECK: %[[PA10:.+]] = getelementptr{{.+}}i8, ptr %a, {{i32|i64}} 4
