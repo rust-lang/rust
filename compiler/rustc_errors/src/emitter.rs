@@ -1597,8 +1597,9 @@ impl HumanEmitter {
             annotated_files.swap(0, pos);
         }
 
+        let annotated_files_len = annotated_files.len();
         // Print out the annotate source lines that correspond with the error
-        for annotated_file in annotated_files {
+        for (file_idx, annotated_file) in annotated_files.into_iter().enumerate() {
             // we can't annotate anything if the source is unavailable.
             if !should_show_source_code(
                 &self.ignored_directories_in_source_blocks,
@@ -1855,7 +1856,9 @@ impl HumanEmitter {
                         width_offset,
                         code_offset,
                         margin,
-                        !is_cont && line_idx + 1 == annotated_file.lines.len(),
+                        !is_cont
+                            && file_idx + 1 == annotated_files_len
+                            && line_idx + 1 == annotated_file.lines.len(),
                     );
 
                     let mut to_add = FxHashMap::default();

@@ -64,8 +64,8 @@ use rustc_middle::middle::privacy::EffectiveVisibilities;
 use rustc_middle::query::Providers;
 use rustc_middle::span_bug;
 use rustc_middle::ty::{
-    self, DelegationFnSig, Feed, MainDefinition, RegisteredTools, ResolverGlobalCtxt,
-    ResolverOutputs, TyCtxt, TyCtxtFeed, Visibility,
+    self, DelegationFnSig, Feed, MainDefinition, RegisteredTools, ResolverAstLowering,
+    ResolverGlobalCtxt, TyCtxt, TyCtxtFeed, Visibility,
 };
 use rustc_query_system::ich::StableHashingContext;
 use rustc_session::lint::builtin::PRIVATE_MACRO_USE;
@@ -1035,6 +1035,11 @@ impl MacroData {
     fn new(ext: Arc<SyntaxExtension>) -> MacroData {
         MacroData { ext, nrules: 0, macro_rules: false }
     }
+}
+
+pub struct ResolverOutputs {
+    pub global_ctxt: ResolverGlobalCtxt,
+    pub ast_lowering: ResolverAstLowering,
 }
 
 /// The main resolver class.

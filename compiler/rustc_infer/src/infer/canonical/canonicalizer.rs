@@ -44,7 +44,7 @@ impl<'tcx> InferCtxt<'tcx> {
     where
         V: TypeFoldable<TyCtxt<'tcx>>,
     {
-        let (param_env, value) = value.into_parts();
+        let ty::ParamEnvAnd { param_env, value } = value;
         let canonical_param_env = self.tcx.canonical_param_env_cache.get_or_insert(
             self.tcx,
             param_env,
