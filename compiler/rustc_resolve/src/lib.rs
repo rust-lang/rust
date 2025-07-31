@@ -1241,6 +1241,9 @@ pub struct Resolver<'ra, 'tcx> {
     // that were encountered during resolution. These names are used to generate item names
     // for APITs, so we don't want to leak details of resolution into these names.
     impl_trait_names: FxHashMap<NodeId, Symbol>,
+
+    /// Mapping of autodiff function IDs
+    autodiff_map: FxHashMap<LocalDefId, LocalDefId>,
 }
 
 /// This provides memory for the rest of the crate. The `'ra` lifetime that is
@@ -1624,6 +1627,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             current_crate_outer_attr_insert_span,
             mods_with_parse_errors: Default::default(),
             impl_trait_names: Default::default(),
+            autodiff_map: Default::default(),
         };
 
         let root_parent_scope = ParentScope::module(graph_root, &resolver);
@@ -1746,6 +1750,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 .map(|(k, f)| (k, f.key()))
                 .collect(),
             disambiguator: self.disambiguator,
+            autodiff_map: self.autodiff_map,
             trait_map: self.trait_map,
             lifetime_elision_allowed: self.lifetime_elision_allowed,
             lint_buffer: Steal::new(self.lint_buffer),
