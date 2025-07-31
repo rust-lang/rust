@@ -1607,6 +1607,10 @@ mod snapshot {
                 .path("cargo")
                 .render_steps(), @r"
         [build] rustc 0 <host> -> cargo 1 <host>
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 1 <host> -> std 1 <host>
+        [build] rustdoc 1 <host>
         [build] rustdoc 0 <host>
         ");
     }
@@ -1623,6 +1627,9 @@ mod snapshot {
         [build] rustc 0 <host> -> rustc 1 <host>
         [build] rustc 1 <host> -> std 1 <host>
         [build] rustc 1 <host> -> cargo 2 <host>
+        [build] rustc 1 <host> -> rustc 2 <host>
+        [build] rustc 2 <host> -> std 2 <host>
+        [build] rustdoc 2 <host>
         [build] rustdoc 1 <host>
         ");
     }

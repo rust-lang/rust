@@ -4,10 +4,12 @@
 //! However, this contains ~all test parts we expect people to be able to build and run locally.
 
 use std::collections::HashSet;
+use std::env::join_paths;
 use std::ffi::{OsStr, OsString};
 use std::path::{Path, PathBuf};
 use std::{env, fs, iter};
 
+use build_helper::exit;
 #[cfg(feature = "tracing")]
 use tracing::instrument;
 
@@ -242,8 +244,12 @@ impl Step for Cargotest {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        // FIXME: support testing stage 0 cargo?
-        assert!(run.builder.top_stage > 0);
+        if run.builder.top_stage == 0 {
+            eprintln!(
+                "ERROR: running cargotest with stage 0 is currently unsupported. Use at least stage 1."
+            );
+            exit!(1);
+        }
         run.builder.ensure(Cargotest {
             build_compiler: run.builder.compiler(run.builder.top_stage - 1, run.target),
             host: run.target,
@@ -322,13 +328,17 @@ impl Step for Cargo {
 
     /// Runs `cargo test` for `cargo` packaged with Rust.
     fn run(self, builder: &Builder<'_>) {
-        // FIXME: we now use the same compiler to build cargo and then we also test that compiler
-        // using cargo.
-        // We could build cargo using a different compiler, but that complicates some things,
-        // because when we run cargo tests, the crates that are being compiled are accessing the
-        // sysroot of the build compiler, rather than the compiler being tested.
-        // Since these two compilers are currently the same, it works.
+        // When we do a "stage 1 cargo test", it means that we test the stage 1 rustc
+        // using stage 1 cargo. So we actually build cargo using the stage 0 compiler, and then
+        // run its tests against the stage 1 compiler (called `tested_compiler` below).
         builder.ensure(tool::Cargo::from_build_compiler(self.build_compiler, self.host));
+
+        let tested_compiler = builder.compiler(self.build_compiler.stage + 1, self.host);
+        builder.std(tested_compiler, self.host);
+        // We also need to build rustdoc for cargo tests
+        // It will be located in the bindir of `tested_compiler`, so we don't need to explicitly
+        // pass its path to Cargo.
+        builder.rustdoc_for_compiler(tested_compiler);
 
         let cargo = tool::prepare_tool_cargo(
             builder,
@@ -350,7 +360,27 @@ impl Step for Cargo {
         // Forcibly disable tests using nightly features since any changes to
         // those features won't be able to land.
         cargo.env("CARGO_TEST_DISABLE_NIGHTLY", "1");
-        cargo.env("PATH", path_for_cargo(builder, self.build_compiler));
+
+        // Configure PATH to find the right rustc. NB. we have to use PATH
+        // and not RUSTC because the Cargo test suite has tests that will
+        // fail if rustc is not spelled `rustc`.
+        cargo.env("PATH", bin_path_for_cargo(builder, tested_compiler));
+
+        // The `cargo` command configured above has dylib dir path set to the `build_compiler`'s
+        // libdir. That causes issues in cargo test, because the programs that cargo compiles are
+        // incorrectly picking that libdir, even though they should be picking the
+        // `tested_compiler`'s libdir. We thus have to override the precedence here.
+        let existing_dylib_path = cargo
+            .get_envs()
+            .find(|(k, _)| *k == OsStr::new(dylib_path_var()))
+            .and_then(|(_, v)| v)
+            .unwrap_or(OsStr::new(""));
+        cargo.env(
+            dylib_path_var(),
+            join_paths([builder.rustc_libdir(tested_compiler).as_ref(), existing_dylib_path])
+                .unwrap_or_default(),
+        );
+
         // Cargo's test suite uses `CARGO_RUSTC_CURRENT_DIR` to determine the path that `file!` is
         // relative to. Cargo no longer sets this env var, so we have to do that. This has to be the
         // same value as `-Zroot-dir`.
@@ -859,10 +889,7 @@ impl Step for Clippy {
     }
 }
 
-fn path_for_cargo(builder: &Builder<'_>, compiler: Compiler) -> OsString {
-    // Configure PATH to find the right rustc. NB. we have to use PATH
-    // and not RUSTC because the Cargo test suite has tests that will
-    // fail if rustc is not spelled `rustc`.
+fn bin_path_for_cargo(builder: &Builder<'_>, compiler: Compiler) -> OsString {
     let path = builder.sysroot(compiler).join("bin");
     let old_path = env::var_os("PATH").unwrap_or_default();
     env::join_paths(iter::once(path).chain(env::split_paths(&old_path))).expect("")
