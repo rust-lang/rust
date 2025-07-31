@@ -106,7 +106,7 @@ pub fn parse_meta<'a>(psess: &'a ParseSess, attr: &Attribute) -> PResult<'a, Met
                     res
                 } else {
                     // Example cases:
-                    // - `#[foo = 1+1]`: results in `ast::ExprKind::BinOp`.
+                    // - `#[foo = 1+1]`: results in `ast::ExprKind::Binary`.
                     // - `#[foo = include_str!("nonexistent-file.rs")]`:
                     //   results in `ast::ExprKind::Err`. In that case we delay
                     //   the error because an earlier error will have already
