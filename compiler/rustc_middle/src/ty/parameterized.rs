@@ -11,10 +11,6 @@ pub trait ParameterizedOverTcx: 'static {
     type Value<'tcx>;
 }
 
-impl<T: ParameterizedOverTcx> ParameterizedOverTcx for &'static [T] {
-    type Value<'tcx> = &'tcx [T::Value<'tcx>];
-}
-
 impl<T: ParameterizedOverTcx> ParameterizedOverTcx for Option<T> {
     type Value<'tcx> = Option<T::Value<'tcx>>;
 }
@@ -57,8 +53,6 @@ macro_rules! trivially_parameterized_over_tcx {
 
 trivially_parameterized_over_tcx! {
     usize,
-    (),
-    u32,
     u64,
     bool,
     std::string::String,
@@ -76,16 +70,13 @@ trivially_parameterized_over_tcx! {
     ty::DeducedParamAttrs,
     ty::Destructor,
     ty::Generics,
-    ty::ImplPolarity,
     ty::ImplTraitInTraitData,
     ty::ReprOptions,
     ty::TraitDef,
-    ty::UnusedGenericParams,
     ty::Visibility<DefIndex>,
     ty::adjustment::CoerceUnsizedInfo,
     ty::fast_reject::SimplifiedType,
     ty::IntrinsicDef,
-    rustc_ast::Attribute,
     rustc_ast::DelimArgs,
     rustc_attr_data_structures::StrippedCfgItem<rustc_hir::def_id::DefIndex>,
     rustc_attr_data_structures::ConstStability,
@@ -96,7 +87,6 @@ trivially_parameterized_over_tcx! {
     rustc_hir::Defaultness,
     rustc_hir::Safety,
     rustc_hir::CoroutineKind,
-    rustc_hir::IsAsync,
     rustc_hir::LangItem,
     rustc_hir::def::DefKind,
     rustc_hir::def::DocLinkResMap,
@@ -106,7 +96,6 @@ trivially_parameterized_over_tcx! {
     rustc_hir::OpaqueTyOrigin<rustc_hir::def_id::DefId>,
     rustc_hir::PreciseCapturingArgKind<Symbol, Symbol>,
     rustc_index::bit_set::DenseBitSet<u32>,
-    rustc_index::bit_set::FiniteBitSet<u32>,
     rustc_session::cstore::ForeignModule,
     rustc_session::cstore::LinkagePreference,
     rustc_session::cstore::NativeLib,
@@ -117,7 +106,6 @@ trivially_parameterized_over_tcx! {
     rustc_span::SourceFile,
     rustc_span::Span,
     rustc_span::Symbol,
-    rustc_span::def_id::DefPathHash,
     rustc_span::hygiene::SyntaxContextKey,
     rustc_span::Ident,
     rustc_type_ir::Variance,
@@ -148,7 +136,6 @@ parameterized_over_tcx! {
     ty::ConstConditions,
     ty::TraitRef,
     ty::Const,
-    ty::Predicate,
     ty::Clause,
     ty::ClauseKind,
     ty::ImplTraitHeader,
