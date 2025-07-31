@@ -33,7 +33,10 @@ pub fn check_attr(psess: &ParseSess, attr: &Attribute, id: NodeId) {
     // Check input tokens for built-in and key-value attributes.
     match builtin_attr_info {
         // `rustc_dummy` doesn't have any restrictions specific to built-in attributes.
-        Some(BuiltinAttribute { name, template, .. }) if *name != sym::rustc_dummy => {
+        Some(BuiltinAttribute { name, template, .. }) => {
+            if AttributeParser::<Late>::is_parsed_attribute(slice::from_ref(&name)) {
+                return;
+            }
             match parse_meta(psess, attr) {
                 // Don't check safety again, we just did that
                 Ok(meta) => {
@@ -259,9 +262,6 @@ pub fn check_builtin_meta_item(
 ) {
     if !is_attr_template_compatible(&template, &meta.kind) {
         // attrs with new parsers are locally validated so excluded here
-        if AttributeParser::<Late>::is_parsed_attribute(slice::from_ref(&name)) {
-            return;
-        }
         emit_malformed_attribute(psess, style, meta.span, name, template);
     }
 

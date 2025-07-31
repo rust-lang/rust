@@ -415,16 +415,6 @@ impl<'a> StripUnconfigured<'a> {
         node: NodeId,
         emit_errors: ShouldEmit,
     ) -> EvalConfigResult {
-        // We need to run this to do basic validation of the attribute, such as that lits are valid, etc
-        // FIXME(jdonszelmann) this should not be necessary in the future
-        match validate_attr::parse_meta(&self.sess.psess, attr) {
-            Ok(_) => {}
-            Err(err) => {
-                err.emit();
-                return EvalConfigResult::True;
-            }
-        }
-
         // Unsafety check needs to be done explicitly here because this attribute will be removed before the normal check
         deny_builtin_meta_unsafety(
             self.sess.dcx(),
