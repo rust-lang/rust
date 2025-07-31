@@ -1623,6 +1623,12 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             _ => self.with_in_trait_impl(None, |this| visit::walk_assoc_item(this, item, ctxt)),
         }
     }
+
+    fn visit_block(&mut self, block: &'a Block) {
+        // Conditional consts should not be used in invalid contexts—such as const bodies—even if
+        // they appear within the generic parameters of const traits or impls.
+        self.with_tilde_const(Some(TildeConstReason::Item), |this| visit::walk_block(this, block))
+    }
 }
 
 /// When encountering an equality constraint in a `where` clause, emit an error. If the code seems

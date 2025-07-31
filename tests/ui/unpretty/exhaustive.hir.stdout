@@ -668,7 +668,6 @@ mod types {
         let _: (/*ERROR*/);
         let _: (/*ERROR*/);
         let _: (/*ERROR*/);
-        let _: (/*ERROR*/);
     }
     /// TyKind::Paren
     fn ty_paren() { let _: T; }
