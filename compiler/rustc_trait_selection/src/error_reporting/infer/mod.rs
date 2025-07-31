@@ -235,28 +235,29 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             }
 
             fn print_region(&mut self, _region: ty::Region<'_>) -> Result<(), PrintError> {
-                Err(fmt::Error)
+                unreachable!(); // because `path_generic_args` ignores the `GenericArgs`
             }
 
             fn print_type(&mut self, _ty: Ty<'tcx>) -> Result<(), PrintError> {
-                Err(fmt::Error)
+                unreachable!(); // because `path_generic_args` ignores the `GenericArgs`
             }
 
             fn print_dyn_existential(
                 &mut self,
                 _predicates: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
             ) -> Result<(), PrintError> {
-                Err(fmt::Error)
+                unreachable!(); // because `path_generic_args` ignores the `GenericArgs`
             }
 
             fn print_const(&mut self, _ct: ty::Const<'tcx>) -> Result<(), PrintError> {
-                Err(fmt::Error)
+                unreachable!(); // because `path_generic_args` ignores the `GenericArgs`
             }
 
             fn path_crate(&mut self, cnum: CrateNum) -> Result<(), PrintError> {
                 self.segments = vec![self.tcx.crate_name(cnum)];
                 Ok(())
             }
+
             fn path_qualified(
                 &mut self,
                 _self_ty: Ty<'tcx>,
@@ -274,6 +275,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             ) -> Result<(), PrintError> {
                 Err(fmt::Error)
             }
+
             fn path_append(
                 &mut self,
                 print_prefix: impl FnOnce(&mut Self) -> Result<(), PrintError>,
@@ -283,6 +285,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 self.segments.push(disambiguated_data.as_sym(true));
                 Ok(())
             }
+
             fn path_generic_args(
                 &mut self,
                 print_prefix: impl FnOnce(&mut Self) -> Result<(), PrintError>,

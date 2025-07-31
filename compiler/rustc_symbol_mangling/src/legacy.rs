@@ -236,7 +236,7 @@ impl<'tcx> Printer<'tcx> for SymbolPrinter<'tcx> {
     }
 
     fn print_region(&mut self, _region: ty::Region<'_>) -> Result<(), PrintError> {
-        Ok(())
+        unreachable!(); // because `<Self As PrettyPrinter>::should_print_region` returns false
     }
 
     fn print_type(&mut self, ty: Ty<'tcx>) -> Result<(), PrintError> {
