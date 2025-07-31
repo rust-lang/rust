@@ -23,12 +23,11 @@ use syntax::{
     ast::{
         self, HasArgList, HasAttrs, HasGenericParams, HasName, HasTypeBounds, Whitespace,
         edit::{AstNodeEdit, IndentLevel},
-        edit_in_place::{AttrsOwnerEdit, Removable},
+        edit_in_place::AttrsOwnerEdit,
         make,
         syntax_factory::SyntaxFactory,
     },
-    syntax_editor::SyntaxEditor,
-    ted,
+    syntax_editor::{Removable, SyntaxEditor},
 };
 
 use crate::{
@@ -207,7 +206,7 @@ pub fn add_trait_assoc_items_to_impl(
                         stdx::never!("formatted `AssocItem` could not be cast back to `AssocItem`");
                     }
                 }
-                original_item.clone_for_update()
+                original_item
             }
             .reset_indent();
 
@@ -221,31 +220,37 @@ pub fn add_trait_assoc_items_to_impl(
             cloned_item.remove_attrs_and_docs();
             cloned_item
         })
-        .map(|item| {
-            match &item {
-                ast::AssocItem::Fn(fn_) if fn_.body().is_none() => {
-                    let body = AstNodeEdit::indent(
-                        &make::block_expr(
-                            None,
-                            Some(match config.expr_fill_default {
-                                ExprFillDefaultMode::Todo => make::ext::expr_todo(),
-                                ExprFillDefaultMode::Underscore => make::ext::expr_underscore(),
-                                ExprFillDefaultMode::Default => make::ext::expr_todo(),
-                            }),
-                        ),
-                        IndentLevel::single(),
-                    );
-                    ted::replace(fn_.get_or_create_body().syntax(), body.syntax());
-                }
-                ast::AssocItem::TypeAlias(type_alias) => {
-                    if let Some(type_bound_list) = type_alias.type_bound_list() {
-                        type_bound_list.remove()
-                    }
-                }
-                _ => {}
+        .filter_map(|item| match item {
+            ast::AssocItem::Fn(fn_) if fn_.body().is_none() => {
+                let fn_ = fn_.clone_subtree();
+                let new_body = &make::block_expr(
+                    None,
+                    Some(match config.expr_fill_default {
+                        ExprFillDefaultMode::Todo => make::ext::expr_todo(),
+                        ExprFillDefaultMode::Underscore => make::ext::expr_underscore(),
+                        ExprFillDefaultMode::Default => make::ext::expr_todo(),
+                    }),
+                );
+                let new_body = AstNodeEdit::indent(new_body, IndentLevel::single());
+                let mut fn_editor = SyntaxEditor::new(fn_.syntax().clone());
+                fn_.replace_or_insert_body(&mut fn_editor, new_body);
+                let new_fn_ = fn_editor.finish().new_root().clone();
+                ast::AssocItem::cast(new_fn_)
             }
-            AstNodeEdit::indent(&item, new_indent_level)
+            ast::AssocItem::TypeAlias(type_alias) => {
+                let type_alias = type_alias.clone_subtree();
+                if let Some(type_bound_list) = type_alias.type_bound_list() {
+                    let mut type_alias_editor = SyntaxEditor::new(type_alias.syntax().clone());
+                    type_bound_list.remove(&mut type_alias_editor);
+                    let type_alias = type_alias_editor.finish().new_root().clone();
+                    ast::AssocItem::cast(type_alias)
+                } else {
+                    Some(ast::AssocItem::TypeAlias(type_alias))
+                }
+            }
+            item => Some(item),
         })
+        .map(|item| AstNodeEdit::indent(&item, new_indent_level))
         .collect()
 }
 
