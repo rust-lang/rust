@@ -26,8 +26,8 @@ pub(crate) fn handle_gpu_code<'ll>(
             kernels.push(kernel);
         }
     }
-    gen_call_handling(&cx, &kernels, &o_types);
     generate_launcher(&cx);
+    gen_call_handling(&cx, &kernels, &o_types);
     crate::builder::gpu_wrapper::gen_image_wrapper_module(&cgcx);
 }
 
@@ -347,8 +347,9 @@ fn gen_call_handling<'ll>(
     let ty2 = cx.type_array(cx.type_i64(), num_args);
     let a4 = builder.direct_alloca(ty2, Align::EIGHT, ".offload_sizes");
 
-    let a5 = builder.direct_alloca(tgt_kernel_decl, Align::EIGHT, "kernel_args");
     //%kernel_args = alloca %struct.__tgt_kernel_arguments, align 8
+    let a5 = builder.direct_alloca(tgt_kernel_decl, Align::EIGHT, "kernel_args");
+
     // Now we allocate once per function param, a copy to be passed to one of our maps.
     let mut vals = vec![];
     let mut geps = vec![];
@@ -441,7 +442,51 @@ fn gen_call_handling<'ll>(
 
     // Step 3)
     // Here we will add code for the actual kernel launches in a follow-up PR.
+    //%28 = getelementptr inbounds nuw %struct.__tgt_kernel_arguments, ptr %kernel_args, i32 0, i32 0
+    //store i32 3, ptr %28, align 4
+    //%29 = getelementptr inbounds nuw %struct.__tgt_kernel_arguments, ptr %kernel_args, i32 0, i32 1
+    //store i32 3, ptr %29, align 4
+    //%30 = getelementptr inbounds nuw %struct.__tgt_kernel_arguments, ptr %kernel_args, i32 0, i32 2
+    //store ptr %26, ptr %30, align 8
+    //%31 = getelementptr inbounds nuw %struct.__tgt_kernel_arguments, ptr %kernel_args, i32 0, i32 3
+    //store ptr %27, ptr %31, align 8
+    //%32 = getelementptr inbounds nuw %struct.__tgt_kernel_arguments, ptr %kernel_args, i32 0, i32 4
+    //store ptr @.offload_sizes, ptr %32, align 8
+    //%33 = getelementptr inbounds nuw %struct.__tgt_kernel_arguments, ptr %kernel_args, i32 0, i32 5
+    //store ptr @.offload_maptypes, ptr %33, align 8
+    //%34 = getelementptr inbounds nuw %struct.__tgt_kernel_arguments, ptr %kernel_args, i32 0, i32 6
+    //store ptr null, ptr %34, align 8
+    //%35 = getelementptr inbounds nuw %struct.__tgt_kernel_arguments, ptr %kernel_args, i32 0, i32 7
+    //store ptr null, ptr %35, align 8
+    //%36 = getelementptr inbounds nuw %struct.__tgt_kernel_arguments, ptr %kernel_args, i32 0, i32 8
+    //store i64 0, ptr %36, align 8
+    //%37 = getelementptr inbounds nuw %struct.__tgt_kernel_arguments, ptr %kernel_args, i32 0, i32 9
+    //store i64 0, ptr %37, align 8
+    //%38 = getelementptr inbounds nuw %struct.__tgt_kernel_arguments, ptr %kernel_args, i32 0, i32 10
+    //store [3 x i32] [i32 2097152, i32 0, i32 0], ptr %38, align 4
+    //%39 = getelementptr inbounds nuw %struct.__tgt_kernel_arguments, ptr %kernel_args, i32 0, i32 11
+    //store [3 x i32] [i32 256, i32 0, i32 0], ptr %39, align 4
+    //%40 = getelementptr inbounds nuw %struct.__tgt_kernel_arguments, ptr %kernel_args, i32 0, i32 12
+    //store i32 0, ptr %40, align 4
     // FIXME(offload): launch kernels
+    let mut values = vec![];
+    values.push(cx.get_const_i32(3));
+    values.push(cx.get_const_i32(3));
+    values.push(geps.0);
+    values.push(geps.1);
+    values.push(geps.2);
+    values.push(o_types[0]);
+    values.push(cx.const_null(cx.type_ptr()));
+    values.push(cx.const_null(cx.type_ptr()));
+    values.push(cx.get_const_i64(0));
+    values.push(cx.get_const_i64(0));
+    values.push();
+    values.push();
+    values.push(cx.get_const_i32(0));
+    for (value, i) in values.enumerate() {
+        let gep1 = builder.inbounds_gep(ty, a1, &[i32_0, cx.get_const_i32(i)]);
+        builder.store(p, alloca, Align::EIGHT);
+    }
 
     // Step 4)
     unsafe { llvm::LLVMRustPositionAfter(builder.llbuilder, kernel_call) };
