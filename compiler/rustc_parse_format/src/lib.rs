@@ -858,7 +858,8 @@ impl<'input> Parser<'input> {
             self.errors.insert(
                 0,
                 ParseError {
-                    description: "expected format parameter to occur in its right place".to_owned(),
+                    description: "expected format parameter to occur in its right place"
+                        .to_string(),
                     note: Some(
                         "See https://doc.rust-lang.org/std/fmt/index.html#syntax for more details"
                             .to_string(),
