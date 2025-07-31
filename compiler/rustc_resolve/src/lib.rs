@@ -2178,35 +2178,42 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     }
 
     fn extern_prelude_get(&mut self, ident: Ident, finalize: bool) -> Option<NameBinding<'ra>> {
-        let norm_ident = ident.normalize_to_macros_2_0();
-        let binding = self.extern_prelude.get(&norm_ident).cloned().and_then(|entry| {
-            Some(if let Some(binding) = entry.binding.get() {
+        let mut record_use = None;
+        let entry = self.extern_prelude.get(&ident.normalize_to_macros_2_0());
+        let binding = entry.and_then(|entry| match entry.binding.get() {
+            Some(binding) if binding.is_import() => {
                 if finalize {
-                    if !entry.is_import() {
-                        self.cstore_mut().process_path_extern(self.tcx, ident.name, ident.span);
-                    } else if entry.introduced_by_item {
-                        self.record_use(ident, binding, Used::Other);
-                    }
+                    record_use = Some(binding);
                 }
-                binding
-            } else {
+                Some(binding)
+            }
+            Some(binding) => {
+                if finalize {
+                    self.cstore_mut().process_path_extern(self.tcx, ident.name, ident.span);
+                }
+                Some(binding)
+            }
+            None => {
                 let crate_id = if finalize {
-                    let Some(crate_id) =
-                        self.cstore_mut().process_path_extern(self.tcx, ident.name, ident.span)
-                    else {
-                        return Some(self.dummy_binding);
-                    };
-                    crate_id
+                    self.cstore_mut().process_path_extern(self.tcx, ident.name, ident.span)
                 } else {
-                    self.cstore_mut().maybe_process_path_extern(self.tcx, ident.name)?
+                    self.cstore_mut().maybe_process_path_extern(self.tcx, ident.name)
                 };
-                let res = Res::Def(DefKind::Mod, crate_id.as_def_id());
-                self.arenas.new_pub_res_binding(res, DUMMY_SP, LocalExpnId::ROOT)
-            })
+                match crate_id {
+                    Some(crate_id) => {
+                        let res = Res::Def(DefKind::Mod, crate_id.as_def_id());
+                        let binding =
+                            self.arenas.new_pub_res_binding(res, DUMMY_SP, LocalExpnId::ROOT);
+                        entry.binding.set(Some(binding));
+                        Some(binding)
+                    }
+                    None => finalize.then_some(self.dummy_binding),
+                }
+            }
         });
 
-        if let Some(entry) = self.extern_prelude.get(&norm_ident) {
-            entry.binding.set(binding);
+        if let Some(binding) = record_use {
+            self.record_use(ident, binding, Used::Scope);
         }
 
         binding
