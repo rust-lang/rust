@@ -25,20 +25,20 @@
 // should not be included if the "tracing" feature is disabled.
 extern crate tracing_core;
 
-use tracing_core::{Event, Subscriber, field::Field, span};
+use tracing_core::{field::Field, span, Event, Subscriber};
 use tracing_subscriber::{
-    Layer,
     layer::Context,
     registry::{LookupSpan, SpanRef},
+    Layer,
 };
 
-use serde_json::{Value as JsonValue, json};
+use serde_json::{json, Value as JsonValue};
 use std::{
     marker::PhantomData,
     path::Path,
     sync::{
-        Arc, Mutex,
         atomic::{AtomicUsize, Ordering},
+        Arc, Mutex,
     },
 };
 
@@ -308,7 +308,10 @@ fn create_default_writer() -> Box<dyn Write + Send> {
     Box::new(
         std::fs::File::create(format!(
             "./trace-{}.json",
-            std::time::SystemTime::UNIX_EPOCH.elapsed().unwrap().as_micros()
+            std::time::SystemTime::UNIX_EPOCH
+                .elapsed()
+                .unwrap()
+                .as_micros()
         ))
         .expect("Failed to create trace file."),
     )
@@ -322,7 +325,9 @@ where
         let (tx, rx) = mpsc::channel();
         OUT.with(|val| val.replace(Some(tx.clone())));
 
-        let out_writer = builder.out_writer.unwrap_or_else(|| create_default_writer());
+        let out_writer = builder
+            .out_writer
+            .unwrap_or_else(|| create_default_writer());
 
         let handle = std::thread::spawn(move || {
             let mut write = BufWriter::new(out_writer);
@@ -432,7 +437,10 @@ where
             write.flush().unwrap();
         });
 
-        let guard = FlushGuard { sender: tx.clone(), handle: Cell::new(Some(handle)) };
+        let guard = FlushGuard {
+            sender: tx.clone(),
+            handle: Cell::new(Some(handle)),
+        };
         let layer = ChromeLayer {
             out: Arc::new(Mutex::new(tx)),
             start: std::time::Instant::now(),
@@ -480,12 +488,19 @@ where
                     None
                 }
             }
-            EventOrSpan::Span(s) => s.extensions().get::<ArgsWrapper>().map(|e| &e.args).cloned(),
+            EventOrSpan::Span(s) => s
+                .extensions()
+                .get::<ArgsWrapper>()
+                .map(|e| &e.args)
+                .cloned(),
         };
         let name = name.unwrap_or_else(|| meta.name().into());
         let target = target.unwrap_or_else(|| meta.target().into());
-        let (file, line) =
-            if self.include_locations { (meta.file(), meta.line()) } else { (None, None) };
+        let (file, line) = if self.include_locations {
+            (meta.file(), meta.line())
+        } else {
+            (None, None)
+        };
 
         if new_thread {
             let name = match std::thread::current().name() {
@@ -495,7 +510,14 @@ where
             self.send_message(Message::NewThread(tid, name));
         }
 
-        Callsite { tid, name, target, file, line, args }
+        Callsite {
+            tid,
+            name,
+            target,
+            file,
+            line,
+            args,
+        }
     }
 
     fn get_root_id(&self, span: SpanRef<S>) -> Option<i64> {
@@ -512,7 +534,7 @@ where
                 } else {
                     None
                 }
-            }
+            },
             TraceStyle::Async => Some(
                 span.scope()
                     .from_root()
@@ -521,7 +543,7 @@ where
                     .unwrap_or(span)
                     .id()
                     .into_u64()
-                    .cast_signed(), // the comment above explains the cast
+                    .cast_signed() // the comment above explains the cast
             ),
         }
     }
@@ -600,7 +622,9 @@ where
         if self.include_args {
             let mut args = Object::new();
             attrs.record(&mut JsonVisitor { object: &mut args });
-            ctx.span(id).unwrap().extensions_mut().insert(ArgsWrapper { args: Arc::new(args) });
+            ctx.span(id).unwrap().extensions_mut().insert(ArgsWrapper {
+                args: Arc::new(args),
+            });
         }
         if let TraceStyle::Threaded = self.trace_style {
             return;
@@ -626,7 +650,8 @@ struct JsonVisitor<'a> {
 
 impl<'a> tracing_subscriber::field::Visit for JsonVisitor<'a> {
     fn record_debug(&mut self, field: &Field, value: &dyn std::fmt::Debug) {
-        self.object.insert(field.name().to_owned(), format!("{value:?}").into());
+        self.object
+            .insert(field.name().to_owned(), format!("{value:?}").into());
     }
 }
 

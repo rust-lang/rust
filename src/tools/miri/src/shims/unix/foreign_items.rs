@@ -26,14 +26,15 @@ pub fn is_dyn_sym(name: &str, target_os: &str) -> bool {
         // needed at least on macOS to avoid file-based fallback in getrandom
         "getentropy" | "getrandom" => true,
         // Give specific OSes a chance to allow their symbols.
-        _ => match target_os {
-            "android" => android::is_dyn_sym(name),
-            "freebsd" => freebsd::is_dyn_sym(name),
-            "linux" => linux::is_dyn_sym(name),
-            "macos" => macos::is_dyn_sym(name),
-            "solaris" | "illumos" => solarish::is_dyn_sym(name),
-            _ => false,
-        },
+        _ =>
+            match target_os {
+                "android" => android::is_dyn_sym(name),
+                "freebsd" => freebsd::is_dyn_sym(name),
+                "linux" => linux::is_dyn_sym(name),
+                "macos" => macos::is_dyn_sym(name),
+                "solaris" | "illumos" => solarish::is_dyn_sym(name),
+                _ => false,
+            },
     }
 }
 
@@ -878,9 +879,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // TODO: when https://github.com/rust-lang/miri/issues/3730 is fixed this should use its notion of tid/pid
                 let thread_id = match pid {
                     0 => this.active_thread(),
-                    _ => throw_unsup_format!(
-                        "`sched_getaffinity` is only supported with a pid of 0 (indicating the current thread)"
-                    ),
+                    _ =>
+                        throw_unsup_format!(
+                            "`sched_getaffinity` is only supported with a pid of 0 (indicating the current thread)"
+                        ),
                 };
 
                 // The mask is stored in chunks, and the size must be a whole number of chunks.
@@ -915,9 +917,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // TODO: when https://github.com/rust-lang/miri/issues/3730 is fixed this should use its notion of tid/pid
                 let thread_id = match pid {
                     0 => this.active_thread(),
-                    _ => throw_unsup_format!(
-                        "`sched_setaffinity` is only supported with a pid of 0 (indicating the current thread)"
-                    ),
+                    _ =>
+                        throw_unsup_format!(
+                            "`sched_setaffinity` is only supported with a pid of 0 (indicating the current thread)"
+                        ),
                 };
 
                 if this.ptr_is_null(mask)? {
@@ -1143,21 +1146,26 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             _ => {
                 let target_os = &*this.tcx.sess.target.os;
                 return match target_os {
-                    "android" => android::EvalContextExt::emulate_foreign_item_inner(
-                        this, link_name, abi, args, dest,
-                    ),
-                    "freebsd" => freebsd::EvalContextExt::emulate_foreign_item_inner(
-                        this, link_name, abi, args, dest,
-                    ),
-                    "linux" => linux::EvalContextExt::emulate_foreign_item_inner(
-                        this, link_name, abi, args, dest,
-                    ),
-                    "macos" => macos::EvalContextExt::emulate_foreign_item_inner(
-                        this, link_name, abi, args, dest,
-                    ),
-                    "solaris" | "illumos" => solarish::EvalContextExt::emulate_foreign_item_inner(
-                        this, link_name, abi, args, dest,
-                    ),
+                    "android" =>
+                        android::EvalContextExt::emulate_foreign_item_inner(
+                            this, link_name, abi, args, dest,
+                        ),
+                    "freebsd" =>
+                        freebsd::EvalContextExt::emulate_foreign_item_inner(
+                            this, link_name, abi, args, dest,
+                        ),
+                    "linux" =>
+                        linux::EvalContextExt::emulate_foreign_item_inner(
+                            this, link_name, abi, args, dest,
+                        ),
+                    "macos" =>
+                        macos::EvalContextExt::emulate_foreign_item_inner(
+                            this, link_name, abi, args, dest,
+                        ),
+                    "solaris" | "illumos" =>
+                        solarish::EvalContextExt::emulate_foreign_item_inner(
+                            this, link_name, abi, args, dest,
+                        ),
                     _ => interp_ok(EmulateItemResult::NotSupported),
                 };
             }

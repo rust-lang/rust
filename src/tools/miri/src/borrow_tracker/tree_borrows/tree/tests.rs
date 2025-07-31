@@ -9,10 +9,12 @@ use crate::borrow_tracker::tree_borrows::exhaustive::{Exhaustive, precondition};
 impl Exhaustive for LocationState {
     fn exhaustive() -> Box<dyn Iterator<Item = Self>> {
         // We keep `latest_foreign_access` at `None` as that's just a cache.
-        Box::new(<(Permission, bool)>::exhaustive().map(|(permission, accessed)| Self {
-            permission,
-            accessed,
-            idempotent_foreign_access: IdempotentForeignAccess::default(),
+        Box::new(<(Permission, bool)>::exhaustive().map(|(permission, accessed)| {
+            Self {
+                permission,
+                accessed,
+                idempotent_foreign_access: IdempotentForeignAccess::default(),
+            }
         }))
     }
 }
@@ -259,16 +261,18 @@ mod spurious_read {
         fn rel_pair(self, xy_rel: RelPosXY) -> (AccessRelatedness, AccessRelatedness) {
             use AccessRelatedness::*;
             match xy_rel {
-                RelPosXY::MutuallyForeign => match self {
-                    PtrSelector::X => (This, CousinAccess),
-                    PtrSelector::Y => (CousinAccess, This),
-                    PtrSelector::Other => (CousinAccess, CousinAccess),
-                },
-                RelPosXY::XChildY => match self {
-                    PtrSelector::X => (This, StrictChildAccess),
-                    PtrSelector::Y => (AncestorAccess, This),
-                    PtrSelector::Other => (CousinAccess, CousinAccess),
-                },
+                RelPosXY::MutuallyForeign =>
+                    match self {
+                        PtrSelector::X => (This, CousinAccess),
+                        PtrSelector::Y => (CousinAccess, This),
+                        PtrSelector::Other => (CousinAccess, CousinAccess),
+                    },
+                RelPosXY::XChildY =>
+                    match self {
+                        PtrSelector::X => (This, StrictChildAccess),
+                        PtrSelector::Y => (AncestorAccess, This),
+                        PtrSelector::Other => (CousinAccess, CousinAccess),
+                    },
             }
         }
     }
@@ -438,9 +442,10 @@ mod spurious_read {
             let accessed = match ptr {
                 PtrSelector::X => self.x.state.accessed,
                 PtrSelector::Y => self.y.state.accessed,
-                PtrSelector::Other => panic!(
-                    "the `accessed` status of `PtrSelector::Other` is unknown, do not pass it to `read_if_accessed`"
-                ),
+                PtrSelector::Other =>
+                    panic!(
+                        "the `accessed` status of `PtrSelector::Other` is unknown, do not pass it to `read_if_accessed`"
+                    ),
             };
             if accessed {
                 self.perform_test_access(&TestAccess { ptr, kind: AccessKind::Read })
@@ -487,11 +492,8 @@ mod spurious_read {
     impl Exhaustive for LocStateProtPair {
         fn exhaustive() -> Box<dyn Iterator<Item = Self>> {
             Box::new(<[LocStateProt; 2]>::exhaustive().flat_map(|[x, y]| {
-                RelPosXY::exhaustive().map(move |xy_rel| Self {
-                    x: x.clone(),
-                    y: y.clone(),
-                    xy_rel,
-                })
+                RelPosXY::exhaustive()
+                    .map(move |xy_rel| Self { x: x.clone(), y: y.clone(), xy_rel })
             }))
         }
     }

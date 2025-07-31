@@ -837,16 +837,17 @@ impl<'tcx> MiriMachine<'tcx> {
 
         let data_race = match &ecx.machine.data_race {
             GlobalDataRaceHandler::None => AllocDataRaceHandler::None,
-            GlobalDataRaceHandler::Vclocks(data_race) => AllocDataRaceHandler::Vclocks(
-                data_race::AllocState::new_allocation(
-                    data_race,
-                    &ecx.machine.threads,
-                    size,
-                    kind,
-                    ecx.machine.current_span(),
+            GlobalDataRaceHandler::Vclocks(data_race) =>
+                AllocDataRaceHandler::Vclocks(
+                    data_race::AllocState::new_allocation(
+                        data_race,
+                        &ecx.machine.threads,
+                        size,
+                        kind,
+                        ecx.machine.current_span(),
+                    ),
+                    data_race.weak_memory.then(weak_memory::AllocState::new_allocation),
                 ),
-                data_race.weak_memory.then(weak_memory::AllocState::new_allocation),
-            ),
             GlobalDataRaceHandler::Genmc(_genmc_ctx) => {
                 // GenMC learns about new allocations directly from the alloc_addresses module,
                 // since it has to be able to control the address at which they are placed.
@@ -1390,9 +1391,8 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         // The order of checks is deliberate, to prefer reporting a data race over a borrow tracker error.
         match &machine.data_race {
             GlobalDataRaceHandler::None => {}
-            GlobalDataRaceHandler::Genmc(genmc_ctx) => {
-                genmc_ctx.memory_load(machine, ptr.addr(), range.size)?
-            }
+            GlobalDataRaceHandler::Genmc(genmc_ctx) =>
+                genmc_ctx.memory_load(machine, ptr.addr(), range.size)?,
             GlobalDataRaceHandler::Vclocks(_data_race) => {
                 let AllocDataRaceHandler::Vclocks(data_race, weak_memory) = &alloc_extra.data_race
                 else {
@@ -1462,9 +1462,8 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         }
         match &machine.data_race {
             GlobalDataRaceHandler::None => {}
-            GlobalDataRaceHandler::Genmc(genmc_ctx) => {
-                genmc_ctx.handle_dealloc(machine, ptr.addr(), size, align, kind)?
-            }
+            GlobalDataRaceHandler::Genmc(genmc_ctx) =>
+                genmc_ctx.handle_dealloc(machine, ptr.addr(), size, align, kind)?,
             GlobalDataRaceHandler::Vclocks(_global_state) => {
                 let data_race = alloc_extra.data_race.as_vclocks_mut().unwrap();
                 data_race.write(

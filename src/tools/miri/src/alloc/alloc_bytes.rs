@@ -54,9 +54,8 @@ impl Drop for MiriAllocBytes {
         unsafe {
             match self.params.clone() {
                 MiriAllocParams::Global => alloc::dealloc(self.ptr, alloc_layout),
-                MiriAllocParams::Isolated(alloc) => {
-                    alloc.borrow_mut().dealloc(self.ptr, alloc_layout)
-                }
+                MiriAllocParams::Isolated(alloc) =>
+                    alloc.borrow_mut().dealloc(self.ptr, alloc_layout),
             }
         }
     }

@@ -64,9 +64,8 @@ impl Stack {
                 Permission::Disabled => left.perm() == Permission::SharedReadWrite,
                 // Unique and SharedReadOnly can terminate a SharedReadWrite block, so only remove
                 // them if they are both unreachable and not directly after a SharedReadWrite.
-                Permission::Unique | Permission::SharedReadOnly => {
-                    left.perm() == Permission::SharedReadWrite || tags.contains(&this.tag())
-                }
+                Permission::Unique | Permission::SharedReadOnly =>
+                    left.perm() == Permission::SharedReadWrite || tags.contains(&this.tag()),
             };
 
             if should_keep {

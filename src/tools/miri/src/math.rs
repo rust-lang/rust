@@ -59,18 +59,14 @@ pub(crate) fn apply_random_float_error_to_imm<'tcx>(
 ) -> InterpResult<'tcx, ImmTy<'tcx>> {
     let scalar = val.to_scalar_int()?;
     let res: ScalarInt = match val.layout.ty.kind() {
-        ty::Float(FloatTy::F16) => {
-            apply_random_float_error_ulp(ecx, scalar.to_f16(), ulp_exponent).into()
-        }
-        ty::Float(FloatTy::F32) => {
-            apply_random_float_error_ulp(ecx, scalar.to_f32(), ulp_exponent).into()
-        }
-        ty::Float(FloatTy::F64) => {
-            apply_random_float_error_ulp(ecx, scalar.to_f64(), ulp_exponent).into()
-        }
-        ty::Float(FloatTy::F128) => {
-            apply_random_float_error_ulp(ecx, scalar.to_f128(), ulp_exponent).into()
-        }
+        ty::Float(FloatTy::F16) =>
+            apply_random_float_error_ulp(ecx, scalar.to_f16(), ulp_exponent).into(),
+        ty::Float(FloatTy::F32) =>
+            apply_random_float_error_ulp(ecx, scalar.to_f32(), ulp_exponent).into(),
+        ty::Float(FloatTy::F64) =>
+            apply_random_float_error_ulp(ecx, scalar.to_f64(), ulp_exponent).into(),
+        ty::Float(FloatTy::F128) =>
+            apply_random_float_error_ulp(ecx, scalar.to_f128(), ulp_exponent).into(),
         _ => bug!("intrinsic called with non-float input type"),
     };
 

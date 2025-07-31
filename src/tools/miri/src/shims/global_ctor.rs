@@ -33,17 +33,17 @@ impl<'tcx> GlobalCtorState<'tcx> {
                     // Lookup constructors from the relevant magic link section.
                     let ctors = match this.tcx.sess.target.binary_format {
                         // Read the CRT library section on Windows.
-                        BinaryFormat::Coff => {
-                            this.lookup_link_section(|section| section == ".CRT$XCU")?
-                        }
+                        BinaryFormat::Coff =>
+                            this.lookup_link_section(|section| section == ".CRT$XCU")?,
 
                         // Read the `__mod_init_func` section on macOS.
-                        BinaryFormat::MachO => this.lookup_link_section(|section| {
-                            let mut parts = section.splitn(3, ',');
-                            let (segment_name, section_name, section_type) =
-                                (parts.next(), parts.next(), parts.next());
+                        BinaryFormat::MachO =>
+                            this.lookup_link_section(|section| {
+                                let mut parts = section.splitn(3, ',');
+                                let (segment_name, section_name, section_type) =
+                                    (parts.next(), parts.next(), parts.next());
 
-                            segment_name == Some("__DATA")
+                                segment_name == Some("__DATA")
                                     && section_name == Some("__mod_init_func")
                                     // The `mod_init_funcs` directive ensures that the
                                     // `S_MOD_INIT_FUNC_POINTERS` flag is set on the section. LLVM
@@ -52,14 +52,13 @@ impl<'tcx> GlobalCtorState<'tcx> {
                                     // implicitly add it here. Also see
                                     // <https://github.com/rust-lang/miri/pull/4459#discussion_r2200115629>.
                                     && matches!(section_type, None | Some("mod_init_funcs"))
-                        })?,
+                            })?,
 
                         // Read the standard `.init_array` section on platforms that use ELF, or WASM,
                         // which supports the same linker directive.
                         // FIXME: Add support for `.init_array.N` and `.ctors`?
-                        BinaryFormat::Elf | BinaryFormat::Wasm => {
-                            this.lookup_link_section(|section| section == ".init_array")?
-                        }
+                        BinaryFormat::Elf | BinaryFormat::Wasm =>
+                            this.lookup_link_section(|section| section == ".init_array")?,
 
                         // Other platforms have no global ctor support.
                         _ => break 'new_state Done,

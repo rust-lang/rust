@@ -167,7 +167,7 @@ mod transition {
                 assert!(!protected);
                 res
             }
-            Active => {
+            Active =>
                 if protected {
                     // We wrote, someone else reads -- that's bad.
                     // (Since Active is always initialized, this move-to-protected will mean insta-UB.)
@@ -176,8 +176,7 @@ mod transition {
                     // We don't want to disable here to allow read-read reordering: it is crucial
                     // that the foreign read does not invalidate future reads through this tag.
                     Frozen
-                }
-            }
+                },
         })
     }
 
@@ -471,14 +470,12 @@ pub mod diagnostics {
             match (self.from, self.to) {
                 (_, Active) => "the first write to a 2-phase borrowed mutable reference",
                 (_, Frozen) => "a loss of write permissions",
-                (ReservedFrz { conflicted: false }, ReservedFrz { conflicted: true }) => {
-                    "a temporary loss of write permissions until function exit"
-                }
+                (ReservedFrz { conflicted: false }, ReservedFrz { conflicted: true }) =>
+                    "a temporary loss of write permissions until function exit",
                 (Frozen, Disabled) => "a loss of read permissions",
                 (_, Disabled) => "a loss of read and write permissions",
-                (old, new) => {
-                    unreachable!("Transition from {old:?} to {new:?} should never be possible")
-                }
+                (old, new) =>
+                    unreachable!("Transition from {old:?} to {new:?} should never be possible"),
             }
         }
 
@@ -535,15 +532,13 @@ pub mod diagnostics {
 
                         // `Active`, `Reserved`, and `Cell` have all permissions, so a
                         // `ChildAccessForbidden(Reserved | Active)` can never exist.
-                        (_, Active) | (_, ReservedFrz { conflicted: false }) | (_, Cell) => {
-                            unreachable!("this permission cannot cause an error")
-                        }
+                        (_, Active) | (_, ReservedFrz { conflicted: false }) | (_, Cell) =>
+                            unreachable!("this permission cannot cause an error"),
                         // No transition has `Reserved { conflicted: false }` or `ReservedIM`
                         // as its `.to` unless it's a noop. `Cell` cannot be in its `.to`
                         // because all child accesses are a noop.
-                        (ReservedFrz { conflicted: false } | ReservedIM | Cell, _) => {
-                            unreachable!("self is a noop transition")
-                        }
+                        (ReservedFrz { conflicted: false } | ReservedIM | Cell, _) =>
+                            unreachable!("self is a noop transition"),
                         // All transitions produced in normal executions (using `apply_access`)
                         // change permissions in the order `Reserved -> Active -> Frozen -> Disabled`.
                         // We assume that the error was triggered on the same location that
@@ -551,9 +546,8 @@ pub mod diagnostics {
                         // in the order `self.from < self.to <= insufficient.inner`
                         (Active | Frozen | Disabled, ReservedFrz { .. } | ReservedIM)
                         | (Disabled, Frozen)
-                        | (ReservedFrz { .. }, ReservedIM) => {
-                            unreachable!("permissions between self and err must be increasing")
-                        }
+                        | (ReservedFrz { .. }, ReservedIM) =>
+                            unreachable!("permissions between self and err must be increasing"),
                     }
                 }
                 TransitionError::ProtectedDisabled(before_disabled) => {
@@ -584,24 +578,23 @@ pub mod diagnostics {
                         (Active, Frozen) => false,
                         (ReservedFrz { conflicted: true }, _) => false,
 
-                        (_, Disabled) => unreachable!(
-                            "permission that results in Disabled should not itself be Disabled in the first place"
-                        ),
+                        (_, Disabled) =>
+                            unreachable!(
+                                "permission that results in Disabled should not itself be Disabled in the first place"
+                            ),
                         // No transition has `Reserved { conflicted: false }` or `ReservedIM` as its `.to`
                         // unless it's a noop. `Cell` cannot be in its `.to` because all child
                         // accesses are a noop.
-                        (ReservedFrz { conflicted: false } | ReservedIM | Cell, _) => {
-                            unreachable!("self is a noop transition")
-                        }
+                        (ReservedFrz { conflicted: false } | ReservedIM | Cell, _) =>
+                            unreachable!("self is a noop transition"),
 
                         // Permissions only evolve in the order `Reserved -> Active -> Frozen -> Disabled`,
                         // so permissions found must be increasing in the order
                         // `self.from < self.to <= forbidden.from < forbidden.to`.
                         (Disabled, Cell | ReservedFrz { .. } | ReservedIM | Active | Frozen)
                         | (Frozen, Cell | ReservedFrz { .. } | ReservedIM | Active)
-                        | (Active, Cell | ReservedFrz { .. } | ReservedIM) => {
-                            unreachable!("permissions between self and err must be increasing")
-                        }
+                        | (Active, Cell | ReservedFrz { .. } | ReservedIM) =>
+                            unreachable!("permissions between self and err must be increasing"),
                     }
                 }
                 // We don't care because protectors evolve independently from

@@ -212,13 +212,12 @@ fn mutex_kind_from_static_initializer<'tcx>(
     }
     // Support additional platform-specific initializers.
     match &*ecx.tcx.sess.target.os {
-        "linux" => {
+        "linux" =>
             if is_initializer("PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP")? {
                 return interp_ok(MutexKind::Recursive);
             } else if is_initializer("PTHREAD_ERRORCHECK_MUTEX_INITIALIZER_NP")? {
                 return interp_ok(MutexKind::ErrorCheck);
-            }
-        }
+            },
         _ => {}
     }
     throw_unsup_format!("unsupported static initializer used for `pthread_mutex_t`");
@@ -492,9 +491,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             } else {
                 // Trying to acquire the same mutex again.
                 match mutex.kind {
-                    MutexKind::Default => throw_ub_format!(
-                        "trying to acquire default mutex already locked by the current thread"
-                    ),
+                    MutexKind::Default =>
+                        throw_ub_format!(
+                            "trying to acquire default mutex already locked by the current thread"
+                        ),
                     MutexKind::Normal => throw_machine_stop!(TerminationInfo::Deadlock),
                     MutexKind::ErrorCheck => this.eval_libc_i32("EDEADLK"),
                     MutexKind::Recursive => {
@@ -522,9 +522,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.eval_libc_i32("EBUSY")
             } else {
                 match mutex.kind {
-                    MutexKind::Default | MutexKind::Normal | MutexKind::ErrorCheck => {
-                        this.eval_libc_i32("EBUSY")
-                    }
+                    MutexKind::Default | MutexKind::Normal | MutexKind::ErrorCheck =>
+                        this.eval_libc_i32("EBUSY"),
                     MutexKind::Recursive => {
                         this.mutex_lock(&mutex.mutex_ref);
                         0
@@ -551,15 +550,16 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // the “Unlock When Not Owner” column in
             // https://pubs.opengroup.org/onlinepubs/9699919799/functions/pthread_mutex_unlock.html.
             match mutex.kind {
-                MutexKind::Default => throw_ub_format!(
-                    "unlocked a default mutex that was not locked by the current thread"
-                ),
-                MutexKind::Normal => throw_ub_format!(
-                    "unlocked a PTHREAD_MUTEX_NORMAL mutex that was not locked by the current thread"
-                ),
-                MutexKind::ErrorCheck | MutexKind::Recursive => {
-                    interp_ok(Scalar::from_i32(this.eval_libc_i32("EPERM")))
-                }
+                MutexKind::Default =>
+                    throw_ub_format!(
+                        "unlocked a default mutex that was not locked by the current thread"
+                    ),
+                MutexKind::Normal =>
+                    throw_ub_format!(
+                        "unlocked a PTHREAD_MUTEX_NORMAL mutex that was not locked by the current thread"
+                    ),
+                MutexKind::ErrorCheck | MutexKind::Recursive =>
+                    interp_ok(Scalar::from_i32(this.eval_libc_i32("EPERM"))),
             }
         }
     }

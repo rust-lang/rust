@@ -526,9 +526,11 @@ impl DisplayFmt {
     /// Print extra text if the tag has a protector.
     fn print_protector(&self, protector: Option<&ProtectorKind>) -> &'static str {
         protector
-            .map(|p| match *p {
-                ProtectorKind::WeakProtector => " Weakly protected",
-                ProtectorKind::StrongProtector => " Strongly protected",
+            .map(|p| {
+                match *p {
+                    ProtectorKind::WeakProtector => " Weakly protected",
+                    ProtectorKind::StrongProtector => " Strongly protected",
+                }
             })
             .unwrap_or("")
     }

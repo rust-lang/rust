@@ -143,30 +143,35 @@ impl<'tcx> NewPermission {
         let protector = is_protected.then_some(ProtectorKind::StrongProtector);
 
         Some(match mutability {
-            Mutability::Mut if ty_is_unpin => NewPermission {
-                freeze_perm: Permission::new_reserved(/* ty_is_freeze */ true, is_protected),
-                freeze_access: true,
-                nonfreeze_perm: Permission::new_reserved(
-                    /* ty_is_freeze */ false,
-                    is_protected,
-                ),
-                // If we have a mutable reference, then the non-frozen part will
-                // have state `ReservedIM` or `Reserved`, which can have an initial read access
-                // performed on it because you cannot have multiple mutable borrows.
-                nonfreeze_access: true,
-                protector,
-            },
-            Mutability::Not => NewPermission {
-                freeze_perm: Permission::new_frozen(),
-                freeze_access: true,
-                nonfreeze_perm: Permission::new_cell(),
-                // If it is a shared reference, then the non-frozen
-                // part will have state `Cell`, which should not have an initial access,
-                // as this can cause data races when using thread-safe data types like
-                // `Mutex<T>`.
-                nonfreeze_access: false,
-                protector,
-            },
+            Mutability::Mut if ty_is_unpin =>
+                NewPermission {
+                    freeze_perm: Permission::new_reserved(
+                        /* ty_is_freeze */ true,
+                        is_protected,
+                    ),
+                    freeze_access: true,
+                    nonfreeze_perm: Permission::new_reserved(
+                        /* ty_is_freeze */ false,
+                        is_protected,
+                    ),
+                    // If we have a mutable reference, then the non-frozen part will
+                    // have state `ReservedIM` or `Reserved`, which can have an initial read access
+                    // performed on it because you cannot have multiple mutable borrows.
+                    nonfreeze_access: true,
+                    protector,
+                },
+            Mutability::Not =>
+                NewPermission {
+                    freeze_perm: Permission::new_frozen(),
+                    freeze_access: true,
+                    nonfreeze_perm: Permission::new_cell(),
+                    // If it is a shared reference, then the non-frozen
+                    // part will have state `Cell`, which should not have an initial access,
+                    // as this can cause data races when using thread-safe data types like
+                    // `Mutex<T>`.
+                    nonfreeze_access: false,
+                    protector,
+                },
             _ => return None,
         })
     }
@@ -508,9 +513,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx, ImmTy<'tcx>> {
         let this = self.eval_context_mut();
         let new_perm = match val.layout.ty.kind() {
-            &ty::Ref(_, pointee, mutability) => {
-                NewPermission::from_ref_ty(pointee, mutability, kind, this)
-            }
+            &ty::Ref(_, pointee, mutability) =>
+                NewPermission::from_ref_ty(pointee, mutability, kind, this),
             _ => None,
         };
         if let Some(new_perm) = new_perm {

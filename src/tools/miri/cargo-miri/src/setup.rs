@@ -73,12 +73,10 @@ pub fn setup(
         None =>
         // No-std heuristic taken from rust/src/bootstrap/config.rs
         // (https://github.com/rust-lang/rust/blob/25b5af1b3a0b9e2c0c57b223b2d0e3e203869b2c/src/bootstrap/config.rs#L549-L555).
-        {
             target.contains("-none")
                 || target.contains("nvptx")
                 || target.contains("switch")
-                || target.contains("-uefi")
-        }
+                || target.contains("-uefi"),
         Some(val) => val != "0",
     };
     let sysroot_config = if no_std {
@@ -170,14 +168,13 @@ pub fn setup(
         .when_build_required(notify)
         .build_from_source(&rust_src);
     match status {
-        Ok(SysrootStatus::AlreadyCached) => {
+        Ok(SysrootStatus::AlreadyCached) =>
             if !quiet && show_setup {
                 eprintln!(
                     "A sysroot for Miri is already available in `{}`.",
                     sysroot_dir.display()
                 );
-            }
-        }
+            },
         Ok(SysrootStatus::SysrootBuilt) => {
             // Print what `notify` prepared.
             eprint!("{after_build_output}");

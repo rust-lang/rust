@@ -120,51 +120,49 @@ impl Iterator for ChildListener {
             // defensive programming since Linux sometimes assigns threads of
             // the same process different PIDs with unpredictable rules...
             match wait::waitid(wait::Id::All, opts) {
-                Ok(stat) => match stat {
-                    // Child exited normally with a specific code set.
-                    wait::WaitStatus::Exited(_, code) => self.last_code = Some(code),
-                    // Child was killed by a signal, without giving a code.
-                    wait::WaitStatus::Signaled(_, _, _) => self.last_code = None,
-                    // Child entered or exited a syscall.
-                    wait::WaitStatus::PtraceSyscall(pid) => {
-                        if self.attached {
-                            return Some(ExecEvent::Syscall(pid));
-                        }
-                    }
-                    // Child with the given pid was stopped by the given signal.
-                    // It's somewhat dubious when this is returned instead of
-                    // WaitStatus::Stopped, but for our purposes they are the
-                    // same thing.
-                    wait::WaitStatus::PtraceEvent(pid, signal, _) => {
-                        if self.attached {
-                            // This is our end-of-FFI signal!
-                            if signal == signal::SIGUSR1 {
-                                self.attached = false;
-                                return Some(ExecEvent::End);
+                Ok(stat) =>
+                    match stat {
+                        // Child exited normally with a specific code set.
+                        wait::WaitStatus::Exited(_, code) => self.last_code = Some(code),
+                        // Child was killed by a signal, without giving a code.
+                        wait::WaitStatus::Signaled(_, _, _) => self.last_code = None,
+                        // Child entered or exited a syscall.
+                        wait::WaitStatus::PtraceSyscall(pid) =>
+                            if self.attached {
+                                return Some(ExecEvent::Syscall(pid));
+                            },
+                        // Child with the given pid was stopped by the given signal.
+                        // It's somewhat dubious when this is returned instead of
+                        // WaitStatus::Stopped, but for our purposes they are the
+                        // same thing.
+                        wait::WaitStatus::PtraceEvent(pid, signal, _) =>
+                            if self.attached {
+                                // This is our end-of-FFI signal!
+                                if signal == signal::SIGUSR1 {
+                                    self.attached = false;
+                                    return Some(ExecEvent::End);
+                                } else {
+                                    return Some(ExecEvent::Status(pid, signal));
+                                }
                             } else {
-                                return Some(ExecEvent::Status(pid, signal));
-                            }
-                        } else {
-                            // Just pass along the signal.
-                            ptrace::cont(pid, signal).unwrap();
-                        }
-                    }
-                    // Child was stopped at the given signal. Same logic as for
-                    // WaitStatus::PtraceEvent.
-                    wait::WaitStatus::Stopped(pid, signal) => {
-                        if self.attached {
-                            if signal == signal::SIGUSR1 {
-                                self.attached = false;
-                                return Some(ExecEvent::End);
+                                // Just pass along the signal.
+                                ptrace::cont(pid, signal).unwrap();
+                            },
+                        // Child was stopped at the given signal. Same logic as for
+                        // WaitStatus::PtraceEvent.
+                        wait::WaitStatus::Stopped(pid, signal) =>
+                            if self.attached {
+                                if signal == signal::SIGUSR1 {
+                                    self.attached = false;
+                                    return Some(ExecEvent::End);
+                                } else {
+                                    return Some(ExecEvent::Status(pid, signal));
+                                }
                             } else {
-                                return Some(ExecEvent::Status(pid, signal));
-                            }
-                        } else {
-                            ptrace::cont(pid, signal).unwrap();
-                        }
-                    }
-                    _ => (),
-                },
+                                ptrace::cont(pid, signal).unwrap();
+                            },
+                        _ => (),
+                    },
                 // This case should only trigger when all children died.
                 Err(_) => return Some(ExecEvent::Died(self.override_retcode.or(self.last_code))),
             }
@@ -174,14 +172,12 @@ impl Iterator for ChildListener {
                 match req {
                     TraceRequest::StartFfi(info) =>
                     // Should never trigger - but better to panic explicitly than deadlock!
-                    {
                         if self.attached {
                             panic!("Attempting to begin FFI multiple times!");
                         } else {
                             self.attached = true;
                             return Some(ExecEvent::Start(info));
-                        }
-                    }
+                        },
                     TraceRequest::OverrideRetcode(code) => {
                         self.override_retcode = Some(code);
                         self.confirm_tx.send(Confirmation).unwrap();
@@ -269,28 +265,30 @@ pub fn sv_loop(
                 ptrace::cont(curr_pid, None).unwrap();
             }
             // Child process was stopped by a signal
-            ExecEvent::Status(pid, signal) => match signal {
-                // If it was a segfault, check if it was an artificial one
-                // caused by it trying to access the MiriMachine memory.
-                signal::SIGSEGV => handle_segfault(
-                    pid,
-                    &ch_pages,
-                    ch_stack.unwrap(),
-                    page_size,
-                    &cs,
-                    &mut acc_events,
-                )?,
-                // Something weird happened.
-                _ => {
-                    eprintln!("Process unexpectedly got {signal}; continuing...");
-                    // In case we're not tracing
-                    if ptrace::syscall(pid, None).is_err() {
-                        // If *this* fails too, something really weird happened
-                        // and it's probably best to just panic.
-                        signal::kill(pid, signal::SIGCONT).unwrap();
+            ExecEvent::Status(pid, signal) =>
+                match signal {
+                    // If it was a segfault, check if it was an artificial one
+                    // caused by it trying to access the MiriMachine memory.
+                    signal::SIGSEGV =>
+                        handle_segfault(
+                            pid,
+                            &ch_pages,
+                            ch_stack.unwrap(),
+                            page_size,
+                            &cs,
+                            &mut acc_events,
+                        )?,
+                    // Something weird happened.
+                    _ => {
+                        eprintln!("Process unexpectedly got {signal}; continuing...");
+                        // In case we're not tracing
+                        if ptrace::syscall(pid, None).is_err() {
+                            // If *this* fails too, something really weird happened
+                            // and it's probably best to just panic.
+                            signal::kill(pid, signal::SIGCONT).unwrap();
+                        }
                     }
-                }
-            },
+                },
             // Child entered a syscall; we wait for exits inside of this, so it
             // should never trigger on return from a syscall we care about.
             ExecEvent::Syscall(pid) => {

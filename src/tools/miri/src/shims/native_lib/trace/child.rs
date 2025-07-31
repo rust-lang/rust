@@ -142,10 +142,11 @@ impl Supervisor {
         let events = sv
             .event_rx
             .try_recv_timeout(std::time::Duration::from_secs(5))
-            .map_err(|e| match e {
-                ipc::TryRecvError::IpcError(_) => (),
-                ipc::TryRecvError::Empty => {
-                    panic!("Waiting for accesses from supervisor timed out!")
+            .map_err(|e| {
+                match e {
+                    ipc::TryRecvError::IpcError(_) => (),
+                    ipc::TryRecvError::Empty =>
+                        panic!("Waiting for accesses from supervisor timed out!"),
                 }
             })
             .ok();
