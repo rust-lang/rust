@@ -15,6 +15,7 @@ import os.path
 import re
 import shlex
 from collections import namedtuple
+from pathlib import Path
 
 try:
     from html.parser import HTMLParser
@@ -242,6 +243,11 @@ class CachedFiles(object):
             return self.last_path
 
     def get_absolute_path(self, path):
+        if "*" in path:
+            paths = list(Path(self.root).glob(path))
+            if len(paths) != 1:
+                raise FailedCheck("glob path does not resolve to one file")
+            path = str(paths[0])
         return os.path.join(self.root, path)
 
     def get_file(self, path):

@@ -14,9 +14,9 @@
 //@ has tango/trait.Tango.html
 //@ hasraw sierra/struct.Sierra.html 'Tango'
 //@ hasraw trait.impl/tango/trait.Tango.js 'struct.Sierra.html'
-//@ hasraw search-index.js 'Tango'
-//@ hasraw search-index.js 'Sierra'
-//@ hasraw search-index.js 'Quebec'
+//@ hasraw search.index/name/*.js 'Tango'
+//@ hasraw search.index/name/*.js 'Sierra'
+//@ hasraw search.index/name/*.js 'Quebec'
 
 // similar to cargo-workflow-transitive, but we use --merge=read-write,
 // which is the default.

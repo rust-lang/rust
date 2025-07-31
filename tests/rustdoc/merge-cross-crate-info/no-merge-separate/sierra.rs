@@ -8,7 +8,7 @@
 //@ has sierra/struct.Sierra.html
 //@ hasraw sierra/struct.Sierra.html 'Tango'
 //@ !has trait.impl/tango/trait.Tango.js
-//@ !has search-index.js
+//@ !has search.index/name/*.js
 
 // we don't generate any cross-crate info if --merge=none, even if we
 // document crates separately

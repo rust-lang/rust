@@ -5,7 +5,7 @@ set-window-size: (400, 600)
 set-font-size: 18
 wait-for: 100 // wait a bit for the resize and the font-size change to be fully taken into account.
 
-assert-property: (".mobile-topbar h2", {"offsetHeight": 33})
+assert-property: ("rustdoc-topbar h2", {"offsetHeight": 33})
 
 // On the settings page, the theme buttons should not line-wrap. Instead, they should
 // all be placed as a group on a line below the setting name "Theme."

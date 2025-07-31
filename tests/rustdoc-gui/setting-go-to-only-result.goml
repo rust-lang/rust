@@ -5,7 +5,7 @@ define-function: (
     [storage_value, setting_attribute_value],
     block {
         assert-local-storage: {"rustdoc-go-to-only-result": |storage_value|}
-        click: "#settings-menu"
+        click: "rustdoc-toolbar .settings-menu"
         wait-for: "#settings"
         assert-property: ("#go-to-only-result", {"checked": |setting_attribute_value|})
     }
@@ -25,7 +25,7 @@ wait-for: "#search"
 assert-document-property: ({"URL": "/lib2/index.html"}, CONTAINS)
 
 // Now we change its value.
-click: "#settings-menu"
+click: "rustdoc-toolbar .settings-menu"
 wait-for: "#settings"
 click: "#go-to-only-result"
 assert-local-storage: {"rustdoc-go-to-only-result": "true"}
