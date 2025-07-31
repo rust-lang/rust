@@ -21,16 +21,15 @@ fn main() {
 }
 
 // CHECK: %struct.__tgt_offload_entry = type { i64, i16, i16, i32, ptr, ptr, i64, i64, ptr }
-// CHECK: %struct.__tgt_kernel_arguments = type { i32, i32, ptr, ptr, ptr, ptr, ptr, ptr, i64, i64, [3 x i32], [3 x i32], i32 }
 // CHECK: %struct.ident_t = type { i32, i32, i32, i32, ptr }
 // CHECK: %struct.__tgt_bin_desc = type { i32, ptr, ptr, ptr }
+// CHECK: %struct.__tgt_kernel_arguments = type { i32, i32, ptr, ptr, ptr, ptr, ptr, ptr, i64, i64, [3 x i32], [3 x i32], i32 }
 
 // CHECK: @.offload_sizes.1 = private unnamed_addr constant [1 x i64] [i64 1024]
 // CHECK: @.offload_maptypes.1 = private unnamed_addr constant [1 x i64] [i64 3]
 // CHECK: @.kernel_1.region_id = weak unnamed_addr constant i8 0
 // CHECK: @.offloading.entry_name.1 = internal unnamed_addr constant [9 x i8] c"kernel_1\00", section ".llvm.rodata.offloading", align 1
 // CHECK: @.offloading.entry.kernel_1 = weak constant %struct.__tgt_offload_entry { i64 0, i16 1, i16 1, i32 0, ptr @.kernel_1.region_id, ptr @.offloading.entry_name.1, i64 0, i64 0, ptr null }, section ".omp_offloading_entries", align 1
-// CHECK: @my_struct_global2 = external global %struct.__tgt_kernel_arguments
 // CHECK: @0 = private unnamed_addr constant [23 x i8] c";unknown;unknown;0;0;;\00", align 1
 // CHECK: @1 = private unnamed_addr constant %struct.ident_t { i32 0, i32 2, i32 0, i32 22, ptr @0 }, align 8
 
@@ -43,6 +42,7 @@ fn main() {
 // CHECK-NEXT:   %.offload_baseptrs = alloca [1 x ptr], align 8
 // CHECK-NEXT:   %.offload_ptrs = alloca [1 x ptr], align 8
 // CHECK-NEXT:   %.offload_sizes = alloca [1 x i64], align 8
+// CHECK-NEXT:   %kernel_args = alloca %struct.__tgt_kernel_arguments, align 8
 // CHECK-NEXT:   %x.addr = alloca ptr, align 8
 // CHECK-NEXT:   store ptr %x, ptr %x.addr, align 8
 // CHECK-NEXT:   %1 = load ptr, ptr %x.addr, align 8
@@ -70,6 +70,9 @@ fn main() {
 // CHECK-NEXT:   call void asm sideeffect "", "r,~{memory}"(ptr nonnull %0)
 // CHECK:        ret void
 // CHECK-NEXT: }
+
+// CHECK: Function Attrs: nounwind
+// CHECK: declare i32 @__tgt_target_kernel(ptr, i64, i32, i32, ptr, ptr)
 
 #[unsafe(no_mangle)]
 #[inline(never)]

@@ -27,7 +27,23 @@ pub(crate) fn handle_gpu_code<'ll>(
         }
     }
     gen_call_handling(&cx, &kernels, &o_types);
+    generate_launcher(&cx);
     crate::builder::gpu_wrapper::gen_image_wrapper_module(&cgcx);
+}
+
+// ; Function Attrs: nounwind
+// declare i32 @__tgt_target_kernel(ptr, i64, i32, i32, ptr, ptr) #2
+fn generate_launcher<'ll>(cx: &'ll SimpleCx<'_>) -> &'ll llvm::Value {
+    let tptr = cx.type_ptr();
+    let ti64 = cx.type_i64();
+    let ti32 = cx.type_i32();
+    let args = vec![tptr, ti64, ti32, ti32, tptr, tptr];
+    let tgt_fn_ty = cx.type_func(&args, ti32);
+    let name = "__tgt_target_kernel";
+    let tgt_decl = declare_offload_fn(&cx, name, tgt_fn_ty);
+    let nounwind = llvm::AttributeKind::NoUnwind.create_attr(cx.llcx);
+    attributes::apply_to_llfn(tgt_decl, Function, &[nounwind]);
+    tgt_decl
 }
 
 // What is our @1 here? A magic global, used in our data_{begin/update/end}_mapper:
@@ -83,7 +99,7 @@ pub(crate) fn add_tgt_offload_entry<'ll>(cx: &'ll SimpleCx<'_>) -> &'ll llvm::Ty
     offload_entry_ty
 }
 
-fn gen_tgt_kernel_global<'ll>(cx: &'ll SimpleCx<'_>) {
+fn gen_tgt_kernel_global<'ll>(cx: &'ll SimpleCx<'_>) -> &'ll llvm::Type {
     let kernel_arguments_ty = cx.type_named_struct("struct.__tgt_kernel_arguments");
     let tptr = cx.type_ptr();
     let ti64 = cx.type_i64();
@@ -118,9 +134,10 @@ fn gen_tgt_kernel_global<'ll>(cx: &'ll SimpleCx<'_>) {
         vec![ti32, ti32, tptr, tptr, tptr, tptr, tptr, tptr, ti64, ti64, tarr, tarr, ti32];
 
     cx.set_struct_body(kernel_arguments_ty, &kernel_elements, false);
+    kernel_arguments_ty
     // For now we don't handle kernels, so for now we just add a global dummy
     // to make sure that the __tgt_offload_entry is defined and handled correctly.
-    cx.declare_global("my_struct_global2", kernel_arguments_ty);
+    //cx.declare_global("my_struct_global2", kernel_arguments_ty);
 }
 
 fn gen_tgt_data_mappers<'ll>(
@@ -295,7 +312,7 @@ fn gen_call_handling<'ll>(
     let tgt_bin_desc = cx.type_named_struct("struct.__tgt_bin_desc");
     cx.set_struct_body(tgt_bin_desc, &tgt_bin_desc_ty, false);
 
-    gen_tgt_kernel_global(&cx);
+    let tgt_kernel_decl = gen_tgt_kernel_global(&cx);
     let (begin_mapper_decl, _, end_mapper_decl, fn_ty) = gen_tgt_data_mappers(&cx);
 
     let main_fn = cx.get_function("main");
@@ -329,6 +346,9 @@ fn gen_call_handling<'ll>(
     // These represent the sizes in bytes, e.g. the entry for `&[f64; 16]` will be 8*16.
     let ty2 = cx.type_array(cx.type_i64(), num_args);
     let a4 = builder.direct_alloca(ty2, Align::EIGHT, ".offload_sizes");
+
+    let a5 = builder.direct_alloca(tgt_kernel_decl, Align::EIGHT, "kernel_args");
+    //%kernel_args = alloca %struct.__tgt_kernel_arguments, align 8
     // Now we allocate once per function param, a copy to be passed to one of our maps.
     let mut vals = vec![];
     let mut geps = vec![];
