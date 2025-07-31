@@ -1695,7 +1695,7 @@ impl<'test> TestCx<'test> {
             TestMode::Assembly | TestMode::Codegen => {
                 rustc.arg("-Cdebug-assertions=no");
                 // For assembly and codegen tests, we want to use the same order
-                // of the items of a codegen unit as the source order，so that
+                // of the items of a codegen unit as the source order, so that
                 // we can compare the output with the source code through filecheck.
                 rustc.arg("-Zcodegen-source-order");
             }
