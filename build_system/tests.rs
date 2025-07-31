@@ -209,13 +209,15 @@ const EXTENDED_SYSROOT_SUITE: &[TestCase] = &[
 
         PORTABLE_SIMD.clean(&runner.dirs);
 
-        let mut build_cmd = PORTABLE_SIMD.build(&runner.target_compiler, &runner.dirs);
-        build_cmd.arg("--all-targets");
+        let build_cmd = PORTABLE_SIMD.build(&runner.target_compiler, &runner.dirs);
+        // FIXME uncomment once examples work: https://github.com/rust-lang/portable-simd/issues/470
+        //build_cmd.arg("--all-targets");
         spawn_and_wait(build_cmd);
 
         if runner.is_native {
             let mut test_cmd = PORTABLE_SIMD.test(&runner.target_compiler, &runner.dirs);
-            test_cmd.arg("-q");
+            // FIXME remove --tests once examples work: https://github.com/rust-lang/portable-simd/issues/470
+            test_cmd.arg("-q").arg("--tests");
             spawn_and_wait(test_cmd);
         }
     }),
