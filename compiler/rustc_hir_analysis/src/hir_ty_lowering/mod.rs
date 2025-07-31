@@ -2037,9 +2037,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 match prim_ty {
                     hir::PrimTy::Bool => tcx.types.bool,
                     hir::PrimTy::Char => tcx.types.char,
-                    hir::PrimTy::Int(it) => Ty::new_int(tcx, ty::int_ty(it)),
-                    hir::PrimTy::Uint(uit) => Ty::new_uint(tcx, ty::uint_ty(uit)),
-                    hir::PrimTy::Float(ft) => Ty::new_float(tcx, ty::float_ty(ft)),
+                    hir::PrimTy::Int(it) => Ty::new_int(tcx, it),
+                    hir::PrimTy::Uint(uit) => Ty::new_uint(tcx, uit),
+                    hir::PrimTy::Float(ft) => Ty::new_float(tcx, ft),
                     hir::PrimTy::Str => tcx.types.str_,
                 }
             }

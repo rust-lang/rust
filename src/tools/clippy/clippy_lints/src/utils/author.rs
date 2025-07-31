@@ -9,6 +9,7 @@ use rustc_hir::{
     FnRetTy, HirId, Lit, PatExprKind, PatKind, QPath, StmtKind, StructTailExpr,
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_middle::ty::{FloatTy, IntTy, UintTy};
 use rustc_session::declare_lint_pass;
 use rustc_span::symbol::{Ident, Symbol};
 use std::cell::Cell;
@@ -337,15 +338,43 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
             LitKind::Byte(b) => kind!("Byte({b})"),
             LitKind::Int(i, suffix) => {
                 let int_ty = match suffix {
-                    LitIntType::Signed(int_ty) => format!("LitIntType::Signed(IntTy::{int_ty:?})"),
-                    LitIntType::Unsigned(uint_ty) => format!("LitIntType::Unsigned(UintTy::{uint_ty:?})"),
+                    LitIntType::Signed(int_ty) => {
+                        let t = match int_ty {
+                            IntTy::Isize => "Isize",
+                            IntTy::I8 => "I8",
+                            IntTy::I16 => "I16",
+                            IntTy::I32 => "I32",
+                            IntTy::I64 => "I64",
+                            IntTy::I128 => "I128",
+                        };
+                        format!("LitIntType::Signed(IntTy::{t})")
+                    }
+                    LitIntType::Unsigned(uint_ty) => {
+                        let t = match uint_ty {
+                            UintTy::Usize => "Usize",
+                            UintTy::U8 => "U8",
+                            UintTy::U16 => "U16",
+                            UintTy::U32 => "U32",
+                            UintTy::U64 => "U64",
+                            UintTy::U128 => "U128",
+                        };
+                        format!("LitIntType::Unsigned(UintTy::{t})")
+                    }
                     LitIntType::Unsuffixed => String::from("LitIntType::Unsuffixed"),
                 };
                 kind!("Int({i}, {int_ty})");
             },
             LitKind::Float(_, suffix) => {
                 let float_ty = match suffix {
-                    LitFloatType::Suffixed(suffix_ty) => format!("LitFloatType::Suffixed(FloatTy::{suffix_ty:?})"),
+                    LitFloatType::Suffixed(suffix_ty) => {
+                        let t = match suffix_ty {
+                            FloatTy::F16 => "F16",
+                            FloatTy::F32 => "F32",
+                            FloatTy::F64 => "F64",
+                            FloatTy::F128 => "F128",
+                        };
+                        format!("LitFloatType::Suffixed(FloatTy::{t})")
+                    }
                     LitFloatType::Unsuffixed => String::from("LitFloatType::Unsuffixed"),
                 };
                 kind!("Float(_, {float_ty})");

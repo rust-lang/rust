@@ -1963,43 +1963,6 @@ impl PrimitiveType {
     }
 }
 
-impl From<ast::IntTy> for PrimitiveType {
-    fn from(int_ty: ast::IntTy) -> PrimitiveType {
-        match int_ty {
-            ast::IntTy::Isize => PrimitiveType::Isize,
-            ast::IntTy::I8 => PrimitiveType::I8,
-            ast::IntTy::I16 => PrimitiveType::I16,
-            ast::IntTy::I32 => PrimitiveType::I32,
-            ast::IntTy::I64 => PrimitiveType::I64,
-            ast::IntTy::I128 => PrimitiveType::I128,
-        }
-    }
-}
-
-impl From<ast::UintTy> for PrimitiveType {
-    fn from(uint_ty: ast::UintTy) -> PrimitiveType {
-        match uint_ty {
-            ast::UintTy::Usize => PrimitiveType::Usize,
-            ast::UintTy::U8 => PrimitiveType::U8,
-            ast::UintTy::U16 => PrimitiveType::U16,
-            ast::UintTy::U32 => PrimitiveType::U32,
-            ast::UintTy::U64 => PrimitiveType::U64,
-            ast::UintTy::U128 => PrimitiveType::U128,
-        }
-    }
-}
-
-impl From<ast::FloatTy> for PrimitiveType {
-    fn from(float_ty: ast::FloatTy) -> PrimitiveType {
-        match float_ty {
-            ast::FloatTy::F16 => PrimitiveType::F16,
-            ast::FloatTy::F32 => PrimitiveType::F32,
-            ast::FloatTy::F64 => PrimitiveType::F64,
-            ast::FloatTy::F128 => PrimitiveType::F128,
-        }
-    }
-}
-
 impl From<ty::IntTy> for PrimitiveType {
     fn from(int_ty: ty::IntTy) -> PrimitiveType {
         match int_ty {
