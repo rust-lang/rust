@@ -4552,6 +4552,7 @@ name = "rustc_resolve"
 version = "0.0.0"
 dependencies = [
  "bitflags",
+ "indexmap",
  "itertools",
  "pulldown-cmark",
  "rustc_arena",
