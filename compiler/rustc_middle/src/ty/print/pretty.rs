@@ -2456,7 +2456,12 @@ impl<'tcx> PrettyPrinter<'tcx> for FmtPrinter<'_, 'tcx> {
     where
         T: Print<'tcx, Self> + TypeFoldable<TyCtxt<'tcx>>,
     {
-        self.pretty_print_in_binder(value)
+        let old_region_index = self.region_index;
+        let (new_value, _) = self.name_all_regions(value, WrapBinderMode::ForAll)?;
+        new_value.print(self)?;
+        self.region_index = old_region_index;
+        self.binder_depth -= 1;
+        Ok(())
     }
 
     fn wrap_binder<T, C: FnOnce(&T, &mut Self) -> Result<(), PrintError>>(
@@ -2468,7 +2473,12 @@ impl<'tcx> PrettyPrinter<'tcx> for FmtPrinter<'_, 'tcx> {
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
-        self.pretty_wrap_binder(value, mode, f)
+        let old_region_index = self.region_index;
+        let (new_value, _) = self.name_all_regions(value, mode)?;
+        f(&new_value, self)?;
+        self.region_index = old_region_index;
+        self.binder_depth -= 1;
+        Ok(())
     }
 
     fn typed_value(
@@ -2853,38 +2863,6 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
         self.binder_depth += 1;
         self.region_index = region_index;
         Ok((new_value, map))
-    }
-
-    pub fn pretty_print_in_binder<T>(
-        &mut self,
-        value: &ty::Binder<'tcx, T>,
-    ) -> Result<(), fmt::Error>
-    where
-        T: Print<'tcx, Self> + TypeFoldable<TyCtxt<'tcx>>,
-    {
-        let old_region_index = self.region_index;
-        let (new_value, _) = self.name_all_regions(value, WrapBinderMode::ForAll)?;
-        new_value.print(self)?;
-        self.region_index = old_region_index;
-        self.binder_depth -= 1;
-        Ok(())
-    }
-
-    pub fn pretty_wrap_binder<T, C: FnOnce(&T, &mut Self) -> Result<(), fmt::Error>>(
-        &mut self,
-        value: &ty::Binder<'tcx, T>,
-        mode: WrapBinderMode,
-        f: C,
-    ) -> Result<(), fmt::Error>
-    where
-        T: TypeFoldable<TyCtxt<'tcx>>,
-    {
-        let old_region_index = self.region_index;
-        let (new_value, _) = self.name_all_regions(value, mode)?;
-        f(&new_value, self)?;
-        self.region_index = old_region_index;
-        self.binder_depth -= 1;
-        Ok(())
     }
 
     fn prepare_region_info<T>(&mut self, value: &ty::Binder<'tcx, T>)
