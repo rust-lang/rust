@@ -7,7 +7,6 @@
 
 use rustc_abi::{FIRST_VARIANT, FieldIdx};
 use rustc_ast::util::parser::ExprPrecedence;
-use rustc_attr_data_structures::{AttributeKind, find_attr};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::unord::UnordMap;
@@ -16,10 +15,11 @@ use rustc_errors::{
     Applicability, Diag, ErrorGuaranteed, MultiSpan, StashKey, Subdiagnostic, listify, pluralize,
     struct_span_code_err,
 };
+use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
-use rustc_hir::{ExprKind, HirId, QPath};
+use rustc_hir::{ExprKind, HirId, QPath, find_attr};
 use rustc_hir_analysis::NoVariantNamed;
 use rustc_hir_analysis::hir_ty_lowering::{FeedConstTy, HirTyLowerer as _};
 use rustc_infer::infer::{self, DefineOpaqueTypes, InferOk, RegionVariableOrigin};

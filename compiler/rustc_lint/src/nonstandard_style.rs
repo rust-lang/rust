@@ -1,11 +1,11 @@
 use rustc_abi::ExternAbi;
-use rustc_attr_data_structures::{AttributeKind, ReprAttr, find_attr};
 use rustc_attr_parsing::AttributeParser;
 use rustc_errors::Applicability;
+use rustc_hir::attrs::{AttributeKind, ReprAttr};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{FnKind, Visitor};
-use rustc_hir::{AttrArgs, AttrItem, Attribute, GenericParamKind, PatExprKind, PatKind};
+use rustc_hir::{AttrArgs, AttrItem, Attribute, GenericParamKind, PatExprKind, PatKind, find_attr};
 use rustc_middle::hir::nested_filter::All;
 use rustc_middle::ty;
 use rustc_session::config::CrateType;

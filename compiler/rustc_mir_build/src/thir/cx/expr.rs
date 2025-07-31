@@ -1,10 +1,11 @@
 use itertools::Itertools;
 use rustc_abi::{FIRST_VARIANT, FieldIdx};
 use rustc_ast::UnsafeBinderCastKind;
-use rustc_attr_data_structures::{AttributeKind, find_attr};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir as hir;
+use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
+use rustc_hir::find_attr;
 use rustc_index::Idx;
 use rustc_middle::hir::place::{
     Place as HirPlace, PlaceBase as HirPlaceBase, ProjectionKind as HirProjectionKind,

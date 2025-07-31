@@ -85,13 +85,13 @@ use std::io;
 use std::io::prelude::*;
 use std::rc::Rc;
 
-use rustc_attr_data_structures::{AttributeKind, find_attr};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir as hir;
+use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::*;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{self, Visitor};
-use rustc_hir::{Expr, HirId, HirIdMap, HirIdSet};
+use rustc_hir::{Expr, HirId, HirIdMap, HirIdSet, find_attr};
 use rustc_index::IndexVec;
 use rustc_middle::query::Providers;
 use rustc_middle::span_bug;

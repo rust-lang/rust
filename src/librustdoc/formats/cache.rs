@@ -1,8 +1,8 @@
 use std::mem;
 
 use rustc_ast::join_path_syms;
-use rustc_attr_data_structures::StabilityLevel;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
+use rustc_hir::StabilityLevel;
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, DefIdSet};
 use rustc_metadata::creader::CStore;
 use rustc_middle::ty::{self, TyCtxt};

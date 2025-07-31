@@ -1,11 +1,11 @@
 use hir::{ExprKind, Node, is_range_literal};
 use rustc_abi::{Integer, Size};
-use rustc_hir::HirId;
+use rustc_hir::{HirId, attrs};
 use rustc_middle::ty::Ty;
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::{bug, ty};
 use rustc_span::Span;
-use {rustc_ast as ast, rustc_attr_data_structures as attrs, rustc_hir as hir};
+use {rustc_ast as ast, rustc_hir as hir};
 
 use crate::LateContext;
 use crate::context::LintContext;

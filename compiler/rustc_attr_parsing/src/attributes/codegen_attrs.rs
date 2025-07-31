@@ -1,5 +1,5 @@
-use rustc_attr_data_structures::{AttributeKind, CoverageAttrKind, OptimizeAttr, UsedBy};
 use rustc_feature::{AttributeTemplate, template};
+use rustc_hir::attrs::{AttributeKind, CoverageAttrKind, OptimizeAttr, UsedBy};
 use rustc_session::parse::feature_err;
 use rustc_span::{Span, Symbol, sym};
 

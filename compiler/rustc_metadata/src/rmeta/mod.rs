@@ -8,14 +8,14 @@ use encoder::EncodeContext;
 pub use encoder::{EncodedMetadata, encode_metadata, rendered_const};
 pub(crate) use parameterized::ParameterizedOverTcx;
 use rustc_abi::{FieldIdx, ReprOptions, VariantIdx};
-use rustc_attr_data_structures::StrippedCfgItem;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::svh::Svh;
-use rustc_hir::PreciseCapturingArgKind;
+use rustc_hir::attrs::StrippedCfgItem;
 use rustc_hir::def::{CtorKind, DefKind, DocLinkResMap};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, DefIndex, DefPathHash, StableCrateId};
 use rustc_hir::definitions::DefKey;
 use rustc_hir::lang_items::LangItem;
+use rustc_hir::{PreciseCapturingArgKind, attrs};
 use rustc_index::IndexVec;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_macros::{
@@ -39,7 +39,7 @@ use rustc_span::hygiene::{ExpnIndex, MacroKind, SyntaxContextKey};
 use rustc_span::{self, ExpnData, ExpnHash, ExpnId, Ident, Span, Symbol};
 use rustc_target::spec::{PanicStrategy, TargetTuple};
 use table::TableBuilder;
-use {rustc_ast as ast, rustc_attr_data_structures as attrs, rustc_hir as hir};
+use {rustc_ast as ast, rustc_hir as hir};
 
 use crate::creader::CrateMetadataRef;
 
@@ -188,7 +188,7 @@ type ExpnHashTable = LazyTable<ExpnIndex, Option<LazyValue<ExpnHash>>>;
 #[derive(MetadataEncodable, MetadataDecodable)]
 pub(crate) struct ProcMacroData {
     proc_macro_decls_static: DefIndex,
-    stability: Option<attrs::Stability>,
+    stability: Option<hir::Stability>,
     macros: LazyArray<DefIndex>,
 }
 
@@ -410,9 +410,9 @@ define_tables! {
     safety: Table<DefIndex, hir::Safety>,
     def_span: Table<DefIndex, LazyValue<Span>>,
     def_ident_span: Table<DefIndex, LazyValue<Span>>,
-    lookup_stability: Table<DefIndex, LazyValue<attrs::Stability>>,
-    lookup_const_stability: Table<DefIndex, LazyValue<attrs::ConstStability>>,
-    lookup_default_body_stability: Table<DefIndex, LazyValue<attrs::DefaultBodyStability>>,
+    lookup_stability: Table<DefIndex, LazyValue<hir::Stability>>,
+    lookup_const_stability: Table<DefIndex, LazyValue<hir::ConstStability>>,
+    lookup_default_body_stability: Table<DefIndex, LazyValue<hir::DefaultBodyStability>>,
     lookup_deprecation_entry: Table<DefIndex, LazyValue<attrs::Deprecation>>,
     explicit_predicates_of: Table<DefIndex, LazyValue<ty::GenericPredicates<'static>>>,
     generics_of: Table<DefIndex, LazyValue<ty::Generics>>,

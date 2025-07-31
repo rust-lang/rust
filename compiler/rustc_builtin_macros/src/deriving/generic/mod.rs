@@ -187,10 +187,10 @@ use rustc_ast::{
     self as ast, AnonConst, AttrArgs, BindingMode, ByRef, DelimArgs, EnumDef, Expr, GenericArg,
     GenericParamKind, Generics, Mutability, PatKind, Safety, VariantData,
 };
-use rustc_attr_data_structures::{AttributeKind, ReprPacked};
 use rustc_attr_parsing::AttributeParser;
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_hir::Attribute;
+use rustc_hir::attrs::{AttributeKind, ReprPacked};
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
 use thin_vec::{ThinVec, thin_vec};
 use ty::{Bounds, Path, Ref, Self_, Ty};

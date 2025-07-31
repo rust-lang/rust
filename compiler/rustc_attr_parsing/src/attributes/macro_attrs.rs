@@ -1,6 +1,6 @@
-use rustc_attr_data_structures::{AttributeKind, MacroUseArgs};
 use rustc_errors::DiagArgValue;
 use rustc_feature::{AttributeTemplate, template};
+use rustc_hir::attrs::{AttributeKind, MacroUseArgs};
 use rustc_span::{Span, Symbol, sym};
 use thin_vec::ThinVec;
 

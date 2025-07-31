@@ -16,8 +16,8 @@
 
 use std::marker::PhantomData;
 
-use rustc_attr_data_structures::AttributeKind;
 use rustc_feature::{AttributeTemplate, template};
+use rustc_hir::attrs::AttributeKind;
 use rustc_span::{Span, Symbol};
 use thin_vec::ThinVec;
 
