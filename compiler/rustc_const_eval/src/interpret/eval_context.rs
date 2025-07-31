@@ -113,7 +113,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     /// See [LayoutOf::layout_of] for the original documentation.
     #[inline(always)]
     pub fn layout_of(&self, ty: Ty<'tcx>) -> <Self as LayoutOfHelpers<'tcx>>::LayoutOfResult {
-        let _span = enter_trace_span!(M, "InterpCx::layout_of", ty = ?ty.kind());
+        let _span = enter_trace_span!(M, layouting::layout_of, ty = ?ty.kind());
         LayoutOf::layout_of(self, ty)
     }
 
@@ -126,7 +126,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         sig: ty::PolyFnSig<'tcx>,
         extra_args: &'tcx ty::List<Ty<'tcx>>,
     ) -> <Self as FnAbiOfHelpers<'tcx>>::FnAbiOfResult {
-        let _span = enter_trace_span!(M, "InterpCx::fn_abi_of_fn_ptr", ?sig, ?extra_args);
+        let _span = enter_trace_span!(M, layouting::fn_abi_of_fn_ptr, ?sig, ?extra_args);
         FnAbiOf::fn_abi_of_fn_ptr(self, sig, extra_args)
     }
 
@@ -139,7 +139,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         instance: ty::Instance<'tcx>,
         extra_args: &'tcx ty::List<Ty<'tcx>>,
     ) -> <Self as FnAbiOfHelpers<'tcx>>::FnAbiOfResult {
-        let _span = enter_trace_span!(M, "InterpCx::fn_abi_of_instance", ?instance, ?extra_args);
+        let _span = enter_trace_span!(M, layouting::fn_abi_of_instance, ?instance, ?extra_args);
         FnAbiOf::fn_abi_of_instance(self, instance, extra_args)
     }
 }
