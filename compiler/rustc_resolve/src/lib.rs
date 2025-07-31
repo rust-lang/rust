@@ -1487,13 +1487,23 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let mut invocation_parents = FxHashMap::default();
         invocation_parents.insert(LocalExpnId::ROOT, InvocationParent::ROOT);
 
-        let mut extern_prelude: FxIndexMap<Ident, ExternPreludeEntry<'_>> = tcx
+        let mut extern_prelude: FxIndexMap<_, _> = tcx
             .sess
             .opts
             .externs
             .iter()
-            .filter(|(_, entry)| entry.add_prelude)
-            .map(|(name, _)| (Ident::from_str(name), Default::default()))
+            .filter_map(|(name, entry)| {
+                // Make sure `self`, `super`, `_` etc do not get into extern prelude.
+                // FIXME: reject `--extern self` and similar in option parsing instead.
+                if entry.add_prelude
+                    && let name = Symbol::intern(name)
+                    && name.can_be_raw()
+                {
+                    Some((Ident::with_dummy_span(name), Default::default()))
+                } else {
+                    None
+                }
+            })
             .collect();
 
         if !attr::contains_name(attrs, sym::no_core) {
@@ -2168,11 +2178,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     }
 
     fn extern_prelude_get(&mut self, ident: Ident, finalize: bool) -> Option<NameBinding<'ra>> {
-        if ident.is_path_segment_keyword() {
-            // Make sure `self`, `super` etc produce an error when passed to here.
-            return None;
-        }
-
         let norm_ident = ident.normalize_to_macros_2_0();
         let binding = self.extern_prelude.get(&norm_ident).cloned().and_then(|entry| {
             Some(if let Some(binding) = entry.binding.get() {
