@@ -31,24 +31,6 @@ macro_rules! check {
     };
 }
 
-// CHECK-LABEL: reg:
-// CHECK: @APP
-// CHECK: mov r0, r0
-// CHECK: @NO_APP
-check!(reg "" reg i32 "mov");
-
-// CHECK-LABEL: sreg:
-// CHECK: @APP
-// CHECK: vmov.f32 s0, s0
-// CHECK: @NO_APP
-check!(sreg "" sreg f32 "vmov.f32");
-
-// CHECK-LABEL: sreg_low16:
-// CHECK: @APP
-// CHECK: vmov.f32 s0, s0
-// CHECK: @NO_APP
-check!(sreg_low16 "" sreg_low16 f32 "vmov.f32");
-
 // CHECK-LABEL: dreg:
 // CHECK: @APP
 // CHECK: vmov.f64 d0, d0
@@ -85,6 +67,23 @@ check!(qreg_e "e" qreg f32x4 "vmov.f64");
 // CHECK: @NO_APP
 check!(qreg_f "f" qreg f32x4 "vmov.f64");
 
+// CHECK-LABEL: qreg_low4:
+// CHECK: @APP
+// CHECK: vorr q0, q0, q0
+// CHECK: @NO_APP
+check!(qreg_low4 "" qreg_low4 f32x4 "vmov");
+
+// CHECK-LABEL: qreg_low4_e:
+// CHECK: @APP
+// CHECK: vmov.f64 d0, d0
+// CHECK: @NO_APP
+check!(qreg_low4_e "e" qreg_low4 f32x4 "vmov.f64");
+
+// CHECK-LABEL: qreg_low4_f:
+// CHECK: @APP
+// CHECK: vmov.f64 d1, d1
+// CHECK: @NO_APP
+check!(qreg_low4_f "f" qreg_low4 f32x4 "vmov.f64");
 // CHECK-LABEL: qreg_low8:
 // CHECK: @APP
 // CHECK: vorr q0, q0, q0
@@ -103,20 +102,20 @@ check!(qreg_low8_e "e" qreg_low8 f32x4 "vmov.f64");
 // CHECK: @NO_APP
 check!(qreg_low8_f "f" qreg_low8 f32x4 "vmov.f64");
 
-// CHECK-LABEL: qreg_low4:
+// CHECK-LABEL: reg:
 // CHECK: @APP
-// CHECK: vorr q0, q0, q0
+// CHECK: mov r0, r0
 // CHECK: @NO_APP
-check!(qreg_low4 "" qreg_low4 f32x4 "vmov");
+check!(reg "" reg i32 "mov");
 
-// CHECK-LABEL: qreg_low4_e:
+// CHECK-LABEL: sreg:
 // CHECK: @APP
-// CHECK: vmov.f64 d0, d0
+// CHECK: vmov.f32 s0, s0
 // CHECK: @NO_APP
-check!(qreg_low4_e "e" qreg_low4 f32x4 "vmov.f64");
+check!(sreg "" sreg f32 "vmov.f32");
 
-// CHECK-LABEL: qreg_low4_f:
+// CHECK-LABEL: sreg_low16:
 // CHECK: @APP
-// CHECK: vmov.f64 d1, d1
+// CHECK: vmov.f32 s0, s0
 // CHECK: @NO_APP
-check!(qreg_low4_f "f" qreg_low4 f32x4 "vmov.f64");
+check!(sreg_low16 "" sreg_low16 f32 "vmov.f32");

@@ -57,54 +57,6 @@ macro_rules! check_reg { ($func:ident, $ty:ty, $reg:tt, $mov:literal) => {
     }
 };}
 
-// CHECK-LABEL: reg_i8:
-// CHECK: #APP
-// CHECK: move ${{[a-z0-9]+}}, ${{[a-z0-9]+}}
-// CHECK: #NO_APP
-check!(reg_i8, i8, reg, "move");
-
-// CHECK-LABEL: reg_i16:
-// CHECK: #APP
-// CHECK: move ${{[a-z0-9]+}}, ${{[a-z0-9]+}}
-// CHECK: #NO_APP
-check!(reg_i16, i16, reg, "move");
-
-// CHECK-LABEL: reg_f16:
-// CHECK: #APP
-// CHECK: move ${{[a-z0-9]+}}, ${{[a-z0-9]+}}
-// CHECK: #NO_APP
-check!(reg_f16, f16, reg, "move");
-
-// CHECK-LABEL: reg_i32:
-// CHECK: #APP
-// CHECK: move ${{[a-z0-9]+}}, ${{[a-z0-9]+}}
-// CHECK: #NO_APP
-check!(reg_i32, i32, reg, "move");
-
-// CHECK-LABEL: reg_f32:
-// CHECK: #APP
-// CHECK: move ${{[a-z0-9]+}}, ${{[a-z0-9]+}}
-// CHECK: #NO_APP
-check!(reg_f32, f32, reg, "move");
-
-// CHECK-LABEL: reg_i64:
-// CHECK: #APP
-// CHECK: move ${{[a-z0-9]+}}, ${{[a-z0-9]+}}
-// CHECK: #NO_APP
-check!(reg_i64, i64, reg, "move");
-
-// CHECK-LABEL: reg_f64:
-// CHECK: #APP
-// CHECK: move ${{[a-z0-9]+}}, ${{[a-z0-9]+}}
-// CHECK: #NO_APP
-check!(reg_f64, f64, reg, "move");
-
-// CHECK-LABEL: reg_ptr:
-// CHECK: #APP
-// CHECK: move ${{[a-z0-9]+}}, ${{[a-z0-9]+}}
-// CHECK: #NO_APP
-check!(reg_ptr, ptr, reg, "move");
-
 // CHECK-LABEL: freg_f16:
 // CHECK: #APP
 // CHECK: fmov.s $f{{[a-z0-9]+}}, $f{{[a-z0-9]+}}
@@ -123,53 +75,53 @@ check!(freg_f32, f32, freg, "fmov.s");
 // CHECK: #NO_APP
 check!(freg_f64, f64, freg, "fmov.d");
 
-// CHECK-LABEL: r4_i8:
+// CHECK-LABEL: reg_f16:
 // CHECK: #APP
-// CHECK: move $a0, $a0
+// CHECK: move ${{[a-z0-9]+}}, ${{[a-z0-9]+}}
 // CHECK: #NO_APP
-check_reg!(r4_i8, i8, "$r4", "move");
+check!(reg_f16, f16, reg, "move");
 
-// CHECK-LABEL: r4_i16:
+// CHECK-LABEL: reg_f32:
 // CHECK: #APP
-// CHECK: move $a0, $a0
+// CHECK: move ${{[a-z0-9]+}}, ${{[a-z0-9]+}}
 // CHECK: #NO_APP
-check_reg!(r4_i16, i16, "$r4", "move");
+check!(reg_f32, f32, reg, "move");
 
-// CHECK-LABEL: r4_f16:
+// CHECK-LABEL: reg_f64:
 // CHECK: #APP
-// CHECK: move $a0, $a0
+// CHECK: move ${{[a-z0-9]+}}, ${{[a-z0-9]+}}
 // CHECK: #NO_APP
-check_reg!(r4_f16, f16, "$r4", "move");
+check!(reg_f64, f64, reg, "move");
 
-// CHECK-LABEL: r4_i32:
+// CHECK-LABEL: reg_i16:
 // CHECK: #APP
-// CHECK: move $a0, $a0
+// CHECK: move ${{[a-z0-9]+}}, ${{[a-z0-9]+}}
 // CHECK: #NO_APP
-check_reg!(r4_i32, i32, "$r4", "move");
+check!(reg_i16, i16, reg, "move");
 
-// CHECK-LABEL: r4_f32:
+// CHECK-LABEL: reg_i32:
 // CHECK: #APP
-// CHECK: move $a0, $a0
+// CHECK: move ${{[a-z0-9]+}}, ${{[a-z0-9]+}}
 // CHECK: #NO_APP
-check_reg!(r4_f32, f32, "$r4", "move");
+check!(reg_i32, i32, reg, "move");
 
-// CHECK-LABEL: r4_i64:
+// CHECK-LABEL: reg_i64:
 // CHECK: #APP
-// CHECK: move $a0, $a0
+// CHECK: move ${{[a-z0-9]+}}, ${{[a-z0-9]+}}
 // CHECK: #NO_APP
-check_reg!(r4_i64, i64, "$r4", "move");
+check!(reg_i64, i64, reg, "move");
 
-// CHECK-LABEL: r4_f64:
+// CHECK-LABEL: reg_i8:
 // CHECK: #APP
-// CHECK: move $a0, $a0
+// CHECK: move ${{[a-z0-9]+}}, ${{[a-z0-9]+}}
 // CHECK: #NO_APP
-check_reg!(r4_f64, f64, "$r4", "move");
+check!(reg_i8, i8, reg, "move");
 
-// CHECK-LABEL: r4_ptr:
+// CHECK-LABEL: reg_ptr:
 // CHECK: #APP
-// CHECK: move $a0, $a0
+// CHECK: move ${{[a-z0-9]+}}, ${{[a-z0-9]+}}
 // CHECK: #NO_APP
-check_reg!(r4_ptr, ptr, "$r4", "move");
+check!(reg_ptr, ptr, reg, "move");
 
 // CHECK-LABEL: f0_f16:
 // CHECK: #APP
@@ -188,3 +140,51 @@ check_reg!(f0_f32, f32, "$f0", "fmov.s");
 // CHECK: fmov.d $f{{[a-z0-9]+}}, $f{{[a-z0-9]+}}
 // CHECK: #NO_APP
 check_reg!(f0_f64, f64, "$f0", "fmov.d");
+
+// CHECK-LABEL: r4_f16:
+// CHECK: #APP
+// CHECK: move $a0, $a0
+// CHECK: #NO_APP
+check_reg!(r4_f16, f16, "$r4", "move");
+
+// CHECK-LABEL: r4_f32:
+// CHECK: #APP
+// CHECK: move $a0, $a0
+// CHECK: #NO_APP
+check_reg!(r4_f32, f32, "$r4", "move");
+
+// CHECK-LABEL: r4_f64:
+// CHECK: #APP
+// CHECK: move $a0, $a0
+// CHECK: #NO_APP
+check_reg!(r4_f64, f64, "$r4", "move");
+
+// CHECK-LABEL: r4_i16:
+// CHECK: #APP
+// CHECK: move $a0, $a0
+// CHECK: #NO_APP
+check_reg!(r4_i16, i16, "$r4", "move");
+
+// CHECK-LABEL: r4_i32:
+// CHECK: #APP
+// CHECK: move $a0, $a0
+// CHECK: #NO_APP
+check_reg!(r4_i32, i32, "$r4", "move");
+
+// CHECK-LABEL: r4_i64:
+// CHECK: #APP
+// CHECK: move $a0, $a0
+// CHECK: #NO_APP
+check_reg!(r4_i64, i64, "$r4", "move");
+
+// CHECK-LABEL: r4_i8:
+// CHECK: #APP
+// CHECK: move $a0, $a0
+// CHECK: #NO_APP
+check_reg!(r4_i8, i8, "$r4", "move");
+
+// CHECK-LABEL: r4_ptr:
+// CHECK: #APP
+// CHECK: move $a0, $a0
+// CHECK: #NO_APP
+check_reg!(r4_ptr, ptr, "$r4", "move");
