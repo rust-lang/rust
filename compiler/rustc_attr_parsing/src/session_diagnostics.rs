@@ -790,3 +790,39 @@ pub(crate) struct MetaBadDelimSugg {
     #[suggestion_part(code = ")")]
     pub close: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag(attr_parsing_invalid_meta_item)]
+pub(crate) struct InvalidMetaItem {
+    #[primary_span]
+    pub span: Span,
+    pub descr: String,
+    #[subdiagnostic]
+    pub quote_ident_sugg: Option<InvalidMetaItemQuoteIdentSugg>,
+    #[subdiagnostic]
+    pub remove_neg_sugg: Option<InvalidMetaItemRemoveNegSugg>,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(attr_parsing_quote_ident_sugg, applicability = "machine-applicable")]
+pub(crate) struct InvalidMetaItemQuoteIdentSugg {
+    #[suggestion_part(code = "\"")]
+    pub before: Span,
+    #[suggestion_part(code = "\"")]
+    pub after: Span,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(attr_parsing_remove_neg_sugg, applicability = "machine-applicable")]
+pub(crate) struct InvalidMetaItemRemoveNegSugg {
+    #[suggestion_part(code = "")]
+    pub negative_sign: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(attr_parsing_suffixed_literal_in_attribute)]
+#[help]
+pub(crate) struct SuffixedLiteralInAttribute {
+    #[primary_span]
+    pub span: Span,
+}
