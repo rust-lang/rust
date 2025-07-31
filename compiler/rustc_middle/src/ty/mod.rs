@@ -85,7 +85,6 @@ pub use self::fold::*;
 pub use self::instance::{Instance, InstanceKind, ReifyReason, ShortInstance, UnusedGenericParams};
 pub use self::list::{List, ListWithCachedTypeInfo};
 pub use self::opaque_types::OpaqueTypeKey;
-pub use self::parameterized::ParameterizedOverTcx;
 pub use self::pattern::{Pattern, PatternKind};
 pub use self::predicate::{
     AliasTerm, ArgOutlivesPredicate, Clause, ClauseKind, CoercePredicate, ExistentialPredicate,
@@ -158,7 +157,6 @@ mod instance;
 mod intrinsic;
 mod list;
 mod opaque_types;
-mod parameterized;
 mod predicate;
 mod region;
 mod rvalue_scopes;
