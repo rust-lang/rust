@@ -1,0 +1,8 @@
+error: a function marked with `#[track_caller]` cannot be tail-called (llvm)
+  --> $DIR/callee_is_track_caller_polymorphic.rs:14:5
+   |
+LL |     fn f() {}
+   |     ^^^^^^
+
+error: aborting due to 1 previous error
+

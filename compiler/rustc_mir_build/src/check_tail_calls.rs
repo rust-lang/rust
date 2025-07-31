@@ -8,7 +8,7 @@ use rustc_middle::thir::visit::{self, Visitor};
 use rustc_middle::thir::{BodyTy, Expr, ExprId, ExprKind, Thir};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::def_id::{DefId, LocalDefId};
-use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span};
+use rustc_span::{ErrorGuaranteed, Span};
 
 pub(crate) fn check_tail_calls(tcx: TyCtxt<'_>, def: LocalDefId) -> Result<(), ErrorGuaranteed> {
     let (thir, expr) = tcx.thir_body(def)?;
@@ -135,21 +135,18 @@ impl<'tcx> TailCallCkVisitor<'_, 'tcx> {
             // `#[track_caller]` affects the ABI of a function (by adding a location argument),
             // so a `track_caller` can only tail call other `track_caller` functions.
             //
-            // The issue is however that we can't know if a function is `track_caller` or not at
-            // this point (THIR can be polymorphic, we may have an unresolved trait function).
-            // We could only allow functions that we *can* resolve and *are* `track_caller`,
-            // but that would turn changing `track_caller`-ness into a breaking change,
-            // which is probably undesirable.
+            // The issue is however that we can't always know if a function is `track_caller` or not
+            // at this point (THIR can be polymorphic, we may have an unresolved trait function).
+            // To prevent problems we deny code if we detect `#[track_caller]`.
             //
-            // Also note that we don't check callee's `track_caller`-ness at all, mostly for the
-            // reasons above, but also because we can always tailcall the shim we'd generate for
-            // coercing the function to an `fn()` pointer. (although in that case the tailcall is
-            // basically useless -- the shim calls the actual function, so tailcalling the shim is
-            // equivalent to calling the function)
-            let caller_needs_location = self.needs_location(self.caller_ty);
-
-            if caller_needs_location {
+            // N.B. because we can't always know if the callee needs location,
+            // backends have to re-check that.
+            if self.needs_location(self.caller_ty) {
                 self.report_track_caller_caller(expr.span);
+            }
+
+            if self.needs_location(ty) {
+                self.report_track_caller_callee(expr.span);
             }
         }
 
@@ -165,12 +162,13 @@ impl<'tcx> TailCallCkVisitor<'_, 'tcx> {
     /// Returns true if function of type `ty` needs location argument
     /// (i.e. if a function is marked as `#[track_caller]`).
     ///
-    /// Panics if the function's instance can't be immediately resolved.
+    /// N.B. might spuriously return `false` in cases when it's not known if the function is
+    /// `#[track_caller]` or not (e.g. polymorphic thir)
     fn needs_location(&self, ty: Ty<'tcx>) -> bool {
-        if let &ty::FnDef(did, substs) = ty.kind() {
-            let instance =
-                ty::Instance::expect_resolve(self.tcx, self.typing_env, did, substs, DUMMY_SP);
-
+        if let &ty::FnDef(did, args) = ty.kind()
+            && let Ok(Some(instance)) =
+                ty::Instance::try_resolve(self.tcx, self.typing_env, did, args)
+        {
             instance.def.requires_caller_location(self.tcx)
         } else {
             false
@@ -316,6 +314,16 @@ impl<'tcx> TailCallCkVisitor<'_, 'tcx> {
                 sp,
                 "a function marked with `#[track_caller]` cannot perform a tail-call",
             )
+            .emit();
+
+        self.found_errors = Err(err);
+    }
+
+    fn report_track_caller_callee(&mut self, sp: Span) {
+        let err = self
+            .tcx
+            .dcx()
+            .struct_span_err(sp, "a function marked with `#[track_caller]` cannot be tail-called")
             .emit();
 
         self.found_errors = Err(err);

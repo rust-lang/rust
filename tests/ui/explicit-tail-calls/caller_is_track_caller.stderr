@@ -5,10 +5,16 @@ LL |     become b();
    |     ^^^^^^^^^^
 
 error: a function marked with `#[track_caller]` cannot perform a tail-call
-  --> $DIR/caller_is_track_caller.rs:13:5
+  --> $DIR/caller_is_track_caller.rs:14:5
    |
 LL |     become a();
    |     ^^^^^^^^^^
 
-error: aborting due to 2 previous errors
+error: a function marked with `#[track_caller]` cannot be tail-called
+  --> $DIR/caller_is_track_caller.rs:14:5
+   |
+LL |     become a();
+   |     ^^^^^^^^^^
+
+error: aborting due to 3 previous errors
 
