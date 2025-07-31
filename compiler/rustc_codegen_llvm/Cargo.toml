@@ -45,4 +45,7 @@ tracing = "0.1"
 # tidy-alphabetical-end
 
 [features]
+# tidy-alphabetical-start
 check_only = ["rustc_llvm/check_only"]
+# tidy-alphabetical-end
+
