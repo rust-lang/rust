@@ -15,7 +15,11 @@ test = false
 doctest = false
 
 [dependencies]
+# tidy-alphabetical-start
 rustc-literal-escaper = "0.0.5"
+# tidy-alphabetical-end
 
 [features]
+# tidy-alphabetical-start
 rustc-dep-of-std = []
+# tidy-alphabetical-end

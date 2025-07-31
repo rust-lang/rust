@@ -12,10 +12,12 @@ rustc_span = { path = "../rustc_span", optional = true }
 # tidy-alphabetical-end
 
 [features]
+# tidy-alphabetical-start
 default = ["nightly"]
 nightly = [
-    "dep:rustc_serialize",
-    "dep:rustc_span",
     "dep:rustc_data_structures",
     "dep:rustc_macros",
+    "dep:rustc_serialize",
+    "dep:rustc_span",
 ]
+# tidy-alphabetical-end
