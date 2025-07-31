@@ -448,7 +448,7 @@ impl GlobalState {
                     tracing::info!(%vfs_path, ?change_kind, "Processing rust-analyzer.toml changes");
                     if vfs_path.as_path() == user_config_abs_path {
                         tracing::info!(%vfs_path, ?change_kind, "Use config rust-analyzer.toml changes");
-                        change.change_user_config(Some(db.file_text(file_id).text(db)));
+                        change.change_user_config(Some(db.file_text(file_id).text(db).clone()));
                     }
 
                     // If change has been made to a ratoml file that
@@ -462,14 +462,14 @@ impl GlobalState {
                             change.change_workspace_ratoml(
                                 source_root_id,
                                 vfs_path.clone(),
-                                Some(db.file_text(file_id).text(db)),
+                                Some(db.file_text(file_id).text(db).clone()),
                             )
                         } else {
                             tracing::info!(%vfs_path, ?source_root_id, "crate rust-analyzer.toml changes");
                             change.change_ratoml(
                                 source_root_id,
                                 vfs_path.clone(),
-                                Some(db.file_text(file_id).text(db)),
+                                Some(db.file_text(file_id).text(db).clone()),
                             )
                         };
 
