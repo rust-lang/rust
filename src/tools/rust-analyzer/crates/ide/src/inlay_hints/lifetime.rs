@@ -324,35 +324,35 @@ fn hints_(
 
     // apply hints
     // apply output if required
-    if let (Some(output_lt), Some(r)) = (&output, ret_type) {
-        if let Some(ty) = r.ty() {
-            walk_ty(&ty, &mut |ty| match ty {
-                ast::Type::RefType(ty) if ty.lifetime().is_none() => {
-                    if let Some(amp) = ty.amp_token() {
-                        is_trivial = false;
-                        acc.push(mk_lt_hint(amp, output_lt.to_string()));
-                    }
-                    false
+    if let (Some(output_lt), Some(r)) = (&output, ret_type)
+        && let Some(ty) = r.ty()
+    {
+        walk_ty(&ty, &mut |ty| match ty {
+            ast::Type::RefType(ty) if ty.lifetime().is_none() => {
+                if let Some(amp) = ty.amp_token() {
+                    is_trivial = false;
+                    acc.push(mk_lt_hint(amp, output_lt.to_string()));
                 }
-                ast::Type::FnPtrType(_) => {
+                false
+            }
+            ast::Type::FnPtrType(_) => {
+                is_trivial = false;
+                true
+            }
+            ast::Type::PathType(t) => {
+                if t.path()
+                    .and_then(|it| it.segment())
+                    .and_then(|it| it.parenthesized_arg_list())
+                    .is_some()
+                {
                     is_trivial = false;
                     true
+                } else {
+                    false
                 }
-                ast::Type::PathType(t) => {
-                    if t.path()
-                        .and_then(|it| it.segment())
-                        .and_then(|it| it.parenthesized_arg_list())
-                        .is_some()
-                    {
-                        is_trivial = false;
-                        true
-                    } else {
-                        false
-                    }
-                }
-                _ => false,
-            })
-        }
+            }
+            _ => false,
+        })
     }
 
     if config.lifetime_elision_hints == LifetimeElisionHints::SkipTrivial && is_trivial {

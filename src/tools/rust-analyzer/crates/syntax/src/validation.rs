@@ -142,50 +142,50 @@ fn validate_literal(literal: ast::Literal, acc: &mut Vec<SyntaxError>) {
 
     match literal.kind() {
         ast::LiteralKind::String(s) => {
-            if !s.is_raw() {
-                if let Some(without_quotes) = unquote(text, 1, '"') {
-                    unescape_str(without_quotes, |range, char| {
-                        if let Err(err) = char {
-                            push_err(1, range.start, err);
-                        }
-                    });
-                }
+            if !s.is_raw()
+                && let Some(without_quotes) = unquote(text, 1, '"')
+            {
+                unescape_str(without_quotes, |range, char| {
+                    if let Err(err) = char {
+                        push_err(1, range.start, err);
+                    }
+                });
             }
         }
         ast::LiteralKind::ByteString(s) => {
-            if !s.is_raw() {
-                if let Some(without_quotes) = unquote(text, 2, '"') {
-                    unescape_byte_str(without_quotes, |range, char| {
-                        if let Err(err) = char {
-                            push_err(1, range.start, err);
-                        }
-                    });
-                }
+            if !s.is_raw()
+                && let Some(without_quotes) = unquote(text, 2, '"')
+            {
+                unescape_byte_str(without_quotes, |range, char| {
+                    if let Err(err) = char {
+                        push_err(1, range.start, err);
+                    }
+                });
             }
         }
         ast::LiteralKind::CString(s) => {
-            if !s.is_raw() {
-                if let Some(without_quotes) = unquote(text, 2, '"') {
-                    unescape_c_str(without_quotes, |range, char| {
-                        if let Err(err) = char {
-                            push_err(1, range.start, err);
-                        }
-                    });
-                }
+            if !s.is_raw()
+                && let Some(without_quotes) = unquote(text, 2, '"')
+            {
+                unescape_c_str(without_quotes, |range, char| {
+                    if let Err(err) = char {
+                        push_err(1, range.start, err);
+                    }
+                });
             }
         }
         ast::LiteralKind::Char(_) => {
-            if let Some(without_quotes) = unquote(text, 1, '\'') {
-                if let Err(err) = unescape_char(without_quotes) {
-                    push_err(1, 0, err);
-                }
+            if let Some(without_quotes) = unquote(text, 1, '\'')
+                && let Err(err) = unescape_char(without_quotes)
+            {
+                push_err(1, 0, err);
             }
         }
         ast::LiteralKind::Byte(_) => {
-            if let Some(without_quotes) = unquote(text, 2, '\'') {
-                if let Err(err) = unescape_byte(without_quotes) {
-                    push_err(2, 0, err);
-                }
+            if let Some(without_quotes) = unquote(text, 2, '\'')
+                && let Err(err) = unescape_byte(without_quotes)
+            {
+                push_err(2, 0, err);
             }
         }
         ast::LiteralKind::IntNumber(_)
@@ -224,14 +224,14 @@ pub(crate) fn validate_block_structure(root: &SyntaxNode) {
 }
 
 fn validate_numeric_name(name_ref: Option<ast::NameRef>, errors: &mut Vec<SyntaxError>) {
-    if let Some(int_token) = int_token(name_ref) {
-        if int_token.text().chars().any(|c| !c.is_ascii_digit()) {
-            errors.push(SyntaxError::new(
-                "Tuple (struct) field access is only allowed through \
+    if let Some(int_token) = int_token(name_ref)
+        && int_token.text().chars().any(|c| !c.is_ascii_digit())
+    {
+        errors.push(SyntaxError::new(
+            "Tuple (struct) field access is only allowed through \
                 decimal integers with no underscores or suffix",
-                int_token.text_range(),
-            ));
-        }
+            int_token.text_range(),
+        ));
     }
 
     fn int_token(name_ref: Option<ast::NameRef>) -> Option<SyntaxToken> {
@@ -285,13 +285,13 @@ fn validate_path_keywords(segment: ast::PathSegment, errors: &mut Vec<SyntaxErro
                 token.text_range(),
             ));
         }
-    } else if let Some(token) = segment.crate_token() {
-        if !is_path_start || use_prefix(path).is_some() {
-            errors.push(SyntaxError::new(
-                "The `crate` keyword is only allowed as the first segment of a path",
-                token.text_range(),
-            ));
-        }
+    } else if let Some(token) = segment.crate_token()
+        && (!is_path_start || use_prefix(path).is_some())
+    {
+        errors.push(SyntaxError::new(
+            "The `crate` keyword is only allowed as the first segment of a path",
+            token.text_range(),
+        ));
     }
 
     fn use_prefix(mut path: ast::Path) -> Option<ast::Path> {

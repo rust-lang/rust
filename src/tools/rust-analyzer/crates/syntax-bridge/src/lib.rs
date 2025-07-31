@@ -768,17 +768,17 @@ where
     }
 
     fn bump(&mut self) -> Option<(Self::Token, TextRange)> {
-        if let Some((punct, offset)) = self.punct_offset.clone() {
-            if usize::from(offset) + 1 < punct.text().len() {
-                let offset = offset + TextSize::of('.');
-                let range = punct.text_range();
-                self.punct_offset = Some((punct.clone(), offset));
-                let range = TextRange::at(range.start() + offset, TextSize::of('.'));
-                return Some((
-                    SynToken::Punct { token: punct, offset: u32::from(offset) as usize },
-                    range,
-                ));
-            }
+        if let Some((punct, offset)) = self.punct_offset.clone()
+            && usize::from(offset) + 1 < punct.text().len()
+        {
+            let offset = offset + TextSize::of('.');
+            let range = punct.text_range();
+            self.punct_offset = Some((punct.clone(), offset));
+            let range = TextRange::at(range.start() + offset, TextSize::of('.'));
+            return Some((
+                SynToken::Punct { token: punct, offset: u32::from(offset) as usize },
+                range,
+            ));
         }
 
         if let Some(leaf) = self.current_leaves.pop() {

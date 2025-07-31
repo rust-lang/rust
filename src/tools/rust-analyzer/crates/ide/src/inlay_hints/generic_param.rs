@@ -33,10 +33,10 @@ pub(crate) fn hints(
     let mut args = generic_arg_list.generic_args().peekable();
     let start_with_lifetime = matches!(args.peek()?, ast::GenericArg::LifetimeArg(_));
     let params = generic_def.params(sema.db).into_iter().filter(|p| {
-        if let hir::GenericParam::TypeParam(it) = p {
-            if it.is_implicit(sema.db) {
-                return false;
-            }
+        if let hir::GenericParam::TypeParam(it) = p
+            && it.is_implicit(sema.db)
+        {
+            return false;
         }
         if !start_with_lifetime {
             return !matches!(p, hir::GenericParam::LifetimeParam(_));

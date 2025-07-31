@@ -41,13 +41,11 @@ pub(super) fn hints(
                 Some(it.colon_token())
             },
             ast::LetStmt(it) => {
-                if config.hide_closure_initialization_hints {
-                    if let Some(ast::Expr::ClosureExpr(closure)) = it.initializer() {
-                        if closure_has_block_body(&closure) {
+                if config.hide_closure_initialization_hints
+                    && let Some(ast::Expr::ClosureExpr(closure)) = it.initializer()
+                        && closure_has_block_body(&closure) {
                             return None;
                         }
-                    }
-                }
                 if it.ty().is_some() {
                     return None;
                 }

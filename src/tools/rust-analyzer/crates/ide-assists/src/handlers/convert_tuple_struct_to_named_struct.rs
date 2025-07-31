@@ -192,7 +192,7 @@ fn edit_struct_references(
                         ).syntax().clone()
                     )
                 },
-                _ => return None,
+                _ => None,
             }
         }
     };

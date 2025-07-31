@@ -336,10 +336,10 @@ impl<'db> Expr<'db> {
 
         if let Expr::Method { func, params, .. } = self {
             res.extend(params.iter().flat_map(|it| it.traits_used(db)));
-            if let Some(it) = func.as_assoc_item(db) {
-                if let Some(it) = it.container_or_implemented_trait(db) {
-                    res.push(it);
-                }
+            if let Some(it) = func.as_assoc_item(db)
+                && let Some(it) = it.container_or_implemented_trait(db)
+            {
+                res.push(it);
             }
         }
 

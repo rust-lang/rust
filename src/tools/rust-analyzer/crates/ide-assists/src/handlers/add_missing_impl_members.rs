@@ -201,14 +201,12 @@ fn add_missing_impl_members_inner(
 
         if let Some(cap) = ctx.config.snippet_cap {
             let mut placeholder = None;
-            if let DefaultMethods::No = mode {
-                if let Some(ast::AssocItem::Fn(func)) = &first_new_item {
-                    if let Some(m) = func.syntax().descendants().find_map(ast::MacroCall::cast)
-                        && m.syntax().text() == "todo!()"
-                    {
-                        placeholder = Some(m);
-                    }
-                }
+            if let DefaultMethods::No = mode
+                && let Some(ast::AssocItem::Fn(func)) = &first_new_item
+                && let Some(m) = func.syntax().descendants().find_map(ast::MacroCall::cast)
+                && m.syntax().text() == "todo!()"
+            {
+                placeholder = Some(m);
             }
 
             if let Some(macro_call) = placeholder {

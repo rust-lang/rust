@@ -626,10 +626,10 @@ mod tests {
         if let Some(ret_ty) = parent_fn.ret_type() {
             editor.delete(ret_ty.syntax().clone());
 
-            if let Some(SyntaxElement::Token(token)) = ret_ty.syntax().next_sibling_or_token() {
-                if token.kind().is_trivia() {
-                    editor.delete(token);
-                }
+            if let Some(SyntaxElement::Token(token)) = ret_ty.syntax().next_sibling_or_token()
+                && token.kind().is_trivia()
+            {
+                editor.delete(token);
             }
         }
 
