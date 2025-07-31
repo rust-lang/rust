@@ -460,6 +460,8 @@ impl<'tcx> PrettyPrinter<'tcx> for SymbolPrinter<'tcx> {
     fn should_print_region(&self, _region: ty::Region<'_>) -> bool {
         false
     }
+
+    // Identical to `PrettyPrinter::comma_sep` except there is no space after each comma.
     fn comma_sep<T>(&mut self, mut elems: impl Iterator<Item = T>) -> Result<(), PrintError>
     where
         T: Print<'tcx, Self>,
