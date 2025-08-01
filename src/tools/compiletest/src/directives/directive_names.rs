@@ -85,6 +85,7 @@ pub(crate) const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     "ignore-haiku",
     "ignore-horizon",
     "ignore-i586",
+    "ignore-i586-unknown-linux-gnu",
     "ignore-i686-pc-windows-gnu",
     "ignore-i686-pc-windows-msvc",
     "ignore-illumos",
