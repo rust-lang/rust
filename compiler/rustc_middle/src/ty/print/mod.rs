@@ -21,18 +21,16 @@ pub trait Print<'tcx, P> {
     fn print(&self, p: &mut P) -> Result<(), PrintError>;
 }
 
-/// Interface for outputting user-facing "type-system entities"
-/// (paths, types, lifetimes, constants, etc.) as a side-effect
-/// (e.g. formatting, like `PrettyPrinter` implementors do) or by
-/// constructing some alternative representation (e.g. an AST),
-/// which the associated types allow passing through the methods.
-///
-/// For pretty-printing/formatting in particular, see `PrettyPrinter`.
-//
-// FIXME(eddyb) find a better name; this is more general than "printing".
+/// A trait that "prints" user-facing type system entities: paths, types, lifetimes, constants,
+/// etc. "Printing" here means building up a representation of the entity's path, usually as a
+/// `String` (e.g. "std::io::Read") or a `Vec<Symbol>` (e.g. `[sym::std, sym::io, sym::Read]`). The
+/// representation is built up by appending one or more pieces. The specific details included in
+/// the built-up representation depend on the purpose of the printer. The more advanced printers
+/// also rely on the `PrettyPrinter` sub-trait.
 pub trait Printer<'tcx>: Sized {
     fn tcx<'a>(&'a self) -> TyCtxt<'tcx>;
 
+    /// Appends a representation of an entity with a normal path, e.g. "std::io::Read".
     fn print_def_path(
         &mut self,
         def_id: DefId,
@@ -41,6 +39,7 @@ pub trait Printer<'tcx>: Sized {
         self.default_print_def_path(def_id, args)
     }
 
+    /// Like `print_def_path`, but for `DefPathData::Impl`.
     fn print_impl_path(
         &mut self,
         impl_def_id: DefId,
@@ -66,25 +65,40 @@ pub trait Printer<'tcx>: Sized {
         self.default_print_impl_path(impl_def_id, self_ty, impl_trait_ref)
     }
 
+    /// Appends a representation of a region.
     fn print_region(&mut self, region: ty::Region<'tcx>) -> Result<(), PrintError>;
 
+    /// Appends a representation of a type.
     fn print_type(&mut self, ty: Ty<'tcx>) -> Result<(), PrintError>;
 
+    /// Appends a representation of a list of `PolyExistentialPredicate`s.
     fn print_dyn_existential(
         &mut self,
         predicates: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
     ) -> Result<(), PrintError>;
 
+    /// Appends a representation of a const.
     fn print_const(&mut self, ct: ty::Const<'tcx>) -> Result<(), PrintError>;
 
+    /// Appends a representation of a crate name, e.g. `std`, or even ``.
     fn path_crate(&mut self, cnum: CrateNum) -> Result<(), PrintError>;
 
-    fn path_qualified(
+    /// Appends a representation of a (full or partial) simple path, in two parts. `print_prefix`,
+    /// when called, appends the representation of the leading segments. The rest of the method
+    /// appends the representation of the final segment, the details of which are in
+    /// `disambiguated_data`.
+    ///
+    /// E.g. `std::io` + `Read` -> `std::io::Read`.
+    fn path_append(
         &mut self,
-        self_ty: Ty<'tcx>,
-        trait_ref: Option<ty::TraitRef<'tcx>>,
+        print_prefix: impl FnOnce(&mut Self) -> Result<(), PrintError>,
+        disambiguated_data: &DisambiguatedDefPathData,
     ) -> Result<(), PrintError>;
 
+    /// Similar to `path_append`, but the final segment is an `impl` segment.
+    ///
+    /// E.g. `slice` + `<impl [T]>` -> `slice::<impl [T]>`, which may then be further appended to,
+    /// giving a longer path representation such as `slice::<impl [T]>::to_vec_in::ConvertVec`.
     fn path_append_impl(
         &mut self,
         print_prefix: impl FnOnce(&mut Self) -> Result<(), PrintError>,
@@ -92,16 +106,24 @@ pub trait Printer<'tcx>: Sized {
         trait_ref: Option<ty::TraitRef<'tcx>>,
     ) -> Result<(), PrintError>;
 
-    fn path_append(
-        &mut self,
-        print_prefix: impl FnOnce(&mut Self) -> Result<(), PrintError>,
-        disambiguated_data: &DisambiguatedDefPathData,
-    ) -> Result<(), PrintError>;
-
+    /// Appends a representation of a path ending in generic args, in two parts. `print_prefix`,
+    /// when called, appends the leading segments. The rest of the method appends the
+    /// representation of the generic args. (Some printers choose to skip appending the generic
+    /// args.)
+    ///
+    /// E.g. `ImplementsTraitForUsize` + `<usize>` -> `ImplementsTraitForUsize<usize>`.
     fn path_generic_args(
         &mut self,
         print_prefix: impl FnOnce(&mut Self) -> Result<(), PrintError>,
         args: &[GenericArg<'tcx>],
+    ) -> Result<(), PrintError>;
+
+    /// Appends a representation of a qualified path segment, e.g. `<OsString as From<&T>>`.
+    /// If `trait_ref` is `None`, it may fall back to simpler forms, e.g. `<Vec<T>>` or just `Foo`.
+    fn path_qualified(
+        &mut self,
+        self_ty: Ty<'tcx>,
+        trait_ref: Option<ty::TraitRef<'tcx>>,
     ) -> Result<(), PrintError>;
 
     fn should_truncate(&mut self) -> bool {
