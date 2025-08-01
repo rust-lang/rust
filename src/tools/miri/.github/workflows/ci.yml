@@ -198,7 +198,7 @@ jobs:
           BRANCH="rustup-$(date -u +%Y-%m-%d)"
           git switch -c $BRANCH
           git push -u origin $BRANCH
-          gh pr create -B master --title 'Automatic Rustup' --body 'Please close and re-open this PR to trigger CI, then enable auto-merge.'
+          gh pr create -B master --title 'Automatic Rustup' --body "Update \`rustc\` to https://github.com/rust-lang/rust/commit/$(cat rust-version)."
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
 
