@@ -100,10 +100,12 @@ struct Node {
 #[derive(Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 struct NodeHandle(usize);
 
+/// Represents a dependency between two bootstrap steps.
 #[derive(PartialEq, Eq, Hash, PartialOrd, Ord)]
 struct Edge {
     src: NodeHandle,
     dst: NodeHandle,
+    // Was the corresponding execution of a step cached, or was the step actually executed?
     cached: bool,
 }
 
@@ -134,7 +136,11 @@ impl DotGraph {
     }
 
     fn add_cached_edge(&mut self, src: NodeHandle, dst: NodeHandle) {
-        self.edges.insert(Edge { src, dst, cached: true });
+        // There's no point in rendering both cached and uncached edge
+        let uncached = Edge { src, dst, cached: false };
+        if !self.edges.contains(&uncached) {
+            self.edges.insert(Edge { src, dst, cached: true });
+        }
     }
 
     fn get_handle_by_key(&self, key: &str) -> Option<NodeHandle> {
