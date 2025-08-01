@@ -10,6 +10,7 @@ use crate::{BTreeSet, HashSet, PathBuf, TargetSelection, define_config, exit};
 
 define_config! {
     /// TOML representation of how the Rust build is configured.
+    #[derive(Default)]
     struct Rust {
         optimize: Option<RustOptimize> = "optimize",
         debug: Option<bool> = "debug",
