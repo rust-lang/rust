@@ -25,8 +25,8 @@ impl fmt::Debug for ty::TraitDef {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         ty::tls::with(|tcx| {
             with_no_trimmed_paths!({
-                let s = FmtPrinter::print_string(tcx, Namespace::TypeNS, |cx| {
-                    cx.print_def_path(self.def_id, &[])
+                let s = FmtPrinter::print_string(tcx, Namespace::TypeNS, |p| {
+                    p.print_def_path(self.def_id, &[])
                 })?;
                 f.write_str(&s)
             })
@@ -38,8 +38,8 @@ impl<'tcx> fmt::Debug for ty::AdtDef<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         ty::tls::with(|tcx| {
             with_no_trimmed_paths!({
-                let s = FmtPrinter::print_string(tcx, Namespace::TypeNS, |cx| {
-                    cx.print_def_path(self.did(), &[])
+                let s = FmtPrinter::print_string(tcx, Namespace::TypeNS, |p| {
+                    p.print_def_path(self.did(), &[])
                 })?;
                 f.write_str(&s)
             })
@@ -170,9 +170,9 @@ impl<'tcx> fmt::Debug for ty::Const<'tcx> {
         if let ConstKind::Value(cv) = self.kind() {
             return ty::tls::with(move |tcx| {
                 let cv = tcx.lift(cv).unwrap();
-                let mut cx = FmtPrinter::new(tcx, Namespace::ValueNS);
-                cx.pretty_print_const_valtree(cv, /*print_ty*/ true)?;
-                f.write_str(&cx.into_buffer())
+                let mut p = FmtPrinter::new(tcx, Namespace::ValueNS);
+                p.pretty_print_const_valtree(cv, /*print_ty*/ true)?;
+                f.write_str(&p.into_buffer())
             });
         }
         // Fall back to something verbose.

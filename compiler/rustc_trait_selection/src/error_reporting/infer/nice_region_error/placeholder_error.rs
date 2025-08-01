@@ -47,11 +47,11 @@ where
     T: for<'a> Print<'tcx, FmtPrinter<'a, 'tcx>>,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut printer = ty::print::FmtPrinter::new(self.tcx, self.ns);
-        printer.region_highlight_mode = self.highlight;
+        let mut p = ty::print::FmtPrinter::new(self.tcx, self.ns);
+        p.region_highlight_mode = self.highlight;
 
-        self.value.print(&mut printer)?;
-        f.write_str(&printer.into_buffer())
+        self.value.print(&mut p)?;
+        f.write_str(&p.into_buffer())
     }
 }
 
