@@ -35,13 +35,7 @@ fn symbols_check_archive(path: &str) {
             continue; // All compiler-builtins symbols must remain unmangled
         }
 
-        if name.contains("rust_eh_personality") {
-            continue; // Unfortunately LLVM doesn't allow us to mangle this symbol
-        }
-
-        if name.contains(".llvm.") {
-            // Starting in LLVM 21 we get various implementation-detail functions which
-            // contain .llvm. that are not a problem.
+        if symbol_ok_everywhere(name) {
             continue;
         }
 
@@ -71,13 +65,7 @@ fn symbols_check(path: &str) {
             continue;
         }
 
-        if name.contains("rust_eh_personality") {
-            continue; // Unfortunately LLVM doesn't allow us to mangle this symbol
-        }
-
-        if name.contains(".llvm.") {
-            // Starting in LLVM 21 we get various implementation-detail functions which
-            // contain .llvm. that are not a problem.
+        if symbol_ok_everywhere(name) {
             continue;
         }
 
@@ -87,4 +75,23 @@ fn symbols_check(path: &str) {
 
 fn strip_underscore_if_apple(symbol: &str) -> &str {
     if cfg!(target_vendor = "apple") { symbol.strip_prefix("_").unwrap() } else { symbol }
+}
+
+fn symbol_ok_everywhere(name: &str) -> bool {
+    if name.contains("rust_eh_personality") {
+        return true; // Unfortunately LLVM doesn't allow us to mangle this symbol
+    }
+
+    if name.contains(".llvm.") {
+        // Starting in LLVM 21 we get various implementation-detail functions which
+        // contain .llvm. that are not a problem.
+        return true;
+    }
+
+    if name.starts_with("__rustc_debug_gdb_scripts_section") {
+        // These symbols are fine; they're made unique by the crate ID.
+        return true;
+    }
+
+    return false;
 }

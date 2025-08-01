@@ -50,7 +50,7 @@ pub trait DebugInfoCodegenMethods<'tcx>: BackendTypes {
         scope_metadata: Self::DIScope,
         file: &SourceFile,
     ) -> Self::DIScope;
-    fn debuginfo_finalize(&self);
+    fn debuginfo_finalize(&mut self);
 
     // FIXME(eddyb) find a common convention for all of the debuginfo-related
     // names (choose between `dbg`, `debug`, `debuginfo`, `debug_info` etc.).
