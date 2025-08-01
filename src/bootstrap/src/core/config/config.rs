@@ -501,86 +501,85 @@ impl Config {
         // Now override TOML values with flags, to make sure that we won't later override flags with
         // TOML values by accident instead, because flags have higher priority.
         let Build {
-            description,
-            mut build,
-            host,
-            target,
-            build_dir,
-            cargo,
-            rustc,
-            rustfmt,
-            cargo_clippy,
-            docs,
-            compiler_docs,
-            library_docs_private_items,
-            docs_minification,
-            submodules,
-            gdb,
-            lldb,
-            nodejs,
-            npm,
-            python,
-            reuse,
-            locked_deps,
-            vendor,
-            full_bootstrap,
-            bootstrap_cache_path,
-            extended,
-            tools,
-            tool,
-            verbose: build_verbose,
-            sanitizers,
-            profiler,
-            cargo_native_static,
-            low_priority,
-            configure_args,
-            local_rebuild,
-            print_step_timings,
-            print_step_rusage,
-            check_stage,
-            doc_stage,
-            build_stage,
-            test_stage,
-            install_stage,
-            dist_stage,
-            bench_stage,
-            patch_binaries_for_nix,
+            description: build_description_toml,
+            build: mut build_build_toml,
+            host: build_host_toml,
+            target: build_target_toml,
+            build_dir: build_build_dir_toml,
+            cargo: build_cargo_toml,
+            rustc: build_rustc_toml,
+            rustfmt: build_rustfmt_toml,
+            cargo_clippy: build_cargo_clippy_toml,
+            docs: build_docs_toml,
+            compiler_docs: build_compiler_docs_toml,
+            library_docs_private_items: build_library_docs_private_items_toml,
+            docs_minification: build_docs_minification_toml,
+            submodules: build_submodules_toml,
+            gdb: build_gdb_toml,
+            lldb: build_lldb_toml,
+            nodejs: build_nodejs_toml,
+            npm: build_npm_toml,
+            python: build_python_toml,
+            reuse: build_reuse_toml,
+            locked_deps: build_locked_deps_toml,
+            vendor: build_vendor_toml,
+            full_bootstrap: build_full_bootstrap_toml,
+            bootstrap_cache_path: build_bootstrap_cache_path_toml,
+            extended: build_extended_toml,
+            tools: build_tools_toml,
+            tool: build_tool_toml,
+            verbose: build_verbose_toml,
+            sanitizers: build_sanitizers_toml,
+            profiler: build_profiler_toml,
+            cargo_native_static: build_cargo_native_static_toml,
+            low_priority: build_low_priority_toml,
+            configure_args: build_configure_args_toml,
+            local_rebuild: build_local_rebuild_toml,
+            print_step_timings: build_print_step_timings_toml,
+            print_step_rusage: build_print_step_rusage_toml,
+            check_stage: build_check_stage_toml,
+            doc_stage: build_doc_stage_toml,
+            build_stage: build_build_stage_toml,
+            test_stage: build_test_stage_toml,
+            install_stage: build_install_stage_toml,
+            dist_stage: build_dist_stage_toml,
+            bench_stage: build_bench_stage_toml,
+            patch_binaries_for_nix: build_patch_binaries_for_nix_toml,
             // This field is only used by bootstrap.py
             metrics: _,
-            android_ndk,
-            optimized_compiler_builtins,
-            mut jobs,
-            compiletest_diff_tool,
-            compiletest_allow_stage0,
-            compiletest_use_stage0_libtest,
-            tidy_extra_checks,
-            ccache,
-            exclude,
+            android_ndk: build_android_ndk_toml,
+            optimized_compiler_builtins: build_optimized_compiler_builtins_toml,
+            jobs: mut build_jobs_toml,
+            compiletest_diff_tool: build_compiletest_diff_tool_toml,
+            compiletest_use_stage0_libtest: build_compiletest_use_stage0_libtest_toml,
+            tidy_extra_checks: build_tidy_extra_checks_toml,
+            ccache: build_ccache_toml,
+            exclude: build_exclude_toml,
         } = toml.build.unwrap_or_default();
-        jobs = flags_jobs.or(jobs);
-        build = flags_build.or(build);
-        let build_dir = flags_build_dir.or(build_dir.map(PathBuf::from));
+        build_jobs_toml = flags_jobs.or(build_jobs_toml);
+        build_build_toml = flags_build.or(build_build_toml);
+        let build_dir = flags_build_dir.or(build_build_dir_toml.map(PathBuf::from));
         let host = if let Some(TargetSelectionList(hosts)) = flags_host {
             Some(hosts)
-        } else if let Some(file_host) = host {
+        } else if let Some(file_host) = build_host_toml {
             Some(file_host.iter().map(|h| TargetSelection::from_user(h)).collect())
         } else {
             None
         };
         let target = if let Some(TargetSelectionList(targets)) = flags_target {
             Some(targets)
-        } else if let Some(file_target) = target {
+        } else if let Some(file_target) = build_target_toml {
             Some(file_target.iter().map(|h| TargetSelection::from_user(h)).collect())
         } else {
             None
         };
 
-        if let Some(rustc) = &rustc {
+        if let Some(rustc) = &build_rustc_toml {
             if !flags_skip_stage0_validation {
                 check_stage0_version(&rustc, "rustc", &config.src, config.exec_ctx());
             }
         }
-        if let Some(cargo) = &cargo {
+        if let Some(cargo) = &build_cargo_toml {
             if !flags_skip_stage0_validation {
                 check_stage0_version(&cargo, "cargo", &config.src, config.exec_ctx());
             }
@@ -590,10 +589,10 @@ impl Config {
         // TOML.
         config
             .exec_ctx
-            .set_verbosity(cmp::max(build_verbose.unwrap_or_default() as u8, flags_verbose));
+            .set_verbosity(cmp::max(build_verbose_toml.unwrap_or_default() as u8, flags_verbose));
 
         let mut paths: Vec<PathBuf> = flags_skip.into_iter().chain(flags_exclude).collect();
-        if let Some(exclude) = exclude {
+        if let Some(exclude) = build_exclude_toml {
             paths.extend(exclude);
         }
 
@@ -657,8 +656,8 @@ impl Config {
             "config.skip" = ?config.skip,
         );
 
-        config.jobs = Some(threads_from_config(jobs.unwrap_or(0)));
-        if let Some(build) = build {
+        config.jobs = Some(threads_from_config(build_jobs_toml.unwrap_or(0)));
+        if let Some(build) = build_build_toml {
             config.host_target = TargetSelection::from_user(&build);
         }
 
@@ -670,18 +669,13 @@ impl Config {
             config.out = absolute(&config.out).expect("can't make empty path absolute");
         }
 
-        if cargo_clippy.is_some() && rustc.is_none() {
+        if build_cargo_clippy_toml.is_some() && build_rustc_toml.is_none() {
             println!(
                 "WARNING: Using `build.cargo-clippy` without `build.rustc` usually fails due to toolchain conflict."
             );
         }
 
-        config.patch_binaries_for_nix = patch_binaries_for_nix;
-        config.bootstrap_cache_path = bootstrap_cache_path;
-        config.llvm_assertions =
-            toml.llvm.as_ref().is_some_and(|llvm| llvm.assertions.unwrap_or(false));
-
-        config.initial_rustc = if let Some(rustc) = rustc {
+        config.initial_rustc = if let Some(rustc) = build_rustc_toml {
             rustc
         } else {
             let dwn_ctx = DownloadContext::from(&config);
@@ -703,9 +697,9 @@ impl Config {
                 .trim()
         ));
 
-        config.initial_cargo_clippy = cargo_clippy;
+        config.initial_cargo_clippy = build_cargo_clippy_toml;
 
-        config.initial_cargo = if let Some(cargo) = cargo {
+        config.initial_cargo = if let Some(cargo) = build_cargo_toml {
             cargo
         } else {
             let dwn_ctx = DownloadContext::from(&config);
@@ -729,31 +723,33 @@ impl Config {
             config.hosts.clone()
         };
 
-        config.nodejs = nodejs.map(PathBuf::from);
-        config.npm = npm.map(PathBuf::from);
-        config.gdb = gdb.map(PathBuf::from);
-        config.lldb = lldb.map(PathBuf::from);
-        config.python = python.map(PathBuf::from);
-        config.reuse = reuse.map(PathBuf::from);
-        config.submodules = submodules;
-        config.android_ndk = android_ndk;
-        set(&mut config.low_priority, low_priority);
-        set(&mut config.compiler_docs, compiler_docs);
-        set(&mut config.library_docs_private_items, library_docs_private_items);
-        set(&mut config.docs_minification, docs_minification);
-        set(&mut config.docs, docs);
-        set(&mut config.locked_deps, locked_deps);
-        set(&mut config.full_bootstrap, full_bootstrap);
-        set(&mut config.extended, extended);
-        config.tools = tools;
-        set(&mut config.tool, tool);
-        set(&mut config.sanitizers, sanitizers);
-        set(&mut config.profiler, profiler);
-        set(&mut config.cargo_native_static, cargo_native_static);
-        set(&mut config.configure_args, configure_args);
-        set(&mut config.local_rebuild, local_rebuild);
-        set(&mut config.print_step_timings, print_step_timings);
-        set(&mut config.print_step_rusage, print_step_rusage);
+        config.nodejs = build_nodejs_toml.map(PathBuf::from);
+        config.npm = build_npm_toml.map(PathBuf::from);
+        config.gdb = build_gdb_toml.map(PathBuf::from);
+        config.lldb = build_lldb_toml.map(PathBuf::from);
+        config.python = build_python_toml.map(PathBuf::from);
+        config.reuse = build_reuse_toml.map(PathBuf::from);
+        config.submodules = build_submodules_toml;
+        config.android_ndk = build_android_ndk_toml;
+        config.bootstrap_cache_path = build_bootstrap_cache_path_toml;
+        set(&mut config.low_priority, build_low_priority_toml);
+        set(&mut config.compiler_docs, build_compiler_docs_toml);
+        set(&mut config.library_docs_private_items, build_library_docs_private_items_toml);
+        set(&mut config.docs_minification, build_docs_minification_toml);
+        set(&mut config.docs, build_docs_toml);
+        set(&mut config.locked_deps, build_locked_deps_toml);
+        set(&mut config.full_bootstrap, build_full_bootstrap_toml);
+        set(&mut config.extended, build_extended_toml);
+        config.tools = build_tools_toml;
+        set(&mut config.tool, build_tool_toml);
+        set(&mut config.sanitizers, build_sanitizers_toml);
+        set(&mut config.profiler, build_profiler_toml);
+        set(&mut config.cargo_native_static, build_cargo_native_static_toml);
+        set(&mut config.configure_args, build_configure_args_toml);
+        set(&mut config.local_rebuild, build_local_rebuild_toml);
+        set(&mut config.print_step_timings, build_print_step_timings_toml);
+        set(&mut config.print_step_rusage, build_print_step_rusage_toml);
+        config.patch_binaries_for_nix = build_patch_binaries_for_nix_toml;
 
         // Verbose flag is a good default for `rust.verbose-tests`.
         config.verbose_tests = config.is_verbose();
@@ -818,7 +814,7 @@ impl Config {
         config.in_tree_llvm_info = config.git_info(false, &config.src.join("src/llvm-project"));
         config.in_tree_gcc_info = config.git_info(false, &config.src.join("src/gcc"));
 
-        config.vendor = vendor.unwrap_or(
+        config.vendor = build_vendor_toml.unwrap_or(
             config.rust_info.is_from_tarball()
                 && config.src.join("vendor").exists()
                 && config.src.join(".cargo/config.toml").exists(),
@@ -1113,7 +1109,7 @@ impl Config {
             rust_debuginfo_level_tests_toml.unwrap_or(DebuginfoLevel::None);
 
         config.reproducible_artifacts = flags_reproducible_artifact;
-        config.description = description;
+        config.description = build_description_toml;
 
         // We need to override `rust.channel` if it's manually specified when using the CI rustc.
         // This is because if the compiler uses a different channel than the one specified in bootstrap.toml,
@@ -1247,7 +1243,7 @@ impl Config {
             None => GccCiMode::default(),
         };
 
-        match ccache {
+        match build_ccache_toml {
             Some(StringOrBool::String(ref s)) => config.ccache = Some(s.to_string()),
             Some(StringOrBool::Bool(true)) => {
                 config.ccache = Some("ccache".to_string());
@@ -1292,7 +1288,7 @@ impl Config {
             config.rust_info.is_managed_git_subrepository() || config.rust_info.is_from_tarball()
         });
 
-        config.initial_rustfmt = if let Some(r) = rustfmt {
+        config.initial_rustfmt = if let Some(r) = build_rustfmt_toml {
             Some(r)
         } else {
             let dwn_ctx = DownloadContext::from(&config);
@@ -1313,41 +1309,40 @@ impl Config {
         }
 
         config.optimized_compiler_builtins =
-            optimized_compiler_builtins.unwrap_or(config.channel != "dev");
-
-        config.compiletest_diff_tool = compiletest_diff_tool;
-
-        config.compiletest_allow_stage0 = compiletest_allow_stage0.unwrap_or(false);
-        config.compiletest_use_stage0_libtest = compiletest_use_stage0_libtest.unwrap_or(true);
-
-        config.tidy_extra_checks = tidy_extra_checks;
+            build_optimized_compiler_builtins_toml.unwrap_or(config.channel != "dev");
+        config.compiletest_diff_tool = build_compiletest_diff_tool_toml;
+        config.compiletest_use_stage0_libtest =
+            build_compiletest_use_stage0_libtest_toml.unwrap_or(true);
+        config.tidy_extra_checks = build_tidy_extra_checks_toml;
 
         let download_rustc = config.download_rustc_commit.is_some();
         config.explicit_stage_from_cli = flags_stage.is_some();
-        config.explicit_stage_from_config = test_stage.is_some()
-            || build_stage.is_some()
-            || doc_stage.is_some()
-            || dist_stage.is_some()
-            || install_stage.is_some()
-            || check_stage.is_some()
-            || bench_stage.is_some();
+        config.explicit_stage_from_config = build_test_stage_toml.is_some()
+            || build_build_stage_toml.is_some()
+            || build_doc_stage_toml.is_some()
+            || build_dist_stage_toml.is_some()
+            || build_install_stage_toml.is_some()
+            || build_check_stage_toml.is_some()
+            || build_bench_stage_toml.is_some();
 
         config.stage = match config.cmd {
-            Subcommand::Check { .. } => flags_stage.or(check_stage).unwrap_or(1),
-            Subcommand::Clippy { .. } | Subcommand::Fix => flags_stage.or(check_stage).unwrap_or(1),
+            Subcommand::Check { .. } => flags_stage.or(build_check_stage_toml).unwrap_or(1),
+            Subcommand::Clippy { .. } | Subcommand::Fix => {
+                flags_stage.or(build_check_stage_toml).unwrap_or(1)
+            }
             // `download-rustc` only has a speed-up for stage2 builds. Default to stage2 unless explicitly overridden.
             Subcommand::Doc { .. } => {
-                flags_stage.or(doc_stage).unwrap_or(if download_rustc { 2 } else { 1 })
+                flags_stage.or(build_doc_stage_toml).unwrap_or(if download_rustc { 2 } else { 1 })
             }
             Subcommand::Build => {
-                flags_stage.or(build_stage).unwrap_or(if download_rustc { 2 } else { 1 })
+                flags_stage.or(build_build_stage_toml).unwrap_or(if download_rustc { 2 } else { 1 })
             }
             Subcommand::Test { .. } | Subcommand::Miri { .. } => {
-                flags_stage.or(test_stage).unwrap_or(if download_rustc { 2 } else { 1 })
+                flags_stage.or(build_test_stage_toml).unwrap_or(if download_rustc { 2 } else { 1 })
             }
-            Subcommand::Bench { .. } => flags_stage.or(bench_stage).unwrap_or(2),
-            Subcommand::Dist => flags_stage.or(dist_stage).unwrap_or(2),
-            Subcommand::Install => flags_stage.or(install_stage).unwrap_or(2),
+            Subcommand::Bench { .. } => flags_stage.or(build_bench_stage_toml).unwrap_or(2),
+            Subcommand::Dist => flags_stage.or(build_dist_stage_toml).unwrap_or(2),
+            Subcommand::Install => flags_stage.or(build_install_stage_toml).unwrap_or(2),
             Subcommand::Perf { .. } => flags_stage.unwrap_or(1),
             // These are all bootstrap tools, which don't depend on the compiler.
             // The stage we pass shouldn't matter, but use 0 just in case.
