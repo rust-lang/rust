@@ -1,3 +1,5 @@
+use core::marker::Move;
+
 use crate::cmp::Ordering;
 use crate::marker::{PointeeSized, Unsize};
 use crate::mem::{MaybeUninit, SizedTypeProperties};
@@ -1624,7 +1626,10 @@ impl<T: PointeeSized> Copy for NonNull<T> {}
 impl<T: PointeeSized, U: PointeeSized> CoerceUnsized<NonNull<U>> for NonNull<T> where T: Unsize<U> {}
 
 #[unstable(feature = "dispatch_from_dyn", issue = "none")]
-impl<T: PointeeSized, U: PointeeSized + ?core::marker::Move> DispatchFromDyn<NonNull<U>> for NonNull<T> where T: Unsize<U> {}
+impl<T: PointeeSized, U: PointeeSized + ?Move> DispatchFromDyn<NonNull<U>> for NonNull<T> where
+    T: Unsize<U>
+{
+}
 
 #[stable(feature = "pin", since = "1.33.0")]
 unsafe impl<T: PointeeSized> PinCoerceUnsized for NonNull<T> {}
