@@ -73,11 +73,13 @@ pub(crate) fn folding_ranges(file: &SourceFile) -> Vec<Fold> {
                             }
 
                             if fn_node.body().is_some() {
+                                // Get the actual start of the function (excluding doc comments)
+                                let fn_start = fn_node
+                                    .fn_token()
+                                    .map(|token| token.text_range().start())
+                                    .unwrap_or(node.text_range().start());
                                 res.push(Fold {
-                                    range: TextRange::new(
-                                        node.text_range().start(),
-                                        node.text_range().end(),
-                                    ),
+                                    range: TextRange::new(fn_start, node.text_range().end()),
                                     kind: FoldKind::Function,
                                 });
                                 continue;
@@ -687,5 +689,22 @@ type Foo<T, U> = foo<fold arglist><
 ></fold>;
 "#,
         )
+    }
+
+    #[test]
+    fn test_fold_doc_comments_with_multiline_paramlist_function() {
+        check(
+            r#"
+<fold comment>/// A very very very very very very very very very very very very very very very
+/// very very very long description</fold>
+<fold function>fn foo<fold arglist>(
+    very_long_parameter_name: u32,
+    another_very_long_parameter_name: u32,
+    third_very_long_param: u32,
+)</fold> <fold block>{
+    todo!()
+}</fold></fold>
+"#,
+        );
     }
 }

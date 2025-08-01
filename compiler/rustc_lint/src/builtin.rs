@@ -2446,16 +2446,16 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
 
         /// Determine if this expression is a "dangerous initialization".
         fn is_dangerous_init(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> Option<InitKind> {
-            if let hir::ExprKind::Call(path_expr, args) = expr.kind {
+            if let hir::ExprKind::Call(path_expr, args) = expr.kind
                 // Find calls to `mem::{uninitialized,zeroed}` methods.
-                if let hir::ExprKind::Path(ref qpath) = path_expr.kind {
-                    let def_id = cx.qpath_res(qpath, path_expr.hir_id).opt_def_id()?;
-                    match cx.tcx.get_diagnostic_name(def_id) {
-                        Some(sym::mem_zeroed) => return Some(InitKind::Zeroed),
-                        Some(sym::mem_uninitialized) => return Some(InitKind::Uninit),
-                        Some(sym::transmute) if is_zero(&args[0]) => return Some(InitKind::Zeroed),
-                        _ => {}
-                    }
+                && let hir::ExprKind::Path(ref qpath) = path_expr.kind
+            {
+                let def_id = cx.qpath_res(qpath, path_expr.hir_id).opt_def_id()?;
+                match cx.tcx.get_diagnostic_name(def_id) {
+                    Some(sym::mem_zeroed) => return Some(InitKind::Zeroed),
+                    Some(sym::mem_uninitialized) => return Some(InitKind::Uninit),
+                    Some(sym::transmute) if is_zero(&args[0]) => return Some(InitKind::Zeroed),
+                    _ => {}
                 }
             } else if let hir::ExprKind::MethodCall(_, receiver, ..) = expr.kind {
                 // Find problematic calls to `MaybeUninit::assume_init`.
@@ -2463,14 +2463,14 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
                 if cx.tcx.is_diagnostic_item(sym::assume_init, def_id) {
                     // This is a call to *some* method named `assume_init`.
                     // See if the `self` parameter is one of the dangerous constructors.
-                    if let hir::ExprKind::Call(path_expr, _) = receiver.kind {
-                        if let hir::ExprKind::Path(ref qpath) = path_expr.kind {
-                            let def_id = cx.qpath_res(qpath, path_expr.hir_id).opt_def_id()?;
-                            match cx.tcx.get_diagnostic_name(def_id) {
-                                Some(sym::maybe_uninit_zeroed) => return Some(InitKind::Zeroed),
-                                Some(sym::maybe_uninit_uninit) => return Some(InitKind::Uninit),
-                                _ => {}
-                            }
+                    if let hir::ExprKind::Call(path_expr, _) = receiver.kind
+                        && let hir::ExprKind::Path(ref qpath) = path_expr.kind
+                    {
+                        let def_id = cx.qpath_res(qpath, path_expr.hir_id).opt_def_id()?;
+                        match cx.tcx.get_diagnostic_name(def_id) {
+                            Some(sym::maybe_uninit_zeroed) => return Some(InitKind::Zeroed),
+                            Some(sym::maybe_uninit_uninit) => return Some(InitKind::Uninit),
+                            _ => {}
                         }
                     }
                 }
@@ -2724,13 +2724,13 @@ impl<'tcx> LateLintPass<'tcx> for DerefNullPtr {
                 }
                 // check for call to `core::ptr::null` or `core::ptr::null_mut`
                 hir::ExprKind::Call(path, _) => {
-                    if let hir::ExprKind::Path(ref qpath) = path.kind {
-                        if let Some(def_id) = cx.qpath_res(qpath, path.hir_id).opt_def_id() {
-                            return matches!(
-                                cx.tcx.get_diagnostic_name(def_id),
-                                Some(sym::ptr_null | sym::ptr_null_mut)
-                            );
-                        }
+                    if let hir::ExprKind::Path(ref qpath) = path.kind
+                        && let Some(def_id) = cx.qpath_res(qpath, path.hir_id).opt_def_id()
+                    {
+                        return matches!(
+                            cx.tcx.get_diagnostic_name(def_id),
+                            Some(sym::ptr_null | sym::ptr_null_mut)
+                        );
                     }
                 }
                 _ => {}

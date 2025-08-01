@@ -14,7 +14,7 @@ SOURCE_FILE
         WHITESPACE " "
         EXPR_STMT
           CLOSURE_EXPR
-            CLOSURE_BINDER
+            FOR_BINDER
               FOR_KW "for"
               GENERIC_PARAM_LIST
                 L_ANGLE "<"

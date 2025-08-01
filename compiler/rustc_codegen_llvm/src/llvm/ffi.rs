@@ -2612,13 +2612,6 @@ unsafe extern "C" {
         len: usize,
         Identifier: *const c_char,
     ) -> Option<&Module>;
-    pub(crate) fn LLVMRustGetSliceFromObjectDataByName(
-        data: *const u8,
-        len: usize,
-        name: *const u8,
-        name_len: usize,
-        out_len: &mut usize,
-    ) -> *const u8;
 
     pub(crate) fn LLVMRustLinkerNew(M: &Module) -> &mut Linker<'_>;
     pub(crate) fn LLVMRustLinkerAdd(

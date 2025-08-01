@@ -276,7 +276,7 @@ fn get_transformed_assoc_item(
     let assoc_item = assoc_item.clone_for_update();
     // FIXME: Paths in nested macros are not handled well. See
     // `macro_generated_assoc_item2` test.
-    transform.apply(assoc_item.syntax());
+    let assoc_item = ast::AssocItem::cast(transform.apply(assoc_item.syntax()))?;
     assoc_item.remove_attrs_and_docs();
     Some(assoc_item)
 }
@@ -301,7 +301,7 @@ fn get_transformed_fn(
     let fn_ = fn_.clone_for_update();
     // FIXME: Paths in nested macros are not handled well. See
     // `macro_generated_assoc_item2` test.
-    transform.apply(fn_.syntax());
+    let fn_ = ast::Fn::cast(transform.apply(fn_.syntax()))?;
     fn_.remove_attrs_and_docs();
     match async_ {
         AsyncSugaring::Desugar => {

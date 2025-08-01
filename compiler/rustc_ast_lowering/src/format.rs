@@ -402,6 +402,8 @@ fn expand_format_args<'hir>(
     fmt: &FormatArgs,
     allow_const: bool,
 ) -> hir::ExprKind<'hir> {
+    let macsp = ctx.lower_span(macsp);
+
     let mut incomplete_lit = String::new();
     let lit_pieces =
         ctx.arena.alloc_from_iter(fmt.template.iter().enumerate().filter_map(|(i, piece)| {

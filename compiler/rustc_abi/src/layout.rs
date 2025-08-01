@@ -1,3 +1,4 @@
+use std::collections::BTreeSet;
 use std::fmt::{self, Write};
 use std::ops::{Bound, Deref};
 use std::{cmp, iter};
@@ -5,7 +6,7 @@ use std::{cmp, iter};
 use rustc_hashes::Hash64;
 use rustc_index::Idx;
 use rustc_index::bit_set::BitMatrix;
-use tracing::debug;
+use tracing::{debug, trace};
 
 use crate::{
     AbiAlign, Align, BackendRepr, FieldsShape, HasDataLayout, IndexSlice, IndexVec, Integer,
@@ -766,30 +767,63 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
 
         let niche_filling_layout = calculate_niche_filling_layout();
 
-        let (mut min, mut max) = (i128::MAX, i128::MIN);
         let discr_type = repr.discr_type();
-        let bits = Integer::from_attr(dl, discr_type).size().bits();
-        for (i, mut val) in discriminants {
-            if !repr.c() && variants[i].iter().any(|f| f.is_uninhabited()) {
-                continue;
-            }
-            if discr_type.is_signed() {
-                // sign extend the raw representation to be an i128
-                val = (val << (128 - bits)) >> (128 - bits);
-            }
-            if val < min {
-                min = val;
-            }
-            if val > max {
-                max = val;
-            }
-        }
-        // We might have no inhabited variants, so pretend there's at least one.
-        if (min, max) == (i128::MAX, i128::MIN) {
-            min = 0;
-            max = 0;
-        }
-        assert!(min <= max, "discriminant range is {min}...{max}");
+        let discr_int = Integer::from_attr(dl, discr_type);
+        // Because we can only represent one range of valid values, we'll look for the
+        // largest range of invalid values and pick everything else as the range of valid
+        // values.
+
+        // First we need to sort the possible discriminant values so that we can look for the largest gap:
+        let valid_discriminants: BTreeSet<i128> = discriminants
+            .filter(|&(i, _)| repr.c() || variants[i].iter().all(|f| !f.is_uninhabited()))
+            .map(|(_, val)| {
+                if discr_type.is_signed() {
+                    // sign extend the raw representation to be an i128
+                    // FIXME: do this at the discriminant iterator creation sites
+                    discr_int.size().sign_extend(val as u128)
+                } else {
+                    val
+                }
+            })
+            .collect();
+        trace!(?valid_discriminants);
+        let discriminants = valid_discriminants.iter().copied();
+        //let next_discriminants = discriminants.clone().cycle().skip(1);
+        let next_discriminants =
+            discriminants.clone().chain(valid_discriminants.first().copied()).skip(1);
+        // Iterate over pairs of each discriminant together with the next one.
+        // Since they were sorted, we can now compute the niche sizes and pick the largest.
+        let discriminants = discriminants.zip(next_discriminants);
+        let largest_niche = discriminants.max_by_key(|&(start, end)| {
+            trace!(?start, ?end);
+            // If this is a wraparound range, the niche size is `MAX - abs(diff)`, as the diff between
+            // the two end points is actually the size of the valid discriminants.
+            let dist = if start > end {
+                // Overflow can happen for 128 bit discriminants if `end` is negative.
+                // But in that case casting to `u128` still gets us the right value,
+                // as the distance must be positive if the lhs of the subtraction is larger than the rhs.
+                let dist = start.wrapping_sub(end);
+                if discr_type.is_signed() {
+                    discr_int.signed_max().wrapping_sub(dist) as u128
+                } else {
+                    discr_int.size().unsigned_int_max() - dist as u128
+                }
+            } else {
+                // Overflow can happen for 128 bit discriminants if `start` is negative.
+                // But in that case casting to `u128` still gets us the right value,
+                // as the distance must be positive if the lhs of the subtraction is larger than the rhs.
+                end.wrapping_sub(start) as u128
+            };
+            trace!(?dist);
+            dist
+        });
+        trace!(?largest_niche);
+
+        // `max` is the last valid discriminant before the largest niche
+        // `min` is the first valid discriminant after the largest niche
+        let (max, min) = largest_niche
+            // We might have no inhabited variants, so pretend there's at least one.
+            .unwrap_or((0, 0));
         let (min_ity, signed) = discr_range_of_repr(min, max); //Integer::repr_discr(tcx, ty, &repr, min, max);
 
         let mut align = dl.aggregate_align;

@@ -465,6 +465,11 @@
 # What custom diff tool to use for displaying compiletest tests.
 #build.compiletest-diff-tool = <none>
 
+# Whether to allow `compiletest` self-tests and `compiletest`-managed test
+# suites to be run against the stage 0 rustc. This is only intended to be used
+# when the stage 0 compiler is actually built from in-tree sources.
+#build.compiletest-allow-stage0 = false
+
 # Whether to use the precompiled stage0 libtest with compiletest.
 #build.compiletest-use-stage0-libtest = true
 
@@ -475,6 +480,9 @@
 # Note that if any value is manually given to bootstrap such as
 # `./x test tidy --extra-checks=js`, this value is ignored.
 # Use `--extra-checks=''` to temporarily disable all extra checks.
+#
+# Automatically enabled in the "tools" profile.
+# Set to the empty string to force disable (recommeded for hdd systems).
 #build.tidy-extra-checks = ""
 
 # Indicates whether ccache is used when building certain artifacts (e.g. LLVM).

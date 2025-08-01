@@ -3,6 +3,7 @@
     "rust-analyzer.linkedProjects": [
         "Cargo.toml",
         "cargo-miri/Cargo.toml",
+        "genmc-sys/Cargo.toml",
         "miri-script/Cargo.toml",
     ],
     "rust-analyzer.check.invocationStrategy": "once",

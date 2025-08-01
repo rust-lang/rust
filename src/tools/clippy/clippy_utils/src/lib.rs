@@ -349,7 +349,7 @@ pub fn is_ty_alias(qpath: &QPath<'_>) -> bool {
 /// Checks if the given method call expression calls an inherent method.
 pub fn is_inherent_method_call(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     if let Some(method_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id) {
-        cx.tcx.trait_of_item(method_id).is_none()
+        cx.tcx.trait_of_assoc(method_id).is_none()
     } else {
         false
     }
@@ -357,7 +357,7 @@ pub fn is_inherent_method_call(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
 
 /// Checks if a method is defined in an impl of a diagnostic item
 pub fn is_diag_item_method(cx: &LateContext<'_>, def_id: DefId, diag_item: Symbol) -> bool {
-    if let Some(impl_did) = cx.tcx.impl_of_method(def_id)
+    if let Some(impl_did) = cx.tcx.impl_of_assoc(def_id)
         && let Some(adt) = cx.tcx.type_of(impl_did).instantiate_identity().ty_adt_def()
     {
         return cx.tcx.is_diagnostic_item(diag_item, adt.did());
@@ -367,7 +367,7 @@ pub fn is_diag_item_method(cx: &LateContext<'_>, def_id: DefId, diag_item: Symbo
 
 /// Checks if a method is in a diagnostic item trait
 pub fn is_diag_trait_item(cx: &LateContext<'_>, def_id: DefId, diag_item: Symbol) -> bool {
-    if let Some(trait_did) = cx.tcx.trait_of_item(def_id) {
+    if let Some(trait_did) = cx.tcx.trait_of_assoc(def_id) {
         return cx.tcx.is_diagnostic_item(diag_item, trait_did);
     }
     false
@@ -620,7 +620,7 @@ fn is_default_equivalent_ctor(cx: &LateContext<'_>, def_id: DefId, path: &QPath<
 
     if let QPath::TypeRelative(_, method) = path
         && method.ident.name == sym::new
-        && let Some(impl_did) = cx.tcx.impl_of_method(def_id)
+        && let Some(impl_did) = cx.tcx.impl_of_assoc(def_id)
         && let Some(adt) = cx.tcx.type_of(impl_did).instantiate_identity().ty_adt_def()
     {
         return std_types_symbols.iter().any(|&symbol| {

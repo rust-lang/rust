@@ -561,8 +561,6 @@ fn asm_tests(env: &Env, args: &TestArg) -> Result<(), String> {
     // FIXME: create a function "display_if_not_quiet" or something along the line.
     println!("[TEST] rustc asm test suite");
 
-    env.insert("COMPILETEST_FORCE_STAGE0".to_string(), "1".to_string());
-
     let codegen_backend_path = format!(
         "{pwd}/target/{channel}/librustc_codegen_gcc.{dylib_ext}",
         pwd = std::env::current_dir()
@@ -588,6 +586,8 @@ fn asm_tests(env: &Env, args: &TestArg) -> Result<(), String> {
             &"always",
             &"--stage",
             &"0",
+            &"--set",
+            &"build.compiletest-allow-stage0=true",
             &"tests/assembly-llvm/asm",
             &"--compiletest-rustc-args",
             &rustc_args,
@@ -1047,7 +1047,6 @@ where
 
     // FIXME: create a function "display_if_not_quiet" or something along the line.
     println!("[TEST] rustc {test_type} test suite");
-    env.insert("COMPILETEST_FORCE_STAGE0".to_string(), "1".to_string());
 
     let extra =
         if args.is_using_gcc_master_branch() { "" } else { " -Csymbol-mangling-version=v0" };
@@ -1070,6 +1069,8 @@ where
             &"always",
             &"--stage",
             &"0",
+            &"--set",
+            &"build.compiletest-allow-stage0=true",
             &format!("tests/{test_type}"),
             &"--compiletest-rustc-args",
             &rustc_args,

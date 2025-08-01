@@ -426,14 +426,6 @@ impl WriteBackendMethods for GccCodegenBackend {
     fn serialize_module(_module: ModuleCodegen<Self::Module>) -> (String, Self::ModuleBuffer) {
         unimplemented!();
     }
-
-    fn run_link(
-        cgcx: &CodegenContext<Self>,
-        dcx: DiagCtxtHandle<'_>,
-        modules: Vec<ModuleCodegen<Self::Module>>,
-    ) -> Result<ModuleCodegen<Self::Module>, FatalError> {
-        back::write::link(cgcx, dcx, modules)
-    }
 }
 
 /// This is the entrypoint for a hot plugged rustc_codegen_gccjit

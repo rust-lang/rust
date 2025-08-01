@@ -1,5 +1,5 @@
 use crate::concurrency::sync::FutexRef;
-use crate::helpers::check_min_vararg_count;
+use crate::shims::sig::check_min_vararg_count;
 use crate::*;
 
 struct LinuxFutex {

@@ -4,12 +4,12 @@ use ide_db::{
 };
 use syntax::{
     ast::{self, AstNode, HasName, HasVisibility, StructKind, edit_in_place::Indent, make},
-    ted,
+    syntax_editor::Position,
 };
 
 use crate::{
     AssistContext, AssistId, Assists,
-    utils::{find_struct_impl, generate_impl},
+    utils::{find_struct_impl, generate_impl_with_item},
 };
 
 // Assist: generate_new
@@ -149,7 +149,53 @@ pub(crate) fn generate_new(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option
         .clone_for_update();
         fn_.indent(1.into());
 
-        if let Some(cap) = ctx.config.snippet_cap {
+        let mut editor = builder.make_editor(strukt.syntax());
+
+        // Get the node for set annotation
+        let contain_fn = if let Some(impl_def) = impl_def {
+            fn_.indent(impl_def.indent_level());
+
+            if let Some(l_curly) = impl_def.assoc_item_list().and_then(|list| list.l_curly_token())
+            {
+                editor.insert_all(
+                    Position::after(l_curly),
+                    vec![
+                        make::tokens::whitespace(&format!("\n{}", impl_def.indent_level() + 1))
+                            .into(),
+                        fn_.syntax().clone().into(),
+                        make::tokens::whitespace("\n").into(),
+                    ],
+                );
+                fn_.syntax().clone()
+            } else {
+                let items = vec![either::Either::Right(ast::AssocItem::Fn(fn_))];
+                let list = make::assoc_item_list(Some(items));
+                editor.insert(Position::after(impl_def.syntax()), list.syntax());
+                list.syntax().clone()
+            }
+        } else {
+            // Generate a new impl to add the method to
+            let indent_level = strukt.indent_level();
+            let body = vec![either::Either::Right(ast::AssocItem::Fn(fn_))];
+            let list = make::assoc_item_list(Some(body));
+            let impl_def = generate_impl_with_item(&ast::Adt::Struct(strukt.clone()), Some(list));
+
+            impl_def.indent(strukt.indent_level());
+
+            // Insert it after the adt
+            editor.insert_all(
+                Position::after(strukt.syntax()),
+                vec![
+                    make::tokens::whitespace(&format!("\n\n{indent_level}")).into(),
+                    impl_def.syntax().clone().into(),
+                ],
+            );
+            impl_def.syntax().clone()
+        };
+
+        if let Some(fn_) = contain_fn.descendants().find_map(ast::Fn::cast)
+            && let Some(cap) = ctx.config.snippet_cap
+        {
             match strukt.kind() {
                 StructKind::Tuple(_) => {
                     let struct_args = fn_
@@ -168,8 +214,8 @@ pub(crate) fn generate_new(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option
                         for (struct_arg, fn_param) in struct_args.zip(fn_params.params()) {
                             if let Some(fn_pat) = fn_param.pat() {
                                 let fn_pat = fn_pat.syntax().clone();
-                                builder
-                                    .add_placeholder_snippet_group(cap, vec![struct_arg, fn_pat]);
+                                let placeholder = builder.make_placeholder_snippet(cap);
+                                editor.add_annotation_all(vec![struct_arg, fn_pat], placeholder)
                             }
                         }
                     }
@@ -179,36 +225,12 @@ pub(crate) fn generate_new(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option
 
             // Add a tabstop before the name
             if let Some(name) = fn_.name() {
-                builder.add_tabstop_before(cap, name);
+                let tabstop_before = builder.make_tabstop_before(cap);
+                editor.add_annotation(name.syntax(), tabstop_before);
             }
         }
 
-        // Get the mutable version of the impl to modify
-        let impl_def = if let Some(impl_def) = impl_def {
-            fn_.indent(impl_def.indent_level());
-            builder.make_mut(impl_def)
-        } else {
-            // Generate a new impl to add the method to
-            let impl_def = generate_impl(&ast::Adt::Struct(strukt.clone()));
-            let indent_level = strukt.indent_level();
-            fn_.indent(indent_level);
-
-            // Insert it after the adt
-            let strukt = builder.make_mut(strukt.clone());
-
-            ted::insert_all_raw(
-                ted::Position::after(strukt.syntax()),
-                vec![
-                    make::tokens::whitespace(&format!("\n\n{indent_level}")).into(),
-                    impl_def.syntax().clone().into(),
-                ],
-            );
-
-            impl_def
-        };
-
-        // Add the `new` method at the start of the impl
-        impl_def.get_or_create_assoc_item_list().add_item_at_start(fn_.into());
+        builder.add_file_edits(ctx.vfs_file_id(), editor);
     })
 }
 

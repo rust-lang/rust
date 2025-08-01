@@ -101,7 +101,7 @@ WhereClause =
   'where' predicates:(WherePred (',' WherePred)* ','?)
 
 WherePred =
-  ('for' GenericParamList)? (Lifetime | Type) ':' TypeBoundList?
+  ForBinder? (Lifetime | Type) ':' TypeBoundList?
 
 
 //*************************//
@@ -534,10 +534,10 @@ FieldExpr =
   Attr* Expr '.' NameRef
 
 ClosureExpr =
-  Attr* ClosureBinder? 'const'? 'static'? 'async'? 'gen'? 'move'?  ParamList RetType?
+  Attr* ForBinder? 'const'? 'static'? 'async'? 'gen'? 'move'?  ParamList RetType?
   body:Expr
 
-ClosureBinder =
+ForBinder =
   'for' GenericParamList
 
 IfExpr =
@@ -658,7 +658,7 @@ FnPtrType =
   'const'? 'async'? 'unsafe'? Abi? 'fn' ParamList RetType?
 
 ForType =
-  'for' GenericParamList Type
+  ForBinder Type
 
 ImplTraitType =
   'impl' TypeBoundList
@@ -671,7 +671,7 @@ TypeBoundList =
 
 TypeBound =
   Lifetime
-| ('~' 'const' | '[' 'const' ']' | 'const')? 'async'? '?'? Type
+| ForBinder? ('~' 'const' | '[' 'const' ']' | 'const')? 'async'? '?'? Type
 | 'use' UseBoundGenericArgs
 
 UseBoundGenericArgs =

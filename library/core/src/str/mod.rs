@@ -407,17 +407,22 @@ impl str {
     /// ```
     #[unstable(feature = "round_char_boundary", issue = "93743")]
     #[inline]
-    pub fn floor_char_boundary(&self, index: usize) -> usize {
+    pub const fn floor_char_boundary(&self, index: usize) -> usize {
         if index >= self.len() {
             self.len()
         } else {
-            let lower_bound = index.saturating_sub(3);
-            let new_index = self.as_bytes()[lower_bound..=index]
-                .iter()
-                .rposition(|b| b.is_utf8_char_boundary());
+            let mut i = index;
+            while i > 0 {
+                if self.as_bytes()[i].is_utf8_char_boundary() {
+                    break;
+                }
+                i -= 1;
+            }
 
-            // SAFETY: we know that the character boundary will be within four bytes
-            unsafe { lower_bound + new_index.unwrap_unchecked() }
+            //  The character boundary will be within four bytes of the index
+            debug_assert!(i >= index.saturating_sub(3));
+
+            i
         }
     }
 
@@ -445,15 +450,22 @@ impl str {
     /// ```
     #[unstable(feature = "round_char_boundary", issue = "93743")]
     #[inline]
-    pub fn ceil_char_boundary(&self, index: usize) -> usize {
+    pub const fn ceil_char_boundary(&self, index: usize) -> usize {
         if index >= self.len() {
             self.len()
         } else {
-            let upper_bound = Ord::min(index + 4, self.len());
-            self.as_bytes()[index..upper_bound]
-                .iter()
-                .position(|b| b.is_utf8_char_boundary())
-                .map_or(upper_bound, |pos| pos + index)
+            let mut i = index;
+            while i < self.len() {
+                if self.as_bytes()[i].is_utf8_char_boundary() {
+                    break;
+                }
+                i += 1;
+            }
+
+            //  The character boundary will be within four bytes of the index
+            debug_assert!(i <= index + 3);
+
+            i
         }
     }
 

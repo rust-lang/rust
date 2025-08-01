@@ -135,4 +135,5 @@ pub(crate) fn imply_features(mut value: cache::Initializer) -> cache::Initialize
 }
 
 #[cfg(test)]
+#[path = "riscv/tests.rs"]
 mod tests;

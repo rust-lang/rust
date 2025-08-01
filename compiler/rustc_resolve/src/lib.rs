@@ -1009,13 +1009,13 @@ impl<'ra> NameBindingData<'ra> {
 
 #[derive(Default, Clone)]
 struct ExternPreludeEntry<'ra> {
-    binding: Option<NameBinding<'ra>>,
+    binding: Cell<Option<NameBinding<'ra>>>,
     introduced_by_item: bool,
 }
 
 impl ExternPreludeEntry<'_> {
     fn is_import(&self) -> bool {
-        self.binding.is_some_and(|binding| binding.is_import())
+        self.binding.get().is_some_and(|binding| binding.is_import())
     }
 }
 
@@ -2006,7 +2006,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             // but not introduce it, as used if they are accessed from lexical scope.
             if used == Used::Scope {
                 if let Some(entry) = self.extern_prelude.get(&ident.normalize_to_macros_2_0()) {
-                    if !entry.introduced_by_item && entry.binding == Some(used_binding) {
+                    if !entry.introduced_by_item && entry.binding.get() == Some(used_binding) {
                         return;
                     }
                 }
@@ -2170,7 +2170,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
         let norm_ident = ident.normalize_to_macros_2_0();
         let binding = self.extern_prelude.get(&norm_ident).cloned().and_then(|entry| {
-            Some(if let Some(binding) = entry.binding {
+            Some(if let Some(binding) = entry.binding.get() {
                 if finalize {
                     if !entry.is_import() {
                         self.cstore_mut().process_path_extern(self.tcx, ident.name, ident.span);
@@ -2195,8 +2195,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             })
         });
 
-        if let Some(entry) = self.extern_prelude.get_mut(&norm_ident) {
-            entry.binding = binding;
+        if let Some(entry) = self.extern_prelude.get(&norm_ident) {
+            entry.binding.set(binding);
         }
 
         binding

@@ -755,7 +755,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let limit = if candidates.len() == 5 { 5 } else { 4 };
 
         for (index, &item) in candidates.iter().take(limit).enumerate() {
-            let impl_ = tcx.impl_of_method(item).unwrap();
+            let impl_ = tcx.impl_of_assoc(item).unwrap();
 
             let note_span = if item.is_local() {
                 Some(tcx.def_span(item))

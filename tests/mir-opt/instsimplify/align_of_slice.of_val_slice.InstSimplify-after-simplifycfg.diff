@@ -1,0 +1,22 @@
+- // MIR for `of_val_slice` before InstSimplify-after-simplifycfg
++ // MIR for `of_val_slice` after InstSimplify-after-simplifycfg
+  
+  fn of_val_slice(_1: &[T]) -> usize {
+      debug slice => _1;
+      let mut _0: usize;
+      let mut _2: *const [T];
+  
+      bb0: {
+          StorageLive(_2);
+          _2 = &raw const (*_1);
+-         _0 = std::intrinsics::align_of_val::<[T]>(move _2) -> [return: bb1, unwind unreachable];
++         _0 = AlignOf(T);
++         goto -> bb1;
+      }
+  
+      bb1: {
+          StorageDead(_2);
+          return;
+      }
+  }
+  

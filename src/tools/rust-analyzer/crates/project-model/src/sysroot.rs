@@ -143,12 +143,11 @@ impl Sysroot {
             Some(root) => {
                 // special case rustc, we can look that up directly in the sysroot's bin folder
                 // as it should never invoke another cargo binary
-                if let Tool::Rustc = tool {
-                    if let Some(path) =
+                if let Tool::Rustc = tool
+                    && let Some(path) =
                         probe_for_binary(root.join("bin").join(Tool::Rustc.name()).into())
-                    {
-                        return toolchain::command(path, current_dir, envs);
-                    }
+                {
+                    return toolchain::command(path, current_dir, envs);
                 }
 
                 let mut cmd = toolchain::command(tool.prefer_proxy(), current_dir, envs);
@@ -291,29 +290,26 @@ impl Sysroot {
 
     pub fn set_workspace(&mut self, workspace: RustLibSrcWorkspace) {
         self.workspace = workspace;
-        if self.error.is_none() {
-            if let Some(src_root) = &self.rust_lib_src_root {
-                let has_core = match &self.workspace {
-                    RustLibSrcWorkspace::Workspace(ws) => {
-                        ws.packages().any(|p| ws[p].name == "core")
-                    }
-                    RustLibSrcWorkspace::Json(project_json) => project_json
-                        .crates()
-                        .filter_map(|(_, krate)| krate.display_name.clone())
-                        .any(|name| name.canonical_name().as_str() == "core"),
-                    RustLibSrcWorkspace::Stitched(stitched) => stitched.by_name("core").is_some(),
-                    RustLibSrcWorkspace::Empty => true,
+        if self.error.is_none()
+            && let Some(src_root) = &self.rust_lib_src_root
+        {
+            let has_core = match &self.workspace {
+                RustLibSrcWorkspace::Workspace(ws) => ws.packages().any(|p| ws[p].name == "core"),
+                RustLibSrcWorkspace::Json(project_json) => project_json
+                    .crates()
+                    .filter_map(|(_, krate)| krate.display_name.clone())
+                    .any(|name| name.canonical_name().as_str() == "core"),
+                RustLibSrcWorkspace::Stitched(stitched) => stitched.by_name("core").is_some(),
+                RustLibSrcWorkspace::Empty => true,
+            };
+            if !has_core {
+                let var_note = if env::var_os("RUST_SRC_PATH").is_some() {
+                    " (env var `RUST_SRC_PATH` is set and may be incorrect, try unsetting it)"
+                } else {
+                    ", try running `rustup component add rust-src` to possibly fix this"
                 };
-                if !has_core {
-                    let var_note = if env::var_os("RUST_SRC_PATH").is_some() {
-                        " (env var `RUST_SRC_PATH` is set and may be incorrect, try unsetting it)"
-                    } else {
-                        ", try running `rustup component add rust-src` to possibly fix this"
-                    };
-                    self.error = Some(format!(
-                        "sysroot at `{src_root}` is missing a `core` library{var_note}",
-                    ));
-                }
+                self.error =
+                    Some(format!("sysroot at `{src_root}` is missing a `core` library{var_note}",));
             }
         }
     }

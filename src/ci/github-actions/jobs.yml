@@ -31,20 +31,11 @@ runners:
     <<: *base-job
 
   - &job-windows
-    os: windows-2022
-    <<: *base-job
-
-  # NOTE: windows-2025 has less disk space available than windows-2022,
-  # because the D drive is missing.
-  - &job-windows-25
     os: windows-2025
+    free_disk: true
     <<: *base-job
 
   - &job-windows-8c
-    os: windows-2022-8core-32gb
-    <<: *base-job
-
-  - &job-windows-25-8c
     os: windows-2025-8core-32gb
     <<: *base-job
 
@@ -491,7 +482,7 @@ auto:
       NO_LLVM_ASSERTIONS: 1
       NO_DEBUG_ASSERTIONS: 1
       NO_OVERFLOW_CHECKS: 1
-    <<: *job-macos
+    <<: *job-macos-m1
 
   - name: x86_64-apple-1
     env:
@@ -668,7 +659,7 @@ auto:
       SCRIPT: python x.py build --set rust.debug=true opt-dist && PGO_HOST=x86_64-pc-windows-msvc ./build/x86_64-pc-windows-msvc/stage0-tools-bin/opt-dist windows-ci -- python x.py dist bootstrap --include-default-paths
       DIST_REQUIRE_ALL_TOOLS: 1
       CODEGEN_BACKENDS: llvm,cranelift
-    <<: *job-windows-25-8c
+    <<: *job-windows-8c
 
   - name: dist-i686-msvc
     env:

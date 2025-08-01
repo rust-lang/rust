@@ -227,21 +227,19 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                     self.typeck_results.type_dependent_defs_mut().remove(e.hir_id);
                     self.typeck_results.node_args_mut().remove(e.hir_id);
 
-                    if let Some(a) = self.typeck_results.adjustments_mut().get_mut(base.hir_id) {
+                    if let Some(a) = self.typeck_results.adjustments_mut().get_mut(base.hir_id)
                         // Discard the need for a mutable borrow
-
                         // Extra adjustment made when indexing causes a drop
                         // of size information - we need to get rid of it
                         // Since this is "after" the other adjustment to be
                         // discarded, we do an extra `pop()`
-                        if let Some(Adjustment {
+                        && let Some(Adjustment {
                             kind: Adjust::Pointer(PointerCoercion::Unsize),
                             ..
                         }) = a.pop()
-                        {
-                            // So the borrow discard actually happens here
-                            a.pop();
-                        }
+                    {
+                        // So the borrow discard actually happens here
+                        a.pop();
                     }
                 }
             }

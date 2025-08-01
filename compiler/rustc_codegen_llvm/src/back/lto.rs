@@ -7,6 +7,7 @@ use std::sync::Arc;
 use std::{io, iter, slice};
 
 use object::read::archive::ArchiveFile;
+use object::{Object, ObjectSection};
 use rustc_codegen_ssa::back::lto::{SerializedModule, ThinModule, ThinShared};
 use rustc_codegen_ssa::back::write::{CodegenContext, FatLtoInput};
 use rustc_codegen_ssa::traits::*;
@@ -105,31 +106,15 @@ fn get_bitcode_slice_from_object_data<'a>(
     // name" which in the public API for sections gets treated as part of the section name, but
     // internally in MachOObjectFile.cpp gets treated separately.
     let section_name = bitcode_section_name(cgcx).to_str().unwrap().trim_start_matches("__LLVM,");
-    let mut len = 0;
-    let data = unsafe {
-        llvm::LLVMRustGetSliceFromObjectDataByName(
-            obj.as_ptr(),
-            obj.len(),
-            section_name.as_ptr(),
-            section_name.len(),
-            &mut len,
-        )
-    };
-    if !data.is_null() {
-        assert!(len != 0);
-        let bc = unsafe { slice::from_raw_parts(data, len) };
 
-        // `bc` must be a sub-slice of `obj`.
-        assert!(obj.as_ptr() <= bc.as_ptr());
-        assert!(bc[bc.len()..bc.len()].as_ptr() <= obj[obj.len()..obj.len()].as_ptr());
+    let obj =
+        object::File::parse(obj).map_err(|err| LtoBitcodeFromRlib { err: err.to_string() })?;
 
-        Ok(bc)
-    } else {
-        assert!(len == 0);
-        Err(LtoBitcodeFromRlib {
-            llvm_err: llvm::last_error().unwrap_or_else(|| "unknown LLVM error".to_string()),
-        })
-    }
+    let section = obj
+        .section_by_name(section_name)
+        .ok_or_else(|| LtoBitcodeFromRlib { err: format!("Can't find section {section_name}") })?;
+
+    section.data().map_err(|err| LtoBitcodeFromRlib { err: err.to_string() })
 }
 
 /// Performs fat LTO by merging all modules into a single one and returning it
@@ -505,10 +490,10 @@ fn thin_lto(
 
         // Save the current ThinLTO import information for the next compilation
         // session, overwriting the previous serialized data (if any).
-        if let Some(path) = key_map_path {
-            if let Err(err) = curr_key_map.save_to_file(&path) {
-                return Err(write::llvm_err(dcx, LlvmError::WriteThinLtoKey { err }));
-            }
+        if let Some(path) = key_map_path
+            && let Err(err) = curr_key_map.save_to_file(&path)
+        {
+            return Err(write::llvm_err(dcx, LlvmError::WriteThinLtoKey { err }));
         }
 
         Ok((opt_jobs, copy_jobs))

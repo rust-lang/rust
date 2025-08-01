@@ -125,38 +125,59 @@ pub fn git_diff<S: AsRef<OsStr>>(base_commit: &str, extra_arg: S) -> Option<Stri
     Some(String::from_utf8_lossy(&output.stdout).into())
 }
 
-/// Returns true if any modified file matches the predicate, if we are in CI, or if unable to list modified files.
-pub fn files_modified(ci_info: &CiInfo, pred: impl Fn(&str) -> bool) -> bool {
+/// Similar to `files_modified`, but only involves a single call to `git`.
+///
+/// removes all elements from `items` that do not cause any match when `pred` is called with the list of modifed files.
+///
+/// if in CI, no elements will be removed.
+pub fn files_modified_batch_filter<T>(
+    ci_info: &CiInfo,
+    items: &mut Vec<T>,
+    pred: impl Fn(&T, &str) -> bool,
+) {
     if CiEnv::is_ci() {
         // assume everything is modified on CI because we really don't want false positives there.
-        return true;
+        return;
     }
     let Some(base_commit) = &ci_info.base_commit else {
         eprintln!("No base commit, assuming all files are modified");
-        return true;
+        return;
     };
     match crate::git_diff(base_commit, "--name-status") {
         Some(output) => {
-            let modified_files = output.lines().filter_map(|ln| {
-                let (status, name) = ln
-                    .trim_end()
-                    .split_once('\t')
-                    .expect("bad format from `git diff --name-status`");
-                if status == "M" { Some(name) } else { None }
-            });
-            for modified_file in modified_files {
-                if pred(modified_file) {
-                    return true;
+            let modified_files: Vec<_> = output
+                .lines()
+                .filter_map(|ln| {
+                    let (status, name) = ln
+                        .trim_end()
+                        .split_once('\t')
+                        .expect("bad format from `git diff --name-status`");
+                    if status == "M" { Some(name) } else { None }
+                })
+                .collect();
+            items.retain(|item| {
+                for modified_file in &modified_files {
+                    if pred(item, modified_file) {
+                        // at least one predicate matches, keep this item.
+                        return true;
+                    }
                 }
-            }
-            false
+                // no predicates matched, remove this item.
+                false
+            });
         }
         None => {
             eprintln!("warning: failed to run `git diff` to check for changes");
             eprintln!("warning: assuming all files are modified");
-            true
         }
     }
+}
+
+/// Returns true if any modified file matches the predicate, if we are in CI, or if unable to list modified files.
+pub fn files_modified(ci_info: &CiInfo, pred: impl Fn(&str) -> bool) -> bool {
+    let mut v = vec![()];
+    files_modified_batch_filter(ci_info, &mut v, |_, p| pred(p));
+    !v.is_empty()
 }
 
 pub mod alphabetical;

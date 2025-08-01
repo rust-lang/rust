@@ -910,22 +910,15 @@ impl<'ast, 'ra, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'ra, 'tc
                     span,
                     |this| {
                         this.visit_generic_params(&fn_ptr.generic_params, false);
-                        this.with_lifetime_rib(
-                            LifetimeRibKind::AnonymousCreateParameter {
-                                binder: ty.id,
-                                report_in_path: false,
-                            },
-                            |this| {
-                                this.resolve_fn_signature(
-                                    ty.id,
-                                    false,
-                                    // We don't need to deal with patterns in parameters, because
-                                    // they are not possible for foreign or bodiless functions.
-                                    fn_ptr.decl.inputs.iter().map(|Param { ty, .. }| (None, &**ty)),
-                                    &fn_ptr.decl.output,
-                                )
-                            },
-                        );
+                        this.resolve_fn_signature(
+                            ty.id,
+                            false,
+                            // We don't need to deal with patterns in parameters, because
+                            // they are not possible for foreign or bodiless functions.
+                            fn_ptr.decl.inputs.iter().map(|Param { ty, .. }| (None, &**ty)),
+                            &fn_ptr.decl.output,
+                            false,
+                        )
                     },
                 )
             }
@@ -1042,19 +1035,12 @@ impl<'ast, 'ra, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'ra, 'tc
                 self.visit_fn_header(&sig.header);
                 self.visit_ident(ident);
                 self.visit_generics(generics);
-                self.with_lifetime_rib(
-                    LifetimeRibKind::AnonymousCreateParameter {
-                        binder: fn_id,
-                        report_in_path: false,
-                    },
-                    |this| {
-                        this.resolve_fn_signature(
-                            fn_id,
-                            sig.decl.has_self(),
-                            sig.decl.inputs.iter().map(|Param { ty, .. }| (None, &**ty)),
-                            &sig.decl.output,
-                        );
-                    },
+                self.resolve_fn_signature(
+                    fn_id,
+                    sig.decl.has_self(),
+                    sig.decl.inputs.iter().map(|Param { ty, .. }| (None, &**ty)),
+                    &sig.decl.output,
+                    false,
                 );
                 return;
             }
@@ -1080,22 +1066,15 @@ impl<'ast, 'ra, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'ra, 'tc
                             .coroutine_kind
                             .map(|coroutine_kind| coroutine_kind.return_id());
 
-                        this.with_lifetime_rib(
-                            LifetimeRibKind::AnonymousCreateParameter {
-                                binder: fn_id,
-                                report_in_path: coro_node_id.is_some(),
-                            },
-                            |this| {
-                                this.resolve_fn_signature(
-                                    fn_id,
-                                    declaration.has_self(),
-                                    declaration
-                                        .inputs
-                                        .iter()
-                                        .map(|Param { pat, ty, .. }| (Some(&**pat), &**ty)),
-                                    &declaration.output,
-                                );
-                            },
+                        this.resolve_fn_signature(
+                            fn_id,
+                            declaration.has_self(),
+                            declaration
+                                .inputs
+                                .iter()
+                                .map(|Param { pat, ty, .. }| (Some(&**pat), &**ty)),
+                            &declaration.output,
+                            coro_node_id.is_some(),
                         );
 
                         if let Some(contract) = contract {
@@ -1307,19 +1286,12 @@ impl<'ast, 'ra, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'ra, 'tc
                             kind: LifetimeBinderKind::PolyTrait,
                             ..
                         } => {
-                            self.with_lifetime_rib(
-                                LifetimeRibKind::AnonymousCreateParameter {
-                                    binder,
-                                    report_in_path: false,
-                                },
-                                |this| {
-                                    this.resolve_fn_signature(
-                                        binder,
-                                        false,
-                                        p_args.inputs.iter().map(|ty| (None, &**ty)),
-                                        &p_args.output,
-                                    )
-                                },
+                            self.resolve_fn_signature(
+                                binder,
+                                false,
+                                p_args.inputs.iter().map(|ty| (None, &**ty)),
+                                &p_args.output,
+                                false,
                             );
                             break;
                         }
@@ -2236,25 +2208,32 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         has_self: bool,
         inputs: impl Iterator<Item = (Option<&'ast Pat>, &'ast Ty)> + Clone,
         output_ty: &'ast FnRetTy,
+        report_elided_lifetimes_in_path: bool,
     ) {
-        // Add each argument to the rib.
-        let elision_lifetime = self.resolve_fn_params(has_self, inputs);
-        debug!(?elision_lifetime);
-
-        let outer_failures = take(&mut self.diag_metadata.current_elision_failures);
-        let output_rib = if let Ok(res) = elision_lifetime.as_ref() {
-            self.r.lifetime_elision_allowed.insert(fn_id);
-            LifetimeRibKind::Elided(*res)
-        } else {
-            LifetimeRibKind::ElisionFailure
+        let rib = LifetimeRibKind::AnonymousCreateParameter {
+            binder: fn_id,
+            report_in_path: report_elided_lifetimes_in_path,
         };
-        self.with_lifetime_rib(output_rib, |this| visit::walk_fn_ret_ty(this, output_ty));
-        let elision_failures =
-            replace(&mut self.diag_metadata.current_elision_failures, outer_failures);
-        if !elision_failures.is_empty() {
-            let Err(failure_info) = elision_lifetime else { bug!() };
-            self.report_missing_lifetime_specifiers(elision_failures, Some(failure_info));
-        }
+        self.with_lifetime_rib(rib, |this| {
+            // Add each argument to the rib.
+            let elision_lifetime = this.resolve_fn_params(has_self, inputs);
+            debug!(?elision_lifetime);
+
+            let outer_failures = take(&mut this.diag_metadata.current_elision_failures);
+            let output_rib = if let Ok(res) = elision_lifetime.as_ref() {
+                this.r.lifetime_elision_allowed.insert(fn_id);
+                LifetimeRibKind::Elided(*res)
+            } else {
+                LifetimeRibKind::ElisionFailure
+            };
+            this.with_lifetime_rib(output_rib, |this| visit::walk_fn_ret_ty(this, output_ty));
+            let elision_failures =
+                replace(&mut this.diag_metadata.current_elision_failures, outer_failures);
+            if !elision_failures.is_empty() {
+                let Err(failure_info) = elision_lifetime else { bug!() };
+                this.report_missing_lifetime_specifiers(elision_failures, Some(failure_info));
+            }
+        });
     }
 
     /// Resolve inside function parameters and parameter types.
