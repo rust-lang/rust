@@ -304,24 +304,23 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     p.print_def_path(def_id, &[]).map(|_| p.segments)
                 };
 
-                // We compare strings because DefPath can be different
-                // for imported and non-imported crates
+                // We compare strings because DefPath can be different for imported and
+                // non-imported crates.
                 let expected_str = self.tcx.def_path_str(did1);
                 let found_str = self.tcx.def_path_str(did2);
                 let Ok(expected_abs) = abs_path(did1) else { return false };
                 let Ok(found_abs) = abs_path(did2) else { return false };
-                let same_path = || -> Result<_, PrintError> {
-                    Ok(expected_str == found_str || expected_abs == found_abs)
-                };
-                // We want to use as unique a type path as possible. If both types are "locally
-                // known" by the same name, we use the "absolute path" which uses the original
-                // crate name instead.
-                let (expected, found) = if expected_str == found_str {
-                    (join_path_syms(&expected_abs), join_path_syms(&found_abs))
-                } else {
-                    (expected_str.clone(), found_str.clone())
-                };
-                if same_path().unwrap_or(false) {
+                let same_path = expected_str == found_str || expected_abs == found_abs;
+                if same_path {
+                    // We want to use as unique a type path as possible. If both types are "locally
+                    // known" by the same name, we use the "absolute path" which uses the original
+                    // crate name instead.
+                    let (expected, found) = if expected_str == found_str {
+                        (join_path_syms(&expected_abs), join_path_syms(&found_abs))
+                    } else {
+                        (expected_str.clone(), found_str.clone())
+                    };
+
                     // We've displayed "expected `a::b`, found `a::b`". We add context to
                     // differentiate the different cases where that might happen.
                     let expected_crate_name = self.tcx.crate_name(did1.krate);
