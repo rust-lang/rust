@@ -1,0 +1,99 @@
+error[E0425]: cannot find value `Hello` in this scope
+  --> $DIR/case-difference-suggestions.rs:5:20
+   |
+LL |     println!("{}", Hello);
+   |                    ^^^^^ help: a local variable with a similar name exists: `hello`
+
+error[E0425]: cannot find value `myvariable` in this scope
+  --> $DIR/case-difference-suggestions.rs:9:20
+   |
+LL |     println!("{}", myvariable);
+   |                    ^^^^^^^^^^ help: a local variable with a similar name exists (notice the capitalization): `myVariable`
+
+error[E0425]: cannot find value `User_Name` in this scope
+  --> $DIR/case-difference-suggestions.rs:13:20
+   |
+LL |     println!("{}", User_Name);
+   |                    ^^^^^^^^^ help: a local variable with a similar name exists: `user_name`
+
+error[E0425]: cannot find value `foo` in this scope
+  --> $DIR/case-difference-suggestions.rs:17:20
+   |
+LL |     println!("{}", foo);
+   |                    ^^^ help: a local variable with a similar name exists (notice the capitalization): `FOO`
+
+error[E0425]: cannot find value `FFOO` in this scope
+  --> $DIR/case-difference-suggestions.rs:22:20
+   |
+LL |     println!("{}", FFOO);
+   |                    ^^^^ help: a local variable with a similar name exists (notice the digit/letter confusion): `FFO0`
+
+error[E0425]: cannot find value `list` in this scope
+  --> $DIR/case-difference-suggestions.rs:25:20
+   |
+LL |     println!("{}", list);
+   |                    ^^^^ help: a local variable with a similar name exists: `l1st`
+
+error[E0425]: cannot find value `SS` in this scope
+  --> $DIR/case-difference-suggestions.rs:28:20
+   |
+LL |     println!("{}", SS);
+   |                    ^^ help: a local variable with a similar name exists (notice the digit/letter confusion): `S5`
+
+error[E0425]: cannot find value `a55` in this scope
+  --> $DIR/case-difference-suggestions.rs:31:20
+   |
+LL |     println!("{}", a55);
+   |                    ^^^ help: a local variable with a similar name exists (notice the digit/letter confusion): `aS5`
+
+error[E0425]: cannot find value `BB` in this scope
+  --> $DIR/case-difference-suggestions.rs:34:20
+   |
+LL |     println!("{}", BB);
+   |                    ^^ help: a local variable with a similar name exists (notice the digit/letter confusion): `B8`
+
+error[E0425]: cannot find value `gg` in this scope
+  --> $DIR/case-difference-suggestions.rs:37:20
+   |
+LL |     println!("{}", gg);
+   |                    ^^ help: a local variable with a similar name exists (notice the digit/letter confusion): `g9`
+
+error[E0425]: cannot find value `old` in this scope
+  --> $DIR/case-difference-suggestions.rs:40:20
+   |
+LL |     println!("{}", old);
+   |                    ^^^ help: a local variable with a similar name exists (notice the digit/letter confusion): `o1d`
+
+error[E0425]: cannot find value `newl` in this scope
+  --> $DIR/case-difference-suggestions.rs:43:20
+   |
+LL |     println!("{}", newl);
+   |                    ^^^^ help: a local variable with a similar name exists (notice the digit/letter confusion): `new1`
+
+error[E0425]: cannot find value `app1e` in this scope
+  --> $DIR/case-difference-suggestions.rs:46:20
+   |
+LL |     println!("{}", app1e);
+   |                    ^^^^^ help: a local variable with a similar name exists (notice the digit/letter confusion): `apple`
+
+error[E0425]: cannot find value `A` in this scope
+  --> $DIR/case-difference-suggestions.rs:49:20
+   |
+LL |     println!("{}", A);
+   |                    ^ help: a local variable with a similar name exists: `a`
+
+error[E0425]: cannot find value `world1U` in this scope
+  --> $DIR/case-difference-suggestions.rs:52:20
+   |
+LL |     println!("{}", world1U);
+   |                    ^^^^^^^ help: a local variable with a similar name exists (notice the capitalization and digit/letter confusion): `worldlu`
+
+error[E0425]: cannot find value `myv4r1able` in this scope
+  --> $DIR/case-difference-suggestions.rs:55:20
+   |
+LL |     println!("{}", myv4r1able);
+   |                    ^^^^^^^^^^ help: a local variable with a similar name exists (notice the capitalization and digit/letter confusion): `myV4rlable`
+
+error: aborting due to 16 previous errors
+
+For more information about this error, try `rustc --explain E0425`.
