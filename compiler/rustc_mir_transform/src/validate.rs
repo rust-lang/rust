@@ -1,9 +1,9 @@
 //! Validates the MIR to ensure that invariants are upheld.
 
 use rustc_abi::{ExternAbi, FIRST_VARIANT, Size};
-use rustc_attr_data_structures::InlineAttr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::LangItem;
+use rustc_hir::attrs::InlineAttr;
 use rustc_index::IndexVec;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_infer::infer::TyCtxtInferExt;
@@ -80,15 +80,14 @@ impl<'tcx> crate::MirPass<'tcx> for Validator {
             cfg_checker.fail(location, msg);
         }
 
-        if let MirPhase::Runtime(_) = body.phase {
-            if let ty::InstanceKind::Item(_) = body.source.instance {
-                if body.has_free_regions() {
-                    cfg_checker.fail(
-                        Location::START,
-                        format!("Free regions in optimized {} MIR", body.phase.name()),
-                    );
-                }
-            }
+        if let MirPhase::Runtime(_) = body.phase
+            && let ty::InstanceKind::Item(_) = body.source.instance
+            && body.has_free_regions()
+        {
+            cfg_checker.fail(
+                Location::START,
+                format!("Free regions in optimized {} MIR", body.phase.name()),
+            );
         }
     }
 

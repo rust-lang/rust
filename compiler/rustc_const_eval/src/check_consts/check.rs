@@ -6,7 +6,6 @@ use std::mem;
 use std::num::NonZero;
 use std::ops::Deref;
 
-use rustc_attr_data_structures as attrs;
 use rustc_errors::{Diag, ErrorGuaranteed};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
@@ -466,7 +465,7 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
     /// Check the const stability of the given item (fn or trait).
     fn check_callee_stability(&mut self, def_id: DefId) {
         match self.tcx.lookup_const_stability(def_id) {
-            Some(attrs::ConstStability { level: attrs::StabilityLevel::Stable { .. }, .. }) => {
+            Some(hir::ConstStability { level: hir::StabilityLevel::Stable { .. }, .. }) => {
                 // All good.
             }
             None => {
@@ -482,8 +481,8 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
                     });
                 }
             }
-            Some(attrs::ConstStability {
-                level: attrs::StabilityLevel::Unstable { implied_by: implied_feature, issue, .. },
+            Some(hir::ConstStability {
+                level: hir::StabilityLevel::Unstable { implied_by: implied_feature, issue, .. },
                 feature,
                 ..
             }) => {
@@ -714,10 +713,10 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
 
     fn visit_operand(&mut self, op: &Operand<'tcx>, location: Location) {
         self.super_operand(op, location);
-        if let Operand::Constant(c) = op {
-            if let Some(def_id) = c.check_static_ptr(self.tcx) {
-                self.check_static(def_id, self.span);
-            }
+        if let Operand::Constant(c) = op
+            && let Some(def_id) = c.check_static_ptr(self.tcx)
+        {
+            self.check_static(def_id, self.span);
         }
     }
 
@@ -784,7 +783,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                     self.revalidate_conditional_constness(callee, fn_args, *fn_span);
 
                 // Attempting to call a trait method?
-                if let Some(trait_did) = tcx.trait_of_item(callee) {
+                if let Some(trait_did) = tcx.trait_of_assoc(callee) {
                     // We can't determine the actual callee here, so we have to do different checks
                     // than usual.
 
@@ -891,8 +890,8 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                                 });
                             }
                         }
-                        Some(attrs::ConstStability {
-                            level: attrs::StabilityLevel::Unstable { .. },
+                        Some(hir::ConstStability {
+                            level: hir::StabilityLevel::Unstable { .. },
                             feature,
                             ..
                         }) => {
@@ -902,8 +901,8 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                                 const_stable_indirect: is_const_stable,
                             });
                         }
-                        Some(attrs::ConstStability {
-                            level: attrs::StabilityLevel::Stable { .. },
+                        Some(hir::ConstStability {
+                            level: hir::StabilityLevel::Stable { .. },
                             ..
                         }) => {
                             // All good. Note that a `#[rustc_const_stable]` intrinsic (meaning it

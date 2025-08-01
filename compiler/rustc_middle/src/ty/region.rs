@@ -324,6 +324,14 @@ pub struct EarlyParamRegion {
     pub name: Symbol,
 }
 
+impl EarlyParamRegion {
+    /// Does this early bound region have a name? Early bound regions normally
+    /// always have names except when using anonymous lifetimes (`'_`).
+    pub fn is_named(&self) -> bool {
+        self.name != kw::UnderscoreLifetime
+    }
+}
+
 impl rustc_type_ir::inherent::ParamLike for EarlyParamRegion {
     fn index(self) -> u32 {
         self.index
@@ -486,4 +494,16 @@ impl BoundRegionKind {
             _ => None,
         }
     }
+}
+
+// Some types are used a lot. Make sure they don't unintentionally get bigger.
+#[cfg(target_pointer_width = "64")]
+mod size_asserts {
+    use rustc_data_structures::static_assert_size;
+
+    use super::*;
+    // tidy-alphabetical-start
+    static_assert_size!(RegionKind<'_>, 20);
+    static_assert_size!(ty::WithCachedTypeInfo<RegionKind<'_>>, 48);
+    // tidy-alphabetical-end
 }

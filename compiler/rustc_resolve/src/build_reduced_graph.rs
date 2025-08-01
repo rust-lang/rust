@@ -13,12 +13,12 @@ use rustc_ast::{
     self as ast, AssocItem, AssocItemKind, Block, ConstItem, Delegation, Fn, ForeignItem,
     ForeignItemKind, Impl, Item, ItemKind, NodeId, StaticItem, StmtKind, TyAlias,
 };
-use rustc_attr_data_structures::{AttributeKind, MacroUseArgs};
 use rustc_attr_parsing as attr;
 use rustc_attr_parsing::AttributeParser;
 use rustc_expand::base::ResolverExpand;
 use rustc_expand::expand::AstFragment;
 use rustc_hir::Attribute;
+use rustc_hir::attrs::{AttributeKind, MacroUseArgs};
 use rustc_hir::def::{self, *};
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LocalDefId};
 use rustc_index::bit_set::DenseBitSet;
@@ -984,18 +984,17 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                 // more details: https://github.com/rust-lang/rust/pull/111761
                 return;
             }
-            let entry = self
-                .r
-                .extern_prelude
-                .entry(ident)
-                .or_insert(ExternPreludeEntry { binding: None, introduced_by_item: true });
+            let entry = self.r.extern_prelude.entry(ident).or_insert(ExternPreludeEntry {
+                binding: Cell::new(None),
+                introduced_by_item: true,
+            });
             if orig_name.is_some() {
                 entry.introduced_by_item = true;
             }
             // Binding from `extern crate` item in source code can replace
             // a binding from `--extern` on command line here.
             if !entry.is_import() {
-                entry.binding = Some(imported_binding)
+                entry.binding.set(Some(imported_binding));
             } else if ident.name != kw::Underscore {
                 self.r.dcx().span_delayed_bug(
                     item.span,

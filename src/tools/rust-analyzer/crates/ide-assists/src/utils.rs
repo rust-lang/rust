@@ -23,10 +23,11 @@ use syntax::{
     ast::{
         self, HasArgList, HasAttrs, HasGenericParams, HasName, HasTypeBounds, Whitespace,
         edit::{AstNodeEdit, IndentLevel},
-        edit_in_place::{AttrsOwnerEdit, Indent, Removable},
+        edit_in_place::{AttrsOwnerEdit, Removable},
         make,
         syntax_factory::SyntaxFactory,
     },
+    syntax_editor::SyntaxEditor,
     ted,
 };
 
@@ -178,6 +179,7 @@ pub fn filter_assoc_items(
 /// [`filter_assoc_items()`]), clones each item for update and applies path transformation to it,
 /// then inserts into `impl_`. Returns the modified `impl_` and the first associated item that got
 /// inserted.
+#[must_use]
 pub fn add_trait_assoc_items_to_impl(
     sema: &Semantics<'_, RootDatabase>,
     config: &AssistConfig,
@@ -185,71 +187,66 @@ pub fn add_trait_assoc_items_to_impl(
     trait_: hir::Trait,
     impl_: &ast::Impl,
     target_scope: &hir::SemanticsScope<'_>,
-) -> ast::AssocItem {
+) -> Vec<ast::AssocItem> {
     let new_indent_level = IndentLevel::from_node(impl_.syntax()) + 1;
-    let items = original_items.iter().map(|InFile { file_id, value: original_item }| {
-        let cloned_item = {
-            if let Some(macro_file) = file_id.macro_file() {
-                let span_map = sema.db.expansion_span_map(macro_file);
-                let item_prettified = prettify_macro_expansion(
-                    sema.db,
-                    original_item.syntax().clone(),
-                    &span_map,
-                    target_scope.krate().into(),
-                );
-                if let Some(formatted) = ast::AssocItem::cast(item_prettified) {
-                    return formatted;
-                } else {
-                    stdx::never!("formatted `AssocItem` could not be cast back to `AssocItem`");
+    original_items
+        .iter()
+        .map(|InFile { file_id, value: original_item }| {
+            let mut cloned_item = {
+                if let Some(macro_file) = file_id.macro_file() {
+                    let span_map = sema.db.expansion_span_map(macro_file);
+                    let item_prettified = prettify_macro_expansion(
+                        sema.db,
+                        original_item.syntax().clone(),
+                        &span_map,
+                        target_scope.krate().into(),
+                    );
+                    if let Some(formatted) = ast::AssocItem::cast(item_prettified) {
+                        return formatted;
+                    } else {
+                        stdx::never!("formatted `AssocItem` could not be cast back to `AssocItem`");
+                    }
                 }
+                original_item.clone_for_update()
             }
-            original_item.clone_for_update()
-        };
+            .reset_indent();
 
-        if let Some(source_scope) = sema.scope(original_item.syntax()) {
-            // FIXME: Paths in nested macros are not handled well. See
-            // `add_missing_impl_members::paths_in_nested_macro_should_get_transformed` test.
-            let transform =
-                PathTransform::trait_impl(target_scope, &source_scope, trait_, impl_.clone());
-            transform.apply(cloned_item.syntax());
-        }
-        cloned_item.remove_attrs_and_docs();
-        cloned_item.reindent_to(new_indent_level);
-        cloned_item
-    });
-
-    let assoc_item_list = impl_.get_or_create_assoc_item_list();
-
-    let mut first_item = None;
-    for item in items {
-        first_item.get_or_insert_with(|| item.clone());
-        match &item {
-            ast::AssocItem::Fn(fn_) if fn_.body().is_none() => {
-                let body = AstNodeEdit::indent(
-                    &make::block_expr(
-                        None,
-                        Some(match config.expr_fill_default {
-                            ExprFillDefaultMode::Todo => make::ext::expr_todo(),
-                            ExprFillDefaultMode::Underscore => make::ext::expr_underscore(),
-                            ExprFillDefaultMode::Default => make::ext::expr_todo(),
-                        }),
-                    ),
-                    new_indent_level,
-                );
-                ted::replace(fn_.get_or_create_body().syntax(), body.clone_for_update().syntax())
+            if let Some(source_scope) = sema.scope(original_item.syntax()) {
+                // FIXME: Paths in nested macros are not handled well. See
+                // `add_missing_impl_members::paths_in_nested_macro_should_get_transformed` test.
+                let transform =
+                    PathTransform::trait_impl(target_scope, &source_scope, trait_, impl_.clone());
+                cloned_item = ast::AssocItem::cast(transform.apply(cloned_item.syntax())).unwrap();
             }
-            ast::AssocItem::TypeAlias(type_alias) => {
-                if let Some(type_bound_list) = type_alias.type_bound_list() {
-                    type_bound_list.remove()
+            cloned_item.remove_attrs_and_docs();
+            cloned_item
+        })
+        .map(|item| {
+            match &item {
+                ast::AssocItem::Fn(fn_) if fn_.body().is_none() => {
+                    let body = AstNodeEdit::indent(
+                        &make::block_expr(
+                            None,
+                            Some(match config.expr_fill_default {
+                                ExprFillDefaultMode::Todo => make::ext::expr_todo(),
+                                ExprFillDefaultMode::Underscore => make::ext::expr_underscore(),
+                                ExprFillDefaultMode::Default => make::ext::expr_todo(),
+                            }),
+                        ),
+                        IndentLevel::single(),
+                    );
+                    ted::replace(fn_.get_or_create_body().syntax(), body.syntax());
                 }
+                ast::AssocItem::TypeAlias(type_alias) => {
+                    if let Some(type_bound_list) = type_alias.type_bound_list() {
+                        type_bound_list.remove()
+                    }
+                }
+                _ => {}
             }
-            _ => {}
-        }
-
-        assoc_item_list.add_item(item)
-    }
-
-    first_item.unwrap()
+            AstNodeEdit::indent(&item, new_indent_level)
+        })
+        .collect()
 }
 
 pub(crate) fn vis_offset(node: &SyntaxNode) -> TextSize {
@@ -334,7 +331,7 @@ fn invert_special_case(make: &SyntaxFactory, expr: &ast::Expr) -> Option<ast::Ex
 fn invert_special_case_legacy(expr: &ast::Expr) -> Option<ast::Expr> {
     match expr {
         ast::Expr::BinExpr(bin) => {
-            let bin = bin.clone_for_update();
+            let bin = bin.clone_subtree();
             let op_token = bin.op_token()?;
             let rev_token = match op_token.kind() {
                 T![==] => T![!=],
@@ -350,8 +347,9 @@ fn invert_special_case_legacy(expr: &ast::Expr) -> Option<ast::Expr> {
                     );
                 }
             };
-            ted::replace(op_token, make::token(rev_token));
-            Some(bin.into())
+            let mut bin_editor = SyntaxEditor::new(bin.syntax().clone());
+            bin_editor.replace(op_token, make::token(rev_token));
+            ast::Expr::cast(bin_editor.finish().new_root().clone())
         }
         ast::Expr::MethodCallExpr(mce) => {
             let receiver = mce.receiver()?;
@@ -664,16 +662,23 @@ fn generate_impl_text_inner(
 
 /// Generates the corresponding `impl Type {}` including type and lifetime
 /// parameters.
+pub(crate) fn generate_impl_with_item(
+    adt: &ast::Adt,
+    body: Option<ast::AssocItemList>,
+) -> ast::Impl {
+    generate_impl_inner(false, adt, None, true, body)
+}
+
 pub(crate) fn generate_impl(adt: &ast::Adt) -> ast::Impl {
-    generate_impl_inner(adt, None, true)
+    generate_impl_inner(false, adt, None, true, None)
 }
 
 /// Generates the corresponding `impl <trait> for Type {}` including type
 /// and lifetime parameters, with `<trait>` appended to `impl`'s generic parameters' bounds.
 ///
 /// This is useful for traits like `PartialEq`, since `impl<T> PartialEq for U<T>` often requires `T: PartialEq`.
-pub(crate) fn generate_trait_impl(adt: &ast::Adt, trait_: ast::Type) -> ast::Impl {
-    generate_impl_inner(adt, Some(trait_), true)
+pub(crate) fn generate_trait_impl(is_unsafe: bool, adt: &ast::Adt, trait_: ast::Type) -> ast::Impl {
+    generate_impl_inner(is_unsafe, adt, Some(trait_), true, None)
 }
 
 /// Generates the corresponding `impl <trait> for Type {}` including type
@@ -681,13 +686,15 @@ pub(crate) fn generate_trait_impl(adt: &ast::Adt, trait_: ast::Type) -> ast::Imp
 ///
 /// This is useful for traits like `From<T>`, since `impl<T> From<T> for U<T>` doesn't require `T: From<T>`.
 pub(crate) fn generate_trait_impl_intransitive(adt: &ast::Adt, trait_: ast::Type) -> ast::Impl {
-    generate_impl_inner(adt, Some(trait_), false)
+    generate_impl_inner(false, adt, Some(trait_), false, None)
 }
 
 fn generate_impl_inner(
+    is_unsafe: bool,
     adt: &ast::Adt,
     trait_: Option<ast::Type>,
     trait_is_transitive: bool,
+    body: Option<ast::AssocItemList>,
 ) -> ast::Impl {
     // Ensure lifetime params are before type & const params
     let generic_params = adt.generic_param_list().map(|generic_params| {
@@ -727,7 +734,7 @@ fn generate_impl_inner(
 
     let impl_ = match trait_ {
         Some(trait_) => make::impl_trait(
-            false,
+            is_unsafe,
             None,
             None,
             generic_params,
@@ -737,9 +744,9 @@ fn generate_impl_inner(
             ty,
             None,
             adt.where_clause(),
-            None,
+            body,
         ),
-        None => make::impl_(generic_params, generic_args, ty, adt.where_clause(), None),
+        None => make::impl_(generic_params, generic_args, ty, adt.where_clause(), body),
     }
     .clone_for_update();
 

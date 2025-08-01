@@ -397,11 +397,11 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // Finish things up.
         M::after_stack_push(self)?;
         self.frame_mut().loc = Left(mir::Location::START);
-        // `tracing_separate_thread` is used to instruct the chrome_tracing [tracing::Layer] in Miri
+        // `tracing_separate_thread` is used to instruct the tracing_chrome [tracing::Layer] in Miri
         // to put the "frame" span on a separate trace thread/line than other spans, to make the
-        // visualization in https://ui.perfetto.dev easier to interpret. It is set to a value of
+        // visualization in <https://ui.perfetto.dev> easier to interpret. It is set to a value of
         // [tracing::field::Empty] so that other tracing layers (e.g. the logger) will ignore it.
-        let span = info_span!("frame", tracing_separate_thread = Empty, "{}", instance);
+        let span = info_span!("frame", tracing_separate_thread = Empty, frame = %instance);
         self.frame_mut().tracing_span.enter(span);
 
         interp_ok(())

@@ -1,11 +1,12 @@
 use std::num::NonZero;
 
-use rustc_attr_data_structures::{
-    AttributeKind, DefaultBodyStability, PartialConstStability, Stability, StabilityLevel,
-    StableSince, UnstableReason, VERSION_PLACEHOLDER,
-};
 use rustc_errors::ErrorGuaranteed;
 use rustc_feature::template;
+use rustc_hir::attrs::AttributeKind;
+use rustc_hir::{
+    DefaultBodyStability, PartialConstStability, Stability, StabilityLevel, StableSince,
+    UnstableReason, VERSION_PLACEHOLDER,
+};
 use rustc_span::{Ident, Span, Symbol, sym};
 
 use super::util::parse_version;

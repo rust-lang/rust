@@ -46,21 +46,17 @@ pub(crate) fn finalize(cx: &mut CodegenCx<'_, '_>) {
     debug!("Generating coverage map for CodegenUnit: `{}`", cx.codegen_unit.name());
 
     // FIXME(#132395): Can this be none even when coverage is enabled?
-    let instances_used = match cx.coverage_cx {
-        Some(ref cx) => cx.instances_used.borrow(),
-        None => return,
-    };
+    let Some(ref coverage_cx) = cx.coverage_cx else { return };
 
-    let mut covfun_records = instances_used
-        .iter()
-        .copied()
+    let mut covfun_records = coverage_cx
+        .instances_used()
+        .into_iter()
         // Sort by symbol name, so that the global file table is built in an
         // order that doesn't depend on the stable-hash-based order in which
         // instances were visited during codegen.
         .sorted_by_cached_key(|&instance| tcx.symbol_name(instance).name)
         .filter_map(|instance| prepare_covfun_record(tcx, instance, true))
         .collect::<Vec<_>>();
-    drop(instances_used);
 
     // In a single designated CGU, also prepare covfun records for functions
     // in this crate that were instrumented for coverage, but are unused.

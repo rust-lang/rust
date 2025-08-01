@@ -183,6 +183,7 @@ LL |     cfg!(target_feature = "_UNEXPECTED_VALUE");
 `nnp-assist`
 `nontrapping-fptoint`
 `nvic`
+`outline-atomics`
 `paca`
 `pacg`
 `pan`

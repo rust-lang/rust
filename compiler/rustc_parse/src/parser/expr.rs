@@ -263,10 +263,11 @@ impl<'a> Parser<'a> {
                 continue;
             }
 
+            let op_span = op.span;
             let op = op.node;
             // Special cases:
             if op == AssocOp::Cast {
-                lhs = self.parse_assoc_op_cast(lhs, lhs_span, ExprKind::Cast)?;
+                lhs = self.parse_assoc_op_cast(lhs, lhs_span, op_span, ExprKind::Cast)?;
                 continue;
             } else if let AssocOp::Range(limits) = op {
                 // If we didn't have to handle `x..`/`x..=`, it would be pretty easy to
@@ -284,7 +285,7 @@ impl<'a> Parser<'a> {
                 this.parse_expr_assoc_with(min_prec, attrs)
             })?;
 
-            let span = self.mk_expr_sp(&lhs, lhs_span, rhs.span);
+            let span = self.mk_expr_sp(&lhs, lhs_span, op_span, rhs.span);
             lhs = match op {
                 AssocOp::Binary(ast_op) => {
                     let binary = self.mk_binary(source_map::respan(cur_op_span, ast_op), lhs, rhs);
@@ -429,7 +430,7 @@ impl<'a> Parser<'a> {
             None
         };
         let rhs_span = rhs.as_ref().map_or(cur_op_span, |x| x.span);
-        let span = self.mk_expr_sp(&lhs, lhs.span, rhs_span);
+        let span = self.mk_expr_sp(&lhs, lhs.span, cur_op_span, rhs_span);
         let range = self.mk_range(Some(lhs), rhs, limits);
         Ok(self.mk_expr(span, range))
     }
@@ -654,10 +655,11 @@ impl<'a> Parser<'a> {
         &mut self,
         lhs: P<Expr>,
         lhs_span: Span,
+        op_span: Span,
         expr_kind: fn(P<Expr>, P<Ty>) -> ExprKind,
     ) -> PResult<'a, P<Expr>> {
         let mk_expr = |this: &mut Self, lhs: P<Expr>, rhs: P<Ty>| {
-            this.mk_expr(this.mk_expr_sp(&lhs, lhs_span, rhs.span), expr_kind(lhs, rhs))
+            this.mk_expr(this.mk_expr_sp(&lhs, lhs_span, op_span, rhs.span), expr_kind(lhs, rhs))
         };
 
         // Save the state of the parser before parsing type normally, in case there is a
@@ -785,9 +787,13 @@ impl<'a> Parser<'a> {
                     ExprKind::Call(_, _) => "a function call",
                     ExprKind::Await(_, _) => "`.await`",
                     ExprKind::Use(_, _) => "`.use`",
+                    ExprKind::Yield(YieldKind::Postfix(_)) => "`.yield`",
                     ExprKind::Match(_, _, MatchKind::Postfix) => "a postfix match",
                     ExprKind::Err(_) => return Ok(with_postfix),
-                    _ => unreachable!("parse_dot_or_call_expr_with_ shouldn't produce this"),
+                    _ => unreachable!(
+                        "did not expect {:?} as an illegal postfix operator following cast",
+                        with_postfix.kind
+                    ),
                 }
             );
             let mut err = self.dcx().struct_span_err(span, msg);
@@ -4001,11 +4007,12 @@ impl<'a> Parser<'a> {
 
     /// Create expression span ensuring the span of the parent node
     /// is larger than the span of lhs and rhs, including the attributes.
-    fn mk_expr_sp(&self, lhs: &P<Expr>, lhs_span: Span, rhs_span: Span) -> Span {
+    fn mk_expr_sp(&self, lhs: &P<Expr>, lhs_span: Span, op_span: Span, rhs_span: Span) -> Span {
         lhs.attrs
             .iter()
             .find(|a| a.style == AttrStyle::Outer)
             .map_or(lhs_span, |a| a.span)
+            .to(op_span)
             .to(rhs_span)
     }
 

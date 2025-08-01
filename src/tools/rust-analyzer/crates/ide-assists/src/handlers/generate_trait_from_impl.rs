@@ -3,7 +3,7 @@ use ide_db::assists::AssistId;
 use syntax::{
     AstNode, SyntaxKind, T,
     ast::{
-        self, HasGenericParams, HasName,
+        self, HasGenericParams, HasName, HasVisibility,
         edit_in_place::{HasVisibilityEdit, Indent},
         make,
     },
@@ -164,6 +164,12 @@ pub(crate) fn generate_trait_from_impl(acc: &mut Assists, ctx: &AssistContext<'_
 /// `E0449` Trait items always share the visibility of their trait
 fn remove_items_visibility(item: &ast::AssocItem) {
     if let Some(has_vis) = ast::AnyHasVisibility::cast(item.syntax().clone()) {
+        if let Some(vis) = has_vis.visibility()
+            && let Some(token) = vis.syntax().next_sibling_or_token()
+            && token.kind() == SyntaxKind::WHITESPACE
+        {
+            ted::remove(token);
+        }
         has_vis.set_visibility(None);
     }
 }
@@ -333,11 +339,11 @@ impl F$0oo {
 struct Foo;
 
 trait NewTrait {
-     fn a_func() -> Option<()>;
+    fn a_func() -> Option<()>;
 }
 
 impl NewTrait for Foo {
-     fn a_func() -> Option<()> {
+    fn a_func() -> Option<()> {
         Some(())
     }
 }"#,

@@ -1650,40 +1650,6 @@ extern "C" LLVMModuleRef LLVMRustParseBitcodeForLTO(LLVMContextRef Context,
   return wrap(std::move(*SrcOrError).release());
 }
 
-// Find a section of an object file by name. Fail if the section is missing or
-// empty.
-extern "C" const char *LLVMRustGetSliceFromObjectDataByName(const char *data,
-                                                            size_t len,
-                                                            const char *name,
-                                                            size_t name_len,
-                                                            size_t *out_len) {
-  *out_len = 0;
-  auto Name = StringRef(name, name_len);
-  auto Data = StringRef(data, len);
-  auto Buffer = MemoryBufferRef(Data, ""); // The id is unused.
-  file_magic Type = identify_magic(Buffer.getBuffer());
-  Expected<std::unique_ptr<object::ObjectFile>> ObjFileOrError =
-      object::ObjectFile::createObjectFile(Buffer, Type);
-  if (!ObjFileOrError) {
-    LLVMRustSetLastError(toString(ObjFileOrError.takeError()).c_str());
-    return nullptr;
-  }
-  for (const object::SectionRef &Sec : (*ObjFileOrError)->sections()) {
-    Expected<StringRef> SecName = Sec.getName();
-    if (SecName && *SecName == Name) {
-      Expected<StringRef> SectionOrError = Sec.getContents();
-      if (!SectionOrError) {
-        LLVMRustSetLastError(toString(SectionOrError.takeError()).c_str());
-        return nullptr;
-      }
-      *out_len = SectionOrError->size();
-      return SectionOrError->data();
-    }
-  }
-  LLVMRustSetLastError("could not find requested section");
-  return nullptr;
-}
-
 // Computes the LTO cache key for the provided 'ModId' in the given 'Data',
 // storing the result in 'KeyOut'.
 // Currently, this cache key is a SHA-1 hash of anything that could affect

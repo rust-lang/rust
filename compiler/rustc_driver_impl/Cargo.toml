@@ -4,8 +4,8 @@ version = "0.0.0"
 edition = "2024"
 
 [dependencies]
-jiff = { version = "0.2.5", default-features = false, features = ["std"] }
 # tidy-alphabetical-start
+jiff = { version = "0.2.5", default-features = false, features = ["std"] }
 rustc_abi = { path = "../rustc_abi" }
 rustc_ast = { path = "../rustc_ast" }
 rustc_ast_lowering = { path = "../rustc_ast_lowering" }

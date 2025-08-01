@@ -590,9 +590,14 @@ impl<'a> TyLoweringContext<'a> {
                         .resolve_trait(ctx.ty_ctx().db, ctx.ty_ctx().resolver.krate());
                     let pointee_sized = LangItem::PointeeSized
                         .resolve_trait(ctx.ty_ctx().db, ctx.ty_ctx().resolver.krate());
-                    if meta_sized.is_some_and(|it| it == trait_ref.hir_trait_id()) {
+                    let destruct = LangItem::Destruct
+                        .resolve_trait(ctx.ty_ctx().db, ctx.ty_ctx().resolver.krate());
+                    let hir_trait_id = trait_ref.hir_trait_id();
+                    if meta_sized.is_some_and(|it| it == hir_trait_id)
+                        || destruct.is_some_and(|it| it == hir_trait_id)
+                    {
                         // Ignore this bound
-                    } else if pointee_sized.is_some_and(|it| it == trait_ref.hir_trait_id()) {
+                    } else if pointee_sized.is_some_and(|it| it == hir_trait_id) {
                         // Regard this as `?Sized` bound
                         ctx.ty_ctx().unsized_types.insert(self_ty);
                     } else {

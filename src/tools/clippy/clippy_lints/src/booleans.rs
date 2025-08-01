@@ -7,7 +7,7 @@ use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::{implements_trait, is_type_diagnostic_item};
 use clippy_utils::{eq_expr_value, sym};
 use rustc_ast::ast::LitKind;
-use rustc_attr_data_structures::RustcVersion;
+use rustc_hir::RustcVersion;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{FnKind, Visitor, walk_expr};
 use rustc_hir::{BinOpKind, Body, Expr, ExprKind, FnDecl, UnOp};

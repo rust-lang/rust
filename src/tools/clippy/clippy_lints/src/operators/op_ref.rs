@@ -179,7 +179,7 @@ fn in_impl<'tcx>(
     bin_op: DefId,
 ) -> Option<(&'tcx rustc_hir::Ty<'tcx>, &'tcx rustc_hir::Ty<'tcx>)> {
     if let Some(block) = get_enclosing_block(cx, e.hir_id)
-        && let Some(impl_def_id) = cx.tcx.impl_of_method(block.hir_id.owner.to_def_id())
+        && let Some(impl_def_id) = cx.tcx.impl_of_assoc(block.hir_id.owner.to_def_id())
         && let item = cx.tcx.hir_expect_item(impl_def_id.expect_local())
         && let ItemKind::Impl(item) = &item.kind
         && let Some(of_trait) = &item.of_trait

@@ -13,7 +13,7 @@ use crate::time::{Duration, Instant};
 #[stable(feature = "wait_timeout", since = "1.5.0")]
 pub struct WaitTimeoutResult(bool);
 
-// FIXME(sync_nonpoison): `WaitTimeoutResult` is actually poisoning-agnostic, it seems.
+// FIXME(nonpoison_condvar): `WaitTimeoutResult` is actually poisoning-agnostic, it seems.
 // Should we take advantage of this fact?
 impl WaitTimeoutResult {
     /// Returns `true` if the wait was known to have timed out.

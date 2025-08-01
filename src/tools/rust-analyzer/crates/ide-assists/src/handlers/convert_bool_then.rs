@@ -228,8 +228,7 @@ pub(crate) fn convert_bool_then_to_if(acc: &mut Assists, ctx: &AssistContext<'_>
                     closure_body,
                     Some(ast::ElseBranch::Block(make.block_expr(None, Some(none_path)))),
                 )
-                .indent(mcall.indent_level())
-                .clone_for_update();
+                .indent(mcall.indent_level());
             editor.replace(mcall.syntax().clone(), if_expr.syntax().clone());
 
             editor.add_mappings(make.finish_with_mappings());

@@ -14,7 +14,6 @@ pub use rustc_ast::{
     BoundConstness, BoundPolarity, ByRef, CaptureBy, DelimArgs, ImplPolarity, IsAuto,
     MetaItemInner, MetaItemLit, Movability, Mutability, UnOp,
 };
-use rustc_attr_data_structures::AttributeKind;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::tagged_ptr::TaggedRef;
@@ -30,6 +29,7 @@ use thin_vec::ThinVec;
 use tracing::debug;
 
 use crate::LangItem;
+use crate::attrs::AttributeKind;
 use crate::def::{CtorKind, DefKind, PerNS, Res};
 use crate::def_id::{DefId, LocalDefIdMap};
 pub(crate) use crate::hir_id::{HirId, ItemLocalId, ItemLocalMap, OwnerId};
@@ -148,6 +148,11 @@ impl From<Ident> for LifetimeSyntax {
 /// `LifetimeSource::OutlivesBound` or `LifetimeSource::PreciseCapturing`
 /// — there's no way to "elide" these lifetimes.
 #[derive(Debug, Copy, Clone, HashStable_Generic)]
+// Raise the aligement to at least 4 bytes - this is relied on in other parts of the compiler(for pointer tagging):
+// https://github.com/rust-lang/rust/blob/ce5fdd7d42aba9a2925692e11af2bd39cf37798a/compiler/rustc_data_structures/src/tagged_ptr.rs#L163
+// Removing this `repr(4)` will cause the compiler to not build on platforms like `m68k` Linux, where the aligement of u32 and usize is only 2.
+// Since `repr(align)` may only raise aligement, this has no effect on platforms where the aligement is already sufficient.
+#[repr(align(4))]
 pub struct Lifetime {
     #[stable_hasher(ignore)]
     pub hir_id: HirId,
