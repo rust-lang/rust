@@ -1132,68 +1132,68 @@ impl Config {
         }
 
         let Llvm {
-            optimize: optimize_toml,
-            thin_lto,
-            release_debuginfo,
+            optimize: llvm_optimize_toml,
+            thin_lto: llvm_thin_lto_toml,
+            release_debuginfo: llvm_release_debuginfo_toml,
             assertions: _,
-            tests: llvm_tests,
-            enzyme: llvm_enzyme,
-            plugins: llvm_plugin,
-            static_libstdcpp,
-            libzstd,
-            ninja,
-            targets,
-            experimental_targets,
-            link_jobs,
-            link_shared,
-            version_suffix,
-            clang_cl,
-            cflags,
-            cxxflags,
-            ldflags,
-            use_libcxx,
-            use_linker,
-            allow_old_toolchain,
-            offload: llvm_offload,
-            polly,
-            clang,
-            enable_warnings,
-            download_ci_llvm,
-            build_config,
+            tests: llvm_tests_toml,
+            enzyme: llvm_enzyme_toml,
+            plugins: llvm_plugin_toml,
+            static_libstdcpp: llvm_static_libstdcpp_toml,
+            libzstd: llvm_libzstd_toml,
+            ninja: llvm_ninja_toml,
+            targets: llvm_targets_toml,
+            experimental_targets: llvm_experimental_targets_toml,
+            link_jobs: llvm_link_jobs_toml,
+            link_shared: llvm_link_shared_toml,
+            version_suffix: llvm_version_suffix_toml,
+            clang_cl: llvm_clang_cl_toml,
+            cflags: llvm_cflags_toml,
+            cxxflags: llvm_cxxflags_toml,
+            ldflags: llvm_ldflags_toml,
+            use_libcxx: llvm_use_libcxx_toml,
+            use_linker: llvm_use_linker_toml,
+            allow_old_toolchain: llvm_allow_old_toolchain_toml,
+            offload: llvm_offload_toml,
+            polly: llvm_polly_toml,
+            clang: llvm_clang_toml,
+            enable_warnings: llvm_enable_warnings_toml,
+            download_ci_llvm: llvm_download_ci_llvm_toml,
+            build_config: llvm_build_config_toml,
         } = toml.llvm.unwrap_or_default();
 
-        set(&mut config.ninja_in_file, ninja);
-        set(&mut config.llvm_optimize, optimize_toml);
-        set(&mut config.llvm_thin_lto, thin_lto);
-        set(&mut config.llvm_release_debuginfo, release_debuginfo);
-        set(&mut config.llvm_static_stdcpp, static_libstdcpp);
-        set(&mut config.llvm_libzstd, libzstd);
-        if let Some(v) = link_shared {
+        set(&mut config.ninja_in_file, llvm_ninja_toml);
+        set(&mut config.llvm_optimize, llvm_optimize_toml);
+        set(&mut config.llvm_thin_lto, llvm_thin_lto_toml);
+        set(&mut config.llvm_release_debuginfo, llvm_release_debuginfo_toml);
+        set(&mut config.llvm_static_stdcpp, llvm_static_libstdcpp_toml);
+        set(&mut config.llvm_libzstd, llvm_libzstd_toml);
+        if let Some(v) = llvm_link_shared_toml {
             config.llvm_link_shared.set(Some(v));
         }
-        config.llvm_targets.clone_from(&targets);
-        config.llvm_experimental_targets.clone_from(&experimental_targets);
-        config.llvm_link_jobs = link_jobs;
-        config.llvm_version_suffix.clone_from(&version_suffix);
-        config.llvm_clang_cl.clone_from(&clang_cl);
-        config.llvm_tests = llvm_tests.unwrap_or_default();
-        config.llvm_enzyme = llvm_enzyme.unwrap_or_default();
-        config.llvm_plugins = llvm_plugin.unwrap_or_default();
+        config.llvm_targets.clone_from(&llvm_targets_toml);
+        config.llvm_experimental_targets.clone_from(&llvm_experimental_targets_toml);
+        config.llvm_link_jobs = llvm_link_jobs_toml;
+        config.llvm_version_suffix.clone_from(&llvm_version_suffix_toml);
+        config.llvm_clang_cl.clone_from(&llvm_clang_cl_toml);
+        config.llvm_tests = llvm_tests_toml.unwrap_or_default();
+        config.llvm_enzyme = llvm_enzyme_toml.unwrap_or_default();
+        config.llvm_plugins = llvm_plugin_toml.unwrap_or_default();
 
-        config.llvm_cflags.clone_from(&cflags);
-        config.llvm_cxxflags.clone_from(&cxxflags);
-        config.llvm_ldflags.clone_from(&ldflags);
-        set(&mut config.llvm_use_libcxx, use_libcxx);
-        config.llvm_use_linker.clone_from(&use_linker);
-        config.llvm_allow_old_toolchain = allow_old_toolchain.unwrap_or(false);
-        config.llvm_offload = llvm_offload.unwrap_or(false);
-        config.llvm_polly = polly.unwrap_or(false);
-        config.llvm_clang = clang.unwrap_or(false);
-        config.llvm_enable_warnings = enable_warnings.unwrap_or(false);
-        config.llvm_build_config = build_config.clone().unwrap_or(Default::default());
+        config.llvm_cflags.clone_from(&llvm_cflags_toml);
+        config.llvm_cxxflags.clone_from(&llvm_cxxflags_toml);
+        config.llvm_ldflags.clone_from(&llvm_ldflags_toml);
+        set(&mut config.llvm_use_libcxx, llvm_use_libcxx_toml);
+        config.llvm_use_linker.clone_from(&llvm_use_linker_toml);
+        config.llvm_allow_old_toolchain = llvm_allow_old_toolchain_toml.unwrap_or(false);
+        config.llvm_offload = llvm_offload_toml.unwrap_or(false);
+        config.llvm_polly = llvm_polly_toml.unwrap_or(false);
+        config.llvm_clang = llvm_clang_toml.unwrap_or(false);
+        config.llvm_enable_warnings = llvm_enable_warnings_toml.unwrap_or(false);
+        config.llvm_build_config = llvm_build_config_toml.clone().unwrap_or(Default::default());
 
         config.llvm_from_ci =
-            config.parse_download_ci_llvm(download_ci_llvm, config.llvm_assertions);
+            config.parse_download_ci_llvm(llvm_download_ci_llvm_toml, config.llvm_assertions);
 
         if config.llvm_from_ci {
             let warn = |option: &str| {
@@ -1205,11 +1205,11 @@ impl Config {
                 );
             };
 
-            if static_libstdcpp.is_some() {
+            if llvm_static_libstdcpp_toml.is_some() {
                 warn("static-libstdcpp");
             }
 
-            if link_shared.is_some() {
+            if llvm_link_shared_toml.is_some() {
                 warn("link-shared");
             }
 
@@ -1218,7 +1218,7 @@ impl Config {
             // config to the ones used to build the LLVM artifacts on CI, and only notify users
             // if they've chosen a different value.
 
-            if libzstd.is_some() {
+            if llvm_libzstd_toml.is_some() {
                 println!(
                     "WARNING: when using `download-ci-llvm`, the local `llvm.libzstd` option, \
                     like almost all `llvm.*` options, will be ignored and set by the LLVM CI \
@@ -1230,7 +1230,7 @@ impl Config {
             }
         }
 
-        if !config.llvm_from_ci && config.llvm_thin_lto && link_shared.is_none() {
+        if !config.llvm_from_ci && config.llvm_thin_lto && llvm_link_shared_toml.is_none() {
             // If we're building with ThinLTO on, by default we want to link
             // to LLVM shared, to avoid re-doing ThinLTO (which happens in
             // the link step) with each stage.
