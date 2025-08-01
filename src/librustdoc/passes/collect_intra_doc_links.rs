@@ -5,7 +5,7 @@
 use std::borrow::Cow;
 use std::fmt::Display;
 use std::mem;
-use std::ops::Range;
+use std::ops::{ControlFlow, Range};
 
 use pulldown_cmark::LinkType;
 use rustc_ast::util::comments::may_have_doc_links;
@@ -1351,7 +1351,8 @@ impl LinkCollector<'_, '_> {
             privacy_error(self.cx, diag_info, path_str, PrivacyErrorKind::Private);
         }
 
-        if self.cx.tcx.is_doc_hidden(id) && !self.cx.tcx.is_doc_hidden(src_def_id) {
+        if is_effectively_hidden(self.cx.tcx, id) && !is_effectively_hidden(self.cx.tcx, src_def_id)
+        {
             privacy_error(self.cx, diag_info, path_str, PrivacyErrorKind::Hidden);
         }
 
@@ -1594,6 +1595,13 @@ fn range_between_backticks(ori_link_range: &MarkdownLinkRange, dox: &str) -> Mar
     MarkdownLinkRange::Destination(
         (range.start + after_first_backtick_group)..(range.start + before_second_backtick_group),
     )
+}
+
+/// Is this item or any of its ancestors doc(hidden)?
+fn is_effectively_hidden(tcx: TyCtxt<'_>, id: DefId) -> bool {
+    crate::html::format::traverse_parent(tcx, id, false, false, &|id| {
+        if tcx.is_doc_hidden(id) { ControlFlow::Break(true) } else { ControlFlow::Continue(()) }
+    })
 }
 
 /// Returns true if we should ignore `link` due to it being unlikely
