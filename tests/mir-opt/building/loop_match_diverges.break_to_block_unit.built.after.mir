@@ -1,0 +1,63 @@
+// MIR for `break_to_block_unit` after built
+
+fn break_to_block_unit() -> u8 {
+    let mut _0: u8;
+    let mut _1: i32;
+    let mut _2: !;
+    scope 1 {
+        debug state => _1;
+    }
+
+    bb0: {
+        StorageLive(_1);
+        _1 = const 0_i32;
+        FakeRead(ForLet(None), _1);
+        StorageLive(_2);
+        goto -> bb1;
+    }
+
+    bb1: {
+        falseUnwind -> [real: bb2, unwind: bb10];
+    }
+
+    bb2: {
+        PlaceMention(_1);
+        _1 = const 2_i32;
+        goto -> bb5;
+    }
+
+    bb3: {
+        FakeRead(ForMatchedPlace(None), _1);
+        unreachable;
+    }
+
+    bb4: {
+        goto -> bb6;
+    }
+
+    bb5: {
+        goto -> bb6;
+    }
+
+    bb6: {
+        goto -> bb7;
+    }
+
+    bb7: {
+        goto -> bb1;
+    }
+
+    bb8: {
+        unreachable;
+    }
+
+    bb9: {
+        StorageDead(_2);
+        StorageDead(_1);
+        return;
+    }
+
+    bb10 (cleanup): {
+        resume;
+    }
+}
