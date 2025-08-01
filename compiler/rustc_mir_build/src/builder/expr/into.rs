@@ -345,7 +345,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                         expr_span,
                                         |this| {
                                             this.lower_match_arms(
-                                                destination,
+                                                state_place,
                                                 scrutinee_place_builder,
                                                 scrutinee_span,
                                                 arms,
