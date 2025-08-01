@@ -556,6 +556,62 @@ impl Config {
             datadir: install_datadir_toml,
         } = toml.install.unwrap_or_default();
 
+        let Rust {
+            optimize: rust_optimize_toml,
+            debug: rust_debug_toml,
+            codegen_units: rust_codegen_units_toml,
+            codegen_units_std: rust_codegen_units_std_toml,
+            rustc_debug_assertions: rust_rustc_debug_assertions_toml,
+            std_debug_assertions: rust_std_debug_assertions_toml,
+            tools_debug_assertions: rust_tools_debug_assertions_toml,
+            overflow_checks: rust_overflow_checks_toml,
+            overflow_checks_std: rust_overflow_checks_std_toml,
+            debug_logging: rust_debug_logging_toml,
+            debuginfo_level: rust_debuginfo_level_toml,
+            debuginfo_level_rustc: rust_debuginfo_level_rustc_toml,
+            debuginfo_level_std: rust_debuginfo_level_std_toml,
+            debuginfo_level_tools: rust_debuginfo_level_tools_toml,
+            debuginfo_level_tests: rust_debuginfo_level_tests_toml,
+            backtrace: rust_backtrace_toml,
+            incremental: rust_incremental_toml,
+            randomize_layout: rust_randomize_layout_toml,
+            default_linker: rust_default_linker_toml,
+            channel: rust_channel_toml,
+            musl_root: rust_musl_root_toml,
+            rpath: rust_rpath_toml,
+            verbose_tests: rust_verbose_tests_toml,
+            optimize_tests: rust_optimize_tests_toml,
+            codegen_tests: rust_codegen_tests_toml,
+            omit_git_hash: rust_omit_git_hash_toml,
+            dist_src: rust_dist_src_toml,
+            save_toolstates: rust_save_toolstates_toml,
+            codegen_backends: rust_codegen_backends_toml,
+            lld: rust_lld_enabled_toml,
+            llvm_tools: rust_llvm_tools_toml,
+            llvm_bitcode_linker: rust_llvm_bitcode_linker_toml,
+            deny_warnings: rust_deny_warnings_toml,
+            backtrace_on_ice: rust_backtrace_on_ice_toml,
+            verify_llvm_ir: rust_verify_llvm_ir_toml,
+            thin_lto_import_instr_limit: rust_thin_lto_import_instr_limit_toml,
+            remap_debuginfo: rust_remap_debuginfo_toml,
+            jemalloc: rust_jemalloc_toml,
+            test_compare_mode: rust_test_compare_mode_toml,
+            llvm_libunwind: rust_llvm_libunwind_toml,
+            control_flow_guard: rust_control_flow_guard_toml,
+            ehcont_guard: rust_ehcont_guard_toml,
+            new_symbol_mangling: rust_new_symbol_mangling_toml,
+            profile_generate: rust_profile_generate_toml,
+            profile_use: rust_profile_use_toml,
+            download_rustc: rust_download_rustc_toml,
+            lto: rust_lto_toml,
+            validate_mir_opts: rust_validate_mir_opts_toml,
+            frame_pointers: rust_frame_pointers_toml,
+            stack_protector: rust_stack_protector_toml,
+            strip: rust_strip_toml,
+            lld_mode: rust_lld_mode_toml,
+            std_features: rust_std_features_toml,
+        } = toml.rust.unwrap_or_default();
+
         if cfg!(test) {
             // When configuring bootstrap for tests, make sure to set the rustc and Cargo to the
             // same ones used to call the tests (if custom ones are not defined in the toml). If we
@@ -786,8 +842,7 @@ impl Config {
         let file_content = t!(fs::read_to_string(config.src.join("src/ci/channel")));
         let ci_channel = file_content.trim_end();
 
-        let toml_channel = toml.rust.as_ref().and_then(|r| r.channel.clone());
-        let is_user_configured_rust_channel = match toml_channel {
+        let is_user_configured_rust_channel = match rust_channel_toml {
             Some(channel) if channel == "auto-detect" => {
                 config.channel = ci_channel.into();
                 true
@@ -800,7 +855,7 @@ impl Config {
         };
 
         let default = config.channel == "dev";
-        config.omit_git_hash = toml.rust.as_ref().and_then(|r| r.omit_git_hash).unwrap_or(default);
+        config.omit_git_hash = rust_omit_git_hash_toml.unwrap_or(default);
 
         config.rust_info = config.git_info(config.omit_git_hash, &config.src);
         config.cargo_info =
@@ -893,62 +948,6 @@ impl Config {
                 config.target_config.insert(TargetSelection::from_user(&triple), target);
             }
         }
-
-        let Rust {
-            optimize: rust_optimize_toml,
-            debug: rust_debug_toml,
-            codegen_units: rust_codegen_units_toml,
-            codegen_units_std: rust_codegen_units_std_toml,
-            rustc_debug_assertions: rust_rustc_debug_assertions_toml,
-            std_debug_assertions: rust_std_debug_assertions_toml,
-            tools_debug_assertions: rust_tools_debug_assertions_toml,
-            overflow_checks: rust_overflow_checks_toml,
-            overflow_checks_std: rust_overflow_checks_std_toml,
-            debug_logging: rust_debug_logging_toml,
-            debuginfo_level: rust_debuginfo_level_toml,
-            debuginfo_level_rustc: rust_debuginfo_level_rustc_toml,
-            debuginfo_level_std: rust_debuginfo_level_std_toml,
-            debuginfo_level_tools: rust_debuginfo_level_tools_toml,
-            debuginfo_level_tests: rust_debuginfo_level_tests_toml,
-            backtrace: rust_backtrace_toml,
-            incremental: rust_incremental_toml,
-            randomize_layout: rust_randomize_layout_toml,
-            default_linker: rust_default_linker_toml,
-            channel: _, // already handled above
-            musl_root: rust_musl_root_toml,
-            rpath: rust_rpath_toml,
-            verbose_tests: rust_verbose_tests_toml,
-            optimize_tests: rust_optimize_tests_toml,
-            codegen_tests: rust_codegen_tests_toml,
-            omit_git_hash: _, // already handled above
-            dist_src: rust_dist_src_toml,
-            save_toolstates: rust_save_toolstates_toml,
-            codegen_backends: rust_codegen_backends_toml,
-            lld: rust_lld_enabled_toml,
-            llvm_tools: rust_llvm_tools_toml,
-            llvm_bitcode_linker: rust_llvm_bitcode_linker_toml,
-            deny_warnings: rust_deny_warnings_toml,
-            backtrace_on_ice: rust_backtrace_on_ice_toml,
-            verify_llvm_ir: rust_verify_llvm_ir_toml,
-            thin_lto_import_instr_limit: rust_thin_lto_import_instr_limit_toml,
-            remap_debuginfo: rust_remap_debuginfo_toml,
-            jemalloc: rust_jemalloc_toml,
-            test_compare_mode: rust_test_compare_mode_toml,
-            llvm_libunwind: rust_llvm_libunwind_toml,
-            control_flow_guard: rust_control_flow_guard_toml,
-            ehcont_guard: rust_ehcont_guard_toml,
-            new_symbol_mangling: rust_new_symbol_mangling_toml,
-            profile_generate: rust_profile_generate_toml,
-            profile_use: rust_profile_use_toml,
-            download_rustc: rust_download_rustc_toml,
-            lto: rust_lto_toml,
-            validate_mir_opts: rust_validate_mir_opts_toml,
-            frame_pointers: rust_frame_pointers_toml,
-            stack_protector: rust_stack_protector_toml,
-            strip: rust_strip_toml,
-            lld_mode: rust_lld_mode_toml,
-            std_features: rust_std_features_toml,
-        } = toml.rust.unwrap_or_default();
 
         // FIXME(#133381): alt rustc builds currently do *not* have rustc debug assertions
         // enabled. We should not download a CI alt rustc if we need rustc to have debug
