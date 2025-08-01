@@ -12,6 +12,7 @@ use crate::{HashSet, PathBuf, define_config, exit};
 
 define_config! {
     /// TOML representation of how the GCC build is configured.
+    #[derive(Default)]
     struct Gcc {
         download_ci_gcc: Option<bool> = "download-ci-gcc",
     }

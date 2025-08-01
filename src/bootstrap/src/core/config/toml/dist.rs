@@ -12,6 +12,7 @@ use crate::core::config::toml::ReplaceOpt;
 use crate::{HashSet, PathBuf, define_config, exit};
 
 define_config! {
+    #[derive(Default)]
     struct Dist {
         sign_folder: Option<String> = "sign-folder",
         upload_addr: Option<String> = "upload-addr",

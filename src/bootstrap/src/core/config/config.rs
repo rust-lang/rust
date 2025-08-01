@@ -38,6 +38,7 @@ use crate::core::config::toml::TomlConfig;
 use crate::core::config::toml::build::{Build, Tool};
 use crate::core::config::toml::change_id::ChangeId;
 use crate::core::config::toml::dist::Dist;
+use crate::core::config::toml::gcc::Gcc;
 use crate::core::config::toml::install::Install;
 use crate::core::config::toml::llvm::Llvm;
 use crate::core::config::toml::rust::{
@@ -774,7 +775,6 @@ impl Config {
         let install_libdir = install_libdir.map(PathBuf::from);
         let install_mandir = install_mandir.map(PathBuf::from);
         let install_datadir = install_datadir.map(PathBuf::from);
-
         config.prefix = install_prefix;
         config.sysconfdir = install_sysconfdir;
         config.datadir = install_datadir;
@@ -1278,15 +1278,15 @@ impl Config {
         config.llvm_offload = llvm_offload.unwrap_or(false);
         config.llvm_plugins = llvm_plugins.unwrap_or(false);
 
-        if let Some(gcc) = toml.gcc {
-            config.gcc_ci_mode = match gcc.download_ci_gcc {
-                Some(value) => match value {
-                    true => GccCiMode::DownloadFromCi,
-                    false => GccCiMode::BuildLocally,
-                },
-                None => GccCiMode::default(),
-            };
-        }
+        let Gcc { download_ci_gcc: gcc_download_ci_gcc } = toml.gcc.unwrap_or_default();
+
+        config.gcc_ci_mode = match gcc_download_ci_gcc {
+            Some(value) => match value {
+                true => GccCiMode::DownloadFromCi,
+                false => GccCiMode::BuildLocally,
+            },
+            None => GccCiMode::default(),
+        };
 
         match ccache {
             Some(StringOrBool::String(ref s)) => config.ccache = Some(s.to_string()),
@@ -1312,28 +1312,26 @@ impl Config {
                 Some(ci_llvm_bin.join(exe("FileCheck", config.host_target)));
         }
 
-        if let Some(dist) = toml.dist {
-            let Dist {
-                sign_folder,
-                upload_addr,
-                src_tarball,
-                compression_formats,
-                compression_profile,
-                include_mingw_linker,
-                vendor,
-            } = dist;
-            config.dist_sign_folder = sign_folder.map(PathBuf::from);
-            config.dist_upload_addr = upload_addr;
-            config.dist_compression_formats = compression_formats;
-            set(&mut config.dist_compression_profile, compression_profile);
-            set(&mut config.rust_dist_src, src_tarball);
-            set(&mut config.dist_include_mingw_linker, include_mingw_linker);
-            config.dist_vendor = vendor.unwrap_or_else(|| {
-                // If we're building from git or tarball sources, enable it by default.
-                config.rust_info.is_managed_git_subrepository()
-                    || config.rust_info.is_from_tarball()
-            });
-        }
+        let Dist {
+            sign_folder: dist_sign_folder,
+            upload_addr: dist_upload_addr,
+            src_tarball: dist_src_tarball,
+            compression_formats: dist_compression_formats,
+            compression_profile: dist_compression_profile,
+            include_mingw_linker: dist_include_mingw_linker,
+            vendor: dist_vendor,
+        } = toml.dist.unwrap_or_default();
+
+        config.dist_sign_folder = dist_sign_folder.map(PathBuf::from);
+        config.dist_upload_addr = dist_upload_addr;
+        config.dist_compression_formats = dist_compression_formats;
+        set(&mut config.dist_compression_profile, dist_compression_profile);
+        set(&mut config.rust_dist_src, dist_src_tarball);
+        set(&mut config.dist_include_mingw_linker, dist_include_mingw_linker);
+        config.dist_vendor = dist_vendor.unwrap_or_else(|| {
+            // If we're building from git or tarball sources, enable it by default.
+            config.rust_info.is_managed_git_subrepository() || config.rust_info.is_from_tarball()
+        });
 
         config.initial_rustfmt = if let Some(r) = rustfmt {
             Some(r)
