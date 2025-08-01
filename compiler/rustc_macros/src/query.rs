@@ -5,7 +5,7 @@ use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
 use syn::{
     AttrStyle, Attribute, Block, Error, Expr, Ident, Pat, ReturnType, Token, Type, braced,
-    parenthesized, parse_macro_input, parse_quote, token,
+    parenthesized, parse_macro_input, token,
 };
 
 mod kw {

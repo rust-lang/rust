@@ -516,7 +516,6 @@ mod test {
     #[allow(dead_code)]
     mod mock {
         use super::super::*;
-        use crate::config_option_with_style_edition_default;
         use rustfmt_config_proc_macro::config_type;
 
         #[config_type]

@@ -19,7 +19,7 @@ use syntax_bridge::syntax_node_to_token_tree;
 
 use crate::{
     EditionedFileId, ExpandError, ExpandResult, Lookup as _, MacroCallId,
-    builtin::quote::{WithDelimiter, dollar_crate, quote},
+    builtin::quote::{WithDelimiter, dollar_crate},
     db::ExpandDatabase,
     hygiene::{span_with_call_site_ctxt, span_with_def_site_ctxt},
     name,
