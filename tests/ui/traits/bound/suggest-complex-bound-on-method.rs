@@ -1,0 +1,23 @@
+//@ run-rustfix
+#![allow(dead_code)]
+struct Application;
+
+trait Trait {
+    type Error: std::error::Error;
+
+    fn run(&self) -> Result<(), Self::Error>;
+}
+
+#[derive(Debug)]
+enum ApplicationError {
+    Quit,
+}
+
+impl Application {
+    fn thing<T: Trait>(&self, t: T) -> Result<(), ApplicationError> {
+        t.run()?; //~ ERROR E0277
+        Ok(())
+    }
+}
+
+fn main() {}
