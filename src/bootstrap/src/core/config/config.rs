@@ -1237,9 +1237,9 @@ impl Config {
             config.llvm_link_shared.set(Some(true));
         }
 
-        let Gcc { download_ci_gcc: gcc_download_ci_gcc } = toml.gcc.unwrap_or_default();
+        let Gcc { download_ci_gcc: gcc_download_ci_gcc_toml } = toml.gcc.unwrap_or_default();
 
-        config.gcc_ci_mode = match gcc_download_ci_gcc {
+        config.gcc_ci_mode = match gcc_download_ci_gcc_toml {
             Some(value) => match value {
                 true => GccCiMode::DownloadFromCi,
                 false => GccCiMode::BuildLocally,
