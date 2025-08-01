@@ -148,7 +148,6 @@ pub enum GitRepo {
 /// although most functions are implemented as free functions rather than
 /// methods specifically on this structure itself (to make it easier to
 /// organize).
-#[derive(Clone)]
 pub struct Build {
     /// User-specified configuration from `bootstrap.toml`.
     config: Config,
@@ -204,6 +203,9 @@ pub struct Build {
 
     #[cfg(feature = "build-metrics")]
     metrics: crate::utils::metrics::BuildMetrics,
+
+    #[cfg(feature = "tracing")]
+    step_graph: std::cell::RefCell<crate::utils::step_graph::StepGraph>,
 }
 
 #[derive(Debug, Clone)]
@@ -507,6 +509,9 @@ impl Build {
 
             #[cfg(feature = "build-metrics")]
             metrics: crate::utils::metrics::BuildMetrics::init(),
+
+            #[cfg(feature = "tracing")]
+            step_graph: std::cell::RefCell::new(crate::utils::step_graph::StepGraph::default()),
         };
 
         // If local-rust is the same major.minor as the current version, then force a
@@ -1983,6 +1988,11 @@ to download LLVM rather than building it.
 
     pub fn report_summary(&self, start_time: Instant) {
         self.config.exec_ctx.profiler().report_summary(start_time);
+    }
+
+    #[cfg(feature = "tracing")]
+    pub fn report_step_graph(self) {
+        self.step_graph.into_inner().store_to_dot_files();
     }
 }
 
