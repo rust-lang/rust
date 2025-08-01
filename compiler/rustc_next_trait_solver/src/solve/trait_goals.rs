@@ -229,7 +229,7 @@ where
         }
 
         // We need to make sure to stall any coroutines we are inferring to avoid query cycles.
-        if let Some(cand) = ecx.try_stall_coroutine_witness(goal.predicate.self_ty()) {
+        if let Some(cand) = ecx.try_stall_coroutine(goal.predicate.self_ty()) {
             return cand;
         }
 
@@ -294,7 +294,7 @@ where
         }
 
         // We need to make sure to stall any coroutines we are inferring to avoid query cycles.
-        if let Some(cand) = ecx.try_stall_coroutine_witness(goal.predicate.self_ty()) {
+        if let Some(cand) = ecx.try_stall_coroutine(goal.predicate.self_ty()) {
             return cand;
         }
 
@@ -1432,11 +1432,8 @@ where
         self.merge_trait_candidates(candidates)
     }
 
-    fn try_stall_coroutine_witness(
-        &mut self,
-        self_ty: I::Ty,
-    ) -> Option<Result<Candidate<I>, NoSolution>> {
-        if let ty::CoroutineWitness(def_id, _) = self_ty.kind() {
+    fn try_stall_coroutine(&mut self, self_ty: I::Ty) -> Option<Result<Candidate<I>, NoSolution>> {
+        if let ty::Coroutine(def_id, _) = self_ty.kind() {
             match self.typing_mode() {
                 TypingMode::Analysis {
                     defining_opaque_types_and_generators: stalled_generators,
