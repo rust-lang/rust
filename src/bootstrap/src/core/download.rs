@@ -1,14 +1,17 @@
+use std::collections::HashMap;
 use std::env;
 use std::ffi::OsString;
 use std::fs::{self, File};
 use std::io::{BufRead, BufReader, BufWriter, ErrorKind, Write};
 use std::path::{Path, PathBuf};
-use std::sync::OnceLock;
+use std::sync::{Arc, Mutex, OnceLock};
 
+use build_helper::git::PathFreshness;
 use xz2::bufread::XzDecoder;
 
 use crate::core::config::{BUILDER_CONFIG_FILENAME, TargetSelection};
 use crate::utils::build_stamp::BuildStamp;
+use crate::utils::channel;
 use crate::utils::exec::{ExecutionContext, command};
 use crate::utils::helpers::{exe, hex_encode, move_file};
 use crate::{Config, t};
@@ -396,16 +399,24 @@ impl Config {
     }
 }
 
+// submodules: Option<bool>,
+// path_modification_cache: Arc<Mutex<HashMap<Vec<&'static str>, PathFreshness>>>,
+// rust_info: channel::GitInfo,
+// download_rustc_commit: Option<String>,
 /// Only should be used for pre config initialization downloads.
 pub(crate) struct IOContext<'a> {
-    host_target: TargetSelection,
-    out: &'a Path,
-    patch_binaries_for_nix: Option<bool>,
-    exec_ctx: &'a ExecutionContext,
-    stage0_metadata: &'a build_helper::stage0_parser::Stage0,
-    llvm_assertions: bool,
-    bootstrap_cache_path: &'a Option<PathBuf>,
-    is_running_on_ci: bool,
+    pub host_target: TargetSelection,
+    pub out: &'a Path,
+    pub patch_binaries_for_nix: Option<bool>,
+    pub exec_ctx: &'a ExecutionContext,
+    pub stage0_metadata: &'a build_helper::stage0_parser::Stage0,
+    pub llvm_assertions: bool,
+    pub bootstrap_cache_path: &'a Option<PathBuf>,
+    pub is_running_on_ci: bool,
+    pub src: &'a Path,
+    pub submodules: &'a Option<bool>,
+    pub path_modification_cache: Arc<Mutex<HashMap<Vec<&'static str>, PathFreshness>>>,
+    pub rust_info: &'a channel::GitInfo,
 }
 
 impl<'a> IOContext<'a> {
@@ -418,6 +429,10 @@ impl<'a> IOContext<'a> {
         llvm_assertions: bool,
         bootstrap_cache_path: &'a Option<PathBuf>,
         is_running_on_ci: bool,
+        src: &'a Path,
+        submodules: &'a Option<bool>,
+        path_modification_cache: Arc<Mutex<HashMap<Vec<&'static str>, PathFreshness>>>,
+        rust_info: &'a channel::GitInfo,
     ) -> Self {
         Self {
             host_target,
@@ -428,6 +443,10 @@ impl<'a> IOContext<'a> {
             llvm_assertions,
             bootstrap_cache_path,
             is_running_on_ci,
+            src,
+            submodules,
+            path_modification_cache,
+            rust_info,
         }
     }
 }
@@ -449,6 +468,10 @@ impl<'a> From<&'a Config> for IOContext<'a> {
             llvm_assertions: value.llvm_assertions,
             bootstrap_cache_path: &value.bootstrap_cache_path,
             is_running_on_ci: value.is_running_on_ci,
+            src: &value.src,
+            submodules: &value.submodules,
+            path_modification_cache: value.path_modification_cache.clone(),
+            rust_info: &value.rust_info,
         }
     }
 }

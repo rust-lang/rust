@@ -501,9 +501,7 @@ impl Config {
         let mut config = Config::default_opts();
         let exec_ctx = ExecutionContext::new(flags_verbose, flags_cmd.fail_fast());
 
-        config.exec_ctx = exec_ctx;
-
-        if let Some(src_) = compute_src_directory(flags_src, &config.exec_ctx) {
+        if let Some(src_) = compute_src_directory(flags_src, &exec_ctx) {
             src = src_;
         }
 
@@ -511,7 +509,7 @@ impl Config {
         let (mut toml, toml_path) = load_toml_config(&src, flags_config, &get_toml);
         config.config = toml_path.clone();
 
-        postprocess_toml(&mut toml, &src, toml_path, config.exec_ctx(), &flags_set, &get_toml);
+        postprocess_toml(&mut toml, &src, toml_path, &exec_ctx, &flags_set, &get_toml);
 
         // Now override TOML values with flags, to make sure that we won't later override flags with
         // TOML values by accident instead, because flags have higher priority.
@@ -716,12 +714,12 @@ impl Config {
 
         if let Some(rustc) = &build_rustc_toml {
             if !flags_skip_stage0_validation {
-                check_stage0_version(&rustc, "rustc", &src, config.exec_ctx());
+                check_stage0_version(&rustc, "rustc", &src, &exec_ctx);
             }
         }
         if let Some(cargo) = &build_cargo_toml {
             if !flags_skip_stage0_validation {
-                check_stage0_version(&cargo, "cargo", &src, config.exec_ctx());
+                check_stage0_version(&cargo, "cargo", &src, &exec_ctx);
             }
         }
 
@@ -775,32 +773,6 @@ impl Config {
         llvm_assertions = llvm_assertions_toml.unwrap_or(false);
         bootstrap_cache_path = build_bootstrap_cache_path_toml;
 
-        initial_rustc = if let Some(rustc) = build_rustc_toml {
-            rustc
-        } else {
-            let dwn_ctx = IOContext::new(
-                host_target,
-                &out,
-                patch_binaries_for_nix,
-                &config.exec_ctx,
-                &stage0_metadata,
-                llvm_assertions,
-                &bootstrap_cache_path,
-                is_running_on_ci,
-            );
-            download_beta_toolchain(dwn_ctx);
-            out.join(host_target).join("stage0").join("bin").join(exe("rustc", host_target))
-        };
-
-        initial_sysroot = t!(PathBuf::from_str(
-            command(&initial_rustc)
-                .args(["--print", "sysroot"])
-                .run_in_dry_run()
-                .run_capture_stdout(&config)
-                .stdout()
-                .trim()
-        ));
-
         hosts = if let Some(hosts) = host { hosts } else { vec![host_target] };
 
         submodules = build_submodules_toml;
@@ -823,7 +795,7 @@ impl Config {
         let default = channel == "dev";
         omit_git_hash = rust_omit_git_hash_toml.unwrap_or(default);
 
-        rust_info = git_info(&config.exec_ctx, omit_git_hash, &src);
+        rust_info = git_info(&exec_ctx, omit_git_hash, &src);
 
         if !is_user_configured_rust_channel && rust_info.is_from_tarball() {
             channel = ci_channel.into();
@@ -893,6 +865,37 @@ impl Config {
             }
         }
 
+        let io_ctx = IOContext::new(
+            host_target,
+            &out,
+            patch_binaries_for_nix,
+            &exec_ctx,
+            &stage0_metadata,
+            llvm_assertions,
+            &bootstrap_cache_path,
+            is_running_on_ci,
+            &src,
+            &submodules,
+            path_modification_cache.clone(),
+            &rust_info,
+        );
+
+        initial_rustc = if let Some(rustc) = build_rustc_toml {
+            rustc
+        } else {
+            download_beta_toolchain(&io_ctx);
+            out.join(host_target).join("stage0").join("bin").join(exe("rustc", host_target))
+        };
+
+        initial_sysroot = t!(PathBuf::from_str(
+            command(&initial_rustc)
+                .args(["--print", "sysroot"])
+                .run_in_dry_run()
+                .run_capture_stdout(&config)
+                .stdout()
+                .trim()
+        ));
+
         // FIXME(#133381): alt rustc builds currently do *not* have rustc debug assertions
         // enabled. We should not download a CI alt rustc if we need rustc to have debug
         // assertions (e.g. for crashes test suite). This can be changed once something like
@@ -919,16 +922,10 @@ impl Config {
         }
 
         download_rustc_commit = download_ci_rustc_commit(
-            host_target,
-            rust_info.clone(),
-            is_running_on_ci,
-            &src,
+            &io_ctx,
             rust_download_rustc_toml,
             debug_assertions_requested,
             llvm_assertions,
-            &config.exec_ctx,
-            path_modification_cache.clone(),
-            stage0_metadata.clone(),
         );
 
         if rust_optimize_toml.as_ref().is_some_and(|v| matches!(v, RustOptimize::Bool(false))) {
@@ -950,15 +947,8 @@ impl Config {
         }
 
         llvm_from_ci = parse_download_ci_llvm(
-            &src,
-            submodules,
-            &config.exec_ctx,
-            path_modification_cache.clone(),
-            stage0_metadata.clone(),
-            &host_target,
-            is_running_on_ci,
-            rust_info.clone(),
-            download_rustc_commit.clone(),
+            &io_ctx,
+            &download_rustc_commit,
             llvm_download_ci_llvm_toml,
             llvm_assertions,
         );
@@ -1011,7 +1001,7 @@ impl Config {
             let channel_ = read_file_by_commit(
                 rust_info.clone(),
                 &src,
-                &config.exec_ctx,
+                &exec_ctx,
                 Path::new("src/ci/channel"),
                 commit,
             )
@@ -1209,22 +1199,18 @@ impl Config {
         // Job/thread configuration
         config.jobs = Some(threads_from_config(build_jobs_toml.unwrap_or(0)));
 
+        config.initial_rustfmt = if let Some(r) = build_rustfmt_toml {
+            Some(r)
+        } else {
+            maybe_download_rustfmt(&io_ctx)
+        };
+
         // Initial Cargo logic
         config.initial_cargo_clippy = build_cargo_clippy_toml;
         config.initial_cargo = if let Some(cargo) = build_cargo_toml {
             cargo
         } else {
-            let dwn_ctx = IOContext::new(
-                host_target,
-                &out,
-                patch_binaries_for_nix,
-                &config.exec_ctx,
-                &stage0_metadata,
-                llvm_assertions,
-                &bootstrap_cache_path,
-                is_running_on_ci,
-            );
-            download_beta_toolchain(dwn_ctx);
+            download_beta_toolchain(&io_ctx);
             initial_sysroot.join("bin").join(exe("cargo", host_target))
         };
 
@@ -1278,18 +1264,15 @@ impl Config {
         config.mandir = install_mandir_toml.map(PathBuf::from);
 
         // Git info for tools
-        config.clippy_info =
-            git_info(&config.exec_ctx, omit_git_hash, &src.join("src/tools/clippy"));
-        config.rustfmt_info =
-            git_info(&config.exec_ctx, omit_git_hash, &src.join("src/tools/rustfmt"));
-        config.miri_info = git_info(&config.exec_ctx, omit_git_hash, &src.join("src/tools/miri"));
+        config.clippy_info = git_info(&exec_ctx, omit_git_hash, &src.join("src/tools/clippy"));
+        config.rustfmt_info = git_info(&exec_ctx, omit_git_hash, &src.join("src/tools/rustfmt"));
+        config.miri_info = git_info(&exec_ctx, omit_git_hash, &src.join("src/tools/miri"));
         config.rust_analyzer_info =
-            git_info(&config.exec_ctx, omit_git_hash, &src.join("src/tools/rust_analyzer"));
-        config.enzyme_info =
-            git_info(&config.exec_ctx, omit_git_hash, &src.join("src/tools/enzyme"));
-        config.cargo_info = git_info(&config.exec_ctx, omit_git_hash, &src.join("src/tools/cargo"));
-        config.in_tree_llvm_info = git_info(&config.exec_ctx, false, &src.join("src/llvm-project"));
-        config.in_tree_gcc_info = git_info(&config.exec_ctx, false, &src.join("src/gcc"));
+            git_info(&exec_ctx, omit_git_hash, &src.join("src/tools/rust_analyzer"));
+        config.enzyme_info = git_info(&exec_ctx, omit_git_hash, &src.join("src/tools/enzyme"));
+        config.cargo_info = git_info(&exec_ctx, omit_git_hash, &src.join("src/tools/cargo"));
+        config.in_tree_llvm_info = git_info(&exec_ctx, false, &src.join("src/llvm-project"));
+        config.in_tree_gcc_info = git_info(&exec_ctx, false, &src.join("src/gcc"));
 
         // Vendor detection
         config.vendor = build_vendor_toml.unwrap_or_else(|| {
@@ -1441,22 +1424,6 @@ impl Config {
         });
 
         // Rustfmt and Tool Initialization
-        config.initial_rustfmt = if let Some(r) = build_rustfmt_toml {
-            Some(r)
-        } else {
-            let dwn_ctx = IOContext::new(
-                host_target,
-                &out,
-                patch_binaries_for_nix,
-                &config.exec_ctx,
-                &stage0_metadata,
-                llvm_assertions,
-                &bootstrap_cache_path,
-                is_running_on_ci,
-            );
-            maybe_download_rustfmt(dwn_ctx)
-        };
-
         // Final compiler and test toolchain options
         config.optimized_compiler_builtins =
             build_optimized_compiler_builtins_toml.unwrap_or(channel != "dev");
@@ -1505,6 +1472,7 @@ impl Config {
         config.rust_info = rust_info;
         config.stage = stage;
         config.cmd = cmd;
+        config.exec_ctx = exec_ctx;
 
         config
     }
@@ -2474,19 +2442,14 @@ pub fn is_system_llvm(
     }
 }
 
-pub fn download_ci_rustc_commit(
-    host_target: TargetSelection,
-    rust_info: channel::GitInfo,
-    is_running_on_ci: bool,
-    src: &Path,
+pub fn download_ci_rustc_commit<'a>(
+    io_ctx: impl AsRef<IOContext<'a>>,
     download_rustc: Option<StringOrBool>,
     debug_assertions_requested: bool,
     llvm_assertions: bool,
-    exec_ctx: &ExecutionContext,
-    path_modification_cache: Arc<Mutex<HashMap<Vec<&'static str>, PathFreshness>>>,
-    stage0_metadata: build_helper::stage0_parser::Stage0,
 ) -> Option<String> {
-    if !is_download_ci_available(&host_target.triple, llvm_assertions) {
+    let io_ctx = io_ctx.as_ref();
+    if !is_download_ci_available(&io_ctx.host_target.triple, llvm_assertions) {
         return None;
     }
 
@@ -2500,7 +2463,7 @@ pub fn download_ci_rustc_commit(
         None | Some(StringOrBool::Bool(false)) => return None,
         Some(StringOrBool::Bool(true)) => false,
         Some(StringOrBool::String(s)) if s == "if-unchanged" => {
-            if !rust_info.is_managed_git_subrepository() {
+            if !io_ctx.rust_info.is_managed_git_subrepository() {
                 println!(
                     "ERROR: `download-rustc=if-unchanged` is only compatible with Git managed sources."
                 );
@@ -2514,16 +2477,16 @@ pub fn download_ci_rustc_commit(
         }
     };
 
-    let commit = if rust_info.is_managed_git_subrepository() {
+    let commit = if io_ctx.rust_info.is_managed_git_subrepository() {
         // Look for a version to compare to based on the current commit.
         // Only commits merged by bors will have CI artifacts.
         let freshness = check_path_modifications_(
-            src,
-            path_modification_cache,
-            stage0_metadata,
+            io_ctx.src,
+            io_ctx.path_modification_cache.clone(),
+            &io_ctx.stage0_metadata,
             RUSTC_IF_UNCHANGED_ALLOWED_PATHS,
         );
-        exec_ctx.verbose(|| {
+        io_ctx.exec_ctx.verbose(|| {
             eprintln!("rustc freshness: {freshness:?}");
         });
         match freshness {
@@ -2533,7 +2496,7 @@ pub fn download_ci_rustc_commit(
                     return None;
                 }
 
-                if is_running_on_ci {
+                if io_ctx.is_running_on_ci {
                     eprintln!("CI rustc commit matches with HEAD and we are in CI.");
                     eprintln!(
                         "`rustc.download-ci` functionality will be skipped as artifacts are not available."
@@ -2549,7 +2512,7 @@ pub fn download_ci_rustc_commit(
             }
         }
     } else {
-        channel::read_commit_info_file(&src)
+        channel::read_commit_info_file(io_ctx.src)
             .map(|info| info.sha.trim().to_owned())
             .expect("git-commit-info is missing in the project root")
     };
@@ -2569,7 +2532,7 @@ pub fn download_ci_rustc_commit(
 pub fn check_path_modifications_(
     src: &Path,
     path_modification_cache: Arc<Mutex<HashMap<Vec<&'static str>, PathFreshness>>>,
-    stage0_metadata: build_helper::stage0_parser::Stage0,
+    stage0_metadata: &build_helper::stage0_parser::Stage0,
     paths: &[&'static str],
 ) -> PathFreshness {
     let git_config = GitConfig {
@@ -2591,22 +2554,16 @@ pub fn check_path_modifications_(
         .clone()
 }
 
-pub fn parse_download_ci_llvm(
-    src: &Path,
-    submodules: Option<bool>,
-    exec_ctx: &ExecutionContext,
-    path_modification_cache: Arc<Mutex<HashMap<Vec<&'static str>, PathFreshness>>>,
-    stage0_metadata: build_helper::stage0_parser::Stage0,
-    host_target: &TargetSelection,
-    is_running_on_ci: bool,
-    rust_info: channel::GitInfo,
-    download_rustc_commit: Option<String>,
+pub fn parse_download_ci_llvm<'a>(
+    io_ctx: impl AsRef<IOContext<'a>>,
+    download_rustc_commit: &Option<String>,
     download_ci_llvm: Option<StringOrBool>,
     asserts: bool,
 ) -> bool {
+    let io_ctx = io_ctx.as_ref();
     // We don't ever want to use `true` on CI, as we should not
     // download upstream artifacts if there are any local modifications.
-    let default = if is_running_on_ci {
+    let default = if io_ctx.is_running_on_ci {
         StringOrBool::String("if-unchanged".to_string())
     } else {
         StringOrBool::Bool(true)
@@ -2614,7 +2571,7 @@ pub fn parse_download_ci_llvm(
     let download_ci_llvm = download_ci_llvm.unwrap_or(default);
 
     let if_unchanged = || {
-        if rust_info.is_from_tarball() {
+        if io_ctx.rust_info.is_from_tarball() {
             // Git is needed for running "if-unchanged" logic.
             println!("ERROR: 'if-unchanged' is only compatible with Git managed sources.");
             crate::exit!(1);
@@ -2622,18 +2579,28 @@ pub fn parse_download_ci_llvm(
 
         // Fetching the LLVM submodule is unnecessary for self-tests.
         #[cfg(not(test))]
-        update_submodule(rust_info, src, submodules, exec_ctx, "src/llvm-project");
+        update_submodule(
+            io_ctx.rust_info,
+            io_ctx.src,
+            io_ctx.submodules,
+            io_ctx.exec_ctx,
+            "src/llvm-project",
+        );
 
         // Check for untracked changes in `src/llvm-project` and other important places.
         let has_changes = has_changes_from_upstream(
-            src,
-            path_modification_cache,
-            stage0_metadata,
+            io_ctx.src,
+            io_ctx.path_modification_cache.clone(),
+            &io_ctx.stage0_metadata,
             LLVM_INVALIDATION_PATHS,
         );
 
         // Return false if there are untracked changes, otherwise check if CI LLVM is available.
-        if has_changes { false } else { is_ci_llvm_available_for_target(host_target, asserts) }
+        if has_changes {
+            false
+        } else {
+            is_ci_llvm_available_for_target(&io_ctx.host_target, asserts)
+        }
     };
 
     match download_ci_llvm {
@@ -2644,7 +2611,7 @@ pub fn parse_download_ci_llvm(
                 );
             }
 
-            if b && is_running_on_ci {
+            if b && io_ctx.is_running_on_ci {
                 // On CI, we must always rebuild LLVM if there were any modifications to it
                 panic!(
                     "`llvm.download-ci-llvm` cannot be set to `true` on CI. Use `if-unchanged` instead."
@@ -2652,7 +2619,7 @@ pub fn parse_download_ci_llvm(
             }
 
             // If download-ci-llvm=true we also want to check that CI llvm is available
-            b && is_ci_llvm_available_for_target(host_target, asserts)
+            b && is_ci_llvm_available_for_target(&io_ctx.host_target, asserts)
         }
         StringOrBool::String(s) if s == "if-unchanged" => if_unchanged(),
         StringOrBool::String(other) => {
@@ -2715,7 +2682,7 @@ pub(crate) fn is_ci_llvm_available_for_target(
 pub fn has_changes_from_upstream(
     src: &Path,
     path_modification_cache: Arc<Mutex<HashMap<Vec<&'static str>, PathFreshness>>>,
-    stage0_metadata: build_helper::stage0_parser::Stage0,
+    stage0_metadata: &build_helper::stage0_parser::Stage0,
     paths: &[&'static str],
 ) -> bool {
     match check_path_modifications_(src, path_modification_cache, stage0_metadata, paths) {
@@ -2725,9 +2692,9 @@ pub fn has_changes_from_upstream(
 }
 
 pub(crate) fn update_submodule(
-    rust_info: channel::GitInfo,
+    rust_info: &channel::GitInfo,
     src: &Path,
-    submodules: Option<bool>,
+    submodules: &Option<bool>,
     exec_ctx: &ExecutionContext,
     relative_path: &str,
 ) {
@@ -2842,7 +2809,7 @@ pub(crate) fn update_submodule(
     }
 }
 
-pub fn submodules_(submodules: Option<bool>, rust_info: channel::GitInfo) -> bool {
+pub fn submodules_(submodules: &Option<bool>, rust_info: &channel::GitInfo) -> bool {
     // If not specified in config, the default is to only manage
     // submodules if we're currently inside a git repository.
     submodules.unwrap_or(rust_info.is_managed_git_subrepository())
