@@ -643,6 +643,18 @@ impl Config {
             build_config: llvm_build_config_toml,
         } = toml.llvm.unwrap_or_default();
 
+        let Dist {
+            sign_folder: dist_sign_folder_toml,
+            upload_addr: dist_upload_addr_toml,
+            src_tarball: dist_src_tarball_toml,
+            compression_formats: dist_compression_formats_toml,
+            compression_profile: dist_compression_profile_toml,
+            include_mingw_linker: dist_include_mingw_linker_toml,
+            vendor: dist_vendor_toml,
+        } = toml.dist.unwrap_or_default();
+
+        let Gcc { download_ci_gcc: gcc_download_ci_gcc_toml } = toml.gcc.unwrap_or_default();
+
         if cfg!(test) {
             // When configuring bootstrap for tests, make sure to set the rustc and Cargo to the
             // same ones used to call the tests (if custom ones are not defined in the toml). If we
@@ -1241,8 +1253,6 @@ impl Config {
             config.llvm_link_shared.set(Some(true));
         }
 
-        let Gcc { download_ci_gcc: gcc_download_ci_gcc_toml } = toml.gcc.unwrap_or_default();
-
         config.gcc_ci_mode = match gcc_download_ci_gcc_toml {
             Some(value) => match value {
                 true => GccCiMode::DownloadFromCi,
@@ -1274,16 +1284,6 @@ impl Config {
             build_target.llvm_filecheck =
                 Some(ci_llvm_bin.join(exe("FileCheck", config.host_target)));
         }
-
-        let Dist {
-            sign_folder: dist_sign_folder_toml,
-            upload_addr: dist_upload_addr_toml,
-            src_tarball: dist_src_tarball_toml,
-            compression_formats: dist_compression_formats_toml,
-            compression_profile: dist_compression_profile_toml,
-            include_mingw_linker: dist_include_mingw_linker_toml,
-            vendor: dist_vendor_toml,
-        } = toml.dist.unwrap_or_default();
 
         config.dist_sign_folder = dist_sign_folder_toml.map(PathBuf::from);
         config.dist_upload_addr = dist_upload_addr_toml;
