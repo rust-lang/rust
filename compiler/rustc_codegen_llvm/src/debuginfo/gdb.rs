@@ -1,8 +1,8 @@
 // .debug_gdb_scripts binary section.
 
+use std::collections::BTreeSet;
 use std::ffi::CString;
 
-use rustc_codegen_ssa::base::collect_debugger_visualizers_transitive;
 use rustc_codegen_ssa::traits::*;
 use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def_id::LOCAL_CRATE;
@@ -53,10 +53,14 @@ pub(crate) fn get_or_insert_gdb_debug_scripts_section_global<'ll>(
 
         // Next, add the pretty printers that were specified via the `#[debugger_visualizer]`
         // attribute.
-        let visualizers = collect_debugger_visualizers_transitive(
-            cx.tcx,
-            DebuggerVisualizerType::GdbPrettyPrinter,
-        );
+        let visualizers = cx
+            .tcx
+            .debugger_visualizers(LOCAL_CRATE)
+            .iter()
+            .filter(|visualizer| {
+                visualizer.visualizer_type == DebuggerVisualizerType::GdbPrettyPrinter
+            })
+            .collect::<BTreeSet<_>>();
         let crate_name = cx.tcx.crate_name(LOCAL_CRATE);
         for (index, visualizer) in visualizers.iter().enumerate() {
             // The initial byte `4` instructs GDB that the following pretty printer
@@ -96,31 +100,14 @@ pub(crate) fn needs_gdb_debug_scripts_section(cx: &CodegenCx<'_, '_>) -> bool {
     let omit_gdb_pretty_printer_section =
         find_attr!(cx.tcx.hir_krate_attrs(), AttributeKind::OmitGdbPrettyPrinterSection);
 
-    // We collect pretty printers transitively for all crates, so we make sure
-    // that the section is only emitted for leaf crates.
-    let embed_visualizers = cx.tcx.crate_types().iter().any(|&crate_type| match crate_type {
-        CrateType::Executable | CrateType::Cdylib | CrateType::Staticlib | CrateType::Sdylib => {
-            // These are crate types for which we will embed pretty printers since they
-            // are treated as leaf crates.
-            true
-        }
-        CrateType::ProcMacro => {
-            // We could embed pretty printers for proc macro crates too but it does not
-            // seem like a good default, since this is a rare use case and we don't
-            // want to slow down the common case.
-            false
-        }
-        CrateType::Rlib | CrateType::Dylib => {
-            // Don't embed pretty printers for these crate types; the compiler
-            // can see the `#[debug_visualizer]` attributes when using the
-            // library, and emitting `.debug_gdb_scripts` regardless would
-            // break `#![omit_gdb_pretty_printer_section]`.
-            false
-        }
-    });
+    // We could embed pretty printers for proc macro crates too but it does not
+    // seem like a good default, since this is a rare use case and we don't
+    // want to slow down the common case.
+    let proc_macro_only =
+        cx.tcx.crate_types().iter().all(|&crate_type| crate_type == CrateType::ProcMacro);
 
     !omit_gdb_pretty_printer_section
         && cx.sess().opts.debuginfo != DebugInfo::None
         && cx.sess().target.emit_debug_gdb_scripts
-        && embed_visualizers
+        && !proc_macro_only
 }
