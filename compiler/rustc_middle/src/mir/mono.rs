@@ -568,6 +568,10 @@ impl<'tcx> CodegenUnit<'tcx> {
         }
 
         let mut items: Vec<_> = self.items().iter().map(|(&i, &data)| (i, data)).collect();
+        if !tcx.sess.opts.unstable_opts.codegen_source_order {
+            // It's already deterministic, so we can just use it.
+            return items;
+        }
         items.sort_by_cached_key(|&(i, _)| item_sort_key(tcx, i));
         items
     }

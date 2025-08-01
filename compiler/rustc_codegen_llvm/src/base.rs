@@ -84,12 +84,7 @@ pub(crate) fn compile_codegen_unit(
         let llvm_module = ModuleLlvm::new(tcx, cgu_name.as_str());
         {
             let mut cx = CodegenCx::new(tcx, cgu, &llvm_module);
-            let mono_items = if tcx.sess.opts.unstable_opts.codegen_source_order {
-                cx.codegen_unit.items_in_deterministic_order(cx.tcx)
-            } else {
-                // The `items` has a deterministic order, so we can use it directly.
-                cx.codegen_unit.items().iter().map(|(item, data)| (*item, *data)).collect()
-            };
+            let mono_items = cx.codegen_unit.items_in_deterministic_order(cx.tcx);
             for &(mono_item, data) in &mono_items {
                 mono_item.predefine::<Builder<'_, '_, '_>>(
                     &mut cx,
