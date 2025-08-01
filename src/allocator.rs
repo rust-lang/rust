@@ -104,7 +104,8 @@ fn create_const_value_function(
             tcx.sess.default_visibility(),
         )));
 
-        func.add_attribute(FnAttribute::AlwaysInline);
+        // FIXME(antoyo): cg_llvm sets AlwaysInline, but AlwaysInline is different in GCC and using
+        // it here will causes linking errors when using LTO.
         func.add_attribute(FnAttribute::Inline);
     }
 
