@@ -212,7 +212,6 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
         let region_assumptions = self.0.inner.borrow().region_assumptions().to_owned();
         let region_constraints = self.0.with_region_constraints(|region_constraints| {
             make_query_region_constraints(
-                self.tcx,
                 region_obligations,
                 region_constraints,
                 region_assumptions,

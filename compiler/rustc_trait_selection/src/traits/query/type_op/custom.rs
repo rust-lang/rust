@@ -108,7 +108,6 @@ where
     let region_assumptions = infcx.take_registered_region_assumptions();
     let region_constraint_data = infcx.take_and_reset_region_constraints();
     let region_constraints = query_response::make_query_region_constraints(
-        infcx.tcx,
         region_obligations,
         &region_constraint_data,
         region_assumptions,

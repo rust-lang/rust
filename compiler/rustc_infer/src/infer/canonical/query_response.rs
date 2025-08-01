@@ -21,7 +21,7 @@ use crate::infer::canonical::{
     Canonical, CanonicalQueryResponse, CanonicalVarValues, Certainty, OriginalQueryValues,
     QueryRegionConstraints, QueryResponse,
 };
-use crate::infer::region_constraints::{Constraint, RegionConstraintData};
+use crate::infer::region_constraints::RegionConstraintData;
 use crate::infer::{
     DefineOpaqueTypes, InferCtxt, InferOk, InferResult, SubregionOrigin, TypeOutlivesConstraint,
 };
@@ -105,8 +105,6 @@ impl<'tcx> InferCtxt<'tcx> {
     where
         T: Debug + TypeFoldable<TyCtxt<'tcx>>,
     {
-        let tcx = self.tcx;
-
         // Select everything, returning errors.
         let errors = fulfill_cx.select_all_or_error(self);
 
@@ -120,7 +118,6 @@ impl<'tcx> InferCtxt<'tcx> {
         debug!(?region_obligations);
         let region_constraints = self.with_region_constraints(|region_constraints| {
             make_query_region_constraints(
-                tcx,
                 region_obligations,
                 region_constraints,
                 region_assumptions,
@@ -587,7 +584,6 @@ impl<'tcx> InferCtxt<'tcx> {
 /// Given the region obligations and constraints scraped from the infcx,
 /// creates query region constraints.
 pub fn make_query_region_constraints<'tcx>(
-    tcx: TyCtxt<'tcx>,
     outlives_obligations: Vec<TypeOutlivesConstraint<'tcx>>,
     region_constraints: &RegionConstraintData<'tcx>,
     assumptions: Vec<ty::ArgOutlivesPredicate<'tcx>>,
@@ -600,22 +596,9 @@ pub fn make_query_region_constraints<'tcx>(
 
     let outlives: Vec<_> = constraints
         .iter()
-        .map(|(k, origin)| {
-            let constraint = match *k {
-                // Swap regions because we are going from sub (<=) to outlives
-                // (>=).
-                Constraint::VarSubVar(v1, v2) => ty::OutlivesPredicate(
-                    ty::Region::new_var(tcx, v2).into(),
-                    ty::Region::new_var(tcx, v1),
-                ),
-                Constraint::VarSubReg(v1, r2) => {
-                    ty::OutlivesPredicate(r2.into(), ty::Region::new_var(tcx, v1))
-                }
-                Constraint::RegSubVar(r1, v2) => {
-                    ty::OutlivesPredicate(ty::Region::new_var(tcx, v2).into(), r1)
-                }
-                Constraint::RegSubReg(r1, r2) => ty::OutlivesPredicate(r2.into(), r1),
-            };
+        .map(|(c, origin)| {
+            // Swap regions because we are going from sub (<=) to outlives (>=).
+            let constraint = ty::OutlivesPredicate(c.sup.into(), c.sub);
             (constraint, origin.to_constraint_category())
         })
         .chain(outlives_obligations.into_iter().map(|obl| {
