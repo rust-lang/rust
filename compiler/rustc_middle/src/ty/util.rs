@@ -32,7 +32,7 @@ use crate::ty::{
 
 #[derive(Copy, Clone, Debug)]
 pub struct Discr<'tcx> {
-    /// Bit representation of the discriminant (e.g., `-128i8` is `0xFF_u128`).
+    /// Bit representation of the discriminant (e.g., `-1i8` is `0xFF_u128`).
     pub val: u128,
     pub ty: Ty<'tcx>,
 }

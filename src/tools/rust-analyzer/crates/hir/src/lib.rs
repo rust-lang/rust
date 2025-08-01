@@ -1922,10 +1922,6 @@ impl DefWithBody {
             Module { id: def_map.module_id(DefMap::ROOT) }.diagnostics(db, acc, style_lints);
         }
 
-        source_map
-            .macro_calls()
-            .for_each(|(_ast_id, call_id)| macro_call_diagnostics(db, call_id, acc));
-
         expr_store_diagnostics(db, acc, &source_map);
 
         let infer = db.infer(self.into());
@@ -2130,39 +2126,15 @@ impl DefWithBody {
     }
 }
 
-fn expr_store_diagnostics(
-    db: &dyn HirDatabase,
-    acc: &mut Vec<AnyDiagnostic<'_>>,
+fn expr_store_diagnostics<'db>(
+    db: &'db dyn HirDatabase,
+    acc: &mut Vec<AnyDiagnostic<'db>>,
     source_map: &ExpressionStoreSourceMap,
 ) {
     for diag in source_map.diagnostics() {
         acc.push(match diag {
             ExpressionStoreDiagnostics::InactiveCode { node, cfg, opts } => {
                 InactiveCode { node: *node, cfg: cfg.clone(), opts: opts.clone() }.into()
-            }
-            ExpressionStoreDiagnostics::MacroError { node, err } => {
-                let RenderedExpandError { message, error, kind } = err.render_to_string(db);
-
-                let editioned_file_id = EditionedFileId::from_span(db, err.span().anchor.file_id);
-                let precise_location = if editioned_file_id == node.file_id {
-                    Some(
-                        err.span().range
-                            + db.ast_id_map(editioned_file_id.into())
-                                .get_erased(err.span().anchor.ast_id)
-                                .text_range()
-                                .start(),
-                    )
-                } else {
-                    None
-                };
-                MacroError {
-                    node: (node).map(|it| it.into()),
-                    precise_location,
-                    message,
-                    error,
-                    kind,
-                }
-                .into()
             }
             ExpressionStoreDiagnostics::UnresolvedMacroCall { node, path } => UnresolvedMacroCall {
                 macro_call: (*node).map(|ast_ptr| ast_ptr.into()),
@@ -2182,6 +2154,10 @@ fn expr_store_diagnostics(
             }
         });
     }
+
+    source_map
+        .macro_calls()
+        .for_each(|(_ast_id, call_id)| macro_call_diagnostics(db, call_id, acc));
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Function {

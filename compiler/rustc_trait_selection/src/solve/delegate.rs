@@ -135,6 +135,13 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
                     None
                 }
             }
+            ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(ct, _)) => {
+                if self.shallow_resolve_const(ct).is_ct_infer() {
+                    Some(Certainty::AMBIGUOUS)
+                } else {
+                    None
+                }
+            }
             ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(arg)) => {
                 let arg = self.shallow_resolve_term(arg);
                 if arg.is_trivially_wf(self.tcx) {

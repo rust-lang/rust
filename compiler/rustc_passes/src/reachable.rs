@@ -104,10 +104,10 @@ impl<'tcx> Visitor<'tcx> for ReachableContext<'tcx> {
 
     fn visit_inline_asm(&mut self, asm: &'tcx hir::InlineAsm<'tcx>, id: hir::HirId) {
         for (op, _) in asm.operands {
-            if let hir::InlineAsmOperand::SymStatic { def_id, .. } = op {
-                if let Some(def_id) = def_id.as_local() {
-                    self.reachable_symbols.insert(def_id);
-                }
+            if let hir::InlineAsmOperand::SymStatic { def_id, .. } = op
+                && let Some(def_id) = def_id.as_local()
+            {
+                self.reachable_symbols.insert(def_id);
             }
         }
         intravisit::walk_inline_asm(self, asm, id);

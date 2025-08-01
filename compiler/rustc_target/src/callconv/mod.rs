@@ -495,18 +495,16 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
 
     pub fn extend_integer_width_to(&mut self, bits: u64) {
         // Only integers have signedness
-        if let BackendRepr::Scalar(scalar) = self.layout.backend_repr {
-            if let Primitive::Int(i, signed) = scalar.primitive() {
-                if i.size().bits() < bits {
-                    if let PassMode::Direct(ref mut attrs) = self.mode {
-                        if signed {
-                            attrs.ext(ArgExtension::Sext)
-                        } else {
-                            attrs.ext(ArgExtension::Zext)
-                        };
-                    }
-                }
-            }
+        if let BackendRepr::Scalar(scalar) = self.layout.backend_repr
+            && let Primitive::Int(i, signed) = scalar.primitive()
+            && i.size().bits() < bits
+            && let PassMode::Direct(ref mut attrs) = self.mode
+        {
+            if signed {
+                attrs.ext(ArgExtension::Sext)
+            } else {
+                attrs.ext(ArgExtension::Zext)
+            };
         }
     }
 

@@ -960,37 +960,28 @@ impl ExprCollector<'_> {
         impl_trait_lower_fn: ImplTraitLowerFn<'_>,
     ) -> TypeBound {
         match node.kind() {
-            ast::TypeBoundKind::PathType(path_type) => {
-                let m = match node.question_mark_token() {
-                    Some(_) => TraitBoundModifier::Maybe,
-                    None => TraitBoundModifier::None,
-                };
-                self.lower_path_type(&path_type, impl_trait_lower_fn)
-                    .map(|p| {
-                        TypeBound::Path(self.alloc_path(p, AstPtr::new(&path_type).upcast()), m)
-                    })
-                    .unwrap_or(TypeBound::Error)
-            }
-            ast::TypeBoundKind::ForType(for_type) => {
-                let lt_refs = match for_type.generic_param_list() {
+            ast::TypeBoundKind::PathType(binder, path_type) => {
+                let binder = match binder.and_then(|it| it.generic_param_list()) {
                     Some(gpl) => gpl
                         .lifetime_params()
                         .flat_map(|lp| lp.lifetime().map(|lt| Name::new_lifetime(&lt.text())))
                         .collect(),
                     None => ThinVec::default(),
                 };
-                let path = for_type.ty().and_then(|ty| match &ty {
-                    ast::Type::PathType(path_type) => {
-                        self.lower_path_type(path_type, impl_trait_lower_fn).map(|p| (p, ty))
-                    }
-                    _ => None,
-                });
-                match path {
-                    Some((p, ty)) => {
-                        TypeBound::ForLifetime(lt_refs, self.alloc_path(p, AstPtr::new(&ty)))
-                    }
-                    None => TypeBound::Error,
-                }
+                let m = match node.question_mark_token() {
+                    Some(_) => TraitBoundModifier::Maybe,
+                    None => TraitBoundModifier::None,
+                };
+                self.lower_path_type(&path_type, impl_trait_lower_fn)
+                    .map(|p| {
+                        let path = self.alloc_path(p, AstPtr::new(&path_type).upcast());
+                        if binder.is_empty() {
+                            TypeBound::Path(path, m)
+                        } else {
+                            TypeBound::ForLifetime(binder, path)
+                        }
+                    })
+                    .unwrap_or(TypeBound::Error)
             }
             ast::TypeBoundKind::Use(gal) => TypeBound::Use(
                 gal.use_bound_generic_args()
@@ -1981,13 +1972,7 @@ impl ExprCollector<'_> {
                 return collector(self, None);
             }
         };
-        if record_diagnostics {
-            if let Some(err) = res.err {
-                self.store
-                    .diagnostics
-                    .push(ExpressionStoreDiagnostics::MacroError { node: macro_call_ptr, err });
-            }
-        }
+        // No need to push macro and parsing errors as they'll be recreated from `macro_calls()`.
 
         match res.value {
             Some((mark, expansion)) => {
@@ -1995,10 +1980,6 @@ impl ExprCollector<'_> {
                 // other services in incomplete macro expressions.
                 if let Some(macro_file) = self.expander.current_file_id().macro_file() {
                     self.store.expansions.insert(macro_call_ptr, macro_file);
-                }
-
-                if record_diagnostics {
-                    // FIXME: Report parse errors here
                 }
 
                 let id = collector(self, expansion.map(|it| it.tree()));

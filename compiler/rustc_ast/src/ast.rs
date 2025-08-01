@@ -23,7 +23,7 @@ use std::{cmp, fmt};
 
 pub use GenericArgs::*;
 pub use UnsafeSource::*;
-pub use rustc_ast_ir::{Movability, Mutability, Pinnedness};
+pub use rustc_ast_ir::{FloatTy, IntTy, Movability, Mutability, Pinnedness, UintTy};
 use rustc_data_structures::packed::Pu128;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::stack::ensure_sufficient_stack;
@@ -2283,105 +2283,6 @@ pub struct FnSig {
     pub header: FnHeader,
     pub decl: P<FnDecl>,
     pub span: Span,
-}
-
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
-#[derive(Encodable, Decodable, HashStable_Generic)]
-pub enum FloatTy {
-    F16,
-    F32,
-    F64,
-    F128,
-}
-
-impl FloatTy {
-    pub fn name_str(self) -> &'static str {
-        match self {
-            FloatTy::F16 => "f16",
-            FloatTy::F32 => "f32",
-            FloatTy::F64 => "f64",
-            FloatTy::F128 => "f128",
-        }
-    }
-
-    pub fn name(self) -> Symbol {
-        match self {
-            FloatTy::F16 => sym::f16,
-            FloatTy::F32 => sym::f32,
-            FloatTy::F64 => sym::f64,
-            FloatTy::F128 => sym::f128,
-        }
-    }
-}
-
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
-#[derive(Encodable, Decodable, HashStable_Generic)]
-pub enum IntTy {
-    Isize,
-    I8,
-    I16,
-    I32,
-    I64,
-    I128,
-}
-
-impl IntTy {
-    pub fn name_str(&self) -> &'static str {
-        match *self {
-            IntTy::Isize => "isize",
-            IntTy::I8 => "i8",
-            IntTy::I16 => "i16",
-            IntTy::I32 => "i32",
-            IntTy::I64 => "i64",
-            IntTy::I128 => "i128",
-        }
-    }
-
-    pub fn name(&self) -> Symbol {
-        match *self {
-            IntTy::Isize => sym::isize,
-            IntTy::I8 => sym::i8,
-            IntTy::I16 => sym::i16,
-            IntTy::I32 => sym::i32,
-            IntTy::I64 => sym::i64,
-            IntTy::I128 => sym::i128,
-        }
-    }
-}
-
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Copy, Debug)]
-#[derive(Encodable, Decodable, HashStable_Generic)]
-pub enum UintTy {
-    Usize,
-    U8,
-    U16,
-    U32,
-    U64,
-    U128,
-}
-
-impl UintTy {
-    pub fn name_str(&self) -> &'static str {
-        match *self {
-            UintTy::Usize => "usize",
-            UintTy::U8 => "u8",
-            UintTy::U16 => "u16",
-            UintTy::U32 => "u32",
-            UintTy::U64 => "u64",
-            UintTy::U128 => "u128",
-        }
-    }
-
-    pub fn name(&self) -> Symbol {
-        match *self {
-            UintTy::Usize => sym::usize,
-            UintTy::U8 => sym::u8,
-            UintTy::U16 => sym::u16,
-            UintTy::U32 => sym::u32,
-            UintTy::U64 => sym::u64,
-            UintTy::U128 => sym::u128,
-        }
-    }
 }
 
 /// A constraint on an associated item.

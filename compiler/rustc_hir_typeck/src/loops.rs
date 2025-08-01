@@ -3,12 +3,12 @@ use std::fmt;
 
 use Context::*;
 use rustc_ast::Label;
-use rustc_attr_data_structures::{AttributeKind, find_attr};
 use rustc_hir as hir;
+use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{self, Visitor};
-use rustc_hir::{Destination, Node};
+use rustc_hir::{Destination, Node, find_attr};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::span_bug;
 use rustc_middle::ty::TyCtxt;

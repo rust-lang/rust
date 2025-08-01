@@ -1,6 +1,7 @@
 use rustc_ast::{LitKind, NodeId};
-use rustc_attr_data_structures::{CfgEntry, RustcVersion};
 use rustc_feature::{AttributeTemplate, Features, template};
+use rustc_hir::RustcVersion;
+use rustc_hir::attrs::CfgEntry;
 use rustc_session::Session;
 use rustc_session::config::ExpectedValues;
 use rustc_session::lint::BuiltinLintDiag;

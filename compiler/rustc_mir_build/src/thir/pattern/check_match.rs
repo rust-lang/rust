@@ -1155,14 +1155,12 @@ fn find_fallback_pattern_typo<'tcx>(
                     }
                     hir::Node::Block(hir::Block { stmts, .. }) => {
                         for stmt in *stmts {
-                            if let hir::StmtKind::Let(let_stmt) = stmt.kind {
-                                if let hir::PatKind::Binding(_, _, binding_name, _) =
+                            if let hir::StmtKind::Let(let_stmt) = stmt.kind
+                                && let hir::PatKind::Binding(_, _, binding_name, _) =
                                     let_stmt.pat.kind
-                                {
-                                    if name == binding_name.name {
-                                        lint.pattern_let_binding = Some(binding_name.span);
-                                    }
-                                }
+                                && name == binding_name.name
+                            {
+                                lint.pattern_let_binding = Some(binding_name.span);
                             }
                         }
                     }

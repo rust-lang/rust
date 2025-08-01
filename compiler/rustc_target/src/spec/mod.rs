@@ -3598,6 +3598,7 @@ impl Target {
             ),
             "x86" => (Architecture::I386, None),
             "s390x" => (Architecture::S390x, None),
+            "m68k" => (Architecture::M68k, None),
             "mips" | "mips32r6" => (Architecture::Mips, None),
             "mips64" | "mips64r6" => (
                 // While there are currently no builtin targets

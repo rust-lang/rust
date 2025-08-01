@@ -19,3 +19,7 @@ pub(crate) struct CopyBitcode {
 pub(crate) struct LtoBitcodeFromRlib {
     pub gcc_err: String,
 }
+
+#[derive(Diagnostic)]
+#[diag(codegen_gcc_explicit_tail_calls_unsupported)]
+pub(crate) struct ExplicitTailCallsUnsupported;

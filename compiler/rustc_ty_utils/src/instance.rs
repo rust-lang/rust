@@ -21,7 +21,7 @@ fn resolve_instance_raw<'tcx>(
 ) -> Result<Option<Instance<'tcx>>, ErrorGuaranteed> {
     let PseudoCanonicalInput { typing_env, value: (def_id, args) } = key;
 
-    let result = if let Some(trait_def_id) = tcx.trait_of_item(def_id) {
+    let result = if let Some(trait_def_id) = tcx.trait_of_assoc(def_id) {
         debug!(" => associated item, attempting to find impl in typing_env {:#?}", typing_env);
         resolve_associated_item(
             tcx,

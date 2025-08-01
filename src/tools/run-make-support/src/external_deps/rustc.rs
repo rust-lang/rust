@@ -173,6 +173,12 @@ impl Rustc {
         self
     }
 
+    /// This flag enables LTO in the specified form.
+    pub fn lto(&mut self, option: &str) -> &mut Self {
+        self.cmd.arg(format!("-Clto={option}"));
+        self
+    }
+
     /// This flag defers LTO optimizations to the linker.
     pub fn linker_plugin_lto(&mut self, option: &str) -> &mut Self {
         self.cmd.arg(format!("-Clinker-plugin-lto={option}"));

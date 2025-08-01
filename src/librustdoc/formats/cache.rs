@@ -1,9 +1,10 @@
 use std::mem;
 
 use rustc_ast::join_path_syms;
-use rustc_attr_data_structures::StabilityLevel;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
+use rustc_hir::StabilityLevel;
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, DefIdSet};
+use rustc_metadata::creader::CStore;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::Symbol;
 use tracing::debug;
@@ -158,18 +159,33 @@ impl Cache {
         assert!(cx.external_traits.is_empty());
         cx.cache.traits = mem::take(&mut krate.external_traits);
 
+        let render_options = &cx.render_options;
+        let extern_url_takes_precedence = render_options.extern_html_root_takes_precedence;
+        let dst = &render_options.output;
+
+        // Make `--extern-html-root-url` support the same names as `--extern` whenever possible
+        let cstore = CStore::from_tcx(tcx);
+        for (name, extern_url) in &render_options.extern_html_root_urls {
+            if let Some(crate_num) = cstore.resolved_extern_crate(Symbol::intern(name)) {
+                let e = ExternalCrate { crate_num };
+                let location = e.location(Some(extern_url), extern_url_takes_precedence, dst, tcx);
+                cx.cache.extern_locations.insert(e.crate_num, location);
+            }
+        }
+
         // Cache where all our extern crates are located
-        // FIXME: this part is specific to HTML so it'd be nice to remove it from the common code
+        // This is also used in the JSON output.
         for &crate_num in tcx.crates(()) {
             let e = ExternalCrate { crate_num };
 
             let name = e.name(tcx);
-            let render_options = &cx.render_options;
-            let extern_url = render_options.extern_html_root_urls.get(name.as_str()).map(|u| &**u);
-            let extern_url_takes_precedence = render_options.extern_html_root_takes_precedence;
-            let dst = &render_options.output;
-            let location = e.location(extern_url, extern_url_takes_precedence, dst, tcx);
-            cx.cache.extern_locations.insert(e.crate_num, location);
+            cx.cache.extern_locations.entry(e.crate_num).or_insert_with(|| {
+                // falls back to matching by crates' own names, because
+                // transitive dependencies and injected crates may be loaded without `--extern`
+                let extern_url =
+                    render_options.extern_html_root_urls.get(name.as_str()).map(|u| &**u);
+                e.location(extern_url, extern_url_takes_precedence, dst, tcx)
+            });
             cx.cache.external_paths.insert(e.def_id(), (vec![name], ItemType::Module));
         }
 

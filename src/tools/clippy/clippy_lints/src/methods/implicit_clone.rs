@@ -50,7 +50,7 @@ pub fn is_clone_like(cx: &LateContext<'_>, method_name: Symbol, method_def_id: h
         sym::to_path_buf => is_diag_item_method(cx, method_def_id, sym::Path),
         sym::to_vec => cx
             .tcx
-            .impl_of_method(method_def_id)
+            .impl_of_assoc(method_def_id)
             .filter(|&impl_did| {
                 cx.tcx.type_of(impl_did).instantiate_identity().is_slice() && cx.tcx.impl_trait_ref(impl_did).is_none()
             })

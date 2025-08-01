@@ -37,7 +37,7 @@ fn get_const_name_and_ty_name(
         } else {
             return None;
         }
-    } else if let Some(impl_id) = cx.tcx.impl_of_method(method_def_id)
+    } else if let Some(impl_id) = cx.tcx.impl_of_assoc(method_def_id)
         && let Some(ty_name) = get_primitive_ty_name(cx.tcx.type_of(impl_id).instantiate_identity())
         && matches!(
             method_name,

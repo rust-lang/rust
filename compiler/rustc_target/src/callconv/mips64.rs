@@ -6,15 +6,14 @@ use crate::callconv::{ArgAbi, ArgExtension, CastTarget, FnAbi, PassMode, Uniform
 
 fn extend_integer_width_mips<Ty>(arg: &mut ArgAbi<'_, Ty>, bits: u64) {
     // Always sign extend u32 values on 64-bit mips
-    if let BackendRepr::Scalar(scalar) = arg.layout.backend_repr {
-        if let Primitive::Int(i, signed) = scalar.primitive() {
-            if !signed && i.size().bits() == 32 {
-                if let PassMode::Direct(ref mut attrs) = arg.mode {
-                    attrs.ext(ArgExtension::Sext);
-                    return;
-                }
-            }
-        }
+    if let BackendRepr::Scalar(scalar) = arg.layout.backend_repr
+        && let Primitive::Int(i, signed) = scalar.primitive()
+        && !signed
+        && i.size().bits() == 32
+        && let PassMode::Direct(ref mut attrs) = arg.mode
+    {
+        attrs.ext(ArgExtension::Sext);
+        return;
     }
 
     arg.extend_integer_width_to(bits);
@@ -58,13 +57,12 @@ where
                     ret.cast_to(reg);
                     return;
                 }
-            } else if ret.layout.fields.count() == 2 {
-                if let Some(reg0) = float_reg(cx, ret, 0) {
-                    if let Some(reg1) = float_reg(cx, ret, 1) {
-                        ret.cast_to(CastTarget::pair(reg0, reg1));
-                        return;
-                    }
-                }
+            } else if ret.layout.fields.count() == 2
+                && let Some(reg0) = float_reg(cx, ret, 0)
+                && let Some(reg1) = float_reg(cx, ret, 1)
+            {
+                ret.cast_to(CastTarget::pair(reg0, reg1));
+                return;
             }
         }
 

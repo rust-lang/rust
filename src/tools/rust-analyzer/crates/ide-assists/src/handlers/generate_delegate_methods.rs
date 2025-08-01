@@ -114,9 +114,13 @@ pub(crate) fn generate_delegate_methods(acc: &mut Assists, ctx: &AssistContext<'
                         let source_scope = ctx.sema.scope(v.syntax());
                         let target_scope = ctx.sema.scope(strukt.syntax());
                         if let (Some(s), Some(t)) = (source_scope, target_scope) {
-                            PathTransform::generic_transformation(&t, &s).apply(v.syntax());
+                            ast::Fn::cast(
+                                PathTransform::generic_transformation(&t, &s).apply(v.syntax()),
+                            )
+                            .unwrap_or(v)
+                        } else {
+                            v
                         }
-                        v
                     }
                     None => return,
                 };

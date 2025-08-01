@@ -86,7 +86,7 @@ fn reachable_non_generics_provider(tcx: TyCtxt<'_>, _: LocalCrate) -> DefIdMap<S
             // Only consider nodes that actually have exported symbols.
             match tcx.def_kind(def_id) {
                 DefKind::Fn | DefKind::Static { .. } => {}
-                DefKind::AssocFn if tcx.impl_of_method(def_id.to_def_id()).is_some() => {}
+                DefKind::AssocFn if tcx.impl_of_assoc(def_id.to_def_id()).is_some() => {}
                 _ => return None,
             };
 
@@ -384,7 +384,7 @@ fn exported_generic_symbols_provider_local<'tcx>(
 
             if !tcx.sess.opts.share_generics() {
                 if tcx.codegen_fn_attrs(mono_item.def_id()).inline
-                    == rustc_attr_data_structures::InlineAttr::Never
+                    == rustc_hir::attrs::InlineAttr::Never
                 {
                     // this is OK, we explicitly allow sharing inline(never) across crates even
                     // without share-generics.

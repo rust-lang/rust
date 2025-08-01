@@ -23,14 +23,16 @@ tracing = "0.1"
 # tidy-alphabetical-end
 
 [features]
+# tidy-alphabetical-start
 default = ["nightly"]
 nightly = [
-    "dep:rustc_serialize",
-    "dep:rustc_span",
     "dep:rustc_data_structures",
     "dep:rustc_macros",
+    "dep:rustc_serialize",
+    "dep:rustc_span",
+    "rustc_ast_ir/nightly",
+    "rustc_index/nightly",
     "smallvec/may_dangle",
     "smallvec/union",
-    "rustc_index/nightly",
-    "rustc_ast_ir/nightly",
 ]
+# tidy-alphabetical-end

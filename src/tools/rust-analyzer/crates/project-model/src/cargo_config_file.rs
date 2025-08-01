@@ -1,4 +1,5 @@
 //! Read `.cargo/config.toml` as a JSON object
+use paths::{Utf8Path, Utf8PathBuf};
 use rustc_hash::FxHashMap;
 use toolchain::Tool;
 
@@ -31,4 +32,25 @@ pub(crate) fn read(
         .and_then(|stdout| serde_json::from_str(&stdout).ok())?;
 
     Some(json)
+}
+
+pub(crate) fn make_lockfile_copy(
+    lockfile_path: &Utf8Path,
+) -> Option<(temp_dir::TempDir, Utf8PathBuf)> {
+    let temp_dir = temp_dir::TempDir::with_prefix("rust-analyzer").ok()?;
+    let target_lockfile = temp_dir.path().join("Cargo.lock").try_into().ok()?;
+    match std::fs::copy(lockfile_path, &target_lockfile) {
+        Ok(_) => {
+            tracing::debug!("Copied lock file from `{}` to `{}`", lockfile_path, target_lockfile);
+            Some((temp_dir, target_lockfile))
+        }
+        // lockfile does not yet exist, so we can just create a new one in the temp dir
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Some((temp_dir, target_lockfile)),
+        Err(e) => {
+            tracing::warn!(
+                "Failed to copy lock file from `{lockfile_path}` to `{target_lockfile}`: {e}",
+            );
+            None
+        }
+    }
 }
