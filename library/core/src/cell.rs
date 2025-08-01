@@ -250,8 +250,6 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use core::marker::Move;
-
 use crate::cmp::Ordering;
 use crate::fmt::{self, Debug, Display};
 use crate::marker::{Move, PhantomData, Unsize};
