@@ -143,6 +143,7 @@ mod __doctest_mod {{
             .output()
             .expect(\"failed to run command\");
         if should_panic {{
+            // FIXME: use test::ERROR_EXIT_CODE once public
             if out.status.code() != Some(101) {{
                 eprintln!(\"Test didn't panic, but it's marked `should_panic`.\");
                 ExitCode::FAILURE

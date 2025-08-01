@@ -19,7 +19,7 @@ Test didn't panic, but it's marked `should_panic`.",
     for text in should_contain {
         assert!(
             output.contains(text),
-            "output doesn't contains (edition: {edition}) {:?}\nfull output: {output}",
+            "output (edition: {edition}) doesn't contain {:?}\nfull output: {output}",
             text
         );
     }
