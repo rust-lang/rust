@@ -69,7 +69,7 @@ impl Config {
     }
 
     fn download_file(&self, url: &str, dest_path: &Path, help_on_error: &str) {
-        let dwn_ctx: DownloadContext<'_> = self.into();
+        let dwn_ctx: IOContext<'_> = self.into();
         download_file(dwn_ctx, url, dest_path, help_on_error);
     }
 
@@ -234,7 +234,7 @@ impl Config {
         key: &str,
         destination: &str,
     ) {
-        let dwn_ctx: DownloadContext<'_> = self.into();
+        let dwn_ctx: IOContext<'_> = self.into();
         download_component(dwn_ctx, mode, filename, prefix, key, destination);
     }
 
@@ -397,7 +397,7 @@ impl Config {
 }
 
 /// Only should be used for pre config initialization downloads.
-pub(crate) struct DownloadContext<'a> {
+pub(crate) struct IOContext<'a> {
     host_target: TargetSelection,
     out: &'a Path,
     patch_binaries_for_nix: Option<bool>,
@@ -408,7 +408,7 @@ pub(crate) struct DownloadContext<'a> {
     is_running_on_ci: bool,
 }
 
-impl<'a> DownloadContext<'a> {
+impl<'a> IOContext<'a> {
     pub fn new(
         host_target: TargetSelection,
         out: &'a Path,
@@ -432,15 +432,15 @@ impl<'a> DownloadContext<'a> {
     }
 }
 
-impl<'a> AsRef<DownloadContext<'a>> for DownloadContext<'a> {
-    fn as_ref(&self) -> &DownloadContext<'a> {
+impl<'a> AsRef<IOContext<'a>> for IOContext<'a> {
+    fn as_ref(&self) -> &IOContext<'a> {
         self
     }
 }
 
-impl<'a> From<&'a Config> for DownloadContext<'a> {
+impl<'a> From<&'a Config> for IOContext<'a> {
     fn from(value: &'a Config) -> Self {
-        DownloadContext {
+        IOContext {
             host_target: value.host_target,
             out: &value.out,
             patch_binaries_for_nix: value.patch_binaries_for_nix,
@@ -500,18 +500,14 @@ pub(crate) fn is_download_ci_available(target_triple: &str, llvm_assertions: boo
 }
 
 #[cfg(test)]
-pub(crate) fn maybe_download_rustfmt<'a>(
-    dwn_ctx: impl AsRef<DownloadContext<'a>>,
-) -> Option<PathBuf> {
+pub(crate) fn maybe_download_rustfmt<'a>(dwn_ctx: impl AsRef<IOContext<'a>>) -> Option<PathBuf> {
     Some(PathBuf::new())
 }
 
 /// NOTE: rustfmt is a completely different toolchain than the bootstrap compiler, so it can't
 /// reuse target directories or artifacts
 #[cfg(not(test))]
-pub(crate) fn maybe_download_rustfmt<'a>(
-    dwn_ctx: impl AsRef<DownloadContext<'a>>,
-) -> Option<PathBuf> {
+pub(crate) fn maybe_download_rustfmt<'a>(dwn_ctx: impl AsRef<IOContext<'a>>) -> Option<PathBuf> {
     use build_helper::stage0_parser::VersionMetadata;
 
     let dwn_ctx = dwn_ctx.as_ref();
@@ -566,10 +562,10 @@ pub(crate) fn maybe_download_rustfmt<'a>(
 }
 
 #[cfg(test)]
-pub(crate) fn download_beta_toolchain<'a>(dwn_ctx: impl AsRef<DownloadContext<'a>>) {}
+pub(crate) fn download_beta_toolchain<'a>(dwn_ctx: impl AsRef<IOContext<'a>>) {}
 
 #[cfg(not(test))]
-pub(crate) fn download_beta_toolchain<'a>(dwn_ctx: impl AsRef<DownloadContext<'a>>) {
+pub(crate) fn download_beta_toolchain<'a>(dwn_ctx: impl AsRef<IOContext<'a>>) {
     let dwn_ctx = dwn_ctx.as_ref();
     dwn_ctx.exec_ctx.verbose(|| {
         println!("downloading stage0 beta artifacts");
@@ -591,7 +587,7 @@ pub(crate) fn download_beta_toolchain<'a>(dwn_ctx: impl AsRef<DownloadContext<'a
 }
 
 fn download_toolchain<'a>(
-    dwn_ctx: impl AsRef<DownloadContext<'a>>,
+    dwn_ctx: impl AsRef<IOContext<'a>>,
     version: &str,
     sysroot: &str,
     stamp_key: &str,
@@ -756,7 +752,7 @@ fn should_fix_bins_and_dylibs(
 }
 
 fn download_component<'a>(
-    dwn_ctx: impl AsRef<DownloadContext<'a>>,
+    dwn_ctx: impl AsRef<IOContext<'a>>,
     mode: DownloadSource,
     filename: String,
     prefix: &str,
@@ -959,7 +955,7 @@ fn unpack(exec_ctx: &ExecutionContext, tarball: &Path, dst: &Path, pattern: &str
 }
 
 fn download_file<'a>(
-    dwn_ctx: impl AsRef<DownloadContext<'a>>,
+    dwn_ctx: impl AsRef<IOContext<'a>>,
     url: &str,
     dest_path: &Path,
     help_on_error: &str,

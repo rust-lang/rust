@@ -51,7 +51,7 @@ use crate::core::config::{
     StringOrBool, set, threads_from_config,
 };
 use crate::core::download::{
-    DownloadContext, download_beta_toolchain, is_download_ci_available, maybe_download_rustfmt,
+    IOContext, download_beta_toolchain, is_download_ci_available, maybe_download_rustfmt,
 };
 use crate::utils::channel;
 use crate::utils::exec::{ExecutionContext, command};
@@ -778,7 +778,7 @@ impl Config {
         initial_rustc = if let Some(rustc) = build_rustc_toml {
             rustc
         } else {
-            let dwn_ctx = DownloadContext::new(
+            let dwn_ctx = IOContext::new(
                 host_target,
                 &out,
                 patch_binaries_for_nix,
@@ -1214,7 +1214,7 @@ impl Config {
         config.initial_cargo = if let Some(cargo) = build_cargo_toml {
             cargo
         } else {
-            let dwn_ctx = DownloadContext::new(
+            let dwn_ctx = IOContext::new(
                 host_target,
                 &out,
                 patch_binaries_for_nix,
@@ -1444,7 +1444,7 @@ impl Config {
         config.initial_rustfmt = if let Some(r) = build_rustfmt_toml {
             Some(r)
         } else {
-            let dwn_ctx = DownloadContext::new(
+            let dwn_ctx = IOContext::new(
                 host_target,
                 &out,
                 patch_binaries_for_nix,
