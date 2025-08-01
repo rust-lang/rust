@@ -73,8 +73,7 @@ fn internal_extern_flags() -> Vec<String> {
             && INTERNAL_TEST_DEPENDENCIES.contains(&name)
         {
             // A dependency may be listed twice if it is available in sysroot,
-            // and the sysroot dependencies are listed first. As of the writing,
-            // this only seems to apply to if_chain.
+            // and the sysroot dependencies are listed first.
             crates.insert(name, path);
         }
     }
