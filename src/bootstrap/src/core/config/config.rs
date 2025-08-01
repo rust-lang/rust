@@ -546,14 +546,27 @@ impl Config {
             exclude: build_exclude_toml,
         } = toml.build.unwrap_or_default();
 
+        let Install {
+            prefix: install_prefix_toml,
+            sysconfdir: install_sysconfdir_toml,
+            docdir: install_docdir_toml,
+            bindir: install_bindir_toml,
+            libdir: install_libdir_toml,
+            mandir: install_mandir_toml,
+            datadir: install_datadir_toml,
+        } = toml.install.unwrap_or_default();
+
         if cfg!(test) {
             // When configuring bootstrap for tests, make sure to set the rustc and Cargo to the
             // same ones used to call the tests (if custom ones are not defined in the toml). If we
             // don't do that, bootstrap will use its own detection logic to find a suitable rustc
             // and Cargo, which doesn't work when the caller is specìfying a custom local rustc or
             // Cargo in their bootstrap.toml.
-            build_rustc_toml = build_rustc_toml.take().or(std::env::var_os("RUSTC").map(|p| p.into()));
-            build_build_toml = build_build_toml.take().or(std::env::var_os("CARGO").map(|p| p.into_string().unwrap()));
+            build_rustc_toml =
+                build_rustc_toml.take().or(std::env::var_os("RUSTC").map(|p| p.into()));
+            build_build_toml = build_build_toml
+                .take()
+                .or(std::env::var_os("CARGO").map(|p| p.into_string().unwrap()));
         }
 
         build_jobs_toml = flags_jobs.or(build_jobs_toml);
@@ -754,16 +767,6 @@ impl Config {
 
         // Verbose flag is a good default for `rust.verbose-tests`.
         config.verbose_tests = config.is_verbose();
-
-        let Install {
-            prefix: install_prefix_toml,
-            sysconfdir: install_sysconfdir_toml,
-            docdir: install_docdir_toml,
-            bindir: install_bindir_toml,
-            libdir: install_libdir_toml,
-            mandir: install_mandir_toml,
-            datadir: install_datadir_toml,
-        } = toml.install.unwrap_or_default();
 
         let install_prefix = install_prefix_toml.map(PathBuf::from);
         let install_sysconfdir = install_sysconfdir_toml.map(PathBuf::from);
