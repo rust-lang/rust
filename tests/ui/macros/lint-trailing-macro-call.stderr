@@ -11,7 +11,7 @@ LL |     expand_it!()
    = note: for more information, see issue #79813 <https://github.com/rust-lang/rust/issues/79813>
    = note: macro invocations at the end of a block are treated as expressions
    = note: to ignore the value produced by the macro, add a semicolon after the invocation of `expand_it`
-   = note: `#[warn(semicolon_in_expressions_from_macros)]` on by default
+   = note: `#[warn(semicolon_in_expressions_from_macros)]` (part of `#[warn(future_incompatible)]`) on by default
    = note: this warning originates in the macro `expand_it` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 warning: 1 warning emitted
@@ -30,6 +30,6 @@ LL |     expand_it!()
    = note: for more information, see issue #79813 <https://github.com/rust-lang/rust/issues/79813>
    = note: macro invocations at the end of a block are treated as expressions
    = note: to ignore the value produced by the macro, add a semicolon after the invocation of `expand_it`
-   = note: `#[warn(semicolon_in_expressions_from_macros)]` on by default
+   = note: `#[warn(semicolon_in_expressions_from_macros)]` (part of `#[warn(future_incompatible)]`) on by default
    = note: this warning originates in the macro `expand_it` (in Nightly builds, run with -Z macro-backtrace for more info)
 

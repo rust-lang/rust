@@ -211,11 +211,28 @@ impl LintExpectation {
 }
 
 fn explain_lint_level_source(
+    sess: &Session,
     lint: &'static Lint,
     level: Level,
     src: LintLevelSource,
     err: &mut Diag<'_, ()>,
 ) {
+    // Find the name of the lint group that contains the given lint.
+    // Assumes the lint only belongs to one group.
+    let lint_group_name = |lint| {
+        let lint_groups_iter = sess.lint_groups_iter();
+        let lint_id = LintId::of(lint);
+        lint_groups_iter
+            .filter(|lint_group| !lint_group.is_externally_loaded)
+            .find(|lint_group| {
+                lint_group
+                    .lints
+                    .iter()
+                    .find(|lint_group_lint| **lint_group_lint == lint_id)
+                    .is_some()
+            })
+            .map(|lint_group| lint_group.name)
+    };
     let name = lint.name_lower();
     if let Level::Allow = level {
         // Do not point at `#[allow(compat_lint)]` as the reason for a compatibility lint
@@ -224,7 +241,15 @@ fn explain_lint_level_source(
     }
     match src {
         LintLevelSource::Default => {
-            err.note_once(format!("`#[{}({})]` on by default", level.as_str(), name));
+            let level_str = level.as_str();
+            match lint_group_name(lint) {
+                Some(group_name) => {
+                    err.note_once(format!("`#[{level_str}({name})]` (part of `#[{level_str}({group_name})]`) on by default"));
+                }
+                None => {
+                    err.note_once(format!("`#[{level_str}({name})]` on by default"));
+                }
+            }
         }
         LintLevelSource::CommandLine(lint_flag_val, orig_level) => {
             let flag = orig_level.to_cmd_flag();
@@ -427,7 +452,7 @@ pub fn lint_level(
             decorate(&mut err);
         }
 
-        explain_lint_level_source(lint, level, src, &mut err);
+        explain_lint_level_source(sess, lint, level, src, &mut err);
         err.emit()
     }
     lint_level_impl(sess, lint, level, span, Box::new(decorate))

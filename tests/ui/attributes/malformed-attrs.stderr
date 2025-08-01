@@ -192,7 +192,7 @@ LL | #[doc]
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #57571 <https://github.com/rust-lang/rust/issues/57571>
-   = note: `#[deny(ill_formed_attribute_input)]` on by default
+   = note: `#[deny(ill_formed_attribute_input)]` (part of `#[deny(future_incompatible)]`) on by default
 
 error: valid forms for the attribute are `#[doc(hidden|inline|...)]` and `#[doc = "string"]`
   --> $DIR/malformed-attrs.rs:77:1
@@ -606,7 +606,7 @@ warning: `#[diagnostic::do_not_recommend]` does not expect any arguments
 LL | #[diagnostic::do_not_recommend()]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `#[warn(malformed_diagnostic_attributes)]` on by default
+   = note: `#[warn(malformed_diagnostic_attributes)]` (part of `#[warn(unknown_or_malformed_diagnostic_attributes)]`) on by default
 
 warning: missing options for `on_unimplemented` attribute
   --> $DIR/malformed-attrs.rs:139:1
