@@ -123,6 +123,46 @@ impl PartialEq for Compiler {
     }
 }
 
+/// Represents a codegen backend.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Default)]
+pub enum CodegenBackendKind {
+    #[default]
+    Llvm,
+    Cranelift,
+    Gcc,
+    Custom(String),
+}
+
+impl CodegenBackendKind {
+    /// Name of the codegen backend, as identified in the `compiler` directory
+    /// (`rustc_codegen_<name>`).
+    pub fn name(&self) -> &str {
+        match self {
+            CodegenBackendKind::Llvm => "llvm",
+            CodegenBackendKind::Cranelift => "cranelift",
+            CodegenBackendKind::Gcc => "gcc",
+            CodegenBackendKind::Custom(name) => name,
+        }
+    }
+
+    /// Name of the codegen backend's crate, e.g. `rustc_codegen_cranelift`.
+    pub fn crate_name(&self) -> String {
+        format!("rustc_codegen_{}", self.name())
+    }
+
+    pub fn is_llvm(&self) -> bool {
+        matches!(self, Self::Llvm)
+    }
+
+    pub fn is_cranelift(&self) -> bool {
+        matches!(self, Self::Cranelift)
+    }
+
+    pub fn is_gcc(&self) -> bool {
+        matches!(self, Self::Gcc)
+    }
+}
+
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
 pub enum DocTests {
     /// Run normal tests and doc tests (default).
