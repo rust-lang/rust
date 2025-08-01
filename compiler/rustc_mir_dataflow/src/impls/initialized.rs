@@ -108,6 +108,7 @@ impl<'tcx> MaybePlacesSwitchIntData<'tcx> {
 ///
 /// ```rust
 /// struct S;
+/// #[rustfmt::skip]
 /// fn foo(pred: bool) {                        // maybe-init:
 ///                                             // {}
 ///     let a = S; let mut b = S; let c; let d; // {a, b}
@@ -197,6 +198,7 @@ impl<'a, 'tcx> HasMoveData<'tcx> for MaybeInitializedPlaces<'a, 'tcx> {
 ///
 /// ```rust
 /// struct S;
+/// #[rustfmt::skip]
 /// fn foo(pred: bool) {                        // maybe-uninit:
 ///                                             // {a, b, c, d}
 ///     let a = S; let mut b = S; let c; let d; // {      c, d}
@@ -289,6 +291,7 @@ impl<'tcx> HasMoveData<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
 ///
 /// ```rust
 /// struct S;
+/// #[rustfmt::skip]
 /// fn foo(pred: bool) {                        // ever-init:
 ///                                             // {          }
 ///     let a = S; let mut b = S; let c; let d; // {a, b      }

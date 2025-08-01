@@ -265,12 +265,12 @@ use crate::vec::{self, Vec};
 /// You can look at these with the [`as_ptr`], [`len`], and [`capacity`]
 /// methods:
 ///
+// FIXME Update this when vec_into_raw_parts is stabilized
 /// ```
 /// use std::mem;
 ///
 /// let story = String::from("Once upon a time...");
 ///
-// FIXME Update this when vec_into_raw_parts is stabilized
 /// // Prevent automatically dropping the String's data
 /// let mut story = mem::ManuallyDrop::new(story);
 ///
@@ -970,13 +970,13 @@ impl String {
     ///
     /// # Examples
     ///
+    // FIXME Update this when vec_into_raw_parts is stabilized
     /// ```
     /// use std::mem;
     ///
     /// unsafe {
     ///     let s = String::from("hello");
     ///
-    // FIXME Update this when vec_into_raw_parts is stabilized
     ///     // Prevent automatically dropping the String's data
     ///     let mut s = mem::ManuallyDrop::new(s);
     ///
