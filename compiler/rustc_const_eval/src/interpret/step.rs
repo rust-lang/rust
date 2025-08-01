@@ -15,7 +15,7 @@ use super::{
     FnArg, FnVal, ImmTy, Immediate, InterpCx, InterpResult, Machine, MemPlaceMeta, PlaceTy,
     Projectable, Scalar, interp_ok, throw_ub, throw_unsup_format,
 };
-use crate::util;
+use crate::{enter_trace_span, util};
 
 struct EvaluatedCalleeAndArgs<'tcx, M: Machine<'tcx>> {
     callee: FnVal<'tcx, M::ExtraFnVal>,
@@ -544,7 +544,11 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     "Async Drop must be expanded or reset to sync in runtime MIR"
                 );
                 let place = self.eval_place(place)?;
-                let instance = Instance::resolve_drop_in_place(*self.tcx, place.layout.ty);
+                let instance = {
+                    let _span =
+                        enter_trace_span!(M, resolve::resolve_drop_in_place, ty = ?place.layout.ty);
+                    Instance::resolve_drop_in_place(*self.tcx, place.layout.ty)
+                };
                 if let ty::InstanceKind::DropGlue(_, None) = instance.def {
                     // This is the branch we enter if and only if the dropped type has no drop glue
                     // whatsoever. This can happen as a result of monomorphizing a drop of a
