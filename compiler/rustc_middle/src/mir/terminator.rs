@@ -690,7 +690,7 @@ impl<'tcx> TerminatorKind<'tcx> {
     }
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum TerminatorEdges<'mir, 'tcx> {
     /// For terminators that have no successor, like `return`.
     None,
@@ -713,7 +713,7 @@ pub enum TerminatorEdges<'mir, 'tcx> {
 
 /// List of places that are written to after a successful (non-unwind) return
 /// from a `Call`, `Yield` or `InlineAsm`.
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum CallReturnPlaces<'a, 'tcx> {
     Call(Place<'tcx>),
     Yield(Place<'tcx>),

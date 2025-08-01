@@ -43,6 +43,12 @@ impl<'tcx> crate::MirPass<'tcx> for DataflowConstProp {
         debug!(def_id = ?body.source.def_id());
         if tcx.sess.mir_opt_level() < 4 && body.basic_blocks.len() > BLOCK_LIMIT {
             debug!("aborted dataflow const prop due too many basic blocks");
+            eprintln!(
+                "aborted dataflow const prop due too many basic blocks {} (limit: {}), mir opt-level={} (limit: 4)",
+                body.basic_blocks.len(),
+                BLOCK_LIMIT,
+                tcx.sess.mir_opt_level()
+            );
             return;
         }
 
@@ -60,8 +66,14 @@ impl<'tcx> crate::MirPass<'tcx> for DataflowConstProp {
         let map = Map::new(tcx, body, place_limit);
 
         // Perform the actual dataflow analysis.
+        // let timer = std::time::Instant::now();
         let mut const_ = debug_span!("analyze")
-            .in_scope(|| ConstAnalysis::new(tcx, body, map).iterate_to_fixpoint(tcx, body, None));
+            .in_scope(|| ConstAnalysis::new(tcx, body, map).iterate_to_fixpoint(tcx, body, None)); // fixme: optimize
+        // let elapsed = timer.elapsed();
+        // // if elapsed.as_millis() > 1
+        // {
+        //     eprintln!("ConstAnalysis took {} ns on {:?}", elapsed.as_nanos(), body.span);
+        // }
 
         // Collect results and patch the body afterwards.
         let mut visitor = Collector::new(tcx, &body.local_decls);
