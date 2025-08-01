@@ -749,6 +749,12 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
             SourceType::InTree,
             &[],
         );
+
+        // Used for `compiletest` self-tests to have the path to the *staged* compiler. Getting this
+        // right is important, as `compiletest` is intended to only support one target spec JSON
+        // format, namely that of the staged compiler.
+        cargo.env("TEST_RUSTC", builder.rustc(compiler));
+
         cargo.allow_features(COMPILETEST_ALLOW_FEATURES);
         run_cargo_test(cargo, &[], &[], "compiletest self test", host, builder);
     }
