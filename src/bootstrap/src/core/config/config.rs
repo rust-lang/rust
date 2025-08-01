@@ -487,17 +487,6 @@ impl Config {
             &get_toml,
         );
 
-        if cfg!(test) {
-            // When configuring bootstrap for tests, make sure to set the rustc and Cargo to the
-            // same ones used to call the tests (if custom ones are not defined in the toml). If we
-            // don't do that, bootstrap will use its own detection logic to find a suitable rustc
-            // and Cargo, which doesn't work when the caller is specìfying a custom local rustc or
-            // Cargo in their bootstrap.toml.
-            let build = toml.build.get_or_insert_with(Default::default);
-            build.rustc = build.rustc.take().or(std::env::var_os("RUSTC").map(|p| p.into()));
-            build.cargo = build.cargo.take().or(std::env::var_os("CARGO").map(|p| p.into()));
-        }
-
         // Now override TOML values with flags, to make sure that we won't later override flags with
         // TOML values by accident instead, because flags have higher priority.
         let Build {
@@ -507,7 +496,7 @@ impl Config {
             target: build_target_toml,
             build_dir: build_build_dir_toml,
             cargo: build_cargo_toml,
-            rustc: build_rustc_toml,
+            rustc: mut build_rustc_toml,
             rustfmt: build_rustfmt_toml,
             cargo_clippy: build_cargo_clippy_toml,
             docs: build_docs_toml,
@@ -556,8 +545,20 @@ impl Config {
             ccache: build_ccache_toml,
             exclude: build_exclude_toml,
         } = toml.build.unwrap_or_default();
+
+        if cfg!(test) {
+            // When configuring bootstrap for tests, make sure to set the rustc and Cargo to the
+            // same ones used to call the tests (if custom ones are not defined in the toml). If we
+            // don't do that, bootstrap will use its own detection logic to find a suitable rustc
+            // and Cargo, which doesn't work when the caller is specìfying a custom local rustc or
+            // Cargo in their bootstrap.toml.
+            build_rustc_toml = build_rustc_toml.take().or(std::env::var_os("RUSTC").map(|p| p.into()));
+            build_build_toml = build_build_toml.take().or(std::env::var_os("CARGO").map(|p| p.into_string().unwrap()));
+        }
+
         build_jobs_toml = flags_jobs.or(build_jobs_toml);
         build_build_toml = flags_build.or(build_build_toml);
+
         let build_dir = flags_build_dir.or(build_build_dir_toml.map(PathBuf::from));
         let host = if let Some(TargetSelectionList(hosts)) = flags_host {
             Some(hosts)
