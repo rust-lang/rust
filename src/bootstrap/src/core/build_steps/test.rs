@@ -250,6 +250,9 @@ impl Step for Cargotest {
             );
             exit!(1);
         }
+        // We want to build cargo stage N (where N == top_stage), and rustc stage N,
+        // and test both of these together.
+        // So we need to get a build compiler stage N-1 to build the stage N components.
         run.builder.ensure(Cargotest {
             build_compiler: run.builder.compiler(run.builder.top_stage - 1, run.target),
             host: run.target,
@@ -261,9 +264,15 @@ impl Step for Cargotest {
     /// This tool in `src/tools` will check out a few Rust projects and run `cargo
     /// test` to ensure that we don't regress the test suites there.
     fn run(self, builder: &Builder<'_>) {
-        // Here we need to ensure that we run cargo with an in-tree compiler, because we test
-        // both their behavior together.
-        // We can build cargo with the earlier stage compiler though.
+        // cargotest's staging has several pieces:
+        // consider ./x test cargotest --stage=2.
+        //
+        // The test goal is to exercise a (stage 2 cargo, stage 2 rustc) pair through a stage 2
+        // cargotest tool.
+        // To produce the stage 2 cargo and cargotest, we need to do so with the stage 1 rustc and std.
+        // Importantly, the stage 2 rustc being tested (`tested_compiler`) via stage 2 cargotest is
+        // the rustc built by an earlier stage 1 rustc (the build_compiler). These are two different
+        // compilers!
         let cargo =
             builder.ensure(tool::Cargo::from_build_compiler(self.build_compiler, self.host));
         let tested_compiler = builder.compiler(self.build_compiler.stage + 1, self.host);
@@ -298,6 +307,7 @@ impl Step for Cargotest {
 }
 
 /// Runs `cargo test` for cargo itself.
+/// We label these tests as "cargo self-tests".
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Cargo {
     build_compiler: Compiler,
@@ -328,7 +338,7 @@ impl Step for Cargo {
 
     /// Runs `cargo test` for `cargo` packaged with Rust.
     fn run(self, builder: &Builder<'_>) {
-        // When we do a "stage 1 cargo test", it means that we test the stage 1 rustc
+        // When we do a "stage 1 cargo self-test", it means that we test the stage 1 rustc
         // using stage 1 cargo. So we actually build cargo using the stage 0 compiler, and then
         // run its tests against the stage 1 compiler (called `tested_compiler` below).
         builder.ensure(tool::Cargo::from_build_compiler(self.build_compiler, self.host));
