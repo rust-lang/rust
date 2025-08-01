@@ -759,22 +759,22 @@ impl Config {
         config.verbose_tests = config.is_verbose();
 
         let Install {
-            prefix: install_prefix,
-            sysconfdir: install_sysconfdir,
-            docdir: install_docdir,
-            bindir: install_bindir,
-            libdir: install_libdir,
-            mandir: install_mandir,
-            datadir: install_datadir,
+            prefix: install_prefix_toml,
+            sysconfdir: install_sysconfdir_toml,
+            docdir: install_docdir_toml,
+            bindir: install_bindir_toml,
+            libdir: install_libdir_toml,
+            mandir: install_mandir_toml,
+            datadir: install_datadir_toml,
         } = toml.install.unwrap_or_default();
 
-        let install_prefix = install_prefix.map(PathBuf::from);
-        let install_sysconfdir = install_sysconfdir.map(PathBuf::from);
-        let install_docdir = install_docdir.map(PathBuf::from);
-        let install_bindir = install_bindir.map(PathBuf::from);
-        let install_libdir = install_libdir.map(PathBuf::from);
-        let install_mandir = install_mandir.map(PathBuf::from);
-        let install_datadir = install_datadir.map(PathBuf::from);
+        let install_prefix = install_prefix_toml.map(PathBuf::from);
+        let install_sysconfdir = install_sysconfdir_toml.map(PathBuf::from);
+        let install_docdir = install_docdir_toml.map(PathBuf::from);
+        let install_bindir = install_bindir_toml.map(PathBuf::from);
+        let install_libdir = install_libdir_toml.map(PathBuf::from);
+        let install_mandir = install_mandir_toml.map(PathBuf::from);
+        let install_datadir = install_datadir_toml.map(PathBuf::from);
         config.prefix = install_prefix;
         config.sysconfdir = install_sysconfdir;
         config.datadir = install_datadir;
