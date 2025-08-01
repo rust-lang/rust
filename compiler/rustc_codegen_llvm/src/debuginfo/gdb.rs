@@ -1,5 +1,7 @@
 // .debug_gdb_scripts binary section.
 
+use std::ffi::CString;
+
 use rustc_abi::{Align, Size};
 use rustc_attr_ir::DebuggerVisualizerType;
 use rustc_codegen_ssa::base::collect_debugger_visualizers_transitive;
@@ -29,7 +31,12 @@ pub(crate) fn insert_reference_to_gdb_debug_scripts_section_global(bx: &mut Buil
 pub(crate) fn get_or_insert_gdb_debug_scripts_section_global<'ll>(
     cx: &CodegenCx<'ll, '_>,
 ) -> Value<'ll> {
-    let c_section_var_name = c"__rustc_debug_gdb_scripts_section__";
+    let c_section_var_name = CString::new(format!(
+        "__rustc_debug_gdb_scripts_section_{}_{:08x}",
+        cx.tcx.crate_name(LOCAL_CRATE),
+        cx.tcx.stable_crate_id(LOCAL_CRATE),
+    ))
+    .unwrap();
     let section_var_name = c_section_var_name.to_str().unwrap();
 
     let section_var = unsafe { llvm::LLVMGetNamedGlobal(cx.llmod, c_section_var_name.as_ptr()) };
