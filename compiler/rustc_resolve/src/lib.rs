@@ -861,6 +861,7 @@ enum AmbiguityKind {
     GlobVsGlob,
     GlobVsExpanded,
     MoreExpandedVsOuter,
+    ExternPrelude,
 }
 
 impl AmbiguityKind {
@@ -880,6 +881,9 @@ impl AmbiguityKind {
             }
             AmbiguityKind::MoreExpandedVsOuter => {
                 "a conflict between a macro-expanded name and a less macro-expanded name from outer scope during import or macro resolution"
+            }
+            AmbiguityKind::ExternPrelude => {
+                "a conflict between a macro-expanded `extern crate` and `--extern` flag during import or macro resolution"
             }
         }
     }

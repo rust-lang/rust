@@ -36,9 +36,8 @@ error[E0659]: `std` is ambiguous
 LL | use ::std::mem as _;
    |       ^^^ ambiguous name
    |
-   = note: ambiguous because of a conflict between a macro-expanded name and a less macro-expanded name from outer scope during import or macro resolution
+   = note: ambiguous because of a conflict between a macro-expanded `extern crate` and `--extern` flag during import or macro resolution
    = note: `std` could refer to a built-in crate
-   = help: use `::std` to refer to this crate unambiguously
 note: `std` could also refer to the crate imported here
   --> $DIR/issue-109148.rs:6:9
    |
@@ -47,7 +46,6 @@ LL |         extern crate core as std;
 ...
 LL | m!();
    | ---- in this macro invocation
-   = help: use `::std` to refer to this crate unambiguously
    = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 3 previous errors

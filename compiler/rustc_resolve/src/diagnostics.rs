@@ -1886,7 +1886,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     "consider adding an explicit import of `{ident}` to disambiguate"
                 ))
             }
-            if b.is_extern_crate() && ident.span.at_least_rust_2018() {
+            if kind != AmbiguityKind::ExternPrelude
+                && b.is_extern_crate()
+                && ident.span.at_least_rust_2018()
+            {
                 help_msgs.push(format!("use `::{ident}` to refer to this {thing} unambiguously"))
             }
             match misc {

@@ -396,9 +396,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             struct Flags: u8 {
                 const MACRO_RULES          = 1 << 0;
                 const MODULE               = 1 << 1;
-                const MISC_SUGGEST_CRATE   = 1 << 2;
-                const MISC_SUGGEST_SELF    = 1 << 3;
-                const MISC_FROM_PRELUDE    = 1 << 4;
+                const EXTERN_PRELUDE       = 1 << 2;
+                const MISC_SUGGEST_CRATE   = 1 << 3;
+                const MISC_SUGGEST_SELF    = 1 << 4;
+                const MISC_FROM_PRELUDE    = 1 << 5;
             }
         }
 
@@ -564,7 +565,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     },
                     Scope::ExternPreludeItems => {
                         match this.extern_prelude_get_item(ident, finalize.is_some()) {
-                            Some(binding) => Ok((binding, Flags::empty())),
+                            Some(binding) => Ok((binding, Flags::EXTERN_PRELUDE)),
                             None => Err(Determinacy::determined(
                                 this.graph_root.unexpanded_invocations.borrow().is_empty(),
                             )),
@@ -572,7 +573,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     }
                     Scope::ExternPreludeFlags => {
                         match this.extern_prelude_get_flag(ident, finalize.is_some()) {
-                            Some(binding) => Ok((binding, Flags::empty())),
+                            Some(binding) => Ok((binding, Flags::EXTERN_PRELUDE)),
                             None => Err(Determinacy::Determined),
                         }
                     }
@@ -684,7 +685,13 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                 } else if innermost_binding
                                     .may_appear_after(parent_scope.expansion, binding)
                                 {
-                                    Some(AmbiguityKind::MoreExpandedVsOuter)
+                                    if flags.contains(Flags::EXTERN_PRELUDE)
+                                        && innermost_flags.contains(Flags::EXTERN_PRELUDE)
+                                    {
+                                        Some(AmbiguityKind::ExternPrelude)
+                                    } else {
+                                        Some(AmbiguityKind::MoreExpandedVsOuter)
+                                    }
                                 } else {
                                     None
                                 };
