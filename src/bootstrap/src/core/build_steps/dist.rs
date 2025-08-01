@@ -1384,7 +1384,7 @@ impl Step for CraneliftCodegenBackend {
         let clif_enabled_by_default = run
             .builder
             .config
-            .codegen_backends(run.builder.host_target)
+            .enabled_codegen_backends(run.builder.host_target)
             .contains(&CodegenBackendKind::Cranelift);
         run.alias("rustc_codegen_cranelift").default_condition(clif_enabled_by_default)
     }

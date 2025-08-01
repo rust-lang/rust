@@ -3468,7 +3468,11 @@ impl Step for CodegenCranelift {
             return;
         }
 
-        if !builder.config.codegen_backends(run.target).contains(&CodegenBackendKind::Cranelift) {
+        if !builder
+            .config
+            .enabled_codegen_backends(run.target)
+            .contains(&CodegenBackendKind::Cranelift)
+        {
             builder.info("cranelift not in rust.codegen-backends. skipping");
             return;
         }
@@ -3595,7 +3599,7 @@ impl Step for CodegenGCC {
             return;
         }
 
-        if !builder.config.codegen_backends(run.target).contains(&CodegenBackendKind::Gcc) {
+        if !builder.config.enabled_codegen_backends(run.target).contains(&CodegenBackendKind::Gcc) {
             builder.info("gcc not in rust.codegen-backends. skipping");
             return;
         }
