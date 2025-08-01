@@ -123,6 +123,12 @@ if [#96176][cleanup-compiler-for] is resolved.
 
 [cleanup-compiler-for]: https://github.com/rust-lang/rust/issues/96176
 
+### Rendering step graph
+
+When you run bootstrap with the `BOOTSTRAP_TRACING` environment variable configured, bootstrap will automatically output a DOT file that shows all executed steps and their dependencies. The files will have a prefix `bootstrap-steps`. You can use e.g. `xdot` to visualize the file or e.g. `dot -Tsvg` to convert the DOT file to a SVG file.
+
+A separate DOT file will be outputted for dry-run and non-dry-run execution.
+
 ### Using `tracing` in bootstrap
 
 Both `tracing::*` macros and the `tracing::instrument` proc-macro attribute need to be gated behind `tracing` feature. Examples:

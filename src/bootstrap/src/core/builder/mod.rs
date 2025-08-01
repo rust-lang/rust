@@ -77,7 +77,7 @@ impl Deref for Builder<'_> {
 /// type's [`Debug`] implementation.
 ///
 /// (Trying to debug-print `dyn Any` results in the unhelpful `"Any { .. }"`.)
-trait AnyDebug: Any + Debug {}
+pub trait AnyDebug: Any + Debug {}
 impl<T: Any + Debug> AnyDebug for T {}
 impl dyn AnyDebug {
     /// Equivalent to `<dyn Any>::downcast_ref`.
@@ -196,6 +196,14 @@ impl StepMetadata {
             // For std, its stage corresponds to the stage of the compiler that builds it.
             // For everything else, a stage N things gets built by a stage N-1 compiler.
             .map(|compiler| if self.name == "std" { compiler.stage } else { compiler.stage + 1 }))
+    }
+
+    pub fn get_name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn get_target(&self) -> TargetSelection {
+        self.target
     }
 }
 
@@ -1657,9 +1665,24 @@ You have to build a stage1 compiler for `{}` first, and then use it to build a s
             if let Some(out) = self.cache.get(&step) {
                 self.verbose_than(1, || println!("{}c {:?}", "  ".repeat(stack.len()), step));
 
+                #[cfg(feature = "tracing")]
+                {
+                    if let Some(parent) = stack.last() {
+                        let mut graph = self.build.step_graph.borrow_mut();
+                        graph.register_cached_step(&step, parent, self.config.dry_run());
+                    }
+                }
                 return out;
             }
             self.verbose_than(1, || println!("{}> {:?}", "  ".repeat(stack.len()), step));
+
+            #[cfg(feature = "tracing")]
+            {
+                let parent = stack.last();
+                let mut graph = self.build.step_graph.borrow_mut();
+                graph.register_step_execution(&step, parent, self.config.dry_run());
+            }
+
             stack.push(Box::new(step.clone()));
         }
 
