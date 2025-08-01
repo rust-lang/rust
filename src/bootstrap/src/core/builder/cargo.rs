@@ -563,6 +563,12 @@ impl Builder<'_> {
             println!("using sysroot {sysroot_str}");
         }
 
+        if self.config.codegen_backends(target).first().map(|b| b.as_str()) == Some("gcc") {
+            let gcc_sysroot = self.config.libgccjit_root();
+            let gcc_sysroot = gcc_sysroot.as_os_str().to_str().expect("sysroot should be UTF-8");
+            cargo.env("LD_LIBRARY_PATH", gcc_sysroot);
+        }
+
         let mut rustflags = Rustflags::new(target);
         if build_compiler_stage != 0 {
             if let Ok(s) = env::var("CARGOFLAGS_NOT_BOOTSTRAP") {

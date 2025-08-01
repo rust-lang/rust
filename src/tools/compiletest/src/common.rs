@@ -684,6 +684,9 @@ pub struct Config {
 
     /// Current codegen backend used.
     pub codegen_backend: CodegenBackend,
+
+    /// Only used by GCC codegen backend for now. It is used to pass `libgccjit.so`'s path.
+    pub extra_library_path: Option<Utf8PathBuf>,
 }
 
 impl Config {
@@ -787,6 +790,7 @@ impl Config {
             diff_command: Default::default(),
             minicore_path: Default::default(),
             codegen_backend: CodegenBackend::Llvm,
+            extra_library_path: None,
         }
     }
 
@@ -1151,7 +1155,11 @@ fn supported_crate_types(config: &Config) -> HashSet<String> {
 
 fn rustc_output(config: &Config, args: &[&str], envs: HashMap<String, String>) -> String {
     let mut command = Command::new(&config.rustc_path);
-    add_dylib_path(&mut command, iter::once(&config.compile_lib_path));
+    if let Some(ref extra_lib) = config.extra_library_path {
+        add_dylib_path(&mut command, [&config.compile_lib_path, &extra_lib].iter());
+    } else {
+        add_dylib_path(&mut command, iter::once(&config.compile_lib_path));
+    }
     command.args(&config.target_rustcflags).args(args);
     command.env("RUSTC_BOOTSTRAP", "1");
     command.envs(envs);

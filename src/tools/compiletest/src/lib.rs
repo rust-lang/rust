@@ -204,11 +204,12 @@ pub fn parse_config(args: Vec<String>) -> Config {
             "only test a specific debugger in debuginfo tests",
             "gdb | lldb | cdb",
         )
+        .optopt("", "codegen-backend", "the codegen backend currently used", "CODEGEN BACKEND NAME")
         .optopt(
             "",
-            "codegen-backend",
-            "the codegen backend currently used",
-            "CODEGEN BACKEND NAME",
+            "extra-library-path",
+            "extra path to be passed into LIBRARY_PATH environment variable",
+            "library path",
         );
 
     let (argv0, args_) = args.split_first().unwrap();
@@ -466,6 +467,10 @@ pub fn parse_config(args: Vec<String>) -> Config {
         minicore_path: opt_path(matches, "minicore-path"),
 
         codegen_backend,
+
+        extra_library_path: matches
+            .opt_str("extra-library-path")
+            .map(|p| make_absolute(Utf8PathBuf::from(p))),
     }
 }
 

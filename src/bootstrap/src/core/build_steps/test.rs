@@ -1785,7 +1785,10 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         cmd.arg("--host").arg(&*compiler.host.triple);
         cmd.arg("--llvm-filecheck").arg(builder.llvm_filecheck(builder.config.host_target));
 
-        if let Some(codegen_backend) = builder.config.default_codegen_backend(compiler.host) {
+        if let Some(codegen_backend) = builder.config.codegen_backends(compiler.host).first() {
+            cmd.arg("--codegen-backend").arg(codegen_backend);
+        } else if let Some(codegen_backend) = builder.config.default_codegen_backend(compiler.host)
+        {
             cmd.arg("--codegen-backend").arg(&codegen_backend);
         }
 
@@ -1931,6 +1934,11 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         for exclude in &builder.config.skip {
             cmd.arg("--skip");
             cmd.arg(exclude);
+        }
+
+        if builder.config.codegen_backends(target).first().map(|b| b.as_str()) == Some("gcc") {
+            cmd.arg("--extra-library-path");
+            cmd.arg(builder.config.libgccjit_root());
         }
 
         // Get paths from cmd args

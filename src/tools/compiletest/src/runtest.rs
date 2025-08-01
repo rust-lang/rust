@@ -1556,6 +1556,11 @@ impl<'test> TestCx<'test> {
             // In stage 0, make sure we use `stage0-sysroot` instead of the bootstrap sysroot.
             rustc.arg("--sysroot").arg(&self.config.sysroot_base);
         }
+        // If the provided codegen backend is not LLVM, we need to pass it.
+        if !matches!(self.config.codegen_backend, crate::CodegenBackend::Llvm) {
+            let lib_path = self.config.sysroot_base.join(self.config.codegen_backend.as_str());
+            rustc.arg(format!("-Zcodegen-backend={}", lib_path));
+        }
 
         // Optionally prevent default --target if specified in test compile-flags.
         let custom_target = self.props.compile_flags.iter().any(|x| x.starts_with("--target"));
