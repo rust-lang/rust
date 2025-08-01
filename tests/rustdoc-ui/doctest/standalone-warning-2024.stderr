@@ -15,7 +15,7 @@ error: unknown attribute `standalone`
 note: the lint level is defined here
   --> $DIR/standalone-warning-2024.rs:9:9
    |
-9  | #![deny(warnings)]
+ 9 | #![deny(warnings)]
    |         ^^^^^^^^
    = note: `#[deny(rustdoc::invalid_codeblock_attributes)]` implied by `#[deny(warnings)]`
 

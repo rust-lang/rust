@@ -286,7 +286,7 @@ fn parse_iter_usage<'tcx>(
             let iter_id = cx.tcx.get_diagnostic_item(sym::Iterator)?;
 
             match (name.ident.name, args) {
-                (sym::next, []) if cx.tcx.trait_of_item(did) == Some(iter_id) => (IterUsageKind::Nth(0), e.span),
+                (sym::next, []) if cx.tcx.trait_of_assoc(did) == Some(iter_id) => (IterUsageKind::Nth(0), e.span),
                 (sym::next_tuple, []) => {
                     return if paths::ITERTOOLS_NEXT_TUPLE.matches(cx, did)
                         && let ty::Adt(adt_def, subs) = cx.typeck_results().expr_ty(e).kind()
@@ -303,7 +303,7 @@ fn parse_iter_usage<'tcx>(
                         None
                     };
                 },
-                (sym::nth | sym::skip, [idx_expr]) if cx.tcx.trait_of_item(did) == Some(iter_id) => {
+                (sym::nth | sym::skip, [idx_expr]) if cx.tcx.trait_of_assoc(did) == Some(iter_id) => {
                     if let Some(Constant::Int(idx)) = ConstEvalCtxt::new(cx).eval(idx_expr) {
                         let span = if name.ident.as_str() == "nth" {
                             e.span
@@ -312,7 +312,7 @@ fn parse_iter_usage<'tcx>(
                             && next_name.ident.name == sym::next
                             && next_expr.span.ctxt() == ctxt
                             && let Some(next_id) = cx.typeck_results().type_dependent_def_id(next_expr.hir_id)
-                            && cx.tcx.trait_of_item(next_id) == Some(iter_id)
+                            && cx.tcx.trait_of_assoc(next_id) == Some(iter_id)
                         {
                             next_expr.span
                         } else {

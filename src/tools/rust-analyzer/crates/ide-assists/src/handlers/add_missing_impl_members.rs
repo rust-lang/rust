@@ -2,6 +2,7 @@ use hir::HasSource;
 use syntax::{
     Edition,
     ast::{self, AstNode, make},
+    syntax_editor::{Position, SyntaxEditor},
 };
 
 use crate::{
@@ -147,45 +148,78 @@ fn add_missing_impl_members_inner(
 
     let target = impl_def.syntax().text_range();
     acc.add(AssistId::quick_fix(assist_id), label, target, |edit| {
-        let new_impl_def = edit.make_mut(impl_def.clone());
-        let first_new_item = add_trait_assoc_items_to_impl(
+        let new_item = add_trait_assoc_items_to_impl(
             &ctx.sema,
             ctx.config,
             &missing_items,
             trait_,
-            &new_impl_def,
+            &impl_def,
             &target_scope,
         );
+
+        let Some((first_new_item, other_items)) = new_item.split_first() else {
+            return;
+        };
+
+        let mut first_new_item = if let DefaultMethods::No = mode
+            && let ast::AssocItem::Fn(func) = &first_new_item
+            && let Some(body) = try_gen_trait_body(
+                ctx,
+                func,
+                trait_ref,
+                &impl_def,
+                target_scope.krate().edition(ctx.sema.db),
+            )
+            && let Some(func_body) = func.body()
+        {
+            let mut func_editor = SyntaxEditor::new(first_new_item.syntax().clone_subtree());
+            func_editor.replace(func_body.syntax(), body.syntax());
+            ast::AssocItem::cast(func_editor.finish().new_root().clone())
+        } else {
+            Some(first_new_item.clone())
+        };
+
+        let new_assoc_items = first_new_item
+            .clone()
+            .into_iter()
+            .chain(other_items.iter().cloned())
+            .map(either::Either::Right)
+            .collect::<Vec<_>>();
+
+        let mut editor = edit.make_editor(impl_def.syntax());
+        if let Some(assoc_item_list) = impl_def.assoc_item_list() {
+            let items = new_assoc_items.into_iter().filter_map(either::Either::right).collect();
+            assoc_item_list.add_items(&mut editor, items);
+        } else {
+            let assoc_item_list = make::assoc_item_list(Some(new_assoc_items)).clone_for_update();
+            editor.insert_all(
+                Position::after(impl_def.syntax()),
+                vec![make::tokens::whitespace(" ").into(), assoc_item_list.syntax().clone().into()],
+            );
+            first_new_item = assoc_item_list.assoc_items().next();
+        }
 
         if let Some(cap) = ctx.config.snippet_cap {
             let mut placeholder = None;
             if let DefaultMethods::No = mode {
-                if let ast::AssocItem::Fn(func) = &first_new_item {
-                    if try_gen_trait_body(
-                        ctx,
-                        func,
-                        trait_ref,
-                        &impl_def,
-                        target_scope.krate().edition(ctx.sema.db),
-                    )
-                    .is_none()
+                if let Some(ast::AssocItem::Fn(func)) = &first_new_item {
+                    if let Some(m) = func.syntax().descendants().find_map(ast::MacroCall::cast)
+                        && m.syntax().text() == "todo!()"
                     {
-                        if let Some(m) = func.syntax().descendants().find_map(ast::MacroCall::cast)
-                        {
-                            if m.syntax().text() == "todo!()" {
-                                placeholder = Some(m);
-                            }
-                        }
+                        placeholder = Some(m);
                     }
                 }
             }
 
             if let Some(macro_call) = placeholder {
-                edit.add_placeholder_snippet(cap, macro_call);
-            } else {
-                edit.add_tabstop_before(cap, first_new_item);
+                let placeholder = edit.make_placeholder_snippet(cap);
+                editor.add_annotation(macro_call.syntax(), placeholder);
+            } else if let Some(first_new_item) = first_new_item {
+                let tabstop = edit.make_tabstop_before(cap);
+                editor.add_annotation(first_new_item.syntax(), tabstop);
             };
         };
+        edit.add_file_edits(ctx.vfs_file_id(), editor);
     })
 }
 
@@ -195,7 +229,7 @@ fn try_gen_trait_body(
     trait_ref: hir::TraitRef<'_>,
     impl_def: &ast::Impl,
     edition: Edition,
-) -> Option<()> {
+) -> Option<ast::BlockExpr> {
     let trait_path = make::ext::ident_path(
         &trait_ref.trait_().name(ctx.db()).display(ctx.db(), edition).to_string(),
     );
@@ -322,7 +356,7 @@ impl Foo for S {
     }
 
     #[test]
-    fn test_impl_def_without_braces() {
+    fn test_impl_def_without_braces_macro() {
         check_assist(
             add_missing_impl_members,
             r#"
@@ -335,6 +369,33 @@ struct S;
 impl Foo for S {
     fn foo(&self) {
         ${0:todo!()}
+    }
+}"#,
+        );
+    }
+
+    #[test]
+    fn test_impl_def_without_braces_tabstop_first_item() {
+        check_assist(
+            add_missing_impl_members,
+            r#"
+trait Foo {
+    type Output;
+    fn foo(&self);
+}
+struct S;
+impl Foo for S { $0 }"#,
+            r#"
+trait Foo {
+    type Output;
+    fn foo(&self);
+}
+struct S;
+impl Foo for S {
+    $0type Output;
+
+    fn foo(&self) {
+        todo!()
     }
 }"#,
         );

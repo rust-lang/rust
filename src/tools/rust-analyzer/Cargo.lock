@@ -396,15 +396,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "directories"
-version = "6.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "16f5094c54661b38d03bd7e50df373292118db60b585c08a411c6d840017fe7d"
-dependencies = [
- "dirs-sys",
-]
-
-[[package]]
 name = "dirs"
 version = "6.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1268,7 +1259,7 @@ dependencies = [
  "expect-test",
  "intern",
  "parser",
- "ra-ap-rustc_lexer 0.122.0",
+ "ra-ap-rustc_lexer 0.123.0",
  "rustc-hash 2.1.1",
  "smallvec",
  "span",
@@ -1504,7 +1495,7 @@ dependencies = [
  "drop_bomb",
  "edition",
  "expect-test",
- "ra-ap-rustc_lexer 0.122.0",
+ "ra-ap-rustc_lexer 0.123.0",
  "rustc-literal-escaper",
  "stdx",
  "tracing",
@@ -1614,7 +1605,7 @@ dependencies = [
  "object",
  "paths",
  "proc-macro-test",
- "ra-ap-rustc_lexer 0.122.0",
+ "ra-ap-rustc_lexer 0.123.0",
  "span",
  "syntax-bridge",
  "tt",
@@ -1688,6 +1679,7 @@ dependencies = [
  "serde_json",
  "span",
  "stdx",
+ "temp-dir",
  "toolchain",
  "tracing",
  "triomphe",
@@ -1756,9 +1748,9 @@ dependencies = [
 
 [[package]]
 name = "ra-ap-rustc_abi"
-version = "0.122.0"
+version = "0.123.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fb01e1fec578003c85481c1cad4ff8cd8195b07c2dc85ae3f716108507ae15d5"
+checksum = "f18c877575c259d127072e9bfc41d985202262fb4d6bfdae3d1252147c2562c2"
 dependencies = [
  "bitflags 2.9.1",
  "ra-ap-rustc_hashes",
@@ -1768,18 +1760,18 @@ dependencies = [
 
 [[package]]
 name = "ra-ap-rustc_hashes"
-version = "0.122.0"
+version = "0.123.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e0ec056e72a472ffef8761ce96ece6c626eb07368c09d0105b6df30d27d07673"
+checksum = "2439ed1df3472443133b66949f81080dff88089b42f825761455463709ee1cad"
 dependencies = [
  "rustc-stable-hash",
 ]
 
 [[package]]
 name = "ra-ap-rustc_index"
-version = "0.122.0"
+version = "0.123.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0fcdd1001db0295e59052e9f53aeda588bbe81e362534f4687d41bd44777b5a7"
+checksum = "57a24fe0be21be1f8ebc21dcb40129214fb4cefb0f2753f3d46b6dbe656a1a45"
 dependencies = [
  "ra-ap-rustc_index_macros",
  "smallvec",
@@ -1787,9 +1779,9 @@ dependencies = [
 
 [[package]]
 name = "ra-ap-rustc_index_macros"
-version = "0.122.0"
+version = "0.123.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "728d64dd98e25530b32e3f7c7c1e844e52722b269360daa1cdeba9dff9727a26"
+checksum = "844a27ddcad0116facae2df8e741fd788662cf93dc13029cd864f2b8013b81f9"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1809,9 +1801,9 @@ dependencies = [
 
 [[package]]
 name = "ra-ap-rustc_lexer"
-version = "0.122.0"
+version = "0.123.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "415f0821f512608d825b3215489a6a6a2c18ed9f0045953d514e7ec23d4b90ab"
+checksum = "2b734cfcb577d09877799a22742f1bd398be6c00bc428d9de56d48d11ece5771"
 dependencies = [
  "memchr",
  "unicode-properties",
@@ -1830,9 +1822,9 @@ dependencies = [
 
 [[package]]
 name = "ra-ap-rustc_pattern_analysis"
-version = "0.122.0"
+version = "0.123.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4657fcfdfe06e2a02ec8180d4e7c95aecf4811ba50367e363d1a2300b7623284"
+checksum = "75b0ee1f059b9dea0818c6c7267478926eee95ba4c7dcf89c8db32fa165d3904"
 dependencies = [
  "ra-ap-rustc_index",
  "rustc-hash 2.1.1",
@@ -2294,6 +2286,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "temp-dir"
+version = "0.1.16"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "83176759e9416cf81ee66cb6508dbfe9c96f20b8b56265a39917551c23c70964"
+
+[[package]]
 name = "tenthash"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2592,7 +2590,7 @@ version = "0.0.0"
 dependencies = [
  "arrayvec",
  "intern",
- "ra-ap-rustc_lexer 0.122.0",
+ "ra-ap-rustc_lexer 0.123.0",
  "stdx",
  "text-size",
 ]
@@ -3105,7 +3103,6 @@ name = "xtask"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "directories",
  "edition",
  "either",
  "flate2",

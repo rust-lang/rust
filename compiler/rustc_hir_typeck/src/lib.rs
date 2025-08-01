@@ -42,18 +42,18 @@ mod writeback;
 
 pub use coercion::can_coerce;
 use fn_ctxt::FnCtxt;
-use rustc_attr_data_structures::{AttributeKind, find_attr};
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, ErrorGuaranteed, pluralize, struct_span_code_err};
 use rustc_hir as hir;
+use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::{HirId, HirIdMap, Node};
+use rustc_hir::{HirId, HirIdMap, Node, find_attr};
 use rustc_hir_analysis::check::{check_abi, check_custom_abi};
 use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
 use rustc_infer::traits::{ObligationCauseCode, ObligationInspector, WellFormedLoc};
 use rustc_middle::query::Providers;
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
 use rustc_middle::{bug, span_bug};
 use rustc_session::config;
 use rustc_span::Span;
@@ -258,6 +258,21 @@ fn typeck_with_inspect<'tcx>(
     fcx.check_asms();
 
     let typeck_results = fcx.resolve_type_vars_in_body(body);
+
+    // Handle potentially region dependent goals, see `InferCtxt::in_hir_typeck`.
+    if let None = fcx.infcx.tainted_by_errors() {
+        for obligation in fcx.take_hir_typeck_potentially_region_dependent_goals() {
+            let obligation = fcx.resolve_vars_if_possible(obligation);
+            if obligation.has_non_region_infer() {
+                bug!("unexpected inference variable after writeback: {obligation:?}");
+            }
+            fcx.register_predicate(obligation);
+        }
+        fcx.select_obligations_where_possible(|_| {});
+        if let None = fcx.infcx.tainted_by_errors() {
+            fcx.report_ambiguity_errors();
+        }
+    }
 
     fcx.detect_opaque_types_added_during_writeback();
 

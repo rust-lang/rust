@@ -1,4 +1,5 @@
 // Test that rustdoc will properly canonicalize the target spec json path just like rustc.
+//@ needs-llvm-components: x86
 
 use run_make_support::{cwd, rustc, rustdoc};
 

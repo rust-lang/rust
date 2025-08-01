@@ -51,7 +51,7 @@ impl ops::BitOrAssign for EagernessSuggestion {
 fn fn_eagerness(cx: &LateContext<'_>, fn_id: DefId, name: Symbol, have_one_arg: bool) -> EagernessSuggestion {
     use EagernessSuggestion::{Eager, Lazy, NoChange};
 
-    let ty = match cx.tcx.impl_of_method(fn_id) {
+    let ty = match cx.tcx.impl_of_assoc(fn_id) {
         Some(id) => cx.tcx.type_of(id).instantiate_identity(),
         None => return Lazy,
     };

@@ -640,16 +640,16 @@ impl<'a> AstValidator<'a> {
             return;
         }
 
-        if let Some(header) = fk.header() {
-            if let Const::Yes(const_span) = header.constness {
-                let mut spans = variadic_spans.clone();
-                spans.push(const_span);
-                self.dcx().emit_err(errors::ConstAndCVariadic {
-                    spans,
-                    const_span,
-                    variadic_spans: variadic_spans.clone(),
-                });
-            }
+        if let Some(header) = fk.header()
+            && let Const::Yes(const_span) = header.constness
+        {
+            let mut spans = variadic_spans.clone();
+            spans.push(const_span);
+            self.dcx().emit_err(errors::ConstAndCVariadic {
+                spans,
+                const_span,
+                variadic_spans: variadic_spans.clone(),
+            });
         }
 
         match (fk.ctxt(), fk.header()) {

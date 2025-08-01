@@ -341,7 +341,7 @@ impl<'tcx> BorrowExplanation<'tcx> {
                                 }
                             }
                         } else if let LocalInfo::BlockTailTemp(info) = local_decl.local_info() {
-                            let sp = info.span.find_oldest_ancestor_in_same_ctxt();
+                            let sp = info.span.find_ancestor_not_from_macro().unwrap_or(info.span);
                             if info.tail_result_is_ignored {
                                 // #85581: If the first mutable borrow's scope contains
                                 // the second borrow, this suggestion isn't helpful.
@@ -917,30 +917,29 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
 
                 if let TerminatorKind::Call { destination, target: Some(block), args, .. } =
                     &terminator.kind
+                    && let Some(dest) = destination.as_local()
                 {
-                    if let Some(dest) = destination.as_local() {
-                        debug!(
-                            "was_captured_by_trait_object: target={:?} dest={:?} args={:?}",
-                            target, dest, args
-                        );
-                        // Check if one of the arguments to this function is the target place.
-                        let found_target = args.iter().any(|arg| {
-                            if let Operand::Move(place) = arg.node {
-                                if let Some(potential) = place.as_local() {
-                                    potential == target
-                                } else {
-                                    false
-                                }
+                    debug!(
+                        "was_captured_by_trait_object: target={:?} dest={:?} args={:?}",
+                        target, dest, args
+                    );
+                    // Check if one of the arguments to this function is the target place.
+                    let found_target = args.iter().any(|arg| {
+                        if let Operand::Move(place) = arg.node {
+                            if let Some(potential) = place.as_local() {
+                                potential == target
                             } else {
                                 false
                             }
-                        });
-
-                        // If it is, follow this to the next block and update the target.
-                        if found_target {
-                            target = dest;
-                            queue.push(block.start_location());
+                        } else {
+                            false
                         }
+                    });
+
+                    // If it is, follow this to the next block and update the target.
+                    if found_target {
+                        target = dest;
+                        queue.push(block.start_location());
                     }
                 }
             }

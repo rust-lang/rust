@@ -11,7 +11,8 @@ use std::path::{Path, PathBuf};
 use std::process::{self, Command, Stdio};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
-use std::{panic, str};
+use std::time::{Duration, Instant};
+use std::{fmt, panic, str};
 
 pub(crate) use make::{BuildDocTestBuilder, DocTestBuilder};
 pub(crate) use markdown::test as test_markdown;
@@ -35,6 +36,50 @@ use self::rust::HirCollector;
 use crate::config::{Options as RustdocOptions, OutputFormat};
 use crate::html::markdown::{ErrorCodes, Ignore, LangString, MdRelLine};
 use crate::lint::init_lints;
+
+/// Type used to display times (compilation and total) information for merged doctests.
+struct MergedDoctestTimes {
+    total_time: Instant,
+    /// Total time spent compiling all merged doctests.
+    compilation_time: Duration,
+    /// This field is used to keep track of how many merged doctests we (tried to) compile.
+    added_compilation_times: usize,
+}
+
+impl MergedDoctestTimes {
+    fn new() -> Self {
+        Self {
+            total_time: Instant::now(),
+            compilation_time: Duration::default(),
+            added_compilation_times: 0,
+        }
+    }
+
+    fn add_compilation_time(&mut self, duration: Duration) {
+        self.compilation_time += duration;
+        self.added_compilation_times += 1;
+    }
+
+    fn display_times(&self) {
+        // If no merged doctest was compiled, then there is nothing to display since the numbers
+        // displayed by `libtest` for standalone tests are already accurate (they include both
+        // compilation and runtime).
+        if self.added_compilation_times > 0 {
+            println!("{self}");
+        }
+    }
+}
+
+impl fmt::Display for MergedDoctestTimes {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "all doctests ran in {:.2}s; merged doctests compilation took {:.2}s",
+            self.total_time.elapsed().as_secs_f64(),
+            self.compilation_time.as_secs_f64(),
+        )
+    }
+}
 
 /// Options that apply to all doctests in a crate or Markdown file (for `rustdoc foo.md`).
 #[derive(Clone)]
@@ -295,6 +340,7 @@ pub(crate) fn run_tests(
 
     let mut nb_errors = 0;
     let mut ran_edition_tests = 0;
+    let mut times = MergedDoctestTimes::new();
     let target_str = rustdoc_options.target.to_string();
 
     for (MergeableTestKey { edition, global_crate_attrs_hash }, mut doctests) in mergeable_tests {
@@ -314,13 +360,15 @@ pub(crate) fn run_tests(
         for (doctest, scraped_test) in &doctests {
             tests_runner.add_test(doctest, scraped_test, &target_str);
         }
-        if let Ok(success) = tests_runner.run_merged_tests(
+        let (duration, ret) = tests_runner.run_merged_tests(
             rustdoc_test_options,
             edition,
             &opts,
             &test_args,
             rustdoc_options,
-        ) {
+        );
+        times.add_compilation_time(duration);
+        if let Ok(success) = ret {
             ran_edition_tests += 1;
             if !success {
                 nb_errors += 1;
@@ -354,12 +402,15 @@ pub(crate) fn run_tests(
         test::test_main_with_exit_callback(&test_args, standalone_tests, None, || {
             // We ensure temp dir destructor is called.
             std::mem::drop(temp_dir.take());
+            times.display_times();
         });
     }
     if nb_errors != 0 {
         // We ensure temp dir destructor is called.
         std::mem::drop(temp_dir);
-        // libtest::ERROR_EXIT_CODE is not public but it's the same value.
+        times.display_times();
+        // FIXME(GuillaumeGomez): Uncomment the next line once #144297 has been merged.
+        // std::process::exit(test::ERROR_EXIT_CODE);
         std::process::exit(101);
     }
 }
@@ -496,16 +547,19 @@ impl RunnableDocTest {
 ///
 /// This is the function that calculates the compiler command line, invokes the compiler, then
 /// invokes the test or tests in a separate executable (if applicable).
+///
+/// Returns a tuple containing the `Duration` of the compilation and the `Result` of the test.
 fn run_test(
     doctest: RunnableDocTest,
     rustdoc_options: &RustdocOptions,
     supports_color: bool,
     report_unused_externs: impl Fn(UnusedExterns),
-) -> Result<(), TestFailure> {
+) -> (Duration, Result<(), TestFailure>) {
     let langstr = &doctest.langstr;
     // Make sure we emit well-formed executable names for our target.
     let rust_out = add_exe_suffix("rust_out".to_owned(), &rustdoc_options.target);
     let output_file = doctest.test_opts.outdir.path().join(rust_out);
+    let instant = Instant::now();
 
     // Common arguments used for compiling the doctest runner.
     // On merged doctests, the compiler is invoked twice: once for the test code itself,
@@ -589,7 +643,7 @@ fn run_test(
         if std::fs::write(&input_file, &doctest.full_test_code).is_err() {
             // If we cannot write this file for any reason, we leave. All combined tests will be
             // tested as standalone tests.
-            return Err(TestFailure::CompileError);
+            return (Duration::default(), Err(TestFailure::CompileError));
         }
         if !rustdoc_options.nocapture {
             // If `nocapture` is disabled, then we don't display rustc's output when compiling
@@ -660,7 +714,7 @@ fn run_test(
         if std::fs::write(&runner_input_file, merged_test_code).is_err() {
             // If we cannot write this file for any reason, we leave. All combined tests will be
             // tested as standalone tests.
-            return Err(TestFailure::CompileError);
+            return (instant.elapsed(), Err(TestFailure::CompileError));
         }
         if !rustdoc_options.nocapture {
             // If `nocapture` is disabled, then we don't display rustc's output when compiling
@@ -713,7 +767,7 @@ fn run_test(
     let _bomb = Bomb(&out);
     match (output.status.success(), langstr.compile_fail) {
         (true, true) => {
-            return Err(TestFailure::UnexpectedCompilePass);
+            return (instant.elapsed(), Err(TestFailure::UnexpectedCompilePass));
         }
         (true, false) => {}
         (false, true) => {
@@ -729,17 +783,18 @@ fn run_test(
                     .collect();
 
                 if !missing_codes.is_empty() {
-                    return Err(TestFailure::MissingErrorCodes(missing_codes));
+                    return (instant.elapsed(), Err(TestFailure::MissingErrorCodes(missing_codes)));
                 }
             }
         }
         (false, false) => {
-            return Err(TestFailure::CompileError);
+            return (instant.elapsed(), Err(TestFailure::CompileError));
         }
     }
 
+    let duration = instant.elapsed();
     if doctest.no_run {
-        return Ok(());
+        return (duration, Ok(()));
     }
 
     // Run the code!
@@ -771,17 +826,17 @@ fn run_test(
         cmd.output()
     };
     match result {
-        Err(e) => return Err(TestFailure::ExecutionError(e)),
+        Err(e) => return (duration, Err(TestFailure::ExecutionError(e))),
         Ok(out) => {
             if langstr.should_panic && out.status.success() {
-                return Err(TestFailure::UnexpectedRunPass);
+                return (duration, Err(TestFailure::UnexpectedRunPass));
             } else if !langstr.should_panic && !out.status.success() {
-                return Err(TestFailure::ExecutionFailure(out));
+                return (duration, Err(TestFailure::ExecutionFailure(out)));
             }
         }
     }
 
-    Ok(())
+    (duration, Ok(()))
 }
 
 /// Converts a path intended to use as a command to absolute if it is
@@ -1071,7 +1126,7 @@ fn doctest_run_fn(
         no_run: scraped_test.no_run(&rustdoc_options),
         merged_test_code: None,
     };
-    let res =
+    let (_, res) =
         run_test(runnable_test, &rustdoc_options, doctest.supports_color, report_unused_externs);
 
     if let Err(err) = res {

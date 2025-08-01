@@ -656,22 +656,26 @@ impl flags::AnalysisStats {
         let mut sw = self.stop_watch();
         let mut all = 0;
         let mut fail = 0;
-        for &body in bodies {
-            if matches!(body, DefWithBody::Variant(_)) {
+        for &body_id in bodies {
+            if matches!(body_id, DefWithBody::Variant(_)) {
                 continue;
             }
+            let module = body_id.module(db);
+            if !self.should_process(db, body_id, module) {
+                continue;
+            }
+
             all += 1;
-            let Err(e) = db.mir_body(body.into()) else {
+            let Err(e) = db.mir_body(body_id.into()) else {
                 continue;
             };
             if verbosity.is_spammy() {
-                let full_name = body
-                    .module(db)
+                let full_name = module
                     .path_to_root(db)
                     .into_iter()
                     .rev()
                     .filter_map(|it| it.name(db))
-                    .chain(Some(body.name(db).unwrap_or_else(Name::missing)))
+                    .chain(Some(body_id.name(db).unwrap_or_else(Name::missing)))
                     .map(|it| it.display(db, Edition::LATEST).to_string())
                     .join("::");
                 bar.println(format!("Mir body for {full_name} failed due {e:?}"));
@@ -727,26 +731,9 @@ impl flags::AnalysisStats {
             let name = body_id.name(db).unwrap_or_else(Name::missing);
             let module = body_id.module(db);
             let display_target = module.krate().to_display_target(db);
-            let full_name = move || {
-                module
-                    .krate()
-                    .display_name(db)
-                    .map(|it| it.canonical_name().as_str().to_owned())
-                    .into_iter()
-                    .chain(
-                        module
-                            .path_to_root(db)
-                            .into_iter()
-                            .filter_map(|it| it.name(db))
-                            .rev()
-                            .chain(Some(body_id.name(db).unwrap_or_else(Name::missing)))
-                            .map(|it| it.display(db, Edition::LATEST).to_string()),
-                    )
-                    .join("::")
-            };
             if let Some(only_name) = self.only.as_deref() {
                 if name.display(db, Edition::LATEST).to_string() != only_name
-                    && full_name() != only_name
+                    && full_name(db, body_id, module) != only_name
                 {
                     continue;
                 }
@@ -763,12 +750,17 @@ impl flags::AnalysisStats {
                         let original_file = src.file_id.original_file(db);
                         let path = vfs.file_path(original_file.file_id(db));
                         let syntax_range = src.text_range();
-                        format!("processing: {} ({} {:?})", full_name(), path, syntax_range)
+                        format!(
+                            "processing: {} ({} {:?})",
+                            full_name(db, body_id, module),
+                            path,
+                            syntax_range
+                        )
                     } else {
-                        format!("processing: {}", full_name())
+                        format!("processing: {}", full_name(db, body_id, module))
                     }
                 } else {
-                    format!("processing: {}", full_name())
+                    format!("processing: {}", full_name(db, body_id, module))
                 }
             };
             if verbosity.is_spammy() {
@@ -781,9 +773,11 @@ impl flags::AnalysisStats {
                 Ok(inference_result) => inference_result,
                 Err(p) => {
                     if let Some(s) = p.downcast_ref::<&str>() {
-                        eprintln!("infer panicked for {}: {}", full_name(), s);
+                        eprintln!("infer panicked for {}: {}", full_name(db, body_id, module), s);
                     } else if let Some(s) = p.downcast_ref::<String>() {
-                        eprintln!("infer panicked for {}: {}", full_name(), s);
+                        eprintln!("infer panicked for {}: {}", full_name(db, body_id, module), s);
+                    } else {
+                        eprintln!("infer panicked for {}", full_name(db, body_id, module));
                     }
                     panics += 1;
                     bar.inc(1);
@@ -890,7 +884,7 @@ impl flags::AnalysisStats {
             if verbosity.is_spammy() {
                 bar.println(format!(
                     "In {}: {} exprs, {} unknown, {} partial",
-                    full_name(),
+                    full_name(db, body_id, module),
                     num_exprs - previous_exprs,
                     num_exprs_unknown - previous_unknown,
                     num_exprs_partially_unknown - previous_partially_unknown
@@ -993,7 +987,7 @@ impl flags::AnalysisStats {
             if verbosity.is_spammy() {
                 bar.println(format!(
                     "In {}: {} pats, {} unknown, {} partial",
-                    full_name(),
+                    full_name(db, body_id, module),
                     num_pats - previous_pats,
                     num_pats_unknown - previous_unknown,
                     num_pats_partially_unknown - previous_partially_unknown
@@ -1049,34 +1043,8 @@ impl flags::AnalysisStats {
         bar.tick();
         for &body_id in bodies {
             let module = body_id.module(db);
-            let full_name = move || {
-                module
-                    .krate()
-                    .display_name(db)
-                    .map(|it| it.canonical_name().as_str().to_owned())
-                    .into_iter()
-                    .chain(
-                        module
-                            .path_to_root(db)
-                            .into_iter()
-                            .filter_map(|it| it.name(db))
-                            .rev()
-                            .chain(Some(body_id.name(db).unwrap_or_else(Name::missing)))
-                            .map(|it| it.display(db, Edition::LATEST).to_string()),
-                    )
-                    .join("::")
-            };
-            if let Some(only_name) = self.only.as_deref() {
-                if body_id
-                    .name(db)
-                    .unwrap_or_else(Name::missing)
-                    .display(db, Edition::LATEST)
-                    .to_string()
-                    != only_name
-                    && full_name() != only_name
-                {
-                    continue;
-                }
+            if !self.should_process(db, body_id, module) {
+                continue;
             }
             let msg = move || {
                 if verbosity.is_verbose() {
@@ -1090,12 +1058,17 @@ impl flags::AnalysisStats {
                         let original_file = src.file_id.original_file(db);
                         let path = vfs.file_path(original_file.file_id(db));
                         let syntax_range = src.text_range();
-                        format!("processing: {} ({} {:?})", full_name(), path, syntax_range)
+                        format!(
+                            "processing: {} ({} {:?})",
+                            full_name(db, body_id, module),
+                            path,
+                            syntax_range
+                        )
                     } else {
-                        format!("processing: {}", full_name())
+                        format!("processing: {}", full_name(db, body_id, module))
                     }
                 } else {
-                    format!("processing: {}", full_name())
+                    format!("processing: {}", full_name(db, body_id, module))
                 }
             };
             if verbosity.is_spammy() {
@@ -1205,9 +1178,40 @@ impl flags::AnalysisStats {
         eprintln!("{:<20} {} ({} files)", "IDE:", ide_time, file_ids.len());
     }
 
+    fn should_process(&self, db: &RootDatabase, body_id: DefWithBody, module: hir::Module) -> bool {
+        if let Some(only_name) = self.only.as_deref() {
+            let name = body_id.name(db).unwrap_or_else(Name::missing);
+
+            if name.display(db, Edition::LATEST).to_string() != only_name
+                && full_name(db, body_id, module) != only_name
+            {
+                return false;
+            }
+        }
+        true
+    }
+
     fn stop_watch(&self) -> StopWatch {
         StopWatch::start()
     }
+}
+
+fn full_name(db: &RootDatabase, body_id: DefWithBody, module: hir::Module) -> String {
+    module
+        .krate()
+        .display_name(db)
+        .map(|it| it.canonical_name().as_str().to_owned())
+        .into_iter()
+        .chain(
+            module
+                .path_to_root(db)
+                .into_iter()
+                .filter_map(|it| it.name(db))
+                .rev()
+                .chain(Some(body_id.name(db).unwrap_or_else(Name::missing)))
+                .map(|it| it.display(db, Edition::LATEST).to_string()),
+        )
+        .join("::")
 }
 
 fn location_csv_expr(db: &RootDatabase, vfs: &Vfs, sm: &BodySourceMap, expr_id: ExprId) -> String {

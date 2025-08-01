@@ -2,10 +2,11 @@ use core::ops::ControlFlow;
 
 use rustc_abi::{FieldIdx, VariantIdx};
 use rustc_apfloat::Float;
-use rustc_attr_data_structures::{AttributeKind, find_attr};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Diag;
 use rustc_hir as hir;
+use rustc_hir::attrs::AttributeKind;
+use rustc_hir::find_attr;
 use rustc_index::Idx;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::Obligation;

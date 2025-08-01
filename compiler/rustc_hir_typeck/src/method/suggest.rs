@@ -9,7 +9,6 @@ use std::path::PathBuf;
 
 use hir::Expr;
 use rustc_ast::ast::Mutability;
-use rustc_attr_data_structures::{AttributeKind, find_attr};
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::unord::UnordSet;
@@ -17,11 +16,12 @@ use rustc_errors::codes::*;
 use rustc_errors::{
     Applicability, Diag, DiagStyledString, MultiSpan, StashKey, pluralize, struct_span_code_err,
 };
+use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::lang_items::LangItem;
-use rustc_hir::{self as hir, ExprKind, HirId, Node, PathSegment, QPath};
+use rustc_hir::{self as hir, ExprKind, HirId, Node, PathSegment, QPath, find_attr};
 use rustc_infer::infer::{BoundRegionConversionTime, RegionVariableOrigin};
 use rustc_middle::bug;
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams, simplify_type};

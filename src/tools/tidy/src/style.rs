@@ -519,8 +519,11 @@ pub fn check(path: &Path, bad: &mut bool) {
                         .any(|directive| matches!(directive, Directive::Ignore(_)));
                 let has_alphabetical_directive = line.contains("tidy-alphabetical-start")
                     || line.contains("tidy-alphabetical-end");
-                let has_recognized_directive =
-                    has_recognized_ignore_directive || has_alphabetical_directive;
+                let has_other_tidy_ignore_directive =
+                    line.contains("ignore-tidy-target-specific-tests");
+                let has_recognized_directive = has_recognized_ignore_directive
+                    || has_alphabetical_directive
+                    || has_other_tidy_ignore_directive;
                 if contains_potential_directive && (!has_recognized_directive) {
                     err("Unrecognized tidy directive")
                 }

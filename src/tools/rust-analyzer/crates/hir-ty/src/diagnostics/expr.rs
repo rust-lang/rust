@@ -175,8 +175,9 @@ impl ExprValidator {
                 });
             }
 
-            let receiver_ty = self.infer[*receiver].clone();
-            checker.prev_receiver_ty = Some(receiver_ty);
+            if let Some(receiver_ty) = self.infer.type_of_expr_with_adjust(*receiver) {
+                checker.prev_receiver_ty = Some(receiver_ty.clone());
+            }
         }
     }
 
@@ -187,7 +188,9 @@ impl ExprValidator {
         arms: &[MatchArm],
         db: &dyn HirDatabase,
     ) {
-        let scrut_ty = &self.infer[scrutinee_expr];
+        let Some(scrut_ty) = self.infer.type_of_expr_with_adjust(scrutinee_expr) else {
+            return;
+        };
         if scrut_ty.contains_unknown() {
             return;
         }
@@ -200,7 +203,7 @@ impl ExprValidator {
         // Note: Skipping the entire diagnostic rather than just not including a faulty match arm is
         // preferred to avoid the chance of false positives.
         for arm in arms {
-            let Some(pat_ty) = self.infer.type_of_pat.get(arm.pat) else {
+            let Some(pat_ty) = self.infer.type_of_pat_with_adjust(arm.pat) else {
                 return;
             };
             if pat_ty.contains_unknown() {
@@ -328,7 +331,7 @@ impl ExprValidator {
                 continue;
             }
             let Some(initializer) = initializer else { continue };
-            let ty = &self.infer[initializer];
+            let Some(ty) = self.infer.type_of_expr_with_adjust(initializer) else { continue };
             if ty.contains_unknown() {
                 continue;
             }
@@ -433,44 +436,44 @@ impl ExprValidator {
                     Statement::Expr { expr, .. } => Some(*expr),
                     _ => None,
                 });
-                if let Some(last_then_expr) = last_then_expr {
-                    let last_then_expr_ty = &self.infer[last_then_expr];
-                    if last_then_expr_ty.is_never() {
-                        // Only look at sources if the then branch diverges and we have an else branch.
-                        let source_map = db.body_with_source_map(self.owner).1;
-                        let Ok(source_ptr) = source_map.expr_syntax(id) else {
-                            return;
-                        };
-                        let root = source_ptr.file_syntax(db);
-                        let either::Left(ast::Expr::IfExpr(if_expr)) =
-                            source_ptr.value.to_node(&root)
-                        else {
-                            return;
-                        };
-                        let mut top_if_expr = if_expr;
-                        loop {
-                            let parent = top_if_expr.syntax().parent();
-                            let has_parent_expr_stmt_or_stmt_list =
-                                parent.as_ref().is_some_and(|node| {
-                                    ast::ExprStmt::can_cast(node.kind())
-                                        | ast::StmtList::can_cast(node.kind())
-                                });
-                            if has_parent_expr_stmt_or_stmt_list {
-                                // Only emit diagnostic if parent or direct ancestor is either
-                                // an expr stmt or a stmt list.
-                                break;
-                            }
-                            let Some(parent_if_expr) = parent.and_then(ast::IfExpr::cast) else {
-                                // Bail if parent is neither an if expr, an expr stmt nor a stmt list.
-                                return;
-                            };
-                            // Check parent if expr.
-                            top_if_expr = parent_if_expr;
+                if let Some(last_then_expr) = last_then_expr
+                    && let Some(last_then_expr_ty) =
+                        self.infer.type_of_expr_with_adjust(last_then_expr)
+                    && last_then_expr_ty.is_never()
+                {
+                    // Only look at sources if the then branch diverges and we have an else branch.
+                    let source_map = db.body_with_source_map(self.owner).1;
+                    let Ok(source_ptr) = source_map.expr_syntax(id) else {
+                        return;
+                    };
+                    let root = source_ptr.file_syntax(db);
+                    let either::Left(ast::Expr::IfExpr(if_expr)) = source_ptr.value.to_node(&root)
+                    else {
+                        return;
+                    };
+                    let mut top_if_expr = if_expr;
+                    loop {
+                        let parent = top_if_expr.syntax().parent();
+                        let has_parent_expr_stmt_or_stmt_list =
+                            parent.as_ref().is_some_and(|node| {
+                                ast::ExprStmt::can_cast(node.kind())
+                                    | ast::StmtList::can_cast(node.kind())
+                            });
+                        if has_parent_expr_stmt_or_stmt_list {
+                            // Only emit diagnostic if parent or direct ancestor is either
+                            // an expr stmt or a stmt list.
+                            break;
                         }
-
-                        self.diagnostics
-                            .push(BodyValidationDiagnostic::RemoveUnnecessaryElse { if_expr: id })
+                        let Some(parent_if_expr) = parent.and_then(ast::IfExpr::cast) else {
+                            // Bail if parent is neither an if expr, an expr stmt nor a stmt list.
+                            return;
+                        };
+                        // Check parent if expr.
+                        top_if_expr = parent_if_expr;
                     }
+
+                    self.diagnostics
+                        .push(BodyValidationDiagnostic::RemoveUnnecessaryElse { if_expr: id })
                 }
             }
         }

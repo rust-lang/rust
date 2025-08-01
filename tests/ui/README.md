@@ -412,6 +412,10 @@ These tests revolve around command-line flags which change the way error/warning
 
 Exercises `#[diagnostic::*]` namespaced attributes. See [RFC 3368 Diagnostic attribute namespace](https://github.com/rust-lang/rfcs/blob/master/text/3368-diagnostic-attribute-namespace.md).
 
+## `tests/ui/diagnostics-infra`
+
+This directory contains tests and infrastructure related to the diagnostics system, including support for translatable diagnostics
+
 ## `tests/ui/diagnostic-width/`: `--diagnostic-width`
 
 Everything to do with `--diagnostic-width`.
@@ -649,10 +653,6 @@ Tests on range patterns where one of the bounds is not a direct value.
 ## `tests/ui/hashmap/`
 
 Tests for the standard library collection [`std::collections::HashMap`](https://doc.rust-lang.org/std/collections/struct.HashMap.html).
-
-## `tests/ui/hello_world/`
-
-Tests that the basic hello-world program is not somehow broken.
 
 ## `tests/ui/higher-ranked/`
 

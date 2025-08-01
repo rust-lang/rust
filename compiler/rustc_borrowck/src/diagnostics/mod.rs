@@ -266,48 +266,44 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             args,
             ..
         } = &terminator.kind
+            && let ty::FnDef(id, _) = *const_.ty().kind()
         {
-            if let ty::FnDef(id, _) = *const_.ty().kind() {
-                debug!("add_moved_or_invoked_closure_note: id={:?}", id);
-                if self.infcx.tcx.is_lang_item(self.infcx.tcx.parent(id), LangItem::FnOnce) {
-                    let closure = match args.first() {
-                        Some(Spanned {
-                            node: Operand::Copy(place) | Operand::Move(place), ..
-                        }) if target == place.local_or_deref_local() => {
-                            place.local_or_deref_local().unwrap()
-                        }
-                        _ => return false,
-                    };
+            debug!("add_moved_or_invoked_closure_note: id={:?}", id);
+            if self.infcx.tcx.is_lang_item(self.infcx.tcx.parent(id), LangItem::FnOnce) {
+                let closure = match args.first() {
+                    Some(Spanned { node: Operand::Copy(place) | Operand::Move(place), .. })
+                        if target == place.local_or_deref_local() =>
+                    {
+                        place.local_or_deref_local().unwrap()
+                    }
+                    _ => return false,
+                };
 
-                    debug!("add_moved_or_invoked_closure_note: closure={:?}", closure);
-                    if let ty::Closure(did, _) = self.body.local_decls[closure].ty.kind() {
-                        let did = did.expect_local();
-                        if let Some((span, hir_place)) = self.infcx.tcx.closure_kind_origin(did) {
-                            diag.subdiagnostic(OnClosureNote::InvokedTwice {
-                                place_name: &ty::place_to_string_for_capture(
-                                    self.infcx.tcx,
-                                    hir_place,
-                                ),
-                                span: *span,
-                            });
-                            return true;
-                        }
+                debug!("add_moved_or_invoked_closure_note: closure={:?}", closure);
+                if let ty::Closure(did, _) = self.body.local_decls[closure].ty.kind() {
+                    let did = did.expect_local();
+                    if let Some((span, hir_place)) = self.infcx.tcx.closure_kind_origin(did) {
+                        diag.subdiagnostic(OnClosureNote::InvokedTwice {
+                            place_name: &ty::place_to_string_for_capture(self.infcx.tcx, hir_place),
+                            span: *span,
+                        });
+                        return true;
                     }
                 }
             }
         }
 
         // Check if we are just moving a closure after it has been invoked.
-        if let Some(target) = target {
-            if let ty::Closure(did, _) = self.body.local_decls[target].ty.kind() {
-                let did = did.expect_local();
-                if let Some((span, hir_place)) = self.infcx.tcx.closure_kind_origin(did) {
-                    diag.subdiagnostic(OnClosureNote::MovedTwice {
-                        place_name: &ty::place_to_string_for_capture(self.infcx.tcx, hir_place),
-                        span: *span,
-                    });
-                    return true;
-                }
+        if let Some(target) = target
+            && let ty::Closure(did, _) = self.body.local_decls[target].ty.kind()
+        {
+            let did = did.expect_local();
+            if let Some((span, hir_place)) = self.infcx.tcx.closure_kind_origin(did) {
+                diag.subdiagnostic(OnClosureNote::MovedTwice {
+                    place_name: &ty::place_to_string_for_capture(self.infcx.tcx, hir_place),
+                    span: *span,
+                });
+                return true;
             }
         }
         false
@@ -942,7 +938,7 @@ impl<'tcx> BorrowedContentSource<'tcx> {
     fn from_call(func: Ty<'tcx>, tcx: TyCtxt<'tcx>) -> Option<Self> {
         match *func.kind() {
             ty::FnDef(def_id, args) => {
-                let trait_id = tcx.trait_of_item(def_id)?;
+                let trait_id = tcx.trait_of_assoc(def_id)?;
 
                 if tcx.is_lang_item(trait_id, LangItem::Deref)
                     || tcx.is_lang_item(trait_id, LangItem::DerefMut)

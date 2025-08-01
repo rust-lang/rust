@@ -1363,11 +1363,11 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
         sess.dcx().emit_err(errors::InstrumentationNotSupported { us: "XRay".to_string() });
     }
 
-    if let Some(flavor) = sess.opts.cg.linker_flavor {
-        if let Some(compatible_list) = sess.target.linker_flavor.check_compatibility(flavor) {
-            let flavor = flavor.desc();
-            sess.dcx().emit_err(errors::IncompatibleLinkerFlavor { flavor, compatible_list });
-        }
+    if let Some(flavor) = sess.opts.cg.linker_flavor
+        && let Some(compatible_list) = sess.target.linker_flavor.check_compatibility(flavor)
+    {
+        let flavor = flavor.desc();
+        sess.dcx().emit_err(errors::IncompatibleLinkerFlavor { flavor, compatible_list });
     }
 
     if sess.opts.unstable_opts.function_return != FunctionReturn::default() {

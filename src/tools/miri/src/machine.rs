@@ -12,10 +12,10 @@ use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 use rustc_abi::{Align, ExternAbi, Size};
 use rustc_apfloat::{Float, FloatConvert};
-use rustc_attr_data_structures::InlineAttr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 #[allow(unused)]
 use rustc_data_structures::static_assert_size;
+use rustc_hir::attrs::InlineAttr;
 use rustc_middle::mir;
 use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::layout::{

@@ -2,11 +2,12 @@ use std::iter;
 use std::ops::ControlFlow;
 
 use rustc_abi::ExternAbi;
-use rustc_attr_data_structures::{AttributeKind, find_attr};
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_hir as hir;
+use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::find_attr;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::privacy::{EffectiveVisibility, Level};
