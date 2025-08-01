@@ -7,12 +7,12 @@ use rustc_middle::bug;
 use rustc_middle::ty::print::{PrettyPrinter, PrintError, Printer};
 use rustc_middle::ty::{self, GenericArg, GenericArgKind, Ty, TyCtxt};
 
-struct AbsolutePathPrinter<'tcx> {
+struct TypeNamePrinter<'tcx> {
     tcx: TyCtxt<'tcx>,
     path: String,
 }
 
-impl<'tcx> Printer<'tcx> for AbsolutePathPrinter<'tcx> {
+impl<'tcx> Printer<'tcx> for TypeNamePrinter<'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
@@ -133,7 +133,7 @@ impl<'tcx> Printer<'tcx> for AbsolutePathPrinter<'tcx> {
     }
 }
 
-impl<'tcx> PrettyPrinter<'tcx> for AbsolutePathPrinter<'tcx> {
+impl<'tcx> PrettyPrinter<'tcx> for TypeNamePrinter<'tcx> {
     fn should_print_region(&self, _region: ty::Region<'_>) -> bool {
         false
     }
@@ -157,7 +157,7 @@ impl<'tcx> PrettyPrinter<'tcx> for AbsolutePathPrinter<'tcx> {
     }
 }
 
-impl Write for AbsolutePathPrinter<'_> {
+impl Write for TypeNamePrinter<'_> {
     fn write_str(&mut self, s: &str) -> std::fmt::Result {
         self.path.push_str(s);
         Ok(())
@@ -165,7 +165,7 @@ impl Write for AbsolutePathPrinter<'_> {
 }
 
 pub fn type_name<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> String {
-    let mut p = AbsolutePathPrinter { tcx, path: String::new() };
+    let mut p = TypeNamePrinter { tcx, path: String::new() };
     p.print_type(ty).unwrap();
     p.path
 }

@@ -745,12 +745,12 @@ impl<'tcx> LateContext<'tcx> {
     /// }
     /// ```
     pub fn get_def_path(&self, def_id: DefId) -> Vec<Symbol> {
-        struct AbsolutePathPrinter<'tcx> {
+        struct LintPathPrinter<'tcx> {
             tcx: TyCtxt<'tcx>,
             path: Vec<Symbol>,
         }
 
-        impl<'tcx> Printer<'tcx> for AbsolutePathPrinter<'tcx> {
+        impl<'tcx> Printer<'tcx> for LintPathPrinter<'tcx> {
             fn tcx(&self) -> TyCtxt<'tcx> {
                 self.tcx
             }
@@ -853,7 +853,7 @@ impl<'tcx> LateContext<'tcx> {
             }
         }
 
-        let mut p = AbsolutePathPrinter { tcx: self.tcx, path: vec![] };
+        let mut p = LintPathPrinter { tcx: self.tcx, path: vec![] };
         p.print_def_path(def_id, &[]).unwrap();
         p.path
     }

@@ -33,7 +33,7 @@ pub(super) fn mangle<'tcx>(
     let args = tcx.normalize_erasing_regions(ty::TypingEnv::fully_monomorphized(), instance.args);
 
     let prefix = "_R";
-    let mut p: SymbolMangler<'_> = SymbolMangler {
+    let mut p: V0SymbolMangler<'_> = V0SymbolMangler {
         tcx,
         start_offset: prefix.len(),
         is_exportable,
@@ -88,7 +88,7 @@ pub fn mangle_internal_symbol<'tcx>(tcx: TyCtxt<'tcx>, item_name: &str) -> Strin
     }
 
     let prefix = "_R";
-    let mut p: SymbolMangler<'_> = SymbolMangler {
+    let mut p: V0SymbolMangler<'_> = V0SymbolMangler {
         tcx,
         start_offset: prefix.len(),
         is_exportable: false,
@@ -131,7 +131,7 @@ pub(super) fn mangle_typeid_for_trait_ref<'tcx>(
     trait_ref: ty::ExistentialTraitRef<'tcx>,
 ) -> String {
     // FIXME(flip1995): See comment in `mangle_typeid_for_fnabi`.
-    let mut p = SymbolMangler {
+    let mut p = V0SymbolMangler {
         tcx,
         start_offset: 0,
         is_exportable: false,
@@ -159,7 +159,7 @@ struct BinderLevel {
     lifetime_depths: Range<u32>,
 }
 
-struct SymbolMangler<'tcx> {
+struct V0SymbolMangler<'tcx> {
     tcx: TyCtxt<'tcx>,
     binders: Vec<BinderLevel>,
     out: String,
@@ -173,7 +173,7 @@ struct SymbolMangler<'tcx> {
     consts: FxHashMap<ty::Const<'tcx>, usize>,
 }
 
-impl<'tcx> SymbolMangler<'tcx> {
+impl<'tcx> V0SymbolMangler<'tcx> {
     fn push(&mut self, s: &str) {
         self.out.push_str(s);
     }
@@ -272,7 +272,7 @@ impl<'tcx> SymbolMangler<'tcx> {
     }
 }
 
-impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
+impl<'tcx> Printer<'tcx> for V0SymbolMangler<'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }

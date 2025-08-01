@@ -224,12 +224,12 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         use ty::GenericArg;
         use ty::print::Printer;
 
-        struct AbsolutePathPrinter<'tcx> {
+        struct ConflictingPathPrinter<'tcx> {
             tcx: TyCtxt<'tcx>,
             segments: Vec<Symbol>,
         }
 
-        impl<'tcx> Printer<'tcx> for AbsolutePathPrinter<'tcx> {
+        impl<'tcx> Printer<'tcx> for ConflictingPathPrinter<'tcx> {
             fn tcx<'a>(&'a self) -> TyCtxt<'tcx> {
                 self.tcx
             }
@@ -300,7 +300,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             // let _ = [{struct Foo; Foo}, {struct Foo; Foo}];
             if did1.krate != did2.krate {
                 let abs_path = |def_id| {
-                    let mut p = AbsolutePathPrinter { tcx: self.tcx, segments: vec![] };
+                    let mut p = ConflictingPathPrinter { tcx: self.tcx, segments: vec![] };
                     p.print_def_path(def_id, &[]).map(|_| p.segments)
                 };
 

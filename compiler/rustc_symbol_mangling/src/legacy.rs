@@ -58,7 +58,7 @@ pub(super) fn mangle<'tcx>(
 
     let hash = get_symbol_hash(tcx, instance, instance_ty, instantiating_crate);
 
-    let mut p = SymbolPrinter { tcx, path: SymbolPath::new(), keep_within_component: false };
+    let mut p = LegacySymbolMangler { tcx, path: SymbolPath::new(), keep_within_component: false };
     p.print_def_path(
         def_id,
         if let ty::InstanceKind::DropGlue(_, _)
@@ -213,7 +213,7 @@ impl SymbolPath {
     }
 }
 
-struct SymbolPrinter<'tcx> {
+struct LegacySymbolMangler<'tcx> {
     tcx: TyCtxt<'tcx>,
     path: SymbolPath,
 
@@ -228,7 +228,7 @@ struct SymbolPrinter<'tcx> {
 // `PrettyPrinter` aka pretty printing of e.g. types in paths,
 // symbol names should have their own printing machinery.
 
-impl<'tcx> Printer<'tcx> for SymbolPrinter<'tcx> {
+impl<'tcx> Printer<'tcx> for LegacySymbolMangler<'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
@@ -453,7 +453,7 @@ impl<'tcx> Printer<'tcx> for SymbolPrinter<'tcx> {
     }
 }
 
-impl<'tcx> PrettyPrinter<'tcx> for SymbolPrinter<'tcx> {
+impl<'tcx> PrettyPrinter<'tcx> for LegacySymbolMangler<'tcx> {
     fn should_print_region(&self, _region: ty::Region<'_>) -> bool {
         false
     }
@@ -489,7 +489,7 @@ impl<'tcx> PrettyPrinter<'tcx> for SymbolPrinter<'tcx> {
     }
 }
 
-impl fmt::Write for SymbolPrinter<'_> {
+impl fmt::Write for LegacySymbolMangler<'_> {
     fn write_str(&mut self, s: &str) -> fmt::Result {
         // Name sanitation. LLVM will happily accept identifiers with weird names, but
         // gas doesn't!
