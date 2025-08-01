@@ -269,7 +269,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             fn path_append_impl(
                 &mut self,
                 _print_prefix: impl FnOnce(&mut Self) -> Result<(), PrintError>,
-                _disambiguated_data: &DisambiguatedDefPathData,
                 _self_ty: Ty<'tcx>,
                 _trait_ref: Option<ty::TraitRef<'tcx>>,
             ) -> Result<(), PrintError> {
