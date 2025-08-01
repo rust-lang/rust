@@ -525,6 +525,8 @@ impl Config {
         let is_running_on_ci;
         let bootstrap_cache_path;
         let patch_binaries_for_nix;
+        let stage;
+        let cmd;
 
         // First initialize the bare minimum that we need for further operation - source directory
         // and execution context.
@@ -809,7 +811,7 @@ impl Config {
         config.json_output = flags_json_output;
         config.compile_time_deps = flags_compile_time_deps;
         config.on_fail = flags_on_fail;
-        config.cmd = flags_cmd;
+        cmd = flags_cmd;
         config.incremental = flags_incremental;
         config.set_dry_run(if flags_dry_run { DryRun::UserSelected } else { DryRun::Disabled });
         config.dump_bootstrap_shims = flags_dump_bootstrap_shims;
@@ -1461,7 +1463,7 @@ impl Config {
             || build_check_stage_toml.is_some()
             || build_bench_stage_toml.is_some();
 
-        config.stage = match config.cmd {
+        stage = match cmd {
             Subcommand::Check { .. } => flags_stage.or(build_check_stage_toml).unwrap_or(1),
             Subcommand::Clippy { .. } | Subcommand::Fix => {
                 flags_stage.or(build_check_stage_toml).unwrap_or(1)
@@ -1490,7 +1492,7 @@ impl Config {
         };
 
         // Now check that the selected stage makes sense, and if not, print a warning and end
-        match (config.stage, &config.cmd) {
+        match (stage, &cmd) {
             (0, Subcommand::Build) => {
                 eprintln!("WARNING: cannot build anything on stage 0. Use at least stage 1.");
                 exit!(1);
@@ -1502,7 +1504,7 @@ impl Config {
             _ => {}
         }
 
-        if config.compile_time_deps && !matches!(config.cmd, Subcommand::Check { .. }) {
+        if config.compile_time_deps && !matches!(cmd, Subcommand::Check { .. }) {
             eprintln!(
                 "WARNING: Can't use --compile-time-deps with any subcommand other than check."
             );
@@ -1512,7 +1514,7 @@ impl Config {
         // CI should always run stage 2 builds, unless it specifically states otherwise
         #[cfg(not(test))]
         if flags_stage.is_none() && is_running_on_ci {
-            match config.cmd {
+            match cmd {
                 Subcommand::Test { .. }
                 | Subcommand::Miri { .. }
                 | Subcommand::Doc { .. }
@@ -1521,9 +1523,9 @@ impl Config {
                 | Subcommand::Dist
                 | Subcommand::Install => {
                     assert_eq!(
-                        config.stage, 2,
+                        stage, 2,
                         "x.py should be run with `--stage 2` on CI, but was run with `--stage {}`",
-                        config.stage,
+                        stage,
                     );
                 }
                 Subcommand::Clean { .. }
@@ -1564,6 +1566,8 @@ impl Config {
         config.bootstrap_cache_path = bootstrap_cache_path;
         config.patch_binaries_for_nix = patch_binaries_for_nix;
         config.rust_info = rust_info;
+        config.stage = stage;
+        config.cmd = cmd;
 
         config
     }
