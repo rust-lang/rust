@@ -97,6 +97,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             ScopeSet::All(ns)
             | ScopeSet::ModuleAndExternPrelude(ns, _)
             | ScopeSet::Late(ns, ..) => (ns, None),
+            ScopeSet::ExternPrelude => (TypeNS, None),
             ScopeSet::Macro(macro_kind) => (MacroNS, Some(macro_kind)),
         };
         let module = match scope_set {
@@ -106,8 +107,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             _ => parent_scope.module.nearest_item_scope(),
         };
         let module_and_extern_prelude = matches!(scope_set, ScopeSet::ModuleAndExternPrelude(..));
+        let extern_prelude = matches!(scope_set, ScopeSet::ExternPrelude);
         let mut scope = match ns {
             _ if module_and_extern_prelude => Scope::Module(module, None),
+            _ if extern_prelude => Scope::ExternPreludeItems,
             TypeNS | ValueNS => Scope::Module(module, None),
             MacroNS => Scope::DeriveHelpers(parent_scope.expansion),
         };
@@ -138,7 +141,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 Scope::Module(..) => true,
                 Scope::MacroUsePrelude => use_prelude || rust_2015,
                 Scope::BuiltinAttrs => true,
-                Scope::ExternPrelude => use_prelude || module_and_extern_prelude,
+                Scope::ExternPreludeItems | Scope::ExternPreludeFlags => {
+                    use_prelude || module_and_extern_prelude || extern_prelude
+                }
                 Scope::ToolPrelude => use_prelude,
                 Scope::StdLibPrelude => use_prelude || ns == MacroNS,
                 Scope::BuiltinTypes => true,
@@ -177,7 +182,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 Scope::Module(..) if module_and_extern_prelude => match ns {
                     TypeNS => {
                         ctxt.adjust(ExpnId::root());
-                        Scope::ExternPrelude
+                        Scope::ExternPreludeItems
                     }
                     ValueNS | MacroNS => break,
                 },
@@ -194,7 +199,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         None => {
                             ctxt.adjust(ExpnId::root());
                             match ns {
-                                TypeNS => Scope::ExternPrelude,
+                                TypeNS => Scope::ExternPreludeItems,
                                 ValueNS => Scope::StdLibPrelude,
                                 MacroNS => Scope::MacroUsePrelude,
                             }
@@ -203,8 +208,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 }
                 Scope::MacroUsePrelude => Scope::StdLibPrelude,
                 Scope::BuiltinAttrs => break, // nowhere else to search
-                Scope::ExternPrelude if module_and_extern_prelude => break,
-                Scope::ExternPrelude => Scope::ToolPrelude,
+                Scope::ExternPreludeItems => Scope::ExternPreludeFlags,
+                Scope::ExternPreludeFlags if module_and_extern_prelude || extern_prelude => break,
+                Scope::ExternPreludeFlags => Scope::ToolPrelude,
                 Scope::ToolPrelude => Scope::StdLibPrelude,
                 Scope::StdLibPrelude => match ns {
                     TypeNS => Scope::BuiltinTypes,
@@ -407,6 +413,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             ScopeSet::All(ns)
             | ScopeSet::ModuleAndExternPrelude(ns, _)
             | ScopeSet::Late(ns, ..) => (ns, None),
+            ScopeSet::ExternPrelude => (TypeNS, None),
             ScopeSet::Macro(macro_kind) => (MacroNS, Some(macro_kind)),
         };
 
@@ -555,12 +562,18 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         Some(binding) => Ok((*binding, Flags::empty())),
                         None => Err(Determinacy::Determined),
                     },
-                    Scope::ExternPrelude => {
-                        match this.extern_prelude_get(ident, finalize.is_some()) {
+                    Scope::ExternPreludeItems => {
+                        match this.extern_prelude_get_item(ident, finalize.is_some()) {
                             Some(binding) => Ok((binding, Flags::empty())),
                             None => Err(Determinacy::determined(
                                 this.graph_root.unexpanded_invocations.borrow().is_empty(),
                             )),
+                        }
+                    }
+                    Scope::ExternPreludeFlags => {
+                        match this.extern_prelude_get_flag(ident, finalize.is_some()) {
+                            Some(binding) => Ok((binding, Flags::empty())),
+                            None => Err(Determinacy::Determined),
                         }
                     }
                     Scope::ToolPrelude => match this.registered_tool_bindings.get(&ident) {
@@ -812,13 +825,17 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 assert_eq!(shadowing, Shadowing::Unrestricted);
                 return if ns != TypeNS {
                     Err((Determined, Weak::No))
-                } else if let Some(binding) = self.extern_prelude_get(ident, finalize.is_some()) {
-                    Ok(binding)
-                } else if !self.graph_root.unexpanded_invocations.borrow().is_empty() {
-                    // Macro-expanded `extern crate` items can add names to extern prelude.
-                    Err((Undetermined, Weak::No))
                 } else {
-                    Err((Determined, Weak::No))
+                    let binding = self.early_resolve_ident_in_lexical_scope(
+                        ident,
+                        ScopeSet::ExternPrelude,
+                        parent_scope,
+                        finalize,
+                        finalize.is_some(),
+                        ignore_binding,
+                        ignore_import,
+                    );
+                    return binding.map_err(|determinacy| (determinacy, Weak::No));
                 };
             }
             ModuleOrUniformRoot::CurrentScope => {
