@@ -612,6 +612,37 @@ impl Config {
             std_features: rust_std_features_toml,
         } = toml.rust.unwrap_or_default();
 
+        let Llvm {
+            optimize: llvm_optimize_toml,
+            thin_lto: llvm_thin_lto_toml,
+            release_debuginfo: llvm_release_debuginfo_toml,
+            assertions: llvm_assertions_toml,
+            tests: llvm_tests_toml,
+            enzyme: llvm_enzyme_toml,
+            plugins: llvm_plugin_toml,
+            static_libstdcpp: llvm_static_libstdcpp_toml,
+            libzstd: llvm_libzstd_toml,
+            ninja: llvm_ninja_toml,
+            targets: llvm_targets_toml,
+            experimental_targets: llvm_experimental_targets_toml,
+            link_jobs: llvm_link_jobs_toml,
+            link_shared: llvm_link_shared_toml,
+            version_suffix: llvm_version_suffix_toml,
+            clang_cl: llvm_clang_cl_toml,
+            cflags: llvm_cflags_toml,
+            cxxflags: llvm_cxxflags_toml,
+            ldflags: llvm_ldflags_toml,
+            use_libcxx: llvm_use_libcxx_toml,
+            use_linker: llvm_use_linker_toml,
+            allow_old_toolchain: llvm_allow_old_toolchain_toml,
+            offload: llvm_offload_toml,
+            polly: llvm_polly_toml,
+            clang: llvm_clang_toml,
+            enable_warnings: llvm_enable_warnings_toml,
+            download_ci_llvm: llvm_download_ci_llvm_toml,
+            build_config: llvm_build_config_toml,
+        } = toml.llvm.unwrap_or_default();
+
         if cfg!(test) {
             // When configuring bootstrap for tests, make sure to set the rustc and Cargo to the
             // same ones used to call the tests (if custom ones are not defined in the toml). If we
@@ -839,6 +870,11 @@ impl Config {
         config.libdir = install_libdir;
         config.mandir = install_mandir;
 
+<<<<<<< HEAD
+=======
+        config.llvm_assertions = llvm_assertions_toml.unwrap_or(false);
+
+>>>>>>> f1dbcb5ad2c (move llvm config to the top of parse method)
         let file_content = t!(fs::read_to_string(config.src.join("src/ci/channel")));
         let ci_channel = file_content.trim_end();
 
@@ -1129,37 +1165,6 @@ impl Config {
 
             config.channel = channel;
         }
-
-        let Llvm {
-            optimize: llvm_optimize_toml,
-            thin_lto: llvm_thin_lto_toml,
-            release_debuginfo: llvm_release_debuginfo_toml,
-            assertions: _,
-            tests: llvm_tests_toml,
-            enzyme: llvm_enzyme_toml,
-            plugins: llvm_plugin_toml,
-            static_libstdcpp: llvm_static_libstdcpp_toml,
-            libzstd: llvm_libzstd_toml,
-            ninja: llvm_ninja_toml,
-            targets: llvm_targets_toml,
-            experimental_targets: llvm_experimental_targets_toml,
-            link_jobs: llvm_link_jobs_toml,
-            link_shared: llvm_link_shared_toml,
-            version_suffix: llvm_version_suffix_toml,
-            clang_cl: llvm_clang_cl_toml,
-            cflags: llvm_cflags_toml,
-            cxxflags: llvm_cxxflags_toml,
-            ldflags: llvm_ldflags_toml,
-            use_libcxx: llvm_use_libcxx_toml,
-            use_linker: llvm_use_linker_toml,
-            allow_old_toolchain: llvm_allow_old_toolchain_toml,
-            offload: llvm_offload_toml,
-            polly: llvm_polly_toml,
-            clang: llvm_clang_toml,
-            enable_warnings: llvm_enable_warnings_toml,
-            download_ci_llvm: llvm_download_ci_llvm_toml,
-            build_config: llvm_build_config_toml,
-        } = toml.llvm.unwrap_or_default();
 
         set(&mut config.ninja_in_file, llvm_ninja_toml);
         set(&mut config.llvm_optimize, llvm_optimize_toml);
