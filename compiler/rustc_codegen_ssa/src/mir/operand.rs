@@ -498,6 +498,35 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
                         bx.cx().const_uint(cast_to, niche_variants.start().as_u32() as u64);
                     (is_niche, tagged_discr, 0)
                 } else {
+                    // Thanks to parameter attributes and load metadata, LLVM already knows
+                    // the general valid range of the tag. It's possible, though, for there
+                    // to be an impossible value *in the middle*, which those ranges don't
+                    // communicate, so it's worth an `assume` to let the optimizer know.
+                    // Most importantly, this means when optimizing a variant test like
+                    // `SELECT(is_niche, complex, CONST) == CONST` it's ok to simplify that
+                    // to `!is_niche` because the `complex` part can't possibly match.
+                    //
+                    // This was previously asserted on `tagged_discr` below, where the
+                    // impossible value is more obvious, but that caused an intermediate
+                    // value to become multi-use and thus not optimize, so instead this
+                    // assumes on the original input which is always multi-use. See
+                    // <https://github.com/llvm/llvm-project/issues/134024#issuecomment-3131782555>
+                    //
+                    // FIXME: If we ever get range assume operand bundles in LLVM (so we
+                    // don't need the `icmp`s in the instruction stream any more), it
+                    // might be worth moving this back to being on the switch argument
+                    // where it's more obviously applicable.
+                    if niche_variants.contains(&untagged_variant)
+                        && bx.cx().sess().opts.optimize != OptLevel::No
+                    {
+                        let impossible = niche_start
+                            .wrapping_add(u128::from(untagged_variant.as_u32()))
+                            .wrapping_sub(u128::from(niche_variants.start().as_u32()));
+                        let impossible = bx.cx().const_uint_big(tag_llty, impossible);
+                        let ne = bx.icmp(IntPredicate::IntNE, tag, impossible);
+                        bx.assume(ne);
+                    }
+
                     // With multiple niched variants we'll have to actually compute
                     // the variant index from the stored tag.
                     //
@@ -587,20 +616,6 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
 
                 let untagged_variant_const =
                     bx.cx().const_uint(cast_to, u64::from(untagged_variant.as_u32()));
-
-                // Thanks to parameter attributes and load metadata, LLVM already knows
-                // the general valid range of the tag. It's possible, though, for there
-                // to be an impossible value *in the middle*, which those ranges don't
-                // communicate, so it's worth an `assume` to let the optimizer know.
-                // Most importantly, this means when optimizing a variant test like
-                // `SELECT(is_niche, complex, CONST) == CONST` it's ok to simplify that
-                // to `!is_niche` because the `complex` part can't possibly match.
-                if niche_variants.contains(&untagged_variant)
-                    && bx.cx().sess().opts.optimize != OptLevel::No
-                {
-                    let ne = bx.icmp(IntPredicate::IntNE, tagged_discr, untagged_variant_const);
-                    bx.assume(ne);
-                }
 
                 let discr = bx.select(is_niche, tagged_discr, untagged_variant_const);
 
