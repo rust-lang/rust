@@ -941,7 +941,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     // FIXME: Until we have a clear design for the effects of align(N) functions
                     // on the address of function pointers, we don't consider the align(N)
                     // attribute on functions in the interpreter.
-                    //self.tcx.codegen_instance_attrs(instance.def).alignment.unwrap_or(Align::ONE)
+                    // See <https://github.com/rust-lang/rust/issues/144661> for more context.
                     Align::ONE
                 }
                 // Machine-specific extra functions currently do not support alignment restrictions.
