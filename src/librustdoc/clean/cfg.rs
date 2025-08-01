@@ -486,6 +486,7 @@ impl fmt::Display for Display<'_> {
                     (sym::debug_assertions, None) => "debug-assertions enabled",
                     (sym::target_os, Some(os)) => match os.as_str() {
                         "android" => "Android",
+                        "cygwin" => "Cygwin",
                         "dragonfly" => "DragonFly BSD",
                         "emscripten" => "Emscripten",
                         "freebsd" => "FreeBSD",
