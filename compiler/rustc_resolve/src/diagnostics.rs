@@ -1096,12 +1096,14 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         );
                     }
                 }
-                Scope::ExternPrelude => {
+                Scope::ExternPreludeItems => {
+                    // Add idents from both item and flag scopes.
                     suggestions.extend(this.extern_prelude.keys().filter_map(|ident| {
                         let res = Res::Def(DefKind::Mod, CRATE_DEF_ID.to_def_id());
                         filter_fn(res).then_some(TypoSuggestion::typo_from_ident(ident.0, res))
                     }));
                 }
+                Scope::ExternPreludeFlags => {}
                 Scope::ToolPrelude => {
                     let res = Res::NonMacroAttr(NonMacroAttrKind::Tool);
                     suggestions.extend(

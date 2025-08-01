@@ -2,6 +2,6 @@
 
 foo!(); //~ ERROR cannot find macro `foo` in this scope
 
-pub(in ::bar) struct Baz {} //~ ERROR cannot determine resolution for the visibility
+pub(in ::bar) struct Baz {} //~ ERROR failed to resolve: could not find `bar` in the list of imported crates
 
 fn main() {}
