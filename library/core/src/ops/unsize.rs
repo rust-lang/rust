@@ -122,13 +122,13 @@ pub trait DispatchFromDyn<T: ?crate::marker::Move> {
 
 // &T -> &U
 #[unstable(feature = "dispatch_from_dyn", issue = "none")]
-impl<'a, T: PointeeSized + ?crate::marker::Move + Unsize<U>, U: PointeeSized> DispatchFromDyn<&'a U> for &'a T {}
+impl<'a, T: PointeeSized + ?crate::marker::Move + Unsize<U>, U: PointeeSized + ?crate::marker::Move> DispatchFromDyn<&'a U> for &'a T {}
 // &mut T -> &mut U
 #[unstable(feature = "dispatch_from_dyn", issue = "none")]
-impl<'a, T: PointeeSized + ?crate::marker::Move + Unsize<U>, U: PointeeSized> DispatchFromDyn<&'a mut U> for &'a mut T {}
+impl<'a, T: PointeeSized + ?crate::marker::Move + Unsize<U>, U: PointeeSized + ?crate::marker::Move> DispatchFromDyn<&'a mut U> for &'a mut T {}
 // *const T -> *const U
 #[unstable(feature = "dispatch_from_dyn", issue = "none")]
-impl<T: PointeeSized + ?crate::marker::Move + Unsize<U>, U: PointeeSized> DispatchFromDyn<*const U> for *const T {}
+impl<T: PointeeSized + ?crate::marker::Move + Unsize<U>, U: PointeeSized + ?crate::marker::Move> DispatchFromDyn<*const U> for *const T {}
 // *mut T -> *mut U
 #[unstable(feature = "dispatch_from_dyn", issue = "none")]
-impl<T: PointeeSized + ?crate::marker::Move + Unsize<U>, U: PointeeSized> DispatchFromDyn<*mut U> for *mut T {}
+impl<T: PointeeSized + ?crate::marker::Move + Unsize<U>, U: PointeeSized + ?crate::marker::Move> DispatchFromDyn<*mut U> for *mut T {}

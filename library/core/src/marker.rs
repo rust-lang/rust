@@ -820,7 +820,7 @@ impl<T: PointeeSized> !Sync for *mut T {}
 /// [drop check]: Drop#drop-check
 #[lang = "phantom_data"]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct PhantomData<T: PointeeSized>;
+pub struct PhantomData<T: PointeeSized + ?crate::marker::Move>;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: PointeeSized> Hash for PhantomData<T> {
@@ -914,7 +914,7 @@ pub trait DiscriminantKind {
 pub unsafe auto trait Freeze {}
 
 #[unstable(feature = "freeze", issue = "121675")]
-impl<T: PointeeSized> !Freeze for UnsafeCell<T> {}
+impl<T: PointeeSized + ?crate::marker::Move> !Freeze for UnsafeCell<T> {}
 marker_impls! {
     #[unstable(feature = "freeze", issue = "121675")]
     unsafe Freeze for
@@ -934,7 +934,7 @@ marker_impls! {
 #[lang = "unsafe_unpin"]
 pub(crate) unsafe auto trait UnsafeUnpin {}
 
-impl<T: ?Sized> !UnsafeUnpin for UnsafePinned<T> {}
+impl<T: ?Sized + ?crate::marker::Move> !UnsafeUnpin for UnsafePinned<T> {}
 unsafe impl<T: ?Sized> UnsafeUnpin for PhantomData<T> {}
 unsafe impl<T: ?Sized> UnsafeUnpin for *const T {}
 unsafe impl<T: ?Sized> UnsafeUnpin for *mut T {}
@@ -1378,7 +1378,6 @@ pub unsafe auto trait Move {
 marker_impls! {
     #[unstable(feature = "move_trait", issue = "none")]
     unsafe Move for
-        {T: ?Sized} PhantomData<T>,
         {T: ?Sized} *const T,
         {T: ?Sized} *mut T,
         {T: ?Sized} &T,
