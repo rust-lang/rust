@@ -46,7 +46,6 @@
 #![deny(unsafe_op_in_unsafe_fn)]
 
 extern crate alloc;
-extern crate test;
 
 use std::hash::{DefaultHasher, Hash, Hasher};
 
