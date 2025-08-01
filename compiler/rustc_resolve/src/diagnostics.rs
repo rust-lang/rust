@@ -2845,16 +2845,13 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 continue;
             }
 
-            let note = errors::FoundItemConfigureOut { span: ident.span };
-            err.subdiagnostic(note);
-
-            if let CfgEntry::NameValue { value: Some((feature, _)), .. } = cfg.0 {
-                let note = errors::ItemWasBehindFeature { feature, span: cfg.1 };
-                err.subdiagnostic(note);
+            let item_was = if let CfgEntry::NameValue { value: Some((feature, _)), .. } = cfg.0 {
+                errors::ItemWas::BehindFeature { feature, span: cfg.1 }
             } else {
-                let note = errors::ItemWasCfgOut { span: cfg.1 };
-                err.subdiagnostic(note);
-            }
+                errors::ItemWas::CfgOut { span: cfg.1 }
+            };
+            let note = errors::FoundItemConfigureOut { span: ident.span, item_was };
+            err.subdiagnostic(note);
         }
     }
 }

@@ -7,23 +7,18 @@ LL |     foo();
 note: found an item that was configured out
   --> $DIR/both-true-false.rs:6:4
    |
+LL | #[cfg(false)]
+   |       ----- the item is gated here
+LL | #[cfg(true)]
 LL | fn foo() {}
    |    ^^^
-note: the item is gated here
-  --> $DIR/both-true-false.rs:4:7
-   |
-LL | #[cfg(false)]
-   |       ^^^^^
 note: found an item that was configured out
   --> $DIR/both-true-false.rs:10:4
    |
+LL | #[cfg(false)]
+   |       ----- the item is gated here
 LL | fn foo() {}
    |    ^^^
-note: the item is gated here
-  --> $DIR/both-true-false.rs:9:7
-   |
-LL | #[cfg(false)]
-   |       ^^^^^
 
 error: aborting due to 1 previous error
 

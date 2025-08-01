@@ -7,13 +7,10 @@ LL |     foo();
 note: found an item that was configured out
   --> $DIR/cmdline-false.rs:5:4
    |
+LL | #[cfg(false)]
+   |       ----- the item is gated here
 LL | fn foo() {}
    |    ^^^
-note: the item is gated here
-  --> $DIR/cmdline-false.rs:4:7
-   |
-LL | #[cfg(false)]
-   |       ^^^^^
 
 error: aborting due to 1 previous error
 

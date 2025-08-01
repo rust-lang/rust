@@ -7,13 +7,10 @@ LL |     let f = Foo;
 note: found an item that was configured out
   --> $DIR/cfg-rustdoc.rs:2:12
    |
+LL | #[cfg(doc)]
+   |       --- the item is gated here
 LL | pub struct Foo;
    |            ^^^
-note: the item is gated here
-  --> $DIR/cfg-rustdoc.rs:1:7
-   |
-LL | #[cfg(doc)]
-   |       ^^^
 
 error: aborting due to 1 previous error
 

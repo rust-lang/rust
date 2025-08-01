@@ -7,13 +7,10 @@ LL |     f()
 note: found an item that was configured out
   --> $DIR/nested-cfg-attr-conditional-compilation.rs:14:4
    |
+LL | #[cfg_attr(all(), cfg_attr(all(), cfg(false)))]
+   |                                       ----- the item is gated here
 LL | fn f() {}
    |    ^
-note: the item is gated here
-  --> $DIR/nested-cfg-attr-conditional-compilation.rs:13:39
-   |
-LL | #[cfg_attr(all(), cfg_attr(all(), cfg(false)))]
-   |                                       ^^^^^
 
 error: aborting due to 1 previous error
 

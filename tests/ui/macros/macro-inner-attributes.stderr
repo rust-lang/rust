@@ -9,11 +9,8 @@ note: found an item that was configured out
    |
 LL | test!(a,
    |       ^
-note: the item is gated here
-  --> $DIR/macro-inner-attributes.rs:8:13
-   |
 LL |       #[cfg(false)],
-   |             ^^^^^
+   |             ----- the item is gated here
 help: there is a crate or module with a similar name
    |
 LL -     a::bar();
