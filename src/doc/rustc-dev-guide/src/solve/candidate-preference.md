@@ -94,7 +94,7 @@ fn overflow<T: Trait>() {
 }
 ```
 
-This preference causes a lot of issues. See https://github.com/rust-lang/rust/issues/24066. Most of the
+This preference causes a lot of issues. See [#24066]. Most of the
 issues are caused by prefering where-bounds over impls even if the where-bound guides type inference:
 ```rust
 trait Trait<T> {
@@ -423,4 +423,5 @@ where
 [`fn merge_trait_candidates`]: https://github.com/rust-lang/rust/blob/e3ee7f7aea5b45af3b42b5e4713da43876a65ac9/compiler/rustc_next_trait_solver/src/solve/trait_goals.rs#L1342-L1424
 [`fn assemble_and_merge_candidates`]: https://github.com/rust-lang/rust/blob/e3ee7f7aea5b45af3b42b5e4713da43876a65ac9/compiler/rustc_next_trait_solver/src/solve/assembly/mod.rs#L920-L1003
 [trait-system-refactor-initiative#76]: https://github.com/rust-lang/trait-system-refactor-initiative/issues/76
+[#24066]: https://github.com/rust-lang/rust/issues/24066
 [#133044]: https://github.com/rust-lang/rust/issues/133044
