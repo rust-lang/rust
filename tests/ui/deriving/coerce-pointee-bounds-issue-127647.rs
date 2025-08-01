@@ -1,7 +1,5 @@
 //@ check-pass
 
-#![feature(derive_coerce_pointee)]
-
 #[derive(core::marker::CoercePointee)]
 #[repr(transparent)]
 pub struct Ptr<'a, #[pointee] T: OnDrop + ?Sized, X> {
