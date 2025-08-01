@@ -12,7 +12,7 @@ codegen_llvm_from_llvm_optimization_diag = {$filename}:{$line}:{$column} {$pass_
 codegen_llvm_load_bitcode = failed to load bitcode of module "{$name}"
 codegen_llvm_load_bitcode_with_llvm_err = failed to load bitcode of module "{$name}": {$llvm_err}
 
-codegen_llvm_lto_bitcode_from_rlib = failed to get bitcode from object file for LTO ({$llvm_err})
+codegen_llvm_lto_bitcode_from_rlib = failed to get bitcode from object file for LTO ({$err})
 
 codegen_llvm_mismatch_data_layout =
     data-layout for target `{$rustc_target}`, `{$rustc_layout}`, differs from LLVM target's `{$llvm_target}` default layout, `{$llvm_layout}`

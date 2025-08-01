@@ -781,16 +781,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                         self,
                                         &project_obligation,
                                     )
-                                {
-                                    if let Some(cached_res) = self
+                                    && let Some(cached_res) = self
                                         .infcx
                                         .inner
                                         .borrow_mut()
                                         .projection_cache()
                                         .is_complete(key)
-                                    {
-                                        break 'compute_res Ok(cached_res);
-                                    }
+                                {
+                                    break 'compute_res Ok(cached_res);
                                 }
 
                                 // Need to explicitly set the depth of nested goals here as
@@ -1436,24 +1434,23 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     ) -> SelectionResult<'tcx, SelectionCandidate<'tcx>> {
         let tcx = self.tcx();
         // Treat reservation impls as ambiguity.
-        if let ImplCandidate(def_id) = candidate {
-            if let ty::ImplPolarity::Reservation = tcx.impl_polarity(def_id) {
-                if let Some(intercrate_ambiguity_clauses) = &mut self.intercrate_ambiguity_causes {
-                    let message = tcx
-                        .get_attr(def_id, sym::rustc_reservation_impl)
-                        .and_then(|a| a.value_str());
-                    if let Some(message) = message {
-                        debug!(
-                            "filter_reservation_impls: \
+        if let ImplCandidate(def_id) = candidate
+            && let ty::ImplPolarity::Reservation = tcx.impl_polarity(def_id)
+        {
+            if let Some(intercrate_ambiguity_clauses) = &mut self.intercrate_ambiguity_causes {
+                let message =
+                    tcx.get_attr(def_id, sym::rustc_reservation_impl).and_then(|a| a.value_str());
+                if let Some(message) = message {
+                    debug!(
+                        "filter_reservation_impls: \
                                  reservation impl ambiguity on {:?}",
-                            def_id
-                        );
-                        intercrate_ambiguity_clauses
-                            .insert(IntercrateAmbiguityCause::ReservationImpl { message });
-                    }
+                        def_id
+                    );
+                    intercrate_ambiguity_clauses
+                        .insert(IntercrateAmbiguityCause::ReservationImpl { message });
                 }
-                return Ok(None);
             }
+            return Ok(None);
         }
         Ok(Some(candidate))
     }

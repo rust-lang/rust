@@ -2368,7 +2368,17 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         &mut self,
         modifiers: TraitBoundModifiers,
     ) -> hir::TraitBoundModifiers {
-        hir::TraitBoundModifiers { constness: modifiers.constness, polarity: modifiers.polarity }
+        let constness = match modifiers.constness {
+            BoundConstness::Never => BoundConstness::Never,
+            BoundConstness::Always(span) => BoundConstness::Always(self.lower_span(span)),
+            BoundConstness::Maybe(span) => BoundConstness::Maybe(self.lower_span(span)),
+        };
+        let polarity = match modifiers.polarity {
+            BoundPolarity::Positive => BoundPolarity::Positive,
+            BoundPolarity::Negative(span) => BoundPolarity::Negative(self.lower_span(span)),
+            BoundPolarity::Maybe(span) => BoundPolarity::Maybe(self.lower_span(span)),
+        };
+        hir::TraitBoundModifiers { constness, polarity }
     }
 
     // Helper methods for building HIR.
@@ -2414,6 +2424,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         init: Option<&'hir hir::Expr<'hir>>,
     ) -> hir::Stmt<'hir> {
         let hir_id = self.next_id();
+        let span = self.lower_span(span);
         let local = hir::LetStmt {
             super_: Some(span),
             hir_id,
@@ -2421,7 +2432,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             pat,
             els: None,
             source: hir::LocalSource::Normal,
-            span: self.lower_span(span),
+            span,
             ty: None,
         };
         self.stmt(span, hir::StmtKind::Let(self.arena.alloc(local)))

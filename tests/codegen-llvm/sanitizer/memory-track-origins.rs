@@ -5,7 +5,7 @@
 //@ revisions:MSAN-0 MSAN-1 MSAN-2 MSAN-1-LTO MSAN-2-LTO
 //
 //@ compile-flags: -Zsanitizer=memory -Ctarget-feature=-crt-static
-//@[MSAN-0] compile-flags:
+// [MSAN-0] no extra compile-flags
 //@[MSAN-1] compile-flags: -Zsanitizer-memory-track-origins=1
 //@[MSAN-2] compile-flags: -Zsanitizer-memory-track-origins
 //@[MSAN-1-LTO] compile-flags: -Zsanitizer-memory-track-origins=1 -C lto=fat

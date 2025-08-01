@@ -759,7 +759,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
         &self,
         err: &mut Diag<'_, impl EmissionGuarantee>,
     ) {
-        let trait_ = match self.tcx.trait_of_item(self.def_id) {
+        let trait_ = match self.tcx.trait_of_assoc(self.def_id) {
             Some(def_id) => def_id,
             None => return,
         };

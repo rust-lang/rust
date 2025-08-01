@@ -68,6 +68,7 @@ define_config! {
         optimized_compiler_builtins: Option<bool> = "optimized-compiler-builtins",
         jobs: Option<u32> = "jobs",
         compiletest_diff_tool: Option<String> = "compiletest-diff-tool",
+        compiletest_allow_stage0: Option<bool> = "compiletest-allow-stage0",
         compiletest_use_stage0_libtest: Option<bool> = "compiletest-use-stage0-libtest",
         tidy_extra_checks: Option<String> = "tidy-extra-checks",
         ccache: Option<StringOrBool> = "ccache",

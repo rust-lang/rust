@@ -642,11 +642,11 @@ fn fn_abi_adjust_for_abi<'tcx>(
                 // The `deduced_param_attrs` list could be empty if this is a type of function
                 // we can't deduce any parameters for, so make sure the argument index is in
                 // bounds.
-                if let Some(deduced_param_attrs) = deduced_param_attrs.get(arg_idx) {
-                    if deduced_param_attrs.read_only {
-                        attrs.regular.insert(ArgAttribute::ReadOnly);
-                        debug!("added deduced read-only attribute");
-                    }
+                if let Some(deduced_param_attrs) = deduced_param_attrs.get(arg_idx)
+                    && deduced_param_attrs.read_only
+                {
+                    attrs.regular.insert(ArgAttribute::ReadOnly);
+                    debug!("added deduced read-only attribute");
                 }
             }
         }

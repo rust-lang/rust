@@ -168,13 +168,6 @@ impl WriteBackendMethods for LlvmCodegenBackend {
         let stats = llvm::build_string(|s| unsafe { llvm::LLVMRustPrintStatistics(s) }).unwrap();
         print!("{stats}");
     }
-    fn run_link(
-        cgcx: &CodegenContext<Self>,
-        dcx: DiagCtxtHandle<'_>,
-        modules: Vec<ModuleCodegen<Self::Module>>,
-    ) -> Result<ModuleCodegen<Self::Module>, FatalError> {
-        back::write::link(cgcx, dcx, modules)
-    }
     fn run_and_optimize_fat_lto(
         cgcx: &CodegenContext<Self>,
         exported_symbols_for_lto: &[String],

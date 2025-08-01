@@ -826,10 +826,10 @@ impl SourceMap {
     /// Given a `Span`, tries to get a shorter span ending just after the first occurrence of `char`
     /// `c`.
     pub fn span_through_char(&self, sp: Span, c: char) -> Span {
-        if let Ok(snippet) = self.span_to_snippet(sp) {
-            if let Some(offset) = snippet.find(c) {
-                return sp.with_hi(BytePos(sp.lo().0 + (offset + c.len_utf8()) as u32));
-            }
+        if let Ok(snippet) = self.span_to_snippet(sp)
+            && let Some(offset) = snippet.find(c)
+        {
+            return sp.with_hi(BytePos(sp.lo().0 + (offset + c.len_utf8()) as u32));
         }
         sp
     }

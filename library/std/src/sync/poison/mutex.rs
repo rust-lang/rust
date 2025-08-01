@@ -650,7 +650,7 @@ impl<T: ?Sized + fmt::Debug> fmt::Debug for Mutex<T> {
                 d.field("data", &&**err.get_ref());
             }
             Err(TryLockError::WouldBlock) => {
-                d.field("data", &format_args!("<locked>"));
+                d.field("data", &"<locked>");
             }
         }
         d.field("poisoned", &self.poison.get());

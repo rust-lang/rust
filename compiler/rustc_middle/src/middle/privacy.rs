@@ -182,7 +182,7 @@ impl EffectiveVisibilities {
             // don't check this condition for them.
             let is_impl = matches!(tcx.def_kind(def_id), DefKind::Impl { .. });
             let is_associated_item_in_trait_impl = tcx
-                .impl_of_method(def_id.to_def_id())
+                .impl_of_assoc(def_id.to_def_id())
                 .and_then(|impl_id| tcx.trait_id_of_impl(impl_id))
                 .is_some();
             if !is_impl && !is_associated_item_in_trait_impl {

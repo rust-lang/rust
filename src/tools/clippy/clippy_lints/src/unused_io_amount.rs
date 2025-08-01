@@ -84,7 +84,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedIoAmount {
     /// get desugared to match.
     fn check_block(&mut self, cx: &LateContext<'tcx>, block: &'tcx hir::Block<'tcx>) {
         let fn_def_id = block.hir_id.owner.to_def_id();
-        if let Some(impl_id) = cx.tcx.impl_of_method(fn_def_id)
+        if let Some(impl_id) = cx.tcx.impl_of_assoc(fn_def_id)
             && let Some(trait_id) = cx.tcx.trait_id_of_impl(impl_id)
         {
             // We don't want to lint inside io::Read or io::Write implementations, as the author has more
@@ -300,7 +300,7 @@ fn check_io_mode(cx: &LateContext<'_>, call: &hir::Expr<'_>) -> Option<IoOp> {
     };
 
     if let Some(method_def_id) = cx.typeck_results().type_dependent_def_id(call.hir_id)
-        && let Some(trait_def_id) = cx.tcx.trait_of_item(method_def_id)
+        && let Some(trait_def_id) = cx.tcx.trait_of_assoc(method_def_id)
     {
         if let Some(diag_name) = cx.tcx.get_diagnostic_name(trait_def_id) {
             match diag_name {

@@ -561,6 +561,32 @@ impl InferenceResult {
             ExprOrPatId::PatId(id) => self.type_of_pat.get(id),
         }
     }
+    pub fn type_of_expr_with_adjust(&self, id: ExprId) -> Option<&Ty> {
+        match self.expr_adjustments.get(&id).and_then(|adjustments| {
+            adjustments
+                .iter()
+                .filter(|adj| {
+                    // https://github.com/rust-lang/rust/blob/67819923ac8ea353aaa775303f4c3aacbf41d010/compiler/rustc_mir_build/src/thir/cx/expr.rs#L140
+                    !matches!(
+                        adj,
+                        Adjustment {
+                            kind: Adjust::NeverToAny,
+                            target,
+                        } if target.is_never()
+                    )
+                })
+                .next_back()
+        }) {
+            Some(adjustment) => Some(&adjustment.target),
+            None => self.type_of_expr.get(id),
+        }
+    }
+    pub fn type_of_pat_with_adjust(&self, id: PatId) -> Option<&Ty> {
+        match self.pat_adjustments.get(&id).and_then(|adjustments| adjustments.last()) {
+            adjusted @ Some(_) => adjusted,
+            None => self.type_of_pat.get(id),
+        }
+    }
     pub fn is_erroneous(&self) -> bool {
         self.has_errors && self.type_of_expr.iter().count() == 0
     }

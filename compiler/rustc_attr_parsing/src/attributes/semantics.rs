@@ -1,4 +1,4 @@
-use rustc_attr_data_structures::AttributeKind;
+use rustc_hir::attrs::AttributeKind;
 use rustc_span::{Span, Symbol, sym};
 
 use crate::attributes::{NoArgsAttributeParser, OnDuplicate};

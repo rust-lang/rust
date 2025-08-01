@@ -761,24 +761,37 @@ where
 
         let skip_contents = adt.is_union() || adt.is_manually_drop();
         let contents_drop = if skip_contents {
+            if adt.has_dtor(self.tcx()) && self.elaborator.get_drop_flag(self.path).is_some() {
+                // the top-level drop flag is usually cleared by open_drop_for_adt_contents
+                // types with destructors would still need an empty drop ladder to clear it
+
+                // however, these types are only open dropped in `DropShimElaborator`
+                // which does not have drop flags
+                // a future box-like "DerefMove" trait would allow for this case to happen
+                span_bug!(self.source_info.span, "open dropping partially moved union");
+            }
+
             (self.succ, self.unwind, self.dropline)
         } else {
             self.open_drop_for_adt_contents(adt, args)
         };
 
-        if adt.is_box() {
-            // we need to drop the inside of the box before running the destructor
-            let succ = self.destructor_call_block_sync((contents_drop.0, contents_drop.1));
-            let unwind = contents_drop
-                .1
-                .map(|unwind| self.destructor_call_block_sync((unwind, Unwind::InCleanup)));
-            let dropline = contents_drop
-                .2
-                .map(|dropline| self.destructor_call_block_sync((dropline, contents_drop.1)));
+        if adt.has_dtor(self.tcx()) {
+            let destructor_block = if adt.is_box() {
+                // we need to drop the inside of the box before running the destructor
+                let succ = self.destructor_call_block_sync((contents_drop.0, contents_drop.1));
+                let unwind = contents_drop
+                    .1
+                    .map(|unwind| self.destructor_call_block_sync((unwind, Unwind::InCleanup)));
+                let dropline = contents_drop
+                    .2
+                    .map(|dropline| self.destructor_call_block_sync((dropline, contents_drop.1)));
+                self.open_drop_for_box_contents(adt, args, succ, unwind, dropline)
+            } else {
+                self.destructor_call_block(contents_drop)
+            };
 
-            self.open_drop_for_box_contents(adt, args, succ, unwind, dropline)
-        } else if adt.has_dtor(self.tcx()) {
-            self.destructor_call_block(contents_drop)
+            self.drop_flag_test_block(destructor_block, contents_drop.0, contents_drop.1)
         } else {
             contents_drop.0
         }
@@ -982,12 +995,7 @@ where
             unwind.is_cleanup(),
         );
 
-        let destructor_block = self.elaborator.patch().new_block(result);
-
-        let block_start = Location { block: destructor_block, statement_index: 0 };
-        self.elaborator.clear_drop_flag(block_start, self.path, DropFlagMode::Shallow);
-
-        self.drop_flag_test_block(destructor_block, succ, unwind)
+        self.elaborator.patch().new_block(result)
     }
 
     fn destructor_call_block(
@@ -1002,13 +1010,7 @@ where
             && !unwind.is_cleanup()
             && ty.is_async_drop(self.tcx(), self.elaborator.typing_env())
         {
-            let destructor_block =
-                self.build_async_drop(self.place, ty, None, succ, unwind, dropline, true);
-
-            let block_start = Location { block: destructor_block, statement_index: 0 };
-            self.elaborator.clear_drop_flag(block_start, self.path, DropFlagMode::Shallow);
-
-            self.drop_flag_test_block(destructor_block, succ, unwind)
+            self.build_async_drop(self.place, ty, None, succ, unwind, dropline, true)
         } else {
             self.destructor_call_block_sync((succ, unwind))
         }

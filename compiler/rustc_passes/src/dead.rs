@@ -368,7 +368,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
     /// will be ignored for the purposes of dead code analysis (see PR #85200
     /// for discussion).
     fn should_ignore_item(&mut self, def_id: DefId) -> bool {
-        if let Some(impl_of) = self.tcx.impl_of_method(def_id) {
+        if let Some(impl_of) = self.tcx.impl_of_assoc(def_id) {
             if !self.tcx.is_automatically_derived(impl_of) {
                 return false;
             }
@@ -429,7 +429,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
             Node::TraitItem(trait_item) => {
                 // mark the trait live
                 let trait_item_id = trait_item.owner_id.to_def_id();
-                if let Some(trait_id) = self.tcx.trait_of_item(trait_item_id) {
+                if let Some(trait_id) = self.tcx.trait_of_assoc(trait_item_id) {
                     self.check_def_id(trait_id);
                 }
                 intravisit::walk_trait_item(self, trait_item);

@@ -1205,6 +1205,19 @@ impl Integer {
         }
     }
 
+    /// Returns the smallest signed value that can be represented by this Integer.
+    #[inline]
+    pub fn signed_min(self) -> i128 {
+        use Integer::*;
+        match self {
+            I8 => i8::MIN as i128,
+            I16 => i16::MIN as i128,
+            I32 => i32::MIN as i128,
+            I64 => i64::MIN as i128,
+            I128 => i128::MIN,
+        }
+    }
+
     /// Finds the smallest Integer type which can represent the signed value.
     #[inline]
     pub fn fit_signed(x: i128) -> Integer {

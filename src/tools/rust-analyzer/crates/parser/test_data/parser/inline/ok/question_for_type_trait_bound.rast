@@ -29,10 +29,11 @@ SOURCE_FILE
           TYPE_BOUND
             QUESTION "?"
             FOR_TYPE
-              FOR_KW "for"
-              GENERIC_PARAM_LIST
-                L_ANGLE "<"
-                R_ANGLE ">"
+              FOR_BINDER
+                FOR_KW "for"
+                GENERIC_PARAM_LIST
+                  L_ANGLE "<"
+                  R_ANGLE ">"
               WHITESPACE " "
               PATH_TYPE
                 PATH

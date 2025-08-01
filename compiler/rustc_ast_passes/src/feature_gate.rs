@@ -630,16 +630,11 @@ fn check_incompatible_features(sess: &Session, features: &Features) {
         .iter()
         .filter(|(f1, f2)| features.enabled(*f1) && features.enabled(*f2))
     {
-        if let Some((f1_name, f1_span)) = enabled_features.clone().find(|(name, _)| name == f1) {
-            if let Some((f2_name, f2_span)) = enabled_features.clone().find(|(name, _)| name == f2)
-            {
-                let spans = vec![f1_span, f2_span];
-                sess.dcx().emit_err(errors::IncompatibleFeatures {
-                    spans,
-                    f1: f1_name,
-                    f2: f2_name,
-                });
-            }
+        if let Some((f1_name, f1_span)) = enabled_features.clone().find(|(name, _)| name == f1)
+            && let Some((f2_name, f2_span)) = enabled_features.clone().find(|(name, _)| name == f2)
+        {
+            let spans = vec![f1_span, f2_span];
+            sess.dcx().emit_err(errors::IncompatibleFeatures { spans, f1: f1_name, f2: f2_name });
         }
     }
 }

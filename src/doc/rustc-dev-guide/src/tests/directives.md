@@ -293,8 +293,6 @@ See [Pretty-printer](compiletest.md#pretty-printer-tests).
 
 - `no-auto-check-cfg` — disable auto check-cfg (only for `--check-cfg` tests)
 - [`revisions`](compiletest.md#revisions) — compile multiple times
-- [`unused-revision-names`](compiletest.md#ignoring-unused-revision-names) -
-      suppress tidy checks for mentioning unknown revision names
 -[`forbid-output`](compiletest.md#incremental-tests) — incremental cfail rejects
       output pattern
 - [`should-ice`](compiletest.md#incremental-tests) — incremental cfail should
@@ -315,6 +313,17 @@ test suites that use those tools:
 - `llvm-cov-flags` adds extra flags when running LLVM's `llvm-cov` tool.
   - Used by [coverage tests](compiletest.md#coverage-tests) in `coverage-run` mode.
 
+### Tidy specific directives
+
+The following directives control how the [tidy script](../conventions.md#formatting)
+verifies tests.
+
+- `ignore-tidy-target-specific-tests` disables checking that the appropriate
+  LLVM component is required (via a `needs-llvm-components` directive) when a
+  test is compiled for a specific target (via the `--target` flag in a
+  `compile-flag` directive).
+- [`unused-revision-names`](compiletest.md#ignoring-unused-revision-names) -
+      suppress tidy checks for mentioning unknown revision names.
 
 ## Substitutions
 

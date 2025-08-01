@@ -18,13 +18,14 @@ SOURCE_FILE
       WHERE_KW "where"
       WHITESPACE "\n   "
       WHERE_PRED
-        FOR_KW "for"
-        GENERIC_PARAM_LIST
-          L_ANGLE "<"
-          LIFETIME_PARAM
-            LIFETIME
-              LIFETIME_IDENT "'a"
-          R_ANGLE ">"
+        FOR_BINDER
+          FOR_KW "for"
+          GENERIC_PARAM_LIST
+            L_ANGLE "<"
+            LIFETIME_PARAM
+              LIFETIME
+                LIFETIME_IDENT "'a"
+            R_ANGLE ">"
         WHITESPACE " "
         PATH_TYPE
           PATH

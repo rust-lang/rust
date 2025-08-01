@@ -202,7 +202,7 @@ SOURCE_FILE
         WHITESPACE "\n    "
         EXPR_STMT
           CLOSURE_EXPR
-            CLOSURE_BINDER
+            FOR_BINDER
               FOR_KW "for"
               GENERIC_PARAM_LIST
                 L_ANGLE "<"
@@ -223,7 +223,7 @@ SOURCE_FILE
         WHITESPACE "\n    "
         EXPR_STMT
           CLOSURE_EXPR
-            CLOSURE_BINDER
+            FOR_BINDER
               FOR_KW "for"
               GENERIC_PARAM_LIST
                 L_ANGLE "<"

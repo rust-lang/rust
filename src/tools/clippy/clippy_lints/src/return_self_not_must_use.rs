@@ -1,7 +1,8 @@
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::ty::is_must_use_ty;
 use clippy_utils::{nth_arg, return_ty};
-use rustc_attr_data_structures::{AttributeKind, find_attr};
+use rustc_hir::attrs::{AttributeKind};
+use rustc_hir::find_attr;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{Body, FnDecl, OwnerId, TraitItem, TraitItemKind};
@@ -113,7 +114,7 @@ impl<'tcx> LateLintPass<'tcx> for ReturnSelfNotMustUse {
     ) {
         if matches!(kind, FnKind::Method(_, _))
             // We are only interested in methods, not in functions or associated functions.
-            && let Some(impl_def) = cx.tcx.impl_of_method(fn_def.to_def_id())
+            && let Some(impl_def) = cx.tcx.impl_of_assoc(fn_def.to_def_id())
             // We don't want this method to be te implementation of a trait because the
             // `#[must_use]` should be put on the trait definition directly.
             && cx.tcx.trait_id_of_impl(impl_def).is_none()

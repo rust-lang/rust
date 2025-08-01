@@ -50,12 +50,10 @@ use std::{fs, str};
 use askama::Template;
 use itertools::Either;
 use rustc_ast::join_path_syms;
-use rustc_attr_data_structures::{
-    ConstStability, DeprecatedSince, Deprecation, RustcVersion, StabilityLevel, StableSince,
-};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
-use rustc_hir::Mutability;
+use rustc_hir::attrs::{DeprecatedSince, Deprecation};
 use rustc_hir::def_id::{DefId, DefIdSet};
+use rustc_hir::{ConstStability, Mutability, RustcVersion, StabilityLevel, StableSince};
 use rustc_middle::ty::print::PrintTraitRefExt;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::symbol::{Symbol, sym};

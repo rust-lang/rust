@@ -39,7 +39,7 @@ pub(crate) struct AutoDiffWithoutEnable;
 #[derive(Diagnostic)]
 #[diag(codegen_llvm_lto_bitcode_from_rlib)]
 pub(crate) struct LtoBitcodeFromRlib {
-    pub llvm_err: String,
+    pub err: String,
 }
 
 #[derive(Diagnostic)]

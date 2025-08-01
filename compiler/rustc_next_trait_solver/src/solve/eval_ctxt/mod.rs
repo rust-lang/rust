@@ -20,6 +20,7 @@ use super::has_only_region_constraints;
 use crate::coherence;
 use crate::delegate::SolverDelegate;
 use crate::placeholder::BoundVarReplacer;
+use crate::resolve::eager_resolve_vars;
 use crate::solve::inspect::{self, ProofTreeBuilder};
 use crate::solve::search_graph::SearchGraph;
 use crate::solve::ty::may_use_unstable_feature;
@@ -440,6 +441,7 @@ where
             return Ok((
                 NestedNormalizationGoals::empty(),
                 GoalEvaluation {
+                    goal,
                     certainty: Certainty::Maybe(stalled_on.stalled_cause),
                     has_changed: HasChanged::No,
                     stalled_on: Some(stalled_on),
@@ -447,7 +449,16 @@ where
             ));
         }
 
-        let (orig_values, canonical_goal) = self.canonicalize_goal(goal);
+        // We only care about one entry per `OpaqueTypeKey` here,
+        // so we only canonicalize the lookup table and ignore
+        // duplicate entries.
+        let opaque_types = self.delegate.clone_opaque_types_lookup_table();
+        let (goal, opaque_types) = eager_resolve_vars(self.delegate, (goal, opaque_types));
+
+        let is_hir_typeck_root_goal = matches!(goal_evaluation_kind, GoalEvaluationKind::Root)
+            && self.delegate.in_hir_typeck();
+        let (orig_values, canonical_goal) =
+            self.canonicalize_goal(is_hir_typeck_root_goal, goal, opaque_types);
         let mut goal_evaluation =
             self.inspect.new_goal_evaluation(goal, &orig_values, goal_evaluation_kind);
         let canonical_result = self.search_graph.evaluate_goal(
@@ -525,7 +536,10 @@ where
             },
         };
 
-        Ok((normalization_nested_goals, GoalEvaluation { certainty, has_changed, stalled_on }))
+        Ok((
+            normalization_nested_goals,
+            GoalEvaluation { goal, certainty, has_changed, stalled_on },
+        ))
     }
 
     pub(super) fn compute_goal(&mut self, goal: Goal<I, I::Predicate>) -> QueryResult<I> {
@@ -661,7 +675,7 @@ where
 
                 let (
                     NestedNormalizationGoals(nested_goals),
-                    GoalEvaluation { certainty, stalled_on, has_changed: _ },
+                    GoalEvaluation { goal, certainty, stalled_on, has_changed: _ },
                 ) = self.evaluate_goal_raw(
                     GoalEvaluationKind::Nested,
                     source,
@@ -699,7 +713,15 @@ where
                 // FIXME: Do we need to eagerly resolve here? Or should we check
                 // if the cache key has any changed vars?
                 let with_resolved_vars = self.resolve_vars_if_possible(goal);
-                if pred.alias != goal.predicate.as_normalizes_to().unwrap().skip_binder().alias {
+                if pred.alias
+                    != with_resolved_vars
+                        .predicate
+                        .as_normalizes_to()
+                        .unwrap()
+                        .no_bound_vars()
+                        .unwrap()
+                        .alias
+                {
                     unchanged_certainty = None;
                 }
 
@@ -711,7 +733,7 @@ where
                     }
                 }
             } else {
-                let GoalEvaluation { certainty, has_changed, stalled_on } =
+                let GoalEvaluation { goal, certainty, has_changed, stalled_on } =
                     self.evaluate_goal(GoalEvaluationKind::Nested, source, goal, stalled_on)?;
                 if has_changed == HasChanged::Yes {
                     unchanged_certainty = None;

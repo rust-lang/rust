@@ -91,51 +91,51 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     ) {
         // Heavily inspired by `FnCtxt::suggest_compatible_variants`, with
         // some modifications due to that being in typeck and this being in infer.
-        if let ObligationCauseCode::Pattern { .. } = cause.code() {
-            if let ty::Adt(expected_adt, args) = exp_found.expected.kind() {
-                let compatible_variants: Vec<_> = expected_adt
-                    .variants()
-                    .iter()
-                    .filter(|variant| {
-                        variant.fields.len() == 1 && variant.ctor_kind() == Some(CtorKind::Fn)
-                    })
-                    .filter_map(|variant| {
-                        let sole_field = &variant.single_field();
-                        let sole_field_ty = sole_field.ty(self.tcx, args);
-                        if self.same_type_modulo_infer(sole_field_ty, exp_found.found) {
-                            let variant_path =
-                                with_no_trimmed_paths!(self.tcx.def_path_str(variant.def_id));
-                            // FIXME #56861: DRYer prelude filtering
-                            if let Some(path) = variant_path.strip_prefix("std::prelude::") {
-                                if let Some((_, path)) = path.split_once("::") {
-                                    return Some(path.to_string());
-                                }
-                            }
-                            Some(variant_path)
-                        } else {
-                            None
+        if let ObligationCauseCode::Pattern { .. } = cause.code()
+            && let ty::Adt(expected_adt, args) = exp_found.expected.kind()
+        {
+            let compatible_variants: Vec<_> = expected_adt
+                .variants()
+                .iter()
+                .filter(|variant| {
+                    variant.fields.len() == 1 && variant.ctor_kind() == Some(CtorKind::Fn)
+                })
+                .filter_map(|variant| {
+                    let sole_field = &variant.single_field();
+                    let sole_field_ty = sole_field.ty(self.tcx, args);
+                    if self.same_type_modulo_infer(sole_field_ty, exp_found.found) {
+                        let variant_path =
+                            with_no_trimmed_paths!(self.tcx.def_path_str(variant.def_id));
+                        // FIXME #56861: DRYer prelude filtering
+                        if let Some(path) = variant_path.strip_prefix("std::prelude::")
+                            && let Some((_, path)) = path.split_once("::")
+                        {
+                            return Some(path.to_string());
                         }
-                    })
-                    .collect();
-                match &compatible_variants[..] {
-                    [] => {}
-                    [variant] => {
-                        let sugg = SuggestTuplePatternOne {
-                            variant: variant.to_owned(),
-                            span_low: cause.span.shrink_to_lo(),
-                            span_high: cause.span.shrink_to_hi(),
-                        };
-                        diag.subdiagnostic(sugg);
+                        Some(variant_path)
+                    } else {
+                        None
                     }
-                    _ => {
-                        // More than one matching variant.
-                        let sugg = SuggestTuplePatternMany {
-                            path: self.tcx.def_path_str(expected_adt.did()),
-                            cause_span: cause.span,
-                            compatible_variants,
-                        };
-                        diag.subdiagnostic(sugg);
-                    }
+                })
+                .collect();
+            match &compatible_variants[..] {
+                [] => {}
+                [variant] => {
+                    let sugg = SuggestTuplePatternOne {
+                        variant: variant.to_owned(),
+                        span_low: cause.span.shrink_to_lo(),
+                        span_high: cause.span.shrink_to_hi(),
+                    };
+                    diag.subdiagnostic(sugg);
+                }
+                _ => {
+                    // More than one matching variant.
+                    let sugg = SuggestTuplePatternMany {
+                        path: self.tcx.def_path_str(expected_adt.did()),
+                        cause_span: cause.span,
+                        compatible_variants,
+                    };
+                    diag.subdiagnostic(sugg);
                 }
             }
         }
@@ -288,19 +288,17 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 .filter(|field| field.vis.is_accessible_from(field.did, self.tcx))
                 .map(|field| (field.name, field.ty(self.tcx, expected_args)))
                 .find(|(_, ty)| self.same_type_modulo_infer(*ty, exp_found.found))
+                && let ObligationCauseCode::Pattern { span: Some(span), .. } = *cause.code()
+                && let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span)
             {
-                if let ObligationCauseCode::Pattern { span: Some(span), .. } = *cause.code() {
-                    if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span) {
-                        let suggestion = if expected_def.is_struct() {
-                            SuggestAccessingField::Safe { span, snippet, name, ty }
-                        } else if expected_def.is_union() {
-                            SuggestAccessingField::Unsafe { span, snippet, name, ty }
-                        } else {
-                            return;
-                        };
-                        diag.subdiagnostic(suggestion);
-                    }
-                }
+                let suggestion = if expected_def.is_struct() {
+                    SuggestAccessingField::Safe { span, snippet, name, ty }
+                } else if expected_def.is_union() {
+                    SuggestAccessingField::Unsafe { span, snippet, name, ty }
+                } else {
+                    return;
+                };
+                diag.subdiagnostic(suggestion);
             }
         }
     }
@@ -540,38 +538,35 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     ) -> Option<SuggestAsRefKind> {
         if let (ty::Adt(exp_def, exp_args), ty::Ref(_, found_ty, _)) =
             (expected.kind(), found.kind())
+            && let ty::Adt(found_def, found_args) = *found_ty.kind()
         {
-            if let ty::Adt(found_def, found_args) = *found_ty.kind() {
-                if exp_def == &found_def {
-                    let have_as_ref = &[
-                        (sym::Option, SuggestAsRefKind::Option),
-                        (sym::Result, SuggestAsRefKind::Result),
-                    ];
-                    if let Some(msg) = have_as_ref.iter().find_map(|(name, msg)| {
-                        self.tcx.is_diagnostic_item(*name, exp_def.did()).then_some(msg)
-                    }) {
-                        let mut show_suggestion = true;
-                        for (exp_ty, found_ty) in
-                            std::iter::zip(exp_args.types(), found_args.types())
-                        {
-                            match *exp_ty.kind() {
-                                ty::Ref(_, exp_ty, _) => {
-                                    match (exp_ty.kind(), found_ty.kind()) {
-                                        (_, ty::Param(_))
-                                        | (_, ty::Infer(_))
-                                        | (ty::Param(_), _)
-                                        | (ty::Infer(_), _) => {}
-                                        _ if self.same_type_modulo_infer(exp_ty, found_ty) => {}
-                                        _ => show_suggestion = false,
-                                    };
-                                }
-                                ty::Param(_) | ty::Infer(_) => {}
-                                _ => show_suggestion = false,
+            if exp_def == &found_def {
+                let have_as_ref = &[
+                    (sym::Option, SuggestAsRefKind::Option),
+                    (sym::Result, SuggestAsRefKind::Result),
+                ];
+                if let Some(msg) = have_as_ref.iter().find_map(|(name, msg)| {
+                    self.tcx.is_diagnostic_item(*name, exp_def.did()).then_some(msg)
+                }) {
+                    let mut show_suggestion = true;
+                    for (exp_ty, found_ty) in std::iter::zip(exp_args.types(), found_args.types()) {
+                        match *exp_ty.kind() {
+                            ty::Ref(_, exp_ty, _) => {
+                                match (exp_ty.kind(), found_ty.kind()) {
+                                    (_, ty::Param(_))
+                                    | (_, ty::Infer(_))
+                                    | (ty::Param(_), _)
+                                    | (ty::Infer(_), _) => {}
+                                    _ if self.same_type_modulo_infer(exp_ty, found_ty) => {}
+                                    _ => show_suggestion = false,
+                                };
                             }
+                            ty::Param(_) | ty::Infer(_) => {}
+                            _ => show_suggestion = false,
                         }
-                        if show_suggestion {
-                            return Some(*msg);
-                        }
+                    }
+                    if show_suggestion {
+                        return Some(*msg);
                     }
                 }
             }
