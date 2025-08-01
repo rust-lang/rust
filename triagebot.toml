@@ -1064,6 +1064,14 @@ cc = ["@oli-obk", "@RalfJung", "@JakobDegen", "@davidtwco", "@vakaras"]
 message = "`rustc_error_messages` was changed"
 cc = ["@davidtwco", "@compiler-errors", "@TaKO8Ki"]
 
+[mentions."compiler/rustc_errors/src/annotate_snippet_emitter_writer.rs"]
+message = "`rustc_errors::annotate_snippet_emitter_writer` was changed"
+cc = ["@Muscraft"]
+
+[mentions."compiler/rustc_errors/src/emitter.rs"]
+message = "`rustc_errors::emitter` was changed"
+cc = ["@Muscraft"]
+
 [mentions."compiler/rustc_errors/src/translation.rs"]
 message = "`rustc_errors::translation` was changed"
 cc = ["@davidtwco", "@compiler-errors", "@TaKO8Ki"]
