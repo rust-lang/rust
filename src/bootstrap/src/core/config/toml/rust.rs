@@ -11,7 +11,9 @@ use crate::core::config::{
     DebuginfoLevel, Merge, ReplaceOpt, RustcLto, StringOrBool, set, threads_from_config,
 };
 use crate::flags::Warnings;
-use crate::{BTreeSet, Config, HashSet, PathBuf, TargetSelection, define_config, exit};
+use crate::{
+    BTreeSet, CodegenBackendKind, Config, HashSet, PathBuf, TargetSelection, define_config, exit,
+};
 
 define_config! {
     /// TOML representation of how the Rust build is configured.
@@ -389,9 +391,13 @@ pub fn check_incompatible_options_for_ci_rustc(
     Ok(())
 }
 
-pub(crate) const VALID_CODEGEN_BACKENDS: &[&str] = &["llvm", "cranelift", "gcc"];
+pub(crate) const BUILTIN_CODEGEN_BACKENDS: &[&str] = &["llvm", "cranelift", "gcc"];
 
-pub(crate) fn validate_codegen_backends(backends: Vec<String>, section: &str) -> Vec<String> {
+pub(crate) fn parse_codegen_backends(
+    backends: Vec<String>,
+    section: &str,
+) -> Vec<CodegenBackendKind> {
+    let mut found_backends = vec![];
     for backend in &backends {
         if let Some(stripped) = backend.strip_prefix(CODEGEN_BACKEND_PREFIX) {
             panic!(
@@ -400,14 +406,21 @@ pub(crate) fn validate_codegen_backends(backends: Vec<String>, section: &str) ->
                 Please, use '{stripped}' instead."
             )
         }
-        if !VALID_CODEGEN_BACKENDS.contains(&backend.as_str()) {
+        if !BUILTIN_CODEGEN_BACKENDS.contains(&backend.as_str()) {
             println!(
                 "HELP: '{backend}' for '{section}.codegen-backends' might fail. \
-                List of known good values: {VALID_CODEGEN_BACKENDS:?}"
+                List of known codegen backends: {BUILTIN_CODEGEN_BACKENDS:?}"
             );
         }
+        let backend = match backend.as_str() {
+            "llvm" => CodegenBackendKind::Llvm,
+            "cranelift" => CodegenBackendKind::Cranelift,
+            "gcc" => CodegenBackendKind::Gcc,
+            backend => CodegenBackendKind::Custom(backend.to_string()),
+        };
+        found_backends.push(backend);
     }
-    backends
+    found_backends
 }
 
 #[cfg(not(test))]
@@ -609,7 +622,7 @@ impl Config {
                 llvm_libunwind.map(|v| v.parse().expect("failed to parse rust.llvm-libunwind"));
             set(
                 &mut self.rust_codegen_backends,
-                codegen_backends.map(|backends| validate_codegen_backends(backends, "rust")),
+                codegen_backends.map(|backends| parse_codegen_backends(backends, "rust")),
             );
 
             self.rust_codegen_units = codegen_units.map(threads_from_config);

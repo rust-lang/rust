@@ -1007,10 +1007,6 @@ cc = [
 message = "Some changes occurred in GUI tests."
 cc = ["@GuillaumeGomez"]
 
-[mentions."tests/run-make/"]
-message = "This PR modifies `run-make` tests."
-cc = ["@jieyouxu"]
-
 [mentions."tests/auxiliary/minicore.rs"]
 message = "This PR modifies `tests/auxiliary/minicore.rs`."
 cc = ["@jieyouxu"]
@@ -1112,10 +1108,6 @@ Otherwise, you can ignore this comment.
 
 [mentions."src/tools/x"]
 message = "`src/tools/x` was changed. Bump version of Cargo.toml in `src/tools/x` so tidy will suggest installing the new version."
-
-[mentions."src/tools/tidy"]
-message = "There are changes to the `tidy` tool."
-cc = ["@jieyouxu"]
 
 [mentions."src/tools/tidy/src/deps.rs"]
 message = "The list of allowed third-party dependencies may have been modified! You must ensure that any new dependencies have compatible licenses before merging."

@@ -9,6 +9,7 @@ use rustc_abi::{BackendRepr, HasDataLayout, Size};
 use rustc_middle::ty::Ty;
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::{bug, mir, span_bug};
+use tracing::field::Empty;
 use tracing::{instrument, trace};
 
 use super::{
@@ -16,6 +17,7 @@ use super::{
     InterpResult, Machine, MemoryKind, Misalignment, OffsetMode, OpTy, Operand, Pointer,
     Projectable, Provenance, Scalar, alloc_range, interp_ok, mir_assign_valid_types,
 };
+use crate::enter_trace_span;
 
 #[derive(Copy, Clone, Hash, PartialEq, Eq, Debug)]
 /// Information required for the sound usage of a `MemPlace`.
@@ -524,6 +526,9 @@ where
         &self,
         mir_place: mir::Place<'tcx>,
     ) -> InterpResult<'tcx, PlaceTy<'tcx, M::Provenance>> {
+        let _span =
+            enter_trace_span!(M, step::eval_place, ?mir_place, tracing_separate_thread = Empty);
+
         let mut place = self.local_to_place(mir_place.local)?;
         // Using `try_fold` turned out to be bad for performance, hence the loop.
         for elem in mir_place.projection.iter() {

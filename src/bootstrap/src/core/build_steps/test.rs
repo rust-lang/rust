@@ -33,7 +33,7 @@ use crate::utils::helpers::{
     linker_flags, t, target_supports_cranelift_backend, up_to_date,
 };
 use crate::utils::render_tests::{add_flags_and_try_run_tests, try_run_tests};
-use crate::{CLang, DocTests, GitRepo, Mode, PathSet, debug, envify};
+use crate::{CLang, CodegenBackendKind, DocTests, GitRepo, Mode, PathSet, debug, envify};
 
 const ADB_TEST_DIR: &str = "/data/local/tmp/work";
 
@@ -1786,7 +1786,9 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         cmd.arg("--llvm-filecheck").arg(builder.llvm_filecheck(builder.config.host_target));
 
         if let Some(codegen_backend) = builder.config.default_codegen_backend(compiler.host) {
-            cmd.arg("--codegen-backend").arg(&codegen_backend);
+            // Tells compiletest which codegen backend is used by default by the compiler.
+            // It is used to e.g. ignore tests that don't support that codegen backend.
+            cmd.arg("--codegen-backend").arg(codegen_backend.name());
         }
 
         if builder.build.config.llvm_enzyme {
@@ -3406,7 +3408,7 @@ impl Step for CodegenCranelift {
             return;
         }
 
-        if !builder.config.codegen_backends(run.target).contains(&"cranelift".to_owned()) {
+        if !builder.config.codegen_backends(run.target).contains(&CodegenBackendKind::Cranelift) {
             builder.info("cranelift not in rust.codegen-backends. skipping");
             return;
         }
@@ -3533,7 +3535,7 @@ impl Step for CodegenGCC {
             return;
         }
 
-        if !builder.config.codegen_backends(run.target).contains(&"gcc".to_owned()) {
+        if !builder.config.codegen_backends(run.target).contains(&CodegenBackendKind::Gcc) {
             builder.info("gcc not in rust.codegen-backends. skipping");
             return;
         }

@@ -33,7 +33,10 @@ use crate::utils::exec::command;
 use crate::utils::helpers::{
     exe, get_clang_cl_resource_dir, is_debug_info, is_dylib, symlink_dir, t, up_to_date,
 };
-use crate::{CLang, Compiler, DependencyType, FileType, GitRepo, LLVM_TOOLS, Mode, debug, trace};
+use crate::{
+    CLang, CodegenBackendKind, Compiler, DependencyType, FileType, GitRepo, LLVM_TOOLS, Mode,
+    debug, trace,
+};
 
 /// Build a standard library for the given `target` using the given `compiler`.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -1330,7 +1333,7 @@ pub fn rustc_cargo_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetS
     }
 
     if let Some(backend) = builder.config.default_codegen_backend(target) {
-        cargo.env("CFG_DEFAULT_CODEGEN_BACKEND", backend);
+        cargo.env("CFG_DEFAULT_CODEGEN_BACKEND", backend.name());
     }
 
     let libdir_relative = builder.config.libdir_relative().unwrap_or_else(|| Path::new("lib"));
@@ -1543,7 +1546,7 @@ impl Step for RustcLink {
 pub struct CodegenBackend {
     pub target: TargetSelection,
     pub compiler: Compiler,
-    pub backend: String,
+    pub backend: CodegenBackendKind,
 }
 
 fn needs_codegen_config(run: &RunConfig<'_>) -> bool {
@@ -1568,7 +1571,7 @@ fn is_codegen_cfg_needed(path: &TaskPath, run: &RunConfig<'_>) -> bool {
     if path.contains(CODEGEN_BACKEND_PREFIX) {
         let mut needs_codegen_backend_config = true;
         for backend in run.builder.config.codegen_backends(run.target) {
-            if path.ends_with(&(CODEGEN_BACKEND_PREFIX.to_owned() + backend)) {
+            if path.ends_with(&(CODEGEN_BACKEND_PREFIX.to_owned() + backend.name())) {
                 needs_codegen_backend_config = false;
             }
         }
@@ -1602,7 +1605,7 @@ impl Step for CodegenBackend {
         }
 
         for backend in run.builder.config.codegen_backends(run.target) {
-            if backend == "llvm" {
+            if backend.is_llvm() {
                 continue; // Already built as part of rustc
             }
 
@@ -1663,20 +1666,21 @@ impl Step for CodegenBackend {
         );
         cargo
             .arg("--manifest-path")
-            .arg(builder.src.join(format!("compiler/rustc_codegen_{backend}/Cargo.toml")));
+            .arg(builder.src.join(format!("compiler/{}/Cargo.toml", backend.crate_name())));
         rustc_cargo_env(builder, &mut cargo, target);
 
         // Ideally, we'd have a separate step for the individual codegen backends,
         // like we have in tests (test::CodegenGCC) but that would require a lot of restructuring.
         // If the logic gets more complicated, it should probably be done.
-        if backend == "gcc" {
+        if backend.is_gcc() {
             let gcc = builder.ensure(Gcc { target });
             add_cg_gcc_cargo_flags(&mut cargo, &gcc);
         }
 
         let tmp_stamp = BuildStamp::new(&out_dir).with_prefix("tmp");
 
-        let _guard = builder.msg_build(compiler, format_args!("codegen backend {backend}"), target);
+        let _guard =
+            builder.msg_build(compiler, format_args!("codegen backend {}", backend.name()), target);
         let files = run_cargo(builder, cargo, vec![], &tmp_stamp, vec![], false, false);
         if builder.config.dry_run() {
             return;
@@ -1731,7 +1735,7 @@ fn copy_codegen_backends_to_sysroot(
     }
 
     for backend in builder.config.codegen_backends(target) {
-        if backend == "llvm" {
+        if backend.is_llvm() {
             continue; // Already built as part of rustc
         }
 
@@ -2161,7 +2165,7 @@ impl Step for Assemble {
         let _codegen_backend_span =
             span!(tracing::Level::DEBUG, "building requested codegen backends").entered();
         for backend in builder.config.codegen_backends(target_compiler.host) {
-            if backend == "llvm" {
+            if backend.is_llvm() {
                 debug!("llvm codegen backend is already built as part of rustc");
                 continue; // Already built as part of rustc
             }
