@@ -14,6 +14,7 @@ use crate::{HashSet, PathBuf, define_config, exit};
 
 define_config! {
     /// TOML representation of various global install decisions.
+    #[derive(Default)]
     struct Install {
         prefix: Option<String> = "prefix",
         sysconfdir: Option<String> = "sysconfdir",

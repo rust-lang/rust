@@ -757,16 +757,31 @@ impl Config {
         // Verbose flag is a good default for `rust.verbose-tests`.
         config.verbose_tests = config.is_verbose();
 
-        if let Some(install) = toml.install {
-            let Install { prefix, sysconfdir, docdir, bindir, libdir, mandir, datadir } = install;
-            config.prefix = prefix.map(PathBuf::from);
-            config.sysconfdir = sysconfdir.map(PathBuf::from);
-            config.datadir = datadir.map(PathBuf::from);
-            config.docdir = docdir.map(PathBuf::from);
-            set(&mut config.bindir, bindir.map(PathBuf::from));
-            config.libdir = libdir.map(PathBuf::from);
-            config.mandir = mandir.map(PathBuf::from);
-        }
+        let Install {
+            prefix: install_prefix,
+            sysconfdir: install_sysconfdir,
+            docdir: install_docdir,
+            bindir: install_bindir,
+            libdir: install_libdir,
+            mandir: install_mandir,
+            datadir: install_datadir,
+        } = toml.install.unwrap_or_default();
+
+        let install_prefix = install_prefix.map(PathBuf::from);
+        let install_sysconfdir = install_sysconfdir.map(PathBuf::from);
+        let install_docdir = install_docdir.map(PathBuf::from);
+        let install_bindir = install_bindir.map(PathBuf::from);
+        let install_libdir = install_libdir.map(PathBuf::from);
+        let install_mandir = install_mandir.map(PathBuf::from);
+        let install_datadir = install_datadir.map(PathBuf::from);
+
+        config.prefix = install_prefix;
+        config.sysconfdir = install_sysconfdir;
+        config.datadir = install_datadir;
+        config.docdir = install_docdir;
+        set(&mut config.bindir, install_bindir);
+        config.libdir = install_libdir;
+        config.mandir = install_mandir;
 
         let file_content = t!(fs::read_to_string(config.src.join("src/ci/channel")));
         let ci_channel = file_content.trim_end();
