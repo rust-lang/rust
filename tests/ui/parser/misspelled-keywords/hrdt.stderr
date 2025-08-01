@@ -4,7 +4,7 @@ error: expected one of `!`, `(`, `+`, `::`, `<`, `where`, or `{`, found keyword 
 LL |     Where for<'a> F: Fn(&'a (u8, u16)) -> &'a u8,
    |           ^^^ expected one of 7 possible tokens
    |
-help: write keyword `where` in lowercase (notice the capitalization difference)
+help: write keyword `where` in lowercase (notice the capitalization)
    |
 LL -     Where for<'a> F: Fn(&'a (u8, u16)) -> &'a u8,
 LL +     where for<'a> F: Fn(&'a (u8, u16)) -> &'a u8,
