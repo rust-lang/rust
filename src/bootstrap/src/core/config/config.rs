@@ -1272,22 +1272,22 @@ impl Config {
         }
 
         let Dist {
-            sign_folder: dist_sign_folder,
-            upload_addr: dist_upload_addr,
-            src_tarball: dist_src_tarball,
-            compression_formats: dist_compression_formats,
-            compression_profile: dist_compression_profile,
-            include_mingw_linker: dist_include_mingw_linker,
-            vendor: dist_vendor,
+            sign_folder: dist_sign_folder_toml,
+            upload_addr: dist_upload_addr_toml,
+            src_tarball: dist_src_tarball_toml,
+            compression_formats: dist_compression_formats_toml,
+            compression_profile: dist_compression_profile_toml,
+            include_mingw_linker: dist_include_mingw_linker_toml,
+            vendor: dist_vendor_toml,
         } = toml.dist.unwrap_or_default();
 
-        config.dist_sign_folder = dist_sign_folder.map(PathBuf::from);
-        config.dist_upload_addr = dist_upload_addr;
-        config.dist_compression_formats = dist_compression_formats;
-        set(&mut config.dist_compression_profile, dist_compression_profile);
-        set(&mut config.rust_dist_src, dist_src_tarball);
-        set(&mut config.dist_include_mingw_linker, dist_include_mingw_linker);
-        config.dist_vendor = dist_vendor.unwrap_or_else(|| {
+        config.dist_sign_folder = dist_sign_folder_toml.map(PathBuf::from);
+        config.dist_upload_addr = dist_upload_addr_toml;
+        config.dist_compression_formats = dist_compression_formats_toml;
+        set(&mut config.dist_compression_profile, dist_compression_profile_toml);
+        set(&mut config.rust_dist_src, dist_src_tarball_toml);
+        set(&mut config.dist_include_mingw_linker, dist_include_mingw_linker_toml);
+        config.dist_vendor = dist_vendor_toml.unwrap_or_else(|| {
             // If we're building from git or tarball sources, enable it by default.
             config.rust_info.is_managed_git_subrepository() || config.rust_info.is_from_tarball()
         });
