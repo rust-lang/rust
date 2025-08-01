@@ -1,6 +1,6 @@
 // Regression test for ICE #130012
 // Checks that we do not ICE while reporting
-// lifetime mistmatch error
+// lifetime mismatch error
 
 trait Fun {
     type Assoc;
