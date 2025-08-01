@@ -104,7 +104,9 @@ targets and features, with the following base command line:
 ```bash
 cargo check --quiet --workspace --message-format=json --all-targets --keep-going
 ```
-.
+
+Note: The option must be specified as an array of command line arguments, with
+the first argument being the name of the command to run.
 
 
 ## rust-analyzer.cargo.buildScripts.rebuildOnSave {#cargo.buildScripts.rebuildOnSave}
@@ -331,7 +333,9 @@ An example command would be:
 ```bash
 cargo check --workspace --message-format=json --all-targets
 ```
-.
+
+Note: The option must be specified as an array of command line arguments, with
+the first argument being the name of the command to run.
 
 
 ## rust-analyzer.check.targets {#check.targets}
@@ -1342,6 +1346,9 @@ formatting. This should be the equivalent of `rustfmt` here, and
 not that of `cargo fmt`. The file contents will be passed on the
 standard input and the formatted result will be read from the
 standard output.
+
+Note: The option must be specified as an array of command line arguments, with
+the first argument being the name of the command to run.
 
 
 ## rust-analyzer.rustfmt.rangeFormatting.enable {#rustfmt.rangeFormatting.enable}
