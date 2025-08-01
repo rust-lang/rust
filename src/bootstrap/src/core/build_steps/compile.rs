@@ -1624,7 +1624,7 @@ impl Step for GccCodegenBackend {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct CraneliftCodegenBackend {
-    compilers: RustcPrivateCompilers,
+    pub compilers: RustcPrivateCompilers,
 }
 
 impl Step for CraneliftCodegenBackend {
