@@ -425,7 +425,6 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
             ty::Bool => "b",
             ty::Char => "c",
             ty::Str => "e",
-            ty::Tuple(_) if ty.is_unit() => "u",
             ty::Int(IntTy::I8) => "a",
             ty::Int(IntTy::I16) => "s",
             ty::Int(IntTy::I32) => "l",
@@ -444,11 +443,11 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
             ty::Float(FloatTy::F128) => "C4f128",
             ty::Never => "z",
 
+            ty::Tuple(_) if ty.is_unit() => "u",
+
             // Should only be encountered within the identity-substituted
             // impl header of an item nested within an impl item.
             ty::Param(_) => "p",
-
-            ty::Bound(..) | ty::Placeholder(_) | ty::Infer(_) | ty::Error(_) => bug!(),
 
             _ => "",
         };
@@ -468,11 +467,9 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
                 unreachable!()
             }
             ty::Tuple(_) if ty.is_unit() => unreachable!(),
+            ty::Param(_) => unreachable!(),
 
-            // Placeholders, also handled as part of basic types.
-            ty::Param(_) | ty::Bound(..) | ty::Placeholder(_) | ty::Infer(_) | ty::Error(_) => {
-                unreachable!()
-            }
+            ty::Bound(..) | ty::Placeholder(_) | ty::Infer(_) | ty::Error(_) => bug!(),
 
             ty::Ref(r, ty, mutbl) => {
                 self.push(match mutbl {
