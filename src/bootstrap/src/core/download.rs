@@ -408,6 +408,30 @@ pub(crate) struct DownloadContext<'a> {
     is_running_on_ci: bool,
 }
 
+impl<'a> DownloadContext<'a> {
+    pub fn new(
+        host_target: TargetSelection,
+        out: &'a Path,
+        patch_binaries_for_nix: Option<bool>,
+        exec_ctx: &'a ExecutionContext,
+        stage0_metadata: &'a build_helper::stage0_parser::Stage0,
+        llvm_assertions: bool,
+        bootstrap_cache_path: &'a Option<PathBuf>,
+        is_running_on_ci: bool,
+    ) -> Self {
+        Self {
+            host_target,
+            out,
+            patch_binaries_for_nix,
+            exec_ctx,
+            stage0_metadata,
+            llvm_assertions,
+            bootstrap_cache_path,
+            is_running_on_ci,
+        }
+    }
+}
+
 impl<'a> AsRef<DownloadContext<'a>> for DownloadContext<'a> {
     fn as_ref(&self) -> &DownloadContext<'a> {
         self

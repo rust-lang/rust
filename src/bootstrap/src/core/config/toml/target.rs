@@ -15,7 +15,7 @@
 use serde::{Deserialize, Deserializer};
 
 use crate::core::config::{LlvmLibunwind, Merge, ReplaceOpt, SplitDebuginfo, StringOrBool};
-use crate::{HashSet, PathBuf, define_config, exit};
+use crate::{CodegenBackendKind, HashSet, PathBuf, define_config, exit};
 
 define_config! {
     /// TOML representation of how each build target is configured.
