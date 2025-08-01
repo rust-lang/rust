@@ -235,28 +235,29 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             }
 
             fn print_region(&mut self, _region: ty::Region<'_>) -> Result<(), PrintError> {
-                Err(fmt::Error)
+                unreachable!(); // because `path_generic_args` ignores the `GenericArgs`
             }
 
             fn print_type(&mut self, _ty: Ty<'tcx>) -> Result<(), PrintError> {
-                Err(fmt::Error)
+                unreachable!(); // because `path_generic_args` ignores the `GenericArgs`
             }
 
             fn print_dyn_existential(
                 &mut self,
                 _predicates: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
             ) -> Result<(), PrintError> {
-                Err(fmt::Error)
+                unreachable!(); // because `path_generic_args` ignores the `GenericArgs`
             }
 
             fn print_const(&mut self, _ct: ty::Const<'tcx>) -> Result<(), PrintError> {
-                Err(fmt::Error)
+                unreachable!(); // because `path_generic_args` ignores the `GenericArgs`
             }
 
             fn path_crate(&mut self, cnum: CrateNum) -> Result<(), PrintError> {
                 self.segments = vec![self.tcx.crate_name(cnum)];
                 Ok(())
             }
+
             fn path_qualified(
                 &mut self,
                 _self_ty: Ty<'tcx>,
@@ -268,12 +269,12 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             fn path_append_impl(
                 &mut self,
                 _print_prefix: impl FnOnce(&mut Self) -> Result<(), PrintError>,
-                _disambiguated_data: &DisambiguatedDefPathData,
                 _self_ty: Ty<'tcx>,
                 _trait_ref: Option<ty::TraitRef<'tcx>>,
             ) -> Result<(), PrintError> {
                 Err(fmt::Error)
             }
+
             fn path_append(
                 &mut self,
                 print_prefix: impl FnOnce(&mut Self) -> Result<(), PrintError>,
@@ -283,6 +284,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 self.segments.push(disambiguated_data.as_sym(true));
                 Ok(())
             }
+
             fn path_generic_args(
                 &mut self,
                 print_prefix: impl FnOnce(&mut Self) -> Result<(), PrintError>,
@@ -298,8 +300,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             // let _ = [{struct Foo; Foo}, {struct Foo; Foo}];
             if did1.krate != did2.krate {
                 let abs_path = |def_id| {
-                    let mut printer = AbsolutePathPrinter { tcx: self.tcx, segments: vec![] };
-                    printer.print_def_path(def_id, &[]).map(|_| printer.segments)
+                    let mut p = AbsolutePathPrinter { tcx: self.tcx, segments: vec![] };
+                    p.print_def_path(def_id, &[]).map(|_| p.segments)
                 };
 
                 // We compare strings because DefPath can be different

@@ -244,7 +244,7 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for ClosureEraser<'a, 'tcx> {
 }
 
 fn fmt_printer<'a, 'tcx>(infcx: &'a InferCtxt<'tcx>, ns: Namespace) -> FmtPrinter<'a, 'tcx> {
-    let mut printer = FmtPrinter::new(infcx.tcx, ns);
+    let mut p = FmtPrinter::new(infcx.tcx, ns);
     let ty_getter = move |ty_vid| {
         if infcx.probe_ty_var(ty_vid).is_ok() {
             warn!("resolved ty var in error message");
@@ -270,11 +270,11 @@ fn fmt_printer<'a, 'tcx>(infcx: &'a InferCtxt<'tcx>, ns: Namespace) -> FmtPrinte
             None
         }
     };
-    printer.ty_infer_name_resolver = Some(Box::new(ty_getter));
+    p.ty_infer_name_resolver = Some(Box::new(ty_getter));
     let const_getter =
         move |ct_vid| Some(infcx.tcx.item_name(infcx.const_var_origin(ct_vid)?.param_def_id?));
-    printer.const_infer_name_resolver = Some(Box::new(const_getter));
-    printer
+    p.const_infer_name_resolver = Some(Box::new(const_getter));
+    p
 }
 
 fn ty_to_string<'tcx>(
@@ -282,7 +282,7 @@ fn ty_to_string<'tcx>(
     ty: Ty<'tcx>,
     called_method_def_id: Option<DefId>,
 ) -> String {
-    let mut printer = fmt_printer(infcx, Namespace::TypeNS);
+    let mut p = fmt_printer(infcx, Namespace::TypeNS);
     let ty = infcx.resolve_vars_if_possible(ty);
     // We use `fn` ptr syntax for closures, but this only works when the closure does not capture
     // anything. We also remove all type parameters that are fully known to the type system.
@@ -292,8 +292,8 @@ fn ty_to_string<'tcx>(
         // We don't want the regular output for `fn`s because it includes its path in
         // invalid pseudo-syntax, we want the `fn`-pointer output instead.
         (ty::FnDef(..), _) => {
-            ty.fn_sig(infcx.tcx).print(&mut printer).unwrap();
-            printer.into_buffer()
+            ty.fn_sig(infcx.tcx).print(&mut p).unwrap();
+            p.into_buffer()
         }
         (_, Some(def_id))
             if ty.is_ty_or_numeric_infer()
@@ -303,8 +303,8 @@ fn ty_to_string<'tcx>(
         }
         _ if ty.is_ty_or_numeric_infer() => "/* Type */".to_string(),
         _ => {
-            ty.print(&mut printer).unwrap();
-            printer.into_buffer()
+            ty.print(&mut p).unwrap();
+            p.into_buffer()
         }
     }
 }
@@ -561,21 +561,20 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 {
                     "Vec<_>".to_string()
                 } else {
-                    let mut printer = fmt_printer(self, Namespace::TypeNS);
-                    printer
-                        .comma_sep(generic_args.iter().copied().map(|arg| {
-                            if arg.is_suggestable(self.tcx, true) {
-                                return arg;
-                            }
+                    let mut p = fmt_printer(self, Namespace::TypeNS);
+                    p.comma_sep(generic_args.iter().copied().map(|arg| {
+                        if arg.is_suggestable(self.tcx, true) {
+                            return arg;
+                        }
 
-                            match arg.kind() {
-                                GenericArgKind::Lifetime(_) => bug!("unexpected lifetime"),
-                                GenericArgKind::Type(_) => self.next_ty_var(DUMMY_SP).into(),
-                                GenericArgKind::Const(_) => self.next_const_var(DUMMY_SP).into(),
-                            }
-                        }))
-                        .unwrap();
-                    printer.into_buffer()
+                        match arg.kind() {
+                            GenericArgKind::Lifetime(_) => bug!("unexpected lifetime"),
+                            GenericArgKind::Type(_) => self.next_ty_var(DUMMY_SP).into(),
+                            GenericArgKind::Const(_) => self.next_const_var(DUMMY_SP).into(),
+                        }
+                    }))
+                    .unwrap();
+                    p.into_buffer()
                 };
 
                 if !have_turbofish {
@@ -589,9 +588,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             InferSourceKind::FullyQualifiedMethodCall { receiver, successor, args, def_id } => {
                 let placeholder = Some(self.next_ty_var(DUMMY_SP));
                 if let Some(args) = args.make_suggestable(self.infcx.tcx, true, placeholder) {
-                    let mut printer = fmt_printer(self, Namespace::ValueNS);
-                    printer.print_def_path(def_id, args).unwrap();
-                    let def_path = printer.into_buffer();
+                    let mut p = fmt_printer(self, Namespace::ValueNS);
+                    p.print_def_path(def_id, args).unwrap();
+                    let def_path = p.into_buffer();
 
                     // We only care about whether we have to add `&` or `&mut ` for now.
                     // This is the case if the last adjustment is a borrow and the
