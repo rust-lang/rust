@@ -355,6 +355,7 @@ trigger_labels = [
 [autolabel."T-libs"]
 trigger_files = [
     "library/alloc",
+    "library/compiler-builtins",
     "library/core",
     "library/panic_abort",
     "library/panic_unwind",
