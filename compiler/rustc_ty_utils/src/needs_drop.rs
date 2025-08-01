@@ -101,9 +101,6 @@ fn has_significant_drop_raw<'tcx>(
 struct NeedsDropTypes<'tcx, F> {
     tcx: TyCtxt<'tcx>,
     typing_env: ty::TypingEnv<'tcx>,
-    /// Whether to reveal coroutine witnesses, this is set
-    /// to `false` unless we compute `needs_drop` for a coroutine witness.
-    reveal_coroutine_witnesses: bool,
     query_ty: Ty<'tcx>,
     seen_tys: FxHashSet<Ty<'tcx>>,
     /// A stack of types left to process, and the recursion depth when we
@@ -131,7 +128,6 @@ impl<'tcx, F> NeedsDropTypes<'tcx, F> {
         Self {
             tcx,
             typing_env,
-            reveal_coroutine_witnesses: exhaustive,
             seen_tys,
             query_ty: ty,
             unchecked_tys: vec![(ty, 0)],
@@ -196,15 +192,28 @@ where
                     // need to be dropped, and only require the captured types to be live
                     // if they do.
                     ty::Coroutine(_, args) => {
-                        if self.reveal_coroutine_witnesses {
-                            queue_type(self, args.as_coroutine().witness());
-                        } else {
-                            return Some(self.always_drop_component(ty));
+                        for arg in args.as_coroutine().upvar_tys() {
+                            queue_type(self, arg);
+                        }
+                        queue_type(self, args.as_coroutine().resume_ty());
+                        match self.typing_env.typing_mode {
+                            ty::TypingMode::Coherence => {
+                                unreachable!("coherence should not be considering drops")
+                            }
+                            ty::TypingMode::Analysis { .. } => {
+                                return Some(
+                                    self.always_drop_component(args.as_coroutine().witness()),
+                                );
+                            }
+                            ty::TypingMode::Borrowck { .. }
+                            | ty::TypingMode::PostBorrowckAnalysis { .. }
+                            | ty::TypingMode::PostAnalysis => {
+                                queue_type(self, args.as_coroutine().witness());
+                            }
                         }
                     }
                     ty::CoroutineWitness(def_id, args) => {
                         if let Some(witness) = tcx.mir_coroutine_witnesses(def_id) {
-                            self.reveal_coroutine_witnesses = true;
                             for field_ty in &witness.field_tys {
                                 queue_type(
                                     self,
