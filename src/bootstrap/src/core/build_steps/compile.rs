@@ -2190,7 +2190,7 @@ impl Step for Assemble {
             let _codegen_backend_span =
                 span!(tracing::Level::DEBUG, "building requested codegen backends").entered();
 
-            for backend in builder.config.codegen_backends(target_compiler.host) {
+            for backend in builder.config.enabled_codegen_backends(target_compiler.host) {
                 // FIXME: this is a horrible hack used to make `x check` work when other codegen
                 // backends are enabled.
                 // `x check` will check stage 1 rustc, which copies its rmetas to the stage0 sysroot.
