@@ -88,7 +88,6 @@ pub trait Printer<'tcx>: Sized {
     fn path_append_impl(
         &mut self,
         print_prefix: impl FnOnce(&mut Self) -> Result<(), PrintError>,
-        disambiguated_data: &DisambiguatedDefPathData,
         self_ty: Ty<'tcx>,
         trait_ref: Option<ty::TraitRef<'tcx>>,
     ) -> Result<(), PrintError>;
@@ -236,12 +235,7 @@ pub trait Printer<'tcx>: Sized {
             // If the impl is not co-located with either self-type or
             // trait-type, then fallback to a format that identifies
             // the module more clearly.
-            self.path_append_impl(
-                |p| p.print_def_path(parent_def_id, &[]),
-                &key.disambiguated_data,
-                self_ty,
-                impl_trait_ref,
-            )
+            self.path_append_impl(|p| p.print_def_path(parent_def_id, &[]), self_ty, impl_trait_ref)
         } else {
             // Otherwise, try to give a good form that would be valid language
             // syntax. Preferably using associated item notation.

@@ -846,7 +846,6 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
     fn path_append_impl(
         &mut self,
         _: impl FnOnce(&mut Self) -> Result<(), PrintError>,
-        _: &DisambiguatedDefPathData,
         _: Ty<'tcx>,
         _: Option<ty::TraitRef<'tcx>>,
     ) -> Result<(), PrintError> {
