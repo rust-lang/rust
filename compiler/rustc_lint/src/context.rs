@@ -854,9 +854,9 @@ impl<'tcx> LateContext<'tcx> {
             }
         }
 
-        let mut printer = AbsolutePathPrinter { tcx: self.tcx, path: vec![] };
-        printer.print_def_path(def_id, &[]).unwrap();
-        printer.path
+        let mut p = AbsolutePathPrinter { tcx: self.tcx, path: vec![] };
+        p.print_def_path(def_id, &[]).unwrap();
+        p.path
     }
 
     /// Returns the associated type `name` for `self_ty` as an implementation of `trait_id`.

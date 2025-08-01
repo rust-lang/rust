@@ -301,8 +301,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             // let _ = [{struct Foo; Foo}, {struct Foo; Foo}];
             if did1.krate != did2.krate {
                 let abs_path = |def_id| {
-                    let mut printer = AbsolutePathPrinter { tcx: self.tcx, segments: vec![] };
-                    printer.print_def_path(def_id, &[]).map(|_| printer.segments)
+                    let mut p = AbsolutePathPrinter { tcx: self.tcx, segments: vec![] };
+                    p.print_def_path(def_id, &[]).map(|_| p.segments)
                 };
 
                 // We compare strings because DefPath can be different

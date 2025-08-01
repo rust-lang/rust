@@ -166,7 +166,7 @@ impl Write for AbsolutePathPrinter<'_> {
 }
 
 pub fn type_name<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> String {
-    let mut printer = AbsolutePathPrinter { tcx, path: String::new() };
-    printer.print_type(ty).unwrap();
-    printer.path
+    let mut p = AbsolutePathPrinter { tcx, path: String::new() };
+    p.print_type(ty).unwrap();
+    p.path
 }
