@@ -165,6 +165,21 @@ impl Generics {
         (parent_len, self_param, type_params, const_params, impl_trait_params, lifetime_params)
     }
 
+    pub(crate) fn type_or_const_param(
+        &self,
+        param: TypeOrConstParamId,
+    ) -> Option<(usize, TypeOrConstParamData)> {
+        let idx = self.find_type_or_const_param(param)?;
+        self.iter().nth(idx).and_then(|p| {
+            let data = match p.1 {
+                GenericParamDataRef::TypeParamData(p) => p.clone().into(),
+                GenericParamDataRef::ConstParamData(p) => p.clone().into(),
+                _ => return None,
+            };
+            Some((idx, data))
+        })
+    }
+
     pub fn type_or_const_param_idx(&self, param: TypeOrConstParamId) -> Option<usize> {
         self.find_type_or_const_param(param)
     }
@@ -272,7 +287,7 @@ pub(crate) fn trait_self_param_idx(db: &dyn DefDatabase, def: GenericDefId) -> O
     }
 }
 
-fn parent_generic_def(db: &dyn DefDatabase, def: GenericDefId) -> Option<GenericDefId> {
+pub(crate) fn parent_generic_def(db: &dyn DefDatabase, def: GenericDefId) -> Option<GenericDefId> {
     let container = match def {
         GenericDefId::FunctionId(it) => it.lookup(db).container,
         GenericDefId::TypeAliasId(it) => it.lookup(db).container,

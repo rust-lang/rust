@@ -22,6 +22,8 @@ tracing.workspace = true
 triomphe.workspace = true
 indexmap.workspace = true
 
+ra-ap-rustc_type_ir.workspace = true
+
 # local deps
 base-db.workspace = true
 cfg.workspace = true
@@ -36,6 +38,9 @@ span.workspace = true
 
 [dev-dependencies]
 expect-test.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+tracing-tree.workspace = true
 
 # local deps
 test-utils.workspace = true

@@ -35,7 +35,7 @@
 //!     error: fmt
 //!     fmt: option, result, transmute, coerce_unsized, copy, clone, derive
 //!     fmt_before_1_89_0: fmt
-//!     fn: tuple
+//!     fn: sized, tuple
 //!     from: sized, result
 //!     future: pin
 //!     coroutine: pin
@@ -323,6 +323,18 @@ pub mod clone {
     impl Clone for ! {
         fn clone(&self) {
             *self
+        }
+    }
+
+    impl<T: Clone> Clone for [T; 0] {
+        fn clone(&self) -> Self {
+            []
+        }
+    }
+
+    impl<T: Clone> Clone for [T; 1] {
+        fn clone(&self) -> Self {
+            [self[0].clone()]
         }
     }
     // endregion:builtin_impls
@@ -1035,6 +1047,7 @@ pub mod ops {
 
         #[lang = "coroutine"]
         pub trait Coroutine<R = ()> {
+            #[lang = "coroutine_yield"]
             type Yield;
             #[lang = "coroutine_return"]
             type Return;

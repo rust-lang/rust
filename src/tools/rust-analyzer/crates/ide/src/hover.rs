@@ -12,6 +12,7 @@ use hir::{
 };
 use ide_db::{
     FileRange, FxIndexSet, Ranker, RootDatabase,
+    base_db::salsa,
     defs::{Definition, IdentClass, NameRefClass, OperatorClass},
     famous_defs::FamousDefs,
     helpers::pick_best_token,
@@ -290,7 +291,7 @@ fn hover_offset(
                 .into_iter()
                 .unique_by(|&((def, _), _, _, _)| def)
                 .map(|((def, subst), macro_arm, hovered_definition, node)| {
-                    hover_for_definition(
+                    salsa::attach(sema.db, || hover_for_definition(
                         sema,
                         file_id,
                         def,
@@ -301,7 +302,7 @@ fn hover_offset(
                         config,
                         edition,
                         display_target,
-                    )
+                    ))
                 })
                 .collect::<Vec<_>>(),
             )

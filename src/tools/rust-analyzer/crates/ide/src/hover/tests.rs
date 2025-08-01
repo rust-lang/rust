@@ -6,6 +6,8 @@ use crate::{
     HoverConfig, HoverDocFormat, MemoryLayoutHoverConfig, MemoryLayoutHoverRenderKind, fixture,
 };
 
+use hir::setup_tracing;
+
 const HOVER_BASE_CONFIG: HoverConfig = HoverConfig {
     links_in_hover: false,
     memory_layout: Some(MemoryLayoutHoverConfig {
@@ -38,6 +40,7 @@ fn check_hover_no_result(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
 
 #[track_caller]
 fn check(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect) {
+    let _tracing = setup_tracing();
     let (analysis, position) = fixture::position(ra_fixture);
     let hover = analysis
         .hover(

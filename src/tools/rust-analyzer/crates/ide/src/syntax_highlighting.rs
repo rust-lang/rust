@@ -16,7 +16,7 @@ use std::ops::ControlFlow;
 
 use either::Either;
 use hir::{DefWithBody, EditionedFileId, InFile, InRealFile, MacroKind, Name, Semantics};
-use ide_db::{FxHashMap, FxHashSet, Ranker, RootDatabase, SymbolKind};
+use ide_db::{FxHashMap, FxHashSet, Ranker, RootDatabase, SymbolKind, base_db::salsa};
 use syntax::{
     AstNode, AstToken, NodeOrToken,
     SyntaxKind::*,
@@ -434,15 +434,17 @@ fn traverse(
             |node| unsafe_ops.contains(&InFile::new(descended_element.file_id, node));
         let element = match descended_element.value {
             NodeOrToken::Node(name_like) => {
-                let hl = highlight::name_like(
-                    sema,
-                    krate,
-                    bindings_shadow_count,
-                    &is_unsafe_node,
-                    config.syntactic_name_ref_highlighting,
-                    name_like,
-                    edition,
-                );
+                let hl = salsa::attach(sema.db, || {
+                    highlight::name_like(
+                        sema,
+                        krate,
+                        bindings_shadow_count,
+                        &is_unsafe_node,
+                        config.syntactic_name_ref_highlighting,
+                        name_like,
+                        edition,
+                    )
+                });
                 if hl.is_some() && !in_macro {
                     // skip highlighting the contained token of our name-like node
                     // as that would potentially overwrite our result

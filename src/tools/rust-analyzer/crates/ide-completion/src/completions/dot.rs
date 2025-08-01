@@ -1384,14 +1384,15 @@ fn baz() {
     fn skip_iter() {
         check_no_kw(
             r#"
-        //- minicore: iterator
+        //- minicore: iterator, clone, builtin_impls
         fn foo() {
             [].$0
         }
         "#,
             expect![[r#"
-                me clone() (as Clone)                                       fn(&self) -> Self
-                me into_iter() (as IntoIterator) fn(self) -> <Self as IntoIterator>::IntoIter
+                me clone() (as Clone)                                             fn(&self) -> Self
+                me fmt(…) (use core::fmt::Debug) fn(&self, &mut Formatter<'_>) -> Result<(), Error>
+                me into_iter() (as IntoIterator)       fn(self) -> <Self as IntoIterator>::IntoIter
             "#]],
         );
         check_no_kw(

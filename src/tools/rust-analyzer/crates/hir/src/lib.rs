@@ -20,6 +20,12 @@
 #![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
 #![recursion_limit = "512"]
 
+#[cfg(feature = "in-rust-tree")]
+extern crate rustc_type_ir;
+
+#[cfg(not(feature = "in-rust-tree"))]
+extern crate ra_ap_rustc_type_ir as rustc_type_ir;
+
 mod attrs;
 mod from_id;
 mod has_source;
@@ -54,7 +60,10 @@ use hir_def::{
     },
     item_tree::ImportAlias,
     layout::{self, ReprOptions, TargetDataLayout},
-    nameres::{self, assoc::TraitItems, diagnostics::DefDiagnostic},
+    nameres::{
+        assoc::TraitItems,
+        diagnostics::{DefDiagnostic, DefDiagnosticKind},
+    },
     per_ns::PerNs,
     resolver::{HasResolver, Resolver},
     signatures::{ImplFlags, StaticFlags, TraitFlags, VariantFields},
@@ -76,11 +85,11 @@ use hir_ty::{
     layout::{Layout as TyLayout, RustcEnumVariantIdx, RustcFieldIdx, TagEncoding},
     method_resolution,
     mir::{MutBorrowKind, interpret_mir},
+    next_solver::{DbInterner, GenericArgs, SolverDefId, infer::InferCtxt},
     primitive::UintTy,
     traits::FnTrait,
 };
 use itertools::Itertools;
-use nameres::diagnostics::DefDiagnosticKind;
 use rustc_hash::FxHashSet;
 use smallvec::SmallVec;
 use span::{AstIdNode, Edition, FileId};
@@ -187,6 +196,10 @@ pub struct CrateDependency {
 }
 
 impl Crate {
+    pub fn base(self) -> base_db::Crate {
+        self.id
+    }
+
     pub fn origin(self, db: &dyn HirDatabase) -> CrateOrigin {
         self.id.data(db).origin.clone()
     }
@@ -1247,6 +1260,25 @@ pub struct Field {
     pub(crate) id: LocalFieldId,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct InstantiatedField<'db> {
+    pub(crate) inner: Field,
+    pub(crate) args: GenericArgs<'db>,
+}
+
+impl<'db> InstantiatedField<'db> {
+    /// Returns the type as in the signature of the struct.
+    pub fn ty(&self, db: &'db dyn HirDatabase) -> TypeNs<'db> {
+        let krate = self.inner.krate(db);
+        let interner = DbInterner::new_with(db, Some(krate.base()), None);
+
+        let var_id = self.inner.parent.into();
+        let field = db.field_types_ns(var_id)[self.inner.id];
+        let ty = field.instantiate(interner, self.args);
+        TypeNs::new(db, var_id, ty)
+    }
+}
+
 #[derive(Debug, PartialEq, Eq, Copy, Clone, Hash)]
 pub struct TupleField {
     pub owner: DefWithBodyId,
@@ -1444,6 +1476,11 @@ impl Struct {
     pub fn is_unstable(self, db: &dyn HirDatabase) -> bool {
         db.attrs(self.id.into()).is_unstable()
     }
+
+    pub fn instantiate_infer<'db>(self, infer_ctxt: &InferCtxt<'db>) -> InstantiatedStruct<'db> {
+        let args = infer_ctxt.fresh_args_for_item(self.id.into());
+        InstantiatedStruct { inner: self, args }
+    }
 }
 
 impl HasVisibility for Struct {
@@ -1451,6 +1488,35 @@ impl HasVisibility for Struct {
         let loc = self.id.lookup(db);
         let source = loc.source(db);
         visibility_from_ast(db, self.id, source.map(|src| src.visibility()))
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct InstantiatedStruct<'db> {
+    pub(crate) inner: Struct,
+    pub(crate) args: GenericArgs<'db>,
+}
+
+impl<'db> InstantiatedStruct<'db> {
+    pub fn fields(self, db: &dyn HirDatabase) -> Vec<InstantiatedField<'db>> {
+        self.inner
+            .id
+            .fields(db)
+            .fields()
+            .iter()
+            .map(|(id, _)| InstantiatedField {
+                inner: Field { parent: self.inner.into(), id },
+                args: self.args,
+            })
+            .collect()
+    }
+
+    pub fn ty(self, db: &'db dyn HirDatabase) -> TypeNs<'db> {
+        let krate = self.inner.krate(db);
+        let interner = DbInterner::new_with(db, Some(krate.base()), None);
+
+        let ty = db.ty_ns(self.inner.id.into());
+        TypeNs::new(db, self.inner.id, ty.instantiate(interner, self.args))
     }
 }
 
@@ -1598,6 +1664,22 @@ impl HasVisibility for Enum {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct InstantiatedEnum<'db> {
+    pub(crate) inner: Enum,
+    pub(crate) args: GenericArgs<'db>,
+}
+
+impl<'db> InstantiatedEnum<'db> {
+    pub fn ty(self, db: &'db dyn HirDatabase) -> TypeNs<'db> {
+        let krate = self.inner.krate(db);
+        let interner = DbInterner::new_with(db, Some(krate.base()), None);
+
+        let ty = db.ty_ns(self.inner.id.into());
+        TypeNs::new(db, self.inner.id, ty.instantiate(interner, self.args))
+    }
+}
+
 impl From<&Variant> for DefWithBodyId {
     fn from(&v: &Variant) -> Self {
         DefWithBodyId::VariantId(v.into())
@@ -1672,6 +1754,38 @@ impl Variant {
 
     pub fn is_unstable(self, db: &dyn HirDatabase) -> bool {
         db.attrs(self.id.into()).is_unstable()
+    }
+
+    pub fn instantiate_infer<'db>(self, infer_ctxt: &InferCtxt<'db>) -> InstantiatedVariant<'db> {
+        let args =
+            infer_ctxt.fresh_args_for_item(self.parent_enum(infer_ctxt.interner.db()).id.into());
+        InstantiatedVariant { inner: self, args }
+    }
+}
+
+// FIXME: Rename to `EnumVariant`
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct InstantiatedVariant<'db> {
+    pub(crate) inner: Variant,
+    pub(crate) args: GenericArgs<'db>,
+}
+
+impl<'db> InstantiatedVariant<'db> {
+    pub fn parent_enum(self, db: &dyn HirDatabase) -> InstantiatedEnum<'db> {
+        InstantiatedEnum { inner: self.inner.id.lookup(db).parent.into(), args: self.args }
+    }
+
+    pub fn fields(self, db: &dyn HirDatabase) -> Vec<InstantiatedField<'db>> {
+        self.inner
+            .id
+            .fields(db)
+            .fields()
+            .iter()
+            .map(|(id, _)| InstantiatedField {
+                inner: Field { parent: self.inner.into(), id },
+                args: self.args,
+            })
+            .collect()
     }
 }
 
@@ -5072,7 +5186,7 @@ impl<'db> Type<'db> {
             binders: CanonicalVarKinds::empty(Interner),
         };
 
-        db.trait_solve(self.env.krate, self.env.block, goal).is_some()
+        !db.trait_solve(self.env.krate, self.env.block, goal).no_solution()
     }
 
     pub fn normalize_trait_assoc_type(
@@ -5827,6 +5941,55 @@ impl<'db> Type<'db> {
     }
 }
 
+#[derive(Clone, PartialEq, Eq, Debug, Hash)]
+pub struct TypeNs<'db> {
+    env: Arc<TraitEnvironment>,
+    ty: hir_ty::next_solver::Ty<'db>,
+    _pd: PhantomCovariantLifetime<'db>,
+}
+
+impl<'db> TypeNs<'db> {
+    fn new(
+        db: &'db dyn HirDatabase,
+        lexical_env: impl HasResolver,
+        ty: hir_ty::next_solver::Ty<'db>,
+    ) -> Self {
+        let resolver = lexical_env.resolver(db);
+        let environment = resolver
+            .generic_def()
+            .map_or_else(|| TraitEnvironment::empty(resolver.krate()), |d| db.trait_environment(d));
+        TypeNs { env: environment, ty, _pd: PhantomCovariantLifetime::new() }
+    }
+
+    // FIXME: Find better API that also handles const generics
+    pub fn impls_trait(&self, infcx: InferCtxt<'db>, trait_: Trait, args: &[TypeNs<'db>]) -> bool {
+        let args = GenericArgs::new_from_iter(
+            infcx.interner,
+            [self.ty].into_iter().chain(args.iter().map(|t| t.ty)).map(|t| t.into()),
+        );
+        let trait_ref = hir_ty::next_solver::TraitRef::new(
+            infcx.interner,
+            SolverDefId::TraitId(trait_.id),
+            args,
+        );
+
+        let pred_kind = rustc_type_ir::Binder::dummy(rustc_type_ir::PredicateKind::Clause(
+            rustc_type_ir::ClauseKind::Trait(rustc_type_ir::TraitPredicate {
+                trait_ref,
+                polarity: rustc_type_ir::PredicatePolarity::Positive,
+            }),
+        ));
+        let predicate = hir_ty::next_solver::Predicate::new(infcx.interner, pred_kind);
+        let goal = hir_ty::next_solver::Goal::new(
+            infcx.interner,
+            hir_ty::next_solver::ParamEnv::empty(),
+            predicate,
+        );
+        let res = hir_ty::traits::next_trait_solve_in_ctxt(&infcx, goal);
+        res.map_or(false, |res| matches!(res.1, rustc_type_ir::solve::Certainty::Yes))
+    }
+}
+
 #[derive(Debug, PartialEq, Eq, Copy, Clone, Hash)]
 pub struct InlineAsmOperand {
     owner: DefWithBodyId,
@@ -6476,3 +6639,6 @@ pub fn resolve_absolute_path<'a, I: Iterator<Item = Symbol> + Clone + 'a>(
 fn as_name_opt(name: Option<impl AsName>) -> Name {
     name.map_or_else(Name::missing, |name| name.as_name())
 }
+
+pub use hir_ty::next_solver;
+pub use hir_ty::setup_tracing;

@@ -12,9 +12,6 @@ mod simple;
 mod traits;
 mod type_alias_impl_traits;
 
-use std::env;
-use std::sync::LazyLock;
-
 use base_db::{Crate, SourceDatabase};
 use expect_test::Expect;
 use hir_def::{
@@ -35,8 +32,6 @@ use syntax::{
     ast::{self, AstNode, HasName},
 };
 use test_fixture::WithFixture;
-use tracing_subscriber::{Registry, layer::SubscriberExt};
-use tracing_tree::HierarchicalLayer;
 use triomphe::Arc;
 
 use crate::{
@@ -44,29 +39,13 @@ use crate::{
     db::HirDatabase,
     display::{DisplayTarget, HirDisplay},
     infer::{Adjustment, TypeMismatch},
+    setup_tracing,
     test_db::TestDB,
 };
 
 // These tests compare the inference results for all expressions in a file
 // against snapshots of the expected results using expect. Use
 // `env UPDATE_EXPECT=1 cargo test -p hir_ty` to update the snapshots.
-
-fn setup_tracing() -> Option<tracing::subscriber::DefaultGuard> {
-    static ENABLE: LazyLock<bool> = LazyLock::new(|| env::var("CHALK_DEBUG").is_ok());
-    if !*ENABLE {
-        return None;
-    }
-
-    let filter: tracing_subscriber::filter::Targets =
-        env::var("CHALK_DEBUG").ok().and_then(|it| it.parse().ok()).unwrap_or_default();
-    let layer = HierarchicalLayer::default()
-        .with_indent_lines(true)
-        .with_ansi(false)
-        .with_indent_amount(2)
-        .with_writer(std::io::stderr);
-    let subscriber = Registry::default().with(filter).with(layer);
-    Some(tracing::subscriber::set_default(subscriber))
-}
 
 #[track_caller]
 fn check_types(#[rust_analyzer::rust_fixture] ra_fixture: &str) {

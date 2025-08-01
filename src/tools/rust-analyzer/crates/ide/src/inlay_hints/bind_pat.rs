@@ -909,7 +909,7 @@ fn main() {
     foo(plus_one);
 
     let add_mul = bar(|x: u8| { x + 1 });
-    //  ^^^^^^^ impl FnOnce(u8) -> u8 + ?Sized
+    //  ^^^^^^^ impl FnOnce(u8) -> u8
 
     let closure = if let Some(6) = add_mul(2).checked_sub(1) {
     //  ^^^^^^^ fn(i32) -> i32

@@ -157,7 +157,7 @@ fn h(x: &Y<Unknown>) -> Y<Unknown> {
     fn no_false_positive_dyn_fn() {
         check_diagnostics(
             r#"
-//- minicore: copy, fn
+//- minicore: copy, fn, dispatch_from_dyn
 fn f(x: &mut &mut dyn Fn()) {
     x();
 }
@@ -166,7 +166,7 @@ struct X<'a> {
     field: &'a mut dyn Fn(),
 }
 
-fn f(x: &mut X<'_>) {
+fn g(x: &mut X<'_>) {
     (x.field)();
 }
 "#,

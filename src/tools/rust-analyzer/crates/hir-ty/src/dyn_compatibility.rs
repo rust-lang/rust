@@ -16,8 +16,8 @@ use rustc_hash::FxHashSet;
 use smallvec::SmallVec;
 
 use crate::{
-    AliasEq, AliasTy, Binders, BoundVar, CallableSig, GoalData, ImplTraitId, Interner, OpaqueTyId,
-    ProjectionTyExt, Solution, Substitution, TraitRef, Ty, TyKind, WhereClause, all_super_traits,
+    AliasEq, AliasTy, Binders, BoundVar, CallableSig, DomainGoal, GoalData, ImplTraitId, Interner,
+    OpaqueTyId, ProjectionTyExt, Substitution, TraitRef, Ty, TyKind, WhereClause, all_super_traits,
     db::HirDatabase,
     from_assoc_type_id, from_chalk_trait_id,
     generics::{generics, trait_self_param_idx},
@@ -510,6 +510,8 @@ fn receiver_is_dispatchable(
         trait_id: to_chalk_trait_id(unsize_did),
         substitution: Substitution::from_iter(Interner, [self_ty.clone(), unsized_self_ty.clone()]),
     });
+    let unsized_predicate =
+        Binders::empty(Interner, unsized_predicate.cast::<DomainGoal>(Interner));
     let trait_predicate = WhereClause::Implemented(TraitRef {
         trait_id: to_chalk_trait_id(trait_),
         substitution: Substitution::from_iter(
@@ -518,18 +520,32 @@ fn receiver_is_dispatchable(
                 .chain(placeholder_subst.iter(Interner).skip(1).cloned()),
         ),
     });
+    let trait_predicate = Binders::empty(Interner, trait_predicate.cast::<DomainGoal>(Interner));
 
     let generic_predicates = &*db.generic_predicates(func.into());
 
-    let clauses = std::iter::once(unsized_predicate)
-        .chain(std::iter::once(trait_predicate))
-        .chain(generic_predicates.iter().map(|pred| {
-            pred.clone().substitute(Interner, &placeholder_subst).into_value_and_skipped_binders().0
-        }))
-        .map(|pred| {
-            pred.cast::<chalk_ir::ProgramClause<Interner>>(Interner).into_from_env_clause(Interner)
-        });
-    let env = chalk_ir::Environment::new(Interner).add_clauses(Interner, clauses);
+    let goals = std::iter::once(unsized_predicate).chain(std::iter::once(trait_predicate)).chain(
+        generic_predicates.iter().map(|pred| {
+            pred.clone()
+                .substitute(Interner, &placeholder_subst)
+                .map(|g| g.cast::<DomainGoal>(Interner))
+        }),
+    );
+    let clauses = chalk_ir::ProgramClauses::from_iter(
+        Interner,
+        goals.into_iter().map(|g| {
+            chalk_ir::ProgramClause::new(
+                Interner,
+                chalk_ir::ProgramClauseData(g.map(|g| chalk_ir::ProgramClauseImplication {
+                    consequence: g,
+                    conditions: chalk_ir::Goals::empty(Interner),
+                    constraints: chalk_ir::Constraints::empty(Interner),
+                    priority: chalk_ir::ClausePriority::High,
+                })),
+            )
+        }),
+    );
+    let env: chalk_ir::Environment<Interner> = chalk_ir::Environment { clauses };
 
     let obligation = WhereClause::Implemented(TraitRef {
         trait_id: to_chalk_trait_id(dispatch_from_dyn_did),
@@ -541,9 +557,8 @@ fn receiver_is_dispatchable(
 
     let mut table = chalk_solve::infer::InferenceTable::<Interner>::new();
     let canonicalized = table.canonicalize(Interner, in_env);
-    let solution = db.trait_solve(krate, None, canonicalized.quantified);
 
-    matches!(solution, Some(Solution::Unique(_)))
+    db.trait_solve(krate, None, canonicalized.quantified).certain()
 }
 
 fn receiver_for_self_ty(db: &dyn HirDatabase, func: FunctionId, ty: Ty) -> Option<Ty> {

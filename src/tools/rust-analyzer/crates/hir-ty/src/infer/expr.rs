@@ -278,6 +278,7 @@ impl InferenceContext<'_> {
         }
     }
 
+    #[tracing::instrument(level = "debug", skip(self, is_read), ret)]
     fn infer_expr_inner(
         &mut self,
         tgt_expr: ExprId,
@@ -286,7 +287,9 @@ impl InferenceContext<'_> {
     ) -> Ty {
         self.db.unwind_if_revision_cancelled();
 
-        let ty = match &self.body[tgt_expr] {
+        let expr = &self.body[tgt_expr];
+        tracing::trace!(?expr);
+        let ty = match expr {
             Expr::Missing => self.err_ty(),
             &Expr::If { condition, then_branch, else_branch } => {
                 let expected = &expected.adjust_for_branches(&mut self.table);
@@ -1949,7 +1952,11 @@ impl InferenceContext<'_> {
                     sig.ret().clone(),
                     sig.is_varargs,
                 ),
-                None => ((self.err_ty(), Vec::new()), self.err_ty(), true),
+                None => {
+                    let formal_receiver_ty = self.table.new_type_var();
+                    let ret_ty = self.table.new_type_var();
+                    ((formal_receiver_ty, Vec::new()), ret_ty, true)
+                }
             };
         self.unify(&formal_receiver_ty, &receiver_ty);
 

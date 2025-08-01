@@ -14,10 +14,9 @@ use hir_def::{
 use crate::{
     AdtId, AliasEq, AliasTy, Binders, CallableDefId, CallableSig, Canonical, CanonicalVarKinds,
     ClosureId, DynTy, FnPointer, ImplTraitId, InEnvironment, Interner, Lifetime, ProjectionTy,
-    QuantifiedWhereClause, Substitution, TraitRef, Ty, TyBuilder, TyKind, TypeFlags, WhereClause,
-    db::HirDatabase, from_assoc_type_id, from_chalk_trait_id, from_foreign_def_id,
-    from_placeholder_idx, generics::generics, mapping::ToChalk, to_chalk_trait_id,
-    utils::ClosureSubst,
+    QuantifiedWhereClause, Substitution, ToChalk, TraitRef, Ty, TyBuilder, TyKind, TypeFlags,
+    WhereClause, db::HirDatabase, from_assoc_type_id, from_chalk_trait_id, from_foreign_def_id,
+    from_placeholder_idx, generics::generics, to_chalk_trait_id, utils::ClosureSubst,
 };
 
 pub trait TyExt {
@@ -371,7 +370,7 @@ impl TyExt for Ty {
             value: InEnvironment::new(&env.env, trait_ref.cast(Interner)),
             binders: CanonicalVarKinds::empty(Interner),
         };
-        db.trait_solve(crate_id, None, goal).is_some()
+        !db.trait_solve(crate_id, None, goal).no_solution()
     }
 
     fn equals_ctor(&self, other: &Ty) -> bool {

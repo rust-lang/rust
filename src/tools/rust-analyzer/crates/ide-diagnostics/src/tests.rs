@@ -2,6 +2,7 @@
 
 mod overly_long_real_world_cases;
 
+use hir::setup_tracing;
 use ide_db::{
     LineIndexDatabase, RootDatabase,
     assists::{AssistResolveStrategy, ExprFillDefaultMode},
@@ -198,6 +199,8 @@ pub(crate) fn check_diagnostics_with_config(
     config: DiagnosticsConfig,
     #[rust_analyzer::rust_fixture] ra_fixture: &str,
 ) {
+    let _tracing = setup_tracing();
+
     let (db, files) = RootDatabase::with_many_files(ra_fixture);
     let mut annotations = files
         .iter()

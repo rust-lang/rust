@@ -19,11 +19,13 @@ use triomphe::Arc;
 use super::{InferOk, InferResult, InferenceContext, TypeError};
 use crate::{
     AliasEq, AliasTy, BoundVar, Canonical, Const, ConstValue, DebruijnIndex, DomainGoal,
-    GenericArg, GenericArgData, Goal, GoalData, Guidance, InEnvironment, InferenceVar, Interner,
-    Lifetime, OpaqueTyId, ParamKind, ProjectionTy, ProjectionTyExt, Scalar, Solution, Substitution,
-    TraitEnvironment, TraitRef, Ty, TyBuilder, TyExt, TyKind, VariableKind, WhereClause,
-    consteval::unknown_const, db::HirDatabase, fold_generic_args, fold_tys_and_consts,
-    to_chalk_trait_id, traits::FnTrait,
+    GenericArg, GenericArgData, Goal, GoalData, InEnvironment, InferenceVar, Interner, Lifetime,
+    OpaqueTyId, ParamKind, ProjectionTy, ProjectionTyExt, Scalar, Substitution, TraitEnvironment,
+    TraitRef, Ty, TyBuilder, TyExt, TyKind, VariableKind, WhereClause,
+    consteval::unknown_const,
+    db::HirDatabase,
+    fold_generic_args, fold_tys_and_consts, to_chalk_trait_id,
+    traits::{FnTrait, NextTraitSolveResult},
 };
 
 impl InferenceContext<'_> {
@@ -116,9 +118,12 @@ impl<T: HasInterner<Interner = Interner>> Canonicalized<T> {
                 // eagerly replace projections in the type; we may be getting types
                 // e.g. from where clauses where this hasn't happened yet
                 let ty = ctx.normalize_associated_types_in(new_vars.apply(ty.clone(), Interner));
+                tracing::debug!("unifying {:?} {:?}", var, ty);
                 ctx.unify(var.assert_ty_ref(Interner), &ty);
             } else {
-                let _ = ctx.try_unify(var, &new_vars.apply(v.clone(), Interner));
+                let v = new_vars.apply(v.clone(), Interner);
+                tracing::debug!("try_unifying {:?} {:?}", var, v);
+                let _ = ctx.try_unify(var, &v);
             }
         }
     }
@@ -326,6 +331,7 @@ impl<'a> InferenceTable<'a> {
     /// type annotation (e.g. from a let type annotation, field type or function
     /// call). `make_ty` handles this already, but e.g. for field types we need
     /// to do it as well.
+    #[tracing::instrument(skip(self), ret)]
     pub(crate) fn normalize_associated_types_in<T>(&mut self, ty: T) -> T
     where
         T: HasInterner<Interner = Interner> + TypeFoldable<Interner>,
@@ -333,12 +339,88 @@ impl<'a> InferenceTable<'a> {
         fold_tys_and_consts(
             ty,
             |e, _| match e {
-                Either::Left(ty) => Either::Left(match ty.kind(Interner) {
-                    TyKind::Alias(AliasTy::Projection(proj_ty)) => {
-                        self.normalize_projection_ty(proj_ty.clone())
-                    }
-                    _ => ty,
-                }),
+                Either::Left(ty) => {
+                    let ty = self.resolve_ty_shallow(&ty);
+                    tracing::debug!(?ty);
+                    Either::Left(match ty.kind(Interner) {
+                        TyKind::Alias(AliasTy::Projection(proj_ty)) => {
+                            let ty = self.normalize_projection_ty(proj_ty.clone());
+                            self.resolve_ty_shallow(&ty)
+                        }
+                        TyKind::AssociatedType(id, subst) => {
+                            if ty.data(Interner).flags.intersects(
+                                chalk_ir::TypeFlags::HAS_TY_INFER
+                                    | chalk_ir::TypeFlags::HAS_CT_INFER,
+                            ) {
+                                return Either::Left(ty);
+                            }
+                            let var = self.new_type_var();
+                            let proj_ty = chalk_ir::ProjectionTy {
+                                associated_ty_id: *id,
+                                substitution: subst.clone(),
+                            };
+                            let normalize = chalk_ir::Normalize {
+                                alias: AliasTy::Projection(proj_ty),
+                                ty: var.clone(),
+                            };
+                            let goal = chalk_ir::Goal::new(
+                                Interner,
+                                chalk_ir::GoalData::DomainGoal(chalk_ir::DomainGoal::Normalize(
+                                    normalize,
+                                )),
+                            );
+                            let in_env = InEnvironment::new(&self.trait_env.env, goal);
+
+                            let canonicalized = {
+                                let result =
+                                    self.var_unification_table.canonicalize(Interner, in_env);
+                                let free_vars = result
+                                    .free_vars
+                                    .into_iter()
+                                    .map(|free_var| free_var.to_generic_arg(Interner))
+                                    .collect();
+                                Canonicalized { value: result.quantified, free_vars }
+                            };
+                            let solution = self.db.trait_solve(
+                                self.trait_env.krate,
+                                self.trait_env.block,
+                                canonicalized.value.clone(),
+                            );
+                            if let NextTraitSolveResult::Certain(canonical_subst) = solution {
+                                // This is not great :) But let's just assert this for now and come back to it later.
+                                if canonical_subst.value.subst.len(Interner) != 1 {
+                                    ty
+                                } else {
+                                    let normalized = canonical_subst.value.subst.as_slice(Interner)
+                                        [0]
+                                    .assert_ty_ref(Interner);
+                                    match normalized.kind(Interner) {
+                                        TyKind::Alias(AliasTy::Projection(proj_ty)) => {
+                                            if id == &proj_ty.associated_ty_id
+                                                && subst == &proj_ty.substitution
+                                            {
+                                                ty
+                                            } else {
+                                                normalized.clone()
+                                            }
+                                        }
+                                        TyKind::AssociatedType(new_id, new_subst) => {
+                                            if new_id == id && new_subst == subst {
+                                                ty
+                                            } else {
+                                                normalized.clone()
+                                            }
+                                        }
+                                        _ => normalized.clone(),
+                                    }
+                                }
+                            } else {
+                                ty
+                            }
+                        }
+                        _ => ty,
+                    })
+                }
                 Either::Right(c) => Either::Right(match &c.data(Interner).value {
                     chalk_ir::ConstValue::Concrete(cc) => match &cc.interned {
                         crate::ConstScalar::UnevaluatedConst(c_id, subst) => {
@@ -588,7 +670,6 @@ impl<'a> InferenceTable<'a> {
     }
 
     /// Unify two relatable values (e.g. `Ty`) and register new trait goals that arise from that.
-    #[tracing::instrument(skip_all)]
     pub(crate) fn unify<T: ?Sized + Zip<Interner>>(&mut self, ty1: &T, ty2: &T) -> bool {
         let result = match self.try_unify(ty1, ty2) {
             Ok(r) => r,
@@ -606,7 +687,7 @@ impl<'a> InferenceTable<'a> {
         };
         result.goals.iter().all(|goal| {
             let canonicalized = self.canonicalize_with_free_vars(goal.clone());
-            self.try_resolve_obligation(&canonicalized).is_some()
+            self.try_resolve_obligation(&canonicalized).certain()
         })
     }
 
@@ -633,6 +714,9 @@ impl<'a> InferenceTable<'a> {
     /// If `ty` is a type variable with known type, returns that type;
     /// otherwise, return ty.
     pub(crate) fn resolve_ty_shallow(&mut self, ty: &Ty) -> Ty {
+        if !ty.data(Interner).flags.intersects(chalk_ir::TypeFlags::HAS_FREE_LOCAL_NAMES) {
+            return ty.clone();
+        }
         self.resolve_obligations_as_possible();
         self.var_unification_table.normalize_ty_shallow(Interner, ty).unwrap_or_else(|| ty.clone())
     }
@@ -662,7 +746,8 @@ impl<'a> InferenceTable<'a> {
     /// Checks an obligation without registering it. Useful mostly to check
     /// whether a trait *might* be implemented before deciding to 'lock in' the
     /// choice (during e.g. method resolution or deref).
-    pub(crate) fn try_obligation(&mut self, goal: Goal) -> Option<Solution> {
+    #[tracing::instrument(level = "debug", skip(self))]
+    pub(crate) fn try_obligation(&mut self, goal: Goal) -> NextTraitSolveResult {
         let in_env = InEnvironment::new(&self.trait_env.env, goal);
         let canonicalized = self.canonicalize(in_env);
 
@@ -674,10 +759,45 @@ impl<'a> InferenceTable<'a> {
         self.register_obligation_in_env(in_env)
     }
 
+    #[tracing::instrument(level = "debug", skip(self))]
     fn register_obligation_in_env(&mut self, goal: InEnvironment<Goal>) {
-        let canonicalized = self.canonicalize_with_free_vars(goal);
+        match goal.goal.data(Interner) {
+            chalk_ir::GoalData::DomainGoal(chalk_ir::DomainGoal::Holds(
+                chalk_ir::WhereClause::AliasEq(chalk_ir::AliasEq { alias, ty }),
+            )) => {
+                if ty.inference_var(Interner).is_some() {
+                    match alias {
+                        chalk_ir::AliasTy::Opaque(opaque) => {
+                            if self.unify(
+                                &chalk_ir::TyKind::OpaqueType(
+                                    opaque.opaque_ty_id,
+                                    opaque.substitution.clone(),
+                                )
+                                .intern(Interner),
+                                ty,
+                            ) {
+                                return;
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+            }
+            _ => {}
+        }
+        let canonicalized = {
+            let result = self.var_unification_table.canonicalize(Interner, goal);
+            let free_vars = result
+                .free_vars
+                .into_iter()
+                .map(|free_var| free_var.to_generic_arg(Interner))
+                .collect();
+            Canonicalized { value: result.quantified, free_vars }
+        };
+        tracing::debug!(?canonicalized);
         let solution = self.try_resolve_obligation(&canonicalized);
-        if matches!(solution, Some(Solution::Ambig(_))) {
+        tracing::debug!(?solution);
+        if solution.uncertain() {
             self.pending_obligations.push(canonicalized);
         }
     }
@@ -694,7 +814,9 @@ impl<'a> InferenceTable<'a> {
             mem::swap(&mut self.pending_obligations, &mut obligations);
 
             for canonicalized in obligations.drain(..) {
+                tracing::debug!(obligation = ?canonicalized);
                 if !self.check_changed(&canonicalized) {
+                    tracing::debug!("not changed");
                     self.pending_obligations.push(canonicalized);
                     continue;
                 }
@@ -799,37 +921,36 @@ impl<'a> InferenceTable<'a> {
         })
     }
 
+    #[tracing::instrument(level = "debug", skip(self))]
     fn try_resolve_obligation(
         &mut self,
         canonicalized: &Canonicalized<InEnvironment<Goal>>,
-    ) -> Option<chalk_solve::Solution<Interner>> {
+    ) -> NextTraitSolveResult {
         let solution = self.db.trait_solve(
             self.trait_env.krate,
             self.trait_env.block,
             canonicalized.value.clone(),
         );
 
+        tracing::debug!(?solution, ?canonicalized);
         match &solution {
-            Some(Solution::Unique(canonical_subst)) => {
+            NextTraitSolveResult::Certain(v) => {
                 canonicalized.apply_solution(
                     self,
                     Canonical {
-                        binders: canonical_subst.binders.clone(),
-                        // FIXME: handle constraints
-                        value: canonical_subst.value.subst.clone(),
+                        binders: v.binders.clone(),
+                        // FIXME handle constraints
+                        value: v.value.subst.clone(),
                     },
                 );
             }
-            Some(Solution::Ambig(Guidance::Definite(substs))) => {
-                canonicalized.apply_solution(self, substs.clone());
+            // ...so, should think about how to get some actually get some guidance here
+            NextTraitSolveResult::Uncertain(v) => {
+                canonicalized.apply_solution(self, v.clone());
             }
-            Some(_) => {
-                // FIXME use this when trying to resolve everything at the end
-            }
-            None => {
-                // FIXME obligation cannot be fulfilled => diagnostic
-            }
+            NextTraitSolveResult::NoSolution => {}
         }
+
         solution
     }
 
@@ -896,7 +1017,10 @@ impl<'a> InferenceTable<'a> {
                 environment: trait_env.clone(),
             };
             let canonical = self.canonicalize(obligation.clone());
-            if self.db.trait_solve(krate, self.trait_env.block, canonical.cast(Interner)).is_some()
+            if !self
+                .db
+                .trait_solve(krate, self.trait_env.block, canonical.cast(Interner))
+                .no_solution()
             {
                 self.register_obligation(obligation.goal);
                 let return_ty = self.normalize_projection_ty(projection);
@@ -909,10 +1033,10 @@ impl<'a> InferenceTable<'a> {
                             environment: trait_env.clone(),
                         };
                     let canonical = self.canonicalize(obligation.clone());
-                    if self
+                    if !self
                         .db
                         .trait_solve(krate, self.trait_env.block, canonical.cast(Interner))
-                        .is_some()
+                        .no_solution()
                     {
                         return Some((fn_x, arg_tys, return_ty));
                     }
@@ -1032,7 +1156,7 @@ impl<'a> InferenceTable<'a> {
             substitution: Substitution::from1(Interner, ty),
         });
         let goal = GoalData::DomainGoal(chalk_ir::DomainGoal::Holds(sized_pred)).intern(Interner);
-        matches!(self.try_obligation(goal), Some(Solution::Unique(_)))
+        self.try_obligation(goal).certain()
     }
 }
 

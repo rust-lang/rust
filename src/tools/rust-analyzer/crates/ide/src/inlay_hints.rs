@@ -8,7 +8,9 @@ use hir::{
     ClosureStyle, DisplayTarget, EditionedFileId, HasVisibility, HirDisplay, HirDisplayError,
     HirWrite, InRealFile, ModuleDef, ModuleDefId, Semantics, sym,
 };
-use ide_db::{FileRange, RootDatabase, famous_defs::FamousDefs, text_edit::TextEditBuilder};
+use ide_db::{
+    FileRange, RootDatabase, base_db::salsa, famous_defs::FamousDefs, text_edit::TextEditBuilder,
+};
 use ide_db::{FxHashSet, text_edit::TextEdit};
 use itertools::Itertools;
 use smallvec::{SmallVec, smallvec};
@@ -734,7 +736,7 @@ fn label_of_ty(
         config: &InlayHintsConfig,
         display_target: DisplayTarget,
     ) -> Result<(), HirDisplayError> {
-        let iter_item_type = hint_iterator(sema, famous_defs, ty);
+        let iter_item_type = salsa::attach(sema.db, || hint_iterator(sema, famous_defs, ty));
         match iter_item_type {
             Some((iter_trait, item, ty)) => {
                 const LABEL_START: &str = "impl ";
