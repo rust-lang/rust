@@ -1157,126 +1157,111 @@ impl Config {
             config.channel = channel;
         }
 
-        let mut llvm_tests = None;
-        let mut llvm_enzyme = None;
-        let mut llvm_offload = None;
-        let mut llvm_plugins = None;
+        let Llvm {
+            optimize: optimize_toml,
+            thin_lto,
+            release_debuginfo,
+            assertions: _,
+            tests: llvm_tests,
+            enzyme: llvm_enzyme,
+            plugins: llvm_plugin,
+            static_libstdcpp,
+            libzstd,
+            ninja,
+            targets,
+            experimental_targets,
+            link_jobs,
+            link_shared,
+            version_suffix,
+            clang_cl,
+            cflags,
+            cxxflags,
+            ldflags,
+            use_libcxx,
+            use_linker,
+            allow_old_toolchain,
+            offload: llvm_offload,
+            polly,
+            clang,
+            enable_warnings,
+            download_ci_llvm,
+            build_config,
+        } = toml.llvm.unwrap_or_default();
 
-        if let Some(llvm) = toml.llvm {
-            let Llvm {
-                optimize: optimize_toml,
-                thin_lto,
-                release_debuginfo,
-                assertions: _,
-                tests,
-                enzyme,
-                plugins,
-                static_libstdcpp,
-                libzstd,
-                ninja,
-                targets,
-                experimental_targets,
-                link_jobs,
-                link_shared,
-                version_suffix,
-                clang_cl,
-                cflags,
-                cxxflags,
-                ldflags,
-                use_libcxx,
-                use_linker,
-                allow_old_toolchain,
-                offload,
-                polly,
-                clang,
-                enable_warnings,
-                download_ci_llvm,
-                build_config,
-            } = llvm;
+        set(&mut config.ninja_in_file, ninja);
+        set(&mut config.llvm_optimize, optimize_toml);
+        set(&mut config.llvm_thin_lto, thin_lto);
+        set(&mut config.llvm_release_debuginfo, release_debuginfo);
+        set(&mut config.llvm_static_stdcpp, static_libstdcpp);
+        set(&mut config.llvm_libzstd, libzstd);
+        if let Some(v) = link_shared {
+            config.llvm_link_shared.set(Some(v));
+        }
+        config.llvm_targets.clone_from(&targets);
+        config.llvm_experimental_targets.clone_from(&experimental_targets);
+        config.llvm_link_jobs = link_jobs;
+        config.llvm_version_suffix.clone_from(&version_suffix);
+        config.llvm_clang_cl.clone_from(&clang_cl);
+        config.llvm_tests = llvm_tests.unwrap_or_default();
+        config.llvm_enzyme = llvm_enzyme.unwrap_or_default();
+        config.llvm_plugins = llvm_plugin.unwrap_or_default();
 
-            set(&mut config.ninja_in_file, ninja);
-            llvm_tests = tests;
-            llvm_enzyme = enzyme;
-            llvm_offload = offload;
-            llvm_plugins = plugins;
-            set(&mut config.llvm_optimize, optimize_toml);
-            set(&mut config.llvm_thin_lto, thin_lto);
-            set(&mut config.llvm_release_debuginfo, release_debuginfo);
-            set(&mut config.llvm_static_stdcpp, static_libstdcpp);
-            set(&mut config.llvm_libzstd, libzstd);
-            if let Some(v) = link_shared {
-                config.llvm_link_shared.set(Some(v));
-            }
-            config.llvm_targets.clone_from(&targets);
-            config.llvm_experimental_targets.clone_from(&experimental_targets);
-            config.llvm_link_jobs = link_jobs;
-            config.llvm_version_suffix.clone_from(&version_suffix);
-            config.llvm_clang_cl.clone_from(&clang_cl);
+        config.llvm_cflags.clone_from(&cflags);
+        config.llvm_cxxflags.clone_from(&cxxflags);
+        config.llvm_ldflags.clone_from(&ldflags);
+        set(&mut config.llvm_use_libcxx, use_libcxx);
+        config.llvm_use_linker.clone_from(&use_linker);
+        config.llvm_allow_old_toolchain = allow_old_toolchain.unwrap_or(false);
+        config.llvm_offload = llvm_offload.unwrap_or(false);
+        config.llvm_polly = polly.unwrap_or(false);
+        config.llvm_clang = clang.unwrap_or(false);
+        config.llvm_enable_warnings = enable_warnings.unwrap_or(false);
+        config.llvm_build_config = build_config.clone().unwrap_or(Default::default());
 
-            config.llvm_cflags.clone_from(&cflags);
-            config.llvm_cxxflags.clone_from(&cxxflags);
-            config.llvm_ldflags.clone_from(&ldflags);
-            set(&mut config.llvm_use_libcxx, use_libcxx);
-            config.llvm_use_linker.clone_from(&use_linker);
-            config.llvm_allow_old_toolchain = allow_old_toolchain.unwrap_or(false);
-            config.llvm_offload = offload.unwrap_or(false);
-            config.llvm_polly = polly.unwrap_or(false);
-            config.llvm_clang = clang.unwrap_or(false);
-            config.llvm_enable_warnings = enable_warnings.unwrap_or(false);
-            config.llvm_build_config = build_config.clone().unwrap_or(Default::default());
+        config.llvm_from_ci =
+            config.parse_download_ci_llvm(download_ci_llvm, config.llvm_assertions);
 
-            config.llvm_from_ci =
-                config.parse_download_ci_llvm(download_ci_llvm, config.llvm_assertions);
+        if config.llvm_from_ci {
+            let warn = |option: &str| {
+                println!(
+                    "WARNING: `{option}` will only be used on `compiler/rustc_llvm` build, not for the LLVM build."
+                );
+                println!(
+                    "HELP: To use `{option}` for LLVM builds, set `download-ci-llvm` option to false."
+                );
+            };
 
-            if config.llvm_from_ci {
-                let warn = |option: &str| {
-                    println!(
-                        "WARNING: `{option}` will only be used on `compiler/rustc_llvm` build, not for the LLVM build."
-                    );
-                    println!(
-                        "HELP: To use `{option}` for LLVM builds, set `download-ci-llvm` option to false."
-                    );
-                };
-
-                if static_libstdcpp.is_some() {
-                    warn("static-libstdcpp");
-                }
-
-                if link_shared.is_some() {
-                    warn("link-shared");
-                }
-
-                // FIXME(#129153): instead of all the ad-hoc `download-ci-llvm` checks that follow,
-                // use the `builder-config` present in tarballs since #128822 to compare the local
-                // config to the ones used to build the LLVM artifacts on CI, and only notify users
-                // if they've chosen a different value.
-
-                if libzstd.is_some() {
-                    println!(
-                        "WARNING: when using `download-ci-llvm`, the local `llvm.libzstd` option, \
-                        like almost all `llvm.*` options, will be ignored and set by the LLVM CI \
-                        artifacts builder config."
-                    );
-                    println!(
-                        "HELP: To use `llvm.libzstd` for LLVM/LLD builds, set `download-ci-llvm` option to false."
-                    );
-                }
+            if static_libstdcpp.is_some() {
+                warn("static-libstdcpp");
             }
 
-            if !config.llvm_from_ci && config.llvm_thin_lto && link_shared.is_none() {
-                // If we're building with ThinLTO on, by default we want to link
-                // to LLVM shared, to avoid re-doing ThinLTO (which happens in
-                // the link step) with each stage.
-                config.llvm_link_shared.set(Some(true));
+            if link_shared.is_some() {
+                warn("link-shared");
             }
-        } else {
-            config.llvm_from_ci = config.parse_download_ci_llvm(None, false);
+
+            // FIXME(#129153): instead of all the ad-hoc `download-ci-llvm` checks that follow,
+            // use the `builder-config` present in tarballs since #128822 to compare the local
+            // config to the ones used to build the LLVM artifacts on CI, and only notify users
+            // if they've chosen a different value.
+
+            if libzstd.is_some() {
+                println!(
+                    "WARNING: when using `download-ci-llvm`, the local `llvm.libzstd` option, \
+                    like almost all `llvm.*` options, will be ignored and set by the LLVM CI \
+                    artifacts builder config."
+                );
+                println!(
+                    "HELP: To use `llvm.libzstd` for LLVM/LLD builds, set `download-ci-llvm` option to false."
+                );
+            }
         }
 
-        config.llvm_tests = llvm_tests.unwrap_or(false);
-        config.llvm_enzyme = llvm_enzyme.unwrap_or(false);
-        config.llvm_offload = llvm_offload.unwrap_or(false);
-        config.llvm_plugins = llvm_plugins.unwrap_or(false);
+        if !config.llvm_from_ci && config.llvm_thin_lto && link_shared.is_none() {
+            // If we're building with ThinLTO on, by default we want to link
+            // to LLVM shared, to avoid re-doing ThinLTO (which happens in
+            // the link step) with each stage.
+            config.llvm_link_shared.set(Some(true));
+        }
 
         let Gcc { download_ci_gcc: gcc_download_ci_gcc } = toml.gcc.unwrap_or_default();
 
