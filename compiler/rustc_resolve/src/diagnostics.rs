@@ -805,14 +805,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 }
 
                 if let Some(segment) = segment {
-                    if let Some(ModuleOrUniformRoot::Module(module)) = module {
-                        let module =
-                            module.opt_def_id().unwrap_or_else(|| CRATE_DEF_ID.to_def_id());
-                        self.find_cfg_stripped(&mut err, &segment, module);
-                    } else {
-                        let module = CRATE_DEF_ID.to_def_id();
-                        self.find_cfg_stripped(&mut err, &segment, module);
-                    }
+                    let module = match module {
+                        Some(ModuleOrUniformRoot::Module(m)) if let Some(id) = m.opt_def_id() => id,
+                        _ => CRATE_DEF_ID.to_def_id(),
+                    };
+                    self.find_cfg_stripped(&mut err, &segment, module);
                 }
 
                 err
