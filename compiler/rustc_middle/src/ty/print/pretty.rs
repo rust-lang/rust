@@ -2131,8 +2131,6 @@ impl<'a, 'tcx> FmtPrinter<'a, 'tcx> {
     }
 }
 
-// HACK(eddyb) get rid of `def_path_str` and/or pass `Namespace` explicitly always
-// (but also some things just print a `DefId` generally so maybe we need this?)
 fn guess_def_namespace(tcx: TyCtxt<'_>, def_id: DefId) -> Namespace {
     match tcx.def_key(def_id).disambiguated_data.data {
         DefPathData::TypeNs(..) | DefPathData::CrateRoot | DefPathData::OpaqueTy => {
@@ -2157,6 +2155,7 @@ impl<'t> TyCtxt<'t> {
         self.def_path_str_with_args(def_id, &[])
     }
 
+    /// For this one we determine the appropriate namespace for the `def_id`.
     pub fn def_path_str_with_args(
         self,
         def_id: impl IntoQueryParam<DefId>,
@@ -2169,16 +2168,17 @@ impl<'t> TyCtxt<'t> {
         FmtPrinter::print_string(self, ns, |p| p.print_def_path(def_id, args)).unwrap()
     }
 
+    /// For this one we always use value namespace.
     pub fn value_path_str_with_args(
         self,
         def_id: impl IntoQueryParam<DefId>,
         args: &'t [GenericArg<'t>],
     ) -> String {
         let def_id = def_id.into_query_param();
-        let ns = guess_def_namespace(self, def_id);
+        let ns = Namespace::ValueNS;
         debug!("value_path_str: def_id={:?}, ns={:?}", def_id, ns);
 
-        FmtPrinter::print_string(self, ns, |p| p.print_value_path(def_id, args)).unwrap()
+        FmtPrinter::print_string(self, ns, |p| p.print_def_path(def_id, args)).unwrap()
     }
 }
 
