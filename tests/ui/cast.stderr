@@ -752,5 +752,17 @@ LL -     (255 % 999999u64) as u8;
 LL +     u8::try_from(255 % 999999u64);
    |
 
-error: aborting due to 92 previous errors
+error: casting `u8` to `i8` may wrap around the value
+  --> tests/ui/cast.rs:576:13
+   |
+LL |         _ = 1u8 as i8;
+   |             ^^^^^^^^^ help: if this is intentional, consider using `cast_signed()` instead: `1u8.cast_signed()`
+
+error: casting `u8` to `i8` may wrap around the value
+  --> tests/ui/cast.rs:581:13
+   |
+LL |         _ = 1u8 as i8;
+   |             ^^^^^^^^^
+
+error: aborting due to 94 previous errors
 
