@@ -339,10 +339,13 @@ impl Canonicalized {
         // We'll probably always have some slack though so this loop will still
         // be needed.
         for &w in unique_words {
-            unique_mapping.entry(w).or_insert_with(|| {
+            if !unique_mapping.contains_key(&w) {
+                assert_eq!(
+                    unique_mapping.insert(w, UniqueMapping::Canonical(canonical_words.len())),
+                    None
+                );
                 canonical_words.push(w);
-                UniqueMapping::Canonical(canonical_words.len())
-            });
+            }
         }
         assert_eq!(canonicalized_words.len() + canonical_words.len(), unique_words.len());
         assert_eq!(unique_mapping.len(), unique_words.len());
