@@ -7,11 +7,13 @@
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::codes::*;
 use rustc_errors::{ErrorGuaranteed, struct_span_code_err};
+use rustc_hir as hir;
 use rustc_infer::infer::{RegionResolutionError, TyCtxtInferExt};
 use rustc_infer::traits::{ObligationCause, ObligationCauseCode};
 use rustc_middle::span_bug;
 use rustc_middle::ty::util::CheckRegions;
 use rustc_middle::ty::{self, GenericArgsRef, Ty, TyCtxt, TypingMode};
+use rustc_span::{Span, sym};
 use rustc_trait_selection::regions::InferCtxtRegionExt;
 use rustc_trait_selection::traits::{self, ObligationCtxt};
 
@@ -70,7 +72,9 @@ pub(crate) fn check_drop_impl(
                 drop_impl_did,
                 adt_def.did(),
                 adt_to_impl_args,
-            )
+            )?;
+
+            ensure_coherent_unpin(tcx, drop_impl_did, adt_def.did(), adt_to_impl_args)
         }
         _ => {
             span_bug!(tcx.def_span(drop_impl_did), "incoherent impl of Drop");
@@ -293,4 +297,103 @@ fn ensure_impl_predicates_are_implied_by_item_defn<'tcx>(
     }
 
     Ok(())
+}
+
+/// This function checks whether `Self: !Unpin` for implementation of `Drop`.
+/// - If `Drop::drop` is implemented, there must be no `Self: !Unpin` implementation.
+/// - If `Drop::pin_drop` is implemented, there must be a `Self: !Unpin` implementation.
+fn ensure_coherent_unpin<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    drop_impl_did: LocalDefId,
+    adt_def_id: DefId,
+    adt_to_impl_args: GenericArgsRef<'tcx>,
+) -> Result<(), ErrorGuaranteed> {
+    let item_impl = tcx.hir_expect_item(drop_impl_did).expect_impl();
+    let mut drop_spans = None;
+    let mut pin_drop_spans = None;
+    for &impl_item_id in item_impl.items {
+        let impl_item = tcx.hir_impl_item(impl_item_id);
+        if let hir::ImplItemKind::Fn(fn_sig, _) = impl_item.kind {
+            match impl_item.ident.name {
+                sym::drop => drop_spans = Some((fn_sig.span, impl_item.span)),
+                sym::pin_drop => pin_drop_spans = Some((fn_sig.span, impl_item.span)),
+                _ => {}
+            }
+        }
+    }
+    let self_ty = Ty::new_adt(tcx, tcx.adt_def(adt_def_id), adt_to_impl_args);
+    let negative_unpin_impl = find_negative_unpin_impl(tcx, self_ty, tcx.def_span(drop_impl_did));
+
+    match (drop_spans, pin_drop_spans) {
+        (None, None) => {
+            return Err(tcx
+                .dcx()
+                .span_delayed_bug(tcx.def_span(drop_impl_did), "unexpected empty impl of `Drop`"));
+        }
+        (Some((span, _)), None) => {
+            if let Some(negative_unpin_impl) = negative_unpin_impl {
+                return Err(tcx.dcx().emit_err(crate::errors::ImplDropForNegativeUnpinType {
+                    span,
+                    negative_unpin_span: tcx.def_span(negative_unpin_impl),
+                    self_ty,
+                }));
+            }
+        }
+        (None, Some((span, _))) => {
+            debug_assert!(
+                tcx.features().pin_ergonomics(),
+                "`Drop::pin_drop` should be guarded by the library feature gate"
+            );
+            if negative_unpin_impl.is_none() {
+                return Err(tcx.dcx().emit_err(
+                    crate::errors::ImplPinDropForNotNegativeUnpinType {
+                        span,
+                        impl_sugg_span: tcx.def_span(drop_impl_did).shrink_to_lo(),
+                        impl_generics_snippet: tcx
+                            .sess
+                            .source_map()
+                            .span_to_snippet(item_impl.generics.span)
+                            .unwrap_or_default(),
+                        self_ty,
+                    },
+                ));
+            }
+        }
+        (
+            Some((drop_span, drop_span_with_body)),
+            Some((pin_drop_span, pin_drop_span_with_body)),
+        ) => {
+            let remove_sugg = match negative_unpin_impl {
+                // without `impl !Unpin`, should pick `drop(&mut self)`, and remove `pin_drop(&pin mut self)`
+                None => pin_drop_span_with_body,
+                // with `impl !Unpin`, should pick `pin_drop(&pin mut self)`, and remove `drop(&mut self)`
+                Some(_) => drop_span_with_body,
+            };
+            return Err(tcx.dcx().emit_err(crate::errors::ConflictImplDropAndPinDrop {
+                span: tcx.def_span(drop_impl_did),
+                drop_span,
+                pin_drop_span,
+                remove_sugg,
+            }));
+        }
+    }
+    Ok(())
+}
+
+fn find_negative_unpin_impl<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    self_ty: Ty<'tcx>,
+    span: Span,
+) -> Option<LocalDefId> {
+    let mut negative_unpin_impl_did = None;
+    tcx.for_each_relevant_impl(tcx.require_lang_item(hir::LangItem::Unpin, span), self_ty, |did| {
+        if tcx.impl_polarity(did) == ty::ImplPolarity::Negative {
+            if negative_unpin_impl_did.is_some() {
+                tcx.dcx()
+                    .span_delayed_bug(tcx.def_span(did), "duplicated `!Unpin` implementations");
+            }
+            negative_unpin_impl_did = Some(did.expect_local());
+        }
+    });
+    negative_unpin_impl_did
 }

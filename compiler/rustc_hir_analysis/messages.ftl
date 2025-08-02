@@ -117,6 +117,11 @@ hir_analysis_coercion_between_struct_same_note = expected coercion between the s
 
 hir_analysis_coercion_between_struct_single_note = expected a single field to be coerced, none found
 
+hir_analysis_conflict_impl_drop_and_pin_drop = conflict implementation of `Drop::drop` and `Drop::pin_drop`
+    .drop_label = `drop(&mut self)` implemented here
+    .pin_drop_label = `pin_drop(&pin mut self)` implemented here
+    .suggestion = remove this implementation
+
 hir_analysis_const_bound_for_non_const_trait = `{$modifier}` can only be applied to `const` traits
     .label = can't be applied to `{$trait_name}`
     .note = `{$trait_name}` can't be used with `{$modifier}` because it isn't `const`
@@ -215,6 +220,11 @@ hir_analysis_functions_names_duplicated = functions names are duplicated
 
 hir_analysis_generic_args_on_overridden_impl = could not resolve generic parameters on overridden impl
 
+hir_analysis_impl_drop_for_negative_unpin_type = could not impl `Drop::drop(&mut self)` for a type that implements `!Unpin`
+    .note = `Unpin` implemented for `{$self_ty}`
+    .help = `impl !Unpin` is intended for pinned projections, which requires the value pinned until it's deallocated
+    .suggestion = consider implement `Drop::pin_drop(&pin mut self)` instead
+
 hir_analysis_impl_not_marked_default = `{$ident}` specializes an item from a parent `impl`, but that item is not marked `default`
     .label = cannot specialize default item `{$ident}`
     .ok_label = parent `impl` is here
@@ -222,6 +232,10 @@ hir_analysis_impl_not_marked_default = `{$ident}` specializes an item from a par
 
 hir_analysis_impl_not_marked_default_err = `{$ident}` specializes an item from a parent `impl`, but that item is not marked `default`
     .note = parent implementation is in crate `{$cname}`
+
+hir_analysis_impl_pin_drop_for_not_negative_unpin_type = implementing `Drop::pin_drop(&pin mut self)` requires `Self: !Unpin`
+    .suggestion = impl `Drop::drop(&mut self)` instead
+    .impl_negative_unpin_sugg = or impl `!Unpin` for `{$self_ty}` instead
 
 hir_analysis_inherent_dyn = cannot define inherent `impl` for a dyn auto trait
     .label = impl requires at least one non-auto trait
