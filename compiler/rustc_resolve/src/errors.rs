@@ -1058,6 +1058,14 @@ pub(crate) struct NameReservedInAttributeNamespace {
 }
 
 #[derive(Diagnostic)]
+#[diag(resolve_builtin_macro_with_non_invocation_rules)]
+pub(crate) struct BuiltinMacroWithNonInvocationRules {
+    #[primary_span]
+    pub(crate) span: Span,
+    pub(crate) ident: Ident,
+}
+
+#[derive(Diagnostic)]
 #[diag(resolve_cannot_find_builtin_macro_with_name)]
 pub(crate) struct CannotFindBuiltinMacroWithName {
     #[primary_span]

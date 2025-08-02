@@ -193,15 +193,19 @@ struct MacroState<'a> {
 /// Arguments:
 /// - `psess` is used to emit diagnostics and lints
 /// - `node_id` is used to emit lints
-/// - `lhs` and `rhs` represent the rule
+/// - `args`, `lhs`, and `rhs` represent the rule
 pub(super) fn check_meta_variables(
     psess: &ParseSess,
     node_id: NodeId,
+    args: Option<&TokenTree>,
     lhs: &TokenTree,
     rhs: &TokenTree,
 ) -> Result<(), ErrorGuaranteed> {
     let mut guar = None;
     let mut binders = Binders::default();
+    if let Some(args) = args {
+        check_binders(psess, node_id, args, &Stack::Empty, &mut binders, &Stack::Empty, &mut guar);
+    }
     check_binders(psess, node_id, lhs, &Stack::Empty, &mut binders, &Stack::Empty, &mut guar);
     check_occurrences(psess, node_id, rhs, &Stack::Empty, &binders, &Stack::Empty, &mut guar);
     guar.map_or(Ok(()), Err)

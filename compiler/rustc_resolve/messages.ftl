@@ -53,6 +53,9 @@ resolve_binding_shadows_something_unacceptable =
 resolve_binding_shadows_something_unacceptable_suggestion =
     try specify the pattern arguments
 
+resolve_builtin_macro_with_non_invocation_rules =
+    built-in macro `{$ident}` has non-invocation rules
+
 resolve_cannot_be_reexported_crate_public =
     `{$ident}` is only public within the crate, and cannot be re-exported outside
 
@@ -243,7 +246,7 @@ resolve_lowercase_self =
     .suggestion = try using `Self`
 
 resolve_macro_cannot_use_as_attr =
-    `{$ident}` exists, but a declarative macro cannot be used as an attribute macro
+    `{$ident}` exists, but has no `attr` rules
 
 resolve_macro_cannot_use_as_derive =
      `{$ident}` exists, but a declarative macro cannot be used as a derive macro
