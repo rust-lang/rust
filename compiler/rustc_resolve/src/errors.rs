@@ -4,7 +4,7 @@ use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{Ident, Span, Symbol};
 
 use crate::Res;
-use crate::late::PatternSource;
+use crate::late::{AnonConstKind, PatternSource};
 
 #[derive(Diagnostic)]
 #[diag(resolve_generic_params_from_outer_item, code = E0401)]
@@ -384,6 +384,7 @@ pub(crate) struct ParamInNonTrivialAnonConst {
     pub(crate) param_kind: ParamKindInNonTrivialAnonConst,
     #[subdiagnostic]
     pub(crate) help: Option<ParamInNonTrivialAnonConstHelp>,
+    pub(crate) place: AnonConstKind,
 }
 
 #[derive(Subdiagnostic)]
