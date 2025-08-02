@@ -7,12 +7,12 @@ use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
-pub fn check(root_path: &Path, bless: bool, bad: &mut bool) {
-    let issues_txt_header = r#"============================================================
+const ISSUES_TXT_HEADER: &str = r#"============================================================
     ⚠️⚠️⚠️NOTHING SHOULD EVER BE ADDED TO THIS LIST⚠️⚠️⚠️
 ============================================================
 "#;
 
+pub fn check(root_path: &Path, bless: bool, bad: &mut bool) {
     let path = &root_path.join("tests");
 
     // the list of files in ui tests that are allowed to start with `issue-XXXX`
@@ -20,7 +20,7 @@ pub fn check(root_path: &Path, bless: bool, bad: &mut bool) {
     let mut prev_line = "";
     let mut is_sorted = true;
     let allowed_issue_names: BTreeSet<_> = include_str!("issues.txt")
-        .strip_prefix(issues_txt_header)
+        .strip_prefix(ISSUES_TXT_HEADER)
         .unwrap()
         .lines()
         .inspect(|&line| {
@@ -78,7 +78,7 @@ pub fn check(root_path: &Path, bless: bool, bad: &mut bool) {
         // so we don't bork things on panic or a contributor using Ctrl+C
         let blessed_issues_path = tidy_src.join("issues_blessed.txt");
         let mut blessed_issues_txt = fs::File::create(&blessed_issues_path).unwrap();
-        blessed_issues_txt.write_all(issues_txt_header.as_bytes()).unwrap();
+        blessed_issues_txt.write_all(ISSUES_TXT_HEADER.as_bytes()).unwrap();
         // If we changed paths to use the OS separator, reassert Unix chauvinism for blessing.
         for filename in allowed_issue_names.difference(&remaining_issue_names) {
             writeln!(blessed_issues_txt, "{filename}").unwrap();
