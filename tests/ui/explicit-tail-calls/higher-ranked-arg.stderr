@@ -1,0 +1,11 @@
+warning: the feature `explicit_tail_calls` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/higher-ranked-arg.rs:4:12
+   |
+LL | #![feature(explicit_tail_calls)]
+   |            ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #112788 <https://github.com/rust-lang/rust/issues/112788> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
+warning: 1 warning emitted
+
