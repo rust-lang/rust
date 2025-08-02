@@ -121,7 +121,10 @@ enum Scope<'ra> {
     MacroRules(MacroRulesScopeRef<'ra>),
     // The node ID is for reporting the `PROC_MACRO_DERIVE_RESOLUTION_FALLBACK`
     // lint if it should be reported.
-    Module(Module<'ra>, Option<NodeId>),
+    NonGlobModule(Module<'ra>, Option<NodeId>),
+    // The node ID is for reporting the `PROC_MACRO_DERIVE_RESOLUTION_FALLBACK`
+    // lint if it should be reported.
+    GlobModule(Module<'ra>, Option<NodeId>),
     MacroUsePrelude,
     BuiltinAttrs,
     ExternPrelude,
@@ -1839,10 +1842,17 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             }
         }
 
+        let mut non_glob_module_inserted = false;
         self.visit_scopes(ScopeSet::All(TypeNS), parent_scope, ctxt, |this, scope, _, _| {
             match scope {
-                Scope::Module(module, _) => {
+                Scope::NonGlobModule(module, _) => {
                     this.traits_in_module(module, assoc_item, &mut found_traits);
+                    non_glob_module_inserted = true;
+                }
+                Scope::GlobModule(module, _) => {
+                    if !non_glob_module_inserted {
+                        this.traits_in_module(module, assoc_item, &mut found_traits);
+                    }
                 }
                 Scope::StdLibPrelude => {
                     if let Some(module) = this.prelude {
