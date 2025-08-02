@@ -608,12 +608,7 @@ impl<'a> From<String> for Box<dyn Error + Send + Sync + 'a> {
     fn from(err: String) -> Box<dyn Error + Send + Sync + 'a> {
         struct StringError(String);
 
-        impl Error for StringError {
-            #[allow(deprecated)]
-            fn description(&self) -> &str {
-                &self.0
-            }
-        }
+        impl Error for StringError {}
 
         impl fmt::Display for StringError {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
