@@ -365,3 +365,10 @@ mod issue11059 {
         if let Some(o) = o { o } else { &S }
     }
 }
+
+fn issue15379() {
+    let opt = Some(0usize);
+    let opt_raw_ptr = &opt as *const Option<usize>;
+    let _ = unsafe { if let Some(o) = *opt_raw_ptr { o } else { 1 } };
+    //~^ option_if_let_else
+}

@@ -127,7 +127,8 @@ fn try_get_option_occurrence<'tcx>(
     if_else: &'tcx Expr<'_>,
 ) -> Option<OptionOccurrence> {
     let cond_expr = match expr.kind {
-        ExprKind::Unary(UnOp::Deref, inner_expr) | ExprKind::AddrOf(_, _, inner_expr) => inner_expr,
+        ExprKind::AddrOf(_, _, inner_expr) => inner_expr,
+        ExprKind::Unary(UnOp::Deref, inner_expr) if !cx.typeck_results().expr_ty(inner_expr).is_raw_ptr() => inner_expr,
         _ => expr,
     };
     let (inner_pat, is_result) = try_get_inner_pat_and_is_result(cx, pat)?;
