@@ -248,6 +248,10 @@ static AARCH64_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("mte", Stable, &[]),
     // FEAT_AdvSimd & FEAT_FP
     ("neon", Stable, &[]),
+    // Backend option to turn atomic operations into an intrinsic call when `lse` is not known to be
+    // available, so the intrinsic can do runtime LSE feature detection rather than unconditionally
+    // using slower non-LSE operations. Unstable since it doesn't need to user-togglable.
+    ("outline-atomics", Unstable(sym::aarch64_unstable_target_feature), &[]),
     // FEAT_PAUTH (address authentication)
     ("paca", Stable, &[]),
     // FEAT_PAUTH (generic authentication)
