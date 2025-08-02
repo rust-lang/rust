@@ -663,6 +663,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if !result.is_empty() {
             mutate_fulfillment_errors(&mut result);
             self.adjust_fulfillment_errors_for_expr_obligation(&mut result);
+            result.retain(|error| !self.add_error(&error.obligation.cause));
+
             self.err_ctxt().report_fulfillment_errors(result);
         }
     }

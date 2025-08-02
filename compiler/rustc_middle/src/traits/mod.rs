@@ -95,6 +95,11 @@ impl<'tcx> ObligationCause<'tcx> {
         &self.code
     }
 
+    #[inline]
+    pub fn code_handle(&self) -> &ObligationCauseCodeHandle<'tcx> {
+        &self.code
+    }
+
     pub fn map_code(
         &mut self,
         f: impl FnOnce(ObligationCauseCodeHandle<'tcx>) -> ObligationCauseCode<'tcx>,
@@ -145,7 +150,7 @@ impl<'tcx> ObligationCause<'tcx> {
 }
 
 /// A compact form of `ObligationCauseCode`.
-#[derive(Clone, PartialEq, Eq, Default, HashStable)]
+#[derive(Clone, PartialEq, Eq, Default, HashStable, Hash)]
 #[derive(TypeVisitable, TypeFoldable, TyEncodable, TyDecodable)]
 pub struct ObligationCauseCodeHandle<'tcx> {
     /// `None` for `ObligationCauseCode::Misc` (a common case, occurs ~60% of
@@ -177,7 +182,7 @@ impl<'tcx> std::ops::Deref for ObligationCauseCodeHandle<'tcx> {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, HashStable, TyEncodable, TyDecodable)]
+#[derive(Clone, Debug, PartialEq, Eq, HashStable, TyEncodable, TyDecodable, Hash)]
 #[derive(TypeVisitable, TypeFoldable)]
 pub enum ObligationCauseCode<'tcx> {
     /// Not well classified or should be obvious from the span.
@@ -420,7 +425,7 @@ pub enum ObligationCauseCode<'tcx> {
 
 /// Whether a value can be extracted into a const.
 /// Used for diagnostics around array repeat expressions.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, HashStable, TyEncodable, TyDecodable)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, HashStable, Hash, TyEncodable, TyDecodable)]
 pub enum IsConstable {
     No,
     /// Call to a const fn
@@ -516,7 +521,7 @@ impl<'tcx> ObligationCauseCode<'tcx> {
 #[cfg(target_pointer_width = "64")]
 rustc_data_structures::static_assert_size!(ObligationCauseCode<'_>, 48);
 
-#[derive(Clone, Debug, PartialEq, Eq, HashStable, TyEncodable, TyDecodable)]
+#[derive(Clone, Debug, PartialEq, Eq, HashStable, Hash, TyEncodable, TyDecodable)]
 #[derive(TypeVisitable, TypeFoldable)]
 pub struct MatchExpressionArmCause<'tcx> {
     pub arm_block_id: Option<HirId>,
@@ -543,7 +548,7 @@ pub struct MatchExpressionArmCause<'tcx> {
 /// Fields here refer to the scrutinee of a pattern.
 /// If the scrutinee isn't given in the diagnostic, then this won't exist.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-#[derive(TypeFoldable, TypeVisitable, HashStable, TyEncodable, TyDecodable)]
+#[derive(TypeFoldable, TypeVisitable, HashStable, Hash, TyEncodable, TyDecodable)]
 pub struct PatternOriginExpr {
     /// A span representing the scrutinee expression, with all leading references
     /// peeled from the expression.
@@ -558,7 +563,7 @@ pub struct PatternOriginExpr {
     pub peeled_prefix_suggestion_parentheses: bool,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, HashStable, TyEncodable, TyDecodable)]
+#[derive(Clone, Debug, PartialEq, Eq, HashStable, Hash, TyEncodable, TyDecodable)]
 #[derive(TypeVisitable, TypeFoldable)]
 pub struct DerivedCause<'tcx> {
     /// The trait predicate of the parent obligation that led to the
@@ -571,7 +576,7 @@ pub struct DerivedCause<'tcx> {
     pub parent_code: ObligationCauseCodeHandle<'tcx>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, HashStable, TyEncodable, TyDecodable)]
+#[derive(Clone, Debug, PartialEq, Eq, HashStable, Hash, TyEncodable, TyDecodable)]
 #[derive(TypeVisitable, TypeFoldable)]
 pub struct ImplDerivedCause<'tcx> {
     pub derived: DerivedCause<'tcx>,
@@ -585,7 +590,7 @@ pub struct ImplDerivedCause<'tcx> {
     pub span: Span,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, HashStable, TyEncodable, TyDecodable)]
+#[derive(Clone, Debug, PartialEq, Eq, HashStable, Hash, TyEncodable, TyDecodable)]
 #[derive(TypeVisitable, TypeFoldable)]
 pub struct DerivedHostCause<'tcx> {
     /// The trait predicate of the parent obligation that led to the
@@ -598,7 +603,7 @@ pub struct DerivedHostCause<'tcx> {
     pub parent_code: ObligationCauseCodeHandle<'tcx>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, HashStable, TyEncodable, TyDecodable)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, HashStable, TyEncodable, TyDecodable)]
 #[derive(TypeVisitable, TypeFoldable)]
 pub struct ImplDerivedHostCause<'tcx> {
     pub derived: DerivedHostCause<'tcx>,
