@@ -5242,7 +5242,6 @@ impl Methods {
                         unused_enumerate_index::check(cx, expr, recv, m_arg);
                         map_clone::check(cx, expr, recv, m_arg, self.msrv);
                         map_with_unused_argument_over_ranges::check(cx, expr, recv, m_arg, self.msrv, span);
-                        manual_is_variant_and::check_map(cx, expr);
                         match method_call(recv) {
                             Some((map_name @ (sym::iter | sym::into_iter), recv2, _, _, _)) => {
                                 iter_kv_map::check(cx, map_name, expr, recv2, m_arg, self.msrv);
