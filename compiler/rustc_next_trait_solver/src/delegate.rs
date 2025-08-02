@@ -1,7 +1,10 @@
 use std::ops::Deref;
 
+use rustc_type_ir::inherent::*;
 use rustc_type_ir::solve::{Certainty, Goal, NoSolution};
 use rustc_type_ir::{self as ty, InferCtxtLike, Interner, TypeFoldable};
+
+use crate::solve::GoalStalledOn;
 
 pub trait SolverDelegate: Deref<Target = Self::Infcx> + Sized {
     type Infcx: InferCtxtLike<Interner = Self::Interner>;
@@ -22,6 +25,11 @@ pub trait SolverDelegate: Deref<Target = Self::Infcx> + Sized {
         goal: Goal<Self::Interner, <Self::Interner as Interner>::Predicate>,
         span: <Self::Interner as Interner>::Span,
     ) -> Option<Certainty>;
+
+    fn is_still_stalled(&self, stalled_on: &GoalStalledOn<Self::Interner>) -> bool {
+        !stalled_on.stalled_vars.iter().any(|value| self.is_changed_arg(*value))
+            && !self.opaque_types_storage_num_entries().needs_reevaluation(stalled_on.num_opaques)
+    }
 
     fn fresh_var_for_kind_with_span(
         &self,
