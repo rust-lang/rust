@@ -2957,7 +2957,8 @@ pub struct ProcRes {
 }
 
 impl ProcRes {
-    pub fn print_info(&self) {
+    #[must_use]
+    pub fn format_info(&self) -> String {
         fn render(name: &str, contents: &str) -> String {
             let contents = json::extract_rendered(contents);
             let contents = contents.trim_end();
@@ -2973,20 +2974,20 @@ impl ProcRes {
             }
         }
 
-        println!(
+        format!(
             "status: {}\ncommand: {}\n{}\n{}\n",
             self.status,
             self.cmdline,
             render("stdout", &self.stdout),
             render("stderr", &self.stderr),
-        );
+        )
     }
 
     pub fn fatal(&self, err: Option<&str>, on_failure: impl FnOnce()) -> ! {
         if let Some(e) = err {
             println!("\nerror: {}", e);
         }
-        self.print_info();
+        println!("{}", self.format_info());
         on_failure();
         // Use resume_unwind instead of panic!() to prevent a panic message + backtrace from
         // compiletest, which is unnecessary noise.
