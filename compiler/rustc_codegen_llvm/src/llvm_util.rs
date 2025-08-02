@@ -262,6 +262,15 @@ pub(crate) fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> Option<LLVMFea
         // Filter out features that are not supported by the current LLVM version
         ("aarch64", "fpmr") => None, // only existed in 18
         ("arm", "fp16") => Some(LLVMFeature::new("fullfp16")),
+        // NVPTX targets added in LLVM 20
+        ("nvptx64", "sm_100") if get_version().0 < 20 => None,
+        ("nvptx64", "sm_100a") if get_version().0 < 20 => None,
+        ("nvptx64", "sm_101") if get_version().0 < 20 => None,
+        ("nvptx64", "sm_101a") if get_version().0 < 20 => None,
+        ("nvptx64", "sm_120") if get_version().0 < 20 => None,
+        ("nvptx64", "sm_120a") if get_version().0 < 20 => None,
+        ("nvptx64", "ptx86") if get_version().0 < 20 => None,
+        ("nvptx64", "ptx87") if get_version().0 < 20 => None,
         // Filter out features that are not supported by the current LLVM version
         ("loongarch64", "div32" | "lam-bh" | "lamcas" | "ld-seq-sa" | "scq")
             if get_version().0 < 20 =>
@@ -324,15 +333,12 @@ pub(crate) fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> Option<LLVMFea
 ///
 /// We do not have to worry about RUSTC_SPECIFIC_FEATURES here, those are handled outside codegen.
 pub(crate) fn target_config(sess: &Session) -> TargetConfig {
-    // Add base features for the target.
-    // We do *not* add the -Ctarget-features there, and instead duplicate the logic for that below.
-    // The reason is that if LLVM considers a feature implied but we do not, we don't want that to
-    // show up in `cfg`. That way, `cfg` is entirely under our control -- except for the handling of
-    // the target CPU, that is still expanded to target features (with all their implied features)
-    // by LLVM.
     let target_machine = create_informational_target_machine(sess, true);
 
     let (unstable_target_features, target_features) = cfg_target_feature(sess, |feature| {
+        // This closure determines whether the target CPU has the feature according to LLVM. We do
+        // *not* consider the `-Ctarget-feature`s here, as that will be handled later in
+        // `cfg_target_feature`.
         if let Some(feat) = to_llvm_features(sess, feature) {
             // All the LLVM features this expands to must be enabled.
             for llvm_feature in feat {
