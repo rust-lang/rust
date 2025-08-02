@@ -1238,7 +1238,7 @@ impl Config {
         };
 
         // Handle dry run directory switch, should be strictly below initial_cargo
-        if config.dry_run() {
+        if exec_ctx.dry_run() {
             let dir = out.join("tmp-dry-run");
             t!(fs::create_dir_all(&dir));
             out = dir;
