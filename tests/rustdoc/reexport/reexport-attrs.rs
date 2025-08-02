@@ -4,13 +4,13 @@
 
 extern crate reexports_attrs;
 
-//@ has 'foo/fn.f0.html' '//pre[@class="rust item-decl"]' '#[no_mangle]'
+//@ has 'foo/fn.f0.html' '//pre[@class="rust item-decl"]' '#[unsafe(no_mangle)]'
 pub use reexports_attrs::f0;
 
-//@ has 'foo/fn.f1.html' '//pre[@class="rust item-decl"]' '#[link_section = ".here"]'
+//@ has 'foo/fn.f1.html' '//pre[@class="rust item-decl"]' '#[unsafe(link_section = ".here")]'
 pub use reexports_attrs::f1;
 
-//@ has 'foo/fn.f2.html' '//pre[@class="rust item-decl"]' '#[export_name = "f2export"]'
+//@ has 'foo/fn.f2.html' '//pre[@class="rust item-decl"]' '#[unsafe(export_name = "f2export")]'
 pub use reexports_attrs::f2;
 
 //@ has 'foo/enum.T0.html' '//pre[@class="rust item-decl"]' '#[repr(u8)]'
