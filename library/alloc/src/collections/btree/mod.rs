@@ -1,5 +1,6 @@
 mod append;
 mod borrow;
+mod cmp;
 mod dedup_sorted_iter;
 mod fix;
 pub(super) mod map;
