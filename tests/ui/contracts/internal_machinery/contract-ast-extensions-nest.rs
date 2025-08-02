@@ -19,8 +19,8 @@
 #![feature(contracts_internals)]
 
 fn nest(x: Baz) -> i32
-    contract_requires(|| x.baz > 0)
-    contract_ensures(|ret| *ret > 100)
+    contract_requires { x.baz > 0 }
+    contract_ensures { |ret| *ret > 100 }
 {
     loop {
         return x.baz + 50;
