@@ -255,7 +255,7 @@ pub fn generate_rust_test_loop<T: IntrinsicTypeDefinition>(
 
 /// Generate the specializations (unique sequences of const-generic arguments) for this intrinsic.
 fn generate_rust_specializations<'a>(
-    constraints: &mut impl Iterator<Item = std::ops::Range<i64>>,
+    constraints: &mut impl Iterator<Item = impl Iterator<Item = i64>>,
 ) -> Vec<Vec<u8>> {
     let mut specializations = vec![vec![]];
 
@@ -292,7 +292,7 @@ pub fn create_rust_test_module<T: IntrinsicTypeDefinition>(
     let specializations = generate_rust_specializations(
         &mut arguments
             .iter()
-            .filter_map(|i| i.constraint.as_ref().map(|v| v.to_range())),
+            .filter_map(|i| i.constraint.as_ref().map(|v| v.iter())),
     );
 
     generate_rust_test_loop(w, intrinsic, indentation, &specializations, PASSES)?;
