@@ -199,6 +199,8 @@ declare_features! (
     /// Renamed to `dyn_compatible_for_dispatch`.
     (removed, object_safe_for_dispatch, "1.83.0", Some(43561),
      Some("renamed to `dyn_compatible_for_dispatch`"), 131511),
+    /// Allows using `#[omit_gdb_pretty_printer_section]`.
+    (removed, omit_gdb_pretty_printer_section, "CURRENT_RUSTC_VERSION", None, None, 144738),
     /// Allows using `#[on_unimplemented(..)]` on traits.
     /// (Moved to `rustc_attrs`.)
     (removed, on_unimplemented, "1.40.0", None, None, 65794),

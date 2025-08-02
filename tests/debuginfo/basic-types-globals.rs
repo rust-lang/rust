@@ -1,6 +1,7 @@
 //@ revisions: lto no-lto
 
 //@ compile-flags:-g
+//@ disable-gdb-pretty-printers
 
 //@ [lto] compile-flags:-C lto
 //@ [lto] no-prefer-dynamic
@@ -39,8 +40,6 @@
 // gdb-command:continue
 
 #![allow(unused_variables)]
-#![feature(omit_gdb_pretty_printer_section)]
-#![omit_gdb_pretty_printer_section]
 #![feature(f16)]
 
 // N.B. These are `mut` only so they don't constant fold away.

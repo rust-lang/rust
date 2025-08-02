@@ -1,4 +1,5 @@
 //@ compile-flags:-g
+//@ disable-gdb-pretty-printers
 
 // === GDB TESTS ===================================================================================
 
@@ -141,8 +142,6 @@
 
 #![allow(unused_variables)]
 #![feature(box_patterns)]
-#![feature(omit_gdb_pretty_printer_section)]
-#![omit_gdb_pretty_printer_section]
 
 struct Struct {
     x: i16,

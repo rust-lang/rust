@@ -1,4 +1,5 @@
 //@ compile-flags:-g
+//@ disable-gdb-pretty-printers
 
 // === GDB TESTS ===================================================================================
 
@@ -32,9 +33,6 @@
 // lldb-command:v *y
 // lldb-check:[...] 110
 // lldb-command:continue
-
-#![feature(omit_gdb_pretty_printer_section)]
-#![omit_gdb_pretty_printer_section]
 
 fn some_generic_fun<T1, T2>(a: T1, b: T2) -> (T2, T1) {
 

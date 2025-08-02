@@ -289,8 +289,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::MacroTransparency(_)
                     | AttributeKind::Pointee(..)
                     | AttributeKind::Dummy
-                    | AttributeKind::RustcBuiltinMacro { .. }
-                    | AttributeKind::OmitGdbPrettyPrinterSection,
+                    | AttributeKind::RustcBuiltinMacro { .. },
                 ) => { /* do nothing  */ }
                 Attribute::Parsed(AttributeKind::AsPtr(attr_span)) => {
                     self.check_applied_to_fn_or_method(hir_id, *attr_span, span, target)

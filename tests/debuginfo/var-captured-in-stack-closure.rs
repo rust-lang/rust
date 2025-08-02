@@ -1,4 +1,5 @@
 //@ compile-flags:-g
+//@ disable-gdb-pretty-printers
 
 // === GDB TESTS ===================================================================================
 
@@ -100,8 +101,6 @@
 // cdb-check:owned            : 0x[...] : 6 [Type: [...] *]
 
 #![allow(unused_variables)]
-#![feature(omit_gdb_pretty_printer_section)]
-#![omit_gdb_pretty_printer_section]
 
 struct Struct {
     a: isize,

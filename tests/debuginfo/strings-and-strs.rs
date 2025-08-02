@@ -2,6 +2,7 @@
 //@ min-lldb-version: 1800
 
 //@ compile-flags:-g
+//@ disable-gdb-pretty-printers
 
 // === GDB TESTS ===================================================================================
 // gdb-command:run
@@ -40,8 +41,6 @@
 
 
 #![allow(unused_variables)]
-#![feature(omit_gdb_pretty_printer_section)]
-#![omit_gdb_pretty_printer_section]
 
 pub struct Foo<'a> {
     inner: &'a str,

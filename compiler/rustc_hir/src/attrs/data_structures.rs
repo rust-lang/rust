@@ -391,9 +391,6 @@ pub enum AttributeKind {
     /// Represents `#[non_exhaustive]`
     NonExhaustive(Span),
 
-    /// Represents `#[omit_gdb_pretty_printer_section]`
-    OmitGdbPrettyPrinterSection,
-
     /// Represents `#[optimize(size|speed)]`
     Optimize(OptimizeAttr, Span),
 

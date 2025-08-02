@@ -1,4 +1,5 @@
 //@ compile-flags:-g
+//@ disable-gdb-pretty-printers
 
 // === GDB TESTS ===================================================================================
 
@@ -29,8 +30,6 @@
 
 
 #![allow(unused_variables)]
-#![feature(omit_gdb_pretty_printer_section)]
-#![omit_gdb_pretty_printer_section]
 
 fn main() {
     let stack_val: (i16, f32) = (-14, -19f32);

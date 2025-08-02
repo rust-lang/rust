@@ -1,8 +1,7 @@
 //@ compile-flags:-g
+//@ disable-gdb-pretty-printers
 
 #![allow(unused_variables)]
-#![feature(omit_gdb_pretty_printer_section)]
-#![omit_gdb_pretty_printer_section]
 
 // No need to actually run the debugger, just make sure that the compiler can
 // handle locals in unreachable code.

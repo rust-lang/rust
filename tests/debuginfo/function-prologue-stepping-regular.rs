@@ -4,6 +4,7 @@
 //@ min-lldb-version: 1800
 //@ ignore-gdb
 //@ compile-flags:-g
+//@ disable-gdb-pretty-printers
 
 // lldb-command:breakpoint set --name immediate_args
 // lldb-command:breakpoint set --name non_immediate_args
@@ -116,8 +117,6 @@
 // lldb-command:continue
 
 #![allow(unused_variables)]
-#![feature(omit_gdb_pretty_printer_section)]
-#![omit_gdb_pretty_printer_section]
 
 fn immediate_args(a: isize, b: bool, c: f64) {
     ()

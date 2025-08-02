@@ -225,8 +225,6 @@ declare_features! (
     (unstable, multiple_supertrait_upcastable, "1.69.0", None),
     /// Allow negative trait bounds. This is an internal-only feature for testing the trait solver!
     (internal, negative_bounds, "1.71.0", None),
-    /// Allows using `#[omit_gdb_pretty_printer_section]`.
-    (internal, omit_gdb_pretty_printer_section, "1.5.0", None),
     /// Set the maximum pattern complexity allowed (not limited by default).
     (internal, pattern_complexity_limit, "1.78.0", None),
     /// Allows using pattern types.

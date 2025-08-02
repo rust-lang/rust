@@ -1257,11 +1257,6 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         TEST, rustc_dummy, Normal, template!(Word /* doesn't matter*/),
         DuplicatesOk, EncodeCrossCrate::No
     ),
-    gated!(
-        omit_gdb_pretty_printer_section, Normal, template!(Word),
-        WarnFollowing, EncodeCrossCrate::No,
-        "the `#[omit_gdb_pretty_printer_section]` attribute is just used for the Rust test suite",
-    ),
     rustc_attr!(
         TEST, pattern_complexity_limit, CrateLevel, template!(NameValueStr: "N"),
         ErrorFollowing, EncodeCrossCrate::No,
