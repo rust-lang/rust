@@ -9,7 +9,7 @@ use clap_complete::{Generator, shells};
 
 use crate::core::build_steps::dist::distdir;
 use crate::core::build_steps::test;
-use crate::core::build_steps::tool::{self, SourceType, Tool};
+use crate::core::build_steps::tool::{self, RustcPrivateCompilers, SourceType, Tool};
 use crate::core::build_steps::vendor::{Vendor, default_paths_to_vendor};
 use crate::core::builder::{Builder, Kind, RunConfig, ShouldRun, Step};
 use crate::core::config::TargetSelection;
@@ -135,13 +135,13 @@ impl Step for Miri {
         }
 
         // This compiler runs on the host, we'll just use it for the target.
-        let target_compiler = builder.compiler(stage, target);
-        let miri_build = builder.ensure(tool::Miri { compiler: target_compiler, target });
-        // Rustc tools are off by one stage, so use the build compiler to run miri.
+        let compilers = RustcPrivateCompilers::new(builder, stage, target);
+        let miri_build = builder.ensure(tool::Miri::from_compilers(compilers));
         let host_compiler = miri_build.build_compiler;
 
         // Get a target sysroot for Miri.
-        let miri_sysroot = test::Miri::build_miri_sysroot(builder, target_compiler, target);
+        let miri_sysroot =
+            test::Miri::build_miri_sysroot(builder, compilers.target_compiler(), target);
 
         // # Run miri.
         // Running it via `cargo run` as that figures out the right dylib path.
@@ -465,8 +465,8 @@ impl Step for Rustfmt {
             std::process::exit(1);
         }
 
-        let compiler = builder.compiler(stage, host);
-        let rustfmt_build = builder.ensure(tool::Rustfmt { compiler, target: host });
+        let compilers = RustcPrivateCompilers::new(builder, stage, host);
+        let rustfmt_build = builder.ensure(tool::Rustfmt::from_compilers(compilers));
 
         let mut rustfmt = tool::prepare_tool_cargo(
             builder,

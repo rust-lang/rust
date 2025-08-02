@@ -149,7 +149,7 @@ impl<P: Step> Step for RustbookSrc<P> {
             let mut rustbook_cmd = builder.tool_cmd(Tool::Rustbook);
 
             if let Some(compiler) = self.rustdoc_compiler {
-                let mut rustdoc = builder.rustdoc(compiler);
+                let mut rustdoc = builder.rustdoc_for_compiler(compiler);
                 rustdoc.pop();
                 let old_path = env::var_os("PATH").unwrap_or_default();
                 let new_path =
@@ -365,7 +365,7 @@ impl Step for Standalone {
             }
 
             let html = out.join(filename).with_extension("html");
-            let rustdoc = builder.rustdoc(compiler);
+            let rustdoc = builder.rustdoc_for_compiler(compiler);
             if up_to_date(&path, &html)
                 && up_to_date(&footer, &html)
                 && up_to_date(&favicon, &html)
@@ -463,7 +463,7 @@ impl Step for Releases {
         let html = out.join("releases.html");
         let tmppath = out.join("releases.md");
         let inpath = builder.src.join("RELEASES.md");
-        let rustdoc = builder.rustdoc(compiler);
+        let rustdoc = builder.rustdoc_for_compiler(compiler);
         if !up_to_date(&inpath, &html)
             || !up_to_date(&footer, &html)
             || !up_to_date(&favicon, &html)
@@ -811,7 +811,7 @@ impl Step for Rustc {
         let compiler = builder.compiler(stage, builder.config.host_target);
         builder.std(compiler, builder.config.host_target);
 
-        let _guard = builder.msg_sysroot_tool(
+        let _guard = builder.msg_rustc_tool(
             Kind::Doc,
             stage,
             format!("compiler{}", crate_description(&self.crates)),
@@ -900,6 +900,10 @@ impl Step for Rustc {
             let index = out.join(krate).join("index.html");
             builder.open_in_browser(index);
         }
+    }
+
+    fn metadata(&self) -> Option<StepMetadata> {
+        Some(StepMetadata::doc("rustc", self.target).stage(self.stage))
     }
 }
 
@@ -1017,6 +1021,10 @@ macro_rules! tool_doc {
                         assert!(out.join(&*dir_name).read_dir().unwrap().next().is_some());
                     })?
                 }
+            }
+
+            fn metadata(&self) -> Option<StepMetadata> {
+                Some(StepMetadata::doc(stringify!($tool), self.target))
             }
         }
     }
