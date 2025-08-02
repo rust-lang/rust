@@ -495,6 +495,29 @@ impl Config {
         let patch_binaries_for_nix;
         let stage;
         let cmd;
+        let llvm_optimize = true;
+        let ninja_in_file = true;
+        let llvm_static_stdcpp = false;
+        let llvm_libzstd = false;
+        let backtrace = true;
+        let rust_optimize = RustOptimize::Bool(true);
+        let rust_optimize_tests = true;
+        let rust_randomize_layout = false;
+        let docs = true;
+        let docs_minification = true;
+        let rust_rpath = true;
+        let rust_strip = false;
+        let codegen_tests = true;
+        let rust_dist_src = true;
+        let rust_codegen_backends = vec![CodegenBackendKind::Llvm];
+        let deny_warnings = true;
+        let bindir = "bin".to_string();
+        let dist_include_mingw_linker = true;
+        let dist_compression_profile = "fast".to_string();
+
+        // This is needed by codegen_ssa on macOS to ship `llvm-objcopy` aliased to
+        // `rust-objcopy` to workaround bad `strip`s on macOS.
+        let llvm_tools_enabled = true;
 
         // First initialize the bare minimum that we need for further operation - source directory
         // and execution context.
@@ -1238,8 +1261,8 @@ impl Config {
         set(&mut config.low_priority, build_low_priority_toml);
         set(&mut config.compiler_docs, build_compiler_docs_toml);
         set(&mut config.library_docs_private_items, build_library_docs_private_items_toml);
-        set(&mut config.docs_minification, build_docs_minification_toml);
-        set(&mut config.docs, build_docs_toml);
+        config.docs_minification = build_docs_minification_toml.unwrap_or(docs_minification);
+        config.docs = build_docs_toml.unwrap_or(docs);
         set(&mut config.locked_deps, build_locked_deps_toml);
         set(&mut config.full_bootstrap, build_full_bootstrap_toml);
         set(&mut config.extended, build_extended_toml);
@@ -1259,7 +1282,7 @@ impl Config {
         config.sysconfdir = install_sysconfdir_toml.map(PathBuf::from);
         config.datadir = install_datadir_toml.map(PathBuf::from);
         config.docdir = install_docdir_toml.map(PathBuf::from);
-        set(&mut config.bindir, install_bindir_toml.map(PathBuf::from));
+        config.bindir = PathBuf::from(install_bindir_toml.unwrap_or(bindir));
         config.libdir = install_libdir_toml.map(PathBuf::from);
         config.mandir = install_mandir_toml.map(PathBuf::from);
 
@@ -1283,16 +1306,17 @@ impl Config {
 
         // rust.* settings
         config.rust_new_symbol_mangling = rust_new_symbol_mangling_toml;
-        set(&mut config.rust_optimize_tests, rust_optimize_tests_toml);
-        set(&mut config.codegen_tests, rust_codegen_tests_toml);
-        set(&mut config.rust_rpath, rust_rpath_toml);
-        set(&mut config.rust_strip, rust_strip_toml);
+        config.rust_optimize_tests = rust_optimize_tests_toml.unwrap_or(rust_optimize_tests);
+        config.codegen_tests = rust_codegen_tests_toml.unwrap_or(codegen_tests);
+        config.rust_rpath = rust_rpath_toml.unwrap_or(rust_rpath);
+        config.rust_strip = rust_strip_toml.unwrap_or(rust_strip);
         set(&mut config.rust_frame_pointers, rust_frame_pointers_toml);
         config.rust_stack_protector = rust_stack_protector_toml;
         set(&mut config.jemalloc, rust_jemalloc_toml);
         set(&mut config.test_compare_mode, rust_test_compare_mode_toml);
-        set(&mut config.backtrace, rust_backtrace_toml);
-        set(&mut config.rust_dist_src, rust_dist_src_toml);
+        config.backtrace = rust_backtrace_toml.unwrap_or(backtrace);
+        config.rust_dist_src =
+            rust_dist_src_toml.or(dist_src_tarball_toml).unwrap_or(rust_dist_src);
         set(&mut config.verbose_tests, rust_verbose_tests_toml);
 
         if let Some(true) = rust_incremental_toml {
@@ -1300,22 +1324,20 @@ impl Config {
         }
 
         set(&mut config.llvm_bitcode_linker_enabled, rust_llvm_bitcode_linker_toml);
-        config.rust_randomize_layout = rust_randomize_layout_toml.unwrap_or_default();
-        config.llvm_tools_enabled = rust_llvm_tools_toml.unwrap_or(true);
+        config.rust_randomize_layout = rust_randomize_layout_toml.unwrap_or(rust_randomize_layout);
+        config.llvm_tools_enabled = rust_llvm_tools_toml.unwrap_or(llvm_tools_enabled);
         config.llvm_enzyme = channel == "dev" || channel == "nightly";
         config.rustc_default_linker = rust_default_linker_toml;
         config.musl_root = rust_musl_root_toml.map(PathBuf::from);
         config.save_toolstates = rust_save_toolstates_toml.map(PathBuf::from);
 
         // Warnings and debug options
-        set(
-            &mut config.deny_warnings,
-            match flags_warnings {
-                Warnings::Deny => Some(true),
-                Warnings::Warn => Some(false),
-                Warnings::Default => rust_deny_warnings_toml,
-            },
-        );
+        config.deny_warnings = match flags_warnings {
+            Warnings::Deny => Some(true),
+            Warnings::Warn => Some(false),
+            Warnings::Default => rust_deny_warnings_toml,
+        }
+        .unwrap_or(deny_warnings);
         set(&mut config.backtrace_on_ice, rust_backtrace_on_ice_toml);
         set(&mut config.rust_verify_llvm_ir, rust_verify_llvm_ir_toml);
         config.rust_thin_lto_import_instr_limit = rust_thin_lto_import_instr_limit_toml;
@@ -1324,15 +1346,14 @@ impl Config {
         set(&mut config.ehcont_guard, rust_ehcont_guard_toml);
         config.llvm_libunwind_default = rust_llvm_libunwind_toml
             .map(|v| v.parse().expect("failed to parse rust.llvm-libunwind"));
-        set(
-            &mut config.rust_codegen_backends,
-            rust_codegen_backends_toml.map(|b| parse_codegen_backends(b, "rust")),
-        );
+        config.rust_codegen_backends = rust_codegen_backends_toml
+            .map(|b| parse_codegen_backends(b, "rust"))
+            .unwrap_or(rust_codegen_backends);
 
         config.rust_lto =
             rust_lto_toml.as_deref().map(|v| RustcLto::from_str(v).unwrap()).unwrap_or_default();
         config.rust_validate_mir_opts = rust_validate_mir_opts_toml;
-        config.rust_optimize = rust_optimize_toml.unwrap_or(RustOptimize::Bool(true));
+        config.rust_optimize = rust_optimize_toml.unwrap_or(rust_optimize);
         config.rust_codegen_units = rust_codegen_units_toml.map(threads_from_config);
         config.rust_codegen_units_std = rust_codegen_units_std_toml.map(threads_from_config);
         config.rust_std_features = rust_std_features_toml
@@ -1358,12 +1379,12 @@ impl Config {
             rust_debuginfo_level_tests_toml.unwrap_or(DebuginfoLevel::None);
 
         // LLVM Configuration
-        set(&mut config.ninja_in_file, llvm_ninja_toml);
-        set(&mut config.llvm_optimize, llvm_optimize_toml);
+        config.ninja_in_file = llvm_ninja_toml.unwrap_or(ninja_in_file);
+        config.llvm_optimize = llvm_optimize_toml.unwrap_or(llvm_optimize);
         set(&mut llvm_thin_lto, llvm_thin_lto_toml);
         set(&mut config.llvm_release_debuginfo, llvm_release_debuginfo_toml);
-        set(&mut config.llvm_static_stdcpp, llvm_static_libstdcpp_toml);
-        set(&mut config.llvm_libzstd, llvm_libzstd_toml);
+        config.llvm_static_stdcpp = llvm_static_libstdcpp_toml.unwrap_or(llvm_static_stdcpp);
+        config.llvm_libzstd = llvm_libzstd_toml.unwrap_or(llvm_libzstd);
 
         if let Some(v) = llvm_link_shared_toml {
             config.llvm_link_shared.set(Some(v));
@@ -1414,9 +1435,10 @@ impl Config {
         config.dist_sign_folder = dist_sign_folder_toml.map(PathBuf::from);
         config.dist_upload_addr = dist_upload_addr_toml;
         config.dist_compression_formats = dist_compression_formats_toml;
-        set(&mut config.dist_compression_profile, dist_compression_profile_toml);
-        set(&mut config.rust_dist_src, dist_src_tarball_toml);
-        set(&mut config.dist_include_mingw_linker, dist_include_mingw_linker_toml);
+        config.dist_compression_profile =
+            dist_compression_profile_toml.unwrap_or(dist_compression_profile);
+        config.dist_include_mingw_linker =
+            dist_include_mingw_linker_toml.unwrap_or(dist_include_mingw_linker);
 
         // Default enable dist.vendor for managed git/tarball sources
         config.dist_vendor = dist_vendor_toml.unwrap_or_else(|| {
