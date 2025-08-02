@@ -27,6 +27,9 @@ use crate::llvm;
 /// the final record that will be embedded in the `__llvm_covfun` section.
 #[derive(Debug)]
 pub(crate) struct CovfunRecord<'tcx> {
+    /// Not used directly, but helpful in debug messages.
+    _instance: Instance<'tcx>,
+
     mangled_function_name: &'tcx str,
     source_hash: u64,
     is_used: bool,
@@ -55,6 +58,7 @@ pub(crate) fn prepare_covfun_record<'tcx>(
     let expressions = prepare_expressions(ids_info);
 
     let mut covfun = CovfunRecord {
+        _instance: instance,
         mangled_function_name: tcx.symbol_name(instance).name,
         source_hash: if is_used { fn_cov_info.function_source_hash } else { 0 },
         is_used,
@@ -106,7 +110,7 @@ fn fill_region_tables<'tcx>(
     // first mapping's span to determine the file.
     let source_map = tcx.sess.source_map();
     let Some(first_span) = (try { fn_cov_info.mappings.first()?.span }) else {
-        debug_assert!(false, "function has no mappings: {:?}", covfun.mangled_function_name);
+        debug_assert!(false, "function has no mappings: {covfun:?}");
         return;
     };
     let source_file = source_map.lookup_source_file(first_span.lo());
@@ -184,6 +188,7 @@ pub(crate) fn generate_covfun_record<'tcx>(
     covfun: &CovfunRecord<'tcx>,
 ) {
     let &CovfunRecord {
+        _instance,
         mangled_function_name,
         source_hash,
         is_used,
