@@ -17,6 +17,7 @@ use crate::ops::{
     ChangeOutputType, ControlFlow, FromResidual, Index, IndexMut, NeverShortCircuit, Residual, Try,
 };
 use crate::ptr::{null, null_mut};
+use crate::random::{Random, RandomSource};
 use crate::slice::{Iter, IterMut};
 
 mod ascii;
@@ -449,6 +450,56 @@ impl<T: Clone, const N: usize> Clone for [T; N] {
         self.clone_from_slice(other);
     }
 }
+
+#[unstable(feature = "random", issue = "130703")]
+impl<T: Random, const N: usize> Random for [T; N] {
+    fn random(source: &mut (impl RandomSource + ?Sized)) -> Self {
+        SpecArrayRandom::random(source)
+    }
+}
+
+#[unstable(feature = "random", issue = "130703")]
+trait SpecArrayRandom: Sized {
+    fn random<const N: usize>(source: &mut (impl RandomSource + ?Sized)) -> [Self; N];
+}
+
+#[unstable(feature = "random", issue = "130703")]
+impl<T: Random> SpecArrayRandom for T {
+    default fn random<const N: usize>(source: &mut (impl RandomSource + ?Sized)) -> [T; N] {
+        from_fn(|_| T::random(source))
+    }
+}
+
+macro_rules! impl_random_for_integer_array {
+    ($t:ty) => {
+        #[unstable(feature = "random", issue = "130703")]
+        impl SpecArrayRandom for $t {
+            fn random<const N: usize>(source: &mut (impl RandomSource + ?Sized)) -> [$t; N] {
+                let mut buf = [const { MaybeUninit::<$t>::uninit() }; N];
+                // SAFETY: all elements in the buffer were initialized with
+                // random bytes.
+                unsafe {
+                    let bytes = buf.as_bytes_mut().assume_init_mut();
+                    source.fill_bytes(bytes);
+                    MaybeUninit::array_assume_init(buf)
+                }
+            }
+        }
+    };
+}
+
+impl_random_for_integer_array!(u8);
+impl_random_for_integer_array!(u16);
+impl_random_for_integer_array!(u32);
+impl_random_for_integer_array!(u64);
+impl_random_for_integer_array!(u128);
+impl_random_for_integer_array!(usize);
+impl_random_for_integer_array!(i8);
+impl_random_for_integer_array!(i16);
+impl_random_for_integer_array!(i32);
+impl_random_for_integer_array!(i64);
+impl_random_for_integer_array!(i128);
+impl_random_for_integer_array!(isize);
 
 trait SpecArrayClone: Clone {
     fn clone<const N: usize>(array: &[Self; N]) -> [Self; N];
