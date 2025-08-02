@@ -603,7 +603,10 @@ impl<'test> TestCx<'test> {
             );
         } else {
             for pattern in missing_patterns {
-                self.error(&format!("error pattern '{}' not found!", pattern));
+                println!(
+                    "\n{prefix}: error pattern '{pattern}' not found!",
+                    prefix = self.error_prefix()
+                );
             }
             self.fatal_proc_rec("multiple error patterns not found", proc_res);
         }
@@ -762,11 +765,12 @@ impl<'test> TestCx<'test> {
         }
 
         if !unexpected.is_empty() || !not_found.is_empty() {
-            self.error(&format!(
-                "{} unexpected diagnostics reported, {} expected diagnostics not reported",
-                unexpected.len(),
-                not_found.len()
-            ));
+            println!(
+                "\n{prefix}: {unexpected} unexpected diagnostics reported, {not_found} expected diagnostics not reported",
+                prefix = self.error_prefix(),
+                unexpected = unexpected.len(),
+                not_found = not_found.len(),
+            );
 
             // Emit locations in a format that is short (relative paths) but "clickable" in editors.
             // Also normalize path separators to `/`.
@@ -1993,16 +1997,19 @@ impl<'test> TestCx<'test> {
         output_base_name(self.config, self.testpaths, self.safe_revision())
     }
 
-    fn error(&self, err: &str) {
+    /// Prefix to print before error messages. Normally just `error`, but also
+    /// includes the revision name for tests that use revisions.
+    #[must_use]
+    fn error_prefix(&self) -> String {
         match self.revision {
-            Some(rev) => println!("\nerror in revision `{}`: {}", rev, err),
-            None => println!("\nerror: {}", err),
+            Some(rev) => format!("error in revision `{rev}`"),
+            None => format!("error"),
         }
     }
 
     #[track_caller]
     fn fatal(&self, err: &str) -> ! {
-        self.error(err);
+        println!("\n{prefix}: {err}", prefix = self.error_prefix());
         error!("fatal error, panic: {:?}", err);
         panic!("fatal error");
     }
@@ -2020,7 +2027,7 @@ impl<'test> TestCx<'test> {
         proc_res: &ProcRes,
         callback_before_unwind: impl FnOnce(),
     ) -> ! {
-        self.error(err);
+        println!("\n{prefix}: {err}", prefix = self.error_prefix());
 
         // Some callers want to print additional notes after the main error message.
         if let Some(note) = extra_note {
