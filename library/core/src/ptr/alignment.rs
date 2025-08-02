@@ -1,3 +1,5 @@
+#![allow(clippy::enum_clike_unportable_variant)]
+
 use crate::num::NonZero;
 use crate::ub_checks::assert_unsafe_precondition;
 use crate::{cmp, fmt, hash, mem, num};
@@ -241,7 +243,7 @@ impl const Default for Alignment {
 
 #[cfg(target_pointer_width = "16")]
 #[derive(Copy, Clone, PartialEq, Eq)]
-#[repr(u16)]
+#[repr(usize)]
 enum AlignmentEnum {
     _Align1Shl0 = 1 << 0,
     _Align1Shl1 = 1 << 1,
@@ -263,7 +265,7 @@ enum AlignmentEnum {
 
 #[cfg(target_pointer_width = "32")]
 #[derive(Copy, Clone, PartialEq, Eq)]
-#[repr(u32)]
+#[repr(usize)]
 enum AlignmentEnum {
     _Align1Shl0 = 1 << 0,
     _Align1Shl1 = 1 << 1,
@@ -301,7 +303,7 @@ enum AlignmentEnum {
 
 #[cfg(target_pointer_width = "64")]
 #[derive(Copy, Clone, PartialEq, Eq)]
-#[repr(u64)]
+#[repr(usize)]
 enum AlignmentEnum {
     _Align1Shl0 = 1 << 0,
     _Align1Shl1 = 1 << 1,
