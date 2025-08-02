@@ -968,7 +968,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
         }
         self.r.potentially_unused_imports.push(import);
         let imported_binding = self.r.import(binding, import);
-        if parent == self.r.graph_root {
+        if ident.name != kw::Underscore && parent == self.r.graph_root {
             let ident = ident.normalize_to_macros_2_0();
             if let Some(entry) = self.r.extern_prelude.get(&ident)
                 && expansion != LocalExpnId::ROOT
@@ -984,23 +984,29 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                 // more details: https://github.com/rust-lang/rust/pull/111761
                 return;
             }
-            let entry = self.r.extern_prelude.entry(ident).or_insert(ExternPreludeEntry {
-                binding: Cell::new(None),
-                introduced_by_item: true,
-            });
-            if orig_name.is_some() {
-                entry.introduced_by_item = true;
-            }
-            // Binding from `extern crate` item in source code can replace
-            // a binding from `--extern` on command line here.
-            if !entry.is_import() {
-                entry.binding.set(Some(imported_binding));
-            } else if ident.name != kw::Underscore {
-                self.r.dcx().span_delayed_bug(
-                    item.span,
-                    format!("it had been define the external module '{ident}' multiple times"),
-                );
-            }
+
+            use indexmap::map::Entry;
+            match self.r.extern_prelude.entry(ident) {
+                Entry::Occupied(mut occupied) => {
+                    let entry = occupied.get_mut();
+                    if let Some(old_binding) = entry.binding.get()
+                        && old_binding.is_import()
+                    {
+                        let msg = format!("extern crate `{ident}` already in extern prelude");
+                        self.r.tcx.dcx().span_delayed_bug(item.span, msg);
+                    } else {
+                        // Binding from `extern crate` item in source code can replace
+                        // a binding from `--extern` on command line here.
+                        entry.binding.set(Some(imported_binding));
+                        entry.introduced_by_item = orig_name.is_some();
+                    }
+                    entry
+                }
+                Entry::Vacant(vacant) => vacant.insert(ExternPreludeEntry {
+                    binding: Cell::new(Some(imported_binding)),
+                    introduced_by_item: true,
+                }),
+            };
         }
         self.r.define_binding_local(parent, ident, TypeNS, imported_binding);
     }
