@@ -1,5 +1,6 @@
 use super::alloc::*;
 use super::time::*;
+use crate::io::{IoSlice, IoSliceMut};
 use crate::time::Duration;
 
 #[test]
@@ -38,4 +39,93 @@ fn epoch() {
         pad2: 0,
     };
     assert_eq!(system_time_internal::uefi_time_to_duration(t), Duration::new(0, 0));
+}
+
+// UEFI IoSlice and IoSliceMut Tests
+//
+// Strictly speaking, vectored read/write types for UDP4, UDP6, TCP4, TCP6 are defined
+// separately in the UEFI Spec. However, they have the same signature. These tests just ensure
+// that `IoSlice` and `IoSliceMut` are compatible with the vectored types for all the
+// networking protocols.
+
+fn to_slice<T>(val: &T) -> &[u8] {
+    let len = size_of_val(val);
+    unsafe { crate::slice::from_raw_parts(crate::ptr::from_ref(val).cast(), len) }
+}
+
+#[test]
+fn io_slice_single() {
+    let mut data = [0, 1, 2, 3, 4];
+
+    let tcp4_frag = r_efi::protocols::tcp4::FragmentData {
+        fragment_length: data.len().try_into().unwrap(),
+        fragment_buffer: data.as_mut_ptr().cast(),
+    };
+    let tcp6_frag = r_efi::protocols::tcp6::FragmentData {
+        fragment_length: data.len().try_into().unwrap(),
+        fragment_buffer: data.as_mut_ptr().cast(),
+    };
+    let udp4_frag = r_efi::protocols::udp4::FragmentData {
+        fragment_length: data.len().try_into().unwrap(),
+        fragment_buffer: data.as_mut_ptr().cast(),
+    };
+    let udp6_frag = r_efi::protocols::udp6::FragmentData {
+        fragment_length: data.len().try_into().unwrap(),
+        fragment_buffer: data.as_mut_ptr().cast(),
+    };
+    let io_slice = IoSlice::new(&data);
+
+    assert_eq!(to_slice(&io_slice), to_slice(&tcp4_frag));
+    assert_eq!(to_slice(&io_slice), to_slice(&tcp6_frag));
+    assert_eq!(to_slice(&io_slice), to_slice(&udp4_frag));
+    assert_eq!(to_slice(&io_slice), to_slice(&udp6_frag));
+}
+
+#[test]
+fn io_slice_mut_single() {
+    let mut data = [0, 1, 2, 3, 4];
+
+    let tcp4_frag = r_efi::protocols::tcp4::FragmentData {
+        fragment_length: data.len().try_into().unwrap(),
+        fragment_buffer: data.as_mut_ptr().cast(),
+    };
+    let tcp6_frag = r_efi::protocols::tcp6::FragmentData {
+        fragment_length: data.len().try_into().unwrap(),
+        fragment_buffer: data.as_mut_ptr().cast(),
+    };
+    let udp4_frag = r_efi::protocols::udp4::FragmentData {
+        fragment_length: data.len().try_into().unwrap(),
+        fragment_buffer: data.as_mut_ptr().cast(),
+    };
+    let udp6_frag = r_efi::protocols::udp6::FragmentData {
+        fragment_length: data.len().try_into().unwrap(),
+        fragment_buffer: data.as_mut_ptr().cast(),
+    };
+    let io_slice_mut = IoSliceMut::new(&mut data);
+
+    assert_eq!(to_slice(&io_slice_mut), to_slice(&tcp4_frag));
+    assert_eq!(to_slice(&io_slice_mut), to_slice(&tcp6_frag));
+    assert_eq!(to_slice(&io_slice_mut), to_slice(&udp4_frag));
+    assert_eq!(to_slice(&io_slice_mut), to_slice(&udp6_frag));
+}
+
+#[test]
+fn io_slice_multi() {
+    let mut data = [0, 1, 2, 3, 4];
+
+    let tcp4_frag = r_efi::protocols::tcp4::FragmentData {
+        fragment_length: data.len().try_into().unwrap(),
+        fragment_buffer: data.as_mut_ptr().cast(),
+    };
+    let rhs =
+        [tcp4_frag.clone(), tcp4_frag.clone(), tcp4_frag.clone(), tcp4_frag.clone(), tcp4_frag];
+    let lhs = [
+        IoSlice::new(&data),
+        IoSlice::new(&data),
+        IoSlice::new(&data),
+        IoSlice::new(&data),
+        IoSlice::new(&data),
+    ];
+
+    assert_eq!(to_slice(&lhs), to_slice(&rhs));
 }
