@@ -160,7 +160,7 @@ impl<'a, 'tcx> ParseCtxt<'a, 'tcx> {
                     });
                 }
             };
-            values.push(value.eval_bits(self.tcx, self.typing_env));
+            values.push(value.valtree.unwrap_leaf().to_bits_unchecked());
             targets.push(self.parse_block(arm.body)?);
         }
 
