@@ -28,9 +28,12 @@ fn round_pointer_up_to_alignment<'ll>(
     align: Align,
     ptr_ty: &'ll Type,
 ) -> &'ll Value {
-    let mut ptr_as_int = bx.ptrtoint(addr, bx.cx().type_isize());
-    ptr_as_int = round_up_to_alignment(bx, ptr_as_int, align);
-    bx.inttoptr(ptr_as_int, ptr_ty)
+    let ptr = bx.inbounds_ptradd(addr, bx.const_i32(align.bytes() as i32 - 1));
+    bx.call_intrinsic(
+        "llvm.ptrmask",
+        &[ptr_ty, bx.type_i32()],
+        &[ptr, bx.const_int(bx.isize_ty, -(align.bytes() as isize) as i64)],
+    )
 }
 
 fn emit_direct_ptr_va_arg<'ll, 'tcx>(
@@ -905,6 +908,21 @@ pub(super) fn emit_va_arg<'ll, 'tcx>(
             )
         }
         "aarch64" => emit_aapcs_va_arg(bx, addr, target_ty),
+        "arm" => {
+            // Types wider than 16 bytes are not currently supported. Clang has special logic for
+            // such types, but `VaArgSafe` is not implemented for any type that is this large.
+            assert!(bx.cx.size_of(target_ty).bytes() <= 16);
+
+            emit_ptr_va_arg(
+                bx,
+                addr,
+                target_ty,
+                PassMode::Direct,
+                SlotSize::Bytes4,
+                AllowHigherAlign::Yes,
+                ForceRightAdjust::No,
+            )
+        }
         "s390x" => emit_s390x_va_arg(bx, addr, target_ty),
         "powerpc" => emit_powerpc_va_arg(bx, addr, target_ty),
         "powerpc64" | "powerpc64le" => emit_ptr_va_arg(
