@@ -33,16 +33,40 @@ use crate::errors::{
 // function, then we should explore its block to check for codes that
 // may need to be marked as live.
 fn should_explore(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
-    matches!(
-        tcx.hir_node_by_def_id(def_id),
-        Node::Item(..)
-            | Node::ImplItem(..)
-            | Node::ForeignItem(..)
-            | Node::TraitItem(..)
-            | Node::Variant(..)
-            | Node::AnonConst(..)
-            | Node::OpaqueTy(..)
-    )
+    match tcx.def_kind(def_id) {
+        DefKind::Mod
+        | DefKind::Struct
+        | DefKind::Union
+        | DefKind::Enum
+        | DefKind::Variant
+        | DefKind::Trait
+        | DefKind::TyAlias
+        | DefKind::ForeignTy
+        | DefKind::TraitAlias
+        | DefKind::AssocTy
+        | DefKind::Fn
+        | DefKind::Const
+        | DefKind::Static { .. }
+        | DefKind::AssocFn
+        | DefKind::AssocConst
+        | DefKind::Macro(_)
+        | DefKind::GlobalAsm
+        | DefKind::Impl { .. }
+        | DefKind::OpaqueTy
+        | DefKind::AnonConst
+        | DefKind::InlineConst
+        | DefKind::ExternCrate
+        | DefKind::Use
+        | DefKind::ForeignMod => true,
+
+        DefKind::TyParam
+        | DefKind::ConstParam
+        | DefKind::Ctor(..)
+        | DefKind::Field
+        | DefKind::LifetimeParam
+        | DefKind::Closure
+        | DefKind::SyntheticCoroutineBody => false,
+    }
 }
 
 /// Returns the local def id of the ADT if the given ty refers to a local one.
