@@ -7,7 +7,12 @@ fn trans((): ()) {
     unsafe { become std::mem::transmute(()) }
 }
 
+fn cats(x: u64) -> u32 {
+    become std::intrinsics::ctlz(x)
+}
+
 fn main() {
     trans(());
+    assert_eq!(cats(17), 59);
 }
 
