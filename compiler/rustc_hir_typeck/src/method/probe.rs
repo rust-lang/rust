@@ -777,7 +777,9 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
 
                 self.assemble_inherent_candidates_from_object(generalized_self_ty);
                 self.assemble_inherent_impl_candidates_for_type(p.def_id(), receiver_steps);
-                if self.tcx.has_attr(p.def_id(), sym::rustc_has_incoherent_inherent_impls) {
+                if self.has_rustc_attrs
+                    && self.tcx.has_attr(p.def_id(), sym::rustc_has_incoherent_inherent_impls)
+                {
                     self.assemble_inherent_candidates_for_incoherent_ty(
                         raw_self_ty,
                         receiver_steps,
@@ -787,7 +789,9 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             ty::Adt(def, _) => {
                 let def_id = def.did();
                 self.assemble_inherent_impl_candidates_for_type(def_id, receiver_steps);
-                if self.tcx.has_attr(def_id, sym::rustc_has_incoherent_inherent_impls) {
+                if self.has_rustc_attrs
+                    && self.tcx.has_attr(def_id, sym::rustc_has_incoherent_inherent_impls)
+                {
                     self.assemble_inherent_candidates_for_incoherent_ty(
                         raw_self_ty,
                         receiver_steps,
@@ -796,7 +800,9 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             }
             ty::Foreign(did) => {
                 self.assemble_inherent_impl_candidates_for_type(did, receiver_steps);
-                if self.tcx.has_attr(did, sym::rustc_has_incoherent_inherent_impls) {
+                if self.has_rustc_attrs
+                    && self.tcx.has_attr(did, sym::rustc_has_incoherent_inherent_impls)
+                {
                     self.assemble_inherent_candidates_for_incoherent_ty(
                         raw_self_ty,
                         receiver_steps,
