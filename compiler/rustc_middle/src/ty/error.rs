@@ -160,7 +160,11 @@ impl<'tcx> Ty<'tcx> {
             _ => {
                 let width = tcx.sess.diagnostic_width();
                 let length_limit = std::cmp::max(width / 4, 40);
-                format!("`{}`", tcx.string_with_limit(self, length_limit)).into()
+                format!(
+                    "`{}`",
+                    tcx.string_with_limit(self, length_limit, hir::def::Namespace::TypeNS)
+                )
+                .into()
             }
         }
     }
@@ -213,12 +217,12 @@ impl<'tcx> Ty<'tcx> {
 }
 
 impl<'tcx> TyCtxt<'tcx> {
-    pub fn string_with_limit<T>(self, p: T, length_limit: usize) -> String
+    pub fn string_with_limit<T>(self, p: T, length_limit: usize, ns: hir::def::Namespace) -> String
     where
         T: Copy + for<'a, 'b> Lift<TyCtxt<'b>, Lifted: Print<'b, FmtPrinter<'a, 'b>>>,
     {
         let mut type_limit = 50;
-        let regular = FmtPrinter::print_string(self, hir::def::Namespace::TypeNS, |cx| {
+        let regular = FmtPrinter::print_string(self, ns, |cx| {
             self.lift(p).expect("could not lift for printing").print(cx)
         })
         .expect("could not write to `String`");
@@ -229,11 +233,7 @@ impl<'tcx> TyCtxt<'tcx> {
         loop {
             // Look for the longest properly trimmed path that still fits in length_limit.
             short = with_forced_trimmed_paths!({
-                let mut cx = FmtPrinter::new_with_limit(
-                    self,
-                    hir::def::Namespace::TypeNS,
-                    rustc_session::Limit(type_limit),
-                );
+                let mut cx = FmtPrinter::new_with_limit(self, ns, rustc_session::Limit(type_limit));
                 self.lift(p)
                     .expect("could not lift for printing")
                     .print(&mut cx)
@@ -248,15 +248,27 @@ impl<'tcx> TyCtxt<'tcx> {
         short
     }
 
-    /// When calling this after a `Diag` is constructed, the preferred way of doing so is
-    /// `tcx.short_string(ty, diag.long_ty_path())`. The diagnostic itself is the one that keeps
-    /// the existence of a "long type" anywhere in the diagnostic, so the note telling the user
-    /// where we wrote the file to is only printed once.
     pub fn short_string<T>(self, p: T, path: &mut Option<PathBuf>) -> String
     where
         T: Copy + Hash + for<'a, 'b> Lift<TyCtxt<'b>, Lifted: Print<'b, FmtPrinter<'a, 'b>>>,
     {
-        let regular = FmtPrinter::print_string(self, hir::def::Namespace::TypeNS, |cx| {
+        self.short_string_namespace(p, path, hir::def::Namespace::TypeNS)
+    }
+
+    /// When calling this after a `Diag` is constructed, the preferred way of doing so is
+    /// `tcx.short_string(ty, diag.long_ty_path())`. The diagnostic itself is the one that keeps
+    /// the existence of a "long type" anywhere in the diagnostic, so the note telling the user
+    /// where we wrote the file to is only printed once.
+    pub fn short_string_namespace<T>(
+        self,
+        p: T,
+        path: &mut Option<PathBuf>,
+        namespace: hir::def::Namespace,
+    ) -> String
+    where
+        T: Copy + Hash + for<'a, 'b> Lift<TyCtxt<'b>, Lifted: Print<'b, FmtPrinter<'a, 'b>>>,
+    {
+        let regular = FmtPrinter::print_string(self, namespace, |cx| {
             self.lift(p).expect("could not lift for printing").print(cx)
         })
         .expect("could not write to `String`");
@@ -270,7 +282,7 @@ impl<'tcx> TyCtxt<'tcx> {
         if regular.len() <= width * 2 / 3 {
             return regular;
         }
-        let short = self.string_with_limit(p, length_limit);
+        let short = self.string_with_limit(p, length_limit, namespace);
         if regular == short {
             return regular;
         }

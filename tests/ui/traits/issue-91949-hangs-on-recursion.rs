@@ -1,6 +1,6 @@
 //~ ERROR overflow evaluating the requirement `<std::iter::Empty<()> as Iterator>::Item == ()`
 //@ build-fail
-//@ compile-flags: -Zinline-mir=no
+//@ compile-flags: -Zinline-mir=no -Zwrite-long-types-to-disk=yes
 
 // Regression test for #91949.
 // This hanged *forever* on 1.56, fixed by #90423.

@@ -1,4 +1,5 @@
 //@ build-fail
+//@ compile-flags: --diagnostic-width=100 -Zwrite-long-types-to-disk=yes
 
 trait ToOpt: Sized {
     fn to_option(&self) -> Option<Self>;

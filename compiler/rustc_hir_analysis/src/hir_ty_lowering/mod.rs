@@ -1135,9 +1135,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         );
                     }
                 } else {
+                    let trait_ =
+                        tcx.short_string(bound.print_only_trait_path(), err.long_ty_path());
                     err.note(format!(
-                        "associated {assoc_kind_str} `{assoc_ident}` could derive from `{}`",
-                        bound.print_only_trait_path(),
+                        "associated {assoc_kind_str} `{assoc_ident}` could derive from `{trait_}`",
                     ));
                 }
             }
