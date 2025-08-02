@@ -203,22 +203,8 @@ impl ConfigBuilder {
         }
 
         args.push("--rustc-path".to_string());
-        // This is a subtle/fragile thing. On rust-lang CI, there is no global
-        // `rustc`, and Cargo doesn't offer a convenient way to get the path to
-        // `rustc`. Fortunately bootstrap sets `RUSTC` for us, which is pointing
-        // to the stage0 compiler.
-        //
-        // Otherwise, if you are running compiletests's tests manually, you
-        // probably don't have `RUSTC` set, in which case this falls back to the
-        // global rustc. If your global rustc is too far out of sync with stage0,
-        // then this may cause confusing errors. Or if for some reason you don't
-        // have rustc in PATH, that would also fail.
-        args.push(std::env::var("RUSTC").unwrap_or_else(|_| {
-            eprintln!(
-                "warning: RUSTC not set, using global rustc (are you not running via bootstrap?)"
-            );
-            "rustc".to_string()
-        }));
+        args.push(std::env::var("TEST_RUSTC").expect("must be configured by bootstrap"));
+
         crate::parse_config(args)
     }
 }
