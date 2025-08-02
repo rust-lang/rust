@@ -11,10 +11,11 @@ jobs:
     if: github.repository == 'rust-lang/rustc-dev-guide'
     uses: rust-lang/josh-sync/.github/workflows/rustc-pull.yml@main
     with:
+      github-app-id: ${{ vars.APP_CLIENT_ID }}
       zulip-stream-id: 196385
       zulip-bot-email:  "rustc-dev-guide-gha-notif-bot@rust-lang.zulipchat.com"
       pr-base-branch: master
       branch-name: rustc-pull
     secrets:
       zulip-api-token: ${{ secrets.ZULIP_API_TOKEN }}
-      token: ${{ secrets.GITHUB_TOKEN }}
+      github-app-secret: ${{ secrets.APP_PRIVATE_KEY }}
