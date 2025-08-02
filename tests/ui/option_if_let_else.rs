@@ -372,3 +372,12 @@ fn issue15379() {
     let _ = unsafe { if let Some(o) = *opt_raw_ptr { o } else { 1 } };
     //~^ option_if_let_else
 }
+
+fn issue15002() {
+    let res: Result<String, ()> = Ok("_".to_string());
+    let _ = match res {
+        //~^ option_if_let_else
+        Ok(s) => s.clone(),
+        Err(_) => String::new(),
+    };
+}
