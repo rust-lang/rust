@@ -112,34 +112,46 @@ impl Determinacy {
 }
 
 /// A specific scope in which a name can be looked up.
-/// This enum is currently used only for early resolution (imports and macros),
-/// but not for late resolution yet.
 #[derive(Clone, Copy, Debug)]
 enum Scope<'ra> {
+    /// Inert attributes registered by derive macros.
     DeriveHelpers(LocalExpnId),
+    /// Inert attributes registered by derive macros, but used before they are actually declared.
+    /// This scope will exist until the compatibility lint `LEGACY_DERIVE_HELPERS`
+    /// is turned into a hard error.
     DeriveHelpersCompat,
+    /// Textual `let`-like scopes introduced by `macro_rules!` items.
     MacroRules(MacroRulesScopeRef<'ra>),
-    // The node ID is for reporting the `PROC_MACRO_DERIVE_RESOLUTION_FALLBACK`
-    // lint if it should be reported.
+    /// Names declared in the given module.
+    /// The node ID is for reporting the `PROC_MACRO_DERIVE_RESOLUTION_FALLBACK`
+    /// lint if it should be reported.
     Module(Module<'ra>, Option<NodeId>),
+    /// Names introduced by `#[macro_use]` attributes on `extern crate` items.
     MacroUsePrelude,
+    /// Built-in attributes.
     BuiltinAttrs,
-    ExternPrelude,
+    /// Extern prelude names introduced by `extern crate` items.
+    ExternPreludeItems,
+    /// Extern prelude names introduced by `--extern` flags.
+    ExternPreludeFlags,
+    /// Tool modules introduced with `#![register_tool]`.
     ToolPrelude,
+    /// Standard library prelude introduced with an internal `#[prelude_import]` import.
     StdLibPrelude,
+    /// Built-in types.
     BuiltinTypes,
 }
 
 /// Names from different contexts may want to visit different subsets of all specific scopes
 /// with different restrictions when looking up the resolution.
-/// This enum is currently used only for early resolution (imports and macros),
-/// but not for late resolution yet.
 #[derive(Clone, Copy, Debug)]
 enum ScopeSet<'ra> {
     /// All scopes with the given namespace.
     All(Namespace),
     /// A module, then extern prelude (used for mixed 2015-2018 mode in macros).
     ModuleAndExternPrelude(Namespace, Module<'ra>),
+    /// Just two extern prelude scopes.
+    ExternPrelude,
     /// All scopes with macro namespace and the given macro kind restriction.
     Macro(MacroKind),
     /// All scopes with the given namespace, used for partially performing late resolution.
@@ -849,6 +861,7 @@ enum AmbiguityKind {
     GlobVsGlob,
     GlobVsExpanded,
     MoreExpandedVsOuter,
+    ExternPrelude,
 }
 
 impl AmbiguityKind {
@@ -868,6 +881,9 @@ impl AmbiguityKind {
             }
             AmbiguityKind::MoreExpandedVsOuter => {
                 "a conflict between a macro-expanded name and a less macro-expanded name from outer scope during import or macro resolution"
+            }
+            AmbiguityKind::ExternPrelude => {
+                "a conflict between a macro-expanded `extern crate` and `--extern` flag during import or macro resolution"
             }
         }
     }
@@ -1009,14 +1025,16 @@ impl<'ra> NameBindingData<'ra> {
 
 #[derive(Default, Clone)]
 struct ExternPreludeEntry<'ra> {
-    binding: Cell<Option<NameBinding<'ra>>>,
+    /// Binding from an `extern crate` item.
+    item_binding: Option<NameBinding<'ra>>,
+    /// Binding from an `--extern` flag, lazily populated on first use.
+    flag_binding: Cell<Option<NameBinding<'ra>>>,
+    /// There was no `--extern` flag introducing this name,
+    /// `flag_binding` doesn't need to be populated.
+    only_item: bool,
+    /// `item_binding` is non-redundant, happens either when `only_item` is true,
+    /// or when `extern crate` introducing `item_binding` used renaming.
     introduced_by_item: bool,
-}
-
-impl ExternPreludeEntry<'_> {
-    fn is_import(&self) -> bool {
-        self.binding.get().is_some_and(|binding| binding.is_import())
-    }
 }
 
 struct DeriveData {
@@ -1487,13 +1505,23 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let mut invocation_parents = FxHashMap::default();
         invocation_parents.insert(LocalExpnId::ROOT, InvocationParent::ROOT);
 
-        let mut extern_prelude: FxIndexMap<Ident, ExternPreludeEntry<'_>> = tcx
+        let mut extern_prelude: FxIndexMap<_, _> = tcx
             .sess
             .opts
             .externs
             .iter()
-            .filter(|(_, entry)| entry.add_prelude)
-            .map(|(name, _)| (Ident::from_str(name), Default::default()))
+            .filter_map(|(name, entry)| {
+                // Make sure `self`, `super`, `_` etc do not get into extern prelude.
+                // FIXME: reject `--extern self` and similar in option parsing instead.
+                if entry.add_prelude
+                    && let name = Symbol::intern(name)
+                    && name.can_be_raw()
+                {
+                    Some((Ident::with_dummy_span(name), Default::default()))
+                } else {
+                    None
+                }
+            })
             .collect();
 
         if !attr::contains_name(attrs, sym::no_core) {
@@ -1849,7 +1877,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         this.traits_in_module(module, assoc_item, &mut found_traits);
                     }
                 }
-                Scope::ExternPrelude | Scope::ToolPrelude | Scope::BuiltinTypes => {}
+                Scope::ExternPreludeItems
+                | Scope::ExternPreludeFlags
+                | Scope::ToolPrelude
+                | Scope::BuiltinTypes => {}
                 _ => unreachable!(),
             }
             None::<()>
@@ -2011,7 +2042,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             // but not introduce it, as used if they are accessed from lexical scope.
             if used == Used::Scope {
                 if let Some(entry) = self.extern_prelude.get(&ident.normalize_to_macros_2_0()) {
-                    if !entry.introduced_by_item && entry.binding.get() == Some(used_binding) {
+                    if !entry.introduced_by_item && entry.item_binding == Some(used_binding) {
                         return;
                     }
                 }
@@ -2167,44 +2198,52 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         }
     }
 
-    fn extern_prelude_get(&mut self, ident: Ident, finalize: bool) -> Option<NameBinding<'ra>> {
-        if ident.is_path_segment_keyword() {
-            // Make sure `self`, `super` etc produce an error when passed to here.
-            return None;
-        }
+    fn extern_prelude_get_item(
+        &mut self,
+        ident: Ident,
+        finalize: bool,
+    ) -> Option<NameBinding<'ra>> {
+        let entry = self.extern_prelude.get(&ident.normalize_to_macros_2_0());
+        entry.and_then(|entry| entry.item_binding).map(|binding| {
+            if finalize {
+                self.record_use(ident, binding, Used::Scope);
+            }
+            binding
+        })
+    }
 
-        let norm_ident = ident.normalize_to_macros_2_0();
-        let binding = self.extern_prelude.get(&norm_ident).cloned().and_then(|entry| {
-            Some(if let Some(binding) = entry.binding.get() {
+    fn extern_prelude_get_flag(
+        &mut self,
+        ident: Ident,
+        finalize: bool,
+    ) -> Option<NameBinding<'ra>> {
+        let entry = self.extern_prelude.get(&ident.normalize_to_macros_2_0());
+        entry.and_then(|entry| match entry.flag_binding.get() {
+            Some(binding) => {
                 if finalize {
-                    if !entry.is_import() {
-                        self.cstore_mut().process_path_extern(self.tcx, ident.name, ident.span);
-                    } else if entry.introduced_by_item {
-                        self.record_use(ident, binding, Used::Other);
-                    }
+                    self.cstore_mut().process_path_extern(self.tcx, ident.name, ident.span);
                 }
-                binding
-            } else {
+                Some(binding)
+            }
+            None if entry.only_item => None,
+            None => {
                 let crate_id = if finalize {
-                    let Some(crate_id) =
-                        self.cstore_mut().process_path_extern(self.tcx, ident.name, ident.span)
-                    else {
-                        return Some(self.dummy_binding);
-                    };
-                    crate_id
+                    self.cstore_mut().process_path_extern(self.tcx, ident.name, ident.span)
                 } else {
-                    self.cstore_mut().maybe_process_path_extern(self.tcx, ident.name)?
+                    self.cstore_mut().maybe_process_path_extern(self.tcx, ident.name)
                 };
-                let res = Res::Def(DefKind::Mod, crate_id.as_def_id());
-                self.arenas.new_pub_res_binding(res, DUMMY_SP, LocalExpnId::ROOT)
-            })
-        });
-
-        if let Some(entry) = self.extern_prelude.get(&norm_ident) {
-            entry.binding.set(binding);
-        }
-
-        binding
+                match crate_id {
+                    Some(crate_id) => {
+                        let res = Res::Def(DefKind::Mod, crate_id.as_def_id());
+                        let binding =
+                            self.arenas.new_pub_res_binding(res, DUMMY_SP, LocalExpnId::ROOT);
+                        entry.flag_binding.set(Some(binding));
+                        Some(binding)
+                    }
+                    None => finalize.then_some(self.dummy_binding),
+                }
+            }
+        })
     }
 
     /// Rustdoc uses this to resolve doc link paths in a recoverable way. `PathResult<'a>`

@@ -10,6 +10,7 @@ macro_rules! m {
 
 m!();
 
-use std::mem;
+use std::mem; //~ ERROR `std` is ambiguous
+use ::std::mem as _; //~ ERROR `std` is ambiguous
 
 fn main() {}
