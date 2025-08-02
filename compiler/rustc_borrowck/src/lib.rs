@@ -1,5 +1,6 @@
 //! This query borrow-checks the MIR to (further) ensure it is not broken.
 
+// ignore-tidy-filelength
 // tidy-alphabetical-start
 #![allow(internal_features)]
 #![doc(rust_logo)]
@@ -44,7 +45,8 @@ use rustc_mir_dataflow::impls::{EverInitializedPlaces, MaybeUninitializedPlaces}
 use rustc_mir_dataflow::move_paths::{
     InitIndex, InitLocation, LookupResult, MoveData, MovePathIndex,
 };
-use rustc_mir_dataflow::{Analysis, Results, ResultsVisitor, visit_results};
+use rustc_mir_dataflow::{Analysis, ResultsVisitor};
+// use rustc_mir_dataflow::{Analysis, Results, ResultsVisitor, visit_results};
 use rustc_session::lint::builtin::{TAIL_EXPR_DROP_ORDER, UNUSED_MUT};
 use rustc_span::{ErrorGuaranteed, Span, Symbol};
 use smallvec::SmallVec;
@@ -340,6 +342,125 @@ fn do_mir_borrowck<'tcx>(
         &borrow_set,
     );
 
+    // use rustc_data_structures::unify;
+
+    // #[derive(Debug, PartialEq, Copy, Clone)]
+    // struct Yo(RegionVid);
+
+    // impl unify::UnifyKey for Yo {
+    //     type Value = ();
+
+    //     fn index(&self) -> u32 {
+    //         self.0.as_u32()
+    //     }
+
+    //     fn from_index(u: u32) -> Self {
+    //         Self(RegionVid::from_u32(u))
+    //     }
+
+    //     fn tag() -> &'static str {
+    //         "Yo!"
+    //     }
+    // }
+
+    // let timer = std::time::Instant::now();
+    // let mut ena = unify::UnificationTable::<unify::InPlace<Yo>>::new();
+    // let mut keys = Vec::new();
+    // for _ in regioncx.definitions.indices() {
+    //     keys.push(ena.new_key(()));
+    // }
+    // for c in regioncx.outlives_constraints() {
+    //     // let sup = Yo(c.sup);
+    //     // let sub = Yo(c.sub);
+    //     ena.union(keys[c.sup.as_usize()], keys[c.sub.as_usize()]);
+    //     // table.unify_var_var(sup, sub).unwrap();
+    //     // table.unify_var_var(a_id, b_id)
+    // }
+    // let elapsed_2 = timer.elapsed();
+
+    // if borrow_set.len() > 0 {
+    //     // if elapsed_1 < elapsed_2 {
+    //     //     eprintln!(
+    //     //         "table wins: by {} ns",
+    //     //         elapsed_2.as_nanos() - elapsed_1.as_nanos()
+    //     //     );
+    //     // } else {
+    //     //     eprintln!(
+    //     //         "ena wins: by {} ns",
+    //     //         elapsed_1.as_nanos() - elapsed_2.as_nanos()
+    //     //     );
+    //     // }
+
+    //     // FIXME: check how much it takes if we use this in loans in scope pre-check
+    //     // eprintln!("ena unification took: {} ns", elapsed_2.as_nanos());
+
+    //     // eprintln!(
+    //     //     "region union find: {} sets in {} ns, region count: {:?}, scc count: {}, loan count: {}, {:?}",
+    //     //     table.count(),
+    //     //     elapsed.as_nanos(),
+    //     //     regioncx.definitions.len(),
+    //     //     regioncx.constraint_sccs().num_sccs(),
+    //     //     borrow_set.len(),
+    //     //     body.span
+    //     // );
+
+    //     // eprintln!(
+    //     //     "region union find: {:5} sets in {} ns, region count: {:?}, scc count: {}, loan count: {}, {:?}",
+    //     //     table.count(),
+    //     //     elapsed_1.as_nanos(),
+    //     //     regioncx.definitions.len(),
+    //     //     regioncx.constraint_sccs().num_sccs(),
+    //     //     borrow_set.len(),
+    //     //     body.span
+    //     // );
+
+    //     // eprintln!(
+    //     //     "ena    union find: {:5} sets in {} ns, region count: {:?}, scc count: {}, loan count: {}, {:?}",
+    //     //     ena.len(),
+    //     //     elapsed_2.as_nanos(),
+    //     //     regioncx.definitions.len(),
+    //     //     regioncx.constraint_sccs().num_sccs(),
+    //     //     borrow_set.len(),
+    //     //     body.span
+    //     // );
+
+    //     // for (idx, loan) in borrow_set.iter_enumerated() {
+    //     //     let borrow_region = loan.region;
+    //     //     let same_set: Vec<_> = regioncx
+    //     //         .definitions
+    //     //         .indices()
+    //     //         .filter(|r| table.is_same_set(&borrow_region, &r))
+    //     //         .collect();
+    //     //     // let different_set = regioncx.outlives_constraints().count() - same_set.len();
+    //     //     // eprint!(
+    //     //     //     "loan {} from region {} involves {} regions in the set, and {} unrelated regions",
+    //     //     //     idx.as_usize(),
+    //     //     //     borrow_region.as_usize(),
+    //     //     //     same_set.len(),
+    //     //     //     different_set,
+    //     //     // );
+    //     //     // if same_set.len() < 15 {
+    //     //     //     eprintln!(", same: {:?}", same_set);
+    //     //     // } else {
+    //     //     //     eprintln!();
+    //     //     // }
+
+    //     //     let ena_same_set: Vec<_> = regioncx
+    //     //         .definitions
+    //     //         .indices()
+    //     //         .filter(|r| ena.unioned(keys[borrow_region.as_usize()], keys[r.as_usize()]))
+    //     //         .collect();
+
+    //     //     assert_eq!(same_set, ena_same_set);
+
+    //     //     // eprintln!(
+    //     //     //     "loan involves {} regions in the set, ena found {} regions in the set",
+    //     //     //     same_set.len(),
+    //     //     //     ena_same_set.len()
+    //     //     // );
+    //     // }
+    // }
+
     // Dump MIR results into a file, if that is enabled. This lets us
     // write unit-tests, as well as helping with debugging.
     nll::dump_nll_mir(&infcx, body, &regioncx, &opt_closure_req, &borrow_set);
@@ -392,6 +513,18 @@ fn do_mir_borrowck<'tcx>(
             move_errors: Vec::new(),
             diags_buffer,
             polonius_diagnostics: polonius_diagnostics.as_ref(),
+            #[cfg(test)]
+            nuutila: None,
+            #[cfg(test)]
+            duration: 0,
+            #[cfg(test)]
+            duration2: 0,
+            #[cfg(test)]
+            duration3: 0,
+            #[cfg(test)]
+            transitive_predecessors: None,
+            #[cfg(test)]
+            locals_checked_for_initialization: FxHashMap::default(),
         };
         struct MoveVisitor<'a, 'b, 'infcx, 'tcx> {
             ctxt: &'a mut MirBorrowckCtxt<'b, 'infcx, 'tcx>,
@@ -431,20 +564,91 @@ fn do_mir_borrowck<'tcx>(
         diags_buffer,
         polonius_output: polonius_output.as_deref(),
         polonius_diagnostics: polonius_diagnostics.as_ref(),
+        #[cfg(test)]
+        nuutila: None,
+        #[cfg(test)]
+        duration: 0,
+        #[cfg(test)]
+        duration2: 0,
+        #[cfg(test)]
+        duration3: 0,
+        #[cfg(test)]
+        transitive_predecessors: None,
+        #[cfg(test)]
+        locals_checked_for_initialization: FxHashMap::default(),
     };
 
     // Compute and report region errors, if any.
     mbcx.report_region_errors(nll_errors);
 
-    let (mut flow_analysis, flow_entry_states) =
-        get_flow_results(tcx, body, &move_data, &borrow_set, &regioncx);
-    visit_results(
-        body,
-        traversal::reverse_postorder(body).map(|(bb, _)| bb),
-        &mut flow_analysis,
-        &flow_entry_states,
-        &mut mbcx,
-    );
+    // if body.basic_blocks.len() > 5000 {
+    //     let stmts: usize =
+    //         body.basic_blocks.iter_enumerated().map(|(_idx, block)| block.statements.len()).sum();
+    //     eprintln!(
+    //         "\nCFG stats, blocks: {}, statements: {}, is cyclic: {}, {:?}",
+    //         body.basic_blocks.len(),
+    //         stmts,
+    //         rustc_data_structures::graph::is_cyclic(&body.basic_blocks),
+    //         body.span,
+    //     );
+    // }
+
+    if body.basic_blocks.is_cfg_cyclic() {
+        // let (mut flow_analysis, flow_entry_states) =
+        //     get_flow_results(tcx, body, &move_data, &borrow_set, &regioncx);
+        // visit_results(
+        //     body,
+        //     traversal::reverse_postorder(body).map(|(bb, _)| bb),
+        //     &mut flow_analysis,
+        //     &flow_entry_states,
+        //     &mut mbcx,
+        // );
+
+        // let sccs = body.basic_blocks.sccs();
+        // let mut single_block = 0; let mut single_successor = 0; let mut single_predecessor = 0;
+        // for &scc in &sccs.queue {
+        //     if sccs.sccs[scc as usize].len() == 1 {
+        //         single_block += 1;
+        //     }
+
+        //     for block in sccs.sccs[scc as usize].iter().copied() {
+        //         if body[block].terminator().successors().count() == 1 {
+        //             single_successor += 1;
+        //         }
+
+        //         if body.basic_blocks.predecessors()[block].len() == 1 {
+        //             single_predecessor += 1;
+        //         }
+        //     }
+        // }
+
+        // eprintln!(
+        //     "CFG, {} blocks, SCCs: {}, single-block SCCs: {}, single-successor blocks: {}, single-predecessor blocks: {}, {:?}",
+        //     body.basic_blocks.len(),
+        //     sccs.component_count,
+        //     single_block,
+        //     single_successor,
+        //     single_predecessor,
+        //     body.span,
+        // );
+
+        let borrows = Borrows::new(tcx, body, &regioncx, &borrow_set);
+        let uninits = MaybeUninitializedPlaces::new(tcx, body, &move_data);
+        let ever_inits = EverInitializedPlaces::new(body, &move_data);
+        compute_cyclic_dataflow(body, borrows, uninits, ever_inits, &mut mbcx);
+
+        // let (_, flow_entry_states) =
+        //     get_flow_results(tcx, body, &move_data, &borrow_set, &regioncx);
+        // compute_cyclic_dataflow(body, borrows, uninits, ever_inits, &mut mbcx, &flow_entry_states);
+    } else {
+        // compute_dataflow(tcx, body, &move_data, &borrow_set, &regioncx, &mut mbcx);
+
+        let borrows = Borrows::new(tcx, body, &regioncx, &borrow_set);
+        let uninits = MaybeUninitializedPlaces::new(tcx, body, &move_data);
+        let ever_inits = EverInitializedPlaces::new(body, &move_data);
+        let mut analysis = Borrowck { borrows, uninits, ever_inits };
+        compute_rpo_dataflow(body, &mut analysis, &mut mbcx);
+    }
 
     mbcx.report_move_errors();
 
@@ -477,6 +681,1821 @@ fn do_mir_borrowck<'tcx>(
         used_mut_upvars: mbcx.used_mut_upvars,
     };
 
+    #[cfg(test)]
+    if body.basic_blocks.len() > 5000 {
+        eprintln!("borrow stats, locals: {}, loans: {}", body.local_decls.len(), borrow_set.len());
+        eprintln!("nuutila duration:     {} ns", mbcx.duration);
+        eprintln!("predecessor duration: {} ns", mbcx.duration2);
+        eprintln!("NLL scopes duration:  {} ns", mbcx.duration3);
+
+        use std::collections::VecDeque;
+
+        use rustc_data_structures::graph::scc::*;
+
+        //
+        {
+            eprint!("SCC tests - {:>30}", "rustc");
+            let timer = std::time::Instant::now();
+
+            type CfgScc = Sccs<BasicBlock, usize>;
+            let sccs = CfgScc::new(&body.basic_blocks);
+
+            let elapsed = timer.elapsed();
+            // eprintln!(", computed {} SCCs in {} ns", sccs.num_sccs(), elapsed.as_nanos());
+            eprint!(", computed {} SCCs in {} ns", sccs.num_sccs(), elapsed.as_nanos());
+
+            use rustc_index::interval::IntervalSet;
+
+            let timer = std::time::Instant::now();
+            let mut components = vec![IntervalSet::new(body.basic_blocks.len()); sccs.num_sccs()];
+            for block in body.basic_blocks.indices() {
+                let scc = sccs.scc(block);
+                components[scc].insert(block);
+            }
+            let elapsed = timer.elapsed();
+
+            eprintln!(" and SCCs contents in {} ns (intervals)", elapsed.as_nanos(),);
+        }
+
+        //
+        {
+            eprint!("SCC tests - {:>30}", "tarjan SCCs (dense/usize)");
+
+            struct Scc {
+                candidate_component_roots: Vec<usize>,
+                components: Vec<isize>,
+                component_count: usize,
+                dfs_numbers: Vec<u32>,
+                d: u32,
+                stack: VecDeque<usize>,
+                visited: DenseBitSet<usize>,
+            }
+
+            impl Scc {
+                fn new(node_count: usize) -> Self {
+                    Self {
+                        candidate_component_roots: vec![0; node_count],
+                        components: vec![-1; node_count],
+                        component_count: 0,
+                        dfs_numbers: vec![0; node_count],
+                        d: 0,
+                        stack: VecDeque::new(),
+                        visited: DenseBitSet::new_empty(node_count),
+                    }
+                }
+
+                fn compute_sccs(&mut self, blocks: &BasicBlocks<'_>) {
+                    for (idx, block) in blocks.iter_enumerated() {
+                        let edges = block.terminator().edges();
+                        if matches!(edges, TerminatorEdges::None) {
+                            continue;
+                        }
+
+                        let idx = idx.as_usize();
+                        if !self.visited.contains(idx) {
+                            self.dfs_visit(idx, blocks);
+                        }
+                    }
+                }
+
+                fn dfs_visit(&mut self, v: usize, blocks: &BasicBlocks<'_>) {
+                    self.candidate_component_roots[v] = v;
+                    self.components[v] = -1;
+
+                    self.d += 1;
+                    self.dfs_numbers[v] = self.d;
+
+                    self.visited.insert(v);
+
+                    // println!(
+                    //     "dfs_visit, v = {v}, CCR[{v}] = {}, D[{v}] = {}",
+                    //     self.candidate_component_roots[v],
+                    //     self.dfs_numbers[v],
+                    //     v = v
+                    // );
+
+                    let idx = BasicBlock::from_usize(v);
+                    for succ in blocks[idx].terminator().successors() {
+                        let w = succ.as_usize();
+
+                        // if w == v {
+                        //     panic!("a dang self loop ?!");
+                        // }
+
+                        if !self.visited.contains(w) {
+                            self.dfs_visit(w, blocks);
+                        }
+
+                        // println!(
+                        //     "v = {v} - adjacent vertex w = {w}: C[w] = {}, C[v] = {} / D[CCR[w]] = {}, D[CCR[v]] = {} / CCR[v] = {}, CCR[w] = {}",
+                        //     self.components[w],
+                        //     self.components[v],
+                        //     self.dfs_numbers[self.candidate_component_roots[w]],
+                        //     self.dfs_numbers[self.candidate_component_roots[v]],
+                        //     self.candidate_component_roots[v],
+                        //     self.candidate_component_roots[w],
+                        //     w = w,
+                        //     v = v,
+                        // );
+
+                        if self.components[w] == -1
+                            && self.dfs_numbers[self.candidate_component_roots[w]]
+                                < self.dfs_numbers[self.candidate_component_roots[v]]
+                        {
+                            self.candidate_component_roots[v] = self.candidate_component_roots[w];
+                        }
+                    }
+
+                    // println!(
+                    //     "v = {v} - CCR[v] = {}",
+                    //     self.candidate_component_roots[v],
+                    //     v = v,
+                    // );
+
+                    if self.candidate_component_roots[v] == v {
+                        self.components[v] = self.component_count as isize;
+                        self.component_count += 1;
+
+                        // println!(
+                        //     "v = {v} - creating component {} / C[v] = {}",
+                        //     self.component_count,
+                        //     self.components[v],
+                        //     v = v,
+                        // );
+
+                        while self.stack.front().is_some()
+                            && self.dfs_numbers[*self.stack.front().expect("peek front failed")]
+                                > self.dfs_numbers[v]
+                        {
+                            let w = self.stack.pop_front().expect("pop front failed");
+                            self.components[w] = self.components[v];
+                            // println!(
+                            //     "v = {v} - popping w = {w} off the stack (contents: {:?}) / C[w] = {}, C[v] = {}",
+                            //     self.stack,
+                            //     self.components[w],
+                            //     self.components[v],
+                            //     v = v,
+                            //     w = w,
+                            // );
+                        }
+                    } else {
+                        // println!(
+                        //     "v = {v}: pushing v on the stack (contents: {:?})",
+                        //     self.stack,
+                        //     v = v,
+                        // );
+                        self.stack.push_front(v);
+                    }
+                }
+            }
+
+            let timer = std::time::Instant::now();
+            let mut sccs = Scc::new(body.basic_blocks.len());
+            sccs.compute_sccs(&body.basic_blocks);
+
+            let elapsed = timer.elapsed();
+            // eprintln!(", computed {} SCCs in {} ns", sccs.component_count, elapsed.as_nanos());
+            eprint!(", computed {} SCCs in {} ns", sccs.component_count, elapsed.as_nanos());
+
+            // sanity checks
+            // eprintln!("-----");
+            // eprintln!("blocks: {}", body.basic_blocks.len());
+            // for block in body.basic_blocks.indices() {
+            //     let successors: Vec<_> =
+            //         body.basic_blocks[block].terminator().successors().collect();
+            //     eprintln!("block: {:?}, successors: {:?}", block, successors);
+            // }
+
+            let rustc_sccs = Sccs::<BasicBlock, usize>::new(&body.basic_blocks);
+
+            for block in body.basic_blocks.indices() {
+                let rustc_scc = rustc_sccs.scc(block);
+                let scc = sccs.components[block.as_usize()] as usize;
+                assert_eq!(
+                    rustc_scc, scc,
+                    "sccs differ for {block:?} between tarjan sccs: {scc}, and rustc's scc: {rustc_scc}"
+                );
+            }
+
+            // eprintln!("-----");
+            // eprintln!(
+            //     "rustc SCCs: {} (min: {:?}, max: {:?})",
+            //     rustc_sccs.num_sccs(),
+            //     rustc_sccs.all_sccs().min().unwrap(),
+            //     rustc_sccs.all_sccs().max().unwrap()
+            // );
+            // for scc in rustc_sccs.all_sccs() {
+            //     let mut blocks = Vec::new();
+            //     for block in body.basic_blocks.indices() {
+            //         if rustc_sccs.scc(block) == scc {
+            //             blocks.push(block);
+            //         }
+            //     }
+            //     blocks.sort();
+
+            //     let mut successors: Vec<_> = rustc_sccs.successors(scc).into_iter().collect();
+            //     successors.sort();
+
+            //     eprintln!("scc: {:?}, contains: {:?}, successors: {:?}", scc, blocks, successors);
+            // }
+
+            // eprintln!("-----");
+            // eprintln!(
+            //     "tarjan SCCs: {} (min: {:?}, max: {:?})",
+            //     sccs.component_count,
+            //     sccs.components.iter().min().unwrap(),
+            //     sccs.components.iter().max().unwrap()
+            // );
+            // for scc in 0..sccs.component_count {
+            //     let mut blocks = Vec::new();
+            //     for block in body.basic_blocks.indices() {
+            //         if sccs.components[block.as_usize()] == scc {
+            //             blocks.push(block);
+            //         }
+            //     }
+            //     blocks.sort();
+
+            //     let mut successors = Vec::new();
+            //     for &block in &blocks {
+            //         let block_successors = body.basic_blocks[block].terminator().successors();
+            //         let scc_successors = block_successors
+            //             .map(|block| sccs.components[block.as_usize()])
+            //             .filter(|&succ_scc| succ_scc != scc);
+            //         successors.extend(scc_successors);
+            //     }
+
+            //     successors.sort();
+            //     successors.dedup();
+
+            //     eprintln!("scc: {:?}, contains: {:?}, successors: {:?}", scc, blocks, successors);
+            // }
+
+            // let timer = std::time::Instant::now();
+
+            // use rustc_index::interval::IntervalSet;
+            // let mut successors = vec![IntervalSet::new(sccs.component_count); sccs.component_count];
+            // for block in body.basic_blocks.indices() {
+            //     let scc = sccs.components[block.as_usize()] as usize;
+            //     let scc_successors = body.basic_blocks[block]
+            //         .terminator()
+            //         .successors()
+            //         .map(|block| sccs.components[block.as_usize()] as usize)
+            //         .filter(|&succ_scc| succ_scc != scc);
+            //     for succ in scc_successors {
+            //         successors[scc].insert(succ);
+            //     }
+            // }
+            // let elapsed = timer.elapsed();
+
+            // let timer = std::time::Instant::now();
+            // let mut components =
+            //     vec![IntervalSet::new(body.basic_blocks.len()); sccs.component_count];
+            // for block in body.basic_blocks.indices() {
+            //     let scc = sccs.components[block.as_usize()] as usize;
+            //     components[scc].insert(block.as_usize());
+            // }
+            // let elapsed2 = timer.elapsed();
+
+            use rustc_index::interval::IntervalSet;
+
+            let timer = std::time::Instant::now();
+
+            let mut components =
+                vec![IntervalSet::new(body.basic_blocks.len()); sccs.component_count];
+            let mut successors = vec![IntervalSet::new(sccs.component_count); sccs.component_count];
+            for block in body.basic_blocks.indices() {
+                let scc = sccs.components[block.as_usize()] as usize;
+                let scc_successors = body.basic_blocks[block]
+                    .terminator()
+                    .successors()
+                    .map(|block| sccs.components[block.as_usize()] as usize)
+                    .filter(|&succ_scc| succ_scc != scc);
+                for succ in scc_successors {
+                    successors[scc].insert(succ);
+                }
+                components[scc].insert(block.as_usize());
+            }
+            let elapsed2 = timer.elapsed();
+
+            eprintln!(" and SCCs successors/contents in {} ns (intervals)", elapsed2.as_nanos(),);
+        }
+
+        //
+        {
+            eprint!("SCC tests - {:>30}", "tarjan SCCs (mixed/usize)");
+
+            struct Scc {
+                candidate_component_roots: Vec<usize>,
+                components: Vec<isize>,
+                component_count: usize,
+                dfs_numbers: Vec<u32>,
+                d: u32,
+                stack: VecDeque<usize>,
+                visited: MixedBitSet<usize>,
+            }
+
+            impl Scc {
+                fn new(node_count: usize) -> Self {
+                    Self {
+                        candidate_component_roots: vec![0; node_count],
+                        components: vec![-1; node_count],
+                        component_count: 0,
+                        dfs_numbers: vec![0; node_count],
+                        d: 0,
+                        stack: VecDeque::new(),
+                        visited: MixedBitSet::new_empty(node_count),
+                    }
+                }
+
+                fn compute_sccs(&mut self, blocks: &BasicBlocks<'_>) {
+                    for (idx, block) in blocks.iter_enumerated() {
+                        let edges = block.terminator().edges();
+                        if matches!(edges, TerminatorEdges::None) {
+                            continue;
+                        }
+
+                        let idx = idx.as_usize();
+                        if !self.visited.contains(idx) {
+                            self.dfs_visit(idx, blocks);
+                        }
+                    }
+                }
+
+                fn dfs_visit(&mut self, v: usize, blocks: &BasicBlocks<'_>) {
+                    self.candidate_component_roots[v] = v;
+                    self.components[v] = -1;
+
+                    self.d += 1;
+                    self.dfs_numbers[v] = self.d;
+
+                    self.visited.insert(v);
+
+                    // println!(
+                    //     "dfs_visit, v = {v}, CCR[{v}] = {}, D[{v}] = {}",
+                    //     self.candidate_component_roots[v],
+                    //     self.dfs_numbers[v],
+                    //     v = v
+                    // );
+
+                    let idx = BasicBlock::from_usize(v);
+                    for succ in blocks[idx].terminator().successors() {
+                        let w = succ.as_usize();
+
+                        // if w == v {
+                        //     panic!("a dang self loop ?!");
+                        // }
+
+                        if !self.visited.contains(w) {
+                            self.dfs_visit(w, blocks);
+                        }
+
+                        // println!(
+                        //     "v = {v} - adjacent vertex w = {w}: C[w] = {}, C[v] = {} / D[CCR[w]] = {}, D[CCR[v]] = {} / CCR[v] = {}, CCR[w] = {}",
+                        //     self.components[w],
+                        //     self.components[v],
+                        //     self.dfs_numbers[self.candidate_component_roots[w]],
+                        //     self.dfs_numbers[self.candidate_component_roots[v]],
+                        //     self.candidate_component_roots[v],
+                        //     self.candidate_component_roots[w],
+                        //     w = w,
+                        //     v = v,
+                        // );
+
+                        if self.components[w] == -1
+                            && self.dfs_numbers[self.candidate_component_roots[w]]
+                                < self.dfs_numbers[self.candidate_component_roots[v]]
+                        {
+                            self.candidate_component_roots[v] = self.candidate_component_roots[w];
+                        }
+                    }
+
+                    // println!(
+                    //     "v = {v} - CCR[v] = {}",
+                    //     self.candidate_component_roots[v],
+                    //     v = v,
+                    // );
+
+                    if self.candidate_component_roots[v] == v {
+                        self.component_count += 1;
+                        self.components[v] = self.component_count as isize;
+
+                        // println!(
+                        //     "v = {v} - creating component {} / C[v] = {}",
+                        //     self.component_count,
+                        //     self.components[v],
+                        //     v = v,
+                        // );
+
+                        while self.stack.front().is_some()
+                            && self.dfs_numbers[*self.stack.front().expect("peek front failed")]
+                                > self.dfs_numbers[v]
+                        {
+                            let w = self.stack.pop_front().expect("pop front failed");
+                            self.components[w] = self.components[v];
+                            // println!(
+                            //     "v = {v} - popping w = {w} off the stack (contents: {:?}) / C[w] = {}, C[v] = {}",
+                            //     self.stack,
+                            //     self.components[w],
+                            //     self.components[v],
+                            //     v = v,
+                            //     w = w,
+                            // );
+                        }
+                    } else {
+                        // println!(
+                        //     "v = {v}: pushing v on the stack (contents: {:?})",
+                        //     self.stack,
+                        //     v = v,
+                        // );
+                        self.stack.push_front(v);
+                    }
+                }
+            }
+
+            let timer = std::time::Instant::now();
+            let mut sccs = Scc::new(body.basic_blocks.len());
+            sccs.compute_sccs(&body.basic_blocks);
+
+            let elapsed = timer.elapsed();
+            eprintln!(", computed {} SCCs in {} ns", sccs.component_count, elapsed.as_nanos());
+        }
+
+        //
+        {
+            eprint!("SCC tests - {:>30}", "tarjan SCCs (mixed/u32)");
+
+            struct Scc {
+                candidate_component_roots: Vec<u32>,
+                components: Vec<i32>,
+                component_count: usize,
+                dfs_numbers: Vec<u32>,
+                d: u32,
+                stack: VecDeque<u32>,
+                visited: MixedBitSet<u32>,
+            }
+
+            impl Scc {
+                fn new(node_count: usize) -> Self {
+                    Self {
+                        candidate_component_roots: vec![0; node_count],
+                        components: vec![-1; node_count],
+                        component_count: 0,
+                        dfs_numbers: vec![0; node_count],
+                        d: 0,
+                        stack: VecDeque::new(),
+                        visited: MixedBitSet::new_empty(node_count),
+                    }
+                }
+
+                fn compute_sccs(&mut self, blocks: &BasicBlocks<'_>) {
+                    for (idx, block) in blocks.iter_enumerated() {
+                        let edges = block.terminator().edges();
+                        if matches!(edges, TerminatorEdges::None) {
+                            continue;
+                        }
+
+                        let idx = idx.as_u32();
+                        if !self.visited.contains(idx) {
+                            self.dfs_visit(idx, blocks);
+                        }
+                    }
+                }
+
+                fn dfs_visit(&mut self, v: u32, blocks: &BasicBlocks<'_>) {
+                    self.candidate_component_roots[v as usize] = v;
+                    self.components[v as usize] = -1;
+
+                    self.d += 1;
+                    self.dfs_numbers[v as usize] = self.d;
+
+                    self.visited.insert(v);
+
+                    // println!(
+                    //     "dfs_visit, v = {v}, CCR[{v}] = {}, D[{v}] = {}",
+                    //     self.candidate_component_roots[v],
+                    //     self.dfs_numbers[v],
+                    //     v = v
+                    // );
+
+                    let idx = unsafe { BasicBlock::from_u32_unchecked(v) };
+                    for succ in blocks[idx].terminator().successors() {
+                        let w = succ.as_u32();
+
+                        // if w == v {
+                        //     panic!("a dang self loop ?!");
+                        // }
+
+                        if !self.visited.contains(w) {
+                            self.dfs_visit(w, blocks);
+                        }
+
+                        // println!(
+                        //     "v = {v} - adjacent vertex w = {w}: C[w] = {}, C[v] = {} / D[CCR[w]] = {}, D[CCR[v]] = {} / CCR[v] = {}, CCR[w] = {}",
+                        //     self.components[w],
+                        //     self.components[v],
+                        //     self.dfs_numbers[self.candidate_component_roots[w]],
+                        //     self.dfs_numbers[self.candidate_component_roots[v]],
+                        //     self.candidate_component_roots[v],
+                        //     self.candidate_component_roots[w],
+                        //     w = w,
+                        //     v = v,
+                        // );
+
+                        if self.components[w as usize] == -1
+                            && self.dfs_numbers[self.candidate_component_roots[w as usize] as usize]
+                                < self.dfs_numbers
+                                    [self.candidate_component_roots[v as usize] as usize]
+                        {
+                            self.candidate_component_roots[v as usize] =
+                                self.candidate_component_roots[w as usize];
+                        }
+                    }
+
+                    // println!(
+                    //     "v = {v} - CCR[v] = {}",
+                    //     self.candidate_component_roots[v],
+                    //     v = v,
+                    // );
+
+                    if self.candidate_component_roots[v as usize] == v {
+                        self.component_count += 1;
+                        self.components[v as usize] = self.component_count as i32;
+
+                        // println!(
+                        //     "v = {v} - creating component {} / C[v] = {}",
+                        //     self.component_count,
+                        //     self.components[v],
+                        //     v = v,
+                        // );
+
+                        while self.stack.front().is_some()
+                            && self.dfs_numbers
+                                [*self.stack.front().expect("peek front failed") as usize]
+                                > self.dfs_numbers[v as usize]
+                        {
+                            let w = self.stack.pop_front().expect("pop front failed");
+                            self.components[w as usize] = self.components[v as usize];
+                            // println!(
+                            //     "v = {v} - popping w = {w} off the stack (contents: {:?}) / C[w] = {}, C[v] = {}",
+                            //     self.stack,
+                            //     self.components[w],
+                            //     self.components[v],
+                            //     v = v,
+                            //     w = w,
+                            // );
+                        }
+                    } else {
+                        // println!(
+                        //     "v = {v}: pushing v on the stack (contents: {:?})",
+                        //     self.stack,
+                        //     v = v,
+                        // );
+                        self.stack.push_front(v);
+                    }
+                }
+            }
+
+            let timer = std::time::Instant::now();
+            let mut sccs = Scc::new(body.basic_blocks.len());
+            sccs.compute_sccs(&body.basic_blocks);
+
+            let elapsed = timer.elapsed();
+            eprintln!(", computed {} SCCs in {} ns", sccs.component_count, elapsed.as_nanos());
+        }
+
+        //
+        {
+            eprint!("SCC tests - {:>30}", "tarjan SCCs (mixed/idx)");
+
+            struct Scc {
+                candidate_component_roots: IndexVec<BasicBlock, BasicBlock>,
+                components: IndexVec<BasicBlock, Option<BasicBlock>>,
+                component_count: u32,
+                dfs_numbers: IndexVec<BasicBlock, u32>,
+                d: u32,
+                stack: VecDeque<BasicBlock>,
+                visited: MixedBitSet<BasicBlock>,
+            }
+
+            impl Scc {
+                fn new(node_count: usize) -> Self {
+                    Self {
+                        candidate_component_roots: IndexVec::from_raw(vec![
+                            unsafe {
+                                BasicBlock::from_u32_unchecked(0)
+                            };
+                            node_count
+                        ]),
+                        components: IndexVec::from_raw(vec![None; node_count]),
+                        component_count: 0,
+                        dfs_numbers: IndexVec::from_raw(vec![0; node_count]),
+                        d: 0,
+                        stack: VecDeque::new(),
+                        visited: MixedBitSet::new_empty(node_count),
+                    }
+                }
+
+                fn compute_sccs(&mut self, blocks: &BasicBlocks<'_>) {
+                    for (idx, block) in blocks.iter_enumerated() {
+                        let edges = block.terminator().edges();
+                        if matches!(edges, TerminatorEdges::None) {
+                            continue;
+                        }
+
+                        if !self.visited.contains(idx) {
+                            self.dfs_visit(idx, blocks);
+                        }
+                    }
+                }
+
+                fn dfs_visit(&mut self, v: BasicBlock, blocks: &BasicBlocks<'_>) {
+                    self.candidate_component_roots[v] = v;
+                    self.components[v] = None;
+
+                    self.d += 1;
+                    self.dfs_numbers[v] = self.d;
+
+                    self.visited.insert(v);
+
+                    // println!(
+                    //     "dfs_visit, v = {v}, CCR[{v}] = {}, D[{v}] = {}",
+                    //     self.candidate_component_roots[v],
+                    //     self.dfs_numbers[v],
+                    //     v = v
+                    // );
+
+                    for w in blocks[v].terminator().successors() {
+                        // if w == v {
+                        //     panic!("a dang self loop ?!");
+                        // }
+
+                        if !self.visited.contains(w) {
+                            self.dfs_visit(w, blocks);
+                        }
+
+                        // println!(
+                        //     "v = {v} - adjacent vertex w = {w}: C[w] = {}, C[v] = {} / D[CCR[w]] = {}, D[CCR[v]] = {} / CCR[v] = {}, CCR[w] = {}",
+                        //     self.components[w],
+                        //     self.components[v],
+                        //     self.dfs_numbers[self.candidate_component_roots[w]],
+                        //     self.dfs_numbers[self.candidate_component_roots[v]],
+                        //     self.candidate_component_roots[v],
+                        //     self.candidate_component_roots[w],
+                        //     w = w,
+                        //     v = v,
+                        // );
+
+                        if self.components[w].is_none()
+                            && self.dfs_numbers[self.candidate_component_roots[w]]
+                                < self.dfs_numbers[self.candidate_component_roots[v]]
+                        {
+                            self.candidate_component_roots[v] = self.candidate_component_roots[w];
+                        }
+                    }
+
+                    // println!(
+                    //     "v = {v} - CCR[v] = {}",
+                    //     self.candidate_component_roots[v],
+                    //     v = v,
+                    // );
+
+                    if self.candidate_component_roots[v] == v {
+                        self.component_count += 1;
+                        self.components[v] =
+                            Some(unsafe { BasicBlock::from_u32_unchecked(self.component_count) });
+
+                        // println!(
+                        //     "v = {v} - creating component {} / C[v] = {}",
+                        //     self.component_count,
+                        //     self.components[v],
+                        //     v = v,
+                        // );
+
+                        while self.stack.front().is_some()
+                            && self.dfs_numbers[*self.stack.front().expect("peek front failed")]
+                                > self.dfs_numbers[v]
+                        {
+                            let w = self.stack.pop_front().expect("pop front failed");
+                            self.components[w] = self.components[v];
+                            // println!(
+                            //     "v = {v} - popping w = {w} off the stack (contents: {:?}) / C[w] = {}, C[v] = {}",
+                            //     self.stack,
+                            //     self.components[w],
+                            //     self.components[v],
+                            //     v = v,
+                            //     w = w,
+                            // );
+                        }
+                    } else {
+                        // println!(
+                        //     "v = {v}: pushing v on the stack (contents: {:?})",
+                        //     self.stack,
+                        //     v = v,
+                        // );
+                        self.stack.push_front(v);
+                    }
+                }
+            }
+
+            let timer = std::time::Instant::now();
+            let mut sccs = Scc::new(body.basic_blocks.len());
+            sccs.compute_sccs(&body.basic_blocks);
+
+            let elapsed = timer.elapsed();
+            eprintln!(", computed {} SCCs in {} ns", sccs.component_count, elapsed.as_nanos());
+        }
+
+        // ---
+
+        {
+            eprint!("SCC tests - {:>30}", "nuutila (interval/vec/usize)");
+
+            use rustc_index::interval::IntervalSet;
+
+            struct Nuutila {
+                candidate_component_roots: Vec<usize>,
+                components: Vec<isize>,
+                component_count: usize,
+                dfs_numbers: Vec<u32>,
+                d: u32,
+                visited: Vec<bool>,
+                stack_vertex: VecDeque<usize>,
+                stack_component: VecDeque<usize>,
+                reachability: Vec<IntervalSet<usize>>,
+                // reachabilly: Vec<HybridBitSet<usize>>,
+            }
+
+            impl Nuutila {
+                fn new(node_count: usize) -> Self {
+                    Self {
+                        candidate_component_roots: vec![0; node_count],
+                        components: vec![-1; node_count],
+                        component_count: 0,
+                        dfs_numbers: vec![0; node_count],
+                        d: 0,
+                        visited: vec![false; node_count],
+                        stack_vertex: VecDeque::new(),
+                        stack_component: VecDeque::new(),
+                        reachability: vec![IntervalSet::new(node_count); node_count + 1],
+                        // ^--- la reachability c'est celle que des composants donc il en faut moins que `node_count` s'il y a au moins un SCC avec > 1 nodes
+                        // reachabilly: vec![HybridBitSet::new_empty(node_count); node_count],
+                    }
+                }
+
+                fn compute_sccs(&mut self, blocks: &BasicBlocks<'_>) {
+                    for (idx, block) in blocks.iter_enumerated() {
+                        let edges = block.terminator().edges();
+                        if matches!(edges, TerminatorEdges::None) {
+                            continue;
+                        }
+
+                        let idx = idx.as_usize();
+                        if !self.visited[idx] {
+                            self.dfs_visit(idx, blocks);
+                        }
+                    }
+                }
+
+                // Compute SCCs and reachability only starting where loans appear.
+                // We still have the unused blocks in our domain, but won't traverse them.
+                fn compute_for_loans(
+                    &mut self,
+                    borrow_set: &BorrowSet<'_>,
+                    blocks: &BasicBlocks<'_>,
+                ) {
+                    for (_loan_idx, loan) in borrow_set.iter_enumerated() {
+                        let block_idx = loan.reserve_location.block;
+                        let block = &blocks[block_idx];
+
+                        let edges = block.terminator().edges();
+                        if matches!(edges, TerminatorEdges::None) {
+                            continue;
+                        }
+
+                        let idx = block_idx.as_usize();
+                        if !self.visited[idx] {
+                            self.dfs_visit(idx, blocks);
+                        }
+                    }
+                }
+
+                fn dfs_visit(&mut self, v: usize, blocks: &BasicBlocks<'_>) {
+                    self.candidate_component_roots[v] = v;
+                    self.components[v] = -1;
+
+                    self.d += 1;
+                    self.dfs_numbers[v] = self.d;
+
+                    self.stack_vertex.push_front(v);
+                    let stack_component_height = self.stack_component.len();
+
+                    self.visited[v] = true;
+
+                    // println!(
+                    //     "dfs_visit, v = {v}, CCR[{v}] = {}, D[{v}] = {}",
+                    //     self.candidate_component_roots[v],
+                    //     self.dfs_numbers[v],
+                    //     v = v
+                    // );
+
+                    let idx = BasicBlock::from_usize(v);
+                    for succ in blocks[idx].terminator().successors() {
+                        let w = succ.as_usize();
+
+                        if w == v {
+                            panic!("a dang self loop ?! at {}", w);
+                        }
+
+                        if !self.visited[w] {
+                            self.dfs_visit(w, blocks);
+                        }
+
+                        // println!(
+                        //     "v = {v} - adjacent vertex w = {w}: C[w] = {}, C[v] = {} / D[CCR[w]] = {}, D[CCR[v]] = {} / CCR[v] = {}, CCR[w] = {}",
+                        //     self.components[w],
+                        //     self.components[v],
+                        //     self.dfs_numbers[self.candidate_component_roots[w]],
+                        //     self.dfs_numbers[self.candidate_component_roots[v]],
+                        //     self.candidate_component_roots[v],
+                        //     self.candidate_component_roots[w],
+                        //     w = w,
+                        //     v = v,
+                        // );
+
+                        let component_w = self.components[w];
+                        if component_w == -1 {
+                            if self.dfs_numbers[self.candidate_component_roots[w]]
+                                < self.dfs_numbers[self.candidate_component_roots[v]]
+                            {
+                                self.candidate_component_roots[v] =
+                                    self.candidate_component_roots[w];
+                            }
+                        } else {
+                            assert!(component_w >= 0);
+
+                            // FIXME: check if v -> w is actually a forward edge or not, to avoid unnecessary work if it is
+                            self.stack_component.push_front(self.components[w] as usize);
+                        }
+                    }
+
+                    // println!(
+                    //     "v = {v} - CCR[v] = {}",
+                    //     self.candidate_component_roots[v],
+                    //     v = v,
+                    // );
+
+                    if self.candidate_component_roots[v] == v {
+                        self.component_count += 1;
+                        self.components[v] = self.component_count as isize;
+
+                        // println!(
+                        //     "v = {v} - creating component {} / C[v] = {}",
+                        //     self.component_count,
+                        //     self.components[v],
+                        //     v = v,
+                        // );
+
+                        // Reachability of C[v]
+                        assert!(self.reachability[self.component_count].is_empty());
+                        // assert!(self.reachabilly[self.component_count].is_empty());
+
+                        if let Some(&top) = self.stack_vertex.front() {
+                            if top != v {
+                                // we're adding new component, initialize its reachability: self-loop,
+                                // the component can reach itself
+                                // self.reachability[self.component_count] =
+                                //     (self.component_count, self.component_count).to_interval_set();
+                                self.reachability[self.component_count]
+                                    .insert(self.component_count);
+                            } else {
+                                // R[C[v]] should be empty here already, do nothing
+                                // if we don't always initialize the reachability of C by default, it would need to be
+                                // initialized to "empty" here.
+                            }
+                        }
+
+                        // process adjacent components
+                        while self.stack_component.len() != stack_component_height {
+                            let x = self
+                                .stack_component
+                                .pop_front()
+                                .expect("Sc can't be empty at this point");
+                            // prevent performing duplicate operations
+                            if !self.reachability[self.component_count].contains(x) {
+                                // merge reachability information
+                                // let r_c_v = self.reachability[self.component_count]
+                                //     .union(&self.reachability[x])
+                                //     .union(&(x, x).to_interval_set());
+                                // self.reachability[self.component_count] = r_c_v;
+                                assert_ne!(x, self.component_count);
+
+                                // self.reachability[self.component_count].union(&self.reachability[x]);
+                                // self.reachability[self.component_count].insert(x);
+
+                                // let mut r_c_v = self.reachability[self.component_count].clone();
+                                // r_c_v.union(&self.reachability[x]);
+                                // r_c_v.insert(x);
+                                // self.reachability[self.component_count] = r_c_v;
+
+                                let zzz = unsafe {
+                                    self.reachability.get_unchecked(x) as *const IntervalSet<usize>
+                                };
+                                let r_c_v = unsafe {
+                                    self.reachability.get_unchecked_mut(self.component_count)
+                                };
+                                // r_c_v.union(&self.reachability[x]);
+                                r_c_v.union(unsafe { &*zzz });
+                                r_c_v.insert(x);
+                            }
+
+                            // // prevent performing duplicate operations
+                            // if !self.reachabilly[self.component_count].contains(x) {
+                            //     // merge reachability information
+                            //     assert!(x != self.component_count);
+
+                            //     self.reachabilly[self.component_count].insert(x);
+
+                            //     // split the array into two slices, starting at the lowest of the 2
+                            //     // the lowest will be the first in the array and the highest the last
+                            //     let low = self.component_count.min(x);
+                            //     let high = self.component_count.max(x);
+                            //     let interval = &mut self.reachabilly[low..=high];
+                            //     let (a, b) = interval.split_at_mut(1);
+                            //     let (component_reachabilly, x_reachabilly) = if self.component_count == low {
+                            //         (&mut a[0], &mut b[b.len() - 1])
+                            //     } else {
+                            //         (&mut b[0], &mut a[a.len() - 1])
+                            //     };
+
+                            //     component_reachabilly.union(x_reachabilly);
+                            // }
+                        }
+
+                        while let Some(w) = self.stack_vertex.pop_front() {
+                            self.components[w] = self.components[v];
+
+                            if w == v {
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+
+            let timer = std::time::Instant::now();
+            let mut sccs = Nuutila::new(body.basic_blocks.len());
+            sccs.compute_sccs(&body.basic_blocks);
+            // sccs.compute_for_loans(&borrow_set, &body.basic_blocks);
+
+            let elapsed = timer.elapsed();
+            eprintln!(", computed {} SCCs in {} ns", sccs.component_count, elapsed.as_nanos());
+        }
+
+        {
+            eprint!("SCC tests - {:>30}", "nuutila' (interval/vec/usize)");
+
+            use rustc_index::interval::IntervalSet;
+
+            struct Nuutila {
+                candidate_component_roots: Vec<usize>,
+                components: Vec<isize>,
+                component_count: usize,
+                dfs_numbers: Vec<u32>,
+                d: u32,
+                visited: Vec<bool>,
+                stack_vertex: VecDeque<usize>,
+                stack_component: VecDeque<usize>,
+                reachability: Vec<IntervalSet<usize>>,
+                // reachabilly: Vec<HybridBitSet<usize>>,
+            }
+
+            impl Nuutila {
+                fn new(node_count: usize) -> Self {
+                    Self {
+                        candidate_component_roots: vec![0; node_count],
+                        components: vec![-1; node_count],
+                        component_count: 0,
+                        dfs_numbers: vec![0; node_count],
+                        d: 0,
+                        visited: vec![false; node_count],
+                        stack_vertex: VecDeque::new(),
+                        stack_component: VecDeque::new(),
+                        reachability: vec![IntervalSet::new(node_count); node_count + 1],
+                        // ^--- la reachability c'est celle que des composants donc il en faut moins que `node_count` s'il y a au moins un SCC avec > 1 nodes
+                        // reachabilly: vec![HybridBitSet::new_empty(node_count); node_count],
+                    }
+                }
+
+                fn compute_sccs(&mut self, blocks: &BasicBlocks<'_>) {
+                    for (idx, block) in blocks.iter_enumerated() {
+                        let edges = block.terminator().edges();
+                        if matches!(edges, TerminatorEdges::None) {
+                            continue;
+                        }
+
+                        let idx = idx.as_usize();
+                        if !self.visited[idx] {
+                            self.dfs_visit(idx, blocks);
+                        }
+                    }
+                }
+
+                // Compute SCCs and reachability only starting where loans appear.
+                // We still have the unused blocks in our domain, but won't traverse them.
+                fn compute_for_loans(
+                    &mut self,
+                    borrow_set: &BorrowSet<'_>,
+                    blocks: &BasicBlocks<'_>,
+                ) {
+                    for (_loan_idx, loan) in borrow_set.iter_enumerated() {
+                        let block_idx = loan.reserve_location.block;
+                        let block = &blocks[block_idx];
+
+                        let edges = block.terminator().edges();
+                        if matches!(edges, TerminatorEdges::None) {
+                            continue;
+                        }
+
+                        let idx = block_idx.as_usize();
+                        if !self.visited[idx] {
+                            self.dfs_visit(idx, blocks);
+                        }
+                    }
+                }
+
+                fn dfs_visit(&mut self, v: usize, blocks: &BasicBlocks<'_>) {
+                    self.candidate_component_roots[v] = v;
+                    self.components[v] = -1;
+
+                    self.d += 1;
+                    self.dfs_numbers[v] = self.d;
+
+                    self.stack_vertex.push_front(v);
+                    let stack_component_height = self.stack_component.len();
+
+                    self.visited[v] = true;
+
+                    // println!(
+                    //     "dfs_visit, v = {v}, CCR[{v}] = {}, D[{v}] = {}",
+                    //     self.candidate_component_roots[v],
+                    //     self.dfs_numbers[v],
+                    //     v = v
+                    // );
+
+                    let idx = BasicBlock::from_usize(v);
+                    for succ in blocks[idx].terminator().successors() {
+                        let w = succ.as_usize();
+
+                        if w == v {
+                            panic!("a dang self loop ?! at {}", w);
+                        }
+
+                        if !self.visited[w] {
+                            self.dfs_visit(w, blocks);
+                        }
+
+                        // println!(
+                        //     "v = {v} - adjacent vertex w = {w}: C[w] = {}, C[v] = {} / D[CCR[w]] = {}, D[CCR[v]] = {} / CCR[v] = {}, CCR[w] = {}",
+                        //     self.components[w],
+                        //     self.components[v],
+                        //     self.dfs_numbers[self.candidate_component_roots[w]],
+                        //     self.dfs_numbers[self.candidate_component_roots[v]],
+                        //     self.candidate_component_roots[v],
+                        //     self.candidate_component_roots[w],
+                        //     w = w,
+                        //     v = v,
+                        // );
+
+                        let component_w = self.components[w];
+                        if component_w == -1 {
+                            if self.dfs_numbers[self.candidate_component_roots[w]]
+                                < self.dfs_numbers[self.candidate_component_roots[v]]
+                            {
+                                self.candidate_component_roots[v] =
+                                    self.candidate_component_roots[w];
+                            }
+                        } else {
+                            assert!(component_w >= 0);
+
+                            // FIXME: check if v -> w is actually a forward edge or not, to avoid unnecessary work if it is
+                            self.stack_component.push_front(self.components[w] as usize);
+                        }
+                    }
+
+                    // println!(
+                    //     "v = {v} - CCR[v] = {}",
+                    //     self.candidate_component_roots[v],
+                    //     v = v,
+                    // );
+
+                    if self.candidate_component_roots[v] == v {
+                        self.component_count += 1;
+                        self.components[v] = self.component_count as isize;
+
+                        // println!(
+                        //     "v = {v} - creating component {} / C[v] = {}",
+                        //     self.component_count,
+                        //     self.components[v],
+                        //     v = v,
+                        // );
+
+                        // Reachability of C[v]
+                        assert!(self.reachability[self.component_count].is_empty());
+                        // assert!(self.reachabilly[self.component_count].is_empty());
+
+                        if let Some(&top) = self.stack_vertex.front() {
+                            if top != v {
+                                // we're adding new component, initialize its reachability: self-loop,
+                                // the component can reach itself
+                                // self.reachability[self.component_count] =
+                                //     (self.component_count, self.component_count).to_interval_set();
+                                self.reachability[self.component_count]
+                                    .insert(self.component_count);
+                            } else {
+                                // R[C[v]] should be empty here already, do nothing
+                                // if we don't always initialize the reachability of C by default, it would need to be
+                                // initialized to "empty" here.
+                            }
+                        }
+
+                        // process adjacent components
+                        while self.stack_component.len() != stack_component_height {
+                            let x = self
+                                .stack_component
+                                .pop_front()
+                                .expect("Sc can't be empty at this point");
+                            // prevent performing duplicate operations
+                            if !self.reachability[self.component_count].contains(x) {
+                                // merge reachability information
+                                // let r_c_v = self.reachability[self.component_count]
+                                //     .union(&self.reachability[x])
+                                //     .union(&(x, x).to_interval_set());
+                                // self.reachability[self.component_count] = r_c_v;
+                                assert_ne!(x, self.component_count);
+
+                                // self.reachability[self.component_count].union(&self.reachability[x]);
+                                // self.reachability[self.component_count].insert(x);
+
+                                // let mut r_c_v = self.reachability[self.component_count].clone();
+                                // r_c_v.union(&self.reachability[x]);
+                                // r_c_v.insert(x);
+                                // self.reachability[self.component_count] = r_c_v;
+
+                                let zzz = unsafe {
+                                    self.reachability.get_unchecked(x) as *const IntervalSet<usize>
+                                };
+                                let r_c_v = unsafe {
+                                    self.reachability.get_unchecked_mut(self.component_count)
+                                };
+                                // r_c_v.union(&self.reachability[x]);
+                                r_c_v.union(unsafe { &*zzz });
+                                r_c_v.insert(x);
+                            }
+
+                            // // prevent performing duplicate operations
+                            // if !self.reachabilly[self.component_count].contains(x) {
+                            //     // merge reachability information
+                            //     assert!(x != self.component_count);
+
+                            //     self.reachabilly[self.component_count].insert(x);
+
+                            //     // split the array into two slices, starting at the lowest of the 2
+                            //     // the lowest will be the first in the array and the highest the last
+                            //     let low = self.component_count.min(x);
+                            //     let high = self.component_count.max(x);
+                            //     let interval = &mut self.reachabilly[low..=high];
+                            //     let (a, b) = interval.split_at_mut(1);
+                            //     let (component_reachabilly, x_reachabilly) = if self.component_count == low {
+                            //         (&mut a[0], &mut b[b.len() - 1])
+                            //     } else {
+                            //         (&mut b[0], &mut a[a.len() - 1])
+                            //     };
+
+                            //     component_reachabilly.union(x_reachabilly);
+                            // }
+                        }
+
+                        while let Some(w) = self.stack_vertex.pop_front() {
+                            self.components[w] = self.components[v];
+
+                            if w == v {
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+
+            let timer = std::time::Instant::now();
+            let mut sccs = Nuutila::new(body.basic_blocks.len());
+            // sccs.compute_sccs(&body.basic_blocks);
+            sccs.compute_for_loans(&borrow_set, &body.basic_blocks);
+
+            let elapsed = timer.elapsed();
+            eprintln!(", computed {} SCCs in {} ns", sccs.component_count, elapsed.as_nanos());
+        }
+
+        {
+            eprint!("SCC tests - {:>30}", "nuutila (interval/dense/usize)");
+
+            use rustc_index::interval::IntervalSet;
+
+            struct Nuutila {
+                candidate_component_roots: Vec<usize>,
+                components: Vec<isize>,
+                component_count: usize,
+                dfs_numbers: Vec<u32>,
+                d: u32,
+                visited: DenseBitSet<usize>,
+                stack_vertex: VecDeque<usize>,
+                stack_component: VecDeque<usize>,
+                reachability: Vec<IntervalSet<usize>>,
+                // reachabilly: Vec<HybridBitSet<usize>>,
+            }
+
+            impl Nuutila {
+                fn new(node_count: usize) -> Self {
+                    Self {
+                        candidate_component_roots: vec![0; node_count],
+                        components: vec![-1; node_count],
+                        component_count: 0,
+                        dfs_numbers: vec![0; node_count],
+                        d: 0,
+                        visited: DenseBitSet::new_empty(node_count),
+                        stack_vertex: VecDeque::new(),
+                        stack_component: VecDeque::new(),
+                        reachability: vec![IntervalSet::new(node_count); node_count + 1],
+                        // ^--- la reachability c'est celle que des composants donc il en faut moins que `node_count` s'il y a au moins un SCC avec > 1 nodes
+                        // reachabilly: vec![HybridBitSet::new_empty(node_count); node_count],
+                    }
+                }
+
+                // Compute SCCs and reachability only starting where loans appear.
+                // We still have the unused blocks in our domain, but won't traverse them.
+                fn compute_for_loans(
+                    &mut self,
+                    borrow_set: &BorrowSet<'_>,
+                    blocks: &BasicBlocks<'_>,
+                ) {
+                    for (_loan_idx, loan) in borrow_set.iter_enumerated() {
+                        let block_idx = loan.reserve_location.block;
+                        let block = &blocks[block_idx];
+
+                        let edges = block.terminator().edges();
+                        if matches!(edges, TerminatorEdges::None) {
+                            continue;
+                        }
+
+                        let idx = block_idx.as_usize();
+                        if !self.visited.contains(idx) {
+                            self.dfs_visit(idx, blocks);
+                        }
+                    }
+                }
+
+                fn compute_sccs(&mut self, blocks: &BasicBlocks<'_>) {
+                    for (idx, block) in blocks.iter_enumerated() {
+                        let edges = block.terminator().edges();
+                        if matches!(edges, TerminatorEdges::None) {
+                            continue;
+                        }
+
+                        let idx = idx.as_usize();
+                        if !self.visited.contains(idx) {
+                            self.dfs_visit(idx, blocks);
+                        }
+                    }
+                }
+
+                fn dfs_visit(&mut self, v: usize, blocks: &BasicBlocks<'_>) {
+                    self.candidate_component_roots[v] = v;
+                    self.components[v] = -1;
+
+                    self.d += 1;
+                    self.dfs_numbers[v] = self.d;
+
+                    self.stack_vertex.push_front(v);
+                    let stack_component_height = self.stack_component.len();
+
+                    self.visited.insert(v);
+
+                    // println!(
+                    //     "dfs_visit, v = {v}, CCR[{v}] = {}, D[{v}] = {}",
+                    //     self.candidate_component_roots[v],
+                    //     self.dfs_numbers[v],
+                    //     v = v
+                    // );
+
+                    let idx = BasicBlock::from_usize(v);
+                    for succ in blocks[idx].terminator().successors() {
+                        let w = succ.as_usize();
+
+                        if w == v {
+                            panic!("a dang self loop ?! at {}", w);
+                        }
+
+                        if !self.visited.contains(w) {
+                            self.dfs_visit(w, blocks);
+                        }
+
+                        // println!(
+                        //     "v = {v} - adjacent vertex w = {w}: C[w] = {}, C[v] = {} / D[CCR[w]] = {}, D[CCR[v]] = {} / CCR[v] = {}, CCR[w] = {}",
+                        //     self.components[w],
+                        //     self.components[v],
+                        //     self.dfs_numbers[self.candidate_component_roots[w]],
+                        //     self.dfs_numbers[self.candidate_component_roots[v]],
+                        //     self.candidate_component_roots[v],
+                        //     self.candidate_component_roots[w],
+                        //     w = w,
+                        //     v = v,
+                        // );
+
+                        let component_w = self.components[w];
+                        if component_w == -1 {
+                            if self.dfs_numbers[self.candidate_component_roots[w]]
+                                < self.dfs_numbers[self.candidate_component_roots[v]]
+                            {
+                                self.candidate_component_roots[v] =
+                                    self.candidate_component_roots[w];
+                            }
+                        } else {
+                            assert!(component_w >= 0);
+
+                            // FIXME: check if v -> w is actually a forward edge or not, to avoid unnecessary work if it is
+                            self.stack_component.push_front(self.components[w] as usize);
+                        }
+                    }
+
+                    // println!(
+                    //     "v = {v} - CCR[v] = {}",
+                    //     self.candidate_component_roots[v],
+                    //     v = v,
+                    // );
+
+                    if self.candidate_component_roots[v] == v {
+                        self.component_count += 1;
+                        self.components[v] = self.component_count as isize;
+
+                        // println!(
+                        //     "v = {v} - creating component {} / C[v] = {}",
+                        //     self.component_count,
+                        //     self.components[v],
+                        //     v = v,
+                        // );
+
+                        // Reachability of C[v]
+                        assert!(self.reachability[self.component_count].is_empty());
+                        // assert!(self.reachabilly[self.component_count].is_empty());
+
+                        if let Some(&top) = self.stack_vertex.front() {
+                            if top != v {
+                                // we're adding new component, initialize its reachability: self-loop,
+                                // the component can reach itself
+                                // self.reachability[self.component_count] =
+                                //     (self.component_count, self.component_count).to_interval_set();
+                                self.reachability[self.component_count]
+                                    .insert(self.component_count);
+                            } else {
+                                // R[C[v]] should be empty here already, do nothing
+                                // if we don't always initialize the reachability of C by default, it would need to be
+                                // initialized to "empty" here.
+                            }
+                        }
+
+                        // process adjacent components
+                        while self.stack_component.len() != stack_component_height {
+                            let x = self
+                                .stack_component
+                                .pop_front()
+                                .expect("Sc can't be empty at this point");
+                            // prevent performing duplicate operations
+                            if !self.reachability[self.component_count].contains(x) {
+                                // merge reachability information
+                                // let r_c_v = self.reachability[self.component_count]
+                                //     .union(&self.reachability[x])
+                                //     .union(&(x, x).to_interval_set());
+                                // self.reachability[self.component_count] = r_c_v;
+                                assert_ne!(x, self.component_count);
+
+                                // self.reachability[self.component_count].union(&self.reachability[x]);
+                                // self.reachability[self.component_count].insert(x);
+
+                                // let mut r_c_v = self.reachability[self.component_count].clone();
+                                // r_c_v.union(&self.reachability[x]);
+                                // r_c_v.insert(x);
+                                // self.reachability[self.component_count] = r_c_v;
+
+                                let zzz = unsafe {
+                                    self.reachability.get_unchecked(x) as *const IntervalSet<usize>
+                                };
+                                let r_c_v = unsafe {
+                                    self.reachability.get_unchecked_mut(self.component_count)
+                                };
+                                // r_c_v.union(&self.reachability[x]);
+                                r_c_v.union(unsafe { &*zzz });
+                                r_c_v.insert(x);
+                            }
+
+                            // // prevent performing duplicate operations
+                            // if !self.reachabilly[self.component_count].contains(x) {
+                            //     // merge reachability information
+                            //     assert!(x != self.component_count);
+
+                            //     self.reachabilly[self.component_count].insert(x);
+
+                            //     // split the array into two slices, starting at the lowest of the 2
+                            //     // the lowest will be the first in the array and the highest the last
+                            //     let low = self.component_count.min(x);
+                            //     let high = self.component_count.max(x);
+                            //     let interval = &mut self.reachabilly[low..=high];
+                            //     let (a, b) = interval.split_at_mut(1);
+                            //     let (component_reachabilly, x_reachabilly) = if self.component_count == low {
+                            //         (&mut a[0], &mut b[b.len() - 1])
+                            //     } else {
+                            //         (&mut b[0], &mut a[a.len() - 1])
+                            //     };
+
+                            //     component_reachabilly.union(x_reachabilly);
+                            // }
+                        }
+
+                        while let Some(w) = self.stack_vertex.pop_front() {
+                            self.components[w] = self.components[v];
+
+                            if w == v {
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+
+            let timer = std::time::Instant::now();
+            let mut sccs = Nuutila::new(body.basic_blocks.len());
+            // sccs.compute_sccs(&body.basic_blocks);
+            sccs.compute_for_loans(&borrow_set, &body.basic_blocks);
+
+            let elapsed = timer.elapsed();
+            eprintln!(", computed {} SCCs in {} ns", sccs.component_count, elapsed.as_nanos());
+        }
+
+        {
+            eprint!("SCC tests - {:>30}", "nuutila (mixed/vec/usize)");
+
+            struct Nuutila {
+                candidate_component_roots: Vec<usize>,
+                components: Vec<isize>,
+                component_count: usize,
+                dfs_numbers: Vec<u32>,
+                d: u32,
+                visited: Vec<bool>,
+                stack_vertex: VecDeque<usize>,
+                stack_component: VecDeque<usize>,
+                // reachability: Vec<IntervalSet<usize>>,
+                reachability: Vec<MixedBitSet<usize>>,
+            }
+
+            impl Nuutila {
+                fn new(node_count: usize) -> Self {
+                    Self {
+                        candidate_component_roots: vec![0; node_count],
+                        components: vec![-1; node_count],
+                        component_count: 0,
+                        dfs_numbers: vec![0; node_count],
+                        d: 0,
+                        visited: vec![false; node_count],
+                        stack_vertex: VecDeque::new(),
+                        stack_component: VecDeque::new(),
+                        reachability: vec![MixedBitSet::new_empty(node_count); node_count + 1],
+                        // ^--- la reachability c'est celle que des composants donc il en faut moins que `node_count` s'il y a au moins un SCC avec > 1 nodes
+                        // reachabilly: vec![HybridBitSet::new_empty(node_count); node_count],
+                    }
+                }
+
+                // Compute SCCs and reachability only starting where loans appear.
+                // We still have the unused blocks in our domain, but won't traverse them.
+                fn compute_for_loans(
+                    &mut self,
+                    borrow_set: &BorrowSet<'_>,
+                    blocks: &BasicBlocks<'_>,
+                ) {
+                    for (_loan_idx, loan) in borrow_set.iter_enumerated() {
+                        let block_idx = loan.reserve_location.block;
+                        let block = &blocks[block_idx];
+
+                        let edges = block.terminator().edges();
+                        if matches!(edges, TerminatorEdges::None) {
+                            continue;
+                        }
+
+                        let idx = block_idx.as_usize();
+                        if !self.visited[idx] {
+                            self.dfs_visit(idx, blocks);
+                        }
+                    }
+                }
+
+                fn compute_sccs(&mut self, blocks: &BasicBlocks<'_>) {
+                    for (idx, block) in blocks.iter_enumerated() {
+                        let edges = block.terminator().edges();
+                        if matches!(edges, TerminatorEdges::None) {
+                            continue;
+                        }
+
+                        let idx = idx.as_usize();
+                        if !self.visited[idx] {
+                            self.dfs_visit(idx, blocks);
+                        }
+                    }
+                }
+
+                fn dfs_visit(&mut self, v: usize, blocks: &BasicBlocks<'_>) {
+                    self.candidate_component_roots[v] = v;
+                    self.components[v] = -1;
+
+                    self.d += 1;
+                    self.dfs_numbers[v] = self.d;
+
+                    self.stack_vertex.push_front(v);
+                    let stack_component_height = self.stack_component.len();
+
+                    self.visited[v] = true;
+
+                    // println!(
+                    //     "dfs_visit, v = {v}, CCR[{v}] = {}, D[{v}] = {}",
+                    //     self.candidate_component_roots[v],
+                    //     self.dfs_numbers[v],
+                    //     v = v
+                    // );
+
+                    let idx = BasicBlock::from_usize(v);
+                    for succ in blocks[idx].terminator().successors() {
+                        let w = succ.as_usize();
+
+                        if w == v {
+                            panic!("a dang self loop ?! at {}", w);
+                        }
+
+                        if !self.visited[w] {
+                            self.dfs_visit(w, blocks);
+                        }
+
+                        // println!(
+                        //     "v = {v} - adjacent vertex w = {w}: C[w] = {}, C[v] = {} / D[CCR[w]] = {}, D[CCR[v]] = {} / CCR[v] = {}, CCR[w] = {}",
+                        //     self.components[w],
+                        //     self.components[v],
+                        //     self.dfs_numbers[self.candidate_component_roots[w]],
+                        //     self.dfs_numbers[self.candidate_component_roots[v]],
+                        //     self.candidate_component_roots[v],
+                        //     self.candidate_component_roots[w],
+                        //     w = w,
+                        //     v = v,
+                        // );
+
+                        let component_w = self.components[w];
+                        if component_w == -1 {
+                            if self.dfs_numbers[self.candidate_component_roots[w]]
+                                < self.dfs_numbers[self.candidate_component_roots[v]]
+                            {
+                                self.candidate_component_roots[v] =
+                                    self.candidate_component_roots[w];
+                            }
+                        } else {
+                            assert!(component_w >= 0);
+
+                            // FIXME: check if v -> w is actually a forward edge or not, to avoid unnecessary work if it is
+                            self.stack_component.push_front(self.components[w] as usize);
+                        }
+                    }
+
+                    // println!(
+                    //     "v = {v} - CCR[v] = {}",
+                    //     self.candidate_component_roots[v],
+                    //     v = v,
+                    // );
+
+                    if self.candidate_component_roots[v] == v {
+                        self.component_count += 1;
+                        self.components[v] = self.component_count as isize;
+
+                        // println!(
+                        //     "v = {v} - creating component {} / C[v] = {}",
+                        //     self.component_count,
+                        //     self.components[v],
+                        //     v = v,
+                        // );
+
+                        // Reachability of C[v]
+                        assert!(self.reachability[self.component_count].is_empty());
+                        // assert!(self.reachabilly[self.component_count].is_empty());
+
+                        if let Some(&top) = self.stack_vertex.front() {
+                            if top != v {
+                                // we're adding new component, initialize its reachability: self-loop,
+                                // the component can reach itself
+                                // self.reachability[self.component_count] =
+                                //     (self.component_count, self.component_count).to_interval_set();
+                                self.reachability[self.component_count]
+                                    .insert(self.component_count);
+                            } else {
+                                // R[C[v]] should be empty here already, do nothing
+                                // if we don't always initialize the reachability of C by default, it would need to be
+                                // initialized to "empty" here.
+                            }
+                        }
+
+                        // process adjacent components
+                        while self.stack_component.len() != stack_component_height {
+                            let x = self
+                                .stack_component
+                                .pop_front()
+                                .expect("Sc can't be empty at this point");
+                            // prevent performing duplicate operations
+                            if !self.reachability[self.component_count].contains(x) {
+                                // merge reachability information
+                                // let r_c_v = self.reachability[self.component_count]
+                                //     .union(&self.reachability[x])
+                                //     .union(&(x, x).to_interval_set());
+                                // self.reachability[self.component_count] = r_c_v;
+                                assert_ne!(x, self.component_count);
+
+                                // self.reachability[self.component_count].union(&self.reachability[x]);
+                                // self.reachability[self.component_count].insert(x);
+
+                                // let mut r_c_v = self.reachability[self.component_count].clone();
+                                // r_c_v.union(&self.reachability[x]);
+                                // r_c_v.insert(x);
+                                // self.reachability[self.component_count] = r_c_v;
+
+                                let zzz = unsafe { self.reachability.get_unchecked(x) as *const _ };
+                                let r_c_v = unsafe {
+                                    self.reachability.get_unchecked_mut(self.component_count)
+                                };
+                                // r_c_v.union(&self.reachability[x]);
+                                r_c_v.union(unsafe { &*zzz });
+                                r_c_v.insert(x);
+                            }
+
+                            // // prevent performing duplicate operations
+                            // if !self.reachabilly[self.component_count].contains(x) {
+                            //     // merge reachability information
+                            //     assert!(x != self.component_count);
+
+                            //     self.reachabilly[self.component_count].insert(x);
+
+                            //     // split the array into two slices, starting at the lowest of the 2
+                            //     // the lowest will be the first in the array and the highest the last
+                            //     let low = self.component_count.min(x);
+                            //     let high = self.component_count.max(x);
+                            //     let interval = &mut self.reachabilly[low..=high];
+                            //     let (a, b) = interval.split_at_mut(1);
+                            //     let (component_reachabilly, x_reachabilly) = if self.component_count == low {
+                            //         (&mut a[0], &mut b[b.len() - 1])
+                            //     } else {
+                            //         (&mut b[0], &mut a[a.len() - 1])
+                            //     };
+
+                            //     component_reachabilly.union(x_reachabilly);
+                            // }
+                        }
+
+                        while let Some(w) = self.stack_vertex.pop_front() {
+                            self.components[w] = self.components[v];
+
+                            if w == v {
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+
+            let timer = std::time::Instant::now();
+            let mut sccs = Nuutila::new(body.basic_blocks.len());
+            // sccs.compute_sccs(&body.basic_blocks);
+            sccs.compute_for_loans(&borrow_set, &body.basic_blocks);
+
+            let elapsed = timer.elapsed();
+            eprintln!(", computed {} SCCs in {} ns", sccs.component_count, elapsed.as_nanos());
+        }
+
+        {
+            // // CFG stats, blocks: 18073, statements: 67351
+            // // borrow stats, locals: 21513, loans: 6232
+            // if body.basic_blocks.len() == 18073
+            //     && body.local_decls.len() == 21513
+            //     && borrow_set.len() == 6232
+            {
+                eprint!("SCC tests - {:>30}", "tagebility");
+
+                let timer = std::time::Instant::now();
+
+                // Compute `transitive_predecessors` and `adjacent_predecessors`.
+                let mut transitive_predecessors = IndexVec::from_elem_n(
+                    DenseBitSet::new_empty(body.basic_blocks.len()),
+                    body.basic_blocks.len(),
+                );
+                let mut adjacent_predecessors = transitive_predecessors.clone();
+                // The stack is initially a reversed postorder traversal of the CFG. However, we might add
+                // add blocks again to the stack if we have loops.
+                let mut stack =
+                    body.basic_blocks.reverse_postorder().iter().rev().copied().collect::<Vec<_>>();
+                // We keep track of all blocks that are currently not in the stack.
+                let mut not_in_stack = DenseBitSet::new_empty(body.basic_blocks.len());
+                while let Some(block) = stack.pop() {
+                    not_in_stack.insert(block);
+
+                    // Loop over all successors to the block and add `block` to their predecessors.
+                    for succ_block in body.basic_blocks[block].terminator().successors() {
+                        // Keep track of whether the transitive predecessors of `succ_block` has changed.
+                        let mut changed = false;
+
+                        // Insert `block` in `succ_block`s predecessors.
+                        if adjacent_predecessors[succ_block].insert(block) {
+                            // Remember that `adjacent_predecessors` is a subset of
+                            // `transitive_predecessors`.
+                            changed |= transitive_predecessors[succ_block].insert(block);
+                        }
+
+                        // Add all transitive predecessors of `block` to the transitive predecessors of
+                        // `succ_block`.
+                        if block != succ_block {
+                            let (blocks_predecessors, succ_blocks_predecessors) =
+                                transitive_predecessors.pick2_mut(block, succ_block);
+                            changed |= succ_blocks_predecessors.union(blocks_predecessors);
+
+                            // Check if the `succ_block`s transitive predecessors changed. If so, we may
+                            // need to add it to the stack again.
+                            if changed && not_in_stack.remove(succ_block) {
+                                stack.push(succ_block);
+                            }
+                        }
+                    }
+
+                    // debug_assert!(
+                    //     transitive_predecessors[block].superset(&adjacent_predecessors[block])
+                    // );
+                }
+
+                let elapsed = timer.elapsed();
+
+                let w = 2 + Sccs::<BasicBlock, usize>::new(&body.basic_blocks).num_sccs().ilog10()
+                    as usize;
+                //  computed 2757 SCCs in 1535259 ns
+                //  computed 11600 SCCs in 6472961 ns
+                //  2 + ilog
+                eprintln!(", {:w$} predecessors in {} ns", " ", elapsed.as_nanos());
+            }
+        }
+    }
+
+    // if std::env::var("LETSGO").is_ok() {
+    //     eprintln!(
+    //         "initialization checks: {} locals out of {} total, at {} statements out of {} total, in {} blocks out of {} total, in {} transitive blocks out {} total, cyclic cfg: {}",
+    //         mbcx.locals_checked_for_initialization.len(),
+    //         body.local_decls.len(),
+    //         mbcx.locals_checked_for_initialization
+    //             .iter()
+    //             .flat_map(|(_, locations)| locations.iter())
+    //             .collect::<FxHashSet<_>>()
+    //             .len(),
+    //         body.basic_blocks
+    //             .iter_enumerated()
+    //             .map(|(_, bb)| bb.statements.len() + 1)
+    //             .sum::<usize>(),
+    //         mbcx.locals_checked_for_initialization
+    //             .iter()
+    //             .flat_map(|(_, locations)| locations.iter().map(|l| l.block))
+    //             .collect::<FxHashSet<_>>()
+    //             .len(),
+    //         body.basic_blocks.len(),
+    //         mbcx.locals_checked_for_initialization
+    //             .iter()
+    //             .flat_map(|(_, locations)| locations.iter().map(|l| l.block))
+    //             .flat_map(|block| std::iter::once(block)
+    //                 .chain(body.basic_blocks.predecessors()[block].iter().copied()))
+    //             .collect::<FxHashSet<_>>()
+    //             .len(),
+    //         body.basic_blocks.len(),
+    //         body.basic_blocks.is_cfg_cyclic(),
+    //     );
+
+    //     // eprintln!(
+    //     //     "initialization checks: {} move paths out of {} total, at {} statements out of {} total",
+    //     //     mbcx.locals_checked_for_initialization.len(),
+    //     //     move_data.init_path_map.len(),
+    //     //     mbcx.locals_checked_for_initialization
+    //     //         .iter()
+    //     //         .flat_map(|(_, locations)| locations.iter())
+    //     //         .collect::<FxHashSet<_>>()
+    //     //         .len(),
+    //     //     body.basic_blocks
+    //     //         .iter_enumerated()
+    //     //         .map(|(_, bb)| bb.statements.len() + 1)
+    //     //         .sum::<usize>(),
+    //     // );
+    // }
+
     if let Some(consumer) = &mut root_cx.consumer {
         consumer.insert_body(
             def,
@@ -497,6 +2516,1280 @@ fn do_mir_borrowck<'tcx>(
     result
 }
 
+fn compute_cyclic_dataflow<'mir, 'tcx>(
+    body: &Body<'tcx>,
+    borrows: Borrows<'mir, 'tcx>,
+    uninits: MaybeUninitializedPlaces<'mir, 'tcx>,
+    ever_inits: EverInitializedPlaces<'mir, 'tcx>,
+    vis: &mut MirBorrowckCtxt<'mir, '_, 'tcx>,
+    // flow_entry_states: &IndexVec<BasicBlock, BorrowckDomain>,
+) {
+    use rustc_data_structures::work_queue::WorkQueue;
+    use rustc_middle::mir;
+    use rustc_mir_dataflow::{Direction, Forward, JoinSemiLattice};
+
+    struct AnalysisHolder<'tcx, T: Analysis<'tcx>> {
+        // results: IndexVec<BasicBlock, T::Domain>,
+        lazy_results: IndexVec<BasicBlock, Option<T::Domain>>,
+        dirty_queue: WorkQueue<BasicBlock>,
+    }
+
+    impl<'tcx, T: Analysis<'tcx>> AnalysisHolder<'tcx, T> {
+        fn new(body: &Body<'tcx>, analysis: &T) -> Self {
+            // let mut results =
+            //     IndexVec::from_fn_n(|_| analysis.bottom_value(body), body.basic_blocks.len());
+            // analysis.initialize_start_block(body, &mut results[mir::START_BLOCK]);
+
+            let mut lazy_results = IndexVec::from_elem_n(None, body.basic_blocks.len());
+            lazy_results[mir::START_BLOCK] = Some(analysis.bottom_value(body));
+            analysis.initialize_start_block(body, lazy_results[mir::START_BLOCK].as_mut().unwrap());
+
+            Self {
+                // results,
+                lazy_results,
+                dirty_queue: WorkQueue::with_none(body.basic_blocks.len()),
+            }
+        }
+    }
+
+    // FIXME: lazify this
+    // let mut results = IndexVec::from_fn_n(|_| analysis.bottom_value(body), body.basic_blocks.len());
+    // analysis.initialize_start_block(body, &mut results[mir::START_BLOCK]);
+
+    let mut borrows_holder = AnalysisHolder::new(body, &borrows);
+    let mut uninits_holder = AnalysisHolder::new(body, &uninits);
+    let mut ever_inits_holder = AnalysisHolder::new(body, &ever_inits);
+
+    // let mut results: IndexVec<BasicBlock, Option<A::Domain>> =
+    //     IndexVec::from_elem_n(None, body.basic_blocks.len());
+    // // Ensure the start block has some state in it;
+    // results[mir::START_BLOCK] = Some(analysis.bottom_value(body));
+    // analysis.initialize_start_block(body, results[mir::START_BLOCK].as_mut().unwrap());
+
+    // We'll compute dataflow over the SCCs.
+    let sccs = body.basic_blocks.sccs();
+
+    // Worklist for per-SCC iterations
+    // let mut dirty_queue: WorkQueue<BasicBlock> = WorkQueue::with_none(body.basic_blocks.len());
+
+    // `state` is not actually used between iterations; this is just an optimization to avoid
+    // reallocating every iteration.
+    // let mut state = BorrowckDomain {
+    //     borrows: borrows.bottom_value(body),
+    //     uninits: uninits.bottom_value(body),
+    //     ever_inits: ever_inits.bottom_value(body),
+    // };
+
+    let mut analysis = Borrowck { borrows, uninits, ever_inits };
+    let mut state = analysis.bottom_value(body);
+
+    for &scc in &sccs.queue {
+        let blocks_in_scc = sccs.sccs[scc as usize].len();
+        // eprintln!(
+        //     "X - entering scc {} out of {}, there are {} blocks in there: {:?}",
+        //     scc, sccs.component_count, blocks_in_scc, sccs.sccs[scc as usize]
+        // );
+
+        #[inline(always)]
+        fn propagate<'tcx, A: Analysis<'tcx>>(
+            body: &Body<'tcx>,
+            block: BasicBlock,
+            holder: &mut AnalysisHolder<'tcx, A>,
+            state: &mut A::Domain,
+            analysis: &mut A,
+            mut propagate: impl FnMut(&mut AnalysisHolder<'tcx, A>, BasicBlock, &A::Domain),
+        ) {
+            // Apply the block's effects without visiting
+            Forward::apply_effects_in_block(
+                analysis,
+                body,
+                state,
+                block,
+                &body[block],
+                |target: BasicBlock, state: &A::Domain| {
+                    propagate(holder, target, state);
+                },
+            );
+        }
+
+        // Fast-path, the overwhelmingly most common case of having a single block in this SCC.
+        if blocks_in_scc == 1 {
+            let block = sccs.sccs[scc as usize][0];
+            let block_data = &body[block];
+
+            // eprintln!("A1 - entering scc {scc}'s block: {:?}", block);
+            // eprintln!(
+            //     "A2 - is {block:?} state ready, borrows: {}, uninits: {}, ever_inits: {}",
+            //     borrows_holder.lazy_results[block].is_some(),
+            //     uninits_holder.lazy_results[block].is_some(),
+            //     ever_inits_holder.lazy_results[block].is_some(),
+            // );
+
+            // eprintln!(
+            //     "1b - scc {scc} is a single block, computing and visiting {block:?} at the same time"
+            // );
+
+            // // tmp: verifying contents on entry
+            // if let Some(borrows) = &borrows_holder.lazy_results[block] {
+            //     assert_eq!(
+            //         &flow_entry_states[block].borrows, borrows,
+            //         "borrows of block {block:?} differ"
+            //     );
+            // }
+            // if let Some(ever_inits) = &ever_inits_holder.lazy_results[block] {
+            //     assert_eq!(
+            //         &flow_entry_states[block].ever_inits, ever_inits,
+            //         "ever_inits of block {block:?} differ"
+            //     );
+            // }
+            // if let Some(uninits) = &uninits_holder.lazy_results[block] {
+            //     assert_eq!(
+            //         &flow_entry_states[block].uninits, uninits,
+            //         "uninits of block {block:?} differ"
+            //     );
+            // }
+
+            // Apply effects in the block's statements.
+            let analysis = &mut analysis;
+            let Some(borrows) = borrows_holder.lazy_results[block].take() else {
+                continue;
+            };
+            let Some(uninits) = uninits_holder.lazy_results[block].take() else {
+                continue;
+            };
+            let Some(ever_inits) = ever_inits_holder.lazy_results[block].take() else {
+                continue;
+            };
+            let mut block_state = BorrowckDomain { borrows, uninits, ever_inits };
+
+            // // tmp: verifying the contents on entry
+            // assert_eq!(
+            //     flow_entry_states[block].borrows, block_state.borrows,
+            //     "borrows of block {block:?} differ"
+            // );
+            // assert_eq!(
+            //     flow_entry_states[block].ever_inits, block_state.ever_inits,
+            //     "ever_inits of block {block:?} differ"
+            // );
+            // assert_eq!(
+            //     flow_entry_states[block].uninits, block_state.uninits,
+            //     "uninits of block {block:?} differ"
+            // );
+
+            // eprintln!("1c1 - {block:?} uninits start state: \n{:?}", block_state.uninits);
+
+            vis.visit_block_start(&mut block_state);
+
+            for (statement_index, statement) in block_data.statements.iter().enumerate() {
+                let location = Location { block, statement_index };
+                analysis.apply_early_statement_effect(&mut block_state, statement, location);
+                vis.visit_after_early_statement_effect(analysis, &block_state, statement, location);
+
+                analysis.apply_primary_statement_effect(&mut block_state, statement, location);
+                vis.visit_after_primary_statement_effect(
+                    analysis,
+                    &block_state,
+                    statement,
+                    location,
+                );
+            }
+
+            // eprintln!("1c2 - {block:?} uninits post statements state: \n{:?}", block_state.uninits);
+
+            // Apply effects in the block terminator.
+            let terminator = block_data.terminator();
+            let location = Location { block, statement_index: block_data.statements.len() };
+            analysis.apply_early_terminator_effect(&mut block_state, terminator, location);
+            vis.visit_after_early_terminator_effect(analysis, &block_state, terminator, location);
+
+            // eprintln!("1c3 - {block:?} uninits early terminator state: \n{:?}", block_state.uninits);
+
+            let edges =
+                analysis.apply_primary_terminator_effect(&mut block_state, terminator, location);
+            vis.visit_after_primary_terminator_effect(analysis, &block_state, terminator, location);
+
+            // eprintln!("1c4 - {block:?} uninits post terminator state: \n{:?}", block_state.uninits);
+
+            vis.visit_block_end(&mut block_state);
+
+            #[inline(always)]
+            fn propagate_single_edge<'tcx, A: Analysis<'tcx>>(
+                holder: &mut AnalysisHolder<'tcx, A>,
+                state: A::Domain,
+                _block: BasicBlock,
+                target: BasicBlock,
+                _tag: &str,
+                _kind: &str,
+                _edge: &str,
+            ) {
+                // eprintln!(
+                //     "{tag} - propagating {kind} state from {block:?} to {edge} edge: {target:?} (init: {})",
+                //     holder.lazy_results[target].is_some()
+                // );
+                match holder.lazy_results[target].as_mut() {
+                    None => {
+                        holder.lazy_results[target] = Some(state);
+                    }
+                    Some(existing_state) => {
+                        existing_state.join(&state);
+                    }
+                }
+            }
+
+            #[inline(always)]
+            fn propagate_optional_single_edge<'tcx, A: Analysis<'tcx>>(
+                holder: &mut AnalysisHolder<'tcx, A>,
+                state: &A::Domain,
+                _block: BasicBlock,
+                target: BasicBlock,
+                _tag: &str,
+                _kind: &str,
+                _edge: &str,
+            ) {
+                // eprintln!(
+                //     "{tag} - propagating {kind} state from {block:?} to {edge} edge: {target:?} (init: {})",
+                //     holder.lazy_results[target].is_some()
+                // );
+                match holder.lazy_results[target].as_mut() {
+                    None => {
+                        holder.lazy_results[target] = Some(state.clone());
+                    }
+                    Some(existing_state) => {
+                        existing_state.join(state);
+                    }
+                }
+            }
+
+            #[inline(always)]
+            fn propagate_double_edge<'tcx, A: Analysis<'tcx>>(
+                holder: &mut AnalysisHolder<'tcx, A>,
+                state: A::Domain,
+                _block: BasicBlock,
+                target: BasicBlock,
+                unwind: BasicBlock,
+                _tag: &str,
+                _kind: &str,
+                _edge: &str,
+            ) {
+                // eprintln!(
+                //     "{tag} - propagating {kind} state from {block:?} to {edge} edge: {target:?} (init: {}), {unwind:?} (init: {})",
+                //     holder.lazy_results[target].is_some(),
+                //     holder.lazy_results[unwind].is_some(),
+                // );
+                // We have two *distinct* successors.
+                //
+                // We could use an `_unchecked` version of `pick2_mut` if it existed: we know the
+                // indices are disjoint and in-bounds.
+                match holder.lazy_results.pick2_mut(target, unwind) {
+                    (None, None) => {
+                        // We need to initialize both successors with our own block state, we need a
+                        // clone.
+                        holder.lazy_results[target] = Some(state.clone());
+                        holder.lazy_results[unwind] = Some(state);
+                    }
+                    (None, Some(unwind_state)) => {
+                        // No need to clone, only one successor is not initialized yet.
+                        unwind_state.join(&state);
+                        holder.lazy_results[target] = Some(state);
+                    }
+                    (Some(target_state), None) => {
+                        // No need to clone, only one successor is not initialized yet.
+                        target_state.join(&state);
+                        holder.lazy_results[unwind] = Some(state);
+                    }
+                    (Some(target_state), Some(unwind_state)) => {
+                        // The successors have already been initialized by their other parents, we
+                        // merge our block state there.
+                        target_state.join(&state);
+                        unwind_state.join(&state);
+                    }
+                }
+            }
+
+            // The current block is done, and the visitor was notified at every step. We now take care
+            // of the successors' state.
+            match edges {
+                TerminatorEdges::None => {}
+                TerminatorEdges::Single(target) => {
+                    // We have a single successor, our own state can either be moved to it, or dropped.
+                    // propagate(target, block_state);
+                    propagate_single_edge(
+                        &mut borrows_holder,
+                        block_state.borrows,
+                        block,
+                        target,
+                        "A3a",
+                        "borrows",
+                        "single",
+                    );
+                    propagate_single_edge(
+                        &mut uninits_holder,
+                        block_state.uninits,
+                        block,
+                        target,
+                        "A3b",
+                        "uninits",
+                        "single",
+                    );
+                    propagate_single_edge(
+                        &mut ever_inits_holder,
+                        block_state.ever_inits,
+                        block,
+                        target,
+                        "A3c",
+                        "ever_inits",
+                        "single",
+                    );
+                }
+                TerminatorEdges::Double(target, unwind) if target == unwind => {
+                    // Why are we generating this shape in MIR building :thinking: ? Either way, we also
+                    // have a single successor here.
+                    // propagate(target, block_state);
+                    propagate_single_edge(
+                        &mut borrows_holder,
+                        block_state.borrows,
+                        block,
+                        target,
+                        "A4a",
+                        "borrows",
+                        "single double",
+                    );
+                    propagate_single_edge(
+                        &mut uninits_holder,
+                        block_state.uninits,
+                        block,
+                        target,
+                        "A4b",
+                        "uninits",
+                        "single double",
+                    );
+                    propagate_single_edge(
+                        &mut ever_inits_holder,
+                        block_state.ever_inits,
+                        block,
+                        target,
+                        "A4c",
+                        "ever_inits",
+                        "single double",
+                    );
+                }
+                TerminatorEdges::Double(target, unwind) => {
+                    propagate_double_edge(
+                        &mut borrows_holder,
+                        block_state.borrows,
+                        block,
+                        target,
+                        unwind,
+                        "A5a",
+                        "borrows",
+                        "double",
+                    );
+                    propagate_double_edge(
+                        &mut uninits_holder,
+                        block_state.uninits,
+                        block,
+                        target,
+                        unwind,
+                        "A5b",
+                        "uninits",
+                        "double",
+                    );
+                    propagate_double_edge(
+                        &mut ever_inits_holder,
+                        block_state.ever_inits,
+                        block,
+                        target,
+                        unwind,
+                        "A5c",
+                        "ever_inits",
+                        "double",
+                    );
+                }
+                TerminatorEdges::AssignOnReturn { return_, cleanup, place } => {
+                    // FIXME: we could optimize the move/clones here:
+                    // - we only need to clone if there's >1 non-initialized block in the return and
+                    //   cleanup blocks
+                    // - if the cleanup block has been initialized, we don't need to pass clone to
+                    //   propagate (until polonius is stabilized, not using propagate would also be a
+                    //   compile error)
+                    // FIXME: check if the return blocks are actually disjoint.
+
+                    // This must be done *first*, otherwise the unwind path will see the assignments.
+                    if let Some(cleanup) = cleanup {
+                        // We don't `propagate`: we'd have to clone the block state, but that's only
+                        // necessary if the cleanup state wasn't already initialized.
+                        //
+                        // FIXME: we wouldn't need to clone either if the cleanup block is one of the
+                        // return blocks, similarly to `TerminatorEdges::Double` which can be 2 edges to
+                        // the same block.
+                        // propagate(cleanup, block_state.clone());
+
+                        propagate_optional_single_edge(
+                            &mut borrows_holder,
+                            &block_state.borrows,
+                            block,
+                            cleanup,
+                            "A6a",
+                            "borrows",
+                            "assign on return cleanup",
+                        );
+                        propagate_optional_single_edge(
+                            &mut uninits_holder,
+                            &block_state.uninits,
+                            block,
+                            cleanup,
+                            "A6b",
+                            "uninits",
+                            "assign on return cleanup",
+                        );
+                        propagate_optional_single_edge(
+                            &mut ever_inits_holder,
+                            &block_state.ever_inits,
+                            block,
+                            cleanup,
+                            "A6c",
+                            "ever_inits",
+                            "assign on return cleanup",
+                        );
+                    }
+
+                    if !return_.is_empty() {
+                        analysis.apply_call_return_effect(&mut block_state, block, place);
+
+                        let target_count = return_.len();
+                        for &target in return_.iter().take(target_count - 1) {
+                            propagate_optional_single_edge(
+                                &mut borrows_holder,
+                                &block_state.borrows,
+                                block,
+                                target,
+                                "A7a",
+                                "borrows",
+                                "return target",
+                            );
+                            propagate_optional_single_edge(
+                                &mut uninits_holder,
+                                &block_state.uninits,
+                                block,
+                                target,
+                                "A7b",
+                                "uninits",
+                                "return target",
+                            );
+                            propagate_optional_single_edge(
+                                &mut ever_inits_holder,
+                                &block_state.ever_inits,
+                                block,
+                                target,
+                                "A7c",
+                                "ever_inits",
+                                "return target",
+                            );
+                        }
+
+                        let target = *return_.last().unwrap();
+                        propagate_single_edge(
+                            &mut borrows_holder,
+                            block_state.borrows,
+                            block,
+                            target,
+                            "A7d",
+                            "borrows",
+                            "return target",
+                        );
+                        propagate_single_edge(
+                            &mut uninits_holder,
+                            block_state.uninits,
+                            block,
+                            target,
+                            "A7e",
+                            "uninits",
+                            "return target",
+                        );
+                        propagate_single_edge(
+                            &mut ever_inits_holder,
+                            block_state.ever_inits,
+                            block,
+                            target,
+                            "A7f",
+                            "ever_inits",
+                            "return target",
+                        );
+                    }
+                }
+                TerminatorEdges::SwitchInt { targets, discr } => {
+                    if let Some(_data) = analysis.get_switch_int_data(block, discr) {
+                        todo!("wat. this is unused in tests");
+                    } else {
+                        let target_count = targets.all_targets().len();
+                        for &target in targets.all_targets().iter().take(target_count - 1) {
+                            propagate_optional_single_edge(
+                                &mut borrows_holder,
+                                &block_state.borrows,
+                                block,
+                                target,
+                                "A8a",
+                                "borrows",
+                                "switchint",
+                            );
+                            propagate_optional_single_edge(
+                                &mut uninits_holder,
+                                &block_state.uninits,
+                                block,
+                                target,
+                                "A8b",
+                                "uninits",
+                                "switchint",
+                            );
+                            propagate_optional_single_edge(
+                                &mut ever_inits_holder,
+                                &block_state.ever_inits,
+                                block,
+                                target,
+                                "A8c",
+                                "ever_inits",
+                                "switchint",
+                            );
+                        }
+
+                        let target = *targets.all_targets().last().unwrap();
+                        propagate_single_edge(
+                            &mut borrows_holder,
+                            block_state.borrows,
+                            block,
+                            target,
+                            "A8d",
+                            "borrows",
+                            "switchint",
+                        );
+                        propagate_single_edge(
+                            &mut uninits_holder,
+                            block_state.uninits,
+                            block,
+                            target,
+                            "A8e",
+                            "uninits",
+                            "switchint",
+                        );
+                        propagate_single_edge(
+                            &mut ever_inits_holder,
+                            block_state.ever_inits,
+                            block,
+                            target,
+                            "A8f",
+                            "ever_inits",
+                            "switchint",
+                        );
+                    }
+                }
+            }
+        } else {
+            for block in sccs.sccs[scc as usize].iter().copied() {
+                borrows_holder.dirty_queue.insert(block);
+                uninits_holder.dirty_queue.insert(block);
+                ever_inits_holder.dirty_queue.insert(block);
+            }
+
+            while let Some(block) = borrows_holder.dirty_queue.pop() {
+                // eprintln!("B1 - entering scc {scc}'s block: {:?}", block);
+
+                // eprintln!(
+                //     "B2 - is {block:?} state ready, borrows: {}, uninits: {}, ever_inits: {}",
+                //     borrows_holder.lazy_results[block].is_some(),
+                //     uninits_holder.lazy_results[block].is_some(),
+                //     ever_inits_holder.lazy_results[block].is_some(),
+                // );
+
+                // We're in an SCC:
+                // - we need to retain our entry state and can't move it to our children: we need to
+                //   reach a fixpoint, and *then* to visit the blocks starting from their entry
+                //   state.
+                // - our parent have initialized our state, so we use this to set the domain cursor
+                state.borrows.clone_from(
+                    borrows_holder.lazy_results[block].as_ref().unwrap_or_else(|| {
+                        panic!("the parents of {block:?} haven't initialized its state!");
+                    }),
+                );
+                propagate(
+                    body,
+                    block,
+                    &mut borrows_holder,
+                    &mut state.borrows,
+                    &mut analysis.borrows,
+                    |holder, target, state| {
+                        let set_changed = match holder.lazy_results[target].as_mut() {
+                            None => {
+                                holder.lazy_results[target] = Some(state.clone());
+                                true
+                            }
+                            Some(existing_state) => existing_state.join(&state),
+                        };
+
+                        // let set_changed = holder.results[target].join(&state);
+                        let target_scc = sccs.components[target];
+                        // eprintln!(
+                        //     "B3a - propagating borrows from {block:?} to target {target:?} (init: {}) of scc {target_scc}",
+                        //     holder.lazy_results[target].is_some()
+                        // );
+                        if set_changed && target_scc == scc {
+                            // The target block is in the SCC we're currently processing, and we
+                            // want to process this block until fixpoint. Otherwise, the target
+                            // block is in a successor SCC and it will be processed when that SCC is
+                            // encountered later.
+                            holder.dirty_queue.insert(target);
+                        }
+                    },
+                );
+            }
+            while let Some(block) = uninits_holder.dirty_queue.pop() {
+                // eprintln!("C1 - entering scc {scc}'s block: {:?}", block);
+
+                // eprintln!(
+                //     "C2 - is {block:?} state ready, borrows: {}, uninits: {}, ever_inits: {}",
+                //     borrows_holder.lazy_results[block].is_some(),
+                //     uninits_holder.lazy_results[block].is_some(),
+                //     ever_inits_holder.lazy_results[block].is_some(),
+                // );
+
+                state.uninits.clone_from(
+                    uninits_holder.lazy_results[block].as_ref().unwrap_or_else(|| {
+                        panic!("the parents of {block:?} haven't initialized its state!");
+                    }),
+                );
+                propagate(
+                    body,
+                    block,
+                    &mut uninits_holder,
+                    &mut state.uninits,
+                    &mut analysis.uninits,
+                    |holder, target, state| {
+                        let set_changed = match holder.lazy_results[target].as_mut() {
+                            None => {
+                                holder.lazy_results[target] = Some(state.clone());
+                                true
+                            }
+                            Some(existing_state) => existing_state.join(&state),
+                        };
+
+                        // let set_changed = holder.results[target].join(&state);
+                        let target_scc = sccs.components[target];
+                        // eprintln!(
+                        //     "C3a - propagating uninits from {block:?} to target {target:?} (init: {}) of scc {target_scc}",
+                        //     holder.lazy_results[target].is_some()
+                        // );
+                        if set_changed && target_scc == scc {
+                            // The target block is in the SCC we're currently processing, and we
+                            // want to process this block until fixpoint. Otherwise, the target
+                            // block is in a successor SCC and it will be processed when that SCC is
+                            // encountered later.
+                            holder.dirty_queue.insert(target);
+                        }
+                    },
+                );
+            }
+            while let Some(block) = ever_inits_holder.dirty_queue.pop() {
+                // eprintln!("D1 - entering scc {scc}'s block: {:?}", block);
+
+                // eprintln!(
+                //     "D2 - is {block:?} state ready, ever_inits: {}",
+                //     ever_inits_holder.lazy_results[block].is_some(),
+                // );
+
+                state.ever_inits.clone_from(
+                    ever_inits_holder.lazy_results[block].as_ref().unwrap_or_else(|| {
+                        panic!("the parents of {block:?} haven't initialized its state!");
+                    }),
+                );
+                propagate(
+                    body,
+                    block,
+                    &mut ever_inits_holder,
+                    &mut state.ever_inits,
+                    &mut analysis.ever_inits,
+                    |holder, target, state| {
+                        let set_changed = match holder.lazy_results[target].as_mut() {
+                            None => {
+                                holder.lazy_results[target] = Some(state.clone());
+                                true
+                            }
+                            Some(existing_state) => existing_state.join(&state),
+                        };
+
+                        // let set_changed = holder.results[target].join(&state);
+                        let target_scc = sccs.components[target];
+                        // eprintln!(
+                        //     "D3a - propagating ever_inits from {block:?} to target {target:?} (init: {}) of scc {target_scc}",
+                        //     holder.lazy_results[target].is_some()
+                        // );
+                        if set_changed && target_scc == scc {
+                            // The target block is in the SCC we're currently processing, and we
+                            // want to process this block until fixpoint. Otherwise, the target
+                            // block is in a successor SCC and it will be processed when that SCC is
+                            // encountered later.
+                            holder.dirty_queue.insert(target);
+                        }
+                    },
+                );
+            }
+
+            // eprintln!(
+            //     "1b - scc {scc} has reached fixpoint, visiting it again from its entry states"
+            // );
+
+            // let state = &mut state;
+            let analysis = &mut analysis;
+
+            // The SCC has reached fixpoint, we can now visit it.
+            for block in sccs.sccs[scc as usize].iter().copied() {
+                // eprintln!("2 - re-entering scc {scc}'s block: {:?}", block);
+
+                // // tmp: verifying contents on entry
+                // assert_eq!(
+                //     &flow_entry_states[block].borrows,
+                //     borrows_holder.lazy_results[block].as_ref().unwrap(),
+                //     "borrows of block {block:?} differ"
+                // );
+                // assert_eq!(
+                //     &flow_entry_states[block].ever_inits,
+                //     ever_inits_holder.lazy_results[block].as_ref().unwrap(),
+                //     "ever_inits of block {block:?} differ"
+                // );
+                // assert_eq!(
+                //     &flow_entry_states[block].uninits,
+                //     uninits_holder.lazy_results[block].as_ref().unwrap(),
+                //     "uninits of block {block:?} differ"
+                // );
+
+                // state.borrows.clone_from(&borrows_holder.lazy_results[block].as_ref().unwrap());
+                // state
+                //     .ever_inits
+                //     .clone_from(&ever_inits_holder.lazy_results[block].as_ref().unwrap());
+                // state.uninits.clone_from(&uninits_holder.lazy_results[block].as_ref().unwrap());
+
+                let Some(borrows) = borrows_holder.lazy_results[block].take() else {
+                    continue;
+                };
+                let Some(uninits) = uninits_holder.lazy_results[block].take() else {
+                    continue;
+                };
+                let Some(ever_inits) = ever_inits_holder.lazy_results[block].take() else {
+                    continue;
+                };
+                let mut state = BorrowckDomain { borrows, uninits, ever_inits };
+                let state = &mut state;
+
+                // // tmp: verifying contents on entry
+                // assert_eq!(
+                //     flow_entry_states[block].borrows, state.borrows,
+                //     "borrows of block {block:?} differ"
+                // );
+                // assert_eq!(
+                //     flow_entry_states[block].ever_inits, state.ever_inits,
+                //     "ever_inits of block {block:?} differ"
+                // );
+                // assert_eq!(
+                //     flow_entry_states[block].uninits, state.uninits,
+                //     "uninits of block {block:?} differ"
+                // );
+
+                let block_data = &body[block];
+
+                vis.visit_block_start(state);
+
+                for (statement_index, statement) in block_data.statements.iter().enumerate() {
+                    let location = Location { block, statement_index };
+                    analysis.apply_early_statement_effect(state, statement, location);
+                    vis.visit_after_early_statement_effect(analysis, state, statement, location);
+                    analysis.apply_primary_statement_effect(state, statement, location);
+                    vis.visit_after_primary_statement_effect(analysis, state, statement, location);
+                }
+
+                let terminator = block_data.terminator();
+                let location = Location { block, statement_index: block_data.statements.len() };
+                analysis.apply_early_terminator_effect(state, terminator, location);
+                vis.visit_after_early_terminator_effect(analysis, state, terminator, location);
+                analysis.apply_primary_terminator_effect(state, terminator, location);
+                vis.visit_after_primary_terminator_effect(analysis, state, terminator, location);
+
+                vis.visit_block_end(state);
+            }
+        }
+
+        // eprintln!();
+    }
+}
+
+// When a CFG is acyclic, reaching fixpoint is a single iteration over the blocks in RPO order. If
+// we do the computation at the same time as we're visiting results, we can avoid computing
+// per-block state in `iterate_to_fixpoint` and then per-statement state (again, since we have to do
+// it in `iterate_to_fixpoint` to compute the per-block exit state) in `visit_results`.
+//
+// The callers need to ensure that the CFG is acyclic, e.g. via `body.basic_blocks.is_cfg_cyclic()`,
+// and that the analysis is a forward analysis.
+fn compute_rpo_dataflow<'mir, 'tcx, A>(
+    body: &'mir Body<'tcx>,
+    analysis: &mut A,
+    vis: &mut impl ResultsVisitor<'tcx, A>,
+) where
+    A: Analysis<'tcx, Direction = rustc_mir_dataflow::Forward>,
+{
+    use rustc_middle::mir;
+    use rustc_mir_dataflow::JoinSemiLattice;
+
+    // Instead of storing a domain state per-block, we only do it lazily. This means that we can
+    // re-use that state when for example a block has a single successor. The visitor will be
+    // notified that the entire block is complete, before we mutate the same piece of state, and
+    // thus avoid creating it or cloning it in many cases.
+
+    // Set up lazy state for the CFG
+    let mut results: IndexVec<BasicBlock, Option<A::Domain>> =
+        IndexVec::from_elem_n(None, body.basic_blocks.len());
+
+    // Ensure the start block has some state in it;
+    results[mir::START_BLOCK] = Some(analysis.bottom_value(body));
+    analysis.initialize_start_block(body, results[mir::START_BLOCK].as_mut().unwrap());
+
+    // eprintln!("CFG, {} blocks, {:?}, {:#?}", body.basic_blocks.len(), body.span, body);
+    // for (block, bb) in body.basic_blocks.iter_enumerated() {
+    //     let terminator = bb.terminator();
+    //     let successors: Vec<_> = terminator.successors().collect();
+    //     eprintln!(
+    //         "block: {block:?}, {} successors: {:?}, edges: {:?}, terminator: {:?}",
+    //         successors.len(),
+    //         successors,
+    //         terminator.edges(),
+    //         terminator.kind,
+    //     );
+
+    //     match terminator.kind {
+    //         TerminatorKind::Drop { place: _, target, unwind, replace: _, drop, async_fut: _ } => {
+    //             eprintln!(
+    //                 "Drop terminator, target: {target:?}, unwind: {unwind:?}, drop: {drop:?}"
+    //             );
+    //         }
+    //         _ => {}
+    //     }
+    // }
+
+    // Visit this *acyclic* CFG in RPO.
+    for (block, block_data) in traversal::reverse_postorder(body) {
+        // `reverse_postorder` doesn't yield unreachable blocks, so every block we visit will have
+        // at least one of its parents visited first.
+        //
+        // Therefore, we get our per-block state:
+        // - from one of our predecessors initializing it
+        // - or from the analysis' initial value, for the START_BLOCK
+        //
+        // That is true in general, except for some bug/issue with async drops today: we can visit
+        // successors of a block that are not present in the data used to propagate dataflow to
+        // successor blocks, `TerminatorEdges`.
+        //
+        // We temporarily ignore these unreachable-in-practice blocks for now: they are ignored by
+        // the dataflow engine, and wouldn't have any state computed or propagated other than the
+        // bottom value of the analysis.
+        let Some(mut block_state) = results[block].take() else {
+            continue;
+        };
+
+        // FIXME(async_drop): we assert here to fail when this issue is fixed, just expect() above
+        // and remove the assertion below when traversal and dataflow agree.
+        assert!(
+            {
+                let terminator = block_data.terminator();
+                if matches!(terminator.kind, TerminatorKind::Drop { drop: Some(_), .. }) {
+                    terminator.successors().count() == 3
+                        && matches!(terminator.edges(), TerminatorEdges::Double(_, _))
+                } else {
+                    true
+                }
+            },
+            "dataflow mismatch between async_drop TerminatorKind successors() and edges()"
+        );
+
+        // Apply effects in the block's statements.
+        vis.visit_block_start(&mut block_state);
+
+        for (statement_index, statement) in block_data.statements.iter().enumerate() {
+            let location = Location { block, statement_index };
+            analysis.apply_early_statement_effect(&mut block_state, statement, location);
+            vis.visit_after_early_statement_effect(analysis, &block_state, statement, location);
+
+            analysis.apply_primary_statement_effect(&mut block_state, statement, location);
+            vis.visit_after_primary_statement_effect(analysis, &block_state, statement, location);
+        }
+
+        // Apply effects in the block terminator.
+        let terminator = block_data.terminator();
+        let location = Location { block, statement_index: block_data.statements.len() };
+        analysis.apply_early_terminator_effect(&mut block_state, terminator, location);
+        vis.visit_after_early_terminator_effect(analysis, &block_state, terminator, location);
+
+        let edges =
+            analysis.apply_primary_terminator_effect(&mut block_state, terminator, location);
+        vis.visit_after_primary_terminator_effect(analysis, &block_state, terminator, location);
+
+        vis.visit_block_end(&mut block_state);
+
+        // The current block is done, and the visitor was notified at every step. We now take care
+        // of the successor's state.
+
+        // let mut propagate = |target: BasicBlock, state: A::Domain| {
+        //     // Look at the target block state holder:
+        //     // - either it's empty, and we initialize it by moving the state there
+        //     // - or it's been initialized, and we merge it with the given state
+        //     match results[target].as_mut() {
+        //         None => {
+        //             results[target] = Some(state);
+        //         }
+        //         Some(existing_state) => {
+        //             existing_state.join(&state);
+        //         }
+        //     }
+        // };
+
+        match edges {
+            TerminatorEdges::None => {}
+            TerminatorEdges::Single(target) => {
+                // eprintln!(
+                //     "Propagating state from {block:?} to single edge: {target:?} (init: {})",
+                //     results[target].is_some()
+                // );
+                match results[target].as_mut() {
+                    None => {
+                        results[target] = Some(block_state);
+                    }
+                    Some(existing_state) => {
+                        existing_state.join(&block_state);
+                    }
+                }
+
+                // We have a single successor, our own state can either be moved to it, or dropped.
+                // propagate(target, block_state);
+            }
+            TerminatorEdges::Double(target, unwind) if target == unwind => {
+                // eprintln!(
+                //     "Propagating state from {block:?} to single double edge: {target:?} (init: {})",
+                //     results[target].is_some()
+                // );
+
+                // Why are we generating this shape in MIR building :thinking: ? Either way, we also
+                // have a single successor here.
+                // propagate(target, block_state);
+                match results[target].as_mut() {
+                    None => {
+                        results[target] = Some(block_state);
+                    }
+                    Some(existing_state) => {
+                        existing_state.join(&block_state);
+                    }
+                }
+            }
+            TerminatorEdges::Double(target, unwind) => {
+                // eprintln!(
+                //     "Propagating state from {block:?} to double edge: {target:?} (init: {}), {unwind:?} (init: {})",
+                //     results[target].is_some(),
+                //     results[unwind].is_some()
+                // );
+
+                // We have two *distinct* successors.
+                //
+                // We could use an `_unchecked` version of `pick2_mut` if it existed: we know the
+                // indices are disjoint and in-bounds.
+                match results.pick2_mut(target, unwind) {
+                    (None, None) => {
+                        // We need to initialize both successors with our own block state, we need a
+                        // clone.
+                        results[target] = Some(block_state.clone());
+                        results[unwind] = Some(block_state);
+                    }
+                    (None, Some(unwind_state)) => {
+                        // No need to clone, only one successor is not initialized yet.
+                        unwind_state.join(&block_state);
+                        results[target] = Some(block_state);
+                    }
+                    (Some(target_state), None) => {
+                        // No need to clone, only one successor is not initialized yet.
+                        target_state.join(&block_state);
+                        results[unwind] = Some(block_state);
+                    }
+                    (Some(target_state), Some(unwind_state)) => {
+                        // The successors have already been initialized by their other parents, we
+                        // merge our block state there.
+                        target_state.join(&block_state);
+                        unwind_state.join(&block_state);
+                    }
+                }
+            }
+            TerminatorEdges::AssignOnReturn { return_, cleanup, place } => {
+                // FIXME: we could optimize the move/clones here:
+                // - we only need to clone if there's >1 non-initialized block in the return and
+                //   cleanup blocks
+                // - if the cleanup block has been initialized, we don't need to pass clone to
+                //   propagate (until polonius is stabilized, not using propagate would also be a
+                //   compile error)
+                // FIXME: check if the return blocks are actually disjoint.
+
+                // This must be done *first*, otherwise the unwind path will see the assignments.
+                if let Some(cleanup) = cleanup {
+                    // We don't `propagate`: we'd have to clone the block state, but that's only
+                    // necessary if the cleanup state wasn't already initialized.
+                    //
+                    // FIXME: we wouldn't need to clone either if the cleanup block is one of the
+                    // return blocks, similarly to `TerminatorEdges::Double` which can be 2 edges to
+                    // the same block.
+                    // propagate(cleanup, block_state.clone());
+
+                    match results[cleanup].as_mut() {
+                        None => {
+                            results[cleanup] = Some(block_state.clone());
+                        }
+                        Some(existing_state) => {
+                            existing_state.join(&block_state);
+                        }
+                    }
+                }
+
+                if !return_.is_empty() {
+                    analysis.apply_call_return_effect(&mut block_state, block, place);
+
+                    let target_count = return_.len();
+                    for &target in return_.iter().take(target_count - 1) {
+                        // propagate(target, block_state.clone());
+                        match results[target].as_mut() {
+                            None => {
+                                results[target] = Some(block_state.clone());
+                            }
+                            Some(existing_state) => {
+                                existing_state.join(&block_state);
+                            }
+                        }
+                    }
+
+                    let target = *return_.last().unwrap();
+                    // propagate(target, block_state);
+                    match results[target].as_mut() {
+                        None => {
+                            results[target] = Some(block_state);
+                        }
+                        Some(existing_state) => {
+                            existing_state.join(&block_state);
+                        }
+                    }
+                }
+            }
+            TerminatorEdges::SwitchInt { targets, discr } => {
+                if let Some(_data) = analysis.get_switch_int_data(block, discr) {
+                    todo!("wat. this is unused in tests");
+                } else {
+                    let target_count = targets.all_targets().len();
+                    for &target in targets.all_targets().iter().take(target_count - 1) {
+                        match results[target].as_mut() {
+                            None => {
+                                results[target] = Some(block_state.clone());
+                            }
+                            Some(existing_state) => {
+                                existing_state.join(&block_state);
+                            }
+                        }
+                    }
+
+                    let target = *targets.all_targets().last().unwrap();
+                    match results[target].as_mut() {
+                        None => {
+                            results[target] = Some(block_state);
+                        }
+                        Some(existing_state) => {
+                            existing_state.join(&block_state);
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+fn compute_dataflow<'a, 'tcx>(
+    tcx: TyCtxt<'tcx>,
+    body: &'a Body<'tcx>,
+
+    move_data: &'a MoveData<'tcx>,
+    borrow_set: &'a BorrowSet<'tcx>,
+    regioncx: &RegionInferenceContext<'tcx>,
+
+    vis: &mut MirBorrowckCtxt<'a, '_, 'tcx>,
+) {
+    let borrows = Borrows::new(tcx, body, regioncx, borrow_set);
+    let uninits = MaybeUninitializedPlaces::new(tcx, body, move_data);
+    let ever_inits = EverInitializedPlaces::new(body, move_data);
+
+    let mut analysis = Borrowck { borrows, uninits, ever_inits };
+
+    // Set up lazy state for the CFG
+    use rustc_middle::mir;
+    use rustc_mir_dataflow::JoinSemiLattice;
+
+    let mut results: IndexVec<BasicBlock, Option<BorrowckDomain>> =
+        IndexVec::from_elem_n(None, body.basic_blocks.len());
+
+    // Ensure the start block has some state in it;
+    results[mir::START_BLOCK] = Some(analysis.bottom_value(body));
+    analysis.initialize_start_block(body, results[mir::START_BLOCK].as_mut().unwrap());
+
+    for (_idx, (block, block_data)) in traversal::reverse_postorder(body).enumerate() {
+        // Apply effects in block
+        let mut block_state = results[block].take().unwrap_or_else(|| analysis.bottom_value(body));
+
+        vis.visit_block_start(&mut block_state);
+
+        for (statement_index, statement) in block_data.statements.iter().enumerate() {
+            let location = Location { block, statement_index };
+            analysis.apply_early_statement_effect(&mut block_state, statement, location);
+            vis.visit_after_early_statement_effect(
+                &mut analysis,
+                &block_state,
+                statement,
+                location,
+            );
+
+            analysis.apply_primary_statement_effect(&mut block_state, statement, location);
+            vis.visit_after_primary_statement_effect(
+                &mut analysis,
+                &block_state,
+                statement,
+                location,
+            );
+        }
+        let terminator = block_data.terminator();
+        let location = Location { block, statement_index: block_data.statements.len() };
+        analysis.apply_early_terminator_effect(&mut block_state, terminator, location);
+        vis.visit_after_early_terminator_effect(&mut analysis, &block_state, terminator, location);
+
+        let edges =
+            analysis.apply_primary_terminator_effect(&mut block_state, terminator, location);
+        vis.visit_after_primary_terminator_effect(
+            &mut analysis,
+            &block_state,
+            terminator,
+            location,
+        );
+
+        // notify visitor the block is ready
+        vis.visit_block_end(&mut block_state);
+
+        match edges {
+            TerminatorEdges::None => {}
+            TerminatorEdges::Single(target) => match results[target].as_mut() {
+                None => {
+                    results[target] = Some(block_state);
+                }
+                Some(existing_state) => {
+                    existing_state.join(&block_state);
+                }
+            },
+            TerminatorEdges::Double(target, unwind) if target == unwind => {
+                // wtf
+                match results[target].as_mut() {
+                    None => {
+                        results[target] = Some(block_state);
+                    }
+                    Some(existing_state) => {
+                        existing_state.join(&block_state);
+                    }
+                }
+            }
+            TerminatorEdges::Double(target, unwind) => match results.pick2_mut(target, unwind) {
+                (None, None) => {
+                    results[target] = Some(block_state.clone());
+                    results[unwind] = Some(block_state);
+                }
+                (None, Some(unwind_state)) => {
+                    unwind_state.join(&block_state);
+                    results[target] = Some(block_state);
+                }
+                (Some(target_state), None) => {
+                    target_state.join(&block_state);
+                    results[unwind] = Some(block_state);
+                }
+                (Some(target_state), Some(unwind_state)) => {
+                    target_state.join(&block_state);
+                    unwind_state.join(&block_state);
+                }
+            },
+            TerminatorEdges::AssignOnReturn { return_, cleanup, place } => {
+                // This must be done *first*, otherwise the unwind path will see the assignments.
+                if let Some(cleanup) = cleanup {
+                    match results[cleanup].as_mut() {
+                        None => {
+                            results[cleanup] = Some(block_state.clone());
+                        }
+                        Some(existing_state) => {
+                            existing_state.join(&block_state);
+                        }
+                    }
+                }
+
+                if !return_.is_empty() {
+                    analysis.apply_call_return_effect(&mut block_state, block, place);
+
+                    // fixme: optimize, if we've merged the previous target states instead
+                    // of moving, we don't need to clone it.
+
+                    let target_count = return_.len();
+                    for &target in return_.iter().take(target_count - 1) {
+                        match results[target].as_mut() {
+                            None => {
+                                results[target] = Some(block_state.clone());
+                            }
+                            Some(existing_state) => {
+                                existing_state.join(&block_state);
+                            }
+                        }
+                    }
+
+                    let target = *return_.last().unwrap();
+                    match results[target].as_mut() {
+                        None => {
+                            results[target] = Some(block_state.clone());
+                        }
+                        Some(existing_state) => {
+                            existing_state.join(&block_state);
+                        }
+                    }
+                }
+            }
+            TerminatorEdges::SwitchInt { targets, discr } => {
+                if let Some(_data) = analysis.get_switch_int_data(block, discr) {
+                    todo!("wat. this is unused in tests");
+                } else {
+                    let target_count = targets.all_targets().len();
+                    for &target in targets.all_targets().iter().take(target_count - 1) {
+                        match results[target].as_mut() {
+                            None => {
+                                results[target] = Some(block_state.clone());
+                            }
+                            Some(existing_state) => {
+                                existing_state.join(&block_state);
+                            }
+                        }
+                    }
+
+                    let target = *targets.all_targets().last().unwrap();
+                    match results[target].as_mut() {
+                        None => {
+                            results[target] = Some(block_state.clone());
+                        }
+                        Some(existing_state) => {
+                            existing_state.join(&block_state);
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+#[cfg(test)]
 fn get_flow_results<'a, 'tcx>(
     tcx: TyCtxt<'tcx>,
     body: &'a Body<'tcx>,
@@ -506,21 +3799,96 @@ fn get_flow_results<'a, 'tcx>(
 ) -> (Borrowck<'a, 'tcx>, Results<BorrowckDomain>) {
     // We compute these three analyses individually, but them combine them into
     // a single results so that `mbcx` can visit them all together.
+    // let timer = std::time::Instant::now();
     let borrows = Borrows::new(tcx, body, regioncx, borrow_set).iterate_to_fixpoint(
         tcx,
         body,
         Some("borrowck"),
     );
+    // let elapsed = timer.elapsed();
+    // if body.basic_blocks.len() > 5000 && elapsed.as_millis() > 1 {
+    //     eprintln!("dataflow {}, took {} ns, {:?}", "borrows", elapsed.as_nanos(), body.span);
+    // }
+
+    // ---
+    // if rustc_data_structures::graph::is_cyclic(&body.basic_blocks) {
+    //     // let timer = std::time::Instant::now();
+    //     let borrowz = Borrows::new(tcx, body, regioncx, borrow_set).iterate_to_fixpoint_per_scc(
+    //         tcx,
+    //         body,
+    //         Some("borrowz"),
+    //     );
+    //     // let elapsed = timer.elapsed();
+    //     // if body.basic_blocks.len() > 5000 && elapsed.as_millis() > 1 {
+    //     //     eprintln!("dataflow {}, took {} ns, {:?}", "borrowz", elapsed.as_nanos(), body.span);
+    //     // }
+    //     assert_eq!(
+    //         borrows.results, borrowz.results,
+    //         "oh noes, borrows dataflow results are different"
+    //     );
+    // }
+
+    // ---
+
+    // let timer = std::time::Instant::now();
     let uninits = MaybeUninitializedPlaces::new(tcx, body, move_data).iterate_to_fixpoint(
         tcx,
         body,
         Some("borrowck"),
     );
+    // let elapsed = timer.elapsed();
+    // if body.basic_blocks.len() > 5000 && elapsed.as_millis() > 1 {
+    //     eprintln!("dataflow {}, took {} ns, {:?}", "uninits", elapsed.as_nanos(), body.span);
+    // }
+
+    // if rustc_data_structures::graph::is_cyclic(&body.basic_blocks) {
+    //     let uninitz = MaybeUninitializedPlaces::new(tcx, body, move_data)
+    //         .iterate_to_fixpoint_per_scc(tcx, body, Some("borrowck"));
+    //     assert_eq!(
+    //         uninits.results, uninitz.results,
+    //         "oh noes, uninits dataflow results are different"
+    //     );
+    // }
+
+    // ---
+    // let timer = std::time::Instant::now();
     let ever_inits = EverInitializedPlaces::new(body, move_data).iterate_to_fixpoint(
         tcx,
         body,
         Some("borrowck"),
     );
+    // let elapsed = timer.elapsed();
+    // if body.basic_blocks.len() > 5000 && elapsed.as_millis() > 1 {
+    //     eprintln!("dataflow {}, took {} ns, {:?}", "e_inits", elapsed.as_nanos(), body.span);
+    // }
+
+    // let timer = std::time::Instant::now();
+    // let _ever_initz = EverInitializedPlaces2::new(body, move_data).iterate_to_fixpoint(
+    //     tcx,
+    //     body,
+    //     Some("borrowck"),
+    // );
+    // let elapsed = timer.elapsed();
+    // if body.basic_blocks.len() > 5000 && elapsed.as_millis() > 1 {
+    //     eprintln!("dataflow {}, took {} ns, {:?}", "e_initz", elapsed.as_nanos(), body.span);
+    // }
+
+    // if rustc_data_structures::graph::is_cyclic(&body.basic_blocks) {
+    //     // let timer = std::time::Instant::now();
+    //     let ever_initz = EverInitializedPlaces::new(body, move_data).iterate_to_fixpoint_per_scc(
+    //         tcx,
+    //         body,
+    //         Some("e_initz"),
+    //     );
+    //     // let elapsed = timer.elapsed();
+    //     // if body.basic_blocks.len() > 5000 && elapsed.as_millis() > 1 {
+    //     //     eprintln!("dataflow {}, took {} ns, {:?}", "e_initz", elapsed.as_nanos(), body.span);
+    //     // }
+    //     assert_eq!(
+    //         ever_inits.results, ever_initz.results,
+    //         "oh noes, ever_inits dataflow results are different"
+    //     );
+    // }
 
     let analysis = Borrowck {
         borrows: borrows.analysis,
@@ -673,6 +4041,21 @@ struct MirBorrowckCtxt<'a, 'infcx, 'tcx> {
     polonius_output: Option<&'a PoloniusOutput>,
     /// When using `-Zpolonius=next`: the data used to compute errors and diagnostics.
     polonius_diagnostics: Option<&'a PoloniusDiagnosticsContext>,
+
+    #[cfg(test)]
+    nuutila: Option<nuutila::Nuutila>,
+    #[cfg(test)]
+    duration: u128,
+    #[cfg(test)]
+    duration2: u128,
+    #[cfg(test)]
+    duration3: u128,
+    #[cfg(test)]
+    transitive_predecessors: Option<IndexVec<BasicBlock, DenseBitSet<BasicBlock>>>,
+
+    // locals_checked_for_initialization: FxHashMap<MovePathIndex, FxHashSet<Location>>,
+    #[cfg(test)]
+    locals_checked_for_initialization: FxHashMap<Local, FxHashSet<Location>>,
 }
 
 // Check that:
@@ -1063,6 +4446,173 @@ impl InitializationRequiringAction {
     }
 }
 
+#[cfg(test)]
+mod nuutila {
+    use std::collections::VecDeque;
+
+    use rustc_index::interval::IntervalSet;
+    use rustc_middle::mir::{BasicBlock, BasicBlocks, TerminatorEdges};
+
+    use crate::consumers::BorrowSet;
+
+    pub(super) struct Nuutila {
+        candidate_component_roots: Vec<usize>,
+        components: Vec<isize>,
+        pub component_count: usize,
+        dfs_numbers: Vec<u32>,
+        d: u32,
+        visited: Vec<bool>,
+        stack_vertex: VecDeque<usize>,
+        stack_component: VecDeque<usize>,
+        pub reachability: Vec<IntervalSet<usize>>,
+    }
+
+    impl Nuutila {
+        pub(crate) fn new(node_count: usize) -> Self {
+            Self {
+                candidate_component_roots: vec![0; node_count],
+                components: vec![-1; node_count],
+                component_count: 0,
+                dfs_numbers: vec![0; node_count],
+                d: 0,
+                visited: vec![false; node_count],
+                stack_vertex: VecDeque::new(),
+                stack_component: VecDeque::new(),
+                reachability: vec![IntervalSet::new(node_count); node_count + 1],
+                // ^--- la reachability c'est celle que des composants donc il en faut moins que `node_count` s'il y a au moins un SCC avec > 1 nodes
+                // reachabilly: vec![HybridBitSet::new_empty(node_count); node_count],
+            }
+        }
+
+        // fn compute_sccs(&mut self, blocks: &BasicBlocks<'_>) {
+        //     for (idx, block) in blocks.iter_enumerated() {
+        //         let edges = block.terminator().edges();
+        //         if matches!(edges, TerminatorEdges::None) {
+        //             continue;
+        //         }
+        //
+        //         let idx = idx.as_usize();
+        //         if !self.visited[idx] {
+        //             self.dfs_visit(idx, blocks);
+        //         }
+        //     }
+        // }
+
+        // Compute SCCs and reachability only starting where loans appear.
+        // We still have the unused blocks in our domain, but won't traverse them.
+        pub(crate) fn compute_for_loans(
+            &mut self,
+            borrow_set: &BorrowSet<'_>,
+            blocks: &BasicBlocks<'_>,
+        ) {
+            for (_loan_idx, loan) in borrow_set.iter_enumerated() {
+                let block_idx = loan.reserve_location.block;
+                let block = &blocks[block_idx];
+
+                let edges = block.terminator().edges();
+                if matches!(edges, TerminatorEdges::None) {
+                    continue;
+                }
+
+                let idx = block_idx.as_usize();
+                if !self.visited[idx] {
+                    self.dfs_visit(idx, blocks);
+                }
+            }
+        }
+
+        fn dfs_visit(&mut self, v: usize, blocks: &BasicBlocks<'_>) {
+            self.candidate_component_roots[v] = v;
+            self.components[v] = -1;
+
+            self.d += 1;
+            self.dfs_numbers[v] = self.d;
+
+            self.stack_vertex.push_front(v);
+            let stack_component_height = self.stack_component.len();
+
+            self.visited[v] = true;
+
+            let idx = BasicBlock::from_usize(v);
+            for succ in blocks[idx].terminator().successors() {
+                let w = succ.as_usize();
+
+                if w == v {
+                    panic!("a dang self loop ?! at {}", w);
+                }
+
+                if !self.visited[w] {
+                    self.dfs_visit(w, blocks);
+                }
+
+                let component_w = self.components[w];
+                if component_w == -1 {
+                    if self.dfs_numbers[self.candidate_component_roots[w]]
+                        < self.dfs_numbers[self.candidate_component_roots[v]]
+                    {
+                        self.candidate_component_roots[v] = self.candidate_component_roots[w];
+                    }
+                } else {
+                    assert!(component_w >= 0);
+
+                    // FIXME: check if v -> w is actually a forward edge or not, to avoid unnecessary work if it is
+                    self.stack_component.push_front(self.components[w] as usize);
+                }
+            }
+
+            if self.candidate_component_roots[v] == v {
+                self.component_count += 1;
+                self.components[v] = self.component_count as isize;
+
+                // Reachability of C[v]
+                assert!(self.reachability[self.component_count].is_empty());
+                // assert!(self.reachabilly[self.component_count].is_empty());
+
+                if let Some(&top) = self.stack_vertex.front() {
+                    if top != v {
+                        // we're adding new component, initialize its reachability: self-loop,
+                        // the component can reach itself
+                        // self.reachability[self.component_count] =
+                        //     (self.component_count, self.component_count).to_interval_set();
+                        self.reachability[self.component_count].insert(self.component_count);
+                    } else {
+                        // R[C[v]] should be empty here already, do nothing
+                        // if we don't always initialize the reachability of C by default, it would need to be
+                        // initialized to "empty" here.
+                    }
+                }
+
+                // process adjacent components
+                while self.stack_component.len() != stack_component_height {
+                    let x =
+                        self.stack_component.pop_front().expect("Sc can't be empty at this point");
+                    // prevent performing duplicate operations
+                    if !self.reachability[self.component_count].contains(x) {
+                        // merge reachability information
+                        assert_ne!(x, self.component_count);
+
+                        let zzz = unsafe {
+                            self.reachability.get_unchecked(x) as *const IntervalSet<usize>
+                        };
+                        let r_c_v =
+                            unsafe { self.reachability.get_unchecked_mut(self.component_count) };
+                        r_c_v.union(unsafe { &*zzz });
+                        r_c_v.insert(x);
+                    }
+                }
+
+                while let Some(w) = self.stack_vertex.pop_front() {
+                    self.components[w] = self.components[v];
+
+                    if w == v {
+                        break;
+                    }
+                }
+            }
+        }
+    }
+}
+
 impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
     fn body(&self) -> &'a Body<'tcx> {
         self.body
@@ -1140,6 +4690,76 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
         }
     }
 
+    #[cfg(test)]
+    fn compute_nuutila(&mut self) {
+        use nuutila::Nuutila;
+
+        let timer = std::time::Instant::now();
+        let mut sccs = Nuutila::new(self.body.basic_blocks.len());
+        sccs.compute_for_loans(&self.borrow_set, &self.body.basic_blocks);
+
+        let elapsed = timer.elapsed();
+        eprintln!(
+            "compute_nuutila, found {} SCCs in {} ns",
+            sccs.component_count,
+            elapsed.as_nanos(),
+        );
+
+        self.nuutila = Some(sccs);
+    }
+
+    #[cfg(test)]
+    fn compute_transitive_predecessors(&mut self) {
+        let block_count = self.body.basic_blocks.len();
+
+        // Compute `transitive_predecessors` and `adjacent_predecessors`.
+        let mut transitive_predecessors =
+            IndexVec::from_elem_n(DenseBitSet::new_empty(block_count), block_count);
+        let mut adjacent_predecessors = transitive_predecessors.clone();
+        // The stack is initially a reversed postorder traversal of the CFG. However, we might add
+        // add blocks again to the stack if we have loops.
+        let mut stack =
+            self.body.basic_blocks.reverse_postorder().iter().rev().copied().collect::<Vec<_>>();
+        // We keep track of all blocks that are currently not in the stack.
+        let mut not_in_stack = DenseBitSet::new_empty(block_count);
+        while let Some(block) = stack.pop() {
+            not_in_stack.insert(block);
+
+            // Loop over all successors to the block and add `block` to their predecessors.
+            for succ_block in self.body.basic_blocks[block].terminator().successors() {
+                // Keep track of whether the transitive predecessors of `succ_block` has changed.
+                let mut changed = false;
+
+                // Insert `block` in `succ_block`s predecessors.
+                if adjacent_predecessors[succ_block].insert(block) {
+                    // Remember that `adjacent_predecessors` is a subset of
+                    // `transitive_predecessors`.
+                    changed |= transitive_predecessors[succ_block].insert(block);
+                }
+
+                // Add all transitive predecessors of `block` to the transitive predecessors of
+                // `succ_block`.
+                if block != succ_block {
+                    let (blocks_predecessors, succ_blocks_predecessors) =
+                        transitive_predecessors.pick2_mut(block, succ_block);
+                    changed |= succ_blocks_predecessors.union(blocks_predecessors);
+
+                    // Check if the `succ_block`s transitive predecessors changed. If so, we may
+                    // need to add it to the stack again.
+                    if changed && not_in_stack.remove(succ_block) {
+                        stack.push(succ_block);
+                    }
+                }
+            }
+
+            // debug_assert!(
+            //     transitive_predecessors[block].superset(&adjacent_predecessors[block])
+            // );
+        }
+
+        self.transitive_predecessors = Some(transitive_predecessors);
+    }
+
     #[instrument(level = "debug", skip(self, state))]
     fn check_access_for_conflict(
         &mut self,
@@ -1151,7 +4771,104 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
     ) -> bool {
         let mut error_reported = false;
 
+        // For each region that is live at this location
+        //   does it unify with the loan introduction region
+        //      if so, it may be live
+        //   if the live region doesn't unify with any borrow region, we don't need to check it
+
         let borrows_in_scope = self.borrows_in_scope(location, state);
+
+        // if self.borrow_set.len() > 6230 {
+        //     if let Some(borrows_for_place_base) = self.borrow_set.local_map.get(&place_span.0.local)
+        //     {
+        //         if self.nuutila.is_none() {
+        //             eprintln!(
+        //                 "we have {} borrows for the place local on the entire function, computing sccs",
+        //                 borrows_for_place_base.len(),
+        //             );
+        //             self.compute_nuutila();
+        //         }
+
+        //         let timer = std::time::Instant::now();
+
+        //         let nuutila = self.nuutila.as_ref().unwrap();
+
+        //         let current_block = location.block;
+        //         let mut reachable_loans = 0;
+        //         for &idx in borrows_for_place_base {
+        //             let loan = &self.borrow_set[idx];
+        //             let loan_introduction_block = loan.reserve_location.block;
+
+        //             let loan_block_reachability =
+        //                 &nuutila.reachability[loan_introduction_block.as_usize()];
+        //             if loan_block_reachability.contains(current_block.as_usize()) {
+        //                 reachable_loans += 1;
+        //             }
+        //         }
+
+        //         let elapsed = timer.elapsed();
+        //         if reachable_loans > 0 {
+        //             self.duration += elapsed.as_nanos();
+
+        //             // eprintln!(
+        //             //     "{} invalidations are reachable from their loan introduction, took {} ns, {:?}",
+        //             //     reachable_loans,
+        //             //     elapsed.as_nanos(),
+        //             //     self.body.span
+        //             // );
+        //         }
+
+        //         // ---
+        //         let timer = std::time::Instant::now();
+
+        //         let mut reachable_loans = 0;
+        //         for &idx in borrows_for_place_base {
+        //             if borrows_in_scope.contains(idx) {
+        //                 reachable_loans += 1;
+        //             }
+        //         }
+
+        //         let elapsed = timer.elapsed();
+        //         if reachable_loans > 0 {
+        //             self.duration3 += elapsed.as_nanos();
+        //         }
+
+        //         // ---
+
+        //         if self.transitive_predecessors.is_none() {
+        //             self.compute_transitive_predecessors();
+        //         }
+
+        //         let timer = std::time::Instant::now();
+
+        //         let transitive_predecessors = self.transitive_predecessors.as_ref().unwrap();
+
+        //         let mut reachable_loans = 0;
+        //         for &idx in borrows_for_place_base {
+        //             let loan = &self.borrow_set[idx];
+        //             let source = loan.reserve_location;
+
+        //             #[inline(always)]
+        //             fn is_predecessor(
+        //                 transitive_predecessors: &IndexVec<BasicBlock, DenseBitSet<BasicBlock>>,
+        //                 a: Location,
+        //                 b: Location,
+        //             ) -> bool {
+        //                 a.block == b.block && a.statement_index < b.statement_index
+        //                     || transitive_predecessors[b.block].contains(a.block)
+        //             }
+
+        //             if is_predecessor(transitive_predecessors, source, location) {
+        //                 reachable_loans += 1;
+        //             }
+        //         }
+
+        //         let elapsed = timer.elapsed();
+        //         if reachable_loans > 0 {
+        //             self.duration2 += elapsed.as_nanos();
+        //         }
+        //     }
+        // }
 
         each_borrow_involving_path(
             self,
@@ -1941,6 +5658,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
 
         debug!("check_if_full_path_is_moved place: {:?}", place_span.0);
         let (prefix, mpi) = self.move_path_closest_to(place_span.0);
+        // self.locals_checked_for_initialization.entry(mpi).or_default().insert(location);
         if maybe_uninits.contains(mpi) {
             self.report_use_of_moved_or_uninitialized(
                 location,
@@ -1971,6 +5689,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
         to: u64,
     ) {
         if let Some(mpi) = self.move_path_for_place(place_span.0) {
+            // self.locals_checked_for_initialization.entry(mpi).or_default().insert(location);
             let move_paths = &self.move_data.move_paths;
 
             let root_path = &move_paths[mpi];
@@ -1980,6 +5699,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                     debug_assert!(!from_end, "Array constant indexing shouldn't be `from_end`.");
 
                     if (from..to).contains(offset) {
+                        // self.locals_checked_for_initialization.entry(child_mpi).or_default().insert(location);
                         let uninit_child =
                             self.move_data.find_in_move_path_or_its_descendants(child_mpi, |mpi| {
                                 maybe_uninits.contains(mpi)
@@ -2057,6 +5777,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
             let uninit_mpi = self
                 .move_data
                 .find_in_move_path_or_its_descendants(mpi, |mpi| maybe_uninits.contains(mpi));
+
+            // self.locals_checked_for_initialization.entry(mpi).or_default().insert(location);
 
             if let Some(uninit_mpi) = uninit_mpi {
                 self.report_use_of_moved_or_uninitialized(
@@ -2214,6 +5936,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
             let mut shortest_uninit_seen = None;
             for prefix in this.prefixes(base, PrefixSet::Shallow) {
                 let Some(mpi) = this.move_path_for_place(prefix) else { continue };
+                // this.locals_checked_for_initialization.entry(mpi).or_default().insert(location);
 
                 if maybe_uninits.contains(mpi) {
                     debug!(
@@ -2290,7 +6013,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                 };
                 match self.is_mutable(place.as_ref(), is_local_mutation_allowed) {
                     Ok(root_place) => {
-                        self.add_used_mut(root_place, state);
+                        self.add_used_mut(root_place, state, location);
                         return false;
                     }
                     Err(place_err) => {
@@ -2302,7 +6025,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
             Reservation(WriteKind::Mutate) | Write(WriteKind::Mutate) => {
                 match self.is_mutable(place.as_ref(), is_local_mutation_allowed) {
                     Ok(root_place) => {
-                        self.add_used_mut(root_place, state);
+                        self.add_used_mut(root_place, state, location);
                         return false;
                     }
                     Err(place_err) => {
@@ -2360,6 +6083,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
         // partial initialization, do not complain about mutability
         // errors except for actual mutation (as opposed to an attempt
         // to do a partial initialization).
+        // self.locals_checked_for_initialization.entry(place.local).or_default().insert(location);
         let previously_initialized = self.is_local_ever_initialized(place.local, state);
 
         // at this point, we have set up the error reporting state.
@@ -2386,12 +6110,27 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
     }
 
     /// Adds the place into the used mutable variables set
-    fn add_used_mut(&mut self, root_place: RootPlace<'tcx>, state: &BorrowckDomain) {
+    fn add_used_mut(
+        &mut self,
+        root_place: RootPlace<'tcx>,
+        state: &BorrowckDomain,
+        _location: Location,
+    ) {
         match root_place {
             RootPlace { place_local: local, place_projection: [], is_local_mutation_allowed } => {
                 // If the local may have been initialized, and it is now currently being
                 // mutated, then it is justified to be annotated with the `mut`
                 // keyword, since the mutation may be a possible reassignment.
+
+                // FIXME: C'est pas super important ce use case de unused mut, on pourrait l'ignorer
+                // ou le faire différemment.
+                // if is_local_mutation_allowed != LocalMutationIsAllowed::Yes {
+                //     self.locals_checked_for_initialization
+                //         .entry(local)
+                //         .or_default()
+                //         .insert(_location);
+                // }
+
                 if is_local_mutation_allowed != LocalMutationIsAllowed::Yes
                     && self.is_local_ever_initialized(local, state).is_some()
                 {

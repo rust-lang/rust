@@ -85,7 +85,7 @@ impl Annotation for () {
 pub struct Sccs<N: Idx, S: Idx> {
     /// For each node, what is the SCC index of the SCC to which it
     /// belongs.
-    scc_indices: IndexVec<N, S>,
+    pub scc_indices: IndexVec<N, S>,
 
     /// Data about all the SCCs.
     scc_data: SccData<S>,
