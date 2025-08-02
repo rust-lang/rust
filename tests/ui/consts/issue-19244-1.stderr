@@ -3,6 +3,8 @@ error[E0609]: no field `1` on type `(usize,)`
    |
 LL |     let a: [isize; TUP.1];
    |                        ^ unknown field
+   |
+   = note: available field is: `0`
 
 error: aborting due to 1 previous error
 

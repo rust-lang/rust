@@ -12,6 +12,8 @@ error[E0609]: no field `dummy` on type `&(A, B)`
    |
 LL |     fn get(&self) -> usize { self.dummy }
    |                                   ^^^^^ unknown field
+   |
+   = note: available fields are: `0`, `1`
 
 error: aborting due to 2 previous errors
 
