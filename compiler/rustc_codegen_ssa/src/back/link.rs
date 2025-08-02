@@ -1011,11 +1011,12 @@ fn link_natively(
             (Strip::Debuginfo, _) => {
                 strip_with_external_utility(sess, stripcmd, out_filename, &["--strip-debug"])
             }
-            // Per the manpage, `-x` is the maximum safe strip level for dynamic libraries. (#93988)
+
+            // Per the manpage, --discard-all is the maximum safe strip level for dynamic libraries. (#93988)
             (
                 Strip::Symbols,
                 CrateType::Dylib | CrateType::Cdylib | CrateType::ProcMacro | CrateType::Sdylib,
-            ) => strip_with_external_utility(sess, stripcmd, out_filename, &["-x"]),
+            ) => strip_with_external_utility(sess, stripcmd, out_filename, &["--discard-all"]),
             (Strip::Symbols, _) => {
                 strip_with_external_utility(sess, stripcmd, out_filename, &["--strip-all"])
             }
