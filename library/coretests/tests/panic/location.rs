@@ -59,7 +59,7 @@ fn location_file_lifetime<'x>() {
 fn location_debug() {
     let f = format!("{:?}", Location::caller());
     assert!(f.contains(&format!("{:?}", file!())));
-    assert!(f.contains("52"));
+    assert!(f.contains("60"));
     assert!(f.contains("29"));
 }
 
