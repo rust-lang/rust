@@ -1,6 +1,5 @@
 use rustc_abi::VariantIdx;
 use rustc_middle::mir::{self, Body, Location, Terminator, TerminatorKind};
-use smallvec::SmallVec;
 use tracing::debug;
 
 use super::move_paths::{InitKind, LookupResult, MoveData, MovePathIndex};
@@ -157,15 +156,17 @@ where
 
 /// Indicates which variants are inactive at a `SwitchInt` edge by listing their `VariantIdx`s or
 /// specifying the single active variant's `VariantIdx`.
-pub(crate) enum InactiveVariants {
-    Inactives(SmallVec<[VariantIdx; 4]>),
+pub(crate) enum InactiveVariants<'a> {
+    Inactives(&'a [(VariantIdx, mir::BasicBlock)]),
     Active(VariantIdx),
 }
 
-impl InactiveVariants {
+impl InactiveVariants<'_> {
     fn contains(&self, variant_idx: VariantIdx) -> bool {
         match self {
-            InactiveVariants::Inactives(inactives) => inactives.contains(&variant_idx),
+            InactiveVariants::Inactives(inactives) => {
+                inactives.iter().any(|(idx, _)| *idx == variant_idx)
+            }
             InactiveVariants::Active(active) => variant_idx != *active,
         }
     }
@@ -176,7 +177,7 @@ impl InactiveVariants {
 pub(crate) fn on_all_inactive_variants<'tcx>(
     move_data: &MoveData<'tcx>,
     enum_place: mir::Place<'tcx>,
-    inactive_variants: &InactiveVariants,
+    inactive_variants: &InactiveVariants<'_>,
     mut handle_inactive_variant: impl FnMut(MovePathIndex),
 ) {
     let LookupResult::Exact(enum_mpi) = move_data.rev_lookup.find(enum_place.as_ref()) else {
