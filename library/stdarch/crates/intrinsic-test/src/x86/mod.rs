@@ -1,3 +1,4 @@
+mod constraint;
 mod intrinsic;
 mod types;
 mod xml_parser;
