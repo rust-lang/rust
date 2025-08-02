@@ -762,6 +762,15 @@ fn check_item<'tcx>(
             {
                 worklist.push((id.owner_id.def_id, comes_from_allow));
             } else if of_trait {
+                if let Some(trait_def_id) = tcx
+                    .impl_trait_ref(id.owner_id.def_id)
+                    .and_then(|trait_ref| trait_ref.skip_binder().def_id.as_local())
+                    && let Some(comes_from_allow) =
+                        has_allow_dead_code_or_lang_attr(tcx, trait_def_id)
+                {
+                    worklist.push((id.owner_id.def_id, comes_from_allow));
+                }
+
                 unsolved_items.push((id, id.owner_id.def_id));
             }
 
@@ -772,6 +781,14 @@ fn check_item<'tcx>(
                 {
                     worklist.push((local_def_id, comes_from_allow));
                 } else if of_trait {
+                    if let Some(trait_item_def_id) = tcx.associated_item(def_id).trait_item_def_id
+                        && let Some(trait_item_local_def_id) = trait_item_def_id.as_local()
+                        && let Some(comes_from_allow) =
+                            has_allow_dead_code_or_lang_attr(tcx, trait_item_local_def_id)
+                    {
+                        worklist.push((local_def_id, comes_from_allow));
+                    }
+
                     // We only care about associated items of traits,
                     // because they cannot be visited directly,
                     // so we later mark them as live if their corresponding traits
@@ -804,6 +821,13 @@ fn check_item<'tcx>(
                 worklist.push((id.owner_id.def_id, ComesFromAllowExpect::No));
             }
         }
+        DefKind::Trait => {
+            if let Some(comes_from_allow) =
+                has_allow_dead_code_or_lang_attr(tcx, id.owner_id.def_id)
+            {
+                worklist.push((id.owner_id.def_id, comes_from_allow));
+            }
+        }
         _ => {}
     }
 }
@@ -813,14 +837,9 @@ fn check_trait_item(
     worklist: &mut Vec<(LocalDefId, ComesFromAllowExpect)>,
     id: hir::TraitItemId,
 ) {
-    use hir::TraitItemKind::{Const, Fn, Type};
-
-    let trait_item = tcx.hir_trait_item(id);
-    if matches!(trait_item.kind, Const(_, Some(_)) | Type(_, Some(_)) | Fn(..))
-        && let Some(comes_from_allow) =
-            has_allow_dead_code_or_lang_attr(tcx, trait_item.owner_id.def_id)
-    {
-        worklist.push((trait_item.owner_id.def_id, comes_from_allow));
+    let trait_item_id = tcx.hir_trait_item(id).owner_id.def_id;
+    if let Some(comes_from_allow) = has_allow_dead_code_or_lang_attr(tcx, trait_item_id) {
+        worklist.push((trait_item_id, comes_from_allow));
     }
 }
 
