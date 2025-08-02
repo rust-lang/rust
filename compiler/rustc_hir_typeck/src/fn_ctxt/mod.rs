@@ -9,6 +9,7 @@ use std::cell::{Cell, RefCell};
 use std::ops::Deref;
 
 use hir::def_id::CRATE_DEF_ID;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::DiagCtxtHandle;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{self as hir, HirId, ItemLocalMap};
@@ -16,7 +17,7 @@ use rustc_hir_analysis::hir_ty_lowering::{
     HirTyLowerer, InherentAssocCandidate, RegionInferReason,
 };
 use rustc_infer::infer::{self, RegionVariableOrigin};
-use rustc_infer::traits::{DynCompatibilityViolation, Obligation};
+use rustc_infer::traits::{DynCompatibilityViolation, Obligation, ObligationCauseCodeHandle};
 use rustc_middle::ty::{self, Const, Ty, TyCtxt, TypeVisitableExt};
 use rustc_session::Session;
 use rustc_span::{self, DUMMY_SP, ErrorGuaranteed, Ident, Span, sym};
@@ -126,6 +127,8 @@ pub(crate) struct FnCtxt<'a, 'tcx> {
     /// These are stored here so we may collect them when canonicalizing user
     /// type ascriptions later.
     pub(super) trait_ascriptions: RefCell<ItemLocalMap<Vec<ty::Clause<'tcx>>>>,
+
+    error_causes: RefCell<FxHashMap<LocalDefId, FxHashSet<ObligationCauseCodeHandle<'tcx>>>>,
 }
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
@@ -154,6 +157,27 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             diverging_fallback_behavior,
             diverging_block_behavior,
             trait_ascriptions: Default::default(),
+            error_causes: Default::default(),
+        }
+    }
+
+    pub(crate) fn add_error(&self, error: &ObligationCause<'tcx>) -> bool {
+        let mut error_causes = self.error_causes.borrow_mut();
+        let body_id = &error.body_id;
+        let code = error.code_handle();
+
+        if let Some(s) = error_causes.get_mut(body_id) {
+            if s.contains(code) {
+                true
+            } else {
+                s.insert(code.clone());
+                false
+            }
+        } else {
+            let mut s = FxHashSet::default();
+            s.insert(code.clone());
+            error_causes.insert(body_id.clone(), s);
+            false
         }
     }
 
