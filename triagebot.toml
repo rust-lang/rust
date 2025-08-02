@@ -1291,6 +1291,8 @@ cc = ["@m-ou-se"]
 [mentions."compiler/rustc_ast_lowering/src/format.rs"]
 cc = ["@m-ou-se"]
 
+[mentions."src/tools/relnotes-api-list"]
+cc = ["@pietroalbini"]
 
 # ------------------------------------------------------------------------------
 # PR assignments

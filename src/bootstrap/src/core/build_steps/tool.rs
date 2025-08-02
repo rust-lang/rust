@@ -568,6 +568,7 @@ bootstrap_tool!(
     FeaturesStatusDump, "src/tools/features-status-dump", "features-status-dump";
     OptimizedDist, "src/tools/opt-dist", "opt-dist", submodules = &["src/tools/rustc-perf"];
     RunMakeSupport, "src/tools/run-make-support", "run_make_support", artifact_kind = ToolArtifactKind::Library;
+    RelnotesApiList, "src/tools/relnotes-api-list", "relnotes-api-list";
 );
 
 /// These are the submodules that are required for rustbook to work due to

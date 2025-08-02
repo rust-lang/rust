@@ -986,7 +986,8 @@ impl<'a> Builder<'a> {
                 tool::LlvmBitcodeLinker,
                 tool::RustcPerf,
                 tool::WasmComponentLd,
-                tool::LldWrapper
+                tool::LldWrapper,
+                tool::RelnotesApiList,
             ),
             Kind::Clippy => describe!(
                 clippy::Std,
@@ -1163,7 +1164,8 @@ impl<'a> Builder<'a> {
                 dist::PlainSourceTarball,
                 dist::BuildManifest,
                 dist::ReproducibleArtifacts,
-                dist::Gcc
+                dist::Gcc,
+                dist::RelnotesApiList,
             ),
             Kind::Install => describe!(
                 install::Docs,
