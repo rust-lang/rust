@@ -726,7 +726,9 @@ config_data! {
         /// ```bash
         /// cargo check --quiet --workspace --message-format=json --all-targets --keep-going
         /// ```
-        /// .
+        ///
+        /// Note: The option must be specified as an array of command line arguments, with
+        /// the first argument being the name of the command to run.
         cargo_buildScripts_overrideCommand: Option<Vec<String>> = None,
         /// Rerun proc-macros building/build-scripts running when proc-macro
         /// or build-script sources change and are saved.
@@ -840,7 +842,9 @@ config_data! {
         /// ```bash
         /// cargo check --workspace --message-format=json --all-targets
         /// ```
-        /// .
+        ///
+        /// Note: The option must be specified as an array of command line arguments, with
+        /// the first argument being the name of the command to run.
         check_overrideCommand | checkOnSave_overrideCommand: Option<Vec<String>>             = None,
         /// Check for specific targets. Defaults to `#rust-analyzer.cargo.target#` if empty.
         ///
@@ -890,6 +894,9 @@ config_data! {
         /// not that of `cargo fmt`. The file contents will be passed on the
         /// standard input and the formatted result will be read from the
         /// standard output.
+        ///
+        /// Note: The option must be specified as an array of command line arguments, with
+        /// the first argument being the name of the command to run.
         rustfmt_overrideCommand: Option<Vec<String>> = None,
         /// Enables the use of rustfmt's unstable range formatting command for the
         /// `textDocument/rangeFormatting` request. The rustfmt option is unstable and only
