@@ -98,7 +98,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             }
 
             let expr_hir_id = self.lower_node_id(e.id);
-            self.lower_attrs(expr_hir_id, &e.attrs, e.span);
+            let attrs = self.lower_attrs(expr_hir_id, &e.attrs, e.span);
 
             let kind = match &e.kind {
                 ExprKind::Array(exprs) => hir::ExprKind::Array(self.lower_exprs(exprs)),
@@ -232,10 +232,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         *fn_arg_span,
                     ),
                     None => self.lower_expr_closure(
+                        attrs,
                         binder,
                         *capture_clause,
                         e.id,
-                        expr_hir_id,
                         *constness,
                         *movability,
                         fn_decl,
@@ -1052,10 +1052,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     fn lower_expr_closure(
         &mut self,
+        attrs: &[rustc_hir::Attribute],
         binder: &ClosureBinder,
         capture_clause: CaptureBy,
         closure_id: NodeId,
-        closure_hir_id: hir::HirId,
         constness: Const,
         movability: Movability,
         decl: &FnDecl,
@@ -1067,15 +1067,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let (binder_clause, generic_params) = self.lower_closure_binder(binder);
 
         let (body_id, closure_kind) = self.with_new_scopes(fn_decl_span, move |this| {
-            let mut coroutine_kind = if this
-                .attrs
-                .get(&closure_hir_id.local_id)
-                .is_some_and(|attrs| attrs.iter().any(|attr| attr.has_name(sym::coroutine)))
-            {
-                Some(hir::CoroutineKind::Coroutine(Movability::Movable))
-            } else {
-                None
-            };
+
+            let mut coroutine_kind = find_attr!(attrs, AttributeKind::Coroutine(_) => hir::CoroutineKind::Coroutine(Movability::Movable));
+
             // FIXME(contracts): Support contracts on closures?
             let body_id = this.lower_fn_body(decl, None, |this| {
                 this.coroutine_kind = coroutine_kind;
