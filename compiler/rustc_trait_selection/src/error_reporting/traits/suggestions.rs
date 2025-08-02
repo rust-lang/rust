@@ -3942,7 +3942,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             if let hir::Expr { kind: hir::ExprKind::MethodCall(_, rcvr, _, _), .. } = expr
                 && let Some(ty) = typeck_results.node_type_opt(rcvr.hir_id)
                 && let Some(failed_pred) = failed_pred.as_trait_clause()
-                && let pred = failed_pred.map_bound(|pred| pred.with_self_ty(tcx, ty))
+                && let pred = failed_pred.map_bound(|pred| pred.with_replaced_self_ty(tcx, ty))
                 && self.predicate_must_hold_modulo_regions(&Obligation::misc(
                     tcx, expr.span, body_id, param_env, pred,
                 ))
@@ -4624,9 +4624,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         let Some(root_pred) = root_obligation.predicate.as_trait_clause() else { return };
 
         let trait_ref = root_pred.map_bound(|root_pred| {
-            root_pred
-                .trait_ref
-                .with_self_ty(self.tcx, Ty::new_tup(self.tcx, &[root_pred.trait_ref.self_ty()]))
+            root_pred.trait_ref.with_replaced_self_ty(
+                self.tcx,
+                Ty::new_tup(self.tcx, &[root_pred.trait_ref.self_ty()]),
+            )
         });
 
         let obligation =

@@ -33,8 +33,8 @@ where
         self.trait_ref
     }
 
-    fn with_self_ty(self, cx: I, self_ty: I::Ty) -> Self {
-        self.with_self_ty(cx, self_ty)
+    fn with_replaced_self_ty(self, cx: I, self_ty: I::Ty) -> Self {
+        self.with_replaced_self_ty(cx, self_ty)
     }
 
     fn trait_def_id(self, _: I) -> I::DefId {
@@ -1263,7 +1263,9 @@ where
             let goals =
                 ecx.enter_forall(constituent_tys(ecx, goal.predicate.self_ty())?, |ecx, tys| {
                     tys.into_iter()
-                        .map(|ty| goal.with(ecx.cx(), goal.predicate.with_self_ty(ecx.cx(), ty)))
+                        .map(|ty| {
+                            goal.with(ecx.cx(), goal.predicate.with_replaced_self_ty(ecx.cx(), ty))
+                        })
                         .collect::<Vec<_>>()
                 });
             ecx.add_goals(GoalSource::ImplWhereBound, goals);

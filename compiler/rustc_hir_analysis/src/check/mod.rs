@@ -493,7 +493,7 @@ fn suggestion_signature<'tcx>(
     let args = ty::GenericArgs::identity_for_item(tcx, assoc.def_id).rebase_onto(
         tcx,
         assoc.container_id(tcx),
-        impl_trait_ref.with_self_ty(tcx, tcx.types.self_param).args,
+        impl_trait_ref.with_replaced_self_ty(tcx, tcx.types.self_param).args,
     );
 
     match assoc.kind {

@@ -167,7 +167,7 @@ impl<'tcx> TypeckRootCtxt<'tcx> {
                 obligation.predicate.kind().rebind(
                     // (*) binder moved here
                     ty::PredicateKind::Clause(ty::ClauseKind::Trait(
-                        tpred.with_self_ty(self.tcx, new_self_ty),
+                        tpred.with_replaced_self_ty(self.tcx, new_self_ty),
                     )),
                 ),
             );

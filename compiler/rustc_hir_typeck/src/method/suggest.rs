@@ -1053,8 +1053,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         let pred = bound_predicate.rebind(pred);
                         // `<Foo as Iterator>::Item = String`.
                         let projection_term = pred.skip_binder().projection_term;
-                        let quiet_projection_term =
-                            projection_term.with_self_ty(tcx, Ty::new_var(tcx, ty::TyVid::ZERO));
+                        let quiet_projection_term = projection_term
+                            .with_replaced_self_ty(tcx, Ty::new_var(tcx, ty::TyVid::ZERO));
 
                         let term = pred.skip_binder().term;
 
@@ -2157,7 +2157,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     self.tcx,
                                     self.fresh_args_for_item(sugg_span, impl_did),
                                 )
-                                .with_self_ty(self.tcx, rcvr_ty),
+                                .with_replaced_self_ty(self.tcx, rcvr_ty),
                             idx,
                             sugg_span,
                             item,
@@ -2196,7 +2196,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 trait_did,
                                 self.fresh_args_for_item(sugg_span, trait_did),
                             )
-                            .with_self_ty(self.tcx, rcvr_ty),
+                            .with_replaced_self_ty(self.tcx, rcvr_ty),
                             idx,
                             sugg_span,
                             item,

@@ -475,7 +475,7 @@ impl<I: Interner> AliasTy<I> {
         self.args.type_at(0)
     }
 
-    pub fn with_self_ty(self, interner: I, self_ty: I::Ty) -> Self {
+    pub fn with_replaced_self_ty(self, interner: I, self_ty: I::Ty) -> Self {
         AliasTy::new(
             interner,
             self.def_id,
