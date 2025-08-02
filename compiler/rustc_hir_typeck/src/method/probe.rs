@@ -2373,17 +2373,14 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                         if !self.is_relevant_kind_for_mode(x.kind) {
                             return false;
                         }
-                        if self.matches_by_doc_alias(x.def_id) {
-                            return true;
-                        }
-                        match edit_distance_with_substrings(
+                        if let Some(d) = edit_distance_with_substrings(
                             name.as_str(),
                             x.name().as_str(),
                             max_dist,
                         ) {
-                            Some(d) => d > 0,
-                            None => false,
+                            return d > 0;
                         }
+                        self.matches_by_doc_alias(x.def_id)
                     })
                     .copied()
                     .collect()
