@@ -13,13 +13,13 @@
 
 use std::ptr::NonNull;
 
-// CHECK-LABEL: ; core::ptr::non_null::NonNull<T>::new_unchecked
+// CHECK-LABEL: ; <core::ptr::non_null::NonNull<u8>>::new_unchecked
 // CHECK-NOT: call
 // CHECK: }
 
 // CHECK-LABEL: @nonnull_new
 #[no_mangle]
 pub unsafe fn nonnull_new(ptr: *mut u8) -> NonNull<u8> {
-    // CHECK: ; call core::ptr::non_null::NonNull<T>::new_unchecked
+    // CHECK: ; call <core::ptr::non_null::NonNull<u8>>::new_unchecked
     unsafe { NonNull::new_unchecked(ptr) }
 }
