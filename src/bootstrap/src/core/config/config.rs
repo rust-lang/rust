@@ -337,46 +337,8 @@ impl Config {
         span!(target: "CONFIG_HANDLING", tracing::Level::TRACE, "constructing default config");
 
         Config {
-            bypass_bootstrap_lock: false,
-            llvm_optimize: true,
-            ninja_in_file: true,
-            llvm_static_stdcpp: false,
-            llvm_libzstd: false,
-            backtrace: true,
-            rust_optimize: RustOptimize::Bool(true),
-            rust_optimize_tests: true,
-            rust_randomize_layout: false,
-            submodules: None,
-            docs: true,
-            docs_minification: true,
-            rust_rpath: true,
-            rust_strip: false,
-            channel: "dev".to_string(),
-            codegen_tests: true,
-            rust_dist_src: true,
-            rust_codegen_backends: vec![CodegenBackendKind::Llvm],
-            deny_warnings: true,
-            bindir: "bin".into(),
-            dist_include_mingw_linker: true,
-            dist_compression_profile: "fast".into(),
-
             stdout_is_tty: std::io::stdout().is_terminal(),
             stderr_is_tty: std::io::stderr().is_terminal(),
-
-            // set by build.rs
-            host_target: get_host_target(),
-
-            src: {
-                let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-                // Undo `src/bootstrap`
-                manifest_dir.parent().unwrap().parent().unwrap().to_owned()
-            },
-            out: PathBuf::from("build"),
-
-            // This is needed by codegen_ssa on macOS to ship `llvm-objcopy` aliased to
-            // `rust-objcopy` to workaround bad `strip`s on macOS.
-            llvm_tools_enabled: true,
-
             ..Default::default()
         }
     }
@@ -464,6 +426,7 @@ impl Config {
         );
 
         let mut out = PathBuf::from("build");
+        // set by build.rs
         let mut host_target = get_host_target();
         let initial_rustc;
         let initial_sysroot;
@@ -521,8 +484,7 @@ impl Config {
 
         // First initialize the bare minimum that we need for further operation - source directory
         // and execution context.
-        let mut config = Config::default_opts();
-        let exec_ctx = ExecutionContext::new(flags_verbose, flags_cmd.fail_fast());
+        let mut exec_ctx = ExecutionContext::new(flags_verbose, flags_cmd.fail_fast());
 
         if let Some(src_) = compute_src_directory(flags_src, &exec_ctx) {
             src = src_;
@@ -530,9 +492,8 @@ impl Config {
 
         // Now load the TOML config, as soon as possible
         let (mut toml, toml_path) = load_toml_config(&src, flags_config, &get_toml);
-        config.config = toml_path.clone();
 
-        postprocess_toml(&mut toml, &src, toml_path, &exec_ctx, &flags_set, &get_toml);
+        postprocess_toml(&mut toml, &src, toml_path.clone(), &exec_ctx, &flags_set, &get_toml);
 
         // Now override TOML values with flags, to make sure that we won't later override flags with
         // TOML values by accident instead, because flags have higher priority.
@@ -748,8 +709,7 @@ impl Config {
 
         // Prefer CLI verbosity flags if set (`flags_verbose` > 0), otherwise take the value from
         // TOML.
-        config
-            .exec_ctx
+        exec_ctx
             .set_verbosity(cmp::max(build_verbose_toml.unwrap_or_default() as u8, flags_verbose));
 
         let mut paths: Vec<PathBuf> = flags_skip.into_iter().chain(flags_exclude).collect();
@@ -914,7 +874,7 @@ impl Config {
             command(&initial_rustc)
                 .args(["--print", "sysroot"])
                 .run_in_dry_run()
-                .run_capture_stdout(&config)
+                .run_capture_stdout(&exec_ctx)
                 .stdout()
                 .trim()
         ));
@@ -1136,13 +1096,6 @@ impl Config {
             _ => {}
         }
 
-        if config.compile_time_deps && !matches!(cmd, Subcommand::Check { .. }) {
-            eprintln!(
-                "WARNING: Can't use --compile-time-deps with any subcommand other than check."
-            );
-            exit!(1);
-        }
-
         // CI should always run stage 2 builds, unless it specifically states otherwise
         #[cfg(not(test))]
         if flags_stage.is_none() && is_running_on_ci {
@@ -1172,12 +1125,23 @@ impl Config {
             }
         }
 
+        let mut config = Config::default_opts();
+        config.config = toml_path.clone();
+
         // Flag-based core settings
         config.paths = flags_paths;
         config.include_default_paths = flags_include_default_paths;
         config.rustc_error_format = flags_rustc_error_format;
         config.json_output = flags_json_output;
         config.compile_time_deps = flags_compile_time_deps;
+
+        if config.compile_time_deps && !matches!(cmd, Subcommand::Check { .. }) {
+            eprintln!(
+                "WARNING: Can't use --compile-time-deps with any subcommand other than check."
+            );
+            exit!(1);
+        }
+
         config.on_fail = flags_on_fail;
         config.incremental = flags_incremental;
         config.dump_bootstrap_shims = flags_dump_bootstrap_shims;
