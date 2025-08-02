@@ -31,9 +31,7 @@ pub(crate) fn check<'a>(cx: &LateContext<'a>, ex: &Expr<'a>, arms: &[Arm<'_>], e
     let match_body = peel_blocks(arms[0].body);
     let mut app = Applicability::MaybeIncorrect;
     let ctxt = expr.span.ctxt();
-    let mut snippet_body = snippet_block_with_context(cx, match_body.span, ctxt, "..", Some(expr.span), &mut app)
-        .0
-        .to_string();
+    let mut snippet_body = snippet_block_with_context(cx, match_body.span, ctxt, "..", Some(expr.span), &mut app).0;
 
     // Do we need to add ';' to suggestion ?
     if let Node::Stmt(stmt) = cx.tcx.parent_hir_node(expr.hir_id)

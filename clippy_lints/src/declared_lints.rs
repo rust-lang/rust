@@ -690,7 +690,6 @@ pub static LINTS: &[&::declare_clippy_lint::LintInfo] = &[
     crate::strings::STRING_FROM_UTF8_AS_BYTES_INFO,
     crate::strings::STRING_LIT_AS_BYTES_INFO,
     crate::strings::STRING_SLICE_INFO,
-    crate::strings::STRING_TO_STRING_INFO,
     crate::strings::STR_TO_STRING_INFO,
     crate::strings::TRIM_SPLIT_WHITESPACE_INFO,
     crate::strlen_on_c_strings::STRLEN_ON_C_STRINGS_INFO,

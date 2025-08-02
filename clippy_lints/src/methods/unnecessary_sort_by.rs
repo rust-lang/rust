@@ -216,7 +216,7 @@ pub(super) fn check<'tcx>(
                 {
                     format!("{}::cmp::Reverse({})", std_or_core, trigger.closure_body)
                 } else {
-                    trigger.closure_body.to_string()
+                    trigger.closure_body
                 },
             ),
             if trigger.reverse {
