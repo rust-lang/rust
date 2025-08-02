@@ -193,6 +193,13 @@ impl<T: Sized> NonNull<T> {
         // requirements for a reference.
         unsafe { &mut *self.cast().as_ptr() }
     }
+
+    /// Casts from a pointer-to-`T` to a pointer-to-`[T; N]`.
+    #[inline]
+    #[unstable(feature = "ptr_cast_array", issue = "144514")]
+    pub const fn cast_array<const N: usize>(self) -> NonNull<[T; N]> {
+        self.cast()
+    }
 }
 
 impl<T: PointeeSized> NonNull<T> {
