@@ -718,110 +718,78 @@ fn has_allow_dead_code_or_lang_attr(
     }
 }
 
-// These check_* functions seeds items that
-//   1) We want to explicitly consider as live:
-//     * Item annotated with #[allow(dead_code)]
-//         - This is done so that if we want to suppress warnings for a
-//           group of dead functions, we only have to annotate the "root".
-//           For example, if both `f` and `g` are dead and `f` calls `g`,
-//           then annotating `f` with `#[allow(dead_code)]` will suppress
-//           warning for both `f` and `g`.
-//     * Item annotated with #[lang=".."]
-//         - This is because lang items are always callable from elsewhere.
-//   or
-//   2) We are not sure to be live or not
-//     * Implementations of traits and trait methods
-fn check_item<'tcx>(
+/// Examine the given definition and record it in the worklist if it should be considered live.
+///
+/// We want to explicitly consider as live:
+/// * Item annotated with #[allow(dead_code)]
+///       This is done so that if we want to suppress warnings for a
+///       group of dead functions, we only have to annotate the "root".
+///       For example, if both `f` and `g` are dead and `f` calls `g`,
+///       then annotating `f` with `#[allow(dead_code)]` will suppress
+///       warning for both `f` and `g`.
+///
+/// * Item annotated with #[lang=".."]
+///       Lang items are always callable from elsewhere.
+///
+/// For trait methods and implementations of traits, we are not certain that the definitions are
+/// live at this stage. We record them in `unsolved_items` for later examination.
+fn maybe_record_as_seed<'tcx>(
     tcx: TyCtxt<'tcx>,
+    owner_id: hir::OwnerId,
     worklist: &mut Vec<(LocalDefId, ComesFromAllowExpect)>,
     unsolved_items: &mut Vec<LocalDefId>,
-    id: hir::ItemId,
 ) {
-    let allow_dead_code = has_allow_dead_code_or_lang_attr(tcx, id.owner_id.def_id);
+    let allow_dead_code = has_allow_dead_code_or_lang_attr(tcx, owner_id.def_id);
     if let Some(comes_from_allow) = allow_dead_code {
-        worklist.push((id.owner_id.def_id, comes_from_allow));
+        worklist.push((owner_id.def_id, comes_from_allow));
     }
 
-    match tcx.def_kind(id.owner_id) {
+    match tcx.def_kind(owner_id) {
         DefKind::Enum => {
-            let item = tcx.hir_item(id);
-            if let hir::ItemKind::Enum(_, _, ref enum_def) = item.kind {
-                if let Some(comes_from_allow) = allow_dead_code {
-                    worklist.extend(
-                        enum_def.variants.iter().map(|variant| (variant.def_id, comes_from_allow)),
-                    );
+            let adt = tcx.adt_def(owner_id);
+            if let Some(comes_from_allow) = allow_dead_code {
+                worklist.extend(
+                    adt.variants()
+                        .iter()
+                        .map(|variant| (variant.def_id.expect_local(), comes_from_allow)),
+                );
+            }
+        }
+        DefKind::AssocFn | DefKind::AssocConst | DefKind::AssocTy => {
+            if allow_dead_code.is_none() {
+                let parent = tcx.local_parent(owner_id.def_id);
+                match tcx.def_kind(parent) {
+                    DefKind::Impl { of_trait: false } | DefKind::Trait => {}
+                    DefKind::Impl { of_trait: true } => {
+                        // We only care about associated items of traits,
+                        // because they cannot be visited directly,
+                        // so we later mark them as live if their corresponding traits
+                        // or trait items and self types are both live,
+                        // but inherent associated items can be visited and marked directly.
+                        unsolved_items.push(owner_id.def_id);
+                    }
+                    _ => bug!(),
                 }
             }
         }
         DefKind::Impl { of_trait } => {
-            if let Some(comes_from_allow) =
-                has_allow_dead_code_or_lang_attr(tcx, id.owner_id.def_id)
-            {
-                worklist.push((id.owner_id.def_id, comes_from_allow));
-            } else if of_trait {
-                unsolved_items.push(id.owner_id.def_id);
-            }
-
-            for def_id in tcx.associated_item_def_ids(id.owner_id) {
-                let local_def_id = def_id.expect_local();
-
-                if let Some(comes_from_allow) = has_allow_dead_code_or_lang_attr(tcx, local_def_id)
-                {
-                    worklist.push((local_def_id, comes_from_allow));
-                } else if of_trait {
-                    // We only care about associated items of traits,
-                    // because they cannot be visited directly,
-                    // so we later mark them as live if their corresponding traits
-                    // or trait items and self types are both live,
-                    // but inherent associated items can be visited and marked directly.
-                    unsolved_items.push(local_def_id);
-                }
+            if allow_dead_code.is_none() && of_trait {
+                unsolved_items.push(owner_id.def_id);
             }
         }
         DefKind::GlobalAsm => {
             // global_asm! is always live.
-            worklist.push((id.owner_id.def_id, ComesFromAllowExpect::No));
+            worklist.push((owner_id.def_id, ComesFromAllowExpect::No));
         }
         DefKind::Const => {
-            let item = tcx.hir_item(id);
-            if let hir::ItemKind::Const(ident, ..) = item.kind
-                && ident.name == kw::Underscore
-            {
+            if tcx.item_name(owner_id.def_id) == kw::Underscore {
                 // `const _` is always live, as that syntax only exists for the side effects
                 // of type checking and evaluating the constant expression, and marking them
                 // as dead code would defeat that purpose.
-                worklist.push((id.owner_id.def_id, ComesFromAllowExpect::No));
+                worklist.push((owner_id.def_id, ComesFromAllowExpect::No));
             }
         }
         _ => {}
-    }
-}
-
-fn check_trait_item(
-    tcx: TyCtxt<'_>,
-    worklist: &mut Vec<(LocalDefId, ComesFromAllowExpect)>,
-    id: hir::TraitItemId,
-) {
-    use hir::TraitItemKind::{Const, Fn, Type};
-
-    let trait_item = tcx.hir_trait_item(id);
-    if matches!(trait_item.kind, Const(_, Some(_)) | Type(_, Some(_)) | Fn(..))
-        && let Some(comes_from_allow) =
-            has_allow_dead_code_or_lang_attr(tcx, trait_item.owner_id.def_id)
-    {
-        worklist.push((trait_item.owner_id.def_id, comes_from_allow));
-    }
-}
-
-fn check_foreign_item(
-    tcx: TyCtxt<'_>,
-    worklist: &mut Vec<(LocalDefId, ComesFromAllowExpect)>,
-    id: hir::ForeignItemId,
-) {
-    if matches!(tcx.def_kind(id.owner_id), DefKind::Static { .. } | DefKind::Fn)
-        && let Some(comes_from_allow) = has_allow_dead_code_or_lang_attr(tcx, id.owner_id.def_id)
-    {
-        worklist.push((id.owner_id.def_id, comes_from_allow));
     }
 }
 
@@ -846,16 +814,8 @@ fn create_and_seed_worklist(
         .collect::<Vec<_>>();
 
     let crate_items = tcx.hir_crate_items(());
-    for id in crate_items.free_items() {
-        check_item(tcx, &mut worklist, &mut unsolved_impl_item, id);
-    }
-
-    for id in crate_items.trait_items() {
-        check_trait_item(tcx, &mut worklist, id);
-    }
-
-    for id in crate_items.foreign_items() {
-        check_foreign_item(tcx, &mut worklist, id);
+    for id in crate_items.owners() {
+        maybe_record_as_seed(tcx, id, &mut worklist, &mut unsolved_impl_item);
     }
 
     (worklist, unsolved_impl_item)
