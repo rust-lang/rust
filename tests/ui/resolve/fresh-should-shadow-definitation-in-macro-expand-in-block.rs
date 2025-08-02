@@ -4,12 +4,12 @@
 // issue#95237
 
 type FnF = i8;
-type LetF = i16;
+type BindingF = i16;
 
 fn b_without_definition_f() {
-    let f = || -> LetF { 42 };
+    let f = || -> BindingF { 42 };
     {
-        let a: LetF = m!();
+        let a: BindingF = m!();
     }
     macro_rules! m {() => ( f() )}
     use m;
@@ -24,244 +24,130 @@ fn b_without_closure_f() {
     use m;
 }
 
-fn b0() {
-    let f = || -> LetF { 42 };
-    fn f() -> FnF { 42 }
+fn f0() {
+    // let f -> macro m -> fn f
+
     {
-        let a: LetF = m!();
+        let a0: BindingF = m!();        // TODO: ERROR: defined later
+    }
+    let f = || -> BindingF { 42 };
+    {
+        let a1: BindingF = m!();
     }
     macro_rules! m {() => ( f() )}
     use m;
-}
-
-fn b1() {
-    let f = || -> LetF { 42 };
     {
-        let a: LetF = m!();
+        let a2: BindingF = m!();
     }
     fn f() -> FnF { 42 }
-    macro_rules! m {() => ( f() )}
-    use m;
-}
-
-fn b2() {
-    let f = || -> LetF { 42 };
     {
-        let a: LetF = m!();
-    }
-    macro_rules! m {() => ( f() )}
-    use m;
-    fn f() -> FnF { 42 }
-}
-
-fn b3() {
-    let f = || -> LetF { 42 };
-    macro_rules! m {() => ( f() )}
-    use m;
-    {
-        let a: LetF = m!();
-    }
-    fn f() -> FnF { 42 }
-}
-
-fn b4() {
-    let f = || -> LetF { 42 };
-    macro_rules! m {() => ( f() )}
-    use m;
-    fn f() -> FnF { 42 }
-    {
-        let a: LetF = m!();
+        let a3: BindingF = m!();
     }
 }
 
-fn b5() {
-    let f = || -> LetF { 42 };
+fn f1() {
+    // let f -> fn f -> macro m
+
+    {
+        let a0: BindingF = m!();        // TODO: ERROR: defined later
+    }
+    let f = || -> BindingF { 42 };
+    {
+        let a1: BindingF = m!();
+    }
     fn f() -> FnF { 42 }
+    {
+        let a2: BindingF = m!();
+    }
     macro_rules! m {() => ( f() )}
     use m;
     {
-        let a: LetF = m!();
+        let a3: BindingF = m!();
     }
 }
 
-fn b6() {
-    fn f() -> FnF { 42 }
-    let f = || -> LetF { 42 };
+fn f2() {
+    // fn f -> let f -> macro m
+
     {
-        let a: LetF = m!();
+        let a0: BindingF = m!();         // TODO: ERROR: defined later
+    }
+    fn f() -> FnF { 42 }
+    {
+        let a1: BindingF = m!();         // TODO: ERROR: defined later
+    }
+    let f = || -> BindingF { 42 };
+    {
+        let a2: BindingF = m!();
     }
     macro_rules! m {() => ( f() )}
     use m;
-}
-
-fn b7() {
-    fn f() -> FnF { 42 }
-    let f = || -> LetF { 42 };
-    macro_rules! m {() => ( f() )}
-    use m;
     {
-        let a: LetF = m!();
-    }
-}
-
-fn b8() {
-    fn f() -> FnF { 42 }
-    {
-        let a: FnF = m!();
-    }
-    let f = || -> LetF { 42 };
-    macro_rules! m {() => ( f() )}
-    use m;
-}
-
-fn b9() {
-    fn f() -> FnF { 42 }
-    {
-        let a: FnF = m!();
-    }
-    macro_rules! m {() => ( f() )}
-    use m;
-    let f = || -> LetF { 42 };
-}
-
-fn b10() {
-    fn f() -> FnF { 42 }
-    macro_rules! m {() => ( f() )}
-    use m;
-    {
-        let a: FnF = m!();
-    }
-    let f = || -> LetF { 42 };
-}
-
-fn b11() {
-    fn f() -> FnF { 42 }
-    macro_rules! m {() => ( f() )}
-    use m;
-    let f = || -> LetF { 42 };
-    {
-        let a: FnF = m!();
+        let a3: BindingF = m!();
     }
 }
 
-fn b12() {
+fn f3() {
+    // fn f -> macro m -> let f
+
     {
-        let a: FnF = m!();
+        let a0: FnF = m!();
     }
     fn f() -> FnF { 42 }
-    let f = || -> LetF { 42 };
-    macro_rules! m {() => ( f() )}
-    use m;
-}
-
-fn b13() {
     {
-        let a: FnF = m!();
-    }
-    let f = || -> LetF { 42 };
-    fn f() -> FnF { 42 }
-    macro_rules! m {() => ( f() )}
-    use m;
-}
-
-fn b14() {
-    {
-        let a: FnF = m!();
-    }
-    let f = || -> LetF { 42 };
-    macro_rules! m {() => ( f() )}
-    use m;
-    fn f() -> FnF { 42 }
-}
-
-fn b15() {
-    {
-        let a: FnF = m!();
+        let a1: FnF = m!();
     }
     macro_rules! m {() => ( f() )}
     use m;
-    let f = || -> LetF { 42 };
-    fn f() -> FnF { 42 }
-}
-
-fn b16() {
     {
-        let a: FnF = m!();
+        let a2: FnF = m!();
     }
-    macro_rules! m {() => ( f() )}
-    use m;
-    fn f() -> FnF { 42 }
-    let f = || -> LetF { 42 };
-}
-
-fn b17() {
+    let f = || -> BindingF { 42 };
     {
-        let a: FnF = m!();
-    }
-    fn f() -> FnF { 42 }
-    macro_rules! m {() => ( f() )}
-    use m;
-    let f = || -> LetF { 42 };
-}
-
-fn b18() {
-    macro_rules! m {() => ( f() )}
-    use m;
-    {
-        let a: FnF = m!();
-    }
-    fn f() -> FnF { 42 }
-    let f = || -> LetF { 42 };
-}
-
-fn b19() {
-    macro_rules! m {() => ( f() )}
-    use m;
-    fn f() -> FnF { 42 }
-    {
-        let a: FnF = m!();
-    }
-    let f = || -> LetF { 42 };
-}
-
-fn b20() {
-    macro_rules! m {() => ( f() )}
-    use m;
-    fn f() -> FnF { 42 }
-    let f = || -> LetF { 42 };
-    {
-        let a: FnF = m!();
+        let a3: FnF = m!();
     }
 }
 
-fn b21() {
+fn f4() {
+    // macro m -> fn f -> let f;
+
+    {
+        let a0: FnF = m!();
+    }
     macro_rules! m {() => ( f() )}
     use m;
     {
-        let a: FnF = m!();
+        let a1: FnF = m!();
     }
-    let f = || -> LetF { 42 };
     fn f() -> FnF { 42 }
+    {
+        let a2: FnF = m!();
+    }
+    let f = || -> BindingF { 42 };
+    {
+        let a3: FnF = m!();
+    }
 }
 
-fn b22() {
-    macro_rules! m {() => ( f() )}
-    use m;
-    let f = || -> LetF { 42 };
-    fn f() -> FnF { 42 }
-    {
-        let a: FnF = m!();
-    }
-}
+fn f5() {
+    // macro m -> let f -> fn f;
 
-fn b23() {
+    {
+        let a0: FnF = m!();
+    }
     macro_rules! m {() => ( f() )}
     use m;
-    let f = || -> LetF { 42 };
     {
-        let a: FnF = m!();
+        let a1: FnF = m!();
+    }
+    let f = || -> BindingF { 42 };
+    {
+        let a2: FnF = m!();
     }
     fn f() -> FnF { 42 }
+    {
+        let a3: FnF = m!();
+    }
 }
 
 fn main () {}
