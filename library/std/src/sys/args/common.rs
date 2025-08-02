@@ -12,7 +12,7 @@ impl !Sync for Args {}
 
 impl Args {
     #[inline]
-    pub(super) fn new(args: Vec<OsString>) -> Self {
+    pub fn new(args: Vec<OsString>) -> Self {
         Args { iter: args.into_iter() }
     }
 }
