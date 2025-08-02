@@ -9,8 +9,8 @@ use rustc_middle::mir::{self, BasicBlock, StatementKind};
 use rustc_middle::ty::TyCtxt;
 use rustc_span::Span;
 
-use crate::coverage::ExtractedHirInfo;
 use crate::coverage::graph::{BasicCoverageBlock, CoverageGraph, START_BCB};
+use crate::coverage::hir_info::ExtractedHirInfo;
 use crate::coverage::spans::extract_refined_covspans;
 use crate::coverage::unexpand::unexpand_into_body_span;
 use crate::errors::MCDCExceedsTestVectorLimit;
