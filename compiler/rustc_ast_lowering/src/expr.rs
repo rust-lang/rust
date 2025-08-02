@@ -94,6 +94,17 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ExprKind::ForLoop { pat, iter, body, label, kind } => {
                     return self.lower_expr_for(e, pat, iter, body, *label, *kind);
                 }
+                // Desugar `expr is pat` expressions. This likewise needs special handling as `is`
+                // expressions outside of `if`/`while` conditions are wrapped in an `if` expression.
+                ExprKind::Is(..) => return self.lower_wrapped_cond_for_expr_is(e),
+                ExprKind::Binary(BinOp { node: BinOpKind::And, .. }, ..) => {
+                    if e.has_expr_is() {
+                        return self.lower_wrapped_cond_for_expr_is(e);
+                    } else {
+                        // `has_expr_is` will be false for this `&&`'s operands; don't check again.
+                        return self.lower_cond_mut(e);
+                    }
+                }
                 _ => (),
             }
 
@@ -373,7 +384,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
                 ExprKind::Try(sub_expr) => self.lower_expr_try(e.span, sub_expr),
 
-                ExprKind::Paren(_) | ExprKind::ForLoop { .. } => {
+                ExprKind::Paren(_) | ExprKind::ForLoop { .. } | ExprKind::Is(..) => {
                     unreachable!("already handled")
                 }
 
@@ -526,13 +537,86 @@ impl<'hir> LoweringContext<'_, 'hir> {
         hir::ExprKind::Call(f, self.lower_exprs(&real_args))
     }
 
+    /// Lower an expression in a context where `let` expressions are permitted, such as the
+    /// condition of an `if` or `while` expression. This allows `is` expressions to be lowered
+    /// directly to `let` expressions without needing to be wrapped in an `if`'s condition.
+    fn lower_cond(&mut self, e: &Expr) -> &'hir hir::Expr<'hir> {
+        self.arena.alloc(self.lower_cond_mut(e))
+    }
+
+    fn lower_cond_mut(&mut self, e: &Expr) -> hir::Expr<'hir> {
+        self.lower_cond_inner(e, None)
+    }
+
+    fn lower_cond_inner(&mut self, e: &Expr, wrapper: Option<(HirId, Span)>) -> hir::Expr<'hir> {
+        let lower_id_and_attrs = |this: &mut LoweringContext<'_, 'hir>| {
+            let expr_hir_id = this.lower_node_id(e.id);
+            // If the condition is wrapped in an `if` expression for `is` desugaring, attach
+            // attributes to the `if` expression instead of `e`.
+            let (attr_hir_id, attr_span) = wrapper.unwrap_or((expr_hir_id, e.span));
+            this.lower_attrs(attr_hir_id, &e.attrs, attr_span);
+            expr_hir_id
+        };
+        match &e.kind {
+            ExprKind::Is(scrutinee, pat) => {
+                // At the top level of a condition, `is` expressions lower directly to `let`.
+                let hir_id = lower_id_and_attrs(self);
+                let span = self.mark_span_with_reason(
+                    DesugaringKind::IsExpr,
+                    self.lower_span(e.span),
+                    None,
+                );
+                let kind = hir::ExprKind::Let(self.arena.alloc(hir::LetExpr {
+                    span,
+                    pat: self.lower_pat(pat),
+                    ty: None,
+                    init: self.lower_expr(scrutinee),
+                    recovered: Recovered::No,
+                }));
+                hir::Expr { hir_id, kind, span }
+            }
+            ExprKind::Binary(binop @ BinOp { node: BinOpKind::And, .. }, lhs, rhs) => {
+                // `is` expressions in chains of `&&` operators can lower to `let`, so we lower the
+                // operands using `self.lower_cond` rather than `self.lower_expr`.
+                ensure_sufficient_stack(|| {
+                    let hir_id = lower_id_and_attrs(self);
+                    let binop = self.lower_binop(*binop);
+                    let lhs = self.lower_cond(lhs);
+                    let rhs = self.lower_cond(rhs);
+                    let kind = hir::ExprKind::Binary(binop, lhs, rhs);
+                    hir::Expr { hir_id, kind, span: self.lower_span(e.span) }
+                })
+            }
+            _ => return self.lower_expr_mut(e),
+        }
+    }
+
+    /// Lower `cond`, wrapped in an `if` expression's condition: `if cond { true } else { false }`.
+    /// This allows `is` expressions in `cond` to lower to `let` expressions.
+    fn lower_wrapped_cond_for_expr_is(&mut self, cond: &Expr) -> hir::Expr<'hir> {
+        let span =
+            self.mark_span_with_reason(DesugaringKind::IsExpr, self.lower_span(cond.span), None);
+        let hir_id = self.next_id();
+        let lowered_cond = self.arena.alloc(self.lower_cond_inner(cond, Some((hir_id, span))));
+        let mut bool_block = |b| {
+            let lit = hir::Lit { span, node: ast::LitKind::Bool(b) };
+            let expr_lit = self.arena.alloc(self.expr(span, hir::ExprKind::Lit(lit)));
+            let block = self.block_expr(expr_lit);
+            self.arena.alloc(self.expr_block(block))
+        };
+        let expr_true = bool_block(true);
+        let expr_false = bool_block(false);
+        let kind = hir::ExprKind::If(lowered_cond, expr_true, Some(expr_false));
+        hir::Expr { span, kind, hir_id }
+    }
+
     fn lower_expr_if(
         &mut self,
         cond: &Expr,
         then: &Block,
         else_opt: Option<&Expr>,
     ) -> hir::ExprKind<'hir> {
-        let lowered_cond = self.lower_expr(cond);
+        let lowered_cond = self.lower_cond(cond);
         let then_expr = self.lower_block_expr(then);
         if let Some(rslt) = else_opt {
             hir::ExprKind::If(
@@ -568,7 +652,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         body: &Block,
         opt_label: Option<Label>,
     ) -> hir::ExprKind<'hir> {
-        let lowered_cond = self.with_loop_condition_scope(|t| t.lower_expr(cond));
+        let lowered_cond = self.with_loop_condition_scope(|t| t.lower_cond(cond));
         let then = self.lower_block_expr(body);
         let expr_break = self.expr_break(span);
         let stmt_break = self.stmt_expr(span, expr_break);
@@ -637,7 +721,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     fn lower_arm(&mut self, arm: &Arm) -> hir::Arm<'hir> {
         let pat = self.lower_pat(&arm.pat);
-        let guard = arm.guard.as_ref().map(|cond| self.lower_expr(cond));
+        let guard = arm.guard.as_ref().map(|cond| self.lower_cond(cond));
         let hir_id = self.next_id();
         let span = self.lower_span(arm.span);
         self.lower_attrs(hir_id, &arm.attrs, arm.span);

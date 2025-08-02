@@ -1562,6 +1562,9 @@ impl Expr {
             // need parens sometimes. E.g. we can print `(let _ = a) && b` as `let _ = a && b`
             // but we need to print `(let _ = a) < b` as-is with parens.
             | ExprKind::Let(..)
+            // FIXME(is): `expr is pat` should be binop-like, but until it can be parsed as such,
+            // it's using prefix placeholder syntax.
+            | ExprKind::Is(..)
             | ExprKind::Unary(..) => ExprPrecedence::Prefix,
 
             // Need parens if and only if there are prefix attributes.
@@ -1616,6 +1619,19 @@ impl Expr {
                 | ExprKind::Path(_, _)
                 | ExprKind::Struct(_)
         )
+    }
+
+    /// Is this an `is` expression or a chain of `&&` operators containing an `is` expression?
+    /// This determines the scope of the `is` expression's bindings. E.g., since
+    /// `(expr is x) && f()` is broken up by parentheses, `x` is dropped before evaluating `f()`.
+    pub fn has_expr_is(&self) -> bool {
+        match &self.kind {
+            ExprKind::Is(..) => true,
+            ExprKind::Binary(BinOp { node: BinOpKind::And, .. }, lhs, rhs) => {
+                lhs.has_expr_is() || rhs.has_expr_is()
+            }
+            _ => false,
+        }
     }
 
     /// Creates a dummy `Expr`.
@@ -1739,6 +1755,11 @@ pub enum ExprKind {
     ///
     /// `Span` represents the whole `let pat = expr` statement.
     Let(P<Pat>, P<Expr>, Span, Recovered),
+    /// An `expr is pat` expression. Currently, there's no `is` keyword, so as a placeholder it's
+    /// parsed as `builtin # is(expr is pat)`.
+    ///
+    /// This is desugared to `if` and `let` expressions.
+    Is(P<Expr>, P<Pat>),
     /// An `if` block, with an optional `else` block.
     ///
     /// `if expr { block } else { expr }`

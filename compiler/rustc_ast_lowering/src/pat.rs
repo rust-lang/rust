@@ -134,6 +134,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         );
                     }
                     PatKind::Guard(inner, cond) => {
+                        // FIXME(is, guard_patterns): use `self.lower_cond` to support `is` bindings
                         break hir::PatKind::Guard(self.lower_pat(inner), self.lower_expr(cond));
                     }
                     PatKind::Slice(pats) => break self.lower_pat_slice(pats),

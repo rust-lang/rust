@@ -972,6 +972,8 @@ macro_rules! common_visitor_and_walkers {
                     visit_visitable!($($mut)? vis, subexpression, typ),
                 ExprKind::Let(pat, expr, span, _recovered) =>
                     visit_visitable!($($mut)? vis, pat, expr, span),
+                ExprKind::Is(expr, pat) =>
+                    visit_visitable!($($mut)? vis, expr, pat),
                 ExprKind::If(head_expression, if_block, optional_else) =>
                     visit_visitable!($($mut)? vis, head_expression, if_block, optional_else),
                 ExprKind::While(subexpression, block, opt_label) =>
