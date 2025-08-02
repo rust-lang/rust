@@ -525,9 +525,8 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         }
         self.err_code_special_cases(&mut err, source, path, span);
 
-        if let Some(module) = base_error.module {
-            self.r.find_cfg_stripped(&mut err, &path.last().unwrap().ident.name, module);
-        }
+        let module = base_error.module.unwrap_or_else(|| CRATE_DEF_ID.to_def_id());
+        self.r.find_cfg_stripped(&mut err, &path.last().unwrap().ident.name, module);
 
         (err, candidates)
     }
