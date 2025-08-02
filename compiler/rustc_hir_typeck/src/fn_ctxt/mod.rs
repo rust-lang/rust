@@ -126,6 +126,10 @@ pub(crate) struct FnCtxt<'a, 'tcx> {
     /// These are stored here so we may collect them when canonicalizing user
     /// type ascriptions later.
     pub(super) trait_ascriptions: RefCell<ItemLocalMap<Vec<ty::Clause<'tcx>>>>,
+
+    /// Whether the current crate enables the `rustc_attrs` feature.
+    /// This allows to skip processing attributes in many places.
+    pub(super) has_rustc_attrs: bool,
 }
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
@@ -154,6 +158,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             diverging_fallback_behavior,
             diverging_block_behavior,
             trait_ascriptions: Default::default(),
+            has_rustc_attrs: root_ctxt.tcx.features().rustc_attrs(),
         }
     }
 
@@ -525,10 +530,13 @@ fn parse_never_type_options_attr(
     let mut fallback = None;
     let mut block = None;
 
-    let items = tcx
-        .get_attr(CRATE_DEF_ID, sym::rustc_never_type_options)
-        .map(|attr| attr.meta_item_list().unwrap())
-        .unwrap_or_default();
+    let items = if tcx.features().rustc_attrs() {
+        tcx.get_attr(CRATE_DEF_ID, sym::rustc_never_type_options)
+            .map(|attr| attr.meta_item_list().unwrap())
+    } else {
+        None
+    };
+    let items = items.unwrap_or_default();
 
     for item in items {
         if item.has_name(sym::fallback) && fallback.is_none() {
