@@ -58,27 +58,14 @@ pub fn check(root_path: &Path, bless: bool, bad: &mut bool) {
                 check_empty_output_snapshot(bad, file_path);
             }
 
-            if ext == "rs"
-                && let Some(test_name) = static_regex!(r"^issues?[-_]?(\d{3,})").captures(testname)
-            {
-                // these paths are always relative to the passed `path` and always UTF8
-                let stripped_path = file_path
-                    .strip_prefix(path)
-                    .unwrap()
-                    .to_str()
-                    .unwrap()
-                    .replace(std::path::MAIN_SEPARATOR_STR, "/");
-
-                if !remaining_issue_names.remove(stripped_path.as_str())
-                    && !stripped_path.starts_with("ui/issues/")
-                {
-                    tidy_error!(
-                        bad,
-                        "file `tests/{stripped_path}` must begin with a descriptive name, consider `{{reason}}-issue-{issue_n}.rs`",
-                        issue_n = &test_name[1],
-                    );
-                }
-            }
+            deny_new_nondescriptive_test_names(
+                bad,
+                path,
+                &mut remaining_issue_names,
+                file_path,
+                testname,
+                ext,
+            );
         }
     });
 
@@ -180,5 +167,36 @@ fn check_empty_output_snapshot(bad: &mut bool, file_path: &Path) {
         && metadata.len() == 0
     {
         tidy_error!(bad, "Empty file with UI testing output: {:?}", file_path);
+    }
+}
+
+fn deny_new_nondescriptive_test_names(
+    bad: &mut bool,
+    path: &Path,
+    remaining_issue_names: &mut BTreeSet<&str>,
+    file_path: &Path,
+    testname: &str,
+    ext: &str,
+) {
+    if ext == "rs"
+        && let Some(test_name) = static_regex!(r"^issues?[-_]?(\d{3,})").captures(testname)
+    {
+        // these paths are always relative to the passed `path` and always UTF8
+        let stripped_path = file_path
+            .strip_prefix(path)
+            .unwrap()
+            .to_str()
+            .unwrap()
+            .replace(std::path::MAIN_SEPARATOR_STR, "/");
+
+        if !remaining_issue_names.remove(stripped_path.as_str())
+            && !stripped_path.starts_with("ui/issues/")
+        {
+            tidy_error!(
+                bad,
+                "file `tests/{stripped_path}` must begin with a descriptive name, consider `{{reason}}-issue-{issue_n}.rs`",
+                issue_n = &test_name[1],
+            );
+        }
     }
 }
