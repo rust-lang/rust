@@ -1,5 +1,7 @@
 //! Dealing with trait goals, i.e. `T: Trait<'a, U>`.
 
+use std::cell::Cell;
+
 use rustc_type_ir::data_structures::IndexSet;
 use rustc_type_ir::fast_reject::DeepRejectCtxt;
 use rustc_type_ir::inherent::*;
@@ -14,7 +16,7 @@ use tracing::{debug, instrument, trace};
 use crate::delegate::SolverDelegate;
 use crate::solve::assembly::structural_traits::{self, AsyncCallableRelevantTypes};
 use crate::solve::assembly::{self, AllowInferenceConstraints, AssembleCandidatesFrom, Candidate};
-use crate::solve::inspect::ProbeKind;
+use crate::solve::inspect::{self, ProbeKind};
 use crate::solve::{
     BuiltinImplSource, CandidateSource, Certainty, EvalCtxt, Goal, GoalSource, MaybeCause,
     NoSolution, ParamEnvSource, QueryResult, has_only_region_constraints,
@@ -39,6 +41,47 @@ where
 
     fn trait_def_id(self, _: I) -> I::DefId {
         self.def_id()
+    }
+
+    fn assemble_param_env_candidates_fast_path(
+        ecx: &mut EvalCtxt<'_, D>,
+        goal: Goal<I, Self>,
+    ) -> Option<Candidate<I>> {
+        // This is kind of a mess. We need to detect whether there's an applicable
+        // `ParamEnv` candidate without fully normalizing other candidates to avoid the
+        // hang in trait-system-refactor-initiative#210. This currently uses structural
+        // identity, which means it does not apply if there are normalizeable aliases
+        // in the environment or if the goal is higher ranked.
+        //
+        // We generally need such a fast path if multiple potentially applicable where-bounds
+        // contain aliases whose normalization tries to apply all these where-bounds yet again.
+        // This can easily result in exponential blowup.
+        for assumption in goal.param_env.caller_bounds().iter().filter_map(|c| c.as_trait_clause())
+        {
+            if assumption.no_bound_vars().is_some_and(|c| c == goal.predicate) {
+                let source = Cell::new(CandidateSource::ParamEnv(ParamEnvSource::Global));
+                let Ok(candidate) = ecx
+                    .probe(|result: &QueryResult<I>| inspect::ProbeKind::TraitCandidate {
+                        source: source.get(),
+                        result: *result,
+                    })
+                    .enter(|ecx| {
+                        source.set(ecx.characterize_param_env_assumption(
+                            goal.param_env,
+                            assumption.upcast(ecx.cx()),
+                        )?);
+                        ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+                    })
+                    .map(|result| Candidate { source: source.get(), result })
+                else {
+                    continue;
+                };
+                if candidate.source == CandidateSource::ParamEnv(ParamEnvSource::NonGlobal) {
+                    return Some(candidate);
+                }
+            }
+        }
+        None
     }
 
     fn consider_additional_alias_assumptions(
