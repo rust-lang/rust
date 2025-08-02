@@ -105,18 +105,6 @@ LL | #![no_builtins]
    | ^^^^^^^^^^^^^^^
 
 error: unused attribute
-  --> $DIR/unused-attr-duplicate.rs:40:5
-   |
-LL |     #[macro_export]
-   |     ^^^^^^^^^^^^^^^ help: remove this attribute
-   |
-note: attribute also specified here
-  --> $DIR/unused-attr-duplicate.rs:39:5
-   |
-LL |     #[macro_export]
-   |     ^^^^^^^^^^^^^^^
-
-error: unused attribute
   --> $DIR/unused-attr-duplicate.rs:37:1
    |
 LL | #[macro_use]
@@ -127,6 +115,18 @@ note: attribute also specified here
    |
 LL | #[macro_use]
    | ^^^^^^^^^^^^
+
+error: unused attribute
+  --> $DIR/unused-attr-duplicate.rs:40:5
+   |
+LL |     #[macro_export]
+   |     ^^^^^^^^^^^^^^^ help: remove this attribute
+   |
+note: attribute also specified here
+  --> $DIR/unused-attr-duplicate.rs:39:5
+   |
+LL |     #[macro_export]
+   |     ^^^^^^^^^^^^^^^
 
 error: unused attribute
   --> $DIR/unused-attr-duplicate.rs:47:1

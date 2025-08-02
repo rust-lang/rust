@@ -32,6 +32,11 @@ attr_parsing_ill_formed_attribute_input = {$num_suggestions ->
         *[other] valid forms for the attribute are {$suggestions}
     }
 
+attr_parsing_invalid_macro_export_arguments = {$num_suggestions ->
+        [1] attribute must be of the form {$suggestions}
+        *[other] valid forms for the attribute are {$suggestions}
+    }
+
 attr_parsing_incorrect_repr_format_align_one_arg =
     incorrect `repr(align)` attribute format: `align` takes exactly one argument in parentheses
 
