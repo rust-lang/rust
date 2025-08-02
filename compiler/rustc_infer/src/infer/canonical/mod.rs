@@ -116,7 +116,7 @@ impl<'tcx> InferCtxt<'tcx> {
 
                     CanonicalTyVarKind::Int => self.next_int_var(),
 
-                    CanonicalTyVarKind::Float => self.next_float_var(),
+                    CanonicalTyVarKind::Float => self.next_float_var(span),
                 };
                 ty.into()
             }
