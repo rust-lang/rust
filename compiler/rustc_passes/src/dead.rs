@@ -14,7 +14,7 @@ use rustc_errors::MultiSpan;
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId, LocalModDefId};
 use rustc_hir::intravisit::{self, Visitor};
-use rustc_hir::{self as hir, ImplItem, ImplItemKind, Node, PatKind, QPath, TyKind};
+use rustc_hir::{self as hir, ImplItem, ImplItemKind, Node, PatKind, QPath};
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::middle::privacy::Level;
 use rustc_middle::query::Providers;
@@ -66,23 +66,6 @@ fn should_explore(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
         | DefKind::LifetimeParam
         | DefKind::Closure
         | DefKind::SyntheticCoroutineBody => false,
-    }
-}
-
-/// Returns the local def id of the ADT if the given ty refers to a local one.
-fn local_adt_def_of_ty<'tcx>(ty: &hir::Ty<'tcx>) -> Option<LocalDefId> {
-    match ty.kind {
-        TyKind::Path(QPath::Resolved(_, path)) => {
-            if let Res::Def(def_kind, def_id) = path.res
-                && let Some(local_def_id) = def_id.as_local()
-                && matches!(def_kind, DefKind::Struct | DefKind::Enum | DefKind::Union)
-            {
-                Some(local_def_id)
-            } else {
-                None
-            }
-        }
-        _ => None,
     }
 }
 
@@ -499,24 +482,24 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
     /// `local_def_id` points to an impl or an impl item,
     /// both impl and impl item that may be passed to this function are of a trait,
     /// and added into the unsolved_items during `create_and_seed_worklist`
-    fn check_impl_or_impl_item_live(
-        &mut self,
-        impl_id: hir::ItemId,
-        local_def_id: LocalDefId,
-    ) -> bool {
-        let trait_def_id = match self.tcx.def_kind(local_def_id) {
+    fn check_impl_or_impl_item_live(&mut self, local_def_id: LocalDefId) -> bool {
+        let (impl_block_id, trait_def_id) = match self.tcx.def_kind(local_def_id) {
             // assoc impl items of traits are live if the corresponding trait items are live
-            DefKind::AssocConst | DefKind::AssocTy | DefKind::AssocFn => self
-                .tcx
-                .associated_item(local_def_id)
-                .trait_item_def_id
-                .and_then(|def_id| def_id.as_local()),
+            DefKind::AssocConst | DefKind::AssocTy | DefKind::AssocFn => (
+                self.tcx.local_parent(local_def_id),
+                self.tcx
+                    .associated_item(local_def_id)
+                    .trait_item_def_id
+                    .and_then(|def_id| def_id.as_local()),
+            ),
             // impl items are live if the corresponding traits are live
-            DefKind::Impl { of_trait: true } => self
-                .tcx
-                .impl_trait_ref(impl_id.owner_id.def_id)
-                .and_then(|trait_ref| trait_ref.skip_binder().def_id.as_local()),
-            _ => None,
+            DefKind::Impl { of_trait: true } => (
+                local_def_id,
+                self.tcx
+                    .impl_trait_ref(local_def_id)
+                    .and_then(|trait_ref| trait_ref.skip_binder().def_id.as_local()),
+            ),
+            _ => bug!(),
         };
 
         if let Some(trait_def_id) = trait_def_id
@@ -526,9 +509,9 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
         }
 
         // The impl or impl item is used if the corresponding trait or trait item is used and the ty is used.
-        if let Some(local_def_id) =
-            local_adt_def_of_ty(self.tcx.hir_item(impl_id).expect_impl().self_ty)
-            && !self.live_symbols.contains(&local_def_id)
+        if let ty::Adt(adt, _) = self.tcx.type_of(impl_block_id).instantiate_identity().kind()
+            && let Some(adt_def_id) = adt.did().as_local()
+            && !self.live_symbols.contains(&adt_def_id)
         {
             return false;
         }
@@ -751,7 +734,7 @@ fn has_allow_dead_code_or_lang_attr(
 fn check_item<'tcx>(
     tcx: TyCtxt<'tcx>,
     worklist: &mut Vec<(LocalDefId, ComesFromAllowExpect)>,
-    unsolved_items: &mut Vec<(hir::ItemId, LocalDefId)>,
+    unsolved_items: &mut Vec<LocalDefId>,
     id: hir::ItemId,
 ) {
     let allow_dead_code = has_allow_dead_code_or_lang_attr(tcx, id.owner_id.def_id);
@@ -776,7 +759,7 @@ fn check_item<'tcx>(
             {
                 worklist.push((id.owner_id.def_id, comes_from_allow));
             } else if of_trait {
-                unsolved_items.push((id, id.owner_id.def_id));
+                unsolved_items.push(id.owner_id.def_id);
             }
 
             for def_id in tcx.associated_item_def_ids(id.owner_id) {
@@ -791,7 +774,7 @@ fn check_item<'tcx>(
                     // so we later mark them as live if their corresponding traits
                     // or trait items and self types are both live,
                     // but inherent associated items can be visited and marked directly.
-                    unsolved_items.push((id, local_def_id));
+                    unsolved_items.push(local_def_id);
                 }
             }
         }
@@ -844,7 +827,7 @@ fn check_foreign_item(
 
 fn create_and_seed_worklist(
     tcx: TyCtxt<'_>,
-) -> (Vec<(LocalDefId, ComesFromAllowExpect)>, Vec<(hir::ItemId, LocalDefId)>) {
+) -> (Vec<(LocalDefId, ComesFromAllowExpect)>, Vec<LocalDefId>) {
     let effective_visibilities = &tcx.effective_visibilities(());
     let mut unsolved_impl_item = Vec::new();
     let mut worklist = effective_visibilities
@@ -895,21 +878,24 @@ fn live_symbols_and_ignored_derived_traits(
         ignored_derived_traits: Default::default(),
     };
     symbol_visitor.mark_live_symbols();
-    let mut items_to_check;
-    (items_to_check, unsolved_items) =
-        unsolved_items.into_iter().partition(|&(impl_id, local_def_id)| {
-            symbol_visitor.check_impl_or_impl_item_live(impl_id, local_def_id)
-        });
+
+    // We have marked the primary seeds as live. We now need to process unsolved items from traits
+    // and trait impls: add them to the work list if the trait or the implemented type is live.
+    let mut items_to_check: Vec<_> = unsolved_items
+        .extract_if(.., |&mut local_def_id| {
+            symbol_visitor.check_impl_or_impl_item_live(local_def_id)
+        })
+        .collect();
 
     while !items_to_check.is_empty() {
-        symbol_visitor.worklist =
-            items_to_check.into_iter().map(|(_, id)| (id, ComesFromAllowExpect::No)).collect();
+        symbol_visitor
+            .worklist
+            .extend(items_to_check.drain(..).map(|id| (id, ComesFromAllowExpect::No)));
         symbol_visitor.mark_live_symbols();
 
-        (items_to_check, unsolved_items) =
-            unsolved_items.into_iter().partition(|&(impl_id, local_def_id)| {
-                symbol_visitor.check_impl_or_impl_item_live(impl_id, local_def_id)
-            });
+        items_to_check.extend(unsolved_items.extract_if(.., |&mut local_def_id| {
+            symbol_visitor.check_impl_or_impl_item_live(local_def_id)
+        }));
     }
 
     (symbol_visitor.live_symbols, symbol_visitor.ignored_derived_traits)
