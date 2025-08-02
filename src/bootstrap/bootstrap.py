@@ -11,6 +11,10 @@ import sys
 import sysconfig
 import tarfile
 import tempfile
+import html
+from pathlib import Path
+from shutil import copytree, rmtree
+from typing import Optional
 
 from time import time
 from multiprocessing import Pool, cpu_count
@@ -1252,6 +1256,10 @@ def parse_args(args):
         "--warnings", choices=["deny", "warn", "default"], default="default"
     )
     parser.add_argument("-v", "--verbose", action="count", default=0)
+    parser.add_argument("--reproducible", action="store_true",
+                       help="build the compiler twice in separate directories and compare the results")
+    parser.add_argument("--html", type=str, metavar="PATH", default=None,
+                       help="generate HTML report of reproducibility check at specified path")
 
     return parser.parse_known_args(args)[0]
 
@@ -1351,16 +1359,312 @@ def bootstrap(args):
     env["BOOTSTRAP_PYTHON"] = sys.executable
     run(args, env=env, verbose=build.verbose, is_bootstrap=True)
 
+def load_config() -> dict:
+    """Load bootstrap.toml configuration file if present"""
+    config = {}
+    config_path = Path.cwd() / "bootstrap.toml"
+    if config_path.exists():
+        try:
+            import toml
+            with open(config_path, 'r') as f:
+                config = toml.load(f)
+            print(f"Loaded configuration from {config_path}")
+        except ImportError:
+            print(f"Warning: toml module not available, cannot parse bootstrap.toml")
+        except Exception as e:
+            print(f"Warning: Failed to parse bootstrap.toml: {e}")
+    return config
+
+def check_reproducible(html_report_path: Optional[str] = None):
+    """Main entry point for reproducibility check"""
+    root_dir = Path.cwd()
+    print(f"Starting reproducibility check from: {root_dir}")
+
+    with tempfile.TemporaryDirectory() as tmp_clean:
+        clean_source = Path(tmp_clean) / "clean_rust"
+        shutil.copytree(root_dir, clean_source,
+                       ignore=shutil.ignore_patterns('build', 'target'))
+
+        build_dir1 = root_dir.parent / "buildA"
+        build_dir2 = root_dir.parent / "buildA_extended"
+
+        for dir_path in [build_dir1, build_dir2]:
+            if dir_path.exists():
+                print(f"Cleaning up existing directory: {dir_path}")
+                shutil.rmtree(dir_path)
+            dir_path.mkdir(parents=True, exist_ok=True)
+
+        try:
+            artifacts1 = perform_build(build_dir1, "first", clean_source)
+            artifacts2 = perform_build(build_dir2, "second", clean_source)
+            differences = compare_builds(artifacts1, artifacts2)
+            report_results(differences, html_report_path)
+        finally:
+            cleanup_build_directory(build_dir1)
+            cleanup_build_directory(build_dir2)
+
+def perform_build(build_dir: Path, build_name: str, clean_source: Path) -> Path:
+    """Perform a build using a clean source copy"""
+    print(f"\nStarting {build_name} build...")
+
+    rust_src = build_dir / "rust"
+    shutil.copytree(clean_source, rust_src)
+
+    execute_build_command(build_dir)
+
+    return collect_artifacts(build_dir)
+
+def execute_build_command(build_dir: Path):
+    """Run the x.py build command in the specified directory"""
+    os.chdir(build_dir)
+    cmd = [str(build_dir / "rust" / "x.py"), "build", "--stage", "2"]
+    try:
+        subprocess.check_call(cmd, stdout=sys.stdout, stderr=sys.stderr)
+    except subprocess.CalledProcessError as e:
+        print(f"Build failed in {build_dir} with exit code {e.returncode}")
+        sys.exit(1)
+
+def collect_artifacts(build_dir: Path) -> Path:
+    """Collect critical artifacts from a successful build"""
+    stage2_dir = find_stage2_directory(build_dir)
+    artifacts_dir = build_dir / "stage2_artifacts"
+
+    if artifacts_dir.exists():
+        shutil.rmtree(artifacts_dir)
+    artifacts_dir.mkdir()
+
+    copy_critical_artifacts(stage2_dir, artifacts_dir)
+    return artifacts_dir
+
+
+def find_stage2_directory(build_dir: Path) -> Path:
+    """Locate the stage2 directory in the build output"""
+    for root, dirs, _ in os.walk(build_dir / "build"):
+        if "stage2" in dirs:
+            return Path(root) / "stage2"
+
+    print("ERROR: Could not find stage2 directory")
+    sys.exit(1)
+
+def copy_critical_artifacts(source_dir: Path, dest_dir: Path):
+    """Copy only the critical artifacts we want to compare"""
+    critical_paths = [
+        ("bin", None),
+        ("lib", "*.so"),
+        ("lib/rustlib", None)
+    ]
+
+    for src_rel, pattern in critical_paths:
+        src_abs = source_dir / src_rel
+        if not src_abs.exists():
+            print(f"Warning: Missing critical path {src_abs}")
+            continue
+
+        dest_abs = dest_dir / src_rel
+        dest_abs.parent.mkdir(parents=True, exist_ok=True)
+
+        if pattern:
+            for file in src_abs.glob(pattern):
+                if file.is_file():
+                    shutil.copy2(file, dest_abs.parent)
+        else:
+            shutil.copytree(
+                src_abs,
+                dest_abs,
+                ignore=shutil.ignore_patterns(
+                    "*.git*", "*rustc-src*", "*src*", "*.py*", "*.txt", "*.md"
+                )
+            )
+
+def cleanup_build_directory(build_dir: Path):
+    """Remove temporary build files"""
+    for path in ["build", "rust"]:
+        full_path = build_dir / path
+        if full_path.exists():
+            shutil.rmtree(full_path)
+
+
+def compare_builds(dir1: Path, dir2: Path) -> list[str]:
+    """Compare critical artifacts between two builds"""
+    differences = []
+
+    differences.extend(compare_binaries(dir1, dir2))
+
+    differences.extend(compare_shared_libraries(dir1, dir2))
+
+    differences.extend(compare_rlibs(dir1, dir2))
+
+    return differences
+
+def compare_binaries(dir1: Path, dir2: Path) -> list[str]:
+    """Compare binary files between builds"""
+    differences = []
+    bin_dir1 = dir1 / "bin"
+    bin_dir2 = dir2 / "bin"
+
+    if bin_dir1.exists() and bin_dir2.exists():
+        for bin_file in bin_dir1.iterdir():
+            if bin_file.is_file():
+                bin2 = bin_dir2 / bin_file.name
+                if bin2.exists():
+                    if not files_equal(bin_file, bin2):
+                        differences.append(f"Binary differs: {bin_file.name}")
+                else:
+                    differences.append(f"Missing binary in second build: {bin_file.name}")
+    return differences
+
+
+def compare_shared_libraries(dir1: Path, dir2: Path) -> list[str]:
+    """Compare shared libraries between builds"""
+    differences = []
+    lib_dir1 = dir1 / "lib"
+    lib_dir2 = dir2 / "lib"
+
+    if lib_dir1.exists() and lib_dir2.exists():
+        for lib_file in lib_dir1.glob("*.so"):
+            lib2 = lib_dir2 / lib_file.name
+            if lib2.exists():
+                if not files_equal(lib_file, lib2):
+                    differences.append(f"Shared library differs: {lib_file.name}")
+            else:
+                differences.append(f"Missing shared library: {lib_file.name}")
+    return differences
+
+def compare_rlibs(dir1: Path, dir2: Path) -> list[str]:
+    """Compare RLIB files between builds"""
+    differences = []
+    rustlib_dir1 = dir1 / "lib/rustlib"
+    rustlib_dir2 = dir2 / "lib/rustlib"
+
+    if rustlib_dir1.exists() and rustlib_dir2.exists():
+        for rlib in rustlib_dir1.rglob("*.rlib"):
+            relative = rlib.relative_to(rustlib_dir1)
+            rlib2 = rustlib_dir2 / relative
+            if rlib2.exists():
+                if not files_equal(rlib, rlib2):
+                    differences.append(f"RLIB differs: {relative}")
+            else:
+                differences.append(f"Missing RLIB: {relative}")
+    return differences
+
+def files_equal(file1: Path, file2: Path) -> bool:
+    """Compare files using cryptographic hash"""
+    if not file1.exists() or not file2.exists():
+        return False
+
+    if file1.stat().st_size != file2.stat().st_size:
+        return False
+
+    hash1 = hashlib.sha256()
+    hash2 = hashlib.sha256()
+
+    with open(file1, 'rb') as f1, open(file2, 'rb') as f2:
+        while True:
+            chunk1 = f1.read(4096)
+            chunk2 = f2.read(4096)
+            if not chunk1 and not chunk2:
+                break
+            if chunk1 != chunk2:
+                return False
+            hash1.update(chunk1)
+            hash2.update(chunk2)
+
+    return hash1.digest() == hash2.digest()
+
+def report_results(differences: list[str], html_report_path: Optional[str] = None):
+    """Print the final results of the reproducibility check"""
+    if not differences:
+        print("\nSUCCESS: Builds are reproducible!")
+        return
+
+    print("\nERROR: Builds are not reproducible. Differences found:")
+    for diff in differences:
+        print(f"  - {diff}")
+
+    print("\nNote: Only critical compiler artifacts were compared")
+    print("      (binaries, shared libraries, RLIBs).")
+
+    if html_report_path:
+        generate_html_report(differences, html_report_path)
+
+    sys.exit(1)
+
+def is_real_build_command(argv: list[str]) -> bool:
+    """True only for actual build commands without help flags"""
+    return (len(argv) > 1 and
+            argv[1] == "build" and
+            not any(arg in {'--help', '-h', 'help'} for arg in argv))
+
+def should_verify_repro(args, config: dict) -> bool:
+    """True only if explicitly requested via CLI or config"""
+    return (getattr(args, 'reproducible', False) or
+            config.get('build', {}).get('reproducible', False))
+
+def generate_html_report(differences: list[str], output_path: str) -> None:
+    """Generate a comprehensive HTML report of the reproducibility check"""
+    timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    report_title = "Rust Compiler Reproducibility Report"
+
+    html_content = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{report_title}</title>
+    <style>
+        body {{ font-family: Arial, sans-serif; line-height: 1.6; margin: 2em; }}
+        h1 {{ color: #333; }}
+        .success {{ color: green; }}
+        .failure {{ color: red; }}
+        .diff {{ background-color: #f8f8f8; padding: 1em; border-left: 3px solid #ccc; }}
+        .timestamp {{ color: #666; font-size: 0.9em; }}
+    </style>
+</head>
+<body>
+    <h1>{report_title}</h1>
+    <p class="timestamp">Generated on: {timestamp}</p>
+    <h2>Results</h2>
+    {"<p class='success'>Builds are reproducible!</p>" if not differences else
+     f"<p class='failure'>Found {len(differences)} differences:</p><ul>" +
+     "".join(f"<li class='diff'>{html.escape(diff)}</li>" for diff in differences) + "</ul>"}
+</body>
+</html>"""
+
+    output_file = Path(output_path).resolve()
+    with open(output_file, 'w', encoding='utf-8') as f:
+        f.write(html_content)
+
+    rust_root = Path(__file__).resolve().parent.parent.parent
+    cwd_report = rust_root / output_file.name
+    if cwd_report.resolve() != output_file:
+        shutil.copy2(output_file, cwd_report)
+
+    print(f"\nHTML report generated at: {output_file}")
+    print(f"Report copied to Rust source directory: {cwd_report.resolve()}")
 
 def main():
     """Entry point for the bootstrap process"""
     start_time = time()
 
-    # x.py help <cmd> ...
     if len(sys.argv) > 1 and sys.argv[1] == "help":
         sys.argv[1] = "-h"
 
     args = parse_args(sys.argv)
+    config = load_config()
+
+    if is_real_build_command(sys.argv) and should_verify_repro(args, config):
+        html_report = args.html
+
+        # If reproducible is set only in bootstrap.toml (not CLI), enable HTML report by default
+        cli_flag = getattr(args, 'reproducible', False)
+        toml_flag = config.get('build', {}).get('reproducible', False)
+        if toml_flag and not cli_flag and not html_report:
+            html_report = "reproducibility_report.html"
+            print("No --html provided; defaulting to 'reproducibility_report.html' because reproducible is set in bootstrap.toml")
+
+        check_reproducible(html_report)
+        return 0
+
     help_triggered = args.help or len(sys.argv) == 1
 
     # If the user is asking for help, let them know that the whole download-and-build

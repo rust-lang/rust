@@ -99,6 +99,7 @@ pub struct Config {
     pub vendor: bool,
     pub target_config: HashMap<TargetSelection, Target>,
     pub full_bootstrap: bool,
+    pub reproducible: bool,
     pub bootstrap_cache_path: Option<PathBuf>,
     pub extended: bool,
     pub tools: Option<HashSet<String>>,
@@ -730,6 +731,7 @@ impl Config {
             locked_deps,
             vendor,
             full_bootstrap,
+            reproducible,
             bootstrap_cache_path,
             extended,
             tools,
@@ -888,6 +890,7 @@ impl Config {
         set(&mut config.docs, docs);
         set(&mut config.locked_deps, locked_deps);
         set(&mut config.full_bootstrap, full_bootstrap);
+        set(&mut config.reproducible, reproducible);
         set(&mut config.extended, extended);
         config.tools = tools;
         set(&mut config.tool, tool);

@@ -41,6 +41,7 @@ define_config! {
         locked_deps: Option<bool> = "locked-deps",
         vendor: Option<bool> = "vendor",
         full_bootstrap: Option<bool> = "full-bootstrap",
+        reproducible: Option<bool> = "reproducible",
         bootstrap_cache_path: Option<PathBuf> = "bootstrap-cache-path",
         extended: Option<bool> = "extended",
         tools: Option<HashSet<String>> = "tools",

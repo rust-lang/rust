@@ -353,6 +353,16 @@
 # This is only useful for verifying that rustc generates reproducible builds.
 #build.full-bootstrap = false
 
+# Set to `true` to verify build reproducibility by compiling the compiler twice
+# in separate directories and comparing outputs. This only takes effect when
+# running `x.py build` (not other commands) and requires significant time/disk space.
+# Can also be enabled via `--reproducible` CLI flag.
+#
+# Optionally, you can generate a detailed HTML report using the CLI:
+#   ./x.py build --reproducible --html report.html
+# The report is saved to the specified path, and a copy is placed in the Rust source directory.
+#build.reproducible = false
+
 # Set the bootstrap/download cache path. It is useful when building rust
 # repeatedly in a CI environment.
 #build.bootstrap-cache-path = /path/to/shared/cache
