@@ -6,8 +6,6 @@
 // We have to use this flag to force ABI computation of an invalid ABI
 //@ compile-flags: -Clink-dead-code
 
-#![feature(extended_varargs_abi_support)]
-
 // sometimes fn ptrs with varargs make layout and ABI computation ICE
 // as found in https://github.com/rust-lang/rust/issues/142107
 
