@@ -1,0 +1,52 @@
+error: attributes cannot be applied here
+  --> $DIR/attribute-on-empty.rs:7:16
+   |
+LL |     let _: Baz<#[cfg(any())]> = todo!();
+   |          -     ^^^^^^^^^^^^^ attributes are not allowed here
+   |          |
+   |          while parsing the type for `_`
+
+error: attributes cannot be applied to a function parameter's type
+  --> $DIR/attribute-on-empty.rs:11:14
+   |
+LL | fn f(_param: #[attr]) {}
+   |              ^^^^^^^ attributes are not allowed here
+
+error: expected type, found `)`
+  --> $DIR/attribute-on-empty.rs:11:21
+   |
+LL | fn f(_param: #[attr]) {}
+   |                     ^ expected type
+
+error: attributes cannot be applied here
+  --> $DIR/attribute-on-empty.rs:15:11
+   |
+LL | fn g() -> #[attr] { 0 }
+   |           ^^^^^^^ attributes are not allowed here
+
+error: attributes cannot be applied here
+  --> $DIR/attribute-on-empty.rs:19:12
+   |
+LL |     field: #[attr],
+   |            ^^^^^^^ attributes are not allowed here
+
+error: attributes cannot be applied here
+  --> $DIR/attribute-on-empty.rs:21:14
+   |
+LL |     field1: (#[attr], i32),
+   |              ^^^^^^^ attributes are not allowed here
+
+error: attributes cannot be applied here
+  --> $DIR/attribute-on-empty.rs:25:15
+   |
+LL | type Tuple = (#[attr], String);
+   |               ^^^^^^^ attributes are not allowed here
+
+error: attributes cannot be applied here
+  --> $DIR/attribute-on-empty.rs:28:6
+   |
+LL | impl #[attr] {}
+   |      ^^^^^^^ attributes are not allowed here
+
+error: aborting due to 8 previous errors
+
