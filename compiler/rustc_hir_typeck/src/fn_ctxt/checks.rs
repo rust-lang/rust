@@ -399,18 +399,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         // Check the arguments.
-        // We do this in a pretty awful way: first we type-check any arguments
-        // that are not closures, then we type-check the closures. This is so
-        // that we have more information about the types of arguments when we
-        // type-check the functions. This isn't really the right way to do this.
+        // More awful hacks: before we check argument types, try to do
+        // an "opportunistic" trait resolution of any trait bounds on
+        // the call. This helps coercions.
+        self.select_obligations_where_possible(|_| {});
         for check_closures in [false, true] {
-            // More awful hacks: before we check argument types, try to do
-            // an "opportunistic" trait resolution of any trait bounds on
-            // the call. This helps coercions.
-            if check_closures {
-                self.select_obligations_where_possible(|_| {})
-            }
-
             // Check each argument, to satisfy the input it was provided for
             // Visually, we're traveling down the diagonal of the compatibility matrix
             for (idx, arg) in provided_args.iter().enumerate() {
