@@ -9,8 +9,8 @@
 //! * [`Eq`] indicates that the overloaded `==` operator corresponds to an
 //!   equivalence relation.
 //! * [`Ord`] and [`PartialOrd`] are traits that allow you to define total and
-//!   partial orderings between values, respectively. Implementing them overloads
-//!   the `<`, `<=`, `>`, and `>=` operators.
+//!   strict partial orderings between values, respectively. Implementing them
+//!   overloads the `<`, `<=`, `>`, and `>=` operators.
 //! * [`Ordering`] is an enum returned by the main functions of [`Ord`] and
 //!   [`PartialOrd`], and describes an ordering of two values (less, equal, or
 //!   greater).
@@ -1099,7 +1099,7 @@ pub macro Ord($item:item) {
     /* compiler built-in */
 }
 
-/// Trait for types that form a [partial order](https://en.wikipedia.org/wiki/Partial_order).
+/// Trait for types that form a [strict partial order](https://en.wikipedia.org/wiki/Strict_partial_order).
 ///
 /// The `lt`, `le`, `gt`, and `ge` methods of this trait can be called using the `<`, `<=`, `>`, and
 /// `>=` operators, respectively.
@@ -1167,7 +1167,8 @@ pub macro Ord($item:item) {
 /// The following corollaries follow from the above requirements:
 ///
 /// - irreflexivity of `<` and `>`: `!(a < a)`, `!(a > a)`
-/// - transitivity of `>`: if `a > b` and `b > c` then `a > c`
+/// - transitivity of `>`: if `a > b` and `b > c`, then `a > c`
+/// - antisymmetry of `<=`: if `a <= b` and `b <= a`, then `a == b`
 /// - duality of `partial_cmp`: `partial_cmp(a, b) == partial_cmp(b, a).map(Ordering::reverse)`
 ///
 /// ## Strict and non-strict partial orders
