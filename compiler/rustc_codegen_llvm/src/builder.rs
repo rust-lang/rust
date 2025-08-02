@@ -1442,6 +1442,18 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         funclet: Option<&Self::Funclet>,
         instance: Option<Instance<'tcx>>,
     ) {
+        if let Some(instance) = instance
+            && instance.def.requires_caller_location(self.tcx)
+        {
+            self.tcx
+                .dcx()
+                .struct_span_fatal(
+                    self.tcx.def_span(instance.def.def_id()),
+                    "a function marked with `#[track_caller]` cannot be tail-called (llvm)",
+                )
+                .emit();
+        }
+
         let call = self.call(llty, fn_attrs, Some(fn_abi), llfn, args, funclet, instance);
         llvm::LLVMRustSetTailCallKind(call, llvm::TailCallKind::MustTail);
 

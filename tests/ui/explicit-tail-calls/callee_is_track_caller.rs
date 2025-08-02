@@ -1,15 +1,11 @@
-//@ check-pass
-// FIXME(explicit_tail_calls): make this run-pass, once tail calls are properly implemented
 #![expect(incomplete_features)]
 #![feature(explicit_tail_calls)]
 
-fn a(x: u32) -> u32 {
-    become b(x);
+fn a() {
+    become b(); //~ error: a function marked with `#[track_caller]` cannot be tail-called
 }
 
 #[track_caller]
-fn b(x: u32) -> u32 { x + 42 }
+fn b() {}
 
-fn main() {
-    assert_eq!(a(12), 54);
-}
+fn main() {}
