@@ -1,14 +1,17 @@
+use std::collections::HashMap;
 use std::env;
 use std::ffi::OsString;
 use std::fs::{self, File};
 use std::io::{BufRead, BufReader, BufWriter, ErrorKind, Write};
 use std::path::{Path, PathBuf};
-use std::sync::OnceLock;
+use std::sync::{Arc, Mutex, OnceLock};
 
+use build_helper::git::PathFreshness;
 use xz2::bufread::XzDecoder;
 
 use crate::core::config::{BUILDER_CONFIG_FILENAME, TargetSelection};
 use crate::utils::build_stamp::BuildStamp;
+use crate::utils::channel;
 use crate::utils::exec::{ExecutionContext, command};
 use crate::utils::helpers::{exe, hex_encode, move_file};
 use crate::{Config, t};
@@ -69,7 +72,7 @@ impl Config {
     }
 
     fn download_file(&self, url: &str, dest_path: &Path, help_on_error: &str) {
-        let dwn_ctx: DownloadContext<'_> = self.into();
+        let dwn_ctx: IOContext<'_> = self.into();
         download_file(dwn_ctx, url, dest_path, help_on_error);
     }
 
@@ -234,7 +237,7 @@ impl Config {
         key: &str,
         destination: &str,
     ) {
-        let dwn_ctx: DownloadContext<'_> = self.into();
+        let dwn_ctx: IOContext<'_> = self.into();
         download_component(dwn_ctx, mode, filename, prefix, key, destination);
     }
 
@@ -396,27 +399,67 @@ impl Config {
     }
 }
 
+// submodules: Option<bool>,
+// path_modification_cache: Arc<Mutex<HashMap<Vec<&'static str>, PathFreshness>>>,
+// rust_info: channel::GitInfo,
+// download_rustc_commit: Option<String>,
 /// Only should be used for pre config initialization downloads.
-pub(crate) struct DownloadContext<'a> {
-    host_target: TargetSelection,
-    out: &'a Path,
-    patch_binaries_for_nix: Option<bool>,
-    exec_ctx: &'a ExecutionContext,
-    stage0_metadata: &'a build_helper::stage0_parser::Stage0,
-    llvm_assertions: bool,
-    bootstrap_cache_path: &'a Option<PathBuf>,
-    is_running_on_ci: bool,
+pub(crate) struct IOContext<'a> {
+    pub host_target: TargetSelection,
+    pub out: &'a Path,
+    pub patch_binaries_for_nix: Option<bool>,
+    pub exec_ctx: &'a ExecutionContext,
+    pub stage0_metadata: &'a build_helper::stage0_parser::Stage0,
+    pub llvm_assertions: bool,
+    pub bootstrap_cache_path: &'a Option<PathBuf>,
+    pub is_running_on_ci: bool,
+    pub src: &'a Path,
+    pub submodules: &'a Option<bool>,
+    pub path_modification_cache: Arc<Mutex<HashMap<Vec<&'static str>, PathFreshness>>>,
+    pub rust_info: &'a channel::GitInfo,
 }
 
-impl<'a> AsRef<DownloadContext<'a>> for DownloadContext<'a> {
-    fn as_ref(&self) -> &DownloadContext<'a> {
+impl<'a> IOContext<'a> {
+    pub fn new(
+        host_target: TargetSelection,
+        out: &'a Path,
+        patch_binaries_for_nix: Option<bool>,
+        exec_ctx: &'a ExecutionContext,
+        stage0_metadata: &'a build_helper::stage0_parser::Stage0,
+        llvm_assertions: bool,
+        bootstrap_cache_path: &'a Option<PathBuf>,
+        is_running_on_ci: bool,
+        src: &'a Path,
+        submodules: &'a Option<bool>,
+        path_modification_cache: Arc<Mutex<HashMap<Vec<&'static str>, PathFreshness>>>,
+        rust_info: &'a channel::GitInfo,
+    ) -> Self {
+        Self {
+            host_target,
+            out,
+            patch_binaries_for_nix,
+            exec_ctx,
+            stage0_metadata,
+            llvm_assertions,
+            bootstrap_cache_path,
+            is_running_on_ci,
+            src,
+            submodules,
+            path_modification_cache,
+            rust_info,
+        }
+    }
+}
+
+impl<'a> AsRef<IOContext<'a>> for IOContext<'a> {
+    fn as_ref(&self) -> &IOContext<'a> {
         self
     }
 }
 
-impl<'a> From<&'a Config> for DownloadContext<'a> {
+impl<'a> From<&'a Config> for IOContext<'a> {
     fn from(value: &'a Config) -> Self {
-        DownloadContext {
+        IOContext {
             host_target: value.host_target,
             out: &value.out,
             patch_binaries_for_nix: value.patch_binaries_for_nix,
@@ -425,6 +468,10 @@ impl<'a> From<&'a Config> for DownloadContext<'a> {
             llvm_assertions: value.llvm_assertions,
             bootstrap_cache_path: &value.bootstrap_cache_path,
             is_running_on_ci: value.is_running_on_ci,
+            src: &value.src,
+            submodules: &value.submodules,
+            path_modification_cache: value.path_modification_cache.clone(),
+            rust_info: &value.rust_info,
         }
     }
 }
@@ -476,18 +523,14 @@ pub(crate) fn is_download_ci_available(target_triple: &str, llvm_assertions: boo
 }
 
 #[cfg(test)]
-pub(crate) fn maybe_download_rustfmt<'a>(
-    dwn_ctx: impl AsRef<DownloadContext<'a>>,
-) -> Option<PathBuf> {
+pub(crate) fn maybe_download_rustfmt<'a>(dwn_ctx: impl AsRef<IOContext<'a>>) -> Option<PathBuf> {
     Some(PathBuf::new())
 }
 
 /// NOTE: rustfmt is a completely different toolchain than the bootstrap compiler, so it can't
 /// reuse target directories or artifacts
 #[cfg(not(test))]
-pub(crate) fn maybe_download_rustfmt<'a>(
-    dwn_ctx: impl AsRef<DownloadContext<'a>>,
-) -> Option<PathBuf> {
+pub(crate) fn maybe_download_rustfmt<'a>(dwn_ctx: impl AsRef<IOContext<'a>>) -> Option<PathBuf> {
     use build_helper::stage0_parser::VersionMetadata;
 
     let dwn_ctx = dwn_ctx.as_ref();
@@ -542,10 +585,10 @@ pub(crate) fn maybe_download_rustfmt<'a>(
 }
 
 #[cfg(test)]
-pub(crate) fn download_beta_toolchain<'a>(dwn_ctx: impl AsRef<DownloadContext<'a>>) {}
+pub(crate) fn download_beta_toolchain<'a>(dwn_ctx: impl AsRef<IOContext<'a>>) {}
 
 #[cfg(not(test))]
-pub(crate) fn download_beta_toolchain<'a>(dwn_ctx: impl AsRef<DownloadContext<'a>>) {
+pub(crate) fn download_beta_toolchain<'a>(dwn_ctx: impl AsRef<IOContext<'a>>) {
     let dwn_ctx = dwn_ctx.as_ref();
     dwn_ctx.exec_ctx.verbose(|| {
         println!("downloading stage0 beta artifacts");
@@ -567,7 +610,7 @@ pub(crate) fn download_beta_toolchain<'a>(dwn_ctx: impl AsRef<DownloadContext<'a
 }
 
 fn download_toolchain<'a>(
-    dwn_ctx: impl AsRef<DownloadContext<'a>>,
+    dwn_ctx: impl AsRef<IOContext<'a>>,
     version: &str,
     sysroot: &str,
     stamp_key: &str,
@@ -732,7 +775,7 @@ fn should_fix_bins_and_dylibs(
 }
 
 fn download_component<'a>(
-    dwn_ctx: impl AsRef<DownloadContext<'a>>,
+    dwn_ctx: impl AsRef<IOContext<'a>>,
     mode: DownloadSource,
     filename: String,
     prefix: &str,
@@ -935,7 +978,7 @@ fn unpack(exec_ctx: &ExecutionContext, tarball: &Path, dst: &Path, pattern: &str
 }
 
 fn download_file<'a>(
-    dwn_ctx: impl AsRef<DownloadContext<'a>>,
+    dwn_ctx: impl AsRef<IOContext<'a>>,
     url: &str,
     dest_path: &Path,
     help_on_error: &str,
