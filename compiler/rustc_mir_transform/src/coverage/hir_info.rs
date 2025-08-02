@@ -67,9 +67,12 @@ pub(crate) fn extract_hir_info<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> E
 }
 
 fn hash_mir_source<'tcx>(tcx: TyCtxt<'tcx>, hir_body: &'tcx hir::Body<'tcx>) -> u64 {
-    // FIXME(cjgillot) Stop hashing HIR manually here.
     let owner = hir_body.id().hir_id.owner;
-    tcx.hir_owner_nodes(owner).opt_hash_including_bodies.unwrap().to_smaller_hash().as_u64()
+    tcx.hir_owner_nodes(owner)
+        .opt_hash_including_bodies
+        .expect("hash should be present when coverage instrumentation is enabled")
+        .to_smaller_hash()
+        .as_u64()
 }
 
 fn extract_hole_spans_from_hir<'tcx>(tcx: TyCtxt<'tcx>, hir_body: &hir::Body<'tcx>) -> Vec<Span> {
