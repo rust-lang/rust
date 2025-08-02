@@ -84,7 +84,7 @@ struct MarkSymbolVisitor<'tcx> {
     // maps from ADTs to ignored derived traits (e.g. Debug and Clone)
     // and the span of their respective impl (i.e., part of the derive
     // macro)
-    ignored_derived_traits: LocalDefIdMap<FxIndexSet<(DefId, DefId)>>,
+    ignored_derived_traits: LocalDefIdMap<FxIndexSet<DefId>>,
 }
 
 impl<'tcx> MarkSymbolVisitor<'tcx> {
@@ -380,10 +380,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
                 if let ty::Adt(adt_def, _) = trait_ref.self_ty().kind()
                     && let Some(adt_def_id) = adt_def.did().as_local()
                 {
-                    self.ignored_derived_traits
-                        .entry(adt_def_id)
-                        .or_default()
-                        .insert((trait_of, impl_of));
+                    self.ignored_derived_traits.entry(adt_def_id).or_default().insert(trait_of);
                 }
                 return true;
             }
@@ -881,7 +878,7 @@ fn create_and_seed_worklist(
 fn live_symbols_and_ignored_derived_traits(
     tcx: TyCtxt<'_>,
     (): (),
-) -> (LocalDefIdSet, LocalDefIdMap<FxIndexSet<(DefId, DefId)>>) {
+) -> (LocalDefIdSet, LocalDefIdMap<FxIndexSet<DefId>>) {
     let (worklist, struct_constructors, mut unsolved_items) = create_and_seed_worklist(tcx);
     let mut symbol_visitor = MarkSymbolVisitor {
         worklist,
@@ -925,7 +922,7 @@ struct DeadItem {
 struct DeadVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
     live_symbols: &'tcx LocalDefIdSet,
-    ignored_derived_traits: &'tcx LocalDefIdMap<FxIndexSet<(DefId, DefId)>>,
+    ignored_derived_traits: &'tcx LocalDefIdMap<FxIndexSet<DefId>>,
 }
 
 enum ShouldWarnAboutField {
@@ -1047,20 +1044,18 @@ impl<'tcx> DeadVisitor<'tcx> {
         let encl_def_id = get_parent_if_enum_variant(tcx, encl_def_id);
 
         let ignored_derived_impls =
-            if let Some(ign_traits) = self.ignored_derived_traits.get(&encl_def_id) {
+            self.ignored_derived_traits.get(&encl_def_id).map(|ign_traits| {
                 let trait_list = ign_traits
                     .iter()
-                    .map(|(trait_id, _)| self.tcx.item_name(*trait_id))
+                    .map(|trait_id| self.tcx.item_name(*trait_id))
                     .collect::<Vec<_>>();
                 let trait_list_len = trait_list.len();
-                Some(IgnoredDerivedImpls {
+                IgnoredDerivedImpls {
                     name: self.tcx.item_name(encl_def_id.to_def_id()),
                     trait_list: trait_list.into(),
                     trait_list_len,
-                })
-            } else {
-                None
-            };
+                }
+            });
 
         let enum_variants_with_same_name = dead_codes
             .iter()
