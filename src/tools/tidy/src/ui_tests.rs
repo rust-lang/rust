@@ -40,6 +40,8 @@ pub fn check(root_path: &Path, bless: bool, bad: &mut bool) {
         );
     }
 
+    deny_new_top_level_ui_tests(bad, &path.join("ui"));
+
     let remaining_issue_names = recursively_check_ui_tests(bad, path, &allowed_issue_names);
 
     // if there are any file names remaining, they were moved on the fs.
@@ -68,6 +70,34 @@ pub fn check(root_path: &Path, bless: bool, bad: &mut bool) {
                 p.display()
             );
         }
+    }
+}
+
+fn deny_new_top_level_ui_tests(bad: &mut bool, tests_path: &Path) {
+    // See <https://github.com/rust-lang/compiler-team/issues/902> where we propose banning adding
+    // new ui tests *directly* under `tests/ui/`. For more context, see:
+    //
+    // - <https://github.com/rust-lang/rust/issues/73494>
+    // - <https://github.com/rust-lang/rust/issues/133895>
+
+    let top_level_ui_tests = walkdir::WalkDir::new(tests_path)
+        .min_depth(1)
+        .max_depth(1)
+        .follow_links(false)
+        .same_file_system(true)
+        .into_iter()
+        .flatten()
+        .filter(|e| {
+            let file_name = e.file_name();
+            file_name != ".gitattributes" && file_name != "README.md"
+        })
+        .filter(|e| !e.file_type().is_dir());
+    for entry in top_level_ui_tests {
+        tidy_error!(
+            bad,
+            "ui tests should be added under meaningful subdirectories: `{}`",
+            entry.path().display()
+        )
     }
 }
 
