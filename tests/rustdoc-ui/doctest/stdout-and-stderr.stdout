@@ -14,7 +14,7 @@ stdout:
 
 stderr:
 
-thread 'main' panicked at $TMP:7:1:
+thread 'main' ($TID) panicked at $TMP:7:1:
 assertion `left == right` failed
   left: "doc"
  right: "test"
@@ -26,7 +26,7 @@ Test executable failed (exit status: 101).
 
 stderr:
 
-thread 'main' panicked at $TMP:15:1:
+thread 'main' ($TID) panicked at $TMP:15:1:
 assertion `left == right` failed
   left: "doc"
  right: "test"

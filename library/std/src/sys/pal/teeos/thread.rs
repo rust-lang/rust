@@ -144,6 +144,10 @@ impl Drop for Thread {
     }
 }
 
+pub(crate) fn current_os_id() -> Option<u64> {
+    None
+}
+
 // Note: Both `sched_getaffinity` and `sysconf` are available but not functional on
 // teeos, so this function always returns an Error!
 pub fn available_parallelism() -> io::Result<NonZero<usize>> {

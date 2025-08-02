@@ -269,6 +269,7 @@ fn default_hook(info: &PanicHookInfo<'_>) {
 
         thread::with_current_name(|name| {
             let name = name.unwrap_or("<unnamed>");
+            let tid = thread::current_os_id();
 
             // Try to write the panic message to a buffer first to prevent other concurrent outputs
             // interleaving with it.
@@ -277,7 +278,7 @@ fn default_hook(info: &PanicHookInfo<'_>) {
 
             let write_msg = |dst: &mut dyn crate::io::Write| {
                 // We add a newline to ensure the panic message appears at the start of a line.
-                writeln!(dst, "\nthread '{name}' panicked at {location}:\n{msg}")
+                writeln!(dst, "\nthread '{name}' ({tid}) panicked at {location}:\n{msg}")
             };
 
             if write_msg(&mut cursor).is_ok() {

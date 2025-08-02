@@ -2,7 +2,7 @@
 { "type": "test", "event": "started", "name": "a" }
 { "type": "test", "name": "a", "event": "ok" }
 { "type": "test", "event": "started", "name": "b" }
-{ "type": "test", "name": "b", "event": "failed", "stdout": "\nthread 'b' panicked at f.rs:9:5:\nassertion failed: false\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n" }
+{ "type": "test", "name": "b", "event": "failed", "stdout": "\nthread 'b' ($TID) panicked at f.rs:9:5:\nassertion failed: false\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n" }
 { "type": "test", "event": "started", "name": "c" }
 { "type": "test", "name": "c", "event": "ok" }
 { "type": "test", "event": "started", "name": "d" }

@@ -1,5 +1,5 @@
 
-thread 'main' panicked at tests/panic/panic1.rs:LL:CC:
+thread 'main' ($TID) panicked at tests/panic/panic1.rs:LL:CC:
 panicking from libstd
 stack backtrace:
    0: std::panicking::begin_panic_handler
