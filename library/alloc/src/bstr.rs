@@ -477,9 +477,8 @@ impl PartialEq for ByteString {
 
 macro_rules! impl_partial_eq_ord_cow {
     ($lhs:ty, $rhs:ty) => {
-        #[allow(unused_lifetimes)]
         #[unstable(feature = "bstr", issue = "134915")]
-        impl<'a> PartialEq<$rhs> for $lhs {
+        impl PartialEq<$rhs> for $lhs {
             #[inline]
             fn eq(&self, other: &$rhs) -> bool {
                 let other: &[u8] = (&**other).as_ref();
@@ -487,9 +486,8 @@ macro_rules! impl_partial_eq_ord_cow {
             }
         }
 
-        #[allow(unused_lifetimes)]
         #[unstable(feature = "bstr", issue = "134915")]
-        impl<'a> PartialEq<$lhs> for $rhs {
+        impl PartialEq<$lhs> for $rhs {
             #[inline]
             fn eq(&self, other: &$lhs) -> bool {
                 let this: &[u8] = (&**self).as_ref();
@@ -497,9 +495,8 @@ macro_rules! impl_partial_eq_ord_cow {
             }
         }
 
-        #[allow(unused_lifetimes)]
         #[unstable(feature = "bstr", issue = "134915")]
-        impl<'a> PartialOrd<$rhs> for $lhs {
+        impl PartialOrd<$rhs> for $lhs {
             #[inline]
             fn partial_cmp(&self, other: &$rhs) -> Option<Ordering> {
                 let other: &[u8] = (&**other).as_ref();
@@ -507,9 +504,8 @@ macro_rules! impl_partial_eq_ord_cow {
             }
         }
 
-        #[allow(unused_lifetimes)]
         #[unstable(feature = "bstr", issue = "134915")]
-        impl<'a> PartialOrd<$lhs> for $rhs {
+        impl PartialOrd<$lhs> for $rhs {
             #[inline]
             fn partial_cmp(&self, other: &$lhs) -> Option<Ordering> {
                 let this: &[u8] = (&**self).as_ref();
@@ -667,9 +663,9 @@ impl From<Arc<ByteStr>> for Arc<[u8]> {
 impl_partial_eq!(ByteStr, Vec<u8>);
 // PartialOrd with `String` omitted to avoid inference failures
 impl_partial_eq!(ByteStr, String);
-impl_partial_eq_ord_cow!(&'a ByteStr, Cow<'a, ByteStr>);
-impl_partial_eq_ord_cow!(&'a ByteStr, Cow<'a, str>);
-impl_partial_eq_ord_cow!(&'a ByteStr, Cow<'a, [u8]>);
+impl_partial_eq_ord_cow!(&ByteStr, Cow<'_, ByteStr>);
+impl_partial_eq_ord_cow!(&ByteStr, Cow<'_, str>);
+impl_partial_eq_ord_cow!(&ByteStr, Cow<'_, [u8]>);
 
 #[unstable(feature = "bstr", issue = "134915")]
 impl<'a> TryFrom<&'a ByteStr> for String {
