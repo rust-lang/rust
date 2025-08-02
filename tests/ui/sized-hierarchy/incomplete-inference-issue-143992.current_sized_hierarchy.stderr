@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/incomplete-inference-issue-143992.rs:30:28
+  --> $DIR/incomplete-inference-issue-143992.rs:27:28
    |
 LL |     let _x = T::Assoc::new(());
    |              ------------- ^^ expected `[u32; 1]`, found `()`
@@ -7,7 +7,7 @@ LL |     let _x = T::Assoc::new(());
    |              arguments to this function are incorrect
    |
 note: associated function defined here
-  --> $DIR/incomplete-inference-issue-143992.rs:21:8
+  --> $DIR/incomplete-inference-issue-143992.rs:18:8
    |
 LL |     fn new(r: R) -> R {
    |        ^^^ ----
