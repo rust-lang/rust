@@ -1,17 +1,17 @@
 error[E0214]: parenthesized type parameters may only be used with a `Fn` trait
-  --> $DIR/issue-32995-2.rs:2:22
+  --> $DIR/parenthesized-type-parameters-error-32995.rs:3:22
    |
 LL |     { fn f<X: ::std::marker()::Send>() {} }
    |                      ^^^^^^^^ only `Fn` traits may use parentheses
 
 error[E0214]: parenthesized type parameters may only be used with a `Fn` trait
-  --> $DIR/issue-32995-2.rs:5:29
+  --> $DIR/parenthesized-type-parameters-error-32995.rs:6:29
    |
 LL |     { fn f() -> impl ::std::marker()::Send { } }
    |                             ^^^^^^^^ only `Fn` traits may use parentheses
 
 error[E0214]: parenthesized type parameters may only be used with a `Fn` trait
-  --> $DIR/issue-32995-2.rs:12:13
+  --> $DIR/parenthesized-type-parameters-error-32995.rs:13:13
    |
 LL | impl ::std::marker()::Copy for X {}
    |             ^^^^^^^^ only `Fn` traits may use parentheses

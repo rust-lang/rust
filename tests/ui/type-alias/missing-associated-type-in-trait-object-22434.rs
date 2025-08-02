@@ -1,3 +1,4 @@
+// https://github.com/rust-lang/rust/issues/22434
 pub trait Foo {
     type A;
 }

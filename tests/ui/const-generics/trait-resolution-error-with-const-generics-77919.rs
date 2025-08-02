@@ -1,3 +1,4 @@
+// https://github.com/rust-lang/rust/issues/77919
 fn main() {
     [1; <Multiply<Five, Five>>::VAL];
 }

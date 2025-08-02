@@ -1,3 +1,4 @@
+// https://github.com/rust-lang/rust/issues/36116
 // Unnecessary path disambiguator is ok
 
 //@ check-pass
