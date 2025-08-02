@@ -1,0 +1,247 @@
+warning: a dangling pointer will be produced because the local variable `x` will be dropped
+  --> $DIR/dangling-pointers-from-locals.rs:10:5
+   |
+LL | fn simple() -> *const u8 {
+   |                --------- return type of the function is `*const u8`
+LL |     let x = 0;
+   |         - `x` is part the function and will be dropped at the end of the function
+LL |     &x
+   |     ^^
+   |
+   = note: pointers do not have a lifetime; after returning, the `u8` will be deallocated at the end of the function because nothing is referencing it as far as the type system is concerned
+   = note: `#[warn(dangling_pointers_from_locals)]` on by default
+
+warning: a dangling pointer will be produced because the local variable `x` will be dropped
+  --> $DIR/dangling-pointers-from-locals.rs:17:5
+   |
+LL | fn bindings() -> *const u8 {
+   |                  --------- return type of the function is `*const u8`
+LL |     let x = 0;
+   |         - `x` is part the function and will be dropped at the end of the function
+LL |     let x = &x;
+   |             -- dangling pointer created here
+LL |     x
+   |     ^
+   |
+   = note: pointers do not have a lifetime; after returning, the `u8` will be deallocated at the end of the function because nothing is referencing it as far as the type system is concerned
+
+warning: a dangling pointer will be produced because the local variable `x` will be dropped
+  --> $DIR/dangling-pointers-from-locals.rs:24:12
+   |
+LL | fn bindings_with_return() -> *const u8 {
+   |                              --------- return type of the function is `*const u8`
+LL |     let x = 42;
+   |         - `x` is part the function and will be dropped at the end of the function
+LL |     let y = &x;
+   |             -- dangling pointer created here
+LL |     return y;
+   |            ^
+   |
+   = note: pointers do not have a lifetime; after returning, the `u8` will be deallocated at the end of the function because nothing is referencing it as far as the type system is concerned
+
+warning: a dangling pointer will be produced because the local variable `x` will be dropped
+  --> $DIR/dangling-pointers-from-locals.rs:30:5
+   |
+LL | fn with_simple_cast() -> *const u8 {
+   |                          --------- return type of the function is `*const u8`
+LL |     let x = 0u8;
+   |         - `x` is part the function and will be dropped at the end of the function
+LL |     &x as *const u8
+   |     --^^^^^^^^^^^^^
+   |     |
+   |     dangling pointer created here
+   |
+   = note: pointers do not have a lifetime; after returning, the `u8` will be deallocated at the end of the function because nothing is referencing it as far as the type system is concerned
+
+warning: a dangling pointer will be produced because the local variable `x` will be dropped
+  --> $DIR/dangling-pointers-from-locals.rs:37:5
+   |
+LL | fn bindings_and_casts() -> *const u8 {
+   |                            --------- return type of the function is `*const u8`
+LL |     let x = 0u8;
+   |         - `x` is part the function and will be dropped at the end of the function
+LL |     let x = &x as *const u8;
+   |             -- dangling pointer created here
+LL |     x as *const u8
+   |     ^^^^^^^^^^^^^^
+   |
+   = note: pointers do not have a lifetime; after returning, the `u8` will be deallocated at the end of the function because nothing is referencing it as far as the type system is concerned
+
+warning: a dangling pointer will be produced because the local variable `x` will be dropped
+  --> $DIR/dangling-pointers-from-locals.rs:43:12
+   |
+LL | fn return_with_complex_cast() -> *mut u8 {
+   |                                  ------- return type of the function is `*mut u8`
+LL |     let mut x = 0u8;
+   |         ----- `x` is part the function and will be dropped at the end of the function
+LL |     return &mut x as *mut u8 as *const u8 as *mut u8;
+   |            ------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |            |
+   |            dangling pointer created here
+   |
+   = note: pointers do not have a lifetime; after returning, the `u8` will be deallocated at the end of the function because nothing is referencing it as far as the type system is concerned
+
+warning: a dangling pointer will be produced because the local variable `x` will be dropped
+  --> $DIR/dangling-pointers-from-locals.rs:49:5
+   |
+LL | fn with_block() -> *const u8 {
+   |                    --------- return type of the function is `*const u8`
+LL |     let x = 0;
+   |         - `x` is part the function and will be dropped at the end of the function
+LL |     &{ x }
+   |     ^^^^^^
+   |
+   = note: pointers do not have a lifetime; after returning, the `u8` will be deallocated at the end of the function because nothing is referencing it as far as the type system is concerned
+
+warning: a dangling pointer will be produced because the local variable `x` will be dropped
+  --> $DIR/dangling-pointers-from-locals.rs:57:13
+   |
+LL |   fn with_many_blocks() -> *const u8 {
+   |                            --------- return type of the function is `*const u8`
+LL |       let x = 0;
+   |           - `x` is part the function and will be dropped at the end of the function
+...
+LL | /             &{
+LL | |
+LL | |                 { x }
+LL | |             }
+   | |_____________^
+   |
+   = note: pointers do not have a lifetime; after returning, the `u8` will be deallocated at the end of the function because nothing is referencing it as far as the type system is concerned
+
+warning: a dangling pointer will be produced because the local variable `x` will be dropped
+  --> $DIR/dangling-pointers-from-locals.rs:67:12
+   |
+LL | fn simple_return() -> *const u8 {
+   |                       --------- return type of the function is `*const u8`
+LL |     let x = 0;
+   |         - `x` is part the function and will be dropped at the end of the function
+LL |     return &x;
+   |            ^^
+   |
+   = note: pointers do not have a lifetime; after returning, the `u8` will be deallocated at the end of the function because nothing is referencing it as far as the type system is concerned
+
+warning: a dangling pointer will be produced because the local variable `x` will be dropped
+  --> $DIR/dangling-pointers-from-locals.rs:73:12
+   |
+LL | fn return_mut() -> *mut u8 {
+   |                    ------- return type of the function is `*mut u8`
+LL |     let mut x = 0;
+   |         ----- `x` is part the function and will be dropped at the end of the function
+LL |     return &mut x;
+   |            ^^^^^^
+   |
+   = note: pointers do not have a lifetime; after returning, the `u8` will be deallocated at the end of the function because nothing is referencing it as far as the type system is concerned
+
+warning: a dangling pointer will be produced because the local variable `x` will be dropped
+  --> $DIR/dangling-pointers-from-locals.rs:80:16
+   |
+LL | fn const_and_flow() -> *const u8 {
+   |                        --------- return type of the function is `*const u8`
+LL |     if false {
+LL |         let x = 8;
+   |             - `x` is part the function and will be dropped at the end of the function
+LL |         return &x;
+   |                ^^
+   |
+   = note: pointers do not have a lifetime; after returning, the `u8` will be deallocated at the end of the function because nothing is referencing it as far as the type system is concerned
+
+warning: a dangling pointer will be produced because the local variable `x` will be dropped
+  --> $DIR/dangling-pointers-from-locals.rs:88:5
+   |
+LL | fn vector<T: Default>() -> *const Vec<T> {
+   |                            ------------- return type of the function is `*const Vec<T>`
+LL |     let x = vec![T::default()];
+   |         - `x` is part the function and will be dropped at the end of the function
+LL |     &x
+   |     ^^
+   |
+   = note: pointers do not have a lifetime; after returning, the `Vec<T>` will be deallocated at the end of the function because nothing is referencing it as far as the type system is concerned
+
+warning: a dangling pointer will be produced because the local variable `x` will be dropped
+  --> $DIR/dangling-pointers-from-locals.rs:94:12
+   |
+LL | fn local_adt() -> *const Adt {
+   |                   ---------- return type of the function is `*const Adt`
+LL |     let x = Adt(5);
+   |         - `x` is part the function and will be dropped at the end of the function
+LL |     return &x;
+   |            ^^
+   |
+   = note: pointers do not have a lifetime; after returning, the `Adt` will be deallocated at the end of the function because nothing is referencing it as far as the type system is concerned
+
+warning: a dangling pointer will be produced because the local variable `x` will be dropped
+  --> $DIR/dangling-pointers-from-locals.rs:101:16
+   |
+LL |     let _x = || -> *const u8 {
+   |                    --------- return type of the closure is `*const u8`
+LL |         let x = 8;
+   |             - `x` is part the closure and will be dropped at the end of the closure
+LL |         return &x;
+   |                ^^
+   |
+   = note: pointers do not have a lifetime; after returning, the `u8` will be deallocated at the end of the closure because nothing is referencing it as far as the type system is concerned
+
+warning: a dangling pointer will be produced because the local variable `x` will be dropped
+  --> $DIR/dangling-pointers-from-locals.rs:113:5
+   |
+LL | fn fn_ptr() -> *const fn() -> u8 {
+   |                ----------------- return type of the function is `*const fn() -> u8`
+...
+LL |     let x = ret_u8 as fn() -> u8;
+   |         - `x` is part the function and will be dropped at the end of the function
+LL |     &x
+   |     ^^
+   |
+   = note: pointers do not have a lifetime; after returning, the `fn() -> u8` will be deallocated at the end of the function because nothing is referencing it as far as the type system is concerned
+
+warning: a dangling pointer will be produced because the local variable `a` will be dropped
+  --> $DIR/dangling-pointers-from-locals.rs:118:5
+   |
+LL | fn as_arg(a: Adt) -> *const Adt {
+   |           -          ---------- return type of the function is `*const Adt`
+   |           |
+   |           `a` is part the function and will be dropped at the end of the function
+LL |     &a
+   |     ^^
+   |
+   = note: pointers do not have a lifetime; after returning, the `Adt` will be deallocated at the end of the function because nothing is referencing it as far as the type system is concerned
+
+warning: a dangling pointer will be produced because the local variable `a` will be dropped
+  --> $DIR/dangling-pointers-from-locals.rs:123:5
+   |
+LL | fn fn_ptr_as_arg(a: fn() -> u8) -> *const fn() -> u8 {
+   |                  -                 ----------------- return type of the function is `*const fn() -> u8`
+   |                  |
+   |                  `a` is part the function and will be dropped at the end of the function
+LL |     &a
+   |     ^^
+   |
+   = note: pointers do not have a lifetime; after returning, the `fn() -> u8` will be deallocated at the end of the function because nothing is referencing it as far as the type system is concerned
+
+warning: a dangling pointer will be produced because the local variable `a` will be dropped
+  --> $DIR/dangling-pointers-from-locals.rs:128:5
+   |
+LL | fn ptr_as_arg(a: *const Adt) -> *const *const Adt {
+   |               -                 ----------------- return type of the function is `*const *const Adt`
+   |               |
+   |               `a` is part the function and will be dropped at the end of the function
+LL |     &a
+   |     ^^
+   |
+   = note: pointers do not have a lifetime; after returning, the `*const Adt` will be deallocated at the end of the function because nothing is referencing it as far as the type system is concerned
+
+warning: a dangling pointer will be produced because the local variable `a` will be dropped
+  --> $DIR/dangling-pointers-from-locals.rs:133:5
+   |
+LL | fn adt_as_arg(a: &Adt) -> *const &Adt {
+   |               -           ----------- return type of the function is `*const &Adt`
+   |               |
+   |               `a` is part the function and will be dropped at the end of the function
+LL |     &a
+   |     ^^
+   |
+   = note: pointers do not have a lifetime; after returning, the `&Adt` will be deallocated at the end of the function because nothing is referencing it as far as the type system is concerned
+
+warning: 19 warnings emitted
+

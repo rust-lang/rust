@@ -207,6 +207,12 @@ lint_confusable_identifier_pair = found both `{$existing_sym}` and `{$sym}` as i
 
 lint_custom_inner_attribute_unstable = custom inner attributes are unstable
 
+lint_dangling_pointers_from_locals = a dangling pointer will be produced because the local variable `{$local_var_name}` will be dropped
+    .ret_ty = return type of the {$fn_kind} is `{$ret_ty}`
+    .local_var = `{$local_var_name}` is part the {$fn_kind} and will be dropped at the end of the {$fn_kind}
+    .created_at = dangling pointer created here
+    .note = pointers do not have a lifetime; after returning, the `{$local_var_ty}` will be deallocated at the end of the {$fn_kind} because nothing is referencing it as far as the type system is concerned
+
 lint_dangling_pointers_from_temporaries = a dangling pointer will be produced because the temporary `{$ty}` will be dropped
     .label_ptr = this pointer will immediately be invalid
     .label_temporary = this `{$ty}` is deallocated at the end of the statement, bind it to a variable to extend its lifetime
