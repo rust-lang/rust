@@ -740,11 +740,19 @@
 # result (broken, compiling, testing) into this JSON file.
 #rust.save-toolstates = <none> (path)
 
-# This is an array of the codegen backends that will be compiled for the rustc
-# that's being compiled. The default is to only build the LLVM codegen backend,
-# and currently the only standard options supported are `"llvm"`, `"cranelift"`
-# and `"gcc"`. The first backend in this list will be used as default by rustc
-# when no explicit backend is specified.
+# This array serves three distinct purposes:
+# - Backends in this list will be automatically compiled and included in the sysroot of each
+# rustc compiled by bootstrap.
+# - The first backend in this list will be configured as the **default codegen backend** by each
+# rustc compiled by bootstrap. In other words, if the first backend is e.g. cranelift, then when
+# we build a stage 1 rustc, it will by default compile Rust programs using the Cranelift backend.
+# This also means that stage 2 rustc would get built by the Cranelift backend.
+# - Running `x dist` (without additional arguments, or with `--include-default-paths`) will produce
+# a dist component/tarball for the Cranelift backend if it is included in this array.
+#
+# Note that the LLVM codegen backend is special and will always be built and distributed.
+#
+# Currently, the only standard options supported here are `"llvm"`, `"cranelift"` and `"gcc"`.
 #rust.codegen-backends = ["llvm"]
 
 # Indicates whether LLD will be compiled and made available in the sysroot for rustc to execute, and

@@ -20,7 +20,7 @@ use object::read::archive::ArchiveFile;
 use tracing::instrument;
 
 use crate::core::build_steps::doc::DocumentationFormat;
-use crate::core::build_steps::tool::{self, Tool};
+use crate::core::build_steps::tool::{self, RustcPrivateCompilers, Tool};
 use crate::core::build_steps::vendor::{VENDOR_DIR, Vendor};
 use crate::core::build_steps::{compile, llvm};
 use crate::core::builder::{Builder, Kind, RunConfig, ShouldRun, Step, StepMetadata};
@@ -425,19 +425,20 @@ impl Step for Rustc {
                 .as_ref()
                 .is_none_or(|tools| tools.iter().any(|tool| tool == "rustdoc"))
             {
-                let rustdoc = builder.rustdoc(compiler);
+                let rustdoc = builder.rustdoc_for_compiler(compiler);
                 builder.install(&rustdoc, &image.join("bin"), FileType::Executable);
             }
 
             let ra_proc_macro_srv_compiler =
                 builder.compiler_for(compiler.stage, builder.config.host_target, compiler.host);
-            builder.ensure(compile::Rustc::new(ra_proc_macro_srv_compiler, compiler.host));
+            let compilers = RustcPrivateCompilers::from_build_compiler(
+                builder,
+                ra_proc_macro_srv_compiler,
+                compiler.host,
+            );
 
             if let Some(ra_proc_macro_srv) = builder.ensure_if_default(
-                tool::RustAnalyzerProcMacroSrv {
-                    compiler: ra_proc_macro_srv_compiler,
-                    target: compiler.host,
-                },
+                tool::RustAnalyzerProcMacroSrv::from_compilers(compilers),
                 builder.kind,
             ) {
                 let dst = image.join("libexec");
@@ -1172,7 +1173,7 @@ impl Step for PlainSourceTarball {
 
 #[derive(Debug, PartialOrd, Ord, Clone, Hash, PartialEq, Eq)]
 pub struct Cargo {
-    pub compiler: Compiler,
+    pub build_compiler: Compiler,
     pub target: TargetSelection,
 }
 
@@ -1188,7 +1189,7 @@ impl Step for Cargo {
 
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(Cargo {
-            compiler: run.builder.compiler_for(
+            build_compiler: run.builder.compiler_for(
                 run.builder.top_stage,
                 run.builder.config.host_target,
                 run.target,
@@ -1198,12 +1199,10 @@ impl Step for Cargo {
     }
 
     fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
-        let compiler = self.compiler;
+        let build_compiler = self.build_compiler;
         let target = self.target;
 
-        builder.ensure(compile::Rustc::new(compiler, target));
-
-        let cargo = builder.ensure(tool::Cargo { compiler, target });
+        let cargo = builder.ensure(tool::Cargo::from_build_compiler(build_compiler, target));
         let src = builder.src.join("src/tools/cargo");
         let etc = src.join("src/etc");
 
@@ -1228,7 +1227,7 @@ impl Step for Cargo {
 
 #[derive(Debug, PartialOrd, Ord, Clone, Hash, PartialEq, Eq)]
 pub struct RustAnalyzer {
-    pub compiler: Compiler,
+    pub build_compiler: Compiler,
     pub target: TargetSelection,
 }
 
@@ -1244,7 +1243,7 @@ impl Step for RustAnalyzer {
 
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(RustAnalyzer {
-            compiler: run.builder.compiler_for(
+            build_compiler: run.builder.compiler_for(
                 run.builder.top_stage,
                 run.builder.config.host_target,
                 run.target,
@@ -1254,12 +1253,11 @@ impl Step for RustAnalyzer {
     }
 
     fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
-        let compiler = self.compiler;
         let target = self.target;
+        let compilers =
+            RustcPrivateCompilers::from_build_compiler(builder, self.build_compiler, self.target);
 
-        builder.ensure(compile::Rustc::new(compiler, target));
-
-        let rust_analyzer = builder.ensure(tool::RustAnalyzer { compiler, target });
+        let rust_analyzer = builder.ensure(tool::RustAnalyzer::from_compilers(compilers));
 
         let mut tarball = Tarball::new(builder, "rust-analyzer", &target.triple);
         tarball.set_overlay(OverlayKind::RustAnalyzer);
@@ -1270,9 +1268,9 @@ impl Step for RustAnalyzer {
     }
 }
 
-#[derive(Debug, PartialOrd, Ord, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct Clippy {
-    pub compiler: Compiler,
+    pub build_compiler: Compiler,
     pub target: TargetSelection,
 }
 
@@ -1288,7 +1286,7 @@ impl Step for Clippy {
 
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(Clippy {
-            compiler: run.builder.compiler_for(
+            build_compiler: run.builder.compiler_for(
                 run.builder.top_stage,
                 run.builder.config.host_target,
                 run.target,
@@ -1298,16 +1296,15 @@ impl Step for Clippy {
     }
 
     fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
-        let compiler = self.compiler;
         let target = self.target;
-
-        builder.ensure(compile::Rustc::new(compiler, target));
+        let compilers =
+            RustcPrivateCompilers::from_build_compiler(builder, self.build_compiler, target);
 
         // Prepare the image directory
         // We expect clippy to build, because we've exited this step above if tool
         // state for clippy isn't testing.
-        let clippy = builder.ensure(tool::Clippy { compiler, target });
-        let cargoclippy = builder.ensure(tool::CargoClippy { compiler, target });
+        let clippy = builder.ensure(tool::Clippy::from_compilers(compilers));
+        let cargoclippy = builder.ensure(tool::CargoClippy::from_compilers(compilers));
 
         let mut tarball = Tarball::new(builder, "clippy", &target.triple);
         tarball.set_overlay(OverlayKind::Clippy);
@@ -1319,9 +1316,9 @@ impl Step for Clippy {
     }
 }
 
-#[derive(Debug, PartialOrd, Ord, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct Miri {
-    pub compiler: Compiler,
+    pub build_compiler: Compiler,
     pub target: TargetSelection,
 }
 
@@ -1337,7 +1334,7 @@ impl Step for Miri {
 
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(Miri {
-            compiler: run.builder.compiler_for(
+            build_compiler: run.builder.compiler_for(
                 run.builder.top_stage,
                 run.builder.config.host_target,
                 run.target,
@@ -1354,15 +1351,12 @@ impl Step for Miri {
             return None;
         }
 
-        let compiler = self.compiler;
-        let target = self.target;
+        let compilers =
+            RustcPrivateCompilers::from_build_compiler(builder, self.build_compiler, self.target);
+        let miri = builder.ensure(tool::Miri::from_compilers(compilers));
+        let cargomiri = builder.ensure(tool::CargoMiri::from_compilers(compilers));
 
-        builder.ensure(compile::Rustc::new(compiler, target));
-
-        let miri = builder.ensure(tool::Miri { compiler, target });
-        let cargomiri = builder.ensure(tool::CargoMiri { compiler, target });
-
-        let mut tarball = Tarball::new(builder, "miri", &target.triple);
+        let mut tarball = Tarball::new(builder, "miri", &self.target.triple);
         tarball.set_overlay(OverlayKind::Miri);
         tarball.is_preview(true);
         tarball.add_file(&miri.tool_path, "bin", FileType::Executable);
@@ -1373,38 +1367,39 @@ impl Step for Miri {
 }
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
-pub struct CodegenBackend {
-    pub compiler: Compiler,
-    pub backend: CodegenBackendKind,
+pub struct CraneliftCodegenBackend {
+    pub build_compiler: Compiler,
 }
 
-impl Step for CodegenBackend {
+impl Step for CraneliftCodegenBackend {
     type Output = Option<GeneratedTarball>;
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("compiler/rustc_codegen_cranelift")
+        // We only want to build the cranelift backend in `x dist` if the backend was enabled
+        // in rust.codegen-backends.
+        // Sadly, we don't have access to the actual for which we're disting clif here..
+        // So we just use the host target.
+        let clif_enabled_by_default = run
+            .builder
+            .config
+            .enabled_codegen_backends(run.builder.host_target)
+            .contains(&CodegenBackendKind::Cranelift);
+        run.alias("rustc_codegen_cranelift").default_condition(clif_enabled_by_default)
     }
 
     fn make_run(run: RunConfig<'_>) {
-        for backend in run.builder.config.codegen_backends(run.target) {
-            if backend.is_llvm() {
-                continue; // Already built as part of rustc
-            }
-
-            run.builder.ensure(CodegenBackend {
-                compiler: run.builder.compiler(run.builder.top_stage, run.target),
-                backend: backend.clone(),
-            });
-        }
+        run.builder.ensure(CraneliftCodegenBackend {
+            build_compiler: run.builder.compiler_for(
+                run.builder.top_stage,
+                run.builder.config.host_target,
+                run.target,
+            ),
+        });
     }
 
     fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
-        if builder.config.dry_run() {
-            return None;
-        }
-
         // This prevents rustc_codegen_cranelift from being built for "dist"
         // or "install" on the stable/beta channels. It is not yet stable and
         // should not be included.
@@ -1412,46 +1407,39 @@ impl Step for CodegenBackend {
             return None;
         }
 
-        if !builder.config.codegen_backends(self.compiler.host).contains(&self.backend) {
-            return None;
-        }
-
-        if self.backend.is_cranelift() && !target_supports_cranelift_backend(self.compiler.host) {
+        let target = self.build_compiler.host;
+        let compilers =
+            RustcPrivateCompilers::from_build_compiler(builder, self.build_compiler, target);
+        if !target_supports_cranelift_backend(target) {
             builder.info("target not supported by rustc_codegen_cranelift. skipping");
             return None;
         }
 
-        let compiler = self.compiler;
-        let backend = self.backend;
-
-        let mut tarball = Tarball::new(
-            builder,
-            &format!("rustc-codegen-{}", backend.name()),
-            &compiler.host.triple,
-        );
-        if backend.is_cranelift() {
-            tarball.set_overlay(OverlayKind::RustcCodegenCranelift);
-        } else {
-            panic!("Unknown codegen backend {}", backend.name());
-        }
+        let mut tarball = Tarball::new(builder, &"rustc-codegen-cranelift", &target.triple);
+        tarball.set_overlay(OverlayKind::RustcCodegenCranelift);
         tarball.is_preview(true);
-        tarball.add_legal_and_readme_to(format!("share/doc/{}", backend.crate_name()));
+        tarball.add_legal_and_readme_to("share/doc/rustc_codegen_cranelift");
 
-        let src = builder.sysroot(compiler);
-        let backends_src = builder.sysroot_codegen_backends(compiler);
+        builder.ensure(compile::CraneliftCodegenBackend { compilers });
+
+        if builder.config.dry_run() {
+            return None;
+        }
+
+        let src = builder.sysroot(self.build_compiler);
+        let backends_src = builder.sysroot_codegen_backends(self.build_compiler);
         let backends_rel = backends_src
             .strip_prefix(src)
             .unwrap()
-            .strip_prefix(builder.sysroot_libdir_relative(compiler))
+            .strip_prefix(builder.sysroot_libdir_relative(self.build_compiler))
             .unwrap();
         // Don't use custom libdir here because ^lib/ will be resolved again with installer
         let backends_dst = PathBuf::from("lib").join(backends_rel);
 
-        let backend_name = backend.crate_name();
         let mut found_backend = false;
         for backend in fs::read_dir(&backends_src).unwrap() {
             let file_name = backend.unwrap().file_name();
-            if file_name.to_str().unwrap().contains(&backend_name) {
+            if file_name.to_str().unwrap().contains("rustc_codegen_cranelift") {
                 tarball.add_file(
                     backends_src.join(file_name),
                     &backends_dst,
@@ -1464,11 +1452,18 @@ impl Step for CodegenBackend {
 
         Some(tarball.generate())
     }
+
+    fn metadata(&self) -> Option<StepMetadata> {
+        Some(
+            StepMetadata::dist("rustc_codegen_cranelift", self.build_compiler.host)
+                .built_by(self.build_compiler),
+        )
+    }
 }
 
-#[derive(Debug, PartialOrd, Ord, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct Rustfmt {
-    pub compiler: Compiler,
+    pub build_compiler: Compiler,
     pub target: TargetSelection,
 }
 
@@ -1484,7 +1479,7 @@ impl Step for Rustfmt {
 
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(Rustfmt {
-            compiler: run.builder.compiler_for(
+            build_compiler: run.builder.compiler_for(
                 run.builder.top_stage,
                 run.builder.config.host_target,
                 run.target,
@@ -1494,14 +1489,13 @@ impl Step for Rustfmt {
     }
 
     fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
-        let compiler = self.compiler;
-        let target = self.target;
+        let compilers =
+            RustcPrivateCompilers::from_build_compiler(builder, self.build_compiler, self.target);
 
-        builder.ensure(compile::Rustc::new(compiler, target));
+        let rustfmt = builder.ensure(tool::Rustfmt::from_compilers(compilers));
+        let cargofmt = builder.ensure(tool::Cargofmt::from_compilers(compilers));
 
-        let rustfmt = builder.ensure(tool::Rustfmt { compiler, target });
-        let cargofmt = builder.ensure(tool::Cargofmt { compiler, target });
-        let mut tarball = Tarball::new(builder, "rustfmt", &target.triple);
+        let mut tarball = Tarball::new(builder, "rustfmt", &self.target.triple);
         tarball.set_overlay(OverlayKind::Rustfmt);
         tarball.is_preview(true);
         tarball.add_file(&rustfmt.tool_path, "bin", FileType::Executable);
@@ -1548,7 +1542,7 @@ impl Step for Extended {
         let mut built_tools = HashSet::new();
         macro_rules! add_component {
             ($name:expr => $step:expr) => {
-                if let Some(tarball) = builder.ensure_if_default($step, Kind::Dist) {
+                if let Some(Some(tarball)) = builder.ensure_if_default($step, Kind::Dist) {
                     tarballs.push(tarball);
                     built_tools.insert($name);
                 }
@@ -1568,16 +1562,15 @@ impl Step for Extended {
 
         add_component!("rust-docs" => Docs { host: target });
         add_component!("rust-json-docs" => JsonDocs { host: target });
-        add_component!("cargo" => Cargo { compiler, target });
-        add_component!("rustfmt" => Rustfmt { compiler, target });
-        add_component!("rust-analyzer" => RustAnalyzer { compiler, target });
+        add_component!("cargo" => Cargo { build_compiler: compiler, target });
+        add_component!("rustfmt" => Rustfmt { build_compiler: compiler, target });
+        add_component!("rust-analyzer" => RustAnalyzer { build_compiler: compiler, target });
         add_component!("llvm-components" => LlvmTools { target });
-        add_component!("clippy" => Clippy { compiler, target });
-        add_component!("miri" => Miri { compiler, target });
+        add_component!("clippy" => Clippy { build_compiler: compiler, target });
+        add_component!("miri" => Miri { build_compiler: compiler, target });
         add_component!("analysis" => Analysis { compiler, target });
-        add_component!("rustc-codegen-cranelift" => CodegenBackend {
-            compiler: builder.compiler(stage, target),
-            backend: CodegenBackendKind::Cranelift,
+        add_component!("rustc-codegen-cranelift" => CraneliftCodegenBackend {
+            build_compiler: compiler,
         });
         add_component!("llvm-bitcode-linker" => LlvmBitcodeLinker {
             build_compiler: compiler,
