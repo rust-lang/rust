@@ -1528,8 +1528,12 @@ impl Step for Libunwind {
 
         // FIXME: https://github.com/alexcrichton/cc-rs/issues/545#issuecomment-679242845
         let mut count = 0;
-        for entry in fs::read_dir(&out_dir).unwrap() {
-            let file = entry.unwrap().path().canonicalize().unwrap();
+        let mut files = fs::read_dir(&out_dir)
+            .unwrap()
+            .map(|entry| entry.unwrap().path().canonicalize().unwrap())
+            .collect::<Vec<_>>();
+        files.sort();
+        for file in files {
             if file.is_file() && file.extension() == Some(OsStr::new("o")) {
                 // Object file name without the hash prefix is "Unwind-EHABI", "Unwind-seh" or "libunwind".
                 let base_name = unhashed_basename(&file);

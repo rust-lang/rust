@@ -2381,15 +2381,19 @@ pub fn run_cargo(
     let mut deps = Vec::new();
     let mut toplevel = Vec::new();
     let ok = stream_cargo(builder, cargo, tail_args, &mut |msg| {
-        let (filenames, crate_types) = match msg {
+        let (filenames_vec, crate_types) = match msg {
             CargoMessage::CompilerArtifact {
                 filenames,
                 target: CargoTarget { crate_types },
                 ..
-            } => (filenames, crate_types),
+            } => {
+                let mut f: Vec<String> = filenames.into_iter().map(|s| s.into_owned()).collect();
+                f.sort(); // Sort the filenames
+                (f, crate_types)
+            }
             _ => return,
         };
-        for filename in filenames {
+        for filename in filenames_vec {
             // Skip files like executables
             let mut keep = false;
             if filename.ends_with(".lib")
