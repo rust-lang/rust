@@ -611,6 +611,7 @@ where
     ///
     /// For example, with 3 fields, the drop ladder is
     ///
+    /// ```text
     /// .d0:
     ///     ELAB(drop location.0 [target=.d1, unwind=.c1])
     /// .d1:
@@ -621,8 +622,10 @@ where
     ///     ELAB(drop location.1 [target=.c2])
     /// .c2:
     ///     ELAB(drop location.2 [target=`self.unwind`])
+    /// ```
     ///
     /// For possible-async drops in coroutines we also need dropline ladder
+    /// ```text
     /// .d0 (mainline):
     ///     ELAB(drop location.0 [target=.d1, unwind=.c1, drop=.e1])
     /// .d1 (mainline):
@@ -637,6 +640,7 @@ where
     ///     ELAB(drop location.1 [target=.e2, unwind=.c2])
     /// .e2 (dropline):
     ///     ELAB(drop location.2 [target=`self.drop`, unwind=`self.unwind`])
+    /// ```
     ///
     /// NOTE: this does not clear the master drop flag, so you need
     /// to point succ/unwind on a `drop_ladder_bottom`.

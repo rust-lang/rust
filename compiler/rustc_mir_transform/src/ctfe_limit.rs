@@ -18,7 +18,7 @@ impl<'tcx> crate::MirPass<'tcx> for CtfeLimit {
             .basic_blocks
             .iter_enumerated()
             .filter_map(|(node, node_data)| {
-                if matches!(node_data.terminator().kind, TerminatorKind::Call { .. })
+                if matches!(node_data.terminator().kind, TerminatorKind::Call { .. } | TerminatorKind::TailCall { .. })
                     // Back edges in a CFG indicate loops
                     || has_back_edge(doms, node, node_data)
                 {

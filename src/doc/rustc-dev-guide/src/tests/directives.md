@@ -52,6 +52,8 @@ not be exhaustive. Directives can generally be found by browsing the
 
 ### Auxiliary builds
 
+See [Building auxiliary crates](compiletest.html#building-auxiliary-crates)
+
 | Directive             | Explanation                                                                                           | Supported test suites | Possible values                               |
 |-----------------------|-------------------------------------------------------------------------------------------------------|-----------------------|-----------------------------------------------|
 | `aux-bin`             | Build a aux binary, made available in `auxiliary/bin` relative to test directory                      | All except `run-make` | Path to auxiliary `.rs` file                  |
@@ -61,8 +63,7 @@ not be exhaustive. Directives can generally be found by browsing the
 | `proc-macro`          | Similar to `aux-build`, but for aux forces host and don't use `-Cprefer-dynamic`[^pm].                | All except `run-make` | Path to auxiliary proc-macro `.rs` file       |
 | `build-aux-docs`      | Build docs for auxiliaries as well.  Note that this only works with `aux-build`, not `aux-crate`.     | All except `run-make` | N/A                                           |
 
-[^pm]: please see the Auxiliary proc-macro section in the
-    [compiletest](./compiletest.md) chapter for specifics.
+[^pm]: please see the [Auxiliary proc-macro section](compiletest.html#auxiliary-proc-macro) in the compiletest chapter for specifics.
 
 ### Controlling outcome expectations
 

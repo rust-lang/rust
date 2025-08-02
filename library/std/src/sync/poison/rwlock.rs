@@ -46,10 +46,12 @@ use crate::sys::sync as sys;
 ///
 /// # Poisoning
 ///
-/// An `RwLock`, like [`Mutex`], will become poisoned on a panic. Note, however,
-/// that an `RwLock` may only be poisoned if a panic occurs while it is locked
-/// exclusively (write mode). If a panic occurs in any reader, then the lock
-/// will not be poisoned.
+/// An `RwLock`, like [`Mutex`], will [usually] become poisoned on a panic. Note,
+/// however, that an `RwLock` may only be poisoned if a panic occurs while it is
+/// locked exclusively (write mode). If a panic occurs in any reader, then the
+/// lock will not be poisoned.
+///
+/// [usually]: super::Mutex#poisoning
 ///
 /// # Examples
 ///

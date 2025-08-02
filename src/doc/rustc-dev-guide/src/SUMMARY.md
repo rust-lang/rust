@@ -176,6 +176,7 @@
     - [Next-gen trait solving](./solve/trait-solving.md)
         - [Invariants of the type system](./solve/invariants.md)
         - [The solver](./solve/the-solver.md)
+        - [Candidate preference](./solve/candidate-preference.md)
         - [Canonicalization](./solve/canonicalization.md)
         - [Coinduction](./solve/coinduction.md)
         - [Caching](./solve/caching.md)

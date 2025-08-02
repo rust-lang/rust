@@ -852,9 +852,9 @@ impl<'tcx> ThirBuildCx<'tcx> {
                 if find_attr!(self.tcx.hir_attrs(expr.hir_id), AttributeKind::ConstContinue(_)) {
                     match dest.target_id {
                         Ok(target_id) => {
-                            let Some(value) = value else {
+                            let (Some(value), Some(_)) = (value, dest.label) else {
                                 let span = expr.span;
-                                self.tcx.dcx().emit_fatal(ConstContinueMissingValue { span })
+                                self.tcx.dcx().emit_fatal(ConstContinueMissingLabelOrValue { span })
                             };
 
                             ExprKind::ConstContinue {
