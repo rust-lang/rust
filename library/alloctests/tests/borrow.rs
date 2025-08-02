@@ -52,9 +52,9 @@ fn cow_const() {
 
     const COW: Cow<'_, str> = Cow::Borrowed("moo");
 
-    const IS_BORROWED: bool = COW.is_borrowed();
+    const IS_BORROWED: bool = Cow::is_borrowed(&COW);
     assert!(IS_BORROWED);
 
-    const IS_OWNED: bool = COW.is_owned();
+    const IS_OWNED: bool = Cow::is_owned(&COW);
     assert!(!IS_OWNED);
 }
