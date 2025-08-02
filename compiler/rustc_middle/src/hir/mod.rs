@@ -175,32 +175,32 @@ impl<'tcx> TyCtxt<'tcx> {
         delayed_lints: &[DelayedLint],
         define_opaque: Option<&[(Span, LocalDefId)]>,
     ) -> (Option<Fingerprint>, Option<Fingerprint>, Option<Fingerprint>) {
-        if self.needs_crate_hash() {
-            self.with_stable_hashing_context(|mut hcx| {
-                let mut stable_hasher = StableHasher::new();
-                node.hash_stable(&mut hcx, &mut stable_hasher);
-                // Bodies are stored out of line, so we need to pull them explicitly in the hash.
-                bodies.hash_stable(&mut hcx, &mut stable_hasher);
-                let h1 = stable_hasher.finish();
-
-                let mut stable_hasher = StableHasher::new();
-                attrs.hash_stable(&mut hcx, &mut stable_hasher);
-
-                // Hash the defined opaque types, which are not present in the attrs.
-                define_opaque.hash_stable(&mut hcx, &mut stable_hasher);
-
-                let h2 = stable_hasher.finish();
-
-                // hash lints emitted during ast lowering
-                let mut stable_hasher = StableHasher::new();
-                delayed_lints.hash_stable(&mut hcx, &mut stable_hasher);
-                let h3 = stable_hasher.finish();
-
-                (Some(h1), Some(h2), Some(h3))
-            })
-        } else {
-            (None, None, None)
+        if !self.needs_crate_hash() {
+            return (None, None, None);
         }
+
+        self.with_stable_hashing_context(|mut hcx| {
+            let mut stable_hasher = StableHasher::new();
+            node.hash_stable(&mut hcx, &mut stable_hasher);
+            // Bodies are stored out of line, so we need to pull them explicitly in the hash.
+            bodies.hash_stable(&mut hcx, &mut stable_hasher);
+            let h1 = stable_hasher.finish();
+
+            let mut stable_hasher = StableHasher::new();
+            attrs.hash_stable(&mut hcx, &mut stable_hasher);
+
+            // Hash the defined opaque types, which are not present in the attrs.
+            define_opaque.hash_stable(&mut hcx, &mut stable_hasher);
+
+            let h2 = stable_hasher.finish();
+
+            // hash lints emitted during ast lowering
+            let mut stable_hasher = StableHasher::new();
+            delayed_lints.hash_stable(&mut hcx, &mut stable_hasher);
+            let h3 = stable_hasher.finish();
+
+            (Some(h1), Some(h2), Some(h3))
+        })
     }
 }
 
