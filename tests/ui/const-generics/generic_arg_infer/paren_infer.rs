@@ -1,4 +1,5 @@
 //@ check-pass
+//@ reference: items.generics.const.inferred
 
 struct Foo<const N: usize>;
 
