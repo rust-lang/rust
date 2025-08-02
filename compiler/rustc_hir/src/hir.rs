@@ -3016,7 +3016,7 @@ impl fmt::Display for LoopIdError {
     }
 }
 
-#[derive(Copy, Clone, Debug, HashStable_Generic)]
+#[derive(Copy, Clone, Debug, PartialEq, HashStable_Generic)]
 pub struct Destination {
     /// This is `Some(_)` iff there is an explicit user-specified 'label
     pub label: Option<Label>,
