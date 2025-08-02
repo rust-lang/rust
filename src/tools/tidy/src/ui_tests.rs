@@ -54,28 +54,8 @@ pub fn check(root_path: &Path, bless: bool, bad: &mut bool) {
             let testname =
                 file_path.file_name().unwrap().to_str().unwrap().split_once('.').unwrap().0;
             if ext == "stderr" || ext == "stdout" || ext == "fixed" {
-                // Test output filenames have one of the formats:
-                // ```
-                // $testname.stderr
-                // $testname.$mode.stderr
-                // $testname.$revision.stderr
-                // $testname.$revision.$mode.stderr
-                // ```
-                //
-                // For now, just make sure that there is a corresponding
-                // `$testname.rs` file.
-
-                if !file_path.with_file_name(testname).with_extension("rs").exists()
-                    && !testname.contains("ignore-tidy")
-                {
-                    tidy_error!(bad, "Stray file with UI testing output: {:?}", file_path);
-                }
-
-                if let Ok(metadata) = fs::metadata(file_path)
-                    && metadata.len() == 0
-                {
-                    tidy_error!(bad, "Empty file with UI testing output: {:?}", file_path);
-                }
+                check_stray_output_snapshot(bad, file_path, testname);
+                check_empty_output_snapshot(bad, file_path);
             }
 
             if ext == "rs"
@@ -173,5 +153,32 @@ fn check_unexpected_extension(bad: &mut bool, file_path: &Path, ext: &str) {
         || EXTENSION_EXCEPTION_PATHS.iter().any(|path| file_path.ends_with(path)))
     {
         tidy_error!(bad, "file {} has unexpected extension {}", file_path.display(), ext);
+    }
+}
+
+fn check_stray_output_snapshot(bad: &mut bool, file_path: &Path, testname: &str) {
+    // Test output filenames have one of the formats:
+    // ```
+    // $testname.stderr
+    // $testname.$mode.stderr
+    // $testname.$revision.stderr
+    // $testname.$revision.$mode.stderr
+    // ```
+    //
+    // For now, just make sure that there is a corresponding
+    // `$testname.rs` file.
+
+    if !file_path.with_file_name(testname).with_extension("rs").exists()
+        && !testname.contains("ignore-tidy")
+    {
+        tidy_error!(bad, "Stray file with UI testing output: {:?}", file_path);
+    }
+}
+
+fn check_empty_output_snapshot(bad: &mut bool, file_path: &Path) {
+    if let Ok(metadata) = fs::metadata(file_path)
+        && metadata.len() == 0
+    {
+        tidy_error!(bad, "Empty file with UI testing output: {:?}", file_path);
     }
 }
