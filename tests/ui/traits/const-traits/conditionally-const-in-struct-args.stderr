@@ -1,0 +1,10 @@
+error: `[const]` is not allowed here
+  --> $DIR/conditionally-const-in-struct-args.rs:12:25
+   |
+LL |             struct I<U: [const] Trait<0>>(U);
+   |                         ^^^^^^^
+   |
+   = note: this item cannot have `[const]` trait bounds
+
+error: aborting due to 1 previous error
+
