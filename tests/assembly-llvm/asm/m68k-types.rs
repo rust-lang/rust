@@ -24,11 +24,17 @@ macro_rules! check {
     };
 }
 
-// CHECK-LABEL: reg_data_i8:
+// CHECK-LABEL: reg_addr_i16:
 // CHECK: ;APP
-// CHECK: move.b %d{{[0-9]}}, %d{{[0-9]}}
+// CHECK: move.w %a{{[0-9]}}, %a{{[0-9]}}
 // CHECK: ;NO_APP
-check!(reg_data_i8 i8 reg_data "move.b");
+check!(reg_addr_i16 i16 reg_addr "move.w");
+
+// CHECK-LABEL: reg_addr_i32:
+// CHECK: ;APP
+// CHECK: move.l %a{{[0-9]}}, %a{{[0-9]}}
+// CHECK: ;NO_APP
+check!(reg_addr_i32 i32 reg_addr "move.l");
 
 // CHECK-LABEL: reg_data_i16:
 // CHECK: ;APP
@@ -42,17 +48,11 @@ check!(reg_data_i16 i16 reg_data "move.w");
 // CHECK: ;NO_APP
 check!(reg_data_i32 i32 reg_data "move.l");
 
-// CHECK-LABEL: reg_addr_i16:
+// CHECK-LABEL: reg_data_i8:
 // CHECK: ;APP
-// CHECK: move.w %a{{[0-9]}}, %a{{[0-9]}}
+// CHECK: move.b %d{{[0-9]}}, %d{{[0-9]}}
 // CHECK: ;NO_APP
-check!(reg_addr_i16 i16 reg_addr "move.w");
-
-// CHECK-LABEL: reg_addr_i32:
-// CHECK: ;APP
-// CHECK: move.l %a{{[0-9]}}, %a{{[0-9]}}
-// CHECK: ;NO_APP
-check!(reg_addr_i32 i32 reg_addr "move.l");
+check!(reg_data_i8 i8 reg_data "move.b");
 
 // CHECK-LABEL: reg_i16:
 // CHECK: ;APP

@@ -55,35 +55,17 @@ check!(vreg vreg "add {0}.4s, {0}.4s, {0}.4s");
 // CHECK: //NO_APP
 check!(vreg_b vreg "ldr {:b}, [x0]");
 
-// CHECK-LABEL: vreg_h:
-// CHECK: //APP
-// CHECK: ldr h0, [x0]
-// CHECK: //NO_APP
-check!(vreg_h vreg "ldr {:h}, [x0]");
-
-// CHECK-LABEL: vreg_s:
-// CHECK: //APP
-// CHECK: ldr s0, [x0]
-// CHECK: //NO_APP
-check!(vreg_s vreg "ldr {:s}, [x0]");
-
 // CHECK-LABEL: vreg_d:
 // CHECK: //APP
 // CHECK: ldr d0, [x0]
 // CHECK: //NO_APP
 check!(vreg_d vreg "ldr {:d}, [x0]");
 
-// CHECK-LABEL: vreg_q:
+// CHECK-LABEL: vreg_h:
 // CHECK: //APP
-// CHECK: ldr q0, [x0]
+// CHECK: ldr h0, [x0]
 // CHECK: //NO_APP
-check!(vreg_q vreg "ldr {:q}, [x0]");
-
-// CHECK-LABEL: vreg_v:
-// CHECK: //APP
-// CHECK: add v0.4s, v0.4s, v0.4s
-// CHECK: //NO_APP
-check!(vreg_v vreg "add {0:v}.4s, {0:v}.4s, {0:v}.4s");
+check!(vreg_h vreg "ldr {:h}, [x0]");
 
 // CHECK-LABEL: vreg_low16:
 // CHECK: //APP
@@ -97,23 +79,17 @@ check!(vreg_low16 vreg_low16 "add {0}.4s, {0}.4s, {0}.4s");
 // CHECK: //NO_APP
 check!(vreg_low16_b vreg_low16 "ldr {:b}, [x0]");
 
-// CHECK-LABEL: vreg_low16_h:
-// CHECK: //APP
-// CHECK: ldr h0, [x0]
-// CHECK: //NO_APP
-check!(vreg_low16_h vreg_low16 "ldr {:h}, [x0]");
-
-// CHECK-LABEL: vreg_low16_s:
-// CHECK: //APP
-// CHECK: ldr s0, [x0]
-// CHECK: //NO_APP
-check!(vreg_low16_s vreg_low16 "ldr {:s}, [x0]");
-
 // CHECK-LABEL: vreg_low16_d:
 // CHECK: //APP
 // CHECK: ldr d0, [x0]
 // CHECK: //NO_APP
 check!(vreg_low16_d vreg_low16 "ldr {:d}, [x0]");
+
+// CHECK-LABEL: vreg_low16_h:
+// CHECK: //APP
+// CHECK: ldr h0, [x0]
+// CHECK: //NO_APP
+check!(vreg_low16_h vreg_low16 "ldr {:h}, [x0]");
 
 // CHECK-LABEL: vreg_low16_q:
 // CHECK: //APP
@@ -121,8 +97,32 @@ check!(vreg_low16_d vreg_low16 "ldr {:d}, [x0]");
 // CHECK: //NO_APP
 check!(vreg_low16_q vreg_low16 "ldr {:q}, [x0]");
 
+// CHECK-LABEL: vreg_low16_s:
+// CHECK: //APP
+// CHECK: ldr s0, [x0]
+// CHECK: //NO_APP
+check!(vreg_low16_s vreg_low16 "ldr {:s}, [x0]");
+
 // CHECK-LABEL: vreg_low16_v:
 // CHECK: //APP
 // CHECK: add v0.4s, v0.4s, v0.4s
 // CHECK: //NO_APP
 check!(vreg_low16_v vreg_low16 "add {0:v}.4s, {0:v}.4s, {0:v}.4s");
+
+// CHECK-LABEL: vreg_q:
+// CHECK: //APP
+// CHECK: ldr q0, [x0]
+// CHECK: //NO_APP
+check!(vreg_q vreg "ldr {:q}, [x0]");
+
+// CHECK-LABEL: vreg_s:
+// CHECK: //APP
+// CHECK: ldr s0, [x0]
+// CHECK: //NO_APP
+check!(vreg_s vreg "ldr {:s}, [x0]");
+
+// CHECK-LABEL: vreg_v:
+// CHECK: //APP
+// CHECK: add v0.4s, v0.4s, v0.4s
+// CHECK: //NO_APP
+check!(vreg_v vreg "add {0:v}.4s, {0:v}.4s, {0:v}.4s");

@@ -50,62 +50,6 @@ macro_rules! check {
     };
 }
 
-// CHECK-LABEL: i8_i32:
-// CHECK: #APP
-// CHECK: local.get {{[0-9]}}
-// CHECK: i32.clz
-// CHECK: local.set {{[0-9]}}
-// CHECK: #NO_APP
-check!(i8_i32 i8 "i32.clz");
-
-// CHECK-LABEL: i16_i32:
-// CHECK: #APP
-// CHECK: local.get {{[0-9]}}
-// CHECK: i32.clz
-// CHECK: local.set {{[0-9]}}
-// CHECK: #NO_APP
-check!(i16_i32 i16 "i32.clz");
-
-// CHECK-LABEL: i32_i32:
-// CHECK: #APP
-// CHECK: local.get {{[0-9]}}
-// CHECK: i32.clz
-// CHECK: local.set {{[0-9]}}
-// CHECK: #NO_APP
-check!(i32_i32 i32 "i32.clz");
-
-// CHECK-LABEL: i8_i64
-// CHECK: #APP
-// CHECK: local.get {{[0-9]}}
-// CHECK: i64.clz
-// CHECK: local.set {{[0-9]}}
-// CHECK: #NO_APP
-check!(i8_i64 i8 "i64.clz");
-
-// CHECK-LABEL: i16_i64
-// CHECK: #APP
-// CHECK: local.get {{[0-9]}}
-// CHECK: i64.clz
-// CHECK: local.set {{[0-9]}}
-// CHECK: #NO_APP
-check!(i16_i64 i16 "i64.clz");
-
-// CHECK-LABEL: i32_i64
-// CHECK: #APP
-// CHECK: local.get {{[0-9]}}
-// CHECK: i64.clz
-// CHECK: local.set {{[0-9]}}
-// CHECK: #NO_APP
-check!(i32_i64 i32 "i64.clz");
-
-// CHECK-LABEL: i64_i64
-// CHECK: #APP
-// CHECK: local.get {{[0-9]}}
-// CHECK: i64.clz
-// CHECK: local.set {{[0-9]}}
-// CHECK: #NO_APP
-check!(i64_i64 i64 "i64.clz");
-
 // CHECK-LABEL: f32_f32
 // CHECK: #APP
 // CHECK: local.get {{[0-9]}}
@@ -122,6 +66,38 @@ check!(f32_f32 f32 "f32.abs");
 // CHECK: #NO_APP
 check!(f64_f64 f64 "f64.abs");
 
+// CHECK-LABEL: i16_i32:
+// CHECK: #APP
+// CHECK: local.get {{[0-9]}}
+// CHECK: i32.clz
+// CHECK: local.set {{[0-9]}}
+// CHECK: #NO_APP
+check!(i16_i32 i16 "i32.clz");
+
+// CHECK-LABEL: i16_i64
+// CHECK: #APP
+// CHECK: local.get {{[0-9]}}
+// CHECK: i64.clz
+// CHECK: local.set {{[0-9]}}
+// CHECK: #NO_APP
+check!(i16_i64 i16 "i64.clz");
+
+// CHECK-LABEL: i32_i32:
+// CHECK: #APP
+// CHECK: local.get {{[0-9]}}
+// CHECK: i32.clz
+// CHECK: local.set {{[0-9]}}
+// CHECK: #NO_APP
+check!(i32_i32 i32 "i32.clz");
+
+// CHECK-LABEL: i32_i64
+// CHECK: #APP
+// CHECK: local.get {{[0-9]}}
+// CHECK: i64.clz
+// CHECK: local.set {{[0-9]}}
+// CHECK: #NO_APP
+check!(i32_i64 i32 "i64.clz");
+
 // CHECK-LABEL: i32_ptr
 // CHECK: #APP
 // CHECK: local.get {{[0-9]}}
@@ -129,3 +105,27 @@ check!(f64_f64 f64 "f64.abs");
 // CHECK: local.set {{[0-9]}}
 // CHECK: #NO_APP
 check!(i32_ptr ptr "i32.eqz");
+
+// CHECK-LABEL: i64_i64
+// CHECK: #APP
+// CHECK: local.get {{[0-9]}}
+// CHECK: i64.clz
+// CHECK: local.set {{[0-9]}}
+// CHECK: #NO_APP
+check!(i64_i64 i64 "i64.clz");
+
+// CHECK-LABEL: i8_i32:
+// CHECK: #APP
+// CHECK: local.get {{[0-9]}}
+// CHECK: i32.clz
+// CHECK: local.set {{[0-9]}}
+// CHECK: #NO_APP
+check!(i8_i32 i8 "i32.clz");
+
+// CHECK-LABEL: i8_i64
+// CHECK: #APP
+// CHECK: local.get {{[0-9]}}
+// CHECK: i64.clz
+// CHECK: local.set {{[0-9]}}
+// CHECK: #NO_APP
+check!(i8_i64 i8 "i64.clz");
