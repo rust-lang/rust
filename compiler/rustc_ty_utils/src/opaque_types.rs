@@ -64,8 +64,8 @@ impl<'tcx> OpaqueTypeCollector<'tcx> {
 
     fn parent_impl_trait_ref(&self) -> Option<ty::TraitRef<'tcx>> {
         let parent = self.parent()?;
-        if matches!(self.tcx.def_kind(parent), DefKind::Impl { .. }) {
-            Some(self.tcx.impl_trait_ref(parent)?.instantiate_identity())
+        if self.tcx.def_kind(parent) == (DefKind::Impl { of_trait: true }) {
+            Some(self.tcx.impl_trait_ref(parent).instantiate_identity())
         } else {
             None
         }

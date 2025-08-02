@@ -352,7 +352,7 @@ trait VisibilityLike: Sized {
     ) -> Self {
         let mut find = FindMin::<_, SHALLOW> { tcx, effective_visibilities, min: Self::MAX };
         find.visit(tcx.type_of(def_id).instantiate_identity());
-        if let Some(trait_ref) = tcx.impl_trait_ref(def_id) {
+        if let Some(trait_ref) = tcx.impl_opt_trait_ref(def_id) {
             find.visit_trait(trait_ref.instantiate_identity());
         }
         find.min
@@ -826,7 +826,7 @@ impl ReachEverythingInTheInterfaceVisitor<'_, '_> {
     }
 
     fn trait_ref(&mut self) -> &mut Self {
-        if let Some(trait_ref) = self.ev.tcx.impl_trait_ref(self.item_def_id) {
+        if let Some(trait_ref) = self.ev.tcx.impl_opt_trait_ref(self.item_def_id) {
             self.visit_trait(trait_ref.instantiate_identity());
         }
         self
@@ -1409,7 +1409,7 @@ impl SearchInterfaceForPrivateItemsVisitor<'_> {
 
     fn trait_ref(&mut self) -> &mut Self {
         self.in_primary_interface = true;
-        if let Some(trait_ref) = self.tcx.impl_trait_ref(self.item_def_id) {
+        if let Some(trait_ref) = self.tcx.impl_opt_trait_ref(self.item_def_id) {
             let _ = self.visit_trait(trait_ref.instantiate_identity());
         }
         self
@@ -1777,7 +1777,7 @@ fn check_mod_privacy(tcx: TyCtxt<'_>, module_def_id: LocalModDefId) {
         }
 
         if let DefKind::Impl { of_trait: true } = tcx.def_kind(def_id) {
-            let trait_ref = tcx.impl_trait_ref(def_id).unwrap();
+            let trait_ref = tcx.impl_trait_ref(def_id);
             let trait_ref = trait_ref.instantiate_identity();
             visitor.span = tcx.hir_expect_item(def_id).expect_impl().of_trait.unwrap().path.span;
             let _ =

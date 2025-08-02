@@ -1483,7 +1483,7 @@ impl<'v> RootCollector<'_, 'v> {
                     }
                 }
             }
-            DefKind::Impl { .. } => {
+            DefKind::Impl { of_trait: true } => {
                 if self.strategy == MonoItemCollectionStrategy::Eager {
                     create_mono_items_for_default_impls(self.tcx, id, self.output);
                 }
@@ -1617,9 +1617,7 @@ fn create_mono_items_for_default_impls<'tcx>(
     item: hir::ItemId,
     output: &mut MonoItems<'tcx>,
 ) {
-    let Some(impl_) = tcx.impl_trait_header(item.owner_id) else {
-        return;
-    };
+    let impl_ = tcx.impl_trait_header(item.owner_id);
 
     if matches!(impl_.polarity, ty::ImplPolarity::Negative) {
         return;

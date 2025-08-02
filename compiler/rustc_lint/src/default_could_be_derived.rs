@@ -68,7 +68,7 @@ impl<'tcx> LateLintPass<'tcx> for DefaultCouldBeDerived {
             // We don't care about what `#[derive(Default)]` produces in this lint.
             return;
         }
-        let Some(trait_ref) = cx.tcx.impl_trait_ref(parent) else { return };
+        let Some(trait_ref) = cx.tcx.impl_opt_trait_ref(parent) else { return };
         let trait_ref = trait_ref.instantiate_identity();
         if trait_ref.def_id != default_def_id {
             return;

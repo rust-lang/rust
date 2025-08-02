@@ -404,9 +404,7 @@ fn check_item<'tcx>(
     let items = tcx.associated_item_def_ids(id.owner_id);
     worklist.extend(items.iter().map(|ii_ref| ii_ref.expect_local()));
 
-    let Some(trait_def_id) = tcx.trait_id_of_impl(id.owner_id.to_def_id()) else {
-        unreachable!();
-    };
+    let trait_def_id = tcx.impl_trait_id(id.owner_id.to_def_id());
 
     if !trait_def_id.is_local() {
         return;

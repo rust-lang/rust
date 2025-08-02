@@ -845,7 +845,7 @@ fn trait_impls_for<'a>(
 
     for &trait_ in tcx.doc_link_traits_in_scope(module) {
         tcx.for_each_relevant_impl(trait_, ty, |impl_| {
-            let trait_ref = tcx.impl_trait_ref(impl_).expect("this is not an inherent impl");
+            let trait_ref = tcx.impl_trait_ref(impl_);
             // Check if these are the same type.
             let impl_type = trait_ref.skip_binder().self_ty();
             trace!(

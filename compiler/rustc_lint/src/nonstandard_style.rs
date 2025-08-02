@@ -31,10 +31,13 @@ pub(crate) fn method_context(cx: &LateContext<'_>, id: LocalDefId) -> MethodLate
     let item = cx.tcx.associated_item(id);
     match item.container {
         ty::AssocItemContainer::Trait => MethodLateContext::TraitAutoImpl,
-        ty::AssocItemContainer::Impl => match cx.tcx.impl_trait_ref(item.container_id(cx.tcx)) {
-            Some(_) => MethodLateContext::TraitImpl,
-            None => MethodLateContext::PlainImpl,
-        },
+        ty::AssocItemContainer::Impl => {
+            if item.trait_item_def_id.is_some() {
+                MethodLateContext::TraitImpl
+            } else {
+                MethodLateContext::PlainImpl
+            }
+        }
     }
 }
 

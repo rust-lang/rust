@@ -1978,7 +1978,7 @@ fn confirm_impl_candidate<'cx, 'tcx>(
     let ImplSourceUserDefinedData { impl_def_id, args, mut nested } = impl_impl_source;
 
     let assoc_item_id = obligation.predicate.def_id;
-    let trait_def_id = tcx.trait_id_of_impl(impl_def_id).unwrap();
+    let trait_def_id = tcx.impl_trait_id(impl_def_id);
 
     let param_env = obligation.param_env;
     let assoc_term = match specialization_graph::assoc_def(tcx, impl_def_id, assoc_item_id) {

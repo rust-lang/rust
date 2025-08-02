@@ -284,7 +284,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
             probe::InherentImplPick => {
                 let impl_def_id = pick.item.container_id(self.tcx);
                 assert!(
-                    self.tcx.impl_trait_ref(impl_def_id).is_none(),
+                    !self.tcx.impl_is_of_trait(impl_def_id),
                     "impl {impl_def_id:?} is not an inherent impl"
                 );
                 self.fresh_args_for_item(self.span, impl_def_id)

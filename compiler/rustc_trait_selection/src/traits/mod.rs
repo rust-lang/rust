@@ -831,10 +831,7 @@ fn is_impossible_associated_item(
     let param_env = ty::ParamEnv::empty();
     let fresh_args = infcx.fresh_args_for_item(tcx.def_span(impl_def_id), impl_def_id);
 
-    let impl_trait_ref = tcx
-        .impl_trait_ref(impl_def_id)
-        .expect("expected impl to correspond to trait")
-        .instantiate(tcx, fresh_args);
+    let impl_trait_ref = tcx.impl_trait_ref(impl_def_id).instantiate(tcx, fresh_args);
 
     let mut visitor = ReferencesOnlyParentGenerics { tcx, generics, trait_item_def_id };
     let predicates_for_trait = predicates.predicates.iter().filter_map(|(pred, span)| {

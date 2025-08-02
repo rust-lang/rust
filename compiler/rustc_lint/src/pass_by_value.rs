@@ -25,7 +25,7 @@ impl<'tcx> LateLintPass<'tcx> for PassByValue {
         match &ty.kind {
             TyKind::Ref(_, hir::MutTy { ty: inner_ty, mutbl: hir::Mutability::Not }) => {
                 if let Some(impl_did) = cx.tcx.impl_of_assoc(ty.hir_id.owner.to_def_id()) {
-                    if cx.tcx.impl_trait_ref(impl_did).is_some() {
+                    if cx.tcx.impl_is_of_trait(impl_did) {
                         return;
                     }
                 }

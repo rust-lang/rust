@@ -1907,7 +1907,7 @@ impl InvalidAtomicOrdering {
             && let Some(impl_did) = cx.tcx.impl_of_assoc(m_def_id)
             && let Some(adt) = cx.tcx.type_of(impl_did).instantiate_identity().ty_adt_def()
             // skip extension traits, only lint functions from the standard library
-            && cx.tcx.trait_id_of_impl(impl_did).is_none()
+            && !cx.tcx.impl_is_of_trait(impl_did)
             && let parent = cx.tcx.parent(adt.did())
             && cx.tcx.is_diagnostic_item(sym::atomic_mod, parent)
             && ATOMIC_TYPES.contains(&cx.tcx.item_name(adt.did()))

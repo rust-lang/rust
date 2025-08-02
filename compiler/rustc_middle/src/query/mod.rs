@@ -1088,8 +1088,7 @@ rustc_queries! {
     }
 
     /// Given an `impl_id`, return the trait it implements along with some header information.
-    /// Return `None` if this is an inherent impl.
-    query impl_trait_header(impl_id: DefId) -> Option<ty::ImplTraitHeader<'tcx>> {
+    query impl_trait_header(impl_id: DefId) -> ty::ImplTraitHeader<'tcx> {
         desc { |tcx| "computing trait implemented by `{}`", tcx.def_path_str(impl_id) }
         cache_on_disk_if { impl_id.is_local() }
         separate_provide_extern

@@ -245,47 +245,49 @@ pub(super) fn check_item<'tcx>(
         // won't be allowed unless there's an *explicit* implementation of `Send`
         // for `T`
         hir::ItemKind::Impl(impl_) => {
-            let header = tcx.impl_trait_header(def_id);
-            let is_auto = header
-                .is_some_and(|header| tcx.trait_is_auto(header.trait_ref.skip_binder().def_id));
-
-            crate::impl_wf_check::check_impl_wf(tcx, def_id)?;
+            crate::impl_wf_check::check_impl_wf(tcx, def_id, impl_.of_trait.is_some())?;
             let mut res = Ok(());
-            if let (hir::Defaultness::Default { .. }, true) = (impl_.defaultness, is_auto) {
-                let sp = impl_.of_trait.as_ref().map_or(item.span, |t| t.path.span);
-                res = Err(tcx
-                    .dcx()
-                    .struct_span_err(sp, "impls of auto traits cannot be default")
-                    .with_span_labels(impl_.defaultness_span, "default because of this")
-                    .with_span_label(sp, "auto trait")
-                    .emit());
-            }
-            // We match on both `ty::ImplPolarity` and `ast::ImplPolarity` just to get the `!` span.
-            match header.map(|h| h.polarity) {
-                // `None` means this is an inherent impl
-                Some(ty::ImplPolarity::Positive) | None => {
-                    res = res.and(check_impl(tcx, item, impl_.self_ty, &impl_.of_trait));
-                }
-                Some(ty::ImplPolarity::Negative) => {
-                    let ast::ImplPolarity::Negative(span) = impl_.polarity else {
-                        bug!("impl_polarity query disagrees with impl's polarity in HIR");
-                    };
-                    // FIXME(#27579): what amount of WF checking do we need for neg impls?
-                    if let hir::Defaultness::Default { .. } = impl_.defaultness {
-                        let mut spans = vec![span];
-                        spans.extend(impl_.defaultness_span);
-                        res = Err(struct_span_code_err!(
-                            tcx.dcx(),
-                            spans,
-                            E0750,
-                            "negative impls cannot be default impls"
-                        )
+            if impl_.of_trait.is_some() {
+                let header = tcx.impl_trait_header(def_id);
+                let is_auto = tcx.trait_is_auto(header.trait_ref.skip_binder().def_id);
+                if let (hir::Defaultness::Default { .. }, true) = (impl_.defaultness, is_auto) {
+                    let sp = impl_.of_trait.as_ref().map_or(item.span, |t| t.path.span);
+                    res = Err(tcx
+                        .dcx()
+                        .struct_span_err(sp, "impls of auto traits cannot be default")
+                        .with_span_labels(impl_.defaultness_span, "default because of this")
+                        .with_span_label(sp, "auto trait")
                         .emit());
+                }
+                // We match on both `ty::ImplPolarity` and `ast::ImplPolarity` just to get the `!` span.
+                match header.polarity {
+                    // `None` means this is an inherent impl
+                    ty::ImplPolarity::Positive => {
+                        res = res.and(check_impl(tcx, item, impl_.self_ty, &impl_.of_trait));
+                    }
+                    ty::ImplPolarity::Negative => {
+                        let ast::ImplPolarity::Negative(span) = impl_.polarity else {
+                            bug!("impl_polarity query disagrees with impl's polarity in HIR");
+                        };
+                        // FIXME(#27579): what amount of WF checking do we need for neg impls?
+                        if let hir::Defaultness::Default { .. } = impl_.defaultness {
+                            let mut spans = vec![span];
+                            spans.extend(impl_.defaultness_span);
+                            res = Err(struct_span_code_err!(
+                                tcx.dcx(),
+                                spans,
+                                E0750,
+                                "negative impls cannot be default impls"
+                            )
+                            .emit());
+                        }
+                    }
+                    ty::ImplPolarity::Reservation => {
+                        // FIXME: what amount of WF checking do we need for reservation impls?
                     }
                 }
-                Some(ty::ImplPolarity::Reservation) => {
-                    // FIXME: what amount of WF checking do we need for reservation impls?
-                }
+            } else {
+                res = res.and(check_impl(tcx, item, impl_.self_ty, &impl_.of_trait));
             }
             res
         }
@@ -1271,7 +1273,7 @@ fn check_impl<'tcx>(
                 // `#[rustc_reservation_impl]` impls are not real impls and
                 // therefore don't need to be WF (the trait's `Self: Trait` predicate
                 // won't hold).
-                let trait_ref = tcx.impl_trait_ref(item.owner_id).unwrap().instantiate_identity();
+                let trait_ref = tcx.impl_trait_ref(item.owner_id).instantiate_identity();
                 // Avoid bogus "type annotations needed `Foo: Bar`" errors on `impl Bar for Foo` in case
                 // other `Foo` impls are incoherent.
                 tcx.ensure_ok().coherent_trait(trait_ref.def_id)?;

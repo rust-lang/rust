@@ -575,7 +575,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         else {
             return;
         };
-        let Some(trait_ref) = self.tcx.impl_trait_ref(impl_def_id) else {
+        let Some(trait_ref) = self.tcx.impl_opt_trait_ref(impl_def_id) else {
             return;
         };
         let trait_args = trait_ref

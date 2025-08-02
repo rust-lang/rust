@@ -242,7 +242,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         match *source {
                             // Note: this cannot come from an inherent impl,
                             // because the first probing succeeded.
-                            CandidateSource::Impl(def) => self.tcx.trait_id_of_impl(def),
+                            CandidateSource::Impl(def) => self.tcx.impl_opt_trait_id(def),
                             CandidateSource::Trait(_) => None,
                         }
                     })

@@ -1127,9 +1127,6 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         // things failed, so lets look at all traits, for diagnostic purposes now:
         self.reset();
 
-        let span = self.span;
-        let tcx = self.tcx;
-
         self.assemble_extension_candidates_for_all_traits();
 
         let out_of_scope_traits = match self.pick_core(&mut Vec::new()) {
@@ -1138,10 +1135,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 .into_iter()
                 .map(|source| match source {
                     CandidateSource::Trait(id) => id,
-                    CandidateSource::Impl(impl_id) => match tcx.trait_id_of_impl(impl_id) {
-                        Some(id) => id,
-                        None => span_bug!(span, "found inherent method when looking at traits"),
-                    },
+                    CandidateSource::Impl(impl_id) => self.tcx.impl_trait_id(impl_id),
                 })
                 .collect(),
             Some(Err(MethodError::NoMatch(NoMatchData {
