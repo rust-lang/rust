@@ -105,6 +105,13 @@ impl<'tcx> TailCallCkVisitor<'_, 'tcx> {
             };
         }
 
+        let (ty::FnDef(..) | ty::FnPtr(..)) = ty.kind() else {
+            self.report_nonfn_callee(fn_span, self.thir[fun].span, ty);
+
+            // `fn_sig` below panics otherwise
+            return;
+        };
+
         // Erase regions since tail calls don't care about lifetimes
         let callee_sig =
             self.tcx.normalize_erasing_late_bound_regions(self.typing_env, ty.fn_sig(self.tcx));
@@ -277,6 +284,31 @@ impl<'tcx> TailCallCkVisitor<'_, 'tcx> {
                 Applicability::MaybeIncorrect,
             )
             .emit();
+        self.found_errors = Err(err);
+    }
+
+    fn report_nonfn_callee(&mut self, call_sp: Span, fun_sp: Span, ty: Ty<'_>) {
+        let mut err = self
+            .tcx
+            .dcx()
+            .struct_span_err(
+                call_sp,
+                "tail calls can only be performed with function definitions or pointers",
+            )
+            .with_note(format!("callee has type `{ty}`"));
+
+        if ty.is_ref() {
+            err.multipart_suggestion(
+                "try dereferencing here",
+                vec![
+                    (fun_sp.shrink_to_lo(), "(*".to_owned()),
+                    (fun_sp.shrink_to_hi(), ")".to_owned()),
+                ],
+                Applicability::MachineApplicable,
+            );
+        }
+
+        let err = err.emit();
         self.found_errors = Err(err);
     }
 
