@@ -492,10 +492,11 @@ impl str {
     ///
     /// # Safety
     ///
-    /// The caller must ensure that the content of the slice is valid UTF-8
-    /// before the borrow ends and the underlying `str` is used.
-    ///
-    /// Use of a `str` whose contents are not valid UTF-8 is undefined behavior.
+    /// This function is unsafe because the returned `&mut [u8]` allows writing
+    /// bytes which are not valid UTF-8. If this constraint is violated, using
+    /// the original `str` after the `&mut [u8]` borrow expires may violate memory
+    /// safety, as the rest of the standard library [assumes that `str`s are
+    /// valid UTF-8](prim@str#invariant).
     ///
     /// # Examples
     ///
