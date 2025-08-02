@@ -7,8 +7,9 @@ use rustc_span::{BytePos, DesugaringKind, ExpnKind, MacroKind, Span};
 use tracing::instrument;
 
 use crate::coverage::graph::{BasicCoverageBlock, CoverageGraph};
+use crate::coverage::hir_info::ExtractedHirInfo;
 use crate::coverage::spans::from_mir::{Hole, RawSpanFromMir, SpanFromMir};
-use crate::coverage::{ExtractedHirInfo, mappings, unexpand};
+use crate::coverage::{mappings, unexpand};
 
 mod from_mir;
 
