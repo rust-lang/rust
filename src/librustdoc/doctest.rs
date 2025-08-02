@@ -64,7 +64,8 @@ impl MergedDoctestTimes {
         // If no merged doctest was compiled, then there is nothing to display since the numbers
         // displayed by `libtest` for standalone tests are already accurate (they include both
         // compilation and runtime).
-        if self.added_compilation_times > 0 {
+        // Skip output if JSON format is requested to maintain valid JSON output.
+        if self.added_compilation_times > 0 && !std::env::args().any(|arg| arg == "--format" || arg == "--format=json") {
             println!("{self}");
         }
     }
