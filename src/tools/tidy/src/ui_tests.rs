@@ -7,41 +7,6 @@ use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
-const EXPECTED_TEST_FILE_EXTENSIONS: &[&str] = &[
-    "rs",     // test source files
-    "stderr", // expected stderr file, corresponds to a rs file
-    "svg",    // expected svg file, corresponds to a rs file, equivalent to stderr
-    "stdout", // expected stdout file, corresponds to a rs file
-    "fixed",  // expected source file after applying fixes
-    "md",     // test directory descriptions
-    "ftl",    // translation tests
-];
-
-const EXTENSION_EXCEPTION_PATHS: &[&str] = &[
-    "tests/ui/asm/named-asm-labels.s", // loading an external asm file to test named labels lint
-    "tests/ui/codegen/mismatched-data-layout.json", // testing mismatched data layout w/ custom targets
-    "tests/ui/check-cfg/my-awesome-platform.json",  // testing custom targets with cfgs
-    "tests/ui/argfile/commandline-argfile-badutf8.args", // passing args via a file
-    "tests/ui/argfile/commandline-argfile.args",    // passing args via a file
-    "tests/ui/crate-loading/auxiliary/libfoo.rlib", // testing loading a manually created rlib
-    "tests/ui/include-macros/data.bin", // testing including data with the include macros
-    "tests/ui/include-macros/file.txt", // testing including data with the include macros
-    "tests/ui/macros/macro-expanded-include/file.txt", // testing including data with the include macros
-    "tests/ui/macros/not-utf8.bin", // testing including data with the include macros
-    "tests/ui/macros/syntax-extension-source-utils-files/includeme.fragment", // more include
-    "tests/ui/proc-macro/auxiliary/included-file.txt", // more include
-    "tests/ui/unpretty/auxiliary/data.txt", // more include
-    "tests/ui/invalid/foo.natvis.xml", // sample debugger visualizer
-    "tests/ui/sanitizer/dataflow-abilist.txt", // dataflow sanitizer ABI list file
-    "tests/ui/shell-argfiles/shell-argfiles.args", // passing args via a file
-    "tests/ui/shell-argfiles/shell-argfiles-badquotes.args", // passing args via a file
-    "tests/ui/shell-argfiles/shell-argfiles-via-argfile-shell.args", // passing args via a file
-    "tests/ui/shell-argfiles/shell-argfiles-via-argfile.args", // passing args via a file
-    "tests/ui/std/windows-bat-args1.bat", // tests escaping arguments through batch files
-    "tests/ui/std/windows-bat-args2.bat", // tests escaping arguments through batch files
-    "tests/ui/std/windows-bat-args3.bat", // tests escaping arguments through batch files
-];
-
 pub fn check(root_path: &Path, bless: bool, bad: &mut bool) {
     let issues_txt_header = r#"============================================================
     ⚠️⚠️⚠️NOTHING SHOULD EVER BE ADDED TO THIS LIST⚠️⚠️⚠️
@@ -82,13 +47,7 @@ pub fn check(root_path: &Path, bless: bool, bad: &mut bool) {
     crate::walk::walk_no_read(&paths, |_, _| false, &mut |entry| {
         let file_path = entry.path();
         if let Some(ext) = file_path.extension().and_then(OsStr::to_str) {
-            // files that are neither an expected extension or an exception should not exist
-            // they're probably typos or not meant to exist
-            if !(EXPECTED_TEST_FILE_EXTENSIONS.contains(&ext)
-                || EXTENSION_EXCEPTION_PATHS.iter().any(|path| file_path.ends_with(path)))
-            {
-                tidy_error!(bad, "file {} has unexpected extension {}", file_path.display(), ext);
-            }
+            check_unexpected_extension(bad, file_path, ext);
 
             // NB: We do not use file_stem() as some file names have multiple `.`s and we
             // must strip all of them.
@@ -169,5 +128,50 @@ pub fn check(root_path: &Path, bless: bool, bad: &mut bool) {
                 p.display()
             );
         }
+    }
+}
+
+fn check_unexpected_extension(bad: &mut bool, file_path: &Path, ext: &str) {
+    const EXPECTED_TEST_FILE_EXTENSIONS: &[&str] = &[
+        "rs",     // test source files
+        "stderr", // expected stderr file, corresponds to a rs file
+        "svg",    // expected svg file, corresponds to a rs file, equivalent to stderr
+        "stdout", // expected stdout file, corresponds to a rs file
+        "fixed",  // expected source file after applying fixes
+        "md",     // test directory descriptions
+        "ftl",    // translation tests
+    ];
+
+    const EXTENSION_EXCEPTION_PATHS: &[&str] = &[
+        "tests/ui/asm/named-asm-labels.s", // loading an external asm file to test named labels lint
+        "tests/ui/codegen/mismatched-data-layout.json", // testing mismatched data layout w/ custom targets
+        "tests/ui/check-cfg/my-awesome-platform.json",  // testing custom targets with cfgs
+        "tests/ui/argfile/commandline-argfile-badutf8.args", // passing args via a file
+        "tests/ui/argfile/commandline-argfile.args",    // passing args via a file
+        "tests/ui/crate-loading/auxiliary/libfoo.rlib", // testing loading a manually created rlib
+        "tests/ui/include-macros/data.bin", // testing including data with the include macros
+        "tests/ui/include-macros/file.txt", // testing including data with the include macros
+        "tests/ui/macros/macro-expanded-include/file.txt", // testing including data with the include macros
+        "tests/ui/macros/not-utf8.bin", // testing including data with the include macros
+        "tests/ui/macros/syntax-extension-source-utils-files/includeme.fragment", // more include
+        "tests/ui/proc-macro/auxiliary/included-file.txt", // more include
+        "tests/ui/unpretty/auxiliary/data.txt", // more include
+        "tests/ui/invalid/foo.natvis.xml", // sample debugger visualizer
+        "tests/ui/sanitizer/dataflow-abilist.txt", // dataflow sanitizer ABI list file
+        "tests/ui/shell-argfiles/shell-argfiles.args", // passing args via a file
+        "tests/ui/shell-argfiles/shell-argfiles-badquotes.args", // passing args via a file
+        "tests/ui/shell-argfiles/shell-argfiles-via-argfile-shell.args", // passing args via a file
+        "tests/ui/shell-argfiles/shell-argfiles-via-argfile.args", // passing args via a file
+        "tests/ui/std/windows-bat-args1.bat", // tests escaping arguments through batch files
+        "tests/ui/std/windows-bat-args2.bat", // tests escaping arguments through batch files
+        "tests/ui/std/windows-bat-args3.bat", // tests escaping arguments through batch files
+    ];
+
+    // files that are neither an expected extension or an exception should not exist
+    // they're probably typos or not meant to exist
+    if !(EXPECTED_TEST_FILE_EXTENSIONS.contains(&ext)
+        || EXTENSION_EXCEPTION_PATHS.iter().any(|path| file_path.ends_with(path)))
+    {
+        tidy_error!(bad, "file {} has unexpected extension {}", file_path.display(), ext);
     }
 }
