@@ -191,7 +191,7 @@
                                 },
                             },
                         },
-                        message: "Error originated from macro call here",
+                        message: "Actual error occurred here",
                     },
                     DiagnosticRelatedInformation {
                         location: Location {
