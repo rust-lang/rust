@@ -1,6 +1,6 @@
 // Regression test for #87456.
 
-fn take_mut(_val: impl FnMut()) {}
+fn take_mut(_val: impl FnMut()) {} //~ NOTE: consider changing this bound to be `FnOnce`
 
 fn main() {
     let val = String::new();
