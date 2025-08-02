@@ -186,7 +186,7 @@ impl<'db> MatchFinder<'db> {
                     replacing::matches_to_edit(
                         self.sema.db,
                         &matches,
-                        &self.sema.db.file_text(file_id).text(self.sema.db),
+                        self.sema.db.file_text(file_id).text(self.sema.db),
                         &self.rules,
                     ),
                 )
@@ -228,7 +228,7 @@ impl<'db> MatchFinder<'db> {
         let file = self.sema.parse(file_id);
         let mut res = Vec::new();
         let file_text = self.sema.db.file_text(file_id.file_id(self.sema.db)).text(self.sema.db);
-        let mut remaining_text = &*file_text;
+        let mut remaining_text = &**file_text;
         let mut base = 0;
         let len = snippet.len() as u32;
         while let Some(offset) = remaining_text.find(snippet) {

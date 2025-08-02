@@ -487,9 +487,9 @@ impl<'a> FindUsages<'a> {
         scope.entries.iter().map(|(&file_id, &search_range)| {
             let text = db.file_text(file_id.file_id(db)).text(db);
             let search_range =
-                search_range.unwrap_or_else(|| TextRange::up_to(TextSize::of(&*text)));
+                search_range.unwrap_or_else(|| TextRange::up_to(TextSize::of(&**text)));
 
-            (text, file_id, search_range)
+            (text.clone(), file_id, search_range)
         })
     }
 
@@ -854,14 +854,7 @@ impl<'a> FindUsages<'a> {
                 &finder,
                 name,
                 is_possibly_self.into_iter().map(|position| {
-                    (
-                        self.sema
-                            .db
-                            .file_text(position.file_id.file_id(self.sema.db))
-                            .text(self.sema.db),
-                        position.file_id,
-                        position.range,
-                    )
+                    (position.file_text(self.sema.db).clone(), position.file_id, position.range)
                 }),
                 |path, name_position| {
                     let has_self = path
@@ -1067,12 +1060,12 @@ impl<'a> FindUsages<'a> {
                 let file_text = sema.db.file_text(file_id.file_id(self.sema.db));
                 let text = file_text.text(sema.db);
                 let search_range =
-                    search_range.unwrap_or_else(|| TextRange::up_to(TextSize::of(&*text)));
+                    search_range.unwrap_or_else(|| TextRange::up_to(TextSize::of(&**text)));
 
                 let tree = LazyCell::new(|| sema.parse(file_id).syntax().clone());
                 let finder = &Finder::new("self");
 
-                for offset in Self::match_indices(&text, finder, search_range) {
+                for offset in Self::match_indices(text, finder, search_range) {
                     for name_ref in Self::find_nodes(sema, "self", file_id, &tree, offset)
                         .filter_map(ast::NameRef::cast)
                     {
