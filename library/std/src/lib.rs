@@ -294,6 +294,8 @@
 #![feature(f128)]
 #![feature(ffi_const)]
 #![feature(formatting_options)]
+#![feature(hash_map_internals)]
+#![feature(hash_map_macro)]
 #![feature(if_let_guard)]
 #![feature(intra_doc_pointers)]
 #![feature(iter_advance_by)]
