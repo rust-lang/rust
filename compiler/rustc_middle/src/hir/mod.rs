@@ -174,34 +174,50 @@ impl<'tcx> TyCtxt<'tcx> {
         attrs: &SortedMap<ItemLocalId, &[Attribute]>,
         delayed_lints: &[DelayedLint],
         define_opaque: Option<&[(Span, LocalDefId)]>,
-    ) -> (Option<Fingerprint>, Option<Fingerprint>, Option<Fingerprint>) {
-        if self.needs_crate_hash() {
-            self.with_stable_hashing_context(|mut hcx| {
-                let mut stable_hasher = StableHasher::new();
-                node.hash_stable(&mut hcx, &mut stable_hasher);
-                // Bodies are stored out of line, so we need to pull them explicitly in the hash.
-                bodies.hash_stable(&mut hcx, &mut stable_hasher);
-                let h1 = stable_hasher.finish();
-
-                let mut stable_hasher = StableHasher::new();
-                attrs.hash_stable(&mut hcx, &mut stable_hasher);
-
-                // Hash the defined opaque types, which are not present in the attrs.
-                define_opaque.hash_stable(&mut hcx, &mut stable_hasher);
-
-                let h2 = stable_hasher.finish();
-
-                // hash lints emitted during ast lowering
-                let mut stable_hasher = StableHasher::new();
-                delayed_lints.hash_stable(&mut hcx, &mut stable_hasher);
-                let h3 = stable_hasher.finish();
-
-                (Some(h1), Some(h2), Some(h3))
-            })
-        } else {
-            (None, None, None)
+    ) -> Hashes {
+        if !self.needs_crate_hash() {
+            return Hashes {
+                opt_hash_including_bodies: None,
+                attrs_hash: None,
+                delayed_lints_hash: None,
+            };
         }
+
+        self.with_stable_hashing_context(|mut hcx| {
+            let mut stable_hasher = StableHasher::new();
+            node.hash_stable(&mut hcx, &mut stable_hasher);
+            // Bodies are stored out of line, so we need to pull them explicitly in the hash.
+            bodies.hash_stable(&mut hcx, &mut stable_hasher);
+            let h1 = stable_hasher.finish();
+
+            let mut stable_hasher = StableHasher::new();
+            attrs.hash_stable(&mut hcx, &mut stable_hasher);
+
+            // Hash the defined opaque types, which are not present in the attrs.
+            define_opaque.hash_stable(&mut hcx, &mut stable_hasher);
+
+            let h2 = stable_hasher.finish();
+
+            // hash lints emitted during ast lowering
+            let mut stable_hasher = StableHasher::new();
+            delayed_lints.hash_stable(&mut hcx, &mut stable_hasher);
+            let h3 = stable_hasher.finish();
+
+            Hashes {
+                opt_hash_including_bodies: Some(h1),
+                attrs_hash: Some(h2),
+                delayed_lints_hash: Some(h3),
+            }
+        })
     }
+}
+
+/// Hashes computed by [`TyCtxt::hash_owner_nodes`] if necessary.
+#[derive(Clone, Copy, Debug)]
+pub struct Hashes {
+    pub opt_hash_including_bodies: Option<Fingerprint>,
+    pub attrs_hash: Option<Fingerprint>,
+    pub delayed_lints_hash: Option<Fingerprint>,
 }
 
 pub fn provide(providers: &mut Providers) {
