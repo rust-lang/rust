@@ -1,25 +1,25 @@
 use crate::fmt;
 use crate::sync::WaitTimeoutResult;
-use crate::sync::poison::{self, LockResult, MutexGuard, PoisonError, mutex};
+use crate::sync::nonpoison::{MutexGuard, mutex};
 use crate::sys::sync as sys;
 use crate::time::{Duration, Instant};
 
 /// A Condition Variable
 ///
-/// Condition variables represent the ability to block a thread such that it
-/// consumes no CPU time while waiting for an event to occur. Condition
-/// variables are typically associated with a boolean predicate (a condition)
-/// and a mutex. The predicate is always verified inside of the mutex before
-/// determining that a thread must block.
-///
-/// Functions in this module will block the current **thread** of execution.
-/// Note that any attempt to use multiple mutexes on the same condition
-/// variable may result in a runtime panic.
+/// For more information about condition variables, check out the documentation for the poisoning
+/// variant of this type at [`poison::Condvar`].
 ///
 /// # Examples
 ///
+/// Note that this `Condvar` does **not** propagate information about threads that panic while
+/// holding a lock. If you need this functionality, see [`poison::Mutex`] and [`poison::Condvar`].
+///
 /// ```
-/// use std::sync::{Arc, Mutex, Condvar};
+/// #![feature(nonpoison_mutex)]
+/// #![feature(nonpoison_condvar)]
+///
+/// use std::sync::nonpoison::{Mutex, Condvar};
+/// use std::sync::Arc;
 /// use std::thread;
 ///
 /// let pair = Arc::new((Mutex::new(false), Condvar::new()));
@@ -28,7 +28,7 @@ use crate::time::{Duration, Instant};
 /// // Inside of our lock, spawn a new thread, and then wait for it to start.
 /// thread::spawn(move || {
 ///     let (lock, cvar) = &*pair2;
-///     let mut started = lock.lock().unwrap();
+///     let mut started = lock.lock();
 ///     *started = true;
 ///     // We notify the condvar that the value has changed.
 ///     cvar.notify_one();
@@ -36,12 +36,15 @@ use crate::time::{Duration, Instant};
 ///
 /// // Wait for the thread to start up.
 /// let (lock, cvar) = &*pair;
-/// let mut started = lock.lock().unwrap();
+/// let mut started = lock.lock();
 /// while !*started {
-///     started = cvar.wait(started).unwrap();
+///     started = cvar.wait(started);
 /// }
 /// ```
-#[stable(feature = "rust1", since = "1.0.0")]
+///
+/// [`poison::Mutex`]: crate::sync::poison::Mutex
+/// [`poison::Condvar`]: crate::sync::poison::Condvar
+#[unstable(feature = "nonpoison_condvar", issue = "134645")]
 pub struct Condvar {
     inner: sys::Condvar,
 }
@@ -57,8 +60,7 @@ impl Condvar {
     ///
     /// let condvar = Condvar::new();
     /// ```
-    #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_locks", since = "1.63.0")]
+    #[unstable(feature = "nonpoison_condvar", issue = "134645")]
     #[must_use]
     #[inline]
     pub const fn new() -> Condvar {
@@ -79,12 +81,6 @@ impl Condvar {
     /// the predicate must always be checked each time this function returns to
     /// protect against spurious wakeups.
     ///
-    /// # Errors
-    ///
-    /// This function will return an error if the mutex being waited on is
-    /// poisoned when this thread re-acquires the lock. For more information,
-    /// see information about [poisoning] on the [`Mutex`] type.
-    ///
     /// # Panics
     ///
     /// This function may [`panic!`] if it is used with more than one mutex
@@ -92,13 +88,15 @@ impl Condvar {
     ///
     /// [`notify_one`]: Self::notify_one
     /// [`notify_all`]: Self::notify_all
-    /// [poisoning]: super::Mutex#poisoning
-    /// [`Mutex`]: super::Mutex
     ///
     /// # Examples
     ///
     /// ```
-    /// use std::sync::{Arc, Mutex, Condvar};
+    /// #![feature(nonpoison_mutex)]
+    /// #![feature(nonpoison_condvar)]
+    ///
+    /// use std::sync::nonpoison::{Mutex, Condvar};
+    /// use std::sync::Arc;
     /// use std::thread;
     ///
     /// let pair = Arc::new((Mutex::new(false), Condvar::new()));
@@ -106,7 +104,7 @@ impl Condvar {
     ///
     /// thread::spawn(move || {
     ///     let (lock, cvar) = &*pair2;
-    ///     let mut started = lock.lock().unwrap();
+    ///     let mut started = lock.lock();
     ///     *started = true;
     ///     // We notify the condvar that the value has changed.
     ///     cvar.notify_one();
@@ -114,20 +112,19 @@ impl Condvar {
     ///
     /// // Wait for the thread to start up.
     /// let (lock, cvar) = &*pair;
-    /// let mut started = lock.lock().unwrap();
+    /// let mut started = lock.lock();
     /// // As long as the value inside the `Mutex<bool>` is `false`, we wait.
     /// while !*started {
-    ///     started = cvar.wait(started).unwrap();
+    ///     started = cvar.wait(started);
     /// }
     /// ```
-    #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn wait<'a, T>(&self, guard: MutexGuard<'a, T>) -> LockResult<MutexGuard<'a, T>> {
-        let poisoned = unsafe {
+    #[unstable(feature = "nonpoison_condvar", issue = "134645")]
+    pub fn wait<'a, T>(&self, guard: MutexGuard<'a, T>) -> MutexGuard<'a, T> {
+        unsafe {
             let lock = mutex::guard_lock(&guard);
             self.inner.wait(lock);
-            mutex::guard_poison(&guard).get()
-        };
-        if poisoned { Err(PoisonError::new(guard)) } else { Ok(guard) }
+        }
+        guard
     }
 
     /// Blocks the current thread until the provided condition becomes false.
@@ -142,22 +139,18 @@ impl Condvar {
     /// mutex is unlocked are candidates to wake this thread up. When this
     /// function call returns, the lock specified will have been re-acquired.
     ///
-    /// # Errors
-    ///
-    /// This function will return an error if the mutex being waited on is
-    /// poisoned when this thread re-acquires the lock. For more information,
-    /// see information about [poisoning] on the [`Mutex`] type.
-    ///
     /// [`wait`]: Self::wait
     /// [`notify_one`]: Self::notify_one
     /// [`notify_all`]: Self::notify_all
-    /// [poisoning]: super::Mutex#poisoning
-    /// [`Mutex`]: super::Mutex
     ///
     /// # Examples
     ///
     /// ```
-    /// use std::sync::{Arc, Mutex, Condvar};
+    /// #![feature(nonpoison_mutex)]
+    /// #![feature(nonpoison_condvar)]
+    ///
+    /// use std::sync::nonpoison::{Mutex, Condvar};
+    /// use std::sync::Arc;
     /// use std::thread;
     ///
     /// let pair = Arc::new((Mutex::new(true), Condvar::new()));
@@ -165,7 +158,7 @@ impl Condvar {
     ///
     /// thread::spawn(move || {
     ///     let (lock, cvar) = &*pair2;
-    ///     let mut pending = lock.lock().unwrap();
+    ///     let mut pending = lock.lock();
     ///     *pending = false;
     ///     // We notify the condvar that the value has changed.
     ///     cvar.notify_one();
@@ -174,85 +167,21 @@ impl Condvar {
     /// // Wait for the thread to start up.
     /// let (lock, cvar) = &*pair;
     /// // As long as the value inside the `Mutex<bool>` is `true`, we wait.
-    /// let _guard = cvar.wait_while(lock.lock().unwrap(), |pending| { *pending }).unwrap();
+    /// let _guard = cvar.wait_while(lock.lock(), |pending| { *pending });
     /// ```
-    #[stable(feature = "wait_until", since = "1.42.0")]
+    #[unstable(feature = "nonpoison_condvar", issue = "134645")]
     pub fn wait_while<'a, T, F>(
         &self,
         mut guard: MutexGuard<'a, T>,
         mut condition: F,
-    ) -> LockResult<MutexGuard<'a, T>>
+    ) -> MutexGuard<'a, T>
     where
         F: FnMut(&mut T) -> bool,
     {
         while condition(&mut *guard) {
-            guard = self.wait(guard)?;
+            guard = self.wait(guard);
         }
-        Ok(guard)
-    }
-
-    /// Waits on this condition variable for a notification, timing out after a
-    /// specified duration.
-    ///
-    /// The semantics of this function are equivalent to [`wait`]
-    /// except that the thread will be blocked for roughly no longer
-    /// than `ms` milliseconds. This method should not be used for
-    /// precise timing due to anomalies such as preemption or platform
-    /// differences that might not cause the maximum amount of time
-    /// waited to be precisely `ms`.
-    ///
-    /// Note that the best effort is made to ensure that the time waited is
-    /// measured with a monotonic clock, and not affected by the changes made to
-    /// the system time.
-    ///
-    /// The returned boolean is `false` only if the timeout is known
-    /// to have elapsed.
-    ///
-    /// Like [`wait`], the lock specified will be re-acquired when this function
-    /// returns, regardless of whether the timeout elapsed or not.
-    ///
-    /// [`wait`]: Self::wait
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::sync::{Arc, Mutex, Condvar};
-    /// use std::thread;
-    ///
-    /// let pair = Arc::new((Mutex::new(false), Condvar::new()));
-    /// let pair2 = Arc::clone(&pair);
-    ///
-    /// thread::spawn(move || {
-    ///     let (lock, cvar) = &*pair2;
-    ///     let mut started = lock.lock().unwrap();
-    ///     *started = true;
-    ///     // We notify the condvar that the value has changed.
-    ///     cvar.notify_one();
-    /// });
-    ///
-    /// // Wait for the thread to start up.
-    /// let (lock, cvar) = &*pair;
-    /// let mut started = lock.lock().unwrap();
-    /// // As long as the value inside the `Mutex<bool>` is `false`, we wait.
-    /// loop {
-    ///     let result = cvar.wait_timeout_ms(started, 10).unwrap();
-    ///     // 10 milliseconds have passed, or maybe the value changed!
-    ///     started = result.0;
-    ///     if *started == true {
-    ///         // We received the notification and the value has been updated, we can leave.
-    ///         break
-    ///     }
-    /// }
-    /// ```
-    #[stable(feature = "rust1", since = "1.0.0")]
-    #[deprecated(since = "1.6.0", note = "replaced by `std::sync::Condvar::wait_timeout`")]
-    pub fn wait_timeout_ms<'a, T>(
-        &self,
-        guard: MutexGuard<'a, T>,
-        ms: u32,
-    ) -> LockResult<(MutexGuard<'a, T>, bool)> {
-        let res = self.wait_timeout(guard, Duration::from_millis(ms as u64));
-        poison::map_result(res, |(a, b)| (a, !b.timed_out()))
+        guard
     }
 
     /// Waits on this condition variable for a notification, timing out after a
@@ -287,7 +216,11 @@ impl Condvar {
     /// # Examples
     ///
     /// ```
-    /// use std::sync::{Arc, Mutex, Condvar};
+    /// #![feature(nonpoison_mutex)]
+    /// #![feature(nonpoison_condvar)]
+    ///
+    /// use std::sync::nonpoison::{Mutex, Condvar};
+    /// use std::sync::Arc;
     /// use std::thread;
     /// use std::time::Duration;
     ///
@@ -296,7 +229,7 @@ impl Condvar {
     ///
     /// thread::spawn(move || {
     ///     let (lock, cvar) = &*pair2;
-    ///     let mut started = lock.lock().unwrap();
+    ///     let mut started = lock.lock();
     ///     *started = true;
     ///     // We notify the condvar that the value has changed.
     ///     cvar.notify_one();
@@ -304,10 +237,10 @@ impl Condvar {
     ///
     /// // wait for the thread to start up
     /// let (lock, cvar) = &*pair;
-    /// let mut started = lock.lock().unwrap();
+    /// let mut started = lock.lock();
     /// // as long as the value inside the `Mutex<bool>` is `false`, we wait
     /// loop {
-    ///     let result = cvar.wait_timeout(started, Duration::from_millis(10)).unwrap();
+    ///     let result = cvar.wait_timeout(started, Duration::from_millis(10));
     ///     // 10 milliseconds have passed, or maybe the value changed!
     ///     started = result.0;
     ///     if *started == true {
@@ -316,18 +249,17 @@ impl Condvar {
     ///     }
     /// }
     /// ```
-    #[stable(feature = "wait_timeout", since = "1.5.0")]
+    #[unstable(feature = "nonpoison_condvar", issue = "134645")]
     pub fn wait_timeout<'a, T>(
         &self,
         guard: MutexGuard<'a, T>,
         dur: Duration,
-    ) -> LockResult<(MutexGuard<'a, T>, WaitTimeoutResult)> {
-        let (poisoned, result) = unsafe {
+    ) -> (MutexGuard<'a, T>, WaitTimeoutResult) {
+        let success = unsafe {
             let lock = mutex::guard_lock(&guard);
-            let success = self.inner.wait_timeout(lock, dur);
-            (mutex::guard_poison(&guard).get(), WaitTimeoutResult(!success))
+            self.inner.wait_timeout(lock, dur)
         };
-        if poisoned { Err(PoisonError::new((guard, result))) } else { Ok((guard, result)) }
+        (guard, WaitTimeoutResult(!success))
     }
 
     /// Waits on this condition variable for a notification, timing out after a
@@ -355,7 +287,11 @@ impl Condvar {
     /// # Examples
     ///
     /// ```
-    /// use std::sync::{Arc, Mutex, Condvar};
+    /// #![feature(nonpoison_mutex)]
+    /// #![feature(nonpoison_condvar)]
+    ///
+    /// use std::sync::nonpoison::{Mutex, Condvar};
+    /// use std::sync::Arc;
     /// use std::thread;
     /// use std::time::Duration;
     ///
@@ -364,7 +300,7 @@ impl Condvar {
     ///
     /// thread::spawn(move || {
     ///     let (lock, cvar) = &*pair2;
-    ///     let mut pending = lock.lock().unwrap();
+    ///     let mut pending = lock.lock();
     ///     *pending = false;
     ///     // We notify the condvar that the value has changed.
     ///     cvar.notify_one();
@@ -373,35 +309,35 @@ impl Condvar {
     /// // wait for the thread to start up
     /// let (lock, cvar) = &*pair;
     /// let result = cvar.wait_timeout_while(
-    ///     lock.lock().unwrap(),
+    ///     lock.lock(),
     ///     Duration::from_millis(100),
     ///     |&mut pending| pending,
-    /// ).unwrap();
+    /// );
     /// if result.1.timed_out() {
     ///     // timed-out without the condition ever evaluating to false.
     /// }
     /// // access the locked mutex via result.0
     /// ```
-    #[stable(feature = "wait_timeout_until", since = "1.42.0")]
+    #[unstable(feature = "nonpoison_condvar", issue = "134645")]
     pub fn wait_timeout_while<'a, T, F>(
         &self,
         mut guard: MutexGuard<'a, T>,
         dur: Duration,
         mut condition: F,
-    ) -> LockResult<(MutexGuard<'a, T>, WaitTimeoutResult)>
+    ) -> (MutexGuard<'a, T>, WaitTimeoutResult)
     where
         F: FnMut(&mut T) -> bool,
     {
         let start = Instant::now();
         loop {
             if !condition(&mut *guard) {
-                return Ok((guard, WaitTimeoutResult(false)));
+                return (guard, WaitTimeoutResult(false));
             }
             let timeout = match dur.checked_sub(start.elapsed()) {
                 Some(timeout) => timeout,
-                None => return Ok((guard, WaitTimeoutResult(true))),
+                None => return (guard, WaitTimeoutResult(true)),
             };
-            guard = self.wait_timeout(guard, timeout)?.0;
+            guard = self.wait_timeout(guard, timeout).0;
         }
     }
 
@@ -420,7 +356,11 @@ impl Condvar {
     /// # Examples
     ///
     /// ```
-    /// use std::sync::{Arc, Mutex, Condvar};
+    /// #![feature(nonpoison_mutex)]
+    /// #![feature(nonpoison_condvar)]
+    ///
+    /// use std::sync::nonpoison::{Mutex, Condvar};
+    /// use std::sync::Arc;
     /// use std::thread;
     ///
     /// let pair = Arc::new((Mutex::new(false), Condvar::new()));
@@ -428,7 +368,7 @@ impl Condvar {
     ///
     /// thread::spawn(move || {
     ///     let (lock, cvar) = &*pair2;
-    ///     let mut started = lock.lock().unwrap();
+    ///     let mut started = lock.lock();
     ///     *started = true;
     ///     // We notify the condvar that the value has changed.
     ///     cvar.notify_one();
@@ -436,13 +376,13 @@ impl Condvar {
     ///
     /// // Wait for the thread to start up.
     /// let (lock, cvar) = &*pair;
-    /// let mut started = lock.lock().unwrap();
+    /// let mut started = lock.lock();
     /// // As long as the value inside the `Mutex<bool>` is `false`, we wait.
     /// while !*started {
-    ///     started = cvar.wait(started).unwrap();
+    ///     started = cvar.wait(started);
     /// }
     /// ```
-    #[stable(feature = "rust1", since = "1.0.0")]
+    #[unstable(feature = "nonpoison_condvar", issue = "134645")]
     pub fn notify_one(&self) {
         self.inner.notify_one()
     }
@@ -460,7 +400,11 @@ impl Condvar {
     /// # Examples
     ///
     /// ```
-    /// use std::sync::{Arc, Mutex, Condvar};
+    /// #![feature(nonpoison_mutex)]
+    /// #![feature(nonpoison_condvar)]
+    ///
+    /// use std::sync::nonpoison::{Mutex, Condvar};
+    /// use std::sync::Arc;
     /// use std::thread;
     ///
     /// let pair = Arc::new((Mutex::new(false), Condvar::new()));
@@ -468,7 +412,7 @@ impl Condvar {
     ///
     /// thread::spawn(move || {
     ///     let (lock, cvar) = &*pair2;
-    ///     let mut started = lock.lock().unwrap();
+    ///     let mut started = lock.lock();
     ///     *started = true;
     ///     // We notify the condvar that the value has changed.
     ///     cvar.notify_all();
@@ -476,26 +420,26 @@ impl Condvar {
     ///
     /// // Wait for the thread to start up.
     /// let (lock, cvar) = &*pair;
-    /// let mut started = lock.lock().unwrap();
+    /// let mut started = lock.lock();
     /// // As long as the value inside the `Mutex<bool>` is `false`, we wait.
     /// while !*started {
-    ///     started = cvar.wait(started).unwrap();
+    ///     started = cvar.wait(started);
     /// }
     /// ```
-    #[stable(feature = "rust1", since = "1.0.0")]
+    #[unstable(feature = "nonpoison_condvar", issue = "134645")]
     pub fn notify_all(&self) {
         self.inner.notify_all()
     }
 }
 
-#[stable(feature = "std_debug", since = "1.16.0")]
+#[unstable(feature = "nonpoison_condvar", issue = "134645")]
 impl fmt::Debug for Condvar {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Condvar").finish_non_exhaustive()
     }
 }
 
-#[stable(feature = "condvar_default", since = "1.10.0")]
+#[unstable(feature = "nonpoison_condvar", issue = "134645")]
 impl Default for Condvar {
     /// Creates a `Condvar` which is ready to be waited on and notified.
     fn default() -> Condvar {
