@@ -133,7 +133,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for CanonicalInstantiator<'tcx> {
     fn fold_const(&mut self, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
         match ct.kind() {
             ty::ConstKind::Bound(debruijn, bound_const) if debruijn == self.current_index => {
-                self.var_values[bound_const.as_usize()].expect_const()
+                self.var_values[bound_const.var.as_usize()].expect_const()
             }
             _ => ct.super_fold_with(self),
         }
@@ -217,7 +217,7 @@ fn highest_var_in_clauses<'tcx>(c: ty::Clauses<'tcx>) -> usize {
             if let ty::ConstKind::Bound(debruijn, bound_const) = ct.kind()
                 && debruijn == self.current_index
             {
-                self.max_var = self.max_var.max(bound_const.as_usize());
+                self.max_var = self.max_var.max(bound_const.var.as_usize());
             } else if ct.has_vars_bound_at_or_above(self.current_index) {
                 ct.super_visit_with(self);
             }

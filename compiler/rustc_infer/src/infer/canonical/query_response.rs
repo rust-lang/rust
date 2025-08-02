@@ -430,12 +430,12 @@ impl<'tcx> InferCtxt<'tcx> {
                 }
                 GenericArgKind::Lifetime(result_value) => {
                     // e.g., here `result_value` might be `'?1` in the example above...
-                    if let ty::ReBound(debruijn, br) = result_value.kind() {
+                    if let ty::ReBound(debruijn, b) = result_value.kind() {
                         // ... in which case we would set `canonical_vars[0]` to `Some('static)`.
 
                         // We only allow a `ty::INNERMOST` index in generic parameters.
                         assert_eq!(debruijn, ty::INNERMOST);
-                        opt_values[br.var] = Some(*original_value);
+                        opt_values[b.var] = Some(*original_value);
                     }
                 }
                 GenericArgKind::Const(result_value) => {
@@ -444,7 +444,7 @@ impl<'tcx> InferCtxt<'tcx> {
 
                         // We only allow a `ty::INNERMOST` index in generic parameters.
                         assert_eq!(debruijn, ty::INNERMOST);
-                        opt_values[b] = Some(*original_value);
+                        opt_values[b.var] = Some(*original_value);
                     }
                 }
             }

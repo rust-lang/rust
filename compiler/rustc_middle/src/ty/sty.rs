@@ -403,12 +403,6 @@ pub enum BoundTyKind {
     Param(DefId),
 }
 
-impl From<BoundVar> for BoundTy {
-    fn from(var: BoundVar) -> Self {
-        BoundTy { var, kind: BoundTyKind::Anon }
-    }
-}
-
 /// Constructors for `Ty`
 impl<'tcx> Ty<'tcx> {
     /// Avoid using this in favour of more specific `new_*` methods, where possible.

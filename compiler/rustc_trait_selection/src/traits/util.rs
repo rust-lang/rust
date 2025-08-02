@@ -222,7 +222,7 @@ pub struct PlaceholderReplacer<'a, 'tcx> {
     infcx: &'a InferCtxt<'tcx>,
     mapped_regions: FxIndexMap<ty::PlaceholderRegion, ty::BoundRegion>,
     mapped_types: FxIndexMap<ty::PlaceholderType, ty::BoundTy>,
-    mapped_consts: FxIndexMap<ty::PlaceholderConst, ty::BoundVar>,
+    mapped_consts: FxIndexMap<ty::PlaceholderConst, ty::BoundConst>,
     universe_indices: &'a [Option<ty::UniverseIndex>],
     current_index: ty::DebruijnIndex,
 }
@@ -232,7 +232,7 @@ impl<'a, 'tcx> PlaceholderReplacer<'a, 'tcx> {
         infcx: &'a InferCtxt<'tcx>,
         mapped_regions: FxIndexMap<ty::PlaceholderRegion, ty::BoundRegion>,
         mapped_types: FxIndexMap<ty::PlaceholderType, ty::BoundTy>,
-        mapped_consts: FxIndexMap<ty::PlaceholderConst, ty::BoundVar>,
+        mapped_consts: FxIndexMap<ty::PlaceholderConst, ty::BoundConst>,
         universe_indices: &'a [Option<ty::UniverseIndex>],
         value: T,
     ) -> T {

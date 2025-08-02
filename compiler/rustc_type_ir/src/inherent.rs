@@ -251,7 +251,7 @@ pub trait Const<I: Interner<Const = Self>>:
 
     fn new_var(interner: I, var: ty::ConstVid) -> Self;
 
-    fn new_bound(interner: I, debruijn: ty::DebruijnIndex, var: I::BoundConst) -> Self;
+    fn new_bound(interner: I, debruijn: ty::DebruijnIndex, bound_const: I::BoundConst) -> Self;
 
     fn new_anon_bound(interner: I, debruijn: ty::DebruijnIndex, var: ty::BoundVar) -> Self;
 

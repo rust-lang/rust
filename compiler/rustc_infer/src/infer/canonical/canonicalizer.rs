@@ -752,7 +752,8 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
     ) -> Ty<'tcx> {
         debug_assert!(!self.infcx.is_some_and(|infcx| ty_var != infcx.shallow_resolve(ty_var)));
         let var = self.canonical_var(var_kind, ty_var.into());
-        Ty::new_bound(self.tcx, self.binder_index, var.into())
+        let bt = ty::BoundTy { var, kind: ty::BoundTyKind::Anon };
+        Ty::new_bound(self.tcx, self.binder_index, bt)
     }
 
     /// Given a type variable `const_var` of the given kind, first check
@@ -768,6 +769,7 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
             !self.infcx.is_some_and(|infcx| ct_var != infcx.shallow_resolve_const(ct_var))
         );
         let var = self.canonical_var(var_kind, ct_var.into());
-        ty::Const::new_bound(self.tcx, self.binder_index, var)
+        let bc = ty::BoundConst { var };
+        ty::Const::new_bound(self.tcx, self.binder_index, bc)
     }
 }

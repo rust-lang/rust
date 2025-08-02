@@ -1077,7 +1077,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for GenericParamAndBoundVarCollector<'_, 't
             ty::ConstKind::Param(param) => {
                 self.params.insert(param.index);
             }
-            ty::ConstKind::Bound(db, ty::BoundVar { .. }) if db >= self.depth => {
+            ty::ConstKind::Bound(db, _) if db >= self.depth => {
                 let guar = self.cx.dcx().delayed_bug("unexpected escaping late-bound const var");
                 return ControlFlow::Break(guar);
             }
