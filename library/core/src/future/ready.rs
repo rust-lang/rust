@@ -20,8 +20,18 @@ impl<T> Future for Ready<T> {
 
     #[inline]
     fn poll(mut self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<T> {
-        Poll::Ready(self.0.take().expect("`Ready` polled after completion"))
+        match self.0.take() {
+            Some(v) => Poll::Ready(v),
+            None => polled_after_completion(),
+        }
     }
+}
+
+// Have only one of these, rather than mono'ing the panic for every `T`
+#[cold]
+#[inline]
+fn polled_after_completion() -> ! {
+    panic!("`Ready` polled after completion")
 }
 
 impl<T> Ready<T> {

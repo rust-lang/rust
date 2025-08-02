@@ -1,5 +1,5 @@
 //@ needs-unwind - this test verifies the amount of drop calls when unwinding is used
-//@ compile-flags: -C no-prepopulate-passes
+//@ compile-flags: -C no-prepopulate-passes -Z inline-mir=no
 
 #![crate_type = "lib"]
 
