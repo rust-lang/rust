@@ -527,21 +527,28 @@ impl<'tcx> GenericArgs<'tcx> {
     #[inline]
     #[track_caller]
     pub fn type_at(&self, i: usize) -> Ty<'tcx> {
-        self[i].as_type().unwrap_or_else(|| bug!("expected type for param #{} in {:?}", i, self))
+        self[i].as_type().unwrap_or_else(
+            #[track_caller]
+            || bug!("expected type for param #{} in {:?}", i, self),
+        )
     }
 
     #[inline]
     #[track_caller]
     pub fn region_at(&self, i: usize) -> ty::Region<'tcx> {
-        self[i]
-            .as_region()
-            .unwrap_or_else(|| bug!("expected region for param #{} in {:?}", i, self))
+        self[i].as_region().unwrap_or_else(
+            #[track_caller]
+            || bug!("expected region for param #{} in {:?}", i, self),
+        )
     }
 
     #[inline]
     #[track_caller]
     pub fn const_at(&self, i: usize) -> ty::Const<'tcx> {
-        self[i].as_const().unwrap_or_else(|| bug!("expected const for param #{} in {:?}", i, self))
+        self[i].as_const().unwrap_or_else(
+            #[track_caller]
+            || bug!("expected const for param #{} in {:?}", i, self),
+        )
     }
 
     #[inline]

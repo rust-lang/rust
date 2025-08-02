@@ -92,6 +92,13 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let invalid_monomorphization_int_type = |ty| {
             bx.tcx().dcx().emit_err(InvalidMonomorphization::BasicIntegerType { span, name, ty });
         };
+        let invalid_monomorphization_int_or_ptr_type = |ty| {
+            bx.tcx().dcx().emit_err(InvalidMonomorphization::BasicIntegerOrPtrType {
+                span,
+                name,
+                ty,
+            });
+        };
 
         let parse_atomic_ordering = |ord: ty::Value<'tcx>| {
             let discr = ord.valtree.unwrap_branch()[0].unwrap_leaf();
@@ -351,7 +358,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             sym::atomic_load => {
                 let ty = fn_args.type_at(0);
                 if !(int_type_width_signed(ty, bx.tcx()).is_some() || ty.is_raw_ptr()) {
-                    invalid_monomorphization_int_type(ty);
+                    invalid_monomorphization_int_or_ptr_type(ty);
                     return Ok(());
                 }
                 let ordering = fn_args.const_at(1).to_value();
@@ -367,7 +374,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             sym::atomic_store => {
                 let ty = fn_args.type_at(0);
                 if !(int_type_width_signed(ty, bx.tcx()).is_some() || ty.is_raw_ptr()) {
-                    invalid_monomorphization_int_type(ty);
+                    invalid_monomorphization_int_or_ptr_type(ty);
                     return Ok(());
                 }
                 let ordering = fn_args.const_at(1).to_value();
@@ -377,10 +384,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 bx.atomic_store(val, ptr, parse_atomic_ordering(ordering), size);
                 return Ok(());
             }
+            // These are all AtomicRMW ops
             sym::atomic_cxchg | sym::atomic_cxchgweak => {
                 let ty = fn_args.type_at(0);
                 if !(int_type_width_signed(ty, bx.tcx()).is_some() || ty.is_raw_ptr()) {
-                    invalid_monomorphization_int_type(ty);
+                    invalid_monomorphization_int_or_ptr_type(ty);
                     return Ok(());
                 }
                 let succ_ordering = fn_args.const_at(1).to_value();
@@ -407,7 +415,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
                 return Ok(());
             }
-            // These are all AtomicRMW ops
             sym::atomic_max | sym::atomic_min => {
                 let atom_op = if name == sym::atomic_max {
                     AtomicRmwBinOp::AtomicMax
@@ -420,7 +427,13 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     let ordering = fn_args.const_at(1).to_value();
                     let ptr = args[0].immediate();
                     let val = args[1].immediate();
-                    bx.atomic_rmw(atom_op, ptr, val, parse_atomic_ordering(ordering))
+                    bx.atomic_rmw(
+                        atom_op,
+                        ptr,
+                        val,
+                        parse_atomic_ordering(ordering),
+                        /* ret_ptr */ false,
+                    )
                 } else {
                     invalid_monomorphization_int_type(ty);
                     return Ok(());
@@ -438,21 +451,44 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     let ordering = fn_args.const_at(1).to_value();
                     let ptr = args[0].immediate();
                     let val = args[1].immediate();
-                    bx.atomic_rmw(atom_op, ptr, val, parse_atomic_ordering(ordering))
+                    bx.atomic_rmw(
+                        atom_op,
+                        ptr,
+                        val,
+                        parse_atomic_ordering(ordering),
+                        /* ret_ptr */ false,
+                    )
                 } else {
                     invalid_monomorphization_int_type(ty);
                     return Ok(());
                 }
             }
-            sym::atomic_xchg
-            | sym::atomic_xadd
+            sym::atomic_xchg => {
+                let ty = fn_args.type_at(0);
+                let ordering = fn_args.const_at(1).to_value();
+                if int_type_width_signed(ty, bx.tcx()).is_some() || ty.is_raw_ptr() {
+                    let ptr = args[0].immediate();
+                    let val = args[1].immediate();
+                    let atomic_op = AtomicRmwBinOp::AtomicXchg;
+                    bx.atomic_rmw(
+                        atomic_op,
+                        ptr,
+                        val,
+                        parse_atomic_ordering(ordering),
+                        /* ret_ptr */ ty.is_raw_ptr(),
+                    )
+                } else {
+                    invalid_monomorphization_int_or_ptr_type(ty);
+                    return Ok(());
+                }
+            }
+            sym::atomic_xadd
             | sym::atomic_xsub
             | sym::atomic_and
             | sym::atomic_nand
             | sym::atomic_or
             | sym::atomic_xor => {
                 let atom_op = match name {
-                    sym::atomic_xchg => AtomicRmwBinOp::AtomicXchg,
                     sym::atomic_xadd => AtomicRmwBinOp::AtomicAdd,
                     sym::atomic_xsub => AtomicRmwBinOp::AtomicSub,
                     sym::atomic_and => AtomicRmwBinOp::AtomicAnd,
@@ -462,14 +498,28 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     _ => unreachable!(),
                 };
 
-                let ty = fn_args.type_at(0);
-                if int_type_width_signed(ty, bx.tcx()).is_some() || ty.is_raw_ptr() {
-                    let ordering = fn_args.const_at(1).to_value();
-                    let ptr = args[0].immediate();
-                    let val = args[1].immediate();
-                    bx.atomic_rmw(atom_op, ptr, val, parse_atomic_ordering(ordering))
+                // The type of the in-memory data.
+                let ty_mem = fn_args.type_at(0);
+                // The type of the 2nd operand, given by-value.
+                let ty_op = fn_args.type_at(1);
+
+                let ordering = fn_args.const_at(2).to_value();
+                // We require either both arguments to have the same integer type, or the first to
+                // be a pointer and the second to be `usize`.
+                if (int_type_width_signed(ty_mem, bx.tcx()).is_some() && ty_op == ty_mem)
+                    || (ty_mem.is_raw_ptr() && ty_op == bx.tcx().types.usize)
+                {
+                    let ptr = args[0].immediate(); // of type "pointer to `ty_mem`"
+                    let val = args[1].immediate(); // of type `ty_op`
+                    bx.atomic_rmw(
+                        atom_op,
+                        ptr,
+                        val,
+                        parse_atomic_ordering(ordering),
+                        /* ret_ptr */ ty_mem.is_raw_ptr(),
+                    )
                 } else {
-                    invalid_monomorphization_int_type(ty);
+                    invalid_monomorphization_int_or_ptr_type(ty_mem);
                     return Ok(());
                 }
             }
