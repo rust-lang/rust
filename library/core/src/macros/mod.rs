@@ -271,7 +271,10 @@ pub macro cfg_select($($tt:tt)*) {
 /// // expression given.
 /// debug_assert!(true);
 ///
-/// fn some_expensive_computation() -> bool { true } // a very simple function
+/// fn some_expensive_computation() -> bool {
+///     // Some expensive computation here
+///     true
+/// }
 /// debug_assert!(some_expensive_computation());
 ///
 /// // assert with a custom message
@@ -1547,7 +1550,10 @@ pub(crate) mod builtin {
     /// // expression given.
     /// assert!(true);
     ///
-    /// fn some_computation() -> bool { true } // a very simple function
+    /// fn some_computation() -> bool {
+    ///     // Some expensive computation here
+    ///     true
+    /// }
     ///
     /// assert!(some_computation());
     ///

@@ -566,13 +566,13 @@ impl<T> Vec<T> {
     ///
     /// # Examples
     ///
+    // FIXME Update this when vec_into_raw_parts is stabilized
     /// ```
     /// use std::ptr;
     /// use std::mem;
     ///
     /// let v = vec![1, 2, 3];
     ///
-    // FIXME Update this when vec_into_raw_parts is stabilized
     /// // Prevent running `v`'s destructor so we are in complete control
     /// // of the allocation.
     /// let mut v = mem::ManuallyDrop::new(v);
@@ -674,6 +674,7 @@ impl<T> Vec<T> {
     ///
     /// # Examples
     ///
+    // FIXME Update this when vec_into_raw_parts is stabilized
     /// ```
     /// #![feature(box_vec_non_null)]
     ///
@@ -682,7 +683,6 @@ impl<T> Vec<T> {
     ///
     /// let v = vec![1, 2, 3];
     ///
-    // FIXME Update this when vec_into_raw_parts is stabilized
     /// // Prevent running `v`'s destructor so we are in complete control
     /// // of the allocation.
     /// let mut v = mem::ManuallyDrop::new(v);
@@ -994,6 +994,7 @@ impl<T, A: Allocator> Vec<T, A> {
     ///
     /// # Examples
     ///
+    // FIXME Update this when vec_into_raw_parts is stabilized
     /// ```
     /// #![feature(allocator_api)]
     ///
@@ -1007,7 +1008,6 @@ impl<T, A: Allocator> Vec<T, A> {
     /// v.push(2);
     /// v.push(3);
     ///
-    // FIXME Update this when vec_into_raw_parts is stabilized
     /// // Prevent running `v`'s destructor so we are in complete control
     /// // of the allocation.
     /// let mut v = mem::ManuallyDrop::new(v);
@@ -1114,6 +1114,7 @@ impl<T, A: Allocator> Vec<T, A> {
     ///
     /// # Examples
     ///
+    // FIXME Update this when vec_into_raw_parts is stabilized
     /// ```
     /// #![feature(allocator_api, box_vec_non_null)]
     ///
@@ -1127,7 +1128,6 @@ impl<T, A: Allocator> Vec<T, A> {
     /// v.push(2);
     /// v.push(3);
     ///
-    // FIXME Update this when vec_into_raw_parts is stabilized
     /// // Prevent running `v`'s destructor so we are in complete control
     /// // of the allocation.
     /// let mut v = mem::ManuallyDrop::new(v);
@@ -3872,8 +3872,8 @@ impl<T, A: Allocator> Vec<T, A> {
     /// while i < vec.len() - end_items {
     ///     if some_predicate(&mut vec[i]) {
     ///         let val = vec.remove(i);
-    /// #         extracted.push(val);
     ///         // your code here
+    /// #         extracted.push(val);
     ///     } else {
     ///         i += 1;
     ///     }

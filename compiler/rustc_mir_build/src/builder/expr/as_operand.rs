@@ -57,7 +57,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// ```
     /// #![feature(unsized_fn_params)]
     /// # use core::fmt::Debug;
-    /// fn foo(_p: dyn Debug) { /* ... */ }
+    /// fn foo(_p: dyn Debug) {
+    ///     /* ... */
+    /// }
     ///
     /// fn bar(box_p: Box<dyn Debug>) { foo(*box_p); }
     /// ```

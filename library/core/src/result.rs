@@ -1544,7 +1544,7 @@ impl<T, E> Result<T, E> {
     ///
     /// ```no_run
     /// let x: Result<u32, &str> = Err("emergency failure");
-    /// unsafe { x.unwrap_unchecked(); } // Undefined behavior!
+    /// unsafe { x.unwrap_unchecked() }; // Undefined behavior!
     /// ```
     #[inline]
     #[track_caller]

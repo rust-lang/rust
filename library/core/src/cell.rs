@@ -2068,9 +2068,9 @@ impl<T: ?Sized + fmt::Display> fmt::Display for RefMut<'_, T> {
 /// implies exclusive access to its `T`:
 ///
 /// ```rust
-/// #![forbid(unsafe_code)] // with exclusive accesses,
-///                         // `UnsafeCell` is a transparent no-op wrapper,
-///                         // so no need for `unsafe` here.
+/// #![forbid(unsafe_code)]
+/// // with exclusive accesses, `UnsafeCell` is a transparent no-op wrapper, so no need for
+/// // `unsafe` here.
 /// use std::cell::UnsafeCell;
 ///
 /// let mut x: UnsafeCell<i32> = 42.into();

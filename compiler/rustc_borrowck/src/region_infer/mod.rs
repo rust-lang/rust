@@ -417,7 +417,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// minimum values.
     ///
     /// For example:
-    /// ```
+    /// ```ignore (illustrative)
     /// fn foo<'a, 'b>( /* ... */ ) where 'a: 'b { /* ... */ }
     /// ```
     /// would initialize two variables like so:

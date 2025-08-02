@@ -1017,7 +1017,8 @@ pub struct LocalDecl<'tcx> {
     /// ```
     /// fn foo(x: &str) {
     ///     #[allow(unused_mut)]
-    ///     let mut x: u32 = { // <- one unused mut
+    ///     let mut x: u32 = {
+    ///         //^ one unused mut
     ///         let mut y: u32 = x.parse().unwrap();
     ///         y + 2
     ///     };
