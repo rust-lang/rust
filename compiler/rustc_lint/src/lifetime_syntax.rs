@@ -434,7 +434,7 @@ fn emit_mismatch_diagnostic<'tcx>(
         lints::MismatchedLifetimeSyntaxesSuggestion::Mixed {
             implicit_suggestions,
             explicit_anonymous_suggestions,
-            tool_only: false,
+            optional_alternative: false,
         }
     });
 
@@ -455,7 +455,10 @@ fn emit_mismatch_diagnostic<'tcx>(
     let implicit_suggestion = should_suggest_implicit.then(|| {
         let suggestions = make_implicit_suggestions(&suggest_change_to_implicit);
 
-        lints::MismatchedLifetimeSyntaxesSuggestion::Implicit { suggestions, tool_only: false }
+        lints::MismatchedLifetimeSyntaxesSuggestion::Implicit {
+            suggestions,
+            optional_alternative: false,
+        }
     });
 
     tracing::debug!(
@@ -508,7 +511,7 @@ fn build_mismatch_suggestion(
     lints::MismatchedLifetimeSyntaxesSuggestion::Explicit {
         lifetime_name,
         suggestions,
-        tool_only: false,
+        optional_alternative: false,
     }
 }
 
