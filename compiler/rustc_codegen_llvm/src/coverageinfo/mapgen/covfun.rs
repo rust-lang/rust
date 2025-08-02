@@ -131,7 +131,7 @@ fn fill_region_tables<'tcx>(
     // codegen needs to handle that gracefully to avoid #133606.
     // It's hard for tests to trigger this organically, so instead we set
     // `-Zcoverage-options=discard-all-spans-in-codegen` to force it to occur.
-    let discard_all = tcx.sess.coverage_discard_all_spans_in_codegen();
+    let discard_all = tcx.sess.coverage_options().discard_all_spans_in_codegen;
     let make_coords = |span: Span| {
         if discard_all { None } else { spans::make_coords(source_map, &source_file, span) }
     };
