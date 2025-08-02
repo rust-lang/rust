@@ -898,7 +898,7 @@ pub fn capture_local_usage(cx: &LateContext<'_>, e: &Expr<'_>) -> CaptureKind {
             ByRef::No if !is_copy(cx, cx.typeck_results().node_type(id)) => {
                 capture = CaptureKind::Value;
             },
-            ByRef::Yes(Mutability::Mut) if capture != CaptureKind::Value => {
+            ByRef::Yes(_, Mutability::Mut) if capture != CaptureKind::Value => {
                 capture = CaptureKind::Ref(Mutability::Mut);
             },
             _ => (),
@@ -1906,7 +1906,7 @@ fn is_body_identity_function(cx: &LateContext<'_>, func: &Body<'_>) -> bool {
             .typeck_results()
             .pat_binding_modes()
             .get(pat.hir_id)
-            .is_some_and(|mode| matches!(mode.0, ByRef::Yes(_)))
+            .is_some_and(|mode| matches!(mode.0, ByRef::Yes(..)))
         {
             // If the parameter is `(x, y)` of type `&(T, T)`, or `[x, y]` of type `&[T; 2]`, then
             // due to match ergonomics, the inner patterns become references. Don't consider this
