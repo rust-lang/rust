@@ -6,7 +6,7 @@ use rustc_span::Span;
 use tracing::debug;
 
 use crate::builder::ForGuard::OutsideGuard;
-use crate::builder::matches::{DeclareLetBindings, EmitStorageLive, ScheduleDrops};
+use crate::builder::matches::{DeclareLetBindings, ScheduleDrops};
 use crate::builder::{BlockAnd, BlockAndExtension, BlockFrame, Builder};
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
@@ -199,15 +199,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             None,
                             Some((Some(&destination), initializer_span)),
                         );
-                        this.visit_primary_bindings(pattern, &mut |this, node, span| {
-                            this.storage_live_binding(
-                                block,
-                                node,
-                                span,
-                                OutsideGuard,
-                                ScheduleDrops::Yes,
-                            );
-                        });
                         let else_block_span = this.thir[*else_block].span;
                         let (matching, failure) =
                             this.in_if_then_scope(last_remainder_scope, else_block_span, |this| {
@@ -218,7 +209,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                     None,
                                     initializer_span,
                                     DeclareLetBindings::No,
-                                    EmitStorageLive::No,
                                 )
                             });
                         matching.and(failure)
