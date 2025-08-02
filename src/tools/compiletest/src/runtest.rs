@@ -765,12 +765,6 @@ impl<'test> TestCx<'test> {
         }
 
         if !unexpected.is_empty() || !not_found.is_empty() {
-            self.error(&format!(
-                "{} unexpected diagnostics reported, {} expected diagnostics not reported",
-                unexpected.len(),
-                not_found.len()
-            ));
-
             // Emit locations in a format that is short (relative paths) but "clickable" in editors.
             // Also normalize path separators to `/`.
             let file_name = self
@@ -794,19 +788,20 @@ impl<'test> TestCx<'test> {
                 |suggestions: &mut Vec<_>, e: &Error, kind, line, msg, color, rank| {
                     let mut ret = String::new();
                     if kind {
-                        ret += &format!("{} {}", "with kind".color(color), e.kind);
+                        ret += &format!("{} {}", "with different kind:".color(color), e.kind);
                     }
                     if line {
                         if !ret.is_empty() {
                             ret.push(' ');
                         }
-                        ret += &format!("{} {}", "on line".color(color), line_str(e));
+                        ret += &format!("{} {}", "on different line:".color(color), line_str(e));
                     }
                     if msg {
                         if !ret.is_empty() {
                             ret.push(' ');
                         }
-                        ret += &format!("{} {}", "with message".color(color), e.msg.cyan());
+                        ret +=
+                            &format!("{} {}", "with different message:".color(color), e.msg.cyan());
                     }
                     suggestions.push((ret, rank));
                 };
@@ -829,17 +824,20 @@ impl<'test> TestCx<'test> {
             // - only known line - meh, but suggested
             // - others are not worth suggesting
             if !unexpected.is_empty() {
-                let header = "--- reported in JSON output but not expected in test file ---";
-                println!("{}", header.green());
+                self.error(&format!(
+                    "{} diagnostics reported in JSON output but not expected in test file",
+                    unexpected.len(),
+                ));
                 for error in &unexpected {
                     print_error(error);
                     let mut suggestions = Vec::new();
                     for candidate in &not_found {
+                        let kind_mismatch = candidate.kind != error.kind;
                         let mut push_red_suggestion = |line, msg, rank| {
                             push_suggestion(
                                 &mut suggestions,
                                 candidate,
-                                candidate.kind != error.kind,
+                                kind_mismatch,
                                 line,
                                 msg,
                                 Color::Red,
@@ -851,26 +849,28 @@ impl<'test> TestCx<'test> {
                         } else if candidate.line_num.is_some()
                             && candidate.line_num == error.line_num
                         {
-                            push_red_suggestion(false, true, 1);
+                            push_red_suggestion(false, true, if kind_mismatch { 2 } else { 1 });
                         }
                     }
 
                     show_suggestions(suggestions, "expected", Color::Red);
                 }
-                println!("{}", "---".green());
             }
             if !not_found.is_empty() {
-                let header = "--- expected in test file but not reported in JSON output ---";
-                println!("{}", header.red());
+                self.error(&format!(
+                    "{} diagnostics expected in test file but not reported in JSON output",
+                    not_found.len()
+                ));
                 for error in &not_found {
                     print_error(error);
                     let mut suggestions = Vec::new();
                     for candidate in unexpected.iter().chain(&unimportant) {
+                        let kind_mismatch = candidate.kind != error.kind;
                         let mut push_green_suggestion = |line, msg, rank| {
                             push_suggestion(
                                 &mut suggestions,
                                 candidate,
-                                candidate.kind != error.kind,
+                                kind_mismatch,
                                 line,
                                 msg,
                                 Color::Green,
@@ -882,13 +882,12 @@ impl<'test> TestCx<'test> {
                         } else if candidate.line_num.is_some()
                             && candidate.line_num == error.line_num
                         {
-                            push_green_suggestion(false, true, 1);
+                            push_green_suggestion(false, true, if kind_mismatch { 2 } else { 1 });
                         }
                     }
 
                     show_suggestions(suggestions, "reported", Color::Green);
                 }
-                println!("{}", "---".red());
             }
             panic!(
                 "errors differ from expected\nstatus: {}\ncommand: {}\n",
