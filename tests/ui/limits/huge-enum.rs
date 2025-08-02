@@ -2,6 +2,9 @@
 //@ normalize-stderr: "std::option::Option<\[u32; \d+\]>" -> "TYPE"
 //@ normalize-stderr: "\[u32; \d+\]" -> "TYPE"
 
+// FIXME(#61117): Respect debuginfo-level-tests, do not force debuginfo-level=0
+//@ compile-flags: -Cdebuginfo=0
+
 #[cfg(target_pointer_width = "32")]
 type BIG = Option<[u32; (1<<29)-1]>;
 

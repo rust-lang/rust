@@ -2,6 +2,9 @@
 //
 //@ run-pass
 
+// FIXME(#61117): Respect debuginfo-level-tests, do not force debuginfo-level=0
+//@ compile-flags: -Cdebuginfo=0
+
 #![allow(unused_variables)]
 
 macro_rules! m(
