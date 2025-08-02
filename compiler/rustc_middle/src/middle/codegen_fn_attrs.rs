@@ -1,7 +1,6 @@
 use std::borrow::Cow;
 
 use rustc_abi::Align;
-use rustc_ast::expand::autodiff_attrs::AutoDiffAttrs;
 use rustc_hir::attrs::{InlineAttr, InstructionSetAttr, OptimizeAttr};
 use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_span::Symbol;
@@ -75,8 +74,6 @@ pub struct CodegenFnAttrs {
     /// The `#[patchable_function_entry(...)]` attribute. Indicates how many nops should be around
     /// the function entry.
     pub patchable_function_entry: Option<PatchableFunctionEntry>,
-    /// For the `#[autodiff]` macros.
-    pub autodiff_item: Option<AutoDiffAttrs>,
 }
 
 #[derive(Copy, Clone, Debug, TyEncodable, TyDecodable, HashStable)]
@@ -182,7 +179,6 @@ impl CodegenFnAttrs {
             instruction_set: None,
             alignment: None,
             patchable_function_entry: None,
-            autodiff_item: None,
         }
     }
 

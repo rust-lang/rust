@@ -23,17 +23,13 @@ fn square2(x: &f64) -> f64 {
     x * x
 }
 
-// CHECK:; identical_fnc::main
-// CHECK-NEXT:; Function Attrs:
-// CHECK-NEXT:define internal void @_ZN13identical_fnc4main17hf4dbc69c8d2f9130E()
-// CHECK-NEXT:start:
-// CHECK-NOT:br
-// CHECK-NOT:ret
-// CHECK:; call identical_fnc::d_square
-// CHECK-NEXT:  call fastcc void @_ZN13identical_fnc8d_square17h4c364207a2f8e06dE(double %x.val, ptr noalias noundef nonnull align 8 dereferenceable(8) %dx1)
-// CHECK-NEXT:; call identical_fnc::d_square
-// CHECK-NEXT:  call fastcc void @_ZN13identical_fnc8d_square17h4c364207a2f8e06dE(double %x.val, ptr noalias noundef nonnull align 8 dereferenceable(8) %dx2)
-
+// CHECK: %0 = fadd fast double %x.val, %x.val
+// CHECK-NEXT: %1 = load double, ptr %dx1, align 8
+// CHECK-NEXT: %2 = fadd fast double %1, %0
+// CHECK-NEXT: store double %2, ptr %dx1, align 8
+// CHECK-NEXT: %3 = load double, ptr %dx2, align 8
+// CHECK-NEXT: %4 = fadd fast double %3, %0
+// CHECK-NEXT: store double %4, ptr %dx2, align 8
 fn main() {
     let x = std::hint::black_box(3.0);
     let mut dx1 = std::hint::black_box(1.0);

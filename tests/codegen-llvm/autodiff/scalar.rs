@@ -11,16 +11,11 @@ fn square(x: &f64) -> f64 {
     x * x
 }
 
-// CHECK:define internal fastcc double @diffesquare(double %x.0.val, ptr nocapture nonnull align 8 %"x'"
-// CHECK-NEXT:invertstart:
-// CHECK-NEXT:  %_0 = fmul double %x.0.val, %x.0.val
-// CHECK-NEXT:  %0 = fadd fast double %x.0.val, %x.0.val
-// CHECK-NEXT:  %1 = load double, ptr %"x'", align 8
-// CHECK-NEXT:  %2 = fadd fast double %1, %0
-// CHECK-NEXT:  store double %2, ptr %"x'", align 8
-// CHECK-NEXT:  ret double %_0
-// CHECK-NEXT:}
+// square
+// CHECK: %_0.i = fmul double %_2.i, %_2.i
 
+// d_square
+// CHECK: %0 = fadd fast double %_2.i, %_2.i
 fn main() {
     let x = std::hint::black_box(3.0);
     let output = square(&x);
