@@ -4,7 +4,7 @@ use std::sync::Arc;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sync::join;
 use rustc_middle::dep_graph::{
-    DepGraph, SerializedDepGraph, WorkProduct, WorkProductId, WorkProductMap,
+    DepGraph, DepsType, SerializedDepGraph, WorkProduct, WorkProductId, WorkProductMap,
 };
 use rustc_middle::ty::TyCtxt;
 use rustc_serialize::Encodable as RustcEncodable;
@@ -144,7 +144,7 @@ fn encode_query_cache(tcx: TyCtxt<'_>, encoder: FileEncoder) -> FileEncodeResult
 /// and moves it to the permanent dep-graph path
 pub(crate) fn build_dep_graph(
     sess: &Session,
-    prev_graph: Arc<SerializedDepGraph>,
+    prev_graph: Arc<SerializedDepGraph<DepsType>>,
     prev_work_products: WorkProductMap,
 ) -> Option<DepGraph> {
     if sess.opts.incremental.is_none() {
