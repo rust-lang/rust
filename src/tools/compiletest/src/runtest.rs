@@ -603,7 +603,10 @@ impl<'test> TestCx<'test> {
             );
         } else {
             for pattern in missing_patterns {
-                self.error(&format!("error pattern '{}' not found!", pattern));
+                println!(
+                    "\n{prefix}: error pattern '{pattern}' not found!",
+                    prefix = self.error_prefix()
+                );
             }
             self.fatal_proc_rec("multiple error patterns not found", proc_res);
         }
@@ -821,10 +824,11 @@ impl<'test> TestCx<'test> {
             // - only known line - meh, but suggested
             // - others are not worth suggesting
             if !unexpected.is_empty() {
-                self.error(&format!(
-                    "{} diagnostics reported in JSON output but not expected in test file",
-                    unexpected.len(),
-                ));
+                println!(
+                    "\n{prefix}: {n} diagnostics reported in JSON output but not expected in test file",
+                    prefix = self.error_prefix(),
+                    n = unexpected.len(),
+                );
                 for error in &unexpected {
                     print_error(error);
                     let mut suggestions = Vec::new();
@@ -854,10 +858,11 @@ impl<'test> TestCx<'test> {
                 }
             }
             if !not_found.is_empty() {
-                self.error(&format!(
-                    "{} diagnostics expected in test file but not reported in JSON output",
-                    not_found.len()
-                ));
+                println!(
+                    "\n{prefix}: {n} diagnostics expected in test file but not reported in JSON output",
+                    prefix = self.error_prefix(),
+                    n = not_found.len(),
+                );
                 for error in &not_found {
                     print_error(error);
                     let mut suggestions = Vec::new();
@@ -1992,16 +1997,19 @@ impl<'test> TestCx<'test> {
         output_base_name(self.config, self.testpaths, self.safe_revision())
     }
 
-    fn error(&self, err: &str) {
+    /// Prefix to print before error messages. Normally just `error`, but also
+    /// includes the revision name for tests that use revisions.
+    #[must_use]
+    fn error_prefix(&self) -> String {
         match self.revision {
-            Some(rev) => println!("\nerror in revision `{}`: {}", rev, err),
-            None => println!("\nerror: {}", err),
+            Some(rev) => format!("error in revision `{rev}`"),
+            None => format!("error"),
         }
     }
 
     #[track_caller]
     fn fatal(&self, err: &str) -> ! {
-        self.error(err);
+        println!("\n{prefix}: {err}", prefix = self.error_prefix());
         error!("fatal error, panic: {:?}", err);
         panic!("fatal error");
     }
@@ -2019,7 +2027,7 @@ impl<'test> TestCx<'test> {
         proc_res: &ProcRes,
         callback_before_unwind: impl FnOnce(),
     ) -> ! {
-        self.error(err);
+        println!("\n{prefix}: {err}", prefix = self.error_prefix());
 
         // Some callers want to print additional notes after the main error message.
         if let Some(note) = extra_note {
