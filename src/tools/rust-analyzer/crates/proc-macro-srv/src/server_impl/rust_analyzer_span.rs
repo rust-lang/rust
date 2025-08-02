@@ -145,12 +145,14 @@ impl server::Span for RaSpanServer {
         // FIXME
         None
     }
+    #[cfg(bootstrap)]
     fn save_span(&mut self, _span: Self::Span) -> usize {
         // FIXME, quote is incompatible with third-party tools
         // This is called by the quote proc-macro which is expanded when the proc-macro is compiled
         // As such, r-a will never observe this
         0
     }
+    #[cfg(bootstrap)]
     fn recover_proc_macro_span(&mut self, _id: usize) -> Self::Span {
         // FIXME, quote is incompatible with third-party tools
         // This is called by the expansion of quote!, r-a will observe this, but we don't have
