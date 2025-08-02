@@ -26,10 +26,10 @@ use rustc_ast::ptr::P;
 use rustc_ast::visit::{AssocCtxt, BoundKind, FnCtxt, FnKind, Visitor, walk_list};
 use rustc_ast::*;
 use rustc_ast_pretty::pprust::{self, State};
+use rustc_attr_parsing::validate_attr;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::DiagCtxtHandle;
 use rustc_feature::Features;
-use rustc_parse::validate_attr;
 use rustc_session::Session;
 use rustc_session::lint::builtin::{
     DEPRECATED_WHERE_CLAUSE_LOCATION, MISSING_ABI, MISSING_UNSAFE_ON_EXTERN,

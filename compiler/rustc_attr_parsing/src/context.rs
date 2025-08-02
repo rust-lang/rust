@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::ops::{Deref, DerefMut};
@@ -213,7 +214,6 @@ mod private {
 #[allow(private_interfaces)]
 pub trait Stage: Sized + 'static + Sealed {
     type Id: Copy;
-    const SHOULD_EMIT_LINTS: bool;
 
     fn parsers() -> &'static group_type!(Self);
 
@@ -222,13 +222,14 @@ pub trait Stage: Sized + 'static + Sealed {
         sess: &'sess Session,
         diag: impl for<'x> Diagnostic<'x>,
     ) -> ErrorGuaranteed;
+
+    fn should_emit(&self) -> ShouldEmit;
 }
 
 // allow because it's a sealed trait
 #[allow(private_interfaces)]
 impl Stage for Early {
     type Id = NodeId;
-    const SHOULD_EMIT_LINTS: bool = false;
 
     fn parsers() -> &'static group_type!(Self) {
         &early::ATTRIBUTE_PARSERS
@@ -244,13 +245,16 @@ impl Stage for Early {
             sess.dcx().create_err(diag).delay_as_bug()
         }
     }
+
+    fn should_emit(&self) -> ShouldEmit {
+        self.emit_errors
+    }
 }
 
 // allow because it's a sealed trait
 #[allow(private_interfaces)]
 impl Stage for Late {
     type Id = HirId;
-    const SHOULD_EMIT_LINTS: bool = true;
 
     fn parsers() -> &'static group_type!(Self) {
         &late::ATTRIBUTE_PARSERS
@@ -261,6 +265,10 @@ impl Stage for Late {
         diag: impl for<'x> Diagnostic<'x>,
     ) -> ErrorGuaranteed {
         tcx.dcx().emit_err(diag)
+    }
+
+    fn should_emit(&self) -> ShouldEmit {
+        ShouldEmit::ErrorsAndLints
     }
 }
 
@@ -300,7 +308,7 @@ impl<'f, 'sess: 'f, S: Stage> SharedContext<'f, 'sess, S> {
     /// must be delayed until after HIR is built. This method will take care of the details of
     /// that.
     pub(crate) fn emit_lint(&mut self, lint: AttributeLintKind, span: Span) {
-        if !S::SHOULD_EMIT_LINTS {
+        if !self.stage.should_emit().should_emit() {
             return;
         }
         let id = self.target_id;
@@ -657,14 +665,31 @@ impl<'sess> AttributeParser<'sess, Early> {
         target_node_id: NodeId,
         features: Option<&'sess Features>,
     ) -> Option<Attribute> {
-        let mut p = Self {
-            features,
-            tools: Vec::new(),
-            parse_only: Some(sym),
+        let mut parsed = Self::parse_limited_all(
             sess,
-            stage: Early { emit_errors: ShouldEmit::Nothing },
-        };
-        let mut parsed = p.parse_attribute_list(
+            attrs,
+            Some(sym),
+            target_span,
+            target_node_id,
+            features,
+            ShouldEmit::Nothing,
+        );
+        assert!(parsed.len() <= 1);
+        parsed.pop()
+    }
+
+    pub fn parse_limited_all(
+        sess: &'sess Session,
+        attrs: &[ast::Attribute],
+        parse_only: Option<Symbol>,
+        target_span: Span,
+        target_node_id: NodeId,
+        features: Option<&'sess Features>,
+        emit_errors: ShouldEmit,
+    ) -> Vec<Attribute> {
+        let mut p =
+            Self { features, tools: Vec::new(), parse_only, sess, stage: Early { emit_errors } };
+        p.parse_attribute_list(
             attrs,
             target_span,
             target_node_id,
@@ -673,10 +698,7 @@ impl<'sess> AttributeParser<'sess, Early> {
             |_lint| {
                 panic!("can't emit lints here for now (nothing uses this atm)");
             },
-        );
-        assert!(parsed.len() <= 1);
-
-        parsed.pop()
+        )
     }
 
     pub fn parse_single<T>(
@@ -686,9 +708,9 @@ impl<'sess> AttributeParser<'sess, Early> {
         target_node_id: NodeId,
         features: Option<&'sess Features>,
         emit_errors: ShouldEmit,
-        parse_fn: fn(cx: &mut AcceptContext<'_, '_, Early>, item: &ArgParser<'_>) -> T,
+        parse_fn: fn(cx: &mut AcceptContext<'_, '_, Early>, item: &ArgParser<'_>) -> Option<T>,
         template: &AttributeTemplate,
-    ) -> T {
+    ) -> Option<T> {
         let mut parser = Self {
             features,
             tools: Vec::new(),
@@ -699,7 +721,9 @@ impl<'sess> AttributeParser<'sess, Early> {
         let ast::AttrKind::Normal(normal_attr) = &attr.kind else {
             panic!("parse_single called on a doc attr")
         };
-        let meta_parser = MetaItemParser::from_attr(normal_attr, parser.dcx());
+        let parts =
+            normal_attr.item.path.segments.iter().map(|seg| seg.ident.name).collect::<Vec<_>>();
+        let meta_parser = MetaItemParser::from_attr(normal_attr, &parts, &sess.psess, emit_errors)?;
         let path = meta_parser.path();
         let args = meta_parser.args();
         let mut cx: AcceptContext<'_, 'sess, Early> = AcceptContext {
@@ -804,14 +828,23 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
                 //     }))
                 // }
                 ast::AttrKind::Normal(n) => {
-                    attr_paths.push(PathParser::Ast(&n.item.path));
+                    attr_paths.push(PathParser(Cow::Borrowed(&n.item.path)));
 
-                    let parser = MetaItemParser::from_attr(n, self.dcx());
-                    let path = parser.path();
-                    let args = parser.args();
-                    let parts = path.segments().map(|i| i.name).collect::<Vec<_>>();
+                    let parts =
+                        n.item.path.segments.iter().map(|seg| seg.ident.name).collect::<Vec<_>>();
 
                     if let Some(accepts) = S::parsers().0.get(parts.as_slice()) {
+                        let Some(parser) = MetaItemParser::from_attr(
+                            n,
+                            &parts,
+                            &self.sess.psess,
+                            self.stage.should_emit(),
+                        ) else {
+                            continue;
+                        };
+                        let path = parser.path();
+                        let args = parser.args();
+
                         for (template, accept) in accepts {
                             let mut cx: AcceptContext<'_, 'sess, S> = AcceptContext {
                                 shared: SharedContext {
