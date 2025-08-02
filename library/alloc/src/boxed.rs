@@ -191,7 +191,7 @@ use core::error::{self, Error};
 use core::fmt;
 use core::future::Future;
 use core::hash::{Hash, Hasher};
-use core::marker::{Tuple, Unsize};
+use core::marker::{Move, Tuple, Unsize};
 use core::mem::{self, SizedTypeProperties};
 use core::ops::{
     AsyncFn, AsyncFnMut, AsyncFnOnce, CoerceUnsized, Coroutine, CoroutineState, Deref, DerefMut,
@@ -2025,7 +2025,10 @@ unsafe impl<T: ?Sized, A: Allocator> PinCoerceUnsized for Box<T, A> {}
 // Handling arbitrary custom allocators (which can affect the `Box` layout heavily!)
 // would need a lot of codegen and interpreter adjustments.
 #[unstable(feature = "dispatch_from_dyn", issue = "none")]
-impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<Box<U>> for Box<T, Global> {}
+impl<T: ?Sized + Unsize<U>, U: ?Sized + ?core::marker::Sized> DispatchFromDyn<Box<U>>
+    for Box<T, Global>
+{
+}
 
 #[stable(feature = "box_borrow", since = "1.1.0")]
 impl<T: ?Sized, A: Allocator> Borrow<T> for Box<T, A> {
@@ -2132,3 +2135,6 @@ impl<E: Error> Error for Box<E> {
         Error::provide(&**self, request);
     }
 }
+
+#[unstable(feature = "move_trait", issue = "none")]
+unsafe impl<T: ?Sized> Move for Box<T> {}

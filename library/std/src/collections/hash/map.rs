@@ -1327,6 +1327,15 @@ where
     }
 }
 
+#[unstable(feature = "move_trait", issue = "none")]
+unsafe impl<K, V, S> core::marker::Move for HashMap<K, V, S>
+where
+    K: Eq + Hash,
+    V: Eq,
+    S: BuildHasher,
+{
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<K, V, S> Eq for HashMap<K, V, S>
 where

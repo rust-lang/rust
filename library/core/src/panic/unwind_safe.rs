@@ -197,7 +197,7 @@ impl<T> UnwindSafe for AssertUnwindSafe<T> {}
 // only thing which doesn't implement it (which then transitively applies to
 // everything else).
 #[stable(feature = "catch_unwind", since = "1.9.0")]
-impl<T: ?Sized> !RefUnwindSafe for UnsafeCell<T> {}
+impl<T: ?Sized + ?crate::marker::Move> !RefUnwindSafe for UnsafeCell<T> {}
 #[stable(feature = "catch_unwind", since = "1.9.0")]
 impl<T> RefUnwindSafe for AssertUnwindSafe<T> {}
 
