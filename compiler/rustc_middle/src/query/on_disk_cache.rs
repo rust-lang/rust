@@ -38,6 +38,7 @@ const TAG_FULL_SPAN: u8 = 0;
 // A partial span with no location information, encoded only with a `SyntaxContext`
 const TAG_PARTIAL_SPAN: u8 = 1;
 const TAG_RELATIVE_SPAN: u8 = 2;
+const TAG_RELATIVE_OUTER_SPAN: u8 = 3;
 
 const TAG_SYNTAX_CONTEXT: u8 = 0;
 const TAG_EXPN_DATA: u8 = 1;
@@ -645,34 +646,41 @@ impl<'a, 'tcx> SpanDecoder for CacheDecoder<'a, 'tcx> {
         let parent = Option::<LocalDefId>::decode(self);
         let tag: u8 = Decodable::decode(self);
 
-        if tag == TAG_PARTIAL_SPAN {
-            return Span::new(BytePos(0), BytePos(0), ctxt, parent);
-        } else if tag == TAG_RELATIVE_SPAN {
-            let dlo = u32::decode(self);
-            let dto = u32::decode(self);
+        let (lo, hi) = match tag {
+            TAG_PARTIAL_SPAN => (BytePos(0), BytePos(0)),
+            TAG_RELATIVE_SPAN => {
+                let dlo = u32::decode(self);
+                let dto = u32::decode(self);
 
-            let enclosing = self.tcx.source_span_untracked(parent.unwrap()).data_untracked();
-            let span = Span::new(
-                enclosing.lo + BytePos::from_u32(dlo),
-                enclosing.lo + BytePos::from_u32(dto),
-                ctxt,
-                parent,
-            );
+                let enclosing = self.tcx.source_span_untracked(parent.unwrap()).data_untracked();
+                (enclosing.lo + BytePos::from_u32(dlo), enclosing.lo + BytePos::from_u32(dto))
+            }
+            TAG_RELATIVE_OUTER_SPAN => {
+                let dlo = isize::decode(self);
+                let dto = isize::decode(self);
 
-            return span;
-        } else {
-            debug_assert_eq!(tag, TAG_FULL_SPAN);
-        }
+                let enclosing = self.tcx.source_span_untracked(parent.unwrap()).data_untracked();
+                let reference = enclosing.lo.to_u32() as isize;
+                (
+                    BytePos::from_usize((reference + dlo) as usize),
+                    BytePos::from_usize((reference + dto) as usize),
+                )
+            }
+            TAG_FULL_SPAN => {
+                let file_lo_index = SourceFileIndex::decode(self);
+                let line_lo = usize::decode(self);
+                let col_lo = RelativeBytePos::decode(self);
+                let len = BytePos::decode(self);
 
-        let file_lo_index = SourceFileIndex::decode(self);
-        let line_lo = usize::decode(self);
-        let col_lo = RelativeBytePos::decode(self);
-        let len = BytePos::decode(self);
+                let file_lo = self.file_index_to_file(file_lo_index);
+                let lo = file_lo.lines()[line_lo - 1] + col_lo;
+                let lo = file_lo.absolute_position(lo);
+                let hi = lo + len;
 
-        let file_lo = self.file_index_to_file(file_lo_index);
-        let lo = file_lo.lines()[line_lo - 1] + col_lo;
-        let lo = file_lo.absolute_position(lo);
-        let hi = lo + len;
+                (lo, hi)
+            }
+            _ => unreachable!(),
+        };
 
         Span::new(lo, hi, ctxt, parent)
     }
@@ -897,30 +905,33 @@ impl<'a, 'tcx> SpanEncoder for CacheEncoder<'a, 'tcx> {
             return TAG_PARTIAL_SPAN.encode(self);
         }
 
-        if let Some(parent) = span_data.parent {
-            let enclosing = self.tcx.source_span_untracked(parent).data_untracked();
-            if enclosing.contains(span_data) {
-                TAG_RELATIVE_SPAN.encode(self);
-                (span_data.lo - enclosing.lo).to_u32().encode(self);
-                (span_data.hi - enclosing.lo).to_u32().encode(self);
-                return;
-            }
+        let parent =
+            span_data.parent.map(|parent| self.tcx.source_span_untracked(parent).data_untracked());
+        if let Some(parent) = parent
+            && parent.contains(span_data)
+        {
+            TAG_RELATIVE_SPAN.encode(self);
+            (span_data.lo - parent.lo).to_u32().encode(self);
+            (span_data.hi - parent.lo).to_u32().encode(self);
+            return;
         }
 
-        let pos = self.source_map.byte_pos_to_line_and_col(span_data.lo);
-        let partial_span = match &pos {
-            Some((file_lo, _, _)) => !file_lo.contains(span_data.hi),
-            None => true,
+        let Some((file_lo, line_lo, col_lo)) =
+            self.source_map.byte_pos_to_line_and_col(span_data.lo)
+        else {
+            return TAG_PARTIAL_SPAN.encode(self);
         };
 
-        if partial_span {
-            return TAG_PARTIAL_SPAN.encode(self);
+        if let Some(parent) = parent
+            && file_lo.contains(parent.lo)
+        {
+            TAG_RELATIVE_OUTER_SPAN.encode(self);
+            (span_data.lo.to_u32() as isize - parent.lo.to_u32() as isize).encode(self);
+            (span_data.hi.to_u32() as isize - parent.lo.to_u32() as isize).encode(self);
+            return;
         }
 
-        let (file_lo, line_lo, col_lo) = pos.unwrap();
-
         let len = span_data.hi - span_data.lo;
-
         let source_file_index = self.source_file_index(file_lo);
 
         TAG_FULL_SPAN.encode(self);
