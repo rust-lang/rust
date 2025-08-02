@@ -192,6 +192,10 @@ impl CodegenFnAttrs {
     /// * `#[export_name(...)]` is present
     /// * `#[linkage]` is present
     ///
+    /// Note that this returns true for foreign items.
+    /// However, in some places that care about `contains_extern_indicator`, foreign items
+    /// (in an `extern` block) should explicitly be ignored.
+    ///
     /// Keep this in sync with the logic for the unused_attributes for `#[inline]` lint.
     pub fn contains_extern_indicator(&self) -> bool {
         self.flags.contains(CodegenFnAttrFlags::NO_MANGLE)
