@@ -1554,6 +1554,9 @@ pub fn min<T: Ord>(v1: T, v2: T) -> T {
 ///
 /// Returns the first argument if the comparison determines them to be equal.
 ///
+/// The parameter order is preserved when calling the `compare` function, i.e. `v1` is
+/// always passed as the first argument and `v2` as the second.
+///
 /// # Examples
 ///
 /// ```
@@ -1569,12 +1572,17 @@ pub fn min<T: Ord>(v1: T, v2: T) -> T {
 ///
 /// let result = cmp::min_by(1, -1, abs_cmp);
 /// assert_eq!(result, 1);
+///
+/// let rhs_abs_cmp = |x: &i32, y: &i32| x.cmp(&y.abs());
+///
+/// let result = cmp::min_by(-2, 1, rhs_abs_cmp);
+/// assert_eq!(result, -2);
 /// ```
 #[inline]
 #[must_use]
 #[stable(feature = "cmp_min_max_by", since = "1.53.0")]
 pub fn min_by<T, F: FnOnce(&T, &T) -> Ordering>(v1: T, v2: T, compare: F) -> T {
-    if compare(&v2, &v1).is_lt() { v2 } else { v1 }
+    if compare(&v1, &v2).is_le() { v1 } else { v2 }
 }
 
 /// Returns the element that gives the minimum value from the specified function.
@@ -1646,6 +1654,9 @@ pub fn max<T: Ord>(v1: T, v2: T) -> T {
 ///
 /// Returns the second argument if the comparison determines them to be equal.
 ///
+/// The parameter order is preserved when calling the `compare` function, i.e. `v1` is
+/// always passed as the first argument and `v2` as the second.
+///
 /// # Examples
 ///
 /// ```
@@ -1661,12 +1672,17 @@ pub fn max<T: Ord>(v1: T, v2: T) -> T {
 ///
 /// let result = cmp::max_by(1, -1, abs_cmp);
 /// assert_eq!(result, -1);
+///
+/// let rhs_abs_cmp = |x: &i32, y: &i32| x.cmp(&y.abs());
+///
+/// let result = cmp::max_by(-2, 1, rhs_abs_cmp);
+/// assert_eq!(result, 1);
 /// ```
 #[inline]
 #[must_use]
 #[stable(feature = "cmp_min_max_by", since = "1.53.0")]
 pub fn max_by<T, F: FnOnce(&T, &T) -> Ordering>(v1: T, v2: T, compare: F) -> T {
-    if compare(&v2, &v1).is_lt() { v1 } else { v2 }
+    if compare(&v1, &v2).is_gt() { v1 } else { v2 }
 }
 
 /// Returns the element that gives the maximum value from the specified function.
@@ -1745,6 +1761,9 @@ where
 ///
 /// Returns `[v1, v2]` if the comparison determines them to be equal.
 ///
+/// The parameter order is preserved when calling the `compare` function, i.e. `v1` is
+/// always passed as the first argument and `v2` as the second.
+///
 /// # Examples
 ///
 /// ```
@@ -1756,6 +1775,10 @@ where
 /// assert_eq!(cmp::minmax_by(-2, 1, abs_cmp), [1, -2]);
 /// assert_eq!(cmp::minmax_by(-1, 2, abs_cmp), [-1, 2]);
 /// assert_eq!(cmp::minmax_by(-2, 2, abs_cmp), [-2, 2]);
+///
+/// let rhs_abs_cmp = |x: &i32, y: &i32| x.cmp(&y.abs());
+///
+/// assert_eq!(cmp::minmax_by(-2, 1, rhs_abs_cmp), [-2, 1]);
 ///
 /// // You can destructure the result using array patterns
 /// let [min, max] = cmp::minmax_by(-42, 17, abs_cmp);
@@ -1769,7 +1792,7 @@ pub fn minmax_by<T, F>(v1: T, v2: T, compare: F) -> [T; 2]
 where
     F: FnOnce(&T, &T) -> Ordering,
 {
-    if compare(&v2, &v1).is_lt() { [v2, v1] } else { [v1, v2] }
+    if compare(&v1, &v2).is_le() { [v1, v2] } else { [v2, v1] }
 }
 
 /// Returns minimum and maximum values with respect to the specified key function.
