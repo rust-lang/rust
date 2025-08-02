@@ -134,7 +134,7 @@ impl HasTokens for StmtKind {
             StmtKind::Let(local) => local.tokens.as_ref(),
             StmtKind::Item(item) => item.tokens(),
             StmtKind::Expr(expr) | StmtKind::Semi(expr) => expr.tokens(),
-            StmtKind::Empty => None,
+            StmtKind::Empty(_) => None,
             StmtKind::MacCall(mac) => mac.tokens.as_ref(),
         }
     }
@@ -143,7 +143,7 @@ impl HasTokens for StmtKind {
             StmtKind::Let(local) => Some(&mut local.tokens),
             StmtKind::Item(item) => item.tokens_mut(),
             StmtKind::Expr(expr) | StmtKind::Semi(expr) => expr.tokens_mut(),
-            StmtKind::Empty => None,
+            StmtKind::Empty(_) => None,
             StmtKind::MacCall(mac) => Some(&mut mac.tokens),
         }
     }
@@ -277,7 +277,7 @@ impl HasAttrs for StmtKind {
             StmtKind::Let(local) => &local.attrs,
             StmtKind::Expr(expr) | StmtKind::Semi(expr) => expr.attrs(),
             StmtKind::Item(item) => item.attrs(),
-            StmtKind::Empty => &[],
+            StmtKind::Empty(_) => &[],
             StmtKind::MacCall(mac) => &mac.attrs,
         }
     }
@@ -287,7 +287,7 @@ impl HasAttrs for StmtKind {
             StmtKind::Let(local) => f(&mut local.attrs),
             StmtKind::Expr(expr) | StmtKind::Semi(expr) => expr.visit_attrs(f),
             StmtKind::Item(item) => item.visit_attrs(f),
-            StmtKind::Empty => {}
+            StmtKind::Empty(_) => {}
             StmtKind::MacCall(mac) => f(&mut mac.attrs),
         }
     }

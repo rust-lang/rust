@@ -431,7 +431,7 @@ fn transcribe_metavar<'tx>(
             mk_delimited(block.span, MetaVarKind::Block, TokenStream::from_ast(block))
         }
         MatchedSingle(ParseNtResult::Stmt(stmt)) => {
-            let stream = if let StmtKind::Empty = stmt.kind {
+            let stream = if let StmtKind::Empty(_) = stmt.kind {
                 // FIXME: Properly collect tokens for empty statements.
                 TokenStream::token_alone(token::Semi, stmt.span)
             } else {

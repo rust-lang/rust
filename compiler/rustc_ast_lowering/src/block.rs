@@ -75,7 +75,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     let span = self.lower_span(s.span);
                     stmts.push(hir::Stmt { hir_id, kind, span });
                 }
-                StmtKind::Empty => {}
+                StmtKind::Empty(_) => {}
                 StmtKind::MacCall(..) => panic!("shouldn't exist here"),
             }
             ast_stmts = tail;

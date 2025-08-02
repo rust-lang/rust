@@ -61,20 +61,16 @@ fn local() {
     macro_rules! let_expr_else_return {
         ($pat:pat, $expr:expr) => { let $pat = $expr else { return; }; };
     }
-    let 
 
-            no_paren = void() else { return; };
+    let no_paren = void() else { return; };
 }
 
 fn match_arm() {
     macro_rules! match_arm {
         ($pat:pat, $expr:expr) => { match () { $pat => $expr } };
     }
-    match () {
 
-
-            no_paren => 1 - 1,
-    };
+    match () { no_paren => 1 - 1, };
     match () { paren_around_brace => ({ 1 }) - 1, };
 }
 
@@ -99,6 +95,6 @@ fn vis_inherited() {
     macro_rules! vis_inherited {
         ($vis:vis struct) => { $vis struct Struct; };
     }
-    struct Struct;
 
+    struct Struct;
 }

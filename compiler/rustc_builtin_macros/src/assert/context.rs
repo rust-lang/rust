@@ -393,7 +393,7 @@ impl<'cx, 'a> Context<'cx, 'a> {
                 )],
                 self.span,
             ))
-            .add_trailing_semicolon();
+            .add_trailing_semicolon(self.span.shrink_to_hi());
         let local_bind_path = self.cx.expr_path(Path::from_ident(local_bind));
         let rslt = if self.is_consumed {
             let ret = self.cx.stmt_expr(local_bind_path);

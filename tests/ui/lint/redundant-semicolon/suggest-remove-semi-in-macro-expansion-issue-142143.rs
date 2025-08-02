@@ -3,9 +3,9 @@
 #![deny(redundant_semicolons)]
 
 macro_rules! m {
-    ($stmt:stmt) => { #[allow(bad_style)] $stmt } //~ ERROR unnecessary trailing semicolon [redundant_semicolons]
+    ($stmt:stmt) => { #[allow(bad_style)] $stmt }
 }
 
 fn main() {
-    m!(;);
+    m!(;); //~ ERROR unnecessary trailing semicolon [redundant_semicolons]
 }
