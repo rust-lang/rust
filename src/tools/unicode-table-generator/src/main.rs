@@ -195,6 +195,7 @@ fn load_data() -> UnicodeData {
                 .into_iter()
                 .flatten()
                 .flat_map(|cp| cp.scalar())
+                .filter(|c| !c.is_ascii())
                 .map(u32::from)
                 .collect::<Vec<_>>();
             (prop, ranges_from_set(&codepoints))
