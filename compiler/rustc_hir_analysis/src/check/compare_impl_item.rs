@@ -356,14 +356,14 @@ fn compare_method_predicate_entailment<'tcx>(
     }
 
     if !(impl_sig, trait_sig).references_error() {
-        ocx.register_obligation(traits::Obligation::new(
-            infcx.tcx,
-            cause,
-            param_env,
-            ty::ClauseKind::WellFormed(
-                Ty::new_fn_ptr(tcx, ty::Binder::dummy(unnormalized_impl_sig)).into(),
-            ),
-        ));
+        for ty in unnormalized_impl_sig.inputs_and_output {
+            ocx.register_obligation(traits::Obligation::new(
+                infcx.tcx,
+                cause.clone(),
+                param_env,
+                ty::ClauseKind::WellFormed(ty.into()),
+            ));
+        }
     }
 
     // Check that all obligations are satisfied by the implementation's
