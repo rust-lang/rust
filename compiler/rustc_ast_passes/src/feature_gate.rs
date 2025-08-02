@@ -183,7 +183,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 gate_doc!(
                     "experimental" {
                         cfg => doc_cfg
-                        cfg_hide => doc_cfg_hide
+                        auto_cfg => doc_cfg
                         masked => doc_masked
                         notable_trait => doc_notable_trait
                     }
