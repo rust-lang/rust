@@ -11,7 +11,7 @@ pub struct IoSlice<'a> {
 
 impl<'a> IoSlice<'a> {
     #[inline]
-    pub fn new(buf: &'a [u8]) -> IoSlice<'a> {
+    pub const fn new(buf: &'a [u8]) -> IoSlice<'a> {
         assert!(buf.len() <= u32::MAX as usize);
         IoSlice {
             vec: c::WSABUF { len: buf.len() as u32, buf: buf.as_ptr() as *mut u8 },
@@ -20,7 +20,7 @@ impl<'a> IoSlice<'a> {
     }
 
     #[inline]
-    pub fn advance(&mut self, n: usize) {
+    pub const fn advance(&mut self, n: usize) {
         if (self.vec.len as usize) < n {
             panic!("advancing IoSlice beyond its length");
         }
@@ -45,7 +45,7 @@ pub struct IoSliceMut<'a> {
 
 impl<'a> IoSliceMut<'a> {
     #[inline]
-    pub fn new(buf: &'a mut [u8]) -> IoSliceMut<'a> {
+    pub const fn new(buf: &'a mut [u8]) -> IoSliceMut<'a> {
         assert!(buf.len() <= u32::MAX as usize);
         IoSliceMut {
             vec: c::WSABUF { len: buf.len() as u32, buf: buf.as_mut_ptr() },
@@ -54,7 +54,7 @@ impl<'a> IoSliceMut<'a> {
     }
 
     #[inline]
-    pub fn advance(&mut self, n: usize) {
+    pub const fn advance(&mut self, n: usize) {
         if (self.vec.len as usize) < n {
             panic!("advancing IoSliceMut beyond its length");
         }
@@ -66,7 +66,7 @@ impl<'a> IoSliceMut<'a> {
     }
 
     #[inline]
-    pub fn as_slice(&self) -> &[u8] {
+    pub const fn as_slice(&self) -> &[u8] {
         unsafe { slice::from_raw_parts(self.vec.buf, self.vec.len as usize) }
     }
 
@@ -76,7 +76,7 @@ impl<'a> IoSliceMut<'a> {
     }
 
     #[inline]
-    pub fn as_mut_slice(&mut self) -> &mut [u8] {
+    pub const fn as_mut_slice(&mut self) -> &mut [u8] {
         unsafe { slice::from_raw_parts_mut(self.vec.buf, self.vec.len as usize) }
     }
 }
