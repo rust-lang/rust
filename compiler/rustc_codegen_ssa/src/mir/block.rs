@@ -982,6 +982,14 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
                                 return if let Some(target) = target {
                                     helper.funclet_br(self, bx, target, mergeable_succ)
+                                } else if kind == CallKind::Tail {
+                                    let res = bx.load(
+                                        bx.backend_type(result.layout),
+                                        result.val.llval,
+                                        result.val.align,
+                                    );
+                                    bx.ret(res);
+                                    MergingSucc::False
                                 } else {
                                     bx.unreachable();
                                     MergingSucc::False
