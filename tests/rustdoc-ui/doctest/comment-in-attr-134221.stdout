@@ -1,5 +1,5 @@
 
-running 3 tests
+running 3 standalone doctests
 test $DIR/comment-in-attr-134221.rs - (line 11) ... FAILED
 test $DIR/comment-in-attr-134221.rs - (line 17) ... FAILED
 test $DIR/comment-in-attr-134221.rs - (line 23) ... FAILED

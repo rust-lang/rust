@@ -1,5 +1,5 @@
 
-running 5 tests
+running 5 standalone doctests
 test $DIR/test-type.rs - f (line 12) ... ignored
 test $DIR/test-type.rs - f (line 15) - compile ... ok
 test $DIR/test-type.rs - f (line 21) - compile fail ... ok

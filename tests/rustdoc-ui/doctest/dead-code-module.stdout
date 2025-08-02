@@ -1,5 +1,5 @@
 
-running 1 test
+running 1 standalone doctest
 test $DIR/dead-code-module.rs - my_mod::f (line 16) - compile ... FAILED
 
 failures:

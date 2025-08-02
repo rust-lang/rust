@@ -1,5 +1,5 @@
 
-running 7 tests
+running 7 standalone doctests
 test $DIR/no-run-flag.rs - f (line 11) - compile ... ok
 test $DIR/no-run-flag.rs - f (line 14) ... ignored
 test $DIR/no-run-flag.rs - f (line 17) - compile ... ok

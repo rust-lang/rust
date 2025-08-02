@@ -1,5 +1,5 @@
 
-running 1 test
+running 1 standalone doctest
 hello!
 test $DIR/nocapture.rs - Foo (line 6) ... ok
 
