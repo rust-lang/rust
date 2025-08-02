@@ -526,6 +526,8 @@ impl Step for Rustc {
             // Debugger scripts
             builder.ensure(DebuggerScripts { sysroot: image.to_owned(), host });
 
+            builder.ensure(TargetSpecJsonSchema { sysroot: image.to_owned(), compiler });
+
             // HTML copyright files
             let file_list = builder.ensure(super::run::GenerateCopyright);
             for file in file_list {
@@ -551,6 +553,40 @@ impl Step for Rustc {
 
     fn metadata(&self) -> Option<StepMetadata> {
         Some(StepMetadata::dist("rustc", self.compiler.host))
+    }
+}
+
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+pub struct TargetSpecJsonSchema {
+    sysroot: PathBuf,
+    compiler: Compiler,
+}
+
+impl Step for TargetSpecJsonSchema {
+    type Output = ();
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.never()
+    }
+
+    /// Copies the output of --print=target-spec-json-schema into etc.
+    fn run(self, builder: &Builder<'_>) {
+        let mut rustc = command(builder.rustc(self.compiler)).fail_fast();
+        rustc
+            .env("RUSTC_BOOTSTRAP", "1")
+            .args(["--print=target-spec-json-schema", "-Zunstable-options"]);
+        let schema = rustc.run_capture(builder).stdout();
+
+        let schema_dir = tmpdir(builder);
+        t!(fs::create_dir_all(&schema_dir));
+        let schema_file = schema_dir.join("target-spec-json-schema.json");
+        t!(std::fs::write(&schema_file, schema));
+
+        let sysroot = self.sysroot;
+        let dst = sysroot.join("etc");
+        t!(fs::create_dir_all(&dst));
+
+        builder.install(&schema_file, &dst, FileType::Regular);
     }
 }
 
