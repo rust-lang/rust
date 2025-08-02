@@ -221,11 +221,7 @@ fn impl_def_from_trait(
         } else {
             Some(first.clone())
         };
-        let items = first_item
-            .into_iter()
-            .chain(other.iter().cloned())
-            .map(either::Either::Right)
-            .collect();
+        let items = first_item.into_iter().chain(other.iter().cloned()).collect();
         make::assoc_item_list(Some(items))
     } else {
         make::assoc_item_list(None)
