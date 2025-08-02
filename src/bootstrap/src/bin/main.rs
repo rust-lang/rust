@@ -159,6 +159,9 @@ fn main() {
     if is_bootstrap_profiling_enabled() {
         build.report_summary(start_time);
     }
+
+    #[cfg(feature = "tracing")]
+    build.report_step_graph();
 }
 
 fn check_version(config: &Config) -> Option<String> {
