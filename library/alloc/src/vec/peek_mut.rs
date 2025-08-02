@@ -36,7 +36,8 @@ impl<'a, T> PeekMut<'a, T> {
 }
 
 #[unstable(feature = "vec_peek_mut", issue = "122742")]
-impl<'a, T> Deref for PeekMut<'a, T> {
+#[rustc_const_unstable(feature = "const_from", issue = "143773")]
+impl<'a, T> const Deref for PeekMut<'a, T> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
@@ -46,7 +47,8 @@ impl<'a, T> Deref for PeekMut<'a, T> {
 }
 
 #[unstable(feature = "vec_peek_mut", issue = "122742")]
-impl<'a, T> DerefMut for PeekMut<'a, T> {
+#[rustc_const_unstable(feature = "const_from", issue = "143773")]
+impl<'a, T> const DerefMut for PeekMut<'a, T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         let idx = self.vec.len() - 1;
         // SAFETY: PeekMut is only constructed if the vec is non-empty

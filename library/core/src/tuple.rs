@@ -133,6 +133,7 @@ macro_rules! tuple_impls {
         maybe_tuple_doc! {
             $($T)+ @
             #[stable(feature = "array_tuple_conv", since = "1.71.0")]
+            // can't do const From due to https://github.com/rust-lang/rust/issues/144280
             impl<T> From<[T; ${count($T)}]> for ($(${ignore($T)} T,)+) {
                 #[inline]
                 #[allow(non_snake_case)]
@@ -146,6 +147,7 @@ macro_rules! tuple_impls {
         maybe_tuple_doc! {
             $($T)+ @
             #[stable(feature = "array_tuple_conv", since = "1.71.0")]
+            // can't do const From due to https://github.com/rust-lang/rust/issues/144280
             impl<T> From<($(${ignore($T)} T,)+)> for [T; ${count($T)}] {
                 #[inline]
                 #[allow(non_snake_case)]
