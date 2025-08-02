@@ -359,11 +359,6 @@ impl Session {
             && self.opts.unstable_opts.coverage_options.level >= CoverageLevel::Mcdc
     }
 
-    /// True if `-Zcoverage-options=no-mir-spans` was passed.
-    pub fn coverage_no_mir_spans(&self) -> bool {
-        self.opts.unstable_opts.coverage_options.no_mir_spans
-    }
-
     /// True if `-Zcoverage-options=discard-all-spans-in-codegen` was passed.
     pub fn coverage_discard_all_spans_in_codegen(&self) -> bool {
         self.opts.unstable_opts.coverage_options.discard_all_spans_in_codegen

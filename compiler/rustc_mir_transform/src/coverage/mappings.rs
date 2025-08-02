@@ -82,15 +82,11 @@ pub(super) fn extract_all_mapping_info_from_mir<'tcx>(
     let mut mcdc_degraded_branches = vec![];
     let mut mcdc_mappings = vec![];
 
-    if hir_info.is_async_fn || tcx.sess.coverage_no_mir_spans() {
+    if hir_info.is_async_fn {
         // An async function desugars into a function that returns a future,
         // with the user code wrapped in a closure. Any spans in the desugared
         // outer function will be unhelpful, so just keep the signature span
         // and ignore all of the spans in the MIR body.
-        //
-        // When debugging flag `-Zcoverage-options=no-mir-spans` is set, we need
-        // to give the same treatment to _all_ functions, because `llvm-cov`
-        // seems to ignore functions that don't have any ordinary code spans.
         if let Some(span) = hir_info.fn_sig_span {
             code_mappings.push(CodeMapping { span, bcb: START_BCB });
         }
