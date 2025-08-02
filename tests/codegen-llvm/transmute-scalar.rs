@@ -1,8 +1,9 @@
 //@ add-core-stubs
-//@ compile-flags: -C opt-level=0 -C no-prepopulate-passes
+//@ compile-flags: -C opt-level=0 -C no-prepopulate-passes --target=x86_64-unknown-linux-gnu
+//@ needs-llvm-components: x86
 
 #![crate_type = "lib"]
-#![feature(no_core, repr_simd, arm_target_feature, mips_target_feature, s390x_target_feature)]
+#![feature(no_core, repr_simd)]
 #![no_core]
 extern crate minicore;
 
@@ -117,11 +118,7 @@ struct S([i64; 1]);
 // CHECK-NEXT: %[[TEMP:.+]] = load i64, ptr %[[RET]]
 // CHECK-NEXT: ret i64 %[[TEMP]]
 #[no_mangle]
-#[cfg_attr(target_family = "wasm", target_feature(enable = "simd128"))]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "neon"))]
 #[cfg_attr(target_arch = "x86", target_feature(enable = "sse"))]
-#[cfg_attr(target_arch = "mips", target_feature(enable = "msa"))]
-#[cfg_attr(target_arch = "s390x", target_feature(enable = "vector"))]
 pub extern "C" fn single_element_simd_to_scalar(b: S) -> i64 {
     unsafe { mem::transmute(b) }
 }
@@ -133,11 +130,7 @@ pub extern "C" fn single_element_simd_to_scalar(b: S) -> i64 {
 // CHECK-NEXT: %[[TEMP:.+]] = load <1 x i64>, ptr %[[RET]]
 // CHECK-NEXT: ret <1 x i64> %[[TEMP]]
 #[no_mangle]
-#[cfg_attr(target_family = "wasm", target_feature(enable = "simd128"))]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "neon"))]
 #[cfg_attr(target_arch = "x86", target_feature(enable = "sse"))]
-#[cfg_attr(target_arch = "mips", target_feature(enable = "msa"))]
-#[cfg_attr(target_arch = "s390x", target_feature(enable = "vector"))]
 pub extern "C" fn scalar_to_single_element_simd(b: i64) -> S {
     unsafe { mem::transmute(b) }
 }
