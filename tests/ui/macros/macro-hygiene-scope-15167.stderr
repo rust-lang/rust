@@ -1,0 +1,47 @@
+error[E0425]: cannot find value `n` in this scope
+  --> $DIR/macro-hygiene-scope-15167.rs:5:25
+   |
+LL | macro_rules! f { () => (n) }
+   |                         ^ not found in this scope
+...
+LL |         println!("{}", f!());
+   |                        ---- in this macro invocation
+   |
+   = note: this error originates in the macro `f` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0425]: cannot find value `n` in this scope
+  --> $DIR/macro-hygiene-scope-15167.rs:5:25
+   |
+LL | macro_rules! f { () => (n) }
+   |                         ^ not found in this scope
+...
+LL |         println!("{}", f!());
+   |                        ---- in this macro invocation
+   |
+   = note: this error originates in the macro `f` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0425]: cannot find value `n` in this scope
+  --> $DIR/macro-hygiene-scope-15167.rs:5:25
+   |
+LL | macro_rules! f { () => (n) }
+   |                         ^ not found in this scope
+...
+LL |         println!("{}", f!());
+   |                        ---- in this macro invocation
+   |
+   = note: this error originates in the macro `f` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0425]: cannot find value `n` in this scope
+  --> $DIR/macro-hygiene-scope-15167.rs:5:25
+   |
+LL | macro_rules! f { () => (n) }
+   |                         ^ not found in this scope
+...
+LL |         println!("{}", f!());
+   |                        ---- in this macro invocation
+   |
+   = note: this error originates in the macro `f` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0425`.
