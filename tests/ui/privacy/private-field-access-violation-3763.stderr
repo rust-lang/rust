@@ -1,0 +1,40 @@
+error[E0616]: field `priv_field` of struct `MyStruct` is private
+  --> $DIR/private-field-access-violation-3763.rs:18:32
+   |
+LL |     let _woohoo = (&my_struct).priv_field;
+   |                                ^^^^^^^^^^ private field
+
+error[E0616]: field `priv_field` of struct `MyStruct` is private
+  --> $DIR/private-field-access-violation-3763.rs:21:41
+   |
+LL |     let _woohoo = (Box::new(my_struct)).priv_field;
+   |                                         ^^^^^^^^^^ private field
+
+error[E0624]: method `happyfun` is private
+  --> $DIR/private-field-access-violation-3763.rs:24:18
+   |
+LL |         fn happyfun(&self) {}
+   |         ------------------ private method defined here
+...
+LL |     (&my_struct).happyfun();
+   |                  ^^^^^^^^ private method
+
+error[E0624]: method `happyfun` is private
+  --> $DIR/private-field-access-violation-3763.rs:26:27
+   |
+LL |         fn happyfun(&self) {}
+   |         ------------------ private method defined here
+...
+LL |     (Box::new(my_struct)).happyfun();
+   |                           ^^^^^^^^ private method
+
+error[E0616]: field `priv_field` of struct `MyStruct` is private
+  --> $DIR/private-field-access-violation-3763.rs:27:26
+   |
+LL |     let nope = my_struct.priv_field;
+   |                          ^^^^^^^^^^ private field
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0616, E0624.
+For more information about an error, try `rustc --explain E0616`.
