@@ -1295,18 +1295,22 @@ fn impl_trait_header(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<ty::ImplTrai
     let icx = ItemCtxt::new(tcx, def_id);
     let item = tcx.hir_expect_item(def_id);
     let impl_ = item.expect_impl();
-    impl_.of_trait.as_ref().map(|ast_trait_ref| {
+    let is_rustc_reservation = tcx.has_attr(def_id, sym::rustc_reservation_impl);
+    if is_rustc_reservation && impl_.of_trait.is_none() {
+        tcx.dcx().span_err(item.span, "reservation impls can't be inherent");
+    }
+    impl_.of_trait.map(|of_trait| {
         let selfty = tcx.type_of(def_id).instantiate_identity();
 
-        check_impl_constness(tcx, impl_.constness, ast_trait_ref);
+        check_impl_constness(tcx, of_trait.constness, &of_trait.trait_ref);
 
-        let trait_ref = icx.lowerer().lower_impl_trait_ref(ast_trait_ref, selfty);
+        let trait_ref = icx.lowerer().lower_impl_trait_ref(&of_trait.trait_ref, selfty);
 
         ty::ImplTraitHeader {
             trait_ref: ty::EarlyBinder::bind(trait_ref),
-            safety: impl_.safety,
-            polarity: polarity_of_impl(tcx, def_id, impl_, item.span),
-            constness: impl_.constness,
+            safety: of_trait.safety,
+            polarity: polarity_of_impl(tcx, of_trait, is_rustc_reservation),
+            constness: of_trait.constness,
         }
     })
 }
@@ -1350,26 +1354,18 @@ fn check_impl_constness(
 
 fn polarity_of_impl(
     tcx: TyCtxt<'_>,
-    def_id: LocalDefId,
-    impl_: &hir::Impl<'_>,
-    span: Span,
+    of_trait: &hir::TraitImplHeader<'_>,
+    is_rustc_reservation: bool,
 ) -> ty::ImplPolarity {
-    let is_rustc_reservation = tcx.has_attr(def_id, sym::rustc_reservation_impl);
-    match &impl_ {
-        hir::Impl { polarity: hir::ImplPolarity::Negative(span), of_trait, .. } => {
+    match of_trait.polarity {
+        hir::ImplPolarity::Negative(span) => {
             if is_rustc_reservation {
-                let span = span.to(of_trait.as_ref().map_or(*span, |t| t.path.span));
+                let span = span.to(of_trait.trait_ref.path.span);
                 tcx.dcx().span_err(span, "reservation impls can't be negative");
             }
             ty::ImplPolarity::Negative
         }
-        hir::Impl { polarity: hir::ImplPolarity::Positive, of_trait: None, .. } => {
-            if is_rustc_reservation {
-                tcx.dcx().span_err(span, "reservation impls can't be inherent");
-            }
-            ty::ImplPolarity::Positive
-        }
-        hir::Impl { polarity: hir::ImplPolarity::Positive, of_trait: Some(_), .. } => {
+        hir::ImplPolarity::Positive => {
             if is_rustc_reservation {
                 ty::ImplPolarity::Reservation
             } else {

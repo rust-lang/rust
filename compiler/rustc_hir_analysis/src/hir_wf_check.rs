@@ -154,8 +154,9 @@ pub(super) fn diagnostic_hir_wf_check<'tcx>(
                 hir::ItemKind::TyAlias(_, _, ty)
                 | hir::ItemKind::Static(_, _, ty, _)
                 | hir::ItemKind::Const(_, _, ty, _) => vec![ty],
-                hir::ItemKind::Impl(impl_) => match &impl_.of_trait {
-                    Some(t) => t
+                hir::ItemKind::Impl(impl_) => match impl_.of_trait {
+                    Some(of_trait) => of_trait
+                        .trait_ref
                         .path
                         .segments
                         .last()

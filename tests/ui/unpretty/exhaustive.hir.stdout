@@ -509,7 +509,7 @@ mod items {
         impl () { }
         impl <T> () { }
         impl Default for () { }
-        impl const <T> Default for () { }
+        impl <T> const Default for () { }
     }
     /// ItemKind::MacCall
     mod item_mac_call { }

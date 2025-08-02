@@ -54,8 +54,7 @@ pub(super) fn check_impl_item(cx: &LateContext<'_>, impl_item: &ImplItem<'_>) {
     if let ImplItemKind::Fn(_, body_id) = impl_item.kind
         && let hir::Node::Item(item) = cx.tcx.parent_hir_node(impl_item.hir_id())
         && let hir::ItemKind::Impl(impl_) = item.kind
-        && let hir::Impl { of_trait, .. } = *impl_
-        && of_trait.is_none()
+        && let hir::Impl { of_trait: None, .. } = impl_
         && let body = cx.tcx.hir_body(body_id)
         && cx.tcx.visibility(cx.tcx.hir_body_owner_def_id(body.id())).is_public()
         && !is_in_test(cx.tcx, impl_item.hir_id())

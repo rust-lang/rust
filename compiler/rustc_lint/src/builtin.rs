@@ -270,7 +270,10 @@ impl EarlyLintPass for UnsafeCode {
                 self.report_unsafe(cx, it.span, BuiltinUnsafe::UnsafeTrait);
             }
 
-            ast::ItemKind::Impl(box ast::Impl { safety: ast::Safety::Unsafe(_), .. }) => {
+            ast::ItemKind::Impl(ast::Impl {
+                of_trait: Some(box ast::TraitImplHeader { safety: ast::Safety::Unsafe(_), .. }),
+                ..
+            }) => {
                 self.report_unsafe(cx, it.span, BuiltinUnsafe::UnsafeImpl);
             }
 
