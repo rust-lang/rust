@@ -218,8 +218,8 @@ struct LegacySymbolMangler<'tcx> {
     path: SymbolPath,
 
     // When `true`, `finalize_pending_component` isn't used.
-    // This is needed when recursing into `path_qualified`,
-    // or `path_generic_args`, as any nested paths are
+    // This is needed when recursing into `print_path_with_qualified`,
+    // or `print_path_with_generic_args`, as any nested paths are
     // logically within one component.
     keep_within_component: bool,
 }
@@ -303,11 +303,12 @@ impl<'tcx> Printer<'tcx> for LegacySymbolMangler<'tcx> {
         Ok(())
     }
 
-    fn path_crate(&mut self, cnum: CrateNum) -> Result<(), PrintError> {
+    fn print_crate_name(&mut self, cnum: CrateNum) -> Result<(), PrintError> {
         self.write_str(self.tcx.crate_name(cnum).as_str())?;
         Ok(())
     }
-    fn path_qualified(
+
+    fn print_path_with_qualified(
         &mut self,
         self_ty: Ty<'tcx>,
         trait_ref: Option<ty::TraitRef<'tcx>>,
@@ -329,7 +330,7 @@ impl<'tcx> Printer<'tcx> for LegacySymbolMangler<'tcx> {
         }
     }
 
-    fn path_append_impl(
+    fn print_path_with_impl(
         &mut self,
         print_prefix: impl FnOnce(&mut Self) -> Result<(), PrintError>,
         self_ty: Ty<'tcx>,
@@ -352,7 +353,8 @@ impl<'tcx> Printer<'tcx> for LegacySymbolMangler<'tcx> {
             trait_ref,
         )
     }
-    fn path_append(
+
+    fn print_path_with_simple(
         &mut self,
         print_prefix: impl FnOnce(&mut Self) -> Result<(), PrintError>,
         disambiguated_data: &DisambiguatedDefPathData,
@@ -375,7 +377,8 @@ impl<'tcx> Printer<'tcx> for LegacySymbolMangler<'tcx> {
 
         Ok(())
     }
-    fn path_generic_args(
+
+    fn print_path_with_generic_args(
         &mut self,
         print_prefix: impl FnOnce(&mut Self) -> Result<(), PrintError>,
         args: &[GenericArg<'tcx>],

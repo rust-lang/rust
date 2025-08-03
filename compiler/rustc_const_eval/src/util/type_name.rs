@@ -73,12 +73,12 @@ impl<'tcx> Printer<'tcx> for TypeNamePrinter<'tcx> {
         self.pretty_print_dyn_existential(predicates)
     }
 
-    fn path_crate(&mut self, cnum: CrateNum) -> Result<(), PrintError> {
+    fn print_crate_name(&mut self, cnum: CrateNum) -> Result<(), PrintError> {
         self.path.push_str(self.tcx.crate_name(cnum).as_str());
         Ok(())
     }
 
-    fn path_qualified(
+    fn print_path_with_qualified(
         &mut self,
         self_ty: Ty<'tcx>,
         trait_ref: Option<ty::TraitRef<'tcx>>,
@@ -86,7 +86,7 @@ impl<'tcx> Printer<'tcx> for TypeNamePrinter<'tcx> {
         self.pretty_path_qualified(self_ty, trait_ref)
     }
 
-    fn path_append_impl(
+    fn print_path_with_impl(
         &mut self,
         print_prefix: impl FnOnce(&mut Self) -> Result<(), PrintError>,
         self_ty: Ty<'tcx>,
@@ -105,7 +105,7 @@ impl<'tcx> Printer<'tcx> for TypeNamePrinter<'tcx> {
         )
     }
 
-    fn path_append(
+    fn print_path_with_simple(
         &mut self,
         print_prefix: impl FnOnce(&mut Self) -> Result<(), PrintError>,
         disambiguated_data: &DisambiguatedDefPathData,
@@ -117,7 +117,7 @@ impl<'tcx> Printer<'tcx> for TypeNamePrinter<'tcx> {
         Ok(())
     }
 
-    fn path_generic_args(
+    fn print_path_with_generic_args(
         &mut self,
         print_prefix: impl FnOnce(&mut Self) -> Result<(), PrintError>,
         args: &[GenericArg<'tcx>],

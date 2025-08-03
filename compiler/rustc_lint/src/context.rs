@@ -774,12 +774,12 @@ impl<'tcx> LateContext<'tcx> {
                 unreachable!(); // because `path_generic_args` ignores the `GenericArgs`
             }
 
-            fn path_crate(&mut self, cnum: CrateNum) -> Result<(), PrintError> {
+            fn print_crate_name(&mut self, cnum: CrateNum) -> Result<(), PrintError> {
                 self.path = vec![self.tcx.crate_name(cnum)];
                 Ok(())
             }
 
-            fn path_qualified(
+            fn print_path_with_qualified(
                 &mut self,
                 self_ty: Ty<'tcx>,
                 trait_ref: Option<ty::TraitRef<'tcx>>,
@@ -800,7 +800,7 @@ impl<'tcx> LateContext<'tcx> {
                 })
             }
 
-            fn path_append_impl(
+            fn print_path_with_impl(
                 &mut self,
                 print_prefix: impl FnOnce(&mut Self) -> Result<(), PrintError>,
                 self_ty: Ty<'tcx>,
@@ -825,7 +825,7 @@ impl<'tcx> LateContext<'tcx> {
                 Ok(())
             }
 
-            fn path_append(
+            fn print_path_with_simple(
                 &mut self,
                 print_prefix: impl FnOnce(&mut Self) -> Result<(), PrintError>,
                 disambiguated_data: &DisambiguatedDefPathData,
@@ -844,7 +844,7 @@ impl<'tcx> LateContext<'tcx> {
                 Ok(())
             }
 
-            fn path_generic_args(
+            fn print_path_with_generic_args(
                 &mut self,
                 print_prefix: impl FnOnce(&mut Self) -> Result<(), PrintError>,
                 _args: &[GenericArg<'tcx>],

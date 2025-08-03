@@ -253,12 +253,12 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 unreachable!(); // because `path_generic_args` ignores the `GenericArgs`
             }
 
-            fn path_crate(&mut self, cnum: CrateNum) -> Result<(), PrintError> {
+            fn print_crate_name(&mut self, cnum: CrateNum) -> Result<(), PrintError> {
                 self.segments = vec![self.tcx.crate_name(cnum)];
                 Ok(())
             }
 
-            fn path_qualified(
+            fn print_path_with_qualified(
                 &mut self,
                 _self_ty: Ty<'tcx>,
                 _trait_ref: Option<ty::TraitRef<'tcx>>,
@@ -266,7 +266,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 Err(fmt::Error)
             }
 
-            fn path_append_impl(
+            fn print_path_with_impl(
                 &mut self,
                 _print_prefix: impl FnOnce(&mut Self) -> Result<(), PrintError>,
                 _self_ty: Ty<'tcx>,
@@ -275,7 +275,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 Err(fmt::Error)
             }
 
-            fn path_append(
+            fn print_path_with_simple(
                 &mut self,
                 print_prefix: impl FnOnce(&mut Self) -> Result<(), PrintError>,
                 disambiguated_data: &DisambiguatedDefPathData,
@@ -285,7 +285,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 Ok(())
             }
 
-            fn path_generic_args(
+            fn print_path_with_generic_args(
                 &mut self,
                 print_prefix: impl FnOnce(&mut Self) -> Result<(), PrintError>,
                 _args: &[GenericArg<'tcx>],

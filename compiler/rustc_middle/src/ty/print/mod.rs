@@ -81,7 +81,7 @@ pub trait Printer<'tcx>: Sized {
     fn print_const(&mut self, ct: ty::Const<'tcx>) -> Result<(), PrintError>;
 
     /// Appends a representation of a crate name, e.g. `std`, or even ``.
-    fn path_crate(&mut self, cnum: CrateNum) -> Result<(), PrintError>;
+    fn print_crate_name(&mut self, cnum: CrateNum) -> Result<(), PrintError>;
 
     /// Appends a representation of a (full or partial) simple path, in two parts. `print_prefix`,
     /// when called, appends the representation of the leading segments. The rest of the method
@@ -89,17 +89,17 @@ pub trait Printer<'tcx>: Sized {
     /// `disambiguated_data`.
     ///
     /// E.g. `std::io` + `Read` -> `std::io::Read`.
-    fn path_append(
+    fn print_path_with_simple(
         &mut self,
         print_prefix: impl FnOnce(&mut Self) -> Result<(), PrintError>,
         disambiguated_data: &DisambiguatedDefPathData,
     ) -> Result<(), PrintError>;
 
-    /// Similar to `path_append`, but the final segment is an `impl` segment.
+    /// Similar to `print_path_with_simple`, but the final segment is an `impl` segment.
     ///
     /// E.g. `slice` + `<impl [T]>` -> `slice::<impl [T]>`, which may then be further appended to,
     /// giving a longer path representation such as `slice::<impl [T]>::to_vec_in::ConvertVec`.
-    fn path_append_impl(
+    fn print_path_with_impl(
         &mut self,
         print_prefix: impl FnOnce(&mut Self) -> Result<(), PrintError>,
         self_ty: Ty<'tcx>,
@@ -112,7 +112,7 @@ pub trait Printer<'tcx>: Sized {
     /// args.)
     ///
     /// E.g. `ImplementsTraitForUsize` + `<usize>` -> `ImplementsTraitForUsize<usize>`.
-    fn path_generic_args(
+    fn print_path_with_generic_args(
         &mut self,
         print_prefix: impl FnOnce(&mut Self) -> Result<(), PrintError>,
         args: &[GenericArg<'tcx>],
@@ -120,7 +120,7 @@ pub trait Printer<'tcx>: Sized {
 
     /// Appends a representation of a qualified path segment, e.g. `<OsString as From<&T>>`.
     /// If `trait_ref` is `None`, it may fall back to simpler forms, e.g. `<Vec<T>>` or just `Foo`.
-    fn path_qualified(
+    fn print_path_with_qualified(
         &mut self,
         self_ty: Ty<'tcx>,
         trait_ref: Option<ty::TraitRef<'tcx>>,
@@ -140,7 +140,7 @@ pub trait Printer<'tcx>: Sized {
         match key.disambiguated_data.data {
             DefPathData::CrateRoot => {
                 assert!(key.parent.is_none());
-                self.path_crate(def_id.krate)
+                self.print_crate_name(def_id.krate)
             }
 
             DefPathData::Impl => self.print_impl_path(def_id, args),
@@ -164,7 +164,7 @@ pub trait Printer<'tcx>: Sized {
                             )) = self.tcx().coroutine_kind(def_id)
                                 && args.len() > parent_args.len()
                             {
-                                return self.path_generic_args(
+                                return self.print_path_with_generic_args(
                                     |p| p.print_def_path(def_id, parent_args),
                                     &args[..parent_args.len() + 1][..1],
                                 );
@@ -186,7 +186,7 @@ pub trait Printer<'tcx>: Sized {
                         _ => {
                             if !generics.is_own_empty() && args.len() >= generics.count() {
                                 let args = generics.own_args_no_defaults(self.tcx(), args);
-                                return self.path_generic_args(
+                                return self.print_path_with_generic_args(
                                     |p| p.print_def_path(def_id, parent_args),
                                     args,
                                 );
@@ -202,7 +202,7 @@ pub trait Printer<'tcx>: Sized {
                         && self.tcx().generics_of(parent_def_id).parent_count == 0;
                 }
 
-                self.path_append(
+                self.print_path_with_simple(
                     |p: &mut Self| {
                         if trait_qualify_parent {
                             let trait_ref = ty::TraitRef::new(
@@ -210,7 +210,7 @@ pub trait Printer<'tcx>: Sized {
                                 parent_def_id,
                                 parent_args.iter().copied(),
                             );
-                            p.path_qualified(trait_ref.self_ty(), Some(trait_ref))
+                            p.print_path_with_qualified(trait_ref.self_ty(), Some(trait_ref))
                         } else {
                             p.print_def_path(parent_def_id, parent_args)
                         }
@@ -253,11 +253,15 @@ pub trait Printer<'tcx>: Sized {
             // If the impl is not co-located with either self-type or
             // trait-type, then fallback to a format that identifies
             // the module more clearly.
-            self.path_append_impl(|p| p.print_def_path(parent_def_id, &[]), self_ty, impl_trait_ref)
+            self.print_path_with_impl(
+                |p| p.print_def_path(parent_def_id, &[]),
+                self_ty,
+                impl_trait_ref,
+            )
         } else {
             // Otherwise, try to give a good form that would be valid language
             // syntax. Preferably using associated item notation.
-            self.path_qualified(self_ty, impl_trait_ref)
+            self.print_path_with_qualified(self_ty, impl_trait_ref)
         }
     }
 }

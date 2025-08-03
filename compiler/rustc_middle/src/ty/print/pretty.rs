@@ -474,7 +474,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
         // path to the crate followed by the path to the item within the crate.
         if let Some(cnum) = def_id.as_crate_root() {
             if cnum == LOCAL_CRATE {
-                self.path_crate(cnum)?;
+                self.print_crate_name(cnum)?;
                 return Ok(true);
             }
 
@@ -498,7 +498,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                         // or avoid ending up with `ExternCrateSource::Extern`,
                         // for the injected `std`/`core`.
                         if span.is_dummy() {
-                            self.path_crate(cnum)?;
+                            self.print_crate_name(cnum)?;
                             return Ok(true);
                         }
 
@@ -512,13 +512,13 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                         return Ok(true);
                     }
                     (ExternCrateSource::Path, LOCAL_CRATE) => {
-                        self.path_crate(cnum)?;
+                        self.print_crate_name(cnum)?;
                         return Ok(true);
                     }
                     _ => {}
                 },
                 None => {
-                    self.path_crate(cnum)?;
+                    self.print_crate_name(cnum)?;
                     return Ok(true);
                 }
             }
@@ -628,7 +628,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             return Ok(false);
         }
         callers.push(visible_parent);
-        // HACK(eddyb) this bypasses `path_append`'s prefix printing to avoid
+        // HACK(eddyb) this bypasses `print_path_with_simple`'s prefix printing to avoid
         // knowing ahead of time whether the entire path will succeed or not.
         // To support printers that do not implement `PrettyPrinter`, a `Vec` or
         // linked list on the stack would need to be built, before any printing.
@@ -637,7 +637,10 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             true => {}
         }
         callers.pop();
-        self.path_append(|_| Ok(()), &DisambiguatedDefPathData { data, disambiguator: 0 })?;
+        self.print_path_with_simple(
+            |_| Ok(()),
+            &DisambiguatedDefPathData { data, disambiguator: 0 },
+        )?;
         Ok(true)
     }
 
@@ -1312,10 +1315,10 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
         alias_ty: ty::AliasTerm<'tcx>,
     ) -> Result<(), PrintError> {
         let def_key = self.tcx().def_key(alias_ty.def_id);
-        self.path_generic_args(
+        self.print_path_with_generic_args(
             |p| {
-                p.path_append(
-                    |p| p.path_qualified(alias_ty.self_ty(), None),
+                p.print_path_with_simple(
+                    |p| p.print_path_with_qualified(alias_ty.self_ty(), None),
                     &def_key.disambiguated_data,
                 )
             },
@@ -1400,7 +1403,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                     }
                 }
 
-                // HACK(eddyb) this duplicates `FmtPrinter`'s `path_generic_args`,
+                // HACK(eddyb) this duplicates `FmtPrinter`'s `print_path_with_generic_args`,
                 // in order to place the projections inside the `<...>`.
                 if !resugared {
                     let principal_with_self =
@@ -2234,7 +2237,7 @@ impl<'tcx> Printer<'tcx> for FmtPrinter<'_, 'tcx> {
 
                 self.print_def_path(parent_def_id, &[])?;
 
-                // HACK(eddyb) copy of `path_append` to avoid
+                // HACK(eddyb) copy of `print_path_with_simple` to avoid
                 // constructing a `DisambiguatedDefPathData`.
                 if !self.empty_path {
                     write!(self, "::")?;
@@ -2310,7 +2313,7 @@ impl<'tcx> Printer<'tcx> for FmtPrinter<'_, 'tcx> {
         self.pretty_print_const(ct, false)
     }
 
-    fn path_crate(&mut self, cnum: CrateNum) -> Result<(), PrintError> {
+    fn print_crate_name(&mut self, cnum: CrateNum) -> Result<(), PrintError> {
         self.empty_path = true;
         if cnum == LOCAL_CRATE {
             if self.tcx.sess.at_least_rust_2018() {
@@ -2327,7 +2330,7 @@ impl<'tcx> Printer<'tcx> for FmtPrinter<'_, 'tcx> {
         Ok(())
     }
 
-    fn path_qualified(
+    fn print_path_with_qualified(
         &mut self,
         self_ty: Ty<'tcx>,
         trait_ref: Option<ty::TraitRef<'tcx>>,
@@ -2337,7 +2340,7 @@ impl<'tcx> Printer<'tcx> for FmtPrinter<'_, 'tcx> {
         Ok(())
     }
 
-    fn path_append_impl(
+    fn print_path_with_impl(
         &mut self,
         print_prefix: impl FnOnce(&mut Self) -> Result<(), PrintError>,
         self_ty: Ty<'tcx>,
@@ -2359,7 +2362,7 @@ impl<'tcx> Printer<'tcx> for FmtPrinter<'_, 'tcx> {
         Ok(())
     }
 
-    fn path_append(
+    fn print_path_with_simple(
         &mut self,
         print_prefix: impl FnOnce(&mut Self) -> Result<(), PrintError>,
         disambiguated_data: &DisambiguatedDefPathData,
@@ -2390,7 +2393,7 @@ impl<'tcx> Printer<'tcx> for FmtPrinter<'_, 'tcx> {
         Ok(())
     }
 
-    fn path_generic_args(
+    fn print_path_with_generic_args(
         &mut self,
         print_prefix: impl FnOnce(&mut Self) -> Result<(), PrintError>,
         args: &[GenericArg<'tcx>],
@@ -3229,7 +3232,7 @@ define_print! {
         // The args don't contain the self ty (as it has been erased) but the corresp.
         // generics do as the trait always has a self ty param. We need to offset.
         let args = &self.args[p.tcx().generics_of(self.def_id).parent_count - 1..];
-        p.path_generic_args(|p| write!(p, "{name}"), args)?;
+        p.print_path_with_generic_args(|p| write!(p, "{name}"), args)?;
         write!(p, " = ")?;
         self.term.print(p)?;
     }
