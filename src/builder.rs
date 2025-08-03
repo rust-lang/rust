@@ -1278,11 +1278,19 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
 
     fn intcast(
         &mut self,
-        value: RValue<'gcc>,
+        mut value: RValue<'gcc>,
         dest_typ: Type<'gcc>,
-        _is_signed: bool,
+        is_signed: bool,
     ) -> RValue<'gcc> {
-        // NOTE: is_signed is for value, not dest_typ.
+        let value_type = value.get_type();
+        if is_signed && !value_type.is_signed(self.cx) {
+            let signed_type = value_type.to_signed(self.cx);
+            value = self.gcc_int_cast(value, signed_type);
+        } else if !is_signed && value_type.is_signed(self.cx) {
+            let unsigned_type = value_type.to_unsigned(self.cx);
+            value = self.gcc_int_cast(value, unsigned_type);
+        }
+
         self.gcc_int_cast(value, dest_typ)
     }
 
