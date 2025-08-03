@@ -2498,7 +2498,7 @@ fn param_env_with_gat_bounds<'tcx>(
                     ty::Const::new_bound(
                         tcx,
                         ty::INNERMOST,
-                        ty::BoundVar::from_usize(bound_vars.len() - 1),
+                        ty::BoundConst { var: ty::BoundVar::from_usize(bound_vars.len() - 1) },
                     )
                     .into()
                 }

@@ -45,10 +45,10 @@ impl<'tcx> InferCtxt<'tcx> {
                     ty::PlaceholderType { universe: next_universe, bound: bound_ty },
                 )
             },
-            consts: &mut |bound_var: ty::BoundVar| {
+            consts: &mut |bound_const: ty::BoundConst| {
                 ty::Const::new_placeholder(
                     self.tcx,
-                    ty::PlaceholderConst { universe: next_universe, bound: bound_var },
+                    ty::PlaceholderConst { universe: next_universe, bound: bound_const },
                 )
             },
         };
