@@ -27,7 +27,7 @@ use rustc_span::edition::Edition;
 use rustc_span::source_map::Spanned;
 use rustc_span::{BytePos, DUMMY_SP, Ident, Span, kw, sym};
 use rustc_trait_selection::infer::InferCtxtExt;
-use rustc_trait_selection::traits::{ObligationCause, ObligationCauseCode, ObligationCtxt};
+use rustc_trait_selection::traits::{ObligationCause, ObligationCauseCode};
 use tracing::{debug, instrument, trace};
 use ty::VariantDef;
 use ty::adjustment::{PatAdjust, PatAdjustment};
@@ -403,38 +403,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let ty = self.check_pat_inner(pat, opt_path_res, adjust_mode, expected, pat_info);
         self.write_ty(pat.hir_id, ty);
 
-        // If we implicitly inserted overloaded dereferences and pinned dereferences before matching,
-        // check the pattern to see if the dereferenced types need `DerefMut` or `!Unpin` bounds.
-        if let Some(derefed_tys) = self.typeck_results.borrow().pat_adjustments().get(pat.hir_id) {
-            let mut has_overloaded_deref = false;
-            let mut has_pin_deref = false;
-            derefed_tys.iter().for_each(|adjust| match adjust.kind {
-                PatAdjust::BuiltinDeref => {}
-                PatAdjust::OverloadedDeref => has_overloaded_deref = true,
-                PatAdjust::PinDeref => has_pin_deref = true,
-            });
-            if has_overloaded_deref {
-                self.register_deref_mut_bounds_if_needed(
-                    pat.span,
-                    pat,
-                    derefed_tys.iter().filter_map(|adjust| match adjust.kind {
-                        PatAdjust::OverloadedDeref => Some(adjust.source),
-                        PatAdjust::BuiltinDeref | PatAdjust::PinDeref => None,
-                    }),
-                );
-            }
-            if has_pin_deref {
-                self.register_not_unpin_bounds_if_needed(
-                    pat.span,
-                    pat,
-                    derefed_tys.iter().filter_map(|adjust| match adjust.kind {
-                        PatAdjust::BuiltinDeref | PatAdjust::OverloadedDeref => None,
-                        PatAdjust::PinDeref => {
-                            Some(adjust.source.pinned_ref().expect("expected pinned reference").0)
-                        }
-                    }),
-                );
-            }
+        // If we implicitly inserted overloaded dereferences before matching check the pattern to
+        // see if the dereferenced types need `DerefMut` bounds.
+        if let Some(derefed_tys) = self.typeck_results.borrow().pat_adjustments().get(pat.hir_id)
+            && derefed_tys.iter().any(|adjust| adjust.kind == PatAdjust::OverloadedDeref)
+        {
+            self.register_deref_mut_bounds_if_needed(
+                pat.span,
+                pat,
+                derefed_tys.iter().filter_map(|adjust| match adjust.kind {
+                    PatAdjust::OverloadedDeref => Some(adjust.source),
+                    PatAdjust::BuiltinDeref | PatAdjust::PinDeref => None,
+                }),
+            );
         }
 
         // (note_1): In most of the cases where (note_1) is referenced
@@ -583,9 +564,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         self.misc(pat.span),
                     )
                 }
-                // Once we've checked `pat`, we'll add a `!Unpin` bound if it contains any
-                // `ref pin` bindings. See `Self::register_not_unpin_bounds_if_needed`.
-
                 debug!("default binding mode is now {:?}", binding_mode);
 
                 // Use the old pat info to keep `current_depth` to its old value.
@@ -2673,44 +2651,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.register_bound(
                     mutably_derefed_ty,
                     self.tcx.require_lang_item(hir::LangItem::DerefMut, span),
-                    self.misc(span),
-                );
-            }
-        }
-    }
-
-    /// Check if the interior of a pin pattern (either explicit or implicit) has any `ref pin`
-    /// bindings of non-`Unpin` types, which would require `!Unpin` to be emitted.
-    fn register_not_unpin_bounds_if_needed(
-        &self,
-        span: Span,
-        inner: &'tcx Pat<'tcx>,
-        derefed_tys: impl IntoIterator<Item = Ty<'tcx>>,
-    ) {
-        // Check if there are subpatterns with `ref pin` binding modes of non-`Unpin` types.
-        let unpin = self.tcx.require_lang_item(hir::LangItem::Unpin, span);
-        let cause = self.misc(span);
-        let unpin_obligations = self.probe(|_| {
-            let ocx = ObligationCtxt::new(&self);
-            self.typeck_results.borrow().pat_walk_ref_pin_binding_of_non_unpin_type(inner, |ty| {
-                let ty = ocx
-                    .normalize(&cause, self.param_env, ty)
-                    .pinned_ref()
-                    .expect("expect pinned reference")
-                    .0;
-                debug!("check if `Unpin` is implemented for `{ty:?}`");
-                ocx.register_bound(cause.clone(), self.param_env, ty, unpin);
-            });
-            ocx.select_all_or_error()
-        });
-
-        // If any, the current pattern type should implement `!Unpin`.
-        if !unpin_obligations.is_empty() {
-            for pinned_derefed_ty in derefed_tys {
-                debug!("register `!Unpin` for `{pinned_derefed_ty:?}`");
-                self.register_negative_bound(
-                    pinned_derefed_ty,
-                    self.tcx.require_lang_item(hir::LangItem::Unpin, span),
                     self.misc(span),
                 );
             }
