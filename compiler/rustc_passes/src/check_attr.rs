@@ -207,6 +207,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 Attribute::Parsed(AttributeKind::ConstContinue(attr_span)) => {
                     self.check_const_continue(hir_id, *attr_span, target)
                 }
+                Attribute::Parsed(AttributeKind::AllowInternalUnsafe(attr_span)) => {
+                    self.check_allow_internal_unsafe(hir_id, *attr_span, span, target, attrs)
+                }
                 Attribute::Parsed(AttributeKind::AllowInternalUnstable(_, first_span)) => {
                     self.check_allow_internal_unstable(hir_id, *first_span, span, target, attrs)
                 }
@@ -414,7 +417,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             // internal
                             | sym::prelude_import
                             | sym::panic_handler
-                            | sym::allow_internal_unsafe
                             | sym::lang
                             | sym::needs_allocator
                             | sym::default_lib_allocator
@@ -2213,7 +2215,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
 
     /// Outputs an error for `#[allow_internal_unstable]` which can only be applied to macros.
     /// (Allows proc_macro functions)
-    // FIXME(jdonszelmann): if possible, move to attr parsing
     fn check_allow_internal_unstable(
         &self,
         hir_id: HirId,
@@ -2221,6 +2222,42 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         span: Span,
         target: Target,
         attrs: &[Attribute],
+    ) {
+        self.check_macro_only_attr(
+            hir_id,
+            attr_span,
+            span,
+            target,
+            attrs,
+            "allow_internal_unstable",
+        )
+    }
+
+    /// Outputs an error for `#[allow_internal_unsafe]` which can only be applied to macros.
+    /// (Allows proc_macro functions)
+    fn check_allow_internal_unsafe(
+        &self,
+        hir_id: HirId,
+        attr_span: Span,
+        span: Span,
+        target: Target,
+        attrs: &[Attribute],
+    ) {
+        self.check_macro_only_attr(hir_id, attr_span, span, target, attrs, "allow_internal_unsafe")
+    }
+
+    /// Outputs an error for attributes that can only be applied to macros, such as
+    /// `#[allow_internal_unsafe]` and `#[allow_internal_unstable]`.
+    /// (Allows proc_macro functions)
+    // FIXME(jdonszelmann): if possible, move to attr parsing
+    fn check_macro_only_attr(
+        &self,
+        hir_id: HirId,
+        attr_span: Span,
+        span: Span,
+        target: Target,
+        attrs: &[Attribute],
+        attr_name: &str,
     ) {
         match target {
             Target::Fn => {
@@ -2239,18 +2276,14 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             // erroneously allowed it and some crates used it accidentally, to be compatible
             // with crates depending on them, we can't throw an error here.
             Target::Field | Target::Arm => {
-                self.inline_attr_str_error_without_macro_def(
-                    hir_id,
-                    attr_span,
-                    "allow_internal_unstable",
-                );
+                self.inline_attr_str_error_without_macro_def(hir_id, attr_span, attr_name);
                 return;
             }
             // otherwise continue out of the match
             _ => {}
         }
 
-        self.tcx.dcx().emit_err(errors::AllowInternalUnstable { attr_span, span });
+        self.tcx.dcx().emit_err(errors::MacroOnlyAttribute { attr_span, span });
     }
 
     /// Checks if the items on the `#[debugger_visualizer]` attribute are valid.
