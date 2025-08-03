@@ -1,7 +1,5 @@
 # How to build and run the compiler
 
-<!-- toc -->
-
 <div class="warning">
 
 For `profile = "library"` users, or users who use `download-rustc = true | "if-unchanged"`, please be advised that

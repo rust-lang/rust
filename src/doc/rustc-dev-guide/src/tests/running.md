@@ -1,7 +1,5 @@
 # Running tests
 
-<!-- toc -->
-
 You can run the entire test collection using `x`. But note that running the
 *entire* test collection is almost never what you want to do during local
 development because it takes a really long time. For local development, see the

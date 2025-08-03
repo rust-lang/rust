@@ -1,7 +1,5 @@
 # Macro expansion
 
-<!-- toc -->
-
 Rust has a very powerful macro system. In the previous chapter, we saw how
 the parser sets aside macros to be expanded (using temporary [placeholders]).
 This chapter is about the process of expanding those macros iteratively until
