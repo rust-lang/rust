@@ -313,7 +313,7 @@ impl<'tcx> Printer<'tcx> for LegacySymbolMangler<'tcx> {
         self_ty: Ty<'tcx>,
         trait_ref: Option<ty::TraitRef<'tcx>>,
     ) -> Result<(), PrintError> {
-        // Similar to `pretty_path_qualified`, but for the other
+        // Similar to `pretty_print_path_with_qualified`, but for the other
         // types that are printed as paths (see `print_type` above).
         match self_ty.kind() {
             ty::FnDef(..)
@@ -326,7 +326,7 @@ impl<'tcx> Printer<'tcx> for LegacySymbolMangler<'tcx> {
                 self.print_type(self_ty)
             }
 
-            _ => self.pretty_path_qualified(self_ty, trait_ref),
+            _ => self.pretty_print_path_with_qualified(self_ty, trait_ref),
         }
     }
 
@@ -336,7 +336,7 @@ impl<'tcx> Printer<'tcx> for LegacySymbolMangler<'tcx> {
         self_ty: Ty<'tcx>,
         trait_ref: Option<ty::TraitRef<'tcx>>,
     ) -> Result<(), PrintError> {
-        self.pretty_path_append_impl(
+        self.pretty_print_path_with_impl(
             |cx| {
                 print_prefix(cx)?;
 

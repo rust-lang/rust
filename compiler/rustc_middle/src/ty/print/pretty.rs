@@ -245,7 +245,7 @@ impl<'tcx> RegionHighlightMode<'tcx> {
 /// Trait for printers that pretty-print using `fmt::Write` to the printer.
 pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
     /// Like `print_def_path` but for value paths.
-    fn print_value_path(
+    fn pretty_print_value_path(
         &mut self,
         def_id: DefId,
         args: &'tcx [GenericArg<'tcx>],
@@ -253,7 +253,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
         self.print_def_path(def_id, args)
     }
 
-    fn print_in_binder<T>(&mut self, value: &ty::Binder<'tcx, T>) -> Result<(), PrintError>
+    fn pretty_print_in_binder<T>(&mut self, value: &ty::Binder<'tcx, T>) -> Result<(), PrintError>
     where
         T: Print<'tcx, Self> + TypeFoldable<TyCtxt<'tcx>>,
     {
@@ -644,7 +644,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
         Ok(true)
     }
 
-    fn pretty_path_qualified(
+    fn pretty_print_path_with_qualified(
         &mut self,
         self_ty: Ty<'tcx>,
         trait_ref: Option<ty::TraitRef<'tcx>>,
@@ -679,7 +679,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
         })
     }
 
-    fn pretty_path_append_impl(
+    fn pretty_print_path_with_impl(
         &mut self,
         print_prefix: impl FnOnce(&mut Self) -> Result<(), PrintError>,
         self_ty: Ty<'tcx>,
@@ -746,7 +746,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                     }
                     sig.print(self)?;
                     write!(self, " {{")?;
-                    self.print_value_path(def_id, args)?;
+                    self.pretty_print_value_path(def_id, args)?;
                     write!(self, "}}")?;
                 }
             }
@@ -1393,7 +1393,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                     if let ty::Tuple(tys) = principal.args.type_at(0).kind() {
                         let mut projections = predicates.projection_bounds();
                         if let (Some(proj), None) = (projections.next(), projections.next()) {
-                            p.pretty_fn_sig(
+                            p.pretty_print_fn_sig(
                                 tys,
                                 false,
                                 proj.skip_binder().term.as_type().expect("Return type was a const"),
@@ -1495,7 +1495,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
         Ok(())
     }
 
-    fn pretty_fn_sig(
+    fn pretty_print_fn_sig(
         &mut self,
         inputs: &[Ty<'tcx>],
         c_variadic: bool,
@@ -1532,7 +1532,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             ty::ConstKind::Unevaluated(ty::UnevaluatedConst { def, args }) => {
                 match self.tcx().def_kind(def) {
                     DefKind::Const | DefKind::AssocConst => {
-                        self.print_value_path(def, args)?;
+                        self.pretty_print_value_path(def, args)?;
                     }
                     DefKind::AnonConst => {
                         if def.is_local()
@@ -1541,13 +1541,13 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                         {
                             write!(self, "{snip}")?;
                         } else {
-                            // Do not call `print_value_path` as if a parent of this anon const is
-                            // an impl it will attempt to print out the impl trait ref i.e. `<T as
-                            // Trait>::{constant#0}`. This would cause printing to enter an
-                            // infinite recursion if the anon const is in the self type i.e.
-                            // `impl<T: Default> Default for [T; 32 - 1 - 1 - 1] {` where we would
-                            // try to print
-                            // `<[T; /* print constant#0 again */] as // Default>::{constant#0}`.
+                            // Do not call `pretty_print_value_path` as if a parent of this anon
+                            // const is an impl it will attempt to print out the impl trait ref
+                            // i.e. `<T as Trait>::{constant#0}`. This would cause printing to
+                            // enter an infinite recursion if the anon const is in the self type
+                            // i.e. `impl<T: Default> Default for [T; 32 - 1 - 1 - 1] {` where we
+                            // would try to print `<[T; /* print constant#0 again */] as //
+                            // Default>::{constant#0}`.
                             write!(
                                 self,
                                 "{}::{}",
@@ -1749,7 +1749,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                     self.tcx().try_get_global_alloc(prov.alloc_id())
                 {
                     self.typed_value(
-                        |this| this.print_value_path(instance.def_id(), instance.args),
+                        |this| this.pretty_print_value_path(instance.def_id(), instance.args),
                         |this| this.print_type(ty),
                         " as ",
                     )?;
@@ -1943,7 +1943,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                         let variant_idx =
                             contents.variant.expect("destructed const of adt without variant idx");
                         let variant_def = &def.variant(variant_idx);
-                        self.print_value_path(variant_def.def_id, args)?;
+                        self.pretty_print_value_path(variant_def.def_id, args)?;
                         match variant_def.ctor_kind() {
                             Some(CtorKind::Const) => {}
                             Some(CtorKind::Fn) => {
@@ -1979,7 +1979,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             }
             (_, ty::FnDef(def_id, args)) => {
                 // Never allowed today, but we still encounter them in invalid const args.
-                self.print_value_path(def_id, args)?;
+                self.pretty_print_value_path(def_id, args)?;
                 return Ok(());
             }
             // FIXME(oli-obk): also pretty print arrays and other aggregate constants by reading
@@ -2000,7 +2000,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
         Ok(())
     }
 
-    fn pretty_closure_as_impl(
+    fn pretty_print_closure_as_impl(
         &mut self,
         closure: ty::ClosureArgs<TyCtxt<'tcx>>,
     ) -> Result<(), PrintError> {
@@ -2335,7 +2335,7 @@ impl<'tcx> Printer<'tcx> for FmtPrinter<'_, 'tcx> {
         self_ty: Ty<'tcx>,
         trait_ref: Option<ty::TraitRef<'tcx>>,
     ) -> Result<(), PrintError> {
-        self.pretty_path_qualified(self_ty, trait_ref)?;
+        self.pretty_print_path_with_qualified(self_ty, trait_ref)?;
         self.empty_path = false;
         Ok(())
     }
@@ -2346,7 +2346,7 @@ impl<'tcx> Printer<'tcx> for FmtPrinter<'_, 'tcx> {
         self_ty: Ty<'tcx>,
         trait_ref: Option<ty::TraitRef<'tcx>>,
     ) -> Result<(), PrintError> {
-        self.pretty_path_append_impl(
+        self.pretty_print_path_with_impl(
             |p| {
                 print_prefix(p)?;
                 if !p.empty_path {
@@ -2424,7 +2424,7 @@ impl<'tcx> PrettyPrinter<'tcx> for FmtPrinter<'_, 'tcx> {
         self.0.const_infer_name_resolver.as_ref().and_then(|func| func(id))
     }
 
-    fn print_value_path(
+    fn pretty_print_value_path(
         &mut self,
         def_id: DefId,
         args: &'tcx [GenericArg<'tcx>],
@@ -2436,7 +2436,7 @@ impl<'tcx> PrettyPrinter<'tcx> for FmtPrinter<'_, 'tcx> {
         Ok(())
     }
 
-    fn print_in_binder<T>(&mut self, value: &ty::Binder<'tcx, T>) -> Result<(), PrintError>
+    fn pretty_print_in_binder<T>(&mut self, value: &ty::Binder<'tcx, T>) -> Result<(), PrintError>
     where
         T: Print<'tcx, Self> + TypeFoldable<TyCtxt<'tcx>>,
     {
@@ -2899,7 +2899,7 @@ where
     T: Print<'tcx, P> + TypeFoldable<TyCtxt<'tcx>>,
 {
     fn print(&self, p: &mut P) -> Result<(), PrintError> {
-        p.print_in_binder(self)
+        p.pretty_print_in_binder(self)
     }
 }
 
@@ -3097,7 +3097,7 @@ define_print! {
         }
 
         write!(p, "fn")?;
-        p.pretty_fn_sig(self.inputs(), self.c_variadic, self.output())?;
+        p.pretty_print_fn_sig(self.inputs(), self.c_variadic, self.output())?;
     }
 
     ty::TraitRef<'tcx> {
@@ -3321,7 +3321,7 @@ define_print_and_forward_display! {
     }
 
     PrintClosureAsImpl<'tcx> {
-        p.pretty_closure_as_impl(self.closure)?;
+        p.pretty_print_closure_as_impl(self.closure)?;
     }
 
     ty::ParamTy {

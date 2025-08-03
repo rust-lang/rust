@@ -83,7 +83,7 @@ impl<'tcx> Printer<'tcx> for TypeNamePrinter<'tcx> {
         self_ty: Ty<'tcx>,
         trait_ref: Option<ty::TraitRef<'tcx>>,
     ) -> Result<(), PrintError> {
-        self.pretty_path_qualified(self_ty, trait_ref)
+        self.pretty_print_path_with_qualified(self_ty, trait_ref)
     }
 
     fn print_path_with_impl(
@@ -92,7 +92,7 @@ impl<'tcx> Printer<'tcx> for TypeNamePrinter<'tcx> {
         self_ty: Ty<'tcx>,
         trait_ref: Option<ty::TraitRef<'tcx>>,
     ) -> Result<(), PrintError> {
-        self.pretty_path_append_impl(
+        self.pretty_print_path_with_impl(
             |cx| {
                 print_prefix(cx)?;
 

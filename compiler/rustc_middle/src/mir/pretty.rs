@@ -1969,7 +1969,7 @@ fn pretty_print_const_value_tcx<'tcx>(
                         let args = tcx.lift(args).unwrap();
                         let mut p = FmtPrinter::new(tcx, Namespace::ValueNS);
                         p.print_alloc_ids = true;
-                        p.print_value_path(variant_def.def_id, args)?;
+                        p.pretty_print_value_path(variant_def.def_id, args)?;
                         fmt.write_str(&p.into_buffer())?;
 
                         match variant_def.ctor_kind() {
@@ -2011,7 +2011,7 @@ fn pretty_print_const_value_tcx<'tcx>(
         (ConstValue::ZeroSized, ty::FnDef(d, s)) => {
             let mut p = FmtPrinter::new(tcx, Namespace::ValueNS);
             p.print_alloc_ids = true;
-            p.print_value_path(*d, s)?;
+            p.pretty_print_value_path(*d, s)?;
             fmt.write_str(&p.into_buffer())?;
             return Ok(());
         }
