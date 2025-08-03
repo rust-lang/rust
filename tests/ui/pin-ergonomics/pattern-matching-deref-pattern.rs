@@ -1,8 +1,6 @@
 //@ revisions: pin_ergonomics normal
 //@ edition:2024
-//@ check-pass
-// //@[normal] check-pass
-// //@[pin_ergonomics] rustc-env:RUSTC_LOG=rustc_hir_typeck::expr_use_visitor=DEBUG
+//@[pin_ergonomics] check-pass
 #![cfg_attr(pin_ergonomics, feature(pin_ergonomics))]
 #![feature(deref_patterns)]
 #![allow(incomplete_features)]
@@ -24,67 +22,99 @@ enum Baz<T, U> {
     Bar { x: T, y: U },
 }
 
-fn foo_mut<T: Unpin, U: Unpin>(foo: Pin<&mut Foo<T, U>>) {
-    let Foo { .. } = foo;
-    let Pin { .. } = foo;
-    let _ = || {
-        let Foo { .. } = foo;
-        let Pin { .. } = foo;
-    };
+trait IsPinMut {}
+trait IsPinConst {}
+impl<T: ?Sized> IsPinMut for Pin<&mut T> {}
+impl<T: ?Sized> IsPinConst for Pin<&T> {}
 
+fn assert_pin_mut<T: IsPinMut>(_: T) {}
+fn assert_pin_const<T: IsPinConst>(_: T) {}
+
+fn foo_mut<T: Unpin, U: Unpin>(mut foo: Pin<&mut Foo<T, U>>) {
+    let Foo { .. } = foo.as_mut();
+    let Foo { x, y } = foo.as_mut();
+    //[normal]~^ ERROR cannot move out of a shared reference
     #[cfg(pin_ergonomics)]
-    let Foo { x, y } = foo;
+    assert_pin_mut(x);
     #[cfg(pin_ergonomics)]
+    assert_pin_mut(y);
+    let Pin { .. } = foo.as_mut();
+
     let _ = || {
-        let Foo { x, y } = foo;
+        let Foo { .. } = foo.as_mut();
+        let Foo { x, y } = foo.as_mut();
+        //[normal]~^ ERROR cannot move out of a shared reference
+        #[cfg(pin_ergonomics)]
+        assert_pin_mut(x);
+        #[cfg(pin_ergonomics)]
+        assert_pin_mut(y);
+        let Pin { .. } = foo.as_mut();
     };
 }
 
 fn foo_const<T: Unpin, U: Unpin>(foo: Pin<&Foo<T, U>>) {
-    let Foo { .. } = foo;
-    let Pin { .. } = foo;
-    let _ = || {
-        let Foo { .. } = foo;
-        let Pin { .. } = foo;
-    };
+    let Foo { .. } = foo.as_ref();
+    let Foo { x, y } = foo.as_ref();
+    //[normal]~^ ERROR cannot move out of a shared reference
+    #[cfg(pin_ergonomics)]
+    assert_pin_const(x);
+    #[cfg(pin_ergonomics)]
+    assert_pin_const(y);
+    let Pin { .. } = foo.as_ref();
 
-    #[cfg(pin_ergonomics)]
-    let Foo { x, y } = foo;
-    #[cfg(pin_ergonomics)]
     let _ = || {
-        let Foo { x, y } = foo;
+        let Foo { .. } = foo.as_ref();
+        let Foo { x, y } = foo.as_ref();
+        //[normal]~^ ERROR cannot move out of a shared reference
+        #[cfg(pin_ergonomics)]
+        assert_pin_const(x);
+        #[cfg(pin_ergonomics)]
+        assert_pin_const(y);
+        let Pin { .. } = foo.as_ref();
     };
 }
 
-fn bar_mut<T: Unpin, U: Unpin>(bar: Pin<&mut Bar<T, U>>) {
-    let Bar(..) = bar;
-    let Pin { .. } = bar;
-    let _ = || {
-        let Bar(..) = bar;
-        let Pin { .. } = bar;
-    };
+fn bar_mut<T: Unpin, U: Unpin>(mut bar: Pin<&mut Bar<T, U>>) {
+    let Bar(..) = bar.as_mut();
+    let Bar(x, y) = bar.as_mut();
+    //[normal]~^ ERROR cannot move out of a shared reference
+    #[cfg(pin_ergonomics)]
+    assert_pin_mut(x);
+    #[cfg(pin_ergonomics)]
+    assert_pin_mut(y);
+    let Pin { .. } = bar.as_mut();
 
-    #[cfg(pin_ergonomics)]
-    let Bar(x, y) = bar;
-    #[cfg(pin_ergonomics)]
     let _ = || {
-        let Bar(x, y) = bar;
+        let Bar(..) = bar.as_mut();
+        let Bar(x, y) = bar.as_mut();
+        //[normal]~^ ERROR cannot move out of a shared reference
+        #[cfg(pin_ergonomics)]
+        assert_pin_mut(x);
+        #[cfg(pin_ergonomics)]
+        assert_pin_mut(y);
+        let Pin { .. } = bar.as_mut();
     };
 }
 
 fn bar_const<T: Unpin, U: Unpin>(bar: Pin<&Bar<T, U>>) {
-    let Bar(..) = bar;
-    let Pin { .. } = bar;
-    let _ = || {
-        let Bar(..) = bar;
-        let Pin { .. } = bar;
-    };
+    let Bar(..) = bar.as_ref();
+    let Bar(x, y) = bar.as_ref();
+    //[normal]~^ ERROR cannot move out of a shared reference
+    #[cfg(pin_ergonomics)]
+    assert_pin_const(x);
+    #[cfg(pin_ergonomics)]
+    assert_pin_const(y);
+    let Pin { .. } = bar.as_ref();
 
-    #[cfg(pin_ergonomics)]
-    let Bar(x, y) = bar;
-    #[cfg(pin_ergonomics)]
     let _ = || {
-        let Bar(x, y) = bar;
+        let Bar(..) = bar.as_ref();
+        let Bar(x, y) = bar.as_ref();
+        //[normal]~^ ERROR cannot move out of a shared reference
+        #[cfg(pin_ergonomics)]
+        assert_pin_const(x);
+        #[cfg(pin_ergonomics)]
+        assert_pin_const(y);
+        let Pin { .. } = bar.as_ref();
     };
 }
 
