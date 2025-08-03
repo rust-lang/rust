@@ -57,11 +57,11 @@ fn should_explore(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
         | DefKind::InlineConst
         | DefKind::ExternCrate
         | DefKind::Use
+        | DefKind::Ctor(..)
         | DefKind::ForeignMod => true,
 
         DefKind::TyParam
         | DefKind::ConstParam
-        | DefKind::Ctor(..)
         | DefKind::Field
         | DefKind::LifetimeParam
         | DefKind::Closure
@@ -103,8 +103,6 @@ struct MarkSymbolVisitor<'tcx> {
     repr_has_repr_simd: bool,
     in_pat: bool,
     ignore_variant_stack: Vec<DefId>,
-    // maps from tuple struct constructors to tuple struct items
-    struct_constructors: LocalDefIdMap<LocalDefId>,
     // maps from ADTs to ignored derived traits (e.g. Debug and Clone)
     // and the span of their respective impl (i.e., part of the derive
     // macro)
@@ -123,7 +121,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
 
     fn check_def_id(&mut self, def_id: DefId) {
         if let Some(def_id) = def_id.as_local() {
-            if should_explore(self.tcx, def_id) || self.struct_constructors.contains_key(&def_id) {
+            if should_explore(self.tcx, def_id) {
                 self.worklist.push((def_id, ComesFromAllowExpect::No));
             }
             self.live_symbols.insert(def_id);
@@ -348,7 +346,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
                 continue;
             }
 
-            let (id, comes_from_allow_expect) = work;
+            let (mut id, comes_from_allow_expect) = work;
 
             // Avoid accessing the HIR for the synthesized associated type generated for RPITITs.
             if self.tcx.is_impl_trait_in_trait(id.to_def_id()) {
@@ -356,9 +354,11 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
                 continue;
             }
 
-            // in the case of tuple struct constructors we want to check the item, not the generated
-            // tuple struct constructor function
-            let id = self.struct_constructors.get(&id).copied().unwrap_or(id);
+            // in the case of tuple struct constructors we want to check the item,
+            // not the generated tuple struct constructor function
+            if let DefKind::Ctor(..) = self.tcx.def_kind(id) {
+                id = self.tcx.local_parent(id);
+            }
 
             // When using `#[allow]` or `#[expect]` of `dead_code`, we do a QOL improvement
             // by declaring fn calls, statics, ... within said items as live, as well as
@@ -751,7 +751,6 @@ fn has_allow_dead_code_or_lang_attr(
 fn check_item<'tcx>(
     tcx: TyCtxt<'tcx>,
     worklist: &mut Vec<(LocalDefId, ComesFromAllowExpect)>,
-    struct_constructors: &mut LocalDefIdMap<LocalDefId>,
     unsolved_items: &mut Vec<(hir::ItemId, LocalDefId)>,
     id: hir::ItemId,
 ) {
@@ -768,12 +767,6 @@ fn check_item<'tcx>(
                     worklist.extend(
                         enum_def.variants.iter().map(|variant| (variant.def_id, comes_from_allow)),
                     );
-                }
-
-                for variant in enum_def.variants {
-                    if let Some(ctor_def_id) = variant.data.ctor_def_id() {
-                        struct_constructors.insert(ctor_def_id, variant.def_id);
-                    }
                 }
             }
         }
@@ -800,14 +793,6 @@ fn check_item<'tcx>(
                     // but inherent associated items can be visited and marked directly.
                     unsolved_items.push((id, local_def_id));
                 }
-            }
-        }
-        DefKind::Struct => {
-            let item = tcx.hir_item(id);
-            if let hir::ItemKind::Struct(_, _, ref variant_data) = item.kind
-                && let Some(ctor_def_id) = variant_data.ctor_def_id()
-            {
-                struct_constructors.insert(ctor_def_id, item.owner_id.def_id);
             }
         }
         DefKind::GlobalAsm => {
@@ -859,15 +844,9 @@ fn check_foreign_item(
 
 fn create_and_seed_worklist(
     tcx: TyCtxt<'_>,
-) -> (
-    Vec<(LocalDefId, ComesFromAllowExpect)>,
-    LocalDefIdMap<LocalDefId>,
-    Vec<(hir::ItemId, LocalDefId)>,
-) {
+) -> (Vec<(LocalDefId, ComesFromAllowExpect)>, Vec<(hir::ItemId, LocalDefId)>) {
     let effective_visibilities = &tcx.effective_visibilities(());
-    // see `MarkSymbolVisitor::struct_constructors`
     let mut unsolved_impl_item = Vec::new();
-    let mut struct_constructors = Default::default();
     let mut worklist = effective_visibilities
         .iter()
         .filter_map(|(&id, effective_vis)| {
@@ -885,7 +864,7 @@ fn create_and_seed_worklist(
 
     let crate_items = tcx.hir_crate_items(());
     for id in crate_items.free_items() {
-        check_item(tcx, &mut worklist, &mut struct_constructors, &mut unsolved_impl_item, id);
+        check_item(tcx, &mut worklist, &mut unsolved_impl_item, id);
     }
 
     for id in crate_items.trait_items() {
@@ -896,14 +875,14 @@ fn create_and_seed_worklist(
         check_foreign_item(tcx, &mut worklist, id);
     }
 
-    (worklist, struct_constructors, unsolved_impl_item)
+    (worklist, unsolved_impl_item)
 }
 
 fn live_symbols_and_ignored_derived_traits(
     tcx: TyCtxt<'_>,
     (): (),
 ) -> (LocalDefIdSet, LocalDefIdMap<FxIndexSet<DefId>>) {
-    let (worklist, struct_constructors, mut unsolved_items) = create_and_seed_worklist(tcx);
+    let (worklist, mut unsolved_items) = create_and_seed_worklist(tcx);
     let mut symbol_visitor = MarkSymbolVisitor {
         worklist,
         tcx,
@@ -913,7 +892,6 @@ fn live_symbols_and_ignored_derived_traits(
         repr_has_repr_simd: false,
         in_pat: false,
         ignore_variant_stack: vec![],
-        struct_constructors,
         ignored_derived_traits: Default::default(),
     };
     symbol_visitor.mark_live_symbols();
