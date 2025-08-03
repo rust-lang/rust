@@ -302,3 +302,15 @@ mod issue11059 {
         if let Some(o) = o { o } else { &S }
     }
 }
+
+fn issue15379() {
+    let opt = Some(0usize);
+    let opt_raw_ptr = &opt as *const Option<usize>;
+    let _ = unsafe { (*opt_raw_ptr).map_or(1, |o| o) };
+    //~^ option_if_let_else
+}
+
+fn issue15002() {
+    let res: Result<String, ()> = Ok("_".to_string());
+    let _ = res.map_or_else(|_| String::new(), |s| s.clone());
+}
