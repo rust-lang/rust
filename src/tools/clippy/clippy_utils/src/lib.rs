@@ -1983,7 +1983,7 @@ pub fn is_expr_untyped_identity_function(cx: &LateContext<'_>, expr: &Expr<'_>) 
             is_body_identity_function(cx, cx.tcx.hir_body(body))
         },
         ExprKind::Path(QPath::Resolved(_, path))
-            if path.segments.iter().all(|seg| seg.infer_args)
+            if path.segments.iter().all(|seg| seg.infer_args())
                 && let Some(did) = path.res.opt_def_id() =>
         {
             cx.tcx.is_diagnostic_item(sym::convert_identity, did)

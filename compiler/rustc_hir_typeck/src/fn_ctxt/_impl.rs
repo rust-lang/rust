@@ -1238,10 +1238,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     if !self.infer_args_for_err.contains(&index) {
                         // Check whether the user has provided generic arguments.
                         if let Some(data) = self.segments[index].args {
-                            return (Some(data), self.segments[index].infer_args);
+                            return (Some(data), self.segments[index].infer_args());
                         }
                     }
-                    return (None, self.segments[index].infer_args);
+                    return (None, self.segments[index].infer_args());
                 }
 
                 (None, true)
