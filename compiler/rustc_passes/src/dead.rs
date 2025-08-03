@@ -5,7 +5,6 @@
 
 use std::mem;
 
-use hir::ItemKind;
 use hir::def_id::{LocalDefIdMap, LocalDefIdSet};
 use rustc_abi::FieldIdx;
 use rustc_data_structures::fx::FxIndexSet;
@@ -14,7 +13,7 @@ use rustc_errors::MultiSpan;
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId, LocalModDefId};
 use rustc_hir::intravisit::{self, Visitor};
-use rustc_hir::{self as hir, ImplItem, ImplItemKind, Node, PatKind, QPath};
+use rustc_hir::{self as hir, Node, PatKind, QPath};
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::middle::privacy::Level;
 use rustc_middle::query::Providers;
@@ -930,25 +929,7 @@ impl<'tcx> DeadVisitor<'tcx> {
         parent_item: Option<LocalDefId>,
         report_on: ReportOn,
     ) {
-        fn get_parent_if_enum_variant<'tcx>(
-            tcx: TyCtxt<'tcx>,
-            may_variant: LocalDefId,
-        ) -> LocalDefId {
-            if let Node::Variant(_) = tcx.hir_node_by_def_id(may_variant)
-                && let Some(enum_did) = tcx.opt_parent(may_variant.to_def_id())
-                && let Some(enum_local_id) = enum_did.as_local()
-                && let Node::Item(item) = tcx.hir_node_by_def_id(enum_local_id)
-                && let ItemKind::Enum(..) = item.kind
-            {
-                enum_local_id
-            } else {
-                may_variant
-            }
-        }
-
-        let Some(&first_item) = dead_codes.first() else {
-            return;
-        };
+        let Some(&first_item) = dead_codes.first() else { return };
         let tcx = self.tcx;
 
         let first_lint_level = first_item.level;
@@ -957,40 +938,40 @@ impl<'tcx> DeadVisitor<'tcx> {
         let names: Vec<_> = dead_codes.iter().map(|item| item.name).collect();
         let spans: Vec<_> = dead_codes
             .iter()
-            .map(|item| match tcx.def_ident_span(item.def_id) {
-                Some(s) => s.with_ctxt(tcx.def_span(item.def_id).ctxt()),
-                None => tcx.def_span(item.def_id),
+            .map(|item| {
+                let span = tcx.def_span(item.def_id);
+                let ident_span = tcx.def_ident_span(item.def_id);
+                // FIXME(cjgillot) this SyntaxContext manipulation does not make any sense.
+                ident_span.map(|s| s.with_ctxt(span.ctxt())).unwrap_or(span)
             })
             .collect();
 
-        let descr = tcx.def_descr(first_item.def_id.to_def_id());
+        let mut descr = tcx.def_descr(first_item.def_id.to_def_id());
         // `impl` blocks are "batched" and (unlike other batching) might
         // contain different kinds of associated items.
-        let descr = if dead_codes.iter().any(|item| tcx.def_descr(item.def_id.to_def_id()) != descr)
-        {
-            "associated item"
-        } else {
-            descr
-        };
+        if dead_codes.iter().any(|item| tcx.def_descr(item.def_id.to_def_id()) != descr) {
+            descr = "associated item"
+        }
+
         let num = dead_codes.len();
         let multiple = num > 6;
         let name_list = names.into();
 
-        let parent_info = if let Some(parent_item) = parent_item {
+        let parent_info = parent_item.map(|parent_item| {
             let parent_descr = tcx.def_descr(parent_item.to_def_id());
             let span = if let DefKind::Impl { .. } = tcx.def_kind(parent_item) {
                 tcx.def_span(parent_item)
             } else {
                 tcx.def_ident_span(parent_item).unwrap()
             };
-            Some(ParentInfo { num, descr, parent_descr, span })
-        } else {
-            None
-        };
+            ParentInfo { num, descr, parent_descr, span }
+        });
 
-        let encl_def_id = parent_item.unwrap_or(first_item.def_id);
-        // If parent of encl_def_id is an enum, use the parent ID instead.
-        let encl_def_id = get_parent_if_enum_variant(tcx, encl_def_id);
+        let mut encl_def_id = parent_item.unwrap_or(first_item.def_id);
+        // `ignored_derived_traits` is computed for the enum, not for the variants.
+        if let DefKind::Variant = tcx.def_kind(encl_def_id) {
+            encl_def_id = tcx.local_parent(encl_def_id);
+        }
 
         let ignored_derived_impls =
             self.ignored_derived_traits.get(&encl_def_id).map(|ign_traits| {
@@ -1005,31 +986,6 @@ impl<'tcx> DeadVisitor<'tcx> {
                     trait_list_len,
                 }
             });
-
-        let enum_variants_with_same_name = dead_codes
-            .iter()
-            .filter_map(|dead_item| {
-                if let Node::ImplItem(ImplItem {
-                    kind: ImplItemKind::Fn(..) | ImplItemKind::Const(..),
-                    ..
-                }) = tcx.hir_node_by_def_id(dead_item.def_id)
-                    && let Some(impl_did) = tcx.opt_parent(dead_item.def_id.to_def_id())
-                    && let DefKind::Impl { of_trait: false } = tcx.def_kind(impl_did)
-                    && let ty::Adt(maybe_enum, _) = tcx.type_of(impl_did).skip_binder().kind()
-                    && maybe_enum.is_enum()
-                    && let Some(variant) =
-                        maybe_enum.variants().iter().find(|i| i.name == dead_item.name)
-                {
-                    Some(crate::errors::EnumVariantSameName {
-                        dead_descr: tcx.def_descr(dead_item.def_id.to_def_id()),
-                        dead_name: dead_item.name,
-                        variant_span: tcx.def_span(variant.def_id),
-                    })
-                } else {
-                    None
-                }
-            })
-            .collect();
 
         let diag = match report_on {
             ReportOn::TupleField => {
@@ -1076,16 +1032,42 @@ impl<'tcx> DeadVisitor<'tcx> {
                     ignored_derived_impls,
                 }
             }
-            ReportOn::NamedField => MultipleDeadCodes::DeadCodes {
-                multiple,
-                num,
-                descr,
-                participle,
-                name_list,
-                parent_info,
-                ignored_derived_impls,
-                enum_variants_with_same_name,
-            },
+            ReportOn::NamedField => {
+                let enum_variants_with_same_name = dead_codes
+                    .iter()
+                    .filter_map(|dead_item| {
+                        if let DefKind::AssocFn | DefKind::AssocConst =
+                            tcx.def_kind(dead_item.def_id)
+                            && let impl_did = tcx.local_parent(dead_item.def_id)
+                            && let DefKind::Impl { of_trait: false } = tcx.def_kind(impl_did)
+                            && let ty::Adt(maybe_enum, _) =
+                                tcx.type_of(impl_did).instantiate_identity().kind()
+                            && maybe_enum.is_enum()
+                            && let Some(variant) =
+                                maybe_enum.variants().iter().find(|i| i.name == dead_item.name)
+                        {
+                            Some(crate::errors::EnumVariantSameName {
+                                dead_descr: tcx.def_descr(dead_item.def_id.to_def_id()),
+                                dead_name: dead_item.name,
+                                variant_span: tcx.def_span(variant.def_id),
+                            })
+                        } else {
+                            None
+                        }
+                    })
+                    .collect();
+
+                MultipleDeadCodes::DeadCodes {
+                    multiple,
+                    num,
+                    descr,
+                    participle,
+                    name_list,
+                    parent_info,
+                    ignored_derived_impls,
+                    enum_variants_with_same_name,
+                }
+            }
         };
 
         let hir_id = tcx.local_def_id_to_hir_id(first_item.def_id);
