@@ -21,7 +21,7 @@ use crate::delegate::SolverDelegate;
 use crate::solve::inspect::ProbeKind;
 use crate::solve::{
     BuiltinImplSource, CandidateSource, CanonicalResponse, Certainty, EvalCtxt, Goal, GoalSource,
-    MaybeCause, NoSolution, ParamEnvSource, QueryResult,
+    MaybeCause, NoSolution, ParamEnvSource, QueryResult, has_no_inference_or_external_constraints,
 };
 
 enum AliasBoundKind {
@@ -395,9 +395,30 @@ where
 
         match assemble_from {
             AssembleCandidatesFrom::All => {
-                self.assemble_impl_candidates(goal, &mut candidates);
                 self.assemble_builtin_impl_candidates(goal, &mut candidates);
-                self.assemble_object_bound_candidates(goal, &mut candidates);
+                // For performance we only assemble impls if there are no candidates
+                // which would shadow them. This is necessary to avoid hangs in rayon,
+                // see trait-system-refactor-initiative#109 for more details.
+                //
+                // We always assemble builtin impls as trivial builtin impls have a higher
+                // priority than where-clauses.
+                //
+                // We only do this if any such candidate applies without any constraints
+                // as we may want to weaken inference guidance in the future and don't want
+                // to worry about causing major performance regressions when doing so.
+                // See trait-system-refactor-initiative#226 for some ideas here.
+                if TypingMode::Coherence == self.typing_mode()
+                    || !candidates.iter().any(|c| {
+                        matches!(
+                            c.source,
+                            CandidateSource::ParamEnv(ParamEnvSource::NonGlobal)
+                                | CandidateSource::AliasBound
+                        ) && has_no_inference_or_external_constraints(c.result)
+                    })
+                {
+                    self.assemble_impl_candidates(goal, &mut candidates);
+                    self.assemble_object_bound_candidates(goal, &mut candidates);
+                }
             }
             AssembleCandidatesFrom::EnvAndBounds => {}
         }
