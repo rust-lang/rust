@@ -343,7 +343,7 @@ impl SourceFileRange {
     /// loaded.
     pub fn as_str(&self) -> Option<&str> {
         (self.sf.src.as_ref().map(|src| src.as_str()))
-            .or_else(|| self.sf.external_src.get().and_then(|src| src.get_source()))
+            .or_else(|| self.sf.external_src.get()?.get_source())
             .and_then(|x| x.get(self.range.clone()))
     }
 }
