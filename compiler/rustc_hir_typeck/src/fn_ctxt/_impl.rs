@@ -23,7 +23,7 @@ use rustc_lint::builtin::SELF_CONSTRUCTOR_FROM_OUTER_ITEM;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, AutoBorrowMutability};
 use rustc_middle::ty::{
     self, AdtKind, CanonicalUserType, GenericArgsRef, GenericParamDefKind, IsIdentity,
-    SizedTraitKind, Ty, TyCtxt, TypeFoldable, TypeVisitable, TypeVisitableExt, Upcast, UserArgs,
+    SizedTraitKind, Ty, TyCtxt, TypeFoldable, TypeVisitable, TypeVisitableExt, UserArgs,
     UserSelfTy,
 };
 use rustc_middle::{bug, span_bug};
@@ -460,29 +460,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 ty,
                 def_id,
                 cause,
-            );
-        }
-    }
-
-    pub(crate) fn register_negative_bound(
-        &self,
-        ty: Ty<'tcx>,
-        def_id: DefId,
-        cause: traits::ObligationCause<'tcx>,
-    ) {
-        if !ty.references_error() {
-            let trait_ref = ty::TraitRef::new(self.tcx, def_id, [ty]);
-            let predicate =
-                ty::TraitPredicate { trait_ref, polarity: ty::PredicatePolarity::Negative }
-                    .upcast(self.tcx);
-            self.fulfillment_cx.borrow_mut().register_predicate_obligation(
-                self,
-                traits::Obligation {
-                    cause,
-                    recursion_depth: 0,
-                    param_env: self.param_env,
-                    predicate,
-                },
             );
         }
     }

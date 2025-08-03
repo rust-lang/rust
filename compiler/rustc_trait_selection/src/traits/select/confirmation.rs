@@ -250,9 +250,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 bug!("`PointeeSized` is removing during lowering");
             }
             Some(LangItem::Copy | LangItem::Clone) => self.copy_clone_conditions(self_ty),
-            Some(LangItem::Unpin) if obligation.polarity() == ty::PredicatePolarity::Negative => {
-                self.neg_unpin_conditions(self_ty)
-            }
             Some(LangItem::FusedIterator) => {
                 if self.coroutine_is_gen(self_ty) {
                     ty::Binder::dummy(vec![])
@@ -278,7 +275,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             cause,
             obligation.recursion_depth + 1,
             trait_def,
-            obligation.polarity(),
             types,
         )
     }
@@ -405,7 +401,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 cause.clone(),
                 obligation.recursion_depth + 1,
                 obligation.predicate.def_id(),
-                obligation.polarity(),
                 constituents.types,
             );
 
