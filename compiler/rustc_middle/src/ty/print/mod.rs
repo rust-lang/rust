@@ -126,10 +126,6 @@ pub trait Printer<'tcx>: Sized {
         trait_ref: Option<ty::TraitRef<'tcx>>,
     ) -> Result<(), PrintError>;
 
-    fn should_truncate(&mut self) -> bool {
-        false
-    }
-
     // Defaults (should not be overridden):
 
     #[instrument(skip(self), level = "debug")]

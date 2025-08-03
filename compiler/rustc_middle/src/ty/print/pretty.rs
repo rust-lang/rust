@@ -333,6 +333,10 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
         f: impl FnOnce(&mut Self) -> Result<(), PrintError>,
     ) -> Result<(), PrintError>;
 
+    fn should_truncate(&mut self) -> bool {
+        false
+    }
+
     /// Returns `true` if the region should be printed in
     /// optional positions, e.g., `&'a T` or `dyn Tr + 'b`.
     /// This is typically the case for all non-`'_` regions.
@@ -2295,10 +2299,6 @@ impl<'tcx> Printer<'tcx> for FmtPrinter<'_, 'tcx> {
         }
     }
 
-    fn should_truncate(&mut self) -> bool {
-        !self.type_length_limit.value_within_limit(self.printed_type_count)
-    }
-
     fn print_dyn_existential(
         &mut self,
         predicates: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
@@ -2485,6 +2485,10 @@ impl<'tcx> PrettyPrinter<'tcx> for FmtPrinter<'_, 'tcx> {
 
         write!(self, ">")?;
         Ok(())
+    }
+
+    fn should_truncate(&mut self) -> bool {
+        !self.type_length_limit.value_within_limit(self.printed_type_count)
     }
 
     fn should_print_region(&self, region: ty::Region<'tcx>) -> bool {
