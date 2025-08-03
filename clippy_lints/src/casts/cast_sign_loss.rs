@@ -66,7 +66,7 @@ pub(super) fn check<'cx>(
 
                     diag.span_suggestion(
                         expr.span,
-                        format!("if this is intentional, consider using `{method}` instead"),
+                        format!("if this is intentional, use `{method}` instead"),
                         format!("{}.{method}", sugg.maybe_paren()),
                         app,
                     );
