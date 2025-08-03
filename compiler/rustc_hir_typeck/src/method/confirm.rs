@@ -116,7 +116,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         // If there is a `Self: Sized` bound and `Self` is a trait object, it is possible that
         // something which derefs to `Self` actually implements the trait and the caller
         // wanted to make a static dispatch on it but forgot to import the trait.
-        // See test `tests/ui/issue-35976.rs`.
+        // See test `tests/ui/issues/issue-35976.rs`.
         //
         // In that case, we'll error anyway, but we'll also re-run the search with all traits
         // in scope, and if we find another method which can be used, we'll output an
