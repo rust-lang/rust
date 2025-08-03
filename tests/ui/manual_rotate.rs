@@ -44,3 +44,20 @@ fn main() {
     let mut l = vec![12_u8, 34];
     let y = (l.pop().unwrap() << 3) + (l.pop().unwrap() >> 5);
 }
+
+fn issue13028() {
+    let s = 5;
+    let u = 5;
+    let x: u32 = 123456;
+
+    let _ = (x << s) | (x >> (32 - s));
+    //~^ manual_rotate
+    let _ = (x << s) | (x >> (31 ^ s));
+    //~^ manual_rotate
+    // still works with consts
+    let _ = (x >> 9) | (x << (32 - 9));
+    //~^ manual_rotate
+
+    // don't lint, because `s` and `u` are different variables, albeit with the same value
+    let _ = (x << s) | (x >> (32 - u));
+}

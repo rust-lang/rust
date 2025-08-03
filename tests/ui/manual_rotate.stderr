@@ -73,5 +73,23 @@ error: there is no need to manually implement bit rotation
 LL |     let _ = (x_i64 >> N) | (x_i64 << (64 - N));
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: this expression can be rewritten as: `x_i64.rotate_right(N)`
 
-error: aborting due to 12 previous errors
+error: there is no need to manually implement bit rotation
+  --> tests/ui/manual_rotate.rs:53:13
+   |
+LL |     let _ = (x << s) | (x >> (32 - s));
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: this expression can be rewritten as: `x.rotate_left(s)`
+
+error: there is no need to manually implement bit rotation
+  --> tests/ui/manual_rotate.rs:55:13
+   |
+LL |     let _ = (x << s) | (x >> (31 ^ s));
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: this expression can be rewritten as: `x.rotate_left(s)`
+
+error: there is no need to manually implement bit rotation
+  --> tests/ui/manual_rotate.rs:58:13
+   |
+LL |     let _ = (x >> 9) | (x << (32 - 9));
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: this expression can be rewritten as: `x.rotate_right(9)`
+
+error: aborting due to 15 previous errors
 
