@@ -259,7 +259,9 @@ impl TestCx<'_> {
                 Some(version) => {
                     println!("NOTE: compiletest thinks it is using GDB version {}", version);
 
-                    if version > extract_gdb_version("7.4").unwrap() {
+                    if !self.props.disable_gdb_pretty_printers
+                        && version > extract_gdb_version("7.4").unwrap()
+                    {
                         // Add the directory containing the pretty printers to
                         // GDB's script auto loading safe path
                         script_str.push_str(&format!(
