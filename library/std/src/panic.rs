@@ -108,8 +108,6 @@ impl<'a> PanicHookInfo<'a> {
     /// # Example
     ///
     /// ```should_panic
-    /// #![feature(panic_payload_as_str)]
-    ///
     /// std::panic::set_hook(Box::new(|panic_info| {
     ///     if let Some(s) = panic_info.payload_as_str() {
     ///         println!("panic occurred: {s:?}");
@@ -122,7 +120,7 @@ impl<'a> PanicHookInfo<'a> {
     /// ```
     #[must_use]
     #[inline]
-    #[unstable(feature = "panic_payload_as_str", issue = "125175")]
+    #[stable(feature = "panic_payload_as_str", since = "CURRENT_RUSTC_VERSION")]
     pub fn payload_as_str(&self) -> Option<&str> {
         if let Some(s) = self.payload.downcast_ref::<&str>() {
             Some(s)
