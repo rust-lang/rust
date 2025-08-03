@@ -2437,12 +2437,7 @@ impl<'tcx> PrettyPrinter<'tcx> for FmtPrinter<'_, 'tcx> {
     where
         T: Print<'tcx, Self> + TypeFoldable<TyCtxt<'tcx>>,
     {
-        let old_region_index = self.region_index;
-        let (new_value, _) = self.name_all_regions(value, WrapBinderMode::ForAll)?;
-        new_value.print(self)?;
-        self.region_index = old_region_index;
-        self.binder_depth -= 1;
-        Ok(())
+        self.wrap_binder(value, WrapBinderMode::ForAll, |new_value, this| new_value.print(this))
     }
 
     fn wrap_binder<T, C: FnOnce(&T, &mut Self) -> Result<(), PrintError>>(
