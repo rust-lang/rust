@@ -3622,6 +3622,7 @@ dependencies = [
  "rustc_hir",
  "rustc_incremental",
  "rustc_index",
+ "rustc_lint_defs",
  "rustc_macros",
  "rustc_metadata",
  "rustc_middle",
