@@ -26,9 +26,9 @@ struct Data {
 #[derive(Deserialize)]
 struct XMLIntrinsic {
     #[serde(rename = "return")]
-    return_data: Parameter,
+    pub return_data: Parameter,
     #[serde(rename = "@name")]
-    name: String,
+    pub name: String,
     // #[serde(rename = "@tech")]
     // tech: String,
     #[serde(rename = "CPUID", default)]
