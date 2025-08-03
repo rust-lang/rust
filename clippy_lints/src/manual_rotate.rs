@@ -85,17 +85,18 @@ impl LateLintPass<'_> for ManualRotate {
             let const_eval = ConstEvalCtxt::new(cx);
 
             let ctxt = expr.span.ctxt();
-            if let Some(Constant::Int(l_amount)) = const_eval.eval_local(l_amount, ctxt)
-                && let Some(Constant::Int(r_amount)) = const_eval.eval_local(r_amount, ctxt)
-                && l_amount + r_amount == u128::from(bit_width)
+            if let Some(Constant::Int(l_amount_val)) = const_eval.eval_local(l_amount, ctxt)
+                && let Some(Constant::Int(r_amount_val)) = const_eval.eval_local(r_amount, ctxt)
+                && l_amount_val + r_amount_val == u128::from(bit_width)
             {
-                let (shift_function, amount) = if l_amount < r_amount {
+                let (shift_function, amount) = if l_amount_val < r_amount_val {
                     (l_shift_dir, l_amount)
                 } else {
                     (r_shift_dir, r_amount)
                 };
                 let mut applicability = Applicability::MachineApplicable;
                 let expr_sugg = sugg::Sugg::hir_with_applicability(cx, l_expr, "_", &mut applicability).maybe_paren();
+                let amount = sugg::Sugg::hir_with_applicability(cx, amount, "_", &mut applicability);
                 span_lint_and_sugg(
                     cx,
                     MANUAL_ROTATE,

@@ -4,6 +4,7 @@ fn main() {
     let (x_u8, x_u16, x_u32, x_u64) = (1u8, 1u16, 1u32, 1u64);
     let (x_i8, x_i16, x_i32, x_i64) = (1i8, 1i16, 1i32, 1i64);
     let a_u32 = 1u32;
+    const N: u32 = 5;
     // True positives
     let y_u8 = x_u8.rotate_right(3);
     //~^ manual_rotate
@@ -28,6 +29,9 @@ fn main() {
     let y_u32_complex = (x_u32 | 3256).rotate_right(8);
     //~^ manual_rotate
     let y_u64_as = (x_u32 as u64).rotate_right(8);
+    //~^ manual_rotate
+    // shift by a const
+    let _ = x_i64.rotate_right(N);
     //~^ manual_rotate
 
     // False positives - can't be replaced with a rotation
