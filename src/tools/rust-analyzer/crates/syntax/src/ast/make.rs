@@ -231,6 +231,23 @@ pub fn ty_fn_ptr<I: Iterator<Item = Param>>(
     }
 }
 
+pub fn item_list(body: Option<Vec<ast::Item>>) -> ast::ItemList {
+    let is_break_braces = body.is_some();
+    let body_newline = if is_break_braces { "\n" } else { "" };
+    let body_indent = if is_break_braces { "    " } else { "" };
+
+    let body = match body {
+        Some(bd) => bd.iter().map(|elem| elem.to_string()).join("\n\n    "),
+        None => String::new(),
+    };
+    ast_from_text(&format!("mod C {{{body_newline}{body_indent}{body}{body_newline}}}"))
+}
+
+pub fn mod_(name: ast::Name, body: Option<ast::ItemList>) -> ast::Module {
+    let body = body.map_or(";".to_owned(), |body| format!(" {body}"));
+    ast_from_text(&format!("mod {name}{body}"))
+}
+
 pub fn assoc_item_list(body: Option<Vec<ast::AssocItem>>) -> ast::AssocItemList {
     let is_break_braces = body.is_some();
     let body_newline = if is_break_braces { "\n".to_owned() } else { String::new() };
