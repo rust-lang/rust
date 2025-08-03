@@ -557,7 +557,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let binding_mode = adjust_binding_mode(Pinnedness::Pinned, inner_mutability);
                 // If the pinnedness is `Not`, it means the pattern is unpinned
                 // and thus requires an `Unpin` bound.
-                if binding_mode == ByRef::Yes(Pinnedness::Not, Mutability::Mut) {
+                if matches!(binding_mode, ByRef::Yes(Pinnedness::Not, _)) {
                     self.register_bound(
                         inner_ty,
                         self.tcx.require_lang_item(hir::LangItem::Unpin, pat.span),
@@ -2683,9 +2683,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected = self.try_structurally_resolve_type(pat.span, expected);
         // Determine whether we're consuming an inherited reference and resetting the default
         // binding mode, based on edition and enabled experimental features.
-        // FIXME(pin_ergonomics): since `&pin` pattern is supported, the condition here
-        // should be adjusted to `pat_pin == inh_pin`
-        if let ByRef::Yes(Pinnedness::Not, inh_mut) = pat_info.binding_mode {
+        if let ByRef::Yes(inh_pin, inh_mut) = pat_info.binding_mode
+            // FIXME(pin_ergonomics): since `&pin` pattern is supported, the condition here
+            // should be adjusted to `pat_pin == inh_pin`
+            && (!self.tcx.features().pin_ergonomics() || inh_pin == Pinnedness::Not)
+        {
             match self.ref_pat_matches_inherited_ref(pat.span.edition()) {
                 InheritedRefMatchRule::EatOuter => {
                     // ref pattern attempts to consume inherited reference
@@ -2704,22 +2706,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     return expected;
                 }
                 InheritedRefMatchRule::EatInner => {
-                    let expected_ref_or_pinned_ref = || {
-                        if self.tcx.features().pin_ergonomics()
-                            && let Some(ty::Ref(_, _, r_mutbl)) =
-                                expected.pinned_ty().map(|ty| *ty.kind())
-                            && pat_mutbl <= r_mutbl
-                        {
-                            return Some((Pinnedness::Pinned, r_mutbl));
-                        }
-                        if let ty::Ref(_, _, r_mutbl) = *expected.kind()
-                            && pat_mutbl <= r_mutbl
-                        {
-                            return Some((Pinnedness::Not, r_mutbl));
-                        }
-                        None
-                    };
-                    if let Some((_, r_mutbl)) = expected_ref_or_pinned_ref() {
+                    if let ty::Ref(_, _, r_mutbl) = *expected.kind()
+                        && pat_mutbl <= r_mutbl
+                    {
                         // Match against the reference type; don't consume the inherited ref.
                         // NB: The check for compatible pattern and ref type mutability assumes that
                         // `&` patterns can match against mutable references (RFC 3627, Rule 5). If

@@ -1,66 +1,123 @@
-error: mix of deref patterns and normal constructors
+error[E0308]: mismatched types
   --> $DIR/pattern-matching-mix-deref-pattern.rs:27:9
    |
-LL |         Foo { .. } => {}
-   |         ^^^^^^^^^^ matches on the result of dereferencing `Pin<&mut Foo<T, U>>`
-LL |         Pin { .. } => {}
-   |         ^^^^^^^^^^ matches directly on `Pin<&mut Foo<T, U>>`
-
-error: mix of deref patterns and normal constructors
-  --> $DIR/pattern-matching-mix-deref-pattern.rs:31:9
+LL |     match foo {
+   |           --- this expression has type `Pin<&mut Foo<T, U>>`
+LL |         Foo { x, y } => {}
+   |         ^^^^^^^^^^^^ expected `Pin<&mut Foo<T, U>>`, found `Foo<_, _>`
    |
-LL |         Foo { .. } => {}
-   |         ^^^^^^^^^^ matches on the result of dereferencing `Pin<&mut Foo<T, U>>`
-LL |         Pin { .. } => {}
-   |         ^^^^^^^^^^ matches directly on `Pin<&mut Foo<T, U>>`
-
-error: mix of deref patterns and normal constructors
-  --> $DIR/pattern-matching-mix-deref-pattern.rs:49:9
+   = note: expected struct `Pin<&mut Foo<T, U>>`
+              found struct `Foo<_, _>`
+help: consider dereferencing to access the inner value using the Deref trait
    |
-LL |         Foo { .. } => {}
-   |         ^^^^^^^^^^ matches on the result of dereferencing `Pin<&Foo<T, U>>`
-LL |         Pin { .. } => {}
-   |         ^^^^^^^^^^ matches directly on `Pin<&Foo<T, U>>`
+LL |     match *foo {
+   |           +
 
-error: mix of deref patterns and normal constructors
-  --> $DIR/pattern-matching-mix-deref-pattern.rs:53:9
+error[E0308]: mismatched types
+  --> $DIR/pattern-matching-mix-deref-pattern.rs:35:9
    |
-LL |         Foo { .. } => {}
-   |         ^^^^^^^^^^ matches on the result of dereferencing `Pin<&Foo<T, U>>`
-LL |         Pin { .. } => {}
-   |         ^^^^^^^^^^ matches directly on `Pin<&Foo<T, U>>`
+LL |     let _ = || match foo {
+   |                      --- this expression has type `Pin<&mut Foo<T, U>>`
+LL |         Foo { x, y } => {}
+   |         ^^^^^^^^^^^^ expected `Pin<&mut Foo<T, U>>`, found `Foo<_, _>`
+   |
+   = note: expected struct `Pin<&mut Foo<T, U>>`
+              found struct `Foo<_, _>`
+help: consider dereferencing to access the inner value using the Deref trait
+   |
+LL |     let _ = || match *foo {
+   |                      +
 
-error: mix of deref patterns and normal constructors
-  --> $DIR/pattern-matching-mix-deref-pattern.rs:71:9
+error[E0308]: mismatched types
+  --> $DIR/pattern-matching-mix-deref-pattern.rs:46:9
    |
-LL |         Bar(..) => {}
-   |         ^^^^^^^ matches on the result of dereferencing `Pin<&mut Bar<T, U>>`
-LL |         Pin { .. } => {}
-   |         ^^^^^^^^^^ matches directly on `Pin<&mut Bar<T, U>>`
+LL |     match foo {
+   |           --- this expression has type `Pin<&Foo<T, U>>`
+LL |         Foo { x, y } => {}
+   |         ^^^^^^^^^^^^ expected `Pin<&Foo<T, U>>`, found `Foo<_, _>`
+   |
+   = note: expected struct `Pin<&Foo<T, U>>`
+              found struct `Foo<_, _>`
+help: consider dereferencing to access the inner value using the Deref trait
+   |
+LL |     match *foo {
+   |           +
 
-error: mix of deref patterns and normal constructors
-  --> $DIR/pattern-matching-mix-deref-pattern.rs:75:9
+error[E0308]: mismatched types
+  --> $DIR/pattern-matching-mix-deref-pattern.rs:54:9
    |
-LL |         Bar(..) => {}
-   |         ^^^^^^^ matches on the result of dereferencing `Pin<&mut Bar<T, U>>`
-LL |         Pin { .. } => {}
-   |         ^^^^^^^^^^ matches directly on `Pin<&mut Bar<T, U>>`
+LL |     let _ = || match foo {
+   |                      --- this expression has type `Pin<&Foo<T, U>>`
+LL |         Foo { x, y } => {}
+   |         ^^^^^^^^^^^^ expected `Pin<&Foo<T, U>>`, found `Foo<_, _>`
+   |
+   = note: expected struct `Pin<&Foo<T, U>>`
+              found struct `Foo<_, _>`
+help: consider dereferencing to access the inner value using the Deref trait
+   |
+LL |     let _ = || match *foo {
+   |                      +
 
-error: mix of deref patterns and normal constructors
-  --> $DIR/pattern-matching-mix-deref-pattern.rs:93:9
+error[E0308]: mismatched types
+  --> $DIR/pattern-matching-mix-deref-pattern.rs:65:9
    |
-LL |         Bar(..) => {}
-   |         ^^^^^^^ matches on the result of dereferencing `Pin<&Bar<T, U>>`
-LL |         Pin { .. } => {}
-   |         ^^^^^^^^^^ matches directly on `Pin<&Bar<T, U>>`
+LL |     match bar {
+   |           --- this expression has type `Pin<&mut Bar<T, U>>`
+LL |         Bar(x, y) => {}
+   |         ^^^^^^^^^ expected `Pin<&mut Bar<T, U>>`, found `Bar<_, _>`
+   |
+   = note: expected struct `Pin<&mut Bar<T, U>>`
+              found struct `Bar<_, _>`
+help: consider dereferencing to access the inner value using the Deref trait
+   |
+LL |     match *bar {
+   |           +
 
-error: mix of deref patterns and normal constructors
-  --> $DIR/pattern-matching-mix-deref-pattern.rs:97:9
+error[E0308]: mismatched types
+  --> $DIR/pattern-matching-mix-deref-pattern.rs:73:9
    |
-LL |         Bar(..) => {}
-   |         ^^^^^^^ matches on the result of dereferencing `Pin<&Bar<T, U>>`
-LL |         Pin { .. } => {}
-   |         ^^^^^^^^^^ matches directly on `Pin<&Bar<T, U>>`
+LL |     let _ = || match bar {
+   |                      --- this expression has type `Pin<&mut Bar<T, U>>`
+LL |         Bar(x, y) => {}
+   |         ^^^^^^^^^ expected `Pin<&mut Bar<T, U>>`, found `Bar<_, _>`
+   |
+   = note: expected struct `Pin<&mut Bar<T, U>>`
+              found struct `Bar<_, _>`
+help: consider dereferencing to access the inner value using the Deref trait
+   |
+LL |     let _ = || match *bar {
+   |                      +
+
+error[E0308]: mismatched types
+  --> $DIR/pattern-matching-mix-deref-pattern.rs:84:9
+   |
+LL |     match bar {
+   |           --- this expression has type `Pin<&Bar<T, U>>`
+LL |         Bar(x, y) => {}
+   |         ^^^^^^^^^ expected `Pin<&Bar<T, U>>`, found `Bar<_, _>`
+   |
+   = note: expected struct `Pin<&Bar<T, U>>`
+              found struct `Bar<_, _>`
+help: consider dereferencing to access the inner value using the Deref trait
+   |
+LL |     match *bar {
+   |           +
+
+error[E0308]: mismatched types
+  --> $DIR/pattern-matching-mix-deref-pattern.rs:92:9
+   |
+LL |     let _ = || match bar {
+   |                      --- this expression has type `Pin<&Bar<T, U>>`
+LL |         Bar(x, y) => {}
+   |         ^^^^^^^^^ expected `Pin<&Bar<T, U>>`, found `Bar<_, _>`
+   |
+   = note: expected struct `Pin<&Bar<T, U>>`
+              found struct `Bar<_, _>`
+help: consider dereferencing to access the inner value using the Deref trait
+   |
+LL |     let _ = || match *bar {
+   |                      +
 
 error: aborting due to 8 previous errors
 
+For more information about this error, try `rustc --explain E0308`.

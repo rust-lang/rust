@@ -1,6 +1,5 @@
 //@ revisions: pin_ergonomics normal
 //@ edition:2024
-//@[pin_ergonomics] check-pass
 #![cfg_attr(pin_ergonomics, feature(pin_ergonomics))]
 #![feature(if_let_guard, negative_impls)]
 #![allow(incomplete_features)]
@@ -105,6 +104,42 @@ fn pin_mut_slice<T, U>(foo_mut: Pin<&mut [Foo<T, U>]>, foo_const: Pin<&[Foo<T, U
         assert_pin_const(x);
         assert_pin_const(y);
     }
+}
+
+fn tuple_ref_mut_pat_and_pin_mut_of_tuple_mut_ty<'a, T, U>(
+    (&mut x,): Pin<&'a mut (&'a mut Foo<T, U>,)>, //[normal]~ ERROR mismatched type
+) -> Pin<&'a mut Foo<T, U>> {
+    x
+}
+
+fn tuple_ref_mut_pat_and_pin_mut_of_mut_tuple_ty<'a, T, U>(
+    (&mut x,): Pin<&'a mut &'a mut (Foo<T, U>,)>, //~ ERROR mismatched type
+) -> Pin<&'a mut Foo<T, U>> {
+    x
+}
+
+fn ref_mut_tuple_pat_and_pin_mut_of_tuple_mut_ty<'a, T, U>(
+    &mut (x,): Pin<&'a mut (&'a mut Foo<T, U>,)>, //~ ERROR mismatched type
+) -> Pin<&'a mut Foo<T, U>> {
+    x
+}
+
+fn ref_mut_tuple_pat_and_pin_mut_of_mut_tuple_ty<'a, T, U>(
+    &mut (x,): Pin<&'a mut &'a mut (Foo<T, U>,)>, //~ ERROR mismatched type
+) -> Pin<&'a mut Foo<T, U>> {
+    x
+}
+
+fn tuple_pat_and_pin_mut_of_tuple_mut_ty<'a, T, U>(
+    (x,): Pin<&'a mut (&'a mut Foo<T, U>,)>, //[normal]~ ERROR mismatched type
+) -> Pin<&'a mut &'a mut Foo<T, U>> {
+    x // ok
+}
+
+fn tuple_pat_and_pin_mut_of_mut_tuple_ty<'a, T, U>(
+    (x,): Pin<&'a mut &'a mut (Foo<T, U>,)>, //[normal]~ ERROR mismatched type
+) -> Pin<&'a mut Foo<T, U>> {
+    x
 }
 
 fn main() {}
