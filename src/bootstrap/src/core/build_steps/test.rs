@@ -1663,7 +1663,11 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         // bootstrap compiler.
         // NOTE: Only stage 1 is special cased because we need the rustc_private artifacts to match the
         // running compiler in stage 2 when plugins run.
+        let query_compiler;
         let (stage, stage_id) = if suite == "ui-fulldeps" && compiler.stage == 1 {
+            // Even when using the stage 0 compiler, we also need to provide the stage 1 compiler
+            // so that compiletest can query it for target information.
+            query_compiler = Some(compiler);
             // At stage 0 (stage - 1) we are using the stage0 compiler. Using `self.target` can lead
             // finding an incorrect compiler path on cross-targets, as the stage 0 is always equal to
             // `build.build` in the configuration.
@@ -1672,6 +1676,7 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
             let test_stage = compiler.stage + 1;
             (test_stage, format!("stage{test_stage}-{build}"))
         } else {
+            query_compiler = None;
             let stage = compiler.stage;
             (stage, format!("stage{stage}-{target}"))
         };
@@ -1716,6 +1721,9 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         cmd.arg("--compile-lib-path").arg(builder.rustc_libdir(compiler));
         cmd.arg("--run-lib-path").arg(builder.sysroot_target_libdir(compiler, target));
         cmd.arg("--rustc-path").arg(builder.rustc(compiler));
+        if let Some(query_compiler) = query_compiler {
+            cmd.arg("--query-rustc-path").arg(builder.rustc(query_compiler));
+        }
 
         // Minicore auxiliary lib for `no_core` tests that need `core` stubs in cross-compilation
         // scenarios.
