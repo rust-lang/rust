@@ -5,17 +5,17 @@ mod intrinsic;
 mod types;
 mod xml_parser;
 
-use std::fs::{self, File};
 use rayon::prelude::*;
+use std::fs::{self, File};
 
 use crate::common::cli::ProcessedCli;
+use crate::common::gen_c::{write_main_cpp, write_mod_cpp};
 use crate::common::intrinsic::{Intrinsic, IntrinsicDefinition};
 use crate::common::intrinsic_helpers::TypeKind;
 use crate::common::{SupportedArchitectureTest, chunk_info};
-use crate::common::gen_c::{write_main_cpp, write_mod_cpp};
+use config::build_notices;
 use intrinsic::X86IntrinsicType;
 use xml_parser::get_xml_intrinsics;
-use config::build_notices;
 
 pub struct X86ArchitectureTest {
     intrinsics: Vec<Intrinsic<X86IntrinsicType>>,
