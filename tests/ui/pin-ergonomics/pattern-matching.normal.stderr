@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/pattern-matching.rs:41:9
+  --> $DIR/pattern-matching.rs:35:9
    |
 LL |     let Foo { x, y } = foo_mut;
    |         ^^^^^^^^^^^^   ------- this expression has type `Pin<&mut Foo<T, U>>`
@@ -14,7 +14,7 @@ LL |     let Foo { x, y } = *foo_mut;
    |                        +
 
 error[E0308]: mismatched types
-  --> $DIR/pattern-matching.rs:46:9
+  --> $DIR/pattern-matching.rs:40:9
    |
 LL |     let Foo { x, y } = foo_const;
    |         ^^^^^^^^^^^^   --------- this expression has type `Pin<&Foo<T, U>>`
@@ -29,180 +29,120 @@ LL |     let Foo { x, y } = *foo_const;
    |                        +
 
 error[E0308]: mismatched types
-  --> $DIR/pattern-matching.rs:54:9
-   |
-LL |     let Foo { x, .. } = foo_mut;
-   |         ^^^^^^^^^^^^^   ------- this expression has type `Pin<&mut Foo<T, U>>`
-   |         |
-   |         expected `Pin<&mut Foo<T, U>>`, found `Foo<_, _>`
-   |
-   = note: expected struct `Pin<&mut Foo<T, U>>`
-              found struct `Foo<_, _>`
-help: consider dereferencing to access the inner value using the Deref trait
-   |
-LL |     let Foo { x, .. } = *foo_mut;
-   |                         +
-
-error[E0308]: mismatched types
-  --> $DIR/pattern-matching.rs:58:9
-   |
-LL |     let Foo { x, .. } = foo_const;
-   |         ^^^^^^^^^^^^^   --------- this expression has type `Pin<&Foo<T, U>>`
-   |         |
-   |         expected `Pin<&Foo<T, U>>`, found `Foo<_, _>`
-   |
-   = note: expected struct `Pin<&Foo<T, U>>`
-              found struct `Foo<_, _>`
-help: consider dereferencing to access the inner value using the Deref trait
-   |
-LL |     let Foo { x, .. } = *foo_const;
-   |                         +
-
-error[E0308]: mismatched types
-  --> $DIR/pattern-matching.rs:68:9
-   |
-LL |     let NegUnpinFoo { x, y } = foo_mut;
-   |         ^^^^^^^^^^^^^^^^^^^^   ------- this expression has type `Pin<&mut NegUnpinFoo<T, U>>`
-   |         |
-   |         expected `Pin<&mut NegUnpinFoo<T, U>>`, found `NegUnpinFoo<_, _>`
-   |
-   = note: expected struct `Pin<&mut NegUnpinFoo<T, U>>`
-              found struct `NegUnpinFoo<_, _>`
-help: consider dereferencing to access the inner value using the Deref trait
-   |
-LL |     let NegUnpinFoo { x, y } = *foo_mut;
-   |                                +
-
-error[E0308]: mismatched types
-  --> $DIR/pattern-matching.rs:73:9
-   |
-LL |     let NegUnpinFoo { x, y } = foo_const;
-   |         ^^^^^^^^^^^^^^^^^^^^   --------- this expression has type `Pin<&NegUnpinFoo<T, U>>`
-   |         |
-   |         expected `Pin<&NegUnpinFoo<T, U>>`, found `NegUnpinFoo<_, _>`
-   |
-   = note: expected struct `Pin<&NegUnpinFoo<T, U>>`
-              found struct `NegUnpinFoo<_, _>`
-help: consider dereferencing to access the inner value using the Deref trait
-   |
-LL |     let NegUnpinFoo { x, y } = *foo_const;
-   |                                +
-
-error[E0308]: mismatched types
-  --> $DIR/pattern-matching.rs:85:9
+  --> $DIR/pattern-matching.rs:48:9
    |
 LL |     match bar_mut {
-   |           ------- this expression has type `Pin<&mut NegUnpinBar<T, U>>`
-LL |         NegUnpinBar::Foo(x, y) => {
-   |         ^^^^^^^^^^^^^^^^^^^^^^ expected `Pin<&mut NegUnpinBar<T, U>>`, found `NegUnpinBar<_, _>`
+   |           ------- this expression has type `Pin<&mut Bar<T, U>>`
+LL |         Bar::Foo(x, y) => {
+   |         ^^^^^^^^^^^^^^ expected `Pin<&mut Bar<T, U>>`, found `Bar<_, _>`
    |
-   = note: expected struct `Pin<&mut NegUnpinBar<T, U>>`
-                found enum `NegUnpinBar<_, _>`
+   = note: expected struct `Pin<&mut Bar<T, U>>`
+                found enum `Bar<_, _>`
 help: consider dereferencing to access the inner value using the Deref trait
    |
 LL |     match *bar_mut {
    |           +
 
 error[E0308]: mismatched types
-  --> $DIR/pattern-matching.rs:90:18
+  --> $DIR/pattern-matching.rs:53:18
    |
-LL |         _ if let NegUnpinBar::Bar { x, y } = bar_mut => {
-   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^   ------- this expression has type `Pin<&mut NegUnpinBar<T, U>>`
+LL |         _ if let Bar::Bar { x, y } = bar_mut => {
+   |                  ^^^^^^^^^^^^^^^^^   ------- this expression has type `Pin<&mut Bar<T, U>>`
    |                  |
-   |                  expected `Pin<&mut NegUnpinBar<T, U>>`, found `NegUnpinBar<_, _>`
+   |                  expected `Pin<&mut Bar<T, U>>`, found `Bar<_, _>`
    |
-   = note: expected struct `Pin<&mut NegUnpinBar<T, U>>`
-                found enum `NegUnpinBar<_, _>`
+   = note: expected struct `Pin<&mut Bar<T, U>>`
+                found enum `Bar<_, _>`
 help: consider dereferencing to access the inner value using the Deref trait
    |
-LL |         _ if let NegUnpinBar::Bar { x, y } = *bar_mut => {
-   |                                              +
+LL |         _ if let Bar::Bar { x, y } = *bar_mut => {
+   |                                      +
 
 error[E0308]: mismatched types
-  --> $DIR/pattern-matching.rs:98:9
+  --> $DIR/pattern-matching.rs:61:9
    |
 LL |     match bar_const {
-   |           --------- this expression has type `Pin<&NegUnpinBar<T, U>>`
-LL |         NegUnpinBar::Bar { x, y } => {
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Pin<&NegUnpinBar<T, U>>`, found `NegUnpinBar<_, _>`
+   |           --------- this expression has type `Pin<&Bar<T, U>>`
+LL |         Bar::Bar { x, y } => {
+   |         ^^^^^^^^^^^^^^^^^ expected `Pin<&Bar<T, U>>`, found `Bar<_, _>`
    |
-   = note: expected struct `Pin<&NegUnpinBar<T, U>>`
-                found enum `NegUnpinBar<_, _>`
+   = note: expected struct `Pin<&Bar<T, U>>`
+                found enum `Bar<_, _>`
 help: consider dereferencing to access the inner value using the Deref trait
    |
 LL |     match *bar_const {
    |           +
 
 error[E0308]: mismatched types
-  --> $DIR/pattern-matching.rs:103:18
+  --> $DIR/pattern-matching.rs:66:18
    |
-LL |         _ if let NegUnpinBar::Foo(x, y) = bar_const => {
-   |                  ^^^^^^^^^^^^^^^^^^^^^^   --------- this expression has type `Pin<&NegUnpinBar<T, U>>`
+LL |         _ if let Bar::Foo(x, y) = bar_const => {
+   |                  ^^^^^^^^^^^^^^   --------- this expression has type `Pin<&Bar<T, U>>`
    |                  |
-   |                  expected `Pin<&NegUnpinBar<T, U>>`, found `NegUnpinBar<_, _>`
+   |                  expected `Pin<&Bar<T, U>>`, found `Bar<_, _>`
    |
-   = note: expected struct `Pin<&NegUnpinBar<T, U>>`
-                found enum `NegUnpinBar<_, _>`
+   = note: expected struct `Pin<&Bar<T, U>>`
+                found enum `Bar<_, _>`
 help: consider dereferencing to access the inner value using the Deref trait
    |
-LL |         _ if let NegUnpinBar::Foo(x, y) = *bar_const => {
-   |                                           +
-
-error[E0308]: mismatched types
-  --> $DIR/pattern-matching.rs:116:9
-   |
-LL |     let (NegUnpinFoo { x, y },) = foo_mut;
-   |         ^^^^^^^^^^^^^^^^^^^^^^^   ------- this expression has type `Pin<&mut (NegUnpinFoo<T, U>,)>`
-   |         |
-   |         expected `Pin<&mut (NegUnpinFoo<T, U>,)>`, found `(_,)`
-   |
-   = note: expected struct `Pin<&mut (NegUnpinFoo<T, U>,)>`
-               found tuple `(_,)`
-help: consider dereferencing to access the inner value using the Deref trait
-   |
-LL |     let (NegUnpinFoo { x, y },) = *foo_mut;
+LL |         _ if let Bar::Foo(x, y) = *bar_const => {
    |                                   +
 
 error[E0308]: mismatched types
-  --> $DIR/pattern-matching.rs:120:9
+  --> $DIR/pattern-matching.rs:76:9
    |
-LL |     let (NegUnpinFoo { x, y },) = foo_const;
-   |         ^^^^^^^^^^^^^^^^^^^^^^^   --------- this expression has type `Pin<&(NegUnpinFoo<T, U>,)>`
+LL |     let (Foo { x, y },) = foo_mut;
+   |         ^^^^^^^^^^^^^^^   ------- this expression has type `Pin<&mut (Foo<T, U>,)>`
    |         |
-   |         expected `Pin<&(NegUnpinFoo<T, U>,)>`, found `(_,)`
+   |         expected `Pin<&mut (Foo<T, U>,)>`, found `(_,)`
    |
-   = note: expected struct `Pin<&(NegUnpinFoo<T, U>,)>`
+   = note: expected struct `Pin<&mut (Foo<T, U>,)>`
                found tuple `(_,)`
 help: consider dereferencing to access the inner value using the Deref trait
    |
-LL |     let (NegUnpinFoo { x, y },) = *foo_const;
-   |                                   +
+LL |     let (Foo { x, y },) = *foo_mut;
+   |                           +
 
-error[E0529]: expected an array or slice, found `Pin<&mut [NegUnpinFoo<T, U>; 1]>`
-  --> $DIR/pattern-matching.rs:130:9
+error[E0308]: mismatched types
+  --> $DIR/pattern-matching.rs:80:9
    |
-LL |     let [NegUnpinFoo { x, y }] = foo_mut;
-   |         ^^^^^^^^^^^^^^^^^^^^^^ pattern cannot match with input type `Pin<&mut [NegUnpinFoo<T, U>; 1]>`
-
-error[E0529]: expected an array or slice, found `Pin<&[NegUnpinFoo<T, U>; 1]>`
-  --> $DIR/pattern-matching.rs:134:9
+LL |     let (Foo { x, y },) = foo_const;
+   |         ^^^^^^^^^^^^^^^   --------- this expression has type `Pin<&(Foo<T, U>,)>`
+   |         |
+   |         expected `Pin<&(Foo<T, U>,)>`, found `(_,)`
    |
-LL |     let [NegUnpinFoo { x, y }] = foo_const;
-   |         ^^^^^^^^^^^^^^^^^^^^^^ pattern cannot match with input type `Pin<&[NegUnpinFoo<T, U>; 1]>`
-
-error[E0529]: expected an array or slice, found `Pin<&mut [NegUnpinFoo<T, U>]>`
-  --> $DIR/pattern-matching.rs:144:12
+   = note: expected struct `Pin<&(Foo<T, U>,)>`
+               found tuple `(_,)`
+help: consider dereferencing to access the inner value using the Deref trait
    |
-LL |     if let [NegUnpinFoo { x, y }] = foo_mut {
-   |            ^^^^^^^^^^^^^^^^^^^^^^ pattern cannot match with input type `Pin<&mut [NegUnpinFoo<T, U>]>`
+LL |     let (Foo { x, y },) = *foo_const;
+   |                           +
 
-error[E0529]: expected an array or slice, found `Pin<&[NegUnpinFoo<T, U>]>`
-  --> $DIR/pattern-matching.rs:149:12
+error[E0529]: expected an array or slice, found `Pin<&mut [Foo<T, U>; 1]>`
+  --> $DIR/pattern-matching.rs:87:9
    |
-LL |     if let [NegUnpinFoo { x, y }] = foo_const {
-   |            ^^^^^^^^^^^^^^^^^^^^^^ pattern cannot match with input type `Pin<&[NegUnpinFoo<T, U>]>`
+LL |     let [Foo { x, y }] = foo_mut;
+   |         ^^^^^^^^^^^^^^ pattern cannot match with input type `Pin<&mut [Foo<T, U>; 1]>`
 
-error: aborting due to 16 previous errors
+error[E0529]: expected an array or slice, found `Pin<&[Foo<T, U>; 1]>`
+  --> $DIR/pattern-matching.rs:91:9
+   |
+LL |     let [Foo { x, y }] = foo_const;
+   |         ^^^^^^^^^^^^^^ pattern cannot match with input type `Pin<&[Foo<T, U>; 1]>`
+
+error[E0529]: expected an array or slice, found `Pin<&mut [Foo<T, U>]>`
+  --> $DIR/pattern-matching.rs:98:12
+   |
+LL |     if let [Foo { x, y }] = foo_mut {
+   |            ^^^^^^^^^^^^^^ pattern cannot match with input type `Pin<&mut [Foo<T, U>]>`
+
+error[E0529]: expected an array or slice, found `Pin<&[Foo<T, U>]>`
+  --> $DIR/pattern-matching.rs:103:12
+   |
+LL |     if let [Foo { x, y }] = foo_const {
+   |            ^^^^^^^^^^^^^^ pattern cannot match with input type `Pin<&[Foo<T, U>]>`
+
+error: aborting due to 12 previous errors
 
 Some errors have detailed explanations: E0308, E0529.
 For more information about an error, try `rustc --explain E0308`.
