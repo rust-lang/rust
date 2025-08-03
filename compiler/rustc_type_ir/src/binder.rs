@@ -376,7 +376,7 @@ impl<I: Interner> TypeVisitor<I> for ValidateBoundVars<I> {
 pub struct EarlyBinder<I: Interner, T> {
     value: T,
     #[derive_where(skip(Debug))]
-    _tcx: PhantomData<I>,
+    _tcx: PhantomData<fn() -> I>,
 }
 
 /// For early binders, you should first call `instantiate` before using any visitors.
