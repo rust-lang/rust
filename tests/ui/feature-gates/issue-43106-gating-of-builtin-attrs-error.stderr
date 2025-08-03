@@ -91,21 +91,6 @@ error[E0518]: attribute should be applied to function or closure
 LL | #![inline]
    | ^^^^^^^^^^ not a function or closure
 
-error: `macro_export` attribute cannot be used at crate level
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:12:1
-   |
-LL | #![macro_export]
-   | ^^^^^^^^^^^^^^^^
-...
-LL | mod inline {
-   |     ------ the inner attribute doesn't annotate this module
-   |
-help: perhaps you meant to use an outer attribute
-   |
-LL - #![macro_export]
-LL + #[macro_export]
-   |
-
 error: `rustc_main` attribute cannot be used at crate level
   --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:14:1
    |
@@ -134,6 +119,21 @@ help: perhaps you meant to use an outer attribute
    |
 LL - #![repr()]
 LL + #[repr()]
+   |
+
+error: `macro_export` attribute cannot be used at crate level
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:12:1
+   |
+LL | #![macro_export]
+   | ^^^^^^^^^^^^^^^^
+...
+LL | mod inline {
+   |     ------ the inner attribute doesn't annotate this module
+   |
+help: perhaps you meant to use an outer attribute
+   |
+LL - #![macro_export]
+LL + #[macro_export]
    |
 
 error: `path` attribute cannot be used at crate level
