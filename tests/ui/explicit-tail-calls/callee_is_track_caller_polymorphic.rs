@@ -3,14 +3,18 @@
 #![expect(incomplete_features)]
 #![feature(explicit_tail_calls)]
 
-fn a(x: u32) -> u32 {
-    become b(x);
+fn c<T: Trait>() {
+    become T::f();
     //~^ warning: tail calling a function marked with `#[track_caller]` has no special effect
 }
 
-#[track_caller]
-fn b(x: u32) -> u32 { x + 42 }
+trait Trait {
+    #[track_caller]
+    fn f() {}
+}
+
+impl Trait for () {}
 
 fn main() {
-    assert_eq!(a(12), 54);
+    c::<()>();
 }
