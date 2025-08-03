@@ -1,6 +1,7 @@
 //! A bunch of methods and structures more or less related to resolving macros and
 //! interface provided by `Resolver` to macro expander.
 
+use std::any::Any;
 use std::cell::Cell;
 use std::mem;
 use std::sync::Arc;
@@ -13,10 +14,10 @@ use rustc_expand::base::{
     Annotatable, DeriveResolution, Indeterminate, ResolverExpand, SyntaxExtension,
     SyntaxExtensionKind,
 };
-use rustc_expand::compile_declarative_macro;
 use rustc_expand::expand::{
     AstFragment, AstFragmentKind, Invocation, InvocationKind, SupportsMacroExpansion,
 };
+use rustc_expand::{MacroRulesMacroExpander, compile_declarative_macro};
 use rustc_hir::def::{self, DefKind, Namespace, NonMacroAttrKind};
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId};
 use rustc_middle::middle::stability;
@@ -357,8 +358,12 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
             let SyntaxExtensionKind::LegacyBang(ref ext) = m.ext.kind else {
                 continue;
             };
+            let ext: &dyn Any = ext.as_ref();
+            let Some(m) = ext.downcast_ref::<MacroRulesMacroExpander>() else {
+                continue;
+            };
             for arm_i in unused_arms.iter() {
-                if let Some((ident, rule_span)) = ext.get_unused_rule(arm_i) {
+                if let Some((ident, rule_span)) = m.get_unused_rule(arm_i) {
                     self.lint_buffer.buffer_lint(
                         UNUSED_MACRO_RULES,
                         node_id,
@@ -506,7 +511,7 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
     }
 
     fn glob_delegation_suffixes(
-        &mut self,
+        &self,
         trait_def_id: DefId,
         impl_def_id: LocalDefId,
     ) -> Result<Vec<(Ident, Option<Ident>)>, Indeterminate> {
@@ -530,7 +535,7 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
         target_trait.for_each_child(self, |this, ident, ns, _binding| {
             // FIXME: Adjust hygiene for idents from globs, like for glob imports.
             if let Some(overriding_keys) = this.impl_binding_keys.get(&impl_def_id)
-                && overriding_keys.contains(&BindingKey::new(ident.normalize_to_macros_2_0(), ns))
+                && overriding_keys.contains(&BindingKey::new(ident, ns))
             {
                 // The name is overridden, do not produce it from the glob delegation.
             } else {
@@ -1018,40 +1023,39 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         node_id: NodeId,
     ) {
         let span = path.span;
-        if let Some(stability) = &ext.stability {
-            if let StabilityLevel::Unstable { reason, issue, is_soft, implied_by, .. } =
+        if let Some(stability) = &ext.stability
+            && let StabilityLevel::Unstable { reason, issue, is_soft, implied_by, .. } =
                 stability.level
-            {
-                let feature = stability.feature;
+        {
+            let feature = stability.feature;
 
-                let is_allowed =
-                    |feature| self.tcx.features().enabled(feature) || span.allows_unstable(feature);
-                let allowed_by_implication = implied_by.is_some_and(|feature| is_allowed(feature));
-                if !is_allowed(feature) && !allowed_by_implication {
-                    let lint_buffer = &mut self.lint_buffer;
-                    let soft_handler = |lint, span, msg: String| {
-                        lint_buffer.buffer_lint(
-                            lint,
-                            node_id,
-                            span,
-                            BuiltinLintDiag::UnstableFeature(
-                                // FIXME make this translatable
-                                msg.into(),
-                            ),
-                        )
-                    };
-                    stability::report_unstable(
-                        self.tcx.sess,
-                        feature,
-                        reason.to_opt_reason(),
-                        issue,
-                        None,
-                        is_soft,
+            let is_allowed =
+                |feature| self.tcx.features().enabled(feature) || span.allows_unstable(feature);
+            let allowed_by_implication = implied_by.is_some_and(|feature| is_allowed(feature));
+            if !is_allowed(feature) && !allowed_by_implication {
+                let lint_buffer = &mut self.lint_buffer;
+                let soft_handler = |lint, span, msg: String| {
+                    lint_buffer.buffer_lint(
+                        lint,
+                        node_id,
                         span,
-                        soft_handler,
-                        stability::UnstableKind::Regular,
-                    );
-                }
+                        BuiltinLintDiag::UnstableFeature(
+                            // FIXME make this translatable
+                            msg.into(),
+                        ),
+                    )
+                };
+                stability::report_unstable(
+                    self.tcx.sess,
+                    feature,
+                    reason.to_opt_reason(),
+                    issue,
+                    None,
+                    is_soft,
+                    span,
+                    soft_handler,
+                    stability::UnstableKind::Regular,
+                );
             }
         }
         if let Some(depr) = &ext.deprecation {

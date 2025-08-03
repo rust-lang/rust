@@ -796,29 +796,6 @@ pub(crate) fn optimize(
     Ok(())
 }
 
-pub(crate) fn link(
-    cgcx: &CodegenContext<LlvmCodegenBackend>,
-    dcx: DiagCtxtHandle<'_>,
-    mut modules: Vec<ModuleCodegen<ModuleLlvm>>,
-) -> Result<ModuleCodegen<ModuleLlvm>, FatalError> {
-    use super::lto::{Linker, ModuleBuffer};
-    // Sort the modules by name to ensure deterministic behavior.
-    modules.sort_by(|a, b| a.name.cmp(&b.name));
-    let (first, elements) =
-        modules.split_first().expect("Bug! modules must contain at least one module.");
-
-    let mut linker = Linker::new(first.module_llvm.llmod());
-    for module in elements {
-        let _timer = cgcx.prof.generic_activity_with_arg("LLVM_link_module", &*module.name);
-        let buffer = ModuleBuffer::new(module.module_llvm.llmod());
-        linker
-            .add(buffer.data())
-            .map_err(|()| llvm_err(dcx, LlvmError::SerializeModule { name: &module.name }))?;
-    }
-    drop(linker);
-    Ok(modules.remove(0))
-}
-
 pub(crate) fn codegen(
     cgcx: &CodegenContext<LlvmCodegenBackend>,
     module: ModuleCodegen<ModuleLlvm>,

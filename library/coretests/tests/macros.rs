@@ -213,3 +213,9 @@ fn _expression() {
         }
     );
 }
+
+#[deny(non_exhaustive_omitted_patterns)]
+fn _matches_does_not_trigger_non_exhaustive_omitted_patterns_lint(o: core::sync::atomic::Ordering) {
+    // Ordering is a #[non_exhaustive] enum from a separate crate
+    let _m = matches!(o, core::sync::atomic::Ordering::Relaxed);
+}

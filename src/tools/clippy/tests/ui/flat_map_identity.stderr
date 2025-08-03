@@ -19,5 +19,11 @@ error: use of `flat_map` with an identity function
 LL |     let _ = iterator.flat_map(|x| return x);
    |                      ^^^^^^^^^^^^^^^^^^^^^^ help: try: `flatten()`
 
-error: aborting due to 3 previous errors
+error: use of `flat_map` with an identity function
+  --> tests/ui/flat_map_identity.rs:29:31
+   |
+LL |     let _ = x.iter().copied().flat_map(|[x, y]| [x, y]);
+   |                               ^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `flatten()`
+
+error: aborting due to 4 previous errors
 

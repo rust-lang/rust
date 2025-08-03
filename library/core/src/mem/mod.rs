@@ -21,6 +21,10 @@ mod transmutability;
 #[unstable(feature = "transmutability", issue = "99571")]
 pub use transmutability::{Assume, TransmuteFrom};
 
+mod drop_guard;
+#[unstable(feature = "drop_guard", issue = "144426")]
+pub use drop_guard::DropGuard;
+
 // This one has to be a re-export (rather than wrapping the underlying intrinsic) so that we can do
 // the special magic "types have equal size" check at the call site.
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -960,7 +964,7 @@ pub fn drop<T>(_x: T) {}
 ///
 /// This function is not magic; it is literally defined as
 /// ```
-/// pub fn copy<T: Copy>(x: &T) -> T { *x }
+/// pub const fn copy<T: Copy>(x: &T) -> T { *x }
 /// ```
 ///
 /// It is useful when you want to pass a function pointer to a combinator, rather than defining a new closure.

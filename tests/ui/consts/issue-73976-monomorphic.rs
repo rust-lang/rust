@@ -1,3 +1,4 @@
+//@ ignore-backends: gcc
 //@ check-pass
 //
 // This test is complement to the test in issue-73976-polymorphic.rs.

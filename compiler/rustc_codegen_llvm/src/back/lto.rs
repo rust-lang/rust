@@ -1,33 +1,29 @@
 use std::collections::BTreeMap;
 use std::ffi::{CStr, CString};
 use std::fs::File;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::ptr::NonNull;
 use std::sync::Arc;
 use std::{io, iter, slice};
 
 use object::read::archive::ArchiveFile;
+use object::{Object, ObjectSection};
 use rustc_codegen_ssa::back::lto::{SerializedModule, ThinModule, ThinShared};
-use rustc_codegen_ssa::back::symbol_export;
 use rustc_codegen_ssa::back::write::{CodegenContext, FatLtoInput};
 use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::{ModuleCodegen, ModuleKind, looks_like_rust_object_file};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::memmap::Mmap;
 use rustc_errors::{DiagCtxtHandle, FatalError};
-use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_middle::bug;
 use rustc_middle::dep_graph::WorkProduct;
-use rustc_middle::middle::exported_symbols::{SymbolExportInfo, SymbolExportLevel};
-use rustc_session::config::{self, CrateType, Lto};
+use rustc_session::config::{self, Lto};
 use tracing::{debug, info};
 
 use crate::back::write::{
     self, CodegenDiagnosticsStage, DiagnosticHandlers, bitcode_section_name, save_temp_bitcode,
 };
-use crate::errors::{
-    DynamicLinkingWithLTO, LlvmError, LtoBitcodeFromRlib, LtoDisallowed, LtoDylib, LtoProcMacro,
-};
+use crate::errors::{LlvmError, LtoBitcodeFromRlib};
 use crate::llvm::AttributePlace::Function;
 use crate::llvm::{self, build_string};
 use crate::{LlvmCodegenBackend, ModuleLlvm, SimpleCx, attributes};
@@ -36,45 +32,21 @@ use crate::{LlvmCodegenBackend, ModuleLlvm, SimpleCx, attributes};
 /// session to determine which CGUs we can reuse.
 const THIN_LTO_KEYS_INCR_COMP_FILE_NAME: &str = "thin-lto-past-keys.bin";
 
-fn crate_type_allows_lto(crate_type: CrateType) -> bool {
-    match crate_type {
-        CrateType::Executable
-        | CrateType::Dylib
-        | CrateType::Staticlib
-        | CrateType::Cdylib
-        | CrateType::ProcMacro
-        | CrateType::Sdylib => true,
-        CrateType::Rlib => false,
-    }
-}
-
 fn prepare_lto(
     cgcx: &CodegenContext<LlvmCodegenBackend>,
+    exported_symbols_for_lto: &[String],
+    each_linked_rlib_for_lto: &[PathBuf],
     dcx: DiagCtxtHandle<'_>,
 ) -> Result<(Vec<CString>, Vec<(SerializedModule<ModuleBuffer>, CString)>), FatalError> {
-    let export_threshold = match cgcx.lto {
-        // We're just doing LTO for our one crate
-        Lto::ThinLocal => SymbolExportLevel::Rust,
+    let mut symbols_below_threshold = exported_symbols_for_lto
+        .iter()
+        .map(|symbol| CString::new(symbol.to_owned()).unwrap())
+        .collect::<Vec<CString>>();
 
-        // We're doing LTO for the entire crate graph
-        Lto::Fat | Lto::Thin => symbol_export::crates_export_threshold(&cgcx.crate_types),
-
-        Lto::No => panic!("didn't request LTO but we're doing LTO"),
-    };
-
-    let symbol_filter = &|&(ref name, info): &(String, SymbolExportInfo)| {
-        if info.level.is_below_threshold(export_threshold) || info.used {
-            Some(CString::new(name.as_str()).unwrap())
-        } else {
-            None
-        }
-    };
-    let exported_symbols = cgcx.exported_symbols.as_ref().expect("needs exported symbols for LTO");
-    let mut symbols_below_threshold = {
-        let _timer = cgcx.prof.generic_activity("LLVM_lto_generate_symbols_below_threshold");
-        exported_symbols[&LOCAL_CRATE].iter().filter_map(symbol_filter).collect::<Vec<CString>>()
-    };
-    info!("{} symbols to preserve in this crate", symbols_below_threshold.len());
+    // __llvm_profile_counter_bias is pulled in at link time by an undefined reference to
+    // __llvm_profile_runtime, therefore we won't know until link time if this symbol
+    // should have default visibility.
+    symbols_below_threshold.push(c"__llvm_profile_counter_bias".to_owned());
 
     // If we're performing LTO for the entire crate graph, then for each of our
     // upstream dependencies, find the corresponding rlib and load the bitcode
@@ -84,37 +56,7 @@ fn prepare_lto(
     // with either fat or thin LTO
     let mut upstream_modules = Vec::new();
     if cgcx.lto != Lto::ThinLocal {
-        // Make sure we actually can run LTO
-        for crate_type in cgcx.crate_types.iter() {
-            if !crate_type_allows_lto(*crate_type) {
-                dcx.emit_err(LtoDisallowed);
-                return Err(FatalError);
-            } else if *crate_type == CrateType::Dylib {
-                if !cgcx.opts.unstable_opts.dylib_lto {
-                    dcx.emit_err(LtoDylib);
-                    return Err(FatalError);
-                }
-            } else if *crate_type == CrateType::ProcMacro && !cgcx.opts.unstable_opts.dylib_lto {
-                dcx.emit_err(LtoProcMacro);
-                return Err(FatalError);
-            }
-        }
-
-        if cgcx.opts.cg.prefer_dynamic && !cgcx.opts.unstable_opts.dylib_lto {
-            dcx.emit_err(DynamicLinkingWithLTO);
-            return Err(FatalError);
-        }
-
-        for &(cnum, ref path) in cgcx.each_linked_rlib_for_lto.iter() {
-            let exported_symbols =
-                cgcx.exported_symbols.as_ref().expect("needs exported symbols for LTO");
-            {
-                let _timer =
-                    cgcx.prof.generic_activity("LLVM_lto_generate_symbols_below_threshold");
-                symbols_below_threshold
-                    .extend(exported_symbols[&cnum].iter().filter_map(symbol_filter));
-            }
-
+        for path in each_linked_rlib_for_lto {
             let archive_data = unsafe {
                 Mmap::map(std::fs::File::open(&path).expect("couldn't open rlib"))
                     .expect("couldn't map rlib")
@@ -147,10 +89,6 @@ fn prepare_lto(
         }
     }
 
-    // __llvm_profile_counter_bias is pulled in at link time by an undefined reference to
-    // __llvm_profile_runtime, therefore we won't know until link time if this symbol
-    // should have default visibility.
-    symbols_below_threshold.push(c"__llvm_profile_counter_bias".to_owned());
     Ok((symbols_below_threshold, upstream_modules))
 }
 
@@ -168,46 +106,32 @@ fn get_bitcode_slice_from_object_data<'a>(
     // name" which in the public API for sections gets treated as part of the section name, but
     // internally in MachOObjectFile.cpp gets treated separately.
     let section_name = bitcode_section_name(cgcx).to_str().unwrap().trim_start_matches("__LLVM,");
-    let mut len = 0;
-    let data = unsafe {
-        llvm::LLVMRustGetSliceFromObjectDataByName(
-            obj.as_ptr(),
-            obj.len(),
-            section_name.as_ptr(),
-            section_name.len(),
-            &mut len,
-        )
-    };
-    if !data.is_null() {
-        assert!(len != 0);
-        let bc = unsafe { slice::from_raw_parts(data, len) };
 
-        // `bc` must be a sub-slice of `obj`.
-        assert!(obj.as_ptr() <= bc.as_ptr());
-        assert!(bc[bc.len()..bc.len()].as_ptr() <= obj[obj.len()..obj.len()].as_ptr());
+    let obj =
+        object::File::parse(obj).map_err(|err| LtoBitcodeFromRlib { err: err.to_string() })?;
 
-        Ok(bc)
-    } else {
-        assert!(len == 0);
-        Err(LtoBitcodeFromRlib {
-            llvm_err: llvm::last_error().unwrap_or_else(|| "unknown LLVM error".to_string()),
-        })
-    }
+    let section = obj
+        .section_by_name(section_name)
+        .ok_or_else(|| LtoBitcodeFromRlib { err: format!("Can't find section {section_name}") })?;
+
+    section.data().map_err(|err| LtoBitcodeFromRlib { err: err.to_string() })
 }
 
 /// Performs fat LTO by merging all modules into a single one and returning it
 /// for further optimization.
 pub(crate) fn run_fat(
     cgcx: &CodegenContext<LlvmCodegenBackend>,
+    exported_symbols_for_lto: &[String],
+    each_linked_rlib_for_lto: &[PathBuf],
     modules: Vec<FatLtoInput<LlvmCodegenBackend>>,
-    cached_modules: Vec<(SerializedModule<ModuleBuffer>, WorkProduct)>,
 ) -> Result<ModuleCodegen<ModuleLlvm>, FatalError> {
     let dcx = cgcx.create_dcx();
     let dcx = dcx.handle();
-    let (symbols_below_threshold, upstream_modules) = prepare_lto(cgcx, dcx)?;
+    let (symbols_below_threshold, upstream_modules) =
+        prepare_lto(cgcx, exported_symbols_for_lto, each_linked_rlib_for_lto, dcx)?;
     let symbols_below_threshold =
         symbols_below_threshold.iter().map(|c| c.as_ptr()).collect::<Vec<_>>();
-    fat_lto(cgcx, dcx, modules, cached_modules, upstream_modules, &symbols_below_threshold)
+    fat_lto(cgcx, dcx, modules, upstream_modules, &symbols_below_threshold)
 }
 
 /// Performs thin LTO by performing necessary global analysis and returning two
@@ -215,12 +139,15 @@ pub(crate) fn run_fat(
 /// can simply be copied over from the incr. comp. cache.
 pub(crate) fn run_thin(
     cgcx: &CodegenContext<LlvmCodegenBackend>,
+    exported_symbols_for_lto: &[String],
+    each_linked_rlib_for_lto: &[PathBuf],
     modules: Vec<(String, ThinBuffer)>,
     cached_modules: Vec<(SerializedModule<ModuleBuffer>, WorkProduct)>,
 ) -> Result<(Vec<ThinModule<LlvmCodegenBackend>>, Vec<WorkProduct>), FatalError> {
     let dcx = cgcx.create_dcx();
     let dcx = dcx.handle();
-    let (symbols_below_threshold, upstream_modules) = prepare_lto(cgcx, dcx)?;
+    let (symbols_below_threshold, upstream_modules) =
+        prepare_lto(cgcx, exported_symbols_for_lto, each_linked_rlib_for_lto, dcx)?;
     let symbols_below_threshold =
         symbols_below_threshold.iter().map(|c| c.as_ptr()).collect::<Vec<_>>();
     if cgcx.opts.cg.linker_plugin_lto.enabled() {
@@ -245,7 +172,6 @@ fn fat_lto(
     cgcx: &CodegenContext<LlvmCodegenBackend>,
     dcx: DiagCtxtHandle<'_>,
     modules: Vec<FatLtoInput<LlvmCodegenBackend>>,
-    cached_modules: Vec<(SerializedModule<ModuleBuffer>, WorkProduct)>,
     mut serialized_modules: Vec<(SerializedModule<ModuleBuffer>, CString)>,
     symbols_below_threshold: &[*const libc::c_char],
 ) -> Result<ModuleCodegen<ModuleLlvm>, FatalError> {
@@ -258,21 +184,12 @@ fn fat_lto(
     //   modules that are serialized in-memory.
     // * `in_memory` contains modules which are already parsed and in-memory,
     //   such as from multi-CGU builds.
-    //
-    // All of `cached_modules` (cached from previous incremental builds) can
-    // immediately go onto the `serialized_modules` modules list and then we can
-    // split the `modules` array into these two lists.
     let mut in_memory = Vec::new();
-    serialized_modules.extend(cached_modules.into_iter().map(|(buffer, wp)| {
-        info!("pushing cached module {:?}", wp.cgu_name);
-        (buffer, CString::new(wp.cgu_name).unwrap())
-    }));
     for module in modules {
         match module {
             FatLtoInput::InMemory(m) => in_memory.push(m),
             FatLtoInput::Serialized { name, buffer } => {
                 info!("pushing serialized module {:?}", name);
-                let buffer = SerializedModule::Local(buffer);
                 serialized_modules.push((buffer, CString::new(name).unwrap()));
             }
         }
@@ -573,10 +490,10 @@ fn thin_lto(
 
         // Save the current ThinLTO import information for the next compilation
         // session, overwriting the previous serialized data (if any).
-        if let Some(path) = key_map_path {
-            if let Err(err) = curr_key_map.save_to_file(&path) {
-                return Err(write::llvm_err(dcx, LlvmError::WriteThinLtoKey { err }));
-            }
+        if let Some(path) = key_map_path
+            && let Err(err) = curr_key_map.save_to_file(&path)
+        {
+            return Err(write::llvm_err(dcx, LlvmError::WriteThinLtoKey { err }));
         }
 
         Ok((opt_jobs, copy_jobs))

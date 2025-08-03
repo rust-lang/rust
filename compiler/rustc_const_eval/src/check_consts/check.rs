@@ -714,10 +714,10 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
 
     fn visit_operand(&mut self, op: &Operand<'tcx>, location: Location) {
         self.super_operand(op, location);
-        if let Operand::Constant(c) = op {
-            if let Some(def_id) = c.check_static_ptr(self.tcx) {
-                self.check_static(def_id, self.span);
-            }
+        if let Operand::Constant(c) = op
+            && let Some(def_id) = c.check_static_ptr(self.tcx)
+        {
+            self.check_static(def_id, self.span);
         }
     }
 
@@ -784,7 +784,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                     self.revalidate_conditional_constness(callee, fn_args, *fn_span);
 
                 // Attempting to call a trait method?
-                if let Some(trait_did) = tcx.trait_of_item(callee) {
+                if let Some(trait_did) = tcx.trait_of_assoc(callee) {
                     // We can't determine the actual callee here, so we have to do different checks
                     // than usual.
 

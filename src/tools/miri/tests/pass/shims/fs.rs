@@ -17,6 +17,10 @@ mod utils;
 fn main() {
     test_path_conversion();
     test_file();
+    // Partial reads/writes are apparently not a thing on Windows.
+    if cfg!(not(windows)) {
+        test_file_partial_reads_writes();
+    }
     test_file_create_new();
     test_metadata();
     test_seek();
@@ -53,7 +57,7 @@ fn test_file() {
     file.write(&mut []).unwrap();
     assert_eq!(file.metadata().unwrap().len(), 0);
 
-    file.write(bytes).unwrap();
+    file.write_all(bytes).unwrap();
     assert_eq!(file.metadata().unwrap().len(), bytes.len() as u64);
     // Test opening, reading and closing a file.
     let mut file = File::open(&path).unwrap();
@@ -66,7 +70,33 @@ fn test_file() {
 
     assert!(!file.is_terminal());
 
+    // Writing to a file opened for reading should error (and not stop interpretation). std does not
+    // categorize the error so we don't check for details.
+    file.write(&[]).unwrap_err();
+
     // Removing file should succeed.
+    remove_file(&path).unwrap();
+}
+
+fn test_file_partial_reads_writes() {
+    let path = utils::prepare_with_content("miri_test_fs_file.txt", b"abcdefg");
+
+    // Ensure we sometimes do incomplete writes.
+    let got_short_write = (0..16).any(|_| {
+        let _ = remove_file(&path); // FIXME(win, issue #4483): errors if the file already exists
+        let mut file = File::create(&path).unwrap();
+        file.write(&[0; 4]).unwrap() != 4
+    });
+    assert!(got_short_write);
+    // Ensure we sometimes do incomplete reads.
+    let got_short_read = (0..16).any(|_| {
+        let mut file = File::open(&path).unwrap();
+        let mut buf = [0; 4];
+        file.read(&mut buf).unwrap() != 4
+    });
+    assert!(got_short_read);
+
+    // Clean up
     remove_file(&path).unwrap();
 }
 

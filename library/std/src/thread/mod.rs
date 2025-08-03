@@ -595,7 +595,7 @@ impl Builder {
             // Similarly, the `sys` implementation must guarantee that no references to the closure
             // exist after the thread has terminated, which is signaled by `Thread::join`
             // returning.
-            native: unsafe { imp::Thread::new(stack_size, main)? },
+            native: unsafe { imp::Thread::new(stack_size, my_thread.name(), main)? },
             thread: my_thread,
             packet: my_packet,
         })
@@ -1399,6 +1399,11 @@ where
 }
 
 /// The internal representation of a `Thread` handle
+///
+/// We explicitly set the alignment for our guarantee in Thread::into_raw. This
+/// allows applications to stuff extra metadata bits into the alignment, which
+/// can be rather useful when working with atomics.
+#[repr(align(8))]
 struct Inner {
     name: Option<ThreadNameString>,
     id: ThreadId,
@@ -1582,7 +1587,8 @@ impl Thread {
     /// Consumes the `Thread`, returning a raw pointer.
     ///
     /// To avoid a memory leak the pointer must be converted
-    /// back into a `Thread` using [`Thread::from_raw`].
+    /// back into a `Thread` using [`Thread::from_raw`]. The pointer is
+    /// guaranteed to be aligned to at least 8 bytes.
     ///
     /// # Examples
     ///

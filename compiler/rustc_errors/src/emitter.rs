@@ -713,8 +713,7 @@ impl HumanEmitter {
                 Style::LineNumber,
             );
         }
-        buffer.puts(line_offset, 0, &self.maybe_anonymized(line_index), Style::LineNumber);
-
+        self.draw_line_num(buffer, line_index, line_offset, width_offset - 3);
         self.draw_col_separator_no_space(buffer, line_offset, width_offset - 2);
         left
     }
@@ -2128,11 +2127,11 @@ impl HumanEmitter {
                 // Account for a suggestion to completely remove a line(s) with whitespace (#94192).
                 let line_end = sm.lookup_char_pos(parts[0].span.hi()).line;
                 for line in line_start..=line_end {
-                    buffer.puts(
+                    self.draw_line_num(
+                        &mut buffer,
+                        line,
                         row_num - 1 + line - line_start,
-                        0,
-                        &self.maybe_anonymized(line),
-                        Style::LineNumber,
+                        max_line_num_len,
                     );
                     buffer.puts(
                         row_num - 1 + line - line_start,
@@ -2612,12 +2611,7 @@ impl HumanEmitter {
             // For more info: https://github.com/rust-lang/rust/issues/92741
             let lines_to_remove = file_lines.lines.iter().take(file_lines.lines.len() - 1);
             for (index, line_to_remove) in lines_to_remove.enumerate() {
-                buffer.puts(
-                    *row_num - 1,
-                    0,
-                    &self.maybe_anonymized(line_num + index),
-                    Style::LineNumber,
-                );
+                self.draw_line_num(buffer, line_num + index, *row_num - 1, max_line_num_len);
                 buffer.puts(*row_num - 1, max_line_num_len + 1, "- ", Style::Removal);
                 let line = normalize_whitespace(
                     &file_lines.file.get_line(line_to_remove.line_index).unwrap(),
@@ -2634,11 +2628,11 @@ impl HumanEmitter {
             let last_line_index = file_lines.lines[file_lines.lines.len() - 1].line_index;
             let last_line = &file_lines.file.get_line(last_line_index).unwrap();
             if last_line != line_to_add {
-                buffer.puts(
+                self.draw_line_num(
+                    buffer,
+                    line_num + file_lines.lines.len() - 1,
                     *row_num - 1,
-                    0,
-                    &self.maybe_anonymized(line_num + file_lines.lines.len() - 1),
-                    Style::LineNumber,
+                    max_line_num_len,
                 );
                 buffer.puts(*row_num - 1, max_line_num_len + 1, "- ", Style::Removal);
                 buffer.puts(
@@ -2661,7 +2655,7 @@ impl HumanEmitter {
                     // 2 -     .await
                     //   |
                     // *row_num -= 1;
-                    buffer.puts(*row_num, 0, &self.maybe_anonymized(line_num), Style::LineNumber);
+                    self.draw_line_num(buffer, line_num, *row_num, max_line_num_len);
                     buffer.puts(*row_num, max_line_num_len + 1, "+ ", Style::Addition);
                     buffer.append(*row_num, &normalize_whitespace(line_to_add), Style::NoStyle);
                 } else {
@@ -2671,7 +2665,7 @@ impl HumanEmitter {
                 *row_num -= 2;
             }
         } else if is_multiline {
-            buffer.puts(*row_num, 0, &self.maybe_anonymized(line_num), Style::LineNumber);
+            self.draw_line_num(buffer, line_num, *row_num, max_line_num_len);
             match &highlight_parts {
                 [SubstitutionHighlight { start: 0, end }] if *end == line_to_add.len() => {
                     buffer.puts(*row_num, max_line_num_len + 1, "+ ", Style::Addition);
@@ -2702,11 +2696,11 @@ impl HumanEmitter {
                 Style::NoStyle,
             );
         } else if let DisplaySuggestion::Add = show_code_change {
-            buffer.puts(*row_num, 0, &self.maybe_anonymized(line_num), Style::LineNumber);
+            self.draw_line_num(buffer, line_num, *row_num, max_line_num_len);
             buffer.puts(*row_num, max_line_num_len + 1, "+ ", Style::Addition);
             buffer.append(*row_num, &normalize_whitespace(line_to_add), Style::NoStyle);
         } else {
-            buffer.puts(*row_num, 0, &self.maybe_anonymized(line_num), Style::LineNumber);
+            self.draw_line_num(buffer, line_num, *row_num, max_line_num_len);
             self.draw_col_separator(buffer, *row_num, max_line_num_len + 1);
             buffer.append(*row_num, &normalize_whitespace(line_to_add), Style::NoStyle);
         }
@@ -3015,6 +3009,22 @@ impl HumanEmitter {
             OutputTheme::Ascii => "...",
             OutputTheme::Unicode => "…",
         }
+    }
+
+    fn draw_line_num(
+        &self,
+        buffer: &mut StyledBuffer,
+        line_num: usize,
+        line_offset: usize,
+        max_line_num_len: usize,
+    ) {
+        let line_num = self.maybe_anonymized(line_num);
+        buffer.puts(
+            line_offset,
+            max_line_num_len.saturating_sub(str_width(&line_num)),
+            &line_num,
+            Style::LineNumber,
+        );
     }
 }
 

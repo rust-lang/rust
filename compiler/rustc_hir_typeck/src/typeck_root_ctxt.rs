@@ -85,8 +85,11 @@ impl<'tcx> TypeckRootCtxt<'tcx> {
     pub(crate) fn new(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Self {
         let hir_owner = tcx.local_def_id_to_hir_id(def_id).owner;
 
-        let infcx =
-            tcx.infer_ctxt().ignoring_regions().build(TypingMode::typeck_for_body(tcx, def_id));
+        let infcx = tcx
+            .infer_ctxt()
+            .ignoring_regions()
+            .in_hir_typeck()
+            .build(TypingMode::typeck_for_body(tcx, def_id));
         let typeck_results = RefCell::new(ty::TypeckResults::new(hir_owner));
         let fulfillment_cx = RefCell::new(<dyn TraitEngine<'_, _>>::new(&infcx));
 
@@ -165,13 +168,12 @@ impl<'tcx> TypeckRootCtxt<'tcx> {
 
         if let ty::PredicateKind::Clause(ty::ClauseKind::Projection(predicate)) =
             obligation.predicate.kind().skip_binder()
-        {
             // If the projection predicate (Foo::Bar == X) has X as a non-TyVid,
             // we need to make it into one.
-            if let Some(vid) = predicate.term.as_type().and_then(|ty| ty.ty_vid()) {
-                debug!("infer_var_info: {:?}.output = true", vid);
-                infer_var_info.entry(vid).or_default().output = true;
-            }
+            && let Some(vid) = predicate.term.as_type().and_then(|ty| ty.ty_vid())
+        {
+            debug!("infer_var_info: {:?}.output = true", vid);
+            infer_var_info.entry(vid).or_default().output = true;
         }
     }
 }

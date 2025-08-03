@@ -442,10 +442,10 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 // # First compute the dynamic alignment
 
                 // Packed type alignment needs to be capped.
-                if let ty::Adt(def, _) = layout.ty.kind() {
-                    if let Some(packed) = def.repr().pack {
-                        unsized_align = unsized_align.min(packed);
-                    }
+                if let ty::Adt(def, _) = layout.ty.kind()
+                    && let Some(packed) = def.repr().pack
+                {
+                    unsized_align = unsized_align.min(packed);
                 }
 
                 // Choose max of two known alignments (combined value must
@@ -582,8 +582,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         span: Span,
         layout: Option<TyAndLayout<'tcx>>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
-        M::eval_mir_constant(self, *val, span, layout, |ecx, val, span, layout| {
-            let const_val = val.eval(*ecx.tcx, ecx.typing_env, span).map_err(|err| {
+        let const_val = val.eval(*self.tcx, self.typing_env, span).map_err(|err| {
                 if M::ALL_CONSTS_ARE_PRECHECKED {
                     match err {
                         ErrorHandled::TooGeneric(..) => {},
@@ -599,11 +598,10 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                         }
                     }
                 }
-                err.emit_note(*ecx.tcx);
+                err.emit_note(*self.tcx);
                 err
             })?;
-            ecx.const_val_to_op(const_val, val.ty(), layout)
-        })
+        self.const_val_to_op(const_val, val.ty(), layout)
     }
 
     #[must_use]

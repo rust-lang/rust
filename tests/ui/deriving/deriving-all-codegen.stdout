@@ -17,10 +17,10 @@
 #![crate_type = "lib"]
 #![allow(dead_code)]
 #![allow(deprecated)]
-#[prelude_import]
-use std::prelude::rust_2021::*;
 #[macro_use]
 extern crate std;
+#[prelude_import]
+use std::prelude::rust_2021::*;
 
 // Empty struct.
 struct Empty;

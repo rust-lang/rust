@@ -441,7 +441,7 @@ impl<'db> SourceAnalyzer<'db> {
     ) -> Option<GenericSubstitution<'db>> {
         let body = self.store()?;
         if let Expr::Field { expr: object_expr, name: _ } = body[field_expr] {
-            let (adt, subst) = type_of_expr_including_adjust(infer, object_expr)?.as_adt()?;
+            let (adt, subst) = infer.type_of_expr_with_adjust(object_expr)?.as_adt()?;
             return Some(GenericSubstitution::new(
                 adt.into(),
                 subst.clone(),
@@ -1779,11 +1779,4 @@ pub(crate) fn name_hygiene(db: &dyn HirDatabase, name: InFile<&SyntaxNode>) -> H
     let span_map = db.expansion_span_map(macro_file);
     let ctx = span_map.span_at(name.value.text_range().start()).ctx;
     HygieneId::new(ctx.opaque_and_semitransparent(db))
-}
-
-fn type_of_expr_including_adjust(infer: &InferenceResult, id: ExprId) -> Option<&Ty> {
-    match infer.expr_adjustment(id).and_then(|adjustments| adjustments.last()) {
-        Some(adjustment) => Some(&adjustment.target),
-        None => Some(&infer[id]),
-    }
 }

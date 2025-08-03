@@ -509,9 +509,8 @@ fn collect_link_data<'input, F: BrokenLinkCallback<'input>>(
     display_text.map(String::into_boxed_str)
 }
 
-/// Returns a tuple containing a span encompassing all the document fragments and a boolean that is
-/// `true` if any of the fragments are from a macro expansion.
-pub fn span_of_fragments_with_expansion(fragments: &[DocFragment]) -> Option<(Span, bool)> {
+/// Returns a span encompassing all the document fragments.
+pub fn span_of_fragments(fragments: &[DocFragment]) -> Option<Span> {
     let (first_fragment, last_fragment) = match fragments {
         [] => return None,
         [first, .., last] => (first, last),
@@ -520,15 +519,7 @@ pub fn span_of_fragments_with_expansion(fragments: &[DocFragment]) -> Option<(Sp
     if first_fragment.span == DUMMY_SP {
         return None;
     }
-    Some((
-        first_fragment.span.to(last_fragment.span),
-        fragments.iter().any(|frag| frag.from_expansion),
-    ))
-}
-
-/// Returns a span encompassing all the document fragments.
-pub fn span_of_fragments(fragments: &[DocFragment]) -> Option<Span> {
-    span_of_fragments_with_expansion(fragments).map(|(sp, _)| sp)
+    Some(first_fragment.span.to(last_fragment.span))
 }
 
 /// Attempts to match a range of bytes from parsed markdown to a `Span` in the source code.
@@ -686,7 +677,7 @@ pub fn source_span_for_markdown_range_inner(
         }
     }
 
-    let (span, _) = span_of_fragments_with_expansion(fragments)?;
+    let span = span_of_fragments(fragments)?;
     let src_span = span.from_inner(InnerSpan::new(
         md_range.start + start_bytes,
         md_range.end + start_bytes + end_bytes,

@@ -375,7 +375,7 @@ impl Timeout {
 }
 
 /// The clock to use for the timeout you are asking for.
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub enum TimeoutClock {
     Monotonic,
     RealTime,

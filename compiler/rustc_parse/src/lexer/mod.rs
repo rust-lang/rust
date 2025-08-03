@@ -1,4 +1,4 @@
-use diagnostics::make_unclosed_delims_error;
+use diagnostics::make_errors_for_mismatched_closing_delims;
 use rustc_ast::ast::{self, AttrStyle};
 use rustc_ast::token::{self, CommentKind, Delimiter, IdentIsRaw, Token, TokenKind};
 use rustc_ast::tokenstream::TokenStream;
@@ -71,27 +71,23 @@ pub(crate) fn lex_token_trees<'psess, 'src>(
     };
     let res = lexer.lex_token_trees(/* is_delimited */ false);
 
-    let mut unmatched_delims: Vec<_> = lexer
-        .diag_info
-        .unmatched_delims
-        .into_iter()
-        .filter_map(|unmatched_delim| make_unclosed_delims_error(unmatched_delim, psess))
-        .collect();
+    let mut unmatched_closing_delims: Vec<_> =
+        make_errors_for_mismatched_closing_delims(&lexer.diag_info.unmatched_delims, psess);
 
     match res {
         Ok((_open_spacing, stream)) => {
-            if unmatched_delims.is_empty() {
+            if unmatched_closing_delims.is_empty() {
                 Ok(stream)
             } else {
                 // Return error if there are unmatched delimiters or unclosed delimiters.
-                Err(unmatched_delims)
+                Err(unmatched_closing_delims)
             }
         }
         Err(errs) => {
             // We emit delimiter mismatch errors first, then emit the unclosing delimiter mismatch
             // because the delimiter mismatch is more likely to be the root cause of error
-            unmatched_delims.extend(errs);
-            Err(unmatched_delims)
+            unmatched_closing_delims.extend(errs);
+            Err(unmatched_closing_delims)
         }
     }
 }

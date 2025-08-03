@@ -140,7 +140,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
 
     pub(crate) fn from_const<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
         bx: &mut Bx,
-        val: mir::ConstValue<'tcx>,
+        val: mir::ConstValue,
         ty: Ty<'tcx>,
     ) -> Self {
         let layout = bx.layout_of(ty);
@@ -154,14 +154,11 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
                 OperandValue::Immediate(llval)
             }
             ConstValue::ZeroSized => return OperandRef::zero_sized(layout),
-            ConstValue::Slice { data, meta } => {
+            ConstValue::Slice { alloc_id, meta } => {
                 let BackendRepr::ScalarPair(a_scalar, _) = layout.backend_repr else {
                     bug!("from_const: invalid ScalarPair layout: {:#?}", layout);
                 };
-                let a = Scalar::from_pointer(
-                    Pointer::new(bx.tcx().reserve_and_set_memory_alloc(data).into(), Size::ZERO),
-                    &bx.tcx(),
-                );
+                let a = Scalar::from_pointer(Pointer::new(alloc_id.into(), Size::ZERO), &bx.tcx());
                 let a_llval = bx.scalar_to_backend(
                     a,
                     a_scalar,
@@ -338,13 +335,6 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
 
         let val = if field.is_zst() {
             OperandValue::ZeroSized
-        } else if let BackendRepr::SimdVector { .. } = self.layout.backend_repr {
-            // codegen_transmute_operand doesn't support SIMD, but since the previous
-            // check handled ZSTs, the only possible field access into something SIMD
-            // is to the `non_1zst_field` that's the same SIMD. (Other things, even
-            // just padding, would change the wrapper's representation type.)
-            assert_eq!(field.size, self.layout.size);
-            self.val
         } else if field.size == self.layout.size {
             assert_eq!(offset.bytes(), 0);
             fx.codegen_transmute_operand(bx, *self, field)
@@ -931,9 +921,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         match self.locals[place_ref.local] {
             LocalRef::Operand(mut o) => {
-                // Moves out of scalar and scalar pair fields are trivial.
-                for elem in place_ref.projection.iter() {
-                    match elem {
+                // We only need to handle the projections that
+                // `LocalAnalyzer::process_place` let make it here.
+                for elem in place_ref.projection {
+                    match *elem {
                         mir::ProjectionElem::Field(f, _) => {
                             assert!(
                                 !o.layout.ty.is_any_ptr(),
@@ -942,17 +933,18 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             );
                             o = o.extract_field(self, bx, f.index());
                         }
-                        mir::ProjectionElem::Index(_)
-                        | mir::ProjectionElem::ConstantIndex { .. } => {
-                            // ZSTs don't require any actual memory access.
-                            // FIXME(eddyb) deduplicate this with the identical
-                            // checks in `codegen_consume` and `extract_field`.
-                            let elem = o.layout.field(bx.cx(), 0);
-                            if elem.is_zst() {
-                                o = OperandRef::zero_sized(elem);
-                            } else {
-                                return None;
-                            }
+                        mir::PlaceElem::Downcast(_, vidx) => {
+                            debug_assert_eq!(
+                                o.layout.variants,
+                                abi::Variants::Single { index: vidx },
+                            );
+                            let layout = o.layout.for_variant(bx.cx(), vidx);
+                            o = OperandRef { val: o.val, layout }
+                        }
+                        mir::PlaceElem::Subtype(subtype_ty) => {
+                            let subtype_ty = self.monomorphize(subtype_ty);
+                            let layout = self.cx.layout_of(subtype_ty);
+                            o = OperandRef { val: o.val, layout }
                         }
                         _ => return None,
                     }

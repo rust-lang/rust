@@ -1296,7 +1296,7 @@ pub mod parse {
     }
 
     pub(crate) fn parse_linker_flavor(slot: &mut Option<LinkerFlavorCli>, v: Option<&str>) -> bool {
-        match v.and_then(LinkerFlavorCli::from_str) {
+        match v.and_then(|v| LinkerFlavorCli::from_str(v).ok()) {
             Some(lf) => *slot = Some(lf),
             _ => return false,
         }
@@ -2168,8 +2168,6 @@ options! {
         "hash algorithm of source files used to check freshness in cargo (`blake3` or `sha256`)"),
     codegen_backend: Option<String> = (None, parse_opt_string, [TRACKED],
         "the backend to use"),
-    combine_cgu: bool = (false, parse_bool, [TRACKED],
-        "combine CGUs into a single one"),
     contract_checks: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "emit runtime checks for contract pre- and post-conditions (default: no)"),
     coverage_options: CoverageOptions = (CoverageOptions::default(), parse_coverage_options, [TRACKED],

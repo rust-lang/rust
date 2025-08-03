@@ -1,3 +1,4 @@
+//@ ignore-backends: gcc
 //@ run-pass
 #![feature(repr_simd, core_intrinsics)]
 

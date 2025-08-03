@@ -17,5 +17,5 @@ fn main() {
     // These two types have the same size but are still not compatible.
     let g = unsafe { std::mem::transmute::<fn(S), fn(A)>(f) };
 
-    g(Default::default()) //~ ERROR: calling a function with argument of type S passing data of type [i32; 4]
+    g(Default::default()) //~ ERROR: type S passing argument of type [i32; 4]
 }

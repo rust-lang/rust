@@ -950,9 +950,7 @@ impl<Cx: PatCx> Constructor<Cx> {
                 }
             }
             Never => write!(f, "!")?,
-            Wildcard | Missing | NonExhaustive | Hidden | PrivateUninhabited => {
-                write!(f, "_ : {:?}", ty)?
-            }
+            Wildcard | Missing | NonExhaustive | Hidden | PrivateUninhabited => write!(f, "_")?,
         }
         Ok(())
     }

@@ -1,27 +1,31 @@
-error: ty
-  --> $DIR/macro-const-trait-bound-theoretical-regression.rs:8:19
+error: macro expansion ignores keyword `dyn` and any tokens following
+  --> $DIR/macro-const-trait-bound-theoretical-regression.rs:14:31
    |
-LL |     ($ty:ty) => { compile_error!("ty"); };
-   |                   ^^^^^^^^^^^^^^^^^^^^
-...
-LL | demo! { impl const Trait }
-   | -------------------------- in this macro invocation
-   |
-   = note: this error originates in the macro `demo` (in Nightly builds, run with -Z macro-backtrace for more info)
-
-error: ty
-  --> $DIR/macro-const-trait-bound-theoretical-regression.rs:8:19
-   |
-LL |     ($ty:ty) => { compile_error!("ty"); };
-   |                   ^^^^^^^^^^^^^^^^^^^^
+LL |     (dyn $c:ident Trait) => { dyn $c Trait {} };
+   |                               ^^^
 ...
 LL | demo! { dyn const Trait }
-   | ------------------------- in this macro invocation
+   | ------------------------- caused by the macro expansion here
    |
+   = note: the usage of `demo!` is likely invalid in item context
+
+error: inherent impls cannot be `const`
+  --> $DIR/macro-const-trait-bound-theoretical-regression.rs:10:40
+   |
+LL |     (impl $c:ident Trait) => { impl $c Trait {} };
+   |                                        ^^^^^ inherent impl for this type
+...
+LL | demo! { impl const Trait }
+   | --------------------------
+   | |            |
+   | |            `const` because of this
+   | in this macro invocation
+   |
+   = note: only trait implementations may be annotated with `const`
    = note: this error originates in the macro `demo` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0658]: const trait impls are experimental
-  --> $DIR/macro-const-trait-bound-theoretical-regression.rs:15:14
+  --> $DIR/macro-const-trait-bound-theoretical-regression.rs:17:14
    |
 LL | demo! { impl const Trait }
    |              ^^^^^
@@ -30,16 +34,24 @@ LL | demo! { impl const Trait }
    = help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: const trait impls are experimental
-  --> $DIR/macro-const-trait-bound-theoretical-regression.rs:18:13
+warning: trait objects without an explicit `dyn` are deprecated
+  --> $DIR/macro-const-trait-bound-theoretical-regression.rs:10:40
    |
-LL | demo! { dyn const Trait }
-   |             ^^^^^
+LL |     (impl $c:ident Trait) => { impl $c Trait {} };
+   |                                        ^^^^^
+...
+LL | demo! { impl const Trait }
+   | -------------------------- in this macro invocation
    |
-   = note: see issue #143874 <https://github.com/rust-lang/rust/issues/143874> for more information
-   = help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = warning: this is accepted in the current edition (Rust 2018) but is a hard error in Rust 2021!
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/warnings-promoted-to-error.html>
+   = note: `#[warn(bare_trait_objects)]` on by default
+   = note: this warning originates in the macro `demo` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: you might have intended to implement this trait for a given type
+   |
+LL |     (impl $c:ident Trait) => { impl $c Trait for /* Type */ {} };
+   |                                              ++++++++++++++
 
-error: aborting due to 4 previous errors
+error: aborting due to 3 previous errors; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0658`.

@@ -107,10 +107,10 @@ pub fn feature_err_issue(
     let span = span.into();
 
     // Cancel an earlier warning for this same error, if it exists.
-    if let Some(span) = span.primary_span() {
-        if let Some(err) = sess.dcx().steal_non_err(span, StashKey::EarlySyntaxWarning) {
-            err.cancel()
-        }
+    if let Some(span) = span.primary_span()
+        && let Some(err) = sess.dcx().steal_non_err(span, StashKey::EarlySyntaxWarning)
+    {
+        err.cancel()
     }
 
     let mut err = sess.dcx().create_err(FeatureGateError { span, explain: explain.into() });

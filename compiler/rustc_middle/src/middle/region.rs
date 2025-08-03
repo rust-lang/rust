@@ -175,23 +175,22 @@ impl Scope {
             return DUMMY_SP;
         };
         let span = tcx.hir_span(hir_id);
-        if let ScopeData::Remainder(first_statement_index) = self.data {
-            if let Node::Block(blk) = tcx.hir_node(hir_id) {
-                // Want span for scope starting after the
-                // indexed statement and ending at end of
-                // `blk`; reuse span of `blk` and shift `lo`
-                // forward to end of indexed statement.
-                //
-                // (This is the special case alluded to in the
-                // doc-comment for this method)
+        if let ScopeData::Remainder(first_statement_index) = self.data
+            // Want span for scope starting after the
+            // indexed statement and ending at end of
+            // `blk`; reuse span of `blk` and shift `lo`
+            // forward to end of indexed statement.
+            //
+            // (This is the special case alluded to in the
+            // doc-comment for this method)
+            && let Node::Block(blk) = tcx.hir_node(hir_id)
+        {
+            let stmt_span = blk.stmts[first_statement_index.index()].span;
 
-                let stmt_span = blk.stmts[first_statement_index.index()].span;
-
-                // To avoid issues with macro-generated spans, the span
-                // of the statement must be nested in that of the block.
-                if span.lo() <= stmt_span.lo() && stmt_span.lo() <= span.hi() {
-                    return span.with_lo(stmt_span.lo());
-                }
+            // To avoid issues with macro-generated spans, the span
+            // of the statement must be nested in that of the block.
+            if span.lo() <= stmt_span.lo() && stmt_span.lo() <= span.hi() {
+                return span.with_lo(stmt_span.lo());
             }
         }
         span

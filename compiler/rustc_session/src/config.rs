@@ -343,12 +343,12 @@ impl LinkSelfContained {
         if let Some(component_to_enable) = component.strip_prefix('+') {
             self.explicitly_set = None;
             self.enabled_components
-                .insert(LinkSelfContainedComponents::from_str(component_to_enable)?);
+                .insert(LinkSelfContainedComponents::from_str(component_to_enable).ok()?);
             Some(())
         } else if let Some(component_to_disable) = component.strip_prefix('-') {
             self.explicitly_set = None;
             self.disabled_components
-                .insert(LinkSelfContainedComponents::from_str(component_to_disable)?);
+                .insert(LinkSelfContainedComponents::from_str(component_to_disable).ok()?);
             Some(())
         } else {
             None

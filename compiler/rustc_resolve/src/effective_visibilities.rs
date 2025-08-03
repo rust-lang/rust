@@ -114,9 +114,7 @@ impl<'a, 'ra, 'tcx> EffectiveVisibilitiesVisitor<'a, 'ra, 'tcx> {
     /// including their whole reexport chains.
     fn set_bindings_effective_visibilities(&mut self, module_id: LocalDefId) {
         let module = self.r.expect_module(module_id.to_def_id());
-        let resolutions = self.r.resolutions(module);
-
-        for (_, name_resolution) in resolutions.borrow().iter() {
+        for (_, name_resolution) in self.r.resolutions(module).borrow().iter() {
             let Some(mut binding) = name_resolution.borrow().binding() else {
                 continue;
             };

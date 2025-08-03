@@ -80,8 +80,11 @@ fn sizedness_constraint_for_ty<'tcx>(
 
 fn defaultness(tcx: TyCtxt<'_>, def_id: LocalDefId) -> hir::Defaultness {
     match tcx.hir_node_by_def_id(def_id) {
-        hir::Node::Item(hir::Item { kind: hir::ItemKind::Impl(impl_), .. }) => impl_.defaultness,
-        hir::Node::ImplItem(hir::ImplItem { defaultness, .. })
+        hir::Node::Item(hir::Item {
+            kind: hir::ItemKind::Impl(hir::Impl { defaultness, of_trait: Some(_), .. }),
+            ..
+        })
+        | hir::Node::ImplItem(hir::ImplItem { defaultness, .. })
         | hir::Node::TraitItem(hir::TraitItem { defaultness, .. }) => *defaultness,
         node => {
             bug!("`defaultness` called on {:?}", node);
@@ -106,10 +109,10 @@ fn adt_sizedness_constraint<'tcx>(
     tcx: TyCtxt<'tcx>,
     (def_id, sizedness): (DefId, SizedTraitKind),
 ) -> Option<ty::EarlyBinder<'tcx, Ty<'tcx>>> {
-    if let Some(def_id) = def_id.as_local() {
-        if let ty::Representability::Infinite(_) = tcx.representability(def_id) {
-            return None;
-        }
+    if let Some(def_id) = def_id.as_local()
+        && let ty::Representability::Infinite(_) = tcx.representability(def_id)
+    {
+        return None;
     }
     let def = tcx.adt_def(def_id);
 

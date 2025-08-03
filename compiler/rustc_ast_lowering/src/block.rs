@@ -95,7 +95,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
     fn lower_local(&mut self, l: &Local) -> &'hir hir::LetStmt<'hir> {
         // Let statements are allowed to have impl trait in bindings.
-        let super_ = l.super_;
+        let super_ = l.super_.map(|span| self.lower_span(span));
         let ty = l.ty.as_ref().map(|t| {
             self.lower_ty(t, self.impl_trait_in_bindings_ctxt(ImplTraitPosition::Variable))
         });

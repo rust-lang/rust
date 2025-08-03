@@ -86,7 +86,7 @@ macro_rules! define_helper {
 
             impl $helper {
                 pub fn new() -> $helper {
-                    $helper($tl.with(|c| c.replace(true)))
+                    $helper($tl.replace(true))
                 }
             }
 
@@ -100,12 +100,12 @@ macro_rules! define_helper {
 
             impl Drop for $helper {
                 fn drop(&mut self) {
-                    $tl.with(|c| c.set(self.0))
+                    $tl.set(self.0)
                 }
             }
 
             pub fn $name() -> bool {
-                $tl.with(|c| c.get())
+                $tl.get()
             }
         )+
     }
@@ -225,10 +225,10 @@ impl<'tcx> RegionHighlightMode<'tcx> {
         region: Option<ty::Region<'tcx>>,
         number: Option<usize>,
     ) {
-        if let Some(k) = region {
-            if let Some(n) = number {
-                self.highlighting_region(k, n);
-            }
+        if let Some(k) = region
+            && let Some(n) = number
+        {
+            self.highlighting_region(k, n);
         }
     }
 

@@ -148,6 +148,11 @@ impl From<Ident> for LifetimeSyntax {
 /// `LifetimeSource::OutlivesBound` or `LifetimeSource::PreciseCapturing`
 /// — there's no way to "elide" these lifetimes.
 #[derive(Debug, Copy, Clone, HashStable_Generic)]
+// Raise the aligement to at least 4 bytes - this is relied on in other parts of the compiler(for pointer tagging):
+// https://github.com/rust-lang/rust/blob/ce5fdd7d42aba9a2925692e11af2bd39cf37798a/compiler/rustc_data_structures/src/tagged_ptr.rs#L163
+// Removing this `repr(4)` will cause the compiler to not build on platforms like `m68k` Linux, where the aligement of u32 and usize is only 2.
+// Since `repr(align)` may only raise aligement, this has no effect on platforms where the aligement is already sufficient.
+#[repr(align(4))]
 pub struct Lifetime {
     #[stable_hasher(ignore)]
     pub hir_id: HirId,
@@ -1302,6 +1307,7 @@ impl AttributeExt for Attribute {
             // FIXME: should not be needed anymore when all attrs are parsed
             Attribute::Parsed(AttributeKind::Deprecation { span, .. }) => *span,
             Attribute::Parsed(AttributeKind::DocComment { span, .. }) => *span,
+            Attribute::Parsed(AttributeKind::MacroUse { span, .. }) => *span,
             Attribute::Parsed(AttributeKind::MayDangle(span)) => *span,
             Attribute::Parsed(AttributeKind::Ignore { span, .. }) => *span,
             Attribute::Parsed(AttributeKind::AutomaticallyDerived(span)) => *span,
@@ -1361,6 +1367,17 @@ impl AttributeExt for Attribute {
             }
             _ => None,
         }
+    }
+
+    fn is_proc_macro_attr(&self) -> bool {
+        matches!(
+            self,
+            Attribute::Parsed(
+                AttributeKind::ProcMacro(..)
+                    | AttributeKind::ProcMacroAttribute(..)
+                    | AttributeKind::ProcMacroDerive { .. }
+            )
+        )
     }
 }
 

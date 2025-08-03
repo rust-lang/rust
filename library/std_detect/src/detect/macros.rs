@@ -131,14 +131,13 @@ macro_rules! features {
             };
         }
 
-        #[test] //tidy:skip
         #[deny(unexpected_cfgs)]
         #[deny(unfulfilled_lint_expectations)]
-        fn unexpected_cfgs() {
+        const _: () = {
             $(
                 check_cfg_feature!($feature, $feature_lit $(, without cfg check: $feature_cfg_check)? $(: $($target_feature_lit),*)?);
             )*
-        }
+        };
 
         /// Each variant denotes a position in a bitset for a particular feature.
         ///

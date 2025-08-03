@@ -63,10 +63,10 @@ rand = { version = "0.9.0", default-features = false, features = ["alloc"] }
 rand_xorshift = "0.4.0"
 
 [target.'cfg(any(all(target_family = "wasm", target_os = "unknown"), target_os = "xous", all(target_vendor = "fortanix", target_env = "sgx")))'.dependencies]
-dlmalloc = { version = "0.2.4", features = ['rustc-dep-of-std'] }
+dlmalloc = { version = "0.2.10", features = ['rustc-dep-of-std'] }
 
 [target.x86_64-fortanix-unknown-sgx.dependencies]
-fortanix-sgx-abi = { version = "0.5.0", features = [
+fortanix-sgx-abi = { version = "0.6.1", features = [
     'rustc-dep-of-std',
 ], public = true }
 
@@ -97,9 +97,7 @@ backtrace-trace-only = []
 panic-unwind = ["dep:panic_unwind"]
 compiler-builtins-c = ["alloc/compiler-builtins-c"]
 compiler-builtins-mem = ["alloc/compiler-builtins-mem"]
-compiler-builtins-no-asm = ["alloc/compiler-builtins-no-asm"]
 compiler-builtins-no-f16-f128 = ["alloc/compiler-builtins-no-f16-f128"]
-compiler-builtins-mangled-names = ["alloc/compiler-builtins-mangled-names"]
 llvm-libunwind = ["unwind/llvm-libunwind"]
 system-llvm-libunwind = ["unwind/system-llvm-libunwind"]
 

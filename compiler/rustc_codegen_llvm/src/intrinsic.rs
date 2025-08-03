@@ -382,26 +382,16 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 let width = size.bits();
                 let llty = self.type_ix(width);
                 match name {
-                    sym::ctlz | sym::cttz => {
-                        let y = self.const_bool(false);
-                        let ret = self.call_intrinsic(
-                            format!("llvm.{name}"),
-                            &[llty],
-                            &[args[0].immediate(), y],
-                        );
-
-                        self.intcast(ret, result.layout.llvm_type(self), false)
-                    }
-                    sym::ctlz_nonzero => {
-                        let y = self.const_bool(true);
+                    sym::ctlz | sym::ctlz_nonzero | sym::cttz | sym::cttz_nonzero => {
+                        let y =
+                            self.const_bool(name == sym::ctlz_nonzero || name == sym::cttz_nonzero);
+                        let llvm_name = if name == sym::ctlz || name == sym::ctlz_nonzero {
+                            "llvm.ctlz"
+                        } else {
+                            "llvm.cttz"
+                        };
                         let ret =
-                            self.call_intrinsic("llvm.ctlz", &[llty], &[args[0].immediate(), y]);
-                        self.intcast(ret, result.layout.llvm_type(self), false)
-                    }
-                    sym::cttz_nonzero => {
-                        let y = self.const_bool(true);
-                        let ret =
-                            self.call_intrinsic("llvm.cttz", &[llty], &[args[0].immediate(), y]);
+                            self.call_intrinsic(llvm_name, &[llty], &[args[0].immediate(), y]);
                         self.intcast(ret, result.layout.llvm_type(self), false)
                     }
                     sym::ctpop => {

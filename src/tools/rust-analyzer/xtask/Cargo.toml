@@ -8,7 +8,6 @@ rust-version.workspace = true
 
 [dependencies]
 anyhow.workspace = true
-directories = "6.0"
 flate2 = "1.1.2"
 write-json = "0.1.4"
 xshell.workspace = true

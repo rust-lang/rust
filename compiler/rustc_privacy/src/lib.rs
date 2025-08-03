@@ -26,7 +26,7 @@ use rustc_errors::{MultiSpan, listify};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LocalDefId, LocalModDefId};
 use rustc_hir::intravisit::{self, InferKind, Visitor};
-use rustc_hir::{AmbigArg, ForeignItemKind, ItemId, ItemKind, PatKind};
+use rustc_hir::{AmbigArg, ForeignItemId, ItemId, PatKind};
 use rustc_middle::middle::privacy::{EffectiveVisibilities, EffectiveVisibility, Level};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::print::PrintTraitRefExt as _;
@@ -204,12 +204,10 @@ where
                 // Something like `fn() {my_method}` type of the method
                 // `impl Pub<Priv> { pub fn my_method() {} }` is considered a private type,
                 // so we need to visit the self type additionally.
-                if let Some(assoc_item) = tcx.opt_associated_item(def_id) {
-                    if let Some(impl_def_id) = assoc_item.impl_container(tcx) {
-                        try_visit!(
-                            tcx.type_of(impl_def_id).instantiate_identity().visit_with(self)
-                        );
-                    }
+                if let Some(assoc_item) = tcx.opt_associated_item(def_id)
+                    && let Some(impl_def_id) = assoc_item.impl_container(tcx)
+                {
+                    try_visit!(tcx.type_of(impl_def_id).instantiate_identity().visit_with(self));
                 }
             }
             ty::Alias(kind @ (ty::Inherent | ty::Free | ty::Projection), data) => {
@@ -599,18 +597,13 @@ impl<'tcx> EmbargoVisitor<'tcx> {
 
             DefKind::Struct | DefKind::Union => {
                 // While structs and unions have type privacy, their fields do not.
-                let item = self.tcx.hir_expect_item(def_id);
-                if let hir::ItemKind::Struct(_, _, ref struct_def)
-                | hir::ItemKind::Union(_, _, ref struct_def) = item.kind
-                {
-                    for field in struct_def.fields() {
-                        let field_vis = self.tcx.local_visibility(field.def_id);
-                        if field_vis.is_accessible_from(module, self.tcx) {
-                            self.reach(field.def_id, macro_ev).ty();
-                        }
+                let struct_def = self.tcx.adt_def(def_id);
+                for field in struct_def.non_enum_variant().fields.iter() {
+                    let def_id = field.did.expect_local();
+                    let field_vis = self.tcx.local_visibility(def_id);
+                    if field_vis.is_accessible_from(module, self.tcx) {
+                        self.reach(def_id, macro_ev).ty();
                     }
-                } else {
-                    bug!("item {:?} with DefKind {:?}", item, def_kind);
                 }
             }
 
@@ -739,6 +732,7 @@ impl<'tcx> Visitor<'tcx> for EmbargoVisitor<'tcx> {
                         if let Some(ctor_def_id) = variant.data.ctor_def_id() {
                             self.update(ctor_def_id, variant_ev, Level::Reachable);
                         }
+
                         for field in variant.data.fields() {
                             self.update(field.def_id, variant_ev, Level::Reachable);
                             self.reach(field.def_id, variant_ev).ty();
@@ -1644,66 +1638,29 @@ impl<'tcx> PrivateItemsInPublicInterfacesChecker<'_, 'tcx> {
                 self.check(def_id, item_visibility, effective_vis).generics().predicates();
             }
             DefKind::Enum => {
-                let item = tcx.hir_item(id);
-                if let hir::ItemKind::Enum(_, _, ref def) = item.kind {
-                    self.check_unnameable(item.owner_id.def_id, effective_vis);
+                self.check_unnameable(def_id, effective_vis);
+                self.check(def_id, item_visibility, effective_vis).generics().predicates();
 
-                    self.check(item.owner_id.def_id, item_visibility, effective_vis)
-                        .generics()
-                        .predicates();
-
-                    for variant in def.variants {
-                        for field in variant.data.fields() {
-                            self.check(field.def_id, item_visibility, effective_vis).ty();
-                        }
-                    }
-                }
-            }
-            // Subitems of foreign modules have their own publicity.
-            DefKind::ForeignMod => {
-                let item = tcx.hir_item(id);
-                if let hir::ItemKind::ForeignMod { items, .. } = item.kind {
-                    for &foreign_item in items {
-                        let foreign_item = tcx.hir_foreign_item(foreign_item);
-
-                        let ev = self.get(foreign_item.owner_id.def_id);
-                        let vis = tcx.local_visibility(foreign_item.owner_id.def_id);
-
-                        if let ForeignItemKind::Type = foreign_item.kind {
-                            self.check_unnameable(foreign_item.owner_id.def_id, ev);
-                        }
-
-                        self.check(foreign_item.owner_id.def_id, vis, ev)
-                            .generics()
-                            .predicates()
-                            .ty();
-                    }
+                let adt = tcx.adt_def(id.owner_id);
+                for field in adt.all_fields() {
+                    self.check(field.did.expect_local(), item_visibility, effective_vis).ty();
                 }
             }
             // Subitems of structs and unions have their own publicity.
             DefKind::Struct | DefKind::Union => {
-                let item = tcx.hir_item(id);
-                if let hir::ItemKind::Struct(_, _, ref struct_def)
-                | hir::ItemKind::Union(_, _, ref struct_def) = item.kind
-                {
-                    self.check_unnameable(item.owner_id.def_id, effective_vis);
-                    self.check(item.owner_id.def_id, item_visibility, effective_vis)
-                        .generics()
-                        .predicates();
+                self.check_unnameable(def_id, effective_vis);
+                self.check(def_id, item_visibility, effective_vis).generics().predicates();
 
-                    for field in struct_def.fields() {
-                        let field_visibility = tcx.local_visibility(field.def_id);
-                        let field_ev = self.get(field.def_id);
+                let adt = tcx.adt_def(id.owner_id);
+                for field in adt.all_fields() {
+                    let visibility = min(item_visibility, field.vis.expect_local(), tcx);
+                    let field_ev = self.get(field.did.expect_local());
 
-                        self.check(
-                            field.def_id,
-                            min(item_visibility, field_visibility, tcx),
-                            field_ev,
-                        )
-                        .ty();
-                    }
+                    self.check(field.did.expect_local(), visibility, field_ev).ty();
                 }
             }
+            // Subitems of foreign modules have their own publicity.
+            DefKind::ForeignMod => {}
             // An inherent impl is public when its type is public
             // Subitems of inherent impls have their own publicity.
             // A trait impl is public when both its type and its trait are public
@@ -1763,6 +1720,19 @@ impl<'tcx> PrivateItemsInPublicInterfacesChecker<'_, 'tcx> {
             _ => {}
         }
     }
+
+    fn check_foreign_item(&mut self, id: ForeignItemId) {
+        let tcx = self.tcx;
+        let def_id = id.owner_id.def_id;
+        let item_visibility = tcx.local_visibility(def_id);
+        let effective_vis = self.get(def_id);
+
+        if let DefKind::ForeignTy = self.tcx.def_kind(def_id) {
+            self.check_unnameable(def_id, effective_vis);
+        }
+
+        self.check(def_id, item_visibility, effective_vis).generics().predicates().ty();
+    }
 }
 
 pub fn provide(providers: &mut Providers) {
@@ -1791,20 +1761,13 @@ fn check_mod_privacy(tcx: TyCtxt<'_>, module_def_id: LocalModDefId) {
         if let Some(body_id) = tcx.hir_maybe_body_owned_by(def_id) {
             visitor.visit_nested_body(body_id.id());
         }
-    }
 
-    for id in module.free_items() {
-        if let ItemKind::Impl(i) = tcx.hir_item(id).kind {
-            if let Some(item) = i.of_trait {
-                let trait_ref = tcx.impl_trait_ref(id.owner_id.def_id).unwrap();
-                let trait_ref = trait_ref.instantiate_identity();
-                visitor.span = item.path.span;
-                let _ = visitor.visit_def_id(
-                    trait_ref.def_id,
-                    "trait",
-                    &trait_ref.print_only_trait_path(),
-                );
-            }
+        if let DefKind::Impl { of_trait: true } = tcx.def_kind(def_id) {
+            let trait_ref = tcx.impl_trait_ref(def_id).unwrap();
+            let trait_ref = trait_ref.instantiate_identity();
+            visitor.span = tcx.hir_expect_item(def_id).expect_impl().of_trait.unwrap().path.span;
+            let _ =
+                visitor.visit_def_id(trait_ref.def_id, "trait", &trait_ref.print_only_trait_path());
         }
     }
 }
@@ -1895,7 +1858,11 @@ fn check_private_in_public(tcx: TyCtxt<'_>, (): ()) {
     // Check for private types in public interfaces.
     let mut checker = PrivateItemsInPublicInterfacesChecker { tcx, effective_visibilities };
 
-    for id in tcx.hir_free_items() {
+    let crate_items = tcx.hir_crate_items(());
+    for id in crate_items.free_items() {
         checker.check_item(id);
+    }
+    for id in crate_items.foreign_items() {
+        checker.check_foreign_item(id);
     }
 }
