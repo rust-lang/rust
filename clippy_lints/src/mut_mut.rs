@@ -1,5 +1,7 @@
-use clippy_utils::diagnostics::{span_lint, span_lint_hir};
+use clippy_utils::diagnostics::{span_lint, span_lint_hir, span_lint_hir_and_then};
 use clippy_utils::higher;
+use clippy_utils::sugg::Sugg;
+use rustc_errors::Applicability;
 use rustc_hir::{self as hir, AmbigArg, intravisit};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::ty;
@@ -80,12 +82,17 @@ impl<'tcx> intravisit::Visitor<'tcx> for MutVisitor<'_, 'tcx> {
             } else if let ty::Ref(_, ty, hir::Mutability::Mut) = self.cx.typeck_results().expr_ty(e).kind()
                 && ty.peel_refs().is_sized(self.cx.tcx, self.cx.typing_env())
             {
-                span_lint_hir(
+                let mut applicability = Applicability::MaybeIncorrect;
+                let sugg = Sugg::hir_with_applicability(self.cx, e, "..", &mut applicability).mut_addr_deref();
+                span_lint_hir_and_then(
                     self.cx,
                     MUT_MUT,
                     expr.hir_id,
                     expr.span,
-                    "this expression mutably borrows a mutable reference. Consider reborrowing",
+                    "this expression mutably borrows a mutable reference",
+                    |diag| {
+                        diag.span_suggestion(expr.span, "reborrow instead", sugg, applicability);
+                    },
                 );
             }
         }

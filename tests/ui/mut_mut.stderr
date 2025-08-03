@@ -21,11 +21,11 @@ LL |     let mut z = inline!(&mut $(&mut 3u32));
    |
    = note: this error originates in the macro `__inline_mac_fn_main` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: this expression mutably borrows a mutable reference. Consider reborrowing
+error: this expression mutably borrows a mutable reference
   --> tests/ui/mut_mut.rs:35:21
    |
 LL |         let mut y = &mut x;
-   |                     ^^^^^^
+   |                     ^^^^^^ help: reborrow instead: `&mut *x`
 
 error: generally you want to avoid `&mut &mut _` if possible
   --> tests/ui/mut_mut.rs:40:32

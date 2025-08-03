@@ -13,11 +13,11 @@ error: generally you want to avoid `&mut &mut _` if possible
 LL |     let mut x = &mut &mut 1u32;
    |                 ^^^^^^^^^^^^^^
 
-error: this expression mutably borrows a mutable reference. Consider reborrowing
+error: this expression mutably borrows a mutable reference
   --> tests/ui/mut_mut_unfixable.rs:18:21
    |
 LL |         let mut y = &mut x;
-   |                     ^^^^^^
+   |                     ^^^^^^ help: reborrow instead: `&mut *x`
 
 error: generally you want to avoid `&mut &mut _` if possible
   --> tests/ui/mut_mut_unfixable.rs:24:17
