@@ -65,7 +65,7 @@ use crate::session_diagnostics::{AttributeParseError, AttributeParseErrorReason,
 type GroupType<S> = LazyLock<GroupTypeInner<S>>;
 
 struct GroupTypeInner<S: Stage> {
-    accepters: BTreeMap<&'static [Symbol], Vec<GroupTypeInnerAccept<S>>>,
+    accepters: BTreeMap<&'static [Symbol], GroupTypeInnerAccept<S>>,
     finalizers: Vec<FinalizeFn<S>>,
 }
 
@@ -104,7 +104,7 @@ macro_rules! attribute_parsers {
         @[$stage: ty] pub(crate) static $name: ident = [$($names: ty),* $(,)?];
     ) => {
         pub(crate) static $name: GroupType<$stage> = LazyLock::new(|| {
-            let mut accepts = BTreeMap::<_, Vec<GroupTypeInnerAccept<$stage>>>::new();
+            let mut accepts = BTreeMap::<_, GroupTypeInnerAccept<$stage>>::new();
             let mut finalizes = Vec::<FinalizeFn<$stage>>::new();
             $(
                 {
@@ -113,14 +113,16 @@ macro_rules! attribute_parsers {
                     };
 
                     for (path, template, accept_fn) in <$names>::ATTRIBUTES {
-                        accepts.entry(*path).or_default().push(GroupTypeInnerAccept {
+                        if accepts.insert(*path, GroupTypeInnerAccept {
                             template: *template,
                             accept_fn: Box::new(|cx, args| {
                                 STATE_OBJECT.with_borrow_mut(|s| {
                                     accept_fn(s, cx, args)
                                 })
                             })
-                        });
+                        }).is_some() {
+                            panic!("Found two attribute parsers for attribute {path:?}");
+                        }
                     }
 
                     finalizes.push(Box::new(|cx| {
@@ -822,22 +824,20 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
                     let args = parser.args();
                     let parts = path.segments().map(|i| i.name).collect::<Vec<_>>();
 
-                    if let Some(accepts) = S::parsers().accepters.get(parts.as_slice()) {
-                        for accept in accepts {
-                            let mut cx: AcceptContext<'_, 'sess, S> = AcceptContext {
-                                shared: SharedContext {
-                                    cx: self,
-                                    target_span,
-                                    target_id,
-                                    emit_lint: &mut emit_lint,
-                                },
-                                attr_span: lower_span(attr.span),
-                                template: &accept.template,
-                                attr_path: path.get_attribute_path(),
-                            };
+                    if let Some(accept) = S::parsers().accepters.get(parts.as_slice()) {
+                        let mut cx: AcceptContext<'_, 'sess, S> = AcceptContext {
+                            shared: SharedContext {
+                                cx: self,
+                                target_span,
+                                target_id,
+                                emit_lint: &mut emit_lint,
+                            },
+                            attr_span: lower_span(attr.span),
+                            template: &accept.template,
+                            attr_path: path.get_attribute_path(),
+                        };
 
-                            (accept.accept_fn)(&mut cx, args)
-                        }
+                        (accept.accept_fn)(&mut cx, args)
                     } else {
                         // If we're here, we must be compiling a tool attribute... Or someone
                         // forgot to parse their fancy new attribute. Let's warn them in any case.
