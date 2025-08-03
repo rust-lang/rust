@@ -297,6 +297,9 @@ pub enum AttributeKind {
     /// Represents `#[const_trait]`.
     ConstTrait(Span),
 
+    /// Represents `#[coroutine]`.
+    Coroutine(Span),
+
     /// Represents `#[coverage(..)]`.
     Coverage(Span, CoverageAttrKind),
 
