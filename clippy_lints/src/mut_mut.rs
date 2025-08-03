@@ -1,5 +1,6 @@
-use clippy_utils::diagnostics::{span_lint, span_lint_hir_and_then};
+use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_hir_and_then};
 use clippy_utils::higher;
+use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::sugg::Sugg;
 use rustc_errors::Applicability;
 use rustc_hir::{self as hir, AmbigArg, intravisit};
@@ -37,15 +38,20 @@ impl<'tcx> LateLintPass<'tcx> for MutMut {
     fn check_ty(&mut self, cx: &LateContext<'tcx>, ty: &'tcx hir::Ty<'_, AmbigArg>) {
         if let hir::TyKind::Ref(_, mty) = ty.kind
             && mty.mutbl == hir::Mutability::Mut
-            && let hir::TyKind::Ref(_, mty) = mty.ty.kind
-            && mty.mutbl == hir::Mutability::Mut
+            && let hir::TyKind::Ref(_, mty2) = mty.ty.kind
+            && mty2.mutbl == hir::Mutability::Mut
             && !ty.span.in_external_macro(cx.sess().source_map())
         {
-            span_lint(
+            let mut applicability = Applicability::MaybeIncorrect;
+            let sugg = snippet_with_applicability(cx.sess(), mty.ty.span, "..", &mut applicability);
+            span_lint_and_sugg(
                 cx,
                 MUT_MUT,
                 ty.span,
-                "generally you want to avoid `&mut &mut _` if possible",
+                "a type of form `&mut &mut _`",
+                "remove the extra `&mut`",
+                sugg.to_string(),
+                applicability,
             );
         }
     }

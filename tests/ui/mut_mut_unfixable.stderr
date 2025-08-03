@@ -1,8 +1,8 @@
-error: generally you want to avoid `&mut &mut _` if possible
+error: a type of form `&mut &mut _`
   --> tests/ui/mut_mut_unfixable.rs:9:11
    |
 LL | fn fun(x: &mut &mut u32) -> bool {
-   |           ^^^^^^^^^^^^^
+   |           ^^^^^^^^^^^^^ help: remove the extra `&mut`: `&mut u32`
    |
    = note: `-D clippy::mut-mut` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::mut_mut)]`
