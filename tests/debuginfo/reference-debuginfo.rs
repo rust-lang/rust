@@ -3,6 +3,7 @@
 // and leaves codegen to create a ladder of allocations so as `*a == b`.
 //
 //@ compile-flags:-g -Zmir-enable-passes=+ReferencePropagation,-ConstDebugInfo
+//@ disable-gdb-pretty-printers
 
 // === GDB TESTS ===================================================================================
 
@@ -106,8 +107,6 @@
 // lldb-check:[...] 3.5
 
 #![allow(unused_variables)]
-#![feature(omit_gdb_pretty_printer_section)]
-#![omit_gdb_pretty_printer_section]
 #![feature(f16)]
 
 fn main() {
