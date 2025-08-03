@@ -1,7 +1,7 @@
-//@ revisions: pin_ergonomics normal
+//@ revisions: normal pin_ergonomics deref_patterns both
 //@ edition:2024
-#![cfg_attr(pin_ergonomics, feature(pin_ergonomics))]
-#![feature(deref_patterns)]
+#![cfg_attr(any(pin_ergonomics, both), feature(pin_ergonomics))]
+#![cfg_attr(any(deref_patterns, both), feature(deref_patterns))]
 #![allow(incomplete_features)]
 
 // This test verifies that the `pin_ergonomics` feature works well
@@ -24,88 +24,76 @@ enum Baz<T, U> {
 
 fn foo_mut<T: Unpin, U: Unpin>(foo: Pin<&mut Foo<T, U>>) {
     match foo {
-        Foo { .. } => {} //~ ERROR mix of deref patterns and normal constructors
+        Foo { x, y } => {}
+        //[normal]~^ ERROR mismatched types
+        //[deref_patterns]~^^ ERROR mix of deref patterns and normal constructors
+        //[pin_ergonomics]~^^^ ERROR mix of deref patterns and normal constructors
+        //[both]~^^^^ ERROR mix of deref patterns and normal constructors
         Pin { .. } => {}
     }
     let _ = || match foo {
-        Foo { .. } => {} //~ ERROR mix of deref patterns and normal constructors
-        Pin { .. } => {}
-    };
-
-    #[cfg(pin_ergonomics)]
-    match foo {
-        Foo { x, y } => {} //[pin_ergonomics]~ ERROR mix of deref patterns and normal constructors
-        Pin { .. } => {}
-    }
-    #[cfg(pin_ergonomics)]
-    let _ = || match foo {
-        Foo { .. } => {} //[pin_ergonomics]~ ERROR mix of deref patterns and normal constructors
+        Foo { x, y } => {}
+        //[normal]~^ ERROR mismatched types
+        //[deref_patterns]~^^ ERROR mix of deref patterns and normal constructors
+        //[pin_ergonomics]~^^^ ERROR mix of deref patterns and normal constructors
+        //[both]~^^^^ ERROR mix of deref patterns and normal constructors
         Pin { .. } => {}
     };
 }
 
 fn foo_const<T: Unpin, U: Unpin>(foo: Pin<&Foo<T, U>>) {
     match foo {
-        Foo { .. } => {} //~ ERROR mix of deref patterns and normal constructors
+        Foo { x, y } => {}
+        //[normal]~^ ERROR mismatched types
+        //[deref_patterns]~^^ ERROR mix of deref patterns and normal constructors
+        //[pin_ergonomics]~^^^ ERROR mix of deref patterns and normal constructors
+        //[both]~^^^^ ERROR mix of deref patterns and normal constructors
         Pin { .. } => {}
     }
     let _ = || match foo {
-        Foo { .. } => {} //~ ERROR mix of deref patterns and normal constructors
-        Pin { .. } => {}
-    };
-
-    #[cfg(pin_ergonomics)]
-    match foo {
-        Foo { x, y } => {} //[pin_ergonomics]~ ERROR mix of deref patterns and normal constructors
-        Pin { .. } => {}
-    }
-    #[cfg(pin_ergonomics)]
-    let _ = || match foo {
-        Foo { .. } => {} //[pin_ergonomics]~ ERROR mix of deref patterns and normal constructors
+        Foo { x, y } => {}
+        //[normal]~^ ERROR mismatched types
+        //[deref_patterns]~^^ ERROR mix of deref patterns and normal constructors
+        //[pin_ergonomics]~^^^ ERROR mix of deref patterns and normal constructors
+        //[both]~^^^^ ERROR mix of deref patterns and normal constructors
         Pin { .. } => {}
     };
 }
 
 fn bar_mut<T: Unpin, U: Unpin>(bar: Pin<&mut Bar<T, U>>) {
     match bar {
-        Bar(..) => {} //~ ERROR mix of deref patterns and normal constructors
+        Bar(x, y) => {}
+        //[normal]~^ ERROR mismatched types
+        //[deref_patterns]~^^ ERROR mix of deref patterns and normal constructors
+        //[pin_ergonomics]~^^^ ERROR mix of deref patterns and normal constructors
+        //[both]~^^^^ ERROR mix of deref patterns and normal constructors
         Pin { .. } => {}
     }
     let _ = || match bar {
-        Bar(..) => {} //~ ERROR mix of deref patterns and normal constructors
-        Pin { .. } => {}
-    };
-
-    #[cfg(pin_ergonomics)]
-    match bar {
-        Bar(x, y) => {} //[pin_ergonomics]~ ERROR mix of deref patterns and normal constructors
-        Pin { .. } => {}
-    }
-    #[cfg(pin_ergonomics)]
-    let _ = || match bar {
-        Bar(x, y) => {} //[pin_ergonomics]~ ERROR mix of deref patterns and normal constructors
+        Bar(x, y) => {}
+        //[normal]~^ ERROR mismatched types
+        //[deref_patterns]~^^ ERROR mix of deref patterns and normal constructors
+        //[pin_ergonomics]~^^^ ERROR mix of deref patterns and normal constructors
+        //[both]~^^^^ ERROR mix of deref patterns and normal constructors
         Pin { .. } => {}
     };
 }
 
 fn bar_const<T: Unpin, U: Unpin>(bar: Pin<&Bar<T, U>>) {
     match bar {
-        Bar(..) => {} //~ ERROR mix of deref patterns and normal constructors
+        Bar(x, y) => {}
+        //[normal]~^ ERROR mismatched types
+        //[deref_patterns]~^^ ERROR mix of deref patterns and normal constructors
+        //[pin_ergonomics]~^^^ ERROR mix of deref patterns and normal constructors
+        //[both]~^^^^ ERROR mix of deref patterns and normal constructors
         Pin { .. } => {}
     }
     let _ = || match bar {
-        Bar(..) => {} //~ ERROR mix of deref patterns and normal constructors
-        Pin { .. } => {}
-    };
-
-    #[cfg(pin_ergonomics)]
-    match bar {
-        Bar(x, y) => {} //[pin_ergonomics]~ ERROR mix of deref patterns and normal constructors
-        Pin { .. } => {}
-    }
-    #[cfg(pin_ergonomics)]
-    let _ = || match bar {
-        Bar(x, y) => {} //[pin_ergonomics]~ ERROR mix of deref patterns and normal constructors
+        Bar(x, y) => {}
+        //[normal]~^ ERROR mismatched types
+        //[deref_patterns]~^^ ERROR mix of deref patterns and normal constructors
+        //[pin_ergonomics]~^^^ ERROR mix of deref patterns and normal constructors
+        //[both]~^^^^ ERROR mix of deref patterns and normal constructors
         Pin { .. } => {}
     };
 }
