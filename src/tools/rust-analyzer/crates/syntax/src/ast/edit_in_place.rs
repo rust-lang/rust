@@ -9,11 +9,11 @@ use crate::{
     SyntaxKind::{ATTR, COMMENT, WHITESPACE},
     SyntaxNode, SyntaxToken,
     algo::{self, neighbor},
-    ast::{self, HasGenericArgs, HasGenericParams, edit::IndentLevel, make},
+    ast::{self, HasGenericParams, edit::IndentLevel, make},
     ted::{self, Position},
 };
 
-use super::{GenericParam, HasArgList, HasName};
+use super::{GenericParam, HasName};
 
 pub trait GenericParamsOwnerEdit: ast::HasGenericParams {
     fn get_or_create_generic_param_list(&self) -> ast::GenericParamList;
@@ -419,34 +419,6 @@ impl Removable for ast::TypeBoundList {
     }
 }
 
-impl ast::PathSegment {
-    pub fn get_or_create_generic_arg_list(&self) -> ast::GenericArgList {
-        if self.generic_arg_list().is_none() {
-            let arg_list = make::generic_arg_list(empty()).clone_for_update();
-            ted::append_child(self.syntax(), arg_list.syntax());
-        }
-        self.generic_arg_list().unwrap()
-    }
-}
-
-impl ast::MethodCallExpr {
-    pub fn get_or_create_generic_arg_list(&self) -> ast::GenericArgList {
-        if self.generic_arg_list().is_none() {
-            let generic_arg_list = make::turbofish_generic_arg_list(empty()).clone_for_update();
-
-            if let Some(arg_list) = self.arg_list() {
-                ted::insert_raw(
-                    ted::Position::before(arg_list.syntax()),
-                    generic_arg_list.syntax(),
-                );
-            } else {
-                ted::append_child(self.syntax(), generic_arg_list.syntax());
-            }
-        }
-        self.generic_arg_list().unwrap()
-    }
-}
-
 impl Removable for ast::UseTree {
     fn remove(&self) {
         for dir in [Direction::Next, Direction::Prev] {
@@ -676,106 +648,6 @@ impl ast::AssocItemList {
             item.syntax().clone().into(),
         ];
         ted::insert_all(position, elements);
-    }
-
-    /// Adds a new associated item at the start of the associated item list.
-    ///
-    /// Attention! This function does align the first line of `item` with respect to `self`,
-    /// but it does _not_ change indentation of other lines (if any).
-    pub fn add_item_at_start(&self, item: ast::AssocItem) {
-        match self.assoc_items().next() {
-            Some(first_item) => {
-                let indent = IndentLevel::from_node(first_item.syntax());
-                let before = Position::before(first_item.syntax());
-
-                ted::insert_all(
-                    before,
-                    vec![
-                        item.syntax().clone().into(),
-                        make::tokens::whitespace(&format!("\n\n{indent}")).into(),
-                    ],
-                )
-            }
-            None => {
-                let (indent, position, whitespace) = match self.l_curly_token() {
-                    Some(l_curly) => {
-                        normalize_ws_between_braces(self.syntax());
-                        (IndentLevel::from_token(&l_curly) + 1, Position::after(&l_curly), "\n")
-                    }
-                    None => (IndentLevel::single(), Position::first_child_of(self.syntax()), ""),
-                };
-
-                let mut elements = vec![];
-
-                // Avoid pushing an empty whitespace token
-                if !indent.is_zero() || !whitespace.is_empty() {
-                    elements.push(make::tokens::whitespace(&format!("{whitespace}{indent}")).into())
-                }
-                elements.push(item.syntax().clone().into());
-
-                ted::insert_all(position, elements)
-            }
-        };
-    }
-}
-
-impl ast::Fn {
-    pub fn get_or_create_body(&self) -> ast::BlockExpr {
-        if self.body().is_none() {
-            let body = make::ext::empty_block_expr().clone_for_update();
-            match self.semicolon_token() {
-                Some(semi) => {
-                    ted::replace(semi, body.syntax());
-                    ted::insert(Position::before(body.syntax), make::tokens::single_space());
-                }
-                None => ted::append_child(self.syntax(), body.syntax()),
-            }
-        }
-        self.body().unwrap()
-    }
-}
-
-impl ast::LetStmt {
-    pub fn set_ty(&self, ty: Option<ast::Type>) {
-        match ty {
-            None => {
-                if let Some(colon_token) = self.colon_token() {
-                    ted::remove(colon_token);
-                }
-
-                if let Some(existing_ty) = self.ty() {
-                    if let Some(sibling) = existing_ty.syntax().prev_sibling_or_token()
-                        && sibling.kind() == SyntaxKind::WHITESPACE
-                    {
-                        ted::remove(sibling);
-                    }
-
-                    ted::remove(existing_ty.syntax());
-                }
-
-                // Remove any trailing ws
-                if let Some(last) = self.syntax().last_token().filter(|it| it.kind() == WHITESPACE)
-                {
-                    last.detach();
-                }
-            }
-            Some(new_ty) => {
-                if self.colon_token().is_none() {
-                    ted::insert_raw(
-                        Position::after(
-                            self.pat().expect("let stmt should have a pattern").syntax(),
-                        ),
-                        make::token(T![:]),
-                    );
-                }
-
-                if let Some(old_ty) = self.ty() {
-                    ted::replace(old_ty.syntax(), new_ty.syntax());
-                } else {
-                    ted::insert(Position::after(self.colon_token().unwrap()), new_ty.syntax());
-                }
-            }
-        }
     }
 }
 
@@ -1090,36 +962,5 @@ mod tests {
         // removing
         check("let a @ ()", "let a", None);
         check("let a @ ", "let a", None);
-    }
-
-    #[test]
-    fn test_let_stmt_set_ty() {
-        #[track_caller]
-        fn check(before: &str, expected: &str, ty: Option<ast::Type>) {
-            let ty = ty.map(|it| it.clone_for_update());
-
-            let let_stmt = ast_mut_from_text::<ast::LetStmt>(&format!("fn f() {{ {before} }}"));
-            let_stmt.set_ty(ty);
-
-            let after = ast_mut_from_text::<ast::LetStmt>(&format!("fn f() {{ {expected} }}"));
-            assert_eq!(let_stmt.to_string(), after.to_string(), "{let_stmt:#?}\n!=\n{after:#?}");
-        }
-
-        // adding
-        check("let a;", "let a: ();", Some(make::ty_tuple([])));
-        // no semicolon due to it being eaten during error recovery
-        check("let a:", "let a: ()", Some(make::ty_tuple([])));
-
-        // replacing
-        check("let a: u8;", "let a: ();", Some(make::ty_tuple([])));
-        check("let a: u8 = 3;", "let a: () = 3;", Some(make::ty_tuple([])));
-        check("let a: = 3;", "let a: () = 3;", Some(make::ty_tuple([])));
-
-        // removing
-        check("let a: u8;", "let a;", None);
-        check("let a:;", "let a;", None);
-
-        check("let a: u8 = 3;", "let a = 3;", None);
-        check("let a: = 3;", "let a = 3;", None);
     }
 }
