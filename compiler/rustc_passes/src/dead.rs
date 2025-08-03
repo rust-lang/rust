@@ -81,6 +81,7 @@ struct MarkSymbolVisitor<'tcx> {
     worklist: Vec<(LocalDefId, ComesFromAllowExpect)>,
     tcx: TyCtxt<'tcx>,
     maybe_typeck_results: Option<&'tcx ty::TypeckResults<'tcx>>,
+    scanned: UnordSet<(LocalDefId, ComesFromAllowExpect)>,
     live_symbols: LocalDefIdSet,
     repr_unconditionally_treats_fields_as_live: bool,
     repr_has_repr_simd: bool,
@@ -323,9 +324,8 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
     }
 
     fn mark_live_symbols(&mut self) {
-        let mut scanned = UnordSet::default();
         while let Some(work) = self.worklist.pop() {
-            if !scanned.insert(work) {
+            if !self.scanned.insert(work) {
                 continue;
             }
 
@@ -830,6 +830,7 @@ fn live_symbols_and_ignored_derived_traits(
         worklist,
         tcx,
         maybe_typeck_results: None,
+        scanned: Default::default(),
         live_symbols: Default::default(),
         repr_unconditionally_treats_fields_as_live: false,
         repr_has_repr_simd: false,
