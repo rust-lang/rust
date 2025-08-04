@@ -74,9 +74,8 @@ use crate::{BytePos, SPAN_TRACK, SpanData};
 ///   because `parent` isn't currently used by default.
 ///
 /// In order to reliably use parented spans in incremental compilation,
-/// the dependency to the parent definition's span. This is performed
-/// using the callback `SPAN_TRACK` to access the query engine.
-///
+/// accesses to `lo` and `hi` must introduce a dependency to the parent definition's span.
+/// This is performed using the callback `SPAN_TRACK` to access the query engine.
 #[derive(Clone, Copy, Eq, PartialEq, Hash)]
 #[rustc_pass_by_value]
 pub struct Span {
