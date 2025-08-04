@@ -11,7 +11,7 @@
 #[repr(transparent)]
 pub struct Wrapper<T, const N: usize>([T; N]);
 
-// CHECK-LABEL: define {{.+}}do_repeat{{.+}}(i32 noundef %x)
+// CHECK-LABEL: define {{.+}}do_repeat{{.+}}(i32 noundef{{( signext)?}} %x)
 // CHECK-NEXT: start:
 // CHECK-NOT: alloca
 // CHECK-NEXT: ret void
@@ -23,6 +23,6 @@ pub fn do_repeat<T: Copy, const N: usize>(x: T) -> Wrapper<T, N> {
 // CHECK-LABEL: @trigger_repeat_zero_len
 #[no_mangle]
 pub fn trigger_repeat_zero_len() -> Wrapper<u32, 0> {
-    // CHECK: call void {{.+}}do_repeat{{.+}}(i32 noundef 4)
+    // CHECK: call void {{.+}}do_repeat{{.+}}(i32 noundef{{( signext)?}} 4)
     do_repeat(4)
 }
