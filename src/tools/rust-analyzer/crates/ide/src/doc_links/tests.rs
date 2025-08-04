@@ -415,6 +415,30 @@ fn foo() {
 }
 
 #[test]
+fn external_docs_macro_export() {
+    check_external_docs(
+        r#"
+//- /lib.rs crate:foo
+pub mod inner {
+    #[macro_export]
+    macro_rules! my_macro {
+        () => {};
+    }
+}
+
+//- /main.rs crate:bar deps:foo
+fn main() {
+    foo::my_m$0acro!();
+}
+        "#,
+        Some("/home/user/project"),
+        Some(expect![[r#"https://docs.rs/foo/*/foo/macro.my_macro.html"#]]),
+        Some(expect![[r#"file:///home/user/project/doc/foo/macro.my_macro.html"#]]),
+        Some("/sysroot"),
+    );
+}
+
+#[test]
 fn doc_links_items_simple() {
     check_doc_links(
         r#"
