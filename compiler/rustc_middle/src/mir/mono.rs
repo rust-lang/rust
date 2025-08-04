@@ -525,10 +525,9 @@ impl<'tcx> CodegenUnit<'tcx> {
         tcx: TyCtxt<'tcx>,
     ) -> Vec<(MonoItem<'tcx>, MonoItemData)> {
         // The codegen tests rely on items being process in the same order as
-        // they appear in the file, so for local items, we sort by span and
-        // def_path first
+        // they appear in the file, so for local items, we sort by span first
         #[derive(PartialEq, Eq, PartialOrd, Ord)]
-        struct ItemSortKey<'tcx>(Option<Span>, Option<String>, SymbolName<'tcx>);
+        struct ItemSortKey<'tcx>(Option<Span>, SymbolName<'tcx>);
 
         // We only want to take HirIds of user-defines instances into account.
         // The others don't matter for the codegen tests and can even make item
@@ -561,7 +560,6 @@ impl<'tcx> CodegenUnit<'tcx> {
                 local_item_id(item)
                     .map(|def_id| tcx.def_span(def_id).find_ancestor_not_from_macro())
                     .flatten(),
-                local_item_id(item).map(|def_id| tcx.def_path(def_id).to_string_no_crate_verbose()),
                 item.symbol_name(tcx),
             )
         }
