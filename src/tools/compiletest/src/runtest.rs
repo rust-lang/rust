@@ -356,7 +356,7 @@ impl<'test> TestCx<'test> {
             if proc_res.status.success() {
                 let err = &format!("{} test did not emit an error", self.config.mode);
                 let extra_note = (self.config.mode == crate::common::TestMode::Ui)
-                    .then_some("note: by default, ui tests are expected not to compile");
+                    .then_some("note: by default, ui tests are expected not to compile.\nhint: use check-pass, build-pass, or run-pass directive to change this behavior.");
                 self.fatal_proc_rec_general(err, extra_note, proc_res, || ());
             }
 
