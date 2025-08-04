@@ -1759,9 +1759,6 @@ unsafe impl<'a, T: ?Sized> PinCoerceUnsized for &'a T {}
 unsafe impl<'a, T: ?Sized> PinCoerceUnsized for &'a mut T {}
 
 #[stable(feature = "pin", since = "1.33.0")]
-unsafe impl<T: PinCoerceUnsized> PinCoerceUnsized for Pin<T> {}
-
-#[stable(feature = "pin", since = "1.33.0")]
 unsafe impl<T: ?Sized> PinCoerceUnsized for *const T {}
 
 #[stable(feature = "pin", since = "1.33.0")]
