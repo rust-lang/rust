@@ -534,10 +534,10 @@ tests, and will reject patches that fail to build or pass the testsuite on a
 target. We hold tier 1 targets to our highest standard of requirements.
 
 A proposed new tier 1 target must be reviewed and approved by the compiler team
-based on these requirements. In addition, the release team must approve the
-viability and value of supporting the target. For a tier 1 target, this will
+based on these requirements. In addition, the infra team must approve the
+viability of supporting the target. For a tier 1 target, this will
 typically take place via a full RFC proposing the target, to be jointly
-reviewed and approved by the compiler team and release team.
+reviewed and approved by the compiler team and infra team.
 
 In addition, the infrastructure team must approve the integration of the target
 into Continuous Integration (CI), and the tier 1 CI-related requirements. This
@@ -617,7 +617,7 @@ including the infrastructure team in the RFC proposing the target.
 A tier 1 target may be demoted if it no longer meets these requirements but
 still meets the requirements for a lower tier. Any proposal for demotion of a
 tier 1 target requires a full RFC process, with approval by the compiler and
-release teams. Any such proposal will be communicated widely to the Rust
+infra teams. Any such proposal will be communicated widely to the Rust
 community, both when initially proposed and before being dropped from a stable
 release. A tier 1 target is highly unlikely to be directly removed without
 first being demoted to tier 2 or tier 3. (The amount of time between such
@@ -628,7 +628,7 @@ planned and scheduled action.)
 
 Raising the baseline expectations of a tier 1 target (such as the minimum CPU
 features or OS version required) requires the approval of the compiler and
-release teams, and should be widely communicated as well, but does not
+infra teams, and should be widely communicated as well, but does not
 necessarily require a full RFC.
 
 ### Tier 1 with host tools
@@ -638,11 +638,11 @@ host (such as `rustc` and `cargo`). This allows the target to be used as a
 development platform, not just a compilation target.
 
 A proposed new tier 1 target with host tools must be reviewed and approved by
-the compiler team based on these requirements. In addition, the release team
-must approve the viability and value of supporting host tools for the target.
+the compiler team based on these requirements. In addition, the infra team
+must approve the viability of supporting host tools for the target.
 For a tier 1 target, this will typically take place via a full RFC proposing
 the target, to be jointly reviewed and approved by the compiler team and
-release team.
+infra team.
 
 In addition, the infrastructure team must approve the integration of the
 target's host tools into Continuous Integration (CI), and the CI-related
@@ -697,7 +697,7 @@ target with host tools may be demoted (including having its host tools dropped,
 or being demoted to tier 2 with host tools) if it no longer meets these
 requirements but still meets the requirements for a lower tier. Any proposal
 for demotion of a tier 1 target (with or without host tools) requires a full
-RFC process, with approval by the compiler and release teams. Any such proposal
+RFC process, with approval by the compiler and infra teams. Any such proposal
 will be communicated widely to the Rust community, both when initially proposed
 and before being dropped from a stable release.
 
