@@ -1,0 +1,111 @@
+error: `#[derive(From)]` can only be used on structs with a single field
+  --> $DIR/deriving-from-wrong-target.rs:8:1
+   |
+LL | struct S1;
+   | ^^^^^^^^^^
+
+error: `#[derive(From)]` can only be used on structs with a single field
+  --> $DIR/deriving-from-wrong-target.rs:12:1
+   |
+LL | struct S2 {}
+   | ^^^^^^^^^^^^
+
+error: `#[derive(From)]` can only be used on structs with a single field
+  --> $DIR/deriving-from-wrong-target.rs:16:1
+   |
+LL | struct S3(u32, bool);
+   | ^^^^^^^^^^^^^^^^^^^^^
+
+error: `#[derive(From)]` can only be used on structs with a single field
+  --> $DIR/deriving-from-wrong-target.rs:21:1
+   |
+LL | / struct S4 {
+LL | |     a: u32,
+LL | |     b: bool,
+LL | | }
+   | |_^
+
+error: `#[derive(From)]` can only be used on structs with a single field
+  --> $DIR/deriving-from-wrong-target.rs:27:1
+   |
+LL | enum E1 {}
+   | ^^^^^^^^^^
+
+error: `#[derive(From)]` can only be used on structs with a single field
+  --> $DIR/deriving-from-wrong-target.rs:32:1
+   |
+LL | / enum E2 {
+LL | |     V1,
+LL | |     V2,
+LL | | }
+   | |_^
+
+error: `#[derive(From)]` can only be used on structs with a single field
+  --> $DIR/deriving-from-wrong-target.rs:39:1
+   |
+LL | / enum E3 {
+LL | |     V1(u32),
+LL | |     V2(bool),
+LL | | }
+   | |_^
+
+error[E0277]: the size for values of type `T` cannot be known at compilation time
+  --> $DIR/deriving-from-wrong-target.rs:44:10
+   |
+LL | #[derive(From)]
+   |          ^^^^ doesn't have a size known at compile-time
+...
+LL | struct SUnsizedField<T: ?Sized> {
+   |                      - this type parameter needs to be `Sized`
+   |
+note: required by an implicit `Sized` bound in `From`
+  --> $SRC_DIR/core/src/convert/mod.rs:LL:COL
+help: consider removing the `?Sized` bound to make the type parameter `Sized`
+   |
+LL - struct SUnsizedField<T: ?Sized> {
+LL + struct SUnsizedField<T> {
+   |
+
+error[E0277]: the size for values of type `T` cannot be known at compilation time
+  --> $DIR/deriving-from-wrong-target.rs:44:10
+   |
+LL | #[derive(From)]
+   |          ^^^^ doesn't have a size known at compile-time
+...
+LL | struct SUnsizedField<T: ?Sized> {
+   |                      - this type parameter needs to be `Sized`
+   |
+note: required because it appears within the type `SUnsizedField<T>`
+  --> $DIR/deriving-from-wrong-target.rs:47:8
+   |
+LL | struct SUnsizedField<T: ?Sized> {
+   |        ^^^^^^^^^^^^^
+   = note: the return type of a function must have a statically known size
+help: consider removing the `?Sized` bound to make the type parameter `Sized`
+   |
+LL - struct SUnsizedField<T: ?Sized> {
+LL + struct SUnsizedField<T> {
+   |
+
+error[E0277]: the size for values of type `T` cannot be known at compilation time
+  --> $DIR/deriving-from-wrong-target.rs:48:11
+   |
+LL | struct SUnsizedField<T: ?Sized> {
+   |                      - this type parameter needs to be `Sized`
+LL |     last: T,
+   |           ^ doesn't have a size known at compile-time
+   |
+   = help: unsized fn params are gated as an unstable feature
+help: consider removing the `?Sized` bound to make the type parameter `Sized`
+   |
+LL - struct SUnsizedField<T: ?Sized> {
+LL + struct SUnsizedField<T> {
+   |
+help: function arguments must have a statically known size, borrowed types always have a known size
+   |
+LL |     last: &T,
+   |           +
+
+error: aborting due to 10 previous errors
+
+For more information about this error, try `rustc --explain E0277`.
