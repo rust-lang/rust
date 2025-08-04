@@ -745,8 +745,8 @@ fn maybe_record_as_seed<'tcx>(
 
     match tcx.def_kind(owner_id) {
         DefKind::Enum => {
-            let adt = tcx.adt_def(owner_id);
             if let Some(comes_from_allow) = allow_dead_code {
+                let adt = tcx.adt_def(owner_id);
                 worklist.extend(
                     adt.variants()
                         .iter()
@@ -771,8 +771,8 @@ fn maybe_record_as_seed<'tcx>(
                 }
             }
         }
-        DefKind::Impl { of_trait } => {
-            if allow_dead_code.is_none() && of_trait {
+        DefKind::Impl { of_trait: true } => {
+            if allow_dead_code.is_none() {
                 unsolved_items.push(owner_id.def_id);
             }
         }
