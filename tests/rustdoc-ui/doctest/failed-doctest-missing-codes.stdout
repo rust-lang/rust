@@ -1,5 +1,5 @@
 
-running 1 test
+running 1 standalone doctest
 test $DIR/failed-doctest-missing-codes.rs - Foo (line 9) - compile fail ... FAILED
 
 failures:

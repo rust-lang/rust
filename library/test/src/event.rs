@@ -4,6 +4,7 @@
 use super::test_result::TestResult;
 use super::time::TestExecTime;
 use super::types::{TestDesc, TestId};
+use crate::TestGroupKind;
 
 #[derive(Debug, Clone)]
 pub struct CompletedTest {
@@ -28,7 +29,7 @@ impl CompletedTest {
 
 #[derive(Debug, Clone)]
 pub enum TestEvent {
-    TeFiltered(usize, Option<u64>),
+    TeFiltered(usize, Option<u64>, TestGroupKind),
     TeWait(TestDesc),
     TeResult(CompletedTest),
     TeTimeout(TestDesc),
