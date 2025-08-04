@@ -1387,7 +1387,7 @@ rustc_queries! {
 
     /// Performs part of the privacy check and computes effective visibilities.
     query effective_visibilities(_: ()) -> &'tcx EffectiveVisibilities {
-        eval_always
+        no_hash
         desc { "checking effective visibilities" }
     }
     query check_private_in_public(module_def_id: LocalModDefId) {
