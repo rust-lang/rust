@@ -225,7 +225,7 @@ macro_rules! int_impl {
         #[rustc_const_stable(feature = "integer_sign_cast", since = "1.87.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
-        #[inline(always)]
+        #[rustc_early_inline]
         pub const fn cast_unsigned(self) -> $UnsignedT {
             self as $UnsignedT
         }
@@ -1915,7 +1915,7 @@ macro_rules! int_impl {
         #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
-        #[inline(always)]
+        #[rustc_early_inline]
         pub const fn wrapping_add(self, rhs: Self) -> Self {
             intrinsics::wrapping_add(self, rhs)
         }
