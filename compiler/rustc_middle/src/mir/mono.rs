@@ -533,13 +533,10 @@ impl<'tcx> CodegenUnit<'tcx> {
         // We only want to take HirIds of user-defines instances into account.
         // The others don't matter for the codegen tests and can even make item
         // order unstable.
-        fn local_item_query<'tcx, T>(
-            item: MonoItem<'tcx>,
-            op: impl FnOnce(DefId) -> T,
-        ) -> Option<T> {
+        fn local_item_id<'tcx>(item: MonoItem<'tcx>) -> Option<DefId> {
             match item {
                 MonoItem::Fn(ref instance) => match instance.def {
-                    InstanceKind::Item(def) => def.as_local().map(|_| op(def)),
+                    InstanceKind::Item(def) => def.as_local().map(|_| def),
                     InstanceKind::VTableShim(..)
                     | InstanceKind::ReifyShim(..)
                     | InstanceKind::Intrinsic(..)
@@ -555,14 +552,14 @@ impl<'tcx> CodegenUnit<'tcx> {
                     | InstanceKind::FutureDropPollShim(..)
                     | InstanceKind::AsyncDropGlueCtorShim(..) => None,
                 },
-                MonoItem::Static(def_id) => def_id.as_local().map(|_| op(def_id)),
-                MonoItem::GlobalAsm(item_id) => Some(op(item_id.owner_id.def_id.to_def_id())),
+                MonoItem::Static(def_id) => def_id.as_local().map(|_| def_id),
+                MonoItem::GlobalAsm(item_id) => Some(item_id.owner_id.def_id.to_def_id()),
             }
         }
         fn item_sort_key<'tcx>(tcx: TyCtxt<'tcx>, item: MonoItem<'tcx>) -> ItemSortKey<'tcx> {
             ItemSortKey(
-                local_item_query(item, |def_id| tcx.def_span(def_id)),
-                local_item_query(item, |def_id| tcx.def_path(def_id).to_string_no_crate_verbose()),
+                local_item_id(item).map(|def_id| tcx.def_span(def_id).find_ancestor_not_from_macro()).flatten(),
+                local_item_id(item).map(|def_id| tcx.def_path(def_id).to_string_no_crate_verbose()),
                 item.symbol_name(tcx),
             )
         }
