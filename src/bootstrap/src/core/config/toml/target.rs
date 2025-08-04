@@ -7,15 +7,12 @@
 //! * [`TomlTarget`]: This struct directly mirrors the `[target.<triple>]` sections in your
 //!   `bootstrap.toml`. It's used for deserializing raw TOML data for a specific target.
 //! * [`Target`]: This struct represents the processed and validated configuration for a
-//!   build target, which is is stored in the main [`Config`] structure.
-//! * [`Config::apply_target_config`]: This method processes the `TomlTarget` data and
-//!   applies it to the global [`Config`], ensuring proper path resolution, validation,
-//!   and integration with other build settings.
+//!   build target, which is is stored in the main `Config` structure.
 
 use serde::{Deserialize, Deserializer};
 
 use crate::core::config::{LlvmLibunwind, Merge, ReplaceOpt, SplitDebuginfo, StringOrBool};
-use crate::{HashSet, PathBuf, define_config, exit};
+use crate::{CodegenBackendKind, HashSet, PathBuf, define_config, exit};
 
 define_config! {
     /// TOML representation of how each build target is configured.

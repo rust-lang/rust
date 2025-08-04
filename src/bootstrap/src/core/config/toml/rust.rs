@@ -6,7 +6,7 @@ use serde::{Deserialize, Deserializer};
 use crate::core::build_steps::compile::CODEGEN_BACKEND_PREFIX;
 use crate::core::config::toml::TomlConfig;
 use crate::core::config::{DebuginfoLevel, Merge, ReplaceOpt, StringOrBool};
-use crate::{BTreeSet, HashSet, PathBuf, TargetSelection, define_config, exit};
+use crate::{BTreeSet, CodegenBackendKind, HashSet, PathBuf, TargetSelection, define_config, exit};
 
 define_config! {
     /// TOML representation of how the Rust build is configured.
