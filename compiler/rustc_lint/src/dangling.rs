@@ -1,8 +1,8 @@
 use rustc_ast::visit::{visit_opt, walk_list};
-use rustc_attr_data_structures::{AttributeKind, find_attr};
+use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{FnKind, Visitor, walk_expr};
-use rustc_hir::{Block, Body, Expr, ExprKind, FnDecl, LangItem};
+use rustc_hir::{Block, Body, Expr, ExprKind, FnDecl, LangItem, find_attr};
 use rustc_middle::ty::{Ty, TyCtxt};
 use rustc_session::{declare_lint, impl_lint_pass};
 use rustc_span::{Span, sym};

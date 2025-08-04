@@ -1,0 +1,27 @@
+error[E0603]: unit struct `C` is private
+  --> $DIR/private-unit-struct-assignment.rs:8:8
+   |
+LL |     A::C = 1;
+   |        ^ private unit struct
+   |
+note: the unit struct `C` is defined here
+  --> $DIR/private-unit-struct-assignment.rs:4:5
+   |
+LL |     struct C;
+   |     ^^^^^^^^^
+
+error[E0308]: mismatched types
+  --> $DIR/private-unit-struct-assignment.rs:8:5
+   |
+LL |     struct C;
+   |     -------- unit struct defined here
+...
+LL |     A::C = 1;
+   |     ^^^^   - this expression has type `{integer}`
+   |     |
+   |     expected integer, found `C`
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0308, E0603.
+For more information about an error, try `rustc --explain E0308`.

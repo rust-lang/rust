@@ -269,7 +269,7 @@ trigger_files = [
     "compiler/rustc_codegen_ssa/src/codegen_attrs.rs",
     "compiler/rustc_passes/src/check_attr.rs",
     "compiler/rustc_attr_parsing",
-    "compiler/rustc_attr_data_structures",
+    "compiler/rustc_hir/src/attrs",
 ]
 
 [autolabel."A-compiler-builtins"]
@@ -355,6 +355,7 @@ trigger_labels = [
 [autolabel."T-libs"]
 trigger_files = [
     "library/alloc",
+    "library/compiler-builtins",
     "library/core",
     "library/panic_abort",
     "library/panic_unwind",
@@ -1006,10 +1007,6 @@ cc = [
 message = "Some changes occurred in GUI tests."
 cc = ["@GuillaumeGomez"]
 
-[mentions."tests/run-make/"]
-message = "This PR modifies `run-make` tests."
-cc = ["@jieyouxu"]
-
 [mentions."tests/auxiliary/minicore.rs"]
 message = "This PR modifies `tests/auxiliary/minicore.rs`."
 cc = ["@jieyouxu"]
@@ -1064,6 +1061,14 @@ cc = ["@oli-obk", "@RalfJung", "@JakobDegen", "@davidtwco", "@vakaras"]
 message = "`rustc_error_messages` was changed"
 cc = ["@davidtwco", "@compiler-errors", "@TaKO8Ki"]
 
+[mentions."compiler/rustc_errors/src/annotate_snippet_emitter_writer.rs"]
+message = "`rustc_errors::annotate_snippet_emitter_writer` was changed"
+cc = ["@Muscraft"]
+
+[mentions."compiler/rustc_errors/src/emitter.rs"]
+message = "`rustc_errors::emitter` was changed"
+cc = ["@Muscraft"]
+
 [mentions."compiler/rustc_errors/src/translation.rs"]
 message = "`rustc_errors::translation` was changed"
 cc = ["@davidtwco", "@compiler-errors", "@TaKO8Ki"]
@@ -1103,10 +1108,6 @@ Otherwise, you can ignore this comment.
 
 [mentions."src/tools/x"]
 message = "`src/tools/x` was changed. Bump version of Cargo.toml in `src/tools/x` so tidy will suggest installing the new version."
-
-[mentions."src/tools/tidy"]
-message = "There are changes to the `tidy` tool."
-cc = ["@jieyouxu"]
 
 [mentions."src/tools/tidy/src/deps.rs"]
 message = "The list of allowed third-party dependencies may have been modified! You must ensure that any new dependencies have compatible licenses before merging."
@@ -1261,13 +1262,11 @@ cc = ["@ehuss"]
 message = "The rustc-dev-guide subtree was changed. If this PR *only* touches the dev guide consider submitting a PR directly to [rust-lang/rustc-dev-guide](https://github.com/rust-lang/rustc-dev-guide/pulls) otherwise thank you for updating the dev guide with your changes."
 cc = ["@BoxyUwU", "@jieyouxu", "@kobzol", "@tshepang"]
 
-[mentions."compiler/rustc_codegen_ssa/src/codegen_attrs.rs"]
-cc = ["@jdonszelmann"]
 [mentions."compiler/rustc_passes/src/check_attr.rs"]
 cc = ["@jdonszelmann"]
 [mentions."compiler/rustc_attr_parsing"]
 cc = ["@jdonszelmann"]
-[mentions."compiler/rustc_attr_data_structures"]
+[mentions."compiler/rustc_hir/src/attrs"]
 cc = ["@jdonszelmann"]
 
 [mentions."src/tools/enzyme"]

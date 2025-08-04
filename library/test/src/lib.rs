@@ -89,8 +89,8 @@ use options::RunStrategy;
 use test_result::*;
 use time::TestExecTime;
 
-// Process exit code to be used to indicate test failures.
-const ERROR_EXIT_CODE: i32 = 101;
+/// Process exit code to be used to indicate test failures.
+pub const ERROR_EXIT_CODE: i32 = 101;
 
 const SECONDARY_TEST_INVOKER_VAR: &str = "__RUST_TEST_INVOKE";
 const SECONDARY_TEST_BENCH_BENCHMARKS_VAR: &str = "__RUST_TEST_BENCH_BENCHMARKS";

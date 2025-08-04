@@ -214,7 +214,9 @@ impl ModuleConfig {
                 false
             ),
             emit_obj,
-            emit_thin_lto: sess.opts.unstable_opts.emit_thin_lto,
+            // thin lto summaries prevent fat lto, so do not emit them if fat
+            // lto is requested. See PR #136840 for background information.
+            emit_thin_lto: sess.opts.unstable_opts.emit_thin_lto && sess.lto() != Lto::Fat,
             emit_thin_lto_summary: if_regular!(
                 sess.opts.output_types.contains_key(&OutputType::ThinLinkBitcode),
                 false

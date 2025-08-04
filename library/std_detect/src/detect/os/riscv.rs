@@ -90,7 +90,7 @@ pub(crate) fn imply_features(mut value: cache::Initializer) -> cache::Initialize
         group!(zks == zbkb & zbkc & zbkx & zksed & zksh);
         group!(zk == zkn & zkr & zkt);
 
-        imply!(zacas => zaamo);
+        imply!(zabha | zacas => zaamo);
         group!(a == zalrsc & zaamo);
 
         group!(b == zba & zbb & zbs);

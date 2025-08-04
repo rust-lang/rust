@@ -510,12 +510,9 @@ impl_decodable_via_ref! {
     &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
     &'tcx traits::ImplSource<'tcx, ()>,
     &'tcx mir::Body<'tcx>,
-    &'tcx mir::ConcreteOpaqueTypes<'tcx>,
     &'tcx ty::List<ty::BoundVariableKind>,
     &'tcx ty::List<ty::Pattern<'tcx>>,
     &'tcx ty::ListWithCachedTypeInfo<ty::Clause<'tcx>>,
-    &'tcx ty::List<FieldIdx>,
-    &'tcx ty::List<(VariantIdx, FieldIdx)>,
 }
 
 #[macro_export]

@@ -14,7 +14,6 @@ pub use rustc_ast::{
     BoundConstness, BoundPolarity, ByRef, CaptureBy, DelimArgs, ImplPolarity, IsAuto,
     MetaItemInner, MetaItemLit, Movability, Mutability, UnOp,
 };
-use rustc_attr_data_structures::AttributeKind;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::tagged_ptr::TaggedRef;
@@ -30,6 +29,7 @@ use thin_vec::ThinVec;
 use tracing::debug;
 
 use crate::LangItem;
+use crate::attrs::AttributeKind;
 use crate::def::{CtorKind, DefKind, PerNS, Res};
 use crate::def_id::{DefId, LocalDefIdMap};
 pub(crate) use crate::hir_id::{HirId, ItemLocalId, ItemLocalMap, OwnerId};
@@ -412,10 +412,8 @@ impl<'hir> PathSegment<'hir> {
 /// that are [just paths](ConstArgKind::Path) (currently just bare const params)
 /// versus const args that are literals or have arbitrary computations (e.g., `{ 1 + 3 }`).
 ///
-/// The `Unambig` generic parameter represents whether the position this const is from is
-/// unambiguously a const or ambiguous as to whether it is a type or a const. When in an
-/// ambiguous context the parameter is instantiated with an uninhabited type making the
-/// [`ConstArgKind::Infer`] variant unusable and [`GenericArg::Infer`] is used instead.
+/// For an explanation of the `Unambig` generic parameter see the dev-guide:
+/// <https://rustc-dev-guide.rust-lang.org/hir/ambig-unambig-ty-and-consts.html>
 #[derive(Clone, Copy, Debug, HashStable_Generic)]
 #[repr(C)]
 pub struct ConstArg<'hir, Unambig = ()> {
@@ -427,7 +425,7 @@ pub struct ConstArg<'hir, Unambig = ()> {
 impl<'hir> ConstArg<'hir, AmbigArg> {
     /// Converts a `ConstArg` in an ambiguous position to one in an unambiguous position.
     ///
-    /// Functions accepting an unambiguous consts may expect the [`ConstArgKind::Infer`] variant
+    /// Functions accepting unambiguous consts may expect the [`ConstArgKind::Infer`] variant
     /// to be used. Care should be taken to separately handle infer consts when calling this
     /// function as it cannot be handled by downstream code making use of the returned const.
     ///
@@ -3016,7 +3014,7 @@ impl fmt::Display for LoopIdError {
     }
 }
 
-#[derive(Copy, Clone, Debug, HashStable_Generic)]
+#[derive(Copy, Clone, Debug, PartialEq, HashStable_Generic)]
 pub struct Destination {
     /// This is `Some(_)` iff there is an explicit user-specified 'label
     pub label: Option<Label>,
@@ -3314,14 +3312,12 @@ impl<'hir> AssocItemConstraintKind<'hir> {
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub enum AmbigArg {}
 
-#[derive(Debug, Clone, Copy, HashStable_Generic)]
-#[repr(C)]
 /// Represents a type in the `HIR`.
 ///
-/// The `Unambig` generic parameter represents whether the position this type is from is
-/// unambiguously a type or ambiguous as to whether it is a type or a const. When in an
-/// ambiguous context the parameter is instantiated with an uninhabited type making the
-/// [`TyKind::Infer`] variant unusable and [`GenericArg::Infer`] is used instead.
+/// For an explanation of the `Unambig` generic parameter see the dev-guide:
+/// <https://rustc-dev-guide.rust-lang.org/hir/ambig-unambig-ty-and-consts.html>
+#[derive(Debug, Clone, Copy, HashStable_Generic)]
+#[repr(C)]
 pub struct Ty<'hir, Unambig = ()> {
     #[stable_hasher(ignore)]
     pub hir_id: HirId,
@@ -3656,9 +3652,12 @@ pub enum InferDelegationKind {
 }
 
 /// The various kinds of types recognized by the compiler.
-#[derive(Debug, Clone, Copy, HashStable_Generic)]
+///
+/// For an explanation of the `Unambig` generic parameter see the dev-guide:
+/// <https://rustc-dev-guide.rust-lang.org/hir/ambig-unambig-ty-and-consts.html>
 // SAFETY: `repr(u8)` is required so that `TyKind<()>` and `TyKind<!>` are layout compatible
 #[repr(u8, C)]
+#[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub enum TyKind<'hir, Unambig = ()> {
     /// Actual type should be inherited from `DefId` signature
     InferDelegation(DefId, InferDelegationKind),

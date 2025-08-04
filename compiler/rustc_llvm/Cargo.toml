@@ -16,5 +16,7 @@ cc = "=1.2.16"
 # tidy-alphabetical-end
 
 [features]
+# tidy-alphabetical-start
 # Used by ./x.py check --compile-time-deps to skip building C++ code
 check_only = []
+# tidy-alphabetical-end

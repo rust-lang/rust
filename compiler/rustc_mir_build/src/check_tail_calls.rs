@@ -89,10 +89,10 @@ impl<'tcx> TailCallCkVisitor<'_, 'tcx> {
             self.report_op(ty, args, fn_span, expr);
         }
 
-        // Closures in thir look something akin to
-        // `for<'a> extern "rust-call" fn(&'a [closure@...], ()) -> <[closure@...] as FnOnce<()>>::Output {<[closure@...] as Fn<()>>::call}`
-        // So we have to check for them in this weird way...
         if let &ty::FnDef(did, args) = ty.kind() {
+            // Closures in thir look something akin to
+            // `for<'a> extern "rust-call" fn(&'a [closure@...], ()) -> <[closure@...] as FnOnce<()>>::Output {<[closure@...] as Fn<()>>::call}`
+            // So we have to check for them in this weird way...
             let parent = self.tcx.parent(did);
             if self.tcx.fn_trait_kind_from_def_id(parent).is_some()
                 && args.first().and_then(|arg| arg.as_type()).is_some_and(Ty::is_closure)
@@ -103,6 +103,10 @@ impl<'tcx> TailCallCkVisitor<'_, 'tcx> {
                 // skip them, producing an error about calling a closure is enough.
                 return;
             };
+
+            if self.tcx.intrinsic(did).is_some() {
+                self.report_calling_intrinsic(expr);
+            }
         }
 
         // Erase regions since tail calls don't care about lifetimes
@@ -277,6 +281,16 @@ impl<'tcx> TailCallCkVisitor<'_, 'tcx> {
                 Applicability::MaybeIncorrect,
             )
             .emit();
+        self.found_errors = Err(err);
+    }
+
+    fn report_calling_intrinsic(&mut self, expr: &Expr<'_>) {
+        let err = self
+            .tcx
+            .dcx()
+            .struct_span_err(expr.span, "tail calling intrinsics is not allowed")
+            .emit();
+
         self.found_errors = Err(err);
     }
 

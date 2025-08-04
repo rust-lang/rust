@@ -706,7 +706,10 @@ fn replace_param_and_infer_args_with_placeholder<'tcx>(
                 self.idx += 1;
                 ty::Const::new_placeholder(
                     self.tcx,
-                    ty::PlaceholderConst { universe: ty::UniverseIndex::ROOT, bound: idx },
+                    ty::PlaceholderConst {
+                        universe: ty::UniverseIndex::ROOT,
+                        bound: ty::BoundConst { var: idx },
+                    },
                 )
             } else {
                 c.super_fold_with(self)

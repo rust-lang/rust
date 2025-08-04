@@ -5,8 +5,8 @@ use std::sync::LazyLock;
 use AttributeDuplicates::*;
 use AttributeGate::*;
 use AttributeType::*;
-use rustc_attr_data_structures::EncodeCrossCrate;
 use rustc_data_structures::fx::FxHashMap;
+use rustc_hir::attrs::EncodeCrossCrate;
 use rustc_span::edition::Edition;
 use rustc_span::{Symbol, sym};
 
@@ -112,7 +112,7 @@ pub enum AttributeGate {
     Ungated,
 }
 
-// FIXME(jdonszelmann): move to rustc_attr_data_structures
+// FIXME(jdonszelmann): move to rustc_hir::attrs
 /// A template that the attribute input must match.
 /// Only top-level shape (`#[attr]` vs `#[attr(...)]` vs `#[attr = ...]`) is considered now.
 #[derive(Clone, Copy, Default)]
@@ -1256,11 +1256,6 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     rustc_attr!(
         TEST, rustc_dummy, Normal, template!(Word /* doesn't matter*/),
         DuplicatesOk, EncodeCrossCrate::No
-    ),
-    gated!(
-        omit_gdb_pretty_printer_section, Normal, template!(Word),
-        WarnFollowing, EncodeCrossCrate::No,
-        "the `#[omit_gdb_pretty_printer_section]` attribute is just used for the Rust test suite",
     ),
     rustc_attr!(
         TEST, pattern_complexity_limit, CrateLevel, template!(NameValueStr: "N"),

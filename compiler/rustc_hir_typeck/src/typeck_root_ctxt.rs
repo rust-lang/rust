@@ -17,6 +17,19 @@ use tracing::{debug, instrument};
 
 use super::callee::DeferredCallResolution;
 
+#[derive(Debug, Default, Copy, Clone)]
+pub(crate) struct InferVarInfo {
+    /// This is true if we identified that this Ty (`?T`) is found in a `?T: Foo`
+    /// obligation, where:
+    ///
+    ///  * `Foo` is not `Sized`
+    ///  * `(): Foo` may be satisfied
+    pub self_in_trait: bool,
+    /// This is true if we identified that this Ty (`?T`) is found in a `<_ as
+    /// _>::AssocType = ?T`
+    pub output: bool,
+}
+
 /// Data shared between a "typeck root" and its nested bodies,
 /// e.g. closures defined within the function. For example:
 /// ```ignore (illustrative)
@@ -71,7 +84,7 @@ pub(crate) struct TypeckRootCtxt<'tcx> {
     /// fallback. See the `fallback` module for details.
     pub(super) diverging_type_vars: RefCell<UnordSet<Ty<'tcx>>>,
 
-    pub(super) infer_var_info: RefCell<UnordMap<ty::TyVid, ty::InferVarInfo>>,
+    pub(super) infer_var_info: RefCell<UnordMap<ty::TyVid, InferVarInfo>>,
 }
 
 impl<'tcx> Deref for TypeckRootCtxt<'tcx> {

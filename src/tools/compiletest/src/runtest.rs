@@ -354,13 +354,10 @@ impl<'test> TestCx<'test> {
             }
         } else {
             if proc_res.status.success() {
-                {
-                    self.error(&format!("{} test did not emit an error", self.config.mode));
-                    if self.config.mode == crate::common::TestMode::Ui {
-                        println!("note: by default, ui tests are expected not to compile");
-                    }
-                    proc_res.fatal(None, || ());
-                };
+                let err = &format!("{} test did not emit an error", self.config.mode);
+                let extra_note = (self.config.mode == crate::common::TestMode::Ui)
+                    .then_some("note: by default, ui tests are expected not to compile");
+                self.fatal_proc_rec_general(err, extra_note, proc_res, || ());
             }
 
             if !self.props.dont_check_failure_status {
@@ -606,7 +603,10 @@ impl<'test> TestCx<'test> {
             );
         } else {
             for pattern in missing_patterns {
-                self.error(&format!("error pattern '{}' not found!", pattern));
+                println!(
+                    "\n{prefix}: error pattern '{pattern}' not found!",
+                    prefix = self.error_prefix()
+                );
             }
             self.fatal_proc_rec("multiple error patterns not found", proc_res);
         }
@@ -765,12 +765,6 @@ impl<'test> TestCx<'test> {
         }
 
         if !unexpected.is_empty() || !not_found.is_empty() {
-            self.error(&format!(
-                "{} unexpected diagnostics reported, {} expected diagnostics not reported",
-                unexpected.len(),
-                not_found.len()
-            ));
-
             // Emit locations in a format that is short (relative paths) but "clickable" in editors.
             // Also normalize path separators to `/`.
             let file_name = self
@@ -794,19 +788,20 @@ impl<'test> TestCx<'test> {
                 |suggestions: &mut Vec<_>, e: &Error, kind, line, msg, color, rank| {
                     let mut ret = String::new();
                     if kind {
-                        ret += &format!("{} {}", "with kind".color(color), e.kind);
+                        ret += &format!("{} {}", "with different kind:".color(color), e.kind);
                     }
                     if line {
                         if !ret.is_empty() {
                             ret.push(' ');
                         }
-                        ret += &format!("{} {}", "on line".color(color), line_str(e));
+                        ret += &format!("{} {}", "on different line:".color(color), line_str(e));
                     }
                     if msg {
                         if !ret.is_empty() {
                             ret.push(' ');
                         }
-                        ret += &format!("{} {}", "with message".color(color), e.msg.cyan());
+                        ret +=
+                            &format!("{} {}", "with different message:".color(color), e.msg.cyan());
                     }
                     suggestions.push((ret, rank));
                 };
@@ -829,17 +824,21 @@ impl<'test> TestCx<'test> {
             // - only known line - meh, but suggested
             // - others are not worth suggesting
             if !unexpected.is_empty() {
-                let header = "--- reported in JSON output but not expected in test file ---";
-                println!("{}", header.green());
+                println!(
+                    "\n{prefix}: {n} diagnostics reported in JSON output but not expected in test file",
+                    prefix = self.error_prefix(),
+                    n = unexpected.len(),
+                );
                 for error in &unexpected {
                     print_error(error);
                     let mut suggestions = Vec::new();
                     for candidate in &not_found {
+                        let kind_mismatch = candidate.kind != error.kind;
                         let mut push_red_suggestion = |line, msg, rank| {
                             push_suggestion(
                                 &mut suggestions,
                                 candidate,
-                                candidate.kind != error.kind,
+                                kind_mismatch,
                                 line,
                                 msg,
                                 Color::Red,
@@ -851,26 +850,29 @@ impl<'test> TestCx<'test> {
                         } else if candidate.line_num.is_some()
                             && candidate.line_num == error.line_num
                         {
-                            push_red_suggestion(false, true, 1);
+                            push_red_suggestion(false, true, if kind_mismatch { 2 } else { 1 });
                         }
                     }
 
                     show_suggestions(suggestions, "expected", Color::Red);
                 }
-                println!("{}", "---".green());
             }
             if !not_found.is_empty() {
-                let header = "--- expected in test file but not reported in JSON output ---";
-                println!("{}", header.red());
+                println!(
+                    "\n{prefix}: {n} diagnostics expected in test file but not reported in JSON output",
+                    prefix = self.error_prefix(),
+                    n = not_found.len(),
+                );
                 for error in &not_found {
                     print_error(error);
                     let mut suggestions = Vec::new();
                     for candidate in unexpected.iter().chain(&unimportant) {
+                        let kind_mismatch = candidate.kind != error.kind;
                         let mut push_green_suggestion = |line, msg, rank| {
                             push_suggestion(
                                 &mut suggestions,
                                 candidate,
-                                candidate.kind != error.kind,
+                                kind_mismatch,
                                 line,
                                 msg,
                                 Color::Green,
@@ -882,13 +884,12 @@ impl<'test> TestCx<'test> {
                         } else if candidate.line_num.is_some()
                             && candidate.line_num == error.line_num
                         {
-                            push_green_suggestion(false, true, 1);
+                            push_green_suggestion(false, true, if kind_mismatch { 2 } else { 1 });
                         }
                     }
 
                     show_suggestions(suggestions, "reported", Color::Green);
                 }
-                println!("{}", "---".red());
             }
             panic!(
                 "errors differ from expected\nstatus: {}\ncommand: {}\n",
@@ -1996,33 +1997,52 @@ impl<'test> TestCx<'test> {
         output_base_name(self.config, self.testpaths, self.safe_revision())
     }
 
-    fn error(&self, err: &str) {
+    /// Prefix to print before error messages. Normally just `error`, but also
+    /// includes the revision name for tests that use revisions.
+    #[must_use]
+    fn error_prefix(&self) -> String {
         match self.revision {
-            Some(rev) => println!("\nerror in revision `{}`: {}", rev, err),
-            None => println!("\nerror: {}", err),
+            Some(rev) => format!("error in revision `{rev}`"),
+            None => format!("error"),
         }
     }
 
     #[track_caller]
     fn fatal(&self, err: &str) -> ! {
-        self.error(err);
+        println!("\n{prefix}: {err}", prefix = self.error_prefix());
         error!("fatal error, panic: {:?}", err);
         panic!("fatal error");
     }
 
     fn fatal_proc_rec(&self, err: &str, proc_res: &ProcRes) -> ! {
-        self.error(err);
-        proc_res.fatal(None, || ());
+        self.fatal_proc_rec_general(err, None, proc_res, || ());
     }
 
-    fn fatal_proc_rec_with_ctx(
+    /// Underlying implementation of [`Self::fatal_proc_rec`], providing some
+    /// extra capabilities not needed by most callers.
+    fn fatal_proc_rec_general(
         &self,
         err: &str,
+        extra_note: Option<&str>,
         proc_res: &ProcRes,
-        on_failure: impl FnOnce(Self),
+        callback_before_unwind: impl FnOnce(),
     ) -> ! {
-        self.error(err);
-        proc_res.fatal(None, || on_failure(*self));
+        println!("\n{prefix}: {err}", prefix = self.error_prefix());
+
+        // Some callers want to print additional notes after the main error message.
+        if let Some(note) = extra_note {
+            println!("{note}");
+        }
+
+        // Print the details and output of the subprocess that caused this test to fail.
+        println!("{}", proc_res.format_info());
+
+        // Some callers want print more context or show a custom diff before the unwind occurs.
+        callback_before_unwind();
+
+        // Use resume_unwind instead of panic!() to prevent a panic message + backtrace from
+        // compiletest, which is unnecessary noise.
+        std::panic::resume_unwind(Box::new(()));
     }
 
     // codegen tests (using FileCheck)
@@ -2081,7 +2101,7 @@ impl<'test> TestCx<'test> {
         if cfg!(target_os = "freebsd") { "ISO-8859-1" } else { "UTF-8" }
     }
 
-    fn compare_to_default_rustdoc(&mut self, out_dir: &Utf8Path) {
+    fn compare_to_default_rustdoc(&self, out_dir: &Utf8Path) {
         if !self.config.has_html_tidy {
             return;
         }
@@ -2958,7 +2978,8 @@ pub struct ProcRes {
 }
 
 impl ProcRes {
-    pub fn print_info(&self) {
+    #[must_use]
+    pub fn format_info(&self) -> String {
         fn render(name: &str, contents: &str) -> String {
             let contents = json::extract_rendered(contents);
             let contents = contents.trim_end();
@@ -2974,24 +2995,13 @@ impl ProcRes {
             }
         }
 
-        println!(
+        format!(
             "status: {}\ncommand: {}\n{}\n{}\n",
             self.status,
             self.cmdline,
             render("stdout", &self.stdout),
             render("stderr", &self.stderr),
-        );
-    }
-
-    pub fn fatal(&self, err: Option<&str>, on_failure: impl FnOnce()) -> ! {
-        if let Some(e) = err {
-            println!("\nerror: {}", e);
-        }
-        self.print_info();
-        on_failure();
-        // Use resume_unwind instead of panic!() to prevent a panic message + backtrace from
-        // compiletest, which is unnecessary noise.
-        std::panic::resume_unwind(Box::new(()));
+        )
     }
 }
 

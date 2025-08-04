@@ -189,7 +189,7 @@ fn remap_gat_vars_and_recurse_into_nested_projections<'tcx>(
             }
             ty::GenericArgKind::Const(ct) => {
                 if let ty::ConstKind::Bound(ty::INNERMOST, bv) = ct.kind() {
-                    mapping.insert(bv, tcx.mk_param_from_def(param))
+                    mapping.insert(bv.var, tcx.mk_param_from_def(param))
                 } else {
                     return None;
                 }
@@ -307,16 +307,16 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for MapAndCompressBoundVars<'tcx> {
             return ct;
         }
 
-        if let ty::ConstKind::Bound(binder, old_var) = ct.kind()
+        if let ty::ConstKind::Bound(binder, old_bound) = ct.kind()
             && self.binder == binder
         {
-            let mapped = if let Some(mapped) = self.mapping.get(&old_var) {
+            let mapped = if let Some(mapped) = self.mapping.get(&old_bound.var) {
                 mapped.expect_const()
             } else {
                 let var = ty::BoundVar::from_usize(self.still_bound_vars.len());
                 self.still_bound_vars.push(ty::BoundVariableKind::Const);
-                let mapped = ty::Const::new_bound(self.tcx, ty::INNERMOST, var);
-                self.mapping.insert(old_var, mapped.into());
+                let mapped = ty::Const::new_bound(self.tcx, ty::INNERMOST, ty::BoundConst { var });
+                self.mapping.insert(old_bound.var, mapped.into());
                 mapped
             };
 

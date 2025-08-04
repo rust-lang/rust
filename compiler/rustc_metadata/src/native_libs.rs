@@ -3,9 +3,10 @@ use std::path::{Path, PathBuf};
 
 use rustc_abi::ExternAbi;
 use rustc_ast::CRATE_NODE_ID;
-use rustc_attr_data_structures::{AttributeKind, find_attr};
 use rustc_attr_parsing as attr;
 use rustc_data_structures::fx::FxHashSet;
+use rustc_hir::attrs::AttributeKind;
+use rustc_hir::find_attr;
 use rustc_middle::query::LocalCrate;
 use rustc_middle::ty::{self, List, Ty, TyCtxt};
 use rustc_session::Session;

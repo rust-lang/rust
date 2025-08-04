@@ -12,6 +12,7 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId};
 use rustc_infer::infer::{DefineOpaqueTypes, InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::PredicateObligations;
+use rustc_macros::{TypeFoldable, TypeVisitable};
 use rustc_middle::bug;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::traits::solve::{CandidateSource, Certainty, Goal};
@@ -37,8 +38,20 @@ use crate::traits::{
     SelectionContext, SkipLeakCheck, util,
 };
 
+/// The "header" of an impl is everything outside the body: a Self type, a trait
+/// ref (in the case of a trait impl), and a set of predicates (from the
+/// bounds / where-clauses).
+#[derive(Clone, Debug, TypeFoldable, TypeVisitable)]
+pub struct ImplHeader<'tcx> {
+    pub impl_def_id: DefId,
+    pub impl_args: ty::GenericArgsRef<'tcx>,
+    pub self_ty: Ty<'tcx>,
+    pub trait_ref: Option<ty::TraitRef<'tcx>>,
+    pub predicates: Vec<ty::Predicate<'tcx>>,
+}
+
 pub struct OverlapResult<'tcx> {
-    pub impl_header: ty::ImplHeader<'tcx>,
+    pub impl_header: ImplHeader<'tcx>,
     pub intercrate_ambiguity_causes: FxIndexSet<IntercrateAmbiguityCause<'tcx>>,
 
     /// `true` if the overlap might've been permitted before the shift
@@ -151,11 +164,11 @@ pub fn overlapping_impls(
     }
 }
 
-fn fresh_impl_header<'tcx>(infcx: &InferCtxt<'tcx>, impl_def_id: DefId) -> ty::ImplHeader<'tcx> {
+fn fresh_impl_header<'tcx>(infcx: &InferCtxt<'tcx>, impl_def_id: DefId) -> ImplHeader<'tcx> {
     let tcx = infcx.tcx;
     let impl_args = infcx.fresh_args_for_item(DUMMY_SP, impl_def_id);
 
-    ty::ImplHeader {
+    ImplHeader {
         impl_def_id,
         impl_args,
         self_ty: tcx.type_of(impl_def_id).instantiate(tcx, impl_args),
@@ -173,7 +186,7 @@ fn fresh_impl_header_normalized<'tcx>(
     infcx: &InferCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     impl_def_id: DefId,
-) -> ty::ImplHeader<'tcx> {
+) -> ImplHeader<'tcx> {
     let header = fresh_impl_header(infcx, impl_def_id);
 
     let InferOk { value: mut header, obligations } =
@@ -287,8 +300,8 @@ fn overlap<'tcx>(
 fn equate_impl_headers<'tcx>(
     infcx: &InferCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    impl1: &ty::ImplHeader<'tcx>,
-    impl2: &ty::ImplHeader<'tcx>,
+    impl1: &ImplHeader<'tcx>,
+    impl2: &ImplHeader<'tcx>,
 ) -> Option<PredicateObligations<'tcx>> {
     let result =
         match (impl1.trait_ref, impl2.trait_ref) {
@@ -535,7 +548,10 @@ fn plug_infer_with_placeholders<'tcx>(
                         ct,
                         ty::Const::new_placeholder(
                             self.infcx.tcx,
-                            ty::Placeholder { universe: self.universe, bound: self.next_var() },
+                            ty::Placeholder {
+                                universe: self.universe,
+                                bound: ty::BoundConst { var: self.next_var() },
+                            },
                         ),
                     )
                 else {

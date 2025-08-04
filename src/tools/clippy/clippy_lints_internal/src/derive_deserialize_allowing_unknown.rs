@@ -2,7 +2,8 @@ use clippy_utils::diagnostics::span_lint;
 use clippy_utils::paths;
 use rustc_ast::tokenstream::{TokenStream, TokenTree};
 use rustc_ast::{AttrStyle, DelimArgs};
-use rustc_attr_data_structures::{AttributeKind, find_attr};
+use rustc_hir::attrs::{AttributeKind};
+use rustc_hir::find_attr;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::{
