@@ -1,7 +1,5 @@
 # Using tracing to debug the compiler
 
-<!-- toc -->
-
 The compiler has a lot of [`debug!`] (or `trace!`) calls, which print out logging information
 at many points. These are very useful to at least narrow down the location of
 a bug if not to find it entirely, or just to orient yourself as to why the

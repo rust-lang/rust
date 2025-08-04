@@ -11,7 +11,7 @@ you should avoid adding dependencies to the compiler for several reasons:
 - The dependency may have transitive dependencies that have one of the above
   problems.
 
-<!-- date-check: Feb 2023 -->
+<!-- date-check: Aug 2025 -->
 Note that there is no official policy for vetting new dependencies to the compiler.
 Decisions are made on a case-by-case basis, during code review.
 

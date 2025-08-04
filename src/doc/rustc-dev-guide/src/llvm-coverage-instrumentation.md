@@ -1,7 +1,5 @@
 # LLVM source-based code coverage
 
-<!-- toc -->
-
 `rustc` supports detailed source-based code and test coverage analysis
 with a command line option (`-C instrument-coverage`) that instruments Rust
 libraries and binaries with additional instructions and data, at compile time.
