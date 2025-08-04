@@ -12,7 +12,6 @@ use rustc_hashes::Hash128;
 use rustc_hir::ItemId;
 use rustc_hir::attrs::InlineAttr;
 use rustc_hir::def_id::{CrateNum, DefId, DefIdSet, LOCAL_CRATE};
-use rustc_index::Idx;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_query_system::ich::StableHashingContext;
 use rustc_session::config::OptLevel;
@@ -526,9 +525,9 @@ impl<'tcx> CodegenUnit<'tcx> {
         tcx: TyCtxt<'tcx>,
     ) -> Vec<(MonoItem<'tcx>, MonoItemData)> {
         // The codegen tests rely on items being process in the same order as
-        // they appear in the file, so for local items, we sort by node_id first
+        // they appear in the file, so for local items, we sort by span first
         #[derive(PartialEq, Eq, PartialOrd, Ord)]
-        struct ItemSortKey<'tcx>(Option<usize>, SymbolName<'tcx>);
+        struct ItemSortKey<'tcx>(Option<Span>, SymbolName<'tcx>);
 
         fn item_sort_key<'tcx>(tcx: TyCtxt<'tcx>, item: MonoItem<'tcx>) -> ItemSortKey<'tcx> {
             ItemSortKey(
@@ -539,7 +538,10 @@ impl<'tcx> CodegenUnit<'tcx> {
                             // instances into account. The others don't matter for
                             // the codegen tests and can even make item order
                             // unstable.
-                            InstanceKind::Item(def) => def.as_local().map(Idx::index),
+                            InstanceKind::Item(def) => def
+                                .as_local()
+                                .map(|_| tcx.def_span(def).find_ancestor_not_from_macro())
+                                .flatten(),
                             InstanceKind::VTableShim(..)
                             | InstanceKind::ReifyShim(..)
                             | InstanceKind::Intrinsic(..)
@@ -556,8 +558,13 @@ impl<'tcx> CodegenUnit<'tcx> {
                             | InstanceKind::AsyncDropGlueCtorShim(..) => None,
                         }
                     }
-                    MonoItem::Static(def_id) => def_id.as_local().map(Idx::index),
-                    MonoItem::GlobalAsm(item_id) => Some(item_id.owner_id.def_id.index()),
+                    MonoItem::Static(def_id) => def_id
+                        .as_local()
+                        .map(|_| tcx.def_span(def_id).find_ancestor_not_from_macro())
+                        .flatten(),
+                    MonoItem::GlobalAsm(item_id) => {
+                        tcx.def_span(item_id.owner_id.def_id).find_ancestor_not_from_macro()
+                    }
                 },
                 item.symbol_name(tcx),
             )
