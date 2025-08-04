@@ -842,6 +842,7 @@ symbols! {
         derive_const,
         derive_const_issue: "118304",
         derive_default_enum,
+        derive_from,
         derive_smart_pointer,
         destruct,
         destructuring_assignment,
