@@ -997,6 +997,7 @@ fn preprocess_link(
         }
     };
 
+    let is_shortcut_style = ori_link.kind == LinkType::ShortcutUnknown;
     // If there's no backticks, be lenient and revert to the old behavior.
     // This is to prevent churn by linting on stuff that isn't meant to be a link.
     // only shortcut links have simple enough syntax that they
@@ -1013,9 +1014,20 @@ fn preprocess_link(
     // | has backtick |    never ignore    |    never ignore   |
     // | no backtick  | ignore if url-like |    never ignore   |
     // |-------------------------------------------------------|
-    let ignore_urllike =
-        can_be_url || (ori_link.kind == LinkType::ShortcutUnknown && !ori_link.link.contains('`'));
+    let ignore_urllike = can_be_url || (is_shortcut_style && !ori_link.link.contains('`'));
     if ignore_urllike && should_ignore_link(path_str) {
+        return None;
+    }
+    // If we have an intra-doc link starting with `!` (which isn't `[!]` because this is the never type), we ignore it
+    // as it is never valid.
+    //
+    // The case is common enough because of cases like `#[doc = include_str!("../README.md")]` which often
+    // uses GitHub-flavored Markdown (GFM) admonitions, such as `[!NOTE]`.
+    if is_shortcut_style
+        && let Some(suffix) = ori_link.link.strip_prefix('!')
+        && !suffix.is_empty()
+        && suffix.chars().all(|c| c.is_ascii_alphabetic())
+    {
         return None;
     }
 
