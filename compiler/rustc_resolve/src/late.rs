@@ -4231,13 +4231,21 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 //
                 // And that's what happens below - we're just mixing both messages
                 // into a single one.
+                let failed_to_resolve = match parent_err.node {
+                    ResolutionError::FailedToResolve { .. } => true,
+                    _ => false,
+                };
                 let mut parent_err = this.r.into_struct_error(parent_err.span, parent_err.node);
 
                 // overwrite all properties with the parent's error message
                 err.messages = take(&mut parent_err.messages);
                 err.code = take(&mut parent_err.code);
                 swap(&mut err.span, &mut parent_err.span);
-                err.children = take(&mut parent_err.children);
+                if failed_to_resolve {
+                    err.children = take(&mut parent_err.children);
+                } else {
+                    err.children.append(&mut parent_err.children);
+                }
                 err.sort_span = parent_err.sort_span;
                 err.is_lint = parent_err.is_lint.clone();
 

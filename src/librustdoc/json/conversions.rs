@@ -908,8 +908,12 @@ fn maybe_from_hir_attr(
         hir::Attribute::Parsed(kind) => kind,
 
         hir::Attribute::Unparsed(_) => {
-            // FIXME: We should handle `#[doc(hidden)]`.
-            return Some(other_attr(tcx, attr));
+            return Some(if attr.has_name(sym::macro_export) {
+                Attribute::MacroExport
+                // FIXME: We should handle `#[doc(hidden)]`.
+            } else {
+                other_attr(tcx, attr)
+            });
         }
     };
 

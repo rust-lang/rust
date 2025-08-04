@@ -1,7 +1,5 @@
 # Placeholders and universes
 
-<!-- toc -->
-
 From time to time we have to reason about regions that we can't
 concretely know. For example, consider this program:
 

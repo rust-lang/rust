@@ -973,14 +973,13 @@ pub(crate) fn handle_runnables(
                 res.push(runnable);
             }
 
-            if let lsp_ext::RunnableArgs::Cargo(r) = &mut runnable.args {
-                if let Some(TargetSpec::Cargo(CargoTargetSpec {
+            if let lsp_ext::RunnableArgs::Cargo(r) = &mut runnable.args
+                && let Some(TargetSpec::Cargo(CargoTargetSpec {
                     sysroot_root: Some(sysroot_root),
                     ..
                 })) = &target_spec
-                {
-                    r.environment.insert("RUSTC_TOOLCHAIN".to_owned(), sysroot_root.to_string());
-                }
+            {
+                r.environment.insert("RUSTC_TOOLCHAIN".to_owned(), sysroot_root.to_string());
             };
 
             res.push(runnable);
@@ -1034,25 +1033,25 @@ pub(crate) fn handle_runnables(
         }
         Some(TargetSpec::ProjectJson(_)) => {}
         None => {
-            if !snap.config.linked_or_discovered_projects().is_empty() {
-                if let Some(path) = snap.file_id_to_file_path(file_id).parent() {
-                    let mut cargo_args = vec!["check".to_owned(), "--workspace".to_owned()];
-                    cargo_args.extend(config.cargo_extra_args.iter().cloned());
-                    res.push(lsp_ext::Runnable {
-                        label: "cargo check --workspace".to_owned(),
-                        location: None,
-                        kind: lsp_ext::RunnableKind::Cargo,
-                        args: lsp_ext::RunnableArgs::Cargo(lsp_ext::CargoRunnableArgs {
-                            workspace_root: None,
-                            cwd: path.as_path().unwrap().to_path_buf().into(),
-                            override_cargo: config.override_cargo,
-                            cargo_args,
-                            executable_args: Vec::new(),
-                            environment: Default::default(),
-                        }),
-                    });
-                };
-            }
+            if !snap.config.linked_or_discovered_projects().is_empty()
+                && let Some(path) = snap.file_id_to_file_path(file_id).parent()
+            {
+                let mut cargo_args = vec!["check".to_owned(), "--workspace".to_owned()];
+                cargo_args.extend(config.cargo_extra_args.iter().cloned());
+                res.push(lsp_ext::Runnable {
+                    label: "cargo check --workspace".to_owned(),
+                    location: None,
+                    kind: lsp_ext::RunnableKind::Cargo,
+                    args: lsp_ext::RunnableArgs::Cargo(lsp_ext::CargoRunnableArgs {
+                        workspace_root: None,
+                        cwd: path.as_path().unwrap().to_path_buf().into(),
+                        override_cargo: config.override_cargo,
+                        cargo_args,
+                        executable_args: Vec::new(),
+                        environment: Default::default(),
+                    }),
+                });
+            };
         }
     }
     Ok(res)
@@ -1557,12 +1556,12 @@ pub(crate) fn handle_code_action_resolve(
     code_action.edit = ca.edit;
     code_action.command = ca.command;
 
-    if let Some(edit) = code_action.edit.as_ref() {
-        if let Some(changes) = edit.document_changes.as_ref() {
-            for change in changes {
-                if let lsp_ext::SnippetDocumentChangeOperation::Op(res_op) = change {
-                    resource_ops_supported(&snap.config, resolve_resource_op(res_op))?
-                }
+    if let Some(edit) = code_action.edit.as_ref()
+        && let Some(changes) = edit.document_changes.as_ref()
+    {
+        for change in changes {
+            if let lsp_ext::SnippetDocumentChangeOperation::Op(res_op) = change {
+                resource_ops_supported(&snap.config, resolve_resource_op(res_op))?
             }
         }
     }
@@ -1958,12 +1957,11 @@ pub(crate) fn handle_semantic_tokens_full_delta(
 
     if let Some(cached_tokens @ lsp_types::SemanticTokens { result_id: Some(prev_id), .. }) =
         &cached_tokens
+        && *prev_id == params.previous_result_id
     {
-        if *prev_id == params.previous_result_id {
-            let delta = to_proto::semantic_token_delta(cached_tokens, &semantic_tokens);
-            snap.semantic_tokens_cache.lock().insert(params.text_document.uri, semantic_tokens);
-            return Ok(Some(delta.into()));
-        }
+        let delta = to_proto::semantic_token_delta(cached_tokens, &semantic_tokens);
+        snap.semantic_tokens_cache.lock().insert(params.text_document.uri, semantic_tokens);
+        return Ok(Some(delta.into()));
     }
 
     // Clone first to keep the lock short
@@ -2122,24 +2120,25 @@ fn show_impl_command_link(
     snap: &GlobalStateSnapshot,
     position: &FilePosition,
 ) -> Option<lsp_ext::CommandLinkGroup> {
-    if snap.config.hover_actions().implementations && snap.config.client_commands().show_reference {
-        if let Some(nav_data) = snap.analysis.goto_implementation(*position).unwrap_or(None) {
-            let uri = to_proto::url(snap, position.file_id);
-            let line_index = snap.file_line_index(position.file_id).ok()?;
-            let position = to_proto::position(&line_index, position.offset);
-            let locations: Vec<_> = nav_data
-                .info
-                .into_iter()
-                .filter_map(|nav| to_proto::location_from_nav(snap, nav).ok())
-                .collect();
-            let title = to_proto::implementation_title(locations.len());
-            let command = to_proto::command::show_references(title, &uri, position, locations);
+    if snap.config.hover_actions().implementations
+        && snap.config.client_commands().show_reference
+        && let Some(nav_data) = snap.analysis.goto_implementation(*position).unwrap_or(None)
+    {
+        let uri = to_proto::url(snap, position.file_id);
+        let line_index = snap.file_line_index(position.file_id).ok()?;
+        let position = to_proto::position(&line_index, position.offset);
+        let locations: Vec<_> = nav_data
+            .info
+            .into_iter()
+            .filter_map(|nav| to_proto::location_from_nav(snap, nav).ok())
+            .collect();
+        let title = to_proto::implementation_title(locations.len());
+        let command = to_proto::command::show_references(title, &uri, position, locations);
 
-            return Some(lsp_ext::CommandLinkGroup {
-                commands: vec![to_command_link(command, "Go to implementations".into())],
-                ..Default::default()
-            });
-        }
+        return Some(lsp_ext::CommandLinkGroup {
+            commands: vec![to_command_link(command, "Go to implementations".into())],
+            ..Default::default()
+        });
     }
     None
 }
@@ -2148,28 +2147,29 @@ fn show_ref_command_link(
     snap: &GlobalStateSnapshot,
     position: &FilePosition,
 ) -> Option<lsp_ext::CommandLinkGroup> {
-    if snap.config.hover_actions().references && snap.config.client_commands().show_reference {
-        if let Some(ref_search_res) = snap.analysis.find_all_refs(*position, None).unwrap_or(None) {
-            let uri = to_proto::url(snap, position.file_id);
-            let line_index = snap.file_line_index(position.file_id).ok()?;
-            let position = to_proto::position(&line_index, position.offset);
-            let locations: Vec<_> = ref_search_res
-                .into_iter()
-                .flat_map(|res| res.references)
-                .flat_map(|(file_id, ranges)| {
-                    ranges.into_iter().map(move |(range, _)| FileRange { file_id, range })
-                })
-                .unique()
-                .filter_map(|range| to_proto::location(snap, range).ok())
-                .collect();
-            let title = to_proto::reference_title(locations.len());
-            let command = to_proto::command::show_references(title, &uri, position, locations);
+    if snap.config.hover_actions().references
+        && snap.config.client_commands().show_reference
+        && let Some(ref_search_res) = snap.analysis.find_all_refs(*position, None).unwrap_or(None)
+    {
+        let uri = to_proto::url(snap, position.file_id);
+        let line_index = snap.file_line_index(position.file_id).ok()?;
+        let position = to_proto::position(&line_index, position.offset);
+        let locations: Vec<_> = ref_search_res
+            .into_iter()
+            .flat_map(|res| res.references)
+            .flat_map(|(file_id, ranges)| {
+                ranges.into_iter().map(move |(range, _)| FileRange { file_id, range })
+            })
+            .unique()
+            .filter_map(|range| to_proto::location(snap, range).ok())
+            .collect();
+        let title = to_proto::reference_title(locations.len());
+        let command = to_proto::command::show_references(title, &uri, position, locations);
 
-            return Some(lsp_ext::CommandLinkGroup {
-                commands: vec![to_command_link(command, "Go to references".into())],
-                ..Default::default()
-            });
-        }
+        return Some(lsp_ext::CommandLinkGroup {
+            commands: vec![to_command_link(command, "Go to references".into())],
+            ..Default::default()
+        });
     }
     None
 }

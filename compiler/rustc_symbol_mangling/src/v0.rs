@@ -33,7 +33,7 @@ pub(super) fn mangle<'tcx>(
     let args = tcx.normalize_erasing_regions(ty::TypingEnv::fully_monomorphized(), instance.args);
 
     let prefix = "_R";
-    let mut cx: SymbolMangler<'_> = SymbolMangler {
+    let mut p: SymbolMangler<'_> = SymbolMangler {
         tcx,
         start_offset: prefix.len(),
         is_exportable,
@@ -69,16 +69,16 @@ pub(super) fn mangle<'tcx>(
             bug!();
         };
         let drop_ty = cor_args.first().unwrap().expect_ty();
-        cx.print_def_path(def_id, tcx.mk_args(&[GenericArg::from(drop_ty)])).unwrap()
+        p.print_def_path(def_id, tcx.mk_args(&[GenericArg::from(drop_ty)])).unwrap()
     } else if let Some(shim_kind) = shim_kind {
-        cx.path_append_ns(|cx| cx.print_def_path(def_id, args), 'S', 0, shim_kind).unwrap()
+        p.path_append_ns(|p| p.print_def_path(def_id, args), 'S', 0, shim_kind).unwrap()
     } else {
-        cx.print_def_path(def_id, args).unwrap()
+        p.print_def_path(def_id, args).unwrap()
     };
     if let Some(instantiating_crate) = instantiating_crate {
-        cx.print_def_path(instantiating_crate.as_def_id(), &[]).unwrap();
+        p.print_def_path(instantiating_crate.as_def_id(), &[]).unwrap();
     }
-    std::mem::take(&mut cx.out)
+    std::mem::take(&mut p.out)
 }
 
 pub fn mangle_internal_symbol<'tcx>(tcx: TyCtxt<'tcx>, item_name: &str) -> String {
@@ -88,7 +88,7 @@ pub fn mangle_internal_symbol<'tcx>(tcx: TyCtxt<'tcx>, item_name: &str) -> Strin
     }
 
     let prefix = "_R";
-    let mut cx: SymbolMangler<'_> = SymbolMangler {
+    let mut p: SymbolMangler<'_> = SymbolMangler {
         tcx,
         start_offset: prefix.len(),
         is_exportable: false,
@@ -99,10 +99,10 @@ pub fn mangle_internal_symbol<'tcx>(tcx: TyCtxt<'tcx>, item_name: &str) -> Strin
         out: String::from(prefix),
     };
 
-    cx.path_append_ns(
-        |cx| {
-            cx.push("C");
-            cx.push_disambiguator({
+    p.path_append_ns(
+        |p| {
+            p.push("C");
+            p.push_disambiguator({
                 let mut hasher = StableHasher::new();
                 // Incorporate the rustc version to ensure #[rustc_std_internal_symbol] functions
                 // get a different symbol name depending on the rustc version.
@@ -114,7 +114,7 @@ pub fn mangle_internal_symbol<'tcx>(tcx: TyCtxt<'tcx>, item_name: &str) -> Strin
                 let hash: Hash64 = hasher.finish();
                 hash.as_u64()
             });
-            cx.push_ident("__rustc");
+            p.push_ident("__rustc");
             Ok(())
         },
         'v',
@@ -123,7 +123,7 @@ pub fn mangle_internal_symbol<'tcx>(tcx: TyCtxt<'tcx>, item_name: &str) -> Strin
     )
     .unwrap();
 
-    std::mem::take(&mut cx.out)
+    std::mem::take(&mut p.out)
 }
 
 pub(super) fn mangle_typeid_for_trait_ref<'tcx>(
@@ -131,7 +131,7 @@ pub(super) fn mangle_typeid_for_trait_ref<'tcx>(
     trait_ref: ty::ExistentialTraitRef<'tcx>,
 ) -> String {
     // FIXME(flip1995): See comment in `mangle_typeid_for_fnabi`.
-    let mut cx = SymbolMangler {
+    let mut p = SymbolMangler {
         tcx,
         start_offset: 0,
         is_exportable: false,
@@ -141,8 +141,8 @@ pub(super) fn mangle_typeid_for_trait_ref<'tcx>(
         binders: vec![],
         out: String::new(),
     };
-    cx.print_def_path(trait_ref.def_id, &[]).unwrap();
-    std::mem::take(&mut cx.out)
+    p.print_def_path(trait_ref.def_id, &[]).unwrap();
+    std::mem::take(&mut p.out)
 }
 
 struct BinderLevel {
@@ -368,7 +368,7 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
             self.path_generic_args(
                 |this| {
                     this.path_append_ns(
-                        |cx| cx.print_def_path(parent_def_id, &[]),
+                        |p| p.print_def_path(parent_def_id, &[]),
                         'I',
                         key.disambiguated_data.disambiguator as u64,
                         "",
@@ -425,7 +425,6 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
             ty::Bool => "b",
             ty::Char => "c",
             ty::Str => "e",
-            ty::Tuple(_) if ty.is_unit() => "u",
             ty::Int(IntTy::I8) => "a",
             ty::Int(IntTy::I16) => "s",
             ty::Int(IntTy::I32) => "l",
@@ -444,11 +443,11 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
             ty::Float(FloatTy::F128) => "C4f128",
             ty::Never => "z",
 
+            ty::Tuple(_) if ty.is_unit() => "u",
+
             // Should only be encountered within the identity-substituted
             // impl header of an item nested within an impl item.
             ty::Param(_) => "p",
-
-            ty::Bound(..) | ty::Placeholder(_) | ty::Infer(_) | ty::Error(_) => bug!(),
 
             _ => "",
         };
@@ -468,11 +467,9 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
                 unreachable!()
             }
             ty::Tuple(_) if ty.is_unit() => unreachable!(),
+            ty::Param(_) => unreachable!(),
 
-            // Placeholders, also handled as part of basic types.
-            ty::Param(_) | ty::Bound(..) | ty::Placeholder(_) | ty::Infer(_) | ty::Error(_) => {
-                unreachable!()
-            }
+            ty::Bound(..) | ty::Placeholder(_) | ty::Infer(_) | ty::Error(_) => bug!(),
 
             ty::Ref(r, ty, mutbl) => {
                 self.push(match mutbl {
@@ -542,31 +539,31 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
             ty::FnPtr(sig_tys, hdr) => {
                 let sig = sig_tys.with(hdr);
                 self.push("F");
-                self.wrap_binder(&sig, |cx, sig| {
+                self.wrap_binder(&sig, |p, sig| {
                     if sig.safety.is_unsafe() {
-                        cx.push("U");
+                        p.push("U");
                     }
                     match sig.abi {
                         ExternAbi::Rust => {}
-                        ExternAbi::C { unwind: false } => cx.push("KC"),
+                        ExternAbi::C { unwind: false } => p.push("KC"),
                         abi => {
-                            cx.push("K");
+                            p.push("K");
                             let name = abi.as_str();
                             if name.contains('-') {
-                                cx.push_ident(&name.replace('-', "_"));
+                                p.push_ident(&name.replace('-', "_"));
                             } else {
-                                cx.push_ident(name);
+                                p.push_ident(name);
                             }
                         }
                     }
                     for &ty in sig.inputs() {
-                        ty.print(cx)?;
+                        ty.print(p)?;
                     }
                     if sig.c_variadic {
-                        cx.push("v");
+                        p.push("v");
                     }
-                    cx.push("E");
-                    sig.output().print(cx)
+                    p.push("E");
+                    sig.output().print(p)
                 })?;
             }
 
@@ -623,7 +620,7 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
         // [<Trait> [{<Projection>}]] [{<Auto>}]
         // Since any predicates after the first one shouldn't change the binders,
         // just put them all in the binders of the first.
-        self.wrap_binder(&predicates[0], |cx, _| {
+        self.wrap_binder(&predicates[0], |p, _| {
             for predicate in predicates.iter() {
                 // It would be nice to be able to validate bound vars here, but
                 // projections can actually include bound vars from super traits
@@ -632,21 +629,21 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
                 match predicate.as_ref().skip_binder() {
                     ty::ExistentialPredicate::Trait(trait_ref) => {
                         // Use a type that can't appear in defaults of type parameters.
-                        let dummy_self = Ty::new_fresh(cx.tcx, 0);
-                        let trait_ref = trait_ref.with_self_ty(cx.tcx, dummy_self);
-                        cx.print_def_path(trait_ref.def_id, trait_ref.args)?;
+                        let dummy_self = Ty::new_fresh(p.tcx, 0);
+                        let trait_ref = trait_ref.with_self_ty(p.tcx, dummy_self);
+                        p.print_def_path(trait_ref.def_id, trait_ref.args)?;
                     }
                     ty::ExistentialPredicate::Projection(projection) => {
-                        let name = cx.tcx.associated_item(projection.def_id).name();
-                        cx.push("p");
-                        cx.push_ident(name.as_str());
+                        let name = p.tcx.associated_item(projection.def_id).name();
+                        p.push("p");
+                        p.push_ident(name.as_str());
                         match projection.term.kind() {
-                            ty::TermKind::Ty(ty) => ty.print(cx),
-                            ty::TermKind::Const(c) => c.print(cx),
+                            ty::TermKind::Ty(ty) => ty.print(p),
+                            ty::TermKind::Const(c) => c.print(p),
                         }?;
                     }
                     ty::ExistentialPredicate::AutoTrait(def_id) => {
-                        cx.print_def_path(*def_id, &[])?;
+                        p.print_def_path(*def_id, &[])?;
                     }
                 }
             }
@@ -849,7 +846,6 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
     fn path_append_impl(
         &mut self,
         _: impl FnOnce(&mut Self) -> Result<(), PrintError>,
-        _: &DisambiguatedDefPathData,
         _: Ty<'tcx>,
         _: Option<ty::TraitRef<'tcx>>,
     ) -> Result<(), PrintError> {

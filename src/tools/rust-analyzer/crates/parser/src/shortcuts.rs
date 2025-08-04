@@ -252,10 +252,10 @@ fn n_attached_trivias<'a>(
                     WHITESPACE if text.contains("\n\n") => {
                         // we check whether the next token is a doc-comment
                         // and skip the whitespace in this case
-                        if let Some((COMMENT, peek_text)) = trivias.peek().map(|(_, pair)| pair) {
-                            if is_outer(peek_text) {
-                                continue;
-                            }
+                        if let Some((COMMENT, peek_text)) = trivias.peek().map(|(_, pair)| pair)
+                            && is_outer(peek_text)
+                        {
+                            continue;
                         }
                         break;
                     }

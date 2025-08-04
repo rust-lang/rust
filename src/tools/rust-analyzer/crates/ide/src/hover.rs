@@ -244,17 +244,15 @@ fn hover_offset(
                     let node = token.parent()?;
 
                     // special case macro calls, we wanna render the invoked arm index
-                    if let Some(name) = ast::NameRef::cast(node.clone()) {
-                        if let Some(path_seg) =
+                    if let Some(name) = ast::NameRef::cast(node.clone())
+                        && let Some(path_seg) =
                             name.syntax().parent().and_then(ast::PathSegment::cast)
-                        {
-                            if let Some(macro_call) = path_seg
+                            && let Some(macro_call) = path_seg
                                 .parent_path()
                                 .syntax()
                                 .parent()
                                 .and_then(ast::MacroCall::cast)
-                            {
-                                if let Some(macro_) = sema.resolve_macro_call(&macro_call) {
+                                && let Some(macro_) = sema.resolve_macro_call(&macro_call) {
                                     break 'a vec![(
                                         (Definition::Macro(macro_), None),
                                         sema.resolve_macro_call_arm(&macro_call),
@@ -262,9 +260,6 @@ fn hover_offset(
                                         node,
                                     )];
                                 }
-                            }
-                        }
-                    }
 
                     match IdentClass::classify_node(sema, &node)? {
                         // It's better for us to fall back to the keyword hover here,

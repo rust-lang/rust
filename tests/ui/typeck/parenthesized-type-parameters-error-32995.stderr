@@ -1,0 +1,21 @@
+error[E0214]: parenthesized type parameters may only be used with a `Fn` trait
+  --> $DIR/parenthesized-type-parameters-error-32995.rs:3:22
+   |
+LL |     { fn f<X: ::std::marker()::Send>() {} }
+   |                      ^^^^^^^^ only `Fn` traits may use parentheses
+
+error[E0214]: parenthesized type parameters may only be used with a `Fn` trait
+  --> $DIR/parenthesized-type-parameters-error-32995.rs:6:29
+   |
+LL |     { fn f() -> impl ::std::marker()::Send { } }
+   |                             ^^^^^^^^ only `Fn` traits may use parentheses
+
+error[E0214]: parenthesized type parameters may only be used with a `Fn` trait
+  --> $DIR/parenthesized-type-parameters-error-32995.rs:13:13
+   |
+LL | impl ::std::marker()::Copy for X {}
+   |             ^^^^^^^^ only `Fn` traits may use parentheses
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0214`.

@@ -89,11 +89,11 @@ impl IndentLevel {
             _ => None,
         });
         for token in tokens {
-            if let Some(ws) = ast::Whitespace::cast(token) {
-                if ws.text().contains('\n') {
-                    let new_ws = make::tokens::whitespace(&format!("{}{self}", ws.syntax()));
-                    ted::replace(ws.syntax(), &new_ws);
-                }
+            if let Some(ws) = ast::Whitespace::cast(token)
+                && ws.text().contains('\n')
+            {
+                let new_ws = make::tokens::whitespace(&format!("{}{self}", ws.syntax()));
+                ted::replace(ws.syntax(), &new_ws);
             }
         }
     }
@@ -122,13 +122,13 @@ impl IndentLevel {
             _ => None,
         });
         for token in tokens {
-            if let Some(ws) = ast::Whitespace::cast(token) {
-                if ws.text().contains('\n') {
-                    let new_ws = make::tokens::whitespace(
-                        &ws.syntax().text().replace(&format!("\n{self}"), "\n"),
-                    );
-                    ted::replace(ws.syntax(), &new_ws);
-                }
+            if let Some(ws) = ast::Whitespace::cast(token)
+                && ws.text().contains('\n')
+            {
+                let new_ws = make::tokens::whitespace(
+                    &ws.syntax().text().replace(&format!("\n{self}"), "\n"),
+                );
+                ted::replace(ws.syntax(), &new_ws);
             }
         }
     }

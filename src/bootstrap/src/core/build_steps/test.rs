@@ -33,7 +33,7 @@ use crate::utils::helpers::{
     linker_flags, t, target_supports_cranelift_backend, up_to_date,
 };
 use crate::utils::render_tests::{add_flags_and_try_run_tests, try_run_tests};
-use crate::{CLang, DocTests, GitRepo, Mode, PathSet, debug, envify};
+use crate::{CLang, CodegenBackendKind, DocTests, GitRepo, Mode, PathSet, debug, envify};
 
 const ADB_TEST_DIR: &str = "/data/local/tmp/work";
 
@@ -749,6 +749,12 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
             SourceType::InTree,
             &[],
         );
+
+        // Used for `compiletest` self-tests to have the path to the *staged* compiler. Getting this
+        // right is important, as `compiletest` is intended to only support one target spec JSON
+        // format, namely that of the staged compiler.
+        cargo.env("TEST_RUSTC", builder.rustc(compiler));
+
         cargo.allow_features(COMPILETEST_ALLOW_FEATURES);
         run_cargo_test(cargo, &[], &[], "compiletest self test", host, builder);
     }
@@ -1657,7 +1663,11 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         // bootstrap compiler.
         // NOTE: Only stage 1 is special cased because we need the rustc_private artifacts to match the
         // running compiler in stage 2 when plugins run.
+        let query_compiler;
         let (stage, stage_id) = if suite == "ui-fulldeps" && compiler.stage == 1 {
+            // Even when using the stage 0 compiler, we also need to provide the stage 1 compiler
+            // so that compiletest can query it for target information.
+            query_compiler = Some(compiler);
             // At stage 0 (stage - 1) we are using the stage0 compiler. Using `self.target` can lead
             // finding an incorrect compiler path on cross-targets, as the stage 0 is always equal to
             // `build.build` in the configuration.
@@ -1666,6 +1676,7 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
             let test_stage = compiler.stage + 1;
             (test_stage, format!("stage{test_stage}-{build}"))
         } else {
+            query_compiler = None;
             let stage = compiler.stage;
             (stage, format!("stage{stage}-{target}"))
         };
@@ -1710,6 +1721,9 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         cmd.arg("--compile-lib-path").arg(builder.rustc_libdir(compiler));
         cmd.arg("--run-lib-path").arg(builder.sysroot_target_libdir(compiler, target));
         cmd.arg("--rustc-path").arg(builder.rustc(compiler));
+        if let Some(query_compiler) = query_compiler {
+            cmd.arg("--query-rustc-path").arg(builder.rustc(query_compiler));
+        }
 
         // Minicore auxiliary lib for `no_core` tests that need `core` stubs in cross-compilation
         // scenarios.
@@ -1786,7 +1800,9 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         cmd.arg("--llvm-filecheck").arg(builder.llvm_filecheck(builder.config.host_target));
 
         if let Some(codegen_backend) = builder.config.default_codegen_backend(compiler.host) {
-            cmd.arg("--codegen-backend").arg(&codegen_backend);
+            // Tells compiletest which codegen backend is used by default by the compiler.
+            // It is used to e.g. ignore tests that don't support that codegen backend.
+            cmd.arg("--codegen-backend").arg(codegen_backend.name());
         }
 
         if builder.build.config.llvm_enzyme {
@@ -3406,7 +3422,7 @@ impl Step for CodegenCranelift {
             return;
         }
 
-        if !builder.config.codegen_backends(run.target).contains(&"cranelift".to_owned()) {
+        if !builder.config.codegen_backends(run.target).contains(&CodegenBackendKind::Cranelift) {
             builder.info("cranelift not in rust.codegen-backends. skipping");
             return;
         }
@@ -3533,7 +3549,7 @@ impl Step for CodegenGCC {
             return;
         }
 
-        if !builder.config.codegen_backends(run.target).contains(&"gcc".to_owned()) {
+        if !builder.config.codegen_backends(run.target).contains(&CodegenBackendKind::Gcc) {
             builder.info("gcc not in rust.codegen-backends. skipping");
             return;
         }

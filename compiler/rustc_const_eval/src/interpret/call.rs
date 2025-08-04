@@ -11,6 +11,7 @@ use rustc_middle::ty::{self, AdtDef, Instance, Ty, VariantDef};
 use rustc_middle::{bug, mir, span_bug};
 use rustc_span::sym;
 use rustc_target::callconv::{ArgAbi, FnAbi, PassMode};
+use tracing::field::Empty;
 use tracing::{info, instrument, trace};
 
 use super::{
@@ -18,7 +19,8 @@ use super::{
     Projectable, Provenance, ReturnAction, ReturnContinuation, Scalar, StackPopInfo, interp_ok,
     throw_ub, throw_ub_custom, throw_unsup_format,
 };
-use crate::fluent_generated as fluent;
+use crate::interpret::EnteredTraceSpan;
+use crate::{enter_trace_span, fluent_generated as fluent};
 
 /// An argument passed to a function.
 #[derive(Clone, Debug)]
@@ -344,6 +346,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         destination: &PlaceTy<'tcx, M::Provenance>,
         mut cont: ReturnContinuation,
     ) -> InterpResult<'tcx> {
+        let _span = enter_trace_span!(M, step::init_stack_frame, %instance, tracing_separate_thread = Empty);
+
         // Compute callee information.
         // FIXME: for variadic support, do we have to somehow determine callee's extra_args?
         let callee_fn_abi = self.fn_abi_of_instance(instance, ty::List::empty())?;
@@ -523,7 +527,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         target: Option<mir::BasicBlock>,
         unwind: mir::UnwindAction,
     ) -> InterpResult<'tcx> {
-        trace!("init_fn_call: {:#?}", fn_val);
+        let _span =
+            enter_trace_span!(M, step::init_fn_call, tracing_separate_thread = Empty, ?fn_val)
+                .or_if_tracing_disabled(|| trace!("init_fn_call: {:#?}", fn_val));
 
         let instance = match fn_val {
             FnVal::Instance(instance) => instance,

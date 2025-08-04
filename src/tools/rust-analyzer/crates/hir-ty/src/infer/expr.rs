@@ -653,19 +653,18 @@ impl InferenceContext<'_> {
                 // FIXME: Note down method resolution her
                 match op {
                     UnaryOp::Deref => {
-                        if let Some(deref_trait) = self.resolve_lang_trait(LangItem::Deref) {
-                            if let Some(deref_fn) = deref_trait
+                        if let Some(deref_trait) = self.resolve_lang_trait(LangItem::Deref)
+                            && let Some(deref_fn) = deref_trait
                                 .trait_items(self.db)
                                 .method_by_name(&Name::new_symbol_root(sym::deref))
-                            {
-                                // FIXME: this is wrong in multiple ways, subst is empty, and we emit it even for builtin deref (note that
-                                // the mutability is not wrong, and will be fixed in `self.infer_mut`).
-                                self.write_method_resolution(
-                                    tgt_expr,
-                                    deref_fn,
-                                    Substitution::empty(Interner),
-                                );
-                            }
+                        {
+                            // FIXME: this is wrong in multiple ways, subst is empty, and we emit it even for builtin deref (note that
+                            // the mutability is not wrong, and will be fixed in `self.infer_mut`).
+                            self.write_method_resolution(
+                                tgt_expr,
+                                deref_fn,
+                                Substitution::empty(Interner),
+                            );
                         }
                         if let Some(derefed) = builtin_deref(self.table.db, &inner_ty, true) {
                             self.resolve_ty_shallow(derefed)
@@ -1387,28 +1386,28 @@ impl InferenceContext<'_> {
         let ret_ty = match method_ty.callable_sig(self.db) {
             Some(sig) => {
                 let p_left = &sig.params()[0];
-                if matches!(op, BinaryOp::CmpOp(..) | BinaryOp::Assignment { .. }) {
-                    if let TyKind::Ref(mtbl, lt, _) = p_left.kind(Interner) {
-                        self.write_expr_adj(
-                            lhs,
-                            Box::new([Adjustment {
-                                kind: Adjust::Borrow(AutoBorrow::Ref(lt.clone(), *mtbl)),
-                                target: p_left.clone(),
-                            }]),
-                        );
-                    }
+                if matches!(op, BinaryOp::CmpOp(..) | BinaryOp::Assignment { .. })
+                    && let TyKind::Ref(mtbl, lt, _) = p_left.kind(Interner)
+                {
+                    self.write_expr_adj(
+                        lhs,
+                        Box::new([Adjustment {
+                            kind: Adjust::Borrow(AutoBorrow::Ref(lt.clone(), *mtbl)),
+                            target: p_left.clone(),
+                        }]),
+                    );
                 }
                 let p_right = &sig.params()[1];
-                if matches!(op, BinaryOp::CmpOp(..)) {
-                    if let TyKind::Ref(mtbl, lt, _) = p_right.kind(Interner) {
-                        self.write_expr_adj(
-                            rhs,
-                            Box::new([Adjustment {
-                                kind: Adjust::Borrow(AutoBorrow::Ref(lt.clone(), *mtbl)),
-                                target: p_right.clone(),
-                            }]),
-                        );
-                    }
+                if matches!(op, BinaryOp::CmpOp(..))
+                    && let TyKind::Ref(mtbl, lt, _) = p_right.kind(Interner)
+                {
+                    self.write_expr_adj(
+                        rhs,
+                        Box::new([Adjustment {
+                            kind: Adjust::Borrow(AutoBorrow::Ref(lt.clone(), *mtbl)),
+                            target: p_right.clone(),
+                        }]),
+                    );
                 }
                 sig.ret().clone()
             }
@@ -1664,14 +1663,12 @@ impl InferenceContext<'_> {
             Some((ty, field_id, adjustments, is_public)) => {
                 self.write_expr_adj(receiver, adjustments.into_boxed_slice());
                 self.result.field_resolutions.insert(tgt_expr, field_id);
-                if !is_public {
-                    if let Either::Left(field) = field_id {
-                        // FIXME: Merge this diagnostic into UnresolvedField?
-                        self.push_diagnostic(InferenceDiagnostic::PrivateField {
-                            expr: tgt_expr,
-                            field,
-                        });
-                    }
+                if !is_public && let Either::Left(field) = field_id {
+                    // FIXME: Merge this diagnostic into UnresolvedField?
+                    self.push_diagnostic(InferenceDiagnostic::PrivateField {
+                        expr: tgt_expr,
+                        field,
+                    });
                 }
                 ty
             }

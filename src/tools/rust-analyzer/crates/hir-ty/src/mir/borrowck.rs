@@ -559,10 +559,9 @@ fn mutability_of_locals(
                         },
                         p,
                     ) = value
+                        && place_case(db, body, p) != ProjectionCase::Indirect
                     {
-                        if place_case(db, body, p) != ProjectionCase::Indirect {
-                            push_mut_span(p.local, statement.span, &mut result);
-                        }
+                        push_mut_span(p.local, statement.span, &mut result);
                     }
                 }
                 StatementKind::FakeRead(p) => {

@@ -29,7 +29,7 @@ warning: const parameter `foo` should have an upper case name
 LL | fn foo<const foo: u32>() {
    |              ^^^
    |
-help: convert the identifier to upper case (notice the capitalization difference)
+help: convert the identifier to upper case (notice the capitalization)
    |
 LL - fn foo<const foo: u32>() {
 LL + fn foo<const FOO: u32>() {

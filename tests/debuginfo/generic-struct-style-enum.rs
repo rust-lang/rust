@@ -1,4 +1,5 @@
 //@ compile-flags:-g
+//@ disable-gdb-pretty-printers
 
 // gdb-command:set print union on
 // gdb-command:run
@@ -15,9 +16,6 @@
 // gdb-command:print univariant
 // gdb-check:$4 = generic_struct_style_enum::Univariant<i32>::TheOnlyCase{a: -1}
 
-
-#![feature(omit_gdb_pretty_printer_section)]
-#![omit_gdb_pretty_printer_section]
 
 use self::Regular::{Case1, Case2, Case3};
 use self::Univariant::TheOnlyCase;

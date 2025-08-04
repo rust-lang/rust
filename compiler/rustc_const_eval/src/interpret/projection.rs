@@ -199,6 +199,15 @@ where
         base.offset_with_meta(offset, OffsetMode::Inbounds, meta, field_layout, self)
     }
 
+    /// Projects multiple fields at once. See [`Self::project_field`] for details.
+    pub fn project_fields<P: Projectable<'tcx, M::Provenance>, const N: usize>(
+        &self,
+        base: &P,
+        fields: [FieldIdx; N],
+    ) -> InterpResult<'tcx, [P; N]> {
+        fields.try_map(|field| self.project_field(base, field))
+    }
+
     /// Downcasting to an enum variant.
     pub fn project_downcast<P: Projectable<'tcx, M::Provenance>>(
         &self,

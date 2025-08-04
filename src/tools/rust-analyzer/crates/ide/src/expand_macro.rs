@@ -96,14 +96,14 @@ pub(crate) fn expand_macro(db: &RootDatabase, position: FilePosition) -> Option<
     let (name, expanded, kind) = loop {
         let node = anc.next()?;
 
-        if let Some(item) = ast::Item::cast(node.clone()) {
-            if let Some(def) = sema.resolve_attr_macro_call(&item) {
-                break (
-                    def.name(db).display(db, file_id.edition(db)).to_string(),
-                    expand_macro_recur(&sema, &item, &mut error, &mut span_map, TextSize::new(0))?,
-                    SyntaxKind::MACRO_ITEMS,
-                );
-            }
+        if let Some(item) = ast::Item::cast(node.clone())
+            && let Some(def) = sema.resolve_attr_macro_call(&item)
+        {
+            break (
+                def.name(db).display(db, file_id.edition(db)).to_string(),
+                expand_macro_recur(&sema, &item, &mut error, &mut span_map, TextSize::new(0))?,
+                SyntaxKind::MACRO_ITEMS,
+            );
         }
         if let Some(mac) = ast::MacroCall::cast(node) {
             let mut name = mac.path()?.segment()?.name_ref()?.to_string();

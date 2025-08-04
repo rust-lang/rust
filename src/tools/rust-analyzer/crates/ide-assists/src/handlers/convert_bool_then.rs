@@ -86,12 +86,11 @@ pub(crate) fn convert_if_to_bool_then(acc: &mut Assists, ctx: &AssistContext<'_>
                     e @ ast::Expr::CallExpr(_) => Some(e.clone()),
                     _ => None,
                 };
-                if let Some(ast::Expr::CallExpr(call)) = e {
-                    if let Some(arg_list) = call.arg_list() {
-                        if let Some(arg) = arg_list.args().next() {
-                            editor.replace(call.syntax(), arg.syntax());
-                        }
-                    }
+                if let Some(ast::Expr::CallExpr(call)) = e
+                    && let Some(arg_list) = call.arg_list()
+                    && let Some(arg) = arg_list.args().next()
+                {
+                    editor.replace(call.syntax(), arg.syntax());
                 }
             });
             let edit = editor.finish();
@@ -276,12 +275,12 @@ fn is_invalid_body(
                 e @ ast::Expr::CallExpr(_) => Some(e.clone()),
                 _ => None,
             };
-            if let Some(ast::Expr::CallExpr(call)) = e {
-                if let Some(ast::Expr::PathExpr(p)) = call.expr() {
-                    let res = p.path().and_then(|p| sema.resolve_path(&p));
-                    if let Some(hir::PathResolution::Def(hir::ModuleDef::Variant(v))) = res {
-                        return invalid |= v != some_variant;
-                    }
+            if let Some(ast::Expr::CallExpr(call)) = e
+                && let Some(ast::Expr::PathExpr(p)) = call.expr()
+            {
+                let res = p.path().and_then(|p| sema.resolve_path(&p));
+                if let Some(hir::PathResolution::Def(hir::ModuleDef::Variant(v))) = res {
+                    return invalid |= v != some_variant;
                 }
             }
             invalid = true

@@ -80,15 +80,15 @@ pub(crate) fn make_usual_string(acc: &mut Assists, ctx: &AssistContext<'_>) -> O
             // parse inside string to escape `"`
             let escaped = value.escape_default().to_string();
             let suffix = string_suffix(token.text()).unwrap_or_default();
-            if let Some(offsets) = token.quote_offsets() {
-                if token.text()[offsets.contents - token.syntax().text_range().start()] == escaped {
-                    let end_quote = offsets.quotes.1;
-                    let end_quote =
-                        TextRange::new(end_quote.start(), end_quote.end() - TextSize::of(suffix));
-                    edit.replace(offsets.quotes.0, "\"");
-                    edit.replace(end_quote, "\"");
-                    return;
-                }
+            if let Some(offsets) = token.quote_offsets()
+                && token.text()[offsets.contents - token.syntax().text_range().start()] == escaped
+            {
+                let end_quote = offsets.quotes.1;
+                let end_quote =
+                    TextRange::new(end_quote.start(), end_quote.end() - TextSize::of(suffix));
+                edit.replace(offsets.quotes.0, "\"");
+                edit.replace(end_quote, "\"");
+                return;
             }
 
             edit.replace(token.syntax().text_range(), format!("\"{escaped}\"{suffix}"));
