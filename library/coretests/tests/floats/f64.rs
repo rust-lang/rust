@@ -25,35 +25,6 @@ const NAN_MASK1: u64 = 0x000a_aaaa_aaaa_aaaa;
 const NAN_MASK2: u64 = 0x0005_5555_5555_5555;
 
 #[test]
-fn test_next_up() {
-    let tiny = f64::from_bits(TINY_BITS);
-    let tiny_up = f64::from_bits(TINY_UP_BITS);
-    let max_down = f64::from_bits(MAX_DOWN_BITS);
-    let largest_subnormal = f64::from_bits(LARGEST_SUBNORMAL_BITS);
-    let smallest_normal = f64::from_bits(SMALLEST_NORMAL_BITS);
-    assert_biteq!(f64::NEG_INFINITY.next_up(), f64::MIN);
-    assert_biteq!(f64::MIN.next_up(), -max_down);
-    assert_biteq!((-1.0 - f64::EPSILON).next_up(), -1.0f64);
-    assert_biteq!((-smallest_normal).next_up(), -largest_subnormal);
-    assert_biteq!((-tiny_up).next_up(), -tiny);
-    assert_biteq!((-tiny).next_up(), -0.0f64);
-    assert_biteq!((-0.0f64).next_up(), tiny);
-    assert_biteq!(0.0f64.next_up(), tiny);
-    assert_biteq!(tiny.next_up(), tiny_up);
-    assert_biteq!(largest_subnormal.next_up(), smallest_normal);
-    assert_biteq!(1.0f64.next_up(), 1.0 + f64::EPSILON);
-    assert_biteq!(f64::MAX.next_up(), f64::INFINITY);
-    assert_biteq!(f64::INFINITY.next_up(), f64::INFINITY);
-
-    let nan0 = f64::NAN;
-    let nan1 = f64::from_bits(f64::NAN.to_bits() ^ NAN_MASK1);
-    let nan2 = f64::from_bits(f64::NAN.to_bits() ^ NAN_MASK2);
-    assert_biteq!(nan0.next_up(), nan0);
-    assert_biteq!(nan1.next_up(), nan1);
-    assert_biteq!(nan2.next_up(), nan2);
-}
-
-#[test]
 fn test_next_down() {
     let tiny = f64::from_bits(TINY_BITS);
     let tiny_up = f64::from_bits(TINY_UP_BITS);

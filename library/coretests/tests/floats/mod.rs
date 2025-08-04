@@ -2,34 +2,70 @@ use std::num::FpCategory as Fp;
 use std::ops::{Add, Div, Mul, Rem, Sub};
 
 trait TestableFloat {
+    /// Unsigned int with the same size, for converting to/from bits.
+    type Int;
     /// Set the default tolerance for float comparison based on the type.
     const APPROX: Self;
     const MIN_POSITIVE_NORMAL: Self;
     const MAX_SUBNORMAL: Self;
+    /// Smallest number
+    const TINY: Self;
+    /// Next smallest number
+    const TINY_UP: Self;
+    /// Exponent = 0b11...10, Significand 0b1111..10. Min val > 0
+    const MAX_DOWN: Self;
+    /// First pattern over the mantissa
+    const NAN_MASK1: Self::Int;
+    /// Second pattern over the mantissa
+    const NAN_MASK2: Self::Int;
 }
 
 impl TestableFloat for f16 {
+    type Int = u16;
     const APPROX: Self = 1e-3;
     const MIN_POSITIVE_NORMAL: Self = Self::MIN_POSITIVE;
     const MAX_SUBNORMAL: Self = Self::MIN_POSITIVE.next_down();
+    const TINY: Self = Self::from_bits(0x1);
+    const TINY_UP: Self = Self::from_bits(0x2);
+    const MAX_DOWN: Self = Self::from_bits(0x7bfe);
+    const NAN_MASK1: Self::Int = 0x02aa;
+    const NAN_MASK2: Self::Int = 0x0155;
 }
 
 impl TestableFloat for f32 {
+    type Int = u32;
     const APPROX: Self = 1e-6;
     const MIN_POSITIVE_NORMAL: Self = Self::MIN_POSITIVE;
     const MAX_SUBNORMAL: Self = Self::MIN_POSITIVE.next_down();
+    const TINY: Self = Self::from_bits(0x1);
+    const TINY_UP: Self = Self::from_bits(0x2);
+    const MAX_DOWN: Self = Self::from_bits(0x7f7f_fffe);
+    const NAN_MASK1: Self::Int = 0x002a_aaaa;
+    const NAN_MASK2: Self::Int = 0x0055_5555;
 }
 
 impl TestableFloat for f64 {
+    type Int = u64;
     const APPROX: Self = 1e-6;
     const MIN_POSITIVE_NORMAL: Self = Self::MIN_POSITIVE;
     const MAX_SUBNORMAL: Self = Self::MIN_POSITIVE.next_down();
+    const TINY: Self = Self::from_bits(0x1);
+    const TINY_UP: Self = Self::from_bits(0x2);
+    const MAX_DOWN: Self = Self::from_bits(0x7fef_ffff_ffff_fffe);
+    const NAN_MASK1: Self::Int = 0x000a_aaaa_aaaa_aaaa;
+    const NAN_MASK2: Self::Int = 0x0005_5555_5555_5555;
 }
 
 impl TestableFloat for f128 {
+    type Int = u128;
     const APPROX: Self = 1e-9;
     const MIN_POSITIVE_NORMAL: Self = Self::MIN_POSITIVE;
     const MAX_SUBNORMAL: Self = Self::MIN_POSITIVE.next_down();
+    const TINY: Self = Self::from_bits(0x1);
+    const TINY_UP: Self = Self::from_bits(0x2);
+    const MAX_DOWN: Self = Self::from_bits(0x7ffefffffffffffffffffffffffffffe);
+    const NAN_MASK1: Self::Int = 0x0000aaaaaaaaaaaaaaaaaaaaaaaaaaaa;
+    const NAN_MASK2: Self::Int = 0x00005555555555555555555555555555;
 }
 
 /// Determine the tolerance for values of the argument type.
@@ -1017,5 +1053,38 @@ float_test! {
         assert!((one / Float::NEG_INFINITY).is_sign_negative());
         assert!(!Float::NAN.is_sign_negative());
         assert!((-Float::NAN).is_sign_negative());
+    }
+}
+
+float_test! {
+    name: next_up,
+    attrs: {
+        f16: #[cfg(any(miri, target_has_reliable_f16))],
+        f128: #[cfg(any(miri, target_has_reliable_f128))],
+    },
+    test<Float> {
+        let one: Float = 1.0;
+        let zero: Float = 0.0;
+        assert_biteq!(Float::NEG_INFINITY.next_up(), Float::MIN);
+        assert_biteq!(Float::MIN.next_up(), -Float::MAX_DOWN);
+        assert_biteq!((-one - Float::EPSILON).next_up(), -one);
+        assert_biteq!((-Float::MIN_POSITIVE_NORMAL).next_up(), -Float::MAX_SUBNORMAL);
+        assert_biteq!((-Float::TINY_UP).next_up(), -Float::TINY);
+        assert_biteq!((-Float::TINY).next_up(), -zero);
+        assert_biteq!((-zero).next_up(), Float::TINY);
+        assert_biteq!(zero.next_up(), Float::TINY);
+        assert_biteq!(Float::TINY.next_up(), Float::TINY_UP);
+        assert_biteq!(Float::MAX_SUBNORMAL.next_up(), Float::MIN_POSITIVE_NORMAL);
+        assert_biteq!(one.next_up(), 1.0 + Float::EPSILON);
+        assert_biteq!(Float::MAX.next_up(), Float::INFINITY);
+        assert_biteq!(Float::INFINITY.next_up(), Float::INFINITY);
+
+        // Check that NaNs roundtrip.
+        let nan0 = Float::NAN;
+        let nan1 = Float::from_bits(Float::NAN.to_bits() ^ Float::NAN_MASK1);
+        let nan2 = Float::from_bits(Float::NAN.to_bits() ^ Float::NAN_MASK2);
+        assert_biteq!(nan0.next_up(), nan0);
+        assert_biteq!(nan1.next_up(), nan1);
+        assert_biteq!(nan2.next_up(), nan2);
     }
 }

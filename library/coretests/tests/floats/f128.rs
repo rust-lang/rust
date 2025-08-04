@@ -40,36 +40,6 @@ const NAN_MASK2: u128 = 0x00005555555555555555555555555555;
 // the intrinsics.
 
 #[test]
-fn test_next_up() {
-    let tiny = f128::from_bits(TINY_BITS);
-    let tiny_up = f128::from_bits(TINY_UP_BITS);
-    let max_down = f128::from_bits(MAX_DOWN_BITS);
-    let largest_subnormal = f128::from_bits(LARGEST_SUBNORMAL_BITS);
-    let smallest_normal = f128::from_bits(SMALLEST_NORMAL_BITS);
-    assert_biteq!(f128::NEG_INFINITY.next_up(), f128::MIN);
-    assert_biteq!(f128::MIN.next_up(), -max_down);
-    assert_biteq!((-1.0 - f128::EPSILON).next_up(), -1.0f128);
-    assert_biteq!((-smallest_normal).next_up(), -largest_subnormal);
-    assert_biteq!((-tiny_up).next_up(), -tiny);
-    assert_biteq!((-tiny).next_up(), -0.0f128);
-    assert_biteq!((-0.0f128).next_up(), tiny);
-    assert_biteq!(0.0f128.next_up(), tiny);
-    assert_biteq!(tiny.next_up(), tiny_up);
-    assert_biteq!(largest_subnormal.next_up(), smallest_normal);
-    assert_biteq!(1.0f128.next_up(), 1.0 + f128::EPSILON);
-    assert_biteq!(f128::MAX.next_up(), f128::INFINITY);
-    assert_biteq!(f128::INFINITY.next_up(), f128::INFINITY);
-
-    // Check that NaNs roundtrip.
-    let nan0 = f128::NAN;
-    let nan1 = f128::from_bits(f128::NAN.to_bits() ^ 0x002a_aaaa);
-    let nan2 = f128::from_bits(f128::NAN.to_bits() ^ 0x0055_5555);
-    assert_biteq!(nan0.next_up(), nan0);
-    assert_biteq!(nan1.next_up(), nan1);
-    assert_biteq!(nan2.next_up(), nan2);
-}
-
-#[test]
 fn test_next_down() {
     let tiny = f128::from_bits(TINY_BITS);
     let tiny_up = f128::from_bits(TINY_UP_BITS);
