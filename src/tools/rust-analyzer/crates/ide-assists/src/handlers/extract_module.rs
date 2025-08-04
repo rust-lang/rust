@@ -586,6 +586,7 @@ impl Module {
             if (def_out_sel || !is_item) && use_stmt_not_in_sel {
                 let use_ = make::use_(
                     None,
+                    None,
                     make::use_tree(make::join_paths(use_tree_paths), None, None, false),
                 );
                 self.use_items.insert(0, ast::Item::from(use_));
@@ -599,6 +600,7 @@ impl Module {
         let super_path = make::ext::ident_path("super");
         let node_path = make::ext::ident_path(&node_syntax.to_string());
         let use_ = make::use_(
+            None,
             None,
             make::use_tree(make::join_paths(vec![super_path, node_path]), None, None, false),
         );

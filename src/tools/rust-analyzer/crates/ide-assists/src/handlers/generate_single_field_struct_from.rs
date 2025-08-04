@@ -6,13 +6,12 @@ use ide_db::{
 };
 use syntax::{
     TokenText,
-    ast::{self, AstNode, HasGenericParams, HasName, edit, edit_in_place::Indent},
+    ast::{self, AstNode, HasAttrs, HasGenericParams, HasName, edit, edit_in_place::Indent},
 };
 
 use crate::{
     AssistId,
     assist_context::{AssistContext, Assists},
-    utils::add_cfg_attrs_to,
 };
 
 // Assist: generate_single_field_struct_from
@@ -90,6 +89,7 @@ pub(crate) fn generate_single_field_struct_from(
 
             let fn_ = make::fn_(
                 None,
+                None,
                 make::name("from"),
                 None,
                 None,
@@ -110,8 +110,12 @@ pub(crate) fn generate_single_field_struct_from(
             .clone_for_update();
 
             fn_.indent(1.into());
+            let cfg_attrs = strukt
+                .attrs()
+                .filter(|attr| attr.as_simple_call().is_some_and(|(name, _arg)| name == "cfg"));
 
             let impl_ = make::impl_trait(
+                cfg_attrs,
                 false,
                 None,
                 trait_gen_args,
@@ -127,8 +131,6 @@ pub(crate) fn generate_single_field_struct_from(
             .clone_for_update();
 
             impl_.get_or_create_assoc_item_list().add_item(fn_.into());
-
-            add_cfg_attrs_to(&strukt, &impl_);
 
             impl_.reindent_to(indent);
 

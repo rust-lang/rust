@@ -189,7 +189,7 @@ fn add_func_to_accumulator(
             )));
 
             // FIXME: adt may have generic params.
-            let impl_ = make::impl_(None, None, name, None, None).clone_for_update();
+            let impl_ = make::impl_(None, None, None, name, None, None).clone_for_update();
 
             func.indent(IndentLevel(1));
             impl_.get_or_create_assoc_item_list().add_item(func.into());
@@ -365,6 +365,7 @@ impl FunctionBuilder {
             Visibility::Pub => Some(make::visibility_pub()),
         };
         let fn_def = make::fn_(
+            None,
             visibility,
             self.fn_name,
             self.generic_param_list,
