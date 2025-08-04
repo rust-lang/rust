@@ -59,7 +59,7 @@ Libraries
 Stabilized APIs
 ---------------
 
-- [Allow `NonZero<char>`](https://github.com/rust-lang/rust/pull/141001)
+- [`NonZero<char>`](https://doc.rust-lang.org/stable/std/num/struct.NonZero.html)
 - Many intrinsics for x86, not enumerated here
   - [AVX512 intrinsics](https://github.com/rust-lang/rust/issues/111137)
   - [`SHA512`, `SM3` and `SM4` intrinsics](https://github.com/rust-lang/rust/issues/126624)
