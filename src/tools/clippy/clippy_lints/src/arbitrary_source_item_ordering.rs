@@ -6,7 +6,7 @@ use clippy_config::types::{
 };
 use clippy_utils::diagnostics::span_lint_and_note;
 use clippy_utils::is_cfg_test;
-use rustc_attr_data_structures::AttributeKind;
+use rustc_hir::attrs::AttributeKind;
 use rustc_hir::{
     Attribute, FieldDef, HirId, ImplItemId, IsAuto, Item, ItemKind, Mod, OwnerId, QPath, TraitItemId, TyKind, Variant,
     VariantData,

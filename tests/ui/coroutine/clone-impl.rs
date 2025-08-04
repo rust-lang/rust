@@ -42,6 +42,7 @@ fn test3_upvars() {
     let clonable_0: Vec<u32> = Vec::new();
     let gen_clone_0 = #[coroutine]
     move || {
+        yield;
         drop(clonable_0);
     };
     check_copy(&gen_clone_0);

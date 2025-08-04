@@ -60,6 +60,12 @@ pub fn llvm_pdbutil() -> LlvmPdbutil {
     LlvmPdbutil::new()
 }
 
+/// Construct a new `llvm-as` invocation. This assumes that `llvm-as` is available
+/// at `$LLVM_BIN_DIR/llvm-as`.
+pub fn llvm_as() -> LlvmAs {
+    LlvmAs::new()
+}
+
 /// Construct a new `llvm-dis` invocation. This assumes that `llvm-dis` is available
 /// at `$LLVM_BIN_DIR/llvm-dis`.
 pub fn llvm_dis() -> LlvmDis {
@@ -135,6 +141,13 @@ pub struct LlvmPdbutil {
     cmd: Command,
 }
 
+/// A `llvm-as` invocation builder.
+#[derive(Debug)]
+#[must_use]
+pub struct LlvmAs {
+    cmd: Command,
+}
+
 /// A `llvm-dis` invocation builder.
 #[derive(Debug)]
 #[must_use]
@@ -158,6 +171,7 @@ crate::macros::impl_common_helpers!(LlvmNm);
 crate::macros::impl_common_helpers!(LlvmBcanalyzer);
 crate::macros::impl_common_helpers!(LlvmDwarfdump);
 crate::macros::impl_common_helpers!(LlvmPdbutil);
+crate::macros::impl_common_helpers!(LlvmAs);
 crate::macros::impl_common_helpers!(LlvmDis);
 crate::macros::impl_common_helpers!(LlvmObjcopy);
 
@@ -437,6 +451,22 @@ impl LlvmObjcopy {
     ) -> &mut Self {
         self.cmd.arg("--dump-section");
         self.cmd.arg(format!("{}={}", section_name.as_ref(), path.as_ref().to_str().unwrap()));
+        self
+    }
+}
+
+impl LlvmAs {
+    /// Construct a new `llvm-as` invocation. This assumes that `llvm-as` is available
+    /// at `$LLVM_BIN_DIR/llvm-as`.
+    pub fn new() -> Self {
+        let llvm_as = llvm_bin_dir().join("llvm-as");
+        let cmd = Command::new(llvm_as);
+        Self { cmd }
+    }
+
+    /// Provide an input file.
+    pub fn input<P: AsRef<Path>>(&mut self, path: P) -> &mut Self {
+        self.cmd.arg(path.as_ref());
         self
     }
 }

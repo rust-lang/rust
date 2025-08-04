@@ -403,12 +403,6 @@ pub enum BoundTyKind {
     Param(DefId),
 }
 
-impl From<BoundVar> for BoundTy {
-    fn from(var: BoundVar) -> Self {
-        BoundTy { var, kind: BoundTyKind::Anon }
-    }
-}
-
 /// Constructors for `Ty`
 impl<'tcx> Ty<'tcx> {
     /// Avoid using this in favour of more specific `new_*` methods, where possible.
@@ -2040,7 +2034,7 @@ mod size_asserts {
 
     use super::*;
     // tidy-alphabetical-start
-    static_assert_size!(ty::RegionKind<'_>, 20);
-    static_assert_size!(ty::TyKind<'_>, 24);
+    static_assert_size!(TyKind<'_>, 24);
+    static_assert_size!(ty::WithCachedTypeInfo<TyKind<'_>>, 48);
     // tidy-alphabetical-end
 }

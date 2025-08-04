@@ -35,6 +35,14 @@ enum MergingSucc {
     True,
 }
 
+/// Indicates to the call terminator codegen whether a cal
+/// is a normal call or an explicit tail call.
+#[derive(Debug, PartialEq)]
+enum CallKind {
+    Normal,
+    Tail,
+}
+
 /// Used by `FunctionCx::codegen_terminator` for emitting common patterns
 /// e.g., creating a basic block, calling a function, etc.
 struct TerminatorCodegenHelper<'tcx> {
@@ -160,6 +168,7 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
         mut unwind: mir::UnwindAction,
         lifetime_ends_after_call: &[(Bx::Value, Size)],
         instance: Option<Instance<'tcx>>,
+        kind: CallKind,
         mergeable_succ: bool,
     ) -> MergingSucc {
         let tcx = bx.tcx();
@@ -220,6 +229,11 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
                 }
             }
         };
+
+        if kind == CallKind::Tail {
+            bx.tail_call(fn_ty, fn_attrs, fn_abi, fn_ptr, llargs, self.funclet(fx), instance);
+            return MergingSucc::False;
+        }
 
         if let Some(unwind_block) = unwind_block {
             let ret_llbb = if let Some((_, target)) = destination {
@@ -659,6 +673,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             unwind,
             &[],
             Some(drop_instance),
+            CallKind::Normal,
             !maybe_null && mergeable_succ,
         )
     }
@@ -747,8 +762,19 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let (fn_abi, llfn, instance) = common::build_langcall(bx, span, lang_item);
 
         // Codegen the actual panic invoke/call.
-        let merging_succ =
-            helper.do_call(self, bx, fn_abi, llfn, &args, None, unwind, &[], Some(instance), false);
+        let merging_succ = helper.do_call(
+            self,
+            bx,
+            fn_abi,
+            llfn,
+            &args,
+            None,
+            unwind,
+            &[],
+            Some(instance),
+            CallKind::Normal,
+            false,
+        );
         assert_eq!(merging_succ, MergingSucc::False);
         MergingSucc::False
     }
@@ -777,6 +803,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             mir::UnwindAction::Unreachable,
             &[],
             Some(instance),
+            CallKind::Normal,
             false,
         );
         assert_eq!(merging_succ, MergingSucc::False);
@@ -845,6 +872,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             unwind,
             &[],
             Some(instance),
+            CallKind::Normal,
             mergeable_succ,
         ))
     }
@@ -860,6 +888,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         target: Option<mir::BasicBlock>,
         unwind: mir::UnwindAction,
         fn_span: Span,
+        kind: CallKind,
         mergeable_succ: bool,
     ) -> MergingSucc {
         let source_info = mir::SourceInfo { span: fn_span, ..terminator.source_info };
@@ -1003,8 +1032,13 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         // We still need to call `make_return_dest` even if there's no `target`, since
         // `fn_abi.ret` could be `PassMode::Indirect`, even if it is uninhabited,
         // and `make_return_dest` adds the return-place indirect pointer to `llargs`.
-        let return_dest = self.make_return_dest(bx, destination, &fn_abi.ret, &mut llargs);
-        let destination = target.map(|target| (return_dest, target));
+        let destination = match kind {
+            CallKind::Normal => {
+                let return_dest = self.make_return_dest(bx, destination, &fn_abi.ret, &mut llargs);
+                target.map(|target| (return_dest, target))
+            }
+            CallKind::Tail => None,
+        };
 
         // Split the rust-call tupled arguments off.
         let (first_args, untuple) = if sig.abi() == ExternAbi::RustCall
@@ -1020,6 +1054,14 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         // to generate `lifetime_end` when the call returns.
         let mut lifetime_ends_after_call: Vec<(Bx::Value, Size)> = Vec::new();
         'make_args: for (i, arg) in first_args.iter().enumerate() {
+            if kind == CallKind::Tail && matches!(fn_abi.args[i].mode, PassMode::Indirect { .. }) {
+                // FIXME: https://github.com/rust-lang/rust/pull/144232#discussion_r2218543841
+                span_bug!(
+                    fn_span,
+                    "arguments using PassMode::Indirect are currently not supported for tail calls"
+                );
+            }
+
             let mut op = self.codegen_operand(bx, &arg.node);
 
             if let (0, Some(ty::InstanceKind::Virtual(_, idx))) = (i, instance.map(|i| i.def)) {
@@ -1147,6 +1189,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             unwind,
             &lifetime_ends_after_call,
             instance,
+            kind,
             mergeable_succ,
         )
     }
@@ -1388,15 +1431,23 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 target,
                 unwind,
                 fn_span,
+                CallKind::Normal,
                 mergeable_succ(),
             ),
-            mir::TerminatorKind::TailCall { .. } => {
-                // FIXME(explicit_tail_calls): implement tail calls in ssa backend
-                span_bug!(
-                    terminator.source_info.span,
-                    "`TailCall` terminator is not yet supported by `rustc_codegen_ssa`"
-                )
-            }
+            mir::TerminatorKind::TailCall { ref func, ref args, fn_span } => self
+                .codegen_call_terminator(
+                    helper,
+                    bx,
+                    terminator,
+                    func,
+                    args,
+                    mir::Place::from(mir::RETURN_PLACE),
+                    None,
+                    mir::UnwindAction::Unreachable,
+                    fn_span,
+                    CallKind::Tail,
+                    mergeable_succ(),
+                ),
             mir::TerminatorKind::CoroutineDrop | mir::TerminatorKind::Yield { .. } => {
                 bug!("coroutine ops in codegen")
             }

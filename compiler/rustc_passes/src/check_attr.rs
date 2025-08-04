@@ -11,10 +11,6 @@ use std::slice;
 
 use rustc_abi::{Align, ExternAbi, Size};
 use rustc_ast::{AttrStyle, LitKind, MetaItemInner, MetaItemKind, ast, join_path_syms};
-use rustc_attr_data_structures::{
-    AttributeKind, InlineAttr, PartialConstStability, ReprAttr, Stability, StabilityLevel,
-    find_attr,
-};
 use rustc_attr_parsing::{AttributeParser, Late};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{Applicability, DiagCtxtHandle, IntoDiagArg, MultiSpan, StashKey};
@@ -22,12 +18,14 @@ use rustc_feature::{
     ACCEPTED_LANG_FEATURES, AttributeDuplicates, AttributeType, BUILTIN_ATTRIBUTE_MAP,
     BuiltinAttribute,
 };
+use rustc_hir::attrs::{AttributeKind, InlineAttr, ReprAttr};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalModDefId;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{
-    self as hir, self, Attribute, CRATE_HIR_ID, CRATE_OWNER_ID, FnSig, ForeignItem, HirId, Item,
-    ItemKind, MethodKind, Safety, Target, TraitItem,
+    self as hir, Attribute, CRATE_HIR_ID, CRATE_OWNER_ID, FnSig, ForeignItem, HirId, Item,
+    ItemKind, MethodKind, PartialConstStability, Safety, Stability, StabilityLevel, Target,
+    TraitItem, find_attr,
 };
 use rustc_macros::LintDiagnostic;
 use rustc_middle::hir::nested_filter;
@@ -291,8 +289,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::MacroTransparency(_)
                     | AttributeKind::Pointee(..)
                     | AttributeKind::Dummy
-                    | AttributeKind::RustcBuiltinMacro { .. }
-                    | AttributeKind::OmitGdbPrettyPrinterSection,
+                    | AttributeKind::RustcBuiltinMacro { .. },
                 ) => { /* do nothing  */ }
                 Attribute::Parsed(AttributeKind::AsPtr(attr_span)) => {
                     self.check_applied_to_fn_or_method(hir_id, *attr_span, span, target)

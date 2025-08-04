@@ -2037,9 +2037,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 match prim_ty {
                     hir::PrimTy::Bool => tcx.types.bool,
                     hir::PrimTy::Char => tcx.types.char,
-                    hir::PrimTy::Int(it) => Ty::new_int(tcx, ty::int_ty(it)),
-                    hir::PrimTy::Uint(uit) => Ty::new_uint(tcx, ty::uint_ty(uit)),
-                    hir::PrimTy::Float(ft) => Ty::new_float(tcx, ty::float_ty(ft)),
+                    hir::PrimTy::Int(it) => Ty::new_int(tcx, it),
+                    hir::PrimTy::Uint(uit) => Ty::new_uint(tcx, uit),
+                    hir::PrimTy::Float(ft) => Ty::new_float(tcx, ft),
                     hir::PrimTy::Str => tcx.types.str_,
                 }
             }
@@ -2107,9 +2107,11 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 let name = tcx.item_name(param_def_id);
                 ty::Const::new_param(tcx, ty::ParamConst::new(index, name))
             }
-            Some(rbv::ResolvedArg::LateBound(debruijn, index, _)) => {
-                ty::Const::new_bound(tcx, debruijn, ty::BoundVar::from_u32(index))
-            }
+            Some(rbv::ResolvedArg::LateBound(debruijn, index, _)) => ty::Const::new_bound(
+                tcx,
+                debruijn,
+                ty::BoundConst { var: ty::BoundVar::from_u32(index) },
+            ),
             Some(rbv::ResolvedArg::Error(guar)) => ty::Const::new_error(tcx, guar),
             arg => bug!("unexpected bound var resolution for {:?}: {arg:?}", path_hir_id),
         }

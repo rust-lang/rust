@@ -27,17 +27,17 @@ pub use intrinsic::IntrinsicDef;
 use rustc_abi::{Align, FieldIdx, Integer, IntegerType, ReprFlags, ReprOptions, VariantIdx};
 use rustc_ast::node_id::NodeMap;
 pub use rustc_ast_ir::{Movability, Mutability, try_visit};
-use rustc_attr_data_structures::{AttributeKind, StrippedCfgItem, find_attr};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::{Diag, ErrorGuaranteed};
-use rustc_hir::LangItem;
+use rustc_hir::attrs::{AttributeKind, StrippedCfgItem};
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, DocLinkResMap, LifetimeRes, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LocalDefIdMap};
 use rustc_hir::definitions::DisambiguatorState;
+use rustc_hir::{LangItem, attrs as attr, find_attr};
 use rustc_index::IndexVec;
 use rustc_index::bit_set::BitMatrix;
 use rustc_macros::{
@@ -49,7 +49,7 @@ use rustc_serialize::{Decodable, Encodable};
 use rustc_session::lint::LintBuffer;
 pub use rustc_session::lint::RegisteredTools;
 use rustc_span::hygiene::MacroKind;
-use rustc_span::{DUMMY_SP, ExpnId, ExpnKind, Ident, Span, Symbol, kw, sym};
+use rustc_span::{DUMMY_SP, ExpnId, ExpnKind, Ident, Span, Symbol, sym};
 pub use rustc_type_ir::data_structures::{DelayedMap, DelayedSet};
 pub use rustc_type_ir::fast_reject::DeepRejectCtxt;
 #[allow(
@@ -65,7 +65,7 @@ pub use rustc_type_ir::*;
 use rustc_type_ir::{InferCtxtLike, Interner};
 use tracing::{debug, instrument};
 pub use vtable::*;
-use {rustc_ast as ast, rustc_attr_data_structures as attr, rustc_hir as hir};
+use {rustc_ast as ast, rustc_hir as hir};
 
 pub use self::closure::{
     BorrowKind, CAPTURE_STRUCT_LOCAL, CaptureInfo, CapturedPlace, ClosureTypeInfo,
@@ -85,7 +85,6 @@ pub use self::fold::*;
 pub use self::instance::{Instance, InstanceKind, ReifyReason, ShortInstance, UnusedGenericParams};
 pub use self::list::{List, ListWithCachedTypeInfo};
 pub use self::opaque_types::OpaqueTypeKey;
-pub use self::parameterized::ParameterizedOverTcx;
 pub use self::pattern::{Pattern, PatternKind};
 pub use self::predicate::{
     AliasTerm, ArgOutlivesPredicate, Clause, ClauseKind, CoercePredicate, ExistentialPredicate,
@@ -158,7 +157,6 @@ mod instance;
 mod intrinsic;
 mod list;
 mod opaque_types;
-mod parameterized;
 mod predicate;
 mod region;
 mod rvalue_scopes;
@@ -169,11 +167,6 @@ mod typeck_results;
 mod visit;
 
 // Data types
-
-pub struct ResolverOutputs {
-    pub global_ctxt: ResolverGlobalCtxt,
-    pub ast_lowering: ResolverAstLowering,
-}
 
 #[derive(Debug, HashStable)]
 pub struct ResolverGlobalCtxt {
@@ -253,18 +246,6 @@ impl MainDefinition {
     pub fn opt_fn_def_id(self) -> Option<DefId> {
         if let Res::Def(DefKind::Fn, def_id) = self.res { Some(def_id) } else { None }
     }
-}
-
-/// The "header" of an impl is everything outside the body: a Self type, a trait
-/// ref (in the case of a trait impl), and a set of predicates (from the
-/// bounds / where-clauses).
-#[derive(Clone, Debug, TypeFoldable, TypeVisitable)]
-pub struct ImplHeader<'tcx> {
-    pub impl_def_id: DefId,
-    pub impl_args: ty::GenericArgsRef<'tcx>,
-    pub self_ty: Ty<'tcx>,
-    pub trait_ref: Option<TraitRef<'tcx>>,
-    pub predicates: Vec<Predicate<'tcx>>,
 }
 
 #[derive(Copy, Clone, Debug, TyEncodable, TyDecodable, HashStable)]
@@ -467,14 +448,6 @@ impl<'tcx> rustc_type_ir::Flags for Ty<'tcx> {
 
     fn outer_exclusive_binder(&self) -> DebruijnIndex {
         self.0.outer_exclusive_binder
-    }
-}
-
-impl EarlyParamRegion {
-    /// Does this early bound region have a name? Early bound regions normally
-    /// always have names except when using anonymous lifetimes (`'_`).
-    pub fn is_named(&self) -> bool {
-        self.name != kw::UnderscoreLifetime
     }
 }
 
@@ -695,39 +668,6 @@ impl<'tcx> TermKind<'tcx> {
         };
 
         Term { ptr: ptr.map_addr(|addr| addr | tag), marker: PhantomData }
-    }
-}
-
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
-pub enum ParamTerm {
-    Ty(ParamTy),
-    Const(ParamConst),
-}
-
-impl ParamTerm {
-    pub fn index(self) -> usize {
-        match self {
-            ParamTerm::Ty(ty) => ty.index as usize,
-            ParamTerm::Const(ct) => ct.index as usize,
-        }
-    }
-}
-
-#[derive(Copy, Clone, Eq, PartialEq, Debug)]
-pub enum TermVid {
-    Ty(ty::TyVid),
-    Const(ty::ConstVid),
-}
-
-impl From<ty::TyVid> for TermVid {
-    fn from(value: ty::TyVid) -> Self {
-        TermVid::Ty(value)
-    }
-}
-
-impl From<ty::ConstVid> for TermVid {
-    fn from(value: ty::ConstVid) -> Self {
-        TermVid::Const(value)
     }
 }
 
@@ -968,34 +908,43 @@ impl<'tcx> rustc_type_ir::inherent::PlaceholderLike<TyCtxt<'tcx>> for Placeholde
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, HashStable)]
 #[derive(TyEncodable, TyDecodable)]
-pub struct BoundConst<'tcx> {
+pub struct BoundConst {
     pub var: BoundVar,
-    pub ty: Ty<'tcx>,
 }
 
-pub type PlaceholderConst = Placeholder<BoundVar>;
+impl<'tcx> rustc_type_ir::inherent::BoundVarLike<TyCtxt<'tcx>> for BoundConst {
+    fn var(self) -> BoundVar {
+        self.var
+    }
+
+    fn assert_eq(self, var: ty::BoundVariableKind) {
+        var.expect_const()
+    }
+}
+
+pub type PlaceholderConst = Placeholder<BoundConst>;
 
 impl<'tcx> rustc_type_ir::inherent::PlaceholderLike<TyCtxt<'tcx>> for PlaceholderConst {
-    type Bound = BoundVar;
+    type Bound = BoundConst;
 
     fn universe(self) -> UniverseIndex {
         self.universe
     }
 
     fn var(self) -> BoundVar {
-        self.bound
+        self.bound.var
     }
 
     fn with_updated_universe(self, ui: UniverseIndex) -> Self {
         Placeholder { universe: ui, ..self }
     }
 
-    fn new(ui: UniverseIndex, bound: BoundVar) -> Self {
+    fn new(ui: UniverseIndex, bound: BoundConst) -> Self {
         Placeholder { universe: ui, bound }
     }
 
     fn new_anon(ui: UniverseIndex, var: BoundVar) -> Self {
-        Placeholder { universe: ui, bound: var }
+        Placeholder { universe: ui, bound: BoundConst { var } }
     }
 }
 
@@ -1067,12 +1016,6 @@ impl<'tcx> ParamEnv<'tcx> {
 pub struct ParamEnvAnd<'tcx, T> {
     pub param_env: ParamEnv<'tcx>,
     pub value: T,
-}
-
-impl<'tcx, T> ParamEnvAnd<'tcx, T> {
-    pub fn into_parts(self) -> (ParamEnv<'tcx>, T) {
-        (self.param_env, self.value)
-    }
 }
 
 /// The environment in which to do trait solving.
@@ -1525,7 +1468,7 @@ impl<'tcx> TyCtxt<'tcx> {
         }
 
         if let Some(reprs) =
-            attr::find_attr!(self.get_all_attrs(did), AttributeKind::Repr { reprs, .. } => reprs)
+            find_attr!(self.get_all_attrs(did), AttributeKind::Repr { reprs, .. } => reprs)
         {
             for (r, _) in reprs {
                 flags.insert(match *r {
@@ -1770,15 +1713,6 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
-    // FIXME(@lcnr): Remove this function.
-    pub fn get_attrs_unchecked(self, did: DefId) -> &'tcx [hir::Attribute] {
-        if let Some(did) = did.as_local() {
-            self.hir_attrs(self.local_def_id_to_hir_id(did))
-        } else {
-            self.attrs_for_def(did)
-        }
-    }
-
     /// Gets all attributes with the given name.
     pub fn get_attrs(
         self,
@@ -1790,7 +1724,8 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Gets all attributes.
     ///
-    /// To see if an item has a specific attribute, you should use [`rustc_attr_data_structures::find_attr!`] so you can use matching.
+    /// To see if an item has a specific attribute, you should use
+    /// [`rustc_hir::find_attr!`] so you can use matching.
     pub fn get_all_attrs(self, did: impl Into<DefId>) -> &'tcx [hir::Attribute] {
         let did: DefId = did.into();
         if let Some(did) = did.as_local() {
@@ -2198,59 +2133,6 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 }
 
-pub fn int_ty(ity: ast::IntTy) -> IntTy {
-    match ity {
-        ast::IntTy::Isize => IntTy::Isize,
-        ast::IntTy::I8 => IntTy::I8,
-        ast::IntTy::I16 => IntTy::I16,
-        ast::IntTy::I32 => IntTy::I32,
-        ast::IntTy::I64 => IntTy::I64,
-        ast::IntTy::I128 => IntTy::I128,
-    }
-}
-
-pub fn uint_ty(uty: ast::UintTy) -> UintTy {
-    match uty {
-        ast::UintTy::Usize => UintTy::Usize,
-        ast::UintTy::U8 => UintTy::U8,
-        ast::UintTy::U16 => UintTy::U16,
-        ast::UintTy::U32 => UintTy::U32,
-        ast::UintTy::U64 => UintTy::U64,
-        ast::UintTy::U128 => UintTy::U128,
-    }
-}
-
-pub fn float_ty(fty: ast::FloatTy) -> FloatTy {
-    match fty {
-        ast::FloatTy::F16 => FloatTy::F16,
-        ast::FloatTy::F32 => FloatTy::F32,
-        ast::FloatTy::F64 => FloatTy::F64,
-        ast::FloatTy::F128 => FloatTy::F128,
-    }
-}
-
-pub fn ast_int_ty(ity: IntTy) -> ast::IntTy {
-    match ity {
-        IntTy::Isize => ast::IntTy::Isize,
-        IntTy::I8 => ast::IntTy::I8,
-        IntTy::I16 => ast::IntTy::I16,
-        IntTy::I32 => ast::IntTy::I32,
-        IntTy::I64 => ast::IntTy::I64,
-        IntTy::I128 => ast::IntTy::I128,
-    }
-}
-
-pub fn ast_uint_ty(uty: UintTy) -> ast::UintTy {
-    match uty {
-        UintTy::Usize => ast::UintTy::Usize,
-        UintTy::U8 => ast::UintTy::U8,
-        UintTy::U16 => ast::UintTy::U16,
-        UintTy::U32 => ast::UintTy::U32,
-        UintTy::U64 => ast::UintTy::U64,
-        UintTy::U128 => ast::UintTy::U128,
-    }
-}
-
 pub fn provide(providers: &mut Providers) {
     closure::provide(providers);
     context::provide(providers);
@@ -2304,34 +2186,9 @@ impl<'tcx> fmt::Debug for SymbolName<'tcx> {
     }
 }
 
-#[derive(Debug, Default, Copy, Clone)]
-pub struct InferVarInfo {
-    /// This is true if we identified that this Ty (`?T`) is found in a `?T: Foo`
-    /// obligation, where:
-    ///
-    ///  * `Foo` is not `Sized`
-    ///  * `(): Foo` may be satisfied
-    pub self_in_trait: bool,
-    /// This is true if we identified that this Ty (`?T`) is found in a `<_ as
-    /// _>::AssocType = ?T`
-    pub output: bool,
-}
-
 /// The constituent parts of a type level constant of kind ADT or array.
 #[derive(Copy, Clone, Debug, HashStable)]
 pub struct DestructuredConst<'tcx> {
     pub variant: Option<VariantIdx>,
     pub fields: &'tcx [ty::Const<'tcx>],
-}
-
-// Some types are used a lot. Make sure they don't unintentionally get bigger.
-#[cfg(target_pointer_width = "64")]
-mod size_asserts {
-    use rustc_data_structures::static_assert_size;
-
-    use super::*;
-    // tidy-alphabetical-start
-    static_assert_size!(PredicateKind<'_>, 32);
-    static_assert_size!(WithCachedTypeInfo<TyKind<'_>>, 48);
-    // tidy-alphabetical-end
 }

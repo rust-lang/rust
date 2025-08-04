@@ -4,13 +4,11 @@
 use std::num::NonZero;
 
 use rustc_ast::NodeId;
-use rustc_attr_data_structures::{
-    self as attrs, ConstStability, DefaultBodyStability, DeprecatedSince, Deprecation, Stability,
-};
 use rustc_errors::{Applicability, Diag, EmissionGuarantee};
 use rustc_feature::GateIssue;
+use rustc_hir::attrs::{DeprecatedSince, Deprecation};
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::{self as hir, HirId};
+use rustc_hir::{self as hir, ConstStability, DefaultBodyStability, HirId, Stability};
 use rustc_macros::{Decodable, Encodable, HashStable, Subdiagnostic};
 use rustc_session::Session;
 use rustc_session::lint::builtin::{DEPRECATED, DEPRECATED_IN_FUTURE, SOFT_UNSTABLE};
@@ -368,7 +366,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
         match stability {
             Some(Stability {
-                level: attrs::StabilityLevel::Unstable { reason, issue, is_soft, implied_by, .. },
+                level: hir::StabilityLevel::Unstable { reason, issue, is_soft, implied_by, .. },
                 feature,
                 ..
             }) => {
@@ -451,7 +449,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
         match stability {
             Some(DefaultBodyStability {
-                level: attrs::StabilityLevel::Unstable { reason, issue, is_soft, .. },
+                level: hir::StabilityLevel::Unstable { reason, issue, is_soft, .. },
                 feature,
             }) => {
                 if span.allows_unstable(feature) {
@@ -600,7 +598,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
         match stability {
             Some(ConstStability {
-                level: attrs::StabilityLevel::Unstable { reason, issue, is_soft, implied_by, .. },
+                level: hir::StabilityLevel::Unstable { reason, issue, is_soft, implied_by, .. },
                 feature,
                 ..
             }) => {

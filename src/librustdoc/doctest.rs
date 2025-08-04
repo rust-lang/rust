@@ -409,7 +409,8 @@ pub(crate) fn run_tests(
         // We ensure temp dir destructor is called.
         std::mem::drop(temp_dir);
         times.display_times();
-        // libtest::ERROR_EXIT_CODE is not public but it's the same value.
+        // FIXME(GuillaumeGomez): Uncomment the next line once #144297 has been merged.
+        // std::process::exit(test::ERROR_EXIT_CODE);
         std::process::exit(101);
     }
 }

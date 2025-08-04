@@ -4,11 +4,11 @@
 
 use rustc_abi::ExternAbi;
 use rustc_ast::visit::{VisitorResult, walk_list};
-use rustc_attr_data_structures::{AttributeKind, find_attr};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::{DynSend, DynSync, par_for_each_in, try_par_for_each_in};
+use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId, LocalModDefId};
 use rustc_hir::definitions::{DefKey, DefPath, DefPathHash};
@@ -533,8 +533,10 @@ impl<'tcx> TyCtxt<'tcx> {
     /// ```
     /// fn foo(x: usize) -> bool {
     ///     if x == 1 {
-    ///         true  // If `get_fn_id_for_return_block` gets passed the `id` corresponding
-    ///     } else {  // to this, it will return `foo`'s `HirId`.
+    ///         // If `get_fn_id_for_return_block` gets passed the `id` corresponding to this, it
+    ///         // will return `foo`'s `HirId`.
+    ///         true
+    ///     } else {
     ///         false
     ///     }
     /// }
@@ -543,8 +545,10 @@ impl<'tcx> TyCtxt<'tcx> {
     /// ```compile_fail,E0308
     /// fn foo(x: usize) -> bool {
     ///     loop {
-    ///         true  // If `get_fn_id_for_return_block` gets passed the `id` corresponding
-    ///     }         // to this, it will return `None`.
+    ///         // If `get_fn_id_for_return_block` gets passed the `id` corresponding to this, it
+    ///         // will return `None`.
+    ///         true
+    ///     }
     ///     false
     /// }
     /// ```

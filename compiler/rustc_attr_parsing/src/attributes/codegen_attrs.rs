@@ -1,5 +1,5 @@
-use rustc_attr_data_structures::{AttributeKind, CoverageAttrKind, OptimizeAttr, UsedBy};
 use rustc_feature::{AttributeTemplate, template};
+use rustc_hir::attrs::{AttributeKind, CoverageAttrKind, OptimizeAttr, UsedBy};
 use rustc_session::parse::feature_err;
 use rustc_span::{Span, Symbol, sym};
 
@@ -373,12 +373,4 @@ impl<S: Stage> CombineAttributeParser<S> for TargetFeatureParser {
         }
         features
     }
-}
-
-pub(crate) struct OmitGdbPrettyPrinterSectionParser;
-
-impl<S: Stage> NoArgsAttributeParser<S> for OmitGdbPrettyPrinterSectionParser {
-    const PATH: &[Symbol] = &[sym::omit_gdb_pretty_printer_section];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
-    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::OmitGdbPrettyPrinterSection;
 }

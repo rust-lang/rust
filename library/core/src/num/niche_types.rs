@@ -46,11 +46,11 @@ macro_rules! define_valid_range_type {
             /// primitive without checking whether its zero.
             ///
             /// # Safety
-            /// Immediate language UB if `val == 0`, as it violates the validity
-            /// invariant of this type.
+            /// Immediate language UB if `val` is not within the valid range for this
+            /// type, as it violates the validity invariant.
             #[inline]
             pub const unsafe fn new_unchecked(val: $int) -> Self {
-                // SAFETY: Caller promised that `val` is non-zero.
+                // SAFETY: Caller promised that `val` is within the valid range.
                 unsafe { $name(val) }
             }
 

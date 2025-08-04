@@ -14,7 +14,8 @@ use clippy_utils::source::snippet_indent;
 use clippy_utils::ty::is_must_use_ty;
 use clippy_utils::visitors::for_each_expr_without_closures;
 use clippy_utils::{return_ty, trait_ref_of_method};
-use rustc_attr_data_structures::{AttributeKind, find_attr};
+use rustc_hir::attrs::{AttributeKind};
+use rustc_hir::find_attr;
 use rustc_span::Symbol;
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 

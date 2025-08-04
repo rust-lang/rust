@@ -1,8 +1,15 @@
-use rustc_attr_data_structures::lints::AttributeLint;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_macros::HashStable_Generic;
+use rustc_span::Span;
 
 use crate::HirId;
+
+#[derive(Debug)]
+pub struct DelayedLints {
+    pub lints: Box<[DelayedLint]>,
+    // Only present when the crate hash is needed.
+    pub opt_hash: Option<Fingerprint>,
+}
 
 /// During ast lowering, no lints can be emitted.
 /// That is because lints attach to nodes either in the AST, or on the built HIR.
@@ -15,9 +22,16 @@ pub enum DelayedLint {
     AttributeParsing(AttributeLint<HirId>),
 }
 
-#[derive(Debug)]
-pub struct DelayedLints {
-    pub lints: Box<[DelayedLint]>,
-    // Only present when the crate hash is needed.
-    pub opt_hash: Option<Fingerprint>,
+#[derive(Clone, Debug, HashStable_Generic)]
+pub struct AttributeLint<Id> {
+    pub id: Id,
+    pub span: Span,
+    pub kind: AttributeLintKind,
+}
+
+#[derive(Clone, Debug, HashStable_Generic)]
+pub enum AttributeLintKind {
+    UnusedDuplicate { this: Span, other: Span, warning: bool },
+    IllFormedAttributeInput { suggestions: Vec<String> },
+    EmptyAttribute { first_span: Span },
 }

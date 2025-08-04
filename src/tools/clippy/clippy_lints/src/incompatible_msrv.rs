@@ -2,7 +2,7 @@ use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::msrvs::Msrv;
 use clippy_utils::{is_in_const_context, is_in_test};
-use rustc_attr_data_structures::{RustcVersion, StabilityLevel, StableSince};
+use rustc_hir::{RustcVersion, StabilityLevel, StableSince};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def::DefKind;
 use rustc_hir::{self as hir, AmbigArg, Expr, ExprKind, HirId, QPath};

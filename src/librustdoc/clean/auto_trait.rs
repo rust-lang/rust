@@ -1,6 +1,6 @@
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet, IndexEntry};
 use rustc_hir as hir;
-use rustc_infer::infer::region_constraints::{Constraint, RegionConstraintData};
+use rustc_infer::infer::region_constraints::{ConstraintKind, RegionConstraintData};
 use rustc_middle::bug;
 use rustc_middle::ty::{self, Region, Ty, fold_regions};
 use rustc_span::def_id::DefId;
@@ -233,31 +233,35 @@ fn clean_region_outlives_constraints<'tcx>(
     // Each `RegionTarget` (a `RegionVid` or a `Region`) maps to its smaller and larger regions.
     // Note that "larger" regions correspond to sub regions in the surface language.
     // E.g., in `'a: 'b`, `'a` is the larger region.
-    for (constraint, _) in &regions.constraints {
-        match *constraint {
-            Constraint::VarSubVar(vid1, vid2) => {
-                let deps1 = map.entry(RegionTarget::RegionVid(vid1)).or_default();
-                deps1.larger.insert(RegionTarget::RegionVid(vid2));
+    for (c, _) in &regions.constraints {
+        match c.kind {
+            ConstraintKind::VarSubVar => {
+                let sub_vid = c.sub.as_var();
+                let sup_vid = c.sup.as_var();
+                let deps1 = map.entry(RegionTarget::RegionVid(sub_vid)).or_default();
+                deps1.larger.insert(RegionTarget::RegionVid(sup_vid));
 
-                let deps2 = map.entry(RegionTarget::RegionVid(vid2)).or_default();
-                deps2.smaller.insert(RegionTarget::RegionVid(vid1));
+                let deps2 = map.entry(RegionTarget::RegionVid(sup_vid)).or_default();
+                deps2.smaller.insert(RegionTarget::RegionVid(sub_vid));
             }
-            Constraint::RegSubVar(region, vid) => {
-                let deps = map.entry(RegionTarget::RegionVid(vid)).or_default();
-                deps.smaller.insert(RegionTarget::Region(region));
+            ConstraintKind::RegSubVar => {
+                let sup_vid = c.sup.as_var();
+                let deps = map.entry(RegionTarget::RegionVid(sup_vid)).or_default();
+                deps.smaller.insert(RegionTarget::Region(c.sub));
             }
-            Constraint::VarSubReg(vid, region) => {
-                let deps = map.entry(RegionTarget::RegionVid(vid)).or_default();
-                deps.larger.insert(RegionTarget::Region(region));
+            ConstraintKind::VarSubReg => {
+                let sub_vid = c.sub.as_var();
+                let deps = map.entry(RegionTarget::RegionVid(sub_vid)).or_default();
+                deps.larger.insert(RegionTarget::Region(c.sup));
             }
-            Constraint::RegSubReg(r1, r2) => {
+            ConstraintKind::RegSubReg => {
                 // The constraint is already in the form that we want, so we're done with it
                 // The desired order is [larger, smaller], so flip them.
-                if early_bound_region_name(r1) != early_bound_region_name(r2) {
+                if early_bound_region_name(c.sub) != early_bound_region_name(c.sup) {
                     outlives_predicates
-                        .entry(early_bound_region_name(r2).expect("no region_name found"))
+                        .entry(early_bound_region_name(c.sup).expect("no region_name found"))
                         .or_default()
-                        .push(r1);
+                        .push(c.sub);
                 }
             }
         }

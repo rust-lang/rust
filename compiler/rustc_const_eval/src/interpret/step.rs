@@ -9,13 +9,15 @@ use rustc_middle::ty::{self, Instance, Ty};
 use rustc_middle::{bug, mir, span_bug};
 use rustc_span::source_map::Spanned;
 use rustc_target::callconv::FnAbi;
+use tracing::field::Empty;
 use tracing::{info, instrument, trace};
 
 use super::{
     FnArg, FnVal, ImmTy, Immediate, InterpCx, InterpResult, Machine, MemPlaceMeta, PlaceTy,
     Projectable, Scalar, interp_ok, throw_ub, throw_unsup_format,
 };
-use crate::util;
+use crate::interpret::EnteredTraceSpan;
+use crate::{enter_trace_span, util};
 
 struct EvaluatedCalleeAndArgs<'tcx, M: Machine<'tcx>> {
     callee: FnVal<'tcx, M::ExtraFnVal>,
@@ -74,7 +76,14 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     ///
     /// This does NOT move the statement counter forward, the caller has to do that!
     pub fn eval_statement(&mut self, stmt: &mir::Statement<'tcx>) -> InterpResult<'tcx> {
-        info!("{:?}", stmt);
+        let _span = enter_trace_span!(
+            M,
+            step::eval_statement,
+            stmt = ?stmt.kind,
+            span = ?stmt.source_info.span,
+            tracing_separate_thread = Empty,
+        )
+        .or_if_tracing_disabled(|| info!(stmt = ?stmt.kind));
 
         use rustc_middle::mir::StatementKind::*;
 
@@ -456,7 +465,14 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     }
 
     fn eval_terminator(&mut self, terminator: &mir::Terminator<'tcx>) -> InterpResult<'tcx> {
-        info!("{:?}", terminator.kind);
+        let _span = enter_trace_span!(
+            M,
+            step::eval_terminator,
+            terminator = ?terminator.kind,
+            span = ?terminator.source_info.span,
+            tracing_separate_thread = Empty,
+        )
+        .or_if_tracing_disabled(|| info!(terminator = ?terminator.kind));
 
         use rustc_middle::mir::TerminatorKind::*;
         match terminator.kind {

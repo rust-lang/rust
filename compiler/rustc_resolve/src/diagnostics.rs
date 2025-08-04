@@ -4,9 +4,6 @@ use rustc_ast::{
     self as ast, CRATE_NODE_ID, Crate, ItemKind, ModKind, NodeId, Path, join_path_idents,
 };
 use rustc_ast_pretty::pprust;
-use rustc_attr_data_structures::{
-    self as attr, AttributeKind, CfgEntry, Stability, StrippedCfgItem, find_attr,
-};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::codes::*;
@@ -15,10 +12,11 @@ use rustc_errors::{
     report_ambiguity_error, struct_span_code_err,
 };
 use rustc_feature::BUILTIN_ATTRIBUTES;
-use rustc_hir::PrimTy;
+use rustc_hir::attrs::{AttributeKind, CfgEntry, StrippedCfgItem};
 use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{self, CtorKind, CtorOf, DefKind, NonMacroAttrKind, PerNS};
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId};
+use rustc_hir::{PrimTy, Stability, StabilityLevel, find_attr};
 use rustc_middle::bug;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
@@ -803,10 +801,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     }
                     err.multipart_suggestion(msg, suggestions, applicability);
                 }
-                if let Some(ModuleOrUniformRoot::Module(module)) = module
-                    && let Some(module) = module.opt_def_id()
-                    && let Some(segment) = segment
-                {
+
+                if let Some(segment) = segment {
+                    let module = match module {
+                        Some(ModuleOrUniformRoot::Module(m)) if let Some(id) = m.opt_def_id() => id,
+                        _ => CRATE_DEF_ID.to_def_id(),
+                    };
                     self.find_cfg_stripped(&mut err, &segment, module);
                 }
 
@@ -1362,9 +1362,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
         match self.tcx.lookup_stability(did) {
             Some(Stability {
-                level: attr::StabilityLevel::Unstable { implied_by, .. },
-                feature,
-                ..
+                level: StabilityLevel::Unstable { implied_by, .. }, feature, ..
             }) => {
                 if span.allows_unstable(feature) {
                     true
@@ -2843,16 +2841,13 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 continue;
             }
 
-            let note = errors::FoundItemConfigureOut { span: ident.span };
-            err.subdiagnostic(note);
-
-            if let CfgEntry::NameValue { value: Some((feature, _)), .. } = cfg.0 {
-                let note = errors::ItemWasBehindFeature { feature, span: cfg.1 };
-                err.subdiagnostic(note);
+            let item_was = if let CfgEntry::NameValue { value: Some((feature, _)), .. } = cfg.0 {
+                errors::ItemWas::BehindFeature { feature, span: cfg.1 }
             } else {
-                let note = errors::ItemWasCfgOut { span: cfg.1 };
-                err.subdiagnostic(note);
-            }
+                errors::ItemWas::CfgOut { span: cfg.1 }
+            };
+            let note = errors::FoundItemConfigureOut { span: ident.span, item_was };
+            err.subdiagnostic(note);
         }
     }
 }

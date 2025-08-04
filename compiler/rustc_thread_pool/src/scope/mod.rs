@@ -501,9 +501,9 @@ impl<'scope> Scope<'scope> {
     /// let mut value_c = None;
     /// rayon::scope(|s| {
     ///     s.spawn(|s1| {
-    ///           // ^ this is the same scope as `s`; this handle `s1`
-    ///           //   is intended for use by the spawned task,
-    ///           //   since scope handles cannot cross thread boundaries.
+    ///         //   ^ this is the same scope as `s`; this handle `s1`
+    ///         //     is intended for use by the spawned task,
+    ///         //     since scope handles cannot cross thread boundaries.
     ///
     ///         value_a = Some(22);
     ///

@@ -29,7 +29,7 @@ use rustc_parse::{
     new_parser_from_file, new_parser_from_source_str, unwrap_or_emit_fatal, validate_attr,
 };
 use rustc_passes::{abi_test, input_stats, layout_test};
-use rustc_resolve::Resolver;
+use rustc_resolve::{Resolver, ResolverOutputs};
 use rustc_session::config::{CrateType, Input, OutFileName, OutputFilenames, OutputType};
 use rustc_session::cstore::Untracked;
 use rustc_session::output::{collect_crate_types, filename_for_input};
@@ -793,7 +793,7 @@ fn resolver_for_lowering_raw<'tcx>(
     // Make sure we don't mutate the cstore from here on.
     tcx.untracked().cstore.freeze();
 
-    let ty::ResolverOutputs {
+    let ResolverOutputs {
         global_ctxt: untracked_resolutions,
         ast_lowering: untracked_resolver_for_lowering,
     } = resolver.into_outputs();
@@ -1151,7 +1151,9 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) {
 
                 parallel!(
                     {
-                        tcx.ensure_ok().check_private_in_public(());
+                        tcx.par_hir_for_each_module(|module| {
+                            tcx.ensure_ok().check_private_in_public(module)
+                        })
                     },
                     {
                         tcx.par_hir_for_each_module(|module| {

@@ -16,9 +16,9 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Deserializer};
 
-use crate::core::config::toml::rust::validate_codegen_backends;
+use crate::core::config::toml::rust::parse_codegen_backends;
 use crate::core::config::{LlvmLibunwind, Merge, ReplaceOpt, SplitDebuginfo, StringOrBool};
-use crate::{Config, HashSet, PathBuf, TargetSelection, define_config, exit};
+use crate::{CodegenBackendKind, Config, HashSet, PathBuf, TargetSelection, define_config, exit};
 
 define_config! {
     /// TOML representation of how each build target is configured.
@@ -76,7 +76,7 @@ pub struct Target {
     pub qemu_rootfs: Option<PathBuf>,
     pub runner: Option<String>,
     pub no_std: bool,
-    pub codegen_backends: Option<Vec<String>>,
+    pub codegen_backends: Option<Vec<CodegenBackendKind>>,
     pub optimized_compiler_builtins: Option<bool>,
     pub jemalloc: Option<bool>,
 }
@@ -144,7 +144,7 @@ impl Config {
                 target.jemalloc = cfg.jemalloc;
                 if let Some(backends) = cfg.codegen_backends {
                     target.codegen_backends =
-                        Some(validate_codegen_backends(backends, &format!("target.{triple}")))
+                        Some(parse_codegen_backends(backends, &format!("target.{triple}")))
                 }
 
                 target.split_debuginfo = cfg.split_debuginfo.as_ref().map(|v| {

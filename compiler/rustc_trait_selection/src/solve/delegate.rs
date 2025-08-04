@@ -135,6 +135,13 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
                     None
                 }
             }
+            ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(ct, _)) => {
+                if self.shallow_resolve_const(ct).is_ct_infer() {
+                    Some(Certainty::AMBIGUOUS)
+                } else {
+                    None
+                }
+            }
             ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(arg)) => {
                 let arg = self.shallow_resolve_term(arg);
                 if arg.is_trivially_wf(self.tcx) {
@@ -205,7 +212,6 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
         let region_assumptions = self.0.inner.borrow().region_assumptions().to_owned();
         let region_constraints = self.0.with_region_constraints(|region_constraints| {
             make_query_region_constraints(
-                self.tcx,
                 region_obligations,
                 region_constraints,
                 region_assumptions,
