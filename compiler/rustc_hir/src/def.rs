@@ -318,6 +318,7 @@ impl DefKind {
         )
     }
 
+    /// Whether the corresponding item has generic parameters, ie. the `generics_of` query works.
     pub fn has_generics(self) -> bool {
         match self {
             DefKind::AnonConst
