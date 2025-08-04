@@ -11,8 +11,8 @@ use rustc_macros::extension;
 use rustc_middle::span_bug;
 use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::{
-    self, AliasTerm, Term, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitable,
-    TypeVisitableExt, TypingMode,
+    self, AliasTerm, AssocItemContainer, Term, Ty, TyCtxt, TypeFoldable, TypeFolder,
+    TypeSuperFoldable, TypeVisitable, TypeVisitableExt, TypingMode,
 };
 use tracing::{debug, instrument};
 
@@ -450,14 +450,13 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
             };
 
             let ct = match tcx.def_kind(uv.def) {
-                DefKind::AssocConst => match tcx.def_kind(tcx.parent(uv.def)) {
-                    DefKind::Trait => self.normalize_trait_projection(uv.into()),
-                    DefKind::Impl { of_trait: false } => {
+                DefKind::AssocConst => match tcx.associated_item(uv.def).container {
+                    AssocItemContainer::Trait => self.normalize_trait_projection(uv.into()),
+                    AssocItemContainer::InherentImpl => {
                         self.normalize_inherent_projection(uv.into())
                     }
-                    kind => unreachable!(
-                        "unexpected `DefKind` for const alias' resolution's parent def: {:?}",
-                        kind
+                    AssocItemContainer::TraitImpl => unreachable!(
+                        "unexpected `TraitImpl` container for const alias' resolution's parent def",
                     ),
                 },
                 DefKind::Const | DefKind::AnonConst => self.normalize_free_alias(uv.into()),

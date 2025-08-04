@@ -272,11 +272,13 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
     ) -> GenericArgsRef<'tcx> {
         match pick.kind {
             probe::InherentImplPick => {
-                let impl_def_id = pick.item.container_id(self.tcx);
-                assert!(
-                    self.tcx.impl_trait_ref(impl_def_id).is_none(),
-                    "impl {impl_def_id:?} is not an inherent impl"
+                assert_eq!(
+                    pick.item.container,
+                    ty::AssocItemContainer::InherentImpl,
+                    "{:?} is not in an inherent impl",
+                    pick.item.def_id,
                 );
+                let impl_def_id = pick.item.container_id(self.tcx);
                 self.fresh_args_for_item(self.span, impl_def_id)
             }
 
