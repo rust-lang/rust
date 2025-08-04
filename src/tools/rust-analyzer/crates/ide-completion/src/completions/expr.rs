@@ -61,6 +61,7 @@ pub(crate) fn complete_expr_path(
         after_if_expr,
         in_condition,
         incomplete_let,
+        in_value,
         ref ref_expr_parent,
         after_amp,
         ref is_func_update,
@@ -361,10 +362,16 @@ pub(crate) fn complete_expr_path(
                     add_keyword("loop", "loop {\n    $0\n}");
                     if in_match_guard {
                         add_keyword("if", "if $0");
+                    } else if in_value {
+                        add_keyword("if", "if $1 {\n    $2\n} else {\n    $0\n}");
                     } else {
                         add_keyword("if", "if $1 {\n    $0\n}");
                     }
-                    add_keyword("if let", "if let $1 = $2 {\n    $0\n}");
+                    if in_value {
+                        add_keyword("if let", "if let $1 = $2 {\n    $3\n} else {\n    $0\n}");
+                    } else {
+                        add_keyword("if let", "if let $1 = $2 {\n    $0\n}");
+                    }
                     add_keyword("for", "for $1 in $2 {\n    $0\n}");
                     add_keyword("true", "true");
                     add_keyword("false", "false");

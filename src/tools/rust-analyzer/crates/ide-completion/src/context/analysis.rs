@@ -1245,6 +1245,7 @@ fn classify_name_ref<'db>(
             .parent()
             .and_then(ast::LetStmt::cast)
             .is_some_and(|it| it.semicolon_token().is_none());
+        let in_value = it.parent().and_then(Either::<ast::LetStmt, ast::ArgList>::cast).is_some();
         let impl_ = fetch_immediate_impl(sema, original_file, expr.syntax());
 
         let in_match_guard = match it.parent().and_then(ast::MatchArm::cast) {
@@ -1265,6 +1266,7 @@ fn classify_name_ref<'db>(
                 is_func_update,
                 innermost_ret_ty,
                 self_param,
+                in_value,
                 incomplete_let,
                 impl_,
                 in_match_guard,
