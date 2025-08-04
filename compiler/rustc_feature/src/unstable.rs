@@ -354,7 +354,7 @@ declare_features! (
     /// Allows `extern "avr-interrupt" fn()` and `extern "avr-non-blocking-interrupt" fn()`.
     (unstable, abi_avr_interrupt, "1.45.0", Some(69664)),
     /// Allows `extern "cmse-nonsecure-call" fn()`.
-    (unstable, abi_cmse_nonsecure_call, "CURRENT_RUSTC_VERSION", Some(81391)),
+    (unstable, abi_cmse_nonsecure_call, "1.90.0", Some(81391)),
     /// Allows `extern "custom" fn()`.
     (unstable, abi_custom, "1.89.0", Some(140829)),
     /// Allows `extern "gpu-kernel" fn()`.
@@ -554,7 +554,7 @@ declare_features! (
     /// to pass custom arguments to the linker.
     (unstable, link_arg_attribute, "1.76.0", Some(99427)),
     /// Allows fused `loop`/`match` for direct intraprocedural jumps.
-    (incomplete, loop_match, "CURRENT_RUSTC_VERSION", Some(132306)),
+    (incomplete, loop_match, "1.90.0", Some(132306)),
     /// Give access to additional metadata about declarative macro meta-variables.
     (unstable, macro_metavar_expr, "1.61.0", Some(83527)),
     /// Provides a way to concatenate identifiers using metavariable expressions.

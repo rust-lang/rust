@@ -969,7 +969,7 @@ impl<T> [T] {
     /// assert!(v == [3, 2, 1]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_slice_reverse", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_slice_reverse", since = "1.90.0")]
     #[inline]
     pub const fn reverse(&mut self) {
         let half_len = self.len() / 2;
