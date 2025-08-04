@@ -388,7 +388,7 @@ pub fn catch_unwind<F: FnOnce() -> R + UnwindSafe, R>(f: F) -> Result<R> {
 /// ```
 #[stable(feature = "resume_unwind", since = "1.9.0")]
 pub fn resume_unwind(payload: Box<dyn Any + Send>) -> ! {
-    panicking::rust_panic_without_hook(payload)
+    panicking::resume_unwind(payload)
 }
 
 /// Makes all future panics abort directly without running the panic hook or unwinding.
