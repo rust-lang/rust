@@ -377,10 +377,10 @@ fn parse_repr_tt(tt: &crate::tt::TopSubtree) -> Option<ReprOptions> {
                 let mut align = None;
                 if let Some(TtElement::Subtree(_, mut tt_iter)) = tts.peek() {
                     tts.next();
-                    if let Some(TtElement::Leaf(tt::Leaf::Literal(lit))) = tt_iter.next() {
-                        if let Ok(a) = lit.symbol.as_str().parse() {
-                            align = Align::from_bytes(a).ok();
-                        }
+                    if let Some(TtElement::Leaf(tt::Leaf::Literal(lit))) = tt_iter.next()
+                        && let Ok(a) = lit.symbol.as_str().parse()
+                    {
+                        align = Align::from_bytes(a).ok();
                     }
                 }
                 ReprOptions { align, ..Default::default() }

@@ -428,19 +428,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         ));
 
         // Also add an obligation for the method type being well-formed.
-        let method_ty = Ty::new_fn_ptr(tcx, ty::Binder::dummy(fn_sig));
         debug!(
-            "lookup_method_in_trait: matched method method_ty={:?} obligation={:?}",
-            method_ty, obligation
+            "lookup_method_in_trait: matched method fn_sig={:?} obligation={:?}",
+            fn_sig, obligation
         );
-        obligations.push(traits::Obligation::new(
-            tcx,
-            obligation.cause,
-            self.param_env,
-            ty::Binder::dummy(ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(
-                method_ty.into(),
-            ))),
-        ));
+        for ty in fn_sig.inputs_and_output {
+            obligations.push(traits::Obligation::new(
+                tcx,
+                obligation.cause.clone(),
+                self.param_env,
+                ty::Binder::dummy(ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(ty.into()))),
+            ));
+        }
 
         let callee = MethodCallee { def_id, args, sig: fn_sig };
         debug!("callee = {:?}", callee);

@@ -1,7 +1,5 @@
 # Async closures/"coroutine-closures"
 
-<!-- toc -->
-
 Please read [RFC 3668](https://rust-lang.github.io/rfcs/3668-async-closures.html) to understand the general motivation of the feature. This is a very technical and somewhat "vertical" chapter; ideally we'd split this and sprinkle it across all the relevant chapters, but for the purposes of understanding async closures *holistically*, I've put this together all here in one chapter.
 
 ## Coroutine-closures -- a technical deep dive

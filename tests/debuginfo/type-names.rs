@@ -6,6 +6,7 @@
 //@ min-gdb-version: 9.2
 
 //@ compile-flags:-g
+//@ disable-gdb-pretty-printers
 
 // === GDB TESTS ==================================================================================
 
@@ -271,8 +272,6 @@
 // cdb-check:struct type_names::mod1::extern$0::ForeignType2 * foreign2 = [...]
 
 #![allow(unused_variables)]
-#![feature(omit_gdb_pretty_printer_section)]
-#![omit_gdb_pretty_printer_section]
 #![feature(extern_types)]
 
 use std::marker::PhantomData;

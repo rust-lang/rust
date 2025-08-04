@@ -404,11 +404,10 @@ impl Anchor {
                 }
                 if let Some(expr) =
                     node.parent().and_then(ast::StmtList::cast).and_then(|it| it.tail_expr())
+                    && expr.syntax() == &node
                 {
-                    if expr.syntax() == &node {
-                        cov_mark::hit!(test_extract_var_last_expr);
-                        return Some(Anchor::Before(node));
-                    }
+                    cov_mark::hit!(test_extract_var_last_expr);
+                    return Some(Anchor::Before(node));
                 }
 
                 if let Some(parent) = node.parent() {
@@ -427,10 +426,10 @@ impl Anchor {
                 }
 
                 if let Some(stmt) = ast::Stmt::cast(node.clone()) {
-                    if let ast::Stmt::ExprStmt(stmt) = stmt {
-                        if stmt.expr().as_ref() == Some(to_extract) {
-                            return Some(Anchor::Replace(stmt));
-                        }
+                    if let ast::Stmt::ExprStmt(stmt) = stmt
+                        && stmt.expr().as_ref() == Some(to_extract)
+                    {
+                        return Some(Anchor::Replace(stmt));
                     }
                     return Some(Anchor::Before(node));
                 }

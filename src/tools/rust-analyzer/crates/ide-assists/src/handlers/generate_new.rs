@@ -168,7 +168,7 @@ pub(crate) fn generate_new(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option
                 );
                 fn_.syntax().clone()
             } else {
-                let items = vec![either::Either::Right(ast::AssocItem::Fn(fn_))];
+                let items = vec![ast::AssocItem::Fn(fn_)];
                 let list = make::assoc_item_list(Some(items));
                 editor.insert(Position::after(impl_def.syntax()), list.syntax());
                 list.syntax().clone()
@@ -176,7 +176,7 @@ pub(crate) fn generate_new(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option
         } else {
             // Generate a new impl to add the method to
             let indent_level = strukt.indent_level();
-            let body = vec![either::Either::Right(ast::AssocItem::Fn(fn_))];
+            let body = vec![ast::AssocItem::Fn(fn_)];
             let list = make::assoc_item_list(Some(body));
             let impl_def = generate_impl_with_item(&ast::Adt::Struct(strukt.clone()), Some(list));
 

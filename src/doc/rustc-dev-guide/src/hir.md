@@ -1,7 +1,5 @@
 # The HIR
 
-<!-- toc -->
-
 The HIR – "High-Level Intermediate Representation" – is the primary IR used
 in most of rustc. It is a compiler-friendly representation of the abstract
 syntax tree (AST) that is generated after parsing, macro expansion, and name

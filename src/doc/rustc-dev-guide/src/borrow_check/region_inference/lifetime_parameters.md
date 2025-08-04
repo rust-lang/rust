@@ -1,7 +1,5 @@
 # Universal regions
 
-<!-- toc -->
-
 "Universal regions" is the name that the code uses to refer to "named
 lifetimes" -- e.g., lifetime parameters and `'static`. The name
 derives from the fact that such lifetimes are "universally quantified"

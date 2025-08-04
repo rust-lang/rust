@@ -146,12 +146,11 @@ pub(crate) fn signature_help(
 
         // Stop at multi-line expressions, since the signature of the outer call is not very
         // helpful inside them.
-        if let Some(expr) = ast::Expr::cast(node.clone()) {
-            if !matches!(expr, ast::Expr::RecordExpr(..))
-                && expr.syntax().text().contains_char('\n')
-            {
-                break;
-            }
+        if let Some(expr) = ast::Expr::cast(node.clone())
+            && !matches!(expr, ast::Expr::RecordExpr(..))
+            && expr.syntax().text().contains_char('\n')
+        {
+            break;
         }
     }
 
@@ -366,10 +365,10 @@ fn signature_help_for_generics(
     res.signature.push('<');
     let mut buf = String::new();
     for param in params {
-        if let hir::GenericParam::TypeParam(ty) = param {
-            if ty.is_implicit(db) {
-                continue;
-            }
+        if let hir::GenericParam::TypeParam(ty) = param
+            && ty.is_implicit(db)
+        {
+            continue;
         }
 
         buf.clear();

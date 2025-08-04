@@ -722,20 +722,19 @@ impl<'a> WalkExpandedExprCtx<'a> {
                         self.depth += 1;
                     }
 
-                    if let ast::Expr::MacroExpr(expr) = expr {
-                        if let Some(expanded) =
+                    if let ast::Expr::MacroExpr(expr) = expr
+                        && let Some(expanded) =
                             expr.macro_call().and_then(|call| self.sema.expand_macro_call(&call))
-                        {
-                            match_ast! {
-                                match (expanded.value) {
-                                    ast::MacroStmts(it) => {
-                                        self.handle_expanded(it, cb);
-                                    },
-                                    ast::Expr(it) => {
-                                        self.walk(&it, cb);
-                                    },
-                                    _ => {}
-                                }
+                    {
+                        match_ast! {
+                            match (expanded.value) {
+                                ast::MacroStmts(it) => {
+                                    self.handle_expanded(it, cb);
+                                },
+                                ast::Expr(it) => {
+                                    self.walk(&it, cb);
+                                },
+                                _ => {}
                             }
                         }
                     }
@@ -755,10 +754,10 @@ impl<'a> WalkExpandedExprCtx<'a> {
         }
 
         for stmt in expanded.statements() {
-            if let ast::Stmt::ExprStmt(stmt) = stmt {
-                if let Some(expr) = stmt.expr() {
-                    self.walk(&expr, cb);
-                }
+            if let ast::Stmt::ExprStmt(stmt) = stmt
+                && let Some(expr) = stmt.expr()
+            {
+                self.walk(&expr, cb);
             }
         }
     }
@@ -806,12 +805,12 @@ pub(crate) fn highlight_unsafe_points(
         push_to_highlights(unsafe_token_file_id, Some(unsafe_token.text_range()));
 
         // highlight unsafe operations
-        if let Some(block) = block_expr {
-            if let Some(body) = sema.body_for(InFile::new(unsafe_token_file_id, block.syntax())) {
-                let unsafe_ops = sema.get_unsafe_ops(body);
-                for unsafe_op in unsafe_ops {
-                    push_to_highlights(unsafe_op.file_id, Some(unsafe_op.value.text_range()));
-                }
+        if let Some(block) = block_expr
+            && let Some(body) = sema.body_for(InFile::new(unsafe_token_file_id, block.syntax()))
+        {
+            let unsafe_ops = sema.get_unsafe_ops(body);
+            for unsafe_op in unsafe_ops {
+                push_to_highlights(unsafe_op.file_id, Some(unsafe_op.value.text_range()));
             }
         }
 

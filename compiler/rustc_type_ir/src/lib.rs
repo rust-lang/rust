@@ -387,16 +387,6 @@ rustc_index::newtype_index! {
     pub struct BoundVar {}
 }
 
-impl<I: Interner> inherent::BoundVarLike<I> for BoundVar {
-    fn var(self) -> BoundVar {
-        self
-    }
-
-    fn assert_eq(self, _var: I::BoundVarKind) {
-        unreachable!("FIXME: We really should have a separate `BoundConst` for consts")
-    }
-}
-
 /// Represents the various closure traits in the language. This
 /// will determine the type of the environment (`self`, in the
 /// desugaring) argument that the closure expects.

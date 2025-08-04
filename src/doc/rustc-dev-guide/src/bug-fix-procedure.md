@@ -1,7 +1,5 @@
 # Procedures for breaking changes
 
-<!-- toc -->
-
 This page defines the best practices procedure for making bug fixes or soundness
 corrections in the compiler that can cause existing code to stop compiling. This
 text is based on

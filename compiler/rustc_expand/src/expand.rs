@@ -1411,9 +1411,8 @@ impl InvocationCollectorNode for P<ast::Item> {
                     }
                 }
             }
-
             let mut idents = Vec::new();
-            collect_use_tree_leaves(ut, &mut idents);
+            collect_use_tree_leaves(&ut, &mut idents);
             idents
         } else {
             self.kind.ident().into_iter().collect()

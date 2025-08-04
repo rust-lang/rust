@@ -39,8 +39,8 @@ use rustc_target::spec::{
 use crate::code_stats::CodeStats;
 pub use crate::code_stats::{DataTypeKind, FieldInfo, FieldKind, SizeKind, VariantInfo};
 use crate::config::{
-    self, CoverageLevel, CrateType, DebugInfo, ErrorOutputType, FunctionReturn, Input,
-    InstrumentCoverage, OptLevel, OutFileName, OutputType, RemapPathScopeComponents,
+    self, CoverageLevel, CoverageOptions, CrateType, DebugInfo, ErrorOutputType, FunctionReturn,
+    Input, InstrumentCoverage, OptLevel, OutFileName, OutputType, RemapPathScopeComponents,
     SwitchWithOptPath,
 };
 use crate::filesearch::FileSearch;
@@ -359,14 +359,11 @@ impl Session {
             && self.opts.unstable_opts.coverage_options.level >= CoverageLevel::Mcdc
     }
 
-    /// True if `-Zcoverage-options=no-mir-spans` was passed.
-    pub fn coverage_no_mir_spans(&self) -> bool {
-        self.opts.unstable_opts.coverage_options.no_mir_spans
-    }
-
-    /// True if `-Zcoverage-options=discard-all-spans-in-codegen` was passed.
-    pub fn coverage_discard_all_spans_in_codegen(&self) -> bool {
-        self.opts.unstable_opts.coverage_options.discard_all_spans_in_codegen
+    /// Provides direct access to the `CoverageOptions` struct, so that
+    /// individual flags for debugging/testing coverage instrumetation don't
+    /// need separate accessors.
+    pub fn coverage_options(&self) -> &CoverageOptions {
+        &self.opts.unstable_opts.coverage_options
     }
 
     pub fn is_sanitizer_cfi_enabled(&self) -> bool {

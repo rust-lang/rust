@@ -42,12 +42,12 @@ fn alloc_caller_location<'tcx>(
     let location = ecx.allocate(loc_layout, MemoryKind::CallerLocation).unwrap();
 
     // Initialize fields.
-    ecx.write_immediate(filename, &ecx.project_field(&location, FieldIdx::from_u32(0)).unwrap())
+    let [filename_field, line_field, col_field] =
+        ecx.project_fields(&location, [0, 1, 2].map(FieldIdx::from_u32)).unwrap();
+    ecx.write_immediate(filename, &filename_field)
         .expect("writing to memory we just allocated cannot fail");
-    ecx.write_scalar(line, &ecx.project_field(&location, FieldIdx::from_u32(1)).unwrap())
-        .expect("writing to memory we just allocated cannot fail");
-    ecx.write_scalar(col, &ecx.project_field(&location, FieldIdx::from_u32(2)).unwrap())
-        .expect("writing to memory we just allocated cannot fail");
+    ecx.write_scalar(line, &line_field).expect("writing to memory we just allocated cannot fail");
+    ecx.write_scalar(col, &col_field).expect("writing to memory we just allocated cannot fail");
 
     location
 }

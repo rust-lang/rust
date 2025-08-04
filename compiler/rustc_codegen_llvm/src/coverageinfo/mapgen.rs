@@ -1,3 +1,4 @@
+use std::assert_matches::assert_matches;
 use std::sync::Arc;
 
 use itertools::Itertools;
@@ -5,6 +6,7 @@ use rustc_abi::Align;
 use rustc_codegen_ssa::traits::{BaseTypeCodegenMethods, ConstCodegenMethods};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_index::IndexVec;
+use rustc_macros::TryFromU32;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::RemapFileNameExt;
 use rustc_session::config::RemapPathScopeComponents;
@@ -20,6 +22,23 @@ mod covfun;
 mod spans;
 mod unused;
 
+/// Version number that will be included the `__llvm_covmap` section header.
+/// Corresponds to LLVM's `llvm::coverage::CovMapVersion` (in `CoverageMapping.h`),
+/// or at least the subset that we know and care about.
+///
+/// Note that version `n` is encoded as `(n-1)`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, TryFromU32)]
+enum CovmapVersion {
+    /// Used by LLVM 18 onwards.
+    Version7 = 6,
+}
+
+impl CovmapVersion {
+    fn to_u32(self) -> u32 {
+        self as u32
+    }
+}
+
 /// Generates and exports the coverage map, which is embedded in special
 /// linker sections in the final binary.
 ///
@@ -29,19 +48,13 @@ pub(crate) fn finalize(cx: &mut CodegenCx<'_, '_>) {
     let tcx = cx.tcx;
 
     // Ensure that LLVM is using a version of the coverage mapping format that
-    // agrees with our Rust-side code. Expected versions (encoded as n-1) are:
-    // - `CovMapVersion::Version7` (6) used by LLVM 18-19
-    let covmap_version = {
-        let llvm_covmap_version = llvm_cov::mapping_version();
-        let expected_versions = 6..=6;
-        assert!(
-            expected_versions.contains(&llvm_covmap_version),
-            "Coverage mapping version exposed by `llvm-wrapper` is out of sync; \
-            expected {expected_versions:?} but was {llvm_covmap_version}"
-        );
-        // This is the version number that we will embed in the covmap section:
-        llvm_covmap_version
-    };
+    // agrees with our Rust-side code. Expected versions are:
+    // - `Version7` (6) used by LLVM 18 onwards.
+    let covmap_version =
+        CovmapVersion::try_from(llvm_cov::mapping_version()).unwrap_or_else(|raw_version: u32| {
+            panic!("unknown coverage mapping version reported by `llvm-wrapper`: {raw_version}")
+        });
+    assert_matches!(covmap_version, CovmapVersion::Version7);
 
     debug!("Generating coverage map for CodegenUnit: `{}`", cx.codegen_unit.name());
 
@@ -201,7 +214,11 @@ impl VirtualFileMapping {
 /// Generates the contents of the covmap record for this CGU, which mostly
 /// consists of a header and a list of filenames. The record is then stored
 /// as a global variable in the `__llvm_covmap` section.
-fn generate_covmap_record<'ll>(cx: &mut CodegenCx<'ll, '_>, version: u32, filenames_buffer: &[u8]) {
+fn generate_covmap_record<'ll>(
+    cx: &mut CodegenCx<'ll, '_>,
+    version: CovmapVersion,
+    filenames_buffer: &[u8],
+) {
     // A covmap record consists of four target-endian u32 values, followed by
     // the encoded filenames table. Two of the header fields are unused in
     // modern versions of the LLVM coverage mapping format, and are always 0.
@@ -212,7 +229,7 @@ fn generate_covmap_record<'ll>(cx: &mut CodegenCx<'ll, '_>, version: u32, filena
             cx.const_u32(0), // (unused)
             cx.const_u32(filenames_buffer.len() as u32),
             cx.const_u32(0), // (unused)
-            cx.const_u32(version),
+            cx.const_u32(version.to_u32()),
         ],
         /* packed */ false,
     );
