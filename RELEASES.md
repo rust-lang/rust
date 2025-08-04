@@ -98,7 +98,7 @@ Cargo
 
 Rustdoc
 -----
-- [On mobile, make the sidebar full width and linewrap](https://github.com/rust-lang/rust/pull/139831).  This makes long section and item names much easier to deal with on mobile.
+- [On mobile, make the sidebar full width and linewrap](https://github.com/rust-lang/rust/pull/139831). This makes long section and item names much easier to deal with on mobile.
 
 
 <a id="1.89.0-Compatibility-Notes"></a>
