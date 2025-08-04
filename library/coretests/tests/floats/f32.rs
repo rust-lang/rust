@@ -30,19 +30,6 @@ const NAN_MASK2: u32 = 0x0055_5555;
 const APPROX_DELTA: f32 = if cfg!(miri) { 1e-4 } else { 1e-6 };
 
 #[test]
-fn test_is_sign_negative() {
-    assert!(!f32::INFINITY.is_sign_negative());
-    assert!(!1f32.is_sign_negative());
-    assert!(!0f32.is_sign_negative());
-    assert!((-0f32).is_sign_negative());
-    assert!((-1f32).is_sign_negative());
-    assert!(f32::NEG_INFINITY.is_sign_negative());
-    assert!((1f32 / f32::NEG_INFINITY).is_sign_negative());
-    assert!(!f32::NAN.is_sign_negative());
-    assert!((-f32::NAN).is_sign_negative());
-}
-
-#[test]
 fn test_next_up() {
     let tiny = f32::from_bits(TINY_BITS);
     let tiny_up = f32::from_bits(TINY_UP_BITS);

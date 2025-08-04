@@ -998,3 +998,24 @@ float_test! {
         assert!(!(-Float::NAN).is_sign_positive());
     }
 }
+
+float_test! {
+    name: is_sign_negative,
+    attrs: {
+        f16: #[cfg(any(miri, target_has_reliable_f16))],
+        f128: #[cfg(any(miri, target_has_reliable_f128))],
+    },
+    test<Float> {
+        let one: Float = 1.0;
+        let zero: Float = 0.0;
+        assert!(!Float::INFINITY.is_sign_negative());
+        assert!(!one.is_sign_negative());
+        assert!(!zero.is_sign_negative());
+        assert!((-zero).is_sign_negative());
+        assert!((-one).is_sign_negative());
+        assert!(Float::NEG_INFINITY.is_sign_negative());
+        assert!((one / Float::NEG_INFINITY).is_sign_negative());
+        assert!(!Float::NAN.is_sign_negative());
+        assert!((-Float::NAN).is_sign_negative());
+    }
+}

@@ -40,19 +40,6 @@ const NAN_MASK2: u128 = 0x00005555555555555555555555555555;
 // the intrinsics.
 
 #[test]
-fn test_is_sign_negative() {
-    assert!(!f128::INFINITY.is_sign_negative());
-    assert!(!1f128.is_sign_negative());
-    assert!(!0f128.is_sign_negative());
-    assert!((-0f128).is_sign_negative());
-    assert!((-1f128).is_sign_negative());
-    assert!(f128::NEG_INFINITY.is_sign_negative());
-    assert!((1f128 / f128::NEG_INFINITY).is_sign_negative());
-    assert!(!f128::NAN.is_sign_negative());
-    assert!((-f128::NAN).is_sign_negative());
-}
-
-#[test]
 fn test_next_up() {
     let tiny = f128::from_bits(TINY_BITS);
     let tiny_up = f128::from_bits(TINY_UP_BITS);

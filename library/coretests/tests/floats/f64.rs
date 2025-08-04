@@ -25,19 +25,6 @@ const NAN_MASK1: u64 = 0x000a_aaaa_aaaa_aaaa;
 const NAN_MASK2: u64 = 0x0005_5555_5555_5555;
 
 #[test]
-fn test_is_sign_negative() {
-    assert!(!f64::INFINITY.is_sign_negative());
-    assert!(!1f64.is_sign_negative());
-    assert!(!0f64.is_sign_negative());
-    assert!((-0f64).is_sign_negative());
-    assert!((-1f64).is_sign_negative());
-    assert!(f64::NEG_INFINITY.is_sign_negative());
-    assert!((1f64 / f64::NEG_INFINITY).is_sign_negative());
-    assert!(!f64::NAN.is_sign_negative());
-    assert!((-f64::NAN).is_sign_negative());
-}
-
-#[test]
 fn test_next_up() {
     let tiny = f64::from_bits(TINY_BITS);
     let tiny_up = f64::from_bits(TINY_UP_BITS);
