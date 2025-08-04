@@ -71,7 +71,7 @@ impl<'tcx> LateLintPass<'tcx> for InfallibleTryFrom {
                     cx,
                     INFALLIBLE_TRY_FROM,
                     span,
-                    "infallible TryFrom impl; consider implementing From, instead",
+                    "infallible TryFrom impl; consider implementing From instead",
                 );
             }
         }
