@@ -558,7 +558,9 @@ impl<'tcx> CodegenUnit<'tcx> {
         }
         fn item_sort_key<'tcx>(tcx: TyCtxt<'tcx>, item: MonoItem<'tcx>) -> ItemSortKey<'tcx> {
             ItemSortKey(
-                local_item_id(item).map(|def_id| tcx.def_span(def_id).find_ancestor_not_from_macro()).flatten(),
+                local_item_id(item)
+                    .map(|def_id| tcx.def_span(def_id).find_ancestor_not_from_macro())
+                    .flatten(),
                 local_item_id(item).map(|def_id| tcx.def_path(def_id).to_string_no_crate_verbose()),
                 item.symbol_name(tcx),
             )
