@@ -130,7 +130,7 @@ where
 
     #[inline]
     pub(crate) fn from_bitmask_integer(bitmask: u64) -> Self {
-        let mut bytes = <LaneCount<N> as SupportedLaneCount>::BitMask::EMPTY_BIT_MASK;
+        let mut bytes = <LaneCount<N> as SupportedLaneCount>::EMPTY_BIT_MASK;
         let len = bytes.as_mut().len();
         bytes
             .as_mut()
