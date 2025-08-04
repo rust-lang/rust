@@ -544,7 +544,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let EvaluatedCalleeAndArgs { callee, args, fn_sig, fn_abi, with_caller_location } =
                     self.eval_callee_and_args(terminator, func, args)?;
 
-                self.init_fn_tail_call(callee, (fn_sig.abi, fn_abi), &args, with_caller_location)?;
+                self.init_fn_tail_call(callee, (fn_sig.abi, fn_abi), args, with_caller_location)?;
 
                 if self.frame_idx() != old_frame_idx {
                     span_bug!(

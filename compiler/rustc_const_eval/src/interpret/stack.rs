@@ -205,6 +205,16 @@ impl<'tcx, Prov: Provenance> LocalState<'tcx, Prov> {
             LocalValue::Live(val) => interp_ok(val),
         }
     }
+
+    pub(super) fn is_allocation(&self) -> bool {
+        match self.value {
+            LocalValue::Dead => false,
+            LocalValue::Live(val) => match val {
+                Operand::Immediate(_) => false,
+                Operand::Indirect(_) => true,
+            },
+        }
+    }
 }
 
 /// What we store about a frame in an interpreter backtrace.
