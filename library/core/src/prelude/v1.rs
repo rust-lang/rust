@@ -117,3 +117,10 @@ pub use crate::macros::builtin::deref;
     reason = "`type_alias_impl_trait` has open design concerns"
 )]
 pub use crate::macros::builtin::define_opaque;
+
+#[unstable(
+    feature = "derive_from",
+    issue = "144889",
+    reason = "`derive(From)` is unstable"
+)]
+pub use crate::macros::builtin::From;
