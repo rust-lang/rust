@@ -95,8 +95,11 @@ fn map_arch_intrinsic(full_name: &str) -> &'static str {
                     "cubema" => "__builtin_amdgcn_cubema",
                     "cubesc" => "__builtin_amdgcn_cubesc",
                     "cubetc" => "__builtin_amdgcn_cubetc",
+                    "cvt.f16.bf8" => "__builtin_amdgcn_cvt_f16_bf8",
+                    "cvt.f16.fp8" => "__builtin_amdgcn_cvt_f16_fp8",
                     "cvt.f32.bf8" => "__builtin_amdgcn_cvt_f32_bf8",
                     "cvt.f32.fp8" => "__builtin_amdgcn_cvt_f32_fp8",
+                    "cvt.f32.fp8.e5m3" => "__builtin_amdgcn_cvt_f32_fp8_e5m3",
                     "cvt.off.f32.i4" => "__builtin_amdgcn_cvt_off_f32_i4",
                     "cvt.pk.bf8.f32" => "__builtin_amdgcn_cvt_pk_bf8_f32",
                     "cvt.pk.f16.bf8" => "__builtin_amdgcn_cvt_pk_f16_bf8",
@@ -181,6 +184,12 @@ fn map_arch_intrinsic(full_name: &str) -> &'static str {
                     "dot4.f32.fp8.bf8" => "__builtin_amdgcn_dot4_f32_fp8_bf8",
                     "dot4.f32.fp8.fp8" => "__builtin_amdgcn_dot4_f32_fp8_fp8",
                     "ds.add.gs.reg.rtn" => "__builtin_amdgcn_ds_add_gs_reg_rtn",
+                    "ds.atomic.async.barrier.arrive.b64" => {
+                        "__builtin_amdgcn_ds_atomic_async_barrier_arrive_b64"
+                    }
+                    "ds.atomic.barrier.arrive.rtn.b64" => {
+                        "__builtin_amdgcn_ds_atomic_barrier_arrive_rtn_b64"
+                    }
                     "ds.bpermute" => "__builtin_amdgcn_ds_bpermute",
                     "ds.bpermute.fi.b32" => "__builtin_amdgcn_ds_bpermute_fi_b32",
                     "ds.gws.barrier" => "__builtin_amdgcn_ds_gws_barrier",
@@ -198,8 +207,32 @@ fn map_arch_intrinsic(full_name: &str) -> &'static str {
                     "fdot2.f16.f16" => "__builtin_amdgcn_fdot2_f16_f16",
                     "fdot2.f32.bf16" => "__builtin_amdgcn_fdot2_f32_bf16",
                     "fdot2c.f32.bf16" => "__builtin_amdgcn_fdot2c_f32_bf16",
+                    "flat.prefetch" => "__builtin_amdgcn_flat_prefetch",
                     "fmul.legacy" => "__builtin_amdgcn_fmul_legacy",
+                    "global.load.async.to.lds.b128" => {
+                        "__builtin_amdgcn_global_load_async_to_lds_b128"
+                    }
+                    "global.load.async.to.lds.b32" => {
+                        "__builtin_amdgcn_global_load_async_to_lds_b32"
+                    }
+                    "global.load.async.to.lds.b64" => {
+                        "__builtin_amdgcn_global_load_async_to_lds_b64"
+                    }
+                    "global.load.async.to.lds.b8" => "__builtin_amdgcn_global_load_async_to_lds_b8",
                     "global.load.lds" => "__builtin_amdgcn_global_load_lds",
+                    "global.prefetch" => "__builtin_amdgcn_global_prefetch",
+                    "global.store.async.from.lds.b128" => {
+                        "__builtin_amdgcn_global_store_async_from_lds_b128"
+                    }
+                    "global.store.async.from.lds.b32" => {
+                        "__builtin_amdgcn_global_store_async_from_lds_b32"
+                    }
+                    "global.store.async.from.lds.b64" => {
+                        "__builtin_amdgcn_global_store_async_from_lds_b64"
+                    }
+                    "global.store.async.from.lds.b8" => {
+                        "__builtin_amdgcn_global_store_async_from_lds_b8"
+                    }
                     "groupstaticsize" => "__builtin_amdgcn_groupstaticsize",
                     "iglp.opt" => "__builtin_amdgcn_iglp_opt",
                     "implicit.buffer.ptr" => "__builtin_amdgcn_implicit_buffer_ptr",
@@ -291,6 +324,7 @@ fn map_arch_intrinsic(full_name: &str) -> &'static str {
                     "s.incperflevel" => "__builtin_amdgcn_s_incperflevel",
                     "s.memrealtime" => "__builtin_amdgcn_s_memrealtime",
                     "s.memtime" => "__builtin_amdgcn_s_memtime",
+                    "s.monitor.sleep" => "__builtin_amdgcn_s_monitor_sleep",
                     "s.sendmsg" => "__builtin_amdgcn_s_sendmsg",
                     "s.sendmsghalt" => "__builtin_amdgcn_s_sendmsghalt",
                     "s.setprio" => "__builtin_amdgcn_s_setprio",
@@ -300,11 +334,15 @@ fn map_arch_intrinsic(full_name: &str) -> &'static str {
                     "s.sleep.var" => "__builtin_amdgcn_s_sleep_var",
                     "s.ttracedata" => "__builtin_amdgcn_s_ttracedata",
                     "s.ttracedata.imm" => "__builtin_amdgcn_s_ttracedata_imm",
+                    "s.wait.asynccnt" => "__builtin_amdgcn_s_wait_asynccnt",
                     "s.wait.event.export.ready" => "__builtin_amdgcn_s_wait_event_export_ready",
+                    "s.wait.tensorcnt" => "__builtin_amdgcn_s_wait_tensorcnt",
                     "s.waitcnt" => "__builtin_amdgcn_s_waitcnt",
                     "sad.hi.u8" => "__builtin_amdgcn_sad_hi_u8",
                     "sad.u16" => "__builtin_amdgcn_sad_u16",
                     "sad.u8" => "__builtin_amdgcn_sad_u8",
+                    "sat.pk4.i4.i8" => "__builtin_amdgcn_sat_pk4_i4_i8",
+                    "sat.pk4.u4.u8" => "__builtin_amdgcn_sat_pk4_u4_u8",
                     "sched.barrier" => "__builtin_amdgcn_sched_barrier",
                     "sched.group.barrier" => "__builtin_amdgcn_sched_group_barrier",
                     "sdot2" => "__builtin_amdgcn_sdot2",
@@ -346,8 +384,13 @@ fn map_arch_intrinsic(full_name: &str) -> &'static str {
                     "smfmac.i32.16x16x64.i8" => "__builtin_amdgcn_smfmac_i32_16x16x64_i8",
                     "smfmac.i32.32x32x32.i8" => "__builtin_amdgcn_smfmac_i32_32x32x32_i8",
                     "smfmac.i32.32x32x64.i8" => "__builtin_amdgcn_smfmac_i32_32x32x64_i8",
+                    "struct.ptr.buffer.load.lds" => "__builtin_amdgcn_struct_ptr_buffer_load_lds",
                     "sudot4" => "__builtin_amdgcn_sudot4",
                     "sudot8" => "__builtin_amdgcn_sudot8",
+                    "tensor.load.to.lds" => "__builtin_amdgcn_tensor_load_to_lds",
+                    "tensor.load.to.lds.d2" => "__builtin_amdgcn_tensor_load_to_lds_d2",
+                    "tensor.store.from.lds" => "__builtin_amdgcn_tensor_store_from_lds",
+                    "tensor.store.from.lds.d2" => "__builtin_amdgcn_tensor_store_from_lds_d2",
                     "udot2" => "__builtin_amdgcn_udot2",
                     "udot4" => "__builtin_amdgcn_udot4",
                     "udot8" => "__builtin_amdgcn_udot8",
@@ -6325,6 +6368,23 @@ fn map_arch_intrinsic(full_name: &str) -> &'static str {
                 }
             }
             s390(name, full_name)
+        }
+        "spv" => {
+            #[allow(non_snake_case)]
+            fn spv(name: &str, full_name: &str) -> &'static str {
+                match name {
+                    // spv
+                    "num.subgroups" => "__builtin_spirv_num_subgroups",
+                    "subgroup.id" => "__builtin_spirv_subgroup_id",
+                    "subgroup.local.invocation.id" => {
+                        "__builtin_spirv_subgroup_local_invocation_id"
+                    }
+                    "subgroup.max.size" => "__builtin_spirv_subgroup_max_size",
+                    "subgroup.size" => "__builtin_spirv_subgroup_size",
+                    _ => unimplemented!("***** unsupported LLVM intrinsic {full_name}"),
+                }
+            }
+            spv(name, full_name)
         }
         "ve" => {
             #[allow(non_snake_case)]
