@@ -101,24 +101,24 @@ pub(crate) fn wrap_return_type(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
                 let mut exprs_to_wrap = Vec::new();
                 let tail_cb = &mut |e: &_| tail_cb_impl(&mut exprs_to_wrap, e);
                 walk_expr(&body_expr, &mut |expr| {
-                    if let Expr::ReturnExpr(ret_expr) = expr {
-                        if let Some(ret_expr_arg) = &ret_expr.expr() {
-                            for_each_tail_expr(ret_expr_arg, tail_cb);
-                        }
+                    if let Expr::ReturnExpr(ret_expr) = expr
+                        && let Some(ret_expr_arg) = &ret_expr.expr()
+                    {
+                        for_each_tail_expr(ret_expr_arg, tail_cb);
                     }
                 });
                 for_each_tail_expr(&body_expr, tail_cb);
 
                 for ret_expr_arg in exprs_to_wrap {
-                    if let Some(ty) = ctx.sema.type_of_expr(&ret_expr_arg) {
-                        if ty.adjusted().could_unify_with(ctx.db(), &semantic_new_return_ty) {
-                            // The type is already correct, don't wrap it.
-                            // We deliberately don't use `could_unify_with_deeply()`, because as long as the outer
-                            // enum matches it's okay for us, as we don't trigger the assist if the return type
-                            // is already `Option`/`Result`, so mismatched exact type is more likely a mistake
-                            // than something intended.
-                            continue;
-                        }
+                    if let Some(ty) = ctx.sema.type_of_expr(&ret_expr_arg)
+                        && ty.adjusted().could_unify_with(ctx.db(), &semantic_new_return_ty)
+                    {
+                        // The type is already correct, don't wrap it.
+                        // We deliberately don't use `could_unify_with_deeply()`, because as long as the outer
+                        // enum matches it's okay for us, as we don't trigger the assist if the return type
+                        // is already `Option`/`Result`, so mismatched exact type is more likely a mistake
+                        // than something intended.
+                        continue;
                     }
 
                     let happy_wrapped = make.expr_call(
@@ -147,13 +147,13 @@ pub(crate) fn wrap_return_type(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
                         ast::GenericArg::LifetimeArg(_) => false,
                         _ => true,
                     });
-                    if let Some(error_type_arg) = error_type_arg {
-                        if let Some(cap) = ctx.config.snippet_cap {
-                            editor.add_annotation(
-                                error_type_arg.syntax(),
-                                builder.make_placeholder_snippet(cap),
-                            );
-                        }
+                    if let Some(error_type_arg) = error_type_arg
+                        && let Some(cap) = ctx.config.snippet_cap
+                    {
+                        editor.add_annotation(
+                            error_type_arg.syntax(),
+                            builder.make_placeholder_snippet(cap),
+                        );
                     }
                 }
 

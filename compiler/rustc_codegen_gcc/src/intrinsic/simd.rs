@@ -206,6 +206,28 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
         );
     }
 
+    #[cfg(feature = "master")]
+    if name == sym::simd_funnel_shl {
+        return Ok(simd_funnel_shift(
+            bx,
+            args[0].immediate(),
+            args[1].immediate(),
+            args[2].immediate(),
+            true,
+        ));
+    }
+
+    #[cfg(feature = "master")]
+    if name == sym::simd_funnel_shr {
+        return Ok(simd_funnel_shift(
+            bx,
+            args[0].immediate(),
+            args[1].immediate(),
+            args[2].immediate(),
+            false,
+        ));
+    }
+
     if name == sym::simd_bswap {
         return Ok(simd_bswap(bx, args[0].immediate()));
     }
@@ -1433,4 +1455,63 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
     bitwise_red!(simd_reduce_any: BinaryOp::BitwiseOr, true);
 
     unimplemented!("simd {}", name);
+}
+
+#[cfg(feature = "master")]
+fn simd_funnel_shift<'a, 'gcc, 'tcx>(
+    bx: &mut Builder<'a, 'gcc, 'tcx>,
+    a: RValue<'gcc>,
+    b: RValue<'gcc>,
+    shift: RValue<'gcc>,
+    shift_left: bool,
+) -> RValue<'gcc> {
+    use crate::common::SignType;
+
+    let a_type = a.get_type();
+    let vector_type = a_type.unqualified().dyncast_vector().expect("vector type");
+    let num_units = vector_type.get_num_units();
+    let elem_type = vector_type.get_element_type();
+
+    let (new_int_type, int_shift_val, int_mask) = if elem_type.is_compatible_with(bx.u8_type)
+        || elem_type.is_compatible_with(bx.i8_type)
+    {
+        (bx.u16_type, 8, u8::MAX as u64)
+    } else if elem_type.is_compatible_with(bx.u16_type) || elem_type.is_compatible_with(bx.i16_type)
+    {
+        (bx.u32_type, 16, u16::MAX as u64)
+    } else if elem_type.is_compatible_with(bx.u32_type) || elem_type.is_compatible_with(bx.i32_type)
+    {
+        (bx.u64_type, 32, u32::MAX as u64)
+    } else if elem_type.is_compatible_with(bx.u64_type) || elem_type.is_compatible_with(bx.i64_type)
+    {
+        (bx.u128_type, 64, u64::MAX)
+    } else {
+        unimplemented!("funnel shift on {:?}", elem_type);
+    };
+
+    let int_mask = bx.context.new_rvalue_from_long(new_int_type, int_mask as i64);
+    let int_shift_val = bx.context.new_rvalue_from_int(new_int_type, int_shift_val);
+    let mut elements = vec![];
+    let unsigned_type = elem_type.to_unsigned(bx);
+    for i in 0..num_units {
+        let index = bx.context.new_rvalue_from_int(bx.int_type, i as i32);
+        let a_val = bx.context.new_vector_access(None, a, index).to_rvalue();
+        let a_val = bx.context.new_bitcast(None, a_val, unsigned_type);
+        // TODO: we probably need to use gcc_int_cast instead.
+        let a_val = bx.gcc_int_cast(a_val, new_int_type);
+        let b_val = bx.context.new_vector_access(None, b, index).to_rvalue();
+        let b_val = bx.context.new_bitcast(None, b_val, unsigned_type);
+        let b_val = bx.gcc_int_cast(b_val, new_int_type);
+        let shift_val = bx.context.new_vector_access(None, shift, index).to_rvalue();
+        let shift_val = bx.gcc_int_cast(shift_val, new_int_type);
+        let mut val = a_val << int_shift_val | b_val;
+        if shift_left {
+            val = (val << shift_val) >> int_shift_val;
+        } else {
+            val = (val >> shift_val) & int_mask;
+        }
+        let val = bx.gcc_int_cast(val, elem_type);
+        elements.push(val);
+    }
+    bx.context.new_rvalue_from_vector(None, a_type, &elements)
 }

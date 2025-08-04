@@ -970,11 +970,11 @@ impl<'tcx> TerminatorKind<'tcx> {
             Call { func, args, destination, .. } => {
                 write!(fmt, "{destination:?} = ")?;
                 write!(fmt, "{func:?}(")?;
-                for (index, arg) in args.iter().map(|a| &a.node).enumerate() {
+                for (index, arg) in args.iter().enumerate() {
                     if index > 0 {
                         write!(fmt, ", ")?;
                     }
-                    write!(fmt, "{arg:?}")?;
+                    write!(fmt, "{:?}", arg.node)?;
                 }
                 write!(fmt, ")")
             }
@@ -984,7 +984,7 @@ impl<'tcx> TerminatorKind<'tcx> {
                     if index > 0 {
                         write!(fmt, ", ")?;
                     }
-                    write!(fmt, "{:?}", arg)?;
+                    write!(fmt, "{:?}", arg.node)?;
                 }
                 write!(fmt, ")")
             }
@@ -1197,8 +1197,8 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                         ty::tls::with(|tcx| {
                             let variant_def = &tcx.adt_def(adt_did).variant(variant);
                             let args = tcx.lift(args).expect("could not lift for printing");
-                            let name = FmtPrinter::print_string(tcx, Namespace::ValueNS, |cx| {
-                                cx.print_def_path(variant_def.def_id, args)
+                            let name = FmtPrinter::print_string(tcx, Namespace::ValueNS, |p| {
+                                p.print_def_path(variant_def.def_id, args)
                             })?;
 
                             match variant_def.ctor_kind() {
@@ -1473,9 +1473,9 @@ impl<'tcx> Visitor<'tcx> for ExtraComments<'tcx> {
             };
 
             let fmt_valtree = |cv: &ty::Value<'tcx>| {
-                let mut cx = FmtPrinter::new(self.tcx, Namespace::ValueNS);
-                cx.pretty_print_const_valtree(*cv, /*print_ty*/ true).unwrap();
-                cx.into_buffer()
+                let mut p = FmtPrinter::new(self.tcx, Namespace::ValueNS);
+                p.pretty_print_const_valtree(*cv, /*print_ty*/ true).unwrap();
+                p.into_buffer()
             };
 
             let val = match const_ {
@@ -1967,10 +1967,10 @@ fn pretty_print_const_value_tcx<'tcx>(
                             .expect("destructed mir constant of adt without variant idx");
                         let variant_def = &def.variant(variant_idx);
                         let args = tcx.lift(args).unwrap();
-                        let mut cx = FmtPrinter::new(tcx, Namespace::ValueNS);
-                        cx.print_alloc_ids = true;
-                        cx.print_value_path(variant_def.def_id, args)?;
-                        fmt.write_str(&cx.into_buffer())?;
+                        let mut p = FmtPrinter::new(tcx, Namespace::ValueNS);
+                        p.print_alloc_ids = true;
+                        p.print_value_path(variant_def.def_id, args)?;
+                        fmt.write_str(&p.into_buffer())?;
 
                         match variant_def.ctor_kind() {
                             Some(CtorKind::Const) => {}
@@ -2001,18 +2001,18 @@ fn pretty_print_const_value_tcx<'tcx>(
             }
         }
         (ConstValue::Scalar(scalar), _) => {
-            let mut cx = FmtPrinter::new(tcx, Namespace::ValueNS);
-            cx.print_alloc_ids = true;
+            let mut p = FmtPrinter::new(tcx, Namespace::ValueNS);
+            p.print_alloc_ids = true;
             let ty = tcx.lift(ty).unwrap();
-            cx.pretty_print_const_scalar(scalar, ty)?;
-            fmt.write_str(&cx.into_buffer())?;
+            p.pretty_print_const_scalar(scalar, ty)?;
+            fmt.write_str(&p.into_buffer())?;
             return Ok(());
         }
         (ConstValue::ZeroSized, ty::FnDef(d, s)) => {
-            let mut cx = FmtPrinter::new(tcx, Namespace::ValueNS);
-            cx.print_alloc_ids = true;
-            cx.print_value_path(*d, s)?;
-            fmt.write_str(&cx.into_buffer())?;
+            let mut p = FmtPrinter::new(tcx, Namespace::ValueNS);
+            p.print_alloc_ids = true;
+            p.print_value_path(*d, s)?;
+            fmt.write_str(&p.into_buffer())?;
             return Ok(());
         }
         // FIXME(oli-obk): also pretty print arrays and other aggregate constants by reading

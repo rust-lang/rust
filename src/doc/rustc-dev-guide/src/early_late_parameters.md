@@ -1,8 +1,6 @@
 
 # Early vs Late bound parameters
 
-<!-- toc -->
-
 > **NOTE**: This chapter largely talks about early/late bound as being solely relevant when discussing function item types/function definitions. This is potentially not completely true, async blocks and closures should likely be discussed somewhat in this chapter.
 
 ## What does it mean to be "early" bound or "late" bound

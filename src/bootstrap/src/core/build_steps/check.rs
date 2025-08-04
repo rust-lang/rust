@@ -13,7 +13,7 @@ use crate::core::builder::{
 };
 use crate::core::config::TargetSelection;
 use crate::utils::build_stamp::{self, BuildStamp};
-use crate::{Compiler, Mode, Subcommand};
+use crate::{CodegenBackendKind, Compiler, Mode, Subcommand};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Std {
@@ -312,7 +312,7 @@ fn prepare_compiler_for_check(
 pub struct CodegenBackend {
     pub build_compiler: Compiler,
     pub target: TargetSelection,
-    pub backend: &'static str,
+    pub backend: CodegenBackendKind,
 }
 
 impl Step for CodegenBackend {
@@ -327,14 +327,14 @@ impl Step for CodegenBackend {
     fn make_run(run: RunConfig<'_>) {
         // FIXME: only check the backend(s) that were actually selected in run.paths
         let build_compiler = prepare_compiler_for_check(run.builder, run.target, Mode::Codegen);
-        for &backend in &["cranelift", "gcc"] {
+        for backend in [CodegenBackendKind::Cranelift, CodegenBackendKind::Gcc] {
             run.builder.ensure(CodegenBackend { build_compiler, target: run.target, backend });
         }
     }
 
     fn run(self, builder: &Builder<'_>) {
         // FIXME: remove once https://github.com/rust-lang/rust/issues/112393 is resolved
-        if builder.build.config.vendor && self.backend == "gcc" {
+        if builder.build.config.vendor && self.backend.is_gcc() {
             println!("Skipping checking of `rustc_codegen_gcc` with vendoring enabled.");
             return;
         }
@@ -354,19 +354,22 @@ impl Step for CodegenBackend {
 
         cargo
             .arg("--manifest-path")
-            .arg(builder.src.join(format!("compiler/rustc_codegen_{backend}/Cargo.toml")));
+            .arg(builder.src.join(format!("compiler/{}/Cargo.toml", backend.crate_name())));
         rustc_cargo_env(builder, &mut cargo, target);
 
-        let _guard = builder.msg_check(format!("rustc_codegen_{backend}"), target, None);
+        let _guard = builder.msg_check(backend.crate_name(), target, None);
 
-        let stamp = build_stamp::codegen_backend_stamp(builder, build_compiler, target, backend)
+        let stamp = build_stamp::codegen_backend_stamp(builder, build_compiler, target, &backend)
             .with_prefix("check");
 
         run_cargo(builder, cargo, builder.config.free_args.clone(), &stamp, vec![], true, false);
     }
 
     fn metadata(&self) -> Option<StepMetadata> {
-        Some(StepMetadata::check(self.backend, self.target).built_by(self.build_compiler))
+        Some(
+            StepMetadata::check(&self.backend.crate_name(), self.target)
+                .built_by(self.build_compiler),
+        )
     }
 }
 

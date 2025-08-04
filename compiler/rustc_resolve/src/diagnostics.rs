@@ -801,10 +801,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     }
                     err.multipart_suggestion(msg, suggestions, applicability);
                 }
-                if let Some(ModuleOrUniformRoot::Module(module)) = module
-                    && let Some(module) = module.opt_def_id()
-                    && let Some(segment) = segment
-                {
+
+                if let Some(segment) = segment {
+                    let module = match module {
+                        Some(ModuleOrUniformRoot::Module(m)) if let Some(id) = m.opt_def_id() => id,
+                        _ => CRATE_DEF_ID.to_def_id(),
+                    };
                     self.find_cfg_stripped(&mut err, &segment, module);
                 }
 
@@ -1096,7 +1098,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     }
                 }
                 Scope::ExternPrelude => {
-                    suggestions.extend(this.extern_prelude.iter().filter_map(|(ident, _)| {
+                    suggestions.extend(this.extern_prelude.keys().filter_map(|ident| {
                         let res = Res::Def(DefKind::Mod, CRATE_DEF_ID.to_def_id());
                         filter_fn(res).then_some(TypoSuggestion::typo_from_ident(*ident, res))
                     }));
@@ -1407,7 +1409,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         );
 
         if lookup_ident.span.at_least_rust_2018() {
-            for ident in self.extern_prelude.clone().into_keys() {
+            for &ident in self.extern_prelude.keys() {
                 if ident.span.from_expansion() {
                     // Idents are adjusted to the root context before being
                     // resolved in the extern prelude, so reporting this to the
@@ -2839,16 +2841,13 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 continue;
             }
 
-            let note = errors::FoundItemConfigureOut { span: ident.span };
-            err.subdiagnostic(note);
-
-            if let CfgEntry::NameValue { value: Some((feature, _)), .. } = cfg.0 {
-                let note = errors::ItemWasBehindFeature { feature, span: cfg.1 };
-                err.subdiagnostic(note);
+            let item_was = if let CfgEntry::NameValue { value: Some((feature, _)), .. } = cfg.0 {
+                errors::ItemWas::BehindFeature { feature, span: cfg.1 }
             } else {
-                let note = errors::ItemWasCfgOut { span: cfg.1 };
-                err.subdiagnostic(note);
-            }
+                errors::ItemWas::CfgOut { span: cfg.1 }
+            };
+            let note = errors::FoundItemConfigureOut { span: ident.span, item_was };
+            err.subdiagnostic(note);
         }
     }
 }

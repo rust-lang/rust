@@ -48,10 +48,24 @@ pub(crate) fn create_static_alloc<'tcx>(
 
 /// A marker trait returned by [crate::interpret::Machine::enter_trace_span], identifying either a
 /// real [tracing::span::EnteredSpan] in case tracing is enabled, or the dummy type `()` when
-/// tracing is disabled.
-pub trait EnteredTraceSpan {}
-impl EnteredTraceSpan for () {}
-impl EnteredTraceSpan for tracing::span::EnteredSpan {}
+/// tracing is disabled. Also see [crate::enter_trace_span!] below.
+pub trait EnteredTraceSpan {
+    /// Allows executing an alternative function when tracing is disabled. Useful for example if you
+    /// want to open a trace span when tracing is enabled, and alternatively just log a line when
+    /// tracing is disabled.
+    fn or_if_tracing_disabled(self, f: impl FnOnce()) -> Self;
+}
+impl EnteredTraceSpan for () {
+    fn or_if_tracing_disabled(self, f: impl FnOnce()) -> Self {
+        f(); // tracing is disabled, execute the function
+        self
+    }
+}
+impl EnteredTraceSpan for tracing::span::EnteredSpan {
+    fn or_if_tracing_disabled(self, _f: impl FnOnce()) -> Self {
+        self // tracing is enabled, don't execute anything
+    }
+}
 
 /// Shortand for calling [crate::interpret::Machine::enter_trace_span] on a [tracing::info_span!].
 /// This is supposed to be compiled out when [crate::interpret::Machine::enter_trace_span] has the
@@ -111,6 +125,19 @@ impl EnteredTraceSpan for tracing::span::EnteredSpan {}
 /// # use rustc_const_eval::enter_trace_span;
 /// # type M = rustc_const_eval::const_eval::CompileTimeMachine<'static>;
 /// let _span = enter_trace_span!(M, step::eval_statement, tracing_separate_thread = tracing::field::Empty);
+/// ```
+///
+/// ### Executing something else when tracing is disabled
+///
+/// [crate::interpret::Machine::enter_trace_span] returns [EnteredTraceSpan], on which you can call
+/// [EnteredTraceSpan::or_if_tracing_disabled], to e.g. log a line as an alternative to the tracing
+/// span for when tracing is disabled. For example:
+/// ```rust
+/// # use rustc_const_eval::enter_trace_span;
+/// # use rustc_const_eval::interpret::EnteredTraceSpan;
+/// # type M = rustc_const_eval::const_eval::CompileTimeMachine<'static>;
+/// let _span = enter_trace_span!(M, step::eval_statement)
+///     .or_if_tracing_disabled(|| tracing::info!("eval_statement"));
 /// ```
 #[macro_export]
 macro_rules! enter_trace_span {

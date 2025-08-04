@@ -218,10 +218,10 @@ pub(crate) fn crate_notable_traits(db: &dyn DefDatabase, krate: Crate) -> Option
 
     for (_, module_data) in crate_def_map.modules() {
         for def in module_data.scope.declarations() {
-            if let ModuleDefId::TraitId(trait_) = def {
-                if db.attrs(trait_.into()).has_doc_notable_trait() {
-                    traits.push(trait_);
-                }
+            if let ModuleDefId::TraitId(trait_) = def
+                && db.attrs(trait_.into()).has_doc_notable_trait()
+            {
+                traits.push(trait_);
             }
         }
     }

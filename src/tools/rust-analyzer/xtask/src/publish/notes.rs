@@ -72,13 +72,13 @@ impl<'a, 'b, R: BufRead> Converter<'a, 'b, R> {
     }
 
     fn process_document_title(&mut self) -> anyhow::Result<()> {
-        if let Some(Ok(line)) = self.iter.next() {
-            if let Some((level, title)) = get_title(&line) {
-                let title = process_inline_macros(title)?;
-                if level == 1 {
-                    self.write_title(level, &title);
-                    return Ok(());
-                }
+        if let Some(Ok(line)) = self.iter.next()
+            && let Some((level, title)) = get_title(&line)
+        {
+            let title = process_inline_macros(title)?;
+            if level == 1 {
+                self.write_title(level, &title);
+                return Ok(());
             }
         }
         bail!("document title not found")
@@ -141,39 +141,39 @@ impl<'a, 'b, R: BufRead> Converter<'a, 'b, R> {
     }
 
     fn process_source_code_block(&mut self, level: usize) -> anyhow::Result<()> {
-        if let Some(Ok(line)) = self.iter.next() {
-            if let Some(styles) = line.strip_prefix("[source").and_then(|s| s.strip_suffix(']')) {
-                let mut styles = styles.split(',');
-                if !styles.next().unwrap().is_empty() {
-                    bail!("not a source code block");
-                }
-                let language = styles.next();
-                return self.process_listing_block(language, level);
+        if let Some(Ok(line)) = self.iter.next()
+            && let Some(styles) = line.strip_prefix("[source").and_then(|s| s.strip_suffix(']'))
+        {
+            let mut styles = styles.split(',');
+            if !styles.next().unwrap().is_empty() {
+                bail!("not a source code block");
             }
+            let language = styles.next();
+            return self.process_listing_block(language, level);
         }
         bail!("not a source code block")
     }
 
     fn process_listing_block(&mut self, style: Option<&str>, level: usize) -> anyhow::Result<()> {
-        if let Some(Ok(line)) = self.iter.next() {
-            if line == LISTING_DELIMITER {
-                self.write_indent(level);
-                self.output.push_str("```");
-                if let Some(style) = style {
-                    self.output.push_str(style);
-                }
-                self.output.push('\n');
-                while let Some(line) = self.iter.next() {
-                    let line = line?;
-                    if line == LISTING_DELIMITER {
-                        self.write_line("```", level);
-                        return Ok(());
-                    } else {
-                        self.write_line(&line, level);
-                    }
-                }
-                bail!("listing block is not terminated")
+        if let Some(Ok(line)) = self.iter.next()
+            && line == LISTING_DELIMITER
+        {
+            self.write_indent(level);
+            self.output.push_str("```");
+            if let Some(style) = style {
+                self.output.push_str(style);
             }
+            self.output.push('\n');
+            while let Some(line) = self.iter.next() {
+                let line = line?;
+                if line == LISTING_DELIMITER {
+                    self.write_line("```", level);
+                    return Ok(());
+                } else {
+                    self.write_line(&line, level);
+                }
+            }
+            bail!("listing block is not terminated")
         }
         bail!("not a listing block")
     }
@@ -200,49 +200,48 @@ impl<'a, 'b, R: BufRead> Converter<'a, 'b, R> {
     }
 
     fn process_image_block(&mut self, caption: Option<&str>, level: usize) -> anyhow::Result<()> {
-        if let Some(Ok(line)) = self.iter.next() {
-            if let Some((url, attrs)) = parse_media_block(&line, IMAGE_BLOCK_PREFIX) {
-                let alt = if let Some(stripped) =
-                    attrs.strip_prefix('"').and_then(|s| s.strip_suffix('"'))
-                {
+        if let Some(Ok(line)) = self.iter.next()
+            && let Some((url, attrs)) = parse_media_block(&line, IMAGE_BLOCK_PREFIX)
+        {
+            let alt =
+                if let Some(stripped) = attrs.strip_prefix('"').and_then(|s| s.strip_suffix('"')) {
                     stripped
                 } else {
                     attrs
                 };
-                if let Some(caption) = caption {
-                    self.write_caption_line(caption, level);
-                }
-                self.write_indent(level);
-                self.output.push_str("![");
-                self.output.push_str(alt);
-                self.output.push_str("](");
-                self.output.push_str(url);
-                self.output.push_str(")\n");
-                return Ok(());
+            if let Some(caption) = caption {
+                self.write_caption_line(caption, level);
             }
+            self.write_indent(level);
+            self.output.push_str("![");
+            self.output.push_str(alt);
+            self.output.push_str("](");
+            self.output.push_str(url);
+            self.output.push_str(")\n");
+            return Ok(());
         }
         bail!("not a image block")
     }
 
     fn process_video_block(&mut self, caption: Option<&str>, level: usize) -> anyhow::Result<()> {
-        if let Some(Ok(line)) = self.iter.next() {
-            if let Some((url, attrs)) = parse_media_block(&line, VIDEO_BLOCK_PREFIX) {
-                let html_attrs = match attrs {
-                    "options=loop" => "controls loop",
-                    r#"options="autoplay,loop""# => "autoplay controls loop",
-                    _ => bail!("unsupported video syntax"),
-                };
-                if let Some(caption) = caption {
-                    self.write_caption_line(caption, level);
-                }
-                self.write_indent(level);
-                self.output.push_str(r#"<video src=""#);
-                self.output.push_str(url);
-                self.output.push_str(r#"" "#);
-                self.output.push_str(html_attrs);
-                self.output.push_str(">Your browser does not support the video tag.</video>\n");
-                return Ok(());
+        if let Some(Ok(line)) = self.iter.next()
+            && let Some((url, attrs)) = parse_media_block(&line, VIDEO_BLOCK_PREFIX)
+        {
+            let html_attrs = match attrs {
+                "options=loop" => "controls loop",
+                r#"options="autoplay,loop""# => "autoplay controls loop",
+                _ => bail!("unsupported video syntax"),
+            };
+            if let Some(caption) = caption {
+                self.write_caption_line(caption, level);
             }
+            self.write_indent(level);
+            self.output.push_str(r#"<video src=""#);
+            self.output.push_str(url);
+            self.output.push_str(r#"" "#);
+            self.output.push_str(html_attrs);
+            self.output.push_str(">Your browser does not support the video tag.</video>\n");
+            return Ok(());
         }
         bail!("not a video block")
     }
@@ -371,12 +370,11 @@ fn strip_prefix_symbol(line: &str, symbol: char) -> Option<(usize, &str)> {
 }
 
 fn parse_media_block<'a>(line: &'a str, prefix: &str) -> Option<(&'a str, &'a str)> {
-    if let Some(line) = line.strip_prefix(prefix) {
-        if let Some((url, rest)) = line.split_once('[') {
-            if let Some(attrs) = rest.strip_suffix(']') {
-                return Some((url, attrs));
-            }
-        }
+    if let Some(line) = line.strip_prefix(prefix)
+        && let Some((url, rest)) = line.split_once('[')
+        && let Some(attrs) = rest.strip_suffix(']')
+    {
+        return Some((url, attrs));
     }
     None
 }

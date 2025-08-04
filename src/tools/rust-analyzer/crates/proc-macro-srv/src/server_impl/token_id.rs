@@ -1,4 +1,4 @@
-//! proc-macro server backend based on [`proc_macro_api::msg::TokenId`] as the backing span.
+//! proc-macro server backend based on [`proc_macro_api::msg::SpanId`] as the backing span.
 //! This backend is rather inflexible, used by RustRover and older rust-analyzer versions.
 use std::ops::{Bound, Range};
 
@@ -7,25 +7,34 @@ use proc_macro::bridge::{self, server};
 
 use crate::server_impl::{from_token_tree, literal_from_str, token_stream::TokenStreamBuilder};
 
-type Span = span::TokenId;
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+pub struct SpanId(pub u32);
+
+impl std::fmt::Debug for SpanId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
+type Span = SpanId;
 type TokenStream = crate::server_impl::TokenStream<Span>;
 
 pub struct FreeFunctions;
 
-pub struct TokenIdServer {
+pub struct SpanIdServer {
     pub call_site: Span,
     pub def_site: Span,
     pub mixed_site: Span,
 }
 
-impl server::Types for TokenIdServer {
+impl server::Types for SpanIdServer {
     type FreeFunctions = FreeFunctions;
     type TokenStream = TokenStream;
     type Span = Span;
     type Symbol = Symbol;
 }
 
-impl server::FreeFunctions for TokenIdServer {
+impl server::FreeFunctions for SpanIdServer {
     fn injected_env_var(&mut self, _: &str) -> Option<std::string::String> {
         None
     }
@@ -41,7 +50,7 @@ impl server::FreeFunctions for TokenIdServer {
     fn emit_diagnostic(&mut self, _: bridge::Diagnostic<Self::Span>) {}
 }
 
-impl server::TokenStream for TokenIdServer {
+impl server::TokenStream for SpanIdServer {
     fn is_empty(&mut self, stream: &Self::TokenStream) -> bool {
         stream.is_empty()
     }
@@ -102,12 +111,12 @@ impl server::TokenStream for TokenIdServer {
         &mut self,
         stream: Self::TokenStream,
     ) -> Vec<bridge::TokenTree<Self::TokenStream, Self::Span, Self::Symbol>> {
-        // Can't join with `TokenId`.
+        // Can't join with `SpanId`.
         stream.into_bridge(&mut |first, _second| first)
     }
 }
 
-impl server::Span for TokenIdServer {
+impl server::Span for SpanIdServer {
     fn debug(&mut self, span: Self::Span) -> String {
         format!("{:?}", span.0)
     }
@@ -174,14 +183,14 @@ impl server::Span for TokenIdServer {
     }
 }
 
-impl server::Symbol for TokenIdServer {
+impl server::Symbol for SpanIdServer {
     fn normalize_and_validate_ident(&mut self, string: &str) -> Result<Self::Symbol, ()> {
         // FIXME: nfc-normalize and validate idents
         Ok(<Self as server::Server>::intern_symbol(string))
     }
 }
 
-impl server::Server for TokenIdServer {
+impl server::Server for SpanIdServer {
     fn globals(&mut self) -> bridge::ExpnGlobals<Self::Span> {
         bridge::ExpnGlobals {
             def_site: self.def_site,
@@ -201,8 +210,6 @@ impl server::Server for TokenIdServer {
 
 #[cfg(test)]
 mod tests {
-    use span::TokenId;
-
     use super::*;
 
     #[test]
@@ -211,18 +218,18 @@ mod tests {
             token_trees: vec![
                 tt::TokenTree::Leaf(tt::Leaf::Ident(tt::Ident {
                     sym: Symbol::intern("struct"),
-                    span: TokenId(0),
+                    span: SpanId(0),
                     is_raw: tt::IdentIsRaw::No,
                 })),
                 tt::TokenTree::Leaf(tt::Leaf::Ident(tt::Ident {
                     sym: Symbol::intern("T"),
-                    span: TokenId(0),
+                    span: SpanId(0),
                     is_raw: tt::IdentIsRaw::No,
                 })),
                 tt::TokenTree::Subtree(tt::Subtree {
                     delimiter: tt::Delimiter {
-                        open: TokenId(0),
-                        close: TokenId(0),
+                        open: SpanId(0),
+                        close: SpanId(0),
                         kind: tt::DelimiterKind::Brace,
                     },
                     len: 0,
@@ -238,8 +245,8 @@ mod tests {
         let subtree_paren_a = vec![
             tt::TokenTree::Subtree(tt::Subtree {
                 delimiter: tt::Delimiter {
-                    open: TokenId(0),
-                    close: TokenId(0),
+                    open: SpanId(0),
+                    close: SpanId(0),
                     kind: tt::DelimiterKind::Parenthesis,
                 },
                 len: 1,
@@ -247,24 +254,24 @@ mod tests {
             tt::TokenTree::Leaf(tt::Leaf::Ident(tt::Ident {
                 is_raw: tt::IdentIsRaw::No,
                 sym: Symbol::intern("a"),
-                span: TokenId(0),
+                span: SpanId(0),
             })),
         ];
 
-        let t1 = TokenStream::from_str("(a)", TokenId(0)).unwrap();
+        let t1 = TokenStream::from_str("(a)", SpanId(0)).unwrap();
         assert_eq!(t1.token_trees.len(), 2);
         assert!(t1.token_trees[0..2] == subtree_paren_a);
 
-        let t2 = TokenStream::from_str("(a);", TokenId(0)).unwrap();
+        let t2 = TokenStream::from_str("(a);", SpanId(0)).unwrap();
         assert_eq!(t2.token_trees.len(), 3);
         assert!(t2.token_trees[0..2] == subtree_paren_a);
 
-        let underscore = TokenStream::from_str("_", TokenId(0)).unwrap();
+        let underscore = TokenStream::from_str("_", SpanId(0)).unwrap();
         assert!(
             underscore.token_trees[0]
                 == tt::TokenTree::Leaf(tt::Leaf::Ident(tt::Ident {
                     sym: Symbol::intern("_"),
-                    span: TokenId(0),
+                    span: SpanId(0),
                     is_raw: tt::IdentIsRaw::No,
                 }))
         );

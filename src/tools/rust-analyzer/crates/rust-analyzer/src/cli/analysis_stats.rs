@@ -136,34 +136,30 @@ impl flags::AnalysisStats {
         for source_root_id in source_roots {
             let source_root = db.source_root(source_root_id).source_root(db);
             for file_id in source_root.iter() {
-                if let Some(p) = source_root.path_for_file(&file_id) {
-                    if let Some((_, Some("rs"))) = p.name_and_extension() {
-                        // measure workspace/project code
-                        if !source_root.is_library || self.with_deps {
-                            let length = db.file_text(file_id).text(db).lines().count();
-                            let item_stats = db
-                                .file_item_tree(
-                                    EditionedFileId::current_edition(db, file_id).into(),
-                                )
-                                .item_tree_stats()
-                                .into();
+                if let Some(p) = source_root.path_for_file(&file_id)
+                    && let Some((_, Some("rs"))) = p.name_and_extension()
+                {
+                    // measure workspace/project code
+                    if !source_root.is_library || self.with_deps {
+                        let length = db.file_text(file_id).text(db).lines().count();
+                        let item_stats = db
+                            .file_item_tree(EditionedFileId::current_edition(db, file_id).into())
+                            .item_tree_stats()
+                            .into();
 
-                            workspace_loc += length;
-                            workspace_item_trees += 1;
-                            workspace_item_stats += item_stats;
-                        } else {
-                            let length = db.file_text(file_id).text(db).lines().count();
-                            let item_stats = db
-                                .file_item_tree(
-                                    EditionedFileId::current_edition(db, file_id).into(),
-                                )
-                                .item_tree_stats()
-                                .into();
+                        workspace_loc += length;
+                        workspace_item_trees += 1;
+                        workspace_item_stats += item_stats;
+                    } else {
+                        let length = db.file_text(file_id).text(db).lines().count();
+                        let item_stats = db
+                            .file_item_tree(EditionedFileId::current_edition(db, file_id).into())
+                            .item_tree_stats()
+                            .into();
 
-                            dep_loc += length;
-                            dep_item_trees += 1;
-                            dep_item_stats += item_stats;
-                        }
+                        dep_loc += length;
+                        dep_item_trees += 1;
+                        dep_item_stats += item_stats;
                     }
                 }
             }
@@ -560,29 +556,35 @@ impl flags::AnalysisStats {
                         std::fs::write(path, txt).unwrap();
 
                         let res = ws.run_build_scripts(&cargo_config, &|_| ()).unwrap();
-                        if let Some(err) = res.error() {
-                            if err.contains("error: could not compile") {
-                                if let Some(mut err_idx) = err.find("error[E") {
-                                    err_idx += 7;
-                                    let err_code = &err[err_idx..err_idx + 4];
-                                    match err_code {
-                                        "0282" | "0283" => continue, // Byproduct of testing method
-                                        "0277" | "0308" if generated.contains(&todo) => continue, // See https://github.com/rust-lang/rust/issues/69882
-                                        // FIXME: In some rare cases `AssocItem::container_or_implemented_trait` returns `None` for trait methods.
-                                        // Generated code is valid in case traits are imported
-                                        "0599" if err.contains("the following trait is implemented but not in scope") => continue,
-                                        _ => (),
+                        if let Some(err) = res.error()
+                            && err.contains("error: could not compile")
+                        {
+                            if let Some(mut err_idx) = err.find("error[E") {
+                                err_idx += 7;
+                                let err_code = &err[err_idx..err_idx + 4];
+                                match err_code {
+                                    "0282" | "0283" => continue, // Byproduct of testing method
+                                    "0277" | "0308" if generated.contains(&todo) => continue, // See https://github.com/rust-lang/rust/issues/69882
+                                    // FIXME: In some rare cases `AssocItem::container_or_implemented_trait` returns `None` for trait methods.
+                                    // Generated code is valid in case traits are imported
+                                    "0599"
+                                        if err.contains(
+                                            "the following trait is implemented but not in scope",
+                                        ) =>
+                                    {
+                                        continue;
                                     }
-                                    bar.println(err);
-                                    bar.println(generated);
-                                    acc.error_codes
-                                        .entry(err_code.to_owned())
-                                        .and_modify(|n| *n += 1)
-                                        .or_insert(1);
-                                } else {
-                                    acc.syntax_errors += 1;
-                                    bar.println(format!("Syntax error: \n{err}"));
+                                    _ => (),
                                 }
+                                bar.println(err);
+                                bar.println(generated);
+                                acc.error_codes
+                                    .entry(err_code.to_owned())
+                                    .and_modify(|n| *n += 1)
+                                    .or_insert(1);
+                            } else {
+                                acc.syntax_errors += 1;
+                                bar.println(format!("Syntax error: \n{err}"));
                             }
                         }
                     }
@@ -731,12 +733,11 @@ impl flags::AnalysisStats {
             let name = body_id.name(db).unwrap_or_else(Name::missing);
             let module = body_id.module(db);
             let display_target = module.krate().to_display_target(db);
-            if let Some(only_name) = self.only.as_deref() {
-                if name.display(db, Edition::LATEST).to_string() != only_name
-                    && full_name(db, body_id, module) != only_name
-                {
-                    continue;
-                }
+            if let Some(only_name) = self.only.as_deref()
+                && name.display(db, Edition::LATEST).to_string() != only_name
+                && full_name(db, body_id, module) != only_name
+            {
+                continue;
             }
             let msg = move || {
                 if verbosity.is_verbose() {

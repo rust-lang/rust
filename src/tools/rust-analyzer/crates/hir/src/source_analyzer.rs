@@ -995,11 +995,11 @@ impl<'db> SourceAnalyzer<'db> {
 
         // Case where path is a qualifier of a use tree, e.g. foo::bar::{Baz, Qux} where we are
         // trying to resolve foo::bar.
-        if let Some(use_tree) = parent().and_then(ast::UseTree::cast) {
-            if use_tree.coloncolon_token().is_some() {
-                return resolve_hir_path_qualifier(db, &self.resolver, &hir_path, &store)
-                    .map(|it| (it, None));
-            }
+        if let Some(use_tree) = parent().and_then(ast::UseTree::cast)
+            && use_tree.coloncolon_token().is_some()
+        {
+            return resolve_hir_path_qualifier(db, &self.resolver, &hir_path, &store)
+                .map(|it| (it, None));
         }
 
         let meta_path = path
@@ -1035,24 +1035,19 @@ impl<'db> SourceAnalyzer<'db> {
                 // }
                 // ```
                 Some(it) if matches!(it, PathResolution::Def(ModuleDef::BuiltinType(_))) => {
-                    if let Some(mod_path) = hir_path.mod_path() {
-                        if let Some(ModuleDefId::ModuleId(id)) =
+                    if let Some(mod_path) = hir_path.mod_path()
+                        && let Some(ModuleDefId::ModuleId(id)) =
                             self.resolver.resolve_module_path_in_items(db, mod_path).take_types()
+                    {
+                        let parent_hir_name = parent_hir_path.segments().get(1).map(|it| it.name);
+                        let module = crate::Module { id };
+                        if module
+                            .scope(db, None)
+                            .into_iter()
+                            .any(|(name, _)| Some(&name) == parent_hir_name)
                         {
-                            let parent_hir_name =
-                                parent_hir_path.segments().get(1).map(|it| it.name);
-                            let module = crate::Module { id };
-                            if module
-                                .scope(db, None)
-                                .into_iter()
-                                .any(|(name, _)| Some(&name) == parent_hir_name)
-                            {
-                                return Some((
-                                    PathResolution::Def(ModuleDef::Module(module)),
-                                    None,
-                                ));
-                            };
-                        }
+                            return Some((PathResolution::Def(ModuleDef::Module(module)), None));
+                        };
                     }
                     Some((it, None))
                 }
@@ -1282,22 +1277,22 @@ impl<'db> SourceAnalyzer<'db> {
         db: &'db dyn HirDatabase,
         macro_expr: InFile<&ast::MacroExpr>,
     ) -> bool {
-        if let Some((def, body, sm, Some(infer))) = self.body_() {
-            if let Some(expanded_expr) = sm.macro_expansion_expr(macro_expr) {
-                let mut is_unsafe = false;
-                let mut walk_expr = |expr_id| {
-                    unsafe_operations(db, infer, def, body, expr_id, &mut |inside_unsafe_block| {
-                        is_unsafe |= inside_unsafe_block == InsideUnsafeBlock::No
-                    })
-                };
-                match expanded_expr {
-                    ExprOrPatId::ExprId(expanded_expr) => walk_expr(expanded_expr),
-                    ExprOrPatId::PatId(expanded_pat) => {
-                        body.walk_exprs_in_pat(expanded_pat, &mut walk_expr)
-                    }
+        if let Some((def, body, sm, Some(infer))) = self.body_()
+            && let Some(expanded_expr) = sm.macro_expansion_expr(macro_expr)
+        {
+            let mut is_unsafe = false;
+            let mut walk_expr = |expr_id| {
+                unsafe_operations(db, infer, def, body, expr_id, &mut |inside_unsafe_block| {
+                    is_unsafe |= inside_unsafe_block == InsideUnsafeBlock::No
+                })
+            };
+            match expanded_expr {
+                ExprOrPatId::ExprId(expanded_expr) => walk_expr(expanded_expr),
+                ExprOrPatId::PatId(expanded_pat) => {
+                    body.walk_exprs_in_pat(expanded_pat, &mut walk_expr)
                 }
-                return is_unsafe;
             }
+            return is_unsafe;
         }
         false
     }
@@ -1575,12 +1570,11 @@ fn resolve_hir_path_(
 
         // If we are in a TypeNs for a Trait, and we have an unresolved name, try to resolve it as a type
         // within the trait's associated types.
-        if let (Some(unresolved), &TypeNs::TraitId(trait_id)) = (&unresolved, &ty) {
-            if let Some(type_alias_id) =
+        if let (Some(unresolved), &TypeNs::TraitId(trait_id)) = (&unresolved, &ty)
+            && let Some(type_alias_id) =
                 trait_id.trait_items(db).associated_type_by_name(unresolved.name)
-            {
-                return Some(PathResolution::Def(ModuleDefId::from(type_alias_id).into()));
-            }
+        {
+            return Some(PathResolution::Def(ModuleDefId::from(type_alias_id).into()));
         }
 
         let res = match ty {
@@ -1726,12 +1720,11 @@ fn resolve_hir_path_qualifier(
 
         // If we are in a TypeNs for a Trait, and we have an unresolved name, try to resolve it as a type
         // within the trait's associated types.
-        if let (Some(unresolved), &TypeNs::TraitId(trait_id)) = (&unresolved, &ty) {
-            if let Some(type_alias_id) =
+        if let (Some(unresolved), &TypeNs::TraitId(trait_id)) = (&unresolved, &ty)
+            && let Some(type_alias_id) =
                 trait_id.trait_items(db).associated_type_by_name(unresolved.name)
-            {
-                return Some(PathResolution::Def(ModuleDefId::from(type_alias_id).into()));
-            }
+        {
+            return Some(PathResolution::Def(ModuleDefId::from(type_alias_id).into()));
         }
 
         let res = match ty {

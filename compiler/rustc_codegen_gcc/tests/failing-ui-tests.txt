@@ -10,11 +10,10 @@ tests/ui/iterators/iter-sum-overflow-overflow-checks.rs
 tests/ui/mir/mir_drop_order.rs
 tests/ui/mir/mir_let_chains_drop_order.rs
 tests/ui/mir/mir_match_guard_let_chains_drop_order.rs
-tests/ui/oom_unwind.rs
+tests/ui/panics/oom-panic-unwind.rs
 tests/ui/panic-runtime/abort-link-to-unwinding-crates.rs
 tests/ui/panic-runtime/abort.rs
 tests/ui/panic-runtime/link-to-abort.rs
-tests/ui/unwind-no-uwtable.rs
 tests/ui/parser/unclosed-delimiter-in-dep.rs
 tests/ui/consts/missing_span_in_backtrace.rs
 tests/ui/drop/dynamic-drop.rs
@@ -82,3 +81,8 @@ tests/ui/coroutine/panic-drops.rs
 tests/ui/coroutine/panic-safe.rs
 tests/ui/process/nofile-limit.rs
 tests/ui/simd/intrinsic/generic-arithmetic-pass.rs
+tests/ui/linking/no-gc-encapsulation-symbols.rs
+tests/ui/panics/unwind-force-no-unwind-tables.rs
+tests/ui/attributes/fn-align-dyn.rs
+tests/ui/linkage-attr/raw-dylib/elf/glibc-x86_64.rs
+tests/ui/explicit-tail-calls/recursion-etc.rs

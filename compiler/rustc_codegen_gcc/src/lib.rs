@@ -50,6 +50,7 @@ extern crate rustc_session;
 extern crate rustc_span;
 extern crate rustc_symbol_mangling;
 extern crate rustc_target;
+extern crate rustc_type_ir;
 
 // This prevents duplicating functions and statics that are already part of the host rustc process.
 #[allow(unused_extern_crates)]
@@ -362,9 +363,9 @@ impl WriteBackendMethods for GccCodegenBackend {
         _exported_symbols_for_lto: &[String],
         each_linked_rlib_for_lto: &[PathBuf],
         modules: Vec<FatLtoInput<Self>>,
-        diff_fncs: Vec<AutoDiffItem>,
+        diff_functions: Vec<AutoDiffItem>,
     ) -> Result<ModuleCodegen<Self::Module>, FatalError> {
-        if !diff_fncs.is_empty() {
+        if !diff_functions.is_empty() {
             unimplemented!();
         }
 
