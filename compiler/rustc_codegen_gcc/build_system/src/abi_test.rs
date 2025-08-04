@@ -31,7 +31,7 @@ pub fn run() -> Result<(), String> {
         Some("clones/abi-cafe".as_ref()),
         true,
     )
-    .map_err(|err| (format!("Git clone failed with message: {err:?}!")))?;
+    .map_err(|err| format!("Git clone failed with message: {err:?}!"))?;
     // Configure abi-cafe to use the exact same rustc version we use - this is crucial.
     // Otherwise, the concept of ABI compatibility becomes meanignless.
     std::fs::copy("rust-toolchain", "clones/abi-cafe/rust-toolchain")
