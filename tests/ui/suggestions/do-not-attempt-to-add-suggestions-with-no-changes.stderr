@@ -3,6 +3,7 @@ error[E0573]: expected type, found module `result`
    |
 LL | impl result {
    |      ^^^^^^ help: an enum with a similar name exists: `Result`
+   |
   --> $SRC_DIR/core/src/result.rs:LL:COL
    |
    = note: similarly named enum `Result` defined here

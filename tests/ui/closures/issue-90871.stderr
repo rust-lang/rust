@@ -3,6 +3,7 @@ error[E0412]: cannot find type `n` in this scope
    |
 LL |     type_ascribe!(2, n([u8; || 1]))
    |                      ^ help: a trait with a similar name exists: `Fn`
+   |
   --> $SRC_DIR/core/src/ops/function.rs:LL:COL
    |
    = note: similarly named trait `Fn` defined here

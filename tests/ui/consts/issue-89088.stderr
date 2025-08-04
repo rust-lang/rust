@@ -6,6 +6,7 @@ LL | const FOO: &A = &A::Field(Cow::Borrowed("foo"));
 ...
 LL |         FOO => todo!(),
    |         ^^^ constant of non-structural type
+   |
   --> $SRC_DIR/alloc/src/borrow.rs:LL:COL
    |
    = note: `Cow<'_, str>` must be annotated with `#[derive(PartialEq)]` to be usable in patterns

@@ -3,6 +3,7 @@ error[E0599]: no method named `fmt` found for opaque type `impl Debug` in the cu
    |
 LL |         x.fmt(f);
    |           ^^^ method not found in `impl Debug`
+   |
   --> $SRC_DIR/core/src/fmt/mod.rs:LL:COL
    |
    = note: the method is available for `impl Debug` here

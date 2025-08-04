@@ -14,6 +14,7 @@ warning: cannot specify lifetime arguments explicitly if late bound lifetime par
    |
 LL |     0.clone::<'a>();
    |               ^^
+   |
   --> $SRC_DIR/core/src/clone.rs:LL:COL
    |
    = note: the late bound lifetime parameter is introduced here

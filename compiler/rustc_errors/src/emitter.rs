@@ -1462,7 +1462,7 @@ impl HumanEmitter {
         max_line_num_len: usize,
         is_secondary: bool,
         is_cont: bool,
-    ) -> io::Result<()> {
+    ) -> io::Result<CodeWindowStatus> {
         let mut buffer = StyledBuffer::new();
 
         if !msp.has_primary_spans() && !msp.has_span_labels() && is_secondary && !self.short_message
@@ -1575,12 +1575,14 @@ impl HumanEmitter {
         }
         let mut annotated_files = FileWithAnnotatedLines::collect_annotations(self, args, msp);
         trace!("{annotated_files:#?}");
+        let mut code_window_status = CodeWindowStatus::Open;
 
         // Make sure our primary file comes first
         let primary_span = msp.primary_span().unwrap_or_default();
         let (Some(sm), false) = (self.sm.as_ref(), primary_span.is_dummy()) else {
             // If we don't have span information, emit and exit
-            return emit_to_destination(&buffer.render(), level, &mut self.dst, self.short_message);
+            return emit_to_destination(&buffer.render(), level, &mut self.dst, self.short_message)
+                .map(|_| code_window_status);
         };
         let primary_lo = sm.lookup_char_pos(primary_span.lo());
         if let Ok(pos) =
@@ -1589,6 +1591,9 @@ impl HumanEmitter {
             annotated_files.swap(0, pos);
         }
 
+        // An end column separator should be emitted when a file with with a
+        // source, is followed by one without a source
+        let mut col_sep_before_no_show_source = false;
         let annotated_files_len = annotated_files.len();
         // Print out the annotate source lines that correspond with the error
         for (file_idx, annotated_file) in annotated_files.into_iter().enumerate() {
@@ -1599,6 +1604,26 @@ impl HumanEmitter {
                 &annotated_file.file,
             ) {
                 if !self.short_message {
+                    // Add an end column separator when a file without a source
+                    // comes after one with a source
+                    //    ╭▸ $DIR/deriving-meta-unknown-trait.rs:1:10
+                    //    │
+                    // LL │ #[derive(Eqr)]
+                    //    │          ━━━
+                    //    ╰╴ (<- It prints *this* line)
+                    //    ╭▸ $SRC_DIR/core/src/cmp.rs:356:0
+                    //    │
+                    //    ╰╴note: similarly named derive macro `Eq` defined here
+                    if col_sep_before_no_show_source {
+                        let buffer_msg_line_offset = buffer.num_lines();
+                        self.draw_col_separator_end(
+                            &mut buffer,
+                            buffer_msg_line_offset,
+                            max_line_num_len + 1,
+                        );
+                    }
+                    col_sep_before_no_show_source = false;
+
                     // We'll just print an unannotated message.
                     for (annotation_id, line) in annotated_file.lines.iter().enumerate() {
                         let mut annotations = line.annotations.clone();
@@ -1639,29 +1664,42 @@ impl HumanEmitter {
                             }
                             line_idx += 1;
                         }
-                        for (label, is_primary) in labels.into_iter() {
+                        if is_cont
+                            && file_idx == annotated_files_len - 1
+                            && annotation_id == annotated_file.lines.len() - 1
+                            && !labels.is_empty()
+                        {
+                            code_window_status = CodeWindowStatus::Closed;
+                        }
+                        let labels_len = labels.len();
+                        for (label_idx, (label, is_primary)) in labels.into_iter().enumerate() {
                             let style = if is_primary {
                                 Style::LabelPrimary
                             } else {
                                 Style::LabelSecondary
                             };
-                            let pipe = self.col_separator();
-                            buffer.prepend(line_idx, &format!(" {pipe}"), Style::LineNumber);
-                            for _ in 0..max_line_num_len {
-                                buffer.prepend(line_idx, " ", Style::NoStyle);
-                            }
+                            self.draw_col_separator_no_space(
+                                &mut buffer,
+                                line_idx,
+                                max_line_num_len + 1,
+                            );
                             line_idx += 1;
-                            let chr = self.note_separator();
-                            buffer.append(line_idx, &format!(" {chr} note: "), style);
-                            for _ in 0..max_line_num_len {
-                                buffer.prepend(line_idx, " ", Style::NoStyle);
-                            }
+                            self.draw_note_separator(
+                                &mut buffer,
+                                line_idx,
+                                max_line_num_len + 1,
+                                label_idx != labels_len - 1,
+                            );
+                            buffer.append(line_idx, "note", Style::MainHeaderMsg);
+                            buffer.append(line_idx, ": ", Style::NoStyle);
                             buffer.append(line_idx, label, style);
                             line_idx += 1;
                         }
                     }
                 }
                 continue;
+            } else {
+                col_sep_before_no_show_source = true;
             }
 
             // print out the span location and spacer before we print the annotated source
@@ -1976,7 +2014,7 @@ impl HumanEmitter {
         // final step: take our styled buffer, render it, then output it
         emit_to_destination(&buffer.render(), level, &mut self.dst, self.short_message)?;
 
-        Ok(())
+        Ok(code_window_status)
     }
 
     fn column_width(&self, code_offset: usize) -> usize {
@@ -2491,7 +2529,7 @@ impl HumanEmitter {
             !children.is_empty()
                 || suggestions.iter().any(|s| s.style != SuggestionStyle::CompletelyHidden),
         ) {
-            Ok(()) => {
+            Ok(code_window_status) => {
                 if !children.is_empty()
                     || suggestions.iter().any(|s| s.style != SuggestionStyle::CompletelyHidden)
                 {
@@ -2502,7 +2540,7 @@ impl HumanEmitter {
                         {
                             // We'll continue the vertical bar to point into the next note.
                             self.draw_col_separator_no_space(&mut buffer, 0, max_line_num_len + 1);
-                        } else {
+                        } else if matches!(code_window_status, CodeWindowStatus::Open) {
                             // We'll close the vertical bar to visually end the code window.
                             self.draw_col_separator_end(&mut buffer, 0, max_line_num_len + 1);
                         }
@@ -2829,10 +2867,11 @@ impl HumanEmitter {
         }
     }
 
-    fn note_separator(&self) -> char {
+    fn note_separator(&self, is_cont: bool) -> &'static str {
         match self.theme {
-            OutputTheme::Ascii => '=',
-            OutputTheme::Unicode => '╰',
+            OutputTheme::Ascii => "= ",
+            OutputTheme::Unicode if is_cont => "├ ",
+            OutputTheme::Unicode => "╰ ",
         }
     }
 
@@ -2945,11 +2984,7 @@ impl HumanEmitter {
         col: usize,
         is_cont: bool,
     ) {
-        let chr = match self.theme {
-            OutputTheme::Ascii => "= ",
-            OutputTheme::Unicode if is_cont => "├ ",
-            OutputTheme::Unicode => "╰ ",
-        };
+        let chr = self.note_separator(is_cont);
         buffer.puts(line, col, chr, Style::LineNumber);
     }
 
@@ -3048,6 +3083,12 @@ enum DisplaySuggestion {
     Diff,
     None,
     Add,
+}
+
+#[derive(Clone, Copy, Debug)]
+enum CodeWindowStatus {
+    Closed,
+    Open,
 }
 
 impl FileWithAnnotatedLines {

@@ -3,6 +3,7 @@ error[E0599]: no method named `finish` found for struct `DefaultHasher` in the c
    |
 LL |     h.finish()
    |       ^^^^^^ method not found in `DefaultHasher`
+   |
   --> $SRC_DIR/core/src/hash/mod.rs:LL:COL
    |
    = note: the method is available for `DefaultHasher` here
