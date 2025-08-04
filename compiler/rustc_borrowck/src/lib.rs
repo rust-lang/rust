@@ -593,7 +593,20 @@ fn do_mir_borrowck<'tcx>(
     //     );
     // }
 
-    if body.basic_blocks.is_cfg_cyclic() {
+    // Loops in THIR don't always have backedges (e.g. a loop that breaks immediately), so the MIR
+    // can still be acyclic even if the THIR had loops. However, if the MIR is acyclic, it must come
+    // from loops.
+    // if body.basic_blocks.is_cfg_cyclic() {
+    //     assert_eq!(
+    //         Some(true),
+    //         body.basic_blocks.thir_had_loops,
+    //         "mismatch between THIR loop and cyclic MIR {:?}",
+    //         body.span,
+    //     );
+    // }
+
+    // if body.basic_blocks.is_cfg_cyclic() {
+    if body.basic_blocks.thir_had_loops.unwrap_or_else(|| body.basic_blocks.is_cfg_cyclic()) {
         // let (mut flow_analysis, flow_entry_states) =
         //     get_flow_results(tcx, body, &move_data, &borrow_set, &regioncx);
         // visit_results(

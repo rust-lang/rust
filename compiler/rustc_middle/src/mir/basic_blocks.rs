@@ -15,6 +15,7 @@ use crate::mir::{BasicBlock, BasicBlockData, START_BLOCK};
 pub struct BasicBlocks<'tcx> {
     basic_blocks: IndexVec<BasicBlock, BasicBlockData<'tcx>>,
     cache: Cache,
+    pub thir_had_loops: Option<bool>,
 }
 
 // Typically 95%+ of basic blocks have 4 or fewer predecessors.
@@ -529,7 +530,7 @@ impl<T: Idx> VecQueue<T> {
 impl<'tcx> BasicBlocks<'tcx> {
     #[inline]
     pub fn new(basic_blocks: IndexVec<BasicBlock, BasicBlockData<'tcx>>) -> Self {
-        BasicBlocks { basic_blocks, cache: Cache::default() }
+        BasicBlocks { basic_blocks, cache: Cache::default(), thir_had_loops: None }
     }
 
     /// Returns true if control-flow graph contains a cycle reachable from the `START_BLOCK`.
