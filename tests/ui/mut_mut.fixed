@@ -49,8 +49,7 @@ fn main() {
         //~| mut_mut
     }
 
-    let mut z = inline!(&mut 3u32mut $(&mut 3u32));
-    //~^ mut_mut
+    let mut z = inline!(&mut $(&mut 3u32));
 }
 
 fn issue939() {

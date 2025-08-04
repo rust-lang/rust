@@ -72,6 +72,9 @@ impl<'tcx> intravisit::Visitor<'tcx> for MutVisitor<'_, 'tcx> {
             intravisit::walk_expr(self, body);
         } else if let hir::ExprKind::AddrOf(hir::BorrowKind::Ref, hir::Mutability::Mut, e) = expr.kind {
             if let hir::ExprKind::AddrOf(hir::BorrowKind::Ref, hir::Mutability::Mut, _) = e.kind {
+                if !expr.span.eq_ctxt(e.span) {
+                    return;
+                }
                 let mut applicability = Applicability::MaybeIncorrect;
                 let sugg = Sugg::hir_with_applicability(self.cx, e, "..", &mut applicability);
                 span_lint_hir_and_then(
