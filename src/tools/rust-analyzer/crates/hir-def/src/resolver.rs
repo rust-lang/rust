@@ -228,15 +228,15 @@ impl<'db> Resolver<'db> {
                                 ResolvePathResultPrefixInfo::default(),
                             ));
                         }
-                    } else if let &GenericDefId::AdtId(adt) = def {
-                        if *first_name == sym::Self_ {
-                            return Some((
-                                TypeNs::AdtSelfType(adt),
-                                remaining_idx(),
-                                None,
-                                ResolvePathResultPrefixInfo::default(),
-                            ));
-                        }
+                    } else if let &GenericDefId::AdtId(adt) = def
+                        && *first_name == sym::Self_
+                    {
+                        return Some((
+                            TypeNs::AdtSelfType(adt),
+                            remaining_idx(),
+                            None,
+                            ResolvePathResultPrefixInfo::default(),
+                        ));
                     }
                     if let Some(id) = params.find_type_by_name(first_name, *def) {
                         return Some((
@@ -401,13 +401,13 @@ impl<'db> Resolver<'db> {
                         handle_macro_def_scope(db, &mut hygiene_id, &mut hygiene_info, macro_id)
                     }
                     Scope::GenericParams { params, def } => {
-                        if let &GenericDefId::ImplId(impl_) = def {
-                            if *first_name == sym::Self_ {
-                                return Some((
-                                    ResolveValueResult::ValueNs(ValueNs::ImplSelf(impl_), None),
-                                    ResolvePathResultPrefixInfo::default(),
-                                ));
-                            }
+                        if let &GenericDefId::ImplId(impl_) = def
+                            && *first_name == sym::Self_
+                        {
+                            return Some((
+                                ResolveValueResult::ValueNs(ValueNs::ImplSelf(impl_), None),
+                                ResolvePathResultPrefixInfo::default(),
+                            ));
                         }
                         if let Some(id) = params.find_const_by_name(first_name, *def) {
                             let val = ValueNs::GenericParam(id);
@@ -436,14 +436,14 @@ impl<'db> Resolver<'db> {
                                     ResolvePathResultPrefixInfo::default(),
                                 ));
                             }
-                        } else if let &GenericDefId::AdtId(adt) = def {
-                            if *first_name == sym::Self_ {
-                                let ty = TypeNs::AdtSelfType(adt);
-                                return Some((
-                                    ResolveValueResult::Partial(ty, 1, None),
-                                    ResolvePathResultPrefixInfo::default(),
-                                ));
-                            }
+                        } else if let &GenericDefId::AdtId(adt) = def
+                            && *first_name == sym::Self_
+                        {
+                            let ty = TypeNs::AdtSelfType(adt);
+                            return Some((
+                                ResolveValueResult::Partial(ty, 1, None),
+                                ResolvePathResultPrefixInfo::default(),
+                            ));
                         }
                         if let Some(id) = params.find_type_by_name(first_name, *def) {
                             let ty = TypeNs::GenericParam(id);
@@ -469,13 +469,14 @@ impl<'db> Resolver<'db> {
         // If a path of the shape `u16::from_le_bytes` failed to resolve at all, then we fall back
         // to resolving to the primitive type, to allow this to still work in the presence of
         // `use core::u16;`.
-        if path.kind == PathKind::Plain && n_segments > 1 {
-            if let Some(builtin) = BuiltinType::by_name(first_name) {
-                return Some((
-                    ResolveValueResult::Partial(TypeNs::BuiltinType(builtin), 1, None),
-                    ResolvePathResultPrefixInfo::default(),
-                ));
-            }
+        if path.kind == PathKind::Plain
+            && n_segments > 1
+            && let Some(builtin) = BuiltinType::by_name(first_name)
+        {
+            return Some((
+                ResolveValueResult::Partial(TypeNs::BuiltinType(builtin), 1, None),
+                ResolvePathResultPrefixInfo::default(),
+            ));
         }
 
         None
@@ -660,12 +661,11 @@ impl<'db> Resolver<'db> {
                 Scope::BlockScope(m) => traits.extend(m.def_map[m.module_id].scope.traits()),
                 &Scope::GenericParams { def: GenericDefId::ImplId(impl_), .. } => {
                     let impl_data = db.impl_signature(impl_);
-                    if let Some(target_trait) = impl_data.target_trait {
-                        if let Some(TypeNs::TraitId(trait_)) = self
+                    if let Some(target_trait) = impl_data.target_trait
+                        && let Some(TypeNs::TraitId(trait_)) = self
                             .resolve_path_in_type_ns_fully(db, &impl_data.store[target_trait.path])
-                        {
-                            traits.insert(trait_);
-                        }
+                    {
+                        traits.insert(trait_);
                     }
                 }
                 _ => (),
@@ -918,17 +918,17 @@ fn handle_macro_def_scope(
     hygiene_info: &mut Option<(SyntaxContext, MacroDefId)>,
     macro_id: &MacroDefId,
 ) {
-    if let Some((parent_ctx, label_macro_id)) = hygiene_info {
-        if label_macro_id == macro_id {
-            // A macro is allowed to refer to variables from before its declaration.
-            // Therefore, if we got to the rib of its declaration, give up its hygiene
-            // and use its parent expansion.
-            *hygiene_id = HygieneId::new(parent_ctx.opaque_and_semitransparent(db));
-            *hygiene_info = parent_ctx.outer_expn(db).map(|expansion| {
-                let expansion = db.lookup_intern_macro_call(expansion.into());
-                (parent_ctx.parent(db), expansion.def)
-            });
-        }
+    if let Some((parent_ctx, label_macro_id)) = hygiene_info
+        && label_macro_id == macro_id
+    {
+        // A macro is allowed to refer to variables from before its declaration.
+        // Therefore, if we got to the rib of its declaration, give up its hygiene
+        // and use its parent expansion.
+        *hygiene_id = HygieneId::new(parent_ctx.opaque_and_semitransparent(db));
+        *hygiene_info = parent_ctx.outer_expn(db).map(|expansion| {
+            let expansion = db.lookup_intern_macro_call(expansion.into());
+            (parent_ctx.parent(db), expansion.def)
+        });
     }
 }
 

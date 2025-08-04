@@ -22,30 +22,31 @@ pub(super) fn hints(
         return None;
     }
 
-    if let Either::Right(it) = &statik_or_const {
-        if ast::AssocItemList::can_cast(
+    if let Either::Right(it) = &statik_or_const
+        && ast::AssocItemList::can_cast(
             it.syntax().parent().map_or(SyntaxKind::EOF, |it| it.kind()),
-        ) {
-            return None;
-        }
+        )
+    {
+        return None;
     }
 
-    if let Some(ast::Type::RefType(ty)) = statik_or_const.either(|it| it.ty(), |it| it.ty()) {
-        if ty.lifetime().is_none() {
-            let t = ty.amp_token()?;
-            acc.push(InlayHint {
-                range: t.text_range(),
-                kind: InlayKind::Lifetime,
-                label: "'static".into(),
-                text_edit: Some(config.lazy_text_edit(|| {
-                    TextEdit::insert(t.text_range().start(), "'static ".into())
-                })),
-                position: InlayHintPosition::After,
-                pad_left: false,
-                pad_right: true,
-                resolve_parent: None,
-            });
-        }
+    if let Some(ast::Type::RefType(ty)) = statik_or_const.either(|it| it.ty(), |it| it.ty())
+        && ty.lifetime().is_none()
+    {
+        let t = ty.amp_token()?;
+        acc.push(InlayHint {
+            range: t.text_range(),
+            kind: InlayKind::Lifetime,
+            label: "'static".into(),
+            text_edit: Some(
+                config
+                    .lazy_text_edit(|| TextEdit::insert(t.text_range().start(), "'static ".into())),
+            ),
+            position: InlayHintPosition::After,
+            pad_left: false,
+            pad_right: true,
+            resolve_parent: None,
+        });
     }
 
     Some(())

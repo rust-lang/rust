@@ -510,12 +510,11 @@ impl ItemScope {
         id: AttrId,
         idx: usize,
     ) {
-        if let Some(derives) = self.derive_macros.get_mut(&adt) {
-            if let Some(DeriveMacroInvocation { derive_call_ids, .. }) =
+        if let Some(derives) = self.derive_macros.get_mut(&adt)
+            && let Some(DeriveMacroInvocation { derive_call_ids, .. }) =
                 derives.iter_mut().find(|&&mut DeriveMacroInvocation { attr_id, .. }| id == attr_id)
-            {
-                derive_call_ids[idx] = Some(call);
-            }
+        {
+            derive_call_ids[idx] = Some(call);
         }
     }
 

@@ -233,26 +233,25 @@ impl CastCheck {
         F: FnMut(ExprId, Vec<Adjustment>),
     {
         // Mutability order is opposite to rustc. `Mut < Not`
-        if m_expr <= m_cast {
-            if let TyKind::Array(ety, _) = t_expr.kind(Interner) {
-                // Coerce to a raw pointer so that we generate RawPtr in MIR.
-                let array_ptr_type = TyKind::Raw(m_expr, t_expr.clone()).intern(Interner);
-                if let Ok((adj, _)) = table.coerce(&self.expr_ty, &array_ptr_type, CoerceNever::Yes)
-                {
-                    apply_adjustments(self.source_expr, adj);
-                } else {
-                    never!(
-                        "could not cast from reference to array to pointer to array ({:?} to {:?})",
-                        self.expr_ty,
-                        array_ptr_type
-                    );
-                }
+        if m_expr <= m_cast
+            && let TyKind::Array(ety, _) = t_expr.kind(Interner)
+        {
+            // Coerce to a raw pointer so that we generate RawPtr in MIR.
+            let array_ptr_type = TyKind::Raw(m_expr, t_expr.clone()).intern(Interner);
+            if let Ok((adj, _)) = table.coerce(&self.expr_ty, &array_ptr_type, CoerceNever::Yes) {
+                apply_adjustments(self.source_expr, adj);
+            } else {
+                never!(
+                    "could not cast from reference to array to pointer to array ({:?} to {:?})",
+                    self.expr_ty,
+                    array_ptr_type
+                );
+            }
 
-                // This is a less strict condition than rustc's `demand_eqtype`,
-                // but false negative is better than false positive
-                if table.coerce(ety, t_cast, CoerceNever::Yes).is_ok() {
-                    return Ok(());
-                }
+            // This is a less strict condition than rustc's `demand_eqtype`,
+            // but false negative is better than false positive
+            if table.coerce(ety, t_cast, CoerceNever::Yes).is_ok() {
+                return Ok(());
             }
         }
 

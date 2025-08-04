@@ -1487,13 +1487,13 @@ impl ExprCollector<'_> {
             ast::Expr::UnderscoreExpr(_) => self.alloc_pat_from_expr(Pat::Wild, syntax_ptr),
             ast::Expr::ParenExpr(e) => {
                 // We special-case `(..)` for consistency with patterns.
-                if let Some(ast::Expr::RangeExpr(range)) = e.expr() {
-                    if range.is_range_full() {
-                        return Some(self.alloc_pat_from_expr(
-                            Pat::Tuple { args: Box::default(), ellipsis: Some(0) },
-                            syntax_ptr,
-                        ));
-                    }
+                if let Some(ast::Expr::RangeExpr(range)) = e.expr()
+                    && range.is_range_full()
+                {
+                    return Some(self.alloc_pat_from_expr(
+                        Pat::Tuple { args: Box::default(), ellipsis: Some(0) },
+                        syntax_ptr,
+                    ));
                 }
                 return e.expr().and_then(|expr| self.maybe_collect_expr_as_pat(&expr));
             }
@@ -2569,19 +2569,18 @@ impl ExprCollector<'_> {
                     }
                 }
                 RibKind::MacroDef(macro_id) => {
-                    if let Some((parent_ctx, label_macro_id)) = hygiene_info {
-                        if label_macro_id == **macro_id {
-                            // A macro is allowed to refer to labels from before its declaration.
-                            // Therefore, if we got to the rib of its declaration, give up its hygiene
-                            // and use its parent expansion.
+                    if let Some((parent_ctx, label_macro_id)) = hygiene_info
+                        && label_macro_id == **macro_id
+                    {
+                        // A macro is allowed to refer to labels from before its declaration.
+                        // Therefore, if we got to the rib of its declaration, give up its hygiene
+                        // and use its parent expansion.
 
-                            hygiene_id =
-                                HygieneId::new(parent_ctx.opaque_and_semitransparent(self.db));
-                            hygiene_info = parent_ctx.outer_expn(self.db).map(|expansion| {
-                                let expansion = self.db.lookup_intern_macro_call(expansion.into());
-                                (parent_ctx.parent(self.db), expansion.def)
-                            });
-                        }
+                        hygiene_id = HygieneId::new(parent_ctx.opaque_and_semitransparent(self.db));
+                        hygiene_info = parent_ctx.outer_expn(self.db).map(|expansion| {
+                            let expansion = self.db.lookup_intern_macro_call(expansion.into());
+                            (parent_ctx.parent(self.db), expansion.def)
+                        });
                     }
                 }
                 _ => {}

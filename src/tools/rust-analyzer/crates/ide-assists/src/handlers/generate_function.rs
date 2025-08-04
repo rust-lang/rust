@@ -70,10 +70,10 @@ fn gen_fn(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let TargetInfo { target_module, adt_info, target, file } =
         fn_target_info(ctx, path, &call, fn_name)?;
 
-    if let Some(m) = target_module {
-        if !is_editable_crate(m.krate(), ctx.db()) {
-            return None;
-        }
+    if let Some(m) = target_module
+        && !is_editable_crate(m.krate(), ctx.db())
+    {
+        return None;
     }
 
     let function_builder =

@@ -334,10 +334,10 @@ where
             _ => Some(CfgExpr::Atom(CfgAtom::Flag(name))),
         },
     };
-    if let Some(NodeOrToken::Token(element)) = iter.peek() {
-        if element.kind() == syntax::T![,] {
-            iter.next();
-        }
+    if let Some(NodeOrToken::Token(element)) = iter.peek()
+        && element.kind() == syntax::T![,]
+    {
+        iter.next();
     }
     result
 }

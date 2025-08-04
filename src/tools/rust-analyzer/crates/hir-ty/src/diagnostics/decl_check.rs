@@ -657,10 +657,10 @@ impl<'a> DeclValidator<'a> {
     }
 
     fn is_trait_impl_container(&self, container_id: ItemContainerId) -> bool {
-        if let ItemContainerId::ImplId(impl_id) = container_id {
-            if self.db.impl_trait(impl_id).is_some() {
-                return true;
-            }
+        if let ItemContainerId::ImplId(impl_id) = container_id
+            && self.db.impl_trait(impl_id).is_some()
+        {
+            return true;
         }
         false
     }
