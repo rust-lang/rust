@@ -106,24 +106,6 @@ fn test_float_bits_conv() {
 }
 
 #[test]
-#[should_panic]
-fn test_clamp_min_greater_than_max() {
-    let _ = 1.0f64.clamp(3.0, 1.0);
-}
-
-#[test]
-#[should_panic]
-fn test_clamp_min_is_nan() {
-    let _ = 1.0f64.clamp(f64::NAN, 1.0);
-}
-
-#[test]
-#[should_panic]
-fn test_clamp_max_is_nan() {
-    let _ = 1.0f64.clamp(3.0, f64::NAN);
-}
-
-#[test]
 fn test_total_cmp() {
     use core::cmp::Ordering;
 

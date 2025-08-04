@@ -1145,3 +1145,48 @@ float_test! {
         assert_biteq!(Float::INFINITY.sqrt(), Float::INFINITY);
     }
 }
+
+float_test! {
+    name: clamp_min_greater_than_max,
+    attrs: {
+        const: #[cfg(false)],
+        f16: #[should_panic, cfg(any(miri, target_has_reliable_f16))],
+        f32: #[should_panic],
+        f64: #[should_panic],
+        f128: #[should_panic, cfg(any(miri, target_has_reliable_f128))],
+    },
+    test<Float> {
+        let one : Float = 1.0;
+        let _ = one.clamp(3.0, 1.0);
+    }
+}
+
+float_test! {
+    name: clamp_min_is_nan,
+    attrs: {
+        const: #[cfg(false)],
+        f16: #[should_panic, cfg(any(miri, target_has_reliable_f16))],
+        f32: #[should_panic],
+        f64: #[should_panic],
+        f128: #[should_panic, cfg(any(miri, target_has_reliable_f128))],
+    },
+    test<Float> {
+        let one : Float = 1.0;
+        let _ = one.clamp(Float::NAN, 1.0);
+    }
+}
+
+float_test! {
+    name: clamp_max_is_nan,
+    attrs: {
+        const: #[cfg(false)],
+        f16: #[should_panic, cfg(any(miri, target_has_reliable_f16))],
+        f32: #[should_panic],
+        f64: #[should_panic],
+        f128: #[should_panic, cfg(any(miri, target_has_reliable_f128))],
+    },
+    test<Float> {
+        let one : Float = 1.0;
+        let _ = one.clamp(3.0, Float::NAN);
+    }
+}
