@@ -223,7 +223,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
     pub(crate) fn build_reduced_graph_external(&self, module: Module<'ra>) {
         for child in self.tcx.module_children(module.def_id()) {
-            let parent_scope = ParentScope::module(module, self);
+            let parent_scope = ParentScope::module(module, self.arenas);
             self.build_reduced_graph_for_external_crate_res(child, parent_scope)
         }
     }
@@ -373,7 +373,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                         res,
                     ))
                 };
-                match self.r.resolve_path(
+                match self.r.cm().resolve_path(
                     &segments,
                     None,
                     parent_scope,
@@ -1128,7 +1128,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
             });
         } else {
             for ident in single_imports.iter().cloned() {
-                let result = self.r.maybe_resolve_ident_in_module(
+                let result = self.r.cm().maybe_resolve_ident_in_module(
                     ModuleOrUniformRoot::Module(module),
                     ident,
                     MacroNS,
