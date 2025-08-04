@@ -10,7 +10,7 @@ use std::iter::{self, once};
 use crate::{
     Adt, AssocItem, BindingMode, BuiltinAttr, BuiltinType, Callable, Const, DeriveHelper, Field,
     Function, GenericSubstitution, Local, Macro, ModuleDef, Static, Struct, ToolModule, Trait,
-    TraitAlias, TupleField, Type, TypeAlias, Variant,
+    TupleField, Type, TypeAlias, Variant,
     db::HirDatabase,
     semantics::{PathResolution, PathResolutionPerNs},
 };
@@ -1587,7 +1587,6 @@ fn resolve_hir_path_(
             TypeNs::TypeAliasId(it) => PathResolution::Def(TypeAlias::from(it).into()),
             TypeNs::BuiltinType(it) => PathResolution::Def(BuiltinType::from(it).into()),
             TypeNs::TraitId(it) => PathResolution::Def(Trait::from(it).into()),
-            TypeNs::TraitAliasId(it) => PathResolution::Def(TraitAlias::from(it).into()),
             TypeNs::ModuleId(it) => PathResolution::Def(ModuleDef::Module(it.into())),
         };
         match unresolved {
@@ -1737,7 +1736,6 @@ fn resolve_hir_path_qualifier(
             TypeNs::TypeAliasId(it) => PathResolution::Def(TypeAlias::from(it).into()),
             TypeNs::BuiltinType(it) => PathResolution::Def(BuiltinType::from(it).into()),
             TypeNs::TraitId(it) => PathResolution::Def(Trait::from(it).into()),
-            TypeNs::TraitAliasId(it) => PathResolution::Def(TraitAlias::from(it).into()),
             TypeNs::ModuleId(it) => PathResolution::Def(ModuleDef::Module(it.into())),
         };
         match unresolved {

@@ -52,7 +52,7 @@ use hir_def::{
     CrateRootModuleId, DefWithBodyId, EnumId, EnumVariantId, ExternBlockId, ExternCrateId,
     FunctionId, GenericDefId, GenericParamId, HasModule, ImplId, ItemContainerId, LifetimeParamId,
     LocalFieldId, Lookup, MacroExpander, MacroId, ModuleId, StaticId, StructId, SyntheticSyntax,
-    TraitAliasId, TupleId, TypeAliasId, TypeOrConstParamId, TypeParamId, UnionId,
+    TupleId, TypeAliasId, TypeOrConstParamId, TypeParamId, UnionId,
     expr_store::{ExpressionStoreDiagnostics, ExpressionStoreSourceMap},
     hir::{
         BindingAnnotation, BindingId, Expr, ExprId, ExprOrPatId, LabelId, Pat,
@@ -333,7 +333,6 @@ pub enum ModuleDef {
     Const(Const),
     Static(Static),
     Trait(Trait),
-    TraitAlias(TraitAlias),
     TypeAlias(TypeAlias),
     BuiltinType(BuiltinType),
     Macro(Macro),
@@ -346,7 +345,6 @@ impl_from!(
     Const,
     Static,
     Trait,
-    TraitAlias,
     TypeAlias,
     BuiltinType,
     Macro
@@ -373,7 +371,6 @@ impl ModuleDef {
             ModuleDef::Const(it) => Some(it.module(db)),
             ModuleDef::Static(it) => Some(it.module(db)),
             ModuleDef::Trait(it) => Some(it.module(db)),
-            ModuleDef::TraitAlias(it) => Some(it.module(db)),
             ModuleDef::TypeAlias(it) => Some(it.module(db)),
             ModuleDef::Macro(it) => Some(it.module(db)),
             ModuleDef::BuiltinType(_) => None,
@@ -402,7 +399,6 @@ impl ModuleDef {
             ModuleDef::Const(it) => it.name(db)?,
             ModuleDef::Adt(it) => it.name(db),
             ModuleDef::Trait(it) => it.name(db),
-            ModuleDef::TraitAlias(it) => it.name(db),
             ModuleDef::Function(it) => it.name(db),
             ModuleDef::Variant(it) => it.name(db),
             ModuleDef::TypeAlias(it) => it.name(db),
@@ -425,7 +421,6 @@ impl ModuleDef {
                 Adt::Union(it) => it.id.into(),
             },
             ModuleDef::Trait(it) => it.id.into(),
-            ModuleDef::TraitAlias(it) => it.id.into(),
             ModuleDef::Function(it) => it.id.into(),
             ModuleDef::TypeAlias(it) => it.id.into(),
             ModuleDef::Module(it) => it.id.into(),
@@ -465,7 +460,6 @@ impl ModuleDef {
             ModuleDef::Module(_)
             | ModuleDef::Adt(_)
             | ModuleDef::Trait(_)
-            | ModuleDef::TraitAlias(_)
             | ModuleDef::TypeAlias(_)
             | ModuleDef::Macro(_)
             | ModuleDef::BuiltinType(_) => None,
@@ -478,7 +472,6 @@ impl ModuleDef {
             ModuleDef::Function(it) => Some(it.into()),
             ModuleDef::Adt(it) => Some(it.into()),
             ModuleDef::Trait(it) => Some(it.into()),
-            ModuleDef::TraitAlias(it) => Some(it.into()),
             ModuleDef::TypeAlias(it) => Some(it.into()),
             ModuleDef::Module(_)
             | ModuleDef::Variant(_)
@@ -498,7 +491,6 @@ impl ModuleDef {
             ModuleDef::Const(it) => it.attrs(db),
             ModuleDef::Static(it) => it.attrs(db),
             ModuleDef::Trait(it) => it.attrs(db),
-            ModuleDef::TraitAlias(it) => it.attrs(db),
             ModuleDef::TypeAlias(it) => it.attrs(db),
             ModuleDef::Macro(it) => it.attrs(db),
             ModuleDef::BuiltinType(_) => return None,
@@ -524,7 +516,6 @@ impl HasVisibility for ModuleDef {
             ModuleDef::Const(it) => it.visibility(db),
             ModuleDef::Static(it) => it.visibility(db),
             ModuleDef::Trait(it) => it.visibility(db),
-            ModuleDef::TraitAlias(it) => it.visibility(db),
             ModuleDef::TypeAlias(it) => it.visibility(db),
             ModuleDef::Variant(it) => it.visibility(db),
             ModuleDef::Macro(it) => it.visibility(db),
@@ -3046,29 +3037,6 @@ impl HasVisibility for Trait {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct TraitAlias {
-    pub(crate) id: TraitAliasId,
-}
-
-impl TraitAlias {
-    pub fn module(self, db: &dyn HirDatabase) -> Module {
-        Module { id: self.id.lookup(db).container }
-    }
-
-    pub fn name(self, db: &dyn HirDatabase) -> Name {
-        db.trait_alias_signature(self.id).name.clone()
-    }
-}
-
-impl HasVisibility for TraitAlias {
-    fn visibility(&self, db: &dyn HirDatabase) -> Visibility {
-        let loc = self.id.lookup(db);
-        let source = loc.source(db);
-        visibility_from_ast(db, self.id, source.map(|src| src.visibility()))
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct TypeAlias {
     pub(crate) id: TypeAliasId,
 }
@@ -3690,7 +3658,6 @@ pub enum GenericDef {
     Function(Function),
     Adt(Adt),
     Trait(Trait),
-    TraitAlias(TraitAlias),
     TypeAlias(TypeAlias),
     Impl(Impl),
     // consts can have type parameters from their parents (i.e. associated consts of traits)
@@ -3701,7 +3668,6 @@ impl_from!(
     Function,
     Adt(Struct, Enum, Union),
     Trait,
-    TraitAlias,
     TypeAlias,
     Impl,
     Const,
@@ -3751,7 +3717,6 @@ impl GenericDef {
             GenericDef::Function(it) => it.id.into(),
             GenericDef::Adt(it) => it.into(),
             GenericDef::Trait(it) => it.id.into(),
-            GenericDef::TraitAlias(it) => it.id.into(),
             GenericDef::TypeAlias(it) => it.id.into(),
             GenericDef::Impl(it) => it.id.into(),
             GenericDef::Const(it) => it.id.into(),
@@ -3776,7 +3741,6 @@ impl GenericDef {
             GenericDefId::FunctionId(it) => db.function_signature_with_source_map(it).1,
             GenericDefId::ImplId(it) => db.impl_signature_with_source_map(it).1,
             GenericDefId::StaticId(_) => return,
-            GenericDefId::TraitAliasId(it) => db.trait_alias_signature_with_source_map(it).1,
             GenericDefId::TraitId(it) => db.trait_signature_with_source_map(it).1,
             GenericDefId::TypeAliasId(it) => db.type_alias_signature_with_source_map(it).1,
         };
@@ -3813,7 +3777,6 @@ impl GenericDef {
             GenericDef::Adt(Adt::Enum(_)) => "enum",
             GenericDef::Adt(Adt::Union(_)) => "union",
             GenericDef::Trait(_) => "trait",
-            GenericDef::TraitAlias(_) => "trait alias",
             GenericDef::TypeAlias(_) => "type alias",
             GenericDef::Impl(_) => "impl",
             GenericDef::Const(_) => "constant",
@@ -6401,12 +6364,6 @@ impl HasCrate for Trait {
     }
 }
 
-impl HasCrate for TraitAlias {
-    fn krate(&self, db: &dyn HirDatabase) -> Crate {
-        self.module(db).krate()
-    }
-}
-
 impl HasCrate for Static {
     fn krate(&self, db: &dyn HirDatabase) -> Crate {
         self.module(db).krate()
@@ -6495,12 +6452,6 @@ impl HasContainer for Static {
 }
 
 impl HasContainer for Trait {
-    fn container(&self, db: &dyn HirDatabase) -> ItemContainer {
-        ItemContainer::Module(Module { id: self.id.lookup(db).container })
-    }
-}
-
-impl HasContainer for TraitAlias {
     fn container(&self, db: &dyn HirDatabase) -> ItemContainer {
         ItemContainer::Module(Module { id: self.id.lookup(db).container })
     }

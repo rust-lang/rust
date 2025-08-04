@@ -276,7 +276,6 @@ enum SmallModItem {
     Static(Static),
     Struct(Struct),
     Trait(Trait),
-    TraitAlias(TraitAlias),
     TypeAlias(TypeAlias),
     Union(Union),
 }
@@ -404,7 +403,6 @@ ModItemId ->
     Static in small_data -> ast::Static,
     Struct in small_data -> ast::Struct,
     Trait in small_data -> ast::Trait,
-    TraitAlias in small_data -> ast::TraitAlias,
     TypeAlias in small_data -> ast::TypeAlias,
     Union in small_data -> ast::Union,
     Use in big_data -> ast::Use,
@@ -579,12 +577,6 @@ pub struct Static {
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Trait {
-    pub name: Name,
-    pub(crate) visibility: RawVisibilityId,
-}
-
-#[derive(Debug, Clone, Eq, PartialEq)]
-pub struct TraitAlias {
     pub name: Name,
     pub(crate) visibility: RawVisibilityId,
 }

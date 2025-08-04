@@ -33,7 +33,7 @@ use tt::TextRange;
 
 use crate::{
     AdtId, BlockId, BlockLoc, DefWithBodyId, FunctionId, GenericDefId, ImplId, MacroId,
-    ModuleDefId, ModuleId, TraitAliasId, TraitId, TypeAliasId, UnresolvedMacro,
+    ModuleDefId, ModuleId, TraitId, TypeAliasId, UnresolvedMacro,
     builtin_type::BuiltinUint,
     db::DefDatabase,
     expr_store::{
@@ -235,28 +235,6 @@ pub(crate) fn lower_trait(
     module: ModuleId,
     trait_syntax: InFile<ast::Trait>,
     trait_id: TraitId,
-) -> (ExpressionStore, ExpressionStoreSourceMap, Arc<GenericParams>) {
-    let mut expr_collector = ExprCollector::new(db, module, trait_syntax.file_id);
-    let mut collector = generics::GenericParamsCollector::with_self_param(
-        &mut expr_collector,
-        trait_id.into(),
-        trait_syntax.value.type_bound_list(),
-    );
-    collector.lower(
-        &mut expr_collector,
-        trait_syntax.value.generic_param_list(),
-        trait_syntax.value.where_clause(),
-    );
-    let params = collector.finish();
-    let (store, source_map) = expr_collector.store.finish();
-    (store, source_map, params)
-}
-
-pub(crate) fn lower_trait_alias(
-    db: &dyn DefDatabase,
-    module: ModuleId,
-    trait_syntax: InFile<ast::TraitAlias>,
-    trait_id: TraitAliasId,
 ) -> (ExpressionStore, ExpressionStoreSourceMap, Arc<GenericParams>) {
     let mut expr_collector = ExprCollector::new(db, module, trait_syntax.file_id);
     let mut collector = generics::GenericParamsCollector::with_self_param(

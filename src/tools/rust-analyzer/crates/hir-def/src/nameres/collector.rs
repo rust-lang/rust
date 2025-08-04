@@ -30,7 +30,7 @@ use crate::{
     ExternCrateId, ExternCrateLoc, FunctionId, FunctionLoc, ImplLoc, Intern, ItemContainerId,
     LocalModuleId, Lookup, Macro2Id, Macro2Loc, MacroExpander, MacroId, MacroRulesId,
     MacroRulesLoc, MacroRulesLocFlags, ModuleDefId, ModuleId, ProcMacroId, ProcMacroLoc, StaticLoc,
-    StructLoc, TraitAliasLoc, TraitLoc, TypeAliasLoc, UnionLoc, UnresolvedMacro, UseId, UseLoc,
+    StructLoc, TraitLoc, TypeAliasLoc, UnionLoc, UnresolvedMacro, UseId, UseLoc,
     attr::Attrs,
     db::DefDatabase,
     item_scope::{GlobId, ImportId, ImportOrExternCrate, PerNsGlobImports},
@@ -1947,20 +1947,6 @@ impl ModCollector<'_, '_> {
                     update_def(
                         self.def_collector,
                         TraitLoc { container: module, id: InFile::new(self.file_id(), id) }
-                            .intern(db)
-                            .into(),
-                        &it.name,
-                        vis,
-                        false,
-                    );
-                }
-                ModItemId::TraitAlias(id) => {
-                    let it = &self.item_tree[id];
-
-                    let vis = resolve_vis(def_map, local_def_map, &self.item_tree[it.visibility]);
-                    update_def(
-                        self.def_collector,
-                        TraitAliasLoc { container: module, id: InFile::new(self.file_id(), id) }
                             .intern(db)
                             .into(),
                         &it.name,

@@ -339,10 +339,6 @@ fn signature_help_for_generics(
             res.doc = it.docs(db);
             format_to!(res.signature, "trait {}", it.name(db).display(db, edition));
         }
-        hir::GenericDef::TraitAlias(it) => {
-            res.doc = it.docs(db);
-            format_to!(res.signature, "trait {}", it.name(db).display(db, edition));
-        }
         hir::GenericDef::TypeAlias(it) => {
             res.doc = it.docs(db);
             format_to!(res.signature, "type {}", it.name(db).display(db, edition));

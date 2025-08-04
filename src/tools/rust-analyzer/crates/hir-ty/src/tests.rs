@@ -9,6 +9,7 @@ mod never_type;
 mod patterns;
 mod regression;
 mod simple;
+mod trait_aliases;
 mod traits;
 mod type_alias_impl_traits;
 

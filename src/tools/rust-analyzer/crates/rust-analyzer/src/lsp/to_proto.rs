@@ -61,7 +61,7 @@ pub(crate) fn symbol_kind(symbol_kind: SymbolKind) -> lsp_types::SymbolKind {
         SymbolKind::Struct => lsp_types::SymbolKind::STRUCT,
         SymbolKind::Enum => lsp_types::SymbolKind::ENUM,
         SymbolKind::Variant => lsp_types::SymbolKind::ENUM_MEMBER,
-        SymbolKind::Trait | SymbolKind::TraitAlias => lsp_types::SymbolKind::INTERFACE,
+        SymbolKind::Trait => lsp_types::SymbolKind::INTERFACE,
         SymbolKind::Macro
         | SymbolKind::ProcMacro
         | SymbolKind::BuiltinAttr
@@ -156,7 +156,6 @@ pub(crate) fn completion_item_kind(
             SymbolKind::Static => lsp_types::CompletionItemKind::VALUE,
             SymbolKind::Struct => lsp_types::CompletionItemKind::STRUCT,
             SymbolKind::Trait => lsp_types::CompletionItemKind::INTERFACE,
-            SymbolKind::TraitAlias => lsp_types::CompletionItemKind::INTERFACE,
             SymbolKind::TypeAlias => lsp_types::CompletionItemKind::STRUCT,
             SymbolKind::TypeParam => lsp_types::CompletionItemKind::TYPE_PARAMETER,
             SymbolKind::Union => lsp_types::CompletionItemKind::STRUCT,
@@ -817,7 +816,6 @@ fn semantic_token_type_and_modifiers(
             SymbolKind::Union => types::UNION,
             SymbolKind::TypeAlias => types::TYPE_ALIAS,
             SymbolKind::Trait => types::INTERFACE,
-            SymbolKind::TraitAlias => types::INTERFACE,
             SymbolKind::Macro => types::MACRO,
             SymbolKind::ProcMacro => types::PROC_MACRO,
             SymbolKind::BuiltinAttr => types::BUILTIN_ATTRIBUTE,
@@ -909,7 +907,6 @@ pub(crate) fn folding_range(
         | FoldKind::WhereClause
         | FoldKind::ReturnType
         | FoldKind::Array
-        | FoldKind::TraitAliases
         | FoldKind::ExternCrates
         | FoldKind::MatchArm
         | FoldKind::Function => None,

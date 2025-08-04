@@ -23,8 +23,8 @@ use itertools::Itertools;
 use crate::{
     Adt, AsAssocItem, AssocItem, AssocItemContainer, Const, ConstParam, Crate, Enum,
     ExternCrateDecl, Field, Function, GenericParam, HasCrate, HasVisibility, Impl, LifetimeParam,
-    Macro, Module, SelfParam, Static, Struct, StructKind, Trait, TraitAlias, TraitRef, TupleField,
-    TyBuilder, Type, TypeAlias, TypeOrConstParam, TypeParam, Union, Variant,
+    Macro, Module, SelfParam, Static, Struct, StructKind, Trait, TraitRef, TupleField, TyBuilder,
+    Type, TypeAlias, TypeOrConstParam, TypeParam, Union, Variant,
 };
 
 impl HirDisplay for Function {
@@ -751,6 +751,7 @@ impl HirDisplay for TraitRef<'_> {
 
 impl HirDisplay for Trait {
     fn hir_fmt(&self, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
+        // FIXME(trait-alias) needs special handling to print the equal sign
         write_trait_header(self, f)?;
         let def_id = GenericDefId::TraitId(self.id);
         let has_where_clause = write_where_clause(def_id, f)?;
@@ -800,22 +801,6 @@ fn write_trait_header(trait_: &Trait, f: &mut HirFormatter<'_>) -> Result<(), Hi
     write!(f, "trait {}", data.name.display(f.db, f.edition()))?;
     write_generic_params(GenericDefId::TraitId(trait_.id), f)?;
     Ok(())
-}
-
-impl HirDisplay for TraitAlias {
-    fn hir_fmt(&self, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
-        write_visibility(self.module(f.db).id, self.visibility(f.db), f)?;
-        let data = f.db.trait_alias_signature(self.id);
-        write!(f, "trait {}", data.name.display(f.db, f.edition()))?;
-        let def_id = GenericDefId::TraitAliasId(self.id);
-        write_generic_params(def_id, f)?;
-        f.write_str(" = ")?;
-        // FIXME: Currently we lower every bounds in a trait alias as a trait bound on `Self` i.e.
-        // `trait Foo = Bar` is stored and displayed as `trait Foo = where Self: Bar`, which might
-        // be less readable.
-        write_where_clause(def_id, f)?;
-        Ok(())
-    }
 }
 
 impl HirDisplay for TypeAlias {

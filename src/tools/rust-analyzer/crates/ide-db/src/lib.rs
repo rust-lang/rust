@@ -273,7 +273,6 @@ pub enum SymbolKind {
     Struct,
     ToolModule,
     Trait,
-    TraitAlias,
     TypeAlias,
     TypeParam,
     Union,
@@ -306,7 +305,6 @@ impl From<hir::ModuleDef> for SymbolKind {
             hir::ModuleDef::Adt(hir::Adt::Enum(..)) => SymbolKind::Enum,
             hir::ModuleDef::Adt(hir::Adt::Union(..)) => SymbolKind::Union,
             hir::ModuleDef::Trait(..) => SymbolKind::Trait,
-            hir::ModuleDef::TraitAlias(..) => SymbolKind::TraitAlias,
             hir::ModuleDef::TypeAlias(..) => SymbolKind::TypeAlias,
             hir::ModuleDef::BuiltinType(..) => SymbolKind::TypeAlias,
         }

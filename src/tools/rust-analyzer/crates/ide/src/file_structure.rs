@@ -162,7 +162,6 @@ fn structure_node(node: &SyntaxNode, config: &FileStructureConfig) -> Option<Str
             ast::Enum(it) => decl(it, StructureNodeKind::SymbolKind(SymbolKind::Enum)),
             ast::Variant(it) => decl(it, StructureNodeKind::SymbolKind(SymbolKind::Variant)),
             ast::Trait(it) => decl(it, StructureNodeKind::SymbolKind(SymbolKind::Trait)),
-            ast::TraitAlias(it) => decl(it, StructureNodeKind::SymbolKind(SymbolKind::TraitAlias)),
             ast::Module(it) => decl(it, StructureNodeKind::SymbolKind(SymbolKind::Module)),
             ast::Macro(it) => decl(it, StructureNodeKind::SymbolKind(SymbolKind::Macro)),
             ast::TypeAlias(it) => decl_with_type_ref(&it, it.ty(), StructureNodeKind::SymbolKind(SymbolKind::TypeAlias)),
@@ -553,7 +552,7 @@ fn let_statements() {
                         navigation_range: 251..256,
                         node_range: 245..262,
                         kind: SymbolKind(
-                            TraitAlias,
+                            Trait,
                         ),
                         detail: None,
                         deprecated: false,

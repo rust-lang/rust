@@ -37,9 +37,7 @@ pub(crate) fn complete_type_path(
                 true
             }
             // Type things are fine
-            ScopeDef::ModuleDef(
-                BuiltinType(_) | Adt(_) | Module(_) | Trait(_) | TraitAlias(_) | TypeAlias(_),
-            )
+            ScopeDef::ModuleDef(BuiltinType(_) | Adt(_) | Module(_) | Trait(_) | TypeAlias(_))
             | ScopeDef::AdtSelfType(_)
             | ScopeDef::Unknown
             | ScopeDef::GenericParam(TypeParam(_)) => location.complete_types(),
