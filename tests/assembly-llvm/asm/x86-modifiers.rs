@@ -30,65 +30,12 @@ macro_rules! check {
     };
 }
 
-// Note: we don't have any way of ensuring that k1 is actually the register
-// chosen by the register allocator, so this check may fail if a different
-// register is chosen.
-// CHECK-LABEL: kreg:
-// CHECK: #APP
-// CHECK: kmovb k1, k1
-// CHECK: #NO_APP
-check!(kreg "" kreg "kmovb");
-
 // CHECK-LABEL: reg:
 // CHECK: #APP
 // x86_64: mov rax, rax
 // i686: mov eax, eax
 // CHECK: #NO_APP
 check!(reg "" reg "mov");
-
-// CHECK-LABEL: reg_abcd:
-// CHECK: #APP
-// x86_64: mov rax, rax
-// i686: mov eax, eax
-// CHECK: #NO_APP
-check!(reg_abcd "" reg_abcd "mov");
-
-// CHECK-LABEL: reg_abcd_e:
-// CHECK: #APP
-// CHECK: mov eax, eax
-// CHECK: #NO_APP
-check!(reg_abcd_e "e" reg_abcd "mov");
-
-// CHECK-LABEL: reg_abcd_h:
-// CHECK: #APP
-// CHECK: mov ah, ah
-// CHECK: #NO_APP
-check!(reg_abcd_h "h" reg_abcd "mov");
-
-// CHECK-LABEL: reg_abcd_l:
-// CHECK: #APP
-// CHECK: mov al, al
-// CHECK: #NO_APP
-check!(reg_abcd_l "l" reg_abcd "mov");
-
-// x86_64-LABEL: reg_abcd_r:
-// x86_64: #APP
-// x86_64: mov rax, rax
-// x86_64: #NO_APP
-#[cfg(x86_64)]
-check!(reg_abcd_r "r" reg_abcd "mov");
-
-// CHECK-LABEL: reg_abcd_x:
-// CHECK: #APP
-// CHECK: mov ax, ax
-// CHECK: #NO_APP
-check!(reg_abcd_x "x" reg_abcd "mov");
-
-// CHECK-LABEL: reg_e:
-// CHECK: #APP
-// CHECK: mov eax, eax
-// CHECK: #NO_APP
-check!(reg_e "e" reg "mov");
 
 // x86_64-LABEL: reg_l:
 // x86_64: #APP
@@ -97,6 +44,18 @@ check!(reg_e "e" reg "mov");
 #[cfg(x86_64)]
 check!(reg_l "l" reg "mov");
 
+// CHECK-LABEL: reg_x:
+// CHECK: #APP
+// CHECK: mov ax, ax
+// CHECK: #NO_APP
+check!(reg_x "x" reg "mov");
+
+// CHECK-LABEL: reg_e:
+// CHECK: #APP
+// CHECK: mov eax, eax
+// CHECK: #NO_APP
+check!(reg_e "e" reg "mov");
+
 // x86_64-LABEL: reg_r:
 // x86_64: #APP
 // x86_64: mov rax, rax
@@ -104,11 +63,43 @@ check!(reg_l "l" reg "mov");
 #[cfg(x86_64)]
 check!(reg_r "r" reg "mov");
 
-// CHECK-LABEL: reg_x:
+// CHECK-LABEL: reg_abcd:
+// CHECK: #APP
+// x86_64: mov rax, rax
+// i686: mov eax, eax
+// CHECK: #NO_APP
+check!(reg_abcd "" reg_abcd "mov");
+
+// CHECK-LABEL: reg_abcd_l:
+// CHECK: #APP
+// CHECK: mov al, al
+// CHECK: #NO_APP
+check!(reg_abcd_l "l" reg_abcd "mov");
+
+// CHECK-LABEL: reg_abcd_h:
+// CHECK: #APP
+// CHECK: mov ah, ah
+// CHECK: #NO_APP
+check!(reg_abcd_h "h" reg_abcd "mov");
+
+// CHECK-LABEL: reg_abcd_x:
 // CHECK: #APP
 // CHECK: mov ax, ax
 // CHECK: #NO_APP
-check!(reg_x "x" reg "mov");
+check!(reg_abcd_x "x" reg_abcd "mov");
+
+// CHECK-LABEL: reg_abcd_e:
+// CHECK: #APP
+// CHECK: mov eax, eax
+// CHECK: #NO_APP
+check!(reg_abcd_e "e" reg_abcd "mov");
+
+// x86_64-LABEL: reg_abcd_r:
+// x86_64: #APP
+// x86_64: mov rax, rax
+// x86_64: #NO_APP
+#[cfg(x86_64)]
+check!(reg_abcd_r "r" reg_abcd "mov");
 
 // CHECK-LABEL: xmm_reg
 // CHECK: #APP
@@ -181,3 +172,13 @@ check!(zmm_reg_y "y" zmm_reg "vmovaps");
 // CHECK: vmovaps zmm0, zmm0
 // CHECK: #NO_APP
 check!(zmm_reg_z "z" zmm_reg "vmovaps");
+
+// Note: we don't have any way of ensuring that k1 is actually the register
+// chosen by the register allocator, so this check may fail if a different
+// register is chosen.
+
+// CHECK-LABEL: kreg:
+// CHECK: #APP
+// CHECK: kmovb k1, k1
+// CHECK: #NO_APP
+check!(kreg "" kreg "kmovb");

@@ -13,6 +13,50 @@ use minicore::*;
 
 type ptr = *const i16;
 
+macro_rules! check {
+    ($func:ident $ty:ident $class:ident) => {
+        #[no_mangle]
+        pub unsafe fn $func(x: $ty) -> $ty {
+            let y;
+            asm!("mov {}, {}", lateout($class) y, in($class) x);
+            y
+        }
+    };
+}
+
+macro_rules! checkb {
+    ($func:ident $ty:ident $class:ident) => {
+        #[no_mangle]
+        pub unsafe fn $func(x: $ty) -> $ty {
+            let y;
+            asm!("mov.b {}, {}", lateout($class) y, in($class) x);
+            y
+        }
+    };
+}
+
+macro_rules! check_reg {
+    ($func:ident $ty:ident $reg:tt) => {
+        #[no_mangle]
+        pub unsafe fn $func(x: $ty) -> $ty {
+            let y;
+            asm!(concat!("mov ", $reg, ", ", $reg), lateout($reg) y, in($reg) x);
+            y
+        }
+    };
+}
+
+macro_rules! check_regb {
+    ($func:ident $ty:ident $reg:tt) => {
+        #[no_mangle]
+        pub unsafe fn $func(x: $ty) -> $ty {
+            let y;
+            asm!(concat!("mov.b ", $reg, ", ", $reg), lateout($reg) y, in($reg) x);
+            y
+        }
+    };
+}
+
 extern "C" {
     fn extern_func();
     static extern_static: i8;
@@ -60,49 +104,11 @@ pub unsafe fn mov_postincrement(mut x: *const i16) -> (i16, *const i16) {
     (y, x)
 }
 
-macro_rules! check {
-    ($func:ident $ty:ident $class:ident) => {
-        #[no_mangle]
-        pub unsafe fn $func(x: $ty) -> $ty {
-            let y;
-            asm!("mov {}, {}", lateout($class) y, in($class) x);
-            y
-        }
-    };
-}
-
-macro_rules! checkb {
-    ($func:ident $ty:ident $class:ident) => {
-        #[no_mangle]
-        pub unsafe fn $func(x: $ty) -> $ty {
-            let y;
-            asm!("mov.b {}, {}", lateout($class) y, in($class) x);
-            y
-        }
-    };
-}
-
-macro_rules! check_reg {
-    ($func:ident $ty:ident $reg:tt) => {
-        #[no_mangle]
-        pub unsafe fn $func(x: $ty) -> $ty {
-            let y;
-            asm!(concat!("mov ", $reg, ", ", $reg), lateout($reg) y, in($reg) x);
-            y
-        }
-    };
-}
-
-macro_rules! check_regb {
-    ($func:ident $ty:ident $reg:tt) => {
-        #[no_mangle]
-        pub unsafe fn $func(x: $ty) -> $ty {
-            let y;
-            asm!(concat!("mov.b ", $reg, ", ", $reg), lateout($reg) y, in($reg) x);
-            y
-        }
-    };
-}
+// CHECK-LABEL: reg_i8:
+// CHECK: ;APP
+// CHECK: mov r{{[0-9]+}}, r{{[0-9]+}}
+// CHECK: ;NO_APP
+check!(reg_i8 i8 reg);
 
 // CHECK-LABEL: reg_i16:
 // CHECK: ;APP
@@ -110,28 +116,23 @@ macro_rules! check_regb {
 // CHECK: ;NO_APP
 check!(reg_i16 i16 reg);
 
-// CHECK-LABEL: reg_i8:
-// CHECK: ;APP
-// CHECK: mov r{{[0-9]+}}, r{{[0-9]+}}
-// CHECK: ;NO_APP
-check!(reg_i8 i8 reg);
-
 // CHECK-LABEL: reg_i8b:
 // CHECK: ;APP
 // CHECK: mov.b r{{[0-9]+}}, r{{[0-9]+}}
 // CHECK: ;NO_APP
 checkb!(reg_i8b i8 reg);
 
-// CHECK-LABEL: r5_i16:
-// CHECK: ;APP
-// CHECK: mov r5, r5
-// CHECK: ;NO_APP
-check_reg!(r5_i16 i16 "r5");
 // CHECK-LABEL: r5_i8:
 // CHECK: ;APP
 // CHECK: mov r5, r5
 // CHECK: ;NO_APP
 check_reg!(r5_i8 i8 "r5");
+
+// CHECK-LABEL: r5_i16:
+// CHECK: ;APP
+// CHECK: mov r5, r5
+// CHECK: ;NO_APP
+check_reg!(r5_i16 i16 "r5");
 
 // CHECK-LABEL: r5_i8b:
 // CHECK: ;APP
