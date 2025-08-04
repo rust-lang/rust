@@ -366,7 +366,8 @@ fn gen_call_handling<'ll>(
         let arg_name = format!("{name}.addr");
         let alloca = builder.direct_alloca(in_ty, Align::EIGHT, &arg_name);
 
-        builder.store(p, alloca, Align::EIGHT);
+        let v = unsafe { llvm::LLVMGetOperand(kernel_call, index as u32).unwrap() };
+        builder.store(v, alloca, Align::EIGHT);
         let val = builder.load(in_ty, alloca, Align::EIGHT);
         let gep = builder.inbounds_gep(cx.type_f32(), val, &[i32_0]);
         vals.push(val);
@@ -510,7 +511,9 @@ fn gen_call_handling<'ll>(
         let next = llvm::LLVMGetNextInstruction(offload_success).unwrap();
         dbg!(&next);
         llvm::LLVMRustPositionAfter(builder.llbuilder, next);
+        let called_kernel = llvm::LLVMGetCalledValue(next).unwrap();
         llvm::LLVMInstructionEraseFromParent(next);
+        dbg!(&called_kernel);
     }
 
     // Step 4)
@@ -520,6 +523,10 @@ fn gen_call_handling<'ll>(
     generate_mapper_call(&mut builder, &cx, geps, o, end_mapper_decl, fn_ty, num_args, s_ident_t);
 
     builder.call(mapper_fn_ty, unregister_lib_decl, &[tgt_bin_desc_alloca], None);
+
+    drop(builder);
+    unsafe { llvm::LLVMDeleteFunction(called) };
+    dbg!("survived");
 
     // With this we generated the following begin and end mappers. We could easily generate the
     // update mapper in an update.
