@@ -6358,6 +6358,7 @@ Released 2018-09-13
 [`pointers_in_nomem_asm_block`]: https://rust-lang.github.io/rust-clippy/master/index.html#pointers_in_nomem_asm_block
 [`positional_named_format_parameters`]: https://rust-lang.github.io/rust-clippy/master/index.html#positional_named_format_parameters
 [`possible_missing_comma`]: https://rust-lang.github.io/rust-clippy/master/index.html#possible_missing_comma
+[`possible_missing_else`]: https://rust-lang.github.io/rust-clippy/master/index.html#possible_missing_else
 [`precedence`]: https://rust-lang.github.io/rust-clippy/master/index.html#precedence
 [`precedence_bits`]: https://rust-lang.github.io/rust-clippy/master/index.html#precedence_bits
 [`print_in_format_impl`]: https://rust-lang.github.io/rust-clippy/master/index.html#print_in_format_impl
