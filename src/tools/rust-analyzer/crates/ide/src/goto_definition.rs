@@ -83,14 +83,14 @@ pub(crate) fn goto_definition(
         return Some(RangeInfo::new(original_token.text_range(), navs));
     }
 
-    if let Some(navs) = find_definition_for_known_blanket_dual_impls(sema, &original_token) {
-        return Some(RangeInfo::new(original_token.text_range(), navs));
-    }
-
     let navs = sema
         .descend_into_macros_no_opaque(original_token.clone(), false)
         .into_iter()
         .filter_map(|token| {
+            if let Some(navs) = find_definition_for_known_blanket_dual_impls(sema, &token.value) {
+                return Some(navs);
+            }
+
             let parent = token.value.parent()?;
 
             let token_file_id = token.file_id;
@@ -3275,6 +3275,32 @@ impl From<A> for B {
     }
 }
 
+fn f() {
+    let a = A;
+    let b: B = a.into$0();
+}
+        "#,
+        );
+    }
+
+    #[test]
+    fn into_call_to_from_definition_within_macro() {
+        check(
+            r#"
+//- proc_macros: identity
+//- minicore: from
+struct A;
+
+struct B;
+
+impl From<A> for B {
+    fn from(value: A) -> Self {
+     //^^^^
+        B
+    }
+}
+
+#[proc_macros::identity]
 fn f() {
     let a = A;
     let b: B = a.into$0();
