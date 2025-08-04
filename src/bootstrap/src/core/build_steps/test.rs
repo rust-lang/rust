@@ -4,7 +4,7 @@
 //! However, this contains ~all test parts we expect people to be able to build and run locally.
 
 use std::collections::HashSet;
-use std::env::join_paths;
+use std::env::split_paths;
 use std::ffi::{OsStr, OsString};
 use std::path::{Path, PathBuf};
 use std::{env, fs, iter};
@@ -34,8 +34,8 @@ use crate::core::config::flags::{Subcommand, get_completion};
 use crate::utils::build_stamp::{self, BuildStamp};
 use crate::utils::exec::{BootstrapCommand, command};
 use crate::utils::helpers::{
-    self, LldThreads, add_rustdoc_cargo_linker_args, dylib_path, dylib_path_var, linker_args,
-    linker_flags, t, target_supports_cranelift_backend, up_to_date,
+    self, LldThreads, add_dylib_path, add_rustdoc_cargo_linker_args, dylib_path, dylib_path_var,
+    linker_args, linker_flags, t, target_supports_cranelift_backend, up_to_date,
 };
 use crate::utils::render_tests::{add_flags_and_try_run_tests, try_run_tests};
 use crate::{CLang, CodegenBackendKind, DocTests, GitRepo, Mode, PathSet, debug, envify};
@@ -380,16 +380,14 @@ impl Step for Cargo {
         // libdir. That causes issues in cargo test, because the programs that cargo compiles are
         // incorrectly picking that libdir, even though they should be picking the
         // `tested_compiler`'s libdir. We thus have to override the precedence here.
-        let existing_dylib_path = cargo
+        let mut existing_dylib_paths = cargo
             .get_envs()
             .find(|(k, _)| *k == OsStr::new(dylib_path_var()))
             .and_then(|(_, v)| v)
-            .unwrap_or(OsStr::new(""));
-        cargo.env(
-            dylib_path_var(),
-            join_paths([builder.rustc_libdir(tested_compiler).as_ref(), existing_dylib_path])
-                .unwrap_or_default(),
-        );
+            .map(|value| split_paths(value).collect::<Vec<PathBuf>>())
+            .unwrap_or_default();
+        existing_dylib_paths.insert(0, builder.rustc_libdir(tested_compiler));
+        add_dylib_path(existing_dylib_paths, &mut cargo);
 
         // Cargo's test suite uses `CARGO_RUSTC_CURRENT_DIR` to determine the path that `file!` is
         // relative to. Cargo no longer sets this env var, so we have to do that. This has to be the
