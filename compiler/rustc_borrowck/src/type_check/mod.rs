@@ -845,9 +845,13 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     );
                 }
 
-                if let TerminatorKind::Call { destination, target, .. } = term.kind {
-                    self.check_call_dest(term, &sig, destination, target, term_location);
-                }
+                let (destination, target) =
+                    if let TerminatorKind::Call { destination, target, .. } = term.kind {
+                        (destination, target)
+                    } else {
+                        (RETURN_PLACE.into(), Some(BasicBlock::ZERO))
+                    };
+                self.check_call_dest(term, &sig, destination, target, term_location);
 
                 // The ordinary liveness rules will ensure that all
                 // regions in the type of the callee are live here. We
