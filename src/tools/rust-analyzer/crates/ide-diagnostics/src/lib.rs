@@ -568,10 +568,10 @@ fn handle_diag_from_macros(
         diag.fixes = None;
 
         // All Clippy lints report in macros, see https://github.com/rust-lang/rust-clippy/blob/903293b199364/declare_clippy_lint/src/lib.rs#L172.
-        if let DiagnosticCode::RustcLint(lint) = diag.code {
-            if !LINTS_TO_REPORT_IN_EXTERNAL_MACROS.contains(lint) {
-                return false;
-            }
+        if let DiagnosticCode::RustcLint(lint) = diag.code
+            && !LINTS_TO_REPORT_IN_EXTERNAL_MACROS.contains(lint)
+        {
+            return false;
         };
     }
     true
@@ -760,35 +760,35 @@ fn cfg_attr_lint_attrs(
     }
 
     while let Some(value) = iter.next() {
-        if let Some(token) = value.as_token() {
-            if token.kind() == SyntaxKind::IDENT {
-                let severity = match token.text() {
-                    "allow" | "expect" => Some(Severity::Allow),
-                    "warn" => Some(Severity::Warning),
-                    "forbid" | "deny" => Some(Severity::Error),
-                    "cfg_attr" => {
-                        if let Some(NodeOrToken::Node(value)) = iter.next() {
-                            cfg_attr_lint_attrs(sema, &value, lint_attrs);
-                        }
-                        None
+        if let Some(token) = value.as_token()
+            && token.kind() == SyntaxKind::IDENT
+        {
+            let severity = match token.text() {
+                "allow" | "expect" => Some(Severity::Allow),
+                "warn" => Some(Severity::Warning),
+                "forbid" | "deny" => Some(Severity::Error),
+                "cfg_attr" => {
+                    if let Some(NodeOrToken::Node(value)) = iter.next() {
+                        cfg_attr_lint_attrs(sema, &value, lint_attrs);
                     }
-                    _ => None,
-                };
-                if let Some(severity) = severity {
-                    let lints = iter.next();
-                    if let Some(NodeOrToken::Node(lints)) = lints {
-                        lint_attrs.push((severity, lints));
-                    }
+                    None
+                }
+                _ => None,
+            };
+            if let Some(severity) = severity {
+                let lints = iter.next();
+                if let Some(NodeOrToken::Node(lints)) = lints {
+                    lint_attrs.push((severity, lints));
                 }
             }
         }
     }
 
-    if prev_len != lint_attrs.len() {
-        if let Some(false) | None = sema.check_cfg_attr(value) {
-            // Discard the attributes when the condition is false.
-            lint_attrs.truncate(prev_len);
-        }
+    if prev_len != lint_attrs.len()
+        && let Some(false) | None = sema.check_cfg_attr(value)
+    {
+        // Discard the attributes when the condition is false.
+        lint_attrs.truncate(prev_len);
     }
 }
 

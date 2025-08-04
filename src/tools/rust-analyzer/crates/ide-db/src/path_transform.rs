@@ -193,13 +193,12 @@ impl<'a> PathTransform<'a> {
                     }
                 }
                 (Either::Right(k), None) => {
-                    if let Some(default) = k.default(db) {
-                        if let Some(default) =
+                    if let Some(default) = k.default(db)
+                        && let Some(default) =
                             &default.display_source_code(db, source_module.into(), false).ok()
-                        {
-                            type_substs.insert(k, make::ty(default).clone_for_update());
-                            defaulted_params.push(Either::Left(k));
-                        }
+                    {
+                        type_substs.insert(k, make::ty(default).clone_for_update());
+                        defaulted_params.push(Either::Left(k));
                     }
                 }
                 (Either::Left(k), Some(TypeOrConst::Either(v))) => {
@@ -221,11 +220,10 @@ impl<'a> PathTransform<'a> {
                 (Either::Left(k), None) => {
                     if let Some(default) =
                         k.default(db, target_module.krate().to_display_target(db))
+                        && let Some(default) = default.expr()
                     {
-                        if let Some(default) = default.expr() {
-                            const_substs.insert(k, default.syntax().clone_for_update());
-                            defaulted_params.push(Either::Right(k));
-                        }
+                        const_substs.insert(k, default.syntax().clone_for_update());
+                        defaulted_params.push(Either::Right(k));
                     }
                 }
                 _ => (), // ignore mismatching params
@@ -427,14 +425,14 @@ impl Ctx<'_> {
                 }
             }
             hir::PathResolution::Def(def) if def.as_assoc_item(self.source_scope.db).is_none() => {
-                if let hir::ModuleDef::Trait(_) = def {
-                    if matches!(path.segment()?.kind()?, ast::PathSegmentKind::Type { .. }) {
-                        // `speculative_resolve` resolves segments like `<T as
-                        // Trait>` into `Trait`, but just the trait name should
-                        // not be used as the replacement of the original
-                        // segment.
-                        return None;
-                    }
+                if let hir::ModuleDef::Trait(_) = def
+                    && matches!(path.segment()?.kind()?, ast::PathSegmentKind::Type { .. })
+                {
+                    // `speculative_resolve` resolves segments like `<T as
+                    // Trait>` into `Trait`, but just the trait name should
+                    // not be used as the replacement of the original
+                    // segment.
+                    return None;
                 }
 
                 let cfg = ImportPathConfig {
@@ -446,19 +444,17 @@ impl Ctx<'_> {
                 let found_path = self.target_module.find_path(self.source_scope.db, def, cfg)?;
                 let res = mod_path_to_ast(&found_path, self.target_edition).clone_for_update();
                 let mut res_editor = SyntaxEditor::new(res.syntax().clone_subtree());
-                if let Some(args) = path.segment().and_then(|it| it.generic_arg_list()) {
-                    if let Some(segment) = res.segment() {
-                        if let Some(old) = segment.generic_arg_list() {
-                            res_editor.replace(
-                                old.syntax(),
-                                args.clone_subtree().syntax().clone_for_update(),
-                            )
-                        } else {
-                            res_editor.insert(
-                                syntax_editor::Position::last_child_of(segment.syntax()),
-                                args.clone_subtree().syntax().clone_for_update(),
-                            );
-                        }
+                if let Some(args) = path.segment().and_then(|it| it.generic_arg_list())
+                    && let Some(segment) = res.segment()
+                {
+                    if let Some(old) = segment.generic_arg_list() {
+                        res_editor
+                            .replace(old.syntax(), args.clone_subtree().syntax().clone_for_update())
+                    } else {
+                        res_editor.insert(
+                            syntax_editor::Position::last_child_of(segment.syntax()),
+                            args.clone_subtree().syntax().clone_for_update(),
+                        );
                     }
                 }
                 let res = res_editor.finish().new_root().clone();
@@ -485,27 +481,27 @@ impl Ctx<'_> {
                     .ok()?;
                 let ast_ty = make::ty(ty_str).clone_for_update();
 
-                if let Some(adt) = ty.as_adt() {
-                    if let ast::Type::PathType(path_ty) = &ast_ty {
-                        let cfg = ImportPathConfig {
-                            prefer_no_std: false,
-                            prefer_prelude: true,
-                            prefer_absolute: false,
-                            allow_unstable: true,
-                        };
-                        let found_path = self.target_module.find_path(
-                            self.source_scope.db,
-                            ModuleDef::from(adt),
-                            cfg,
-                        )?;
+                if let Some(adt) = ty.as_adt()
+                    && let ast::Type::PathType(path_ty) = &ast_ty
+                {
+                    let cfg = ImportPathConfig {
+                        prefer_no_std: false,
+                        prefer_prelude: true,
+                        prefer_absolute: false,
+                        allow_unstable: true,
+                    };
+                    let found_path = self.target_module.find_path(
+                        self.source_scope.db,
+                        ModuleDef::from(adt),
+                        cfg,
+                    )?;
 
-                        if let Some(qual) =
-                            mod_path_to_ast(&found_path, self.target_edition).qualifier()
-                        {
-                            let res = make::path_concat(qual, path_ty.path()?).clone_for_update();
-                            editor.replace(path.syntax(), res.syntax());
-                            return Some(());
-                        }
+                    if let Some(qual) =
+                        mod_path_to_ast(&found_path, self.target_edition).qualifier()
+                    {
+                        let res = make::path_concat(qual, path_ty.path()?).clone_for_update();
+                        editor.replace(path.syntax(), res.syntax());
+                        return Some(());
                     }
                 }
 

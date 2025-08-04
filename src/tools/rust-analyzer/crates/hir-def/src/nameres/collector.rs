@@ -261,20 +261,20 @@ impl<'db> DefCollector<'db> {
 
         // Process other crate-level attributes.
         for attr in &*attrs {
-            if let Some(cfg) = attr.cfg() {
-                if self.cfg_options.check(&cfg) == Some(false) {
-                    process = false;
-                    break;
-                }
+            if let Some(cfg) = attr.cfg()
+                && self.cfg_options.check(&cfg) == Some(false)
+            {
+                process = false;
+                break;
             }
             let Some(attr_name) = attr.path.as_ident() else { continue };
 
             match () {
                 () if *attr_name == sym::recursion_limit => {
-                    if let Some(limit) = attr.string_value() {
-                        if let Ok(limit) = limit.as_str().parse() {
-                            crate_data.recursion_limit = Some(limit);
-                        }
+                    if let Some(limit) = attr.string_value()
+                        && let Ok(limit) = limit.as_str().parse()
+                    {
+                        crate_data.recursion_limit = Some(limit);
                     }
                 }
                 () if *attr_name == sym::crate_type => {
@@ -1188,56 +1188,44 @@ impl<'db> DefCollector<'db> {
             // Multiple globs may import the same item and they may override visibility from
             // previously resolved globs. Handle overrides here and leave the rest to
             // `ItemScope::push_res_with_import()`.
-            if let Some(def) = defs.types {
-                if let Some(prev_def) = prev_defs.types {
-                    if def.def == prev_def.def
-                        && self.from_glob_import.contains_type(module_id, name.clone())
-                        && def.vis != prev_def.vis
-                        && def.vis.max(prev_def.vis, &self.def_map) == Some(def.vis)
-                    {
-                        changed = true;
-                        // This import is being handled here, don't pass it down to
-                        // `ItemScope::push_res_with_import()`.
-                        defs.types = None;
-                        self.def_map.modules[module_id]
-                            .scope
-                            .update_visibility_types(name, def.vis);
-                    }
-                }
+            if let Some(def) = defs.types
+                && let Some(prev_def) = prev_defs.types
+                && def.def == prev_def.def
+                && self.from_glob_import.contains_type(module_id, name.clone())
+                && def.vis != prev_def.vis
+                && def.vis.max(prev_def.vis, &self.def_map) == Some(def.vis)
+            {
+                changed = true;
+                // This import is being handled here, don't pass it down to
+                // `ItemScope::push_res_with_import()`.
+                defs.types = None;
+                self.def_map.modules[module_id].scope.update_visibility_types(name, def.vis);
             }
 
-            if let Some(def) = defs.values {
-                if let Some(prev_def) = prev_defs.values {
-                    if def.def == prev_def.def
-                        && self.from_glob_import.contains_value(module_id, name.clone())
-                        && def.vis != prev_def.vis
-                        && def.vis.max(prev_def.vis, &self.def_map) == Some(def.vis)
-                    {
-                        changed = true;
-                        // See comment above.
-                        defs.values = None;
-                        self.def_map.modules[module_id]
-                            .scope
-                            .update_visibility_values(name, def.vis);
-                    }
-                }
+            if let Some(def) = defs.values
+                && let Some(prev_def) = prev_defs.values
+                && def.def == prev_def.def
+                && self.from_glob_import.contains_value(module_id, name.clone())
+                && def.vis != prev_def.vis
+                && def.vis.max(prev_def.vis, &self.def_map) == Some(def.vis)
+            {
+                changed = true;
+                // See comment above.
+                defs.values = None;
+                self.def_map.modules[module_id].scope.update_visibility_values(name, def.vis);
             }
 
-            if let Some(def) = defs.macros {
-                if let Some(prev_def) = prev_defs.macros {
-                    if def.def == prev_def.def
-                        && self.from_glob_import.contains_macro(module_id, name.clone())
-                        && def.vis != prev_def.vis
-                        && def.vis.max(prev_def.vis, &self.def_map) == Some(def.vis)
-                    {
-                        changed = true;
-                        // See comment above.
-                        defs.macros = None;
-                        self.def_map.modules[module_id]
-                            .scope
-                            .update_visibility_macros(name, def.vis);
-                    }
-                }
+            if let Some(def) = defs.macros
+                && let Some(prev_def) = prev_defs.macros
+                && def.def == prev_def.def
+                && self.from_glob_import.contains_macro(module_id, name.clone())
+                && def.vis != prev_def.vis
+                && def.vis.max(prev_def.vis, &self.def_map) == Some(def.vis)
+            {
+                changed = true;
+                // See comment above.
+                defs.macros = None;
+                self.def_map.modules[module_id].scope.update_visibility_macros(name, def.vis);
             }
         }
 
@@ -1392,15 +1380,14 @@ impl<'db> DefCollector<'db> {
                         Resolved::Yes
                     };
 
-                    if let Some(ident) = path.as_ident() {
-                        if let Some(helpers) = self.def_map.derive_helpers_in_scope.get(&ast_id) {
-                            if helpers.iter().any(|(it, ..)| it == ident) {
-                                cov_mark::hit!(resolved_derive_helper);
-                                // Resolved to derive helper. Collect the item's attributes again,
-                                // starting after the derive helper.
-                                return recollect_without(self);
-                            }
-                        }
+                    if let Some(ident) = path.as_ident()
+                        && let Some(helpers) = self.def_map.derive_helpers_in_scope.get(&ast_id)
+                        && helpers.iter().any(|(it, ..)| it == ident)
+                    {
+                        cov_mark::hit!(resolved_derive_helper);
+                        // Resolved to derive helper. Collect the item's attributes again,
+                        // starting after the derive helper.
+                        return recollect_without(self);
                     }
 
                     let def = match resolver_def_id(path) {
@@ -1729,12 +1716,12 @@ impl ModCollector<'_, '_> {
 
         let mut process_mod_item = |item: ModItemId| {
             let attrs = self.item_tree.attrs(db, krate, item.ast_id());
-            if let Some(cfg) = attrs.cfg() {
-                if !self.is_cfg_enabled(&cfg) {
-                    let ast_id = item.ast_id().erase();
-                    self.emit_unconfigured_diagnostic(InFile::new(self.file_id(), ast_id), &cfg);
-                    return;
-                }
+            if let Some(cfg) = attrs.cfg()
+                && !self.is_cfg_enabled(&cfg)
+            {
+                let ast_id = item.ast_id().erase();
+                self.emit_unconfigured_diagnostic(InFile::new(self.file_id(), ast_id), &cfg);
+                return;
             }
 
             if let Err(()) = self.resolve_attributes(&attrs, item, container) {
@@ -1871,14 +1858,13 @@ impl ModCollector<'_, '_> {
                     if self.def_collector.def_map.block.is_none()
                         && self.def_collector.is_proc_macro
                         && self.module_id == DefMap::ROOT
+                        && let Some(proc_macro) = attrs.parse_proc_macro_decl(&it.name)
                     {
-                        if let Some(proc_macro) = attrs.parse_proc_macro_decl(&it.name) {
-                            self.def_collector.export_proc_macro(
-                                proc_macro,
-                                InFile::new(self.file_id(), id),
-                                fn_id,
-                            );
-                        }
+                        self.def_collector.export_proc_macro(
+                            proc_macro,
+                            InFile::new(self.file_id(), id),
+                            fn_id,
+                        );
                     }
 
                     update_def(self.def_collector, fn_id.into(), &it.name, vis, false);
@@ -2419,13 +2405,13 @@ impl ModCollector<'_, '_> {
             macro_id,
             &self.item_tree[mac.visibility],
         );
-        if let Some(helpers) = helpers_opt {
-            if self.def_collector.def_map.block.is_none() {
-                Arc::get_mut(&mut self.def_collector.def_map.data)
-                    .unwrap()
-                    .exported_derives
-                    .insert(macro_id.into(), helpers);
-            }
+        if let Some(helpers) = helpers_opt
+            && self.def_collector.def_map.block.is_none()
+        {
+            Arc::get_mut(&mut self.def_collector.def_map.data)
+                .unwrap()
+                .exported_derives
+                .insert(macro_id.into(), helpers);
         }
     }
 

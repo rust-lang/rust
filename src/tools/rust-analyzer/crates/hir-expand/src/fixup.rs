@@ -280,8 +280,8 @@ pub(crate) fn fixup_syntax(
                     }
                 },
                 ast::RecordExprField(it) => {
-                    if let Some(colon) = it.colon_token() {
-                        if it.name_ref().is_some() && it.expr().is_none() {
+                    if let Some(colon) = it.colon_token()
+                        && it.name_ref().is_some() && it.expr().is_none() {
                             append.insert(colon.into(), vec![
                                 Leaf::Ident(Ident {
                                     sym: sym::__ra_fixup,
@@ -290,11 +290,10 @@ pub(crate) fn fixup_syntax(
                                 })
                             ]);
                         }
-                    }
                 },
                 ast::Path(it) => {
-                    if let Some(colon) = it.coloncolon_token() {
-                        if it.segment().is_none() {
+                    if let Some(colon) = it.coloncolon_token()
+                        && it.segment().is_none() {
                             append.insert(colon.into(), vec![
                                 Leaf::Ident(Ident {
                                     sym: sym::__ra_fixup,
@@ -303,7 +302,6 @@ pub(crate) fn fixup_syntax(
                                 })
                             ]);
                         }
-                    }
                 },
                 ast::ClosureExpr(it) => {
                     if it.body().is_none() {

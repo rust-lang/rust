@@ -119,25 +119,25 @@ impl Evaluator<'_> {
             destination.write_from_bytes(self, &result)?;
             return Ok(true);
         }
-        if let ItemContainerId::TraitId(t) = def.lookup(self.db).container {
-            if self.db.lang_attr(t.into()) == Some(LangItem::Clone) {
-                let [self_ty] = generic_args.as_slice(Interner) else {
-                    not_supported!("wrong generic arg count for clone");
-                };
-                let Some(self_ty) = self_ty.ty(Interner) else {
-                    not_supported!("wrong generic arg kind for clone");
-                };
-                // Clone has special impls for tuples and function pointers
-                if matches!(
-                    self_ty.kind(Interner),
-                    TyKind::Function(_) | TyKind::Tuple(..) | TyKind::Closure(..)
-                ) {
-                    self.exec_clone(def, args, self_ty.clone(), locals, destination, span)?;
-                    return Ok(true);
-                }
-                // Return early to prevent caching clone as non special fn.
-                return Ok(false);
+        if let ItemContainerId::TraitId(t) = def.lookup(self.db).container
+            && self.db.lang_attr(t.into()) == Some(LangItem::Clone)
+        {
+            let [self_ty] = generic_args.as_slice(Interner) else {
+                not_supported!("wrong generic arg count for clone");
+            };
+            let Some(self_ty) = self_ty.ty(Interner) else {
+                not_supported!("wrong generic arg kind for clone");
+            };
+            // Clone has special impls for tuples and function pointers
+            if matches!(
+                self_ty.kind(Interner),
+                TyKind::Function(_) | TyKind::Tuple(..) | TyKind::Closure(..)
+            ) {
+                self.exec_clone(def, args, self_ty.clone(), locals, destination, span)?;
+                return Ok(true);
             }
+            // Return early to prevent caching clone as non special fn.
+            return Ok(false);
         }
         self.not_special_fn_cache.borrow_mut().insert(def);
         Ok(false)
@@ -1256,23 +1256,22 @@ impl Evaluator<'_> {
                     let addr = tuple.interval.addr.offset(offset);
                     args.push(IntervalAndTy::new(addr, field, self, locals)?);
                 }
-                if let Some(target) = LangItem::FnOnce.resolve_trait(self.db, self.crate_id) {
-                    if let Some(def) = target
+                if let Some(target) = LangItem::FnOnce.resolve_trait(self.db, self.crate_id)
+                    && let Some(def) = target
                         .trait_items(self.db)
                         .method_by_name(&Name::new_symbol_root(sym::call_once))
-                    {
-                        self.exec_fn_trait(
-                            def,
-                            &args,
-                            // FIXME: wrong for manual impls of `FnOnce`
-                            Substitution::empty(Interner),
-                            locals,
-                            destination,
-                            None,
-                            span,
-                        )?;
-                        return Ok(true);
-                    }
+                {
+                    self.exec_fn_trait(
+                        def,
+                        &args,
+                        // FIXME: wrong for manual impls of `FnOnce`
+                        Substitution::empty(Interner),
+                        locals,
+                        destination,
+                        None,
+                        span,
+                    )?;
+                    return Ok(true);
                 }
                 not_supported!("FnOnce was not available for executing const_eval_select");
             }
@@ -1367,12 +1366,11 @@ impl Evaluator<'_> {
                         break;
                     }
                 }
-                if signed {
-                    if let Some((&l, &r)) = lhs.iter().zip(rhs).next_back() {
-                        if l != r {
-                            result = (l as i8).cmp(&(r as i8));
-                        }
-                    }
+                if signed
+                    && let Some((&l, &r)) = lhs.iter().zip(rhs).next_back()
+                    && l != r
+                {
+                    result = (l as i8).cmp(&(r as i8));
                 }
                 if let Some(e) = LangItem::Ordering.resolve_enum(self.db, self.crate_id) {
                     let ty = self.db.ty(e.into());

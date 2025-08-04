@@ -207,10 +207,10 @@ pub(crate) fn apply_demorgan_iterator(acc: &mut Assists, ctx: &AssistContext<'_>
             // negate all tail expressions in the closure body
             let tail_cb = &mut |e: &_| tail_cb_impl(&mut editor, &make, e);
             walk_expr(&closure_body, &mut |expr| {
-                if let ast::Expr::ReturnExpr(ret_expr) = expr {
-                    if let Some(ret_expr_arg) = &ret_expr.expr() {
-                        for_each_tail_expr(ret_expr_arg, tail_cb);
-                    }
+                if let ast::Expr::ReturnExpr(ret_expr) = expr
+                    && let Some(ret_expr_arg) = &ret_expr.expr()
+                {
+                    for_each_tail_expr(ret_expr_arg, tail_cb);
                 }
             });
             for_each_tail_expr(&closure_body, tail_cb);

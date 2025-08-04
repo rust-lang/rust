@@ -183,13 +183,11 @@ fn add_missing_impl_members_inner(
             .clone()
             .into_iter()
             .chain(other_items.iter().cloned())
-            .map(either::Either::Right)
             .collect::<Vec<_>>();
 
         let mut editor = edit.make_editor(impl_def.syntax());
         if let Some(assoc_item_list) = impl_def.assoc_item_list() {
-            let items = new_assoc_items.into_iter().filter_map(either::Either::right).collect();
-            assoc_item_list.add_items(&mut editor, items);
+            assoc_item_list.add_items(&mut editor, new_assoc_items);
         } else {
             let assoc_item_list = make::assoc_item_list(Some(new_assoc_items)).clone_for_update();
             editor.insert_all(
@@ -201,14 +199,12 @@ fn add_missing_impl_members_inner(
 
         if let Some(cap) = ctx.config.snippet_cap {
             let mut placeholder = None;
-            if let DefaultMethods::No = mode {
-                if let Some(ast::AssocItem::Fn(func)) = &first_new_item {
-                    if let Some(m) = func.syntax().descendants().find_map(ast::MacroCall::cast)
-                        && m.syntax().text() == "todo!()"
-                    {
-                        placeholder = Some(m);
-                    }
-                }
+            if let DefaultMethods::No = mode
+                && let Some(ast::AssocItem::Fn(func)) = &first_new_item
+                && let Some(m) = func.syntax().descendants().find_map(ast::MacroCall::cast)
+                && m.syntax().text() == "todo!()"
+            {
+                placeholder = Some(m);
             }
 
             if let Some(macro_call) = placeholder {

@@ -47,10 +47,10 @@ pub(crate) fn unwrap_tuple(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option
     if tuple_pat.fields().count() != tuple_init.fields().count() {
         return None;
     }
-    if let Some(tys) = &tuple_ty {
-        if tuple_pat.fields().count() != tys.fields().count() {
-            return None;
-        }
+    if let Some(tys) = &tuple_ty
+        && tuple_pat.fields().count() != tys.fields().count()
+    {
+        return None;
     }
 
     let parent = let_kw.parent()?;

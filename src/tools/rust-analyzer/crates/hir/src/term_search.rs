@@ -122,10 +122,10 @@ impl<'db> LookupTable<'db> {
         }
 
         // Collapse suggestions if there are many
-        if let Some(res) = &res {
-            if res.len() > self.many_threshold {
-                return Some(vec![Expr::Many(ty.clone())]);
-            }
+        if let Some(res) = &res
+            && res.len() > self.many_threshold
+        {
+            return Some(vec![Expr::Many(ty.clone())]);
         }
 
         res
@@ -160,10 +160,10 @@ impl<'db> LookupTable<'db> {
         }
 
         // Collapse suggestions if there are many
-        if let Some(res) = &res {
-            if res.len() > self.many_threshold {
-                return Some(vec![Expr::Many(ty.clone())]);
-            }
+        if let Some(res) = &res
+            && res.len() > self.many_threshold
+        {
+            return Some(vec![Expr::Many(ty.clone())]);
         }
 
         res

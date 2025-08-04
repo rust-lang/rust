@@ -393,19 +393,17 @@ fn inline(
     // `FileReference` incorrect
     if let Some(imp) =
         sema.ancestors_with_macros(fn_body.syntax().clone()).find_map(ast::Impl::cast)
+        && !node.syntax().ancestors().any(|anc| &anc == imp.syntax())
+        && let Some(t) = imp.self_ty()
     {
-        if !node.syntax().ancestors().any(|anc| &anc == imp.syntax()) {
-            if let Some(t) = imp.self_ty() {
-                while let Some(self_tok) = body
-                    .syntax()
-                    .descendants_with_tokens()
-                    .filter_map(NodeOrToken::into_token)
-                    .find(|tok| tok.kind() == SyntaxKind::SELF_TYPE_KW)
-                {
-                    let replace_with = t.clone_subtree().syntax().clone_for_update();
-                    ted::replace(self_tok, replace_with);
-                }
-            }
+        while let Some(self_tok) = body
+            .syntax()
+            .descendants_with_tokens()
+            .filter_map(NodeOrToken::into_token)
+            .find(|tok| tok.kind() == SyntaxKind::SELF_TYPE_KW)
+        {
+            let replace_with = t.clone_subtree().syntax().clone_for_update();
+            ted::replace(self_tok, replace_with);
         }
     }
 
@@ -415,10 +413,10 @@ fn inline(
     for stmt in fn_body.statements() {
         if let Some(let_stmt) = ast::LetStmt::cast(stmt.syntax().to_owned()) {
             for has_token in let_stmt.syntax().children_with_tokens() {
-                if let Some(node) = has_token.as_node() {
-                    if let Some(ident_pat) = ast::IdentPat::cast(node.to_owned()) {
-                        func_let_vars.insert(ident_pat.syntax().text().to_string());
-                    }
+                if let Some(node) = has_token.as_node()
+                    && let Some(ident_pat) = ast::IdentPat::cast(node.to_owned())
+                {
+                    func_let_vars.insert(ident_pat.syntax().text().to_string());
                 }
             }
         }
@@ -534,16 +532,15 @@ fn inline(
         }
     }
 
-    if let Some(generic_arg_list) = generic_arg_list.clone() {
-        if let Some((target, source)) = &sema.scope(node.syntax()).zip(sema.scope(fn_body.syntax()))
-        {
-            body.reindent_to(IndentLevel(0));
-            if let Some(new_body) = ast::BlockExpr::cast(
-                PathTransform::function_call(target, source, function, generic_arg_list)
-                    .apply(body.syntax()),
-            ) {
-                body = new_body;
-            }
+    if let Some(generic_arg_list) = generic_arg_list.clone()
+        && let Some((target, source)) = &sema.scope(node.syntax()).zip(sema.scope(fn_body.syntax()))
+    {
+        body.reindent_to(IndentLevel(0));
+        if let Some(new_body) = ast::BlockExpr::cast(
+            PathTransform::function_call(target, source, function, generic_arg_list)
+                .apply(body.syntax()),
+        ) {
+            body = new_body;
         }
     }
 

@@ -83,34 +83,34 @@ impl chalk_solve::RustIrDatabase<Interner> for ChalkContext<'_> {
         Arc::new(rust_ir::AdtRepr { c: false, packed: false, int: None })
     }
     fn discriminant_type(&self, ty: chalk_ir::Ty<Interner>) -> chalk_ir::Ty<Interner> {
-        if let chalk_ir::TyKind::Adt(id, _) = ty.kind(Interner) {
-            if let hir_def::AdtId::EnumId(e) = id.0 {
-                let enum_data = self.db.enum_signature(e);
-                let ty = enum_data.repr.unwrap_or_default().discr_type();
-                return chalk_ir::TyKind::Scalar(match ty {
-                    hir_def::layout::IntegerType::Pointer(is_signed) => match is_signed {
-                        true => chalk_ir::Scalar::Int(chalk_ir::IntTy::Isize),
-                        false => chalk_ir::Scalar::Uint(chalk_ir::UintTy::Usize),
-                    },
-                    hir_def::layout::IntegerType::Fixed(size, is_signed) => match is_signed {
-                        true => chalk_ir::Scalar::Int(match size {
-                            hir_def::layout::Integer::I8 => chalk_ir::IntTy::I8,
-                            hir_def::layout::Integer::I16 => chalk_ir::IntTy::I16,
-                            hir_def::layout::Integer::I32 => chalk_ir::IntTy::I32,
-                            hir_def::layout::Integer::I64 => chalk_ir::IntTy::I64,
-                            hir_def::layout::Integer::I128 => chalk_ir::IntTy::I128,
-                        }),
-                        false => chalk_ir::Scalar::Uint(match size {
-                            hir_def::layout::Integer::I8 => chalk_ir::UintTy::U8,
-                            hir_def::layout::Integer::I16 => chalk_ir::UintTy::U16,
-                            hir_def::layout::Integer::I32 => chalk_ir::UintTy::U32,
-                            hir_def::layout::Integer::I64 => chalk_ir::UintTy::U64,
-                            hir_def::layout::Integer::I128 => chalk_ir::UintTy::U128,
-                        }),
-                    },
-                })
-                .intern(Interner);
-            }
+        if let chalk_ir::TyKind::Adt(id, _) = ty.kind(Interner)
+            && let hir_def::AdtId::EnumId(e) = id.0
+        {
+            let enum_data = self.db.enum_signature(e);
+            let ty = enum_data.repr.unwrap_or_default().discr_type();
+            return chalk_ir::TyKind::Scalar(match ty {
+                hir_def::layout::IntegerType::Pointer(is_signed) => match is_signed {
+                    true => chalk_ir::Scalar::Int(chalk_ir::IntTy::Isize),
+                    false => chalk_ir::Scalar::Uint(chalk_ir::UintTy::Usize),
+                },
+                hir_def::layout::IntegerType::Fixed(size, is_signed) => match is_signed {
+                    true => chalk_ir::Scalar::Int(match size {
+                        hir_def::layout::Integer::I8 => chalk_ir::IntTy::I8,
+                        hir_def::layout::Integer::I16 => chalk_ir::IntTy::I16,
+                        hir_def::layout::Integer::I32 => chalk_ir::IntTy::I32,
+                        hir_def::layout::Integer::I64 => chalk_ir::IntTy::I64,
+                        hir_def::layout::Integer::I128 => chalk_ir::IntTy::I128,
+                    }),
+                    false => chalk_ir::Scalar::Uint(match size {
+                        hir_def::layout::Integer::I8 => chalk_ir::UintTy::U8,
+                        hir_def::layout::Integer::I16 => chalk_ir::UintTy::U16,
+                        hir_def::layout::Integer::I32 => chalk_ir::UintTy::U32,
+                        hir_def::layout::Integer::I64 => chalk_ir::UintTy::U64,
+                        hir_def::layout::Integer::I128 => chalk_ir::UintTy::U128,
+                    }),
+                },
+            })
+            .intern(Interner);
         }
         chalk_ir::TyKind::Scalar(chalk_ir::Scalar::Uint(chalk_ir::UintTy::U8)).intern(Interner)
     }
@@ -142,10 +142,10 @@ impl chalk_solve::RustIrDatabase<Interner> for ChalkContext<'_> {
         ) -> Option<chalk_ir::TyVariableKind> {
             if let TyKind::BoundVar(bv) = ty.kind(Interner) {
                 let binders = binders.as_slice(Interner);
-                if bv.debruijn == DebruijnIndex::INNERMOST {
-                    if let chalk_ir::VariableKind::Ty(tk) = binders[bv.index].kind {
-                        return Some(tk);
-                    }
+                if bv.debruijn == DebruijnIndex::INNERMOST
+                    && let chalk_ir::VariableKind::Ty(tk) = binders[bv.index].kind
+                {
+                    return Some(tk);
                 }
             }
             None

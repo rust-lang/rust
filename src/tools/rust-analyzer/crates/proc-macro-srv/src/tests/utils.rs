@@ -1,14 +1,12 @@
 //! utils used in proc-macro tests
 
 use expect_test::Expect;
-use span::{
-    EditionedFileId, FileId, ROOT_ERASED_FILE_AST_ID, Span, SpanAnchor, SyntaxContext, TokenId,
-};
+use span::{EditionedFileId, FileId, ROOT_ERASED_FILE_AST_ID, Span, SpanAnchor, SyntaxContext};
 use tt::TextRange;
 
-use crate::{EnvSnapshot, ProcMacroSrv, dylib, proc_macro_test_dylib_path};
+use crate::{EnvSnapshot, ProcMacroSrv, SpanId, dylib, proc_macro_test_dylib_path};
 
-fn parse_string(call_site: TokenId, src: &str) -> crate::server_impl::TokenStream<TokenId> {
+fn parse_string(call_site: SpanId, src: &str) -> crate::server_impl::TokenStream<SpanId> {
     crate::server_impl::TokenStream::with_subtree(crate::server_impl::TopSubtree(
         syntax_bridge::parse_to_token_tree_static_span(span::Edition::CURRENT, call_site, src)
             .unwrap()
@@ -57,11 +55,11 @@ fn assert_expand_impl(
     expect_spanned: Expect,
 ) {
     let path = proc_macro_test_dylib_path();
-    let expander = dylib::Expander::new(&path).unwrap();
+    let expander = dylib::Expander::new(&temp_dir::TempDir::new().unwrap(), &path).unwrap();
 
-    let def_site = TokenId(0);
-    let call_site = TokenId(1);
-    let mixed_site = TokenId(2);
+    let def_site = SpanId(0);
+    let call_site = SpanId(1);
+    let mixed_site = SpanId(2);
     let input_ts = parse_string(call_site, input).into_subtree(call_site);
     let attr_ts = attr.map(|attr| parse_string(call_site, attr).into_subtree(call_site));
     let input_ts_string = format!("{input_ts:?}");

@@ -135,10 +135,10 @@ fn should_hide_param_name_hint(
     }
 
     if unary_function {
-        if let Some(function_name) = function_name {
-            if is_param_name_suffix_of_fn_name(param_name, function_name) {
-                return true;
-            }
+        if let Some(function_name) = function_name
+            && is_param_name_suffix_of_fn_name(param_name, function_name)
+        {
+            return true;
         }
         if is_obvious_param(param_name) {
             return true;
