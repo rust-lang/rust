@@ -1931,7 +1931,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     self.tcx(),
                     self.infcx.typing_env(self.infcx.param_env),
                 ) {
-                    span_mirbug!(self, term, "call to converging function {:?} w/o dest", sig);
+                    span_mirbug!(self, term, "call to diverging function {:?} w/o dest", sig);
                 }
             }
         }
