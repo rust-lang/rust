@@ -1,3 +1,4 @@
+// https://github.com/rust-lang/rust/issues/9918
 //@ run-pass
 
 pub fn main() {

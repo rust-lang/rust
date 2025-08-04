@@ -1,3 +1,4 @@
+// https://github.com/rust-lang/rust/issues/54044
 #![deny(unused_attributes)] //~ NOTE lint level is defined here
 
 #[cold]
