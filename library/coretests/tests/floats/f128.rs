@@ -79,19 +79,6 @@ fn test_powi() {
 }
 
 #[test]
-#[cfg(not(miri))]
-#[cfg(target_has_reliable_f128_math)]
-fn test_sqrt_domain() {
-    assert!(f128::NAN.sqrt().is_nan());
-    assert!(f128::NEG_INFINITY.sqrt().is_nan());
-    assert!((-1.0f128).sqrt().is_nan());
-    assert_biteq!((-0.0f128).sqrt(), -0.0);
-    assert_biteq!(0.0f128.sqrt(), 0.0);
-    assert_biteq!(1.0f128.sqrt(), 1.0);
-    assert_biteq!(f128::INFINITY.sqrt(), f128::INFINITY);
-}
-
-#[test]
 fn test_to_degrees() {
     let pi: f128 = consts::PI;
     let nan: f128 = f128::NAN;

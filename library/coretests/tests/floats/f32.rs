@@ -61,17 +61,6 @@ fn test_powi() {
 }
 
 #[test]
-fn test_sqrt_domain() {
-    assert!(f32::NAN.sqrt().is_nan());
-    assert!(f32::NEG_INFINITY.sqrt().is_nan());
-    assert!((-1.0f32).sqrt().is_nan());
-    assert_biteq!((-0.0f32).sqrt(), -0.0);
-    assert_biteq!(0.0f32.sqrt(), 0.0);
-    assert_biteq!(1.0f32.sqrt(), 1.0);
-    assert_biteq!(f32::INFINITY.sqrt(), f32::INFINITY);
-}
-
-#[test]
 fn test_to_degrees() {
     let pi: f32 = consts::PI;
     let nan: f32 = f32::NAN;

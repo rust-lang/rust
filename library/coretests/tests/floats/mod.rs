@@ -1122,3 +1122,26 @@ float_test! {
         assert_biteq!(nan2.next_down(), nan2);
     }
 }
+
+// FIXME(f16_f128,miri): many of these have to be disabled since miri does not yet support
+// the intrinsics.
+
+float_test! {
+    name: sqrt_domain,
+    attrs: {
+        const: #[cfg(false)],
+        f16: #[cfg(all(not(miri), target_has_reliable_f16_math))],
+        f128: #[cfg(all(not(miri), target_has_reliable_f128_math))],
+    },
+    test<Float> {
+        let one: Float = 1.0;
+        let zero: Float = 0.0;
+        assert!(Float::NAN.sqrt().is_nan());
+        assert!(Float::NEG_INFINITY.sqrt().is_nan());
+        assert!((-one).sqrt().is_nan());
+        assert_biteq!((-zero).sqrt(), -zero);
+        assert_biteq!(zero.sqrt(), zero);
+        assert_biteq!(one.sqrt(), one);
+        assert_biteq!(Float::INFINITY.sqrt(), Float::INFINITY);
+    }
+}
