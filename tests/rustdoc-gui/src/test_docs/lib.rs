@@ -767,3 +767,17 @@ pub mod impls_indent {
         pub fn bar() {}
     }
 }
+
+pub mod tooltips {
+    pub struct X;
+
+    impl X {
+        pub fn bar() -> Vec<u8> {
+            Vec::new()
+        }
+    }
+
+    pub fn bar() -> Vec<u8> {
+        Vec::new()
+    }
+}
