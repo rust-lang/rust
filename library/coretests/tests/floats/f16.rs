@@ -21,21 +21,6 @@ const TOL_P2: f16 = 0.5;
 #[allow(unused)]
 const TOL_P4: f16 = 10.0;
 
-/// Smallest number
-const TINY_BITS: u16 = 0x1;
-
-/// Next smallest number
-const TINY_UP_BITS: u16 = 0x2;
-
-/// Exponent = 0b11...10, Sifnificand 0b1111..10. Min val > 0
-const MAX_DOWN_BITS: u16 = 0x7bfe;
-
-/// Zeroed exponent, full significant
-const LARGEST_SUBNORMAL_BITS: u16 = 0x03ff;
-
-/// Exponent = 0b1, zeroed significand
-const SMALLEST_NORMAL_BITS: u16 = 0x0400;
-
 /// First pattern over the mantissa
 const NAN_MASK1: u16 = 0x02aa;
 
@@ -44,37 +29,6 @@ const NAN_MASK2: u16 = 0x0155;
 
 // FIXME(f16_f128,miri): many of these have to be disabled since miri does not yet support
 // the intrinsics.
-
-#[test]
-fn test_next_down() {
-    let tiny = f16::from_bits(TINY_BITS);
-    let tiny_up = f16::from_bits(TINY_UP_BITS);
-    let max_down = f16::from_bits(MAX_DOWN_BITS);
-    let largest_subnormal = f16::from_bits(LARGEST_SUBNORMAL_BITS);
-    let smallest_normal = f16::from_bits(SMALLEST_NORMAL_BITS);
-    assert_biteq!(f16::NEG_INFINITY.next_down(), f16::NEG_INFINITY);
-    assert_biteq!(f16::MIN.next_down(), f16::NEG_INFINITY);
-    assert_biteq!((-max_down).next_down(), f16::MIN);
-    assert_biteq!((-1.0f16).next_down(), -1.0 - f16::EPSILON);
-    assert_biteq!((-largest_subnormal).next_down(), -smallest_normal);
-    assert_biteq!((-tiny).next_down(), -tiny_up);
-    assert_biteq!((-0.0f16).next_down(), -tiny);
-    assert_biteq!((0.0f16).next_down(), -tiny);
-    assert_biteq!(tiny.next_down(), 0.0f16);
-    assert_biteq!(tiny_up.next_down(), tiny);
-    assert_biteq!(smallest_normal.next_down(), largest_subnormal);
-    assert_biteq!((1.0 + f16::EPSILON).next_down(), 1.0f16);
-    assert_biteq!(f16::MAX.next_down(), max_down);
-    assert_biteq!(f16::INFINITY.next_down(), f16::MAX);
-
-    // Check that NaNs roundtrip.
-    let nan0 = f16::NAN;
-    let nan1 = f16::from_bits(f16::NAN.to_bits() ^ NAN_MASK1);
-    let nan2 = f16::from_bits(f16::NAN.to_bits() ^ NAN_MASK2);
-    assert_biteq!(nan0.next_down(), nan0);
-    assert_biteq!(nan1.next_down(), nan1);
-    assert_biteq!(nan2.next_down(), nan2);
-}
 
 #[test]
 #[cfg(not(miri))]

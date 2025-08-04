@@ -1088,3 +1088,37 @@ float_test! {
         assert_biteq!(nan2.next_up(), nan2);
     }
 }
+
+float_test! {
+    name: next_down,
+    attrs: {
+        f16: #[cfg(any(miri, target_has_reliable_f16))],
+        f128: #[cfg(any(miri, target_has_reliable_f128))],
+    },
+    test<Float> {
+        let one: Float = 1.0;
+        let zero: Float = 0.0;
+        assert_biteq!(Float::NEG_INFINITY.next_down(), Float::NEG_INFINITY);
+        assert_biteq!(Float::MIN.next_down(), Float::NEG_INFINITY);
+        assert_biteq!((-Float::MAX_DOWN).next_down(), Float::MIN);
+        assert_biteq!((-one).next_down(), -1.0 - Float::EPSILON);
+        assert_biteq!((-Float::MAX_SUBNORMAL).next_down(), -Float::MIN_POSITIVE_NORMAL);
+        assert_biteq!((-Float::TINY).next_down(), -Float::TINY_UP);
+        assert_biteq!((-zero).next_down(), -Float::TINY);
+        assert_biteq!((zero).next_down(), -Float::TINY);
+        assert_biteq!(Float::TINY.next_down(), zero);
+        assert_biteq!(Float::TINY_UP.next_down(), Float::TINY);
+        assert_biteq!(Float::MIN_POSITIVE_NORMAL.next_down(), Float::MAX_SUBNORMAL);
+        assert_biteq!((1.0 + Float::EPSILON).next_down(), one);
+        assert_biteq!(Float::MAX.next_down(), Float::MAX_DOWN);
+        assert_biteq!(Float::INFINITY.next_down(), Float::MAX);
+
+        // Check that NaNs roundtrip.
+        let nan0 = Float::NAN;
+        let nan1 = Float::from_bits(Float::NAN.to_bits() ^ Float::NAN_MASK1);
+        let nan2 = Float::from_bits(Float::NAN.to_bits() ^ Float::NAN_MASK2);
+        assert_biteq!(nan0.next_down(), nan0);
+        assert_biteq!(nan1.next_down(), nan1);
+        assert_biteq!(nan2.next_down(), nan2);
+    }
+}

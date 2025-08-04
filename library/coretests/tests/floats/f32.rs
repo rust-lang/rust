@@ -3,21 +3,6 @@ use core::f32::consts;
 
 use super::{assert_approx_eq, assert_biteq};
 
-/// Smallest number
-const TINY_BITS: u32 = 0x1;
-
-/// Next smallest number
-const TINY_UP_BITS: u32 = 0x2;
-
-/// Exponent = 0b11...10, Sifnificand 0b1111..10. Min val > 0
-const MAX_DOWN_BITS: u32 = 0x7f7f_fffe;
-
-/// Zeroed exponent, full significant
-const LARGEST_SUBNORMAL_BITS: u32 = 0x007f_ffff;
-
-/// Exponent = 0b1, zeroed significand
-const SMALLEST_NORMAL_BITS: u32 = 0x0080_0000;
-
 /// First pattern over the mantissa
 const NAN_MASK1: u32 = 0x002a_aaaa;
 
@@ -28,37 +13,6 @@ const NAN_MASK2: u32 = 0x0055_5555;
 /// These values are purely used as a canary to test against and are thus not a stable guarantee Rust provides.
 /// They serve as a way to get an idea of the real precision of floating point operations on different platforms.
 const APPROX_DELTA: f32 = if cfg!(miri) { 1e-4 } else { 1e-6 };
-
-#[test]
-fn test_next_down() {
-    let tiny = f32::from_bits(TINY_BITS);
-    let tiny_up = f32::from_bits(TINY_UP_BITS);
-    let max_down = f32::from_bits(MAX_DOWN_BITS);
-    let largest_subnormal = f32::from_bits(LARGEST_SUBNORMAL_BITS);
-    let smallest_normal = f32::from_bits(SMALLEST_NORMAL_BITS);
-    assert_biteq!(f32::NEG_INFINITY.next_down(), f32::NEG_INFINITY);
-    assert_biteq!(f32::MIN.next_down(), f32::NEG_INFINITY);
-    assert_biteq!((-max_down).next_down(), f32::MIN);
-    assert_biteq!((-1.0f32).next_down(), -1.0 - f32::EPSILON);
-    assert_biteq!((-largest_subnormal).next_down(), -smallest_normal);
-    assert_biteq!((-tiny).next_down(), -tiny_up);
-    assert_biteq!((-0.0f32).next_down(), -tiny);
-    assert_biteq!((0.0f32).next_down(), -tiny);
-    assert_biteq!(tiny.next_down(), 0.0f32);
-    assert_biteq!(tiny_up.next_down(), tiny);
-    assert_biteq!(smallest_normal.next_down(), largest_subnormal);
-    assert_biteq!((1.0 + f32::EPSILON).next_down(), 1.0f32);
-    assert_biteq!(f32::MAX.next_down(), max_down);
-    assert_biteq!(f32::INFINITY.next_down(), f32::MAX);
-
-    // Check that NaNs roundtrip.
-    let nan0 = f32::NAN;
-    let nan1 = f32::from_bits(f32::NAN.to_bits() ^ NAN_MASK1);
-    let nan2 = f32::from_bits(f32::NAN.to_bits() ^ NAN_MASK2);
-    assert_biteq!(nan0.next_down(), nan0);
-    assert_biteq!(nan1.next_down(), nan1);
-    assert_biteq!(nan2.next_down(), nan2);
-}
 
 // FIXME(#140515): mingw has an incorrect fma https://sourceforge.net/p/mingw-w64/bugs/848/
 #[cfg_attr(all(target_os = "windows", target_env = "gnu", not(target_abi = "llvm")), ignore)]
