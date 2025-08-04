@@ -18,22 +18,24 @@ pub(crate) fn handle_gpu_code<'ll>(
     // The offload memory transfer type for each kernel
     let mut o_types = vec![];
     let mut kernels = vec![];
+    let mut region_ids = vec![];
     let offload_entry_ty = add_tgt_offload_entry(&cx);
     for num in 0..9 {
         let kernel = cx.get_function(&format!("kernel_{num}"));
         if let Some(kernel) = kernel {
-            o_types.push(gen_define_handling(&cx, kernel, offload_entry_ty, num));
+            let (o, k) = gen_define_handling(&cx, kernel, offload_entry_ty, num);
+            o_types.push(o);
+            region_ids.push(k);
             kernels.push(kernel);
         }
     }
-    generate_launcher(&cx);
-    gen_call_handling(&cx, &kernels, &o_types);
+    gen_call_handling(&cx, &kernels, &o_types, &region_ids);
     crate::builder::gpu_wrapper::gen_image_wrapper_module(&cgcx);
 }
 
 // ; Function Attrs: nounwind
 // declare i32 @__tgt_target_kernel(ptr, i64, i32, i32, ptr, ptr) #2
-fn generate_launcher<'ll>(cx: &'ll SimpleCx<'_>) -> &'ll llvm::Value {
+fn generate_launcher<'ll>(cx: &'ll SimpleCx<'_>) -> (&'ll llvm::Value, &'ll llvm::Type) {
     let tptr = cx.type_ptr();
     let ti64 = cx.type_i64();
     let ti32 = cx.type_i32();
@@ -43,7 +45,7 @@ fn generate_launcher<'ll>(cx: &'ll SimpleCx<'_>) -> &'ll llvm::Value {
     let tgt_decl = declare_offload_fn(&cx, name, tgt_fn_ty);
     let nounwind = llvm::AttributeKind::NoUnwind.create_attr(cx.llcx);
     attributes::apply_to_llfn(tgt_decl, Function, &[nounwind]);
-    tgt_decl
+    (tgt_decl, tgt_fn_ty)
 }
 
 // What is our @1 here? A magic global, used in our data_{begin/update/end}_mapper:
@@ -204,7 +206,7 @@ fn gen_define_handling<'ll>(
     kernel: &'ll llvm::Value,
     offload_entry_ty: &'ll llvm::Type,
     num: i64,
-) -> &'ll llvm::Value {
+) -> (&'ll llvm::Value, &'ll llvm::Value) {
     let types = cx.func_params_types(cx.get_type_of_global(kernel));
     // It seems like non-pointer values are automatically mapped. So here, we focus on pointer (or
     // reference) types.
@@ -262,7 +264,7 @@ fn gen_define_handling<'ll>(
     llvm::set_alignment(llglobal, Align::ONE);
     let c_section_name = CString::new(".omp_offloading_entries").unwrap();
     llvm::set_section(llglobal, &c_section_name);
-    o_types
+    (o_types, region_id)
 }
 
 pub(crate) fn declare_offload_fn<'ll>(
@@ -304,7 +306,9 @@ fn gen_call_handling<'ll>(
     cx: &'ll SimpleCx<'_>,
     _kernels: &[&'ll llvm::Value],
     o_types: &[&'ll llvm::Value],
+    region_ids: &[&'ll llvm::Value],
 ) {
+    let (tgt_decl, tgt_target_kernel_ty) = generate_launcher(&cx);
     // %struct.__tgt_bin_desc = type { i32, ptr, ptr, ptr }
     let tptr = cx.type_ptr();
     let ti32 = cx.type_i32();
@@ -491,8 +495,26 @@ fn gen_call_handling<'ll>(
         builder.store(value.1, ptr, Align::from_bytes(value.0).unwrap());
     }
 
+    let args = vec![
+        s_ident_t,
+        // MAX == -1
+        cx.get_const_i64(u64::MAX),
+        cx.get_const_i32(2097152),
+        cx.get_const_i32(256),
+        region_ids[0],
+        a5,
+    ];
+    let offload_success = builder.call(tgt_target_kernel_ty, tgt_decl, &args, None);
+    // %41 = call i32 @__tgt_target_kernel(ptr @1, i64 -1, i32 2097152, i32 256, ptr @.kernel_1.region_id, ptr %kernel_args)
+    unsafe {
+        let next = llvm::LLVMGetNextInstruction(offload_success).unwrap();
+        dbg!(&next);
+        llvm::LLVMRustPositionAfter(builder.llbuilder, next);
+        llvm::LLVMInstructionEraseFromParent(next);
+    }
+
     // Step 4)
-    unsafe { llvm::LLVMRustPositionAfter(builder.llbuilder, kernel_call) };
+    //unsafe { llvm::LLVMRustPositionAfter(builder.llbuilder, kernel_call) };
 
     let geps = get_geps(&mut builder, &cx, ty, ty2, a1, a2, a4);
     generate_mapper_call(&mut builder, &cx, geps, o, end_mapper_decl, fn_ty, num_args, s_ident_t);

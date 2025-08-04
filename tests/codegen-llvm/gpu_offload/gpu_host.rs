@@ -60,11 +60,37 @@ fn main() {
 // CHECK-NEXT:   %7 = getelementptr inbounds [1 x ptr], ptr %.offload_ptrs, i32 0, i32 0
 // CHECK-NEXT:   %8 = getelementptr inbounds [1 x i64], ptr %.offload_sizes, i32 0, i32 0
 // CHECK-NEXT:   call void @__tgt_target_data_begin_mapper(ptr @1, i64 -1, i32 1, ptr %6, ptr %7, ptr %8, ptr @.offload_maptypes.1, ptr null, ptr null)
-// CHECK-NEXT:   call void @kernel_1(ptr noalias noundef nonnull align 4 dereferenceable(1024) %x)
-// CHECK-NEXT:   %9 = getelementptr inbounds [1 x ptr], ptr %.offload_baseptrs, i32 0, i32 0
-// CHECK-NEXT:   %10 = getelementptr inbounds [1 x ptr], ptr %.offload_ptrs, i32 0, i32 0
-// CHECK-NEXT:   %11 = getelementptr inbounds [1 x i64], ptr %.offload_sizes, i32 0, i32 0
-// CHECK-NEXT:   call void @__tgt_target_data_end_mapper(ptr @1, i64 -1, i32 1, ptr %9, ptr %10, ptr %11, ptr @.offload_maptypes.1, ptr null, ptr null)
+// CHECK-NEXT:   %9 = getelementptr inbounds %struct.__tgt_kernel_arguments, ptr %kernel_args, i32 0, i32 0
+// CHECK-NEXT:   store i32 3, ptr %9, align 4
+// CHECK-NEXT:   %10 = getelementptr inbounds %struct.__tgt_kernel_arguments, ptr %kernel_args, i32 0, i32 1
+// CHECK-NEXT:   store i32 3, ptr %10, align 4
+// CHECK-NEXT:   %11 = getelementptr inbounds %struct.__tgt_kernel_arguments, ptr %kernel_args, i32 0, i32 2
+// CHECK-NEXT:   store ptr %6, ptr %11, align 8
+// CHECK-NEXT:   %12 = getelementptr inbounds %struct.__tgt_kernel_arguments, ptr %kernel_args, i32 0, i32 3
+// CHECK-NEXT:   store ptr %7, ptr %12, align 8
+// CHECK-NEXT:   %13 = getelementptr inbounds %struct.__tgt_kernel_arguments, ptr %kernel_args, i32 0, i32 4
+// CHECK-NEXT:   store ptr %8, ptr %13, align 8
+// CHECK-NEXT:   %14 = getelementptr inbounds %struct.__tgt_kernel_arguments, ptr %kernel_args, i32 0, i32 5
+// CHECK-NEXT:   store ptr @.offload_maptypes.1, ptr %14, align 8
+// CHECK-NEXT:   %15 = getelementptr inbounds %struct.__tgt_kernel_arguments, ptr %kernel_args, i32 0, i32 6
+// CHECK-NEXT:   store ptr null, ptr %15, align 8
+// CHECK-NEXT:   %16 = getelementptr inbounds %struct.__tgt_kernel_arguments, ptr %kernel_args, i32 0, i32 7
+// CHECK-NEXT:   store ptr null, ptr %16, align 8
+// CHECK-NEXT:   %17 = getelementptr inbounds %struct.__tgt_kernel_arguments, ptr %kernel_args, i32 0, i32 8
+// CHECK-NEXT:   store i64 0, ptr %17, align 8
+// CHECK-NEXT:   %18 = getelementptr inbounds %struct.__tgt_kernel_arguments, ptr %kernel_args, i32 0, i32 9
+// CHECK-NEXT:   store i64 0, ptr %18, align 8
+// CHECK-NEXT:   %19 = getelementptr inbounds %struct.__tgt_kernel_arguments, ptr %kernel_args, i32 0, i32 10
+// CHECK-NEXT:   store [3 x i32] [i32 2097152, i32 0, i32 0], ptr %19, align 8
+// CHECK-NEXT:   %20 = getelementptr inbounds %struct.__tgt_kernel_arguments, ptr %kernel_args, i32 0, i32 11
+// CHECK-NEXT:   store [3 x i32] [i32 256, i32 0, i32 0], ptr %20, align 8
+// CHECK-NEXT:   %21 = getelementptr inbounds %struct.__tgt_kernel_arguments, ptr %kernel_args, i32 0, i32 12
+// CHECK-NEXT:   store i32 0, ptr %21, align 4
+// CHECK-NEXT:   %22 = call i32 @__tgt_target_kernel(ptr @1, i64 -1, i32 2097152, i32 256, ptr @.kernel_1.region_id, ptr %kernel_args)
+// CHECK-NEXT:   %23 = getelementptr inbounds [1 x ptr], ptr %.offload_baseptrs, i32 0, i32 0
+// CHECK-NEXT:   %24 = getelementptr inbounds [1 x ptr], ptr %.offload_ptrs, i32 0, i32 0
+// CHECK-NEXT:   %25 = getelementptr inbounds [1 x i64], ptr %.offload_sizes, i32 0, i32 0
+// CHECK-NEXT:   call void @__tgt_target_data_end_mapper(ptr @1, i64 -1, i32 1, ptr %23, ptr %24, ptr %25, ptr @.offload_maptypes.1, ptr null, ptr null)
 // CHECK-NEXT:   call void @__tgt_unregister_lib(ptr %EmptyDesc)
 // CHECK:        store ptr %x, ptr %0, align 8
 // CHECK-NEXT:   call void asm sideeffect "", "r,~{memory}"(ptr nonnull %0)

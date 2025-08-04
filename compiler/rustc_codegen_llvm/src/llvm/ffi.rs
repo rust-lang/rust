@@ -1252,6 +1252,8 @@ unsafe extern "C" {
     pub(crate) fn LLVMIsAInstruction(Val: &Value) -> Option<&Value>;
     pub(crate) fn LLVMGetFirstBasicBlock(Fn: &Value) -> &BasicBlock;
     pub(crate) fn LLVMGetOperand(Val: &Value, Index: c_uint) -> Option<&Value>;
+    pub(crate) fn LLVMGetNextInstruction(Val: &Value) -> Option<&Value>;
+    pub(crate) fn LLVMInstructionEraseFromParent(Val: &Value);
 
     // Operations on call sites
     pub(crate) fn LLVMSetInstructionCallConv(Instr: &Value, CC: c_uint);
