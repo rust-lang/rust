@@ -27,10 +27,9 @@ use crate::errors::{
     ChangeFields, IgnoredDerivedImpls, MultipleDeadCodes, ParentInfo, UselessAssignment,
 };
 
-// Any local node that may call something in its body block should be
-// explored. For example, if it's a live Node::Item that is a
-// function, then we should explore its block to check for codes that
-// may need to be marked as live.
+/// Any local definition that may call something in its body block should be explored. For example,
+/// if it's a live function, then we should explore its block to check for codes that may need to
+/// be marked as live.
 fn should_explore(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
     match tcx.def_kind(def_id) {
         DefKind::Mod
