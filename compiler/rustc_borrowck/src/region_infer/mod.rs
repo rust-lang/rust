@@ -1592,6 +1592,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         from_region: RegionVid,
         to_region: RegionVid,
     ) -> Option<Vec<OutlivesConstraint<'tcx>>> {
+        if from_region == to_region {
+            bug!("Tried to find a path between {from_region:?} and itself!");
+        }
         self.constraint_path_to(from_region, |to| to == to_region, true).map(|o| o.0)
     }
 
@@ -1793,18 +1796,22 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         let path = self.constraint_path_between_regions(from_region, to_region).unwrap();
 
-        // If we are passing through a constraint added because `'lt: 'unnameable`,
-        // where cannot name `'unnameable`, redirect search towards `'unnameable`.
+        // If we are passing through a constraint added because we reached an unnameable placeholder `'unnameable`,
+        // redirect search towards `'unnameable`.
         let due_to_placeholder_outlives = path.iter().find_map(|c| {
-            if let ConstraintCategory::OutlivesUnnameablePlaceholder(lt, unnameable) = c.category {
-                Some((lt, unnameable))
+            if let ConstraintCategory::OutlivesUnnameablePlaceholder(unnameable) = c.category {
+                Some(unnameable)
             } else {
                 None
             }
         });
-        let path = if let Some((lt, unnameable)) = due_to_placeholder_outlives {
+
+        // Edge case: it's possible that `'from_region` is an unnameable placeholder.
+        let path = if let Some(unnameable) = due_to_placeholder_outlives
+            && unnameable != from_region
+        {
             // This the `false` argument is what prevents circular reasoning here!
-            self.constraint_path_to(lt, |r| r == unnameable, false).unwrap().0
+            self.constraint_path_to(from_region, |r| r == unnameable, false).unwrap().0
         } else {
             path
         };
@@ -1949,7 +1956,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 // specific, and are not used for relations that would make sense to blame.
                 ConstraintCategory::BoringNoLocation => 6,
                 // Do not blame internal constraints.
-                ConstraintCategory::OutlivesUnnameablePlaceholder(_, _) => 7,
+                ConstraintCategory::OutlivesUnnameablePlaceholder(_) => 7,
                 ConstraintCategory::Internal => 8,
             };
 
@@ -1989,7 +1996,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         assert!(
             !matches!(
                 best_constraint.category,
-                ConstraintCategory::OutlivesUnnameablePlaceholder(_, _)
+                ConstraintCategory::OutlivesUnnameablePlaceholder(_)
             ),
             "Illegal placeholder constraint blamed; should have redirected to other region relation"
         );

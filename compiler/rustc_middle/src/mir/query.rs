@@ -150,13 +150,10 @@ pub enum ConstraintCategory<'tcx> {
     Internal,
 
     /// An internal constraint added when a region outlives a placeholder
-    /// it cannot name and therefore has to outlive `'static`. The arguments
-    /// are a source -> drain of a path that caused the problem and always
-    /// leads to `'static`.
+    /// it cannot name and therefore has to outlive `'static`. The argument
+    /// is the unnameable placeholder and the constraint is always between
+    /// an SCC representative and `'static`.
     OutlivesUnnameablePlaceholder(
-        #[type_foldable(identity)]
-        #[type_visitable(ignore)]
-        ty::RegionVid,
         #[type_foldable(identity)]
         #[type_visitable(ignore)]
         ty::RegionVid,

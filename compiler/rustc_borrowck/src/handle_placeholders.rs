@@ -1,7 +1,7 @@
 //! Logic for lowering higher-kinded outlives constraints
 //! (with placeholders and universes) and turn them into regular
 //! outlives constraints.
-use std::cell::OnceCell;
+use core::cmp;
 
 use rustc_data_structures::frozen::Frozen;
 use rustc_data_structures::fx::FxIndexMap;
@@ -13,7 +13,6 @@ use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::ty::{RegionVid, UniverseIndex};
 use tracing::{debug, trace};
 
-use crate::constraints::graph::{ConstraintGraph, Normal};
 use crate::constraints::{ConstraintSccIndex, OutlivesConstraintSet};
 use crate::consumers::OutlivesConstraint;
 use crate::diagnostics::UniverseInfo;
@@ -84,16 +83,8 @@ enum PlaceholderReachability {
 }
 
 impl PlaceholderReachability {
-    /// Merge the reachable placeholders of two graph components, where
-    /// `max_nameable_universe` is the largest nameable universe
-    /// in the component according to the following preference:
-    /// Prefer a larger universe over a smaller one unless both universes
-    /// are unnameable, in which case they are tied. Break ties by rvid index.
-    fn merge(
-        self,
-        other: PlaceholderReachability,
-        max_nameable_universe: UniverseIndex,
-    ) -> PlaceholderReachability {
+    /// Merge the reachable placeholders of two graph components.
+    fn merge(self, other: PlaceholderReachability) -> PlaceholderReachability {
         use PlaceholderReachability::*;
         match (self, other) {
             (NoPlaceholders, NoPlaceholders) => NoPlaceholders,
@@ -107,21 +98,9 @@ impl PlaceholderReachability {
                 },
                 Placeholders { min_placeholder, max_placeholder, max_universe },
             ) => Placeholders {
-                min_placeholder: core::cmp::min(min_pl, min_placeholder),
-                max_placeholder: core::cmp::max(max_pl, max_placeholder),
-                max_universe: {
-                    let both_unnameable = max_nameable_universe.cannot_name(max_u.0)
-                        && max_nameable_universe.cannot_name(max_universe.0);
-                    let same_universe = max_u.0 == max_universe.0;
-
-                    // If both are equally unnameable, prefer the smaller rvid
-                    if both_unnameable || same_universe {
-                        core::cmp::min_by_key(max_u, max_universe, |u| u.1)
-                    } else {
-                        // Pick the one with the largest universe.
-                        core::cmp::max(max_u, max_universe)
-                    }
-                },
+                min_placeholder: cmp::min(min_pl, min_placeholder),
+                max_placeholder: cmp::max(max_pl, max_placeholder),
+                max_universe: cmp::max(max_u, max_universe),
             },
         }
     }
@@ -204,33 +183,26 @@ impl RegionTracker {
         Some((max_u_rvid, max_u))
     }
 }
-/// Pick the smallest universe index out of two, preferring
-/// the first argument if they are equal.
-#[inline(always)]
-fn pick_min_max_universe(a: RegionTracker, b: RegionTracker) -> (UniverseIndex, RegionVid) {
-    std::cmp::min(a.max_nameable_universe, b.max_nameable_universe)
-}
 
 impl scc::Annotation for RegionTracker {
     fn merge_scc(self, other: Self) -> Self {
         trace!("{:?} << {:?}", self.representative, other.representative);
 
-        let max_nameable_universe = pick_min_max_universe(self, other);
-
         Self {
-            max_nameable_universe,
-            reachable_placeholders: self
-                .reachable_placeholders
-                .merge(other.reachable_placeholders, max_nameable_universe.0),
             representative: self.representative.merge_scc(other.representative),
+            ..self.merge_reached(other)
         }
     }
 
-    fn merge_reached(mut self, other: Self) -> Self {
-        self.reachable_placeholders = self
-            .reachable_placeholders
-            .merge(other.reachable_placeholders, self.max_nameable_universe.0);
-        self
+    fn merge_reached(self, other: Self) -> Self {
+        Self {
+            max_nameable_universe: cmp::min(
+                self.max_nameable_universe,
+                other.max_nameable_universe,
+            ),
+            reachable_placeholders: self.reachable_placeholders.merge(other.reachable_placeholders),
+            representative: self.representative,
+        }
     }
 }
 
@@ -403,7 +375,6 @@ fn rewrite_placeholder_outlives<'tcx>(
     let mut added_constraints = false;
 
     let annotations = &annotations.scc_to_annotation;
-    let _constraint_graph: OnceCell<ConstraintGraph<Normal>> = OnceCell::new();
 
     for scc in sccs.all_sccs() {
         // No point in adding 'static: 'static!
@@ -423,16 +394,18 @@ fn rewrite_placeholder_outlives<'tcx>(
             "Placeholder universe {max_u:?} is too large for its SCC, represented by {:?}",
             annotation.representative
         );
+
         // We only add one `r: 'static` constraint per SCC, where `r` is the SCC representative.
-        // That constraint is annotated with some outlives relation `lt: unnameable` where
-        // `unnameable` is unnameable from `lt` and there is a path in the constraint graph
+        // That constraint is annotated with some placeholder `unnameable` where
+        // `unnameable` is unnameable from `r` and there is a path in the constraint graph
         // between them.
         //
-        // We prefer the representative, `r`, as `lt` in all cases but one: where the problem
-        // is that the SCC has had its universe lowered to accommodate some other region and
-        // no longer can name its representative. In that case, we blame `r: low_u`, where `low_u`
-        // cannot name `r` so that any explanation always starts with the SCC representative.
+        // There is one exception; if some other region in this SCC can't name `'r`, then
+        // we pick the region with the smallest universe in the SCC, so that a path can
+        // always start in `'r` to find a motivation that isn't cyclic.
         let blame_to = if annotation.representative.rvid() == max_u_rvid {
+            // Assertion: the region that lowered our universe is an existential one and we are a placeholder!
+
             // The SCC's representative is not nameable from some region
             // that ends up in the SCC.
             let small_universed_rvid = annotation.max_nameable_universe.1;
@@ -453,10 +426,7 @@ fn rewrite_placeholder_outlives<'tcx>(
         outlives_constraints.push(OutlivesConstraint {
             sup: annotation.representative.rvid(),
             sub: fr_static,
-            category: ConstraintCategory::OutlivesUnnameablePlaceholder(
-                annotation.representative.rvid(),
-                blame_to,
-            ),
+            category: ConstraintCategory::OutlivesUnnameablePlaceholder(blame_to),
             locations: Locations::All(rustc_span::DUMMY_SP),
             span: rustc_span::DUMMY_SP,
             variance_info: VarianceDiagInfo::None,

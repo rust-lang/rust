@@ -12,8 +12,8 @@ use rustc_middle::ty::UniverseIndex;
 use super::*;
 
 fn render_outlives_constraint(constraint: &OutlivesConstraint<'_>) -> String {
-    if let ConstraintCategory::OutlivesUnnameablePlaceholder(from, to) = constraint.category {
-        format!("b/c {from:?}: {to:?}")
+    if let ConstraintCategory::OutlivesUnnameablePlaceholder(unnameable) = constraint.category {
+        format!("{unnameable:?} unnameable")
     } else {
         match constraint.locations {
             Locations::All(_) => "All(...)".to_string(),
@@ -41,7 +41,16 @@ fn render_region_vid(rvid: RegionVid, regioncx: &RegionInferenceContext<'_>) -> 
         "".to_string()
     };
 
-    format!("{:?}{universe_str}{external_name_str}", rvid)
+    let extra_info = match regioncx.region_definition(rvid).origin {
+        NllRegionVariableOrigin::FreeRegion => "".to_string(),
+        NllRegionVariableOrigin::Placeholder(p) => match p.bound.kind {
+            ty::BoundRegionKind::Named(_, symbol) => format!("(p for {symbol}`"),
+            ty::BoundRegionKind::ClosureEnv | ty::BoundRegionKind::Anon => "(p)".to_string(),
+        },
+        NllRegionVariableOrigin::Existential { .. } => "(ex)".to_string(),
+    };
+
+    format!("{:?}{universe_str}{external_name_str}{extra_info}", rvid)
 }
 
 impl<'tcx> RegionInferenceContext<'tcx> {
