@@ -360,7 +360,7 @@ impl DefKind {
 /// For example, everything prefixed with `/* Res */` in this example has
 /// an associated `Res`:
 ///
-/// ```
+/// ```ignore (illustrative)
 /// fn str_to_string(s: & /* Res */ str) -> /* Res */ String {
 ///     /* Res */ String::from(/* Res */ s)
 /// }
@@ -421,7 +421,7 @@ pub enum Res<Id = hir::HirId> {
     /// }
     ///
     /// impl Foo for Bar {
-    ///     fn foo() -> Box<Self> { // SelfTyAlias
+    ///     fn foo() -> Box<Self /* SelfTyAlias */> {
     ///         let _: Self;        // SelfTyAlias
     ///
     ///         todo!()

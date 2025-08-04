@@ -533,8 +533,10 @@ impl<'tcx> TyCtxt<'tcx> {
     /// ```
     /// fn foo(x: usize) -> bool {
     ///     if x == 1 {
-    ///         true  // If `get_fn_id_for_return_block` gets passed the `id` corresponding
-    ///     } else {  // to this, it will return `foo`'s `HirId`.
+    ///         // If `get_fn_id_for_return_block` gets passed the `id` corresponding to this, it
+    ///         // will return `foo`'s `HirId`.
+    ///         true
+    ///     } else {
     ///         false
     ///     }
     /// }
@@ -543,8 +545,10 @@ impl<'tcx> TyCtxt<'tcx> {
     /// ```compile_fail,E0308
     /// fn foo(x: usize) -> bool {
     ///     loop {
-    ///         true  // If `get_fn_id_for_return_block` gets passed the `id` corresponding
-    ///     }         // to this, it will return `None`.
+    ///         // If `get_fn_id_for_return_block` gets passed the `id` corresponding to this, it
+    ///         // will return `None`.
+    ///         true
+    ///     }
     ///     false
     /// }
     /// ```

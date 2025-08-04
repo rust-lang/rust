@@ -16,6 +16,8 @@ use crate::sync::Once;
 /// A `OnceLock` can be thought of as a safe abstraction over uninitialized data that becomes
 /// initialized once written.
 ///
+/// Unlike [`Mutex`](crate::sync::Mutex), `OnceLock` is never poisoned on panic.
+///
 /// [`OnceCell`]: crate::cell::OnceCell
 /// [`LazyLock<T, F>`]: crate::sync::LazyLock
 /// [`LazyLock::new(|| ...)`]: crate::sync::LazyLock::new

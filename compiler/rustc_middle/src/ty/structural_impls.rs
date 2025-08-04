@@ -25,8 +25,8 @@ impl fmt::Debug for ty::TraitDef {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         ty::tls::with(|tcx| {
             with_no_trimmed_paths!({
-                let s = FmtPrinter::print_string(tcx, Namespace::TypeNS, |cx| {
-                    cx.print_def_path(self.def_id, &[])
+                let s = FmtPrinter::print_string(tcx, Namespace::TypeNS, |p| {
+                    p.print_def_path(self.def_id, &[])
                 })?;
                 f.write_str(&s)
             })
@@ -38,8 +38,8 @@ impl<'tcx> fmt::Debug for ty::AdtDef<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         ty::tls::with(|tcx| {
             with_no_trimmed_paths!({
-                let s = FmtPrinter::print_string(tcx, Namespace::TypeNS, |cx| {
-                    cx.print_def_path(self.did(), &[])
+                let s = FmtPrinter::print_string(tcx, Namespace::TypeNS, |p| {
+                    p.print_def_path(self.did(), &[])
                 })?;
                 f.write_str(&s)
             })
@@ -170,9 +170,9 @@ impl<'tcx> fmt::Debug for ty::Const<'tcx> {
         if let ConstKind::Value(cv) = self.kind() {
             return ty::tls::with(move |tcx| {
                 let cv = tcx.lift(cv).unwrap();
-                let mut cx = FmtPrinter::new(tcx, Namespace::ValueNS);
-                cx.pretty_print_const_valtree(cv, /*print_ty*/ true)?;
-                f.write_str(&cx.into_buffer())
+                let mut p = FmtPrinter::new(tcx, Namespace::ValueNS);
+                p.pretty_print_const_valtree(cv, /*print_ty*/ true)?;
+                f.write_str(&p.into_buffer())
             });
         }
         // Fall back to something verbose.
@@ -232,6 +232,7 @@ TrivialLiftImpls! {
     crate::mir::Promoted,
     crate::mir::interpret::AllocId,
     crate::mir::interpret::Scalar,
+    crate::ty::ParamConst,
     rustc_abi::ExternAbi,
     rustc_abi::Size,
     rustc_hir::Safety,
@@ -271,10 +272,6 @@ TrivialTypeTraversalImpls! {
     crate::ty::AssocItem,
     crate::ty::AssocKind,
     crate::ty::BoundRegion,
-    crate::ty::BoundVar,
-    crate::ty::InferConst,
-    crate::ty::Placeholder<crate::ty::BoundRegion>,
-    crate::ty::Placeholder<ty::BoundVar>,
     crate::ty::UserTypeAnnotationIndex,
     crate::ty::ValTree<'tcx>,
     crate::ty::abstract_const::NotConstEvaluatable,
@@ -302,9 +299,8 @@ TrivialTypeTraversalImpls! {
 // interners).
 TrivialTypeTraversalAndLiftImpls! {
     // tidy-alphabetical-start
-    crate::ty::ParamConst,
     crate::ty::ParamTy,
-    crate::ty::Placeholder<crate::ty::BoundTy>,
+    crate::ty::PlaceholderType,
     crate::ty::instance::ReifyReason,
     rustc_hir::def_id::DefId,
     // tidy-alphabetical-end
@@ -673,30 +669,30 @@ impl<'tcx> TypeSuperFoldable<TyCtxt<'tcx>> for ty::Const<'tcx> {
         folder: &mut F,
     ) -> Result<Self, F::Error> {
         let kind = match self.kind() {
-            ConstKind::Param(p) => ConstKind::Param(p.try_fold_with(folder)?),
-            ConstKind::Infer(i) => ConstKind::Infer(i.try_fold_with(folder)?),
-            ConstKind::Bound(d, b) => {
-                ConstKind::Bound(d.try_fold_with(folder)?, b.try_fold_with(folder)?)
-            }
-            ConstKind::Placeholder(p) => ConstKind::Placeholder(p.try_fold_with(folder)?),
             ConstKind::Unevaluated(uv) => ConstKind::Unevaluated(uv.try_fold_with(folder)?),
             ConstKind::Value(v) => ConstKind::Value(v.try_fold_with(folder)?),
-            ConstKind::Error(e) => ConstKind::Error(e.try_fold_with(folder)?),
             ConstKind::Expr(e) => ConstKind::Expr(e.try_fold_with(folder)?),
+
+            ConstKind::Param(_)
+            | ConstKind::Infer(_)
+            | ConstKind::Bound(..)
+            | ConstKind::Placeholder(_)
+            | ConstKind::Error(_) => return Ok(self),
         };
         if kind != self.kind() { Ok(folder.cx().mk_ct_from_kind(kind)) } else { Ok(self) }
     }
 
     fn super_fold_with<F: TypeFolder<TyCtxt<'tcx>>>(self, folder: &mut F) -> Self {
         let kind = match self.kind() {
-            ConstKind::Param(p) => ConstKind::Param(p.fold_with(folder)),
-            ConstKind::Infer(i) => ConstKind::Infer(i.fold_with(folder)),
-            ConstKind::Bound(d, b) => ConstKind::Bound(d.fold_with(folder), b.fold_with(folder)),
-            ConstKind::Placeholder(p) => ConstKind::Placeholder(p.fold_with(folder)),
             ConstKind::Unevaluated(uv) => ConstKind::Unevaluated(uv.fold_with(folder)),
             ConstKind::Value(v) => ConstKind::Value(v.fold_with(folder)),
-            ConstKind::Error(e) => ConstKind::Error(e.fold_with(folder)),
             ConstKind::Expr(e) => ConstKind::Expr(e.fold_with(folder)),
+
+            ConstKind::Param(_)
+            | ConstKind::Infer(_)
+            | ConstKind::Bound(..)
+            | ConstKind::Placeholder(_)
+            | ConstKind::Error(_) => return self,
         };
         if kind != self.kind() { folder.cx().mk_ct_from_kind(kind) } else { self }
     }
@@ -705,17 +701,15 @@ impl<'tcx> TypeSuperFoldable<TyCtxt<'tcx>> for ty::Const<'tcx> {
 impl<'tcx> TypeSuperVisitable<TyCtxt<'tcx>> for ty::Const<'tcx> {
     fn super_visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> V::Result {
         match self.kind() {
-            ConstKind::Param(p) => p.visit_with(visitor),
-            ConstKind::Infer(i) => i.visit_with(visitor),
-            ConstKind::Bound(d, b) => {
-                try_visit!(d.visit_with(visitor));
-                b.visit_with(visitor)
-            }
-            ConstKind::Placeholder(p) => p.visit_with(visitor),
             ConstKind::Unevaluated(uv) => uv.visit_with(visitor),
             ConstKind::Value(v) => v.visit_with(visitor),
-            ConstKind::Error(e) => e.visit_with(visitor),
             ConstKind::Expr(e) => e.visit_with(visitor),
+            ConstKind::Error(e) => e.visit_with(visitor),
+
+            ConstKind::Param(_)
+            | ConstKind::Infer(_)
+            | ConstKind::Bound(..)
+            | ConstKind::Placeholder(_) => V::Result::output(),
         }
     }
 }

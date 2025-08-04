@@ -8,6 +8,9 @@ use super::static_files::{STATIC_FILES, StaticFiles};
 use crate::externalfiles::ExternalHtml;
 use crate::html::render::{StylePath, ensure_trailing_slash};
 
+#[cfg(test)]
+mod tests;
+
 pub(crate) struct Layout {
     pub(crate) logo: String,
     pub(crate) favicon: String,
@@ -66,6 +69,13 @@ struct PageLayout<'a> {
     display_krate_with_trailing_slash: String,
     display_krate_version_number: &'a str,
     display_krate_version_extra: &'a str,
+}
+
+impl PageLayout<'_> {
+    /// See [`may_remove_crossorigin`].
+    fn static_root_path_may_remove_crossorigin(&self) -> bool {
+        may_remove_crossorigin(&self.static_root_path)
+    }
 }
 
 pub(crate) use crate::html::render::sidebar::filters;
@@ -133,4 +143,23 @@ pub(crate) fn redirect(url: &str) -> String {
 </body>
 </html>"##,
     )
+}
+
+/// Conservatively determines if `href` is relative to the current origin,
+/// so that `crossorigin` may be safely removed from `<link>` elements.
+pub(crate) fn may_remove_crossorigin(href: &str) -> bool {
+    // Reject scheme-relative URLs (`//example.com/`).
+    if href.starts_with("//") {
+        return false;
+    }
+    // URL is interpreted as having a scheme iff: it starts with an ascii alpha, and only
+    // contains ascii alphanumeric or `+` `-` `.` up to the `:`.
+    // https://url.spec.whatwg.org/#url-parsing
+    let has_scheme = href.split_once(':').is_some_and(|(scheme, _rest)| {
+        let mut chars = scheme.chars();
+        chars.next().is_some_and(|c| c.is_ascii_alphabetic())
+            && chars.all(|c| c.is_ascii_alphanumeric() || c == '+' || c == '-' || c == '.')
+    });
+    // Reject anything with a scheme (`http:`, etc.).
+    !has_scheme
 }

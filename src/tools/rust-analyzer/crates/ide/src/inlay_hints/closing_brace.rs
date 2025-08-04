@@ -120,11 +120,11 @@ pub(super) fn hints(
     };
 
     if let Some(mut next) = closing_token.next_token() {
-        if next.kind() == T![;] {
-            if let Some(tok) = next.next_token() {
-                closing_token = next;
-                next = tok;
-            }
+        if next.kind() == T![;]
+            && let Some(tok) = next.next_token()
+        {
+            closing_token = next;
+            next = tok;
         }
         if !(next.kind() == SyntaxKind::WHITESPACE && next.text().contains('\n')) {
             // Only display the hint if the `}` is the last token on the line

@@ -83,12 +83,12 @@ impl<'a> Ctx<'a> {
             .flat_map(|item| self.lower_mod_item(&item))
             .collect();
 
-        if let Some(ast::Expr::MacroExpr(tail_macro)) = stmts.expr() {
-            if let Some(call) = tail_macro.macro_call() {
-                cov_mark::hit!(macro_stmt_with_trailing_macro_expr);
-                if let Some(mod_item) = self.lower_mod_item(&call.into()) {
-                    self.top_level.push(mod_item);
-                }
+        if let Some(ast::Expr::MacroExpr(tail_macro)) = stmts.expr()
+            && let Some(call) = tail_macro.macro_call()
+        {
+            cov_mark::hit!(macro_stmt_with_trailing_macro_expr);
+            if let Some(mod_item) = self.lower_mod_item(&call.into()) {
+                self.top_level.push(mod_item);
             }
         }
 
@@ -112,12 +112,11 @@ impl<'a> Ctx<'a> {
                 _ => None,
             })
             .collect();
-        if let Some(ast::Expr::MacroExpr(expr)) = block.tail_expr() {
-            if let Some(call) = expr.macro_call() {
-                if let Some(mod_item) = self.lower_mod_item(&call.into()) {
-                    self.top_level.push(mod_item);
-                }
-            }
+        if let Some(ast::Expr::MacroExpr(expr)) = block.tail_expr()
+            && let Some(call) = expr.macro_call()
+            && let Some(mod_item) = self.lower_mod_item(&call.into())
+        {
+            self.top_level.push(mod_item);
         }
         self.tree.vis.arena = self.visibilities.into_iter().collect();
         self.tree.top_level = self.top_level.into_boxed_slice();

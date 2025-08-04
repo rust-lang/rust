@@ -305,10 +305,10 @@ impl flags::RustcTests {
         for i in walk_dir {
             let i = i?;
             let p = i.into_path();
-            if let Some(f) = &self.filter {
-                if !p.as_os_str().to_string_lossy().contains(f) {
-                    continue;
-                }
+            if let Some(f) = &self.filter
+                && !p.as_os_str().to_string_lossy().contains(f)
+            {
+                continue;
             }
             if p.extension().is_none_or(|x| x != "rs") {
                 continue;

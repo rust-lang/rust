@@ -939,6 +939,24 @@ impl SyntaxFactory {
         ast
     }
 
+    pub fn record_expr(
+        &self,
+        path: ast::Path,
+        fields: ast::RecordExprFieldList,
+    ) -> ast::RecordExpr {
+        let ast = make::record_expr(path.clone(), fields.clone()).clone_for_update();
+        if let Some(mut mapping) = self.mappings() {
+            let mut builder = SyntaxMappingBuilder::new(ast.syntax().clone());
+            builder.map_node(path.syntax().clone(), ast.path().unwrap().syntax().clone());
+            builder.map_node(
+                fields.syntax().clone(),
+                ast.record_expr_field_list().unwrap().syntax().clone(),
+            );
+            builder.finish(&mut mapping);
+        }
+        ast
+    }
+
     pub fn record_expr_field(
         &self,
         name: ast::NameRef,

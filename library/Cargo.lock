@@ -169,9 +169,9 @@ dependencies = [
 
 [[package]]
 name = "object"
-version = "0.37.1"
+version = "0.37.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "03fd943161069e1768b4b3d050890ba48730e590f57e56d4aa04e7e090e61b4a"
+checksum = "b3e3d0a7419f081f4a808147e845310313a39f322d7ae1f996b7f001d6cbed04"
 dependencies = [
  "memchr",
  "rustc-std-workspace-alloc",
@@ -183,9 +183,8 @@ name = "panic_abort"
 version = "0.0.0"
 dependencies = [
  "alloc",
- "compiler_builtins",
- "core",
  "libc",
+ "rustc-std-workspace-core",
 ]
 
 [[package]]
@@ -194,9 +193,8 @@ version = "0.0.0"
 dependencies = [
  "alloc",
  "cfg-if",
- "compiler_builtins",
- "core",
  "libc",
+ "rustc-std-workspace-core",
  "unwind",
 ]
 
@@ -261,9 +259,9 @@ dependencies = [
 
 [[package]]
 name = "rustc-demangle"
-version = "0.1.25"
+version = "0.1.26"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "989e6739f80c4ad5b13e0fd7fe89531180375b18520cc8c82080e4dc4035b84f"
+checksum = "56f7d92ca342cea22a06f2121d944b4fd82af56988c270852495420f961d4ace"
 dependencies = [
  "rustc-std-workspace-core",
 ]
@@ -313,7 +311,6 @@ dependencies = [
  "addr2line",
  "alloc",
  "cfg-if",
- "compiler_builtins",
  "core",
  "dlmalloc",
  "fortanix-sgx-abi",
@@ -380,19 +377,17 @@ name = "unwind"
 version = "0.0.0"
 dependencies = [
  "cfg-if",
- "compiler_builtins",
- "core",
  "libc",
+ "rustc-std-workspace-core",
  "unwinding",
 ]
 
 [[package]]
 name = "unwinding"
-version = "0.2.7"
+version = "0.2.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7d80f6c2bfede213d9a90b4a14f3eb99b84e33c52df6c1a15de0a100f5a88751"
+checksum = "60612c845ef41699f39dc8c5391f252942c0a88b7d15da672eff0d14101bbd6d"
 dependencies = [
- "compiler_builtins",
  "gimli",
  "rustc-std-workspace-core",
 ]

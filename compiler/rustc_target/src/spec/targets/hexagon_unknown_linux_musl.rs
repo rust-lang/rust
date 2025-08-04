@@ -7,7 +7,6 @@ pub(crate) fn target() -> Target {
     // FIXME: HVX length defaults are per-CPU
     base.features = "-small-data,+hvx-length128b".into();
 
-    base.crt_static_default = false;
     base.has_rpath = true;
     base.linker_flavor = LinkerFlavor::Unix(Cc::Yes);
 

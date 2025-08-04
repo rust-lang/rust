@@ -1,0 +1,47 @@
+// MIR for `option_traits` after PreCodegen
+
+fn option_traits(_1: Option<u32>) -> Option<u32> {
+    debug x => _1;
+    let mut _0: std::option::Option<u32>;
+    let mut _2: std::ops::ControlFlow<std::option::Option<std::convert::Infallible>, u32>;
+    let mut _3: isize;
+    let _4: u32;
+    let mut _5: u32;
+    scope 1 {
+        debug residual => const Option::<Infallible>::None;
+        scope 2 {
+        }
+    }
+    scope 3 {
+        debug val => _4;
+        scope 4 {
+        }
+    }
+
+    bb0: {
+        _2 = <Option<u32> as Try>::branch(copy _1) -> [return: bb1, unwind continue];
+    }
+
+    bb1: {
+        _3 = discriminant(_2);
+        switchInt(move _3) -> [0: bb2, 1: bb3, otherwise: bb5];
+    }
+
+    bb2: {
+        _4 = copy ((_2 as Continue).0: u32);
+        _5 = Not(copy _4);
+        _0 = <Option<u32> as Try>::from_output(move _5) -> [return: bb4, unwind continue];
+    }
+
+    bb3: {
+        _0 = <Option<u32> as FromResidual<Option<Infallible>>>::from_residual(const Option::<Infallible>::None) -> [return: bb4, unwind continue];
+    }
+
+    bb4: {
+        return;
+    }
+
+    bb5: {
+        unreachable;
+    }
+}

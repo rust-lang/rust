@@ -318,7 +318,7 @@ pub fn dtorck_constraint_for_ty_inner<'tcx>(
             })
         }
 
-        ty::Coroutine(_, args) => {
+        ty::Coroutine(def_id, args) => {
             // rust-lang/rust#49918: types can be constructed, stored
             // in the interior, and sit idle when coroutine yields
             // (and is subsequently dropped).
@@ -346,7 +346,10 @@ pub fn dtorck_constraint_for_ty_inner<'tcx>(
             // While we conservatively assume that all coroutines require drop
             // to avoid query cycles during MIR building, we can check the actual
             // witness during borrowck to avoid unnecessary liveness constraints.
-            if args.witness().needs_drop(tcx, tcx.erase_regions(typing_env)) {
+            let typing_env = tcx.erase_regions(typing_env);
+            if tcx.mir_coroutine_witnesses(def_id).is_some_and(|witness| {
+                witness.field_tys.iter().any(|field| field.ty.needs_drop(tcx, typing_env))
+            }) {
                 constraints.outlives.extend(args.upvar_tys().iter().map(ty::GenericArg::from));
                 constraints.outlives.push(args.resume_ty().into());
             }

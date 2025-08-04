@@ -309,11 +309,11 @@ impl TyBuilder<hir_def::AdtId> {
         if let Some(defaults) = defaults.get(self.vec.len()..) {
             for default_ty in defaults {
                 // NOTE(skip_binders): we only check if the arg type is error type.
-                if let Some(x) = default_ty.skip_binders().ty(Interner) {
-                    if x.is_unknown() {
-                        self.vec.push(fallback().cast(Interner));
-                        continue;
-                    }
+                if let Some(x) = default_ty.skip_binders().ty(Interner)
+                    && x.is_unknown()
+                {
+                    self.vec.push(fallback().cast(Interner));
+                    continue;
                 }
                 // Each default can only depend on the previous parameters.
                 self.vec.push(default_ty.clone().substitute(Interner, &*self.vec).cast(Interner));

@@ -63,6 +63,12 @@ pub fn parse_config(args: Vec<String>) -> Config {
             "path to rustc to use for compiling run-make recipes",
             "PATH",
         )
+        .optopt(
+            "",
+            "query-rustc-path",
+            "path to rustc to use for querying target information (defaults to `--rustc-path`)",
+            "PATH",
+        )
         .optopt("", "rustdoc-path", "path to rustdoc to use for compiling", "PATH")
         .optopt("", "coverage-dump-path", "path to coverage-dump to use in tests", "PATH")
         .reqopt("", "python", "path to python to use for doc tests", "PATH")
@@ -354,6 +360,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         rustc_path: opt_path(matches, "rustc-path"),
         cargo_path: matches.opt_str("cargo-path").map(Utf8PathBuf::from),
         stage0_rustc_path: matches.opt_str("stage0-rustc-path").map(Utf8PathBuf::from),
+        query_rustc_path: matches.opt_str("query-rustc-path").map(Utf8PathBuf::from),
         rustdoc_path: matches.opt_str("rustdoc-path").map(Utf8PathBuf::from),
         coverage_dump_path: matches.opt_str("coverage-dump-path").map(Utf8PathBuf::from),
         python: matches.opt_str("python").unwrap(),

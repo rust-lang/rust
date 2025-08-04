@@ -1,7 +1,5 @@
 # What Bootstrapping does
 
-<!-- toc -->
-
 [*Bootstrapping*][boot] is the process of using a compiler to compile itself.
 More accurately, it means using an older compiler to compile a newer version of
 the same compiler.

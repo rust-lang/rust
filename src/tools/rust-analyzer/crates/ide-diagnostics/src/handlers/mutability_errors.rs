@@ -12,14 +12,14 @@ pub(crate) fn need_mut(ctx: &DiagnosticsContext<'_>, d: &hir::NeedMut) -> Option
     let root = ctx.sema.db.parse_or_expand(d.span.file_id);
     let node = d.span.value.to_node(&root);
     let mut span = d.span;
-    if let Some(parent) = node.parent() {
-        if ast::BinExpr::can_cast(parent.kind()) {
-            // In case of an assignment, the diagnostic is provided on the variable name.
-            // We want to expand it to include the whole assignment, but only when this
-            // is an ordinary assignment, not a destructuring assignment. So, the direct
-            // parent is an assignment expression.
-            span = d.span.with_value(SyntaxNodePtr::new(&parent));
-        }
+    if let Some(parent) = node.parent()
+        && ast::BinExpr::can_cast(parent.kind())
+    {
+        // In case of an assignment, the diagnostic is provided on the variable name.
+        // We want to expand it to include the whole assignment, but only when this
+        // is an ordinary assignment, not a destructuring assignment. So, the direct
+        // parent is an assignment expression.
+        span = d.span.with_value(SyntaxNodePtr::new(&parent));
     };
 
     let fixes = (|| {
@@ -73,10 +73,10 @@ pub(crate) fn unused_mut(ctx: &DiagnosticsContext<'_>, d: &hir::UnusedMut) -> Op
             let ast = source.syntax();
             let Some(mut_token) = token(ast, T![mut]) else { continue };
             edit_builder.delete(mut_token.text_range());
-            if let Some(token) = mut_token.next_token() {
-                if token.kind() == SyntaxKind::WHITESPACE {
-                    edit_builder.delete(token.text_range());
-                }
+            if let Some(token) = mut_token.next_token()
+                && token.kind() == SyntaxKind::WHITESPACE
+            {
+                edit_builder.delete(token.text_range());
             }
         }
         let edit = edit_builder.finish();

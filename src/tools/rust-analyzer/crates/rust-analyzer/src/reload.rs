@@ -306,13 +306,13 @@ impl GlobalState {
                         _ => None,
                     });
 
-                    if let Some(build) = build {
-                        if is_quiescent {
-                            let path = AbsPathBuf::try_from(build.build_file)
-                                .expect("Unable to convert to an AbsPath");
-                            let arg = DiscoverProjectParam::Buildfile(path);
-                            sender.send(Task::DiscoverLinkedProjects(arg)).unwrap();
-                        }
+                    if let Some(build) = build
+                        && is_quiescent
+                    {
+                        let path = AbsPathBuf::try_from(build.build_file)
+                            .expect("Unable to convert to an AbsPath");
+                        let arg = DiscoverProjectParam::Buildfile(path);
+                        sender.send(Task::DiscoverLinkedProjects(arg)).unwrap();
                     }
                 }
 

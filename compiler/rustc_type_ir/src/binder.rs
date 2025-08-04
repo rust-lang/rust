@@ -274,8 +274,9 @@ impl<I: Interner, T: IntoIterator> Binder<I, T> {
 pub struct ValidateBoundVars<I: Interner> {
     bound_vars: I::BoundVarKinds,
     binder_index: ty::DebruijnIndex,
-    // We may encounter the same variable at different levels of binding, so
-    // this can't just be `Ty`
+    // We only cache types because any complex const will have to step through
+    // a type at some point anyways. We may encounter the same variable at
+    // different levels of binding, so this can't just be `Ty`.
     visited: SsoHashSet<(ty::DebruijnIndex, I::Ty)>,
 }
 
@@ -319,6 +320,24 @@ impl<I: Interner> TypeVisitor<I> for ValidateBoundVars<I> {
         t.super_visit_with(self)
     }
 
+    fn visit_const(&mut self, c: I::Const) -> Self::Result {
+        if c.outer_exclusive_binder() < self.binder_index {
+            return ControlFlow::Break(());
+        }
+        match c.kind() {
+            ty::ConstKind::Bound(debruijn, bound_const) if debruijn == self.binder_index => {
+                let idx = bound_const.var().as_usize();
+                if self.bound_vars.len() <= idx {
+                    panic!("Not enough bound vars: {:?} not found in {:?}", c, self.bound_vars);
+                }
+                bound_const.assert_eq(self.bound_vars.get(idx).unwrap());
+            }
+            _ => {}
+        };
+
+        c.super_visit_with(self)
+    }
+
     fn visit_region(&mut self, r: I::Region) -> Self::Result {
         match r.kind() {
             ty::ReBound(index, br) if index == self.binder_index => {
@@ -357,7 +376,7 @@ impl<I: Interner> TypeVisitor<I> for ValidateBoundVars<I> {
 pub struct EarlyBinder<I: Interner, T> {
     value: T,
     #[derive_where(skip(Debug))]
-    _tcx: PhantomData<I>,
+    _tcx: PhantomData<fn() -> I>,
 }
 
 /// For early binders, you should first call `instantiate` before using any visitors.

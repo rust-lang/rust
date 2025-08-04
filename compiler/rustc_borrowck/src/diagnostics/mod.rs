@@ -613,7 +613,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
     /// Return the name of the provided `Ty` (that must be a reference) with a synthesized lifetime
     /// name where required.
     pub(super) fn get_name_for_ty(&self, ty: Ty<'tcx>, counter: usize) -> String {
-        let mut printer = ty::print::FmtPrinter::new(self.infcx.tcx, Namespace::TypeNS);
+        let mut p = ty::print::FmtPrinter::new(self.infcx.tcx, Namespace::TypeNS);
 
         // We need to add synthesized lifetimes where appropriate. We do
         // this by hooking into the pretty printer and telling it to label the
@@ -624,19 +624,19 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 | ty::RePlaceholder(ty::PlaceholderRegion {
                     bound: ty::BoundRegion { kind: br, .. },
                     ..
-                }) => printer.region_highlight_mode.highlighting_bound_region(br, counter),
+                }) => p.region_highlight_mode.highlighting_bound_region(br, counter),
                 _ => {}
             }
         }
 
-        ty.print(&mut printer).unwrap();
-        printer.into_buffer()
+        ty.print(&mut p).unwrap();
+        p.into_buffer()
     }
 
     /// Returns the name of the provided `Ty` (that must be a reference)'s region with a
     /// synthesized lifetime name where required.
     pub(super) fn get_region_name_for_ty(&self, ty: Ty<'tcx>, counter: usize) -> String {
-        let mut printer = ty::print::FmtPrinter::new(self.infcx.tcx, Namespace::TypeNS);
+        let mut p = ty::print::FmtPrinter::new(self.infcx.tcx, Namespace::TypeNS);
 
         let region = if let ty::Ref(region, ..) = ty.kind() {
             match region.kind() {
@@ -644,7 +644,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 | ty::RePlaceholder(ty::PlaceholderRegion {
                     bound: ty::BoundRegion { kind: br, .. },
                     ..
-                }) => printer.region_highlight_mode.highlighting_bound_region(br, counter),
+                }) => p.region_highlight_mode.highlighting_bound_region(br, counter),
                 _ => {}
             }
             region
@@ -652,8 +652,8 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             bug!("ty for annotation of borrow region is not a reference");
         };
 
-        region.print(&mut printer).unwrap();
-        printer.into_buffer()
+        region.print(&mut p).unwrap();
+        p.into_buffer()
     }
 
     /// Add a note to region errors and borrow explanations when higher-ranked regions in predicates

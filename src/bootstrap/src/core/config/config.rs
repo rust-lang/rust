@@ -51,7 +51,7 @@ use crate::core::download::{
 use crate::utils::channel;
 use crate::utils::exec::{ExecutionContext, command};
 use crate::utils::helpers::{exe, get_host_target};
-use crate::{GitInfo, OnceLock, TargetSelection, check_ci_llvm, helpers, t};
+use crate::{CodegenBackendKind, GitInfo, OnceLock, TargetSelection, check_ci_llvm, helpers, t};
 
 /// Each path in this list is considered "allowed" in the `download-rustc="if-unchanged"` logic.
 /// This means they can be modified and changes to these paths should never trigger a compiler build
@@ -208,7 +208,7 @@ pub struct Config {
     pub rustc_default_linker: Option<String>,
     pub rust_optimize_tests: bool,
     pub rust_dist_src: bool,
-    pub rust_codegen_backends: Vec<String>,
+    pub rust_codegen_backends: Vec<CodegenBackendKind>,
     pub rust_verify_llvm_ir: bool,
     pub rust_thin_lto_import_instr_limit: Option<u32>,
     pub rust_randomize_layout: bool,
@@ -350,7 +350,7 @@ impl Config {
             channel: "dev".to_string(),
             codegen_tests: true,
             rust_dist_src: true,
-            rust_codegen_backends: vec!["llvm".to_owned()],
+            rust_codegen_backends: vec![CodegenBackendKind::Llvm],
             deny_warnings: true,
             bindir: "bin".into(),
             dist_include_mingw_linker: true,
@@ -1747,7 +1747,7 @@ impl Config {
             .unwrap_or(self.profiler)
     }
 
-    pub fn codegen_backends(&self, target: TargetSelection) -> &[String] {
+    pub fn codegen_backends(&self, target: TargetSelection) -> &[CodegenBackendKind] {
         self.target_config
             .get(&target)
             .and_then(|cfg| cfg.codegen_backends.as_deref())
@@ -1758,7 +1758,7 @@ impl Config {
         self.target_config.get(&target).and_then(|cfg| cfg.jemalloc).unwrap_or(self.jemalloc)
     }
 
-    pub fn default_codegen_backend(&self, target: TargetSelection) -> Option<String> {
+    pub fn default_codegen_backend(&self, target: TargetSelection) -> Option<CodegenBackendKind> {
         self.codegen_backends(target).first().cloned()
     }
 
@@ -1774,7 +1774,7 @@ impl Config {
     }
 
     pub fn llvm_enabled(&self, target: TargetSelection) -> bool {
-        self.codegen_backends(target).contains(&"llvm".to_owned())
+        self.codegen_backends(target).contains(&CodegenBackendKind::Llvm)
     }
 
     pub fn llvm_libunwind(&self, target: TargetSelection) -> LlvmLibunwind {
