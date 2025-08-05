@@ -35,7 +35,7 @@ declare_clippy_lint! {
     /// * [`too_many_lines`](https://rust-lang.github.io/rust-clippy/master/index.html#too_many_lines)
     #[clippy::version = "1.35.0"]
     pub COGNITIVE_COMPLEXITY,
-    nursery,
+    restriction,
     "functions that should be split up into multiple functions",
     @eval_always = true
 }
