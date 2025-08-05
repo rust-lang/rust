@@ -157,6 +157,9 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
 
     /// Call `fn_ptr` of `fn_abi` with the arguments `llargs`, the optional
     /// return destination `destination` and the unwind action `unwind`.
+    /// The `indirect_return_pointer` is specified for functions returning
+    /// via `PassMode::indirect`, and points to a buffer, where the return value
+    /// shall be stored.
     fn do_call<Bx: BuilderMethods<'a, 'tcx>>(
         &self,
         fx: &mut FunctionCx<'a, 'tcx, Bx>,
@@ -268,7 +271,6 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
             }
             MergingSucc::False
         } else {
-            //assert!(!matches!(fn_abi.ret.mode, PassMode::Indirect { .. })); /* What does this assertion even check for???*/
             let llret = bx.call(
                 fn_ty,
                 fn_attrs,
@@ -1053,7 +1055,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     self.make_return_dest(bx, destination, &fn_abi.ret);
                 (target.map(|target| (return_dest, target)), indirect_return)
             }
-            CallKind::Tail => (None, None), // FIXME(FractalFir: Can tail calls use indirect returns)?
+            CallKind::Tail => (None, None), /*
+                                            FIXME(FractalFir): Tail calls don't currently support indirect returns.
+                                            Once that support is added, assign the indirect return(sret) pointer to `indirect_return` when applicable.
+                                            */
         };
 
         // Split the rust-call tupled arguments off.

@@ -407,18 +407,20 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         fn_attrs: Option<&CodegenFnAttrs>,
         fn_abi: Option<&FnAbi<'tcx, Ty<'tcx>>>,
         llfn: &'ll Value,
-        indirect_return_pointer: Option<Self::Value>,
+        indirect_return_pointer: Option<&'ll Value>,
         args: &[&'ll Value],
         then: &'ll BasicBlock,
         catch: &'ll BasicBlock,
         funclet: Option<&Funclet<'ll>>,
         instance: Option<Instance<'tcx>>,
     ) -> &'ll Value {
+        // If this function returns indirectly(`PassMode::Indirect`),
+        // the `indirect_return_pointer` should be the first argument.
         let args = match indirect_return_pointer {
             None => args.to_vec(),
             Some(sret_ptr) => {
                 let mut args = args.to_vec();
-                // Preappend the indirect return pointer
+                // Preappend the indirect return pointer.
                 args.insert(0, sret_ptr);
                 args
             }
@@ -1401,11 +1403,13 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         fn_attrs: Option<&CodegenFnAttrs>,
         fn_abi: Option<&FnAbi<'tcx, Ty<'tcx>>>,
         llfn: &'ll Value,
-        indirect_return_pointer: Option<Self::Value>,
+        indirect_return_pointer: Option<&'ll Value>,
         args: &[&'ll Value],
         funclet: Option<&Funclet<'ll>>,
         instance: Option<Instance<'tcx>>,
     ) -> &'ll Value {
+        // If this function returns indirectly(`PassMode::Indirect`),
+        // the `indirect_return_pointer` should be the first argument.
         let args = match indirect_return_pointer {
             None => args.to_vec(),
             Some(sret_ptr) => {
@@ -1465,7 +1469,10 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
             fn_attrs,
             Some(fn_abi),
             llfn,
-            None, /*FIXME(FractalFir): can tail calls return indrectly?*/
+            None, /*
+                      FIXME(FractalFir):  Tail calls don't support indirect returns at the time of writing, but they will do so soon.
+                      Once this support is added, the indirect return pointer ought to be passed here(if present).
+                  */
             args,
             funclet,
             instance,
@@ -1700,7 +1707,7 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
         args: &[&'ll Value],
     ) -> &'ll Value {
         let (ty, f) = self.cx.get_intrinsic(base_name.into(), type_params);
-        self.call(ty, None, None, f, None/* FIXME(FractalFir): I **assume** that no LLVM intrinsic returns a value via sret. Is this correct?*/, args, None, None)
+        self.call(ty, None, None, f, None/* (FractalFir): at the time of writing, no LLVM intrinsic retruns data indirectly(via `sret`). So, this is always None.*/, args, None, None)
     }
 
     fn call_lifetime_intrinsic(&mut self, intrinsic: &'static str, ptr: &'ll Value, size: Size) {
