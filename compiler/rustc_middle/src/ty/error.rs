@@ -213,13 +213,13 @@ impl<'tcx> Ty<'tcx> {
 }
 
 impl<'tcx> TyCtxt<'tcx> {
-    pub fn string_with_limit<T>(self, p: T, length_limit: usize) -> String
+    pub fn string_with_limit<T>(self, t: T, length_limit: usize) -> String
     where
         T: Copy + for<'a, 'b> Lift<TyCtxt<'b>, Lifted: Print<'b, FmtPrinter<'a, 'b>>>,
     {
         let mut type_limit = 50;
-        let regular = FmtPrinter::print_string(self, hir::def::Namespace::TypeNS, |cx| {
-            self.lift(p).expect("could not lift for printing").print(cx)
+        let regular = FmtPrinter::print_string(self, hir::def::Namespace::TypeNS, |p| {
+            self.lift(t).expect("could not lift for printing").print(p)
         })
         .expect("could not write to `String`");
         if regular.len() <= length_limit {
@@ -229,16 +229,16 @@ impl<'tcx> TyCtxt<'tcx> {
         loop {
             // Look for the longest properly trimmed path that still fits in length_limit.
             short = with_forced_trimmed_paths!({
-                let mut cx = FmtPrinter::new_with_limit(
+                let mut p = FmtPrinter::new_with_limit(
                     self,
                     hir::def::Namespace::TypeNS,
                     rustc_session::Limit(type_limit),
                 );
-                self.lift(p)
+                self.lift(t)
                     .expect("could not lift for printing")
-                    .print(&mut cx)
+                    .print(&mut p)
                     .expect("could not print type");
-                cx.into_buffer()
+                p.into_buffer()
             });
             if short.len() <= length_limit || type_limit == 0 {
                 break;
@@ -252,12 +252,12 @@ impl<'tcx> TyCtxt<'tcx> {
     /// `tcx.short_string(ty, diag.long_ty_path())`. The diagnostic itself is the one that keeps
     /// the existence of a "long type" anywhere in the diagnostic, so the note telling the user
     /// where we wrote the file to is only printed once.
-    pub fn short_string<T>(self, p: T, path: &mut Option<PathBuf>) -> String
+    pub fn short_string<T>(self, t: T, path: &mut Option<PathBuf>) -> String
     where
         T: Copy + Hash + for<'a, 'b> Lift<TyCtxt<'b>, Lifted: Print<'b, FmtPrinter<'a, 'b>>>,
     {
-        let regular = FmtPrinter::print_string(self, hir::def::Namespace::TypeNS, |cx| {
-            self.lift(p).expect("could not lift for printing").print(cx)
+        let regular = FmtPrinter::print_string(self, hir::def::Namespace::TypeNS, |p| {
+            self.lift(t).expect("could not lift for printing").print(p)
         })
         .expect("could not write to `String`");
 
@@ -270,13 +270,13 @@ impl<'tcx> TyCtxt<'tcx> {
         if regular.len() <= width * 2 / 3 {
             return regular;
         }
-        let short = self.string_with_limit(p, length_limit);
+        let short = self.string_with_limit(t, length_limit);
         if regular == short {
             return regular;
         }
         // Ensure we create an unique file for the type passed in when we create a file.
         let mut s = DefaultHasher::new();
-        p.hash(&mut s);
+        t.hash(&mut s);
         let hash = s.finish();
         *path = Some(path.take().unwrap_or_else(|| {
             self.output_filenames(()).temp_path_for_diagnostic(&format!("long-type-{hash}.txt"))
