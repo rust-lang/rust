@@ -220,7 +220,7 @@ impl X86IntrinsicType {
                     data.vec_len = match str::parse::<u32>(type_processed.as_str()) {
                         // If bit_len is None, vec_len will be None.
                         // Else vec_len will be (num_bits / bit_len).
-                        Ok(num_bits) => data.bit_len.and(Some(num_bits / data.bit_len.unwrap())),
+                        Ok(num_bits) => data.bit_len.and_then(|bit_len| Some(num_bits / bit_len)),
                         Err(_) => None,
                     };
                 }
