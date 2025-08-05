@@ -13,18 +13,16 @@ impl IntrinsicTypeDefinition for X86IntrinsicType {
     /// Gets a string containing the type in C format.
     /// This function assumes that this value is present in the metadata hashmap.
     fn c_type(&self) -> String {
-        self.metadata
-            .get("type")
-            .expect("Failed to extract the C typename in X86!")
-            .to_string()
+        self.param.type_data.clone()
     }
 
     fn c_single_vector_type(&self) -> String {
         // matches __m128, __m256 and similar types
         let re = Regex::new(r"\__m\d+\").unwrap();
-        match self.metadata.get("type") {
-            Some(type_data) if re.is_match(type_data) => type_data.to_string(),
-            _ => unreachable!("Shouldn't be called on this type"),
+        if re.is_match(self.param.type_data.as_str()) {
+            self.param.type_data.clone()
+        } else {
+            unreachable!("Shouldn't be called on this type")
         }
     }
 
@@ -94,40 +92,42 @@ impl IntrinsicTypeDefinition for X86IntrinsicType {
 
     /// Determines the load function for this type.
     fn get_load_function(&self, _language: Language) -> String {
-        if let Some(type_value) = self.metadata.get("type") {
-            if type_value.starts_with("__mmask") {
-                // no need of loads, since they work directly
-                // with hex constants
-                String::from("*")
-            } else if type_value.starts_with("__m") {
-                // the structure is like the follows:
-                // if "type" starts with __m<num>{h/i/<null>},
-                // then use either _mm_set1_epi64,
-                // _mm256_set1_epi64 or _mm512_set1_epi64
-                let type_val_filtered = type_value
-                    .chars()
-                    .filter(|c| c.is_numeric())
-                    .join("")
-                    .replace("128", "");
-                format!("_mm{type_val_filtered}_set1_epi64")
-            } else {
-                // if it is a pointer, then rely on type conversion
-                // If it is not any of the above type (__int<num>, __bfloat16, unsigned short, etc)
-                // then typecast it.
-                format!("({type_value})")
-            }
-            // Look for edge cases (constexpr, literal, etc)
-        } else {
+        let type_value = self.param.type_data.clone();
+        if type_value.len() == 0 {
             unimplemented!("the value for key 'type' is not present!");
         }
+        if type_value.starts_with("__mmask") {
+            // no need of loads, since they work directly
+            // with hex constants
+            String::from("*")
+        } else if type_value.starts_with("__m") {
+            // the structure is like the follows:
+            // if "type" starts with __m<num>{h/i/<null>},
+            // then use either _mm_set1_epi64,
+            // _mm256_set1_epi64 or _mm512_set1_epi64
+            let type_val_filtered = type_value
+                .chars()
+                .filter(|c| c.is_numeric())
+                .join("")
+                .replace("128", "");
+            format!("_mm{type_val_filtered}_set1_epi64")
+        } else {
+            // if it is a pointer, then rely on type conversion
+            // If it is not any of the above type (__int<num>, __bfloat16, unsigned short, etc)
+            // then typecast it.
+            format!("({type_value})")
+        }
+        // Look for edge cases (constexpr, literal, etc)
     }
 
     /// Determines the get lane function for this type.
     fn get_lane_function(&self) -> String {
         todo!("get_lane_function for X86IntrinsicType needs to be implemented!");
     }
+}
 
-    fn from_c(s: &str) -> Result<Self, String> {
+impl X86IntrinsicType {
+    fn from_c(s: &str) -> Result<IntrinsicType, String> {
         let mut s_copy = s.to_string();
         let mut metadata: HashMap<String, String> = HashMap::new();
         metadata.insert("type".to_string(), s.to_string());
@@ -162,7 +162,7 @@ impl IntrinsicTypeDefinition for X86IntrinsicType {
         let constant = s.matches("const").next().is_some();
         let ptr = s.matches("*").next().is_some();
 
-        Ok(X86IntrinsicType(IntrinsicType {
+        Ok(IntrinsicType {
             ptr,
             ptr_constant,
             constant,
@@ -170,25 +170,20 @@ impl IntrinsicTypeDefinition for X86IntrinsicType {
             bit_len: None,
             simd_len: None,
             vec_len: None,
-            metadata,
-        }))
+        })
     }
-}
 
-impl X86IntrinsicType {
     pub fn from_param(param: &Parameter) -> Result<Self, String> {
         match Self::from_c(param.type_data.as_str()) {
             Err(message) => Err(message),
-            Ok(mut ret) => {
+            Ok(mut data) => {
                 // First correct the type of the parameter using param.etype.
                 // The assumption is that the parameter of type void may have param.type
                 // as "__m128i", "__mmask8" and the like.
-                ret.set_metadata("etype".to_string(), param.etype.clone());
-                ret.set_metadata("memwidth".to_string(), param.memwidth.to_string());
                 if !param.etype.is_empty() {
                     match TypeKind::from_str(param.etype.as_str()) {
                         Ok(value) => {
-                            ret.kind = value;
+                            data.kind = value;
                         }
                         Err(_) => {}
                     };
@@ -202,9 +197,9 @@ impl X86IntrinsicType {
                 etype_processed.retain(|c| c.is_numeric());
 
                 match str::parse::<u32>(etype_processed.as_str()) {
-                    Ok(value) => ret.bit_len = Some(value),
+                    Ok(value) => data.bit_len = Some(value),
                     Err(_) => {
-                        ret.bit_len = match ret.kind() {
+                        data.bit_len = match data.kind() {
                             TypeKind::Char(_) => Some(8),
                             TypeKind::BFloat => Some(16),
                             TypeKind::Int(_) => Some(32),
@@ -222,26 +217,29 @@ impl X86IntrinsicType {
                 {
                     let mut type_processed = param.type_data.clone();
                     type_processed.retain(|c| c.is_numeric());
-                    ret.vec_len = match str::parse::<u32>(type_processed.as_str()) {
+                    data.vec_len = match str::parse::<u32>(type_processed.as_str()) {
                         // If bit_len is None, vec_len will be None.
                         // Else vec_len will be (num_bits / bit_len).
-                        Ok(num_bits) => ret.bit_len.and(Some(num_bits / ret.bit_len.unwrap())),
+                        Ok(num_bits) => data.bit_len.and(Some(num_bits / data.bit_len.unwrap())),
                         Err(_) => None,
                     };
                 }
 
                 // default settings for "void *" parameters
                 // often used by intrinsics to denote memory address or so.
-                if ret.kind == TypeKind::Void && ret.ptr {
-                    ret.kind = TypeKind::Int(Sign::Unsigned);
-                    ret.bit_len = Some(8);
+                if data.kind == TypeKind::Void && data.ptr {
+                    data.kind = TypeKind::Int(Sign::Unsigned);
+                    data.bit_len = Some(8);
                 }
 
                 // if param.etype == IMM, then it is a constant.
                 // else it stays unchanged.
-                ret.constant |= param.etype == "IMM";
+                data.constant |= param.etype == "IMM";
 
-                Ok(ret)
+                Ok(X86IntrinsicType {
+                    data,
+                    param: param.clone(),
+                })
             }
         }
         // Tile types won't currently reach here, since the intrinsic that involve them

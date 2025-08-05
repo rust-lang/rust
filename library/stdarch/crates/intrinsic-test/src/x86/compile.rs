@@ -32,7 +32,7 @@ pub fn build_cpp_compilation(config: &ProcessedCli) -> Option<CppCompilation> {
         command = command.add_extra_flag("-flax-vector-conversions");
     }
 
-    let mut cpp_compiler = command.into_cpp_compilation();
+    let cpp_compiler = command.into_cpp_compilation();
 
     Some(cpp_compiler)
 }

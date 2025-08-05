@@ -37,7 +37,7 @@ struct XMLIntrinsic {
     parameters: Vec<Parameter>,
 }
 
-#[derive(Deserialize)]
+#[derive(Debug, PartialEq, Clone, Deserialize)]
 pub struct Parameter {
     #[serde(rename = "@varname")]
     pub var_name: String,

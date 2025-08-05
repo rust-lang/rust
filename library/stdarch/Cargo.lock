@@ -349,6 +349,7 @@ dependencies = [
  "pretty_env_logger",
  "quick-xml 0.37.5",
  "rayon",
+ "regex",
  "serde",
  "serde-xml-rs",
  "serde_json",
