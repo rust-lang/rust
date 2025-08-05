@@ -1,0 +1,35 @@
+error: generally you want to avoid `&mut &mut _` if possible
+  --> tests/ui/mut_mut_unfixable.rs:9:11
+   |
+LL | fn fun(x: &mut &mut u32) -> bool {
+   |           ^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::mut-mut` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::mut_mut)]`
+
+error: generally you want to avoid `&mut &mut _` if possible
+  --> tests/ui/mut_mut_unfixable.rs:15:17
+   |
+LL |     let mut x = &mut &mut 1u32;
+   |                 ^^^^^^^^^^^^^^
+
+error: this expression mutably borrows a mutable reference. Consider reborrowing
+  --> tests/ui/mut_mut_unfixable.rs:18:21
+   |
+LL |         let mut y = &mut x;
+   |                     ^^^^^^
+
+error: generally you want to avoid `&mut &mut _` if possible
+  --> tests/ui/mut_mut_unfixable.rs:24:17
+   |
+LL |         let y = &mut &mut 2;
+   |                 ^^^^^^^^^^^
+
+error: generally you want to avoid `&mut &mut _` if possible
+  --> tests/ui/mut_mut_unfixable.rs:30:17
+   |
+LL |         let y = &mut &mut &mut 2;
+   |                 ^^^^^^^^^^^^^^^^
+
+error: aborting due to 5 previous errors
+
