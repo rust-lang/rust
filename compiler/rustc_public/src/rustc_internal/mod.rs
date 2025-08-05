@@ -184,6 +184,14 @@ macro_rules! optional {
 #[doc(hidden)]
 macro_rules! run_driver {
     ($args:expr, $callback:expr $(, $with_tcx:ident)?) => {{
+        // this way, users don't have to manually import these crates,
+        // but they have to enable #![feature(rustc_private)] manually
+        // because this macro could occur as an expression, which would trigger
+        // the [`stmt_expr_attributes`](https://github.com/rust-lang/rust/issues/15701).
+        extern crate rustc_driver;
+        extern crate rustc_interface;
+        extern crate rustc_middle;
+
         use rustc_driver::{Callbacks, Compilation, run_compiler};
         use rustc_middle::ty::TyCtxt;
         use rustc_interface::interface;
