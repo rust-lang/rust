@@ -812,7 +812,7 @@ impl GlobalState {
                 };
 
                 if let Some(state) = state {
-                    self.report_progress("Building build-artifacts", state, msg, None, None);
+                    self.report_progress("Building compile-time-deps", state, msg, None, None);
                 }
             }
             Task::LoadProcMacros(progress) => {
