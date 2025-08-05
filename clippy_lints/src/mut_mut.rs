@@ -14,19 +14,30 @@ declare_clippy_lint! {
     /// Checks for instances of `mut mut` references.
     ///
     /// ### Why is this bad?
-    /// Multiple `mut`s don't add anything meaningful to the
-    /// source. This is either a copy'n'paste error, or it shows a fundamental
-    /// misunderstanding of references.
+    /// This is usually just a typo or a misunderstanding of how references work.
     ///
     /// ### Example
     /// ```no_run
-    /// # let mut y = 1;
-    /// let x = &mut &mut y;
+    /// let x = &mut &mut 1;
+    ///
+    /// let mut x = &mut 1;
+    /// let y = &mut x;
+    ///
+    /// fn foo(x: &mut &mut u32) {}
+    /// ```
+    /// Use instead
+    /// ```no_run
+    /// let x = &mut 1;
+    ///
+    /// let mut x = &mut 1;
+    /// let y = &mut *x; // reborrow
+    ///
+    /// fn foo(x: &mut u32) {}
     /// ```
     #[clippy::version = "pre 1.29.0"]
     pub MUT_MUT,
     pedantic,
-    "usage of double-mut refs, e.g., `&mut &mut ...`"
+    "usage of double mut-refs, e.g., `&mut &mut ...`"
 }
 
 impl_lint_pass!(MutMut => [MUT_MUT]);
