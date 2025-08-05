@@ -196,7 +196,7 @@ macro_rules! compare_and_swap {
                     "cbnz   w17, 0b",
                     "1:",
                     "ret",
-                    have_lse = sym crate::aarch64_linux::HAVE_LSE_ATOMICS,
+                    have_lse = sym crate::aarch64_outline_atomics::HAVE_LSE_ATOMICS,
                 }
             }
         }
@@ -228,7 +228,7 @@ macro_rules! compare_and_swap_i128 {
                     "cbnz   w15, 0b",
                     "1:",
                     "ret",
-                    have_lse = sym crate::aarch64_linux::HAVE_LSE_ATOMICS,
+                    have_lse = sym crate::aarch64_outline_atomics::HAVE_LSE_ATOMICS,
                 }
             }
         }
@@ -256,7 +256,7 @@ macro_rules! swap {
                     concat!(stxr!($ordering, $bytes), " w17, ", reg!($bytes, 16), ", [x1]"),
                     "cbnz   w17, 0b",
                     "ret",
-                    have_lse = sym crate::aarch64_linux::HAVE_LSE_ATOMICS,
+                    have_lse = sym crate::aarch64_outline_atomics::HAVE_LSE_ATOMICS,
                 }
             }
         }
@@ -286,7 +286,7 @@ macro_rules! fetch_op {
                     concat!(stxr!($ordering, $bytes), " w15, ", reg!($bytes, 17), ", [x1]"),
                     "cbnz  w15, 0b",
                     "ret",
-                    have_lse = sym crate::aarch64_linux::HAVE_LSE_ATOMICS,
+                    have_lse = sym crate::aarch64_outline_atomics::HAVE_LSE_ATOMICS,
                 }
             }
         }
