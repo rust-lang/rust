@@ -4,7 +4,7 @@ use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::sugg::Sugg;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
-use rustc_hir::{self as hir, AmbigArg, HirId, intravisit};
+use rustc_hir::{self as hir, AmbigArg, BorrowKind, Expr, ExprKind, HirId, Mutability, TyKind, intravisit};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::ty;
 use rustc_session::impl_lint_pass;
@@ -42,10 +42,10 @@ impl<'tcx> LateLintPass<'tcx> for MutMut {
     }
 
     fn check_ty(&mut self, cx: &LateContext<'tcx>, ty: &'tcx hir::Ty<'_, AmbigArg>) {
-        if let hir::TyKind::Ref(_, mty) = ty.kind
-            && mty.mutbl == hir::Mutability::Mut
-            && let hir::TyKind::Ref(_, mty2) = mty.ty.kind
-            && mty2.mutbl == hir::Mutability::Mut
+        if let TyKind::Ref(_, mty) = ty.kind
+            && mty.mutbl == Mutability::Mut
+            && let TyKind::Ref(_, mty2) = mty.ty.kind
+            && mty2.mutbl == Mutability::Mut
             && !ty.span.in_external_macro(cx.sess().source_map())
         {
             if self.seen_tys.contains(&ty.hir_id) {
@@ -76,7 +76,7 @@ pub struct MutVisitor<'a, 'tcx> {
 }
 
 impl<'tcx> intravisit::Visitor<'tcx> for MutVisitor<'_, 'tcx> {
-    fn visit_expr(&mut self, expr: &'tcx hir::Expr<'_>) {
+    fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
         if expr.span.in_external_macro(self.cx.sess().source_map()) {
             return;
         }
@@ -90,8 +90,8 @@ impl<'tcx> intravisit::Visitor<'tcx> for MutVisitor<'_, 'tcx> {
             // Let's ignore the generated code.
             intravisit::walk_expr(self, arg);
             intravisit::walk_expr(self, body);
-        } else if let hir::ExprKind::AddrOf(hir::BorrowKind::Ref, hir::Mutability::Mut, e) = expr.kind {
-            if let hir::ExprKind::AddrOf(hir::BorrowKind::Ref, hir::Mutability::Mut, _) = e.kind {
+        } else if let ExprKind::AddrOf(BorrowKind::Ref, Mutability::Mut, e) = expr.kind {
+            if let ExprKind::AddrOf(BorrowKind::Ref, Mutability::Mut, _) = e.kind {
                 if !expr.span.eq_ctxt(e.span) {
                     return;
                 }
@@ -107,7 +107,7 @@ impl<'tcx> intravisit::Visitor<'tcx> for MutVisitor<'_, 'tcx> {
                         diag.span_suggestion(expr.span, "remove the extra `&mut`", sugg, applicability);
                     },
                 );
-            } else if let ty::Ref(_, ty, hir::Mutability::Mut) = self.cx.typeck_results().expr_ty(e).kind()
+            } else if let ty::Ref(_, ty, Mutability::Mut) = self.cx.typeck_results().expr_ty(e).kind()
                 && ty.peel_refs().is_sized(self.cx.tcx, self.cx.typing_env())
             {
                 let mut applicability = Applicability::MaybeIncorrect;
