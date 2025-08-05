@@ -43,7 +43,7 @@ fn main() {
     }
 
     {
-        let y: &mut &mut u32 = &mut &mut 2;
+        let y: &mut u32 = &mut 2;
         //~^ mut_mut
         //~| mut_mut
     }

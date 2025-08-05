@@ -29,7 +29,7 @@ error: an expression of form `&mut &mut _`
   --> tests/ui/mut_mut_unfixable.rs:30:17
    |
 LL |         let y = &mut &mut &mut 2;
-   |                 ^^^^^^^^^^^^^^^^ help: remove the extra `&mut`: `&mut &mut 2`
+   |                 ^^^^^^^^^^^^^^^^ help: remove the extra `&mut`s: `&mut 2`
 
 error: aborting due to 5 previous errors
 

@@ -35,13 +35,13 @@ error: an expression of form `&mut &mut _`
   --> tests/ui/mut_mut.rs:46:37
    |
 LL |         let y: &mut &mut &mut u32 = &mut &mut &mut 2;
-   |                                     ^^^^^^^^^^^^^^^^ help: remove the extra `&mut`: `&mut &mut 2`
+   |                                     ^^^^^^^^^^^^^^^^ help: remove the extra `&mut`s: `&mut 2`
 
 error: a type of form `&mut &mut _`
   --> tests/ui/mut_mut.rs:46:16
    |
 LL |         let y: &mut &mut &mut u32 = &mut &mut &mut 2;
-   |                ^^^^^^^^^^^^^^^^^^ help: remove the extra `&mut`: `&mut &mut u32`
+   |                ^^^^^^^^^^^^^^^^^^ help: remove the extra `&mut`s: `&mut u32`
 
 error: aborting due to 7 previous errors
 

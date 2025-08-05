@@ -56,14 +56,30 @@ impl<'tcx> LateLintPass<'tcx> for MutMut {
             }
             self.seen_tys.insert(mty.ty.hir_id);
 
+            // if there is an even longer chain, like `&mut &mut &mut x`, suggest peeling off
+            // all extra ones at once
+            let (mut t, mut t2) = (mty.ty, mty2.ty);
+            let mut many_muts = false;
+            loop {
+                if let TyKind::Ref(_, next) = t2.kind
+                    && next.mutbl == Mutability::Mut
+                {
+                    (t, t2) = (t2, next.ty);
+                    many_muts = true;
+                } else {
+                    break;
+                }
+            }
+
             let mut applicability = Applicability::MaybeIncorrect;
-            let sugg = snippet_with_applicability(cx.sess(), mty.ty.span, "..", &mut applicability);
+            let sugg = snippet_with_applicability(cx.sess(), t.span, "..", &mut applicability);
+            let suffix = if many_muts { "s" } else { "" };
             span_lint_and_sugg(
                 cx,
                 MUT_MUT,
                 ty.span,
                 "a type of form `&mut &mut _`",
-                "remove the extra `&mut`",
+                format!("remove the extra `&mut`{suffix}"),
                 sugg.to_string(),
                 applicability,
             );
@@ -91,12 +107,30 @@ impl<'tcx> intravisit::Visitor<'tcx> for MutVisitor<'_, 'tcx> {
             intravisit::walk_expr(self, arg);
             intravisit::walk_expr(self, body);
         } else if let ExprKind::AddrOf(BorrowKind::Ref, Mutability::Mut, e) = expr.kind {
-            if let ExprKind::AddrOf(BorrowKind::Ref, Mutability::Mut, _) = e.kind {
+            if let ExprKind::AddrOf(BorrowKind::Ref, Mutability::Mut, e2) = e.kind {
                 if !expr.span.eq_ctxt(e.span) {
                     return;
                 }
+
+                // if there is an even longer chain, like `&mut &mut &mut x`, suggest peeling off
+                // all extra ones at once
+                let (mut e, mut e2) = (e, e2);
+                let mut many_muts = false;
+                loop {
+                    if !e.span.eq_ctxt(e2.span) {
+                        return;
+                    }
+                    if let ExprKind::AddrOf(BorrowKind::Ref, Mutability::Mut, next) = e2.kind {
+                        (e, e2) = (e2, next);
+                        many_muts = true;
+                    } else {
+                        break;
+                    }
+                }
+
                 let mut applicability = Applicability::MaybeIncorrect;
                 let sugg = Sugg::hir_with_applicability(self.cx, e, "..", &mut applicability);
+                let suffix = if many_muts { "s" } else { "" };
                 span_lint_hir_and_then(
                     self.cx,
                     MUT_MUT,
@@ -104,7 +138,12 @@ impl<'tcx> intravisit::Visitor<'tcx> for MutVisitor<'_, 'tcx> {
                     expr.span,
                     "an expression of form `&mut &mut _`",
                     |diag| {
-                        diag.span_suggestion(expr.span, "remove the extra `&mut`", sugg, applicability);
+                        diag.span_suggestion(
+                            expr.span,
+                            format!("remove the extra `&mut`{suffix}"),
+                            sugg,
+                            applicability,
+                        );
                     },
                 );
             } else if let ty::Ref(_, ty, Mutability::Mut) = self.cx.typeck_results().expr_ty(e).kind()
