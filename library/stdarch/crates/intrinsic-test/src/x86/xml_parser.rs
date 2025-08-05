@@ -39,9 +39,9 @@ struct XMLIntrinsic {
 
 #[derive(Debug, PartialEq, Clone, Deserialize)]
 pub struct Parameter {
-    #[serde(rename = "@varname")]
+    #[serde(rename = "@varname", default)]
     pub var_name: String,
-    #[serde(rename = "@type")]
+    #[serde(rename = "@type", default)]
     pub type_data: String,
     #[serde(rename = "@etype", default)]
     pub etype: String,
