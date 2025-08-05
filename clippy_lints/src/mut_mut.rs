@@ -54,13 +54,15 @@ impl<'tcx> LateLintPass<'tcx> for MutMut {
                 // so don't flag the inner `&mut &mut (x)`
                 return;
             }
-            self.seen_tys.insert(mty.ty.hir_id);
 
             // if there is an even longer chain, like `&mut &mut &mut x`, suggest peeling off
             // all extra ones at once
             let (mut t, mut t2) = (mty.ty, mty2.ty);
             let mut many_muts = false;
             loop {
+                // this should allow us to remember all the nested types, so that the `contains`
+                // above fails faster
+                self.seen_tys.insert(t.hir_id);
                 if let TyKind::Ref(_, next) = t2.kind
                     && next.mutbl == Mutability::Mut
                 {
