@@ -100,7 +100,7 @@ fn json_to_intrinsic(
             // The JSON doesn't list immediates as const
             let IntrinsicType {
                 ref mut constant, ..
-            } = arg.ty.0;
+            } = arg.ty.data;
             if arg.name.starts_with("imm") {
                 *constant = true
             }
