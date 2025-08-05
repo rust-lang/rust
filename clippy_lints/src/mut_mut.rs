@@ -1,4 +1,4 @@
-use clippy_utils::diagnostics::{span_lint, span_lint_hir, span_lint_hir_and_then};
+use clippy_utils::diagnostics::{span_lint, span_lint_hir_and_then};
 use clippy_utils::higher;
 use clippy_utils::sugg::Sugg;
 use rustc_errors::Applicability;
@@ -72,12 +72,17 @@ impl<'tcx> intravisit::Visitor<'tcx> for MutVisitor<'_, 'tcx> {
             intravisit::walk_expr(self, body);
         } else if let hir::ExprKind::AddrOf(hir::BorrowKind::Ref, hir::Mutability::Mut, e) = expr.kind {
             if let hir::ExprKind::AddrOf(hir::BorrowKind::Ref, hir::Mutability::Mut, _) = e.kind {
-                span_lint_hir(
+                let mut applicability = Applicability::MaybeIncorrect;
+                let sugg = Sugg::hir_with_applicability(self.cx, e, "..", &mut applicability);
+                span_lint_hir_and_then(
                     self.cx,
                     MUT_MUT,
                     expr.hir_id,
                     expr.span,
-                    "generally you want to avoid `&mut &mut _` if possible",
+                    "an expression of form `&mut &mut _`",
+                    |diag| {
+                        diag.span_suggestion(expr.span, "remove the extra `&mut`", sugg, applicability);
+                    },
                 );
             } else if let ty::Ref(_, ty, hir::Mutability::Mut) = self.cx.typeck_results().expr_ty(e).kind()
                 && ty.peel_refs().is_sized(self.cx.tcx, self.cx.typing_env())

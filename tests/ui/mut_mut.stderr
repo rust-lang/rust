@@ -7,17 +7,17 @@ LL | fn fun(x: &mut &mut u32) {
    = note: `-D clippy::mut-mut` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::mut_mut)]`
 
-error: generally you want to avoid `&mut &mut _` if possible
+error: an expression of form `&mut &mut _`
   --> tests/ui/mut_mut.rs:32:17
    |
 LL |     let mut x = &mut &mut 1u32;
-   |                 ^^^^^^^^^^^^^^
+   |                 ^^^^^^^^^^^^^^ help: remove the extra `&mut`: `&mut 1u32`
 
-error: generally you want to avoid `&mut &mut _` if possible
+error: an expression of form `&mut &mut _`
   --> tests/ui/mut_mut.rs:52:25
    |
 LL |     let mut z = inline!(&mut $(&mut 3u32));
-   |                         ^
+   |                         ^ help: remove the extra `&mut`: `&mut 3u32`
    |
    = note: this error originates in the macro `__inline_mac_fn_main` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -27,11 +27,11 @@ error: this expression mutably borrows a mutable reference
 LL |         let mut y = &mut x;
    |                     ^^^^^^ help: reborrow instead: `&mut *x`
 
-error: generally you want to avoid `&mut &mut _` if possible
+error: an expression of form `&mut &mut _`
   --> tests/ui/mut_mut.rs:40:32
    |
 LL |         let y: &mut &mut u32 = &mut &mut 2;
-   |                                ^^^^^^^^^^^
+   |                                ^^^^^^^^^^^ help: remove the extra `&mut`: `&mut 2`
 
 error: generally you want to avoid `&mut &mut _` if possible
   --> tests/ui/mut_mut.rs:40:16
@@ -39,11 +39,11 @@ error: generally you want to avoid `&mut &mut _` if possible
 LL |         let y: &mut &mut u32 = &mut &mut 2;
    |                ^^^^^^^^^^^^^
 
-error: generally you want to avoid `&mut &mut _` if possible
+error: an expression of form `&mut &mut _`
   --> tests/ui/mut_mut.rs:46:37
    |
 LL |         let y: &mut &mut &mut u32 = &mut &mut &mut 2;
-   |                                     ^^^^^^^^^^^^^^^^
+   |                                     ^^^^^^^^^^^^^^^^ help: remove the extra `&mut`: `&mut &mut 2`
 
 error: generally you want to avoid `&mut &mut _` if possible
   --> tests/ui/mut_mut.rs:46:16
