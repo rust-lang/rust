@@ -2,7 +2,7 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, DefIdMap, LocalDefId};
 use rustc_hir::definitions::{DefPathData, DisambiguatorState};
 use rustc_hir::intravisit::{self, Visitor};
-use rustc_hir::{self as hir, ItemKind};
+use rustc_hir::{self as hir, ImplItemImplKind, ItemKind};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, ImplTraitInTraitData, TyCtxt};
 use rustc_middle::{bug, span_bug};
@@ -121,8 +121,11 @@ fn associated_item_from_impl_item(tcx: TyCtxt<'_>, impl_item: &hir::ImplItem<'_>
     ty::AssocItem {
         kind,
         def_id: owner_id.to_def_id(),
-        trait_item_def_id: impl_item.trait_item_def_id,
         container: ty::AssocContainer::Impl,
+        trait_item_def_id: match impl_item.impl_kind {
+            ImplItemImplKind::Inherent { .. } => None,
+            ImplItemImplKind::Trait { trait_item_def_id, .. } => trait_item_def_id.ok(),
+        },
     }
 }
 struct RPITVisitor<'a, 'tcx> {
@@ -190,7 +193,10 @@ fn associated_types_for_impl_traits_in_trait_or_impl<'tcx>(
                     }
                     let did = item.owner_id.def_id.to_def_id();
                     let item = tcx.hir_impl_item(*item);
-                    let Some(trait_item_def_id) = item.trait_item_def_id else {
+                    let ImplItemImplKind::Trait {
+                        trait_item_def_id: Ok(trait_item_def_id), ..
+                    } = item.impl_kind
+                    else {
                         return Some((did, vec![]));
                     };
                     let iter = in_trait_def[&trait_item_def_id].iter().map(|&id| {
