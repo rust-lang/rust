@@ -592,20 +592,8 @@ disableShortcutsButton.checked = disableShortcuts;
 
 addListeners();
 highlightLazily();
-
-function updateLintCount() {
-    const allLints = filters.getAllLints().filter(lint => lint.group != "deprecated");
-    const totalLints = allLints.length;
-
-    const countElement = document.getElementById("lint-count");
-    if (countElement) {
-        countElement.innerText = `Total number: ${totalLints}`;
-    }
-}
-
 generateSettings();
 generateSearch();
 parseURLFilters();
 scrollToLintByURL();
 filters.filterLints();
-updateLintCount();

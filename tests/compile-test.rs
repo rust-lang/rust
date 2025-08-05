@@ -433,6 +433,7 @@ fn ui_cargo_toml_metadata() {
 #[derive(Template)]
 #[template(path = "index_template.html")]
 struct Renderer<'a> {
+    count: usize,
     lints: &'a Vec<LintMetadata>,
 }
 
@@ -512,7 +513,12 @@ impl DiagnosticCollector {
 
             fs::write(
                 "util/gh-pages/index.html",
-                Renderer { lints: &metadata }.render().unwrap(),
+                Renderer {
+                    count: LINTS.len(),
+                    lints: &metadata,
+                }
+                .render()
+                .unwrap(),
             )
             .unwrap();
         });
