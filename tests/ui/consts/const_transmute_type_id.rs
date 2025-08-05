@@ -1,4 +1,4 @@
-#![feature(const_type_id, const_trait_impl, const_cmp)]
+#![feature(const_trait_impl, const_cmp)]
 
 use std::any::TypeId;
 
