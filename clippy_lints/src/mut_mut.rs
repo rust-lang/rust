@@ -2,11 +2,12 @@ use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_hir_and_then};
 use clippy_utils::higher;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::sugg::Sugg;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
-use rustc_hir::{self as hir, AmbigArg, intravisit};
+use rustc_hir::{self as hir, AmbigArg, HirId, intravisit};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::ty;
-use rustc_session::declare_lint_pass;
+use rustc_session::impl_lint_pass;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -28,7 +29,12 @@ declare_clippy_lint! {
     "usage of double-mut refs, e.g., `&mut &mut ...`"
 }
 
-declare_lint_pass!(MutMut => [MUT_MUT]);
+impl_lint_pass!(MutMut => [MUT_MUT]);
+
+#[derive(Default)]
+pub(crate) struct MutMut {
+    seen_tys: FxHashSet<HirId>,
+}
 
 impl<'tcx> LateLintPass<'tcx> for MutMut {
     fn check_block(&mut self, cx: &LateContext<'tcx>, block: &'tcx hir::Block<'_>) {
@@ -42,6 +48,14 @@ impl<'tcx> LateLintPass<'tcx> for MutMut {
             && mty2.mutbl == hir::Mutability::Mut
             && !ty.span.in_external_macro(cx.sess().source_map())
         {
+            if self.seen_tys.contains(&ty.hir_id) {
+                // we have 2+ `&mut`s, e.g., `&mut &mut &mut x`
+                // and we have already flagged on the outermost `&mut &mut (&mut x)`,
+                // so don't flag the inner `&mut &mut (x)`
+                return;
+            }
+            self.seen_tys.insert(mty.ty.hir_id);
+
             let mut applicability = Applicability::MaybeIncorrect;
             let sugg = snippet_with_applicability(cx.sess(), mty.ty.span, "..", &mut applicability);
             span_lint_and_sugg(

@@ -12,7 +12,7 @@
 extern crate proc_macros;
 use proc_macros::{external, inline_macros};
 
-fn fun(x: &mut &mut u32) {
+fn fun(x: &mut u32) {
     //~^ mut_mut
 }
 
@@ -37,15 +37,14 @@ fn main() {
     }
 
     {
-        let y: &mut &mut u32 = &mut 2;
+        let y: &mut u32 = &mut 2;
         //~^ mut_mut
         //~| mut_mut
     }
 
     {
-        let y: &mut &mut &mut u32 = &mut &mut 2;
+        let y: &mut &mut u32 = &mut &mut 2;
         //~^ mut_mut
-        //~| mut_mut
         //~| mut_mut
     }
 

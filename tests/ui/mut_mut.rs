@@ -46,7 +46,6 @@ fn main() {
         let y: &mut &mut &mut u32 = &mut &mut &mut 2;
         //~^ mut_mut
         //~| mut_mut
-        //~| mut_mut
     }
 
     let mut z = inline!(&mut $(&mut 3u32));

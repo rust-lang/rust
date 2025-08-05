@@ -43,11 +43,5 @@ error: a type of form `&mut &mut _`
 LL |         let y: &mut &mut &mut u32 = &mut &mut &mut 2;
    |                ^^^^^^^^^^^^^^^^^^ help: remove the extra `&mut`: `&mut &mut u32`
 
-error: a type of form `&mut &mut _`
-  --> tests/ui/mut_mut.rs:46:21
-   |
-LL |         let y: &mut &mut &mut u32 = &mut &mut &mut 2;
-   |                     ^^^^^^^^^^^^^ help: remove the extra `&mut`: `&mut u32`
-
-error: aborting due to 8 previous errors
+error: aborting due to 7 previous errors
 
