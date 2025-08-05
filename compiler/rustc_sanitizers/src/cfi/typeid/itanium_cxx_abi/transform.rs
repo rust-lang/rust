@@ -453,6 +453,35 @@ pub(crate) fn transform_instance<'tcx>(
             instance.def = ty::InstanceKind::Virtual(call, 0);
             instance.args = abstract_args;
         }
+        let fn_traits = [
+            (LangItem::Fn, sym::call),
+            (LangItem::FnMut, sym::call_mut),
+            (LangItem::FnOnce, sym::call_once),
+        ];
+        for (lang_item, method_sym) in fn_traits {
+            if let Some(trait_id) = tcx.lang_items().get(lang_item) {
+                let items = tcx.associated_items(trait_id);
+                if let Some(call_method) =
+                    items.in_definition_order().find(|item| item.name() == method_sym)
+                {
+                    if instance.def_id() == call_method.def_id {
+                        // This is a call to a method of Fn, FnMut, or FnOnce. Transform self into a
+                        // trait object of the trait that defines the method.
+                        let self_ty = trait_object_ty(
+                            tcx,
+                            ty::Binder::dummy(ty::TraitRef::from_method(
+                                tcx,
+                                trait_id,
+                                instance.args,
+                            )),
+                        );
+                        instance.args =
+                            tcx.mk_args_trait(self_ty, instance.args.into_iter().skip(1));
+                        break;
+                    }
+                }
+            }
+        }
     }
 
     instance
