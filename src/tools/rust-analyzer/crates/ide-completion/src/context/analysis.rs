@@ -562,7 +562,7 @@ fn expected_type_and_name<'db>(
     token: &SyntaxToken,
     name_like: &ast::NameLike,
 ) -> (Option<Type<'db>>, Option<NameOrNameRef>) {
-    let token = prev_assign_token_at_whitespace(token.clone());
+    let token = prev_assign_token_at_trivia(token.clone());
     let mut node = match token.parent() {
         Some(it) => it,
         None => return (None, None),
@@ -1883,8 +1883,8 @@ fn next_non_trivia_sibling(ele: SyntaxElement) -> Option<SyntaxElement> {
     None
 }
 
-fn prev_assign_token_at_whitespace(mut token: SyntaxToken) -> SyntaxToken {
-    while token.kind() == SyntaxKind::WHITESPACE
+fn prev_assign_token_at_trivia(mut token: SyntaxToken) -> SyntaxToken {
+    while token.kind().is_trivia()
         && let Some(prev) = token.prev_token()
         && let T![=]
         | T![+=]
