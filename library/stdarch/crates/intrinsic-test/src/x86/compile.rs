@@ -6,7 +6,7 @@ pub fn build_cpp_compilation(config: &ProcessedCli) -> Option<CppCompilation> {
 
     // -ffp-contract=off emulates Rust's approach of not fusing separate mul-add operations
     let mut command = CompilationCommandBuilder::new()
-        .add_arch_flags(vec![
+        .add_arch_flags([
             "avx",
             "avx2",
             "avx512f",
