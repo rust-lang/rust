@@ -196,31 +196,31 @@ pub(crate) mod Fallback_AD {
 
     // TypeTree function fallbacks
     pub(crate) fn EnzymeNewTypeTree() -> CTypeTreeRef {
-        unimplemented!()
+        unsafe { unimplemented!() }
     }
 
     pub(crate) fn EnzymeNewTypeTreeCT(arg1: CConcreteType, ctx: &Context) -> CTypeTreeRef {
-        unimplemented!()
+        unsafe { unimplemented!() }
     }
 
     pub(crate) fn EnzymeNewTypeTreeTR(arg1: CTypeTreeRef) -> CTypeTreeRef {
-        unimplemented!()
+        unsafe { unimplemented!() }
     }
 
     pub(crate) fn EnzymeFreeTypeTree(CTT: CTypeTreeRef) {
-        unimplemented!()
+        unsafe { unimplemented!() }
     }
 
     pub(crate) fn EnzymeMergeTypeTree(arg1: CTypeTreeRef, arg2: CTypeTreeRef) -> bool {
-        unimplemented!()
+        unsafe { unimplemented!() }
     }
 
     pub(crate) fn EnzymeTypeTreeOnlyEq(arg1: CTypeTreeRef, pos: i64) {
-        unimplemented!()
+        unsafe { unimplemented!() }
     }
 
     pub(crate) fn EnzymeTypeTreeData0Eq(arg1: CTypeTreeRef) {
-        unimplemented!()
+        unsafe { unimplemented!() }
     }
 
     pub(crate) fn EnzymeTypeTreeShiftIndiciesEq(
@@ -230,15 +230,15 @@ pub(crate) mod Fallback_AD {
         max_size: i64,
         add_offset: u64,
     ) {
-        unimplemented!()
+        unsafe { unimplemented!() }
     }
 
     pub(crate) fn EnzymeTypeTreeToString(arg1: CTypeTreeRef) -> *const c_char {
-        unimplemented!()
+        unsafe { unimplemented!() }
     }
 
     pub(crate) fn EnzymeTypeTreeToStringFree(arg1: *const c_char) {
-        unimplemented!()
+        unsafe { unimplemented!() }
     }
 
     pub(crate) fn set_inline(val: bool) {

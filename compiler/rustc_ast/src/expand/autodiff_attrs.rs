@@ -86,7 +86,6 @@ pub struct AutoDiffItem {
     /// The name of the function being generated
     pub target: String,
     pub attrs: AutoDiffAttrs,
-    // Type Tree support
     pub inputs: Vec<TypeTree>,
     pub output: TypeTree,
 }
