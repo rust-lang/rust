@@ -6,7 +6,7 @@ use rustc_errors::{E0570, ErrorGuaranteed, struct_span_code_err};
 use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::{DefKind, PerNS, Res};
 use rustc_hir::def_id::{CRATE_DEF_ID, LocalDefId};
-use rustc_hir::{self as hir, HirId, LifetimeSource, PredicateOrigin, find_attr};
+use rustc_hir::{self as hir, HirId, ImplItemImplKind, LifetimeSource, PredicateOrigin, find_attr};
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::span_bug;
 use rustc_middle::ty::{ResolverAstLowering, TyCtxt};
@@ -1101,16 +1101,21 @@ impl<'hir> LoweringContext<'_, 'hir> {
             owner_id: hir_id.expect_owner(),
             ident: self.lower_ident(ident),
             generics,
+            impl_kind: if is_in_trait_impl {
+                ImplItemImplKind::Trait {
+                    defaultness,
+                    trait_item_def_id: self
+                        .resolver
+                        .get_partial_res(i.id)
+                        .map(|r| r.expect_full_res().opt_def_id())
+                        .unwrap_or(None),
+                }
+            } else {
+                ImplItemImplKind::Inherent { vis_span: self.lower_span(i.vis.span) }
+            },
             kind,
-            vis_span: self.lower_span(i.vis.span),
             span: self.lower_span(i.span),
-            defaultness,
             has_delayed_lints: !self.delayed_lints.is_empty(),
-            trait_item_def_id: self
-                .resolver
-                .get_partial_res(i.id)
-                .map(|r| r.expect_full_res().opt_def_id())
-                .unwrap_or(None),
         };
         self.arena.alloc(item)
     }
