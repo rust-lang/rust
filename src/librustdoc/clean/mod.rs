@@ -2927,7 +2927,11 @@ fn clean_impl<'tcx>(
             trait_,
             for_,
             items,
-            polarity: tcx.impl_polarity(def_id),
+            polarity: if impl_.of_trait.is_some() {
+                tcx.impl_polarity(def_id)
+            } else {
+                ty::ImplPolarity::Positive
+            },
             kind: if utils::has_doc_flag(tcx, def_id.to_def_id(), sym::fake_variadic) {
                 ImplKind::FakeVariadic
             } else {

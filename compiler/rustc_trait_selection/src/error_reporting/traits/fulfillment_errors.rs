@@ -1784,7 +1784,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             .tcx
             .all_impls(trait_pred.def_id())
             .filter_map(|def_id| {
-                let imp = self.tcx.impl_trait_header(def_id).unwrap();
+                let imp = self.tcx.impl_trait_header(def_id);
                 if imp.polarity != ty::ImplPolarity::Positive
                     || !self.tcx.is_user_visible_dep(def_id.krate)
                 {
@@ -1822,7 +1822,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 // ignore `do_not_recommend` items
                 .filter(|def_id| !self.tcx.do_not_recommend_impl(*def_id))
                 // Ignore automatically derived impls and `!Trait` impls.
-                .filter_map(|def_id| self.tcx.impl_trait_header(def_id))
+                .map(|def_id| self.tcx.impl_trait_header(def_id))
                 .filter_map(|header| {
                     (header.polarity != ty::ImplPolarity::Negative
                         || self.tcx.is_automatically_derived(def_id))

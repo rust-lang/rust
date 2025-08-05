@@ -155,7 +155,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn impl_subject(self, def_id: DefId) -> EarlyBinder<'tcx, ImplSubject<'tcx>> {
-        match self.impl_trait_ref(def_id) {
+        match self.impl_opt_trait_ref(def_id) {
             Some(t) => t.map_bound(ImplSubject::Trait),
             None => self.type_of(def_id).map_bound(ImplSubject::Inherent),
         }

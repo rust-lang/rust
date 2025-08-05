@@ -306,7 +306,7 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
         let parent_def_id = DefId { index: key.parent.unwrap(), ..impl_def_id };
 
         let self_ty = self.tcx.type_of(impl_def_id);
-        let impl_trait_ref = self.tcx.impl_trait_ref(impl_def_id);
+        let impl_trait_ref = self.tcx.impl_opt_trait_ref(impl_def_id);
         let generics = self.tcx.generics_of(impl_def_id);
         // We have two cases to worry about here:
         // 1. We're printing a nested item inside of an impl item, like an inner

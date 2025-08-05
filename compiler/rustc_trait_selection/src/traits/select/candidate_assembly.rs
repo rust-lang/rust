@@ -600,7 +600,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // Before we create the generic parameters and everything, first
                 // consider a "quick reject". This avoids creating more types
                 // and so forth that we need to.
-                let impl_trait_header = self.tcx().impl_trait_header(impl_def_id).unwrap();
+                let impl_trait_header = self.tcx().impl_trait_header(impl_def_id);
                 if !drcx
                     .args_may_unify(obligation_args, impl_trait_header.trait_ref.skip_binder().args)
                 {

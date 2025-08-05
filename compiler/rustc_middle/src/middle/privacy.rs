@@ -183,8 +183,7 @@ impl EffectiveVisibilities {
             let is_impl = matches!(tcx.def_kind(def_id), DefKind::Impl { .. });
             let is_associated_item_in_trait_impl = tcx
                 .impl_of_assoc(def_id.to_def_id())
-                .and_then(|impl_id| tcx.trait_id_of_impl(impl_id))
-                .is_some();
+                .is_some_and(|impl_id| tcx.impl_is_of_trait(impl_id));
             if !is_impl && !is_associated_item_in_trait_impl {
                 let nominal_vis = tcx.visibility(def_id);
                 if !nominal_vis.is_at_least(ev.reachable, tcx) {

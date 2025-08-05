@@ -42,12 +42,14 @@ fn assumed_wf_types<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &'tcx [(Ty<'
             ));
             tcx.arena.alloc_slice(&assumed_wf_types)
         }
-        DefKind::Impl { .. } => {
+        DefKind::Impl { of_trait } => {
             // Trait arguments and the self type for trait impls or only the self type for
             // inherent impls.
-            let tys = match tcx.impl_trait_ref(def_id) {
-                Some(trait_ref) => trait_ref.skip_binder().args.types().collect(),
-                None => vec![tcx.type_of(def_id).instantiate_identity()],
+            let tys = if of_trait {
+                let trait_ref = tcx.impl_trait_ref(def_id);
+                trait_ref.skip_binder().args.types().collect()
+            } else {
+                vec![tcx.type_of(def_id).instantiate_identity()]
             };
 
             let mut impl_spans = impl_spans(tcx, def_id);
@@ -111,7 +113,7 @@ fn assumed_wf_types<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &'tcx [(Ty<'
                     let args = ty::GenericArgs::identity_for_item(tcx, def_id).rebase_onto(
                         tcx,
                         impl_def_id.to_def_id(),
-                        tcx.impl_trait_ref(impl_def_id).unwrap().instantiate_identity().args,
+                        tcx.impl_trait_ref(impl_def_id).instantiate_identity().args,
                     );
                     tcx.arena.alloc_from_iter(
                         ty::EarlyBinder::bind(tcx.assumed_wf_types_for_rpitit(rpitit_def_id))

@@ -48,7 +48,7 @@ pub trait Printer<'tcx>: Sized {
     ) -> Result<(), PrintError> {
         let tcx = self.tcx();
         let self_ty = tcx.type_of(impl_def_id);
-        let impl_trait_ref = tcx.impl_trait_ref(impl_def_id);
+        let impl_trait_ref = tcx.impl_opt_trait_ref(impl_def_id);
         let (self_ty, impl_trait_ref) = if tcx.generics_of(impl_def_id).count() <= args.len() {
             (
                 self_ty.instantiate(tcx, args),

@@ -535,7 +535,7 @@ impl<'ll, 'tcx> DebugInfoCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             // subroutine's self-type.
             if let Some(impl_def_id) = cx.tcx.impl_of_assoc(instance.def_id()) {
                 // If the method does *not* belong to a trait, proceed
-                if cx.tcx.trait_id_of_impl(impl_def_id).is_none() {
+                if !cx.tcx.impl_is_of_trait(impl_def_id) {
                     let impl_self_ty = cx.tcx.instantiate_and_normalize_erasing_regions(
                         instance.args,
                         cx.typing_env(),

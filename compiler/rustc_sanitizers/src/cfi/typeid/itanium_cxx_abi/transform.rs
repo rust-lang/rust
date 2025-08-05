@@ -468,7 +468,7 @@ fn implemented_method<'tcx>(
     let trait_method;
     let ancestor = if let Some(impl_id) = tcx.impl_of_assoc(instance.def_id()) {
         // Implementation in an `impl` block
-        trait_ref = tcx.impl_trait_ref(impl_id)?;
+        trait_ref = tcx.impl_trait_ref(impl_id);
         let impl_method = tcx.associated_item(instance.def_id());
         method_id = impl_method.trait_item_def_id?;
         trait_method = tcx.associated_item(method_id);

@@ -241,7 +241,7 @@ fn missing_items_err(
         let snippet = with_types_for_signature!(suggestion_signature(
             tcx,
             trait_item,
-            tcx.impl_trait_ref(impl_def_id).unwrap().instantiate_identity(),
+            tcx.impl_trait_ref(impl_def_id).instantiate_identity(),
         ));
         let code = format!("{padding}{snippet}\n{padding}");
         if let Some(span) = tcx.hir_span_if_local(trait_item.def_id) {

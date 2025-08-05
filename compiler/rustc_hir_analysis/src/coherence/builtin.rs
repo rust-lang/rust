@@ -386,7 +386,7 @@ pub(crate) fn coerce_unsized_info<'tcx>(
     let unsize_trait = tcx.require_lang_item(LangItem::Unsize, span);
 
     let source = tcx.type_of(impl_did).instantiate_identity();
-    let trait_ref = tcx.impl_trait_ref(impl_did).unwrap().instantiate_identity();
+    let trait_ref = tcx.impl_trait_ref(impl_did).instantiate_identity();
 
     assert_eq!(trait_ref.def_id, coerce_unsized_trait);
     let target = trait_ref.args.type_at(1);
@@ -714,7 +714,7 @@ fn visit_implementation_of_coerce_pointee_validity(
     checker: &Checker<'_>,
 ) -> Result<(), ErrorGuaranteed> {
     let tcx = checker.tcx;
-    let self_ty = tcx.impl_trait_ref(checker.impl_def_id).unwrap().instantiate_identity().self_ty();
+    let self_ty = tcx.impl_trait_ref(checker.impl_def_id).instantiate_identity().self_ty();
     let span = tcx.def_span(checker.impl_def_id);
     if !tcx.is_builtin_derived(checker.impl_def_id.into()) {
         return Err(tcx.dcx().emit_err(errors::CoercePointeeNoUserValidityAssertion { span }));

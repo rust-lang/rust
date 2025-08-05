@@ -1832,7 +1832,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             .tcx
                             .all_impls(def_id)
                             .filter(|&impl_def_id| {
-                                let header = self.tcx.impl_trait_header(impl_def_id).unwrap();
+                                let header = self.tcx.impl_trait_header(impl_def_id);
                                 let trait_ref = header.trait_ref.instantiate(
                                     self.tcx,
                                     self.infcx.fresh_args_for_item(DUMMY_SP, impl_def_id),
@@ -2095,8 +2095,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // Provide the best span we can. Use the item, if local to crate, else
                     // the impl, if local to crate (item may be defaulted), else nothing.
                     let Some(item) = self.associated_value(impl_did, item_name).or_else(|| {
-                        let impl_trait_ref = self.tcx.impl_trait_ref(impl_did)?;
-                        self.associated_value(impl_trait_ref.skip_binder().def_id, item_name)
+                        let impl_trait_id = self.tcx.impl_opt_trait_id(impl_did)?;
+                        self.associated_value(impl_trait_id, item_name)
                     }) else {
                         continue;
                     };
@@ -2111,7 +2111,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                     let impl_ty = self.tcx.at(span).type_of(impl_did).instantiate_identity();
 
-                    let insertion = match self.tcx.impl_trait_ref(impl_did) {
+                    let insertion = match self.tcx.impl_opt_trait_ref(impl_did) {
                         None => String::new(),
                         Some(trait_ref) => {
                             format!(
@@ -2146,7 +2146,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         err.note(note_str);
                     }
                     if let Some(sugg_span) = sugg_span
-                        && let Some(trait_ref) = self.tcx.impl_trait_ref(impl_did)
+                        && let Some(trait_ref) = self.tcx.impl_opt_trait_ref(impl_did)
                         && let Some(sugg) = print_disambiguation_help(
                             self.tcx,
                             err,
@@ -3862,7 +3862,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 static_candidates.iter().all(|sc| match *sc {
                     CandidateSource::Trait(def_id) => def_id != info.def_id,
                     CandidateSource::Impl(def_id) => {
-                        self.tcx.trait_id_of_impl(def_id) != Some(info.def_id)
+                        self.tcx.impl_opt_trait_id(def_id) != Some(info.def_id)
                     }
                 })
             })
@@ -4122,11 +4122,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     if self
                         .tcx
                         .all_impls(candidate.def_id)
-                        .map(|imp_did| {
-                            self.tcx.impl_trait_header(imp_did).expect(
-                                "inherent impls can't be candidates, only trait impls can be",
-                            )
-                        })
+                        .map(|imp_did| self.tcx.impl_trait_header(imp_did))
                         .filter(|header| header.polarity != ty::ImplPolarity::Positive)
                         .any(|header| {
                             let imp = header.trait_ref.instantiate_identity();

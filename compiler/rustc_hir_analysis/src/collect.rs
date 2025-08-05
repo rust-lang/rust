@@ -1291,24 +1291,26 @@ pub fn suggest_impl_trait<'tcx>(
     None
 }
 
-fn impl_trait_header(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<ty::ImplTraitHeader<'_>> {
+fn impl_trait_header(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::ImplTraitHeader<'_> {
     let icx = ItemCtxt::new(tcx, def_id);
     let item = tcx.hir_expect_item(def_id);
     let impl_ = item.expect_impl();
-    impl_.of_trait.as_ref().map(|ast_trait_ref| {
-        let selfty = tcx.type_of(def_id).instantiate_identity();
+    let ast_trait_ref = impl_
+        .of_trait
+        .as_ref()
+        .unwrap_or_else(|| panic!("expected impl trait, found inherent impl on {def_id:?}"));
+    let selfty = tcx.type_of(def_id).instantiate_identity();
 
-        check_impl_constness(tcx, impl_.constness, ast_trait_ref);
+    check_impl_constness(tcx, impl_.constness, ast_trait_ref);
 
-        let trait_ref = icx.lowerer().lower_impl_trait_ref(ast_trait_ref, selfty);
+    let trait_ref = icx.lowerer().lower_impl_trait_ref(ast_trait_ref, selfty);
 
-        ty::ImplTraitHeader {
-            trait_ref: ty::EarlyBinder::bind(trait_ref),
-            safety: impl_.safety,
-            polarity: polarity_of_impl(tcx, def_id, impl_, item.span),
-            constness: impl_.constness,
-        }
-    })
+    ty::ImplTraitHeader {
+        trait_ref: ty::EarlyBinder::bind(trait_ref),
+        safety: impl_.safety,
+        polarity: polarity_of_impl(tcx, def_id, impl_, item.span),
+        constness: impl_.constness,
+    }
 }
 
 fn check_impl_constness(
