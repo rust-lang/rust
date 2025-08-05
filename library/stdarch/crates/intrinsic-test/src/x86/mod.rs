@@ -9,6 +9,7 @@ use rayon::prelude::*;
 use std::fs::{self, File};
 
 use crate::common::cli::ProcessedCli;
+use crate::common::compare::compare_outputs;
 use crate::common::gen_c::{write_main_cpp, write_mod_cpp};
 use crate::common::gen_rust::{
     compile_rust_programs, write_bin_cargo_toml, write_lib_cargo_toml, write_lib_rs, write_main_rs,
@@ -175,6 +176,20 @@ impl SupportedArchitectureTest for X86ArchitectureTest {
     }
 
     fn compare_outputs(&self) -> bool {
-        todo!("compare_outputs in X86ArchitectureTest is not implemented")
+        if self.cli_options.toolchain.is_some() {
+            let intrinsics_name_list = self
+                .intrinsics
+                .iter()
+                .map(|i| i.name.clone())
+                .collect::<Vec<_>>();
+
+            compare_outputs(
+                &intrinsics_name_list,
+                &self.cli_options.runner,
+                &self.cli_options.target,
+            )
+        } else {
+            true
+        }
     }
 }
