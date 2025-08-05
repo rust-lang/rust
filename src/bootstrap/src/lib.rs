@@ -859,14 +859,17 @@ impl Build {
         if self.config.rust_optimize.is_release() { "release" } else { "debug" }
     }
 
-    fn tools_dir(&self, compiler: Compiler) -> PathBuf {
-        let out = self.out.join(compiler.host).join(format!("stage{}-tools-bin", compiler.stage));
+    fn tools_dir(&self, build_compiler: Compiler) -> PathBuf {
+        let out = self
+            .out
+            .join(build_compiler.host)
+            .join(format!("stage{}-tools-bin", build_compiler.stage + 1));
         t!(fs::create_dir_all(&out));
         out
     }
 
     /// Returns the root directory for all output generated in a particular
-    /// stage when running with a particular host compiler.
+    /// stage when being built with a particular build compiler.
     ///
     /// The mode indicates what the root directory is for.
     fn stage_out(&self, build_compiler: Compiler, mode: Mode) -> PathBuf {
@@ -876,15 +879,17 @@ impl Build {
             (None, "bootstrap-tools")
         }
         fn staged_tool(build_compiler: Compiler) -> (Option<u32>, &'static str) {
-            (Some(build_compiler.stage), "tools")
+            (Some(build_compiler.stage + 1), "tools")
         }
 
         let (stage, suffix) = match mode {
+            // Std is special, stage N std is built with stage N rustc
             Mode::Std => (Some(build_compiler.stage), "std"),
-            Mode::Rustc => (Some(build_compiler.stage), "rustc"),
-            Mode::Codegen => (Some(build_compiler.stage), "codegen"),
+            // The rest of things are built with stage N-1 rustc
+            Mode::Rustc => (Some(build_compiler.stage + 1), "rustc"),
+            Mode::Codegen => (Some(build_compiler.stage + 1), "codegen"),
             Mode::ToolBootstrap => bootstrap_tool(),
-            Mode::ToolStd | Mode::ToolRustc => (Some(build_compiler.stage), "tools"),
+            Mode::ToolStd | Mode::ToolRustc => (Some(build_compiler.stage + 1), "tools"),
             Mode::ToolTarget => {
                 // If we're not cross-compiling (the common case), share the target directory with
                 // bootstrap tools to reuse the build cache.
@@ -907,8 +912,8 @@ impl Build {
     /// Returns the root output directory for all Cargo output in a given stage,
     /// running a particular compiler, whether or not we're building the
     /// standard library, and targeting the specified architecture.
-    fn cargo_out(&self, compiler: Compiler, mode: Mode, target: TargetSelection) -> PathBuf {
-        self.stage_out(compiler, mode).join(target).join(self.cargo_dir())
+    fn cargo_out(&self, build_compiler: Compiler, mode: Mode, target: TargetSelection) -> PathBuf {
+        self.stage_out(build_compiler, mode).join(target).join(self.cargo_dir())
     }
 
     /// Root output directory of LLVM for `target`

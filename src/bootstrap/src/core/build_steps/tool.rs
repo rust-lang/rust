@@ -380,13 +380,13 @@ pub(crate) fn get_tool_target_compiler(
 /// tools directory.
 fn copy_link_tool_bin(
     builder: &Builder<'_>,
-    compiler: Compiler,
+    build_compiler: Compiler,
     target: TargetSelection,
     mode: Mode,
     name: &str,
 ) -> PathBuf {
-    let cargo_out = builder.cargo_out(compiler, mode, target).join(exe(name, target));
-    let bin = builder.tools_dir(compiler).join(exe(name, target));
+    let cargo_out = builder.cargo_out(build_compiler, mode, target).join(exe(name, target));
+    let bin = builder.tools_dir(build_compiler).join(exe(name, target));
     builder.copy_link(&cargo_out, &bin, FileType::Executable);
     bin
 }
