@@ -146,6 +146,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type AllocId = crate::mir::interpret::AllocId;
     type Pat = Pattern<'tcx>;
     type PatList = &'tcx List<Pattern<'tcx>>;
+    type Visibility = Visibility<DefId>;
     type Safety = hir::Safety;
     type Abi = ExternAbi;
     type Const = ty::Const<'tcx>;
@@ -237,6 +238,8 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     fn adt_def(self, adt_def_id: DefId) -> Self::AdtDef {
         self.adt_def(adt_def_id)
     }
+
+    type FieldDef = &'tcx ty::FieldDef;
 
     fn alias_ty_kind(self, alias: ty::AliasTy<'tcx>) -> ty::AliasTyKind {
         match self.def_kind(alias.def_id) {
@@ -803,6 +806,12 @@ impl<'tcx> rustc_type_ir::inherent::Abi<TyCtxt<'tcx>> for ExternAbi {
 
     fn is_rust(self) -> bool {
         matches!(self, ExternAbi::Rust)
+    }
+}
+
+impl<'tcx> rustc_type_ir::inherent::Visibility<TyCtxt<'tcx>> for Visibility<DefId> {
+    fn is_public(self) -> bool {
+        matches!(self, Visibility::Public)
     }
 }
 

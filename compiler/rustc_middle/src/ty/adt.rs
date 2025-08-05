@@ -220,6 +220,10 @@ impl<'tcx> rustc_type_ir::inherent::AdtDef<TyCtxt<'tcx>> for AdtDef<'tcx> {
         self.is_manually_drop()
     }
 
+    fn all_fields(self) -> ty::EarlyBinder<'tcx, impl IntoIterator<Item = &'tcx FieldDef>> {
+        ty::EarlyBinder::bind(self.all_fields())
+    }
+
     fn all_field_tys(
         self,
         tcx: TyCtxt<'tcx>,

@@ -1422,6 +1422,16 @@ impl<'tcx> FieldDef {
     }
 }
 
+impl<'tcx> rustc_type_ir::inherent::FieldDef<TyCtxt<'tcx>> for &'tcx FieldDef {
+    fn def_id(self) -> DefId {
+        self.did
+    }
+
+    fn visibility(self) -> ty::Visibility<DefId> {
+        self.vis
+    }
+}
+
 #[derive(Debug, PartialEq, Eq)]
 pub enum ImplOverlapKind {
     /// These impls are always allowed to overlap.
