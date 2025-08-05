@@ -90,6 +90,9 @@ fi
 # Test targets compiled with extra features.
 case ${TARGET} in
     x86_64-unknown-linux-gnu)
+        TEST_CPPFLAGS="-fuse-ld=lld -I/usr/include/x86_64-linux-gnu/"
+        TEST_CXX_COMPILER="clang++-19"
+        TEST_RUNNER="${CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUNNER}"
         export STDARCH_DISABLE_ASSERT_INSTR=1
 
         export RUSTFLAGS="${RUSTFLAGS} -C target-feature=+avx"
