@@ -1265,12 +1265,7 @@ fn open_flavors() {
     let mut ra = OO::new();
     ra.read(true).append(true);
 
-    #[cfg(windows)]
-    let invalid_options = 87; // ERROR_INVALID_PARAMETER
-    #[cfg(all(unix, not(target_os = "vxworks")))]
-    let invalid_options = "Invalid argument";
-    #[cfg(target_os = "vxworks")]
-    let invalid_options = "invalid argument";
+    let invalid_options = "creating or truncating a file requires write or append access";
 
     // Test various combinations of creation modes and access modes.
     //
@@ -1293,10 +1288,10 @@ fn open_flavors() {
     check!(c(&w).open(&tmpdir.join("a")));
 
     // read-only
-    error!(c(&r).create_new(true).open(&tmpdir.join("b")), invalid_options);
-    error!(c(&r).create(true).truncate(true).open(&tmpdir.join("b")), invalid_options);
-    error!(c(&r).truncate(true).open(&tmpdir.join("b")), invalid_options);
-    error!(c(&r).create(true).open(&tmpdir.join("b")), invalid_options);
+    error_contains!(c(&r).create_new(true).open(&tmpdir.join("b")), invalid_options);
+    error_contains!(c(&r).create(true).truncate(true).open(&tmpdir.join("b")), invalid_options);
+    error_contains!(c(&r).truncate(true).open(&tmpdir.join("b")), invalid_options);
+    error_contains!(c(&r).create(true).open(&tmpdir.join("b")), invalid_options);
     check!(c(&r).open(&tmpdir.join("a"))); // try opening the file created with write_only
 
     // read-write
@@ -1308,21 +1303,21 @@ fn open_flavors() {
 
     // append
     check!(c(&a).create_new(true).open(&tmpdir.join("d")));
-    error!(c(&a).create(true).truncate(true).open(&tmpdir.join("d")), invalid_options);
-    error!(c(&a).truncate(true).open(&tmpdir.join("d")), invalid_options);
+    error_contains!(c(&a).create(true).truncate(true).open(&tmpdir.join("d")), invalid_options);
+    error_contains!(c(&a).truncate(true).open(&tmpdir.join("d")), invalid_options);
     check!(c(&a).create(true).open(&tmpdir.join("d")));
     check!(c(&a).open(&tmpdir.join("d")));
 
     // read-append
     check!(c(&ra).create_new(true).open(&tmpdir.join("e")));
-    error!(c(&ra).create(true).truncate(true).open(&tmpdir.join("e")), invalid_options);
-    error!(c(&ra).truncate(true).open(&tmpdir.join("e")), invalid_options);
+    error_contains!(c(&ra).create(true).truncate(true).open(&tmpdir.join("e")), invalid_options);
+    error_contains!(c(&ra).truncate(true).open(&tmpdir.join("e")), invalid_options);
     check!(c(&ra).create(true).open(&tmpdir.join("e")));
     check!(c(&ra).open(&tmpdir.join("e")));
 
     // Test opening a file without setting an access mode
     let mut blank = OO::new();
-    error!(blank.create(true).open(&tmpdir.join("f")), invalid_options);
+    error_contains!(blank.create(true).open(&tmpdir.join("f")), invalid_options);
 
     // Test write works
     check!(check!(File::create(&tmpdir.join("h"))).write("foobar".as_bytes()));
@@ -2083,4 +2078,35 @@ fn test_rename_junction() {
     // Make sure that renaming `original` to `dest` preserves the junction point.
     // Junction links are always absolute so we just check the file name is correct.
     assert_eq!(fs::read_link(&dest).unwrap().file_name(), Some(not_exist.as_os_str()));
+}
+
+#[test]
+fn test_open_options_invalid_combinations() {
+    use crate::fs::OpenOptions as OO;
+
+    let test_cases: &[(fn() -> OO, &str)] = &[
+        (|| OO::new().create(true).read(true).clone(), "create without write"),
+        (|| OO::new().create_new(true).read(true).clone(), "create_new without write"),
+        (|| OO::new().truncate(true).read(true).clone(), "truncate without write"),
+        (|| OO::new().truncate(true).append(true).clone(), "truncate with append"),
+    ];
+
+    for (make_opts, desc) in test_cases {
+        let opts = make_opts();
+        let result = opts.open("nonexistent.txt");
+        assert!(result.is_err(), "{desc} should fail");
+        let err = result.unwrap_err();
+        assert_eq!(err.kind(), ErrorKind::InvalidInput, "{desc} - wrong error kind");
+        assert_eq!(
+            err.to_string(),
+            "creating or truncating a file requires write or append access",
+            "{desc} - wrong error message"
+        );
+    }
+
+    let result = OO::new().open("nonexistent.txt");
+    assert!(result.is_err(), "no access mode should fail");
+    let err = result.unwrap_err();
+    assert_eq!(err.kind(), ErrorKind::InvalidInput);
+    assert_eq!(err.to_string(), "must specify at least one of read, write, or append access");
 }
