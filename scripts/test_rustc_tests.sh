@@ -63,6 +63,7 @@ rm -r tests/run-make/used-proc-macro # used(linker) isn't supported yet
 rm tests/ui/linking/no-gc-encapsulation-symbols.rs # same
 rm tests/ui/attributes/fn-align-dyn.rs # per-function alignment not supported
 rm -r tests/ui/c-variadic/same-program-multiple-abis.rs # variadics for calling conventions other than C unsupported
+rm -r tests/ui/explicit-tail-calls # tail calls
 
 # requires LTO
 rm -r tests/run-make/cdylib
