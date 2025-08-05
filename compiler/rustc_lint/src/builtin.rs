@@ -29,7 +29,7 @@ use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LocalDefId};
 use rustc_hir::intravisit::FnKind as HirFnKind;
-use rustc_hir::{Body, FnDecl, PatKind, PredicateOrigin, find_attr};
+use rustc_hir::{Body, FnDecl, ImplItemImplKind, PatKind, PredicateOrigin, find_attr};
 use rustc_middle::bug;
 use rustc_middle::lint::LevelAndSource;
 use rustc_middle::ty::layout::LayoutOf;
@@ -1321,9 +1321,8 @@ impl<'tcx> LateLintPass<'tcx> for UnreachablePub {
     }
 
     fn check_impl_item(&mut self, cx: &LateContext<'_>, impl_item: &hir::ImplItem<'_>) {
-        // Only lint inherent impl items.
-        if cx.tcx.associated_item(impl_item.owner_id).trait_item_def_id.is_none() {
-            self.perform_lint(cx, "item", impl_item.owner_id.def_id, impl_item.vis_span, false);
+        if let ImplItemImplKind::Inherent { vis_span } = impl_item.impl_kind {
+            self.perform_lint(cx, "item", impl_item.owner_id.def_id, vis_span, false);
         }
     }
 }
