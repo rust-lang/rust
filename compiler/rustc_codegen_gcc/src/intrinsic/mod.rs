@@ -667,7 +667,16 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
     fn abort(&mut self) {
         let func = self.context.get_builtin_function("abort");
         let func: RValue<'gcc> = unsafe { std::mem::transmute(func) };
-        self.call(self.type_void(), None, None, func, &[], None, None);
+        self.call(
+            self.type_void(),
+            None,
+            None,
+            func,
+            None, /* abort does not return, so it can't return indirectly. */
+            &[],
+            None,
+            None,
+        );
     }
 
     fn assume(&mut self, value: Self::Value) {
@@ -1348,7 +1357,7 @@ fn try_intrinsic<'a, 'b, 'gcc, 'tcx>(
         let param_type = bx.u8_type.make_pointer();
         let fn_type =
             bx.context.new_function_pointer_type(None, bx.type_void(), &[param_type], false);
-        bx.call(fn_type, None, None, try_func, &[data], None, None);
+        bx.call(fn_type, None, None, try_func, None, &[data], None, None);
         // Return 0 unconditionally from the intrinsic call;
         // we can never unwind.
         OperandValue::Immediate(bx.const_bool(false)).store(bx, dest);
@@ -1421,21 +1430,41 @@ fn codegen_gnu_try<'gcc, 'tcx>(
         let zero = bx.cx.context.new_rvalue_zero(bx.int_type);
         let ptr = bx.cx.context.new_call(None, eh_pointer_builtin, &[zero]);
         let catch_ty = bx.type_func(&[bx.type_i8p(), bx.type_i8p()], bx.type_void());
-        bx.call(catch_ty, None, None, catch_func, &[data, ptr], None, None);
+        bx.call(catch_ty, None, None, catch_func, None, &[data, ptr], None, None);
         bx.ret(bx.const_bool(true));
 
         // NOTE: the blocks must be filled before adding the try/catch, otherwise gcc will not
         // generate a try/catch.
         // FIXME(antoyo): add a check in the libgccjit API to prevent this.
         bx.switch_to_block(current_block);
-        bx.invoke(try_func_ty, None, None, try_func, &[data], then, catch, None, None);
+        bx.invoke(
+            try_func_ty,
+            None,
+            None,
+            try_func,
+            None, /* this function can't return indirectly */
+            &[data],
+            then,
+            catch,
+            None,
+            None,
+        );
     });
 
     let func = unsafe { std::mem::transmute::<Function<'gcc>, RValue<'gcc>>(func) };
 
     // Note that no invoke is used here because by definition this function
     // can't panic (that's what it's catching).
-    let ret = bx.call(llty, None, None, func, &[try_func, data, catch_func], None, None);
+    let ret = bx.call(
+        llty,
+        None,
+        None,
+        func,
+        None, /*This function can't return indirectly*/
+        &[try_func, data, catch_func],
+        None,
+        None,
+    );
     OperandValue::Immediate(ret).store(bx, dest);
 }
 

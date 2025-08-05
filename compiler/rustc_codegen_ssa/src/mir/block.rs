@@ -165,6 +165,9 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
 
     /// Call `fn_ptr` of `fn_abi` with the arguments `llargs`, the optional
     /// return destination `destination` and the unwind action `unwind`.
+    /// The `indirect_return_pointer` is specified for functions returning
+    /// via `PassMode::indirect`, and points to a buffer, where the return value
+    /// shall be stored.
     fn do_call<Bx: BuilderMethods<'a, 'tcx>>(
         &self,
         fx: &mut FunctionCx<'a, 'tcx, Bx>,
