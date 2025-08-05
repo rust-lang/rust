@@ -1128,7 +1128,7 @@ impl File {
     ///     use std::fs::{self, File, FileTimes};
     ///
     ///     let src = fs::metadata("src")?;
-    ///     let dest = File::options().write(true).open("dest")?;
+    ///     let dest = File::open("dest")?;
     ///     let times = FileTimes::new()
     ///         .set_accessed(src.accessed()?)
     ///         .set_modified(src.modified()?);
