@@ -96,6 +96,7 @@ pub(crate) fn convert_from_to_tryfrom(acc: &mut Assists, ctx: &AssistContext<'_>
             }
 
             let error_type = ast::AssocItem::TypeAlias(make::ty_alias(
+                None,
                 "Error",
                 None,
                 None,

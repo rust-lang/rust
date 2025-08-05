@@ -273,28 +273,6 @@ pub trait AttrsOwnerEdit: ast::HasAttrs {
             }
         }
     }
-
-    fn add_attr(&self, attr: ast::Attr) {
-        add_attr(self.syntax(), attr);
-
-        fn add_attr(node: &SyntaxNode, attr: ast::Attr) {
-            let indent = IndentLevel::from_node(node);
-            attr.reindent_to(indent);
-
-            let after_attrs_and_comments = node
-                .children_with_tokens()
-                .find(|it| !matches!(it.kind(), WHITESPACE | COMMENT | ATTR))
-                .map_or(Position::first_child_of(node), Position::before);
-
-            ted::insert_all(
-                after_attrs_and_comments,
-                vec![
-                    attr.syntax().clone().into(),
-                    make::tokens::whitespace(&format!("\n{indent}")).into(),
-                ],
-            )
-        }
-    }
 }
 
 impl<T: ast::HasAttrs> AttrsOwnerEdit for T {}

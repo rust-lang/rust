@@ -13,12 +13,7 @@ use ide_db::{
 use itertools::Itertools;
 use syntax::{
     AstNode, NodeOrToken, SyntaxKind, SyntaxNode, T,
-    ast::{
-        self, HasName,
-        edit::IndentLevel,
-        edit_in_place::{AttrsOwnerEdit, Indent},
-        make,
-    },
+    ast::{self, HasName, edit::IndentLevel, edit_in_place::Indent, make},
 };
 
 use crate::{
@@ -506,18 +501,6 @@ fn node_to_insert_before(target_node: SyntaxNode) -> SyntaxNode {
 }
 
 fn make_bool_enum(make_pub: bool) -> ast::Enum {
-    let enum_def = make::enum_(
-        if make_pub { Some(make::visibility_pub()) } else { None },
-        make::name("Bool"),
-        None,
-        None,
-        make::variant_list(vec![
-            make::variant(None, make::name("True"), None, None),
-            make::variant(None, make::name("False"), None, None),
-        ]),
-    )
-    .clone_for_update();
-
     let derive_eq = make::attr_outer(make::meta_token_tree(
         make::ext::ident_path("derive"),
         make::token_tree(
@@ -529,11 +512,19 @@ fn make_bool_enum(make_pub: bool) -> ast::Enum {
                 NodeOrToken::Token(make::tokens::ident("Eq")),
             ],
         ),
-    ))
-    .clone_for_update();
-    enum_def.add_attr(derive_eq);
-
-    enum_def
+    ));
+    make::enum_(
+        [derive_eq],
+        if make_pub { Some(make::visibility_pub()) } else { None },
+        make::name("Bool"),
+        None,
+        None,
+        make::variant_list(vec![
+            make::variant(None, make::name("True"), None, None),
+            make::variant(None, make::name("False"), None, None),
+        ]),
+    )
+    .clone_for_update()
 }
 
 #[cfg(test)]

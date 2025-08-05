@@ -134,6 +134,7 @@ pub(crate) fn generate_new(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option
         let ret_type = make::ret_type(make::ty_path(make::ext::ident_path("Self")));
 
         let fn_ = make::fn_(
+            None,
             strukt.visibility(),
             make::name("new"),
             None,

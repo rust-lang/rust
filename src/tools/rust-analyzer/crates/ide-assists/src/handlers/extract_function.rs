@@ -1642,6 +1642,7 @@ fn format_function(
 
     make::fn_(
         None,
+        None,
         fun_name,
         generic_params,
         where_clause,

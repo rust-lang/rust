@@ -200,7 +200,7 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
                     }
                     ExtractionKind::Constant => {
                         let ast_ty = make.ty(&ty_string);
-                        ast::Item::Const(make.item_const(None, pat_name, ast_ty, initializer))
+                        ast::Item::Const(make.item_const(None, None, pat_name, ast_ty, initializer))
                             .into()
                     }
                     ExtractionKind::Static => {
