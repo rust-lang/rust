@@ -2203,7 +2203,16 @@ impl<'tcx> TyCtxt<'tcx> {
 
         let is_impl_item = match self.hir_node_by_def_id(suitable_region_binding_scope) {
             Node::Item(..) | Node::TraitItem(..) => false,
-            Node::ImplItem(..) => self.is_bound_region_in_impl_item(suitable_region_binding_scope),
+            Node::ImplItem(impl_item) => match impl_item.impl_kind {
+                // For now, we do not try to target impls of traits. This is
+                // because this message is going to suggest that the user
+                // change the fn signature, but they may not be free to do so,
+                // since the signature must match the trait.
+                //
+                // FIXME(#42706) -- in some cases, we could do better here.
+                hir::ImplItemImplKind::Trait { .. } => true,
+                _ => false,
+            },
             _ => false,
         };
 
@@ -2255,21 +2264,6 @@ impl<'tcx> TyCtxt<'tcx> {
             }
         }
         None
-    }
-
-    /// Checks if the bound region is in Impl Item.
-    pub fn is_bound_region_in_impl_item(self, suitable_region_binding_scope: LocalDefId) -> bool {
-        let container_id = self.parent(suitable_region_binding_scope.to_def_id());
-        if self.impl_trait_ref(container_id).is_some() {
-            // For now, we do not try to target impls of traits. This is
-            // because this message is going to suggest that the user
-            // change the fn signature, but they may not be free to do so,
-            // since the signature must match the trait.
-            //
-            // FIXME(#42706) -- in some cases, we could do better here.
-            return true;
-        }
-        false
     }
 
     /// Determines whether identifiers in the assembly have strict naming rules.

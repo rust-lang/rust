@@ -38,11 +38,6 @@ pub(crate) fn method_context(cx: &LateContext<'_>, id: LocalDefId) -> MethodLate
     }
 }
 
-fn assoc_item_in_trait_impl(cx: &LateContext<'_>, ii: &hir::ImplItem<'_>) -> bool {
-    let item = cx.tcx.associated_item(ii.owner_id);
-    item.trait_item_def_id.is_some()
-}
-
 declare_lint! {
     /// The `non_camel_case_types` lint detects types, variants, traits and
     /// type parameters that don't have camel case names.
@@ -610,7 +605,7 @@ impl<'tcx> LateLintPass<'tcx> for NonUpperCaseGlobals {
 
     fn check_impl_item(&mut self, cx: &LateContext<'_>, ii: &hir::ImplItem<'_>) {
         if let hir::ImplItemKind::Const(..) = ii.kind
-            && !assoc_item_in_trait_impl(cx, ii)
+            && let hir::ImplItemImplKind::Inherent { .. } = ii.impl_kind
         {
             NonUpperCaseGlobals::check_upper_case(cx, "associated constant", None, &ii.ident);
         }
