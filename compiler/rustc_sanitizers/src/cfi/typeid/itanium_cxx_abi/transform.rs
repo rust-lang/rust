@@ -10,8 +10,8 @@ use rustc_hir as hir;
 use rustc_hir::LangItem;
 use rustc_middle::bug;
 use rustc_middle::ty::{
-    self, ExistentialPredicateStableCmpExt as _, Instance, InstanceKind, IntTy, List, TraitRef, Ty,
-    TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt, UintTy,
+    self, ExistentialPredicateStableCmpExt as _, Instance, IntTy, List, TraitRef, Ty, TyCtxt,
+    TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt, UintTy,
 };
 use rustc_span::def_id::DefId;
 use rustc_span::{DUMMY_SP, sym};
@@ -453,38 +453,18 @@ pub(crate) fn transform_instance<'tcx>(
             instance.def = ty::InstanceKind::Virtual(call, 0);
             instance.args = abstract_args;
         }
-        let fn_traits = [
-            (LangItem::Fn, sym::call),
-            (LangItem::FnMut, sym::call_mut),
-            (LangItem::FnOnce, sym::call_once),
-        ];
-        for (lang_item, method_sym) in fn_traits {
-            if let Some(trait_id) = tcx.lang_items().get(lang_item) {
-                let items = tcx.associated_items(trait_id);
-                if let Some(call_method) =
-                    items.in_definition_order().find(|item| item.name() == method_sym)
-                {
-                    if instance.def_id() == call_method.def_id {
-                        // This is a call to a method of Fn, FnMut, or FnOnce. Transform self into a
-                        // trait object of the trait that defines the method.
-                        let self_ty = trait_object_ty(
-                            tcx,
-                            ty::Binder::dummy(ty::TraitRef::from_method(
-                                tcx,
-                                trait_id,
-                                instance.args,
-                            )),
-                        );
-                        instance.args =
-                            tcx.mk_args_trait(self_ty, instance.args.into_iter().skip(1));
-                        break;
-                    }
-                }
-            }
-        }
     }
 
     instance
+}
+
+fn default_or_shim<'tcx>(instance: Instance<'tcx>) -> Option<DefId> {
+    match instance.def {
+        ty::InstanceKind::Item(def_id) | ty::InstanceKind::FnPtrShim(def_id, _) => {
+            tcx.opt_associated_item(def_id)
+        }
+        _ => None,
+    }
 }
 
 fn implemented_method<'tcx>(
@@ -503,10 +483,8 @@ fn implemented_method<'tcx>(
         trait_method = tcx.associated_item(method_id);
         trait_id = trait_ref.skip_binder().def_id;
         impl_id
-    } else if let InstanceKind::Item(def_id) = instance.def
-        && let Some(trait_method_bound) = tcx.opt_associated_item(def_id)
-    {
-        // Provided method in a `trait` block
+    } else if let Some(trait_method_bound) = default_or_shim(instance) {
+        // Provided method in a `trait` block or a synthetic `shim`
         trait_method = trait_method_bound;
         method_id = instance.def_id();
         trait_id = tcx.trait_of_assoc(method_id)?;
