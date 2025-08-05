@@ -1,7 +1,5 @@
 # Queries: demand-driven compilation
 
-<!-- toc -->
-
 As described in [Overview of the compiler], the Rust compiler
 is still (as of <!-- date-check --> July 2021) transitioning from a
 traditional "pass-based" setup to a "demand-driven" system. The compiler query
