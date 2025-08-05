@@ -19,7 +19,7 @@ use serde_derive::Deserialize;
 use tracing::{instrument, span};
 
 use crate::core::build_steps::gcc::{Gcc, add_cg_gcc_cargo_flags};
-use crate::core::build_steps::tool::{SourceType, copy_lld_artifacts};
+use crate::core::build_steps::tool::{RustcPrivateCompilers, SourceType, copy_lld_artifacts};
 use crate::core::build_steps::{dist, llvm};
 use crate::core::builder;
 use crate::core::builder::{
@@ -1131,7 +1131,7 @@ impl Step for Rustc {
             cargo.env("RUSTC_BOLT_LINK_FLAGS", "1");
         }
 
-        let _guard = builder.msg_sysroot_tool(
+        let _guard = builder.msg_rustc_tool(
             Kind::Build,
             build_compiler.stage,
             format_args!("compiler artifacts{}", crate_description(&self.crates)),
@@ -1544,9 +1544,8 @@ impl Step for RustcLink {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct CodegenBackend {
-    pub target: TargetSelection,
-    pub compiler: Compiler,
-    pub backend: CodegenBackendKind,
+    compilers: RustcPrivateCompilers,
+    backend: CodegenBackendKind,
 }
 
 fn needs_codegen_config(run: &RunConfig<'_>) -> bool {
@@ -1610,8 +1609,11 @@ impl Step for CodegenBackend {
             }
 
             run.builder.ensure(CodegenBackend {
-                target: run.target,
-                compiler: run.builder.compiler(run.builder.top_stage, run.build_triple()),
+                compilers: RustcPrivateCompilers::new(
+                    run.builder,
+                    run.builder.top_stage,
+                    run.target,
+                ),
                 backend: backend.clone(),
             });
         }
@@ -1624,20 +1626,17 @@ impl Step for CodegenBackend {
             name = "CodegenBackend::run",
             skip_all,
             fields(
-                compiler = ?self.compiler,
-                target = ?self.target,
-                backend = ?self.target,
+                compilers = ?self.compilers,
+                backend = ?self.backend,
             ),
         ),
     )]
     fn run(self, builder: &Builder<'_>) {
-        let compiler = self.compiler;
-        let target = self.target;
         let backend = self.backend;
+        let target = self.compilers.target();
+        let build_compiler = self.compilers.build_compiler();
 
-        builder.ensure(Rustc::new(compiler, target));
-
-        if builder.config.keep_stage.contains(&compiler.stage) {
+        if builder.config.keep_stage.contains(&build_compiler.stage) {
             trace!("`keep-stage` requested");
             builder.info(
                 "WARNING: Using a potentially old codegen backend. \
@@ -1648,17 +1647,11 @@ impl Step for CodegenBackend {
             return;
         }
 
-        let compiler_to_use = builder.compiler_for(compiler.stage, compiler.host, target);
-        if compiler_to_use != compiler {
-            builder.ensure(CodegenBackend { compiler: compiler_to_use, target, backend });
-            return;
-        }
-
-        let out_dir = builder.cargo_out(compiler, Mode::Codegen, target);
+        let out_dir = builder.cargo_out(build_compiler, Mode::Codegen, target);
 
         let mut cargo = builder::Cargo::new(
             builder,
-            compiler,
+            build_compiler,
             Mode::Codegen,
             SourceType::InTree,
             target,
@@ -1679,8 +1672,13 @@ impl Step for CodegenBackend {
 
         let tmp_stamp = BuildStamp::new(&out_dir).with_prefix("tmp");
 
-        let _guard =
-            builder.msg_build(compiler, format_args!("codegen backend {}", backend.name()), target);
+        let _guard = builder.msg_rustc_tool(
+            Kind::Build,
+            build_compiler.stage,
+            format_args!("codegen backend {}", backend.name()),
+            build_compiler.host,
+            target,
+        );
         let files = run_cargo(builder, cargo, vec![], &tmp_stamp, vec![], false, false);
         if builder.config.dry_run() {
             return;
@@ -1700,9 +1698,16 @@ impl Step for CodegenBackend {
                 f.display()
             );
         }
-        let stamp = build_stamp::codegen_backend_stamp(builder, compiler, target, &backend);
+        let stamp = build_stamp::codegen_backend_stamp(builder, build_compiler, target, &backend);
         let codegen_backend = codegen_backend.to_str().unwrap();
         t!(stamp.add_stamp(codegen_backend).write());
+    }
+
+    fn metadata(&self) -> Option<StepMetadata> {
+        Some(
+            StepMetadata::build(&self.backend.crate_name(), self.compilers.target())
+                .built_by(self.compilers.build_compiler()),
+        )
     }
 }
 
@@ -2190,8 +2195,10 @@ impl Step for Assemble {
                 continue;
             }
             builder.ensure(CodegenBackend {
-                compiler: build_compiler,
-                target: target_compiler.host,
+                compilers: RustcPrivateCompilers::from_build_and_target_compiler(
+                    build_compiler,
+                    target_compiler,
+                ),
                 backend: backend.clone(),
             });
         }
