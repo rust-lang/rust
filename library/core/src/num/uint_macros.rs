@@ -229,14 +229,14 @@ macro_rules! uint_impl {
         ///
         #[doc = concat!("let n: ", stringify!($SelfT), " = 0b_01100100;")]
         ///
-        /// assert_eq!(n.isolate_most_significant_one(), 0b_01000000);
-        #[doc = concat!("assert_eq!(0_", stringify!($SelfT), ".isolate_most_significant_one(), 0);")]
+        /// assert_eq!(n.isolate_highest_one(), 0b_01000000);
+        #[doc = concat!("assert_eq!(0_", stringify!($SelfT), ".isolate_highest_one(), 0);")]
         /// ```
         #[unstable(feature = "isolate_most_least_significant_one", issue = "136909")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
-        pub const fn isolate_most_significant_one(self) -> Self {
+        pub const fn isolate_highest_one(self) -> Self {
             self & (((1 as $SelfT) << (<$SelfT>::BITS - 1)).wrapping_shr(self.leading_zeros()))
         }
 
@@ -250,14 +250,14 @@ macro_rules! uint_impl {
         ///
         #[doc = concat!("let n: ", stringify!($SelfT), " = 0b_01100100;")]
         ///
-        /// assert_eq!(n.isolate_least_significant_one(), 0b_00000100);
-        #[doc = concat!("assert_eq!(0_", stringify!($SelfT), ".isolate_least_significant_one(), 0);")]
+        /// assert_eq!(n.isolate_lowest_one(), 0b_00000100);
+        #[doc = concat!("assert_eq!(0_", stringify!($SelfT), ".isolate_lowest_one(), 0);")]
         /// ```
         #[unstable(feature = "isolate_most_least_significant_one", issue = "136909")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
-        pub const fn isolate_least_significant_one(self) -> Self {
+        pub const fn isolate_lowest_one(self) -> Self {
             self & self.wrapping_neg()
         }
 
