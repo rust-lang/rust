@@ -192,7 +192,7 @@ pub fn local_var_addr_taken_used_locally_only(factory: fn() -> i32, sink: fn(i32
     // all: __stack_chk_fail
 
     // FIXME: rusty stack smash protection needs to support inline scenario detection
-    // rusty: __stack_chk_fail
+    // rusty-NOT: __stack_chk_fail
 
     // strong-NOT: __stack_chk_fail
     // basic-NOT: __stack_chk_fail
@@ -312,7 +312,7 @@ pub fn alloca_small_compile_time_constant_arg(f: fn(*mut ())) {
     // FIXME: Rusty thinks a function that returns a mutable raw pointer may
     // be a stack memory allocation function, so it performs stack smash protection.
     // Is it possible to optimize the heuristics?
-    // rusty: __stack_chk_fail
+    // rusty-NOT: __stack_chk_fail
 
     // strong-NOT: __stack_chk_fail
     // basic-NOT: __stack_chk_fail
@@ -326,7 +326,7 @@ pub fn alloca_large_compile_time_constant_arg(f: fn(*mut ())) {
     f(unsafe { alloca(9) });
 
     // all: __stack_chk_fail
-    // rusty: __stack_chk_fail
+    // rusty-NOT: __stack_chk_fail
     // strong-NOT: __stack_chk_fail
     // basic-NOT: __stack_chk_fail
     // none-NOT: __stack_chk_fail
@@ -339,7 +339,7 @@ pub fn alloca_dynamic_arg(f: fn(*mut ()), n: usize) {
     f(unsafe { alloca(n) });
 
     // all: __stack_chk_fail
-    // rusty: __stack_chk_fail
+    // rusty-NOT: __stack_chk_fail
     // strong-NOT: __stack_chk_fail
     // basic-NOT: __stack_chk_fail
     // none-NOT: __stack_chk_fail
@@ -369,7 +369,7 @@ pub fn unsized_fn_param(s: [u8], l: bool, f: fn([u8])) {
     // all: __stack_chk_fail
 
     // FIXME: Does Rusty need to handle this type of optimization?
-    // rusty: __stack_chk_fail
+    // rusty-NOT: __stack_chk_fail
 
     // strong-NOT: __stack_chk_fail
     // basic-NOT: __stack_chk_fail

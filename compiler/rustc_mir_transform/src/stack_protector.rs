@@ -1,11 +1,9 @@
 //! Validates the MIR to ensure that invariants are upheld.
-
 use std::ops::Deref;
 
 use rustc_middle::mir::*;
 use rustc_middle::ty;
-use rustc_middle::ty::{Instance, TyCtxt};
-use rustc_target::callconv::PassMode;
+use rustc_middle::ty::TyCtxt;
 
 pub(super) struct StackProtectorFinder;
 
@@ -37,29 +35,6 @@ impl<'tcx> crate::MirPass<'tcx> for StackProtectorFinder {
                         return;
                     }
                 }
-            }
-
-            let instance = Instance::mono(tcx, def_id);
-            let Ok(fn_abi) = tcx.fn_abi_of_instance(
-                ty::TypingEnv::fully_monomorphized().as_query_input((instance, ty::List::empty())),
-            ) else {
-                // FIXME: Find when an Err() message is returned
-
-                return;
-            };
-
-            // for arg in fn_abi.args.iter() {
-            //     if matches!(&arg.mode, PassMode::Indirect { attrs: _, meta_attrs: _, on_stack: false }) {
-            //         tcx.stack_protector.borrow_mut().insert(def_id);
-            //         return;
-            //     }
-            // }
-
-            let ret = &fn_abi.ret;
-            if matches!(&ret.mode, PassMode::Indirect { attrs: _, meta_attrs: _, on_stack: false })
-            {
-                tcx.stack_protector.borrow_mut().insert(def_id);
-                return;
             }
         }
     }

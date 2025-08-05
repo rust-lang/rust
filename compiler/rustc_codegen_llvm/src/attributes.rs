@@ -6,6 +6,7 @@ use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, PatchableFuncti
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::config::{BranchProtection, FunctionReturn, OptLevel, PAuthKey, PacRet};
 use rustc_symbol_mangling::mangle_internal_symbol;
+use rustc_target::callconv::PassMode;
 use rustc_target::spec::{FramePointer, SanitizerSet, StackProbeType, StackProtector};
 use smallvec::SmallVec;
 
@@ -270,13 +271,22 @@ fn probestack_attr<'ll>(cx: &CodegenCx<'ll, '_>) -> Option<&'ll Attribute> {
     Some(llvm::CreateAttrStringValue(cx.llcx, "probe-stack", attr_value))
 }
 
-fn stackprotector_attr<'ll>(cx: &CodegenCx<'ll, '_>, def_id: DefId) -> Option<&'ll Attribute> {
+fn stackprotector_attr<'ll, 'tcx>(
+    cx: &CodegenCx<'ll, 'tcx>,
+    instance: ty::Instance<'tcx>,
+) -> Option<&'ll Attribute> {
+    let fn_abi = cx.fn_abi_of_instance(instance, ty::List::empty());
     let sspattr = match cx.sess().stack_protector() {
         StackProtector::None => return None,
         StackProtector::All => AttributeKind::StackProtectReq,
 
         StackProtector::Rusty => {
-            if cx.tcx.stack_protector.borrow().contains(&def_id) {
+            if cx.tcx.stack_protector.borrow().contains(&instance.def_id())
+                || matches!(
+                    &fn_abi.ret.mode,
+                    PassMode::Indirect { attrs: _, meta_attrs: _, on_stack: false }
+                )
+            {
                 AttributeKind::StackProtectStrong
             } else {
                 return None;
@@ -395,7 +405,7 @@ pub(crate) fn llfn_attrs_from_instance<'ll, 'tcx>(
     to_add.extend(probestack_attr(cx));
 
     // stack protector
-    to_add.extend(stackprotector_attr(cx, instance.def_id()));
+    to_add.extend(stackprotector_attr(cx, instance));
 
     if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::NO_BUILTINS) {
         to_add.push(llvm::CreateAttrString(cx.llcx, "no-builtins"));
