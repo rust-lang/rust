@@ -46,6 +46,7 @@ impl AttributeKind {
             LinkSection { .. } => Yes, // Needed for rustdoc
             LoopMatch(..) => No,
             MacroEscape(..) => No,
+            MacroExport { .. } => Yes,
             MacroTransparency(..) => Yes,
             MacroUse { .. } => No,
             Marker(..) => No,
