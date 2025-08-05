@@ -1,3 +1,4 @@
+// https://github.com/rust-lang/rust/issues/26093
 macro_rules! not_a_place {
     ($thing:expr) => {
         $thing = 42;
