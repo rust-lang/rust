@@ -83,6 +83,16 @@ impl SyntaxEditor {
         self.changes.push(Change::Replace(element.syntax_element(), None));
     }
 
+    pub fn delete_all(&mut self, range: RangeInclusive<SyntaxElement>) {
+        if range.start() == range.end() {
+            self.delete(range.start());
+            return;
+        }
+
+        debug_assert!(is_ancestor_or_self_of_element(range.start(), &self.root));
+        self.changes.push(Change::ReplaceAll(range, Vec::new()))
+    }
+
     pub fn replace(&mut self, old: impl Element, new: impl Element) {
         let old = old.syntax_element();
         debug_assert!(is_ancestor_or_self_of_element(&old, &self.root));
@@ -626,10 +636,10 @@ mod tests {
         if let Some(ret_ty) = parent_fn.ret_type() {
             editor.delete(ret_ty.syntax().clone());
 
-            if let Some(SyntaxElement::Token(token)) = ret_ty.syntax().next_sibling_or_token() {
-                if token.kind().is_trivia() {
-                    editor.delete(token);
-                }
+            if let Some(SyntaxElement::Token(token)) = ret_ty.syntax().next_sibling_or_token()
+                && token.kind().is_trivia()
+            {
+                editor.delete(token);
             }
         }
 

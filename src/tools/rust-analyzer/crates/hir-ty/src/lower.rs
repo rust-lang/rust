@@ -830,10 +830,10 @@ fn named_associated_type_shorthand_candidates<R>(
             let data = t.hir_trait_id().trait_items(db);
 
             for (name, assoc_id) in &data.items {
-                if let AssocItemId::TypeAliasId(alias) = assoc_id {
-                    if let Some(result) = cb(name, &t, *alias) {
-                        return Some(result);
-                    }
+                if let AssocItemId::TypeAliasId(alias) = assoc_id
+                    && let Some(result) = cb(name, &t, *alias)
+                {
+                    return Some(result);
                 }
             }
             None

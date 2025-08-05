@@ -9,8 +9,6 @@ For more details about how rustdoc works, see the
 
 [Rustdoc internals]: ./rustdoc-internals.md
 
-<!-- toc -->
-
 `rustdoc` uses `rustc` internals (and, of course, the standard library), so you
 will have to build the compiler and `std` once before you can build `rustdoc`.
 

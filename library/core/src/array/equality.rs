@@ -22,18 +22,16 @@ where
 {
     #[inline]
     fn eq(&self, other: &[U]) -> bool {
-        let b: Result<&[U; N], _> = other.try_into();
-        match b {
-            Ok(b) => *self == *b,
-            Err(_) => false,
+        match other.as_array::<N>() {
+            Some(b) => *self == *b,
+            None => false,
         }
     }
     #[inline]
     fn ne(&self, other: &[U]) -> bool {
-        let b: Result<&[U; N], _> = other.try_into();
-        match b {
-            Ok(b) => *self != *b,
-            Err(_) => true,
+        match other.as_array::<N>() {
+            Some(b) => *self != *b,
+            None => true,
         }
     }
 }
@@ -45,18 +43,16 @@ where
 {
     #[inline]
     fn eq(&self, other: &[U; N]) -> bool {
-        let b: Result<&[T; N], _> = self.try_into();
-        match b {
-            Ok(b) => *b == *other,
-            Err(_) => false,
+        match self.as_array::<N>() {
+            Some(b) => *b == *other,
+            None => false,
         }
     }
     #[inline]
     fn ne(&self, other: &[U; N]) -> bool {
-        let b: Result<&[T; N], _> = self.try_into();
-        match b {
-            Ok(b) => *b != *other,
-            Err(_) => true,
+        match self.as_array::<N>() {
+            Some(b) => *b != *other,
+            None => true,
         }
     }
 }

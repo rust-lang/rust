@@ -3,8 +3,6 @@
 Thank you for your interest in contributing to Rust! There are many ways to
 contribute, and we appreciate all of them.
 
-<!-- toc -->
-
 If this is your first time contributing, the [walkthrough] chapter can give you a good example of
 how a typical contribution would go.
 

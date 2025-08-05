@@ -159,10 +159,10 @@ pub(crate) fn annotations(
                     node.value.syntax().text_range(),
                     Some(name),
                 );
-                if res.call_site.0.file_id == source_file_id {
-                    if let Some(name_range) = res.call_site.1 {
-                        return Some((res.call_site.0.range, Some(name_range)));
-                    }
+                if res.call_site.0.file_id == source_file_id
+                    && let Some(name_range) = res.call_site.1
+                {
+                    return Some((res.call_site.0.range, Some(name_range)));
                 }
             };
             // otherwise try upmapping the entire node out of attributes

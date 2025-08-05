@@ -6,8 +6,6 @@ APIs to use unstable APIs internally in the rustc standard library.
 **NOTE**: this section is for *library* features, not *language* features. For instructions on
 stabilizing a language feature see [Stabilizing Features](./stabilization_guide.md).
 
-<!-- toc -->
-
 ## unstable
 
 The `#[unstable(feature = "foo", issue = "1234", reason = "lorem ipsum")]`

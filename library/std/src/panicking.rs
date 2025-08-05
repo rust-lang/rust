@@ -861,7 +861,7 @@ fn panic_with_hook(
 /// This is the entry point for `resume_unwind`.
 /// It just forwards the payload to the panic runtime.
 #[cfg_attr(feature = "panic_immediate_abort", inline)]
-pub fn rust_panic_without_hook(payload: Box<dyn Any + Send>) -> ! {
+pub fn resume_unwind(payload: Box<dyn Any + Send>) -> ! {
     panic_count::increase(false);
 
     struct RewrapBox(Box<dyn Any + Send>);

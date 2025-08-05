@@ -1124,7 +1124,9 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                         );
                     }
                 }
-                visit::walk_item(self, item)
+                self.with_tilde_const(Some(TildeConstReason::Enum { span: item.span }), |this| {
+                    visit::walk_item(this, item)
+                });
             }
             ItemKind::Trait(box Trait {
                 constness,
@@ -1175,26 +1177,32 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 }
                 visit::walk_item(self, item)
             }
-            ItemKind::Struct(ident, generics, vdata) => match vdata {
-                VariantData::Struct { fields, .. } => {
-                    self.visit_attrs_vis_ident(&item.attrs, &item.vis, ident);
-                    self.visit_generics(generics);
-                    walk_list!(self, visit_field_def, fields);
-                }
-                _ => visit::walk_item(self, item),
-            },
+            ItemKind::Struct(ident, generics, vdata) => {
+                self.with_tilde_const(Some(TildeConstReason::Struct { span: item.span }), |this| {
+                    match vdata {
+                        VariantData::Struct { fields, .. } => {
+                            this.visit_attrs_vis_ident(&item.attrs, &item.vis, ident);
+                            this.visit_generics(generics);
+                            walk_list!(this, visit_field_def, fields);
+                        }
+                        _ => visit::walk_item(this, item),
+                    }
+                })
+            }
             ItemKind::Union(ident, generics, vdata) => {
                 if vdata.fields().is_empty() {
                     self.dcx().emit_err(errors::FieldlessUnion { span: item.span });
                 }
-                match vdata {
-                    VariantData::Struct { fields, .. } => {
-                        self.visit_attrs_vis_ident(&item.attrs, &item.vis, ident);
-                        self.visit_generics(generics);
-                        walk_list!(self, visit_field_def, fields);
+                self.with_tilde_const(Some(TildeConstReason::Union { span: item.span }), |this| {
+                    match vdata {
+                        VariantData::Struct { fields, .. } => {
+                            this.visit_attrs_vis_ident(&item.attrs, &item.vis, ident);
+                            this.visit_generics(generics);
+                            walk_list!(this, visit_field_def, fields);
+                        }
+                        _ => visit::walk_item(this, item),
                     }
-                    _ => visit::walk_item(self, item),
-                }
+                });
             }
             ItemKind::Const(box ConstItem { defaultness, expr, .. }) => {
                 self.check_defaultness(item.span, *defaultness);
@@ -1622,6 +1630,13 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             }
             _ => self.with_in_trait_impl(None, |this| visit::walk_assoc_item(this, item, ctxt)),
         }
+    }
+
+    fn visit_anon_const(&mut self, anon_const: &'a AnonConst) {
+        self.with_tilde_const(
+            Some(TildeConstReason::AnonConst { span: anon_const.value.span }),
+            |this| visit::walk_anon_const(this, anon_const),
+        )
     }
 }
 

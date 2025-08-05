@@ -1,7 +1,5 @@
 # Typing/Parameter Environments
 
-<!-- toc -->
-
 ## Typing Environments
 
 When interacting with the type system there are a few variables to consider that can affect the results of trait solving. The set of in-scope where clauses, and what phase of the compiler type system operations are being performed in (the [`ParamEnv`][penv] and [`TypingMode`][tmode] structs respectively).

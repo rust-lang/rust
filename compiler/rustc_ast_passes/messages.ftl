@@ -241,6 +241,10 @@ ast_passes_tilde_const_disallowed = `[const]` is not allowed here
     .trait_assoc_ty = associated types in non-`const` traits cannot have `[const]` trait bounds
     .trait_impl_assoc_ty = associated types in non-const impls cannot have `[const]` trait bounds
     .inherent_assoc_ty = inherent associated types cannot have `[const]` trait bounds
+    .struct = structs cannot have `[const]` trait bounds
+    .enum = enums cannot have `[const]` trait bounds
+    .union = unions cannot have `[const]` trait bounds
+    .anon_const = anonymous constants cannot have `[const]` trait bounds
     .object = trait objects cannot have `[const]` trait bounds
     .item = this item cannot have `[const]` trait bounds
 

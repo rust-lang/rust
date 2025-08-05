@@ -23,12 +23,11 @@ use syntax::{
     ast::{
         self, HasArgList, HasAttrs, HasGenericParams, HasName, HasTypeBounds, Whitespace,
         edit::{AstNodeEdit, IndentLevel},
-        edit_in_place::{AttrsOwnerEdit, Removable},
+        edit_in_place::AttrsOwnerEdit,
         make,
         syntax_factory::SyntaxFactory,
     },
-    syntax_editor::SyntaxEditor,
-    ted,
+    syntax_editor::{Removable, SyntaxEditor},
 };
 
 use crate::{
@@ -131,10 +130,10 @@ pub fn filter_assoc_items(
             if ignore_items == IgnoreAssocItems::DocHiddenAttrPresent
                 && assoc_item.attrs(sema.db).has_doc_hidden()
             {
-                if let hir::AssocItem::Function(f) = assoc_item {
-                    if !f.has_body(sema.db) {
-                        return true;
-                    }
+                if let hir::AssocItem::Function(f) = assoc_item
+                    && !f.has_body(sema.db)
+                {
+                    return true;
                 }
                 return false;
             }
@@ -207,7 +206,7 @@ pub fn add_trait_assoc_items_to_impl(
                         stdx::never!("formatted `AssocItem` could not be cast back to `AssocItem`");
                     }
                 }
-                original_item.clone_for_update()
+                original_item
             }
             .reset_indent();
 
@@ -221,31 +220,37 @@ pub fn add_trait_assoc_items_to_impl(
             cloned_item.remove_attrs_and_docs();
             cloned_item
         })
-        .map(|item| {
-            match &item {
-                ast::AssocItem::Fn(fn_) if fn_.body().is_none() => {
-                    let body = AstNodeEdit::indent(
-                        &make::block_expr(
-                            None,
-                            Some(match config.expr_fill_default {
-                                ExprFillDefaultMode::Todo => make::ext::expr_todo(),
-                                ExprFillDefaultMode::Underscore => make::ext::expr_underscore(),
-                                ExprFillDefaultMode::Default => make::ext::expr_todo(),
-                            }),
-                        ),
-                        IndentLevel::single(),
-                    );
-                    ted::replace(fn_.get_or_create_body().syntax(), body.syntax());
-                }
-                ast::AssocItem::TypeAlias(type_alias) => {
-                    if let Some(type_bound_list) = type_alias.type_bound_list() {
-                        type_bound_list.remove()
-                    }
-                }
-                _ => {}
+        .filter_map(|item| match item {
+            ast::AssocItem::Fn(fn_) if fn_.body().is_none() => {
+                let fn_ = fn_.clone_subtree();
+                let new_body = &make::block_expr(
+                    None,
+                    Some(match config.expr_fill_default {
+                        ExprFillDefaultMode::Todo => make::ext::expr_todo(),
+                        ExprFillDefaultMode::Underscore => make::ext::expr_underscore(),
+                        ExprFillDefaultMode::Default => make::ext::expr_todo(),
+                    }),
+                );
+                let new_body = AstNodeEdit::indent(new_body, IndentLevel::single());
+                let mut fn_editor = SyntaxEditor::new(fn_.syntax().clone());
+                fn_.replace_or_insert_body(&mut fn_editor, new_body);
+                let new_fn_ = fn_editor.finish().new_root().clone();
+                ast::AssocItem::cast(new_fn_)
             }
-            AstNodeEdit::indent(&item, new_indent_level)
+            ast::AssocItem::TypeAlias(type_alias) => {
+                let type_alias = type_alias.clone_subtree();
+                if let Some(type_bound_list) = type_alias.type_bound_list() {
+                    let mut type_alias_editor = SyntaxEditor::new(type_alias.syntax().clone());
+                    type_bound_list.remove(&mut type_alias_editor);
+                    let type_alias = type_alias_editor.finish().new_root().clone();
+                    ast::AssocItem::cast(type_alias)
+                } else {
+                    Some(ast::AssocItem::TypeAlias(type_alias))
+                }
+            }
+            item => Some(item),
         })
+        .map(|item| AstNodeEdit::indent(&item, new_indent_level))
         .collect()
 }
 
@@ -514,10 +519,10 @@ pub(crate) fn find_struct_impl(
         if !(same_ty && not_trait_impl) { None } else { Some(impl_blk) }
     });
 
-    if let Some(ref impl_blk) = block {
-        if has_any_fn(impl_blk, names) {
-            return None;
-        }
+    if let Some(ref impl_blk) = block
+        && has_any_fn(impl_blk, names)
+    {
+        return None;
     }
 
     Some(block)
@@ -526,12 +531,11 @@ pub(crate) fn find_struct_impl(
 fn has_any_fn(imp: &ast::Impl, names: &[String]) -> bool {
     if let Some(il) = imp.assoc_item_list() {
         for item in il.assoc_items() {
-            if let ast::AssocItem::Fn(f) = item {
-                if let Some(name) = f.name() {
-                    if names.iter().any(|n| n.eq_ignore_ascii_case(&name.text())) {
-                        return true;
-                    }
-                }
+            if let ast::AssocItem::Fn(f) = item
+                && let Some(name) = f.name()
+                && names.iter().any(|n| n.eq_ignore_ascii_case(&name.text()))
+            {
+                return true;
             }
         }
     }
@@ -1021,12 +1025,12 @@ pub(crate) fn trimmed_text_range(source_file: &SourceFile, initial_range: TextRa
 pub(crate) fn convert_param_list_to_arg_list(list: ast::ParamList) -> ast::ArgList {
     let mut args = vec![];
     for param in list.params() {
-        if let Some(ast::Pat::IdentPat(pat)) = param.pat() {
-            if let Some(name) = pat.name() {
-                let name = name.to_string();
-                let expr = make::expr_path(make::ext::ident_path(&name));
-                args.push(expr);
-            }
+        if let Some(ast::Pat::IdentPat(pat)) = param.pat()
+            && let Some(name) = pat.name()
+        {
+            let name = name.to_string();
+            let expr = make::expr_path(make::ext::ident_path(&name));
+            args.push(expr);
         }
     }
     make::arg_list(args)
@@ -1138,12 +1142,11 @@ pub fn is_body_const(sema: &Semantics<'_, RootDatabase>, expr: &ast::Expr) -> bo
         };
         match expr {
             ast::Expr::CallExpr(call) => {
-                if let Some(ast::Expr::PathExpr(path_expr)) = call.expr() {
-                    if let Some(PathResolution::Def(ModuleDef::Function(func))) =
+                if let Some(ast::Expr::PathExpr(path_expr)) = call.expr()
+                    && let Some(PathResolution::Def(ModuleDef::Function(func))) =
                         path_expr.path().and_then(|path| sema.resolve_path(&path))
-                    {
-                        is_const &= func.is_const(sema.db);
-                    }
+                {
+                    is_const &= func.is_const(sema.db);
                 }
             }
             ast::Expr::MethodCallExpr(call) => {

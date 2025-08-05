@@ -1,7 +1,5 @@
 # Compiletest directives
 
-<!-- toc -->
-
 <!--
 FIXME(jieyouxu) completely revise this chapter.
 -->
@@ -360,7 +358,7 @@ described below:
   - Example: `x86_64-unknown-linux-gnu`
 
 See
-[`tests/ui/commandline-argfile.rs`](https://github.com/rust-lang/rust/blob/master/tests/ui/argfile/commandline-argfile.rs)
+[`tests/ui/argfile/commandline-argfile.rs`](https://github.com/rust-lang/rust/blob/master/tests/ui/argfile/commandline-argfile.rs)
 for an example of a test that uses this substitution.
 
 [output normalization]: ui.md#normalization

@@ -623,6 +623,26 @@ pub(crate) enum TildeConstReason {
         #[primary_span]
         span: Span,
     },
+    #[note(ast_passes_struct)]
+    Struct {
+        #[primary_span]
+        span: Span,
+    },
+    #[note(ast_passes_enum)]
+    Enum {
+        #[primary_span]
+        span: Span,
+    },
+    #[note(ast_passes_union)]
+    Union {
+        #[primary_span]
+        span: Span,
+    },
+    #[note(ast_passes_anon_const)]
+    AnonConst {
+        #[primary_span]
+        span: Span,
+    },
     #[note(ast_passes_object)]
     TraitObject,
     #[note(ast_passes_item)]

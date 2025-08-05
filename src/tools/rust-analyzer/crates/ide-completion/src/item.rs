@@ -636,10 +636,10 @@ impl Builder {
     }
     pub(crate) fn set_detail(&mut self, detail: Option<impl Into<String>>) -> &mut Builder {
         self.detail = detail.map(Into::into);
-        if let Some(detail) = &self.detail {
-            if never!(detail.contains('\n'), "multiline detail:\n{}", detail) {
-                self.detail = Some(detail.split('\n').next().unwrap().to_owned());
-            }
+        if let Some(detail) = &self.detail
+            && never!(detail.contains('\n'), "multiline detail:\n{}", detail)
+        {
+            self.detail = Some(detail.split('\n').next().unwrap().to_owned());
         }
         self
     }

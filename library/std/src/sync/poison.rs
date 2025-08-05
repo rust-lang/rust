@@ -11,7 +11,7 @@
 //!
 //! The specifics of how this "poisoned" state affects other threads and whether
 //! the panics are recognized reliably or on a best-effort basis depend on the
-//! primitive. See [#Overview] below.
+//! primitive. See [Overview](#overview) below.
 //!
 //! For the alternative implementations that do not employ poisoning,
 //! see [`std::sync::nonpoison`].
