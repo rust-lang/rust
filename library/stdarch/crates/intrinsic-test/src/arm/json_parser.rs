@@ -2,7 +2,7 @@ use super::intrinsic::ArmIntrinsicType;
 use crate::common::argument::{Argument, ArgumentList};
 use crate::common::constraint::Constraint;
 use crate::common::intrinsic::Intrinsic;
-use crate::common::intrinsic_helpers::{IntrinsicType, IntrinsicTypeDefinition};
+use crate::common::intrinsic_helpers::IntrinsicType;
 use serde::Deserialize;
 use serde_json::Value;
 use std::collections::HashMap;
@@ -100,7 +100,7 @@ fn json_to_intrinsic(
             // The JSON doesn't list immediates as const
             let IntrinsicType {
                 ref mut constant, ..
-            } = arg.ty.0;
+            } = arg.ty.data;
             if arg.name.starts_with("imm") {
                 *constant = true
             }
