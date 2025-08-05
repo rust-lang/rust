@@ -470,7 +470,7 @@ macro_rules! iterator {
 
         #[unstable(feature = "peekable_iterator", issue = "132973")]
         impl<'a, T> PeekableIterator for $name<'a, T> {
-            fn peek_with<T>(&mut self, func: impl for<'b> FnOnce(Option<&'b Self::Item>) -> T) -> T {
+            fn peek_with<U>(&mut self, func: impl for<'b> FnOnce(Option<&'b Self::Item>) -> U) -> U {
                 let ptr = self.ptr;
                 let end_or_len = self.end_or_len;
 
