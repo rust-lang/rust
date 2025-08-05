@@ -434,3 +434,53 @@ fn f(thing: u32) -> &u32 {
         expect!["ty: u32, name: ?"],
     );
 }
+
+#[test]
+fn expected_type_assign() {
+    check_expected_type_and_name(
+        r#"
+enum State { Stop }
+fn foo() {
+    let x: &mut State = &mut State::Stop;
+    x = $0;
+}
+"#,
+        expect![[r#"ty: &'_ mut State, name: ?"#]],
+    );
+}
+
+#[test]
+fn expected_type_deref_assign() {
+    check_expected_type_and_name(
+        r#"
+enum State { Stop }
+fn foo() {
+    let x: &mut State = &mut State::Stop;
+    match x {
+        State::Stop => {
+            *x = $0;
+        },
+    }
+}
+"#,
+        expect![[r#"ty: State, name: ?"#]],
+    );
+}
+
+#[test]
+fn expected_type_deref_assign_at_block_end() {
+    check_expected_type_and_name(
+        r#"
+enum State { Stop }
+fn foo() {
+    let x: &mut State = &mut State::Stop;
+    match x {
+        State::Stop => {
+            *x = $0
+        },
+    }
+}
+"#,
+        expect![[r#"ty: State, name: ?"#]],
+    );
+}

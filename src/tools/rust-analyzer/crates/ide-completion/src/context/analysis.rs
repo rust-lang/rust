@@ -559,6 +559,7 @@ fn expected_type_and_name<'db>(
     token: &SyntaxToken,
     name_like: &ast::NameLike,
 ) -> (Option<Type<'db>>, Option<NameOrNameRef>) {
+    let token = prev_assign_token_at_trivia(token.clone());
     let mut node = match token.parent() {
         Some(it) => it,
         None => return (None, None),
@@ -628,6 +629,17 @@ fn expected_type_and_name<'db>(
                         .or_else(|| it.expr().and_then(|it| sema.type_of_expr(&it)))
                         .map(TypeInfo::original);
                     (ty, None)
+                },
+                ast::BinExpr(it) => {
+                    if let Some(ast::BinaryOp::Assignment { op: None }) = it.op_kind() {
+                        let ty = it.lhs()
+                            .and_then(|lhs| sema.type_of_expr(&lhs))
+                            .or_else(|| it.rhs().and_then(|rhs| sema.type_of_expr(&rhs)))
+                            .map(TypeInfo::original);
+                        (ty, None)
+                    } else {
+                        (None, None)
+                    }
                 },
                 ast::ArgList(_) => {
                     cov_mark::hit!(expected_type_fn_param);
@@ -1855,4 +1867,24 @@ fn next_non_trivia_sibling(ele: SyntaxElement) -> Option<SyntaxElement> {
         }
     }
     None
+}
+
+fn prev_assign_token_at_trivia(mut token: SyntaxToken) -> SyntaxToken {
+    while token.kind().is_trivia()
+        && let Some(prev) = token.prev_token()
+        && let T![=]
+        | T![+=]
+        | T![/=]
+        | T![*=]
+        | T![%=]
+        | T![>>=]
+        | T![<<=]
+        | T![-=]
+        | T![|=]
+        | T![&=]
+        | T![^=] = prev.kind()
+    {
+        token = prev
+    }
+    token
 }
