@@ -9,9 +9,6 @@
 #![feature(rustc_private)]
 #![feature(assert_matches)]
 
-
-extern crate rustc_driver;
-extern crate rustc_interface;
 extern crate rustc_middle;
 extern crate serde;
 extern crate serde_json;

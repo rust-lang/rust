@@ -9,10 +9,7 @@
 #![feature(rustc_private)]
 #![feature(assert_matches)]
 
-extern crate rustc_middle;
 
-extern crate rustc_driver;
-extern crate rustc_interface;
 extern crate rustc_public;
 
 use std::io::Write;

@@ -11,11 +11,6 @@
 #![feature(assert_matches)]
 #![feature(ascii_char, ascii_char_variants)]
 
-extern crate rustc_hir;
-extern crate rustc_middle;
-
-extern crate rustc_driver;
-extern crate rustc_interface;
 #[macro_use]
 extern crate rustc_public;
 

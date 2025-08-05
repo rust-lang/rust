@@ -9,11 +9,7 @@
 #![feature(rustc_private)]
 #![feature(assert_matches)]
 
-extern crate rustc_hir;
-extern crate rustc_middle;
 
-extern crate rustc_driver;
-extern crate rustc_interface;
 #[macro_use]
 extern crate rustc_public;
 
