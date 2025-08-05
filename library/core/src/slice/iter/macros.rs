@@ -468,6 +468,34 @@ macro_rules! iterator {
             }
         }
 
+        #[unstable(feature = "peekable_iterator", issue = "132973")]
+        impl<'a, T> PeekableIterator for $name<'a, T> {
+            fn peek(&mut self) -> Option<&$elem> {
+                let ptr = self.ptr;
+                let end_or_len = self.end_or_len;
+
+                // SAFETY: See inner comments.
+                unsafe {
+                    if T::IS_ZST {
+                        let len = end_or_len.addr();
+                        if len == 0 {
+                            return None;
+                        }
+                    } else {
+                        // SAFETY: by type invariant, the `end_or_len` field is always
+                        // non-null for a non-ZST pointee.  (This transmute ensures we
+                        // get `!nonnull` metadata on the load of the field.)
+                        if ptr == crate::intrinsics::transmute::<$ptr, NonNull<T>>(end_or_len) {
+                            return None;
+                        }
+                    }
+                    // SAFETY: Now that we know it wasn't empty and we've moved past
+                    // the first one (to avoid giving a duplicate `&mut` next time),
+                    // we can give out a reference to it.
+                    Some(core::mem::transmute(&self.ptr))
+                }
+            }
+        }
         #[stable(feature = "default_iters", since = "1.70.0")]
         impl<T> Default for $name<'_, T> {
             /// Creates an empty slice iterator.
