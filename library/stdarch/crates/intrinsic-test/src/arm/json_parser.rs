@@ -2,7 +2,7 @@ use super::intrinsic::ArmIntrinsicType;
 use crate::common::argument::{Argument, ArgumentList};
 use crate::common::constraint::Constraint;
 use crate::common::intrinsic::Intrinsic;
-use crate::common::intrinsic_helpers::{IntrinsicType, IntrinsicTypeDefinition};
+use crate::common::intrinsic_helpers::IntrinsicType;
 use serde::Deserialize;
 use serde_json::Value;
 use std::collections::HashMap;

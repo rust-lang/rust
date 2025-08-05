@@ -8,9 +8,7 @@ impl IntrinsicTypeDefinition for ArmIntrinsicType {
         let prefix = self.kind.c_prefix();
         let const_prefix = if self.constant { "const " } else { "" };
 
-        if let (Some(bit_len), simd_len, vec_len) =
-            (self.bit_len, self.simd_len, self.vec_len)
-        {
+        if let (Some(bit_len), simd_len, vec_len) = (self.bit_len, self.simd_len, self.vec_len) {
             match (simd_len, vec_len) {
                 (None, None) => format!("{const_prefix}{prefix}{bit_len}_t"),
                 (Some(simd), None) => format!("{prefix}{bit_len}x{simd}_t"),
@@ -102,7 +100,7 @@ impl IntrinsicTypeDefinition for ArmIntrinsicType {
     }
 }
 
-impl ArmIntrinsicType { 
+impl ArmIntrinsicType {
     pub fn from_c(s: &str, target: &str) -> Result<Self, String> {
         const CONST_STR: &str = "const";
         if let Some(s) = s.strip_suffix('*') {
@@ -144,34 +142,36 @@ impl ArmIntrinsicType {
                     ),
                     None => None,
                 };
-                Ok(ArmIntrinsicType{
+                Ok(ArmIntrinsicType {
                     data: IntrinsicType {
-                    ptr: false,
-                    ptr_constant: false,
-                    constant,
-                    kind: arg_kind,
-                    bit_len: Some(bit_len),
-                    simd_len,
-                    vec_len,
-                },
-                target: target.to_string()})
+                        ptr: false,
+                        ptr_constant: false,
+                        constant,
+                        kind: arg_kind,
+                        bit_len: Some(bit_len),
+                        simd_len,
+                        vec_len,
+                    },
+                    target: target.to_string(),
+                })
             } else {
                 let kind = start.parse::<TypeKind>()?;
                 let bit_len = match kind {
                     TypeKind::Int(_) => Some(32),
                     _ => None,
                 };
-                Ok(ArmIntrinsicType{
+                Ok(ArmIntrinsicType {
                     data: IntrinsicType {
-                    ptr: false,
-                    ptr_constant: false,
-                    constant,
-                    kind: start.parse::<TypeKind>()?,
-                    bit_len,
-                    simd_len: None,
-                    vec_len: None,
-                },
-                target: target.to_string()})
+                        ptr: false,
+                        ptr_constant: false,
+                        constant,
+                        kind: start.parse::<TypeKind>()?,
+                        bit_len,
+                        simd_len: None,
+                        vec_len: None,
+                    },
+                    target: target.to_string(),
+                })
             }
         }
     }
