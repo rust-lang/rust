@@ -885,6 +885,9 @@ impl<'a> Parser<'a> {
     /// Parses `unsafe? auto? trait Foo { ... }` or `trait Foo = Bar;`.
     fn parse_item_trait(&mut self, attrs: &mut AttrVec, lo: Span) -> PResult<'a, ItemKind> {
         let constness = self.parse_constness(Case::Sensitive);
+        if let Const::Yes(span) = constness {
+            self.psess.gated_spans.gate(sym::const_trait_impl, span);
+        }
         let safety = self.parse_safety(Case::Sensitive);
         // Parse optional `auto` prefix.
         let is_auto = if self.eat_keyword(exp!(Auto)) {
