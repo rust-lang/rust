@@ -10,6 +10,9 @@
 //@ revisions: aarch64_be_unknown_netbsd
 //@ [aarch64_be_unknown_netbsd] compile-flags: --target aarch64_be-unknown-netbsd
 //@ [aarch64_be_unknown_netbsd] needs-llvm-components: aarch64
+//@ revisions: aarch64_be_unknown_none_softfloat
+//@ [aarch64_be_unknown_none_softfloat] compile-flags: --target aarch64_be-unknown-none-softfloat
+//@ [aarch64_be_unknown_none_softfloat] needs-llvm-components: aarch64
 //@ revisions: aarch64_kmc_solid_asp3
 //@ [aarch64_kmc_solid_asp3] compile-flags: --target aarch64-kmc-solid_asp3
 //@ [aarch64_kmc_solid_asp3] needs-llvm-components: aarch64
