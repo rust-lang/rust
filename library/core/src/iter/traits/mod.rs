@@ -4,6 +4,11 @@ mod double_ended;
 mod exact_size;
 mod iterator;
 mod marker;
+<<<<<<< HEAD
+=======
+mod peekable;
+mod unchecked_iterator;
+>>>>>>> 3b7f4abc23a (Add peekable_iterator)
 
 #[unstable(issue = "none", feature = "inplace_iteration")]
 pub use self::marker::InPlaceIterable;
@@ -11,6 +16,8 @@ pub use self::marker::InPlaceIterable;
 pub use self::marker::TrustedFused;
 #[unstable(feature = "trusted_step", issue = "85731")]
 pub use self::marker::TrustedStep;
+#[unstable(feature = "peekable_iterator", issue = "132973")]
+pub use self::peekable::PeekableIterator;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::{
     accum::{Product, Sum},
