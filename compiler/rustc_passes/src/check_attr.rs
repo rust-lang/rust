@@ -38,9 +38,8 @@ use rustc_middle::{bug, span_bug};
 use rustc_session::config::CrateType;
 use rustc_session::lint;
 use rustc_session::lint::builtin::{
-    CONFLICTING_REPR_HINTS, INVALID_DOC_ATTRIBUTES, INVALID_MACRO_EXPORT_ARGUMENTS,
-    MALFORMED_DIAGNOSTIC_ATTRIBUTES, MISPLACED_DIAGNOSTIC_ATTRIBUTES, UNUSED_ATTRIBUTES,
-    USELESS_DEPRECATED,
+    CONFLICTING_REPR_HINTS, INVALID_DOC_ATTRIBUTES, MALFORMED_DIAGNOSTIC_ATTRIBUTES,
+    MISPLACED_DIAGNOSTIC_ATTRIBUTES, UNUSED_ATTRIBUTES, USELESS_DEPRECATED,
 };
 use rustc_session::parse::feature_err;
 use rustc_span::edition::Edition;
@@ -291,6 +290,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::Dummy
                     | AttributeKind::RustcBuiltinMacro { .. },
                 ) => { /* do nothing  */ }
+                Attribute::Parsed(AttributeKind::MacroExport { span, .. }) => {
+                    self.check_macro_export(hir_id, *span, target)
+                }
                 Attribute::Parsed(AttributeKind::AsPtr(attr_span)) => {
                     self.check_applied_to_fn_or_method(hir_id, *attr_span, span, target)
                 }
@@ -383,7 +385,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         [sym::ffi_const, ..] => self.check_ffi_const(attr.span(), target),
                         [sym::link, ..] => self.check_link(hir_id, attr, span, target),
                         [sym::path, ..] => self.check_generic_attr_unparsed(hir_id, attr, target, Target::Mod),
-                        [sym::macro_export, ..] => self.check_macro_export(hir_id, attr, target),
                         [sym::should_panic, ..] => {
                             self.check_generic_attr_unparsed(hir_id, attr, target, Target::Fn)
                         }
@@ -2432,32 +2433,14 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         }
     }
 
-    fn check_macro_export(&self, hir_id: HirId, attr: &Attribute, target: Target) {
+    fn check_macro_export(&self, hir_id: HirId, attr_span: Span, target: Target) {
         if target != Target::MacroDef {
             self.tcx.emit_node_span_lint(
                 UNUSED_ATTRIBUTES,
                 hir_id,
-                attr.span(),
+                attr_span,
                 errors::MacroExport::Normal,
             );
-        } else if let Some(meta_item_list) = attr.meta_item_list()
-            && !meta_item_list.is_empty()
-        {
-            if meta_item_list.len() > 1 {
-                self.tcx.emit_node_span_lint(
-                    INVALID_MACRO_EXPORT_ARGUMENTS,
-                    hir_id,
-                    attr.span(),
-                    errors::MacroExport::TooManyItems,
-                );
-            } else if !meta_item_list[0].has_name(sym::local_inner_macros) {
-                self.tcx.emit_node_span_lint(
-                    INVALID_MACRO_EXPORT_ARGUMENTS,
-                    hir_id,
-                    meta_item_list[0].span(),
-                    errors::MacroExport::InvalidArgument,
-                );
-            }
         } else {
             // special case when `#[macro_export]` is applied to a macro 2.0
             let (_, macro_definition, _) = self.tcx.hir_node(hir_id).expect_item().expect_macro();
@@ -2467,7 +2450,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 self.tcx.emit_node_span_lint(
                     UNUSED_ATTRIBUTES,
                     hir_id,
-                    attr.span(),
+                    attr_span,
                     errors::MacroExport::OnDeclMacro,
                 );
             }
@@ -2820,7 +2803,9 @@ impl<'tcx> Visitor<'tcx> for CheckAttrVisitor<'tcx> {
         // In the long run, the checks should be harmonized.
         if let ItemKind::Macro(_, macro_def, _) = item.kind {
             let def_id = item.owner_id.to_def_id();
-            if macro_def.macro_rules && !self.tcx.has_attr(def_id, sym::macro_export) {
+            if macro_def.macro_rules
+                && !find_attr!(self.tcx.get_all_attrs(def_id), AttributeKind::MacroExport { .. })
+            {
                 check_non_exported_macro_for_invalid_attrs(self.tcx, item);
             }
         }
@@ -2950,7 +2935,6 @@ fn check_invalid_crate_level_attr(tcx: TyCtxt<'_>, attrs: &[Attribute]) {
     // which were unsuccessfully resolved due to cannot determine
     // resolution for the attribute macro error.
     const ATTRS_TO_CHECK: &[Symbol] = &[
-        sym::macro_export,
         sym::rustc_main,
         sym::derive,
         sym::test,
@@ -2975,6 +2959,8 @@ fn check_invalid_crate_level_attr(tcx: TyCtxt<'_>, attrs: &[Attribute]) {
             (*span, sym::path)
         } else if let Attribute::Parsed(AttributeKind::AutomaticallyDerived(span)) = attr {
             (*span, sym::automatically_derived)
+        } else if let Attribute::Parsed(AttributeKind::MacroExport { span, .. }) = attr {
+            (*span, sym::macro_export)
         } else {
             continue;
         };
