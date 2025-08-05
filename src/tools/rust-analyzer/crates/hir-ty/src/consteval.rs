@@ -342,10 +342,10 @@ pub(crate) fn eval_to_const(
             return c;
         }
     }
-    if let Ok(mir_body) = lower_to_mir(ctx.db, ctx.owner, ctx.body, &infer, expr) {
-        if let Ok((Ok(result), _)) = interpret_mir(db, Arc::new(mir_body), true, None) {
-            return result;
-        }
+    if let Ok(mir_body) = lower_to_mir(ctx.db, ctx.owner, ctx.body, &infer, expr)
+        && let Ok((Ok(result), _)) = interpret_mir(db, Arc::new(mir_body), true, None)
+    {
+        return result;
     }
     unknown_const(infer[expr].clone())
 }

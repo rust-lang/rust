@@ -39,10 +39,10 @@ pub(super) fn hints(
     if let ast::Expr::ParenExpr(_) = expr {
         return None;
     }
-    if let ast::Expr::BlockExpr(b) = expr {
-        if !b.is_standalone() {
-            return None;
-        }
+    if let ast::Expr::BlockExpr(b) = expr
+        && !b.is_standalone()
+    {
+        return None;
     }
 
     let descended = sema.descend_node_into_attributes(expr.clone()).pop();

@@ -902,12 +902,12 @@ impl<'db> InferenceContext<'db> {
                         return false;
                     }
 
-                    if let UnresolvedMethodCall { field_with_same_name, .. } = diagnostic {
-                        if let Some(ty) = field_with_same_name {
-                            *ty = table.resolve_completely(ty.clone());
-                            if ty.contains_unknown() {
-                                *field_with_same_name = None;
-                            }
+                    if let UnresolvedMethodCall { field_with_same_name, .. } = diagnostic
+                        && let Some(ty) = field_with_same_name
+                    {
+                        *ty = table.resolve_completely(ty.clone());
+                        if ty.contains_unknown() {
+                            *field_with_same_name = None;
                         }
                     }
                 }
@@ -1010,12 +1010,12 @@ impl<'db> InferenceContext<'db> {
             param_tys.push(va_list_ty);
         }
         let mut param_tys = param_tys.into_iter().chain(iter::repeat(self.table.new_type_var()));
-        if let Some(self_param) = self.body.self_param {
-            if let Some(ty) = param_tys.next() {
-                let ty = self.insert_type_vars(ty);
-                let ty = self.normalize_associated_types_in(ty);
-                self.write_binding_ty(self_param, ty);
-            }
+        if let Some(self_param) = self.body.self_param
+            && let Some(ty) = param_tys.next()
+        {
+            let ty = self.insert_type_vars(ty);
+            let ty = self.normalize_associated_types_in(ty);
+            self.write_binding_ty(self_param, ty);
         }
         let mut tait_candidates = FxHashSet::default();
         for (ty, pat) in param_tys.zip(&*self.body.params) {
@@ -1199,20 +1199,19 @@ impl<'db> InferenceContext<'db> {
             ) -> std::ops::ControlFlow<Self::BreakTy> {
                 let ty = self.table.resolve_ty_shallow(ty);
 
-                if let TyKind::OpaqueType(id, _) = ty.kind(Interner) {
-                    if let ImplTraitId::TypeAliasImplTrait(alias_id, _) =
+                if let TyKind::OpaqueType(id, _) = ty.kind(Interner)
+                    && let ImplTraitId::TypeAliasImplTrait(alias_id, _) =
                         self.db.lookup_intern_impl_trait_id((*id).into())
-                    {
-                        let loc = self.db.lookup_intern_type_alias(alias_id);
-                        match loc.container {
-                            ItemContainerId::ImplId(impl_id) => {
-                                self.assocs.insert(*id, (impl_id, ty.clone()));
-                            }
-                            ItemContainerId::ModuleId(..) | ItemContainerId::ExternBlockId(..) => {
-                                self.non_assocs.insert(*id, ty.clone());
-                            }
-                            _ => {}
+                {
+                    let loc = self.db.lookup_intern_type_alias(alias_id);
+                    match loc.container {
+                        ItemContainerId::ImplId(impl_id) => {
+                            self.assocs.insert(*id, (impl_id, ty.clone()));
                         }
+                        ItemContainerId::ModuleId(..) | ItemContainerId::ExternBlockId(..) => {
+                            self.non_assocs.insert(*id, ty.clone());
+                        }
+                        _ => {}
                     }
                 }
 

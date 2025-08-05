@@ -272,10 +272,10 @@ impl<'db> UnsafeVisitor<'db> {
                 if let Some(func) = callee.as_fn_def(self.db) {
                     self.check_call(current, func);
                 }
-                if let TyKind::Function(fn_ptr) = callee.kind(Interner) {
-                    if fn_ptr.sig.safety == chalk_ir::Safety::Unsafe {
-                        self.on_unsafe_op(current.into(), UnsafetyReason::UnsafeFnCall);
-                    }
+                if let TyKind::Function(fn_ptr) = callee.kind(Interner)
+                    && fn_ptr.sig.safety == chalk_ir::Safety::Unsafe
+                {
+                    self.on_unsafe_op(current.into(), UnsafetyReason::UnsafeFnCall);
                 }
             }
             Expr::Path(path) => {
@@ -346,12 +346,11 @@ impl<'db> UnsafeVisitor<'db> {
             Expr::Cast { .. } => self.inside_assignment = inside_assignment,
             Expr::Field { .. } => {
                 self.inside_assignment = inside_assignment;
-                if !inside_assignment {
-                    if let Some(Either::Left(FieldId { parent: VariantId::UnionId(_), .. })) =
+                if !inside_assignment
+                    && let Some(Either::Left(FieldId { parent: VariantId::UnionId(_), .. })) =
                         self.infer.field_resolution(current)
-                    {
-                        self.on_unsafe_op(current.into(), UnsafetyReason::UnionField);
-                    }
+                {
+                    self.on_unsafe_op(current.into(), UnsafetyReason::UnionField);
                 }
             }
             Expr::Unsafe { statements, .. } => {

@@ -215,12 +215,12 @@ fn tag_generics_in_variant(ty: &ast::Type, generics: &mut [(ast::GenericParam, b
                 ast::GenericParam::LifetimeParam(lt)
                     if matches!(token.kind(), T![lifetime_ident]) =>
                 {
-                    if let Some(lt) = lt.lifetime() {
-                        if lt.text().as_str() == token.text() {
-                            *tag = true;
-                            tagged_one = true;
-                            break;
-                        }
+                    if let Some(lt) = lt.lifetime()
+                        && lt.text().as_str() == token.text()
+                    {
+                        *tag = true;
+                        tagged_one = true;
+                        break;
                     }
                 }
                 param if matches!(token.kind(), T![ident]) => {

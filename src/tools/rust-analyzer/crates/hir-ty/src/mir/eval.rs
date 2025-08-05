@@ -1082,18 +1082,18 @@ impl Evaluator<'_> {
         let stack_size = {
             let mut stack_ptr = self.stack.len();
             for (id, it) in body.locals.iter() {
-                if id == return_slot() {
-                    if let Some(destination) = destination {
-                        locals.ptr.insert(id, destination);
-                        continue;
-                    }
+                if id == return_slot()
+                    && let Some(destination) = destination
+                {
+                    locals.ptr.insert(id, destination);
+                    continue;
                 }
                 let (size, align) = self.size_align_of_sized(
                     &it.ty,
                     &locals,
                     "no unsized local in extending stack",
                 )?;
-                while stack_ptr % align != 0 {
+                while !stack_ptr.is_multiple_of(align) {
                     stack_ptr += 1;
                 }
                 let my_ptr = stack_ptr;
@@ -1673,14 +1673,14 @@ impl Evaluator<'_> {
         if let Some(it) = goal(kind) {
             return Ok(it);
         }
-        if let TyKind::Adt(id, subst) = kind {
-            if let AdtId::StructId(struct_id) = id.0 {
-                let field_types = self.db.field_types(struct_id.into());
-                if let Some(ty) =
-                    field_types.iter().last().map(|it| it.1.clone().substitute(Interner, subst))
-                {
-                    return self.coerce_unsized_look_through_fields(&ty, goal);
-                }
+        if let TyKind::Adt(id, subst) = kind
+            && let AdtId::StructId(struct_id) = id.0
+        {
+            let field_types = self.db.field_types(struct_id.into());
+            if let Some(ty) =
+                field_types.iter().last().map(|it| it.1.clone().substitute(Interner, subst))
+            {
+                return self.coerce_unsized_look_through_fields(&ty, goal);
             }
         }
         Err(MirEvalError::CoerceUnsizedError(ty.clone()))
@@ -1778,17 +1778,15 @@ impl Evaluator<'_> {
         locals: &Locals,
     ) -> Result<(usize, Arc<Layout>, Option<(usize, usize, i128)>)> {
         let adt = it.adt_id(self.db);
-        if let DefWithBodyId::VariantId(f) = locals.body.owner {
-            if let VariantId::EnumVariantId(it) = it {
-                if let AdtId::EnumId(e) = adt {
-                    if f.lookup(self.db).parent == e {
-                        // Computing the exact size of enums require resolving the enum discriminants. In order to prevent loops (and
-                        // infinite sized type errors) we use a dummy layout
-                        let i = self.const_eval_discriminant(it)?;
-                        return Ok((16, self.layout(&TyBuilder::unit())?, Some((0, 16, i))));
-                    }
-                }
-            }
+        if let DefWithBodyId::VariantId(f) = locals.body.owner
+            && let VariantId::EnumVariantId(it) = it
+            && let AdtId::EnumId(e) = adt
+            && f.lookup(self.db).parent == e
+        {
+            // Computing the exact size of enums require resolving the enum discriminants. In order to prevent loops (and
+            // infinite sized type errors) we use a dummy layout
+            let i = self.const_eval_discriminant(it)?;
+            return Ok((16, self.layout(&TyBuilder::unit())?, Some((0, 16, i))));
         }
         let layout = self.layout_adt(adt, subst)?;
         Ok(match &layout.variants {
@@ -1909,10 +1907,10 @@ impl Evaluator<'_> {
                         let name = const_id.name(self.db);
                         MirEvalError::ConstEvalError(name, Box::new(e))
                     })?;
-                if let chalk_ir::ConstValue::Concrete(c) = &result_owner.data(Interner).value {
-                    if let ConstScalar::Bytes(v, mm) = &c.interned {
-                        break 'b (v, mm);
-                    }
+                if let chalk_ir::ConstValue::Concrete(c) = &result_owner.data(Interner).value
+                    && let ConstScalar::Bytes(v, mm) = &c.interned
+                {
+                    break 'b (v, mm);
                 }
                 not_supported!("unevaluatable constant");
             }
@@ -2055,14 +2053,13 @@ impl Evaluator<'_> {
                 .is_sized()
                 .then(|| (layout.size.bytes_usize(), layout.align.abi.bytes() as usize)));
         }
-        if let DefWithBodyId::VariantId(f) = locals.body.owner {
-            if let Some((AdtId::EnumId(e), _)) = ty.as_adt() {
-                if f.lookup(self.db).parent == e {
-                    // Computing the exact size of enums require resolving the enum discriminants. In order to prevent loops (and
-                    // infinite sized type errors) we use a dummy size
-                    return Ok(Some((16, 16)));
-                }
-            }
+        if let DefWithBodyId::VariantId(f) = locals.body.owner
+            && let Some((AdtId::EnumId(e), _)) = ty.as_adt()
+            && f.lookup(self.db).parent == e
+        {
+            // Computing the exact size of enums require resolving the enum discriminants. In order to prevent loops (and
+            // infinite sized type errors) we use a dummy size
+            return Ok(Some((16, 16)));
         }
         let layout = self.layout(ty);
         if self.assert_placeholder_ty_is_unused
@@ -2103,7 +2100,7 @@ impl Evaluator<'_> {
         if !align.is_power_of_two() || align > 10000 {
             return Err(MirEvalError::UndefinedBehavior(format!("Alignment {align} is invalid")));
         }
-        while self.heap.len() % align != 0 {
+        while !self.heap.len().is_multiple_of(align) {
             self.heap.push(0);
         }
         if size.checked_add(self.heap.len()).is_none_or(|x| x > self.memory_limit) {

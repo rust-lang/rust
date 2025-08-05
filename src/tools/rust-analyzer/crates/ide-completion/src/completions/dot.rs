@@ -258,12 +258,11 @@ fn complete_methods(
         fn on_trait_method(&mut self, func: hir::Function) -> ControlFlow<()> {
             // This needs to come before the `seen_methods` test, so that if we see the same method twice,
             // once as inherent and once not, we will include it.
-            if let ItemContainer::Trait(trait_) = func.container(self.ctx.db) {
-                if self.ctx.exclude_traits.contains(&trait_)
-                    || trait_.complete(self.ctx.db) == Complete::IgnoreMethods
-                {
-                    return ControlFlow::Continue(());
-                }
+            if let ItemContainer::Trait(trait_) = func.container(self.ctx.db)
+                && (self.ctx.exclude_traits.contains(&trait_)
+                    || trait_.complete(self.ctx.db) == Complete::IgnoreMethods)
+            {
+                return ControlFlow::Continue(());
             }
 
             if func.self_param(self.ctx.db).is_some()

@@ -75,20 +75,13 @@ impl ProcMacros {
         Err(bridge::PanicMessage::String(format!("proc-macro `{macro_name}` is missing")).into())
     }
 
-    pub(crate) fn list_macros(&self) -> Vec<(String, ProcMacroKind)> {
-        self.0
-            .iter()
-            .map(|proc_macro| match proc_macro {
-                bridge::client::ProcMacro::CustomDerive { trait_name, .. } => {
-                    (trait_name.to_string(), ProcMacroKind::CustomDerive)
-                }
-                bridge::client::ProcMacro::Bang { name, .. } => {
-                    (name.to_string(), ProcMacroKind::Bang)
-                }
-                bridge::client::ProcMacro::Attr { name, .. } => {
-                    (name.to_string(), ProcMacroKind::Attr)
-                }
-            })
-            .collect()
+    pub(crate) fn list_macros(&self) -> impl Iterator<Item = (&str, ProcMacroKind)> {
+        self.0.iter().map(|proc_macro| match *proc_macro {
+            bridge::client::ProcMacro::CustomDerive { trait_name, .. } => {
+                (trait_name, ProcMacroKind::CustomDerive)
+            }
+            bridge::client::ProcMacro::Bang { name, .. } => (name, ProcMacroKind::Bang),
+            bridge::client::ProcMacro::Attr { name, .. } => (name, ProcMacroKind::Attr),
+        })
     }
 }

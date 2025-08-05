@@ -299,7 +299,7 @@ impl Analysis {
 
     /// Gets the text of the source file.
     pub fn file_text(&self, file_id: FileId) -> Cancellable<Arc<str>> {
-        self.with_db(|db| SourceDatabase::file_text(db, file_id).text(db))
+        self.with_db(|db| SourceDatabase::file_text(db, file_id).text(db).clone())
     }
 
     /// Gets the syntax tree of the file.

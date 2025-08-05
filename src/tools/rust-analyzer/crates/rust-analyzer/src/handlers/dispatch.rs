@@ -433,10 +433,10 @@ impl NotificationDispatcher<'_> {
     }
 
     pub(crate) fn finish(&mut self) {
-        if let Some(not) = &self.not {
-            if !not.method.starts_with("$/") {
-                tracing::error!("unhandled notification: {:?}", not);
-            }
+        if let Some(not) = &self.not
+            && !not.method.starts_with("$/")
+        {
+            tracing::error!("unhandled notification: {:?}", not);
         }
     }
 }

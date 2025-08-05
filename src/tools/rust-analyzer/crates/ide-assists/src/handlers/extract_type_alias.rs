@@ -72,10 +72,10 @@ pub(crate) fn extract_type_alias(acc: &mut Assists, ctx: &AssistContext<'_>) -> 
             let ty_alias = make::ty_alias("Type", generic_params, None, None, Some((ty, None)))
                 .clone_for_update();
 
-            if let Some(cap) = ctx.config.snippet_cap {
-                if let Some(name) = ty_alias.name() {
-                    edit.add_annotation(name.syntax(), builder.make_tabstop_before(cap));
-                }
+            if let Some(cap) = ctx.config.snippet_cap
+                && let Some(name) = ty_alias.name()
+            {
+                edit.add_annotation(name.syntax(), builder.make_tabstop_before(cap));
             }
 
             let indent = IndentLevel::from_node(node);
@@ -111,17 +111,17 @@ fn collect_used_generics<'gp>(
         match ty {
             ast::Type::PathType(ty) => {
                 if let Some(path) = ty.path() {
-                    if let Some(name_ref) = path.as_single_name_ref() {
-                        if let Some(param) = known_generics.iter().find(|gp| {
+                    if let Some(name_ref) = path.as_single_name_ref()
+                        && let Some(param) = known_generics.iter().find(|gp| {
                             match gp {
                                 ast::GenericParam::ConstParam(cp) => cp.name(),
                                 ast::GenericParam::TypeParam(tp) => tp.name(),
                                 _ => None,
                             }
                             .is_some_and(|n| n.text() == name_ref.text())
-                        }) {
-                            generics.push(param);
-                        }
+                        })
+                    {
+                        generics.push(param);
                     }
                     generics.extend(
                         path.segments()
@@ -160,20 +160,18 @@ fn collect_used_generics<'gp>(
                     .and_then(|lt| known_generics.iter().find(find_lifetime(&lt.text()))),
             ),
             ast::Type::ArrayType(ar) => {
-                if let Some(ast::Expr::PathExpr(p)) = ar.const_arg().and_then(|x| x.expr()) {
-                    if let Some(path) = p.path() {
-                        if let Some(name_ref) = path.as_single_name_ref() {
-                            if let Some(param) = known_generics.iter().find(|gp| {
-                                if let ast::GenericParam::ConstParam(cp) = gp {
-                                    cp.name().is_some_and(|n| n.text() == name_ref.text())
-                                } else {
-                                    false
-                                }
-                            }) {
-                                generics.push(param);
-                            }
+                if let Some(ast::Expr::PathExpr(p)) = ar.const_arg().and_then(|x| x.expr())
+                    && let Some(path) = p.path()
+                    && let Some(name_ref) = path.as_single_name_ref()
+                    && let Some(param) = known_generics.iter().find(|gp| {
+                        if let ast::GenericParam::ConstParam(cp) = gp {
+                            cp.name().is_some_and(|n| n.text() == name_ref.text())
+                        } else {
+                            false
                         }
-                    }
+                    })
+                {
+                    generics.push(param);
                 }
             }
             _ => (),
