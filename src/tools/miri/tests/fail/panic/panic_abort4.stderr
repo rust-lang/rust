@@ -17,8 +17,8 @@ LL | ABORT()
    = note: inside `std::panicking::rust_panic` at RUSTLIB/std/src/panicking.rs:LL:CC
    = note: inside `std::panicking::panic_with_hook` at RUSTLIB/std/src/panicking.rs:LL:CC
    = note: inside closure at RUSTLIB/std/src/panicking.rs:LL:CC
-   = note: inside `std::sys::backtrace::__rust_end_short_backtrace::<{closure@std::panicking::begin_panic_handler::{closure#0}}, !>` at RUSTLIB/std/src/sys/backtrace.rs:LL:CC
-   = note: inside `std::panicking::begin_panic_handler` at RUSTLIB/std/src/panicking.rs:LL:CC
+   = note: inside `std::sys::backtrace::__rust_end_short_backtrace::<{closure@std::panicking::panic_handler::{closure#0}}, !>` at RUSTLIB/std/src/sys/backtrace.rs:LL:CC
+   = note: inside `std::panicking::panic_handler` at RUSTLIB/std/src/panicking.rs:LL:CC
 note: inside `main`
   --> tests/fail/panic/panic_abort4.rs:LL:CC
    |
