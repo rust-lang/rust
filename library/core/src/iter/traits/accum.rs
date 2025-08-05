@@ -106,7 +106,6 @@ macro_rules! saturating_integer_sum_product {
             fn sum<I: Iterator<Item=Self>>(iter: I) -> Self {
                 iter.fold(
                     $zero,
-                    #[rustc_inherit_overflow_checks]
                     |a, b| a + b,
                 )
             }
@@ -118,7 +117,6 @@ macro_rules! saturating_integer_sum_product {
             fn product<I: Iterator<Item=Self>>(iter: I) -> Self {
                 iter.fold(
                     $one,
-                    #[rustc_inherit_overflow_checks]
                     |a, b| a * b,
                 )
             }
@@ -130,7 +128,6 @@ macro_rules! saturating_integer_sum_product {
             fn sum<I: Iterator<Item=&'a Self>>(iter: I) -> Self {
                 iter.fold(
                     $zero,
-                    #[rustc_inherit_overflow_checks]
                     |a, b| a + b,
                 )
             }
@@ -142,7 +139,6 @@ macro_rules! saturating_integer_sum_product {
             fn product<I: Iterator<Item=&'a Self>>(iter: I) -> Self {
                 iter.fold(
                     $one,
-                    #[rustc_inherit_overflow_checks]
                     |a, b| a * b,
                 )
             }
