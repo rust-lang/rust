@@ -1808,11 +1808,9 @@ mod snapshot {
                 .path("compiler")
                 .stage(1)
                 .render_steps(), @r"
+        [build] rustdoc 0 <host>
         [build] llvm <host>
-        [build] rustc 0 <host> -> rustc 1 <host>
-        [build] rustc 1 <host> -> std 1 <host>
-        [build] rustdoc 1 <host>
-        [doc] rustc 1 <host>
+        [doc] rustc 0 <host> -> rustc 1 <host>
         ");
     }
 
@@ -1827,10 +1825,8 @@ mod snapshot {
         [build] llvm <host>
         [build] rustc 0 <host> -> rustc 1 <host>
         [build] rustc 1 <host> -> std 1 <host>
-        [build] rustc 1 <host> -> rustc 2 <host>
-        [build] rustc 2 <host> -> std 2 <host>
-        [build] rustdoc 2 <host>
-        [doc] rustc 2 <host>
+        [build] rustdoc 1 <host>
+        [doc] rustc 1 <host> -> rustc 2 <host>
         ");
     }
 

@@ -212,10 +212,10 @@ impl Step for HtmlCheck {
         }
         // Ensure that a few different kinds of documentation are available.
         builder.default_doc(&[]);
-        builder.ensure(crate::core::build_steps::doc::Rustc::new(
-            builder.top_stage,
-            self.target,
+        builder.ensure(crate::core::build_steps::doc::Rustc::for_stage(
             builder,
+            self.target,
+            builder.top_stage,
         ));
 
         builder
