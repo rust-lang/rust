@@ -415,7 +415,7 @@ fn ty_search_pat(ty: &Ty<'_>) -> (Pat, Pat) {
 }
 
 fn ast_ty_search_pat(ty: &ast::Ty) -> (Pat, Pat) {
-    use ast::{FnRetTy, MutTy, TyKind};
+    use ast::{FnRetTy, MutTy, TraitObjectSyntax, TyKind};
 
     match &ty.kind {
         TyKind::Slice(..) | TyKind::Array(..) => (Pat::Str("["), Pat::Str("]")),
@@ -496,10 +496,14 @@ fn ast_ty_search_pat(ty: &ast::Ty) -> (Pat, Pat) {
             (start, end)
         },
         TyKind::Infer => (Pat::Str("_"), Pat::Str("_")),
-        TyKind::TraitObject(_, tagged_ptr) if let TraitObjectSyntax::Dyn = tagged_ptr.tag() => {
-            (Pat::Str("dyn"), Pat::Str(""))
+        TyKind::TraitObject(_, trait_obj_syntax) => {
+            if let TraitObjectSyntax::Dyn = trait_obj_syntax {
+                (Pat::Str("dyn"), Pat::Str(""))
+            } else {
+                // NOTE: `TraitObject` is incomplete. It will always return true then.
+                (Pat::Str(""), Pat::Str(""))
+            }
         },
-        // NOTE: `TraitObject` is incomplete. It will always return true then.
         _ => (Pat::Str(""), Pat::Str("")),
     }
 }
