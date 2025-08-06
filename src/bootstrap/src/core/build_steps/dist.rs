@@ -1401,7 +1401,7 @@ impl Step for CraneliftCodegenBackend {
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         // We only want to build the cranelift backend in `x dist` if the backend was enabled
         // in rust.codegen-backends.
-        // Sadly, we don't have access to the actual for which we're disting clif here..
+        // Sadly, we don't have access to the actual target for which we're disting clif here..
         // So we just use the host target.
         let clif_enabled_by_default = run
             .builder
