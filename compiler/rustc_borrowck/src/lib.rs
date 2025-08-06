@@ -2,6 +2,7 @@
 
 // ignore-tidy-filelength
 // tidy-alphabetical-start
+#![allow(dead_code)]
 #![allow(internal_features)]
 #![doc(rust_logo)]
 #![feature(assert_matches)]
@@ -24,12 +25,16 @@ use std::ops::{ControlFlow, Deref};
 use borrow_set::LocalsStateAtExit;
 use root_cx::BorrowCheckRootCtxt;
 use rustc_abi::FieldIdx;
+#[cfg(test)]
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::graph::dominators::Dominators;
 use rustc_errors::LintDiagnostic;
 use rustc_hir as hir;
 use rustc_hir::CRATE_HIR_ID;
 use rustc_hir::def_id::LocalDefId;
+#[cfg(test)]
+use rustc_index::bit_set::DenseBitSet;
 use rustc_index::bit_set::MixedBitSet;
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_infer::infer::{
@@ -45,8 +50,7 @@ use rustc_mir_dataflow::impls::{EverInitializedPlaces, MaybeUninitializedPlaces}
 use rustc_mir_dataflow::move_paths::{
     InitIndex, InitLocation, LookupResult, MoveData, MovePathIndex,
 };
-use rustc_mir_dataflow::{Analysis, ResultsVisitor};
-// use rustc_mir_dataflow::{Analysis, Results, ResultsVisitor, visit_results};
+use rustc_mir_dataflow::{Analysis, Results, ResultsVisitor, visit_results};
 use rustc_session::lint::builtin::{TAIL_EXPR_DROP_ORDER, UNUSED_MUT};
 use rustc_span::{ErrorGuaranteed, Span, Symbol};
 use smallvec::SmallVec;
@@ -605,63 +609,82 @@ fn do_mir_borrowck<'tcx>(
     //     );
     // }
 
-    // if body.basic_blocks.is_cfg_cyclic() {
-    if body.basic_blocks.thir_had_loops.unwrap_or_else(|| body.basic_blocks.is_cfg_cyclic()) {
-        // let (mut flow_analysis, flow_entry_states) =
-        //     get_flow_results(tcx, body, &move_data, &borrow_set, &regioncx);
-        // visit_results(
-        //     body,
-        //     traversal::reverse_postorder(body).map(|(bb, _)| bb),
-        //     &mut flow_analysis,
-        //     &flow_entry_states,
-        //     &mut mbcx,
-        // );
-
-        // let sccs = body.basic_blocks.sccs();
-        // let mut single_block = 0; let mut single_successor = 0; let mut single_predecessor = 0;
-        // for &scc in &sccs.queue {
-        //     if sccs.sccs[scc as usize].len() == 1 {
-        //         single_block += 1;
-        //     }
-
-        //     for block in sccs.sccs[scc as usize].iter().copied() {
-        //         if body[block].terminator().successors().count() == 1 {
-        //             single_successor += 1;
-        //         }
-
-        //         if body.basic_blocks.predecessors()[block].len() == 1 {
-        //             single_predecessor += 1;
-        //         }
-        //     }
-        // }
-
-        // eprintln!(
-        //     "CFG, {} blocks, SCCs: {}, single-block SCCs: {}, single-successor blocks: {}, single-predecessor blocks: {}, {:?}",
-        //     body.basic_blocks.len(),
-        //     sccs.component_count,
-        //     single_block,
-        //     single_successor,
-        //     single_predecessor,
-        //     body.span,
-        // );
-
-        let borrows = Borrows::new(tcx, body, &regioncx, &borrow_set);
-        let uninits = MaybeUninitializedPlaces::new(tcx, body, &move_data);
-        let ever_inits = EverInitializedPlaces::new(body, &move_data);
-        compute_cyclic_dataflow(body, borrows, uninits, ever_inits, &mut mbcx);
-
-        // let (_, flow_entry_states) =
-        //     get_flow_results(tcx, body, &move_data, &borrow_set, &regioncx);
-        // compute_cyclic_dataflow(body, borrows, uninits, ever_inits, &mut mbcx, &flow_entry_states);
+    if body.basic_blocks.thir_had_loops != Some(false) {
+        // Cyclic
+        let (mut flow_analysis, flow_entry_states) =
+            get_flow_results(tcx, body, &move_data, &borrow_set, &regioncx);
+        visit_results(
+            body,
+            traversal::reverse_postorder(body).map(|(bb, _)| bb),
+            &mut flow_analysis,
+            &flow_entry_states,
+            &mut mbcx,
+        );
     } else {
-        // compute_dataflow(tcx, body, &move_data, &borrow_set, &regioncx, &mut mbcx);
-
+        // Acyclic
         let borrows = Borrows::new(tcx, body, &regioncx, &borrow_set);
         let uninits = MaybeUninitializedPlaces::new(tcx, body, &move_data);
         let ever_inits = EverInitializedPlaces::new(body, &move_data);
         let mut analysis = Borrowck { borrows, uninits, ever_inits };
         compute_rpo_dataflow(body, &mut analysis, &mut mbcx);
     }
+
+    // if body.basic_blocks.thir_had_loops.unwrap_or_else(|| body.basic_blocks.is_cfg_cyclic()) {
+    //     // let (mut flow_analysis, flow_entry_states) =
+    //     //     get_flow_results(tcx, body, &move_data, &borrow_set, &regioncx);
+    //     // visit_results(
+    //     //     body,
+    //     //     traversal::reverse_postorder(body).map(|(bb, _)| bb),
+    //     //     &mut flow_analysis,
+    //     //     &flow_entry_states,
+    //     //     &mut mbcx,
+    //     // );
+
+    //     // let sccs = body.basic_blocks.sccs();
+    //     // let mut single_block = 0; let mut single_successor = 0; let mut single_predecessor = 0;
+    //     // for &scc in &sccs.queue {
+    //     //     if sccs.sccs[scc as usize].len() == 1 {
+    //     //         single_block += 1;
+    //     //     }
+
+    //     //     for block in sccs.sccs[scc as usize].iter().copied() {
+    //     //         if body[block].terminator().successors().count() == 1 {
+    //     //             single_successor += 1;
+    //     //         }
+
+    //     //         if body.basic_blocks.predecessors()[block].len() == 1 {
+    //     //             single_predecessor += 1;
+    //     //         }
+    //     //     }
+    //     // }
+
+    //     // eprintln!(
+    //     //     "CFG, {} blocks, SCCs: {}, single-block SCCs: {}, single-successor blocks: {}, single-predecessor blocks: {}, {:?}",
+    //     //     body.basic_blocks.len(),
+    //     //     sccs.component_count,
+    //     //     single_block,
+    //     //     single_successor,
+    //     //     single_predecessor,
+    //     //     body.span,
+    //     // );
+
+    //     let borrows = Borrows::new(tcx, body, &regioncx, &borrow_set);
+    //     let uninits = MaybeUninitializedPlaces::new(tcx, body, &move_data);
+    //     let ever_inits = EverInitializedPlaces::new(body, &move_data);
+    //     compute_cyclic_dataflow(body, borrows, uninits, ever_inits, &mut mbcx);
+
+    //     // let (_, flow_entry_states) =
+    //     //     get_flow_results(tcx, body, &move_data, &borrow_set, &regioncx);
+    //     // compute_cyclic_dataflow(body, borrows, uninits, ever_inits, &mut mbcx, &flow_entry_states);
+    // } else {
+    //     // compute_dataflow(tcx, body, &move_data, &borrow_set, &regioncx, &mut mbcx);
+
+    //     let borrows = Borrows::new(tcx, body, &regioncx, &borrow_set);
+    //     let uninits = MaybeUninitializedPlaces::new(tcx, body, &move_data);
+    //     let ever_inits = EverInitializedPlaces::new(body, &move_data);
+    //     let mut analysis = Borrowck { borrows, uninits, ever_inits };
+    //     compute_rpo_dataflow(body, &mut analysis, &mut mbcx);
+    // }
 
     mbcx.report_move_errors();
 
@@ -695,7 +718,7 @@ fn do_mir_borrowck<'tcx>(
     };
 
     #[cfg(test)]
-    if body.basic_blocks.len() > 5000 {
+    if body.basic_blocks.len() > 5000 && false {
         eprintln!("borrow stats, locals: {}, loans: {}", body.local_decls.len(), borrow_set.len());
         eprintln!("nuutila duration:     {} ns", mbcx.duration);
         eprintln!("predecessor duration: {} ns", mbcx.duration2);
@@ -2529,6 +2552,7 @@ fn do_mir_borrowck<'tcx>(
     result
 }
 
+#[cfg(test)]
 fn compute_cyclic_dataflow<'mir, 'tcx>(
     body: &Body<'tcx>,
     borrows: Borrows<'mir, 'tcx>,
@@ -3802,7 +3826,6 @@ fn compute_dataflow<'a, 'tcx>(
     }
 }
 
-#[cfg(test)]
 fn get_flow_results<'a, 'tcx>(
     tcx: TyCtxt<'tcx>,
     body: &'a Body<'tcx>,
