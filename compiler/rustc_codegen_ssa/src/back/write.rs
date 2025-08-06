@@ -76,11 +76,8 @@ pub struct ModuleConfig {
     /// Names of additional optimization passes to run.
     pub passes: Vec<String>,
     /// Some(level) to optimize at a certain level, or None to run
-    /// absolutely no optimizations (used for the metadata module).
+    /// absolutely no optimizations (used for the allocator module).
     pub opt_level: Option<config::OptLevel>,
-
-    /// Some(level) to optimize binary size, or None to not affect program size.
-    pub opt_size: Option<config::OptLevel>,
 
     pub pgo_gen: SwitchWithOptPath,
     pub pgo_use: Option<PathBuf>,
@@ -170,7 +167,6 @@ impl ModuleConfig {
             passes: if_regular!(sess.opts.cg.passes.clone(), vec![]),
 
             opt_level: opt_level_and_size,
-            opt_size: opt_level_and_size,
 
             pgo_gen: if_regular!(
                 sess.opts.cg.profile_generate.clone(),
