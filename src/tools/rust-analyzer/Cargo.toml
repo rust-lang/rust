@@ -100,7 +100,7 @@ ra-ap-rustc_pattern_analysis = { version = "0.123", default-features = false }
 # in-tree crates that are published separately and follow semver. See lib/README.md
 line-index = { version = "0.1.2" }
 la-arena = { version = "0.3.1" }
-lsp-server = { version = "0.7.8" }
+lsp-server = { version = "0.7.9" }
 
 # non-local crates
 anyhow = "1.0.98"
@@ -125,11 +125,11 @@ memmap2 = "0.9.5"
 nohash-hasher = "0.2.0"
 oorandom = "11.1.5"
 object = { version = "0.36.7", default-features = false, features = [
-  "std",
-  "read_core",
-  "elf",
-  "macho",
-  "pe",
+    "std",
+    "read_core",
+    "elf",
+    "macho",
+    "pe",
 ] }
 process-wrap = { version = "8.2.1", features = ["std"] }
 pulldown-cmark-to-cmark = "10.0.4"
@@ -139,9 +139,9 @@ rowan = "=0.15.15"
 # Ideally we'd not enable the macros feature but unfortunately the `tracked` attribute does not work
 # on impls without it
 salsa = { version = "0.23.0", default-features = true, features = [
-  "rayon",
-  "salsa_unstable",
-  "macros",
+    "rayon",
+    "salsa_unstable",
+    "macros",
 ] }
 salsa-macros = "0.23.0"
 semver = "1.0.26"
@@ -151,9 +151,9 @@ serde_json = "1.0.140"
 rustc-hash = "2.1.1"
 rustc-literal-escaper = "0.0.4"
 smallvec = { version = "1.15.1", features = [
-  "const_new",
-  "union",
-  "const_generics",
+    "const_new",
+    "union",
+    "const_generics",
 ] }
 smol_str = "0.3.2"
 temp-dir = "0.1.16"
@@ -161,12 +161,12 @@ text-size = "1.1.1"
 tracing = "0.1.41"
 tracing-tree = "0.4.0"
 tracing-subscriber = { version = "0.3.19", default-features = false, features = [
-  "registry",
-  "fmt",
-  "local-time",
-  "std",
-  "time",
-  "tracing-log",
+    "registry",
+    "fmt",
+    "local-time",
+    "std",
+    "time",
+    "tracing-log",
 ] }
 triomphe = { version = "0.1.14", default-features = false, features = ["std"] }
 url = "2.5.4"
@@ -176,7 +176,7 @@ xshell = "0.2.7"
 dashmap = { version = "=6.1.0", features = ["raw-api", "inline"] }
 # We need to freeze the version of the crate, as it needs to match with dashmap
 hashbrown = { version = "0.14.*", features = [
-  "inline-more",
+    "inline-more",
 ], default-features = false }
 
 [workspace.lints.rust]
