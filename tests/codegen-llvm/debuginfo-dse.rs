@@ -1,6 +1,7 @@
 //@ compile-flags: -Copt-level=3 -g -Zverify-llvm-ir -Zmerge-functions=disabled
 //@ revisions: CODEGEN OPTIMIZED
 //@[CODEGEN] compile-flags: -Cno-prepopulate-passes
+// ignore-tidy-linelength
 
 #![crate_type = "lib"]
 
