@@ -755,7 +755,7 @@ mod desc {
     pub(crate) const parse_linker_flavor: &str = ::rustc_target::spec::LinkerFlavorCli::one_of();
     pub(crate) const parse_dump_mono_stats: &str = "`markdown` (default) or `json`";
     pub(crate) const parse_instrument_coverage: &str = parse_bool;
-    pub(crate) const parse_coverage_options: &str = "`block` | `branch` | `condition` | `mcdc`";
+    pub(crate) const parse_coverage_options: &str = "`block` | `branch` | `condition`";
     pub(crate) const parse_instrument_xray: &str = "either a boolean (`yes`, `no`, `on`, `off`, etc), or a comma separated list of settings: `always` or `never` (mutually exclusive), `ignore-loops`, `instruction-threshold=N`, `skip-entry`, `skip-exit`";
     pub(crate) const parse_unpretty: &str = "`string` or `string=string`";
     pub(crate) const parse_treat_err_as_bug: &str = "either no value or a non-negative number";
@@ -1458,7 +1458,6 @@ pub mod parse {
                 "block" => slot.level = CoverageLevel::Block,
                 "branch" => slot.level = CoverageLevel::Branch,
                 "condition" => slot.level = CoverageLevel::Condition,
-                "mcdc" => slot.level = CoverageLevel::Mcdc,
                 "discard-all-spans-in-codegen" => slot.discard_all_spans_in_codegen = true,
                 _ => return false,
             }
