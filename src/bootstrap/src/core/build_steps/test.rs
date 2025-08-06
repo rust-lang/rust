@@ -214,8 +214,8 @@ impl Step for HtmlCheck {
         builder.default_doc(&[]);
         builder.ensure(crate::core::build_steps::doc::Rustc::for_stage(
             builder,
-            self.target,
             builder.top_stage,
+            self.target,
         ));
 
         builder
