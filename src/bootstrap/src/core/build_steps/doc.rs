@@ -756,21 +756,31 @@ fn doc_std(
     builder.cp_link_r(&out_dir, out);
 }
 
+/// Prepare a compiler that will be able to document something for `target` at `stage`.
+fn prepare_doc_compiler(builder: &Builder<'_>, target: TargetSelection, stage: u32) -> Compiler {
+    let build_compiler = builder.compiler(stage - 1, builder.host_target);
+    builder.std(build_compiler, target);
+    build_compiler
+}
+
+/// Document the compiler for the given `target` using rustdoc from `build_compiler`.
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct Rustc {
-    pub stage: u32,
-    pub target: TargetSelection,
+    build_compiler: Compiler,
+    target: TargetSelection,
     crates: Vec<String>,
 }
 
 impl Rustc {
-    pub(crate) fn new(stage: u32, target: TargetSelection, builder: &Builder<'_>) -> Self {
+    /// Document `stage` compiler for the given `target`.
+    pub(crate) fn for_stage(builder: &Builder<'_>, target: TargetSelection, stage: u32) -> Self {
         let crates = builder
             .in_tree_crates("rustc-main", Some(target))
             .into_iter()
             .map(|krate| krate.name.to_string())
             .collect();
-        Self { stage, target, crates }
+        let build_compiler = prepare_doc_compiler(builder, target, stage);
+        Self { build_compiler, target, crates }
     }
 }
 
@@ -787,11 +797,7 @@ impl Step for Rustc {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(Rustc {
-            stage: run.builder.top_stage,
-            target: run.target,
-            crates: run.make_run_crates(Alias::Compiler),
-        });
+        run.builder.ensure(Rustc::for_stage(run.builder, run.target, run.builder.top_stage));
     }
 
     /// Generates compiler documentation.
@@ -801,7 +807,6 @@ impl Step for Rustc {
     /// we do not merge it with the other documentation from std, test and
     /// proc_macros. This is largely just a wrapper around `cargo doc`.
     fn run(self, builder: &Builder<'_>) {
-        let stage = self.stage;
         let target = self.target;
 
         // This is the intended out directory for compiler documentation.
@@ -810,21 +815,21 @@ impl Step for Rustc {
 
         // Build the standard library, so that proc-macros can use it.
         // (Normally, only the metadata would be necessary, but proc-macros are special since they run at compile-time.)
-        let compiler = builder.compiler(stage, builder.config.host_target);
-        builder.std(compiler, builder.config.host_target);
+        let build_compiler = self.build_compiler;
+        builder.std(build_compiler, builder.config.host_target);
 
         let _guard = builder.msg_rustc_tool(
             Kind::Doc,
-            stage,
+            build_compiler.stage,
             format!("compiler{}", crate_description(&self.crates)),
-            compiler.host,
+            build_compiler.host,
             target,
         );
 
         // Build cargo command.
         let mut cargo = builder::Cargo::new(
             builder,
-            compiler,
+            build_compiler,
             Mode::Rustc,
             SourceType::InTree,
             target,
@@ -842,7 +847,7 @@ impl Step for Rustc {
         // If there is any bug, please comment out the next line.
         cargo.rustdocflag("--generate-link-to-definition");
 
-        compile::rustc_cargo(builder, &mut cargo, target, &compiler, &self.crates);
+        compile::rustc_cargo(builder, &mut cargo, target, &build_compiler, &self.crates);
         cargo.arg("-Zskip-rustdoc-fingerprint");
 
         // Only include compiler crates, no dependencies of those, such as `libc`.
@@ -857,7 +862,7 @@ impl Step for Rustc {
 
         let mut to_open = None;
 
-        let out_dir = builder.stage_out(compiler, Mode::Rustc).join(target).join("doc");
+        let out_dir = builder.stage_out(build_compiler, Mode::Rustc).join(target).join("doc");
         for krate in &*self.crates {
             // Create all crate output directories first to make sure rustdoc uses
             // relative links.
@@ -879,7 +884,7 @@ impl Step for Rustc {
         symlink_dir_force(&builder.config, &out, &out_dir);
         // Cargo puts proc macros in `target/doc` even if you pass `--target`
         // explicitly (https://github.com/rust-lang/cargo/issues/7677).
-        let proc_macro_out_dir = builder.stage_out(compiler, Mode::Rustc).join("doc");
+        let proc_macro_out_dir = builder.stage_out(build_compiler, Mode::Rustc).join("doc");
         symlink_dir_force(&builder.config, &out, &proc_macro_out_dir);
 
         cargo.into_cmd().run(builder);
@@ -905,7 +910,7 @@ impl Step for Rustc {
     }
 
     fn metadata(&self) -> Option<StepMetadata> {
-        Some(StepMetadata::doc("rustc", self.target).stage(self.stage))
+        Some(StepMetadata::doc("rustc", self.target).built_by(self.build_compiler))
     }
 }
 
