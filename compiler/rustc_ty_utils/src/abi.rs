@@ -474,9 +474,10 @@ fn fn_abi_new_uncached<'tcx>(
     let (caller_location, determined_fn_def_id, is_virtual_call) = if let Some(instance) = instance
     {
         let is_virtual_call = matches!(instance.def, ty::InstanceKind::Virtual(..));
+        let is_tls_shim_call = matches!(instance.def, ty::InstanceKind::ThreadLocalShim(_));
         (
             instance.def.requires_caller_location(tcx).then(|| tcx.caller_location_ty()),
-            if is_virtual_call { None } else { Some(instance.def_id()) },
+            if is_virtual_call || is_tls_shim_call { None } else { Some(instance.def_id()) },
             is_virtual_call,
         )
     } else {
@@ -556,6 +557,7 @@ fn fn_abi_new_uncached<'tcx>(
         c_variadic: sig.c_variadic,
         fixed_count: inputs.len() as u32,
         conv,
+        // FIXME return false for tls shim
         can_unwind: fn_can_unwind(
             tcx,
             // Since `#[rustc_nounwind]` can change unwinding, we cannot infer unwinding by `fn_def_id` for a virtual call.
@@ -568,8 +570,9 @@ fn fn_abi_new_uncached<'tcx>(
         &mut fn_abi,
         sig.abi,
         // If this is a virtual call, we cannot pass the `fn_def_id`, as it might call other
-        // functions from vtable. Internally, `deduced_param_attrs` attempts to infer attributes by
-        // visit the function body.
+        // functions from vtable. And for a tls shim, passing the `fn_def_id` would refer to
+        // the underlying static. Internally, `deduced_param_attrs` attempts to infer attributes
+        // by visit the function body.
         determined_fn_def_id,
     );
     debug!("fn_abi_new_uncached = {:?}", fn_abi);
