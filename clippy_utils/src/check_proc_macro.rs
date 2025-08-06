@@ -29,7 +29,7 @@ use rustc_lint::{EarlyContext, LateContext, LintContext};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_span::symbol::{Ident, kw};
-use rustc_span::{Span, Symbol};
+use rustc_span::{Span, Symbol, sym};
 
 /// The search pattern to look for. Used by `span_matches_pat`
 #[derive(Clone)]
@@ -415,29 +415,31 @@ fn ty_search_pat(ty: &Ty<'_>) -> (Pat, Pat) {
 }
 
 fn ast_ty_search_pat(ty: &ast::Ty) -> (Pat, Pat) {
-    use ast::{FnRetTy, MutTy, TraitObjectSyntax, TyKind};
+    use ast::{Extern, FnRetTy, MutTy, Safety, TraitObjectSyntax, TyKind};
 
     match &ty.kind {
         TyKind::Slice(..) | TyKind::Array(..) => (Pat::Str("["), Pat::Str("]")),
         TyKind::Ptr(MutTy { ty, .. }) => (Pat::Str("*"), ast_ty_search_pat(ty).1),
         TyKind::Ref(_, MutTy { ty, .. }) => (Pat::Str("&"), ast_ty_search_pat(ty).1),
         TyKind::FnPtr(fn_ptr) => (
-            if fn_ptr.safety.is_unsafe() {
+            if let Safety::Unsafe(_) = fn_ptr.safety {
                 Pat::Str("unsafe")
-            } else if fn_ptr.abi != ExternAbi::Rust {
-                Pat::Str("extern")
-            } else {
+            } else if let Extern::Explicit(strlit, _) = fn_ptr.ext
+                && strlit.symbol == sym::rust
+            {
                 Pat::MultiStr(&["fn", "extern"])
+            } else {
+                Pat::Str("extern")
             },
-            match fn_ptr.decl.output {
-                FnRetTy::DefaultReturn(_) => {
-                    if let [.., ty] = fn_ptr.decl.inputs {
-                        ast_ty_search_pat(ty).1
+            match &fn_ptr.decl.output {
+                FnRetTy::Default(_) => {
+                    if let [.., param] = &*fn_ptr.decl.inputs {
+                        ast_ty_search_pat(&param.ty).1
                     } else {
                         Pat::Str("(")
                     }
                 },
-                FnRetTy::Return(ty) => ast_ty_search_pat(ty).1,
+                FnRetTy::Ty(ty) => ast_ty_search_pat(ty).1,
             },
         ),
         TyKind::Never => (Pat::Str("!"), Pat::Str("!")),
