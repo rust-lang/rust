@@ -11,7 +11,10 @@ pub trait PeekableIterator: Iterator {
 
     /// Returns the `next()` element if the given predicate holds true.
     fn next_if(&mut self, func: impl FnOnce(&Self::Item) -> bool) -> Option<Self::Item> {
-        self.peek_with(|x| if func(x) { self.next() } else { None })
+        match self.peek_map(func) {
+            Some(true) => self.next(),
+            _ => None,
+        }
     }
 
     /// Moves forward and return the `next()` item if it is equal to the expected value.
