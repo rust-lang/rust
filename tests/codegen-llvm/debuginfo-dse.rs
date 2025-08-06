@@ -30,6 +30,21 @@ fn r#ref(ref_foo: &Foo) -> i32 {
 }
 
 #[no_mangle]
+pub fn dead_first(dead_first_foo: &Foo) -> &i32 {
+    // CHECK-LABEL: def {{.*}} ptr @dead_first
+    // CHECK-SAME: (ptr {{.*}} [[ARG_dead_first_foo:%.*]])
+    // CODEGEN: #dbg_declare(ptr %dead_first_foo.dbg.spill, [[ARG_dead_first_foo:![0-9]+]], !DIExpression()
+    // OPTIMIZED: #dbg_value(ptr %dead_first_foo, [[ARG_dead_first_foo:![0-9]+]], !DIExpression()
+    // CHECK: #dbg_value(ptr %dead_first_foo, [[VAR_dead_first_v0:![0-9]+]], !DIExpression()
+    // CHECK: %dead_first_v0 = getelementptr{{.*}} i8, ptr %dead_first_foo, i64 16
+    // CODEGEN: #dbg_declare(ptr %dead_first_v0.dbg.spill, [[VAR_dead_first_v0]], !DIExpression()
+    // OPTIMIZED: #dbg_value(ptr %dead_first_v0, [[VAR_dead_first_v0]], !DIExpression()
+    let mut dead_first_v0 = &dead_first_foo.0;
+    dead_first_v0 = &dead_first_foo.2;
+    dead_first_v0
+}
+
+#[no_mangle]
 fn ptr(ptr_foo: Foo) -> i32 {
     // CHECK-LABEL: define {{.*}} i32 @ptr
     // CHECK-SAME: (ptr {{.*}} [[ARG_ptr_foo:%.*]])
@@ -94,3 +109,5 @@ pub fn tuple(foo: (i32, &Foo)) -> i32 {
 // CHECK-DAG: [[VAR_fragment_f]] = !DILocalVariable(name: "fragment_f"
 // CHECK-DAG: [[VAR_tuple_dead]] = !DILocalVariable(name: "tuple_dead"
 // CHECK-DAG: [[VAR_deref_dead]] = !DILocalVariable(name: "deref_dead"
+// CHECK-DAG: [[ARG_dead_first_foo]] = !DILocalVariable(name: "dead_first_foo", arg: 1
+// CHECK-DAG: [[VAR_dead_first_v0]] = !DILocalVariable(name: "dead_first_v0"
