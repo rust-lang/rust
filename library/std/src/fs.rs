@@ -1112,8 +1112,9 @@ impl File {
     /// [may change in the future][changes].
     ///
     /// On most platforms, including UNIX and Windows platforms, this function can also change the
-    /// timestamps of a directory. To do so, open the directory with `File::open`, without
-    /// attempting to obtain write permission.
+    /// timestamps of a directory. To get a `File` representing a directory in order to call
+    /// `set_times`, open the directory with `File::open` without attempting to obtain write
+    /// permission.
     ///
     /// [changes]: io#platform-specific-behavior
     ///
