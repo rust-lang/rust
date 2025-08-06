@@ -53,7 +53,7 @@ fn mapped(_1: impl Iterator<Item = T>, _2: impl Fn(T) -> U) -> () {
 
     bb2: {
         StorageLive(_12);
-        // DBG: _15 = &_4
+        // DBG: _15 = &_4;
         StorageLive(_7);
         StorageLive(_6);
         StorageLive(_5);

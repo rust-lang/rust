@@ -779,7 +779,7 @@ where
     for statement in &data.statements {
         extra_data(PassWhere::BeforeLocation(current_location), w)?;
         for debuginfo in statement.debuginfos.iter() {
-            writeln!(w, "{INDENT}{INDENT}// DBG: {debuginfo:?}")?;
+            writeln!(w, "{INDENT}{INDENT}// DBG: {debuginfo:?};")?;
         }
         let indented_body = format!("{INDENT}{INDENT}{statement:?};");
         if options.include_extra_comments {
@@ -816,7 +816,7 @@ where
     // Terminator at the bottom.
     extra_data(PassWhere::BeforeLocation(current_location), w)?;
     for debuginfo in data.after_last_stmt_debuginfos.iter() {
-        writeln!(w, "{INDENT}{INDENT}// DBG: {debuginfo:?}")?;
+        writeln!(w, "{INDENT}{INDENT}// DBG: {debuginfo:?};")?;
     }
     if data.terminator.is_some() {
         let indented_terminator = format!("{0}{0}{1:?};", INDENT, data.terminator().kind);

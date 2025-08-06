@@ -9,7 +9,7 @@ fn <impl at $DIR/clone_as_copy.rs:12:10: 12:15>::clone(_1: &NestCopy) -> NestCop
     }
 
     bb0: {
-        // DBG: _2 = &((*_1).1: AllCopy)
+        // DBG: _2 = &((*_1).1: AllCopy);
         _0 = copy (*_1);
         return;
     }

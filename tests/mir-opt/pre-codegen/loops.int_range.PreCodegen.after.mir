@@ -61,10 +61,10 @@ fn int_range(_1: usize, _2: usize) -> () {
 
     bb1: {
         StorageLive(_10);
-        // DBG: _13 = &_4
+        // DBG: _13 = &_4;
         StorageLive(_7);
-        // DBG: _14 = &(_4.0: usize)
-        // DBG: _15 = &(_4.1: usize)
+        // DBG: _14 = &(_4.0: usize);
+        // DBG: _15 = &(_4.1: usize);
         StorageLive(_5);
         _5 = copy (_4.0: usize);
         StorageLive(_6);

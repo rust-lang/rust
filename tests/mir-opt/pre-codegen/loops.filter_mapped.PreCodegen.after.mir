@@ -38,7 +38,7 @@ fn filter_mapped(_1: impl Iterator<Item = T>, _2: impl Fn(T) -> Option<U>) -> ()
 
     bb2: {
         StorageLive(_7);
-        // DBG: _11 = &_4
+        // DBG: _11 = &_4;
         StorageLive(_5);
         _5 = &mut (_4.0: impl Iterator<Item = T>);
         StorageLive(_6);
