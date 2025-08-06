@@ -228,9 +228,9 @@ fn hints(
                 chaining::hints(hints, famous_defs, config, display_target, &expr);
                 adjustment::hints(hints, famous_defs, config, display_target, &expr);
                 match expr {
-                    ast::Expr::CallExpr(it) => param_name::hints(hints, famous_defs, config, ast::Expr::from(it)),
+                    ast::Expr::CallExpr(it) => param_name::hints(hints, famous_defs, config, file_id, ast::Expr::from(it)),
                     ast::Expr::MethodCallExpr(it) => {
-                        param_name::hints(hints, famous_defs, config, ast::Expr::from(it))
+                        param_name::hints(hints, famous_defs, config, file_id, ast::Expr::from(it))
                     }
                     ast::Expr::ClosureExpr(it) => {
                         closure_captures::hints(hints, famous_defs, config, it.clone());

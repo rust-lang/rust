@@ -175,7 +175,7 @@ impl Message {
         let msg = match serde_json::from_str(&text) {
             Ok(msg) => msg,
             Err(e) => {
-                return Err(invalid_data!("malformed LSP payload: {:?}", e));
+                return Err(invalid_data!("malformed LSP payload `{e:?}`: {text:?}"));
             }
         };
 
