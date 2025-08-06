@@ -2156,6 +2156,7 @@ declare_lint! {
     @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::FutureReleaseError,
         reference: "issue #52234 <https://github.com/rust-lang/rust/issues/52234>",
+        report_in_deps: true,
     };
     crate_level_only
 }
@@ -2887,11 +2888,12 @@ declare_lint! {
     /// struct S { /* fields */ }
     /// ```
     pub LEGACY_DERIVE_HELPERS,
-    Warn,
+    Deny,
     "detects derive helper attributes that are used before they are introduced",
     @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::FutureReleaseError,
         reference: "issue #79202 <https://github.com/rust-lang/rust/issues/79202>",
+        report_in_deps: true,
     };
 }
 
@@ -4629,11 +4631,12 @@ declare_lint! {
     ///
     /// [future-incompatible]: ../index.md#future-incompatible-lints
     pub PRIVATE_MACRO_USE,
-    Warn,
+    Deny,
     "detects certain macro bindings that should not be re-exported",
     @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::FutureReleaseError,
         reference: "issue #120192 <https://github.com/rust-lang/rust/issues/120192>",
+        report_in_deps: true,
     };
 }
 
@@ -4833,7 +4836,7 @@ declare_lint! {
     ///
     /// ### Example
     ///
-    /// ```rust
+    /// ```rust,compile_fail
     /// #![doc = in_root!()]
     ///
     /// macro_rules! in_root { () => { "" } }
@@ -4858,11 +4861,12 @@ declare_lint! {
     ///
     /// [future-incompatible]: ../index.md#future-incompatible-lints
     pub OUT_OF_SCOPE_MACRO_CALLS,
-    Warn,
+    Deny,
     "detects out of scope calls to `macro_rules` in key-value attributes",
     @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::FutureReleaseError,
         reference: "issue #124535 <https://github.com/rust-lang/rust/issues/124535>",
+        report_in_deps: true,
     };
 }
 
