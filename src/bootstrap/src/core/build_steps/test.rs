@@ -983,8 +983,8 @@ impl Step for RustdocJSStd {
                 command.arg("--test-file").arg(path);
             }
         }
-        builder.ensure(crate::core::build_steps::doc::Std::new(
-            builder.top_stage,
+        builder.ensure(crate::core::build_steps::doc::Std::from_build_compiler(
+            builder.compiler(builder.top_stage, builder.host_target),
             self.target,
             DocumentationFormat::Html,
         ));
