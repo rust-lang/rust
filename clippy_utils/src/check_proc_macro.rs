@@ -446,7 +446,7 @@ fn ast_ty_search_pat(ty: &ast::Ty) -> (Pat, Pat) {
         TyKind::Tup([head, .., tail]) => (ast_ty_search_pat(head).0, ast_ty_search_pat(tail).1),
         TyKind::OpaqueDef(..) => (Pat::Str("impl"), Pat::Str("")),
         TyKind::Path(qpath) => qpath_search_pat(&qpath),
-        TyKind::Infer(()) => (Pat::Str("_"), Pat::Str("_")),
+        TyKind::Infer => (Pat::Str("_"), Pat::Str("_")),
         TyKind::TraitObject(_, tagged_ptr) if let TraitObjectSyntax::Dyn = tagged_ptr.tag() => {
             (Pat::Str("dyn"), Pat::Str(""))
         },
