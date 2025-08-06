@@ -328,7 +328,7 @@ fn invoke_rustdoc(
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct Standalone {
-    compiler: Compiler,
+    build_compiler: Compiler,
     target: TargetSelection,
 }
 
@@ -343,7 +343,11 @@ impl Step for Standalone {
 
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(Standalone {
-            compiler: run.builder.compiler(run.builder.top_stage, run.builder.config.host_target),
+            build_compiler: prepare_doc_compiler(
+                run.builder,
+                run.builder.host_target,
+                run.builder.top_stage,
+            ),
             target: run.target,
         });
     }
@@ -358,8 +362,8 @@ impl Step for Standalone {
     /// In the end, this is just a glorified wrapper around rustdoc!
     fn run(self, builder: &Builder<'_>) {
         let target = self.target;
-        let compiler = self.compiler;
-        let _guard = builder.msg_doc(compiler, "standalone", target);
+        let build_compiler = self.build_compiler;
+        let _guard = builder.msg_doc(build_compiler, "standalone", target);
         let out = builder.doc_out(target);
         t!(fs::create_dir_all(&out));
 
@@ -378,7 +382,7 @@ impl Step for Standalone {
             }
 
             let html = out.join(filename).with_extension("html");
-            let rustdoc = builder.rustdoc_for_compiler(compiler);
+            let rustdoc = builder.rustdoc_for_compiler(build_compiler);
             if up_to_date(&path, &html)
                 && up_to_date(&footer, &html)
                 && up_to_date(&favicon, &html)
@@ -389,7 +393,7 @@ impl Step for Standalone {
                 continue;
             }
 
-            let mut cmd = builder.rustdoc_cmd(compiler);
+            let mut cmd = builder.rustdoc_cmd(build_compiler);
 
             cmd.arg("--html-after-content")
                 .arg(&footer)
@@ -426,11 +430,15 @@ impl Step for Standalone {
             builder.open_in_browser(index);
         }
     }
+
+    fn metadata(&self) -> Option<StepMetadata> {
+        Some(StepMetadata::doc("standalone", self.target).built_by(self.build_compiler))
+    }
 }
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct Releases {
-    compiler: Compiler,
+    build_compiler: Compiler,
     target: TargetSelection,
 }
 
@@ -445,7 +453,11 @@ impl Step for Releases {
 
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(Releases {
-            compiler: run.builder.compiler(run.builder.top_stage, run.builder.config.host_target),
+            build_compiler: prepare_doc_compiler(
+                run.builder,
+                run.builder.host_target,
+                run.builder.top_stage,
+            ),
             target: run.target,
         });
     }
@@ -457,15 +469,12 @@ impl Step for Releases {
     /// the headline added. In the end, the conversion is done by Rustdoc.
     fn run(self, builder: &Builder<'_>) {
         let target = self.target;
-        let compiler = self.compiler;
-        let _guard = builder.msg_doc(compiler, "releases", target);
+        let build_compiler = self.build_compiler;
+        let _guard = builder.msg_doc(build_compiler, "releases", target);
         let out = builder.doc_out(target);
         t!(fs::create_dir_all(&out));
 
-        builder.ensure(Standalone {
-            compiler: builder.compiler(builder.top_stage, builder.config.host_target),
-            target,
-        });
+        builder.ensure(Standalone { build_compiler, target });
 
         let version_info = builder.ensure(SharedAssets { target: self.target }).version_info;
 
@@ -476,7 +485,7 @@ impl Step for Releases {
         let html = out.join("releases.html");
         let tmppath = out.join("releases.md");
         let inpath = builder.src.join("RELEASES.md");
-        let rustdoc = builder.rustdoc_for_compiler(compiler);
+        let rustdoc = builder.rustdoc_for_compiler(build_compiler);
         if !up_to_date(&inpath, &html)
             || !up_to_date(&footer, &html)
             || !up_to_date(&favicon, &html)
@@ -489,7 +498,7 @@ impl Step for Releases {
             t!(tmpfile.write_all(b"% Rust Release Notes\n\n"));
             t!(io::copy(&mut t!(fs::File::open(&inpath)), &mut tmpfile));
             mem::drop(tmpfile);
-            let mut cmd = builder.rustdoc_cmd(compiler);
+            let mut cmd = builder.rustdoc_cmd(build_compiler);
 
             cmd.arg("--html-after-content")
                 .arg(&footer)
@@ -521,6 +530,10 @@ impl Step for Releases {
         if builder.was_invoked_explicitly::<Self>(Kind::Doc) {
             builder.open_in_browser(&html);
         }
+    }
+
+    fn metadata(&self) -> Option<StepMetadata> {
+        Some(StepMetadata::doc("releases", self.target).built_by(self.build_compiler))
     }
 }
 
