@@ -1,6 +1,9 @@
 //@ build-fail
 // FIXME(#83838) codegen-units=1 triggers llvm asserts
-//@ compile-flags: -Ccodegen-units=16
+// FIXME(#144940) `-Zcodegen-source-order` avoids `_rust_extern_with_linkage_collision`
+//                sorted after the main, otherwise it causes an ICE. Remove this option
+//                once this issue fixed.
+//@ compile-flags: -Ccodegen-units=16 -Zcodegen-source-order
 #![feature(linkage)]
 
 mod dep1 {
