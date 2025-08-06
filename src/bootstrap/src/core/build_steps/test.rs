@@ -296,7 +296,6 @@ impl Step for Cargotest {
             builder,
             tested_compiler.host,
             LldThreads::No,
-            tested_compiler.stage,
         );
         cmd.delay_failure().run(builder);
     }
@@ -940,7 +939,7 @@ impl Step for RustdocTheme {
             .env("CFG_RELEASE_CHANNEL", &builder.config.channel)
             .env("RUSTDOC_REAL", builder.rustdoc_for_compiler(self.compiler))
             .env("RUSTC_BOOTSTRAP", "1");
-        cmd.args(linker_args(builder, self.compiler.host, LldThreads::No, self.compiler.stage));
+        cmd.args(linker_args(builder, self.compiler.host, LldThreads::No));
 
         cmd.delay_failure().run(builder);
     }
@@ -1125,7 +1124,6 @@ impl Step for RustdocGUI {
             builder,
             self.compiler.host,
             LldThreads::No,
-            self.compiler.stage,
         );
 
         for path in &builder.paths {
@@ -1951,7 +1949,7 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         }
 
         let mut hostflags = flags.clone();
-        hostflags.extend(linker_flags(builder, compiler.host, LldThreads::No, compiler.stage));
+        hostflags.extend(linker_flags(builder, compiler.host, LldThreads::No));
 
         let mut targetflags = flags;
 
