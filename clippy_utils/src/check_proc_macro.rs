@@ -498,6 +498,7 @@ fn ast_ty_search_pat(ty: &ast::Ty) -> (Pat, Pat) {
             (start, end)
         },
         TyKind::Infer => (Pat::Str("_"), Pat::Str("_")),
+        TyKind::Paren(ty) => ast_ty_search_pat(ty),
         TyKind::TraitObject(_, trait_obj_syntax) => {
             if let TraitObjectSyntax::Dyn = trait_obj_syntax {
                 (Pat::Str("dyn"), Pat::Str(""))
