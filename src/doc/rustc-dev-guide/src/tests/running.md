@@ -342,13 +342,34 @@ coordinate running tests (see [src/bootstrap/src/core/build_steps/test.rs]).
 > **TODO**
 >
 > - Is there any support for using an iOS emulator?
-> - It's also unclear to me how the wasm or asm.js tests are run.
 
 [armhf-gnu]: https://github.com/rust-lang/rust/tree/master/src/ci/docker/host-x86_64/armhf-gnu/Dockerfile
 [QEMU]: https://www.qemu.org/
 [remote-test-client]: https://github.com/rust-lang/rust/tree/master/src/tools/remote-test-client
 [remote-test-server]: https://github.com/rust-lang/rust/tree/master/src/tools/remote-test-server
 [src/bootstrap/src/core/build_steps/test.rs]: https://github.com/rust-lang/rust/blob/master/src/bootstrap/src/core/build_steps/test.rs
+
+## Testing tests on wasi (wasm32-wasip1)
+
+Some tests are specific to wasm targets.
+To run theste tests, you have to pass `--target wasm32-wasip1` to `x test`.
+Additionally, you need the wasi sdk.
+Follow the install instructions from the [wasi sdk repository] to get a sysroot on your computer.
+On the [wasm32-wasip1 target support page] a minimum version is specified that your sdk must be able to build.
+Some cmake commands that take a while and give a lot of very concerning c++ warnings...
+Then, in `bootstrap.toml`, point to the sysroot like so:
+
+```
+[target.wasm32-wasip1]
+wasi-root = "<wasi-sdk location>/build/sysroot/install/share/wasi-sysroot"
+```
+
+In my case I git-cloned it next to my rust folder, so it was `../wasi-sdk/build/....`
+Now, tests should just run, you don't have to set up anything else.
+
+[wasi sdk repository]: https://github.com/WebAssembly/wasi-sdk
+[wasm32-wasip1 target support page]: https://github.com/rust-lang/rust/blob/master/src/doc/rustc/src/platform-support/wasm32-wasip1.md#building-the-target.
+
 
 ## Running rustc_codegen_gcc tests
 
