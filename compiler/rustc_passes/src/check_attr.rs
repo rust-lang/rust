@@ -324,6 +324,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 &Attribute::Parsed(AttributeKind::Coverage(attr_span, _)) => {
                     self.check_coverage(attr_span, span, target)
                 }
+                &Attribute::Parsed(AttributeKind::Coroutine(attr_span)) => {
+                    self.check_coroutine(attr_span, target)
+                }
                 Attribute::Unparsed(attr_item) => {
                     style = Some(attr_item.style);
                     match attr.path().as_slice() {
@@ -389,9 +392,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         }
                         [sym::autodiff_forward, ..] | [sym::autodiff_reverse, ..] => {
                             self.check_autodiff(hir_id, attr, span, target)
-                        }
-                        [sym::coroutine, ..] => {
-                            self.check_coroutine(attr, target);
                         }
                         [sym::linkage, ..] => self.check_linkage(attr, span, target),
                         [
@@ -2651,11 +2651,11 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         }
     }
 
-    fn check_coroutine(&self, attr: &Attribute, target: Target) {
+    fn check_coroutine(&self, attr_span: Span, target: Target) {
         match target {
             Target::Closure => return,
             _ => {
-                self.dcx().emit_err(errors::CoroutineOnNonClosure { span: attr.span() });
+                self.dcx().emit_err(errors::CoroutineOnNonClosure { span: attr_span });
             }
         }
     }
