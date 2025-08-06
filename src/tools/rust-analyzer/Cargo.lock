@@ -1294,7 +1294,7 @@ checksum = "13dc2df351e3202783a1fe0d44375f7295ffb4049267b0f3018346dc122a1d94"
 
 [[package]]
 name = "lsp-server"
-version = "0.7.8"
+version = "0.7.9"
 dependencies = [
  "anyhow",
  "crossbeam-channel",
@@ -1310,9 +1310,9 @@ dependencies = [
 
 [[package]]
 name = "lsp-server"
-version = "0.7.8"
+version = "0.7.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9462c4dc73e17f971ec1f171d44bfffb72e65a130117233388a0ebc7ec5656f9"
+checksum = "7d6ada348dbc2703cbe7637b2dda05cff84d3da2819c24abcb305dd613e0ba2e"
 dependencies = [
  "crossbeam-channel",
  "log",
@@ -2007,7 +2007,7 @@ dependencies = [
  "intern",
  "itertools 0.14.0",
  "load-cargo",
- "lsp-server 0.7.8 (registry+https://github.com/rust-lang/crates.io-index)",
+ "lsp-server 0.7.9 (registry+https://github.com/rust-lang/crates.io-index)",
  "lsp-types",
  "memchr",
  "mimalloc",
