@@ -32,12 +32,10 @@ LL | fn bar(_: fn(Foo<for<'b> fn(Foo<fn(&'b ())>::Assoc)>::Assoc)) {}
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: higher-ranked subtype error
-  --> $DIR/issue-111404-1.rs:10:1
+  --> $DIR/issue-111404-1.rs:10:8
    |
 LL | fn bar(_: fn(Foo<for<'b> fn(Foo<fn(&'b ())>::Assoc)>::Assoc)) {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+   |        ^
 
 error: aborting due to 5 previous errors
 
