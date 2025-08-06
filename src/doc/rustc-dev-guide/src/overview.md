@@ -323,7 +323,7 @@ the name `'tcx`, which means that something is tied to the lifetime of the
 
 For more information about queries in the compiler, see [the queries chapter][queries].
 
-[queries]: https://rustc-dev-guide.rust-lang.org/query.html
+[queries]: ./query.md
 
 ### `ty::Ty`
 
