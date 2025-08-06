@@ -3310,11 +3310,8 @@ impl Step for LintDocs {
     /// Tests that the lint examples in the rustc book generate the correct
     /// lints and have the expected format.
     fn run(self, builder: &Builder<'_>) {
-        builder.ensure(crate::core::build_steps::doc::RustcBook {
-            compiler: self.compiler,
-            target: self.target,
-            validate: true,
-        });
+        builder
+            .ensure(crate::core::build_steps::doc::RustcBook::validate(self.compiler, self.target));
     }
 }
 

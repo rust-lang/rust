@@ -1200,9 +1200,15 @@ fn symlink_dir_force(config: &Config, original: &Path, link: &Path) {
 
 #[derive(Ord, PartialOrd, Debug, Clone, Hash, PartialEq, Eq)]
 pub struct RustcBook {
-    pub compiler: Compiler,
-    pub target: TargetSelection,
-    pub validate: bool,
+    build_compiler: Compiler,
+    target: TargetSelection,
+    validate: bool,
+}
+
+impl RustcBook {
+    pub fn validate(build_compiler: Compiler, target: TargetSelection) -> Self {
+        Self { build_compiler, target, validate: true }
+    }
 }
 
 impl Step for RustcBook {
@@ -1216,8 +1222,17 @@ impl Step for RustcBook {
     }
 
     fn make_run(run: RunConfig<'_>) {
+        // Bump the stage to 2, because the rustc book requires an in-tree compiler.
+        // At the same time, since this step is enabled by default, we don't want `x doc` to fail
+        // in stage 1.
+        let stage = if run.builder.config.is_explicit_stage() || run.builder.top_stage >= 2 {
+            run.builder.top_stage
+        } else {
+            2
+        };
+
         run.builder.ensure(RustcBook {
-            compiler: run.builder.compiler(run.builder.top_stage, run.builder.config.host_target),
+            build_compiler: prepare_doc_compiler(run.builder, run.target, stage),
             target: run.target,
             validate: false,
         });
@@ -1235,10 +1250,10 @@ impl Step for RustcBook {
         builder.cp_link_r(&builder.src.join("src/doc/rustc"), &out_base);
         builder.info(&format!("Generating lint docs ({})", self.target));
 
-        let rustc = builder.rustc(self.compiler);
+        let rustc = builder.rustc(self.build_compiler);
         // The tool runs `rustc` for extracting output examples, so it needs a
         // functional sysroot.
-        builder.std(self.compiler, self.target);
+        builder.std(self.build_compiler, self.target);
         let mut cmd = builder.tool_cmd(Tool::LintDocs);
         cmd.arg("--src");
         cmd.arg(builder.src.join("compiler"));
@@ -1264,12 +1279,12 @@ impl Step for RustcBook {
         // If the lib directories are in an unusual location (changed in
         // bootstrap.toml), then this needs to explicitly update the dylib search
         // path.
-        builder.add_rustc_lib_path(self.compiler, &mut cmd);
+        builder.add_rustc_lib_path(self.build_compiler, &mut cmd);
         let doc_generator_guard = builder.msg(
             Kind::Run,
-            self.compiler.stage,
+            self.build_compiler.stage,
             "lint-docs",
-            self.compiler.host,
+            self.build_compiler.host,
             self.target,
         );
         cmd.run(builder);
