@@ -223,60 +223,27 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
             "synthetic HIR should have its `generics_of` explicitly fed"
         ),
 
-        _ => span_bug!(tcx.def_span(def_id), "unhandled node {node:?}"),
+        _ => span_bug!(tcx.def_span(def_id), "generics_of: unexpected node kind {node:?}"),
     };
 
-    enum Defaults {
-        Allowed,
-        // See #36887
-        FutureCompatDisallowed,
-        Deny,
-    }
+    // Add in the self type parameter.
+    let opt_self = if let Node::Item(item) = node
+        && let ItemKind::Trait(..) | ItemKind::TraitAlias(..) = item.kind
+    {
+        // Something of a hack: We reuse the node ID of the trait for the self type parameter.
+        Some(ty::GenericParamDef {
+            index: 0,
+            name: kw::SelfUpper,
+            def_id: def_id.to_def_id(),
+            pure_wrt_drop: false,
+            kind: ty::GenericParamDefKind::Type { has_default: false, synthetic: false },
+        })
+    } else {
+        None
+    };
 
+    let param_default_policy = param_default_policy(node);
     let hir_generics = node.generics().unwrap_or(hir::Generics::empty());
-    let (opt_self, allow_defaults) = match node {
-        Node::Item(item) => {
-            match item.kind {
-                ItemKind::Trait(..) | ItemKind::TraitAlias(..) => {
-                    // Add in the self type parameter.
-                    //
-                    // Something of a hack: use the node id for the trait, also as
-                    // the node id for the Self type parameter.
-                    let opt_self = Some(ty::GenericParamDef {
-                        index: 0,
-                        name: kw::SelfUpper,
-                        def_id: def_id.to_def_id(),
-                        pure_wrt_drop: false,
-                        kind: ty::GenericParamDefKind::Type {
-                            has_default: false,
-                            synthetic: false,
-                        },
-                    });
-
-                    (opt_self, Defaults::Allowed)
-                }
-                ItemKind::TyAlias(..)
-                | ItemKind::Enum(..)
-                | ItemKind::Struct(..)
-                | ItemKind::Union(..) => (None, Defaults::Allowed),
-                ItemKind::Const(..) => (None, Defaults::Deny),
-                _ => (None, Defaults::FutureCompatDisallowed),
-            }
-        }
-
-        Node::OpaqueTy(..) => (None, Defaults::Allowed),
-
-        // GATs
-        Node::TraitItem(item) if matches!(item.kind, TraitItemKind::Type(..)) => {
-            (None, Defaults::Deny)
-        }
-        Node::ImplItem(item) if matches!(item.kind, ImplItemKind::Type(..)) => {
-            (None, Defaults::Deny)
-        }
-
-        _ => (None, Defaults::FutureCompatDisallowed),
-    };
-
     let has_self = opt_self.is_some();
     let mut parent_has_self = false;
     let mut own_start = has_self as u32;
@@ -312,60 +279,53 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
         prev + type_start
     };
 
-    const TYPE_DEFAULT_NOT_ALLOWED: &'static str = "defaults for type parameters are only allowed in \
-    `struct`, `enum`, `type`, or `trait` definitions";
-
-    own_params.extend(hir_generics.params.iter().filter_map(|param| match param.kind {
-        GenericParamKind::Lifetime { .. } => None,
-        GenericParamKind::Type { default, synthetic, .. } => {
-            if default.is_some() {
-                match allow_defaults {
-                    Defaults::Allowed => {}
-                    Defaults::FutureCompatDisallowed => {
-                        tcx.node_span_lint(
-                            lint::builtin::INVALID_TYPE_PARAM_DEFAULT,
-                            param.hir_id,
-                            param.span,
-                            |lint| {
-                                lint.primary_message(TYPE_DEFAULT_NOT_ALLOWED);
-                            },
-                        );
-                    }
-                    Defaults::Deny => {
-                        tcx.dcx().span_err(param.span, TYPE_DEFAULT_NOT_ALLOWED);
+    own_params.extend(hir_generics.params.iter().filter_map(|param| {
+        const MESSAGE: &str = "defaults for generic parameters are not allowed here";
+        let kind = match param.kind {
+            GenericParamKind::Lifetime { .. } => return None,
+            GenericParamKind::Type { default, synthetic } => {
+                if default.is_some() {
+                    match param_default_policy.expect("no policy for generic param default") {
+                        ParamDefaultPolicy::Allowed => {}
+                        ParamDefaultPolicy::FutureCompatForbidden => {
+                            tcx.node_span_lint(
+                                lint::builtin::INVALID_TYPE_PARAM_DEFAULT,
+                                param.hir_id,
+                                param.span,
+                                |lint| {
+                                    lint.primary_message(MESSAGE);
+                                },
+                            );
+                        }
+                        ParamDefaultPolicy::Forbidden => {
+                            tcx.dcx().span_err(param.span, MESSAGE);
+                        }
                     }
                 }
+
+                ty::GenericParamDefKind::Type { has_default: default.is_some(), synthetic }
             }
+            GenericParamKind::Const { ty: _, default, synthetic } => {
+                if default.is_some() {
+                    match param_default_policy.expect("no policy for generic param default") {
+                        ParamDefaultPolicy::Allowed => {}
+                        ParamDefaultPolicy::FutureCompatForbidden
+                        | ParamDefaultPolicy::Forbidden => {
+                            tcx.dcx().span_err(param.span, MESSAGE);
+                        }
+                    }
+                }
 
-            let kind = ty::GenericParamDefKind::Type { has_default: default.is_some(), synthetic };
-
-            Some(ty::GenericParamDef {
-                index: next_index(),
-                name: param.name.ident().name,
-                def_id: param.def_id.to_def_id(),
-                pure_wrt_drop: param.pure_wrt_drop,
-                kind,
-            })
-        }
-        GenericParamKind::Const { ty: _, default, synthetic } => {
-            if !matches!(allow_defaults, Defaults::Allowed) && default.is_some() {
-                tcx.dcx().span_err(
-                    param.span,
-                    "defaults for const parameters are only allowed in \
-                    `struct`, `enum`, `type`, or `trait` definitions",
-                );
+                ty::GenericParamDefKind::Const { has_default: default.is_some(), synthetic }
             }
-
-            let index = next_index();
-
-            Some(ty::GenericParamDef {
-                index,
-                name: param.name.ident().name,
-                def_id: param.def_id.to_def_id(),
-                pure_wrt_drop: param.pure_wrt_drop,
-                kind: ty::GenericParamDefKind::Const { has_default: default.is_some(), synthetic },
-            })
-        }
+        };
+        Some(ty::GenericParamDef {
+            index: next_index(),
+            name: param.name.ident().name,
+            def_id: param.def_id.to_def_id(),
+            pure_wrt_drop: param.pure_wrt_drop,
+            kind,
+        })
     }));
 
     // provide junk type parameter defs - the only place that
@@ -436,6 +396,48 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
         has_self: has_self || parent_has_self,
         has_late_bound_regions: has_late_bound_regions(tcx, node),
     }
+}
+
+#[derive(Clone, Copy)]
+enum ParamDefaultPolicy {
+    Allowed,
+    /// Tracked in <https://github.com/rust-lang/rust/issues/36887>.
+    FutureCompatForbidden,
+    Forbidden,
+}
+
+fn param_default_policy(node: Node<'_>) -> Option<ParamDefaultPolicy> {
+    use rustc_hir::*;
+
+    Some(match node {
+        Node::Item(item) => match item.kind {
+            ItemKind::Trait(..)
+            | ItemKind::TraitAlias(..)
+            | ItemKind::TyAlias(..)
+            | ItemKind::Enum(..)
+            | ItemKind::Struct(..)
+            | ItemKind::Union(..) => ParamDefaultPolicy::Allowed,
+            ItemKind::Fn { .. } | ItemKind::Impl(_) => ParamDefaultPolicy::FutureCompatForbidden,
+            // Re. GCI, we're not bound by backward compatibility.
+            ItemKind::Const(..) => ParamDefaultPolicy::Forbidden,
+            _ => return None,
+        },
+        Node::TraitItem(item) => match item.kind {
+            // Re. GATs and GACs (generic_const_items), we're not bound by backward compatibility.
+            TraitItemKind::Const(..) | TraitItemKind::Type(..) => ParamDefaultPolicy::Forbidden,
+            TraitItemKind::Fn(..) => ParamDefaultPolicy::FutureCompatForbidden,
+        },
+        Node::ImplItem(item) => match item.kind {
+            // Re. GATs and GACs (generic_const_items), we're not bound by backward compatibility.
+            ImplItemKind::Const(..) | ImplItemKind::Type(..) => ParamDefaultPolicy::Forbidden,
+            ImplItemKind::Fn(..) => ParamDefaultPolicy::FutureCompatForbidden,
+        },
+        // Generic params are (semantically) invalid on foreign items. Still, for maximum forward
+        // compatibility, let's hard-reject defaults on them.
+        Node::ForeignItem(_) => ParamDefaultPolicy::Forbidden,
+        Node::OpaqueTy(..) => ParamDefaultPolicy::Allowed,
+        _ => return None,
+    })
 }
 
 fn has_late_bound_regions<'tcx>(tcx: TyCtxt<'tcx>, node: Node<'tcx>) -> Option<Span> {

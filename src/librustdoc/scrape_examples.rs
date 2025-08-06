@@ -333,11 +333,14 @@ pub(crate) fn run(
 pub(crate) fn load_call_locations(
     with_examples: Vec<String>,
     dcx: DiagCtxtHandle<'_>,
-    loaded_paths: &mut Vec<PathBuf>,
 ) -> AllCallLocations {
     let mut all_calls: AllCallLocations = FxIndexMap::default();
     for path in with_examples {
-        loaded_paths.push(path.clone().into());
+        // FIXME: Figure out why this line is causing this feature to crash in specific contexts.
+        // Full issue backlog is available here: <https://github.com/rust-lang/rust/pull/144600>.
+        //
+        // Can be checked with `tests/run-make/rustdoc-scrape-examples-paths`.
+        // loaded_paths.push(path.clone().into());
         let bytes = match fs::read(&path) {
             Ok(bytes) => bytes,
             Err(e) => dcx.fatal(format!("failed to load examples: {e}")),

@@ -269,7 +269,7 @@ impl Step for Std {
                 target,
                 Kind::Build,
             );
-            std_cargo(builder, target, compiler.stage, &mut cargo);
+            std_cargo(builder, target, &mut cargo);
             for krate in &*self.crates {
                 cargo.arg("-p").arg(krate);
             }
@@ -497,7 +497,7 @@ fn compiler_rt_for_profiler(builder: &Builder<'_>) -> PathBuf {
 
 /// Configure cargo to compile the standard library, adding appropriate env vars
 /// and such.
-pub fn std_cargo(builder: &Builder<'_>, target: TargetSelection, stage: u32, cargo: &mut Cargo) {
+pub fn std_cargo(builder: &Builder<'_>, target: TargetSelection, cargo: &mut Cargo) {
     // rustc already ensures that it builds with the minimum deployment
     // target, so ideally we shouldn't need to do anything here.
     //
@@ -645,12 +645,8 @@ pub fn std_cargo(builder: &Builder<'_>, target: TargetSelection, stage: u32, car
     // built with bitcode so that the produced rlibs can be used for both LTO
     // builds (which use bitcode) and non-LTO builds (which use object code).
     // So we override the override here!
-    //
-    // But we don't bother for the stage 0 compiler because it's never used
-    // with LTO.
-    if stage >= 1 {
-        cargo.rustflag("-Cembed-bitcode=yes");
-    }
+    cargo.rustflag("-Cembed-bitcode=yes");
+
     if builder.config.rust_lto == RustcLto::Off {
         cargo.rustflag("-Clto=off");
     }

@@ -26,6 +26,7 @@ use crate::parser::ArgParser;
 use crate::session_diagnostics::UnusedMultiple;
 
 pub(crate) mod allow_unstable;
+pub(crate) mod body;
 pub(crate) mod cfg;
 pub(crate) mod cfg_old;
 pub(crate) mod codegen_attrs;

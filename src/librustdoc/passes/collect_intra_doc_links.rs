@@ -1082,7 +1082,12 @@ impl LinkCollector<'_, '_> {
             for md_link in preprocessed_markdown_links(&doc) {
                 let link = self.resolve_link(&doc, item, item_id, module_id, &md_link);
                 if let Some(link) = link {
-                    self.cx.cache.intra_doc_links.entry(item.item_id).or_default().insert(link);
+                    self.cx
+                        .cache
+                        .intra_doc_links
+                        .entry(item.item_or_reexport_id())
+                        .or_default()
+                        .insert(link);
                 }
             }
         }
