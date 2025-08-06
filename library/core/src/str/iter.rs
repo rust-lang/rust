@@ -135,11 +135,7 @@ impl<'a> DoubleEndedIterator for Chars<'a> {
 #[unstable(feature = "peekable_iterator", issue = "132973")]
 impl<'a> PeekableIterator for Chars<'a> {
     fn peek_with<T>(&mut self, func: impl for<'b> FnOnce(Option<&'b Self::Item>) -> T) -> T {
-        // SAFETY: `str` invariant says `self.iter` is a valid UTF-8 string and
-        // the resulting `ch` is a valid Unicode Scalar Value.
-        let tmp = unsafe {
-            next_code_point(&mut self.iter.clone()).map(|ch| char::from_u32_unchecked(ch))
-        };
+        let tmp = self.clone().next();
         func(&tmp)
     }
 }
