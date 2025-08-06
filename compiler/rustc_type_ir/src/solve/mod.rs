@@ -8,6 +8,7 @@ use derive_where::derive_where;
 use rustc_macros::{Decodable_NoContext, Encodable_NoContext, HashStable_NoContext};
 use rustc_type_ir_macros::{Lift_Generic, TypeFoldable_Generic, TypeVisitable_Generic};
 
+use crate::inherent::*;
 use crate::lang_items::TraitSolverLangItem;
 use crate::search_graph::PathKind;
 use crate::{self as ty, Canonical, CanonicalVarValues, Interner, Upcast};
@@ -366,6 +367,121 @@ impl MaybeCause {
 pub enum AdtDestructorKind {
     NotConst,
     Const,
+}
+
+/// Describes under what conditions a type implements `[const] Destruct`,
+/// or what can be implied given assuming it does.
+pub enum DestructConstCondition<I: Interner> {
+    /// The type never satisfies `[const] Destruct`.
+    Never,
+
+    /// The type always satisfies `[const] Destruct`.
+    ///
+    /// This may be due to:
+    /// - The type being `ManuallyDrop`, which is always trivially `Destruct`.
+    /// - All conditions being satisfied statically.
+    Trivial {
+        /// True if the type is `ManuallyDrop`, which guarantees `[const] Destruct`.
+        manually_drop: bool,
+    },
+
+    /// The type satisfies `[const] Destruct` conditionally,
+    /// based on whether certain trait obligations hold for its components.
+    ///
+    /// For example:
+    /// - ADTs whose fields must also implement `[const] Destruct`.
+    /// - Arrays whose element type must implement `[const] Destruct`.
+    Structural(Vec<ty::TraitRef<I>>),
+}
+
+pub fn const_conditions_for_destruct<I: Interner>(
+    cx: I,
+    self_ty: I::Ty,
+    adt_pub_fields_only: bool,
+) -> DestructConstCondition<I> {
+    let destruct_def_id = cx.require_lang_item(TraitSolverLangItem::Destruct);
+
+    match self_ty.kind() {
+        // `ManuallyDrop` is trivially `[const] Destruct` as we do not run any drop glue on it.
+        ty::Adt(adt_def, _) if adt_def.is_manually_drop() => {
+            DestructConstCondition::Trivial { manually_drop: true }
+        }
+
+        // An ADT is `[const] Destruct` only if all of the fields are,
+        // *and* if there is a `Drop` impl, that `Drop` impl is also `[const]`.
+        ty::Adt(adt_def, args) => {
+            let mut const_conditions: Vec<_> = adt_def
+                .all_fields()
+                .map_bound(|fields| {
+                    fields.into_iter().filter_map(|field| {
+                        if adt_pub_fields_only && !field.visibility().is_public() {
+                            None
+                        } else {
+                            Some(cx.type_of(field.def_id()).skip_binder())
+                        }
+                    })
+                })
+                .iter_instantiated(cx, args)
+                .map(|field_ty| ty::TraitRef::new(cx, destruct_def_id, [field_ty]))
+                .collect();
+            match adt_def.destructor(cx) {
+                // `Drop` impl exists, but it's not const. Type cannot be `[const] Destruct`.
+                Some(AdtDestructorKind::NotConst) => return DestructConstCondition::Never,
+                // `Drop` impl exists, and it's const. Require `Ty: [const] Drop` to hold.
+                Some(AdtDestructorKind::Const) => {
+                    let drop_def_id = cx.require_lang_item(TraitSolverLangItem::Drop);
+                    let drop_trait_ref = ty::TraitRef::new(cx, drop_def_id, [self_ty]);
+                    const_conditions.push(drop_trait_ref);
+                }
+                // No `Drop` impl, no need to require anything else.
+                None => {}
+            }
+            DestructConstCondition::Structural(const_conditions)
+        }
+
+        ty::Array(ty, _) | ty::Pat(ty, _) | ty::Slice(ty) => {
+            DestructConstCondition::Structural(vec![ty::TraitRef::new(cx, destruct_def_id, [ty])])
+        }
+
+        ty::Tuple(tys) => DestructConstCondition::Structural(
+            tys.iter().map(|field_ty| ty::TraitRef::new(cx, destruct_def_id, [field_ty])).collect(),
+        ),
+
+        // Trivially implement `[const] Destruct`
+        ty::Bool
+        | ty::Char
+        | ty::Int(..)
+        | ty::Uint(..)
+        | ty::Float(..)
+        | ty::Str
+        | ty::RawPtr(..)
+        | ty::Ref(..)
+        | ty::FnDef(..)
+        | ty::FnPtr(..)
+        | ty::Never
+        | ty::Infer(ty::InferTy::FloatVar(_) | ty::InferTy::IntVar(_))
+        | ty::Error(_) => DestructConstCondition::Trivial { manually_drop: false },
+
+        // Coroutines and closures could implement `[const] Drop`,
+        // but they don't really need to right now.
+        ty::Closure(_, _)
+        | ty::CoroutineClosure(_, _)
+        | ty::Coroutine(_, _)
+        | ty::CoroutineWitness(_, _) => DestructConstCondition::Never,
+
+        // FIXME(unsafe_binders): Unsafe binders could implement `[const] Drop`
+        // if their inner type implements it.
+        ty::UnsafeBinder(_) => DestructConstCondition::Never,
+
+        ty::Dynamic(..) | ty::Param(_) | ty::Alias(..) | ty::Placeholder(_) | ty::Foreign(_) => {
+            DestructConstCondition::Never
+        }
+
+        ty::Bound(..)
+        | ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
+            panic!("unexpected type `{self_ty:?}`")
+        }
+    }
 }
 
 /// Which sizedness trait - `Sized`, `MetaSized`? `PointeeSized` is omitted as it is removed during
