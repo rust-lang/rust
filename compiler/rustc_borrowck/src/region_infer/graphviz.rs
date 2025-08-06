@@ -45,14 +45,14 @@ fn render_region_vid<'tcx>(
         NllRegionVariableOrigin::FreeRegion => "".to_string(),
         NllRegionVariableOrigin::Placeholder(p) => match p.bound.kind {
             ty::BoundRegionKind::Named(def_id) => {
-                format!("(p for {})", tcx.item_name(def_id))
+                format!(" (for<{}>)", tcx.item_name(def_id))
             }
-            ty::BoundRegionKind::ClosureEnv | ty::BoundRegionKind::Anon => "(p)".to_string(),
+            ty::BoundRegionKind::ClosureEnv | ty::BoundRegionKind::Anon => " (for<'_>)".to_string(),
             ty::BoundRegionKind::NamedAnon(_) => {
                 bug!("only used for pretty printing")
             }
         },
-        NllRegionVariableOrigin::Existential { .. } => "(ex)".to_string(),
+        NllRegionVariableOrigin::Existential { .. } => " (ex<'?>)".to_string(),
     };
 
     format!("{:?}{universe_str}{external_name_str}{extra_info}", rvid)
