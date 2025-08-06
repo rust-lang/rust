@@ -60,7 +60,7 @@ impl<'tcx> TailCallCkVisitor<'_, 'tcx> {
         let BodyTy::Fn(caller_sig) = self.thir.body_type else {
             span_bug!(
                 call.span,
-                "`become` outside of functions should have been disallowed by hit_typeck"
+                "`become` outside of functions should have been disallowed by hir_typeck"
             )
         };
 
@@ -131,21 +131,7 @@ impl<'tcx> TailCallCkVisitor<'_, 'tcx> {
         }
 
         if caller_sig.inputs_and_output != callee_sig.inputs_and_output {
-            if caller_sig.inputs() != callee_sig.inputs() {
-                self.report_arguments_mismatch(expr.span, caller_sig, callee_sig);
-            }
-
-            // FIXME(explicit_tail_calls): this currently fails for cases where opaques are used.
-            // e.g.
-            // ```
-            // fn a() -> impl Sized { become b() } // ICE
-            // fn b() -> u8 { 0 }
-            // ```
-            // we should think what is the expected behavior here.
-            // (we should probably just accept this by revealing opaques?)
-            if caller_sig.output() != callee_sig.output() {
-                span_bug!(expr.span, "hir typeck should have checked the return type already");
-            }
+            self.report_arguments_mismatch(expr.span, caller_sig, callee_sig);
         }
 
         {
