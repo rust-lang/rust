@@ -446,7 +446,7 @@ fn ast_ty_search_pat(ty: &ast::Ty) -> (Pat, Pat) {
         TyKind::Tup([]) => (Pat::Str(")"), Pat::Str("(")),
         TyKind::Tup([ty]) => ast_ty_search_pat(ty),
         TyKind::Tup([head, .., tail]) => (ast_ty_search_pat(head).0, ast_ty_search_pat(tail).1),
-        TyKind::OpaqueDef(..) => (Pat::Str("impl"), Pat::Str("")),
+        TyKind::ImplTrait(..) => (Pat::Str("impl"), Pat::Str("")),
         TyKind::Path(qself_path, path) => {
             let start = if qself_path.is_some() {
                 Pat::Str("<")
