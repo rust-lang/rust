@@ -48,7 +48,7 @@ impl<T> UnsafePinned<T> {
     ///
     /// All access to the inner value through `&UnsafePinned<T>` or `&mut UnsafePinned<T>` or
     /// `Pin<&mut UnsafePinned<T>>` requires `unsafe` code.
-    #[inline(always)]
+    #[rustc_early_inline]
     #[must_use]
     #[unstable(feature = "unsafe_pinned", issue = "125735")]
     pub const fn new(value: T) -> Self {
@@ -56,7 +56,7 @@ impl<T> UnsafePinned<T> {
     }
 
     /// Unwraps the value, consuming this `UnsafePinned`.
-    #[inline(always)]
+    #[rustc_early_inline]
     #[must_use]
     #[unstable(feature = "unsafe_pinned", issue = "125735")]
     #[rustc_allow_const_fn_unstable(const_precise_live_drops)]
@@ -67,7 +67,7 @@ impl<T> UnsafePinned<T> {
 
 impl<T: ?Sized> UnsafePinned<T> {
     /// Get read-write access to the contents of a pinned `UnsafePinned`.
-    #[inline(always)]
+    #[rustc_early_inline]
     #[must_use]
     #[unstable(feature = "unsafe_pinned", issue = "125735")]
     pub const fn get_mut_pinned(self: Pin<&mut Self>) -> *mut T {
@@ -79,7 +79,7 @@ impl<T: ?Sized> UnsafePinned<T> {
     ///
     /// You should usually be using `get_mut_pinned` instead to explicitly track the fact that this
     /// memory is "pinned" due to there being aliases.
-    #[inline(always)]
+    #[rustc_early_inline]
     #[must_use]
     #[unstable(feature = "unsafe_pinned", issue = "125735")]
     pub const fn get_mut_unchecked(&mut self) -> *mut T {
@@ -104,7 +104,7 @@ impl<T: ?Sized> UnsafePinned<T> {
     ///     assert_eq!(ptr.read(), 1);
     /// }
     /// ```
-    #[inline(always)]
+    #[rustc_early_inline]
     #[must_use]
     #[unstable(feature = "unsafe_pinned", issue = "125735")]
     pub const fn get(&self) -> *mut T {
@@ -117,7 +117,7 @@ impl<T: ?Sized> UnsafePinned<T> {
     /// avoid the creation of temporary references.
     ///
     /// [`get`]: UnsafePinned::get
-    #[inline(always)]
+    #[rustc_early_inline]
     #[must_use]
     #[unstable(feature = "unsafe_pinned", issue = "125735")]
     pub const fn raw_get(this: *const Self) -> *const T {
@@ -131,7 +131,7 @@ impl<T: ?Sized> UnsafePinned<T> {
     ///
     /// [`get_mut_pinned`]: UnsafePinned::get_mut_pinned
     /// [`get_mut_unchecked`]: UnsafePinned::get_mut_unchecked
-    #[inline(always)]
+    #[rustc_early_inline]
     #[must_use]
     #[unstable(feature = "unsafe_pinned", issue = "125735")]
     pub const fn raw_get_mut(this: *mut Self) -> *mut T {

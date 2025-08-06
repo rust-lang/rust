@@ -875,7 +875,7 @@ impl<T: Ord, A: Allocator> BinaryHeap<T, A> {
 
         let tail_len = self.len() - start;
 
-        #[inline(always)]
+        #[rustc_early_inline]
         fn log2_fast(x: usize) -> usize {
             (usize::BITS - x.leading_zeros() - 1) as usize
         }

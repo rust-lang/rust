@@ -15,16 +15,19 @@
               debug len => _4;
           }
       }
+      scope 3 (inlined core::slice::<impl [i32]>::as_ptr) {
+          let mut _7: *const [i32];
+      }
   
       bb0: {
 -         StorageLive(_2);
 +         nop;
           StorageLive(_3);
           _3 = &(*_1);
-          _2 = core::slice::<impl [i32]>::as_ptr(move _3) -> [return: bb1, unwind unreachable];
-      }
-  
-      bb1: {
+          StorageLive(_7);
+          _7 = &raw const (*_3);
+          _2 = move _7 as *const i32 (PtrToPtr);
+          StorageDead(_7);
           StorageDead(_3);
 -         StorageLive(_4);
 +         nop;

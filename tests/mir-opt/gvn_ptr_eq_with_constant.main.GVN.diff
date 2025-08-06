@@ -6,26 +6,26 @@
       let _1: bool;
       let mut _2: *mut u8;
       scope 1 (inlined dangling_mut::<u8>) {
-          scope 2 (inlined NonNull::<u8>::dangling) {
+          scope 2 (inlined NonNull::<u8>::as_ptr) {
+          }
+          scope 3 (inlined NonNull::<u8>::dangling) {
               let mut _3: std::num::NonZero<usize>;
-              scope 3 {
-                  scope 5 (inlined std::ptr::Alignment::as_nonzero) {
+              scope 4 {
+                  scope 6 (inlined std::ptr::Alignment::as_nonzero) {
                   }
-                  scope 6 (inlined NonNull::<u8>::without_provenance) {
-                      scope 7 {
-                      }
-                      scope 8 (inlined NonZero::<usize>::get) {
+                  scope 7 (inlined NonNull::<u8>::without_provenance) {
+                      scope 8 {
                       }
                       scope 9 (inlined std::ptr::without_provenance::<u8>) {
                           scope 10 (inlined without_provenance_mut::<u8>) {
                           }
                       }
+                      scope 11 (inlined NonZero::<usize>::get) {
+                      }
                   }
               }
-              scope 4 (inlined std::ptr::Alignment::of::<u8>) {
+              scope 5 (inlined std::ptr::Alignment::of::<u8>) {
               }
-          }
-          scope 11 (inlined NonNull::<u8>::as_ptr) {
           }
       }
       scope 12 (inlined Foo::<u8>::cmp_ptr) {

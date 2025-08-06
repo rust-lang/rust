@@ -84,7 +84,7 @@ macro_rules! iterator {
             }
 
             // Helper function for creating a slice from the iterator.
-            #[inline(always)]
+            #[rustc_early_inline]
             fn make_slice(&self) -> &'a [T] {
                 // SAFETY: the iterator was created from a slice with pointer
                 // `self.ptr` and length `len!(self)`. This guarantees that all
@@ -95,7 +95,7 @@ macro_rules! iterator {
             // Helper function for moving the start of the iterator forwards by `offset` elements,
             // returning the old start.
             // Unsafe because the offset must not exceed `self.len()`.
-            #[inline(always)]
+            #[rustc_early_inline]
             unsafe fn post_inc_start(&mut self, offset: usize) -> NonNull<T> {
                 let old = self.ptr;
 
@@ -114,7 +114,7 @@ macro_rules! iterator {
             // Helper function for moving the end of the iterator backwards by `offset` elements,
             // returning the new end.
             // Unsafe because the offset must not exceed `self.len()`.
-            #[inline(always)]
+            #[rustc_early_inline]
             unsafe fn pre_dec_end(&mut self, offset: usize) -> NonNull<T> {
                 if_zst!(mut self,
                     // SAFETY: By our precondition, `offset` can be at most the

@@ -33,7 +33,7 @@ where
 // This binary heap respects the invariant `parent >= child`.
 //
 // SAFETY: The caller has to guarantee that `node <= v.len()`.
-#[inline(always)]
+#[rustc_early_inline]
 unsafe fn sift_down<T, F>(v: &mut [T], mut node: usize, is_less: &mut F)
 where
     F: FnMut(&T, &T) -> bool,

@@ -17,20 +17,20 @@
           scope 2 {
               debug ptr => _3;
           }
-          scope 5 (inlined <std::alloc::Global as Allocator>::allocate) {
-          }
-          scope 6 (inlined #[track_caller] Result::<NonNull<[u8]>, std::alloc::AllocError>::unwrap) {
+          scope 5 (inlined #[track_caller] Result::<NonNull<[u8]>, std::alloc::AllocError>::unwrap) {
               let mut _12: isize;
               let _13: std::alloc::AllocError;
               let mut _14: !;
               let mut _15: &dyn std::fmt::Debug;
               let _16: &std::alloc::AllocError;
+              scope 6 {
+              }
               scope 7 {
               }
-              scope 8 {
-              }
           }
-          scope 9 (inlined NonNull::<[u8]>::as_ptr) {
+          scope 8 (inlined NonNull::<[u8]>::as_ptr) {
+          }
+          scope 9 (inlined <std::alloc::Global as Allocator>::allocate) {
           }
       }
       scope 3 (inlined #[track_caller] Option::<Layout>::unwrap) {
@@ -75,28 +75,19 @@
           _7 = copy _9;
           StorageLive(_8);
 -         _8 = copy _1;
--         _6 = std::alloc::Global::alloc_impl(move _7, move _8, const false) -> [return: bb4, unwind unreachable];
+-         _6 = std::alloc::Global::alloc_impl(move _7, move _8, const false) -> [return: bb6, unwind unreachable];
 +         _8 = const Layout {{ size: Indirect { alloc_id: ALLOC0, offset: Size(4 bytes) }: usize, align: std::ptr::Alignment(Scalar(0x00000000): std::ptr::alignment::AlignmentEnum) }};
-+         _6 = std::alloc::Global::alloc_impl(copy _9, const Layout {{ size: Indirect { alloc_id: ALLOC0, offset: Size(4 bytes) }: usize, align: std::ptr::Alignment(Scalar(0x00000000): std::ptr::alignment::AlignmentEnum) }}, const false) -> [return: bb4, unwind unreachable];
++         _6 = std::alloc::Global::alloc_impl(copy _9, const Layout {{ size: Indirect { alloc_id: ALLOC0, offset: Size(4 bytes) }: usize, align: std::ptr::Alignment(Scalar(0x00000000): std::ptr::alignment::AlignmentEnum) }}, const false) -> [return: bb6, unwind unreachable];
       }
   
       bb4: {
-          StorageDead(_8);
-          StorageDead(_7);
-          StorageLive(_12);
-          StorageLive(_16);
-          _12 = discriminant(_6);
-          switchInt(move _12) -> [0: bb6, 1: bb5, otherwise: bb1];
-      }
-  
-      bb5: {
           StorageLive(_15);
           _16 = &_13;
           _15 = copy _16 as &dyn std::fmt::Debug (PointerCoercion(Unsize, Implicit));
           _14 = result::unwrap_failed(const "called `Result::unwrap()` on an `Err` value", move _15) -> unwind unreachable;
       }
   
-      bb6: {
+      bb5: {
           _5 = move ((_6 as Ok).0: std::ptr::NonNull<[u8]>);
           StorageDead(_16);
           StorageDead(_12);
@@ -109,6 +100,15 @@
 -         StorageDead(_1);
 +         nop;
           return;
+      }
+  
+      bb6: {
+          StorageDead(_8);
+          StorageDead(_7);
+          StorageLive(_12);
+          StorageLive(_16);
+          _12 = discriminant(_6);
+          switchInt(move _12) -> [0: bb5, 1: bb4, otherwise: bb1];
       }
   }
   

@@ -1,5 +1,5 @@
-- // MIR for `unchecked_shr_signed_bigger` before Inline
-+ // MIR for `unchecked_shr_signed_bigger` after Inline
+- // MIR for `unchecked_shr_signed_bigger` before ForceInline
++ // MIR for `unchecked_shr_signed_bigger` after ForceInline
   
   fn unchecked_shr_signed_bigger(_1: i64, _2: u32) -> i64 {
       debug a => _1;

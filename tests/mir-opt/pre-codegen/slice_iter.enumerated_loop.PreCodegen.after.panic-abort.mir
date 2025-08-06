@@ -71,25 +71,25 @@ fn enumerated_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
                             scope 33 (inlined std::ptr::const_ptr::<impl *const T>::cast::<()>) {
                             }
                         }
-                        scope 38 (inlined <NonNull<T> as PartialEq>::eq) {
-                            let mut _17: *mut T;
-                            let mut _18: *mut T;
-                            scope 39 (inlined NonNull::<T>::as_ptr) {
-                            }
-                            scope 40 (inlined NonNull::<T>::as_ptr) {
-                            }
-                        }
-                        scope 41 (inlined NonNull::<T>::add) {
+                        scope 38 (inlined NonNull::<T>::add) {
                             let mut _20: *const T;
                             let mut _21: *const T;
-                            scope 42 (inlined NonNull::<T>::as_ptr) {
+                            scope 39 (inlined NonNull::<T>::as_ptr) {
                             }
                         }
-                        scope 43 (inlined NonNull::<T>::as_ref::<'_>) {
+                        scope 40 (inlined NonNull::<T>::as_ref::<'_>) {
                             let _25: *const T;
+                            scope 41 (inlined NonNull::<T>::as_ptr) {
+                            }
+                            scope 42 (inlined std::ptr::mut_ptr::<impl *mut T>::cast_const) {
+                            }
+                        }
+                        scope 43 (inlined <NonNull<T> as PartialEq>::eq) {
+                            let mut _17: *mut T;
+                            let mut _18: *mut T;
                             scope 44 (inlined NonNull::<T>::as_ptr) {
                             }
-                            scope 45 (inlined std::ptr::mut_ptr::<impl *mut T>::cast_const) {
+                            scope 45 (inlined NonNull::<T>::as_ptr) {
                             }
                         }
                     }
@@ -109,21 +109,21 @@ fn enumerated_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
                     let _9: *const T;
                     scope 7 {
                     }
-                    scope 11 (inlined std::ptr::without_provenance::<T>) {
-                        scope 12 (inlined without_provenance_mut::<T>) {
+                    scope 8 (inlined std::ptr::without_provenance::<T>) {
+                        scope 9 (inlined without_provenance_mut::<T>) {
                         }
                     }
-                    scope 13 (inlined NonNull::<T>::as_ptr) {
+                    scope 10 (inlined NonNull::<T>::as_ptr) {
                     }
-                    scope 14 (inlined #[track_caller] std::ptr::mut_ptr::<impl *mut T>::add) {
+                    scope 11 (inlined #[track_caller] std::ptr::mut_ptr::<impl *mut T>::add) {
                     }
                 }
-                scope 8 (inlined NonNull::<[T]>::from_ref) {
+                scope 12 (inlined NonNull::<[T]>::from_ref) {
                     let mut _4: *const [T];
                 }
-                scope 9 (inlined NonNull::<[T]>::cast::<T>) {
+                scope 13 (inlined NonNull::<[T]>::cast::<T>) {
                     let mut _5: *const T;
-                    scope 10 (inlined NonNull::<[T]>::as_ptr) {
+                    scope 14 (inlined NonNull::<[T]>::as_ptr) {
                     }
                 }
             }

@@ -100,7 +100,7 @@ pub use num::FloatToInt;
 /// ```
 #[stable(feature = "convert_id", since = "1.33.0")]
 #[rustc_const_stable(feature = "const_identity", since = "1.33.0")]
-#[inline(always)]
+#[rustc_early_inline]
 #[rustc_diagnostic_item = "convert_identity"]
 pub const fn identity<T>(x: T) -> T {
     x
