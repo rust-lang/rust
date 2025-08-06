@@ -610,7 +610,13 @@ fn do_mir_borrowck<'tcx>(
     // }
 
     if body.basic_blocks.thir_had_loops != Some(false) {
-        // Cyclic
+        // Cyclic: "single-pass"
+        let borrows = Borrows::new(tcx, body, &regioncx, &borrow_set);
+        let uninits = MaybeUninitializedPlaces::new(tcx, body, &move_data);
+        let ever_inits = EverInitializedPlaces::new(body, &move_data);
+        compute_cyclic_dataflow(body, borrows, uninits, ever_inits, &mut mbcx);
+    } else {
+        // Acyclic: default
         let (mut flow_analysis, flow_entry_states) =
             get_flow_results(tcx, body, &move_data, &borrow_set, &regioncx);
         visit_results(
@@ -620,13 +626,6 @@ fn do_mir_borrowck<'tcx>(
             &flow_entry_states,
             &mut mbcx,
         );
-    } else {
-        // Acyclic
-        let borrows = Borrows::new(tcx, body, &regioncx, &borrow_set);
-        let uninits = MaybeUninitializedPlaces::new(tcx, body, &move_data);
-        let ever_inits = EverInitializedPlaces::new(body, &move_data);
-        let mut analysis = Borrowck { borrows, uninits, ever_inits };
-        compute_rpo_dataflow(body, &mut analysis, &mut mbcx);
     }
 
     // if body.basic_blocks.thir_had_loops.unwrap_or_else(|| body.basic_blocks.is_cfg_cyclic()) {
@@ -2552,7 +2551,6 @@ fn do_mir_borrowck<'tcx>(
     result
 }
 
-#[cfg(test)]
 fn compute_cyclic_dataflow<'mir, 'tcx>(
     body: &Body<'tcx>,
     borrows: Borrows<'mir, 'tcx>,
