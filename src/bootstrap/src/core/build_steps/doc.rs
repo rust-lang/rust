@@ -16,8 +16,7 @@ use crate::core::build_steps::tool::{
     self, RustcPrivateCompilers, SourceType, Tool, prepare_tool_cargo,
 };
 use crate::core::builder::{
-    self, Alias, Builder, Compiler, Kind, RunConfig, ShouldRun, Step, StepMetadata,
-    crate_description,
+    self, Builder, Compiler, Kind, RunConfig, ShouldRun, Step, StepMetadata, crate_description,
 };
 use crate::core::config::{Config, TargetSelection};
 use crate::helpers::{submodule_path_of, symlink_dir, t, up_to_date};
@@ -26,7 +25,7 @@ use crate::{FileType, Mode};
 macro_rules! book {
     ($($name:ident, $path:expr, $book_name:expr, $lang:expr ;)+) => {
         $(
-            #[derive(Debug, Clone, Hash, PartialEq, Eq)]
+        #[derive(Debug, Clone, Hash, PartialEq, Eq)]
         pub struct $name {
             target: TargetSelection,
         }
@@ -797,13 +796,21 @@ pub struct Rustc {
 
 impl Rustc {
     /// Document `stage` compiler for the given `target`.
-    pub(crate) fn for_stage(builder: &Builder<'_>, target: TargetSelection, stage: u32) -> Self {
+    pub(crate) fn for_stage(builder: &Builder<'_>, stage: u32, target: TargetSelection) -> Self {
+        let build_compiler = prepare_doc_compiler(builder, target, stage);
+        Self::from_build_compiler(builder, build_compiler, target)
+    }
+
+    fn from_build_compiler(
+        builder: &Builder<'_>,
+        build_compiler: Compiler,
+        target: TargetSelection,
+    ) -> Self {
         let crates = builder
             .in_tree_crates("rustc-main", Some(target))
             .into_iter()
             .map(|krate| krate.name.to_string())
             .collect();
-        let build_compiler = prepare_doc_compiler(builder, target, stage);
         Self { build_compiler, target, crates }
     }
 }
@@ -821,7 +828,7 @@ impl Step for Rustc {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(Rustc::for_stage(run.builder, run.target, run.builder.top_stage));
+        run.builder.ensure(Rustc::for_stage(run.builder, run.builder.top_stage, run.target));
     }
 
     /// Generates compiler documentation.
@@ -942,12 +949,14 @@ macro_rules! tool_doc {
     (
         $tool: ident,
         $path: literal,
-        $(rustc_tool = $rustc_tool:literal, )?
+        $(rustc_private_tool = $rustc_private_tool:literal, )?
         $(is_library = $is_library:expr,)?
         $(crates = $crates:expr)?
        ) => {
         #[derive(Debug, Clone, Hash, PartialEq, Eq)]
         pub struct $tool {
+            build_compiler: Compiler,
+            mode: Mode,
             target: TargetSelection,
         }
 
@@ -962,15 +971,26 @@ macro_rules! tool_doc {
             }
 
             fn make_run(run: RunConfig<'_>) {
-                run.builder.ensure($tool { target: run.target });
+                let target = run.target;
+                let (build_compiler, mode) = if true $(&& $rustc_private_tool)? {
+                    // Rustdoc needs the rustc sysroot available to build.
+                    let compilers = RustcPrivateCompilers::new(run.builder, run.builder.top_stage, target);
+
+                    // Build rustc docs so that we generate relative links.
+                    run.builder.ensure(Rustc::from_build_compiler(run.builder, compilers.build_compiler(), target));
+
+                    (compilers.build_compiler(), Mode::ToolRustc)
+                } else {
+                    // bootstrap/host tools have to be documented with the stage 0 compiler
+                    (prepare_doc_compiler(run.builder, target, 1), Mode::ToolBootstrap)
+                };
+
+                run.builder.ensure($tool { build_compiler, mode, target });
             }
 
-            /// Generates compiler documentation.
+            /// Generates documentation for a tool.
             ///
-            /// This will generate all documentation for compiler and dependencies.
-            /// Compiler documentation is distributed separately, so we make sure
-            /// we do not merge it with the other documentation from std, test and
-            /// proc_macros. This is largely just a wrapper around `cargo doc`.
+            /// This is largely just a wrapper around `cargo doc`.
             fn run(self, builder: &Builder<'_>) {
                 let mut source_type = SourceType::InTree;
 
@@ -979,31 +999,17 @@ macro_rules! tool_doc {
                     builder.require_submodule(&submodule_path, None);
                 }
 
-                let stage = builder.top_stage;
-                let target = self.target;
+                let $tool { build_compiler, mode, target } = self;
 
                 // This is the intended out directory for compiler documentation.
                 let out = builder.compiler_doc_out(target);
                 t!(fs::create_dir_all(&out));
 
-                let compiler = builder.compiler(stage, builder.config.host_target);
-                builder.std(compiler, target);
-
-                if true $(&& $rustc_tool)? {
-                    // Build rustc docs so that we generate relative links.
-                    builder.ensure(Rustc::new(stage, target, builder));
-
-                    // Rustdoc needs the rustc sysroot available to build.
-                    // FIXME: is there a way to only ensure `check::Rustc` here? Last time I tried it failed
-                    // with strange errors, but only on a full bors test ...
-                    builder.ensure(compile::Rustc::new(compiler, target));
-                }
-
                 // Build cargo command.
                 let mut cargo = prepare_tool_cargo(
                     builder,
-                    compiler,
-                    Mode::ToolRustc,
+                    build_compiler,
+                    mode,
                     target,
                     Kind::Doc,
                     $path,
@@ -1030,7 +1036,7 @@ macro_rules! tool_doc {
                 cargo.rustdocflag("--show-type-layout");
                 cargo.rustdocflag("--generate-link-to-definition");
 
-                let out_dir = builder.stage_out(compiler, Mode::ToolRustc).join(target).join("doc");
+                let out_dir = builder.stage_out(build_compiler, mode).join(target).join("doc");
                 $(for krate in $crates {
                     let dir_name = krate.replace("-", "_");
                     t!(fs::create_dir_all(out_dir.join(&*dir_name)));
@@ -1038,10 +1044,10 @@ macro_rules! tool_doc {
 
                 // Symlink compiler docs to the output directory of rustdoc documentation.
                 symlink_dir_force(&builder.config, &out, &out_dir);
-                let proc_macro_out_dir = builder.stage_out(compiler, Mode::ToolRustc).join("doc");
+                let proc_macro_out_dir = builder.stage_out(build_compiler, mode).join("doc");
                 symlink_dir_force(&builder.config, &out, &proc_macro_out_dir);
 
-                let _guard = builder.msg_doc(compiler, stringify!($tool).to_lowercase(), target);
+                let _guard = builder.msg_doc(build_compiler, stringify!($tool).to_lowercase(), target);
                 cargo.into_cmd().run(builder);
 
                 if !builder.config.dry_run() {
@@ -1055,7 +1061,7 @@ macro_rules! tool_doc {
             }
 
             fn metadata(&self) -> Option<StepMetadata> {
-                Some(StepMetadata::doc(stringify!($tool), self.target))
+                Some(StepMetadata::doc(stringify!($tool), self.target).built_by(self.build_compiler))
             }
         }
     }
@@ -1065,7 +1071,7 @@ macro_rules! tool_doc {
 tool_doc!(
     BuildHelper,
     "src/build_helper",
-    rustc_tool = false,
+    rustc_private_tool = false,
     is_library = true,
     crates = ["build_helper"]
 );
@@ -1076,7 +1082,7 @@ tool_doc!(Miri, "src/tools/miri", crates = ["miri"]);
 tool_doc!(
     Cargo,
     "src/tools/cargo",
-    rustc_tool = false,
+    rustc_private_tool = false,
     crates = [
         "cargo",
         "cargo-credential",
@@ -1090,25 +1096,25 @@ tool_doc!(
         "rustfix",
     ]
 );
-tool_doc!(Tidy, "src/tools/tidy", rustc_tool = false, crates = ["tidy"]);
+tool_doc!(Tidy, "src/tools/tidy", rustc_private_tool = false, crates = ["tidy"]);
 tool_doc!(
     Bootstrap,
     "src/bootstrap",
-    rustc_tool = false,
+    rustc_private_tool = false,
     is_library = true,
     crates = ["bootstrap"]
 );
 tool_doc!(
     RunMakeSupport,
     "src/tools/run-make-support",
-    rustc_tool = false,
+    rustc_private_tool = false,
     is_library = true,
     crates = ["run_make_support"]
 );
 tool_doc!(
     Compiletest,
     "src/tools/compiletest",
-    rustc_tool = false,
+    rustc_private_tool = false,
     is_library = true,
     crates = ["compiletest"]
 );
