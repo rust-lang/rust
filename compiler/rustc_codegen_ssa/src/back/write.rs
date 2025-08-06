@@ -99,7 +99,6 @@ pub struct ModuleConfig {
     pub emit_obj: EmitObj,
     pub emit_thin_lto: bool,
     pub emit_thin_lto_summary: bool,
-    pub bc_cmdline: String,
 
     // Miscellaneous flags. These are mostly copied from command-line
     // options.
@@ -216,7 +215,6 @@ impl ModuleConfig {
                 sess.opts.output_types.contains_key(&OutputType::ThinLinkBitcode),
                 false
             ),
-            bc_cmdline: sess.target.bitcode_llvm_cmdline.to_string(),
 
             verify_llvm_ir: sess.verify_llvm_ir(),
             lint_llvm_ir: sess.opts.unstable_opts.lint_llvm_ir,
