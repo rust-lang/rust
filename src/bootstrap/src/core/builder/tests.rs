@@ -1870,6 +1870,22 @@ mod snapshot {
         [doc] Compiletest <host>
         ");
     }
+
+    // Reference should be auto-bumped to stage 2.
+    #[test]
+    fn doc_reference() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("doc")
+                .path("reference")
+                .render_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 1 <host> -> std 1 <host>
+        [build] rustc 0 <host> -> Rustbook 1 <host>
+        [doc] rustc 1 <host> -> reference (book) 2 <host>
+        ");
+    }
 }
 
 struct ExecutedSteps {
