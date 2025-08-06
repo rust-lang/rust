@@ -366,7 +366,7 @@ class RoaringBitmap {
             }
         }
         // shrink the keysAndCardinalities list if it's more than twice as big as it needs to be
-        if (result.containers.length < (result.containers.length * 2)) {
+        if (result.keysAndCardinalities.length > (result.containers.length * 8)) {
             result.keysAndCardinalities =
                 result.keysAndCardinalities.slice(result.containers.length * 4);
         }
@@ -482,9 +482,9 @@ class RoaringBitmap {
             }
         }
         // shrink the keysAndCardinalities list if it's more than twice as big as it needs to be
-        if (result.containers.length < (result.containers.length * 2)) {
-            //result.keysAndCardinalities =
-            //    result.keysAndCardinalities.slice(result.containers.length * 4);
+        if (result.keysAndCardinalities.length > (result.containers.length * 8)) {
+            result.keysAndCardinalities =
+                result.keysAndCardinalities.slice(result.containers.length * 4);
         }
         return result;
     }
