@@ -9,8 +9,6 @@
 #![feature(lang_items)]
 #![no_std]
 
-// CHECK: @llvm.used = {{.+}} @__rustc_debug_gdb_scripts_section
-
 #[panic_handler]
 fn panic_handler(_: &core::panic::PanicInfo) -> ! {
     loop {}
@@ -24,7 +22,7 @@ extern "C" fn rust_eh_personality() {
 // Needs rustc to generate `main` as that's where the magic load is inserted.
 // IOW, we cannot write this test with `#![no_main]`.
 // CHECK-LABEL: @main
-// CHECK: load volatile i8, {{.+}} @__rustc_debug_gdb_scripts_section
+// CHECK: load volatile i8, {{.+}} @__rustc_debug_gdb_scripts_section__
 
 #[lang = "start"]
 fn lang_start<T: 'static>(

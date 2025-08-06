@@ -609,7 +609,15 @@ pub fn collect_debugger_visualizers_transitive(
 ) -> BTreeSet<DebuggerVisualizerFile> {
     tcx.debugger_visualizers(LOCAL_CRATE)
         .iter()
-        .chain(tcx.crates(()).iter().flat_map(|&cnum| tcx.debugger_visualizers(cnum)))
+        .chain(
+            tcx.crates(())
+                .iter()
+                .filter(|&cnum| {
+                    let used_crate_source = tcx.used_crate_source(*cnum);
+                    used_crate_source.rlib.is_some() || used_crate_source.rmeta.is_some()
+                })
+                .flat_map(|&cnum| tcx.debugger_visualizers(cnum)),
+        )
         .filter(|visualizer| visualizer.visualizer_type == visualizer_type)
         .cloned()
         .collect::<BTreeSet<_>>()
