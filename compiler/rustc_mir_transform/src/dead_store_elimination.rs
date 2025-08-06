@@ -83,7 +83,15 @@ fn eliminate<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) -> bool {
                 let loc = Location { block: bb, statement_index };
                 live.seek_before_primary_effect(loc);
                 if !live.get().contains(destination.local) {
-                    patch.push((loc, !debuginfo_locals.contains(destination.local)));
+                    let drop_debuginfo = !debuginfo_locals.contains(destination.local);
+                    // When eliminating a dead statement, we need to address
+                    // the debug information for that statement.
+                    assert!(
+                        drop_debuginfo || statement.kind.as_debuginfo().is_some(),
+                        "don't know how to retain the debug information for {:?}",
+                        statement.kind
+                    );
+                    patch.push((loc, drop_debuginfo));
                 }
             }
         }
