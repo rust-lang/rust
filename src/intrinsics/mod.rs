@@ -17,7 +17,9 @@ mod llvm_aarch64;
 mod llvm_x86;
 mod simd;
 
-use cranelift_codegen::ir::{AtomicRmwOp, BlockArg, ExceptionTableData, ExceptionTag};
+use cranelift_codegen::ir::{
+    AtomicRmwOp, BlockArg, ExceptionTableData, ExceptionTableItem, ExceptionTag,
+};
 use rustc_middle::ty;
 use rustc_middle::ty::GenericArgsRef;
 use rustc_middle::ty::layout::ValidityRequirement;
@@ -1381,8 +1383,8 @@ fn codegen_regular_intrinsic_call<'tcx>(
                     fx.bcx.func.dfg.exception_tables.push(ExceptionTableData::new(
                         f_sig,
                         fallthrough_block_call,
-                        [(
-                            Some(ExceptionTag::with_number(EXCEPTION_HANDLER_CATCH).unwrap()),
+                        [ExceptionTableItem::Tag(
+                            ExceptionTag::with_number(EXCEPTION_HANDLER_CATCH).unwrap(),
                             catch_block_call,
                         )],
                     ));

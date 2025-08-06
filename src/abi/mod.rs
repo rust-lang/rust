@@ -7,7 +7,9 @@ mod returning;
 use std::borrow::Cow;
 use std::mem;
 
-use cranelift_codegen::ir::{ArgumentPurpose, BlockArg, ExceptionTableData, ExceptionTag, SigRef};
+use cranelift_codegen::ir::{
+    ArgumentPurpose, BlockArg, ExceptionTableData, ExceptionTableItem, ExceptionTag, SigRef,
+};
 use cranelift_codegen::isa::CallConv;
 use cranelift_module::ModuleError;
 use rustc_abi::{CanonAbi, ExternAbi, X86Call};
@@ -856,8 +858,8 @@ pub(crate) fn codegen_call_with_unwind_action(
             let exception_table = fx.bcx.func.dfg.exception_tables.push(ExceptionTableData::new(
                 sig_ref,
                 fallthrough_block_call,
-                [(
-                    Some(ExceptionTag::with_number(EXCEPTION_HANDLER_CLEANUP).unwrap()),
+                [ExceptionTableItem::Tag(
+                    ExceptionTag::with_number(EXCEPTION_HANDLER_CLEANUP).unwrap(),
                     pre_cleanup_block_call,
                 )],
             ));

@@ -1,5 +1,6 @@
 //! Unwind info generation (`.eh_frame`)
 
+use cranelift_codegen::FinalizedMachExceptionHandler;
 use cranelift_codegen::ir::Endianness;
 use cranelift_codegen::isa::unwind::UnwindInfo;
 use cranelift_module::DataId;
@@ -172,23 +173,28 @@ impl UnwindContext {
                                 action_entry: None,
                             });
                         }
-                        for &(tag, landingpad) in call_site.exception_handlers {
-                            match tag.expand().unwrap().as_u32() {
-                                EXCEPTION_HANDLER_CLEANUP => {
-                                    gcc_except_table_data.call_sites.0.push(CallSite {
-                                        start: u64::from(call_site.ret_addr - 1),
-                                        length: 1,
-                                        landing_pad: u64::from(landingpad),
-                                        action_entry: None,
-                                    })
-                                }
-                                EXCEPTION_HANDLER_CATCH => {
-                                    gcc_except_table_data.call_sites.0.push(CallSite {
-                                        start: u64::from(call_site.ret_addr - 1),
-                                        length: 1,
-                                        landing_pad: u64::from(landingpad),
-                                        action_entry: Some(catch_action),
-                                    })
+                        for &handler in call_site.exception_handlers {
+                            match handler {
+                                FinalizedMachExceptionHandler::Tag(tag, landingpad) => {
+                                    match tag.as_u32() {
+                                        EXCEPTION_HANDLER_CLEANUP => {
+                                            gcc_except_table_data.call_sites.0.push(CallSite {
+                                                start: u64::from(call_site.ret_addr - 1),
+                                                length: 1,
+                                                landing_pad: u64::from(landingpad),
+                                                action_entry: None,
+                                            })
+                                        }
+                                        EXCEPTION_HANDLER_CATCH => {
+                                            gcc_except_table_data.call_sites.0.push(CallSite {
+                                                start: u64::from(call_site.ret_addr - 1),
+                                                length: 1,
+                                                landing_pad: u64::from(landingpad),
+                                                action_entry: Some(catch_action),
+                                            })
+                                        }
+                                        _ => unreachable!(),
+                                    }
                                 }
                                 _ => unreachable!(),
                             }

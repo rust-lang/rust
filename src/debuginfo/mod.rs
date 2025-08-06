@@ -120,6 +120,7 @@ impl DebugContext {
             encoding,
             LineEncoding::default(),
             LineString::new(comp_dir.as_bytes(), encoding, &mut dwarf.line_strings),
+            None,
             LineString::new(name.as_bytes(), encoding, &mut dwarf.line_strings),
             file_info,
         );
