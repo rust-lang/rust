@@ -19,7 +19,7 @@ Language
 - [Stabilize `repr128` (`#[repr(u128)]`, `#[repr(i128)]`)](https://github.com/rust-lang/rust/pull/138285)
 - [Allow `#![doc(test(attr(..)))]` everywhere](https://github.com/rust-lang/rust/pull/140560)
 - [Extend temporary lifetime extension to also go through tuple struct and tuple variant constructors](https://github.com/rust-lang/rust/pull/140593)
-
+- [`extern "C"` functions on the `wasm32-unknown-unknown` target now have a standards compliant ABI](https://blog.rust-lang.org/2025/04/04/c-abi-changes-for-wasm32-unknown-unknown/)
 
 <a id="1.89.0-Compiler"></a>
 
@@ -35,6 +35,7 @@ Compiler
 Platform Support
 ----------------
 - [Add new Tier-3 targets `loongarch32-unknown-none` and `loongarch32-unknown-none-softfloat`](https://github.com/rust-lang/rust/pull/142053)
+- [`x86_64-apple-darwin` is in the process of being demoted to Tier 2 with host tools](https://github.com/rust-lang/rfcs/pull/3841)
 
 Refer to Rust's [platform support page][platform-support-doc]
 for more information on Rust's tiered platform support.
@@ -120,7 +121,7 @@ Compatibility Notes
 - [Lint against "stdcall", "fastcall", and "cdecl" on non-x86-32 targets](https://github.com/rust-lang/rust/pull/141435)
 - [Future incompatibility warnings relating to the never type (`!`) are now reported in dependencies](https://github.com/rust-lang/rust/pull/141937)
 - [Ensure `std::ptr::copy_*` intrinsics also perform the static self-init checks](https://github.com/rust-lang/rust/pull/142575)
-
+- [`extern "C"` functions on the `wasm32-unknown-unknown` target now have a standards compliant ABI](https://blog.rust-lang.org/2025/04/04/c-abi-changes-for-wasm32-unknown-unknown/)
 
 <a id="1.89.0-Internal-Changes"></a>
 
