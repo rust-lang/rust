@@ -443,9 +443,11 @@ fn ast_ty_search_pat(ty: &ast::Ty) -> (Pat, Pat) {
         TyKind::Never => (Pat::Str("!"), Pat::Str("!")),
         // Parenthesis are trimmed from the text before the search patterns are matched.
         // See: `span_matches_pat`
-        TyKind::Tup([]) => (Pat::Str(")"), Pat::Str("(")),
-        TyKind::Tup([ty]) => ast_ty_search_pat(ty),
-        TyKind::Tup([head, .., tail]) => (ast_ty_search_pat(head).0, ast_ty_search_pat(tail).1),
+        TyKind::Tup(tup) => match &**tup {
+            [] => (Pat::Str(")"), Pat::Str("(")),
+            [ty] => ast_ty_search_pat(ty),
+            [head, .., tail] => (ast_ty_search_pat(head).0, ast_ty_search_pat(tail).1),
+        },
         TyKind::ImplTrait(..) => (Pat::Str("impl"), Pat::Str("")),
         TyKind::Path(qself_path, path) => {
             let start = if qself_path.is_some() {
