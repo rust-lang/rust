@@ -804,8 +804,7 @@ impl Options {
 
         let scrape_examples_options = ScrapeExamplesOptions::new(matches, dcx);
         let with_examples = matches.opt_strs("with-examples");
-        let call_locations =
-            crate::scrape_examples::load_call_locations(with_examples, dcx, &mut loaded_paths);
+        let call_locations = crate::scrape_examples::load_call_locations(with_examples, dcx);
         let doctest_build_args = matches.opt_strs("doctest-build-arg");
 
         let unstable_features =
