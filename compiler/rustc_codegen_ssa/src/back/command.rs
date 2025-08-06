@@ -109,7 +109,7 @@ impl Command {
             }
             Program::Lld(ref p, flavor) => {
                 let mut c = process::Command::new(p);
-                c.arg("-flavor").arg(flavor.as_str());
+                c.arg("-flavor").arg(flavor.desc());
                 c
             }
         };
