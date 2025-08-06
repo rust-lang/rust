@@ -413,10 +413,12 @@ fn ty_search_pat(ty: &Ty<'_>) -> (Pat, Pat) {
 }
 
 fn ast_ty_search_pat(ty: &ast::Ty) -> (Pat, Pat) {
-    match ty.kind {
+    use ast::{FnRetTy, MutTy, TyKind};
+
+    match &ty.kind {
         TyKind::Slice(..) | TyKind::Array(..) => (Pat::Str("["), Pat::Str("]")),
-        TyKind::Ptr(MutTy { ty, .. }) => (Pat::Str("*"), ty_search_pat(ty).1),
-        TyKind::Ref(_, MutTy { ty, .. }) => (Pat::Str("&"), ty_search_pat(ty).1),
+        TyKind::Ptr(MutTy { ty, .. }) => (Pat::Str("*"), ast_ty_search_pat(ty).1),
+        TyKind::Ref(_, MutTy { ty, .. }) => (Pat::Str("&"), ast_ty_search_pat(ty).1),
         TyKind::FnPtr(fn_ptr) => (
             if fn_ptr.safety.is_unsafe() {
                 Pat::Str("unsafe")
@@ -428,20 +430,20 @@ fn ast_ty_search_pat(ty: &ast::Ty) -> (Pat, Pat) {
             match fn_ptr.decl.output {
                 FnRetTy::DefaultReturn(_) => {
                     if let [.., ty] = fn_ptr.decl.inputs {
-                        ty_search_pat(ty).1
+                        ast_ty_search_pat(ty).1
                     } else {
                         Pat::Str("(")
                     }
                 },
-                FnRetTy::Return(ty) => ty_search_pat(ty).1,
+                FnRetTy::Return(ty) => ast_ty_search_pat(ty).1,
             },
         ),
         TyKind::Never => (Pat::Str("!"), Pat::Str("!")),
         // Parenthesis are trimmed from the text before the search patterns are matched.
         // See: `span_matches_pat`
         TyKind::Tup([]) => (Pat::Str(")"), Pat::Str("(")),
-        TyKind::Tup([ty]) => ty_search_pat(ty),
-        TyKind::Tup([head, .., tail]) => (ty_search_pat(head).0, ty_search_pat(tail).1),
+        TyKind::Tup([ty]) => ast_ty_search_pat(ty),
+        TyKind::Tup([head, .., tail]) => (ast_ty_search_pat(head).0, ast_ty_search_pat(tail).1),
         TyKind::OpaqueDef(..) => (Pat::Str("impl"), Pat::Str("")),
         TyKind::Path(qpath) => qpath_search_pat(&qpath),
         TyKind::Infer(()) => (Pat::Str("_"), Pat::Str("_")),
