@@ -203,7 +203,7 @@ impl<T> Copy for NonZero<T> where T: ZeroablePrimitive {}
 #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
 impl<T> const PartialEq for NonZero<T>
 where
-    T: ZeroablePrimitive + ~const PartialEq,
+    T: ZeroablePrimitive + [const] PartialEq,
 {
     #[inline]
     fn eq(&self, other: &Self) -> bool {

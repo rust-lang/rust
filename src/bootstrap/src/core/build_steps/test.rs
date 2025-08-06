@@ -291,12 +291,7 @@ impl Step for Cargotest {
             .args(builder.config.test_args())
             .env("RUSTC", builder.rustc(tested_compiler))
             .env("RUSTDOC", builder.rustdoc_for_compiler(tested_compiler));
-        add_rustdoc_cargo_linker_args(
-            &mut cmd,
-            builder,
-            tested_compiler.host,
-            LldThreads::No,
-        );
+        add_rustdoc_cargo_linker_args(&mut cmd, builder, tested_compiler.host, LldThreads::No);
         cmd.delay_failure().run(builder);
     }
 
@@ -1119,12 +1114,7 @@ impl Step for RustdocGUI {
         cmd.env("RUSTDOC", builder.rustdoc_for_compiler(self.compiler))
             .env("RUSTC", builder.rustc(self.compiler));
 
-        add_rustdoc_cargo_linker_args(
-            &mut cmd,
-            builder,
-            self.compiler.host,
-            LldThreads::No,
-        );
+        add_rustdoc_cargo_linker_args(&mut cmd, builder, self.compiler.host, LldThreads::No);
 
         for path in &builder.paths {
             if let Some(p) = helpers::is_valid_test_suite_arg(path, "tests/rustdoc-gui", builder) {

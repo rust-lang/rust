@@ -9,7 +9,7 @@ use crate::{ops, range};
 #[rustc_const_unstable(feature = "const_index", issue = "143775")]
 impl<T, I> const ops::Index<I> for [T]
 where
-    I: ~const SliceIndex<[T]>,
+    I: [const] SliceIndex<[T]>,
 {
     type Output = I::Output;
 
@@ -23,7 +23,7 @@ where
 #[rustc_const_unstable(feature = "const_index", issue = "143775")]
 impl<T, I> const ops::IndexMut<I> for [T]
 where
-    I: ~const SliceIndex<[T]>,
+    I: [const] SliceIndex<[T]>,
 {
     #[inline(always)]
     fn index_mut(&mut self, index: I) -> &mut I::Output {
