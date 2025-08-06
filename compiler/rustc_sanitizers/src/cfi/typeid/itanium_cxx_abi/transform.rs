@@ -458,10 +458,10 @@ pub(crate) fn transform_instance<'tcx>(
     instance
 }
 
-fn default_or_shim<'tcx>(instance: Instance<'tcx>) -> Option<DefId> {
+fn default_or_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> Option<DefId> {
     match instance.def {
         ty::InstanceKind::Item(def_id) | ty::InstanceKind::FnPtrShim(def_id, _) => {
-            tcx.opt_associated_item(def_id)
+            tcx.opt_associated_item(def_id).map(|item| item.def_id)
         }
         _ => None,
     }
@@ -483,9 +483,9 @@ fn implemented_method<'tcx>(
         trait_method = tcx.associated_item(method_id);
         trait_id = trait_ref.skip_binder().def_id;
         impl_id
-    } else if let Some(trait_method_bound) = default_or_shim(instance) {
+    } else if let Some(trait_method_def_id) = default_or_shim(tcx, instance) {
         // Provided method in a `trait` block or a synthetic `shim`
-        trait_method = trait_method_bound;
+        trait_method = tcx.associated_item(trait_method_def_id);
         method_id = instance.def_id();
         trait_id = tcx.trait_of_assoc(method_id)?;
         trait_ref = ty::EarlyBinder::bind(TraitRef::from_method(tcx, trait_id, instance.args));
