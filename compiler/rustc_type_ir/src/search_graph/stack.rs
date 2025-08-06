@@ -3,7 +3,9 @@ use std::ops::Index;
 use derive_where::derive_where;
 use rustc_index::IndexVec;
 
-use crate::search_graph::{AvailableDepth, Cx, CycleHeads, NestedGoals, PathKind, UsageKind};
+use crate::search_graph::{
+    AvailableDepth, CandidateUsages, Cx, CycleHeads, NestedGoals, PathKind, Usages,
+};
 
 rustc_index::newtype_index! {
     #[orderable]
@@ -40,9 +42,11 @@ pub(super) struct StackEntry<X: Cx> {
     /// Whether evaluating this goal encountered overflow. Lazily updated.
     pub encountered_overflow: bool,
 
-    /// Whether this goal has been used as the root of a cycle. This gets
-    /// eagerly updated when encountering a cycle.
-    pub has_been_used: Option<UsageKind>,
+    /// Whether and how this goal has been used as the root of a cycle. Lazily updated.
+    pub usages: Option<Usages>,
+
+    /// TODO
+    pub candidate_usages: Option<CandidateUsages>,
 
     /// The nested goals of this goal, see the doc comment of the type.
     pub nested_goals: NestedGoals<X>,
