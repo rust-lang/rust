@@ -16,10 +16,11 @@ use std::{cmp, fmt, fs, iter};
 
 use externs::{ExternOpt, split_extern_opt};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
-use rustc_data_structures::stable_hasher::{StableOrd, ToStableHashKey};
+use rustc_data_structures::stable_hasher::{StableHasher, StableOrd, ToStableHashKey};
 use rustc_errors::emitter::HumanReadableErrorType;
 use rustc_errors::{ColorConfig, DiagArgValue, DiagCtxtFlags, IntoDiagArg};
 use rustc_feature::UnstableFeatures;
+use rustc_hashes::Hash64;
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_span::edition::{DEFAULT_EDITION, EDITION_NAME_LIST, Edition, LATEST_STABLE_EDITION};
 use rustc_span::source_map::FilePathMapping;
@@ -1198,7 +1199,25 @@ pub struct OutputFilenames {
 pub const RLINK_EXT: &str = "rlink";
 pub const RUST_CGU_EXT: &str = "rcgu";
 pub const DWARF_OBJECT_EXT: &str = "dwo";
+pub const MAX_FILENAME_LENGTH: usize = 143; // ecryptfs limits filenames to 143 bytes see #49914
 
+/// Ensure the filename is not too long, as some filesystems have a limit.
+/// If the filename is too long, hash part of it and append the hash to the filename.
+/// This is a workaround for long crate names generating overly long filenames.
+fn maybe_strip_file_name(mut path: PathBuf) -> PathBuf {
+    if path.file_name().map_or(0, |name| name.len()) > MAX_FILENAME_LENGTH {
+        let filename = path.file_name().unwrap().to_string_lossy();
+        let hash_len = 64 / 4; // Hash64 is 64 bits encoded in hex
+        let stripped_len = filename.len() - MAX_FILENAME_LENGTH + hash_len;
+
+        let mut hasher = StableHasher::new();
+        filename[..stripped_len].hash(&mut hasher);
+        let hash = hasher.finish::<Hash64>();
+
+        path.set_file_name(format!("{:x}-{}", hash, &filename[stripped_len..]));
+    }
+    path
+}
 impl OutputFilenames {
     pub fn new(
         out_directory: PathBuf,
@@ -1291,7 +1310,7 @@ impl OutputFilenames {
         }
 
         let temps_directory = self.temps_directory.as_ref().unwrap_or(&self.out_directory);
-        self.with_directory_and_extension(temps_directory, &extension)
+        maybe_strip_file_name(self.with_directory_and_extension(temps_directory, &extension))
     }
 
     pub fn temp_path_for_diagnostic(&self, ext: &str) -> PathBuf {
