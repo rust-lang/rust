@@ -400,14 +400,19 @@ macro_rules! make_mir_visitor {
                             PlaceContext::NonUse(NonUseContext::VarDebugInfo),
                             location
                         );
-                        if let Some(place) = place {
-                            self.visit_place(
-                                place,
-                                PlaceContext::NonUse(NonUseContext::VarDebugInfo),
-                                location
-                            );
-                        }
+                        self.visit_place(
+                            place,
+                            PlaceContext::NonUse(NonUseContext::VarDebugInfo),
+                            location
+                        );
                     },
+                    StmtDebugInfo::InvalidAssign(local) => {
+                        self.visit_local(
+                            $(& $mutability)? *local,
+                            PlaceContext::NonUse(NonUseContext::VarDebugInfo),
+                            location
+                        );
+                    }
                 }
             }
 

@@ -82,7 +82,7 @@ impl<'tcx> StatementKind<'tcx> {
             StatementKind::Assign(box (place, Rvalue::Ref(_, _, ref_place)))
                 if let Some(local) = place.as_local() =>
             {
-                Some(StmtDebugInfo::AssignRef(local, Some(*ref_place)))
+                Some(StmtDebugInfo::AssignRef(local, *ref_place))
             }
             _ => None,
         }
@@ -496,6 +496,21 @@ impl<'tcx> PlaceRef<'tcx> {
             let base = PlaceRef { local: self.local, projection: &self.projection[..i] };
             (base, *proj)
         })
+    }
+
+    /// Return the place accessed locals that include the base local.
+    pub fn accessed_locals(self) -> impl Iterator<Item = Local> {
+        std::iter::once(self.local).chain(self.projection.iter().filter_map(|proj| match proj {
+            ProjectionElem::Index(local) => Some(*local),
+            ProjectionElem::Deref
+            | ProjectionElem::Field(_, _)
+            | ProjectionElem::ConstantIndex { .. }
+            | ProjectionElem::Subslice { .. }
+            | ProjectionElem::Downcast(_, _)
+            | ProjectionElem::OpaqueCast(_)
+            | ProjectionElem::UnwrapUnsafeBinder(_)
+            | ProjectionElem::Subtype(_) => None,
+        }))
     }
 
     /// Generates a new place by appending `more_projections` to the existing ones
@@ -1028,5 +1043,6 @@ impl<'tcx> ops::DerefMut for StmtDebugInfos<'tcx> {
 
 #[derive(Clone, TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable)]
 pub enum StmtDebugInfo<'tcx> {
-    AssignRef(Local, Option<Place<'tcx>>),
+    AssignRef(Local, Place<'tcx>),
+    InvalidAssign(Local),
 }

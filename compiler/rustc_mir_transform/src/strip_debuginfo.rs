@@ -36,11 +36,15 @@ impl<'tcx> crate::MirPass<'tcx> for StripDebugInfo {
         for data in body.basic_blocks.as_mut_preserves_cfg() {
             for stmt in data.statements.iter_mut() {
                 stmt.debuginfos.retain(|debuginfo| match debuginfo {
-                    StmtDebugInfo::AssignRef(local, _) => debuginfo_locals.contains(*local),
+                    StmtDebugInfo::AssignRef(local, _) | StmtDebugInfo::InvalidAssign(local) => {
+                        debuginfo_locals.contains(*local)
+                    }
                 });
             }
             data.after_last_stmt_debuginfos.retain(|debuginfo| match debuginfo {
-                StmtDebugInfo::AssignRef(local, _) => debuginfo_locals.contains(*local),
+                StmtDebugInfo::AssignRef(local, _) | StmtDebugInfo::InvalidAssign(local) => {
+                    debuginfo_locals.contains(*local)
+                }
             });
         }
     }
