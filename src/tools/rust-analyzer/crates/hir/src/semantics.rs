@@ -1241,29 +1241,27 @@ impl<'db> SemanticsImpl<'db> {
                                         adt,
                                     ))
                                 })?;
-                            let mut res = None;
                             for (_, derive_attr, derives) in derives {
                                 // as there may be multiple derives registering the same helper
                                 // name, we gotta make sure to call this for all of them!
                                 // FIXME: We need to call `f` for all of them as well though!
-                                res = res.or(process_expansion_for_token(
-                                    ctx,
-                                    &mut stack,
-                                    derive_attr,
-                                ));
+                                process_expansion_for_token(ctx, &mut stack, derive_attr);
                                 for derive in derives.into_iter().flatten() {
-                                    res = res
-                                        .or(process_expansion_for_token(ctx, &mut stack, derive));
+                                    process_expansion_for_token(ctx, &mut stack, derive);
                                 }
                             }
                             // remove all tokens that are within the derives expansion
                             filter_duplicates(tokens, adt.syntax().text_range());
-                            Some(res)
+                            Some(())
                         });
                         // if we found derives, we can early exit. There is no way we can be in any
                         // macro call at this point given we are not in a token tree
-                        if let Some(res) = res {
-                            return res;
+                        if let Some(()) = res {
+                            // Note: derives do not remap the original token. Furthermore, we want
+                            // the original token to be before the derives in the list, because if they
+                            // upmap to the same token and we deduplicate them (e.g. in rename), we
+                            // want the original token to remain, not the derive.
+                            return None;
                         }
                     }
                     // Then check for token trees, that means we are either in a function-like macro or
