@@ -579,17 +579,22 @@ impl Step for SharedAssets {
     }
 }
 
+/// Document the standard library using `build_compiler`.
 #[derive(Debug, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Std {
-    pub stage: u32,
-    pub target: TargetSelection,
-    pub format: DocumentationFormat,
+    build_compiler: Compiler,
+    target: TargetSelection,
+    format: DocumentationFormat,
     crates: Vec<String>,
 }
 
 impl Std {
-    pub(crate) fn new(stage: u32, target: TargetSelection, format: DocumentationFormat) -> Self {
-        Std { stage, target, format, crates: vec![] }
+    pub(crate) fn from_build_compiler(
+        build_compiler: Compiler,
+        target: TargetSelection,
+        format: DocumentationFormat,
+    ) -> Self {
+        Std { build_compiler, target, format, crates: vec![] }
     }
 }
 
@@ -609,7 +614,7 @@ impl Step for Std {
             return;
         }
         run.builder.ensure(Std {
-            stage: run.builder.top_stage,
+            build_compiler: run.builder.compiler(run.builder.top_stage, run.builder.host_target),
             target: run.target,
             format: if run.builder.config.cmd.json() {
                 DocumentationFormat::Json
@@ -625,7 +630,6 @@ impl Step for Std {
     /// This will generate all documentation for the standard library and its
     /// dependencies. This is largely just a wrapper around `cargo doc`.
     fn run(self, builder: &Builder<'_>) {
-        let stage = self.stage;
         let target = self.target;
         let crates = if self.crates.is_empty() {
             builder
@@ -667,7 +671,7 @@ impl Step for Std {
         // For `--index-page` and `--output-format=json`.
         extra_args.push("-Zunstable-options");
 
-        doc_std(builder, self.format, stage, target, &out, &extra_args, &crates);
+        doc_std(builder, self.format, self.build_compiler, target, &out, &extra_args, &crates);
 
         // Don't open if the format is json
         if let DocumentationFormat::Json = self.format {
@@ -692,7 +696,7 @@ impl Step for Std {
     fn metadata(&self) -> Option<StepMetadata> {
         Some(
             StepMetadata::doc("std", self.target)
-                .stage(self.stage)
+                .built_by(self.build_compiler)
                 .with_metadata(format!("crates=[{}]", self.crates.join(","))),
         )
     }
@@ -728,24 +732,29 @@ impl DocumentationFormat {
 fn doc_std(
     builder: &Builder<'_>,
     format: DocumentationFormat,
-    stage: u32,
+    build_compiler: Compiler,
     target: TargetSelection,
     out: &Path,
     extra_args: &[&str],
     requested_crates: &[String],
 ) {
-    let compiler = builder.compiler(stage, builder.config.host_target);
-
     let target_doc_dir_name = if format == DocumentationFormat::Json { "json-doc" } else { "doc" };
-    let target_dir = builder.stage_out(compiler, Mode::Std).join(target).join(target_doc_dir_name);
+    let target_dir =
+        builder.stage_out(build_compiler, Mode::Std).join(target).join(target_doc_dir_name);
 
     // This is directory where the compiler will place the output of the command.
     // We will then copy the files from this directory into the final `out` directory, the specified
     // as a function parameter.
     let out_dir = target_dir.join(target).join("doc");
 
-    let mut cargo =
-        builder::Cargo::new(builder, compiler, Mode::Std, SourceType::InTree, target, Kind::Doc);
+    let mut cargo = builder::Cargo::new(
+        builder,
+        build_compiler,
+        Mode::Std,
+        SourceType::InTree,
+        target,
+        Kind::Doc,
+    );
 
     compile::std_cargo(builder, target, &mut cargo);
     cargo
@@ -773,7 +782,7 @@ fn doc_std(
 
     let description =
         format!("library{} in {} format", crate_description(requested_crates), format.as_str());
-    let _guard = builder.msg_doc(compiler, description, target);
+    let _guard = builder.msg_doc(build_compiler, description, target);
 
     cargo.into_cmd().run(builder);
     builder.cp_link_r(&out_dir, out);

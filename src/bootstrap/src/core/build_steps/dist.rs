@@ -92,7 +92,8 @@ impl Step for Docs {
 
 #[derive(Debug, PartialOrd, Ord, Clone, Hash, PartialEq, Eq)]
 pub struct JsonDocs {
-    pub host: TargetSelection,
+    build_compiler: Compiler,
+    target: TargetSelection,
 }
 
 impl Step for JsonDocs {
@@ -105,24 +106,27 @@ impl Step for JsonDocs {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(JsonDocs { host: run.target });
+        run.builder.ensure(JsonDocs {
+            build_compiler: run.builder.compiler(run.builder.top_stage, run.builder.host_target),
+            target: run.target,
+        });
     }
 
     /// Builds the `rust-docs-json` installer component.
     fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
-        let host = self.host;
-        builder.ensure(crate::core::build_steps::doc::Std::new(
-            builder.top_stage,
-            host,
+        let target = self.target;
+        builder.ensure(crate::core::build_steps::doc::Std::from_build_compiler(
+            self.build_compiler,
+            target,
             DocumentationFormat::Json,
         ));
 
         let dest = "share/doc/rust/json";
 
-        let mut tarball = Tarball::new(builder, "rust-docs-json", &host.triple);
+        let mut tarball = Tarball::new(builder, "rust-docs-json", &target.triple);
         tarball.set_product_name("Rust Documentation In JSON Format");
         tarball.is_preview(true);
-        tarball.add_bulk_dir(builder.json_doc_out(host), dest);
+        tarball.add_bulk_dir(builder.json_doc_out(target), dest);
         Some(tarball.generate())
     }
 }
@@ -1583,7 +1587,7 @@ impl Step for Extended {
         }
 
         add_component!("rust-docs" => Docs { host: target });
-        add_component!("rust-json-docs" => JsonDocs { host: target });
+        add_component!("rust-json-docs" => JsonDocs { build_compiler: compiler, target });
         add_component!("cargo" => Cargo { build_compiler: compiler, target });
         add_component!("rustfmt" => Rustfmt { build_compiler: compiler, target });
         add_component!("rust-analyzer" => RustAnalyzer { build_compiler: compiler, target });
