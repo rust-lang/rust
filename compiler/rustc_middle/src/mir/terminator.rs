@@ -448,15 +448,8 @@ impl<'tcx> Terminator<'tcx> {
     #[inline]
     pub fn identical_successor(&self) -> Option<BasicBlock> {
         let mut successors = self.successors();
-        let Some(first_succ) = successors.next() else {
-            return None;
-        };
-        while let Some(succ) = successors.next() {
-            if first_succ != succ {
-                return None;
-            }
-        }
-        Some(first_succ)
+        let first_succ = successors.next()?;
+        if successors.all(|succ| first_succ == succ) { Some(first_succ) } else { None }
     }
 
     #[inline]
