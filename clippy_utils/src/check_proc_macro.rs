@@ -406,6 +406,7 @@ fn ty_search_pat(ty: &Ty<'_>) -> (Pat, Pat) {
         TyKind::OpaqueDef(..) => (Pat::Str("impl"), Pat::Str("")),
         TyKind::Path(qpath) => qpath_search_pat(&qpath),
         TyKind::Infer(()) => (Pat::Str("_"), Pat::Str("_")),
+        TyKind::UnsafeBinder(binder_ty) => (Pat::Str("unsafe"), ty_search_pat(binder_ty.inner_ty).1),
         TyKind::TraitObject(_, tagged_ptr) if let TraitObjectSyntax::Dyn = tagged_ptr.tag() => {
             (Pat::Str("dyn"), Pat::Str(""))
         },
@@ -499,6 +500,7 @@ fn ast_ty_search_pat(ty: &ast::Ty) -> (Pat, Pat) {
         },
         TyKind::Infer => (Pat::Str("_"), Pat::Str("_")),
         TyKind::Paren(ty) => ast_ty_search_pat(ty),
+        TyKind::UnsafeBinder(binder_ty) => (Pat::Str("unsafe"), ast_ty_search_pat(&binder_ty.inner_ty).1),
         TyKind::TraitObject(_, trait_obj_syntax) => {
             if let TraitObjectSyntax::Dyn = trait_obj_syntax {
                 (Pat::Str("dyn"), Pat::Str(""))
