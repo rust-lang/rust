@@ -136,7 +136,7 @@ impl<'a> DoubleEndedIterator for Chars<'a> {
 impl<'a> PeekableIterator for Chars<'a> {
     fn peek_with<T>(&mut self, func: impl for<'b> FnOnce(Option<&'b Self::Item>) -> T) -> T {
         let tmp = self.clone().next();
-        func(&tmp)
+        func(tmp.as_ref())
     }
 }
 
