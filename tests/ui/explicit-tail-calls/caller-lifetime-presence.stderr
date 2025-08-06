@@ -1,0 +1,22 @@
+error: mismatched signatures
+  --> $DIR/caller-lifetime-presence.rs:16:5
+   |
+LL |     become bar(dummy);
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = note: `become` requires caller and callee to have matching signatures
+   = note: caller signature: `fn(fn(&'a ()))`
+   = note: callee signature: `fn(for<'a> fn(&'a ()))`
+
+error: mismatched signatures
+  --> $DIR/caller-lifetime-presence.rs:28:5
+   |
+LL |     become bar1(dummy2);
+   |     ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `become` requires caller and callee to have matching signatures
+   = note: caller signature: `fn(for<'a> fn(&'a ()))`
+   = note: callee signature: `fn(fn(&'a ()))`
+
+error: aborting due to 2 previous errors
+
