@@ -110,7 +110,6 @@ pub struct ModuleConfig {
     pub lint_llvm_ir: bool,
     pub no_prepopulate_passes: bool,
     pub no_builtins: bool,
-    pub time_module: bool,
     pub vectorize_loop: bool,
     pub vectorize_slp: bool,
     pub merge_functions: bool,
@@ -227,10 +226,6 @@ impl ModuleConfig {
             lint_llvm_ir: sess.opts.unstable_opts.lint_llvm_ir,
             no_prepopulate_passes: sess.opts.cg.no_prepopulate_passes,
             no_builtins: no_builtins || sess.target.no_builtins,
-
-            // Exclude metadata and allocator modules from time_passes output,
-            // since they throw off the "LLVM passes" measurement.
-            time_module: if_regular!(true, false),
 
             // Copy what clang does by turning on loop vectorization at O2 and
             // slp vectorization at O3.
@@ -1740,7 +1735,7 @@ fn spawn_work<'a, B: ExtraBackendMethods>(
     llvm_start_time: &mut Option<VerboseTimingGuard<'a>>,
     work: WorkItem<B>,
 ) {
-    if cgcx.config(work.module_kind()).time_module && llvm_start_time.is_none() {
+    if llvm_start_time.is_none() {
         *llvm_start_time = Some(cgcx.prof.verbose_generic_activity("LLVM_passes"));
     }
 
