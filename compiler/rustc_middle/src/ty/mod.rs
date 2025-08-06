@@ -1011,6 +1011,14 @@ impl<'tcx> ParamEnv<'tcx> {
     pub fn and<T: TypeVisitable<TyCtxt<'tcx>>>(self, value: T) -> ParamEnvAnd<'tcx, T> {
         ParamEnvAnd { param_env: self, value }
     }
+
+    pub fn elaborate_host_effect_destruct(self, tcx: TyCtxt<'tcx>) -> Self {
+        let caller_bounds = tcx.mk_clauses_from_iter(
+            ty::elaborate::elaborate(tcx, self.caller_bounds.iter())
+                .elaborate_host_effect_destruct(),
+        );
+        ParamEnv { caller_bounds }
+    }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, TypeFoldable, TypeVisitable)]
