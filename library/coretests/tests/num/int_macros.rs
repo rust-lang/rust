@@ -194,7 +194,7 @@ macro_rules! int_module {
         }
 
         #[test]
-        fn test_isolate_most_significant_one() {
+        fn test_isolate_highest_one() {
             const BITS: $T = -1;
             const MOST_SIG_ONE: $T = 1 << (<$T>::BITS - 1);
 
@@ -203,15 +203,15 @@ macro_rules! int_module {
             let mut i = 0;
             while i < <$T>::BITS {
                 assert_eq!(
-                    (BITS >> i).isolate_most_significant_one(),
-                    (MOST_SIG_ONE >> i).isolate_most_significant_one()
+                    (BITS >> i).isolate_highest_one(),
+                    (MOST_SIG_ONE >> i).isolate_highest_one()
                 );
                 i += 1;
             }
         }
 
         #[test]
-        fn test_isolate_least_significant_one() {
+        fn test_isolate_lowest_one() {
             const BITS: $T = -1;
             const LEAST_SIG_ONE: $T = 1;
 
@@ -220,8 +220,8 @@ macro_rules! int_module {
             let mut i = 0;
             while i < <$T>::BITS {
                 assert_eq!(
-                    (BITS << i).isolate_least_significant_one(),
-                    (LEAST_SIG_ONE << i).isolate_least_significant_one()
+                    (BITS << i).isolate_lowest_one(),
+                    (LEAST_SIG_ONE << i).isolate_lowest_one()
                 );
                 i += 1;
             }
