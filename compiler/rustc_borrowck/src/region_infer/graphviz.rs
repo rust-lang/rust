@@ -52,7 +52,8 @@ fn render_region_vid<'tcx>(
                 bug!("only used for pretty printing")
             }
         },
-        NllRegionVariableOrigin::Existential { .. } => " (ex<'?>)".to_string(),
+        NllRegionVariableOrigin::Existential { name: Some(name), .. } => format!(" (ex<{name}>)"),
+        NllRegionVariableOrigin::Existential { .. } => format!(" (ex<'_>)"),
     };
 
     format!("{:?}{universe_str}{external_name_str}{extra_info}", rvid)
