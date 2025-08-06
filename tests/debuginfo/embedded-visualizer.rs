@@ -1,6 +1,8 @@
 //@ compile-flags:-g
 //@ ignore-lldb
 //@ ignore-windows-gnu: #128981
+//@ ignore-musl: linker too old in CI
+//@ ignore-i586-unknown-linux-gnu: linker too old in CI
 
 // === CDB TESTS ==================================================================================
 
