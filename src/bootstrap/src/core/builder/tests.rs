@@ -742,6 +742,21 @@ mod snapshot {
     }
 
     #[test]
+    fn build_compiler_lld_opt_in() {
+        with_lld_opt_in_targets(vec![host_target()], || {
+            let ctx = TestCtx::new();
+            insta::assert_snapshot!(
+                ctx.config("build")
+                    .path("compiler")
+                    .render_steps(), @r"
+            [build] llvm <host>
+            [build] rustc 0 <host> -> rustc 1 <host>
+            [build] rustc 0 <host> -> LldWrapper 1 <host>
+            ");
+        });
+    }
+
+    #[test]
     fn build_library_no_explicit_stage() {
         let ctx = TestCtx::new();
         insta::assert_snapshot!(
@@ -1696,21 +1711,6 @@ mod snapshot {
     }
 
     #[test]
-    fn test_lld_opt_in() {
-        with_lld_opt_in_targets(vec![host_target()], || {
-            let ctx = TestCtx::new();
-            insta::assert_snapshot!(
-                ctx.config("build")
-                    .path("compiler")
-                    .render_steps(), @r"
-            [build] llvm <host>
-            [build] rustc 0 <host> -> rustc 1 <host>
-            [build] rustc 0 <host> -> LldWrapper 1 <host>
-            ");
-        });
-    }
-
-    #[test]
     fn doc_library_no_std_target() {
         let ctx = TestCtx::new();
         insta::assert_snapshot!(
@@ -1742,17 +1742,10 @@ mod snapshot {
     }
 
     #[test]
+    #[should_panic]
     fn doc_compiler_stage_0() {
         let ctx = TestCtx::new();
-        insta::assert_snapshot!(
-            ctx.config("doc")
-                .path("compiler")
-                .stage(0)
-                .render_steps(), @r"
-        [build] rustdoc 0 <host>
-        [build] llvm <host>
-        [doc] rustc 0 <host>
-        ");
+        ctx.config("doc").path("compiler").stage(0).run();
     }
 
     #[test]
@@ -1790,16 +1783,10 @@ mod snapshot {
     }
 
     #[test]
+    #[should_panic]
     fn doc_compiletest_stage_0() {
         let ctx = TestCtx::new();
-        insta::assert_snapshot!(
-            ctx.config("doc")
-                .path("src/tools/compiletest")
-                .stage(0)
-                .render_steps(), @r"
-        [build] rustdoc 0 <host>
-        [doc] Compiletest <host>
-        ");
+        ctx.config("doc").path("src/tools/compiletest").stage(0).run();
     }
 
     #[test]
