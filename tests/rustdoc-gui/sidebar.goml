@@ -220,7 +220,7 @@ wait-for: "html:not(.src-sidebar-expanded)"
 // Now we check the same when the sidebar button is moved alongside the search.
 set-window-size: (500, 500)
 store-css: ("#sidebar-button a:hover", {"background-color": not_sidebar_background_hover})
-move-cursor-to: "rustdoc-toolbar .settings-menu"
+move-cursor-to: "rustdoc-toolbar #search-button"
 store-css: ("#sidebar-button a:not(:hover)", {"background-color": not_sidebar_background})
 // The sidebar background is supposed to be the same as the main background.
 assert-css: ("body", {"background-color": |not_sidebar_background|})
