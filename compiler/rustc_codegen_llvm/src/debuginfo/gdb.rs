@@ -1,11 +1,13 @@
 // .debug_gdb_scripts binary section.
 
-use rustc_codegen_ssa::base::collect_debugger_visualizers_transitive;
+use std::collections::BTreeSet;
+use std::ffi::CString;
+
 use rustc_codegen_ssa::traits::*;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_middle::bug;
 use rustc_middle::middle::debugger_visualizer::DebuggerVisualizerType;
-use rustc_session::config::{CrateType, DebugInfo};
+use rustc_session::config::DebugInfo;
 
 use crate::builder::Builder;
 use crate::common::CodegenCx;
@@ -31,7 +33,12 @@ pub(crate) fn insert_reference_to_gdb_debug_scripts_section_global(bx: &mut Buil
 pub(crate) fn get_or_insert_gdb_debug_scripts_section_global<'ll>(
     cx: &CodegenCx<'ll, '_>,
 ) -> &'ll Value {
-    let c_section_var_name = c"__rustc_debug_gdb_scripts_section__";
+    let c_section_var_name = CString::new(format!(
+        "__rustc_debug_gdb_scripts_section_{}_{:08x}",
+        cx.tcx.crate_name(LOCAL_CRATE),
+        cx.tcx.stable_crate_id(LOCAL_CRATE),
+    ))
+    .unwrap();
     let section_var_name = c_section_var_name.to_str().unwrap();
 
     let section_var = unsafe { llvm::LLVMGetNamedGlobal(cx.llmod, c_section_var_name.as_ptr()) };
@@ -44,10 +51,14 @@ pub(crate) fn get_or_insert_gdb_debug_scripts_section_global<'ll>(
 
         // Next, add the pretty printers that were specified via the `#[debugger_visualizer]`
         // attribute.
-        let visualizers = collect_debugger_visualizers_transitive(
-            cx.tcx,
-            DebuggerVisualizerType::GdbPrettyPrinter,
-        );
+        let visualizers = cx
+            .tcx
+            .debugger_visualizers(LOCAL_CRATE)
+            .iter()
+            .filter(|visualizer| {
+                visualizer.visualizer_type == DebuggerVisualizerType::GdbPrettyPrinter
+            })
+            .collect::<BTreeSet<_>>();
         let crate_name = cx.tcx.crate_name(LOCAL_CRATE);
         for (index, visualizer) in visualizers.iter().enumerate() {
             // The initial byte `4` instructs GDB that the following pretty printer
@@ -84,35 +95,5 @@ pub(crate) fn get_or_insert_gdb_debug_scripts_section_global<'ll>(
 }
 
 pub(crate) fn needs_gdb_debug_scripts_section(cx: &CodegenCx<'_, '_>) -> bool {
-    // To ensure the section `__rustc_debug_gdb_scripts_section__` will not create
-    // ODR violations at link time, this section will not be emitted for rlibs since
-    // each rlib could produce a different set of visualizers that would be embedded
-    // in the `.debug_gdb_scripts` section. For that reason, we make sure that the
-    // section is only emitted for leaf crates.
-    let embed_visualizers = cx.tcx.crate_types().iter().any(|&crate_type| match crate_type {
-        CrateType::Executable
-        | CrateType::Dylib
-        | CrateType::Cdylib
-        | CrateType::Staticlib
-        | CrateType::Sdylib => {
-            // These are crate types for which we will embed pretty printers since they
-            // are treated as leaf crates.
-            true
-        }
-        CrateType::ProcMacro => {
-            // We could embed pretty printers for proc macro crates too but it does not
-            // seem like a good default, since this is a rare use case and we don't
-            // want to slow down the common case.
-            false
-        }
-        CrateType::Rlib => {
-            // As per the above description, embedding pretty printers for rlibs could
-            // lead to ODR violations so we skip this crate type as well.
-            false
-        }
-    });
-
-    cx.sess().opts.debuginfo != DebugInfo::None
-        && cx.sess().target.emit_debug_gdb_scripts
-        && embed_visualizers
+    cx.sess().opts.debuginfo != DebugInfo::None && cx.sess().target.emit_debug_gdb_scripts
 }
