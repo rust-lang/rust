@@ -57,7 +57,7 @@ macro_rules! book {
                     src: builder.src.join($path),
                     parent: Some(self),
                     languages: $lang.into(),
-                    rustdoc_compiler: None,
+                    build_compiler: None,
                 })
             }
         }
@@ -105,7 +105,7 @@ impl Step for UnstableBook {
             src: builder.md_doc_out(self.target).join("unstable-book"),
             parent: Some(self),
             languages: vec![],
-            rustdoc_compiler: None,
+            build_compiler: None,
         })
     }
 }
@@ -117,7 +117,8 @@ struct RustbookSrc<P: Step> {
     src: PathBuf,
     parent: Option<P>,
     languages: Vec<&'static str>,
-    rustdoc_compiler: Option<Compiler>,
+    /// Compiler whose rustdoc should be used to document things using `mdbook-spec`.
+    build_compiler: Option<Compiler>,
 }
 
 impl<P: Step> Step for RustbookSrc<P> {
@@ -150,7 +151,7 @@ impl<P: Step> Step for RustbookSrc<P> {
 
             let mut rustbook_cmd = builder.tool_cmd(Tool::Rustbook);
 
-            if let Some(compiler) = self.rustdoc_compiler {
+            if let Some(compiler) = self.build_compiler {
                 let mut rustdoc = builder.rustdoc_for_compiler(compiler);
                 rustdoc.pop();
                 let old_path = env::var_os("PATH").unwrap_or_default();
@@ -193,11 +194,21 @@ impl<P: Step> Step for RustbookSrc<P> {
             builder.maybe_open_in_browser::<P>(index)
         }
     }
+
+    fn metadata(&self) -> Option<StepMetadata> {
+        let mut metadata = StepMetadata::doc(&format!("{} (book)", self.name), self.target);
+        if let Some(compiler) = self.build_compiler {
+            metadata = metadata.built_by(compiler);
+        }
+
+        Some(metadata)
+    }
 }
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct TheBook {
-    compiler: Compiler,
+    /// Compiler whose rustdoc will be used to generated documentation.
+    build_compiler: Compiler,
     target: TargetSelection,
 }
 
@@ -212,7 +223,7 @@ impl Step for TheBook {
 
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(TheBook {
-            compiler: run.builder.compiler(run.builder.top_stage, run.builder.config.host_target),
+            build_compiler: prepare_doc_compiler(run.builder, run.target, run.builder.top_stage),
             target: run.target,
         });
     }
@@ -229,7 +240,7 @@ impl Step for TheBook {
     fn run(self, builder: &Builder<'_>) {
         builder.require_submodule("src/doc/book", None);
 
-        let compiler = self.compiler;
+        let compiler = self.build_compiler;
         let target = self.target;
 
         let absolute_path = builder.src.join("src/doc/book");
@@ -242,7 +253,7 @@ impl Step for TheBook {
             src: absolute_path.clone(),
             parent: Some(self),
             languages: vec![],
-            rustdoc_compiler: None,
+            build_compiler: None,
         });
 
         // building older edition redirects
@@ -255,7 +266,7 @@ impl Step for TheBook {
                 // treat the other editions as not having a parent.
                 parent: Option::<Self>::None,
                 languages: vec![],
-                rustdoc_compiler: None,
+                build_compiler: None,
             });
         }
 
@@ -1271,15 +1282,18 @@ impl Step for RustcBook {
             src: out_base,
             parent: Some(self),
             languages: vec![],
-            rustdoc_compiler: None,
+            build_compiler: None,
         });
     }
 }
 
+/// Documents the reference.
+/// It is always done using a stage 1+ compiler, because it references in-tree compiler/stdlib
+/// concepts.
 #[derive(Ord, PartialOrd, Debug, Clone, Hash, PartialEq, Eq)]
 pub struct Reference {
-    pub compiler: Compiler,
-    pub target: TargetSelection,
+    build_compiler: Compiler,
+    target: TargetSelection,
 }
 
 impl Step for Reference {
@@ -1292,8 +1306,19 @@ impl Step for Reference {
     }
 
     fn make_run(run: RunConfig<'_>) {
+        // Bump the stage to 2, because the reference requires an in-tree compiler.
+        // At the same time, since this step is enabled by default, we don't want `x doc` to fail
+        // in stage 1.
+        // FIXME: create a shared method on builder for auto-bumping, and print some warning when
+        // it happens.
+        let stage = if run.builder.config.is_explicit_stage() || run.builder.top_stage >= 2 {
+            run.builder.top_stage
+        } else {
+            2
+        };
+
         run.builder.ensure(Reference {
-            compiler: run.builder.compiler(run.builder.top_stage, run.builder.config.host_target),
+            build_compiler: prepare_doc_compiler(run.builder, run.target, stage),
             target: run.target,
         });
     }
@@ -1304,14 +1329,14 @@ impl Step for Reference {
 
         // This is needed for generating links to the standard library using
         // the mdbook-spec plugin.
-        builder.std(self.compiler, builder.config.host_target);
+        builder.std(self.build_compiler, builder.config.host_target);
 
         // Run rustbook/mdbook to generate the HTML pages.
         builder.ensure(RustbookSrc {
             target: self.target,
             name: "reference".to_owned(),
             src: builder.src.join("src/doc/reference"),
-            rustdoc_compiler: Some(self.compiler),
+            build_compiler: Some(self.build_compiler),
             parent: Some(self),
             languages: vec![],
         });
