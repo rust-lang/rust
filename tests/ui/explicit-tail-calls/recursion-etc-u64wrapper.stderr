@@ -1,0 +1,19 @@
+error: internal compiler error: $COMPILER_DIR_REAL/rustc_codegen_ssa/src/mir/block.rs:LL:CC: arguments using PassMode::Indirect are currently not supported for tail calls
+  --> $DIR/recursion-etc-u64wrapper.rs:24:16
+   |
+LL |           become count(
+   |  ________________^
+LL | |             U64Wrapper {
+LL | |                 x: curr.x + 1,
+LL | |                 arbitrary: curr.arbitrary,
+LL | |             },
+LL | |             top,
+LL | |         )
+   | |_________^
+
+
+Box<dyn Any>
+query stack during panic:
+end of query stack
+error: aborting due to 1 previous error
+
