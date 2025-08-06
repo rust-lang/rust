@@ -18,18 +18,18 @@
 +             scope 3 (inlined Vec::<A>::as_mut_ptr) {
 +                 scope 4 (inlined alloc::raw_vec::RawVec::<A>::ptr) {
 +                     scope 5 (inlined alloc::raw_vec::RawVecInner::ptr::<A>) {
-+                         scope 6 (inlined alloc::raw_vec::RawVecInner::non_null::<A>) {
++                         scope 6 (inlined NonNull::<A>::as_ptr) {
++                         }
++                         scope 7 (inlined alloc::raw_vec::RawVecInner::non_null::<A>) {
 +                             let mut _11: std::ptr::NonNull<u8>;
-+                             scope 7 (inlined Unique::<u8>::cast::<A>) {
-+                                 scope 8 (inlined NonNull::<u8>::cast::<A>) {
-+                                     scope 9 (inlined NonNull::<u8>::as_ptr) {
++                             scope 8 (inlined Unique::<u8>::cast::<A>) {
++                                 scope 9 (inlined NonNull::<u8>::cast::<A>) {
++                                     scope 10 (inlined NonNull::<u8>::as_ptr) {
 +                                     }
 +                                 }
 +                             }
-+                             scope 10 (inlined Unique::<A>::as_non_null_ptr) {
++                             scope 11 (inlined Unique::<A>::as_non_null_ptr) {
 +                             }
-+                         }
-+                         scope 11 (inlined NonNull::<A>::as_ptr) {
 +                         }
 +                     }
 +                 }

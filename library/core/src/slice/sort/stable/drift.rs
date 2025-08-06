@@ -152,7 +152,7 @@ pub fn sort<T, F: FnMut(&T, &T) -> bool>(
 //    x < 2^63 + 2n
 // So as long as n < 2^62 we find that x < 2^64, meaning our operations do not
 // overflow.
-#[inline(always)]
+#[rustc_early_inline]
 fn merge_tree_scale_factor(n: usize) -> u64 {
     if usize::BITS > u64::BITS {
         panic!("Platform not supported");
@@ -163,7 +163,7 @@ fn merge_tree_scale_factor(n: usize) -> u64 {
 
 // Note: merge_tree_depth output is < 64 when left < right as f*x and f*y must
 // differ in some bit, and is <= 64 always.
-#[inline(always)]
+#[rustc_early_inline]
 fn merge_tree_depth(left: usize, mid: usize, right: usize, scale_factor: u64) -> u8 {
     let x = left as u64 + mid as u64;
     let y = mid as u64 + right as u64;
@@ -187,7 +187,7 @@ fn sqrt_approx(n: usize) -> usize {
 }
 
 // Lazy logical runs as in Glidesort.
-#[inline(always)]
+#[rustc_early_inline]
 fn logical_merge<T, F: FnMut(&T, &T) -> bool>(
     v: &mut [T],
     scratch: &mut [MaybeUninit<T>],
@@ -276,22 +276,22 @@ fn stable_quicksort<T, F: FnMut(&T, &T) -> bool>(
 struct DriftsortRun(usize);
 
 impl DriftsortRun {
-    #[inline(always)]
+    #[rustc_early_inline]
     fn new_sorted(length: usize) -> Self {
         Self((length << 1) | 1)
     }
 
-    #[inline(always)]
+    #[rustc_early_inline]
     fn new_unsorted(length: usize) -> Self {
         Self(length << 1)
     }
 
-    #[inline(always)]
+    #[rustc_early_inline]
     fn sorted(self) -> bool {
         self.0 & 1 == 1
     }
 
-    #[inline(always)]
+    #[rustc_early_inline]
     fn len(self) -> usize {
         self.0 >> 1
     }

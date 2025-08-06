@@ -679,7 +679,7 @@ unsafe fn sort8_stable<T: FreezeMarker, F: FnMut(&T, &T) -> bool>(
     }
 }
 
-#[inline(always)]
+#[rustc_early_inline]
 unsafe fn merge_up<T, F: FnMut(&T, &T) -> bool>(
     mut left_src: *const T,
     mut right_src: *const T,
@@ -712,7 +712,7 @@ unsafe fn merge_up<T, F: FnMut(&T, &T) -> bool>(
     (left_src, right_src, dst)
 }
 
-#[inline(always)]
+#[rustc_early_inline]
 unsafe fn merge_down<T, F: FnMut(&T, &T) -> bool>(
     mut left_src: *const T,
     mut right_src: *const T,

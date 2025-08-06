@@ -1848,6 +1848,7 @@ symbols! {
         rustc_dump_predicates,
         rustc_dump_user_args,
         rustc_dump_vtable,
+        rustc_early_inline,
         rustc_effective_visibility,
         rustc_evaluate_where_clauses,
         rustc_expected_cgu_reuse,

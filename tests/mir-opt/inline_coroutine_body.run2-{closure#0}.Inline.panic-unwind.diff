@@ -57,7 +57,7 @@
 +                         let _26: ();
 +                         scope 9 {
 +                         }
-+                         scope 12 (inlined Pin::<&mut std::future::Ready<()>>::new_unchecked) {
++                         scope 10 (inlined Pin::<&mut std::future::Ready<()>>::new_unchecked) {
 +                         }
 +                         scope 13 (inlined <std::future::Ready<()> as Future>::poll) {
 +                             let mut _44: ();
@@ -91,25 +91,25 @@
 +                             }
 +                         }
 +                     }
-+                     scope 10 (inlined ready::<()>) {
++                     scope 11 (inlined ready::<()>) {
 +                         let mut _43: std::option::Option<()>;
 +                     }
-+                     scope 11 (inlined <std::future::Ready<()> as IntoFuture>::into_future) {
++                     scope 12 (inlined <std::future::Ready<()> as IntoFuture>::into_future) {
 +                     }
 +                 }
 +             }
           }
-+         scope 5 (inlined Pin::<&mut {async fn body of ActionPermit<'_, T>::perform()}>::new_unchecked) {
-+         }
+          scope 4 (inlined Pin::<&mut {async fn body of ActionPermit<'_, T>::perform()}>::new_unchecked) {
+          }
       }
-+     scope 4 (inlined ActionPermit::<'_, T>::perform) {
++     scope 5 (inlined ActionPermit::<'_, T>::perform) {
 +     }
   
       bb0: {
           StorageLive(_2);
           StorageLive(_3);
           _3 = move (_1.0: ActionPermit<'_, T>);
--         _2 = ActionPermit::<'_, T>::perform(move _3) -> [return: bb1, unwind: bb6];
+-         _2 = ActionPermit::<'_, T>::perform(move _3) -> [return: bb1, unwind: bb5];
 -     }
 - 
 -     bb1: {
@@ -118,11 +118,7 @@
           StorageLive(_4);
           StorageLive(_5);
           _5 = &mut _2;
--         _4 = Pin::<&mut {async fn body of ActionPermit<'_, T>::perform()}>::new_unchecked(move _5) -> [return: bb2, unwind: bb5];
--     }
-- 
--     bb2: {
-+         _4 = Pin::<&mut {async fn body of ActionPermit<'_, T>::perform()}> { pointer: copy _5 };
+          _4 = Pin::<&mut {async fn body of ActionPermit<'_, T>::perform()}> { pointer: copy _5 };
           StorageDead(_5);
           StorageLive(_6);
           StorageLive(_7);
@@ -131,7 +127,7 @@
           StorageLive(_9);
           _10 = deref_copy (_1.1: &mut std::task::Context<'_>);
           _9 = &mut (*_10);
--         _7 = <{async fn body of ActionPermit<'_, T>::perform()} as Future>::poll(move _8, move _9) -> [return: bb3, unwind: bb5];
+-         _7 = <{async fn body of ActionPermit<'_, T>::perform()} as Future>::poll(move _8, move _9) -> [return: bb2, unwind: bb4];
 +         StorageLive(_11);
 +         StorageLive(_15);
 +         StorageLive(_16);
@@ -155,7 +151,7 @@
 +         switchInt(move _32) -> [0: bb5, 1: bb15, 2: bb14, 3: bb13, otherwise: bb7];
       }
   
--     bb3: {
+-     bb2: {
 +     bb1: {
 +         StorageDead(_2);
 +         return;
@@ -195,11 +191,11 @@
           StorageDead(_6);
           _0 = const ();
           StorageDead(_4);
--         drop(_2) -> [return: bb4, unwind: bb6];
+-         drop(_2) -> [return: bb3, unwind: bb5];
 +         drop(_2) -> [return: bb1, unwind: bb3];
       }
   
--     bb4: {
+-     bb3: {
 -         StorageDead(_2);
 -         return;
 +     bb5: {
@@ -223,8 +219,8 @@
 +         goto -> bb6;
       }
   
--     bb5 (cleanup): {
--         drop(_2) -> [return: bb6, unwind terminate(cleanup)];
+-     bb4 (cleanup): {
+-         drop(_2) -> [return: bb5, unwind terminate(cleanup)];
 +     bb6: {
 +         StorageLive(_17);
 +         StorageLive(_18);
@@ -266,7 +262,7 @@
 +         switchInt(move _51) -> [0: bb16, 1: bb17, otherwise: bb7];
       }
   
--     bb6 (cleanup): {
+-     bb5 (cleanup): {
 -         resume;
 +     bb7: {
 +         unreachable;

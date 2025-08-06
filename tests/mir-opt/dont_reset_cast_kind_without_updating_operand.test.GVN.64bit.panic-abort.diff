@@ -23,11 +23,11 @@
                   scope 4 {
                       debug _x => _7;
                   }
-                  scope 18 (inlined foo) {
+                  scope 16 (inlined foo) {
                   }
               }
-              scope 16 (inlined slice_from_raw_parts::<()>) {
-                  scope 17 (inlined std::ptr::from_raw_parts::<[()], ()>) {
+              scope 17 (inlined slice_from_raw_parts::<()>) {
+                  scope 18 (inlined std::ptr::from_raw_parts::<[()], ()>) {
                   }
               }
           }
@@ -45,14 +45,14 @@
                   let _17: std::ptr::NonNull<[u8]>;
                   scope 8 {
                       scope 11 (inlined NonNull::<[u8]>::as_mut_ptr) {
-                          scope 12 (inlined NonNull::<[u8]>::as_non_null_ptr) {
-                              scope 13 (inlined NonNull::<[u8]>::cast::<u8>) {
+                          scope 12 (inlined NonNull::<u8>::as_ptr) {
+                          }
+                          scope 13 (inlined NonNull::<[u8]>::as_non_null_ptr) {
+                              scope 14 (inlined NonNull::<[u8]>::cast::<u8>) {
                                   let mut _22: *mut [u8];
-                                  scope 14 (inlined NonNull::<[u8]>::as_ptr) {
+                                  scope 15 (inlined NonNull::<[u8]>::as_ptr) {
                                   }
                               }
-                          }
-                          scope 15 (inlined NonNull::<u8>::as_ptr) {
                           }
                       }
                   }

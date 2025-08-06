@@ -28,25 +28,25 @@ fn slice_iter_next(_1: &mut std::slice::Iter<'_, T>) -> Option<&T> {
                     scope 6 (inlined std::ptr::const_ptr::<impl *const T>::cast::<()>) {
                     }
                 }
-                scope 11 (inlined <NonNull<T> as PartialEq>::eq) {
-                    let mut _5: *mut T;
-                    let mut _6: *mut T;
-                    scope 12 (inlined NonNull::<T>::as_ptr) {
-                    }
-                    scope 13 (inlined NonNull::<T>::as_ptr) {
-                    }
-                }
-                scope 14 (inlined NonNull::<T>::add) {
+                scope 11 (inlined NonNull::<T>::add) {
                     let mut _8: *const T;
                     let mut _9: *const T;
-                    scope 15 (inlined NonNull::<T>::as_ptr) {
+                    scope 12 (inlined NonNull::<T>::as_ptr) {
                     }
                 }
-                scope 16 (inlined NonNull::<T>::as_ref::<'_>) {
+                scope 13 (inlined NonNull::<T>::as_ref::<'_>) {
                     let _13: *const T;
+                    scope 14 (inlined NonNull::<T>::as_ptr) {
+                    }
+                    scope 15 (inlined std::ptr::mut_ptr::<impl *mut T>::cast_const) {
+                    }
+                }
+                scope 16 (inlined <NonNull<T> as PartialEq>::eq) {
+                    let mut _5: *mut T;
+                    let mut _6: *mut T;
                     scope 17 (inlined NonNull::<T>::as_ptr) {
                     }
-                    scope 18 (inlined std::ptr::mut_ptr::<impl *mut T>::cast_const) {
+                    scope 18 (inlined NonNull::<T>::as_ptr) {
                     }
                 }
             }

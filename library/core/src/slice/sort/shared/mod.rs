@@ -16,7 +16,7 @@ impl<T: Freeze> FreezeMarker for T {}
 ///
 /// Returns the length of the run, and a bool that is false when the run
 /// is ascending, and true if the run strictly descending.
-#[inline(always)]
+#[rustc_early_inline]
 pub(crate) fn find_existing_run<T, F: FnMut(&T, &T) -> bool>(
     v: &[T],
     is_less: &mut F,

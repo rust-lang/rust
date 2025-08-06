@@ -19,12 +19,12 @@ use std::ptr;
 /// interior mutability will be observable. Same is true if `T: Ord` panics.
 ///
 /// Panics if allocating the auxiliary memory fails.
-#[inline(always)]
+#[rustc_early_inline]
 pub fn sort<T: Ord>(v: &mut [T]) {
     stable_sort(v, |a, b| a.lt(b))
 }
 
-#[inline(always)]
+#[rustc_early_inline]
 fn stable_sort<T, F: FnMut(&T, &T) -> bool>(v: &mut [T], mut is_less: F) {
     if size_of::<T>() == 0 {
         return;
@@ -65,7 +65,7 @@ unsafe fn mergesort_main<T, F: FnMut(&T, &T) -> bool>(v: &mut [T], is_less: &mut
 /// no run detection, etc.
 ///
 /// Buffer as pointed to by `scratch` must have space for `v.len()` writes. And must not alias `v`.
-#[inline(always)]
+#[rustc_early_inline]
 unsafe fn mergesort_core<T, F: FnMut(&T, &T) -> bool>(
     v: &mut [T],
     scratch_ptr: *mut T,
@@ -96,7 +96,7 @@ unsafe fn mergesort_core<T, F: FnMut(&T, &T) -> bool>(
 ///
 /// SAFETY: The caller must ensure that `scratch_ptr` is valid for `v.len()` writes. And that mid is
 /// in-bounds.
-#[inline(always)]
+#[rustc_early_inline]
 unsafe fn merge<T, F>(v: &mut [T], scratch_ptr: *mut T, is_less: &mut F, mid: usize)
 where
     F: FnMut(&T, &T) -> bool,

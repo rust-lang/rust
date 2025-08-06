@@ -46,8 +46,10 @@ fn cross_crate_inlinable(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
     // #[inline(never)] to force code generation.
     match codegen_fn_attrs.inline {
         InlineAttr::Never => return false,
-        InlineAttr::Hint | InlineAttr::Always | InlineAttr::Force { .. } => return true,
-        _ => {}
+        InlineAttr::Hint | InlineAttr::Always | InlineAttr::Early | InlineAttr::Force { .. } => {
+            return true;
+        }
+        InlineAttr::None => {}
     }
 
     // If the crate is likely to be mostly unused, use cross-crate inlining to defer codegen until

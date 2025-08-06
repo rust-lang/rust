@@ -43,25 +43,25 @@ fn forward_loop(_1: &[T], _2: impl Fn(&T)) -> () {
                         scope 21 (inlined std::ptr::const_ptr::<impl *const T>::cast::<()>) {
                         }
                     }
-                    scope 26 (inlined <NonNull<T> as PartialEq>::eq) {
-                        let mut _16: *mut T;
-                        let mut _17: *mut T;
-                        scope 27 (inlined NonNull::<T>::as_ptr) {
-                        }
-                        scope 28 (inlined NonNull::<T>::as_ptr) {
-                        }
-                    }
-                    scope 29 (inlined NonNull::<T>::add) {
+                    scope 26 (inlined NonNull::<T>::add) {
                         let mut _19: *const T;
                         let mut _20: *const T;
-                        scope 30 (inlined NonNull::<T>::as_ptr) {
+                        scope 27 (inlined NonNull::<T>::as_ptr) {
                         }
                     }
-                    scope 31 (inlined NonNull::<T>::as_ref::<'_>) {
+                    scope 28 (inlined NonNull::<T>::as_ref::<'_>) {
                         let _24: *const T;
+                        scope 29 (inlined NonNull::<T>::as_ptr) {
+                        }
+                        scope 30 (inlined std::ptr::mut_ptr::<impl *mut T>::cast_const) {
+                        }
+                    }
+                    scope 31 (inlined <NonNull<T> as PartialEq>::eq) {
+                        let mut _16: *mut T;
+                        let mut _17: *mut T;
                         scope 32 (inlined NonNull::<T>::as_ptr) {
                         }
-                        scope 33 (inlined std::ptr::mut_ptr::<impl *mut T>::cast_const) {
+                        scope 33 (inlined NonNull::<T>::as_ptr) {
                         }
                     }
                 }
@@ -80,21 +80,21 @@ fn forward_loop(_1: &[T], _2: impl Fn(&T)) -> () {
                     let _9: *const T;
                     scope 7 {
                     }
-                    scope 11 (inlined std::ptr::without_provenance::<T>) {
-                        scope 12 (inlined without_provenance_mut::<T>) {
+                    scope 8 (inlined std::ptr::without_provenance::<T>) {
+                        scope 9 (inlined without_provenance_mut::<T>) {
                         }
                     }
-                    scope 13 (inlined NonNull::<T>::as_ptr) {
+                    scope 10 (inlined NonNull::<T>::as_ptr) {
                     }
-                    scope 14 (inlined #[track_caller] std::ptr::mut_ptr::<impl *mut T>::add) {
+                    scope 11 (inlined #[track_caller] std::ptr::mut_ptr::<impl *mut T>::add) {
                     }
                 }
-                scope 8 (inlined NonNull::<[T]>::from_ref) {
+                scope 12 (inlined NonNull::<[T]>::from_ref) {
                     let mut _4: *const [T];
                 }
-                scope 9 (inlined NonNull::<[T]>::cast::<T>) {
+                scope 13 (inlined NonNull::<[T]>::cast::<T>) {
                     let mut _5: *const T;
-                    scope 10 (inlined NonNull::<[T]>::as_ptr) {
+                    scope 14 (inlined NonNull::<[T]>::as_ptr) {
                     }
                 }
             }

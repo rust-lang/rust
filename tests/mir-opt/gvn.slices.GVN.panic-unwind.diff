@@ -77,6 +77,18 @@
                           debug kind => _47;
                       }
                   }
+                  scope 10 (inlined core::str::<impl str>::as_ptr) {
+                      let mut _57: *const str;
+                  }
+                  scope 11 (inlined core::slice::<impl [u8]>::as_ptr) {
+                      let mut _58: *const [u8];
+                  }
+              }
+              scope 8 (inlined core::str::<impl str>::as_ptr) {
+                  let mut _55: *const str;
+              }
+              scope 9 (inlined core::str::<impl str>::as_ptr) {
+                  let mut _56: *const str;
               }
           }
       }
@@ -118,10 +130,10 @@
 +         nop;
           StorageLive(_11);
           _11 = &(*_1);
-          _10 = core::str::<impl str>::as_ptr(move _11) -> [return: bb3, unwind continue];
-      }
-  
-      bb3: {
+          StorageLive(_55);
+          _55 = &raw const (*_11);
+          _10 = move _55 as *const u8 (PtrToPtr);
+          StorageDead(_55);
           StorageDead(_11);
           _9 = &_10;
 -         StorageLive(_12);
@@ -131,10 +143,10 @@
           StorageLive(_14);
 -         _14 = &(*_4);
 +         _14 = &(*_1);
-          _13 = core::str::<impl str>::as_ptr(move _14) -> [return: bb4, unwind continue];
-      }
-  
-      bb4: {
+          StorageLive(_56);
+          _56 = &raw const (*_14);
+          _13 = move _56 as *const u8 (PtrToPtr);
+          StorageDead(_56);
           StorageDead(_14);
           _12 = &_13;
 -         _8 = (move _9, move _12);
@@ -158,10 +170,10 @@
 -         _17 = Eq(move _18, move _19);
 +         _19 = copy _13;
 +         _17 = Eq(copy _10, copy _13);
-          switchInt(move _17) -> [0: bb6, otherwise: bb5];
+          switchInt(move _17) -> [0: bb4, otherwise: bb3];
       }
   
-      bb5: {
+      bb3: {
           StorageDead(_19);
           StorageDead(_18);
           _7 = const ();
@@ -183,11 +195,11 @@
           StorageLive(_31);
           StorageLive(_32);
           _32 = copy _29;
--         _31 = opaque::<&[u8]>(move _32) -> [return: bb7, unwind continue];
-+         _31 = opaque::<&[u8]>(copy _29) -> [return: bb7, unwind continue];
+-         _31 = opaque::<&[u8]>(move _32) -> [return: bb5, unwind continue];
++         _31 = opaque::<&[u8]>(copy _29) -> [return: bb5, unwind continue];
       }
   
-      bb6: {
+      bb4: {
           StorageDead(_19);
           StorageDead(_18);
 -         StorageLive(_21);
@@ -214,7 +226,7 @@
 +         _22 = assert_failed::<*const u8, *const u8>(const core::panicking::AssertKind::Eq, move _24, move _26, move _28) -> unwind continue;
       }
   
-      bb7: {
+      bb5: {
           StorageDead(_32);
           StorageDead(_31);
           StorageLive(_33);
@@ -225,10 +237,10 @@
 +         nop;
           StorageLive(_37);
           _37 = &(*_1);
-          _36 = core::str::<impl str>::as_ptr(move _37) -> [return: bb8, unwind continue];
-      }
-  
-      bb8: {
+          StorageLive(_57);
+          _57 = &raw const (*_37);
+          _36 = move _57 as *const u8 (PtrToPtr);
+          StorageDead(_57);
           StorageDead(_37);
           _35 = &_36;
 -         StorageLive(_38);
@@ -237,10 +249,10 @@
 +         nop;
           StorageLive(_40);
           _40 = &(*_29);
-          _39 = core::slice::<impl [u8]>::as_ptr(move _40) -> [return: bb9, unwind continue];
-      }
-  
-      bb9: {
+          StorageLive(_58);
+          _58 = &raw const (*_40);
+          _39 = move _58 as *const u8 (PtrToPtr);
+          StorageDead(_58);
           StorageDead(_40);
           _38 = &_39;
 -         _34 = (move _35, move _38);
@@ -264,10 +276,10 @@
 -         _43 = Eq(move _44, move _45);
 +         _45 = copy _39;
 +         _43 = Eq(copy _36, copy _39);
-          switchInt(move _43) -> [0: bb11, otherwise: bb10];
+          switchInt(move _43) -> [0: bb7, otherwise: bb6];
       }
   
-      bb10: {
+      bb6: {
           StorageDead(_45);
           StorageDead(_44);
           _33 = const ();
@@ -289,7 +301,7 @@
           return;
       }
   
-      bb11: {
+      bb7: {
           StorageDead(_45);
           StorageDead(_44);
 -         StorageLive(_47);

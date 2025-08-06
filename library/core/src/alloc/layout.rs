@@ -83,7 +83,7 @@ impl Layout {
         true
     }
 
-    #[inline(always)]
+    #[rustc_early_inline]
     const fn max_size_for_align(align: Alignment) -> usize {
         // (power-of-two implies align != 0.)
 

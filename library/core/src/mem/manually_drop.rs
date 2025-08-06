@@ -176,7 +176,7 @@ impl<T> ManuallyDrop<T> {
     #[must_use = "if you don't need the wrapper, you can use `mem::forget` instead"]
     #[stable(feature = "manually_drop", since = "1.20.0")]
     #[rustc_const_stable(feature = "const_manually_drop", since = "1.32.0")]
-    #[inline(always)]
+    #[rustc_early_inline]
     pub const fn new(value: T) -> ManuallyDrop<T> {
         ManuallyDrop { value }
     }
@@ -194,7 +194,7 @@ impl<T> ManuallyDrop<T> {
     /// ```
     #[stable(feature = "manually_drop", since = "1.20.0")]
     #[rustc_const_stable(feature = "const_manually_drop", since = "1.32.0")]
-    #[inline(always)]
+    #[rustc_early_inline]
     pub const fn into_inner(slot: ManuallyDrop<T>) -> T {
         slot.value
     }

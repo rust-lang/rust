@@ -390,7 +390,7 @@ impl<T: PointeeSized> NonNull<T> {
     #[rustc_const_stable(feature = "const_nonnull_as_ptr", since = "1.32.0")]
     #[rustc_never_returns_null_ptr]
     #[must_use]
-    #[inline(always)]
+    #[rustc_early_inline]
     pub const fn as_ptr(self) -> *mut T {
         // This is a transmute for the same reasons as `NonZero::get`.
 
@@ -429,7 +429,7 @@ impl<T: PointeeSized> NonNull<T> {
     #[stable(feature = "nonnull", since = "1.25.0")]
     #[rustc_const_stable(feature = "const_nonnull_as_ref", since = "1.73.0")]
     #[must_use]
-    #[inline(always)]
+    #[rustc_early_inline]
     pub const unsafe fn as_ref<'a>(&self) -> &'a T {
         // SAFETY: the caller must guarantee that `self` meets all the
         // requirements for a reference.
@@ -467,7 +467,7 @@ impl<T: PointeeSized> NonNull<T> {
     #[stable(feature = "nonnull", since = "1.25.0")]
     #[rustc_const_stable(feature = "const_ptr_as_ref", since = "1.83.0")]
     #[must_use]
-    #[inline(always)]
+    #[rustc_early_inline]
     pub const unsafe fn as_mut<'a>(&mut self) -> &'a mut T {
         // SAFETY: the caller must guarantee that `self` meets all the
         // requirements for a mutable reference.
@@ -560,7 +560,7 @@ impl<T: PointeeSized> NonNull<T> {
     ///     println!("{}", ptr.offset(2).read());
     /// }
     /// ```
-    #[inline(always)]
+    #[rustc_early_inline]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     #[must_use = "returns a new pointer rather than modifying its argument"]
     #[stable(feature = "non_null_convenience", since = "1.80.0")]
@@ -587,7 +587,7 @@ impl<T: PointeeSized> NonNull<T> {
     /// For non-`Sized` pointees this operation changes only the data pointer,
     /// leaving the metadata untouched.
     #[must_use]
-    #[inline(always)]
+    #[rustc_early_inline]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     #[stable(feature = "non_null_convenience", since = "1.80.0")]
     #[rustc_const_stable(feature = "non_null_convenience", since = "1.80.0")]
@@ -636,7 +636,7 @@ impl<T: PointeeSized> NonNull<T> {
     ///     println!("{}", ptr.add(2).read() as char);
     /// }
     /// ```
-    #[inline(always)]
+    #[rustc_early_inline]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     #[must_use = "returns a new pointer rather than modifying its argument"]
     #[stable(feature = "non_null_convenience", since = "1.80.0")]
@@ -663,7 +663,7 @@ impl<T: PointeeSized> NonNull<T> {
     /// For non-`Sized` pointees this operation changes only the data pointer,
     /// leaving the metadata untouched.
     #[must_use]
-    #[inline(always)]
+    #[rustc_early_inline]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     #[stable(feature = "non_null_convenience", since = "1.80.0")]
     #[rustc_const_stable(feature = "non_null_convenience", since = "1.80.0")]
@@ -713,7 +713,7 @@ impl<T: PointeeSized> NonNull<T> {
     ///     println!("{}", end.sub(2).read() as char);
     /// }
     /// ```
-    #[inline(always)]
+    #[rustc_early_inline]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     #[must_use = "returns a new pointer rather than modifying its argument"]
     #[stable(feature = "non_null_convenience", since = "1.80.0")]
@@ -745,7 +745,7 @@ impl<T: PointeeSized> NonNull<T> {
     /// For non-`Sized` pointees this operation changes only the data pointer,
     /// leaving the metadata untouched.
     #[must_use]
-    #[inline(always)]
+    #[rustc_early_inline]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     #[stable(feature = "non_null_convenience", since = "1.80.0")]
     #[rustc_const_stable(feature = "non_null_convenience", since = "1.80.0")]
@@ -864,7 +864,7 @@ impl<T: PointeeSized> NonNull<T> {
     ///
     /// For non-`Sized` pointees this operation considers only the data pointers,
     /// ignoring the metadata.
-    #[inline(always)]
+    #[rustc_early_inline]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     #[stable(feature = "non_null_convenience", since = "1.80.0")]
     #[rustc_const_stable(feature = "non_null_convenience", since = "1.80.0")]
@@ -956,7 +956,7 @@ impl<T: PointeeSized> NonNull<T> {
     ///
     /// For non-`Sized` pointees this operation considers only the data pointers,
     /// ignoring the metadata.
-    #[inline(always)]
+    #[rustc_early_inline]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     #[stable(feature = "ptr_sub_ptr", since = "1.87.0")]
     #[rustc_const_stable(feature = "const_ptr_sub_ptr", since = "1.87.0")]
@@ -1032,7 +1032,7 @@ impl<T: PointeeSized> NonNull<T> {
     /// See [`ptr::copy`] for safety concerns and examples.
     ///
     /// [`ptr::copy`]: crate::ptr::copy()
-    #[inline(always)]
+    #[rustc_early_inline]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     #[stable(feature = "non_null_convenience", since = "1.80.0")]
     #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.83.0")]
@@ -1052,7 +1052,7 @@ impl<T: PointeeSized> NonNull<T> {
     /// See [`ptr::copy_nonoverlapping`] for safety concerns and examples.
     ///
     /// [`ptr::copy_nonoverlapping`]: crate::ptr::copy_nonoverlapping()
-    #[inline(always)]
+    #[rustc_early_inline]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     #[stable(feature = "non_null_convenience", since = "1.80.0")]
     #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.83.0")]
@@ -1072,7 +1072,7 @@ impl<T: PointeeSized> NonNull<T> {
     /// See [`ptr::copy`] for safety concerns and examples.
     ///
     /// [`ptr::copy`]: crate::ptr::copy()
-    #[inline(always)]
+    #[rustc_early_inline]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     #[stable(feature = "non_null_convenience", since = "1.80.0")]
     #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.83.0")]
@@ -1092,7 +1092,7 @@ impl<T: PointeeSized> NonNull<T> {
     /// See [`ptr::copy_nonoverlapping`] for safety concerns and examples.
     ///
     /// [`ptr::copy_nonoverlapping`]: crate::ptr::copy_nonoverlapping()
-    #[inline(always)]
+    #[rustc_early_inline]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     #[stable(feature = "non_null_convenience", since = "1.80.0")]
     #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.83.0")]
@@ -1109,7 +1109,7 @@ impl<T: PointeeSized> NonNull<T> {
     /// See [`ptr::drop_in_place`] for safety concerns and examples.
     ///
     /// [`ptr::drop_in_place`]: crate::ptr::drop_in_place()
-    #[inline(always)]
+    #[rustc_early_inline]
     #[stable(feature = "non_null_convenience", since = "1.80.0")]
     pub unsafe fn drop_in_place(self) {
         // SAFETY: the caller must uphold the safety contract for `drop_in_place`.
@@ -1122,7 +1122,7 @@ impl<T: PointeeSized> NonNull<T> {
     /// See [`ptr::write`] for safety concerns and examples.
     ///
     /// [`ptr::write`]: crate::ptr::write()
-    #[inline(always)]
+    #[rustc_early_inline]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     #[stable(feature = "non_null_convenience", since = "1.80.0")]
     #[rustc_const_stable(feature = "const_ptr_write", since = "1.83.0")]
@@ -1140,7 +1140,7 @@ impl<T: PointeeSized> NonNull<T> {
     /// See [`ptr::write_bytes`] for safety concerns and examples.
     ///
     /// [`ptr::write_bytes`]: crate::ptr::write_bytes()
-    #[inline(always)]
+    #[rustc_early_inline]
     #[doc(alias = "memset")]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     #[stable(feature = "non_null_convenience", since = "1.80.0")]
@@ -1163,7 +1163,7 @@ impl<T: PointeeSized> NonNull<T> {
     /// See [`ptr::write_volatile`] for safety concerns and examples.
     ///
     /// [`ptr::write_volatile`]: crate::ptr::write_volatile()
-    #[inline(always)]
+    #[rustc_early_inline]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     #[stable(feature = "non_null_convenience", since = "1.80.0")]
     pub unsafe fn write_volatile(self, val: T)
@@ -1182,7 +1182,7 @@ impl<T: PointeeSized> NonNull<T> {
     /// See [`ptr::write_unaligned`] for safety concerns and examples.
     ///
     /// [`ptr::write_unaligned`]: crate::ptr::write_unaligned()
-    #[inline(always)]
+    #[rustc_early_inline]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     #[stable(feature = "non_null_convenience", since = "1.80.0")]
     #[rustc_const_stable(feature = "const_ptr_write", since = "1.83.0")]
@@ -1200,7 +1200,7 @@ impl<T: PointeeSized> NonNull<T> {
     /// See [`ptr::replace`] for safety concerns and examples.
     ///
     /// [`ptr::replace`]: crate::ptr::replace()
-    #[inline(always)]
+    #[rustc_early_inline]
     #[stable(feature = "non_null_convenience", since = "1.80.0")]
     #[rustc_const_stable(feature = "const_inherent_ptr_replace", since = "1.88.0")]
     pub const unsafe fn replace(self, src: T) -> T
@@ -1218,7 +1218,7 @@ impl<T: PointeeSized> NonNull<T> {
     /// See [`ptr::swap`] for safety concerns and examples.
     ///
     /// [`ptr::swap`]: crate::ptr::swap()
-    #[inline(always)]
+    #[rustc_early_inline]
     #[stable(feature = "non_null_convenience", since = "1.80.0")]
     #[rustc_const_stable(feature = "const_swap", since = "1.85.0")]
     pub const unsafe fn swap(self, with: NonNull<T>)

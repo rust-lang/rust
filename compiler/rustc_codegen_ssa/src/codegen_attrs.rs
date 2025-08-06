@@ -473,7 +473,7 @@ fn check_result(
 
     // warn that inline has no effect when no_sanitize is present
     if !codegen_fn_attrs.no_sanitize.is_empty()
-        && codegen_fn_attrs.inline.always()
+        && codegen_fn_attrs.inline.always_in_codegen()
         && let (Some(no_sanitize_span), Some(inline_span)) =
             (interesting_spans.no_sanitize, interesting_spans.inline)
     {

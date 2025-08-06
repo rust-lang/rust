@@ -86,7 +86,7 @@ const fn slice_end_index_overflow_fail() -> ! {
 // Both the safe and unsafe public methods share these helpers,
 // which use intrinsics directly to get *no* extra checks.
 
-#[inline(always)]
+#[rustc_early_inline]
 const unsafe fn get_offset_len_noubcheck<T>(
     ptr: *const [T],
     offset: usize,
@@ -98,7 +98,7 @@ const unsafe fn get_offset_len_noubcheck<T>(
     crate::intrinsics::aggregate_raw_ptr(ptr, len)
 }
 
-#[inline(always)]
+#[rustc_early_inline]
 const unsafe fn get_offset_len_mut_noubcheck<T>(
     ptr: *mut [T],
     offset: usize,

@@ -351,7 +351,7 @@ impl<T: ?Sized> Rc<T> {
 }
 
 impl<T: ?Sized, A: Allocator> Rc<T, A> {
-    #[inline(always)]
+    #[rustc_early_inline]
     fn inner(&self) -> &RcInner<T> {
         // This unsafety is ok because while this Rc is alive we're guaranteed
         // that the inner pointer is valid.
@@ -2251,7 +2251,7 @@ impl<T: Copy> RcFromSlice<T> for Rc<[T]> {
 impl<T: ?Sized, A: Allocator> Deref for Rc<T, A> {
     type Target = T;
 
-    #[inline(always)]
+    #[rustc_early_inline]
     fn deref(&self) -> &T {
         &self.inner().value
     }

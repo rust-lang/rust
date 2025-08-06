@@ -816,12 +816,12 @@ const fn panic_already_mutably_borrowed(err: BorrowError) -> ! {
 type BorrowCounter = isize;
 const UNUSED: BorrowCounter = 0;
 
-#[inline(always)]
+#[rustc_early_inline]
 const fn is_writing(x: BorrowCounter) -> bool {
     x < UNUSED
 }
 
-#[inline(always)]
+#[rustc_early_inline]
 const fn is_reading(x: BorrowCounter) -> bool {
     x > UNUSED
 }
@@ -2112,7 +2112,7 @@ impl<T> UnsafeCell<T> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_unsafe_cell_new", since = "1.32.0")]
-    #[inline(always)]
+    #[rustc_early_inline]
     pub const fn new(value: T) -> UnsafeCell<T> {
         UnsafeCell { value }
     }
@@ -2128,7 +2128,7 @@ impl<T> UnsafeCell<T> {
     ///
     /// let five = uc.into_inner();
     /// ```
-    #[inline(always)]
+    #[rustc_early_inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_cell_into_inner", since = "1.83.0")]
     #[rustc_allow_const_fn_unstable(const_precise_live_drops)]
@@ -2180,7 +2180,7 @@ impl<T: ?Sized> UnsafeCell<T> {
     /// *uc.get_mut() -= 1;
     /// assert_eq!(*uc.get_mut(), 41);
     /// ```
-    #[inline(always)]
+    #[rustc_early_inline]
     #[stable(feature = "unsafe_cell_from_mut", since = "1.84.0")]
     #[rustc_const_stable(feature = "unsafe_cell_from_mut", since = "1.84.0")]
     pub const fn from_mut(value: &mut T) -> &mut UnsafeCell<T> {
@@ -2203,7 +2203,7 @@ impl<T: ?Sized> UnsafeCell<T> {
     ///
     /// let five = uc.get();
     /// ```
-    #[inline(always)]
+    #[rustc_early_inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_unsafecell_get", since = "1.32.0")]
     #[rustc_as_ptr]
@@ -2230,7 +2230,7 @@ impl<T: ?Sized> UnsafeCell<T> {
     ///
     /// assert_eq!(*c.get_mut(), 6);
     /// ```
-    #[inline(always)]
+    #[rustc_early_inline]
     #[stable(feature = "unsafe_cell_get_mut", since = "1.50.0")]
     #[rustc_const_stable(feature = "const_unsafecell_get_mut", since = "1.83.0")]
     pub const fn get_mut(&mut self) -> &mut T {
@@ -2264,7 +2264,7 @@ impl<T: ?Sized> UnsafeCell<T> {
     ///
     /// assert_eq!(uc.into_inner(), 5);
     /// ```
-    #[inline(always)]
+    #[rustc_early_inline]
     #[stable(feature = "unsafe_cell_raw_get", since = "1.56.0")]
     #[rustc_const_stable(feature = "unsafe_cell_raw_get", since = "1.56.0")]
     #[rustc_diagnostic_item = "unsafe_cell_raw_get"]

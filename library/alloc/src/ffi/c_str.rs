@@ -269,7 +269,7 @@ impl CString {
         }
 
         // Specialization for avoiding reallocation
-        #[inline(always)] // Without that it is not inlined into specializations
+        #[rustc_early_inline] // Without that it is not inlined into specializations
         fn spec_new_impl_bytes(bytes: &[u8]) -> Result<CString, NulError> {
             // We cannot have such large slice that we would overflow here
             // but using `checked_add` allows LLVM to assume that capacity never overflows

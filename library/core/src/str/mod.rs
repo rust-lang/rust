@@ -481,7 +481,7 @@ impl str {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "str_as_bytes", since = "1.39.0")]
     #[must_use]
-    #[inline(always)]
+    #[rustc_early_inline]
     #[allow(unused_attributes)]
     pub const fn as_bytes(&self) -> &[u8] {
         // SAFETY: const sound because we transmute two types with the same layout
@@ -527,7 +527,7 @@ impl str {
     #[stable(feature = "str_mut_extras", since = "1.20.0")]
     #[rustc_const_stable(feature = "const_str_as_mut", since = "1.83.0")]
     #[must_use]
-    #[inline(always)]
+    #[rustc_early_inline]
     pub const unsafe fn as_bytes_mut(&mut self) -> &mut [u8] {
         // SAFETY: the cast from `&str` to `&[u8]` is safe since `str`
         // has the same layout as `&[u8]` (only std can make this guarantee).
@@ -558,7 +558,7 @@ impl str {
     #[rustc_never_returns_null_ptr]
     #[rustc_as_ptr]
     #[must_use]
-    #[inline(always)]
+    #[rustc_early_inline]
     pub const fn as_ptr(&self) -> *const u8 {
         self as *const str as *const u8
     }
@@ -576,7 +576,7 @@ impl str {
     #[rustc_never_returns_null_ptr]
     #[rustc_as_ptr]
     #[must_use]
-    #[inline(always)]
+    #[rustc_early_inline]
     pub const fn as_mut_ptr(&mut self) -> *mut u8 {
         self as *mut str as *mut u8
     }

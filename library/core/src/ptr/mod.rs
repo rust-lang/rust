@@ -520,7 +520,7 @@ mod mut_ptr;
 #[doc(alias = "memcpy")]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.83.0")]
-#[inline(always)]
+#[rustc_early_inline]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 #[rustc_diagnostic_item = "ptr_copy_nonoverlapping"]
 pub const unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize) {
@@ -617,7 +617,7 @@ pub const unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: us
 #[doc(alias = "memmove")]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.83.0")]
-#[inline(always)]
+#[rustc_early_inline]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 #[rustc_diagnostic_item = "ptr_copy"]
 pub const unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize) {
@@ -691,7 +691,7 @@ pub const unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize) {
 #[doc(alias = "memset")]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_stable(feature = "const_ptr_write", since = "1.83.0")]
-#[inline(always)]
+#[rustc_early_inline]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 #[rustc_diagnostic_item = "ptr_write_bytes"]
 pub const unsafe fn write_bytes<T>(dst: *mut T, val: u8, count: usize) {
@@ -824,7 +824,7 @@ pub unsafe fn drop_in_place<T: PointeeSized>(to_drop: *mut T) {
 /// assert!(p.is_null());
 /// assert_eq!(p as usize, 0); // this pointer has the address 0
 /// ```
-#[inline(always)]
+#[rustc_early_inline]
 #[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_promotable]
@@ -849,7 +849,7 @@ pub const fn null<T: PointeeSized + Thin>() -> *const T {
 /// assert!(p.is_null());
 /// assert_eq!(p as usize, 0); // this pointer has the address 0
 /// ```
-#[inline(always)]
+#[rustc_early_inline]
 #[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_promotable]
@@ -872,7 +872,7 @@ pub const fn null_mut<T: PointeeSized + Thin>() -> *mut T {
 /// exposed provenance. See [`with_exposed_provenance`] for more details on that operation.
 ///
 /// This is a [Strict Provenance][crate::ptr#strict-provenance] API.
-#[inline(always)]
+#[rustc_early_inline]
 #[must_use]
 #[stable(feature = "strict_provenance", since = "1.84.0")]
 #[rustc_const_stable(feature = "strict_provenance", since = "1.84.0")]
@@ -889,7 +889,7 @@ pub const fn without_provenance<T>(addr: usize) -> *const T {
 /// a `T`, which means this must not be used as a "not yet initialized"
 /// sentinel value. Types that lazily allocate must track initialization by
 /// some other means.
-#[inline(always)]
+#[rustc_early_inline]
 #[must_use]
 #[stable(feature = "strict_provenance", since = "1.84.0")]
 #[rustc_const_stable(feature = "strict_provenance", since = "1.84.0")]
@@ -910,7 +910,7 @@ pub const fn dangling<T>() -> *const T {
 /// exposed provenance. See [`with_exposed_provenance_mut`] for more details on that operation.
 ///
 /// This is a [Strict Provenance][crate::ptr#strict-provenance] API.
-#[inline(always)]
+#[rustc_early_inline]
 #[must_use]
 #[stable(feature = "strict_provenance", since = "1.84.0")]
 #[rustc_const_stable(feature = "strict_provenance", since = "1.84.0")]
@@ -932,7 +932,7 @@ pub const fn without_provenance_mut<T>(addr: usize) -> *mut T {
 /// a `T`, which means this must not be used as a "not yet initialized"
 /// sentinel value. Types that lazily allocate must track initialization by
 /// some other means.
-#[inline(always)]
+#[rustc_early_inline]
 #[must_use]
 #[stable(feature = "strict_provenance", since = "1.84.0")]
 #[rustc_const_stable(feature = "strict_provenance", since = "1.84.0")]
@@ -972,7 +972,7 @@ pub const fn dangling_mut<T>() -> *mut T {
 ///
 /// This is an [Exposed Provenance][crate::ptr#exposed-provenance] API.
 #[must_use]
-#[inline(always)]
+#[rustc_early_inline]
 #[stable(feature = "exposed_provenance", since = "1.84.0")]
 #[rustc_const_unstable(feature = "const_exposed_provenance", issue = "144538")]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
@@ -1013,7 +1013,7 @@ pub const fn with_exposed_provenance<T>(addr: usize) -> *const T {
 ///
 /// This is an [Exposed Provenance][crate::ptr#exposed-provenance] API.
 #[must_use]
-#[inline(always)]
+#[rustc_early_inline]
 #[stable(feature = "exposed_provenance", since = "1.84.0")]
 #[rustc_const_unstable(feature = "const_exposed_provenance", issue = "144538")]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
@@ -1069,7 +1069,7 @@ pub const fn with_exposed_provenance_mut<T>(addr: usize) -> *mut T {
 /// let p = ptr::from_ref(&x);
 /// unsafe { p.read() };
 /// ```
-#[inline(always)]
+#[rustc_early_inline]
 #[must_use]
 #[stable(feature = "ptr_from_ref", since = "1.76.0")]
 #[rustc_const_stable(feature = "ptr_from_ref", since = "1.76.0")]
@@ -1120,7 +1120,7 @@ pub const fn from_ref<T: PointeeSized>(r: &T) -> *const T {
 /// let p = ptr::from_mut(&mut x);
 /// unsafe { p.write(T::default()) };
 /// ```
-#[inline(always)]
+#[rustc_early_inline]
 #[must_use]
 #[stable(feature = "ptr_from_ref", since = "1.76.0")]
 #[rustc_const_stable(feature = "ptr_from_ref", since = "1.76.0")]
@@ -2435,7 +2435,7 @@ pub(crate) unsafe fn align_offset<T: Sized>(p: *const T, a: usize) -> usize {
 /// assert!(!std::ptr::eq(&a[0..2], &a[1..3]));
 /// ```
 #[stable(feature = "ptr_eq", since = "1.17.0")]
-#[inline(always)]
+#[rustc_early_inline]
 #[must_use = "pointer comparison produces a value"]
 #[rustc_diagnostic_item = "ptr_eq"]
 #[allow(ambiguous_wide_pointer_comparisons)] // it's actually clear here
@@ -2461,7 +2461,7 @@ pub fn eq<T: PointeeSized>(a: *const T, b: *const T) -> bool {
 /// assert!(!ptr::eq::<dyn std::fmt::Debug>(whole, first));
 /// ```
 #[stable(feature = "ptr_addr_eq", since = "1.76.0")]
-#[inline(always)]
+#[rustc_early_inline]
 #[must_use = "pointer comparison produces a value"]
 pub fn addr_eq<T: PointeeSized, U: PointeeSized>(p: *const T, q: *const U) -> bool {
     (p as *const ()) == (q as *const ())
@@ -2514,7 +2514,7 @@ pub fn addr_eq<T: PointeeSized, U: PointeeSized>(p: *const T, q: *const U) -> bo
 ///
 /// [subtype]: https://doc.rust-lang.org/reference/subtyping.html
 #[stable(feature = "ptr_fn_addr_eq", since = "1.85.0")]
-#[inline(always)]
+#[rustc_early_inline]
 #[must_use = "function pointer comparison produces a value"]
 pub fn fn_addr_eq<T: FnPtr, U: FnPtr>(f: T, g: U) -> bool {
     f.addr() == g.addr()

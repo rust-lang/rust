@@ -1,0 +1,12 @@
+- // MIR for `early_as_fn` before ForceInline
++ // MIR for `early_as_fn` after ForceInline
+  
+  fn early_as_fn() -> fn(i32, i32) -> i32 {
+      let mut _0: fn(i32, i32) -> i32;
+  
+      bb0: {
+          _0 = do_early as fn(i32, i32) -> i32 (PointerCoercion(ReifyFnPointer, Implicit));
+          return;
+      }
+  }
+  

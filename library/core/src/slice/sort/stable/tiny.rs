@@ -6,7 +6,7 @@ use crate::slice::sort::stable::merge;
 
 /// Tiny recursive top-down merge sort optimized for binary size. It has no adaptiveness whatsoever,
 /// no run detection, etc.
-#[inline(always)]
+#[rustc_early_inline]
 pub fn mergesort<T, F: FnMut(&T, &T) -> bool>(
     v: &mut [T],
     scratch: &mut [MaybeUninit<T>],

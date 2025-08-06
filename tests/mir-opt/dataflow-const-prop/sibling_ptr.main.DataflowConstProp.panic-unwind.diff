@@ -7,12 +7,15 @@
       let _2: ();
       let mut _4: *mut u8;
       let mut _5: *mut u8;
+      let mut _7: usize;
       scope 1 {
           debug x => _1;
           let _3: *mut u8;
           let _6: u8;
           scope 2 {
               debug p => _3;
+              scope 4 (inlined #[track_caller] std::ptr::mut_ptr::<impl *mut u8>::add) {
+              }
           }
           scope 3 {
               debug x1 => _6;
@@ -28,10 +31,11 @@
           StorageLive(_4);
           StorageLive(_5);
           _5 = copy _3;
-          _4 = std::ptr::mut_ptr::<impl *mut u8>::add(move _5, const 1_usize) -> [return: bb1, unwind continue];
-      }
-  
-      bb1: {
+          StorageLive(_7);
+          _7 = const 1_usize;
+-         _4 = Offset(copy _5, copy _7);
++         _4 = Offset(copy _5, const 1_usize);
+          StorageDead(_7);
           StorageDead(_5);
           (*_4) = const 1_u8;
           StorageDead(_4);

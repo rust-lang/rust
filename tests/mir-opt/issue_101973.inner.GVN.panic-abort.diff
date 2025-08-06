@@ -16,12 +16,12 @@
       let mut _11: bool;
       let mut _12: u32;
       let mut _13: bool;
-      scope 1 (inlined imm8) {
-          let mut _14: u32;
-          scope 2 {
-          }
+      scope 1 (inlined core::num::<impl u32>::rotate_right) {
       }
-      scope 3 (inlined core::num::<impl u32>::rotate_right) {
+      scope 2 (inlined imm8) {
+          let mut _14: u32;
+          scope 3 {
+          }
       }
   
       bb0: {
