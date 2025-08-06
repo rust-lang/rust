@@ -275,15 +275,17 @@ fn stackprotector_attr<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
     instance: ty::Instance<'tcx>,
 ) -> Option<&'ll Attribute> {
-    let fn_abi = cx.fn_abi_of_instance(instance, ty::List::empty());
     let sspattr = match cx.sess().stack_protector() {
         StackProtector::None => return None,
         StackProtector::All => AttributeKind::StackProtectReq,
 
         StackProtector::Rusty => {
+            let fn_abi = cx.fn_abi_of_instance(instance, ty::List::empty());
             if cx.tcx.stack_protector.borrow().contains(&instance.def_id())
                 || matches!(
                     &fn_abi.ret.mode,
+                    // When a large-size variable is converted to a pointer and passed,
+                    // does meta_attrs always have to be Some(_)?
                     PassMode::Indirect { attrs: _, meta_attrs: _, on_stack: false }
                 )
             {
