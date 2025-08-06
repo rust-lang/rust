@@ -15,7 +15,9 @@
 use rustc_abi::ExternAbi;
 use rustc_ast as ast;
 use rustc_ast::AttrStyle;
-use rustc_ast::ast::{AttrKind, Attribute, IntTy, LitIntType, LitKind, StrStyle, TraitObjectSyntax, UintTy};
+use rustc_ast::ast::{
+    AttrKind, Attribute, GenericArgs, IntTy, LitIntType, LitKind, StrStyle, TraitObjectSyntax, UintTy,
+};
 use rustc_ast::token::CommentKind;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{
@@ -445,7 +447,52 @@ fn ast_ty_search_pat(ty: &ast::Ty) -> (Pat, Pat) {
         TyKind::Tup([ty]) => ast_ty_search_pat(ty),
         TyKind::Tup([head, .., tail]) => (ast_ty_search_pat(head).0, ast_ty_search_pat(tail).1),
         TyKind::OpaqueDef(..) => (Pat::Str("impl"), Pat::Str("")),
-        TyKind::Path(qpath) => qpath_search_pat(&qpath),
+        TyKind::Path(qself_path, path) => {
+            let start = if qself_path.is_some() {
+                Pat::Str("<")
+            } else if let Some(first) = path.segments.first() {
+                ident_search_pat(first.ident).0
+            } else {
+                // this shouldn't be possible, but sure
+                Pat::Str("")
+            };
+            let end = if let Some(last) = path.segments.last() {
+                match last.args.as_deref() {
+                    // last `>` in `std::foo::Bar<T>`
+                    Some(GenericArgs::AngleBracketed(_)) => Pat::Str(">"),
+                    Some(GenericArgs::Parenthesized(par_args)) => match &par_args.output {
+                        FnRetTy::Default(_) => {
+                            if let Some(last) = par_args.inputs.last() {
+                                // `B` in `(A, B)` -- `)` gets stripped
+                                ast_ty_search_pat(last).1
+                            } else {
+                                // `(` in `()` -- `)` gets stripped
+                                Pat::Str("(")
+                            }
+                        },
+                        // `C` in `(A, B) -> C`
+                        FnRetTy::Ty(ty) => ast_ty_search_pat(ty).1,
+                    },
+                    // last `..` in `(..)` -- `)` gets stripped
+                    Some(GenericArgs::ParenthesizedElided(_)) => Pat::Str(".."),
+                    // `bar` in `std::foo::bar`
+                    None => ident_search_pat(last.ident).1,
+                }
+            } else {
+                // this shouldn't be possible, but sure
+                #[allow(
+                    clippy::collapsible_else_if,
+                    reason = "we want to keep these cases together, since they are both impossible"
+                )]
+                if qself_path.is_some() {
+                    // last `>` in `<Vec as IntoIterator>`
+                    Pat::Str(">")
+                } else {
+                    Pat::Str("")
+                }
+            };
+            (start, end)
+        },
         TyKind::Infer => (Pat::Str("_"), Pat::Str("_")),
         TyKind::TraitObject(_, tagged_ptr) if let TraitObjectSyntax::Dyn = tagged_ptr.tag() => {
             (Pat::Str("dyn"), Pat::Str(""))
