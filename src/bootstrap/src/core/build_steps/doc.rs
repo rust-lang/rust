@@ -722,7 +722,7 @@ fn doc_std(
     let mut cargo =
         builder::Cargo::new(builder, compiler, Mode::Std, SourceType::InTree, target, Kind::Doc);
 
-    compile::std_cargo(builder, target, compiler.stage, &mut cargo);
+    compile::std_cargo(builder, target, &mut cargo);
     cargo
         .arg("--no-deps")
         .arg("--target-dir")
