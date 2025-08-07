@@ -1,0 +1,14 @@
+error[E0282]: type annotations needed
+  --> $DIR/closure-in-array.rs:5:11
+   |
+LL |     foo([|s| s.len()])
+   |           ^  - type must be known at this point
+   |
+help: consider giving this closure parameter an explicit type
+   |
+LL |     foo([|s: /* Type */| s.len()])
+   |            ++++++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0282`.

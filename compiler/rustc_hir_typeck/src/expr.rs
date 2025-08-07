@@ -1670,11 +1670,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             let coerce_to = expected
                 .to_option(self)
-                .and_then(|uty| self.try_structurally_resolve_type(expr.span, uty).builtin_index())
+                .and_then(|uty| {
+                    self.try_structurally_resolve_type(expr.span, uty)
+                        .builtin_index()
+                        // Avoid using the original type variable as the coerce_to type, as it may resolve
+                        // during the first coercion instead of being the LUB type.
+                        .filter(|t| !self.try_structurally_resolve_type(expr.span, *t).is_ty_var())
+                })
                 .unwrap_or_else(|| self.next_ty_var(expr.span));
             let mut coerce = CoerceMany::with_capacity(coerce_to, args.len());
 
             for e in args {
+                // FIXME: the element expectation should use
+                // `try_structurally_resolve_and_adjust_for_branches` just like in `if` and `match`.
+                // While that fixes nested coercion, it will break [some
+                // code like this](https://github.com/rust-lang/rust/pull/140283#issuecomment-2958776528).
+                // If we find a way to support recursive tuple coercion, this break can be avoided.
                 let e_ty = self.check_expr_with_hint(e, coerce_to);
                 let cause = self.misc(e.span);
                 coerce.coerce(self, &cause, e, e_ty);
