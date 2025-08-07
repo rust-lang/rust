@@ -167,7 +167,7 @@ impl fmt::Debug for Debug<'_> {
 ///     for chunk in input.utf8_chunks() {
 ///         push(chunk.valid());
 ///
-///         if !chunk.invalid().is_empty() {
+///         for _byte in chunk.invalid() {
 ///             push("\u{FFFD}");
 ///         }
 ///     }
