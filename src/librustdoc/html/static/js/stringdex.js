@@ -1591,9 +1591,6 @@ function loadDatabase(hooks) {
                 // if we want to do them in order)
                 for (const {node, len} of current_layer) {
                     const tree = await node;
-                    if (tree.leaves_whole.isEmpty()) {
-                        continue;
-                    }
                     const length = len + tree.data.length;
                     if (minLength === null || length < minLength) {
                         minLength = length;
@@ -1618,7 +1615,9 @@ function loadDatabase(hooks) {
                     if (minLength !== null && backlogEntry.length > minLength) {
                         break;
                     }
-                    yield backlogEntry.bitmap;
+                    if (!backlogEntry.bitmap.isEmpty()) {
+                        yield backlogEntry.bitmap;
+                    }
                     backlog[0] = backlog[backlog.length - 1];
                     backlog.length -= 1;
                     let backlogSlot = 0;
