@@ -33,7 +33,7 @@ use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::lint::builtin::{
     MACRO_USE_EXTERN_CRATE, UNUSED_EXTERN_CRATES, UNUSED_IMPORTS, UNUSED_QUALIFICATIONS,
 };
-use rustc_span::{DUMMY_SP, Ident, Span, kw};
+use rustc_span::{DUMMY_SP, Ident, Macros20NormalizedIdent, Span, kw};
 
 use crate::imports::{Import, ImportKind};
 use crate::{LexicalScopeBinding, NameBindingKind, Resolver, module_to_string};
@@ -203,7 +203,7 @@ impl<'a, 'ra, 'tcx> UnusedImportCheckVisitor<'a, 'ra, 'tcx> {
             if self
                 .r
                 .extern_prelude
-                .get(&extern_crate.ident)
+                .get(&Macros20NormalizedIdent::new(extern_crate.ident))
                 .is_none_or(|entry| entry.introduced_by_item)
             {
                 continue;
