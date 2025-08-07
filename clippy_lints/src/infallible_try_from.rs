@@ -13,7 +13,7 @@ declare_clippy_lint! {
     ///
     /// ### Why is this bad?
     ///
-    /// Infalliable conversions should be implemented via `From` with the blanket conversion.
+    /// Infallible conversions should be implemented via `From` with the blanket conversion.
     ///
     /// ### Example
     /// ```no_run
@@ -35,7 +35,7 @@ declare_clippy_lint! {
     ///     }
     /// }
     /// ```
-    #[clippy::version = "1.88.0"]
+    #[clippy::version = "1.89.0"]
     pub INFALLIBLE_TRY_FROM,
     suspicious,
     "TryFrom with infallible Error type"
@@ -71,7 +71,7 @@ impl<'tcx> LateLintPass<'tcx> for InfallibleTryFrom {
                     cx,
                     INFALLIBLE_TRY_FROM,
                     span,
-                    "infallible TryFrom impl; consider implementing From, instead",
+                    "infallible TryFrom impl; consider implementing From instead",
                 );
             }
         }

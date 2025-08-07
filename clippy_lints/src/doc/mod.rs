@@ -662,7 +662,7 @@ declare_clippy_lint! {
     /// /// [^1]: defined here
     /// fn my_fn() {}
     /// ```
-    #[clippy::version = "1.88.0"]
+    #[clippy::version = "1.89.0"]
     pub DOC_SUSPICIOUS_FOOTNOTES,
     suspicious,
     "looks like a link or footnote ref, but with no definition"

@@ -136,6 +136,9 @@ impl CollapsibleIf {
                         return;
                     }
 
+                    // Peel off any parentheses.
+                    let (_, else_block_span, _) = peel_parens(cx.tcx.sess.source_map(), else_.span);
+
                     // Prevent "elseif"
                     // Check that the "else" is followed by whitespace
                     let requires_space = if let Some(c) = snippet(cx, up_to_else, "..").chars().last() {
@@ -152,7 +155,7 @@ impl CollapsibleIf {
                             if requires_space { " " } else { "" },
                             snippet_block_with_applicability(
                                 cx,
-                                else_.span,
+                                else_block_span,
                                 "..",
                                 Some(else_block.span),
                                 &mut applicability
@@ -187,7 +190,8 @@ impl CollapsibleIf {
                             .with_leading_whitespace(cx)
                             .into_span()
                     };
-                    let inner_if = inner.span.split_at(2).0;
+                    let (paren_start, inner_if_span, paren_end) = peel_parens(cx.tcx.sess.source_map(), inner.span);
+                    let inner_if = inner_if_span.split_at(2).0;
                     let mut sugg = vec![
                         // Remove the outer then block `{`
                         (then_open_bracket, String::new()),
@@ -196,6 +200,17 @@ impl CollapsibleIf {
                         // Replace inner `if` by `&&`
                         (inner_if, String::from("&&")),
                     ];
+
+                    if !paren_start.is_empty() {
+                        // Remove any leading parentheses '('
+                        sugg.push((paren_start, String::new()));
+                    }
+
+                    if !paren_end.is_empty() {
+                        // Remove any trailing parentheses ')'
+                        sugg.push((paren_end, String::new()));
+                    }
+
                     sugg.extend(parens_around(check));
                     sugg.extend(parens_around(check_inner));
 
@@ -284,4 +299,38 @@ fn span_extract_keyword(sm: &SourceMap, span: Span, keyword: &str) -> Option<Spa
                 .0
         })
         .next()
+}
+
+/// Peel the parentheses from an `if` expression, e.g. `((if true {} else {}))`.
+fn peel_parens(sm: &SourceMap, mut span: Span) -> (Span, Span, Span) {
+    use crate::rustc_span::Pos;
+
+    let start = span.shrink_to_lo();
+    let end = span.shrink_to_hi();
+
+    let snippet = sm.span_to_snippet(span).unwrap();
+    if let Some((trim_start, _, trim_end)) = peel_parens_str(&snippet) {
+        let mut data = span.data();
+        data.lo = data.lo + BytePos::from_usize(trim_start);
+        data.hi = data.hi - BytePos::from_usize(trim_end);
+        span = data.span();
+    }
+
+    (start.with_hi(span.lo()), span, end.with_lo(span.hi()))
+}
+
+fn peel_parens_str(snippet: &str) -> Option<(usize, &str, usize)> {
+    let trimmed = snippet.trim();
+    if !(trimmed.starts_with('(') && trimmed.ends_with(')')) {
+        return None;
+    }
+
+    let trim_start = (snippet.len() - snippet.trim_start().len()) + 1;
+    let trim_end = (snippet.len() - snippet.trim_end().len()) + 1;
+
+    let inner = snippet.get(trim_start..snippet.len() - trim_end)?;
+    Some(match peel_parens_str(inner) {
+        None => (trim_start, inner, trim_end),
+        Some((start, inner, end)) => (trim_start + start, inner, trim_end + end),
+    })
 }
