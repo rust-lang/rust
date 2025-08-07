@@ -1,9 +1,8 @@
-//@ check-pass
-// Ensure that trailing semicolons cause warnings by default
+// Ensure that trailing semicolons cause errors by default
 
 macro_rules! foo {
     () => {
-        true; //~  WARN trailing semicolon in macro
+        true; //~  ERROR trailing semicolon in macro
               //~| WARN this was previously
     }
 }
