@@ -7,7 +7,10 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_macros::{Decodable_NoContext, Encodable_NoContext, HashStable_NoContext};
 use rustc_type_ir_macros::{Lift_Generic, TypeFoldable_Generic, TypeVisitable_Generic};
 
-use crate::{self as ty, DebruijnIndex, Interner};
+use crate::{
+    self as ty, DebruijnIndex, FallibleTypeFolder, Interner, TypeFoldable, TypeFolder,
+    TypeVisitable, TypeVisitor, VisitorResult,
+};
 
 /// Represents a constant in Rust.
 #[derive_where(Clone, Copy, Hash, PartialEq, Eq; I: Interner)]
@@ -118,5 +121,21 @@ impl<CTX> HashStable<CTX> for InferConst {
             }
             InferConst::Fresh(i) => i.hash_stable(hcx, hasher),
         }
+    }
+}
+
+impl<I: Interner> TypeFoldable<I> for InferConst {
+    fn try_fold_with<F: FallibleTypeFolder<I>>(self, _folder: &mut F) -> Result<Self, F::Error> {
+        Ok(self)
+    }
+
+    fn fold_with<F: TypeFolder<I>>(self, _folder: &mut F) -> Self {
+        self
+    }
+}
+
+impl<I: Interner> TypeVisitable<I> for InferConst {
+    fn visit_with<V: TypeVisitor<I>>(&self, _visitor: &mut V) -> V::Result {
+        V::Result::output()
     }
 }
