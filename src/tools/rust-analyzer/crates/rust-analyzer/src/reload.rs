@@ -741,13 +741,16 @@ impl GlobalState {
             })
             .collect();
 
+        self.incomplete_crate_graph = false;
         let (crate_graph, proc_macro_paths) = {
             // Create crate graph from all the workspaces
             let vfs = &self.vfs.read().0;
             let load = |path: &AbsPath| {
                 let vfs_path = vfs::VfsPath::from(path.to_path_buf());
                 self.crate_graph_file_dependencies.insert(vfs_path.clone());
-                vfs.file_id(&vfs_path).and_then(|(file_id, excluded)| {
+                let file_id = vfs.file_id(&vfs_path);
+                self.incomplete_crate_graph |= file_id.is_none();
+                file_id.and_then(|(file_id, excluded)| {
                     (excluded == vfs::FileExcluded::No).then_some(file_id)
                 })
             };
