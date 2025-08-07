@@ -249,20 +249,10 @@ pub struct BoundRegion {
 
 pub(crate) type UniverseIndex = u32;
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize)]
 pub struct Placeholder<T> {
     pub universe: UniverseIndex,
     pub bound: T,
-}
-
-impl<T: std::hash::Hash> std::hash::Hash for Placeholder<T> {
-    fn hash<H>(&self, state: &mut H)
-    where
-        H: std::hash::Hasher,
-    {
-        self.universe.hash(state);
-        self.bound.hash(state);
-    }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Serialize)]
