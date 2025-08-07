@@ -687,6 +687,9 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             return;
         };
 
+        // Look for the where-bound which introduces the placeholder.
+        // As we're using the HIR, we need to handle both `for<'a> T: Trait<'a>`
+        // and `T: for<'a> Trait`<'a>.
         for pred in generics.predicates {
             let WherePredicateKind::BoundPredicate(WhereBoundPredicate {
                 bound_generic_params,
