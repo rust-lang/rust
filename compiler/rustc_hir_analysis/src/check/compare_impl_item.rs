@@ -445,10 +445,10 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
     tcx: TyCtxt<'tcx>,
     impl_m_def_id: LocalDefId,
 ) -> Result<&'tcx DefIdMap<ty::EarlyBinder<'tcx, Ty<'tcx>>>, ErrorGuaranteed> {
-    let impl_m = tcx.opt_associated_item(impl_m_def_id.to_def_id()).unwrap();
-    let trait_m = tcx.opt_associated_item(impl_m.trait_item_def_id.unwrap()).unwrap();
+    let impl_m = tcx.associated_item(impl_m_def_id.to_def_id());
+    let trait_m = tcx.associated_item(impl_m.trait_item_def_id.unwrap());
     let impl_trait_ref =
-        tcx.impl_trait_ref(impl_m.impl_container(tcx).unwrap()).unwrap().instantiate_identity();
+        tcx.impl_trait_ref(tcx.parent(impl_m_def_id.to_def_id())).unwrap().instantiate_identity();
     // First, check a few of the same things as `compare_impl_method`,
     // just so we don't ICE during instantiation later.
     check_method_is_structurally_compatible(tcx, impl_m, trait_m, impl_trait_ref, true)?;
@@ -1449,7 +1449,9 @@ fn compare_self_type<'tcx>(
 
     let self_string = |method: ty::AssocItem| {
         let untransformed_self_ty = match method.container {
-            ty::AssocItemContainer::Impl => impl_trait_ref.self_ty(),
+            ty::AssocItemContainer::InherentImpl | ty::AssocItemContainer::TraitImpl => {
+                impl_trait_ref.self_ty()
+            }
             ty::AssocItemContainer::Trait => tcx.types.self_param,
         };
         let self_arg_ty = tcx.fn_sig(method.def_id).instantiate_identity().input(0);
@@ -2458,8 +2460,11 @@ fn param_env_with_gat_bounds<'tcx>(
 
     for impl_ty in impl_tys_to_install {
         let trait_ty = match impl_ty.container {
+            ty::AssocItemContainer::InherentImpl => bug!(),
             ty::AssocItemContainer::Trait => impl_ty,
-            ty::AssocItemContainer::Impl => tcx.associated_item(impl_ty.trait_item_def_id.unwrap()),
+            ty::AssocItemContainer::TraitImpl => {
+                tcx.associated_item(impl_ty.trait_item_def_id.unwrap())
+            }
         };
 
         let mut bound_vars: smallvec::SmallVec<[ty::BoundVariableKind; 8]> =

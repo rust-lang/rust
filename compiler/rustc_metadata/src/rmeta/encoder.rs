@@ -1254,7 +1254,7 @@ fn should_encode_type(tcx: TyCtxt<'_>, def_id: LocalDefId, def_kind: DefKind) ->
         DefKind::AssocTy => {
             let assoc_item = tcx.associated_item(def_id);
             match assoc_item.container {
-                ty::AssocItemContainer::Impl => true,
+                ty::AssocItemContainer::InherentImpl | ty::AssocItemContainer::TraitImpl => true,
                 ty::AssocItemContainer::Trait => assoc_item.defaultness(tcx).has_value(),
             }
         }
@@ -1739,11 +1739,12 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     }
                 }
             }
-            AssocItemContainer::Impl => {
+            AssocItemContainer::TraitImpl => {
                 if let Some(trait_item_def_id) = item.trait_item_def_id {
                     self.tables.trait_item_def_id.set_some(def_id.index, trait_item_def_id.into());
                 }
             }
+            AssocItemContainer::InherentImpl => {}
         }
         if let ty::AssocKind::Type { data: ty::AssocTypeData::Rpitit(rpitit_info) } = item.kind {
             record!(self.tables.opt_rpitit_info[def_id] <- rpitit_info);

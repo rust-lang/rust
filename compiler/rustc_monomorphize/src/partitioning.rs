@@ -116,7 +116,7 @@ use rustc_middle::mir::mono::{
     MonoItemPartitions, Visibility,
 };
 use rustc_middle::ty::print::{characteristic_def_id_of_type, with_no_trimmed_paths};
-use rustc_middle::ty::{self, InstanceKind, TyCtxt};
+use rustc_middle::ty::{self, AssocItemContainer, InstanceKind, TyCtxt};
 use rustc_middle::util::Providers;
 use rustc_session::CodegenUnits;
 use rustc_session::config::{DumpMonoStatsFormat, SwitchWithOptPath};
@@ -650,32 +650,35 @@ fn characteristic_def_id_of_mono_item<'tcx>(
             // its self-type. If the self-type does not provide a characteristic
             // DefId, we use the location of the impl after all.
 
-            if tcx.trait_of_assoc(def_id).is_some() {
-                let self_ty = instance.args.type_at(0);
-                // This is a default implementation of a trait method.
-                return characteristic_def_id_of_type(self_ty).or(Some(def_id));
-            }
+            let Some(assoc) = tcx.opt_associated_item(def_id) else {
+                return Some(def_id);
+            };
 
-            if let Some(impl_def_id) = tcx.impl_of_assoc(def_id) {
-                if tcx.sess.opts.incremental.is_some()
-                    && tcx
-                        .trait_id_of_impl(impl_def_id)
-                        .is_some_and(|def_id| tcx.is_lang_item(def_id, LangItem::Drop))
-                {
-                    // Put `Drop::drop` into the same cgu as `drop_in_place`
-                    // since `drop_in_place` is the only thing that can
-                    // call it.
-                    return None;
+            match assoc.container {
+                AssocItemContainer::Trait => {
+                    let self_ty = instance.args.type_at(0);
+                    // This is a default implementation of a trait method.
+                    return characteristic_def_id_of_type(self_ty).or(Some(def_id));
                 }
-
-                // This is a method within an impl, find out what the self-type is:
-                let impl_self_ty = tcx.instantiate_and_normalize_erasing_regions(
-                    instance.args,
-                    ty::TypingEnv::fully_monomorphized(),
-                    tcx.type_of(impl_def_id),
-                );
-                if let Some(def_id) = characteristic_def_id_of_type(impl_self_ty) {
-                    return Some(def_id);
+                AssocItemContainer::InherentImpl | AssocItemContainer::TraitImpl => {
+                    let impl_id = tcx.parent(def_id);
+                    if let AssocItemContainer::TraitImpl = assoc.container
+                        && tcx.is_lang_item(tcx.trait_id_of_impl(impl_id).unwrap(), LangItem::Drop)
+                    {
+                        // Put `Drop::drop` into the same cgu as `drop_in_place`
+                        // since `drop_in_place` is the only thing that can
+                        // call it.
+                        return None;
+                    }
+                    // This is a method within an impl, find out what the self-type is:
+                    let impl_self_ty = tcx.instantiate_and_normalize_erasing_regions(
+                        instance.args,
+                        ty::TypingEnv::fully_monomorphized(),
+                        tcx.type_of(impl_id),
+                    );
+                    if let Some(def_id) = characteristic_def_id_of_type(impl_self_ty) {
+                        return Some(def_id);
+                    }
                 }
             }
 

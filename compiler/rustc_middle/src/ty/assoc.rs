@@ -13,7 +13,8 @@ use crate::ty;
 #[derive(Clone, Copy, PartialEq, Eq, Debug, HashStable, Hash, Encodable, Decodable)]
 pub enum AssocItemContainer {
     Trait,
-    Impl,
+    InherentImpl,
+    TraitImpl,
 }
 
 /// Information about an associated item
@@ -25,6 +26,7 @@ pub struct AssocItem {
 
     /// If this is an item in an impl of a trait then this is the `DefId` of
     /// the associated item on the trait that this implements.
+    /// This may be `None` if there is a resolution error.
     pub trait_item_def_id: Option<DefId>,
 }
 
@@ -71,7 +73,7 @@ impl AssocItem {
     #[inline]
     pub fn trait_container(&self, tcx: TyCtxt<'_>) -> Option<DefId> {
         match self.container {
-            AssocItemContainer::Impl => None,
+            AssocItemContainer::InherentImpl | AssocItemContainer::TraitImpl => None,
             AssocItemContainer::Trait => Some(tcx.parent(self.def_id)),
         }
     }
@@ -79,7 +81,9 @@ impl AssocItem {
     #[inline]
     pub fn impl_container(&self, tcx: TyCtxt<'_>) -> Option<DefId> {
         match self.container {
-            AssocItemContainer::Impl => Some(tcx.parent(self.def_id)),
+            AssocItemContainer::InherentImpl | AssocItemContainer::TraitImpl => {
+                Some(tcx.parent(self.def_id))
+            }
             AssocItemContainer::Trait => None,
         }
     }
@@ -158,9 +162,9 @@ impl AssocItem {
 
         let def_id = match (self.container, self.trait_item_def_id) {
             (AssocItemContainer::Trait, _) => self.def_id,
-            (AssocItemContainer::Impl, Some(trait_item_did)) => trait_item_did,
-            // Inherent impl but this attr is only applied to trait assoc items.
-            (AssocItemContainer::Impl, None) => return true,
+            (AssocItemContainer::TraitImpl, Some(trait_item_did)) => trait_item_did,
+            (AssocItemContainer::TraitImpl, None) => return false,
+            (AssocItemContainer::InherentImpl, _) => return true,
         };
         find_attr!(tcx.get_all_attrs(def_id), AttributeKind::TypeConst(_))
     }

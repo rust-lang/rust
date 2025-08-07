@@ -33,7 +33,9 @@ use rustc_middle::bug;
 use rustc_middle::lint::LevelAndSource;
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::print::with_no_trimmed_paths;
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt, Upcast, VariantDef};
+use rustc_middle::ty::{
+    self, AssocItemContainer, Ty, TyCtxt, TypeVisitableExt, Upcast, VariantDef,
+};
 use rustc_session::lint::FutureIncompatibilityReason;
 // hardwired lints from rustc_lint_defs
 pub use rustc_session::lint::builtin::*;
@@ -60,7 +62,6 @@ use crate::lints::{
     BuiltinUnreachablePub, BuiltinUnsafe, BuiltinUnstableFeatures, BuiltinUnusedDocComment,
     BuiltinUnusedDocCommentSub, BuiltinWhileTrue, InvalidAsmLabel,
 };
-use crate::nonstandard_style::{MethodLateContext, method_context};
 use crate::{
     EarlyContext, EarlyLintPass, LateContext, LateLintPass, Level, LintContext,
     fluent_generated as fluent,
@@ -458,14 +459,14 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
     }
 
     fn check_impl_item(&mut self, cx: &LateContext<'_>, impl_item: &hir::ImplItem<'_>) {
-        let context = method_context(cx, impl_item.owner_id.def_id);
+        let container = cx.tcx.associated_item(impl_item.owner_id.def_id).container;
 
-        match context {
+        match container {
             // If the method is an impl for a trait, don't doc.
-            MethodLateContext::TraitImpl => return,
-            MethodLateContext::TraitAutoImpl => {}
+            AssocItemContainer::TraitImpl => return,
+            AssocItemContainer::Trait => {}
             // If the method is an impl for an item with docs_hidden, don't doc.
-            MethodLateContext::PlainImpl => {
+            AssocItemContainer::InherentImpl => {
                 let parent = cx.tcx.hir_get_parent_item(impl_item.hir_id());
                 let impl_ty = cx.tcx.type_of(parent).instantiate_identity();
                 let outerdef = match impl_ty.kind() {

@@ -600,7 +600,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
 fn opt_trait_item(tcx: TyCtxt<'_>, def_id: DefId) -> Option<DefId> {
     let impl_item = tcx.opt_associated_item(def_id)?;
     match impl_item.container {
-        ty::AssocItemContainer::Impl => impl_item.trait_item_def_id,
+        ty::AssocItemContainer::TraitImpl => impl_item.trait_item_def_id,
         _ => None,
     }
 }

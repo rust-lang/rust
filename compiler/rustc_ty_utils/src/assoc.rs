@@ -118,15 +118,13 @@ fn associated_item_from_impl_item(tcx: TyCtxt<'_>, impl_item: &hir::ImplItem<'_>
         }
     };
 
-    ty::AssocItem {
-        kind,
-        def_id: owner_id.to_def_id(),
-        container: ty::AssocItemContainer::Impl,
-        trait_item_def_id: match impl_item.impl_kind {
-            ImplItemImplKind::Inherent { .. } => None,
-            ImplItemImplKind::Trait { trait_item_def_id, .. } => trait_item_def_id,
-        },
-    }
+    let (container, trait_item_def_id) = match impl_item.impl_kind {
+        ImplItemImplKind::Inherent { .. } => (ty::AssocItemContainer::InherentImpl, None),
+        ImplItemImplKind::Trait { trait_item_def_id, .. } => {
+            (ty::AssocItemContainer::TraitImpl, trait_item_def_id)
+        }
+    };
+    ty::AssocItem { kind, def_id: owner_id.to_def_id(), container, trait_item_def_id }
 }
 struct RPITVisitor<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
@@ -329,7 +327,7 @@ fn associated_type_for_impl_trait_in_impl(
         },
         def_id,
         trait_item_def_id: Some(trait_assoc_def_id),
-        container: ty::AssocItemContainer::Impl,
+        container: ty::AssocItemContainer::TraitImpl,
     });
 
     // Copy visility of the containing function.

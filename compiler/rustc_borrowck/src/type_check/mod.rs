@@ -25,9 +25,9 @@ use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::cast::CastTy;
 use rustc_middle::ty::{
-    self, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations, CoroutineArgsExt,
-    GenericArgsRef, OpaqueHiddenType, OpaqueTypeKey, RegionVid, Ty, TyCtxt, TypeVisitableExt,
-    UserArgs, UserTypeAnnotationIndex, fold_regions,
+    self, AssocItemContainer, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations,
+    CoroutineArgsExt, GenericArgsRef, OpaqueHiddenType, OpaqueTypeKey, RegionVid, Ty, TyCtxt,
+    TypeVisitableExt, UserArgs, UserTypeAnnotationIndex, fold_regions,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_mir_dataflow::move_paths::MoveData;
@@ -1774,8 +1774,8 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 );
 
                 assert!(!matches!(
-                    tcx.impl_of_assoc(def_id).map(|imp| tcx.def_kind(imp)),
-                    Some(DefKind::Impl { of_trait: true })
+                    tcx.opt_associated_item(def_id).map(|assoc| assoc.container),
+                    Some(AssocItemContainer::TraitImpl),
                 ));
                 self.prove_predicates(
                     args.types().map(|ty| ty::ClauseKind::WellFormed(ty.into())),

@@ -2,6 +2,7 @@ use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::Res;
 use rustc_hir::{self as hir, AmbigArg, GenericArg, PathSegment, QPath, TyKind, find_attr};
 use rustc_middle::ty;
+use rustc_middle::ty::AssocItemContainer;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 use crate::lints::PassByValueDiag;
@@ -24,10 +25,10 @@ impl<'tcx> LateLintPass<'tcx> for PassByValue {
     fn check_ty(&mut self, cx: &LateContext<'_>, ty: &'tcx hir::Ty<'tcx, AmbigArg>) {
         match &ty.kind {
             TyKind::Ref(_, hir::MutTy { ty: inner_ty, mutbl: hir::Mutability::Not }) => {
-                if let Some(impl_did) = cx.tcx.impl_of_assoc(ty.hir_id.owner.to_def_id()) {
-                    if cx.tcx.impl_trait_ref(impl_did).is_some() {
-                        return;
-                    }
+                if let Some(assoc) = cx.tcx.opt_associated_item(ty.hir_id.owner.to_def_id())
+                    && assoc.container == AssocItemContainer::TraitImpl
+                {
+                    return;
                 }
                 if let Some(t) = path_for_pass_by_value(cx, inner_ty) {
                     cx.emit_span_lint(

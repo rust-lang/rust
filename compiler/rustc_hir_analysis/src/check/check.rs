@@ -1009,7 +1009,7 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
             res = res.and(check_associated_item(tcx, def_id));
             let assoc_item = tcx.associated_item(def_id);
             match assoc_item.container {
-                ty::AssocItemContainer::Impl => {}
+                ty::AssocItemContainer::InherentImpl | ty::AssocItemContainer::TraitImpl => {}
                 ty::AssocItemContainer::Trait => {
                     res = res.and(check_trait_item(tcx, def_id));
                 }
@@ -1026,7 +1026,7 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
             res = res.and(check_associated_item(tcx, def_id));
             let assoc_item = tcx.associated_item(def_id);
             match assoc_item.container {
-                ty::AssocItemContainer::Impl => {}
+                ty::AssocItemContainer::InherentImpl | ty::AssocItemContainer::TraitImpl => {}
                 ty::AssocItemContainer::Trait => {
                     res = res.and(check_trait_item(tcx, def_id));
                 }
@@ -1043,7 +1043,7 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
 
             let assoc_item = tcx.associated_item(def_id);
             let has_type = match assoc_item.container {
-                ty::AssocItemContainer::Impl => true,
+                ty::AssocItemContainer::InherentImpl | ty::AssocItemContainer::TraitImpl => true,
                 ty::AssocItemContainer::Trait => {
                     tcx.ensure_ok().explicit_item_bounds(def_id);
                     tcx.ensure_ok().explicit_item_self_bounds(def_id);
