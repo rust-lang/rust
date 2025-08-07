@@ -30,7 +30,7 @@ use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::source_map::SourceMap;
-use rustc_span::{BytePos, Ident, Span, Symbol, SyntaxContext, kw, sym};
+use rustc_span::{BytePos, Ident, Macros20NormalizedIdent, Span, Symbol, SyntaxContext, kw, sym};
 use thin_vec::{ThinVec, thin_vec};
 use tracing::{debug, instrument};
 
@@ -320,8 +320,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         // Check if the target of the use for both bindings is the same.
         let duplicate = new_binding.res().opt_def_id() == old_binding.res().opt_def_id();
         let has_dummy_span = new_binding.span.is_dummy() || old_binding.span.is_dummy();
-        let from_item =
-            self.extern_prelude.get(&ident).is_none_or(|entry| entry.introduced_by_item);
+        let from_item = self
+            .extern_prelude
+            .get(&Macros20NormalizedIdent::new(ident))
+            .is_none_or(|entry| entry.introduced_by_item);
         // Only suggest removing an import if both bindings are to the same def, if both spans
         // aren't dummy spans. Further, if both bindings are imports, then the ident must have
         // been introduced by an item.
@@ -530,7 +532,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         module.for_each_child(self, |_this, ident, _ns, binding| {
             let res = binding.res();
             if filter_fn(res) && ctxt.is_none_or(|ctxt| ctxt == ident.span.ctxt()) {
-                names.push(TypoSuggestion::typo_from_ident(ident, res));
+                names.push(TypoSuggestion::typo_from_ident(ident.0, res));
             }
         });
     }
@@ -1100,7 +1102,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 Scope::ExternPrelude => {
                     suggestions.extend(this.extern_prelude.keys().filter_map(|ident| {
                         let res = Res::Def(DefKind::Mod, CRATE_DEF_ID.to_def_id());
-                        filter_fn(res).then_some(TypoSuggestion::typo_from_ident(*ident, res))
+                        filter_fn(res).then_some(TypoSuggestion::typo_from_ident(ident.0, res))
                     }));
                 }
                 Scope::ToolPrelude => {
@@ -1246,7 +1248,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     };
                     segms.append(&mut path_segments.clone());
 
-                    segms.push(ast::PathSegment::from_ident(ident));
+                    segms.push(ast::PathSegment::from_ident(ident.0));
                     let path = Path { span: name_binding.span, segments: segms, tokens: None };
 
                     if child_accessible
@@ -1319,7 +1321,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 if let Some(def_id) = name_binding.res().module_like_def_id() {
                     // form the path
                     let mut path_segments = path_segments.clone();
-                    path_segments.push(ast::PathSegment::from_ident(ident));
+                    path_segments.push(ast::PathSegment::from_ident(ident.0));
 
                     let alias_import = if let NameBindingKind::Import { import, .. } =
                         name_binding.kind
@@ -1453,7 +1455,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 if needs_disambiguation {
                     crate_path.push(ast::PathSegment::path_root(rustc_span::DUMMY_SP));
                 }
-                crate_path.push(ast::PathSegment::from_ident(ident));
+                crate_path.push(ast::PathSegment::from_ident(ident.0));
 
                 suggestions.extend(self.lookup_import_candidates_from_module(
                     lookup_ident,
