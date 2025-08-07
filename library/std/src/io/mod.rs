@@ -1449,7 +1449,8 @@ impl<'a> IoSliceMut<'a> {
 }
 
 #[stable(feature = "iovec", since = "1.36.0")]
-impl<'a> Deref for IoSliceMut<'a> {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl<'a> const Deref for IoSliceMut<'a> {
     type Target = [u8];
 
     #[inline]
@@ -1459,7 +1460,8 @@ impl<'a> Deref for IoSliceMut<'a> {
 }
 
 #[stable(feature = "iovec", since = "1.36.0")]
-impl<'a> DerefMut for IoSliceMut<'a> {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl<'a> const DerefMut for IoSliceMut<'a> {
     #[inline]
     fn deref_mut(&mut self) -> &mut [u8] {
         self.0.as_mut_slice()
@@ -1611,13 +1613,15 @@ impl<'a> IoSlice<'a> {
     /// assert_eq!(io_slice.as_slice(), b"def");
     /// ```
     #[unstable(feature = "io_slice_as_bytes", issue = "132818")]
+    #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
     pub const fn as_slice(self) -> &'a [u8] {
         self.0.as_slice()
     }
 }
 
 #[stable(feature = "iovec", since = "1.36.0")]
-impl<'a> Deref for IoSlice<'a> {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl<'a> const Deref for IoSlice<'a> {
     type Target = [u8];
 
     #[inline]

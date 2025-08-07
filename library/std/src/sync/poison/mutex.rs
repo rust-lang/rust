@@ -674,7 +674,8 @@ impl<T: ?Sized> Mutex<T> {
 }
 
 #[stable(feature = "mutex_from", since = "1.24.0")]
-impl<T> From<T> for Mutex<T> {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl<T> const From<T> for Mutex<T> {
     /// Creates a new mutex in an unlocked state ready for use.
     /// This is equivalent to [`Mutex::new`].
     fn from(t: T) -> Self {

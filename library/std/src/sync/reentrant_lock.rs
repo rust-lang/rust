@@ -388,7 +388,8 @@ impl<T: Default> Default for ReentrantLock<T> {
 }
 
 #[unstable(feature = "reentrant_lock", issue = "121440")]
-impl<T> From<T> for ReentrantLock<T> {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl<T> const From<T> for ReentrantLock<T> {
     fn from(t: T) -> Self {
         Self::new(t)
     }

@@ -21,7 +21,7 @@ impl Repr {
         Self(Inner::Os(code))
     }
     #[inline]
-    pub(super) fn new_simple(kind: ErrorKind) -> Self {
+    pub(super) const fn new_simple(kind: ErrorKind) -> Self {
         Self(Inner::Simple(kind))
     }
     #[inline]
