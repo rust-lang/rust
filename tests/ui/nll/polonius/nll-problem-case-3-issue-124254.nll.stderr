@@ -1,0 +1,34 @@
+error[E0499]: cannot borrow `list[_]` as mutable more than once at a time
+  --> $DIR/nll-problem-case-3-issue-124254.rs:30:5
+   |
+LL | fn find_lowest_or_first_empty_pos(list: &mut [Option<u8>]) -> &mut Option<u8> {
+   |                                         - let's call the lifetime of this reference `'1`
+LL |     let mut low_pos_val: Option<(usize, u8)> = None;
+LL |     for (idx, i) in list.iter_mut().enumerate() {
+   |                     ---- first mutable borrow occurs here
+LL |         let Some(s) = i else {
+LL |             return i;
+   |                    - returning this value requires that `*list` is borrowed for `'1`
+...
+LL |     &mut list[lowest_idx]
+   |     ^^^^^^^^^^^^^^^^^^^^^ second mutable borrow occurs here
+
+error[E0503]: cannot use `*list` because it was mutably borrowed
+  --> $DIR/nll-problem-case-3-issue-124254.rs:30:10
+   |
+LL | fn find_lowest_or_first_empty_pos(list: &mut [Option<u8>]) -> &mut Option<u8> {
+   |                                         - let's call the lifetime of this reference `'1`
+LL |     let mut low_pos_val: Option<(usize, u8)> = None;
+LL |     for (idx, i) in list.iter_mut().enumerate() {
+   |                     ---- `*list` is borrowed here
+LL |         let Some(s) = i else {
+LL |             return i;
+   |                    - returning this value requires that `*list` is borrowed for `'1`
+...
+LL |     &mut list[lowest_idx]
+   |          ^^^^^^^^^^^^^^^^ use of borrowed `*list`
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0499, E0503.
+For more information about an error, try `rustc --explain E0499`.
