@@ -51,7 +51,7 @@ body:
   - type: textarea
     id: comparison
     attributes:
-      label: Comparision with existing lints
+      label: Comparison with existing lints
       description: |
         What makes this lint different from any existing lints that are similar, and how are those differences useful?
 
