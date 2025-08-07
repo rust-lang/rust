@@ -862,7 +862,7 @@ pub(crate) fn codegen(
                     .generic_activity_with_arg("LLVM_module_codegen_embed_bitcode", &*module.name);
                 let thin_bc =
                     module.thin_lto_buffer.as_deref().expect("cannot find embedded bitcode");
-                embed_bitcode(cgcx, llcx, llmod, &config.bc_cmdline, &thin_bc);
+                embed_bitcode(cgcx, llcx, llmod, &thin_bc);
             }
         }
 
@@ -1058,40 +1058,38 @@ fn embed_bitcode(
     cgcx: &CodegenContext<LlvmCodegenBackend>,
     llcx: &llvm::Context,
     llmod: &llvm::Module,
-    cmdline: &str,
     bitcode: &[u8],
 ) {
     // We're adding custom sections to the output object file, but we definitely
     // do not want these custom sections to make their way into the final linked
-    // executable. The purpose of these custom sections is for tooling
-    // surrounding object files to work with the LLVM IR, if necessary. For
-    // example rustc's own LTO will look for LLVM IR inside of the object file
-    // in these sections by default.
+    // executable. The purpose of this custom section is for tooling surrounding
+    // object files to work with the LLVM IR, if necessary. For example rustc's
+    // own LTO will look for LLVM IR inside of the object file in this section
+    // by default.
     //
     // To handle this is a bit different depending on the object file format
     // used by the backend, broken down into a few different categories:
     //
     // * Mach-O - this is for macOS. Inspecting the source code for the native
-    //   linker here shows that the `.llvmbc` and `.llvmcmd` sections are
-    //   automatically skipped by the linker. In that case there's nothing extra
-    //   that we need to do here.
+    //   linker here shows that the `.llvmbc` section is automatically skipped
+    //   by the linker. In that case there's nothing extra that we need to do
+    //   here.
     //
-    // * Wasm - the native LLD linker is hard-coded to skip `.llvmbc` and
-    //   `.llvmcmd` sections, so there's nothing extra we need to do.
+    // * Wasm - the native LLD linker is hard-coded to skip `.llvmbc` section,
+    //   so there's nothing extra we need to do.
     //
-    // * COFF - if we don't do anything the linker will by default copy all
-    //   these sections to the output artifact, not what we want! To subvert
-    //   this we want to flag the sections we inserted here as
-    //   `IMAGE_SCN_LNK_REMOVE`.
+    // * COFF - if we don't do anything the linker will by default copy this
+    //   section to the output artifact, not what we want! To subvert this we
+    //   want to flag the section we inserted here as `IMAGE_SCN_LNK_REMOVE`.
     //
-    // * ELF - this is very similar to COFF above. One difference is that these
-    //   sections are removed from the output linked artifact when
-    //   `--gc-sections` is passed, which we pass by default. If that flag isn't
-    //   passed though then these sections will show up in the final output.
-    //   Additionally the flag that we need to set here is `SHF_EXCLUDE`.
+    // * ELF - this is very similar to COFF above. One difference is that this
+    //   section is removed from the output linked artifact when `--gc-sections`
+    //   is passed, which we pass by default. If that flag isn't passed through
+    //   then this section will show up in the final output. Additionally the
+    //   flag that we need to set here is `SHF_EXCLUDE`.
     //
-    // * XCOFF - AIX linker ignores content in .ipa and .info if no auxiliary
-    //   symbol associated with these sections.
+    // * XCOFF - AIX linker ignores content in .ipa if no auxiliary symbol
+    //   associated with this section.
     //
     // Unfortunately, LLVM provides no way to set custom section flags. For ELF
     // and COFF we emit the sections using module level inline assembly for that
@@ -1110,25 +1108,10 @@ fn embed_bitcode(
         llvm::set_section(llglobal, bitcode_section_name(cgcx));
         llvm::set_linkage(llglobal, llvm::Linkage::PrivateLinkage);
         llvm::LLVMSetGlobalConstant(llglobal, llvm::True);
-
-        let llconst = common::bytes_in_context(llcx, cmdline.as_bytes());
-        let llglobal = llvm::add_global(llmod, common::val_ty(llconst), c"rustc.embedded.cmdline");
-        llvm::set_initializer(llglobal, llconst);
-        let section = if cgcx.target_is_like_darwin {
-            c"__LLVM,__cmdline"
-        } else if cgcx.target_is_like_aix {
-            c".info"
-        } else {
-            c".llvmcmd"
-        };
-        llvm::set_section(llglobal, section);
-        llvm::set_linkage(llglobal, llvm::Linkage::PrivateLinkage);
     } else {
         // We need custom section flags, so emit module-level inline assembly.
         let section_flags = if cgcx.is_pe_coff { "n" } else { "e" };
         let asm = create_section_with_flags_asm(".llvmbc", section_flags, bitcode);
-        llvm::append_module_inline_asm(llmod, &asm);
-        let asm = create_section_with_flags_asm(".llvmcmd", section_flags, cmdline.as_bytes());
         llvm::append_module_inline_asm(llmod, &asm);
     }
 }
