@@ -436,6 +436,9 @@ pub enum AttributeKind {
     /// Represents `#[rustc_object_lifetime_default]`.
     RustcObjectLifetimeDefault,
 
+    /// Represents `#[should_panic]`
+    ShouldPanic { reason: Option<Symbol>, span: Span },
+
     /// Represents `#[rustc_skip_during_method_dispatch]`.
     SkipDuringMethodDispatch { array: bool, boxed_slice: bool, span: Span },
 
