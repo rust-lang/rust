@@ -517,7 +517,7 @@ impl Build {
             local_rebuild: config.local_rebuild,
             fail_fast: config.cmd.fail_fast(),
             doc_tests: config.cmd.doc_tests(),
-            verbosity: config.verbose,
+            verbosity: config.exec_ctx.verbosity as usize,
 
             host_target: config.host_target,
             hosts: config.hosts.clone(),
