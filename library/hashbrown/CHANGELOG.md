@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.15.5](https://github.com/rust-lang/hashbrown/compare/v0.15.4...v0.15.5) - 2025-08-07
+
+### Fixed
+
+- fix clippy issues
+
+### Other
+
+- Re-implement likely/unlikely with `#[cold]`
+- Merge branch 'master' of https://github.com/rust-lang/hashbrown into or-default-entry
+
 ## [0.15.4](https://github.com/rust-lang/hashbrown/compare/v0.15.3...v0.15.4) - 2025-06-05
 
 ### Changed
