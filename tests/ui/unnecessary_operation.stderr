@@ -35,7 +35,7 @@ error: unnecessary operation
   --> tests/ui/unnecessary_operation.rs:81:5
    |
 LL |     5 + get_number();
-   |     ^^^^^^^^^^^^^^^^^ help: statement can be reduced to: `5;get_number();`
+   |     ^^^^^^^^^^^^^^^^^ help: statement can be reduced to: `5; get_number();`
 
 error: unnecessary operation
   --> tests/ui/unnecessary_operation.rs:83:5
@@ -53,7 +53,7 @@ error: unnecessary operation
   --> tests/ui/unnecessary_operation.rs:87:5
    |
 LL |     (5, 6, get_number());
-   |     ^^^^^^^^^^^^^^^^^^^^^ help: statement can be reduced to: `5;6;get_number();`
+   |     ^^^^^^^^^^^^^^^^^^^^^ help: statement can be reduced to: `5; 6; get_number();`
 
 error: unnecessary operation
   --> tests/ui/unnecessary_operation.rs:89:5
@@ -71,13 +71,13 @@ error: unnecessary operation
   --> tests/ui/unnecessary_operation.rs:93:5
    |
 LL |     5..get_number();
-   |     ^^^^^^^^^^^^^^^^ help: statement can be reduced to: `5;get_number();`
+   |     ^^^^^^^^^^^^^^^^ help: statement can be reduced to: `5; get_number();`
 
 error: unnecessary operation
   --> tests/ui/unnecessary_operation.rs:95:5
    |
 LL |     [42, get_number()];
-   |     ^^^^^^^^^^^^^^^^^^^ help: statement can be reduced to: `42;get_number();`
+   |     ^^^^^^^^^^^^^^^^^^^ help: statement can be reduced to: `42; get_number();`
 
 error: unnecessary operation
   --> tests/ui/unnecessary_operation.rs:97:5
@@ -89,7 +89,7 @@ error: unnecessary operation
   --> tests/ui/unnecessary_operation.rs:99:5
    |
 LL |     (42, get_number()).1;
-   |     ^^^^^^^^^^^^^^^^^^^^^ help: statement can be reduced to: `42;get_number();`
+   |     ^^^^^^^^^^^^^^^^^^^^^ help: statement can be reduced to: `42; get_number();`
 
 error: unnecessary operation
   --> tests/ui/unnecessary_operation.rs:101:5
