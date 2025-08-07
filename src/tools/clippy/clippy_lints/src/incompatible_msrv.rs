@@ -2,14 +2,13 @@ use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::msrvs::Msrv;
 use clippy_utils::{is_in_const_context, is_in_test};
-use rustc_hir::{RustcVersion, StabilityLevel, StableSince};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def::DefKind;
-use rustc_hir::{self as hir, AmbigArg, Expr, ExprKind, HirId, QPath};
+use rustc_hir::{self as hir, AmbigArg, Expr, ExprKind, HirId, QPath, RustcVersion, StabilityLevel, StableSince};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::impl_lint_pass;
-use rustc_span::def_id::DefId;
+use rustc_span::def_id::{CrateNum, DefId};
 use rustc_span::{ExpnKind, Span, sym};
 
 declare_clippy_lint! {
@@ -83,16 +82,22 @@ pub struct IncompatibleMsrv {
     msrv: Msrv,
     availability_cache: FxHashMap<(DefId, bool), Availability>,
     check_in_tests: bool,
+    core_crate: Option<CrateNum>,
 }
 
 impl_lint_pass!(IncompatibleMsrv => [INCOMPATIBLE_MSRV]);
 
 impl IncompatibleMsrv {
-    pub fn new(conf: &'static Conf) -> Self {
+    pub fn new(tcx: TyCtxt<'_>, conf: &'static Conf) -> Self {
         Self {
             msrv: conf.msrv,
             availability_cache: FxHashMap::default(),
             check_in_tests: conf.check_incompatible_msrv_in_tests,
+            core_crate: tcx
+                .crates(())
+                .iter()
+                .find(|krate| tcx.crate_name(**krate) == sym::core)
+                .copied(),
         }
     }
 
@@ -140,23 +145,16 @@ impl IncompatibleMsrv {
             // We don't check local items since their MSRV is supposed to always be valid.
             return;
         }
-        if let ExpnKind::AstPass(_) | ExpnKind::Desugaring(_) = span.ctxt().outer_expn_data().kind {
+        let expn_data = span.ctxt().outer_expn_data();
+        if let ExpnKind::AstPass(_) | ExpnKind::Desugaring(_) = expn_data.kind {
             // Desugared expressions get to cheat and stability is ignored.
             // Intentionally not using `.from_expansion()`, since we do still care about macro expansions
             return;
         }
-
         // Functions coming from `core` while expanding a macro such as `assert*!()` get to cheat too: the
         // macros may have existed prior to the checked MSRV, but their expansion with a recent compiler
         // might use recent functions or methods. Compiling with an older compiler would not use those.
-        if span.from_expansion()
-            && cx.tcx.crate_name(def_id.krate) == sym::core
-            && span
-                .ctxt()
-                .outer_expn_data()
-                .macro_def_id
-                .is_some_and(|def_id| cx.tcx.crate_name(def_id.krate) == sym::core)
-        {
+        if Some(def_id.krate) == self.core_crate && expn_data.macro_def_id.map(|did| did.krate) == self.core_crate {
             return;
         }
 
