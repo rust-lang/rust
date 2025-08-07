@@ -315,6 +315,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 Attribute::Parsed(AttributeKind::Used { span: attr_span, .. }) => {
                     self.check_used(*attr_span, target, span);
                 }
+                Attribute::Parsed(AttributeKind::ShouldPanic { span: attr_span, .. }) => self
+                    .check_generic_attr(hir_id, sym::should_panic, *attr_span, target, Target::Fn),
                 &Attribute::Parsed(AttributeKind::PassByValue(attr_span)) => {
                     self.check_pass_by_value(attr_span, span, target)
                 }
@@ -387,9 +389,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         [sym::link, ..] => self.check_link(hir_id, attr, span, target),
                         [sym::path, ..] => self.check_generic_attr_unparsed(hir_id, attr, target, Target::Mod),
                         [sym::macro_export, ..] => self.check_macro_export(hir_id, attr, target),
-                        [sym::should_panic, ..] => {
-                            self.check_generic_attr_unparsed(hir_id, attr, target, Target::Fn)
-                        }
                         [sym::autodiff_forward, ..] | [sym::autodiff_reverse, ..] => {
                             self.check_autodiff(hir_id, attr, span, target)
                         }
