@@ -29,7 +29,7 @@ passes_allow_incoherent_impl =
     `rustc_allow_incoherent_impl` attribute should be applied to impl items
     .label = the only currently supported targets are inherent methods
 
-passes_allow_internal_unstable =
+passes_macro_only_attribute =
     attribute should be applied to a macro
     .label = not a macro
 
