@@ -184,6 +184,15 @@ impl<I: Interner> UpcastFrom<I, TraitRef<I>> for TraitPredicate<I> {
     }
 }
 
+impl<I: Interner> UpcastFrom<I, ty::Binder<I, TraitRef<I>>> for ty::Binder<I, TraitPredicate<I>> {
+    fn upcast_from(from: ty::Binder<I, TraitRef<I>>, _tcx: I) -> Self {
+        from.map_bound(|trait_ref| TraitPredicate {
+            trait_ref,
+            polarity: PredicatePolarity::Positive,
+        })
+    }
+}
+
 impl<I: Interner> fmt::Debug for TraitPredicate<I> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "TraitPredicate({:?}, polarity:{:?})", self.trait_ref, self.polarity)
