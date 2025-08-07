@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.15.5](https://github.com/rust-lang/hashbrown/compare/v0.15.4...v0.15.5) - 2025-08-07
+
+### Added
+
+- Added `Entry::or_default_entry` and `Entry::or_insert_entry`.
+
+### Changed
+
+- Re-implemented likely/unlikely with `#[cold]`
+
 ## [0.15.4](https://github.com/rust-lang/hashbrown/compare/v0.15.3...v0.15.4) - 2025-06-05
 
 ### Changed
