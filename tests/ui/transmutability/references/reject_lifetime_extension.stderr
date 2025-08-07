@@ -68,10 +68,10 @@ LL |         unsafe { extend_hrtb(src) }
    |                  argument requires that `'a` must outlive `'static`
    |
 note: due to current limitations in the borrow checker, this implies a `'static` lifetime
-  --> $DIR/reject_lifetime_extension.rs:85:25
+  --> $DIR/reject_lifetime_extension.rs:85:9
    |
 LL |         for<'b> &'b u8: TransmuteFrom<&'a u8>,
-   |                         ^^^^^^^^^^^^^^^^^^^^^
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 8 previous errors
 

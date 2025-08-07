@@ -13,10 +13,10 @@ LL |     outlives_forall::<Value<'a>>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ requires that `'a` must outlive `'static`
    |
 note: due to current limitations in the borrow checker, this implies a `'static` lifetime
-  --> $DIR/type-test-universe.rs:6:16
+  --> $DIR/type-test-universe.rs:6:5
    |
 LL |     for<'u> T: 'u,
-   |                ^^
+   |     ^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 

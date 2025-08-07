@@ -10,10 +10,10 @@ LL | }
    | - temporary value is freed at the end of this statement
    |
 note: due to current limitations in the borrow checker, this implies a `'static` lifetime
-  --> $DIR/hrtb-implied-1.rs:26:26
+  --> $DIR/hrtb-implied-1.rs:26:5
    |
 LL |     for<'a> I::Item<'a>: Debug,
-   |                          ^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 1 previous error
 
