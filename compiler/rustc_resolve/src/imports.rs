@@ -489,7 +489,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         // Define or update `binding` in `module`s glob importers.
         for import in glob_importers.iter() {
             let mut ident = key.ident;
-            let scope = match ident.span.reverse_glob_adjust(module.expansion, import.span) {
+            let scope = match ident.0.span.reverse_glob_adjust(module.expansion, import.span) {
                 Some(Some(def)) => self.expn_def_scope(def),
                 Some(None) => import.parent_scope.module,
                 None => continue,
@@ -498,7 +498,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 let imported_binding = self.import(binding, *import);
                 let _ = self.try_define_local(
                     import.parent_scope.module,
-                    ident,
+                    ident.0,
                     key.ns,
                     imported_binding,
                     warn_ambiguity,
@@ -1504,7 +1504,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             })
             .collect::<Vec<_>>();
         for (mut key, binding) in bindings {
-            let scope = match key.ident.span.reverse_glob_adjust(module.expansion, import.span) {
+            let scope = match key.ident.0.span.reverse_glob_adjust(module.expansion, import.span) {
                 Some(Some(def)) => self.expn_def_scope(def),
                 Some(None) => import.parent_scope.module,
                 None => continue,
@@ -1517,7 +1517,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     .is_some_and(|binding| binding.warn_ambiguity_recursive());
                 let _ = self.try_define_local(
                     import.parent_scope.module,
-                    key.ident,
+                    key.ident.0,
                     key.ns,
                     imported_binding,
                     warn_ambiguity,
@@ -1550,7 +1550,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     next_binding = binding;
                 }
 
-                children.push(ModChild { ident, res, vis: binding.vis, reexport_chain });
+                children.push(ModChild { ident: ident.0, res, vis: binding.vis, reexport_chain });
             }
         });
 

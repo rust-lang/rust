@@ -18,7 +18,9 @@ impl<'tcx> Printer<'tcx> for AbsolutePathPrinter<'tcx> {
     }
 
     fn print_region(&mut self, _region: ty::Region<'_>) -> Result<(), PrintError> {
-        unreachable!(); // because `<Self As PrettyPrinter>::should_print_region` returns false
+        // This is reachable (via `pretty_print_dyn_existential`) even though
+        // `<Self As PrettyPrinter>::should_print_region` returns false. See #144994.
+        Ok(())
     }
 
     fn print_type(&mut self, ty: Ty<'tcx>) -> Result<(), PrintError> {

@@ -1,3 +1,4 @@
+#![cfg_attr(bootstrap, feature(strict_overflow_ops))]
 #![feature(abort_unwind)]
 #![feature(cfg_select)]
 #![feature(rustc_private)]
@@ -11,13 +12,14 @@
 #![feature(variant_count)]
 #![feature(yeet_expr)]
 #![feature(nonzero_ops)]
-#![feature(strict_overflow_ops)]
 #![feature(pointer_is_aligned_to)]
 #![feature(ptr_metadata)]
 #![feature(unqualified_local_imports)]
 #![feature(derive_coerce_pointee)]
 #![feature(arbitrary_self_types)]
 #![feature(iter_advance_by)]
+#![feature(f16)]
+#![feature(f128)]
 // Configure clippy and other lints
 #![allow(
     clippy::collapsible_else_if,
