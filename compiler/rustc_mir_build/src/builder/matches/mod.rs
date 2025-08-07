@@ -5,11 +5,11 @@
 //! This also includes code for pattern bindings in `let` statements and
 //! function parameters.
 
-use std::assert_matches::assert_matches;
 use std::borrow::Borrow;
 use std::mem;
 use std::sync::Arc;
 
+use itertools::{Itertools, Position};
 use rustc_abi::VariantIdx;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::stack::ensure_sufficient_stack;
@@ -545,16 +545,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // return: it isn't bound by move until right before enter the arm.
             // To handle this we instead unschedule it's drop after each time
             // we lower the guard.
+            // As a result, we end up with the drop order of the last sub-branch we lower. To use
+            // the drop order for the first sub-branch, we lower sub-branches in reverse (#142163).
             let target_block = self.cfg.start_new_block();
-            let mut schedule_drops = ScheduleDrops::Yes;
-            let arm = arm_match_scope.unzip().0;
-            // We keep a stack of all of the bindings and type ascriptions
-            // from the parent candidates that we visit, that also need to
-            // be bound for each candidate.
-            for sub_branch in branch.sub_branches {
-                if let Some(arm) = arm {
-                    self.clear_top_scope(arm.scope);
-                }
+            for (pos, sub_branch) in branch.sub_branches.into_iter().rev().with_position() {
+                debug_assert!(pos != Position::Only);
+                let schedule_drops =
+                    if pos == Position::Last { ScheduleDrops::Yes } else { ScheduleDrops::No };
                 let binding_end = self.bind_and_guard_matched_candidate(
                     sub_branch,
                     fake_borrow_temps,
@@ -562,9 +559,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     arm_match_scope,
                     schedule_drops,
                 );
-                if arm.is_none() {
-                    schedule_drops = ScheduleDrops::No;
-                }
                 self.cfg.goto(binding_end, outer_source_info, target_block);
             }
 
@@ -978,7 +972,7 @@ struct PatternExtraData<'tcx> {
     span: Span,
 
     /// Bindings that must be established.
-    bindings: Vec<Binding<'tcx>>,
+    bindings: Vec<SubpatternBindings<'tcx>>,
 
     /// Types that must be asserted.
     ascriptions: Vec<Ascription<'tcx>>,
@@ -991,6 +985,15 @@ impl<'tcx> PatternExtraData<'tcx> {
     fn is_empty(&self) -> bool {
         self.bindings.is_empty() && self.ascriptions.is_empty()
     }
+}
+
+#[derive(Debug, Clone)]
+enum SubpatternBindings<'tcx> {
+    /// A single binding.
+    One(Binding<'tcx>),
+    /// Holds the place for an or-pattern's bindings. This ensures their drops are scheduled in the
+    /// order the primary bindings appear. See rust-lang/rust#142163 for more information.
+    FromOrPattern,
 }
 
 /// A pattern in a form suitable for lowering the match tree, with all irrefutable
@@ -1208,7 +1211,7 @@ fn traverse_candidate<'tcx, C, T, I>(
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug)]
 struct Binding<'tcx> {
     span: Span,
     source: Place<'tcx>,
@@ -1434,12 +1437,7 @@ impl<'tcx> MatchTreeSubBranch<'tcx> {
             span: candidate.extra_data.span,
             success_block: candidate.pre_binding_block.unwrap(),
             otherwise_block: candidate.otherwise_block.unwrap(),
-            bindings: parent_data
-                .iter()
-                .flat_map(|d| &d.bindings)
-                .chain(&candidate.extra_data.bindings)
-                .cloned()
-                .collect(),
+            bindings: sub_branch_bindings(parent_data, &candidate.extra_data.bindings),
             ascriptions: parent_data
                 .iter()
                 .flat_map(|d| &d.ascriptions)
@@ -1469,6 +1467,68 @@ impl<'tcx> MatchTreeBranch<'tcx> {
             },
         );
         MatchTreeBranch { sub_branches }
+    }
+}
+
+/// Collects the bindings for a [`MatchTreeSubBranch`], preserving the order they appear in the
+/// pattern, as though the or-alternatives chosen in this sub-branch were inlined.
+fn sub_branch_bindings<'tcx>(
+    parents: &[PatternExtraData<'tcx>],
+    leaf_bindings: &[SubpatternBindings<'tcx>],
+) -> Vec<Binding<'tcx>> {
+    // In the common case, all bindings will be in leaves. Allocate to fit the leaf's bindings.
+    let mut all_bindings = Vec::with_capacity(leaf_bindings.len());
+    let mut remainder = parents
+        .iter()
+        .map(|parent| parent.bindings.as_slice())
+        .chain([leaf_bindings])
+        // Skip over unsimplified or-patterns without bindings.
+        .filter(|bindings| !bindings.is_empty());
+    if let Some(candidate_bindings) = remainder.next() {
+        push_sub_branch_bindings(&mut all_bindings, candidate_bindings, &mut remainder);
+    }
+    // Make sure we've included all bindings. For ill-formed patterns like `(x, _ | y)`, we may not
+    // have collected all bindings yet, since we only check the first alternative when determining
+    // whether to inline subcandidates' bindings.
+    // FIXME(@dianne): prevent ill-formed patterns from getting here
+    while let Some(candidate_bindings) = remainder.next() {
+        ty::tls::with(|tcx| {
+            tcx.dcx().delayed_bug("mismatched or-pattern bindings but no error emitted")
+        });
+        // To recover, we collect the rest in an arbitrary order.
+        push_sub_branch_bindings(&mut all_bindings, candidate_bindings, &mut remainder);
+    }
+    all_bindings
+}
+
+/// Helper for [`sub_branch_bindings`]. Collects bindings from `candidate_bindings` into
+/// `flattened`. Bindings in or-patterns are collected recursively from `remainder`.
+fn push_sub_branch_bindings<'c, 'tcx: 'c>(
+    flattened: &mut Vec<Binding<'tcx>>,
+    candidate_bindings: &'c [SubpatternBindings<'tcx>],
+    remainder: &mut impl Iterator<Item = &'c [SubpatternBindings<'tcx>]>,
+) {
+    for subpat_bindings in candidate_bindings {
+        match subpat_bindings {
+            SubpatternBindings::One(binding) => flattened.push(*binding),
+            SubpatternBindings::FromOrPattern => {
+                // Inline bindings from an or-pattern. By construction, this always
+                // corresponds to a subcandidate and its closest descendants (i.e. those
+                // from nested or-patterns, but not adjacent or-patterns). To handle
+                // adjacent or-patterns, e.g. `(x | x, y | y)`, we update the `remainder` to
+                // point to the first descendant candidate from outside this or-pattern.
+                if let Some(subcandidate_bindings) = remainder.next() {
+                    push_sub_branch_bindings(flattened, subcandidate_bindings, remainder);
+                } else {
+                    // For ill-formed patterns like `x | _`, we may not have any subcandidates left
+                    // to inline bindings from.
+                    // FIXME(@dianne): prevent ill-formed patterns from getting here
+                    ty::tls::with(|tcx| {
+                        tcx.dcx().delayed_bug("mismatched or-pattern bindings but no error emitted")
+                    });
+                };
+            }
+        }
     }
 }
 
@@ -2426,11 +2486,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
             // Bindings for guards require some extra handling to automatically
             // insert implicit references/dereferences.
-            self.bind_matched_candidate_for_guard(
-                block,
-                schedule_drops,
-                sub_branch.bindings.iter(),
-            );
+            // This always schedules storage drops, so we may need to unschedule them below.
+            self.bind_matched_candidate_for_guard(block, sub_branch.bindings.iter());
             let guard_frame = GuardFrame {
                 locals: sub_branch
                     .bindings
@@ -2461,6 +2518,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         DeclareLetBindings::No, // For guards, `let` bindings are declared separately
                     )
                 });
+
+            // If this isn't the final sub-branch being lowered, we need to unschedule drops of
+            // bindings and temporaries created for and by the guard. As a result, the drop order
+            // for the arm will correspond to the binding order of the final sub-branch lowered.
+            if matches!(schedule_drops, ScheduleDrops::No) {
+                self.clear_top_scope(arm.scope);
+            }
 
             let source_info = self.source_info(guard_span);
             let guard_end = self.source_info(tcx.sess.source_map().end_point(guard_span));
@@ -2511,14 +2575,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let cause = FakeReadCause::ForGuardBinding;
                 self.cfg.push_fake_read(post_guard_block, guard_end, cause, Place::from(local_id));
             }
-            assert_matches!(
-                schedule_drops,
-                ScheduleDrops::Yes,
-                "patterns with guards must schedule drops"
-            );
+            // Only schedule drops for the last sub-branch we lower.
             self.bind_matched_candidate_for_arm_body(
                 post_guard_block,
-                ScheduleDrops::Yes,
+                schedule_drops,
                 by_value_bindings,
             );
 
@@ -2642,7 +2702,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     fn bind_matched_candidate_for_guard<'b>(
         &mut self,
         block: BasicBlock,
-        schedule_drops: ScheduleDrops,
         bindings: impl IntoIterator<Item = &'b Binding<'tcx>>,
     ) where
         'tcx: 'b,
@@ -2661,12 +2720,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // a reference R: &T pointing to the location matched by
             // the pattern, and every occurrence of P within a guard
             // denotes *R.
+            // Drops must be scheduled to emit `StorageDead` on the guard's failure/break branches.
             let ref_for_guard = self.storage_live_binding(
                 block,
                 binding.var_id,
                 binding.span,
                 RefWithinGuard,
-                schedule_drops,
+                ScheduleDrops::Yes,
             );
             match binding.binding_mode.0 {
                 ByRef::No => {
@@ -2676,13 +2736,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     self.cfg.push_assign(block, source_info, ref_for_guard, rvalue);
                 }
                 ByRef::Yes(mutbl) => {
-                    // The arm binding will be by reference, so eagerly create it now.
+                    // The arm binding will be by reference, so eagerly create it now. Drops must
+                    // be scheduled to emit `StorageDead` on the guard's failure/break branches.
                     let value_for_arm = self.storage_live_binding(
                         block,
                         binding.var_id,
                         binding.span,
                         OutsideGuard,
-                        schedule_drops,
+                        ScheduleDrops::Yes,
                     );
 
                     let rvalue =
