@@ -1528,19 +1528,6 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         ret
     }
 
-    fn with_mod_rib<T>(&mut self, id: NodeId, f: impl FnOnce(&mut Self) -> T) -> T {
-        let module = self.r.expect_module(self.r.local_def_id(id).to_def_id());
-        // Move down in the graph.
-        let orig_module = replace(&mut self.parent_scope.module, module);
-        self.with_rib(ValueNS, RibKind::Module(module), |this| {
-            this.with_rib(TypeNS, RibKind::Module(module), |this| {
-                let ret = f(this);
-                this.parent_scope.module = orig_module;
-                ret
-            })
-        })
-    }
-
     fn visit_generic_params(&mut self, params: &'ast [GenericParam], add_self_upper: bool) {
         // For type parameter defaults, we have to ban access
         // to following type parameters, as the GenericArgs can only
@@ -2678,20 +2665,25 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             }
 
             ItemKind::Mod(..) => {
-                self.with_mod_rib(item.id, |this| {
-                    if mod_inner_docs {
-                        this.resolve_doc_links(&item.attrs, MaybeExported::Ok(item.id));
-                    }
-                    let old_macro_rules = this.parent_scope.macro_rules;
-                    visit::walk_item(this, item);
-                    // Maintain macro_rules scopes in the same way as during early resolution
-                    // for diagnostics and doc links.
-                    if item.attrs.iter().all(|attr| {
-                        !attr.has_name(sym::macro_use) && !attr.has_name(sym::macro_escape)
-                    }) {
-                        this.parent_scope.macro_rules = old_macro_rules;
-                    }
+                let module = self.r.expect_module(self.r.local_def_id(item.id).to_def_id());
+                let orig_module = replace(&mut self.parent_scope.module, module);
+                self.with_rib(ValueNS, RibKind::Module(module), |this| {
+                    this.with_rib(TypeNS, RibKind::Module(module), |this| {
+                        if mod_inner_docs {
+                            this.resolve_doc_links(&item.attrs, MaybeExported::Ok(item.id));
+                        }
+                        let old_macro_rules = this.parent_scope.macro_rules;
+                        visit::walk_item(this, item);
+                        // Maintain macro_rules scopes in the same way as during early resolution
+                        // for diagnostics and doc links.
+                        if item.attrs.iter().all(|attr| {
+                            !attr.has_name(sym::macro_use) && !attr.has_name(sym::macro_escape)
+                        }) {
+                            this.parent_scope.macro_rules = old_macro_rules;
+                        }
+                    })
                 });
+                self.parent_scope.module = orig_module;
             }
 
             ItemKind::Static(box ast::StaticItem {
