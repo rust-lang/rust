@@ -215,6 +215,11 @@ fn verify_no_duplicates(archive: &Archive) {
             return;
         }
 
+        // GDB pretty printing symbols may show up more than once but are weak.
+        if sym.section == ".debug_gdb_scripts" && sym.is_weak {
+            return;
+        }
+
         // Windows has symbols for literal numeric constants, string literals, and MinGW pseudo-
         // relocations. These are allowed to have repeated definitions.
         let win_allowed_dup_pfx = ["__real@", "__xmm@", "??_C@_", ".refptr"];
