@@ -17,11 +17,11 @@ use rustc_ast::{
     FormatArgPosition, FormatArgPositionKind, FormatArgsPiece, FormatArgumentKind, FormatCount, FormatOptions,
     FormatPlaceholder, FormatTrait,
 };
-use rustc_attr_data_structures::{AttributeKind, RustcVersion, find_attr};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::Applicability;
 use rustc_errors::SuggestionStyle::{CompletelyHidden, ShowCode};
-use rustc_hir::{Expr, ExprKind, LangItem};
+use rustc_hir::attrs::AttributeKind;
+use rustc_hir::{Expr, ExprKind, LangItem, RustcVersion, find_attr};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::ty::adjustment::{Adjust, Adjustment};
 use rustc_middle::ty::{self, GenericArg, List, TraitRef, Ty, TyCtxt, Upcast};

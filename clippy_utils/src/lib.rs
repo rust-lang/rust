@@ -28,7 +28,6 @@
 extern crate indexmap;
 extern crate rustc_abi;
 extern crate rustc_ast;
-extern crate rustc_attr_data_structures;
 extern crate rustc_attr_parsing;
 extern crate rustc_const_eval;
 extern crate rustc_data_structures;
@@ -91,11 +90,11 @@ use itertools::Itertools;
 use rustc_abi::Integer;
 use rustc_ast::ast::{self, LitKind, RangeLimits};
 use rustc_ast::join_path_syms;
-use rustc_attr_data_structures::{AttributeKind, find_attr};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::packed::Pu128;
 use rustc_data_structures::unhash::UnindexMap;
 use rustc_hir::LangItem::{OptionNone, OptionSome, ResultErr, ResultOk};
+use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId, LocalModDefId};
 use rustc_hir::definitions::{DefPath, DefPathData};
@@ -106,7 +105,7 @@ use rustc_hir::{
     CoroutineKind, Destination, Expr, ExprField, ExprKind, FnDecl, FnRetTy, GenericArg, GenericArgs, HirId, Impl,
     ImplItem, ImplItemKind, Item, ItemKind, LangItem, LetStmt, MatchSource, Mutability, Node, OwnerId, OwnerNode,
     Param, Pat, PatExpr, PatExprKind, PatKind, Path, PathSegment, QPath, Stmt, StmtKind, TraitFn, TraitItem,
-    TraitItemKind, TraitRef, TyKind, UnOp, def,
+    TraitItemKind, TraitRef, TyKind, UnOp, def, find_attr,
 };
 use rustc_lexer::{FrontmatterAllowed, TokenKind, tokenize};
 use rustc_lint::{LateContext, Level, Lint, LintContext};
@@ -349,7 +348,7 @@ pub fn is_ty_alias(qpath: &QPath<'_>) -> bool {
 /// Checks if the given method call expression calls an inherent method.
 pub fn is_inherent_method_call(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     if let Some(method_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id) {
-        cx.tcx.trait_of_item(method_id).is_none()
+        cx.tcx.trait_of_assoc(method_id).is_none()
     } else {
         false
     }
@@ -357,7 +356,7 @@ pub fn is_inherent_method_call(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
 
 /// Checks if a method is defined in an impl of a diagnostic item
 pub fn is_diag_item_method(cx: &LateContext<'_>, def_id: DefId, diag_item: Symbol) -> bool {
-    if let Some(impl_did) = cx.tcx.impl_of_method(def_id)
+    if let Some(impl_did) = cx.tcx.impl_of_assoc(def_id)
         && let Some(adt) = cx.tcx.type_of(impl_did).instantiate_identity().ty_adt_def()
     {
         return cx.tcx.is_diagnostic_item(diag_item, adt.did());
@@ -367,7 +366,7 @@ pub fn is_diag_item_method(cx: &LateContext<'_>, def_id: DefId, diag_item: Symbo
 
 /// Checks if a method is in a diagnostic item trait
 pub fn is_diag_trait_item(cx: &LateContext<'_>, def_id: DefId, diag_item: Symbol) -> bool {
-    if let Some(trait_did) = cx.tcx.trait_of_item(def_id) {
+    if let Some(trait_did) = cx.tcx.trait_of_assoc(def_id) {
         return cx.tcx.is_diagnostic_item(diag_item, trait_did);
     }
     false
@@ -620,7 +619,7 @@ fn is_default_equivalent_ctor(cx: &LateContext<'_>, def_id: DefId, path: &QPath<
 
     if let QPath::TypeRelative(_, method) = path
         && method.ident.name == sym::new
-        && let Some(impl_did) = cx.tcx.impl_of_method(def_id)
+        && let Some(impl_did) = cx.tcx.impl_of_assoc(def_id)
         && let Some(adt) = cx.tcx.type_of(impl_did).instantiate_identity().ty_adt_def()
     {
         return std_types_symbols.iter().any(|&symbol| {

@@ -165,7 +165,7 @@ pub(super) fn check_method(cx: &LateContext<'_>, expr: &Expr<'_>) {
 pub(super) fn check_function(cx: &LateContext<'_>, expr: &Expr<'_>, callee: &Expr<'_>) {
     if let ExprKind::Path(ref qpath) = callee.kind
         && let Some(item_def_id) = cx.qpath_res(qpath, callee.hir_id).opt_def_id()
-        && let Some(trait_def_id) = cx.tcx.trait_of_item(item_def_id)
+        && let Some(trait_def_id) = cx.tcx.trait_of_assoc(item_def_id)
     {
         let qpath_spans = match qpath {
             QPath::Resolved(_, path) => {
