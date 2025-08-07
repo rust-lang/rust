@@ -215,7 +215,6 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         diag: &mut Diag<'_>,
         lower_bound: RegionVid,
     ) {
-        let mut suggestions = vec![];
         let tcx = self.infcx.tcx;
 
         // find generic associated types in the given region 'lower_bound'
@@ -239,7 +238,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
 
         // find higher-ranked trait bounds bounded to the generic associated types
         let mut hrtb_bounds = vec![];
-        gat_id_and_generics.iter().flatten().for_each(|(gat_hir_id, generics)| {
+        gat_id_and_generics.iter().flatten().for_each(|&(gat_hir_id, generics)| {
             for pred in generics.predicates {
                 let BoundPredicate(WhereBoundPredicate { bound_generic_params, bounds, .. }) =
                     pred.kind
@@ -248,17 +247,32 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 };
                 if bound_generic_params
                     .iter()
-                    .rfind(|bgp| tcx.local_def_id_to_hir_id(bgp.def_id) == *gat_hir_id)
+                    .rfind(|bgp| tcx.local_def_id_to_hir_id(bgp.def_id) == gat_hir_id)
                     .is_some()
                 {
                     for bound in *bounds {
                         hrtb_bounds.push(bound);
+                    }
+                } else {
+                    for bound in *bounds {
+                        if let Trait(trait_bound) = bound {
+                            if trait_bound
+                                .bound_generic_params
+                                .iter()
+                                .rfind(|bgp| tcx.local_def_id_to_hir_id(bgp.def_id) == gat_hir_id)
+                                .is_some()
+                            {
+                                hrtb_bounds.push(bound);
+                                return;
+                            }
+                        }
                     }
                 }
             }
         });
         debug!(?hrtb_bounds);
 
+        let mut suggestions = vec![];
         hrtb_bounds.iter().for_each(|bound| {
             let Trait(PolyTraitRef { trait_ref, span: trait_span, .. }) = bound else {
                 return;
