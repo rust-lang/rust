@@ -49,7 +49,7 @@ LL | #[repr(simd)]
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #68585 <https://github.com/rust-lang/rust/issues/68585>
-   = note: `#[deny(conflicting_repr_hints)]` on by default
+   = note: `#[deny(conflicting_repr_hints)]` (part of `#[deny(future_incompatible)]`) on by default
 
 error[E0517]: attribute should be applied to a struct
   --> $DIR/feature-gate-repr-simd.rs:9:8
@@ -85,5 +85,5 @@ LL | #[repr(simd)]
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #68585 <https://github.com/rust-lang/rust/issues/68585>
-   = note: `#[deny(conflicting_repr_hints)]` on by default
+   = note: `#[deny(conflicting_repr_hints)]` (part of `#[deny(future_incompatible)]`) on by default
 

@@ -6,7 +6,7 @@ LL |         panic!("foo");
 LL |         yield 69;
    |         ^^^^^^^^^ unreachable statement
    |
-   = note: `#[warn(unreachable_code)]` on by default
+   = note: `#[warn(unreachable_code)]` (part of `#[warn(unused)]`) on by default
 
 warning: 1 warning emitted
 

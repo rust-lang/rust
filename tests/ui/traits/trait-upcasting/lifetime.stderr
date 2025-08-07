@@ -10,7 +10,7 @@ LL |     fn z(&self) -> i32 {
 LL |     fn y(&self) -> i32 {
    |        ^
    |
-   = note: `#[warn(dead_code)]` on by default
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
 
 warning: method `w` is never used
   --> $DIR/lifetime.rs:22:8
