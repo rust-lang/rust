@@ -28,12 +28,12 @@ pub(super) struct StackEntry<X: Cx> {
     /// The available depth of a given goal, immutable.
     pub available_depth: AvailableDepth,
 
+    /// The maximum depth required while evaluating this goal.
+    pub required_depth: usize,
+
     /// Starts out as `None` and gets set when rerunning this
     /// goal in case we encounter a cycle.
     pub provisional_result: Option<X::Result>,
-
-    /// The maximum depth required while evaluating this goal.
-    pub required_depth: usize,
 
     /// All cycle heads this goal depends on. Lazily updated and only
     /// up-to date for the top of the stack.
@@ -45,7 +45,7 @@ pub(super) struct StackEntry<X: Cx> {
     /// Whether and how this goal has been used as the root of a cycle. Lazily updated.
     pub usages: Option<Usages>,
 
-    /// TODO
+    // TODO
     pub candidate_usages: Option<CandidateUsages>,
 
     /// The nested goals of this goal, see the doc comment of the type.

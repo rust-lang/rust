@@ -16,8 +16,8 @@ use std::collections::hash_map::Entry;
 use std::collections::{BTreeMap, btree_map};
 use std::fmt::Debug;
 use std::hash::Hash;
+use std::iter;
 use std::marker::PhantomData;
-use std::{iter, mem};
 
 use derive_where::derive_where;
 #[cfg(feature = "nightly")]
@@ -229,16 +229,19 @@ impl Usages {
 
 #[derive(Debug, Default)]
 pub struct CandidateUsages {
-    usages: HashMap<StackDepth, Usages>,
+    usages: Option<Box<HashMap<StackDepth, Usages>>>,
 }
 impl CandidateUsages {
-    pub fn add_usages(&mut self, mut other: CandidateUsages) {
-        if self.usages.is_empty() {
-            mem::swap(self, &mut other);
-        }
-        #[allow(rustc::potential_query_instability)]
-        for (head_index, head) in other.usages {
-            self.usages.entry(head_index).or_default().add_usages(head);
+    pub fn add_usages(&mut self, other: CandidateUsages) {
+        if let Some(other_usages) = other.usages {
+            if let Some(ref mut self_usages) = self.usages {
+                #[allow(rustc::potential_query_instability)]
+                for (head_index, head) in other_usages.into_iter() {
+                    self_usages.entry(head_index).or_default().add_usages(head);
+                }
+            } else {
+                self.usages = Some(other_usages);
+            }
         }
     }
 }
@@ -604,6 +607,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
                 if let Some(candidate_usages) = &mut parent.candidate_usages {
                     candidate_usages
                         .usages
+                        .get_or_insert_default()
                         .entry(head_index)
                         .or_default()
                         .add_usages(head.usages.compressed());
@@ -682,13 +686,15 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
     }
 
     pub fn ignore_candidate_usages(&mut self, usages: CandidateUsages) {
-        let (entry_index, entry) = self.stack.last_mut_with_index().unwrap();
-        #[allow(rustc::potential_query_instability)]
-        for (head_index, usages) in usages.usages {
-            if head_index == entry_index {
-                entry.usages.unwrap().ignore_usages(usages);
-            } else {
-                entry.heads.ignore_usages(head_index, usages);
+        if let Some(usages) = usages.usages {
+            let (entry_index, entry) = self.stack.last_mut_with_index().unwrap();
+            #[allow(rustc::potential_query_instability)]
+            for (head_index, usages) in usages.into_iter() {
+                if head_index == entry_index {
+                    entry.usages.unwrap().ignore_usages(usages);
+                } else {
+                    entry.heads.ignore_usages(head_index, usages);
+                }
             }
         }
     }
