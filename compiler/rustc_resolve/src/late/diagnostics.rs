@@ -850,9 +850,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         }
 
         // Try to find in last block rib
-        if let Some(rib) = &self.last_block_rib
-            && let RibKind::Normal = rib.kind
-        {
+        if let Some(rib) = &self.last_block_rib {
             for (ident, &res) in &rib.bindings {
                 if let Res::Local(_) = res
                     && path.len() == 1
@@ -901,7 +899,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         if path.len() == 1 {
             for rib in self.ribs[ns].iter().rev() {
                 let item = path[0].ident;
-                if let RibKind::Module(module) = rib.kind
+                if let RibKind::Module(module) | RibKind::Block(Some(module)) = rib.kind
                     && let Some(did) = find_doc_alias_name(self.r, module, item.name)
                 {
                     return Some((did, item));
@@ -2469,7 +2467,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 }
 
                 // Items in scope
-                if let RibKind::Module(module) = rib.kind {
+                if let RibKind::Module(module) | RibKind::Block(Some(module)) = rib.kind {
                     // Items from this module
                     self.r.add_module_candidates(module, &mut names, &filter_fn, Some(ctxt));
 

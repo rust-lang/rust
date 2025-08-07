@@ -192,6 +192,13 @@ pub(crate) enum RibKind<'ra> {
     /// No restriction needs to be applied.
     Normal,
 
+    /// We passed through an `ast::Block`.
+    /// Behaves like `Normal`, but also partially like `Module` if the block contains items.
+    /// `Block(None)` must be always processed in the same way as `Block(Some(module))`
+    /// with empty `module`. The module can be `None` only because creation of some definitely
+    /// empty modules is skipped as an optimization.
+    Block(Option<Module<'ra>>),
+
     /// We passed through an impl or trait and are now in one of its
     /// methods or associated types. Allow references to ty params that impl or trait
     /// binds. Disallow any other upvars (including other ty params that are
@@ -210,7 +217,7 @@ pub(crate) enum RibKind<'ra> {
     /// All other constants aren't allowed to use generic params at all.
     ConstantItem(ConstantHasGenerics, Option<(Ident, ConstantItemKind)>),
 
-    /// We passed through a module.
+    /// We passed through a module item.
     Module(Module<'ra>),
 
     /// We passed through a `macro_rules!` statement
@@ -242,6 +249,7 @@ impl RibKind<'_> {
     pub(crate) fn contains_params(&self) -> bool {
         match self {
             RibKind::Normal
+            | RibKind::Block(..)
             | RibKind::FnOrCoroutine
             | RibKind::ConstantItem(..)
             | RibKind::Module(_)
@@ -258,15 +266,8 @@ impl RibKind<'_> {
     fn is_label_barrier(self) -> bool {
         match self {
             RibKind::Normal | RibKind::MacroDefinition(..) => false,
-
-            RibKind::AssocItem
-            | RibKind::FnOrCoroutine
-            | RibKind::Item(..)
-            | RibKind::ConstantItem(..)
-            | RibKind::Module(..)
-            | RibKind::ForwardGenericParamBan(_)
-            | RibKind::ConstParamTy
-            | RibKind::InlineAsmSym => true,
+            RibKind::FnOrCoroutine | RibKind::ConstantItem(..) => true,
+            kind => bug!("unexpected rib kind: {kind:?}"),
         }
     }
 }
@@ -2821,9 +2822,9 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             // We also can't shadow bindings from associated parent items.
             for ns in [ValueNS, TypeNS] {
                 for parent_rib in self.ribs[ns].iter().rev() {
-                    // Break at mod level, to account for nested items which are
+                    // Break at module or block level, to account for nested items which are
                     // allowed to shadow generic param names.
-                    if matches!(parent_rib.kind, RibKind::Module(..)) {
+                    if matches!(parent_rib.kind, RibKind::Module(..) | RibKind::Block(..)) {
                         break;
                     }
 
@@ -4664,16 +4665,16 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         debug!("(resolving block) entering block");
         // Move down in the graph, if there's an anonymous module rooted here.
         let orig_module = self.parent_scope.module;
-        let anonymous_module = self.r.block_map.get(&block.id).cloned(); // clones a reference
+        let anonymous_module = self.r.block_map.get(&block.id).copied();
 
         let mut num_macro_definition_ribs = 0;
         if let Some(anonymous_module) = anonymous_module {
             debug!("(resolving block) found anonymous module, moving down");
-            self.ribs[ValueNS].push(Rib::new(RibKind::Module(anonymous_module)));
-            self.ribs[TypeNS].push(Rib::new(RibKind::Module(anonymous_module)));
+            self.ribs[ValueNS].push(Rib::new(RibKind::Block(Some(anonymous_module))));
+            self.ribs[TypeNS].push(Rib::new(RibKind::Block(Some(anonymous_module))));
             self.parent_scope.module = anonymous_module;
         } else {
-            self.ribs[ValueNS].push(Rib::new(RibKind::Normal));
+            self.ribs[ValueNS].push(Rib::new(RibKind::Block(None)));
         }
 
         // Descend into the block.
