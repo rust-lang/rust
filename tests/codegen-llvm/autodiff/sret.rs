@@ -13,6 +13,7 @@ use std::autodiff::autodiff_reverse;
 
 #[no_mangle]
 #[autodiff_reverse(df, Active, Active, Active)]
+#[inline(never)]
 fn primal(x: f32, y: f32) -> f64 {
     (x * x * y) as f64
 }

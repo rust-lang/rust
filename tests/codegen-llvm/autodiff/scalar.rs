@@ -7,6 +7,7 @@ use std::autodiff::autodiff_reverse;
 
 #[autodiff_reverse(d_square, Duplicated, Active)]
 #[no_mangle]
+#[inline(never)]
 fn square(x: &f64) -> f64 {
     x * x
 }

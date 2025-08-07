@@ -17,6 +17,7 @@ use std::autodiff::autodiff_forward;
 #[autodiff_forward(d_square2, 4, Dual, DualOnly)]
 #[autodiff_forward(d_square1, 4, Dual, Dual)]
 #[no_mangle]
+#[inline(never)]
 fn square(x: &f32) -> f32 {
     x * x
 }

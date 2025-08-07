@@ -14,11 +14,13 @@
 use std::autodiff::autodiff_reverse;
 
 #[autodiff_reverse(d_square, Duplicated, Active)]
+#[inline(never)]
 fn square(x: &f64) -> f64 {
     x * x
 }
 
 #[autodiff_reverse(d_square2, Duplicated, Active)]
+#[inline(never)]
 fn square2(x: &f64) -> f64 {
     x * x
 }
@@ -29,8 +31,10 @@ fn square2(x: &f64) -> f64 {
 // CHECK-NEXT:start:
 // CHECK-NOT:br
 // CHECK-NOT:ret
-// CHECK:call fastcc void @diffe_ZN13identical_fnc6square17h67c6eccd3051fb4cE(double %x.val, ptr %dx1)
-// CHECK-NEXT:call fastcc void @diffe_ZN13identical_fnc6square17h67c6eccd3051fb4cE(double %x.val, ptr %dx2)
+// CHECK:; call identical_fnc::d_square
+// CHECK-NEXT:call fastcc void @_ZN13identical_fnc8d_square17hcb5768e95528c35fE(double %x.val, ptr noalias noundef align 8 dereferenceable(8) %dx1)
+// CHECK:; call identical_fnc::d_square
+// CHECK-NEXT:call fastcc void @_ZN13identical_fnc8d_square17hcb5768e95528c35fE(double %x.val, ptr noalias noundef align 8 dereferenceable(8) %dx2)
 
 fn main() {
     let x = std::hint::black_box(3.0);

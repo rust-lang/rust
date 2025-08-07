@@ -3,10 +3,10 @@
 //@ needs-enzyme
 
 #![feature(autodiff)]
-#[prelude_import]
-use ::std::prelude::rust_2015::*;
 #[macro_use]
 extern crate std;
+#[prelude_import]
+use ::std::prelude::rust_2015::*;
 //@ pretty-mode:expanded
 //@ pretty-compare-only
 //@ pp-exact:inherent_impl.pp
@@ -26,7 +26,6 @@ trait MyTrait {
 
 impl MyTrait for Foo {
     #[rustc_autodiff]
-    #[inline(never)]
     fn f(&self, x: f64) -> f64 {
         self.a * 0.25 * (x * x - 1.0 - 2.0 * x.ln())
     }
