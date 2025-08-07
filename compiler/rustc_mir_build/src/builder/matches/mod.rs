@@ -434,12 +434,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let arm_source_info = self.source_info(arm.span);
                 let arm_scope = (arm.scope, arm_source_info);
                 let match_scope = self.local_scope();
+                let guard_scope = arm
+                    .guard
+                    .map(|_| region::Scope { data: region::ScopeData::MatchGuard, ..arm.scope });
                 self.in_scope(arm_scope, arm.lint_level, |this| {
-                    let guard_scope =
-                        region::Scope { data: region::ScopeData::MatchGuard, ..arm.scope };
-                    this.in_scope((guard_scope, arm_source_info), LintLevel::Inherited, |this| {
+                    this.opt_in_scope(guard_scope.map(|scope| (scope, arm_source_info)), |this| {
+                        // `if let` guard temps needing deduplicating will be in the guard scope.
                         let old_dedup_scope =
-                            mem::replace(&mut this.fixed_temps_scope, Some(guard_scope));
+                            mem::replace(&mut this.fixed_temps_scope, guard_scope);
 
                         // `try_to_place` may fail if it is unable to resolve the given
                         // `PlaceBuilder` inside a closure. In this case, we don't want to include

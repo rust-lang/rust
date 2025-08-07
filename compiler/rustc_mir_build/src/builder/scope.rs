@@ -697,6 +697,20 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         block.and(rv)
     }
 
+    /// Convenience wrapper that executes `f` either within the current scope or a new scope.
+    /// Used for pattern matching, which introduces an additional scope for patterns with guards.
+    pub(crate) fn opt_in_scope<R>(
+        &mut self,
+        opt_region_scope: Option<(region::Scope, SourceInfo)>,
+        f: impl FnOnce(&mut Builder<'a, 'tcx>) -> BlockAnd<R>,
+    ) -> BlockAnd<R> {
+        if let Some(region_scope) = opt_region_scope {
+            self.in_scope(region_scope, LintLevel::Inherited, f)
+        } else {
+            f(self)
+        }
+    }
+
     /// Push a scope onto the stack. You can then build code in this
     /// scope and call `pop_scope` afterwards. Note that these two
     /// calls must be paired; using `in_scope` as a convenience

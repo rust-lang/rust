@@ -129,7 +129,7 @@ body:
                                                                                                 body: 
                                                                                                     Expr {
                                                                                                         ty: bool
-                                                                                                        temp_lifetime: TempLifetime { temp_lifetime: Some(MatchGuard(16)), backwards_incompatible: None }
+                                                                                                        temp_lifetime: TempLifetime { temp_lifetime: Some(Node(16)), backwards_incompatible: None }
                                                                                                         span: $DIR/thir-tree-loop-match.rs:12:25: 15:18 (#0)
                                                                                                         kind: 
                                                                                                             Scope {
@@ -138,14 +138,14 @@ body:
                                                                                                                 value:
                                                                                                                     Expr {
                                                                                                                         ty: bool
-                                                                                                                        temp_lifetime: TempLifetime { temp_lifetime: Some(MatchGuard(16)), backwards_incompatible: None }
+                                                                                                                        temp_lifetime: TempLifetime { temp_lifetime: Some(Node(16)), backwards_incompatible: None }
                                                                                                                         span: $DIR/thir-tree-loop-match.rs:12:25: 15:18 (#0)
                                                                                                                         kind: 
                                                                                                                             NeverToAny {
                                                                                                                                 source:
                                                                                                                                     Expr {
                                                                                                                                         ty: !
-                                                                                                                                        temp_lifetime: TempLifetime { temp_lifetime: Some(MatchGuard(16)), backwards_incompatible: None }
+                                                                                                                                        temp_lifetime: TempLifetime { temp_lifetime: Some(Node(16)), backwards_incompatible: None }
                                                                                                                                         span: $DIR/thir-tree-loop-match.rs:12:25: 15:18 (#0)
                                                                                                                                         kind: 
                                                                                                                                             Block {
@@ -227,7 +227,7 @@ body:
                                                                                                 body: 
                                                                                                     Expr {
                                                                                                         ty: bool
-                                                                                                        temp_lifetime: TempLifetime { temp_lifetime: Some(MatchGuard(24)), backwards_incompatible: None }
+                                                                                                        temp_lifetime: TempLifetime { temp_lifetime: Some(Node(24)), backwards_incompatible: None }
                                                                                                         span: $DIR/thir-tree-loop-match.rs:16:26: 16:38 (#0)
                                                                                                         kind: 
                                                                                                             Scope {
@@ -236,21 +236,21 @@ body:
                                                                                                                 value:
                                                                                                                     Expr {
                                                                                                                         ty: bool
-                                                                                                                        temp_lifetime: TempLifetime { temp_lifetime: Some(MatchGuard(24)), backwards_incompatible: None }
+                                                                                                                        temp_lifetime: TempLifetime { temp_lifetime: Some(Node(24)), backwards_incompatible: None }
                                                                                                                         span: $DIR/thir-tree-loop-match.rs:16:26: 16:38 (#0)
                                                                                                                         kind: 
                                                                                                                             NeverToAny {
                                                                                                                                 source:
                                                                                                                                     Expr {
                                                                                                                                         ty: !
-                                                                                                                                        temp_lifetime: TempLifetime { temp_lifetime: Some(MatchGuard(24)), backwards_incompatible: None }
+                                                                                                                                        temp_lifetime: TempLifetime { temp_lifetime: Some(Node(24)), backwards_incompatible: None }
                                                                                                                                         span: $DIR/thir-tree-loop-match.rs:16:26: 16:38 (#0)
                                                                                                                                         kind: 
                                                                                                                                             Return {
                                                                                                                                                 value:
                                                                                                                                                     Expr {
                                                                                                                                                         ty: bool
-                                                                                                                                                        temp_lifetime: TempLifetime { temp_lifetime: Some(MatchGuard(24)), backwards_incompatible: None }
+                                                                                                                                                        temp_lifetime: TempLifetime { temp_lifetime: Some(Node(24)), backwards_incompatible: None }
                                                                                                                                                         span: $DIR/thir-tree-loop-match.rs:16:33: 16:38 (#0)
                                                                                                                                                         kind: 
                                                                                                                                                             Scope {
@@ -259,7 +259,7 @@ body:
                                                                                                                                                                 value:
                                                                                                                                                                     Expr {
                                                                                                                                                                         ty: bool
-                                                                                                                                                                        temp_lifetime: TempLifetime { temp_lifetime: Some(MatchGuard(24)), backwards_incompatible: None }
+                                                                                                                                                                        temp_lifetime: TempLifetime { temp_lifetime: Some(Node(24)), backwards_incompatible: None }
                                                                                                                                                                         span: $DIR/thir-tree-loop-match.rs:16:33: 16:38 (#0)
                                                                                                                                                                         kind: 
                                                                                                                                                                             VarRef {

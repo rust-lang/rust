@@ -198,12 +198,12 @@ fn resolve_arm<'tcx>(visitor: &mut ScopeResolutionVisitor<'tcx>, arm: &'tcx hir:
     visitor.cx.var_parent = visitor.cx.parent;
 
     resolve_pat(visitor, arm.pat);
-    // We introduce a new scope to contain bindings and temporaries from `if let` guards, to
-    // ensure they're dropped before the arm's pattern's bindings. This extends to the end of
-    // the arm body and is the scope of its locals as well.
-    visitor.enter_scope(Scope { local_id: arm.hir_id.local_id, data: ScopeData::MatchGuard });
-    visitor.cx.var_parent = visitor.cx.parent;
     if let Some(guard) = arm.guard {
+        // We introduce a new scope to contain bindings and temporaries from `if let` guards, to
+        // ensure they're dropped before the arm's pattern's bindings. This extends to the end of
+        // the arm body and is the scope of its locals as well.
+        visitor.enter_scope(Scope { local_id: arm.hir_id.local_id, data: ScopeData::MatchGuard });
+        visitor.cx.var_parent = visitor.cx.parent;
         resolve_cond(visitor, guard);
     }
     resolve_expr(visitor, arm.body, false);
