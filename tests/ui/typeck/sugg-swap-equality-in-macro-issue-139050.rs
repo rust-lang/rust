@@ -8,7 +8,7 @@ extern crate ext;
 
 use std::fmt::Debug;
 
-macro_rules! eq_local {    
+macro_rules! eq_local {
     (assert $a:expr, $b:expr) => {
         match (&$a, &$b) {
             (left_val, right_val) => {
@@ -28,7 +28,6 @@ where
     Item: Eq + Debug, //~ ERROR cannot find type `Item` in this scope [E0412]
 {
     ext::eq!(assert iter.next(), Some(value)); //~ ERROR  mismatched types [E0308]
-    eq_local!(assert iter.next(), Some(value)); 
+    eq_local!(assert iter.next(), Some(value));
 }
 fn main() {}
-

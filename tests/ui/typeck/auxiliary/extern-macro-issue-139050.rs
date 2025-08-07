@@ -1,5 +1,5 @@
 #[macro_export]
-macro_rules! eq {    
+macro_rules! eq {
     (assert $a:expr, $b:expr) => {
         match (&$a, &$b) {
             (left_val, right_val) => {
