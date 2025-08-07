@@ -448,7 +448,7 @@ impl GlobalState {
                     tracing::info!(%vfs_path, ?change_kind, "Processing rust-analyzer.toml changes");
                     if vfs_path.as_path() == user_config_abs_path {
                         tracing::info!(%vfs_path, ?change_kind, "Use config rust-analyzer.toml changes");
-                        change.change_user_config(Some(db.file_text(file_id).text(db)));
+                        change.change_user_config(Some(db.file_text(file_id).text(db).clone()));
                     }
 
                     // If change has been made to a ratoml file that
@@ -462,14 +462,14 @@ impl GlobalState {
                             change.change_workspace_ratoml(
                                 source_root_id,
                                 vfs_path.clone(),
-                                Some(db.file_text(file_id).text(db)),
+                                Some(db.file_text(file_id).text(db).clone()),
                             )
                         } else {
                             tracing::info!(%vfs_path, ?source_root_id, "crate rust-analyzer.toml changes");
                             change.change_ratoml(
                                 source_root_id,
                                 vfs_path.clone(),
-                                Some(db.file_text(file_id).text(db)),
+                                Some(db.file_text(file_id).text(db).clone()),
                             )
                         };
 
@@ -591,10 +591,10 @@ impl GlobalState {
 
     pub(crate) fn respond(&mut self, response: lsp_server::Response) {
         if let Some((method, start)) = self.req_queue.incoming.complete(&response.id) {
-            if let Some(err) = &response.error {
-                if err.message.starts_with("server panicked") {
-                    self.poke_rust_analyzer_developer(format!("{}, check the log", err.message));
-                }
+            if let Some(err) = &response.error
+                && err.message.starts_with("server panicked")
+            {
+                self.poke_rust_analyzer_developer(format!("{}, check the log", err.message));
             }
 
             let duration = start.elapsed();
@@ -663,18 +663,18 @@ impl GlobalState {
 
     pub(crate) fn check_workspaces_msrv(&self) -> impl Iterator<Item = String> + '_ {
         self.workspaces.iter().filter_map(|ws| {
-            if let Some(toolchain) = &ws.toolchain {
-                if *toolchain < crate::MINIMUM_SUPPORTED_TOOLCHAIN_VERSION {
-                    return Some(format!(
-                        "Workspace `{}` is using an outdated toolchain version `{}` but \
+            if let Some(toolchain) = &ws.toolchain
+                && *toolchain < crate::MINIMUM_SUPPORTED_TOOLCHAIN_VERSION
+            {
+                return Some(format!(
+                    "Workspace `{}` is using an outdated toolchain version `{}` but \
                         rust-analyzer only supports `{}` and higher.\n\
                         Consider using the rust-analyzer rustup component for your toolchain or
                         upgrade your toolchain to a supported version.\n\n",
-                        ws.manifest_or_root(),
-                        toolchain,
-                        crate::MINIMUM_SUPPORTED_TOOLCHAIN_VERSION,
-                    ));
-                }
+                    ws.manifest_or_root(),
+                    toolchain,
+                    crate::MINIMUM_SUPPORTED_TOOLCHAIN_VERSION,
+                ));
             }
             None
         })

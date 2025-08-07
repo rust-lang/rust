@@ -1456,7 +1456,7 @@ impl<'tcx> Ty<'tcx> {
         }
     }
 
-    /// Returns the type and mutability of `*ty`.
+    /// Returns the type of `*ty`.
     ///
     /// The parameter `explicit` indicates if this is an *explicit* dereference.
     /// Some types -- notably raw ptrs -- can only be dereferenced explicitly.

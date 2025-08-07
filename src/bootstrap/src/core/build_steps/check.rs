@@ -84,7 +84,7 @@ impl Step for Std {
             Kind::Check,
         );
 
-        std_cargo(builder, target, stage, &mut cargo);
+        std_cargo(builder, target, &mut cargo);
         if matches!(builder.config.cmd, Subcommand::Fix) {
             // By default, cargo tries to fix all targets. Tell it not to fix tests until we've added `test` to the sysroot.
             cargo.arg("--lib");
@@ -125,7 +125,7 @@ impl Step for Std {
             Kind::Check,
         );
 
-        std_cargo(builder, target, build_compiler.stage, &mut cargo);
+        std_cargo(builder, target, &mut cargo);
 
         // Explicitly pass -p for all dependencies krates -- this will force cargo
         // to also check the tests/benches/examples for these crates, rather

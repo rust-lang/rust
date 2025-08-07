@@ -7,7 +7,6 @@ authors = [
 ]
 description = "Core APIs for Rayon - fork for rustc"
 license = "MIT OR Apache-2.0"
-rust-version = "1.63"
 edition = "2021"
 readme = "README.md"
 keywords = ["parallel", "thread", "concurrency", "join", "performance"]

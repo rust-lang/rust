@@ -58,59 +58,57 @@ pub(super) fn mangle<'tcx>(
 
     let hash = get_symbol_hash(tcx, instance, instance_ty, instantiating_crate);
 
-    let mut printer = SymbolPrinter { tcx, path: SymbolPath::new(), keep_within_component: false };
-    printer
-        .print_def_path(
-            def_id,
-            if let ty::InstanceKind::DropGlue(_, _)
-            | ty::InstanceKind::AsyncDropGlueCtorShim(_, _)
-            | ty::InstanceKind::FutureDropPollShim(_, _, _) = instance.def
-            {
-                // Add the name of the dropped type to the symbol name
-                &*instance.args
-            } else if let ty::InstanceKind::AsyncDropGlue(_, ty) = instance.def {
-                let ty::Coroutine(_, cor_args) = ty.kind() else {
-                    bug!();
-                };
-                let drop_ty = cor_args.first().unwrap().expect_ty();
-                tcx.mk_args(&[GenericArg::from(drop_ty)])
-            } else {
-                &[]
-            },
-        )
-        .unwrap();
+    let mut p = SymbolPrinter { tcx, path: SymbolPath::new(), keep_within_component: false };
+    p.print_def_path(
+        def_id,
+        if let ty::InstanceKind::DropGlue(_, _)
+        | ty::InstanceKind::AsyncDropGlueCtorShim(_, _)
+        | ty::InstanceKind::FutureDropPollShim(_, _, _) = instance.def
+        {
+            // Add the name of the dropped type to the symbol name
+            &*instance.args
+        } else if let ty::InstanceKind::AsyncDropGlue(_, ty) = instance.def {
+            let ty::Coroutine(_, cor_args) = ty.kind() else {
+                bug!();
+            };
+            let drop_ty = cor_args.first().unwrap().expect_ty();
+            tcx.mk_args(&[GenericArg::from(drop_ty)])
+        } else {
+            &[]
+        },
+    )
+    .unwrap();
 
     match instance.def {
         ty::InstanceKind::ThreadLocalShim(..) => {
-            printer.write_str("{{tls-shim}}").unwrap();
+            p.write_str("{{tls-shim}}").unwrap();
         }
         ty::InstanceKind::VTableShim(..) => {
-            printer.write_str("{{vtable-shim}}").unwrap();
+            p.write_str("{{vtable-shim}}").unwrap();
         }
         ty::InstanceKind::ReifyShim(_, reason) => {
-            printer.write_str("{{reify-shim").unwrap();
+            p.write_str("{{reify-shim").unwrap();
             match reason {
-                Some(ReifyReason::FnPtr) => printer.write_str("-fnptr").unwrap(),
-                Some(ReifyReason::Vtable) => printer.write_str("-vtable").unwrap(),
+                Some(ReifyReason::FnPtr) => p.write_str("-fnptr").unwrap(),
+                Some(ReifyReason::Vtable) => p.write_str("-vtable").unwrap(),
                 None => (),
             }
-            printer.write_str("}}").unwrap();
+            p.write_str("}}").unwrap();
         }
         // FIXME(async_closures): This shouldn't be needed when we fix
         // `Instance::ty`/`Instance::def_id`.
         ty::InstanceKind::ConstructCoroutineInClosureShim { receiver_by_ref, .. } => {
-            printer
-                .write_str(if receiver_by_ref { "{{by-move-shim}}" } else { "{{by-ref-shim}}" })
+            p.write_str(if receiver_by_ref { "{{by-move-shim}}" } else { "{{by-ref-shim}}" })
                 .unwrap();
         }
         _ => {}
     }
 
     if let ty::InstanceKind::FutureDropPollShim(..) = instance.def {
-        let _ = printer.write_str("{{drop-shim}}");
+        let _ = p.write_str("{{drop-shim}}");
     }
 
-    printer.path.finish(hash)
+    p.path.finish(hash)
 }
 
 fn get_symbol_hash<'tcx>(
@@ -236,7 +234,7 @@ impl<'tcx> Printer<'tcx> for SymbolPrinter<'tcx> {
     }
 
     fn print_region(&mut self, _region: ty::Region<'_>) -> Result<(), PrintError> {
-        Ok(())
+        unreachable!(); // because `<Self As PrettyPrinter>::should_print_region` returns false
     }
 
     fn print_type(&mut self, ty: Ty<'tcx>) -> Result<(), PrintError> {
@@ -334,7 +332,6 @@ impl<'tcx> Printer<'tcx> for SymbolPrinter<'tcx> {
     fn path_append_impl(
         &mut self,
         print_prefix: impl FnOnce(&mut Self) -> Result<(), PrintError>,
-        _disambiguated_data: &DisambiguatedDefPathData,
         self_ty: Ty<'tcx>,
         trait_ref: Option<ty::TraitRef<'tcx>>,
     ) -> Result<(), PrintError> {
@@ -460,6 +457,8 @@ impl<'tcx> PrettyPrinter<'tcx> for SymbolPrinter<'tcx> {
     fn should_print_region(&self, _region: ty::Region<'_>) -> bool {
         false
     }
+
+    // Identical to `PrettyPrinter::comma_sep` except there is no space after each comma.
     fn comma_sep<T>(&mut self, mut elems: impl Iterator<Item = T>) -> Result<(), PrintError>
     where
         T: Print<'tcx, Self>,

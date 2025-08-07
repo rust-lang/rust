@@ -1,5 +1,6 @@
 use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::mir;
+use rustc_middle::mir::coverage::START_BCB;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::source_map::SourceMap;
 use rustc_span::{BytePos, DesugaringKind, ExpnKind, MacroKind, Span};
@@ -16,8 +17,19 @@ pub(super) fn extract_refined_covspans<'tcx>(
     mir_body: &mir::Body<'tcx>,
     hir_info: &ExtractedHirInfo,
     graph: &CoverageGraph,
-    code_mappings: &mut impl Extend<mappings::CodeMapping>,
+    code_mappings: &mut Vec<mappings::CodeMapping>,
 ) {
+    if hir_info.is_async_fn {
+        // An async function desugars into a function that returns a future,
+        // with the user code wrapped in a closure. Any spans in the desugared
+        // outer function will be unhelpful, so just keep the signature span
+        // and ignore all of the spans in the MIR body.
+        if let Some(span) = hir_info.fn_sig_span {
+            code_mappings.push(mappings::CodeMapping { span, bcb: START_BCB });
+        }
+        return;
+    }
+
     let &ExtractedHirInfo { body_span, .. } = hir_info;
 
     let raw_spans = from_mir::extract_raw_spans_from_mir(mir_body, graph);

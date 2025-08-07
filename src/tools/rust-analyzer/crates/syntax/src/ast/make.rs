@@ -229,9 +229,7 @@ pub fn ty_fn_ptr<I: Iterator<Item = Param>>(
     }
 }
 
-pub fn assoc_item_list(
-    body: Option<Vec<either::Either<ast::Attr, ast::AssocItem>>>,
-) -> ast::AssocItemList {
+pub fn assoc_item_list(body: Option<Vec<ast::AssocItem>>) -> ast::AssocItemList {
     let is_break_braces = body.is_some();
     let body_newline = if is_break_braces { "\n".to_owned() } else { String::new() };
     let body_indent = if is_break_braces { "    ".to_owned() } else { String::new() };

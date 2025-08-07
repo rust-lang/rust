@@ -97,7 +97,7 @@ impl<I: Interner> TraitRef<I> {
         )
     }
 
-    pub fn with_self_ty(self, interner: I, self_ty: I::Ty) -> Self {
+    pub fn with_replaced_self_ty(self, interner: I, self_ty: I::Ty) -> Self {
         TraitRef::new(
             interner,
             self.def_id,
@@ -146,8 +146,11 @@ pub struct TraitPredicate<I: Interner> {
 }
 
 impl<I: Interner> TraitPredicate<I> {
-    pub fn with_self_ty(self, interner: I, self_ty: I::Ty) -> Self {
-        Self { trait_ref: self.trait_ref.with_self_ty(interner, self_ty), polarity: self.polarity }
+    pub fn with_replaced_self_ty(self, interner: I, self_ty: I::Ty) -> Self {
+        Self {
+            trait_ref: self.trait_ref.with_replaced_self_ty(interner, self_ty),
+            polarity: self.polarity,
+        }
     }
 
     pub fn def_id(self) -> I::DefId {
@@ -645,7 +648,7 @@ impl<I: Interner> AliasTerm<I> {
         self.args.type_at(0)
     }
 
-    pub fn with_self_ty(self, interner: I, self_ty: I::Ty) -> Self {
+    pub fn with_replaced_self_ty(self, interner: I, self_ty: I::Ty) -> Self {
         AliasTerm::new(
             interner,
             self.def_id,
@@ -756,8 +759,11 @@ impl<I: Interner> ProjectionPredicate<I> {
         self.projection_term.self_ty()
     }
 
-    pub fn with_self_ty(self, interner: I, self_ty: I::Ty) -> ProjectionPredicate<I> {
-        Self { projection_term: self.projection_term.with_self_ty(interner, self_ty), ..self }
+    pub fn with_replaced_self_ty(self, interner: I, self_ty: I::Ty) -> ProjectionPredicate<I> {
+        Self {
+            projection_term: self.projection_term.with_replaced_self_ty(interner, self_ty),
+            ..self
+        }
     }
 
     pub fn trait_def_id(self, interner: I) -> I::DefId {
@@ -814,8 +820,8 @@ impl<I: Interner> NormalizesTo<I> {
         self.alias.self_ty()
     }
 
-    pub fn with_self_ty(self, interner: I, self_ty: I::Ty) -> NormalizesTo<I> {
-        Self { alias: self.alias.with_self_ty(interner, self_ty), ..self }
+    pub fn with_replaced_self_ty(self, interner: I, self_ty: I::Ty) -> NormalizesTo<I> {
+        Self { alias: self.alias.with_replaced_self_ty(interner, self_ty), ..self }
     }
 
     pub fn trait_def_id(self, interner: I) -> I::DefId {
@@ -849,8 +855,8 @@ impl<I: Interner> HostEffectPredicate<I> {
         self.trait_ref.self_ty()
     }
 
-    pub fn with_self_ty(self, interner: I, self_ty: I::Ty) -> Self {
-        Self { trait_ref: self.trait_ref.with_self_ty(interner, self_ty), ..self }
+    pub fn with_replaced_self_ty(self, interner: I, self_ty: I::Ty) -> Self {
+        Self { trait_ref: self.trait_ref.with_replaced_self_ty(interner, self_ty), ..self }
     }
 
     pub fn def_id(self) -> I::DefId {

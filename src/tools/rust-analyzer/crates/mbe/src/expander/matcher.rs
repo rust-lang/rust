@@ -475,12 +475,12 @@ fn match_loop_inner<'t>(
                 })
             }
             OpDelimited::Op(Op::Subtree { tokens, delimiter }) => {
-                if let Ok((subtree, _)) = src.clone().expect_subtree() {
-                    if subtree.delimiter.kind == delimiter.kind {
-                        item.stack.push(item.dot);
-                        item.dot = tokens.iter_delimited_with(*delimiter);
-                        cur_items.push(item);
-                    }
+                if let Ok((subtree, _)) = src.clone().expect_subtree()
+                    && subtree.delimiter.kind == delimiter.kind
+                {
+                    item.stack.push(item.dot);
+                    item.dot = tokens.iter_delimited_with(*delimiter);
+                    cur_items.push(item);
                 }
             }
             OpDelimited::Op(Op::Var { kind, name, .. }) => {

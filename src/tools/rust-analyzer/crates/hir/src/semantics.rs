@@ -933,19 +933,18 @@ impl<'db> SemanticsImpl<'db> {
                 InFile::new(file.file_id, last),
                 false,
                 &mut |InFile { value: last, file_id: last_fid }, _ctx| {
-                    if let Some(InFile { value: first, file_id: first_fid }) = scratch.next() {
-                        if first_fid == last_fid {
-                            if let Some(p) = first.parent() {
-                                let range = first.text_range().cover(last.text_range());
-                                let node = find_root(&p)
-                                    .covering_element(range)
-                                    .ancestors()
-                                    .take_while(|it| it.text_range() == range)
-                                    .find_map(N::cast);
-                                if let Some(node) = node {
-                                    res.push(node);
-                                }
-                            }
+                    if let Some(InFile { value: first, file_id: first_fid }) = scratch.next()
+                        && first_fid == last_fid
+                        && let Some(p) = first.parent()
+                    {
+                        let range = first.text_range().cover(last.text_range());
+                        let node = find_root(&p)
+                            .covering_element(range)
+                            .ancestors()
+                            .take_while(|it| it.text_range() == range)
+                            .find_map(N::cast);
+                        if let Some(node) = node {
+                            res.push(node);
                         }
                     }
                 },
@@ -1391,10 +1390,10 @@ impl<'db> SemanticsImpl<'db> {
                     }
                 })()
                 .is_none();
-                if was_not_remapped {
-                    if let ControlFlow::Break(b) = f(InFile::new(expansion, token), ctx) {
-                        return Some(b);
-                    }
+                if was_not_remapped
+                    && let ControlFlow::Break(b) = f(InFile::new(expansion, token), ctx)
+                {
+                    return Some(b);
                 }
             }
         }
@@ -2068,14 +2067,12 @@ impl<'db> SemanticsImpl<'db> {
                 break false;
             }
 
-            if let Some(parent) = ast::Expr::cast(parent.clone()) {
-                if let Some(ExprOrPatId::ExprId(expr_id)) =
+            if let Some(parent) = ast::Expr::cast(parent.clone())
+                && let Some(ExprOrPatId::ExprId(expr_id)) =
                     source_map.node_expr(InFile { file_id, value: &parent })
-                {
-                    if let Expr::Unsafe { .. } = body[expr_id] {
-                        break true;
-                    }
-                }
+                && let Expr::Unsafe { .. } = body[expr_id]
+            {
+                break true;
             }
 
             let Some(parent_) = parent.parent() else { break false };
@@ -2354,32 +2351,30 @@ struct RenameConflictsVisitor<'a> {
 
 impl RenameConflictsVisitor<'_> {
     fn resolve_path(&mut self, node: ExprOrPatId, path: &Path) {
-        if let Path::BarePath(path) = path {
-            if let Some(name) = path.as_ident() {
-                if *name.symbol() == self.new_name {
-                    if let Some(conflicting) = self.resolver.rename_will_conflict_with_renamed(
-                        self.db,
-                        name,
-                        path,
-                        self.body.expr_or_pat_path_hygiene(node),
-                        self.to_be_renamed,
-                    ) {
-                        self.conflicts.insert(conflicting);
-                    }
-                } else if *name.symbol() == self.old_name {
-                    if let Some(conflicting) =
-                        self.resolver.rename_will_conflict_with_another_variable(
-                            self.db,
-                            name,
-                            path,
-                            self.body.expr_or_pat_path_hygiene(node),
-                            &self.new_name,
-                            self.to_be_renamed,
-                        )
-                    {
-                        self.conflicts.insert(conflicting);
-                    }
+        if let Path::BarePath(path) = path
+            && let Some(name) = path.as_ident()
+        {
+            if *name.symbol() == self.new_name {
+                if let Some(conflicting) = self.resolver.rename_will_conflict_with_renamed(
+                    self.db,
+                    name,
+                    path,
+                    self.body.expr_or_pat_path_hygiene(node),
+                    self.to_be_renamed,
+                ) {
+                    self.conflicts.insert(conflicting);
                 }
+            } else if *name.symbol() == self.old_name
+                && let Some(conflicting) = self.resolver.rename_will_conflict_with_another_variable(
+                    self.db,
+                    name,
+                    path,
+                    self.body.expr_or_pat_path_hygiene(node),
+                    &self.new_name,
+                    self.to_be_renamed,
+                )
+            {
+                self.conflicts.insert(conflicting);
             }
         }
     }

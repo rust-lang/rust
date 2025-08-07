@@ -16,6 +16,7 @@ use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, Symbol, sym};
 use crate::attributes::allow_unstable::{
     AllowConstFnUnstableParser, AllowInternalUnstableParser, UnstableFeatureBoundParser,
 };
+use crate::attributes::body::CoroutineParser;
 use crate::attributes::codegen_attrs::{
     ColdParser, CoverageParser, ExportNameParser, NakedParser, NoMangleParser, OptimizeParser,
     TargetFeatureParser, TrackCallerParser, UsedParser,
@@ -184,6 +185,7 @@ attribute_parsers!(
         Single<WithoutArgs<ConstContinueParser>>,
         Single<WithoutArgs<ConstStabilityIndirectParser>>,
         Single<WithoutArgs<ConstTraitParser>>,
+        Single<WithoutArgs<CoroutineParser>>,
         Single<WithoutArgs<DenyExplicitImplParser>>,
         Single<WithoutArgs<DoNotImplementViaObjectParser>>,
         Single<WithoutArgs<ExportStableParser>>,
@@ -222,7 +224,6 @@ mod private {
 #[allow(private_interfaces)]
 pub trait Stage: Sized + 'static + Sealed {
     type Id: Copy;
-    const SHOULD_EMIT_LINTS: bool;
 
     fn parsers() -> &'static GroupType<Self>;
 
@@ -231,13 +232,14 @@ pub trait Stage: Sized + 'static + Sealed {
         sess: &'sess Session,
         diag: impl for<'x> Diagnostic<'x>,
     ) -> ErrorGuaranteed;
+
+    fn should_emit(&self) -> ShouldEmit;
 }
 
 // allow because it's a sealed trait
 #[allow(private_interfaces)]
 impl Stage for Early {
     type Id = NodeId;
-    const SHOULD_EMIT_LINTS: bool = false;
 
     fn parsers() -> &'static GroupType<Self> {
         &early::ATTRIBUTE_PARSERS
@@ -253,13 +255,16 @@ impl Stage for Early {
             sess.dcx().create_err(diag).delay_as_bug()
         }
     }
+
+    fn should_emit(&self) -> ShouldEmit {
+        self.emit_errors
+    }
 }
 
 // allow because it's a sealed trait
 #[allow(private_interfaces)]
 impl Stage for Late {
     type Id = HirId;
-    const SHOULD_EMIT_LINTS: bool = true;
 
     fn parsers() -> &'static GroupType<Self> {
         &late::ATTRIBUTE_PARSERS
@@ -270,6 +275,10 @@ impl Stage for Late {
         diag: impl for<'x> Diagnostic<'x>,
     ) -> ErrorGuaranteed {
         tcx.dcx().emit_err(diag)
+    }
+
+    fn should_emit(&self) -> ShouldEmit {
+        ShouldEmit::ErrorsAndLints
     }
 }
 
@@ -309,7 +318,7 @@ impl<'f, 'sess: 'f, S: Stage> SharedContext<'f, 'sess, S> {
     /// must be delayed until after HIR is built. This method will take care of the details of
     /// that.
     pub(crate) fn emit_lint(&mut self, lint: AttributeLintKind, span: Span) {
-        if !S::SHOULD_EMIT_LINTS {
+        if !self.stage.should_emit().should_emit() {
             return;
         }
         let id = self.target_id;

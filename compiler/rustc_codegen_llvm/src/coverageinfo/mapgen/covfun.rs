@@ -27,6 +27,9 @@ use crate::llvm;
 /// the final record that will be embedded in the `__llvm_covfun` section.
 #[derive(Debug)]
 pub(crate) struct CovfunRecord<'tcx> {
+    /// Not used directly, but helpful in debug messages.
+    _instance: Instance<'tcx>,
+
     mangled_function_name: &'tcx str,
     source_hash: u64,
     is_used: bool,
@@ -55,6 +58,7 @@ pub(crate) fn prepare_covfun_record<'tcx>(
     let expressions = prepare_expressions(ids_info);
 
     let mut covfun = CovfunRecord {
+        _instance: instance,
         mangled_function_name: tcx.symbol_name(instance).name,
         source_hash: if is_used { fn_cov_info.function_source_hash } else { 0 },
         is_used,
@@ -102,11 +106,21 @@ fn fill_region_tables<'tcx>(
     ids_info: &'tcx CoverageIdsInfo,
     covfun: &mut CovfunRecord<'tcx>,
 ) {
+    // If this function is unused, replace all counters with zero.
+    let counter_for_bcb = |bcb: BasicCoverageBlock| -> ffi::Counter {
+        let term = if covfun.is_used {
+            ids_info.term_for_bcb[bcb].expect("every BCB in a mapping was given a term")
+        } else {
+            CovTerm::Zero
+        };
+        ffi::Counter::from_term(term)
+    };
+
     // Currently a function's mappings must all be in the same file, so use the
     // first mapping's span to determine the file.
     let source_map = tcx.sess.source_map();
     let Some(first_span) = (try { fn_cov_info.mappings.first()?.span }) else {
-        debug_assert!(false, "function has no mappings: {:?}", covfun.mangled_function_name);
+        debug_assert!(false, "function has no mappings: {covfun:?}");
         return;
     };
     let source_file = source_map.lookup_source_file(first_span.lo());
@@ -117,7 +131,7 @@ fn fill_region_tables<'tcx>(
     // codegen needs to handle that gracefully to avoid #133606.
     // It's hard for tests to trigger this organically, so instead we set
     // `-Zcoverage-options=discard-all-spans-in-codegen` to force it to occur.
-    let discard_all = tcx.sess.coverage_discard_all_spans_in_codegen();
+    let discard_all = tcx.sess.coverage_options().discard_all_spans_in_codegen;
     let make_coords = |span: Span| {
         if discard_all { None } else { spans::make_coords(source_map, &source_file, span) }
     };
@@ -133,16 +147,6 @@ fn fill_region_tables<'tcx>(
     // For each counter/region pair in this function+file, convert it to a
     // form suitable for FFI.
     for &Mapping { ref kind, span } in &fn_cov_info.mappings {
-        // If this function is unused, replace all counters with zero.
-        let counter_for_bcb = |bcb: BasicCoverageBlock| -> ffi::Counter {
-            let term = if covfun.is_used {
-                ids_info.term_for_bcb[bcb].expect("every BCB in a mapping was given a term")
-            } else {
-                CovTerm::Zero
-            };
-            ffi::Counter::from_term(term)
-        };
-
         let Some(coords) = make_coords(span) else { continue };
         let cov_span = coords.make_coverage_span(local_file_id);
 
@@ -184,6 +188,7 @@ pub(crate) fn generate_covfun_record<'tcx>(
     covfun: &CovfunRecord<'tcx>,
 ) {
     let &CovfunRecord {
+        _instance,
         mangled_function_name,
         source_hash,
         is_used,

@@ -1800,11 +1800,13 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                             .kind()
                             .map_bound(|clause| match clause {
                                 ty::ClauseKind::Trait(trait_pred) => Some(ty::ClauseKind::Trait(
-                                    trait_pred.with_self_ty(fcx.tcx, ty),
+                                    trait_pred.with_replaced_self_ty(fcx.tcx, ty),
                                 )),
-                                ty::ClauseKind::Projection(proj_pred) => Some(
-                                    ty::ClauseKind::Projection(proj_pred.with_self_ty(fcx.tcx, ty)),
-                                ),
+                                ty::ClauseKind::Projection(proj_pred) => {
+                                    Some(ty::ClauseKind::Projection(
+                                        proj_pred.with_replaced_self_ty(fcx.tcx, ty),
+                                    ))
+                                }
                                 _ => None,
                             })
                             .transpose()?;

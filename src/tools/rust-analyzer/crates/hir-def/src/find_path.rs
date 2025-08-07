@@ -107,11 +107,11 @@ struct FindPathCtx<'db> {
 /// Attempts to find a path to refer to the given `item` visible from the `from` ModuleId
 fn find_path_inner(ctx: &FindPathCtx<'_>, item: ItemInNs, max_len: usize) -> Option<ModPath> {
     // - if the item is a module, jump straight to module search
-    if !ctx.is_std_item {
-        if let ItemInNs::Types(ModuleDefId::ModuleId(module_id)) = item {
-            return find_path_for_module(ctx, &mut FxHashSet::default(), module_id, true, max_len)
-                .map(|choice| choice.path);
-        }
+    if !ctx.is_std_item
+        && let ItemInNs::Types(ModuleDefId::ModuleId(module_id)) = item
+    {
+        return find_path_for_module(ctx, &mut FxHashSet::default(), module_id, true, max_len)
+            .map(|choice| choice.path);
     }
 
     let may_be_in_scope = match ctx.prefix {
@@ -226,15 +226,15 @@ fn find_path_for_module(
     }
 
     // - if the module can be referenced as self, super or crate, do that
-    if let Some(kind) = is_kw_kind_relative_to_from(ctx.from_def_map, module_id, ctx.from) {
-        if ctx.prefix != PrefixKind::ByCrate || kind == PathKind::Crate {
-            return Some(Choice {
-                path: ModPath::from_segments(kind, None),
-                path_text_len: path_kind_len(kind),
-                stability: Stable,
-                prefer_due_to_prelude: false,
-            });
-        }
+    if let Some(kind) = is_kw_kind_relative_to_from(ctx.from_def_map, module_id, ctx.from)
+        && (ctx.prefix != PrefixKind::ByCrate || kind == PathKind::Crate)
+    {
+        return Some(Choice {
+            path: ModPath::from_segments(kind, None),
+            path_text_len: path_kind_len(kind),
+            stability: Stable,
+            prefer_due_to_prelude: false,
+        });
     }
 
     // - if the module is in the prelude, return it by that path
@@ -604,29 +604,29 @@ fn find_local_import_locations(
             &def_map[module.local_id]
         };
 
-        if let Some((name, vis, declared)) = data.scope.name_of(item) {
-            if vis.is_visible_from(db, from) {
-                let is_pub_or_explicit = match vis {
-                    Visibility::Module(_, VisibilityExplicitness::Explicit) => {
-                        cov_mark::hit!(explicit_private_imports);
-                        true
-                    }
-                    Visibility::Module(_, VisibilityExplicitness::Implicit) => {
-                        cov_mark::hit!(discount_private_imports);
-                        false
-                    }
-                    Visibility::PubCrate(_) => true,
-                    Visibility::Public => true,
-                };
-
-                // Ignore private imports unless they are explicit. these could be used if we are
-                // in a submodule of this module, but that's usually not
-                // what the user wants; and if this module can import
-                // the item and we're a submodule of it, so can we.
-                // Also this keeps the cached data smaller.
-                if declared || is_pub_or_explicit {
-                    cb(visited_modules, name, module);
+        if let Some((name, vis, declared)) = data.scope.name_of(item)
+            && vis.is_visible_from(db, from)
+        {
+            let is_pub_or_explicit = match vis {
+                Visibility::Module(_, VisibilityExplicitness::Explicit) => {
+                    cov_mark::hit!(explicit_private_imports);
+                    true
                 }
+                Visibility::Module(_, VisibilityExplicitness::Implicit) => {
+                    cov_mark::hit!(discount_private_imports);
+                    false
+                }
+                Visibility::PubCrate(_) => true,
+                Visibility::Public => true,
+            };
+
+            // Ignore private imports unless they are explicit. these could be used if we are
+            // in a submodule of this module, but that's usually not
+            // what the user wants; and if this module can import
+            // the item and we're a submodule of it, so can we.
+            // Also this keeps the cached data smaller.
+            if declared || is_pub_or_explicit {
+                cb(visited_modules, name, module);
             }
         }
 

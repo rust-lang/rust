@@ -888,8 +888,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 ty::PredicateKind::Clause(ty::ClauseKind::Projection(pred)) => {
                     // `<Foo as Iterator>::Item = String`.
                     let projection_term = pred.projection_term;
-                    let quiet_projection_term =
-                        projection_term.with_self_ty(tcx, Ty::new_var(tcx, ty::TyVid::ZERO));
+                    let quiet_projection_term = projection_term
+                        .with_replaced_self_ty(tcx, Ty::new_var(tcx, ty::TyVid::ZERO));
 
                     let term = pred.term;
                     let obligation = format!("{projection_term} = {term}");

@@ -357,10 +357,10 @@ impl<'a, S: Copy> TokenTreesView<'a, S> {
     }
 
     pub fn try_into_subtree(self) -> Option<SubtreeView<'a, S>> {
-        if let Some(TokenTree::Subtree(subtree)) = self.0.first() {
-            if subtree.usize_len() == (self.0.len() - 1) {
-                return Some(SubtreeView::new(self.0));
-            }
+        if let Some(TokenTree::Subtree(subtree)) = self.0.first()
+            && subtree.usize_len() == (self.0.len() - 1)
+        {
+            return Some(SubtreeView::new(self.0));
         }
         None
     }
@@ -1028,10 +1028,10 @@ pub fn pretty<S>(mut tkns: &[TokenTree<S>]) -> String {
         tkns = rest;
         last = [last, tokentree_to_text(tkn, &mut tkns)].join(if last_to_joint { "" } else { " " });
         last_to_joint = false;
-        if let TokenTree::Leaf(Leaf::Punct(punct)) = tkn {
-            if punct.spacing == Spacing::Joint {
-                last_to_joint = true;
-            }
+        if let TokenTree::Leaf(Leaf::Punct(punct)) = tkn
+            && punct.spacing == Spacing::Joint
+        {
+            last_to_joint = true;
         }
     }
     last

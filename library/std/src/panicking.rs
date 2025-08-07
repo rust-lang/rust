@@ -696,14 +696,14 @@ pub fn begin_panic_handler(info: &core::panic::PanicInfo<'_>) -> ! {
     let msg = info.message();
     crate::sys::backtrace::__rust_end_short_backtrace(move || {
         if let Some(s) = msg.as_str() {
-            rust_panic_with_hook(
+            panic_with_hook(
                 &mut StaticStrPayload(s),
                 loc,
                 info.can_unwind(),
                 info.force_no_backtrace(),
             );
         } else {
-            rust_panic_with_hook(
+            panic_with_hook(
                 &mut FormatStringPayload { inner: &msg, string: None },
                 loc,
                 info.can_unwind(),
@@ -767,7 +767,7 @@ pub const fn begin_panic<M: Any + Send>(msg: M) -> ! {
 
     let loc = Location::caller();
     crate::sys::backtrace::__rust_end_short_backtrace(move || {
-        rust_panic_with_hook(
+        panic_with_hook(
             &mut Payload { inner: Some(msg) },
             loc,
             /* can_unwind */ true,
@@ -792,7 +792,7 @@ fn payload_as_str(payload: &dyn Any) -> &str {
 /// panics, panic hooks, and finally dispatching to the panic runtime to either
 /// abort or unwind.
 #[optimize(size)]
-fn rust_panic_with_hook(
+fn panic_with_hook(
     payload: &mut dyn PanicPayload,
     location: &Location<'_>,
     can_unwind: bool,
@@ -861,7 +861,7 @@ fn rust_panic_with_hook(
 /// This is the entry point for `resume_unwind`.
 /// It just forwards the payload to the panic runtime.
 #[cfg_attr(feature = "panic_immediate_abort", inline)]
-pub fn rust_panic_without_hook(payload: Box<dyn Any + Send>) -> ! {
+pub fn resume_unwind(payload: Box<dyn Any + Send>) -> ! {
     panic_count::increase(false);
 
     struct RewrapBox(Box<dyn Any + Send>);
@@ -885,8 +885,8 @@ pub fn rust_panic_without_hook(payload: Box<dyn Any + Send>) -> ! {
     rust_panic(&mut RewrapBox(payload))
 }
 
-/// An unmangled function (through `rustc_std_internal_symbol`) on which to slap
-/// yer breakpoints.
+/// A function with a fixed suffix (through `rustc_std_internal_symbol`)
+/// on which to slap yer breakpoints.
 #[inline(never)]
 #[cfg_attr(not(test), rustc_std_internal_symbol)]
 #[cfg(not(feature = "panic_immediate_abort"))]
