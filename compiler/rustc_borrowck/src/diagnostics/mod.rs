@@ -676,7 +676,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         });
 
         if let Some(span) = predicate_span {
-            err.span_note(span, "due to current limitations in the borrow checker, this implies a `'static` lifetime");
+            err.span_note(span, fluent::borrowck_limitations_implies_static);
         }
     }
 
