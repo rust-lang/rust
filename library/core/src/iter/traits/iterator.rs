@@ -1875,7 +1875,7 @@ pub trait Iterator {
     /// without giving up ownership of the original iterator,
     /// so you can use the original iterator afterwards.
     ///
-    /// Uses [impl<I: Iterator + ?Sized> Iterator for &mut I { type Item = I::Item; ...}](https://doc.rust-lang.org/nightly/std/iter/trait.Iterator.html#impl-Iterator-for-%26mut+I).
+    /// Uses [`impl<I: Iterator + ?Sized> Iterator for &mut I { type Item = I::Item; ...}`](https://doc.rust-lang.org/nightly/std/iter/trait.Iterator.html#impl-Iterator-for-%26mut+I).
     ///
     /// # Examples
     ///
