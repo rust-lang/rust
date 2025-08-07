@@ -428,6 +428,7 @@ macro_rules! common_visitor_and_walkers {
             DelegationMac,
             DelimArgs,
             DelimSpan,
+            EmptyFromMacro,
             EnumDef,
             Extern,
             ForLoopKind,
@@ -1166,7 +1167,7 @@ pub fn walk_stmt<'a, V: Visitor<'a>>(visitor: &mut V, statement: &'a Stmt) -> V:
         StmtKind::Let(local) => try_visit!(visitor.visit_local(local)),
         StmtKind::Item(item) => try_visit!(visitor.visit_item(item)),
         StmtKind::Expr(expr) | StmtKind::Semi(expr) => try_visit!(visitor.visit_expr(expr)),
-        StmtKind::Empty => {}
+        StmtKind::Empty(_) => {}
         StmtKind::MacCall(mac) => {
             let MacCallStmt { mac, attrs, style: _, tokens: _ } = &**mac;
             walk_list!(visitor, visit_attribute, attrs);

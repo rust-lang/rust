@@ -809,17 +809,15 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             }
             _ => return None,
         };
-        let span = if last_stmt.span.from_expansion() {
-            let mac_call = rustc_span::source_map::original_sp(last_stmt.span, blk.span);
-            self.tcx.sess.source_map().mac_call_stmt_semi_span(mac_call)?
-        } else {
-            self.tcx
-                .sess
-                .source_map()
-                .span_extend_while_whitespace(last_expr.span)
-                .shrink_to_hi()
-                .with_hi(last_stmt.span.hi())
-        };
+
+        let expr_span = last_expr.span.find_ancestor_inside_same_ctxt(last_stmt.span)?;
+        let span = self
+            .tcx
+            .sess
+            .source_map()
+            .span_extend_while_whitespace(expr_span)
+            .shrink_to_hi()
+            .with_hi(last_stmt.span.hi());
 
         Some((span, needs_box))
     }
@@ -904,15 +902,14 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             [(ident, _ty)] => {
                 let sm = self.tcx.sess.source_map();
                 let (span, sugg) = if let Some(stmt) = blk.stmts.last() {
-                    let stmt_span = sm.stmt_span(stmt.span, blk.span);
                     let sugg = if sm.is_multiline(blk.span)
-                        && let Some(spacing) = sm.indentation_before(stmt_span)
+                        && let Some(spacing) = sm.indentation_before(stmt.span)
                     {
                         format!("\n{spacing}{ident}")
                     } else {
                         format!(" {ident}")
                     };
-                    (stmt_span.shrink_to_hi(), sugg)
+                    (stmt.span.shrink_to_hi(), sugg)
                 } else {
                     let sugg = if sm.is_multiline(blk.span)
                         && let Some(spacing) = sm.indentation_before(blk.span.shrink_to_lo())
