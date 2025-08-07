@@ -485,6 +485,7 @@ impl<'a, 'typeck, 'tcx> LivenessContext<'a, 'typeck, 'tcx> {
             // case), there are a few dozens compared to e.g. thousands or tens of thousands of
             // locals and move paths.
             let flow_inits = MaybeInitializedPlaces::new(tcx, body, self.move_data)
+                .exclude_inactive_in_otherwise()
                 .iterate_to_fixpoint(tcx, body, Some("borrowck"))
                 .into_results_cursor(body);
             flow_inits

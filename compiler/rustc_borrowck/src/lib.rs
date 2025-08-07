@@ -511,11 +511,9 @@ fn get_flow_results<'a, 'tcx>(
         body,
         Some("borrowck"),
     );
-    let uninits = MaybeUninitializedPlaces::new(tcx, body, move_data).iterate_to_fixpoint(
-        tcx,
-        body,
-        Some("borrowck"),
-    );
+    let uninits = MaybeUninitializedPlaces::new(tcx, body, move_data)
+        .include_inactive_in_otherwise()
+        .iterate_to_fixpoint(tcx, body, Some("borrowck"));
     let ever_inits = EverInitializedPlaces::new(body, move_data).iterate_to_fixpoint(
         tcx,
         body,
