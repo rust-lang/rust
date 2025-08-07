@@ -986,6 +986,7 @@ impl Step for Enzyme {
             .env("LLVM_CONFIG_REAL", &llvm_config)
             .define("LLVM_ENABLE_ASSERTIONS", "ON")
             .define("ENZYME_EXTERNAL_SHARED_LIB", "ON")
+            .define("ENZYME_BC_LOADER", "OFF")
             .define("LLVM_DIR", builder.llvm_out(target));
 
         cfg.build();
