@@ -902,9 +902,8 @@ pub(crate) struct MappingToUnit {
     pub argument_label: Span,
     #[label(lint_map_label)]
     pub map_label: Span,
-    #[suggestion(style = "verbose", code = "{replace}", applicability = "maybe-incorrect")]
+    #[suggestion(style = "verbose", code = "for_each", applicability = "maybe-incorrect")]
     pub suggestion: Span,
-    pub replace: String,
 }
 
 // internal.rs

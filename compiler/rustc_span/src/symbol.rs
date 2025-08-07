@@ -280,6 +280,7 @@ symbols! {
         IterPeekable,
         Iterator,
         IteratorItem,
+        IteratorMap,
         Layout,
         Left,
         LinkedList,
