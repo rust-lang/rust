@@ -160,9 +160,9 @@ fn setup_logging(log_file_flag: Option<PathBuf>) -> anyhow::Result<()> {
 
     rust_analyzer::tracing::Config {
         writer,
-        // Deliberately enable all `error` logs if the user has not set RA_LOG, as there is usually
+        // Deliberately enable all `warn` logs if the user has not set RA_LOG, as there is usually
         // useful information in there for debugging.
-        filter: env::var("RA_LOG").ok().unwrap_or_else(|| "error".to_owned()),
+        filter: env::var("RA_LOG").ok().unwrap_or_else(|| "warn".to_owned()),
         chalk_filter: env::var("CHALK_DEBUG").ok(),
         profile_filter: env::var("RA_PROFILE").ok(),
         json_profile_filter: std::env::var("RA_PROFILE_JSON").ok(),
