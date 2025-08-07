@@ -790,8 +790,8 @@ macro_rules! uint_impl {
         #[doc = concat!("assert_eq!(1", stringify!($SelfT), ".checked_sub_signed(-2), Some(3));")]
         #[doc = concat!("assert_eq!((", stringify!($SelfT), "::MAX - 2).checked_sub_signed(-4), None);")]
         /// ```
-        #[stable(feature = "mixed_integer_ops_unsigned_sub", since = "CURRENT_RUSTC_VERSION")]
-        #[rustc_const_stable(feature = "mixed_integer_ops_unsigned_sub", since = "CURRENT_RUSTC_VERSION")]
+        #[stable(feature = "mixed_integer_ops_unsigned_sub", since = "1.90.0")]
+        #[rustc_const_stable(feature = "mixed_integer_ops_unsigned_sub", since = "1.90.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -1974,8 +1974,8 @@ macro_rules! uint_impl {
         #[doc = concat!("assert_eq!(1", stringify!($SelfT), ".saturating_sub_signed(-2), 3);")]
         #[doc = concat!("assert_eq!((", stringify!($SelfT), "::MAX - 2).saturating_sub_signed(-4), ", stringify!($SelfT), "::MAX);")]
         /// ```
-        #[stable(feature = "mixed_integer_ops_unsigned_sub", since = "CURRENT_RUSTC_VERSION")]
-        #[rustc_const_stable(feature = "mixed_integer_ops_unsigned_sub", since = "CURRENT_RUSTC_VERSION")]
+        #[stable(feature = "mixed_integer_ops_unsigned_sub", since = "1.90.0")]
+        #[rustc_const_stable(feature = "mixed_integer_ops_unsigned_sub", since = "1.90.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -2122,8 +2122,8 @@ macro_rules! uint_impl {
         #[doc = concat!("assert_eq!(1", stringify!($SelfT), ".wrapping_sub_signed(-2), 3);")]
         #[doc = concat!("assert_eq!((", stringify!($SelfT), "::MAX - 2).wrapping_sub_signed(-4), 1);")]
         /// ```
-        #[stable(feature = "mixed_integer_ops_unsigned_sub", since = "CURRENT_RUSTC_VERSION")]
-        #[rustc_const_stable(feature = "mixed_integer_ops_unsigned_sub", since = "CURRENT_RUSTC_VERSION")]
+        #[stable(feature = "mixed_integer_ops_unsigned_sub", since = "1.90.0")]
+        #[rustc_const_stable(feature = "mixed_integer_ops_unsigned_sub", since = "1.90.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -2581,8 +2581,8 @@ macro_rules! uint_impl {
         #[doc = concat!("assert_eq!(1", stringify!($SelfT), ".overflowing_sub_signed(-2), (3, false));")]
         #[doc = concat!("assert_eq!((", stringify!($SelfT), "::MAX - 2).overflowing_sub_signed(-4), (1, true));")]
         /// ```
-        #[stable(feature = "mixed_integer_ops_unsigned_sub", since = "CURRENT_RUSTC_VERSION")]
-        #[rustc_const_stable(feature = "mixed_integer_ops_unsigned_sub", since = "CURRENT_RUSTC_VERSION")]
+        #[stable(feature = "mixed_integer_ops_unsigned_sub", since = "1.90.0")]
+        #[rustc_const_stable(feature = "mixed_integer_ops_unsigned_sub", since = "1.90.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]

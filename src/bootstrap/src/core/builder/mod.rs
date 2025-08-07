@@ -1623,7 +1623,7 @@ You have to build a stage1 compiler for `{}` first, and then use it to build a s
             cmd.arg("-Dwarnings");
         }
         cmd.arg("-Znormalize-docs");
-        cmd.args(linker_args(self, compiler.host, LldThreads::Yes, compiler.stage));
+        cmd.args(linker_args(self, compiler.host, LldThreads::Yes));
         cmd
     }
 

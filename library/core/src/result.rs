@@ -610,9 +610,9 @@ impl<T, E> Result<T, E> {
     #[rustc_const_unstable(feature = "const_result_trait_fn", issue = "144211")]
     pub const fn is_ok_and<F>(self, f: F) -> bool
     where
-        F: ~const FnOnce(T) -> bool + ~const Destruct,
-        T: ~const Destruct,
-        E: ~const Destruct,
+        F: [const] FnOnce(T) -> bool + [const] Destruct,
+        T: [const] Destruct,
+        E: [const] Destruct,
     {
         match self {
             Err(_) => false,
@@ -665,9 +665,9 @@ impl<T, E> Result<T, E> {
     #[rustc_const_unstable(feature = "const_result_trait_fn", issue = "144211")]
     pub const fn is_err_and<F>(self, f: F) -> bool
     where
-        F: ~const FnOnce(E) -> bool + ~const Destruct,
-        E: ~const Destruct,
-        T: ~const Destruct,
+        F: [const] FnOnce(E) -> bool + [const] Destruct,
+        E: [const] Destruct,
+        T: [const] Destruct,
     {
         match self {
             Ok(_) => false,
@@ -699,8 +699,8 @@ impl<T, E> Result<T, E> {
     #[rustc_diagnostic_item = "result_ok_method"]
     pub const fn ok(self) -> Option<T>
     where
-        T: ~const Destruct,
-        E: ~const Destruct,
+        T: [const] Destruct,
+        E: [const] Destruct,
     {
         match self {
             Ok(x) => Some(x),
@@ -727,8 +727,8 @@ impl<T, E> Result<T, E> {
     #[rustc_const_unstable(feature = "const_result_trait_fn", issue = "144211")]
     pub const fn err(self) -> Option<E>
     where
-        T: ~const Destruct,
-        E: ~const Destruct,
+        T: [const] Destruct,
+        E: [const] Destruct,
     {
         match self {
             Ok(_) => None,
@@ -822,7 +822,7 @@ impl<T, E> Result<T, E> {
     #[rustc_const_unstable(feature = "const_result_trait_fn", issue = "144211")]
     pub const fn map<U, F>(self, op: F) -> Result<U, E>
     where
-        F: ~const FnOnce(T) -> U + ~const Destruct,
+        F: [const] FnOnce(T) -> U + [const] Destruct,
     {
         match self {
             Ok(t) => Ok(op(t)),
@@ -854,10 +854,10 @@ impl<T, E> Result<T, E> {
     #[must_use = "if you don't need the returned value, use `if let` instead"]
     pub const fn map_or<U, F>(self, default: U, f: F) -> U
     where
-        F: ~const FnOnce(T) -> U + ~const Destruct,
-        T: ~const Destruct,
-        E: ~const Destruct,
-        U: ~const Destruct,
+        F: [const] FnOnce(T) -> U + [const] Destruct,
+        T: [const] Destruct,
+        E: [const] Destruct,
+        U: [const] Destruct,
     {
         match self {
             Ok(t) => f(t),
@@ -888,8 +888,8 @@ impl<T, E> Result<T, E> {
     #[rustc_const_unstable(feature = "const_result_trait_fn", issue = "144211")]
     pub const fn map_or_else<U, D, F>(self, default: D, f: F) -> U
     where
-        D: ~const FnOnce(E) -> U + ~const Destruct,
-        F: ~const FnOnce(T) -> U + ~const Destruct,
+        D: [const] FnOnce(E) -> U + [const] Destruct,
+        F: [const] FnOnce(T) -> U + [const] Destruct,
     {
         match self {
             Ok(t) => f(t),
@@ -919,10 +919,10 @@ impl<T, E> Result<T, E> {
     #[rustc_const_unstable(feature = "const_result_trait_fn", issue = "144211")]
     pub const fn map_or_default<U, F>(self, f: F) -> U
     where
-        F: ~const FnOnce(T) -> U + ~const Destruct,
-        U: ~const Default,
-        T: ~const Destruct,
-        E: ~const Destruct,
+        F: [const] FnOnce(T) -> U + [const] Destruct,
+        U: [const] Default,
+        T: [const] Destruct,
+        E: [const] Destruct,
     {
         match self {
             Ok(t) => f(t),
@@ -953,7 +953,7 @@ impl<T, E> Result<T, E> {
     #[rustc_const_unstable(feature = "const_result_trait_fn", issue = "144211")]
     pub const fn map_err<F, O>(self, op: O) -> Result<T, F>
     where
-        O: ~const FnOnce(E) -> F + ~const Destruct,
+        O: [const] FnOnce(E) -> F + [const] Destruct,
     {
         match self {
             Ok(t) => Ok(t),
@@ -979,7 +979,7 @@ impl<T, E> Result<T, E> {
     #[rustc_const_unstable(feature = "const_result_trait_fn", issue = "144211")]
     pub const fn inspect<F>(self, f: F) -> Self
     where
-        F: ~const FnOnce(&T) + ~const Destruct,
+        F: [const] FnOnce(&T) + [const] Destruct,
     {
         if let Ok(ref t) = self {
             f(t);
@@ -1007,7 +1007,7 @@ impl<T, E> Result<T, E> {
     #[rustc_const_unstable(feature = "const_result_trait_fn", issue = "144211")]
     pub const fn inspect_err<F>(self, f: F) -> Self
     where
-        F: ~const FnOnce(&E) + ~const Destruct,
+        F: [const] FnOnce(&E) + [const] Destruct,
     {
         if let Err(ref e) = self {
             f(e);
@@ -1254,8 +1254,8 @@ impl<T, E> Result<T, E> {
     #[rustc_const_unstable(feature = "const_result_trait_fn", issue = "144211")]
     pub const fn unwrap_or_default(self) -> T
     where
-        T: ~const Default + ~const Destruct,
-        E: ~const Destruct,
+        T: [const] Default + [const] Destruct,
+        E: [const] Destruct,
     {
         match self {
             Ok(x) => x,
@@ -1350,7 +1350,7 @@ impl<T, E> Result<T, E> {
     #[rustc_const_unstable(feature = "const_try", issue = "74935")]
     pub const fn into_ok(self) -> T
     where
-        E: ~const Into<!>,
+        E: [const] Into<!>,
     {
         match self {
             Ok(x) => x,
@@ -1387,7 +1387,7 @@ impl<T, E> Result<T, E> {
     #[rustc_const_unstable(feature = "const_try", issue = "74935")]
     pub const fn into_err(self) -> E
     where
-        T: ~const Into<!>,
+        T: [const] Into<!>,
     {
         match self {
             Ok(x) => x.into(),
@@ -1431,9 +1431,9 @@ impl<T, E> Result<T, E> {
     #[rustc_const_unstable(feature = "const_result_trait_fn", issue = "144211")]
     pub const fn and<U>(self, res: Result<U, E>) -> Result<U, E>
     where
-        T: ~const Destruct,
-        E: ~const Destruct,
-        U: ~const Destruct,
+        T: [const] Destruct,
+        E: [const] Destruct,
+        U: [const] Destruct,
     {
         match self {
             Ok(_) => res,
@@ -1477,7 +1477,7 @@ impl<T, E> Result<T, E> {
     #[rustc_confusables("flat_map", "flatmap")]
     pub const fn and_then<U, F>(self, op: F) -> Result<U, E>
     where
-        F: ~const FnOnce(T) -> Result<U, E> + ~const Destruct,
+        F: [const] FnOnce(T) -> Result<U, E> + [const] Destruct,
     {
         match self {
             Ok(t) => op(t),
@@ -1517,9 +1517,9 @@ impl<T, E> Result<T, E> {
     #[rustc_const_unstable(feature = "const_result_trait_fn", issue = "144211")]
     pub const fn or<F>(self, res: Result<T, F>) -> Result<T, F>
     where
-        T: ~const Destruct,
-        E: ~const Destruct,
-        F: ~const Destruct,
+        T: [const] Destruct,
+        E: [const] Destruct,
+        F: [const] Destruct,
     {
         match self {
             Ok(v) => Ok(v),
@@ -1548,7 +1548,7 @@ impl<T, E> Result<T, E> {
     #[rustc_const_unstable(feature = "const_result_trait_fn", issue = "144211")]
     pub const fn or_else<F, O>(self, op: O) -> Result<T, F>
     where
-        O: ~const FnOnce(E) -> Result<T, F> + ~const Destruct,
+        O: [const] FnOnce(E) -> Result<T, F> + [const] Destruct,
     {
         match self {
             Ok(t) => Ok(t),
@@ -1579,8 +1579,8 @@ impl<T, E> Result<T, E> {
     #[rustc_const_unstable(feature = "const_result_trait_fn", issue = "144211")]
     pub const fn unwrap_or(self, default: T) -> T
     where
-        T: ~const Destruct,
-        E: ~const Destruct,
+        T: [const] Destruct,
+        E: [const] Destruct,
     {
         match self {
             Ok(t) => t,
@@ -1605,7 +1605,7 @@ impl<T, E> Result<T, E> {
     #[rustc_const_unstable(feature = "const_result_trait_fn", issue = "144211")]
     pub const fn unwrap_or_else<F>(self, op: F) -> T
     where
-        F: ~const FnOnce(E) -> T + ~const Destruct,
+        F: [const] FnOnce(E) -> T + [const] Destruct,
     {
         match self {
             Ok(t) => t,
@@ -2164,7 +2164,7 @@ impl<T, E> const ops::Try for Result<T, E> {
 
 #[unstable(feature = "try_trait_v2", issue = "84277", old_name = "try_trait")]
 #[rustc_const_unstable(feature = "const_try", issue = "74935")]
-impl<T, E, F: ~const From<E>> const ops::FromResidual<Result<convert::Infallible, E>>
+impl<T, E, F: [const] From<E>> const ops::FromResidual<Result<convert::Infallible, E>>
     for Result<T, F>
 {
     #[inline]
@@ -2178,7 +2178,7 @@ impl<T, E, F: ~const From<E>> const ops::FromResidual<Result<convert::Infallible
 #[diagnostic::do_not_recommend]
 #[unstable(feature = "try_trait_v2_yeet", issue = "96374")]
 #[rustc_const_unstable(feature = "const_try", issue = "74935")]
-impl<T, E, F: ~const From<E>> const ops::FromResidual<ops::Yeet<E>> for Result<T, F> {
+impl<T, E, F: [const] From<E>> const ops::FromResidual<ops::Yeet<E>> for Result<T, F> {
     #[inline]
     fn from_residual(ops::Yeet(e): ops::Yeet<E>) -> Self {
         Err(From::from(e))
