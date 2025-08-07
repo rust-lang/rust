@@ -66,7 +66,7 @@ set-text: (
 )
 
 // Then we compare again to confirm the height didn't change.
-assert-size: ("#crate-search", {"width": 179})
+assert-size: ("#crate-search", {"width": 185})
 assert-size: (".search-switcher", {
     "height": |search_results_title_height|,
 })

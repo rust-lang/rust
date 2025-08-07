@@ -54,20 +54,20 @@ assert-css: ("rustdoc-topbar h2", {"overflow-x": "hidden"})
 // Check that main heading and toolbar go side-by-side, both on desktop and on mobile.
 set-window-size: (1100, 800)
 go-to: "file://" + |DOC_PATH| + "/lib2/too_long/struct.SuperIncrediblyLongLongLongLongLongLongLongGigaGigaGigaMegaLongLongLongStructName.html"
-compare-elements-position: (".main-heading h1", ".main-heading rustdoc-toolbar", ["y"])
-compare-elements-position-near-false: (".main-heading h1", ".main-heading rustdoc-toolbar", {"x": 300})
+compare-elements-position: (".main-heading h1", ".main-heading rustdoc-toolbar #search-button", ["y"])
+compare-elements-position-near-false: (".main-heading h1", ".main-heading rustdoc-toolbar #search-button", {"x": 300})
 go-to: "file://" + |DOC_PATH| + "/lib2/index.html"
-compare-elements-position: (".main-heading h1", ".main-heading rustdoc-toolbar", ["y"])
-compare-elements-position-near-false: (".main-heading h1", ".main-heading rustdoc-toolbar", {"x": 300})
+compare-elements-position: (".main-heading h1", ".main-heading rustdoc-toolbar #search-button", ["y"])
+compare-elements-position-near-false: (".main-heading h1", ".main-heading rustdoc-toolbar #search-button", {"x": 300})
 
 // On mobile, they always wrap.
 set-window-size: (600, 600)
 go-to: "file://" + |DOC_PATH| + "/lib2/too_long/struct.SuperIncrediblyLongLongLongLongLongLongLongGigaGigaGigaMegaLongLongLongStructName.html"
-compare-elements-position: (".main-heading h1", ".main-heading rustdoc-toolbar", ["y"])
-compare-elements-position-near-false: (".main-heading h1", ".main-heading rustdoc-toolbar", {"x": 200})
+compare-elements-position: (".main-heading h1", ".main-heading rustdoc-toolbar #search-button", ["y"])
+compare-elements-position-near-false: (".main-heading h1", ".main-heading rustdoc-toolbar #search-button", {"x": 200})
 go-to: "file://" + |DOC_PATH| + "/lib2/index.html"
-compare-elements-position: (".main-heading h1", ".main-heading rustdoc-toolbar", ["y"])
-compare-elements-position-near-false: (".main-heading h1", ".main-heading rustdoc-toolbar", {"x": 200})
+compare-elements-position: (".main-heading h1", ".main-heading rustdoc-toolbar #search-button", ["y"])
+compare-elements-position-near-false: (".main-heading h1", ".main-heading rustdoc-toolbar #search-button", {"x": 200})
 
 // Now we will check that the scrolling is working.
 // First on an item with "hidden methods".

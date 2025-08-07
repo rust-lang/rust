@@ -1998,17 +1998,16 @@ a.tooltip:hover::after {
 	left: 6px;
 	height: 34px;
 	width: 34px;
+	z-index: calc(var(--desktop-sidebar-z-index) + 1);
 }
 .hide-sidebar #sidebar-button {
 	left: 6px;
 	background-color: var(--main-background-color);
-	z-index: 1;
 }
 .src #sidebar-button {
 	margin-top: 0;
 	top: 8px;
 	left: 8px;
-	z-index: calc(var(--desktop-sidebar-z-index) + 1);
 	border-color: var(--border-color);
 }
 .hide-sidebar .src #sidebar-button {
@@ -2040,14 +2039,14 @@ button#toggle-all-docs {
 	min-width: 0;
 }
 #sidebar-button > a {
+	border: solid 1px transparent;
+	border-radius: var(--button-border-radius);
 	background-color: var(--button-background-color);
 	width: 33px;
 }
 .src #sidebar-button > a {
-	background-color: transparent;
-}
-#sidebar-button > a:hover, #sidebar-button > a:focus-visible {
-	background-color: var(--main-background-color);
+	background-color: var(--sidebar-background-color);
+	border-color: var(--border-color);
 }
 
 #search-button > a:hover, #search-button > a:focus-visible,
@@ -2105,15 +2104,29 @@ button#toggle-all-docs::before {
 }
 
 .help-menu > a::before {
-	/* Question mark with circle */
-	content: url('data:image/svg+xml,<svg width="18" height="18" viewBox="0 0 12 12" \
-	enable-background="new 0 0 12 12" xmlns="http://www.w3.org/2000/svg" fill="none">\
-	<circle r="5.25" cx="6" cy="6" stroke-width="1.5" stroke="black"/>\
-	<text x="6" y="7" style="font:8px sans-serif;font-weight:1000" text-anchor="middle" \
-		dominant-baseline="middle" fill="black">?</text></svg>');
+	/* Question mark with "circle" */
+	content: url('data:image/svg+xml,\
+		<svg width="18" height="18" enable-background="new 0 0 12 12" fill="none" \
+		version="1.1" viewBox="0 0 12 12" xmlns="http://www.w3.org/2000/svg"> \
+		<path d="m6.007 0.6931c2.515 0 5.074 1.908 5.074 5.335 0 3.55-2.567 5.278-5.088 \
+		5.278-2.477 0-5.001-1.742-5.001-5.3 0-3.38 2.527-5.314 5.014-5.314z" stroke="black" \
+		stroke-width="1.5"/>\
+		<path d="m5.999 7.932c0.3111 0 0.7062 0.2915 0.7062 0.7257 0 0.5458-0.3951 \
+		0.8099-0.7081 0.8099-0.2973 0-0.7023-0.266-0.7023-0.7668 0-0.4695 0.3834-0.7688 \
+		0.7042-0.7688z" fill="black"/>\
+		<path d="m4.281 3.946c0.0312-0.03057 0.06298-0.06029 0.09528-0.08916 0.4833-0.432 1.084-0.6722 \
+		1.634-0.6722 1.141 0 1.508 1.043 1.221 1.621-0.2753 0.5542-1.061 0.5065-1.273 \
+		1.595-0.05728 0.2939 0.0134 0.9812 0.0134 1.205" fill="none" stroke="black" \
+		stroke-width="1.25"/>\
+		</svg>');
 	width: 18px;
 	height: 18px;
 	filter: var(--settings-menu-filter);
+}
+
+.help-menu > a {
+	/* design hack to cope with "Help" being far shorter than "Settings" etc */
+	width: 74px;
 }
 
 #search-button > a::before,
@@ -2154,9 +2167,9 @@ rustdoc-toolbar span.label {
 	/* sidebar resizer image */
 	content: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 22 22" \
 		fill="none" stroke="black">\
-		<rect x="1" y="1" width="20" height="20" ry="1.5" stroke-width="1.5" stroke="%23777"/>\
-		<circle cx="4.375" cy="4.375" r="1" stroke-width=".75"/>\
-		<path d="m7.6121 3v16 M5.375 7.625h-2 m2 3h-2 m2 3h-2" stroke-width="1.25"/></svg>');
+		<rect x="1" y="2" width="20" height="18" ry="1.5" stroke-width="1.5" stroke="%23777"/>\
+		<circle cx="4.375" cy="5.375" r="1" stroke-width=".75"/>\
+		<path d="m7.6121 4v14 M5.375 8.625h-2 m2 3h-2 m2 3h-2" stroke-width="1.25"/></svg>');
 	width: 22px;
 	height: 22px;
 }
@@ -2435,6 +2448,9 @@ However, it's not needed with smaller screen width because the doc/code block is
 	opacity: 0.75;
 	filter: var(--mobile-sidebar-menu-filter);
 }
+.src #sidebar-button > a:hover {
+	background: var(--main-background-color);
+}
 .sidebar-menu-toggle:hover::before,
 .sidebar-menu-toggle:active::before,
 .sidebar-menu-toggle:focus::before {
@@ -2457,32 +2473,34 @@ However, it's not needed with smaller screen width because the doc/code block is
 
 	/* Text label takes up too much space at this size. */
 	.main-heading {
-	    grid-template-areas:
-	        "main-heading-breadcrumbs main-heading-toolbar"
-	        "main-heading-h1 main-heading-toolbar"
-	        "main-heading-sub-heading main-heading-toolbar";
+		grid-template-areas:
+			"main-heading-breadcrumbs main-heading-toolbar"
+			"main-heading-h1 main-heading-toolbar"
+			"main-heading-sub-heading main-heading-toolbar";
 	}
 	.search-results-main-heading {
-	    display: grid;
-	    grid-template-areas:
-		"main-heading-breadcrumbs main-heading-toolbar"
-		"main-heading-breadcrumbs main-heading-toolbar"
-		"main-heading-h1 main-heading-toolbar";
+		display: grid;
+		grid-template-areas:
+			"main-heading-breadcrumbs main-heading-toolbar"
+			"main-heading-breadcrumbs main-heading-toolbar"
+			"main-heading-h1 main-heading-toolbar";
 	}
 	rustdoc-toolbar {
-	    display: grid;
-	    grid-template-areas:
-	        "x settings help"
-	        "search summary summary";
+		margin-top: -10px;
+		display: grid;
+		grid-template-areas:
+			"x settings help"
+			"search summary summary";
+		grid-template-rows: 35px 1fr;
 	}
 	.search-results-main-heading rustdoc-toolbar {
-	    display: grid;
-	    grid-template-areas:
-	        "settings help"
-	        "search search";
+		display: grid;
+		grid-template-areas:
+			"settings help"
+			"search search";
 	}
 	.search-results-main-heading #toggle-all-docs {
-	    display: none;
+		display: none;
 	}
 	rustdoc-toolbar .settings-menu span.label,
 	rustdoc-toolbar .help-menu span.label
@@ -2504,22 +2522,27 @@ However, it's not needed with smaller screen width because the doc/code block is
 	rustdoc-toolbar #toggle-all-docs {
 		grid-area: summary;
 	}
+	rustdoc-toolbar .settings-menu,
+	rustdoc-toolbar .help-menu {
+		height: 35px;
+	}
 	rustdoc-toolbar .settings-menu > a,
 	rustdoc-toolbar .help-menu > a {
-	    border-radius: 2px;
-	    text-align: center;
-	    width: 40px;
+		border-radius: 2px;
+		text-align: center;
+		width: 34px;
+		padding: 5px 0;
 	}
 	rustdoc-toolbar .settings-menu > a:before,
 	rustdoc-toolbar .help-menu > a:before {
-	    margin: 0 4px;
+		margin: 0 4px;
 	}
 	#settings.popover {
-	    top: 16px;
+		top: 16px;
 		--popover-arrow-offset: 58px;
 	}
 	#help.popover {
-	    top: 16px;
+		top: 16px;
 		--popover-arrow-offset: 16px;
 	}
 }
@@ -2554,42 +2577,29 @@ in src-script.js and main.js
 
 
 	/* Pull settings and help up into the top bar. */
-	.main-heading {
-	    grid-template-areas:
-	        "main-heading-breadcrumbs main-heading-breadcrumbs"
-	        "main-heading-h1 main-heading-toolbar"
-	        "main-heading-sub-heading main-heading-toolbar";
-	}
-	.search-results-main-heading {
-	    display: grid;
-	    grid-template-areas:
-		"main-heading-breadcrumbs main-heading-placeholder"
-		"main-heading-breadcrumbs main-heading-toolbar"
-		"main-heading-h1 main-heading-toolbar";
-	}
 	rustdoc-topbar span.label,
-	rustdoc-toolbar .settings-menu,
-	rustdoc-toolbar .help-menu
+	html:not(.hide-sidebar) .rustdoc:not(.src) rustdoc-toolbar .settings-menu > a,
+	html:not(.hide-sidebar) .rustdoc:not(.src) rustdoc-toolbar .help-menu > a
 	{
 		display: none;
 	}
 	rustdoc-topbar .settings-menu > a,
 	rustdoc-topbar .help-menu > a {
 		width: 33px;
-	    line-height: 0;
+		line-height: 0;
 	}
 	rustdoc-topbar .settings-menu > a:hover,
 	rustdoc-topbar .help-menu > a:hover {
 		border: none;
-	    background: var(--main-background-color);
-	    border-radius: 0;
+		background: var(--main-background-color);
+		border-radius: 0;
 	}
 	#settings.popover {
-	    top: 32px;
+		top: 32px;
 		--popover-arrow-offset: 48px;
 	}
 	#help.popover {
-	    top: 32px;
+		top: 32px;
 		--popover-arrow-offset: 12px;
 	}
 
@@ -2599,7 +2609,7 @@ in src-script.js and main.js
 		display: block;
 	}
 
-	main {
+	html:not(.hide-sidebar) main {
 		padding-left: 15px;
 		padding-top: 0px;
 	}
@@ -2638,6 +2648,9 @@ in src-script.js and main.js
 		height: 100vh;
 		border: 0;
 	}
+	html .src main {
+		padding: 18px 0;
+	}
 	.src .search-form {
 		margin-left: 40px;
 	}
@@ -2659,7 +2672,7 @@ in src-script.js and main.js
 
 	rustdoc-topbar > h2 {
 		padding-bottom: 0;
-	    margin: auto;
+		margin: auto;
 		overflow: hidden;
 		/* Rare exception to specifying font sizes in rem. Since the topbar
 		   height is specified in pixels, this also has to be specified in
@@ -2668,7 +2681,7 @@ in src-script.js and main.js
 		font-size: 24px;
 		white-space: nowrap;
 		text-overflow: ellipsis;
-	    text-align: center;
+		text-align: center;
 	}
 
 	rustdoc-topbar .logo-container > img {
@@ -2693,9 +2706,9 @@ in src-script.js and main.js
 	}
 
 	.sidebar-menu-toggle {
-	    /* prevent flexbox shrinking */
+		/* prevent flexbox shrinking */
 		width: 41px;
-	    min-width: 41px;
+		min-width: 41px;
 		border: none;
 		line-height: 0;
 	}
@@ -2718,15 +2731,16 @@ in src-script.js and main.js
 	}
 
 	/* sidebar button becomes topbar button */
-	.hide-sidebar #sidebar-button {
-		margin-top: 0;
-	}
 	#sidebar-button > a::before {
 		content: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" \
 			viewBox="0 0 22 22" fill="none" stroke="black">\
-			<rect x="1" y="1" width="20" height="20" ry="1.5" stroke-width="1.5" stroke="%23777"/>\
-			<circle cx="4.375" cy="4.375" r="1" stroke-width=".75"/>\
-			<path d="m3 7.375h16m0-3h-4" stroke-width="1.25"/></svg>');
+			<rect x="1" y="2" width="20" height="18" ry="1.5" stroke-width="1.5" stroke="%23777"/>\
+			<g fill="black" stroke="none">\
+			<circle cx="4.375" cy="5.375" r="1" stroke-width=".75"/>\
+			<circle cx="17.375" cy="5.375" r="1" stroke-width=".75"/>\
+			<circle cx="14.375" cy="5.375" r="1" stroke-width=".75"/>\
+			</g>\
+			<path d="m3 8.375h16" stroke-width="1.25"/></svg>');
 		width: 22px;
 		height: 22px;
 	}

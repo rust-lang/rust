@@ -345,7 +345,7 @@
         const settingsMenu = nonnull(document.getElementById("settings"));
         onEachLazy(document.querySelectorAll(".settings-menu"), settingsButton => {
             /** @param {MouseEvent} event */
-            settingsButton.onclick = event => {
+            settingsButton.querySelector("a").onclick = event => {
                 if (!(event.target instanceof Element) || settingsMenu.contains(event.target)) {
                     return;
                 }

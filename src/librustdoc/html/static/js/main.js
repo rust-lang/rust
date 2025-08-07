@@ -215,7 +215,7 @@ function preLoadCss(cssUrl) {
 
     onEachLazy(document.querySelectorAll(".settings-menu"), settingsMenu => {
         /** @param {MouseEvent} event */
-        settingsMenu.onclick = event => {
+        settingsMenu.querySelector("a").onclick = event => {
             if (event.ctrlKey || event.altKey || event.metaKey) {
                 return;
             }
