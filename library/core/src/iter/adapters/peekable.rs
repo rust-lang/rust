@@ -1,5 +1,5 @@
 use crate::iter::adapters::SourceIter;
-use crate::iter::{FusedIterator, TrustedLen};
+use crate::iter::{FusedIterator, PeekableIterator, TrustedLen};
 use crate::ops::{ControlFlow, Try};
 
 /// An iterator with a `peek()` that returns an optional reference to the next
@@ -321,6 +321,14 @@ impl<I: Iterator> Peekable<I> {
 
 #[unstable(feature = "trusted_len", issue = "37572")]
 unsafe impl<I> TrustedLen for Peekable<I> where I: TrustedLen {}
+
+#[unstable(feature = "peekable_iterator", issue = "132973")]
+impl<I: Iterator> PeekableIterator for Peekable<I> {
+    fn peek_with<T>(&mut self, func: impl for<'a> FnOnce(Option<&'a Self::Item>) -> T) -> T {
+        let tmp = self.peek();
+        func(tmp.as_ref())
+    }
+}
 
 #[unstable(issue = "none", feature = "inplace_iteration")]
 unsafe impl<I: Iterator> SourceIter for Peekable<I>
