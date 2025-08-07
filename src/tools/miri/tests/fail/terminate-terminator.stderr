@@ -1,12 +1,12 @@
 warning: You have explicitly enabled MIR optimizations, overriding Miri's default which is to completely disable them. Any optimizations may hide UB that Miri would otherwise detect, and it is not necessarily possible to predict what kind of UB will be missed. If you are enabling optimizations to make Miri run faster, we advise using cfg(miri) to shrink your workload instead. The performance benefit of enabling MIR optimizations is usually marginal at best.
 
 
-thread 'main' panicked at tests/fail/terminate-terminator.rs:LL:CC:
+thread 'main' ($TID) panicked at tests/fail/terminate-terminator.rs:LL:CC:
 explicit panic
 note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
 note: in Miri, you may have to set `MIRIFLAGS=-Zmiri-env-forward=RUST_BACKTRACE` for the environment variable to have an effect
 
-thread 'main' panicked at RUSTLIB/core/src/panicking.rs:LL:CC:
+thread 'main' ($TID) panicked at RUSTLIB/core/src/panicking.rs:LL:CC:
 panic in a function that cannot unwind
 stack backtrace:
 thread caused non-unwinding panic. aborting.

@@ -127,6 +127,14 @@ impl Thread {
     }
 }
 
+pub(crate) fn current_os_id() -> Option<u64> {
+    // SAFETY: FFI call with no preconditions.
+    let id: u32 = unsafe { c::GetThreadId(c::GetCurrentThread()) };
+
+    // A return value of 0 indicates failed lookup.
+    if id == 0 { None } else { Some(id.into()) }
+}
+
 pub fn available_parallelism() -> io::Result<NonZero<usize>> {
     let res = unsafe {
         let mut sysinfo: c::SYSTEM_INFO = crate::mem::zeroed();
