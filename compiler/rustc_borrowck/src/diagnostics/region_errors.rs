@@ -236,7 +236,9 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             .collect::<Vec<_>>();
         debug!(?gat_id_and_generics);
 
-        // find higher-ranked trait bounds bounded to the generic associated types
+        // Look for the where-bound which introduces the placeholder.
+        // As we're using the HIR, we need to handle both `for<'a> T: Trait<'a>`
+        // and `T: for<'a> Trait`<'a>.
         let mut hrtb_bounds = vec![];
         gat_id_and_generics.iter().flatten().for_each(|&(gat_hir_id, generics)| {
             for pred in generics.predicates {
