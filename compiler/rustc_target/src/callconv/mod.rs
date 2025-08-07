@@ -424,8 +424,10 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
             PassMode::Indirect { .. } => {
                 self.mode = PassMode::Direct(ArgAttributes::new());
             }
-            PassMode::Ignore | PassMode::Direct(_) | PassMode::Pair(_, _) => {} // already direct
-            _ => panic!("Tried to make {:?} direct", self.mode),
+            PassMode::Ignore | PassMode::Direct(_) => {} // already direct
+            PassMode::Pair(_, _) | PassMode::Cast { .. } => {
+                panic!("Tried to make {:?} direct", self.mode)
+            }
         }
     }
 

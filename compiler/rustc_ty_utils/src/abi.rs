@@ -592,8 +592,6 @@ fn fn_abi_adjust_for_abi<'tcx>(
         // The "unadjusted" ABI passes aggregates in "direct" mode. That's fragile but needed for
         // some LLVM intrinsics.
         fn unadjust<'tcx>(arg: &mut ArgAbi<'tcx, Ty<'tcx>>) {
-            // This still uses `PassMode::Pair` for ScalarPair types. That's unlikely to be intended,
-            // but who knows what breaks if we change this now.
             if matches!(arg.layout.backend_repr, BackendRepr::Memory { .. }) {
                 assert!(
                     arg.layout.backend_repr.is_sized(),
