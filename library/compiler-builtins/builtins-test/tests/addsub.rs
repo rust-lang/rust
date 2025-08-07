@@ -111,7 +111,7 @@ macro_rules! float_sum {
     }
 }
 
-#[cfg(not(all(target_arch = "x86", not(target_feature = "sse"))))]
+#[cfg(not(x86_no_sse))]
 mod float_addsub {
     use super::*;
 
@@ -122,7 +122,7 @@ mod float_addsub {
 }
 
 #[cfg(f128_enabled)]
-#[cfg(not(all(target_arch = "x86", not(target_feature = "sse"))))]
+#[cfg(not(x86_no_sse))]
 #[cfg(not(any(target_arch = "powerpc", target_arch = "powerpc64")))]
 mod float_addsub_f128 {
     use super::*;

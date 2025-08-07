@@ -9,14 +9,7 @@ use core::intrinsics;
 
 intrinsics! {
     #[unsafe(naked)]
-    #[cfg(all(
-        any(
-            all(windows, target_env = "gnu"),
-            target_os = "cygwin",
-            target_os = "uefi"
-        ),
-        not(feature = "no-asm")
-    ))]
+    #[cfg(any(all(windows, target_env = "gnu"), target_os = "cygwin", target_os = "uefi"))]
     pub unsafe extern "custom" fn ___chkstk_ms() {
         core::arch::naked_asm!(
             "push   %rcx",
