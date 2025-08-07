@@ -4,9 +4,9 @@ trait Foo {
     fn a(&self);
 }
 
-trait Bar: ~const Foo {}
+trait Bar: [const] Foo {}
 
-const fn foo<T: ~const Bar>(x: &T) {
+const fn foo<T: [const] Bar>(x: &T) {
     x.a();
 }
 
