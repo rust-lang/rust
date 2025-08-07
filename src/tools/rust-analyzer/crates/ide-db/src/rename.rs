@@ -442,17 +442,17 @@ fn source_edit_from_name(
     name: &ast::Name,
     new_name: &dyn Display,
 ) -> bool {
-    if ast::RecordPatField::for_field_name(name).is_some() {
-        if let Some(ident_pat) = name.syntax().parent().and_then(ast::IdentPat::cast) {
-            cov_mark::hit!(rename_record_pat_field_name_split);
-            // Foo { ref mut field } -> Foo { new_name: ref mut field }
-            //      ^ insert `new_name: `
+    if ast::RecordPatField::for_field_name(name).is_some()
+        && let Some(ident_pat) = name.syntax().parent().and_then(ast::IdentPat::cast)
+    {
+        cov_mark::hit!(rename_record_pat_field_name_split);
+        // Foo { ref mut field } -> Foo { new_name: ref mut field }
+        //      ^ insert `new_name: `
 
-            // FIXME: instead of splitting the shorthand, recursively trigger a rename of the
-            // other name https://github.com/rust-lang/rust-analyzer/issues/6547
-            edit.insert(ident_pat.syntax().text_range().start(), format!("{new_name}: "));
-            return true;
-        }
+        // FIXME: instead of splitting the shorthand, recursively trigger a rename of the
+        // other name https://github.com/rust-lang/rust-analyzer/issues/6547
+        edit.insert(ident_pat.syntax().text_range().start(), format!("{new_name}: "));
+        return true;
     }
 
     false

@@ -154,7 +154,7 @@ impl Step for Std {
             Kind::Clippy,
         );
 
-        std_cargo(builder, target, compiler.stage, &mut cargo);
+        std_cargo(builder, target, &mut cargo);
 
         for krate in &*self.crates {
             cargo.arg("-p").arg(krate);

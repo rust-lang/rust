@@ -317,27 +317,26 @@ impl MirLowerCtx<'_> {
                     (current, current_else) =
                         self.pattern_match_inner(current, current_else, next_place, pat, mode)?;
                 }
-                if let &Some(slice) = slice {
-                    if mode != MatchingMode::Check {
-                        if let Pat::Bind { id, subpat: _ } = self.body[slice] {
-                            let next_place = cond_place.project(
-                                ProjectionElem::Subslice {
-                                    from: prefix.len() as u64,
-                                    to: suffix.len() as u64,
-                                },
-                                &mut self.result.projection_store,
-                            );
-                            let mode = self.infer.binding_modes[slice];
-                            (current, current_else) = self.pattern_match_binding(
-                                id,
-                                mode,
-                                next_place,
-                                (slice).into(),
-                                current,
-                                current_else,
-                            )?;
-                        }
-                    }
+                if let &Some(slice) = slice
+                    && mode != MatchingMode::Check
+                    && let Pat::Bind { id, subpat: _ } = self.body[slice]
+                {
+                    let next_place = cond_place.project(
+                        ProjectionElem::Subslice {
+                            from: prefix.len() as u64,
+                            to: suffix.len() as u64,
+                        },
+                        &mut self.result.projection_store,
+                    );
+                    let mode = self.infer.binding_modes[slice];
+                    (current, current_else) = self.pattern_match_binding(
+                        id,
+                        mode,
+                        next_place,
+                        (slice).into(),
+                        current,
+                        current_else,
+                    )?;
                 }
                 for (i, &pat) in suffix.iter().enumerate() {
                     let next_place = cond_place.project(
@@ -391,10 +390,10 @@ impl MirLowerCtx<'_> {
                         return Ok((current, current_else));
                     }
                     let (c, subst) = 'b: {
-                        if let Some(x) = self.infer.assoc_resolutions_for_pat(pattern) {
-                            if let AssocItemId::ConstId(c) = x.0 {
-                                break 'b (c, x.1);
-                            }
+                        if let Some(x) = self.infer.assoc_resolutions_for_pat(pattern)
+                            && let AssocItemId::ConstId(c) = x.0
+                        {
+                            break 'b (c, x.1);
                         }
                         if let ResolveValueResult::ValueNs(ValueNs::ConstId(c), _) = pr {
                             break 'b (c, Substitution::empty(Interner));

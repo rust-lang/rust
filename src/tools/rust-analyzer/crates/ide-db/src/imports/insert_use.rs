@@ -97,12 +97,11 @@ impl ImportScope {
                     .map(ImportScopeKind::Module)
                     .map(|kind| ImportScope { kind, required_cfgs });
             } else if let Some(has_attrs) = ast::AnyHasAttrs::cast(syntax) {
-                if block.is_none() {
-                    if let Some(b) = ast::BlockExpr::cast(has_attrs.syntax().clone()) {
-                        if let Some(b) = sema.original_ast_node(b) {
-                            block = b.stmt_list();
-                        }
-                    }
+                if block.is_none()
+                    && let Some(b) = ast::BlockExpr::cast(has_attrs.syntax().clone())
+                    && let Some(b) = sema.original_ast_node(b)
+                {
+                    block = b.stmt_list();
                 }
                 if has_attrs
                     .attrs()
@@ -349,26 +348,24 @@ fn guess_granularity_from_scope(scope: &ImportScope) -> ImportGranularityGuess {
             seen_one_style_groups.push((curr_vis.clone(), curr_attrs.clone()));
         } else if eq_visibility(prev_vis, curr_vis.clone())
             && eq_attrs(prev_attrs, curr_attrs.clone())
+            && let Some((prev_path, curr_path)) = prev.path().zip(curr.path())
+            && let Some((prev_prefix, _)) = common_prefix(&prev_path, &curr_path)
         {
-            if let Some((prev_path, curr_path)) = prev.path().zip(curr.path()) {
-                if let Some((prev_prefix, _)) = common_prefix(&prev_path, &curr_path) {
-                    if prev.use_tree_list().is_none() && curr.use_tree_list().is_none() {
-                        let prefix_c = prev_prefix.qualifiers().count();
-                        let curr_c = curr_path.qualifiers().count() - prefix_c;
-                        let prev_c = prev_path.qualifiers().count() - prefix_c;
-                        if curr_c == 1 && prev_c == 1 {
-                            // Same prefix, only differing in the last segment and no use tree lists so this has to be of item style.
-                            break ImportGranularityGuess::Item;
-                        } else {
-                            // Same prefix and no use tree list but differs in more than one segment at the end. This might be module style still.
-                            res = ImportGranularityGuess::ModuleOrItem;
-                        }
-                    } else {
-                        // Same prefix with item tree lists, has to be module style as it
-                        // can't be crate style since the trees wouldn't share a prefix then.
-                        break ImportGranularityGuess::Module;
-                    }
+            if prev.use_tree_list().is_none() && curr.use_tree_list().is_none() {
+                let prefix_c = prev_prefix.qualifiers().count();
+                let curr_c = curr_path.qualifiers().count() - prefix_c;
+                let prev_c = prev_path.qualifiers().count() - prefix_c;
+                if curr_c == 1 && prev_c == 1 {
+                    // Same prefix, only differing in the last segment and no use tree lists so this has to be of item style.
+                    break ImportGranularityGuess::Item;
+                } else {
+                    // Same prefix and no use tree list but differs in more than one segment at the end. This might be module style still.
+                    res = ImportGranularityGuess::ModuleOrItem;
                 }
+            } else {
+                // Same prefix with item tree lists, has to be module style as it
+                // can't be crate style since the trees wouldn't share a prefix then.
+                break ImportGranularityGuess::Module;
             }
         }
         prev = curr;

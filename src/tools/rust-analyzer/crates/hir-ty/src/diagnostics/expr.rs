@@ -528,15 +528,15 @@ impl FilterMapNextChecker {
             return None;
         }
 
-        if *function_id == self.next_function_id? {
-            if let Some(prev_filter_map_expr_id) = self.prev_filter_map_expr_id {
-                let is_dyn_trait = self
-                    .prev_receiver_ty
-                    .as_ref()
-                    .is_some_and(|it| it.strip_references().dyn_trait().is_some());
-                if *receiver_expr_id == prev_filter_map_expr_id && !is_dyn_trait {
-                    return Some(());
-                }
+        if *function_id == self.next_function_id?
+            && let Some(prev_filter_map_expr_id) = self.prev_filter_map_expr_id
+        {
+            let is_dyn_trait = self
+                .prev_receiver_ty
+                .as_ref()
+                .is_some_and(|it| it.strip_references().dyn_trait().is_some());
+            if *receiver_expr_id == prev_filter_map_expr_id && !is_dyn_trait {
+                return Some(());
             }
         }
 

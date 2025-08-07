@@ -508,7 +508,7 @@ impl Builder<'_> {
                 }
                 _ => panic!("doc mode {mode:?} not expected"),
             };
-            let rustdoc = self.rustdoc(compiler);
+            let rustdoc = self.rustdoc_for_compiler(compiler);
             build_stamp::clear_if_dirty(self, &my_out, &rustdoc);
         }
 
@@ -822,7 +822,7 @@ impl Builder<'_> {
         }
 
         let rustdoc_path = match cmd_kind {
-            Kind::Doc | Kind::Test | Kind::MiriTest => self.rustdoc(compiler),
+            Kind::Doc | Kind::Test | Kind::MiriTest => self.rustdoc_for_compiler(compiler),
             _ => PathBuf::from("/path/to/nowhere/rustdoc/not/required"),
         };
 

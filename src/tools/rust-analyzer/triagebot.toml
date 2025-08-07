@@ -28,6 +28,3 @@ labels = ["has-merge-commits", "S-waiting-on-author"]
 
 # Prevents mentions in commits to avoid users being spammed
 [no-mentions]
-
-# Automatically close and reopen PRs made by bots to run CI on them
-[bot-pull-requests]

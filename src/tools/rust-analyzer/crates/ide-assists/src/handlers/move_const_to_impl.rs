@@ -43,10 +43,10 @@ pub(crate) fn move_const_to_impl(acc: &mut Assists, ctx: &AssistContext<'_>) -> 
     let db = ctx.db();
     let const_: ast::Const = ctx.find_node_at_offset()?;
     // Don't show the assist when the cursor is at the const's body.
-    if let Some(body) = const_.body() {
-        if body.syntax().text_range().contains(ctx.offset()) {
-            return None;
-        }
+    if let Some(body) = const_.body()
+        && body.syntax().text_range().contains(ctx.offset())
+    {
+        return None;
     }
 
     let parent_fn = const_.syntax().ancestors().find_map(ast::Fn::cast)?;

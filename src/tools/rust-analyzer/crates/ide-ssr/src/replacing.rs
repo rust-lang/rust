@@ -112,12 +112,12 @@ impl<'db> ReplacementRenderer<'_, 'db> {
             self.out.push_str(&mod_path.display(self.db, self.edition).to_string());
             // Emit everything except for the segment's name-ref, since we already effectively
             // emitted that as part of `mod_path`.
-            if let Some(path) = ast::Path::cast(node.clone()) {
-                if let Some(segment) = path.segment() {
-                    for node_or_token in segment.syntax().children_with_tokens() {
-                        if node_or_token.kind() != SyntaxKind::NAME_REF {
-                            self.render_node_or_token(&node_or_token);
-                        }
+            if let Some(path) = ast::Path::cast(node.clone())
+                && let Some(segment) = path.segment()
+            {
+                for node_or_token in segment.syntax().children_with_tokens() {
+                    if node_or_token.kind() != SyntaxKind::NAME_REF {
+                        self.render_node_or_token(&node_or_token);
                     }
                 }
             }
@@ -242,15 +242,15 @@ fn token_is_method_call_receiver(token: &SyntaxToken) -> bool {
 }
 
 fn parse_as_kind(code: &str, kind: SyntaxKind) -> Option<SyntaxNode> {
-    if ast::Expr::can_cast(kind) {
-        if let Ok(expr) = fragments::expr(code) {
-            return Some(expr);
-        }
+    if ast::Expr::can_cast(kind)
+        && let Ok(expr) = fragments::expr(code)
+    {
+        return Some(expr);
     }
-    if ast::Item::can_cast(kind) {
-        if let Ok(item) = fragments::item(code) {
-            return Some(item);
-        }
+    if ast::Item::can_cast(kind)
+        && let Ok(item) = fragments::item(code)
+    {
+        return Some(item);
     }
     None
 }

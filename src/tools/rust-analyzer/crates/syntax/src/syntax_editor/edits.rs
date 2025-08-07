@@ -153,6 +153,23 @@ impl ast::VariantList {
     }
 }
 
+impl ast::Fn {
+    pub fn replace_or_insert_body(&self, editor: &mut SyntaxEditor, body: ast::BlockExpr) {
+        if let Some(old_body) = self.body() {
+            editor.replace(old_body.syntax(), body.syntax());
+        } else {
+            let single_space = make::tokens::single_space();
+            let elements = vec![single_space.into(), body.syntax().clone().into()];
+
+            if let Some(semicolon) = self.semicolon_token() {
+                editor.replace_with_many(semicolon, elements);
+            } else {
+                editor.insert_all(Position::last_child_of(self.syntax()), elements);
+            }
+        }
+    }
+}
+
 fn normalize_ws_between_braces(editor: &mut SyntaxEditor, node: &SyntaxNode) -> Option<()> {
     let make = SyntaxFactory::without_mappings();
     let l = node
@@ -182,6 +199,15 @@ fn normalize_ws_between_braces(editor: &mut SyntaxEditor, node: &SyntaxNode) -> 
 
 pub trait Removable: AstNode {
     fn remove(&self, editor: &mut SyntaxEditor);
+}
+
+impl Removable for ast::TypeBoundList {
+    fn remove(&self, editor: &mut SyntaxEditor) {
+        match self.syntax().siblings_with_tokens(Direction::Prev).find(|it| it.kind() == T![:]) {
+            Some(colon) => editor.delete_all(colon..=self.syntax().clone().into()),
+            None => editor.delete(self.syntax()),
+        }
+    }
 }
 
 impl Removable for ast::Use {

@@ -95,23 +95,25 @@ pub(super) fn try_expr(
     if let Some((hir::Adt::Enum(inner), hir::Adt::Enum(body))) = adts {
         let famous_defs = FamousDefs(sema, sema.scope(try_expr.syntax())?.krate());
         // special case for two options, there is no value in showing them
-        if let Some(option_enum) = famous_defs.core_option_Option() {
-            if inner == option_enum && body == option_enum {
-                cov_mark::hit!(hover_try_expr_opt_opt);
-                return None;
-            }
+        if let Some(option_enum) = famous_defs.core_option_Option()
+            && inner == option_enum
+            && body == option_enum
+        {
+            cov_mark::hit!(hover_try_expr_opt_opt);
+            return None;
         }
 
         // special case two results to show the error variants only
-        if let Some(result_enum) = famous_defs.core_result_Result() {
-            if inner == result_enum && body == result_enum {
-                let error_type_args =
-                    inner_ty.type_arguments().nth(1).zip(body_ty.type_arguments().nth(1));
-                if let Some((inner, body)) = error_type_args {
-                    inner_ty = inner;
-                    body_ty = body;
-                    "Try Error".clone_into(&mut s);
-                }
+        if let Some(result_enum) = famous_defs.core_result_Result()
+            && inner == result_enum
+            && body == result_enum
+        {
+            let error_type_args =
+                inner_ty.type_arguments().nth(1).zip(body_ty.type_arguments().nth(1));
+            if let Some((inner, body)) = error_type_args {
+                inner_ty = inner;
+                body_ty = body;
+                "Try Error".clone_into(&mut s);
             }
         }
     }
@@ -1132,10 +1134,10 @@ fn markup(
 ) -> (Markup, Option<DocsRangeMap>) {
     let mut buf = String::new();
 
-    if let Some(mod_path) = mod_path {
-        if !mod_path.is_empty() {
-            format_to!(buf, "```rust\n{}\n```\n\n", mod_path);
-        }
+    if let Some(mod_path) = mod_path
+        && !mod_path.is_empty()
+    {
+        format_to!(buf, "```rust\n{}\n```\n\n", mod_path);
     }
     format_to!(buf, "```rust\n{}\n```", rust);
 
@@ -1217,55 +1219,55 @@ fn render_memory_layout(
         format_to!(label, ", ");
     }
 
-    if let Some(render) = config.offset {
-        if let Some(offset) = offset(&layout) {
-            format_to!(label, "offset = ");
-            match render {
-                MemoryLayoutHoverRenderKind::Decimal => format_to!(label, "{offset}"),
-                MemoryLayoutHoverRenderKind::Hexadecimal => format_to!(label, "{offset:#X}"),
-                MemoryLayoutHoverRenderKind::Both if offset >= 10 => {
-                    format_to!(label, "{offset} ({offset:#X})")
-                }
-                MemoryLayoutHoverRenderKind::Both => {
-                    format_to!(label, "{offset}")
-                }
+    if let Some(render) = config.offset
+        && let Some(offset) = offset(&layout)
+    {
+        format_to!(label, "offset = ");
+        match render {
+            MemoryLayoutHoverRenderKind::Decimal => format_to!(label, "{offset}"),
+            MemoryLayoutHoverRenderKind::Hexadecimal => format_to!(label, "{offset:#X}"),
+            MemoryLayoutHoverRenderKind::Both if offset >= 10 => {
+                format_to!(label, "{offset} ({offset:#X})")
             }
-            format_to!(label, ", ");
+            MemoryLayoutHoverRenderKind::Both => {
+                format_to!(label, "{offset}")
+            }
         }
+        format_to!(label, ", ");
     }
 
-    if let Some(render) = config.padding {
-        if let Some((padding_name, padding)) = padding(&layout) {
-            format_to!(label, "{padding_name} = ");
-            match render {
-                MemoryLayoutHoverRenderKind::Decimal => format_to!(label, "{padding}"),
-                MemoryLayoutHoverRenderKind::Hexadecimal => format_to!(label, "{padding:#X}"),
-                MemoryLayoutHoverRenderKind::Both if padding >= 10 => {
-                    format_to!(label, "{padding} ({padding:#X})")
-                }
-                MemoryLayoutHoverRenderKind::Both => {
-                    format_to!(label, "{padding}")
-                }
+    if let Some(render) = config.padding
+        && let Some((padding_name, padding)) = padding(&layout)
+    {
+        format_to!(label, "{padding_name} = ");
+        match render {
+            MemoryLayoutHoverRenderKind::Decimal => format_to!(label, "{padding}"),
+            MemoryLayoutHoverRenderKind::Hexadecimal => format_to!(label, "{padding:#X}"),
+            MemoryLayoutHoverRenderKind::Both if padding >= 10 => {
+                format_to!(label, "{padding} ({padding:#X})")
             }
-            format_to!(label, ", ");
+            MemoryLayoutHoverRenderKind::Both => {
+                format_to!(label, "{padding}")
+            }
         }
+        format_to!(label, ", ");
     }
 
-    if config.niches {
-        if let Some(niches) = layout.niches() {
-            if niches > 1024 {
-                if niches.is_power_of_two() {
-                    format_to!(label, "niches = 2{}, ", pwr2_to_exponent(niches));
-                } else if is_pwr2plus1(niches) {
-                    format_to!(label, "niches = 2{} + 1, ", pwr2_to_exponent(niches - 1));
-                } else if is_pwr2minus1(niches) {
-                    format_to!(label, "niches = 2{} - 1, ", pwr2_to_exponent(niches + 1));
-                } else {
-                    format_to!(label, "niches = a lot, ");
-                }
+    if config.niches
+        && let Some(niches) = layout.niches()
+    {
+        if niches > 1024 {
+            if niches.is_power_of_two() {
+                format_to!(label, "niches = 2{}, ", pwr2_to_exponent(niches));
+            } else if is_pwr2plus1(niches) {
+                format_to!(label, "niches = 2{} + 1, ", pwr2_to_exponent(niches - 1));
+            } else if is_pwr2minus1(niches) {
+                format_to!(label, "niches = 2{} - 1, ", pwr2_to_exponent(niches + 1));
             } else {
-                format_to!(label, "niches = {niches}, ");
+                format_to!(label, "niches = a lot, ");
             }
+        } else {
+            format_to!(label, "niches = {niches}, ");
         }
     }
     label.pop(); // ' '

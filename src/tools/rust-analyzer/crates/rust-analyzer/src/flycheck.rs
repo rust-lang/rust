@@ -492,12 +492,11 @@ impl FlycheckActor {
             FlycheckConfig::CargoCommand { command, options, ansi_color_output } => {
                 let mut cmd =
                     toolchain::command(Tool::Cargo.path(), &*self.root, &options.extra_env);
-                if let Some(sysroot_root) = &self.sysroot_root {
-                    if !options.extra_env.contains_key("RUSTUP_TOOLCHAIN")
-                        && std::env::var_os("RUSTUP_TOOLCHAIN").is_none()
-                    {
-                        cmd.env("RUSTUP_TOOLCHAIN", AsRef::<std::path::Path>::as_ref(sysroot_root));
-                    }
+                if let Some(sysroot_root) = &self.sysroot_root
+                    && !options.extra_env.contains_key("RUSTUP_TOOLCHAIN")
+                    && std::env::var_os("RUSTUP_TOOLCHAIN").is_none()
+                {
+                    cmd.env("RUSTUP_TOOLCHAIN", AsRef::<std::path::Path>::as_ref(sysroot_root));
                 }
                 cmd.arg(command);
 

@@ -2018,6 +2018,9 @@ fn _assert_sync_and_send() {
 ///   which may take time on systems with large numbers of mountpoints.
 ///   (This does not apply to cgroup v2, or to processes not in a
 ///   cgroup.)
+/// - It does not attempt to take `ulimit` into account. If there is a limit set on the number of
+///   threads, `available_parallelism` cannot know how much of that limit a Rust program should
+///   take, or know in a reliable and race-free way how much of that limit is already taken.
 ///
 /// On all targets:
 /// - It may overcount the amount of parallelism available when running in a VM

@@ -15,7 +15,7 @@ Target triples available:
 
 ## Target maintainers
 
-- Renat Fatykhov, https://github.com/rfatykhov-lynx
+[@rfatykhov-lynx](https://github.com/rfatykhov-lynx)
 
 ## Requirements
 

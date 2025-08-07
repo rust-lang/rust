@@ -925,10 +925,17 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         // TODO(antoyo): use width?
         let arg_type = arg.get_type();
         let result_type = self.u32_type;
+        let arg = if arg_type.is_signed(self.cx) {
+            let new_type = arg_type.to_unsigned(self.cx);
+            self.gcc_int_cast(arg, new_type)
+        } else {
+            arg
+        };
+        let arg_type = arg.get_type();
         let count_leading_zeroes =
             // TODO(antoyo): write a new function Type::is_compatible_with(&Type) and use it here
             // instead of using is_uint().
-            if arg_type.is_uint(self.cx) {
+            if arg_type.is_uchar(self.cx) || arg_type.is_ushort(self.cx) || arg_type.is_uint(self.cx) {
                 "__builtin_clz"
             }
             else if arg_type.is_ulong(self.cx) {

@@ -93,7 +93,7 @@
       }
   
       bb11: {
-          tailcall g_with_arg(Spanned { node: move _10, span: $DIR/tail_call_drops.rs:36:23: 36:36 (#0) }, Spanned { node: move _11, span: $DIR/tail_call_drops.rs:36:38: 36:51 (#0) });
+          tailcall g_with_arg(move _10, move _11);
       }
   
       bb12 (cleanup): {

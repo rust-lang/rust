@@ -22,7 +22,7 @@ error[E0214]: parenthesized type parameters may only be used with a `Fn` trait
 LL | fn c<T = u8()>() {}
    |          ^^^^ only `Fn` traits may use parentheses
 
-error: defaults for type parameters are only allowed in `struct`, `enum`, `type`, or `trait` definitions
+error: defaults for generic parameters are not allowed here
   --> $DIR/unusual-rib-combinations.rs:15:6
    |
 LL | fn c<T = u8()>() {}
@@ -43,7 +43,7 @@ error: aborting due to 6 previous errors
 Some errors have detailed explanations: E0106, E0214, E0308, E0770.
 For more information about an error, try `rustc --explain E0106`.
 Future incompatibility report: Future breakage diagnostic:
-error: defaults for type parameters are only allowed in `struct`, `enum`, `type`, or `trait` definitions
+error: defaults for generic parameters are not allowed here
   --> $DIR/unusual-rib-combinations.rs:15:6
    |
 LL | fn c<T = u8()>() {}

@@ -62,10 +62,10 @@ pub(crate) fn pull_assignment_up(acc: &mut Assists, ctx: &AssistContext<'_>) -> 
         return None;
     };
 
-    if let Some(parent) = tgt.syntax().parent() {
-        if matches!(parent.kind(), syntax::SyntaxKind::BIN_EXPR | syntax::SyntaxKind::LET_STMT) {
-            return None;
-        }
+    if let Some(parent) = tgt.syntax().parent()
+        && matches!(parent.kind(), syntax::SyntaxKind::BIN_EXPR | syntax::SyntaxKind::LET_STMT)
+    {
+        return None;
     }
     let target = tgt.syntax().text_range();
 
@@ -90,10 +90,10 @@ pub(crate) fn pull_assignment_up(acc: &mut Assists, ctx: &AssistContext<'_>) -> 
     let mut editor = SyntaxEditor::new(edit_tgt);
     for (stmt, rhs) in assignments {
         let mut stmt = stmt.syntax().clone();
-        if let Some(parent) = stmt.parent() {
-            if ast::ExprStmt::cast(parent.clone()).is_some() {
-                stmt = parent.clone();
-            }
+        if let Some(parent) = stmt.parent()
+            && ast::ExprStmt::cast(parent.clone()).is_some()
+        {
+            stmt = parent.clone();
         }
         editor.replace(stmt, rhs.syntax());
     }

@@ -176,12 +176,12 @@ impl InferenceContext<'_> {
         }
 
         // Deduction based on the expected `dyn Fn` is done separately.
-        if let TyKind::Dyn(dyn_ty) = expected_ty.kind(Interner) {
-            if let Some(sig) = self.deduce_sig_from_dyn_ty(dyn_ty) {
-                let expected_sig_ty = TyKind::Function(sig).intern(Interner);
+        if let TyKind::Dyn(dyn_ty) = expected_ty.kind(Interner)
+            && let Some(sig) = self.deduce_sig_from_dyn_ty(dyn_ty)
+        {
+            let expected_sig_ty = TyKind::Function(sig).intern(Interner);
 
-                self.unify(sig_ty, &expected_sig_ty);
-            }
+            self.unify(sig_ty, &expected_sig_ty);
         }
     }
 
@@ -208,14 +208,13 @@ impl InferenceContext<'_> {
                             alias: AliasTy::Projection(projection_ty),
                             ty: projected_ty,
                         }) = bound.skip_binders()
-                        {
-                            if let Some(sig) = self.deduce_sig_from_projection(
+                            && let Some(sig) = self.deduce_sig_from_projection(
                                 closure_kind,
                                 projection_ty,
                                 projected_ty,
-                            ) {
-                                return Some(sig);
-                            }
+                            )
+                        {
+                            return Some(sig);
                         }
                         None
                     });
@@ -254,55 +253,44 @@ impl InferenceContext<'_> {
         let mut expected_kind = None;
 
         for clause in elaborate_clause_supertraits(self.db, clauses.rev()) {
-            if expected_sig.is_none() {
-                if let WhereClause::AliasEq(AliasEq {
-                    alias: AliasTy::Projection(projection),
-                    ty,
-                }) = &clause
-                {
-                    let inferred_sig =
-                        self.deduce_sig_from_projection(closure_kind, projection, ty);
-                    // Make sure that we didn't infer a signature that mentions itself.
-                    // This can happen when we elaborate certain supertrait bounds that
-                    // mention projections containing the `Self` type. See rust-lang/rust#105401.
-                    struct MentionsTy<'a> {
-                        expected_ty: &'a Ty,
+            if expected_sig.is_none()
+                && let WhereClause::AliasEq(AliasEq { alias: AliasTy::Projection(projection), ty }) =
+                    &clause
+            {
+                let inferred_sig = self.deduce_sig_from_projection(closure_kind, projection, ty);
+                // Make sure that we didn't infer a signature that mentions itself.
+                // This can happen when we elaborate certain supertrait bounds that
+                // mention projections containing the `Self` type. See rust-lang/rust#105401.
+                struct MentionsTy<'a> {
+                    expected_ty: &'a Ty,
+                }
+                impl TypeVisitor<Interner> for MentionsTy<'_> {
+                    type BreakTy = ();
+
+                    fn interner(&self) -> Interner {
+                        Interner
                     }
-                    impl TypeVisitor<Interner> for MentionsTy<'_> {
-                        type BreakTy = ();
 
-                        fn interner(&self) -> Interner {
-                            Interner
-                        }
-
-                        fn as_dyn(
-                            &mut self,
-                        ) -> &mut dyn TypeVisitor<Interner, BreakTy = Self::BreakTy>
-                        {
-                            self
-                        }
-
-                        fn visit_ty(
-                            &mut self,
-                            t: &Ty,
-                            db: chalk_ir::DebruijnIndex,
-                        ) -> ControlFlow<()> {
-                            if t == self.expected_ty {
-                                ControlFlow::Break(())
-                            } else {
-                                t.super_visit_with(self, db)
-                            }
-                        }
-                    }
-                    if inferred_sig
-                        .visit_with(
-                            &mut MentionsTy { expected_ty },
-                            chalk_ir::DebruijnIndex::INNERMOST,
-                        )
-                        .is_continue()
+                    fn as_dyn(
+                        &mut self,
+                    ) -> &mut dyn TypeVisitor<Interner, BreakTy = Self::BreakTy>
                     {
-                        expected_sig = inferred_sig;
+                        self
                     }
+
+                    fn visit_ty(&mut self, t: &Ty, db: chalk_ir::DebruijnIndex) -> ControlFlow<()> {
+                        if t == self.expected_ty {
+                            ControlFlow::Break(())
+                        } else {
+                            t.super_visit_with(self, db)
+                        }
+                    }
+                }
+                if inferred_sig
+                    .visit_with(&mut MentionsTy { expected_ty }, chalk_ir::DebruijnIndex::INNERMOST)
+                    .is_continue()
+                {
+                    expected_sig = inferred_sig;
                 }
             }
 
@@ -617,11 +605,10 @@ impl HirPlace {
         if let CaptureKind::ByRef(BorrowKind::Mut {
             kind: MutBorrowKind::Default | MutBorrowKind::TwoPhasedBorrow,
         }) = current_capture
+            && self.projections[len..].contains(&ProjectionElem::Deref)
         {
-            if self.projections[len..].contains(&ProjectionElem::Deref) {
-                current_capture =
-                    CaptureKind::ByRef(BorrowKind::Mut { kind: MutBorrowKind::ClosureCapture });
-            }
+            current_capture =
+                CaptureKind::ByRef(BorrowKind::Mut { kind: MutBorrowKind::ClosureCapture });
         }
         current_capture
     }
@@ -1076,12 +1063,11 @@ impl InferenceContext<'_> {
             Mutability::Mut => CaptureKind::ByRef(BorrowKind::Mut { kind: MutBorrowKind::Default }),
             Mutability::Not => CaptureKind::ByRef(BorrowKind::Shared),
         };
-        if let Some(place) = self.place_of_expr_without_adjust(tgt_expr) {
-            if let Some(place) =
+        if let Some(place) = self.place_of_expr_without_adjust(tgt_expr)
+            && let Some(place) =
                 apply_adjusts_to_place(&mut self.current_capture_span_stack, place, rest)
-            {
-                self.add_capture(place, capture_kind);
-            }
+        {
+            self.add_capture(place, capture_kind);
         }
         self.walk_expr_with_adjust(tgt_expr, rest);
     }
@@ -1169,15 +1155,15 @@ impl InferenceContext<'_> {
                     }
                 }
                 self.walk_expr(*expr);
-                if let Some(discr_place) = self.place_of_expr(*expr) {
-                    if self.is_upvar(&discr_place) {
-                        let mut capture_mode = None;
-                        for arm in arms.iter() {
-                            self.walk_pat(&mut capture_mode, arm.pat);
-                        }
-                        if let Some(c) = capture_mode {
-                            self.push_capture(discr_place, c);
-                        }
+                if let Some(discr_place) = self.place_of_expr(*expr)
+                    && self.is_upvar(&discr_place)
+                {
+                    let mut capture_mode = None;
+                    for arm in arms.iter() {
+                        self.walk_pat(&mut capture_mode, arm.pat);
+                    }
+                    if let Some(c) = capture_mode {
+                        self.push_capture(discr_place, c);
                     }
                 }
             }
@@ -1209,13 +1195,11 @@ impl InferenceContext<'_> {
                     let mutability = 'b: {
                         if let Some(deref_trait) =
                             self.resolve_lang_item(LangItem::DerefMut).and_then(|it| it.as_trait())
-                        {
-                            if let Some(deref_fn) = deref_trait
+                            && let Some(deref_fn) = deref_trait
                                 .trait_items(self.db)
                                 .method_by_name(&Name::new_symbol_root(sym::deref_mut))
-                            {
-                                break 'b deref_fn == f;
-                            }
+                        {
+                            break 'b deref_fn == f;
                         }
                         false
                     };
@@ -1405,10 +1389,10 @@ impl InferenceContext<'_> {
 
     fn expr_ty_after_adjustments(&self, e: ExprId) -> Ty {
         let mut ty = None;
-        if let Some(it) = self.result.expr_adjustments.get(&e) {
-            if let Some(it) = it.last() {
-                ty = Some(it.target.clone());
-            }
+        if let Some(it) = self.result.expr_adjustments.get(&e)
+            && let Some(it) = it.last()
+        {
+            ty = Some(it.target.clone());
         }
         ty.unwrap_or_else(|| self.expr_ty(e))
     }
@@ -1793,10 +1777,10 @@ impl InferenceContext<'_> {
     }
 
     pub(super) fn add_current_closure_dependency(&mut self, dep: ClosureId) {
-        if let Some(c) = self.current_closure {
-            if !dep_creates_cycle(&self.closure_dependencies, &mut FxHashSet::default(), c, dep) {
-                self.closure_dependencies.entry(c).or_default().push(dep);
-            }
+        if let Some(c) = self.current_closure
+            && !dep_creates_cycle(&self.closure_dependencies, &mut FxHashSet::default(), c, dep)
+        {
+            self.closure_dependencies.entry(c).or_default().push(dep);
         }
 
         fn dep_creates_cycle(

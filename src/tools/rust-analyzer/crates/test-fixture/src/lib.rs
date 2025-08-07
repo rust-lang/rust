@@ -955,12 +955,12 @@ impl ProcMacroExpander for DisallowCfgProcMacroExpander {
         _: String,
     ) -> Result<TopSubtree, ProcMacroExpansionError> {
         for tt in subtree.token_trees().flat_tokens() {
-            if let tt::TokenTree::Leaf(tt::Leaf::Ident(ident)) = tt {
-                if ident.sym == sym::cfg || ident.sym == sym::cfg_attr {
-                    return Err(ProcMacroExpansionError::Panic(
-                        "cfg or cfg_attr found in DisallowCfgProcMacroExpander".to_owned(),
-                    ));
-                }
+            if let tt::TokenTree::Leaf(tt::Leaf::Ident(ident)) = tt
+                && (ident.sym == sym::cfg || ident.sym == sym::cfg_attr)
+            {
+                return Err(ProcMacroExpansionError::Panic(
+                    "cfg or cfg_attr found in DisallowCfgProcMacroExpander".to_owned(),
+                ));
             }
         }
         Ok(subtree.clone())

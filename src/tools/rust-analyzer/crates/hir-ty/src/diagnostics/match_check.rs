@@ -382,10 +382,10 @@ impl HirDisplay for Pat {
                     let subpats = (0..num_fields).map(|i| {
                         WriteWith(move |f| {
                             let fid = LocalFieldId::from_raw((i as u32).into());
-                            if let Some(p) = subpatterns.get(i) {
-                                if p.field == fid {
-                                    return p.pattern.hir_fmt(f);
-                                }
+                            if let Some(p) = subpatterns.get(i)
+                                && p.field == fid
+                            {
+                                return p.pattern.hir_fmt(f);
                             }
                             if let Some(p) = subpatterns.iter().find(|p| p.field == fid) {
                                 p.pattern.hir_fmt(f)
