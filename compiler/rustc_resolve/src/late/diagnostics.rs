@@ -852,7 +852,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
 
         // Try to find in last block rib
         if let Some(rib) = &self.last_block_rib
-            && let RibKind::Normal = rib.kind
+            && let RibKind::Block { module: None } = rib.kind
         {
             for (ident, &res) in &rib.bindings {
                 if let Res::Local(_) = res
@@ -2467,7 +2467,8 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 }
 
                 // Items in scope
-                if let RibKind::Module(module) = rib.kind {
+                if let RibKind::Module(module) | RibKind::Block { module: Some(module) } = rib.kind
+                {
                     // Items from this module
                     self.r.add_module_candidates(module, &mut names, &filter_fn, Some(ctxt));
 

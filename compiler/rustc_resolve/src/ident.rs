@@ -327,6 +327,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
             module = match rib.kind {
                 RibKind::Module(module) => module,
+                RibKind::Block { module } if let Some(module) = module => module,
                 RibKind::MacroDefinition(def) if def == self.macro_def(ident.span.ctxt()) => {
                     // If an invocation of this macro created `ident`, give up on `ident`
                     // and switch to `ident`'s source from the macro definition.
@@ -1149,6 +1150,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         RibKind::Normal
                         | RibKind::FnOrCoroutine
                         | RibKind::Module(..)
+                        | RibKind::Block { .. }
                         | RibKind::MacroDefinition(..)
                         | RibKind::ForwardGenericParamBan(_) => {
                             // Nothing to do. Continue.
@@ -1241,6 +1243,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         RibKind::Normal
                         | RibKind::FnOrCoroutine
                         | RibKind::Module(..)
+                        | RibKind::Block { .. }
                         | RibKind::MacroDefinition(..)
                         | RibKind::InlineAsmSym
                         | RibKind::AssocItem
@@ -1334,6 +1337,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         RibKind::Normal
                         | RibKind::FnOrCoroutine
                         | RibKind::Module(..)
+                        | RibKind::Block { .. }
                         | RibKind::MacroDefinition(..)
                         | RibKind::InlineAsmSym
                         | RibKind::AssocItem

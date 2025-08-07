@@ -211,6 +211,10 @@ pub(crate) enum RibKind<'ra> {
     /// All other constants aren't allowed to use generic params at all.
     ConstantItem(ConstantHasGenerics, Option<(Ident, ConstantItemKind)>),
 
+    Block {
+        module: Option<Module<'ra>>,
+    },
+
     /// We passed through a module.
     Module(Module<'ra>),
 
@@ -243,6 +247,7 @@ impl RibKind<'_> {
     pub(crate) fn contains_params(&self) -> bool {
         match self {
             RibKind::Normal
+            | RibKind::Block { .. }
             | RibKind::FnOrCoroutine
             | RibKind::ConstantItem(..)
             | RibKind::Module(_)
@@ -258,13 +263,16 @@ impl RibKind<'_> {
     /// This rib forbids referring to labels defined in upwards ribs.
     fn is_label_barrier(self) -> bool {
         match self {
-            RibKind::Normal | RibKind::MacroDefinition(..) => false,
+            RibKind::Normal | RibKind::MacroDefinition(..) | RibKind::Block { module: None } => {
+                false
+            }
 
             RibKind::AssocItem
             | RibKind::FnOrCoroutine
             | RibKind::Item(..)
             | RibKind::ConstantItem(..)
             | RibKind::Module(..)
+            | RibKind::Block { module: Some(_) }
             | RibKind::ForwardGenericParamBan(_)
             | RibKind::ConstParamTy
             | RibKind::InlineAsmSym => true,
@@ -2822,7 +2830,10 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 for parent_rib in self.ribs[ns].iter().rev() {
                     // Break at mod level, to account for nested items which are
                     // allowed to shadow generic param names.
-                    if matches!(parent_rib.kind, RibKind::Module(..)) {
+                    if matches!(
+                        parent_rib.kind,
+                        RibKind::Module(..) | RibKind::Block { module: Some(_) }
+                    ) {
                         break;
                     }
 
@@ -4662,11 +4673,11 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         let mut num_macro_definition_ribs = 0;
         if let Some(anonymous_module) = anonymous_module {
             debug!("(resolving block) found anonymous module, moving down");
-            self.ribs[ValueNS].push(Rib::new(RibKind::Module(anonymous_module)));
-            self.ribs[TypeNS].push(Rib::new(RibKind::Module(anonymous_module)));
+            self.ribs[ValueNS].push(Rib::new(RibKind::Block { module: Some(anonymous_module) }));
+            self.ribs[TypeNS].push(Rib::new(RibKind::Block { module: Some(anonymous_module) }));
             self.parent_scope.module = anonymous_module;
         } else {
-            self.ribs[ValueNS].push(Rib::new(RibKind::Normal));
+            self.ribs[ValueNS].push(Rib::new(RibKind::Block { module: None }));
         }
 
         // Descend into the block.
