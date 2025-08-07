@@ -9,14 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.15.5](https://github.com/rust-lang/hashbrown/compare/v0.15.4...v0.15.5) - 2025-08-07
 
-### Fixed
+### Added
 
-- fix clippy issues
+- Added `Entry::or_default_entry` and `Entry::or_insert_entry`.
 
-### Other
+### Changed
 
-- Re-implement likely/unlikely with `#[cold]`
-- Merge branch 'master' of https://github.com/rust-lang/hashbrown into or-default-entry
+- Re-implemented likely/unlikely with `#[cold]`
 
 ## [0.15.4](https://github.com/rust-lang/hashbrown/compare/v0.15.3...v0.15.4) - 2025-06-05
 
