@@ -113,7 +113,7 @@ macro_rules! float_mul {
     };
 }
 
-#[cfg(not(all(target_arch = "x86", not(target_feature = "sse"))))]
+#[cfg(not(x86_no_sse))]
 mod float_mul {
     use super::*;
 
@@ -126,7 +126,7 @@ mod float_mul {
 }
 
 #[cfg(f128_enabled)]
-#[cfg(not(all(target_arch = "x86", not(target_feature = "sse"))))]
+#[cfg(not(x86_no_sse))]
 #[cfg(not(any(target_arch = "powerpc", target_arch = "powerpc64")))]
 mod float_mul_f128 {
     use super::*;
