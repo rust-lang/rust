@@ -69,18 +69,6 @@ pub(crate) enum DeclareLetBindings {
     LetNotPermitted,
 }
 
-/// Used by [`Builder::bind_matched_candidate_for_arm_body`] to determine
-/// whether or not to call [`Builder::storage_live_binding`] to emit
-/// [`StatementKind::StorageLive`].
-#[derive(Clone, Copy)]
-pub(crate) enum EmitStorageLive {
-    /// Yes, emit `StorageLive` as normal.
-    Yes,
-    /// No, don't emit `StorageLive`. The caller has taken responsibility for
-    /// emitting `StorageLive` as appropriate.
-    No,
-}
-
 /// Used by [`Builder::storage_live_binding`] and [`Builder::bind_matched_candidate_for_arm_body`]
 /// to decide whether to schedule drops.
 #[derive(Clone, Copy, Debug)]
@@ -207,7 +195,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 Some(args.variable_source_info.scope),
                 args.variable_source_info.span,
                 args.declare_let_bindings,
-                EmitStorageLive::Yes,
             ),
             _ => {
                 let mut block = block;
@@ -479,7 +466,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         &built_match_tree.fake_borrow_temps,
                         scrutinee_span,
                         Some((arm, match_scope)),
-                        EmitStorageLive::Yes,
                     );
 
                     this.fixed_temps_scope = old_dedup_scope;
@@ -533,7 +519,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         fake_borrow_temps: &[(Place<'tcx>, Local, FakeBorrowKind)],
         scrutinee_span: Span,
         arm_match_scope: Option<(&Arm<'tcx>, region::Scope)>,
-        emit_storage_live: EmitStorageLive,
     ) -> BasicBlock {
         if branch.sub_branches.len() == 1 {
             let [sub_branch] = branch.sub_branches.try_into().unwrap();
@@ -544,7 +529,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 scrutinee_span,
                 arm_match_scope,
                 ScheduleDrops::Yes,
-                emit_storage_live,
             )
         } else {
             // It's helpful to avoid scheduling drops multiple times to save
@@ -577,7 +561,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     scrutinee_span,
                     arm_match_scope,
                     schedule_drops,
-                    emit_storage_live,
                 );
                 if arm.is_none() {
                     schedule_drops = ScheduleDrops::No;
@@ -741,7 +724,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             &[],
             irrefutable_pat.span,
             None,
-            EmitStorageLive::Yes,
         )
         .unit()
     }
@@ -2364,7 +2346,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         source_scope: Option<SourceScope>,
         scope_span: Span,
         declare_let_bindings: DeclareLetBindings,
-        emit_storage_live: EmitStorageLive,
     ) -> BlockAnd<()> {
         let expr_span = self.thir[expr_id].span;
         let scrutinee = unpack!(block = self.lower_scrutinee(block, expr_id, expr_span));
@@ -2398,14 +2379,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
         }
 
-        let success = self.bind_pattern(
-            self.source_info(pat.span),
-            branch,
-            &[],
-            expr_span,
-            None,
-            emit_storage_live,
-        );
+        let success = self.bind_pattern(self.source_info(pat.span), branch, &[], expr_span, None);
 
         // If branch coverage is enabled, record this branch.
         self.visit_coverage_conditional_let(pat, success, built_tree.otherwise_block);
@@ -2428,7 +2402,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         scrutinee_span: Span,
         arm_match_scope: Option<(&Arm<'tcx>, region::Scope)>,
         schedule_drops: ScheduleDrops,
-        emit_storage_live: EmitStorageLive,
     ) -> BasicBlock {
         debug!("bind_and_guard_matched_candidate(subbranch={:?})", sub_branch);
 
@@ -2547,7 +2520,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 post_guard_block,
                 ScheduleDrops::Yes,
                 by_value_bindings,
-                emit_storage_live,
             );
 
             post_guard_block
@@ -2559,7 +2531,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 block,
                 schedule_drops,
                 sub_branch.bindings.iter(),
-                emit_storage_live,
             );
             block
         }
@@ -2730,7 +2701,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         block: BasicBlock,
         schedule_drops: ScheduleDrops,
         bindings: impl IntoIterator<Item = &'b Binding<'tcx>>,
-        emit_storage_live: EmitStorageLive,
     ) where
         'tcx: 'b,
     {
@@ -2740,19 +2710,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // Assign each of the bindings. This may trigger moves out of the candidate.
         for binding in bindings {
             let source_info = self.source_info(binding.span);
-            let local = match emit_storage_live {
-                // Here storages are already alive, probably because this is a binding
-                // from let-else.
-                // We just need to schedule drop for the value.
-                EmitStorageLive::No => self.var_local_id(binding.var_id, OutsideGuard).into(),
-                EmitStorageLive::Yes => self.storage_live_binding(
-                    block,
-                    binding.var_id,
-                    binding.span,
-                    OutsideGuard,
-                    schedule_drops,
-                ),
-            };
+            let local = self.storage_live_binding(
+                block,
+                binding.var_id,
+                binding.span,
+                OutsideGuard,
+                schedule_drops,
+            );
             if matches!(schedule_drops, ScheduleDrops::Yes) {
                 self.schedule_drop_for_binding(binding.var_id, binding.span, OutsideGuard);
             }
