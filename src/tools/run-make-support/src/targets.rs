@@ -46,6 +46,12 @@ pub fn is_aix() -> bool {
     target().contains("aix")
 }
 
+/// Check if target is arm64ec.
+#[must_use]
+pub fn is_arm64ec() -> bool {
+    target().starts_with("arm64ec")
+}
+
 /// Get the target OS on Apple operating systems.
 #[must_use]
 pub fn apple_os() -> &'static str {
