@@ -2,7 +2,6 @@
 //@ [DEBUG] compile-flags: -C opt-level=0
 //@ [OPTIM] compile-flags: -C opt-level=3
 //@ compile-flags: -C no-prepopulate-passes
-//@ min-llvm-version: 20
 
 #![crate_type = "lib"]
 #![feature(core_intrinsics)]
