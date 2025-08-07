@@ -57,7 +57,12 @@ impl AssocItem {
     ///
     /// [`type_of`]: crate::ty::TyCtxt::type_of
     pub fn defaultness(&self, tcx: TyCtxt<'_>) -> hir::Defaultness {
-        tcx.defaultness(self.def_id)
+        match self.container {
+            AssocItemContainer::InherentImpl => hir::Defaultness::Final,
+            AssocItemContainer::Trait | AssocItemContainer::TraitImpl => {
+                tcx.defaultness(self.def_id)
+            }
+        }
     }
 
     #[inline]

@@ -1725,11 +1725,11 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let tcx = self.tcx;
         let item = tcx.associated_item(def_id);
 
-        self.tables.defaultness.set_some(def_id.index, item.defaultness(tcx));
         self.tables.assoc_container.set_some(def_id.index, item.container);
 
         match item.container {
             AssocItemContainer::Trait => {
+                self.tables.defaultness.set_some(def_id.index, item.defaultness(tcx));
                 if item.is_type() {
                     self.encode_explicit_item_bounds(def_id);
                     self.encode_explicit_item_self_bounds(def_id);
@@ -1740,6 +1740,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 }
             }
             AssocItemContainer::TraitImpl => {
+                self.tables.defaultness.set_some(def_id.index, item.defaultness(tcx));
                 if let Some(trait_item_def_id) = item.trait_item_def_id {
                     self.tables.trait_item_def_id.set_some(def_id.index, trait_item_def_id.into());
                 }
