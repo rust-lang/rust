@@ -326,7 +326,7 @@ unsafe impl<I> TrustedLen for Peekable<I> where I: TrustedLen {}
 impl<I: Iterator> PeekableIterator for Peekable<I> {
     fn peek_with<T>(&mut self, func: impl for<'a> FnOnce(Option<&'a Self::Item>) -> T) -> T {
         let tmp = self.peek();
-        func(tmp.as_ref())
+        func(tmp)
     }
 }
 
