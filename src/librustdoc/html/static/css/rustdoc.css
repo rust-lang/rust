@@ -1468,14 +1468,14 @@ so that we can apply CSS-filters to change the arrow color in themes */
 }
 
 #settings.popover {
-	--popover-arrow-offset: 202px;
+	--popover-arrow-offset: 196px;
 	top: calc(100% - 16px);
 }
 
 /* use larger max-width for help popover, but not for help.html */
 #help.popover {
 	max-width: 600px;
-	--popover-arrow-offset: 118px;
+	--popover-arrow-offset: 115px;
 	top: calc(100% - 16px);
 }
 
