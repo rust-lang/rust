@@ -550,10 +550,17 @@ impl<G: EmissionGuarantee> Diagnostic<'_, G> for LinkingFailed<'_> {
 #[diag(codegen_ssa_link_exe_unexpected_error)]
 pub(crate) struct LinkExeUnexpectedError;
 
-#[derive(Diagnostic)]
-#[diag(codegen_ssa_link_exe_status_stack_buffer_overrun)]
-#[note]
 pub(crate) struct LinkExeStatusStackBufferOverrun;
+
+impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for LinkExeStatusStackBufferOverrun {
+    fn into_diag(self, dcx: rustc_errors::DiagCtxtHandle<'a>, level: Level) -> Diag<'a, G> {
+        let mut diag =
+            Diag::new(dcx, level, fluent::codegen_ssa_link_exe_status_stack_buffer_overrun);
+        diag.note(fluent::codegen_ssa_abort_note);
+        diag.note(fluent::codegen_ssa_event_log_note);
+        diag
+    }
+}
 
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_repair_vs_build_tools)]
