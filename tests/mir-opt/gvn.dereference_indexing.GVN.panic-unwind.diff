@@ -43,8 +43,7 @@
 +         nop;
           StorageLive(_8);
           StorageLive(_9);
--         _9 = copy (*_3);
-+         _9 = copy _1[_4];
+          _9 = copy (*_3);
           _8 = opaque::<u8>(move _9) -> [return: bb2, unwind continue];
       }
   
