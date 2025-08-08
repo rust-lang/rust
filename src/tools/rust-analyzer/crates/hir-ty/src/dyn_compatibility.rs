@@ -13,6 +13,9 @@ use hir_def::{
     TypeAliasId, lang_item::LangItem, signatures::TraitFlags,
 };
 use rustc_hash::FxHashSet;
+use rustc_type_ir::{
+    AliasTyKind, ClauseKind, PredicatePolarity, TypeSuperVisitable as _, inherent::IntoKind,
+};
 use smallvec::SmallVec;
 
 use crate::{
@@ -21,6 +24,7 @@ use crate::{
     db::HirDatabase,
     from_assoc_type_id, from_chalk_trait_id,
     generics::{generics, trait_self_param_idx},
+    next_solver::{DbInterner, SolverDefId, TraitPredicate},
     to_chalk_trait_id,
     utils::elaborate_clause_supertraits,
 };
@@ -319,6 +323,61 @@ fn contains_illegal_self_type_reference<T: TypeVisitable<Interner>>(
     t.visit_with(visitor.as_dyn(), outer_binder).is_break()
 }
 
+fn contains_illegal_self_type_reference_ns<
+    'db,
+    T: rustc_type_ir::TypeVisitable<DbInterner<'db>>,
+>(
+    db: &'db dyn HirDatabase,
+    trait_: TraitId,
+    t: &T,
+    allow_self_projection: AllowSelfProjection,
+) -> bool {
+    struct IllegalSelfTypeVisitor<'db> {
+        db: &'db dyn HirDatabase,
+        trait_: TraitId,
+        super_traits: Option<SmallVec<[TraitId; 4]>>,
+        allow_self_projection: AllowSelfProjection,
+    }
+    impl<'db> rustc_type_ir::TypeVisitor<DbInterner<'db>> for IllegalSelfTypeVisitor<'db> {
+        type Result = ControlFlow<()>;
+
+        fn visit_ty(
+            &mut self,
+            ty: <DbInterner<'db> as rustc_type_ir::Interner>::Ty,
+        ) -> Self::Result {
+            match ty.kind() {
+                rustc_type_ir::TyKind::Param(param) if param.index == 0 => ControlFlow::Break(()),
+                rustc_type_ir::TyKind::Param(_) => ControlFlow::Continue(()),
+                rustc_type_ir::TyKind::Alias(AliasTyKind::Projection, proj) => match self
+                    .allow_self_projection
+                {
+                    AllowSelfProjection::Yes => {
+                        let trait_ = proj.trait_def_id(DbInterner::new_with(self.db, None, None));
+                        let trait_ = match trait_ {
+                            SolverDefId::TraitId(id) => id,
+                            _ => unreachable!(),
+                        };
+                        if self.super_traits.is_none() {
+                            self.super_traits = Some(all_super_traits(self.db, self.trait_));
+                        }
+                        if self.super_traits.as_ref().is_some_and(|s| s.contains(&trait_)) {
+                            ControlFlow::Continue(())
+                        } else {
+                            ty.super_visit_with(self)
+                        }
+                    }
+                    AllowSelfProjection::No => ty.super_visit_with(self),
+                },
+                _ => ty.super_visit_with(self),
+            }
+        }
+    }
+
+    let mut visitor =
+        IllegalSelfTypeVisitor { db, trait_, super_traits: None, allow_self_projection };
+    t.visit_with(&mut visitor).is_break()
+}
+
 fn dyn_compatibility_violation_for_assoc_item<F>(
     db: &dyn HirDatabase,
     trait_: TraitId,
@@ -415,40 +474,33 @@ where
         cb(MethodViolationCode::UndispatchableReceiver)?;
     }
 
-    let predicates = &*db.generic_predicates_without_parent(func.into());
-    let trait_self_idx = trait_self_param_idx(db, func.into());
+    let predicates = &*db.generic_predicates_without_parent_ns(func.into());
     for pred in predicates {
-        let pred = pred.skip_binders().skip_binders();
+        let pred = pred.kind().skip_binder();
 
-        if matches!(pred, WhereClause::TypeOutlives(_)) {
+        if matches!(pred, ClauseKind::TypeOutlives(_)) {
             continue;
         }
 
         // Allow `impl AutoTrait` predicates
-        if let WhereClause::Implemented(TraitRef { trait_id, substitution }) = pred {
-            let trait_data = db.trait_signature(from_chalk_trait_id(*trait_id));
-            if trait_data.flags.contains(TraitFlags::AUTO)
-                && substitution
-                    .as_slice(Interner)
-                    .first()
-                    .and_then(|arg| arg.ty(Interner))
-                    .and_then(|ty| ty.bound_var(Interner))
-                    .is_some_and(|b| {
-                        b.debruijn == DebruijnIndex::ONE && Some(b.index) == trait_self_idx
-                    })
-            {
-                continue;
-            }
+        let interner = DbInterner::new_with(db, None, None);
+        if let ClauseKind::Trait(TraitPredicate {
+            trait_ref: pred_trait_ref,
+            polarity: PredicatePolarity::Positive,
+        }) = pred
+            && let SolverDefId::TraitId(trait_id) = pred_trait_ref.def_id
+            && let trait_data = db.trait_signature(trait_id)
+            && trait_data.flags.contains(TraitFlags::AUTO)
+            && pred_trait_ref.self_ty()
+                == crate::next_solver::Ty::new(
+                    interner,
+                    rustc_type_ir::TyKind::Param(crate::next_solver::ParamTy { index: 0 }),
+                )
+        {
+            continue;
         }
 
-        if contains_illegal_self_type_reference(
-            db,
-            func.into(),
-            trait_,
-            pred,
-            DebruijnIndex::ONE,
-            AllowSelfProjection::Yes,
-        ) {
+        if contains_illegal_self_type_reference_ns(db, trait_, &pred, AllowSelfProjection::Yes) {
             cb(MethodViolationCode::WhereClauseReferencesSelf)?;
             break;
         }

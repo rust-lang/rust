@@ -1179,22 +1179,6 @@ pub(crate) fn generic_predicates_query(
     generic_predicates_filtered_by(db, def, |_, _| true).0
 }
 
-pub(crate) fn generic_predicates_without_parent_query(
-    db: &dyn HirDatabase,
-    def: GenericDefId,
-) -> GenericPredicates {
-    db.generic_predicates_without_parent_with_diagnostics(def).0
-}
-
-/// Resolve the where clause(s) of an item with generics,
-/// except the ones inherited from the parent
-pub(crate) fn generic_predicates_without_parent_with_diagnostics_query(
-    db: &dyn HirDatabase,
-    def: GenericDefId,
-) -> (GenericPredicates, Diagnostics) {
-    generic_predicates_filtered_by(db, def, |_, d| d == def)
-}
-
 /// Resolve the where clause(s) of an item with generics,
 /// with a given filter
 fn generic_predicates_filtered_by<F>(

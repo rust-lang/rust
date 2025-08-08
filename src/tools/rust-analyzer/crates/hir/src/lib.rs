@@ -3750,7 +3750,7 @@ impl GenericDef {
         push_ty_diagnostics(
             db,
             acc,
-            db.generic_predicates_without_parent_with_diagnostics(def).1,
+            db.generic_predicates_without_parent_with_diagnostics_ns(def).1,
             &source_map,
         );
         for (param_id, param) in generics.iter_type_or_consts() {

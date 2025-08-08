@@ -179,16 +179,6 @@ pub trait HirDatabase: DefDatabase + std::fmt::Debug {
     #[salsa::invoke(crate::lower::generic_predicates_query)]
     fn generic_predicates(&self, def: GenericDefId) -> GenericPredicates;
 
-    #[salsa::invoke(crate::lower::generic_predicates_without_parent_with_diagnostics_query)]
-    fn generic_predicates_without_parent_with_diagnostics(
-        &self,
-        def: GenericDefId,
-    ) -> (GenericPredicates, Diagnostics);
-
-    #[salsa::invoke(crate::lower::generic_predicates_without_parent_query)]
-    #[salsa::transparent]
-    fn generic_predicates_without_parent(&self, def: GenericDefId) -> GenericPredicates;
-
     #[salsa::invoke(crate::lower::trait_environment_for_body_query)]
     #[salsa::transparent]
     fn trait_environment_for_body(&self, def: DefWithBodyId) -> Arc<TraitEnvironment>;
