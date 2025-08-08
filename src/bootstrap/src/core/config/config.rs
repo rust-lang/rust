@@ -947,7 +947,14 @@ impl Config {
             );
         }
 
-        config.download_rustc_commit = config.download_ci_rustc_commit(
+        config.download_rustc_commit = download_ci_rustc_commit(
+            &config.stage0_metadata,
+            config.path_modification_cache.clone(),
+            &config.src,
+            config.is_running_on_ci,
+            &config.exec_ctx,
+            &config.rust_info,
+            &config.host_target,
             rust_download_rustc,
             debug_assertions_requested,
             config.llvm_assertions,
@@ -2333,5 +2340,125 @@ pub fn check_stage0_version(
         fail(&format!(
             "Unexpected {component_name} version: {stage0_version}, we should use {prev_version}/{source_version} to build source with {source_version}"
         ));
+    }
+}
+
+pub fn download_ci_rustc_commit(
+    stage0_metadata: &build_helper::stage0_parser::Stage0,
+    path_modification_cache: Arc<Mutex<HashMap<Vec<&'static str>, PathFreshness>>>,
+    src: &Path,
+    is_running_on_ci: bool,
+    exec_ctx: &ExecutionContext,
+    rust_info: &channel::GitInfo,
+    host_target: &TargetSelection,
+    download_rustc: Option<StringOrBool>,
+    debug_assertions_requested: bool,
+    llvm_assertions: bool,
+) -> Option<String> {
+    if !is_download_ci_available(&host_target.triple, llvm_assertions) {
+        return None;
+    }
+
+    // If `download-rustc` is not set, default to rebuilding.
+    let if_unchanged = match download_rustc {
+        // Globally default `download-rustc` to `false`, because some contributors don't use
+        // profiles for reasons such as:
+        // - They need to seamlessly switch between compiler/library work.
+        // - They don't want to use compiler profile because they need to override too many
+        //   things and it's easier to not use a profile.
+        None | Some(StringOrBool::Bool(false)) => return None,
+        Some(StringOrBool::Bool(true)) => false,
+        Some(StringOrBool::String(s)) if s == "if-unchanged" => {
+            if !rust_info.is_managed_git_subrepository() {
+                println!(
+                    "ERROR: `download-rustc=if-unchanged` is only compatible with Git managed sources."
+                );
+                crate::exit!(1);
+            }
+
+            true
+        }
+        Some(StringOrBool::String(other)) => {
+            panic!("unrecognized option for download-rustc: {other}")
+        }
+    };
+
+    let commit = if rust_info.is_managed_git_subrepository() {
+        // Look for a version to compare to based on the current commit.
+        // Only commits merged by bors will have CI artifacts.
+        let freshness = check_path_modifications_(
+            stage0_metadata,
+            src,
+            path_modification_cache,
+            RUSTC_IF_UNCHANGED_ALLOWED_PATHS,
+        );
+        exec_ctx.verbose(|| {
+            eprintln!("rustc freshness: {freshness:?}");
+        });
+        match freshness {
+            PathFreshness::LastModifiedUpstream { upstream } => upstream,
+            PathFreshness::HasLocalModifications { upstream } => {
+                if if_unchanged {
+                    return None;
+                }
+
+                if is_running_on_ci {
+                    eprintln!("CI rustc commit matches with HEAD and we are in CI.");
+                    eprintln!(
+                        "`rustc.download-ci` functionality will be skipped as artifacts are not available."
+                    );
+                    return None;
+                }
+
+                upstream
+            }
+            PathFreshness::MissingUpstream => {
+                eprintln!("No upstream commit found");
+                return None;
+            }
+        }
+    } else {
+        channel::read_commit_info_file(src)
+            .map(|info| info.sha.trim().to_owned())
+            .expect("git-commit-info is missing in the project root")
+    };
+
+    if debug_assertions_requested {
+        eprintln!(
+            "WARN: `rust.debug-assertions = true` will prevent downloading CI rustc as alt CI \
+            rustc is not currently built with debug assertions."
+        );
+        return None;
+    }
+
+    Some(commit)
+}
+
+pub fn check_path_modifications_(
+    stage0_metadata: &build_helper::stage0_parser::Stage0,
+    src: &Path,
+    path_modification_cache: Arc<Mutex<HashMap<Vec<&'static str>, PathFreshness>>>,
+    paths: &[&'static str],
+) -> PathFreshness {
+    // Checking path modifications through git can be relatively expensive (>100ms).
+    // We do not assume that the sources would change during bootstrap's execution,
+    // so we can cache the results here.
+    // Note that we do not use a static variable for the cache, because it would cause problems
+    // in tests that create separate `Config` instsances.
+    path_modification_cache
+        .lock()
+        .unwrap()
+        .entry(paths.to_vec())
+        .or_insert_with(|| {
+            check_path_modifications(src, &git_config(stage0_metadata), paths, CiEnv::current())
+                .unwrap()
+        })
+        .clone()
+}
+
+pub fn git_config(stage0_metadata: &build_helper::stage0_parser::Stage0) -> GitConfig<'_> {
+    GitConfig {
+        nightly_branch: &stage0_metadata.config.nightly_branch,
+        git_merge_commit_email: &stage0_metadata.config.git_merge_commit_email,
     }
 }
