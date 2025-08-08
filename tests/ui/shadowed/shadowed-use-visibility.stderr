@@ -1,20 +1,3 @@
-error[E0603]: module import `bar` is private
-  --> $DIR/shadowed-use-visibility.rs:9:21
-   |
-LL |     use crate::foo::bar::f as g;
-   |                     ^^^ private module import
-   |
-note: the module import `bar` is defined here...
-  --> $DIR/shadowed-use-visibility.rs:4:9
-   |
-LL |     use crate::foo as bar;
-   |         ^^^^^^^^^^^^^^^^^
-note: ...and refers to the module `foo` which is defined here
-  --> $DIR/shadowed-use-visibility.rs:1:1
-   |
-LL | mod foo {
-   | ^^^^^^^
-
 error[E0603]: module import `f` is private
   --> $DIR/shadowed-use-visibility.rs:15:10
    |
@@ -26,6 +9,23 @@ note: the module import `f` is defined here...
    |
 LL |     use crate::foo as f;
    |         ^^^^^^^^^^^^^^^
+note: ...and refers to the module `foo` which is defined here
+  --> $DIR/shadowed-use-visibility.rs:1:1
+   |
+LL | mod foo {
+   | ^^^^^^^
+
+error[E0603]: module import `bar` is private
+  --> $DIR/shadowed-use-visibility.rs:9:21
+   |
+LL |     use crate::foo::bar::f as g;
+   |                     ^^^ private module import
+   |
+note: the module import `bar` is defined here...
+  --> $DIR/shadowed-use-visibility.rs:4:9
+   |
+LL |     use crate::foo as bar;
+   |         ^^^^^^^^^^^^^^^^^
 note: ...and refers to the module `foo` which is defined here
   --> $DIR/shadowed-use-visibility.rs:1:1
    |
