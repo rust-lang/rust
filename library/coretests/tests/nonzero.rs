@@ -214,13 +214,11 @@ fn nonzero_const() {
     const ONE: Option<NonZero<u8>> = NonZero::new(1);
     assert!(ONE.is_some());
 
-    /* FIXME(#110395)
     const FROM_NONZERO_U8: u8 = u8::from(NONZERO_U8);
     assert_eq!(FROM_NONZERO_U8, 5);
 
     const NONZERO_CONVERT: NonZero<u32> = NonZero::<u32>::from(NONZERO_U8);
     assert_eq!(NONZERO_CONVERT.get(), 5);
-    */
 }
 
 #[test]

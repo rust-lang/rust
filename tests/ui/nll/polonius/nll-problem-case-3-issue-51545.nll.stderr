@@ -1,0 +1,15 @@
+error[E0499]: cannot borrow `*o` as mutable more than once at a time
+  --> $DIR/nll-problem-case-3-issue-51545.rs:17:17
+   |
+LL | fn borrow(o: &mut Option<i32>) -> Option<&mut i32> {
+   |              - let's call the lifetime of this reference `'1`
+LL |     match o.as_mut() {
+   |           - first mutable borrow occurs here
+LL |         Some(i) => Some(i),
+   |                    ------- returning this value requires that `*o` is borrowed for `'1`
+LL |         None => o.as_mut(),
+   |                 ^ second mutable borrow occurs here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0499`.
