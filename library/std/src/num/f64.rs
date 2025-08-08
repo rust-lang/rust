@@ -749,12 +749,12 @@ impl f64 {
     /// # Examples
     ///
     /// ```
-    /// let f = std::f64::consts::FRAC_PI_4;
+    /// let f = std::f64::consts::FRAC_PI_2;
     ///
     /// // asin(sin(pi/2))
-    /// let abs_difference = (f.sin().asin() - f).abs();
+    /// let abs_difference = (f.sin().asin() - std::f64::consts::FRAC_PI_2).abs();
     ///
-    /// assert!(abs_difference < 1e-14);
+    /// assert!(abs_difference < 1e-7);
     /// ```
     #[doc(alias = "arcsin")]
     #[rustc_allow_incoherent_impl]
@@ -1153,7 +1153,7 @@ impl f64 {
     ///
     /// let abs_difference = (x.gamma() - 24.0).abs();
     ///
-    /// assert!(abs_difference <= 1e-10);
+    /// assert!(abs_difference <= f64::EPSILON);
     /// ```
     #[rustc_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
@@ -1248,7 +1248,7 @@ impl f64 {
     /// let one = x.erf() + x.erfc();
     /// let abs_difference = (one - 1.0).abs();
     ///
-    /// assert!(abs_difference <= 1e-10);
+    /// assert!(abs_difference <= f64::EPSILON);
     /// ```
     #[rustc_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
