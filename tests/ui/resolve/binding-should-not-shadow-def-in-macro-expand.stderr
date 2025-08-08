@@ -1,0 +1,15 @@
+error[E0434]: can't capture dynamic environment in a fn item
+  --> $DIR/binding-should-not-shadow-def-in-macro-expand.rs:140:21
+   |
+LL |             () => { f() };
+   |                     ^
+LL |         }
+LL |         m!();
+   |         ---- in this macro invocation
+   |
+   = help: use the `|| { ... }` closure form instead
+   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0434`.

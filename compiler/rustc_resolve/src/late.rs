@@ -40,9 +40,9 @@ use thin_vec::ThinVec;
 use tracing::{debug, instrument, trace};
 
 use crate::{
-    BindingError, BindingKey, Finalize, LexicalScopeBinding, Module, ModuleOrUniformRoot,
-    NameBinding, ParentScope, PathResult, ResolutionError, Resolver, Segment, TyCtxt, UseError,
-    Used, errors, path_names_to_string, rustdoc,
+    BindingError, BindingKey, Finalize, LexicalScopeBinding, LookaheadItemInBlock, Module,
+    ModuleOrUniformRoot, NameBinding, ParentScope, PathResult, ResolutionError, Resolver, Segment,
+    TyCtxt, UseError, Used, errors, path_names_to_string, rustdoc,
 };
 
 mod diagnostics;
@@ -103,7 +103,7 @@ impl IntoDiagArg for PatternSource {
 /// Denotes whether the context for the set of already bound bindings is a `Product`
 /// or `Or` context. This is used in e.g., `fresh_binding` and `resolve_pattern_inner`.
 /// See those functions for more information.
-#[derive(PartialEq)]
+#[derive(PartialEq, Debug)]
 enum PatBoundCtx {
     /// A product pattern context, e.g., `Variant(a, b)`.
     Product,
@@ -193,6 +193,27 @@ pub(crate) enum RibKind<'ra> {
     /// No restriction needs to be applied.
     Normal,
 
+    /// During resolving an item in a block, we had records all bindings defined
+    /// in this local scope, for these features:
+    ///
+    /// - Forward reference detection:
+    ///
+    /// ```ignore (illustrative)
+    /// let a = b;  // displays '`b` is defined at <span>' instead of ''b' not found'
+    /// let b = 42;
+    /// ```
+    ///
+    /// - Correctly resolves the hoisting bindings within macro expand:
+    ///
+    /// ```ignore (illustrative)
+    /// fn f() {}
+    /// let a: i16 = m!();        // throw error because it should use the local `f` rather than `fn f`
+    /// let f = || -> i16 { 42 };
+    /// macro_rules! m {() => ( f() )}
+    /// use m;
+    /// ```
+    Block { id: NodeId, is_module: bool },
+
     /// We passed through an impl or trait and are now in one of its
     /// methods or associated types. Allow references to ty params that impl or trait
     /// binds. Disallow any other upvars (including other ty params that are
@@ -243,6 +264,7 @@ impl RibKind<'_> {
     pub(crate) fn contains_params(&self) -> bool {
         match self {
             RibKind::Normal
+            | RibKind::Block { .. }
             | RibKind::FnOrCoroutine
             | RibKind::ConstantItem(..)
             | RibKind::Module(_)
@@ -258,7 +280,7 @@ impl RibKind<'_> {
     /// This rib forbids referring to labels defined in upwards ribs.
     fn is_label_barrier(self) -> bool {
         match self {
-            RibKind::Normal | RibKind::MacroDefinition(..) => false,
+            RibKind::Normal | RibKind::Block { .. } | RibKind::MacroDefinition(..) => false,
 
             RibKind::AssocItem
             | RibKind::FnOrCoroutine
@@ -740,7 +762,7 @@ struct LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
     ribs: PerNS<Vec<Rib<'ra>>>,
 
     /// Previous popped `rib`, only used for diagnostic.
-    last_block_rib: Option<Rib<'ra>>,
+    last_normal_block_rib: Option<Rib<'ra>>,
 
     /// The current set of local scopes, for labels.
     label_ribs: Vec<Rib<'ra, NodeId>>,
@@ -1086,7 +1108,7 @@ impl<'ast, 'ra, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'ra, 'tc
                             // Be sure not to set this until the function signature has been resolved.
                             let previous_state = replace(&mut this.in_func_body, true);
                             // We only care block in the same function
-                            this.last_block_rib = None;
+                            this.last_normal_block_rib = None;
                             // Resolve the function body, potentially inside the body of an async closure
                             this.with_lifetime_rib(
                                 LifetimeRibKind::Elided(LifetimeRes::Infer),
@@ -1434,7 +1456,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 type_ns: vec![Rib::new(start_rib_kind)],
                 macro_ns: vec![Rib::new(start_rib_kind)],
             },
-            last_block_rib: None,
+            last_normal_block_rib: None,
             label_ribs: Vec::new(),
             lifetime_ribs: Vec::new(),
             lifetime_elision_candidates: None,
@@ -2822,7 +2844,10 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 for parent_rib in self.ribs[ns].iter().rev() {
                     // Break at mod level, to account for nested items which are
                     // allowed to shadow generic param names.
-                    if matches!(parent_rib.kind, RibKind::Module(..)) {
+                    if matches!(
+                        parent_rib.kind,
+                        RibKind::Module(..) | RibKind::Block { is_module: true, .. }
+                    ) {
                         break;
                     }
 
@@ -3775,6 +3800,52 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
     fn resolve_pattern_top(&mut self, pat: &'ast Pat, pat_src: PatternSource) {
         let mut bindings = smallvec![(PatBoundCtx::Product, Default::default())];
         self.resolve_pattern(pat, pat_src, &mut bindings);
+
+        let mut last_pat_id = None;
+        pat.walk(&mut |pat| {
+            if let PatKind::Ident(..) = pat.kind {
+                last_pat_id = Some(pat.id);
+            }
+            true
+        });
+
+        if let Some(last_pat_id) = last_pat_id
+            && let RibKind::Block { id: block, .. } = self.ribs[ValueNS].last_mut().unwrap().kind
+            && let Some(items) = self.r.lookahead_items_in_block.get_mut(&block)
+        {
+            let start = items.get_index_of(&last_pat_id).unwrap_or_else(|| {
+                panic!("pattern({pat:#?}) not found in lookahead items");
+            });
+            // let mut first_macro: Option<SyntaxContext> = None;
+            // `need_removed` used for avoid injecting masked names into macro definition bindings:
+            //
+            // ```
+            // let x = 0;
+            // macro_rules! m0 {() => { x; }} // Injects `let x = 0` into `m0`
+            // let x = 1;
+            // macro_rules! m1 {() => { x; }} // Should NOT inject `let x = 0` into `m1`
+            // ```
+            let mut need_removed = FxHashSet::default();
+            for (_, item) in items.iter_mut().skip(start + 1) {
+                match item {
+                    LookaheadItemInBlock::Binding { name } => {
+                        need_removed.insert(name.normalize_to_macro_rules());
+                    }
+                    LookaheadItemInBlock::MacroDef { bindings: macro_bindings, .. } => {
+                        let bindings =
+                            bindings.last().unwrap().1.iter().filter_map(|(name, res)| {
+                                if !need_removed.contains(&name) {
+                                    Some((*name, *res))
+                                } else {
+                                    None
+                                }
+                            });
+                        macro_bindings.extend(bindings);
+                    }
+                }
+            }
+        }
+
         self.apply_pattern_bindings(bindings);
     }
 
@@ -4658,6 +4729,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         // Move down in the graph, if there's an anonymous module rooted here.
         let orig_module = self.parent_scope.module;
         let anonymous_module = self.r.block_map.get(&block.id).cloned(); // clones a reference
+        let is_module_block = anonymous_module.is_some();
 
         let mut num_macro_definition_ribs = 0;
         if let Some(anonymous_module) = anonymous_module {
@@ -4669,6 +4741,8 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             self.ribs[ValueNS].push(Rib::new(RibKind::Normal));
         }
 
+        self.ribs[ValueNS]
+            .push(Rib::new(RibKind::Block { id: block.id, is_module: is_module_block }));
         // Descend into the block.
         for stmt in &block.stmts {
             if let StmtKind::Item(ref item) = stmt.kind
@@ -4676,7 +4750,6 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             {
                 num_macro_definition_ribs += 1;
                 let res = self.r.local_def_id(item.id).to_def_id();
-                self.ribs[ValueNS].push(Rib::new(RibKind::MacroDefinition(res)));
                 self.label_ribs.push(Rib::new(RibKind::MacroDefinition(res)));
             }
 
@@ -4686,10 +4759,14 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         // Move back up.
         self.parent_scope.module = orig_module;
         for _ in 0..num_macro_definition_ribs {
-            self.ribs[ValueNS].pop();
+            // pop `MacroDefinition`
             self.label_ribs.pop();
         }
-        self.last_block_rib = self.ribs[ValueNS].pop();
+        let block_rib = self.ribs[ValueNS].pop(); // pop `RibKind::Block`
+        if !is_module_block {
+            self.last_normal_block_rib = block_rib;
+        }
+        self.ribs[ValueNS].pop(); // pop `RibKind::Module` or `RibKind::Normal`
         if anonymous_module.is_some() {
             self.ribs[TypeNS].pop();
         }
@@ -5146,6 +5223,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
 /// lifetime generic parameters and function parameters.
 struct ItemInfoCollector<'a, 'ra, 'tcx> {
     r: &'a mut Resolver<'ra, 'tcx>,
+    current_block: Option<NodeId>,
 }
 
 impl ItemInfoCollector<'_, '_, '_> {
@@ -5164,6 +5242,30 @@ impl ItemInfoCollector<'_, '_, '_> {
             target_feature: attrs.iter().any(|attr| attr.has_name(sym::target_feature)),
         };
         self.r.delegation_fn_sigs.insert(self.r.local_def_id(id), sig);
+    }
+
+    fn collect_fresh_binding(&mut self, binding: NodeId, name: Ident) {
+        let block_id = self.current_block.unwrap();
+        let items = self.r.lookahead_items_in_block.entry(block_id).or_default();
+        items.insert(binding, LookaheadItemInBlock::Binding { name });
+    }
+
+    fn collect_macro_def_in_block(&mut self, block_id: NodeId, node_id: NodeId) {
+        let def_id = self.r.local_def_id(node_id).to_def_id();
+        let items = self.r.lookahead_items_in_block.entry(block_id).or_default();
+        items.insert(
+            node_id,
+            LookaheadItemInBlock::MacroDef { bindings: Default::default(), def_id },
+        );
+    }
+
+    fn collect_fresh_binding_in_pat(&mut self, pat: &ast::Pat) {
+        pat.walk(&mut |pat| {
+            if let PatKind::Ident(_, name, _) = &pat.kind {
+                self.collect_fresh_binding(pat.id, *name);
+            }
+            true
+        });
     }
 }
 
@@ -5201,12 +5303,15 @@ impl<'ast> Visitor<'ast> for ItemInfoCollector<'_, '_, '_> {
                     }
                 }
             }
-
+            ItemKind::MacroDef(_, _) => {
+                if let Some(block_id) = self.current_block {
+                    self.collect_macro_def_in_block(block_id, item.id);
+                }
+            }
             ItemKind::Mod(..)
             | ItemKind::Static(..)
             | ItemKind::Use(..)
             | ItemKind::ExternCrate(..)
-            | ItemKind::MacroDef(..)
             | ItemKind::GlobalAsm(..)
             | ItemKind::MacCall(..)
             | ItemKind::DelegationMac(..) => {}
@@ -5226,11 +5331,22 @@ impl<'ast> Visitor<'ast> for ItemInfoCollector<'_, '_, '_> {
         }
         visit::walk_assoc_item(self, item, ctxt);
     }
+
+    fn visit_local(&mut self, node: &'ast Local) -> Self::Result {
+        self.collect_fresh_binding_in_pat(&node.pat);
+        visit::walk_local(self, node)
+    }
+
+    fn visit_block(&mut self, node: &'ast Block) -> Self::Result {
+        let saved_block_id = self.current_block.replace(node.id);
+        visit::walk_block(self, node);
+        self.current_block = saved_block_id;
+    }
 }
 
 impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     pub(crate) fn late_resolve_crate(&mut self, krate: &Crate) {
-        visit::walk_crate(&mut ItemInfoCollector { r: self }, krate);
+        visit::walk_crate(&mut ItemInfoCollector { r: self, current_block: None }, krate);
         let mut late_resolution_visitor = LateResolutionVisitor::new(self);
         late_resolution_visitor.resolve_doc_links(&krate.attrs, MaybeExported::Ok(CRATE_NODE_ID));
         visit::walk_crate(&mut late_resolution_visitor, krate);

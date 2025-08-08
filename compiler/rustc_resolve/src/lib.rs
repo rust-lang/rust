@@ -1043,6 +1043,14 @@ pub struct ResolverOutputs {
     pub ast_lowering: ResolverAstLowering,
 }
 
+#[derive(Debug)]
+enum LookaheadItemInBlock {
+    /// such as `let x = 1;`
+    Binding { name: Ident },
+    /// such as `macro_rules! foo { ... }`
+    MacroDef { def_id: DefId, bindings: FxIndexMap<Ident, Res> },
+}
+
 /// The main resolver class.
 ///
 /// This is the visitor that walks the whole crate.
@@ -1107,6 +1115,7 @@ pub struct Resolver<'ra, 'tcx> {
     /// There will be an anonymous module created around `g` with the ID of the
     /// entry block for `f`.
     block_map: NodeMap<Module<'ra>>,
+    lookahead_items_in_block: NodeMap<FxIndexMap<NodeId, LookaheadItemInBlock>>,
     /// A fake module that contains no definition and no prelude. Used so that
     /// some AST passes can generate identifiers that only resolve to local or
     /// lang items.
@@ -1642,6 +1651,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             current_crate_outer_attr_insert_span,
             mods_with_parse_errors: Default::default(),
             impl_trait_names: Default::default(),
+            lookahead_items_in_block: Default::default(),
         };
 
         let root_parent_scope = ParentScope::module(graph_root, &resolver);

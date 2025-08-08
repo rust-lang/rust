@@ -1,0 +1,91 @@
+error[E0425]: cannot find function `f` in this scope
+  --> $DIR/fresh-should-shadow-definitation-in-macro-expand.rs:28:29
+   |
+LL |     let a0: BindingF = m!();
+   |                        ---- in this macro invocation
+...
+LL |     macro_rules! m {() => ( f() )}
+   |                             ^ not found in this scope
+   |
+   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0425]: cannot find function `f` in this scope
+  --> $DIR/fresh-should-shadow-definitation-in-macro-expand.rs:44:29
+   |
+LL |     let a0: BindingF = m!();
+   |                        ---- in this macro invocation
+...
+LL |     macro_rules! m {() => ( f() )}
+   |                             ^ not found in this scope
+   |
+   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0425]: cannot find function `f` in this scope
+  --> $DIR/fresh-should-shadow-definitation-in-macro-expand.rs:58:29
+   |
+LL |     let a0: BindingF = m!();
+   |                        ---- in this macro invocation
+...
+LL |     macro_rules! m {() => ( f() )}
+   |                             ^ not found in this scope
+   |
+   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0425]: cannot find function `f` in this scope
+  --> $DIR/fresh-should-shadow-definitation-in-macro-expand.rs:58:29
+   |
+LL |     let a1: BindingF = m!();
+   |                        ---- in this macro invocation
+...
+LL |     macro_rules! m {() => ( f() )}
+   |                             ^ not found in this scope
+   |
+   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0425]: cannot find function `f` in this scope
+  --> $DIR/fresh-should-shadow-definitation-in-macro-expand.rs:113:29
+   |
+LL |     let a0: BindingF = m!();
+   |                        ---- in this macro invocation
+...
+LL |     macro_rules! m {() => ( f() )}
+   |                             ^ not found in this scope
+   |
+   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0425]: cannot find function `f` in this scope
+  --> $DIR/fresh-should-shadow-definitation-in-macro-expand.rs:113:29
+   |
+LL |     let a1: BindingF = m!();
+   |                        ---- in this macro invocation
+...
+LL |     macro_rules! m {() => ( f() )}
+   |                             ^ not found in this scope
+   |
+   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0425]: cannot find function `f` in this scope
+  --> $DIR/fresh-should-shadow-definitation-in-macro-expand.rs:147:17
+   |
+LL |     let m2_0: i32 = m2!();
+   |                     ----- in this macro invocation
+...
+LL |         () => { f() }
+   |                 ^ not found in this scope
+   |
+   = note: this error originates in the macro `m2` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0425]: cannot find function `f` in this scope
+  --> $DIR/fresh-should-shadow-definitation-in-macro-expand.rs:147:17
+   |
+LL |     let m2_1: i32 = m2!();
+   |                     ----- in this macro invocation
+...
+LL |         () => { f() }
+   |                 ^ not found in this scope
+   |
+   = note: this error originates in the macro `m2` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 8 previous errors
+
+For more information about this error, try `rustc --explain E0425`.
