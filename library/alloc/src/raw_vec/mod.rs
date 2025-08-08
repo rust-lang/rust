@@ -680,7 +680,7 @@ impl<A: Allocator> RawVecInner<A> {
 
         // SAFETY: Precondition passed to caller
         let ptr =
-            finish_grow(new_layout, unsafe { self.current_memory(elem_layout) }, &mut self.alloc)?;
+            unsafe { finish_grow(new_layout, self.current_memory(elem_layout), &mut self.alloc)? };
         // SAFETY: finish_grow would have resulted in a capacity overflow if we tried to allocate more than `isize::MAX` items
 
         unsafe { self.set_ptr_and_cap(ptr, cap) };
@@ -704,7 +704,7 @@ impl<A: Allocator> RawVecInner<A> {
 
         // SAFETY: Precondition passed to caller
         let ptr =
-            finish_grow(new_layout, unsafe { self.current_memory(elem_layout) }, &mut self.alloc)?;
+            unsafe { finish_grow(new_layout, self.current_memory(elem_layout), &mut self.alloc)? };
         // SAFETY: finish_grow would have resulted in a capacity overflow if we tried to allocate more than `isize::MAX` items
         unsafe {
             self.set_ptr_and_cap(ptr, cap);
@@ -789,7 +789,7 @@ impl<A: Allocator> RawVecInner<A> {
 // not marked inline(never) since we want optimizers to be able to observe the specifics of this
 // function, see tests/codegen-llvm/vec-reserve-extend.rs.
 #[cold]
-fn finish_grow<A>(
+unsafe fn finish_grow<A>(
     new_layout: Layout,
     current_memory: Option<(NonNull<u8>, Layout)>,
     alloc: &mut A,
