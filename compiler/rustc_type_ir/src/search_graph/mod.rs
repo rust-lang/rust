@@ -908,41 +908,57 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
                 };
 
                 // We're rebasing an entry `e` over a head `p`. This head
-                // has a number of own heads `h` it depends on. We need to
-                // make sure that the path kind of all paths `hph` remain the
-                // same after rebasing.
+                // has a number of own heads `h` it depends on.
                 //
-                // After rebasing the cycles `hph` will go through `e`. We need
-                // to make sure that forall possible paths `hep` and `heph`
-                // is equal to `hph.`
-                let ep = popped_head.paths_to_head;
-                for (head_index, head) in stack_entry.heads.iter() {
-                    let ph = head.paths_to_head;
-                    let hp = Self::cycle_path_kind(
-                        &self.stack,
-                        stack_entry.step_kind_from_parent,
-                        head_index,
-                    );
+                // This causes our provisional result to depend on the lowest head
+                // of `p` to avoid moving any goal which uses this cache entry to
+                // the global cache.
+                if popped_head.usages.is_empty() {
+                    // The result of `e` does not depend on the value of `p`. This we can
+                    // keep using the result of this provisional cache entry even if evaluating
+                    // `p` as a nested goal of `e` would have a different result.
+                    for (head_index, _) in stack_entry.heads.iter() {
+                        heads.insert(head_index, PathsToNested::EMPTY, Usages::default());
+                    }
+                } else {
+                    // The entry `e` actually depends on the value of `p`. We need
+                    // to make sure that the value of `p` wouldn't change even if we
+                    // were to reevaluate it as a nested goal of `e` instead. For this
+                    // we check that the path kind of all paths `hph` remain the
+                    // same after rebasing.
+                    //
+                    // After rebasing the cycles `hph` will go through `e`. We need
+                    // to make sure that forall possible paths `hep` and `heph`
+                    // is equal to `hph.`
+                    let ep = popped_head.paths_to_head;
+                    for (head_index, head) in stack_entry.heads.iter() {
+                        let ph = head.paths_to_head;
+                        let hp = Self::cycle_path_kind(
+                            &self.stack,
+                            stack_entry.step_kind_from_parent,
+                            head_index,
+                        );
 
-                    // We first validate that all cycles while computing `p` would stay
-                    // the same if we were to recompute it as a nested goal of `e`.
-                    let he = hp.extend(*path_from_head);
-                    for ph in ph.iter_paths() {
-                        let hph = hp.extend(ph);
-                        for ep in ep.iter_paths() {
-                            let hep = ep.extend(he);
-                            let heph = hep.extend(ph);
-                            if hph != heph {
-                                return false;
+                        // We first validate that all cycles while computing `p` would stay
+                        // the same if we were to recompute it as a nested goal of `e`.
+                        let he = hp.extend(*path_from_head);
+                        for ph in ph.iter_paths() {
+                            let hph = hp.extend(ph);
+                            for ep in ep.iter_paths() {
+                                let hep = ep.extend(he);
+                                let heph = hep.extend(ph);
+                                if hph != heph {
+                                    return false;
+                                }
                             }
                         }
-                    }
 
-                    // If so, all paths reached while computing `p` have to get added
-                    // the heads of `e` to make sure that rebasing `e` again also considers
-                    // them.
-                    let eph = ep.extend_with_paths(ph);
-                    heads.insert(head_index, eph, head.usages.compressed());
+                        // If so, all paths reached while computing `p` have to get added
+                        // the heads of `e` to make sure that rebasing `e` again also considers
+                        // them.
+                        let eph = ep.extend_with_paths(ph);
+                        heads.insert(head_index, eph, head.usages.compressed());
+                    }
                 }
 
                 let Some(head_index) = heads.opt_highest_cycle_head_index() else {
