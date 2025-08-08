@@ -1936,8 +1936,8 @@ pub mod math {
     /// let abs_difference_x = (f32::math::abs_sub(x, 1.0) - 2.0).abs();
     /// let abs_difference_y = (f32::math::abs_sub(y, 1.0) - 0.0).abs();
     ///
-    /// assert!(abs_difference_x <= 1e-6);
-    /// assert!(abs_difference_y <= 1e-6);
+    /// assert!(abs_difference_x <= f32::EPSILON);
+    /// assert!(abs_difference_y <= f32::EPSILON);
     /// ```
     ///
     /// _This standalone function is for testing only.
@@ -1982,7 +1982,7 @@ pub mod math {
     /// // x^(1/3) - 2 == 0
     /// let abs_difference = (f32::math::cbrt(x) - 2.0).abs();
     ///
-    /// assert!(abs_difference <= 1e-6);
+    /// assert!(abs_difference <= f32::EPSILON);
     /// ```
     ///
     /// _This standalone function is for testing only.
