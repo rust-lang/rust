@@ -4802,6 +4802,7 @@ impl<'hir> Node<'hir> {
                 ForeignItemKind::Static(ty, ..) => Some(ty),
                 _ => None,
             },
+            Node::Field(f) => Some(f.ty),
             _ => None,
         }
     }
