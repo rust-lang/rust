@@ -1836,6 +1836,16 @@ unsafe extern "C" {
         Tag: c_uint,
         Type: &'ll DIType,
     ) -> &'ll DIDerivedType;
+
+    pub(crate) fn LLVMDIBuilderCreatePointerType<'ll>(
+        Builder: &DIBuilder<'ll>,
+        PointeeTy: &'ll DIType,
+        SizeInBits: u64,
+        AlignInBits: u32,
+        AddressSpace: c_uint,
+        Name: *const c_char,
+        NameLen: size_t,
+    ) -> &'ll DIDerivedType;
 }
 
 #[link(name = "llvm-wrapper", kind = "static")]
@@ -2193,16 +2203,6 @@ unsafe extern "C" {
         File: &'a DIFile,
         LineNo: c_uint,
         Scope: Option<&'a DIScope>,
-    ) -> &'a DIDerivedType;
-
-    pub(crate) fn LLVMRustDIBuilderCreatePointerType<'a>(
-        Builder: &DIBuilder<'a>,
-        PointeeTy: &'a DIType,
-        SizeInBits: u64,
-        AlignInBits: u32,
-        AddressSpace: c_uint,
-        Name: *const c_char,
-        NameLen: size_t,
     ) -> &'a DIDerivedType;
 
     pub(crate) fn LLVMRustDIBuilderCreateStructType<'a>(
