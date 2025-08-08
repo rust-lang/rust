@@ -6,7 +6,7 @@ use crate::spec::targets::{
 };
 
 #[test]
-fn simulator_targets_set_abi() {
+fn simulator_targets_set_env() {
     let all_sim_targets = [
         x86_64_apple_ios::target(),
         x86_64_apple_tvos::target(),
@@ -18,7 +18,9 @@ fn simulator_targets_set_abi() {
     ];
 
     for target in &all_sim_targets {
-        assert_eq!(target.abi, "sim")
+        assert_eq!(target.env, "sim");
+        // Ensure backwards compat
+        assert_eq!(target.abi, "sim");
     }
 }
 

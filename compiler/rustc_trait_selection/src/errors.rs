@@ -1,5 +1,3 @@
-use std::path::PathBuf;
-
 use rustc_ast::Path;
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_errors::codes::*;
@@ -224,9 +222,6 @@ pub struct AnnotationRequired<'a> {
     pub infer_subdiags: Vec<SourceKindSubdiag<'a>>,
     #[subdiagnostic]
     pub multi_suggestions: Vec<SourceKindMultiSuggestion<'a>>,
-    #[note(trait_selection_full_type_written)]
-    pub was_written: bool,
-    pub path: PathBuf,
 }
 
 // Copy of `AnnotationRequired` for E0283
@@ -245,9 +240,6 @@ pub struct AmbiguousImpl<'a> {
     pub infer_subdiags: Vec<SourceKindSubdiag<'a>>,
     #[subdiagnostic]
     pub multi_suggestions: Vec<SourceKindMultiSuggestion<'a>>,
-    #[note(trait_selection_full_type_written)]
-    pub was_written: bool,
-    pub path: PathBuf,
 }
 
 // Copy of `AnnotationRequired` for E0284
@@ -266,9 +258,6 @@ pub struct AmbiguousReturn<'a> {
     pub infer_subdiags: Vec<SourceKindSubdiag<'a>>,
     #[subdiagnostic]
     pub multi_suggestions: Vec<SourceKindMultiSuggestion<'a>>,
-    #[note(trait_selection_full_type_written)]
-    pub was_written: bool,
-    pub path: PathBuf,
 }
 
 // Used when a better one isn't available

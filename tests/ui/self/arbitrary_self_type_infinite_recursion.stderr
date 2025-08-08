@@ -32,7 +32,7 @@ LL |   p.method();
    |
    = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`arbitrary_self_type_infinite_recursion`)
 
-error[E0599]: no method named `method` found for struct `MySmartPtr` in the current scope
+error[E0599]: no method named `method` found for struct `MySmartPtr<T>` in the current scope
   --> $DIR/arbitrary_self_type_infinite_recursion.rs:21:5
    |
 LL | struct MySmartPtr<T>(T);
