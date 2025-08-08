@@ -18,9 +18,28 @@ use rustc_trait_selection::errors::impl_trait_overcapture_suggestion;
 use crate::MirBorrowckCtxt;
 use crate::borrow_set::BorrowData;
 use crate::consumers::RegionInferenceContext;
+use crate::region_infer::opaque_types::DeferredOpaqueTypeError;
 use crate::type_check::Locations;
 
 impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
+    pub(crate) fn report_opaque_type_errors(&mut self, errors: Vec<DeferredOpaqueTypeError<'tcx>>) {
+        if errors.is_empty() {
+            return;
+        }
+        let mut guar = None;
+        for error in errors {
+            guar = Some(match error {
+                DeferredOpaqueTypeError::InvalidOpaqueTypeArgs(err) => err.report(self.infcx),
+                DeferredOpaqueTypeError::LifetimeMismatchOpaqueParam(err) => {
+                    self.infcx.dcx().emit_err(err)
+                }
+            });
+        }
+        let guar = guar.unwrap();
+        self.root_cx.set_tainted_by_errors(guar);
+        self.infcx.set_tainted_by_errors(guar);
+    }
+
     /// Try to note when an opaque is involved in a borrowck error and that
     /// opaque captures lifetimes due to edition 2024.
     // FIXME: This code is otherwise somewhat general, and could easily be adapted

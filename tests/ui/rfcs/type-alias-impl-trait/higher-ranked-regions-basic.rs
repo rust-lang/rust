@@ -41,6 +41,7 @@ mod capture_tait_complex_pass {
     #[define_opaque(Opq2)]
     fn test() -> Opq2 {}
     //~^ ERROR: expected generic lifetime parameter, found `'a`
+    //~| ERROR: expected generic lifetime parameter, found `'b`
 }
 
 // Same as the above, but make sure that different placeholder regions are not equal.
@@ -80,6 +81,7 @@ mod constrain_pass {
     #[define_opaque(Opq2)]
     fn test() -> Opq2 {}
     //~^ ERROR: expected generic lifetime parameter, found `'a`
+    //~| ERROR: expected generic lifetime parameter, found `'a`
 }
 
 fn main() {}
