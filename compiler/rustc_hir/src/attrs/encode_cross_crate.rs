@@ -16,7 +16,6 @@ impl AttributeKind {
             Align { .. } => No,
             AllowConstFnUnstable(..) => No,
             AllowIncoherentImpl(..) => No,
-            AllowInternalUnsafe(..) => Yes,
             AllowInternalUnstable(..) => Yes,
             AsPtr(..) => Yes,
             AutomaticallyDerived(..) => Yes,
