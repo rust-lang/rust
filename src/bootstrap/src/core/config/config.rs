@@ -1356,6 +1356,10 @@ impl Config {
                 eprintln!("WARNING: cannot check anything on stage 0. Use at least stage 1.");
                 exit!(1);
             }
+            (0, Subcommand::Clippy { .. }) => {
+                eprintln!("WARNING: cannot run clippy on stage 0. Use at least stage 1.");
+                exit!(1);
+            }
             _ => {}
         }
 
