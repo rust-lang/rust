@@ -3291,6 +3291,12 @@ class DocSearch {
                 }
 
                 // sort unstable items later
+                // FIXME: there is some doubt if this is the most effecient way to implement this.
+                // alternative options include:
+                // * put is_unstable on each item when the index is built.
+                //   increases memory usage but avoids a hashmap lookup.
+                // * put is_unstable on each item before sorting.
+                //   better worst case performance but worse average case performance.
                 a = Number(
                     // @ts-expect-error
                     this.searchIndexUnstable.get(aaa.item.crate).contains(aaa.item.bitIndex),
