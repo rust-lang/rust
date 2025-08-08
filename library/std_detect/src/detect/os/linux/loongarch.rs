@@ -17,22 +17,21 @@ pub(crate) fn detect_features() -> cache::Initializer {
     // The values are part of the platform-specific [cpucfg]
     //
     // [cpucfg]: LoongArch Reference Manual Volume 1: Basic Architecture v1.1
+    let cpucfg1: usize;
     let cpucfg2: usize;
-    unsafe {
-        asm!(
-            "cpucfg {}, {}",
-            out(reg) cpucfg2, in(reg) 2,
-            options(pure, nomem, preserves_flags, nostack)
-        );
-    }
     let cpucfg3: usize;
     unsafe {
         asm!(
             "cpucfg {}, {}",
+            "cpucfg {}, {}",
+            "cpucfg {}, {}",
+            out(reg) cpucfg1, in(reg) 1,
+            out(reg) cpucfg2, in(reg) 2,
             out(reg) cpucfg3, in(reg) 3,
             options(pure, nomem, preserves_flags, nostack)
         );
     }
+    enable_feature(&mut value, Feature::_32s, bit::test(cpucfg1, 0) || bit::test(cpucfg1, 1));
     enable_feature(&mut value, Feature::frecipe, bit::test(cpucfg2, 25));
     enable_feature(&mut value, Feature::div32, bit::test(cpucfg2, 26));
     enable_feature(&mut value, Feature::lam_bh, bit::test(cpucfg2, 27));
