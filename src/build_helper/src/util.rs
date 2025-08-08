@@ -76,6 +76,25 @@ pub fn ensure_version_or_cargo_install(
     bin_name: &str,
     version: &str,
 ) -> io::Result<PathBuf> {
+    // ignore the process exit code here and instead just let the version number check fail.
+    // we also importantly don't return if the program wasn't installed,
+    // instead we want to continue to the fallback.
+    'ck: {
+        // FIXME: rewrite as if-let chain once this crate is 2024 edition.
+        let Ok(output) = Command::new(bin_name).arg("--version").output() else {
+            break 'ck;
+        };
+        let Ok(s) = str::from_utf8(&output.stdout) else {
+            break 'ck;
+        };
+        let Some(v) = s.trim().split_whitespace().last() else {
+            break 'ck;
+        };
+        if v == version {
+            return Ok(PathBuf::from(bin_name));
+        }
+    }
+
     let tool_root_dir = build_dir.join("misc-tools");
     let tool_bin_dir = tool_root_dir.join("bin");
     // use --force to ensure that if the required version is bumped, we update it.
