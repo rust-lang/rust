@@ -2117,6 +2117,19 @@ mod snapshot {
     }
 
     #[test]
+    fn test_tier_check() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("test")
+                .path("tier-check")
+                .render_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 1 <host> -> std 1 <host>
+        ");
+    }
+
+    #[test]
     fn doc_all() {
         let ctx = TestCtx::new();
         insta::assert_snapshot!(
