@@ -160,6 +160,10 @@ impl StepMetadata {
         Self::new(name, target, Kind::Check)
     }
 
+    pub fn clippy(name: &str, target: TargetSelection) -> Self {
+        Self::new(name, target, Kind::Clippy)
+    }
+
     pub fn doc(name: &str, target: TargetSelection) -> Self {
         Self::new(name, target, Kind::Doc)
     }

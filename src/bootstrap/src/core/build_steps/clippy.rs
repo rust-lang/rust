@@ -2,11 +2,11 @@
 
 use super::check;
 use super::compile::{run_cargo, rustc_cargo, std_cargo};
-use super::tool::{SourceType, prepare_tool_cargo};
+use super::tool::{RustcPrivateCompilers, SourceType, prepare_tool_cargo};
 use crate::builder::{Builder, ShouldRun};
 use crate::core::build_steps::compile::std_crates_for_run_make;
 use crate::core::builder;
-use crate::core::builder::{Alias, Kind, RunConfig, Step, crate_description};
+use crate::core::builder::{Alias, Kind, RunConfig, Step, StepMetadata, crate_description};
 use crate::utils::build_stamp::{self, BuildStamp};
 use crate::{Mode, Subcommand, TargetSelection};
 
@@ -253,6 +253,82 @@ impl Step for Rustc {
     }
 }
 
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+pub struct CodegenGcc {
+    compilers: RustcPrivateCompilers,
+    target: TargetSelection,
+    config: LintConfig,
+}
+
+impl CodegenGcc {
+    fn new(builder: &Builder<'_>, target: TargetSelection, config: LintConfig) -> Self {
+        Self {
+            compilers: RustcPrivateCompilers::new(builder, builder.top_stage, target),
+            target,
+            config,
+        }
+    }
+}
+
+impl Step for CodegenGcc {
+    type Output = ();
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.alias("rustc_codegen_gcc")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        let builder = run.builder;
+        let config = LintConfig::new(builder);
+        builder.ensure(CodegenGcc::new(builder, run.target, config));
+    }
+
+    fn run(self, builder: &Builder<'_>) -> Self::Output {
+        let build_compiler = self.compilers.build_compiler();
+        let target = self.target;
+
+        let cargo = prepare_tool_cargo(
+            builder,
+            build_compiler,
+            Mode::Codegen,
+            target,
+            Kind::Clippy,
+            "compiler/rustc_codegen_gcc",
+            SourceType::InTree,
+            &[],
+        );
+
+        let _guard = builder.msg_tool(
+            Kind::Clippy,
+            Mode::ToolRustc,
+            "rustc_codegen_gcc",
+            build_compiler.stage,
+            &build_compiler.host,
+            &target,
+        );
+
+        let stamp = BuildStamp::new(&builder.cargo_out(build_compiler, Mode::Codegen, target))
+            .with_prefix("rustc_codegen_gcc-check");
+
+        run_cargo(
+            builder,
+            cargo,
+            lint_args(builder, &self.config, &[]),
+            &stamp,
+            vec![],
+            true,
+            false,
+        );
+    }
+
+    fn metadata(&self) -> Option<StepMetadata> {
+        Some(
+            StepMetadata::clippy("rustc_codegen_gcc", self.target)
+                .built_by(self.compilers.build_compiler()),
+        )
+    }
+}
+
 macro_rules! lint_any {
     ($(
         $name:ident, $path:expr, $readable_name:expr
@@ -337,7 +413,6 @@ lint_any!(
     CargoMiri, "src/tools/miri/cargo-miri", "cargo-miri";
     Clippy, "src/tools/clippy", "clippy";
     CollectLicenseMetadata, "src/tools/collect-license-metadata", "collect-license-metadata";
-    CodegenGcc, "compiler/rustc_codegen_gcc", "rustc-codegen-gcc";
     Compiletest, "src/tools/compiletest", "compiletest";
     CoverageDump, "src/tools/coverage-dump", "coverage-dump";
     Jsondocck, "src/tools/jsondocck", "jsondocck";
@@ -440,9 +515,10 @@ impl Step for CI {
             deny: vec!["warnings".into()],
             forbid: vec![],
         };
-        builder.ensure(CodegenGcc {
-            target: self.target,
-            config: self.config.merge(&rustc_codegen_gcc),
-        });
+        builder.ensure(CodegenGcc::new(
+            builder,
+            self.target,
+            self.config.merge(&rustc_codegen_gcc),
+        ));
     }
 }
