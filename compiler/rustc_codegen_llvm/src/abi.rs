@@ -24,6 +24,7 @@ use crate::attributes::{self, llfn_attrs_from_instance};
 use crate::builder::Builder;
 use crate::context::CodegenCx;
 use crate::llvm::{self, Attribute, AttributePlace};
+use crate::llvm_util;
 use crate::type_::Type;
 use crate::type_of::LayoutLlvmExt;
 use crate::value::Value;
@@ -500,7 +501,16 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                     }
                 }
                 PassMode::Indirect { attrs, meta_attrs: None, on_stack: false } => {
-                    apply(attrs);
+                    let i = apply(attrs);
+                    if cx.sess().opts.optimize != config::OptLevel::No
+                        && llvm_util::get_version() >= (21, 0, 0)
+                    {
+                        attributes::apply_to_llfn(
+                            llfn,
+                            llvm::AttributePlace::Argument(i),
+                            &[llvm::AttributeKind::DeadOnReturn.create_attr(cx.llcx)],
+                        );
+                    }
                 }
                 PassMode::Indirect { attrs, meta_attrs: Some(meta_attrs), on_stack } => {
                     assert!(!on_stack);
