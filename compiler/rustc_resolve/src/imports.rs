@@ -48,22 +48,25 @@ pub(crate) struct ImportResolver<'r, 'ra, 'tcx> {
 
     // outputs
     determined_imports: Vec<Import<'ra>>,
+    glob_imports: Vec<Import<'ra>>,
 }
 
 struct ImportResolutionOutputs<'ra> {
     indeterminate_imports: Vec<Import<'ra>>,
     determined_imports: Vec<Import<'ra>>,
+    glob_imports: Vec<Import<'ra>>,
 }
 
 impl<'r, 'ra, 'tcx> ImportResolver<'r, 'ra, 'tcx> {
     pub(crate) fn new(cmr: CmResolver<'r, 'ra, 'tcx>, batch: Vec<Import<'ra>>) -> Self {
-        ImportResolver { r: cmr, batch, determined_imports: Vec::new() }
+        ImportResolver { r: cmr, batch, determined_imports: Vec::new(), glob_imports: Vec::new() }
     }
 
     fn into_outputs(self) -> ImportResolutionOutputs<'ra> {
         ImportResolutionOutputs {
             indeterminate_imports: self.batch,
             determined_imports: self.determined_imports,
+            glob_imports: self.glob_imports,
         }
     }
 }
@@ -72,6 +75,9 @@ impl<'ra> ImportResolutionOutputs<'ra> {
     fn commit<'tcx>(self, r: &mut Resolver<'ra, 'tcx>) {
         r.indeterminate_imports = self.indeterminate_imports;
         r.determined_imports.extend(self.determined_imports);
+        for glob in self.glob_imports {
+            r.resolve_glob_import(glob);
+        }
     }
 }
 
@@ -927,9 +933,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 (source, target, bindings, type_ns_only)
             }
             ImportKind::Glob { .. } => {
-                // FIXME: Use mutable resolver directly as a hack, this should be an output of
-                // specualtive resolution.
-                self.r.get_mut_unchecked().resolve_glob_import(import);
+                self.glob_imports.push(import);
                 return 0;
             }
             _ => unreachable!(),
