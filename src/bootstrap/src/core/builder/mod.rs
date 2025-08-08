@@ -1556,8 +1556,10 @@ You have to build a stage1 compiler for `{}` first, and then use it to build a s
         self.ensure(tool::Rustdoc { target_compiler })
     }
 
-    pub fn cargo_clippy_cmd(&self, run_compiler: Compiler) -> BootstrapCommand {
-        if run_compiler.stage == 0 {
+    /// Create a Cargo command for running Clippy.
+    /// The used Clippy is (or in the case of stage 0, already was) built using `build_compiler`.
+    pub fn cargo_clippy_cmd(&self, build_compiler: Compiler) -> BootstrapCommand {
+        if build_compiler.stage == 0 {
             let cargo_clippy = self
                 .config
                 .initial_cargo_clippy
@@ -1569,15 +1571,16 @@ You have to build a stage1 compiler for `{}` first, and then use it to build a s
             return cmd;
         }
 
-        // FIXME: double check that `run_compiler`'s stage is what we want to use
-        let compilers =
-            RustcPrivateCompilers::new(self, run_compiler.stage, self.build.host_target);
-        assert_eq!(run_compiler, compilers.target_compiler());
+        let compilers = RustcPrivateCompilers::from_build_compiler(
+            self,
+            build_compiler,
+            self.build.host_target,
+        );
 
         let _ = self.ensure(tool::Clippy::from_compilers(compilers));
         let cargo_clippy = self.ensure(tool::CargoClippy::from_compilers(compilers));
         let mut dylib_path = helpers::dylib_path();
-        dylib_path.insert(0, self.sysroot(run_compiler).join("lib"));
+        dylib_path.insert(0, self.sysroot(build_compiler).join("lib"));
 
         let mut cmd = command(cargo_clippy.tool_path);
         cmd.env(helpers::dylib_path_var(), env::join_paths(&dylib_path).unwrap());

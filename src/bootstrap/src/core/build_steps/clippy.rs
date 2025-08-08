@@ -1,14 +1,27 @@
 //! Implementation of running clippy on the compiler, standard library and various tools.
+//!
+//! This serves a double purpose:
+//! - The first is to run Clippy itself on in-tree code, in order to test and dogfood it.
+//! - The second is to actually lint the in-tree codebase on CI, with a hard-coded set of rules,
+//!   which is performed by the `x clippy ci` command.
+//!
+//! In order to prepare a build compiler for running clippy, use the
+//! `check::prepare_compiler_for_check` function. That prepares a compiler and a standard library
+//! for running Clippy. The second part (actually building Clippy) is performed inside
+//! [Builder::cargo_clippy_cmd]. It would be nice if this was more explicit, and we actually had
+//! to pass a prebuilt Clippy from the outside when running `cargo clippy`, but that would be
+//! (as usual) a massive undertaking/refactoring.
 
 use super::check;
 use super::compile::{run_cargo, rustc_cargo, std_cargo};
 use super::tool::{RustcPrivateCompilers, SourceType, prepare_tool_cargo};
 use crate::builder::{Builder, ShouldRun};
+use crate::core::build_steps::check::prepare_compiler_for_check;
 use crate::core::build_steps::compile::std_crates_for_run_make;
 use crate::core::builder;
 use crate::core::builder::{Alias, Kind, RunConfig, Step, StepMetadata, crate_description};
 use crate::utils::build_stamp::{self, BuildStamp};
-use crate::{Mode, Subcommand, TargetSelection};
+use crate::{Compiler, Mode, Subcommand, TargetSelection};
 
 /// Disable the most spammy clippy lints
 const IGNORED_RULES_FOR_STD_AND_RUSTC: &[&str] = &[
@@ -184,12 +197,33 @@ impl Step for Std {
     }
 }
 
+/// Lints the compiler.
+///
+/// This will build Clippy with the `build_compiler` and use it to lint
+/// in-tree rustc.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Rustc {
-    pub target: TargetSelection,
+    build_compiler: Compiler,
+    target: TargetSelection,
     config: LintConfig,
     /// Whether to lint only a subset of crates.
     crates: Vec<String>,
+}
+
+impl Rustc {
+    fn new(
+        builder: &Builder<'_>,
+        target: TargetSelection,
+        config: LintConfig,
+        crates: Vec<String>,
+    ) -> Self {
+        Self {
+            build_compiler: prepare_compiler_for_check(builder, target, Mode::Rustc),
+            target,
+            config,
+            crates,
+        }
+    }
 }
 
 impl Step for Rustc {
@@ -202,32 +236,15 @@ impl Step for Rustc {
     }
 
     fn make_run(run: RunConfig<'_>) {
+        let builder = run.builder;
         let crates = run.make_run_crates(Alias::Compiler);
         let config = LintConfig::new(run.builder);
-        run.builder.ensure(Rustc { target: run.target, config, crates });
+        run.builder.ensure(Rustc::new(builder, run.target, config, crates));
     }
 
-    /// Lints the compiler.
-    ///
-    /// This will lint the compiler for a particular stage of the build using
-    /// the `compiler` targeting the `target` architecture.
     fn run(self, builder: &Builder<'_>) {
-        let build_compiler = builder.compiler(builder.top_stage, builder.config.host_target);
+        let build_compiler = self.build_compiler;
         let target = self.target;
-
-        if !builder.download_rustc() {
-            if build_compiler.stage != 0 {
-                // If we're not in stage 0, then we won't have a std from the beta
-                // compiler around. That means we need to make sure there's one in
-                // the sysroot for the compiler to find. Otherwise, we're going to
-                // fail when building crates that need to generate code (e.g., build
-                // scripts and their dependencies).
-                builder.std(build_compiler, build_compiler.host);
-                builder.std(build_compiler, target);
-            } else {
-                builder.ensure(check::Std::new(build_compiler, target));
-            }
-        }
 
         let mut cargo = builder::Cargo::new(
             builder,
@@ -267,7 +284,7 @@ impl Step for Rustc {
     }
 
     fn metadata(&self) -> Option<StepMetadata> {
-        Some(StepMetadata::clippy("rustc", self.target))
+        Some(StepMetadata::clippy("rustc", self.target).built_by(self.build_compiler))
     }
 }
 
@@ -518,11 +535,12 @@ impl Step for CI {
             ],
             forbid: vec![],
         };
-        builder.ensure(Rustc {
-            target: self.target,
-            config: self.config.merge(&compiler_clippy_cfg),
-            crates: vec![],
-        });
+        builder.ensure(Rustc::new(
+            builder,
+            self.target,
+            self.config.merge(&compiler_clippy_cfg),
+            vec![],
+        ));
 
         let rustc_codegen_gcc = LintConfig {
             allow: vec![],

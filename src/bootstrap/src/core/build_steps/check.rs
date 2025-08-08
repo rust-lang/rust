@@ -30,10 +30,6 @@ pub struct Std {
 
 impl Std {
     const CRATE_OR_DEPS: &[&str] = &["sysroot", "coretests", "alloctests"];
-
-    pub fn new(build_compiler: Compiler, target: TargetSelection) -> Self {
-        Self { build_compiler, target, crates: vec![] }
-    }
 }
 
 impl Step for Std {
@@ -241,7 +237,7 @@ impl Step for Rustc {
 }
 
 /// Prepares a compiler that will check something with the given `mode`.
-fn prepare_compiler_for_check(
+pub fn prepare_compiler_for_check(
     builder: &Builder<'_>,
     target: TargetSelection,
     mode: Mode,
