@@ -14,16 +14,11 @@ use std::intrinsics::three_way_compare;
 // CHECK-LABEL: signed_cmp:
 pub fn signed_cmp(a: i16, b: i16) -> std::cmp::Ordering {
     // DEBUG: sub
-    // DEBUG: setl
-    // DEBUG: setg
-    // DEBUG: sub
-    // DEBUG: ret
-    //
     // OPTIM: cmp
-    // OPTIM: setl
-    // OPTIM: setg
-    // OPTIM: sub
-    // OPTIM: ret
+    // CHECK: setl
+    // CHECK: setg
+    // CHECK: sub
+    // CHECK: ret
     three_way_compare(a, b)
 }
 
@@ -31,13 +26,9 @@ pub fn signed_cmp(a: i16, b: i16) -> std::cmp::Ordering {
 // CHECK-LABEL: unsigned_cmp:
 pub fn unsigned_cmp(a: u16, b: u16) -> std::cmp::Ordering {
     // DEBUG: sub
-    // DEBUG: seta
-    // DEBUG: sbb
-    // DEBUG: ret
-    //
     // OPTIM: cmp
-    // OPTIM: seta
-    // OPTIM: sbb
-    // OPTIM: ret
+    // CHECK: seta
+    // CHECK: sbb
+    // CHECK: ret
     three_way_compare(a, b)
 }
