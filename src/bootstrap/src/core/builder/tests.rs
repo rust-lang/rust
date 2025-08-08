@@ -1292,6 +1292,8 @@ mod snapshot {
         [build] rustc 1 <host> -> rustc_codegen_cranelift 2 <host>
         [build] rustdoc 2 <host>
         [doc] std 2 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
+        [build] rustc 1 <host> -> error-index 2 <host>
+        [doc] rustc 1 <host> -> error-index 2 <host>
         [build] rustc 2 <host> -> std 2 <host>
         [build] rustc 0 <host> -> LintDocs 1 <host>
         [build] rustc 0 <host> -> RustInstaller 1 <host>
