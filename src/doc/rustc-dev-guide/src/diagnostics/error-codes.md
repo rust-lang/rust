@@ -20,7 +20,7 @@ explanations should help users understand why their code cannot be accepted by
 the compiler. Rust prides itself on helpful error messages and long-form
 explanations are no exception. However, before error explanations are
 overhauled[^new-explanations] it is a bit open as to how exactly they should be
-written, as always: ask your reviewer or ask around on the Rust Discord or Zulip.
+written, as always: ask your reviewer or ask around on the Rust Zulip.
 
 [^new-explanations]: See the draft RFC [here][new-explanations-rfc].
 
