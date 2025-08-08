@@ -11,73 +11,71 @@ use crate::spec::{
 
 #[cfg(test)]
 mod tests;
-
 use Arch::*;
-#[allow(non_camel_case_types)]
-#[derive(Copy, Clone, PartialEq)]
-pub(crate) enum Arch {
-    Armv7k,
-    Armv7s,
-    Arm64,
-    Arm64e,
-    Arm64_32,
-    I386,
-    I686,
-    X86_64,
-    X86_64h,
-}
+
+use crate::spec::Aarch64Ver::{_32, E, V8A};
+pub(crate) use crate::spec::Arch;
+use crate::spec::ArmVer::{V7K, V7S};
+use crate::spec::Ix86::{AppleI386, ClangI686};
+use crate::spec::X86_64Ver::{Haswell, X64};
 
 impl Arch {
     fn target_name(self) -> &'static str {
         match self {
-            Armv7k => "armv7k",
-            Armv7s => "armv7s",
-            Arm64 => "arm64",
-            Arm64e => "arm64e",
-            Arm64_32 => "arm64_32",
-            I386 => "i386",
-            I686 => "i686",
-            X86_64 => "x86_64",
-            X86_64h => "x86_64h",
+            Arm(V7K) => "armv7k",
+            Arm(V7S) => "armv7s",
+            Aarch64(V8A) => "arm64",
+            Aarch64(E) => "arm64e",
+            Aarch64(_32) => "arm64_32",
+            X86_32(AppleI386) => "i386",
+            X86_32(ClangI686) => "i686",
+            X86_64(Haswell) => "x86_64h",
+            X86_64(..) => "x86_64",
+            _ => panic!(),
         }
     }
 
     pub(crate) fn target_arch(self) -> Cow<'static, str> {
         Cow::Borrowed(match self {
-            Armv7k | Armv7s => "arm",
-            Arm64 | Arm64e | Arm64_32 => "aarch64",
-            I386 | I686 => "x86",
-            X86_64 | X86_64h => "x86_64",
+            Arm(..) => "arm",
+            Aarch64(..) => "aarch64",
+            X86_32(..) => "x86",
+            X86_64(..) => "x86_64",
         })
     }
 
     fn target_cpu(self, abi: TargetAbi) -> &'static str {
         match self {
-            Armv7k => "cortex-a8",
-            Armv7s => "swift", // iOS 10 is only supported on iPhone 5 or higher.
-            Arm64 => match abi {
+            Arm(V7K) => "cortex-a8",
+            Arm(V7S) => "swift",
+            Aarch64(V8A) => match abi {
                 TargetAbi::Normal => "apple-a7",
                 TargetAbi::Simulator => "apple-a12",
                 TargetAbi::MacCatalyst => "apple-a12",
             },
-            Arm64e => "apple-a12",
-            Arm64_32 => "apple-s4",
+            Aarch64(E) => "apple-a12",
+            Aarch64(_32) => "apple-s4",
             // Only macOS 10.12+ is supported, which means
             // all x86_64/x86 CPUs must be running at least penryn
             // https://github.com/llvm/llvm-project/blob/01f924d0e37a5deae51df0d77e10a15b63aa0c0f/clang/lib/Driver/ToolChains/Arch/X86.cpp#L79-L82
-            I386 | I686 => "penryn",
-            X86_64 => "penryn",
+            X86_32(AppleI386) | X86_32(ClangI686) => "penryn",
+            X86_64(X64) => "penryn",
             // Note: `core-avx2` is slightly more advanced than `x86_64h`, see
             // comments (and disabled features) in `x86_64h_apple_darwin` for
             // details. It is a higher baseline then `penryn` however.
-            X86_64h => "core-avx2",
+            X86_64(Haswell) => "core-avx2",
+            X86_32(_) => unreachable!(),
+            X86_64(..) => unreachable!(),
+            Arm(..) => unreachable!(),
         }
     }
 
     fn stack_probes(self) -> StackProbeType {
         match self {
-            Armv7k | Armv7s => StackProbeType::None,
-            Arm64 | Arm64e | Arm64_32 | I386 | I686 | X86_64 | X86_64h => StackProbeType::Inline,
+            Arm(V7K) | Arm(V7S) => StackProbeType::None,
+            Aarch64(V8A) | Aarch64(E) | Aarch64(_32) | X86_32(AppleI386) | X86_32(ClangI686)
+            | X86_64(X64) | X86_64(Haswell) => StackProbeType::Inline,
+            _ => unreachable!(),
         }
     }
 }
@@ -126,10 +124,10 @@ pub(crate) fn base(
         default_dwarf_version: 4,
         frame_pointer: match arch {
             // clang ignores `-fomit-frame-pointer` for Armv7, it only accepts `-momit-leaf-frame-pointer`
-            Armv7k | Armv7s => FramePointer::Always,
+            Arm(..) => FramePointer::Always,
             // clang supports omitting frame pointers for the rest, but... don't?
-            Arm64 | Arm64e | Arm64_32 => FramePointer::NonLeaf,
-            I386 | I686 | X86_64 | X86_64h => FramePointer::Always,
+            Aarch64(..) => FramePointer::NonLeaf,
+            X86_32(..) | X86_64(..) => FramePointer::Always,
         },
         has_rpath: true,
         dll_suffix: ".dylib".into(),
@@ -164,7 +162,7 @@ pub(crate) fn base(
 
         ..Default::default()
     };
-    if matches!(arch, Arch::I386 | Arch::I686) {
+    if matches!(arch, Arch::X86_32(..)) {
         // All Apple x86-32 targets have SSE2.
         opts.rustc_abi = Some(RustcAbi::X86Sse2);
     }
