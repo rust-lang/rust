@@ -377,24 +377,25 @@ fn update_target_reliable_float_cfg(sess: &Session, cfg: &mut TargetConfig) {
     let target_abi = sess.target.options.abi.as_ref();
     let target_pointer_width = sess.target.pointer_width;
     let version = get_version();
+    let lt_20_1_1 = version < (20, 1, 1);
+    let lt_21_0_0 = version < (21, 0, 0);
 
     cfg.has_reliable_f16 = match (target_arch, target_os) {
-        // Selection failure <https://github.com/llvm/llvm-project/issues/50374>
-        ("s390x", _) => false,
-        // LLVM crash without neon <https://github.com/llvm/llvm-project/issues/129394> (now fixed)
+        // LLVM crash without neon <https://github.com/llvm/llvm-project/issues/129394> (fixed in llvm20)
         ("aarch64", _)
-            if !cfg.target_features.iter().any(|f| f.as_str() == "neon")
-                && version < (20, 1, 1) =>
+            if !cfg.target_features.iter().any(|f| f.as_str() == "neon") && lt_20_1_1 =>
         {
             false
         }
         // Unsupported <https://github.com/llvm/llvm-project/issues/94434>
         ("arm64ec", _) => false,
+        // Selection failure <https://github.com/llvm/llvm-project/issues/50374> (fixed in llvm21)
+        ("s390x", _) if lt_21_0_0 => false,
         // MinGW ABI bugs <https://gcc.gnu.org/bugzilla/show_bug.cgi?id=115054>
         ("x86_64", "windows") if target_env == "gnu" && target_abi != "llvm" => false,
         // Infinite recursion <https://github.com/llvm/llvm-project/issues/97981>
         ("csky", _) => false,
-        ("hexagon", _) => false,
+        ("hexagon", _) if lt_21_0_0 => false, // (fixed in llvm21)
         ("powerpc" | "powerpc64", _) => false,
         ("sparc" | "sparc64", _) => false,
         ("wasm32" | "wasm64", _) => false,
@@ -407,9 +408,10 @@ fn update_target_reliable_float_cfg(sess: &Session, cfg: &mut TargetConfig) {
     cfg.has_reliable_f128 = match (target_arch, target_os) {
         // Unsupported <https://github.com/llvm/llvm-project/issues/94434>
         ("arm64ec", _) => false,
-        // Selection bug <https://github.com/llvm/llvm-project/issues/96432>
-        ("mips64" | "mips64r6", _) => false,
-        // Selection bug <https://github.com/llvm/llvm-project/issues/95471>
+        // Selection bug <https://github.com/llvm/llvm-project/issues/96432> (fixed in llvm20)
+        ("mips64" | "mips64r6", _) if lt_20_1_1 => false,
+        // Selection bug <https://github.com/llvm/llvm-project/issues/95471>. This issue is closed
+        // but basic math still does not work.
         ("nvptx64", _) => false,
         // Unsupported https://github.com/llvm/llvm-project/issues/121122
         ("amdgpu", _) => false,
@@ -419,8 +421,8 @@ fn update_target_reliable_float_cfg(sess: &Session, cfg: &mut TargetConfig) {
         // ABI unsupported  <https://github.com/llvm/llvm-project/issues/41838>
         ("sparc", _) => false,
         // Stack alignment bug <https://github.com/llvm/llvm-project/issues/77401>. NB: tests may
-        // not fail if our compiler-builtins is linked.
-        ("x86", _) => false,
+        // not fail if our compiler-builtins is linked. (fixed in llvm21)
+        ("x86", _) if lt_21_0_0 => false,
         // MinGW ABI bugs <https://gcc.gnu.org/bugzilla/show_bug.cgi?id=115054>
         ("x86_64", "windows") if target_env == "gnu" && target_abi != "llvm" => false,
         // There are no known problems on other platforms, so the only requirement is that symbols
