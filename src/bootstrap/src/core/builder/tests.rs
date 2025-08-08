@@ -985,6 +985,7 @@ mod snapshot {
                 .render_steps(), @r"
         [build] llvm <host>
         [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 1 <host> -> std 1 <host>
         [build] rustc 1 <host> -> std 1 <target1>
         [build] rustc 1 <host> -> cargo 2 <target1>
         ");

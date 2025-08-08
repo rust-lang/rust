@@ -334,7 +334,8 @@ pub fn prepare_tool_cargo(
 /// Determines how to build a `ToolTarget`, i.e. which compiler should be used to compile it.
 /// The compiler stage is automatically bumped if we need to cross-compile a stage 1 tool.
 pub enum ToolTargetBuildMode {
-    /// Build the tool using rustc that corresponds to the selected CLI stage.
+    /// Build the tool for the given `target` using rustc that corresponds to the top CLI
+    /// stage.
     Build(TargetSelection),
     /// Build the tool so that it can be attached to the sysroot of the passed compiler.
     /// Since we always dist stage 2+, the compiler that builds the tool in this case has to be
@@ -366,7 +367,10 @@ pub(crate) fn get_tool_target_compiler(
     } else {
         // If we are cross-compiling a stage 1 tool, we cannot do that with a stage 0 compiler,
         // so we auto-bump the tool's stage to 2, which means we need a stage 1 compiler.
-        builder.compiler(build_compiler_stage.max(1), builder.host_target)
+        let build_compiler = builder.compiler(build_compiler_stage.max(1), builder.host_target);
+        // We also need the host stdlib to compile host code (proc macros/build scripts)
+        builder.std(build_compiler, builder.host_target);
+        build_compiler
     };
     builder.std(compiler, target);
     compiler
