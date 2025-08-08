@@ -298,7 +298,7 @@ macro_rules! lint_any {
                 let target = self.target;
 
                 if !builder.download_rustc() {
-                    builder.ensure(check::Rustc::new(builder, build_compiler, target));
+                    builder.ensure(check::Rustc::new(builder, target, vec![]));
                 };
 
                 let cargo = prepare_tool_cargo(
