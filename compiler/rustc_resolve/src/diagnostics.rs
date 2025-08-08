@@ -1041,28 +1041,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     }
                 }
                 Scope::DeriveHelpersCompat => {
-                    let res = Res::NonMacroAttr(NonMacroAttrKind::DeriveHelperCompat);
-                    if filter_fn(res) {
-                        for derive in parent_scope.derives {
-                            let parent_scope = &ParentScope { derives: &[], ..*parent_scope };
-                            let Ok((Some(ext), _)) = this.reborrow().resolve_macro_path(
-                                derive,
-                                MacroKind::Derive,
-                                parent_scope,
-                                false,
-                                false,
-                                None,
-                                None,
-                            ) else {
-                                continue;
-                            };
-                            suggestions.extend(
-                                ext.helper_attrs
-                                    .iter()
-                                    .map(|name| TypoSuggestion::typo_from_name(*name, res)),
-                            );
-                        }
-                    }
+                    // Never recommend deprecated helper attributes.
                 }
                 Scope::MacroRules(macro_rules_scope) => {
                     if let MacroRulesScope::Binding(macro_rules_binding) = macro_rules_scope.get() {

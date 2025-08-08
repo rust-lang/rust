@@ -459,11 +459,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         }
                     }
                     Scope::DeriveHelpersCompat => {
-                        // FIXME: Try running this logic earlier, to allocate name bindings for
-                        // legacy derive helpers when creating an attribute invocation with
-                        // following derives. Legacy derive helpers are not common, so it shouldn't
-                        // affect performance. It should also allow to remove the `derives`
-                        // component from `ParentScope`.
                         let mut result = Err(Determinacy::Determined);
                         for derive in parent_scope.derives {
                             let parent_scope = &ParentScope { derives: &[], ..*parent_scope };
