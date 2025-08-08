@@ -2,6 +2,7 @@
 
 use std::cell::Cell;
 use std::mem;
+use std::ops::Deref;
 
 use rustc_ast::NodeId;
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
@@ -40,6 +41,53 @@ use crate::{
 };
 
 type Res = def::Res<NodeId>;
+
+pub(crate) struct ImportResolver<'r, 'ra, 'tcx> {
+    r: CmResolver<'r, 'ra, 'tcx>, // always immutable
+    batch: Vec<Import<'ra>>,      // a.k.a. indeterminate_imports, also treated as output
+
+    // outputs
+    determined_imports: Vec<Import<'ra>>,
+}
+
+struct ImportResolutionOutputs<'ra> {
+    indeterminate_imports: Vec<Import<'ra>>,
+    determined_imports: Vec<Import<'ra>>,
+}
+
+impl<'r, 'ra, 'tcx> ImportResolver<'r, 'ra, 'tcx> {
+    pub(crate) fn new(cmr: CmResolver<'r, 'ra, 'tcx>, batch: Vec<Import<'ra>>) -> Self {
+        ImportResolver { r: cmr, batch, determined_imports: Vec::new() }
+    }
+
+    fn into_outputs(self) -> ImportResolutionOutputs<'ra> {
+        ImportResolutionOutputs {
+            indeterminate_imports: self.batch,
+            determined_imports: self.determined_imports,
+        }
+    }
+}
+
+impl<'ra> ImportResolutionOutputs<'ra> {
+    fn commit<'tcx>(self, r: &mut Resolver<'ra, 'tcx>) {
+        r.indeterminate_imports = self.indeterminate_imports;
+        r.determined_imports.extend(self.determined_imports);
+    }
+}
+
+impl<'r, 'ra, 'tcx> Deref for ImportResolver<'r, 'ra, 'tcx> {
+    type Target = Resolver<'ra, 'tcx>;
+
+    fn deref(&self) -> &Self::Target {
+        self.r.deref()
+    }
+}
+
+impl<'r, 'ra, 'tcx> AsRef<Resolver<'ra, 'tcx>> for ImportResolver<'r, 'ra, 'tcx> {
+    fn as_ref(&self) -> &Resolver<'ra, 'tcx> {
+        self.r.as_ref()
+    }
+}
 
 /// A [`NameBinding`] in the process of being resolved.
 #[derive(Clone, Copy, Default, PartialEq)]
@@ -552,22 +600,32 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     /// Resolves all imports for the crate. This method performs the fixed-
     /// point iteration.
     pub(crate) fn resolve_imports(&mut self) {
-        self.assert_speculative = true;
         let mut prev_indeterminate_count = usize::MAX;
         let mut indeterminate_count = self.indeterminate_imports.len() * 3;
         while indeterminate_count < prev_indeterminate_count {
+            self.assert_speculative = true;
             prev_indeterminate_count = indeterminate_count;
-            indeterminate_count = 0;
-            for import in mem::take(&mut self.indeterminate_imports) {
-                let import_indeterminate_count = self.cm().resolve_import(import);
-                indeterminate_count += import_indeterminate_count;
-                match import_indeterminate_count {
-                    0 => self.determined_imports.push(import),
-                    _ => self.indeterminate_imports.push(import),
-                }
+            let batch = mem::take(&mut self.indeterminate_imports);
+            let (outputs, count) = ImportResolver::new(self.cm(), batch).resolve_batch();
+            indeterminate_count = count;
+            self.assert_speculative = false;
+            outputs.commit(self);
+        }
+    }
+
+    fn resolve_batch<'r>(
+        mut self: ImportResolver<'r, 'ra, 'tcx>,
+    ) -> (ImportResolutionOutputs<'ra>, usize) {
+        let mut indeterminate_count = 0;
+        for import in mem::take(&mut self.batch) {
+            let import_indeterminate_count = self.resolve_import(import);
+            indeterminate_count += import_indeterminate_count;
+            match import_indeterminate_count {
+                0 => self.determined_imports.push(import),
+                _ => self.batch.push(import),
             }
         }
-        self.assert_speculative = false;
+        (self.into_outputs(), indeterminate_count)
     }
 
     pub(crate) fn finalize_imports(&mut self) {
@@ -840,7 +898,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     ///
     /// Meanwhile, if resolve successful, the resolved bindings are written
     /// into the module.
-    fn resolve_import<'r>(mut self: CmResolver<'r, 'ra, 'tcx>, import: Import<'ra>) -> usize {
+    fn resolve_import<'r>(self: &mut ImportResolver<'r, 'ra, 'tcx>, import: Import<'ra>) -> usize {
         debug!(
             "(resolving import for module) resolving import `{}::...` in `{}`",
             Segment::names_to_string(&import.module_path),
@@ -849,7 +907,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let module = if let Some(module) = import.imported_module.get() {
             module
         } else {
-            let path_res = self.reborrow().maybe_resolve_path(
+            let path_res = self.r.reborrow().maybe_resolve_path(
                 &import.module_path,
                 None,
                 &import.parent_scope,
@@ -871,14 +929,14 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             ImportKind::Glob { .. } => {
                 // FIXME: Use mutable resolver directly as a hack, this should be an output of
                 // specualtive resolution.
-                self.get_mut_unchecked().resolve_glob_import(import);
+                self.r.get_mut_unchecked().resolve_glob_import(import);
                 return 0;
             }
             _ => unreachable!(),
         };
 
         let mut indeterminate_count = 0;
-        self.per_ns_cm(|this, ns| {
+        self.r.reborrow().per_ns_cm(|this, ns| {
             if !type_ns_only || ns == TypeNS {
                 if bindings[ns].get() != PendingBinding::Pending {
                     return;
