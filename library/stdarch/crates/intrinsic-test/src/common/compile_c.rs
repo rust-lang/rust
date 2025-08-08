@@ -37,9 +37,9 @@ impl CompilationCommandBuilder {
         self
     }
 
-    pub fn add_arch_flags(mut self, flags: Vec<&str>) -> Self {
-        let mut new_arch_flags = flags.into_iter().map(|v| v.to_string()).collect();
-        self.arch_flags.append(&mut new_arch_flags);
+    pub fn add_arch_flags<'a>(mut self, flags: impl IntoIterator<Item = &'a str>) -> Self {
+        self.arch_flags
+            .extend(flags.into_iter().map(|s| s.to_owned()));
 
         self
     }
@@ -55,14 +55,15 @@ impl CompilationCommandBuilder {
         self
     }
 
-    pub fn add_extra_flags(mut self, flags: Vec<&str>) -> Self {
-        let mut flags: Vec<String> = flags.into_iter().map(|f| f.to_string()).collect();
-        self.extra_flags.append(&mut flags);
+    pub fn add_extra_flags<'a>(mut self, flags: impl IntoIterator<Item = &'a str>) -> Self {
+        self.extra_flags
+            .extend(flags.into_iter().map(|s| s.to_owned()));
+
         self
     }
 
     pub fn add_extra_flag(self, flag: &str) -> Self {
-        self.add_extra_flags(vec![flag])
+        self.add_extra_flags([flag])
     }
 }
 
