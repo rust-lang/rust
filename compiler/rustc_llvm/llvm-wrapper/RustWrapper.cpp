@@ -1204,15 +1204,6 @@ LLVMRustDIBuilderGetOrCreateSubrange(LLVMDIBuilderRef Builder, int64_t Lo,
   return wrap(unwrap(Builder)->getOrCreateSubrange(Lo, Count));
 }
 
-extern "C" LLVMMetadataRef
-LLVMRustDIBuilderGetOrCreateArray(LLVMDIBuilderRef Builder,
-                                  LLVMMetadataRef *Ptr, unsigned Count) {
-  Metadata **DataValue = unwrap(Ptr);
-  return wrap(unwrap(Builder)
-                  ->getOrCreateArray(ArrayRef<Metadata *>(DataValue, Count))
-                  .get());
-}
-
 extern "C" void
 LLVMRustDIBuilderInsertDeclareAtEnd(LLVMDIBuilderRef Builder, LLVMValueRef V,
                                     LLVMMetadataRef VarInfo, uint64_t *AddrOps,

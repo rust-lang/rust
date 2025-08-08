@@ -1846,6 +1846,12 @@ unsafe extern "C" {
         Name: *const c_char,
         NameLen: size_t,
     ) -> &'ll DIDerivedType;
+
+    pub(crate) fn LLVMDIBuilderGetOrCreateTypeArray<'ll>(
+        Builder: &DIBuilder<'ll>,
+        Data: *const Option<&'ll DIDescriptor>, //FIXME: is it really const?
+        Length: size_t,
+    ) -> &'ll DIArray;
 }
 
 #[link(name = "llvm-wrapper", kind = "static")]
@@ -2309,12 +2315,6 @@ unsafe extern "C" {
         Lo: i64,
         Count: i64,
     ) -> &'a DISubrange;
-
-    pub(crate) fn LLVMRustDIBuilderGetOrCreateArray<'a>(
-        Builder: &DIBuilder<'a>,
-        Ptr: *const Option<&'a DIDescriptor>,
-        Count: c_uint,
-    ) -> &'a DIArray;
 
     pub(crate) fn LLVMRustDIBuilderInsertDeclareAtEnd<'a>(
         Builder: &DIBuilder<'a>,

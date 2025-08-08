@@ -1,5 +1,6 @@
 // Utility Functions.
 
+use libc::size_t;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::layout::{HasTypingEnv, LayoutOf};
 use rustc_middle::ty::{self, Ty};
@@ -28,7 +29,7 @@ pub(crate) fn create_DIArray<'ll>(
     builder: &DIBuilder<'ll>,
     arr: &[Option<&'ll DIDescriptor>],
 ) -> &'ll DIArray {
-    unsafe { llvm::LLVMRustDIBuilderGetOrCreateArray(builder, arr.as_ptr(), arr.len() as u32) }
+    unsafe { llvm::LLVMDIBuilderGetOrCreateTypeArray(builder, arr.as_ptr(), arr.len() as size_t) }
 }
 
 #[inline]
