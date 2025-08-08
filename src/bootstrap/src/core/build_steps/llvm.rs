@@ -196,7 +196,10 @@ pub(crate) fn detect_llvm_freshness(config: &Config, is_git: bool) -> PathFreshn
 ///
 /// This checks the build triple platform to confirm we're usable at all, and if LLVM
 /// with/without assertions is available.
-pub(crate) fn is_ci_llvm_available_for_target(config: &Config, asserts: bool) -> bool {
+pub(crate) fn is_ci_llvm_available_for_target(
+    host_target: &TargetSelection,
+    asserts: bool,
+) -> bool {
     // This is currently all tier 1 targets and tier 2 targets with host tools
     // (since others may not have CI artifacts)
     // https://doc.rust-lang.org/rustc/platform-support.html#tier-1
@@ -235,8 +238,8 @@ pub(crate) fn is_ci_llvm_available_for_target(config: &Config, asserts: bool) ->
         ("x86_64-unknown-netbsd", false),
     ];
 
-    if !supported_platforms.contains(&(&*config.host_target.triple, asserts))
-        && (asserts || !supported_platforms.contains(&(&*config.host_target.triple, true)))
+    if !supported_platforms.contains(&(&*host_target.triple, asserts))
+        && (asserts || !supported_platforms.contains(&(&*host_target.triple, true)))
     {
         return false;
     }

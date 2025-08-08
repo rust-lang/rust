@@ -1200,8 +1200,19 @@ impl Config {
         config.llvm_enable_warnings = llvm_enable_warnings.unwrap_or(false);
         config.llvm_build_config = llvm_build_config.clone().unwrap_or(Default::default());
 
-        config.llvm_from_ci =
-            config.parse_download_ci_llvm(llvm_download_ci_llvm, config.llvm_assertions);
+        config.llvm_from_ci = parse_download_ci_llvm(
+            &config.exec_ctx,
+            &config.submodules,
+            &config.stage0_metadata,
+            &config.src,
+            config.path_modification_cache.clone(),
+            &config.host_target,
+            &config.download_rustc_commit,
+            &config.rust_info,
+            config.is_running_on_ci,
+            llvm_download_ci_llvm,
+            config.llvm_assertions,
+        );
 
         if config.llvm_from_ci {
             let warn = |option: &str| {
@@ -1902,7 +1913,11 @@ impl Config {
             let has_changes = self.has_changes_from_upstream(LLVM_INVALIDATION_PATHS);
 
             // Return false if there are untracked changes, otherwise check if CI LLVM is available.
-            if has_changes { false } else { llvm::is_ci_llvm_available_for_target(self, asserts) }
+            if has_changes {
+                false
+            } else {
+                llvm::is_ci_llvm_available_for_target(&self.host_target, asserts)
+            }
         };
 
         match download_ci_llvm {
@@ -1921,7 +1936,7 @@ impl Config {
                 }
 
                 // If download-ci-llvm=true we also want to check that CI llvm is available
-                b && llvm::is_ci_llvm_available_for_target(self, asserts)
+                b && llvm::is_ci_llvm_available_for_target(&self.host_target, asserts)
             }
             StringOrBool::String(s) if s == "if-unchanged" => if_unchanged(),
             StringOrBool::String(other) => {
@@ -2461,4 +2476,227 @@ pub fn git_config(stage0_metadata: &build_helper::stage0_parser::Stage0) -> GitC
         nightly_branch: &stage0_metadata.config.nightly_branch,
         git_merge_commit_email: &stage0_metadata.config.git_merge_commit_email,
     }
+}
+
+pub fn parse_download_ci_llvm(
+    exec_ctx: &ExecutionContext,
+    submodules: &Option<bool>,
+    stage0_metadata: &build_helper::stage0_parser::Stage0,
+    src: &Path,
+    path_modification_cache: Arc<Mutex<HashMap<Vec<&'static str>, PathFreshness>>>,
+    host_target: &TargetSelection,
+    download_rustc_commit: &Option<String>,
+    rust_info: &channel::GitInfo,
+    is_running_on_ci: bool,
+    download_ci_llvm: Option<StringOrBool>,
+    asserts: bool,
+) -> bool {
+    // We don't ever want to use `true` on CI, as we should not
+    // download upstream artifacts if there are any local modifications.
+    let default = if is_running_on_ci {
+        StringOrBool::String("if-unchanged".to_string())
+    } else {
+        StringOrBool::Bool(true)
+    };
+    let download_ci_llvm = download_ci_llvm.unwrap_or(default);
+
+    let if_unchanged = || {
+        if rust_info.is_from_tarball() {
+            // Git is needed for running "if-unchanged" logic.
+            println!("ERROR: 'if-unchanged' is only compatible with Git managed sources.");
+            crate::exit!(1);
+        }
+
+        // Fetching the LLVM submodule is unnecessary for self-tests.
+        #[cfg(not(test))]
+        update_submodule(submodules, exec_ctx, src, rust_info, "src/llvm-project");
+
+        // Check for untracked changes in `src/llvm-project` and other important places.
+        let has_changes = has_changes_from_upstream(
+            stage0_metadata,
+            src,
+            path_modification_cache,
+            LLVM_INVALIDATION_PATHS,
+        );
+
+        // Return false if there are untracked changes, otherwise check if CI LLVM is available.
+        if has_changes {
+            false
+        } else {
+            llvm::is_ci_llvm_available_for_target(host_target, asserts)
+        }
+    };
+
+    match download_ci_llvm {
+        StringOrBool::Bool(b) => {
+            if !b && download_rustc_commit.is_some() {
+                panic!(
+                    "`llvm.download-ci-llvm` cannot be set to `false` if `rust.download-rustc` is set to `true` or `if-unchanged`."
+                );
+            }
+
+            if b && is_running_on_ci {
+                // On CI, we must always rebuild LLVM if there were any modifications to it
+                panic!(
+                    "`llvm.download-ci-llvm` cannot be set to `true` on CI. Use `if-unchanged` instead."
+                );
+            }
+
+            // If download-ci-llvm=true we also want to check that CI llvm is available
+            b && llvm::is_ci_llvm_available_for_target(host_target, asserts)
+        }
+        StringOrBool::String(s) if s == "if-unchanged" => if_unchanged(),
+        StringOrBool::String(other) => {
+            panic!("unrecognized option for download-ci-llvm: {other:?}")
+        }
+    }
+}
+
+pub fn has_changes_from_upstream(
+    stage0_metadata: &build_helper::stage0_parser::Stage0,
+    src: &Path,
+    path_modification_cache: Arc<Mutex<HashMap<Vec<&'static str>, PathFreshness>>>,
+    paths: &[&'static str],
+) -> bool {
+    match check_path_modifications_(stage0_metadata, src, path_modification_cache, paths) {
+        PathFreshness::LastModifiedUpstream { .. } => false,
+        PathFreshness::HasLocalModifications { .. } | PathFreshness::MissingUpstream => true,
+    }
+}
+
+#[cfg_attr(
+    feature = "tracing",
+    instrument(
+        level = "trace",
+        name = "Config::update_submodule",
+        skip_all,
+        fields(relative_path = ?relative_path),
+    ),
+)]
+pub(crate) fn update_submodule(
+    submodules: &Option<bool>,
+    exec_ctx: &ExecutionContext,
+    src: &Path,
+    rust_info: &channel::GitInfo,
+    relative_path: &str,
+) {
+    if rust_info.is_from_tarball() || !submodules_(submodules, rust_info) {
+        return;
+    }
+
+    let absolute_path = src.join(relative_path);
+
+    // NOTE: This check is required because `jj git clone` doesn't create directories for
+    // submodules, they are completely ignored. The code below assumes this directory exists,
+    // so create it here.
+    if !absolute_path.exists() {
+        t!(fs::create_dir_all(&absolute_path));
+    }
+
+    // NOTE: The check for the empty directory is here because when running x.py the first time,
+    // the submodule won't be checked out. Check it out now so we can build it.
+    if !git_info(exec_ctx, false, &absolute_path).is_managed_git_subrepository()
+        && !helpers::dir_is_empty(&absolute_path)
+    {
+        return;
+    }
+
+    // Submodule updating actually happens during in the dry run mode. We need to make sure that
+    // all the git commands below are actually executed, because some follow-up code
+    // in bootstrap might depend on the submodules being checked out. Furthermore, not all
+    // the command executions below work with an empty output (produced during dry run).
+    // Therefore, all commands below are marked with `run_in_dry_run()`, so that they also run in
+    // dry run mode.
+    let submodule_git = || {
+        let mut cmd = helpers::git(Some(&absolute_path));
+        cmd.run_in_dry_run();
+        cmd
+    };
+
+    // Determine commit checked out in submodule.
+    let checked_out_hash =
+        submodule_git().args(["rev-parse", "HEAD"]).run_capture_stdout(exec_ctx).stdout();
+    let checked_out_hash = checked_out_hash.trim_end();
+    // Determine commit that the submodule *should* have.
+    let recorded = helpers::git(Some(src))
+        .run_in_dry_run()
+        .args(["ls-tree", "HEAD"])
+        .arg(relative_path)
+        .run_capture_stdout(exec_ctx)
+        .stdout();
+
+    let actual_hash = recorded
+        .split_whitespace()
+        .nth(2)
+        .unwrap_or_else(|| panic!("unexpected output `{recorded}`"));
+
+    if actual_hash == checked_out_hash {
+        // already checked out
+        return;
+    }
+
+    println!("Updating submodule {relative_path}");
+
+    helpers::git(Some(src))
+        .allow_failure()
+        .run_in_dry_run()
+        .args(["submodule", "-q", "sync"])
+        .arg(relative_path)
+        .run(exec_ctx);
+
+    // Try passing `--progress` to start, then run git again without if that fails.
+    let update = |progress: bool| {
+        // Git is buggy and will try to fetch submodules from the tracking branch for *this* repository,
+        // even though that has no relation to the upstream for the submodule.
+        let current_branch = helpers::git(Some(src))
+            .allow_failure()
+            .run_in_dry_run()
+            .args(["symbolic-ref", "--short", "HEAD"])
+            .run_capture(exec_ctx);
+
+        let mut git = helpers::git(Some(&src)).allow_failure();
+        git.run_in_dry_run();
+        if current_branch.is_success() {
+            // If there is a tag named after the current branch, git will try to disambiguate by prepending `heads/` to the branch name.
+            // This syntax isn't accepted by `branch.{branch}`. Strip it.
+            let branch = current_branch.stdout();
+            let branch = branch.trim();
+            let branch = branch.strip_prefix("heads/").unwrap_or(branch);
+            git.arg("-c").arg(format!("branch.{branch}.remote=origin"));
+        }
+        git.args(["submodule", "update", "--init", "--recursive", "--depth=1"]);
+        if progress {
+            git.arg("--progress");
+        }
+        git.arg(relative_path);
+        git
+    };
+    if !update(true).allow_failure().run(exec_ctx) {
+        update(false).allow_failure().run(exec_ctx);
+    }
+
+    // Save any local changes, but avoid running `git stash pop` if there are none (since it will exit with an error).
+    // diff-index reports the modifications through the exit status
+    let has_local_modifications =
+        !submodule_git().allow_failure().args(["diff-index", "--quiet", "HEAD"]).run(exec_ctx);
+    if has_local_modifications {
+        submodule_git().allow_failure().args(["stash", "push"]).run(exec_ctx);
+    }
+
+    submodule_git().allow_failure().args(["reset", "-q", "--hard"]).run(exec_ctx);
+    submodule_git().allow_failure().args(["clean", "-qdfx"]).run(exec_ctx);
+
+    if has_local_modifications {
+        submodule_git().allow_failure().args(["stash", "pop"]).run(exec_ctx);
+    }
+}
+
+pub fn git_info(exec_ctx: &ExecutionContext, omit_git_hash: bool, dir: &Path) -> GitInfo {
+    GitInfo::new(omit_git_hash, dir, exec_ctx)
+}
+
+pub fn submodules_(submodules: &Option<bool>, rust_info: &channel::GitInfo) -> bool {
+    // If not specified in config, the default is to only manage
+    // submodules if we're currently inside a git repository.
+    submodules.unwrap_or(rust_info.is_managed_git_subrepository())
 }
