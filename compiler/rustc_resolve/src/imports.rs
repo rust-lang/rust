@@ -49,17 +49,25 @@ pub(crate) struct ImportResolver<'r, 'ra, 'tcx> {
     // outputs
     determined_imports: Vec<Import<'ra>>,
     glob_imports: Vec<Import<'ra>>,
+    import_bindings: PerNS<Vec<(Module<'ra>, Import<'ra>, PendingBinding<'ra>)>>,
 }
 
 struct ImportResolutionOutputs<'ra> {
     indeterminate_imports: Vec<Import<'ra>>,
     determined_imports: Vec<Import<'ra>>,
     glob_imports: Vec<Import<'ra>>,
+    import_bindings: PerNS<Vec<(Module<'ra>, Import<'ra>, PendingBinding<'ra>)>>,
 }
 
 impl<'r, 'ra, 'tcx> ImportResolver<'r, 'ra, 'tcx> {
     pub(crate) fn new(cmr: CmResolver<'r, 'ra, 'tcx>, batch: Vec<Import<'ra>>) -> Self {
-        ImportResolver { r: cmr, batch, determined_imports: Vec::new(), glob_imports: Vec::new() }
+        ImportResolver {
+            r: cmr,
+            batch,
+            determined_imports: Vec::new(),
+            glob_imports: Vec::new(),
+            import_bindings: PerNS::default(),
+        }
     }
 
     fn into_outputs(self) -> ImportResolutionOutputs<'ra> {
@@ -67,6 +75,7 @@ impl<'r, 'ra, 'tcx> ImportResolver<'r, 'ra, 'tcx> {
             indeterminate_imports: self.batch,
             determined_imports: self.determined_imports,
             glob_imports: self.glob_imports,
+            import_bindings: self.import_bindings,
         }
     }
 }
@@ -77,6 +86,27 @@ impl<'ra> ImportResolutionOutputs<'ra> {
         r.determined_imports.extend(self.determined_imports);
         for glob in self.glob_imports {
             r.resolve_glob_import(glob);
+        }
+
+        for (ns, import_bindings) in self.import_bindings.into_iter_with() {
+            for (parent, import, pending_binding) in import_bindings {
+                let ImportKind::Single { target, ref bindings, .. } = import.kind else {
+                    unreachable!();
+                };
+                match pending_binding {
+                    PendingBinding::Ready(Some(binding)) => {
+                        r.define_binding_local(parent, target, ns, binding);
+                    }
+                    PendingBinding::Ready(None) => {
+                        let key = BindingKey::new(target, ns);
+                        r.update_local_resolution(parent, key, false, |_, resolution| {
+                            resolution.single_imports.swap_remove(&import);
+                        });
+                    }
+                    _ => {}
+                }
+                bindings[ns].set(pending_binding);
+            }
         }
     }
 }
@@ -927,6 +957,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             }
         };
 
+        // FIXME: isolate if not a cache.
         import.imported_module.set(Some(module));
         let (source, target, bindings, type_ns_only) = match import.kind {
             ImportKind::Single { source, target, ref bindings, type_ns_only, .. } => {
@@ -953,7 +984,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     Some(import),
                 );
                 let parent = import.parent_scope.module;
-                let binding = match binding_result {
+                let pending_binding = match binding_result {
                     Ok(binding) => {
                         if binding.is_assoc_item()
                             && !this.tcx.features().import_trait_associated_functions()
@@ -968,39 +999,21 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         }
                         // We need the `target`, `source` can be extracted.
                         let imported_binding = this.import(binding, import);
-                        // FIXME: Use mutable resolver directly as a hack, this should be an output of
-                        // specualtive resolution.
-                        this.get_mut_unchecked().define_binding_local(
-                            parent,
-                            target,
-                            ns,
-                            imported_binding,
-                        );
                         PendingBinding::Ready(Some(imported_binding))
                     }
                     Err(Determinacy::Determined) => {
                         // Don't remove underscores from `single_imports`, they were never added.
-                        if target.name != kw::Underscore {
-                            let key = BindingKey::new(target, ns);
-                            // FIXME: Use mutable resolver directly as a hack, this should be an output of
-                            // specualtive resolution.
-                            this.get_mut_unchecked().update_local_resolution(
-                                parent,
-                                key,
-                                false,
-                                |_, resolution| {
-                                    resolution.single_imports.swap_remove(&import);
-                                },
-                            );
+                        if target.name == kw::Underscore {
+                            return;
                         }
                         PendingBinding::Ready(None)
                     }
                     Err(Determinacy::Undetermined) => {
                         indeterminate_count += 1;
-                        PendingBinding::Pending
+                        return;
                     }
                 };
-                bindings[ns].set(binding);
+                self.import_bindings[ns].push((parent, import, pending_binding));
             }
         });
 
