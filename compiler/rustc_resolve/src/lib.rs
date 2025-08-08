@@ -12,6 +12,7 @@
 #![allow(rustc::untranslatable_diagnostic)]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
+#![feature(arbitrary_self_types)]
 #![feature(assert_matches)]
 #![feature(box_patterns)]
 #![feature(if_let_guard)]
@@ -162,11 +163,11 @@ struct ParentScope<'ra> {
 impl<'ra> ParentScope<'ra> {
     /// Creates a parent scope with the passed argument used as the module scope component,
     /// and other scope components set to default empty values.
-    fn module(module: Module<'ra>, resolver: &Resolver<'ra, '_>) -> ParentScope<'ra> {
+    fn module(module: Module<'ra>, arenas: &'ra ResolverArenas<'ra>) -> ParentScope<'ra> {
         ParentScope {
             module,
             expansion: LocalExpnId::ROOT,
-            macro_rules: resolver.arenas.alloc_macro_rules_scope(MacroRulesScope::Empty),
+            macro_rules: arenas.alloc_macro_rules_scope(MacroRulesScope::Empty),
             derives: &[],
         }
     }
@@ -1054,6 +1055,9 @@ pub struct Resolver<'ra, 'tcx> {
 
     graph_root: Module<'ra>,
 
+    /// Assert that we are in speculative resolution mode.
+    assert_speculative: bool,
+
     prelude: Option<Module<'ra>>,
     extern_prelude: FxIndexMap<Macros20NormalizedIdent, ExternPreludeEntry<'ra>>,
 
@@ -1156,10 +1160,11 @@ pub struct Resolver<'ra, 'tcx> {
     unused_macro_rules: FxIndexMap<NodeId, DenseBitSet<usize>>,
     proc_macro_stubs: FxHashSet<LocalDefId>,
     /// Traces collected during macro resolution and validated when it's complete.
+    // FIXME: Remove interior mutability when speculative resolution produces these as outputs.
     single_segment_macro_resolutions:
-        Vec<(Ident, MacroKind, ParentScope<'ra>, Option<NameBinding<'ra>>, Option<Span>)>,
+        RefCell<Vec<(Ident, MacroKind, ParentScope<'ra>, Option<NameBinding<'ra>>, Option<Span>)>>,
     multi_segment_macro_resolutions:
-        Vec<(Vec<Segment>, Span, MacroKind, ParentScope<'ra>, Option<Res>, Namespace)>,
+        RefCell<Vec<(Vec<Segment>, Span, MacroKind, ParentScope<'ra>, Option<Res>, Namespace)>>,
     builtin_attrs: Vec<(Ident, ParentScope<'ra>)>,
     /// `derive(Copy)` marks items they are applied to so they are treated specially later.
     /// Derive macros cannot modify the item themselves and have to store the markers in the global
@@ -1527,6 +1532,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             // The outermost module has def ID 0; this is not reflected in the
             // AST.
             graph_root,
+            assert_speculative: false, // Only set/cleared in Resolver::resolve_imports for now
             prelude: None,
             extern_prelude,
 
@@ -1644,7 +1650,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             impl_trait_names: Default::default(),
         };
 
-        let root_parent_scope = ParentScope::module(graph_root, &resolver);
+        let root_parent_scope = ParentScope::module(graph_root, resolver.arenas);
         resolver.invocation_parent_scopes.insert(LocalExpnId::ROOT, root_parent_scope);
         resolver.feed_visibility(crate_feed, Visibility::Public);
 
@@ -1792,11 +1798,28 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         }
     }
 
+    /// Returns a conditionally mutable resolver.
+    ///
+    /// Currently only dependent on `assert_speculative`, if `assert_speculative` is false,
+    /// the resolver will allow mutation; otherwise, it will be immutable.
+    fn cm(&mut self) -> CmResolver<'_, 'ra, 'tcx> {
+        CmResolver::new(self, !self.assert_speculative)
+    }
+
     /// Runs the function on each namespace.
     fn per_ns<F: FnMut(&mut Self, Namespace)>(&mut self, mut f: F) {
         f(self, TypeNS);
         f(self, ValueNS);
         f(self, MacroNS);
+    }
+
+    fn per_ns_cm<'r, F: FnMut(&mut CmResolver<'r, 'ra, 'tcx>, Namespace)>(
+        mut self: CmResolver<'r, 'ra, 'tcx>,
+        mut f: F,
+    ) {
+        f(&mut self, TypeNS);
+        f(&mut self, ValueNS);
+        f(&mut self, MacroNS);
     }
 
     fn is_builtin_macro(&self, res: Res) -> bool {
@@ -1852,14 +1875,14 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             }
         }
 
-        self.visit_scopes(ScopeSet::All(TypeNS), parent_scope, ctxt, |this, scope, _, _| {
+        self.cm().visit_scopes(ScopeSet::All(TypeNS), parent_scope, ctxt, |this, scope, _, _| {
             match scope {
                 Scope::Module(module, _) => {
-                    this.traits_in_module(module, assoc_item, &mut found_traits);
+                    this.get_mut().traits_in_module(module, assoc_item, &mut found_traits);
                 }
                 Scope::StdLibPrelude => {
                     if let Some(module) = this.prelude {
-                        this.traits_in_module(module, assoc_item, &mut found_traits);
+                        this.get_mut().traits_in_module(module, assoc_item, &mut found_traits);
                     }
                 }
                 Scope::ExternPrelude | Scope::ToolPrelude | Scope::BuiltinTypes => {}
@@ -2002,14 +2025,17 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 // Do not report the lint if the macro name resolves in stdlib prelude
                 // even without the problematic `macro_use` import.
                 let found_in_stdlib_prelude = self.prelude.is_some_and(|prelude| {
-                    self.maybe_resolve_ident_in_module(
-                        ModuleOrUniformRoot::Module(prelude),
-                        ident,
-                        MacroNS,
-                        &ParentScope::module(self.empty_module, self),
-                        None,
-                    )
-                    .is_ok()
+                    let empty_module = self.empty_module;
+                    let arenas = self.arenas;
+                    self.cm()
+                        .maybe_resolve_ident_in_module(
+                            ModuleOrUniformRoot::Module(prelude),
+                            ident,
+                            MacroNS,
+                            &ParentScope::module(empty_module, arenas),
+                            None,
+                        )
+                        .is_ok()
                 });
                 if !found_in_stdlib_prelude {
                     self.lint_buffer().buffer_lint(
@@ -2180,7 +2206,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         }
     }
 
-    fn extern_prelude_get(&mut self, ident: Ident, finalize: bool) -> Option<NameBinding<'ra>> {
+    fn extern_prelude_get<'r>(
+        mut self: CmResolver<'r, 'ra, 'tcx>,
+        ident: Ident,
+        finalize: bool,
+    ) -> Option<NameBinding<'ra>> {
         let mut record_use = None;
         let entry = self.extern_prelude.get(&Macros20NormalizedIdent::new(ident));
         let binding = entry.and_then(|entry| match entry.binding.get() {
@@ -2216,7 +2246,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         });
 
         if let Some(binding) = record_use {
-            self.record_use(ident, binding, Used::Scope);
+            self.get_mut().record_use(ident, binding, Used::Scope);
         }
 
         binding
@@ -2251,7 +2281,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             .collect();
         let Ok(segments) = segments else { return None };
 
-        match self.maybe_resolve_path(&segments, Some(ns), &parent_scope, None) {
+        match self.cm().maybe_resolve_path(&segments, Some(ns), &parent_scope, None) {
             PathResult::Module(ModuleOrUniformRoot::Module(module)) => Some(module.res().unwrap()),
             PathResult::NonModule(path_res) => {
                 path_res.full_res().filter(|res| !matches!(res, Res::Def(DefKind::Ctor(..), _)))
@@ -2330,9 +2360,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     fn resolve_main(&mut self) {
         let module = self.graph_root;
         let ident = Ident::with_dummy_span(sym::main);
-        let parent_scope = &ParentScope::module(module, self);
+        let parent_scope = &ParentScope::module(module, self.arenas);
 
-        let Ok(name_binding) = self.maybe_resolve_ident_in_module(
+        let Ok(name_binding) = self.cm().maybe_resolve_ident_in_module(
             ModuleOrUniformRoot::Module(module),
             ident,
             ValueNS,
@@ -2426,3 +2456,63 @@ impl Finalize {
 pub fn provide(providers: &mut Providers) {
     providers.registered_tools = macros::registered_tools;
 }
+
+mod ref_mut {
+    use std::ops::Deref;
+
+    /// A wrapper around a mutable reference that conditionally allows mutable access.
+    pub(crate) struct RefOrMut<'a, T> {
+        p: &'a mut T,
+        mutable: bool,
+    }
+
+    impl<'a, T> Deref for RefOrMut<'a, T> {
+        type Target = T;
+
+        fn deref(&self) -> &Self::Target {
+            self.p
+        }
+    }
+
+    impl<'a, T> AsRef<T> for RefOrMut<'a, T> {
+        fn as_ref(&self) -> &T {
+            self.p
+        }
+    }
+
+    impl<'a, T> RefOrMut<'a, T> {
+        pub(crate) fn new(p: &'a mut T, mutable: bool) -> Self {
+            RefOrMut { p, mutable }
+        }
+
+        /// This is needed because this wraps a `&mut T` and is therefore not `Copy`.
+        pub(crate) fn reborrow(&mut self) -> RefOrMut<'_, T> {
+            RefOrMut { p: self.p, mutable: self.mutable }
+        }
+
+        /// Returns a mutable reference to the inner value if allowed.
+        ///
+        /// # Panics
+        /// Panics if the `mutable` flag is false.
+        #[track_caller]
+        pub(crate) fn get_mut(&mut self) -> &mut T {
+            match self.mutable {
+                false => panic!("Can't mutably borrow speculative resolver"),
+                true => self.p,
+            }
+        }
+
+        /// Returns a mutable reference to the inner value without checking if
+        /// it's in a mutable state.
+        pub(crate) fn get_mut_unchecked(&mut self) -> &mut T {
+            self.p
+        }
+    }
+}
+
+/// A wrapper around `&mut Resolver` that may be mutable or immutable, depending on a conditions.
+///
+/// `Cm` stands for "conditionally mutable".
+///
+/// Prefer constructing it through [`Resolver::cm`] to ensure correctness.
+type CmResolver<'r, 'ra, 'tcx> = ref_mut::RefOrMut<'r, Resolver<'ra, 'tcx>>;

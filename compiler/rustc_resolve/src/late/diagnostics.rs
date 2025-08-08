@@ -2389,7 +2389,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
 
         // Look for associated items in the current trait.
         if let Some((module, _)) = self.current_trait_ref
-            && let Ok(binding) = self.r.maybe_resolve_ident_in_module(
+            && let Ok(binding) = self.r.cm().maybe_resolve_ident_in_module(
                 ModuleOrUniformRoot::Module(module),
                 ident,
                 ns,

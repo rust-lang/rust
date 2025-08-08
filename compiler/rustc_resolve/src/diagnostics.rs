@@ -469,13 +469,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
     pub(crate) fn lint_if_path_starts_with_module(
         &mut self,
-        finalize: Option<Finalize>,
+        finalize: Finalize,
         path: &[Segment],
         second_binding: Option<NameBinding<'_>>,
     ) {
-        let Some(Finalize { node_id, root_span, .. }) = finalize else {
-            return;
-        };
+        let Finalize { node_id, root_span, .. } = finalize;
 
         let first_name = match path.get(0) {
             // In the 2018 edition this lint is a hard error, so nothing to do
@@ -1029,7 +1027,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     ) -> Option<TypoSuggestion> {
         let mut suggestions = Vec::new();
         let ctxt = ident.span.ctxt();
-        self.visit_scopes(scope_set, parent_scope, ctxt, |this, scope, use_prelude, _| {
+        self.cm().visit_scopes(scope_set, parent_scope, ctxt, |this, scope, use_prelude, _| {
             match scope {
                 Scope::DeriveHelpers(expn_id) => {
                     let res = Res::NonMacroAttr(NonMacroAttrKind::DeriveHelper);
@@ -1048,7 +1046,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     if filter_fn(res) {
                         for derive in parent_scope.derives {
                             let parent_scope = &ParentScope { derives: &[], ..*parent_scope };
-                            let Ok((Some(ext), _)) = this.resolve_macro_path(
+                            let Ok((Some(ext), _)) = this.reborrow().resolve_macro_path(
                                 derive,
                                 Some(MacroKind::Derive),
                                 parent_scope,
@@ -1482,7 +1480,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     ) {
         // Bring imported but unused `derive` macros into `macro_map` so we ensure they can be used
         // for suggestions.
-        self.visit_scopes(
+        self.cm().visit_scopes(
             ScopeSet::Macro(MacroKind::Derive),
             &parent_scope,
             ident.span.ctxt(),
@@ -1591,7 +1589,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             });
         }
         for ns in [Namespace::MacroNS, Namespace::TypeNS, Namespace::ValueNS] {
-            let Ok(binding) = self.early_resolve_ident_in_lexical_scope(
+            let Ok(binding) = self.cm().early_resolve_ident_in_lexical_scope(
                 ident,
                 ScopeSet::All(ns),
                 parent_scope,
@@ -2271,16 +2269,17 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             if ns == TypeNS || ns == ValueNS {
                 let ns_to_try = if ns == TypeNS { ValueNS } else { TypeNS };
                 let binding = if let Some(module) = module {
-                    self.resolve_ident_in_module(
-                        module,
-                        ident,
-                        ns_to_try,
-                        parent_scope,
-                        None,
-                        ignore_binding,
-                        ignore_import,
-                    )
-                    .ok()
+                    self.cm()
+                        .resolve_ident_in_module(
+                            module,
+                            ident,
+                            ns_to_try,
+                            parent_scope,
+                            None,
+                            ignore_binding,
+                            ignore_import,
+                        )
+                        .ok()
                 } else if let Some(ribs) = ribs
                     && let Some(TypeNS | ValueNS) = opt_ns
                 {
@@ -2298,16 +2297,17 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         _ => None,
                     }
                 } else {
-                    self.early_resolve_ident_in_lexical_scope(
-                        ident,
-                        ScopeSet::All(ns_to_try),
-                        parent_scope,
-                        None,
-                        false,
-                        ignore_binding,
-                        ignore_import,
-                    )
-                    .ok()
+                    self.cm()
+                        .early_resolve_ident_in_lexical_scope(
+                            ident,
+                            ScopeSet::All(ns_to_try),
+                            parent_scope,
+                            None,
+                            false,
+                            ignore_binding,
+                            ignore_import,
+                        )
+                        .ok()
                 };
                 if let Some(binding) = binding {
                     msg = format!(
@@ -2401,7 +2401,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     },
                 )
             });
-            if let Ok(binding) = self.early_resolve_ident_in_lexical_scope(
+            if let Ok(binding) = self.cm().early_resolve_ident_in_lexical_scope(
                 ident,
                 ScopeSet::All(ValueNS),
                 parent_scope,
@@ -2531,7 +2531,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     ) -> Option<(Vec<Segment>, Option<String>)> {
         // Replace first ident with `self` and check if that is valid.
         path[0].ident.name = kw::SelfLower;
-        let result = self.maybe_resolve_path(&path, None, parent_scope, None);
+        let result = self.cm().maybe_resolve_path(&path, None, parent_scope, None);
         debug!(?path, ?result);
         if let PathResult::Module(..) = result { Some((path, None)) } else { None }
     }
@@ -2551,7 +2551,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     ) -> Option<(Vec<Segment>, Option<String>)> {
         // Replace first ident with `crate` and check if that is valid.
         path[0].ident.name = kw::Crate;
-        let result = self.maybe_resolve_path(&path, None, parent_scope, None);
+        let result = self.cm().maybe_resolve_path(&path, None, parent_scope, None);
         debug!(?path, ?result);
         if let PathResult::Module(..) = result {
             Some((
@@ -2583,7 +2583,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     ) -> Option<(Vec<Segment>, Option<String>)> {
         // Replace first ident with `crate` and check if that is valid.
         path[0].ident.name = kw::Super;
-        let result = self.maybe_resolve_path(&path, None, parent_scope, None);
+        let result = self.cm().maybe_resolve_path(&path, None, parent_scope, None);
         debug!(?path, ?result);
         if let PathResult::Module(..) = result { Some((path, None)) } else { None }
     }
@@ -2618,7 +2618,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         for name in extern_crate_names.into_iter() {
             // Replace first ident with a crate name and check if that is valid.
             path[0].ident.name = name;
-            let result = self.maybe_resolve_path(&path, None, parent_scope, None);
+            let result = self.cm().maybe_resolve_path(&path, None, parent_scope, None);
             debug!(?path, ?name, ?result);
             if let PathResult::Module(..) = result {
                 return Some((path, None));
