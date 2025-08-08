@@ -2,6 +2,7 @@
 
 use std::cell::Cell;
 use std::mem;
+use std::ops::Deref;
 
 use rustc_ast::NodeId;
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
@@ -40,6 +41,96 @@ use crate::{
 };
 
 type Res = def::Res<NodeId>;
+
+struct ImportResolver<'r, 'ra, 'tcx> {
+    r: CmResolver<'r, 'ra, 'tcx>, // always immutable
+    outputs: ImportResolutionOutputs<'ra>,
+}
+
+enum SideEffect<'ra> {
+    None,
+    Single { import_bindings: PerNS<PendingBinding<'ra>> },
+    Glob { import_bindings: Vec<(NameBinding<'ra>, BindingKey, bool /* warn_ambiguity */)> },
+}
+
+#[derive(Default)]
+struct ImportResolutionOutputs<'ra> {
+    indeterminate_imports: Vec<Import<'ra>>,
+    determined_imports: Vec<(Import<'ra>, SideEffect<'ra>)>,
+}
+
+impl<'ra> ImportResolutionOutputs<'ra> {
+    fn commit<'tcx>(self, r: &mut Resolver<'ra, 'tcx>) {
+        r.indeterminate_imports = self.indeterminate_imports;
+        r.determined_imports.reserve(self.determined_imports.len());
+
+        for (import, side_effect) in self.determined_imports {
+            r.determined_imports.push(import);
+
+            let parent = import.parent_scope.module;
+            match (&import.kind, side_effect) {
+                (
+                    ImportKind::Single { target, bindings, .. },
+                    SideEffect::Single { import_bindings },
+                ) => {
+                    for (ns, pending_binding) in import_bindings.into_iter_with() {
+                        match pending_binding {
+                            PendingBinding::Ready(Some(binding)) => {
+                                r.define_binding_local(parent, *target, ns, binding);
+                            }
+                            PendingBinding::Ready(None) => {
+                                let key = BindingKey::new(*target, ns);
+                                r.update_local_resolution(parent, key, false, |_, resolution| {
+                                    resolution.single_imports.swap_remove(&import);
+                                });
+                            }
+                            _ => {}
+                        }
+                        bindings[ns].set(pending_binding);
+                    }
+                }
+                (ImportKind::Glob { id, .. }, SideEffect::Glob { import_bindings }) => {
+                    let ModuleOrUniformRoot::Module(module) = import.imported_module.get().unwrap()
+                    else {
+                        unreachable!();
+                    };
+
+                    module.glob_importers.borrow_mut().push(import);
+
+                    for (binding, key, warn_ambiguity) in import_bindings {
+                        let _ = r.try_define_local(
+                            parent,
+                            key.ident.0,
+                            key.ns,
+                            binding,
+                            warn_ambiguity,
+                        );
+                    }
+
+                    r.record_partial_res(*id, PartialRes::new(module.res().unwrap()));
+                }
+
+                (_, SideEffect::None) => {}
+                // Something weird happened, which shouldn't have happened.
+                _ => unreachable!("Mismatched import kind and side effect"),
+            }
+        }
+    }
+}
+
+impl<'r, 'ra, 'tcx> Deref for ImportResolver<'r, 'ra, 'tcx> {
+    type Target = Resolver<'ra, 'tcx>;
+
+    fn deref(&self) -> &Self::Target {
+        self.r.deref()
+    }
+}
+
+impl<'r, 'ra, 'tcx> AsRef<Resolver<'ra, 'tcx>> for ImportResolver<'r, 'ra, 'tcx> {
+    fn as_ref(&self) -> &Resolver<'ra, 'tcx> {
+        self.r.as_ref()
+    }
+}
 
 /// A [`NameBinding`] in the process of being resolved.
 #[derive(Clone, Copy, Default, PartialEq)]
@@ -551,22 +642,34 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     /// Resolves all imports for the crate. This method performs the fixed-
     /// point iteration.
     pub(crate) fn resolve_imports(&mut self) {
-        self.assert_speculative = true;
         let mut prev_indeterminate_count = usize::MAX;
         let mut indeterminate_count = self.indeterminate_imports.len() * 3;
         while indeterminate_count < prev_indeterminate_count {
             prev_indeterminate_count = indeterminate_count;
-            indeterminate_count = 0;
-            for import in mem::take(&mut self.indeterminate_imports) {
-                let import_indeterminate_count = self.cm().resolve_import(import);
-                indeterminate_count += import_indeterminate_count;
-                match import_indeterminate_count {
-                    0 => self.determined_imports.push(import),
-                    _ => self.indeterminate_imports.push(import),
-                }
+            let batch = mem::take(&mut self.indeterminate_imports);
+            self.assert_speculative = true;
+            let (outputs, count) =
+                ImportResolver { r: self.cm(), outputs: Default::default() }.resolve_batch(batch);
+            self.assert_speculative = false;
+            indeterminate_count = count;
+            outputs.commit(self);
+        }
+    }
+
+    fn resolve_batch<'r>(
+        mut self: ImportResolver<'r, 'ra, 'tcx>,
+        batch: Vec<Import<'ra>>,
+    ) -> (ImportResolutionOutputs<'ra>, usize) {
+        let mut indeterminate_count = 0;
+        for import in batch {
+            let (side_effect, import_indeterminate_count) = self.resolve_import(import);
+            indeterminate_count += import_indeterminate_count;
+            match import_indeterminate_count {
+                0 => self.outputs.determined_imports.push((import, side_effect)),
+                _ => self.outputs.indeterminate_imports.push(import),
             }
         }
-        self.assert_speculative = false;
+        (self.outputs, indeterminate_count)
     }
 
     pub(crate) fn finalize_imports(&mut self) {
@@ -839,7 +942,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     ///
     /// Meanwhile, if resolve successful, the resolved bindings are written
     /// into the module.
-    fn resolve_import<'r>(mut self: CmResolver<'r, 'ra, 'tcx>, import: Import<'ra>) -> usize {
+    fn resolve_import<'r>(
+        self: &mut ImportResolver<'r, 'ra, 'tcx>,
+        import: Import<'ra>,
+    ) -> (SideEffect<'ra>, usize) {
         debug!(
             "(resolving import for module) resolving import `{}::...` in `{}`",
             Segment::names_to_string(&import.module_path),
@@ -848,7 +954,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let module = if let Some(module) = import.imported_module.get() {
             module
         } else {
-            let path_res = self.reborrow().maybe_resolve_path(
+            let path_res = self.r.reborrow().maybe_resolve_path(
                 &import.module_path,
                 None,
                 &import.parent_scope,
@@ -857,8 +963,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
             match path_res {
                 PathResult::Module(module) => module,
-                PathResult::Indeterminate => return 3,
-                PathResult::NonModule(..) | PathResult::Failed { .. } => return 0,
+                PathResult::Indeterminate => return (SideEffect::None, 3),
+                PathResult::NonModule(..) | PathResult::Failed { .. } => {
+                    return (SideEffect::None, 0);
+                }
             }
         };
 
@@ -868,16 +976,14 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 (source, target, bindings, type_ns_only)
             }
             ImportKind::Glob { .. } => {
-                // FIXME: Use mutable resolver directly as a hack, this should be an output of
-                // speculative resolution.
-                self.get_mut_unchecked().resolve_glob_import(import);
-                return 0;
+                return (self.resolve_glob_import(import), 0);
             }
             _ => unreachable!(),
         };
 
+        let mut import_bindings = PerNS::default();
         let mut indeterminate_count = 0;
-        self.per_ns_cm(|this, ns| {
+        self.r.reborrow().per_ns_cm(|this, ns| {
             if !type_ns_only || ns == TypeNS {
                 if bindings[ns].get() != PendingBinding::Pending {
                     return;
@@ -889,8 +995,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     &import.parent_scope,
                     Some(import),
                 );
-                let parent = import.parent_scope.module;
-                let binding = match binding_result {
+                let pending_binding = match binding_result {
                     Ok(binding) => {
                         if binding.is_assoc_item()
                             && !this.tcx.features().import_trait_associated_functions()
@@ -905,43 +1010,25 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         }
                         // We need the `target`, `source` can be extracted.
                         let imported_binding = this.import(binding, import);
-                        // FIXME: Use mutable resolver directly as a hack, this should be an output of
-                        // speculative resolution.
-                        this.get_mut_unchecked().define_binding_local(
-                            parent,
-                            target,
-                            ns,
-                            imported_binding,
-                        );
                         PendingBinding::Ready(Some(imported_binding))
                     }
                     Err(Determinacy::Determined) => {
                         // Don't remove underscores from `single_imports`, they were never added.
-                        if target.name != kw::Underscore {
-                            let key = BindingKey::new(target, ns);
-                            // FIXME: Use mutable resolver directly as a hack, this should be an output of
-                            // speculative resolution.
-                            this.get_mut_unchecked().update_local_resolution(
-                                parent,
-                                key,
-                                false,
-                                |_, resolution| {
-                                    resolution.single_imports.swap_remove(&import);
-                                },
-                            );
+                        if target.name == kw::Underscore {
+                            return;
                         }
                         PendingBinding::Ready(None)
                     }
                     Err(Determinacy::Undetermined) => {
                         indeterminate_count += 1;
-                        PendingBinding::Pending
+                        return;
                     }
                 };
-                bindings[ns].set(binding);
+                import_bindings[ns] = pending_binding;
             }
         });
 
-        indeterminate_count
+        (SideEffect::Single { import_bindings }, indeterminate_count)
     }
 
     /// Performs final import resolution, consistency checks and error reporting.
@@ -1484,13 +1571,16 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         false
     }
 
-    fn resolve_glob_import(&mut self, import: Import<'ra>) {
+    fn resolve_glob_import<'r>(
+        self: &mut ImportResolver<'r, 'ra, 'tcx>,
+        import: Import<'ra>,
+    ) -> SideEffect<'ra> {
         // This function is only called for glob imports.
-        let ImportKind::Glob { id, .. } = import.kind else { unreachable!() };
+        let ImportKind::Glob { .. } = import.kind else { unreachable!() };
 
         let ModuleOrUniformRoot::Module(module) = import.imported_module.get().unwrap() else {
             self.dcx().emit_err(CannotGlobImportAllCrates { span: import.span });
-            return;
+            return SideEffect::None;
         };
 
         if module.is_trait() && !self.tcx.features().import_trait_associated_functions() {
@@ -1504,11 +1594,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         }
 
         if module == import.parent_scope.module {
-            return;
+            return SideEffect::None;
         }
-
-        // Add to module's glob_importers
-        module.glob_importers.borrow_mut().push(import);
 
         // Ensure that `resolutions` isn't borrowed during `try_define`,
         // since it might get updated via a glob cycle.
@@ -1520,6 +1607,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 resolution.borrow().binding().map(|binding| (*key, binding))
             })
             .collect::<Vec<_>>();
+        let mut import_bindings = Vec::with_capacity(bindings.len());
         for (mut key, binding) in bindings {
             let scope = match key.ident.0.span.reverse_glob_adjust(module.expansion, import.span) {
                 Some(Some(def)) => self.expn_def_scope(def),
@@ -1532,18 +1620,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     .resolution(import.parent_scope.module, key)
                     .and_then(|r| r.binding())
                     .is_some_and(|binding| binding.warn_ambiguity_recursive());
-                let _ = self.try_define_local(
-                    import.parent_scope.module,
-                    key.ident.0,
-                    key.ns,
-                    imported_binding,
-                    warn_ambiguity,
-                );
+                import_bindings.push((imported_binding, key, warn_ambiguity));
             }
         }
 
         // Record the destination of this import
-        self.record_partial_res(id, PartialRes::new(module.res().unwrap()));
+        SideEffect::Glob { import_bindings }
     }
 
     // Miscellaneous post-processing, including recording re-exports,
