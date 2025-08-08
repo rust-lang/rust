@@ -491,4 +491,9 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Warning,
         summary: "Added `build.compiletest-allow-stage0` flag instead of `COMPILETEST_FORCE_STAGE0` env var, and reject running `compiletest` self tests against stage 0 rustc unless explicitly allowed.",
     },
+    ChangeInfo {
+        change_id: 145011,
+        severity: ChangeSeverity::Warning,
+        summary: "It is no longer possible to `x doc` with stage 0. All doc commands have to be on stage 1+.",
+    },
 ];
