@@ -582,8 +582,16 @@ fn shellcheck_runner(args: &[&OsStr]) -> Result<(), Error> {
 fn spellcheck_runner(outdir: &Path, args: &[&str]) -> Result<(), Error> {
     let bin_path = ensure_version_or_cargo_install(outdir, "typos-cli", "typos", "1.34.0")?;
 
-    let status = Command::new(bin_path).args(args).status()?;
-    if status.success() { Ok(()) } else { Err(Error::FailedCheck("typos")) }
+    match Command::new(bin_path).args(args).status() {
+        Ok(status) => {
+            if status.success() {
+                Ok(())
+            } else {
+                Err(Error::FailedCheck("typos"))
+            }
+        }
+        Err(err) => Err(Error::Generic(format!("failed to run typos tool: {err:?}"))),
+    }
 }
 
 /// Check git for tracked files matching an extension
