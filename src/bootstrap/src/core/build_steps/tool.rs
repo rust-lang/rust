@@ -588,20 +588,20 @@ impl Step for RustcPerf {
     }
 }
 
-#[derive(Debug, Clone, Hash, PartialEq, Eq, Ord, PartialOrd)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct ErrorIndex {
-    pub compiler: Compiler,
+    compilers: RustcPrivateCompilers,
 }
 
 impl ErrorIndex {
-    pub fn command(builder: &Builder<'_>) -> BootstrapCommand {
+    pub fn command(builder: &Builder<'_>, compilers: RustcPrivateCompilers) -> BootstrapCommand {
         // Error-index-generator links with the rustdoc library, so we need to add `rustc_lib_paths`
         // for rustc_private and libLLVM.so, and `sysroot_lib` for libstd, etc.
-        let host = builder.config.host_target;
-        let compiler = builder.compiler_for(builder.top_stage, host, host);
-        let mut cmd = command(builder.ensure(ErrorIndex { compiler }).tool_path);
-        let mut dylib_paths = builder.rustc_lib_paths(compiler);
-        dylib_paths.push(builder.sysroot_target_libdir(compiler, compiler.host));
+        let mut cmd = command(builder.ensure(ErrorIndex { compilers }).tool_path);
+
+        let target_compiler = compilers.target_compiler();
+        let mut dylib_paths = builder.rustc_lib_paths(target_compiler);
+        dylib_paths.push(builder.sysroot_target_libdir(target_compiler, target_compiler.host));
         add_dylib_path(dylib_paths, &mut cmd);
         cmd
     }
@@ -620,14 +620,19 @@ impl Step for ErrorIndex {
         // src/tools/error-index-generator` which almost nobody does.
         // Normally, `x.py test` or `x.py doc` will use the
         // `ErrorIndex::command` function instead.
-        let compiler = run.builder.compiler(run.builder.top_stage, run.builder.config.host_target);
-        run.builder.ensure(ErrorIndex { compiler });
+        run.builder.ensure(ErrorIndex {
+            compilers: RustcPrivateCompilers::new(
+                run.builder,
+                run.builder.top_stage,
+                run.builder.host_target,
+            ),
+        });
     }
 
     fn run(self, builder: &Builder<'_>) -> ToolBuildResult {
         builder.ensure(ToolBuild {
-            build_compiler: self.compiler,
-            target: self.compiler.host,
+            build_compiler: self.compilers.build_compiler,
+            target: self.compilers.target(),
             tool: "error_index_generator",
             mode: Mode::ToolRustc,
             path: "src/tools/error_index_generator",
@@ -637,6 +642,13 @@ impl Step for ErrorIndex {
             cargo_args: Vec::new(),
             artifact_kind: ToolArtifactKind::Binary,
         })
+    }
+
+    fn metadata(&self) -> Option<StepMetadata> {
+        Some(
+            StepMetadata::build("error-index", self.compilers.target())
+                .built_by(self.compilers.build_compiler),
+        )
     }
 }
 

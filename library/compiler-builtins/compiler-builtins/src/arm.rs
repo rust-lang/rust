@@ -1,5 +1,3 @@
-#![cfg(not(feature = "no-asm"))]
-
 // Interfaces used by naked trampolines.
 // SAFETY: these are defined in compiler-builtins
 unsafe extern "C" {

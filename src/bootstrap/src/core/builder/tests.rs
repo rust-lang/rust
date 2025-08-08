@@ -257,31 +257,6 @@ fn parse_config_download_rustc_at(path: &Path, download_rustc: &str, ci: bool) -
     )
 }
 
-mod defaults {
-    use pretty_assertions::assert_eq;
-
-    use super::{TEST_TRIPLE_1, TEST_TRIPLE_2, configure, first, run_build};
-    use crate::Config;
-    use crate::core::builder::*;
-
-    #[test]
-    fn doc_default() {
-        let mut config = configure("doc", &[TEST_TRIPLE_1], &[TEST_TRIPLE_1]);
-        config.compiler_docs = true;
-        config.cmd = Subcommand::Doc { open: false, json: false };
-        let mut cache = run_build(&[], config);
-        let a = TargetSelection::from_user(TEST_TRIPLE_1);
-
-        // error_index_generator uses stage 0 to share rustdoc artifacts with the
-        // rustdoc tool.
-        assert_eq!(first(cache.all::<doc::ErrorIndex>()), &[doc::ErrorIndex { target: a },]);
-        assert_eq!(
-            first(cache.all::<tool::ErrorIndex>()),
-            &[tool::ErrorIndex { compiler: Compiler::new(1, a) }]
-        );
-    }
-}
-
 mod dist {
     use pretty_assertions::assert_eq;
 
@@ -308,28 +283,6 @@ mod dist {
         let build = Build::new(config.clone());
         let target = TargetSelection::from_user(TEST_TRIPLE_1);
         assert!(build.llvm_out(target).ends_with("llvm"));
-    }
-
-    #[test]
-    fn doc_ci() {
-        let mut config = configure(&[TEST_TRIPLE_1], &[TEST_TRIPLE_1]);
-        config.compiler_docs = true;
-        config.cmd = Subcommand::Doc { open: false, json: false };
-        let build = Build::new(config);
-        let mut builder = Builder::new(&build);
-        builder.run_step_descriptions(&Builder::get_step_descriptions(Kind::Doc), &[]);
-        let a = TargetSelection::from_user(TEST_TRIPLE_1);
-
-        // error_index_generator uses stage 1 to share rustdoc artifacts with the
-        // rustdoc tool.
-        assert_eq!(
-            first(builder.cache.all::<doc::ErrorIndex>()),
-            &[doc::ErrorIndex { target: a },]
-        );
-        assert_eq!(
-            first(builder.cache.all::<tool::ErrorIndex>()),
-            &[tool::ErrorIndex { compiler: Compiler::new(1, a) }]
-        );
     }
 }
 
@@ -889,6 +842,19 @@ mod snapshot {
     }
 
     #[test]
+    fn build_error_index() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("build")
+                .path("error_index_generator")
+                .render_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 0 <host> -> error-index 1 <host>
+        ");
+    }
+
+    #[test]
     fn build_bootstrap_tool_no_explicit_stage() {
         let ctx = TestCtx::new();
         insta::assert_snapshot!(
@@ -1032,6 +998,8 @@ mod snapshot {
         [build] rustc 1 <host> -> rustc 2 <host>
         [build] rustdoc 2 <host>
         [doc] std 2 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
+        [build] rustc 1 <host> -> error-index 2 <host>
+        [doc] rustc 1 <host> -> error-index 2 <host>
         [build] rustc 2 <host> -> std 2 <host>
         [build] rustc 0 <host> -> LintDocs 1 <host>
         [build] rustc 0 <host> -> RustInstaller 1 <host>
@@ -1074,6 +1042,8 @@ mod snapshot {
         [build] rustc 1 <host> -> LlvmBitcodeLinker 2 <host>
         [build] rustdoc 2 <host>
         [doc] std 2 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
+        [build] rustc 1 <host> -> error-index 2 <host>
+        [doc] rustc 1 <host> -> error-index 2 <host>
         [build] rustc 2 <host> -> std 2 <host>
         [build] rustc 0 <host> -> LintDocs 1 <host>
         [build] rustc 0 <host> -> RustInstaller 1 <host>
@@ -1114,6 +1084,8 @@ mod snapshot {
         [build] rustdoc 2 <host>
         [doc] std 2 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
         [doc] std 2 <target1> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
+        [build] rustc 1 <host> -> error-index 2 <host>
+        [doc] rustc 1 <host> -> error-index 2 <host>
         [build] rustc 2 <host> -> std 2 <host>
         [build] rustc 0 <host> -> LintDocs 1 <host>
         [build] rustc 0 <host> -> RustInstaller 1 <host>
@@ -1150,9 +1122,15 @@ mod snapshot {
         [build] rustc 1 <host> -> rustc 2 <host>
         [build] rustdoc 2 <host>
         [doc] std 2 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
+        [build] rustc 1 <host> -> error-index 2 <host>
+        [doc] rustc 1 <host> -> error-index 2 <host>
+        [build] llvm <target1>
+        [build] rustc 1 <host> -> std 1 <target1>
+        [build] rustc 1 <host> -> rustc 2 <target1>
+        [build] rustc 1 <host> -> error-index 2 <target1>
+        [doc] rustc 1 <host> -> error-index 2 <target1>
         [build] rustc 2 <host> -> std 2 <host>
         [build] rustc 0 <host> -> LintDocs 1 <host>
-        [build] rustc 1 <host> -> std 1 <target1>
         [build] rustc 2 <host> -> std 2 <target1>
         [build] rustc 0 <host> -> RustInstaller 1 <host>
         [dist] docs <host>
@@ -1160,8 +1138,6 @@ mod snapshot {
         [dist] mingw <host>
         [build] rustc 0 <host> -> GenerateCopyright 1 <host>
         [dist] rustc <host>
-        [build] llvm <target1>
-        [build] rustc 1 <host> -> rustc 2 <target1>
         [build] rustdoc 2 <target1>
         [dist] rustc <target1>
         [dist] rustc 1 <host> -> std 1 <host>
@@ -1188,9 +1164,15 @@ mod snapshot {
         [build] rustdoc 2 <host>
         [doc] std 2 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
         [doc] std 2 <target1> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
+        [build] rustc 1 <host> -> error-index 2 <host>
+        [doc] rustc 1 <host> -> error-index 2 <host>
+        [build] llvm <target1>
+        [build] rustc 1 <host> -> std 1 <target1>
+        [build] rustc 1 <host> -> rustc 2 <target1>
+        [build] rustc 1 <host> -> error-index 2 <target1>
+        [doc] rustc 1 <host> -> error-index 2 <target1>
         [build] rustc 2 <host> -> std 2 <host>
         [build] rustc 0 <host> -> LintDocs 1 <host>
-        [build] rustc 1 <host> -> std 1 <target1>
         [build] rustc 2 <host> -> std 2 <target1>
         [build] rustc 0 <host> -> RustInstaller 1 <host>
         [dist] docs <host>
@@ -1201,8 +1183,6 @@ mod snapshot {
         [dist] mingw <target1>
         [build] rustc 0 <host> -> GenerateCopyright 1 <host>
         [dist] rustc <host>
-        [build] llvm <target1>
-        [build] rustc 1 <host> -> rustc 2 <target1>
         [build] rustdoc 2 <target1>
         [dist] rustc <target1>
         [dist] rustc 1 <host> -> std 1 <host>
@@ -1261,17 +1241,19 @@ mod snapshot {
         [build] rustc 1 <host> -> WasmComponentLd 2 <host>
         [build] rustdoc 2 <host>
         [doc] std 2 <target1> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
-        [build] rustc 2 <host> -> std 2 <host>
+        [build] llvm <target1>
         [build] rustc 1 <host> -> std 1 <target1>
+        [build] rustc 1 <host> -> rustc 2 <target1>
+        [build] rustc 1 <host> -> WasmComponentLd 2 <target1>
+        [build] rustc 1 <host> -> error-index 2 <target1>
+        [doc] rustc 1 <host> -> error-index 2 <target1>
+        [build] rustc 2 <host> -> std 2 <host>
         [build] rustc 2 <host> -> std 2 <target1>
         [build] rustc 0 <host> -> LintDocs 1 <host>
         [build] rustc 0 <host> -> RustInstaller 1 <host>
         [dist] docs <target1>
         [doc] std 2 <target1> crates=[]
         [dist] mingw <target1>
-        [build] llvm <target1>
-        [build] rustc 1 <host> -> rustc 2 <target1>
-        [build] rustc 1 <host> -> WasmComponentLd 2 <target1>
         [build] rustdoc 2 <target1>
         [build] rustc 1 <host> -> rust-analyzer-proc-macro-srv 2 <target1>
         [build] rustc 0 <host> -> GenerateCopyright 1 <host>
@@ -1648,6 +1630,25 @@ mod snapshot {
         [build] rustc 0 <host> -> CargoTest 1 <host>
         [build] rustdoc 1 <host>
         [test] cargotest 1 <host>
+        ");
+    }
+
+    #[test]
+    fn doc_all() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("doc")
+                .render_steps(), @r"
+        [build] rustc 0 <host> -> UnstableBookGen 1 <host>
+        [build] rustc 0 <host> -> Rustbook 1 <host>
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustdoc 1 <host>
+        [doc] std 1 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
+        [build] rustc 0 <host> -> error-index 1 <host>
+        [doc] rustc 0 <host> -> error-index 1 <host>
+        [build] rustc 1 <host> -> std 1 <host>
+        [build] rustc 0 <host> -> LintDocs 1 <host>
         ");
     }
 

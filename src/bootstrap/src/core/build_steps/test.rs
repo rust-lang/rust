@@ -2502,7 +2502,7 @@ test_book!(
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ErrorIndex {
-    compiler: Compiler,
+    compilers: RustcPrivateCompilers,
 }
 
 impl Step for ErrorIndex {
@@ -2520,8 +2520,12 @@ impl Step for ErrorIndex {
         // error_index_generator depends on librustdoc. Use the compiler that
         // is normally used to build rustdoc for other tests (like compiletest
         // tests in tests/rustdoc) so that it shares the same artifacts.
-        let compiler = run.builder.compiler(run.builder.top_stage, run.builder.config.host_target);
-        run.builder.ensure(ErrorIndex { compiler });
+        let compilers = RustcPrivateCompilers::new(
+            run.builder,
+            run.builder.top_stage,
+            run.builder.config.host_target,
+        );
+        run.builder.ensure(ErrorIndex { compilers });
     }
 
     /// Runs the error index generator tool to execute the tests located in the error
@@ -2531,24 +2535,30 @@ impl Step for ErrorIndex {
     /// generate a markdown file from the error indexes of the code base which is
     /// then passed to `rustdoc --test`.
     fn run(self, builder: &Builder<'_>) {
-        let compiler = self.compiler;
+        // The compiler that we are testing
+        let target_compiler = self.compilers.target_compiler();
 
-        let dir = testdir(builder, compiler.host);
+        let dir = testdir(builder, target_compiler.host);
         t!(fs::create_dir_all(&dir));
         let output = dir.join("error-index.md");
 
-        let mut tool = tool::ErrorIndex::command(builder);
+        let mut tool = tool::ErrorIndex::command(builder, self.compilers);
         tool.arg("markdown").arg(&output);
 
-        let guard =
-            builder.msg(Kind::Test, compiler.stage, "error-index", compiler.host, compiler.host);
+        let guard = builder.msg(
+            Kind::Test,
+            target_compiler.stage,
+            "error-index",
+            target_compiler.host,
+            target_compiler.host,
+        );
         let _time = helpers::timeit(builder);
         tool.run_capture(builder);
         drop(guard);
         // The tests themselves need to link to std, so make sure it is
         // available.
-        builder.std(compiler, compiler.host);
-        markdown_test(builder, compiler, &output);
+        builder.std(target_compiler, target_compiler.host);
+        markdown_test(builder, target_compiler, &output);
     }
 }
 

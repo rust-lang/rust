@@ -628,7 +628,7 @@ pub fn panicking() -> bool {
 /// Entry point of panics from the core crate (`panic_impl` lang item).
 #[cfg(not(any(test, doctest)))]
 #[panic_handler]
-pub fn begin_panic_handler(info: &core::panic::PanicInfo<'_>) -> ! {
+pub fn panic_handler(info: &core::panic::PanicInfo<'_>) -> ! {
     struct FormatStringPayload<'a> {
         inner: &'a core::panic::PanicMessage<'a>,
         string: Option<String>,
