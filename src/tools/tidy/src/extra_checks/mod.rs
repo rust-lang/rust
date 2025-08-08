@@ -53,6 +53,7 @@ pub fn check(
     librustdoc_path: &Path,
     tools_path: &Path,
     npm: &Path,
+    cargo: &Path,
     bless: bool,
     extra_checks: Option<&str>,
     pos_args: &[String],
@@ -65,6 +66,7 @@ pub fn check(
         librustdoc_path,
         tools_path,
         npm,
+        cargo,
         bless,
         extra_checks,
         pos_args,
@@ -80,6 +82,7 @@ fn check_impl(
     librustdoc_path: &Path,
     tools_path: &Path,
     npm: &Path,
+    cargo: &Path,
     bless: bool,
     extra_checks: Option<&str>,
     pos_args: &[String],
@@ -295,7 +298,7 @@ fn check_impl(
         } else {
             eprintln!("spellcheck files");
         }
-        spellcheck_runner(&outdir, &args)?;
+        spellcheck_runner(&outdir, &cargo, &args)?;
     }
 
     if js_lint || js_typecheck {
@@ -579,8 +582,8 @@ fn shellcheck_runner(args: &[&OsStr]) -> Result<(), Error> {
 }
 
 /// Check that spellchecker is installed then run it at the given path
-fn spellcheck_runner(outdir: &Path, args: &[&str]) -> Result<(), Error> {
-    let bin_path = ensure_version_or_cargo_install(outdir, "typos-cli", "typos", "1.34.0")?;
+fn spellcheck_runner(outdir: &Path, cargo: &Path, args: &[&str]) -> Result<(), Error> {
+    let bin_path = ensure_version_or_cargo_install(outdir, cargo, "typos-cli", "typos", "1.34.0")?;
 
     match Command::new(bin_path).args(args).status() {
         Ok(status) => {

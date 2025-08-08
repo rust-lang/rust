@@ -72,6 +72,7 @@ pub fn parse_gitmodules(target_dir: &Path) -> Vec<String> {
 /// otherwise install via cargo.
 pub fn ensure_version_or_cargo_install(
     build_dir: &Path,
+    cargo: &Path,
     pkg_name: &str,
     bin_name: &str,
     version: &str,
@@ -101,7 +102,7 @@ pub fn ensure_version_or_cargo_install(
     // use --force to ensure that if the required version is bumped, we update it.
     // use --target-dir to ensure we have a build cache so repeated invocations aren't slow.
     // modify PATH so that cargo doesn't print a warning telling the user to modify the path.
-    let cargo_exit_code = Command::new("cargo")
+    let cargo_exit_code = Command::new(cargo)
         .args(["install", "--locked", "--force", "--quiet"])
         .arg("--root")
         .arg(&tool_root_dir)
