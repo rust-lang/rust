@@ -23,7 +23,8 @@ const INT_POW10: [u64; 16] = [
 ];
 
 /// A floating point number with up to 64 bits of mantissa and an `i64` exponent.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Copy, Debug)]
+#[derive_const(Clone, Default, PartialEq, Eq)]
 pub struct Decimal {
     pub exponent: i64,
     pub mantissa: u64,

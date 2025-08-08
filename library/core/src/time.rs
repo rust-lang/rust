@@ -76,7 +76,8 @@ const DAYS_PER_WEEK: u64 = 7;
 /// compatibility, you may wish to format `Duration` objects yourself or use a
 /// crate to do so.
 #[stable(feature = "duration", since = "1.3.0")]
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
+#[derive(Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default)]
 #[rustc_diagnostic_item = "Duration"]
 pub struct Duration {
     secs: u64,
@@ -1456,7 +1457,8 @@ impl fmt::Display for TryFromFloatSecsError {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug)]
+#[derive_const(Clone, PartialEq, Eq)]
 enum TryFromFloatSecsErrorKind {
     // Value is negative.
     Negative,

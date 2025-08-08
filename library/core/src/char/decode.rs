@@ -24,7 +24,8 @@ where
 ///
 /// This `struct` is created when using the [`DecodeUtf16`] type.
 #[stable(feature = "decode_utf16", since = "1.9.0")]
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Clone, Debug)]
+#[derive_const(Eq, PartialEq)]
 pub struct DecodeUtf16Error {
     code: u16,
 }
