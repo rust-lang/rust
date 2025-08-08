@@ -70,6 +70,7 @@
 //!     tuple:
 //!     unpin: sized
 //!     unsize: sized
+//!     write: fmt
 //!     todo: panic
 //!     unimplemented: panic
 //!     column:
@@ -1768,6 +1769,26 @@ mod macros {
         };
     }
     // endregion:panic
+
+    // region:write
+    #[macro_export]
+    macro_rules! write {
+        ($dst:expr, $($arg:tt)*) => {
+            $dst.write_fmt($crate::format_args!($($arg)*))
+        };
+    }
+
+    #[macro_export]
+    #[allow_internal_unstable(format_args_nl)]
+    macro_rules! writeln {
+        ($dst:expr $(,)?) => {
+            $crate::write!($dst, "\n")
+        };
+        ($dst:expr, $($arg:tt)*) => {
+            $dst.write_fmt($crate::format_args_nl!($($arg)*))
+        };
+    }
+    // endregion:write
 
     // region:assert
     #[macro_export]
