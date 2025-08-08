@@ -47,9 +47,7 @@ pub(super) fn convert_typeck_constraints<'tcx>(
                         tcx,
                         body,
                         stmt,
-                        liveness,
                         &outlives_constraint,
-                        location,
                         point,
                         universal_regions,
                     )
@@ -78,9 +76,7 @@ fn localize_statement_constraint<'tcx>(
     tcx: TyCtxt<'tcx>,
     body: &Body<'tcx>,
     stmt: &Statement<'tcx>,
-    liveness: &LivenessValues,
     outlives_constraint: &OutlivesConstraint<'tcx>,
-    current_location: Location,
     current_point: PointIndex,
     universal_regions: &UniversalRegions<'tcx>,
 ) -> LocalizedOutlivesConstraint {
@@ -119,16 +115,8 @@ fn localize_statement_constraint<'tcx>(
                 "there should be no common regions between the LHS and RHS of an assignment"
             );
 
-            // As mentioned earlier, we should be tracking these better upstream but: we want to
-            // relate the types on entry to the type of the place on exit. That is, outlives
-            // constraints on the RHS are on entry, and outlives constraints to/from the LHS are on
-            // exit (i.e. on entry to the successor location).
             let lhs_ty = body.local_decls[lhs.local].ty;
-            let successor_location = Location {
-                block: current_location.block,
-                statement_index: current_location.statement_index + 1,
-            };
-            let successor_point = liveness.point_from_location(successor_location);
+            let successor_point = current_point;
             compute_constraint_direction(
                 tcx,
                 outlives_constraint,
