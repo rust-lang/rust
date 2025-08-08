@@ -1311,6 +1311,7 @@ symbols! {
         lt,
         m68k_target_feature,
         macro_at_most_once_rep,
+        macro_attr,
         macro_attributes_in_derive_output,
         macro_concat,
         macro_escape,

@@ -631,9 +631,21 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 };
 
                 match result {
-                    Ok((binding, flags))
-                        if sub_namespace_match(binding.macro_kind(), macro_kind) =>
-                    {
+                    Ok((binding, flags)) => {
+                        let binding_macro_kind = binding.macro_kind();
+                        // If we're looking for an attribute, that might be supported by a
+                        // `macro_rules!` macro.
+                        // FIXME: Replace this with tracking multiple macro kinds for one Def.
+                        if !(sub_namespace_match(binding_macro_kind, macro_kind)
+                            || (binding_macro_kind == Some(MacroKind::Bang)
+                                && macro_kind == Some(MacroKind::Attr)
+                                && this
+                                    .get_macro(binding.res())
+                                    .is_some_and(|macro_data| macro_data.attr_ext.is_some())))
+                        {
+                            return None;
+                        }
+
                         if finalize.is_none() || matches!(scope_set, ScopeSet::Late(..)) {
                             return Some(Ok(binding));
                         }
@@ -710,7 +722,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             innermost_result = Some((binding, flags));
                         }
                     }
-                    Ok(..) | Err(Determinacy::Determined) => {}
+                    Err(Determinacy::Determined) => {}
                     Err(Determinacy::Undetermined) => determinacy = Determinacy::Undetermined,
                 }
 

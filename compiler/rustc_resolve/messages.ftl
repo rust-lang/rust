@@ -243,7 +243,7 @@ resolve_lowercase_self =
     .suggestion = try using `Self`
 
 resolve_macro_cannot_use_as_attr =
-    `{$ident}` exists, but a declarative macro cannot be used as an attribute macro
+    `{$ident}` exists, but has no `attr` rules
 
 resolve_macro_cannot_use_as_derive =
      `{$ident}` exists, but a declarative macro cannot be used as a derive macro

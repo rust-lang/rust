@@ -1029,13 +1029,14 @@ struct DeriveData {
 
 struct MacroData {
     ext: Arc<SyntaxExtension>,
+    attr_ext: Option<Arc<SyntaxExtension>>,
     nrules: usize,
     macro_rules: bool,
 }
 
 impl MacroData {
     fn new(ext: Arc<SyntaxExtension>) -> MacroData {
-        MacroData { ext, nrules: 0, macro_rules: false }
+        MacroData { ext, attr_ext: None, nrules: 0, macro_rules: false }
     }
 }
 
