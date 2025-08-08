@@ -653,7 +653,6 @@ impl<T> Trait<T> for X {
             )
         );
         let impl_comparison = matches!(cause_code, ObligationCauseCode::CompareImplItem { .. });
-        let assoc = tcx.associated_item(proj_ty.def_id);
         if impl_comparison {
             // We do not want to suggest calling functions when the reason of the
             // type error is a comparison of an `impl` with its `trait`.
@@ -661,7 +660,7 @@ impl<T> Trait<T> for X {
             let point_at_assoc_fn = if callable_scope
                 && self.point_at_methods_that_satisfy_associated_type(
                     diag,
-                    assoc.container_id(tcx),
+                    tcx.parent(proj_ty.def_id),
                     current_method_ident,
                     proj_ty.def_id,
                     values.expected,
