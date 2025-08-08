@@ -447,7 +447,7 @@ macro_rules! lint_any {
             }
 
             fn metadata(&self) -> Option<StepMetadata> {
-                Some(StepMetadata::clippy($readable_name, self.target))
+                Some(StepMetadata::clippy($readable_name, self.target).built_by(self.build_compiler))
             }
         }
         )+
