@@ -147,6 +147,12 @@ enum Scope<'ra> {
     BuiltinTypes,
 }
 
+#[derive(Debug, PartialEq, Clone, Copy)]
+enum Shadowing {
+    Restricted,
+    Unrestricted,
+}
+
 /// Names from different contexts may want to visit different subsets of all specific scopes
 /// with different restrictions when looking up the resolution.
 #[derive(Clone, Copy, Debug)]
@@ -162,6 +168,8 @@ enum ScopeSet<'ra> {
     /// All scopes with the given namespace, used for partially performing late resolution.
     /// The node id enables lints and is used for reporting them.
     Late(Namespace, Module<'ra>, Option<NodeId>),
+    /// Scope::NonGlobModule and Scope::GlobModule.
+    Module(Module<'ra>, Namespace, Shadowing),
 }
 
 /// Everything you need to know about a name's location to resolve it.
