@@ -1327,15 +1327,13 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         &mut self,
         op: rustc_codegen_ssa::common::AtomicRmwBinOp,
         dst: &'ll Value,
-        mut src: &'ll Value,
+        src: &'ll Value,
         order: rustc_middle::ty::AtomicOrdering,
+        ret_ptr: bool,
     ) -> &'ll Value {
-        // The only RMW operation that LLVM supports on pointers is compare-exchange.
-        let requires_cast_to_int = self.val_ty(src) == self.type_ptr()
-            && op != rustc_codegen_ssa::common::AtomicRmwBinOp::AtomicXchg;
-        if requires_cast_to_int {
-            src = self.ptrtoint(src, self.type_isize());
-        }
+        // FIXME: If `ret_ptr` is true and `src` is not a pointer, we *should* tell LLVM that the
+        // LHS is a pointer and the operation should be provenance-preserving, but LLVM does not
+        // currently support that (https://github.com/llvm/llvm-project/issues/120837).
         let mut res = unsafe {
             llvm::LLVMBuildAtomicRMW(
                 self.llbuilder,
@@ -1346,7 +1344,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                 llvm::False, // SingleThreaded
             )
         };
-        if requires_cast_to_int {
+        if ret_ptr && self.val_ty(res) != self.type_ptr() {
             res = self.inttoptr(res, self.type_ptr());
         }
         res
