@@ -149,9 +149,9 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
 
                 let macro_data =
                     self.resolver.compile_macro(def, *ident, &attrs, i.span, i.id, edition);
-                let macro_kind = macro_data.ext.macro_kind();
+                let macro_kinds = macro_data.ext.macro_kinds();
                 opt_macro_data = Some(macro_data);
-                DefKind::Macro(macro_kind)
+                DefKind::Macro(macro_kinds)
             }
             ItemKind::GlobalAsm(..) => DefKind::GlobalAsm,
             ItemKind::Use(use_tree) => {

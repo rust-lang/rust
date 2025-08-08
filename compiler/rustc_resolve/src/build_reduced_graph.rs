@@ -1235,7 +1235,8 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
             ItemKind::Fn(box ast::Fn { ident: fn_ident, .. }) => {
                 match self.proc_macro_stub(item, *fn_ident) {
                     Some((macro_kind, ident, span)) => {
-                        let res = Res::Def(DefKind::Macro(macro_kind), def_id.to_def_id());
+                        let macro_kinds = macro_kind.into();
+                        let res = Res::Def(DefKind::Macro(macro_kinds), def_id.to_def_id());
                         let macro_data = MacroData::new(self.r.dummy_ext(macro_kind));
                         self.r.new_local_macro(def_id, macro_data);
                         self.r.proc_macro_stubs.insert(def_id);

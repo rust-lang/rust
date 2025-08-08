@@ -20,7 +20,6 @@ use rustc_data_structures::tagged_ptr::TaggedRef;
 use rustc_index::IndexVec;
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_span::def_id::LocalDefId;
-use rustc_span::hygiene::MacroKind;
 use rustc_span::source_map::Spanned;
 use rustc_span::{BytePos, DUMMY_SP, ErrorGuaranteed, Ident, Span, Symbol, kw, sym};
 use rustc_target::asm::InlineAsmRegOrRegClass;
@@ -30,7 +29,7 @@ use tracing::debug;
 
 use crate::LangItem;
 use crate::attrs::AttributeKind;
-use crate::def::{CtorKind, DefKind, PerNS, Res};
+use crate::def::{CtorKind, DefKind, MacroKinds, PerNS, Res};
 use crate::def_id::{DefId, LocalDefIdMap};
 pub(crate) use crate::hir_id::{HirId, ItemLocalId, ItemLocalMap, OwnerId};
 use crate::intravisit::{FnKind, VisitorExt};
@@ -4156,7 +4155,7 @@ impl<'hir> Item<'hir> {
         expect_fn, (Ident, &FnSig<'hir>, &'hir Generics<'hir>, BodyId),
             ItemKind::Fn { ident, sig, generics, body, .. }, (*ident, sig, generics, *body);
 
-        expect_macro, (Ident, &ast::MacroDef, MacroKind),
+        expect_macro, (Ident, &ast::MacroDef, MacroKinds),
             ItemKind::Macro(ident, def, mk), (*ident, def, *mk);
 
         expect_mod, (Ident, &'hir Mod<'hir>), ItemKind::Mod(ident, m), (*ident, m);
@@ -4335,7 +4334,7 @@ pub enum ItemKind<'hir> {
         has_body: bool,
     },
     /// A MBE macro definition (`macro_rules!` or `macro`).
-    Macro(Ident, &'hir ast::MacroDef, MacroKind),
+    Macro(Ident, &'hir ast::MacroDef, MacroKinds),
     /// A module.
     Mod(Ident, &'hir Mod<'hir>),
     /// An external module, e.g. `extern { .. }`.
