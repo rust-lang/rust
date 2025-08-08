@@ -1934,10 +1934,12 @@ a.tooltip:hover::after {
 	color: inherit;
 }
 #search-tabs button:not(.selected) {
+	--search-tab-button-background: var(--search-tab-button-not-selected-background);
 	background-color: var(--search-tab-button-not-selected-background);
 	border-top-color: var(--search-tab-button-not-selected-border-top-color);
 }
 #search-tabs button:hover, #search-tabs button.selected {
+	--search-tab-button-background: var(--search-tab-button-selected-background);
 	background-color: var(--search-tab-button-selected-background);
 	border-top-color: var(--search-tab-button-selected-border-top-color);
 }
@@ -1946,6 +1948,53 @@ a.tooltip:hover::after {
 	font-size: 1rem;
 	font-variant-numeric: tabular-nums;
 	color: var(--search-tab-title-count-color);
+	position: relative;
+}
+
+#search-tabs .count.loading {
+	color: transparent;
+}
+
+#search-tabs .count.loading::before {
+	width: 16px;
+	height: 16px;
+	border-radius: 16px;
+	background: radial-gradient(
+		var(--search-tab-button-background) 0 50%,
+		transparent 50% 100%
+	), conic-gradient(
+		var(--code-highlight-kw-color) 0deg 30deg,
+		var(--code-highlight-prelude-color) 30deg 60deg,
+		var(--code-highlight-number-color) 90deg 120deg,
+		var(--code-highlight-lifetime-color ) 120deg 150deg,
+		var(--code-highlight-comment-color) 150deg 180deg,
+		var(--code-highlight-self-color) 180deg 210deg,
+		var(--code-highlight-attribute-color) 210deg 240deg,
+		var(--code-highlight-literal-color) 210deg 240deg,
+		var(--code-highlight-macro-color) 240deg 270deg,
+		var(--code-highlight-question-mark-color) 270deg 300deg,
+		var(--code-highlight-prelude-val-color) 300deg 330deg,
+		var(--code-highlight-doc-comment-color) 330deg 360deg
+	);
+	content: "";
+	position: absolute;
+	left: 2px;
+	top: 2px;
+	animation: rotating 1.25s linear infinite;
+}
+#search-tabs .count.loading::after {
+	width: 18px;
+	height: 18px;
+	border-radius: 18px;
+	background: conic-gradient(
+		var(--search-tab-button-background) 0deg 180deg,
+		transparent 270deg 360deg
+	);
+	content: "";
+	position: absolute;
+	left: 1px;
+	top: 1px;
+	animation: rotating 0.66s linear infinite;
 }
 
 #search .error code {
