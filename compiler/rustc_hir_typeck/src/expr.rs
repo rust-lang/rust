@@ -1825,15 +1825,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         .filter(|t| !self.try_structurally_resolve_type(expr.span, *t).is_ty_var())
                 })
                 .unwrap_or_else(|| self.next_ty_var(expr.span));
+            let element_expected = Expectation::ExpectHasType(coerce_to)
+                .try_structurally_resolve_and_adjust_for_branches(self, expr.span);
             let mut coerce = CoerceMany::with_coercion_sites(coerce_to, args);
             assert_eq!(self.diverges.get(), Diverges::Maybe);
             for e in args {
-                // FIXME: the element expectation should use
-                // `try_structurally_resolve_and_adjust_for_branches` just like in `if` and `match`.
-                // While that fixes nested coercion, it will break [some
-                // code like this](https://github.com/rust-lang/rust/pull/140283#issuecomment-2958776528).
-                // If we find a way to support recursive tuple coercion, this break can be avoided.
-                let e_ty = self.check_expr_with_hint(e, coerce_to);
+                let e_ty = self.check_expr_with_expectation(e, element_expected);
                 let cause = self.misc(e.span);
                 coerce.coerce(self, &cause, e, e_ty);
             }

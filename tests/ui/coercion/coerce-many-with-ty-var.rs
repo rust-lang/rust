@@ -13,6 +13,7 @@ fn main() {
     // Previously the element type's ty var will be unified with `foo`.
     let _: [_; 2] = [foo, bar];
     infer_array_element([foo, bar]);
+    let _ = [foo, if false { bar } else { foo }];
 
     let _ = if false {
         foo
@@ -24,6 +25,16 @@ fn main() {
     } else {
         bar
     });
+    let _ = if false {
+        foo
+    } else {
+        if false {
+            bar
+        } else {
+            foo
+        }
+    };
+
 
     let _ = match false {
         true => foo,
@@ -33,6 +44,12 @@ fn main() {
         true => foo,
         false => bar,
     });
-
-
+    let _ = match 1 {
+        2 => foo,
+        _ => if false {
+            bar
+        } else {
+            foo
+        },
+    };
 }
