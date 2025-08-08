@@ -2581,12 +2581,6 @@ mod ref_mut {
                 true => self.p,
             }
         }
-
-        /// Returns a mutable reference to the inner value without checking if
-        /// it's in a mutable state.
-        pub(crate) fn get_mut_unchecked(&mut self) -> &mut T {
-            self.p
-        }
     }
 
     /// A wrapper around a [`Cell`] that only allows mutation based on a condition in the resolver.
