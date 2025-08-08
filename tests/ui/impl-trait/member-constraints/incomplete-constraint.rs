@@ -1,8 +1,8 @@
 //@ check-pass
 // FIXME(-Znext-solver): enable this test
 
-// These functions currently does not normalize the opaque type but will do
-// so in the future. At this point we've got a new use of the opaque will fully
+// These functions currently do not normalize the opaque type but will do
+// so in the future. At this point we've got a new use of the opaque with fully
 // universal arguments but for which lifetimes in the hidden type are unconstrained.
 //
 // Applying the member constraints would then incompletely infer `'unconstrained` to `'static`.

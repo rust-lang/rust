@@ -8,7 +8,7 @@
 // As '0 gets outlived by 'a - its "upper bound" -  the only applicable choice
 // region is 'a.
 //
-// '1 has to outlive 'b so the only applicabel choice regions are 'b and 'static.
+// '1 has to outlive 'b so the only applicable choice regions are 'b and 'static.
 // Considering this member constraint by itself would choose 'b as it is the
 // smaller of the two regions.
 //
