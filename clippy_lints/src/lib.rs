@@ -654,7 +654,7 @@ pub fn register_lint_passes(store: &mut rustc_lint::LintStore, conf: &'static Co
     store.register_early_pass(move || Box::new(nonstandard_macro_braces::MacroBraces::new(conf)));
     store.register_late_pass(|_| Box::<macro_use::MacroUseImports>::default());
     store.register_late_pass(|_| Box::new(pattern_type_mismatch::PatternTypeMismatch));
-    store.register_late_pass(|_| Box::new(unwrap_in_result::UnwrapInResult));
+    store.register_late_pass(|_| Box::<unwrap_in_result::UnwrapInResult>::default());
     store.register_late_pass(|_| Box::new(semicolon_if_nothing_returned::SemicolonIfNothingReturned));
     store.register_late_pass(|_| Box::new(async_yields_async::AsyncYieldsAsync));
     let attrs = attr_storage.clone();
