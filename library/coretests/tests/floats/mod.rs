@@ -6,6 +6,8 @@ trait TestableFloat {
     type Int;
     /// Set the default tolerance for float comparison based on the type.
     const APPROX: Self;
+    const ZERO: Self;
+    const ONE: Self;
     const MIN_POSITIVE_NORMAL: Self;
     const MAX_SUBNORMAL: Self;
     /// Smallest number
@@ -23,6 +25,8 @@ trait TestableFloat {
 impl TestableFloat for f16 {
     type Int = u16;
     const APPROX: Self = 1e-3;
+    const ZERO: Self = 0.0;
+    const ONE: Self = 1.0;
     const MIN_POSITIVE_NORMAL: Self = Self::MIN_POSITIVE;
     const MAX_SUBNORMAL: Self = Self::MIN_POSITIVE.next_down();
     const TINY: Self = Self::from_bits(0x1);
@@ -35,6 +39,8 @@ impl TestableFloat for f16 {
 impl TestableFloat for f32 {
     type Int = u32;
     const APPROX: Self = 1e-6;
+    const ZERO: Self = 0.0;
+    const ONE: Self = 1.0;
     const MIN_POSITIVE_NORMAL: Self = Self::MIN_POSITIVE;
     const MAX_SUBNORMAL: Self = Self::MIN_POSITIVE.next_down();
     const TINY: Self = Self::from_bits(0x1);
@@ -47,6 +53,8 @@ impl TestableFloat for f32 {
 impl TestableFloat for f64 {
     type Int = u64;
     const APPROX: Self = 1e-6;
+    const ZERO: Self = 0.0;
+    const ONE: Self = 1.0;
     const MIN_POSITIVE_NORMAL: Self = Self::MIN_POSITIVE;
     const MAX_SUBNORMAL: Self = Self::MIN_POSITIVE.next_down();
     const TINY: Self = Self::from_bits(0x1);
@@ -59,6 +67,8 @@ impl TestableFloat for f64 {
 impl TestableFloat for f128 {
     type Int = u128;
     const APPROX: Self = 1e-9;
+    const ZERO: Self = 0.0;
+    const ONE: Self = 1.0;
     const MIN_POSITIVE_NORMAL: Self = Self::MIN_POSITIVE;
     const MAX_SUBNORMAL: Self = Self::MIN_POSITIVE.next_down();
     const TINY: Self = Self::from_bits(0x1);
@@ -378,15 +388,14 @@ float_test! {
         f128: #[cfg(any(miri, target_has_reliable_f128))],
     },
     test<Float> {
-        let zero: Float = 0.0;
-        assert_biteq!(0.0, zero);
-        assert!(!zero.is_infinite());
-        assert!(zero.is_finite());
-        assert!(zero.is_sign_positive());
-        assert!(!zero.is_sign_negative());
-        assert!(!zero.is_nan());
-        assert!(!zero.is_normal());
-        assert!(matches!(zero.classify(), Fp::Zero));
+        assert_biteq!(0.0, Float::ZERO);
+        assert!(!Float::ZERO.is_infinite());
+        assert!(Float::ZERO.is_finite());
+        assert!(Float::ZERO.is_sign_positive());
+        assert!(!Float::ZERO.is_sign_negative());
+        assert!(!Float::ZERO.is_nan());
+        assert!(!Float::ZERO.is_normal());
+        assert!(matches!(Float::ZERO.classify(), Fp::Zero));
     }
 }
 
@@ -417,15 +426,14 @@ float_test! {
         f128: #[cfg(any(miri, target_has_reliable_f128))],
     },
     test<Float> {
-        let one: Float = 1.0;
-        assert_biteq!(1.0, one);
-        assert!(!one.is_infinite());
-        assert!(one.is_finite());
-        assert!(one.is_sign_positive());
-        assert!(!one.is_sign_negative());
-        assert!(!one.is_nan());
-        assert!(one.is_normal());
-        assert!(matches!(one.classify(), Fp::Normal));
+        assert_biteq!(1.0, Float::ONE);
+        assert!(!Float::ONE.is_infinite());
+        assert!(Float::ONE.is_finite());
+        assert!(Float::ONE.is_sign_positive());
+        assert!(!Float::ONE.is_sign_negative());
+        assert!(!Float::ONE.is_nan());
+        assert!(Float::ONE.is_normal());
+        assert!(matches!(Float::ONE.classify(), Fp::Normal));
     }
 }
 
@@ -439,11 +447,10 @@ float_test! {
         let nan: Float = Float::NAN;
         let inf: Float = Float::INFINITY;
         let neg_inf: Float = Float::NEG_INFINITY;
-        let zero: Float = 0.0;
         let pos: Float = 5.3;
         let neg: Float = -10.732;
         assert!(nan.is_nan());
-        assert!(!zero.is_nan());
+        assert!(!Float::ZERO.is_nan());
         assert!(!pos.is_nan());
         assert!(!neg.is_nan());
         assert!(!inf.is_nan());
@@ -461,13 +468,12 @@ float_test! {
         let nan: Float = Float::NAN;
         let inf: Float = Float::INFINITY;
         let neg_inf: Float = Float::NEG_INFINITY;
-        let zero: Float = 0.0;
         let pos: Float = 42.8;
         let neg: Float = -109.2;
         assert!(!nan.is_infinite());
         assert!(inf.is_infinite());
         assert!(neg_inf.is_infinite());
-        assert!(!zero.is_infinite());
+        assert!(!Float::ZERO.is_infinite());
         assert!(!pos.is_infinite());
         assert!(!neg.is_infinite());
     }
@@ -483,13 +489,12 @@ float_test! {
         let nan: Float = Float::NAN;
         let inf: Float = Float::INFINITY;
         let neg_inf: Float = Float::NEG_INFINITY;
-        let zero: Float = 0.0;
         let pos: Float = 42.8;
         let neg: Float = -109.2;
         assert!(!nan.is_finite());
         assert!(!inf.is_finite());
         assert!(!neg_inf.is_finite());
-        assert!(zero.is_finite());
+        assert!(Float::ZERO.is_finite());
         assert!(pos.is_finite());
         assert!(neg.is_finite());
     }
@@ -505,15 +510,13 @@ float_test! {
         let nan: Float = Float::NAN;
         let inf: Float = Float::INFINITY;
         let neg_inf: Float = Float::NEG_INFINITY;
-        let zero: Float = 0.0;
         let neg_zero: Float = -0.0;
-        let one : Float = 1.0;
         assert!(!nan.is_normal());
         assert!(!inf.is_normal());
         assert!(!neg_inf.is_normal());
-        assert!(!zero.is_normal());
+        assert!(!Float::ZERO.is_normal());
         assert!(!neg_zero.is_normal());
-        assert!(one.is_normal());
+        assert!(Float::ONE.is_normal());
         assert!(Float::MIN_POSITIVE_NORMAL.is_normal());
         assert!(!Float::MAX_SUBNORMAL.is_normal());
     }
@@ -528,15 +531,13 @@ float_test! {
         let nan: Float = Float::NAN;
         let inf: Float = Float::INFINITY;
         let neg_inf: Float = Float::NEG_INFINITY;
-        let zero: Float = 0.0;
         let neg_zero: Float = -0.0;
-        let one: Float = 1.0;
         assert!(matches!(nan.classify(), Fp::Nan));
         assert!(matches!(inf.classify(), Fp::Infinite));
         assert!(matches!(neg_inf.classify(), Fp::Infinite));
-        assert!(matches!(zero.classify(), Fp::Zero));
+        assert!(matches!(Float::ZERO.classify(), Fp::Zero));
         assert!(matches!(neg_zero.classify(), Fp::Zero));
-        assert!(matches!(one.classify(), Fp::Normal));
+        assert!(matches!(Float::ONE.classify(), Fp::Normal));
         assert!(matches!(Float::MIN_POSITIVE_NORMAL.classify(), Fp::Normal));
         assert!(matches!(Float::MAX_SUBNORMAL.classify(), Fp::Subnormal));
     }
@@ -756,15 +757,13 @@ float_test! {
         f128: #[cfg(any(miri, target_has_reliable_f128_math))],
     },
     test<Float> {
-        let one: Float = 1.0;
-        let zero: Float = 0.0;
         assert_biteq!(Float::INFINITY.abs(), Float::INFINITY);
-        assert_biteq!(one.abs(), one);
-        assert_biteq!(zero.abs(), zero);
-        assert_biteq!((-zero).abs(), zero);
-        assert_biteq!((-one).abs(), one);
+        assert_biteq!(Float::ONE.abs(), Float::ONE);
+        assert_biteq!(Float::ZERO.abs(), Float::ZERO);
+        assert_biteq!((-Float::ZERO).abs(), Float::ZERO);
+        assert_biteq!((-Float::ONE).abs(), Float::ONE);
         assert_biteq!(Float::NEG_INFINITY.abs(), Float::INFINITY);
-        assert_biteq!((one / Float::NEG_INFINITY).abs(), zero);
+        assert_biteq!((Float::ONE / Float::NEG_INFINITY).abs(), Float::ZERO);
         assert!(Float::NAN.abs().is_nan());
     }
 }
@@ -1001,15 +1000,13 @@ float_test! {
         f128: #[cfg(any(miri, target_has_reliable_f128_math))],
     },
     test<Float> {
-        let one: Float = 1.0;
-        let zero: Float = 0.0;
-        assert_biteq!(Float::INFINITY.signum(), one);
-        assert_biteq!(one.signum(), one);
-        assert_biteq!(zero.signum(), one);
-        assert_biteq!((-zero).signum(), -one);
-        assert_biteq!((-one).signum(), -one);
-        assert_biteq!(Float::NEG_INFINITY.signum(), -one);
-        assert_biteq!((one / Float::NEG_INFINITY).signum(), -one);
+        assert_biteq!(Float::INFINITY.signum(), Float::ONE);
+        assert_biteq!(Float::ONE.signum(), Float::ONE);
+        assert_biteq!(Float::ZERO.signum(), Float::ONE);
+        assert_biteq!((-Float::ZERO).signum(), -Float::ONE);
+        assert_biteq!((-Float::ONE).signum(), -Float::ONE);
+        assert_biteq!(Float::NEG_INFINITY.signum(), -Float::ONE);
+        assert_biteq!((Float::ONE / Float::NEG_INFINITY).signum(), -Float::ONE);
         assert!(Float::NAN.signum().is_nan());
     }
 }
@@ -1021,15 +1018,13 @@ float_test! {
         f128: #[cfg(any(miri, target_has_reliable_f128))],
     },
     test<Float> {
-        let one: Float = 1.0;
-        let zero: Float = 0.0;
         assert!(Float::INFINITY.is_sign_positive());
-        assert!(one.is_sign_positive());
-        assert!(zero.is_sign_positive());
-        assert!(!(-zero).is_sign_positive());
-        assert!(!(-one).is_sign_positive());
+        assert!(Float::ONE.is_sign_positive());
+        assert!(Float::ZERO.is_sign_positive());
+        assert!(!(-Float::ZERO).is_sign_positive());
+        assert!(!(-Float::ONE).is_sign_positive());
         assert!(!Float::NEG_INFINITY.is_sign_positive());
-        assert!(!(one / Float::NEG_INFINITY).is_sign_positive());
+        assert!(!(Float::ONE / Float::NEG_INFINITY).is_sign_positive());
         assert!(Float::NAN.is_sign_positive());
         assert!(!(-Float::NAN).is_sign_positive());
     }
@@ -1042,15 +1037,13 @@ float_test! {
         f128: #[cfg(any(miri, target_has_reliable_f128))],
     },
     test<Float> {
-        let one: Float = 1.0;
-        let zero: Float = 0.0;
         assert!(!Float::INFINITY.is_sign_negative());
-        assert!(!one.is_sign_negative());
-        assert!(!zero.is_sign_negative());
-        assert!((-zero).is_sign_negative());
-        assert!((-one).is_sign_negative());
+        assert!(!Float::ONE.is_sign_negative());
+        assert!(!Float::ZERO.is_sign_negative());
+        assert!((-Float::ZERO).is_sign_negative());
+        assert!((-Float::ONE).is_sign_negative());
         assert!(Float::NEG_INFINITY.is_sign_negative());
-        assert!((one / Float::NEG_INFINITY).is_sign_negative());
+        assert!((Float::ONE / Float::NEG_INFINITY).is_sign_negative());
         assert!(!Float::NAN.is_sign_negative());
         assert!((-Float::NAN).is_sign_negative());
     }
@@ -1063,19 +1056,17 @@ float_test! {
         f128: #[cfg(any(miri, target_has_reliable_f128))],
     },
     test<Float> {
-        let one: Float = 1.0;
-        let zero: Float = 0.0;
         assert_biteq!(Float::NEG_INFINITY.next_up(), Float::MIN);
         assert_biteq!(Float::MIN.next_up(), -Float::MAX_DOWN);
-        assert_biteq!((-one - Float::EPSILON).next_up(), -one);
+        assert_biteq!((-Float::ONE - Float::EPSILON).next_up(), -Float::ONE);
         assert_biteq!((-Float::MIN_POSITIVE_NORMAL).next_up(), -Float::MAX_SUBNORMAL);
         assert_biteq!((-Float::TINY_UP).next_up(), -Float::TINY);
-        assert_biteq!((-Float::TINY).next_up(), -zero);
-        assert_biteq!((-zero).next_up(), Float::TINY);
-        assert_biteq!(zero.next_up(), Float::TINY);
+        assert_biteq!((-Float::TINY).next_up(), -Float::ZERO);
+        assert_biteq!((-Float::ZERO).next_up(), Float::TINY);
+        assert_biteq!(Float::ZERO.next_up(), Float::TINY);
         assert_biteq!(Float::TINY.next_up(), Float::TINY_UP);
         assert_biteq!(Float::MAX_SUBNORMAL.next_up(), Float::MIN_POSITIVE_NORMAL);
-        assert_biteq!(one.next_up(), 1.0 + Float::EPSILON);
+        assert_biteq!(Float::ONE.next_up(), 1.0 + Float::EPSILON);
         assert_biteq!(Float::MAX.next_up(), Float::INFINITY);
         assert_biteq!(Float::INFINITY.next_up(), Float::INFINITY);
 
@@ -1096,20 +1087,18 @@ float_test! {
         f128: #[cfg(any(miri, target_has_reliable_f128))],
     },
     test<Float> {
-        let one: Float = 1.0;
-        let zero: Float = 0.0;
         assert_biteq!(Float::NEG_INFINITY.next_down(), Float::NEG_INFINITY);
         assert_biteq!(Float::MIN.next_down(), Float::NEG_INFINITY);
         assert_biteq!((-Float::MAX_DOWN).next_down(), Float::MIN);
-        assert_biteq!((-one).next_down(), -1.0 - Float::EPSILON);
+        assert_biteq!((-Float::ONE).next_down(), -1.0 - Float::EPSILON);
         assert_biteq!((-Float::MAX_SUBNORMAL).next_down(), -Float::MIN_POSITIVE_NORMAL);
         assert_biteq!((-Float::TINY).next_down(), -Float::TINY_UP);
-        assert_biteq!((-zero).next_down(), -Float::TINY);
-        assert_biteq!((zero).next_down(), -Float::TINY);
-        assert_biteq!(Float::TINY.next_down(), zero);
+        assert_biteq!((-Float::ZERO).next_down(), -Float::TINY);
+        assert_biteq!((Float::ZERO).next_down(), -Float::TINY);
+        assert_biteq!(Float::TINY.next_down(), Float::ZERO);
         assert_biteq!(Float::TINY_UP.next_down(), Float::TINY);
         assert_biteq!(Float::MIN_POSITIVE_NORMAL.next_down(), Float::MAX_SUBNORMAL);
-        assert_biteq!((1.0 + Float::EPSILON).next_down(), one);
+        assert_biteq!((1.0 + Float::EPSILON).next_down(), Float::ONE);
         assert_biteq!(Float::MAX.next_down(), Float::MAX_DOWN);
         assert_biteq!(Float::INFINITY.next_down(), Float::MAX);
 
@@ -1134,14 +1123,12 @@ float_test! {
         f128: #[cfg(all(not(miri), target_has_reliable_f128_math))],
     },
     test<Float> {
-        let one: Float = 1.0;
-        let zero: Float = 0.0;
         assert!(Float::NAN.sqrt().is_nan());
         assert!(Float::NEG_INFINITY.sqrt().is_nan());
-        assert!((-one).sqrt().is_nan());
-        assert_biteq!((-zero).sqrt(), -zero);
-        assert_biteq!(zero.sqrt(), zero);
-        assert_biteq!(one.sqrt(), one);
+        assert!((-Float::ONE).sqrt().is_nan());
+        assert_biteq!((-Float::ZERO).sqrt(), -Float::ZERO);
+        assert_biteq!(Float::ZERO.sqrt(), Float::ZERO);
+        assert_biteq!(Float::ONE.sqrt(), Float::ONE);
         assert_biteq!(Float::INFINITY.sqrt(), Float::INFINITY);
     }
 }
@@ -1156,8 +1143,7 @@ float_test! {
         f128: #[should_panic, cfg(any(miri, target_has_reliable_f128))],
     },
     test<Float> {
-        let one : Float = 1.0;
-        let _ = one.clamp(3.0, 1.0);
+        let _ = Float::ONE.clamp(3.0, 1.0);
     }
 }
 
@@ -1171,8 +1157,7 @@ float_test! {
         f128: #[should_panic, cfg(any(miri, target_has_reliable_f128))],
     },
     test<Float> {
-        let one : Float = 1.0;
-        let _ = one.clamp(Float::NAN, 1.0);
+        let _ = Float::ONE.clamp(Float::NAN, 1.0);
     }
 }
 
@@ -1186,8 +1171,7 @@ float_test! {
         f128: #[should_panic, cfg(any(miri, target_has_reliable_f128))],
     },
     test<Float> {
-        let one : Float = 1.0;
-        let _ = one.clamp(3.0, Float::NAN);
+        let _ = Float::ONE.clamp(3.0, Float::NAN);
     }
 }
 
