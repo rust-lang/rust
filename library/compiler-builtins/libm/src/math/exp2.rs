@@ -322,7 +322,7 @@ static TBL: [u64; TBLSIZE * 2] = [
 /// Exponential, base 2 (f64)
 ///
 /// Calculate `2^x`, that is, 2 raised to the power `x`.
-#[cfg_attr(all(test, assert_no_panic), no_panic::no_panic)]
+#[cfg_attr(assert_no_panic, no_panic::no_panic)]
 pub fn exp2(mut x: f64) -> f64 {
     let redux = f64::from_bits(0x4338000000000000) / TBLSIZE as f64;
     let p1 = f64::from_bits(0x3fe62e42fefa39ef);

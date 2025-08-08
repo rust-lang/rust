@@ -1,5 +1,3 @@
-#![cfg(not(feature = "no-asm"))]
-
 use core::arch::global_asm;
 
 global_asm!(include_str!("hexagon/func_macro.s"), options(raw));
