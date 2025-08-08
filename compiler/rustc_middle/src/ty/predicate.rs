@@ -6,8 +6,7 @@ use rustc_macros::{HashStable, extension};
 use rustc_type_ir as ir;
 
 use crate::ty::{
-    self, DebruijnIndex, EarlyBinder, PredicatePolarity, Ty, TyCtxt, TypeFlags, Upcast, UpcastFrom,
-    WithCachedTypeInfo,
+    self, DebruijnIndex, EarlyBinder, Ty, TyCtxt, TypeFlags, Upcast, UpcastFrom, WithCachedTypeInfo,
 };
 
 pub type TraitRef<'tcx> = ir::TraitRef<TyCtxt<'tcx>>;
@@ -533,15 +532,6 @@ impl<'tcx> UpcastFrom<TyCtxt<'tcx>, ty::Binder<'tcx, TraitRef<'tcx>>> for Clause
     fn upcast_from(from: ty::Binder<'tcx, TraitRef<'tcx>>, tcx: TyCtxt<'tcx>) -> Self {
         let pred: PolyTraitPredicate<'tcx> = from.upcast(tcx);
         pred.upcast(tcx)
-    }
-}
-
-impl<'tcx> UpcastFrom<TyCtxt<'tcx>, ty::Binder<'tcx, TraitRef<'tcx>>> for PolyTraitPredicate<'tcx> {
-    fn upcast_from(from: ty::Binder<'tcx, TraitRef<'tcx>>, _tcx: TyCtxt<'tcx>) -> Self {
-        from.map_bound(|trait_ref| TraitPredicate {
-            trait_ref,
-            polarity: PredicatePolarity::Positive,
-        })
     }
 }
 
