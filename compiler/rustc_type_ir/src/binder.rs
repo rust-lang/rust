@@ -15,13 +15,12 @@ use crate::lift::Lift;
 use crate::visit::{Flags, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor};
 use crate::{self as ty, Interner};
 
-/// Binder is a binder for higher-ranked lifetimes or types. It is part of the
+/// `Binder` is a binder for higher-ranked lifetimes or types. It is part of the
 /// compiler's representation for things like `for<'a> Fn(&'a isize)`
-/// (which would be represented by the type `PolyTraitRef ==
-/// Binder<I, TraitRef>`). Note that when we instantiate,
-/// erase, or otherwise "discharge" these bound vars, we change the
-/// type from `Binder<I, T>` to just `T` (see
-/// e.g., `liberate_late_bound_regions`).
+/// (which would be represented by the type `PolyTraitRef == Binder<I, TraitRef>`).
+///
+/// See <https://rustc-dev-guide.rust-lang.org/ty_module/instantiating_binders.html>
+/// for more details.
 ///
 /// `Decodable` and `Encodable` are implemented for `Binder<T>` using the `impl_binder_encode_decode!` macro.
 #[derive_where(Clone; I: Interner, T: Clone)]
@@ -154,22 +153,19 @@ impl<I: Interner, T: TypeVisitable<I>> TypeSuperVisitable<I> for Binder<I, T> {
 }
 
 impl<I: Interner, T> Binder<I, T> {
-    /// Skips the binder and returns the "bound" value. This is a
-    /// risky thing to do because it's easy to get confused about
-    /// De Bruijn indices and the like. It is usually better to
-    /// discharge the binder using `no_bound_vars` or
-    /// `instantiate_bound_regions` or something like
-    /// that. `skip_binder` is only valid when you are either
-    /// extracting data that has nothing to do with bound vars, you
-    /// are doing some sort of test that does not involve bound
-    /// regions, or you are being very careful about your depth
-    /// accounting.
+    /// Returns the value contained inside of this `for<'a>`. Accessing generic args
+    /// in the returned value is generally incorrect.
     ///
-    /// Some examples where `skip_binder` is reasonable:
+    /// Please read <https://rustc-dev-guide.rust-lang.org/ty_module/instantiating_binders.html>
+    /// before using this function. It is usually better to discharge the binder using
+    /// `no_bound_vars` or `instantiate_bound_regions` or something like that.
     ///
-    /// - extracting the `DefId` from a PolyTraitRef;
-    /// - comparing the self type of a PolyTraitRef to see if it is equal to
-    ///   a type parameter `X`, since the type `X` does not reference any regions
+    /// `skip_binder` is only valid when you are either extracting data that does not reference
+    /// any generic arguments, e.g. a `DefId`, or when you're making sure you only pass the
+    /// value to things which can handle escaping bound vars.
+    ///
+    /// See existing uses of `.skip_binder()` in `rustc_trait_selection::traits::select`
+    /// or `rustc_next_trait_solver` for examples.
     pub fn skip_binder(self) -> T {
         self.value
     }
@@ -355,12 +351,11 @@ impl<I: Interner> TypeVisitor<I> for ValidateBoundVars<I> {
     }
 }
 
-/// Similar to [`super::Binder`] except that it tracks early bound generics, i.e. `struct Foo<T>(T)`
+/// Similar to [`Binder`] except that it tracks early bound generics, i.e. `struct Foo<T>(T)`
 /// needs `T` instantiated immediately. This type primarily exists to avoid forgetting to call
 /// `instantiate`.
 ///
-/// If you don't have anything to `instantiate`, you may be looking for
-/// [`instantiate_identity`](EarlyBinder::instantiate_identity) or [`skip_binder`](EarlyBinder::skip_binder).
+/// See <https://rustc-dev-guide.rust-lang.org/ty_module/early_binder.html> for more details.
 #[derive_where(Clone; I: Interner, T: Clone)]
 #[derive_where(Copy; I: Interner, T: Copy)]
 #[derive_where(PartialEq; I: Interner, T: PartialEq)]
@@ -423,17 +418,22 @@ impl<I: Interner, T> EarlyBinder<I, T> {
         EarlyBinder { value, _tcx: PhantomData }
     }
 
-    /// Skips the binder and returns the "bound" value.
-    /// This can be used to extract data that does not depend on generic parameters
-    /// (e.g., getting the `DefId` of the inner value or getting the number of
-    /// arguments of an `FnSig`). Otherwise, consider using
-    /// [`instantiate_identity`](EarlyBinder::instantiate_identity).
+    /// Skips the binder and returns the "bound" value. Accessing generic args
+    /// in the returned value is generally incorrect.
+    ///
+    /// Please read <https://rustc-dev-guide.rust-lang.org/ty_module/early_binder.html>
+    /// before using this function.
+    ///
+    /// Only use this to extract data that does not depend on generic parameters, e.g.
+    /// to get the `DefId` of the inner value or the number of arguments ofan `FnSig`,
+    /// or while making sure to only pass the value to functions which are explicitly
+    /// set up to handle these uninstantiated generic parameters.
     ///
     /// To skip the binder on `x: &EarlyBinder<I, T>` to obtain `&T`, leverage
     /// [`EarlyBinder::as_ref`](EarlyBinder::as_ref): `x.as_ref().skip_binder()`.
     ///
-    /// See also [`Binder::skip_binder`](super::Binder::skip_binder), which is
-    /// the analogous operation on [`super::Binder`].
+    /// See also [`Binder::skip_binder`](Binder::skip_binder), which is
+    /// the analogous operation on [`Binder`].
     pub fn skip_binder(self) -> T {
         self.value
     }
