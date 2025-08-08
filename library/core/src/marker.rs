@@ -462,7 +462,9 @@ marker_impls! {
 // library, and there's no way to safely have this behavior right now.
 #[rustc_unsafe_specialization_marker]
 #[rustc_diagnostic_item = "Copy"]
-pub trait Copy: Clone {
+#[const_trait]
+#[rustc_const_unstable(feature = "const_clone", issue = "142757")]
+pub trait Copy: [const] Clone {
     // Empty.
 }
 
@@ -852,10 +854,12 @@ impl<T: PointeeSized> cmp::Ord for PhantomData<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: PointeeSized> Copy for PhantomData<T> {}
+#[rustc_const_unstable(feature = "const_clone", issue = "142757")]
+impl<T: PointeeSized> const Copy for PhantomData<T> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: PointeeSized> Clone for PhantomData<T> {
+#[rustc_const_unstable(feature = "const_clone", issue = "142757")]
+impl<T: PointeeSized> const Clone for PhantomData<T> {
     fn clone(&self) -> Self {
         Self
     }
