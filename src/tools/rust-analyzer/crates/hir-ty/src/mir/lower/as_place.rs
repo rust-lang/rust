@@ -2,7 +2,7 @@
 
 use hir_def::FunctionId;
 use intern::sym;
-use rustc_type_ir::inherent::{Region as _, Ty as _};
+use rustc_type_ir::inherent::Region as _;
 
 use super::*;
 use crate::{

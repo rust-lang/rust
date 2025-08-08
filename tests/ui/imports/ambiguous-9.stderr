@@ -32,12 +32,12 @@ LL |     use super::prelude::*;
    = note: `#[warn(ambiguous_glob_imports)]` (part of `#[warn(future_incompatible)]`) on by default
 
 warning: ambiguous glob re-exports
-  --> $DIR/ambiguous-9.rs:15:13
+  --> $DIR/ambiguous-9.rs:16:13
    |
 LL |     pub use self::t::*;
-   |             ^^^^^^^^^^ the name `date_range` in the value namespace is first re-exported here
+   |             ---------- but the name `date_range` in the value namespace is also re-exported here
 LL |     pub use super::dsl::*;
-   |             ------------- but the name `date_range` in the value namespace is also re-exported here
+   |             ^^^^^^^^^^^^^ the name `date_range` in the value namespace is first re-exported here
 
 warning: `date_range` is ambiguous
   --> $DIR/ambiguous-9.rs:23:5
@@ -49,16 +49,16 @@ LL |     date_range();
    = note: for more information, see issue #114095 <https://github.com/rust-lang/rust/issues/114095>
    = note: ambiguous because of multiple glob imports of a name in the same module
 note: `date_range` could refer to the function imported here
-  --> $DIR/ambiguous-9.rs:19:5
+  --> $DIR/ambiguous-9.rs:16:13
    |
-LL | use dsl::*;
-   |     ^^^^^^
+LL |     pub use super::dsl::*;
+   |             ^^^^^^^^^^^^^
    = help: consider adding an explicit import of `date_range` to disambiguate
 note: `date_range` could also refer to the function imported here
-  --> $DIR/ambiguous-9.rs:20:5
+  --> $DIR/ambiguous-9.rs:15:13
    |
-LL | use prelude::*;
-   |     ^^^^^^^^^^
+LL |     pub use self::t::*;
+   |             ^^^^^^^^^^
    = help: consider adding an explicit import of `date_range` to disambiguate
 
 warning: 4 warnings emitted
@@ -98,16 +98,16 @@ LL |     date_range();
    = note: for more information, see issue #114095 <https://github.com/rust-lang/rust/issues/114095>
    = note: ambiguous because of multiple glob imports of a name in the same module
 note: `date_range` could refer to the function imported here
-  --> $DIR/ambiguous-9.rs:19:5
+  --> $DIR/ambiguous-9.rs:16:13
    |
-LL | use dsl::*;
-   |     ^^^^^^
+LL |     pub use super::dsl::*;
+   |             ^^^^^^^^^^^^^
    = help: consider adding an explicit import of `date_range` to disambiguate
 note: `date_range` could also refer to the function imported here
-  --> $DIR/ambiguous-9.rs:20:5
+  --> $DIR/ambiguous-9.rs:15:13
    |
-LL | use prelude::*;
-   |     ^^^^^^^^^^
+LL |     pub use self::t::*;
+   |             ^^^^^^^^^^
    = help: consider adding an explicit import of `date_range` to disambiguate
    = note: `#[warn(ambiguous_glob_imports)]` (part of `#[warn(future_incompatible)]`) on by default
 
