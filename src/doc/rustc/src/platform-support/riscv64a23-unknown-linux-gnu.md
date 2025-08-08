@@ -2,7 +2,7 @@
 
 **Tier: 3**
 
-RISC-V targets using the ratified [RVA23 Profile](https://github.com/riscv/riscv-profiles/blob/main/rva23-profile.adoc).
+RISC-V targets using the ratified [RVA23 Profile](https://github.com/riscv/riscv-profiles/blob/main/src/rva23-profile.adoc).
 This target will enable all mandary features of rva23u64 and rva23s64 by default.
 
 
