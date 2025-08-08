@@ -5,7 +5,7 @@ LL | #[derive(ambigious_extern::Embed)]
    |                            ^^^^^ private derive macro
    |
 note: the derive macro `Embed` is defined here
-  --> $DIR/auxiliary/same-res-ambigious-extern-fail.rs:16:9
+  --> $DIR/auxiliary/same-res-ambigious-extern.rs:11:9
    |
 LL | pub use RustEmbed as Embed;
    |         ^^^^^^^^^
