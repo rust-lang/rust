@@ -3,7 +3,6 @@ use core::mem;
 use core::num::NonZeroU16;
 
 use core::arch::loongarch64::*;
-use mem::transmute;
 
 pub(crate) type BitMaskWord = u16;
 pub(crate) type NonZeroBitMaskWord = NonZeroU16;
@@ -16,7 +15,7 @@ pub(crate) const BITMASK_ITER_MASK: BitMaskWord = !0;
 ///
 /// This implementation uses a 128-bit LSX value.
 #[derive(Copy, Clone)]
-pub(crate) struct Group(v16i8);
+pub(crate) struct Group(m128i);
 
 // FIXME: https://github.com/rust-lang/rust-clippy/issues/3859
 #[allow(clippy::use_self)]
@@ -72,10 +71,9 @@ impl Group {
     /// the given value.
     #[inline]
     pub(crate) fn match_tag(self, tag: Tag) -> BitMask {
-        #[allow(clippy::missing_transmute_annotations)]
         unsafe {
             let cmp = lsx_vseq_b(self.0, lsx_vreplgr2vr_b(tag.0 as i32));
-            BitMask(lsx_vpickve2gr_hu::<0>(transmute(lsx_vmskltz_b(cmp))) as u16)
+            BitMask(lsx_vpickve2gr_hu::<0>(lsx_vmskltz_b(cmp)) as u16)
         }
     }
 
@@ -83,10 +81,9 @@ impl Group {
     /// `EMPTY`.
     #[inline]
     pub(crate) fn match_empty(self) -> BitMask {
-        #[allow(clippy::missing_transmute_annotations)]
         unsafe {
             let cmp = lsx_vseqi_b::<{ Tag::EMPTY.0 as i8 as i32 }>(self.0);
-            BitMask(lsx_vpickve2gr_hu::<0>(transmute(lsx_vmskltz_b(cmp))) as u16)
+            BitMask(lsx_vpickve2gr_hu::<0>(lsx_vmskltz_b(cmp)) as u16)
         }
     }
 
@@ -94,20 +91,18 @@ impl Group {
     /// `EMPTY` or `DELETED`.
     #[inline]
     pub(crate) fn match_empty_or_deleted(self) -> BitMask {
-        #[allow(clippy::missing_transmute_annotations)]
         unsafe {
             // A tag is EMPTY or DELETED iff the high bit is set
-            BitMask(lsx_vpickve2gr_hu::<0>(transmute(lsx_vmskltz_b(self.0))) as u16)
+            BitMask(lsx_vpickve2gr_hu::<0>(lsx_vmskltz_b(self.0)) as u16)
         }
     }
 
     /// Returns a `BitMask` indicating all tags in the group which are full.
     #[inline]
     pub(crate) fn match_full(&self) -> BitMask {
-        #[allow(clippy::missing_transmute_annotations)]
         unsafe {
             // A tag is EMPTY or DELETED iff the high bit is set
-            BitMask(lsx_vpickve2gr_hu::<0>(transmute(lsx_vmskgez_b(self.0))) as u16)
+            BitMask(lsx_vpickve2gr_hu::<0>(lsx_vmskgez_b(self.0)) as u16)
         }
     }
 
@@ -124,14 +119,10 @@ impl Group {
         //   let special = 0 > tag = 1111_1111 (true) or 0000_0000 (false)
         //   1111_1111 | 1000_0000 = 1111_1111
         //   0000_0000 | 1000_0000 = 1000_0000
-        #[allow(clippy::missing_transmute_annotations)]
         unsafe {
             let zero = lsx_vreplgr2vr_b(0);
             let special = lsx_vslt_b(self.0, zero);
-            Group(transmute(lsx_vor_v(
-                transmute(special),
-                transmute(lsx_vreplgr2vr_b(Tag::DELETED.0 as i32)),
-            )))
+            Group(lsx_vor_v(special, lsx_vreplgr2vr_b(Tag::DELETED.0 as i32)))
         }
     }
 }
