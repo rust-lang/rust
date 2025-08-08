@@ -880,7 +880,7 @@ function createQueryElement(query, parserState, name, generics, isInGenerics) {
  */
 function makePrimitiveElement(name, extra) {
     return Object.assign({
-        name: name,
+        name,
         id: null,
         fullPath: [name],
         pathWithoutLast: [],
@@ -1200,25 +1200,36 @@ class DocSearch {
         if (!nn) {
             return;
         }
+        // Each of these identifiers are used specially by
+        // type-driven search.
         const [
+            // output is the special associated type that goes
+            // after the arrow: the type checker desugars
+            // the path `Fn(a) -> b` into `Fn<Output=b, (a)>`
             output,
+            // fn, fnmut, and fnonce all match `->`
             fn,
             fnMut,
             fnOnce,
+            hof,
+            // array and slice both match `[]`
             array,
             slice,
             arrayOrSlice,
+            // tuple and unit both match `()`
             tuple,
             unit,
             tupleOrUnit,
+            // reference matches `&`
             reference,
-            hof,
+            // never matches `!`
             never,
         ] = await Promise.all([
             nn.search("output"),
             nn.search("fn"),
             nn.search("fnmut"),
             nn.search("fnonce"),
+            nn.search("->"),
             nn.search("array"),
             nn.search("slice"),
             nn.search("[]"),
@@ -1226,7 +1237,6 @@ class DocSearch {
             nn.search("unit"),
             nn.search("()"),
             nn.search("reference"),
-            nn.search("->"),
             nn.search("never"),
         ]);
         /**
@@ -4232,9 +4242,8 @@ class DocSearch {
                     unpackPostingsListAll(inputs),
                     unpackPostingsListAll(output),
                 ]);
-                const results = [];
+                const resultPromises = [];
                 let checkCounter = 0;
-                let maxDist = 0;
                 for (const [inputsPostingList, inputs] of allInputs) {
                     for (const [outputPostingList, output] of allOutput) {
                         const postingList = inputsPostingList.intersection(outputPostingList);
@@ -4243,51 +4252,49 @@ class DocSearch {
                             if ((checkCounter & 0x7F) === 0) {
                                 await yieldToBrowser();
                             }
-                            const fnData = await this.getFunctionData(id);
-                            if (!fnData || !fnData.functionSignature) {
-                                continue;
-                            }
-                            if (fnData.elemCount > maxDist) {
-                                if (results.length > 200) {
-                                    continue;
-                                } else {
-                                    maxDist = fnData.elemCount;
+                            resultPromises.push(this.getFunctionData(id).then(async fnData => {
+                                if (!fnData || !fnData.functionSignature) {
+                                    return null;
                                 }
-                            }
-                            const functionSignature = fnData.functionSignature;
-                            if (!unifyFunctionTypes(
-                                functionSignature.inputs,
-                                inputs,
-                                functionSignature.where_clause,
-                                null,
-                                mgens => {
-                                    return !!unifyFunctionTypes(
-                                        functionSignature.output,
-                                        output,
-                                        functionSignature.where_clause,
-                                        mgens,
-                                        checkTypeMgensForConflict,
-                                        0, // unboxing depth
-                                    );
-                                },
-                                0, // unboxing depth
-                            )) {
-                                continue;
-                            }
-                            results.push({
-                                id,
-                                dist: fnData.elemCount,
-                                path_dist: 0,
-                                index: -1,
-                                elems: inputs,
-                                returned: output,
-                                is_alias: false,
-                            });
+                                checkCounter += 1;
+                                if ((checkCounter & 0x7F) === 0) {
+                                    await yieldToBrowser();
+                                }
+                                const functionSignature = fnData.functionSignature;
+                                if (!unifyFunctionTypes(
+                                    functionSignature.inputs,
+                                    inputs,
+                                    functionSignature.where_clause,
+                                    null,
+                                    mgens => {
+                                        return !!unifyFunctionTypes(
+                                            functionSignature.output,
+                                            output,
+                                            functionSignature.where_clause,
+                                            mgens,
+                                            checkTypeMgensForConflict,
+                                            0, // unboxing depth
+                                        );
+                                    },
+                                    0, // unboxing depth
+                                )) {
+                                    return null;
+                                }
+                                return {
+                                    id,
+                                    dist: fnData.elemCount,
+                                    path_dist: 0,
+                                    index: -1,
+                                    elems: inputs,
+                                    returned: output,
+                                    is_alias: false,
+                                };
+                            }));
                         }
                     }
                 }
                 yield* sortAndTransformResults(
-                    results,
+                    await Promise.all(resultPromises),
                     typeInfo,
                     currentCrate,
                     new Set(),
