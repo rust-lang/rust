@@ -217,7 +217,7 @@ struct UniversalRegionIndices<'tcx> {
 
     /// Whether we've encountered an error region. If we have, cancel all
     /// outlives errors, as they are likely bogus.
-    pub tainted_by_errors: Cell<Option<ErrorGuaranteed>>,
+    pub encountered_re_error: Cell<Option<ErrorGuaranteed>>,
 }
 
 #[derive(Debug, PartialEq)]
@@ -442,8 +442,8 @@ impl<'tcx> UniversalRegions<'tcx> {
         self.fr_fn_body
     }
 
-    pub(crate) fn tainted_by_errors(&self) -> Option<ErrorGuaranteed> {
-        self.indices.tainted_by_errors.get()
+    pub(crate) fn encountered_re_error(&self) -> Option<ErrorGuaranteed> {
+        self.indices.encountered_re_error.get()
     }
 }
 
@@ -706,7 +706,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
         UniversalRegionIndices {
             indices: global_mapping.chain(arg_mapping).collect(),
             fr_static,
-            tainted_by_errors: Cell::new(None),
+            encountered_re_error: Cell::new(None),
         }
     }
 
@@ -916,7 +916,7 @@ impl<'tcx> UniversalRegionIndices<'tcx> {
         match r.kind() {
             ty::ReVar(..) => r.as_var(),
             ty::ReError(guar) => {
-                self.tainted_by_errors.set(Some(guar));
+                self.encountered_re_error.set(Some(guar));
                 // We use the `'static` `RegionVid` because `ReError` doesn't actually exist in the
                 // `UniversalRegionIndices`. This is fine because 1) it is a fallback only used if
                 // errors are being emitted and 2) it leaves the happy path unaffected.
