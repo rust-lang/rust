@@ -1846,12 +1846,10 @@ mod snapshot {
         [build] llvm <host>
         [build] rustc 0 <host> -> rustc 1 <host>
         [check] rustc 1 <host> -> rustc 2 <host>
-        [build] rustc 1 <host> -> std 1 <host>
-        [build] rustc 1 <host> -> rustc 2 <host>
-        [build] rustc 1 <host> -> clippy-driver 2 <host>
-        [build] rustc 1 <host> -> cargo-clippy 2 <host>
+        [build] rustc 0 <host> -> clippy-driver 1 <host>
+        [build] rustc 0 <host> -> cargo-clippy 1 <host>
         [clippy] bootstrap <host>
-        [clippy] std <host>
+        [clippy] rustc 1 <host> -> std 1 <host>
         [clippy] rustc 0 <host> -> rustc 1 <host>
         [clippy] rustc 0 <host> -> rustc_codegen_gcc 1 <host>
         ");
@@ -1870,14 +1868,12 @@ mod snapshot {
         [build] rustc 1 <host> -> std 1 <host>
         [build] rustc 1 <host> -> rustc 2 <host>
         [check] rustc 2 <host> -> rustc 3 <host>
-        [build] rustc 2 <host> -> std 2 <host>
-        [build] rustc 2 <host> -> rustc 3 <host>
-        [build] rustc 2 <host> -> clippy-driver 3 <host>
-        [build] rustc 2 <host> -> cargo-clippy 3 <host>
-        [clippy] bootstrap <host>
-        [clippy] std <host>
         [build] rustc 1 <host> -> clippy-driver 2 <host>
         [build] rustc 1 <host> -> cargo-clippy 2 <host>
+        [clippy] bootstrap <host>
+        [clippy] rustc 2 <host> -> std 2 <host>
+        [build] rustc 0 <host> -> clippy-driver 1 <host>
+        [build] rustc 0 <host> -> cargo-clippy 1 <host>
         [clippy] rustc 1 <host> -> rustc 2 <host>
         [clippy] rustc 1 <host> -> rustc_codegen_gcc 2 <host>
         ");
@@ -1904,11 +1900,9 @@ mod snapshot {
                 .render_steps(), @r"
         [build] llvm <host>
         [build] rustc 0 <host> -> rustc 1 <host>
-        [build] rustc 1 <host> -> std 1 <host>
-        [build] rustc 1 <host> -> rustc 2 <host>
-        [build] rustc 1 <host> -> clippy-driver 2 <host>
-        [build] rustc 1 <host> -> cargo-clippy 2 <host>
-        [clippy] std <host>
+        [build] rustc 0 <host> -> clippy-driver 1 <host>
+        [build] rustc 0 <host> -> cargo-clippy 1 <host>
+        [clippy] rustc 1 <host> -> std 1 <host>
         ");
     }
 }
