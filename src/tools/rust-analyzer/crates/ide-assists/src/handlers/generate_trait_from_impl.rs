@@ -1,8 +1,10 @@
 use crate::assist_context::{AssistContext, Assists};
 use ide_db::assists::AssistId;
 use syntax::{
-    AstNode, SyntaxKind, T,
-    ast::{self, HasGenericParams, HasName, HasVisibility, edit::AstNodeEdit, make},
+    AstNode, AstToken, SyntaxKind, T,
+    ast::{
+        self, HasDocComments, HasGenericParams, HasName, HasVisibility, edit::AstNodeEdit, make,
+    },
     syntax_editor::{Position, SyntaxEditor},
 };
 
@@ -133,6 +135,7 @@ pub(crate) fn generate_trait_from_impl(acc: &mut Assists, ctx: &AssistContext<'_
             let mut editor = builder.make_editor(impl_ast.syntax());
             impl_assoc_items.assoc_items().for_each(|item| {
                 remove_items_visibility(&mut editor, &item);
+                remove_doc_comments(&mut editor, &item);
             });
 
             editor.insert_all(Position::before(impl_name.syntax()), elements);
@@ -172,6 +175,17 @@ fn remove_items_visibility(editor: &mut SyntaxEditor, item: &ast::AssocItem) {
         if let Some(vis) = has_vis.visibility() {
             editor.delete(vis.syntax());
         }
+    }
+}
+
+fn remove_doc_comments(editor: &mut SyntaxEditor, item: &ast::AssocItem) {
+    for doc in item.doc_comments() {
+        if let Some(next) = doc.syntax().next_token()
+            && next.kind() == SyntaxKind::WHITESPACE
+        {
+            editor.delete(next);
+        }
+        editor.delete(doc.syntax());
     }
 }
 
@@ -231,6 +245,42 @@ trait NewTrait {
 }
 
 impl NewTrait for Foo {
+    fn add(&mut self, x: f64) {
+        self.0 += x;
+    }
+}"#,
+        )
+    }
+
+    #[test]
+    fn test_remove_doc_comments() {
+        check_assist_no_snippet_cap(
+            generate_trait_from_impl,
+            r#"
+struct Foo(f64);
+
+impl F$0oo {
+    /// Add `x`
+    ///
+    /// # Examples
+    #[cfg(true)]
+    fn add(&mut self, x: f64) {
+        self.0 += x;
+    }
+}"#,
+            r#"
+struct Foo(f64);
+
+trait NewTrait {
+    /// Add `x`
+    ///
+    /// # Examples
+    #[cfg(true)]
+    fn add(&mut self, x: f64);
+}
+
+impl NewTrait for Foo {
+    #[cfg(true)]
     fn add(&mut self, x: f64) {
         self.0 += x;
     }
