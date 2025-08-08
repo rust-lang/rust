@@ -1,6 +1,7 @@
+use std::env;
 use std::fs::File;
-use std::io::{BufRead, BufReader};
-use std::path::Path;
+use std::io::{self, BufRead, BufReader};
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 /// Invokes `build_helper::util::detail_exit` with `cfg!(test)`
@@ -65,4 +66,40 @@ pub fn parse_gitmodules(target_dir: &Path) -> Vec<String> {
     }
 
     submodules_paths
+}
+
+/// If the given executible is installed with the given version, use that,
+/// otherwise install via cargo.
+pub fn ensure_version_or_cargo_install(
+    build_dir: &Path,
+    pkg_name: &str,
+    bin_name: &str,
+    version: &str,
+) -> io::Result<PathBuf> {
+    let tool_root_dir = build_dir.join("misc-tools");
+    let tool_bin_dir = tool_root_dir.join("bin");
+    // use --force to ensure that if the required version is bumped, we update it.
+    // use --target-dir to ensure we have a build cache so repeated invocations aren't slow.
+    // modify PATH so that cargo doesn't print a warning telling the user to modify the path.
+    let cargo_exit_code = Command::new("cargo")
+        .args(["install", "--locked", "--force", "--quiet"])
+        .arg("--root")
+        .arg(&tool_root_dir)
+        .arg("--target-dir")
+        .arg(tool_root_dir.join("target"))
+        .arg(format!("{pkg_name}@{version}"))
+        .env(
+            "PATH",
+            env::join_paths(
+                env::split_paths(&env::var("PATH").unwrap())
+                    .chain(std::iter::once(tool_bin_dir.clone())),
+            )
+            .expect("build dir contains invalid char"),
+        )
+        .spawn()?
+        .wait()?;
+    if !cargo_exit_code.success() {
+        return Err(io::Error::other("cargo install failed"));
+    }
+    return Ok(tool_bin_dir.join(bin_name));
 }
