@@ -412,23 +412,26 @@ pub trait BuilderMethods<'a, 'tcx>:
         lhs: Self::Value,
         rhs: Self::Value,
     ) -> Self::Value {
+        // FIXME: This implementation was designed around LLVM's ability to optimize, but `cg_llvm`
+        // overrides this to just use `@llvm.scmp`/`ucmp` since LLVM 20. This default impl should be
+        // reevaluated with respect to the remaining backends like cg_gcc, whether they might use
+        // specialized implementations as well, or continue to use a generic implementation here.
         use std::cmp::Ordering;
         let pred = |op| crate::base::bin_op_to_icmp_predicate(op, ty.is_signed());
         if self.cx().sess().opts.optimize == OptLevel::No {
-            // FIXME: This actually generates tighter assembly, and is a classic trick
-            // <https://graphics.stanford.edu/~seander/bithacks.html#CopyIntegerSign>
-            // However, as of 2023-11 it optimizes worse in things like derived
-            // `PartialOrd`, so only use it in debug for now. Once LLVM can handle it
-            // better (see <https://github.com/llvm/llvm-project/issues/73417>), it'll
-            // be worth trying it in optimized builds as well.
+            // This actually generates tighter assembly, and is a classic trick:
+            // <https://graphics.stanford.edu/~seander/bithacks.html#CopyIntegerSign>.
+            // However, as of 2023-11 it optimized worse in LLVM in things like derived
+            // `PartialOrd`, so we were only using it in debug. Since LLVM now uses its own
+            // intrinsics, it may be be worth trying it in optimized builds for other backends.
             let is_gt = self.icmp(pred(mir::BinOp::Gt), lhs, rhs);
             let gtext = self.zext(is_gt, self.type_i8());
             let is_lt = self.icmp(pred(mir::BinOp::Lt), lhs, rhs);
             let ltext = self.zext(is_lt, self.type_i8());
             self.unchecked_ssub(gtext, ltext)
         } else {
-            // These operations are those expected by `tests/codegen-llvm/integer-cmp.rs`,
-            // from <https://github.com/rust-lang/rust/pull/63767>.
+            // These operations were better optimized by LLVM, before `@llvm.scmp`/`ucmp` in 20.
+            // See <https://github.com/rust-lang/rust/pull/63767>.
             let is_lt = self.icmp(pred(mir::BinOp::Lt), lhs, rhs);
             let is_ne = self.icmp(pred(mir::BinOp::Ne), lhs, rhs);
             let ge = self.select(
