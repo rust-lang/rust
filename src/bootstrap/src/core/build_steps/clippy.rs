@@ -6,13 +6,12 @@
 //!   which is performed by the `x clippy ci` command.
 //!
 //! In order to prepare a build compiler for running clippy, use the
-//! `check::prepare_compiler_for_check` function. That prepares a compiler and a standard library
+//! [check::prepare_compiler_for_check] function. That prepares a compiler and a standard library
 //! for running Clippy. The second part (actually building Clippy) is performed inside
 //! [Builder::cargo_clippy_cmd]. It would be nice if this was more explicit, and we actually had
 //! to pass a prebuilt Clippy from the outside when running `cargo clippy`, but that would be
 //! (as usual) a massive undertaking/refactoring.
 
-use super::check;
 use super::compile::{run_cargo, rustc_cargo, std_cargo};
 use super::tool::{RustcPrivateCompilers, SourceType, prepare_tool_cargo};
 use crate::builder::{Builder, ShouldRun};
@@ -377,7 +376,10 @@ impl Step for CodegenGcc {
 
 macro_rules! lint_any {
     ($(
-        $name:ident, $path:expr, $readable_name:expr
+        $name:ident,
+        $path:expr,
+        $readable_name:expr,
+        $mode:expr
         $(,lint_by_default = $lint_by_default:expr)*
         ;
     )+) => {
@@ -385,7 +387,8 @@ macro_rules! lint_any {
 
         #[derive(Debug, Clone, Hash, PartialEq, Eq)]
         pub struct $name {
-            pub target: TargetSelection,
+            build_compiler: Compiler,
+            target: TargetSelection,
             config: LintConfig,
         }
 
@@ -400,23 +403,19 @@ macro_rules! lint_any {
             fn make_run(run: RunConfig<'_>) {
                 let config = LintConfig::new(run.builder);
                 run.builder.ensure($name {
+                    build_compiler: prepare_compiler_for_check(run.builder, run.target, $mode),
                     target: run.target,
                     config,
                 });
             }
 
             fn run(self, builder: &Builder<'_>) -> Self::Output {
-                let build_compiler = builder.compiler(builder.top_stage, builder.config.host_target);
+                let build_compiler = self.build_compiler;
                 let target = self.target;
-
-                if !builder.download_rustc() {
-                    builder.ensure(check::Rustc::new(builder, target, vec![]));
-                };
-
                 let cargo = prepare_tool_cargo(
                     builder,
                     build_compiler,
-                    Mode::ToolRustc,
+                    $mode,
                     target,
                     Kind::Clippy,
                     $path,
@@ -427,13 +426,13 @@ macro_rules! lint_any {
                 let _guard = builder.msg(
                     Kind::Clippy,
                     $readable_name,
-                    Mode::ToolRustc,
+                    $mode,
                     build_compiler,
                     target,
                 );
 
                 let stringified_name = stringify!($name).to_lowercase();
-                let stamp = BuildStamp::new(&builder.cargo_out(build_compiler, Mode::ToolRustc, target))
+                let stamp = BuildStamp::new(&builder.cargo_out(build_compiler, $mode, target))
                     .with_prefix(&format!("{}-check", stringified_name));
 
                 run_cargo(
@@ -455,30 +454,32 @@ macro_rules! lint_any {
     }
 }
 
+// Note: we use ToolTarget instead of ToolBootstrap here, to allow linting in-tree host tools
+// using the in-tree Clippy. Because Mode::ToolBootstrap would always use stage 0 rustc/Clippy.
 lint_any!(
-    Bootstrap, "src/bootstrap", "bootstrap";
-    BuildHelper, "src/build_helper", "build_helper";
-    BuildManifest, "src/tools/build-manifest", "build-manifest";
-    CargoMiri, "src/tools/miri/cargo-miri", "cargo-miri";
-    Clippy, "src/tools/clippy", "clippy";
-    CollectLicenseMetadata, "src/tools/collect-license-metadata", "collect-license-metadata";
-    Compiletest, "src/tools/compiletest", "compiletest";
-    CoverageDump, "src/tools/coverage-dump", "coverage-dump";
-    Jsondocck, "src/tools/jsondocck", "jsondocck";
-    Jsondoclint, "src/tools/jsondoclint", "jsondoclint";
-    LintDocs, "src/tools/lint-docs", "lint-docs";
-    LlvmBitcodeLinker, "src/tools/llvm-bitcode-linker", "llvm-bitcode-linker";
-    Miri, "src/tools/miri", "miri";
-    MiroptTestTools, "src/tools/miropt-test-tools", "miropt-test-tools";
-    OptDist, "src/tools/opt-dist", "opt-dist";
-    RemoteTestClient, "src/tools/remote-test-client", "remote-test-client";
-    RemoteTestServer, "src/tools/remote-test-server", "remote-test-server";
-    RustAnalyzer, "src/tools/rust-analyzer", "rust-analyzer";
-    Rustdoc, "src/librustdoc", "clippy";
-    Rustfmt, "src/tools/rustfmt", "rustfmt";
-    RustInstaller, "src/tools/rust-installer", "rust-installer";
-    Tidy, "src/tools/tidy", "tidy";
-    TestFloatParse, "src/tools/test-float-parse", "test-float-parse";
+    Bootstrap, "src/bootstrap", "bootstrap", Mode::ToolTarget;
+    BuildHelper, "src/build_helper", "build_helper", Mode::ToolTarget;
+    BuildManifest, "src/tools/build-manifest", "build-manifest", Mode::ToolTarget;
+    CargoMiri, "src/tools/miri/cargo-miri", "cargo-miri", Mode::ToolRustc;
+    Clippy, "src/tools/clippy", "clippy", Mode::ToolRustc;
+    CollectLicenseMetadata, "src/tools/collect-license-metadata", "collect-license-metadata", Mode::ToolTarget;
+    Compiletest, "src/tools/compiletest", "compiletest", Mode::ToolTarget;
+    CoverageDump, "src/tools/coverage-dump", "coverage-dump", Mode::ToolTarget;
+    Jsondocck, "src/tools/jsondocck", "jsondocck", Mode::ToolTarget;
+    Jsondoclint, "src/tools/jsondoclint", "jsondoclint", Mode::ToolTarget;
+    LintDocs, "src/tools/lint-docs", "lint-docs", Mode::ToolTarget;
+    LlvmBitcodeLinker, "src/tools/llvm-bitcode-linker", "llvm-bitcode-linker", Mode::ToolTarget;
+    Miri, "src/tools/miri", "miri", Mode::ToolRustc;
+    MiroptTestTools, "src/tools/miropt-test-tools", "miropt-test-tools", Mode::ToolTarget;
+    OptDist, "src/tools/opt-dist", "opt-dist", Mode::ToolTarget;
+    RemoteTestClient, "src/tools/remote-test-client", "remote-test-client", Mode::ToolTarget;
+    RemoteTestServer, "src/tools/remote-test-server", "remote-test-server", Mode::ToolTarget;
+    RustAnalyzer, "src/tools/rust-analyzer", "rust-analyzer", Mode::ToolRustc;
+    Rustdoc, "src/librustdoc", "clippy", Mode::ToolRustc;
+    Rustfmt, "src/tools/rustfmt", "rustfmt", Mode::ToolRustc;
+    RustInstaller, "src/tools/rust-installer", "rust-installer", Mode::ToolTarget;
+    Tidy, "src/tools/tidy", "tidy", Mode::ToolTarget;
+    TestFloatParse, "src/tools/test-float-parse", "test-float-parse", Mode::ToolStd;
 );
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -502,6 +503,7 @@ impl Step for CI {
 
     fn run(self, builder: &Builder<'_>) -> Self::Output {
         builder.ensure(Bootstrap {
+            build_compiler: prepare_compiler_for_check(builder, self.target, Mode::ToolTarget),
             target: self.target,
             config: self.config.merge(&LintConfig {
                 allow: vec![],
