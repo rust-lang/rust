@@ -173,6 +173,10 @@ impl Step for Std {
             false,
         );
     }
+
+    fn metadata(&self) -> Option<StepMetadata> {
+        Some(StepMetadata::clippy("std", self.target))
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -250,6 +254,10 @@ impl Step for Rustc {
             true,
             false,
         );
+    }
+
+    fn metadata(&self) -> Option<StepMetadata> {
+        Some(StepMetadata::clippy("rustc", self.target))
     }
 }
 
@@ -400,6 +408,10 @@ macro_rules! lint_any {
                     true,
                     false,
                 );
+            }
+
+            fn metadata(&self) -> Option<StepMetadata> {
+                Some(StepMetadata::clippy($readable_name, self.target))
             }
         }
         )+
