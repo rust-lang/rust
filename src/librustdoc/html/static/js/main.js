@@ -256,7 +256,7 @@ function preLoadCss(cssUrl) {
                 const params = window.searchState.getQueryStringParams();
                 const autofocusParam = params.search === "" ? "autofocus" : "";
                 hdr.innerHTML = `<nav class="sub">
-                    <form class="search-form">
+                    <form class="search-form loading">
                         <span></span> <!-- This empty span is a hacky fix for Safari: see #93184 -->
                         <input
                             ${autofocusParam}

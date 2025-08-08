@@ -1955,7 +1955,13 @@ a.tooltip:hover::after {
 	color: transparent;
 }
 
-#search-tabs .count.loading::before {
+.search-form.loading {
+	--search-tab-button-background: var(--button-background-color);
+}
+
+#search-tabs .count.loading::before,
+.search-form.loading::before
+{
 	width: 16px;
 	height: 16px;
 	border-radius: 16px;
@@ -1982,7 +1988,9 @@ a.tooltip:hover::after {
 	top: 2px;
 	animation: rotating 1.25s linear infinite;
 }
-#search-tabs .count.loading::after {
+#search-tabs .count.loading::after,
+.search-form.loading::after
+{
 	width: 18px;
 	height: 18px;
 	border-radius: 18px;
@@ -1995,6 +2003,18 @@ a.tooltip:hover::after {
 	left: 1px;
 	top: 1px;
 	animation: rotating 0.66s linear infinite;
+}
+
+.search-form.loading::before {
+	left: auto;
+	right: 9px;
+	top: 8px;
+}
+
+.search-form.loading::after {
+	left: auto;
+	right: 8px;
+	top: 8px;
 }
 
 #search .error code {
