@@ -134,10 +134,27 @@ impl LintConfig {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Std {
-    pub target: TargetSelection,
+    build_compiler: Compiler,
+    target: TargetSelection,
     config: LintConfig,
     /// Whether to lint only a subset of crates.
     crates: Vec<String>,
+}
+
+impl Std {
+    fn new(
+        builder: &Builder<'_>,
+        target: TargetSelection,
+        config: LintConfig,
+        crates: Vec<String>,
+    ) -> Self {
+        Self {
+            build_compiler: builder.compiler(builder.top_stage, builder.host_target),
+            target,
+            config,
+            crates,
+        }
+    }
 }
 
 impl Step for Std {
@@ -151,12 +168,12 @@ impl Step for Std {
     fn make_run(run: RunConfig<'_>) {
         let crates = std_crates_for_run_make(&run);
         let config = LintConfig::new(run.builder);
-        run.builder.ensure(Std { target: run.target, config, crates });
+        run.builder.ensure(Std::new(run.builder, run.target, config, crates));
     }
 
     fn run(self, builder: &Builder<'_>) {
         let target = self.target;
-        let build_compiler = builder.compiler(builder.top_stage, builder.config.host_target);
+        let build_compiler = self.build_compiler;
 
         let mut cargo = builder::Cargo::new(
             builder,
@@ -193,7 +210,7 @@ impl Step for Std {
     }
 
     fn metadata(&self) -> Option<StepMetadata> {
-        Some(StepMetadata::clippy("std", self.target))
+        Some(StepMetadata::clippy("std", self.target).built_by(self.build_compiler))
     }
 }
 
@@ -510,11 +527,12 @@ impl Step for CI {
             ],
             forbid: vec![],
         };
-        builder.ensure(Std {
-            target: self.target,
-            config: self.config.merge(&library_clippy_cfg),
-            crates: vec![],
-        });
+        builder.ensure(Std::new(
+            builder,
+            self.target,
+            self.config.merge(&library_clippy_cfg),
+            vec![],
+        ));
 
         let compiler_clippy_cfg = LintConfig {
             allow: vec!["clippy::all".into()],
