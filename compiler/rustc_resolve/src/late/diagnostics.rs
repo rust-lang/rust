@@ -2462,7 +2462,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 {
                     // If an invocation of this macro created `ident`, give up on `ident`
                     // and switch to `ident`'s source from the macro definition.
-                    ctxt.remove_mark();
+                    let _ = ctxt.remove_mark();
                     continue;
                 }
 

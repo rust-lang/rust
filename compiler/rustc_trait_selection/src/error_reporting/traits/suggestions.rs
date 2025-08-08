@@ -871,7 +871,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         let mut span = obligation.cause.span;
         while span.from_expansion() {
             // Remove all the desugaring and macro contexts.
-            span.remove_mark();
+            let _ = span.remove_mark();
         }
         let mut expr_finder = FindExprBySpan::new(span, self.tcx);
         let Some(body) = self.tcx.hir_maybe_body_owned_by(obligation.cause.body_id) else {
@@ -1533,7 +1533,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         }
         while span.desugaring_kind().is_some() {
             // Remove all the hir desugaring contexts while maintaining the macro contexts.
-            span.remove_mark();
+            let _ = span.remove_mark();
         }
         let mut expr_finder = super::FindExprBySpan::new(span, self.tcx);
         let Some(body) = self.tcx.hir_maybe_body_owned_by(obligation.cause.body_id) else {

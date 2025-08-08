@@ -330,7 +330,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 RibKind::MacroDefinition(def) if def == self.macro_def(ident.span.ctxt()) => {
                     // If an invocation of this macro created `ident`, give up on `ident`
                     // and switch to `ident`'s source from the macro definition.
-                    ident.span.remove_mark();
+                    let _ = ident.span.remove_mark();
                     continue;
                 }
                 _ => continue,
@@ -759,7 +759,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 }
             }
             ModuleOrUniformRoot::ExternPrelude => {
-                ident.span.normalize_to_macros_2_0_and_adjust(ExpnId::root());
+                let _ = ident.span.normalize_to_macros_2_0_and_adjust(ExpnId::root());
             }
             ModuleOrUniformRoot::ModuleAndExternPrelude(..) | ModuleOrUniformRoot::CurrentScope => {
                 // No adjustments

@@ -2481,7 +2481,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 // and switch to `ident`'s source from the macro definition.
                 && def == self.r.macro_def(label.span.ctxt())
             {
-                label.span.remove_mark();
+                let _ = label.span.remove_mark();
             }
 
             let ident = label.normalize_to_macro_rules();
@@ -3426,7 +3426,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         let Some((module, _)) = self.current_trait_ref else {
             return;
         };
-        ident.span.normalize_to_macros_2_0_and_adjust(module.expansion);
+        let _ = ident.span.normalize_to_macros_2_0_and_adjust(module.expansion);
         let key = BindingKey::new(ident, ns);
         let mut binding = self.r.resolution(module, key).and_then(|r| r.best_binding());
         debug!(?binding);

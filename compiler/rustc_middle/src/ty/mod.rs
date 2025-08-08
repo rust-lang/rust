@@ -1992,7 +1992,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn adjust_ident(self, mut ident: Ident, scope: DefId) -> Ident {
-        ident.span.normalize_to_macros_2_0_and_adjust(self.expn_that_defined(scope));
+        let _ = ident.span.normalize_to_macros_2_0_and_adjust(self.expn_that_defined(scope));
         ident
     }
 
