@@ -33,7 +33,7 @@ rustfmt-format-diff = []
 generic-simd = ["bytecount/generic-simd"]
 
 [dependencies]
-annotate-snippets = { version = "0.9", features = ["color"] }
+annotate-snippets = "0.11"
 anyhow = "1.0"
 bytecount = "0.6.8"
 cargo_metadata = "0.18"

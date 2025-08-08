@@ -1,6 +1,7 @@
 //! This module contains types and functions to support formatting specific line ranges.
 
 use itertools::Itertools;
+use std::borrow::Cow;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -23,6 +24,15 @@ pub struct LineRange {
 pub enum FileName {
     Real(PathBuf),
     Stdin,
+}
+
+impl FileName {
+    pub fn to_string_lossy(&self) -> Cow<'_, str> {
+        match self {
+            FileName::Real(path) => path.to_string_lossy(),
+            FileName::Stdin => "<stdin>".into(),
+        }
+    }
 }
 
 impl From<rustc_span::FileName> for FileName {
