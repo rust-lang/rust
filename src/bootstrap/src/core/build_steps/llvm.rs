@@ -421,6 +421,13 @@ impl Step for Llvm {
             ldflags.shared.push(" -latomic");
         }
 
+        if target.starts_with("arm64ec") {
+            // MSVC linker requires the -machine:arm64ec flag to be passed to
+            // know it's linking as Arm64EC (vs Arm64X).
+            ldflags.exe.push(" -machine:arm64ec");
+            ldflags.shared.push(" -machine:arm64ec");
+        }
+
         if target.is_msvc() {
             cfg.define("CMAKE_MSVC_RUNTIME_LIBRARY", "MultiThreaded");
             cfg.static_crt(true);
