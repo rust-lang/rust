@@ -97,6 +97,7 @@ pub fn ensure_version_or_cargo_install(
 
     let tool_root_dir = build_dir.join("misc-tools");
     let tool_bin_dir = tool_root_dir.join("bin");
+    eprintln!("building external tool {bin_name} from package {pkg_name}@{version}");
     // use --force to ensure that if the required version is bumped, we update it.
     // use --target-dir to ensure we have a build cache so repeated invocations aren't slow.
     // modify PATH so that cargo doesn't print a warning telling the user to modify the path.
@@ -120,5 +121,10 @@ pub fn ensure_version_or_cargo_install(
     if !cargo_exit_code.success() {
         return Err(io::Error::other("cargo install failed"));
     }
-    return Ok(tool_bin_dir.join(bin_name));
+    let bin_path = tool_bin_dir.join(bin_name);
+    assert!(
+        matches!(bin_path.try_exists(), Ok(true)),
+        "cargo install did not produce the expected binary"
+    );
+    Ok(bin_path)
 }
