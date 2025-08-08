@@ -6,6 +6,8 @@
 // This tests double-checks that we do not allow such behavior to leak
 // through again.
 
+//@ compile-flags: -Zwrite-long-types-to-disk=yes
+
 pub trait Stream {
     type Item;
     fn next(self) -> Option<Self::Item>;
