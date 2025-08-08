@@ -1830,6 +1830,12 @@ unsafe extern "C" {
         Scope: &'ll Metadata,
         InlinedAt: Option<&'ll Metadata>,
     ) -> &'ll Metadata;
+
+    pub(crate) fn LLVMDIBuilderCreateQualifiedType<'ll>(
+        Builder: &DIBuilder<'ll>,
+        Tag: c_uint,
+        Type: &'ll DIType,
+    ) -> &'ll DIDerivedType;
 }
 
 #[link(name = "llvm-wrapper", kind = "static")]
@@ -2257,12 +2263,6 @@ unsafe extern "C" {
         Flags: DIFlags,
         val: Option<&'a Value>,
         AlignInBits: u32,
-    ) -> &'a DIDerivedType;
-
-    pub(crate) fn LLVMRustDIBuilderCreateQualifiedType<'a>(
-        Builder: &DIBuilder<'a>,
-        Tag: c_uint,
-        Type: &'a DIType,
     ) -> &'a DIDerivedType;
 
     pub(crate) fn LLVMRustDIBuilderCreateStaticVariable<'a>(
