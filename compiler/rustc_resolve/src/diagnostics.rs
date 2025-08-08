@@ -28,7 +28,7 @@ use rustc_session::lint::{AmbiguityErrorDiag, BuiltinLintDiag};
 use rustc_session::utils::was_invoked_from_cargo;
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::edition::Edition;
-use rustc_span::hygiene::MacroKind;
+use rustc_span::hygiene::{MacroKind, MacroKinds};
 use rustc_span::source_map::SourceMap;
 use rustc_span::{BytePos, Ident, Macros20NormalizedIdent, Span, Symbol, SyntaxContext, kw, sym};
 use thin_vec::{ThinVec, thin_vec};
@@ -1492,11 +1492,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     let Some(binding) = resolution.borrow().best_binding() else {
                         continue;
                     };
-                    let Res::Def(DefKind::Macro(MacroKind::Derive | MacroKind::Attr), def_id) =
-                        binding.res()
-                    else {
+                    let Res::Def(DefKind::Macro(kinds), def_id) = binding.res() else {
                         continue;
                     };
+                    if !kinds.intersects(MacroKinds::ATTR | MacroKinds::DERIVE) {
+                        continue;
+                    }
                     // By doing this all *imported* macros get added to the `macro_map` even if they
                     // are *unused*, which makes the later suggestions find them and work.
                     let _ = this.get_macro_by_def_id(def_id);
@@ -1505,7 +1506,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             },
         );
 
-        let is_expected = &|res: Res| res.macro_kind() == Some(macro_kind);
+        let is_expected =
+            &|res: Res| res.macro_kinds().is_some_and(|k| k.contains(macro_kind.into()));
         let suggestion = self.early_lookup_typo_candidate(
             ScopeSet::Macro(macro_kind),
             parent_scope,
@@ -1602,12 +1604,17 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             };
 
             let desc = match binding.res() {
-                Res::Def(DefKind::Macro(MacroKind::Bang), _) => "a function-like macro".to_string(),
-                Res::Def(DefKind::Macro(MacroKind::Attr), _) | Res::NonMacroAttr(..) => {
+                Res::Def(DefKind::Macro(MacroKinds::BANG), _) => {
+                    "a function-like macro".to_string()
+                }
+                Res::Def(DefKind::Macro(MacroKinds::ATTR), _) | Res::NonMacroAttr(..) => {
                     format!("an attribute: `#[{ident}]`")
                 }
-                Res::Def(DefKind::Macro(MacroKind::Derive), _) => {
+                Res::Def(DefKind::Macro(MacroKinds::DERIVE), _) => {
                     format!("a derive macro: `#[derive({ident})]`")
+                }
+                Res::Def(DefKind::Macro(kinds), _) => {
+                    format!("{} {}", kinds.article(), kinds.descr())
                 }
                 Res::ToolMod => {
                     // Don't confuse the user with tool modules.
@@ -2661,9 +2668,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
         let binding_key = BindingKey::new(ident, MacroNS);
         let binding = self.resolution(crate_module, binding_key)?.binding()?;
-        let Res::Def(DefKind::Macro(MacroKind::Bang), _) = binding.res() else {
+        let Res::Def(DefKind::Macro(kinds), _) = binding.res() else {
             return None;
         };
+        if !kinds.contains(MacroKinds::BANG) {
+            return None;
+        }
         let module_name = crate_module.kind.name().unwrap_or(kw::Crate);
         let import_snippet = match import.kind {
             ImportKind::Single { source, target, .. } if source != target => {

@@ -8,7 +8,7 @@ use rustc_data_structures::unord::UnordMap;
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_span::Symbol;
 use rustc_span::def_id::{DefId, LocalDefId};
-use rustc_span::hygiene::MacroKind;
+use rustc_span::hygiene::MacroKinds;
 
 use crate::definitions::DefPathData;
 use crate::hir;
@@ -101,7 +101,7 @@ pub enum DefKind {
     AssocConst,
 
     // Macro namespace
-    Macro(MacroKind),
+    Macro(MacroKinds),
 
     // Not namespaced (or they are, but we don't treat them so)
     ExternCrate,
@@ -177,7 +177,7 @@ impl DefKind {
             DefKind::AssocConst => "associated constant",
             DefKind::TyParam => "type parameter",
             DefKind::ConstParam => "const parameter",
-            DefKind::Macro(macro_kind) => macro_kind.descr(),
+            DefKind::Macro(kinds) => kinds.descr(),
             DefKind::LifetimeParam => "lifetime parameter",
             DefKind::Use => "import",
             DefKind::ForeignMod => "foreign module",
@@ -208,7 +208,7 @@ impl DefKind {
             | DefKind::Use
             | DefKind::InlineConst
             | DefKind::ExternCrate => "an",
-            DefKind::Macro(macro_kind) => macro_kind.article(),
+            DefKind::Macro(kinds) => kinds.article(),
             _ => "a",
         }
     }
@@ -803,10 +803,10 @@ impl<Id> Res<Id> {
         )
     }
 
-    pub fn macro_kind(self) -> Option<MacroKind> {
+    pub fn macro_kinds(self) -> Option<MacroKinds> {
         match self {
-            Res::Def(DefKind::Macro(kind), _) => Some(kind),
-            Res::NonMacroAttr(..) => Some(MacroKind::Attr),
+            Res::Def(DefKind::Macro(kinds), _) => Some(kinds),
+            Res::NonMacroAttr(..) => Some(MacroKinds::ATTR),
             _ => None,
         }
     }

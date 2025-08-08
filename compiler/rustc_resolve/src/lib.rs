@@ -71,7 +71,9 @@ use rustc_middle::ty::{
 use rustc_query_system::ich::StableHashingContext;
 use rustc_session::lint::builtin::PRIVATE_MACRO_USE;
 use rustc_session::lint::{BuiltinLintDiag, LintBuffer};
-use rustc_span::hygiene::{ExpnId, LocalExpnId, MacroKind, SyntaxContext, Transparency};
+use rustc_span::hygiene::{
+    ExpnId, LocalExpnId, MacroKind, MacroKinds, SyntaxContext, Transparency,
+};
 use rustc_span::{DUMMY_SP, Ident, Macros20NormalizedIdent, Span, Symbol, kw, sym};
 use smallvec::{SmallVec, smallvec};
 use tracing::debug;
@@ -968,8 +970,8 @@ impl<'ra> NameBindingData<'ra> {
         matches!(self.res(), Res::Def(DefKind::AssocConst | DefKind::AssocFn | DefKind::AssocTy, _))
     }
 
-    fn macro_kind(&self) -> Option<MacroKind> {
-        self.res().macro_kind()
+    fn macro_kinds(&self) -> Option<MacroKinds> {
+        self.res().macro_kinds()
     }
 
     // Suppose that we resolved macro invocation with `invoc_parent_expansion` to binding `binding`
@@ -1029,14 +1031,13 @@ struct DeriveData {
 
 struct MacroData {
     ext: Arc<SyntaxExtension>,
-    attr_ext: Option<Arc<SyntaxExtension>>,
     nrules: usize,
     macro_rules: bool,
 }
 
 impl MacroData {
     fn new(ext: Arc<SyntaxExtension>) -> MacroData {
-        MacroData { ext, attr_ext: None, nrules: 0, macro_rules: false }
+        MacroData { ext, nrules: 0, macro_rules: false }
     }
 }
 
