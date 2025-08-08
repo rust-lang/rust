@@ -157,7 +157,6 @@ impl fmt::Debug for ProjectWorkspace {
                 .field("file", &file)
                 .field("cargo_script", &cargo_script.is_some())
                 .field("n_sysroot_crates", &sysroot.num_packages())
-                .field("cargo_script", &cargo_script.is_some())
                 .field("n_rustc_cfg", &rustc_cfg.len())
                 .field("toolchain", &toolchain)
                 .field("data_layout", &target_layout)
