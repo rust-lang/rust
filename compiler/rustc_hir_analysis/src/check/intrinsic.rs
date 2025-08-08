@@ -652,16 +652,16 @@ pub(crate) fn check_intrinsic_type(
         sym::atomic_store => (1, 1, vec![Ty::new_mut_ptr(tcx, param(0)), param(0)], tcx.types.unit),
 
         sym::atomic_xchg
-        | sym::atomic_xadd
-        | sym::atomic_xsub
-        | sym::atomic_and
-        | sym::atomic_nand
-        | sym::atomic_or
-        | sym::atomic_xor
         | sym::atomic_max
         | sym::atomic_min
         | sym::atomic_umax
         | sym::atomic_umin => (1, 1, vec![Ty::new_mut_ptr(tcx, param(0)), param(0)], param(0)),
+        sym::atomic_xadd
+        | sym::atomic_xsub
+        | sym::atomic_and
+        | sym::atomic_nand
+        | sym::atomic_or
+        | sym::atomic_xor => (2, 1, vec![Ty::new_mut_ptr(tcx, param(0)), param(1)], param(0)),
         sym::atomic_fence | sym::atomic_singlethreadfence => (0, 1, Vec::new(), tcx.types.unit),
 
         other => {

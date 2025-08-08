@@ -150,69 +150,63 @@ pub unsafe fn atomic_xchg<T: Copy, const ORD: AtomicOrdering>(dst: *mut T, src: 
 
 /// Adds to the current value, returning the previous value.
 /// `T` must be an integer or pointer type.
-/// If `T` is a pointer type, the provenance of `src` is ignored: both the return value and the new
-/// value stored at `*dst` will have the provenance of the old value stored there.
+/// `U` must be the same as `T` if that is an integer type, or `usize` if `T` is a pointer type.
 ///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] types via the `fetch_add` method. For example, [`AtomicIsize::fetch_add`].
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn atomic_xadd<T: Copy, const ORD: AtomicOrdering>(dst: *mut T, src: T) -> T;
+pub unsafe fn atomic_xadd<T: Copy, U: Copy, const ORD: AtomicOrdering>(dst: *mut T, src: U) -> T;
 
 /// Subtract from the current value, returning the previous value.
 /// `T` must be an integer or pointer type.
-/// If `T` is a pointer type, the provenance of `src` is ignored: both the return value and the new
-/// value stored at `*dst` will have the provenance of the old value stored there.
+/// `U` must be the same as `T` if that is an integer type, or `usize` if `T` is a pointer type.
 ///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] types via the `fetch_sub` method. For example, [`AtomicIsize::fetch_sub`].
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn atomic_xsub<T: Copy, const ORD: AtomicOrdering>(dst: *mut T, src: T) -> T;
+pub unsafe fn atomic_xsub<T: Copy, U: Copy, const ORD: AtomicOrdering>(dst: *mut T, src: U) -> T;
 
 /// Bitwise and with the current value, returning the previous value.
 /// `T` must be an integer or pointer type.
-/// If `T` is a pointer type, the provenance of `src` is ignored: both the return value and the new
-/// value stored at `*dst` will have the provenance of the old value stored there.
+/// `U` must be the same as `T` if that is an integer type, or `usize` if `T` is a pointer type.
 ///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] types via the `fetch_and` method. For example, [`AtomicBool::fetch_and`].
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn atomic_and<T: Copy, const ORD: AtomicOrdering>(dst: *mut T, src: T) -> T;
+pub unsafe fn atomic_and<T: Copy, U: Copy, const ORD: AtomicOrdering>(dst: *mut T, src: U) -> T;
 
 /// Bitwise nand with the current value, returning the previous value.
 /// `T` must be an integer or pointer type.
-/// If `T` is a pointer type, the provenance of `src` is ignored: both the return value and the new
-/// value stored at `*dst` will have the provenance of the old value stored there.
+/// `U` must be the same as `T` if that is an integer type, or `usize` if `T` is a pointer type.
 ///
 /// The stabilized version of this intrinsic is available on the
 /// [`AtomicBool`] type via the `fetch_nand` method. For example, [`AtomicBool::fetch_nand`].
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn atomic_nand<T: Copy, const ORD: AtomicOrdering>(dst: *mut T, src: T) -> T;
+pub unsafe fn atomic_nand<T: Copy, U: Copy, const ORD: AtomicOrdering>(dst: *mut T, src: U) -> T;
 
 /// Bitwise or with the current value, returning the previous value.
 /// `T` must be an integer or pointer type.
-/// If `T` is a pointer type, the provenance of `src` is ignored: both the return value and the new
-/// value stored at `*dst` will have the provenance of the old value stored there.
+/// `U` must be the same as `T` if that is an integer type, or `usize` if `T` is a pointer type.
 ///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] types via the `fetch_or` method. For example, [`AtomicBool::fetch_or`].
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn atomic_or<T: Copy, const ORD: AtomicOrdering>(dst: *mut T, src: T) -> T;
+pub unsafe fn atomic_or<T: Copy, U: Copy, const ORD: AtomicOrdering>(dst: *mut T, src: U) -> T;
 
 /// Bitwise xor with the current value, returning the previous value.
 /// `T` must be an integer or pointer type.
-/// If `T` is a pointer type, the provenance of `src` is ignored: both the return value and the new
-/// value stored at `*dst` will have the provenance of the old value stored there.
+/// `U` must be the same as `T` if that is an integer type, or `usize` if `T` is a pointer type.
 ///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] types via the `fetch_xor` method. For example, [`AtomicBool::fetch_xor`].
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn atomic_xor<T: Copy, const ORD: AtomicOrdering>(dst: *mut T, src: T) -> T;
+pub unsafe fn atomic_xor<T: Copy, U: Copy, const ORD: AtomicOrdering>(dst: *mut T, src: U) -> T;
 
 /// Maximum with the current value using a signed comparison.
 /// `T` must be a signed integer type.
