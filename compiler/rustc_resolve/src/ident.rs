@@ -469,7 +469,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             let parent_scope = &ParentScope { derives: &[], ..*parent_scope };
                             match this.reborrow().resolve_macro_path(
                                 derive,
-                                Some(MacroKind::Derive),
+                                MacroKind::Derive,
                                 parent_scope,
                                 true,
                                 force,

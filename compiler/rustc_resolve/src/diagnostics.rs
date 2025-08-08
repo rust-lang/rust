@@ -1047,7 +1047,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             let parent_scope = &ParentScope { derives: &[], ..*parent_scope };
                             let Ok((Some(ext), _)) = this.reborrow().resolve_macro_path(
                                 derive,
-                                Some(MacroKind::Derive),
+                                MacroKind::Derive,
                                 parent_scope,
                                 false,
                                 false,
