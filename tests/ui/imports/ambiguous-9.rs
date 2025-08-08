@@ -12,8 +12,8 @@ pub mod prelude {
     mod t {
       pub fn date_range() {}
     }
-    pub use self::t::*; //~ WARNING ambiguous glob re-exports
-    pub use super::dsl::*;
+    pub use self::t::*;
+    pub use super::dsl::*; //~ WARNING ambiguous glob re-exports
 }
 
 use dsl::*;

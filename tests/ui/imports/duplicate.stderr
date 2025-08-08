@@ -76,15 +76,15 @@ LL |     g::foo();
    |
    = note: ambiguous because of multiple glob imports of a name in the same module
 note: `foo` could refer to the function imported here
-  --> $DIR/duplicate.rs:29:13
+  --> $DIR/duplicate.rs:24:13
    |
 LL |     pub use crate::a::*;
    |             ^^^^^^^^^^^
    = help: consider adding an explicit import of `foo` to disambiguate
 note: `foo` could also refer to the function imported here
-  --> $DIR/duplicate.rs:30:13
+  --> $DIR/duplicate.rs:25:13
    |
-LL |     pub use crate::f::*;
+LL |     pub use crate::b::*;
    |             ^^^^^^^^^^^
    = help: consider adding an explicit import of `foo` to disambiguate
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -104,15 +104,15 @@ LL |     g::foo();
    |
    = note: ambiguous because of multiple glob imports of a name in the same module
 note: `foo` could refer to the function imported here
-  --> $DIR/duplicate.rs:29:13
+  --> $DIR/duplicate.rs:24:13
    |
 LL |     pub use crate::a::*;
    |             ^^^^^^^^^^^
    = help: consider adding an explicit import of `foo` to disambiguate
 note: `foo` could also refer to the function imported here
-  --> $DIR/duplicate.rs:30:13
+  --> $DIR/duplicate.rs:25:13
    |
-LL |     pub use crate::f::*;
+LL |     pub use crate::b::*;
    |             ^^^^^^^^^^^
    = help: consider adding an explicit import of `foo` to disambiguate
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
