@@ -60,7 +60,15 @@ impl AbiMap {
             "x86_64" => Arch::X86_64,
             _ => Arch::Other,
         };
-        let os = if target.is_like_windows { OsKind::Windows } else { OsKind::Other };
+
+        let os = if target.is_like_windows {
+            OsKind::Windows
+        } else if target.is_like_vexos {
+            OsKind::VEXos
+        } else {
+            OsKind::Other
+        };
+
         AbiMap { arch, os }
     }
 
@@ -81,6 +89,10 @@ impl AbiMap {
 
             (ExternAbi::System { .. }, Arch::X86) if os == OsKind::Windows && !has_c_varargs => {
                 CanonAbi::X86(X86Call::Stdcall)
+            }
+            (ExternAbi::System { .. }, Arch::Arm(..)) if self.os == OsKind::VEXos => {
+                // Calls to VEXos APIs do not use VFP registers.
+                CanonAbi::Arm(ArmCall::Aapcs)
             }
             (ExternAbi::System { .. }, _) => CanonAbi::C,
 
@@ -191,6 +203,7 @@ enum Arch {
 #[derive(Debug, PartialEq, Copy, Clone)]
 enum OsKind {
     Windows,
+    VEXos,
     Other,
 }
 
