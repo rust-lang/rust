@@ -1198,12 +1198,6 @@ LLVMRustDIBuilderCreateArrayType(LLVMDIBuilderRef Builder, uint64_t Size,
       DINodeArray(unwrapDI<MDTuple>(Subscripts))));
 }
 
-extern "C" LLVMMetadataRef
-LLVMRustDIBuilderGetOrCreateSubrange(LLVMDIBuilderRef Builder, int64_t Lo,
-                                     int64_t Count) {
-  return wrap(unwrap(Builder)->getOrCreateSubrange(Lo, Count));
-}
-
 extern "C" void
 LLVMRustDIBuilderInsertDeclareAtEnd(LLVMDIBuilderRef Builder, LLVMValueRef V,
                                     LLVMMetadataRef VarInfo, uint64_t *AddrOps,

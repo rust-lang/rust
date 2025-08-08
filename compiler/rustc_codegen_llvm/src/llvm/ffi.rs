@@ -1852,6 +1852,12 @@ unsafe extern "C" {
         Data: *const Option<&'ll DIDescriptor>, //FIXME: is it really const?
         Length: size_t,
     ) -> &'ll DIArray;
+
+    pub(crate) fn LLVMDIBuilderGetOrCreateSubrange<'ll>(
+        Builder: &DIBuilder<'ll>,
+        Lo: i64,
+        Count: i64,
+    ) -> &'ll DISubrange;
 }
 
 #[link(name = "llvm-wrapper", kind = "static")]
@@ -2309,12 +2315,6 @@ unsafe extern "C" {
         Ty: &'a DIType,
         Subscripts: &'a DIArray,
     ) -> &'a DIType;
-
-    pub(crate) fn LLVMRustDIBuilderGetOrCreateSubrange<'a>(
-        Builder: &DIBuilder<'a>,
-        Lo: i64,
-        Count: i64,
-    ) -> &'a DISubrange;
 
     pub(crate) fn LLVMRustDIBuilderInsertDeclareAtEnd<'a>(
         Builder: &DIBuilder<'a>,
