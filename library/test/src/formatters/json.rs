@@ -215,6 +215,17 @@ impl<T: Write> OutputFormatter for JsonFormatter<T> {
 
         Ok(state.failed == 0)
     }
+
+    fn write_merged_doctests_times(
+        &mut self,
+        total_time: f64,
+        compilation_time: f64,
+    ) -> io::Result<()> {
+        let newline = "\n";
+        self.writeln_message(&format!(
+            r#"{{ "type": "report", "total_time": {total_time}, "compilation_time": {compilation_time} }}{newline}"#,
+        ))
+    }
 }
 
 /// A formatting utility used to print strings with characters in need of escaping.
