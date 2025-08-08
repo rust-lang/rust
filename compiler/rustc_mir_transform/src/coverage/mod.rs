@@ -10,9 +10,7 @@ mod unexpand;
 use rustc_hir as hir;
 use rustc_hir::intravisit::{Visitor, walk_expr};
 use rustc_middle::hir::nested_filter;
-use rustc_middle::mir::coverage::{
-    CoverageKind, DecisionInfo, FunctionCoverageInfo, Mapping, MappingKind,
-};
+use rustc_middle::mir::coverage::{CoverageKind, FunctionCoverageInfo, Mapping, MappingKind};
 use rustc_middle::mir::{self, BasicBlock, Statement, StatementKind, TerminatorKind};
 use rustc_middle::ty::TyCtxt;
 use rustc_span::Span;
@@ -95,14 +93,6 @@ fn instrument_function_for_coverage<'tcx>(tcx: TyCtxt<'tcx>, mir_body: &mut mir:
 
     // Inject coverage statements into MIR.
     inject_coverage_statements(mir_body, &graph);
-    inject_mcdc_statements(mir_body, &graph, &extracted_mappings);
-
-    let mcdc_num_condition_bitmaps = extracted_mappings
-        .mcdc_mappings
-        .iter()
-        .map(|&(mappings::MCDCDecision { decision_depth, .. }, _)| decision_depth)
-        .max()
-        .map_or(0, |max| usize::from(max) + 1);
 
     mir_body.function_coverage_info = Some(Box::new(FunctionCoverageInfo {
         function_source_hash: hir_info.function_source_hash,
@@ -111,9 +101,6 @@ fn instrument_function_for_coverage<'tcx>(tcx: TyCtxt<'tcx>, mir_body: &mut mir:
         priority_list,
 
         mappings,
-
-        mcdc_bitmap_bits: extracted_mappings.mcdc_bitmap_bits,
-        mcdc_num_condition_bitmaps,
     }));
 }
 
@@ -124,13 +111,7 @@ fn instrument_function_for_coverage<'tcx>(tcx: TyCtxt<'tcx>, mir_body: &mut mir:
 /// function can potentially be simplified even further.
 fn create_mappings(extracted_mappings: &ExtractedMappings) -> Vec<Mapping> {
     // Fully destructure the mappings struct to make sure we don't miss any kinds.
-    let ExtractedMappings {
-        code_mappings,
-        branch_pairs,
-        mcdc_bitmap_bits: _,
-        mcdc_degraded_branches,
-        mcdc_mappings,
-    } = extracted_mappings;
+    let ExtractedMappings { code_mappings, branch_pairs } = extracted_mappings;
     let mut mappings = Vec::new();
 
     mappings.extend(code_mappings.iter().map(
@@ -148,57 +129,6 @@ fn create_mappings(extracted_mappings: &ExtractedMappings) -> Vec<Mapping> {
         },
     ));
 
-    // MCDC branch mappings are appended with their decisions in case decisions were ignored.
-    mappings.extend(mcdc_degraded_branches.iter().map(
-        |&mappings::MCDCBranch {
-             span,
-             true_bcb,
-             false_bcb,
-             condition_info: _,
-             true_index: _,
-             false_index: _,
-         }| { Mapping { kind: MappingKind::Branch { true_bcb, false_bcb }, span } },
-    ));
-
-    for (decision, branches) in mcdc_mappings {
-        // FIXME(#134497): Previously it was possible for some of these branch
-        // conversions to fail, in which case the remaining branches in the
-        // decision would be degraded to plain `MappingKind::Branch`.
-        // The changes in #134497 made that failure impossible, because the
-        // fallible step was deferred to codegen. But the corresponding code
-        // in codegen wasn't updated to detect the need for a degrade step.
-        let conditions = branches
-            .into_iter()
-            .map(
-                |&mappings::MCDCBranch {
-                     span,
-                     true_bcb,
-                     false_bcb,
-                     condition_info,
-                     true_index: _,
-                     false_index: _,
-                 }| {
-                    Mapping {
-                        kind: MappingKind::MCDCBranch {
-                            true_bcb,
-                            false_bcb,
-                            mcdc_params: condition_info,
-                        },
-                        span,
-                    }
-                },
-            )
-            .collect::<Vec<_>>();
-
-        // LLVM requires end index for counter mapping regions.
-        let kind = MappingKind::MCDCDecision(DecisionInfo {
-            bitmap_idx: (decision.bitmap_idx + decision.num_test_vectors) as u32,
-            num_conditions: u16::try_from(conditions.len()).unwrap(),
-        });
-        let span = decision.span;
-        mappings.extend(std::iter::once(Mapping { kind, span }).chain(conditions.into_iter()));
-    }
-
     mappings
 }
 
@@ -207,51 +137,6 @@ fn inject_coverage_statements<'tcx>(mir_body: &mut mir::Body<'tcx>, graph: &Cove
     for (bcb, data) in graph.iter_enumerated() {
         let target_bb = data.leader_bb();
         inject_statement(mir_body, CoverageKind::VirtualCounter { bcb }, target_bb);
-    }
-}
-
-/// For each conditions inject statements to update condition bitmap after it has been evaluated.
-/// For each decision inject statements to update test vector bitmap after it has been evaluated.
-fn inject_mcdc_statements<'tcx>(
-    mir_body: &mut mir::Body<'tcx>,
-    graph: &CoverageGraph,
-    extracted_mappings: &ExtractedMappings,
-) {
-    for (decision, conditions) in &extracted_mappings.mcdc_mappings {
-        // Inject test vector update first because `inject_statement` always insert new statement at head.
-        for &end in &decision.end_bcbs {
-            let end_bb = graph[end].leader_bb();
-            inject_statement(
-                mir_body,
-                CoverageKind::TestVectorBitmapUpdate {
-                    bitmap_idx: decision.bitmap_idx as u32,
-                    decision_depth: decision.decision_depth,
-                },
-                end_bb,
-            );
-        }
-
-        for &mappings::MCDCBranch {
-            span: _,
-            true_bcb,
-            false_bcb,
-            condition_info: _,
-            true_index,
-            false_index,
-        } in conditions
-        {
-            for (index, bcb) in [(false_index, false_bcb), (true_index, true_bcb)] {
-                let bb = graph[bcb].leader_bb();
-                inject_statement(
-                    mir_body,
-                    CoverageKind::CondBitmapUpdate {
-                        index: index as u32,
-                        decision_depth: decision.decision_depth,
-                    },
-                    bb,
-                );
-            }
-        }
     }
 }
 

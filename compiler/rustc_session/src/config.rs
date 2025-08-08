@@ -190,7 +190,7 @@ pub struct CoverageOptions {
     pub discard_all_spans_in_codegen: bool,
 }
 
-/// Controls whether branch coverage or MC/DC coverage is enabled.
+/// Controls whether branch coverage is enabled.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Default)]
 pub enum CoverageLevel {
     /// Instrument for coverage at the MIR block level.
@@ -214,9 +214,6 @@ pub enum CoverageLevel {
     /// instrumentation, so it might be removed in the future when MC/DC is
     /// sufficiently complete, or if it is making MC/DC changes difficult.
     Condition,
-    /// Instrument for MC/DC. Mostly a superset of condition coverage, but might
-    /// differ in some corner cases.
-    Mcdc,
 }
 
 // The different settings that the `-Z offload` flag can have.
