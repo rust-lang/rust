@@ -16,11 +16,11 @@ LL ~             U8AsBool { n: 1.. } => {},
 LL +             U8AsBool { n: 0_u8 } | U8AsBool { b: false } => todo!()
    |
 
-error[E0004]: non-exhaustive patterns: `(U8AsBool { n: 0_u8 }, false)`, `(U8AsBool { b: false }, false)`, `(U8AsBool { n: 0_u8 }, false)` and 1 more not covered
+error[E0004]: non-exhaustive patterns: `(U8AsBool { n: 0_u8 }, false)`, `(U8AsBool { b: true }, false)`, `(U8AsBool { n: 0_u8 }, false)` and 1 more not covered
   --> $DIR/unions.rs:28:15
    |
 LL |         match (x, true) {
-   |               ^^^^^^^^^ patterns `(U8AsBool { n: 0_u8 }, false)`, `(U8AsBool { b: false }, false)`, `(U8AsBool { n: 0_u8 }, false)` and 1 more not covered
+   |               ^^^^^^^^^ patterns `(U8AsBool { n: 0_u8 }, false)`, `(U8AsBool { b: true }, false)`, `(U8AsBool { n: 0_u8 }, false)` and 1 more not covered
    |
    = note: the matched value is of type `(U8AsBool, bool)`
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern as shown, or multiple match arms
