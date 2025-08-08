@@ -7,9 +7,10 @@ use rustc_ast::Mutability;
 use rustc_hir as hir;
 use rustc_infer::infer::{RegionResolutionError, TyCtxtInferExt};
 use rustc_middle::ty::{self, AdtDef, Ty, TyCtxt, TypeVisitableExt, TypingMode};
+use rustc_span::sym;
 
 use crate::regions::InferCtxtRegionExt;
-use crate::traits::{self, FulfillmentError, ObligationCause};
+use crate::traits::{self, FulfillmentError, Obligation, ObligationCause};
 
 pub enum CopyImplementationError<'tcx> {
     InfringingFields(Vec<(&'tcx ty::FieldDef, Ty<'tcx>, InfringingFieldsReason<'tcx>)>),
@@ -101,7 +102,9 @@ pub fn type_allowed_to_implement_const_param_ty<'tcx>(
     lang_item: LangItem,
     parent_cause: ObligationCause<'tcx>,
 ) -> Result<(), ConstParamTyImplementationError<'tcx>> {
+    // FIXME: remove the unsizedconstparamty item
     assert_matches!(lang_item, LangItem::ConstParamTy | LangItem::UnsizedConstParamTy);
+    let mut need_unstable_feature_bound = false;
 
     let inner_tys: Vec<_> = match *self_type.kind() {
         // Trivially okay as these types are all:
@@ -112,16 +115,13 @@ pub fn type_allowed_to_implement_const_param_ty<'tcx>(
 
         // Handle types gated under `feature(unsized_const_params)`
         // FIXME(unsized_const_params): Make `const N: [u8]` work then forbid references
-        ty::Slice(inner_ty) | ty::Ref(_, inner_ty, Mutability::Not)
-            if lang_item == LangItem::UnsizedConstParamTy =>
-        {
+        ty::Slice(inner_ty) | ty::Ref(_, inner_ty, Mutability::Not) => {
+            need_unstable_feature_bound = true;
             vec![inner_ty]
         }
-        ty::Str if lang_item == LangItem::UnsizedConstParamTy => {
+        ty::Str => {
+            need_unstable_feature_bound = true;
             vec![Ty::new_slice(tcx, tcx.types.u8)]
-        }
-        ty::Str | ty::Slice(..) | ty::Ref(_, _, Mutability::Not) => {
-            return Err(ConstParamTyImplementationError::UnsizedConstParamsFeatureRequired);
         }
 
         ty::Array(inner_ty, _) => vec![inner_ty],
@@ -152,6 +152,16 @@ pub fn type_allowed_to_implement_const_param_ty<'tcx>(
         // We use an ocx per inner ty for better diagnostics
         let infcx = tcx.infer_ctxt().build(TypingMode::non_body_analysis());
         let ocx = traits::ObligationCtxt::new_with_diagnostics(&infcx);
+
+        // FIXME: add a comment here
+        if need_unstable_feature_bound {
+            ocx.register_obligation(Obligation::new(
+                tcx,
+                parent_cause.clone(),
+                param_env,
+                ty::ClauseKind::UnstableFeature(sym::unsized_const_params),
+            ))
+        }
 
         ocx.register_bound(
             parent_cause.clone(),
