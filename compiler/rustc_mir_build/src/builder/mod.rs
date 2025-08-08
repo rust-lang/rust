@@ -533,7 +533,6 @@ fn construct_fn<'tcx>(
         builder.build_drop_trees();
         return_block.unit()
     });
-
     let mut body = builder.finish();
 
     body.spread_arg = if abi == ExternAbi::RustCall {
@@ -803,6 +802,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             None,
         );
         body.coverage_info_hi = self.coverage_info.map(|b| b.into_done());
+        body.basic_blocks.thir_had_loops = Some(self.thir.exprs.iter().any(|e| {
+            matches!(e.kind, thir::ExprKind::Loop { .. } | thir::ExprKind::LoopMatch { .. })
+        }));
 
         for (index, block) in body.basic_blocks.iter().enumerate() {
             if block.terminator.is_none() {

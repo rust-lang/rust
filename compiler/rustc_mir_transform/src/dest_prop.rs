@@ -169,7 +169,12 @@ impl<'tcx> crate::MirPass<'tcx> for DestinationPropagation {
 
         let borrowed = rustc_mir_dataflow::impls::borrowed_locals(body);
 
-        let live = MaybeLiveLocals.iterate_to_fixpoint(tcx, body, Some("MaybeLiveLocals-DestProp"));
+        // let timer = std::time::Instant::now();
+        let live = MaybeLiveLocals.iterate_to_fixpoint(tcx, body, Some("MaybeLiveLocals-DestProp")); // fixme: optimize, but is backwards
+        // let elapsed = timer.elapsed();
+        // // if elapsed.as_millis() > 1 {
+        //     eprintln!("MaybeLiveLocals took {} ns on {:?}", elapsed.as_nanos(), body.span);
+        // // }
         let points = DenseLocationMap::new(body);
         let mut live = save_as_intervals(&points, body, live.analysis, live.results);
 

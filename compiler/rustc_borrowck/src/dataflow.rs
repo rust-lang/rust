@@ -39,9 +39,10 @@ impl<'a, 'tcx> Analysis<'tcx> for Borrowck<'a, 'tcx> {
         }
     }
 
-    fn initialize_start_block(&self, _body: &mir::Body<'tcx>, _state: &mut Self::Domain) {
-        // This is only reachable from `iterate_to_fixpoint`, which this analysis doesn't use.
-        unreachable!();
+    fn initialize_start_block(&self, body: &mir::Body<'tcx>, state: &mut Self::Domain) {
+        self.borrows.initialize_start_block(body, &mut state.borrows);
+        self.uninits.initialize_start_block(body, &mut state.uninits);
+        self.ever_inits.initialize_start_block(body, &mut state.ever_inits);
     }
 
     fn apply_early_statement_effect(
@@ -83,30 +84,36 @@ impl<'a, 'tcx> Analysis<'tcx> for Borrowck<'a, 'tcx> {
         term: &'mir mir::Terminator<'tcx>,
         loc: Location,
     ) -> TerminatorEdges<'mir, 'tcx> {
-        self.borrows.apply_primary_terminator_effect(&mut state.borrows, term, loc);
-        self.uninits.apply_primary_terminator_effect(&mut state.uninits, term, loc);
-        self.ever_inits.apply_primary_terminator_effect(&mut state.ever_inits, term, loc);
+        let _edges1 = self.borrows.apply_primary_terminator_effect(&mut state.borrows, term, loc);
+        let _edges2 = self.uninits.apply_primary_terminator_effect(&mut state.uninits, term, loc);
+        let edges3 =
+            self.ever_inits.apply_primary_terminator_effect(&mut state.ever_inits, term, loc);
 
-        // This return value doesn't matter. It's only used by `iterate_to_fixpoint`, which this
-        // analysis doesn't use.
-        TerminatorEdges::None
+        // assert_eq!(_edges1, _edges2);
+        // assert_eq!(_edges2, edges3);
+
+        edges3
     }
 
     fn apply_call_return_effect(
         &mut self,
-        _state: &mut Self::Domain,
-        _block: BasicBlock,
-        _return_places: CallReturnPlaces<'_, 'tcx>,
+        state: &mut Self::Domain,
+        block: BasicBlock,
+        return_places: CallReturnPlaces<'_, 'tcx>,
     ) {
-        // This is only reachable from `iterate_to_fixpoint`, which this analysis doesn't use.
-        unreachable!();
+        self.borrows.apply_call_return_effect(&mut state.borrows, block, return_places);
+        self.uninits.apply_call_return_effect(&mut state.uninits, block, return_places);
+        self.ever_inits.apply_call_return_effect(&mut state.ever_inits, block, return_places);
     }
 }
 
 impl JoinSemiLattice for BorrowckDomain {
-    fn join(&mut self, _other: &Self) -> bool {
-        // This is only reachable from `iterate_to_fixpoint`, which this analysis doesn't use.
-        unreachable!();
+    fn join(&mut self, other: &Self) -> bool {
+        let mut changed = false;
+        changed |= self.borrows.join(&other.borrows);
+        changed |= self.uninits.join(&other.uninits);
+        changed |= self.ever_inits.join(&other.ever_inits);
+        changed
     }
 }
 

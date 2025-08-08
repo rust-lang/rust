@@ -33,8 +33,10 @@
 //! [gen-kill]: https://en.wikipedia.org/wiki/Data-flow_analysis#Bit_vector_problems
 
 use std::cmp::Ordering;
+use std::collections::VecDeque;
 
-use rustc_data_structures::work_queue::WorkQueue;
+// use rustc_data_structures::fx::FxHashSet;
+// use rustc_data_structures::work_queue::WorkQueue;
 use rustc_index::bit_set::{DenseBitSet, MixedBitSet};
 use rustc_index::{Idx, IndexVec};
 use rustc_middle::bug;
@@ -229,6 +231,122 @@ pub trait Analysis<'tcx> {
         unreachable!();
     }
 
+    #[inline]
+    fn iterate_to_fixpoint<'mir>(
+        mut self,
+        tcx: TyCtxt<'tcx>,
+        body: &'mir mir::Body<'tcx>,
+        pass_name: Option<&'static str>,
+    ) -> AnalysisAndResults<'tcx, Self>
+    where
+        Self: Sized,
+        Self::Domain: DebugWithContext<Self>,
+    {
+        // if Self::Direction::IS_BACKWARD {
+        //     let (results, _) = self.iterate_to_fixpoint_per_block(tcx, body, pass_name);
+        //     return AnalysisAndResults { analysis: self, results };
+        // }
+
+        // // let timer = std::time::Instant::now();
+        // // let _ = body.basic_blocks.is_cfg_cyclic();
+        // // let elapsed_cyclic = timer.elapsed();
+        // // eprintln!("is cyclic: {}, elapsed: {} ns, {:?}", body.basic_blocks.is_cfg_cyclic(), elapsed_cyclic.as_nanos(), body.span);
+
+        // // let timer = std::time::Instant::now();
+        // // let sccs = body.basic_blocks.sccs();
+        // // let elapsed_sccs = timer.elapsed();
+        // // eprintln!("scc count: {}, elapsed: {} ns, {:?}", sccs.component_count, elapsed_sccs.as_nanos(), body.span);
+
+        // // Computing dataflow over the SCCs is only supported in forward analyses. It's also
+        // // unnecessary to use it on acyclic graphs, as the condensation graph is of course the same
+        // // as the CFG itself.
+        // if Self::Direction::IS_BACKWARD || !body.basic_blocks.is_cfg_cyclic() {
+        //     let (results, _) = self.iterate_to_fixpoint_per_block(tcx, body, pass_name);
+        //     return AnalysisAndResults { analysis: self, results };
+        // }
+
+        // const CAN_USE_SCCS: std::cell::OnceCell<bool> = std::cell::OnceCell::new();
+        // let letsgo = *CAN_USE_SCCS
+        //     .get_or_init(|| matches!(std::env::var("LETSGO").ok().as_deref(), Some("1")));
+        // let can_use_sccs = letsgo;
+        // let can_use_sccs = true;
+
+        // if can_use_sccs {
+        //     let (results, _) = self.iterate_to_fixpoint_per_scc(tcx, body, pass_name);
+        //     return AnalysisAndResults { analysis: self, results };
+        // } else {
+        let (results, _) = self.iterate_to_fixpoint_per_block(tcx, body, pass_name);
+        return AnalysisAndResults { analysis: self, results };
+        // }
+
+        // let (results_per_block, debug_per_block) =
+        //     self.iterate_to_fixpoint_per_block(tcx, body, pass_name);
+
+        // let (results_per_scc, debug_per_scc) =
+        //     self.iterate_to_fixpoint_per_scc(tcx, body, pass_name);
+
+        // assert_eq!(results_per_block, results_per_scc);
+        // assert!(debug_per_scc.block_invalidations <= debug_per_block.block_invalidations);
+
+        // // if std::env::var("LETSGO").is_ok()
+        // //     && debug_per_scc.elapsed.as_secs_f64() / debug_per_block.elapsed.as_secs_f64() < 0.75
+        // // {
+        // //     eprintln!(
+        // //         "iterate_to_fixpoint - {} blocks took {} ns, invalidations per block: {} - {} sccs took {} ns, invalidations per scc: {}, factor: {}, {:?}",
+        // //         debug_per_block.unit_count,
+        // //         debug_per_block.elapsed.as_nanos(),
+        // //         debug_per_block.block_invalidations,
+        // //         debug_per_scc.unit_count,
+        // //         debug_per_scc.elapsed.as_nanos(),
+        // //         debug_per_scc.block_invalidations,
+        // //         debug_per_scc.elapsed.as_secs_f64() / debug_per_block.elapsed.as_secs_f64(),
+        // //         body.span,
+        // //     );
+        // //     eprintln!(
+        // //         "per scc - sccs: {} ns, queue: {:5} ns, loop setup: {:7} ns, loop: {:10} ns",
+        // //         debug_per_scc.elapsed_sccs.as_nanos(),
+        // //         debug_per_scc.elapsed_queue.as_nanos(),
+        // //         debug_per_scc.elapsed_loop_setup.as_nanos(),
+        // //         debug_per_scc.elapsed_loop.as_nanos(),
+        // //     );
+        // //     eprintln!(
+        // //         "per block -            queue: {:5} ns, loop setup: {:7} ns, loop: {:10} ns",
+        // //         debug_per_block.elapsed_queue.as_nanos(),
+        // //         debug_per_block.elapsed_loop_setup.as_nanos(),
+        // //         debug_per_block.elapsed_loop.as_nanos(),
+        // //     );
+        // // }
+
+        // if letsgo {
+        //     // debug_per_scc.elapsed += elapsed_cyclic;
+
+        //     // if debug_per_scc.elapsed < debug_per_block.elapsed {
+        //     //     eprintln!(
+        //     //         "per scc wins: by {} ns",
+        //     //         debug_per_block.elapsed.as_nanos() - debug_per_scc.elapsed.as_nanos()
+        //     //     );
+        //     // } else {
+        //     //     eprintln!(
+        //     //         "per block wins: by {} ns",
+        //     //         debug_per_scc.elapsed.as_nanos() - debug_per_block.elapsed.as_nanos()
+        //     //     );
+        //     // }
+
+        //     if debug_per_scc.block_invalidations < debug_per_block.block_invalidations {
+        //         eprintln!(
+        //             "per scc wins: by {} invalidations, scc: {} (took {} ns), block: {} (took {} ns)",
+        //             debug_per_block.block_invalidations - debug_per_scc.block_invalidations,
+        //             debug_per_scc.block_invalidations,
+        //             debug_per_scc.elapsed.as_nanos(),
+        //             debug_per_block.block_invalidations,
+        //             debug_per_block.elapsed.as_nanos(),
+        //         );
+        //     }
+        // }
+
+        // AnalysisAndResults { analysis: self, results: results_per_scc }
+    }
+
     /* Extension methods */
 
     /// Finds the fixpoint for this dataflow problem.
@@ -244,24 +362,33 @@ pub trait Analysis<'tcx> {
     /// dataflow analysis. Some analyses are run multiple times in the compilation pipeline.
     /// Without a `pass_name` to differentiates them, only the results for the latest run will be
     /// saved.
-    fn iterate_to_fixpoint<'mir>(
-        mut self,
+    #[inline(always)]
+    fn iterate_to_fixpoint_per_block<'mir>(
+        &mut self,
         tcx: TyCtxt<'tcx>,
         body: &'mir mir::Body<'tcx>,
         pass_name: Option<&'static str>,
-    ) -> AnalysisAndResults<'tcx, Self>
+    ) -> (IndexVec<BasicBlock, Self::Domain>, DebugTrash)
     where
         Self: Sized,
         Self::Domain: DebugWithContext<Self>,
     {
+        let timer = std::time::Instant::now();
+
+        let mut debug = DebugTrash::default();
+        // debug.unit_count = body.basic_blocks.len();
+
+        // let _timer = std::time::Instant::now();
         let mut results = IndexVec::from_fn_n(|_| self.bottom_value(body), body.basic_blocks.len());
         self.initialize_start_block(body, &mut results[mir::START_BLOCK]);
+        let mut state = self.bottom_value(body);
 
         if Self::Direction::IS_BACKWARD && results[mir::START_BLOCK] != self.bottom_value(body) {
             bug!("`initialize_start_block` is not yet supported for backward dataflow analyses");
         }
 
-        let mut dirty_queue: WorkQueue<BasicBlock> = WorkQueue::with_none(body.basic_blocks.len());
+        let mut dirty_queue: WorkQueue<BasicBlock> =
+            WorkQueue::with_none(body.basic_blocks.len(), body.basic_blocks.len());
 
         if Self::Direction::IS_FORWARD {
             for (bb, _) in traversal::reverse_postorder(body) {
@@ -275,17 +402,23 @@ pub trait Analysis<'tcx> {
             }
         }
 
+        // debug.elapsed_loop_setup = _timer.elapsed();
+
         // `state` is not actually used between iterations;
         // this is just an optimization to avoid reallocating
         // every iteration.
-        let mut state = self.bottom_value(body);
+        // let mut state = self.bottom_value(body);
+        // let _timer = std::time::Instant::now();
+
         while let Some(bb) = dirty_queue.pop() {
             // Set the state to the entry state of the block. This is equivalent to `state =
             // results[bb].clone()`, but it saves an allocation, thus improving compile times.
             state.clone_from(&results[bb]);
 
+            debug.block_invalidations += 1;
+
             Self::Direction::apply_effects_in_block(
-                &mut self,
+                self,
                 body,
                 &mut state,
                 bb,
@@ -298,16 +431,256 @@ pub trait Analysis<'tcx> {
                 },
             );
         }
+        // debug.elapsed_loop = _timer.elapsed();
+
+        debug.elapsed = timer.elapsed();
 
         if tcx.sess.opts.unstable_opts.dump_mir_dataflow {
-            let res = write_graphviz_results(tcx, body, &mut self, &results, pass_name);
+            let res = write_graphviz_results(tcx, body, self, &results, pass_name);
             if let Err(e) = res {
                 error!("Failed to write graphviz dataflow results: {}", e);
             }
         }
 
-        AnalysisAndResults { analysis: self, results }
+        // AnalysisAndResults { analysis: self, results }
+        (results, debug)
     }
+
+    #[inline(always)]
+    fn iterate_to_fixpoint_per_scc<'mir>(
+        &mut self,
+        _tcx: TyCtxt<'tcx>,
+        body: &'mir mir::Body<'tcx>,
+        _pass_name: Option<&'static str>,
+    ) -> (IndexVec<BasicBlock, Self::Domain>, DebugTrash)
+    where
+        Self: Sized,
+        Self::Domain: DebugWithContext<Self>,
+    {
+        // let timer = std::time::Instant::now();
+
+        let mut debug = DebugTrash::default();
+
+        // assert!(Self::Direction::IS_FORWARD);
+
+        // let _timer = std::time::Instant::now();
+        let sccs = body.basic_blocks.sccs();
+        // debug.elapsed_sccs = _timer.elapsed();
+
+        // debug.unit_count = sccs.component_count;
+
+        // struct VecQueue<T: Idx> {
+        //     queue: Vec<T>,
+        //     set: DenseBitSet<T>,
+        // }
+
+        // impl<T: Idx> VecQueue<T> {
+        //     #[inline]
+        //     fn with_none(len: usize) -> Self {
+        //         VecQueue { queue: Vec::with_capacity(len), set: DenseBitSet::new_empty(len) }
+        //     }
+
+        //     #[inline]
+        //     fn insert(&mut self, element: T) {
+        //         if self.set.insert(element) {
+        //             self.queue.push(element);
+        //         }
+        //     }
+        // }
+
+        // let _timer = std::time::Instant::now();
+        // let mut scc_queue = VecQueue::with_none(sccs.component_count);
+        // for &bb in body.basic_blocks.reverse_postorder().iter() {
+        //     // let scc = sccs.components[bb.as_usize()];
+        //     let scc = sccs.components[bb];
+        //     scc_queue.insert(scc);
+        // }
+        // assert_eq!(scc_queue.queue, sccs.queue);
+        // debug.elapsed_queue = _timer.elapsed();
+
+        // let _timer = std::time::Instant::now();
+
+        let mut results = IndexVec::from_fn_n(|_| self.bottom_value(body), body.basic_blocks.len());
+        self.initialize_start_block(body, &mut results[mir::START_BLOCK]);
+
+        // Worklist for per-SCC iterations
+        let mut dirty_queue: WorkQueue<BasicBlock> =
+            WorkQueue::with_none(body.basic_blocks.len(), body.basic_blocks.len());
+
+        let mut state = self.bottom_value(body);
+
+        // debug.elapsed_loop_setup = _timer.elapsed();
+
+        // let mut sccs_seen = FxHashSet::default();
+        // let mut blocks_seen = FxHashSet::default();
+
+        // let _timer = std::time::Instant::now();
+        // for &scc in &scc_queue.queue {
+        for &scc in &sccs.queue {
+            // sccs_seen.insert(scc);
+
+            // les blocks doivent être ajoutés en RPO
+            // for block in sccs.blocks_in_rpo(scc as usize) {
+            for block in sccs.sccs[scc as usize].iter().copied() {
+                dirty_queue.insert(block);
+            }
+            // assert!(dirty_queue.deque.len() <= sccs.biggest_scc);
+
+            // for block in sccs.sccs[scc as usize].iter().copied() {
+            //     state.clone_from(&results[block]);
+            //     Self::Direction::apply_effects_in_block(
+            //         self,
+            //         body,
+            //         &mut state,
+            //         block,
+            //         &body[block],
+            //         |target: BasicBlock, state: &Self::Domain| {
+            //             let set_changed = results[target].join(state);
+            //             // let target_scc = sccs.components[target.as_usize()];
+            //             let target_scc = sccs.components[target];
+            //             if set_changed && target_scc == scc {
+            //                 // The target block is in the SCC we're currently processing, and we
+            //                 // want to process this block until fixpoint. Otherwise, the target
+            //                 // block is in a successor SCC and it will be processed when that SCC is
+            //                 // encountered later.
+            //                 dirty_queue.insert(target);
+            //             }
+            //         },
+            //     );
+            // }
+
+            while let Some(bb) = dirty_queue.pop() {
+                // blocks_seen.insert(bb);
+
+                // Set the state to the entry state of the block. This is equivalent to `state =
+                // results[bb].clone()`, but it saves an allocation, thus improving compile times.
+                state.clone_from(&results[bb]);
+
+                debug.block_invalidations += 1;
+
+                Self::Direction::apply_effects_in_block(
+                    self,
+                    body,
+                    &mut state,
+                    bb,
+                    &body[bb],
+                    |target: BasicBlock, state: &Self::Domain| {
+                        let set_changed = results[target].join(state);
+                        // let target_scc = sccs.components[target.as_usize()];
+                        let target_scc = sccs.components[target];
+                        if set_changed && target_scc == scc {
+                            // The target block is in the SCC we're currently processing, and we
+                            // want to process this block until fixpoint. Otherwise, the target
+                            // block is in a successor SCC and it will be processed when that SCC is
+                            // encountered later.
+                            dirty_queue.insert(target);
+                        }
+                    },
+                );
+            }
+        }
+        // debug.elapsed_loop = _timer.elapsed();
+
+        // debug.elapsed = timer.elapsed();
+
+        // if sccs_seen.len() != sccs.component_count {
+        //     // UH OH, an SCC we haven't visited?!
+
+        //     let mut ok = true;
+        //     let reachable_blocks = rustc_middle::mir::traversal::reachable_as_bitset(&body);
+        //     for scc in 0..sccs.component_count {
+        //         if sccs_seen.contains(&(scc as u32)) {
+        //             continue;
+        //         }
+
+        //         // The SCC gotta contain unreachable blocks only!
+        //         for block in sccs.sccs[scc].iter().copied() {
+        //             if reachable_blocks.contains(block) {
+        //                 ok = false;
+        //                 break;
+        //             }
+        //         }
+        //     }
+
+        //     if !ok {
+        //         panic!("UHOH");
+        //     }
+        // }
+
+        // if blocks_seen.len() != body.basic_blocks.len() {
+        //     // UH OH, a block we haven't visited?!
+
+        //     let mut ok = true;
+        //     let reachable_blocks = rustc_middle::mir::traversal::reachable_as_bitset(&body);
+        //     for block in body.basic_blocks.indices() {
+        //         if blocks_seen.contains(&block) {
+        //             continue;
+        //         }
+
+        //         // It's gotta be unreachable!
+        //         if reachable_blocks.contains(block) {
+        //             ok = false;
+        //             break;
+        //         }
+        //     }
+
+        //     if !ok {
+        //         panic!("UHOH2");
+        //     }
+        // }
+
+        (results, debug)
+    }
+}
+
+struct WorkQueue<T: Idx> {
+    pub deque: VecDeque<T>,
+    set: DenseBitSet<T>,
+}
+
+impl<T: Idx> WorkQueue<T> {
+    /// Creates a new work queue that starts empty, where elements range from (0..len).
+    #[inline]
+    fn with_none(queue_len: usize, domain_len: usize) -> Self {
+        WorkQueue {
+            deque: VecDeque::with_capacity(queue_len),
+            set: DenseBitSet::new_empty(domain_len),
+        }
+    }
+
+    /// Attempt to enqueue `element` in the work queue. Returns false if it was already present.
+    #[inline]
+    fn insert(&mut self, element: T) -> bool {
+        if self.set.insert(element) {
+            self.deque.push_back(element);
+            true
+        } else {
+            false
+        }
+    }
+
+    /// Attempt to pop an element from the work queue.
+    #[inline]
+    fn pop(&mut self) -> Option<T> {
+        if let Some(element) = self.deque.pop_front() {
+            self.set.remove(element);
+            Some(element)
+        } else {
+            None
+        }
+    }
+}
+
+#[derive(Default)]
+pub struct DebugTrash {
+    pub block_invalidations: usize,
+    pub elapsed: std::time::Duration,
+    pub elapsed_sccs: std::time::Duration,
+    pub elapsed_queue: std::time::Duration,
+    pub elapsed_loop_setup: std::time::Duration,
+    pub elapsed_loop: std::time::Duration,
+    // block count or scc count
+    pub unit_count: usize,
 }
 
 /// The legal operations for a transfer function in a gen/kill problem.
