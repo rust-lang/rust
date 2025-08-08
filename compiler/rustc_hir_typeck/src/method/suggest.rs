@@ -2773,7 +2773,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) {
         if let SelfSource::MethodCall(expr) = source {
             let mod_id = self.tcx.parent_module(expr.hir_id).to_def_id();
-            for (fields, args) in self.get_field_candidates_considering_privacy_for_diag(
+            for fields in self.get_field_candidates_considering_privacy_for_diag(
                 span,
                 actual,
                 mod_id,
@@ -2812,7 +2812,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 })
                             },
                             candidate_field,
-                            args,
                             vec![],
                             mod_id,
                             expr.hir_id,
@@ -3652,7 +3651,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         )
                     {
                         debug!("try_alt_rcvr: pick candidate {:?}", pick);
-                        let did = Some(pick.item.container_id(self.tcx));
+                        let did = pick.item.trait_container(self.tcx);
                         // We don't want to suggest a container type when the missing
                         // method is `.clone()` or `.deref()` otherwise we'd suggest
                         // `Arc::new(foo).clone()`, which is far from what the user wants.
@@ -3701,8 +3700,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     && !alt_rcvr_sugg
                     // `T: !Unpin`
                     && !unpin
-                    // The method isn't `as_ref`, as it would provide a wrong suggestion for `Pin`.
-                    && sym::as_ref != item_name.name
                     // Either `Pin::as_ref` or `Pin::as_mut`.
                     && let Some(pin_call) = pin_call
                     // Search for `item_name` as a method accessible on `Pin<T>`.
@@ -3716,6 +3713,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // We skip some common traits that we don't want to consider because autoderefs
                     // would take care of them.
                     && !skippable.contains(&Some(pick.item.container_id(self.tcx)))
+                    // Do not suggest pinning when the method is directly on `Pin`.
+                    && pick.item.impl_container(self.tcx).map_or(true, |did| {
+                        match self.tcx.type_of(did).skip_binder().kind() {
+                            ty::Adt(def, _) => Some(def.did()) != self.tcx.lang_items().pin_type(),
+                            _ => true,
+                        }
+                    })
                     // We don't want to go through derefs.
                     && pick.autoderefs == 0
                     // Check that the method of the same name that was found on the new `Pin<T>`
