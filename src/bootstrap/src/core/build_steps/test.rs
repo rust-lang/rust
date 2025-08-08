@@ -3248,9 +3248,15 @@ impl Step for Bootstrap {
     }
 }
 
+fn get_compiler_to_test(builder: &Builder<'_>, target: TargetSelection) -> Compiler {
+    builder.compiler(builder.top_stage, target)
+}
+
+/// Tests the Platform Support page in the rustc book.
+/// `test_compiler` is used to query the actual targets that are checked.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TierCheck {
-    pub compiler: Compiler,
+    test_compiler: Compiler,
 }
 
 impl Step for TierCheck {
@@ -3263,41 +3269,35 @@ impl Step for TierCheck {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        let compiler = run.builder.compiler_for(
-            run.builder.top_stage,
-            run.builder.build.host_target,
-            run.target,
-        );
-        run.builder.ensure(TierCheck { compiler });
+        run.builder
+            .ensure(TierCheck { test_compiler: get_compiler_to_test(run.builder, run.target) });
     }
 
-    /// Tests the Platform Support page in the rustc book.
     fn run(self, builder: &Builder<'_>) {
-        builder.std(self.compiler, self.compiler.host);
+        let tool_build_compiler = builder.compiler(0, builder.host_target);
+
         let mut cargo = tool::prepare_tool_cargo(
             builder,
-            self.compiler,
-            Mode::ToolStd,
-            self.compiler.host,
+            tool_build_compiler,
+            Mode::ToolBootstrap,
+            tool_build_compiler.host,
             Kind::Run,
             "src/tools/tier-check",
             SourceType::InTree,
             &[],
         );
         cargo.arg(builder.src.join("src/doc/rustc/src/platform-support.md"));
-        cargo.arg(builder.rustc(self.compiler));
+        cargo.arg(builder.rustc(self.test_compiler));
         if builder.is_verbose() {
             cargo.arg("--verbose");
         }
 
-        let _guard = builder.msg(
-            Kind::Test,
-            "platform support check",
-            None,
-            self.compiler,
-            self.compiler.host,
-        );
+        let _guard = builder.msg_test("platform support check", self.test_compiler);
         BootstrapCommand::from(cargo).delay_failure().run(builder);
+    }
+
+    fn metadata(&self) -> Option<StepMetadata> {
+        Some(StepMetadata::test("tier-check", self.test_compiler.host))
     }
 }
 

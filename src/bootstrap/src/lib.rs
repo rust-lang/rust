@@ -1159,6 +1159,25 @@ impl Build {
         self.group(&msg)
     }
 
+    /// Return a `Group` guard for a [`Step`] that tests `what` with the given `stage` and `target`
+    /// (determined by `host_and_stage`).
+    /// Use this instead of [`Builder::msg`] when there is no clear `build_compiler` to be
+    /// determined.
+    ///
+    /// [`Step`]: crate::core::builder::Step
+    #[must_use = "Groups should not be dropped until the Step finishes running"]
+    #[track_caller]
+    fn msg_test(
+        &self,
+        what: impl Display,
+        host_and_stage: impl Into<HostAndStage>,
+    ) -> Option<gha::Group> {
+        let HostAndStage { host, stage } = host_and_stage.into();
+        let action = Kind::Test.description();
+        let msg = format!("{action} stage{stage} {what} ({host})");
+        self.group(&msg)
+    }
+
     /// Return a `Group` guard for a [`Step`] that is only built once and isn't affected by `--stage`.
     ///
     /// [`Step`]: crate::core::builder::Step

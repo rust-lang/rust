@@ -2125,7 +2125,7 @@ mod snapshot {
                 .render_steps(), @r"
         [build] llvm <host>
         [build] rustc 0 <host> -> rustc 1 <host>
-        [build] rustc 1 <host> -> std 1 <host>
+        [test] rustc 0 <host> -> tier-check 1 <host>
         ");
     }
 
