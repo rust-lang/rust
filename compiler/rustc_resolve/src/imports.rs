@@ -84,6 +84,7 @@ impl<'ra> ImportResolutionOutputs<'ra> {
     fn commit<'tcx>(self, r: &mut Resolver<'ra, 'tcx>) {
         r.indeterminate_imports = self.indeterminate_imports;
         r.determined_imports.extend(self.determined_imports);
+
         for glob in self.glob_imports {
             r.resolve_glob_import(glob);
         }
@@ -957,7 +958,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             }
         };
 
-        // FIXME: isolate if not a cache.
         import.imported_module.set(Some(module));
         let (source, target, bindings, type_ns_only) = match import.kind {
             ImportKind::Single { source, target, ref bindings, type_ns_only, .. } => {

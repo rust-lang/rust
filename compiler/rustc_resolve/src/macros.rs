@@ -238,7 +238,7 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
     }
 
     fn resolve_imports(&mut self) {
-        self.resolve_imports();
+        self.resolve_imports()
     }
 
     fn resolve_macro_invocation(
