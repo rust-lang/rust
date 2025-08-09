@@ -61,7 +61,7 @@
 //!   then the lock will not be poisoned.
 
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use self::condvar::{Condvar, WaitTimeoutResult};
+pub use self::condvar::Condvar;
 #[unstable(feature = "mapped_lock_guards", issue = "117108")]
 pub use self::mutex::MappedMutexGuard;
 #[stable(feature = "rust1", since = "1.0.0")]
