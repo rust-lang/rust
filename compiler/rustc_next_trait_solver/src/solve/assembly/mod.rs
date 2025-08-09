@@ -8,6 +8,7 @@ use std::ops::ControlFlow;
 use derive_where::derive_where;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::TraitSolverLangItem;
+use rustc_type_ir::search_graph::CandidateUsages;
 use rustc_type_ir::solve::SizedTraitKind;
 use rustc_type_ir::{
     self as ty, Interner, TypeFlags, TypeFoldable, TypeSuperVisitable, TypeVisitable,
@@ -33,10 +34,11 @@ enum AliasBoundKind {
 ///
 /// It consists of both the `source`, which describes how that goal would be proven,
 /// and the `result` when using the given `source`.
-#[derive_where(Clone, Debug; I: Interner)]
+#[derive_where(Debug; I: Interner)]
 pub(super) struct Candidate<I: Interner> {
     pub(super) source: CandidateSource<I>,
     pub(super) result: CanonicalResponse<I>,
+    pub(super) candidate_usages: CandidateUsages,
 }
 
 /// Methods used to assemble candidates for either trait or projection goals.
@@ -116,8 +118,11 @@ where
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
         assumption: I::Clause,
-    ) -> Result<Candidate<I>, NoSolution> {
-        Self::fast_reject_assumption(ecx, goal, assumption)?;
+    ) -> Result<Candidate<I>, CandidateUsages> {
+        match Self::fast_reject_assumption(ecx, goal, assumption) {
+            Ok(()) => {}
+            Err(NoSolution) => return Err(CandidateUsages::default()),
+        }
 
         // Dealing with `ParamEnv` candidates is a bit of a mess as we need to lazily
         // check whether the candidate is global while considering normalization.
@@ -126,18 +131,23 @@ where
         // in `probe` even if the candidate does not apply before we get there. We handle this
         // by using a `Cell` here. We only ever write into it inside of `match_assumption`.
         let source = Cell::new(CandidateSource::ParamEnv(ParamEnvSource::Global));
-        ecx.probe(|result: &QueryResult<I>| inspect::ProbeKind::TraitCandidate {
-            source: source.get(),
-            result: *result,
-        })
-        .enter(|ecx| {
-            Self::match_assumption(ecx, goal, assumption, |ecx| {
-                ecx.try_evaluate_added_goals()?;
-                source.set(ecx.characterize_param_env_assumption(goal.param_env, assumption)?);
-                ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+        let (result, candidate_usages) = ecx
+            .probe(|result: &QueryResult<I>| inspect::ProbeKind::TraitCandidate {
+                source: source.get(),
+                result: *result,
             })
-        })
-        .map(|result| Candidate { source: source.get(), result })
+            .enter_unique_candidate(|ecx| {
+                Self::match_assumption(ecx, goal, assumption, |ecx| {
+                    ecx.try_evaluate_added_goals()?;
+                    source.set(ecx.characterize_param_env_assumption(goal.param_env, assumption)?);
+                    ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+                })
+            });
+
+        match result {
+            Ok(result) => Ok(Candidate { source: source.get(), result, candidate_usages }),
+            Err(NoSolution) => Err(candidate_usages),
+        }
     }
 
     /// Try equating an assumption predicate against a goal's predicate. If it
@@ -355,6 +365,12 @@ pub(super) enum AssembleCandidatesFrom {
     EnvAndBounds,
 }
 
+// TODO
+#[derive(Debug)]
+pub(super) struct FailedCandidateInfo {
+    pub param_env_usages: CandidateUsages,
+}
+
 impl<D, I> EvalCtxt<'_, D>
 where
     D: SolverDelegate<Interner = I>,
@@ -364,16 +380,20 @@ where
         &mut self,
         goal: Goal<I, G>,
         assemble_from: AssembleCandidatesFrom,
-    ) -> Vec<Candidate<I>> {
+    ) -> (Vec<Candidate<I>>, FailedCandidateInfo) {
+        let mut candidates = vec![];
+        let mut failed_candidate_info =
+            FailedCandidateInfo { param_env_usages: CandidateUsages::default() };
         let Ok(normalized_self_ty) =
             self.structurally_normalize_ty(goal.param_env, goal.predicate.self_ty())
         else {
-            return vec![];
+            return (candidates, failed_candidate_info);
         };
 
         if normalized_self_ty.is_ty_var() {
             debug!("self type has been normalized to infer");
-            return self.forced_ambiguity(MaybeCause::Ambiguity).into_iter().collect();
+            candidates.extend(self.forced_ambiguity(MaybeCause::Ambiguity));
+            return (candidates, failed_candidate_info);
         }
 
         let goal: Goal<I, G> = goal
@@ -382,16 +402,15 @@ where
         // normalizing the self type as well, since type variables are not uniquified.
         let goal = self.resolve_vars_if_possible(goal);
 
-        let mut candidates = vec![];
-
         if let TypingMode::Coherence = self.typing_mode()
             && let Ok(candidate) = self.consider_coherence_unknowable_candidate(goal)
         {
-            return vec![candidate];
+            candidates.push(candidate);
+            return (candidates, failed_candidate_info);
         }
 
         self.assemble_alias_bound_candidates(goal, &mut candidates);
-        self.assemble_param_env_candidates(goal, &mut candidates);
+        self.assemble_param_env_candidates(goal, &mut candidates, &mut failed_candidate_info);
 
         match assemble_from {
             AssembleCandidatesFrom::All => {
@@ -423,7 +442,7 @@ where
             AssembleCandidatesFrom::EnvAndBounds => {}
         }
 
-        candidates
+        (candidates, failed_candidate_info)
     }
 
     pub(super) fn forced_ambiguity(
@@ -584,9 +603,15 @@ where
         &mut self,
         goal: Goal<I, G>,
         candidates: &mut Vec<Candidate<I>>,
+        failed_candidate_info: &mut FailedCandidateInfo,
     ) {
         for assumption in goal.param_env.caller_bounds().iter() {
-            candidates.extend(G::probe_and_consider_param_env_candidate(self, goal, assumption));
+            match G::probe_and_consider_param_env_candidate(self, goal, assumption) {
+                Ok(candidate) => candidates.push(candidate),
+                Err(candidate_usages) => {
+                    failed_candidate_info.param_env_usages.add_usages(candidate_usages)
+                }
+            }
         }
     }
 
@@ -661,7 +686,11 @@ where
                 if let Ok(result) =
                     self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
                 {
-                    candidates.push(Candidate { source: CandidateSource::AliasBound, result });
+                    candidates.push(Candidate {
+                        source: CandidateSource::AliasBound,
+                        result,
+                        candidate_usages: CandidateUsages::default(),
+                    });
                 }
                 return;
             }
@@ -959,7 +988,7 @@ where
                 // Even when a trait bound has been proven using a where-bound, we
                 // still need to consider alias-bounds for normalization, see
                 // `tests/ui/next-solver/alias-bound-shadowed-by-env.rs`.
-                let mut candidates: Vec<_> = self
+                let (mut candidates, _) = self
                     .assemble_and_evaluate_candidates(goal, AssembleCandidatesFrom::EnvAndBounds);
 
                 // We still need to prefer where-bounds over alias-bounds however.
@@ -972,23 +1001,20 @@ where
                     return inject_normalize_to_rigid_candidate(self);
                 }
 
-                if let Some(response) = self.try_merge_candidates(&candidates) {
+                if let Some((response, _)) = self.try_merge_candidates(&candidates) {
                     Ok(response)
                 } else {
                     self.flounder(&candidates)
                 }
             }
             TraitGoalProvenVia::Misc => {
-                let mut candidates =
+                let (mut candidates, _) =
                     self.assemble_and_evaluate_candidates(goal, AssembleCandidatesFrom::All);
 
                 // Prefer "orphaned" param-env normalization predicates, which are used
                 // (for example, and ideally only) when proving item bounds for an impl.
-                let candidates_from_env: Vec<_> = candidates
-                    .extract_if(.., |c| matches!(c.source, CandidateSource::ParamEnv(_)))
-                    .collect();
-                if let Some(response) = self.try_merge_candidates(&candidates_from_env) {
-                    return Ok(response);
+                if candidates.iter().any(|c| matches!(c.source, CandidateSource::ParamEnv(_))) {
+                    candidates.retain(|c| matches!(c.source, CandidateSource::ParamEnv(_)));
                 }
 
                 // We drop specialized impls to allow normalization via a final impl here. In case
@@ -997,7 +1023,7 @@ where
                 // means we can just ignore inference constraints and don't have to special-case
                 // constraining the normalized-to `term`.
                 self.filter_specialized_impls(AllowInferenceConstraints::Yes, &mut candidates);
-                if let Some(response) = self.try_merge_candidates(&candidates) {
+                if let Some((response, _)) = self.try_merge_candidates(&candidates) {
                     Ok(response)
                 } else {
                     self.flounder(&candidates)

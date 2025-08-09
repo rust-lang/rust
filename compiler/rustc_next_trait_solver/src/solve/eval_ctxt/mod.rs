@@ -8,7 +8,7 @@ use rustc_type_ir::fast_reject::DeepRejectCtxt;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::relate::Relate;
 use rustc_type_ir::relate::solver_relating::RelateExt;
-use rustc_type_ir::search_graph::PathKind;
+use rustc_type_ir::search_graph::{CandidateUsages, PathKind};
 use rustc_type_ir::{
     self as ty, CanonicalVarValues, InferCtxtLike, Interner, TypeFoldable, TypeFolder,
     TypeSuperFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
@@ -397,6 +397,10 @@ where
         delegate.reset_opaque_types();
 
         result
+    }
+
+    pub(super) fn ignore_candidate_usages(&mut self, usages: CandidateUsages) {
+        self.search_graph.ignore_candidate_usages(usages);
     }
 
     /// Recursively evaluates `goal`, returning whether any inference vars have
