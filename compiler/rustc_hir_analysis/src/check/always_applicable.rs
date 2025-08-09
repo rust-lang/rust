@@ -148,8 +148,7 @@ fn ensure_impl_params_and_item_params_correspond<'tcx>(
         ty::ImplPolarity::Positive | ty::ImplPolarity::Reservation => "",
         ty::ImplPolarity::Negative => "!",
     };
-    let trait_name = tcx
-        .item_name(tcx.trait_id_of_impl(impl_def_id.to_def_id()).expect("expected impl of trait"));
+    let trait_name = tcx.item_name(tcx.impl_trait_id(impl_def_id.to_def_id()));
     let mut err = struct_span_code_err!(
         tcx.dcx(),
         impl_span,
@@ -187,8 +186,7 @@ fn ensure_impl_predicates_are_implied_by_item_defn<'tcx>(
     let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
 
     let impl_span = tcx.def_span(impl_def_id.to_def_id());
-    let trait_name = tcx
-        .item_name(tcx.trait_id_of_impl(impl_def_id.to_def_id()).expect("expected impl of trait"));
+    let trait_name = tcx.item_name(tcx.impl_trait_id(impl_def_id.to_def_id()));
     let polarity = match tcx.impl_polarity(impl_def_id) {
         ty::ImplPolarity::Positive | ty::ImplPolarity::Reservation => "",
         ty::ImplPolarity::Negative => "!",

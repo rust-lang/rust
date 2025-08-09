@@ -708,8 +708,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             return (false, false, None);
         }
         let my_def = self.body.source.def_id();
-        let Some(td) =
-            tcx.trait_impl_of_assoc(my_def).and_then(|id| self.infcx.tcx.trait_id_of_impl(id))
+        let Some(td) = tcx.trait_impl_of_assoc(my_def).map(|id| self.infcx.tcx.impl_trait_id(id))
         else {
             return (false, false, None);
         };

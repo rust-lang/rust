@@ -1913,12 +1913,6 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
-    /// Given the `DefId` of an impl, returns the `DefId` of the trait it implements.
-    /// If it implements no trait, returns `None`.
-    pub fn trait_id_of_impl(self, def_id: DefId) -> Option<DefId> {
-        self.impl_trait_ref(def_id).map(|tr| tr.skip_binder().def_id)
-    }
-
     /// If the given `DefId` is an associated item, returns the `DefId` and `DefKind` of the parent trait or impl.
     pub fn assoc_parent(self, def_id: DefId) -> Option<(DefId, DefKind)> {
         if !self.def_kind(def_id).is_assoc() {
@@ -1981,6 +1975,18 @@ impl<'tcx> TyCtxt<'tcx> {
         def_id: impl IntoQueryParam<DefId>,
     ) -> Option<ty::EarlyBinder<'tcx, ty::TraitRef<'tcx>>> {
         Some(self.impl_trait_header(def_id)?.trait_ref)
+    }
+
+    /// Given the `DefId` of an impl, returns the `DefId` of the trait it implements.
+    pub fn impl_trait_id(self, def_id: DefId) -> DefId {
+        self.impl_opt_trait_id(def_id)
+            .unwrap_or_else(|| panic!("expected impl of trait for {def_id:?}"))
+    }
+
+    /// Given the `DefId` of an impl, returns the `DefId` of the trait it implements.
+    /// If it implements no trait, returns `None`.
+    pub fn impl_opt_trait_id(self, def_id: DefId) -> Option<DefId> {
+        self.impl_trait_ref(def_id).map(|tr| tr.skip_binder().def_id)
     }
 
     pub fn is_exportable(self, def_id: DefId) -> bool {

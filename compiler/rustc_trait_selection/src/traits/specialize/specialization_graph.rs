@@ -354,7 +354,7 @@ pub(crate) fn assoc_def(
     impl_def_id: DefId,
     assoc_def_id: DefId,
 ) -> Result<LeafDef, ErrorGuaranteed> {
-    let trait_def_id = tcx.trait_id_of_impl(impl_def_id).unwrap();
+    let trait_def_id = tcx.impl_trait_id(impl_def_id);
     let trait_def = tcx.trait_def(trait_def_id);
 
     // This function may be called while we are still building the

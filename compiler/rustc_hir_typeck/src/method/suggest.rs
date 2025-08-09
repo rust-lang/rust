@@ -3720,7 +3720,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 static_candidates.iter().all(|sc| match *sc {
                     CandidateSource::Trait(def_id) => def_id != info.def_id,
                     CandidateSource::Impl(def_id) => {
-                        self.tcx.trait_id_of_impl(def_id) != Some(info.def_id)
+                        self.tcx.impl_opt_trait_id(def_id) != Some(info.def_id)
                     }
                 })
             })
