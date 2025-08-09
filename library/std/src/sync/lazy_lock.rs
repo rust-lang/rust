@@ -79,7 +79,7 @@ union Data<T, F> {
 /// ```
 #[stable(feature = "lazy_cell", since = "1.80.0")]
 pub struct LazyLock<T, F = fn() -> T> {
-    // FIXME(nonpoison_once): if possible, switch to nonpoison version once it is available
+    /// We use `poison::Once` here to enable the `force_mut` method.
     once: Once,
     data: UnsafeCell<Data<T, F>>,
 }

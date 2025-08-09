@@ -5,51 +5,84 @@ use std::sync::mpsc::channel;
 use std::time::Duration;
 use std::{panic, thread};
 
-#[test]
-fn smoke_once() {
-    static O: Once = Once::new();
-    let mut a = 0;
-    O.call_once(|| a += 1);
-    assert_eq!(a, 1);
-    O.call_once(|| a += 1);
-    assert_eq!(a, 1);
-}
+use super::nonpoison_and_poison_unwrap_test;
 
-#[test]
-fn stampede_once() {
-    static O: Once = Once::new();
-    static mut RUN: bool = false;
+nonpoison_and_poison_unwrap_test!(
+    name: smoke_once,
+    test_body: {
+        use locks::Once;
 
-    let (tx, rx) = channel();
-    for _ in 0..10 {
-        let tx = tx.clone();
-        thread::spawn(move || {
-            for _ in 0..4 {
-                thread::yield_now()
-            }
-            unsafe {
-                O.call_once(|| {
-                    assert!(!RUN);
-                    RUN = true;
-                });
-                assert!(RUN);
-            }
-            tx.send(()).unwrap();
-        });
+        static O: Once = Once::new();
+        let mut a = 0;
+        O.call_once(|| a += 1);
+        assert_eq!(a, 1);
+        O.call_once(|| a += 1);
+        assert_eq!(a, 1);
     }
+);
 
-    unsafe {
-        O.call_once(|| {
-            assert!(!RUN);
-            RUN = true;
-        });
-        assert!(RUN);
-    }
+nonpoison_and_poison_unwrap_test!(
+    name: stampede_once,
+    test_body: {
+        use locks::Once;
 
-    for _ in 0..10 {
-        rx.recv().unwrap();
+        static O: Once = Once::new();
+        static mut RUN: bool = false;
+
+        let (tx, rx) = channel();
+        for _ in 0..10 {
+            let tx = tx.clone();
+            thread::spawn(move || {
+                for _ in 0..4 {
+                    thread::yield_now()
+                }
+                unsafe {
+                    O.call_once(|| {
+                        assert!(!RUN);
+                        RUN = true;
+                    });
+                    assert!(RUN);
+                }
+                tx.send(()).unwrap();
+            });
+        }
+
+        unsafe {
+            O.call_once(|| {
+                assert!(!RUN);
+                RUN = true;
+            });
+            assert!(RUN);
+        }
+
+        for _ in 0..10 {
+            rx.recv().unwrap();
+        }
     }
-}
+);
+
+nonpoison_and_poison_unwrap_test!(
+    name: wait,
+    test_body: {
+        use locks::Once;
+
+        for _ in 0..50 {
+            let val = AtomicBool::new(false);
+            let once = Once::new();
+
+            thread::scope(|s| {
+                for _ in 0..4 {
+                    s.spawn(|| {
+                        once.wait();
+                        assert!(val.load(Relaxed));
+                    });
+                }
+
+                once.call_once(|| val.store(true, Relaxed));
+            });
+        }
+    }
+);
 
 #[test]
 #[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
@@ -117,25 +150,6 @@ fn wait_for_force_to_finish() {
 
     assert!(t1.join().is_ok());
     assert!(t2.join().is_ok());
-}
-
-#[test]
-fn wait() {
-    for _ in 0..50 {
-        let val = AtomicBool::new(false);
-        let once = Once::new();
-
-        thread::scope(|s| {
-            for _ in 0..4 {
-                s.spawn(|| {
-                    once.wait();
-                    assert!(val.load(Relaxed));
-                });
-            }
-
-            once.call_once(|| val.store(true, Relaxed));
-        });
-    }
 }
 
 #[test]

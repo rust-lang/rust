@@ -106,9 +106,10 @@ use crate::sync::Once;
 /// ```
 #[stable(feature = "once_cell", since = "1.70.0")]
 pub struct OnceLock<T> {
-    // FIXME(nonpoison_once): switch to nonpoison version once it is available
+    /// We use `poison::Once` here to allow us to pseudo-"poison" the `Once` whenever a
+    /// `get_or_try_init` fails, which allows other calls to be run after a failure.
     once: Once,
-    // Whether or not the value is initialized is tracked by `once.is_completed()`.
+    /// Note that `once.is_completed()` tells us if the value is initialized or not.
     value: UnsafeCell<MaybeUninit<T>>,
     /// `PhantomData` to make sure dropck understands we're dropping T in our Drop impl.
     ///
