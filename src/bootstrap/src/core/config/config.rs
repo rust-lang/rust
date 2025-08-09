@@ -952,12 +952,17 @@ impl Config {
         }
 
         let dwn_ctx = DownloadContext::from(&config);
-        config.download_rustc_commit = download_ci_rustc_commit(
-            dwn_ctx,
-            rust_download_rustc,
-            debug_assertions_requested,
-            config.llvm_assertions,
-        );
+        config.download_rustc_commit =
+            download_ci_rustc_commit(dwn_ctx, rust_download_rustc, config.llvm_assertions);
+
+        if debug_assertions_requested {
+            eprintln!(
+                "WARN: `rust.debug-assertions = true` will prevent downloading CI rustc as alt CI \
+                rustc is not currently built with debug assertions."
+            );
+            // We need to put this later down_ci_rustc_commit.
+            config.download_rustc_commit = None;
+        }
 
         if let Some(t) = toml.target {
             for (triple, cfg) in t {
@@ -1682,31 +1687,6 @@ impl Config {
         update_submodule(dwn_ctx, relative_path);
     }
 
-    /// Returns the commit to download, or `None` if we shouldn't download CI artifacts.
-    pub fn download_ci_rustc_commit(
-        &self,
-        download_rustc: Option<StringOrBool>,
-        debug_assertions_requested: bool,
-        llvm_assertions: bool,
-    ) -> Option<String> {
-        let dwn_ctx = DownloadContext::from(self);
-        download_ci_rustc_commit(
-            dwn_ctx,
-            download_rustc,
-            debug_assertions_requested,
-            llvm_assertions,
-        )
-    }
-
-    pub fn parse_download_ci_llvm(
-        &self,
-        download_ci_llvm: Option<StringOrBool>,
-        asserts: bool,
-    ) -> bool {
-        let dwn_ctx = DownloadContext::from(self);
-        parse_download_ci_llvm(dwn_ctx, download_ci_llvm, asserts)
-    }
-
     /// Returns true if any of the `paths` have been modified locally.
     pub fn has_changes_from_upstream(&self, paths: &[&'static str]) -> bool {
         let dwn_ctx = DownloadContext::from(self);
@@ -1729,10 +1709,6 @@ impl Config {
                     .unwrap()
             })
             .clone()
-    }
-
-    pub fn ci_env(&self) -> CiEnv {
-        if self.is_running_on_ci { CiEnv::GitHubActions } else { CiEnv::None }
     }
 
     pub fn sanitizers_enabled(&self, target: TargetSelection) -> bool {
@@ -2114,7 +2090,6 @@ pub fn check_stage0_version(
 pub fn download_ci_rustc_commit<'a>(
     dwn_ctx: impl AsRef<DownloadContext<'a>>,
     download_rustc: Option<StringOrBool>,
-    debug_assertions_requested: bool,
     llvm_assertions: bool,
 ) -> Option<String> {
     let dwn_ctx = dwn_ctx.as_ref();
@@ -2181,14 +2156,6 @@ pub fn download_ci_rustc_commit<'a>(
             .map(|info| info.sha.trim().to_owned())
             .expect("git-commit-info is missing in the project root")
     };
-
-    if debug_assertions_requested {
-        eprintln!(
-            "WARN: `rust.debug-assertions = true` will prevent downloading CI rustc as alt CI \
-            rustc is not currently built with debug assertions."
-        );
-        return None;
-    }
 
     Some(commit)
 }
