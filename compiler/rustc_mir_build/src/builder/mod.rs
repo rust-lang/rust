@@ -802,7 +802,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             self.coroutine,
             None,
         );
-        body.coverage_info_hi = self.coverage_info.map(|b| b.into_done());
+        body.coverage_info_hi = self.coverage_info.as_ref().map(|b| b.build());
 
         for (index, block) in body.basic_blocks.iter().enumerate() {
             if block.terminator.is_none() {
