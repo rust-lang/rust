@@ -136,7 +136,11 @@ impl<'tcx> TailCallCkVisitor<'_, 'tcx> {
 
         if caller_sig.inputs_and_output != callee_sig.inputs_and_output {
             if caller_sig.inputs() != callee_sig.inputs() {
-                self.report_arguments_mismatch(expr.span, caller_sig, callee_sig);
+                self.report_arguments_mismatch(
+                    expr.span,
+                    self.caller_ty.fn_sig(self.tcx).skip_binder(),
+                    ty.fn_sig(self.tcx).skip_binder(),
+                );
             }
 
             // FIXME(explicit_tail_calls): this currently fails for cases where opaques are used.
