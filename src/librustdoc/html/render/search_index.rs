@@ -93,6 +93,7 @@ pub(crate) fn build_index(
                 ),
                 aliases: item.attrs.get_doc_aliases(),
                 deprecation: item.deprecation(tcx),
+                is_unstable: item.stability(tcx).is_some_and(|x| x.is_unstable()),
             });
         }
     }
@@ -655,6 +656,7 @@ pub(crate) fn build_index(
             let mut parents_backref_queue = VecDeque::new();
             let mut functions = String::with_capacity(self.items.len());
             let mut deprecated = Vec::with_capacity(self.items.len());
+            let mut unstable = Vec::with_capacity(self.items.len());
 
             let mut type_backref_queue = VecDeque::new();
 
@@ -711,6 +713,9 @@ pub(crate) fn build_index(
                     // bitmasks always use 1-indexing for items, with 0 as the crate itself
                     deprecated.push(u32::try_from(index + 1).unwrap());
                 }
+                if item.is_unstable {
+                    unstable.push(u32::try_from(index + 1).unwrap());
+                }
             }
 
             for (index, path) in &revert_extra_paths {
@@ -749,6 +754,7 @@ pub(crate) fn build_index(
             crate_data.serialize_field("r", &re_exports)?;
             crate_data.serialize_field("b", &self.associated_item_disambiguators)?;
             crate_data.serialize_field("c", &bitmap_to_string(&deprecated))?;
+            crate_data.serialize_field("u", &bitmap_to_string(&unstable))?;
             crate_data.serialize_field("e", &bitmap_to_string(&self.empty_desc))?;
             crate_data.serialize_field("P", &param_names)?;
             if has_aliases {
