@@ -27,7 +27,7 @@ use rustc_session::Session;
 use rustc_session::parse::{ParseSess, feature_err};
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::Transparency;
-use rustc_span::{Ident, Span, kw, sym};
+use rustc_span::{Ident, Span, Symbol, kw, sym};
 use tracing::{debug, instrument, trace, trace_span};
 
 use super::diagnostics::failed_to_match_macro;
@@ -138,6 +138,9 @@ pub(super) enum MacroRule {
         body_span: Span,
         rhs: mbe::TokenTree,
     },
+    /// A derive rule, for use with `#[m]`
+    #[expect(unused)]
+    Derive { body: Vec<MatcherLoc>, body_span: Span, rhs: mbe::TokenTree },
 }
 
 pub struct MacroRulesMacroExpander {
@@ -157,6 +160,7 @@ impl MacroRulesMacroExpander {
             MacroRule::Attr { args_span, body_span, ref rhs, .. } => {
                 (MultiSpan::from_spans(vec![args_span, body_span]), rhs)
             }
+            MacroRule::Derive { body_span, ref rhs, .. } => (MultiSpan::from_span(body_span), rhs),
         };
         if has_compile_error_macro(rhs) { None } else { Some((&self.name, span)) }
     }
@@ -569,7 +573,7 @@ pub fn compile_declarative_macro(
     let mut rules = Vec::new();
 
     while p.token != token::Eof {
-        let args = if p.eat_keyword_noexpect(sym::attr) {
+        let (args, is_derive) = if p.eat_keyword_noexpect(sym::attr) {
             kinds |= MacroKinds::ATTR;
             if !features.macro_attr() {
                 feature_err(sess, sym::macro_attr, span, "`macro_rules!` attributes are unstable")
@@ -579,16 +583,46 @@ pub fn compile_declarative_macro(
                 return dummy_syn_ext(guar);
             }
             let args = p.parse_token_tree();
-            check_args_parens(sess, &args);
+            check_args_parens(sess, sym::attr, &args);
             let args = parse_one_tt(args, RulePart::Pattern, sess, node_id, features, edition);
             check_emission(check_lhs(sess, node_id, &args));
             if let Some(guar) = check_no_eof(sess, &p, "expected macro attr body") {
                 return dummy_syn_ext(guar);
             }
-            Some(args)
+            (Some(args), false)
+        } else if p.eat_keyword_noexpect(sym::derive) {
+            kinds |= MacroKinds::DERIVE;
+            let derive_keyword_span = p.prev_token.span;
+            if !features.macro_derive() {
+                feature_err(sess, sym::macro_attr, span, "`macro_rules!` derives are unstable")
+                    .emit();
+            }
+            if let Some(guar) = check_no_eof(sess, &p, "expected `()` after `derive`") {
+                return dummy_syn_ext(guar);
+            }
+            let args = p.parse_token_tree();
+            check_args_parens(sess, sym::derive, &args);
+            let args_empty_result = check_args_empty(sess, &args);
+            let args_not_empty = args_empty_result.is_err();
+            check_emission(args_empty_result);
+            if let Some(guar) = check_no_eof(sess, &p, "expected macro derive body") {
+                return dummy_syn_ext(guar);
+            }
+            // If the user has `=>` right after the `()`, they might have forgotten the empty
+            // parentheses.
+            if p.token == token::FatArrow {
+                let mut err = sess
+                    .dcx()
+                    .struct_span_err(p.token.span, "expected macro derive body, got `=>`");
+                if args_not_empty {
+                    err.span_label(derive_keyword_span, "need `()` after this `derive`");
+                }
+                return dummy_syn_ext(err.emit());
+            }
+            (None, true)
         } else {
             kinds |= MacroKinds::BANG;
-            None
+            (None, false)
         };
         let lhs_tt = p.parse_token_tree();
         let lhs_tt = parse_one_tt(lhs_tt, RulePart::Pattern, sess, node_id, features, edition);
@@ -619,6 +653,8 @@ pub fn compile_declarative_macro(
             let args = mbe::macro_parser::compute_locs(&delimited.tts);
             let body_span = lhs_span;
             rules.push(MacroRule::Attr { args, args_span, body: lhs, body_span, rhs: rhs_tt });
+        } else if is_derive {
+            rules.push(MacroRule::Derive { body: lhs, body_span: lhs_span, rhs: rhs_tt });
         } else {
             rules.push(MacroRule::Func { lhs, lhs_span, rhs: rhs_tt });
         }
@@ -665,7 +701,7 @@ fn check_no_eof(sess: &Session, p: &Parser<'_>, msg: &'static str) -> Option<Err
     None
 }
 
-fn check_args_parens(sess: &Session, args: &tokenstream::TokenTree) {
+fn check_args_parens(sess: &Session, rule_kw: Symbol, args: &tokenstream::TokenTree) {
     // This does not handle the non-delimited case; that gets handled separately by `check_lhs`.
     if let tokenstream::TokenTree::Delimited(dspan, _, delim, _) = args
         && *delim != Delimiter::Parenthesis
@@ -673,7 +709,18 @@ fn check_args_parens(sess: &Session, args: &tokenstream::TokenTree) {
         sess.dcx().emit_err(errors::MacroArgsBadDelim {
             span: dspan.entire(),
             sugg: errors::MacroArgsBadDelimSugg { open: dspan.open, close: dspan.close },
+            rule_kw,
         });
+    }
+}
+
+fn check_args_empty(sess: &Session, args: &tokenstream::TokenTree) -> Result<(), ErrorGuaranteed> {
+    match args {
+        tokenstream::TokenTree::Delimited(.., delimited) if delimited.is_empty() => Ok(()),
+        _ => {
+            let msg = "`derive` rules do not accept arguments; `derive` must be followed by `()`";
+            Err(sess.dcx().span_err(args.span(), msg))
+        }
     }
 }
 

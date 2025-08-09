@@ -1,4 +1,4 @@
-error: macro attribute argument matchers require parentheses
+error: `attr` rule argument matchers require parentheses
   --> $DIR/macro-attr-recovery.rs:5:9
    |
 LL |     attr[$($args:tt)*] { $($body:tt)* } => {

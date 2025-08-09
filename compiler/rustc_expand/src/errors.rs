@@ -490,6 +490,7 @@ pub(crate) struct MacroArgsBadDelim {
     pub span: Span,
     #[subdiagnostic]
     pub sugg: MacroArgsBadDelimSugg,
+    pub rule_kw: Symbol,
 }
 
 #[derive(Subdiagnostic)]
