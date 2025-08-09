@@ -63,19 +63,31 @@ where
     F: FnMut(&T, &T) -> bool,
 {
     let len = v.len();
-    let (run_len, was_reversed) = find_existing_run(v, is_less);
+    let check_existing_run = 'cer: {
+        let v = &v[..];
+        // Skip `find_existing_run` if head and tail sorted in different orders
+        // because we are interested only if the whole slice is sorted.
+        // This should skip running `find_existing_run` for an almost whole slice
+        // in cases when user tries to sort a vector after single call to push.
+        let [h0, h1, ..] = v else { break 'cer true };
+        let [.., t0, t1] = v else { break 'cer true };
+        (is_less(h0, h1) && !is_less(t1, t0)) || (is_less(h1, h0) && !is_less(t0, t1))
+    };
+    if check_existing_run {
+        let (run_len, was_reversed) = find_existing_run(v, is_less);
 
-    // SAFETY: find_existing_run promises to return a valid run_len.
-    unsafe { intrinsics::assume(run_len <= len) };
+        // SAFETY: find_existing_run promises to return a valid run_len.
+        unsafe { intrinsics::assume(run_len <= len) };
 
-    if run_len == len {
-        if was_reversed {
-            v.reverse();
+        if run_len == len {
+            if was_reversed {
+                v.reverse();
+            }
+
+            // It would be possible to a do in-place merging here for a long existing streak. But that
+            // makes the implementation a lot bigger, users can use `slice::sort` for that use-case.
+            return;
         }
-
-        // It would be possible to a do in-place merging here for a long existing streak. But that
-        // makes the implementation a lot bigger, users can use `slice::sort` for that use-case.
-        return;
     }
 
     // Limit the number of imbalanced partitions to `2 * floor(log2(len))`.
