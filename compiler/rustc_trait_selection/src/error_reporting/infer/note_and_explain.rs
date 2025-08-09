@@ -857,7 +857,8 @@ fn foo(&self) -> Self::T { String::new() }
                             "associated type defaults can't be assumed inside the \
                                             trait defining them"
                         }
-                        ty::AssocItemContainer::Impl => {
+                        ty::AssocItemContainer::InherentImpl
+                        | ty::AssocItemContainer::TraitImpl => {
                             "associated type is `default` and may be overridden"
                         }
                     };

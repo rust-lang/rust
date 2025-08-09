@@ -158,13 +158,23 @@ impl<'tcx> LateLintPass<'tcx> for MissingConstForFn {
         let mir = cx.tcx.optimized_mir(def_id);
 
         if let Ok(()) = is_min_const_fn(cx, mir, self.msrv)
-            && let hir::Node::Item(hir::Item { vis_span, .. }) | hir::Node::ImplItem(hir::ImplItem { vis_span, .. }) =
-                cx.tcx.hir_node_by_def_id(def_id)
+            && let node = cx.tcx.hir_node_by_def_id(def_id)
+            && let Some((item_span, vis_span_opt)) = match node {
+                hir::Node::Item(item) => Some((item.span, Some(item.vis_span))),
+                hir::Node::ImplItem(impl_item) => Some((impl_item.span, impl_item.vis_span())),
+                _ => None,
+            }
         {
-            let suggestion = if vis_span.is_empty() { "const " } else { " const" };
+            let (sugg_span, suggestion) = if let Some(vis_span) = vis_span_opt
+                && !vis_span.is_empty()
+            {
+                (vis_span.shrink_to_hi(), " const")
+            } else {
+                (item_span.shrink_to_lo(), "const ")
+            };
             span_lint_and_then(cx, MISSING_CONST_FOR_FN, span, "this could be a `const fn`", |diag| {
                 diag.span_suggestion_verbose(
-                    vis_span.shrink_to_hi(),
+                    sugg_span,
                     "make the function `const`",
                     suggestion,
                     Applicability::MachineApplicable,

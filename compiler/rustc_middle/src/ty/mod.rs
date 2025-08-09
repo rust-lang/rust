@@ -1933,13 +1933,22 @@ impl<'tcx> TyCtxt<'tcx> {
     /// If the given `DefId` is an associated item of a trait,
     /// returns the `DefId` of the trait; otherwise, returns `None`.
     pub fn trait_of_assoc(self, def_id: DefId) -> Option<DefId> {
-        self.assoc_parent(def_id).filter(|id| self.def_kind(id) == DefKind::Trait)
+        self.opt_associated_item(def_id)
+            .is_some_and(|assoc| assoc.container == AssocItemContainer::Trait)
+            .then(|| self.parent(def_id))
     }
 
     /// If the given `DefId` is an associated item of an impl,
     /// returns the `DefId` of the impl; otherwise returns `None`.
     pub fn impl_of_assoc(self, def_id: DefId) -> Option<DefId> {
-        self.assoc_parent(def_id).filter(|id| matches!(self.def_kind(id), DefKind::Impl { .. }))
+        self.opt_associated_item(def_id)
+            .is_some_and(|assoc| {
+                matches!(
+                    assoc.container,
+                    AssocItemContainer::InherentImpl | AssocItemContainer::TraitImpl
+                )
+            })
+            .then(|| self.parent(def_id))
     }
 
     pub fn is_exportable(self, def_id: DefId) -> bool {
@@ -2121,7 +2130,7 @@ impl<'tcx> TyCtxt<'tcx> {
         let Some(item) = self.opt_associated_item(def_id) else {
             return false;
         };
-        if item.container != ty::AssocItemContainer::Impl {
+        if item.container != ty::AssocItemContainer::TraitImpl {
             return false;
         }
 

@@ -1083,7 +1083,9 @@ impl<'tcx> Stable<'tcx> for ty::AssocItemContainer {
         use crate::ty::AssocItemContainer;
         match self {
             ty::AssocItemContainer::Trait => AssocItemContainer::Trait,
-            ty::AssocItemContainer::Impl => AssocItemContainer::Impl,
+            ty::AssocItemContainer::InherentImpl | ty::AssocItemContainer::TraitImpl => {
+                AssocItemContainer::Impl
+            }
         }
     }
 }

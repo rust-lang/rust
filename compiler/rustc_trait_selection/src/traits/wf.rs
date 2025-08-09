@@ -11,8 +11,8 @@ use rustc_hir::lang_items::LangItem;
 use rustc_infer::traits::{ObligationCauseCode, PredicateObligations};
 use rustc_middle::bug;
 use rustc_middle::ty::{
-    self, GenericArgsRef, Term, TermKind, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
-    TypeVisitableExt, TypeVisitor,
+    self, AssocItemContainer, GenericArgsRef, Term, TermKind, Ty, TyCtxt, TypeSuperVisitable,
+    TypeVisitable, TypeVisitableExt, TypeVisitor,
 };
 use rustc_session::parse::feature_err;
 use rustc_span::def_id::{DefId, LocalDefId};
@@ -984,7 +984,7 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
                     ));
 
                     if tcx.def_kind(uv.def) == DefKind::AssocConst
-                        && tcx.def_kind(tcx.parent(uv.def)) == (DefKind::Impl { of_trait: false })
+                        && tcx.associated_item(uv.def).container == AssocItemContainer::InherentImpl
                     {
                         self.add_wf_preds_for_inherent_projection(uv.into());
                         return; // Subtree is handled by above function

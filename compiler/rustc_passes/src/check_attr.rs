@@ -33,7 +33,7 @@ use rustc_middle::middle::resolve_bound_vars::ObjectLifetimeDefault;
 use rustc_middle::query::Providers;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
-use rustc_middle::ty::{self, TyCtxt, TypingMode};
+use rustc_middle::ty::{self, AssocItemContainer, TyCtxt, TypingMode};
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::CrateType;
 use rustc_session::lint;
@@ -2662,8 +2662,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     fn check_type_const(&self, hir_id: HirId, attr_span: Span, target: Target) {
         let tcx = self.tcx;
         if target == Target::AssocConst
-            && let parent = tcx.parent(hir_id.expect_owner().to_def_id())
-            && self.tcx.def_kind(parent) == DefKind::Trait
+            && tcx.associated_item(hir_id.expect_owner().to_def_id()).container
+                == AssocItemContainer::Trait
         {
             return;
         } else {

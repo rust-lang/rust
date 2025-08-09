@@ -1297,11 +1297,13 @@ pub(crate) fn clean_middle_assoc_item(assoc_item: &ty::AssocItem, cx: &mut DocCo
             simplify::move_bounds_to_generic_parameters(&mut generics);
 
             match assoc_item.container {
-                ty::AssocItemContainer::Impl => ImplAssocConstItem(Box::new(Constant {
-                    generics,
-                    kind: ConstantKind::Extern { def_id: assoc_item.def_id },
-                    type_: ty,
-                })),
+                ty::AssocItemContainer::InherentImpl | ty::AssocItemContainer::TraitImpl => {
+                    ImplAssocConstItem(Box::new(Constant {
+                        generics,
+                        kind: ConstantKind::Extern { def_id: assoc_item.def_id },
+                        type_: ty,
+                    }))
+                }
                 ty::AssocItemContainer::Trait => {
                     if tcx.defaultness(assoc_item.def_id).has_value() {
                         ProvidedAssocConstItem(Box::new(Constant {
@@ -1320,7 +1322,7 @@ pub(crate) fn clean_middle_assoc_item(assoc_item: &ty::AssocItem, cx: &mut DocCo
 
             if has_self {
                 let self_ty = match assoc_item.container {
-                    ty::AssocItemContainer::Impl => {
+                    ty::AssocItemContainer::InherentImpl | ty::AssocItemContainer::TraitImpl => {
                         tcx.type_of(assoc_item.container_id(tcx)).instantiate_identity()
                     }
                     ty::AssocItemContainer::Trait => tcx.types.self_param,
@@ -1340,13 +1342,13 @@ pub(crate) fn clean_middle_assoc_item(assoc_item: &ty::AssocItem, cx: &mut DocCo
             }
 
             let provided = match assoc_item.container {
-                ty::AssocItemContainer::Impl => true,
+                ty::AssocItemContainer::InherentImpl | ty::AssocItemContainer::TraitImpl => true,
                 ty::AssocItemContainer::Trait => assoc_item.defaultness(tcx).has_value(),
             };
             if provided {
                 let defaultness = match assoc_item.container {
-                    ty::AssocItemContainer::Impl => Some(assoc_item.defaultness(tcx)),
-                    ty::AssocItemContainer::Trait => None,
+                    ty::AssocItemContainer::TraitImpl => Some(assoc_item.defaultness(tcx)),
+                    ty::AssocItemContainer::InherentImpl | ty::AssocItemContainer::Trait => None,
                 };
                 MethodItem(item, defaultness)
             } else {

@@ -12,7 +12,7 @@ use rustc_middle::bug;
 use rustc_middle::traits::ObligationCauseCode;
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::{
-    self, IsSuggestable, Region, Ty, TyCtxt, TypeVisitableExt as _, Upcast as _,
+    self, AssocItemContainer, IsSuggestable, Region, Ty, TyCtxt, TypeVisitableExt as _, Upcast as _,
 };
 use rustc_span::{BytePos, ErrorGuaranteed, Span, Symbol, kw};
 use tracing::{debug, instrument};
@@ -571,13 +571,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         // but right now it's not really very smart when it comes to implicit `Sized`
         // predicates and bounds on the trait itself.
 
-        let Some(impl_def_id) = self.tcx.associated_item(impl_item_def_id).impl_container(self.tcx)
-        else {
+        if self.tcx.associated_item(impl_item_def_id).container != AssocItemContainer::TraitImpl {
             return;
-        };
-        let Some(trait_ref) = self.tcx.impl_trait_ref(impl_def_id) else {
-            return;
-        };
+        }
+        let impl_def_id = self.tcx.parent(impl_item_def_id.to_def_id());
+        let trait_ref = self.tcx.impl_trait_ref(impl_def_id).unwrap();
         let trait_args = trait_ref
             .instantiate_identity()
             // Replace the explicit self type with `Self` for better suggestion rendering

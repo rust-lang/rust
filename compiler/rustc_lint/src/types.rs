@@ -9,8 +9,8 @@ use rustc_hir::{AmbigArg, Expr, ExprKind, HirId, LangItem};
 use rustc_middle::bug;
 use rustc_middle::ty::layout::{LayoutOf, SizeSkeleton};
 use rustc_middle::ty::{
-    self, Adt, AdtKind, GenericArgsRef, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
-    TypeVisitableExt,
+    self, Adt, AdtKind, AssocItemContainer, GenericArgsRef, Ty, TyCtxt, TypeSuperVisitable,
+    TypeVisitable, TypeVisitableExt,
 };
 use rustc_session::{declare_lint, declare_lint_pass, impl_lint_pass};
 use rustc_span::def_id::LocalDefId;
@@ -1904,10 +1904,10 @@ impl InvalidAtomicOrdering {
         if let ExprKind::MethodCall(method_path, _, args, _) = &expr.kind
             && recognized_names.contains(&method_path.ident.name)
             && let Some(m_def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id)
-            && let Some(impl_did) = cx.tcx.impl_of_assoc(m_def_id)
-            && let Some(adt) = cx.tcx.type_of(impl_did).instantiate_identity().ty_adt_def()
             // skip extension traits, only lint functions from the standard library
-            && cx.tcx.trait_id_of_impl(impl_did).is_none()
+            && cx.tcx.associated_item(m_def_id).container == AssocItemContainer::InherentImpl
+            && let impl_id = cx.tcx.parent(m_def_id)
+            && let Some(adt) = cx.tcx.type_of(impl_id).instantiate_identity().ty_adt_def()
             && let parent = cx.tcx.parent(adt.did())
             && cx.tcx.is_diagnostic_item(sym::atomic_mod, parent)
             && ATOMIC_TYPES.contains(&cx.tcx.item_name(adt.did()))

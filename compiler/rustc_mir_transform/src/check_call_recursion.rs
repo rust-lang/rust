@@ -6,7 +6,7 @@ use rustc_data_structures::graph::iterate::{
 use rustc_hir::LangItem;
 use rustc_hir::def::DefKind;
 use rustc_middle::mir::{self, BasicBlock, BasicBlocks, Body, Terminator, TerminatorKind};
-use rustc_middle::ty::{self, GenericArg, GenericArgs, Instance, Ty, TyCtxt};
+use rustc_middle::ty::{self, AssocItemContainer, GenericArg, GenericArgs, Instance, Ty, TyCtxt};
 use rustc_session::lint::builtin::UNCONDITIONAL_RECURSION;
 use rustc_span::Span;
 
@@ -43,8 +43,8 @@ impl<'tcx> MirLint<'tcx> for CheckDropRecursion {
 
         // First check if `body` is an `fn drop()` of `Drop`
         if let DefKind::AssocFn = tcx.def_kind(def_id)
-        && let Some(trait_ref) =
-            tcx.impl_of_assoc(def_id.to_def_id()).and_then(|def_id| tcx.impl_trait_ref(def_id))
+        && tcx.associated_item(def_id).container == AssocItemContainer::TraitImpl
+        && let trait_ref = tcx.impl_trait_ref(tcx.parent(def_id.to_def_id())).unwrap()
         && tcx.is_lang_item(trait_ref.instantiate_identity().def_id, LangItem::Drop)
         // avoid erroneous `Drop` impls from causing ICEs below
         && let sig = tcx.fn_sig(def_id).instantiate_identity()

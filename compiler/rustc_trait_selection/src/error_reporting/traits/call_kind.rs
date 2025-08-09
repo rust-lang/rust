@@ -2,7 +2,6 @@
 //! as well as errors when attempting to call a non-const function in a const
 //! context.
 
-use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{LangItem, lang_items};
 use rustc_middle::ty::{AssocItemContainer, GenericArgsRef, Instance, Ty, TyCtxt, TypingEnv};
@@ -76,7 +75,8 @@ pub fn call_kind<'tcx>(
     let parent = tcx.opt_associated_item(method_did).and_then(|assoc| {
         let container_id = assoc.container_id(tcx);
         match assoc.container {
-            AssocItemContainer::Impl => tcx.trait_id_of_impl(container_id),
+            AssocItemContainer::InherentImpl => None,
+            AssocItemContainer::TraitImpl => tcx.trait_id_of_impl(container_id),
             AssocItemContainer::Trait => Some(container_id),
         }
     });
@@ -105,8 +105,8 @@ pub fn call_kind<'tcx>(
         );
         let deref_target_span = if let Ok(Some(instance)) =
             Instance::try_resolve(tcx, typing_env, method_did, method_args)
+            && tcx.associated_item(instance.def_id()).container == AssocItemContainer::TraitImpl
             && let instance_parent_def_id = tcx.parent(instance.def_id())
-            && matches!(tcx.def_kind(instance_parent_def_id), DefKind::Impl { .. })
             && let Ok(instance) =
                 specialization_graph::assoc_def(tcx, instance_parent_def_id, deref_target_def_id)
             && instance.is_final()

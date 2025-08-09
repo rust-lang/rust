@@ -8,6 +8,7 @@ use rustc_data_structures::fx::{FxIndexMap, IndexEntry};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_hir::def::DefKind;
 use rustc_macros::HashStable;
+use rustc_middle::ty::AssocItemContainer;
 use rustc_query_system::ich::StableHashingContext;
 use rustc_span::def_id::{CRATE_DEF_ID, LocalDefId};
 
@@ -180,11 +181,11 @@ impl EffectiveVisibilities {
             // All effective visibilities except `reachable_through_impl_trait` are limited to
             // nominal visibility. For some items nominal visibility doesn't make sense so we
             // don't check this condition for them.
-            let is_impl = matches!(tcx.def_kind(def_id), DefKind::Impl { .. });
-            let is_associated_item_in_trait_impl = tcx
-                .impl_of_assoc(def_id.to_def_id())
-                .and_then(|impl_id| tcx.trait_id_of_impl(impl_id))
-                .is_some();
+            let def_kind = tcx.def_kind(def_id);
+            let is_impl = matches!(def_kind, DefKind::Impl { .. });
+            let is_associated_item_in_trait_impl = def_kind.is_assoc()
+                && tcx.associated_item(def_id.to_def_id()).container
+                    == AssocItemContainer::TraitImpl;
             if !is_impl && !is_associated_item_in_trait_impl {
                 let nominal_vis = tcx.visibility(def_id);
                 if !nominal_vis.is_at_least(ev.reachable, tcx) {

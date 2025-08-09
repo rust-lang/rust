@@ -949,7 +949,7 @@ pub(crate) fn check_associated_item(
 
         let self_ty = match item.container {
             ty::AssocItemContainer::Trait => tcx.types.self_param,
-            ty::AssocItemContainer::Impl => {
+            ty::AssocItemContainer::InherentImpl | ty::AssocItemContainer::TraitImpl => {
                 tcx.type_of(item.container_id(tcx)).instantiate_identity()
             }
         };

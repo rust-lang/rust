@@ -1,7 +1,7 @@
 use rustc_middle::mir::visit::{PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::span_bug;
-use rustc_middle::ty::{self, TyCtxt};
+use rustc_middle::ty::{self, AssocItemContainer, TyCtxt};
 
 use crate::{errors, util};
 
@@ -40,8 +40,9 @@ impl<'tcx> Visitor<'tcx> for PackedRefChecker<'_, 'tcx> {
         if context.is_borrow() && util::is_disaligned(self.tcx, self.body, self.typing_env, *place)
         {
             let def_id = self.body.source.instance.def_id();
-            if let Some(impl_def_id) = self.tcx.impl_of_assoc(def_id)
-                && self.tcx.is_builtin_derived(impl_def_id)
+            if let Some(assoc_item) = self.tcx.opt_associated_item(def_id)
+                && assoc_item.container == AssocItemContainer::TraitImpl
+                && self.tcx.is_builtin_derived(self.tcx.parent(def_id))
             {
                 // If we ever reach here it means that the generated derive
                 // code is somehow doing an unaligned reference, which it
