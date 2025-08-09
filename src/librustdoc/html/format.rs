@@ -10,6 +10,7 @@
 use std::cmp::Ordering;
 use std::fmt::{self, Display, Write};
 use std::iter::{self, once};
+use std::ops::ControlFlow;
 use std::slice;
 
 use itertools::{Either, Itertools};
@@ -21,7 +22,7 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::{ConstStability, StabilityLevel, StableSince};
 use rustc_metadata::creader::{CStore, LoadedMacro};
-use rustc_middle::ty::{self, TyCtxt, TypingMode};
+use rustc_middle::ty::{self, ImplSubject, TyCtxt, TypingMode};
 use rustc_span::symbol::kw;
 use rustc_span::{Symbol, sym};
 use tracing::{debug, trace};
@@ -483,22 +484,80 @@ fn generate_item_def_id_path(
 
 /// Checks if the given defid refers to an item that is unnamable, such as one defined in a const block.
 fn is_unnamable(tcx: TyCtxt<'_>, did: DefId) -> bool {
+    traverse_parent(tcx, did, false, true, &|_| ControlFlow::Continue(()))
+}
+
+pub(crate) fn traverse_parent(
+    tcx: TyCtxt<'_>,
+    did: DefId,
+    if_noparent: bool,
+    if_unnamable: bool,
+    callback: &dyn Fn(DefId) -> ControlFlow<bool>,
+) -> bool {
     let mut cur_did = did;
     while let Some(parent) = tcx.opt_parent(cur_did) {
+        if let ControlFlow::Break(x) = callback(cur_did) {
+            return x;
+        }
         match tcx.def_kind(parent) {
             // items defined in these can be linked to, as long as they are visible
-            DefKind::Mod | DefKind::ForeignMod => cur_did = parent,
-            // items in impls can be linked to,
-            // as long as we can link to the item the impl is on.
-            // since associated traits are not a thing,
-            // it should not be possible to refer to an impl item if
-            // the base type is not namable.
-            DefKind::Impl { .. } => return false,
+            DefKind::Mod | DefKind::ForeignMod | DefKind::Trait => cur_did = parent,
+            // this serves both to future-proof is_unnamable for associated trait aliases,
+            // and traverses upwards to see if the trait or type is doc(hidden)
+            DefKind::Impl { .. } => {
+                match tcx.impl_subject(parent).as_ref().skip_binder() {
+                    ImplSubject::Trait(trait_ref) => {
+                        // first, check if the trait fufills the criteria
+                        if traverse_parent(
+                            tcx,
+                            trait_ref.def_id,
+                            if_noparent,
+                            if_unnamable,
+                            callback,
+                        ) {
+                            return true;
+                        }
+
+                        // for trait impls on local types, we also check if the type matches the criteria
+                        if let Some(hir::Node::Item(hir::Item {
+                            kind: hir::ItemKind::Impl(hir::Impl { self_ty, .. }),
+                            ..
+                        })) = tcx.hir_get_if_local(parent)
+                            && let hir::Ty {
+                                kind:
+                                    hir::TyKind::Path(hir::QPath::Resolved(
+                                        _,
+                                        hir::Path {
+                                            res: hir::def::Res::Def(_, self_ty_def_id),
+                                            ..
+                                        },
+                                    )),
+                                ..
+                            } = self_ty.peel_refs()
+                        /*&& let Some(local_def_id) = parent.as_local()
+                        && let Some(self_ty_def_id) = tcx.typeck(local_def_id).type_dependent_def_id(self_ty.hir_id)*/
+                        {
+                            cur_did = *self_ty_def_id;
+                            continue;
+                        }
+                        return if_noparent;
+                    }
+                    ImplSubject::Inherent(ty) => {
+                        if let Some(def_id) =
+                            rustc_middle::ty::print::characteristic_def_id_of_type(ty.peel_refs())
+                        {
+                            cur_did = def_id;
+                        } else {
+                            return if_noparent;
+                        }
+                    }
+                }
+            }
             // everything else does not have docs generated for it
-            _ => return true,
+            _ => return if_unnamable,
         }
     }
-    return false;
+    return if_noparent;
 }
 
 fn to_module_fqp(shortty: ItemType, fqp: &[Symbol]) -> &[Symbol] {
