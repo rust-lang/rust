@@ -2993,6 +2993,11 @@ pub(crate) enum DeprecatedWhereClauseLocationSugg {
 }
 
 #[derive(LintDiagnostic)]
+#[diag(lint_missing_crt_static)]
+#[help]
+pub(crate) struct MissingCrtStatic;
+
+#[derive(LintDiagnostic)]
 #[diag(lint_missing_unsafe_on_extern)]
 pub(crate) struct MissingUnsafeOnExtern {
     #[suggestion(code = "unsafe ", applicability = "machine-applicable")]
