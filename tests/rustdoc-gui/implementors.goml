@@ -1,19 +1,46 @@
 // The goal of this test is to check that the external trait implementors, generated with JS,
 // have the same display than the "local" ones.
 go-to: "file://" + |DOC_PATH| + "/implementors/trait.Whatever.html"
-assert: "#implementors-list"
-// There are supposed to be two implementors listed.
-assert-count: ("#implementors-list .impl", 2)
+wait-for-css: ("#implementors-list", {"display": "block"})
+// There are supposed to be four implementors listed.
+assert-count: ("#implementors-list .impl", 4)
+// There are supposed to be two non-negative implementors.
+assert-count: ("#implementors-list .negative-marker ~ *", 2)
 // Now we check that both implementors have an anchor, an ID and a similar DOM.
-assert: ("#implementors-list .impl:nth-child(1) > a.anchor")
-assert-attribute: ("#implementors-list .impl:nth-child(1)", {"id": "impl-Whatever-for-Struct"})
-assert-attribute: ("#implementors-list .impl:nth-child(1) > a.anchor", {"href": "#impl-Whatever-for-Struct"})
-assert: "#implementors-list .impl:nth-child(1) > .code-header"
+define-function: (
+    "check-dom",
+    [id],
+    block {
+        assert-attribute: (|id| + " > a.anchor", {"href": |id|})
+        assert: |id| + " > .code-header"
+    },
+)
 
-assert: ("#implementors-list .impl:nth-child(2) > a.anchor")
-assert-attribute: ("#implementors-list .impl:nth-child(2)", {"id": "impl-Whatever-1"})
-assert-attribute: ("#implementors-list .impl:nth-child(2) > a.anchor", {"href": "#impl-Whatever-1"})
-assert: "#implementors-list .impl:nth-child(2) > .code-header"
+call-function: ("check-dom", {"id": "#impl-Whatever-for-Struct2"})
+call-function: ("check-dom", {"id": "#impl-Whatever-2"})
+call-function: ("check-dom", {"id": "#impl-Whatever-for-Struct"})
+call-function: ("check-dom", {"id": "#impl-Whatever-3"})
+
+// Ensure that negative impl are sorted first.
+assert-property: (
+    "#implementors-list > *:nth-child(1) > h3",
+    {"textContent": "impl !Whatever for Struct2"},
+)
+assert-property: (
+    "#implementors-list > *:nth-child(2) > h3",
+    {"textContent": "impl !Whatever for StructToImplOnReexport"},
+)
+// Third one is the negative marker.
+assert-attribute: ("#implementors-list > *:nth-child(3)", {"class": "negative-marker"})
+// This one is a `<detail>` so the selector is a bit different.
+assert-property: (
+    "#implementors-list > *:nth-child(4) section > h3",
+    {"textContent": "impl Whatever for Struct"},
+)
+assert-property: (
+    "#implementors-list > *:nth-child(5) > h3",
+    {"textContent": "impl Whatever for Foo"},
+)
 
 go-to: "file://" + |DOC_PATH| + "/test_docs/struct.HasEmptyTraits.html"
 compare-elements-position-near-false: (
@@ -39,3 +66,8 @@ assert-count: ("#implementors-list .impl", 1)
 go-to: "file://" + |DOC_PATH| + "/http/trait.HttpTrait.html"
 assert-count: ("#implementors-list .impl", 1)
 assert-attribute: ("#implementors-list .impl a.trait", {"href": "../http/trait.HttpTrait.html"})
+
+// Now we check that if JS is disabled, the implementors list will be visible.
+javascript: false
+reload:
+assert-css: ("#implementors-list", {"display": "block"})
