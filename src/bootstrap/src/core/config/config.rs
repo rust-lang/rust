@@ -893,21 +893,25 @@ impl Config {
         let default = config.channel == "dev";
         config.omit_git_hash = rust_omit_git_hash.unwrap_or(default);
 
-        config.rust_info = config.git_info(config.omit_git_hash, &config.src);
+        config.rust_info = git_info(&config.exec_ctx, config.omit_git_hash, &config.src);
         config.cargo_info =
-            config.git_info(config.omit_git_hash, &config.src.join("src/tools/cargo"));
-        config.rust_analyzer_info =
-            config.git_info(config.omit_git_hash, &config.src.join("src/tools/rust-analyzer"));
+            git_info(&config.exec_ctx, config.omit_git_hash, &config.src.join("src/tools/cargo"));
+        config.rust_analyzer_info = git_info(
+            &config.exec_ctx,
+            config.omit_git_hash,
+            &config.src.join("src/tools/rust-analyzer"),
+        );
         config.clippy_info =
-            config.git_info(config.omit_git_hash, &config.src.join("src/tools/clippy"));
+            git_info(&config.exec_ctx, config.omit_git_hash, &config.src.join("src/tools/clippy"));
         config.miri_info =
-            config.git_info(config.omit_git_hash, &config.src.join("src/tools/miri"));
+            git_info(&config.exec_ctx, config.omit_git_hash, &config.src.join("src/tools/miri"));
         config.rustfmt_info =
-            config.git_info(config.omit_git_hash, &config.src.join("src/tools/rustfmt"));
+            git_info(&config.exec_ctx, config.omit_git_hash, &config.src.join("src/tools/rustfmt"));
         config.enzyme_info =
-            config.git_info(config.omit_git_hash, &config.src.join("src/tools/enzyme"));
-        config.in_tree_llvm_info = config.git_info(false, &config.src.join("src/llvm-project"));
-        config.in_tree_gcc_info = config.git_info(false, &config.src.join("src/gcc"));
+            git_info(&config.exec_ctx, config.omit_git_hash, &config.src.join("src/tools/enzyme"));
+        config.in_tree_llvm_info =
+            git_info(&config.exec_ctx, false, &config.src.join("src/llvm-project"));
+        config.in_tree_gcc_info = git_info(&config.exec_ctx, false, &config.src.join("src/gcc"));
 
         config.vendor = build_vendor.unwrap_or(
             config.rust_info.is_from_tarball()
