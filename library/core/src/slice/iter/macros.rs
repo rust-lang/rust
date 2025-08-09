@@ -482,16 +482,13 @@ macro_rules! iterator {
                             return func(None);
                         }
                     } else {
-                        // SAFETY: by type invariant, the `end_or_len` field is always
-                        // non-null for a non-ZST pointee.  (This transmute ensures we
-                        // get `!nonnull` metadata on the load of the field.)
-                        if ptr == crate::intrinsics::transmute::<$ptr, NonNull<T>>(end_or_len) {
+                        if ptr.as_ptr() == end_or_len {
                             return func(None);
                         }
                     }
                     // SAFETY: Now that we know it wasn't empty
                     // we can give out a reference to it.
-                    let tmp = {ptr}.$into_ref();
+                    let tmp = ptr.$into_ref();
                     func(Some(&tmp))
                 }
             }
