@@ -252,6 +252,47 @@ use crate::{fmt, intrinsics, ptr, slice};
 ///     std::process::exit(*code); // UB! Accessing uninitialized memory.
 /// }
 /// ```
+///
+/// # Validity
+///
+/// A `MaybeUninit<T>` has no validity requirement – any sequence of bytes of the appropriate length,
+/// initialized to any value or uninitialized, are a valid value of `MaybeUninit<T>`. Equivalently,
+/// it is always sound to perform `transmute::<[MaybeUninit<u8>; size_of::<T>()], MaybeUninit<T>>(...)`.
+///
+/// Note that "round-tripping" via `MaybeUninit` does not always result in the original value.
+/// Concretely, given distinct `T` and `U` where `size_of::<T>() == size_of::<U>()`, the following
+/// code is not guaranteed to be sound:
+///
+/// ```rust,no_run
+/// # use core::mem::{MaybeUninit, transmute};
+/// # struct T; struct U;
+/// fn identity(t: T) -> T {
+///     unsafe {
+///         let u: MaybeUninit<U> = transmute(t);
+///         transmute(u)
+///     }
+/// }
+/// ```
+///
+/// If `T` contains initialized bytes at byte offsets where `U` contains padding bytes, these
+/// may not be preserved in `MaybeUninit<U>`, and so `transmute(u)` may produce a `T` with
+/// uninitialized bytes in these positions. This is an active area of discussion, and this code
+/// may become sound in the future.
+
+/// If byte offsets exists at which `T`'s representation does not permit uninitialized bytes but
+/// `U`'s representation does (e.g. due to padding), then the bytes in `T` at these offsets may
+/// not be preserved in `u`, and so `transmute(u)` may produce a `T` with uninitialized bytes at
+/// these offsets. This is an active area of discussion, and this code may become sound in the future.
+///
+/// Note that, so long as no such byte offsets exist, then the preceding `identity` example *is* sound.
+///
+/// # Provenance
+///
+/// `MaybeUninit` values may contain [pointer provenance][provenance]. Concretely, for any
+/// value, `p: P`, which contains provenance, transmuting `p` to `MaybeUninit<[u8; size_of::<P>]>`
+/// and then back to `P` will produce a value identical to `p`, including provenance.
+///
+/// [provenance]: ../ptr/index.html#provenance
 #[stable(feature = "maybe_uninit", since = "1.36.0")]
 // Lang item so we can wrap other types in it. This is useful for coroutines.
 #[lang = "maybe_uninit"]
