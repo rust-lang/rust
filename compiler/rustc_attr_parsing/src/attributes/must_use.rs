@@ -1,6 +1,6 @@
-use rustc_attr_data_structures::AttributeKind;
 use rustc_errors::DiagArgValue;
 use rustc_feature::{AttributeTemplate, template};
+use rustc_hir::attrs::AttributeKind;
 use rustc_span::{Symbol, sym};
 
 use crate::attributes::{AttributeOrder, OnDuplicate, SingleAttributeParser};
@@ -34,7 +34,7 @@ impl<S: Stage> SingleAttributeParser<S> for MustUseParser {
                 ArgParser::List(_) => {
                     let suggestions =
                         <Self as SingleAttributeParser<S>>::TEMPLATE.suggestions(false, "must_use");
-                    cx.emit_err(session_diagnostics::MustUseIllFormedAttributeInput {
+                    cx.emit_err(session_diagnostics::IllFormedAttributeInputLint {
                         num_suggestions: suggestions.len(),
                         suggestions: DiagArgValue::StrListSepByAnd(
                             suggestions.into_iter().map(|s| format!("`{s}`").into()).collect(),

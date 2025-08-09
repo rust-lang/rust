@@ -8,6 +8,7 @@
 //@ ignore-fuchsia Backtraces not symbolized
 //@ ignore-musl musl doesn't support dynamic libraries (at least when the original test was written).
 //@ needs-unwind
+//@ ignore-backends: gcc
 //@ compile-flags: -g -Copt-level=0 -Cstrip=none -Cforce-frame-pointers=yes
 //@ ignore-emscripten Requires custom symbolization code
 //@ aux-crate: dylib_dep_helper=dylib-dep-helper.rs

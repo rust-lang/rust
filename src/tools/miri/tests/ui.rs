@@ -13,7 +13,8 @@ use ui_test::custom_flags::edition::Edition;
 use ui_test::dependencies::DependencyBuilder;
 use ui_test::per_test_config::TestConfig;
 use ui_test::spanned::Spanned;
-use ui_test::{CommandBuilder, Config, Format, Match, ignore_output_conflict, status_emitter};
+use ui_test::status_emitter::StatusEmitter;
+use ui_test::{CommandBuilder, Config, Match, ignore_output_conflict};
 
 #[derive(Copy, Clone, Debug)]
 enum Mode {
@@ -141,7 +142,7 @@ fn miri_config(
                     envs: vec![("RUSTFLAGS".into(), None)],
                     ..CommandBuilder::cargo()
                 },
-                crate_manifest_path: Path::new("test_dependencies").join("Cargo.toml"),
+                crate_manifest_path: Path::new("tests/deps").join("Cargo.toml"),
                 build_std: None,
                 bless_lockfile: bless,
             },
@@ -216,10 +217,7 @@ fn run_tests(
         // This could be used to overwrite the `Config` on a per-test basis.
         |_, _| {},
         // No GHA output as that would also show in the main rustc repo.
-        match args.format {
-            Format::Terse => status_emitter::Text::quiet(),
-            Format::Pretty => status_emitter::Text::verbose(),
-        },
+        Box::<dyn StatusEmitter>::from(args.format),
     )
 }
 
@@ -250,7 +248,8 @@ regexes! {
     // erase alloc ids
     "alloc[0-9]+"                    => "ALLOC",
     // erase thread ids
-    r"unnamed-[0-9]+"               => "unnamed-ID",
+    r"unnamed-[0-9]+"                => "unnamed-ID",
+    r"thread '(?P<name>.*?)' \(\d+\) panicked" => "thread '$name' ($$TID) panicked",
     // erase borrow tags
     "<[0-9]+>"                       => "<TAG>",
     "<[0-9]+="                       => "<TAG=",
@@ -335,9 +334,23 @@ fn main() -> Result<()> {
     ui(Mode::Panic, "tests/panic", &target, WithDependencies, tmpdir.path())?;
     ui(Mode::Fail, "tests/fail", &target, WithoutDependencies, tmpdir.path())?;
     ui(Mode::Fail, "tests/fail-dep", &target, WithDependencies, tmpdir.path())?;
-    if cfg!(unix) && target == host {
+    if cfg!(all(unix, feature = "native-lib")) && target == host {
         ui(Mode::Pass, "tests/native-lib/pass", &target, WithoutDependencies, tmpdir.path())?;
         ui(Mode::Fail, "tests/native-lib/fail", &target, WithoutDependencies, tmpdir.path())?;
+    }
+
+    // We only enable GenMC tests when the `genmc` feature is enabled, but also only on platforms we support:
+    // FIXME(genmc,macos): Add `target_os = "macos"` once `https://github.com/dtolnay/cxx/issues/1535` is fixed.
+    // FIXME(genmc,cross-platform): remove `host == target` check once cross-platform support with GenMC is possible.
+    if cfg!(all(
+        feature = "genmc",
+        target_os = "linux",
+        target_pointer_width = "64",
+        target_endian = "little"
+    )) && host == target
+    {
+        ui(Mode::Pass, "tests/genmc/pass", &target, WithDependencies, tmpdir.path())?;
+        ui(Mode::Fail, "tests/genmc/fail", &target, WithDependencies, tmpdir.path())?;
     }
 
     Ok(())

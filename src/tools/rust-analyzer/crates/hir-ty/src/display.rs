@@ -608,48 +608,46 @@ impl HirDisplay for ProjectionTy {
         // if we are projection on a type parameter, check if the projection target has bounds
         // itself, if so, we render them directly as `impl Bound` instead of the less useful
         // `<Param as Trait>::Assoc`
-        if !f.display_kind.is_source_code() {
-            if let TyKind::Placeholder(idx) = self_ty.kind(Interner) {
-                if !f.bounds_formatting_ctx.contains(self) {
-                    let db = f.db;
-                    let id = from_placeholder_idx(db, *idx);
-                    let generics = generics(db, id.parent);
+        if !f.display_kind.is_source_code()
+            && let TyKind::Placeholder(idx) = self_ty.kind(Interner)
+            && !f.bounds_formatting_ctx.contains(self)
+        {
+            let db = f.db;
+            let id = from_placeholder_idx(db, *idx);
+            let generics = generics(db, id.parent);
 
-                    let substs = generics.placeholder_subst(db);
-                    let bounds = db
-                        .generic_predicates(id.parent)
-                        .iter()
-                        .map(|pred| pred.clone().substitute(Interner, &substs))
-                        .filter(|wc| match wc.skip_binders() {
-                            WhereClause::Implemented(tr) => {
-                                matches!(
-                                    tr.self_type_parameter(Interner).kind(Interner),
-                                    TyKind::Alias(_)
-                                )
-                            }
-                            WhereClause::TypeOutlives(t) => {
-                                matches!(t.ty.kind(Interner), TyKind::Alias(_))
-                            }
-                            // We shouldn't be here if these exist
-                            WhereClause::AliasEq(_) => false,
-                            WhereClause::LifetimeOutlives(_) => false,
-                        })
-                        .collect::<Vec<_>>();
-                    if !bounds.is_empty() {
-                        return f.format_bounds_with(self.clone(), |f| {
-                            write_bounds_like_dyn_trait_with_prefix(
-                                f,
-                                "impl",
-                                Either::Left(
-                                    &TyKind::Alias(AliasTy::Projection(self.clone()))
-                                        .intern(Interner),
-                                ),
-                                &bounds,
-                                SizedByDefault::NotSized,
-                            )
-                        });
-                    }
-                }
+            let substs = generics.placeholder_subst(db);
+            let bounds = db
+                .generic_predicates(id.parent)
+                .iter()
+                .map(|pred| pred.clone().substitute(Interner, &substs))
+                .filter(|wc| {
+                    let ty = match wc.skip_binders() {
+                        WhereClause::Implemented(tr) => tr.self_type_parameter(Interner),
+                        WhereClause::TypeOutlives(t) => t.ty.clone(),
+                        // We shouldn't be here if these exist
+                        WhereClause::AliasEq(_) | WhereClause::LifetimeOutlives(_) => {
+                            return false;
+                        }
+                    };
+                    let TyKind::Alias(AliasTy::Projection(proj)) = ty.kind(Interner) else {
+                        return false;
+                    };
+                    proj == self
+                })
+                .collect::<Vec<_>>();
+            if !bounds.is_empty() {
+                return f.format_bounds_with(self.clone(), |f| {
+                    write_bounds_like_dyn_trait_with_prefix(
+                        f,
+                        "impl",
+                        Either::Left(
+                            &TyKind::Alias(AliasTy::Projection(self.clone())).intern(Interner),
+                        ),
+                        &bounds,
+                        SizedByDefault::NotSized,
+                    )
+                });
             }
         }
 
@@ -1860,18 +1858,13 @@ fn write_bounds_like_dyn_trait(
                 write!(f, "{}", f.db.trait_signature(trait_).name.display(f.db, f.edition()))?;
                 f.end_location_link();
                 if is_fn_trait {
-                    if let [self_, params @ ..] = trait_ref.substitution.as_slice(Interner) {
-                        if let Some(args) =
+                    if let [self_, params @ ..] = trait_ref.substitution.as_slice(Interner)
+                        && let Some(args) =
                             params.first().and_then(|it| it.assert_ty_ref(Interner).as_tuple())
-                        {
-                            write!(f, "(")?;
-                            hir_fmt_generic_arguments(
-                                f,
-                                args.as_slice(Interner),
-                                self_.ty(Interner),
-                            )?;
-                            write!(f, ")")?;
-                        }
+                    {
+                        write!(f, "(")?;
+                        hir_fmt_generic_arguments(f, args.as_slice(Interner), self_.ty(Interner))?;
+                        write!(f, ")")?;
                     }
                 } else {
                     let params = generic_args_sans_defaults(
@@ -1879,13 +1872,13 @@ fn write_bounds_like_dyn_trait(
                         Some(trait_.into()),
                         trait_ref.substitution.as_slice(Interner),
                     );
-                    if let [self_, params @ ..] = params {
-                        if !params.is_empty() {
-                            write!(f, "<")?;
-                            hir_fmt_generic_arguments(f, params, self_.ty(Interner))?;
-                            // there might be assoc type bindings, so we leave the angle brackets open
-                            angle_open = true;
-                        }
+                    if let [self_, params @ ..] = params
+                        && !params.is_empty()
+                    {
+                        write!(f, "<")?;
+                        hir_fmt_generic_arguments(f, params, self_.ty(Interner))?;
+                        // there might be assoc type bindings, so we leave the angle brackets open
+                        angle_open = true;
                     }
                 }
             }
@@ -2443,11 +2436,11 @@ impl HirDisplayWithExpressionStore for Path {
                                 generic_args.args[0].hir_fmt(f, store)?;
                             }
                         }
-                        if let Some(ret) = generic_args.bindings[0].type_ref {
-                            if !matches!(&store[ret], TypeRef::Tuple(v) if v.is_empty()) {
-                                write!(f, " -> ")?;
-                                ret.hir_fmt(f, store)?;
-                            }
+                        if let Some(ret) = generic_args.bindings[0].type_ref
+                            && !matches!(&store[ret], TypeRef::Tuple(v) if v.is_empty())
+                        {
+                            write!(f, " -> ")?;
+                            ret.hir_fmt(f, store)?;
                         }
                     }
                     hir_def::expr_store::path::GenericArgsParentheses::No => {

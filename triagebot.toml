@@ -28,6 +28,7 @@ allow-unauthenticated = [
     "llvm-*",
     "needs-fcp",
     "relnotes",
+    "release-blog-post",
     "requires-*",
     "regression-*",
     "rla-*",
@@ -49,6 +50,21 @@ remove_labels = ["S-waiting-on-author"]
 # Those labels are added when PR author requests a review from an assignee
 add_labels = ["S-waiting-on-review"]
 
+# [backport.*] sections autonominate pull requests for a backport
+# see: https://forge.rust-lang.org/triagebot/backport.html
+
+[backport.t-compiler-beta-backport]
+# The pull request MUST have one of these labels
+required-pr-labels = ["T-compiler"]
+# The regression MUST have this label
+required-issue-label = "regression-from-stable-to-beta"
+# if the above conditions matches, the PR will receive these labels
+add-labels = ["beta-nominated"]
+
+[backport.t-compiler-stable-backport]
+required-pr-labels = ["T-compiler"]
+required-issue-label = "regression-from-stable-to-stable"
+add-labels = ["stable-nominated"]
 
 # ------------------------------------------------------------------------------
 # Ping groups
@@ -253,7 +269,7 @@ trigger_files = [
     "compiler/rustc_codegen_ssa/src/codegen_attrs.rs",
     "compiler/rustc_passes/src/check_attr.rs",
     "compiler/rustc_attr_parsing",
-    "compiler/rustc_attr_data_structures",
+    "compiler/rustc_hir/src/attrs",
 ]
 
 [autolabel."A-compiler-builtins"]
@@ -269,6 +285,11 @@ trigger_files = [
     "compiler/rustc_monomorphize/src/partitioning/autodiff.rs",
     "compiler/rustc_codegen_llvm/src/builder/autodiff.rs",
     "compiler/rustc_codegen_llvm/src/llvm/enzyme_ffi.rs",
+]
+
+[autolabel."F-explicit_tail_calls"]
+trigger_files = [
+    "tests/ui/explicit-tail-calls",
 ]
 
 [autolabel."T-rustdoc-frontend"]
@@ -302,9 +323,9 @@ trigger_files = [
     "compiler",
 
     # Tests
-    "tests/assembly",
+    "tests/assembly-llvm",
     "tests/auxiliary",
-    "tests/codegen",
+    "tests/codegen-llvm",
     "tests/codegen-units",
     "tests/COMPILER_TESTS.md",
     "tests/coverage",
@@ -339,6 +360,7 @@ trigger_labels = [
 [autolabel."T-libs"]
 trigger_files = [
     "library/alloc",
+    "library/compiler-builtins",
     "library/core",
     "library/panic_abort",
     "library/panic_unwind",
@@ -558,10 +580,10 @@ trigger_files = [
     "src/doc/unstable-book/src/language-features/cfg-sanitize.md",
     "src/doc/unstable-book/src/language-features/cfi-encoding.md",
     "src/doc/unstable-book/src/language-features/no-sanitize.md",
-    "tests/codegen/sanitizer",
-    "tests/codegen/split-lto-unit.rs",
-    "tests/codegen/stack-probes-inline.rs",
-    "tests/codegen/stack-protector.rs",
+    "tests/codegen-llvm/sanitizer",
+    "tests/codegen-llvm/split-lto-unit.rs",
+    "tests/codegen-llvm/stack-probes-inline.rs",
+    "tests/codegen-llvm/stack-protector.rs",
     "tests/ui/sanitizer",
     "tests/ui/stack-protector"
 ]
@@ -990,10 +1012,6 @@ cc = [
 message = "Some changes occurred in GUI tests."
 cc = ["@GuillaumeGomez"]
 
-[mentions."tests/run-make/"]
-message = "This PR modifies `run-make` tests."
-cc = ["@jieyouxu"]
-
 [mentions."tests/auxiliary/minicore.rs"]
 message = "This PR modifies `tests/auxiliary/minicore.rs`."
 cc = ["@jieyouxu"]
@@ -1048,6 +1066,14 @@ cc = ["@oli-obk", "@RalfJung", "@JakobDegen", "@davidtwco", "@vakaras"]
 message = "`rustc_error_messages` was changed"
 cc = ["@davidtwco", "@compiler-errors", "@TaKO8Ki"]
 
+[mentions."compiler/rustc_errors/src/annotate_snippet_emitter_writer.rs"]
+message = "`rustc_errors::annotate_snippet_emitter_writer` was changed"
+cc = ["@Muscraft"]
+
+[mentions."compiler/rustc_errors/src/emitter.rs"]
+message = "`rustc_errors::emitter` was changed"
+cc = ["@Muscraft"]
+
 [mentions."compiler/rustc_errors/src/translation.rs"]
 message = "`rustc_errors::translation` was changed"
 cc = ["@davidtwco", "@compiler-errors", "@TaKO8Ki"]
@@ -1088,15 +1114,11 @@ Otherwise, you can ignore this comment.
 [mentions."src/tools/x"]
 message = "`src/tools/x` was changed. Bump version of Cargo.toml in `src/tools/x` so tidy will suggest installing the new version."
 
-[mentions."src/tools/tidy"]
-message = "There are changes to the `tidy` tool."
-cc = ["@jieyouxu"]
-
 [mentions."src/tools/tidy/src/deps.rs"]
 message = "The list of allowed third-party dependencies may have been modified! You must ensure that any new dependencies have compatible licenses before merging."
 cc = ["@davidtwco", "@wesleywiser"]
 
-[mentions."src/tools/tidy/src/ext_tool_checks.rs"]
+[mentions."src/tools/tidy/src/extra_checks"]
 message = "`tidy` extra checks were modified."
 cc = ["@lolbinarycat"]
 
@@ -1147,6 +1169,12 @@ cc = ["@nnethercote"]
 message = "Changes to the size of AST and/or HIR nodes."
 cc = ["@nnethercote"]
 
+[mentions."tests/ui/issues"]
+message = """
+This PR modifies `tests/ui/issues/`. If this PR is adding new tests to `tests/ui/issues/`,
+please refrain from doing so, and instead add it to more descriptive subdirectories.
+"""
+
 [mentions."compiler/rustc_sanitizers"]
 cc = ["@rcvalle"]
 
@@ -1183,16 +1211,16 @@ cc = ["@Urgau"]
 [mentions."src/doc/rustc/src/platform-support"]
 cc = ["@Noratrieb"]
 
-[mentions."tests/codegen/sanitizer"]
+[mentions."tests/codegen-llvm/sanitizer"]
 cc = ["@rcvalle"]
 
-[mentions."tests/codegen/split-lto-unit.rs"]
+[mentions."tests/codegen-llvm/split-lto-unit.rs"]
 cc = ["@rust-lang/project-exploit-mitigations", "@rcvalle"]
 
-[mentions."tests/codegen/stack-probes-inline.rs"]
+[mentions."tests/codegen-llvm/stack-probes-inline.rs"]
 cc = ["@rust-lang/project-exploit-mitigations", "@rcvalle"]
 
-[mentions."tests/codegen/stack-protector.rs"]
+[mentions."tests/codegen-llvm/stack-protector.rs"]
 cc = ["@rust-lang/project-exploit-mitigations", "@rcvalle"]
 
 [mentions."tests/ui/sanitizer"]
@@ -1239,13 +1267,11 @@ cc = ["@ehuss"]
 message = "The rustc-dev-guide subtree was changed. If this PR *only* touches the dev guide consider submitting a PR directly to [rust-lang/rustc-dev-guide](https://github.com/rust-lang/rustc-dev-guide/pulls) otherwise thank you for updating the dev guide with your changes."
 cc = ["@BoxyUwU", "@jieyouxu", "@kobzol", "@tshepang"]
 
-[mentions."compiler/rustc_codegen_ssa/src/codegen_attrs.rs"]
-cc = ["@jdonszelmann"]
 [mentions."compiler/rustc_passes/src/check_attr.rs"]
 cc = ["@jdonszelmann"]
 [mentions."compiler/rustc_attr_parsing"]
 cc = ["@jdonszelmann"]
-[mentions."compiler/rustc_attr_data_structures"]
+[mentions."compiler/rustc_hir/src/attrs"]
 cc = ["@jdonszelmann"]
 
 [mentions."src/tools/enzyme"]
@@ -1299,6 +1325,7 @@ compiler = [
     "@eholk",
     "@fee1-dead",
     "@fmease",
+    "@jackh726",
     "@jieyouxu",
     "@jdonszelmann",
     "@lcnr",

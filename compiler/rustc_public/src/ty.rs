@@ -60,8 +60,8 @@ impl Ty {
     }
 
     /// Create a new coroutine type.
-    pub fn new_coroutine(def: CoroutineDef, args: GenericArgs, mov: Movability) -> Ty {
-        Ty::from_rigid_kind(RigidTy::Coroutine(def, args, mov))
+    pub fn new_coroutine(def: CoroutineDef, args: GenericArgs) -> Ty {
+        Ty::from_rigid_kind(RigidTy::Coroutine(def, args))
     }
 
     /// Create a new closure type.
@@ -113,7 +113,7 @@ pub enum Pattern {
 }
 
 /// Represents a constant in the type system
-#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize)]
 pub struct TyConst {
     pub(crate) kind: TyConstKind,
     pub id: TyConstId,
@@ -140,7 +140,7 @@ impl TyConst {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize)]
 pub enum TyConstKind {
     Param(ParamConst),
     Bound(DebruijnIndex, BoundVar),
@@ -151,11 +151,11 @@ pub enum TyConstKind {
     ZSTValue(Ty),
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, Serialize)]
 pub struct TyConstId(usize);
 
 /// Represents a constant in MIR
-#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize)]
 pub struct MirConst {
     /// The constant kind.
     pub(crate) kind: ConstantKind,
@@ -212,17 +212,17 @@ impl MirConst {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize)]
 pub struct MirConstId(usize);
 
 type Ident = Opaque;
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize)]
 pub struct Region {
     pub kind: RegionKind,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize)]
 pub enum RegionKind {
     ReEarlyParam(EarlyParamRegion),
     ReBound(DebruijnIndex, BoundRegion),
@@ -233,7 +233,7 @@ pub enum RegionKind {
 
 pub(crate) type DebruijnIndex = u32;
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize)]
 pub struct EarlyParamRegion {
     pub index: u32,
     pub name: Symbol,
@@ -241,7 +241,7 @@ pub struct EarlyParamRegion {
 
 pub(crate) type BoundVar = u32;
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize)]
 pub struct BoundRegion {
     pub var: BoundVar,
     pub kind: BoundRegionKind,
@@ -249,13 +249,13 @@ pub struct BoundRegion {
 
 pub(crate) type UniverseIndex = u32;
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize)]
 pub struct Placeholder<T> {
     pub universe: UniverseIndex,
     pub bound: T,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Serialize)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Serialize)]
 pub struct Span(usize);
 
 impl Debug for Span {
@@ -560,8 +560,7 @@ pub enum RigidTy {
     FnDef(FnDef, GenericArgs),
     FnPtr(PolyFnSig),
     Closure(ClosureDef, GenericArgs),
-    // FIXME(rustc_public): Movability here is redundant
-    Coroutine(CoroutineDef, GenericArgs, Movability),
+    Coroutine(CoroutineDef, GenericArgs),
     CoroutineClosure(CoroutineClosureDef, GenericArgs),
     Dynamic(Vec<Binder<ExistentialPredicate>>, Region, DynKind),
     Never,
@@ -998,7 +997,7 @@ crate_def! {
 }
 
 /// A list of generic arguments.
-#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize)]
 pub struct GenericArgs(pub Vec<GenericArgKind>);
 
 impl std::ops::Index<ParamTy> for GenericArgs {
@@ -1017,7 +1016,7 @@ impl std::ops::Index<ParamConst> for GenericArgs {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize)]
 pub enum GenericArgKind {
     Lifetime(Region),
     Type(Ty),
@@ -1200,7 +1199,7 @@ pub enum BoundTyKind {
     Param(ParamDef, String),
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize)]
 pub enum BoundRegionKind {
     BrAnon,
     BrNamed(BrNamedDef, String),
@@ -1355,7 +1354,7 @@ impl Allocation {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize)]
 pub enum ConstantKind {
     Ty(TyConst),
     Allocated(Allocation),
@@ -1366,13 +1365,13 @@ pub enum ConstantKind {
     ZeroSized,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize)]
 pub struct ParamConst {
     pub index: u32,
     pub name: String,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize)]
 pub struct UnevaluatedConst {
     pub def: ConstDef,
     pub args: GenericArgs,

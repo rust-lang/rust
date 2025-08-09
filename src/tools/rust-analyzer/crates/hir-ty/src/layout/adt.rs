@@ -85,16 +85,6 @@ pub fn layout_of_adt_query(
                 let d = db.const_eval_discriminant(e.enum_variants(db).variants[id.0].0).ok()?;
                 Some((id, d))
             }),
-            // FIXME: The current code for niche-filling relies on variant indices
-            // instead of actual discriminants, so enums with
-            // explicit discriminants (RFC #2363) would misbehave and we should disable
-            // niche optimization for them.
-            // The code that do it in rustc:
-            // repr.inhibit_enum_layout_opt() || def
-            //     .variants()
-            //     .iter_enumerated()
-            //     .any(|(i, v)| v.discr != ty::VariantDiscr::Relative(i.as_u32()))
-            repr.inhibit_enum_layout_opt(),
             !matches!(def, AdtId::EnumId(..))
                 && variants
                     .iter()

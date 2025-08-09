@@ -62,7 +62,7 @@ enum EnvironmentCmd {
         python: String,
 
         /// Directory where artifacts (like PGO profiles or rustc-perf) of this workflow
-        /// will be stored.
+        /// will be stored. Relative to `checkout_dir`
         #[arg(long, default_value = "opt-artifacts")]
         artifact_dir: Utf8PathBuf,
 
@@ -98,6 +98,19 @@ enum EnvironmentCmd {
         /// Perform tests after final build if it's not a fast try build
         #[arg(long)]
         run_tests: bool,
+
+        /// Will be LLVM built during the run?
+        #[arg(long, default_value_t = true, action(clap::ArgAction::Set))]
+        build_llvm: bool,
+
+        /// Set build artifacts dir. Relative to `checkout_dir`, should point to the directory set
+        /// in bootstrap.toml via `build.build-dir` option
+        #[arg(long, default_value = "build")]
+        build_dir: Utf8PathBuf,
+
+        /// Path to custom stage0 root
+        #[arg(long)]
+        stage0_root: Option<Utf8PathBuf>,
     },
     /// Perform an optimized build on Linux CI, from inside Docker.
     LinuxCi {
@@ -133,14 +146,17 @@ fn create_environment(args: Args) -> anyhow::Result<(Environment, Vec<String>)> 
             benchmark_cargo_config,
             shared,
             run_tests,
+            build_llvm,
+            build_dir,
+            stage0_root,
         } => {
             let env = EnvironmentBuilder::default()
                 .host_tuple(target_triple)
                 .python_binary(python)
                 .checkout_dir(checkout_dir.clone())
                 .host_llvm_dir(llvm_dir)
-                .artifact_dir(artifact_dir)
-                .build_dir(checkout_dir)
+                .artifact_dir(checkout_dir.join(artifact_dir))
+                .build_dir(checkout_dir.join(build_dir))
                 .prebuilt_rustc_perf(rustc_perf_checkout_dir)
                 .shared_llvm(llvm_shared)
                 .use_bolt(use_bolt)
@@ -148,6 +164,8 @@ fn create_environment(args: Args) -> anyhow::Result<(Environment, Vec<String>)> 
                 .benchmark_cargo_config(benchmark_cargo_config)
                 .run_tests(run_tests)
                 .fast_try_build(is_fast_try_build)
+                .build_llvm(build_llvm)
+                .stage0_root(stage0_root)
                 .build()?;
 
             (env, shared.build_args)
@@ -165,13 +183,14 @@ fn create_environment(args: Args) -> anyhow::Result<(Environment, Vec<String>)> 
                 .checkout_dir(checkout_dir.clone())
                 .host_llvm_dir(Utf8PathBuf::from("/rustroot"))
                 .artifact_dir(Utf8PathBuf::from("/tmp/tmp-multistage/opt-artifacts"))
-                .build_dir(checkout_dir.join("obj"))
+                .build_dir(checkout_dir.join("obj").join("build"))
                 .shared_llvm(true)
                 // FIXME: Enable bolt for aarch64 once it's fixed upstream. Broken as of December 2024.
                 .use_bolt(!is_aarch64)
                 .skipped_tests(vec![])
                 .run_tests(true)
                 .fast_try_build(is_fast_try_build)
+                .build_llvm(true)
                 .build()?;
 
             (env, shared.build_args)
@@ -187,12 +206,13 @@ fn create_environment(args: Args) -> anyhow::Result<(Environment, Vec<String>)> 
                 .checkout_dir(checkout_dir.clone())
                 .host_llvm_dir(checkout_dir.join("citools").join("clang-rust"))
                 .artifact_dir(checkout_dir.join("opt-artifacts"))
-                .build_dir(checkout_dir)
+                .build_dir(checkout_dir.join("build"))
                 .shared_llvm(false)
                 .use_bolt(false)
                 .skipped_tests(vec![])
                 .run_tests(true)
                 .fast_try_build(is_fast_try_build)
+                .build_llvm(true)
                 .build()?;
 
             (env, shared.build_args)
@@ -255,30 +275,35 @@ fn execute_pipeline(
     // Stage 2: Gather LLVM PGO profiles
     // Here we build a PGO instrumented LLVM, reusing the previously PGO optimized rustc.
     // Then we use the instrumented LLVM to gather LLVM PGO profiles.
-    let llvm_pgo_profile = timer.section("Stage 2 (LLVM PGO)", |stage| {
-        // Remove the previous, uninstrumented build of LLVM.
-        clear_llvm_files(env)?;
+    let llvm_pgo_profile = if env.build_llvm() {
+        timer.section("Stage 2 (LLVM PGO)", |stage| {
+            // Remove the previous, uninstrumented build of LLVM.
+            clear_llvm_files(env)?;
 
-        let llvm_profile_dir_root = env.artifact_dir().join("llvm-pgo");
+            let llvm_profile_dir_root = env.artifact_dir().join("llvm-pgo");
 
-        stage.section("Build PGO instrumented LLVM", |section| {
-            Bootstrap::build(env)
-                .llvm_pgo_instrument(&llvm_profile_dir_root)
-                .avoid_rustc_rebuild()
-                .run(section)
-        })?;
+            stage.section("Build PGO instrumented LLVM", |section| {
+                Bootstrap::build(env)
+                    .llvm_pgo_instrument(&llvm_profile_dir_root)
+                    .avoid_rustc_rebuild()
+                    .run(section)
+            })?;
 
-        let profile = stage
-            .section("Gather profiles", |_| gather_llvm_profiles(env, &llvm_profile_dir_root))?;
+            let profile = stage.section("Gather profiles", |_| {
+                gather_llvm_profiles(env, &llvm_profile_dir_root)
+            })?;
 
-        print_free_disk_space()?;
+            print_free_disk_space()?;
 
-        // Proactively delete the instrumented artifacts, to avoid using them by accident in
-        // follow-up stages.
-        clear_llvm_files(env)?;
+            // Proactively delete the instrumented artifacts, to avoid using them by accident in
+            // follow-up stages.
+            clear_llvm_files(env)?;
 
-        Ok(profile)
-    })?;
+            Ok(Some(profile))
+        })?
+    } else {
+        None
+    };
 
     let bolt_profiles = if env.use_bolt() {
         // Stage 3: Build BOLT instrumented LLVM
@@ -286,37 +311,43 @@ fn execute_pipeline(
         // Note that we don't remove LLVM artifacts after this step, so that they are reused in the final dist build.
         // BOLT instrumentation is performed "on-the-fly" when the LLVM library is copied to the sysroot of rustc,
         // therefore the LLVM artifacts on disk are not "tainted" with BOLT instrumentation and they can be reused.
+        let libdir = env.build_artifacts().join("stage2").join("lib");
         timer.section("Stage 3 (BOLT)", |stage| {
-            stage.section("Build PGO optimized LLVM", |stage| {
-                Bootstrap::build(env)
-                    .with_llvm_bolt_ldflags()
-                    .llvm_pgo_optimize(&llvm_pgo_profile)
-                    .avoid_rustc_rebuild()
-                    .run(stage)
-            })?;
+            let llvm_profile = if env.build_llvm() {
+                stage.section("Build PGO optimized LLVM", |stage| {
+                    Bootstrap::build(env)
+                        .with_llvm_bolt_ldflags()
+                        .llvm_pgo_optimize(llvm_pgo_profile.as_ref())
+                        .avoid_rustc_rebuild()
+                        .run(stage)
+                })?;
 
-            let libdir = env.build_artifacts().join("stage2").join("lib");
-            // The actual name will be something like libLLVM.so.18.1-rust-dev.
-            let llvm_lib = io::find_file_in_dir(&libdir, "libLLVM.so", "")?;
+                // The actual name will be something like libLLVM.so.18.1-rust-dev.
+                let llvm_lib = io::find_file_in_dir(&libdir, "libLLVM.so", "")?;
 
-            log::info!("Optimizing {llvm_lib} with BOLT");
+                log::info!("Optimizing {llvm_lib} with BOLT");
 
-            // FIXME(kobzol): try gather profiles together, at once for LLVM and rustc
-            // Instrument the libraries and gather profiles
-            let llvm_profile = with_bolt_instrumented(&llvm_lib, |llvm_profile_dir| {
-                stage.section("Gather profiles", |_| {
-                    gather_bolt_profiles(env, "LLVM", llvm_benchmarks(env), llvm_profile_dir)
-                })
-            })?;
-            print_free_disk_space()?;
+                // FIXME(kobzol): try gather profiles together, at once for LLVM and rustc
+                // Instrument the libraries and gather profiles
+                let llvm_profile = with_bolt_instrumented(&llvm_lib, |llvm_profile_dir| {
+                    stage.section("Gather profiles", |_| {
+                        gather_bolt_profiles(env, "LLVM", llvm_benchmarks(env), llvm_profile_dir)
+                    })
+                })?;
+                print_free_disk_space()?;
 
-            // Now optimize the library with BOLT. The `libLLVM-XXX.so` library is actually hard-linked
-            // from several places, and this specific path (`llvm_lib`) will *not* be packaged into
-            // the final dist build. However, when BOLT optimizes an artifact, it does so *in-place*,
-            // therefore it will actually optimize all the hard links, which means that the final
-            // packaged `libLLVM.so` file *will* be BOLT optimized.
-            bolt_optimize(&llvm_lib, &llvm_profile, env)
-                .context("Could not optimize LLVM with BOLT")?;
+                // Now optimize the library with BOLT. The `libLLVM-XXX.so` library is actually hard-linked
+                // from several places, and this specific path (`llvm_lib`) will *not* be packaged into
+                // the final dist build. However, when BOLT optimizes an artifact, it does so *in-place*,
+                // therefore it will actually optimize all the hard links, which means that the final
+                // packaged `libLLVM.so` file *will* be BOLT optimized.
+                bolt_optimize(&llvm_lib, &llvm_profile, env)
+                    .context("Could not optimize LLVM with BOLT")?;
+
+                Some(llvm_profile)
+            } else {
+                None
+            };
 
             let rustc_lib = io::find_file_in_dir(&libdir, "librustc_driver", ".so")?;
 
@@ -334,15 +365,16 @@ fn execute_pipeline(
             bolt_optimize(&rustc_lib, &rustc_profile, env)
                 .context("Could not optimize rustc with BOLT")?;
 
-            // LLVM is not being cleared here, we want to use the BOLT-optimized LLVM
-            Ok(vec![llvm_profile, rustc_profile])
+            // LLVM is not being cleared here. Either we built it and we want to use the BOLT-optimized LLVM, or we
+            // didn't build it, so we don't want to remove it.
+            Ok(vec![llvm_profile, Some(rustc_profile)])
         })?
     } else {
         vec![]
     };
 
     let mut dist = Bootstrap::dist(env, &dist_args)
-        .llvm_pgo_optimize(&llvm_pgo_profile)
+        .llvm_pgo_optimize(llvm_pgo_profile.as_ref())
         .rustc_pgo_optimize(&rustc_pgo_profile)
         .avoid_rustc_rebuild();
 

@@ -16,5 +16,13 @@ LL | struct MyEmptyTupleStruct(); // should trigger lint
    |
    = help: remove the brackets
 
-error: aborting due to 2 previous errors
+error: found empty brackets on struct declaration
+  --> tests/ui/empty_structs_with_brackets.rs:40:31
+   |
+LL |     struct Foo<const N: usize> {}
+   |                               ^^^
+   |
+   = help: remove the brackets
+
+error: aborting due to 3 previous errors
 

@@ -57,8 +57,8 @@ impl TestMode {
 string_enum! {
     #[derive(Clone, Copy, PartialEq, Debug)]
     pub enum TestSuite {
-        Assembly => "assembly",
-        Codegen => "codegen",
+        AssemblyLlvm => "assembly-llvm",
+        CodegenLlvm => "codegen-llvm",
         CodegenUnits => "codegen-units",
         Coverage => "coverage",
         CoverageRunRustdoc => "coverage-run-rustdoc",
@@ -88,11 +88,37 @@ string_enum! {
     }
 }
 
+string_enum! {
+    #[derive(Clone, Copy, PartialEq, Debug, Hash)]
+    pub enum RunResult {
+        Pass => "run-pass",
+        Fail => "run-fail",
+        Crash => "run-crash",
+    }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, PartialOrd)]
+pub enum RunFailMode {
+    /// Running the program must make it exit with a regular failure exit code
+    /// in the range `1..=127`. If the program is terminated by e.g. a signal
+    /// the test will fail.
+    Fail,
+    /// Running the program must result in a crash, e.g. by `SIGABRT` or
+    /// `SIGSEGV` on Unix or on Windows by having an appropriate NTSTATUS high
+    /// bit in the exit code.
+    Crash,
+    /// Running the program must either fail or crash. Useful for e.g. sanitizer
+    /// tests since some sanitizer implementations exit the process with code 1
+    /// to in the face of memory errors while others abort (crash) the process
+    /// in the face of memory errors.
+    FailOrCrash,
+}
+
 #[derive(Copy, Clone, Debug, PartialEq, PartialOrd)]
 pub enum FailMode {
     Check,
     Build,
-    Run,
+    Run(RunFailMode),
 }
 
 string_enum! {
@@ -147,6 +173,36 @@ pub enum Sanitizer {
     ShadowCallStack,
     Thread,
     Hwaddress,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum CodegenBackend {
+    Cranelift,
+    Gcc,
+    Llvm,
+}
+
+impl<'a> TryFrom<&'a str> for CodegenBackend {
+    type Error = &'static str;
+
+    fn try_from(value: &'a str) -> Result<Self, Self::Error> {
+        match value.to_lowercase().as_str() {
+            "cranelift" => Ok(Self::Cranelift),
+            "gcc" => Ok(Self::Gcc),
+            "llvm" => Ok(Self::Llvm),
+            _ => Err("unknown backend"),
+        }
+    }
+}
+
+impl CodegenBackend {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Cranelift => "cranelift",
+            Self::Gcc => "gcc",
+            Self::Llvm => "llvm",
+        }
+    }
 }
 
 /// Configuration for `compiletest` *per invocation*.
@@ -222,6 +278,15 @@ pub struct Config {
     /// Path to the stage 0 `rustc` used to build `run-make` recipes. This must not be confused with
     /// [`Self::rustc_path`].
     pub stage0_rustc_path: Option<Utf8PathBuf>,
+
+    /// Path to the stage 1 or higher `rustc` used to obtain target information via
+    /// `--print=all-target-specs-json` and similar queries.
+    ///
+    /// Normally this is unset, because [`Self::rustc_path`] can be used instead.
+    /// But when running "stage 1" ui-fulldeps tests, `rustc_path` is a stage 0
+    /// compiler, whereas target specs must be obtained from a stage 1+ compiler
+    /// (in case the JSON format has changed since the last bootstrap bump).
+    pub query_rustc_path: Option<Utf8PathBuf>,
 
     /// Path to the `rustdoc`-under-test. Like [`Self::rustc_path`], this `rustdoc` is *staged*.
     pub rustdoc_path: Option<Utf8PathBuf>,
@@ -625,6 +690,9 @@ pub struct Config {
     /// need `core` stubs in cross-compilation scenarios that do not otherwise want/need to
     /// `-Zbuild-std`. Used in e.g. ABI tests.
     pub minicore_path: Utf8PathBuf,
+
+    /// Current codegen backend used.
+    pub codegen_backend: CodegenBackend,
 }
 
 impl Config {
@@ -653,6 +721,7 @@ impl Config {
             rustc_path: Utf8PathBuf::default(),
             cargo_path: Default::default(),
             stage0_rustc_path: Default::default(),
+            query_rustc_path: Default::default(),
             rustdoc_path: Default::default(),
             coverage_dump_path: Default::default(),
             python: Default::default(),
@@ -727,6 +796,7 @@ impl Config {
             profiler_runtime: Default::default(),
             diff_command: Default::default(),
             minicore_path: Default::default(),
+            codegen_backend: CodegenBackend::Llvm,
         }
     }
 
@@ -857,7 +927,7 @@ pub struct TargetCfgs {
 
 impl TargetCfgs {
     fn new(config: &Config) -> TargetCfgs {
-        let mut targets: HashMap<String, TargetCfg> = serde_json::from_str(&rustc_output(
+        let mut targets: HashMap<String, TargetCfg> = serde_json::from_str(&query_rustc_output(
             config,
             &["--print=all-target-specs-json", "-Zunstable-options"],
             Default::default(),
@@ -890,7 +960,7 @@ impl TargetCfgs {
             if config.target.ends_with(".json") || !envs.is_empty() {
                 targets.insert(
                     config.target.clone(),
-                    serde_json::from_str(&rustc_output(
+                    serde_json::from_str(&query_rustc_output(
                         config,
                         &[
                             "--print=target-spec-json",
@@ -949,10 +1019,13 @@ impl TargetCfgs {
         // which are respected for `--print=cfg` but not for `--print=all-target-specs-json`. The
         // code below extracts them from `--print=cfg`: make sure to only override fields that can
         // actually be changed with `-C` flags.
-        for config in
-            rustc_output(config, &["--print=cfg", "--target", &config.target], Default::default())
-                .trim()
-                .lines()
+        for config in query_rustc_output(
+            config,
+            &["--print=cfg", "--target", &config.target],
+            Default::default(),
+        )
+        .trim()
+        .lines()
         {
             let (name, value) = config
                 .split_once("=\"")
@@ -1053,7 +1126,7 @@ pub enum Endian {
 }
 
 fn builtin_cfg_names(config: &Config) -> HashSet<String> {
-    rustc_output(
+    query_rustc_output(
         config,
         &["--print=check-cfg", "-Zunstable-options", "--check-cfg=cfg()"],
         Default::default(),
@@ -1068,7 +1141,7 @@ pub const KNOWN_CRATE_TYPES: &[&str] =
     &["bin", "cdylib", "dylib", "lib", "proc-macro", "rlib", "staticlib"];
 
 fn supported_crate_types(config: &Config) -> HashSet<String> {
-    let crate_types: HashSet<_> = rustc_output(
+    let crate_types: HashSet<_> = query_rustc_output(
         config,
         &["--target", &config.target, "--print=supported-crate-types", "-Zunstable-options"],
         Default::default(),
@@ -1089,8 +1162,10 @@ fn supported_crate_types(config: &Config) -> HashSet<String> {
     crate_types
 }
 
-fn rustc_output(config: &Config, args: &[&str], envs: HashMap<String, String>) -> String {
-    let mut command = Command::new(&config.rustc_path);
+fn query_rustc_output(config: &Config, args: &[&str], envs: HashMap<String, String>) -> String {
+    let query_rustc_path = config.query_rustc_path.as_deref().unwrap_or(&config.rustc_path);
+
+    let mut command = Command::new(query_rustc_path);
     add_dylib_path(&mut command, iter::once(&config.compile_lib_path));
     command.args(&config.target_rustcflags).args(args);
     command.env("RUSTC_BOOTSTRAP", "1");

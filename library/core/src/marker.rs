@@ -138,8 +138,7 @@ unsafe impl<T: Sync + PointeeSized> Send for &T {}
 /// impl Bar for Impl { }
 ///
 /// let x: &dyn Foo = &Impl;    // OK
-/// // let y: &dyn Bar = &Impl; // error: the trait `Bar` cannot
-///                             // be made into an object
+/// // let y: &dyn Bar = &Impl; // error: the trait `Bar` cannot be made into an object
 /// ```
 ///
 /// [trait object]: ../../book/ch17-02-trait-objects.html

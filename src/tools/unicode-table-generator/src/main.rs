@@ -160,15 +160,15 @@ fn load_data() -> UnicodeData {
                 .push(Codepoints::Single(row.codepoint));
         }
 
-        if let Some(mapped) = row.simple_lowercase_mapping {
-            if mapped != row.codepoint {
-                to_lower.insert(row.codepoint.value(), (mapped.value(), 0, 0));
-            }
+        if let Some(mapped) = row.simple_lowercase_mapping
+            && mapped != row.codepoint
+        {
+            to_lower.insert(row.codepoint.value(), (mapped.value(), 0, 0));
         }
-        if let Some(mapped) = row.simple_uppercase_mapping {
-            if mapped != row.codepoint {
-                to_upper.insert(row.codepoint.value(), (mapped.value(), 0, 0));
-            }
+        if let Some(mapped) = row.simple_uppercase_mapping
+            && mapped != row.codepoint
+        {
+            to_upper.insert(row.codepoint.value(), (mapped.value(), 0, 0));
         }
     }
 
@@ -196,12 +196,12 @@ fn load_data() -> UnicodeData {
                     .flat_map(|codepoints| match codepoints {
                         Codepoints::Single(c) => c
                             .scalar()
-                            .map(|ch| (ch as u32..ch as u32 + 1))
+                            .map(|ch| ch as u32..ch as u32 + 1)
                             .into_iter()
                             .collect::<Vec<_>>(),
                         Codepoints::Range(c) => c
                             .into_iter()
-                            .flat_map(|c| c.scalar().map(|ch| (ch as u32..ch as u32 + 1)))
+                            .flat_map(|c| c.scalar().map(|ch| ch as u32..ch as u32 + 1))
                             .collect::<Vec<_>>(),
                     })
                     .collect::<Vec<Range<u32>>>(),
@@ -236,7 +236,7 @@ fn main() {
     let ranges_by_property = &unicode_data.ranges;
 
     if let Some(path) = test_path {
-        std::fs::write(&path, generate_tests(&write_location, &ranges_by_property)).unwrap();
+        std::fs::write(&path, generate_tests(&write_location, ranges_by_property)).unwrap();
     }
 
     let mut total_bytes = 0;
@@ -246,9 +246,9 @@ fn main() {
 
         let mut emitter = RawEmitter::new();
         if property == &"White_Space" {
-            emit_whitespace(&mut emitter, &ranges);
+            emit_whitespace(&mut emitter, ranges);
         } else {
-            emit_codepoints(&mut emitter, &ranges);
+            emit_codepoints(&mut emitter, ranges);
         }
 
         modules.push((property.to_lowercase().to_string(), emitter.file));
@@ -288,7 +288,7 @@ fn main() {
         for line in contents.lines() {
             if !line.trim().is_empty() {
                 table_file.push_str("    ");
-                table_file.push_str(&line);
+                table_file.push_str(line);
             }
             table_file.push('\n');
         }
@@ -312,7 +312,7 @@ fn version() -> String {
     let start = readme.find(prefix).unwrap() + prefix.len();
     let end = readme.find(" of the Unicode Standard.").unwrap();
     let version =
-        readme[start..end].split('.').map(|v| v.parse::<u32>().expect(&v)).collect::<Vec<_>>();
+        readme[start..end].split('.').map(|v| v.parse::<u32>().expect(v)).collect::<Vec<_>>();
     let [major, minor, micro] = [version[0], version[1], version[2]];
 
     out.push_str(&format!("({major}, {minor}, {micro});\n"));
@@ -320,7 +320,7 @@ fn version() -> String {
 }
 
 fn fmt_list<V: std::fmt::Debug>(values: impl IntoIterator<Item = V>) -> String {
-    let pieces = values.into_iter().map(|b| format!("{:?}, ", b)).collect::<Vec<_>>();
+    let pieces = values.into_iter().map(|b| format!("{b:?}, ")).collect::<Vec<_>>();
     let mut out = String::new();
     let mut line = String::from("\n    ");
     for piece in pieces {
@@ -348,7 +348,7 @@ fn generate_tests(data_path: &str, ranges: &[(&str, Vec<Range<u32>>)]) -> String
     s.push_str("\nfn main() {\n");
 
     for (property, ranges) in ranges {
-        s.push_str(&format!(r#"    println!("Testing {}");"#, property));
+        s.push_str(&format!(r#"    println!("Testing {property}");"#));
         s.push('\n');
         s.push_str(&format!("    {}_true();\n", property.to_lowercase()));
         s.push_str(&format!("    {}_false();\n", property.to_lowercase()));
@@ -373,7 +373,7 @@ fn generate_tests(data_path: &str, ranges: &[(&str, Vec<Range<u32>>)]) -> String
         s.push_str("    }\n\n");
     }
 
-    s.push_str("}");
+    s.push('}');
     s
 }
 
@@ -388,7 +388,7 @@ fn generate_asserts(s: &mut String, property: &str, points: &[u32], truthy: bool
                 range.start,
             ));
         } else {
-            s.push_str(&format!("        for chn in {:?}u32 {{\n", range));
+            s.push_str(&format!("        for chn in {range:?}u32 {{\n"));
             s.push_str(&format!(
                 "            assert!({}unicode_data::{}::lookup(std::char::from_u32(chn).unwrap()), \"{{:?}}\", chn);\n",
                 if truthy { "" } else { "!" },
@@ -439,7 +439,7 @@ fn merge_ranges(ranges: &mut Vec<Range<u32>>) {
     let mut last_end = None;
     for range in ranges {
         if let Some(last) = last_end {
-            assert!(range.start > last, "{:?}", range);
+            assert!(range.start > last, "{range:?}");
         }
         last_end = Some(range.end);
     }

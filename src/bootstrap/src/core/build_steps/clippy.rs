@@ -19,6 +19,7 @@ const IGNORED_RULES_FOR_STD_AND_RUSTC: &[&str] = &[
     "too_many_arguments",
     "needless_lifetimes", // people want to keep the lifetimes
     "wrong_self_convention",
+    "approx_constant", // libcore is what defines those
 ];
 
 fn lint_args(builder: &Builder<'_>, config: &LintConfig, ignored_rules: &[&str]) -> Vec<String> {
@@ -153,7 +154,7 @@ impl Step for Std {
             Kind::Clippy,
         );
 
-        std_cargo(builder, target, compiler.stage, &mut cargo);
+        std_cargo(builder, target, &mut cargo);
 
         for krate in &*self.crates {
             cargo.arg("-p").arg(krate);

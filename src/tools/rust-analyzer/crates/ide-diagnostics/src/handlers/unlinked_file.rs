@@ -231,13 +231,13 @@ fn make_fixes(
     // If there's an existing `mod m;` statement matching the new one, don't emit a fix (it's
     // probably `#[cfg]`d out).
     for item in items.clone() {
-        if let ast::Item::Module(m) = item {
-            if let Some(name) = m.name() {
-                if m.item_list().is_none() && name.to_string() == new_mod_name {
-                    cov_mark::hit!(unlinked_file_skip_fix_when_mod_already_exists);
-                    return None;
-                }
-            }
+        if let ast::Item::Module(m) = item
+            && let Some(name) = m.name()
+            && m.item_list().is_none()
+            && name.to_string() == new_mod_name
+        {
+            cov_mark::hit!(unlinked_file_skip_fix_when_mod_already_exists);
+            return None;
         }
     }
 

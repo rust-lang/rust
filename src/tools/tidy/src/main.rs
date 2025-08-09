@@ -29,6 +29,7 @@ fn main() {
     let concurrency: NonZeroUsize =
         FromStr::from_str(&env::args().nth(4).expect("need concurrency"))
             .expect("concurrency must be a number");
+    let npm: PathBuf = env::args_os().nth(5).expect("need name/path of npm command").into();
 
     let root_manifest = root_path.join("Cargo.toml");
     let src_path = root_path.join("src");
@@ -112,7 +113,6 @@ fn main() {
         check!(rustdoc_gui_tests, &tests_path);
         check!(rustdoc_css_themes, &librustdoc_path);
         check!(rustdoc_templates, &librustdoc_path);
-        check!(rustdoc_js, &librustdoc_path, &tools_path, &src_path);
         check!(rustdoc_json, &src_path, &ci_info);
         check!(known_bug, &crashes_path);
         check!(unknown_revision, &tests_path);
@@ -128,9 +128,9 @@ fn main() {
         check!(pal, &library_path);
 
         // Checks that need to be done for both the compiler and std libraries.
-        check!(unit_tests, &src_path);
-        check!(unit_tests, &compiler_path);
-        check!(unit_tests, &library_path);
+        check!(unit_tests, &src_path, false);
+        check!(unit_tests, &compiler_path, false);
+        check!(unit_tests, &library_path, true);
 
         if bins::check_filesystem_support(&[&root_path], &output_directory) {
             check!(bins, &root_path);
@@ -177,10 +177,13 @@ fn main() {
         check!(unstable_book, &src_path, collected);
 
         check!(
-            ext_tool_checks,
+            extra_checks,
             &root_path,
             &output_directory,
             &ci_info,
+            &librustdoc_path,
+            &tools_path,
+            &npm,
             bless,
             extra_checks,
             pos_args

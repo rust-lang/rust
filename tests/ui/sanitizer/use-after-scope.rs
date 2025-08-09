@@ -3,7 +3,7 @@
 //@ ignore-cross-compile
 //
 //@ compile-flags: -Zsanitizer=address
-//@ run-fail
+//@ run-fail-or-crash
 //@ error-pattern: ERROR: AddressSanitizer: stack-use-after-scope
 
 static mut P: *mut usize = std::ptr::null_mut();

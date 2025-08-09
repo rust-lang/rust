@@ -22,6 +22,7 @@
 use std::any::Any;
 use std::ffi::CStr;
 use std::mem::ManuallyDrop;
+use std::path::PathBuf;
 
 use back::owned_target_machine::OwnedTargetMachine;
 use back::write::{create_informational_target_machine, create_target_machine};
@@ -167,20 +168,15 @@ impl WriteBackendMethods for LlvmCodegenBackend {
         let stats = llvm::build_string(|s| unsafe { llvm::LLVMRustPrintStatistics(s) }).unwrap();
         print!("{stats}");
     }
-    fn run_link(
-        cgcx: &CodegenContext<Self>,
-        dcx: DiagCtxtHandle<'_>,
-        modules: Vec<ModuleCodegen<Self::Module>>,
-    ) -> Result<ModuleCodegen<Self::Module>, FatalError> {
-        back::write::link(cgcx, dcx, modules)
-    }
     fn run_and_optimize_fat_lto(
         cgcx: &CodegenContext<Self>,
+        exported_symbols_for_lto: &[String],
+        each_linked_rlib_for_lto: &[PathBuf],
         modules: Vec<FatLtoInput<Self>>,
-        cached_modules: Vec<(SerializedModule<Self::ModuleBuffer>, WorkProduct)>,
         diff_fncs: Vec<AutoDiffItem>,
     ) -> Result<ModuleCodegen<Self::Module>, FatalError> {
-        let mut module = back::lto::run_fat(cgcx, modules, cached_modules)?;
+        let mut module =
+            back::lto::run_fat(cgcx, exported_symbols_for_lto, each_linked_rlib_for_lto, modules)?;
 
         if !diff_fncs.is_empty() {
             builder::autodiff::differentiate(&module, cgcx, diff_fncs)?;
@@ -194,10 +190,18 @@ impl WriteBackendMethods for LlvmCodegenBackend {
     }
     fn run_thin_lto(
         cgcx: &CodegenContext<Self>,
+        exported_symbols_for_lto: &[String],
+        each_linked_rlib_for_lto: &[PathBuf],
         modules: Vec<(String, Self::ThinBuffer)>,
         cached_modules: Vec<(SerializedModule<Self::ModuleBuffer>, WorkProduct)>,
     ) -> Result<(Vec<ThinModule<Self>>, Vec<WorkProduct>), FatalError> {
-        back::lto::run_thin(cgcx, modules, cached_modules)
+        back::lto::run_thin(
+            cgcx,
+            exported_symbols_for_lto,
+            each_linked_rlib_for_lto,
+            modules,
+            cached_modules,
+        )
     }
     fn optimize(
         cgcx: &CodegenContext<Self>,
@@ -412,6 +416,20 @@ impl ModuleLlvm {
         }
     }
 
+    fn tm_from_cgcx(
+        cgcx: &CodegenContext<LlvmCodegenBackend>,
+        name: &str,
+        dcx: DiagCtxtHandle<'_>,
+    ) -> Result<OwnedTargetMachine, FatalError> {
+        let tm_factory_config = TargetMachineFactoryConfig::new(cgcx, name);
+        match (cgcx.tm_factory)(tm_factory_config) {
+            Ok(m) => Ok(m),
+            Err(e) => {
+                return Err(dcx.emit_almost_fatal(ParseTargetMachineConfig(e)));
+            }
+        }
+    }
+
     fn parse(
         cgcx: &CodegenContext<LlvmCodegenBackend>,
         name: &CStr,
@@ -421,13 +439,7 @@ impl ModuleLlvm {
         unsafe {
             let llcx = llvm::LLVMRustContextCreate(cgcx.fewer_names);
             let llmod_raw = back::lto::parse_module(llcx, name, buffer, dcx)?;
-            let tm_factory_config = TargetMachineFactoryConfig::new(cgcx, name.to_str().unwrap());
-            let tm = match (cgcx.tm_factory)(tm_factory_config) {
-                Ok(m) => m,
-                Err(e) => {
-                    return Err(dcx.emit_almost_fatal(ParseTargetMachineConfig(e)));
-                }
-            };
+            let tm = ModuleLlvm::tm_from_cgcx(cgcx, name.to_str().unwrap(), dcx)?;
 
             Ok(ModuleLlvm { llmod_raw, llcx, tm: ManuallyDrop::new(tm) })
         }

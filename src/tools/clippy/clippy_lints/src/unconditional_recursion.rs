@@ -206,7 +206,7 @@ fn check_partial_eq(cx: &LateContext<'_>, method_span: Span, method_def_id: Loca
                 let arg_ty = cx.typeck_results().expr_ty_adjusted(arg);
 
                 if let Some(fn_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id)
-                    && let Some(trait_id) = cx.tcx.trait_of_item(fn_id)
+                    && let Some(trait_id) = cx.tcx.trait_of_assoc(fn_id)
                     && trait_id == trait_def_id
                     && matches_ty(receiver_ty, arg_ty, self_arg, other_arg)
                 {
@@ -250,7 +250,7 @@ fn check_to_string(cx: &LateContext<'_>, method_span: Span, method_def_id: Local
         let is_bad = match expr.kind {
             ExprKind::MethodCall(segment, _receiver, &[_arg], _) if segment.ident.name == name.name => {
                 if let Some(fn_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id)
-                    && let Some(trait_id) = cx.tcx.trait_of_item(fn_id)
+                    && let Some(trait_id) = cx.tcx.trait_of_assoc(fn_id)
                     && trait_id == trait_def_id
                 {
                     true
@@ -318,7 +318,7 @@ where
             && let ExprKind::Path(qpath) = f.kind
             && is_default_method_on_current_ty(self.cx.tcx, qpath, self.implemented_ty_id)
             && let Some(method_def_id) = path_def_id(self.cx, f)
-            && let Some(trait_def_id) = self.cx.tcx.trait_of_item(method_def_id)
+            && let Some(trait_def_id) = self.cx.tcx.trait_of_assoc(method_def_id)
             && self.cx.tcx.is_diagnostic_item(sym::Default, trait_def_id)
         {
             span_error(self.cx, self.method_span, expr);
@@ -426,7 +426,7 @@ fn check_from(cx: &LateContext<'_>, method_span: Span, method_def_id: LocalDefId
     if let Some((fn_def_id, node_args)) = fn_def_id_with_node_args(cx, expr)
         && let [s1, s2] = **node_args
         && let (Some(s1), Some(s2)) = (s1.as_type(), s2.as_type())
-        && let Some(trait_def_id) = cx.tcx.trait_of_item(fn_def_id)
+        && let Some(trait_def_id) = cx.tcx.trait_of_assoc(fn_def_id)
         && cx.tcx.is_diagnostic_item(sym::Into, trait_def_id)
         && get_impl_trait_def_id(cx, method_def_id) == cx.tcx.get_diagnostic_item(sym::From)
         && s1 == sig.inputs()[0]

@@ -1,0 +1,19 @@
+error[E0412]: cannot find type `b` in this scope
+  --> $DIR/meaningless-bound.rs:6:5
+   |
+LL |     b: Sized,
+   |     ^ not found in this scope
+
+error[E0411]: cannot find type `Self` in this scope
+  --> $DIR/meaningless-bound.rs:14:5
+   |
+LL | fn f() -> &'static str
+   |    - `Self` not allowed in a function
+LL | where
+LL |     Self: Sized,
+   |     ^^^^ `Self` is only available in impls, traits, and type definitions
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0411, E0412.
+For more information about an error, try `rustc --explain E0411`.

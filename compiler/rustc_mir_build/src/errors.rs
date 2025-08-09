@@ -976,15 +976,6 @@ pub(crate) struct NonEmptyNeverPattern<'tcx> {
 }
 
 #[derive(Diagnostic)]
-#[diag(mir_build_exceeds_mcdc_condition_limit)]
-pub(crate) struct MCDCExceedsConditionLimit {
-    #[primary_span]
-    pub(crate) span: Span,
-    pub(crate) num_conditions: usize,
-    pub(crate) max_conditions: usize,
-}
-
-#[derive(Diagnostic)]
 #[diag(mir_build_pattern_not_covered, code = E0005)]
 pub(crate) struct PatternNotCovered<'s, 'tcx> {
     #[primary_span]
@@ -1214,6 +1205,38 @@ pub(crate) struct LoopMatchArmWithGuard {
 }
 
 #[derive(Diagnostic)]
+#[diag(mir_build_const_continue_not_const)]
+#[help]
+pub(crate) struct ConstContinueNotMonomorphicConst {
+    #[primary_span]
+    pub span: Span,
+
+    #[subdiagnostic]
+    pub reason: ConstContinueNotMonomorphicConstReason,
+}
+
+#[derive(Subdiagnostic)]
+pub(crate) enum ConstContinueNotMonomorphicConstReason {
+    #[label(mir_build_const_continue_not_const_constant_parameter)]
+    ConstantParameter {
+        #[primary_span]
+        span: Span,
+    },
+
+    #[label(mir_build_const_continue_not_const_const_block)]
+    ConstBlock {
+        #[primary_span]
+        span: Span,
+    },
+
+    #[label(mir_build_const_continue_not_const_const_other)]
+    Other {
+        #[primary_span]
+        span: Span,
+    },
+}
+
+#[derive(Diagnostic)]
 #[diag(mir_build_const_continue_bad_const)]
 pub(crate) struct ConstContinueBadConst {
     #[primary_span]
@@ -1222,8 +1245,8 @@ pub(crate) struct ConstContinueBadConst {
 }
 
 #[derive(Diagnostic)]
-#[diag(mir_build_const_continue_missing_value)]
-pub(crate) struct ConstContinueMissingValue {
+#[diag(mir_build_const_continue_missing_label_or_value)]
+pub(crate) struct ConstContinueMissingLabelOrValue {
     #[primary_span]
     pub span: Span,
 }

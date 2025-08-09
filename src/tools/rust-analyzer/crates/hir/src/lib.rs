@@ -1020,21 +1020,21 @@ fn emit_macro_def_diagnostics<'db>(
     m: Macro,
 ) {
     let id = db.macro_def(m.id);
-    if let hir_expand::db::TokenExpander::DeclarativeMacro(expander) = db.macro_expander(id) {
-        if let Some(e) = expander.mac.err() {
-            let Some(ast) = id.ast_id().left() else {
-                never!("declarative expander for non decl-macro: {:?}", e);
-                return;
-            };
-            let krate = HasModule::krate(&m.id, db);
-            let edition = krate.data(db).edition;
-            emit_def_diagnostic_(
-                db,
-                acc,
-                &DefDiagnosticKind::MacroDefError { ast, message: e.to_string() },
-                edition,
-            );
-        }
+    if let hir_expand::db::TokenExpander::DeclarativeMacro(expander) = db.macro_expander(id)
+        && let Some(e) = expander.mac.err()
+    {
+        let Some(ast) = id.ast_id().left() else {
+            never!("declarative expander for non decl-macro: {:?}", e);
+            return;
+        };
+        let krate = HasModule::krate(&m.id, db);
+        let edition = krate.data(db).edition;
+        emit_def_diagnostic_(
+            db,
+            acc,
+            &DefDiagnosticKind::MacroDefError { ast, message: e.to_string() },
+            edition,
+        );
     }
 }
 
@@ -1922,10 +1922,6 @@ impl DefWithBody {
             Module { id: def_map.module_id(DefMap::ROOT) }.diagnostics(db, acc, style_lints);
         }
 
-        source_map
-            .macro_calls()
-            .for_each(|(_ast_id, call_id)| macro_call_diagnostics(db, call_id, acc));
-
         expr_store_diagnostics(db, acc, &source_map);
 
         let infer = db.infer(self.into());
@@ -2130,39 +2126,15 @@ impl DefWithBody {
     }
 }
 
-fn expr_store_diagnostics(
-    db: &dyn HirDatabase,
-    acc: &mut Vec<AnyDiagnostic<'_>>,
+fn expr_store_diagnostics<'db>(
+    db: &'db dyn HirDatabase,
+    acc: &mut Vec<AnyDiagnostic<'db>>,
     source_map: &ExpressionStoreSourceMap,
 ) {
     for diag in source_map.diagnostics() {
         acc.push(match diag {
             ExpressionStoreDiagnostics::InactiveCode { node, cfg, opts } => {
                 InactiveCode { node: *node, cfg: cfg.clone(), opts: opts.clone() }.into()
-            }
-            ExpressionStoreDiagnostics::MacroError { node, err } => {
-                let RenderedExpandError { message, error, kind } = err.render_to_string(db);
-
-                let editioned_file_id = EditionedFileId::from_span(db, err.span().anchor.file_id);
-                let precise_location = if editioned_file_id == node.file_id {
-                    Some(
-                        err.span().range
-                            + db.ast_id_map(editioned_file_id.into())
-                                .get_erased(err.span().anchor.ast_id)
-                                .text_range()
-                                .start(),
-                    )
-                } else {
-                    None
-                };
-                MacroError {
-                    node: (node).map(|it| it.into()),
-                    precise_location,
-                    message,
-                    error,
-                    kind,
-                }
-                .into()
             }
             ExpressionStoreDiagnostics::UnresolvedMacroCall { node, path } => UnresolvedMacroCall {
                 macro_call: (*node).map(|ast_ptr| ast_ptr.into()),
@@ -2182,6 +2154,10 @@ fn expr_store_diagnostics(
             }
         });
     }
+
+    source_map
+        .macro_calls()
+        .for_each(|(_ast_id, call_id)| macro_call_diagnostics(db, call_id, acc));
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Function {
@@ -2588,10 +2564,10 @@ impl<'db> Param<'db> {
             Callee::Closure(closure, _) => {
                 let c = db.lookup_intern_closure(closure.into());
                 let body = db.body(c.0);
-                if let Expr::Closure { args, .. } = &body[c.1] {
-                    if let Pat::Bind { id, .. } = &body[args[self.idx]] {
-                        return Some(Local { parent: c.0, binding_id: *id });
-                    }
+                if let Expr::Closure { args, .. } = &body[c.1]
+                    && let Pat::Bind { id, .. } = &body[args[self.idx]]
+                {
+                    return Some(Local { parent: c.0, binding_id: *id });
                 }
                 None
             }
@@ -2785,26 +2761,20 @@ impl EvaluatedConst {
 
     pub fn render_debug(&self, db: &dyn HirDatabase) -> Result<String, MirEvalError> {
         let data = self.const_.data(Interner);
-        if let TyKind::Scalar(s) = data.ty.kind(Interner) {
-            if matches!(s, Scalar::Int(_) | Scalar::Uint(_)) {
-                if let hir_ty::ConstValue::Concrete(c) = &data.value {
-                    if let hir_ty::ConstScalar::Bytes(b, _) = &c.interned {
-                        let value = u128::from_le_bytes(mir::pad16(b, false));
-                        let value_signed =
-                            i128::from_le_bytes(mir::pad16(b, matches!(s, Scalar::Int(_))));
-                        let mut result = if let Scalar::Int(_) = s {
-                            value_signed.to_string()
-                        } else {
-                            value.to_string()
-                        };
-                        if value >= 10 {
-                            format_to!(result, " ({value:#X})");
-                            return Ok(result);
-                        } else {
-                            return Ok(result);
-                        }
-                    }
-                }
+        if let TyKind::Scalar(s) = data.ty.kind(Interner)
+            && matches!(s, Scalar::Int(_) | Scalar::Uint(_))
+            && let hir_ty::ConstValue::Concrete(c) = &data.value
+            && let hir_ty::ConstScalar::Bytes(b, _) = &c.interned
+        {
+            let value = u128::from_le_bytes(mir::pad16(b, false));
+            let value_signed = i128::from_le_bytes(mir::pad16(b, matches!(s, Scalar::Int(_))));
+            let mut result =
+                if let Scalar::Int(_) = s { value_signed.to_string() } else { value.to_string() };
+            if value >= 10 {
+                format_to!(result, " ({value:#X})");
+                return Ok(result);
+            } else {
+                return Ok(result);
             }
         }
         mir::render_const_using_debug_impl(db, self.def, &self.const_)
@@ -4445,10 +4415,10 @@ impl Impl {
             let impls = db.trait_impls_in_crate(id);
             all.extend(impls.for_trait(trait_.id).map(Self::from))
         }
-        if let Some(block) = module.id.containing_block() {
-            if let Some(trait_impls) = db.trait_impls_in_block(block) {
-                all.extend(trait_impls.for_trait(trait_.id).map(Self::from));
-            }
+        if let Some(block) = module.id.containing_block()
+            && let Some(trait_impls) = db.trait_impls_in_block(block)
+        {
+            all.extend(trait_impls.for_trait(trait_.id).map(Self::from));
         }
         all
     }

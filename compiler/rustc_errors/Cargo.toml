@@ -10,7 +10,6 @@ derive_setters = "0.1.6"
 rustc_abi = { path = "../rustc_abi" }
 rustc_ast = { path = "../rustc_ast" }
 rustc_ast_pretty = { path = "../rustc_ast_pretty" }
-rustc_attr_data_structures = { path = "../rustc_attr_data_structures" }
 rustc_data_structures = { path = "../rustc_data_structures" }
 rustc_error_codes = { path = "../rustc_error_codes" }
 rustc_error_messages = { path = "../rustc_error_messages" }
@@ -25,7 +24,7 @@ rustc_serialize = { path = "../rustc_serialize" }
 rustc_span = { path = "../rustc_span" }
 rustc_target = { path = "../rustc_target" }
 rustc_type_ir = { path = "../rustc_type_ir" }
-serde = { version = "1.0.125", features = [ "derive" ] }
+serde = { version = "1.0.125", features = ["derive"] }
 serde_json = "1.0.59"
 termcolor = "1.2.0"
 termize = "0.2"

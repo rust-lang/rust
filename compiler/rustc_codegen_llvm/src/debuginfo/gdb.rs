@@ -1,6 +1,5 @@
 // .debug_gdb_scripts binary section.
 
-use rustc_attr_data_structures::{AttributeKind, find_attr};
 use rustc_codegen_ssa::base::collect_debugger_visualizers_transitive;
 use rustc_codegen_ssa::traits::*;
 use rustc_hir::def_id::LOCAL_CRATE;
@@ -85,9 +84,6 @@ pub(crate) fn get_or_insert_gdb_debug_scripts_section_global<'ll>(
 }
 
 pub(crate) fn needs_gdb_debug_scripts_section(cx: &CodegenCx<'_, '_>) -> bool {
-    let omit_gdb_pretty_printer_section =
-        find_attr!(cx.tcx.hir_krate_attrs(), AttributeKind::OmitGdbPrettyPrinterSection);
-
     // To ensure the section `__rustc_debug_gdb_scripts_section__` will not create
     // ODR violations at link time, this section will not be emitted for rlibs since
     // each rlib could produce a different set of visualizers that would be embedded
@@ -116,8 +112,7 @@ pub(crate) fn needs_gdb_debug_scripts_section(cx: &CodegenCx<'_, '_>) -> bool {
         }
     });
 
-    !omit_gdb_pretty_printer_section
-        && cx.sess().opts.debuginfo != DebugInfo::None
+    cx.sess().opts.debuginfo != DebugInfo::None
         && cx.sess().target.emit_debug_gdb_scripts
         && embed_visualizers
 }

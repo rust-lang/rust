@@ -5,10 +5,10 @@
 
 use crate::msrvs::{self, Msrv};
 use hir::LangItem;
-use rustc_attr_data_structures::{RustcVersion, StableSince};
 use rustc_const_eval::check_consts::ConstCx;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
+use rustc_hir::{RustcVersion, StableSince};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::Obligation;
 use rustc_lint::LateContext;
@@ -420,11 +420,11 @@ pub fn is_stable_const_fn(cx: &LateContext<'_>, def_id: DefId, msrv: Msrv) -> bo
             .lookup_const_stability(def_id)
             .or_else(|| {
                 cx.tcx
-                    .trait_of_item(def_id)
+                    .trait_of_assoc(def_id)
                     .and_then(|trait_def_id| cx.tcx.lookup_const_stability(trait_def_id))
             })
             .is_none_or(|const_stab| {
-                if let rustc_attr_data_structures::StabilityLevel::Stable { since, .. } = const_stab.level {
+                if let rustc_hir::StabilityLevel::Stable { since, .. } = const_stab.level {
                     // Checking MSRV is manually necessary because `rustc` has no such concept. This entire
                     // function could be removed if `rustc` provided a MSRV-aware version of `is_stable_const_fn`.
                     // as a part of an unimplemented MSRV check https://github.com/rust-lang/rust/issues/65262.
@@ -432,7 +432,7 @@ pub fn is_stable_const_fn(cx: &LateContext<'_>, def_id: DefId, msrv: Msrv) -> bo
                     let const_stab_rust_version = match since {
                         StableSince::Version(version) => version,
                         StableSince::Current => RustcVersion::CURRENT,
-                        StableSince::Err => return false,
+                        StableSince::Err(_) => return false,
                     };
 
                     msrv.meets(cx, const_stab_rust_version)

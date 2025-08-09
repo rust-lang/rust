@@ -70,7 +70,6 @@ fn compute_assumptions<'tcx>(
         let region_constraints = infcx.take_and_reset_region_constraints();
 
         let outlives = make_query_region_constraints(
-            tcx,
             region_obligations,
             &region_constraints,
             region_assumptions,

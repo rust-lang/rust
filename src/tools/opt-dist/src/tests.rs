@@ -13,7 +13,7 @@ pub fn run_tests(env: &Environment) -> anyhow::Result<()> {
     // and then use that extracted rustc as a stage0 compiler.
     // Then we run a subset of tests using that compiler, to have a basic smoke test which checks
     // whether the optimization pipeline hasn't broken something.
-    let build_dir = env.build_root().join("build");
+    let build_dir = env.build_root();
     let dist_dir = build_dir.join("dist");
     let unpacked_dist_dir = build_dir.join("unpacked-dist");
     std::fs::create_dir_all(&unpacked_dist_dir)?;
@@ -79,6 +79,7 @@ lld = false
 rustc = "{rustc}"
 cargo = "{cargo}"
 local-rebuild = true
+compiletest-allow-stage0=true
 
 [target.{host_triple}]
 llvm-config = "{llvm_config}"
@@ -100,8 +101,8 @@ llvm-config = "{llvm_config}"
             env.host_tuple(),
             "--stage",
             "0",
-            "tests/assembly",
-            "tests/codegen",
+            "tests/assembly-llvm",
+            "tests/codegen-llvm",
             "tests/codegen-units",
             "tests/incremental",
             "tests/mir-opt",
@@ -117,7 +118,6 @@ llvm-config = "{llvm_config}"
             args.extend(["--skip", test_path]);
         }
         cmd(&args)
-            .env("COMPILETEST_FORCE_STAGE0", "1")
             // Also run dist-only tests
             .env("COMPILETEST_ENABLE_DIST_TESTS", "1")
             .run()

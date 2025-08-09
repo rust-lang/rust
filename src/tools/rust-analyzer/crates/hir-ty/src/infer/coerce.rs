@@ -164,14 +164,14 @@ impl CoerceMany {
         // - [Comment from rustc](https://github.com/rust-lang/rust/blob/5ff18d0eaefd1bd9ab8ec33dab2404a44e7631ed/compiler/rustc_hir_typeck/src/coercion.rs#L1334-L1335)
         // First try to coerce the new expression to the type of the previous ones,
         // but only if the new expression has no coercion already applied to it.
-        if expr.is_none_or(|expr| !ctx.result.expr_adjustments.contains_key(&expr)) {
-            if let Ok(res) = ctx.coerce(expr, &expr_ty, &self.merged_ty(), CoerceNever::Yes) {
-                self.final_ty = Some(res);
-                if let Some(expr) = expr {
-                    self.expressions.push(expr);
-                }
-                return;
+        if expr.is_none_or(|expr| !ctx.result.expr_adjustments.contains_key(&expr))
+            && let Ok(res) = ctx.coerce(expr, &expr_ty, &self.merged_ty(), CoerceNever::Yes)
+        {
+            self.final_ty = Some(res);
+            if let Some(expr) = expr {
+                self.expressions.push(expr);
             }
+            return;
         }
 
         if let Ok((adjustments, res)) =
@@ -322,18 +322,13 @@ impl InferenceTable<'_> {
         // If we are coercing into a TAIT, coerce into its proxy inference var, instead.
         let mut to_ty = to_ty;
         let _to;
-        if let Some(tait_table) = &self.tait_coercion_table {
-            if let TyKind::OpaqueType(opaque_ty_id, _) = to_ty.kind(Interner) {
-                if !matches!(
-                    from_ty.kind(Interner),
-                    TyKind::InferenceVar(..) | TyKind::OpaqueType(..)
-                ) {
-                    if let Some(ty) = tait_table.get(opaque_ty_id) {
-                        _to = ty.clone();
-                        to_ty = &_to;
-                    }
-                }
-            }
+        if let Some(tait_table) = &self.tait_coercion_table
+            && let TyKind::OpaqueType(opaque_ty_id, _) = to_ty.kind(Interner)
+            && !matches!(from_ty.kind(Interner), TyKind::InferenceVar(..) | TyKind::OpaqueType(..))
+            && let Some(ty) = tait_table.get(opaque_ty_id)
+        {
+            _to = ty.clone();
+            to_ty = &_to;
         }
 
         // Consider coercing the subtype to a DST
@@ -594,14 +589,13 @@ impl InferenceTable<'_> {
         F: FnOnce(Ty) -> Vec<Adjustment>,
         G: FnOnce(Ty) -> Vec<Adjustment>,
     {
-        if let TyKind::Function(to_fn_ptr) = to_ty.kind(Interner) {
-            if let (chalk_ir::Safety::Safe, chalk_ir::Safety::Unsafe) =
+        if let TyKind::Function(to_fn_ptr) = to_ty.kind(Interner)
+            && let (chalk_ir::Safety::Safe, chalk_ir::Safety::Unsafe) =
                 (from_fn_ptr.sig.safety, to_fn_ptr.sig.safety)
-            {
-                let from_unsafe =
-                    TyKind::Function(safe_to_unsafe_fn_ty(from_fn_ptr.clone())).intern(Interner);
-                return self.unify_and(&from_unsafe, to_ty, to_unsafe);
-            }
+        {
+            let from_unsafe =
+                TyKind::Function(safe_to_unsafe_fn_ty(from_fn_ptr.clone())).intern(Interner);
+            return self.unify_and(&from_unsafe, to_ty, to_unsafe);
         }
         self.unify_and(&from_ty, to_ty, normal)
     }

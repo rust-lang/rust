@@ -102,10 +102,10 @@ pub(crate) fn replace_qualified_name_with_use(
 
 fn drop_generic_args(path: &ast::Path) -> ast::Path {
     let path = path.clone_for_update();
-    if let Some(segment) = path.segment() {
-        if let Some(generic_args) = segment.generic_arg_list() {
-            ted::remove(generic_args.syntax());
-        }
+    if let Some(segment) = path.segment()
+        && let Some(generic_args) = segment.generic_arg_list()
+    {
+        ted::remove(generic_args.syntax());
     }
     path
 }

@@ -3,6 +3,7 @@
 #![feature(rustc_attrs)]
 #![feature(rustc_allow_const_fn_unstable)]
 #![feature(allow_internal_unstable)]
+// FIXME(#82232, #143834): temporarily renamed to mitigate `#[align]` nameres ambiguity
 #![feature(fn_align)]
 #![feature(optimize_attribute)]
 #![feature(dropck_eyepatch)]
@@ -19,12 +20,8 @@
 #![feature(linkage)]
 #![feature(cfi_encoding, extern_types)]
 #![feature(patchable_function_entry)]
-#![feature(omit_gdb_pretty_printer_section)]
 #![feature(fundamental)]
 
-
-#![omit_gdb_pretty_printer_section = 1]
-//~^ ERROR malformed `omit_gdb_pretty_printer_section` attribute input
 
 #![windows_subsystem]
 //~^ ERROR malformed
@@ -53,7 +50,7 @@
 #[inline = 5]
 //~^ ERROR valid forms for the attribute are
 //~| WARN this was previously accepted by the compiler
-#[align]
+#[rustc_align]
 //~^ ERROR malformed
 #[optimize]
 //~^ ERROR malformed
@@ -207,7 +204,7 @@ static mut TLS: u8 = 42;
 #[no_link()]
 //~^ ERROR malformed
 #[macro_use = 1]
-//~^ ERROR malformed
+//~^ ERROR valid forms for the attribute are `#[macro_use(name1, name2, ...)]` and `#[macro_use]`
 extern crate wloop;
 //~^ ERROR can't find crate for `wloop` [E0463]
 

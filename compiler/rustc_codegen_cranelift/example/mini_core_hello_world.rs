@@ -348,7 +348,8 @@ fn main() {
     struct V([f64; 2]);
 
     let f = V([0.0, 1.0]);
-    let _a = f.0[0];
+    let fp = (&raw const f) as *const [f64; 2];
+    let _a = (unsafe { &*fp })[0];
 
     stack_val_align();
 }

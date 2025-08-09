@@ -3,9 +3,10 @@ use std::path::{Path, PathBuf};
 
 use rustc_abi::ExternAbi;
 use rustc_ast::CRATE_NODE_ID;
-use rustc_attr_data_structures::{AttributeKind, find_attr};
 use rustc_attr_parsing as attr;
 use rustc_data_structures::fx::FxHashSet;
+use rustc_hir::attrs::AttributeKind;
+use rustc_hir::find_attr;
 use rustc_middle::query::LocalCrate;
 use rustc_middle::ty::{self, List, Ty, TyCtxt};
 use rustc_session::Session;
@@ -82,7 +83,7 @@ pub fn walk_native_lib_search_dirs<R>(
     // Mac Catalyst uses the macOS SDK, but to link to iOS-specific frameworks
     // we must have the support library stubs in the library search path (#121430).
     if let Some(sdk_root) = apple_sdk_root
-        && sess.target.llvm_target.contains("macabi")
+        && sess.target.env == "macabi"
     {
         f(&sdk_root.join("System/iOSSupport/usr/lib"), false)?;
         f(&sdk_root.join("System/iOSSupport/System/Library/Frameworks"), true)?;
@@ -700,8 +701,21 @@ impl<'tcx> Collector<'tcx> {
             .link_ordinal
             .map_or(import_name_type, |ord| Some(PeImportNameType::Ordinal(ord)));
 
+        let name = codegen_fn_attrs.link_name.unwrap_or_else(|| self.tcx.item_name(item));
+
+        if self.tcx.sess.target.binary_format == BinaryFormat::Elf {
+            let name = name.as_str();
+            if name.contains('\0') {
+                self.tcx.dcx().emit_err(errors::RawDylibMalformed { span });
+            } else if let Some((left, right)) = name.split_once('@')
+                && (left.is_empty() || right.is_empty() || right.contains('@'))
+            {
+                self.tcx.dcx().emit_err(errors::RawDylibMalformed { span });
+            }
+        }
+
         DllImport {
-            name: codegen_fn_attrs.link_name.unwrap_or_else(|| self.tcx.item_name(item)),
+            name,
             import_name_type,
             calling_convention,
             span,

@@ -693,7 +693,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             crate_name: self.cx.ecfg.crate_name,
         });
 
-        self.cx.trace_macros_diag();
+        self.cx.macro_error_and_trace_macros_diag();
         guar
     }
 
@@ -707,7 +707,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
     ) -> ErrorGuaranteed {
         let guar =
             self.cx.dcx().emit_err(WrongFragmentKind { span, kind: kind.name(), name: &mac.path });
-        self.cx.trace_macros_diag();
+        self.cx.macro_error_and_trace_macros_diag();
         guar
     }
 
@@ -1048,7 +1048,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 }
                 annotate_err_with_kind(&mut err, kind, span);
                 let guar = err.emit();
-                self.cx.trace_macros_diag();
+                self.cx.macro_error_and_trace_macros_diag();
                 kind.dummy(span, guar)
             }
         }
@@ -1411,9 +1411,8 @@ impl InvocationCollectorNode for P<ast::Item> {
                     }
                 }
             }
-
             let mut idents = Vec::new();
-            collect_use_tree_leaves(ut, &mut idents);
+            collect_use_tree_leaves(&ut, &mut idents);
             idents
         } else {
             self.kind.ident().into_iter().collect()

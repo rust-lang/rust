@@ -140,7 +140,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
 
     pub(crate) fn from_const<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
         bx: &mut Bx,
-        val: mir::ConstValue<'tcx>,
+        val: mir::ConstValue,
         ty: Ty<'tcx>,
     ) -> Self {
         let layout = bx.layout_of(ty);
@@ -154,14 +154,11 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
                 OperandValue::Immediate(llval)
             }
             ConstValue::ZeroSized => return OperandRef::zero_sized(layout),
-            ConstValue::Slice { data, meta } => {
+            ConstValue::Slice { alloc_id, meta } => {
                 let BackendRepr::ScalarPair(a_scalar, _) = layout.backend_repr else {
                     bug!("from_const: invalid ScalarPair layout: {:#?}", layout);
                 };
-                let a = Scalar::from_pointer(
-                    Pointer::new(bx.tcx().reserve_and_set_memory_alloc(data).into(), Size::ZERO),
-                    &bx.tcx(),
-                );
+                let a = Scalar::from_pointer(Pointer::new(alloc_id.into(), Size::ZERO), &bx.tcx());
                 let a_llval = bx.scalar_to_backend(
                     a,
                     a_scalar,
@@ -329,31 +326,15 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
         let offset = self.layout.fields.offset(i);
 
         if !bx.is_backend_ref(self.layout) && bx.is_backend_ref(field) {
-            if let BackendRepr::SimdVector { count, .. } = self.layout.backend_repr
-                && let BackendRepr::Memory { sized: true } = field.backend_repr
-                && count.is_power_of_two()
-            {
-                assert_eq!(field.size, self.layout.size);
-                // This is being deprecated, but for now stdarch still needs it for
-                // Newtype vector of array, e.g. #[repr(simd)] struct S([i32; 4]);
-                let place = PlaceRef::alloca(bx, field);
-                self.val.store(bx, place.val.with_type(self.layout));
-                return bx.load_operand(place);
-            } else {
-                // Part of https://github.com/rust-lang/compiler-team/issues/838
-                bug!("Non-ref type {self:?} cannot project to ref field type {field:?}");
-            }
+            // Part of https://github.com/rust-lang/compiler-team/issues/838
+            span_bug!(
+                fx.mir.span,
+                "Non-ref type {self:?} cannot project to ref field type {field:?}",
+            );
         }
 
         let val = if field.is_zst() {
             OperandValue::ZeroSized
-        } else if let BackendRepr::SimdVector { .. } = self.layout.backend_repr {
-            // codegen_transmute_operand doesn't support SIMD, but since the previous
-            // check handled ZSTs, the only possible field access into something SIMD
-            // is to the `non_1zst_field` that's the same SIMD. (Other things, even
-            // just padding, would change the wrapper's representation type.)
-            assert_eq!(field.size, self.layout.size);
-            self.val
         } else if field.size == self.layout.size {
             assert_eq!(offset.bytes(), 0);
             fx.codegen_transmute_operand(bx, *self, field)
@@ -486,6 +467,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
                 // value and the variant index match, since that's all `Niche` can encode.
 
                 let relative_max = niche_variants.end().as_u32() - niche_variants.start().as_u32();
+                let niche_start_const = bx.cx().const_uint_big(tag_llty, niche_start);
 
                 // We have a subrange `niche_start..=niche_end` inside `range`.
                 // If the value of the tag is inside this subrange, it's a
@@ -511,35 +493,117 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
                     // } else {
                     //     untagged_variant
                     // }
-                    let niche_start = bx.cx().const_uint_big(tag_llty, niche_start);
-                    let is_niche = bx.icmp(IntPredicate::IntEQ, tag, niche_start);
+                    let is_niche = bx.icmp(IntPredicate::IntEQ, tag, niche_start_const);
                     let tagged_discr =
                         bx.cx().const_uint(cast_to, niche_variants.start().as_u32() as u64);
                     (is_niche, tagged_discr, 0)
                 } else {
-                    // The special cases don't apply, so we'll have to go with
-                    // the general algorithm.
-                    let relative_discr = bx.sub(tag, bx.cx().const_uint_big(tag_llty, niche_start));
-                    let cast_tag = bx.intcast(relative_discr, cast_to, false);
-                    let is_niche = bx.icmp(
-                        IntPredicate::IntULE,
-                        relative_discr,
-                        bx.cx().const_uint(tag_llty, relative_max as u64),
-                    );
-
                     // Thanks to parameter attributes and load metadata, LLVM already knows
                     // the general valid range of the tag. It's possible, though, for there
                     // to be an impossible value *in the middle*, which those ranges don't
                     // communicate, so it's worth an `assume` to let the optimizer know.
+                    // Most importantly, this means when optimizing a variant test like
+                    // `SELECT(is_niche, complex, CONST) == CONST` it's ok to simplify that
+                    // to `!is_niche` because the `complex` part can't possibly match.
+                    //
+                    // This was previously asserted on `tagged_discr` below, where the
+                    // impossible value is more obvious, but that caused an intermediate
+                    // value to become multi-use and thus not optimize, so instead this
+                    // assumes on the original input which is always multi-use. See
+                    // <https://github.com/llvm/llvm-project/issues/134024#issuecomment-3131782555>
+                    //
+                    // FIXME: If we ever get range assume operand bundles in LLVM (so we
+                    // don't need the `icmp`s in the instruction stream any more), it
+                    // might be worth moving this back to being on the switch argument
+                    // where it's more obviously applicable.
                     if niche_variants.contains(&untagged_variant)
                         && bx.cx().sess().opts.optimize != OptLevel::No
                     {
-                        let impossible =
-                            u64::from(untagged_variant.as_u32() - niche_variants.start().as_u32());
-                        let impossible = bx.cx().const_uint(tag_llty, impossible);
-                        let ne = bx.icmp(IntPredicate::IntNE, relative_discr, impossible);
+                        let impossible = niche_start
+                            .wrapping_add(u128::from(untagged_variant.as_u32()))
+                            .wrapping_sub(u128::from(niche_variants.start().as_u32()));
+                        let impossible = bx.cx().const_uint_big(tag_llty, impossible);
+                        let ne = bx.icmp(IntPredicate::IntNE, tag, impossible);
                         bx.assume(ne);
                     }
+
+                    // With multiple niched variants we'll have to actually compute
+                    // the variant index from the stored tag.
+                    //
+                    // However, there's still one small optimization we can often do for
+                    // determining *whether* a tag value is a natural value or a niched
+                    // variant. The general algorithm involves a subtraction that often
+                    // wraps in practice, making it tricky to analyse. However, in cases
+                    // where there are few enough possible values of the tag that it doesn't
+                    // need to wrap around, we can instead just look for the contiguous
+                    // tag values on the end of the range with a single comparison.
+                    //
+                    // For example, take the type `enum Demo { A, B, Untagged(bool) }`.
+                    // The `bool` is {0, 1}, and the two other variants are given the
+                    // tags {2, 3} respectively. That means the `tag_range` is
+                    // `[0, 3]`, which doesn't wrap as unsigned (nor as signed), so
+                    // we can test for the niched variants with just `>= 2`.
+                    //
+                    // That means we're looking either for the niche values *above*
+                    // the natural values of the untagged variant:
+                    //
+                    //             niche_start                  niche_end
+                    //                  |                           |
+                    //                  v                           v
+                    // MIN -------------+---------------------------+---------- MAX
+                    //         ^        |         is niche          |
+                    //         |        +---------------------------+
+                    //         |                                    |
+                    //   tag_range.start                      tag_range.end
+                    //
+                    // Or *below* the natural values:
+                    //
+                    //    niche_start              niche_end
+                    //         |                       |
+                    //         v                       v
+                    // MIN ----+-----------------------+---------------------- MAX
+                    //         |       is niche        |           ^
+                    //         +-----------------------+           |
+                    //         |                                   |
+                    //   tag_range.start                      tag_range.end
+                    //
+                    // With those two options and having the flexibility to choose
+                    // between a signed or unsigned comparison on the tag, that
+                    // covers most realistic scenarios. The tests have a (contrived)
+                    // example of a 1-byte enum with over 128 niched variants which
+                    // wraps both as signed as unsigned, though, and for something
+                    // like that we're stuck with the general algorithm.
+
+                    let tag_range = tag_scalar.valid_range(&dl);
+                    let tag_size = tag_scalar.size(&dl);
+                    let niche_end = u128::from(relative_max).wrapping_add(niche_start);
+                    let niche_end = tag_size.truncate(niche_end);
+
+                    let relative_discr = bx.sub(tag, niche_start_const);
+                    let cast_tag = bx.intcast(relative_discr, cast_to, false);
+                    let is_niche = if tag_range.no_unsigned_wraparound(tag_size) == Ok(true) {
+                        if niche_start == tag_range.start {
+                            let niche_end_const = bx.cx().const_uint_big(tag_llty, niche_end);
+                            bx.icmp(IntPredicate::IntULE, tag, niche_end_const)
+                        } else {
+                            assert_eq!(niche_end, tag_range.end);
+                            bx.icmp(IntPredicate::IntUGE, tag, niche_start_const)
+                        }
+                    } else if tag_range.no_signed_wraparound(tag_size) == Ok(true) {
+                        if niche_start == tag_range.start {
+                            let niche_end_const = bx.cx().const_uint_big(tag_llty, niche_end);
+                            bx.icmp(IntPredicate::IntSLE, tag, niche_end_const)
+                        } else {
+                            assert_eq!(niche_end, tag_range.end);
+                            bx.icmp(IntPredicate::IntSGE, tag, niche_start_const)
+                        }
+                    } else {
+                        bx.icmp(
+                            IntPredicate::IntULE,
+                            relative_discr,
+                            bx.cx().const_uint(tag_llty, relative_max as u64),
+                        )
+                    };
 
                     (is_niche, cast_tag, niche_variants.start().as_u32() as u128)
                 };
@@ -550,11 +614,10 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
                     bx.add(tagged_discr, bx.cx().const_uint_big(cast_to, delta))
                 };
 
-                let discr = bx.select(
-                    is_niche,
-                    tagged_discr,
-                    bx.cx().const_uint(cast_to, untagged_variant.as_u32() as u64),
-                );
+                let untagged_variant_const =
+                    bx.cx().const_uint(cast_to, u64::from(untagged_variant.as_u32()));
+
+                let discr = bx.select(is_niche, tagged_discr, untagged_variant_const);
 
                 // In principle we could insert assumes on the possible range of `discr`, but
                 // currently in LLVM this isn't worth it because the original `tag` will
@@ -873,9 +936,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         match self.locals[place_ref.local] {
             LocalRef::Operand(mut o) => {
-                // Moves out of scalar and scalar pair fields are trivial.
-                for elem in place_ref.projection.iter() {
-                    match elem {
+                // We only need to handle the projections that
+                // `LocalAnalyzer::process_place` let make it here.
+                for elem in place_ref.projection {
+                    match *elem {
                         mir::ProjectionElem::Field(f, _) => {
                             assert!(
                                 !o.layout.ty.is_any_ptr(),
@@ -884,17 +948,18 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             );
                             o = o.extract_field(self, bx, f.index());
                         }
-                        mir::ProjectionElem::Index(_)
-                        | mir::ProjectionElem::ConstantIndex { .. } => {
-                            // ZSTs don't require any actual memory access.
-                            // FIXME(eddyb) deduplicate this with the identical
-                            // checks in `codegen_consume` and `extract_field`.
-                            let elem = o.layout.field(bx.cx(), 0);
-                            if elem.is_zst() {
-                                o = OperandRef::zero_sized(elem);
-                            } else {
-                                return None;
-                            }
+                        mir::PlaceElem::Downcast(_, vidx) => {
+                            debug_assert_eq!(
+                                o.layout.variants,
+                                abi::Variants::Single { index: vidx },
+                            );
+                            let layout = o.layout.for_variant(bx.cx(), vidx);
+                            o = OperandRef { val: o.val, layout }
+                        }
+                        mir::PlaceElem::Subtype(subtype_ty) => {
+                            let subtype_ty = self.monomorphize(subtype_ty);
+                            let layout = self.cx.layout_of(subtype_ty);
+                            o = OperandRef { val: o.val, layout }
                         }
                         _ => return None,
                     }

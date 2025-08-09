@@ -67,8 +67,10 @@ pub enum AllocKind {
     LiveData,
     /// A function allocation (that fn ptrs point to).
     Function,
-    /// A (symbolic) vtable allocation.
+    /// A vtable allocation.
     VTable,
+    /// A TypeId allocation.
+    TypeId,
     /// A dead allocation.
     Dead,
 }
@@ -935,8 +937,12 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // (both global from `alloc_map` and local from `extra_fn_ptr_map`)
         if let Some(fn_val) = self.get_fn_alloc(id) {
             let align = match fn_val {
-                FnVal::Instance(instance) => {
-                    self.tcx.codegen_instance_attrs(instance.def).alignment.unwrap_or(Align::ONE)
+                FnVal::Instance(_instance) => {
+                    // FIXME: Until we have a clear design for the effects of align(N) functions
+                    // on the address of function pointers, we don't consider the align(N)
+                    // attribute on functions in the interpreter.
+                    // See <https://github.com/rust-lang/rust/issues/144661> for more context.
+                    Align::ONE
                 }
                 // Machine-specific extra functions currently do not support alignment restrictions.
                 FnVal::Other(_) => Align::ONE,
@@ -950,11 +956,10 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             let (size, align) = global_alloc.size_and_align(*self.tcx, self.typing_env);
             let mutbl = global_alloc.mutability(*self.tcx, self.typing_env);
             let kind = match global_alloc {
-                GlobalAlloc::TypeId { .. }
-                | GlobalAlloc::Static { .. }
-                | GlobalAlloc::Memory { .. } => AllocKind::LiveData,
+                GlobalAlloc::Static { .. } | GlobalAlloc::Memory { .. } => AllocKind::LiveData,
                 GlobalAlloc::Function { .. } => bug!("We already checked function pointers above"),
                 GlobalAlloc::VTable { .. } => AllocKind::VTable,
+                GlobalAlloc::TypeId { .. } => AllocKind::TypeId,
             };
             return AllocInfo::new(size, align, kind, mutbl);
         }
@@ -999,7 +1004,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         ptr: Pointer<Option<M::Provenance>>,
     ) -> InterpResult<'tcx, (Ty<'tcx>, u64)> {
         let (alloc_id, offset, _meta) = self.ptr_get_alloc_id(ptr, 0)?;
-        let GlobalAlloc::TypeId { ty } = self.tcx.global_alloc(alloc_id) else {
+        let Some(GlobalAlloc::TypeId { ty }) = self.tcx.try_get_global_alloc(alloc_id) else {
             throw_ub_format!("invalid `TypeId` value: not all bytes carry type id metadata")
         };
         interp_ok((ty, offset.bytes()))
@@ -1619,6 +1624,13 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 match self.ptr_try_get_alloc_id(ptr, 0) {
                     Ok((alloc_id, offset, _)) => {
                         let info = self.get_alloc_info(alloc_id);
+                        if matches!(info.kind, AllocKind::TypeId) {
+                            // We *could* actually precisely answer this question since here,
+                            // the offset *is* the integer value. But the entire point of making
+                            // this a pointer is not to leak the integer value, so we say everything
+                            // might be null.
+                            return interp_ok(true);
+                        }
                         // If the pointer is in-bounds (including "at the end"), it is definitely not null.
                         if offset <= info.size {
                             return interp_ok(false);

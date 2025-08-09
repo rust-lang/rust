@@ -403,12 +403,6 @@ pub enum BoundTyKind {
     Param(DefId),
 }
 
-impl From<BoundVar> for BoundTy {
-    fn from(var: BoundVar) -> Self {
-        BoundTy { var, kind: BoundTyKind::Anon }
-    }
-}
-
 /// Constructors for `Ty`
 impl<'tcx> Ty<'tcx> {
     /// Avoid using this in favour of more specific `new_*` methods, where possible.
@@ -485,7 +479,15 @@ impl<'tcx> Ty<'tcx> {
         index: ty::DebruijnIndex,
         bound_ty: ty::BoundTy,
     ) -> Ty<'tcx> {
-        Ty::new(tcx, Bound(index, bound_ty))
+        // Use a pre-interned one when possible.
+        if let ty::BoundTy { var, kind: ty::BoundTyKind::Anon } = bound_ty
+            && let Some(inner) = tcx.types.anon_bound_tys.get(index.as_usize())
+            && let Some(ty) = inner.get(var.as_usize()).copied()
+        {
+            ty
+        } else {
+            Ty::new(tcx, Bound(index, bound_ty))
+        }
     }
 
     #[inline]
@@ -1454,7 +1456,7 @@ impl<'tcx> Ty<'tcx> {
         }
     }
 
-    /// Returns the type and mutability of `*ty`.
+    /// Returns the type of `*ty`.
     ///
     /// The parameter `explicit` indicates if this is an *explicit* dereference.
     /// Some types -- notably raw ptrs -- can only be dereferenced explicitly.
@@ -2032,7 +2034,7 @@ mod size_asserts {
 
     use super::*;
     // tidy-alphabetical-start
-    static_assert_size!(ty::RegionKind<'_>, 20);
-    static_assert_size!(ty::TyKind<'_>, 24);
+    static_assert_size!(TyKind<'_>, 24);
+    static_assert_size!(ty::WithCachedTypeInfo<TyKind<'_>>, 48);
     // tidy-alphabetical-end
 }

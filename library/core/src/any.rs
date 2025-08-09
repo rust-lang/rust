@@ -725,7 +725,7 @@ unsafe impl Send for TypeId {}
 unsafe impl Sync for TypeId {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_type_id", issue = "77125")]
+#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
 impl const PartialEq for TypeId {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
@@ -773,7 +773,7 @@ impl TypeId {
     /// ```
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_type_id", issue = "77125")]
+    #[rustc_const_stable(feature = "const_type_id", since = "CURRENT_RUSTC_VERSION")]
     pub const fn of<T: ?Sized + 'static>() -> TypeId {
         const { intrinsics::type_id::<T>() }
     }
@@ -783,7 +783,7 @@ impl TypeId {
 
         // This is a provenance-stripping memcpy.
         for (i, chunk) in self.data.iter().copied().enumerate() {
-            let chunk = chunk.expose_provenance().to_ne_bytes();
+            let chunk = chunk.addr().to_ne_bytes();
             let start = i * chunk.len();
             bytes[start..(start + chunk.len())].copy_from_slice(&chunk);
         }

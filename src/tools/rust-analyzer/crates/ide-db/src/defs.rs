@@ -610,18 +610,16 @@ impl<'db> NameClass<'db> {
 
             let local = sema.to_def(&ident_pat)?;
             let pat_parent = ident_pat.syntax().parent();
-            if let Some(record_pat_field) = pat_parent.and_then(ast::RecordPatField::cast) {
-                if record_pat_field.name_ref().is_none() {
-                    if let Some((field, _, adt_subst)) =
-                        sema.resolve_record_pat_field_with_subst(&record_pat_field)
-                    {
-                        return Some(NameClass::PatFieldShorthand {
-                            local_def: local,
-                            field_ref: field,
-                            adt_subst,
-                        });
-                    }
-                }
+            if let Some(record_pat_field) = pat_parent.and_then(ast::RecordPatField::cast)
+                && record_pat_field.name_ref().is_none()
+                && let Some((field, _, adt_subst)) =
+                    sema.resolve_record_pat_field_with_subst(&record_pat_field)
+            {
+                return Some(NameClass::PatFieldShorthand {
+                    local_def: local,
+                    field_ref: field,
+                    adt_subst,
+                });
             }
             Some(NameClass::Definition(Definition::Local(local)))
         }
@@ -755,30 +753,27 @@ impl<'db> NameRefClass<'db> {
 
         let parent = name_ref.syntax().parent()?;
 
-        if let Some(record_field) = ast::RecordExprField::for_field_name(name_ref) {
-            if let Some((field, local, _, adt_subst)) =
+        if let Some(record_field) = ast::RecordExprField::for_field_name(name_ref)
+            && let Some((field, local, _, adt_subst)) =
                 sema.resolve_record_field_with_substitution(&record_field)
-            {
-                let res = match local {
-                    None => NameRefClass::Definition(Definition::Field(field), Some(adt_subst)),
-                    Some(local) => NameRefClass::FieldShorthand {
-                        field_ref: field,
-                        local_ref: local,
-                        adt_subst,
-                    },
-                };
-                return Some(res);
-            }
+        {
+            let res = match local {
+                None => NameRefClass::Definition(Definition::Field(field), Some(adt_subst)),
+                Some(local) => {
+                    NameRefClass::FieldShorthand { field_ref: field, local_ref: local, adt_subst }
+                }
+            };
+            return Some(res);
         }
 
         if let Some(path) = ast::PathSegment::cast(parent.clone()).map(|it| it.parent_path()) {
-            if path.parent_path().is_none() {
-                if let Some(macro_call) = path.syntax().parent().and_then(ast::MacroCall::cast) {
-                    // Only use this to resolve to macro calls for last segments as qualifiers resolve
-                    // to modules below.
-                    if let Some(macro_def) = sema.resolve_macro_call(&macro_call) {
-                        return Some(NameRefClass::Definition(Definition::Macro(macro_def), None));
-                    }
+            if path.parent_path().is_none()
+                && let Some(macro_call) = path.syntax().parent().and_then(ast::MacroCall::cast)
+            {
+                // Only use this to resolve to macro calls for last segments as qualifiers resolve
+                // to modules below.
+                if let Some(macro_def) = sema.resolve_macro_call(&macro_call) {
+                    return Some(NameRefClass::Definition(Definition::Macro(macro_def), None));
                 }
             }
             return sema
@@ -820,8 +815,8 @@ impl<'db> NameRefClass<'db> {
                     //        ^^^^^
                     let containing_path = name_ref.syntax().ancestors().find_map(ast::Path::cast)?;
                     let resolved = sema.resolve_path(&containing_path)?;
-                    if let PathResolution::Def(ModuleDef::Trait(tr)) = resolved {
-                        if let Some(ty) = tr
+                    if let PathResolution::Def(ModuleDef::Trait(tr)) = resolved
+                        && let Some(ty) = tr
                             .items_with_supertraits(sema.db)
                             .iter()
                             .filter_map(|&assoc| match assoc {
@@ -833,7 +828,6 @@ impl<'db> NameRefClass<'db> {
                             // No substitution, this can only occur in type position.
                             return Some(NameRefClass::Definition(Definition::TypeAlias(ty), None));
                         }
-                    }
                     None
                 },
                 ast::UseBoundGenericArgs(_) => {

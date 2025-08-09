@@ -1,4 +1,4 @@
-error[E0599]: no method named `unknown` found for enum `Result` in the current scope
+error[E0599]: no method named `unknown` found for enum `Result<T, E>` in the current scope
   --> $DIR/untrimmed-path-type.rs:5:11
    |
 LL |    meow().unknown();

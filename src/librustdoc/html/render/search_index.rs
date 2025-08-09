@@ -100,9 +100,22 @@ pub(crate) fn build_index(
     let crate_doc =
         short_markdown_summary(&krate.module.doc_value(), &krate.module.link_names(cache));
 
+    #[derive(Eq, Ord, PartialEq, PartialOrd)]
+    struct SerSymbolAsStr(Symbol);
+
+    impl Serialize for SerSymbolAsStr {
+        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+        where
+            S: Serializer,
+        {
+            self.0.as_str().serialize(serializer)
+        }
+    }
+
+    type AliasMap = BTreeMap<SerSymbolAsStr, Vec<usize>>;
     // Aliases added through `#[doc(alias = "...")]`. Since a few items can have the same alias,
     // we need the alias element to have an array of items.
-    let mut aliases: BTreeMap<String, Vec<usize>> = BTreeMap::new();
+    let mut aliases: AliasMap = BTreeMap::new();
 
     // Sort search index items. This improves the compressibility of the search index.
     cache.search_index.sort_unstable_by(|k1, k2| {
@@ -116,7 +129,7 @@ pub(crate) fn build_index(
     // Set up alias indexes.
     for (i, item) in cache.search_index.iter().enumerate() {
         for alias in &item.aliases[..] {
-            aliases.entry(alias.as_str().to_lowercase()).or_default().push(i);
+            aliases.entry(SerSymbolAsStr(*alias)).or_default().push(i);
         }
     }
 
@@ -474,7 +487,7 @@ pub(crate) fn build_index(
         // The String is alias name and the vec is the list of the elements with this alias.
         //
         // To be noted: the `usize` elements are indexes to `items`.
-        aliases: &'a BTreeMap<String, Vec<usize>>,
+        aliases: &'a AliasMap,
         // Used when a type has more than one impl with an associated item with the same name.
         associated_item_disambiguators: &'a Vec<(usize, String)>,
         // A list of shard lengths encoded as vlqhex. See the comment in write_vlqhex_to_string

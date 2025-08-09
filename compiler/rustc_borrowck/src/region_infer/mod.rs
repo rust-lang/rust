@@ -417,7 +417,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// minimum values.
     ///
     /// For example:
-    /// ```
+    /// ```ignore (illustrative)
     /// fn foo<'a, 'b>( /* ... */ ) where 'a: 'b { /* ... */ }
     /// ```
     /// would initialize two variables like so:
@@ -822,10 +822,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 continue;
             }
 
-            if let Some(propagated_outlives_requirements) = &mut propagated_outlives_requirements {
-                if self.try_promote_type_test(infcx, type_test, propagated_outlives_requirements) {
-                    continue;
-                }
+            if let Some(propagated_outlives_requirements) = &mut propagated_outlives_requirements
+                && self.try_promote_type_test(infcx, type_test, propagated_outlives_requirements)
+            {
+                continue;
             }
 
             // Type-test failed. Report the error.
@@ -1479,40 +1479,36 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         shorter_fr: RegionVid,
         propagated_outlives_requirements: &mut Option<&mut Vec<ClosureOutlivesRequirement<'tcx>>>,
     ) -> RegionRelationCheckResult {
-        if let Some(propagated_outlives_requirements) = propagated_outlives_requirements {
+        if let Some(propagated_outlives_requirements) = propagated_outlives_requirements
             // Shrink `longer_fr` until we find a non-local region (if we do).
             // We'll call it `fr-` -- it's ever so slightly smaller than
             // `longer_fr`.
-            if let Some(fr_minus) = self.universal_region_relations.non_local_lower_bound(longer_fr)
-            {
-                debug!("try_propagate_universal_region_error: fr_minus={:?}", fr_minus);
+            && let Some(fr_minus) = self.universal_region_relations.non_local_lower_bound(longer_fr)
+        {
+            debug!("try_propagate_universal_region_error: fr_minus={:?}", fr_minus);
 
-                let blame_span_category = self.find_outlives_blame_span(
-                    longer_fr,
-                    NllRegionVariableOrigin::FreeRegion,
-                    shorter_fr,
-                );
+            let blame_span_category = self.find_outlives_blame_span(
+                longer_fr,
+                NllRegionVariableOrigin::FreeRegion,
+                shorter_fr,
+            );
 
-                // Grow `shorter_fr` until we find some non-local regions. (We
-                // always will.)  We'll call them `shorter_fr+` -- they're ever
-                // so slightly larger than `shorter_fr`.
-                let shorter_fr_plus =
-                    self.universal_region_relations.non_local_upper_bounds(shorter_fr);
-                debug!(
-                    "try_propagate_universal_region_error: shorter_fr_plus={:?}",
-                    shorter_fr_plus
-                );
-                for fr in shorter_fr_plus {
-                    // Push the constraint `fr-: shorter_fr+`
-                    propagated_outlives_requirements.push(ClosureOutlivesRequirement {
-                        subject: ClosureOutlivesSubject::Region(fr_minus),
-                        outlived_free_region: fr,
-                        blame_span: blame_span_category.1.span,
-                        category: blame_span_category.0,
-                    });
-                }
-                return RegionRelationCheckResult::Propagated;
+            // Grow `shorter_fr` until we find some non-local regions. (We
+            // always will.)  We'll call them `shorter_fr+` -- they're ever
+            // so slightly larger than `shorter_fr`.
+            let shorter_fr_plus =
+                self.universal_region_relations.non_local_upper_bounds(shorter_fr);
+            debug!("try_propagate_universal_region_error: shorter_fr_plus={:?}", shorter_fr_plus);
+            for fr in shorter_fr_plus {
+                // Push the constraint `fr-: shorter_fr+`
+                propagated_outlives_requirements.push(ClosureOutlivesRequirement {
+                    subject: ClosureOutlivesSubject::Region(fr_minus),
+                    outlived_free_region: fr,
+                    blame_span: blame_span_category.1.span,
+                    category: blame_span_category.0,
+                });
             }
+            return RegionRelationCheckResult::Propagated;
         }
 
         RegionRelationCheckResult::Error
@@ -2085,11 +2081,11 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         let locations = self.scc_values.locations_outlived_by(scc);
         for location in locations {
             let bb = &body[location.block];
-            if let Some(terminator) = &bb.terminator {
+            if let Some(terminator) = &bb.terminator
                 // terminator of a loop should be TerminatorKind::FalseUnwind
-                if let TerminatorKind::FalseUnwind { .. } = terminator.kind {
-                    return Some(location);
-                }
+                && let TerminatorKind::FalseUnwind { .. } = terminator.kind
+            {
+                return Some(location);
             }
         }
         None

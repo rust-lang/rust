@@ -16,7 +16,7 @@ pub struct GenmcCtx {}
 pub struct GenmcConfig {}
 
 impl GenmcCtx {
-    pub fn new(_miri_config: &MiriConfig, _genmc_config: &GenmcConfig) -> Self {
+    pub fn new(_miri_config: &MiriConfig) -> Self {
         unreachable!()
     }
 
@@ -227,10 +227,15 @@ impl VisitProvenance for GenmcCtx {
 }
 
 impl GenmcConfig {
-    pub fn parse_arg(_genmc_config: &mut Option<GenmcConfig>, trimmed_arg: &str) {
-        unimplemented!(
-            "GenMC feature im Miri is disabled, cannot handle argument: \"-Zmiri-genmc{trimmed_arg}\""
-        );
+    pub fn parse_arg(
+        _genmc_config: &mut Option<GenmcConfig>,
+        trimmed_arg: &str,
+    ) -> Result<(), String> {
+        if cfg!(feature = "genmc") {
+            Err(format!("GenMC is disabled in this build of Miri"))
+        } else {
+            Err(format!("GenMC is not supported on this target"))
+        }
     }
 
     pub fn should_print_graph(&self, _rep: usize) -> bool {

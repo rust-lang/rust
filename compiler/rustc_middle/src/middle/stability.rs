@@ -4,14 +4,11 @@
 use std::num::NonZero;
 
 use rustc_ast::NodeId;
-use rustc_attr_data_structures::{
-    self as attrs, ConstStability, DefaultBodyStability, DeprecatedSince, Deprecation, Stability,
-};
-use rustc_data_structures::unord::UnordMap;
 use rustc_errors::{Applicability, Diag, EmissionGuarantee};
 use rustc_feature::GateIssue;
-use rustc_hir::def_id::{DefId, LocalDefId, LocalDefIdMap};
-use rustc_hir::{self as hir, HirId};
+use rustc_hir::attrs::{DeprecatedSince, Deprecation};
+use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::{self as hir, ConstStability, DefaultBodyStability, HirId, Stability};
 use rustc_macros::{Decodable, Encodable, HashStable, Subdiagnostic};
 use rustc_session::Session;
 use rustc_session::lint::builtin::{DEPRECATED, DEPRECATED_IN_FUTURE, SOFT_UNSTABLE};
@@ -62,48 +59,6 @@ impl DeprecationEntry {
             (Some(o1), Some(o2)) => o1 == o2,
             _ => false,
         }
-    }
-}
-
-/// A stability index, giving the stability level for items and methods.
-#[derive(HashStable, Debug)]
-pub struct Index {
-    /// This is mostly a cache, except the stabilities of local items
-    /// are filled by the annotator.
-    pub stab_map: LocalDefIdMap<Stability>,
-    pub const_stab_map: LocalDefIdMap<ConstStability>,
-    pub default_body_stab_map: LocalDefIdMap<DefaultBodyStability>,
-    pub depr_map: LocalDefIdMap<DeprecationEntry>,
-    /// Mapping from feature name to feature name based on the `implied_by` field of `#[unstable]`
-    /// attributes. If a `#[unstable(feature = "implier", implied_by = "impliee")]` attribute
-    /// exists, then this map will have a `impliee -> implier` entry.
-    ///
-    /// This mapping is necessary unless both the `#[stable]` and `#[unstable]` attributes should
-    /// specify their implications (both `implies` and `implied_by`). If only one of the two
-    /// attributes do (as in the current implementation, `implied_by` in `#[unstable]`), then this
-    /// mapping is necessary for diagnostics. When a "unnecessary feature attribute" error is
-    /// reported, only the `#[stable]` attribute information is available, so the map is necessary
-    /// to know that the feature implies another feature. If it were reversed, and the `#[stable]`
-    /// attribute had an `implies` meta item, then a map would be necessary when avoiding a "use of
-    /// unstable feature" error for a feature that was implied.
-    pub implications: UnordMap<Symbol, Symbol>,
-}
-
-impl Index {
-    pub fn local_stability(&self, def_id: LocalDefId) -> Option<Stability> {
-        self.stab_map.get(&def_id).copied()
-    }
-
-    pub fn local_const_stability(&self, def_id: LocalDefId) -> Option<ConstStability> {
-        self.const_stab_map.get(&def_id).copied()
-    }
-
-    pub fn local_default_body_stability(&self, def_id: LocalDefId) -> Option<DefaultBodyStability> {
-        self.default_body_stab_map.get(&def_id).copied()
-    }
-
-    pub fn local_deprecation_entry(&self, def_id: LocalDefId) -> Option<DeprecationEntry> {
-        self.depr_map.get(&def_id).cloned()
     }
 }
 
@@ -411,7 +366,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
         match stability {
             Some(Stability {
-                level: attrs::StabilityLevel::Unstable { reason, issue, is_soft, implied_by, .. },
+                level: hir::StabilityLevel::Unstable { reason, issue, is_soft, implied_by, .. },
                 feature,
                 ..
             }) => {
@@ -494,7 +449,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
         match stability {
             Some(DefaultBodyStability {
-                level: attrs::StabilityLevel::Unstable { reason, issue, is_soft, .. },
+                level: hir::StabilityLevel::Unstable { reason, issue, is_soft, .. },
                 feature,
             }) => {
                 if span.allows_unstable(feature) {
@@ -643,7 +598,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
         match stability {
             Some(ConstStability {
-                level: attrs::StabilityLevel::Unstable { reason, issue, is_soft, implied_by, .. },
+                level: hir::StabilityLevel::Unstable { reason, issue, is_soft, implied_by, .. },
                 feature,
                 ..
             }) => {

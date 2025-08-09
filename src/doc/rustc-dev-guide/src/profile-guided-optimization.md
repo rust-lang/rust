@@ -1,7 +1,5 @@
 # Profile-guided optimization
 
-<!-- toc -->
-
 `rustc` supports doing profile-guided optimization (PGO).
 This chapter describes what PGO is and how the support for it is
 implemented in `rustc`.
@@ -132,7 +130,7 @@ There is also a [codegen test][codegen-test] that checks that some expected
 instrumentation artifacts show up in LLVM IR.
 
 [rmake-tests]: https://github.com/rust-lang/rust/tree/master/tests/run-make
-[codegen-test]: https://github.com/rust-lang/rust/blob/master/tests/codegen/pgo-instrumentation.rs
+[codegen-test]: https://github.com/rust-lang/rust/blob/master/tests/codegen-llvm/pgo-instrumentation.rs
 
 ## Additional information
 

@@ -1,10 +1,10 @@
-FROM ubuntu:25.04
+FROM ubuntu:25.10
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
         gcc libc6-dev qemu-user ca-certificates \
         wget xz-utils make file llvm
 
-ENV VERSION=2025.01.20
+ENV VERSION=2025.07.03
 
 RUN wget "https://github.com/riscv-collab/riscv-gnu-toolchain/releases/download/${VERSION}/riscv32-glibc-ubuntu-24.04-gcc-nightly-${VERSION}-nightly.tar.xz" \
     -O riscv-toolchain.tar.xz

@@ -1,0 +1,11 @@
+Function name: try_in_macro::main
+Raw bytes (19): 0x[01, 01, 00, 03, 01, 29, 01, 00, 0a, 01, 01, 05, 00, 1a, 01, 01, 01, 00, 02]
+Number of files: 1
+- file 0 => $DIR/try-in-macro.rs
+Number of expressions: 0
+Number of file 0 mappings: 3
+- Code(Counter(0)) at (prev + 41, 1) to (start + 0, 10)
+- Code(Counter(0)) at (prev + 1, 5) to (start + 0, 26)
+- Code(Counter(0)) at (prev + 1, 1) to (start + 0, 2)
+Highest counter ID seen: c0
+

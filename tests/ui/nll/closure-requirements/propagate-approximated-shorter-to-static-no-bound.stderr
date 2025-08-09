@@ -9,6 +9,11 @@ LL |     establish_relationships(&cell_a, &cell_b, |_outlives, x, y| {
                for<Region(BrAnon), Region(BrAnon), Region(BrAnon), Region(BrAnon), Region(BrAnon)> extern "rust-call" fn((&'^0 std::cell::Cell<&'?1 &'^1 u32>, &'^2 std::cell::Cell<&'^1 u32>, &'^3 std::cell::Cell<&'^4 u32>)),
                (),
            ]
+   = note: late-bound region is '?4
+   = note: late-bound region is '?5
+   = note: late-bound region is '?6
+   = note: late-bound region is '?7
+   = note: late-bound region is '?8
    = note: late-bound region is '?2
    = note: late-bound region is '?3
    = note: number of external vids: 4

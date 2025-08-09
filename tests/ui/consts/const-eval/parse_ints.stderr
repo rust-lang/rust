@@ -1,5 +1,5 @@
 error[E0080]: evaluation panicked: from_ascii_radix: radix must lie in the range `[2, 36]`
-  --> $DIR/parse_ints.rs:5:24
+  --> $DIR/parse_ints.rs:7:24
    |
 LL | const _TOO_LOW: () = { u64::from_str_radix("12345ABCD", 1); };
    |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `_TOO_LOW` failed inside this call
@@ -11,7 +11,7 @@ note: inside `core::num::<impl u64>::from_ascii_radix`
    = note: this error originates in the macro `from_str_int_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0080]: evaluation panicked: from_ascii_radix: radix must lie in the range `[2, 36]`
-  --> $DIR/parse_ints.rs:6:25
+  --> $DIR/parse_ints.rs:8:25
    |
 LL | const _TOO_HIGH: () = { u64::from_str_radix("12345ABCD", 37); };
    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `_TOO_HIGH` failed inside this call

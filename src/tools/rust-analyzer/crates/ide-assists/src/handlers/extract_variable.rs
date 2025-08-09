@@ -7,7 +7,9 @@ use syntax::{
     NodeOrToken, SyntaxKind, SyntaxNode, T,
     algo::ancestors_at_offset,
     ast::{
-        self, AstNode, edit::IndentLevel, edit_in_place::Indent, make,
+        self, AstNode,
+        edit::{AstNodeEdit, IndentLevel},
+        make,
         syntax_factory::SyntaxFactory,
     },
     syntax_editor::Position,
@@ -253,12 +255,11 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
                             // `expr_replace` is a descendant of `to_wrap`, so we just replace it with `name_expr`.
                             editor.replace(expr_replace, name_expr.syntax());
                             make.block_expr([new_stmt], Some(to_wrap.clone()))
-                        };
+                        }
+                        // fixup indentation of block
+                        .indent_with_mapping(indent_to, &make);
 
                         editor.replace(to_wrap.syntax(), block.syntax());
-
-                        // fixup indentation of block
-                        block.indent(indent_to);
                     }
                 }
 
@@ -403,11 +404,10 @@ impl Anchor {
                 }
                 if let Some(expr) =
                     node.parent().and_then(ast::StmtList::cast).and_then(|it| it.tail_expr())
+                    && expr.syntax() == &node
                 {
-                    if expr.syntax() == &node {
-                        cov_mark::hit!(test_extract_var_last_expr);
-                        return Some(Anchor::Before(node));
-                    }
+                    cov_mark::hit!(test_extract_var_last_expr);
+                    return Some(Anchor::Before(node));
                 }
 
                 if let Some(parent) = node.parent() {
@@ -426,10 +426,10 @@ impl Anchor {
                 }
 
                 if let Some(stmt) = ast::Stmt::cast(node.clone()) {
-                    if let ast::Stmt::ExprStmt(stmt) = stmt {
-                        if stmt.expr().as_ref() == Some(to_extract) {
-                            return Some(Anchor::Replace(stmt));
-                        }
+                    if let ast::Stmt::ExprStmt(stmt) = stmt
+                        && stmt.expr().as_ref() == Some(to_extract)
+                    {
+                        return Some(Anchor::Replace(stmt));
                     }
                     return Some(Anchor::Before(node));
                 }

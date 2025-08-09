@@ -64,7 +64,9 @@ fn main() {
             .normalize(r#"/rustc[^/_-]*/"#, "/rustc/")
             .normalize("libpanic_abort", "libpanic_unwind")
             .normalize(
-                regex::escape(run_make_support::build_root().to_str().unwrap()),
+                regex::escape(
+                    run_make_support::build_root().canonicalize().unwrap().to_str().unwrap(),
+                ),
                 "/build-root",
             )
             .normalize(r#""[^"]*\/symbols.o""#, "\"/symbols.o\"")

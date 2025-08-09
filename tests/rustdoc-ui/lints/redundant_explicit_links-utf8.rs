@@ -1,18 +1,24 @@
 //@ check-pass
 
-/// [`…foo`] [`…bar`] [`Err`]
+/// [`…foo`] //~ WARN: unresolved link
+/// [`…bar`] //~ WARN: unresolved link
+/// [`Err`]
 pub struct Broken {}
 
-/// [`…`] [`…`] [`Err`]
+/// [`…`] //~ WARN: unresolved link
+/// [`…`] //~ WARN: unresolved link
+/// [`Err`]
 pub struct Broken2 {}
 
-/// [`…`][…] [`…`][…] [`Err`]
+/// [`…`][…] //~ WARN: unresolved link
+/// [`…`][…] //~ WARN: unresolved link
+/// [`Err`]
 pub struct Broken3 {}
 
 /// […………………………][Broken3]
 pub struct Broken4 {}
 
-/// [Broken3][…………………………]
+/// [Broken3][…………………………] //~ WARN: unresolved link
 pub struct Broken5 {}
 
 pub struct Err;

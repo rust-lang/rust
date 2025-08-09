@@ -75,7 +75,7 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceKind<'tcx>) -> Body<
             build_call_shim(tcx, instance, Some(adjustment), CallKind::Direct(def_id))
         }
         ty::InstanceKind::FnPtrShim(def_id, ty) => {
-            let trait_ = tcx.trait_of_item(def_id).unwrap();
+            let trait_ = tcx.trait_of_assoc(def_id).unwrap();
             // Supports `Fn` or `async Fn` traits.
             let adjustment = match tcx
                 .fn_trait_kind_from_def_id(trait_)
@@ -434,8 +434,8 @@ pub(super) struct DropShimElaborator<'a, 'tcx> {
 }
 
 impl fmt::Debug for DropShimElaborator<'_, '_> {
-    fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
-        Ok(())
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
+        f.debug_struct("DropShimElaborator").finish_non_exhaustive()
     }
 }
 

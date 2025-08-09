@@ -39,9 +39,10 @@ use rustc_ast::tokenstream::{TokenStream, TokenTree};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet, IndexEntry};
 use rustc_errors::codes::*;
 use rustc_errors::{FatalError, struct_span_code_err};
+use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::{DefId, DefIdMap, DefIdSet, LOCAL_CRATE, LocalDefId};
-use rustc_hir::{LangItem, PredicateOrigin};
+use rustc_hir::{LangItem, PredicateOrigin, find_attr};
 use rustc_hir_analysis::hir_ty_lowering::FeedConstTy;
 use rustc_hir_analysis::{lower_const_arg_for_rustdoc, lower_ty};
 use rustc_middle::metadata::Reexport;
@@ -987,28 +988,17 @@ fn clean_proc_macro<'tcx>(
     kind: MacroKind,
     cx: &mut DocContext<'tcx>,
 ) -> ItemKind {
+    if kind != MacroKind::Derive {
+        return ProcMacroItem(ProcMacro { kind, helpers: vec![] });
+    }
     let attrs = cx.tcx.hir_attrs(item.hir_id());
-    if kind == MacroKind::Derive
-        && let Some(derive_name) =
-            hir_attr_lists(attrs, sym::proc_macro_derive).find_map(|mi| mi.ident())
-    {
-        *name = derive_name.name;
-    }
+    let Some((trait_name, helper_attrs)) = find_attr!(attrs, AttributeKind::ProcMacroDerive { trait_name, helper_attrs, ..} => (*trait_name, helper_attrs))
+    else {
+        return ProcMacroItem(ProcMacro { kind, helpers: vec![] });
+    };
+    *name = trait_name;
+    let helpers = helper_attrs.iter().copied().collect();
 
-    let mut helpers = Vec::new();
-    for mi in hir_attr_lists(attrs, sym::proc_macro_derive) {
-        if !mi.has_name(sym::attributes) {
-            continue;
-        }
-
-        if let Some(list) = mi.meta_item_list() {
-            for inner_mi in list {
-                if let Some(ident) = inner_mi.ident() {
-                    helpers.push(ident.name);
-                }
-            }
-        }
-    }
     ProcMacroItem(ProcMacro { kind, helpers })
 }
 
@@ -1021,17 +1011,16 @@ fn clean_fn_or_proc_macro<'tcx>(
     cx: &mut DocContext<'tcx>,
 ) -> ItemKind {
     let attrs = cx.tcx.hir_attrs(item.hir_id());
-    let macro_kind = attrs.iter().find_map(|a| {
-        if a.has_name(sym::proc_macro) {
-            Some(MacroKind::Bang)
-        } else if a.has_name(sym::proc_macro_derive) {
-            Some(MacroKind::Derive)
-        } else if a.has_name(sym::proc_macro_attribute) {
-            Some(MacroKind::Attr)
-        } else {
-            None
-        }
-    });
+    let macro_kind = if find_attr!(attrs, AttributeKind::ProcMacro(..)) {
+        Some(MacroKind::Bang)
+    } else if find_attr!(attrs, AttributeKind::ProcMacroDerive { .. }) {
+        Some(MacroKind::Derive)
+    } else if find_attr!(attrs, AttributeKind::ProcMacroAttribute(..)) {
+        Some(MacroKind::Attr)
+    } else {
+        None
+    };
+
     match macro_kind {
         Some(kind) => clean_proc_macro(item, name, kind, cx),
         None => {

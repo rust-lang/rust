@@ -320,10 +320,10 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
                         // for a coroutine).
                         let var_hir_id = captured_place.get_root_variable();
                         let node = self.ecx.tcx.hir_node(var_hir_id);
-                        if let hir::Node::Pat(pat) = node {
-                            if let hir::PatKind::Binding(_, _, ident, _) = pat.kind {
-                                name = Some(ident.name);
-                            }
+                        if let hir::Node::Pat(pat) = node
+                            && let hir::PatKind::Binding(_, _, ident, _) = pat.kind
+                        {
+                            name = Some(ident.name);
                         }
                     }
                 }
@@ -394,7 +394,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
         interp_ok(try_validation!(
             self.ecx.read_immediate(val),
             self.path,
-            Ub(InvalidUninitBytes(None)) =>
+            Ub(InvalidUninitBytes(_)) =>
                 Uninit { expected },
             // The `Unsup` cases can only occur during CTFE
             Unsup(ReadPointerAsInt(_)) =>

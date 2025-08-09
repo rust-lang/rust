@@ -8,7 +8,7 @@ use rustc_errors::{
 };
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
-use rustc_hir::{self as hir, HirId, LangItem, PolyTraitRef};
+use rustc_hir::{self as hir, HirId, PolyTraitRef};
 use rustc_middle::bug;
 use rustc_middle::ty::fast_reject::{TreatParams, simplify_type};
 use rustc_middle::ty::print::{PrintPolyTraitRefExt as _, PrintTraitRefExt as _};
@@ -29,59 +29,54 @@ use tracing::debug;
 use super::InherentAssocCandidate;
 use crate::errors::{
     self, AssocItemConstraintsNotAllowedHere, ManualImplementation, MissingTypeParams,
-    ParenthesizedFnTraitExpansion, PointeeSizedTraitObject, TraitObjectDeclaredWithNoTraits,
+    ParenthesizedFnTraitExpansion, TraitObjectDeclaredWithNoTraits,
 };
 use crate::fluent_generated as fluent;
 use crate::hir_ty_lowering::{AssocItemQSelf, HirTyLowerer};
 
 impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
-    /// Check for multiple relaxed default bounds and relaxed bounds of non-sizedness traits.
-    pub(crate) fn check_and_report_invalid_unbounds_on_param(
+    /// Check for duplicate relaxed bounds and relaxed bounds of non-default traits.
+    pub(crate) fn check_and_report_invalid_relaxed_bounds(
         &self,
-        unbounds: SmallVec<[&PolyTraitRef<'_>; 1]>,
+        relaxed_bounds: SmallVec<[&PolyTraitRef<'_>; 1]>,
     ) {
         let tcx = self.tcx();
 
-        let sized_did = tcx.require_lang_item(LangItem::Sized, DUMMY_SP);
+        let mut grouped_bounds = FxIndexMap::<_, Vec<_>>::default();
 
-        let mut unique_bounds = FxIndexSet::default();
-        let mut seen_repeat = false;
-        for unbound in &unbounds {
-            if let Res::Def(DefKind::Trait, unbound_def_id) = unbound.trait_ref.path.res {
-                seen_repeat |= !unique_bounds.insert(unbound_def_id);
+        for bound in &relaxed_bounds {
+            if let Res::Def(DefKind::Trait, trait_def_id) = bound.trait_ref.path.res {
+                grouped_bounds.entry(trait_def_id).or_default().push(bound.span);
             }
         }
 
-        if unbounds.len() > 1 {
-            let err = errors::MultipleRelaxedDefaultBounds {
-                spans: unbounds.iter().map(|ptr| ptr.span).collect(),
-            };
-
-            if seen_repeat {
-                tcx.dcx().emit_err(err);
-            } else if !tcx.features().more_maybe_bounds() {
-                tcx.sess.create_feature_err(err, sym::more_maybe_bounds).emit();
-            };
+        for (trait_def_id, spans) in grouped_bounds {
+            if spans.len() > 1 {
+                let name = tcx.item_name(trait_def_id);
+                self.dcx()
+                    .struct_span_err(spans, format!("duplicate relaxed `{name}` bounds"))
+                    .with_code(E0203)
+                    .emit();
+            }
         }
 
-        for unbound in unbounds {
-            if let Res::Def(DefKind::Trait, did) = unbound.trait_ref.path.res
-                && ((did == sized_did) || tcx.is_default_trait(did))
+        let sized_def_id = tcx.require_lang_item(hir::LangItem::Sized, DUMMY_SP);
+
+        for bound in relaxed_bounds {
+            if let Res::Def(DefKind::Trait, def_id) = bound.trait_ref.path.res
+                && (def_id == sized_def_id || tcx.is_default_trait(def_id))
             {
                 continue;
             }
-
-            let unbound_traits = match tcx.sess.opts.unstable_opts.experimental_default_bounds {
-                true => "`?Sized` and `experimental_default_bounds`",
-                false => "`?Sized`",
-            };
             self.dcx().span_err(
-                unbound.span,
-                format!(
-                    "relaxing a default bound only does something for {}; all other traits are \
-                     not bound by default",
-                    unbound_traits
-                ),
+                bound.span,
+                if tcx.sess.opts.unstable_opts.experimental_default_bounds
+                    || tcx.features().more_maybe_bounds()
+                {
+                    "bound modifier `?` can only be applied to default traits like `Sized`"
+                } else {
+                    "bound modifier `?` can only be applied to `Sized`"
+                },
             );
         }
     }
@@ -760,7 +755,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let limit = if candidates.len() == 5 { 5 } else { 4 };
 
         for (index, &item) in candidates.iter().take(limit).enumerate() {
-            let impl_ = tcx.impl_of_method(item).unwrap();
+            let impl_ = tcx.impl_of_assoc(item).unwrap();
 
             let note_span = if item.is_local() {
                 Some(tcx.def_span(item))
@@ -893,8 +888,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 ty::PredicateKind::Clause(ty::ClauseKind::Projection(pred)) => {
                     // `<Foo as Iterator>::Item = String`.
                     let projection_term = pred.projection_term;
-                    let quiet_projection_term =
-                        projection_term.with_self_ty(tcx, Ty::new_var(tcx, ty::TyVid::ZERO));
+                    let quiet_projection_term = projection_term
+                        .with_replaced_self_ty(tcx, Ty::new_var(tcx, ty::TyVid::ZERO));
 
                     let term = pred.term;
                     let obligation = format!("{projection_term} = {term}");
@@ -1409,10 +1404,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             .map(|trait_ref| tcx.def_span(trait_ref.def_id()));
 
         self.dcx().emit_err(TraitObjectDeclaredWithNoTraits { span, trait_alias_span })
-    }
-
-    pub(super) fn report_pointee_sized_trait_object(&self, span: Span) -> ErrorGuaranteed {
-        self.dcx().emit_err(PointeeSizedTraitObject { span })
     }
 }
 

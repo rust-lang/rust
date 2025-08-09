@@ -1,5 +1,6 @@
 use clippy_config::Conf;
 use clippy_utils::diagnostics::{span_lint, span_lint_and_note, span_lint_and_then};
+use clippy_utils::higher::has_let_expr;
 use clippy_utils::source::{IntoSpan, SpanRangeExt, first_line_of_span, indent_of, reindent_multiline, snippet};
 use clippy_utils::ty::{InteriorMut, needs_ordered_drop};
 use clippy_utils::visitors::for_each_expr_without_closures;
@@ -11,7 +12,7 @@ use clippy_utils::{
 use core::iter;
 use core::ops::ControlFlow;
 use rustc_errors::Applicability;
-use rustc_hir::{BinOpKind, Block, Expr, ExprKind, HirId, HirIdSet, LetStmt, Node, Stmt, StmtKind, intravisit};
+use rustc_hir::{Block, Expr, ExprKind, HirId, HirIdSet, LetStmt, Node, Stmt, StmtKind, intravisit};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::impl_lint_pass;
@@ -189,24 +190,13 @@ impl<'tcx> LateLintPass<'tcx> for CopyAndPaste<'tcx> {
     }
 }
 
-/// Checks if the given expression is a let chain.
-fn contains_let(e: &Expr<'_>) -> bool {
-    match e.kind {
-        ExprKind::Let(..) => true,
-        ExprKind::Binary(op, lhs, rhs) if op.node == BinOpKind::And => {
-            matches!(lhs.kind, ExprKind::Let(..)) || contains_let(rhs)
-        },
-        _ => false,
-    }
-}
-
 fn lint_if_same_then_else(cx: &LateContext<'_>, conds: &[&Expr<'_>], blocks: &[&Block<'_>]) -> bool {
     let mut eq = SpanlessEq::new(cx);
     blocks
         .array_windows::<2>()
         .enumerate()
         .fold(true, |all_eq, (i, &[lhs, rhs])| {
-            if eq.eq_block(lhs, rhs) && !contains_let(conds[i]) && conds.get(i + 1).is_none_or(|e| !contains_let(e)) {
+            if eq.eq_block(lhs, rhs) && !has_let_expr(conds[i]) && conds.get(i + 1).is_none_or(|e| !has_let_expr(e)) {
                 span_lint_and_note(
                     cx,
                     IF_SAME_THEN_ELSE,
@@ -245,9 +235,9 @@ fn lint_branches_sharing_code<'tcx>(
         let cond_snippet = reindent_multiline(&snippet(cx, cond_span, "_"), false, None);
         let cond_indent = indent_of(cx, cond_span);
         let moved_snippet = reindent_multiline(&snippet(cx, span, "_"), true, None);
-        let suggestion = moved_snippet.to_string() + "\n" + &cond_snippet + "{";
+        let suggestion = moved_snippet + "\n" + &cond_snippet + "{";
         let suggestion = reindent_multiline(&suggestion, true, cond_indent);
-        (replace_span, suggestion.to_string())
+        (replace_span, suggestion)
     });
     let end_suggestion = res.end_span(last_block, sm).map(|span| {
         let moved_snipped = reindent_multiline(&snippet(cx, span, "_"), true, None);
@@ -263,7 +253,7 @@ fn lint_branches_sharing_code<'tcx>(
                     .then_some(range.start - 4..range.end)
             })
             .map_or(span, |range| range.with_ctxt(span.ctxt()));
-        (span, suggestion.to_string())
+        (span, suggestion.clone())
     });
 
     let (span, msg, end_span) = match (&start_suggestion, &end_suggestion) {

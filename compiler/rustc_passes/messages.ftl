@@ -14,7 +14,7 @@ passes_abi_of =
     fn_abi_of({$fn_name}) = {$fn_abi}
 
 passes_align_attr_application =
-    `#[align(...)]` should be applied to a function item
+    `#[rustc_align(...)]` should be applied to a function item
     .label = not a function item
 
 passes_align_on_fields =
@@ -22,7 +22,7 @@ passes_align_on_fields =
     .warn = {-passes_previously_accepted}
 
 passes_align_should_be_repr_align =
-    `#[align(...)]` is not supported on {$item} items
+    `#[rustc_align(...)]` is not supported on {$item} items
     .suggestion = use `#[repr(align(...))]` instead
 
 passes_allow_incoherent_impl =
@@ -560,7 +560,8 @@ passes_only_has_effect_on =
     `#[{$attr_name}]` only has an effect on {$target_name ->
         [function] functions
         [module] modules
-        [implementation_block] implementation blocks
+        [trait_implementation_block] trait implementation blocks
+        [inherent_implementation_block] inherent implementation blocks
         *[unspecified] (unspecified--this is a compiler bug)
     }
 
@@ -604,7 +605,7 @@ passes_repr_align_greater_than_target_max =
 
 passes_repr_align_should_be_align =
     `#[repr(align(...))]` is not supported on {$item} items
-    .help = use `#[align(...)]` instead
+    .help = use `#[rustc_align(...)]` instead
 
 passes_repr_conflicting =
     conflicting representation hints

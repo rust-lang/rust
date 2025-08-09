@@ -17,7 +17,7 @@ note: inside `main`
 LL |     partial_init();
    |     ^^^^^^^^^^^^^^
 
-error: Undefined Behavior: using uninitialized data, but this operation requires initialized memory
+error: Undefined Behavior: reading memory at ALLOC[0x2..0x3], but memory is uninitialized at [0x2..0x3], and this operation requires initialized memory
   --> tests/native-lib/fail/tracing/partial_init.rs:LL:CC
    |
 LL |         let _val = *slice_ptr.offset(2);
@@ -32,6 +32,11 @@ note: inside `main`
    |
 LL |     partial_init();
    |     ^^^^^^^^^^^^^^
+
+Uninitialized memory occurred at ALLOC[0x2..0x3], in this allocation:
+ALLOC (stack variable, size: 3, align: 1) {
+    ╾00[wildcard] (1 ptr byte)╼ ╾00[wildcard] (1 ptr byte)╼ __                                        │ ━━░
+}
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

@@ -417,10 +417,10 @@ pub fn check(path: &Path, bad: &mut bool) {
             return;
         }
         // Shell completions are automatically generated
-        if let Some(p) = file.parent() {
-            if p.ends_with(Path::new("src/etc/completions")) {
-                return;
-            }
+        if let Some(p) = file.parent()
+            && p.ends_with(Path::new("src/etc/completions"))
+        {
+            return;
         }
         let [
             mut skip_cr,
@@ -519,8 +519,11 @@ pub fn check(path: &Path, bad: &mut bool) {
                         .any(|directive| matches!(directive, Directive::Ignore(_)));
                 let has_alphabetical_directive = line.contains("tidy-alphabetical-start")
                     || line.contains("tidy-alphabetical-end");
-                let has_recognized_directive =
-                    has_recognized_ignore_directive || has_alphabetical_directive;
+                let has_other_tidy_ignore_directive =
+                    line.contains("ignore-tidy-target-specific-tests");
+                let has_recognized_directive = has_recognized_ignore_directive
+                    || has_alphabetical_directive
+                    || has_other_tidy_ignore_directive;
                 if contains_potential_directive && (!has_recognized_directive) {
                     err("Unrecognized tidy directive")
                 }
@@ -604,25 +607,25 @@ pub fn check(path: &Path, bad: &mut bool) {
                         backtick_count += comment_text.chars().filter(|ch| *ch == '`').count();
                     }
                     comment_block = Some((start_line, backtick_count));
-                } else if let Some((start_line, backtick_count)) = comment_block.take() {
-                    if backtick_count % 2 == 1 {
-                        let mut err = |msg: &str| {
-                            tidy_error!(bad, "{}:{start_line}: {msg}", file.display());
-                        };
-                        let block_len = (i + 1) - start_line;
-                        if block_len == 1 {
-                            suppressible_tidy_err!(
-                                err,
-                                skip_odd_backticks,
-                                "comment with odd number of backticks"
-                            );
-                        } else {
-                            suppressible_tidy_err!(
-                                err,
-                                skip_odd_backticks,
-                                "{block_len}-line comment block with odd number of backticks"
-                            );
-                        }
+                } else if let Some((start_line, backtick_count)) = comment_block.take()
+                    && backtick_count % 2 == 1
+                {
+                    let mut err = |msg: &str| {
+                        tidy_error!(bad, "{}:{start_line}: {msg}", file.display());
+                    };
+                    let block_len = (i + 1) - start_line;
+                    if block_len == 1 {
+                        suppressible_tidy_err!(
+                            err,
+                            skip_odd_backticks,
+                            "comment with odd number of backticks"
+                        );
+                    } else {
+                        suppressible_tidy_err!(
+                            err,
+                            skip_odd_backticks,
+                            "{block_len}-line comment block with odd number of backticks"
+                        );
                     }
                 }
             }

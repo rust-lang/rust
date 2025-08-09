@@ -101,21 +101,21 @@ pub(crate) fn convert_closure_to_fn(acc: &mut Assists, ctx: &AssistContext<'_>) 
     // but we need to locate `AstPtr`s inside the body.
     let mut wrap_body_in_block = true;
     if let ast::Expr::BlockExpr(block) = &body {
-        if let Some(async_token) = block.async_token() {
-            if !is_async {
-                is_async = true;
-                ret_ty = ret_ty.future_output(ctx.db())?;
-                let token_idx = async_token.index();
-                let whitespace_tokens_after_count = async_token
-                    .siblings_with_tokens(Direction::Next)
-                    .skip(1)
-                    .take_while(|token| token.kind() == SyntaxKind::WHITESPACE)
-                    .count();
-                body.syntax().splice_children(
-                    token_idx..token_idx + whitespace_tokens_after_count + 1,
-                    Vec::new(),
-                );
-            }
+        if let Some(async_token) = block.async_token()
+            && !is_async
+        {
+            is_async = true;
+            ret_ty = ret_ty.future_output(ctx.db())?;
+            let token_idx = async_token.index();
+            let whitespace_tokens_after_count = async_token
+                .siblings_with_tokens(Direction::Next)
+                .skip(1)
+                .take_while(|token| token.kind() == SyntaxKind::WHITESPACE)
+                .count();
+            body.syntax().splice_children(
+                token_idx..token_idx + whitespace_tokens_after_count + 1,
+                Vec::new(),
+            );
         }
         if let Some(gen_token) = block.gen_token() {
             is_gen = true;
@@ -513,10 +513,10 @@ fn capture_as_arg(ctx: &AssistContext<'_>, capture: &ClosureCapture) -> ast::Exp
         CaptureKind::MutableRef | CaptureKind::UniqueSharedRef => true,
         CaptureKind::Move => return place,
     };
-    if let ast::Expr::PrefixExpr(expr) = &place {
-        if expr.op_kind() == Some(ast::UnaryOp::Deref) {
-            return expr.expr().expect("`display_place_source_code()` produced an invalid expr");
-        }
+    if let ast::Expr::PrefixExpr(expr) = &place
+        && expr.op_kind() == Some(ast::UnaryOp::Deref)
+    {
+        return expr.expr().expect("`display_place_source_code()` produced an invalid expr");
     }
     make::expr_ref(place, needs_mut)
 }
@@ -642,11 +642,11 @@ fn peel_blocks_and_refs_and_parens(mut expr: ast::Expr) -> ast::Expr {
             expr = ast::Expr::cast(parent).unwrap();
             continue;
         }
-        if let Some(stmt_list) = ast::StmtList::cast(parent) {
-            if let Some(block) = stmt_list.syntax().parent().and_then(ast::BlockExpr::cast) {
-                expr = ast::Expr::BlockExpr(block);
-                continue;
-            }
+        if let Some(stmt_list) = ast::StmtList::cast(parent)
+            && let Some(block) = stmt_list.syntax().parent().and_then(ast::BlockExpr::cast)
+        {
+            expr = ast::Expr::BlockExpr(block);
+            continue;
         }
         break;
     }
@@ -662,12 +662,11 @@ fn expr_of_pat(pat: ast::Pat) -> Option<ast::Expr> {
             if let Some(let_stmt) = ast::LetStmt::cast(ancestor.clone()) {
                 break 'find_expr let_stmt.initializer();
             }
-            if ast::MatchArm::can_cast(ancestor.kind()) {
-                if let Some(match_) =
+            if ast::MatchArm::can_cast(ancestor.kind())
+                && let Some(match_) =
                     ancestor.parent().and_then(|it| it.parent()).and_then(ast::MatchExpr::cast)
-                {
-                    break 'find_expr match_.expr();
-                }
+            {
+                break 'find_expr match_.expr();
             }
             if ast::ExprStmt::can_cast(ancestor.kind()) {
                 break;

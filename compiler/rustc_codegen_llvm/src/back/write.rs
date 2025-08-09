@@ -15,6 +15,7 @@ use rustc_codegen_ssa::back::write::{
     BitcodeSection, CodegenContext, EmitObj, ModuleConfig, TargetMachineFactoryConfig,
     TargetMachineFactoryFn,
 };
+use rustc_codegen_ssa::base::wants_wasm_eh;
 use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::{CompiledModule, ModuleCodegen, ModuleKind};
 use rustc_data_structures::profiling::SelfProfilerRef;
@@ -285,6 +286,8 @@ pub(crate) fn target_machine_factory(
     let file_name_display_preference =
         sess.filename_display_preference(RemapPathScopeComponents::DEBUGINFO);
 
+    let use_wasm_eh = wants_wasm_eh(sess);
+
     Arc::new(move |config: TargetMachineFactoryConfig| {
         let path_to_cstring_helper = |path: Option<PathBuf>| -> CString {
             let path = path.unwrap_or_default();
@@ -321,6 +324,7 @@ pub(crate) fn target_machine_factory(
             &debuginfo_compression,
             use_emulated_tls,
             &args_cstr_buff,
+            use_wasm_eh,
         )
     })
 }
@@ -790,29 +794,6 @@ pub(crate) fn optimize(
         }
     }
     Ok(())
-}
-
-pub(crate) fn link(
-    cgcx: &CodegenContext<LlvmCodegenBackend>,
-    dcx: DiagCtxtHandle<'_>,
-    mut modules: Vec<ModuleCodegen<ModuleLlvm>>,
-) -> Result<ModuleCodegen<ModuleLlvm>, FatalError> {
-    use super::lto::{Linker, ModuleBuffer};
-    // Sort the modules by name to ensure deterministic behavior.
-    modules.sort_by(|a, b| a.name.cmp(&b.name));
-    let (first, elements) =
-        modules.split_first().expect("Bug! modules must contain at least one module.");
-
-    let mut linker = Linker::new(first.module_llvm.llmod());
-    for module in elements {
-        let _timer = cgcx.prof.generic_activity_with_arg("LLVM_link_module", &*module.name);
-        let buffer = ModuleBuffer::new(module.module_llvm.llmod());
-        linker
-            .add(buffer.data())
-            .map_err(|()| llvm_err(dcx, LlvmError::SerializeModule { name: &module.name }))?;
-    }
-    drop(linker);
-    Ok(modules.remove(0))
 }
 
 pub(crate) fn codegen(

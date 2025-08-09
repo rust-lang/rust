@@ -38,18 +38,23 @@ features = ['unprefixed_malloc_on_supported_platforms']
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
-libffi = "4.0.0"
-libloading = "0.8"
+# native-lib dependencies
+libffi = { version = "4.0.0", optional = true }
+libloading = { version = "0.8", optional = true }
+serde = { version = "1.0.219", features = ["derive"], optional = true }
 
 [target.'cfg(target_os = "linux")'.dependencies]
-nix = { version = "0.30.1", features = ["mman", "ptrace", "signal"] }
-ipc-channel = "0.19.0"
-serde = { version = "1.0.219", features = ["derive"] }
-capstone = "0.13"
+nix = { version = "0.30.1", features = ["mman", "ptrace", "signal"], optional = true }
+ipc-channel = { version = "0.20.0", optional = true }
+capstone = { version = "0.13", optional = true }
+
+# FIXME(genmc,macos): Add `target_os = "macos"` once https://github.com/dtolnay/cxx/issues/1535 is fixed.
+[target.'cfg(all(target_os = "linux", target_pointer_width = "64", target_endian = "little"))'.dependencies]
+genmc-sys = { path = "./genmc-sys/", version = "0.1.0", optional = true }
 
 [dev-dependencies]
-ui_test = "0.29.1"
-colored = "2"
+ui_test = "0.30.2"
+colored = "3"
 rustc_version = "0.4"
 regex = "1.5.5"
 tempfile = "3"
@@ -64,11 +69,12 @@ name = "ui"
 harness = false
 
 [features]
-default = ["stack-cache"]
-genmc = []
+default = ["stack-cache", "native-lib"]
+genmc = ["dep:genmc-sys"] # this enables a GPL dependency!
 stack-cache = []
 stack-cache-consistency-check = ["stack-cache"]
 tracing = ["serde_json"]
+native-lib = ["dep:libffi", "dep:libloading", "dep:capstone", "dep:ipc-channel", "dep:nix", "dep:serde"]
 
 [lints.rust.unexpected_cfgs]
 level = "warn"

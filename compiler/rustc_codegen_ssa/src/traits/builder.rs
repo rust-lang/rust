@@ -548,12 +548,15 @@ pub trait BuilderMethods<'a, 'tcx>:
         failure_order: AtomicOrdering,
         weak: bool,
     ) -> (Self::Value, Self::Value);
+    /// `ret_ptr` indicates whether the return type (which is also the type `dst` points to)
+    /// is a pointer or the same type as `src`.
     fn atomic_rmw(
         &mut self,
         op: AtomicRmwBinOp,
         dst: Self::Value,
         src: Self::Value,
         order: AtomicOrdering,
+        ret_ptr: bool,
     ) -> Self::Value;
     fn atomic_fence(&mut self, order: AtomicOrdering, scope: SynchronizationScope);
     fn set_invariant_load(&mut self, load: Self::Value);
@@ -595,6 +598,18 @@ pub trait BuilderMethods<'a, 'tcx>:
         funclet: Option<&Self::Funclet>,
         instance: Option<Instance<'tcx>>,
     ) -> Self::Value;
+
+    fn tail_call(
+        &mut self,
+        llty: Self::Type,
+        fn_attrs: Option<&CodegenFnAttrs>,
+        fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
+        llfn: Self::Value,
+        args: &[Self::Value],
+        funclet: Option<&Self::Funclet>,
+        instance: Option<Instance<'tcx>>,
+    );
+
     fn zext(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value;
 
     fn apply_attrs_to_cleanup_callsite(&mut self, llret: Self::Value);

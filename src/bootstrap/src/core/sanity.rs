@@ -33,6 +33,7 @@ pub struct Finder {
 //
 // Targets can be removed from this list once they are present in the stage0 compiler (usually by updating the beta compiler of the bootstrap).
 const STAGE0_MISSING_TARGETS: &[&str] = &[
+    "armv7a-vex-v5",
     // just a dummy comment so the list doesn't get onelined
 ];
 
@@ -338,12 +339,6 @@ than building it.
 
         // Make sure musl-root is valid.
         if target.contains("musl") && !target.contains("unikraft") {
-            // If this is a native target (host is also musl) and no musl-root is given,
-            // fall back to the system toolchain in /usr before giving up
-            if build.musl_root(*target).is_none() && build.config.is_host_target(*target) {
-                let target = build.config.target_config.entry(*target).or_default();
-                target.musl_root = Some("/usr".into());
-            }
             match build.musl_libdir(*target) {
                 Some(libdir) => {
                     if fs::metadata(libdir.join("libc.a")).is_err() {

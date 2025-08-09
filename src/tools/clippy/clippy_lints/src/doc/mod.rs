@@ -662,7 +662,7 @@ declare_clippy_lint! {
     /// /// [^1]: defined here
     /// fn my_fn() {}
     /// ```
-    #[clippy::version = "1.88.0"]
+    #[clippy::version = "1.89.0"]
     pub DOC_SUSPICIOUS_FOOTNOTES,
     suspicious,
     "looks like a link or footnote ref, but with no definition"
@@ -1232,7 +1232,6 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
     headers
 }
 
-#[expect(clippy::range_plus_one)] // inclusive ranges aren't the same type
 fn looks_like_refdef(doc: &str, range: Range<usize>) -> Option<Range<usize>> {
     if range.end < range.start {
         return None;

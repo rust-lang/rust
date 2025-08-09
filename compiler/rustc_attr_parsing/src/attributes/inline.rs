@@ -2,9 +2,9 @@
 //                      note: need to model better how duplicate attr errors work when not using
 //                      SingleAttributeParser which is what we have two of here.
 
-use rustc_attr_data_structures::lints::AttributeLintKind;
-use rustc_attr_data_structures::{AttributeKind, InlineAttr};
 use rustc_feature::{AttributeTemplate, template};
+use rustc_hir::attrs::{AttributeKind, InlineAttr};
+use rustc_hir::lints::AttributeLintKind;
 use rustc_span::{Symbol, sym};
 
 use super::{AcceptContext, AttributeOrder, OnDuplicate};

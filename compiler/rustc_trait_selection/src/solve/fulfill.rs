@@ -197,6 +197,12 @@ where
                     delegate.compute_goal_fast_path(goal, obligation.cause.span)
                 {
                     match certainty {
+                        // This fast path doesn't depend on region identity so it doesn't
+                        // matter if the goal contains inference variables or not, so we
+                        // don't need to call `push_hir_typeck_potentially_region_dependent_goal`
+                        // here.
+                        //
+                        // Only goals proven via the trait solver should be region dependent.
                         Certainty::Yes => {}
                         Certainty::Maybe(_) => {
                             self.obligations.register(obligation, None);
@@ -207,7 +213,7 @@ where
 
                 let result = delegate.evaluate_root_goal(goal, obligation.cause.span, stalled_on);
                 self.inspect_evaluated_obligation(infcx, &obligation, &result);
-                let GoalEvaluation { certainty, has_changed, stalled_on } = match result {
+                let GoalEvaluation { goal, certainty, has_changed, stalled_on } = match result {
                     Ok(result) => result,
                     Err(NoSolution) => {
                         errors.push(E::from_solver_error(
@@ -218,6 +224,10 @@ where
                     }
                 };
 
+                // We've resolved the goal in `evaluate_root_goal`, avoid redoing this work
+                // in the next iteration. This does not resolve the inference variables
+                // constrained by evaluating the goal.
+                obligation.predicate = goal.predicate;
                 if has_changed == HasChanged::Yes {
                     // We increment the recursion depth here to track the number of times
                     // this goal has resulted in inference progress. This doesn't precisely
@@ -230,7 +240,22 @@ where
                 }
 
                 match certainty {
-                    Certainty::Yes => {}
+                    Certainty::Yes => {
+                        // Goals may depend on structural identity. Region uniquification at the
+                        // start of MIR borrowck may cause things to no longer be so, potentially
+                        // causing an ICE.
+                        //
+                        // While we uniquify root goals in HIR this does not handle cases where
+                        // regions are hidden inside of a type or const inference variable.
+                        //
+                        // FIXME(-Znext-solver): This does not handle inference variables hidden
+                        // inside of an opaque type, e.g. if there's `Opaque = (?x, ?x)` in the
+                        // storage, we can also rely on structural identity of `?x` even if we
+                        // later uniquify it in MIR borrowck.
+                        if infcx.in_hir_typeck && obligation.has_non_region_infer() {
+                            infcx.push_hir_typeck_potentially_region_dependent_goal(obligation);
+                        }
+                    }
                     Certainty::Maybe(_) => self.obligations.register(obligation, stalled_on),
                 }
             }
@@ -330,7 +355,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for StalledOnCoroutines<'tcx> {
             return ControlFlow::Continue(());
         }
 
-        if let ty::CoroutineWitness(def_id, _) = *ty.kind()
+        if let ty::Coroutine(def_id, _) = *ty.kind()
             && def_id.as_local().is_some_and(|def_id| self.stalled_coroutines.contains(&def_id))
         {
             ControlFlow::Break(())

@@ -23,8 +23,8 @@ error: the evaluated program deadlocked
 error: the evaluated program deadlocked
   --> tests/fail-dep/libc/socketpair_block_read_twice.rs:LL:CC
    |
-LL |         let res = unsafe { libc::read(fds[1], buf.as_mut_ptr().cast(), buf.len() as libc::size_t) };
-   |                                                                                                 ^ this thread got stuck here
+LL |             libc::read(fds[1], buf.as_mut_ptr().cast(), buf.len() as libc::size_t)
+   |                                                                                  ^ this thread got stuck here
    |
    = note: BACKTRACE on thread `unnamed-ID`:
    = note: inside closure at tests/fail-dep/libc/socketpair_block_read_twice.rs:LL:CC

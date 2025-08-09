@@ -8,7 +8,7 @@ use std::process::ExitStatus;
 use rustc_abi::TargetDataLayoutErrors;
 use rustc_ast::util::parser::ExprPrecedence;
 use rustc_ast_pretty::pprust;
-use rustc_attr_data_structures::RustcVersion;
+use rustc_hir::RustcVersion;
 use rustc_macros::Subdiagnostic;
 use rustc_span::edition::Edition;
 use rustc_span::{Ident, MacroRulesNormalizedIdent, Span, Symbol};

@@ -3,8 +3,6 @@
 The full bootstrapping process takes quite a while. Here are some suggestions to
 make your life easier.
 
-<!-- toc -->
-
 ## Installing a pre-push hook
 
 CI will automatically fail your build if it doesn't pass `tidy`, our internal
@@ -162,7 +160,7 @@ create a `.vim/coc-settings.json`. The settings can be edited with
 [`src/etc/rust_analyzer_settings.json`].
 
 Another way is without a plugin, and creating your own logic in your
-configuration. The following code will work for any checkout of rust-lang/rust (newer than Febuary 2025):
+configuration. The following code will work for any checkout of rust-lang/rust (newer than February 2025):
 
 ```lua
 local function expand_config_variables(option)

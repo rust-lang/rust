@@ -1,7 +1,5 @@
 # UI tests
 
-<!-- toc -->
-
 UI tests are a particular [test suite](compiletest.md#test-suites) of
 compiletest.
 
@@ -25,9 +23,9 @@ If you need to work with `#![no_std]` cross-compiling tests, consult the
 
 ## General structure of a test
 
-A test consists of a Rust source file located anywhere in the `tests/ui`
-directory, but they should be placed in a suitable sub-directory. For example,
-[`tests/ui/hello.rs`] is a basic hello-world test.
+A test consists of a Rust source file located in the `tests/ui` directory.
+**Tests must be placed in the appropriate subdirectory** based on their purpose
+and testing category - placing tests directly in `tests/ui` is not permitted.
 
 Compiletest will use `rustc` to compile the test, and compare the output against
 the expected output which is stored in a `.stdout` or `.stderr` file located
@@ -45,8 +43,6 @@ pass/fail expectations](#controlling-passfail-expectations).
 
 By default, a test is built as an executable binary. If you need a different
 crate type, you can use the `#![crate_type]` attribute to set it as needed.
-
-[`tests/ui/hello.rs`]: https://github.com/rust-lang/rust/blob/master/tests/ui/hello.rs
 
 ## Output comparison
 
@@ -309,7 +305,9 @@ fn main((ؼ
 
 Use `//~?` to match an error without line information.
 `//~?` is precise and will not match errors if their line information is available.
-It should be preferred to using `error-pattern`, which is imprecise and non-exhaustive.
+It should be preferred over `//@ error-pattern`
+for tests wishing to match against compiler diagnostics,
+due to `//@ error-pattern` being imprecise and non-exhaustive.
 
 ```rust,ignore
 //@ compile-flags: --print yyyy
@@ -319,8 +317,8 @@ It should be preferred to using `error-pattern`, which is imprecise and non-exha
 
 ### `error-pattern`
 
-The `error-pattern` [directive](directives.md) can be used for runtime messages, which don't
-have a specific span, or in exceptional cases, for compile time messages.
+The `error-pattern` [directive](directives.md) can be used for runtime messages which don't
+have a specific span, or, in exceptional cases, for compile time messages.
 
 Let's think about this test:
 
@@ -347,8 +345,6 @@ fn main() {
 }
 ```
 
-Use of `error-pattern` is not recommended in general.
-
 For strict testing of compile time output, try to use the line annotations `//~` as much as
 possible, including `//~?` annotations for diagnostics without spans.
 
@@ -359,7 +355,8 @@ Some of the compiler messages can stay uncovered by annotations in this mode.
 
 For checking runtime output, `//@ check-run-results` may be preferable.
 
-Only use `error-pattern` if none of the above works.
+Only use `error-pattern` if none of the above works, such as when finding a
+specific string pattern in a runtime panic output.
 
 Line annotations `//~` and `error-pattern` are compatible and can be used in the same test.
 
@@ -448,7 +445,7 @@ even run the resulting program. Just add one of the following
   - `//@ build-pass` — compilation and linking should succeed but do
     not run the resulting binary.
   - `//@ run-pass` — compilation should succeed and running the resulting
-    binary should also succeed.
+    binary should make it exit with code 0 which indicates success.
 - Fail directives:
   - `//@ check-fail` — compilation should fail (the codegen phase is skipped).
     This is the default for UI tests.
@@ -457,10 +454,20 @@ even run the resulting program. Just add one of the following
     - First time is to ensure that the compile succeeds without the codegen phase
     - Second time is to ensure that the full compile fails
   - `//@ run-fail` — compilation should succeed, but running the resulting
-    binary should fail.
+    binary should make it exit with a code in the range `1..=127` which
+    indicates regular failure. On targets without unwind support, crashes
+    are also accepted.
+  - `//@ run-crash` — compilation should succeed, but running the resulting
+    binary should fail with a crash. Crashing is defined as "not exiting with
+    a code in the range `0..=127`". Example on Linux: Termination by `SIGABRT`
+    or `SIGSEGV`. Example on Windows: Exiting with the code for
+    `STATUS_ILLEGAL_INSTRUCTION` (`0xC000001D`).
+  - `//@ run-fail-or-crash` — compilation should succeed, but running the
+    resulting binary should either `run-fail` or `run-crash`. Useful if a test
+    crashes on some targets but just fails on others.
 
-For `run-pass` and `run-fail` tests, by default the output of the program itself
-is not checked.
+For `run-pass`. `run-fail`, `run-crash` and `run-fail-or-crash` tests, by
+default the output of the program itself is not checked.
 
 If you want to check the output of running the program, include the
 `check-run-results` directive. This will check for a `.run.stderr` and

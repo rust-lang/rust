@@ -6,7 +6,7 @@ use rustc_session::declare_lint_pass;
 use rustc_span::Span;
 
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::source::snippet_with_applicability;
+use clippy_utils::source::{snippet_with_applicability, snippet_with_context};
 use clippy_utils::ty::has_iter_method;
 use clippy_utils::{is_trait_method, sym};
 
@@ -101,18 +101,23 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessForEach {
 
             let body_param_sugg = snippet_with_applicability(cx, body.params[0].pat.span, "..", &mut applicability);
             let for_each_rev_sugg = snippet_with_applicability(cx, for_each_recv.span, "..", &mut applicability);
-            let body_value_sugg = snippet_with_applicability(cx, body.value.span, "..", &mut applicability);
+            let (body_value_sugg, is_macro_call) =
+                snippet_with_context(cx, body.value.span, for_each_recv.span.ctxt(), "..", &mut applicability);
 
             let sugg = format!(
                 "for {} in {} {}",
                 body_param_sugg,
                 for_each_rev_sugg,
-                match body.value.kind {
-                    ExprKind::Block(block, _) if is_let_desugar(block) => {
-                        format!("{{ {body_value_sugg} }}")
-                    },
-                    ExprKind::Block(_, _) => body_value_sugg.to_string(),
-                    _ => format!("{{ {body_value_sugg}; }}"),
+                if is_macro_call {
+                    format!("{{ {body_value_sugg}; }}")
+                } else {
+                    match body.value.kind {
+                        ExprKind::Block(block, _) if is_let_desugar(block) => {
+                            format!("{{ {body_value_sugg} }}")
+                        },
+                        ExprKind::Block(_, _) => body_value_sugg.to_string(),
+                        _ => format!("{{ {body_value_sugg}; }}"),
+                    }
                 }
             );
 

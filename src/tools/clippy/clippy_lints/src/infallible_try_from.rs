@@ -13,7 +13,7 @@ declare_clippy_lint! {
     ///
     /// ### Why is this bad?
     ///
-    /// Infalliable conversions should be implemented via `From` with the blanket conversion.
+    /// Infallible conversions should be implemented via `From` with the blanket conversion.
     ///
     /// ### Example
     /// ```no_run
@@ -35,7 +35,7 @@ declare_clippy_lint! {
     ///     }
     /// }
     /// ```
-    #[clippy::version = "1.88.0"]
+    #[clippy::version = "1.89.0"]
     pub INFALLIBLE_TRY_FROM,
     suspicious,
     "TryFrom with infallible Error type"
@@ -52,13 +52,17 @@ impl<'tcx> LateLintPass<'tcx> for InfallibleTryFrom {
         if !cx.tcx.is_diagnostic_item(sym::TryFrom, trait_def_id) {
             return;
         }
-        for ii in cx.tcx.associated_items(item.owner_id.def_id)
+        for ii in cx
+            .tcx
+            .associated_items(item.owner_id.def_id)
             .filter_by_name_unhygienic_and_kind(sym::Error, AssocTag::Type)
         {
             let ii_ty = cx.tcx.type_of(ii.def_id).instantiate_identity();
             if !ii_ty.is_inhabited_from(cx.tcx, ii.def_id, cx.typing_env()) {
                 let mut span = MultiSpan::from_span(cx.tcx.def_span(item.owner_id.to_def_id()));
-                let ii_ty_span = cx.tcx.hir_node_by_def_id(ii.def_id.expect_local())
+                let ii_ty_span = cx
+                    .tcx
+                    .hir_node_by_def_id(ii.def_id.expect_local())
                     .expect_impl_item()
                     .expect_type()
                     .span;
@@ -67,7 +71,7 @@ impl<'tcx> LateLintPass<'tcx> for InfallibleTryFrom {
                     cx,
                     INFALLIBLE_TRY_FROM,
                     span,
-                    "infallible TryFrom impl; consider implementing From, instead",
+                    "infallible TryFrom impl; consider implementing From instead",
                 );
             }
         }

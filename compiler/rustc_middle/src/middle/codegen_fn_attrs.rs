@@ -2,7 +2,7 @@ use std::borrow::Cow;
 
 use rustc_abi::Align;
 use rustc_ast::expand::autodiff_attrs::AutoDiffAttrs;
-use rustc_attr_data_structures::{InlineAttr, InstructionSetAttr, OptimizeAttr};
+use rustc_hir::attrs::{InlineAttr, InstructionSetAttr, OptimizeAttr};
 use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_span::Symbol;
 use rustc_target::spec::SanitizerSet;
@@ -70,6 +70,7 @@ pub struct CodegenFnAttrs {
     /// switching between multiple instruction sets.
     pub instruction_set: Option<InstructionSetAttr>,
     /// The `#[align(...)]` attribute. Determines the alignment of the function body.
+    // FIXME(#82232, #143834): temporarily renamed to mitigate `#[align]` nameres ambiguity
     pub alignment: Option<Align>,
     /// The `#[patchable_function_entry(...)]` attribute. Indicates how many nops should be around
     /// the function entry.

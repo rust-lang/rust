@@ -127,6 +127,7 @@ register_builtin! {
     (asm, Asm) => asm_expand,
     (global_asm, GlobalAsm) => global_asm_expand,
     (naked_asm, NakedAsm) => naked_asm_expand,
+    (cfg_select, CfgSelect) => cfg_select_expand,
     (cfg, Cfg) => cfg_expand,
     (core_panic, CorePanic) => panic_expand,
     (std_panic, StdPanic) => panic_expand,
@@ -355,6 +356,71 @@ fn naked_asm_expand(
     ExpandResult::ok(expanded)
 }
 
+fn cfg_select_expand(
+    db: &dyn ExpandDatabase,
+    id: MacroCallId,
+    tt: &tt::TopSubtree,
+    span: Span,
+) -> ExpandResult<tt::TopSubtree> {
+    let loc = db.lookup_intern_macro_call(id);
+    let cfg_options = loc.krate.cfg_options(db);
+
+    let mut iter = tt.iter();
+    let mut expand_to = None;
+    while let Some(next) = iter.peek() {
+        let active = if let tt::TtElement::Leaf(tt::Leaf::Ident(ident)) = next
+            && ident.sym == sym::underscore
+        {
+            iter.next();
+            true
+        } else {
+            cfg_options.check(&CfgExpr::parse_from_iter(&mut iter)) != Some(false)
+        };
+        match iter.expect_glued_punct() {
+            Ok(it) if it.len() == 2 && it[0].char == '=' && it[1].char == '>' => {}
+            _ => {
+                let err_span = iter.peek().map(|it| it.first_span()).unwrap_or(span);
+                return ExpandResult::new(
+                    tt::TopSubtree::empty(tt::DelimSpan::from_single(span)),
+                    ExpandError::other(err_span, "expected `=>` after cfg expression"),
+                );
+            }
+        }
+        let expand_to_if_active = match iter.next() {
+            Some(tt::TtElement::Subtree(_, tt)) => tt.remaining(),
+            _ => {
+                let err_span = iter.peek().map(|it| it.first_span()).unwrap_or(span);
+                return ExpandResult::new(
+                    tt::TopSubtree::empty(tt::DelimSpan::from_single(span)),
+                    ExpandError::other(err_span, "expected a token tree after `=>`"),
+                );
+            }
+        };
+
+        if expand_to.is_none() && active {
+            expand_to = Some(expand_to_if_active);
+        }
+    }
+    match expand_to {
+        Some(expand_to) => {
+            let mut builder = tt::TopSubtreeBuilder::new(tt::Delimiter {
+                kind: tt::DelimiterKind::Invisible,
+                open: span,
+                close: span,
+            });
+            builder.extend_with_tt(expand_to);
+            ExpandResult::ok(builder.build())
+        }
+        None => ExpandResult::new(
+            tt::TopSubtree::empty(tt::DelimSpan::from_single(span)),
+            ExpandError::other(
+                span,
+                "none of the predicates in this `cfg_select` evaluated to true",
+            ),
+        ),
+    }
+}
+
 fn cfg_expand(
     db: &dyn ExpandDatabase,
     id: MacroCallId,
@@ -489,12 +555,11 @@ fn concat_expand(
         // FIXME: hack on top of a hack: `$e:expr` captures get surrounded in parentheses
         // to ensure the right parsing order, so skip the parentheses here. Ideally we'd
         // implement rustc's model. cc https://github.com/rust-lang/rust-analyzer/pull/10623
-        if let TtElement::Subtree(subtree, subtree_iter) = &t {
-            if let [tt::TokenTree::Leaf(tt)] = subtree_iter.remaining().flat_tokens() {
-                if subtree.delimiter.kind == tt::DelimiterKind::Parenthesis {
-                    t = TtElement::Leaf(tt);
-                }
-            }
+        if let TtElement::Subtree(subtree, subtree_iter) = &t
+            && let [tt::TokenTree::Leaf(tt)] = subtree_iter.remaining().flat_tokens()
+            && subtree.delimiter.kind == tt::DelimiterKind::Parenthesis
+        {
+            t = TtElement::Leaf(tt);
         }
         match t {
             TtElement::Leaf(tt::Leaf::Literal(it)) if i % 2 == 0 => {
@@ -825,7 +890,7 @@ fn include_str_expand(
     };
 
     let text = db.file_text(file_id.file_id(db));
-    let text = &*text.text(db);
+    let text = &**text.text(db);
 
     ExpandResult::ok(quote!(call_site =>#text))
 }

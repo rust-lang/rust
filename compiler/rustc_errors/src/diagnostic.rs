@@ -1382,6 +1382,11 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
         &mut self.long_ty_path
     }
 
+    pub fn with_long_ty_path(mut self, long_ty_path: Option<PathBuf>) -> Self {
+        self.long_ty_path = long_ty_path;
+        self
+    }
+
     /// Most `emit_producing_guarantee` functions use this as a starting point.
     fn emit_producing_nothing(mut self) {
         let diag = self.take_diag();
@@ -1421,7 +1426,7 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
     ///
     /// See `emit` and `delay_as_bug` for details.
     #[track_caller]
-    pub fn emit_unless(mut self, delay: bool) -> G::EmitResult {
+    pub fn emit_unless_delay(mut self, delay: bool) -> G::EmitResult {
         if delay {
             self.downgrade_to_delayed_bug();
         }

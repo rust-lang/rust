@@ -107,8 +107,8 @@ impl abi::Integer {
             abi::Integer::I8
         };
 
-        // If there are no negative values, we can use the unsigned fit.
-        if min >= 0 {
+        // Pick the smallest fit.
+        if unsigned_fit <= signed_fit {
             (cmp::max(unsigned_fit, at_least), false)
         } else {
             (cmp::max(signed_fit, at_least), true)
@@ -1055,11 +1055,11 @@ where
                     _ => Some(this),
                 };
 
-                if let Some(variant) = data_variant {
+                if let Some(variant) = data_variant
                     // We're not interested in any unions.
-                    if let FieldsShape::Union(_) = variant.fields {
-                        data_variant = None;
-                    }
+                    && let FieldsShape::Union(_) = variant.fields
+                {
+                    data_variant = None;
                 }
 
                 let mut result = None;

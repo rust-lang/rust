@@ -20,9 +20,11 @@ itertools = "0.12"
 # tidy-alphabetical-end
 
 [features]
+# tidy-alphabetical-start
 rustc = [
     "dep:rustc_abi",
     "dep:rustc_hir",
     "dep:rustc_middle",
     "dep:rustc_span",
 ]
+# tidy-alphabetical-end

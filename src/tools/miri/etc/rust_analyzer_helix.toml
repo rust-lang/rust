@@ -5,6 +5,7 @@ source = "discover"
 linkedProjects = [
     "Cargo.toml",
     "cargo-miri/Cargo.toml",
+    "genmc-sys/Cargo.toml",
     "miri-script/Cargo.toml",
 ]
 
@@ -26,5 +27,6 @@ invocationStrategy = "once"
 overrideCommand = [
     "./miri",
     "check",
+    "--no-default-features",
     "--message-format=json",
 ]

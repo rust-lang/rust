@@ -12,7 +12,7 @@ use crate::core::config::{Config, TargetSelection};
 use crate::utils::exec::command;
 use crate::utils::helpers::t;
 use crate::utils::tarball::GeneratedTarball;
-use crate::{Compiler, Kind};
+use crate::{CodegenBackendKind, Compiler, Kind};
 
 #[cfg(target_os = "illumos")]
 const SHELL: &str = "bash";
@@ -215,13 +215,13 @@ install!((self, builder, _config),
     };
     Cargo, alias = "cargo", Self::should_build(_config), only_hosts: true, {
         let tarball = builder
-            .ensure(dist::Cargo { compiler: self.compiler, target: self.target })
+            .ensure(dist::Cargo { build_compiler: self.compiler, target: self.target })
             .expect("missing cargo");
         install_sh(builder, "cargo", self.compiler.stage, Some(self.target), &tarball);
     };
     RustAnalyzer, alias = "rust-analyzer", Self::should_build(_config), only_hosts: true, {
         if let Some(tarball) =
-            builder.ensure(dist::RustAnalyzer { compiler: self.compiler, target: self.target })
+            builder.ensure(dist::RustAnalyzer { build_compiler: self.compiler, target: self.target })
         {
             install_sh(builder, "rust-analyzer", self.compiler.stage, Some(self.target), &tarball);
         } else {
@@ -232,12 +232,12 @@ install!((self, builder, _config),
     };
     Clippy, alias = "clippy", Self::should_build(_config), only_hosts: true, {
         let tarball = builder
-            .ensure(dist::Clippy { compiler: self.compiler, target: self.target })
+            .ensure(dist::Clippy { build_compiler: self.compiler, target: self.target })
             .expect("missing clippy");
         install_sh(builder, "clippy", self.compiler.stage, Some(self.target), &tarball);
     };
     Miri, alias = "miri", Self::should_build(_config), only_hosts: true, {
-        if let Some(tarball) = builder.ensure(dist::Miri { compiler: self.compiler, target: self.target }) {
+        if let Some(tarball) = builder.ensure(dist::Miri { build_compiler: self.compiler, target: self.target }) {
             install_sh(builder, "miri", self.compiler.stage, Some(self.target), &tarball);
         } else {
             // Miri is only available on nightly
@@ -257,7 +257,7 @@ install!((self, builder, _config),
     };
     Rustfmt, alias = "rustfmt", Self::should_build(_config), only_hosts: true, {
         if let Some(tarball) = builder.ensure(dist::Rustfmt {
-            compiler: self.compiler,
+            build_compiler: self.compiler,
             target: self.target
         }) {
             install_sh(builder, "rustfmt", self.compiler.stage, Some(self.target), &tarball);
@@ -276,7 +276,7 @@ install!((self, builder, _config),
     RustcCodegenCranelift, alias = "rustc-codegen-cranelift", Self::should_build(_config), only_hosts: true, {
         if let Some(tarball) = builder.ensure(dist::CodegenBackend {
             compiler: self.compiler,
-            backend: "cranelift".to_string(),
+            backend: CodegenBackendKind::Cranelift,
         }) {
             install_sh(builder, "rustc-codegen-cranelift", self.compiler.stage, Some(self.target), &tarball);
         } else {
@@ -287,7 +287,7 @@ install!((self, builder, _config),
         }
     };
     LlvmBitcodeLinker, alias = "llvm-bitcode-linker", Self::should_build(_config), only_hosts: true, {
-        if let Some(tarball) = builder.ensure(dist::LlvmBitcodeLinker { compiler: self.compiler, target: self.target }) {
+        if let Some(tarball) = builder.ensure(dist::LlvmBitcodeLinker { build_compiler: self.compiler, target: self.target }) {
             install_sh(builder, "llvm-bitcode-linker", self.compiler.stage, Some(self.target), &tarball);
         } else {
             builder.info(

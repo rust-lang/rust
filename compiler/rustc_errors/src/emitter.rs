@@ -262,19 +262,11 @@ pub trait Emitter {
                     format!("help: {msg}")
                 } else {
                     // Show the default suggestion text with the substitution
-                    format!(
-                        "help: {}{}: `{}`",
-                        msg,
-                        if self
-                            .source_map()
-                            .is_some_and(|sm| is_case_difference(sm, snippet, part.span,))
-                        {
-                            " (notice the capitalization)"
-                        } else {
-                            ""
-                        },
-                        snippet,
-                    )
+                    let confusion_type = self
+                        .source_map()
+                        .map(|sm| detect_confusion_type(sm, snippet, part.span))
+                        .unwrap_or(ConfusionType::None);
+                    format!("help: {}{}: `{}`", msg, confusion_type.label_text(), snippet,)
                 };
                 primary_span.push_span_label(part.span, msg);
 
@@ -417,7 +409,7 @@ pub trait Emitter {
                 if !redundant_span || always_backtrace {
                     let msg: Cow<'static, _> = match trace.kind {
                         ExpnKind::Macro(MacroKind::Attr, _) => {
-                            "this procedural macro expansion".into()
+                            "this attribute macro expansion".into()
                         }
                         ExpnKind::Macro(MacroKind::Derive, _) => {
                             "this derive macro expansion".into()
@@ -713,8 +705,7 @@ impl HumanEmitter {
                 Style::LineNumber,
             );
         }
-        buffer.puts(line_offset, 0, &self.maybe_anonymized(line_index), Style::LineNumber);
-
+        self.draw_line_num(buffer, line_index, line_offset, width_offset - 3);
         self.draw_col_separator_no_space(buffer, line_offset, width_offset - 2);
         left
     }
@@ -1598,8 +1589,9 @@ impl HumanEmitter {
             annotated_files.swap(0, pos);
         }
 
+        let annotated_files_len = annotated_files.len();
         // Print out the annotate source lines that correspond with the error
-        for annotated_file in annotated_files {
+        for (file_idx, annotated_file) in annotated_files.into_iter().enumerate() {
             // we can't annotate anything if the source is unavailable.
             if !should_show_source_code(
                 &self.ignored_directories_in_source_blocks,
@@ -1856,7 +1848,9 @@ impl HumanEmitter {
                         width_offset,
                         code_offset,
                         margin,
-                        !is_cont && line_idx + 1 == annotated_file.lines.len(),
+                        !is_cont
+                            && file_idx + 1 == annotated_files_len
+                            && line_idx + 1 == annotated_file.lines.len(),
                     );
 
                     let mut to_add = FxHashMap::default();
@@ -2029,12 +2023,12 @@ impl HumanEmitter {
         buffer.append(0, ": ", Style::HeaderMsg);
 
         let mut msg = vec![(suggestion.msg.to_owned(), Style::NoStyle)];
-        if suggestions
-            .iter()
-            .take(MAX_SUGGESTIONS)
-            .any(|(_, _, _, only_capitalization)| *only_capitalization)
+        if let Some(confusion_type) =
+            suggestions.iter().take(MAX_SUGGESTIONS).find_map(|(_, _, _, confusion_type)| {
+                if confusion_type.has_confusion() { Some(*confusion_type) } else { None }
+            })
         {
-            msg.push((" (notice the capitalization difference)".into(), Style::NoStyle));
+            msg.push((confusion_type.label_text().into(), Style::NoStyle));
         }
         self.msgs_to_buffer(
             &mut buffer,
@@ -2128,11 +2122,11 @@ impl HumanEmitter {
                 // Account for a suggestion to completely remove a line(s) with whitespace (#94192).
                 let line_end = sm.lookup_char_pos(parts[0].span.hi()).line;
                 for line in line_start..=line_end {
-                    buffer.puts(
+                    self.draw_line_num(
+                        &mut buffer,
+                        line,
                         row_num - 1 + line - line_start,
-                        0,
-                        &self.maybe_anonymized(line),
-                        Style::LineNumber,
+                        max_line_num_len,
                     );
                     buffer.puts(
                         row_num - 1 + line - line_start,
@@ -2612,12 +2606,7 @@ impl HumanEmitter {
             // For more info: https://github.com/rust-lang/rust/issues/92741
             let lines_to_remove = file_lines.lines.iter().take(file_lines.lines.len() - 1);
             for (index, line_to_remove) in lines_to_remove.enumerate() {
-                buffer.puts(
-                    *row_num - 1,
-                    0,
-                    &self.maybe_anonymized(line_num + index),
-                    Style::LineNumber,
-                );
+                self.draw_line_num(buffer, line_num + index, *row_num - 1, max_line_num_len);
                 buffer.puts(*row_num - 1, max_line_num_len + 1, "- ", Style::Removal);
                 let line = normalize_whitespace(
                     &file_lines.file.get_line(line_to_remove.line_index).unwrap(),
@@ -2634,11 +2623,11 @@ impl HumanEmitter {
             let last_line_index = file_lines.lines[file_lines.lines.len() - 1].line_index;
             let last_line = &file_lines.file.get_line(last_line_index).unwrap();
             if last_line != line_to_add {
-                buffer.puts(
+                self.draw_line_num(
+                    buffer,
+                    line_num + file_lines.lines.len() - 1,
                     *row_num - 1,
-                    0,
-                    &self.maybe_anonymized(line_num + file_lines.lines.len() - 1),
-                    Style::LineNumber,
+                    max_line_num_len,
                 );
                 buffer.puts(*row_num - 1, max_line_num_len + 1, "- ", Style::Removal);
                 buffer.puts(
@@ -2661,7 +2650,7 @@ impl HumanEmitter {
                     // 2 -     .await
                     //   |
                     // *row_num -= 1;
-                    buffer.puts(*row_num, 0, &self.maybe_anonymized(line_num), Style::LineNumber);
+                    self.draw_line_num(buffer, line_num, *row_num, max_line_num_len);
                     buffer.puts(*row_num, max_line_num_len + 1, "+ ", Style::Addition);
                     buffer.append(*row_num, &normalize_whitespace(line_to_add), Style::NoStyle);
                 } else {
@@ -2671,7 +2660,7 @@ impl HumanEmitter {
                 *row_num -= 2;
             }
         } else if is_multiline {
-            buffer.puts(*row_num, 0, &self.maybe_anonymized(line_num), Style::LineNumber);
+            self.draw_line_num(buffer, line_num, *row_num, max_line_num_len);
             match &highlight_parts {
                 [SubstitutionHighlight { start: 0, end }] if *end == line_to_add.len() => {
                     buffer.puts(*row_num, max_line_num_len + 1, "+ ", Style::Addition);
@@ -2702,11 +2691,11 @@ impl HumanEmitter {
                 Style::NoStyle,
             );
         } else if let DisplaySuggestion::Add = show_code_change {
-            buffer.puts(*row_num, 0, &self.maybe_anonymized(line_num), Style::LineNumber);
+            self.draw_line_num(buffer, line_num, *row_num, max_line_num_len);
             buffer.puts(*row_num, max_line_num_len + 1, "+ ", Style::Addition);
             buffer.append(*row_num, &normalize_whitespace(line_to_add), Style::NoStyle);
         } else {
-            buffer.puts(*row_num, 0, &self.maybe_anonymized(line_num), Style::LineNumber);
+            self.draw_line_num(buffer, line_num, *row_num, max_line_num_len);
             self.draw_col_separator(buffer, *row_num, max_line_num_len + 1);
             buffer.append(*row_num, &normalize_whitespace(line_to_add), Style::NoStyle);
         }
@@ -2991,7 +2980,7 @@ impl HumanEmitter {
     fn secondary_file_start(&self) -> &'static str {
         match self.theme {
             OutputTheme::Ascii => "::: ",
-            OutputTheme::Unicode => " ⸬ ",
+            OutputTheme::Unicode => " ⸬  ",
         }
     }
 
@@ -3015,6 +3004,22 @@ impl HumanEmitter {
             OutputTheme::Ascii => "...",
             OutputTheme::Unicode => "…",
         }
+    }
+
+    fn draw_line_num(
+        &self,
+        buffer: &mut StyledBuffer,
+        line_num: usize,
+        line_offset: usize,
+        max_line_num_len: usize,
+    ) {
+        let line_num = self.maybe_anonymized(line_num);
+        buffer.puts(
+            line_offset,
+            max_line_num_len.saturating_sub(str_width(&line_num)),
+            &line_num,
+            Style::LineNumber,
+        );
     }
 }
 
@@ -3518,24 +3523,107 @@ pub fn is_different(sm: &SourceMap, suggested: &str, sp: Span) -> bool {
 }
 
 /// Whether the original and suggested code are visually similar enough to warrant extra wording.
-pub fn is_case_difference(sm: &SourceMap, suggested: &str, sp: Span) -> bool {
-    // FIXME: this should probably be extended to also account for `FO0` → `FOO` and unicode.
+pub fn detect_confusion_type(sm: &SourceMap, suggested: &str, sp: Span) -> ConfusionType {
     let found = match sm.span_to_snippet(sp) {
         Ok(snippet) => snippet,
         Err(e) => {
             warn!(error = ?e, "Invalid span {:?}", sp);
-            return false;
+            return ConfusionType::None;
         }
     };
-    let ascii_confusables = &['c', 'f', 'i', 'k', 'o', 's', 'u', 'v', 'w', 'x', 'y', 'z'];
-    // All the chars that differ in capitalization are confusable (above):
-    let confusable = iter::zip(found.chars(), suggested.chars())
-        .filter(|(f, s)| f != s)
-        .all(|(f, s)| ascii_confusables.contains(&f) || ascii_confusables.contains(&s));
-    confusable && found.to_lowercase() == suggested.to_lowercase()
-            // FIXME: We sometimes suggest the same thing we already have, which is a
-            //        bug, but be defensive against that here.
-            && found != suggested
+
+    let mut has_case_confusion = false;
+    let mut has_digit_letter_confusion = false;
+
+    if found.len() == suggested.len() {
+        let mut has_case_diff = false;
+        let mut has_digit_letter_confusable = false;
+        let mut has_other_diff = false;
+
+        let ascii_confusables = &['c', 'f', 'i', 'k', 'o', 's', 'u', 'v', 'w', 'x', 'y', 'z'];
+
+        let digit_letter_confusables = [('0', 'O'), ('1', 'l'), ('5', 'S'), ('8', 'B'), ('9', 'g')];
+
+        for (f, s) in iter::zip(found.chars(), suggested.chars()) {
+            if f != s {
+                if f.to_lowercase().to_string() == s.to_lowercase().to_string() {
+                    // Check for case differences (any character that differs only in case)
+                    if ascii_confusables.contains(&f) || ascii_confusables.contains(&s) {
+                        has_case_diff = true;
+                    } else {
+                        has_other_diff = true;
+                    }
+                } else if digit_letter_confusables.contains(&(f, s))
+                    || digit_letter_confusables.contains(&(s, f))
+                {
+                    // Check for digit-letter confusables (like 0 vs O, 1 vs l, etc.)
+                    has_digit_letter_confusable = true;
+                } else {
+                    has_other_diff = true;
+                }
+            }
+        }
+
+        // If we have case differences and no other differences
+        if has_case_diff && !has_other_diff && found != suggested {
+            has_case_confusion = true;
+        }
+        if has_digit_letter_confusable && !has_other_diff && found != suggested {
+            has_digit_letter_confusion = true;
+        }
+    }
+
+    match (has_case_confusion, has_digit_letter_confusion) {
+        (true, true) => ConfusionType::Both,
+        (true, false) => ConfusionType::Case,
+        (false, true) => ConfusionType::DigitLetter,
+        (false, false) => ConfusionType::None,
+    }
+}
+
+/// Represents the type of confusion detected between original and suggested code.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ConfusionType {
+    /// No confusion detected
+    None,
+    /// Only case differences (e.g., "hello" vs "Hello")
+    Case,
+    /// Only digit-letter confusion (e.g., "0" vs "O", "1" vs "l")
+    DigitLetter,
+    /// Both case and digit-letter confusion
+    Both,
+}
+
+impl ConfusionType {
+    /// Returns the appropriate label text for this confusion type.
+    pub fn label_text(&self) -> &'static str {
+        match self {
+            ConfusionType::None => "",
+            ConfusionType::Case => " (notice the capitalization)",
+            ConfusionType::DigitLetter => " (notice the digit/letter confusion)",
+            ConfusionType::Both => " (notice the capitalization and digit/letter confusion)",
+        }
+    }
+
+    /// Combines two confusion types. If either is `Both`, the result is `Both`.
+    /// If one is `Case` and the other is `DigitLetter`, the result is `Both`.
+    /// Otherwise, returns the non-`None` type, or `None` if both are `None`.
+    pub fn combine(self, other: ConfusionType) -> ConfusionType {
+        match (self, other) {
+            (ConfusionType::None, other) => other,
+            (this, ConfusionType::None) => this,
+            (ConfusionType::Both, _) | (_, ConfusionType::Both) => ConfusionType::Both,
+            (ConfusionType::Case, ConfusionType::DigitLetter)
+            | (ConfusionType::DigitLetter, ConfusionType::Case) => ConfusionType::Both,
+            (ConfusionType::Case, ConfusionType::Case) => ConfusionType::Case,
+            (ConfusionType::DigitLetter, ConfusionType::DigitLetter) => ConfusionType::DigitLetter,
+        }
+    }
+
+    /// Returns true if this confusion type represents any kind of confusion.
+    pub fn has_confusion(&self) -> bool {
+        *self != ConfusionType::None
+    }
 }
 
 pub(crate) fn should_show_source_code(

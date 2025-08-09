@@ -37,10 +37,11 @@ use snapshot::undo_log::InferCtxtUndoLogs;
 use tracing::{debug, instrument};
 use type_variable::TypeVariableOrigin;
 
-use crate::infer::region_constraints::UndoLog;
+use crate::infer::snapshot::undo_log::UndoLog;
 use crate::infer::unify_key::{ConstVariableOrigin, ConstVariableValue, ConstVidKey};
 use crate::traits::{
-    self, ObligationCause, ObligationInspector, PredicateObligations, TraitEngine,
+    self, ObligationCause, ObligationInspector, PredicateObligation, PredicateObligations,
+    TraitEngine,
 };
 
 pub mod at;
@@ -156,6 +157,12 @@ pub struct InferCtxtInner<'tcx> {
     /// which may cause types to no longer be considered well-formed.
     region_assumptions: Vec<ty::ArgOutlivesPredicate<'tcx>>,
 
+    /// `-Znext-solver`: Successfully proven goals during HIR typeck which
+    /// reference inference variables and get reproven after writeback.
+    ///
+    /// See the documentation of `InferCtxt::in_hir_typeck` for more details.
+    hir_typeck_potentially_region_dependent_goals: Vec<PredicateObligation<'tcx>>,
+
     /// Caches for opaque type inference.
     opaque_type_storage: OpaqueTypeStorage<'tcx>,
 }
@@ -173,6 +180,7 @@ impl<'tcx> InferCtxtInner<'tcx> {
             region_constraint_storage: Some(Default::default()),
             region_obligations: Default::default(),
             region_assumptions: Default::default(),
+            hir_typeck_potentially_region_dependent_goals: Default::default(),
             opaque_type_storage: Default::default(),
         }
     }
@@ -244,9 +252,29 @@ pub struct InferCtxt<'tcx> {
     typing_mode: TypingMode<'tcx>,
 
     /// Whether this inference context should care about region obligations in
-    /// the root universe. Most notably, this is used during hir typeck as region
+    /// the root universe. Most notably, this is used during HIR typeck as region
     /// solving is left to borrowck instead.
     pub considering_regions: bool,
+    /// `-Znext-solver`: Whether this inference context is used by HIR typeck. If so, we
+    /// need to make sure we don't rely on region identity in the trait solver or when
+    /// relating types. This is necessary as borrowck starts by replacing each occurrence of a
+    /// free region with a unique inference variable. If HIR typeck ends up depending on two
+    /// regions being equal we'd get unexpected mismatches between HIR typeck and MIR typeck,
+    /// resulting in an ICE.
+    ///
+    /// The trait solver sometimes depends on regions being identical. As a concrete example
+    /// the trait solver ignores other candidates if one candidate exists without any constraints.
+    /// The goal `&'a u32: Equals<&'a u32>` has no constraints right now. If we replace each
+    /// occurrence of `'a` with a unique region the goal now equates these regions. See
+    /// the tests in trait-system-refactor-initiative#27 for concrete examples.
+    ///
+    /// We handle this by *uniquifying* region when canonicalizing root goals during HIR typeck.
+    /// This is still insufficient as inference variables may *hide* region variables, so e.g.
+    /// `dyn TwoSuper<?x, ?x>: Super<?x>` may hold but MIR typeck could end up having to prove
+    /// `dyn TwoSuper<&'0 (), &'1 ()>: Super<&'2 ()>` which is now ambiguous. Because of this we
+    /// stash all successfully proven goals which reference inference variables and then reprove
+    /// them after writeback.
+    pub in_hir_typeck: bool,
 
     /// If set, this flag causes us to skip the 'leak check' during
     /// higher-ranked subtyping operations. This flag is a temporary one used
@@ -506,6 +534,7 @@ pub struct TypeOutlivesConstraint<'tcx> {
 pub struct InferCtxtBuilder<'tcx> {
     tcx: TyCtxt<'tcx>,
     considering_regions: bool,
+    in_hir_typeck: bool,
     skip_leak_check: bool,
     /// Whether we should use the new trait solver in the local inference context,
     /// which affects things like which solver is used in `predicate_may_hold`.
@@ -518,6 +547,7 @@ impl<'tcx> TyCtxt<'tcx> {
         InferCtxtBuilder {
             tcx: self,
             considering_regions: true,
+            in_hir_typeck: false,
             skip_leak_check: false,
             next_trait_solver: self.next_trait_solver_globally(),
         }
@@ -532,6 +562,11 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
 
     pub fn ignoring_regions(mut self) -> Self {
         self.considering_regions = false;
+        self
+    }
+
+    pub fn in_hir_typeck(mut self) -> Self {
+        self.in_hir_typeck = true;
         self
     }
 
@@ -568,12 +603,18 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
     }
 
     pub fn build(&mut self, typing_mode: TypingMode<'tcx>) -> InferCtxt<'tcx> {
-        let InferCtxtBuilder { tcx, considering_regions, skip_leak_check, next_trait_solver } =
-            *self;
+        let InferCtxtBuilder {
+            tcx,
+            considering_regions,
+            in_hir_typeck,
+            skip_leak_check,
+            next_trait_solver,
+        } = *self;
         InferCtxt {
             tcx,
             typing_mode,
             considering_regions,
+            in_hir_typeck,
             skip_leak_check,
             inner: RefCell::new(InferCtxtInner::new()),
             lexical_region_resolutions: RefCell::new(None),
@@ -978,6 +1019,22 @@ impl<'tcx> InferCtxt<'tcx> {
         }
     }
 
+    pub fn push_hir_typeck_potentially_region_dependent_goal(
+        &self,
+        goal: PredicateObligation<'tcx>,
+    ) {
+        let mut inner = self.inner.borrow_mut();
+        inner.undo_log.push(UndoLog::PushHirTypeckPotentiallyRegionDependentGoal);
+        inner.hir_typeck_potentially_region_dependent_goals.push(goal);
+    }
+
+    pub fn take_hir_typeck_potentially_region_dependent_goals(
+        &self,
+    ) -> Vec<PredicateObligation<'tcx>> {
+        assert!(!self.in_snapshot(), "cannot take goals in a snapshot");
+        std::mem::take(&mut self.inner.borrow_mut().hir_typeck_potentially_region_dependent_goals)
+    }
+
     pub fn ty_to_string(&self, t: Ty<'tcx>) -> String {
         self.resolve_vars_if_possible(t).to_string()
     }
@@ -1208,8 +1265,8 @@ impl<'tcx> InferCtxt<'tcx> {
             fn replace_ty(&mut self, bt: ty::BoundTy) -> Ty<'tcx> {
                 self.args[bt.var.index()].expect_ty()
             }
-            fn replace_const(&mut self, bv: ty::BoundVar) -> ty::Const<'tcx> {
-                self.args[bv.index()].expect_const()
+            fn replace_const(&mut self, bc: ty::BoundConst) -> ty::Const<'tcx> {
+                self.args[bc.var.index()].expect_const()
             }
         }
         let delegate = ToFreshVars { args };

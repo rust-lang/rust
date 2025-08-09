@@ -6,14 +6,12 @@ use std::{fmt, iter};
 use arrayvec::ArrayVec;
 use itertools::Either;
 use rustc_abi::{ExternAbi, VariantIdx};
-use rustc_attr_data_structures::{
-    AttributeKind, ConstStability, Deprecation, Stability, StableSince, find_attr,
-};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
+use rustc_hir::attrs::{AttributeKind, DeprecatedSince, Deprecation};
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::lang_items::LangItem;
-use rustc_hir::{BodyId, Mutability};
+use rustc_hir::{BodyId, ConstStability, Mutability, Stability, StableSince, find_attr};
 use rustc_index::IndexVec;
 use rustc_metadata::rendered_const;
 use rustc_middle::span_bug;
@@ -387,13 +385,13 @@ impl Item {
             // versions; the paths that are exposed through it are "deprecated" because they
             // were never supposed to work at all.
             let stab = self.stability(tcx)?;
-            if let rustc_attr_data_structures::StabilityLevel::Stable {
+            if let rustc_hir::StabilityLevel::Stable {
                 allowed_through_unstable_modules: Some(note),
                 ..
             } = stab.level
             {
                 Some(Deprecation {
-                    since: rustc_attr_data_structures::DeprecatedSince::Unspecified,
+                    since: DeprecatedSince::Unspecified,
                     note: Some(note),
                     suggestion: None,
                 })
@@ -404,10 +402,7 @@ impl Item {
     }
 
     pub(crate) fn inner_docs(&self, tcx: TyCtxt<'_>) -> bool {
-        self.item_id
-            .as_def_id()
-            .map(|did| inner_docs(tcx.get_attrs_unchecked(did)))
-            .unwrap_or(false)
+        self.item_id.as_def_id().map(|did| inner_docs(tcx.get_all_attrs(did))).unwrap_or(false)
     }
 
     pub(crate) fn span(&self, tcx: TyCtxt<'_>) -> Option<Span> {
@@ -452,7 +447,7 @@ impl Item {
         kind: ItemKind,
         cx: &mut DocContext<'_>,
     ) -> Item {
-        let hir_attrs = cx.tcx.get_attrs_unchecked(def_id);
+        let hir_attrs = cx.tcx.get_all_attrs(def_id);
 
         Self::from_def_id_and_attrs_and_parts(
             def_id,
@@ -485,10 +480,28 @@ impl Item {
         }
     }
 
+    /// If the item has doc comments from a reexport, returns the item id of that reexport,
+    /// otherwise returns returns the item id.
+    ///
+    /// This is used as a key for caching intra-doc link resolution,
+    /// to prevent two reexports of the same item from using the same cache.
+    pub(crate) fn item_or_reexport_id(&self) -> ItemId {
+        // added documentation on a reexport is always prepended.
+        self.attrs
+            .doc_strings
+            .first()
+            .map(|x| x.item_id)
+            .flatten()
+            .map(ItemId::from)
+            .unwrap_or(self.item_id)
+    }
+
     pub(crate) fn links(&self, cx: &Context<'_>) -> Vec<RenderedLink> {
         use crate::html::format::{href, link_tooltip};
 
-        let Some(links) = cx.cache().intra_doc_links.get(&self.item_id) else { return vec![] };
+        let Some(links) = cx.cache().intra_doc_links.get(&self.item_or_reexport_id()) else {
+            return vec![];
+        };
         links
             .iter()
             .filter_map(|ItemLink { link: s, link_text, page_id: id, fragment }| {
@@ -768,13 +781,13 @@ impl Item {
             .iter()
             .filter_map(|attr| match attr {
                 hir::Attribute::Parsed(AttributeKind::LinkSection { name, .. }) => {
-                    Some(format!("#[link_section = \"{name}\"]"))
+                    Some(format!("#[unsafe(link_section = \"{name}\")]"))
                 }
                 hir::Attribute::Parsed(AttributeKind::NoMangle(..)) => {
-                    Some("#[no_mangle]".to_string())
+                    Some("#[unsafe(no_mangle)]".to_string())
                 }
                 hir::Attribute::Parsed(AttributeKind::ExportName { name, .. }) => {
-                    Some(format!("#[export_name = \"{name}\"]"))
+                    Some(format!("#[unsafe(export_name = \"{name}\")]"))
                 }
                 hir::Attribute::Parsed(AttributeKind::NonExhaustive(..)) => {
                     Some("#[non_exhaustive]".to_string())
@@ -1677,7 +1690,7 @@ impl Type {
         }
     }
 
-    pub(crate) fn generics<'a>(&'a self) -> Option<impl Iterator<Item = &'a Type>> {
+    pub(crate) fn generics(&self) -> Option<impl Iterator<Item = &Type>> {
         match self {
             Type::Path { path, .. } => path.generics(),
             _ => None,
@@ -1963,43 +1976,6 @@ impl PrimitiveType {
     }
 }
 
-impl From<ast::IntTy> for PrimitiveType {
-    fn from(int_ty: ast::IntTy) -> PrimitiveType {
-        match int_ty {
-            ast::IntTy::Isize => PrimitiveType::Isize,
-            ast::IntTy::I8 => PrimitiveType::I8,
-            ast::IntTy::I16 => PrimitiveType::I16,
-            ast::IntTy::I32 => PrimitiveType::I32,
-            ast::IntTy::I64 => PrimitiveType::I64,
-            ast::IntTy::I128 => PrimitiveType::I128,
-        }
-    }
-}
-
-impl From<ast::UintTy> for PrimitiveType {
-    fn from(uint_ty: ast::UintTy) -> PrimitiveType {
-        match uint_ty {
-            ast::UintTy::Usize => PrimitiveType::Usize,
-            ast::UintTy::U8 => PrimitiveType::U8,
-            ast::UintTy::U16 => PrimitiveType::U16,
-            ast::UintTy::U32 => PrimitiveType::U32,
-            ast::UintTy::U64 => PrimitiveType::U64,
-            ast::UintTy::U128 => PrimitiveType::U128,
-        }
-    }
-}
-
-impl From<ast::FloatTy> for PrimitiveType {
-    fn from(float_ty: ast::FloatTy) -> PrimitiveType {
-        match float_ty {
-            ast::FloatTy::F16 => PrimitiveType::F16,
-            ast::FloatTy::F32 => PrimitiveType::F32,
-            ast::FloatTy::F64 => PrimitiveType::F64,
-            ast::FloatTy::F128 => PrimitiveType::F128,
-        }
-    }
-}
-
 impl From<ty::IntTy> for PrimitiveType {
     fn from(int_ty: ty::IntTy) -> PrimitiveType {
         match int_ty {
@@ -2227,7 +2203,7 @@ impl Path {
         self.segments.last().map(|seg| &seg.args)
     }
 
-    pub(crate) fn generics<'a>(&'a self) -> Option<impl Iterator<Item = &'a Type>> {
+    pub(crate) fn generics(&self) -> Option<impl Iterator<Item = &Type>> {
         self.segments.last().and_then(|seg| {
             if let GenericArgs::AngleBracketed { ref args, .. } = seg.args {
                 Some(args.iter().filter_map(|arg| match arg {

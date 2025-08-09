@@ -4,8 +4,8 @@
 
 use rustc_abi::ExternAbi;
 use rustc_ast::ast;
-use rustc_attr_data_structures::{self as attrs, DeprecatedSince};
 use rustc_hir as hir;
+use rustc_hir::attrs::{self, DeprecatedSince};
 use rustc_hir::def::CtorKind;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{HeaderSafety, Safety};
@@ -50,7 +50,7 @@ impl JsonRenderer<'_> {
         let span = item.span(self.tcx);
         let visibility = item.visibility(self.tcx);
         let clean::ItemInner { name, item_id, .. } = *item.inner;
-        let id = self.id_from_item(&item);
+        let id = self.id_from_item(item);
         let inner = match item.kind {
             clean::KeywordItem => return None,
             clean::StrippedItem(ref inner) => {
@@ -86,14 +86,14 @@ impl JsonRenderer<'_> {
         items
             .iter()
             .filter(|i| !i.is_stripped() && !i.is_keyword())
-            .map(|i| self.id_from_item(&i))
+            .map(|i| self.id_from_item(i))
             .collect()
     }
 
     fn ids_keeping_stripped(&self, items: &[clean::Item]) -> Vec<Option<Id>> {
         items
             .iter()
-            .map(|i| (!i.is_stripped() && !i.is_keyword()).then(|| self.id_from_item(&i)))
+            .map(|i| (!i.is_stripped() && !i.is_keyword()).then(|| self.id_from_item(i)))
             .collect()
     }
 }
@@ -358,12 +358,12 @@ impl FromClean<clean::Struct> for Struct {
         let clean::Struct { ctor_kind, generics, fields } = struct_;
 
         let kind = match ctor_kind {
-            Some(CtorKind::Fn) => StructKind::Tuple(renderer.ids_keeping_stripped(&fields)),
+            Some(CtorKind::Fn) => StructKind::Tuple(renderer.ids_keeping_stripped(fields)),
             Some(CtorKind::Const) => {
                 assert!(fields.is_empty());
                 StructKind::Unit
             }
-            None => StructKind::Plain { fields: renderer.ids(&fields), has_stripped_fields },
+            None => StructKind::Plain { fields: renderer.ids(fields), has_stripped_fields },
         };
 
         Struct {
@@ -381,7 +381,7 @@ impl FromClean<clean::Union> for Union {
         Union {
             generics: generics.into_json(renderer),
             has_stripped_fields,
-            fields: renderer.ids(&fields),
+            fields: renderer.ids(fields),
             impls: Vec::new(), // Added in JsonRenderer::item
         }
     }
@@ -659,7 +659,7 @@ impl FromClean<clean::FnDecl> for FunctionSignature {
         let clean::FnDecl { inputs, output, c_variadic } = decl;
         FunctionSignature {
             inputs: inputs
-                .into_iter()
+                .iter()
                 .map(|param| {
                     // `_` is the most sensible name for missing param names.
                     let name = param.name.unwrap_or(kw::Underscore).to_string();
@@ -684,7 +684,7 @@ impl FromClean<clean::Trait> for Trait {
             is_auto,
             is_unsafe,
             is_dyn_compatible,
-            items: renderer.ids(&items),
+            items: renderer.ids(items),
             generics: generics.into_json(renderer),
             bounds: bounds.into_json(renderer),
             implementations: Vec::new(), // Added in JsonRenderer::item
@@ -727,7 +727,7 @@ impl FromClean<clean::Impl> for Impl {
                 .collect(),
             trait_: trait_.into_json(renderer),
             for_: for_.into_json(renderer),
-            items: renderer.ids(&items),
+            items: renderer.ids(items),
             is_negative,
             is_synthetic,
             blanket_impl: blanket_impl.map(|x| x.into_json(renderer)),
@@ -770,7 +770,7 @@ impl FromClean<clean::Variant> for Variant {
 
         let kind = match &variant.kind {
             CLike => VariantKind::Plain,
-            Tuple(fields) => VariantKind::Tuple(renderer.ids_keeping_stripped(&fields)),
+            Tuple(fields) => VariantKind::Tuple(renderer.ids_keeping_stripped(fields)),
             Struct(s) => VariantKind::Struct {
                 has_stripped_fields: s.has_stripped_entries(),
                 fields: renderer.ids(&s.fields),
@@ -908,8 +908,12 @@ fn maybe_from_hir_attr(
         hir::Attribute::Parsed(kind) => kind,
 
         hir::Attribute::Unparsed(_) => {
-            // FIXME: We should handle `#[doc(hidden)]`.
-            return Some(other_attr(tcx, attr));
+            return Some(if attr.has_name(sym::macro_export) {
+                Attribute::MacroExport
+                // FIXME: We should handle `#[doc(hidden)]`.
+            } else {
+                other_attr(tcx, attr)
+            });
         }
     };
 

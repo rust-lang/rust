@@ -5,7 +5,7 @@
 //! [`SyntaxEditor`]: https://github.com/dotnet/roslyn/blob/43b0b05cc4f492fd5de00f6f6717409091df8daa/src/Workspaces/Core/Portable/Editing/SyntaxEditor.cs
 
 use std::{
-    fmt,
+    fmt, iter,
     num::NonZeroU32,
     ops::RangeInclusive,
     sync::atomic::{AtomicU32, Ordering},
@@ -41,6 +41,15 @@ impl SyntaxEditor {
         self.annotations.push((element.syntax_element(), annotation))
     }
 
+    pub fn add_annotation_all(
+        &mut self,
+        elements: Vec<impl Element>,
+        annotation: SyntaxAnnotation,
+    ) {
+        self.annotations
+            .extend(elements.into_iter().map(|e| e.syntax_element()).zip(iter::repeat(annotation)));
+    }
+
     pub fn merge(&mut self, mut other: SyntaxEditor) {
         debug_assert!(
             self.root == other.root || other.root.ancestors().any(|node| node == self.root),
@@ -72,6 +81,16 @@ impl SyntaxEditor {
             "should not delete root node"
         );
         self.changes.push(Change::Replace(element.syntax_element(), None));
+    }
+
+    pub fn delete_all(&mut self, range: RangeInclusive<SyntaxElement>) {
+        if range.start() == range.end() {
+            self.delete(range.start());
+            return;
+        }
+
+        debug_assert!(is_ancestor_or_self_of_element(range.start(), &self.root));
+        self.changes.push(Change::ReplaceAll(range, Vec::new()))
     }
 
     pub fn replace(&mut self, old: impl Element, new: impl Element) {
@@ -617,10 +636,10 @@ mod tests {
         if let Some(ret_ty) = parent_fn.ret_type() {
             editor.delete(ret_ty.syntax().clone());
 
-            if let Some(SyntaxElement::Token(token)) = ret_ty.syntax().next_sibling_or_token() {
-                if token.kind().is_trivia() {
-                    editor.delete(token);
-                }
+            if let Some(SyntaxElement::Token(token)) = ret_ty.syntax().next_sibling_or_token()
+                && token.kind().is_trivia()
+            {
+                editor.delete(token);
             }
         }
 

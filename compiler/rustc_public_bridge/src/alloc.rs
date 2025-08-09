@@ -1,4 +1,4 @@
-//! Internal memory allocator implementation for StableMIR.
+//! Internal memory allocator implementation for rustc_public.
 //!
 //! This module handles all direct interactions with rustc queries and performs
 //! the actual memory allocations. The stable interface in `rustc_public::alloc`
@@ -10,22 +10,22 @@ use rustc_middle::mir::interpret::{
 };
 use rustc_middle::ty::{Ty, layout};
 
-use super::{SmirCtxt, Tables};
+use super::{CompilerCtxt, Tables};
 use crate::bridge::Allocation as _;
-use crate::{Bridge, SmirError};
+use crate::{Bridge, Error};
 
 pub fn create_ty_and_layout<'tcx, B: Bridge>(
-    cx: &SmirCtxt<'tcx, B>,
+    cx: &CompilerCtxt<'tcx, B>,
     ty: Ty<'tcx>,
 ) -> Result<TyAndLayout<'tcx, Ty<'tcx>>, &'tcx layout::LayoutError<'tcx>> {
-    use crate::context::SmirTypingEnv;
+    use crate::context::TypingEnvHelpers;
     cx.tcx.layout_of(cx.fully_monomorphized().as_query_input(ty))
 }
 
 pub fn try_new_scalar<'tcx, B: Bridge>(
     layout: TyAndLayout<'tcx, Ty<'tcx>>,
     scalar: Scalar,
-    cx: &SmirCtxt<'tcx, B>,
+    cx: &CompilerCtxt<'tcx, B>,
 ) -> Result<Allocation, B::Error> {
     let size = scalar.size();
     let mut allocation = Allocation::new(size, layout.align.abi, AllocInit::Uninit, ());
@@ -38,11 +38,10 @@ pub fn try_new_scalar<'tcx, B: Bridge>(
 
 pub fn try_new_slice<'tcx, B: Bridge>(
     layout: TyAndLayout<'tcx, Ty<'tcx>>,
-    data: ConstAllocation<'tcx>,
+    alloc_id: AllocId,
     meta: u64,
-    cx: &SmirCtxt<'tcx, B>,
+    cx: &CompilerCtxt<'tcx, B>,
 ) -> Result<Allocation, B::Error> {
-    let alloc_id = cx.tcx.reserve_and_set_memory_alloc(data);
     let ptr = Pointer::new(alloc_id.into(), Size::ZERO);
     let scalar_ptr = Scalar::from_pointer(ptr, &cx.tcx);
     let scalar_meta: Scalar = Scalar::from_target_usize(meta, &cx.tcx);
@@ -60,7 +59,7 @@ pub fn try_new_slice<'tcx, B: Bridge>(
 
 pub fn try_new_indirect<'tcx, B: Bridge>(
     alloc_id: AllocId,
-    cx: &SmirCtxt<'tcx, B>,
+    cx: &CompilerCtxt<'tcx, B>,
 ) -> ConstAllocation<'tcx> {
     let alloc = cx.tcx.global_alloc(alloc_id).unwrap_memory();
 
@@ -72,7 +71,7 @@ pub fn allocation_filter<'tcx, B: Bridge>(
     alloc: &rustc_middle::mir::interpret::Allocation,
     alloc_range: AllocRange,
     tables: &mut Tables<'tcx, B>,
-    cx: &SmirCtxt<'tcx, B>,
+    cx: &CompilerCtxt<'tcx, B>,
 ) -> B::Allocation {
     let mut bytes: Vec<Option<u8>> = alloc
         .inspect_with_uninit_and_ptr_outside_interpreter(

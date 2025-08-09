@@ -5,10 +5,13 @@ use std::assert_matches::assert_matches;
 use std::iter;
 
 use rustc_ast::ptr::P;
-use rustc_ast::{self as ast, GenericParamKind, attr, join_path_idents};
+use rustc_ast::{self as ast, GenericParamKind, HasNodeId, attr, join_path_idents};
 use rustc_ast_pretty::pprust;
+use rustc_attr_parsing::AttributeParser;
 use rustc_errors::{Applicability, Diag, Level};
 use rustc_expand::base::*;
+use rustc_hir::Attribute;
+use rustc_hir::attrs::AttributeKind;
 use rustc_span::{ErrorGuaranteed, FileNameDisplayPreference, Ident, Span, Symbol, sym};
 use thin_vec::{ThinVec, thin_vec};
 use tracing::debug;
@@ -473,39 +476,19 @@ fn should_ignore_message(i: &ast::Item) -> Option<Symbol> {
 }
 
 fn should_panic(cx: &ExtCtxt<'_>, i: &ast::Item) -> ShouldPanic {
-    match attr::find_by_name(&i.attrs, sym::should_panic) {
-        Some(attr) => {
-            match attr.meta_item_list() {
-                // Handle #[should_panic(expected = "foo")]
-                Some(list) => {
-                    let msg = list
-                        .iter()
-                        .find(|mi| mi.has_name(sym::expected))
-                        .and_then(|mi| mi.meta_item())
-                        .and_then(|mi| mi.value_str());
-                    if list.len() != 1 || msg.is_none() {
-                        cx.dcx()
-                            .struct_span_warn(
-                                attr.span,
-                                "argument must be of the form: \
-                             `expected = \"error message\"`",
-                            )
-                            .with_note(
-                                "errors in this attribute were erroneously \
-                                allowed and will become a hard error in a \
-                                future release",
-                            )
-                            .emit();
-                        ShouldPanic::Yes(None)
-                    } else {
-                        ShouldPanic::Yes(msg)
-                    }
-                }
-                // Handle #[should_panic] and #[should_panic = "expected"]
-                None => ShouldPanic::Yes(attr.value_str()),
-            }
-        }
-        None => ShouldPanic::No,
+    if let Some(Attribute::Parsed(AttributeKind::ShouldPanic { reason, .. })) =
+        AttributeParser::parse_limited(
+            cx.sess,
+            &i.attrs,
+            sym::should_panic,
+            i.span,
+            i.node_id(),
+            None,
+        )
+    {
+        ShouldPanic::Yes(reason)
+    } else {
+        ShouldPanic::No
     }
 }
 

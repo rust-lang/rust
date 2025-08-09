@@ -29,7 +29,7 @@ use rustc_parse::{
     new_parser_from_file, new_parser_from_source_str, unwrap_or_emit_fatal, validate_attr,
 };
 use rustc_passes::{abi_test, input_stats, layout_test};
-use rustc_resolve::Resolver;
+use rustc_resolve::{Resolver, ResolverOutputs};
 use rustc_session::config::{CrateType, Input, OutFileName, OutputFilenames, OutputType};
 use rustc_session::cstore::Untracked;
 use rustc_session::output::{collect_crate_types, filename_for_input};
@@ -207,6 +207,10 @@ fn configure_and_expand(
         ecx.num_standard_library_imports = num_standard_library_imports;
         // Expand macros now!
         let krate = sess.time("expand_crate", || ecx.monotonic_expander().expand_crate(krate));
+
+        if ecx.nb_macro_errors > 0 {
+            sess.dcx().abort_if_errors();
+        }
 
         // The rest is error reporting and stats
 
@@ -789,7 +793,7 @@ fn resolver_for_lowering_raw<'tcx>(
     // Make sure we don't mutate the cstore from here on.
     tcx.untracked().cstore.freeze();
 
-    let ty::ResolverOutputs {
+    let ResolverOutputs {
         global_ctxt: untracked_resolutions,
         ast_lowering: untracked_resolver_for_lowering,
     } = resolver.into_outputs();
@@ -1055,17 +1059,11 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
                 });
             },
             {
-                sess.time("unused_lib_feature_checking", || {
-                    rustc_passes::stability::check_unused_or_stable_features(tcx)
-                });
-            },
-            {
                 // We force these queries to run,
                 // since they might not otherwise get called.
                 // This marks the corresponding crate-level attributes
                 // as used, and ensures that their values are valid.
                 tcx.ensure_ok().limits(());
-                tcx.ensure_ok().stability_index(());
             }
         );
     });
@@ -1153,7 +1151,9 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) {
 
                 parallel!(
                     {
-                        tcx.ensure_ok().check_private_in_public(());
+                        tcx.par_hir_for_each_module(|module| {
+                            tcx.ensure_ok().check_private_in_public(module)
+                        })
                     },
                     {
                         tcx.par_hir_for_each_module(|module| {

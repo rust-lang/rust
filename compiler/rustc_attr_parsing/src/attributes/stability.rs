@@ -1,11 +1,12 @@
 use std::num::NonZero;
 
-use rustc_attr_data_structures::{
-    AttributeKind, DefaultBodyStability, PartialConstStability, Stability, StabilityLevel,
-    StableSince, UnstableReason, VERSION_PLACEHOLDER,
-};
 use rustc_errors::ErrorGuaranteed;
 use rustc_feature::template;
+use rustc_hir::attrs::AttributeKind;
+use rustc_hir::{
+    DefaultBodyStability, PartialConstStability, Stability, StabilityLevel, StableSince,
+    UnstableReason, VERSION_PLACEHOLDER,
+};
 use rustc_span::{Ident, Span, Symbol, sym};
 
 use super::util::parse_version;
@@ -74,8 +75,15 @@ impl<S: Stage> AttributeParser<S> for StabilityParser {
             template!(NameValueStr: "deprecation message"),
             |this, cx, args| {
                 reject_outside_std!(cx);
-                this.allowed_through_unstable_modules =
-                    args.name_value().and_then(|i| i.value_as_str())
+                let Some(nv) = args.name_value() else {
+                    cx.expected_name_value(cx.attr_span, None);
+                    return;
+                };
+                let Some(value_str) = nv.value_as_str() else {
+                    cx.expected_string_literal(nv.value_span, Some(nv.value_as_lit()));
+                    return;
+                };
+                this.allowed_through_unstable_modules = Some(value_str);
             },
         ),
     ];
@@ -247,7 +255,12 @@ pub(crate) fn parse_stability<S: Stage>(
     let mut feature = None;
     let mut since = None;
 
-    for param in args.list()?.mixed() {
+    let ArgParser::List(list) = args else {
+        cx.expected_list(cx.attr_span);
+        return None;
+    };
+
+    for param in list.mixed() {
         let param_span = param.span();
         let Some(param) = param.meta_item() else {
             cx.emit_err(session_diagnostics::UnsupportedLiteral {
@@ -292,12 +305,12 @@ pub(crate) fn parse_stability<S: Stage>(
         } else if let Some(version) = parse_version(since) {
             StableSince::Version(version)
         } else {
-            cx.emit_err(session_diagnostics::InvalidSince { span: cx.attr_span });
-            StableSince::Err
+            let err = cx.emit_err(session_diagnostics::InvalidSince { span: cx.attr_span });
+            StableSince::Err(err)
         }
     } else {
-        cx.emit_err(session_diagnostics::MissingSince { span: cx.attr_span });
-        StableSince::Err
+        let err = cx.emit_err(session_diagnostics::MissingSince { span: cx.attr_span });
+        StableSince::Err(err)
     };
 
     match feature {
@@ -322,7 +335,13 @@ pub(crate) fn parse_unstability<S: Stage>(
     let mut is_soft = false;
     let mut implied_by = None;
     let mut old_name = None;
-    for param in args.list()?.mixed() {
+
+    let ArgParser::List(list) = args else {
+        cx.expected_list(cx.attr_span);
+        return None;
+    };
+
+    for param in list.mixed() {
         let Some(param) = param.meta_item() else {
             cx.emit_err(session_diagnostics::UnsupportedLiteral {
                 span: param.span(),

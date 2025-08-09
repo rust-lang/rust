@@ -3,7 +3,6 @@ use std::fmt;
 use std::hash::Hash;
 
 use rustc_ast::expand::autodiff_attrs::AutoDiffItem;
-use rustc_attr_data_structures::InlineAttr;
 use rustc_data_structures::base_n::{BaseNString, CASE_INSENSITIVE, ToBaseN};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxIndexMap;
@@ -11,6 +10,7 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHas
 use rustc_data_structures::unord::UnordMap;
 use rustc_hashes::Hash128;
 use rustc_hir::ItemId;
+use rustc_hir::attrs::InlineAttr;
 use rustc_hir::def_id::{CrateNum, DefId, DefIdSet, LOCAL_CRATE};
 use rustc_index::Idx;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable};
@@ -143,10 +143,8 @@ impl<'tcx> MonoItem<'tcx> {
         };
 
         // Similarly, the executable entrypoint must be instantiated exactly once.
-        if let Some((entry_def_id, _)) = tcx.entry_fn(()) {
-            if instance.def_id() == entry_def_id {
-                return InstantiationMode::GloballyShared { may_conflict: false };
-            }
+        if tcx.is_entrypoint(instance.def_id()) {
+            return InstantiationMode::GloballyShared { may_conflict: false };
         }
 
         // If the function is #[naked] or contains any other attribute that requires exactly-once

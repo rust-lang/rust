@@ -1,14 +1,14 @@
 error: `[const]` is not allowed here
  --> const-super-trait.rs:7:12
   |
-7 | trait Bar: ~const Foo {}
-  |            ^^^^^^
+7 | trait Bar: [const] Foo {}
+  |            ^^^^^^^
   |
 note: this trait is not `const`, so it cannot have `[const]` trait bounds
  --> const-super-trait.rs:7:1
   |
-7 | trait Bar: ~const Foo {}
-  | ^^^^^^^^^^^^^^^^^^^^^^^^
+7 | trait Bar: [const] Foo {}
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0554]: `#![feature]` may not be used on the NIGHTLY release channel
  --> const-super-trait.rs:1:30
@@ -19,8 +19,8 @@ error[E0554]: `#![feature]` may not be used on the NIGHTLY release channel
 error: `[const]` can only be applied to `const` traits
  --> const-super-trait.rs:7:12
   |
-7 | trait Bar: ~const Foo {}
-  |            ^^^^^^ can't be applied to `Foo`
+7 | trait Bar: [const] Foo {}
+  |            ^^^^^^^ can't be applied to `Foo`
   |
 note: `Foo` can't be used with `[const]` because it isn't `const`
  --> const-super-trait.rs:3:1
@@ -31,14 +31,14 @@ note: `Foo` can't be used with `[const]` because it isn't `const`
 error: `[const]` can only be applied to `const` traits
  --> const-super-trait.rs:9:17
   |
-9 | const fn foo<T: ~const Bar>(x: &T) {
-  |                 ^^^^^^ can't be applied to `Bar`
+9 | const fn foo<T: [const] Bar>(x: &T) {
+  |                 ^^^^^^^ can't be applied to `Bar`
   |
 note: `Bar` can't be used with `[const]` because it isn't `const`
  --> const-super-trait.rs:7:1
   |
-7 | trait Bar: ~const Foo {}
-  | ^^^^^^^^^^^^^^^^^^^^^
+7 | trait Bar: [const] Foo {}
+  | ^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0015]: cannot call non-const method `<T as Foo>::a` in constant functions
   --> const-super-trait.rs:10:7

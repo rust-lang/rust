@@ -18,14 +18,11 @@ cfg-if = { version = "1.0", features = ['rustc-dep-of-std'] }
 panic_unwind = { path = "../panic_unwind", optional = true }
 panic_abort = { path = "../panic_abort" }
 core = { path = "../core", public = true }
-compiler_builtins = { path = "../compiler-builtins/compiler-builtins" }
 unwind = { path = "../unwind" }
 hashbrown = { version = "0.15", default-features = false, features = [
     'rustc-dep-of-std',
 ] }
-std_detect = { path = "../stdarch/crates/std_detect", public = true, default-features = false, features = [
-    'rustc-dep-of-std',
-] }
+std_detect = { path = "../std_detect", public = true }
 
 # Dependencies of the `backtrace` crate
 rustc-demangle = { version = "0.1.24", features = ['rustc-dep-of-std'] }
@@ -65,10 +62,10 @@ rand = { version = "0.9.0", default-features = false, features = ["alloc"] }
 rand_xorshift = "0.4.0"
 
 [target.'cfg(any(all(target_family = "wasm", target_os = "unknown"), target_os = "xous", all(target_vendor = "fortanix", target_env = "sgx")))'.dependencies]
-dlmalloc = { version = "0.2.4", features = ['rustc-dep-of-std'] }
+dlmalloc = { version = "0.2.10", features = ['rustc-dep-of-std'] }
 
 [target.x86_64-fortanix-unknown-sgx.dependencies]
-fortanix-sgx-abi = { version = "0.5.0", features = [
+fortanix-sgx-abi = { version = "0.6.1", features = [
     'rustc-dep-of-std',
 ], public = true }
 
@@ -99,9 +96,7 @@ backtrace-trace-only = []
 panic-unwind = ["dep:panic_unwind"]
 compiler-builtins-c = ["alloc/compiler-builtins-c"]
 compiler-builtins-mem = ["alloc/compiler-builtins-mem"]
-compiler-builtins-no-asm = ["alloc/compiler-builtins-no-asm"]
 compiler-builtins-no-f16-f128 = ["alloc/compiler-builtins-no-f16-f128"]
-compiler-builtins-mangled-names = ["alloc/compiler-builtins-mangled-names"]
 llvm-libunwind = ["unwind/llvm-libunwind"]
 system-llvm-libunwind = ["unwind/system-llvm-libunwind"]
 
@@ -118,8 +113,7 @@ optimize_for_size = ["core/optimize_for_size", "alloc/optimize_for_size"]
 debug_refcell = ["core/debug_refcell"]
 
 
-# Enable std_detect default features for stdarch/crates/std_detect:
-# https://github.com/rust-lang/stdarch/blob/master/crates/std_detect/Cargo.toml
+# Enable std_detect features:
 std_detect_file_io = ["std_detect/std_detect_file_io"]
 std_detect_dlsym_getauxval = ["std_detect/std_detect_dlsym_getauxval"]
 

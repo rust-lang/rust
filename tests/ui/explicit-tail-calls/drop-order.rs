@@ -1,5 +1,3 @@
-// FIXME(explicit_tail_calls): enable this test once rustc_codegen_ssa supports tail calls
-//@ ignore-test: tail calls are not implemented in rustc_codegen_ssa yet, so this causes 🧊
 //@ run-pass
 #![expect(incomplete_features)]
 #![feature(explicit_tail_calls)]

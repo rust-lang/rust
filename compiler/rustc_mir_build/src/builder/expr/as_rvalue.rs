@@ -1,6 +1,6 @@
 //! See docs in `build/expr/mod.rs`.
 
-use rustc_abi::{BackendRepr, FieldIdx, Primitive};
+use rustc_abi::FieldIdx;
 use rustc_hir::lang_items::LangItem;
 use rustc_index::{Idx, IndexVec};
 use rustc_middle::bug;
@@ -9,7 +9,6 @@ use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::*;
 use rustc_middle::thir::*;
 use rustc_middle::ty::cast::{CastTy, mir_cast_kind};
-use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::util::IntTypeExt;
 use rustc_middle::ty::{self, Ty, UpvarArgs};
 use rustc_span::source_map::Spanned;
@@ -200,8 +199,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 {
                     let discr_ty = adt_def.repr().discr_type().to_ty(this.tcx);
                     let temp = unpack!(block = this.as_temp(block, scope, source, Mutability::Not));
-                    let layout =
-                        this.tcx.layout_of(this.typing_env().as_query_input(source_expr.ty));
                     let discr = this.temp(discr_ty, source_expr.span);
                     this.cfg.push_assign(
                         block,
@@ -209,80 +206,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         discr,
                         Rvalue::Discriminant(temp.into()),
                     );
-                    let (op, ty) = (Operand::Move(discr), discr_ty);
-
-                    if let BackendRepr::Scalar(scalar) = layout.unwrap().backend_repr
-                        && !scalar.is_always_valid(&this.tcx)
-                        && let Primitive::Int(int_width, _signed) = scalar.primitive()
-                    {
-                        let unsigned_ty = int_width.to_ty(this.tcx, false);
-                        let unsigned_place = this.temp(unsigned_ty, expr_span);
-                        this.cfg.push_assign(
-                            block,
-                            source_info,
-                            unsigned_place,
-                            Rvalue::Cast(CastKind::IntToInt, Operand::Copy(discr), unsigned_ty),
-                        );
-
-                        let bool_ty = this.tcx.types.bool;
-                        let range = scalar.valid_range(&this.tcx);
-                        let merge_op =
-                            if range.start <= range.end { BinOp::BitAnd } else { BinOp::BitOr };
-
-                        let mut comparer = |range: u128, bin_op: BinOp| -> Place<'tcx> {
-                            // We can use `ty::TypingEnv::fully_monomorphized()` here
-                            // as we only need it to compute the layout of a primitive.
-                            let range_val = Const::from_bits(
-                                this.tcx,
-                                range,
-                                ty::TypingEnv::fully_monomorphized(),
-                                unsigned_ty,
-                            );
-                            let lit_op = this.literal_operand(expr.span, range_val);
-                            let is_bin_op = this.temp(bool_ty, expr_span);
-                            this.cfg.push_assign(
-                                block,
-                                source_info,
-                                is_bin_op,
-                                Rvalue::BinaryOp(
-                                    bin_op,
-                                    Box::new((Operand::Copy(unsigned_place), lit_op)),
-                                ),
-                            );
-                            is_bin_op
-                        };
-                        let assert_place = if range.start == 0 {
-                            comparer(range.end, BinOp::Le)
-                        } else {
-                            let start_place = comparer(range.start, BinOp::Ge);
-                            let end_place = comparer(range.end, BinOp::Le);
-                            let merge_place = this.temp(bool_ty, expr_span);
-                            this.cfg.push_assign(
-                                block,
-                                source_info,
-                                merge_place,
-                                Rvalue::BinaryOp(
-                                    merge_op,
-                                    Box::new((
-                                        Operand::Move(start_place),
-                                        Operand::Move(end_place),
-                                    )),
-                                ),
-                            );
-                            merge_place
-                        };
-                        this.cfg.push(
-                            block,
-                            Statement::new(
-                                source_info,
-                                StatementKind::Intrinsic(Box::new(NonDivergingIntrinsic::Assume(
-                                    Operand::Move(assert_place),
-                                ))),
-                            ),
-                        );
-                    }
-
-                    (op, ty)
+                    (Operand::Move(discr), discr_ty)
                 } else {
                     let ty = source_expr.ty;
                     let source = unpack!(

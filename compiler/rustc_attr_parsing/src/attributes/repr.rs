@@ -1,7 +1,7 @@
 use rustc_abi::Align;
 use rustc_ast::{IntTy, LitIntType, LitKind, UintTy};
-use rustc_attr_data_structures::{AttributeKind, IntType, ReprAttr};
 use rustc_feature::{AttributeTemplate, template};
+use rustc_hir::attrs::{AttributeKind, IntType, ReprAttr};
 use rustc_span::{DUMMY_SP, Span, Symbol, sym};
 
 use super::{AcceptMapping, AttributeParser, CombineAttributeParser, ConvertFn, FinalizeContext};
@@ -274,7 +274,7 @@ fn parse_alignment(node: &LitKind) -> Result<Align, &'static str> {
 pub(crate) struct AlignParser(Option<(Align, Span)>);
 
 impl AlignParser {
-    const PATH: &'static [Symbol] = &[sym::align];
+    const PATH: &'static [Symbol] = &[sym::rustc_align];
     const TEMPLATE: AttributeTemplate = template!(List: "<alignment in bytes>");
 
     fn parse<'c, S: Stage>(

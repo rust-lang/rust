@@ -2,11 +2,10 @@ use clippy_config::Conf;
 use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_sugg};
 use clippy_utils::is_from_proc_macro;
 use clippy_utils::msrvs::Msrv;
-use rustc_attr_data_structures::{StabilityLevel, StableSince};
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
-use rustc_hir::{Block, Body, HirId, Path, PathSegment};
+use rustc_hir::{Block, Body, HirId, Path, PathSegment, StabilityLevel, StableSince};
 use rustc_lint::{LateContext, LateLintPass, Lint, LintContext};
 use rustc_session::impl_lint_pass;
 use rustc_span::symbol::kw;
@@ -249,7 +248,7 @@ fn is_stable(cx: &LateContext<'_>, mut def_id: DefId, msrv: Msrv) -> bool {
             let stable = match since {
                 StableSince::Version(v) => msrv.meets(cx, v),
                 StableSince::Current => msrv.current(cx).is_none(),
-                StableSince::Err => false,
+                StableSince::Err(_) => false,
             };
 
             if !stable {

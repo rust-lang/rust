@@ -1,7 +1,9 @@
 // tidy-alphabetical-start
 #![allow(internal_features)]
 #![allow(rustc::diagnostic_outside_of_impl)]
+#![cfg_attr(bootstrap, feature(strict_overflow_ops))]
 #![doc(rust_logo)]
+#![feature(array_try_map)]
 #![feature(assert_matches)]
 #![feature(box_patterns)]
 #![feature(decl_macro)]
@@ -9,7 +11,6 @@
 #![feature(never_type)]
 #![feature(rustdoc_internals)]
 #![feature(slice_ptr_get)]
-#![feature(strict_overflow_ops)]
 #![feature(trait_alias)]
 #![feature(try_blocks)]
 #![feature(unqualified_local_imports)]

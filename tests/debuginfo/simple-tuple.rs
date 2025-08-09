@@ -1,4 +1,5 @@
 //@ compile-flags:-g
+//@ disable-gdb-pretty-printers
 
 // === GDB TESTS ===================================================================================
 
@@ -121,8 +122,6 @@
 
 #![allow(unused_variables)]
 #![allow(dead_code)]
-#![feature(omit_gdb_pretty_printer_section)]
-#![omit_gdb_pretty_printer_section]
 
 static mut NO_PADDING_8: (i8, u8) = (-50, 50);
 static mut NO_PADDING_16: (i16, i16, u16) = (-1, 2, 3);

@@ -22,7 +22,11 @@ unsafe extern "C" {
 
 impl Thread {
     // unsafe: see thread::Builder::spawn_unchecked for safety requirements
-    pub unsafe fn new(stack: usize, p: Box<dyn FnOnce()>) -> io::Result<Thread> {
+    pub unsafe fn new(
+        stack: usize,
+        _name: Option<&str>,
+        p: Box<dyn FnOnce()>,
+    ) -> io::Result<Thread> {
         let p = Box::into_raw(Box::new(p));
         let mut native: libc::pthread_t = unsafe { mem::zeroed() };
         let mut attr: libc::pthread_attr_t = unsafe { mem::zeroed() };
@@ -138,6 +142,10 @@ impl Drop for Thread {
         // we can not call detach, so just panic if thread spawn without join
         panic!("thread must join, detach is not supported!");
     }
+}
+
+pub(crate) fn current_os_id() -> Option<u64> {
+    None
 }
 
 // Note: Both `sched_getaffinity` and `sysconf` are available but not functional on

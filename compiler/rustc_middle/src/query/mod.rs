@@ -70,7 +70,6 @@ use std::sync::Arc;
 use rustc_abi::Align;
 use rustc_arena::TypedArena;
 use rustc_ast::expand::allocator::AllocatorKind;
-use rustc_attr_data_structures::StrippedCfgItem;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::sorted_map::SortedMap;
@@ -78,6 +77,7 @@ use rustc_data_structures::steal::Steal;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::ErrorGuaranteed;
+use rustc_hir::attrs::StrippedCfgItem;
 use rustc_hir::def::{DefKind, DocLinkResMap};
 use rustc_hir::def_id::{
     CrateNum, DefId, DefIdMap, LocalDefId, LocalDefIdMap, LocalDefIdSet, LocalModDefId,
@@ -101,7 +101,7 @@ use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::source_map::Spanned;
 use rustc_span::{DUMMY_SP, Span, Symbol};
 use rustc_target::spec::PanicStrategy;
-use {rustc_abi as abi, rustc_ast as ast, rustc_attr_data_structures as attr, rustc_hir as hir};
+use {rustc_abi as abi, rustc_ast as ast, rustc_hir as hir};
 
 use crate::infer::canonical::{self, Canonical};
 use crate::lint::LintExpectation;
@@ -112,7 +112,7 @@ use crate::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo};
 use crate::middle::lib_features::LibFeatures;
 use crate::middle::privacy::EffectiveVisibilities;
 use crate::middle::resolve_bound_vars::{ObjectLifetimeDefault, ResolveBoundVars, ResolvedArg};
-use crate::middle::stability::{self, DeprecationEntry};
+use crate::middle::stability::DeprecationEntry;
 use crate::mir::interpret::{
     EvalStaticInitializerRawResult, EvalToAllocationRawResult, EvalToConstValueResult,
     EvalToValTreeResult, GlobalId, LitToConstInput,
@@ -1178,11 +1178,10 @@ rustc_queries! {
 
     /// Return the live symbols in the crate for dead code check.
     ///
-    /// The second return value maps from ADTs to ignored derived traits (e.g. Debug and Clone) and
-    /// their respective impl (i.e., part of the derive macro)
+    /// The second return value maps from ADTs to ignored derived traits (e.g. Debug and Clone).
     query live_symbols_and_ignored_derived_traits(_: ()) -> &'tcx (
         LocalDefIdSet,
-        LocalDefIdMap<FxIndexSet<(DefId, DefId)>>
+        LocalDefIdMap<FxIndexSet<DefId>>,
     ) {
         arena_cache
         desc { "finding live symbols in crate" }
@@ -1363,7 +1362,7 @@ rustc_queries! {
     }
 
     /// Converts a type-level constant value into a MIR constant value.
-    query valtree_to_const_val(key: ty::Value<'tcx>) -> mir::ConstValue<'tcx> {
+    query valtree_to_const_val(key: ty::Value<'tcx>) -> mir::ConstValue {
         desc { "converting type-level constant value to MIR constant value"}
     }
 
@@ -1390,9 +1389,11 @@ rustc_queries! {
         eval_always
         desc { "checking effective visibilities" }
     }
-    query check_private_in_public(_: ()) {
-        eval_always
-        desc { "checking for private elements in public interfaces" }
+    query check_private_in_public(module_def_id: LocalModDefId) {
+        desc { |tcx|
+            "checking for private elements in public interfaces for {}",
+            describe_as_module(module_def_id, tcx)
+        }
     }
 
     query reachable_set(_: ()) -> &'tcx LocalDefIdSet {
@@ -1455,19 +1456,19 @@ rustc_queries! {
         cache_on_disk_if { true }
     }
 
-    query lookup_stability(def_id: DefId) -> Option<attr::Stability> {
+    query lookup_stability(def_id: DefId) -> Option<hir::Stability> {
         desc { |tcx| "looking up stability of `{}`", tcx.def_path_str(def_id) }
         cache_on_disk_if { def_id.is_local() }
         separate_provide_extern
     }
 
-    query lookup_const_stability(def_id: DefId) -> Option<attr::ConstStability> {
+    query lookup_const_stability(def_id: DefId) -> Option<hir::ConstStability> {
         desc { |tcx| "looking up const stability of `{}`", tcx.def_path_str(def_id) }
         cache_on_disk_if { def_id.is_local() }
         separate_provide_extern
     }
 
-    query lookup_default_body_stability(def_id: DefId) -> Option<attr::DefaultBodyStability> {
+    query lookup_default_body_stability(def_id: DefId) -> Option<hir::DefaultBodyStability> {
         desc { |tcx| "looking up default body stability of `{}`", tcx.def_path_str(def_id) }
         separate_provide_extern
     }
@@ -2152,9 +2153,6 @@ rustc_queries! {
         desc { |tcx| "collecting child items of module `{}`", tcx.def_path_str(def_id) }
         separate_provide_extern
     }
-    query extern_mod_stmt_cnum(def_id: LocalDefId) -> Option<CrateNum> {
-        desc { |tcx| "computing crate imported by `{}`", tcx.def_path_str(def_id) }
-    }
 
     /// Gets the number of definitions in a foreign crate.
     ///
@@ -2171,6 +2169,18 @@ rustc_queries! {
         separate_provide_extern
         arena_cache
     }
+    /// Mapping from feature name to feature name based on the `implied_by` field of `#[unstable]`
+    /// attributes. If a `#[unstable(feature = "implier", implied_by = "impliee")]` attribute
+    /// exists, then this map will have a `impliee -> implier` entry.
+    ///
+    /// This mapping is necessary unless both the `#[stable]` and `#[unstable]` attributes should
+    /// specify their implications (both `implies` and `implied_by`). If only one of the two
+    /// attributes do (as in the current implementation, `implied_by` in `#[unstable]`), then this
+    /// mapping is necessary for diagnostics. When a "unnecessary feature attribute" error is
+    /// reported, only the `#[stable]` attribute information is available, so the map is necessary
+    /// to know that the feature implies another feature. If it were reversed, and the `#[stable]`
+    /// attribute had an `implies` meta item, then a map would be necessary when avoiding a "use of
+    /// unstable feature" error for a feature that was implied.
     query stability_implications(_: CrateNum) -> &'tcx UnordMap<Symbol, Symbol> {
         arena_cache
         desc { "calculating the implications between `#[unstable]` features defined in a crate" }
@@ -2273,15 +2283,7 @@ rustc_queries! {
     query upvars_mentioned(def_id: DefId) -> Option<&'tcx FxIndexMap<hir::HirId, hir::Upvar>> {
         desc { |tcx| "collecting upvars mentioned in `{}`", tcx.def_path_str(def_id) }
     }
-    query maybe_unused_trait_imports(_: ()) -> &'tcx FxIndexSet<LocalDefId> {
-        desc { "fetching potentially unused trait imports" }
-    }
 
-    query stability_index(_: ()) -> &'tcx stability::Index {
-        arena_cache
-        eval_always
-        desc { "calculating the stability index for the local crate" }
-    }
     /// All available crates in the graph, including those that should not be user-facing
     /// (such as private crates).
     query crates(_: ()) -> &'tcx [CrateNum] {

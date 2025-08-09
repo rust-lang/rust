@@ -4,7 +4,7 @@ use rustc_data_structures::intern::Interned;
 use rustc_hir::def_id::CrateNum;
 use rustc_hir::definitions::DisambiguatedDefPathData;
 use rustc_middle::bug;
-use rustc_middle::ty::print::{PrettyPrinter, Print, PrintError, Printer};
+use rustc_middle::ty::print::{PrettyPrinter, PrintError, Printer};
 use rustc_middle::ty::{self, GenericArg, GenericArgKind, Ty, TyCtxt};
 
 struct AbsolutePathPrinter<'tcx> {
@@ -18,6 +18,8 @@ impl<'tcx> Printer<'tcx> for AbsolutePathPrinter<'tcx> {
     }
 
     fn print_region(&mut self, _region: ty::Region<'_>) -> Result<(), PrintError> {
+        // This is reachable (via `pretty_print_dyn_existential`) even though
+        // `<Self As PrettyPrinter>::should_print_region` returns false. See #144994.
         Ok(())
     }
 
@@ -89,7 +91,6 @@ impl<'tcx> Printer<'tcx> for AbsolutePathPrinter<'tcx> {
     fn path_append_impl(
         &mut self,
         print_prefix: impl FnOnce(&mut Self) -> Result<(), PrintError>,
-        _disambiguated_data: &DisambiguatedDefPathData,
         self_ty: Ty<'tcx>,
         trait_ref: Option<ty::TraitRef<'tcx>>,
     ) -> Result<(), PrintError> {
@@ -138,19 +139,6 @@ impl<'tcx> PrettyPrinter<'tcx> for AbsolutePathPrinter<'tcx> {
     fn should_print_region(&self, _region: ty::Region<'_>) -> bool {
         false
     }
-    fn comma_sep<T>(&mut self, mut elems: impl Iterator<Item = T>) -> Result<(), PrintError>
-    where
-        T: Print<'tcx, Self>,
-    {
-        if let Some(first) = elems.next() {
-            first.print(self)?;
-            for elem in elems {
-                self.path.push_str(", ");
-                elem.print(self)?;
-            }
-        }
-        Ok(())
-    }
 
     fn generic_delimiters(
         &mut self,
@@ -179,7 +167,7 @@ impl Write for AbsolutePathPrinter<'_> {
 }
 
 pub fn type_name<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> String {
-    let mut printer = AbsolutePathPrinter { tcx, path: String::new() };
-    printer.print_type(ty).unwrap();
-    printer.path
+    let mut p = AbsolutePathPrinter { tcx, path: String::new() };
+    p.print_type(ty).unwrap();
+    p.path
 }

@@ -1,4 +1,4 @@
-//! Implement methods to pretty print stable MIR body.
+//! Implement methods to pretty print rustc_public's IR body.
 use std::fmt::Debug;
 use std::io::Write;
 use std::{fmt, io, iter};
@@ -428,7 +428,7 @@ fn pretty_aggregate<W: Write>(
             write!(writer, "{{closure@{}}}(", def.span().diagnostic())?;
             ")"
         }
-        AggregateKind::Coroutine(def, _, _) => {
+        AggregateKind::Coroutine(def, _) => {
             write!(writer, "{{coroutine@{}}}(", def.span().diagnostic())?;
             ")"
         }

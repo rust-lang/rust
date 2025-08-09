@@ -6,7 +6,7 @@ use std::assert_matches::assert_matches;
 
 use rustc_abi::{FieldIdx, HasDataLayout, Size};
 use rustc_apfloat::ieee::{Double, Half, Quad, Single};
-use rustc_middle::mir::interpret::{read_target_uint, write_target_uint};
+use rustc_middle::mir::interpret::{CTFE_ALLOC_SALT, read_target_uint, write_target_uint};
 use rustc_middle::mir::{self, BinOp, ConstValue, NonDivergingIntrinsic};
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::ty::{Ty, TyCtxt};
@@ -17,17 +17,18 @@ use tracing::trace;
 use super::memory::MemoryKind;
 use super::util::ensure_monomorphic_enough;
 use super::{
-    Allocation, CheckInAllocMsg, ConstAllocation, ImmTy, InterpCx, InterpResult, Machine, OpTy,
-    PlaceTy, Pointer, PointerArithmetic, Provenance, Scalar, err_ub_custom, err_unsup_format,
-    interp_ok, throw_inval, throw_ub_custom, throw_ub_format,
+    AllocId, CheckInAllocMsg, ImmTy, InterpCx, InterpResult, Machine, OpTy, PlaceTy, Pointer,
+    PointerArithmetic, Provenance, Scalar, err_ub_custom, err_unsup_format, interp_ok, throw_inval,
+    throw_ub_custom, throw_ub_format,
 };
 use crate::fluent_generated as fluent;
 
 /// Directly returns an `Allocation` containing an absolute path representation of the given type.
-pub(crate) fn alloc_type_name<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> ConstAllocation<'tcx> {
+pub(crate) fn alloc_type_name<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> (AllocId, u64) {
     let path = crate::util::type_name(tcx, ty);
-    let alloc = Allocation::from_bytes_byte_aligned_immutable(path.into_bytes(), ());
-    tcx.mk_const_alloc(alloc)
+    let bytes = path.into_bytes();
+    let len = bytes.len().try_into().unwrap();
+    (tcx.allocate_bytes_dedup(bytes, CTFE_ALLOC_SALT), len)
 }
 impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     /// Generates a value of `TypeId` for `ty` in-place.
@@ -126,8 +127,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             sym::type_name => {
                 let tp_ty = instance.args.type_at(0);
                 ensure_monomorphic_enough(tcx, tp_ty)?;
-                let alloc = alloc_type_name(tcx, tp_ty);
-                let val = ConstValue::Slice { data: alloc, meta: alloc.inner().size().bytes() };
+                let (alloc_id, meta) = alloc_type_name(tcx, tp_ty);
+                let val = ConstValue::Slice { alloc_id, meta };
                 let val = self.const_val_to_op(val, dest.layout.ty, Some(dest.layout))?;
                 self.copy_op(&val, dest)?;
             }

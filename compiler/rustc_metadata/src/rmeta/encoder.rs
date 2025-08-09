@@ -5,7 +5,6 @@ use std::io::{Read, Seek, Write};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use rustc_attr_data_structures::EncodeCrossCrate;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::memmap::{Mmap, MmapMut};
 use rustc_data_structures::sync::{join, par_for_each_in};
@@ -13,18 +12,19 @@ use rustc_data_structures::temp_dir::MaybeTempDir;
 use rustc_data_structures::thousands::usize_with_underscores;
 use rustc_feature::Features;
 use rustc_hir as hir;
+use rustc_hir::attrs::{AttributeKind, EncodeCrossCrate};
 use rustc_hir::def_id::{CRATE_DEF_ID, CRATE_DEF_INDEX, LOCAL_CRATE, LocalDefId, LocalDefIdSet};
 use rustc_hir::definitions::DefPathData;
+use rustc_hir::find_attr;
 use rustc_hir_pretty::id_to_string;
 use rustc_middle::dep_graph::WorkProductId;
 use rustc_middle::middle::dependency_format::Linkage;
-use rustc_middle::middle::exported_symbols::metadata_symbol_name;
 use rustc_middle::mir::interpret;
 use rustc_middle::query::Providers;
 use rustc_middle::traits::specialization_graph;
+use rustc_middle::ty::AssocItemContainer;
 use rustc_middle::ty::codec::TyEncoder;
 use rustc_middle::ty::fast_reject::{self, TreatParams};
-use rustc_middle::ty::{AssocItemContainer, SymbolName};
 use rustc_middle::{bug, span_bug};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder, opaque};
 use rustc_session::config::{CrateType, OptLevel, TargetModifier};
@@ -1965,18 +1965,13 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 // Proc-macros may have attributes like `#[allow_internal_unstable]`,
                 // so downstream crates need access to them.
                 let attrs = tcx.hir_attrs(proc_macro);
-                let macro_kind = if ast::attr::contains_name(attrs, sym::proc_macro) {
+                let macro_kind = if find_attr!(attrs, AttributeKind::ProcMacro(..)) {
                     MacroKind::Bang
-                } else if ast::attr::contains_name(attrs, sym::proc_macro_attribute) {
+                } else if find_attr!(attrs, AttributeKind::ProcMacroAttribute(..)) {
                     MacroKind::Attr
-                } else if let Some(attr) = ast::attr::find_by_name(attrs, sym::proc_macro_derive) {
-                    // This unwrap chain should have been checked by the proc-macro harness.
-                    name = attr.meta_item_list().unwrap()[0]
-                        .meta_item()
-                        .unwrap()
-                        .ident()
-                        .unwrap()
-                        .name;
+                } else if let Some(trait_name) = find_attr!(attrs, AttributeKind::ProcMacroDerive { trait_name, ..} => trait_name)
+                {
+                    name = *trait_name;
                     MacroKind::Derive
                 } else {
                     bug!("Unknown proc-macro type for item {:?}", id);
@@ -2124,10 +2119,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             };
             let def_id = id.owner_id.to_def_id();
 
-            self.tables.defaultness.set_some(def_id.index, tcx.defaultness(def_id));
-
             if of_trait && let Some(header) = tcx.impl_trait_header(def_id) {
                 record!(self.tables.impl_trait_header[def_id] <- header);
+
+                self.tables.defaultness.set_some(def_id.index, tcx.defaultness(def_id));
 
                 let trait_ref = header.trait_ref.instantiate_identity();
                 let simplified_self_ty = fast_reject::simplify_type(
@@ -2141,10 +2136,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     .push((id.owner_id.def_id.local_def_index, simplified_self_ty));
 
                 let trait_def = tcx.trait_def(trait_ref.def_id);
-                if let Ok(mut an) = trait_def.ancestors(tcx, def_id) {
-                    if let Some(specialization_graph::Node::Impl(parent)) = an.nth(1) {
-                        self.tables.impl_parent.set_some(def_id.index, parent.into());
-                    }
+                if let Ok(mut an) = trait_def.ancestors(tcx, def_id)
+                    && let Some(specialization_graph::Node::Impl(parent)) = an.nth(1)
+                {
+                    self.tables.impl_parent.set_some(def_id.index, parent.into());
                 }
 
                 // if this is an impl of `CoerceUnsized`, create its
@@ -2211,19 +2206,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         exported_symbols: &[(ExportedSymbol<'tcx>, SymbolExportInfo)],
     ) -> LazyArray<(ExportedSymbol<'static>, SymbolExportInfo)> {
         empty_proc_macro!(self);
-        // The metadata symbol name is special. It should not show up in
-        // downstream crates.
-        let metadata_symbol_name = SymbolName::new(self.tcx, &metadata_symbol_name(self.tcx));
 
-        self.lazy_array(
-            exported_symbols
-                .iter()
-                .filter(|&(exported_symbol, _)| match *exported_symbol {
-                    ExportedSymbol::NoDefId(symbol_name) => symbol_name != metadata_symbol_name,
-                    _ => true,
-                })
-                .cloned(),
-        )
+        self.lazy_array(exported_symbols.iter().cloned())
     }
 
     fn encode_dylib_dependency_formats(&mut self) -> LazyArray<Option<LinkagePreference>> {

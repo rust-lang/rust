@@ -28,7 +28,7 @@ pub(super) fn check(
     if cx
         .typeck_results()
         .type_dependent_def_id(expr.hir_id)
-        .and_then(|id| cx.tcx.trait_of_item(id))
+        .and_then(|id| cx.tcx.trait_of_assoc(id))
         .zip(cx.tcx.lang_items().clone_trait())
         .is_none_or(|(x, y)| x != y)
     {

@@ -94,7 +94,7 @@ pub(crate) fn generate_mut_trait_impl(acc: &mut Assists, ctx: &AssistContext<'_>
     })?;
     let _ = process_ref_mut(&fn_);
 
-    let assoc_list = make::assoc_item_list().clone_for_update();
+    let assoc_list = make::assoc_item_list(None).clone_for_update();
     ted::replace(impl_def.assoc_item_list()?.syntax(), assoc_list.syntax());
     impl_def.get_or_create_assoc_item_list().add_item(syntax::ast::AssocItem::Fn(fn_));
 
@@ -104,7 +104,14 @@ pub(crate) fn generate_mut_trait_impl(acc: &mut Assists, ctx: &AssistContext<'_>
         format!("Generate `{trait_new}` impl from this `{trait_name}` trait"),
         target,
         |edit| {
-            edit.insert(target.start(), format!("$0{impl_def}\n\n{indent}"));
+            edit.insert(
+                target.start(),
+                if ctx.config.snippet_cap.is_some() {
+                    format!("$0{impl_def}\n\n{indent}")
+                } else {
+                    format!("{impl_def}\n\n{indent}")
+                },
+            );
         },
     )
 }
@@ -134,6 +141,9 @@ fn get_trait_mut(apply_trait: &hir::Trait, famous: FamousDefs<'_, '_>) -> Option
     if trait_ == famous.core_borrow_Borrow().as_ref() {
         return Some("BorrowMut");
     }
+    if trait_ == famous.core_ops_Deref().as_ref() {
+        return Some("DerefMut");
+    }
     None
 }
 
@@ -142,6 +152,7 @@ fn process_method_name(name: ast::Name) -> Option<(ast::Name, &'static str)> {
         "index" => "index_mut",
         "as_ref" => "as_mut",
         "borrow" => "borrow_mut",
+        "deref" => "deref_mut",
         _ => return None,
     };
     Some((name, new_name))
@@ -157,7 +168,10 @@ fn process_ret_type(ref_ty: &ast::RetType) -> Option<ast::Type> {
 
 #[cfg(test)]
 mod tests {
-    use crate::tests::{check_assist, check_assist_not_applicable};
+    use crate::{
+        AssistConfig,
+        tests::{TEST_CONFIG, check_assist, check_assist_not_applicable, check_assist_with_config},
+    };
 
     use super::*;
 
@@ -255,6 +269,39 @@ $0impl core::convert::AsMut<i32> for Foo {
 
 impl core::convert::AsRef<i32> for Foo {
     fn as_ref(&self) -> &i32 {
+        &self.0
+    }
+}
+"#,
+        );
+
+        check_assist(
+            generate_mut_trait_impl,
+            r#"
+//- minicore: deref
+struct Foo(i32);
+
+impl core::ops::Deref$0 for Foo {
+    type Target = i32;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+"#,
+            r#"
+struct Foo(i32);
+
+$0impl core::ops::DerefMut for Foo {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+impl core::ops::Deref for Foo {
+    type Target = i32;
+
+    fn deref(&self) -> &Self::Target {
         &self.0
     }
 }
@@ -365,6 +412,43 @@ impl<T> Index$0<i32> for [T; 3] {}
 pub trait AsRef<T: ?Sized> {}
 
 impl AsRef$0<i32> for [T; 3] {}
+"#,
+        );
+    }
+
+    #[test]
+    fn no_snippets() {
+        check_assist_with_config(
+            generate_mut_trait_impl,
+            AssistConfig { snippet_cap: None, ..TEST_CONFIG },
+            r#"
+//- minicore: index
+pub enum Axis { X = 0, Y = 1, Z = 2 }
+
+impl<T> core::ops::Index$0<Axis> for [T; 3] {
+    type Output = T;
+
+    fn index(&self, index: Axis) -> &Self::Output {
+        &self[index as usize]
+    }
+}
+"#,
+            r#"
+pub enum Axis { X = 0, Y = 1, Z = 2 }
+
+impl<T> core::ops::IndexMut<Axis> for [T; 3] {
+    fn index_mut(&mut self, index: Axis) -> &mut Self::Output {
+        &mut self[index as usize]
+    }
+}
+
+impl<T> core::ops::Index<Axis> for [T; 3] {
+    type Output = T;
+
+    fn index(&self, index: Axis) -> &Self::Output {
+        &self[index as usize]
+    }
+}
 "#,
         );
     }

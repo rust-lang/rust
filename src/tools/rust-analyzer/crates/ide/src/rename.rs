@@ -12,8 +12,12 @@ use ide_db::{
     source_change::SourceChangeBuilder,
 };
 use itertools::Itertools;
-use stdx::{always, never};
-use syntax::{AstNode, SyntaxKind, SyntaxNode, TextRange, TextSize, ast};
+use std::fmt::Write;
+use stdx::{always, format_to, never};
+use syntax::{
+    AstNode, SyntaxKind, SyntaxNode, TextRange, TextSize,
+    ast::{self, HasArgList, prec::ExprPrecedence},
+};
 
 use ide_db::text_edit::TextEdit;
 
@@ -34,13 +38,8 @@ pub(crate) fn prepare_rename(
     let syntax = source_file.syntax();
 
     let res = find_definitions(&sema, syntax, position, &Name::new_symbol_root(sym::underscore))?
-        .map(|(frange, kind, def, _, _)| {
-            // ensure all ranges are valid
-
-            if def.range_for_rename(&sema).is_none() {
-                bail!("No references found at position")
-            }
-
+        .filter(|(_, _, def, _, _)| def.range_for_rename(&sema).is_some())
+        .map(|(frange, kind, _, _, _)| {
             always!(
                 frange.range.contains_inclusive(position.offset)
                     && frange.file_id == position.file_id
@@ -335,6 +334,85 @@ fn find_definitions(
     }
 }
 
+fn transform_assoc_fn_into_method_call(
+    sema: &Semantics<'_, RootDatabase>,
+    source_change: &mut SourceChange,
+    f: hir::Function,
+) {
+    let calls = Definition::Function(f).usages(sema).all();
+    for (file_id, calls) in calls {
+        for call in calls {
+            let Some(fn_name) = call.name.as_name_ref() else { continue };
+            let Some(path) = fn_name.syntax().parent().and_then(ast::PathSegment::cast) else {
+                continue;
+            };
+            let path = path.parent_path();
+            // The `PathExpr` is the direct parent, above it is the `CallExpr`.
+            let Some(call) =
+                path.syntax().parent().and_then(|it| ast::CallExpr::cast(it.parent()?))
+            else {
+                continue;
+            };
+
+            let Some(arg_list) = call.arg_list() else { continue };
+            let mut args = arg_list.args();
+            let Some(mut self_arg) = args.next() else { continue };
+            let second_arg = args.next();
+
+            // Strip (de)references, as they will be taken automatically by auto(de)ref.
+            loop {
+                let self_ = match &self_arg {
+                    ast::Expr::RefExpr(self_) => self_.expr(),
+                    ast::Expr::ParenExpr(self_) => self_.expr(),
+                    ast::Expr::PrefixExpr(self_)
+                        if self_.op_kind() == Some(ast::UnaryOp::Deref) =>
+                    {
+                        self_.expr()
+                    }
+                    _ => break,
+                };
+                self_arg = match self_ {
+                    Some(it) => it,
+                    None => break,
+                };
+            }
+
+            let self_needs_parens =
+                self_arg.precedence().needs_parentheses_in(ExprPrecedence::Postfix);
+
+            let replace_start = path.syntax().text_range().start();
+            let replace_end = match second_arg {
+                Some(second_arg) => second_arg.syntax().text_range().start(),
+                None => arg_list
+                    .r_paren_token()
+                    .map(|it| it.text_range().start())
+                    .unwrap_or_else(|| arg_list.syntax().text_range().end()),
+            };
+            let replace_range = TextRange::new(replace_start, replace_end);
+
+            let Some(macro_mapped_self) = sema.original_range_opt(self_arg.syntax()) else {
+                continue;
+            };
+            let mut replacement = String::new();
+            if self_needs_parens {
+                replacement.push('(');
+            }
+            replacement.push_str(macro_mapped_self.text(sema.db));
+            if self_needs_parens {
+                replacement.push(')');
+            }
+            replacement.push('.');
+            format_to!(replacement, "{fn_name}");
+            replacement.push('(');
+
+            source_change.insert_source_edit(
+                file_id.file_id(sema.db),
+                TextEdit::replace(replace_range, replacement),
+            );
+        }
+    }
+}
+
 fn rename_to_self(
     sema: &Semantics<'_, RootDatabase>,
     local: hir::Local,
@@ -412,6 +490,7 @@ fn rename_to_self(
         file_id.original_file(sema.db).file_id(sema.db),
         TextEdit::replace(param_source.syntax().text_range(), String::from(self_param)),
     );
+    transform_assoc_fn_into_method_call(sema, &mut source_change, fn_def);
     Ok(source_change)
 }
 
@@ -459,35 +538,22 @@ fn rename_self_to_param(
 }
 
 fn text_edit_from_self_param(self_param: &ast::SelfParam, new_name: String) -> Option<TextEdit> {
-    fn target_type_name(impl_def: &ast::Impl) -> Option<String> {
-        if let Some(ast::Type::PathType(p)) = impl_def.self_ty() {
-            return Some(p.path()?.segment()?.name_ref()?.text().to_string());
-        }
-        None
+    let mut replacement_text = new_name;
+    replacement_text.push_str(": ");
+
+    if self_param.amp_token().is_some() {
+        replacement_text.push('&');
+    }
+    if let Some(lifetime) = self_param.lifetime() {
+        write!(replacement_text, "{lifetime} ").unwrap();
+    }
+    if self_param.amp_token().and(self_param.mut_token()).is_some() {
+        replacement_text.push_str("mut ");
     }
 
-    match self_param.syntax().ancestors().find_map(ast::Impl::cast) {
-        Some(impl_def) => {
-            let type_name = target_type_name(&impl_def)?;
+    replacement_text.push_str("Self");
 
-            let mut replacement_text = new_name;
-            replacement_text.push_str(": ");
-            match (self_param.amp_token(), self_param.mut_token()) {
-                (Some(_), None) => replacement_text.push('&'),
-                (Some(_), Some(_)) => replacement_text.push_str("&mut "),
-                (_, _) => (),
-            };
-            replacement_text.push_str(type_name.as_str());
-
-            Some(TextEdit::replace(self_param.syntax().text_range(), replacement_text))
-        }
-        None => {
-            cov_mark::hit!(rename_self_outside_of_methods);
-            let mut replacement_text = new_name;
-            replacement_text.push_str(": _");
-            Some(TextEdit::replace(self_param.syntax().text_range(), replacement_text))
-        }
-    }
+    Some(TextEdit::replace(self_param.syntax().text_range(), replacement_text))
 }
 
 #[cfg(test)]
@@ -511,10 +577,10 @@ mod tests {
     ) {
         let ra_fixture_after = &trim_indent(ra_fixture_after);
         let (analysis, position) = fixture::position(ra_fixture_before);
-        if !ra_fixture_after.starts_with("error: ") {
-            if let Err(err) = analysis.prepare_rename(position).unwrap() {
-                panic!("Prepare rename to '{new_name}' was failed: {err}")
-            }
+        if !ra_fixture_after.starts_with("error: ")
+            && let Err(err) = analysis.prepare_rename(position).unwrap()
+        {
+            panic!("Prepare rename to '{new_name}' was failed: {err}")
         }
         let rename_result = analysis
             .rename(position, new_name)
@@ -2069,7 +2135,7 @@ impl Foo {
 struct Foo { i: i32 }
 
 impl Foo {
-    fn f(foo: &mut Foo) -> i32 {
+    fn f(foo: &mut Self) -> i32 {
         foo.i
     }
 }
@@ -2095,7 +2161,33 @@ impl Foo {
 struct Foo { i: i32 }
 
 impl Foo {
-    fn f(foo: Foo) -> i32 {
+    fn f(foo: Self) -> i32 {
+        foo.i
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_owned_self_to_parameter_with_lifetime() {
+        cov_mark::check!(rename_self_to_param);
+        check(
+            "foo",
+            r#"
+struct Foo<'a> { i: &'a i32 }
+
+impl<'a> Foo<'a> {
+    fn f(&'a $0self) -> i32 {
+        self.i
+    }
+}
+"#,
+            r#"
+struct Foo<'a> { i: &'a i32 }
+
+impl<'a> Foo<'a> {
+    fn f(foo: &'a Self) -> i32 {
         foo.i
     }
 }
@@ -2105,7 +2197,6 @@ impl Foo {
 
     #[test]
     fn test_self_outside_of_methods() {
-        cov_mark::check!(rename_self_outside_of_methods);
         check(
             "foo",
             r#"
@@ -2114,7 +2205,7 @@ fn f($0self) -> i32 {
 }
 "#,
             r#"
-fn f(foo: _) -> i32 {
+fn f(foo: Self) -> i32 {
     foo.i
 }
 "#,
@@ -2159,7 +2250,7 @@ impl Foo {
 struct Foo { i: i32 }
 
 impl Foo {
-    fn f(foo: &Foo) -> i32 {
+    fn f(foo: &Self) -> i32 {
         let self_var = 1;
         foo.i
     }
@@ -3402,6 +3493,80 @@ fn usage(_: BarSuffix) {}
 usage(BartSuffix);
 fn other_place() { Quux::Bar$0; }
 "#,
+        );
+    }
+
+    #[test]
+    fn rename_to_self_callers() {
+        check(
+            "self",
+            r#"
+//- minicore: add
+struct Foo;
+impl core::ops::Add for Foo {
+    type Target = Foo;
+    fn add(self, _: Self) -> Foo { Foo }
+}
+
+impl Foo {
+    fn foo(th$0is: &Self) {}
+}
+
+fn bar(v: &Foo) {
+    Foo::foo(v);
+}
+
+fn baz() {
+    Foo::foo(&Foo);
+    Foo::foo(Foo + Foo);
+}
+        "#,
+            r#"
+struct Foo;
+impl core::ops::Add for Foo {
+    type Target = Foo;
+    fn add(self, _: Self) -> Foo { Foo }
+}
+
+impl Foo {
+    fn foo(&self) {}
+}
+
+fn bar(v: &Foo) {
+    v.foo();
+}
+
+fn baz() {
+    Foo.foo();
+    (Foo + Foo).foo();
+}
+        "#,
+        );
+        // Multiple arguments:
+        check(
+            "self",
+            r#"
+struct Foo;
+
+impl Foo {
+    fn foo(th$0is: &Self, v: i32) {}
+}
+
+fn bar(v: Foo) {
+    Foo::foo(&v, 123);
+}
+        "#,
+            r#"
+struct Foo;
+
+impl Foo {
+    fn foo(&self, v: i32) {}
+}
+
+fn bar(v: Foo) {
+    v.foo(123);
+}
+        "#,
         );
     }
 }

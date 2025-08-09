@@ -1,3 +1,4 @@
+use std::any::Any;
 use std::default::Default;
 use std::iter;
 use std::path::Component::Prefix;
@@ -11,12 +12,13 @@ use rustc_ast::token::MetaVarKind;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::visit::{AssocCtxt, Visitor};
 use rustc_ast::{self as ast, AttrVec, Attribute, HasAttrs, Item, NodeId, PatKind};
-use rustc_attr_data_structures::{AttributeKind, CfgEntry, Deprecation, Stability, find_attr};
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_data_structures::sync;
 use rustc_errors::{DiagCtxtHandle, ErrorGuaranteed, PResult};
 use rustc_feature::Features;
 use rustc_hir as hir;
+use rustc_hir::attrs::{AttributeKind, CfgEntry, Deprecation};
+use rustc_hir::{Stability, find_attr};
 use rustc_lint_defs::{BufferedEarlyLint, RegisteredTools};
 use rustc_parse::MACRO_ARGUMENTS;
 use rustc_parse::parser::{ForceCollect, Parser};
@@ -361,17 +363,13 @@ where
 }
 
 /// Represents a thing that maps token trees to Macro Results
-pub trait TTMacroExpander {
+pub trait TTMacroExpander: Any {
     fn expand<'cx>(
         &self,
         ecx: &'cx mut ExtCtxt<'_>,
         span: Span,
         input: TokenStream,
     ) -> MacroExpanderResult<'cx>;
-
-    fn get_unused_rule(&self, _rule_i: usize) -> Option<(&Ident, Span)> {
-        None
-    }
 }
 
 pub type MacroExpanderResult<'cx> = ExpandResult<Box<dyn MacResult + 'cx>, ()>;
@@ -379,7 +377,7 @@ pub type MacroExpanderResult<'cx> = ExpandResult<Box<dyn MacResult + 'cx>, ()>;
 pub type MacroExpanderFn =
     for<'cx> fn(&'cx mut ExtCtxt<'_>, Span, TokenStream) -> MacroExpanderResult<'cx>;
 
-impl<F> TTMacroExpander for F
+impl<F: 'static> TTMacroExpander for F
 where
     F: for<'cx> Fn(&'cx mut ExtCtxt<'_>, Span, TokenStream) -> MacroExpanderResult<'cx>,
 {
@@ -864,7 +862,7 @@ impl SyntaxExtension {
     /// | (unspecified) | no  | if-ext        | if-ext   | yes |
     /// | external      | no  | if-ext        | if-ext   | yes |
     /// | yes           | yes | yes           | yes      | yes |
-    fn get_collapse_debuginfo(sess: &Session, attrs: &[impl AttributeExt], ext: bool) -> bool {
+    fn get_collapse_debuginfo(sess: &Session, attrs: &[hir::Attribute], ext: bool) -> bool {
         let flag = sess.opts.cg.collapse_macro_debuginfo;
         let attr = ast::attr::find_by_name(attrs, sym::collapse_debuginfo)
             .and_then(|attr| {
@@ -875,7 +873,7 @@ impl SyntaxExtension {
                     .ok()
             })
             .unwrap_or_else(|| {
-                if ast::attr::contains_name(attrs, sym::rustc_builtin_macro) {
+                if find_attr!(attrs, AttributeKind::RustcBuiltinMacro { .. }) {
                     CollapseMacroDebuginfo::Yes
                 } else {
                     CollapseMacroDebuginfo::Unspecified
@@ -918,16 +916,18 @@ impl SyntaxExtension {
         let collapse_debuginfo = Self::get_collapse_debuginfo(sess, attrs, !is_local);
         tracing::debug!(?name, ?local_inner_macros, ?collapse_debuginfo, ?allow_internal_unsafe);
 
-        let (builtin_name, helper_attrs) = ast::attr::find_by_name(attrs, sym::rustc_builtin_macro)
-            .map(|attr| {
-                // Override `helper_attrs` passed above if it's a built-in macro,
-                // marking `proc_macro_derive` macros as built-in is not a realistic use case.
-                parse_macro_name_and_helper_attrs(sess.dcx(), attr, "built-in").map_or_else(
-                    || (Some(name), Vec::new()),
-                    |(name, helper_attrs)| (Some(name), helper_attrs),
-                )
-            })
-            .unwrap_or_else(|| (None, helper_attrs));
+        let (builtin_name, helper_attrs) = match find_attr!(attrs, AttributeKind::RustcBuiltinMacro { builtin_name, helper_attrs, .. } => (builtin_name, helper_attrs))
+        {
+            // Override `helper_attrs` passed above if it's a built-in macro,
+            // marking `proc_macro_derive` macros as built-in is not a realistic use case.
+            Some((Some(name), helper_attrs)) => {
+                (Some(*name), helper_attrs.iter().copied().collect())
+            }
+            Some((None, _)) => (Some(name), Vec::new()),
+
+            // Not a built-in macro
+            None => (None, helper_attrs),
+        };
 
         let stability = find_attr!(attrs, AttributeKind::Stability { stability, .. } => *stability);
 
@@ -1144,7 +1144,7 @@ pub trait ResolverExpand {
 
     /// Names of specific methods to which glob delegation expands.
     fn glob_delegation_suffixes(
-        &mut self,
+        &self,
         trait_def_id: DefId,
         impl_def_id: LocalDefId,
     ) -> Result<Vec<(Ident, Option<Ident>)>, Indeterminate>;
@@ -1227,6 +1227,7 @@ pub struct ExtCtxt<'a> {
     pub(super) expanded_inert_attrs: MarkedAttrs,
     /// `-Zmacro-stats` data.
     pub macro_stats: FxHashMap<(Symbol, MacroKind), MacroStat>,
+    pub nb_macro_errors: usize,
 }
 
 impl<'a> ExtCtxt<'a> {
@@ -1257,6 +1258,7 @@ impl<'a> ExtCtxt<'a> {
             expanded_inert_attrs: MarkedAttrs::new(),
             buffered_early_lint: vec![],
             macro_stats: Default::default(),
+            nb_macro_errors: 0,
         }
     }
 
@@ -1316,6 +1318,12 @@ impl<'a> ExtCtxt<'a> {
     /// Stops backtracing at include! boundary.
     pub fn expansion_cause(&self) -> Option<Span> {
         self.current_expansion.id.expansion_cause()
+    }
+
+    /// This method increases the internal macro errors count and then call `trace_macros_diag`.
+    pub fn macro_error_and_trace_macros_diag(&mut self) {
+        self.nb_macro_errors += 1;
+        self.trace_macros_diag();
     }
 
     pub fn trace_macros_diag(&mut self) {
@@ -1383,80 +1391,6 @@ pub fn resolve_path(sess: &Session, path: impl Into<PathBuf>, span: Span) -> PRe
             _ => Ok(path),
         }
     }
-}
-
-pub fn parse_macro_name_and_helper_attrs(
-    dcx: DiagCtxtHandle<'_>,
-    attr: &impl AttributeExt,
-    macro_type: &str,
-) -> Option<(Symbol, Vec<Symbol>)> {
-    // Once we've located the `#[proc_macro_derive]` attribute, verify
-    // that it's of the form `#[proc_macro_derive(Foo)]` or
-    // `#[proc_macro_derive(Foo, attributes(A, ..))]`
-    let list = attr.meta_item_list()?;
-    let ([trait_attr] | [trait_attr, _]) = list.as_slice() else {
-        dcx.emit_err(errors::AttrNoArguments { span: attr.span() });
-        return None;
-    };
-    let Some(trait_attr) = trait_attr.meta_item() else {
-        dcx.emit_err(errors::NotAMetaItem { span: trait_attr.span() });
-        return None;
-    };
-    let trait_ident = match trait_attr.ident() {
-        Some(trait_ident) if trait_attr.is_word() => trait_ident,
-        _ => {
-            dcx.emit_err(errors::OnlyOneWord { span: trait_attr.span });
-            return None;
-        }
-    };
-
-    if !trait_ident.name.can_be_raw() {
-        dcx.emit_err(errors::CannotBeNameOfMacro {
-            span: trait_attr.span,
-            trait_ident,
-            macro_type,
-        });
-    }
-
-    let attributes_attr = list.get(1);
-    let proc_attrs: Vec<_> = if let Some(attr) = attributes_attr {
-        if !attr.has_name(sym::attributes) {
-            dcx.emit_err(errors::ArgumentNotAttributes { span: attr.span() });
-        }
-        attr.meta_item_list()
-            .unwrap_or_else(|| {
-                dcx.emit_err(errors::AttributesWrongForm { span: attr.span() });
-                &[]
-            })
-            .iter()
-            .filter_map(|attr| {
-                let Some(attr) = attr.meta_item() else {
-                    dcx.emit_err(errors::AttributeMetaItem { span: attr.span() });
-                    return None;
-                };
-
-                let ident = match attr.ident() {
-                    Some(ident) if attr.is_word() => ident,
-                    _ => {
-                        dcx.emit_err(errors::AttributeSingleWord { span: attr.span });
-                        return None;
-                    }
-                };
-                if !ident.name.can_be_raw() {
-                    dcx.emit_err(errors::HelperAttributeNameInvalid {
-                        span: attr.span,
-                        name: ident,
-                    });
-                }
-
-                Some(ident.name)
-            })
-            .collect()
-    } else {
-        Vec::new()
-    };
-
-    Some((trait_ident.name, proc_attrs))
 }
 
 /// If this item looks like a specific enums from `rental`, emit a fatal error.

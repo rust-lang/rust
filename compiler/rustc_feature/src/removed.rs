@@ -54,7 +54,7 @@ declare_features! (
 
     /// Allows using the `amdgpu-kernel` ABI.
     (removed, abi_amdgpu_kernel, "1.77.0", Some(51575), None, 120495),
-    (removed, abi_c_cmse_nonsecure_call, "CURRENT_RUSTC_VERSION", Some(81391), Some("renamed to abi_cmse_nonsecure_call"), 142146),
+    (removed, abi_c_cmse_nonsecure_call, "1.90.0", Some(81391), Some("renamed to abi_cmse_nonsecure_call"), 142146),
     (removed, advanced_slice_patterns, "1.42.0", Some(62254),
      Some("merged into `#![feature(slice_patterns)]`"), 67712),
     (removed, allocator, "1.0.0", None, None),
@@ -199,6 +199,8 @@ declare_features! (
     /// Renamed to `dyn_compatible_for_dispatch`.
     (removed, object_safe_for_dispatch, "1.83.0", Some(43561),
      Some("renamed to `dyn_compatible_for_dispatch`"), 131511),
+    /// Allows using `#[omit_gdb_pretty_printer_section]`.
+    (removed, omit_gdb_pretty_printer_section, "CURRENT_RUSTC_VERSION", None, None, 144738),
     /// Allows using `#[on_unimplemented(..)]` on traits.
     /// (Moved to `rustc_attrs`.)
     (removed, on_unimplemented, "1.40.0", None, None, 65794),
@@ -298,7 +300,7 @@ declare_features! (
     // FIXME(#141617): we should have a better way to track removed library features, but we reuse
     // the infrastructure here so users still get hints. The symbols used here can be remove from
     // `symbol.rs` when that happens.
-    (removed, concat_idents, "CURRENT_RUSTC_VERSION", Some(29599),
+    (removed, concat_idents, "1.90.0", Some(29599),
      Some("use the `${concat(..)}` metavariable expression instead"), 142704),
     // -------------------------------------------------------------------------
     // feature-group-end: removed library features

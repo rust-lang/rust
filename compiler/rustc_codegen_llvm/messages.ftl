@@ -2,10 +2,6 @@ codegen_llvm_autodiff_without_enable = using the autodiff feature requires -Z au
 
 codegen_llvm_copy_bitcode = failed to copy bitcode to object file: {$err}
 
-codegen_llvm_dynamic_linking_with_lto =
-    cannot prefer dynamic linking when performing LTO
-    .note = only 'staticlib', 'bin', and 'cdylib' outputs are supported with LTO
-
 
 codegen_llvm_fixed_x18_invalid_arch = the `-Zfixed-x18` flag is not supported on the `{$arch}` architecture
 
@@ -16,13 +12,7 @@ codegen_llvm_from_llvm_optimization_diag = {$filename}:{$line}:{$column} {$pass_
 codegen_llvm_load_bitcode = failed to load bitcode of module "{$name}"
 codegen_llvm_load_bitcode_with_llvm_err = failed to load bitcode of module "{$name}": {$llvm_err}
 
-codegen_llvm_lto_bitcode_from_rlib = failed to get bitcode from object file for LTO ({$llvm_err})
-
-codegen_llvm_lto_disallowed = lto can only be run for executables, cdylibs and static library outputs
-
-codegen_llvm_lto_dylib = lto cannot be used for `dylib` crate type without `-Zdylib-lto`
-
-codegen_llvm_lto_proc_macro = lto cannot be used for `proc-macro` crate type without `-Zdylib-lto`
+codegen_llvm_lto_bitcode_from_rlib = failed to get bitcode from object file for LTO ({$err})
 
 codegen_llvm_mismatch_data_layout =
     data-layout for target `{$rustc_target}`, `{$rustc_layout}`, differs from LLVM target's `{$llvm_target}` default layout, `{$llvm_layout}`

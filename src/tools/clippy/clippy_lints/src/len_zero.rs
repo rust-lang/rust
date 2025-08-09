@@ -10,9 +10,9 @@ use rustc_errors::Applicability;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::{DefId, DefIdSet};
 use rustc_hir::{
-    BinOpKind, Expr, ExprKind, FnRetTy, GenericArg, GenericBound, HirId, ImplItem, ImplItemKind,
-    ImplicitSelfKind, Item, ItemKind, Mutability, Node, OpaqueTyOrigin, PatExprKind, PatKind, PathSegment, PrimTy,
-    QPath, TraitItemId, TyKind,
+    BinOpKind, Expr, ExprKind, FnRetTy, GenericArg, GenericBound, HirId, ImplItem, ImplItemKind, ImplicitSelfKind,
+    Item, ItemKind, Mutability, Node, OpaqueTyOrigin, PatExprKind, PatKind, PathSegment, PrimTy, QPath, TraitItemId,
+    TyKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{self, FnSig, Ty};
@@ -266,11 +266,14 @@ fn span_without_enclosing_paren(cx: &LateContext<'_>, span: Span) -> Span {
 }
 
 fn check_trait_items(cx: &LateContext<'_>, visited_trait: &Item<'_>, ident: Ident, trait_items: &[TraitItemId]) {
-    fn is_named_self(cx: &LateContext<'_>, item: &TraitItemId, name: Symbol) -> bool {
+    fn is_named_self(cx: &LateContext<'_>, item: TraitItemId, name: Symbol) -> bool {
         cx.tcx.item_name(item.owner_id) == name
             && matches!(
                 cx.tcx.fn_arg_idents(item.owner_id),
-                [Some(Ident { name: kw::SelfLower, .. })],
+                [Some(Ident {
+                    name: kw::SelfLower,
+                    ..
+                })],
             )
     }
 
@@ -284,7 +287,7 @@ fn check_trait_items(cx: &LateContext<'_>, visited_trait: &Item<'_>, ident: Iden
     }
 
     if cx.effective_visibilities.is_exported(visited_trait.owner_id.def_id)
-        && trait_items.iter().any(|i| is_named_self(cx, i, sym::len))
+        && trait_items.iter().any(|&i| is_named_self(cx, i, sym::len))
     {
         let mut current_and_super_traits = DefIdSet::default();
         fill_trait_set(visited_trait.owner_id.to_def_id(), &mut current_and_super_traits, cx);

@@ -74,7 +74,7 @@ pub(crate) fn codegen_tls_ref<'tcx>(
 pub(crate) fn eval_mir_constant<'tcx>(
     fx: &FunctionCx<'_, '_, 'tcx>,
     constant: &ConstOperand<'tcx>,
-) -> (ConstValue<'tcx>, Ty<'tcx>) {
+) -> (ConstValue, Ty<'tcx>) {
     let cv = fx.monomorphize(constant.const_);
     // This cannot fail because we checked all required_consts in advance.
     let val = cv
@@ -93,7 +93,7 @@ pub(crate) fn codegen_constant_operand<'tcx>(
 
 pub(crate) fn codegen_const_value<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
-    const_val: ConstValue<'tcx>,
+    const_val: ConstValue,
     ty: Ty<'tcx>,
 ) -> CValue<'tcx> {
     let layout = fx.layout_of(ty);
@@ -210,8 +210,7 @@ pub(crate) fn codegen_const_value<'tcx>(
                 .offset_i64(fx, i64::try_from(offset.bytes()).unwrap()),
             layout,
         ),
-        ConstValue::Slice { data, meta } => {
-            let alloc_id = fx.tcx.reserve_and_set_memory_alloc(data);
+        ConstValue::Slice { alloc_id, meta } => {
             let ptr = pointer_for_allocation(fx, alloc_id).get_addr(fx);
             let len = fx.bcx.ins().iconst(fx.pointer_type, meta as i64);
             CValue::by_val_pair(ptr, len, layout)
@@ -311,7 +310,10 @@ fn data_id_for_static(
         // `extern_with_linkage_foo` will instead be initialized to
         // zero.
 
-        let ref_name = format!("_rust_extern_with_linkage_{}", symbol_name);
+        let ref_name = format!(
+            "_rust_extern_with_linkage_{:016x}_{symbol_name}",
+            tcx.stable_crate_id(LOCAL_CRATE)
+        );
         let ref_data_id = module.declare_data(&ref_name, Linkage::Local, false, false).unwrap();
         let mut data = DataDescription::new();
         data.set_align(align);

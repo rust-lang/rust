@@ -1,4 +1,4 @@
-error[E0599]: no method named `push` found for struct `BTreeSet` in the current scope
+error[E0599]: no method named `push` found for struct `BTreeSet<T, A>` in the current scope
   --> $DIR/rustc_confusables_std_cases.rs:6:7
    |
 LL |     x.push(1);
@@ -22,7 +22,7 @@ LL -     x.push_back(1);
 LL +     x.push(1);
    |
 
-error[E0599]: no method named `push` found for struct `VecDeque` in the current scope
+error[E0599]: no method named `push` found for struct `VecDeque<T, A>` in the current scope
   --> $DIR/rustc_confusables_std_cases.rs:12:7
    |
 LL |     x.push(1);
@@ -35,7 +35,7 @@ LL |     let mut x = Vec::new();
    |         ^^^^^ `x` of type `Vec<_>` that has method `push` defined earlier here
 ...
 LL |     let mut x = VecDeque::new();
-   |         ----- earlier `x` shadowed here with type `VecDeque`
+   |         ----- earlier `x` shadowed here with type `VecDeque<_>`
 help: you might have meant to use `push_back`
    |
 LL |     x.push_back(1);

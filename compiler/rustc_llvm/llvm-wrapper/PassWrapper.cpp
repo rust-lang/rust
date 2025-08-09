@@ -396,7 +396,7 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
     bool EmitStackSizeSection, bool RelaxELFRelocations, bool UseInitArray,
     const char *SplitDwarfFile, const char *OutputObjFile,
     const char *DebugInfoCompression, bool UseEmulatedTls,
-    const char *ArgsCstrBuff, size_t ArgsCstrBuffLen) {
+    const char *ArgsCstrBuff, size_t ArgsCstrBuffLen, bool UseWasmEH) {
 
   auto OptLevel = fromRust(RustOptLevel);
   auto RM = fromRust(RustReloc);
@@ -461,6 +461,9 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
   if (Singlethread) {
     Options.ThreadModel = ThreadModel::Single;
   }
+
+  if (UseWasmEH)
+    Options.ExceptionModel = ExceptionHandling::Wasm;
 
   Options.EmitStackSizeSection = EmitStackSizeSection;
 
@@ -700,6 +703,10 @@ struct LLVMRustSanitizerOptions {
 #ifdef ENZYME
 extern "C" void registerEnzymeAndPassPipeline(llvm::PassBuilder &PB,
                                               /* augmentPassBuilder */ bool);
+
+extern "C" {
+extern llvm::cl::opt<std::string> EnzymeFunctionToAnalyze;
+}
 #endif
 
 extern "C" LLVMRustResult LLVMRustOptimize(
@@ -1067,6 +1074,15 @@ extern "C" LLVMRustResult LLVMRustOptimize(
       std::string ErrMsg = toString(std::move(Err));
       LLVMRustSetLastError(ErrMsg.c_str());
       return LLVMRustResult::Failure;
+    }
+
+    // Check if PrintTAFn was used and add type analysis pass if needed
+    if (!EnzymeFunctionToAnalyze.empty()) {
+      if (auto Err = PB.parsePassPipeline(MPM, "print-type-analysis")) {
+        std::string ErrMsg = toString(std::move(Err));
+        LLVMRustSetLastError(ErrMsg.c_str());
+        return LLVMRustResult::Failure;
+      }
     }
 
     if (PrintAfterEnzyme) {
@@ -1632,40 +1648,6 @@ extern "C" LLVMModuleRef LLVMRustParseBitcodeForLTO(LLVMContextRef Context,
     return nullptr;
   }
   return wrap(std::move(*SrcOrError).release());
-}
-
-// Find a section of an object file by name. Fail if the section is missing or
-// empty.
-extern "C" const char *LLVMRustGetSliceFromObjectDataByName(const char *data,
-                                                            size_t len,
-                                                            const char *name,
-                                                            size_t name_len,
-                                                            size_t *out_len) {
-  *out_len = 0;
-  auto Name = StringRef(name, name_len);
-  auto Data = StringRef(data, len);
-  auto Buffer = MemoryBufferRef(Data, ""); // The id is unused.
-  file_magic Type = identify_magic(Buffer.getBuffer());
-  Expected<std::unique_ptr<object::ObjectFile>> ObjFileOrError =
-      object::ObjectFile::createObjectFile(Buffer, Type);
-  if (!ObjFileOrError) {
-    LLVMRustSetLastError(toString(ObjFileOrError.takeError()).c_str());
-    return nullptr;
-  }
-  for (const object::SectionRef &Sec : (*ObjFileOrError)->sections()) {
-    Expected<StringRef> SecName = Sec.getName();
-    if (SecName && *SecName == Name) {
-      Expected<StringRef> SectionOrError = Sec.getContents();
-      if (!SectionOrError) {
-        LLVMRustSetLastError(toString(SectionOrError.takeError()).c_str());
-        return nullptr;
-      }
-      *out_len = SectionOrError->size();
-      return SectionOrError->data();
-    }
-  }
-  LLVMRustSetLastError("could not find requested section");
-  return nullptr;
 }
 
 // Computes the LTO cache key for the provided 'ModId' in the given 'Data',

@@ -41,8 +41,6 @@ resolve_attempt_to_use_non_constant_value_in_constant_without_suggestion =
 resolve_attributes_starting_with_rustc_are_reserved =
     attributes starting with `rustc` are reserved for use by the `rustc` compiler
 
-resolve_bad_macro_import = bad macro import
-
 resolve_binding_in_never_pattern =
     never patterns cannot contain variable bindings
     .suggestion = use a wildcard `_` instead
@@ -245,7 +243,7 @@ resolve_lowercase_self =
     .suggestion = try using `Self`
 
 resolve_macro_cannot_use_as_attr =
-    `{$ident}` exists, but a declarative macro cannot be used as an attribute macro
+    `{$ident}` exists, but has no `attr` rules
 
 resolve_macro_cannot_use_as_derive =
      `{$ident}` exists, but a declarative macro cannot be used as a derive macro

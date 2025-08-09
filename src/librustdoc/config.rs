@@ -173,6 +173,9 @@ pub(crate) struct Options {
 
     /// Arguments to be used when compiling doctests.
     pub(crate) doctest_build_args: Vec<String>,
+
+    /// Target modifiers.
+    pub(crate) target_modifiers: BTreeMap<OptionsTargetModifiers, String>,
 }
 
 impl fmt::Debug for Options {
@@ -377,7 +380,7 @@ impl Options {
         early_dcx: &mut EarlyDiagCtxt,
         matches: &getopts::Matches,
         args: Vec<String>,
-    ) -> Option<(InputMode, Options, RenderOptions)> {
+    ) -> Option<(InputMode, Options, RenderOptions, Vec<PathBuf>)> {
         // Check for unstable options.
         nightly_options::check_nightly_options(early_dcx, matches, &opts());
 
@@ -640,10 +643,13 @@ impl Options {
 
         let extension_css = matches.opt_str("e").map(|s| PathBuf::from(&s));
 
-        if let Some(ref p) = extension_css
-            && !p.is_file()
-        {
-            dcx.fatal("option --extend-css argument must be a file");
+        let mut loaded_paths = Vec::new();
+
+        if let Some(ref p) = extension_css {
+            loaded_paths.push(p.clone());
+            if !p.is_file() {
+                dcx.fatal("option --extend-css argument must be a file");
+            }
         }
 
         let mut themes = Vec::new();
@@ -687,6 +693,7 @@ impl Options {
                     ))
                     .emit();
                 }
+                loaded_paths.push(theme_file.clone());
                 themes.push(StylePath { path: theme_file });
             }
         }
@@ -705,6 +712,7 @@ impl Options {
             &mut id_map,
             edition,
             &None,
+            &mut loaded_paths,
         ) else {
             dcx.fatal("`ExternalHtml::load` failed");
         };
@@ -846,6 +854,7 @@ impl Options {
             unstable_features,
             expanded_args: args,
             doctest_build_args,
+            target_modifiers,
         };
         let render_options = RenderOptions {
             output,
@@ -881,7 +890,7 @@ impl Options {
             parts_out_dir,
             disable_minification,
         };
-        Some((input, options, render_options))
+        Some((input, options, render_options, loaded_paths))
     }
 }
 

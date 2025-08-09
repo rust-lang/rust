@@ -50,12 +50,10 @@ use std::{fs, str};
 use askama::Template;
 use itertools::Either;
 use rustc_ast::join_path_syms;
-use rustc_attr_data_structures::{
-    ConstStability, DeprecatedSince, Deprecation, RustcVersion, StabilityLevel, StableSince,
-};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
-use rustc_hir::Mutability;
+use rustc_hir::attrs::{DeprecatedSince, Deprecation};
 use rustc_hir::def_id::{DefId, DefIdSet};
+use rustc_hir::{ConstStability, Mutability, RustcVersion, StabilityLevel, StableSince};
 use rustc_middle::ty::print::PrintTraitRefExt;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::symbol::{Symbol, sym};
@@ -1110,7 +1108,7 @@ fn since_to_string(since: &StableSince) -> Option<String> {
     match since {
         StableSince::Version(since) => Some(since.to_string()),
         StableSince::Current => Some(RustcVersion::CURRENT.to_string()),
-        StableSince::Err => None,
+        StableSince::Err(_) => None,
     }
 }
 
@@ -1483,10 +1481,10 @@ fn render_deref_methods(
             }
         }
         render_assoc_items_inner(&mut w, cx, container_item, did, what, derefs);
-    } else if let Some(prim) = target.primitive_type() {
-        if let Some(&did) = cache.primitive_locations.get(&prim) {
-            render_assoc_items_inner(&mut w, cx, container_item, did, what, derefs);
-        }
+    } else if let Some(prim) = target.primitive_type()
+        && let Some(&did) = cache.primitive_locations.get(&prim)
+    {
+        render_assoc_items_inner(&mut w, cx, container_item, did, what, derefs);
     }
 }
 
@@ -2058,21 +2056,20 @@ fn render_impl(
         // default items which weren't overridden in the implementation block.
         // We don't emit documentation for default items if they appear in the
         // Implementations on Foreign Types or Implementors sections.
-        if rendering_params.show_default_items {
-            if let Some(t) = trait_
-                && !impl_.is_negative_trait_impl()
-            {
-                render_default_items(
-                    &mut default_impl_items,
-                    &mut impl_items,
-                    cx,
-                    t,
-                    impl_,
-                    &i.impl_item,
-                    render_mode,
-                    rendering_params,
-                )?;
-            }
+        if rendering_params.show_default_items
+            && let Some(t) = trait_
+            && !impl_.is_negative_trait_impl()
+        {
+            render_default_items(
+                &mut default_impl_items,
+                &mut impl_items,
+                cx,
+                t,
+                impl_,
+                &i.impl_item,
+                render_mode,
+                rendering_params,
+            )?;
         }
         if render_mode == RenderMode::Normal {
             let toggled = !(impl_items.is_empty() && default_impl_items.is_empty());
@@ -2570,7 +2567,7 @@ fn collect_paths_for_type(first_ty: &clean::Type, cache: &Cache) -> Vec<String> 
         match ty {
             clean::Type::Path { path } => process_path(path.def_id()),
             clean::Type::Tuple(tys) => {
-                work.extend(tys.into_iter());
+                work.extend(tys.iter());
             }
             clean::Type::Slice(ty) => {
                 work.push_back(ty);

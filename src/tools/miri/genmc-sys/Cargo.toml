@@ -1,0 +1,17 @@
+[package]
+authors = ["Miri Team"]
+# The parts in this repo are MIT OR Apache-2.0, but we are linking in
+# code from https://github.com/MPI-SWS/genmc which is GPL-3.0-or-later.
+license = "(MIT OR Apache-2.0) AND GPL-3.0-or-later"
+name = "genmc-sys"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+cxx = { version = "1.0.160", features = ["c++20"] }
+
+[build-dependencies]
+cc = "1.2.16"
+cmake = "0.1.54"
+git2 = { version = "0.20.2", default-features = false, features = ["https"] }
+cxx-build = { version = "1.0.160", features = ["parallel"] }

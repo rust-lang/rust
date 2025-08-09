@@ -9,10 +9,11 @@ use ide_db::{
     search::FileReference,
 };
 use itertools::Itertools;
+use syntax::ast::syntax_factory::SyntaxFactory;
+use syntax::syntax_editor::SyntaxEditor;
 use syntax::{
     AstNode, NodeOrToken, SyntaxNode,
-    ast::{self, HasGenericParams, HasName, make},
-    ted,
+    ast::{self, HasGenericParams, HasName},
 };
 
 use crate::{
@@ -68,37 +69,41 @@ pub(crate) fn inline_type_alias_uses(acc: &mut Assists, ctx: &AssistContext<'_>)
             let mut definition_deleted = false;
 
             let mut inline_refs_for_file = |file_id, refs: Vec<FileReference>| {
-                builder.edit_file(file_id);
+                let source = ctx.sema.parse(file_id);
+                let mut editor = builder.make_editor(source.syntax());
 
                 let (path_types, path_type_uses) =
                     split_refs_and_uses(builder, refs, |path_type| {
                         path_type.syntax().ancestors().nth(3).and_then(ast::PathType::cast)
                     });
-
                 path_type_uses
                     .iter()
                     .flat_map(ast_to_remove_for_path_in_use_stmt)
-                    .for_each(|x| builder.delete(x.syntax().text_range()));
+                    .for_each(|x| editor.delete(x.syntax()));
+
                 for (target, replacement) in path_types.into_iter().filter_map(|path_type| {
-                    let replacement = inline(&ast_alias, &path_type)?.to_text(&concrete_type);
-                    let target = path_type.syntax().text_range();
+                    let replacement =
+                        inline(&ast_alias, &path_type)?.replace_generic(&concrete_type);
+                    let target = path_type.syntax().clone();
                     Some((target, replacement))
                 }) {
-                    builder.replace(target, replacement);
+                    editor.replace(target, replacement);
                 }
 
-                if file_id == ctx.vfs_file_id() {
-                    builder.delete(ast_alias.syntax().text_range());
+                if file_id.file_id(ctx.db()) == ctx.vfs_file_id() {
+                    editor.delete(ast_alias.syntax());
                     definition_deleted = true;
                 }
+                builder.add_file_edits(file_id.file_id(ctx.db()), editor);
             };
 
             for (file_id, refs) in usages.into_iter() {
-                inline_refs_for_file(file_id.file_id(ctx.db()), refs);
+                inline_refs_for_file(file_id, refs);
             }
             if !definition_deleted {
-                builder.edit_file(ctx.vfs_file_id());
-                builder.delete(ast_alias.syntax().text_range());
+                let mut editor = builder.make_editor(ast_alias.syntax());
+                editor.delete(ast_alias.syntax());
+                builder.add_file_edits(ctx.vfs_file_id(), editor)
             }
         },
     )
@@ -146,23 +151,26 @@ pub(crate) fn inline_type_alias(acc: &mut Assists, ctx: &AssistContext<'_>) -> O
         }
     }
 
-    let target = alias_instance.syntax().text_range();
-
     acc.add(
         AssistId::refactor_inline("inline_type_alias"),
         "Inline type alias",
-        target,
-        |builder| builder.replace(target, replacement.to_text(&concrete_type)),
+        alias_instance.syntax().text_range(),
+        |builder| {
+            let mut editor = builder.make_editor(alias_instance.syntax());
+            let replace = replacement.replace_generic(&concrete_type);
+            editor.replace(alias_instance.syntax(), replace);
+            builder.add_file_edits(ctx.vfs_file_id(), editor);
+        },
     )
 }
 
 impl Replacement {
-    fn to_text(&self, concrete_type: &ast::Type) -> String {
+    fn replace_generic(&self, concrete_type: &ast::Type) -> SyntaxNode {
         match self {
             Replacement::Generic { lifetime_map, const_and_type_map } => {
                 create_replacement(lifetime_map, const_and_type_map, concrete_type)
             }
-            Replacement::Plain => concrete_type.to_string(),
+            Replacement::Plain => concrete_type.syntax().clone_subtree().clone_for_update(),
         }
     }
 }
@@ -199,8 +207,8 @@ impl LifetimeMap {
         alias_generics: &ast::GenericParamList,
     ) -> Option<Self> {
         let mut inner = FxHashMap::default();
-
-        let wildcard_lifetime = make::lifetime("'_");
+        let make = SyntaxFactory::without_mappings();
+        let wildcard_lifetime = make.lifetime("'_");
         let lifetimes = alias_generics
             .lifetime_params()
             .filter_map(|lp| lp.lifetime())
@@ -299,15 +307,14 @@ fn create_replacement(
     lifetime_map: &LifetimeMap,
     const_and_type_map: &ConstAndTypeMap,
     concrete_type: &ast::Type,
-) -> String {
-    let updated_concrete_type = concrete_type.clone_for_update();
-    let mut replacements = Vec::new();
-    let mut removals = Vec::new();
+) -> SyntaxNode {
+    let updated_concrete_type = concrete_type.syntax().clone_subtree();
+    let mut editor = SyntaxEditor::new(updated_concrete_type.clone());
 
-    for syntax in updated_concrete_type.syntax().descendants() {
-        let syntax_string = syntax.to_string();
-        let syntax_str = syntax_string.as_str();
+    let mut replacements: Vec<(SyntaxNode, SyntaxNode)> = Vec::new();
+    let mut removals: Vec<NodeOrToken<SyntaxNode, _>> = Vec::new();
 
+    for syntax in updated_concrete_type.descendants() {
         if let Some(old_lifetime) = ast::Lifetime::cast(syntax.clone()) {
             if let Some(new_lifetime) = lifetime_map.0.get(&old_lifetime.to_string()) {
                 if new_lifetime.text() == "'_" {
@@ -322,12 +329,16 @@ fn create_replacement(
 
                 replacements.push((syntax.clone(), new_lifetime.syntax().clone_for_update()));
             }
-        } else if let Some(replacement_syntax) = const_and_type_map.0.get(syntax_str) {
+        } else if let Some(name_ref) = ast::NameRef::cast(syntax.clone()) {
+            let Some(replacement_syntax) = const_and_type_map.0.get(&name_ref.to_string()) else {
+                continue;
+            };
             let new_string = replacement_syntax.to_string();
             let new = if new_string == "_" {
-                make::wildcard_pat().syntax().clone_for_update()
+                let make = SyntaxFactory::without_mappings();
+                make.wildcard_pat().syntax().clone()
             } else {
-                replacement_syntax.clone_for_update()
+                replacement_syntax.clone()
             };
 
             replacements.push((syntax.clone(), new));
@@ -335,14 +346,13 @@ fn create_replacement(
     }
 
     for (old, new) in replacements {
-        ted::replace(old, new);
+        editor.replace(old, new);
     }
 
     for syntax in removals {
-        ted::remove(syntax);
+        editor.delete(syntax);
     }
-
-    updated_concrete_type.to_string()
+    editor.finish().new_root().clone()
 }
 
 fn get_type_alias(ctx: &AssistContext<'_>, path: &ast::PathType) -> Option<ast::TypeAlias> {
@@ -377,12 +387,15 @@ impl ConstOrTypeGeneric {
     }
 
     fn replacement_value(&self) -> Option<SyntaxNode> {
-        Some(match self {
-            ConstOrTypeGeneric::ConstArg(ca) => ca.expr()?.syntax().clone(),
-            ConstOrTypeGeneric::TypeArg(ta) => ta.syntax().clone(),
-            ConstOrTypeGeneric::ConstParam(cp) => cp.default_val()?.syntax().clone(),
-            ConstOrTypeGeneric::TypeParam(tp) => tp.default_type()?.syntax().clone(),
-        })
+        Some(
+            match self {
+                ConstOrTypeGeneric::ConstArg(ca) => ca.expr()?.syntax().clone(),
+                ConstOrTypeGeneric::TypeArg(ta) => ta.syntax().clone(),
+                ConstOrTypeGeneric::ConstParam(cp) => cp.default_val()?.syntax().clone(),
+                ConstOrTypeGeneric::TypeParam(tp) => tp.default_type()?.syntax().clone(),
+            }
+            .clone_for_update(),
+        )
     }
 }
 

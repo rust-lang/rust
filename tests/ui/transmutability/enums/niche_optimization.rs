@@ -75,8 +75,8 @@ fn one_niche() {
 
     assert::is_transmutable::<OptionLike, u8>();
     assert::is_transmutable::<V0, OptionLike>();
+    assert::is_transmutable::<V1, OptionLike>();
     assert::is_transmutable::<V254, OptionLike>();
-    assert::is_transmutable::<V255, OptionLike>();
 }
 
 fn one_niche_alt() {
@@ -97,9 +97,9 @@ fn one_niche_alt() {
     };
 
     assert::is_transmutable::<OptionLike, u8>();
-    assert::is_transmutable::<V0, OptionLike>();
+    assert::is_transmutable::<V1, OptionLike>();
+    assert::is_transmutable::<V2, OptionLike>();
     assert::is_transmutable::<V254, OptionLike>();
-    assert::is_transmutable::<V255, OptionLike>();
 }
 
 fn two_niche() {
@@ -121,9 +121,9 @@ fn two_niche() {
 
     assert::is_transmutable::<OptionLike, u8>();
     assert::is_transmutable::<V0, OptionLike>();
+    assert::is_transmutable::<V1, OptionLike>();
+    assert::is_transmutable::<V2, OptionLike>();
     assert::is_transmutable::<V253, OptionLike>();
-    assert::is_transmutable::<V254, OptionLike>();
-    assert::is_transmutable::<V255, OptionLike>();
 }
 
 fn no_niche() {
@@ -142,7 +142,7 @@ fn no_niche() {
     }
 
     const _: () = {
-        assert!(std::mem::size_of::<OptionLike>() == 2);
+        assert!(std::mem::size_of::<OptionLike>() == 1);
     };
 
     #[repr(C)]

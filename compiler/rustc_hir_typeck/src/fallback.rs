@@ -18,6 +18,7 @@ use rustc_span::{DUMMY_SP, Span};
 use rustc_trait_selection::traits::{ObligationCause, ObligationCtxt};
 use tracing::debug;
 
+use crate::typeck_root_ctxt::InferVarInfo;
 use crate::{FnCtxt, errors};
 
 #[derive(Copy, Clone)]
@@ -345,7 +346,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
                 .map(|(_, info)| *info)
                 .collect();
 
-            let found_infer_var_info = ty::InferVarInfo {
+            let found_infer_var_info = InferVarInfo {
                 self_in_trait: infer_var_infos.items().any(|info| info.self_in_trait),
                 output: infer_var_infos.items().any(|info| info.output),
             };
@@ -694,7 +695,7 @@ impl<'tcx> Visitor<'tcx> for AnnotateUnitFallbackVisitor<'_, 'tcx> {
         // i.e. changing `Default::default()` to `<() as Default>::default()`.
         if let hir::ExprKind::Path(hir::QPath::Resolved(None, path)) = expr.kind
             && let Res::Def(DefKind::AssocFn, def_id) = path.res
-            && self.fcx.tcx.trait_of_item(def_id).is_some()
+            && self.fcx.tcx.trait_of_assoc(def_id).is_some()
             && let Some(args) = self.fcx.typeck_results.borrow().node_args_opt(expr.hir_id)
             && let self_ty = args.type_at(0)
             && let Some(vid) = self.fcx.root_vid(self_ty)

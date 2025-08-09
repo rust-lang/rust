@@ -43,7 +43,7 @@ use std::fmt;
 #[cfg(feature = "nightly")]
 use std::iter::Step;
 use std::num::{NonZeroUsize, ParseIntError};
-use std::ops::{Add, AddAssign, Deref, Mul, RangeInclusive, Sub};
+use std::ops::{Add, AddAssign, Deref, Mul, RangeFull, RangeInclusive, Sub};
 use std::str::FromStr;
 
 use bitflags::bitflags;
@@ -1205,6 +1205,19 @@ impl Integer {
         }
     }
 
+    /// Returns the smallest signed value that can be represented by this Integer.
+    #[inline]
+    pub fn signed_min(self) -> i128 {
+        use Integer::*;
+        match self {
+            I8 => i8::MIN as i128,
+            I16 => i16::MIN as i128,
+            I32 => i32::MIN as i128,
+            I64 => i64::MIN as i128,
+            I128 => i128::MIN,
+        }
+    }
+
     /// Finds the smallest Integer type which can represent the signed value.
     #[inline]
     pub fn fit_signed(x: i128) -> Integer {
@@ -1376,6 +1389,28 @@ impl WrappingRange {
         }
     }
 
+    /// Returns `true` if all the values in `other` are contained in this range,
+    /// when the values are considered as having width `size`.
+    #[inline(always)]
+    pub fn contains_range(&self, other: Self, size: Size) -> bool {
+        if self.is_full_for(size) {
+            true
+        } else {
+            let trunc = |x| size.truncate(x);
+
+            let delta = self.start;
+            let max = trunc(self.end.wrapping_sub(delta));
+
+            let other_start = trunc(other.start.wrapping_sub(delta));
+            let other_end = trunc(other.end.wrapping_sub(delta));
+
+            // Having shifted both input ranges by `delta`, now we only need to check
+            // whether `0..=max` contains `other_start..=other_end`, which can only
+            // happen if the other doesn't wrap since `self` isn't everything.
+            (other_start <= other_end) && (other_end <= max)
+        }
+    }
+
     /// Returns `self` with replaced `start`
     #[inline(always)]
     fn with_start(mut self, start: u128) -> Self {
@@ -1391,11 +1426,44 @@ impl WrappingRange {
     }
 
     /// Returns `true` if `size` completely fills the range.
+    ///
+    /// Note that this is *not* the same as `self == WrappingRange::full(size)`.
+    /// Niche calculations can produce full ranges which are not the canonical one;
+    /// for example `Option<NonZero<u16>>` gets `valid_range: (..=0) | (1..)`.
     #[inline]
     fn is_full_for(&self, size: Size) -> bool {
         let max_value = size.unsigned_int_max();
         debug_assert!(self.start <= max_value && self.end <= max_value);
         self.start == (self.end.wrapping_add(1) & max_value)
+    }
+
+    /// Checks whether this range is considered non-wrapping when the values are
+    /// interpreted as *unsigned* numbers of width `size`.
+    ///
+    /// Returns `Ok(true)` if there's no wrap-around, `Ok(false)` if there is,
+    /// and `Err(..)` if the range is full so it depends how you think about it.
+    #[inline]
+    pub fn no_unsigned_wraparound(&self, size: Size) -> Result<bool, RangeFull> {
+        if self.is_full_for(size) { Err(..) } else { Ok(self.start <= self.end) }
+    }
+
+    /// Checks whether this range is considered non-wrapping when the values are
+    /// interpreted as *signed* numbers of width `size`.
+    ///
+    /// This is heavily dependent on the `size`, as `100..=200` does wrap when
+    /// interpreted as `i8`, but doesn't when interpreted as `i16`.
+    ///
+    /// Returns `Ok(true)` if there's no wrap-around, `Ok(false)` if there is,
+    /// and `Err(..)` if the range is full so it depends how you think about it.
+    #[inline]
+    pub fn no_signed_wraparound(&self, size: Size) -> Result<bool, RangeFull> {
+        if self.is_full_for(size) {
+            Err(..)
+        } else {
+            let start: i128 = size.sign_extend(self.start);
+            let end: i128 = size.sign_extend(self.end);
+            Ok(start <= end)
+        }
     }
 }
 

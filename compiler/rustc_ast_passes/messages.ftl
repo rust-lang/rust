@@ -40,7 +40,7 @@ ast_passes_auto_generic = auto traits cannot have generic parameters
 
 ast_passes_auto_items = auto traits cannot have associated items
     .label = {ast_passes_auto_items}
-    .suggestion = remove these associated items
+    .suggestion = remove the associated items
 
 ast_passes_auto_super_lifetime = auto traits cannot have super traits or lifetime bounds
     .label = {ast_passes_auto_super_lifetime}
@@ -212,11 +212,6 @@ ast_passes_nomangle_ascii = `#[no_mangle]` requires ASCII identifier
 ast_passes_obsolete_auto = `impl Trait for .. {"{}"}` is an obsolete syntax
     .help = use `auto trait Trait {"{}"}` instead
 
-ast_passes_optional_trait_object = `?Trait` is not permitted in trait object types
-
-ast_passes_optional_trait_supertrait = `?Trait` is not permitted in supertraits
-    .note = traits are `?{$path_str}` by default
-
 ast_passes_out_of_order_params = {$param_ord} parameters must be declared prior to {$max_param} parameters
     .suggestion = reorder the parameters: lifetimes, then consts and types
 
@@ -246,6 +241,10 @@ ast_passes_tilde_const_disallowed = `[const]` is not allowed here
     .trait_assoc_ty = associated types in non-`const` traits cannot have `[const]` trait bounds
     .trait_impl_assoc_ty = associated types in non-const impls cannot have `[const]` trait bounds
     .inherent_assoc_ty = inherent associated types cannot have `[const]` trait bounds
+    .struct = structs cannot have `[const]` trait bounds
+    .enum = enums cannot have `[const]` trait bounds
+    .union = unions cannot have `[const]` trait bounds
+    .anon_const = anonymous constants cannot have `[const]` trait bounds
     .object = trait objects cannot have `[const]` trait bounds
     .item = this item cannot have `[const]` trait bounds
 

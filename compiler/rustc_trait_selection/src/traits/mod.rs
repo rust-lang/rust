@@ -706,7 +706,10 @@ fn replace_param_and_infer_args_with_placeholder<'tcx>(
                 self.idx += 1;
                 ty::Const::new_placeholder(
                     self.tcx,
-                    ty::PlaceholderConst { universe: ty::UniverseIndex::ROOT, bound: idx },
+                    ty::PlaceholderConst {
+                        universe: ty::UniverseIndex::ROOT,
+                        bound: ty::BoundConst { var: idx },
+                    },
                 )
             } else {
                 c.super_fold_with(self)
@@ -759,7 +762,7 @@ fn instantiate_and_check_impossible_predicates<'tcx>(
 
     // Specifically check trait fulfillment to avoid an error when trying to resolve
     // associated items.
-    if let Some(trait_def_id) = tcx.trait_of_item(key.0) {
+    if let Some(trait_def_id) = tcx.trait_of_assoc(key.0) {
         let trait_ref = ty::TraitRef::from_method(tcx, trait_def_id, key.1);
         predicates.push(trait_ref.upcast(tcx));
     }

@@ -23,6 +23,7 @@ pub struct Diff {
     actual: Option<String>,
     actual_name: Option<String>,
     normalizers: Vec<(String, String)>,
+    bless_dir: Option<String>,
     drop_bomb: DropBomb,
 }
 
@@ -37,6 +38,7 @@ impl Diff {
             actual: None,
             actual_name: None,
             normalizers: Vec::new(),
+            bless_dir: std::env::var("RUSTC_BLESS_TEST").ok(),
             drop_bomb: DropBomb::arm("diff"),
         }
     }
@@ -44,6 +46,13 @@ impl Diff {
     /// Specify the expected output for the diff from a file.
     pub fn expected_file<P: AsRef<Path>>(&mut self, path: P) -> &mut Self {
         let path = path.as_ref();
+        // In `--bless` mode, create the snapshot file if it doesn't already exist.
+        // The empty file will be overwritten with the actual text.
+        if self.bless_dir.is_some()
+            && let Ok(false) = std::fs::exists(path)
+        {
+            fs::write(path, "");
+        }
         let content = fs::read_to_string(path);
         let name = path.to_string_lossy().to_string();
 
@@ -148,7 +157,7 @@ impl Diff {
         let Some(ref expected_file) = self.expected_file else {
             return false;
         };
-        let Ok(bless_dir) = std::env::var("RUSTC_BLESS_TEST") else {
+        let Some(ref bless_dir) = self.bless_dir else {
             return false;
         };
 

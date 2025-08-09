@@ -193,14 +193,12 @@ impl<'tcx> Context<'tcx> {
         if it.is_stripped()
             && let Some(def_id) = it.def_id()
             && def_id.is_local()
+            && (self.info.is_inside_inlined_module
+                || self.shared.cache.inlined_items.contains(&def_id))
         {
-            if self.info.is_inside_inlined_module
-                || self.shared.cache.inlined_items.contains(&def_id)
-            {
-                // For now we're forced to generate a redirect page for stripped items until
-                // `record_extern_fqn` correctly points to external items.
-                render_redirect_pages = true;
-            }
+            // For now we're forced to generate a redirect page for stripped items until
+            // `record_extern_fqn` correctly points to external items.
+            render_redirect_pages = true;
         }
         let mut title = String::new();
         if !is_module {
@@ -254,40 +252,36 @@ impl<'tcx> Context<'tcx> {
                 &self.shared.style_files,
             )
         } else {
-            if let Some(&(ref names, ty)) = self.cache().paths.get(&it.item_id.expect_def_id()) {
-                if self.current.len() + 1 != names.len()
-                    || self.current.iter().zip(names.iter()).any(|(a, b)| a != b)
-                {
-                    // We checked that the redirection isn't pointing to the current file,
-                    // preventing an infinite redirection loop in the generated
-                    // documentation.
+            if let Some(&(ref names, ty)) = self.cache().paths.get(&it.item_id.expect_def_id())
+                && (self.current.len() + 1 != names.len()
+                    || self.current.iter().zip(names.iter()).any(|(a, b)| a != b))
+            {
+                // We checked that the redirection isn't pointing to the current file,
+                // preventing an infinite redirection loop in the generated
+                // documentation.
 
-                    let path = fmt::from_fn(|f| {
-                        for name in &names[..names.len() - 1] {
-                            write!(f, "{name}/")?;
+                let path = fmt::from_fn(|f| {
+                    for name in &names[..names.len() - 1] {
+                        write!(f, "{name}/")?;
+                    }
+                    write!(f, "{}", print_item_path(ty, names.last().unwrap().as_str()))
+                });
+                match self.shared.redirections {
+                    Some(ref redirections) => {
+                        let mut current_path = String::new();
+                        for name in &self.current {
+                            current_path.push_str(name.as_str());
+                            current_path.push('/');
                         }
-                        write!(f, "{}", print_item_path(ty, names.last().unwrap().as_str()))
-                    });
-                    match self.shared.redirections {
-                        Some(ref redirections) => {
-                            let mut current_path = String::new();
-                            for name in &self.current {
-                                current_path.push_str(name.as_str());
-                                current_path.push('/');
-                            }
-                            let _ = write!(
-                                current_path,
-                                "{}",
-                                print_item_path(ty, names.last().unwrap().as_str())
-                            );
-                            redirections.borrow_mut().insert(current_path, path.to_string());
-                        }
-                        None => {
-                            return layout::redirect(&format!(
-                                "{root}{path}",
-                                root = self.root_path()
-                            ));
-                        }
+                        let _ = write!(
+                            current_path,
+                            "{}",
+                            print_item_path(ty, names.last().unwrap().as_str())
+                        );
+                        redirections.borrow_mut().insert(current_path, path.to_string());
+                    }
+                    None => {
+                        return layout::redirect(&format!("{root}{path}", root = self.root_path()));
                     }
                 }
             }
@@ -762,11 +756,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         // Flush pending errors.
         self.shared.fs.close();
         let nb_errors = self.shared.errors.iter().map(|err| self.tcx().dcx().err(err)).count();
-        if nb_errors > 0 {
-            Err(Error::new(io::Error::new(io::ErrorKind::Other, "I/O error"), ""))
-        } else {
-            Ok(())
-        }
+        if nb_errors > 0 { Err(Error::new(io::Error::other("I/O error"), "")) } else { Ok(()) }
     }
 
     fn mod_item_in(&mut self, item: &clean::Item) -> Result<(), Error> {
@@ -842,7 +832,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             self.info.render_redirect_pages = item.is_stripped();
         }
 
-        let buf = self.render_item(&item, false);
+        let buf = self.render_item(item, false);
         // buf will be empty if the item is stripped and there is no redirect for it
         if !buf.is_empty() {
             let name = item.name.as_ref().unwrap();
@@ -853,7 +843,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             self.shared.fs.write(joint_dst, buf)?;
 
             if !self.info.render_redirect_pages {
-                self.shared.all.borrow_mut().append(full_path(self, &item), &item_type);
+                self.shared.all.borrow_mut().append(full_path(self, item), &item_type);
             }
             // If the item is a macro, redirect from the old macro URL (with !)
             // to the new one (without).

@@ -11,15 +11,15 @@ help: consider dereferencing here to assign to the mutably borrowed value
 LL |     *x.lock().unwrap() = 2;
    |     +
 
-error[E0368]: binary assignment operation `+=` cannot be applied to type `MutexGuard<'_, usize>`
+error[E0368]: binary assignment operation `+=` cannot be applied to type `std::sync::MutexGuard<'_, usize>`
   --> $DIR/assign-non-lval-derefmut.rs:7:5
    |
 LL |     x.lock().unwrap() += 1;
    |     -----------------^^^^^
    |     |
-   |     cannot use `+=` on type `MutexGuard<'_, usize>`
+   |     cannot use `+=` on type `std::sync::MutexGuard<'_, usize>`
    |
-note: the foreign item type `MutexGuard<'_, usize>` doesn't implement `AddAssign<{integer}>`
+note: the foreign item type `std::sync::MutexGuard<'_, usize>` doesn't implement `AddAssign<{integer}>`
   --> $SRC_DIR/std/src/sync/poison/mutex.rs:LL:COL
    |
    = note: not implement `AddAssign<{integer}>`
@@ -36,22 +36,22 @@ LL |     let mut y = x.lock().unwrap();
 LL |     y = 2;
    |         ^ expected `MutexGuard<'_, usize>`, found integer
    |
-   = note: expected struct `MutexGuard<'_, usize>`
+   = note: expected struct `std::sync::MutexGuard<'_, usize>`
                 found type `{integer}`
 help: consider dereferencing here to assign to the mutably borrowed value
    |
 LL |     *y = 2;
    |     +
 
-error[E0368]: binary assignment operation `+=` cannot be applied to type `MutexGuard<'_, usize>`
+error[E0368]: binary assignment operation `+=` cannot be applied to type `std::sync::MutexGuard<'_, usize>`
   --> $DIR/assign-non-lval-derefmut.rs:13:5
    |
 LL |     y += 1;
    |     -^^^^^
    |     |
-   |     cannot use `+=` on type `MutexGuard<'_, usize>`
+   |     cannot use `+=` on type `std::sync::MutexGuard<'_, usize>`
    |
-note: the foreign item type `MutexGuard<'_, usize>` doesn't implement `AddAssign<{integer}>`
+note: the foreign item type `std::sync::MutexGuard<'_, usize>` doesn't implement `AddAssign<{integer}>`
   --> $SRC_DIR/std/src/sync/poison/mutex.rs:LL:COL
    |
    = note: not implement `AddAssign<{integer}>`
