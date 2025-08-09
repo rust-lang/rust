@@ -2528,7 +2528,7 @@ pub fn remove_file<P: AsRef<Path>>(path: P) -> io::Result<()> {
 ///     Ok(())
 /// }
 /// ```
-#[doc(alias = "stat")]
+#[doc(alias = "stat", alias = "GetFileAttributes", alias = "GetFileAttributesEx")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn metadata<P: AsRef<Path>>(path: P) -> io::Result<Metadata> {
     fs_imp::metadata(path.as_ref()).map(Metadata)
@@ -2563,7 +2563,7 @@ pub fn metadata<P: AsRef<Path>>(path: P) -> io::Result<Metadata> {
 ///     Ok(())
 /// }
 /// ```
-#[doc(alias = "lstat")]
+#[doc(alias = "lstat", alias = "GetFileAttributes", alias = "GetFileAttributesEx")]
 #[stable(feature = "symlink_metadata", since = "1.1.0")]
 pub fn symlink_metadata<P: AsRef<Path>>(path: P) -> io::Result<Metadata> {
     fs_imp::symlink_metadata(path.as_ref()).map(Metadata)
@@ -2670,6 +2670,7 @@ pub fn rename<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> io::Result<()> 
 /// }
 /// ```
 #[doc(alias = "cp")]
+#[doc(alias = "copy_file_range")]
 #[doc(alias = "CopyFile", alias = "CopyFileEx")]
 #[doc(alias = "fclonefileat", alias = "fcopyfile")]
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -2915,6 +2916,7 @@ pub fn create_dir<P: AsRef<Path>>(path: P) -> io::Result<()> {
 ///     Ok(())
 /// }
 /// ```
+#[doc(alias = "mkdir", alias = "CreateDirectory")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn create_dir_all<P: AsRef<Path>>(path: P) -> io::Result<()> {
     DirBuilder::new().recursive(true).create(path.as_ref())
@@ -3024,6 +3026,7 @@ pub fn remove_dir<P: AsRef<Path>>(path: P) -> io::Result<()> {
 ///     Ok(())
 /// }
 /// ```
+#[doc(alias = "rm")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn remove_dir_all<P: AsRef<Path>>(path: P) -> io::Result<()> {
     fs_imp::remove_dir_all(path.as_ref())
