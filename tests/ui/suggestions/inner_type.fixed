@@ -31,10 +31,10 @@ fn main() {
     let another_item = std::sync::RwLock::new(Struct { p: 42_u32 });
 
     another_item.read().unwrap().method();
-    //~^ ERROR no method named `method` found for struct `RwLock<T>` in the current scope [E0599]
+    //~^ ERROR no method named `method` found for struct `std::sync::RwLock<T>` in the current scope [E0599]
     //~| HELP  use `.read().unwrap()` to borrow the `Struct<u32>`, blocking the current thread until it can be acquired
 
     another_item.write().unwrap().some_mutable_method();
-    //~^ ERROR no method named `some_mutable_method` found for struct `RwLock<T>` in the current scope [E0599]
+    //~^ ERROR no method named `some_mutable_method` found for struct `std::sync::RwLock<T>` in the current scope [E0599]
     //~| HELP use `.write().unwrap()` to mutably borrow the `Struct<u32>`, blocking the current thread until it can be acquired
 }
