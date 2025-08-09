@@ -7,7 +7,7 @@ mod tests;
 
 use libc::{c_char, c_int, c_void};
 
-use crate::error::Error as StdError;
+use crate::error::Error;
 use crate::ffi::{CStr, OsStr, OsString};
 use crate::os::unix::prelude::*;
 use crate::path::{self, PathBuf};
@@ -251,12 +251,7 @@ impl fmt::Display for JoinPathsError {
     }
 }
 
-impl StdError for JoinPathsError {
-    #[allow(deprecated)]
-    fn description(&self) -> &str {
-        "failed to join paths"
-    }
-}
+impl Error for JoinPathsError {}
 
 #[cfg(target_os = "aix")]
 pub fn current_exe() -> io::Result<PathBuf> {
