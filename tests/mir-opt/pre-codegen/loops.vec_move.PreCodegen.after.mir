@@ -8,13 +8,17 @@ fn vec_move(_1: Vec<impl Sized>) -> () {
     let mut _4: &mut std::vec::IntoIter<impl Sized>;
     let mut _5: std::option::Option<impl Sized>;
     let mut _6: isize;
-    let _8: ();
+    let _10: ();
     scope 1 {
         debug iter => _3;
-        let _7: impl Sized;
+        let _9: impl Sized;
         scope 2 {
-            debug x => _7;
+            debug x => _9;
         }
+    }
+    scope 3 (inlined drop_in_place::<std::vec::IntoIter<impl Sized>> - shim(Some(std::vec::IntoIter<impl Sized>))) {
+        let mut _7: &mut std::vec::IntoIter<impl Sized>;
+        let mut _8: ();
     }
 
     bb0: {
@@ -41,18 +45,21 @@ fn vec_move(_1: Vec<impl Sized>) -> () {
 
     bb4: {
         StorageDead(_5);
-        drop(_3) -> [return: bb5, unwind continue];
+        StorageLive(_7);
+        _7 = &mut _3;
+        _8 = <std::vec::IntoIter<impl Sized> as Drop>::drop(move _7) -> [return: bb5, unwind continue];
     }
 
     bb5: {
+        StorageDead(_7);
         StorageDead(_3);
         StorageDead(_2);
         return;
     }
 
     bb6: {
-        _7 = move ((_5 as Some).0: impl Sized);
-        _8 = opaque::<impl Sized>(move _7) -> [return: bb7, unwind: bb9];
+        _9 = move ((_5 as Some).0: impl Sized);
+        _10 = opaque::<impl Sized>(move _9) -> [return: bb7, unwind: bb9];
     }
 
     bb7: {

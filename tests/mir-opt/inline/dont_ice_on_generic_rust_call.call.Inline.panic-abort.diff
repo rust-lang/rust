@@ -7,10 +7,89 @@
       let mut _0: ();
       let mut _3: &mut std::boxed::Box<dyn std::ops::FnMut<I, Output = ()>>;
       let mut _4: I;
++     let mut _8: *mut std::boxed::Box<dyn std::ops::FnMut<I, Output = ()>>;
++     let mut _9: ();
++     let mut _30: std::alloc::Layout;
 +     scope 1 (inlined <Box<dyn FnMut<I, Output = ()>> as FnMut<I>>::call_mut) {
 +         let mut _5: &mut dyn std::ops::FnMut<I, Output = ()>;
 +         let mut _6: std::boxed::Box<dyn std::ops::FnMut<I, Output = ()>>;
 +         let mut _7: *const dyn std::ops::FnMut<I, Output = ()>;
++     }
++     scope 2 (inlined drop_in_place::<Box<dyn FnMut<I, Output = ()>>> - shim(Some(Box<dyn FnMut<I, Output = ()>>))) {
++         let mut _10: &mut std::boxed::Box<dyn std::ops::FnMut<I, Output = ()>>;
++         let mut _11: ();
++         let mut _12: &mut std::boxed::Box<dyn std::ops::FnMut<I, Output = ()>>;
++         let mut _13: ();
++         let mut _14: *const dyn std::ops::FnMut<I, Output = ()>;
++         scope 3 (inlined <Box<dyn FnMut<I, Output = ()>> as Drop>::drop) {
++             let mut _16: *const dyn std::ops::FnMut<I, Output = ()>;
++             let mut _17: *mut dyn std::ops::FnMut<I, Output = ()>;
++             let mut _18: &std::alloc::Layout;
++             let _19: ();
++             let mut _20: &std::alloc::Global;
++             let _28: std::ptr::NonNull<dyn std::ops::FnMut<I, Output = ()>>;
++             let _29: std::marker::PhantomData<dyn std::ops::FnMut<I, Output = ()>>;
++             scope 4 {
++                 let _15: std::alloc::Layout;
++                 scope 5 {
++                     scope 13 (inlined Layout::size) {
++                     }
++                     scope 14 (inlined Unique::<dyn FnMut<I, Output = ()>>::cast::<u8>) {
++                         let mut _26: std::ptr::NonNull<u8>;
++                         scope 15 (inlined NonNull::<dyn FnMut<I, Output = ()>>::cast::<u8>) {
++                             let mut _27: *const u8;
++                             scope 16 (inlined NonNull::<dyn FnMut<I, Output = ()>>::as_ptr) {
++                             }
++                         }
++                     }
++                     scope 17 (inlined <NonNull<u8> as From<Unique<u8>>>::from) {
++                         scope 18 (inlined Unique::<u8>::as_non_null_ptr) {
++                         }
++                     }
++                     scope 19 (inlined <std::alloc::Global as Allocator>::deallocate) {
++                         let mut _31: usize;
++                         let mut _32: &std::alloc::Layout;
++                         let mut _33: *mut u8;
++                         let mut _34: std::alloc::Layout;
++                         scope 20 (inlined Layout::size) {
++                         }
++                         scope 21 (inlined NonNull::<u8>::as_ptr) {
++                         }
++                         scope 22 (inlined std::alloc::dealloc) {
++                             let mut _35: &std::alloc::Layout;
++                             let mut _36: usize;
++                             let mut _37: &std::alloc::Layout;
++                             scope 23 (inlined Layout::size) {
++                             }
++                             scope 24 (inlined Layout::align) {
++                                 let mut _38: std::ptr::alignment::AlignmentEnum;
++                                 scope 25 (inlined std::ptr::Alignment::as_usize) {
++                                 }
++                             }
++                         }
++                     }
++                 }
++                 scope 6 (inlined Unique::<dyn FnMut<I, Output = ()>>::as_ptr) {
++                     scope 7 (inlined NonNull::<dyn FnMut<I, Output = ()>>::as_ptr) {
++                     }
++                 }
++                 scope 8 (inlined Layout::for_value_raw::<dyn FnMut<I, Output = ()>>) {
++                     let mut _21: usize;
++                     let mut _22: usize;
++                     scope 9 {
++                         scope 12 (inlined #[track_caller] Layout::from_size_align_unchecked) {
++                             let mut _23: bool;
++                             let _24: ();
++                             let mut _25: std::ptr::Alignment;
++                         }
++                     }
++                     scope 10 (inlined size_of_val_raw::<dyn FnMut<I, Output = ()>>) {
++                     }
++                     scope 11 (inlined align_of_val_raw::<dyn FnMut<I, Output = ()>>) {
++                     }
++                 }
++             }
++         }
 +     }
   
       bb0: {
@@ -25,24 +104,138 @@
 +         _6 = copy (*_3);
 +         _7 = copy ((_6.0: std::ptr::Unique<dyn std::ops::FnMut<I, Output = ()>>).0: std::ptr::NonNull<dyn std::ops::FnMut<I, Output = ()>>) as *const dyn std::ops::FnMut<I, Output = ()> (Transmute);
 +         _5 = &mut (*_7);
-+         _0 = <dyn FnMut<I, Output = ()> as FnMut<I>>::call_mut(move _5, move _4) -> [return: bb2, unwind unreachable];
++         _0 = <dyn FnMut<I, Output = ()> as FnMut<I>>::call_mut(move _5, move _4) -> [return: bb1, unwind unreachable];
       }
   
       bb1: {
--         StorageDead(_4);
--         StorageDead(_3);
--         drop(_1) -> [return: bb2, unwind unreachable];
-+         return;
-      }
-  
-      bb2: {
--         return;
 +         StorageDead(_5);
 +         StorageDead(_7);
 +         StorageDead(_6);
-+         StorageDead(_4);
-+         StorageDead(_3);
-+         drop(_1) -> [return: bb1, unwind unreachable];
+          StorageDead(_4);
+          StorageDead(_3);
+-         drop(_1) -> [return: bb2, unwind unreachable];
++         _8 = &raw mut _1;
++         StorageLive(_10);
++         StorageLive(_11);
++         StorageLive(_12);
++         StorageLive(_13);
++         StorageLive(_14);
++         _14 = copy (((*_8).0: std::ptr::Unique<dyn std::ops::FnMut<I, Output = ()>>).0: std::ptr::NonNull<dyn std::ops::FnMut<I, Output = ()>>) as *const dyn std::ops::FnMut<I, Output = ()> (Transmute);
++         drop((*_14)) -> [return: bb2, unwind unreachable];
+      }
+  
+      bb2: {
++         _10 = &mut (*_8);
++         StorageLive(_15);
++         StorageLive(_17);
++         StorageLive(_19);
++         StorageLive(_21);
++         StorageLive(_24);
++         StorageLive(_26);
++         StorageLive(_28);
++         StorageLive(_29);
++         _28 = copy (((*_10).0: std::ptr::Unique<dyn std::ops::FnMut<I, Output = ()>>).0: std::ptr::NonNull<dyn std::ops::FnMut<I, Output = ()>>);
++         _29 = copy (((*_10).0: std::ptr::Unique<dyn std::ops::FnMut<I, Output = ()>>).1: std::marker::PhantomData<dyn std::ops::FnMut<I, Output = ()>>);
++         StorageLive(_16);
++         _17 = copy _28 as *mut dyn std::ops::FnMut<I, Output = ()> (Transmute);
++         _16 = copy _28 as *const dyn std::ops::FnMut<I, Output = ()> (Transmute);
++         StorageLive(_22);
++         _21 = std::intrinsics::size_of_val::<dyn FnMut<I, Output = ()>>(copy _16) -> [return: bb5, unwind unreachable];
++     }
++ 
++     bb3: {
++         StorageLive(_20);
++         _20 = &((*_10).1: std::alloc::Global);
++         StorageLive(_27);
++         _27 = copy _17 as *const u8 (PtrToPtr);
++         _26 = NonNull::<u8> { pointer: move _27 };
++         StorageDead(_27);
++         StorageLive(_30);
++         _30 = copy _15;
++         StorageLive(_31);
++         StorageLive(_32);
++         _32 = &_30;
++         _31 = copy (_30.0: usize);
++         StorageDead(_32);
++         switchInt(move _31) -> [0: bb10, otherwise: bb9];
++     }
++ 
++     bb4: {
++         StorageDead(_29);
++         StorageDead(_28);
++         StorageDead(_26);
++         StorageDead(_24);
++         StorageDead(_21);
++         StorageDead(_19);
++         StorageDead(_17);
++         StorageDead(_15);
++         StorageDead(_14);
++         StorageDead(_13);
++         StorageDead(_12);
++         StorageDead(_11);
++         StorageDead(_10);
+          return;
++     }
++ 
++     bb5: {
++         _22 = std::intrinsics::align_of_val::<dyn FnMut<I, Output = ()>>(move _16) -> [return: bb6, unwind unreachable];
++     }
++ 
++     bb6: {
++         StorageLive(_23);
++         _23 = UbChecks();
++         switchInt(move _23) -> [0: bb8, otherwise: bb7];
++     }
++ 
++     bb7: {
++         _24 = Layout::from_size_align_unchecked::precondition_check(copy _21, copy _22) -> [return: bb8, unwind unreachable];
++     }
++ 
++     bb8: {
++         StorageDead(_23);
++         StorageLive(_25);
++         _25 = copy _22 as std::ptr::Alignment (Transmute);
++         _15 = Layout { size: copy _21, align: move _25 };
++         StorageDead(_25);
++         StorageDead(_22);
++         StorageDead(_16);
++         StorageLive(_18);
++         _18 = &_15;
++         StorageDead(_18);
++         switchInt(move _21) -> [0: bb4, otherwise: bb3];
++     }
++ 
++     bb9: {
++         StorageLive(_33);
++         _33 = copy _26 as *mut u8 (Transmute);
++         StorageLive(_34);
++         _34 = copy _30;
++         StorageLive(_35);
++         _35 = &_34;
++         StorageDead(_35);
++         StorageLive(_36);
++         StorageLive(_37);
++         _37 = &_34;
++         StorageLive(_38);
++         _38 = copy ((_30.1: std::ptr::Alignment).0: std::ptr::alignment::AlignmentEnum);
++         _36 = discriminant(_38);
++         StorageDead(_38);
++         StorageDead(_37);
++         _19 = alloc::alloc::__rust_dealloc(move _33, move _31, move _36) -> [return: bb11, unwind unreachable];
++     }
++ 
++     bb10: {
++         StorageDead(_31);
++         StorageDead(_30);
++         StorageDead(_20);
++         goto -> bb4;
++     }
++ 
++     bb11: {
++         StorageDead(_36);
++         StorageDead(_34);
++         StorageDead(_33);
++         goto -> bb10;
       }
   }
   

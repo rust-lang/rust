@@ -1,0 +1,43 @@
+- // MIR for `half_needs_drop` before Inline
++ // MIR for `half_needs_drop` after Inline
+  
+  fn half_needs_drop(_1: String) -> () {
+      debug s => _1;
+      let mut _0: ();
+      let _2: Pair<bool, std::string::String>;
+      let mut _3: std::string::String;
++     let mut _4: *mut Pair<bool, std::string::String>;
++     let mut _5: ();
+      scope 1 {
+          debug _x => _2;
+      }
++     scope 2 (inlined drop_in_place::<Pair<bool, String>> - shim(Some(Pair<bool, String>))) {
++     }
+  
+      bb0: {
+          StorageLive(_2);
+          StorageLive(_3);
+          _3 = move _1;
+          _2 = Pair::<bool, String>(const true, move _3);
+          StorageDead(_3);
+          _0 = const ();
+-         drop(_2) -> [return: bb1, unwind: bb2];
++         _4 = &raw mut _2;
++         drop(((*_4).1: std::string::String)) -> [return: bb2, unwind: bb1];
+      }
+  
+-     bb1: {
+-         StorageDead(_2);
+-         return;
++     bb1 (cleanup): {
++         resume;
+      }
+  
+-     bb2 (cleanup): {
+-         resume;
++     bb2: {
++         StorageDead(_2);
++         return;
+      }
+  }
+  

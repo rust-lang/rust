@@ -1,9 +1,10 @@
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::unord::UnordSet;
+use rustc_hir::LangItem;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::mir::TerminatorKind;
-use rustc_middle::ty::{self, GenericArgsRef, InstanceKind, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{self, GenericArgsRef, InstanceKind, TyCtxt, TypeVisitableExt, TypingEnv};
 use rustc_session::Limit;
 use rustc_span::sym;
 use tracing::{instrument, trace};
@@ -204,23 +205,40 @@ pub(crate) fn mir_inliner_callees<'tcx>(
     let mut calls = FxIndexSet::default();
     for bb_data in body.basic_blocks.iter() {
         let terminator = bb_data.terminator();
-        if let TerminatorKind::Call { func, args: call_args, .. } = &terminator.kind {
-            let ty = func.ty(&body.local_decls, tcx);
-            let ty::FnDef(def_id, generic_args) = ty.kind() else {
-                continue;
-            };
-            let call = if tcx.is_intrinsic(*def_id, sym::const_eval_select) {
-                let func = &call_args[2].node;
+        let call = match &terminator.kind {
+            TerminatorKind::Call { func, args: call_args, .. } => {
                 let ty = func.ty(&body.local_decls, tcx);
                 let ty::FnDef(def_id, generic_args) = ty.kind() else {
                     continue;
                 };
-                (*def_id, *generic_args)
-            } else {
-                (*def_id, *generic_args)
-            };
-            calls.insert(call);
-        }
+                if tcx.is_intrinsic(*def_id, sym::const_eval_select) {
+                    let func = &call_args[2].node;
+                    let ty = func.ty(&body.local_decls, tcx);
+                    let ty::FnDef(def_id, generic_args) = ty.kind() else {
+                        continue;
+                    };
+                    (*def_id, *generic_args)
+                } else {
+                    (*def_id, *generic_args)
+                }
+            }
+            // Coroutines need optimized MIR for layout, so skip them to avoid cycles
+            TerminatorKind::Drop { place, drop: None, async_fut: None, .. }
+                if !tcx.is_coroutine(instance.def_id()) =>
+            {
+                let drop_ty = place.ty(&body.local_decls, tcx).ty;
+                if !drop_ty.needs_drop(tcx, TypingEnv::post_analysis(tcx, instance.def_id())) {
+                    continue;
+                }
+
+                let drop_def_id =
+                    tcx.require_lang_item(LangItem::DropInPlace, terminator.source_info.span);
+                let args = tcx.mk_args(&[drop_ty.into()]);
+                (drop_def_id, args)
+            }
+            _ => continue,
+        };
+        calls.insert(call);
     }
     tcx.arena.alloc_from_iter(calls.iter().copied())
 }
