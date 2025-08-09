@@ -569,7 +569,7 @@ fn parse_sanitize_attr(
     if let Some(list) = attr.meta_item_list() {
         for item in list.iter() {
             let MetaItemInner::MetaItem(set) = item else {
-                tcx.dcx().emit_err(errors::InvalidSanitize { span: attr.span() });
+                tcx.dcx().emit_err(errors::InvalidSanitizer { span: attr.span() });
                 break;
             };
             let segments = set.path.segments.iter().map(|x| x.ident.name).collect::<Vec<_>>();
@@ -577,49 +577,93 @@ fn parse_sanitize_attr(
                 // Similar to clang, sanitize(address = ..) and
                 // sanitize(kernel_address = ..) control both ASan and KASan
                 // Source: https://reviews.llvm.org/D44981.
-                [sym::address] | [sym::kernel_address] if set.value_str() == Some(sym::off) => {
-                    result |= SanitizerSet::ADDRESS | SanitizerSet::KERNELADDRESS
-                }
-                [sym::address] | [sym::kernel_address] if set.value_str() == Some(sym::on) => {
-                    result &= !SanitizerSet::ADDRESS;
-                    result &= !SanitizerSet::KERNELADDRESS;
-                }
-                [sym::cfi] if set.value_str() == Some(sym::off) => result |= SanitizerSet::CFI,
-                [sym::cfi] if set.value_str() == Some(sym::on) => result &= !SanitizerSet::CFI,
-                [sym::kcfi] if set.value_str() == Some(sym::off) => result |= SanitizerSet::KCFI,
-                [sym::kcfi] if set.value_str() == Some(sym::on) => result &= !SanitizerSet::KCFI,
-                [sym::memory] if set.value_str() == Some(sym::off) => {
-                    result |= SanitizerSet::MEMORY
-                }
-                [sym::memory] if set.value_str() == Some(sym::on) => {
-                    result &= !SanitizerSet::MEMORY
-                }
-                [sym::memtag] if set.value_str() == Some(sym::off) => {
-                    result |= SanitizerSet::MEMTAG
-                }
-                [sym::memtag] if set.value_str() == Some(sym::on) => {
-                    result &= !SanitizerSet::MEMTAG
-                }
-                [sym::shadow_call_stack] if set.value_str() == Some(sym::off) => {
-                    result |= SanitizerSet::SHADOWCALLSTACK
-                }
-                [sym::shadow_call_stack] if set.value_str() == Some(sym::on) => {
-                    result &= !SanitizerSet::SHADOWCALLSTACK
-                }
-                [sym::thread] if set.value_str() == Some(sym::off) => {
-                    result |= SanitizerSet::THREAD
-                }
-                [sym::thread] if set.value_str() == Some(sym::on) => {
-                    result &= !SanitizerSet::THREAD
-                }
-                [sym::hwaddress] if set.value_str() == Some(sym::off) => {
-                    result |= SanitizerSet::HWADDRESS
-                }
-                [sym::hwaddress] if set.value_str() == Some(sym::on) => {
-                    result &= !SanitizerSet::HWADDRESS
-                }
+                [sym::address] | [sym::kernel_address] => match set.value_str() {
+                    Some(sym::off) => result |= SanitizerSet::ADDRESS | SanitizerSet::KERNELADDRESS,
+                    Some(sym::on) => {
+                        result &= !SanitizerSet::ADDRESS;
+                        result &= !SanitizerSet::KERNELADDRESS;
+                    }
+                    _ => {
+                        let sanitizer = segments.as_slice()[0];
+                        tcx.dcx().emit_err(errors::InvalidSanitizerSetting {
+                            span: set.span,
+                            sanitizer,
+                        });
+                    }
+                },
+                [sym::cfi] => match set.value_str() {
+                    Some(sym::off) => result |= SanitizerSet::CFI,
+                    Some(sym::on) => result &= !SanitizerSet::CFI,
+                    _ => {
+                        tcx.dcx().emit_err(errors::InvalidSanitizerSetting {
+                            span: set.span,
+                            sanitizer: sym::cfi,
+                        });
+                    }
+                },
+                [sym::kcfi] => match set.value_str() {
+                    Some(sym::off) => result |= SanitizerSet::KCFI,
+                    Some(sym::on) => result &= !SanitizerSet::KCFI,
+                    _ => {
+                        tcx.dcx().emit_err(errors::InvalidSanitizerSetting {
+                            span: set.span,
+                            sanitizer: sym::kcfi,
+                        });
+                    }
+                },
+                [sym::memory] => match set.value_str() {
+                    Some(sym::off) => result |= SanitizerSet::MEMORY,
+                    Some(sym::on) => result &= !SanitizerSet::MEMORY,
+                    _ => {
+                        tcx.dcx().emit_err(errors::InvalidSanitizerSetting {
+                            span: set.span,
+                            sanitizer: sym::memory,
+                        });
+                    }
+                },
+                [sym::memtag] => match set.value_str() {
+                    Some(sym::off) => result |= SanitizerSet::MEMTAG,
+                    Some(sym::on) => result &= !SanitizerSet::MEMTAG,
+                    _ => {
+                        tcx.dcx().emit_err(errors::InvalidSanitizerSetting {
+                            span: set.span,
+                            sanitizer: sym::memtag,
+                        });
+                    }
+                },
+                [sym::shadow_call_stack] => match set.value_str() {
+                    Some(sym::off) => result |= SanitizerSet::SHADOWCALLSTACK,
+                    Some(sym::on) => result &= !SanitizerSet::SHADOWCALLSTACK,
+                    _ => {
+                        tcx.dcx().emit_err(errors::InvalidSanitizerSetting {
+                            span: set.span,
+                            sanitizer: sym::shadow_call_stack,
+                        });
+                    }
+                },
+                [sym::thread] => match set.value_str() {
+                    Some(sym::off) => result |= SanitizerSet::THREAD,
+                    Some(sym::on) => result &= !SanitizerSet::THREAD,
+                    _ => {
+                        tcx.dcx().emit_err(errors::InvalidSanitizerSetting {
+                            span: set.span,
+                            sanitizer: sym::thread,
+                        });
+                    }
+                },
+
+                [sym::hwaddress] => match set.value_str() {
+                    Some(sym::off) => result |= SanitizerSet::HWADDRESS,
+                    Some(sym::on) => result &= !SanitizerSet::HWADDRESS,
+                    _ => {
+                        tcx.dcx().emit_err(errors::InvalidSanitizerSetting {
+                            span: set.span,
+                            sanitizer: sym::hwaddress,
+                        });
+                    }
+                },
                 _ => {
-                    tcx.dcx().emit_err(errors::InvalidSanitize { span: attr.span() });
+                    tcx.dcx().emit_err(errors::InvalidSanitizer { span: attr.span() });
                 }
             }
         }
