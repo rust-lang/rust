@@ -1,0 +1,22 @@
+error: local_attr: struct S;
+  --> $DIR/macro-rules-attr-error.rs:5:9
+   |
+LL |         compile_error!(concat!("local_attr: ", stringify!($($body)*)));
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL |     #[local_attr]
+   |     ------------- in this attribute macro expansion
+   |
+   = note: this error originates in the attribute macro `local_attr` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: macro has no rules for function-like invocation `local_attr!`
+  --> $DIR/macro-rules-attr-error.rs:14:5
+   |
+LL | macro_rules! local_attr {
+   | ----------------------- this macro has no rules for function-like invocation
+...
+LL |     local_attr!(arg);
+   |     ^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

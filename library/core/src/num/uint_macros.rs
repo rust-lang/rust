@@ -229,14 +229,14 @@ macro_rules! uint_impl {
         ///
         #[doc = concat!("let n: ", stringify!($SelfT), " = 0b_01100100;")]
         ///
-        /// assert_eq!(n.isolate_most_significant_one(), 0b_01000000);
-        #[doc = concat!("assert_eq!(0_", stringify!($SelfT), ".isolate_most_significant_one(), 0);")]
+        /// assert_eq!(n.isolate_highest_one(), 0b_01000000);
+        #[doc = concat!("assert_eq!(0_", stringify!($SelfT), ".isolate_highest_one(), 0);")]
         /// ```
         #[unstable(feature = "isolate_most_least_significant_one", issue = "136909")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
-        pub const fn isolate_most_significant_one(self) -> Self {
+        pub const fn isolate_highest_one(self) -> Self {
             self & (((1 as $SelfT) << (<$SelfT>::BITS - 1)).wrapping_shr(self.leading_zeros()))
         }
 
@@ -250,14 +250,14 @@ macro_rules! uint_impl {
         ///
         #[doc = concat!("let n: ", stringify!($SelfT), " = 0b_01100100;")]
         ///
-        /// assert_eq!(n.isolate_least_significant_one(), 0b_00000100);
-        #[doc = concat!("assert_eq!(0_", stringify!($SelfT), ".isolate_least_significant_one(), 0);")]
+        /// assert_eq!(n.isolate_lowest_one(), 0b_00000100);
+        #[doc = concat!("assert_eq!(0_", stringify!($SelfT), ".isolate_lowest_one(), 0);")]
         /// ```
         #[unstable(feature = "isolate_most_least_significant_one", issue = "136909")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
-        pub const fn isolate_least_significant_one(self) -> Self {
+        pub const fn isolate_lowest_one(self) -> Self {
             self & self.wrapping_neg()
         }
 
@@ -538,17 +538,16 @@ macro_rules! uint_impl {
         /// # Examples
         ///
         /// ```
-        /// #![feature(strict_overflow_ops)]
         #[doc = concat!("assert_eq!((", stringify!($SelfT), "::MAX - 2).strict_add(1), ", stringify!($SelfT), "::MAX - 1);")]
         /// ```
         ///
         /// The following panics because of overflow:
         ///
         /// ```should_panic
-        /// #![feature(strict_overflow_ops)]
         #[doc = concat!("let _ = (", stringify!($SelfT), "::MAX - 2).strict_add(3);")]
         /// ```
-        #[unstable(feature = "strict_overflow_ops", issue = "118260")]
+        #[stable(feature = "strict_overflow_ops", since = "CURRENT_RUSTC_VERSION")]
+        #[rustc_const_stable(feature = "strict_overflow_ops", since = "CURRENT_RUSTC_VERSION")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -630,22 +629,20 @@ macro_rules! uint_impl {
         /// # Examples
         ///
         /// ```
-        /// #![feature(strict_overflow_ops)]
         #[doc = concat!("assert_eq!(1", stringify!($SelfT), ".strict_add_signed(2), 3);")]
         /// ```
         ///
         /// The following panic because of overflow:
         ///
         /// ```should_panic
-        /// #![feature(strict_overflow_ops)]
         #[doc = concat!("let _ = 1", stringify!($SelfT), ".strict_add_signed(-2);")]
         /// ```
         ///
         /// ```should_panic
-        /// #![feature(strict_overflow_ops)]
         #[doc = concat!("let _ = (", stringify!($SelfT), "::MAX - 2).strict_add_signed(3);")]
         /// ```
-        #[unstable(feature = "strict_overflow_ops", issue = "118260")]
+        #[stable(feature = "strict_overflow_ops", since = "CURRENT_RUSTC_VERSION")]
+        #[rustc_const_stable(feature = "strict_overflow_ops", since = "CURRENT_RUSTC_VERSION")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -695,17 +692,16 @@ macro_rules! uint_impl {
         /// # Examples
         ///
         /// ```
-        /// #![feature(strict_overflow_ops)]
         #[doc = concat!("assert_eq!(1", stringify!($SelfT), ".strict_sub(1), 0);")]
         /// ```
         ///
         /// The following panics because of overflow:
         ///
         /// ```should_panic
-        /// #![feature(strict_overflow_ops)]
         #[doc = concat!("let _ = 0", stringify!($SelfT), ".strict_sub(1);")]
         /// ```
-        #[unstable(feature = "strict_overflow_ops", issue = "118260")]
+        #[stable(feature = "strict_overflow_ops", since = "CURRENT_RUSTC_VERSION")]
+        #[rustc_const_stable(feature = "strict_overflow_ops", since = "CURRENT_RUSTC_VERSION")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -790,8 +786,8 @@ macro_rules! uint_impl {
         #[doc = concat!("assert_eq!(1", stringify!($SelfT), ".checked_sub_signed(-2), Some(3));")]
         #[doc = concat!("assert_eq!((", stringify!($SelfT), "::MAX - 2).checked_sub_signed(-4), None);")]
         /// ```
-        #[stable(feature = "mixed_integer_ops_unsigned_sub", since = "CURRENT_RUSTC_VERSION")]
-        #[rustc_const_stable(feature = "mixed_integer_ops_unsigned_sub", since = "CURRENT_RUSTC_VERSION")]
+        #[stable(feature = "mixed_integer_ops_unsigned_sub", since = "1.90.0")]
+        #[rustc_const_stable(feature = "mixed_integer_ops_unsigned_sub", since = "1.90.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -817,22 +813,20 @@ macro_rules! uint_impl {
         /// # Examples
         ///
         /// ```
-        /// #![feature(strict_overflow_ops)]
         #[doc = concat!("assert_eq!(3", stringify!($SelfT), ".strict_sub_signed(2), 1);")]
         /// ```
         ///
         /// The following panic because of overflow:
         ///
         /// ```should_panic
-        /// #![feature(strict_overflow_ops)]
         #[doc = concat!("let _ = 1", stringify!($SelfT), ".strict_sub_signed(2);")]
         /// ```
         ///
         /// ```should_panic
-        /// #![feature(strict_overflow_ops)]
         #[doc = concat!("let _ = (", stringify!($SelfT), "::MAX).strict_sub_signed(-1);")]
         /// ```
-        #[unstable(feature = "strict_overflow_ops", issue = "118260")]
+        #[stable(feature = "strict_overflow_ops", since = "CURRENT_RUSTC_VERSION")]
+        #[rustc_const_stable(feature = "strict_overflow_ops", since = "CURRENT_RUSTC_VERSION")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -850,7 +844,6 @@ macro_rules! uint_impl {
         /// # Examples
         ///
         /// ```
-        /// #![feature(unsigned_signed_diff)]
         #[doc = concat!("assert_eq!(10", stringify!($SelfT), ".checked_signed_diff(2), Some(8));")]
         #[doc = concat!("assert_eq!(2", stringify!($SelfT), ".checked_signed_diff(10), Some(-8));")]
         #[doc = concat!(
@@ -888,7 +881,8 @@ macro_rules! uint_impl {
             "::MAX), Some(0));"
         )]
         /// ```
-        #[unstable(feature = "unsigned_signed_diff", issue = "126041")]
+        #[stable(feature = "unsigned_signed_diff", since = "CURRENT_RUSTC_VERSION")]
+        #[rustc_const_stable(feature = "unsigned_signed_diff", since = "CURRENT_RUSTC_VERSION")]
         #[inline]
         pub const fn checked_signed_diff(self, rhs: Self) -> Option<$SignedT> {
             let res = self.wrapping_sub(rhs) as $SignedT;
@@ -932,17 +926,16 @@ macro_rules! uint_impl {
         /// # Examples
         ///
         /// ```
-        /// #![feature(strict_overflow_ops)]
         #[doc = concat!("assert_eq!(5", stringify!($SelfT), ".strict_mul(1), 5);")]
         /// ```
         ///
         /// The following panics because of overflow:
         ///
         /// ``` should_panic
-        /// #![feature(strict_overflow_ops)]
         #[doc = concat!("let _ = ", stringify!($SelfT), "::MAX.strict_mul(2);")]
         /// ```
-        #[unstable(feature = "strict_overflow_ops", issue = "118260")]
+        #[stable(feature = "strict_overflow_ops", since = "CURRENT_RUSTC_VERSION")]
+        #[rustc_const_stable(feature = "strict_overflow_ops", since = "CURRENT_RUSTC_VERSION")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -1029,17 +1022,16 @@ macro_rules! uint_impl {
         /// # Examples
         ///
         /// ```
-        /// #![feature(strict_overflow_ops)]
         #[doc = concat!("assert_eq!(100", stringify!($SelfT), ".strict_div(10), 10);")]
         /// ```
         ///
         /// The following panics because of division by zero:
         ///
         /// ```should_panic
-        /// #![feature(strict_overflow_ops)]
         #[doc = concat!("let _ = (1", stringify!($SelfT), ").strict_div(0);")]
         /// ```
-        #[unstable(feature = "strict_overflow_ops", issue = "118260")]
+        #[stable(feature = "strict_overflow_ops", since = "CURRENT_RUSTC_VERSION")]
+        #[rustc_const_stable(feature = "strict_overflow_ops", since = "CURRENT_RUSTC_VERSION")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
@@ -1085,16 +1077,15 @@ macro_rules! uint_impl {
         /// # Examples
         ///
         /// ```
-        /// #![feature(strict_overflow_ops)]
         #[doc = concat!("assert_eq!(100", stringify!($SelfT), ".strict_div_euclid(10), 10);")]
         /// ```
         /// The following panics because of division by zero:
         ///
         /// ```should_panic
-        /// #![feature(strict_overflow_ops)]
         #[doc = concat!("let _ = (1", stringify!($SelfT), ").strict_div_euclid(0);")]
         /// ```
-        #[unstable(feature = "strict_overflow_ops", issue = "118260")]
+        #[stable(feature = "strict_overflow_ops", since = "CURRENT_RUSTC_VERSION")]
+        #[rustc_const_stable(feature = "strict_overflow_ops", since = "CURRENT_RUSTC_VERSION")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
@@ -1239,17 +1230,16 @@ macro_rules! uint_impl {
         /// # Examples
         ///
         /// ```
-        /// #![feature(strict_overflow_ops)]
         #[doc = concat!("assert_eq!(100", stringify!($SelfT), ".strict_rem(10), 0);")]
         /// ```
         ///
         /// The following panics because of division by zero:
         ///
         /// ```should_panic
-        /// #![feature(strict_overflow_ops)]
         #[doc = concat!("let _ = 5", stringify!($SelfT), ".strict_rem(0);")]
         /// ```
-        #[unstable(feature = "strict_overflow_ops", issue = "118260")]
+        #[stable(feature = "strict_overflow_ops", since = "CURRENT_RUSTC_VERSION")]
+        #[rustc_const_stable(feature = "strict_overflow_ops", since = "CURRENT_RUSTC_VERSION")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
@@ -1296,17 +1286,16 @@ macro_rules! uint_impl {
         /// # Examples
         ///
         /// ```
-        /// #![feature(strict_overflow_ops)]
         #[doc = concat!("assert_eq!(100", stringify!($SelfT), ".strict_rem_euclid(10), 0);")]
         /// ```
         ///
         /// The following panics because of division by zero:
         ///
         /// ```should_panic
-        /// #![feature(strict_overflow_ops)]
         #[doc = concat!("let _ = 5", stringify!($SelfT), ".strict_rem_euclid(0);")]
         /// ```
-        #[unstable(feature = "strict_overflow_ops", issue = "118260")]
+        #[stable(feature = "strict_overflow_ops", since = "CURRENT_RUSTC_VERSION")]
+        #[rustc_const_stable(feature = "strict_overflow_ops", since = "CURRENT_RUSTC_VERSION")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
@@ -1568,17 +1557,16 @@ macro_rules! uint_impl {
         /// # Examples
         ///
         /// ```
-        /// #![feature(strict_overflow_ops)]
         #[doc = concat!("assert_eq!(0", stringify!($SelfT), ".strict_neg(), 0);")]
         /// ```
         ///
         /// The following panics because of overflow:
         ///
         /// ```should_panic
-        /// #![feature(strict_overflow_ops)]
         #[doc = concat!("let _ = 1", stringify!($SelfT), ".strict_neg();")]
         ///
-        #[unstable(feature = "strict_overflow_ops", issue = "118260")]
+        #[stable(feature = "strict_overflow_ops", since = "CURRENT_RUSTC_VERSION")]
+        #[rustc_const_stable(feature = "strict_overflow_ops", since = "CURRENT_RUSTC_VERSION")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -1625,17 +1613,16 @@ macro_rules! uint_impl {
         /// # Examples
         ///
         /// ```
-        /// #![feature(strict_overflow_ops)]
         #[doc = concat!("assert_eq!(0x1", stringify!($SelfT), ".strict_shl(4), 0x10);")]
         /// ```
         ///
         /// The following panics because of overflow:
         ///
         /// ```should_panic
-        /// #![feature(strict_overflow_ops)]
         #[doc = concat!("let _ = 0x10", stringify!($SelfT), ".strict_shl(129);")]
         /// ```
-        #[unstable(feature = "strict_overflow_ops", issue = "118260")]
+        #[stable(feature = "strict_overflow_ops", since = "CURRENT_RUSTC_VERSION")]
+        #[rustc_const_stable(feature = "strict_overflow_ops", since = "CURRENT_RUSTC_VERSION")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -1741,17 +1728,16 @@ macro_rules! uint_impl {
         /// # Examples
         ///
         /// ```
-        /// #![feature(strict_overflow_ops)]
         #[doc = concat!("assert_eq!(0x10", stringify!($SelfT), ".strict_shr(4), 0x1);")]
         /// ```
         ///
         /// The following panics because of overflow:
         ///
         /// ```should_panic
-        /// #![feature(strict_overflow_ops)]
         #[doc = concat!("let _ = 0x10", stringify!($SelfT), ".strict_shr(129);")]
         /// ```
-        #[unstable(feature = "strict_overflow_ops", issue = "118260")]
+        #[stable(feature = "strict_overflow_ops", since = "CURRENT_RUSTC_VERSION")]
+        #[rustc_const_stable(feature = "strict_overflow_ops", since = "CURRENT_RUSTC_VERSION")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -1867,17 +1853,16 @@ macro_rules! uint_impl {
         /// # Examples
         ///
         /// ```
-        /// #![feature(strict_overflow_ops)]
         #[doc = concat!("assert_eq!(2", stringify!($SelfT), ".strict_pow(5), 32);")]
         /// ```
         ///
         /// The following panics because of overflow:
         ///
         /// ```should_panic
-        /// #![feature(strict_overflow_ops)]
         #[doc = concat!("let _ = ", stringify!($SelfT), "::MAX.strict_pow(2);")]
         /// ```
-        #[unstable(feature = "strict_overflow_ops", issue = "118260")]
+        #[stable(feature = "strict_overflow_ops", since = "CURRENT_RUSTC_VERSION")]
+        #[rustc_const_stable(feature = "strict_overflow_ops", since = "CURRENT_RUSTC_VERSION")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -1974,8 +1959,8 @@ macro_rules! uint_impl {
         #[doc = concat!("assert_eq!(1", stringify!($SelfT), ".saturating_sub_signed(-2), 3);")]
         #[doc = concat!("assert_eq!((", stringify!($SelfT), "::MAX - 2).saturating_sub_signed(-4), ", stringify!($SelfT), "::MAX);")]
         /// ```
-        #[stable(feature = "mixed_integer_ops_unsigned_sub", since = "CURRENT_RUSTC_VERSION")]
-        #[rustc_const_stable(feature = "mixed_integer_ops_unsigned_sub", since = "CURRENT_RUSTC_VERSION")]
+        #[stable(feature = "mixed_integer_ops_unsigned_sub", since = "1.90.0")]
+        #[rustc_const_stable(feature = "mixed_integer_ops_unsigned_sub", since = "1.90.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -2122,8 +2107,8 @@ macro_rules! uint_impl {
         #[doc = concat!("assert_eq!(1", stringify!($SelfT), ".wrapping_sub_signed(-2), 3);")]
         #[doc = concat!("assert_eq!((", stringify!($SelfT), "::MAX - 2).wrapping_sub_signed(-4), 1);")]
         /// ```
-        #[stable(feature = "mixed_integer_ops_unsigned_sub", since = "CURRENT_RUSTC_VERSION")]
-        #[rustc_const_stable(feature = "mixed_integer_ops_unsigned_sub", since = "CURRENT_RUSTC_VERSION")]
+        #[stable(feature = "mixed_integer_ops_unsigned_sub", since = "1.90.0")]
+        #[rustc_const_stable(feature = "mixed_integer_ops_unsigned_sub", since = "1.90.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -2580,8 +2565,8 @@ macro_rules! uint_impl {
         #[doc = concat!("assert_eq!(1", stringify!($SelfT), ".overflowing_sub_signed(-2), (3, false));")]
         #[doc = concat!("assert_eq!((", stringify!($SelfT), "::MAX - 2).overflowing_sub_signed(-4), (1, true));")]
         /// ```
-        #[stable(feature = "mixed_integer_ops_unsigned_sub", since = "CURRENT_RUSTC_VERSION")]
-        #[rustc_const_stable(feature = "mixed_integer_ops_unsigned_sub", since = "CURRENT_RUSTC_VERSION")]
+        #[stable(feature = "mixed_integer_ops_unsigned_sub", since = "1.90.0")]
+        #[rustc_const_stable(feature = "mixed_integer_ops_unsigned_sub", since = "1.90.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]

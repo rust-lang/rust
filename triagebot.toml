@@ -287,6 +287,11 @@ trigger_files = [
     "compiler/rustc_codegen_llvm/src/llvm/enzyme_ffi.rs",
 ]
 
+[autolabel."F-explicit_tail_calls"]
+trigger_files = [
+    "tests/ui/explicit-tail-calls",
+]
+
 [autolabel."T-rustdoc-frontend"]
 trigger_labels = [
     "A-rustdoc-search",
@@ -1320,6 +1325,7 @@ compiler = [
     "@eholk",
     "@fee1-dead",
     "@fmease",
+    "@jackh726",
     "@jieyouxu",
     "@jdonszelmann",
     "@lcnr",

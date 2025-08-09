@@ -756,7 +756,13 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                 && let Some(v) = self.simplify_place_value(&mut pointee, location)
             {
                 value = v;
-                place_ref = pointee.project_deeper(&place.projection[index..], self.tcx).as_ref();
+                // `pointee` holds a `Place`, so `ProjectionElem::Index` holds a `Local`.
+                // That local is SSA, but we otherwise have no guarantee on that local's value at
+                // the current location compared to its value where `pointee` was borrowed.
+                if pointee.projection.iter().all(|elem| !matches!(elem, ProjectionElem::Index(_))) {
+                    place_ref =
+                        pointee.project_deeper(&place.projection[index..], self.tcx).as_ref();
+                }
             }
             if let Some(local) = self.try_as_local(value, location) {
                 // Both `local` and `Place { local: place.local, projection: projection[..index] }`
@@ -774,7 +780,12 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             && let Some(v) = self.simplify_place_value(&mut pointee, location)
         {
             value = v;
-            place_ref = pointee.project_deeper(&[], self.tcx).as_ref();
+            // `pointee` holds a `Place`, so `ProjectionElem::Index` holds a `Local`.
+            // That local is SSA, but we otherwise have no guarantee on that local's value at
+            // the current location compared to its value where `pointee` was borrowed.
+            if pointee.projection.iter().all(|elem| !matches!(elem, ProjectionElem::Index(_))) {
+                place_ref = pointee.project_deeper(&[], self.tcx).as_ref();
+            }
         }
         if let Some(new_local) = self.try_as_local(value, location) {
             place_ref = PlaceRef { local: new_local, projection: &[] };

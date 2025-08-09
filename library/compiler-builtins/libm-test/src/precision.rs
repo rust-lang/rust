@@ -272,34 +272,12 @@ impl MaybeOverride<(f32,)> for SpecialCase {
 impl MaybeOverride<(f64,)> for SpecialCase {
     fn check_float<F: Float>(input: (f64,), actual: F, expected: F, ctx: &CheckCtx) -> CheckAction {
         if cfg!(x86_no_sse)
-            && ctx.base_name == BaseName::Ceil
-            && ctx.basis == CheckBasis::Musl
-            && input.0 < 0.0
-            && input.0 > -1.0
-            && expected == F::ZERO
-            && actual == F::ZERO
-        {
-            // musl returns -0.0, we return +0.0
-            return XFAIL("i586 ceil signed zero");
-        }
-
-        if cfg!(x86_no_sse)
             && (ctx.base_name == BaseName::Rint || ctx.base_name == BaseName::Roundeven)
             && (expected - actual).abs() <= F::ONE
             && (expected - actual).abs() > F::ZERO
         {
             // Our rounding mode is incorrect.
             return XFAIL("i586 rint rounding mode");
-        }
-
-        if cfg!(x86_no_sse)
-            && (ctx.fn_ident == Identifier::Ceil || ctx.fn_ident == Identifier::Floor)
-            && expected.eq_repr(F::NEG_ZERO)
-            && actual.eq_repr(F::ZERO)
-        {
-            // FIXME: the x87 implementations do not keep the distinction between -0.0 and 0.0.
-            // See https://github.com/rust-lang/libm/pull/404#issuecomment-2572399955
-            return XFAIL("i586 ceil/floor signed zero");
         }
 
         if cfg!(x86_no_sse)

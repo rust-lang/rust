@@ -1424,7 +1424,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         // During late resolution we only track the module component of the parent scope,
         // although it may be useful to track other components as well for diagnostics.
         let graph_root = resolver.graph_root;
-        let parent_scope = ParentScope::module(graph_root, resolver);
+        let parent_scope = ParentScope::module(graph_root, resolver.arenas);
         let start_rib_kind = RibKind::Module(graph_root);
         LateResolutionVisitor {
             r: resolver,
@@ -1484,7 +1484,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         opt_ns: Option<Namespace>, // `None` indicates a module path in import
         finalize: Option<Finalize>,
     ) -> PathResult<'ra> {
-        self.r.resolve_path_with_ribs(
+        self.r.cm().resolve_path_with_ribs(
             path,
             opt_ns,
             &self.parent_scope,
@@ -4466,9 +4466,15 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         if qself.is_none() {
             let path_seg = |seg: &Segment| PathSegment::from_ident(seg.ident);
             let path = Path { segments: path.iter().map(path_seg).collect(), span, tokens: None };
-            if let Ok((_, res)) =
-                self.r.resolve_macro_path(&path, None, &self.parent_scope, false, false, None, None)
-            {
+            if let Ok((_, res)) = self.r.cm().resolve_macro_path(
+                &path,
+                None,
+                &self.parent_scope,
+                false,
+                false,
+                None,
+                None,
+            ) {
                 return Ok(Some(PartialRes::new(res)));
             }
         }

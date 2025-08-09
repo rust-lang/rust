@@ -769,9 +769,13 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             }
             TerminatorKind::Call { func, args, .. }
             | TerminatorKind::TailCall { func, args, .. } => {
-                let call_source = match term.kind {
-                    TerminatorKind::Call { call_source, .. } => call_source,
-                    TerminatorKind::TailCall { .. } => CallSource::Normal,
+                let (call_source, destination, is_diverging) = match term.kind {
+                    TerminatorKind::Call { call_source, destination, target, .. } => {
+                        (call_source, destination, target.is_none())
+                    }
+                    TerminatorKind::TailCall { .. } => {
+                        (CallSource::Normal, RETURN_PLACE.into(), false)
+                    }
                     _ => unreachable!(),
                 };
 
@@ -845,9 +849,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     );
                 }
 
-                if let TerminatorKind::Call { destination, target, .. } = term.kind {
-                    self.check_call_dest(term, &sig, destination, target, term_location);
-                }
+                self.check_call_dest(term, &sig, destination, is_diverging, term_location);
 
                 // The ordinary liveness rules will ensure that all
                 // regions in the type of the callee are live here. We
@@ -1874,65 +1876,61 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         term: &Terminator<'tcx>,
         sig: &ty::FnSig<'tcx>,
         destination: Place<'tcx>,
-        target: Option<BasicBlock>,
+        is_diverging: bool,
         term_location: Location,
     ) {
         let tcx = self.tcx();
-        match target {
-            Some(_) => {
-                let dest_ty = destination.ty(self.body, tcx).ty;
-                let dest_ty = self.normalize(dest_ty, term_location);
-                let category = match destination.as_local() {
-                    Some(RETURN_PLACE) => {
-                        if let DefiningTy::Const(def_id, _) | DefiningTy::InlineConst(def_id, _) =
-                            self.universal_regions.defining_ty
-                        {
-                            if tcx.is_static(def_id) {
-                                ConstraintCategory::UseAsStatic
-                            } else {
-                                ConstraintCategory::UseAsConst
-                            }
-                        } else {
-                            ConstraintCategory::Return(ReturnConstraint::Normal)
-                        }
-                    }
-                    Some(l) if !self.body.local_decls[l].is_user_variable() => {
-                        ConstraintCategory::Boring
-                    }
-                    // The return type of a call is interesting for diagnostics.
-                    _ => ConstraintCategory::Assignment,
-                };
-
-                let locations = term_location.to_locations();
-
-                if let Err(terr) = self.sub_types(sig.output(), dest_ty, locations, category) {
-                    span_mirbug!(
-                        self,
-                        term,
-                        "call dest mismatch ({:?} <- {:?}): {:?}",
-                        dest_ty,
-                        sig.output(),
-                        terr
-                    );
-                }
-
-                // When `unsized_fn_params` is not enabled,
-                // this check is done at `check_local`.
-                if self.unsized_feature_enabled() {
-                    let span = term.source_info.span;
-                    self.ensure_place_sized(dest_ty, span);
-                }
+        if is_diverging {
+            // The signature in this call can reference region variables,
+            // so erase them before calling a query.
+            let output_ty = self.tcx().erase_regions(sig.output());
+            if !output_ty
+                .is_privately_uninhabited(self.tcx(), self.infcx.typing_env(self.infcx.param_env))
+            {
+                span_mirbug!(self, term, "call to converging function {:?} w/o dest", sig);
             }
-            None => {
-                // The signature in this call can reference region variables,
-                // so erase them before calling a query.
-                let output_ty = self.tcx().erase_regions(sig.output());
-                if !output_ty.is_privately_uninhabited(
-                    self.tcx(),
-                    self.infcx.typing_env(self.infcx.param_env),
-                ) {
-                    span_mirbug!(self, term, "call to converging function {:?} w/o dest", sig);
+        } else {
+            let dest_ty = destination.ty(self.body, tcx).ty;
+            let dest_ty = self.normalize(dest_ty, term_location);
+            let category = match destination.as_local() {
+                Some(RETURN_PLACE) => {
+                    if let DefiningTy::Const(def_id, _) | DefiningTy::InlineConst(def_id, _) =
+                        self.universal_regions.defining_ty
+                    {
+                        if tcx.is_static(def_id) {
+                            ConstraintCategory::UseAsStatic
+                        } else {
+                            ConstraintCategory::UseAsConst
+                        }
+                    } else {
+                        ConstraintCategory::Return(ReturnConstraint::Normal)
+                    }
                 }
+                Some(l) if !self.body.local_decls[l].is_user_variable() => {
+                    ConstraintCategory::Boring
+                }
+                // The return type of a call is interesting for diagnostics.
+                _ => ConstraintCategory::Assignment,
+            };
+
+            let locations = term_location.to_locations();
+
+            if let Err(terr) = self.sub_types(sig.output(), dest_ty, locations, category) {
+                span_mirbug!(
+                    self,
+                    term,
+                    "call dest mismatch ({:?} <- {:?}): {:?}",
+                    dest_ty,
+                    sig.output(),
+                    terr
+                );
+            }
+
+            // When `unsized_fn_params` is not enabled,
+            // this check is done at `check_local`.
+            if self.unsized_feature_enabled() {
+                let span = term.source_info.span;
+                self.ensure_place_sized(dest_ty, span);
             }
         }
     }

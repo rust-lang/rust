@@ -959,36 +959,23 @@ where
                 // Even when a trait bound has been proven using a where-bound, we
                 // still need to consider alias-bounds for normalization, see
                 // `tests/ui/next-solver/alias-bound-shadowed-by-env.rs`.
-                let candidates_from_env_and_bounds: Vec<_> = self
+                let mut candidates: Vec<_> = self
                     .assemble_and_evaluate_candidates(goal, AssembleCandidatesFrom::EnvAndBounds);
 
                 // We still need to prefer where-bounds over alias-bounds however.
                 // See `tests/ui/winnowing/norm-where-bound-gt-alias-bound.rs`.
-                let mut considered_candidates: Vec<_> = if candidates_from_env_and_bounds
-                    .iter()
-                    .any(|c| matches!(c.source, CandidateSource::ParamEnv(_)))
-                {
-                    candidates_from_env_and_bounds
-                        .into_iter()
-                        .filter(|c| matches!(c.source, CandidateSource::ParamEnv(_)))
-                        .map(|c| c.result)
-                        .collect()
-                } else {
-                    candidates_from_env_and_bounds.into_iter().map(|c| c.result).collect()
-                };
-
-                // If the trait goal has been proven by using the environment, we want to treat
-                // aliases as rigid if there are no applicable projection bounds in the environment.
-                if considered_candidates.is_empty() {
-                    if let Ok(response) = inject_normalize_to_rigid_candidate(self) {
-                        considered_candidates.push(response);
-                    }
+                if candidates.iter().any(|c| matches!(c.source, CandidateSource::ParamEnv(_))) {
+                    candidates.retain(|c| matches!(c.source, CandidateSource::ParamEnv(_)));
+                } else if candidates.is_empty() {
+                    // If the trait goal has been proven by using the environment, we want to treat
+                    // aliases as rigid if there are no applicable projection bounds in the environment.
+                    return inject_normalize_to_rigid_candidate(self);
                 }
 
-                if let Some(response) = self.try_merge_responses(&considered_candidates) {
+                if let Some(response) = self.try_merge_candidates(&candidates) {
                     Ok(response)
                 } else {
-                    self.flounder(&considered_candidates)
+                    self.flounder(&candidates)
                 }
             }
             TraitGoalProvenVia::Misc => {
@@ -998,11 +985,9 @@ where
                 // Prefer "orphaned" param-env normalization predicates, which are used
                 // (for example, and ideally only) when proving item bounds for an impl.
                 let candidates_from_env: Vec<_> = candidates
-                    .iter()
-                    .filter(|c| matches!(c.source, CandidateSource::ParamEnv(_)))
-                    .map(|c| c.result)
+                    .extract_if(.., |c| matches!(c.source, CandidateSource::ParamEnv(_)))
                     .collect();
-                if let Some(response) = self.try_merge_responses(&candidates_from_env) {
+                if let Some(response) = self.try_merge_candidates(&candidates_from_env) {
                     return Ok(response);
                 }
 
@@ -1012,12 +997,10 @@ where
                 // means we can just ignore inference constraints and don't have to special-case
                 // constraining the normalized-to `term`.
                 self.filter_specialized_impls(AllowInferenceConstraints::Yes, &mut candidates);
-
-                let responses: Vec<_> = candidates.iter().map(|c| c.result).collect();
-                if let Some(response) = self.try_merge_responses(&responses) {
+                if let Some(response) = self.try_merge_candidates(&candidates) {
                     Ok(response)
                 } else {
-                    self.flounder(&responses)
+                    self.flounder(&candidates)
                 }
             }
         }

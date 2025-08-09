@@ -1838,6 +1838,10 @@ instead, we check that it's not a "finger" cursor.
 	border-right: 3px solid var(--target-border-color);
 }
 
+a.tooltip {
+	font-family: var(--font-family);
+}
+
 .code-header a.tooltip {
 	color: inherit;
 	margin-right: 15px;

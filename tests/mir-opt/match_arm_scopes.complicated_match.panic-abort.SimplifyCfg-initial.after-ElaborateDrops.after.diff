@@ -85,11 +85,11 @@
           _8 = &(_2.2: std::string::String);
 -         _3 = &fake shallow (_2.0: bool);
 -         _4 = &fake shallow (_2.1: bool);
-          StorageLive(_12);
-          StorageLive(_13);
-          _13 = copy _1;
--         switchInt(move _13) -> [0: bb16, otherwise: bb15];
-+         switchInt(move _13) -> [0: bb13, otherwise: bb12];
+          StorageLive(_9);
+          StorageLive(_10);
+          _10 = copy _1;
+-         switchInt(move _10) -> [0: bb12, otherwise: bb11];
++         switchInt(move _10) -> [0: bb9, otherwise: bb8];
       }
   
 -     bb9: {
@@ -100,11 +100,11 @@
           _8 = &(_2.2: std::string::String);
 -         _3 = &fake shallow (_2.0: bool);
 -         _4 = &fake shallow (_2.1: bool);
-          StorageLive(_9);
-          StorageLive(_10);
-          _10 = copy _1;
--         switchInt(move _10) -> [0: bb12, otherwise: bb11];
-+         switchInt(move _10) -> [0: bb9, otherwise: bb8];
+          StorageLive(_12);
+          StorageLive(_13);
+          _13 = copy _1;
+-         switchInt(move _13) -> [0: bb16, otherwise: bb15];
++         switchInt(move _13) -> [0: bb13, otherwise: bb12];
       }
   
 -     bb10: {
@@ -139,7 +139,7 @@
 -         FakeRead(ForGuardBinding, _6);
 -         FakeRead(ForGuardBinding, _8);
           StorageLive(_5);
-          _5 = copy (_2.1: bool);
+          _5 = copy (_2.0: bool);
           StorageLive(_7);
           _7 = move (_2.2: std::string::String);
 -         goto -> bb10;
@@ -152,8 +152,8 @@
           StorageDead(_9);
           StorageDead(_8);
           StorageDead(_6);
--         falseEdge -> [real: bb1, imaginary: bb1];
-+         goto -> bb1;
+-         falseEdge -> [real: bb3, imaginary: bb3];
++         goto -> bb2;
       }
   
 -     bb15: {
@@ -181,7 +181,7 @@
 -         FakeRead(ForGuardBinding, _6);
 -         FakeRead(ForGuardBinding, _8);
           StorageLive(_5);
-          _5 = copy (_2.0: bool);
+          _5 = copy (_2.1: bool);
           StorageLive(_7);
           _7 = move (_2.2: std::string::String);
 -         goto -> bb10;
@@ -194,8 +194,8 @@
           StorageDead(_12);
           StorageDead(_8);
           StorageDead(_6);
--         falseEdge -> [real: bb3, imaginary: bb3];
-+         goto -> bb2;
+-         falseEdge -> [real: bb1, imaginary: bb1];
++         goto -> bb1;
       }
   
 -     bb19: {

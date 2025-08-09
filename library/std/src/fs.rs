@@ -814,7 +814,7 @@ impl File {
     ///
     /// If this file handle/descriptor, or a clone of it, already holds a lock, the exact behavior
     /// is unspecified and platform dependent, including the possibility that it will deadlock.
-    /// However, if this method returns `Ok(true)`, then it has acquired an exclusive lock.
+    /// However, if this method returns `Ok(())`, then it has acquired an exclusive lock.
     ///
     /// If the file is not open for writing, it is unspecified whether this function returns an error.
     ///
@@ -879,7 +879,7 @@ impl File {
     ///
     /// If this file handle, or a clone of it, already holds a lock, the exact behavior is
     /// unspecified and platform dependent, including the possibility that it will deadlock.
-    /// However, if this method returns `Ok(true)`, then it has acquired a shared lock.
+    /// However, if this method returns `Ok(())`, then it has acquired a shared lock.
     ///
     /// The lock will be released when this file (along with any other file descriptors/handles
     /// duplicated or inherited from it) is closed, or if the [`unlock`] method is called.
@@ -1111,6 +1111,11 @@ impl File {
     /// `futimes` on macOS before 10.13) and the `SetFileTime` function on Windows. Note that this
     /// [may change in the future][changes].
     ///
+    /// On most platforms, including UNIX and Windows platforms, this function can also change the
+    /// timestamps of a directory. To get a `File` representing a directory in order to call
+    /// `set_times`, open the directory with `File::open` without attempting to obtain write
+    /// permission.
+    ///
     /// [changes]: io#platform-specific-behavior
     ///
     /// # Errors
@@ -1128,7 +1133,7 @@ impl File {
     ///     use std::fs::{self, File, FileTimes};
     ///
     ///     let src = fs::metadata("src")?;
-    ///     let dest = File::options().write(true).open("dest")?;
+    ///     let dest = File::open("dest")?;
     ///     let times = FileTimes::new()
     ///         .set_accessed(src.accessed()?)
     ///         .set_modified(src.modified()?);

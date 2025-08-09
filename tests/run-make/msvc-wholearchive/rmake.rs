@@ -7,7 +7,7 @@
 
 use std::path::PathBuf;
 
-use run_make_support::{cc, cmd, env_var, extra_c_flags, rustc};
+use run_make_support::{cc, cmd, env_var, extra_linker_flags, rustc};
 
 fn main() {
     // Build the staticlib
@@ -31,7 +31,7 @@ fn main() {
     // Otherwise the actual test failure may be caused by something else.
     cmd(&linker)
         .args(["c.obj", "./static.lib", "-dll", "-def:dll.def", "-out:dll.dll"])
-        .args(extra_c_flags())
+        .args(extra_linker_flags())
         .run();
 
     // FIXME(@ChrisDenton): this doesn't currently work with llvm's lld-link for other reasons.
@@ -46,7 +46,7 @@ fn main() {
                 "-def:dll.def",
                 "-out:dll_whole_archive.dll",
             ])
-            .args(extra_c_flags())
+            .args(extra_linker_flags())
             .run();
     }
 }

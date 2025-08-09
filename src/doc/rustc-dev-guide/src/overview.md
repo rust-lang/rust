@@ -321,6 +321,10 @@ the name `'tcx`, which means that something is tied to the lifetime of the
 
 [`TyCtxt`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TyCtxt.html
 
+For more information about queries in the compiler, see [the queries chapter][queries].
+
+[queries]: ./query.md
+
 ### `ty::Ty`
 
 Types are really important in Rust, and they form the core of a lot of compiler

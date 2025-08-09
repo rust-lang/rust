@@ -99,7 +99,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         &self,
         trait_pred: ty::PolyTraitPredicate<'tcx>,
         obligation: &PredicateObligation<'tcx>,
-        long_ty_file: &mut Option<PathBuf>,
+        long_ty_path: &mut Option<PathBuf>,
     ) -> OnUnimplementedNote {
         if trait_pred.polarity() != ty::PredicatePolarity::Positive {
             return OnUnimplementedNote::default();
@@ -281,7 +281,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     GenericParamDefKind::Type { .. } | GenericParamDefKind::Const { .. } => {
                         if let Some(ty) = trait_pred.trait_ref.args[param.index as usize].as_type()
                         {
-                            self.tcx.short_string(ty, long_ty_file)
+                            self.tcx.short_string(ty, long_ty_path)
                         } else {
                             trait_pred.trait_ref.args[param.index as usize].to_string()
                         }

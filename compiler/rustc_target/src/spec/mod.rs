@@ -2101,6 +2101,7 @@ supported_targets! {
     ("armv7a-none-eabihf", armv7a_none_eabihf),
     ("armv7a-nuttx-eabi", armv7a_nuttx_eabi),
     ("armv7a-nuttx-eabihf", armv7a_nuttx_eabihf),
+    ("armv7a-vex-v5", armv7a_vex_v5),
 
     ("msp430-none-elf", msp430_none_elf),
 
@@ -2571,6 +2572,8 @@ pub struct TargetOptions {
     pub is_like_wasm: bool,
     /// Whether a target toolchain is like Android, implying a Linux kernel and a Bionic libc
     pub is_like_android: bool,
+    /// Whether a target toolchain is like VEXos, the operating system used by the VEX Robotics V5 Brain.
+    pub is_like_vexos: bool,
     /// Target's binary file format. Defaults to BinaryFormat::Elf
     pub binary_format: BinaryFormat,
     /// Default supported version of DWARF on this platform.
@@ -2953,6 +2956,7 @@ impl Default for TargetOptions {
             is_like_msvc: false,
             is_like_wasm: false,
             is_like_android: false,
+            is_like_vexos: false,
             binary_format: BinaryFormat::Elf,
             default_dwarf_version: 4,
             allows_weak_linkage: true,

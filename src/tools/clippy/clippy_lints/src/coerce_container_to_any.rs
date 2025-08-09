@@ -41,7 +41,7 @@ declare_clippy_lint! {
     /// // Succeeds since we have a &dyn Any to the inner u32!
     /// assert_eq!(dyn_any_of_u32.downcast_ref::<u32>(), Some(&0u32));
     /// ```
-    #[clippy::version = "1.88.0"]
+    #[clippy::version = "1.89.0"]
     pub COERCE_CONTAINER_TO_ANY,
     nursery,
     "coercing to `&dyn Any` when dereferencing could produce a `dyn Any` without coercion is usually not intended"

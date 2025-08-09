@@ -777,7 +777,7 @@ fn test_unstable_options_tracking_hash() {
     tracked!(
         coverage_options,
         CoverageOptions {
-            level: CoverageLevel::Mcdc,
+            level: CoverageLevel::Branch,
             // (don't collapse test-only options onto the same line)
             discard_all_spans_in_codegen: true,
         }

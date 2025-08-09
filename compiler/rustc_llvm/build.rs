@@ -171,6 +171,16 @@ fn main() {
     let cxxflags = output(&mut cmd);
     let mut cfg = cc::Build::new();
     cfg.warnings(false);
+
+    // Prevent critical warnings when we're compiling from rust-lang/rust CI,
+    // except on MSVC, as the compiler throws warnings that are only reported
+    // for this platform. See https://github.com/rust-lang/rust/pull/145031#issuecomment-3162677202
+    // FIXME(llvm22): It looks like the specific problem code has been removed
+    // in https://github.com/llvm/llvm-project/commit/e8fc808bf8e78a3c80d1f8e293a92677b92366dd,
+    // retry msvc once we bump our LLVM version.
+    if std::env::var_os("CI").is_some() && !target.contains("msvc") {
+        cfg.warnings_into_errors(true);
+    }
     for flag in cxxflags.split_whitespace() {
         // Ignore flags like `-m64` when we're doing a cross build
         if is_crossed && flag.starts_with("-m") {

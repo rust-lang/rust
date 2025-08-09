@@ -45,12 +45,6 @@ pub(super) fn is_inline_valid_on_fn<'tcx>(
         return Err("#[rustc_no_mir_inline]");
     }
 
-    // FIXME(#127234): Coverage instrumentation currently doesn't handle inlined
-    // MIR correctly when Modified Condition/Decision Coverage is enabled.
-    if tcx.sess.instrument_coverage_mcdc() {
-        return Err("incompatible with MC/DC coverage");
-    }
-
     let ty = tcx.type_of(def_id);
     if match ty.instantiate_identity().kind() {
         ty::FnDef(..) => tcx.fn_sig(def_id).instantiate_identity().c_variadic(),

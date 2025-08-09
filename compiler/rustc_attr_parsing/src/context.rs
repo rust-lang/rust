@@ -16,6 +16,7 @@ use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, Symbol, sym};
 use crate::attributes::allow_unstable::{
     AllowConstFnUnstableParser, AllowInternalUnstableParser, UnstableFeatureBoundParser,
 };
+use crate::attributes::body::CoroutineParser;
 use crate::attributes::codegen_attrs::{
     ColdParser, CoverageParser, ExportNameParser, NakedParser, NoMangleParser, OptimizeParser,
     TargetFeatureParser, TrackCallerParser, UsedParser,
@@ -49,7 +50,7 @@ use crate::attributes::semantics::MayDangleParser;
 use crate::attributes::stability::{
     BodyStabilityParser, ConstStabilityIndirectParser, ConstStabilityParser, StabilityParser,
 };
-use crate::attributes::test_attrs::IgnoreParser;
+use crate::attributes::test_attrs::{IgnoreParser, ShouldPanicParser};
 use crate::attributes::traits::{
     AllowIncoherentImplParser, CoherenceIsCoreParser, CoinductiveParser, ConstTraitParser,
     DenyExplicitImplParser, DoNotImplementViaObjectParser, FundamentalParser, MarkerParser,
@@ -173,6 +174,7 @@ attribute_parsers!(
         Single<RustcLayoutScalarValidRangeEnd>,
         Single<RustcLayoutScalarValidRangeStart>,
         Single<RustcObjectLifetimeDefaultParser>,
+        Single<ShouldPanicParser>,
         Single<SkipDuringMethodDispatchParser>,
         Single<TransparencyParser>,
         Single<WithoutArgs<AllowIncoherentImplParser>>,
@@ -184,6 +186,7 @@ attribute_parsers!(
         Single<WithoutArgs<ConstContinueParser>>,
         Single<WithoutArgs<ConstStabilityIndirectParser>>,
         Single<WithoutArgs<ConstTraitParser>>,
+        Single<WithoutArgs<CoroutineParser>>,
         Single<WithoutArgs<DenyExplicitImplParser>>,
         Single<WithoutArgs<DoNotImplementViaObjectParser>>,
         Single<WithoutArgs<ExportStableParser>>,

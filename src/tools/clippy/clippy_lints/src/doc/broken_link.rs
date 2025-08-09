@@ -19,52 +19,52 @@ pub fn check(cx: &LateContext<'_>, bl: &PullDownBrokenLink<'_>, doc: &str, fragm
 }
 
 fn warn_if_broken_link(cx: &LateContext<'_>, bl: &PullDownBrokenLink<'_>, doc: &str, fragments: &[DocFragment]) {
-    if let Some((span, _)) = source_span_for_markdown_range(cx.tcx, doc, &bl.span, fragments) {
-        let mut len = 0;
+    let mut len = 0;
 
-        // grab raw link data
-        let (_, raw_link) = doc.split_at(bl.span.start);
+    // grab raw link data
+    let (_, raw_link) = doc.split_at(bl.span.start);
 
-        // strip off link text part
-        let raw_link = match raw_link.split_once(']') {
-            None => return,
-            Some((prefix, suffix)) => {
-                len += prefix.len() + 1;
-                suffix
-            },
-        };
+    // strip off link text part
+    let raw_link = match raw_link.split_once(']') {
+        None => return,
+        Some((prefix, suffix)) => {
+            len += prefix.len() + 1;
+            suffix
+        },
+    };
 
-        let raw_link = match raw_link.split_once('(') {
-            None => return,
-            Some((prefix, suffix)) => {
-                if !prefix.is_empty() {
-                    // there is text between ']' and '(' chars, so it is not a valid link
-                    return;
-                }
-                len += prefix.len() + 1;
-                suffix
-            },
-        };
+    let raw_link = match raw_link.split_once('(') {
+        None => return,
+        Some((prefix, suffix)) => {
+            if !prefix.is_empty() {
+                // there is text between ']' and '(' chars, so it is not a valid link
+                return;
+            }
+            len += prefix.len() + 1;
+            suffix
+        },
+    };
 
-        if raw_link.starts_with("(http") {
-            // reduce chances of false positive reports
-            // by limiting this checking only to http/https links.
+    if raw_link.starts_with("(http") {
+        // reduce chances of false positive reports
+        // by limiting this checking only to http/https links.
+        return;
+    }
+
+    for c in raw_link.chars() {
+        if c == ')' {
+            // it is a valid link
             return;
         }
 
-        for c in raw_link.chars() {
-            if c == ')' {
-                // it is a valid link
-                return;
-            }
-
-            if c == '\n' {
-                report_broken_link(cx, span, len);
-                break;
-            }
-
-            len += 1;
+        if c == '\n'
+            && let Some((span, _)) = source_span_for_markdown_range(cx.tcx, doc, &bl.span, fragments)
+        {
+            report_broken_link(cx, span, len);
+            break;
         }
+
+        len += 1;
     }
 }
 

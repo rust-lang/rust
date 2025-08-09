@@ -17,11 +17,11 @@ use super::ty::{AllowPlus, RecoverQPath, RecoverReturnSign};
 use super::{Parser, Restrictions, TokenType};
 use crate::ast::{PatKind, TyKind};
 use crate::errors::{
-    self, FnPathFoundNamedParams, PathFoundAttributeInParams, PathFoundCVariadicParams,
-    PathSingleColon, PathTripleColon,
+    self, AttributeOnEmptyType, AttributeOnGenericArg, FnPathFoundNamedParams,
+    PathFoundAttributeInParams, PathFoundCVariadicParams, PathSingleColon, PathTripleColon,
 };
 use crate::exp;
-use crate::parser::{CommaRecoveryMode, RecoverColon, RecoverComma};
+use crate::parser::{CommaRecoveryMode, ExprKind, RecoverColon, RecoverComma};
 
 /// Specifies how to parse a path.
 #[derive(Copy, Clone, PartialEq)]
@@ -880,6 +880,12 @@ impl<'a> Parser<'a> {
         &mut self,
         ty_generics: Option<&Generics>,
     ) -> PResult<'a, Option<GenericArg>> {
+        let mut attr_span: Option<Span> = None;
+        if self.token == token::Pound && self.look_ahead(1, |t| *t == token::OpenBracket) {
+            let attrs_wrapper = self.parse_outer_attributes()?;
+            let raw_attrs = attrs_wrapper.take_for_recovery(self.psess);
+            attr_span = Some(raw_attrs[0].span.to(raw_attrs.last().unwrap().span));
+        }
         let start = self.token.span;
         let arg = if self.check_lifetime() && self.look_ahead(1, |t| !t.is_like_plus()) {
             // Parse lifetime argument.
@@ -934,6 +940,9 @@ impl<'a> Parser<'a> {
             }
         } else if self.token.is_keyword(kw::Const) {
             return self.recover_const_param_declaration(ty_generics);
+        } else if let Some(attr_span) = attr_span {
+            let diag = self.dcx().create_err(AttributeOnEmptyType { span: attr_span });
+            return Err(diag);
         } else {
             // Fall back by trying to parse a const-expr expression. If we successfully do so,
             // then we should report an error that it needs to be wrapped in braces.
@@ -953,6 +962,22 @@ impl<'a> Parser<'a> {
                 }
             }
         };
+
+        if let Some(attr_span) = attr_span {
+            let guar = self.dcx().emit_err(AttributeOnGenericArg {
+                span: attr_span,
+                fix_span: attr_span.until(arg.span()),
+            });
+            return Ok(Some(match arg {
+                GenericArg::Type(_) => GenericArg::Type(self.mk_ty(attr_span, TyKind::Err(guar))),
+                GenericArg::Const(_) => {
+                    let error_expr = self.mk_expr(attr_span, ExprKind::Err(guar));
+                    GenericArg::Const(AnonConst { id: ast::DUMMY_NODE_ID, value: error_expr })
+                }
+                GenericArg::Lifetime(lt) => GenericArg::Lifetime(lt),
+            }));
+        }
+
         Ok(Some(arg))
     }
 

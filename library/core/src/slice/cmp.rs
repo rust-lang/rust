@@ -11,7 +11,7 @@ use crate::ops::ControlFlow;
 #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
 impl<T, U> const PartialEq<[U]> for [T]
 where
-    T: ~const PartialEq<U>,
+    T: [const] PartialEq<U>,
 {
     fn eq(&self, other: &[U]) -> bool {
         SlicePartialEq::equal(self, other)
@@ -109,7 +109,7 @@ trait SlicePartialEq<B> {
 #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
 impl<A, B> const SlicePartialEq<B> for [A]
 where
-    A: ~const PartialEq<B>,
+    A: [const] PartialEq<B>,
 {
     default fn equal(&self, other: &[B]) -> bool {
         if self.len() != other.len() {
@@ -138,7 +138,7 @@ where
 #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
 impl<A, B> const SlicePartialEq<B> for [A]
 where
-    A: ~const BytewiseEq<B>,
+    A: [const] BytewiseEq<B>,
 {
     fn equal(&self, other: &[B]) -> bool {
         if self.len() != other.len() {

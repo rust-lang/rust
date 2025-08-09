@@ -91,18 +91,23 @@ pub enum Mid<T> {
 pub fn mid_bool_eq_discr(a: Mid<bool>, b: Mid<bool>) -> bool {
     // CHECK-LABEL: @mid_bool_eq_discr(
 
-    // CHECK: %[[A_REL_DISCR:.+]] = add nsw i8 %a, -2
-    // CHECK: %[[A_IS_NICHE:.+]] = icmp samesign ugt i8 %a, 1
-    // CHECK: %[[A_NOT_HOLE:.+]] = icmp ne i8 %[[A_REL_DISCR]], 1
+    // CHECK: %[[A_NOT_HOLE:.+]] = icmp ne i8 %a, 3
     // CHECK: tail call void @llvm.assume(i1 %[[A_NOT_HOLE]])
-    // CHECK: %[[A_DISCR:.+]] = select i1 %[[A_IS_NICHE]], i8 %[[A_REL_DISCR]], i8 1
+    // LLVM20: %[[A_REL_DISCR:.+]] = add nsw i8 %a, -2
+    // CHECK: %[[A_IS_NICHE:.+]] = icmp samesign ugt i8 %a, 1
+    // LLVM20: %[[A_DISCR:.+]] = select i1 %[[A_IS_NICHE]], i8 %[[A_REL_DISCR]], i8 1
 
-    // CHECK: %[[B_REL_DISCR:.+]] = add nsw i8 %b, -2
-    // CHECK: %[[B_IS_NICHE:.+]] = icmp samesign ugt i8 %b, 1
-    // CHECK: %[[B_NOT_HOLE:.+]] = icmp ne i8 %[[B_REL_DISCR]], 1
+    // CHECK: %[[B_NOT_HOLE:.+]] = icmp ne i8 %b, 3
     // CHECK: tail call void @llvm.assume(i1 %[[B_NOT_HOLE]])
-    // CHECK: %[[B_DISCR:.+]] = select i1 %[[B_IS_NICHE]], i8 %[[B_REL_DISCR]], i8 1
+    // LLVM20: %[[B_REL_DISCR:.+]] = add nsw i8 %b, -2
+    // CHECK: %[[B_IS_NICHE:.+]] = icmp samesign ugt i8 %b, 1
+    // LLVM20: %[[B_DISCR:.+]] = select i1 %[[B_IS_NICHE]], i8 %[[B_REL_DISCR]], i8 1
 
+    // LLVM21: %[[A_MOD_DISCR:.+]] = select i1 %[[A_IS_NICHE]], i8 %a, i8 3
+    // LLVM21: %[[B_MOD_DISCR:.+]] = select i1 %[[B_IS_NICHE]], i8 %b, i8 3
+
+    // LLVM20: %[[R:.+]] = icmp eq i8 %[[A_DISCR]], %[[B_DISCR]]
+    // LLVM21: %[[R:.+]] = icmp eq i8 %[[A_MOD_DISCR]], %[[B_MOD_DISCR]]
     // CHECK: ret i1 %[[R]]
     discriminant_value(&a) == discriminant_value(&b)
 }
@@ -111,19 +116,23 @@ pub fn mid_bool_eq_discr(a: Mid<bool>, b: Mid<bool>) -> bool {
 pub fn mid_ord_eq_discr(a: Mid<Ordering>, b: Mid<Ordering>) -> bool {
     // CHECK-LABEL: @mid_ord_eq_discr(
 
-    // CHECK: %[[A_REL_DISCR:.+]] = add nsw i8 %a, -2
-    // CHECK: %[[A_IS_NICHE:.+]] = icmp sgt i8 %a, 1
-    // CHECK: %[[A_NOT_HOLE:.+]] = icmp ne i8 %[[A_REL_DISCR]], 1
+    // CHECK: %[[A_NOT_HOLE:.+]] = icmp ne i8 %a, 3
     // CHECK: tail call void @llvm.assume(i1 %[[A_NOT_HOLE]])
-    // CHECK: %[[A_DISCR:.+]] = select i1 %[[A_IS_NICHE]], i8 %[[A_REL_DISCR]], i8 1
+    // LLVM20: %[[A_REL_DISCR:.+]] = add nsw i8 %a, -2
+    // CHECK: %[[A_IS_NICHE:.+]] = icmp sgt i8 %a, 1
+    // LLVM20: %[[A_DISCR:.+]] = select i1 %[[A_IS_NICHE]], i8 %[[A_REL_DISCR]], i8 1
 
-    // CHECK: %[[B_REL_DISCR:.+]] = add nsw i8 %b, -2
-    // CHECK: %[[B_IS_NICHE:.+]] = icmp sgt i8 %b, 1
-    // CHECK: %[[B_NOT_HOLE:.+]] = icmp ne i8 %[[B_REL_DISCR]], 1
+    // CHECK: %[[B_NOT_HOLE:.+]] = icmp ne i8 %b, 3
     // CHECK: tail call void @llvm.assume(i1 %[[B_NOT_HOLE]])
-    // CHECK: %[[B_DISCR:.+]] = select i1 %[[B_IS_NICHE]], i8 %[[B_REL_DISCR]], i8 1
+    // LLVM20: %[[B_REL_DISCR:.+]] = add nsw i8 %b, -2
+    // CHECK: %[[B_IS_NICHE:.+]] = icmp sgt i8 %b, 1
+    // LLVM20: %[[B_DISCR:.+]] = select i1 %[[B_IS_NICHE]], i8 %[[B_REL_DISCR]], i8 1
 
-    // CHECK: %[[R:.+]] = icmp eq i8 %[[A_DISCR]], %[[B_DISCR]]
+    // LLVM21: %[[A_MOD_DISCR:.+]] = select i1 %[[A_IS_NICHE]], i8 %a, i8 3
+    // LLVM21: %[[B_MOD_DISCR:.+]] = select i1 %[[B_IS_NICHE]], i8 %b, i8 3
+
+    // LLVM20: %[[R:.+]] = icmp eq i8 %[[A_DISCR]], %[[B_DISCR]]
+    // LLVM21: %[[R:.+]] = icmp eq i8 %[[A_MOD_DISCR]], %[[B_MOD_DISCR]]
     // CHECK: ret i1 %[[R]]
     discriminant_value(&a) == discriminant_value(&b)
 }
@@ -140,16 +149,16 @@ pub fn mid_nz32_eq_discr(a: Mid<NonZero<u32>>, b: Mid<NonZero<u32>>) -> bool {
 pub fn mid_ac_eq_discr(a: Mid<AC>, b: Mid<AC>) -> bool {
     // CHECK-LABEL: @mid_ac_eq_discr(
 
-    // LLVM20: %[[A_REL_DISCR:.+]] = xor i8 %a, -128
-    // CHECK: %[[A_IS_NICHE:.+]] = icmp slt i8 %a, 0
     // CHECK: %[[A_NOT_HOLE:.+]] = icmp ne i8 %a, -127
     // CHECK: tail call void @llvm.assume(i1 %[[A_NOT_HOLE]])
+    // LLVM20: %[[A_REL_DISCR:.+]] = xor i8 %a, -128
+    // CHECK: %[[A_IS_NICHE:.+]] = icmp slt i8 %a, 0
     // LLVM20: %[[A_DISCR:.+]] = select i1 %[[A_IS_NICHE]], i8 %[[A_REL_DISCR]], i8 1
 
-    // LLVM20: %[[B_REL_DISCR:.+]] = xor i8 %b, -128
-    // CHECK: %[[B_IS_NICHE:.+]] = icmp slt i8 %b, 0
     // CHECK: %[[B_NOT_HOLE:.+]] = icmp ne i8 %b, -127
     // CHECK: tail call void @llvm.assume(i1 %[[B_NOT_HOLE]])
+    // LLVM20: %[[B_REL_DISCR:.+]] = xor i8 %b, -128
+    // CHECK: %[[B_IS_NICHE:.+]] = icmp slt i8 %b, 0
     // LLVM20: %[[B_DISCR:.+]] = select i1 %[[B_IS_NICHE]], i8 %[[B_REL_DISCR]], i8 1
 
     // LLVM21: %[[A_DISCR:.+]] = select i1 %[[A_IS_NICHE]], i8 %a, i8 -127
@@ -166,21 +175,25 @@ pub fn mid_ac_eq_discr(a: Mid<AC>, b: Mid<AC>) -> bool {
 pub fn mid_giant_eq_discr(a: Mid<Giant>, b: Mid<Giant>) -> bool {
     // CHECK-LABEL: @mid_giant_eq_discr(
 
-    // CHECK: %[[A_TRUNC:.+]] = trunc nuw nsw i128 %a to i64
-    // CHECK: %[[A_REL_DISCR:.+]] = add nsw i64 %[[A_TRUNC]], -5
-    // CHECK: %[[A_IS_NICHE:.+]] = icmp samesign ugt i128 %a, 4
-    // CHECK: %[[A_NOT_HOLE:.+]] = icmp ne i64 %[[A_REL_DISCR]], 1
+    // CHECK: %[[A_NOT_HOLE:.+]] = icmp ne i128 %a, 6
     // CHECK: tail call void @llvm.assume(i1 %[[A_NOT_HOLE]])
-    // CHECK: %[[A_DISCR:.+]] = select i1 %[[A_IS_NICHE]], i64 %[[A_REL_DISCR]], i64 1
+    // CHECK: %[[A_TRUNC:.+]] = trunc nuw nsw i128 %a to i64
+    // LLVM20: %[[A_REL_DISCR:.+]] = add nsw i64 %[[A_TRUNC]], -5
+    // CHECK: %[[A_IS_NICHE:.+]] = icmp samesign ugt i128 %a, 4
+    // LLVM20: %[[A_DISCR:.+]] = select i1 %[[A_IS_NICHE]], i64 %[[A_REL_DISCR]], i64 1
 
-    // CHECK: %[[B_TRUNC:.+]] = trunc nuw nsw i128 %b to i64
-    // CHECK: %[[B_REL_DISCR:.+]] = add nsw i64 %[[B_TRUNC]], -5
-    // CHECK: %[[B_IS_NICHE:.+]] = icmp samesign ugt i128 %b, 4
-    // CHECK: %[[B_NOT_HOLE:.+]] = icmp ne i64 %[[B_REL_DISCR]], 1
+    // CHECK: %[[B_NOT_HOLE:.+]] = icmp ne i128 %b, 6
     // CHECK: tail call void @llvm.assume(i1 %[[B_NOT_HOLE]])
-    // CHECK: %[[B_DISCR:.+]] = select i1 %[[B_IS_NICHE]], i64 %[[B_REL_DISCR]], i64 1
+    // CHECK: %[[B_TRUNC:.+]] = trunc nuw nsw i128 %b to i64
+    // LLVM20: %[[B_REL_DISCR:.+]] = add nsw i64 %[[B_TRUNC]], -5
+    // CHECK: %[[B_IS_NICHE:.+]] = icmp samesign ugt i128 %b, 4
+    // LLVM20: %[[B_DISCR:.+]] = select i1 %[[B_IS_NICHE]], i64 %[[B_REL_DISCR]], i64 1
 
-    // CHECK: %[[R:.+]] = icmp eq i64 %[[A_DISCR]], %[[B_DISCR]]
+    // LLVM21: %[[A_MODIFIED_TAG:.+]] = select i1 %[[A_IS_NICHE]], i64 %[[A_TRUNC]], i64 6
+    // LLVM21: %[[B_MODIFIED_TAG:.+]] = select i1 %[[B_IS_NICHE]], i64 %[[B_TRUNC]], i64 6
+    // LLVM21: %[[R:.+]] = icmp eq i64 %[[A_MODIFIED_TAG]], %[[B_MODIFIED_TAG]]
+
+    // LLVM20: %[[R:.+]] = icmp eq i64 %[[A_DISCR]], %[[B_DISCR]]
     // CHECK: ret i1 %[[R]]
     discriminant_value(&a) == discriminant_value(&b)
 }

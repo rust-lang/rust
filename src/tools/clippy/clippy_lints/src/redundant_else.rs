@@ -97,7 +97,7 @@ impl EarlyLintPass for RedundantElse {
             els.span.with_lo(then.span.hi()),
             "redundant else block",
             "remove the `else` block and move the contents out",
-            make_sugg(cx, els.span, "..", Some(expr.span)).to_string(),
+            make_sugg(cx, els.span, "..", Some(expr.span)),
             app,
         );
     }
