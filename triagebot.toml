@@ -1573,7 +1573,7 @@ changelog-branch = "master"
 [note]
 
 [behind-upstream]
-days-threshold = 14
+days-threshold = 28
 
 # Canonicalize issue numbers to avoid closing the wrong issue
 # when commits are included in subtrees, as well as warning links in commits.
