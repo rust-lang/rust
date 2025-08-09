@@ -2461,7 +2461,7 @@ pub trait BufRead: Read {
     /// delimiter or EOF is found.
     ///
     /// If successful, this function will return the total number of bytes read,
-    /// including the delimiter byte.
+    /// including the delimiter byte if found.
     ///
     /// This is useful for efficiently skipping data such as NUL-terminated strings
     /// in binary file formats without buffering.
@@ -2489,7 +2489,7 @@ pub trait BufRead: Read {
     /// ```
     /// use std::io::{self, BufRead};
     ///
-    /// let mut cursor = io::Cursor::new(b"Ferris\0Likes long walks on the beach\0Crustacean\0");
+    /// let mut cursor = io::Cursor::new(b"Ferris\0Likes long walks on the beach\0Crustacean\0!");
     ///
     /// // read name
     /// let mut name = Vec::new();
@@ -2509,6 +2509,11 @@ pub trait BufRead: Read {
     ///     .expect("reading from cursor won't fail");
     /// assert_eq!(num_bytes, 11);
     /// assert_eq!(animal, b"Crustacean\0");
+    ///
+    /// // reach EOF
+    /// let num_bytes = cursor.skip_until(b'\0')
+    ///     .expect("reading from cursor won't fail");
+    /// assert_eq!(num_bytes, 1);
     /// ```
     #[stable(feature = "bufread_skip_until", since = "1.83.0")]
     fn skip_until(&mut self, byte: u8) -> Result<usize> {
