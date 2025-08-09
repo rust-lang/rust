@@ -1469,14 +1469,7 @@ impl Config {
 
     /// Returns the content of the given file at a specific commit.
     pub(crate) fn read_file_by_commit(&self, file: &Path, commit: &str) -> String {
-        assert!(
-            self.rust_info.is_managed_git_subrepository(),
-            "`Config::read_file_by_commit` is not supported in non-git sources."
-        );
-
-        let mut git = helpers::git(Some(&self.src));
-        git.arg("show").arg(format!("{commit}:{}", file.to_str().unwrap()));
-        git.run_capture_stdout(self).stdout()
+        read_file_by_commit(&self.exec_ctx, &self.src, &self.rust_info, file, commit)
     }
 
     /// Bootstrap embeds a version number into the name of shared libraries it uploads in CI.
@@ -1547,8 +1540,7 @@ impl Config {
 
     /// The absolute path to the downloaded LLVM artifacts.
     pub(crate) fn ci_llvm_root(&self) -> PathBuf {
-        assert!(self.llvm_from_ci);
-        self.out.join(self.host_target).join("ci-llvm")
+        ci_llvm_root(self.llvm_from_ci, &self.out, &self.host_target)
     }
 
     /// Directory where the extracted `rustc-dev` component is stored.
@@ -1711,115 +1703,13 @@ impl Config {
         ),
     )]
     pub(crate) fn update_submodule(&self, relative_path: &str) {
-        if self.rust_info.is_from_tarball() || !self.submodules() {
-            return;
-        }
-
-        let absolute_path = self.src.join(relative_path);
-
-        // NOTE: This check is required because `jj git clone` doesn't create directories for
-        // submodules, they are completely ignored. The code below assumes this directory exists,
-        // so create it here.
-        if !absolute_path.exists() {
-            t!(fs::create_dir_all(&absolute_path));
-        }
-
-        // NOTE: The check for the empty directory is here because when running x.py the first time,
-        // the submodule won't be checked out. Check it out now so we can build it.
-        if !self.git_info(false, &absolute_path).is_managed_git_subrepository()
-            && !helpers::dir_is_empty(&absolute_path)
-        {
-            return;
-        }
-
-        // Submodule updating actually happens during in the dry run mode. We need to make sure that
-        // all the git commands below are actually executed, because some follow-up code
-        // in bootstrap might depend on the submodules being checked out. Furthermore, not all
-        // the command executions below work with an empty output (produced during dry run).
-        // Therefore, all commands below are marked with `run_in_dry_run()`, so that they also run in
-        // dry run mode.
-        let submodule_git = || {
-            let mut cmd = helpers::git(Some(&absolute_path));
-            cmd.run_in_dry_run();
-            cmd
-        };
-
-        // Determine commit checked out in submodule.
-        let checked_out_hash =
-            submodule_git().args(["rev-parse", "HEAD"]).run_capture_stdout(self).stdout();
-        let checked_out_hash = checked_out_hash.trim_end();
-        // Determine commit that the submodule *should* have.
-        let recorded = helpers::git(Some(&self.src))
-            .run_in_dry_run()
-            .args(["ls-tree", "HEAD"])
-            .arg(relative_path)
-            .run_capture_stdout(self)
-            .stdout();
-
-        let actual_hash = recorded
-            .split_whitespace()
-            .nth(2)
-            .unwrap_or_else(|| panic!("unexpected output `{recorded}`"));
-
-        if actual_hash == checked_out_hash {
-            // already checked out
-            return;
-        }
-
-        println!("Updating submodule {relative_path}");
-
-        helpers::git(Some(&self.src))
-            .allow_failure()
-            .run_in_dry_run()
-            .args(["submodule", "-q", "sync"])
-            .arg(relative_path)
-            .run(self);
-
-        // Try passing `--progress` to start, then run git again without if that fails.
-        let update = |progress: bool| {
-            // Git is buggy and will try to fetch submodules from the tracking branch for *this* repository,
-            // even though that has no relation to the upstream for the submodule.
-            let current_branch = helpers::git(Some(&self.src))
-                .allow_failure()
-                .run_in_dry_run()
-                .args(["symbolic-ref", "--short", "HEAD"])
-                .run_capture(self);
-
-            let mut git = helpers::git(Some(&self.src)).allow_failure();
-            git.run_in_dry_run();
-            if current_branch.is_success() {
-                // If there is a tag named after the current branch, git will try to disambiguate by prepending `heads/` to the branch name.
-                // This syntax isn't accepted by `branch.{branch}`. Strip it.
-                let branch = current_branch.stdout();
-                let branch = branch.trim();
-                let branch = branch.strip_prefix("heads/").unwrap_or(branch);
-                git.arg("-c").arg(format!("branch.{branch}.remote=origin"));
-            }
-            git.args(["submodule", "update", "--init", "--recursive", "--depth=1"]);
-            if progress {
-                git.arg("--progress");
-            }
-            git.arg(relative_path);
-            git
-        };
-        if !update(true).allow_failure().run(self) {
-            update(false).allow_failure().run(self);
-        }
-
-        // Save any local changes, but avoid running `git stash pop` if there are none (since it will exit with an error).
-        // diff-index reports the modifications through the exit status
-        let has_local_modifications =
-            !submodule_git().allow_failure().args(["diff-index", "--quiet", "HEAD"]).run(self);
-        if has_local_modifications {
-            submodule_git().allow_failure().args(["stash", "push"]).run(self);
-        }
-
-        submodule_git().allow_failure().args(["reset", "-q", "--hard"]).run(self);
-        submodule_git().allow_failure().args(["clean", "-qdfx"]).run(self);
-
-        if has_local_modifications {
-            submodule_git().allow_failure().args(["stash", "pop"]).run(self);
-        }
+        update_submodule(
+            &self.submodules,
+            &self.exec_ctx,
+            &self.src,
+            &self.rust_info,
+            relative_path,
+        );
     }
 
     /// Returns the commit to download, or `None` if we shouldn't download CI artifacts.
@@ -1829,78 +1719,18 @@ impl Config {
         debug_assertions_requested: bool,
         llvm_assertions: bool,
     ) -> Option<String> {
-        if !is_download_ci_available(&self.host_target.triple, llvm_assertions) {
-            return None;
-        }
-
-        // If `download-rustc` is not set, default to rebuilding.
-        let if_unchanged = match download_rustc {
-            // Globally default `download-rustc` to `false`, because some contributors don't use
-            // profiles for reasons such as:
-            // - They need to seamlessly switch between compiler/library work.
-            // - They don't want to use compiler profile because they need to override too many
-            //   things and it's easier to not use a profile.
-            None | Some(StringOrBool::Bool(false)) => return None,
-            Some(StringOrBool::Bool(true)) => false,
-            Some(StringOrBool::String(s)) if s == "if-unchanged" => {
-                if !self.rust_info.is_managed_git_subrepository() {
-                    println!(
-                        "ERROR: `download-rustc=if-unchanged` is only compatible with Git managed sources."
-                    );
-                    crate::exit!(1);
-                }
-
-                true
-            }
-            Some(StringOrBool::String(other)) => {
-                panic!("unrecognized option for download-rustc: {other}")
-            }
-        };
-
-        let commit = if self.rust_info.is_managed_git_subrepository() {
-            // Look for a version to compare to based on the current commit.
-            // Only commits merged by bors will have CI artifacts.
-            let freshness = self.check_path_modifications(RUSTC_IF_UNCHANGED_ALLOWED_PATHS);
-            self.verbose(|| {
-                eprintln!("rustc freshness: {freshness:?}");
-            });
-            match freshness {
-                PathFreshness::LastModifiedUpstream { upstream } => upstream,
-                PathFreshness::HasLocalModifications { upstream } => {
-                    if if_unchanged {
-                        return None;
-                    }
-
-                    if self.is_running_on_ci {
-                        eprintln!("CI rustc commit matches with HEAD and we are in CI.");
-                        eprintln!(
-                            "`rustc.download-ci` functionality will be skipped as artifacts are not available."
-                        );
-                        return None;
-                    }
-
-                    upstream
-                }
-                PathFreshness::MissingUpstream => {
-                    eprintln!("No upstream commit found");
-                    return None;
-                }
-            }
-        } else {
-            channel::read_commit_info_file(&self.src)
-                .map(|info| info.sha.trim().to_owned())
-                .expect("git-commit-info is missing in the project root")
-        };
-
-        if debug_assertions_requested {
-            eprintln!(
-                "WARN: `rust.debug-assertions = true` will prevent downloading CI rustc as alt CI \
-                rustc is not currently built with debug assertions."
-            );
-            return None;
-        }
-
-        Some(commit)
+        download_ci_rustc_commit(
+            &self.stage0_metadata,
+            self.path_modification_cache.clone(),
+            &self.src,
+            self.is_running_on_ci,
+            &self.exec_ctx,
+            &self.rust_info,
+            &self.host_target,
+            download_rustc,
+            debug_assertions_requested,
+            llvm_assertions,
+        )
     }
 
     pub fn parse_download_ci_llvm(
@@ -1966,10 +1796,12 @@ impl Config {
 
     /// Returns true if any of the `paths` have been modified locally.
     pub fn has_changes_from_upstream(&self, paths: &[&'static str]) -> bool {
-        match self.check_path_modifications(paths) {
-            PathFreshness::LastModifiedUpstream { .. } => false,
-            PathFreshness::HasLocalModifications { .. } | PathFreshness::MissingUpstream => true,
-        }
+        has_changes_from_upstream(
+            &self.stage0_metadata,
+            &self.src,
+            self.path_modification_cache.clone(),
+            paths,
+        )
     }
 
     /// Checks whether any of the given paths have been modified w.r.t. upstream.
@@ -2077,15 +1909,7 @@ impl Config {
     ///
     /// NOTE: this is not the same as `!is_rust_llvm` when `llvm_has_patches` is set.
     pub fn is_system_llvm(&self, target: TargetSelection) -> bool {
-        match self.target_config.get(&target) {
-            Some(Target { llvm_config: Some(_), .. }) => {
-                let ci_llvm = self.llvm_from_ci && self.is_host_target(target);
-                !ci_llvm
-            }
-            // We're building from the in-tree src/llvm-project sources.
-            Some(Target { llvm_config: None, .. }) => false,
-            None => false,
-        }
+        is_system_llvm(&self.host_target, self.llvm_from_ci, &self.target_config, target)
     }
 
     /// Returns `true` if this is our custom, patched, version of LLVM.
