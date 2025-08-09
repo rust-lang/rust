@@ -2435,6 +2435,13 @@ fn linker_with_args(
     // Passed after compiler-generated options to support manual overriding when necessary.
     add_user_defined_link_args(cmd, sess);
 
+    // ------------ Builtin configurable linker scripts ------------
+    // The user's link args should be able to overwrite symbols in the compiler's
+    // linker script that were weakly defined (i.e. defined with `PROVIDE()`). For this
+    // to work correctly, the user needs to be able to specify linker arguments like
+    // `--defsym` and `--script` *before* any builtin linker scripts are evaluated.
+    add_link_script(cmd, sess, tmpdir, crate_type);
+
     // ------------ Object code and libraries, order-dependent ------------
 
     // Post-link CRT objects.
@@ -2468,8 +2475,6 @@ fn add_order_independent_options(
     add_apple_link_args(cmd, sess, flavor);
 
     let apple_sdk_root = add_apple_sdk(cmd, sess, flavor);
-
-    add_link_script(cmd, sess, tmpdir, crate_type);
 
     if sess.target.os == "fuchsia"
         && crate_type == CrateType::Executable
