@@ -269,6 +269,11 @@ fn main() {
         ));
         total_bytes += emitter.bytes_used;
     }
+    let (conversions, sizes) = case_mapping::generate_case_mapping(&unicode_data);
+    for (name, size) in ["to_lower", "to_upper"].iter().zip(sizes) {
+        table_file.push_str(&format!("// {:16}: {:5} bytes\n", name, size));
+        total_bytes += size;
+    }
     table_file.push_str(&format!("// {:16}: {:5} bytes\n", "Total", total_bytes));
 
     // Include the range search function
@@ -280,7 +285,7 @@ fn main() {
 
     table_file.push('\n');
 
-    modules.push((String::from("conversions"), case_mapping::generate_case_mapping(&unicode_data)));
+    modules.push((String::from("conversions"), conversions));
 
     for (name, contents) in modules {
         table_file.push_str("#[rustfmt::skip]\n");
