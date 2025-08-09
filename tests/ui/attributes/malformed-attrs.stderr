@@ -145,12 +145,6 @@ LL - #[macro_export = 18]
 LL + #[macro_export]
    |
 
-error: malformed `allow_internal_unsafe` attribute input
-  --> $DIR/malformed-attrs.rs:213:1
-   |
-LL | #[allow_internal_unsafe = 1]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[allow_internal_unsafe]`
-
 error: the `#[proc_macro]` attribute is only usable with crates of the `proc-macro` crate type
   --> $DIR/malformed-attrs.rs:96:1
    |
@@ -560,6 +554,15 @@ error: valid forms for the attribute are `#[macro_use(name1, name2, ...)]` and `
    |
 LL | #[macro_use = 1]
    | ^^^^^^^^^^^^^^^^
+
+error[E0565]: malformed `allow_internal_unsafe` attribute input
+  --> $DIR/malformed-attrs.rs:213:1
+   |
+LL | #[allow_internal_unsafe = 1]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^---^
+   | |                       |
+   | |                       didn't expect any arguments here
+   | help: must be of the form: `#[allow_internal_unsafe]`
 
 error[E0565]: malformed `type_const` attribute input
   --> $DIR/malformed-attrs.rs:140:5

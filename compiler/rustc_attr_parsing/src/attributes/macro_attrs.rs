@@ -113,3 +113,11 @@ impl<S: Stage> AttributeParser<S> for MacroUseParser {
         Some(AttributeKind::MacroUse { span: self.first_span?, arguments: self.state })
     }
 }
+
+pub(crate) struct AllowInternalUnsafeParser;
+
+impl<S: Stage> NoArgsAttributeParser<S> for AllowInternalUnsafeParser {
+    const PATH: &[Symbol] = &[sym::allow_internal_unsafe];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Ignore;
+    const CREATE: fn(Span) -> AttributeKind = |span| AttributeKind::AllowInternalUnsafe(span);
+}

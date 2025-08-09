@@ -249,6 +249,9 @@ pub enum AttributeKind {
     /// Represents `#[rustc_allow_incoherent_impl]`.
     AllowIncoherentImpl(Span),
 
+    /// Represents `#[allow_internal_unsafe]`.
+    AllowInternalUnsafe(Span),
+
     /// Represents `#[allow_internal_unstable]`.
     AllowInternalUnstable(ThinVec<(Symbol, Span)>, Span),
 
