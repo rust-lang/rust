@@ -914,6 +914,7 @@ pub const fn dangling<T>() -> *const T {
 #[must_use]
 #[stable(feature = "strict_provenance", since = "1.84.0")]
 #[rustc_const_stable(feature = "strict_provenance", since = "1.84.0")]
+#[allow(integer_to_ptr_transmutes)] // Expected semantics here.
 pub const fn without_provenance_mut<T>(addr: usize) -> *mut T {
     // An int-to-pointer transmute currently has exactly the intended semantics: it creates a
     // pointer without provenance. Note that this is *not* a stable guarantee about transmute
