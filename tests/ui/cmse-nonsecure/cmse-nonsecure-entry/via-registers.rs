@@ -32,14 +32,14 @@ pub extern "cmse-nonsecure-entry" fn inputs2(_: u32, _: u32, _: u32, _: u32) {}
 #[no_mangle]
 pub extern "cmse-nonsecure-entry" fn inputs3(_: u64, _: u64) {}
 #[no_mangle]
-#[allow(improper_ctypes_definitions)]
+#[allow(improper_c_fn_definitions)]
 pub extern "cmse-nonsecure-entry" fn inputs4(_: u128) {}
 #[no_mangle]
 pub extern "cmse-nonsecure-entry" fn inputs5(_: f64, _: f32, _: f32) {}
 #[no_mangle]
 pub extern "cmse-nonsecure-entry" fn inputs6(_: ReprTransparentStruct<u64>, _: U32Compound) {}
 #[no_mangle]
-#[allow(improper_ctypes_definitions)]
+#[allow(improper_c_fn_definitions)]
 pub extern "cmse-nonsecure-entry" fn inputs7(_: [u32; 4]) {}
 
 #[no_mangle]
@@ -59,7 +59,7 @@ pub extern "cmse-nonsecure-entry" fn outputs4() -> f64 {
     0.0
 }
 #[no_mangle]
-#[allow(improper_ctypes_definitions)]
+#[allow(improper_c_fn_definitions)]
 pub extern "cmse-nonsecure-entry" fn outputs5() -> [u8; 4] {
     [0xAA; 4]
 }
