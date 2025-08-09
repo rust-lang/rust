@@ -271,3 +271,89 @@ fn test_peekable_non_fused() {
     assert_eq!(iter.peek(), None);
     assert_eq!(iter.next_back(), None);
 }
+
+#[test]
+fn test_peekable_next_if_map_mutation() {
+    fn collatz((mut num, mut len): (u64, u32)) -> Result<u32, (u64, u32)> {
+        let jump = num.trailing_zeros();
+        num >>= jump;
+        len += jump;
+        if num == 1 { Ok(len) } else { Err((3 * num + 1, len + 1)) }
+    }
+
+    let mut iter = once((3, 0)).peekable();
+    assert_eq!(iter.peek(), Some(&(3, 0)));
+    assert_eq!(iter.next_if_map(collatz), None);
+    assert_eq!(iter.peek(), Some(&(10, 1)));
+    assert_eq!(iter.next_if_map(collatz), None);
+    assert_eq!(iter.peek(), Some(&(16, 3)));
+    assert_eq!(iter.next_if_map(collatz), Some(7));
+    assert_eq!(iter.peek(), None);
+    assert_eq!(iter.next_if_map(collatz), None);
+}
+
+#[test]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
+fn test_peekable_next_if_map_panic() {
+    use core::cell::Cell;
+    use std::panic::{AssertUnwindSafe, catch_unwind};
+
+    struct BitsetOnDrop<'a> {
+        value: u32,
+        cell: &'a Cell<u32>,
+    }
+    impl<'a> Drop for BitsetOnDrop<'a> {
+        fn drop(&mut self) {
+            self.cell.update(|v| v | self.value);
+        }
+    }
+
+    let cell = &Cell::new(0);
+    let mut it = [
+        BitsetOnDrop { value: 1, cell },
+        BitsetOnDrop { value: 2, cell },
+        BitsetOnDrop { value: 4, cell },
+        BitsetOnDrop { value: 8, cell },
+    ]
+    .into_iter()
+    .peekable();
+
+    // sanity check, .peek() won't consume the value, .next() will transfer ownership.
+    let item = it.peek().unwrap();
+    assert_eq!(item.value, 1);
+    assert_eq!(cell.get(), 0);
+    let item = it.next().unwrap();
+    assert_eq!(item.value, 1);
+    assert_eq!(cell.get(), 0);
+    drop(item);
+    assert_eq!(cell.get(), 1);
+
+    // next_if_map returning Ok should transfer the value out.
+    let item = it.next_if_map(Ok).unwrap();
+    assert_eq!(item.value, 2);
+    assert_eq!(cell.get(), 1);
+    drop(item);
+    assert_eq!(cell.get(), 3);
+
+    // next_if_map returning Err should not drop anything.
+    assert_eq!(it.next_if_map::<()>(Err), None);
+    assert_eq!(cell.get(), 3);
+    assert_eq!(it.peek().unwrap().value, 4);
+    assert_eq!(cell.get(), 3);
+
+    // next_if_map panicking should consume and drop the item.
+    let result = catch_unwind({
+        let mut it = AssertUnwindSafe(&mut it);
+        move || it.next_if_map::<()>(|_| panic!())
+    });
+    assert!(result.is_err());
+    assert_eq!(cell.get(), 7);
+    assert_eq!(it.next().unwrap().value, 8);
+    assert_eq!(cell.get(), 15);
+    assert!(it.peek().is_none());
+
+    // next_if_map should *not* execute the closure if the iterator is exhausted.
+    assert!(it.next_if_map::<()>(|_| panic!()).is_none());
+    assert!(it.peek().is_none());
+    assert_eq!(cell.get(), 15);
+}
