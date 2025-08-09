@@ -45,7 +45,7 @@ mod specialize;
 pub use ascii::EscapeAscii;
 #[unstable(feature = "str_internals", issue = "none")]
 #[doc(hidden)]
-pub use ascii::is_ascii_simple;
+pub use ascii::{is_ascii_simd, is_ascii_swar};
 #[stable(feature = "slice_get_slice", since = "1.28.0")]
 pub use index::SliceIndex;
 #[unstable(feature = "slice_range", issue = "76393")]
