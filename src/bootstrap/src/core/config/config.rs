@@ -1168,8 +1168,15 @@ impl Config {
                 "WARNING: `rust.download-rustc` is enabled. The `rust.channel` option will be overridden by the CI rustc's channel."
             );
 
-            let channel =
-                config.read_file_by_commit(Path::new("src/ci/channel"), commit).trim().to_owned();
+            let channel = read_file_by_commit(
+                &config.exec_ctx,
+                &config.src,
+                &config.rust_info,
+                Path::new("src/ci/channel"),
+                commit,
+            )
+            .trim()
+            .to_owned();
 
             config.channel = channel;
         }
@@ -2745,4 +2752,22 @@ pub(crate) fn ci_llvm_root(
 ) -> PathBuf {
     assert!(llvm_from_ci);
     out.join(host_target).join("ci-llvm")
+}
+
+/// Returns the content of the given file at a specific commit.
+pub(crate) fn read_file_by_commit(
+    exec_ctx: &ExecutionContext,
+    src: &Path,
+    rust_info: &channel::GitInfo,
+    file: &Path,
+    commit: &str,
+) -> String {
+    assert!(
+        rust_info.is_managed_git_subrepository(),
+        "`Config::read_file_by_commit` is not supported in non-git sources."
+    );
+
+    let mut git = helpers::git(Some(src));
+    git.arg("show").arg(format!("{commit}:{}", file.to_str().unwrap()));
+    git.run_capture_stdout(exec_ctx).stdout()
 }
