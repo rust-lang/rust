@@ -922,10 +922,26 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         ObligationCauseCode::WhereClause(callee_did, pred_span)
                     },
                 );
+
+                // Only elaborate host-effect destruct obligations when comparing impl method
+                // bounds against the corresponding trait method bounds.
+                let elaborate = matches!(
+                    self.tcx.hir_node_by_def_id(self.body_id),
+                    hir::Node::ImplItem(hir::ImplItem {
+                        trait_item_def_id: Some(did),
+                        ..
+                    }) if *did == callee_did,
+                );
+                let param_env = if elaborate {
+                    self.param_env.elaborate_host_effect_destruct(self.tcx)
+                } else {
+                    self.param_env
+                };
+
                 self.register_predicate(Obligation::new(
                     self.tcx,
                     cause,
-                    self.param_env,
+                    param_env,
                     cond.to_host_effect_clause(self.tcx, host),
                 ));
             }

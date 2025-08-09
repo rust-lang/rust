@@ -4,8 +4,8 @@
 use rustc_type_ir::fast_reject::DeepRejectCtxt;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::TraitSolverLangItem;
-use rustc_type_ir::solve::SizedTraitKind;
 use rustc_type_ir::solve::inspect::ProbeKind;
+use rustc_type_ir::solve::{DestructConstCondition, SizedTraitKind, const_conditions_for_destruct};
 use rustc_type_ir::{self as ty, Interner, elaborate};
 use tracing::instrument;
 
@@ -343,7 +343,11 @@ where
         let cx = ecx.cx();
 
         let self_ty = goal.predicate.self_ty();
-        let const_conditions = structural_traits::const_conditions_for_destruct(cx, self_ty)?;
+        let const_conditions = match const_conditions_for_destruct(cx, self_ty, false) {
+            DestructConstCondition::Trivial { .. } => vec![],
+            DestructConstCondition::Never => return Err(NoSolution),
+            DestructConstCondition::Structural(trait_refs) => trait_refs,
+        };
 
         ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|ecx| {
             ecx.add_goals(
