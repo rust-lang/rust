@@ -17,7 +17,6 @@ pub mod helpers;
 pub mod os;
 #[path = "../unsupported/pipe.rs"]
 pub mod pipe;
-pub mod thread;
 pub mod time;
 
 #[cfg(test)]
