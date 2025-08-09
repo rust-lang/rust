@@ -216,21 +216,10 @@ pub(crate) fn compute_sccs_applying_placeholder_outlives_constraints<'tcx>(
         placeholder_index_to_region: _,
         liveness_constraints,
         mut outlives_constraints,
-        mut member_constraints,
+        member_constraints,
         universe_causes,
         type_tests,
     } = constraints;
-
-    if let Some(guar) = universal_regions.tainted_by_errors() {
-        debug!("Universal regions tainted by errors; removing constraints!");
-        // Suppress unhelpful extra errors in `infer_opaque_types` by clearing out all
-        // outlives bounds that we may end up checking.
-        outlives_constraints = Default::default();
-        member_constraints = Default::default();
-
-        // Also taint the entire scope.
-        infcx.set_tainted_by_errors(guar);
-    }
 
     let fr_static = universal_regions.fr_static;
     let compute_sccs =

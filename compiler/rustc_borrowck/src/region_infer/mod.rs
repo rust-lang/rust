@@ -44,7 +44,7 @@ use crate::{
 
 mod dump_mir;
 mod graphviz;
-mod opaque_types;
+pub(crate) mod opaque_types;
 mod reverse_sccs;
 
 pub(crate) mod values;
