@@ -96,6 +96,7 @@ impl fmt::Debug for Scope {
             ScopeData::Destruction => write!(fmt, "Destruction({:?})", self.local_id),
             ScopeData::IfThen => write!(fmt, "IfThen({:?})", self.local_id),
             ScopeData::IfThenRescope => write!(fmt, "IfThen[edition2024]({:?})", self.local_id),
+            ScopeData::MatchGuard => write!(fmt, "MatchGuard({:?})", self.local_id),
             ScopeData::Remainder(fsi) => write!(
                 fmt,
                 "Remainder {{ block: {:?}, first_statement_index: {}}}",
@@ -130,6 +131,11 @@ pub enum ScopeData {
     /// Used for variables introduced in an if-let expression,
     /// whose lifetimes do not cross beyond this scope.
     IfThenRescope,
+
+    /// Scope of the condition and body of a match arm with a guard
+    /// Used for variables introduced in an if-let guard,
+    /// whose lifetimes do not cross beyond this scope.
+    MatchGuard,
 
     /// Scope following a `let id = expr;` binding in a block.
     Remainder(FirstStatementIndex),
