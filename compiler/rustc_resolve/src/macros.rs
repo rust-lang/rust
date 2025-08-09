@@ -659,6 +659,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             if !path.span.from_expansion()
                 && kind == MacroKind::Derive
                 && !ext.macro_kinds().contains(MacroKinds::DERIVE)
+                && ext.macro_kinds().contains(MacroKinds::ATTR)
             {
                 err.remove_surrounding_derive = Some(RemoveSurroundingDerive { span: path.span });
                 err.add_as_non_derive = Some(AddAsNonDerive { macro_path: &path_str });
