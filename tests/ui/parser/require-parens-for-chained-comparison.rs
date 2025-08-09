@@ -10,10 +10,13 @@ fn main() {
     f<X>();
     //~^ ERROR comparison operators cannot be chained
     //~| HELP use `::<...>` instead of `<...>` to specify lifetime, type, or const arguments
+    //~| ERROR cannot find type `X` in this scope [E0412]
+    //~| ERROR cannot find function `f` in this scope [E0425]
 
     f<Result<Option<X>, Option<Option<X>>>(1, 2);
     //~^ ERROR comparison operators cannot be chained
     //~| HELP use `::<...>` instead of `<...>` to specify lifetime, type, or const arguments
+    //~| ERROR cannot find function `f` in this scope [E0425]
 
     let _ = f<u8, i8>();
     //~^ ERROR expected one of
