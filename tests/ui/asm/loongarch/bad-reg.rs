@@ -1,6 +1,11 @@
 //@ add-core-stubs
 //@ needs-asm-support
-//@ revisions: loongarch64_lp64d loongarch64_lp64s
+//@ revisions: loongarch32_ilp32d loongarch32_ilp32s loongarch64_lp64d loongarch64_lp64s
+//@ min-llvm-version: 20
+//@[loongarch32_ilp32d] compile-flags: --target loongarch32-unknown-none
+//@[loongarch32_ilp32d] needs-llvm-components: loongarch
+//@[loongarch32_ilp32s] compile-flags: --target loongarch32-unknown-none-softfloat
+//@[loongarch32_ilp32s] needs-llvm-components: loongarch
 //@[loongarch64_lp64d] compile-flags: --target loongarch64-unknown-linux-gnu
 //@[loongarch64_lp64d] needs-llvm-components: loongarch
 //@[loongarch64_lp64s] compile-flags: --target loongarch64-unknown-none-softfloat
@@ -34,12 +39,12 @@ fn f() {
 
         asm!("", out("$f0") _); // ok
         asm!("/* {} */", in(freg) f);
-        //[loongarch64_lp64s]~^ ERROR register class `freg` requires at least one of the following target features: d, f
+        //[loongarch32_ilp32s,loongarch64_lp64s]~^ ERROR register class `freg` requires at least one of the following target features: d, f
         asm!("/* {} */", out(freg) _);
-        //[loongarch64_lp64s]~^ ERROR register class `freg` requires at least one of the following target features: d, f
+        //[loongarch32_ilp32s,loongarch64_lp64s]~^ ERROR register class `freg` requires at least one of the following target features: d, f
         asm!("/* {} */", in(freg) d);
-        //[loongarch64_lp64s]~^ ERROR register class `freg` requires at least one of the following target features: d, f
+        //[loongarch32_ilp32s,loongarch64_lp64s]~^ ERROR register class `freg` requires at least one of the following target features: d, f
         asm!("/* {} */", out(freg) d);
-        //[loongarch64_lp64s]~^ ERROR register class `freg` requires at least one of the following target features: d, f
+        //[loongarch32_ilp32s,loongarch64_lp64s]~^ ERROR register class `freg` requires at least one of the following target features: d, f
     }
 }
