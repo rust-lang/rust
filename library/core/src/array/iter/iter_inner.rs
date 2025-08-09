@@ -180,7 +180,7 @@ impl<T> PolymorphicIter<[MaybeUninit<T>]> {
         func(self.alive.clone().next().map(|idx| {
             // SAFETY: `idx` is in self.alive range
             unsafe { self.data.get_unchecked(idx).assume_init_ref() }
-        }));
+        }))
     }
 
     #[inline]
