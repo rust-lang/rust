@@ -7,7 +7,7 @@ fn report_unused_fields() {
         "arch": "powerpc64",
         "data-layout": "e-m:e-i64:64-n32:64",
         "llvm-target": "powerpc64le-elf",
-        "target-pointer-width": "64",
+        "target-pointer-width": 64,
         "code-mode": "foo"
     }
     "#;

@@ -22,5 +22,5 @@
     "unix"
   ],
   "target-mcount": "_mcount",
-  "target-pointer-width": "32"
+  "target-pointer-width": 32
 }
