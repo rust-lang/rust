@@ -169,6 +169,8 @@ use crate::ops::Index;
 /// player_stats.entry("mana").and_modify(|mana| *mana += 200).or_insert(100);
 /// ```
 ///
+/// ## Usage with custom key types
+///
 /// The easiest way to use `HashMap` with a custom key type is to derive [`Eq`] and [`Hash`].
 /// We must also derive [`PartialEq`].
 ///
