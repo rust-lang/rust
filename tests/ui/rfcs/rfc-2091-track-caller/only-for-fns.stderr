@@ -1,11 +1,10 @@
-error[E0739]: attribute should be applied to a function definition
+error: `#[track_caller]` attribute cannot be used on structs
   --> $DIR/only-for-fns.rs:1:1
    |
 LL | #[track_caller]
    | ^^^^^^^^^^^^^^^
-LL | struct S;
-   | --------- not a function definition
+   |
+   = help: `#[track_caller]` can only be applied to functions
 
 error: aborting due to 1 previous error
 
-For more information about this error, try `rustc --explain E0739`.

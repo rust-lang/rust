@@ -69,7 +69,39 @@ error[E0589]: invalid alignment value: not a power of two
 LL | #[rustc_align(3)]
    |               ^
 
-error: `#[repr(align(...))]` is not supported on function items
+error: `#[rustc_align]` attribute cannot be used on structs
+  --> $DIR/malformed-fn-align.rs:44:1
+   |
+LL | #[rustc_align(16)]
+   | ^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[rustc_align]` can only be applied to functions
+
+error: `#[rustc_align]` attribute cannot be used on constants
+  --> $DIR/malformed-fn-align.rs:47:1
+   |
+LL | #[rustc_align(32)]
+   | ^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[rustc_align]` can only be applied to functions
+
+error: `#[rustc_align]` attribute cannot be used on modules
+  --> $DIR/malformed-fn-align.rs:50:1
+   |
+LL | #[rustc_align(32)]
+   | ^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[rustc_align]` can only be applied to functions
+
+error: `#[rustc_align]` attribute cannot be used on use statements
+  --> $DIR/malformed-fn-align.rs:53:1
+   |
+LL | #[rustc_align(32)]
+   | ^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[rustc_align]` can only be applied to functions
+
+error: `#[repr(align(...))]` is not supported on functions
   --> $DIR/malformed-fn-align.rs:26:8
    |
 LL | #[repr(align(16))]
@@ -80,42 +112,6 @@ help: use `#[rustc_align(...)]` instead
    |
 LL | #[repr(align(16))]
    |        ^^^^^^^^^
-
-error: `#[rustc_align(...)]` is not supported on struct items
-  --> $DIR/malformed-fn-align.rs:44:1
-   |
-LL | #[rustc_align(16)]
-   | ^^^^^^^^^^^^^^^^^^
-   |
-help: use `#[repr(align(...))]` instead
-   |
-LL - #[rustc_align(16)]
-LL + #[repr(align(16))]
-   |
-
-error: `#[rustc_align(...)]` should be applied to a function item
-  --> $DIR/malformed-fn-align.rs:47:1
-   |
-LL | #[rustc_align(32)]
-   | ^^^^^^^^^^^^^^^^^^
-LL | const FOO: i32 = 42;
-   | -------------------- not a function item
-
-error: `#[rustc_align(...)]` should be applied to a function item
-  --> $DIR/malformed-fn-align.rs:50:1
-   |
-LL | #[rustc_align(32)]
-   | ^^^^^^^^^^^^^^^^^^
-LL | mod test {}
-   | ----------- not a function item
-
-error: `#[rustc_align(...)]` should be applied to a function item
-  --> $DIR/malformed-fn-align.rs:53:1
-   |
-LL | #[rustc_align(32)]
-   | ^^^^^^^^^^^^^^^^^^
-LL | use ::std::iter;
-   | ---------------- not a function item
 
 error: aborting due to 15 previous errors
 

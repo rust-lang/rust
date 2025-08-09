@@ -1,3 +1,11 @@
+error: `#[inline]` attribute cannot be used on statements
+  --> $DIR/issue-43988.rs:5:5
+   |
+LL |     #[inline]
+   |     ^^^^^^^^^
+   |
+   = help: `#[inline]` can only be applied to functions
+
 error[E0539]: malformed `inline` attribute input
   --> $DIR/issue-43988.rs:10:5
    |
@@ -19,8 +27,16 @@ LL -     #[inline(XYZ)]
 LL +     #[inline]
    |
 
+error: `#[inline]` attribute cannot be used on statements
+  --> $DIR/issue-43988.rs:10:5
+   |
+LL |     #[inline(XYZ)]
+   |     ^^^^^^^^^^^^^^
+   |
+   = help: `#[inline]` can only be applied to functions
+
 error[E0552]: unrecognized representation hint
-  --> $DIR/issue-43988.rs:14:12
+  --> $DIR/issue-43988.rs:15:12
    |
 LL |     #[repr(nothing)]
    |            ^^^^^^^
@@ -29,7 +45,7 @@ LL |     #[repr(nothing)]
    = note: for more information, visit <https://doc.rust-lang.org/reference/type-layout.html?highlight=repr#representations>
 
 error[E0552]: unrecognized representation hint
-  --> $DIR/issue-43988.rs:18:12
+  --> $DIR/issue-43988.rs:19:12
    |
 LL |     #[repr(something_not_real)]
    |            ^^^^^^^^^^^^^^^^^^
@@ -38,7 +54,7 @@ LL |     #[repr(something_not_real)]
    = note: for more information, visit <https://doc.rust-lang.org/reference/type-layout.html?highlight=repr#representations>
 
 error[E0539]: malformed `repr` attribute input
-  --> $DIR/issue-43988.rs:24:5
+  --> $DIR/issue-43988.rs:25:5
    |
 LL |     #[repr]
    |     ^^^^^^^ expected this to be a list
@@ -57,7 +73,7 @@ LL |     #[repr(align(...))]
    = and 2 other candidates
 
 error[E0539]: malformed `inline` attribute input
-  --> $DIR/issue-43988.rs:30:5
+  --> $DIR/issue-43988.rs:31:5
    |
 LL |     #[inline(ABC)]
    |     ^^^^^^^^^---^^
@@ -77,8 +93,16 @@ LL -     #[inline(ABC)]
 LL +     #[inline]
    |
 
+error: `#[inline]` attribute cannot be used on expressions
+  --> $DIR/issue-43988.rs:31:5
+   |
+LL |     #[inline(ABC)]
+   |     ^^^^^^^^^^^^^^
+   |
+   = help: `#[inline]` can only be applied to functions
+
 error[E0539]: malformed `repr` attribute input
-  --> $DIR/issue-43988.rs:34:14
+  --> $DIR/issue-43988.rs:36:14
    |
 LL |     let _z = #[repr] 1;
    |              ^^^^^^^ expected this to be a list
@@ -96,15 +120,7 @@ LL |     let _z = #[repr(align(...))] 1;
    |                    ++++++++++++
    = and 2 other candidates
 
-error[E0518]: attribute should be applied to function or closure
-  --> $DIR/issue-43988.rs:5:5
-   |
-LL |     #[inline]
-   |     ^^^^^^^^^
-LL |     let _a = 4;
-   |     ----------- not a function or closure
+error: aborting due to 9 previous errors
 
-error: aborting due to 7 previous errors
-
-Some errors have detailed explanations: E0518, E0539, E0552.
-For more information about an error, try `rustc --explain E0518`.
+Some errors have detailed explanations: E0539, E0552.
+For more information about an error, try `rustc --explain E0539`.
