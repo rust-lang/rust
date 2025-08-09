@@ -277,6 +277,7 @@ enum class LLVMRustAttributeKind {
   FnRetThunkExtern = 41,
   Writable = 42,
   DeadOnUnwind = 43,
+  DeadOnReturn = 44,
 };
 
 static Attribute::AttrKind fromRust(LLVMRustAttributeKind Kind) {
@@ -369,6 +370,12 @@ static Attribute::AttrKind fromRust(LLVMRustAttributeKind Kind) {
     return Attribute::Writable;
   case LLVMRustAttributeKind::DeadOnUnwind:
     return Attribute::DeadOnUnwind;
+  case LLVMRustAttributeKind::DeadOnReturn:
+#if LLVM_VERSION_GE(21, 0)
+    return Attribute::DeadOnReturn;
+#else
+    report_fatal_error("DeadOnReturn attribute requires LLVM 21 or later");
+#endif
   }
   report_fatal_error("bad LLVMRustAttributeKind");
 }
