@@ -7,6 +7,7 @@ pub use NtPatKind::*;
 pub use TokenKind::*;
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_span::edition::Edition;
+use rustc_span::symbol::IdentPrintMode;
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, kw, sym};
 #[allow(clippy::useless_attribute)] // FIXME: following use of `hidden_glob_reexports` incorrectly triggers `useless_attribute` lint.
 #[allow(hidden_glob_reexports)]
@@ -344,15 +345,24 @@ pub enum IdentIsRaw {
     Yes,
 }
 
-impl From<bool> for IdentIsRaw {
-    fn from(b: bool) -> Self {
-        if b { Self::Yes } else { Self::No }
+impl IdentIsRaw {
+    pub fn to_print_mode_ident(self) -> IdentPrintMode {
+        match self {
+            IdentIsRaw::No => IdentPrintMode::Normal,
+            IdentIsRaw::Yes => IdentPrintMode::RawIdent,
+        }
+    }
+    pub fn to_print_mode_lifetime(self) -> IdentPrintMode {
+        match self {
+            IdentIsRaw::No => IdentPrintMode::Normal,
+            IdentIsRaw::Yes => IdentPrintMode::RawLifetime,
+        }
     }
 }
 
-impl From<IdentIsRaw> for bool {
-    fn from(is_raw: IdentIsRaw) -> bool {
-        matches!(is_raw, IdentIsRaw::Yes)
+impl From<bool> for IdentIsRaw {
+    fn from(b: bool) -> Self {
+        if b { Self::Yes } else { Self::No }
     }
 }
 
