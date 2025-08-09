@@ -847,17 +847,18 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
         self
     }
 
+    with_fn! { with_span_help,
     /// Prints the span with some help above it.
     /// This is like [`Diag::help()`], but it gets its own span.
     #[rustc_lint_diagnostics]
-    pub fn span_help<S: Into<MultiSpan>>(
+    pub fn span_help(
         &mut self,
-        sp: S,
+        sp: impl Into<MultiSpan>,
         msg: impl Into<SubdiagMessage>,
     ) -> &mut Self {
         self.sub(Level::Help, msg, sp.into());
         self
-    }
+    } }
 
     /// Disallow attaching suggestions to this diagnostic.
     /// Any suggestions attached e.g. with the `span_suggestion_*` methods
