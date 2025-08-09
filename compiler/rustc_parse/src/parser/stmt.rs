@@ -4,7 +4,6 @@ use std::ops::Bound;
 
 use ast::Label;
 use rustc_ast as ast;
-use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, InvisibleOrigin, MetaVarKind, TokenKind};
 use rustc_ast::util::classify::{self, TrailingBrace};
 use rustc_ast::{
@@ -157,7 +156,7 @@ impl<'a> Parser<'a> {
             FnParseMode { req_name: |_| true, req_body: true },
             force_collect,
         )? {
-            self.mk_stmt(lo.to(item.span), StmtKind::Item(P(item)))
+            self.mk_stmt(lo.to(item.span), StmtKind::Item(Box::new(item)))
         } else if self.eat(exp!(Semi)) {
             // Do not attempt to parse an expression if we're done here.
             self.error_outer_attrs(attrs);
@@ -246,7 +245,7 @@ impl<'a> Parser<'a> {
             _ => MacStmtStyle::NoBraces,
         };
 
-        let mac = P(MacCall { path, args });
+        let mac = Box::new(MacCall { path, args });
 
         let kind = if (style == MacStmtStyle::Braces
             && !matches!(self.token.kind, token::Dot | token::Question))
@@ -256,7 +255,7 @@ impl<'a> Parser<'a> {
                     | token::Eof
                     | token::CloseInvisible(InvisibleOrigin::MetaVar(MetaVarKind::Stmt))
             ) {
-            StmtKind::MacCall(P(MacCallStmt { mac, style, attrs, tokens: None }))
+            StmtKind::MacCall(Box::new(MacCallStmt { mac, style, attrs, tokens: None }))
         } else {
             // Since none of the above applied, this is an expression statement macro.
             let e = self.mk_expr(lo.to(hi), ExprKind::MacCall(mac));
@@ -307,7 +306,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses a local variable declaration.
-    fn parse_local(&mut self, super_: Option<Span>, attrs: AttrVec) -> PResult<'a, P<Local>> {
+    fn parse_local(&mut self, super_: Option<Span>, attrs: AttrVec) -> PResult<'a, Box<Local>> {
         let lo = super_.unwrap_or(self.prev_token.span);
 
         if self.token.is_keyword(kw::Const) && self.look_ahead(1, |t| t.is_ident()) {
@@ -409,7 +408,7 @@ impl<'a> Parser<'a> {
             }
         };
         let hi = if self.token == token::Semi { self.token.span } else { self.prev_token.span };
-        Ok(P(ast::Local {
+        Ok(Box::new(ast::Local {
             super_,
             ty,
             pat,
@@ -463,7 +462,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses the RHS of a local variable declaration (e.g., `= 14;`).
-    fn parse_initializer(&mut self, eq_optional: bool) -> PResult<'a, Option<P<Expr>>> {
+    fn parse_initializer(&mut self, eq_optional: bool) -> PResult<'a, Option<Box<Expr>>> {
         let eq_consumed = match self.token.kind {
             token::PlusEq
             | token::MinusEq
@@ -494,7 +493,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses a block. No inner attributes are allowed.
-    pub fn parse_block(&mut self) -> PResult<'a, P<Block>> {
+    pub fn parse_block(&mut self) -> PResult<'a, Box<Block>> {
         let (attrs, block) = self.parse_inner_attrs_and_block(None)?;
         if let [.., last] = &*attrs {
             let suggest_to_outer = match &last.kind {
@@ -679,7 +678,7 @@ impl<'a> Parser<'a> {
     pub(super) fn parse_inner_attrs_and_block(
         &mut self,
         loop_header: Option<Span>,
-    ) -> PResult<'a, (AttrVec, P<Block>)> {
+    ) -> PResult<'a, (AttrVec, Box<Block>)> {
         self.parse_block_common(self.token.span, BlockCheckMode::Default, loop_header)
     }
 
@@ -692,7 +691,7 @@ impl<'a> Parser<'a> {
         lo: Span,
         blk_mode: BlockCheckMode,
         loop_header: Option<Span>,
-    ) -> PResult<'a, (AttrVec, P<Block>)> {
+    ) -> PResult<'a, (AttrVec, Box<Block>)> {
         if let Some(block) = self.eat_metavar_seq(MetaVarKind::Block, |this| this.parse_block()) {
             return Ok((AttrVec::new(), block));
         }
@@ -718,7 +717,7 @@ impl<'a> Parser<'a> {
         lo: Span,
         s: BlockCheckMode,
         recover: AttemptLocalParseRecovery,
-    ) -> PResult<'a, P<Block>> {
+    ) -> PResult<'a, Box<Block>> {
         let mut stmts = ThinVec::new();
         let mut snapshot = None;
         while !self.eat(exp!(CloseBrace)) {
@@ -1050,8 +1049,8 @@ impl<'a> Parser<'a> {
         stmts: ThinVec<Stmt>,
         rules: BlockCheckMode,
         span: Span,
-    ) -> P<Block> {
-        P(Block { stmts, id: DUMMY_NODE_ID, rules, span, tokens: None })
+    ) -> Box<Block> {
+        Box::new(Block { stmts, id: DUMMY_NODE_ID, rules, span, tokens: None })
     }
 
     pub(super) fn mk_stmt(&self, span: Span, kind: StmtKind) -> Stmt {
@@ -1062,7 +1061,7 @@ impl<'a> Parser<'a> {
         self.mk_stmt(span, StmtKind::Expr(self.mk_expr_err(span, guar)))
     }
 
-    pub(super) fn mk_block_err(&self, span: Span, guar: ErrorGuaranteed) -> P<Block> {
+    pub(super) fn mk_block_err(&self, span: Span, guar: ErrorGuaranteed) -> Box<Block> {
         self.mk_block(thin_vec![self.mk_stmt_err(span, guar)], BlockCheckMode::Default, span)
     }
 }

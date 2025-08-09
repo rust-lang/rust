@@ -1,7 +1,7 @@
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::path::{Path, PathBuf};
 
-use rustc_ast::{ast, attr, ptr};
+use rustc_ast::{ast, attr};
 use rustc_errors::Diag;
 use rustc_parse::parser::Parser as RawParser;
 use rustc_parse::{exp, new_parser_from_file, new_parser_from_source_str, unwrap_or_emit_fatal};
@@ -102,7 +102,7 @@ impl<'a> Parser<'a> {
         psess: &'a ParseSess,
         path: &Path,
         span: Span,
-    ) -> Result<(ast::AttrVec, ThinVec<ptr::P<ast::Item>>, Span), ParserError> {
+    ) -> Result<(ast::AttrVec, ThinVec<Box<ast::Item>>, Span), ParserError> {
         let result = catch_unwind(AssertUnwindSafe(|| {
             let mut parser =
                 unwrap_or_emit_fatal(new_parser_from_file(psess.inner(), path, Some(span)));
