@@ -520,6 +520,7 @@ impl HygieneData {
         ret_span
     }
 
+    #[must_use]
     fn adjust(&self, ctxt: &mut SyntaxContext, expn_id: ExpnId) -> Option<ExpnId> {
         let mut scope = None;
         while !self.is_descendant_of(expn_id, self.outer_expn(*ctxt)) {
@@ -754,6 +755,7 @@ impl SyntaxContext {
     /// invocation of f that created g1.
     /// Returns the mark that was removed.
     #[inline]
+    #[must_use]
     pub fn remove_mark(&mut self) -> ExpnId {
         HygieneData::with(|data| data.remove_mark(self).0)
     }
@@ -885,7 +887,7 @@ impl SyntaxContext {
     pub fn hygienic_eq(self, other: SyntaxContext, expn_id: ExpnId) -> bool {
         HygieneData::with(|data| {
             let mut self_normalized = data.normalize_to_macros_2_0(self);
-            data.adjust(&mut self_normalized, expn_id);
+            let _ = data.adjust(&mut self_normalized, expn_id);
             self_normalized == data.normalize_to_macros_2_0(other)
         })
     }

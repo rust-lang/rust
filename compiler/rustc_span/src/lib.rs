@@ -1117,6 +1117,7 @@ impl Span {
     }
 
     #[inline]
+    #[must_use]
     pub fn remove_mark(&mut self) -> ExpnId {
         let mut mark = ExpnId::root();
         *self = self.map_ctxt(|mut ctxt| {
@@ -1137,6 +1138,7 @@ impl Span {
     }
 
     #[inline]
+    #[must_use]
     pub fn normalize_to_macros_2_0_and_adjust(&mut self, expn_id: ExpnId) -> Option<ExpnId> {
         let mut mark = None;
         *self = self.map_ctxt(|mut ctxt| {
