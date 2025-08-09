@@ -24,5 +24,5 @@ fn test(cfg: &str) {
 
     let bytes = rfs::read("foo.wasm");
     println!("{}", bytes.len());
-    assert!(bytes.len() < 40_000);
+    assert!(bytes.len() < 40_000, "bytes len was: {}", bytes.len());
 }

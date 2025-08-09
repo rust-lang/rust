@@ -569,7 +569,7 @@ fn symbol_export_level(tcx: TyCtxt<'_>, sym_def_id: DefId) -> SymbolExportLevel 
     // core/std/allocators/etc. For example symbols used to hook up allocation
     // are not considered for export
     let codegen_fn_attrs = tcx.codegen_fn_attrs(sym_def_id);
-    let is_extern = codegen_fn_attrs.contains_extern_indicator();
+    let is_extern = codegen_fn_attrs.contains_extern_indicator(tcx, sym_def_id);
     let std_internal =
         codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL);
 
