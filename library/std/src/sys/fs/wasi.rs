@@ -9,7 +9,8 @@ use crate::path::{Path, PathBuf};
 use crate::sync::Arc;
 use crate::sys::common::small_c_string::run_path_with_cstr;
 use crate::sys::fd::WasiFd;
-pub use crate::sys::fs::common::exists;
+pub use crate::sys::fs::common::{Dir, exists};
+use crate::sys::fs::{remove_dir, remove_file};
 use crate::sys::time::SystemTime;
 use crate::sys::{unsupported, unsupported_err};
 use crate::sys_common::{AsInner, FromInner, IntoInner, ignore_notfound};
@@ -292,6 +293,32 @@ impl DirEntry {
 
     pub fn ino(&self) -> wasi::Inode {
         self.meta.d_ino
+    }
+
+    pub fn open_file(&self) -> io::Result<File> {
+        let mut opts = OpenOptions::new();
+        opts.read(true);
+        File::open(&self.path(), &opts)
+    }
+
+    pub fn open_file_with(&self, opts: &OpenOptions) -> io::Result<File> {
+        File::open(&self.path(), opts)
+    }
+
+    pub fn open_dir(&self) -> io::Result<Dir> {
+        Dir::new(self.path())
+    }
+
+    pub fn open_dir_with(&self, opts: &OpenOptions) -> io::Result<Dir> {
+        Dir::new_with(self.path(), opts)
+    }
+
+    pub fn remove_file(&self) -> io::Result<()> {
+        remove_file(&self.path())
+    }
+
+    pub fn remove_dir(&self) -> io::Result<()> {
+        remove_dir(&self.path())
     }
 }
 
