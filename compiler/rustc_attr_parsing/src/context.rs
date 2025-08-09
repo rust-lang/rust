@@ -33,9 +33,7 @@ use crate::attributes::lint_helpers::{
     AsPtrParser, AutomaticallyDerivedParser, PassByValueParser, PubTransparentParser,
 };
 use crate::attributes::loop_match::{ConstContinueParser, LoopMatchParser};
-use crate::attributes::macro_attrs::{
-    AllowInternalUnsafeParser, MacroEscapeParser, MacroUseParser,
-};
+use crate::attributes::macro_attrs::{MacroEscapeParser, MacroUseParser};
 use crate::attributes::must_use::MustUseParser;
 use crate::attributes::no_implicit_prelude::NoImplicitPreludeParser;
 use crate::attributes::non_exhaustive::NonExhaustiveParser;
@@ -180,7 +178,6 @@ attribute_parsers!(
         Single<SkipDuringMethodDispatchParser>,
         Single<TransparencyParser>,
         Single<WithoutArgs<AllowIncoherentImplParser>>,
-        Single<WithoutArgs<AllowInternalUnsafeParser>>,
         Single<WithoutArgs<AsPtrParser>>,
         Single<WithoutArgs<AutomaticallyDerivedParser>>,
         Single<WithoutArgs<CoherenceIsCoreParser>>,

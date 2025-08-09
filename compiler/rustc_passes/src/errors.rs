@@ -643,8 +643,8 @@ pub(crate) struct UsedStatic {
 }
 
 #[derive(Diagnostic)]
-#[diag(passes_macro_only_attribute)]
-pub(crate) struct MacroOnlyAttribute {
+#[diag(passes_allow_internal_unstable)]
+pub(crate) struct AllowInternalUnstable {
     #[primary_span]
     pub attr_span: Span,
     #[label]

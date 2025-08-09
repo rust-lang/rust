@@ -14,7 +14,6 @@
 //! [`crate::late_lint_methods!`] invocation in `lib.rs`.
 
 use std::fmt::Write;
-use std::slice;
 
 use ast::token::TokenKind;
 use rustc_abi::BackendRepr;
@@ -22,7 +21,6 @@ use rustc_ast::tokenstream::{TokenStream, TokenTree};
 use rustc_ast::visit::{FnCtxt, FnKind};
 use rustc_ast::{self as ast, *};
 use rustc_ast_pretty::pprust::expr_to_string;
-use rustc_attr_parsing::AttributeParser;
 use rustc_errors::{Applicability, LintDiagnostic};
 use rustc_feature::GateIssue;
 use rustc_hir as hir;
@@ -251,16 +249,7 @@ impl UnsafeCode {
 
 impl EarlyLintPass for UnsafeCode {
     fn check_attribute(&mut self, cx: &EarlyContext<'_>, attr: &ast::Attribute) {
-        if AttributeParser::parse_limited(
-            cx.builder.sess(),
-            slice::from_ref(attr),
-            sym::allow_internal_unsafe,
-            attr.span,
-            DUMMY_NODE_ID,
-            Some(cx.builder.features()),
-        )
-        .is_some()
-        {
+        if attr.has_name(sym::allow_internal_unsafe) {
             self.report_unsafe(cx, attr.span, BuiltinUnsafe::AllowInternalUnsafe);
         }
     }
