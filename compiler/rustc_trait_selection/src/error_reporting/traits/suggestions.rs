@@ -5127,6 +5127,44 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             _ => {}
         }
     }
+    pub(crate) fn suggest_impl_similarly_named_trait(
+        &self,
+        err: &mut Diag<'_>,
+        obligation: &PredicateObligation<'tcx>,
+        trait_predicate: ty::PolyTraitPredicate<'tcx>,
+    ) {
+        let trait_def_id = trait_predicate.def_id();
+        let trait_name = self.tcx.item_name(trait_def_id);
+        if let Some(other_trait_def_id) = self.tcx.all_traits_including_private().find(|def_id| {
+            trait_def_id != *def_id
+                && trait_name == self.tcx.item_name(def_id)
+                && self
+                    .tcx
+                    .all_impls(*def_id)
+                    .find(|impl_def_id| {
+                        let Some(trait_ref) = self.tcx.impl_trait_ref(impl_def_id) else {
+                            return false;
+                        };
+                        self.predicate_must_hold_modulo_regions(&Obligation::new(
+                            self.tcx,
+                            obligation.cause.clone(),
+                            obligation.param_env,
+                            trait_ref
+                                .skip_binder()
+                                .with_self_ty(self.tcx, trait_predicate.skip_binder().self_ty()),
+                        ))
+                    })
+                    .is_some()
+        }) {
+            err.note(format!(
+                "`{}` implements similarly named `{}`, but not `{}`",
+                trait_predicate.self_ty(),
+                self.tcx.def_path_str(other_trait_def_id),
+                trait_predicate.print_modifiers_and_trait_path()
+            ));
+        }
+        ()
+    }
 }
 
 /// Add a hint to add a missing borrow or remove an unnecessary one.

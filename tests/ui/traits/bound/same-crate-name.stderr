@@ -12,6 +12,7 @@ help: trait impl with same name found
 LL | impl Bar for Foo {}
    | ^^^^^^^^^^^^^^^^
    = note: perhaps two different versions of crate `crate_a2` are being used?
+   = note: `Foo` implements similarly named `main::a::Bar`, but not `main::a::Bar`
    = help: the trait `main::a::Bar` is implemented for `ImplementsTraitForUsize<usize>`
 note: required by a bound in `try_foo`
   --> $DIR/auxiliary/crate_a1.rs:3:24
@@ -48,6 +49,7 @@ help: trait impl with same name found
 LL | impl Bar for ImplementsWrongTraitConditionally<isize> {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: perhaps two different versions of crate `crate_a2` are being used?
+   = note: `ImplementsWrongTraitConditionally<isize>` implements similarly named `main::a::Bar`, but not `main::a::Bar`
    = help: the trait `main::a::Bar` is implemented for `ImplementsTraitForUsize<usize>`
 note: required by a bound in `try_foo`
   --> $DIR/auxiliary/crate_a1.rs:3:24
