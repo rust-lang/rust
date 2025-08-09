@@ -34,5 +34,17 @@ pub fn emit_attribute_lint<L: LintEmitter>(lint: &AttributeLint<HirId>, lint_emi
             *first_span,
             session_diagnostics::EmptyAttributeList { attr_span: *first_span },
         ),
+        &AttributeLintKind::InvalidTarget { name, target, ref applied, only } => lint_emitter
+            .emit_node_span_lint(
+                rustc_session::lint::builtin::UNUSED_ATTRIBUTES,
+                *id,
+                *span,
+                session_diagnostics::InvalidTargetLint {
+                    name,
+                    target,
+                    applied: applied.clone(),
+                    only,
+                },
+            ),
     }
 }

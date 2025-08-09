@@ -57,7 +57,7 @@ LL | #[lang = "fn"]
    | ^^^^^^^^^^^^^^
 ...
 LL | trait Fn {
-   |         - this trait has 0 generic arguments
+   |         - this a trait has 0 generic arguments
 
 error[E0425]: cannot find function `a` in this scope
   --> $DIR/issue-83471.rs:29:5

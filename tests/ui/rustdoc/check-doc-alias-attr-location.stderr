@@ -4,19 +4,19 @@ error: allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed
 LL |     fn foo(#[doc(alias = "qux")] _x: u32) -> Self::X {
    |            ^^^^^^^^^^^^^^^^^^^^^
 
-error: `#[doc(alias = "...")]` isn't allowed on foreign module
+error: `#[doc(alias = "...")]` isn't allowed on a foreign module
   --> $DIR/check-doc-alias-attr-location.rs:9:7
    |
 LL | #[doc(alias = "foo")]
    |       ^^^^^^^^^^^^^
 
-error: `#[doc(alias = "...")]` isn't allowed on inherent implementation block
+error: `#[doc(alias = "...")]` isn't allowed on an inherent impl block
   --> $DIR/check-doc-alias-attr-location.rs:12:7
    |
 LL | #[doc(alias = "bar")]
    |       ^^^^^^^^^^^^^
 
-error: `#[doc(alias = "...")]` isn't allowed on trait implementation block
+error: `#[doc(alias = "...")]` isn't allowed on a trait impl block
   --> $DIR/check-doc-alias-attr-location.rs:18:7
    |
 LL | #[doc(alias = "foobar")]
@@ -28,19 +28,19 @@ error: `#[doc(alias = "...")]` isn't allowed on type alias in implementation blo
 LL |     #[doc(alias = "assoc")]
    |           ^^^^^^^^^^^^^^^
 
-error: `#[doc(alias = "...")]` isn't allowed on statement
+error: `#[doc(alias = "...")]` isn't allowed on a statement
   --> $DIR/check-doc-alias-attr-location.rs:24:15
    |
 LL |         #[doc(alias = "stmt")]
    |               ^^^^^^^^^^^^^^
 
-error: `#[doc(alias = "...")]` isn't allowed on expression
+error: `#[doc(alias = "...")]` isn't allowed on an expression
   --> $DIR/check-doc-alias-attr-location.rs:26:15
    |
 LL |         #[doc(alias = "expr")]
    |               ^^^^^^^^^^^^^^
 
-error: `#[doc(alias = "...")]` isn't allowed on match arm
+error: `#[doc(alias = "...")]` isn't allowed on a match arm
   --> $DIR/check-doc-alias-attr-location.rs:28:19
    |
 LL |             #[doc(alias = "arm")]

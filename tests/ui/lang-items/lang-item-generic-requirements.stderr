@@ -4,7 +4,7 @@ error[E0718]: `add` lang item must be applied to a trait with 1 generic argument
 LL | #[lang = "add"]
    | ^^^^^^^^^^^^^^^
 LL | trait MyAdd<'a, T> {}
-   |            ------- this trait has 2 generic arguments
+   |            ------- this a trait has 2 generic arguments
 
 error[E0718]: `drop_in_place` lang item must be applied to a function with at least 1 generic argument
   --> $DIR/lang-item-generic-requirements.rs:20:1
@@ -13,7 +13,7 @@ LL | #[lang = "drop_in_place"]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
 LL |
 LL | fn my_ptr_drop() {}
-   |               - this function has 0 generic arguments
+   |               - this a function has 0 generic arguments
 
 error[E0718]: `index` lang item must be applied to a trait with 1 generic argument
   --> $DIR/lang-item-generic-requirements.rs:24:1
@@ -21,7 +21,7 @@ error[E0718]: `index` lang item must be applied to a trait with 1 generic argume
 LL | #[lang = "index"]
    | ^^^^^^^^^^^^^^^^^
 LL | trait MyIndex<'a, T> {}
-   |              ------- this trait has 2 generic arguments
+   |              ------- this a trait has 2 generic arguments
 
 error[E0718]: `phantom_data` lang item must be applied to a struct with 1 generic argument
   --> $DIR/lang-item-generic-requirements.rs:28:1
@@ -30,7 +30,7 @@ LL | #[lang = "phantom_data"]
    | ^^^^^^^^^^^^^^^^^^^^^^^^
 LL |
 LL | struct MyPhantomData<T, U>;
-   |                     ------ this struct has 2 generic arguments
+   |                     ------ this a struct has 2 generic arguments
 
 error[E0718]: `owned_box` lang item must be applied to a struct with at least 1 generic argument
   --> $DIR/lang-item-generic-requirements.rs:34:1
@@ -39,7 +39,7 @@ LL | #[lang = "owned_box"]
    | ^^^^^^^^^^^^^^^^^^^^^
 LL |
 LL | struct Foo;
-   |           - this struct has 0 generic arguments
+   |           - this a struct has 0 generic arguments
 
 error[E0718]: `start` lang item must be applied to a function with 1 generic argument
   --> $DIR/lang-item-generic-requirements.rs:40:1
@@ -48,7 +48,7 @@ LL | #[lang = "start"]
    | ^^^^^^^^^^^^^^^^^
 LL |
 LL | fn start(_: *const u8, _: isize, _: *const *const u8) -> isize {
-   |         - this function has 0 generic arguments
+   |         - this a function has 0 generic arguments
 
 error[E0392]: type parameter `T` is never used
   --> $DIR/lang-item-generic-requirements.rs:30:22

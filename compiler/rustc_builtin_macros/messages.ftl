@@ -259,8 +259,6 @@ builtin_macros_only_one_argument = {$name} takes 1 argument
 
 builtin_macros_proc_macro = `proc-macro` crate types currently cannot export any items other than functions tagged with `#[proc_macro]`, `#[proc_macro_derive]`, or `#[proc_macro_attribute]`
 
-builtin_macros_proc_macro_attribute_only_be_used_on_bare_functions = the `#[{$path}]` attribute may only be used on bare functions
-
 builtin_macros_proc_macro_attribute_only_usable_with_crate_type = the `#[{$path}]` attribute is only usable with crates of the `proc-macro` crate type
 
 builtin_macros_requires_cfg_pattern =

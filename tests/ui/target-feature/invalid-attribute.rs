@@ -3,19 +3,16 @@
 #![warn(unused_attributes)]
 
 #[target_feature(enable = "sse2")]
-//~^ ERROR attribute should be applied to a function
+//~^ ERROR attribute cannot be used on
 extern crate alloc;
-//~^ NOTE not a function
 
 #[target_feature(enable = "sse2")]
-//~^ ERROR attribute should be applied to a function
+//~^ ERROR attribute cannot be used on
 use alloc::alloc::alloc;
-//~^ NOTE not a function
 
 #[target_feature(enable = "sse2")]
-//~^ ERROR attribute should be applied to a function
+//~^ ERROR attribute cannot be used on
 extern "Rust" {}
-//~^ NOTE not a function
 
 #[target_feature = "+sse2"]
 //~^ ERROR malformed `target_feature` attribute
@@ -32,42 +29,35 @@ extern "Rust" {}
 unsafe fn foo() {}
 
 #[target_feature(enable = "sse2")]
-//~^ ERROR attribute should be applied to a function
+//~^ ERROR attribute cannot be used on
 mod another {}
-//~^ NOTE not a function
 
 #[target_feature(enable = "sse2")]
-//~^ ERROR attribute should be applied to a function
+//~^ ERROR attribute cannot be used on
 const FOO: usize = 7;
-//~^ NOTE not a function
 
 #[target_feature(enable = "sse2")]
-//~^ ERROR attribute should be applied to a function
+//~^ ERROR attribute cannot be used on
 struct Foo;
-//~^ NOTE not a function
 
 #[target_feature(enable = "sse2")]
-//~^ ERROR attribute should be applied to a function
+//~^ ERROR attribute cannot be used on
 enum Bar {}
-//~^ NOTE not a function
 
 #[target_feature(enable = "sse2")]
-//~^ ERROR attribute should be applied to a function
+//~^ ERROR attribute cannot be used on
 union Qux {
-    //~^ NOTE not a function
-    f1: u16,
+        f1: u16,
     f2: u16,
 }
 
 #[target_feature(enable = "sse2")]
-//~^ ERROR attribute should be applied to a function
+//~^ ERROR attribute cannot be used on
 type Uwu = ();
-//~^ NOTE not a function
 
 #[target_feature(enable = "sse2")]
-//~^ ERROR attribute should be applied to a function
+//~^ ERROR attribute cannot be used on
 trait Baz {}
-//~^ NOTE not a function
 
 #[inline(always)]
 //~^ ERROR: cannot use `#[inline(always)]`
@@ -75,21 +65,18 @@ trait Baz {}
 unsafe fn test() {}
 
 #[target_feature(enable = "sse2")]
-//~^ ERROR attribute should be applied to a function
+//~^ ERROR attribute cannot be used on
 static A: () = ();
-//~^ NOTE not a function
 
 #[target_feature(enable = "sse2")]
-//~^ ERROR attribute should be applied to a function
+//~^ ERROR attribute cannot be used on
 impl Quux for u8 {}
-//~^ NOTE not a function
-//~| NOTE missing `foo` in implementation
+//~^ NOTE missing `foo` in implementation
 //~| ERROR missing: `foo`
 
 #[target_feature(enable = "sse2")]
-//~^ ERROR attribute should be applied to a function
+//~^ ERROR attribute cannot be used on
 impl Foo {}
-//~^ NOTE not a function
 
 trait Quux {
     fn foo(); //~ NOTE `foo` from trait
@@ -109,17 +96,15 @@ impl Quux for Foo {
 
 fn main() {
     #[target_feature(enable = "sse2")]
-    //~^ ERROR attribute should be applied to a function
+    //~^ ERROR attribute cannot be used on
     unsafe {
         foo();
     }
-    //~^^^ NOTE not a function
 
     #[target_feature(enable = "sse2")]
-    //~^ ERROR attribute should be applied to a function
+    //~^ ERROR attribute cannot be used on
     || {};
-    //~^ NOTE not a function
-}
+    }
 
 #[target_feature(enable = "+sse2")]
 //~^ ERROR `+sse2` is not valid for this target
