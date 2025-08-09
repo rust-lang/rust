@@ -786,16 +786,42 @@ pub fn select_unpredictable<T>(condition: bool, true_val: T, false_val: T) -> T 
     // Change this to use ManuallyDrop instead.
     let mut true_val = MaybeUninit::new(true_val);
     let mut false_val = MaybeUninit::new(false_val);
+
+    struct DropOnPanic<T> {
+        inner: *mut MaybeUninit<T>,
+    }
+
+    impl<T> Drop for DropOnPanic<T> {
+        fn drop(&mut self) {
+            // SAFETY: Must be guaranteed on construction of local type `DropOnPanic`.
+            unsafe { (*self.inner).assume_init_drop() }
+        }
+    }
+
+    let true_ptr = (&mut true_val) as *mut _;
+    let false_ptr = (&mut false_val) as *mut _;
+
     // SAFETY: The value that is not selected is dropped, and the selected one
     // is returned. This is necessary because the intrinsic doesn't drop the
     // value that is  not selected.
     unsafe {
         // Extract the selected value first, ensure it is dropped as well if dropping the unselected
         // value panics.
-        let ret = crate::intrinsics::select_unpredictable(condition, &true_val, &false_val)
-            .assume_init_read();
-        crate::intrinsics::select_unpredictable(!condition, &mut true_val, &mut false_val)
-            .assume_init_drop();
-        ret
+        let (guard, drop) = crate::intrinsics::select_unpredictable(
+            condition,
+            (true_ptr, false_ptr),
+            (false_ptr, true_ptr),
+        );
+
+        // SAFETY: both pointers are to valid `MaybeUninit`, in both variants they do not alias but
+        // the two arguments we have selected from did alias each other.
+        let guard = DropOnPanic { inner: guard };
+        (*drop).assume_init_drop();
+        crate::mem::forget(guard);
+
+        // Note that it is important to use the values here. Reading from the pointer we got makes
+        // LLVM forget the !unpredictable annotation sometimes (in tests, integer sized values in
+        // particular seemed to confuse it, also observed in llvm/llvm-project #82340).
+        crate::intrinsics::select_unpredictable(condition, true_val, false_val).assume_init()
     }
 }
