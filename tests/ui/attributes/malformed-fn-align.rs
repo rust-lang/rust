@@ -23,7 +23,7 @@ fn f2() {}
 #[rustc_align(0)] //~ ERROR invalid alignment value: not a power of two
 fn f3() {}
 
-#[repr(align(16))] //~ ERROR `#[repr(align(...))]` is not supported on function items
+#[repr(align(16))] //~ ERROR `#[repr(align(...))]` is not supported on functions
 fn f4() {}
 
 #[rustc_align(-1)] //~ ERROR expected unsuffixed literal, found `-`
@@ -41,14 +41,14 @@ fn f7() {}
 #[rustc_align(16)]
 fn f8() {}
 
-#[rustc_align(16)] //~ ERROR `#[rustc_align(...)]` is not supported on struct items
+#[rustc_align(16)] //~ ERROR attribute cannot be used on
 struct S1;
 
-#[rustc_align(32)] //~ ERROR `#[rustc_align(...)]` should be applied to a function item
+#[rustc_align(32)] //~ ERROR attribute cannot be used on
 const FOO: i32 = 42;
 
-#[rustc_align(32)] //~ ERROR `#[rustc_align(...)]` should be applied to a function item
+#[rustc_align(32)] //~ ERROR attribute cannot be used on
 mod test {}
 
-#[rustc_align(32)] //~ ERROR `#[rustc_align(...)]` should be applied to a function item
+#[rustc_align(32)] //~ ERROR attribute cannot be used on
 use ::std::iter;

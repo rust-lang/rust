@@ -2,9 +2,9 @@
 // on an item.
 
 #[inline]
-//~^ ERROR attribute should be applied to function or closure [E0518]
+//~^ ERROR attribute cannot be used on
 #[target_feature(enable = "sse2")]
-//~^ ERROR attribute should be applied to a function
+//~^ ERROR attribute cannot be used on
 const FOO: u8 = 0;
 
 fn main() { }
