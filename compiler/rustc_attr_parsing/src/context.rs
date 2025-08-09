@@ -3,6 +3,7 @@ use std::collections::BTreeMap;
 use std::ops::{Deref, DerefMut};
 use std::sync::LazyLock;
 
+use itertools::Itertools;
 use private::Sealed;
 use rustc_ast::{self as ast, LitKind, MetaItemLit, NodeId};
 use rustc_errors::{DiagCtxtHandle, Diagnostic};
@@ -61,8 +62,11 @@ use crate::attributes::traits::{
 };
 use crate::attributes::transparency::TransparencyParser;
 use crate::attributes::{AttributeParser as _, Combine, Single, WithoutArgs};
+use crate::context::MaybeWarn::{Allow, Error, Warn};
 use crate::parser::{ArgParser, MetaItemParser, PathParser};
-use crate::session_diagnostics::{AttributeParseError, AttributeParseErrorReason, UnknownMetaItem};
+use crate::session_diagnostics::{
+    AttributeParseError, AttributeParseErrorReason, InvalidTarget, UnknownMetaItem,
+};
 
 type GroupType<S> = LazyLock<GroupTypeInner<S>>;
 
@@ -74,6 +78,7 @@ struct GroupTypeInner<S: Stage> {
 struct GroupTypeInnerAccept<S: Stage> {
     template: AttributeTemplate,
     accept_fn: AcceptFn<S>,
+    allowed_targets: AllowedTargets,
 }
 
 type AcceptFn<S> =
@@ -121,7 +126,8 @@ macro_rules! attribute_parsers {
                                 STATE_OBJECT.with_borrow_mut(|s| {
                                     accept_fn(s, cx, args)
                                 })
-                            })
+                            }),
+                            allowed_targets: <$names as crate::attributes::AttributeParser<$stage>>::ALLOWED_TARGETS,
                         });
                     }
 
@@ -641,6 +647,67 @@ impl ShouldEmit {
     }
 }
 
+#[derive(Debug)]
+pub(crate) enum AllowedTargets {
+    AllowAll,
+    AllowList(&'static [MaybeWarn]),
+    AllowListWarnRest(&'static [MaybeWarn]),
+}
+
+pub(crate) enum AllowedResult {
+    Allowed,
+    Warn,
+    Error,
+}
+
+impl AllowedTargets {
+    pub(crate) fn is_allowed(&self, target: Target) -> AllowedResult {
+        match self {
+            AllowedTargets::AllowAll => AllowedResult::Allowed,
+            AllowedTargets::AllowList(list) => {
+                if list.contains(&Allow(target)) {
+                    AllowedResult::Allowed
+                } else if list.contains(&Warn(target)) {
+                    AllowedResult::Warn
+                } else {
+                    AllowedResult::Error
+                }
+            }
+            AllowedTargets::AllowListWarnRest(list) => {
+                if list.contains(&Allow(target)) {
+                    AllowedResult::Allowed
+                } else if list.contains(&Error(target)) {
+                    AllowedResult::Error
+                } else {
+                    AllowedResult::Warn
+                }
+            }
+        }
+    }
+
+    pub(crate) fn allowed_targets(&self) -> Vec<Target> {
+        match self {
+            AllowedTargets::AllowAll => unreachable!(),
+            AllowedTargets::AllowList(list) => list,
+            AllowedTargets::AllowListWarnRest(list) => list,
+        }
+        .iter()
+        .filter_map(|target| match target {
+            Allow(target) => Some(*target),
+            Warn(_) => None,
+            Error(_) => None,
+        })
+        .collect()
+    }
+}
+
+#[derive(Debug, Eq, PartialEq)]
+pub(crate) enum MaybeWarn {
+    Allow(Target),
+    Warn(Target),
+    Error(Target),
+}
+
 /// Context created once, for example as part of the ast lowering
 /// context, through which all attributes can be lowered.
 pub struct AttributeParser<'sess, S: Stage = Late> {
@@ -848,7 +915,52 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
                                 attr_path: path.get_attribute_path(),
                             };
 
-                            (accept.accept_fn)(&mut cx, args)
+                            (accept.accept_fn)(&mut cx, args);
+
+                            if self.stage.should_emit().should_emit() {
+                                match accept.allowed_targets.is_allowed(target) {
+                                    AllowedResult::Allowed => {}
+                                    AllowedResult::Warn => {
+                                        let allowed_targets =
+                                            accept.allowed_targets.allowed_targets();
+                                        emit_lint(AttributeLint {
+                                            id: target_id,
+                                            span: attr.span,
+                                            kind: AttributeLintKind::InvalidTarget {
+                                                name: parts[0],
+                                                target: target.plural_name(),
+                                                only: if allowed_targets.len() == 1 {
+                                                    "only "
+                                                } else {
+                                                    ""
+                                                },
+                                                applied: allowed_targets_applied(
+                                                    allowed_targets,
+                                                    target,
+                                                ),
+                                            },
+                                        });
+                                    }
+                                    AllowedResult::Error => {
+                                        let allowed_targets =
+                                            accept.allowed_targets.allowed_targets();
+                                        self.dcx().emit_err(InvalidTarget {
+                                            span: attr.span,
+                                            name: parts[0],
+                                            target: target.plural_name(),
+                                            only: if allowed_targets.len() == 1 {
+                                                "only "
+                                            } else {
+                                                ""
+                                            },
+                                            applied: allowed_targets_applied(
+                                                allowed_targets,
+                                                target,
+                                            ),
+                                        });
+                                    }
+                                }
+                            }
                         }
                     } else {
                         // If we're here, we must be compiling a tool attribute... Or someone
@@ -934,6 +1046,77 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
             }
         }
     }
+}
+
+/// Takes a list of `allowed_targets` for an attribute, and the `target` the attribute was applied to.
+/// Does some heuristic-based filtering to remove uninteresting targets, and formats the targets into a string
+pub(crate) fn allowed_targets_applied(mut allowed_targets: Vec<Target>, target: Target) -> String {
+    // We define groups of "similar" targets.
+    // If at least two of the targets are allowed, and the `target` is not in the group,
+    // we collapse the entire group to a single entry to simplify the target list
+    const FUNCTION_LIKE: &[Target] = &[
+        Target::Fn,
+        Target::Closure,
+        Target::ForeignFn,
+        Target::Method(MethodKind::Inherent),
+        Target::Method(MethodKind::Trait { body: false }),
+        Target::Method(MethodKind::Trait { body: true }),
+        Target::Method(MethodKind::TraitImpl),
+    ];
+    const METHOD_LIKE: &[Target] = &[
+        Target::Method(MethodKind::Inherent),
+        Target::Method(MethodKind::Trait { body: false }),
+        Target::Method(MethodKind::Trait { body: true }),
+        Target::Method(MethodKind::TraitImpl),
+    ];
+    const IMPL_LIKE: &[Target] =
+        &[Target::Impl { of_trait: false }, Target::Impl { of_trait: true }];
+    const ADT_LIKE: &[Target] = &[Target::Struct, Target::Enum];
+
+    let mut added_fake_targets = Vec::new();
+    filter_targets(
+        &mut allowed_targets,
+        FUNCTION_LIKE,
+        "functions",
+        target,
+        &mut added_fake_targets,
+    );
+    filter_targets(&mut allowed_targets, METHOD_LIKE, "methods", target, &mut added_fake_targets);
+    filter_targets(&mut allowed_targets, IMPL_LIKE, "impl blocks", target, &mut added_fake_targets);
+    filter_targets(&mut allowed_targets, ADT_LIKE, "data types", target, &mut added_fake_targets);
+
+    // If there is now only 1 target left, show that as the only possible target
+    if allowed_targets.len() + added_fake_targets.len() == 1 {
+        return allowed_targets
+            .get(0)
+            .map(|t| t.singular_name())
+            .or(added_fake_targets.get(0).copied())
+            .unwrap()
+            .to_string();
+    }
+
+    added_fake_targets
+        .iter()
+        .copied()
+        .chain(allowed_targets.iter().map(|t| t.plural_name()))
+        .join(", ")
+}
+
+fn filter_targets(
+    allowed_targets: &mut Vec<Target>,
+    target_group: &'static [Target],
+    target_group_name: &'static str,
+    target: Target,
+    added_fake_targets: &mut Vec<&'static str>,
+) {
+    if target_group.contains(&target) {
+        return;
+    }
+    if allowed_targets.iter().filter(|at| target_group.contains(at)).count() < 2 {
+        return;
+    }
+    allowed_targets.retain(|t| !target_group.contains(t));
+    added_fake_targets.push(target_group_name);
 }
 
 /// Parse a single integer.

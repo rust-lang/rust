@@ -1,6 +1,6 @@
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_macros::HashStable_Generic;
-use rustc_span::Span;
+use rustc_span::{Span, Symbol};
 
 use crate::HirId;
 
@@ -34,4 +34,5 @@ pub enum AttributeLintKind {
     UnusedDuplicate { this: Span, other: Span, warning: bool },
     IllFormedAttributeInput { suggestions: Vec<String> },
     EmptyAttribute { first_span: Span },
+    InvalidTarget { name: Symbol, target: &'static str, applied: String, only: &'static str },
 }
