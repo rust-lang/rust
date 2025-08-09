@@ -557,13 +557,25 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         let (size, signed) = ty.int_size_and_signed(self.tcx);
         let width = size.bits();
 
-        if oop == OverflowOp::Sub && !signed {
-            // Emit sub and icmp instead of llvm.usub.with.overflow. LLVM considers these
-            // to be the canonical form. It will attempt to reform llvm.usub.with.overflow
-            // in the backend if profitable.
-            let sub = self.sub(lhs, rhs);
-            let cmp = self.icmp(IntPredicate::IntULT, lhs, rhs);
-            return (sub, cmp);
+        if !signed {
+            match oop {
+                OverflowOp::Sub => {
+                    // Emit sub and icmp instead of llvm.usub.with.overflow. LLVM considers these
+                    // to be the canonical form. It will attempt to reform llvm.usub.with.overflow
+                    // in the backend if profitable.
+                    let sub = self.sub(lhs, rhs);
+                    let cmp = self.icmp(IntPredicate::IntULT, lhs, rhs);
+                    return (sub, cmp);
+                }
+                OverflowOp::Add => {
+                    // Like with sub above, using icmp is the preferred form. See
+                    // <https://rust-lang.zulipchat.com/#narrow/channel/187780-t-compiler.2Fllvm/topic/.60uadd.2Ewith.2Eoverflow.60.20.28again.29/near/533041085>
+                    let add = self.add(lhs, rhs);
+                    let cmp = self.icmp(IntPredicate::IntULT, add, lhs);
+                    return (add, cmp);
+                }
+                OverflowOp::Mul => {}
+            }
         }
 
         let oop_str = match oop {
