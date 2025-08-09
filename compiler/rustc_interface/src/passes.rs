@@ -108,7 +108,7 @@ impl LintStoreExpand for LintStoreExpandImpl<'_> {
         registered_tools: &RegisteredTools,
         node_id: ast::NodeId,
         attrs: &[ast::Attribute],
-        items: &[rustc_ast::ptr::P<ast::Item>],
+        items: &[Box<ast::Item>],
         name: Symbol,
     ) {
         pre_expansion_lint(sess, features, self.0, registered_tools, (node_id, attrs, items), name);

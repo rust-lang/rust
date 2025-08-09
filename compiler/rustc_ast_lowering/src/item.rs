@@ -1,5 +1,4 @@
 use rustc_abi::ExternAbi;
-use rustc_ast::ptr::P;
 use rustc_ast::visit::AssocCtxt;
 use rustc_ast::*;
 use rustc_errors::{E0570, ErrorGuaranteed, struct_span_code_err};
@@ -102,7 +101,7 @@ impl<'a, 'hir> ItemLowerer<'a, 'hir> {
 impl<'hir> LoweringContext<'_, 'hir> {
     pub(super) fn lower_mod(
         &mut self,
-        items: &[P<Item>],
+        items: &[Box<Item>],
         spans: &ModSpans,
     ) -> &'hir hir::Mod<'hir> {
         self.arena.alloc(hir::Mod {
@@ -462,7 +461,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             }
             ItemKind::MacroDef(ident, MacroDef { body, macro_rules }) => {
                 let ident = self.lower_ident(*ident);
-                let body = P(self.lower_delim_args(body));
+                let body = Box::new(self.lower_delim_args(body));
                 let def_id = self.local_def_id(id);
                 let def_kind = self.tcx.def_kind(def_id);
                 let DefKind::Macro(macro_kind) = def_kind else {
