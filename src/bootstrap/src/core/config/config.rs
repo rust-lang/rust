@@ -951,14 +951,9 @@ impl Config {
             );
         }
 
+        let dwn_ctx = DownloadContext::from(&config);
         config.download_rustc_commit = download_ci_rustc_commit(
-            &config.stage0_metadata,
-            config.path_modification_cache.clone(),
-            &config.src,
-            config.is_running_on_ci,
-            &config.exec_ctx,
-            &config.rust_info,
-            &config.host_target,
+            dwn_ctx,
             rust_download_rustc,
             debug_assertions_requested,
             config.llvm_assertions,
@@ -1168,15 +1163,9 @@ impl Config {
                 "WARNING: `rust.download-rustc` is enabled. The `rust.channel` option will be overridden by the CI rustc's channel."
             );
 
-            let channel = read_file_by_commit(
-                &config.exec_ctx,
-                &config.src,
-                &config.rust_info,
-                Path::new("src/ci/channel"),
-                commit,
-            )
-            .trim()
-            .to_owned();
+            let dwn_ctx = DownloadContext::from(&config);
+            let channel =
+                read_file_by_commit(dwn_ctx, Path::new("src/ci/channel"), commit).trim().to_owned();
 
             config.channel = channel;
         }
@@ -1211,19 +1200,9 @@ impl Config {
         config.llvm_enable_warnings = llvm_enable_warnings.unwrap_or(false);
         config.llvm_build_config = llvm_build_config.clone().unwrap_or(Default::default());
 
-        config.llvm_from_ci = parse_download_ci_llvm(
-            &config.exec_ctx,
-            &config.submodules,
-            &config.stage0_metadata,
-            &config.src,
-            config.path_modification_cache.clone(),
-            &config.host_target,
-            &config.download_rustc_commit,
-            &config.rust_info,
-            config.is_running_on_ci,
-            llvm_download_ci_llvm,
-            config.llvm_assertions,
-        );
+        let dwn_ctx = DownloadContext::from(&config);
+        config.llvm_from_ci =
+            parse_download_ci_llvm(dwn_ctx, llvm_download_ci_llvm, config.llvm_assertions);
 
         if config.llvm_from_ci {
             let warn = |option: &str| {
@@ -1285,8 +1264,8 @@ impl Config {
 
         if config.llvm_from_ci {
             let triple = &config.host_target.triple;
-            let ci_llvm_bin =
-                ci_llvm_root(config.llvm_from_ci, &config.out, &config.host_target).join("bin");
+            let dwn_ctx = DownloadContext::from(&config);
+            let ci_llvm_bin = ci_llvm_root(dwn_ctx).join("bin");
             let build_target = config
                 .target_config
                 .entry(config.host_target)
@@ -1327,14 +1306,8 @@ impl Config {
             );
         }
 
-        if config.lld_enabled
-            && is_system_llvm(
-                &config.host_target,
-                config.llvm_from_ci,
-                &config.target_config,
-                config.host_target,
-            )
-        {
+        let dwn_ctx = DownloadContext::from(&config);
+        if config.lld_enabled && is_system_llvm(dwn_ctx, config.host_target) {
             panic!("Cannot enable LLD with `rust.lld = true` when using external llvm-config.");
         }
 
@@ -1469,7 +1442,8 @@ impl Config {
 
     /// Returns the content of the given file at a specific commit.
     pub(crate) fn read_file_by_commit(&self, file: &Path, commit: &str) -> String {
-        read_file_by_commit(&self.exec_ctx, &self.src, &self.rust_info, file, commit)
+        let dwn_ctx = DownloadContext::from(self);
+        read_file_by_commit(dwn_ctx, file, commit)
     }
 
     /// Bootstrap embeds a version number into the name of shared libraries it uploads in CI.
@@ -1540,7 +1514,8 @@ impl Config {
 
     /// The absolute path to the downloaded LLVM artifacts.
     pub(crate) fn ci_llvm_root(&self) -> PathBuf {
-        ci_llvm_root(self.llvm_from_ci, &self.out, &self.host_target)
+        let dwn_ctx = DownloadContext::from(self);
+        ci_llvm_root(dwn_ctx)
     }
 
     /// Directory where the extracted `rustc-dev` component is stored.
@@ -1703,13 +1678,8 @@ impl Config {
         ),
     )]
     pub(crate) fn update_submodule(&self, relative_path: &str) {
-        update_submodule(
-            &self.submodules,
-            &self.exec_ctx,
-            &self.src,
-            &self.rust_info,
-            relative_path,
-        );
+        let dwn_ctx = DownloadContext::from(self);
+        update_submodule(dwn_ctx, relative_path);
     }
 
     /// Returns the commit to download, or `None` if we shouldn't download CI artifacts.
@@ -1719,14 +1689,9 @@ impl Config {
         debug_assertions_requested: bool,
         llvm_assertions: bool,
     ) -> Option<String> {
+        let dwn_ctx = DownloadContext::from(self);
         download_ci_rustc_commit(
-            &self.stage0_metadata,
-            self.path_modification_cache.clone(),
-            &self.src,
-            self.is_running_on_ci,
-            &self.exec_ctx,
-            &self.rust_info,
-            &self.host_target,
+            dwn_ctx,
             download_rustc,
             debug_assertions_requested,
             llvm_assertions,
@@ -1738,70 +1703,14 @@ impl Config {
         download_ci_llvm: Option<StringOrBool>,
         asserts: bool,
     ) -> bool {
-        // We don't ever want to use `true` on CI, as we should not
-        // download upstream artifacts if there are any local modifications.
-        let default = if self.is_running_on_ci {
-            StringOrBool::String("if-unchanged".to_string())
-        } else {
-            StringOrBool::Bool(true)
-        };
-        let download_ci_llvm = download_ci_llvm.unwrap_or(default);
-
-        let if_unchanged = || {
-            if self.rust_info.is_from_tarball() {
-                // Git is needed for running "if-unchanged" logic.
-                println!("ERROR: 'if-unchanged' is only compatible with Git managed sources.");
-                crate::exit!(1);
-            }
-
-            // Fetching the LLVM submodule is unnecessary for self-tests.
-            #[cfg(not(test))]
-            self.update_submodule("src/llvm-project");
-
-            // Check for untracked changes in `src/llvm-project` and other important places.
-            let has_changes = self.has_changes_from_upstream(LLVM_INVALIDATION_PATHS);
-
-            // Return false if there are untracked changes, otherwise check if CI LLVM is available.
-            if has_changes {
-                false
-            } else {
-                llvm::is_ci_llvm_available_for_target(&self.host_target, asserts)
-            }
-        };
-
-        match download_ci_llvm {
-            StringOrBool::Bool(b) => {
-                if !b && self.download_rustc_commit.is_some() {
-                    panic!(
-                        "`llvm.download-ci-llvm` cannot be set to `false` if `rust.download-rustc` is set to `true` or `if-unchanged`."
-                    );
-                }
-
-                if b && self.is_running_on_ci {
-                    // On CI, we must always rebuild LLVM if there were any modifications to it
-                    panic!(
-                        "`llvm.download-ci-llvm` cannot be set to `true` on CI. Use `if-unchanged` instead."
-                    );
-                }
-
-                // If download-ci-llvm=true we also want to check that CI llvm is available
-                b && llvm::is_ci_llvm_available_for_target(&self.host_target, asserts)
-            }
-            StringOrBool::String(s) if s == "if-unchanged" => if_unchanged(),
-            StringOrBool::String(other) => {
-                panic!("unrecognized option for download-ci-llvm: {other:?}")
-            }
-        }
+        let dwn_ctx = DownloadContext::from(self);
+        parse_download_ci_llvm(dwn_ctx, download_ci_llvm, asserts)
     }
 
     /// Returns true if any of the `paths` have been modified locally.
     pub fn has_changes_from_upstream(&self, paths: &[&'static str]) -> bool {
-        has_changes_from_upstream(
-            &self.stage0_metadata,
-            &self.src,
-            self.path_modification_cache.clone(),
-            paths,
-        )
+        let dwn_ctx = DownloadContext::from(self);
+        has_changes_from_upstream(dwn_ctx, paths)
     }
 
     /// Checks whether any of the given paths have been modified w.r.t. upstream.
@@ -1909,7 +1818,8 @@ impl Config {
     ///
     /// NOTE: this is not the same as `!is_rust_llvm` when `llvm_has_patches` is set.
     pub fn is_system_llvm(&self, target: TargetSelection) -> bool {
-        is_system_llvm(&self.host_target, self.llvm_from_ci, &self.target_config, target)
+        let dwn_ctx = DownloadContext::from(self);
+        is_system_llvm(dwn_ctx, target)
     }
 
     /// Returns `true` if this is our custom, patched, version of LLVM.
@@ -2201,19 +2111,15 @@ pub fn check_stage0_version(
     }
 }
 
-pub fn download_ci_rustc_commit(
-    stage0_metadata: &build_helper::stage0_parser::Stage0,
-    path_modification_cache: Arc<Mutex<HashMap<Vec<&'static str>, PathFreshness>>>,
-    src: &Path,
-    is_running_on_ci: bool,
-    exec_ctx: &ExecutionContext,
-    rust_info: &channel::GitInfo,
-    host_target: &TargetSelection,
+pub fn download_ci_rustc_commit<'a>(
+    dwn_ctx: impl AsRef<DownloadContext<'a>>,
     download_rustc: Option<StringOrBool>,
     debug_assertions_requested: bool,
     llvm_assertions: bool,
 ) -> Option<String> {
-    if !is_download_ci_available(&host_target.triple, llvm_assertions) {
+    let dwn_ctx = dwn_ctx.as_ref();
+
+    if !is_download_ci_available(&dwn_ctx.host_target.triple, llvm_assertions) {
         return None;
     }
 
@@ -2227,7 +2133,7 @@ pub fn download_ci_rustc_commit(
         None | Some(StringOrBool::Bool(false)) => return None,
         Some(StringOrBool::Bool(true)) => false,
         Some(StringOrBool::String(s)) if s == "if-unchanged" => {
-            if !rust_info.is_managed_git_subrepository() {
+            if !dwn_ctx.rust_info.is_managed_git_subrepository() {
                 println!(
                     "ERROR: `download-rustc=if-unchanged` is only compatible with Git managed sources."
                 );
@@ -2241,16 +2147,11 @@ pub fn download_ci_rustc_commit(
         }
     };
 
-    let commit = if rust_info.is_managed_git_subrepository() {
+    let commit = if dwn_ctx.rust_info.is_managed_git_subrepository() {
         // Look for a version to compare to based on the current commit.
         // Only commits merged by bors will have CI artifacts.
-        let freshness = check_path_modifications_(
-            stage0_metadata,
-            src,
-            path_modification_cache,
-            RUSTC_IF_UNCHANGED_ALLOWED_PATHS,
-        );
-        exec_ctx.verbose(|| {
+        let freshness = check_path_modifications_(dwn_ctx, RUSTC_IF_UNCHANGED_ALLOWED_PATHS);
+        dwn_ctx.exec_ctx.verbose(|| {
             eprintln!("rustc freshness: {freshness:?}");
         });
         match freshness {
@@ -2260,7 +2161,7 @@ pub fn download_ci_rustc_commit(
                     return None;
                 }
 
-                if is_running_on_ci {
+                if dwn_ctx.is_running_on_ci {
                     eprintln!("CI rustc commit matches with HEAD and we are in CI.");
                     eprintln!(
                         "`rustc.download-ci` functionality will be skipped as artifacts are not available."
@@ -2276,7 +2177,7 @@ pub fn download_ci_rustc_commit(
             }
         }
     } else {
-        channel::read_commit_info_file(src)
+        channel::read_commit_info_file(dwn_ctx.src)
             .map(|info| info.sha.trim().to_owned())
             .expect("git-commit-info is missing in the project root")
     };
@@ -2292,24 +2193,29 @@ pub fn download_ci_rustc_commit(
     Some(commit)
 }
 
-pub fn check_path_modifications_(
-    stage0_metadata: &build_helper::stage0_parser::Stage0,
-    src: &Path,
-    path_modification_cache: Arc<Mutex<HashMap<Vec<&'static str>, PathFreshness>>>,
+pub fn check_path_modifications_<'a>(
+    dwn_ctx: impl AsRef<DownloadContext<'a>>,
     paths: &[&'static str],
 ) -> PathFreshness {
+    let dwn_ctx = dwn_ctx.as_ref();
     // Checking path modifications through git can be relatively expensive (>100ms).
     // We do not assume that the sources would change during bootstrap's execution,
     // so we can cache the results here.
     // Note that we do not use a static variable for the cache, because it would cause problems
     // in tests that create separate `Config` instsances.
-    path_modification_cache
+    dwn_ctx
+        .path_modification_cache
         .lock()
         .unwrap()
         .entry(paths.to_vec())
         .or_insert_with(|| {
-            check_path_modifications(src, &git_config(stage0_metadata), paths, CiEnv::current())
-                .unwrap()
+            check_path_modifications(
+                dwn_ctx.src,
+                &git_config(dwn_ctx.stage0_metadata),
+                paths,
+                CiEnv::current(),
+            )
+            .unwrap()
         })
         .clone()
 }
@@ -2321,22 +2227,16 @@ pub fn git_config(stage0_metadata: &build_helper::stage0_parser::Stage0) -> GitC
     }
 }
 
-pub fn parse_download_ci_llvm(
-    exec_ctx: &ExecutionContext,
-    submodules: &Option<bool>,
-    stage0_metadata: &build_helper::stage0_parser::Stage0,
-    src: &Path,
-    path_modification_cache: Arc<Mutex<HashMap<Vec<&'static str>, PathFreshness>>>,
-    host_target: &TargetSelection,
-    download_rustc_commit: &Option<String>,
-    rust_info: &channel::GitInfo,
-    is_running_on_ci: bool,
+pub fn parse_download_ci_llvm<'a>(
+    dwn_ctx: impl AsRef<DownloadContext<'a>>,
     download_ci_llvm: Option<StringOrBool>,
     asserts: bool,
 ) -> bool {
+    let dwn_ctx = dwn_ctx.as_ref();
+
     // We don't ever want to use `true` on CI, as we should not
     // download upstream artifacts if there are any local modifications.
-    let default = if is_running_on_ci {
+    let default = if dwn_ctx.is_running_on_ci {
         StringOrBool::String("if-unchanged".to_string())
     } else {
         StringOrBool::Bool(true)
@@ -2344,7 +2244,7 @@ pub fn parse_download_ci_llvm(
     let download_ci_llvm = download_ci_llvm.unwrap_or(default);
 
     let if_unchanged = || {
-        if rust_info.is_from_tarball() {
+        if dwn_ctx.rust_info.is_from_tarball() {
             // Git is needed for running "if-unchanged" logic.
             println!("ERROR: 'if-unchanged' is only compatible with Git managed sources.");
             crate::exit!(1);
@@ -2352,33 +2252,28 @@ pub fn parse_download_ci_llvm(
 
         // Fetching the LLVM submodule is unnecessary for self-tests.
         #[cfg(not(test))]
-        update_submodule(submodules, exec_ctx, src, rust_info, "src/llvm-project");
+        update_submodule(dwn_ctx, "src/llvm-project");
 
         // Check for untracked changes in `src/llvm-project` and other important places.
-        let has_changes = has_changes_from_upstream(
-            stage0_metadata,
-            src,
-            path_modification_cache,
-            LLVM_INVALIDATION_PATHS,
-        );
+        let has_changes = has_changes_from_upstream(dwn_ctx, LLVM_INVALIDATION_PATHS);
 
         // Return false if there are untracked changes, otherwise check if CI LLVM is available.
         if has_changes {
             false
         } else {
-            llvm::is_ci_llvm_available_for_target(host_target, asserts)
+            llvm::is_ci_llvm_available_for_target(&dwn_ctx.host_target, asserts)
         }
     };
 
     match download_ci_llvm {
         StringOrBool::Bool(b) => {
-            if !b && download_rustc_commit.is_some() {
+            if !b && dwn_ctx.download_rustc_commit.is_some() {
                 panic!(
                     "`llvm.download-ci-llvm` cannot be set to `false` if `rust.download-rustc` is set to `true` or `if-unchanged`."
                 );
             }
 
-            if b && is_running_on_ci {
+            if b && dwn_ctx.is_running_on_ci {
                 // On CI, we must always rebuild LLVM if there were any modifications to it
                 panic!(
                     "`llvm.download-ci-llvm` cannot be set to `true` on CI. Use `if-unchanged` instead."
@@ -2386,7 +2281,7 @@ pub fn parse_download_ci_llvm(
             }
 
             // If download-ci-llvm=true we also want to check that CI llvm is available
-            b && llvm::is_ci_llvm_available_for_target(host_target, asserts)
+            b && llvm::is_ci_llvm_available_for_target(&dwn_ctx.host_target, asserts)
         }
         StringOrBool::String(s) if s == "if-unchanged" => if_unchanged(),
         StringOrBool::String(other) => {
@@ -2395,13 +2290,12 @@ pub fn parse_download_ci_llvm(
     }
 }
 
-pub fn has_changes_from_upstream(
-    stage0_metadata: &build_helper::stage0_parser::Stage0,
-    src: &Path,
-    path_modification_cache: Arc<Mutex<HashMap<Vec<&'static str>, PathFreshness>>>,
+pub fn has_changes_from_upstream<'a>(
+    dwn_ctx: impl AsRef<DownloadContext<'a>>,
     paths: &[&'static str],
 ) -> bool {
-    match check_path_modifications_(stage0_metadata, src, path_modification_cache, paths) {
+    let dwn_ctx = dwn_ctx.as_ref();
+    match check_path_modifications_(dwn_ctx, paths) {
         PathFreshness::LastModifiedUpstream { .. } => false,
         PathFreshness::HasLocalModifications { .. } | PathFreshness::MissingUpstream => true,
     }
@@ -2416,18 +2310,13 @@ pub fn has_changes_from_upstream(
         fields(relative_path = ?relative_path),
     ),
 )]
-pub(crate) fn update_submodule(
-    submodules: &Option<bool>,
-    exec_ctx: &ExecutionContext,
-    src: &Path,
-    rust_info: &channel::GitInfo,
-    relative_path: &str,
-) {
-    if rust_info.is_from_tarball() || !submodules_(submodules, rust_info) {
+pub(crate) fn update_submodule<'a>(dwn_ctx: impl AsRef<DownloadContext<'a>>, relative_path: &str) {
+    let dwn_ctx = dwn_ctx.as_ref();
+    if dwn_ctx.rust_info.is_from_tarball() || !submodules_(dwn_ctx.submodules, dwn_ctx.rust_info) {
         return;
     }
 
-    let absolute_path = src.join(relative_path);
+    let absolute_path = dwn_ctx.src.join(relative_path);
 
     // NOTE: This check is required because `jj git clone` doesn't create directories for
     // submodules, they are completely ignored. The code below assumes this directory exists,
@@ -2438,7 +2327,7 @@ pub(crate) fn update_submodule(
 
     // NOTE: The check for the empty directory is here because when running x.py the first time,
     // the submodule won't be checked out. Check it out now so we can build it.
-    if !git_info(exec_ctx, false, &absolute_path).is_managed_git_subrepository()
+    if !git_info(dwn_ctx.exec_ctx, false, &absolute_path).is_managed_git_subrepository()
         && !helpers::dir_is_empty(&absolute_path)
     {
         return;
@@ -2458,14 +2347,14 @@ pub(crate) fn update_submodule(
 
     // Determine commit checked out in submodule.
     let checked_out_hash =
-        submodule_git().args(["rev-parse", "HEAD"]).run_capture_stdout(exec_ctx).stdout();
+        submodule_git().args(["rev-parse", "HEAD"]).run_capture_stdout(dwn_ctx.exec_ctx).stdout();
     let checked_out_hash = checked_out_hash.trim_end();
     // Determine commit that the submodule *should* have.
-    let recorded = helpers::git(Some(src))
+    let recorded = helpers::git(Some(dwn_ctx.src))
         .run_in_dry_run()
         .args(["ls-tree", "HEAD"])
         .arg(relative_path)
-        .run_capture_stdout(exec_ctx)
+        .run_capture_stdout(dwn_ctx.exec_ctx)
         .stdout();
 
     let actual_hash = recorded
@@ -2480,24 +2369,24 @@ pub(crate) fn update_submodule(
 
     println!("Updating submodule {relative_path}");
 
-    helpers::git(Some(src))
+    helpers::git(Some(dwn_ctx.src))
         .allow_failure()
         .run_in_dry_run()
         .args(["submodule", "-q", "sync"])
         .arg(relative_path)
-        .run(exec_ctx);
+        .run(dwn_ctx.exec_ctx);
 
     // Try passing `--progress` to start, then run git again without if that fails.
     let update = |progress: bool| {
         // Git is buggy and will try to fetch submodules from the tracking branch for *this* repository,
         // even though that has no relation to the upstream for the submodule.
-        let current_branch = helpers::git(Some(src))
+        let current_branch = helpers::git(Some(dwn_ctx.src))
             .allow_failure()
             .run_in_dry_run()
             .args(["symbolic-ref", "--short", "HEAD"])
-            .run_capture(exec_ctx);
+            .run_capture(dwn_ctx.exec_ctx);
 
-        let mut git = helpers::git(Some(&src)).allow_failure();
+        let mut git = helpers::git(Some(dwn_ctx.src)).allow_failure();
         git.run_in_dry_run();
         if current_branch.is_success() {
             // If there is a tag named after the current branch, git will try to disambiguate by prepending `heads/` to the branch name.
@@ -2514,23 +2403,25 @@ pub(crate) fn update_submodule(
         git.arg(relative_path);
         git
     };
-    if !update(true).allow_failure().run(exec_ctx) {
-        update(false).allow_failure().run(exec_ctx);
+    if !update(true).allow_failure().run(dwn_ctx.exec_ctx) {
+        update(false).allow_failure().run(dwn_ctx.exec_ctx);
     }
 
     // Save any local changes, but avoid running `git stash pop` if there are none (since it will exit with an error).
     // diff-index reports the modifications through the exit status
-    let has_local_modifications =
-        !submodule_git().allow_failure().args(["diff-index", "--quiet", "HEAD"]).run(exec_ctx);
+    let has_local_modifications = !submodule_git()
+        .allow_failure()
+        .args(["diff-index", "--quiet", "HEAD"])
+        .run(dwn_ctx.exec_ctx);
     if has_local_modifications {
-        submodule_git().allow_failure().args(["stash", "push"]).run(exec_ctx);
+        submodule_git().allow_failure().args(["stash", "push"]).run(dwn_ctx.exec_ctx);
     }
 
-    submodule_git().allow_failure().args(["reset", "-q", "--hard"]).run(exec_ctx);
-    submodule_git().allow_failure().args(["clean", "-qdfx"]).run(exec_ctx);
+    submodule_git().allow_failure().args(["reset", "-q", "--hard"]).run(dwn_ctx.exec_ctx);
+    submodule_git().allow_failure().args(["clean", "-qdfx"]).run(dwn_ctx.exec_ctx);
 
     if has_local_modifications {
-        submodule_git().allow_failure().args(["stash", "pop"]).run(exec_ctx);
+        submodule_git().allow_failure().args(["stash", "pop"]).run(dwn_ctx.exec_ctx);
     }
 }
 
@@ -2548,15 +2439,14 @@ pub fn submodules_(submodules: &Option<bool>, rust_info: &channel::GitInfo) -> b
 /// In particular, we expect llvm sources to be available when this is false.
 ///
 /// NOTE: this is not the same as `!is_rust_llvm` when `llvm_has_patches` is set.
-pub fn is_system_llvm(
-    host_target: &TargetSelection,
-    llvm_from_ci: bool,
-    target_config: &HashMap<TargetSelection, Target>,
+pub fn is_system_llvm<'a>(
+    dwn_ctx: impl AsRef<DownloadContext<'a>>,
     target: TargetSelection,
 ) -> bool {
-    match target_config.get(&target) {
+    let dwn_ctx = dwn_ctx.as_ref();
+    match dwn_ctx.target_config.get(&target) {
         Some(Target { llvm_config: Some(_), .. }) => {
-            let ci_llvm = llvm_from_ci && is_host_target(host_target, &target);
+            let ci_llvm = dwn_ctx.llvm_from_ci && is_host_target(&dwn_ctx.host_target, &target);
             !ci_llvm
         }
         // We're building from the in-tree src/llvm-project sources.
@@ -2569,29 +2459,25 @@ pub fn is_host_target(host_target: &TargetSelection, target: &TargetSelection) -
     host_target == target
 }
 
-pub(crate) fn ci_llvm_root(
-    llvm_from_ci: bool,
-    out: &Path,
-    host_target: &TargetSelection,
-) -> PathBuf {
-    assert!(llvm_from_ci);
-    out.join(host_target).join("ci-llvm")
+pub(crate) fn ci_llvm_root<'a>(dwn_ctx: impl AsRef<DownloadContext<'a>>) -> PathBuf {
+    let dwn_ctx = dwn_ctx.as_ref();
+    assert!(dwn_ctx.llvm_from_ci);
+    dwn_ctx.out.join(dwn_ctx.host_target).join("ci-llvm")
 }
 
 /// Returns the content of the given file at a specific commit.
-pub(crate) fn read_file_by_commit(
-    exec_ctx: &ExecutionContext,
-    src: &Path,
-    rust_info: &channel::GitInfo,
+pub(crate) fn read_file_by_commit<'a>(
+    dwn_ctx: impl AsRef<DownloadContext<'a>>,
     file: &Path,
     commit: &str,
 ) -> String {
+    let dwn_ctx = dwn_ctx.as_ref();
     assert!(
-        rust_info.is_managed_git_subrepository(),
+        dwn_ctx.rust_info.is_managed_git_subrepository(),
         "`Config::read_file_by_commit` is not supported in non-git sources."
     );
 
-    let mut git = helpers::git(Some(src));
+    let mut git = helpers::git(Some(dwn_ctx.src));
     git.arg("show").arg(format!("{commit}:{}", file.to_str().unwrap()));
-    git.run_capture_stdout(exec_ctx).stdout()
+    git.run_capture_stdout(dwn_ctx.exec_ctx).stdout()
 }
