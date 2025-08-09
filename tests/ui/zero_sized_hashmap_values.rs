@@ -92,6 +92,14 @@ fn issue14822() {
     //~^ zero_sized_map_values
 }
 
+fn issue15429() {
+    struct E<'a>(&'a [E<'a>]);
+
+    // The assertion error happens when the type being evaluated has escaping bound vars
+    // as it cannot be wrapped in a dummy binder during size computation.
+    type F = dyn for<'a> FnOnce(HashMap<u32, E<'a>>) -> u32;
+}
+
 fn main() {
     let _: HashMap<String, ()> = HashMap::new();
     //~^ zero_sized_map_values
