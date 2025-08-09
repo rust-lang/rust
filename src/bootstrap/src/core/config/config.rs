@@ -1315,7 +1315,14 @@ impl Config {
             );
         }
 
-        if config.lld_enabled && config.is_system_llvm(config.host_target) {
+        if config.lld_enabled
+            && is_system_llvm(
+                &config.host_target,
+                config.llvm_from_ci,
+                &config.target_config,
+                config.host_target,
+            )
+        {
             panic!("Cannot enable LLD with `rust.lld = true` when using external llvm-config.");
         }
 
@@ -2699,4 +2706,29 @@ pub fn submodules_(submodules: &Option<bool>, rust_info: &channel::GitInfo) -> b
     // If not specified in config, the default is to only manage
     // submodules if we're currently inside a git repository.
     submodules.unwrap_or(rust_info.is_managed_git_subrepository())
+}
+
+/// Returns `true` if this is an external version of LLVM not managed by bootstrap.
+/// In particular, we expect llvm sources to be available when this is false.
+///
+/// NOTE: this is not the same as `!is_rust_llvm` when `llvm_has_patches` is set.
+pub fn is_system_llvm(
+    host_target: &TargetSelection,
+    llvm_from_ci: bool,
+    target_config: &HashMap<TargetSelection, Target>,
+    target: TargetSelection,
+) -> bool {
+    match target_config.get(&target) {
+        Some(Target { llvm_config: Some(_), .. }) => {
+            let ci_llvm = llvm_from_ci && is_host_target(host_target, &target);
+            !ci_llvm
+        }
+        // We're building from the in-tree src/llvm-project sources.
+        Some(Target { llvm_config: None, .. }) => false,
+        None => false,
+    }
+}
+
+pub fn is_host_target(host_target: &TargetSelection, target: &TargetSelection) -> bool {
+    host_target == target
 }
