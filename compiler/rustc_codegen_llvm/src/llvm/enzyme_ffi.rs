@@ -195,50 +195,50 @@ pub(crate) mod Fallback_AD {
     use super::{CConcreteType, CTypeTreeRef, Context};
 
     // TypeTree function fallbacks
-    pub(crate) fn EnzymeNewTypeTree() -> CTypeTreeRef {
-        unsafe { unimplemented!() }
+    pub(crate) unsafe fn EnzymeNewTypeTree() -> CTypeTreeRef {
+        unimplemented!()
     }
 
-    pub(crate) fn EnzymeNewTypeTreeCT(arg1: CConcreteType, ctx: &Context) -> CTypeTreeRef {
-        unsafe { unimplemented!() }
+    pub(crate) unsafe fn EnzymeNewTypeTreeCT(arg1: CConcreteType, ctx: &Context) -> CTypeTreeRef {
+        unimplemented!()
     }
 
-    pub(crate) fn EnzymeNewTypeTreeTR(arg1: CTypeTreeRef) -> CTypeTreeRef {
-        unsafe { unimplemented!() }
+    pub(crate) unsafe fn EnzymeNewTypeTreeTR(arg1: CTypeTreeRef) -> CTypeTreeRef {
+        unimplemented!()
     }
 
-    pub(crate) fn EnzymeFreeTypeTree(CTT: CTypeTreeRef) {
-        unsafe { unimplemented!() }
+    pub(crate) unsafe fn EnzymeFreeTypeTree(CTT: CTypeTreeRef) {
+        unimplemented!()
     }
 
-    pub(crate) fn EnzymeMergeTypeTree(arg1: CTypeTreeRef, arg2: CTypeTreeRef) -> bool {
-        unsafe { unimplemented!() }
+    pub(crate) unsafe fn EnzymeMergeTypeTree(arg1: CTypeTreeRef, arg2: CTypeTreeRef) -> bool {
+        unimplemented!()
     }
 
-    pub(crate) fn EnzymeTypeTreeOnlyEq(arg1: CTypeTreeRef, pos: i64) {
-        unsafe { unimplemented!() }
+    pub(crate) unsafe fn EnzymeTypeTreeOnlyEq(arg1: CTypeTreeRef, pos: i64) {
+        unimplemented!()
     }
 
-    pub(crate) fn EnzymeTypeTreeData0Eq(arg1: CTypeTreeRef) {
-        unsafe { unimplemented!() }
+    pub(crate) unsafe fn EnzymeTypeTreeData0Eq(arg1: CTypeTreeRef) {
+        unimplemented!()
     }
 
-    pub(crate) fn EnzymeTypeTreeShiftIndiciesEq(
+    pub(crate) unsafe fn EnzymeTypeTreeShiftIndiciesEq(
         arg1: CTypeTreeRef,
         data_layout: *const c_char,
         offset: i64,
         max_size: i64,
         add_offset: u64,
     ) {
-        unsafe { unimplemented!() }
+        unimplemented!()
     }
 
-    pub(crate) fn EnzymeTypeTreeToString(arg1: CTypeTreeRef) -> *const c_char {
-        unsafe { unimplemented!() }
+    pub(crate) unsafe fn EnzymeTypeTreeToString(arg1: CTypeTreeRef) -> *const c_char {
+        unimplemented!()
     }
 
-    pub(crate) fn EnzymeTypeTreeToStringFree(arg1: *const c_char) {
-        unsafe { unimplemented!() }
+    pub(crate) unsafe fn EnzymeTypeTreeToStringFree(arg1: *const c_char) {
+        unimplemented!()
     }
 
     pub(crate) fn set_inline(val: bool) {
