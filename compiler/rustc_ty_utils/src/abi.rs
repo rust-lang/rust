@@ -39,7 +39,7 @@ fn fn_sig_for_fn_abi<'tcx>(
             tcx.thread_local_ptr_ty(instance.def_id()),
             false,
             hir::Safety::Safe,
-            rustc_abi::ExternAbi::Unadjusted,
+            rustc_abi::ExternAbi::Rust,
         );
     }
 
@@ -268,20 +268,21 @@ fn fn_abi_of_instance<'tcx>(
 }
 
 // Handle safe Rust thin and wide pointers.
-fn adjust_for_rust_scalar<'tcx>(
+fn arg_attrs_for_rust_scalar<'tcx>(
     cx: LayoutCx<'tcx>,
-    attrs: &mut ArgAttributes,
     scalar: Scalar,
     layout: TyAndLayout<'tcx>,
     offset: Size,
     is_return: bool,
     drop_target_pointee: Option<Ty<'tcx>>,
-) {
+) -> ArgAttributes {
+    let mut attrs = ArgAttributes::new();
+
     // Booleans are always a noundef i1 that needs to be zero-extended.
     if scalar.is_bool() {
         attrs.ext(ArgExtension::Zext);
         attrs.set(ArgAttribute::NoUndef);
-        return;
+        return attrs;
     }
 
     if !scalar.is_uninit_valid() {
@@ -289,7 +290,7 @@ fn adjust_for_rust_scalar<'tcx>(
     }
 
     // Only pointer types handled below.
-    let Scalar::Initialized { value: Pointer(_), valid_range } = scalar else { return };
+    let Scalar::Initialized { value: Pointer(_), valid_range } = scalar else { return attrs };
 
     // Set `nonnull` if the validity range excludes zero, or for the argument to `drop_in_place`,
     // which must be nonnull per its documented safety requirements.
@@ -358,6 +359,8 @@ fn adjust_for_rust_scalar<'tcx>(
             }
         }
     }
+
+    attrs
 }
 
 /// Ensure that the ABI makes basic sense.
@@ -471,9 +474,10 @@ fn fn_abi_new_uncached<'tcx>(
     let (caller_location, determined_fn_def_id, is_virtual_call) = if let Some(instance) = instance
     {
         let is_virtual_call = matches!(instance.def, ty::InstanceKind::Virtual(..));
+        let is_tls_shim_call = matches!(instance.def, ty::InstanceKind::ThreadLocalShim(_));
         (
             instance.def.requires_caller_location(tcx).then(|| tcx.caller_location_ty()),
-            if is_virtual_call { None } else { Some(instance.def_id()) },
+            if is_virtual_call || is_tls_shim_call { None } else { Some(instance.def_id()) },
             is_virtual_call,
         )
     } else {
@@ -530,17 +534,7 @@ fn fn_abi_new_uncached<'tcx>(
         };
 
         let mut arg = ArgAbi::new(cx, layout, |layout, scalar, offset| {
-            let mut attrs = ArgAttributes::new();
-            adjust_for_rust_scalar(
-                *cx,
-                &mut attrs,
-                scalar,
-                *layout,
-                offset,
-                is_return,
-                drop_target_pointee,
-            );
-            attrs
+            arg_attrs_for_rust_scalar(*cx, scalar, *layout, offset, is_return, drop_target_pointee)
         });
 
         if arg.layout.is_zst() {
@@ -563,6 +557,7 @@ fn fn_abi_new_uncached<'tcx>(
         c_variadic: sig.c_variadic,
         fixed_count: inputs.len() as u32,
         conv,
+        // FIXME return false for tls shim
         can_unwind: fn_can_unwind(
             tcx,
             // Since `#[rustc_nounwind]` can change unwinding, we cannot infer unwinding by `fn_def_id` for a virtual call.
@@ -575,8 +570,9 @@ fn fn_abi_new_uncached<'tcx>(
         &mut fn_abi,
         sig.abi,
         // If this is a virtual call, we cannot pass the `fn_def_id`, as it might call other
-        // functions from vtable. Internally, `deduced_param_attrs` attempts to infer attributes by
-        // visit the function body.
+        // functions from vtable. And for a tls shim, passing the `fn_def_id` would refer to
+        // the underlying static. Internally, `deduced_param_attrs` attempts to infer attributes
+        // by visit the function body.
         determined_fn_def_id,
     );
     debug!("fn_abi_new_uncached = {:?}", fn_abi);
