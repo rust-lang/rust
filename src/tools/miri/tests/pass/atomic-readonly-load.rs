@@ -7,6 +7,7 @@ fn main() {
     // Atomic loads from read-only memory are fine if they are relaxed and small.
     static X: i32 = 0;
     let x = &X as *const i32 as *const AtomicI32;
+    #[expect(unsafe_cell_transmutes)]
     let x = unsafe { &*x };
     x.load(Ordering::Relaxed);
 }
