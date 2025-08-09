@@ -132,9 +132,9 @@ pub fn usize_const<'db>(db: &'db dyn HirDatabase, value: Option<u128>, krate: Cr
     )
 }
 
-pub fn try_const_usize<'db>(db: &'db dyn HirDatabase, c: &Const<'db>) -> Option<u128> {
+pub fn try_const_usize<'db>(db: &'db dyn HirDatabase, c: Const<'db>) -> Option<u128> {
     let interner = DbInterner::new_with(db, None, None);
-    match (*c).kind() {
+    match c.kind() {
         ConstKind::Param(_) => None,
         ConstKind::Infer(_) => None,
         ConstKind::Bound(_, _) => None,
@@ -147,7 +147,7 @@ pub fn try_const_usize<'db>(db: &'db dyn HirDatabase, c: &Const<'db>) -> Option<
             };
             let subst = convert_args_for_result(interner, unevaluated_const.args.as_slice());
             let ec = db.const_eval(c, subst, None).ok()?.to_nextsolver(interner);
-            try_const_usize(db, &ec)
+            try_const_usize(db, ec)
         }
         ConstKind::Value(val) => Some(u128::from_le_bytes(pad16(&val.value.inner().0, false))),
         ConstKind::Error(_) => None,
@@ -212,7 +212,7 @@ pub(crate) fn const_eval_discriminant_variant(
     let c = if is_signed {
         try_const_isize(db, &c).unwrap()
     } else {
-        try_const_usize(db, &c).unwrap() as i128
+        try_const_usize(db, c).unwrap() as i128
     };
     Ok(c)
 }

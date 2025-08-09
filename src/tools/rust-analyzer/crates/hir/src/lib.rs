@@ -85,7 +85,9 @@ use hir_ty::{
     layout::{Layout as TyLayout, RustcEnumVariantIdx, RustcFieldIdx, TagEncoding},
     method_resolution,
     mir::{MutBorrowKind, interpret_mir},
-    next_solver::{DbInterner, GenericArgs, SolverDefId, infer::InferCtxt},
+    next_solver::{
+        DbInterner, GenericArgs, SolverDefId, infer::InferCtxt, mapping::ChalkToNextSolver,
+    },
     primitive::UintTy,
     traits::FnTrait,
 };
@@ -1814,12 +1816,15 @@ impl Adt {
     }
 
     pub fn layout(self, db: &dyn HirDatabase) -> Result<Layout, LayoutError> {
-        db.layout_of_adt(
+        let env = db.trait_environment(self.into());
+        let interner = DbInterner::new_with(db, Some(env.krate), env.block);
+        db.layout_of_adt_ns(
             self.into(),
             TyBuilder::adt(db, self.into())
                 .fill_with_defaults(db, || TyKind::Error.intern(Interner))
-                .build_into_subst(),
-            db.trait_environment(self.into()),
+                .build_into_subst()
+                .to_nextsolver(interner),
+            env,
         )
         .map(|layout| Layout(layout, db.target_data_layout(self.krate(db).id).unwrap()))
     }

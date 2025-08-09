@@ -2299,10 +2299,10 @@ trait Foo {
 }
 "#,
         expect![[r#"
-            83..86 'bar': Foo::Bar<Self, A, B>
+            83..86 'bar': <Self as Foo>::Bar<A, B>
             105..133 '{     ...     }': ()
-            119..120 '_': Foo::Bar<Self, A, B>
-            123..126 'bar': Foo::Bar<Self, A, B>
+            119..120 '_': <Self as Foo>::Bar<A, B>
+            123..126 'bar': <Self as Foo>::Bar<A, B>
         "#]],
     );
 }

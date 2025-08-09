@@ -90,6 +90,7 @@ use intern::{Symbol, sym};
 use la_arena::{Arena, Idx};
 use mir::{MirEvalError, VTableMap};
 use rustc_hash::{FxBuildHasher, FxHashMap, FxHashSet};
+use rustc_type_ir::inherent::SliceLike;
 use syntax::ast::{ConstArg, make};
 use traits::FnTrait;
 use triomphe::Arc;
@@ -100,6 +101,7 @@ use crate::{
     display::{DisplayTarget, HirDisplay},
     generics::Generics,
     infer::unify::InferenceTable,
+    next_solver::{DbInterner, mapping::convert_ty_for_result},
 };
 
 pub use autoderef::autoderef;
@@ -558,6 +560,27 @@ impl CallableSig {
             is_varargs: fn_ptr.sig.variadic,
             safety: fn_ptr.sig.safety,
             abi: fn_ptr.sig.abi,
+        }
+    }
+    pub fn from_fn_sig_and_header<'db>(
+        interner: DbInterner<'db>,
+        sig: crate::next_solver::Binder<'db, rustc_type_ir::FnSigTys<DbInterner<'db>>>,
+        header: rustc_type_ir::FnHeader<DbInterner<'db>>,
+    ) -> CallableSig {
+        CallableSig {
+            // FIXME: what to do about lifetime params? -> return PolyFnSig
+            params_and_return: Arc::from_iter(
+                sig.skip_binder()
+                    .inputs_and_output
+                    .iter()
+                    .map(|t| convert_ty_for_result(interner, t)),
+            ),
+            is_varargs: header.c_variadic,
+            safety: match header.safety {
+                next_solver::abi::Safety::Safe => chalk_ir::Safety::Safe,
+                next_solver::abi::Safety::Unsafe => chalk_ir::Safety::Unsafe,
+            },
+            abi: header.abi,
         }
     }
 

@@ -153,7 +153,7 @@ fn layout_of_simd_ty<'db>(
         return Err(LayoutError::InvalidSimdType);
     };
 
-    let e_len = try_const_usize(db, &e_len).ok_or(LayoutError::HasErrorConst)? as u64;
+    let e_len = try_const_usize(db, e_len).ok_or(LayoutError::HasErrorConst)? as u64;
     let e_ly = db.layout_of_ty_ns(e_ty, env)?;
 
     let cx = LayoutCx::new(dl);
@@ -272,7 +272,7 @@ pub fn layout_of_ty_ns_query<'db>(
             cx.calc.univariant(&fields, &ReprOptions::default(), kind)?
         }
         TyKind::Array(element, count) => {
-            let count = try_const_usize(db, &count).ok_or(LayoutError::HasErrorConst)? as u64;
+            let count = try_const_usize(db, count).ok_or(LayoutError::HasErrorConst)? as u64;
             let element = db.layout_of_ty_ns(element, trait_env)?;
             cx.calc.array_like::<_, _, ()>(&element, Some(count))?
         }

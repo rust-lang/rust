@@ -67,7 +67,7 @@ use ide_db::{
     FxHashMap, FxIndexSet, LineIndexDatabase,
     base_db::{
         CrateOrigin, CrateWorkspaceData, Env, FileSet, RootQueryDb, SourceDatabase, VfsPath,
-        salsa::Cancelled,
+        salsa::{self, Cancelled},
     },
     prime_caches, symbol_index,
 };
@@ -461,7 +461,9 @@ impl Analysis {
         hasher: impl Fn(&InlayHint) -> u64 + Send + UnwindSafe,
     ) -> Cancellable<Option<InlayHint>> {
         self.with_db(|db| {
-            inlay_hints::inlay_hints_resolve(db, file_id, resolve_range, hash, config, hasher)
+            salsa::attach(db, || {
+                inlay_hints::inlay_hints_resolve(db, file_id, resolve_range, hash, config, hasher)
+            })
         })
     }
 
@@ -536,7 +538,7 @@ impl Analysis {
         config: &HoverConfig,
         range: FileRange,
     ) -> Cancellable<Option<RangeInfo<HoverResult>>> {
-        self.with_db(|db| hover::hover(db, range, config))
+        self.with_db(|db| salsa::attach(db, || hover::hover(db, range, config)))
     }
 
     /// Returns moniker of symbol at position.
@@ -544,7 +546,7 @@ impl Analysis {
         &self,
         position: FilePosition,
     ) -> Cancellable<Option<RangeInfo<Vec<moniker::MonikerResult>>>> {
-        self.with_db(|db| moniker::moniker(db, position))
+        self.with_db(|db| salsa::attach(db, || moniker::moniker(db, position)))
     }
 
     /// Returns URL(s) for the documentation of the symbol under the cursor.
@@ -640,7 +642,7 @@ impl Analysis {
 
     /// Returns the set of possible targets to run for the current file.
     pub fn runnables(&self, file_id: FileId) -> Cancellable<Vec<Runnable>> {
-        self.with_db(|db| runnables::runnables(db, file_id))
+        self.with_db(|db| salsa::attach(db, || runnables::runnables(db, file_id)))
     }
 
     /// Returns the set of tests for the given file position.

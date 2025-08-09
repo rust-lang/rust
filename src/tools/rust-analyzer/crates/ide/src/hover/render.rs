@@ -912,7 +912,7 @@ pub(super) fn literal(
     };
     let ty = ty.display(sema.db, display_target);
 
-    let mut s = format!("```rust\n{ty}\n```\n___\n\n");
+    let mut s = salsa::attach(sema.db, || format!("```rust\n{ty}\n```\n___\n\n"));
     match value {
         Ok(value) => {
             let backtick_len = value.chars().filter(|c| *c == '`').count();

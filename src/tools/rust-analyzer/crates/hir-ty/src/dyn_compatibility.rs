@@ -615,7 +615,6 @@ fn receiver_for_self_ty<'db>(
         },
     );
 
-    
     crate::next_solver::EarlyBinder::bind(receiver_ty).instantiate(interner, args)
 }
 

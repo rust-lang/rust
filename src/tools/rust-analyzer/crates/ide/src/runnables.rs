@@ -10,7 +10,7 @@ use hir::{
 use ide_assists::utils::{has_test_related_attribute, test_related_attribute_syn};
 use ide_db::{
     FilePosition, FxHashMap, FxIndexMap, FxIndexSet, RootDatabase, SymbolKind,
-    base_db::RootQueryDb,
+    base_db::{RootQueryDb, salsa},
     defs::Definition,
     documentation::docs_from_attrs,
     helpers::visit_file_defs,
@@ -414,11 +414,13 @@ pub(crate) fn runnable_impl(
     let ty = def.self_ty(sema.db);
     let adt_name = ty.as_adt()?.name(sema.db);
     let mut ty_args = ty.generic_parameters(sema.db, display_target).peekable();
-    let params = if ty_args.peek().is_some() {
-        format!("<{}>", ty_args.format_with(",", |ty, cb| cb(&ty)))
-    } else {
-        String::new()
-    };
+    let params = salsa::attach(sema.db, || {
+        if ty_args.peek().is_some() {
+            format!("<{}>", ty_args.format_with(",", |ty, cb| cb(&ty)))
+        } else {
+            String::new()
+        }
+    });
     let mut test_id = format!("{}{params}", adt_name.display(sema.db, edition));
     test_id.retain(|c| c != ' ');
     let test_id = TestId::Path(test_id);
@@ -521,7 +523,9 @@ fn module_def_doctest(db: &RootDatabase, def: Definition) -> Option<Runnable> {
             let mut ty_args = ty.generic_parameters(db, display_target).peekable();
             format_to!(path, "{}", name.display(db, edition));
             if ty_args.peek().is_some() {
-                format_to!(path, "<{}>", ty_args.format_with(",", |ty, cb| cb(&ty)));
+                salsa::attach(db, || {
+                    format_to!(path, "<{}>", ty_args.format_with(",", |ty, cb| cb(&ty)));
+                });
             }
             format_to!(path, "::{}", def_name.display(db, edition));
             path.retain(|c| c != ' ');

@@ -11,8 +11,8 @@ use base_db::Crate;
 use chalk_ir::{BoundVar, Safety, TyKind};
 use either::Either;
 use hir_def::{
-    GenericDefId, HasModule, ImportPathConfig, ItemContainerId, LocalFieldId, Lookup, ModuleDefId,
-    ModuleId, TraitId,
+    GenericDefId, HasModule, ImportPathConfig, LocalFieldId, Lookup, ModuleDefId, ModuleId,
+    TraitId,
     db::DefDatabase,
     expr_store::{ExpressionStore, path::Path},
     find_path::{self, PrefixKind},
@@ -37,26 +37,34 @@ use rustc_apfloat::{
     ieee::{Half as f16, Quad as f128},
 };
 use rustc_hash::FxHashSet;
+use rustc_type_ir::{
+    AliasTyKind,
+    inherent::{AdtDef, IntoKind, SliceLike},
+};
 use smallvec::SmallVec;
 use span::Edition;
 use stdx::never;
 use triomphe::Arc;
 
 use crate::{
-    AdtId, AliasEq, AliasTy, Binders, CallableDefId, CallableSig, ConcreteConst, Const,
-    ConstScalar, ConstValue, DomainGoal, FnAbi, GenericArg, ImplTraitId, Interner, Lifetime,
-    LifetimeData, LifetimeOutlives, MemoryMap, Mutability, OpaqueTy, ProjectionTy, ProjectionTyExt,
-    QuantifiedWhereClause, Scalar, Substitution, TraitEnvironment, TraitRef, TraitRefExt, Ty,
-    TyExt, WhereClause,
-    consteval::try_const_usize,
+    AliasEq, AliasTy, Binders, CallableDefId, CallableSig, ConcreteConst, Const, ConstScalar,
+    ConstValue, DomainGoal, FnAbi, GenericArg, ImplTraitId, Interner, Lifetime, LifetimeData,
+    LifetimeOutlives, MemoryMap, OpaqueTy, ProjectionTy, ProjectionTyExt, QuantifiedWhereClause,
+    TraitEnvironment, TraitRef, TraitRefExt, Ty, TyExt, WhereClause, consteval_nextsolver,
     db::{HirDatabase, InternedClosure},
-    from_assoc_type_id, from_foreign_def_id, from_placeholder_idx,
+    from_assoc_type_id, from_placeholder_idx,
     generics::generics,
     infer::normalize,
     layout::Layout,
     lt_from_placeholder_idx,
-    mapping::from_chalk,
     mir::pad16,
+    next_solver::{
+        BoundExistentialPredicate, Ctor, DbInterner, GenericArgs, SolverDefId,
+        mapping::{
+            ChalkToNextSolver, convert_args_for_result, convert_const_for_result,
+            convert_region_for_result, convert_ty_for_result,
+        },
+    },
     primitive, to_assoc_type_id,
     utils::{self, ClosureSubst, detect_variant_from_bytes},
 };
@@ -181,6 +189,29 @@ impl HirFormatter<'_> {
             DisplayLifetime::OnlyNamedOrStatic => matches!(
                 ***lifetime.interned(),
                 LifetimeData::Static | LifetimeData::Placeholder(_)
+            ),
+            DisplayLifetime::Never => false,
+        }
+    }
+
+    fn render_region(&self, lifetime: crate::next_solver::Region<'_>) -> bool {
+        match self.display_lifetimes {
+            DisplayLifetime::Always => true,
+            DisplayLifetime::OnlyStatic => {
+                matches!(lifetime.kind(), rustc_type_ir::RegionKind::ReStatic)
+            }
+            DisplayLifetime::OnlyNamed => {
+                matches!(
+                    lifetime.kind(),
+                    rustc_type_ir::RegionKind::RePlaceholder(_)
+                        | rustc_type_ir::RegionKind::ReEarlyParam(_)
+                )
+            }
+            DisplayLifetime::OnlyNamedOrStatic => matches!(
+                lifetime.kind(),
+                rustc_type_ir::RegionKind::ReStatic
+                    | rustc_type_ir::RegionKind::RePlaceholder(_)
+                    | rustc_type_ir::RegionKind::ReEarlyParam(_)
             ),
             DisplayLifetime::Never => false,
         }
@@ -476,10 +507,6 @@ impl DisplayKind {
         matches!(self, Self::SourceCode { .. })
     }
 
-    fn is_test(self) -> bool {
-        matches!(self, Self::Test)
-    }
-
     fn allows_opaque(self) -> bool {
         match self {
             Self::SourceCode { allow_opaque, .. } => allow_opaque,
@@ -721,59 +748,87 @@ fn render_const_scalar(
     ty: &Ty,
 ) -> Result<(), HirDisplayError> {
     let trait_env = TraitEnvironment::empty(f.krate());
+    let interner = DbInterner::new_with(f.db, Some(trait_env.krate), trait_env.block);
     let ty = normalize(f.db, trait_env.clone(), ty.clone());
-    match ty.kind(Interner) {
-        TyKind::Scalar(s) => match s {
-            Scalar::Bool => write!(f, "{}", b[0] != 0),
-            Scalar::Char => {
-                let it = u128::from_le_bytes(pad16(b, false)) as u32;
-                let Ok(c) = char::try_from(it) else {
-                    return f.write_str("<unicode-error>");
-                };
-                write!(f, "{c:?}")
+    let ty = ty.to_nextsolver(interner);
+    render_const_scalar_inner(f, b, memory_map, ty, trait_env, interner)
+}
+
+fn render_const_scalar_ns(
+    f: &mut HirFormatter<'_>,
+    b: &[u8],
+    memory_map: &MemoryMap,
+    ty: crate::next_solver::Ty<'_>,
+) -> Result<(), HirDisplayError> {
+    let trait_env = TraitEnvironment::empty(f.krate());
+    let interner = DbInterner::new_with(f.db, Some(trait_env.krate), trait_env.block);
+    let ty = crate::next_solver::project::solve_normalize::normalize(
+        interner,
+        trait_env.env.to_nextsolver(interner),
+        ty,
+    );
+    render_const_scalar_inner(f, b, memory_map, ty, trait_env, interner)
+}
+
+fn render_const_scalar_inner(
+    f: &mut HirFormatter<'_>,
+    b: &[u8],
+    memory_map: &MemoryMap,
+    ty: crate::next_solver::Ty<'_>,
+    trait_env: Arc<TraitEnvironment>,
+    interner: DbInterner<'_>,
+) -> Result<(), HirDisplayError> {
+    use rustc_type_ir::TyKind;
+    match ty.kind() {
+        TyKind::Bool => write!(f, "{}", b[0] != 0),
+        TyKind::Char => {
+            let it = u128::from_le_bytes(pad16(b, false)) as u32;
+            let Ok(c) = char::try_from(it) else {
+                return f.write_str("<unicode-error>");
+            };
+            write!(f, "{c:?}")
+        }
+        TyKind::Int(_) => {
+            let it = i128::from_le_bytes(pad16(b, true));
+            write!(f, "{it}")
+        }
+        TyKind::Uint(_) => {
+            let it = u128::from_le_bytes(pad16(b, false));
+            write!(f, "{it}")
+        }
+        TyKind::Float(fl) => match fl {
+            rustc_type_ir::FloatTy::F16 => {
+                // FIXME(#17451): Replace with builtins once they are stabilised.
+                let it = f16::from_bits(u16::from_le_bytes(b.try_into().unwrap()).into());
+                let s = it.to_string();
+                if s.strip_prefix('-').unwrap_or(&s).chars().all(|c| c.is_ascii_digit()) {
+                    // Match Rust debug formatting
+                    write!(f, "{s}.0")
+                } else {
+                    write!(f, "{s}")
+                }
             }
-            Scalar::Int(_) => {
-                let it = i128::from_le_bytes(pad16(b, true));
-                write!(f, "{it}")
+            rustc_type_ir::FloatTy::F32 => {
+                let it = f32::from_le_bytes(b.try_into().unwrap());
+                write!(f, "{it:?}")
             }
-            Scalar::Uint(_) => {
-                let it = u128::from_le_bytes(pad16(b, false));
-                write!(f, "{it}")
+            rustc_type_ir::FloatTy::F64 => {
+                let it = f64::from_le_bytes(b.try_into().unwrap());
+                write!(f, "{it:?}")
             }
-            Scalar::Float(fl) => match fl {
-                chalk_ir::FloatTy::F16 => {
-                    // FIXME(#17451): Replace with builtins once they are stabilised.
-                    let it = f16::from_bits(u16::from_le_bytes(b.try_into().unwrap()).into());
-                    let s = it.to_string();
-                    if s.strip_prefix('-').unwrap_or(&s).chars().all(|c| c.is_ascii_digit()) {
-                        // Match Rust debug formatting
-                        write!(f, "{s}.0")
-                    } else {
-                        write!(f, "{s}")
-                    }
+            rustc_type_ir::FloatTy::F128 => {
+                // FIXME(#17451): Replace with builtins once they are stabilised.
+                let it = f128::from_bits(u128::from_le_bytes(b.try_into().unwrap()));
+                let s = it.to_string();
+                if s.strip_prefix('-').unwrap_or(&s).chars().all(|c| c.is_ascii_digit()) {
+                    // Match Rust debug formatting
+                    write!(f, "{s}.0")
+                } else {
+                    write!(f, "{s}")
                 }
-                chalk_ir::FloatTy::F32 => {
-                    let it = f32::from_le_bytes(b.try_into().unwrap());
-                    write!(f, "{it:?}")
-                }
-                chalk_ir::FloatTy::F64 => {
-                    let it = f64::from_le_bytes(b.try_into().unwrap());
-                    write!(f, "{it:?}")
-                }
-                chalk_ir::FloatTy::F128 => {
-                    // FIXME(#17451): Replace with builtins once they are stabilised.
-                    let it = f128::from_bits(u128::from_le_bytes(b.try_into().unwrap()));
-                    let s = it.to_string();
-                    if s.strip_prefix('-').unwrap_or(&s).chars().all(|c| c.is_ascii_digit()) {
-                        // Match Rust debug formatting
-                        write!(f, "{s}.0")
-                    } else {
-                        write!(f, "{s}")
-                    }
-                }
-            },
+            }
         },
-        TyKind::Ref(_, _, t) => match t.kind(Interner) {
+        TyKind::Ref(_, t, _) => match t.kind() {
             TyKind::Str => {
                 let addr = usize::from_le_bytes(b[0..b.len() / 2].try_into().unwrap());
                 let size = usize::from_le_bytes(b[b.len() / 2..].try_into().unwrap());
@@ -786,7 +841,7 @@ fn render_const_scalar(
             TyKind::Slice(ty) => {
                 let addr = usize::from_le_bytes(b[0..b.len() / 2].try_into().unwrap());
                 let count = usize::from_le_bytes(b[b.len() / 2..].try_into().unwrap());
-                let Ok(layout) = f.db.layout_of_ty(ty.clone(), trait_env) else {
+                let Ok(layout) = f.db.layout_of_ty_ns(ty, trait_env) else {
                     return f.write_str("<layout-error>");
                 };
                 let size_one = layout.size.bytes_usize();
@@ -810,11 +865,11 @@ fn render_const_scalar(
                         f.write_str(", ")?;
                     }
                     let offset = size_one * i;
-                    render_const_scalar(f, &bytes[offset..offset + size_one], memory_map, ty)?;
+                    render_const_scalar_ns(f, &bytes[offset..offset + size_one], memory_map, ty)?;
                 }
                 f.write_str("]")
             }
-            TyKind::Dyn(_) => {
+            TyKind::Dynamic(_, _, _) => {
                 let addr = usize::from_le_bytes(b[0..b.len() / 2].try_into().unwrap());
                 let ty_id = usize::from_le_bytes(b[b.len() / 2..].try_into().unwrap());
                 let Ok(t) = memory_map.vtable_ty(ty_id) else {
@@ -828,15 +883,16 @@ fn render_const_scalar(
                     return f.write_str("<ref-data-not-available>");
                 };
                 f.write_str("&")?;
-                render_const_scalar(f, bytes, memory_map, t)
+                render_const_scalar_ns(f, bytes, memory_map, t.to_nextsolver(interner))
             }
-            TyKind::Adt(adt, _) if b.len() == 2 * size_of::<usize>() => match adt.0 {
-                hir_def::AdtId::StructId(s) => {
+            TyKind::Adt(adt, _) if b.len() == 2 * size_of::<usize>() => match adt.def_id() {
+                SolverDefId::AdtId(hir_def::AdtId::StructId(s)) => {
                     let data = f.db.struct_signature(s);
                     write!(f, "&{}", data.name.display(f.db, f.edition()))?;
                     Ok(())
                 }
-                _ => f.write_str("<unsized-enum-or-union>"),
+                SolverDefId::AdtId(_) => f.write_str("<unsized-enum-or-union>"),
+                _ => unreachable!(),
             },
             _ => {
                 let addr = usize::from_le_bytes(match b.try_into() {
@@ -850,7 +906,7 @@ fn render_const_scalar(
                         return f.write_str("<layout-error>");
                     }
                 });
-                let Ok(layout) = f.db.layout_of_ty(t.clone(), trait_env) else {
+                let Ok(layout) = f.db.layout_of_ty_ns(t, trait_env) else {
                     return f.write_str("<layout-error>");
                 };
                 let size = layout.size.bytes_usize();
@@ -858,37 +914,40 @@ fn render_const_scalar(
                     return f.write_str("<ref-data-not-available>");
                 };
                 f.write_str("&")?;
-                render_const_scalar(f, bytes, memory_map, t)
+                render_const_scalar_ns(f, bytes, memory_map, t)
             }
         },
-        TyKind::Tuple(_, subst) => {
-            let Ok(layout) = f.db.layout_of_ty(ty.clone(), trait_env.clone()) else {
+        TyKind::Tuple(tys) => {
+            let Ok(layout) = f.db.layout_of_ty_ns(ty, trait_env.clone()) else {
                 return f.write_str("<layout-error>");
             };
             f.write_str("(")?;
             let mut first = true;
-            for (id, ty) in subst.iter(Interner).enumerate() {
+            for (id, ty) in tys.iter().enumerate() {
                 if first {
                     first = false;
                 } else {
                     f.write_str(", ")?;
                 }
-                let ty = ty.assert_ty_ref(Interner); // Tuple only has type argument
                 let offset = layout.fields.offset(id).bytes_usize();
-                let Ok(layout) = f.db.layout_of_ty(ty.clone(), trait_env.clone()) else {
+                let Ok(layout) = f.db.layout_of_ty_ns(ty, trait_env.clone()) else {
                     f.write_str("<layout-error>")?;
                     continue;
                 };
                 let size = layout.size.bytes_usize();
-                render_const_scalar(f, &b[offset..offset + size], memory_map, ty)?;
+                render_const_scalar_ns(f, &b[offset..offset + size], memory_map, ty)?;
             }
             f.write_str(")")
         }
-        TyKind::Adt(adt, subst) => {
-            let Ok(layout) = f.db.layout_of_adt(adt.0, subst.clone(), trait_env.clone()) else {
+        TyKind::Adt(def, args) => {
+            let def = match def.def_id() {
+                SolverDefId::AdtId(def) => def,
+                _ => unreachable!(),
+            };
+            let Ok(layout) = f.db.layout_of_adt_ns(def, args, trait_env.clone()) else {
                 return f.write_str("<layout-error>");
             };
-            match adt.0 {
+            match def {
                 hir_def::AdtId::StructId(s) => {
                     let data = f.db.struct_signature(s);
                     write!(f, "{}", data.name.display(f.db, f.edition()))?;
@@ -897,9 +956,9 @@ fn render_const_scalar(
                         s.fields(f.db),
                         f,
                         &field_types,
-                        f.db.trait_environment(adt.0.into()),
+                        f.db.trait_environment(def.into()),
                         &layout,
-                        subst,
+                        args,
                         b,
                         memory_map,
                     )
@@ -929,9 +988,9 @@ fn render_const_scalar(
                         var_id.fields(f.db),
                         f,
                         &field_types,
-                        f.db.trait_environment(adt.0.into()),
+                        f.db.trait_environment(def.into()),
                         var_layout,
-                        subst,
+                        args,
                         b,
                         memory_map,
                     )
@@ -939,16 +998,16 @@ fn render_const_scalar(
             }
         }
         TyKind::FnDef(..) => ty.hir_fmt(f),
-        TyKind::Function(_) | TyKind::Raw(_, _) => {
+        TyKind::FnPtr(_, _) | TyKind::RawPtr(_, _) => {
             let it = u128::from_le_bytes(pad16(b, false));
             write!(f, "{it:#X} as ")?;
             ty.hir_fmt(f)
         }
         TyKind::Array(ty, len) => {
-            let Some(len) = try_const_usize(f.db, len) else {
+            let Some(len) = consteval_nextsolver::try_const_usize(f.db, len) else {
                 return f.write_str("<unknown-array-len>");
             };
-            let Ok(layout) = f.db.layout_of_ty(ty.clone(), trait_env) else {
+            let Ok(layout) = f.db.layout_of_ty_ns(ty, trait_env) else {
                 return f.write_str("<layout-error>");
             };
             let size_one = layout.size.bytes_usize();
@@ -961,7 +1020,7 @@ fn render_const_scalar(
                     f.write_str(", ")?;
                 }
                 let offset = size_one * i;
-                render_const_scalar(f, &b[offset..offset + size_one], memory_map, ty)?;
+                render_const_scalar_ns(f, &b[offset..offset + size_one], memory_map, ty)?;
             }
             f.write_str("]")
         }
@@ -969,17 +1028,19 @@ fn render_const_scalar(
         TyKind::Closure(_, _) => f.write_str("<closure>"),
         TyKind::Coroutine(_, _) => f.write_str("<coroutine>"),
         TyKind::CoroutineWitness(_, _) => f.write_str("<coroutine-witness>"),
+        TyKind::CoroutineClosure(_, _) => f.write_str("<coroutine-closure>"),
+        TyKind::UnsafeBinder(_) => f.write_str("<unsafe-binder>"),
         // The below arms are unreachable, since const eval will bail out before here.
         TyKind::Foreign(_) => f.write_str("<extern-type>"),
-        TyKind::Error
+        TyKind::Pat(_, _) => f.write_str("<pat>"),
+        TyKind::Error(..)
         | TyKind::Placeholder(_)
-        | TyKind::Alias(_)
-        | TyKind::AssociatedType(_, _)
-        | TyKind::OpaqueType(_, _)
-        | TyKind::BoundVar(_)
-        | TyKind::InferenceVar(_, _) => f.write_str("<placeholder-or-unknown-type>"),
+        | TyKind::Alias(_, _)
+        | TyKind::Param(_)
+        | TyKind::Bound(_, _)
+        | TyKind::Infer(_) => f.write_str("<placeholder-or-unknown-type>"),
         // The below arms are unreachable, since we handled them in ref case.
-        TyKind::Slice(_) | TyKind::Str | TyKind::Dyn(_) => f.write_str("<unsized-value>"),
+        TyKind::Slice(_) | TyKind::Str | TyKind::Dynamic(_, _, _) => f.write_str("<unsized-value>"),
     }
 }
 
@@ -989,15 +1050,18 @@ fn render_variant_after_name(
     field_types: &ArenaMap<LocalFieldId, Binders<Ty>>,
     trait_env: Arc<TraitEnvironment>,
     layout: &Layout,
-    subst: &Substitution,
+    args: GenericArgs<'_>,
     b: &[u8],
     memory_map: &MemoryMap,
 ) -> Result<(), HirDisplayError> {
+    let interner = DbInterner::new_with(f.db, Some(trait_env.krate), trait_env.block);
     match data.shape {
         FieldsShape::Record | FieldsShape::Tuple => {
             let render_field = |f: &mut HirFormatter<'_>, id: LocalFieldId| {
                 let offset = layout.fields.offset(u32::from(id.into_raw()) as usize).bytes_usize();
-                let ty = field_types[id].clone().substitute(Interner, subst);
+                let ty = field_types[id]
+                    .clone()
+                    .substitute(Interner, &convert_args_for_result(interner, args.as_slice()));
                 let Ok(layout) = f.db.layout_of_ty(ty.clone(), trait_env.clone()) else {
                     return f.write_str("<layout-error>");
                 };
@@ -1045,18 +1109,30 @@ impl HirDisplay for Ty {
         &self,
         f @ &mut HirFormatter { db, .. }: &mut HirFormatter<'_>,
     ) -> Result<(), HirDisplayError> {
+        let ty = self.to_nextsolver(DbInterner::new_with(db, None, None));
+        ty.hir_fmt(f)
+    }
+}
+
+impl<'db> HirDisplay for crate::next_solver::Ty<'db> {
+    fn hir_fmt(
+        &self,
+        f @ &mut HirFormatter { db, .. }: &mut HirFormatter<'_>,
+    ) -> Result<(), HirDisplayError> {
+        let interner = DbInterner::new_with(db, None, None);
         if f.should_truncate() {
             return write!(f, "{TYPE_HINT_TRUNCATION}");
         }
 
-        match self.kind(Interner) {
+        use rustc_type_ir::TyKind;
+        match self.kind() {
             TyKind::Never => write!(f, "!")?,
             TyKind::Str => write!(f, "str")?,
-            TyKind::Scalar(Scalar::Bool) => write!(f, "bool")?,
-            TyKind::Scalar(Scalar::Char) => write!(f, "char")?,
-            &TyKind::Scalar(Scalar::Float(t)) => write!(f, "{}", primitive::float_ty_to_string(t))?,
-            &TyKind::Scalar(Scalar::Int(t)) => write!(f, "{}", primitive::int_ty_to_string(t))?,
-            &TyKind::Scalar(Scalar::Uint(t)) => write!(f, "{}", primitive::uint_ty_to_string(t))?,
+            TyKind::Bool => write!(f, "bool")?,
+            TyKind::Char => write!(f, "char")?,
+            TyKind::Float(t) => write!(f, "{}", primitive::float_ty_to_string_ns(t))?,
+            TyKind::Int(t) => write!(f, "{}", primitive::int_ty_to_string_ns(t))?,
+            TyKind::Uint(t) => write!(f, "{}", primitive::uint_ty_to_string_ns(t))?,
             TyKind::Slice(t) => {
                 write!(f, "[")?;
                 t.hir_fmt(f)?;
@@ -1066,27 +1142,27 @@ impl HirDisplay for Ty {
                 write!(f, "[")?;
                 t.hir_fmt(f)?;
                 write!(f, "; ")?;
-                c.hir_fmt(f)?;
+                convert_const_for_result(interner, c).hir_fmt(f)?;
                 write!(f, "]")?;
             }
-            kind @ (TyKind::Raw(m, t) | TyKind::Ref(m, _, t)) => {
-                if let TyKind::Ref(_, l, _) = kind {
+            kind @ (TyKind::RawPtr(t, m) | TyKind::Ref(_, t, m)) => {
+                if let TyKind::Ref(l, _, _) = kind {
                     f.write_char('&')?;
-                    if f.render_lifetime(l) {
-                        l.hir_fmt(f)?;
+                    if f.render_region(l) {
+                        convert_region_for_result(l).hir_fmt(f)?;
                         f.write_char(' ')?;
                     }
                     match m {
-                        Mutability::Not => (),
-                        Mutability::Mut => f.write_str("mut ")?,
+                        rustc_ast_ir::Mutability::Not => (),
+                        rustc_ast_ir::Mutability::Mut => f.write_str("mut ")?,
                     }
                 } else {
                     write!(
                         f,
                         "*{}",
                         match m {
-                            Mutability::Not => "const ",
-                            Mutability::Mut => "mut ",
+                            rustc_ast_ir::Mutability::Not => "const ",
+                            rustc_ast_ir::Mutability::Mut => "mut ",
                         }
                     )?;
                 }
@@ -1102,25 +1178,42 @@ impl HirDisplay for Ty {
                         }
                     })
                 };
-                let (preds_to_print, has_impl_fn_pred) = match t.kind(Interner) {
-                    TyKind::Dyn(dyn_ty) => {
-                        let bounds = dyn_ty.bounds.skip_binders().interned();
-                        let render_lifetime = f.render_lifetime(&dyn_ty.lifetime);
-                        (bounds.len() + render_lifetime as usize, contains_impl_fn(bounds))
+                let contains_impl_fn_ns = |bounds: &[BoundExistentialPredicate<'_>]| {
+                    bounds.iter().any(|bound| match bound.skip_binder() {
+                        rustc_type_ir::ExistentialPredicate::Trait(trait_ref) => {
+                            let trait_ = match trait_ref.def_id {
+                                SolverDefId::TraitId(id) => id,
+                                _ => unreachable!(),
+                            };
+                            fn_traits(db, trait_).any(|it| it == trait_)
+                        }
+                        _ => false,
+                    })
+                };
+                let (preds_to_print, has_impl_fn_pred) = match t.kind() {
+                    TyKind::Dynamic(bounds, region, _) => {
+                        let render_lifetime = f.render_region(region);
+                        (
+                            bounds.len() + render_lifetime as usize,
+                            contains_impl_fn_ns(bounds.as_slice()),
+                        )
                     }
-                    TyKind::Alias(AliasTy::Opaque(OpaqueTy {
-                        opaque_ty_id,
-                        substitution: parameters,
-                    }))
-                    | TyKind::OpaqueType(opaque_ty_id, parameters) => {
-                        let impl_trait_id = db.lookup_intern_impl_trait_id((*opaque_ty_id).into());
+                    TyKind::Alias(AliasTyKind::Opaque, ty) => {
+                        let opaque_ty_id = match ty.def_id {
+                            SolverDefId::InternedOpaqueTyId(id) => id,
+                            _ => unreachable!(),
+                        };
+                        let impl_trait_id = db.lookup_intern_impl_trait_id(opaque_ty_id);
                         if let ImplTraitId::ReturnTypeImplTrait(func, idx) = impl_trait_id {
                             let datas = db
                                 .return_type_impl_traits(func)
                                 .expect("impl trait id without data");
                             let data =
                                 (*datas).as_ref().map(|rpit| rpit.impl_traits[idx].bounds.clone());
-                            let bounds = data.substitute(Interner, parameters);
+                            let bounds = data.substitute(
+                                Interner,
+                                &convert_args_for_result(interner, ty.args.as_slice()),
+                            );
                             let mut len = bounds.skip_binders().len();
 
                             // Don't count Sized but count when it absent
@@ -1167,24 +1260,31 @@ impl HirDisplay for Ty {
                     t.hir_fmt(f)?;
                 }
             }
-            TyKind::Tuple(_, substs) => {
-                if substs.len(Interner) == 1 {
+            TyKind::Tuple(tys) => {
+                if tys.len() == 1 {
                     write!(f, "(")?;
-                    substs.at(Interner, 0).hir_fmt(f)?;
+                    tys.as_slice()[0].hir_fmt(f)?;
                     write!(f, ",)")?;
                 } else {
                     write!(f, "(")?;
-                    f.write_joined(substs.as_slice(Interner), ", ")?;
+                    f.write_joined(tys.as_slice(), ", ")?;
                     write!(f, ")")?;
                 }
             }
-            TyKind::Function(fn_ptr) => {
-                let sig = CallableSig::from_fn_ptr(fn_ptr);
+            TyKind::FnPtr(sig, header) => {
+                let sig = CallableSig::from_fn_sig_and_header(interner, sig, header);
                 sig.hir_fmt(f)?;
             }
-            TyKind::FnDef(def, parameters) => {
-                let def = from_chalk(db, *def);
-                let sig = db.callable_item_signature(def).substitute(Interner, parameters);
+            TyKind::FnDef(def, args) => {
+                let def = match def {
+                    SolverDefId::FunctionId(id) => CallableDefId::FunctionId(id),
+                    SolverDefId::Ctor(Ctor::Enum(e)) => CallableDefId::EnumVariantId(e),
+                    SolverDefId::Ctor(Ctor::Struct(s)) => CallableDefId::StructId(s),
+                    _ => unreachable!(),
+                };
+                let sig = db
+                    .callable_item_signature(def)
+                    .substitute(Interner, &convert_args_for_result(interner, args.as_slice()));
 
                 if f.display_kind.is_source_code() {
                     // `FnDef` is anonymous and there's no surface syntax for it. Show it as a
@@ -1222,6 +1322,7 @@ impl HirDisplay for Ty {
                 };
                 f.end_location_link();
 
+                let parameters = convert_args_for_result(interner, args.as_slice());
                 if parameters.len(Interner) > 0 {
                     let generic_def_id = GenericDefId::from_callable(db, def);
                     let generics = generics(db, generic_def_id);
@@ -1280,11 +1381,15 @@ impl HirDisplay for Ty {
                     ret.hir_fmt(f)?;
                 }
             }
-            TyKind::Adt(AdtId(def_id), parameters) => {
-                f.start_location_link((*def_id).into());
+            TyKind::Adt(def, parameters) => {
+                let def_id = match def.def_id() {
+                    SolverDefId::AdtId(id) => id,
+                    _ => unreachable!(),
+                };
+                f.start_location_link(def_id.into());
                 match f.display_kind {
                     DisplayKind::Diagnostics | DisplayKind::Test => {
-                        let name = match *def_id {
+                        let name = match def_id {
                             hir_def::AdtId::StructId(it) => db.struct_signature(it).name.clone(),
                             hir_def::AdtId::UnionId(it) => db.union_signature(it).name.clone(),
                             hir_def::AdtId::EnumId(it) => db.enum_signature(it).name.clone(),
@@ -1294,7 +1399,7 @@ impl HirDisplay for Ty {
                     DisplayKind::SourceCode { target_module_id: module_id, allow_opaque: _ } => {
                         if let Some(path) = find_path::find_path(
                             db,
-                            ItemInNs::Types((*def_id).into()),
+                            ItemInNs::Types(def_id.into()),
                             module_id,
                             PrefixKind::Plain,
                             false,
@@ -1316,55 +1421,49 @@ impl HirDisplay for Ty {
                 }
                 f.end_location_link();
 
-                let generic_def = self.as_generic_def(db);
-
-                hir_fmt_generics(f, parameters.as_slice(Interner), generic_def, None)?;
+                hir_fmt_generics(
+                    f,
+                    convert_args_for_result(interner, parameters.as_slice()).as_slice(Interner),
+                    def.def_id().try_into().ok(),
+                    None,
+                )?;
             }
-            TyKind::AssociatedType(assoc_type_id, parameters) => {
-                let type_alias = from_assoc_type_id(*assoc_type_id);
-                let trait_ = match type_alias.lookup(db).container {
-                    ItemContainerId::TraitId(it) => it,
-                    _ => panic!("not an associated type"),
+            TyKind::Alias(AliasTyKind::Projection, alias_ty) => {
+                let type_alias = match alias_ty.def_id {
+                    SolverDefId::TypeAliasId(id) => id,
+                    _ => unreachable!(),
                 };
-                let trait_data = db.trait_signature(trait_);
-                let type_alias_data = db.type_alias_signature(type_alias);
+                let parameters = convert_args_for_result(interner, alias_ty.args.as_slice());
 
-                // Use placeholder associated types when the target is test (https://rust-lang.github.io/chalk/book/clauses/type_equality.html#placeholder-associated-types)
-                if f.display_kind.is_test() {
-                    f.start_location_link(trait_.into());
-                    write!(f, "{}", trait_data.name.display(f.db, f.edition()))?;
-                    f.end_location_link();
-                    write!(f, "::")?;
+                let projection_ty = ProjectionTy {
+                    associated_ty_id: to_assoc_type_id(type_alias),
+                    substitution: parameters.clone(),
+                };
 
-                    f.start_location_link(type_alias.into());
-                    write!(f, "{}", type_alias_data.name.display(f.db, f.edition()))?;
-                    f.end_location_link();
-                    // Note that the generic args for the associated type come before those for the
-                    // trait (including the self type).
-                    hir_fmt_generics(f, parameters.as_slice(Interner), None, None)
-                } else {
-                    let projection_ty = ProjectionTy {
-                        associated_ty_id: to_assoc_type_id(type_alias),
-                        substitution: parameters.clone(),
-                    };
-
-                    projection_ty.hir_fmt(f)
-                }?;
+                projection_ty.hir_fmt(f)?;
             }
             TyKind::Foreign(type_alias) => {
-                let alias = from_foreign_def_id(*type_alias);
+                let alias = match type_alias {
+                    SolverDefId::ForeignId(id) => id,
+                    _ => unreachable!(),
+                };
                 let type_alias = db.type_alias_signature(alias);
                 f.start_location_link(alias.into());
                 write!(f, "{}", type_alias.name.display(f.db, f.edition()))?;
                 f.end_location_link();
             }
-            TyKind::OpaqueType(opaque_ty_id, parameters) => {
+            TyKind::Alias(AliasTyKind::Opaque, alias_ty) => {
+                let opaque_ty_id = match alias_ty.def_id {
+                    SolverDefId::InternedOpaqueTyId(id) => id,
+                    _ => unreachable!(),
+                };
+                let parameters = convert_args_for_result(interner, alias_ty.args.as_slice());
                 if !f.display_kind.allows_opaque() {
                     return Err(HirDisplayError::DisplaySourceCodeError(
                         DisplaySourceCodeError::OpaqueType,
                     ));
                 }
-                let impl_trait_id = db.lookup_intern_impl_trait_id((*opaque_ty_id).into());
+                let impl_trait_id = db.lookup_intern_impl_trait_id(opaque_ty_id);
                 match impl_trait_id {
                     ImplTraitId::ReturnTypeImplTrait(func, idx) => {
                         let datas =
@@ -1376,7 +1475,7 @@ impl HirDisplay for Ty {
                         write_bounds_like_dyn_trait_with_prefix(
                             f,
                             "impl",
-                            Either::Left(self),
+                            Either::Left(&convert_ty_for_result(interner, *self)),
                             bounds.skip_binders(),
                             SizedByDefault::Sized { anchor: krate },
                         )?;
@@ -1391,7 +1490,7 @@ impl HirDisplay for Ty {
                         write_bounds_like_dyn_trait_with_prefix(
                             f,
                             "impl",
-                            Either::Left(self),
+                            Either::Left(&convert_ty_for_result(interner, *self)),
                             bounds.skip_binders(),
                             SizedByDefault::Sized { anchor: krate },
                         )?;
@@ -1426,6 +1525,11 @@ impl HirDisplay for Ty {
                 }
             }
             TyKind::Closure(id, substs) => {
+                let id = match id {
+                    SolverDefId::InternedClosureId(id) => id,
+                    _ => unreachable!(),
+                };
+                let substs = convert_args_for_result(interner, substs.as_slice());
                 if f.display_kind.is_source_code() {
                     if !f.display_kind.allows_opaque() {
                         return Err(HirDisplayError::DisplaySourceCodeError(
@@ -1435,22 +1539,23 @@ impl HirDisplay for Ty {
                         never!("Only `impl Fn` is valid for displaying closures in source code");
                     }
                 }
+                let chalk_id: chalk_ir::ClosureId<_> = id.into();
                 match f.closure_style {
                     ClosureStyle::Hide => return write!(f, "{TYPE_HINT_TRUNCATION}"),
                     ClosureStyle::ClosureWithId => {
-                        return write!(f, "{{closure#{:?}}}", id.0.index());
+                        return write!(f, "{{closure#{:?}}}", chalk_id.0.index());
                     }
                     ClosureStyle::ClosureWithSubst => {
-                        write!(f, "{{closure#{:?}}}", id.0.index())?;
+                        write!(f, "{{closure#{:?}}}", chalk_id.0.index())?;
                         return hir_fmt_generics(f, substs.as_slice(Interner), None, None);
                     }
                     _ => (),
                 }
-                let sig = ClosureSubst(substs).sig_ty().callable_sig(db);
+                let sig = ClosureSubst(&substs).sig_ty().callable_sig(db);
                 if let Some(sig) = sig {
-                    let InternedClosure(def, _) = db.lookup_intern_closure((*id).into());
+                    let InternedClosure(def, _) = db.lookup_intern_closure(id);
                     let infer = db.infer(def);
-                    let (_, kind) = infer.closure_info(id);
+                    let (_, kind) = infer.closure_info(&chalk_id);
                     match f.closure_style {
                         ClosureStyle::ImplFn => write!(f, "impl {kind:?}(")?,
                         ClosureStyle::RANotation => write!(f, "|")?,
@@ -1478,7 +1583,11 @@ impl HirDisplay for Ty {
                 }
             }
             TyKind::Placeholder(idx) => {
-                let id = from_placeholder_idx(db, *idx);
+                let placeholder_index = chalk_ir::PlaceholderIndex {
+                    idx: idx.bound.var.as_usize(),
+                    ui: chalk_ir::UniverseIndex { counter: idx.universe.as_usize() },
+                };
+                let id = from_placeholder_idx(db, placeholder_index);
                 let generics = generics(db, id.parent);
                 let param_data = &generics[id.local_id];
                 match param_data {
@@ -1501,14 +1610,20 @@ impl HirDisplay for Ty {
                                 .map(|pred| pred.clone().substitute(Interner, &substs))
                                 .filter(|wc| match wc.skip_binders() {
                                     WhereClause::Implemented(tr) => {
-                                        tr.self_type_parameter(Interner) == *self
+                                        tr.self_type_parameter(Interner)
+                                            == convert_ty_for_result(interner, *self)
                                     }
                                     WhereClause::AliasEq(AliasEq {
                                         alias: AliasTy::Projection(proj),
                                         ty: _,
-                                    }) => proj.self_type_parameter(db) == *self,
+                                    }) => {
+                                        proj.self_type_parameter(db)
+                                            == convert_ty_for_result(interner, *self)
+                                    }
                                     WhereClause::AliasEq(_) => false,
-                                    WhereClause::TypeOutlives(to) => to.ty == *self,
+                                    WhereClause::TypeOutlives(to) => {
+                                        to.ty == convert_ty_for_result(interner, *self)
+                                    }
                                     WhereClause::LifetimeOutlives(_) => false,
                                 })
                                 .collect::<Vec<_>>();
@@ -1516,7 +1631,7 @@ impl HirDisplay for Ty {
                             write_bounds_like_dyn_trait_with_prefix(
                                 f,
                                 "impl",
-                                Either::Left(self),
+                                Either::Left(&convert_ty_for_result(interner, *self)),
                                 &bounds,
                                 SizedByDefault::Sized { anchor: krate },
                             )?;
@@ -1527,8 +1642,17 @@ impl HirDisplay for Ty {
                     }
                 }
             }
-            TyKind::BoundVar(idx) => idx.hir_fmt(f)?,
-            TyKind::Dyn(dyn_ty) => {
+            TyKind::Param(_) => write!(f, "{{param}}")?,
+            TyKind::Bound(debruijn_index, ty) => {
+                let idx = chalk_ir::BoundVar {
+                    debruijn: chalk_ir::DebruijnIndex::new(debruijn_index.as_u32()),
+                    index: ty.var.as_usize(),
+                };
+                idx.hir_fmt(f)?
+            }
+            TyKind::Dynamic(..) => {
+                let ty = convert_ty_for_result(interner, *self);
+                let chalk_ir::TyKind::Dyn(dyn_ty) = ty.kind(Interner) else { unreachable!() };
                 // Reorder bounds to satisfy `write_bounds_like_dyn_trait()`'s expectation.
                 // FIXME: `Iterator::partition_in_place()` or `Vec::extract_if()` may make it
                 // more efficient when either of them hits stable.
@@ -1544,7 +1668,7 @@ impl HirDisplay for Ty {
                     bounds.push(Binders::empty(
                         Interner,
                         chalk_ir::WhereClause::TypeOutlives(chalk_ir::TypeOutlives {
-                            ty: self.clone(),
+                            ty: ty.clone(),
                             lifetime: dyn_ty.lifetime.clone(),
                         }),
                     ));
@@ -1553,69 +1677,26 @@ impl HirDisplay for Ty {
                 write_bounds_like_dyn_trait_with_prefix(
                     f,
                     "dyn",
-                    Either::Left(self),
+                    Either::Left(&ty),
                     &bounds,
                     SizedByDefault::NotSized,
                 )?;
             }
-            TyKind::Alias(AliasTy::Projection(p_ty)) => p_ty.hir_fmt(f)?,
-            TyKind::Alias(AliasTy::Opaque(opaque_ty)) => {
-                if !f.display_kind.allows_opaque() {
-                    return Err(HirDisplayError::DisplaySourceCodeError(
-                        DisplaySourceCodeError::OpaqueType,
-                    ));
-                }
-                let impl_trait_id = db.lookup_intern_impl_trait_id(opaque_ty.opaque_ty_id.into());
-                match impl_trait_id {
-                    ImplTraitId::ReturnTypeImplTrait(func, idx) => {
-                        let datas =
-                            db.return_type_impl_traits(func).expect("impl trait id without data");
-                        let data =
-                            (*datas).as_ref().map(|rpit| rpit.impl_traits[idx].bounds.clone());
-                        let bounds = data.substitute(Interner, &opaque_ty.substitution);
-                        let krate = func.krate(db);
-                        write_bounds_like_dyn_trait_with_prefix(
-                            f,
-                            "impl",
-                            Either::Left(self),
-                            bounds.skip_binders(),
-                            SizedByDefault::Sized { anchor: krate },
-                        )?;
-                    }
-                    ImplTraitId::TypeAliasImplTrait(alias, idx) => {
-                        let datas =
-                            db.type_alias_impl_traits(alias).expect("impl trait id without data");
-                        let data =
-                            (*datas).as_ref().map(|rpit| rpit.impl_traits[idx].bounds.clone());
-                        let bounds = data.substitute(Interner, &opaque_ty.substitution);
-                        let krate = alias.krate(db);
-                        write_bounds_like_dyn_trait_with_prefix(
-                            f,
-                            "impl",
-                            Either::Left(self),
-                            bounds.skip_binders(),
-                            SizedByDefault::Sized { anchor: krate },
-                        )?;
-                    }
-                    ImplTraitId::AsyncBlockTypeImplTrait(..) => {
-                        write!(f, "{{async block}}")?;
-                    }
-                };
-            }
-            TyKind::Error => {
+            TyKind::Error(_) => {
                 if f.display_kind.is_source_code() {
                     f.write_char('_')?;
                 } else {
                     write!(f, "{{unknown}}")?;
                 }
             }
-            TyKind::InferenceVar(..) => write!(f, "_")?,
+            TyKind::Infer(..) => write!(f, "_")?,
             TyKind::Coroutine(_, subst) => {
                 if f.display_kind.is_source_code() {
                     return Err(HirDisplayError::DisplaySourceCodeError(
                         DisplaySourceCodeError::Coroutine,
                     ));
                 }
+                let subst = convert_args_for_result(interner, subst.as_slice());
                 let subst = subst.as_slice(Interner);
                 let a: Option<SmallVec<[&Ty; 3]>> = subst
                     .get(subst.len() - 3..)
@@ -1637,6 +1718,10 @@ impl HirDisplay for Ty {
                 }
             }
             TyKind::CoroutineWitness(..) => write!(f, "{{coroutine witness}}")?,
+            TyKind::Pat(_, _) => write!(f, "{{pat}}")?,
+            TyKind::UnsafeBinder(_) => write!(f, "{{unsafe binder}}")?,
+            TyKind::CoroutineClosure(_, _) => write!(f, "{{coroutine closure}}")?,
+            TyKind::Alias(_, _) => write!(f, "{{alias}}")?,
         }
         Ok(())
     }

@@ -1290,7 +1290,10 @@ pub(crate) fn convert_ty_for_result<'db>(interner: DbInterner<'db>, ty: Ty<'db>)
     .intern(Interner)
 }
 
-fn convert_const_for_result<'db>(interner: DbInterner<'db>, const_: Const<'db>) -> crate::Const {
+pub fn convert_const_for_result<'db>(
+    interner: DbInterner<'db>,
+    const_: Const<'db>,
+) -> crate::Const {
     let value: chalk_ir::ConstValue<Interner> = match const_.kind() {
         rustc_type_ir::ConstKind::Param(_) => unimplemented!(),
         rustc_type_ir::ConstKind::Infer(rustc_type_ir::InferConst::Var(var)) => {
@@ -1343,7 +1346,7 @@ fn convert_const_for_result<'db>(interner: DbInterner<'db>, const_: Const<'db>) 
     chalk_ir::ConstData { ty: crate::TyKind::Error.intern(Interner), value }.intern(Interner)
 }
 
-fn convert_region_for_result<'db>(region: Region<'db>) -> crate::Lifetime {
+pub fn convert_region_for_result<'db>(region: Region<'db>) -> crate::Lifetime {
     match region.kind() {
         rustc_type_ir::RegionKind::ReEarlyParam(early) => unimplemented!(),
         rustc_type_ir::RegionKind::ReBound(db, bound) => chalk_ir::Lifetime::new(

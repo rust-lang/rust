@@ -11,6 +11,7 @@ use hir::{
 use ide_db::{
     FilePosition, FxIndexMap,
     active_parameter::{callable_for_arg_list, generic_def_for_node},
+    base_db::salsa,
     documentation::{Documentation, HasDocs},
 };
 use itertools::Itertools;
@@ -266,12 +267,12 @@ fn signature_help_for_call(
             // In that case, fall back to render definitions of the respective parameters.
             // This is overly conservative: we do not substitute known type vars
             // (see FIXME in tests::impl_trait) and falling back on any unknowns.
-            match (p.ty().contains_unknown(), fn_params.as_deref()) {
+            salsa::attach(db, || match (p.ty().contains_unknown(), fn_params.as_deref()) {
                 (true, Some(fn_params)) => {
                     format_to!(buf, "{}", fn_params[idx].ty().display(db, display_target))
                 }
                 _ => format_to!(buf, "{}", p.ty().display(db, display_target)),
-            }
+            });
             res.push_call_param(&buf);
         }
     }
