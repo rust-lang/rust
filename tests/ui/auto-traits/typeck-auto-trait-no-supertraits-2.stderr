@@ -1,8 +1,8 @@
 error[E0568]: auto traits cannot have super traits or lifetime bounds
-  --> $DIR/typeck-auto-trait-no-supertraits-2.rs:4:17
+  --> $DIR/typeck-auto-trait-no-supertraits-2.rs:4:20
    |
 LL | auto trait Magic : Sized where Option<Self> : Magic {}
-   |            -----^^^^^^^^ help: remove the super traits or lifetime bounds
+   |            -----   ^^^^^
    |            |
    |            auto traits cannot have super traits or lifetime bounds
 
@@ -10,7 +10,7 @@ error[E0568]: auto traits cannot have super traits or lifetime bounds
   --> $DIR/typeck-auto-trait-no-supertraits-2.rs:4:26
    |
 LL | auto trait Magic : Sized where Option<Self> : Magic {}
-   |            -----         ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove the super traits or lifetime bounds
+   |            -----         ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |            |
    |            auto traits cannot have super traits or lifetime bounds
 

@@ -3026,7 +3026,7 @@ pub(crate) fn are_upstream_rust_objects_already_included(sess: &Session) -> bool
 /// We need to communicate five things to the linker on Apple/Darwin targets:
 /// - The architecture.
 /// - The operating system (and that it's an Apple platform).
-/// - The environment / ABI.
+/// - The environment.
 /// - The deployment target.
 /// - The SDK version.
 fn add_apple_link_args(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor) {
@@ -3040,7 +3040,7 @@ fn add_apple_link_args(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavo
     // `sess.target.arch` (`target_arch`) is not detailed enough.
     let llvm_arch = sess.target.llvm_target.split_once('-').expect("LLVM target must have arch").0;
     let target_os = &*sess.target.os;
-    let target_abi = &*sess.target.abi;
+    let target_env = &*sess.target.env;
 
     // The architecture name to forward to the linker.
     //
@@ -3091,14 +3091,14 @@ fn add_apple_link_args(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavo
         // > - visionos-simulator
         // > - xros-simulator
         // > - driverkit
-        let platform_name = match (target_os, target_abi) {
+        let platform_name = match (target_os, target_env) {
             (os, "") => os,
             ("ios", "macabi") => "mac-catalyst",
             ("ios", "sim") => "ios-simulator",
             ("tvos", "sim") => "tvos-simulator",
             ("watchos", "sim") => "watchos-simulator",
             ("visionos", "sim") => "visionos-simulator",
-            _ => bug!("invalid OS/ABI combination for Apple target: {target_os}, {target_abi}"),
+            _ => bug!("invalid OS/env combination for Apple target: {target_os}, {target_env}"),
         };
 
         let min_version = sess.apple_deployment_target().fmt_full().to_string();

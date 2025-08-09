@@ -480,10 +480,28 @@ impl Item {
         }
     }
 
+    /// If the item has doc comments from a reexport, returns the item id of that reexport,
+    /// otherwise returns returns the item id.
+    ///
+    /// This is used as a key for caching intra-doc link resolution,
+    /// to prevent two reexports of the same item from using the same cache.
+    pub(crate) fn item_or_reexport_id(&self) -> ItemId {
+        // added documentation on a reexport is always prepended.
+        self.attrs
+            .doc_strings
+            .first()
+            .map(|x| x.item_id)
+            .flatten()
+            .map(ItemId::from)
+            .unwrap_or(self.item_id)
+    }
+
     pub(crate) fn links(&self, cx: &Context<'_>) -> Vec<RenderedLink> {
         use crate::html::format::{href, link_tooltip};
 
-        let Some(links) = cx.cache().intra_doc_links.get(&self.item_id) else { return vec![] };
+        let Some(links) = cx.cache().intra_doc_links.get(&self.item_or_reexport_id()) else {
+            return vec![];
+        };
         links
             .iter()
             .filter_map(|ItemLink { link: s, link_text, page_id: id, fragment }| {

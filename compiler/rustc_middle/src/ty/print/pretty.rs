@@ -2987,7 +2987,7 @@ impl<'tcx> ty::Binder<'tcx, ty::TraitRef<'tcx>> {
     }
 }
 
-#[derive(Copy, Clone, TypeFoldable, TypeVisitable, Lift)]
+#[derive(Copy, Clone, TypeFoldable, TypeVisitable, Lift, Hash)]
 pub struct TraitPredPrintModifiersAndPath<'tcx>(ty::TraitPredicate<'tcx>);
 
 impl<'tcx> fmt::Debug for TraitPredPrintModifiersAndPath<'tcx> {

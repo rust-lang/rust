@@ -436,8 +436,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 infer_subdiags,
                 multi_suggestions,
                 bad_label,
-                was_written: false,
-                path: Default::default(),
             }),
             TypeAnnotationNeeded::E0283 => self.dcx().create_err(AmbiguousImpl {
                 span,
@@ -447,8 +445,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 infer_subdiags,
                 multi_suggestions,
                 bad_label,
-                was_written: false,
-                path: Default::default(),
             }),
             TypeAnnotationNeeded::E0284 => self.dcx().create_err(AmbiguousReturn {
                 span,
@@ -458,8 +454,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 infer_subdiags,
                 multi_suggestions,
                 bad_label,
-                was_written: false,
-                path: Default::default(),
             }),
         }
     }
@@ -496,7 +490,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             return self.bad_inference_failure_err(failure_span, arg_data, error_code);
         };
 
-        let (source_kind, name, path) = kind.ty_localized_msg(self);
+        let (source_kind, name, long_ty_path) = kind.ty_localized_msg(self);
         let failure_span = if should_label_span && !failure_span.overlaps(span) {
             Some(failure_span)
         } else {
@@ -628,7 +622,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 }
             }
         }
-        match error_code {
+        let mut err = match error_code {
             TypeAnnotationNeeded::E0282 => self.dcx().create_err(AnnotationRequired {
                 span,
                 source_kind,
@@ -637,8 +631,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 infer_subdiags,
                 multi_suggestions,
                 bad_label: None,
-                was_written: path.is_some(),
-                path: path.unwrap_or_default(),
             }),
             TypeAnnotationNeeded::E0283 => self.dcx().create_err(AmbiguousImpl {
                 span,
@@ -648,8 +640,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 infer_subdiags,
                 multi_suggestions,
                 bad_label: None,
-                was_written: path.is_some(),
-                path: path.unwrap_or_default(),
             }),
             TypeAnnotationNeeded::E0284 => self.dcx().create_err(AmbiguousReturn {
                 span,
@@ -659,10 +649,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 infer_subdiags,
                 multi_suggestions,
                 bad_label: None,
-                was_written: path.is_some(),
-                path: path.unwrap_or_default(),
             }),
-        }
+        };
+        *err.long_ty_path() = long_ty_path;
+        err
     }
 }
 
@@ -726,22 +716,24 @@ impl<'tcx> InferSource<'tcx> {
 
 impl<'tcx> InferSourceKind<'tcx> {
     fn ty_localized_msg(&self, infcx: &InferCtxt<'tcx>) -> (&'static str, String, Option<PathBuf>) {
-        let mut path = None;
+        let mut long_ty_path = None;
         match *self {
             InferSourceKind::LetBinding { ty, .. }
             | InferSourceKind::ClosureArg { ty, .. }
             | InferSourceKind::ClosureReturn { ty, .. } => {
                 if ty.is_closure() {
-                    ("closure", closure_as_fn_str(infcx, ty), path)
+                    ("closure", closure_as_fn_str(infcx, ty), long_ty_path)
                 } else if !ty.is_ty_or_numeric_infer() {
-                    ("normal", infcx.tcx.short_string(ty, &mut path), path)
+                    ("normal", infcx.tcx.short_string(ty, &mut long_ty_path), long_ty_path)
                 } else {
-                    ("other", String::new(), path)
+                    ("other", String::new(), long_ty_path)
                 }
             }
             // FIXME: We should be able to add some additional info here.
             InferSourceKind::GenericArg { .. }
-            | InferSourceKind::FullyQualifiedMethodCall { .. } => ("other", String::new(), path),
+            | InferSourceKind::FullyQualifiedMethodCall { .. } => {
+                ("other", String::new(), long_ty_path)
+            }
         }
     }
 }

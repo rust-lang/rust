@@ -8,7 +8,7 @@ First you need to clone and configure the Rust repository:
 ```bash
 git clone git@github.com:rust-lang/rust
 cd rust
-./configure --enable-llvm-link-shared --release-channel=nightly --enable-llvm-assertions --enable-offload --enable-enzyme --enable-clang --enable-lld --enable-option-checking --enable-ninja --disable-docs
+./configure --enable-llvm-link-shared --release-channel=nightly --enable-llvm-assertions --enable-llvm-offload --enable-llvm-enzyme --enable-clang --enable-lld --enable-option-checking --enable-ninja --disable-docs
 ```
 
 Afterwards you can build rustc using:

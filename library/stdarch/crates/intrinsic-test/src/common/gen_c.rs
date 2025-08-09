@@ -40,7 +40,7 @@ pub fn generate_c_constraint_blocks<'a, T: IntrinsicTypeDefinition + 'a>(
     };
 
     let body_indentation = indentation.nested();
-    for i in current.constraint.iter().flat_map(|c| c.to_range()) {
+    for i in current.constraint.iter().flat_map(|c| c.iter()) {
         let ty = current.ty.c_type();
 
         writeln!(w, "{indentation}{{")?;

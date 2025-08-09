@@ -82,7 +82,7 @@ impl<I: Interner> TraitRef<I> {
         Self::new_from_args(interner, trait_def_id, args)
     }
 
-    pub fn from_method(interner: I, trait_id: I::DefId, args: I::GenericArgs) -> TraitRef<I> {
+    pub fn from_assoc(interner: I, trait_id: I::DefId, args: I::GenericArgs) -> TraitRef<I> {
         let generics = interner.generics_of(trait_id);
         TraitRef::new(interner, trait_id, args.iter().take(generics.count()))
     }
@@ -181,6 +181,15 @@ impl<I: Interner> ty::Binder<I, TraitPredicate<I>> {
 impl<I: Interner> UpcastFrom<I, TraitRef<I>> for TraitPredicate<I> {
     fn upcast_from(from: TraitRef<I>, _tcx: I) -> Self {
         TraitPredicate { trait_ref: from, polarity: PredicatePolarity::Positive }
+    }
+}
+
+impl<I: Interner> UpcastFrom<I, ty::Binder<I, TraitRef<I>>> for ty::Binder<I, TraitPredicate<I>> {
+    fn upcast_from(from: ty::Binder<I, TraitRef<I>>, _tcx: I) -> Self {
+        from.map_bound(|trait_ref| TraitPredicate {
+            trait_ref,
+            polarity: PredicatePolarity::Positive,
+        })
     }
 }
 

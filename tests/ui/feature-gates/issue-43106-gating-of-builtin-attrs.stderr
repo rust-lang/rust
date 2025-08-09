@@ -361,12 +361,6 @@ warning: crate-level attribute should be an inner attribute: add an exclamation 
 LL | #[type_length_limit="0100"]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: `#[should_panic]` only has an effect on functions
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:53:1
-   |
-LL | #![should_panic]
-   | ^^^^^^^^^^^^^^^^
-
 warning: attribute should be applied to an `extern` block with non-Rust ABI
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:64:1
    |
@@ -408,6 +402,12 @@ warning: `#[proc_macro_derive]` only has an effect on functions
    |
 LL | #![proc_macro_derive(Test)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: `#[should_panic]` only has an effect on functions
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:53:1
+   |
+LL | #![should_panic]
+   | ^^^^^^^^^^^^^^^^
 
 warning: attribute should be applied to a function definition
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:62:1

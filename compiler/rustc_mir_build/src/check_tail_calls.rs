@@ -60,9 +60,13 @@ impl<'tcx> TailCallCkVisitor<'_, 'tcx> {
         let BodyTy::Fn(caller_sig) = self.thir.body_type else {
             span_bug!(
                 call.span,
-                "`become` outside of functions should have been disallowed by hit_typeck"
+                "`become` outside of functions should have been disallowed by hir_typeck"
             )
         };
+        // While the `caller_sig` does have its regions erased, it does not have its
+        // binders anonymized. We call `erase_regions` once again to anonymize any binders
+        // within the signature, such as in function pointer or `dyn Trait` args.
+        let caller_sig = self.tcx.erase_regions(caller_sig);
 
         let ExprKind::Scope { value, .. } = call.kind else {
             span_bug!(call.span, "expected scope, found: {call:?}")

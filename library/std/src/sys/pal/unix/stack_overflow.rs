@@ -119,7 +119,8 @@ mod imp {
                     && thread_info.guard_page_range.contains(&fault_addr)
                 {
                     let name = thread_info.thread_name.as_deref().unwrap_or("<unknown>");
-                    rtprintpanic!("\nthread '{name}' has overflowed its stack\n");
+                    let tid = crate::thread::current_os_id();
+                    rtprintpanic!("\nthread '{name}' ({tid}) has overflowed its stack\n");
                     rtabort!("stack overflow");
                 }
             })
@@ -696,7 +697,8 @@ mod imp {
             if code == c::EXCEPTION_STACK_OVERFLOW {
                 crate::thread::with_current_name(|name| {
                     let name = name.unwrap_or("<unknown>");
-                    rtprintpanic!("\nthread '{name}' has overflowed its stack\n");
+                    let tid = crate::thread::current_os_id();
+                    rtprintpanic!("\nthread '{name}' ({tid}) has overflowed its stack\n");
                 });
             }
             c::EXCEPTION_CONTINUE_SEARCH

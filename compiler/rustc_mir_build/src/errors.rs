@@ -976,15 +976,6 @@ pub(crate) struct NonEmptyNeverPattern<'tcx> {
 }
 
 #[derive(Diagnostic)]
-#[diag(mir_build_exceeds_mcdc_condition_limit)]
-pub(crate) struct MCDCExceedsConditionLimit {
-    #[primary_span]
-    pub(crate) span: Span,
-    pub(crate) num_conditions: usize,
-    pub(crate) max_conditions: usize,
-}
-
-#[derive(Diagnostic)]
 #[diag(mir_build_pattern_not_covered, code = E0005)]
 pub(crate) struct PatternNotCovered<'s, 'tcx> {
     #[primary_span]

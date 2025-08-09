@@ -44,7 +44,7 @@ const DEFAULT_DOC_VALID_IDENTS: &[&str] = &[
     "WebP", "OpenExr", "YCbCr", "sRGB",
     "TensorFlow",
     "TrueType",
-    "iOS", "macOS", "FreeBSD", "NetBSD", "OpenBSD",
+    "iOS", "macOS", "FreeBSD", "NetBSD", "OpenBSD", "NixOS",
     "TeX", "LaTeX", "BibTeX", "BibLaTeX",
     "MinGW",
     "CamelCase",

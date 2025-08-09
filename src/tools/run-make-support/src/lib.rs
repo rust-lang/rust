@@ -56,7 +56,7 @@ pub use crate::external_deps::c_build::{
 };
 // Re-exports of external dependencies.
 pub use crate::external_deps::c_cxx_compiler::{
-    Cc, Gcc, cc, cxx, extra_c_flags, extra_cxx_flags, gcc,
+    Cc, Gcc, cc, cxx, extra_c_flags, extra_cxx_flags, extra_linker_flags, gcc,
 };
 pub use crate::external_deps::cargo::cargo;
 pub use crate::external_deps::clang::{Clang, clang};
@@ -84,6 +84,6 @@ pub use crate::string::{
 };
 // Helpers for checking target information.
 pub use crate::targets::{
-    apple_os, is_aix, is_darwin, is_win7, is_windows, is_windows_gnu, is_windows_msvc,
+    apple_os, is_aix, is_arm64ec, is_darwin, is_win7, is_windows, is_windows_gnu, is_windows_msvc,
     llvm_components_contain, target, uname,
 };

@@ -27,7 +27,7 @@ use rustc_middle::metadata::ModChild;
 use rustc_middle::ty::{Feed, Visibility};
 use rustc_middle::{bug, span_bug};
 use rustc_span::hygiene::{ExpnId, LocalExpnId, MacroKind};
-use rustc_span::{Ident, Span, Symbol, kw, sym};
+use rustc_span::{Ident, Macros20NormalizedIdent, Span, Symbol, kw, sym};
 use thin_vec::ThinVec;
 use tracing::debug;
 
@@ -223,7 +223,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
     pub(crate) fn build_reduced_graph_external(&self, module: Module<'ra>) {
         for child in self.tcx.module_children(module.def_id()) {
-            let parent_scope = ParentScope::module(module, self);
+            let parent_scope = ParentScope::module(module, self.arenas);
             self.build_reduced_graph_for_external_crate_res(child, parent_scope)
         }
     }
@@ -373,7 +373,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                         res,
                     ))
                 };
-                match self.r.resolve_path(
+                match self.r.cm().resolve_path(
                     &segments,
                     None,
                     parent_scope,
@@ -969,8 +969,8 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
         self.r.potentially_unused_imports.push(import);
         let imported_binding = self.r.import(binding, import);
         if ident.name != kw::Underscore && parent == self.r.graph_root {
-            let ident = ident.normalize_to_macros_2_0();
-            if let Some(entry) = self.r.extern_prelude.get(&ident)
+            let norm_ident = Macros20NormalizedIdent::new(ident);
+            if let Some(entry) = self.r.extern_prelude.get(&norm_ident)
                 && expansion != LocalExpnId::ROOT
                 && orig_name.is_some()
                 && !entry.is_import()
@@ -986,7 +986,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
             }
 
             use indexmap::map::Entry;
-            match self.r.extern_prelude.entry(ident) {
+            match self.r.extern_prelude.entry(norm_ident) {
                 Entry::Occupied(mut occupied) => {
                     let entry = occupied.get_mut();
                     if let Some(old_binding) = entry.binding.get()
@@ -1128,7 +1128,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
             });
         } else {
             for ident in single_imports.iter().cloned() {
-                let result = self.r.maybe_resolve_ident_in_module(
+                let result = self.r.cm().maybe_resolve_ident_in_module(
                     ModuleOrUniformRoot::Module(module),
                     ident,
                     MacroNS,
