@@ -9,9 +9,9 @@ enum E { A, B }
 fn main() {
     match E::A {
         E::A |
-        E::B | //~ ERROR a trailing `|` is not allowed in an or-pattern
+        E::B //~ ERROR a trailing `|` is not allowed in an or-pattern
         if true => {
-            let _recovery_witness: i32 = 0u32; //~ ERROR mismatched types
+            let _recovery_witness: i32 = 0i32; //~ ERROR mismatched types
         }
         _ => {}
     }
