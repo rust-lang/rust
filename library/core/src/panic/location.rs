@@ -183,7 +183,7 @@ impl<'a> Location<'a> {
     #[must_use]
     #[stable(feature = "panic_hooks", since = "1.10.0")]
     #[rustc_const_stable(feature = "const_location_fields", since = "1.79.0")]
-    pub const fn file(&self) -> &str {
+    pub const fn file(&self) -> &'a str {
         // SAFETY: The filename is valid.
         unsafe { self.filename.as_ref() }
     }
@@ -195,7 +195,7 @@ impl<'a> Location<'a> {
     #[must_use]
     #[unstable(feature = "file_with_nul", issue = "141727")]
     #[inline]
-    pub const fn file_with_nul(&self) -> &CStr {
+    pub const fn file_with_nul(&self) -> &'a CStr {
         let filename = self.filename.as_ptr();
 
         // SAFETY: The filename is valid for `filename_len+1` bytes, so this addition can't
