@@ -12,7 +12,7 @@ fn multiple_consistent() {}
 #[sanitize(address = "off")]
 fn multiple_inconsistent() {}
 
-#[sanitize(address = "bogus")] //~ ERROR invalid argument for `sanitize`
+#[sanitize(address = "bogus")] //~ ERROR invalid setting for `address`
 fn wrong_value() {}
 
 #[sanitize = "off"] //~ ERROR malformed `sanitize` attribute input
