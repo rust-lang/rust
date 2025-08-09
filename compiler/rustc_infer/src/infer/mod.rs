@@ -484,6 +484,7 @@ pub enum NllRegionVariableOrigin {
     Placeholder(ty::PlaceholderRegion),
 
     Existential {
+        name: Option<Symbol>,
         /// If this is true, then this variable was created to represent a lifetime
         /// bound in a `for` binder. For example, it might have been created to
         /// represent the lifetime `'a` in a type like `for<'a> fn(&'a u32)`.
