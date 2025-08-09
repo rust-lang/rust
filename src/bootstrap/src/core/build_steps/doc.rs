@@ -1149,7 +1149,7 @@ impl Step for UnstableBookGen {
         let target = self.target;
 
         let stage = builder.top_stage;
-        let compiler = builder.compiler(stage, self.target);
+        let compiler = builder.compiler(stage, builder.config.host_target);
         let rustc_path =
             builder.out.join(compiler.host).join(format!("stage{stage}")).join("bin").join("rustc");
 
