@@ -1,6 +1,5 @@
 use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_sugg};
 use rustc_ast::node_id::{NodeId, NodeMap};
-use rustc_ast::ptr::P;
 use rustc_ast::visit::{Visitor, walk_expr};
 use rustc_ast::{Crate, Expr, ExprKind, Item, ItemKind, MacroDef, ModKind, Ty, TyKind, UseTreeKind};
 use rustc_errors::Applicability;
@@ -124,7 +123,7 @@ impl Visitor<'_> for ImportUsageVisitor {
 }
 
 impl SingleComponentPathImports {
-    fn check_mod(&mut self, items: &[P<Item>]) {
+    fn check_mod(&mut self, items: &[Box<Item>]) {
         // keep track of imports reused with `self` keyword, such as `self::crypto_hash` in the example
         // below. Removing the `use crypto_hash;` would make this a compile error
         // ```

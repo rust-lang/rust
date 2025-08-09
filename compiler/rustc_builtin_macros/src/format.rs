@@ -1,7 +1,6 @@
 use std::ops::Range;
 
 use parse::Position::ArgumentNamed;
-use rustc_ast::ptr::P;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::{
     Expr, ExprKind, FormatAlignment, FormatArgPosition, FormatArgPositionKind, FormatArgs,
@@ -45,7 +44,7 @@ use PositionUsedAs::*;
 
 #[derive(Debug)]
 struct MacroInput {
-    fmtstr: P<Expr>,
+    fmtstr: Box<Expr>,
     args: FormatArguments,
     /// Whether the first argument was a string literal or a result from eager macro expansion.
     /// If it's not a string literal, we disallow implicit argument capturing.
@@ -1018,7 +1017,7 @@ fn expand_format_args_impl<'cx>(
             };
             match mac {
                 Ok(format_args) => {
-                    MacEager::expr(ecx.expr(sp, ExprKind::FormatArgs(P(format_args))))
+                    MacEager::expr(ecx.expr(sp, ExprKind::FormatArgs(Box::new(format_args))))
                 }
                 Err(guar) => MacEager::expr(DummyResult::raw_expr(sp, Some(guar))),
             }

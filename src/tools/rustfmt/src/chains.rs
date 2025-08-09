@@ -58,7 +58,7 @@
 use std::borrow::Cow;
 use std::cmp::min;
 
-use rustc_ast::{ast, ptr};
+use rustc_ast::ast;
 use rustc_span::{BytePos, Span, symbol};
 use tracing::debug;
 
@@ -187,7 +187,7 @@ enum ChainItemKind {
     MethodCall(
         ast::PathSegment,
         Vec<ast::GenericArg>,
-        ThinVec<ptr::P<ast::Expr>>,
+        ThinVec<Box<ast::Expr>>,
     ),
     StructField(symbol::Ident),
     TupleField(symbol::Ident, bool),
@@ -343,7 +343,7 @@ impl ChainItem {
     fn rewrite_method_call(
         method_name: symbol::Ident,
         types: &[ast::GenericArg],
-        args: &[ptr::P<ast::Expr>],
+        args: &[Box<ast::Expr>],
         span: Span,
         context: &RewriteContext<'_>,
         shape: Shape,

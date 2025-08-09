@@ -127,11 +127,11 @@ where
 
 // The following items are what `rustc` macro can be parsed into :
 // link: https://github.com/rust-lang/rust/blob/9ebf47851a357faa4cd97f4b1dc7835f6376e639/src/libsyntax/ext/expand.rs#L141
-// * Expr(P<ast::Expr>)                     -> token_tree_to_expr
-// * Pat(P<ast::Pat>)                       -> token_tree_to_pat
-// * Ty(P<ast::Ty>)                         -> token_tree_to_ty
+// * Expr(Box<ast::Expr>)                     -> token_tree_to_expr
+// * Pat(Box<ast::Pat>)                       -> token_tree_to_pat
+// * Ty(Box<ast::Ty>)                         -> token_tree_to_ty
 // * Stmts(SmallVec<[ast::Stmt; 1]>)        -> token_tree_to_stmts
-// * Items(SmallVec<[P<ast::Item>; 1]>)     -> token_tree_to_items
+// * Items(SmallVec<[Box<ast::Item>; 1]>)     -> token_tree_to_items
 //
 // * TraitItems(SmallVec<[ast::TraitItem; 1]>)
 // * AssocItems(SmallVec<[ast::AssocItem; 1]>)

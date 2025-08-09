@@ -1,5 +1,4 @@
 use rustc_ast::ast;
-use rustc_ast::ptr::P;
 use rustc_ast::token;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_parse::exp;
@@ -10,7 +9,7 @@ use crate::rewrite::RewriteContext;
 pub(crate) fn parse_lazy_static(
     context: &RewriteContext<'_>,
     ts: TokenStream,
-) -> Option<Vec<(ast::Visibility, symbol::Ident, P<ast::Ty>, P<ast::Expr>)>> {
+) -> Option<Vec<(ast::Visibility, symbol::Ident, Box<ast::Ty>, Box<ast::Expr>)>> {
     let mut result = vec![];
     let mut parser = super::build_parser(context, ts);
     macro_rules! parse_or {

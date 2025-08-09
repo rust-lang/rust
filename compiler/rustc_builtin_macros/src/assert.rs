@@ -1,6 +1,5 @@
 mod context;
 
-use rustc_ast::ptr::P;
 use rustc_ast::token::Delimiter;
 use rustc_ast::tokenstream::{DelimSpan, TokenStream};
 use rustc_ast::{DelimArgs, Expr, ExprKind, MacCall, Path, PathSegment, UnOp, token};
@@ -55,9 +54,9 @@ pub(crate) fn expand_assert<'cx>(
     let expr = if let Some(tokens) = custom_message {
         let then = cx.expr(
             call_site_span,
-            ExprKind::MacCall(P(MacCall {
+            ExprKind::MacCall(Box::new(MacCall {
                 path: panic_path(),
-                args: P(DelimArgs {
+                args: Box::new(DelimArgs {
                     dspan: DelimSpan::from_single(call_site_span),
                     delim: Delimiter::Parenthesis,
                     tokens,
@@ -96,7 +95,7 @@ pub(crate) fn expand_assert<'cx>(
 }
 
 struct Assert {
-    cond_expr: P<Expr>,
+    cond_expr: Box<Expr>,
     custom_message: Option<TokenStream>,
 }
 
@@ -104,10 +103,10 @@ struct Assert {
 fn expr_if_not(
     cx: &ExtCtxt<'_>,
     span: Span,
-    cond: P<Expr>,
-    then: P<Expr>,
-    els: Option<P<Expr>>,
-) -> P<Expr> {
+    cond: Box<Expr>,
+    then: Box<Expr>,
+    els: Option<Box<Expr>>,
+) -> Box<Expr> {
     cx.expr_if(span, cx.expr(span, ExprKind::Unary(UnOp::Not, cond)), then, els)
 }
 

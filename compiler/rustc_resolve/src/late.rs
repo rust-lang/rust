@@ -12,7 +12,6 @@ use std::collections::BTreeSet;
 use std::collections::hash_map::Entry;
 use std::mem::{replace, swap, take};
 
-use rustc_ast::ptr::P;
 use rustc_ast::visit::{
     AssocCtxt, BoundKind, FnCtxt, FnKind, Visitor, try_visit, visit_opt, walk_list,
 };
@@ -670,7 +669,7 @@ pub(crate) struct UnnecessaryQualification<'ra> {
 #[derive(Default, Debug)]
 struct DiagMetadata<'ast> {
     /// The current trait's associated items' ident, used for diagnostic suggestions.
-    current_trait_assoc_items: Option<&'ast [P<AssocItem>]>,
+    current_trait_assoc_items: Option<&'ast [Box<AssocItem>]>,
 
     /// The current self type if inside an impl (used for better errors).
     current_self_type: Option<Ty>,
@@ -720,7 +719,7 @@ struct DiagMetadata<'ast> {
     current_type_path: Option<&'ast Ty>,
 
     /// The current impl items (used to suggest).
-    current_impl_items: Option<&'ast [P<AssocItem>]>,
+    current_impl_items: Option<&'ast [Box<AssocItem>]>,
 
     /// When processing impl trait
     currently_processing_impl_trait: Option<(TraitRef, Ty)>,
@@ -3038,7 +3037,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
     }
 
     /// When evaluating a `trait` use its associated types' idents for suggestions in E0412.
-    fn resolve_trait_items(&mut self, trait_items: &'ast [P<AssocItem>]) {
+    fn resolve_trait_items(&mut self, trait_items: &'ast [Box<AssocItem>]) {
         let trait_assoc_items =
             replace(&mut self.diag_metadata.current_trait_assoc_items, Some(trait_items));
 
@@ -3179,7 +3178,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         opt_trait_reference: &'ast Option<TraitRef>,
         self_type: &'ast Ty,
         item_id: NodeId,
-        impl_items: &'ast [P<AssocItem>],
+        impl_items: &'ast [Box<AssocItem>],
     ) {
         debug!("resolve_implementation");
         // If applicable, create a rib for the type parameters.
@@ -3671,7 +3670,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
     /// pattern as a whole counts as a never pattern (since it's definitionallly unreachable).
     fn compute_and_check_or_pat_binding_map(
         &mut self,
-        pats: &[P<Pat>],
+        pats: &[Box<Pat>],
     ) -> Result<FxIndexMap<Ident, BindingInfo>, IsNeverPattern> {
         let mut missing_vars = FxIndexMap::default();
         let mut inconsistent_vars = FxIndexMap::default();
@@ -4109,7 +4108,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
     fn smart_resolve_path(
         &mut self,
         id: NodeId,
-        qself: &Option<P<QSelf>>,
+        qself: &Option<Box<QSelf>>,
         path: &Path,
         source: PathSource<'_, 'ast, '_>,
     ) {
@@ -4126,7 +4125,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
     #[instrument(level = "debug", skip(self))]
     fn smart_resolve_path_fragment(
         &mut self,
-        qself: &Option<P<QSelf>>,
+        qself: &Option<Box<QSelf>>,
         path: &[Segment],
         source: PathSource<'_, 'ast, '_>,
         finalize: Finalize,
@@ -4434,7 +4433,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
     // Resolve in alternative namespaces if resolution in the primary namespace fails.
     fn resolve_qpath_anywhere(
         &mut self,
-        qself: &Option<P<QSelf>>,
+        qself: &Option<Box<QSelf>>,
         path: &[Segment],
         primary_ns: Namespace,
         span: Span,
@@ -4485,7 +4484,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
     /// Handles paths that may refer to associated items.
     fn resolve_qpath(
         &mut self,
-        qself: &Option<P<QSelf>>,
+        qself: &Option<Box<QSelf>>,
         path: &[Segment],
         ns: Namespace,
         finalize: Finalize,

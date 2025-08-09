@@ -1,4 +1,3 @@
-use rustc_ast::ptr::P;
 use rustc_ast::visit::{self, Visitor};
 use rustc_ast::{
     self as ast, CRATE_NODE_ID, Crate, ItemKind, ModKind, NodeId, Path, join_path_idents,
@@ -3347,7 +3346,7 @@ impl<'tcx> visit::Visitor<'tcx> for UsePlacementFinder {
     }
 }
 
-fn search_for_any_use_in_items(items: &[P<ast::Item>]) -> Option<Span> {
+fn search_for_any_use_in_items(items: &[Box<ast::Item>]) -> Option<Span> {
     for item in items {
         if let ItemKind::Use(..) = item.kind
             && is_span_suitable_for_use_injection(item.span)

@@ -4,8 +4,8 @@ use std::borrow::Cow;
 use std::cmp::{Ordering, max, min};
 
 use regex::Regex;
+use rustc_ast::ast;
 use rustc_ast::visit;
-use rustc_ast::{ast, ptr};
 use rustc_span::{BytePos, DUMMY_SP, Ident, Span, symbol};
 use tracing::debug;
 
@@ -725,9 +725,9 @@ impl<'a> FmtVisitor<'a> {
             .ok()
     }
 
-    fn visit_impl_items(&mut self, items: &[ptr::P<ast::AssocItem>]) {
+    fn visit_impl_items(&mut self, items: &[Box<ast::AssocItem>]) {
         if self.get_context().config.reorder_impl_items() {
-            type TyOpt = Option<ptr::P<ast::Ty>>;
+            type TyOpt = Option<Box<ast::Ty>>;
             use crate::ast::AssocItemKind::*;
             let is_type = |ty: &TyOpt| opaque_ty(ty).is_none();
             let is_opaque = |ty: &TyOpt| opaque_ty(ty).is_some();
@@ -934,7 +934,7 @@ pub(crate) fn format_impl(
 
 fn is_impl_single_line(
     context: &RewriteContext<'_>,
-    items: &[ptr::P<ast::AssocItem>],
+    items: &[Box<ast::AssocItem>],
     result: &str,
     where_clause_str: &str,
     item: &ast::Item,
@@ -2024,7 +2024,7 @@ pub(crate) struct StaticParts<'a> {
     generics: Option<&'a ast::Generics>,
     ty: &'a ast::Ty,
     mutability: ast::Mutability,
-    expr_opt: Option<&'a ptr::P<ast::Expr>>,
+    expr_opt: Option<&'a Box<ast::Expr>>,
     defaultness: Option<ast::Defaultness>,
     span: Span,
 }
