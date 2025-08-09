@@ -66,22 +66,6 @@ pub(super) trait FixedSizeEncoding: IsDefault {
     fn write_to_bytes(self, b: &mut Self::ByteArray);
 }
 
-/// This implementation is not used generically, but for reading/writing
-/// concrete `u32` fields in `Lazy*` structures, which may be zero.
-impl FixedSizeEncoding for u32 {
-    type ByteArray = [u8; 4];
-
-    #[inline]
-    fn from_bytes(b: &[u8; 4]) -> Self {
-        Self::from_le_bytes(*b)
-    }
-
-    #[inline]
-    fn write_to_bytes(self, b: &mut [u8; 4]) {
-        *b = self.to_le_bytes();
-    }
-}
-
 impl FixedSizeEncoding for u64 {
     type ByteArray = [u8; 8];
 
@@ -171,14 +155,6 @@ fixed_size_enum! {
         ( Macro(MacroKind::Attr)                   )
         ( Macro(MacroKind::Derive)                 )
         ( SyntheticCoroutineBody                   )
-    }
-}
-
-fixed_size_enum! {
-    ty::ImplPolarity {
-        ( Positive    )
-        ( Negative    )
-        ( Reservation )
     }
 }
 
@@ -303,45 +279,6 @@ impl FixedSizeEncoding for bool {
     fn write_to_bytes(self, b: &mut [u8; 1]) {
         debug_assert!(!self.is_default());
         b[0] = self as u8
-    }
-}
-
-impl FixedSizeEncoding for Option<bool> {
-    type ByteArray = [u8; 1];
-
-    #[inline]
-    fn from_bytes(b: &[u8; 1]) -> Self {
-        match b[0] {
-            0 => Some(false),
-            1 => Some(true),
-            2 => None,
-            _ => unreachable!(),
-        }
-    }
-
-    #[inline]
-    fn write_to_bytes(self, b: &mut [u8; 1]) {
-        debug_assert!(!self.is_default());
-        b[0] = match self {
-            Some(false) => 0,
-            Some(true) => 1,
-            None => 2,
-        };
-    }
-}
-
-impl FixedSizeEncoding for UnusedGenericParams {
-    type ByteArray = [u8; 4];
-
-    #[inline]
-    fn from_bytes(b: &[u8; 4]) -> Self {
-        let x: u32 = u32::from_bytes(b);
-        UnusedGenericParams::from_bits(x)
-    }
-
-    #[inline]
-    fn write_to_bytes(self, b: &mut [u8; 4]) {
-        self.bits().write_to_bytes(b);
     }
 }
 
