@@ -427,8 +427,8 @@ pub(crate) fn check_generic_arg_count(
         })
         .count();
     let named_const_param_count = param_counts.consts - synth_const_param_count;
-    let infer_lifetimes =
-        (gen_pos != GenericArgPosition::Type || seg.infer_args) && !gen_args.has_lifetime_params();
+    let infer_lifetimes = (gen_pos != GenericArgPosition::Type || seg.infer_args())
+        && !gen_args.has_lifetime_params();
 
     if gen_pos != GenericArgPosition::Type
         && let Some(c) = gen_args.constraints.first()
@@ -577,7 +577,7 @@ pub(crate) fn check_generic_arg_count(
     };
 
     let args_correct = {
-        let expected_min = if seg.infer_args {
+        let expected_min = if seg.infer_args() {
             0
         } else {
             param_counts.consts + named_type_param_count

@@ -1,7 +1,10 @@
+use std::slice;
+
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{self as hir, LifetimeSource};
-use rustc_session::{declare_lint, declare_lint_pass};
+use rustc_session::lint::Lint;
+use rustc_session::{declare_lint, declare_lint_pass, impl_lint_pass};
 use rustc_span::Span;
 use tracing::instrument;
 
@@ -71,7 +74,82 @@ declare_lint! {
     "detects when a lifetime uses different syntax between arguments and return values"
 }
 
-declare_lint_pass!(LifetimeSyntax => [MISMATCHED_LIFETIME_SYNTAXES]);
+declare_lint! {
+    /// The `hidden_lifetimes_in_input_paths` lint detects the use of
+    /// hidden lifetime parameters in types occurring as a function
+    /// argument.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// struct ContainsLifetime<'a>(&'a i32);
+    ///
+    /// #[deny(hidden_lifetimes_in_input_paths)]
+    /// fn foo(x: ContainsLifetime) {}
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Hidden lifetime parameters can make it difficult to see at a
+    /// glance that borrowing is occurring.
+    ///
+    /// This lint ensures that lifetime parameters are always
+    /// explicitly stated, even if it is the `'_` [placeholder
+    /// lifetime].
+    ///
+    /// This lint is "allow" by default as function arguments by
+    /// themselves do not usually cause much confusion.
+    ///
+    /// [placeholder lifetime]: https://doc.rust-lang.org/reference/lifetime-elision.html#lifetime-elision-in-functions
+    pub HIDDEN_LIFETIMES_IN_INPUT_PATHS,
+    Allow,
+    "hidden lifetime parameters in types in function arguments may be confusing"
+}
+
+declare_lint! {
+    /// The `hidden_lifetimes_in_output_paths` lint detects the use
+    /// of hidden lifetime parameters in types occurring as a function
+    /// return value.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// struct ContainsLifetime<'a>(&'a i32);
+    ///
+    /// #[deny(hidden_lifetimes_in_output_paths)]
+    /// fn foo(x: &i32) -> ContainsLifetime {
+    ///     ContainsLifetime(x)
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Hidden lifetime parameters can make it difficult to see at a
+    /// glance that borrowing is occurring. This is especially true
+    /// when a type is used as a function's return value: lifetime
+    /// elision will link the return value's lifetime to an argument's
+    /// lifetime, but no syntax in the function signature indicates
+    /// that.
+    ///
+    /// This lint ensures that lifetime parameters are always
+    /// explicitly stated, even if it is the `'_` [placeholder
+    /// lifetime].
+    ///
+    /// [placeholder lifetime]: https://doc.rust-lang.org/reference/lifetime-elision.html#lifetime-elision-in-functions
+    pub HIDDEN_LIFETIMES_IN_OUTPUT_PATHS,
+    Allow,
+    "hidden lifetime parameters in types in function return values are deprecated"
+}
+
+declare_lint_pass!(LifetimeSyntax => [
+    MISMATCHED_LIFETIME_SYNTAXES,
+    HIDDEN_LIFETIMES_IN_INPUT_PATHS,
+    HIDDEN_LIFETIMES_IN_OUTPUT_PATHS,
+]);
 
 impl<'tcx> LateLintPass<'tcx> for LifetimeSyntax {
     #[instrument(skip_all)]
@@ -123,6 +201,8 @@ fn check_fn_like<'tcx>(cx: &LateContext<'tcx>, fd: &'tcx hir::FnDecl<'tcx>) {
     }
 
     report_mismatches(cx, &input_map, &output_map);
+    report_hidden_in_paths(cx, &input_map, HIDDEN_LIFETIMES_IN_INPUT_PATHS);
+    report_hidden_in_paths(cx, &output_map, HIDDEN_LIFETIMES_IN_OUTPUT_PATHS);
 }
 
 #[instrument(skip_all)]
@@ -515,6 +595,50 @@ fn build_mismatch_suggestion(
     }
 }
 
+fn report_hidden_in_paths<'tcx>(
+    cx: &LateContext<'tcx>,
+    info_map: &LifetimeInfoMap<'tcx>,
+    lint: &'static Lint,
+) {
+    let relevant_lifetimes = info_map
+        .iter()
+        .filter(|&(&&res, _)| reportable_lifetime_resolution(res))
+        .flat_map(|(_, info)| info)
+        .filter(|info| {
+            matches!(info.lifetime.source, LifetimeSource::Path { .. })
+                && info.lifetime.is_implicit()
+        });
+
+    let mut reporting_spans = Vec::new();
+    let mut suggestions = Vec::new();
+
+    for info in relevant_lifetimes {
+        reporting_spans.push(info.reporting_span());
+        suggestions.push(info.suggestion("'_"));
+    }
+
+    if reporting_spans.is_empty() {
+        return;
+    }
+
+    cx.emit_span_lint(
+        lint,
+        reporting_spans,
+        lints::HiddenLifetimeInPath {
+            suggestions: lints::HiddenLifetimeInPathSuggestion { suggestions },
+        },
+    );
+}
+
+/// We don't care about errors, nor do we care about the lifetime
+/// inside of a trait object.
+fn reportable_lifetime_resolution(kind: hir::LifetimeKind) -> bool {
+    matches!(
+        kind,
+        hir::LifetimeKind::Param(..) | hir::LifetimeKind::Infer | hir::LifetimeKind::Static
+    )
+}
+
 #[derive(Debug)]
 struct Info<'tcx> {
     type_span: Span,
@@ -615,5 +739,150 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeInfoCollector<'a, 'tcx> {
 
         self.type_span = old_type_span;
         self.referenced_type_span = old_referenced_type_span;
+    }
+}
+
+declare_lint! {
+    /// The `hidden_lifetimes_in_type_paths` lint detects the use of
+    /// hidden lifetime parameters in types not part of a function's
+    /// arguments or return values.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// struct ContainsLifetime<'a>(&'a i32);
+    ///
+    /// #[deny(hidden_lifetimes_in_type_paths)]
+    /// static FOO: ContainsLifetime = ContainsLifetime(&42);
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Hidden lifetime parameters can make it difficult to see at a
+    /// glance that borrowing is occurring.
+    ///
+    /// This lint ensures that lifetime parameters are always
+    /// explicitly stated, even if it is the `'_` [placeholder
+    /// lifetime].
+    ///
+    /// [placeholder lifetime]: https://doc.rust-lang.org/reference/lifetime-elision.html#lifetime-elision-in-functions
+    pub HIDDEN_LIFETIMES_IN_TYPE_PATHS,
+    Allow,
+    "hidden lifetime parameters in types outside function signatures are discouraged"
+}
+
+#[derive(Default)]
+pub(crate) struct HiddenLifetimesInTypePaths {
+    inside_fn_signature: bool,
+}
+
+impl_lint_pass!(HiddenLifetimesInTypePaths => [HIDDEN_LIFETIMES_IN_TYPE_PATHS]);
+
+// Do not lint about usages such as `ContainsLifetime::method` or
+// `ContainsLifetimeAndType::<SomeType>::method`.
+fn parent_path_implicit_self<'tcx>(cx: &LateContext<'tcx>, parent_hir_id: hir::HirId) -> bool {
+    let parent_hir_node = cx.tcx.parent_hir_node(parent_hir_id);
+    tracing::debug!(?parent_hir_node, "parent_hir_node");
+
+    fn path_is_implicit_self(path: hir::QPath<'_>) -> bool {
+        match path {
+            hir::QPath::TypeRelative(_, seg) => seg.implicit_self(),
+            _ => false,
+        }
+    }
+
+    if let hir::Node::Expr(expr) = parent_hir_node {
+        return match expr.kind {
+            hir::ExprKind::Path(path) => path_is_implicit_self(path),
+            hir::ExprKind::Struct(path, _, _) => path_is_implicit_self(*path),
+            _ => false,
+        };
+    }
+
+    if let hir::Node::Pat(pat) = parent_hir_node
+        && let hir::PatKind::Struct(path, _, _) | hir::PatKind::TupleStruct(path, _, _) = pat.kind
+    {
+        return path_is_implicit_self(path);
+    }
+
+    if let hir::Node::PatExpr(expr) = parent_hir_node
+        && let hir::PatExprKind::Path(path) = expr.kind
+    {
+        return path_is_implicit_self(path);
+    }
+
+    false
+}
+
+impl<'tcx> LateLintPass<'tcx> for HiddenLifetimesInTypePaths {
+    #[instrument(skip(self, cx))]
+    fn check_ty(&mut self, cx: &LateContext<'tcx>, ty: &'tcx hir::Ty<'tcx, hir::AmbigArg>) {
+        if self.inside_fn_signature {
+            return;
+        }
+
+        if parent_path_implicit_self(cx, ty.hir_id) {
+            return;
+        }
+
+        let hir::TyKind::Path(path) = ty.kind else { return };
+
+        let path_segments = match path {
+            hir::QPath::Resolved(_ty, path) => path.segments,
+
+            hir::QPath::TypeRelative(_ty, path_segment) => slice::from_ref(path_segment),
+
+            hir::QPath::LangItem(..) => &[],
+        };
+
+        let mut suggestions = Vec::new();
+
+        for path_segment in path_segments {
+            for arg in path_segment.args().args {
+                if let hir::GenericArg::Lifetime(lifetime) = arg
+                    && lifetime.is_implicit()
+                    && reportable_lifetime_resolution(lifetime.kind)
+                {
+                    suggestions.push(lifetime.suggestion("'_"))
+                }
+            }
+        }
+
+        if suggestions.is_empty() {
+            return;
+        }
+
+        cx.emit_span_lint(
+            HIDDEN_LIFETIMES_IN_TYPE_PATHS,
+            ty.span,
+            lints::HiddenLifetimeInPath {
+                suggestions: lints::HiddenLifetimeInPathSuggestion { suggestions },
+            },
+        );
+    }
+
+    #[instrument(skip_all)]
+    fn check_fn(
+        &mut self,
+        _: &LateContext<'tcx>,
+        _: hir::intravisit::FnKind<'tcx>,
+        _: &'tcx hir::FnDecl<'tcx>,
+        _: &'tcx hir::Body<'tcx>,
+        _: rustc_span::Span,
+        _: rustc_span::def_id::LocalDefId,
+    ) {
+        // We make the assumption that we will visit the function
+        // declaration first, before visiting the body.
+        self.inside_fn_signature = true;
+    }
+
+    // This may be a function's body, which would indicate that we are
+    // no longer in the signature. Even if it's not, a body cannot
+    // occur inside a function signature.
+    #[instrument(skip_all)]
+    fn check_body(&mut self, _: &LateContext<'tcx>, _: &hir::Body<'tcx>) {
+        self.inside_fn_signature = false;
     }
 }

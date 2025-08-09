@@ -40,7 +40,7 @@ use std::iter;
 
 use ast::visit::Visitor;
 use hir::def::{DefKind, PartialRes, Res};
-use hir::{BodyId, HirId};
+use hir::{BodyId, HirId, PathFlags};
 use rustc_abi::ExternAbi;
 use rustc_ast::*;
 use rustc_errors::ErrorGuaranteed;
@@ -264,7 +264,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             hir_id: self.next_id(),
             res: Res::Local(param_id),
             args: None,
-            infer_args: false,
+            flags: PathFlags::empty(),
         }));
 
         let path = self.arena.alloc(hir::Path { span, res: Res::Local(param_id), segments });
@@ -366,6 +366,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 GenericArgsMode::Err,
                 ImplTraitContext::Disallowed(ImplTraitPosition::Path),
                 None,
+                PathFlags::empty(),
             );
             let segment = self.arena.alloc(segment);
 

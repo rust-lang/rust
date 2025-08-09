@@ -3,7 +3,7 @@ use std::sync::Arc;
 use rustc_ast::{self as ast, *};
 use rustc_hir::def::{DefKind, PartialRes, PerNS, Res};
 use rustc_hir::def_id::DefId;
-use rustc_hir::{self as hir, GenericArg};
+use rustc_hir::{self as hir, GenericArg, PathFlags};
 use rustc_middle::{span_bug, ty};
 use rustc_session::parse::add_feature_diagnostics;
 use rustc_span::{BytePos, DUMMY_SP, DesugaringKind, Ident, Span, Symbol, sym};
@@ -135,6 +135,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         generic_args_mode,
                         itctx(i),
                         bound_modifier_allowed_features.clone(),
+                        PathFlags::empty(),
                     )
                 },
             )),
@@ -160,16 +161,23 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         }
 
         // Create the innermost type that we're projecting from.
-        let mut ty = if path.segments.is_empty() {
+        let (mut ty, flags) = if path.segments.is_empty() {
             // If the base path is empty that means there exists a
             // syntactical `Self`, e.g., `&i32` in `<&i32>::clone`.
-            qself.expect("missing QSelf for <T>::...")
+            (qself.expect("missing QSelf for <T>::..."), PathFlags::empty())
         } else {
             // Otherwise, the base path is an implicit `Self` type path,
             // e.g., `Vec` in `Vec::new` or `<I as Iterator>::Item` in
             // `<I as Iterator>::Item::default`.
             let new_id = self.next_id();
-            self.arena.alloc(self.ty_path(new_id, path.span, hir::QPath::Resolved(qself, path)))
+            (
+                &*self.arena.alloc(self.ty_path(
+                    new_id,
+                    path.span,
+                    hir::QPath::Resolved(qself, path),
+                )),
+                PathFlags::IMPLICIT_SELF,
+            )
         };
 
         // Anything after the base path are associated "extensions",
@@ -199,6 +207,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 generic_args_mode,
                 itctx(i),
                 None,
+                flags,
             ));
             let qpath = hir::QPath::TypeRelative(ty, hir_segment);
 
@@ -241,6 +250,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     GenericArgsMode::Err,
                     ImplTraitContext::Disallowed(ImplTraitPosition::Path),
                     None,
+                    PathFlags::empty(),
                 )
             })),
             span: self.lower_span(p.span),
@@ -258,6 +268,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         // This is passed down to the implicit associated type binding in
         // parenthesized bounds.
         bound_modifier_allowed_features: Option<Arc<[Symbol]>>,
+        mut flags: PathFlags,
     ) -> hir::PathSegment<'hir> {
         debug!("path_span: {:?}, lower_path_segment(segment: {:?})", path_span, segment);
         let (mut generic_args, infer_args) = if let Some(generic_args) = segment.args.as_deref() {
@@ -400,11 +411,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             segment.ident, segment.id, hir_id,
         );
 
+        flags.set(PathFlags::INFER_ARGS, infer_args);
+
         hir::PathSegment {
             ident: self.lower_ident(segment.ident),
             hir_id,
             res: self.lower_res(res),
-            infer_args,
+            flags,
             args: if generic_args.is_empty() && generic_args.span.is_empty() {
                 None
             } else {

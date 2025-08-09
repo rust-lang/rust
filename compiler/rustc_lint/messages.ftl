@@ -292,7 +292,11 @@ lint_hidden_glob_reexport = private item shadows public glob re-export
     .note_glob_reexport = the name `{$name}` in the {$namespace} namespace is supposed to be publicly re-exported here
     .note_private_item = but the private item here shadows it
 
-lint_hidden_lifetime_parameters = hidden lifetime parameters in types are deprecated
+lint_hidden_lifetime_in_path =
+    paths containing hidden lifetime parameters are deprecated
+
+lint_hidden_lifetime_in_path_suggestion =
+    indicate the anonymous lifetime
 
 lint_hidden_unicode_codepoints = unicode codepoint changing visible direction of text present in {$label}
     .label = this {$label} contains {$count ->

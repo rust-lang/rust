@@ -3889,6 +3889,7 @@ dependencies = [
 name = "rustc_hir"
 version = "0.0.0"
 dependencies = [
+ "bitflags",
  "odht",
  "rustc_abi",
  "rustc_arena",
