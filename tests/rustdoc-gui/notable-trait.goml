@@ -82,15 +82,6 @@ call-function: ("check-notable-tooltip-position", {
     "i_x": 528,
 })
 
-// Checking on mobile now.
-set-window-size: (650, 600)
-wait-for-size: ("body", {"width": 650})
-call-function: ("check-notable-tooltip-position-complete", {
-    "x": 26,
-    "i_x": 305,
-    "popover_x": 0,
-})
-
 // Now check the colors.
 define-function: (
     "check-colors",
@@ -176,6 +167,15 @@ call-function: (
     },
 )
 
+// Checking on mobile now.
+set-window-size: (650, 600)
+wait-for-size: ("body", {"width": 650})
+call-function: ("check-notable-tooltip-position-complete", {
+    "x": 26,
+    "i_x": 305,
+    "popover_x": 0,
+})
+
 reload:
 
 // Check that pressing escape works
@@ -189,7 +189,7 @@ assert: "#method\.create_an_iterator_from_read .tooltip:focus"
 // Check that clicking outside works.
 click: "//*[@id='method.create_an_iterator_from_read']//*[@class='tooltip']"
 assert-count: ("//*[@class='tooltip popover']", 1)
-click: ".search-input"
+click: ".main-heading h1"
 assert-count: ("//*[@class='tooltip popover']", 0)
 assert-false: "#method\.create_an_iterator_from_read .tooltip:focus"
 
@@ -219,14 +219,14 @@ define-function: (
         store-window-property: {"scrollY": scroll}
         click: "//*[@id='method.create_an_iterator_from_read']//*[@class='tooltip']"
         wait-for: "//*[@class='tooltip popover']"
-        click: "#settings-menu a"
+        click: ".main-heading h1"
     }
 )
 
 // Now we check that the focus isn't given back to the wrong item when opening
 // another popover.
 call-function: ("setup-popup", {})
-click: ".search-input"
+click: ".main-heading h1"
 // We ensure we didn't come back to the previous focused item.
 assert-window-property-false: {"scrollY": |scroll|}
 
@@ -251,7 +251,7 @@ reload:
 assert-count: ("//*[@class='tooltip popover']", 0)
 click: "//*[@id='method.create_an_iterator_from_read']//*[@class='tooltip']"
 assert-count: ("//*[@class='tooltip popover']", 1)
-click: "#settings-menu a"
+click: "rustdoc-toolbar .settings-menu a"
 wait-for: "#settings"
 assert-count: ("//*[@class='tooltip popover']", 0)
 assert-false: "#method\.create_an_iterator_from_read .tooltip:focus"

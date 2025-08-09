@@ -7,7 +7,7 @@
 #[doc(masked)]
 extern crate masked;
 
-//@ !hasraw 'search-index.js' 'masked_method'
+//@ !hasraw 'search.index/name/*.js' 'masked_method'
 
 //@ !hasraw 'foo/struct.String.html' 'MaskedTrait'
 //@ !hasraw 'foo/struct.String.html' 'MaskedBlanketTrait'

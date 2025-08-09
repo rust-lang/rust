@@ -1,10 +1,11 @@
 // This test ensures that the tuple struct fields are not generated in the
 // search index.
 
-//@ !hasraw search-index.js '"0"'
-//@ !hasraw search-index.js '"1"'
-//@ hasraw search-index.js '"foo_a"'
-//@ hasraw search-index.js '"bar_a"'
+// vlqhex encoding ` = 0, a = 1, e = 5
+//@ !hasraw search.index/name/*.js 'a0'
+//@ !hasraw search.index/name/*.js 'a1'
+//@ hasraw search.index/name/*.js 'efoo_a'
+//@ hasraw search.index/name/*.js 'ebar_a'
 
 pub struct Bar(pub u32, pub u8);
 pub struct Foo {

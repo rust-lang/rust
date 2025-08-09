@@ -7,7 +7,7 @@ const PARSED = [
             pathWithoutLast: [],
             pathLast: "中文",
             generics: [],
-            typeFilter: -1,
+            typeFilter: null,
         }],
         returned: [],
         foundElems: 1,
@@ -23,7 +23,7 @@ const PARSED = [
             pathLast: "_0mixed中英文",
             normalizedPathLast: "0mixed中英文",
             generics: [],
-            typeFilter: -1,
+            typeFilter: null,
         }],
         foundElems: 1,
         userQuery: "_0Mixed中英文",
@@ -38,7 +38,7 @@ const PARSED = [
             pathWithoutLast: ["my_crate"],
             pathLast: "中文api",
             generics: [],
-            typeFilter: -1,
+            typeFilter: null,
         }],
         foundElems: 1,
         userQuery: "my_crate::中文API",
@@ -94,7 +94,7 @@ const PARSED = [
             pathWithoutLast: ["my_crate"],
             pathLast: "中文宏",
             generics: [],
-            typeFilter: 16,
+            typeFilter: "macro",
         }],
         foundElems: 1,
         userQuery: "my_crate 中文宏!",
@@ -115,12 +115,6 @@ const EXPECTED = [
         query: '加法',
         others: [
             {
-                name: "加法",
-                path: "non_english_identifier",
-                href: "../non_english_identifier/trait.加法.html",
-                desc: "Add"
-            },
-            {
                 name: "add",
                 path: "non_english_identifier",
                 is_alias: true,
@@ -133,6 +127,12 @@ const EXPECTED = [
                 is_alias: true,
                 alias: "加法",
                 href: "../non_english_identifier/macro.add.html"
+            },
+            {
+                name: "加法",
+                path: "non_english_identifier",
+                href: "../non_english_identifier/trait.加法.html",
+                desc: "Add"
             },
         ],
         in_args: [{

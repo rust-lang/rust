@@ -7,6 +7,7 @@ write-into: (".search-input", "test")
 // To be SURE that the search will be run.
 press-key: 'Enter'
 wait-for: "#crate-search"
+wait-for-false: "#search-tabs .count.loading"
 // The width is returned by "getComputedStyle" which returns the exact number instead of the
 // CSS rule which is "50%"...
 assert-size: (".search-results div.desc", {"width": 248})
@@ -34,6 +35,7 @@ assert: |new_width| < |width| - 10
 // Check that if the search is too long on mobile, it'll go under the "typename".
 go-to: "file://" + |DOC_PATH| + "/test_docs/index.html?search=SuperIncrediblyLongLongLongLongLongLongLongGigaGigaGigaMegaLongLongLongStructName"
 wait-for: "#crate-search"
+wait-for-false: "#search-tabs .count.loading"
 compare-elements-position-near: (
     ".search-results .result-name .typename",
     ".search-results .result-name .path",
@@ -51,7 +53,7 @@ set-window-size: (900, 900)
 
 // First we check the current width, height and position.
 assert-css: ("#crate-search", {"width": "159px"})
-store-size: (".search-results-title", {
+store-size: (".search-switcher", {
     "height": search_results_title_height,
     "width": search_results_title_width,
 })
@@ -64,8 +66,8 @@ set-text: (
 )
 
 // Then we compare again to confirm the height didn't change.
-assert-size: ("#crate-search", {"width": 370})
-assert-size: (".search-results-title", {
+assert-size: ("#crate-search", {"width": 185})
+assert-size: (".search-switcher", {
     "height": |search_results_title_height|,
 })
 assert-css: ("#search", {"width": "640px"})
@@ -79,6 +81,7 @@ define-function: (
     block {
         call-function: ("switch-theme", {"theme": |theme|})
         wait-for: "#crate-search"
+        wait-for-false: "#search-tabs .count.loading"
         assert-css: ("#crate-search", {"border": "1px solid " + |border|})
         assert-css: ("#crate-search-div::after", {"filter": |filter|})
         move-cursor-to: "#crate-search"
