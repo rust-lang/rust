@@ -171,8 +171,11 @@ codegen_ssa_invalid_monomorphization_unsupported_symbol = invalid monomorphizati
 
 codegen_ssa_invalid_monomorphization_unsupported_symbol_of_size = invalid monomorphization of `{$name}` intrinsic: unsupported {$symbol} from `{$in_ty}` with element `{$in_elem}` of size `{$size}` to `{$ret_ty}`
 
-codegen_ssa_invalid_sanitize = invalid argument for `sanitize`
+codegen_ssa_invalid_sanitizer = invalid argument for `sanitize`
     .note = expected one of: `address`, `kernel_address`, `cfi`, `hwaddress`, `kcfi`, `memory`, `memtag`, `shadow_call_stack`, or `thread`
+
+codegen_ssa_invalid_sanitizer_setting = invalid setting for `{$sanitizer}`
+    .note = expected one of: `on`, or `off`
 
 codegen_ssa_invalid_windows_subsystem = invalid windows subsystem `{$subsystem}`, only `windows` and `console` are allowed
 
