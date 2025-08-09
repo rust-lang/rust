@@ -6,6 +6,7 @@ use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_macros::{Decodable, Encodable, HashStable};
+use rustc_span::symbol::sym;
 use tracing::debug;
 
 use crate::query::LocalCrate;
@@ -239,6 +240,12 @@ pub(super) fn trait_impls_of_provider(tcx: TyCtxt<'_>, trait_id: DefId) -> Trait
 
 /// Query provider for `incoherent_impls`.
 pub(super) fn incoherent_impls_provider(tcx: TyCtxt<'_>, simp: SimplifiedType) -> &[DefId] {
+    if let Some(def_id) = simp.def()
+        && !tcx.has_attr(def_id, sym::rustc_has_incoherent_inherent_impls)
+    {
+        return &[];
+    }
+
     let mut impls = Vec::new();
     for cnum in iter::once(LOCAL_CRATE).chain(tcx.crates(()).iter().copied()) {
         for &impl_def_id in tcx.crate_incoherent_impls((cnum, simp)) {
