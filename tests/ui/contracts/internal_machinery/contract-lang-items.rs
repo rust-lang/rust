@@ -17,8 +17,10 @@
 #![feature(contracts_internals)] // to access check_requires lang item
 #![feature(core_intrinsics)]
 fn foo(x: Baz) -> i32 {
-    let injected_checker = {
-        core::contracts::build_check_ensures(|ret| *ret > 100)
+    let injected_checker = if core::intrinsics::contract_checks() {
+        Some(core::contracts::build_check_ensures(|ret| *ret > 100))
+    } else {
+        None
     };
 
     let ret = x.baz + 50;
