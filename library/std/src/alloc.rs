@@ -11,7 +11,7 @@
 //!
 //! This attribute allows configuring the choice of global allocator.
 //! You can use this to implement a completely custom global allocator
-//! to route all default allocation requests to a custom object.
+//! to route all[^system-alloc] default allocation requests to a custom object.
 //!
 //! ```rust
 //! use std::alloc::{GlobalAlloc, System, Layout};
@@ -52,6 +52,13 @@
 //!
 //! The `#[global_allocator]` can only be used once in a crate
 //! or its recursive dependencies.
+//!
+//! [^system-alloc]: Note that the Rust standard library internals may still
+//! directly call [`System`] when necessary (for example for the runtime
+//! support typically required to implement a global allocator, see [re-entrance] on [`GlobalAlloc`]
+//! for more details).
+//!
+//! [re-entrance]: trait.GlobalAlloc.html#re-entrance
 
 #![deny(unsafe_op_in_unsafe_fn)]
 #![stable(feature = "alloc_module", since = "1.28.0")]
