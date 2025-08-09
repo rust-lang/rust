@@ -1094,23 +1094,17 @@ macro_rules! uint_impl {
             self / rhs
         }
 
-        /// Checked integer division without remainder. Computes `self / rhs`.
-        ///
-        /// # Panics
-        ///
-        /// This function will panic  if `rhs == 0` or `self % rhs != 0`.
+        /// Checked integer division without remainder. Computes `self / rhs`,
+        /// returning `None` if `rhs == 0` or if `self % rhs != 0`.
         ///
         /// # Examples
         ///
         /// ```
         /// #![feature(exact_div)]
-        #[doc = concat!("assert_eq!(64", stringify!($SelfT), ".exact_div(2), 32);")]
-        #[doc = concat!("assert_eq!(64", stringify!($SelfT), ".exact_div(32), 2);")]
-        /// ```
-        ///
-        /// ```should_panic
-        /// #![feature(exact_div)]
-        #[doc = concat!("let _ = 65", stringify!($SelfT), ".exact_div(2);")]
+        #[doc = concat!("assert_eq!(64", stringify!($SelfT), ".checked_exact_div(2), Some(32));")]
+        #[doc = concat!("assert_eq!(64", stringify!($SelfT), ".checked_exact_div(32), Some(2));")]
+        #[doc = concat!("assert_eq!(64", stringify!($SelfT), ".checked_exact_div(0), None);")]
+        #[doc = concat!("assert_eq!(65", stringify!($SelfT), ".checked_exact_div(2), None);")]
         /// ```
         #[unstable(
             feature = "exact_div",
