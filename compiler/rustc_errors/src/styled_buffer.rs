@@ -1,5 +1,7 @@
 // Code for creating styled buffers
 
+use std::collections::VecDeque;
+
 use crate::snippet::{Style, StyledString};
 
 #[derive(Debug)]
@@ -106,16 +108,17 @@ impl StyledBuffer {
     /// adding lines if needed
     pub(crate) fn prepend(&mut self, line: usize, string: &str, style: Style) {
         self.ensure_lines(line);
-        let string_len = string.chars().count();
-
-        if !self.lines[line].is_empty() {
-            // Push the old content over to make room for new content
-            for _ in 0..string_len {
-                self.lines[line].insert(0, StyledChar::SPACE);
-            }
+        if string.is_empty() {
+            return;
         }
 
-        self.puts(line, 0, string, style);
+        let row = &mut self.lines[line];
+
+        // collect the prefix into a VecDeque,
+        // then extend the old content to the end of the deque
+        let mut dq: VecDeque<_> = string.chars().map(|ch| StyledChar::new(ch, style)).collect();
+        dq.extend(row.drain(..));
+        *row = dq.into_iter().collect();
     }
 
     /// For given `line` inserts `string` with `style` after old content of that line,
