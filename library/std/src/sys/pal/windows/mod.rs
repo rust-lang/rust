@@ -20,7 +20,6 @@ pub mod futex;
 pub mod handle;
 pub mod os;
 pub mod pipe;
-pub mod thread;
 pub mod time;
 cfg_if::cfg_if! {
     if #[cfg(not(target_vendor = "uwp"))] {
@@ -47,9 +46,9 @@ pub unsafe fn init(_argc: isize, _argv: *const *const u8, _sigpipe: u8) {
     unsafe {
         stack_overflow::init();
 
-        // Normally, `thread::spawn` will call `Thread::set_name` but since this thread already
+        // Normally, `thread::spawn` will call `set_name` but since this thread already
         // exists, we have to call it ourselves.
-        thread::Thread::set_name_wide(wide_str!("main"));
+        crate::sys::thread::set_name_wide(wide_str!("main"));
     }
 }
 
