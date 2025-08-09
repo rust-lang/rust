@@ -63,6 +63,15 @@ pub(crate) struct TraitFnConst {
 }
 
 #[derive(Diagnostic)]
+#[diag(ast_passes_async_fn_in_const_trait)]
+pub(crate) struct AsyncFnInConstTrait {
+    #[primary_span]
+    pub async_keyword: Span,
+    #[label]
+    pub const_trait: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(ast_passes_forbidden_bound)]
 pub(crate) struct ForbiddenBound {
     #[primary_span]
