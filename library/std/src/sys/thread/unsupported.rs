@@ -1,8 +1,7 @@
-use super::unsupported;
 use crate::ffi::CStr;
 use crate::io;
 use crate::num::NonZero;
-use crate::time::{Duration, Instant};
+use crate::time::Duration;
 
 pub struct Thread(!);
 
@@ -15,23 +14,7 @@ impl Thread {
         _name: Option<&str>,
         _p: Box<dyn FnOnce()>,
     ) -> io::Result<Thread> {
-        unsupported()
-    }
-
-    pub fn yield_now() {
-        // do nothing
-    }
-
-    pub fn set_name(_name: &CStr) {
-        // nope
-    }
-
-    pub fn sleep(_dur: Duration) {
-        panic!("can't sleep");
-    }
-
-    pub fn sleep_until(_deadline: Instant) {
-        panic!("can't sleep");
+        Err(io::Error::UNSUPPORTED_PLATFORM)
     }
 
     pub fn join(self) {
@@ -39,10 +22,22 @@ impl Thread {
     }
 }
 
-pub(crate) fn current_os_id() -> Option<u64> {
+pub fn available_parallelism() -> io::Result<NonZero<usize>> {
+    Err(io::Error::UNKNOWN_THREAD_COUNT)
+}
+
+pub fn current_os_id() -> Option<u64> {
     None
 }
 
-pub fn available_parallelism() -> io::Result<NonZero<usize>> {
-    unsupported()
+pub fn yield_now() {
+    // do nothing
+}
+
+pub fn set_name(_name: &CStr) {
+    // nope
+}
+
+pub fn sleep(_dur: Duration) {
+    panic!("can't sleep");
 }
