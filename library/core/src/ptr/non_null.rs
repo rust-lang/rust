@@ -72,6 +72,7 @@ use crate::{fmt, hash, intrinsics, mem, ptr};
 #[rustc_layout_scalar_valid_range_start(1)]
 #[rustc_nonnull_optimization_guaranteed]
 #[rustc_diagnostic_item = "NonNull"]
+#[debuginfo_transparent]
 pub struct NonNull<T: PointeeSized> {
     // Remember to use `.as_ptr()` instead of `.pointer`, as field projecting to
     // this is banned by <https://github.com/rust-lang/compiler-team/issues/807>.

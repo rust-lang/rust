@@ -30,6 +30,7 @@ impl AttributeKind {
             ConstTrait(..) => No,
             Coroutine(..) => No,
             Coverage(..) => No,
+            DebuginfoTransparent { .. } => Yes,
             DenyExplicitImpl(..) => No,
             Deprecation { .. } => Yes,
             DoNotImplementViaObject(..) => No,
