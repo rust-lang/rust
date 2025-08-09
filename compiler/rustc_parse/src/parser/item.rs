@@ -3,7 +3,6 @@ use std::mem;
 
 use ast::token::IdentIsRaw;
 use rustc_ast::ast::*;
-use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, InvisibleOrigin, MetaVarKind, TokenKind};
 use rustc_ast::tokenstream::{DelimSpan, TokenStream, TokenTree};
 use rustc_ast::util::case::Case;
@@ -56,12 +55,12 @@ impl<'a> Parser<'a> {
     pub fn parse_mod(
         &mut self,
         term: ExpTokenPair<'_>,
-    ) -> PResult<'a, (AttrVec, ThinVec<P<Item>>, ModSpans)> {
+    ) -> PResult<'a, (AttrVec, ThinVec<Box<Item>>, ModSpans)> {
         let lo = self.token.span;
         let attrs = self.parse_inner_attributes()?;
 
         let post_attr_lo = self.token.span;
-        let mut items: ThinVec<P<_>> = ThinVec::new();
+        let mut items: ThinVec<Box<_>> = ThinVec::new();
 
         // There shouldn't be any stray semicolons before or after items.
         // `parse_item` consumes the appropriate semicolons so any leftover is an error.
@@ -116,9 +115,9 @@ impl<'a> Parser<'a> {
 }
 
 impl<'a> Parser<'a> {
-    pub fn parse_item(&mut self, force_collect: ForceCollect) -> PResult<'a, Option<P<Item>>> {
+    pub fn parse_item(&mut self, force_collect: ForceCollect) -> PResult<'a, Option<Box<Item>>> {
         let fn_parse_mode = FnParseMode { req_name: |_| true, req_body: true };
-        self.parse_item_(fn_parse_mode, force_collect).map(|i| i.map(P))
+        self.parse_item_(fn_parse_mode, force_collect).map(|i| i.map(Box::new))
     }
 
     fn parse_item_(
@@ -327,7 +326,7 @@ impl<'a> Parser<'a> {
                 self.recover_missing_kw_before_item()?;
             }
             // MACRO INVOCATION ITEM
-            ItemKind::MacCall(P(self.parse_item_macro(vis)?))
+            ItemKind::MacCall(Box::new(self.parse_item_macro(vis)?))
         } else {
             return Ok(None);
         };
@@ -951,7 +950,7 @@ impl<'a> Parser<'a> {
     pub fn parse_impl_item(
         &mut self,
         force_collect: ForceCollect,
-    ) -> PResult<'a, Option<Option<P<AssocItem>>>> {
+    ) -> PResult<'a, Option<Option<Box<AssocItem>>>> {
         let fn_parse_mode = FnParseMode { req_name: |_| true, req_body: true };
         self.parse_assoc_item(fn_parse_mode, force_collect)
     }
@@ -959,7 +958,7 @@ impl<'a> Parser<'a> {
     pub fn parse_trait_item(
         &mut self,
         force_collect: ForceCollect,
-    ) -> PResult<'a, Option<Option<P<AssocItem>>>> {
+    ) -> PResult<'a, Option<Option<Box<AssocItem>>>> {
         let fn_parse_mode =
             FnParseMode { req_name: |edition| edition >= Edition::Edition2018, req_body: false };
         self.parse_assoc_item(fn_parse_mode, force_collect)
@@ -970,7 +969,7 @@ impl<'a> Parser<'a> {
         &mut self,
         fn_parse_mode: FnParseMode,
         force_collect: ForceCollect,
-    ) -> PResult<'a, Option<Option<P<AssocItem>>>> {
+    ) -> PResult<'a, Option<Option<Box<AssocItem>>>> {
         Ok(self.parse_item_(fn_parse_mode, force_collect)?.map(
             |Item { attrs, id, span, vis, kind, tokens }| {
                 let kind = match AssocItemKind::try_from(kind) {
@@ -997,7 +996,7 @@ impl<'a> Parser<'a> {
                         _ => return self.error_bad_item_kind(span, &kind, "`trait`s or `impl`s"),
                     },
                 };
-                Some(P(Item { attrs, id, span, vis, kind, tokens }))
+                Some(Box::new(Item { attrs, id, span, vis, kind, tokens }))
             },
         ))
     }
@@ -1237,7 +1236,7 @@ impl<'a> Parser<'a> {
     pub fn parse_foreign_item(
         &mut self,
         force_collect: ForceCollect,
-    ) -> PResult<'a, Option<Option<P<ForeignItem>>>> {
+    ) -> PResult<'a, Option<Option<Box<ForeignItem>>>> {
         let fn_parse_mode = FnParseMode { req_name: |_| true, req_body: false };
         Ok(self.parse_item_(fn_parse_mode, force_collect)?.map(
             |Item { attrs, id, span, vis, kind, tokens }| {
@@ -1263,7 +1262,7 @@ impl<'a> Parser<'a> {
                         _ => return self.error_bad_item_kind(span, &kind, "`extern` blocks"),
                     },
                 };
-                Some(P(Item { attrs, id, span, vis, kind, tokens }))
+                Some(Box::new(Item { attrs, id, span, vis, kind, tokens }))
             },
         ))
     }
@@ -1424,7 +1423,9 @@ impl<'a> Parser<'a> {
     /// ```ebnf
     /// Const = "const" ($ident | "_") Generics ":" $ty (= $expr)? WhereClause ";" ;
     /// ```
-    fn parse_const_item(&mut self) -> PResult<'a, (Ident, Generics, P<Ty>, Option<P<ast::Expr>>)> {
+    fn parse_const_item(
+        &mut self,
+    ) -> PResult<'a, (Ident, Generics, Box<Ty>, Option<Box<ast::Expr>>)> {
         let ident = self.parse_ident_or_underscore()?;
 
         let mut generics = self.parse_generics()?;
@@ -1517,7 +1518,7 @@ impl<'a> Parser<'a> {
         &mut self,
         colon_present: bool,
         m: Option<Mutability>,
-    ) -> P<Ty> {
+    ) -> Box<Ty> {
         // Construct the error and stash it away with the hope
         // that typeck will later enrich the error with a type.
         let kind = match m {
@@ -1537,7 +1538,7 @@ impl<'a> Parser<'a> {
 
         // The user intended that the type be inferred,
         // so treat this as if the user wrote e.g. `const A: _ = expr;`.
-        P(Ty { kind: TyKind::Infer, span, id: ast::DUMMY_NODE_ID, tokens: None })
+        Box::new(Ty { kind: TyKind::Infer, span, id: ast::DUMMY_NODE_ID, tokens: None })
     }
 
     /// Parses an enum declaration.
@@ -2207,7 +2208,7 @@ impl<'a> Parser<'a> {
             let arrow = TokenTree::token_alone(token::FatArrow, pspan.between(bspan)); // `=>`
             let tokens = TokenStream::new(vec![params, arrow, body]);
             let dspan = DelimSpan::from_pair(pspan.shrink_to_lo(), bspan.shrink_to_hi());
-            P(DelimArgs { dspan, delim: Delimiter::Brace, tokens })
+            Box::new(DelimArgs { dspan, delim: Delimiter::Brace, tokens })
         } else {
             self.unexpected_any()?
         };
@@ -2409,7 +2410,7 @@ impl<'a> Parser<'a> {
         sig_lo: Span,
         vis: &Visibility,
         case: Case,
-    ) -> PResult<'a, (Ident, FnSig, Generics, Option<P<FnContract>>, Option<P<Block>>)> {
+    ) -> PResult<'a, (Ident, FnSig, Generics, Option<Box<FnContract>>, Option<Box<Block>>)> {
         let fn_span = self.token.span;
         let header = self.parse_fn_front_matter(vis, case, FrontMatterParsingMode::Function)?; // `const ... fn`
         let ident = self.parse_ident()?; // `foo`
@@ -2539,7 +2540,7 @@ impl<'a> Parser<'a> {
         sig_hi: &mut Span,
         req_body: bool,
         fn_params_end: Option<Span>,
-    ) -> PResult<'a, Option<P<Block>>> {
+    ) -> PResult<'a, Option<Box<Block>>> {
         let has_semi = if req_body {
             self.token == TokenKind::Semi
         } else {
@@ -2939,8 +2940,8 @@ impl<'a> Parser<'a> {
         req_name: ReqName,
         ret_allow_plus: AllowPlus,
         recover_return_sign: RecoverReturnSign,
-    ) -> PResult<'a, P<FnDecl>> {
-        Ok(P(FnDecl {
+    ) -> PResult<'a, Box<FnDecl>> {
+        Ok(Box::new(FnDecl {
             inputs: self.parse_fn_params(req_name)?,
             output: self.parse_ret_ty(ret_allow_plus, RecoverQPath::Yes, recover_return_sign)?,
         }))

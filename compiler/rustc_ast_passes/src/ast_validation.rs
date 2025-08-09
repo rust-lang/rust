@@ -22,7 +22,6 @@ use std::str::FromStr;
 
 use itertools::{Either, Itertools};
 use rustc_abi::{CanonAbi, ExternAbi, InterruptKind};
-use rustc_ast::ptr::P;
 use rustc_ast::visit::{AssocCtxt, BoundKind, FnCtxt, FnKind, Visitor, walk_list};
 use rustc_ast::*;
 use rustc_ast_pretty::pprust::{self, State};
@@ -719,7 +718,7 @@ impl<'a> AstValidator<'a> {
         }
     }
 
-    fn deny_items(&self, trait_items: &[P<AssocItem>], ident_span: Span) {
+    fn deny_items(&self, trait_items: &[Box<AssocItem>], ident_span: Span) {
         if !trait_items.is_empty() {
             let spans: Vec<_> = trait_items.iter().map(|i| i.kind.ident().unwrap().span).collect();
             let total = trait_items.first().unwrap().span.to(trait_items.last().unwrap().span);

@@ -1530,7 +1530,7 @@ impl<'a> CrateMetadataRef<'a> {
                 let macro_rules = self.root.tables.is_macro_rules.get(self, id);
                 let body =
                     self.root.tables.macro_definition.get(self, id).unwrap().decode((self, sess));
-                ast::MacroDef { macro_rules, body: ast::ptr::P(body) }
+                ast::MacroDef { macro_rules, body: Box::new(body) }
             }
             _ => bug!(),
         }

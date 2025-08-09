@@ -3,7 +3,7 @@ use std::cmp::min;
 
 use itertools::Itertools;
 use rustc_ast::token::{Delimiter, Lit, LitKind};
-use rustc_ast::{ForLoopKind, MatchKind, ast, ptr, token};
+use rustc_ast::{ForLoopKind, MatchKind, ast, token};
 use rustc_span::{BytePos, Span};
 use tracing::debug;
 
@@ -1368,7 +1368,7 @@ fn choose_separator_tactic(context: &RewriteContext<'_>, span: Span) -> Option<S
 pub(crate) fn rewrite_call(
     context: &RewriteContext<'_>,
     callee: &str,
-    args: &[ptr::P<ast::Expr>],
+    args: &[Box<ast::Expr>],
     span: Span,
     shape: Shape,
 ) -> RewriteResult {
@@ -1634,7 +1634,7 @@ fn struct_lit_can_be_aligned(fields: &[ast::ExprField], has_base: bool) -> bool 
 fn rewrite_struct_lit<'a>(
     context: &RewriteContext<'_>,
     path: &ast::Path,
-    qself: &Option<ptr::P<ast::QSelf>>,
+    qself: &Option<Box<ast::QSelf>>,
     fields: &'a [ast::ExprField],
     struct_rest: &ast::StructRest,
     attrs: &[ast::Attribute],

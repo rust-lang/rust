@@ -7,7 +7,6 @@ use std::fmt::{self, Display, Formatter};
 use std::str::FromStr;
 
 use crate::expand::{Decodable, Encodable, HashStable_Generic};
-use crate::ptr::P;
 use crate::{Ty, TyKind};
 
 /// Forward and Reverse Mode are well known names for automatic differentiation implementations.
@@ -162,7 +161,7 @@ pub fn valid_ret_activity(mode: DiffMode, activity: DiffActivity) -> bool {
 /// since Duplicated expects a mutable ref/ptr and we would thus end up with a shadow value
 /// who is an indirect type, which doesn't match the primal scalar type. We can't prevent
 /// users here from marking scalars as Duplicated, due to type aliases.
-pub fn valid_ty_for_activity(ty: &P<Ty>, activity: DiffActivity) -> bool {
+pub fn valid_ty_for_activity(ty: &Box<Ty>, activity: DiffActivity) -> bool {
     use DiffActivity::*;
     // It's always allowed to mark something as Const, since we won't compute derivatives wrt. it.
     // Dual variants also support all types.

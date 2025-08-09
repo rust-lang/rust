@@ -1,4 +1,3 @@
-use rustc_ast::ptr::P;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::{ExprKind, LitIntType, LitKind, StrStyle, UintTy, token};
 use rustc_expand::base::{DummyResult, ExpandResult, ExtCtxt, MacEager, MacroExpanderResult};
@@ -90,7 +89,7 @@ fn handle_array_element(
     cx: &ExtCtxt<'_>,
     guar: &mut Option<ErrorGuaranteed>,
     missing_literals: &mut Vec<rustc_span::Span>,
-    expr: &P<rustc_ast::Expr>,
+    expr: &Box<rustc_ast::Expr>,
 ) -> Option<u8> {
     let dcx = cx.dcx();
 

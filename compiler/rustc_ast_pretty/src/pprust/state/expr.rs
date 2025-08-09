@@ -2,7 +2,6 @@ use std::fmt::Write;
 
 use ast::{ForLoopKind, MatchKind};
 use itertools::{Itertools, Position};
-use rustc_ast::ptr::P;
 use rustc_ast::util::classify;
 use rustc_ast::util::literal::escape_byte_str_symbol;
 use rustc_ast::util::parser::{self, ExprPrecedence, Fixity};
@@ -54,7 +53,7 @@ impl<'a> State<'a> {
         self.print_else(elseopt)
     }
 
-    fn print_call_post(&mut self, args: &[P<ast::Expr>]) {
+    fn print_call_post(&mut self, args: &[Box<ast::Expr>]) {
         self.popen();
         self.commasep_exprs(Inconsistent, args);
         self.pclose()
@@ -111,7 +110,7 @@ impl<'a> State<'a> {
         }
     }
 
-    fn print_expr_vec(&mut self, exprs: &[P<ast::Expr>]) {
+    fn print_expr_vec(&mut self, exprs: &[Box<ast::Expr>]) {
         let ib = self.ibox(INDENT_UNIT);
         self.word("[");
         self.commasep_exprs(Inconsistent, exprs);
@@ -149,7 +148,7 @@ impl<'a> State<'a> {
 
     fn print_expr_struct(
         &mut self,
-        qself: &Option<P<ast::QSelf>>,
+        qself: &Option<Box<ast::QSelf>>,
         path: &ast::Path,
         fields: &[ast::ExprField],
         rest: &ast::StructRest,
@@ -204,7 +203,7 @@ impl<'a> State<'a> {
         self.word("}");
     }
 
-    fn print_expr_tup(&mut self, exprs: &[P<ast::Expr>]) {
+    fn print_expr_tup(&mut self, exprs: &[Box<ast::Expr>]) {
         self.popen();
         self.commasep_exprs(Inconsistent, exprs);
         if exprs.len() == 1 {
@@ -213,7 +212,7 @@ impl<'a> State<'a> {
         self.pclose()
     }
 
-    fn print_expr_call(&mut self, func: &ast::Expr, args: &[P<ast::Expr>], fixup: FixupContext) {
+    fn print_expr_call(&mut self, func: &ast::Expr, args: &[Box<ast::Expr>], fixup: FixupContext) {
         // Independent of parenthesization related to precedence, we must
         // parenthesize `func` if this is a statement context in which without
         // parentheses, a statement boundary would occur inside `func` or
@@ -247,7 +246,7 @@ impl<'a> State<'a> {
         &mut self,
         segment: &ast::PathSegment,
         receiver: &ast::Expr,
-        base_args: &[P<ast::Expr>],
+        base_args: &[Box<ast::Expr>],
         fixup: FixupContext,
     ) {
         // The fixup here is different than in `print_expr_call` because

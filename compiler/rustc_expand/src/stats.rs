@@ -1,6 +1,5 @@
 use std::iter;
 
-use rustc_ast::ptr::P;
 use rustc_ast::{self as ast, DUMMY_NODE_ID, Expr, ExprKind};
 use rustc_ast_pretty::pprust;
 use rustc_span::hygiene::{ExpnKind, MacroKind};
@@ -41,7 +40,7 @@ pub(crate) fn update_bang_macro_stats(
     ecx: &mut ExtCtxt<'_>,
     fragment_kind: AstFragmentKind,
     span: Span,
-    mac: P<ast::MacCall>,
+    mac: Box<ast::MacCall>,
     fragment: &AstFragment,
 ) {
     // Does this path match any of the include macros, e.g. `include!`?

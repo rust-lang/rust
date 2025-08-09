@@ -7,7 +7,6 @@ use std::rc::Rc;
 use std::sync::Arc;
 
 use rustc_ast::attr::{AttributeExt, MarkedAttrs};
-use rustc_ast::ptr::P;
 use rustc_ast::token::MetaVarKind;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::visit::{AssocCtxt, Visitor};
@@ -45,11 +44,11 @@ use crate::stats::MacroStat;
 // to use `assign_id!`
 #[derive(Debug, Clone)]
 pub enum Annotatable {
-    Item(P<ast::Item>),
-    AssocItem(P<ast::AssocItem>, AssocCtxt),
-    ForeignItem(P<ast::ForeignItem>),
-    Stmt(P<ast::Stmt>),
-    Expr(P<ast::Expr>),
+    Item(Box<ast::Item>),
+    AssocItem(Box<ast::AssocItem>, AssocCtxt),
+    ForeignItem(Box<ast::ForeignItem>),
+    Stmt(Box<ast::Stmt>),
+    Expr(Box<ast::Expr>),
     Arm(ast::Arm),
     ExprField(ast::ExprField),
     PatField(ast::PatField),
@@ -141,28 +140,28 @@ impl Annotatable {
         }
     }
 
-    pub fn expect_item(self) -> P<ast::Item> {
+    pub fn expect_item(self) -> Box<ast::Item> {
         match self {
             Annotatable::Item(i) => i,
             _ => panic!("expected Item"),
         }
     }
 
-    pub fn expect_trait_item(self) -> P<ast::AssocItem> {
+    pub fn expect_trait_item(self) -> Box<ast::AssocItem> {
         match self {
             Annotatable::AssocItem(i, AssocCtxt::Trait) => i,
             _ => panic!("expected Item"),
         }
     }
 
-    pub fn expect_impl_item(self) -> P<ast::AssocItem> {
+    pub fn expect_impl_item(self) -> Box<ast::AssocItem> {
         match self {
             Annotatable::AssocItem(i, AssocCtxt::Impl { .. }) => i,
             _ => panic!("expected Item"),
         }
     }
 
-    pub fn expect_foreign_item(self) -> P<ast::ForeignItem> {
+    pub fn expect_foreign_item(self) -> Box<ast::ForeignItem> {
         match self {
             Annotatable::ForeignItem(i) => i,
             _ => panic!("expected foreign item"),
@@ -176,7 +175,7 @@ impl Annotatable {
         }
     }
 
-    pub fn expect_expr(self) -> P<ast::Expr> {
+    pub fn expect_expr(self) -> Box<ast::Expr> {
         match self {
             Annotatable::Expr(expr) => expr,
             _ => panic!("expected expression"),
@@ -412,37 +411,37 @@ macro_rules! make_stmts_default {
 /// methods are spliced into the AST at the callsite of the macro.
 pub trait MacResult {
     /// Creates an expression.
-    fn make_expr(self: Box<Self>) -> Option<P<ast::Expr>> {
+    fn make_expr(self: Box<Self>) -> Option<Box<ast::Expr>> {
         None
     }
 
     /// Creates zero or more items.
-    fn make_items(self: Box<Self>) -> Option<SmallVec<[P<ast::Item>; 1]>> {
+    fn make_items(self: Box<Self>) -> Option<SmallVec<[Box<ast::Item>; 1]>> {
         None
     }
 
     /// Creates zero or more impl items.
-    fn make_impl_items(self: Box<Self>) -> Option<SmallVec<[P<ast::AssocItem>; 1]>> {
+    fn make_impl_items(self: Box<Self>) -> Option<SmallVec<[Box<ast::AssocItem>; 1]>> {
         None
     }
 
     /// Creates zero or more impl items.
-    fn make_trait_impl_items(self: Box<Self>) -> Option<SmallVec<[P<ast::AssocItem>; 1]>> {
+    fn make_trait_impl_items(self: Box<Self>) -> Option<SmallVec<[Box<ast::AssocItem>; 1]>> {
         None
     }
 
     /// Creates zero or more trait items.
-    fn make_trait_items(self: Box<Self>) -> Option<SmallVec<[P<ast::AssocItem>; 1]>> {
+    fn make_trait_items(self: Box<Self>) -> Option<SmallVec<[Box<ast::AssocItem>; 1]>> {
         None
     }
 
     /// Creates zero or more items in an `extern {}` block
-    fn make_foreign_items(self: Box<Self>) -> Option<SmallVec<[P<ast::ForeignItem>; 1]>> {
+    fn make_foreign_items(self: Box<Self>) -> Option<SmallVec<[Box<ast::ForeignItem>; 1]>> {
         None
     }
 
     /// Creates a pattern.
-    fn make_pat(self: Box<Self>) -> Option<P<ast::Pat>> {
+    fn make_pat(self: Box<Self>) -> Option<Box<ast::Pat>> {
         None
     }
 
@@ -454,7 +453,7 @@ pub trait MacResult {
         make_stmts_default!(self)
     }
 
-    fn make_ty(self: Box<Self>) -> Option<P<ast::Ty>> {
+    fn make_ty(self: Box<Self>) -> Option<Box<ast::Ty>> {
         None
     }
 
@@ -521,38 +520,38 @@ macro_rules! make_MacEager {
 }
 
 make_MacEager! {
-    expr: P<ast::Expr>,
-    pat: P<ast::Pat>,
-    items: SmallVec<[P<ast::Item>; 1]>,
-    impl_items: SmallVec<[P<ast::AssocItem>; 1]>,
-    trait_items: SmallVec<[P<ast::AssocItem>; 1]>,
-    foreign_items: SmallVec<[P<ast::ForeignItem>; 1]>,
+    expr: Box<ast::Expr>,
+    pat: Box<ast::Pat>,
+    items: SmallVec<[Box<ast::Item>; 1]>,
+    impl_items: SmallVec<[Box<ast::AssocItem>; 1]>,
+    trait_items: SmallVec<[Box<ast::AssocItem>; 1]>,
+    foreign_items: SmallVec<[Box<ast::ForeignItem>; 1]>,
     stmts: SmallVec<[ast::Stmt; 1]>,
-    ty: P<ast::Ty>,
+    ty: Box<ast::Ty>,
 }
 
 impl MacResult for MacEager {
-    fn make_expr(self: Box<Self>) -> Option<P<ast::Expr>> {
+    fn make_expr(self: Box<Self>) -> Option<Box<ast::Expr>> {
         self.expr
     }
 
-    fn make_items(self: Box<Self>) -> Option<SmallVec<[P<ast::Item>; 1]>> {
+    fn make_items(self: Box<Self>) -> Option<SmallVec<[Box<ast::Item>; 1]>> {
         self.items
     }
 
-    fn make_impl_items(self: Box<Self>) -> Option<SmallVec<[P<ast::AssocItem>; 1]>> {
+    fn make_impl_items(self: Box<Self>) -> Option<SmallVec<[Box<ast::AssocItem>; 1]>> {
         self.impl_items
     }
 
-    fn make_trait_impl_items(self: Box<Self>) -> Option<SmallVec<[P<ast::AssocItem>; 1]>> {
+    fn make_trait_impl_items(self: Box<Self>) -> Option<SmallVec<[Box<ast::AssocItem>; 1]>> {
         self.impl_items
     }
 
-    fn make_trait_items(self: Box<Self>) -> Option<SmallVec<[P<ast::AssocItem>; 1]>> {
+    fn make_trait_items(self: Box<Self>) -> Option<SmallVec<[Box<ast::AssocItem>; 1]>> {
         self.trait_items
     }
 
-    fn make_foreign_items(self: Box<Self>) -> Option<SmallVec<[P<ast::ForeignItem>; 1]>> {
+    fn make_foreign_items(self: Box<Self>) -> Option<SmallVec<[Box<ast::ForeignItem>; 1]>> {
         self.foreign_items
     }
 
@@ -563,13 +562,13 @@ impl MacResult for MacEager {
         }
     }
 
-    fn make_pat(self: Box<Self>) -> Option<P<ast::Pat>> {
+    fn make_pat(self: Box<Self>) -> Option<Box<ast::Pat>> {
         if let Some(p) = self.pat {
             return Some(p);
         }
         if let Some(e) = self.expr {
             if matches!(e.kind, ast::ExprKind::Lit(_) | ast::ExprKind::IncludedBytes(_)) {
-                return Some(P(ast::Pat {
+                return Some(Box::new(ast::Pat {
                     id: ast::DUMMY_NODE_ID,
                     span: e.span,
                     kind: PatKind::Expr(e),
@@ -580,7 +579,7 @@ impl MacResult for MacEager {
         None
     }
 
-    fn make_ty(self: Box<Self>) -> Option<P<ast::Ty>> {
+    fn make_ty(self: Box<Self>) -> Option<Box<ast::Ty>> {
         self.ty
     }
 }
@@ -608,8 +607,8 @@ impl DummyResult {
     }
 
     /// A plain dummy expression.
-    pub fn raw_expr(sp: Span, guar: Option<ErrorGuaranteed>) -> P<ast::Expr> {
-        P(ast::Expr {
+    pub fn raw_expr(sp: Span, guar: Option<ErrorGuaranteed>) -> Box<ast::Expr> {
+        Box::new(ast::Expr {
             id: ast::DUMMY_NODE_ID,
             kind: if let Some(guar) = guar {
                 ast::ExprKind::Err(guar)
@@ -624,12 +623,12 @@ impl DummyResult {
 }
 
 impl MacResult for DummyResult {
-    fn make_expr(self: Box<DummyResult>) -> Option<P<ast::Expr>> {
+    fn make_expr(self: Box<DummyResult>) -> Option<Box<ast::Expr>> {
         Some(DummyResult::raw_expr(self.span, self.guar))
     }
 
-    fn make_pat(self: Box<DummyResult>) -> Option<P<ast::Pat>> {
-        Some(P(ast::Pat {
+    fn make_pat(self: Box<DummyResult>) -> Option<Box<ast::Pat>> {
+        Some(Box::new(ast::Pat {
             id: ast::DUMMY_NODE_ID,
             kind: PatKind::Wild,
             span: self.span,
@@ -637,23 +636,23 @@ impl MacResult for DummyResult {
         }))
     }
 
-    fn make_items(self: Box<DummyResult>) -> Option<SmallVec<[P<ast::Item>; 1]>> {
+    fn make_items(self: Box<DummyResult>) -> Option<SmallVec<[Box<ast::Item>; 1]>> {
         Some(SmallVec::new())
     }
 
-    fn make_impl_items(self: Box<DummyResult>) -> Option<SmallVec<[P<ast::AssocItem>; 1]>> {
+    fn make_impl_items(self: Box<DummyResult>) -> Option<SmallVec<[Box<ast::AssocItem>; 1]>> {
         Some(SmallVec::new())
     }
 
-    fn make_trait_impl_items(self: Box<DummyResult>) -> Option<SmallVec<[P<ast::AssocItem>; 1]>> {
+    fn make_trait_impl_items(self: Box<DummyResult>) -> Option<SmallVec<[Box<ast::AssocItem>; 1]>> {
         Some(SmallVec::new())
     }
 
-    fn make_trait_items(self: Box<DummyResult>) -> Option<SmallVec<[P<ast::AssocItem>; 1]>> {
+    fn make_trait_items(self: Box<DummyResult>) -> Option<SmallVec<[Box<ast::AssocItem>; 1]>> {
         Some(SmallVec::new())
     }
 
-    fn make_foreign_items(self: Box<Self>) -> Option<SmallVec<[P<ast::ForeignItem>; 1]>> {
+    fn make_foreign_items(self: Box<Self>) -> Option<SmallVec<[Box<ast::ForeignItem>; 1]>> {
         Some(SmallVec::new())
     }
 
@@ -665,11 +664,11 @@ impl MacResult for DummyResult {
         }])
     }
 
-    fn make_ty(self: Box<DummyResult>) -> Option<P<ast::Ty>> {
+    fn make_ty(self: Box<DummyResult>) -> Option<Box<ast::Ty>> {
         // FIXME(nnethercote): you might expect `ast::TyKind::Dummy` to be used here, but some
         // values produced here end up being lowered to HIR, which `ast::TyKind::Dummy` does not
         // support, so we use an empty tuple instead.
-        Some(P(ast::Ty {
+        Some(Box::new(ast::Ty {
             id: ast::DUMMY_NODE_ID,
             kind: ast::TyKind::Tup(ThinVec::new()),
             span: self.span,
@@ -1162,7 +1161,7 @@ pub trait LintStoreExpand {
         registered_tools: &RegisteredTools,
         node_id: NodeId,
         attrs: &[Attribute],
-        items: &[P<Item>],
+        items: &[Box<Item>],
         name: Symbol,
     );
 }
