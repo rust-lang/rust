@@ -6,6 +6,7 @@ LL |     cfg!(target_feature = "_UNEXPECTED_VALUE");
    |
    = note: expected values for `target_feature` are: `10e60`
 `2e3`
+`32s`
 `3e3r1`
 `3e3r2`
 `3e3r3`
