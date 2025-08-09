@@ -1278,7 +1278,8 @@ impl Config {
 
         if config.llvm_from_ci {
             let triple = &config.host_target.triple;
-            let ci_llvm_bin = config.ci_llvm_root().join("bin");
+            let ci_llvm_bin =
+                ci_llvm_root(config.llvm_from_ci, &config.out, &config.host_target).join("bin");
             let build_target = config
                 .target_config
                 .entry(config.host_target)
@@ -2735,4 +2736,13 @@ pub fn is_system_llvm(
 
 pub fn is_host_target(host_target: &TargetSelection, target: &TargetSelection) -> bool {
     host_target == target
+}
+
+pub(crate) fn ci_llvm_root(
+    llvm_from_ci: bool,
+    out: &Path,
+    host_target: &TargetSelection,
+) -> PathBuf {
+    assert!(llvm_from_ci);
+    out.join(host_target).join("ci-llvm")
 }
