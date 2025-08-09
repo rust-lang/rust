@@ -33,7 +33,7 @@ pub enum StructurallyRelateAliases {
 /// a miscompilation or unsoundness.
 ///
 /// When in doubt, use `VarianceDiagInfo::default()`
-#[derive_where(Clone, Copy, PartialEq, Eq, Debug, Default; I: Interner)]
+#[derive_where(Clone, Copy, PartialEq, Debug, Default; I: Interner)]
 pub enum VarianceDiagInfo<I: Interner> {
     /// No additional information - this is the default.
     /// We will not add any additional information to error messages.
@@ -50,6 +50,8 @@ pub enum VarianceDiagInfo<I: Interner> {
         param_index: u32,
     },
 }
+
+impl<I: Interner> Eq for VarianceDiagInfo<I> {}
 
 impl<I: Interner> VarianceDiagInfo<I> {
     /// Mirrors `Variance::xform` - used to 'combine' the existing
