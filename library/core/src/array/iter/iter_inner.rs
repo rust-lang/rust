@@ -177,15 +177,10 @@ impl<T> PolymorphicIter<[MaybeUninit<T>]> {
 
     #[inline]
     pub(super) fn peek_with<U>(&self, func: impl for<'b> FnOnce(Option<&'b T>) -> U) -> U {
-        let tmp = self.alive.clone().next().map(|idx| {
+        func(self.alive.clone().next().map(|idx| {
             // SAFETY: `idx` is in self.alive range
-            unsafe { self.data.get_unchecked(idx).assume_init_read() }
-        });
-
-        let out = func(tmp.as_ref());
-        // Avoid dropping before the item is consumed
-        crate::mem::forget(tmp);
-        out
+            unsafe { self.data.get_unchecked(idx).assume_init_ref() }
+        }));
     }
 
     #[inline]
