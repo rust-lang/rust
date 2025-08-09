@@ -290,11 +290,8 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         debug_assert_matches!(self.def_kind(def_id), DefKind::AssocTy | DefKind::AssocConst);
         let trait_def_id = self.parent(def_id);
         debug_assert_matches!(self.def_kind(trait_def_id), DefKind::Trait);
-        let trait_generics = self.generics_of(trait_def_id);
-        (
-            ty::TraitRef::new_from_args(self, trait_def_id, args.truncate_to(self, trait_generics)),
-            &args[trait_generics.count()..],
-        )
+        let trait_ref = ty::TraitRef::from_assoc(self, trait_def_id, args);
+        (trait_ref, &args[trait_ref.args.len()..])
     }
 
     fn mk_args(self, args: &[Self::GenericArg]) -> ty::GenericArgsRef<'tcx> {
