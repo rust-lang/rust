@@ -1,0 +1,19 @@
+error[E0364]: `foo` is only public within the crate, and cannot be re-exported outside
+  --> $DIR/teach-pub-crate-on-macro-rules.rs:5:13
+   |
+LL |     pub use foo;
+   |             ^^^
+   |
+help: consider adding a `#[macro_export]` to the macro in the imported module
+  --> $DIR/teach-pub-crate-on-macro-rules.rs:4:5
+   |
+LL |     macro_rules! foo { () => {}; }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: or if you want to use the macro within this crate only, reduce the visibility to `pub(crate)`
+   |
+LL |     pub(crate) use foo;
+   |        +++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0364`.
