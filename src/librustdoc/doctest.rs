@@ -358,7 +358,7 @@ pub(crate) fn run_tests(
         );
 
         for (doctest, scraped_test) in &doctests {
-            tests_runner.add_test(doctest, scraped_test, &target_str);
+            tests_runner.add_test(doctest, scraped_test, &target_str, rustdoc_options);
         }
         let (duration, ret) = tests_runner.run_merged_tests(
             rustdoc_test_options,
@@ -828,7 +828,8 @@ fn run_test(
     match result {
         Err(e) => return (duration, Err(TestFailure::ExecutionError(e))),
         Ok(out) => {
-            if langstr.should_panic && out.status.success() {
+            // FIXME: use test::ERROR_EXIT_CODE once public
+            if langstr.should_panic && out.status.code() != Some(101) {
                 return (duration, Err(TestFailure::UnexpectedRunPass));
             } else if !langstr.should_panic && !out.status.success() {
                 return (duration, Err(TestFailure::ExecutionFailure(out)));
@@ -1138,7 +1139,7 @@ fn doctest_run_fn(
                 eprint!("Test compiled successfully, but it's marked `compile_fail`.");
             }
             TestFailure::UnexpectedRunPass => {
-                eprint!("Test executable succeeded, but it's marked `should_panic`.");
+                eprint!("Test didn't panic, but it's marked `should_panic`.");
             }
             TestFailure::MissingErrorCodes(codes) => {
                 eprint!("Some expected error codes were not found: {codes:?}");
