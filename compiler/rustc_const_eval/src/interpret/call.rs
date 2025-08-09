@@ -5,6 +5,7 @@ use std::borrow::Cow;
 
 use either::{Left, Right};
 use rustc_abi::{self as abi, ExternAbi, FieldIdx, Integer, VariantIdx};
+use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::layout::{IntegerExt, TyAndLayout};
 use rustc_middle::ty::{self, AdtDef, Instance, Ty, VariantDef};
@@ -19,7 +20,7 @@ use super::{
     Projectable, Provenance, ReturnAction, ReturnContinuation, Scalar, StackPopInfo, interp_ok,
     throw_ub, throw_ub_custom, throw_unsup_format,
 };
-use crate::interpret::EnteredTraceSpan;
+use crate::interpret::{EnteredTraceSpan, MemoryKind};
 use crate::{enter_trace_span, fluent_generated as fluent};
 
 /// An argument passed to a function.
@@ -752,10 +753,40 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         &mut self,
         fn_val: FnVal<'tcx, M::ExtraFnVal>,
         (caller_abi, caller_fn_abi): (ExternAbi, &FnAbi<'tcx, Ty<'tcx>>),
-        args: &[FnArg<'tcx, M::Provenance>],
+        mut args: Vec<FnArg<'tcx, M::Provenance>>,
         with_caller_location: bool,
     ) -> InterpResult<'tcx> {
         trace!("init_fn_tail_call: {:#?}", fn_val);
+
+        let mut local_temps = vec![];
+        let frame_locals = &self.stack().last().unwrap().locals;
+        if frame_locals.iter().any(|frame_local| frame_local.is_allocation()) {
+            // Allocations corresponding to the locals in the last frame.
+            let local_allocs: FxHashSet<_> = frame_locals
+                .iter()
+                .filter_map(|local| local.as_mplace_or_imm()?.left()?.0.provenance?.get_alloc_id())
+                .collect();
+
+            for arg in &mut args {
+                let mplace = match arg {
+                    FnArg::Copy(op) => match op.as_mplace_or_imm() {
+                        Left(mplace) => mplace,
+                        Right(_) => continue,
+                    },
+                    FnArg::InPlace(mplace) => mplace.clone(),
+                };
+
+                if let Some(prov) = mplace.ptr().provenance
+                    && let Some(alloc_id) = prov.get_alloc_id()
+                    && local_allocs.contains(&alloc_id)
+                {
+                    let temp_mplace = self.allocate(*arg.layout(), MemoryKind::Stack)?;
+                    self.copy_op(&mplace, &temp_mplace)?;
+                    local_temps.push(temp_mplace.clone());
+                    *arg = FnArg::Copy(temp_mplace.into());
+                }
+            }
+        }
 
         // This is the "canonical" implementation of tails calls,
         // a pop of the current stack frame, followed by a normal call
@@ -785,12 +816,18 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         self.init_fn_call(
             fn_val,
             (caller_abi, caller_fn_abi),
-            args,
+            &args,
             with_caller_location,
             &return_place,
             ret,
             unwind,
-        )
+        )?;
+
+        for local_temp in local_temps {
+            self.deallocate_ptr(local_temp.ptr(), None, MemoryKind::Stack)?;
+        }
+
+        interp_ok(())
     }
 
     pub(super) fn init_drop_in_place_call(
