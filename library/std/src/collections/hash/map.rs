@@ -135,6 +135,8 @@ use crate::ops::Index;
 /// ]);
 /// ```
 ///
+/// ## `Entry` API
+///
 /// `HashMap` implements an [`Entry` API](#method.entry), which allows
 /// for complex methods of getting, setting, updating and removing keys and
 /// their values:
