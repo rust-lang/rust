@@ -790,8 +790,12 @@ pub fn select_unpredictable<T>(condition: bool, true_val: T, false_val: T) -> T 
     // is returned. This is necessary because the intrinsic doesn't drop the
     // value that is  not selected.
     unsafe {
+        // Extract the selected value first, ensure it is dropped as well if dropping the unselected
+        // value panics.
+        let ret = crate::intrinsics::select_unpredictable(condition, &true_val, &false_val)
+            .assume_init_read();
         crate::intrinsics::select_unpredictable(!condition, &mut true_val, &mut false_val)
             .assume_init_drop();
-        crate::intrinsics::select_unpredictable(condition, true_val, false_val).assume_init()
+        ret
     }
 }
