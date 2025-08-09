@@ -1573,6 +1573,47 @@ impl<'b, T: ?Sized> Ref<'b, T> {
         }
     }
 
+    /// Tries to makes a new `Ref` for a component of the borrowed data.
+    /// On failure, the original guard is returned alongside with the error
+    /// returned by the closure.
+    ///
+    /// The `RefCell` is already immutably borrowed, so this cannot fail.
+    ///
+    /// This is an associated function that needs to be used as
+    /// `Ref::try_map(...)`. A method would interfere with methods of the same
+    /// name on the contents of a `RefCell` used through `Deref`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(refcell_try_map)]
+    /// use std::cell::{RefCell, Ref};
+    /// use std::str::{from_utf8, Utf8Error};
+    ///
+    /// let c = RefCell::new(vec![0xF0, 0x9F, 0xA6 ,0x80]);
+    /// let b1: Ref<'_, Vec<u8>> = c.borrow();
+    /// let b2: Result<Ref<'_, str>, _> = Ref::try_map(b1, |v| from_utf8(v));
+    /// assert_eq!(&*b2.unwrap(), "🦀");
+    ///
+    /// let c = RefCell::new(vec![0xF0, 0x9F, 0xA6]);
+    /// let b1: Ref<'_, Vec<u8>> = c.borrow();
+    /// let b2: Result<_, (Ref<'_, Vec<u8>>, Utf8Error)> = Ref::try_map(b1, |v| from_utf8(v));
+    /// let (b3, e) = b2.unwrap_err();
+    /// assert_eq!(*b3, vec![0xF0, 0x9F, 0xA6]);
+    /// assert_eq!(e.valid_up_to(), 0);
+    /// ```
+    #[unstable(feature = "refcell_try_map", issue = "143801")]
+    #[inline]
+    pub fn try_map<U: ?Sized, E>(
+        orig: Ref<'b, T>,
+        f: impl FnOnce(&T) -> Result<&U, E>,
+    ) -> Result<Ref<'b, U>, (Self, E)> {
+        match f(&*orig) {
+            Ok(value) => Ok(Ref { value: NonNull::from(value), borrow: orig.borrow }),
+            Err(e) => Err((orig, e)),
+        }
+    }
+
     /// Splits a `Ref` into multiple `Ref`s for different components of the
     /// borrowed data.
     ///
@@ -1731,6 +1772,58 @@ impl<'b, T: ?Sized> RefMut<'b, T> {
                 Ok(RefMut { value: NonNull::from(value), borrow: orig.borrow, marker: PhantomData })
             }
             None => Err(orig),
+        }
+    }
+
+    /// Tries to makes a new `RefMut` for a component of the borrowed data.
+    /// On failure, the original guard is returned alongside with the error
+    /// returned by the closure.
+    ///
+    /// The `RefCell` is already mutably borrowed, so this cannot fail.
+    ///
+    /// This is an associated function that needs to be used as
+    /// `RefMut::try_map(...)`. A method would interfere with methods of the same
+    /// name on the contents of a `RefCell` used through `Deref`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(refcell_try_map)]
+    /// use std::cell::{RefCell, RefMut};
+    /// use std::str::{from_utf8_mut, Utf8Error};
+    ///
+    /// let c = RefCell::new(vec![0x68, 0x65, 0x6C, 0x6C, 0x6F]);
+    /// {
+    ///     let b1: RefMut<'_, Vec<u8>> = c.borrow_mut();
+    ///     let b2: Result<RefMut<'_, str>, _> = RefMut::try_map(b1, |v| from_utf8_mut(v));
+    ///     let mut b2 = b2.unwrap();
+    ///     assert_eq!(&*b2, "hello");
+    ///     b2.make_ascii_uppercase();
+    /// }
+    /// assert_eq!(*c.borrow(), "HELLO".as_bytes());
+    ///
+    /// let c = RefCell::new(vec![0xFF]);
+    /// let b1: RefMut<'_, Vec<u8>> = c.borrow_mut();
+    /// let b2: Result<_, (RefMut<'_, Vec<u8>>, Utf8Error)> = RefMut::try_map(b1, |v| from_utf8_mut(v));
+    /// let (b3, e) = b2.unwrap_err();
+    /// assert_eq!(*b3, vec![0xFF]);
+    /// assert_eq!(e.valid_up_to(), 0);
+    /// ```
+    #[unstable(feature = "refcell_try_map", issue = "143801")]
+    #[inline]
+    pub fn try_map<U: ?Sized, E>(
+        mut orig: RefMut<'b, T>,
+        f: impl FnOnce(&mut T) -> Result<&mut U, E>,
+    ) -> Result<RefMut<'b, U>, (Self, E)> {
+        // SAFETY: function holds onto an exclusive reference for the duration
+        // of its call through `orig`, and the pointer is only de-referenced
+        // inside of the function call never allowing the exclusive reference to
+        // escape.
+        match f(&mut *orig) {
+            Ok(value) => {
+                Ok(RefMut { value: NonNull::from(value), borrow: orig.borrow, marker: PhantomData })
+            }
+            Err(e) => Err((orig, e)),
         }
     }
 
