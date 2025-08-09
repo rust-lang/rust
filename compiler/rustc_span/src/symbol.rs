@@ -325,6 +325,7 @@ symbols! {
         RangeSub,
         RangeTo,
         RangeToInclusive,
+        RangeToInclusiveCopy,
         Rc,
         RcWeak,
         Ready,
