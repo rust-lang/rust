@@ -222,7 +222,7 @@ fn verify_no_duplicates(archive: &Archive) {
 
         // Windows has symbols for literal numeric constants, string literals, and MinGW pseudo-
         // relocations. These are allowed to have repeated definitions.
-        let win_allowed_dup_pfx = ["__real@", "__xmm@", "??_C@_", ".refptr"];
+        let win_allowed_dup_pfx = ["__real@", "__xmm@", "__ymm@", "??_C@_", ".refptr"];
         if win_allowed_dup_pfx
             .iter()
             .any(|pfx| sym.name.starts_with(pfx))
