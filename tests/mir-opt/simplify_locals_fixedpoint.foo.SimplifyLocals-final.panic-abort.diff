@@ -36,6 +36,12 @@
   
       bb2: {
           _6 = copy (((_1.0: std::option::Option<u8>) as Some).0: u8);
+-         StorageLive(_7);
+-         _7 = Gt(copy _6, const 42_u8);
+-         StorageLive(_9);
+-         _9 = move _7;
+-         StorageDead(_9);
+-         StorageDead(_7);
           goto -> bb3;
       }
   

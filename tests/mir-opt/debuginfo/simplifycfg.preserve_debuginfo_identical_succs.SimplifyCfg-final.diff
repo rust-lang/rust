@@ -1,0 +1,29 @@
+- // MIR for `preserve_debuginfo_identical_succs` before SimplifyCfg-final
++ // MIR for `preserve_debuginfo_identical_succs` after SimplifyCfg-final
+  
+  fn preserve_debuginfo_identical_succs(_1: &Foo, _2: bool) -> i32 {
+      debug foo_a => _3;
+      debug foo_b => _4;
+      debug foo_c => _5;
+      let mut _0: i32;
+      let mut _3: &i32;
+      let mut _4: &i64;
+      let mut _5: &i32;
+  
+      bb0: {
+-         switchInt(copy _2) -> [1: bb1, otherwise: bb1];
+-     }
+- 
+-     bb1: {
+          // DBG: _3 = &((*_1).0: i32);
+-         goto -> bb2;
+-     }
+- 
+-     bb2: {
+          // DBG: _4 = &((*_1).1: i64);
+          _0 = copy ((*_1).2: i32);
+          // DBG: _5 = &((*_1).2: i32);
+          return;
+      }
+  }
+  
