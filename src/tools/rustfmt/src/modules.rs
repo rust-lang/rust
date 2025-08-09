@@ -26,7 +26,7 @@ type FileModMap<'ast> = BTreeMap<FileName, Module<'ast>>;
 #[derive(Debug, Clone)]
 pub(crate) struct Module<'a> {
     ast_mod_kind: Option<Cow<'a, ast::ModKind>>,
-    pub(crate) items: Cow<'a, ThinVec<rustc_ast::ptr::P<ast::Item>>>,
+    pub(crate) items: Cow<'a, ThinVec<Box<ast::Item>>>,
     inner_attr: ast::AttrVec,
     pub(crate) span: Span,
 }
@@ -35,7 +35,7 @@ impl<'a> Module<'a> {
     pub(crate) fn new(
         mod_span: Span,
         ast_mod_kind: Option<Cow<'a, ast::ModKind>>,
-        mod_items: Cow<'a, ThinVec<rustc_ast::ptr::P<ast::Item>>>,
+        mod_items: Cow<'a, ThinVec<Box<ast::Item>>>,
         mod_attrs: Cow<'a, ast::AttrVec>,
     ) -> Self {
         let inner_attr = mod_attrs
@@ -170,7 +170,7 @@ impl<'ast, 'psess, 'c> ModResolver<'ast, 'psess> {
     /// Visit modules defined inside macro calls.
     fn visit_mod_outside_ast(
         &mut self,
-        items: ThinVec<rustc_ast::ptr::P<ast::Item>>,
+        items: ThinVec<Box<ast::Item>>,
     ) -> Result<(), ModuleResolutionError> {
         for item in items {
             if is_cfg_if(&item) {
@@ -197,7 +197,7 @@ impl<'ast, 'psess, 'c> ModResolver<'ast, 'psess> {
     /// Visit modules from AST.
     fn visit_mod_from_ast(
         &mut self,
-        items: &'ast [rustc_ast::ptr::P<ast::Item>],
+        items: &'ast [Box<ast::Item>],
     ) -> Result<(), ModuleResolutionError> {
         for item in items {
             if is_cfg_if(item) {

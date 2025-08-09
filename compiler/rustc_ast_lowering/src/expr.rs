@@ -1,7 +1,6 @@
 use std::ops::ControlFlow;
 use std::sync::Arc;
 
-use rustc_ast::ptr::P as AstP;
 use rustc_ast::*;
 use rustc_ast_pretty::pprust::expr_to_string;
 use rustc_data_structures::stack::ensure_sufficient_stack;
@@ -53,7 +52,7 @@ impl<'v> rustc_ast::visit::Visitor<'v> for WillCreateDefIdsVisitor {
 }
 
 impl<'hir> LoweringContext<'_, 'hir> {
-    fn lower_exprs(&mut self, exprs: &[AstP<Expr>]) -> &'hir [hir::Expr<'hir>] {
+    fn lower_exprs(&mut self, exprs: &[Box<Expr>]) -> &'hir [hir::Expr<'hir>] {
         self.arena.alloc_from_iter(exprs.iter().map(|x| self.lower_expr_mut(x)))
     }
 
@@ -455,7 +454,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_legacy_const_generics(
         &mut self,
         mut f: Expr,
-        args: ThinVec<AstP<Expr>>,
+        args: ThinVec<Box<Expr>>,
         legacy_args_idx: &[usize],
     ) -> hir::ExprKind<'hir> {
         let ExprKind::Path(None, path) = &mut f.kind else {
@@ -495,7 +494,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 self.create_def(node_id, None, DefKind::AnonConst, f.span);
                 let mut visitor = WillCreateDefIdsVisitor {};
                 let const_value = if let ControlFlow::Break(span) = visitor.visit_expr(&arg) {
-                    AstP(Expr {
+                    Box::new(Expr {
                         id: self.next_node_id(),
                         kind: ExprKind::Err(invalid_expr_error(self.tcx, span)),
                         span: f.span,
@@ -516,7 +515,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         // Add generic args to the last element of the path.
         let last_segment = path.segments.last_mut().unwrap();
         assert!(last_segment.args.is_none());
-        last_segment.args = Some(AstP(GenericArgs::AngleBracketed(AngleBracketedArgs {
+        last_segment.args = Some(Box::new(GenericArgs::AngleBracketed(AngleBracketedArgs {
             span: DUMMY_SP,
             args: generic_args,
         })));
@@ -812,7 +811,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             self.lower_attrs(
                 inner_hir_id,
                 &[Attribute {
-                    kind: AttrKind::Normal(ptr::P(NormalAttr::from_ident(Ident::new(
+                    kind: AttrKind::Normal(Box::new(NormalAttr::from_ident(Ident::new(
                         sym::track_caller,
                         span,
                     )))),
@@ -1285,7 +1284,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn extract_tuple_struct_path<'a>(
         &mut self,
         expr: &'a Expr,
-    ) -> Option<(&'a Option<AstP<QSelf>>, &'a Path)> {
+    ) -> Option<(&'a Option<Box<QSelf>>, &'a Path)> {
         if let ExprKind::Path(qself, path) = &expr.kind {
             // Does the path resolve to something disallowed in a tuple struct/variant pattern?
             if let Some(partial_res) = self.resolver.get_partial_res(expr.id) {
@@ -1307,7 +1306,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn extract_unit_struct_path<'a>(
         &mut self,
         expr: &'a Expr,
-    ) -> Option<(&'a Option<AstP<QSelf>>, &'a Path)> {
+    ) -> Option<(&'a Option<Box<QSelf>>, &'a Path)> {
         if let ExprKind::Path(qself, path) = &expr.kind {
             // Does the path resolve to something disallowed in a unit struct/variant pattern?
             if let Some(partial_res) = self.resolver.get_partial_res(expr.id) {
@@ -1478,7 +1477,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     /// Each sub-assignment is recorded in `assignments`.
     fn destructure_sequence(
         &mut self,
-        elements: &[AstP<Expr>],
+        elements: &[Box<Expr>],
         ctx: &str,
         eq_sign_span: Span,
         assignments: &mut Vec<hir::Stmt<'hir>>,

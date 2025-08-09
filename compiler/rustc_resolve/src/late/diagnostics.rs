@@ -4,7 +4,6 @@ use std::borrow::Cow;
 use std::iter;
 use std::ops::Deref;
 
-use rustc_ast::ptr::P;
 use rustc_ast::visit::{FnCtxt, FnKind, LifetimeCtxt, Visitor, walk_ty};
 use rustc_ast::{
     self as ast, AssocItemKind, DUMMY_NODE_ID, Expr, ExprKind, GenericParam, GenericParamKind,
@@ -2150,7 +2149,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         err: &mut Diag<'_>,
         path_span: Span,
         call_span: Span,
-        args: &[P<Expr>],
+        args: &[Box<Expr>],
     ) {
         if def_id.is_local() {
             // Doing analysis on local `DefId`s would cause infinite recursion.
@@ -3788,7 +3787,7 @@ fn mk_where_bound_predicate(
             ident: last.ident,
             gen_args: None,
             kind: ast::AssocItemConstraintKind::Equality {
-                term: ast::Term::Ty(ast::ptr::P(ast::Ty {
+                term: ast::Term::Ty(Box::new(ast::Ty {
                     kind: ast::TyKind::Path(None, poly_trait_ref.trait_ref.path.clone()),
                     id: DUMMY_NODE_ID,
                     span: DUMMY_SP,
@@ -3805,7 +3804,7 @@ fn mk_where_bound_predicate(
             Some(_) => return None,
             None => {
                 second_last.args =
-                    Some(ast::ptr::P(ast::GenericArgs::AngleBracketed(ast::AngleBracketedArgs {
+                    Some(Box::new(ast::GenericArgs::AngleBracketed(ast::AngleBracketedArgs {
                         args: ThinVec::from([added_constraint]),
                         span: DUMMY_SP,
                     })));
@@ -3818,7 +3817,7 @@ fn mk_where_bound_predicate(
 
     let new_where_bound_predicate = ast::WhereBoundPredicate {
         bound_generic_params: ThinVec::new(),
-        bounded_ty: ast::ptr::P(ty.clone()),
+        bounded_ty: Box::new(ty.clone()),
         bounds: vec![ast::GenericBound::Trait(ast::PolyTraitRef {
             bound_generic_params: ThinVec::new(),
             modifiers: ast::TraitBoundModifiers::NONE,
