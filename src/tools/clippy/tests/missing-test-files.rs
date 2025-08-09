@@ -1,6 +1,6 @@
 #![warn(rust_2018_idioms, unused_lifetimes)]
 #![allow(clippy::assertions_on_constants)]
-#![feature(path_file_prefix)]
+#![cfg_attr(bootstrap, feature(path_file_prefix))]
 
 use std::cmp::Ordering;
 use std::ffi::OsStr;
