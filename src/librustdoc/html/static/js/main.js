@@ -998,8 +998,8 @@ function preLoadCss(cssUrl) {
         window.register_type_impls(window.pending_type_impls);
     }
 
+    // Draw a convenient sidebar of known crates if we have a listing
     function addSidebarCrates() {
-        // @ts-expect-error
         if (!window.ALL_CRATES) {
             return;
         }
@@ -1007,27 +1007,59 @@ function preLoadCss(cssUrl) {
         if (!sidebarElems) {
             return;
         }
-        // Draw a convenient sidebar of known crates if we have a listing
-        const h3 = document.createElement("h3");
-        h3.innerHTML = "Crates";
-        const ul = document.createElement("ul");
-        ul.className = "block crate";
 
-        // @ts-expect-error
-        for (const crate of window.ALL_CRATES) {
-            const link = document.createElement("a");
-            link.href = window.rootPath + crate + "/index.html";
-            link.textContent = crate;
+        // h2 puts this on the same level as the current crate name heading at the top
+        const allCratesHeading = document.createElement("h2");
+        allCratesHeading.textContent = "Crates";
 
-            const li = document.createElement("li");
-            if (window.rootPath !== "./" && crate === window.currentCrate) {
-                li.className = "current";
+        const allCratesSection = document.createElement("section");
+
+        // window.ALL_CRATES is in unsorted array-of-structs format; reorganize so crates with the
+        // same heading are grouped.
+        const cratesGroupedByHeading = new Map();
+        for (const entry of window.ALL_CRATES) {
+            const heading = entry.h || "";
+            const crateName = entry.c;
+            let group = cratesGroupedByHeading.get(heading);
+            if (group === undefined) {
+                group = [];
+                cratesGroupedByHeading.set(heading, group);
             }
-            li.appendChild(link);
-            ul.appendChild(li);
+            group.push(crateName);
         }
-        sidebarElems.appendChild(h3);
-        sidebarElems.appendChild(ul);
+        const headings = Array.from(cratesGroupedByHeading.keys());
+        headings.sort();
+
+        // Generate HTML for grouped crates.
+        for (const headingText of headings) {
+            // Empty string denotes a group with no named heading.
+            if (headingText !== "") {
+                const crateCategoryHeading = document.createElement("h3");
+                crateCategoryHeading.textContent = headingText;
+                allCratesSection.appendChild(crateCategoryHeading);
+            }
+
+            const cratesUl = document.createElement("ul");
+            cratesUl.className = "block crate";
+
+            for (const crateName of cratesGroupedByHeading.get(headingText)) {
+                const link = document.createElement("a");
+                link.href = window.rootPath + crateName + "/index.html";
+                link.textContent = crateName;
+
+                const li = document.createElement("li");
+                if (window.rootPath !== "./" && crateName === window.currentCrate) {
+                    li.className = "current";
+                }
+                li.appendChild(link);
+                cratesUl.appendChild(li);
+            }
+
+            allCratesSection.appendChild(cratesUl);
+        }
+
+        sidebarElems.appendChild(allCratesHeading);
+        sidebarElems.appendChild(allCratesSection);
     }
 
     function expandAllDocs() {

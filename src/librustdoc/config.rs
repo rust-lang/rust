@@ -241,6 +241,10 @@ pub(crate) struct RenderOptions {
     /// What sorting mode to use for module pages.
     /// `ModuleSorting::Alphabetical` by default.
     pub(crate) module_sorting: ModuleSorting,
+    /// In the sidebar list of all crates, put the current crate(s) under this heading.
+    /// To put a crate under the unnamed primary heading, which is always listed first,
+    /// make this the empty string.
+    pub(crate) crate_list_heading: String,
     /// List of themes to extend the docs with. Original argument name is included to assist in
     /// displaying errors if it fails a theme check.
     pub(crate) themes: Vec<StylePath>,
@@ -763,6 +767,7 @@ impl Options {
         } else {
             ModuleSorting::Alphabetical
         };
+        let crate_list_heading = matches.opt_str("crate-list-heading").unwrap_or_default();
         let resource_suffix = matches.opt_str("resource-suffix").unwrap_or_default();
         let markdown_no_toc = matches.opt_present("markdown-no-toc");
         let markdown_css = matches.opt_strs("markdown-css");
@@ -862,6 +867,7 @@ impl Options {
             id_map,
             playground_url,
             module_sorting,
+            crate_list_heading,
             themes,
             extension_css,
             extern_html_root_urls,
