@@ -925,10 +925,24 @@ fn copy_src_dirs(
             "llvm-project\\cmake",
             "llvm-project/runtimes",
             "llvm-project\\runtimes",
+            "llvm-project/third-party",
+            "llvm-project\\third-party",
         ];
         if spath.contains("llvm-project")
             && !spath.ends_with("llvm-project")
             && !LLVM_PROJECTS.iter().any(|path| spath.contains(path))
+        {
+            return false;
+        }
+
+        // Keep only these third party libraries
+        const LLVM_THIRD_PARTY: &[&str] =
+            &["llvm-project/third-party/siphash", "llvm-project\\third-party\\siphash"];
+        if (spath.starts_with("llvm-project/third-party")
+            || spath.starts_with("llvm-project\\third-party"))
+            && !(spath.ends_with("llvm-project/third-party")
+                || spath.ends_with("llvm-project\\third-party"))
+            && !LLVM_THIRD_PARTY.iter().any(|path| spath.contains(path))
         {
             return false;
         }
