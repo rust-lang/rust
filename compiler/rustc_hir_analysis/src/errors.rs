@@ -1717,3 +1717,53 @@ pub(crate) struct AsyncDropWithoutSyncDrop {
     #[primary_span]
     pub span: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_impl_drop_for_negative_unpin_type)]
+#[help]
+pub(crate) struct ImplDropForNegativeUnpinType<'tcx> {
+    #[suggestion(
+        applicability = "machine-applicable",
+        code = "fn pin_drop(&pin mut self)",
+        style = "short"
+    )]
+    #[primary_span]
+    pub span: Span,
+    #[note]
+    pub negative_unpin_span: Span,
+    pub self_ty: Ty<'tcx>,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_impl_pin_drop_for_not_negative_unpin_type)]
+pub(crate) struct ImplPinDropForNotNegativeUnpinType<'tcx> {
+    #[suggestion(
+        applicability = "machine-applicable",
+        code = "fn drop(&mut self)",
+        style = "short"
+    )]
+    #[primary_span]
+    pub span: Span,
+    #[suggestion(
+        hir_analysis_impl_negative_unpin_sugg,
+        applicability = "machine-applicable",
+        code = "impl{impl_generics_snippet} !Unpin for {self_ty}` {}\n",
+        style = "short"
+    )]
+    pub impl_sugg_span: Span,
+    pub impl_generics_snippet: String,
+    pub self_ty: Ty<'tcx>,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_conflict_impl_drop_and_pin_drop)]
+pub(crate) struct ConflictImplDropAndPinDrop {
+    #[primary_span]
+    pub span: Span,
+    #[label(hir_analysis_drop_label)]
+    pub drop_span: Span,
+    #[label(hir_analysis_pin_drop_label)]
+    pub pin_drop_span: Span,
+    #[suggestion(applicability = "machine-applicable", code = "", style = "normal")]
+    pub remove_sugg: Span,
+}
