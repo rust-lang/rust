@@ -2967,7 +2967,7 @@ impl<'a> Parser<'a> {
             params.push(self_param);
         }    
 
-        let (mut reamining_params, _) = self.parse_paren_comma_seq(|p| {
+        let (mut remaining_params, _) = self.parse_paren_comma_seq(|p| {
             p.recover_vcs_conflict_marker();
             let snapshot = p.create_snapshot_for_diagnostic();
             let param = p.parse_param_general(req_name, true).or_else(|e| {
