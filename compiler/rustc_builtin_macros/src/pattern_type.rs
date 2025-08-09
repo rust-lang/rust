@@ -1,4 +1,3 @@
-use rustc_ast::ptr::P;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::{AnonConst, DUMMY_NODE_ID, Ty, TyPat, TyPatKind, ast, token};
 use rustc_errors::PResult;
@@ -22,7 +21,10 @@ pub(crate) fn expand<'cx>(
     ExpandResult::Ready(base::MacEager::ty(cx.ty(sp, ast::TyKind::Pat(ty, pat))))
 }
 
-fn parse_pat_ty<'a>(cx: &mut ExtCtxt<'a>, stream: TokenStream) -> PResult<'a, (P<Ty>, P<TyPat>)> {
+fn parse_pat_ty<'a>(
+    cx: &mut ExtCtxt<'a>,
+    stream: TokenStream,
+) -> PResult<'a, (Box<Ty>, Box<TyPat>)> {
     let mut parser = cx.new_parser_from_tts(stream);
 
     let ty = parser.parse_ty()?;
@@ -45,15 +47,15 @@ fn parse_pat_ty<'a>(cx: &mut ExtCtxt<'a>, stream: TokenStream) -> PResult<'a, (P
     Ok((ty, pat))
 }
 
-fn ty_pat(kind: TyPatKind, span: Span) -> P<TyPat> {
-    P(TyPat { id: DUMMY_NODE_ID, kind, span, tokens: None })
+fn ty_pat(kind: TyPatKind, span: Span) -> Box<TyPat> {
+    Box::new(TyPat { id: DUMMY_NODE_ID, kind, span, tokens: None })
 }
 
-fn pat_to_ty_pat(cx: &mut ExtCtxt<'_>, pat: ast::Pat) -> P<TyPat> {
+fn pat_to_ty_pat(cx: &mut ExtCtxt<'_>, pat: ast::Pat) -> Box<TyPat> {
     let kind = match pat.kind {
         ast::PatKind::Range(start, end, include_end) => TyPatKind::Range(
-            start.map(|value| P(AnonConst { id: DUMMY_NODE_ID, value })),
-            end.map(|value| P(AnonConst { id: DUMMY_NODE_ID, value })),
+            start.map(|value| Box::new(AnonConst { id: DUMMY_NODE_ID, value })),
+            end.map(|value| Box::new(AnonConst { id: DUMMY_NODE_ID, value })),
             include_end,
         ),
         ast::PatKind::Or(variants) => {

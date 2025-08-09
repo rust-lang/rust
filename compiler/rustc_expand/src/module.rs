@@ -1,7 +1,6 @@
 use std::iter::once;
 use std::path::{self, Path, PathBuf};
 
-use rustc_ast::ptr::P;
 use rustc_ast::{AttrVec, Attribute, Inline, Item, ModSpans};
 use rustc_errors::{Diag, ErrorGuaranteed};
 use rustc_parse::{exp, new_parser_from_file, unwrap_or_emit_fatal, validate_attr};
@@ -31,7 +30,7 @@ pub struct ModulePathSuccess {
 }
 
 pub(crate) struct ParsedExternalMod {
-    pub items: ThinVec<P<Item>>,
+    pub items: ThinVec<Box<Item>>,
     pub spans: ModSpans,
     pub file_path: PathBuf,
     pub dir_path: PathBuf,

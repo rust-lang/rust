@@ -1,4 +1,3 @@
-use rustc_ast::ptr::P;
 use rustc_ast::{
     self as ast, Fn, FnHeader, FnSig, Generics, ItemKind, Safety, Stmt, StmtKind, TyKind,
 };
@@ -46,7 +45,7 @@ pub(crate) fn expand(
     let const_body = ecx.expr_block(ecx.block(span, stmts));
     let const_item = ecx.item_const(span, Ident::new(kw::Underscore, span), const_ty, const_body);
     let const_item = if is_stmt {
-        Annotatable::Stmt(P(ecx.stmt_item(span, const_item)))
+        Annotatable::Stmt(Box::new(ecx.stmt_item(span, const_item)))
     } else {
         Annotatable::Item(const_item)
     };
