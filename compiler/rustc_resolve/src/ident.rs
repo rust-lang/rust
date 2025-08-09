@@ -429,6 +429,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         // to detect potential ambiguities.
         let mut innermost_result: Option<(NameBinding<'_>, Flags)> = None;
         let mut determinacy = Determinacy::Determined;
+        // Shadowed bindings don't need to be marked as used or non-speculatively loaded.
+        macro finalize_scope() {
+            if innermost_result.is_none() { finalize } else { None }
+        }
 
         // Go through all the scopes and try to resolve the name.
         let break_result = self.visit_scopes(
@@ -494,13 +498,13 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         _ => Err(Determinacy::Determined),
                     },
                     Scope::Module(module, derive_fallback_lint_id) => {
-                        let (adjusted_parent_scope, finalize) =
+                        let (adjusted_parent_scope, adjusted_finalize) =
                             if matches!(scope_set, ScopeSet::ModuleAndExternPrelude(..)) {
-                                (parent_scope, finalize)
+                                (parent_scope, finalize_scope!())
                             } else {
                                 (
                                     &ParentScope { module, ..*parent_scope },
-                                    finalize.map(|f| Finalize { used: Used::Scope, ..f }),
+                                    finalize_scope!().map(|f| Finalize { used: Used::Scope, ..f }),
                                 )
                             };
                         let binding = this.reborrow().resolve_ident_in_module_unadjusted(
@@ -513,7 +517,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             } else {
                                 Shadowing::Restricted
                             },
-                            finalize,
+                            adjusted_finalize,
                             ignore_binding,
                             ignore_import,
                         );
@@ -562,7 +566,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         None => Err(Determinacy::Determined),
                     },
                     Scope::ExternPrelude => {
-                        match this.reborrow().extern_prelude_get(ident, finalize.is_some()) {
+                        match this.reborrow().extern_prelude_get(ident, finalize_scope!().is_some())
+                        {
                             Some(binding) => Ok((binding, Flags::empty())),
                             None => Err(Determinacy::determined(
                                 this.graph_root.unexpanded_invocations.borrow().is_empty(),
@@ -599,8 +604,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             if matches!(ident.name, sym::f16)
                                 && !this.tcx.features().f16()
                                 && !ident.span.allows_unstable(sym::f16)
-                                && finalize.is_some()
-                                && innermost_result.is_none()
+                                && finalize_scope!().is_some()
                             {
                                 feature_err(
                                     this.tcx.sess,
@@ -613,8 +617,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             if matches!(ident.name, sym::f128)
                                 && !this.tcx.features().f128()
                                 && !ident.span.allows_unstable(sym::f128)
-                                && finalize.is_some()
-                                && innermost_result.is_none()
+                                && finalize_scope!().is_some()
                             {
                                 feature_err(
                                     this.tcx.sess,
