@@ -3,7 +3,7 @@
 use std::fmt;
 
 use rustc_hir::def::{CtorOf, DefKind};
-use rustc_span::hygiene::MacroKind;
+use rustc_span::hygiene::{MacroKind, MacroKinds};
 use serde::{Serialize, Serializer};
 
 use crate::clean;
@@ -134,9 +134,10 @@ impl ItemType {
             DefKind::Trait => Self::Trait,
             DefKind::TyAlias => Self::TypeAlias,
             DefKind::TraitAlias => Self::TraitAlias,
-            DefKind::Macro(MacroKind::Bang) => ItemType::Macro,
-            DefKind::Macro(MacroKind::Attr) => ItemType::ProcAttribute,
-            DefKind::Macro(MacroKind::Derive) => ItemType::ProcDerive,
+            DefKind::Macro(MacroKinds::BANG) => ItemType::Macro,
+            DefKind::Macro(MacroKinds::ATTR) => ItemType::ProcAttribute,
+            DefKind::Macro(MacroKinds::DERIVE) => ItemType::ProcDerive,
+            DefKind::Macro(_) => todo!("Handle macros with multiple kinds"),
             DefKind::ForeignTy => Self::ForeignType,
             DefKind::Variant => Self::Variant,
             DefKind::Field => Self::StructField,

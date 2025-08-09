@@ -27,7 +27,7 @@ use rustc_session::parse::ParseSess;
 use rustc_session::{Limit, Session};
 use rustc_span::def_id::{CrateNum, DefId, LocalDefId};
 use rustc_span::edition::Edition;
-use rustc_span::hygiene::{AstPass, ExpnData, ExpnKind, LocalExpnId, MacroKind};
+use rustc_span::hygiene::{AstPass, ExpnData, ExpnKind, LocalExpnId, MacroKind, MacroKinds};
 use rustc_span::source_map::SourceMap;
 use rustc_span::{DUMMY_SP, FileName, Ident, Span, Symbol, kw, sym};
 use smallvec::{SmallVec, smallvec};
@@ -719,6 +719,9 @@ impl MacResult for DummyResult {
 /// A syntax extension kind.
 #[derive(Clone)]
 pub enum SyntaxExtensionKind {
+    /// A `macro_rules!` macro that can work as any `MacroKind`
+    MacroRules(Arc<crate::MacroRulesMacroExpander>),
+
     /// A token-based function-like macro.
     Bang(
         /// An expander with signature TokenStream -> TokenStream.
@@ -773,7 +776,37 @@ pub enum SyntaxExtensionKind {
     ),
 
     /// A glob delegation.
+    ///
+    /// This is for delegated function implementations, and has nothing to do with glob imports.
     GlobDelegation(Arc<dyn GlobDelegationExpander + sync::DynSync + sync::DynSend>),
+}
+
+impl SyntaxExtensionKind {
+    /// Returns `Some(expander)` for a macro usable as a `LegacyBang`; otherwise returns `None`
+    ///
+    /// This includes a `MacroRules` with function-like rules.
+    pub fn as_legacy_bang(&self) -> Option<&(dyn TTMacroExpander + sync::DynSync + sync::DynSend)> {
+        match self {
+            SyntaxExtensionKind::LegacyBang(exp) => Some(exp.as_ref()),
+            SyntaxExtensionKind::MacroRules(exp) if exp.kinds().contains(MacroKinds::BANG) => {
+                Some(exp.as_ref())
+            }
+            _ => None,
+        }
+    }
+
+    /// Returns `Some(expander)` for a macro usable as an `Attr`; otherwise returns `None`
+    ///
+    /// This includes a `MacroRules` with `attr` rules.
+    pub fn as_attr(&self) -> Option<&(dyn AttrProcMacro + sync::DynSync + sync::DynSend)> {
+        match self {
+            SyntaxExtensionKind::Attr(exp) => Some(exp.as_ref()),
+            SyntaxExtensionKind::MacroRules(exp) if exp.kinds().contains(MacroKinds::ATTR) => {
+                Some(exp.as_ref())
+            }
+            _ => None,
+        }
+    }
 }
 
 /// A struct representing a macro definition in "lowered" form ready for expansion.
@@ -805,18 +838,19 @@ pub struct SyntaxExtension {
 }
 
 impl SyntaxExtension {
-    /// Returns which kind of macro calls this syntax extension.
-    pub fn macro_kind(&self) -> MacroKind {
+    /// Returns which kinds of macro call this syntax extension.
+    pub fn macro_kinds(&self) -> MacroKinds {
         match self.kind {
             SyntaxExtensionKind::Bang(..)
             | SyntaxExtensionKind::LegacyBang(..)
-            | SyntaxExtensionKind::GlobDelegation(..) => MacroKind::Bang,
+            | SyntaxExtensionKind::GlobDelegation(..) => MacroKinds::BANG,
             SyntaxExtensionKind::Attr(..)
             | SyntaxExtensionKind::LegacyAttr(..)
-            | SyntaxExtensionKind::NonMacroAttr => MacroKind::Attr,
+            | SyntaxExtensionKind::NonMacroAttr => MacroKinds::ATTR,
             SyntaxExtensionKind::Derive(..) | SyntaxExtensionKind::LegacyDerive(..) => {
-                MacroKind::Derive
+                MacroKinds::DERIVE
             }
+            SyntaxExtensionKind::MacroRules(ref m) => m.kinds(),
         }
     }
 
@@ -1028,11 +1062,12 @@ impl SyntaxExtension {
         parent: LocalExpnId,
         call_site: Span,
         descr: Symbol,
+        kind: MacroKind,
         macro_def_id: Option<DefId>,
         parent_module: Option<DefId>,
     ) -> ExpnData {
         ExpnData::new(
-            ExpnKind::Macro(self.macro_kind(), descr),
+            ExpnKind::Macro(kind, descr),
             parent.to_expn_id(),
             call_site,
             self.span,

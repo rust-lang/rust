@@ -50,7 +50,7 @@ use rustc_middle::middle::resolve_bound_vars as rbv;
 use rustc_middle::ty::{self, AdtKind, GenericArgsRef, Ty, TyCtxt, TypeVisitableExt, TypingMode};
 use rustc_middle::{bug, span_bug};
 use rustc_span::ExpnKind;
-use rustc_span::hygiene::{AstPass, MacroKind};
+use rustc_span::hygiene::{AstPass, MacroKind, MacroKinds};
 use rustc_span::symbol::{Ident, Symbol, kw, sym};
 use rustc_trait_selection::traits::wf::object_region_bounds;
 use thin_vec::ThinVec;
@@ -2845,11 +2845,19 @@ fn clean_maybe_renamed_item<'tcx>(
                 generics: clean_generics(generics, cx),
                 fields: variant_data.fields().iter().map(|x| clean_field(x, cx)).collect(),
             }),
-            ItemKind::Macro(_, macro_def, MacroKind::Bang) => MacroItem(Macro {
+            // FIXME: handle attributes and derives that aren't proc macros, and macros with
+            // multiple kinds
+            ItemKind::Macro(_, macro_def, MacroKinds::BANG) => MacroItem(Macro {
                 source: display_macro_source(cx, name, macro_def),
                 macro_rules: macro_def.macro_rules,
             }),
-            ItemKind::Macro(_, _, macro_kind) => clean_proc_macro(item, &mut name, macro_kind, cx),
+            ItemKind::Macro(_, _, MacroKinds::ATTR) => {
+                clean_proc_macro(item, &mut name, MacroKind::Attr, cx)
+            }
+            ItemKind::Macro(_, _, MacroKinds::DERIVE) => {
+                clean_proc_macro(item, &mut name, MacroKind::Derive, cx)
+            }
+            ItemKind::Macro(_, _, _) => todo!("Handle macros with multiple kinds"),
             // proc macros can have a name set by attributes
             ItemKind::Fn { ref sig, generics, body: body_id, .. } => {
                 clean_fn_or_proc_macro(item, sig, generics, body_id, &mut name, cx)

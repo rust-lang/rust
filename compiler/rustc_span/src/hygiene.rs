@@ -1188,6 +1188,53 @@ impl MacroKind {
     }
 }
 
+/// A set of macro kinds, for macros that can have more than one kind
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Encodable, Decodable, Hash, Debug)]
+#[derive(HashStable_Generic)]
+pub struct MacroKinds(u8);
+bitflags::bitflags! {
+    impl MacroKinds: u8 {
+        const BANG = 1 << 0;
+        const ATTR = 1 << 1;
+        const DERIVE = 1 << 2;
+    }
+}
+
+impl From<MacroKind> for MacroKinds {
+    fn from(kind: MacroKind) -> Self {
+        match kind {
+            MacroKind::Bang => Self::BANG,
+            MacroKind::Attr => Self::ATTR,
+            MacroKind::Derive => Self::DERIVE,
+        }
+    }
+}
+
+impl MacroKinds {
+    /// Convert the MacroKinds to a static string.
+    ///
+    /// This hardcodes all the possibilities, in order to return a static string.
+    pub fn descr(self) -> &'static str {
+        match self {
+            // FIXME: change this to "function-like macro" and fix all tests
+            Self::BANG => "macro",
+            Self::ATTR => "attribute macro",
+            Self::DERIVE => "derive macro",
+            _ if self == (Self::ATTR | Self::BANG) => "attribute/function macro",
+            _ if self == (Self::DERIVE | Self::BANG) => "derive/function macro",
+            _ if self == (Self::ATTR | Self::DERIVE) => "attribute/derive macro",
+            _ if self.is_all() => "attribute/derive/function macro",
+            _ if self.is_empty() => "useless macro",
+            _ => unreachable!(),
+        }
+    }
+
+    /// Return an indefinite article (a/an) for use with `descr()`
+    pub fn article(self) -> &'static str {
+        if self.contains(Self::ATTR) { "an" } else { "a" }
+    }
+}
+
 /// The kind of AST transform.
 #[derive(Clone, Copy, Debug, PartialEq, Encodable, Decodable, HashStable_Generic)]
 pub enum AstPass {

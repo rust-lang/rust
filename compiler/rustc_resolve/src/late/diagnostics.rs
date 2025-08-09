@@ -27,7 +27,7 @@ use rustc_middle::ty;
 use rustc_session::{Session, lint};
 use rustc_span::edit_distance::{edit_distance, find_best_match_for_name};
 use rustc_span::edition::Edition;
-use rustc_span::hygiene::MacroKind;
+use rustc_span::hygiene::MacroKinds;
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
 use thin_vec::ThinVec;
 use tracing::debug;
@@ -1851,12 +1851,12 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
 
         match (res, source) {
             (
-                Res::Def(DefKind::Macro(MacroKind::Bang), def_id),
+                Res::Def(DefKind::Macro(kinds), def_id),
                 PathSource::Expr(Some(Expr {
                     kind: ExprKind::Index(..) | ExprKind::Call(..), ..
                 }))
                 | PathSource::Struct,
-            ) => {
+            ) if kinds.contains(MacroKinds::BANG) => {
                 // Don't suggest macro if it's unstable.
                 let suggestable = def_id.is_local()
                     || self.r.tcx.lookup_stability(def_id).is_none_or(|s| s.is_stable());
@@ -1881,7 +1881,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                     err.note("if you want the `try` keyword, you need Rust 2018 or later");
                 }
             }
-            (Res::Def(DefKind::Macro(MacroKind::Bang), _), _) => {
+            (Res::Def(DefKind::Macro(kinds), _), _) if kinds.contains(MacroKinds::BANG) => {
                 err.span_label(span, fallback_label.to_string());
             }
             (Res::Def(DefKind::TyAlias, def_id), PathSource::Trait(_)) => {

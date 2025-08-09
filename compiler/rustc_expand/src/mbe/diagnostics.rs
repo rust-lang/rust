@@ -58,18 +58,6 @@ pub(super) fn failed_to_match_macro(
 
     let Some(BestFailure { token, msg: label, remaining_matcher, .. }) = tracker.best_failure
     else {
-        // FIXME: we should report this at macro resolution time, as we do for
-        // `resolve_macro_cannot_use_as_attr`. We can do that once we track multiple macro kinds for a
-        // Def.
-        if attr_args.is_none() && !rules.iter().any(|rule| matches!(rule, MacroRule::Func { .. })) {
-            let msg = format!("macro has no rules for function-like invocation `{name}!`");
-            let mut err = psess.dcx().struct_span_err(sp, msg);
-            if !def_head_span.is_dummy() {
-                let msg = "this macro has no rules for function-like invocation";
-                err.span_label(def_head_span, msg);
-            }
-            return (sp, err.emit());
-        }
         return (sp, psess.dcx().span_delayed_bug(sp, "failed to match a macro"));
     };
 

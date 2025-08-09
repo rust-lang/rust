@@ -4,6 +4,7 @@ version = "0.0.0"
 edition = "2024"
 
 [dependencies]
+bitflags = "2.9.1"
 # tidy-alphabetical-start
 blake3 = "1.5.2"
 derive-where = "1.2.7"

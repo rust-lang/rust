@@ -95,14 +95,6 @@ error: expected derive macro, found macro `crate::my_macro`
    |
 LL | #[derive(crate::my_macro)]
    |          ^^^^^^^^^^^^^^^ not a derive macro
-   |
-help: remove from the surrounding `derive()`
-  --> $DIR/macro-namespace-reserved-2.rs:50:10
-   |
-LL | #[derive(crate::my_macro)]
-   |          ^^^^^^^^^^^^^^^
-   = help: add as non-Derive macro
-           `#[crate::my_macro]`
 
 error: cannot find macro `my_macro_attr` in this scope
   --> $DIR/macro-namespace-reserved-2.rs:28:5
