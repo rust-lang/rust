@@ -122,13 +122,22 @@ enum Scope<'ra> {
     MacroRules(MacroRulesScopeRef<'ra>),
     // The node ID is for reporting the `PROC_MACRO_DERIVE_RESOLUTION_FALLBACK`
     // lint if it should be reported.
-    Module(Module<'ra>, Option<NodeId>),
+    NonGlobModule(Module<'ra>, Option<NodeId>),
+    // The node ID is for reporting the `PROC_MACRO_DERIVE_RESOLUTION_FALLBACK`
+    // lint if it should be reported.
+    GlobModule(Module<'ra>, Option<NodeId>),
     MacroUsePrelude,
     BuiltinAttrs,
     ExternPrelude,
     ToolPrelude,
     StdLibPrelude,
     BuiltinTypes,
+}
+
+#[derive(Debug, PartialEq, Clone, Copy)]
+enum Shadowing {
+    Restricted,
+    Unrestricted,
 }
 
 /// Names from different contexts may want to visit different subsets of all specific scopes
@@ -146,6 +155,8 @@ enum ScopeSet<'ra> {
     /// All scopes with the given namespace, used for partially performing late resolution.
     /// The node id enables lints and is used for reporting them.
     Late(Namespace, Module<'ra>, Option<NodeId>),
+    /// Scope::NonGlobModule and Scope::GlobModule.
+    Module(Module<'ra>, Namespace, Shadowing),
 }
 
 /// Everything you need to know about a name's location to resolve it.
@@ -1878,8 +1889,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
         self.cm().visit_scopes(ScopeSet::All(TypeNS), parent_scope, ctxt, |this, scope, _, _| {
             match scope {
-                Scope::Module(module, _) => {
+                Scope::NonGlobModule(module, _) => {
                     this.get_mut().traits_in_module(module, assoc_item, &mut found_traits);
+                }
+                Scope::GlobModule(..) => {
+                    // already inserted in `Scope::NonGlobModule` arm
                 }
                 Scope::StdLibPrelude => {
                     if let Some(module) = this.prelude {
