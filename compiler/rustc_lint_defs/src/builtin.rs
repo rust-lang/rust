@@ -217,6 +217,7 @@ declare_lint! {
     @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::FutureReleaseError,
         reference: "issue #57571 <https://github.com/rust-lang/rust/issues/57571>",
+        report_in_deps: true,
     };
     crate_level_only
 }
