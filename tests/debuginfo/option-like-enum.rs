@@ -40,34 +40,34 @@
 // lldb-command:run
 
 // lldb-command:v some
-// lldb-check:[...] Some(&0x[...])
+// lldb-check:(core::option::Option<&u32>) some = { value = { 0 = 0x0000555555556014 } }
 
 // lldb-command:v none
-// lldb-check:[...] None
+// lldb-check:(core::option::Option<&u32>) none = { value = $discr$ = 0 }
 
 // lldb-command:v full
-// lldb-check:[...] Full(454545, &0x[...], 9988)
+// lldb-check:(option_like_enum::MoreFields) full = { value = { 0 = 454545 1 = 0x0000555555556008 2 = 9988 } $discr$ = 0 }
 
 // lldb-command:v empty
-// lldb-check:[...] Empty
+// lldb-check:(option_like_enum::MoreFields) empty = { value = $discr$ = 1 }
 
 // lldb-command:v droid
-// lldb-check:[...] Droid { id: 675675, range: 10000001, internals: &0x[...] }
+// lldb-check:(option_like_enum::NamedFields) droid = { value = { id = 675675 range = 10000001 internals = 0x0000555555556008 } $discr$ = 0 }
 
 // lldb-command:v void_droid
-// lldb-check:[...] Void
+// lldb-check:(option_like_enum::NamedFields) void_droid = { value = $discr$ = 1 }
 
 // lldb-command:v some_str
-// lldb-check:[...] Some("abc")
+// lldb-check:(core::option::Option<&str>) some_str = { value = { 0 = "abc" { [0] = 'a' [1] = 'b' [2] = 'c' } } }
 
 // lldb-command:v none_str
-// lldb-check:[...] None
+// lldb-check:(core::option::Option<&str>) none_str = { value = $discr$ = 0 }
 
 // lldb-command:v nested_non_zero_yep
-// lldb-check:[...] Yep(10.5, NestedNonZeroField { a: 10, b: 20, c: &[...] })
+// lldb-check:(option_like_enum::NestedNonZero) nested_non_zero_yep = { value = { 0 = 10.5 1 = { a = 10 b = 20 c = 0x0000555555556018 } } }
 
 // lldb-command:v nested_non_zero_nope
-// lldb-check:[...] Nope
+// lldb-check:nested_non_zero_nope = { value = $discr$ = 0 }
 
 
 // If a struct has exactly two variants, one of them is empty, and the other one

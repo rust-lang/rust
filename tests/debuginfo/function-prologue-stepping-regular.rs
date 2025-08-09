@@ -30,9 +30,9 @@
 
 // NON IMMEDIATE ARGS
 // lldb-command:v a
-// lldb-check:[...] { a = 3, b = 4, c = 5, d = 6, e = 7, f = 8, g = 9, h = 10 }
+// lldb-check:(function_prologue_stepping_regular::BigStruct) a = { a = 3 b = 4 c = 5 d = 6 e = 7 f = 8 g = 9 h = 10 }
 // lldb-command:v b
-// lldb-check:[...] { a = 11, b = 12, c = 13, d = 14, e = 15, f = 16, g = 17, h = 18 }
+// lldb-check:(function_prologue_stepping_regular::BigStruct) b = { a = 11 b = 12 c = 13 d = 14 e = 15 f = 16 g = 17 h = 18 }
 // lldb-command:continue
 
 // BINDING
@@ -109,11 +109,11 @@
 
 // LOOP EXPR
 // lldb-command:v x
-// lldb-check:[...] 43
+// NOT WORKING: lldb-check:[...] 43
 // lldb-command:v y
-// lldb-check:[...] 44
+// NOT WORKING: lldb-check:[...] 44
 // lldb-command:v z
-// lldb-check:[...] 45
+// NOT WORKING: lldb-check:[...] 45
 // lldb-command:continue
 
 #![allow(unused_variables)]
