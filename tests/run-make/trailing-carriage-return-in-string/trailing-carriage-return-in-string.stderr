@@ -1,8 +1,8 @@
 error: unknown character escape: `\r`
-  --> $DIR/trailing-carriage-return-in-string.rs:10:25
+  --> trailing-carriage-return-in-string.rs:LL:CC
    |
-LL |     let bad = "This is \␍ a test";
-   |                         ^ unknown character escape
+LL | let bad = "This is \␍ a test";
+   |                     ^ unknown character escape
    |
    = help: this is an isolated carriage return; consider checking your editor and version control settings
 
