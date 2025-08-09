@@ -545,7 +545,7 @@ declare_features! (
     (incomplete, inherent_associated_types, "1.52.0", Some(8995)),
     /// Allows using `pointer` and `reference` in intra-doc links
     (unstable, intra_doc_pointers, "1.51.0", Some(80896)),
-    // Allows setting the threshold for the `large_assignments` lint.
+    /// Allows setting the threshold for the `large_assignments` lint.
     (unstable, large_assignments, "1.52.0", Some(83518)),
     /// Allow to have type alias types for inter-crate use.
     (incomplete, lazy_type_alias, "1.72.0", Some(112792)),
