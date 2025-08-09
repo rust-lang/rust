@@ -2505,7 +2505,7 @@ mod ref_mut {
 
         /// Returns a mutable reference to the inner value without checking if
         /// it's in a mutable state.
-        pub(crate) fn get_mut_unchecked(&mut self) -> &mut T {
+        pub(crate) fn _get_mut_unchecked(&mut self) -> &mut T {
             self.p
         }
     }
