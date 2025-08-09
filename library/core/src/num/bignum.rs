@@ -398,7 +398,8 @@ macro_rules! define_bignum {
             }
         }
 
-        impl crate::clone::Clone for $name {
+        #[rustc_const_unstable(feature = "const_clone", issue = "142757")]
+        impl const crate::clone::Clone for $name {
             fn clone(&self) -> Self {
                 Self { size: self.size, base: self.base }
             }
