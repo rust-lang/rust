@@ -21,7 +21,7 @@ macro_rules! default_hash_impl {
     };
 }
 
-default_hash_impl! { i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize, }
+default_hash_impl! { u8, u64, usize, }
 
 impl<'tcx> AbiHashStable<'tcx> for bool {
     #[inline]
@@ -34,13 +34,6 @@ impl<'tcx> AbiHashStable<'tcx> for str {
     #[inline]
     fn abi_hash(&self, tcx: TyCtxt<'tcx>, hasher: &mut StableHasher) {
         self.as_bytes().abi_hash(tcx, hasher);
-    }
-}
-
-impl<'tcx> AbiHashStable<'tcx> for String {
-    #[inline]
-    fn abi_hash(&self, tcx: TyCtxt<'tcx>, hasher: &mut StableHasher) {
-        self[..].abi_hash(tcx, hasher);
     }
 }
 
