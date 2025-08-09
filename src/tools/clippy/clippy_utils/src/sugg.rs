@@ -200,6 +200,8 @@ impl<'a> Sugg<'a> {
             | ast::ExprKind::Closure { .. }
             | ast::ExprKind::If(..)
             | ast::ExprKind::Let(..)
+            // FIXME(is): Once `is` can be parsed, it should provide `BinOp` suggestions.
+            | ast::ExprKind::Is(..)
             | ast::ExprKind::Unary(..)
             | ast::ExprKind::Match(..) => match snippet_with_context(cx, expr.span, ctxt, default, app) {
                 (snip, false) => Sugg::MaybeParen(snip),

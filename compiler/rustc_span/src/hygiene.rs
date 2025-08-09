@@ -1237,6 +1237,8 @@ pub enum DesugaringKind {
         /// rewriting it.
         source: bool,
     },
+    /// Desugaring of an `expr is pat` expression
+    IsExpr,
 }
 
 impl DesugaringKind {
@@ -1258,6 +1260,7 @@ impl DesugaringKind {
             DesugaringKind::FormatLiteral { source: false } => {
                 "expression that expanded into a format string literal"
             }
+            DesugaringKind::IsExpr => "`is` expression",
         }
     }
 
@@ -1277,6 +1280,7 @@ impl DesugaringKind {
             DesugaringKind::Contract => value == "Contract",
             DesugaringKind::PatTyRange => value == "PatTyRange",
             DesugaringKind::FormatLiteral { .. } => value == "FormatLiteral",
+            DesugaringKind::IsExpr => value == "IsExpr",
         }
     }
 }

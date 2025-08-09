@@ -503,6 +503,13 @@ impl<'a> State<'a> {
             ast::ExprKind::Let(pat, scrutinee, _, _) => {
                 self.print_let(pat, scrutinee, fixup);
             }
+            ast::ExprKind::Is(scrutinee, pat) => {
+                // FIXME(is): This is a placeholder. Pretty-print properly once `is` can be parsed.
+                self.print_expr(scrutinee, fixup);
+                self.space();
+                self.word_space("is");
+                self.print_pat(pat);
+            }
             ast::ExprKind::If(test, blk, elseopt) => self.print_if(test, blk, elseopt.as_deref()),
             ast::ExprKind::While(test, blk, opt_label) => {
                 if let Some(label) = opt_label {

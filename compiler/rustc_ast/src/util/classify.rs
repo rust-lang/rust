@@ -99,6 +99,7 @@ pub fn expr_requires_semi_to_be_stmt(e: &ast::Expr) -> bool {
 /// }
 /// ```
 pub fn leading_labeled_expr(mut expr: &ast::Expr) -> bool {
+    // FIXME(is): This will need tests for `is` once it can be parsed.
     loop {
         match &expr.kind {
             Block(_, label) | ForLoop { label, .. } | Loop(_, label, _) | While(_, _, label) => {
@@ -110,6 +111,7 @@ pub fn leading_labeled_expr(mut expr: &ast::Expr) -> bool {
             | Await(e, _)
             | Use(e, _)
             | Binary(_, e, _)
+            | Is(e, _)
             | Call(e, _)
             | Cast(e, _)
             | Field(e, _)
@@ -171,6 +173,7 @@ pub enum TrailingBrace<'a> {
 
 /// If an expression ends with `}`, returns the innermost expression ending in the `}`
 pub fn expr_trailing_brace(mut expr: &ast::Expr) -> Option<TrailingBrace<'_>> {
+    // FIXME(is): We should have a test for `let b = expr is Variant {} else { return }`.
     loop {
         match &expr.kind {
             AddrOf(_, _, e)
@@ -237,6 +240,7 @@ pub fn expr_trailing_brace(mut expr: &ast::Expr) -> Option<TrailingBrace<'_>> {
             | Paren(_)
             | Try(_)
             | Yeet(None)
+            | Is(..)
             | UnsafeBinderCast(..)
             | Err(_)
             | Dummy => {

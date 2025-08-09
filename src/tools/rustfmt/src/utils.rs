@@ -505,6 +505,7 @@ pub(crate) fn is_block_expr(context: &RewriteContext<'_>, expr: &ast::Expr, repr
         | ast::ExprKind::Field(..)
         | ast::ExprKind::IncludedBytes(..)
         | ast::ExprKind::InlineAsm(..)
+        | ast::ExprKind::Is(..)
         | ast::ExprKind::OffsetOf(..)
         | ast::ExprKind::UnsafeBinderCast(..)
         | ast::ExprKind::Let(..)

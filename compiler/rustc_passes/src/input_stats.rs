@@ -655,7 +655,7 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
         record_variants!(
             (self, e, e.kind, None, ast, Expr, ExprKind),
             [
-                Array, ConstBlock, Call, MethodCall, Tup, Binary, Unary, Lit, Cast, Type, Let,
+                Array, ConstBlock, Call, MethodCall, Tup, Binary, Unary, Lit, Cast, Type, Let, Is,
                 If, While, ForLoop, Loop, Match, Closure, Block, Await, Use, TryBlock, Assign,
                 AssignOp, Field, Index, Range, Underscore, Path, AddrOf, Break, Continue, Ret,
                 InlineAsm, FormatArgs, OffsetOf, MacCall, Struct, Repeat, Paren, Try, Yield, Yeet,

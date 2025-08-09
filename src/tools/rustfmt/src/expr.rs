@@ -426,6 +426,10 @@ pub(crate) fn format_expr(
             // Also, rustfmt might get passed the output from `-Zunpretty=expanded`.
             Err(RewriteError::Unknown)
         }
+        ast::ExprKind::Is(..) => {
+            // FIXME(is): add formatting for `expr is pat` expressions.
+            Err(RewriteError::Unknown)
+        }
         ast::ExprKind::Err(_) | ast::ExprKind::Dummy => Err(RewriteError::Unknown),
     };
 
