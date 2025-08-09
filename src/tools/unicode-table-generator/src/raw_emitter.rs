@@ -156,6 +156,12 @@ impl RawEmitter {
 pub fn emit_codepoints(emitter: &mut RawEmitter, ranges: &[Range<u32>]) {
     emitter.blank_line();
 
+    if ranges.len() <= 10 {
+        emitter.emit_match(ranges).unwrap();
+        emitter.desc = String::from("match");
+        return;
+    }
+
     let mut bitset = emitter.clone();
     let bitset_ok = bitset.emit_bitset(ranges).is_ok();
 
@@ -169,15 +175,6 @@ pub fn emit_codepoints(emitter: &mut RawEmitter, ranges: &[Range<u32>]) {
         *emitter = skiplist;
         emitter.desc = String::from("skiplist");
     }
-}
-
-pub fn emit_whitespace(emitter: &mut RawEmitter, ranges: &[Range<u32>]) {
-    emitter.blank_line();
-
-    let mut cascading = emitter.clone();
-    cascading.emit_cascading_map(ranges);
-    *emitter = cascading;
-    emitter.desc = String::from("cascading");
 }
 
 struct Canonicalized {

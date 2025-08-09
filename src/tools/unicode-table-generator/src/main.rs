@@ -78,13 +78,13 @@ use std::ops::Range;
 
 use ucd_parse::Codepoints;
 
-mod cascading_map;
 mod case_mapping;
+mod r#match;
 mod raw_emitter;
 mod skiplist;
 mod unicode_download;
 
-use raw_emitter::{RawEmitter, emit_codepoints, emit_whitespace};
+use raw_emitter::{RawEmitter, emit_codepoints};
 
 static PROPERTIES: &[&str] = &[
     "Alphabetic",
@@ -239,11 +239,7 @@ fn main() {
         let datapoints = ranges.iter().map(|r| r.end - r.start).sum::<u32>();
 
         let mut emitter = RawEmitter::new();
-        if property == &"White_Space" {
-            emit_whitespace(&mut emitter, ranges);
-        } else {
-            emit_codepoints(&mut emitter, ranges);
-        }
+        emit_codepoints(&mut emitter, ranges);
 
         modules.push((property.to_lowercase().to_string(), emitter.file));
         table_file.push_str(&format!(
