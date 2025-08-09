@@ -776,6 +776,8 @@ pub enum SyntaxExtensionKind {
     ),
 
     /// A glob delegation.
+    ///
+    /// This is for delegated function implementations, and has nothing to do with glob imports.
     GlobDelegation(Arc<dyn GlobDelegationExpander + sync::DynSync + sync::DynSend>),
 }
 
