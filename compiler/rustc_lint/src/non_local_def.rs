@@ -129,8 +129,8 @@ impl<'tcx> LateLintPass<'tcx> for NonLocalDefinitions {
                 // of the `impl` definition
                 let mut collector = PathCollector { paths: Vec::new() };
                 collector.visit_ty_unambig(&impl_.self_ty);
-                if let Some(of_trait) = &impl_.of_trait {
-                    collector.visit_trait_ref(of_trait);
+                if let Some(of_trait) = impl_.of_trait {
+                    collector.visit_trait_ref(&of_trait.trait_ref);
                 }
 
                 // 1.5. Remove any path that doesn't resolve to a `DefId` or if it resolve to a

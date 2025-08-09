@@ -81,7 +81,11 @@ fn sizedness_constraint_for_ty<'tcx>(
 fn defaultness(tcx: TyCtxt<'_>, def_id: LocalDefId) -> hir::Defaultness {
     match tcx.hir_node_by_def_id(def_id) {
         hir::Node::Item(hir::Item {
-            kind: hir::ItemKind::Impl(hir::Impl { defaultness, of_trait: Some(_), .. }),
+            kind:
+                hir::ItemKind::Impl(hir::Impl {
+                    of_trait: Some(hir::TraitImplHeader { defaultness, .. }),
+                    ..
+                }),
             ..
         })
         | hir::Node::ImplItem(hir::ImplItem { defaultness, .. })
