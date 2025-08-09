@@ -1614,6 +1614,10 @@ impl OpenOptions {
     /// See also [`std::fs::write()`][self::write] for a simple function to
     /// create a file with some given data.
     ///
+    /// # Errors
+    ///
+    /// If `.create(true)` is set without `.write(true)` or `.append(true)`,
+    /// calling [`open`](Self::open) will fail with [`InvalidInput`](io::ErrorKind::InvalidInput) error.
     /// # Examples
     ///
     /// ```no_run
@@ -1685,7 +1689,8 @@ impl OpenOptions {
     /// * [`AlreadyExists`]: `create_new` was specified and the file already
     ///   exists.
     /// * [`InvalidInput`]: Invalid combinations of open options (truncate
-    ///   without write access, no access mode set, etc.).
+    ///   without write access, create without write or append access,
+    ///   no access mode set, etc.).
     ///
     /// The following errors don't match any existing [`io::ErrorKind`] at the moment:
     /// * One of the directory components of the specified file path
