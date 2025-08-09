@@ -3,7 +3,6 @@
 
 use serde::{Deserialize, Deserializer};
 
-use crate::core::build_steps::compile::CODEGEN_BACKEND_PREFIX;
 use crate::core::config::toml::TomlConfig;
 use crate::core::config::{DebuginfoLevel, Merge, ReplaceOpt, StringOrBool};
 use crate::{BTreeSet, CodegenBackendKind, HashSet, PathBuf, TargetSelection, define_config, exit};
@@ -391,6 +390,8 @@ pub(crate) fn parse_codegen_backends(
     backends: Vec<String>,
     section: &str,
 ) -> Vec<CodegenBackendKind> {
+    const CODEGEN_BACKEND_PREFIX: &str = "rustc_codegen_";
+
     let mut found_backends = vec![];
     for backend in &backends {
         if let Some(stripped) = backend.strip_prefix(CODEGEN_BACKEND_PREFIX) {

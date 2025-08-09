@@ -1977,19 +1977,24 @@ impl Config {
             .unwrap_or(self.profiler)
     }
 
-    pub fn codegen_backends(&self, target: TargetSelection) -> &[CodegenBackendKind] {
+    /// Returns codegen backends that should be:
+    /// - Built and added to the sysroot when we build the compiler.
+    /// - Distributed when `x dist` is executed (if the codegen backend has a dist step).
+    pub fn enabled_codegen_backends(&self, target: TargetSelection) -> &[CodegenBackendKind] {
         self.target_config
             .get(&target)
             .and_then(|cfg| cfg.codegen_backends.as_deref())
             .unwrap_or(&self.rust_codegen_backends)
     }
 
-    pub fn jemalloc(&self, target: TargetSelection) -> bool {
-        self.target_config.get(&target).and_then(|cfg| cfg.jemalloc).unwrap_or(self.jemalloc)
+    /// Returns the codegen backend that should be configured as the *default* codegen backend
+    /// for a rustc compiled by bootstrap.
+    pub fn default_codegen_backend(&self, target: TargetSelection) -> Option<CodegenBackendKind> {
+        self.enabled_codegen_backends(target).first().cloned()
     }
 
-    pub fn default_codegen_backend(&self, target: TargetSelection) -> Option<CodegenBackendKind> {
-        self.codegen_backends(target).first().cloned()
+    pub fn jemalloc(&self, target: TargetSelection) -> bool {
+        self.target_config.get(&target).and_then(|cfg| cfg.jemalloc).unwrap_or(self.jemalloc)
     }
 
     pub fn rpath_enabled(&self, target: TargetSelection) -> bool {
@@ -2004,7 +2009,7 @@ impl Config {
     }
 
     pub fn llvm_enabled(&self, target: TargetSelection) -> bool {
-        self.codegen_backends(target).contains(&CodegenBackendKind::Llvm)
+        self.enabled_codegen_backends(target).contains(&CodegenBackendKind::Llvm)
     }
 
     pub fn llvm_libunwind(&self, target: TargetSelection) -> LlvmLibunwind {
