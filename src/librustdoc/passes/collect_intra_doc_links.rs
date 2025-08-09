@@ -997,6 +997,7 @@ fn preprocess_link(
         }
     };
 
+    let is_shortcut_style = ori_link.kind == LinkType::ShortcutUnknown;
     // If there's no backticks, be lenient and revert to the old behavior.
     // This is to prevent churn by linting on stuff that isn't meant to be a link.
     // only shortcut links have simple enough syntax that they
@@ -1013,9 +1014,23 @@ fn preprocess_link(
     // | has backtick |    never ignore    |    never ignore   |
     // | no backtick  | ignore if url-like |    never ignore   |
     // |-------------------------------------------------------|
-    let ignore_urllike =
-        can_be_url || (ori_link.kind == LinkType::ShortcutUnknown && !ori_link.link.contains('`'));
+    let ignore_urllike = can_be_url || (is_shortcut_style && !ori_link.link.contains('`'));
     if ignore_urllike && should_ignore_link(path_str) {
+        return None;
+    }
+    // ignore github flavored markdown special blockquotes,
+    // such as [!NOTE] and [!IMPORTANT]
+    //
+    // rustdoc does not support github-flavored markdown,
+    // however it is a common pattern to add #[doc = include_str!("../README.md")] to the root of a crate,
+    // so we want to at least accept github-flavored markdown, even if it doesn't render perfectly.
+    //
+    // we do allow [!] as a link to the never type.
+    if is_shortcut_style
+        && ori_link.link.starts_with('!')
+        && ori_link.link.len() > 1
+        && ori_link.link[1..].chars().all(|c| c.is_ascii_alphabetic())
+    {
         return None;
     }
 
