@@ -143,7 +143,7 @@ fn enumerated_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
         _4 = &raw const (*_1);
         StorageLive(_5);
         _5 = copy _4 as *const T (PtrToPtr);
-        _6 = NonNull::<T> { pointer: move _5 };
+        _6 = NonNull::<T> { pointer: copy _5 };
         StorageDead(_5);
         StorageLive(_9);
         switchInt(const <T as std::mem::SizedTypeProperties>::IS_ZST) -> [0: bb1, otherwise: bb2];
@@ -155,7 +155,7 @@ fn enumerated_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
         _7 = copy _4 as *mut T (PtrToPtr);
         _8 = Offset(copy _7, copy _3);
         StorageDead(_7);
-        _9 = move _8 as *const T (PtrToPtr);
+        _9 = copy _8 as *const T (PtrToPtr);
         StorageDead(_8);
         goto -> bb3;
     }
@@ -202,7 +202,7 @@ fn enumerated_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
         _17 = copy _14 as *mut T (Transmute);
         StorageLive(_18);
         _18 = copy _16 as *mut T (Transmute);
-        _19 = Eq(move _17, move _18);
+        _19 = Eq(copy _17, copy _18);
         StorageDead(_18);
         StorageDead(_17);
         switchInt(move _19) -> [0: bb6, otherwise: bb7];
@@ -214,9 +214,9 @@ fn enumerated_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
         StorageLive(_21);
         StorageLive(_20);
         _20 = copy _14 as *const T (Transmute);
-        _21 = Offset(move _20, const 1_usize);
+        _21 = Offset(copy _20, const 1_usize);
         StorageDead(_20);
-        _22 = NonNull::<T> { pointer: move _21 };
+        _22 = NonNull::<T> { pointer: copy _21 };
         StorageDead(_21);
         _11 = move _22;
         StorageDead(_22);
@@ -282,7 +282,7 @@ fn enumerated_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
         StorageDead(_23);
         StorageDead(_15);
         StorageDead(_14);
-        _28 = move ((_27 as Some).0: &T);
+        _28 = copy ((_27 as Some).0: &T);
         StorageDead(_27);
         _29 = copy _13;
         _30 = AddWithOverflow(copy _13, const 1_usize);
