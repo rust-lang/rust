@@ -1,4 +1,3 @@
-use std::os::raw::{c_char, c_uint};
 use std::ptr;
 
 use rustc_ast::expand::autodiff_attrs::{AutoDiffAttrs, AutoDiffItem, DiffActivity, DiffMode};
@@ -16,7 +15,7 @@ use crate::context::SimpleCx;
 use crate::declare::declare_simple_fn;
 use crate::errors::{AutoDiffWithoutEnable, LlvmError};
 use crate::llvm::AttributePlace::Function;
-use crate::llvm::{Metadata, True, TypeTree};
+use crate::llvm::{Metadata, True};
 use crate::value::Value;
 use crate::{CodegenContext, LlvmCodegenBackend, ModuleLlvm, attributes, llvm};
 
