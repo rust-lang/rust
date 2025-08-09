@@ -295,7 +295,7 @@ fn check_impl(
         } else {
             eprintln!("spellcheck files");
         }
-        spellcheck_runner(&outdir, &cargo, &args)?;
+        spellcheck_runner(root_path, &outdir, &cargo, &args)?;
     }
 
     if js_lint || js_typecheck {
@@ -579,12 +579,25 @@ fn shellcheck_runner(args: &[&OsStr]) -> Result<(), Error> {
 }
 
 /// Ensure that spellchecker is installed then run it at the given path
-fn spellcheck_runner(outdir: &Path, cargo: &Path, args: &[&str]) -> Result<(), Error> {
+fn spellcheck_runner(
+    src_root: &Path,
+    outdir: &Path,
+    cargo: &Path,
+    args: &[&str],
+) -> Result<(), Error> {
     let bin_path =
         crate::ensure_version_or_cargo_install(outdir, cargo, "typos-cli", "typos", "1.34.0")?;
 
-    let status = Command::new(bin_path).args(args).status()?;
-    if status.success() { Ok(()) } else { Err(Error::FailedCheck("typos")) }
+    match Command::new(bin_path).current_dir(src_root).args(args).status() {
+        Ok(status) => {
+            if status.success() {
+                Ok(())
+            } else {
+                Err(Error::FailedCheck("typos"))
+            }
+        }
+        Err(err) => Err(Error::Generic(format!("failed to run typos tool: {err:?}"))),
+    }
 }
 
 /// Check git for tracked files matching an extension
