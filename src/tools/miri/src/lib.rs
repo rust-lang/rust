@@ -1,4 +1,3 @@
-#![cfg_attr(bootstrap, feature(strict_overflow_ops))]
 #![feature(abort_unwind)]
 #![feature(cfg_select)]
 #![feature(rustc_private)]
