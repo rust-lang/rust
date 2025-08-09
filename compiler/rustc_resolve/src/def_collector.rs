@@ -5,6 +5,7 @@ use rustc_ast::*;
 use rustc_attr_parsing::{AttributeParser, Early, OmitDoc, ShouldEmit};
 use rustc_expand::expand::AstFragment;
 use rustc_hir as hir;
+use rustc_hir::Target;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind};
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::span_bug;
@@ -138,6 +139,7 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
                     &i.attrs,
                     i.span,
                     i.id,
+                    Target::MacroDef,
                     OmitDoc::Skip,
                     std::convert::identity,
                     |_l| {

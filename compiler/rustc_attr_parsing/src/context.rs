@@ -9,7 +9,9 @@ use rustc_errors::{DiagCtxtHandle, Diagnostic};
 use rustc_feature::{AttributeTemplate, Features};
 use rustc_hir::attrs::AttributeKind;
 use rustc_hir::lints::{AttributeLint, AttributeLintKind};
-use rustc_hir::{AttrArgs, AttrItem, AttrPath, Attribute, HashIgnoredAttrId, HirId};
+use rustc_hir::{
+    AttrArgs, AttrItem, AttrPath, Attribute, HashIgnoredAttrId, HirId, MethodKind, Target,
+};
 use rustc_session::Session;
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, Symbol, sym};
 
@@ -691,6 +693,7 @@ impl<'sess> AttributeParser<'sess, Early> {
             attrs,
             target_span,
             target_node_id,
+            Target::Crate, // Does not matter, we're not going to emit errors anyways
             OmitDoc::Skip,
             std::convert::identity,
             |_lint| {
@@ -777,6 +780,7 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
         attrs: &[ast::Attribute],
         target_span: Span,
         target_id: S::Id,
+        target: Target,
         omit_doc: OmitDoc,
 
         lower_span: impl Copy + Fn(Span) -> Span,
