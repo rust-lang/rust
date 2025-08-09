@@ -375,8 +375,14 @@ fn execute_pipeline(
 
     let mut dist = Bootstrap::dist(env, &dist_args)
         .llvm_pgo_optimize(llvm_pgo_profile.as_ref())
-        .rustc_pgo_optimize(&rustc_pgo_profile)
-        .avoid_rustc_rebuild();
+        .rustc_pgo_optimize(&rustc_pgo_profile);
+
+    // if LLVM is not built we'll have PGO optimized rustc
+    dist = if env.supports_shared_llvm() || !env.build_llvm() {
+        dist.avoid_rustc_rebuild()
+    } else {
+        dist.rustc_rebuild()
+    };
 
     for bolt_profile in bolt_profiles {
         dist = dist.with_bolt_profile(bolt_profile);
