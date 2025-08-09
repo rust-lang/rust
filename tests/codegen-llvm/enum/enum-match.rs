@@ -739,7 +739,7 @@ pub enum Tricky {
 
 const _: () = assert!(std::intrinsics::discriminant_value(&Tricky::V100) == 100);
 
-// CHECK-LABEL: define noundef{{( range\(i8 [0-9]+, [0-9]+\))?}} i8 @discriminant6(i8 noundef %e)
+// CHECK-LABEL: define noundef{{( range\(i8 [0-9]+, [0-9]+\))?}} i8 @discriminant6(i8 noundef{{( zeroext)?}} %e)
 // CHECK-NEXT: start:
 // CHECK-NEXT: %[[REL_VAR:.+]] = add i8 %e, -66
 // CHECK-NEXT: %[[IS_NICHE:.+]] = icmp ult i8 %[[REL_VAR]], -56
