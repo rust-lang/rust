@@ -306,8 +306,6 @@ pub enum AllocError {
     ScalarSizeMismatch(ScalarSizeMismatch),
     /// Encountered a pointer where we needed raw bytes.
     ReadPointerAsInt(Option<BadBytesAccess>),
-    /// Partially overwriting a pointer.
-    OverwritePartialPointer(Size),
     /// Partially copying a pointer.
     ReadPartialPointer(Size),
     /// Using uninitialized data where it is not allowed.
@@ -330,9 +328,6 @@ impl AllocError {
             }
             ReadPointerAsInt(info) => InterpErrorKind::Unsupported(
                 UnsupportedOpInfo::ReadPointerAsInt(info.map(|b| (alloc_id, b))),
-            ),
-            OverwritePartialPointer(offset) => InterpErrorKind::Unsupported(
-                UnsupportedOpInfo::OverwritePartialPointer(Pointer::new(alloc_id, offset)),
             ),
             ReadPartialPointer(offset) => InterpErrorKind::Unsupported(
                 UnsupportedOpInfo::ReadPartialPointer(Pointer::new(alloc_id, offset)),
@@ -633,11 +628,11 @@ impl<Prov: Provenance, Extra, Bytes: AllocBytes> Allocation<Prov, Extra, Bytes> 
         &mut self,
         cx: &impl HasDataLayout,
         range: AllocRange,
-    ) -> AllocResult<&mut [u8]> {
+    ) -> &mut [u8] {
         self.mark_init(range, true);
-        self.provenance.clear(range, cx)?;
+        self.provenance.clear(range, cx);
 
-        Ok(&mut self.bytes[range.start.bytes_usize()..range.end().bytes_usize()])
+        &mut self.bytes[range.start.bytes_usize()..range.end().bytes_usize()]
     }
 
     /// A raw pointer variant of `get_bytes_unchecked_for_overwrite` that avoids invalidating existing immutable aliases
@@ -646,15 +641,15 @@ impl<Prov: Provenance, Extra, Bytes: AllocBytes> Allocation<Prov, Extra, Bytes> 
         &mut self,
         cx: &impl HasDataLayout,
         range: AllocRange,
-    ) -> AllocResult<*mut [u8]> {
+    ) -> *mut [u8] {
         self.mark_init(range, true);
-        self.provenance.clear(range, cx)?;
+        self.provenance.clear(range, cx);
 
         assert!(range.end().bytes_usize() <= self.bytes.len()); // need to do our own bounds-check
         // Crucially, we go via `AllocBytes::as_mut_ptr`, not `AllocBytes::deref_mut`.
         let begin_ptr = self.bytes.as_mut_ptr().wrapping_add(range.start.bytes_usize());
         let len = range.end().bytes_usize() - range.start.bytes_usize();
-        Ok(ptr::slice_from_raw_parts_mut(begin_ptr, len))
+        ptr::slice_from_raw_parts_mut(begin_ptr, len)
     }
 
     /// This gives direct mutable access to the entire buffer, just exposing their internal state
@@ -723,26 +718,45 @@ impl<Prov: Provenance, Extra, Bytes: AllocBytes> Allocation<Prov, Extra, Bytes> 
                 let ptr = Pointer::new(prov, Size::from_bytes(bits));
                 return Ok(Scalar::from_pointer(ptr, cx));
             }
-
-            // If we can work on pointers byte-wise, join the byte-wise provenances.
-            if Prov::OFFSET_IS_ADDR {
-                let mut prov = self.provenance.get(range.start, cx);
+            // The other easy case is total absence of provenance.
+            if self.provenance.range_empty(range, cx) {
+                return Ok(Scalar::from_uint(bits, range.size));
+            }
+            // If we get here, we have to check per-byte provenance, and join them together.
+            let prov = 'prov: {
+                // Initialize with first fragment. Must have index 0.
+                let Some((mut joint_prov, 0)) = self.provenance.get_byte(range.start, cx) else {
+                    break 'prov None;
+                };
+                // Update with the remaining fragments.
                 for offset in Size::from_bytes(1)..range.size {
-                    let this_prov = self.provenance.get(range.start + offset, cx);
-                    prov = Prov::join(prov, this_prov);
+                    // Ensure there is provenance here and it has the right index.
+                    let Some((frag_prov, frag_idx)) =
+                        self.provenance.get_byte(range.start + offset, cx)
+                    else {
+                        break 'prov None;
+                    };
+                    // Wildcard provenance is allowed to come with any index (this is needed
+                    // for Miri's native-lib mode to work).
+                    if u64::from(frag_idx) != offset.bytes() && Some(frag_prov) != Prov::WILDCARD {
+                        break 'prov None;
+                    }
+                    // Merge this byte's provenance with the previous ones.
+                    joint_prov = match Prov::join(joint_prov, frag_prov) {
+                        Some(prov) => prov,
+                        None => break 'prov None,
+                    };
                 }
-                // Now use this provenance.
-                let ptr = Pointer::new(prov, Size::from_bytes(bits));
-                return Ok(Scalar::from_maybe_pointer(ptr, cx));
-            } else {
-                // Without OFFSET_IS_ADDR, the only remaining case we can handle is total absence of
-                // provenance.
-                if self.provenance.range_empty(range, cx) {
-                    return Ok(Scalar::from_uint(bits, range.size));
-                }
-                // Else we have mixed provenance, that doesn't work.
+                break 'prov Some(joint_prov);
+            };
+            if prov.is_none() && !Prov::OFFSET_IS_ADDR {
+                // There are some bytes with provenance here but overall the provenance does not add up.
+                // We need `OFFSET_IS_ADDR` to fall back to no-provenance here; without that option, we must error.
                 return Err(AllocError::ReadPartialPointer(range.start));
             }
+            // We can use this provenance.
+            let ptr = Pointer::new(prov, Size::from_bytes(bits));
+            return Ok(Scalar::from_maybe_pointer(ptr, cx));
         } else {
             // We are *not* reading a pointer.
             // If we can just ignore provenance or there is none, that's easy.
@@ -782,7 +796,7 @@ impl<Prov: Provenance, Extra, Bytes: AllocBytes> Allocation<Prov, Extra, Bytes> 
 
         let endian = cx.data_layout().endian;
         // Yes we do overwrite all the bytes in `dst`.
-        let dst = self.get_bytes_unchecked_for_overwrite(cx, range)?;
+        let dst = self.get_bytes_unchecked_for_overwrite(cx, range);
         write_target_uint(endian, dst, bytes).unwrap();
 
         // See if we have to also store some provenance.
@@ -795,10 +809,9 @@ impl<Prov: Provenance, Extra, Bytes: AllocBytes> Allocation<Prov, Extra, Bytes> 
     }
 
     /// Write "uninit" to the given memory range.
-    pub fn write_uninit(&mut self, cx: &impl HasDataLayout, range: AllocRange) -> AllocResult {
+    pub fn write_uninit(&mut self, cx: &impl HasDataLayout, range: AllocRange) {
         self.mark_init(range, false);
-        self.provenance.clear(range, cx)?;
-        Ok(())
+        self.provenance.clear(range, cx);
     }
 
     /// Mark all bytes in the given range as initialised and reset the provenance
@@ -817,9 +830,12 @@ impl<Prov: Provenance, Extra, Bytes: AllocBytes> Allocation<Prov, Extra, Bytes> 
     }
 
     /// Remove all provenance in the given memory range.
-    pub fn clear_provenance(&mut self, cx: &impl HasDataLayout, range: AllocRange) -> AllocResult {
-        self.provenance.clear(range, cx)?;
-        return Ok(());
+    pub fn clear_provenance(&mut self, cx: &impl HasDataLayout, range: AllocRange) {
+        self.provenance.clear(range, cx);
+    }
+
+    pub fn provenance_merge_bytes(&mut self, cx: &impl HasDataLayout) -> bool {
+        self.provenance.merge_bytes(cx)
     }
 
     /// Applies a previously prepared provenance copy.
