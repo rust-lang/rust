@@ -37,11 +37,11 @@ error: malformed `crate_name` attribute input
 LL | #[crate_name]
    | ^^^^^^^^^^^^^ help: must be of the form: `#[crate_name = "name"]`
 
-error: malformed `no_sanitize` attribute input
+error: malformed `sanitize` attribute input
   --> $DIR/malformed-attrs.rs:89:1
    |
-LL | #[no_sanitize]
-   | ^^^^^^^^^^^^^^ help: must be of the form: `#[no_sanitize(address, kcfi, memory, thread)]`
+LL | #[sanitize]
+   | ^^^^^^^^^^^ help: must be of the form: `#[sanitize(address = "on|off", cfi = "on|off")]`
 
 error: malformed `instruction_set` attribute input
   --> $DIR/malformed-attrs.rs:103:1
