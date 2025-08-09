@@ -1,5 +1,5 @@
 
-running 4 tests
+running 4 standalone doctests
 test $DIR/main-alongside-macro-calls.rs - (line 19) ... ok
 test $DIR/main-alongside-macro-calls.rs - (line 24) ... ok
 test $DIR/main-alongside-macro-calls.rs - (line 28) - compile fail ... ok

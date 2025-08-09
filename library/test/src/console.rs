@@ -257,9 +257,9 @@ fn on_test_event(
     out: &mut dyn OutputFormatter,
 ) -> io::Result<()> {
     match (*event).clone() {
-        TestEvent::TeFiltered(filtered_tests, shuffle_seed) => {
+        TestEvent::TeFiltered(filtered_tests, shuffle_seed, group_kind) => {
             st.total = filtered_tests;
-            out.write_run_start(filtered_tests, shuffle_seed)?;
+            out.write_run_start(filtered_tests, shuffle_seed, group_kind)?;
         }
         TestEvent::TeFilteredOut(filtered_out) => {
             st.filtered_out = filtered_out;

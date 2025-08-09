@@ -1,5 +1,5 @@
 
-running 2 tests
+running 2 standalone doctests
 test $DIR/failed-doctest-output.rs - OtherStruct (line 25) ... FAILED
 test $DIR/failed-doctest-output.rs - SomeStruct (line 15) ... FAILED
 
