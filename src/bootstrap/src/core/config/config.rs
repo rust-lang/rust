@@ -1349,11 +1349,15 @@ impl Config {
         // Now check that the selected stage makes sense, and if not, print a warning and end
         match (config.stage, &config.cmd) {
             (0, Subcommand::Build) => {
-                eprintln!("WARNING: cannot build anything on stage 0. Use at least stage 1.");
+                eprintln!("ERROR: cannot build anything on stage 0. Use at least stage 1.");
                 exit!(1);
             }
             (0, Subcommand::Check { .. }) => {
-                eprintln!("WARNING: cannot check anything on stage 0. Use at least stage 1.");
+                eprintln!("ERROR: cannot check anything on stage 0. Use at least stage 1.");
+                exit!(1);
+            }
+            (0, Subcommand::Doc { .. }) => {
+                eprintln!("ERROR: cannot document anything on stage 0. Use at least stage 1.");
                 exit!(1);
             }
             _ => {}
