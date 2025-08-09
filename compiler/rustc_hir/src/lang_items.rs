@@ -320,7 +320,7 @@ language_item_table! {
     PanicAsyncGenFnResumedDrop, sym::panic_const_async_gen_fn_resumed_drop, panic_const_async_gen_fn_resumed_drop, Target::Fn, GenericRequirement::None;
     PanicGenFnNoneDrop, sym::panic_const_gen_fn_none_drop, panic_const_gen_fn_none_drop, Target::Fn, GenericRequirement::None;
     /// libstd panic entry point. Necessary for const eval to be able to catch it
-    BeginPanic,              sym::begin_panic,         begin_panic_fn,             Target::Fn,             GenericRequirement::None;
+    BeginPanic,              sym::panic_with_payload,         begin_panic_fn,             Target::Fn,             GenericRequirement::None;
 
     // Lang items needed for `format_args!()`.
     FormatArgument,          sym::format_argument,     format_argument,            Target::Struct,         GenericRequirement::None;

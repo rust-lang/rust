@@ -103,7 +103,7 @@ fn lint_impl_body(cx: &LateContext<'_>, item_def_id: hir::OwnerId, impl_span: Sp
     {
         let impl_item_def_id = impl_item.def_id.expect_local();
 
-        // check the body for `begin_panic` or `unwrap`
+        // check the body for `panic_with_payload` or `unwrap`
         let body = cx.tcx.hir_body_owned_by(impl_item_def_id);
         let mut fpu = FindPanicUnwrap {
             lcx: cx,

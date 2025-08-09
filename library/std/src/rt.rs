@@ -17,7 +17,7 @@
 #![allow(unused_macros)]
 
 #[rustfmt::skip]
-pub use crate::panicking::{begin_panic, panic_count};
+pub use crate::panicking::{panic_with_payload, panic_count};
 pub use core::panicking::{panic_display, panic_fmt};
 
 #[rustfmt::skip]

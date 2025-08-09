@@ -29,7 +29,7 @@ use crate::{fmt, intrinsics, process, thread};
 
 // This forces codegen of the function called by panic!() inside the std crate, rather than in
 // downstream crates. Primarily this is useful for rustc's codegen tests, which rely on noticing
-// complete removal of panic from generated IR. Since begin_panic is inline(never), it's only
+// complete removal of panic from generated IR. Since panic_with_payload is inline(never), it's only
 // codegen'd once per crate-graph so this pushes that to std rather than our codegen test crates.
 //
 // (See https://github.com/rust-lang/rust/pull/123244 for more info on why).
@@ -41,7 +41,7 @@ use crate::{fmt, intrinsics, process, thread};
 #[allow(dead_code)]
 #[used(compiler)]
 pub static EMPTY_PANIC: fn(&'static str) -> ! =
-    begin_panic::<&'static str> as fn(&'static str) -> !;
+    panic_with_payload::<&'static str> as fn(&'static str) -> !;
 
 // Binary interface to the panic runtime that the standard library depends on.
 //
@@ -651,7 +651,7 @@ pub fn panic_handler(info: &core::panic::PanicInfo<'_>) -> ! {
         fn take_box(&mut self) -> *mut (dyn Any + Send) {
             // We do two allocations here, unfortunately. But (a) they're required with the current
             // scheme, and (b) we don't handle panic + OOM properly anyway (see comment in
-            // begin_panic below).
+            // panic_with_payload below).
             let contents = mem::take(self.fill());
             Box::into_raw(Box::new(contents))
         }
@@ -718,7 +718,7 @@ pub fn panic_handler(info: &core::panic::PanicInfo<'_>) -> ! {
 /// panic!() and assert!(). In particular, this is the only entry point that supports
 /// arbitrary payloads, not just format strings.
 #[unstable(feature = "libstd_sys_internals", reason = "used by the panic! macro", issue = "none")]
-#[cfg_attr(not(any(test, doctest)), lang = "begin_panic")]
+#[cfg_attr(not(any(test, doctest)), lang = "panic_with_payload")]
 // lang item for CTFE panic support
 // never inline unless panic_immediate_abort to avoid code
 // bloat at the call sites as much as possible
@@ -726,7 +726,7 @@ pub fn panic_handler(info: &core::panic::PanicInfo<'_>) -> ! {
 #[cfg_attr(feature = "panic_immediate_abort", inline)]
 #[track_caller]
 #[rustc_do_not_const_check] // hooked by const-eval
-pub const fn begin_panic<M: Any + Send>(msg: M) -> ! {
+pub const fn panic_with_payload<M: Any + Send>(msg: M) -> ! {
     if cfg!(feature = "panic_immediate_abort") {
         intrinsics::abort()
     }

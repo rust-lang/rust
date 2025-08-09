@@ -69,7 +69,7 @@ stack backtrace:
    2: std::panicking::default_hook::{{closure}}
    3: std::panicking::default_hook
    4: std::panicking::rust_panic_with_hook
-   5: std::panicking::begin_panic
+   5: std::panicking::panic_with_payload
    (~~~~ LINES REMOVED BY ME FOR BREVITY ~~~~)
   32: rustc_typeck::check_crate
   33: <std::thread::local::LocalKey<T>>::with

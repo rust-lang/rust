@@ -2,7 +2,7 @@
 thread 'main' ($TID) panicked at $DIR/short-ice-remove-middle-frames.rs:58:5:
 debug!!!
 stack backtrace:
-   0: std::panicking::begin_panic
+   0: std::panicking::panic_with_payload
    1: short_ice_remove_middle_frames::seven
    2: short_ice_remove_middle_frames::sixth
    3: short_ice_remove_middle_frames::fifth::{{closure}}

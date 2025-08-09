@@ -827,11 +827,11 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
 
                 // At this point, we are calling a function, `callee`, whose `DefId` is known...
 
-                // `begin_panic` and `#[rustc_const_panic_str]` functions accept generic
+                // `panic_with_payload` and `#[rustc_const_panic_str]` functions accept generic
                 // types other than str. Check to enforce that only str can be used in
                 // const-eval.
 
-                // const-eval of the `begin_panic` fn assumes the argument is `&str`
+                // const-eval of the `panic_with_payload` fn assumes the argument is `&str`
                 if tcx.is_lang_item(callee, LangItem::BeginPanic) {
                     match args[0].node.ty(&self.ccx.body.local_decls, tcx).kind() {
                         ty::Ref(_, ty, _) if ty.is_str() => {}

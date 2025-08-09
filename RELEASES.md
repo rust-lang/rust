@@ -1013,7 +1013,7 @@ Compatibility Notes
     ```
     thread 'main' panicked at 'hello world', map-panic.rs:2:50
     stack backtrace:
-       0: std::panicking::begin_panic
+       0: std::panicking::panic_with_payload
                  at /rustc/a55dd71d5fb0ec5a6a3a9e8c27b2127ba491ce52/library/std/src/panicking.rs:616:12
        1: map_panic::main::{{closure}}
                  at ./map-panic.rs:2:50
