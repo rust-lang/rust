@@ -1,14 +1,26 @@
 //! Implementation of running clippy on the compiler, standard library and various tools.
+//!
+//! This serves a double purpose:
+//! - The first is to run Clippy itself on in-tree code, in order to test and dogfood it.
+//! - The second is to actually lint the in-tree codebase on CI, with a hard-coded set of rules,
+//!   which is performed by the `x clippy ci` command.
+//!
+//! In order to prepare a build compiler for running clippy, use the
+//! [check::prepare_compiler_for_check] function. That prepares a compiler and a standard library
+//! for running Clippy. The second part (actually building Clippy) is performed inside
+//! [Builder::cargo_clippy_cmd]. It would be nice if this was more explicit, and we actually had
+//! to pass a prebuilt Clippy from the outside when running `cargo clippy`, but that would be
+//! (as usual) a massive undertaking/refactoring.
 
-use super::check;
 use super::compile::{run_cargo, rustc_cargo, std_cargo};
-use super::tool::{SourceType, prepare_tool_cargo};
+use super::tool::{RustcPrivateCompilers, SourceType, prepare_tool_cargo};
 use crate::builder::{Builder, ShouldRun};
+use crate::core::build_steps::check::prepare_compiler_for_check;
 use crate::core::build_steps::compile::std_crates_for_run_make;
 use crate::core::builder;
-use crate::core::builder::{Alias, Kind, RunConfig, Step, crate_description};
+use crate::core::builder::{Alias, Kind, RunConfig, Step, StepMetadata, crate_description};
 use crate::utils::build_stamp::{self, BuildStamp};
-use crate::{Mode, Subcommand, TargetSelection};
+use crate::{Compiler, Mode, Subcommand, TargetSelection};
 
 /// Disable the most spammy clippy lints
 const IGNORED_RULES_FOR_STD_AND_RUSTC: &[&str] = &[
@@ -121,10 +133,27 @@ impl LintConfig {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Std {
-    pub target: TargetSelection,
+    build_compiler: Compiler,
+    target: TargetSelection,
     config: LintConfig,
     /// Whether to lint only a subset of crates.
     crates: Vec<String>,
+}
+
+impl Std {
+    fn new(
+        builder: &Builder<'_>,
+        target: TargetSelection,
+        config: LintConfig,
+        crates: Vec<String>,
+    ) -> Self {
+        Self {
+            build_compiler: builder.compiler(builder.top_stage, builder.host_target),
+            target,
+            config,
+            crates,
+        }
+    }
 }
 
 impl Step for Std {
@@ -138,16 +167,16 @@ impl Step for Std {
     fn make_run(run: RunConfig<'_>) {
         let crates = std_crates_for_run_make(&run);
         let config = LintConfig::new(run.builder);
-        run.builder.ensure(Std { target: run.target, config, crates });
+        run.builder.ensure(Std::new(run.builder, run.target, config, crates));
     }
 
     fn run(self, builder: &Builder<'_>) {
         let target = self.target;
-        let compiler = builder.compiler(builder.top_stage, builder.config.host_target);
+        let build_compiler = self.build_compiler;
 
         let mut cargo = builder::Cargo::new(
             builder,
-            compiler,
+            build_compiler,
             Mode::Std,
             SourceType::InTree,
             target,
@@ -167,20 +196,45 @@ impl Step for Std {
             builder,
             cargo,
             lint_args(builder, &self.config, IGNORED_RULES_FOR_STD_AND_RUSTC),
-            &build_stamp::libstd_stamp(builder, compiler, target),
+            &build_stamp::libstd_stamp(builder, build_compiler, target),
             vec![],
             true,
             false,
         );
     }
+
+    fn metadata(&self) -> Option<StepMetadata> {
+        Some(StepMetadata::clippy("std", self.target).built_by(self.build_compiler))
+    }
 }
 
+/// Lints the compiler.
+///
+/// This will build Clippy with the `build_compiler` and use it to lint
+/// in-tree rustc.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Rustc {
-    pub target: TargetSelection,
+    build_compiler: Compiler,
+    target: TargetSelection,
     config: LintConfig,
     /// Whether to lint only a subset of crates.
     crates: Vec<String>,
+}
+
+impl Rustc {
+    fn new(
+        builder: &Builder<'_>,
+        target: TargetSelection,
+        config: LintConfig,
+        crates: Vec<String>,
+    ) -> Self {
+        Self {
+            build_compiler: prepare_compiler_for_check(builder, target, Mode::Rustc),
+            target,
+            config,
+            crates,
+        }
+    }
 }
 
 impl Step for Rustc {
@@ -193,43 +247,26 @@ impl Step for Rustc {
     }
 
     fn make_run(run: RunConfig<'_>) {
+        let builder = run.builder;
         let crates = run.make_run_crates(Alias::Compiler);
         let config = LintConfig::new(run.builder);
-        run.builder.ensure(Rustc { target: run.target, config, crates });
+        run.builder.ensure(Rustc::new(builder, run.target, config, crates));
     }
 
-    /// Lints the compiler.
-    ///
-    /// This will lint the compiler for a particular stage of the build using
-    /// the `compiler` targeting the `target` architecture.
     fn run(self, builder: &Builder<'_>) {
-        let compiler = builder.compiler(builder.top_stage, builder.config.host_target);
+        let build_compiler = self.build_compiler;
         let target = self.target;
-
-        if !builder.download_rustc() {
-            if compiler.stage != 0 {
-                // If we're not in stage 0, then we won't have a std from the beta
-                // compiler around. That means we need to make sure there's one in
-                // the sysroot for the compiler to find. Otherwise, we're going to
-                // fail when building crates that need to generate code (e.g., build
-                // scripts and their dependencies).
-                builder.std(compiler, compiler.host);
-                builder.std(compiler, target);
-            } else {
-                builder.ensure(check::Std::new(compiler, target));
-            }
-        }
 
         let mut cargo = builder::Cargo::new(
             builder,
-            compiler,
+            build_compiler,
             Mode::Rustc,
             SourceType::InTree,
             target,
             Kind::Clippy,
         );
 
-        rustc_cargo(builder, &mut cargo, target, &compiler, &self.crates);
+        rustc_cargo(builder, &mut cargo, target, &self.build_compiler, &self.crates);
 
         // Explicitly pass -p for all compiler crates -- this will force cargo
         // to also lint the tests/benches/examples for these crates, rather
@@ -245,17 +282,100 @@ impl Step for Rustc {
             builder,
             cargo,
             lint_args(builder, &self.config, IGNORED_RULES_FOR_STD_AND_RUSTC),
-            &build_stamp::librustc_stamp(builder, compiler, target),
+            &build_stamp::librustc_stamp(builder, build_compiler, target),
             vec![],
             true,
             false,
         );
     }
+
+    fn metadata(&self) -> Option<StepMetadata> {
+        Some(StepMetadata::clippy("rustc", self.target).built_by(self.build_compiler))
+    }
+}
+
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+pub struct CodegenGcc {
+    compilers: RustcPrivateCompilers,
+    target: TargetSelection,
+    config: LintConfig,
+}
+
+impl CodegenGcc {
+    fn new(builder: &Builder<'_>, target: TargetSelection, config: LintConfig) -> Self {
+        Self {
+            compilers: RustcPrivateCompilers::new(builder, builder.top_stage, target),
+            target,
+            config,
+        }
+    }
+}
+
+impl Step for CodegenGcc {
+    type Output = ();
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.alias("rustc_codegen_gcc")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        let builder = run.builder;
+        let config = LintConfig::new(builder);
+        builder.ensure(CodegenGcc::new(builder, run.target, config));
+    }
+
+    fn run(self, builder: &Builder<'_>) -> Self::Output {
+        let build_compiler = self.compilers.build_compiler();
+        let target = self.target;
+
+        let cargo = prepare_tool_cargo(
+            builder,
+            build_compiler,
+            Mode::Codegen,
+            target,
+            Kind::Clippy,
+            "compiler/rustc_codegen_gcc",
+            SourceType::InTree,
+            &[],
+        );
+
+        let _guard = builder.msg_tool(
+            Kind::Clippy,
+            Mode::ToolRustc,
+            "rustc_codegen_gcc",
+            build_compiler.stage,
+            &build_compiler.host,
+            &target,
+        );
+
+        let stamp = BuildStamp::new(&builder.cargo_out(build_compiler, Mode::Codegen, target))
+            .with_prefix("rustc_codegen_gcc-check");
+
+        run_cargo(
+            builder,
+            cargo,
+            lint_args(builder, &self.config, &[]),
+            &stamp,
+            vec![],
+            true,
+            false,
+        );
+    }
+
+    fn metadata(&self) -> Option<StepMetadata> {
+        Some(
+            StepMetadata::clippy("rustc_codegen_gcc", self.target)
+                .built_by(self.compilers.build_compiler()),
+        )
+    }
 }
 
 macro_rules! lint_any {
     ($(
-        $name:ident, $path:expr, $readable_name:expr
+        $name:ident,
+        $path:expr,
+        $readable_name:expr,
+        $mode:expr
         $(,lint_by_default = $lint_by_default:expr)*
         ;
     )+) => {
@@ -263,7 +383,8 @@ macro_rules! lint_any {
 
         #[derive(Debug, Clone, Hash, PartialEq, Eq)]
         pub struct $name {
-            pub target: TargetSelection,
+            build_compiler: Compiler,
+            target: TargetSelection,
             config: LintConfig,
         }
 
@@ -278,23 +399,19 @@ macro_rules! lint_any {
             fn make_run(run: RunConfig<'_>) {
                 let config = LintConfig::new(run.builder);
                 run.builder.ensure($name {
+                    build_compiler: prepare_compiler_for_check(run.builder, run.target, $mode),
                     target: run.target,
                     config,
                 });
             }
 
             fn run(self, builder: &Builder<'_>) -> Self::Output {
-                let compiler = builder.compiler(builder.top_stage, builder.config.host_target);
+                let build_compiler = self.build_compiler;
                 let target = self.target;
-
-                if !builder.download_rustc() {
-                    builder.ensure(check::Rustc::new(builder, compiler, target));
-                };
-
                 let cargo = prepare_tool_cargo(
                     builder,
-                    compiler,
-                    Mode::ToolRustc,
+                    build_compiler,
+                    $mode,
                     target,
                     Kind::Clippy,
                     $path,
@@ -304,15 +421,15 @@ macro_rules! lint_any {
 
                 let _guard = builder.msg_tool(
                     Kind::Clippy,
-                    Mode::ToolRustc,
+                    $mode,
                     $readable_name,
-                    compiler.stage,
-                    &compiler.host,
+                    build_compiler.stage,
+                    &build_compiler.host,
                     &target,
                 );
 
                 let stringified_name = stringify!($name).to_lowercase();
-                let stamp = BuildStamp::new(&builder.cargo_out(compiler, Mode::ToolRustc, target))
+                let stamp = BuildStamp::new(&builder.cargo_out(build_compiler, $mode, target))
                     .with_prefix(&format!("{}-check", stringified_name));
 
                 run_cargo(
@@ -325,36 +442,41 @@ macro_rules! lint_any {
                     false,
                 );
             }
+
+            fn metadata(&self) -> Option<StepMetadata> {
+                Some(StepMetadata::clippy($readable_name, self.target).built_by(self.build_compiler))
+            }
         }
         )+
     }
 }
 
+// Note: we use ToolTarget instead of ToolBootstrap here, to allow linting in-tree host tools
+// using the in-tree Clippy. Because Mode::ToolBootstrap would always use stage 0 rustc/Clippy.
 lint_any!(
-    Bootstrap, "src/bootstrap", "bootstrap";
-    BuildHelper, "src/build_helper", "build_helper";
-    BuildManifest, "src/tools/build-manifest", "build-manifest";
-    CargoMiri, "src/tools/miri/cargo-miri", "cargo-miri";
-    Clippy, "src/tools/clippy", "clippy";
-    CollectLicenseMetadata, "src/tools/collect-license-metadata", "collect-license-metadata";
-    CodegenGcc, "compiler/rustc_codegen_gcc", "rustc-codegen-gcc";
-    Compiletest, "src/tools/compiletest", "compiletest";
-    CoverageDump, "src/tools/coverage-dump", "coverage-dump";
-    Jsondocck, "src/tools/jsondocck", "jsondocck";
-    Jsondoclint, "src/tools/jsondoclint", "jsondoclint";
-    LintDocs, "src/tools/lint-docs", "lint-docs";
-    LlvmBitcodeLinker, "src/tools/llvm-bitcode-linker", "llvm-bitcode-linker";
-    Miri, "src/tools/miri", "miri";
-    MiroptTestTools, "src/tools/miropt-test-tools", "miropt-test-tools";
-    OptDist, "src/tools/opt-dist", "opt-dist";
-    RemoteTestClient, "src/tools/remote-test-client", "remote-test-client";
-    RemoteTestServer, "src/tools/remote-test-server", "remote-test-server";
-    RustAnalyzer, "src/tools/rust-analyzer", "rust-analyzer";
-    Rustdoc, "src/librustdoc", "clippy";
-    Rustfmt, "src/tools/rustfmt", "rustfmt";
-    RustInstaller, "src/tools/rust-installer", "rust-installer";
-    Tidy, "src/tools/tidy", "tidy";
-    TestFloatParse, "src/tools/test-float-parse", "test-float-parse";
+    Bootstrap, "src/bootstrap", "bootstrap", Mode::ToolTarget;
+    BuildHelper, "src/build_helper", "build_helper", Mode::ToolTarget;
+    BuildManifest, "src/tools/build-manifest", "build-manifest", Mode::ToolTarget;
+    CargoMiri, "src/tools/miri/cargo-miri", "cargo-miri", Mode::ToolRustc;
+    Clippy, "src/tools/clippy", "clippy", Mode::ToolRustc;
+    CollectLicenseMetadata, "src/tools/collect-license-metadata", "collect-license-metadata", Mode::ToolTarget;
+    Compiletest, "src/tools/compiletest", "compiletest", Mode::ToolTarget;
+    CoverageDump, "src/tools/coverage-dump", "coverage-dump", Mode::ToolTarget;
+    Jsondocck, "src/tools/jsondocck", "jsondocck", Mode::ToolTarget;
+    Jsondoclint, "src/tools/jsondoclint", "jsondoclint", Mode::ToolTarget;
+    LintDocs, "src/tools/lint-docs", "lint-docs", Mode::ToolTarget;
+    LlvmBitcodeLinker, "src/tools/llvm-bitcode-linker", "llvm-bitcode-linker", Mode::ToolTarget;
+    Miri, "src/tools/miri", "miri", Mode::ToolRustc;
+    MiroptTestTools, "src/tools/miropt-test-tools", "miropt-test-tools", Mode::ToolTarget;
+    OptDist, "src/tools/opt-dist", "opt-dist", Mode::ToolTarget;
+    RemoteTestClient, "src/tools/remote-test-client", "remote-test-client", Mode::ToolTarget;
+    RemoteTestServer, "src/tools/remote-test-server", "remote-test-server", Mode::ToolTarget;
+    RustAnalyzer, "src/tools/rust-analyzer", "rust-analyzer", Mode::ToolRustc;
+    Rustdoc, "src/librustdoc", "clippy", Mode::ToolRustc;
+    Rustfmt, "src/tools/rustfmt", "rustfmt", Mode::ToolRustc;
+    RustInstaller, "src/tools/rust-installer", "rust-installer", Mode::ToolTarget;
+    Tidy, "src/tools/tidy", "tidy", Mode::ToolTarget;
+    TestFloatParse, "src/tools/test-float-parse", "test-float-parse", Mode::ToolStd;
 );
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -378,6 +500,7 @@ impl Step for CI {
 
     fn run(self, builder: &Builder<'_>) -> Self::Output {
         builder.ensure(Bootstrap {
+            build_compiler: prepare_compiler_for_check(builder, self.target, Mode::ToolTarget),
             target: self.target,
             config: self.config.merge(&LintConfig {
                 allow: vec![],
@@ -403,11 +526,12 @@ impl Step for CI {
             ],
             forbid: vec![],
         };
-        builder.ensure(Std {
-            target: self.target,
-            config: self.config.merge(&library_clippy_cfg),
-            crates: vec![],
-        });
+        builder.ensure(Std::new(
+            builder,
+            self.target,
+            self.config.merge(&library_clippy_cfg),
+            vec![],
+        ));
 
         let compiler_clippy_cfg = LintConfig {
             allow: vec!["clippy::all".into()],
@@ -428,11 +552,12 @@ impl Step for CI {
             ],
             forbid: vec![],
         };
-        builder.ensure(Rustc {
-            target: self.target,
-            config: self.config.merge(&compiler_clippy_cfg),
-            crates: vec![],
-        });
+        builder.ensure(Rustc::new(
+            builder,
+            self.target,
+            self.config.merge(&compiler_clippy_cfg),
+            vec![],
+        ));
 
         let rustc_codegen_gcc = LintConfig {
             allow: vec![],
@@ -440,9 +565,10 @@ impl Step for CI {
             deny: vec!["warnings".into()],
             forbid: vec![],
         };
-        builder.ensure(CodegenGcc {
-            target: self.target,
-            config: self.config.merge(&rustc_codegen_gcc),
-        });
+        builder.ensure(CodegenGcc::new(
+            builder,
+            self.target,
+            self.config.merge(&rustc_codegen_gcc),
+        ));
     }
 }
