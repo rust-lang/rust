@@ -3,7 +3,7 @@
 
 pub(crate) use Ty::*;
 use rustc_ast::ptr::P;
-use rustc_ast::{self as ast, Expr, GenericArg, GenericParamKind, Generics, SelfKind};
+use rustc_ast::{self as ast, Expr, GenericArg, GenericParamKind, Generics, SelfKind, TyKind};
 use rustc_expand::base::ExtCtxt;
 use rustc_span::source_map::respan;
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw};
@@ -66,7 +66,7 @@ impl Path {
     }
 }
 
-/// A type. Supports pointers, Self, and literals.
+/// A type. Supports pointers, Self, literals, unit or an arbitrary AST path.
 #[derive(Clone)]
 pub(crate) enum Ty {
     Self_,
@@ -77,6 +77,8 @@ pub(crate) enum Ty {
     Path(Path),
     /// For () return types.
     Unit,
+    /// An arbitrary type.
+    AstTy(P<ast::Ty>),
 }
 
 pub(crate) fn self_ref() -> Ty {
@@ -102,6 +104,7 @@ impl Ty {
                 let ty = ast::TyKind::Tup(ThinVec::new());
                 cx.ty(span, ty)
             }
+            AstTy(ty) => ty.clone(),
         }
     }
 
@@ -133,6 +136,10 @@ impl Ty {
                 cx.path_all(span, false, vec![self_ty], params)
             }
             Path(p) => p.to_path(cx, span, self_ty, generics),
+            AstTy(ty) => match &ty.kind {
+                TyKind::Path(_, path) => path.clone(),
+                _ => cx.dcx().span_bug(span, "non-path in a path in generic `derive`"),
+            },
             Ref(..) => cx.dcx().span_bug(span, "ref in a path in generic `derive`"),
             Unit => cx.dcx().span_bug(span, "unit in a path in generic `derive`"),
         }

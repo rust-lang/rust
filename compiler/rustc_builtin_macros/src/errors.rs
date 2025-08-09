@@ -447,6 +447,13 @@ pub(crate) struct DefaultHasArg {
 }
 
 #[derive(Diagnostic)]
+#[diag(builtin_macros_from_wrong_target)]
+pub(crate) struct DeriveFromWrongTarget {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(builtin_macros_derive_macro_call)]
 pub(crate) struct DeriveMacroCall {
     #[primary_span]
