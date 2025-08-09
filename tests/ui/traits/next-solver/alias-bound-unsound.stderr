@@ -32,6 +32,14 @@ LL |     drop(<() as Foo>::copy_me(&x));
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
+error[E0275]: overflow evaluating the requirement `<() as Foo>::Item: Sized`
+  --> $DIR/alias-bound-unsound.rs:24:10
+   |
+LL |     drop(<() as Foo>::copy_me(&x));
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the return type of a function must have a statically known size
+
 error[E0275]: overflow evaluating the requirement `&<() as Foo>::Item well-formed`
   --> $DIR/alias-bound-unsound.rs:24:31
    |
@@ -58,6 +66,6 @@ error[E0275]: overflow evaluating the requirement `<() as Foo>::Item == _`
 LL |     drop(<() as Foo>::copy_me(&x));
    |                               ^^
 
-error: aborting due to 8 previous errors
+error: aborting due to 9 previous errors
 
 For more information about this error, try `rustc --explain E0275`.
