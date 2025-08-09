@@ -1555,11 +1555,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         if let Some((def_id, unused_ident)) = unused_macro {
             let scope = self.local_macro_def_scopes[&def_id];
             let parent_nearest = parent_scope.module.nearest_parent_mod();
-            if Some(parent_nearest) == scope.opt_def_id() {
+            let unused_macro_kinds = self.local_macro_map[def_id].ext.macro_kinds();
+            if !unused_macro_kinds.contains(macro_kind.into()) {
                 match macro_kind {
                     MacroKind::Bang => {
-                        err.subdiagnostic(MacroDefinedLater { span: unused_ident.span });
-                        err.subdiagnostic(MacroSuggMovePosition { span: ident.span, ident });
+                        err.subdiagnostic(MacroRulesNot::Func { span: unused_ident.span, ident });
                     }
                     MacroKind::Attr => {
                         err.subdiagnostic(MacroRulesNot::Attr { span: unused_ident.span, ident });
@@ -1568,14 +1568,13 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         err.subdiagnostic(MacroRulesNot::Derive { span: unused_ident.span, ident });
                     }
                 }
-
                 return;
             }
-        }
-
-        if self.macro_names.contains(&ident.normalize_to_macros_2_0()) {
-            err.subdiagnostic(AddedMacroUse);
-            return;
+            if Some(parent_nearest) == scope.opt_def_id() {
+                err.subdiagnostic(MacroDefinedLater { span: unused_ident.span });
+                err.subdiagnostic(MacroSuggMovePosition { span: ident.span, ident });
+                return;
+            }
         }
 
         if ident.name == kw::Default
@@ -1649,6 +1648,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 imported_ident_desc: &desc,
             };
             err.subdiagnostic(note);
+            return;
+        }
+
+        if self.macro_names.contains(&ident.normalize_to_macros_2_0()) {
+            err.subdiagnostic(AddedMacroUse);
             return;
         }
     }
