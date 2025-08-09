@@ -305,6 +305,8 @@ pub(crate) struct RenderOptions {
     pub(crate) parts_out_dir: Option<PathToParts>,
     /// disable minification of CSS/JS
     pub(crate) disable_minification: bool,
+    /// If `true`, HTML source pages will generate the possibility to expand macros.
+    pub(crate) generate_macro_expansion: bool,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -786,6 +788,7 @@ impl Options {
         let show_type_layout = matches.opt_present("show-type-layout");
         let nocapture = matches.opt_present("nocapture");
         let generate_link_to_definition = matches.opt_present("generate-link-to-definition");
+        let generate_macro_expansion = matches.opt_present("generate-macro-expansion");
         let extern_html_root_takes_precedence =
             matches.opt_present("extern-html-root-takes-precedence");
         let html_no_source = matches.opt_present("html-no-source");
@@ -799,6 +802,13 @@ impl Options {
                 "`--generate-link-to-definition` option can only be used with HTML output format",
             )
             .with_note("`--generate-link-to-definition` option will be ignored")
+            .emit();
+        }
+        if generate_macro_expansion && (show_coverage || output_format != OutputFormat::Html) {
+            dcx.struct_warn(
+                "`--generate-macro-expansion` option can only be used with HTML output format",
+            )
+            .with_note("`--generate-macro-expansion` option will be ignored")
             .emit();
         }
 
@@ -881,6 +891,7 @@ impl Options {
             unstable_features,
             emit,
             generate_link_to_definition,
+            generate_macro_expansion,
             call_locations,
             no_emit_shared: false,
             html_no_source,
