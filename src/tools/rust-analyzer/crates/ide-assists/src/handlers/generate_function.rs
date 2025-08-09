@@ -316,7 +316,7 @@ impl FunctionBuilder {
         let current_module = ctx.sema.scope(call.syntax())?.module();
         let visibility = calculate_necessary_visibility(current_module, target_module, ctx);
 
-        let fn_name = make::name(&name.text());
+        let fn_name = make::name(name.ident_token()?.text());
         let mut necessary_generic_params = FxHashSet::default();
         necessary_generic_params.extend(receiver_ty.generic_params(ctx.db()));
         let params = fn_args(
@@ -3130,5 +3130,33 @@ fn main() {
 }
         "#,
         )
+    }
+
+    #[test]
+    fn no_generate_method_by_keyword() {
+        check_assist_not_applicable(
+            generate_function,
+            r#"
+fn main() {
+    s.super$0();
+}
+        "#,
+        );
+        check_assist_not_applicable(
+            generate_function,
+            r#"
+fn main() {
+    s.Self$0();
+}
+        "#,
+        );
+        check_assist_not_applicable(
+            generate_function,
+            r#"
+fn main() {
+    s.self$0();
+}
+        "#,
+        );
     }
 }
