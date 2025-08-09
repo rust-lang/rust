@@ -1933,10 +1933,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             let stability = tcx.lookup_stability(CRATE_DEF_ID);
             let macros =
                 self.lazy_array(tcx.resolutions(()).proc_macros.iter().map(|p| p.local_def_index));
-            for (i, span) in self.tcx.sess.psess.proc_macro_quoted_spans() {
-                let span = self.lazy(span);
-                self.tables.proc_macro_quoted_spans.set_some(i, span);
-            }
 
             self.tables.def_kind.set_some(LOCAL_CRATE.as_def_id().index, DefKind::Mod);
             record!(self.tables.def_span[LOCAL_CRATE.as_def_id()] <- tcx.def_span(LOCAL_CRATE.as_def_id()));

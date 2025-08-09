@@ -23,9 +23,9 @@ fn main() {
     {
         let mut ts = crate::TokenStream::new();
         crate::ToTokens::to_tokens(&crate::TokenTree::Ident(crate::Ident::new("let",
-                        crate::Span::recover_proc_macro_span(0))), &mut ts);
+                        crate::Span::def_site())), &mut ts);
         crate::ToTokens::to_tokens(&crate::TokenTree::Ident(crate::Ident::new("hello",
-                        crate::Span::recover_proc_macro_span(1))), &mut ts);
+                        crate::Span::def_site())), &mut ts);
         crate::ToTokens::to_tokens(&crate::TokenTree::Punct(crate::Punct::new('=',
                         crate::Spacing::Alone)), &mut ts);
         crate::ToTokens::to_tokens(&crate::TokenTree::Literal({
@@ -33,7 +33,7 @@ fn main() {
                             "\"world\"".parse::<crate::TokenStream>().unwrap().into_iter();
                         if let (Some(crate::TokenTree::Literal(mut lit)), None) =
                                 (iter.next(), iter.next()) {
-                            lit.set_span(crate::Span::recover_proc_macro_span(2));
+                            lit.set_span(crate::Span::def_site());
                             lit
                         } else {
                             ::core::panicking::panic("internal error: entered unreachable code")
@@ -42,9 +42,9 @@ fn main() {
         crate::ToTokens::to_tokens(&crate::TokenTree::Punct(crate::Punct::new(';',
                         crate::Spacing::Alone)), &mut ts);
         crate::ToTokens::to_tokens(&crate::TokenTree::Ident(crate::Ident::new("let",
-                        crate::Span::recover_proc_macro_span(3))), &mut ts);
+                        crate::Span::def_site())), &mut ts);
         crate::ToTokens::to_tokens(&crate::TokenTree::Ident(crate::Ident::new_raw("raw_ident",
-                        crate::Span::recover_proc_macro_span(4))), &mut ts);
+                        crate::Span::def_site())), &mut ts);
         crate::ToTokens::to_tokens(&crate::TokenTree::Punct(crate::Punct::new('=',
                         crate::Spacing::Alone)), &mut ts);
         crate::ToTokens::to_tokens(&crate::TokenTree::Literal({
@@ -52,7 +52,7 @@ fn main() {
                             "r#\"raw\"literal\"#".parse::<crate::TokenStream>().unwrap().into_iter();
                         if let (Some(crate::TokenTree::Literal(mut lit)), None) =
                                 (iter.next(), iter.next()) {
-                            lit.set_span(crate::Span::recover_proc_macro_span(5));
+                            lit.set_span(crate::Span::def_site());
                             lit
                         } else {
                             ::core::panicking::panic("internal error: entered unreachable code")
