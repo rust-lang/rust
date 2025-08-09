@@ -8,7 +8,9 @@
 // N               :   457 bytes,   1911 codepoints in 144 ranges (U+000030 - U+01FBFA) using skiplist
 // Uppercase       :   799 bytes,   1978 codepoints in 656 ranges (U+000041 - U+01F18A) using bitset
 // White_Space     :   256 bytes,     25 codepoints in  10 ranges (U+000009 - U+003001) using cascading
-// Total           :  6530 bytes
+// to_lower        : 11484 bytes
+// to_upper        : 13432 bytes
+// Total           : 31446 bytes
 
 #[inline(always)]
 const fn bitset_search<
@@ -782,7 +784,7 @@ pub mod conversions {
         }
     }
 
-    static LOWERCASE_TABLE: &[(char, u32)] = &[
+    static LOWERCASE_TABLE: &[(char, u32); 1434] = &[
         ('\u{c0}', 224), ('\u{c1}', 225), ('\u{c2}', 226), ('\u{c3}', 227), ('\u{c4}', 228),
         ('\u{c5}', 229), ('\u{c6}', 230), ('\u{c7}', 231), ('\u{c8}', 232), ('\u{c9}', 233),
         ('\u{ca}', 234), ('\u{cb}', 235), ('\u{cc}', 236), ('\u{cd}', 237), ('\u{ce}', 238),
@@ -1132,11 +1134,11 @@ pub mod conversions {
         ('\u{1e921}', 125251),
     ];
 
-    static LOWERCASE_TABLE_MULTI: &[[char; 3]] = &[
+    static LOWERCASE_TABLE_MULTI: &[[char; 3]; 1] = &[
         ['i', '\u{307}', '\u{0}'],
     ];
 
-    static UPPERCASE_TABLE: &[(char, u32)] = &[
+    static UPPERCASE_TABLE: &[(char, u32); 1526] = &[
         ('\u{b5}', 924), ('\u{df}', 4194304), ('\u{e0}', 192), ('\u{e1}', 193), ('\u{e2}', 194),
         ('\u{e3}', 195), ('\u{e4}', 196), ('\u{e5}', 197), ('\u{e6}', 198), ('\u{e7}', 199),
         ('\u{e8}', 200), ('\u{e9}', 201), ('\u{ea}', 202), ('\u{eb}', 203), ('\u{ec}', 204),
@@ -1509,7 +1511,7 @@ pub mod conversions {
         ('\u{1e941}', 125215), ('\u{1e942}', 125216), ('\u{1e943}', 125217),
     ];
 
-    static UPPERCASE_TABLE_MULTI: &[[char; 3]] = &[
+    static UPPERCASE_TABLE_MULTI: &[[char; 3]; 102] = &[
         ['S', 'S', '\u{0}'], ['\u{2bc}', 'N', '\u{0}'], ['J', '\u{30c}', '\u{0}'],
         ['\u{399}', '\u{308}', '\u{301}'], ['\u{3a5}', '\u{308}', '\u{301}'],
         ['\u{535}', '\u{552}', '\u{0}'], ['H', '\u{331}', '\u{0}'], ['T', '\u{308}', '\u{0}'],
