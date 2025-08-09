@@ -77,7 +77,4 @@ mod pin_coerce_unsized {
     pub fn pin_non_null(arg: Pin<NonNull<String>>) -> Pin<NonNull<dyn MyTrait>> {
         arg
     }
-    pub fn nesting_pins(arg: Pin<Pin<&String>>) -> Pin<Pin<&dyn MyTrait>> {
-        arg
-    }
 }

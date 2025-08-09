@@ -13,7 +13,6 @@ trait Trait {
     fn by_arc(self: Arc<Self>) -> i64;
     fn by_pin_mut(self: Pin<&mut Self>) -> i64;
     fn by_pin_box(self: Pin<Box<Self>>) -> i64;
-    fn by_pin_pin_pin_ref(self: Pin<Pin<Pin<&Self>>>) -> i64;
 }
 
 impl Trait for i64 {
@@ -27,9 +26,6 @@ impl Trait for i64 {
         *self
     }
     fn by_pin_box(self: Pin<Box<Self>>) -> i64 {
-        *self
-    }
-    fn by_pin_pin_pin_ref(self: Pin<Pin<Pin<&Self>>>) -> i64 {
         *self
     }
 }
@@ -47,8 +43,4 @@ fn main() {
 
     let pin_box = Into::<Pin<Box<i64>>>::into(Box::new(4i64)) as Pin<Box<dyn Trait>>;
     assert_eq!(4, pin_box.by_pin_box());
-
-    let value = 5i64;
-    let pin_pin_pin_ref = Pin::new(Pin::new(Pin::new(&value))) as Pin<Pin<Pin<&dyn Trait>>>;
-    assert_eq!(5, pin_pin_pin_ref.by_pin_pin_pin_ref());
 }

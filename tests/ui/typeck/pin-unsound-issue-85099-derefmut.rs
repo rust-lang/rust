@@ -1,5 +1,4 @@
-//@ check-pass
-//@ known-bug: #85099
+//@ check-fail
 
 // Should fail. Can coerce `Pin<T>` into `Pin<U>` where
 // `T: Deref<Target: Unpin>` and `U: Deref<Target: !Unpin>`, using the
@@ -59,6 +58,8 @@ pub fn unsound_pin<Fut: Future<Output = ()>>(
     let s: &SomeLocalStruct<'_, Fut> = &SomeLocalStruct(&cell);
     let p: Pin<Pin<&SomeLocalStruct<'_, Fut>>> = Pin::new(Pin::new(s));
     let mut p: Pin<Pin<&dyn SomeTrait<'_, Fut>>> = p;
+    //~^ ERROR: the trait bound `Pin<&SomeLocalStruct<'_, Fut>>: PinCoerceUnsized` is not satisfied [E0277]
+    //~| ERROR: the trait bound `Pin<&dyn SomeTrait<'_, Fut>>: PinCoerceUnsized` is not satisfied [E0277]
     let r: Pin<&mut dyn SomeTrait<'_, Fut>> = p.as_mut();
     let f: Pin<&mut Fut> = r.downcast();
     callback(f);

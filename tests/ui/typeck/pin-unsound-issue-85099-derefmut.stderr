@@ -1,0 +1,39 @@
+error[E0277]: the trait bound `Pin<&SomeLocalStruct<'_, Fut>>: PinCoerceUnsized` is not satisfied
+  --> $DIR/pin-unsound-issue-85099-derefmut.rs:60:52
+   |
+LL |     let mut p: Pin<Pin<&dyn SomeTrait<'_, Fut>>> = p;
+   |                                                    ^ the trait `PinCoerceUnsized` is not implemented for `Pin<&SomeLocalStruct<'_, Fut>>`
+   |
+   = help: the following other types implement trait `PinCoerceUnsized`:
+             &'a T
+             &'a mut T
+             *const T
+             *mut T
+             Arc<T, A>
+             Box<T, A>
+             Cell<T>
+             NonNull<T>
+           and 11 others
+   = note: required for the cast from `Pin<Pin<&SomeLocalStruct<'_, Fut>>>` to `Pin<Pin<&dyn SomeTrait<'_, Fut>>>`
+
+error[E0277]: the trait bound `Pin<&dyn SomeTrait<'_, Fut>>: PinCoerceUnsized` is not satisfied
+  --> $DIR/pin-unsound-issue-85099-derefmut.rs:60:52
+   |
+LL |     let mut p: Pin<Pin<&dyn SomeTrait<'_, Fut>>> = p;
+   |                                                    ^ the trait `PinCoerceUnsized` is not implemented for `Pin<&dyn SomeTrait<'_, Fut>>`
+   |
+   = help: the following other types implement trait `PinCoerceUnsized`:
+             &'a T
+             &'a mut T
+             *const T
+             *mut T
+             Arc<T, A>
+             Box<T, A>
+             Cell<T>
+             NonNull<T>
+           and 11 others
+   = note: required for the cast from `Pin<Pin<&SomeLocalStruct<'_, Fut>>>` to `Pin<Pin<&dyn SomeTrait<'_, Fut>>>`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.
