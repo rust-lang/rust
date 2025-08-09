@@ -8,8 +8,7 @@
 #[no_mangle]
 pub fn position_slice_to_no_bounds_check(s: &[u8]) -> &[u8] {
     // CHECK-NOT: panic
-    // CHECK-NOT: slice_start_index_len_fail
-    // CHECK-NOT: slice_end_index_len_fail
+    // CHECK-NOT: slice_index_fail
     // CHECK-NOT: panic_bounds_check
     // CHECK-NOT: unreachable
     if let Some(idx) = s.iter().position(|b| *b == b'\\') { &s[..idx] } else { s }
@@ -19,8 +18,7 @@ pub fn position_slice_to_no_bounds_check(s: &[u8]) -> &[u8] {
 #[no_mangle]
 pub fn position_slice_from_no_bounds_check(s: &[u8]) -> &[u8] {
     // CHECK-NOT: panic
-    // CHECK-NOT: slice_start_index_len_fail
-    // CHECK-NOT: slice_end_index_len_fail
+    // CHECK-NOT: slice_index_fail
     // CHECK-NOT: panic_bounds_check
     // CHECK-NOT: unreachable
     if let Some(idx) = s.iter().position(|b| *b == b'\\') { &s[idx..] } else { s }
@@ -30,8 +28,7 @@ pub fn position_slice_from_no_bounds_check(s: &[u8]) -> &[u8] {
 #[no_mangle]
 pub fn position_index_no_bounds_check(s: &[u8]) -> u8 {
     // CHECK-NOT: panic
-    // CHECK-NOT: slice_start_index_len_fail
-    // CHECK-NOT: slice_end_index_len_fail
+    // CHECK-NOT: slice_index_fail
     // CHECK-NOT: panic_bounds_check
     // CHECK-NOT: unreachable
     if let Some(idx) = s.iter().position(|b| *b == b'\\') { s[idx] } else { 42 }
@@ -40,8 +37,7 @@ pub fn position_index_no_bounds_check(s: &[u8]) -> u8 {
 #[no_mangle]
 pub fn rposition_slice_to_no_bounds_check(s: &[u8]) -> &[u8] {
     // CHECK-NOT: panic
-    // CHECK-NOT: slice_start_index_len_fail
-    // CHECK-NOT: slice_end_index_len_fail
+    // CHECK-NOT: slice_index_fail
     // CHECK-NOT: panic_bounds_check
     // CHECK-NOT: unreachable
     if let Some(idx) = s.iter().rposition(|b| *b == b'\\') { &s[..idx] } else { s }
@@ -51,8 +47,7 @@ pub fn rposition_slice_to_no_bounds_check(s: &[u8]) -> &[u8] {
 #[no_mangle]
 pub fn rposition_slice_from_no_bounds_check(s: &[u8]) -> &[u8] {
     // CHECK-NOT: panic
-    // CHECK-NOT: slice_start_index_len_fail
-    // CHECK-NOT: slice_end_index_len_fail
+    // CHECK-NOT: slice_index_fail
     // CHECK-NOT: panic_bounds_check
     // CHECK-NOT: unreachable
     if let Some(idx) = s.iter().rposition(|b| *b == b'\\') { &s[idx..] } else { s }
@@ -62,8 +57,7 @@ pub fn rposition_slice_from_no_bounds_check(s: &[u8]) -> &[u8] {
 #[no_mangle]
 pub fn rposition_index_no_bounds_check(s: &[u8]) -> u8 {
     // CHECK-NOT: panic
-    // CHECK-NOT: slice_start_index_len_fail
-    // CHECK-NOT: slice_end_index_len_fail
+    // CHECK-NOT: slice_index_fail
     // CHECK-NOT: panic_bounds_check
     // CHECK-NOT: unreachable
     if let Some(idx) = s.iter().rposition(|b| *b == b'\\') { s[idx] } else { 42 }
