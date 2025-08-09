@@ -76,11 +76,8 @@ pub struct ModuleConfig {
     /// Names of additional optimization passes to run.
     pub passes: Vec<String>,
     /// Some(level) to optimize at a certain level, or None to run
-    /// absolutely no optimizations (used for the metadata module).
+    /// absolutely no optimizations (used for the allocator module).
     pub opt_level: Option<config::OptLevel>,
-
-    /// Some(level) to optimize binary size, or None to not affect program size.
-    pub opt_size: Option<config::OptLevel>,
 
     pub pgo_gen: SwitchWithOptPath,
     pub pgo_use: Option<PathBuf>,
@@ -102,7 +99,6 @@ pub struct ModuleConfig {
     pub emit_obj: EmitObj,
     pub emit_thin_lto: bool,
     pub emit_thin_lto_summary: bool,
-    pub bc_cmdline: String,
 
     // Miscellaneous flags. These are mostly copied from command-line
     // options.
@@ -110,7 +106,6 @@ pub struct ModuleConfig {
     pub lint_llvm_ir: bool,
     pub no_prepopulate_passes: bool,
     pub no_builtins: bool,
-    pub time_module: bool,
     pub vectorize_loop: bool,
     pub vectorize_slp: bool,
     pub merge_functions: bool,
@@ -171,7 +166,6 @@ impl ModuleConfig {
             passes: if_regular!(sess.opts.cg.passes.clone(), vec![]),
 
             opt_level: opt_level_and_size,
-            opt_size: opt_level_and_size,
 
             pgo_gen: if_regular!(
                 sess.opts.cg.profile_generate.clone(),
@@ -221,16 +215,11 @@ impl ModuleConfig {
                 sess.opts.output_types.contains_key(&OutputType::ThinLinkBitcode),
                 false
             ),
-            bc_cmdline: sess.target.bitcode_llvm_cmdline.to_string(),
 
             verify_llvm_ir: sess.verify_llvm_ir(),
             lint_llvm_ir: sess.opts.unstable_opts.lint_llvm_ir,
             no_prepopulate_passes: sess.opts.cg.no_prepopulate_passes,
             no_builtins: no_builtins || sess.target.no_builtins,
-
-            // Exclude metadata and allocator modules from time_passes output,
-            // since they throw off the "LLVM passes" measurement.
-            time_module: if_regular!(true, false),
 
             // Copy what clang does by turning on loop vectorization at O2 and
             // slp vectorization at O3.
@@ -1740,7 +1729,7 @@ fn spawn_work<'a, B: ExtraBackendMethods>(
     llvm_start_time: &mut Option<VerboseTimingGuard<'a>>,
     work: WorkItem<B>,
 ) {
-    if cgcx.config(work.module_kind()).time_module && llvm_start_time.is_none() {
+    if llvm_start_time.is_none() {
         *llvm_start_time = Some(cgcx.prof.verbose_generic_activity("LLVM_passes"));
     }
 

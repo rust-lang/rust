@@ -862,7 +862,7 @@ pub(crate) fn codegen(
                     .generic_activity_with_arg("LLVM_module_codegen_embed_bitcode", &*module.name);
                 let thin_bc =
                     module.thin_lto_buffer.as_deref().expect("cannot find embedded bitcode");
-                embed_bitcode(cgcx, llcx, llmod, &config.bc_cmdline, &thin_bc);
+                embed_bitcode(cgcx, llcx, llmod, &thin_bc);
             }
         }
 
@@ -1058,7 +1058,6 @@ fn embed_bitcode(
     cgcx: &CodegenContext<LlvmCodegenBackend>,
     llcx: &llvm::Context,
     llmod: &llvm::Module,
-    cmdline: &str,
     bitcode: &[u8],
 ) {
     // We're adding custom sections to the output object file, but we definitely
@@ -1074,7 +1073,9 @@ fn embed_bitcode(
     // * Mach-O - this is for macOS. Inspecting the source code for the native
     //   linker here shows that the `.llvmbc` and `.llvmcmd` sections are
     //   automatically skipped by the linker. In that case there's nothing extra
-    //   that we need to do here.
+    //   that we need to do here. We do need to make sure that the
+    //   `__LLVM,__cmdline` section exists even though it is empty as otherwise
+    //   ld64 rejects the object file.
     //
     // * Wasm - the native LLD linker is hard-coded to skip `.llvmbc` and
     //   `.llvmcmd` sections, so there's nothing extra we need to do.
@@ -1111,7 +1112,7 @@ fn embed_bitcode(
         llvm::set_linkage(llglobal, llvm::Linkage::PrivateLinkage);
         llvm::LLVMSetGlobalConstant(llglobal, llvm::True);
 
-        let llconst = common::bytes_in_context(llcx, cmdline.as_bytes());
+        let llconst = common::bytes_in_context(llcx, &[]);
         let llglobal = llvm::add_global(llmod, common::val_ty(llconst), c"rustc.embedded.cmdline");
         llvm::set_initializer(llglobal, llconst);
         let section = if cgcx.target_is_like_darwin {
@@ -1128,7 +1129,7 @@ fn embed_bitcode(
         let section_flags = if cgcx.is_pe_coff { "n" } else { "e" };
         let asm = create_section_with_flags_asm(".llvmbc", section_flags, bitcode);
         llvm::append_module_inline_asm(llmod, &asm);
-        let asm = create_section_with_flags_asm(".llvmcmd", section_flags, cmdline.as_bytes());
+        let asm = create_section_with_flags_asm(".llvmcmd", section_flags, &[]);
         llvm::append_module_inline_asm(llmod, &asm);
     }
 }
