@@ -1678,6 +1678,10 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
+    pub fn codegen_mir(self, instance: ty::Instance<'tcx>) -> &'tcx Body<'tcx> {
+        self.build_codegen_mir(instance)
+    }
+
     /// Returns the possibly-auto-generated MIR of a [`ty::InstanceKind`].
     #[instrument(skip(self), level = "debug")]
     pub fn instance_mir(self, instance: ty::InstanceKind<'tcx>) -> &'tcx Body<'tcx> {

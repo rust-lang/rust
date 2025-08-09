@@ -33,8 +33,8 @@ use crate::mir::interpret::{AllocRange, Scalar};
 use crate::ty::codec::{TyDecoder, TyEncoder};
 use crate::ty::print::{FmtPrinter, Printer, pretty_print_const, with_no_trimmed_paths};
 use crate::ty::{
-    self, GenericArg, GenericArgsRef, Instance, InstanceKind, List, Ty, TyCtxt, TypeVisitableExt,
-    TypingEnv, UserTypeAnnotationIndex,
+    self, GenericArg, GenericArgsRef, InstanceKind, List, Ty, TyCtxt, TypeVisitableExt, TypingEnv,
+    UserTypeAnnotationIndex,
 };
 
 mod basic_blocks;
@@ -375,6 +375,8 @@ pub struct Body<'tcx> {
     #[type_foldable(identity)]
     #[type_visitable(ignore)]
     pub function_coverage_info: Option<Box<coverage::FunctionCoverageInfo>>,
+
+    pub is_codegen_mir: bool,
 }
 
 impl<'tcx> Body<'tcx> {
@@ -418,6 +420,7 @@ impl<'tcx> Body<'tcx> {
             tainted_by_errors,
             coverage_info_hi: None,
             function_coverage_info: None,
+            is_codegen_mir: false,
         };
         body.is_polymorphic = body.has_non_region_param();
         body
@@ -449,6 +452,7 @@ impl<'tcx> Body<'tcx> {
             tainted_by_errors: None,
             coverage_info_hi: None,
             function_coverage_info: None,
+            is_codegen_mir: false,
         };
         body.is_polymorphic = body.has_non_region_param();
         body
@@ -631,74 +635,6 @@ impl<'tcx> Body<'tcx> {
     #[inline]
     pub fn is_custom_mir(&self) -> bool {
         self.injection_phase.is_some()
-    }
-
-    /// If this basic block ends with a [`TerminatorKind::SwitchInt`] for which we can evaluate the
-    /// discriminant in monomorphization, we return the discriminant bits and the
-    /// [`SwitchTargets`], just so the caller doesn't also have to match on the terminator.
-    fn try_const_mono_switchint<'a>(
-        tcx: TyCtxt<'tcx>,
-        instance: Instance<'tcx>,
-        block: &'a BasicBlockData<'tcx>,
-    ) -> Option<(u128, &'a SwitchTargets)> {
-        // There are two places here we need to evaluate a constant.
-        let eval_mono_const = |constant: &ConstOperand<'tcx>| {
-            // FIXME(#132279): what is this, why are we using an empty environment here.
-            let typing_env = ty::TypingEnv::fully_monomorphized();
-            let mono_literal = instance.instantiate_mir_and_normalize_erasing_regions(
-                tcx,
-                typing_env,
-                crate::ty::EarlyBinder::bind(constant.const_),
-            );
-            mono_literal.try_eval_bits(tcx, typing_env)
-        };
-
-        let TerminatorKind::SwitchInt { discr, targets } = &block.terminator().kind else {
-            return None;
-        };
-
-        // If this is a SwitchInt(const _), then we can just evaluate the constant and return.
-        let discr = match discr {
-            Operand::Constant(constant) => {
-                let bits = eval_mono_const(constant)?;
-                return Some((bits, targets));
-            }
-            Operand::Move(place) | Operand::Copy(place) => place,
-        };
-
-        // MIR for `if false` actually looks like this:
-        // _1 = const _
-        // SwitchInt(_1)
-        //
-        // And MIR for if intrinsics::ub_checks() looks like this:
-        // _1 = UbChecks()
-        // SwitchInt(_1)
-        //
-        // So we're going to try to recognize this pattern.
-        //
-        // If we have a SwitchInt on a non-const place, we find the most recent statement that
-        // isn't a storage marker. If that statement is an assignment of a const to our
-        // discriminant place, we evaluate and return the const, as if we've const-propagated it
-        // into the SwitchInt.
-
-        let last_stmt = block.statements.iter().rev().find(|stmt| {
-            !matches!(stmt.kind, StatementKind::StorageDead(_) | StatementKind::StorageLive(_))
-        })?;
-
-        let (place, rvalue) = last_stmt.kind.as_assign()?;
-
-        if discr != place {
-            return None;
-        }
-
-        match rvalue {
-            Rvalue::NullaryOp(NullOp::UbChecks, _) => Some((tcx.sess.ub_checks() as u128, targets)),
-            Rvalue::Use(Operand::Constant(constant)) => {
-                let bits = eval_mono_const(constant)?;
-                Some((bits, targets))
-            }
-            _ => None,
-        }
     }
 
     /// For a `Location` in this scope, determine what the "caller location" at that point is. This
@@ -1390,19 +1326,6 @@ impl<'tcx> BasicBlockData<'tcx> {
     #[inline]
     pub fn is_empty_unreachable(&self) -> bool {
         self.statements.is_empty() && matches!(self.terminator().kind, TerminatorKind::Unreachable)
-    }
-
-    /// Like [`Terminator::successors`] but tries to use information available from the [`Instance`]
-    /// to skip successors like the `false` side of an `if const {`.
-    ///
-    /// This is used to implement [`traversal::mono_reachable`] and
-    /// [`traversal::mono_reachable_reverse_postorder`].
-    pub fn mono_successors(&self, tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> Successors<'_> {
-        if let Some((bits, targets)) = Body::try_const_mono_switchint(tcx, instance, self) {
-            targets.successors_for_value(bits)
-        } else {
-            self.terminator().successors()
-        }
     }
 }
 
