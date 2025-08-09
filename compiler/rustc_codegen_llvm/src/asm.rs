@@ -511,9 +511,9 @@ pub(crate) fn inline_asm_call<'ll>(
         assert!(catch_funclet.is_none());
         bx.callbr(fty, None, None, v, inputs, dest.unwrap(), labels, None, None)
     } else if let Some((catch, funclet)) = catch_funclet {
-        bx.invoke(fty, None, None, v, inputs, dest.unwrap(), catch, funclet, None)
+        bx.invoke(fty, None, None, v, None /*FIXME(FractalFir): I assume that inline assembly does not return via `PassMode::Indirect` - is this correct?*/, inputs, dest.unwrap(), catch, funclet, None)
     } else {
-        bx.call(fty, None, None, v, inputs, None, None)
+        bx.call(fty, None, None, v, None /*FIXME(FractalFir): I assume that inline assembly does not return via `PassMode::Indirect` - is this correct?*/,inputs, None, None)
     };
 
     // Store mark in a metadata node so we can map LLVM errors
