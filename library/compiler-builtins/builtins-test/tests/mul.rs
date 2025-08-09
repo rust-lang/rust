@@ -1,5 +1,6 @@
-#![allow(unused_macros)]
+#![cfg_attr(f16_enabled, feature(f16))]
 #![cfg_attr(f128_enabled, feature(f128))]
+#![allow(unused_macros)]
 
 use builtins_test::*;
 
@@ -116,6 +117,11 @@ macro_rules! float_mul {
 #[cfg(not(x86_no_sse))]
 mod float_mul {
     use super::*;
+
+    #[cfg(f16_enabled)]
+    float_mul! {
+        f16, __mulhf3, Half, all();
+    }
 
     // FIXME(#616): Stop ignoring arches that don't have native support once fix for builtins is in
     // nightly.

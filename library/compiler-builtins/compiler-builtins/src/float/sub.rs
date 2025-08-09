@@ -1,6 +1,11 @@
 use crate::float::Float;
 
 intrinsics! {
+    #[cfg(f16_enabled)]
+    pub extern "C" fn __subhf3(a: f16, b: f16) -> f16 {
+        crate::float::add::__addhf3(a, f16::from_bits(b.to_bits() ^ f16::SIGN_MASK))
+    }
+
     #[arm_aeabi_alias = __aeabi_fsub]
     pub extern "C" fn __subsf3(a: f32, b: f32) -> f32 {
         crate::float::add::__addsf3(a, f32::from_bits(b.to_bits() ^ f32::SIGN_MASK))

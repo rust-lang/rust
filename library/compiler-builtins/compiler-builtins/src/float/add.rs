@@ -191,6 +191,11 @@ where
 }
 
 intrinsics! {
+    #[cfg(f16_enabled)]
+    pub extern "C" fn __addhf3(a: f16, b: f16) -> f16 {
+        add(a, b)
+    }
+
     #[aapcs_on_arm]
     #[arm_aeabi_alias = __aeabi_fadd]
     pub extern "C" fn __addsf3(a: f32, b: f32) -> f32 {
