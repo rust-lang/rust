@@ -870,7 +870,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             }
             ImportKind::Glob { .. } => {
                 // FIXME: Use mutable resolver directly as a hack, this should be an output of
-                // specualtive resolution.
+                // speculative resolution.
                 self.get_mut_unchecked().resolve_glob_import(import);
                 return 0;
             }
@@ -907,7 +907,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         // We need the `target`, `source` can be extracted.
                         let imported_binding = this.import(binding, import);
                         // FIXME: Use mutable resolver directly as a hack, this should be an output of
-                        // specualtive resolution.
+                        // speculative resolution.
                         this.get_mut_unchecked().define_binding_local(
                             parent,
                             target,
@@ -921,7 +921,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         if target.name != kw::Underscore {
                             let key = BindingKey::new(target, ns);
                             // FIXME: Use mutable resolver directly as a hack, this should be an output of
-                            // specualtive resolution.
+                            // speculative resolution.
                             this.get_mut_unchecked().update_local_resolution(
                                 parent,
                                 key,

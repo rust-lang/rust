@@ -184,6 +184,7 @@ fn main() {
             &librustdoc_path,
             &tools_path,
             &npm,
+            &cargo,
             bless,
             extra_checks,
             pos_args

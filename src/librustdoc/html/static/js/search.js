@@ -3333,7 +3333,7 @@ class DocSearch {
                 }
 
                 // sort unstable items later
-                // FIXME: there is some doubt if this is the most effecient way to implement this.
+                // FIXME: there is some doubt if this is the most efficient way to implement this.
                 // alternative options include:
                 // * put is_unstable on each item when the index is built.
                 //   increases memory usage but avoids a hashmap lookup.
