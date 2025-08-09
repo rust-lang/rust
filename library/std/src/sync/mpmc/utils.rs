@@ -23,14 +23,13 @@ use crate::ops::{Deref, DerefMut};
     any(target_arch = "x86_64", target_arch = "aarch64", target_arch = "powerpc64",),
     repr(align(128))
 )]
-// arm, mips, mips64, and riscv64 have 32-byte cache line size.
+// arm, mips and mips64 have 32-byte cache line size.
 //
 // Sources:
 // - https://github.com/golang/go/blob/3dd58676054223962cd915bb0934d1f9f489d4d2/src/internal/cpu/cpu_arm.go#L7
 // - https://github.com/golang/go/blob/3dd58676054223962cd915bb0934d1f9f489d4d2/src/internal/cpu/cpu_mips.go#L7
 // - https://github.com/golang/go/blob/3dd58676054223962cd915bb0934d1f9f489d4d2/src/internal/cpu/cpu_mipsle.go#L7
 // - https://github.com/golang/go/blob/3dd58676054223962cd915bb0934d1f9f489d4d2/src/internal/cpu/cpu_mips64x.go#L9
-// - https://github.com/golang/go/blob/3dd58676054223962cd915bb0934d1f9f489d4d2/src/internal/cpu/cpu_riscv64.go#L7
 #[cfg_attr(
     any(
         target_arch = "arm",
@@ -38,7 +37,6 @@ use crate::ops::{Deref, DerefMut};
         target_arch = "mips32r6",
         target_arch = "mips64",
         target_arch = "mips64r6",
-        target_arch = "riscv64",
     ),
     repr(align(32))
 )]
@@ -47,11 +45,12 @@ use crate::ops::{Deref, DerefMut};
 // Sources:
 // - https://github.com/golang/go/blob/3dd58676054223962cd915bb0934d1f9f489d4d2/src/internal/cpu/cpu_s390x.go#L7
 #[cfg_attr(target_arch = "s390x", repr(align(256)))]
-// x86 and wasm have 64-byte cache line size.
+// x86, wasm and riscv have 64-byte cache line size.
 //
 // Sources:
 // - https://github.com/golang/go/blob/dda2991c2ea0c5914714469c4defc2562a907230/src/internal/cpu/cpu_x86.go#L9
 // - https://github.com/golang/go/blob/3dd58676054223962cd915bb0934d1f9f489d4d2/src/internal/cpu/cpu_wasm.go#L7
+// - https://github.com/golang/go/blob/5e31f78c8a4ed1b872ddc194f0cd1ae931b37d7e/src/internal/cpu/cpu_riscv64.go#L7
 //
 // All others are assumed to have 64-byte cache line size.
 #[cfg_attr(
@@ -64,7 +63,6 @@ use crate::ops::{Deref, DerefMut};
         target_arch = "mips32r6",
         target_arch = "mips64",
         target_arch = "mips64r6",
-        target_arch = "riscv64",
         target_arch = "s390x",
     )),
     repr(align(64))
