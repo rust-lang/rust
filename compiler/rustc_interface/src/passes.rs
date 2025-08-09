@@ -371,7 +371,7 @@ fn print_macro_stats(ecx: &ExtCtxt<'_>) {
             // The name won't abut or overlap with the uses value, but it does
             // overlap with the empty part of the uses column. Shrink the width
             // of the uses column to account for the excess name length.
-            uses_w = uses_with_underscores.len() + 1
+            uses_w -= name.len() - name_w;
         };
 
         _ = writeln!(

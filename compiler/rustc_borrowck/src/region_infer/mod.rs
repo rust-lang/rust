@@ -44,7 +44,7 @@ use crate::{
 
 mod dump_mir;
 mod graphviz;
-mod opaque_types;
+pub(crate) mod opaque_types;
 mod reverse_sccs;
 
 pub(crate) mod values;
@@ -1940,9 +1940,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // and here we prefer to blame the source (the y = x statement).
         let blame_source = match from_region_origin {
             NllRegionVariableOrigin::FreeRegion
-            | NllRegionVariableOrigin::Existential { from_forall: false } => true,
+            | NllRegionVariableOrigin::Existential { from_forall: false, name: _ } => true,
             NllRegionVariableOrigin::Placeholder(_)
-            | NllRegionVariableOrigin::Existential { from_forall: true } => false,
+            | NllRegionVariableOrigin::Existential { from_forall: true, name: _ } => false,
         };
 
         // To pick a constraint to blame, we organize constraints by how interesting we expect them

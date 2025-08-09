@@ -249,7 +249,7 @@ impl<'a, 'b, 'tcx> NllTypeRelating<'a, 'b, 'tcx> {
         from_forall: bool,
         name: Option<Symbol>,
     ) -> ty::Region<'tcx> {
-        let origin = NllRegionVariableOrigin::Existential { from_forall };
+        let origin = NllRegionVariableOrigin::Existential { name, from_forall };
 
         let reg_var =
             self.type_checker.infcx.next_nll_region_var(origin, || RegionCtxt::Existential(name));

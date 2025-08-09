@@ -976,6 +976,22 @@ mod snapshot {
     }
 
     #[test]
+    fn build_cargo_cross() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("build")
+                .paths(&["cargo"])
+                .hosts(&[TEST_TRIPLE_1])
+                .render_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 1 <host> -> std 1 <host>
+        [build] rustc 1 <host> -> std 1 <target1>
+        [build] rustc 1 <host> -> cargo 2 <target1>
+        ");
+    }
+
+    #[test]
     fn dist_default_stage() {
         let ctx = TestCtx::new();
         assert_eq!(ctx.config("dist").path("compiler").create_config().stage, 2);

@@ -66,7 +66,7 @@ impl<'a, 'tcx> RegionRenumberer<'a, 'tcx> {
         T: TypeFoldable<TyCtxt<'tcx>>,
         F: Fn() -> RegionCtxt,
     {
-        let origin = NllRegionVariableOrigin::Existential { from_forall: false };
+        let origin = NllRegionVariableOrigin::Existential { from_forall: false, name: None };
         fold_regions(self.infcx.tcx, value, |_region, _depth| {
             self.infcx.next_nll_region_var(origin, || region_ctxt_fn())
         })

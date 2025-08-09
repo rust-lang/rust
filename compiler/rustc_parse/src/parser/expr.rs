@@ -3028,6 +3028,8 @@ impl<'a> Parser<'a> {
             let span = self.token.span;
             self.bump();
             (span, errors::MissingInInForLoopSub::InNotOf)
+        } else if self.eat(exp!(Eq)) {
+            (self.prev_token.span, errors::MissingInInForLoopSub::InNotEq)
         } else {
             (self.prev_token.span.between(self.token.span), errors::MissingInInForLoopSub::AddIn)
         };

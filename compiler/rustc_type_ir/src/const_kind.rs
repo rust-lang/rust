@@ -92,15 +92,10 @@ rustc_index::newtype_index! {
 
 /// An inference variable for a const, for use in const generics.
 #[derive(Copy, Clone, Eq, PartialEq, PartialOrd, Ord, Hash)]
-#[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
 #[cfg_attr(feature = "nightly", derive(Encodable_NoContext, Decodable_NoContext))]
 pub enum InferConst {
     /// Infer the value of the const.
-    Var(
-        #[type_foldable(identity)]
-        #[type_visitable(ignore)]
-        ConstVid,
-    ),
+    Var(ConstVid),
     /// A fresh const variable. See `infer::freshen` for more details.
     Fresh(u32),
 }

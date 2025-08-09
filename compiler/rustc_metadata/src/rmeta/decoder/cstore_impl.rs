@@ -75,24 +75,6 @@ impl<'a, 'tcx, T: Copy + Decodable<DecodeContext<'a, 'tcx>>> ProcessQueryValue<'
 }
 
 impl<'a, 'tcx, T: Copy + Decodable<DecodeContext<'a, 'tcx>>>
-    ProcessQueryValue<'tcx, ty::EarlyBinder<'tcx, &'tcx [T]>>
-    for Option<DecodeIterator<'a, 'tcx, T>>
-{
-    #[inline(always)]
-    fn process_decoded(
-        self,
-        tcx: TyCtxt<'tcx>,
-        err: impl Fn() -> !,
-    ) -> ty::EarlyBinder<'tcx, &'tcx [T]> {
-        ty::EarlyBinder::bind(if let Some(iter) = self {
-            tcx.arena.alloc_from_iter(iter)
-        } else {
-            err()
-        })
-    }
-}
-
-impl<'a, 'tcx, T: Copy + Decodable<DecodeContext<'a, 'tcx>>>
     ProcessQueryValue<'tcx, Option<&'tcx [T]>> for Option<DecodeIterator<'a, 'tcx, T>>
 {
     #[inline(always)]
