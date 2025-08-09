@@ -1,11 +1,17 @@
-use crate::ffi::CStr;
 use crate::mem::{self, ManuallyDrop};
-use crate::num::NonZero;
 use crate::sys::os;
-use crate::time::{Duration, Instant};
+use crate::time::Duration;
 use crate::{cmp, io, ptr};
 
 pub const DEFAULT_MIN_STACK_SIZE: usize = 8 * 1024;
+
+unsafe extern "C" {
+    safe fn TEE_Wait(timeout: u32) -> u32;
+}
+
+fn min_stack_size(_: *const libc::pthread_attr_t) -> usize {
+    libc::PTHREAD_STACK_MIN.try_into().expect("Infallible")
+}
 
 pub struct Thread {
     id: libc::pthread_t,
@@ -15,10 +21,6 @@ pub struct Thread {
 // a thread to be Send/Sync
 unsafe impl Send for Thread {}
 unsafe impl Sync for Thread {}
-
-unsafe extern "C" {
-    pub fn TEE_Wait(timeout: u32) -> u32;
-}
 
 impl Thread {
     // unsafe: see thread::Builder::spawn_unchecked for safety requirements
@@ -74,7 +76,7 @@ impl Thread {
         } else {
             // The new thread will start running earliest after the next yield.
             // We add a yield here, so that the user does not have to.
-            Thread::yield_now();
+            yield_now();
             Ok(Thread { id: native })
         };
 
@@ -91,45 +93,11 @@ impl Thread {
         }
     }
 
-    pub fn yield_now() {
-        let ret = unsafe { libc::sched_yield() };
-        debug_assert_eq!(ret, 0);
-    }
-
-    /// This does not do anything on teeos
-    pub fn set_name(_name: &CStr) {
-        // Both pthread_setname_np and prctl are not available to the TA,
-        // so we can't implement this currently. If the need arises please
-        // contact the teeos rustzone team.
-    }
-
-    /// only main thread could wait for sometime in teeos
-    pub fn sleep(dur: Duration) {
-        let sleep_millis = dur.as_millis();
-        let final_sleep: u32 =
-            if sleep_millis >= u32::MAX as u128 { u32::MAX } else { sleep_millis as u32 };
-        unsafe {
-            let _ = TEE_Wait(final_sleep);
-        }
-    }
-
-    pub fn sleep_until(deadline: Instant) {
-        let now = Instant::now();
-
-        if let Some(delay) = deadline.checked_duration_since(now) {
-            Self::sleep(delay);
-        }
-    }
-
     /// must join, because no pthread_detach supported
     pub fn join(self) {
         let id = self.into_id();
         let ret = unsafe { libc::pthread_join(id, ptr::null_mut()) };
         assert!(ret == 0, "failed to join thread: {}", io::Error::from_raw_os_error(ret));
-    }
-
-    pub fn id(&self) -> libc::pthread_t {
-        self.id
     }
 
     pub fn into_id(self) -> libc::pthread_t {
@@ -144,16 +112,15 @@ impl Drop for Thread {
     }
 }
 
-pub(crate) fn current_os_id() -> Option<u64> {
-    None
+pub fn yield_now() {
+    let ret = unsafe { libc::sched_yield() };
+    debug_assert_eq!(ret, 0);
 }
 
-// Note: Both `sched_getaffinity` and `sysconf` are available but not functional on
-// teeos, so this function always returns an Error!
-pub fn available_parallelism() -> io::Result<NonZero<usize>> {
-    Err(io::Error::UNKNOWN_THREAD_COUNT)
-}
-
-fn min_stack_size(_: *const libc::pthread_attr_t) -> usize {
-    libc::PTHREAD_STACK_MIN.try_into().expect("Infallible")
+/// only main thread could wait for sometime in teeos
+pub fn sleep(dur: Duration) {
+    let sleep_millis = dur.as_millis();
+    let final_sleep: u32 =
+        if sleep_millis >= u32::MAX as u128 { u32::MAX } else { sleep_millis as u32 };
+    TEE_Wait(final_sleep);
 }

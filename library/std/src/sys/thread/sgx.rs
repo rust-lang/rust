@@ -1,11 +1,8 @@
 #![cfg_attr(test, allow(dead_code))] // why is this necessary?
 
-use super::abi::{thread, usercalls};
-use super::unsupported;
-use crate::ffi::CStr;
 use crate::io;
-use crate::num::NonZero;
-use crate::time::{Duration, Instant};
+use crate::sys::pal::abi::{thread, usercalls};
+use crate::time::Duration;
 
 pub struct Thread(task_queue::JoinHandle);
 
@@ -108,40 +105,11 @@ impl Thread {
         Ok(Thread(handle))
     }
 
-    pub(super) fn entry() -> JoinNotifier {
+    pub(crate) fn entry() -> JoinNotifier {
         let mut pending_tasks = task_queue::lock();
         let task = rtunwrap!(Some, pending_tasks.pop());
         drop(pending_tasks); // make sure to not hold the task queue lock longer than necessary
         task.run()
-    }
-
-    pub fn yield_now() {
-        let wait_error = rtunwrap!(Err, usercalls::wait(0, usercalls::raw::WAIT_NO));
-        rtassert!(wait_error.kind() == io::ErrorKind::WouldBlock);
-    }
-
-    /// SGX should protect in-enclave data from the outside (attacker),
-    /// so there should be no data leakage to the OS,
-    /// and therefore also no 1-1 mapping between SGX thread names and OS thread names.
-    ///
-    /// This is why the method is intentionally No-Op.
-    pub fn set_name(_name: &CStr) {
-        // Note that the internally visible SGX thread name is already provided
-        // by the platform-agnostic (target-agnostic) Rust thread code.
-        // This can be observed in the [`std::thread::tests::test_named_thread`] test,
-        // which succeeds as-is with the SGX target.
-    }
-
-    pub fn sleep(dur: Duration) {
-        usercalls::wait_timeout(0, dur, || true);
-    }
-
-    pub fn sleep_until(deadline: Instant) {
-        let now = Instant::now();
-
-        if let Some(delay) = deadline.checked_duration_since(now) {
-            Self::sleep(delay);
-        }
     }
 
     pub fn join(self) {
@@ -149,10 +117,15 @@ impl Thread {
     }
 }
 
-pub(crate) fn current_os_id() -> Option<u64> {
+pub fn current_os_id() -> Option<u64> {
     Some(thread::current().addr().get() as u64)
 }
 
-pub fn available_parallelism() -> io::Result<NonZero<usize>> {
-    unsupported()
+pub fn sleep(dur: Duration) {
+    usercalls::wait_timeout(0, dur, || true);
+}
+
+pub fn yield_now() {
+    let wait_error = rtunwrap!(Err, usercalls::wait(0, usercalls::raw::WAIT_NO));
+    rtassert!(wait_error.kind() == io::ErrorKind::WouldBlock);
 }
