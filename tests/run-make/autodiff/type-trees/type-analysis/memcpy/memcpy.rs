@@ -12,12 +12,15 @@ fn test_memcpy(input: &[f64; 8]) -> f64 {
         ptr::copy_nonoverlapping(input.as_ptr(), local_data.as_mut_ptr(), 8);
     }
 
-    let mut result = 0.0;
-    for i in 0..8 {
-        result += local_data[i] * local_data[i];
-    }
-
-    result
+    // type tree does not support loops
+    local_data[0] * local_data[0]
+        + local_data[1] * local_data[1]
+        + local_data[2] * local_data[2]
+        + local_data[3] * local_data[3]
+        + local_data[4] * local_data[4]
+        + local_data[5] * local_data[5]
+        + local_data[6] * local_data[6]
+        + local_data[7] * local_data[7]
 }
 
 fn main() {

@@ -504,6 +504,9 @@ pub(crate) fn differentiate<'ll>(
                 },
             ));
         };
+        // Attach TypeTree metadata to the source function before calling Enzyme
+        let fnc_tree = FncTree { args: item.inputs.clone(), ret: item.output.clone() };
+        add_tt(cx.llmod, cx.llcx, fn_def, fnc_tree);
 
         generate_enzyme_call(&cx, fn_def, fn_target, item.attrs.clone());
     }
