@@ -6,7 +6,9 @@ use rustc_abi::{FieldIdx, VariantIdx};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::{Applicability, Diag, EmissionGuarantee, MultiSpan, listify};
 use rustc_hir::def::{CtorKind, Namespace};
-use rustc_hir::{self as hir, CoroutineKind, LangItem};
+use rustc_hir::{
+    self as hir, CoroutineKind, GenericBound, LangItem, WhereBoundPredicate, WherePredicateKind,
+};
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_infer::infer::{BoundRegionConversionTime, NllRegionVariableOrigin};
 use rustc_infer::traits::SelectionError;
@@ -658,25 +660,66 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
 
     /// Add a note to region errors and borrow explanations when higher-ranked regions in predicates
     /// implicitly introduce an "outlives `'static`" constraint.
+    ///
+    /// This is very similar to `fn suggest_static_lifetime_for_gat_from_hrtb` which handles this
+    /// note for failed type tests instead of outlives errors.
     fn add_placeholder_from_predicate_note<G: EmissionGuarantee>(
         &self,
-        err: &mut Diag<'_, G>,
+        diag: &mut Diag<'_, G>,
         path: &[OutlivesConstraint<'tcx>],
     ) {
-        let predicate_span = path.iter().find_map(|constraint| {
+        let tcx = self.infcx.tcx;
+        let Some((gat_hir_id, generics)) = path.iter().find_map(|constraint| {
             let outlived = constraint.sub;
             if let Some(origin) = self.regioncx.definitions.get(outlived)
-                && let NllRegionVariableOrigin::Placeholder(_) = origin.origin
-                && let ConstraintCategory::Predicate(span) = constraint.category
+                && let NllRegionVariableOrigin::Placeholder(placeholder) = origin.origin
+                && let Some(id) = placeholder.bound.kind.get_id()
+                && let Some(placeholder_id) = id.as_local()
+                && let gat_hir_id = tcx.local_def_id_to_hir_id(placeholder_id)
+                && let Some(generics_impl) =
+                    tcx.parent_hir_node(tcx.parent_hir_id(gat_hir_id)).generics()
             {
-                Some(span)
+                Some((gat_hir_id, generics_impl))
             } else {
                 None
             }
-        });
+        }) else {
+            return;
+        };
 
-        if let Some(span) = predicate_span {
-            err.span_note(span, "due to current limitations in the borrow checker, this implies a `'static` lifetime");
+        // Look for the where-bound which introduces the placeholder.
+        // As we're using the HIR, we need to handle both `for<'a> T: Trait<'a>`
+        // and `T: for<'a> Trait`<'a>.
+        for pred in generics.predicates {
+            let WherePredicateKind::BoundPredicate(WhereBoundPredicate {
+                bound_generic_params,
+                bounds,
+                ..
+            }) = pred.kind
+            else {
+                continue;
+            };
+            if bound_generic_params
+                .iter()
+                .rfind(|bgp| tcx.local_def_id_to_hir_id(bgp.def_id) == gat_hir_id)
+                .is_some()
+            {
+                diag.span_note(pred.span, fluent::borrowck_limitations_implies_static);
+                return;
+            }
+            for bound in bounds.iter() {
+                if let GenericBound::Trait(bound) = bound {
+                    if bound
+                        .bound_generic_params
+                        .iter()
+                        .rfind(|bgp| tcx.local_def_id_to_hir_id(bgp.def_id) == gat_hir_id)
+                        .is_some()
+                    {
+                        diag.span_note(bound.span, fluent::borrowck_limitations_implies_static);
+                        return;
+                    }
+                }
+            }
         }
     }
 
