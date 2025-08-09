@@ -170,7 +170,8 @@ pub trait Pattern: Sized {
 /// Result of calling [`Pattern::as_utf8_pattern()`].
 /// Can be used for inspecting the contents of a [`Pattern`] in cases
 /// where the underlying representation can be represented as UTF-8.
-#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+#[derive(Copy, Debug)]
+#[derive_const(Clone, Eq, PartialEq)]
 pub enum Utf8Pattern<'a> {
     /// Type returned by String and str types.
     StringPattern(&'a [u8]),

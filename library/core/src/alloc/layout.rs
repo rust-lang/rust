@@ -35,7 +35,8 @@ const fn size_align<T>() -> (usize, usize) {
 /// like this are met, use specific allocators with looser
 /// requirements, or use the more lenient `Allocator` interface.)
 #[stable(feature = "alloc_layout", since = "1.28.0")]
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Copy, Debug, Hash)]
+#[derive_const(Clone, PartialEq, Eq)]
 #[lang = "alloc_layout"]
 pub struct Layout {
     // size of the requested block of memory, measured in bytes.

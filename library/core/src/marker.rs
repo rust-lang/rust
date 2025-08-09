@@ -1021,7 +1021,8 @@ pub auto trait Unpin {}
 // marker in your struct acts as if you wrapped the entire struct in an `UnsafePinned`. This type
 // will likely eventually be deprecated, and all new code should be using `UnsafePinned` instead.
 #[stable(feature = "pin", since = "1.33.0")]
-#[derive(Debug, Default, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Copy, Debug, Hash)]
+#[derive_const(Default, Clone, Eq, PartialEq, Ord, PartialOrd)]
 pub struct PhantomPinned;
 
 #[stable(feature = "pin", since = "1.33.0")]

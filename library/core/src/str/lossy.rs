@@ -67,7 +67,8 @@ impl [u8] {
 /// assert_eq!(b"\xF1\x80", chunk.invalid());
 /// ```
 #[stable(feature = "utf8_chunks", since = "1.79.0")]
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug)]
+#[derive_const(PartialEq, Eq)]
 pub struct Utf8Chunk<'a> {
     valid: &'a str,
     invalid: &'a [u8],
