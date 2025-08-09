@@ -68,7 +68,7 @@ pub fn parse_gitmodules(target_dir: &Path) -> Vec<String> {
     submodules_paths
 }
 
-/// If the given executible is installed with the given version, use that,
+/// If the given executable is installed with the given version, use that,
 /// otherwise install via cargo.
 pub fn ensure_version_or_cargo_install(
     build_dir: &Path,
