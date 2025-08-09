@@ -33,7 +33,7 @@ pub(super) fn mangle<'tcx>(
     let args = tcx.normalize_erasing_regions(ty::TypingEnv::fully_monomorphized(), instance.args);
 
     let prefix = "_R";
-    let mut p: SymbolMangler<'_> = SymbolMangler {
+    let mut p: V0SymbolMangler<'_> = V0SymbolMangler {
         tcx,
         start_offset: prefix.len(),
         is_exportable,
@@ -88,7 +88,7 @@ pub fn mangle_internal_symbol<'tcx>(tcx: TyCtxt<'tcx>, item_name: &str) -> Strin
     }
 
     let prefix = "_R";
-    let mut p: SymbolMangler<'_> = SymbolMangler {
+    let mut p: V0SymbolMangler<'_> = V0SymbolMangler {
         tcx,
         start_offset: prefix.len(),
         is_exportable: false,
@@ -131,7 +131,7 @@ pub(super) fn mangle_typeid_for_trait_ref<'tcx>(
     trait_ref: ty::ExistentialTraitRef<'tcx>,
 ) -> String {
     // FIXME(flip1995): See comment in `mangle_typeid_for_fnabi`.
-    let mut p = SymbolMangler {
+    let mut p = V0SymbolMangler {
         tcx,
         start_offset: 0,
         is_exportable: false,
@@ -159,7 +159,7 @@ struct BinderLevel {
     lifetime_depths: Range<u32>,
 }
 
-struct SymbolMangler<'tcx> {
+struct V0SymbolMangler<'tcx> {
     tcx: TyCtxt<'tcx>,
     binders: Vec<BinderLevel>,
     out: String,
@@ -173,7 +173,7 @@ struct SymbolMangler<'tcx> {
     consts: FxHashMap<ty::Const<'tcx>, usize>,
 }
 
-impl<'tcx> SymbolMangler<'tcx> {
+impl<'tcx> V0SymbolMangler<'tcx> {
     fn push(&mut self, s: &str) {
         self.out.push_str(s);
     }
@@ -272,7 +272,7 @@ impl<'tcx> SymbolMangler<'tcx> {
     }
 }
 
-impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
+impl<'tcx> Printer<'tcx> for V0SymbolMangler<'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
@@ -365,7 +365,7 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
         // Encode impl generic params if the generic parameters contain non-region parameters
         // and this isn't an inherent impl.
         if impl_trait_ref.is_some() && args.iter().any(|a| a.has_non_region_param()) {
-            self.path_generic_args(
+            self.print_path_with_generic_args(
                 |this| {
                     this.path_append_ns(
                         |p| p.print_def_path(parent_def_id, &[]),
@@ -786,7 +786,7 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
                             None => {
                                 self.push("S");
                                 for (field_def, field) in iter::zip(&variant_def.fields, fields) {
-                                    // HACK(eddyb) this mimics `path_append`,
+                                    // HACK(eddyb) this mimics `print_path_with_simple`,
                                     // instead of simply using `field_def.ident`,
                                     // just to be able to handle disambiguators.
                                     let disambiguated_field =
@@ -819,7 +819,7 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
         Ok(())
     }
 
-    fn path_crate(&mut self, cnum: CrateNum) -> Result<(), PrintError> {
+    fn print_crate_name(&mut self, cnum: CrateNum) -> Result<(), PrintError> {
         self.push("C");
         if !self.is_exportable {
             let stable_crate_id = self.tcx.def_path_hash(cnum.as_def_id()).stable_crate_id();
@@ -830,7 +830,7 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
         Ok(())
     }
 
-    fn path_qualified(
+    fn print_path_with_qualified(
         &mut self,
         self_ty: Ty<'tcx>,
         trait_ref: Option<ty::TraitRef<'tcx>>,
@@ -843,7 +843,7 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
         self.print_def_path(trait_ref.def_id, trait_ref.args)
     }
 
-    fn path_append_impl(
+    fn print_path_with_impl(
         &mut self,
         _: impl FnOnce(&mut Self) -> Result<(), PrintError>,
         _: Ty<'tcx>,
@@ -853,7 +853,7 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
         unreachable!()
     }
 
-    fn path_append(
+    fn print_path_with_simple(
         &mut self,
         print_prefix: impl FnOnce(&mut Self) -> Result<(), PrintError>,
         disambiguated_data: &DisambiguatedDefPathData,
@@ -873,7 +873,7 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
             DefPathData::SyntheticCoroutineBody => 's',
             DefPathData::NestedStatic => 'n',
 
-            // These should never show up as `path_append` arguments.
+            // These should never show up as `print_path_with_simple` arguments.
             DefPathData::CrateRoot
             | DefPathData::Use
             | DefPathData::GlobalAsm
@@ -896,7 +896,7 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
         )
     }
 
-    fn path_generic_args(
+    fn print_path_with_generic_args(
         &mut self,
         print_prefix: impl FnOnce(&mut Self) -> Result<(), PrintError>,
         args: &[GenericArg<'tcx>],

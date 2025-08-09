@@ -224,12 +224,12 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         use ty::GenericArg;
         use ty::print::Printer;
 
-        struct AbsolutePathPrinter<'tcx> {
+        struct ConflictingPathPrinter<'tcx> {
             tcx: TyCtxt<'tcx>,
             segments: Vec<Symbol>,
         }
 
-        impl<'tcx> Printer<'tcx> for AbsolutePathPrinter<'tcx> {
+        impl<'tcx> Printer<'tcx> for ConflictingPathPrinter<'tcx> {
             fn tcx<'a>(&'a self) -> TyCtxt<'tcx> {
                 self.tcx
             }
@@ -253,12 +253,12 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 unreachable!(); // because `path_generic_args` ignores the `GenericArgs`
             }
 
-            fn path_crate(&mut self, cnum: CrateNum) -> Result<(), PrintError> {
+            fn print_crate_name(&mut self, cnum: CrateNum) -> Result<(), PrintError> {
                 self.segments = vec![self.tcx.crate_name(cnum)];
                 Ok(())
             }
 
-            fn path_qualified(
+            fn print_path_with_qualified(
                 &mut self,
                 _self_ty: Ty<'tcx>,
                 _trait_ref: Option<ty::TraitRef<'tcx>>,
@@ -266,7 +266,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 Err(fmt::Error)
             }
 
-            fn path_append_impl(
+            fn print_path_with_impl(
                 &mut self,
                 _print_prefix: impl FnOnce(&mut Self) -> Result<(), PrintError>,
                 _self_ty: Ty<'tcx>,
@@ -275,7 +275,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 Err(fmt::Error)
             }
 
-            fn path_append(
+            fn print_path_with_simple(
                 &mut self,
                 print_prefix: impl FnOnce(&mut Self) -> Result<(), PrintError>,
                 disambiguated_data: &DisambiguatedDefPathData,
@@ -285,7 +285,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 Ok(())
             }
 
-            fn path_generic_args(
+            fn print_path_with_generic_args(
                 &mut self,
                 print_prefix: impl FnOnce(&mut Self) -> Result<(), PrintError>,
                 _args: &[GenericArg<'tcx>],
@@ -300,28 +300,27 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             // let _ = [{struct Foo; Foo}, {struct Foo; Foo}];
             if did1.krate != did2.krate {
                 let abs_path = |def_id| {
-                    let mut p = AbsolutePathPrinter { tcx: self.tcx, segments: vec![] };
+                    let mut p = ConflictingPathPrinter { tcx: self.tcx, segments: vec![] };
                     p.print_def_path(def_id, &[]).map(|_| p.segments)
                 };
 
-                // We compare strings because DefPath can be different
-                // for imported and non-imported crates
+                // We compare strings because DefPath can be different for imported and
+                // non-imported crates.
                 let expected_str = self.tcx.def_path_str(did1);
                 let found_str = self.tcx.def_path_str(did2);
                 let Ok(expected_abs) = abs_path(did1) else { return false };
                 let Ok(found_abs) = abs_path(did2) else { return false };
-                let same_path = || -> Result<_, PrintError> {
-                    Ok(expected_str == found_str || expected_abs == found_abs)
-                };
-                // We want to use as unique a type path as possible. If both types are "locally
-                // known" by the same name, we use the "absolute path" which uses the original
-                // crate name instead.
-                let (expected, found) = if expected_str == found_str {
-                    (join_path_syms(&expected_abs), join_path_syms(&found_abs))
-                } else {
-                    (expected_str.clone(), found_str.clone())
-                };
-                if same_path().unwrap_or(false) {
+                let same_path = expected_str == found_str || expected_abs == found_abs;
+                if same_path {
+                    // We want to use as unique a type path as possible. If both types are "locally
+                    // known" by the same name, we use the "absolute path" which uses the original
+                    // crate name instead.
+                    let (expected, found) = if expected_str == found_str {
+                        (join_path_syms(&expected_abs), join_path_syms(&found_abs))
+                    } else {
+                        (expected_str.clone(), found_str.clone())
+                    };
+
                     // We've displayed "expected `a::b`, found `a::b`". We add context to
                     // differentiate the different cases where that might happen.
                     let expected_crate_name = self.tcx.crate_name(did1.krate);

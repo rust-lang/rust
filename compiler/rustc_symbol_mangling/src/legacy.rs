@@ -58,7 +58,7 @@ pub(super) fn mangle<'tcx>(
 
     let hash = get_symbol_hash(tcx, instance, instance_ty, instantiating_crate);
 
-    let mut p = SymbolPrinter { tcx, path: SymbolPath::new(), keep_within_component: false };
+    let mut p = LegacySymbolMangler { tcx, path: SymbolPath::new(), keep_within_component: false };
     p.print_def_path(
         def_id,
         if let ty::InstanceKind::DropGlue(_, _)
@@ -213,13 +213,13 @@ impl SymbolPath {
     }
 }
 
-struct SymbolPrinter<'tcx> {
+struct LegacySymbolMangler<'tcx> {
     tcx: TyCtxt<'tcx>,
     path: SymbolPath,
 
     // When `true`, `finalize_pending_component` isn't used.
-    // This is needed when recursing into `path_qualified`,
-    // or `path_generic_args`, as any nested paths are
+    // This is needed when recursing into `print_path_with_qualified`,
+    // or `print_path_with_generic_args`, as any nested paths are
     // logically within one component.
     keep_within_component: bool,
 }
@@ -228,7 +228,7 @@ struct SymbolPrinter<'tcx> {
 // `PrettyPrinter` aka pretty printing of e.g. types in paths,
 // symbol names should have their own printing machinery.
 
-impl<'tcx> Printer<'tcx> for SymbolPrinter<'tcx> {
+impl<'tcx> Printer<'tcx> for LegacySymbolMangler<'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
@@ -305,16 +305,17 @@ impl<'tcx> Printer<'tcx> for SymbolPrinter<'tcx> {
         Ok(())
     }
 
-    fn path_crate(&mut self, cnum: CrateNum) -> Result<(), PrintError> {
+    fn print_crate_name(&mut self, cnum: CrateNum) -> Result<(), PrintError> {
         self.write_str(self.tcx.crate_name(cnum).as_str())?;
         Ok(())
     }
-    fn path_qualified(
+
+    fn print_path_with_qualified(
         &mut self,
         self_ty: Ty<'tcx>,
         trait_ref: Option<ty::TraitRef<'tcx>>,
     ) -> Result<(), PrintError> {
-        // Similar to `pretty_path_qualified`, but for the other
+        // Similar to `pretty_print_path_with_qualified`, but for the other
         // types that are printed as paths (see `print_type` above).
         match self_ty.kind() {
             ty::FnDef(..)
@@ -327,17 +328,17 @@ impl<'tcx> Printer<'tcx> for SymbolPrinter<'tcx> {
                 self.print_type(self_ty)
             }
 
-            _ => self.pretty_path_qualified(self_ty, trait_ref),
+            _ => self.pretty_print_path_with_qualified(self_ty, trait_ref),
         }
     }
 
-    fn path_append_impl(
+    fn print_path_with_impl(
         &mut self,
         print_prefix: impl FnOnce(&mut Self) -> Result<(), PrintError>,
         self_ty: Ty<'tcx>,
         trait_ref: Option<ty::TraitRef<'tcx>>,
     ) -> Result<(), PrintError> {
-        self.pretty_path_append_impl(
+        self.pretty_print_path_with_impl(
             |cx| {
                 print_prefix(cx)?;
 
@@ -354,7 +355,8 @@ impl<'tcx> Printer<'tcx> for SymbolPrinter<'tcx> {
             trait_ref,
         )
     }
-    fn path_append(
+
+    fn print_path_with_simple(
         &mut self,
         print_prefix: impl FnOnce(&mut Self) -> Result<(), PrintError>,
         disambiguated_data: &DisambiguatedDefPathData,
@@ -377,7 +379,8 @@ impl<'tcx> Printer<'tcx> for SymbolPrinter<'tcx> {
 
         Ok(())
     }
-    fn path_generic_args(
+
+    fn print_path_with_generic_args(
         &mut self,
         print_prefix: impl FnOnce(&mut Self) -> Result<(), PrintError>,
         args: &[GenericArg<'tcx>],
@@ -455,7 +458,7 @@ impl<'tcx> Printer<'tcx> for SymbolPrinter<'tcx> {
     }
 }
 
-impl<'tcx> PrettyPrinter<'tcx> for SymbolPrinter<'tcx> {
+impl<'tcx> PrettyPrinter<'tcx> for LegacySymbolMangler<'tcx> {
     fn should_print_region(&self, _region: ty::Region<'_>) -> bool {
         false
     }
@@ -491,7 +494,7 @@ impl<'tcx> PrettyPrinter<'tcx> for SymbolPrinter<'tcx> {
     }
 }
 
-impl fmt::Write for SymbolPrinter<'_> {
+impl fmt::Write for LegacySymbolMangler<'_> {
     fn write_str(&mut self, s: &str) -> fmt::Result {
         // Name sanitation. LLVM will happily accept identifiers with weird names, but
         // gas doesn't!
