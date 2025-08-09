@@ -35,7 +35,7 @@ fn in_async() {
 
 // FIXME(#78168)
 fn in_const() {
-    let x = const 2; //~ ERROR expected expression, found keyword `const`
+    let x = const 2; //~ ERROR expected `{`, found `2`
 }
 
 // FIXME(#78168)
@@ -43,7 +43,6 @@ fn in_const_in_match() {
     let x = 2;
     match x {
         const 2 => {}
-        //~^ ERROR expected identifier, found keyword `const`
-        //~| ERROR expected one of `=>`, `if`, or `|`, found `2`
+        //~^ ERROR expected `{`, found `2`
     }
 }
