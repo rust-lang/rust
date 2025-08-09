@@ -13,30 +13,30 @@ use std::autodiff::autodiff_reverse;
 
 #[no_mangle]
 #[autodiff_reverse(df, Active, Active, Active)]
+#[inline(never)]
 fn primal(x: f32, y: f32) -> f64 {
     (x * x * y) as f64
 }
 
-// CHECK:define internal fastcc void @_ZN4sret2df17h93be4316dd8ea006E(ptr dead_on_unwind noalias nocapture noundef nonnull writable writeonly align 8 dereferenceable(16) initializes((0, 16)) %_0, float noundef %x, float noundef %y)
-// CHECK-NEXT:start:
-// CHECK-NEXT:  %0 = tail call fastcc { double, float, float } @diffeprimal(float %x, float %y)
-// CHECK-NEXT:  %.elt = extractvalue { double, float, float } %0, 0
-// CHECK-NEXT:  store double %.elt, ptr %_0, align 8
-// CHECK-NEXT:  %_0.repack1 = getelementptr inbounds nuw i8, ptr %_0, i64 8
-// CHECK-NEXT:  %.elt2 = extractvalue { double, float, float } %0, 1
-// CHECK-NEXT:  store float %.elt2, ptr %_0.repack1, align 8
-// CHECK-NEXT:  %_0.repack3 = getelementptr inbounds nuw i8, ptr %_0, i64 12
-// CHECK-NEXT:  %.elt4 = extractvalue { double, float, float } %0, 2
-// CHECK-NEXT:  store float %.elt4, ptr %_0.repack3, align 4
-// CHECK-NEXT:  ret void
-// CHECK-NEXT:}
+// CHECK: define internal fastcc { double, float, float } @diffeprimal(float noundef %x, float noundef %y)
+// CHECK-NEXT: invertstart:
+// CHECK-NEXT: %_4 = fmul float %x, %x
+// CHECK-NEXT: %_3 = fmul float %_4, %y
+// CHECK-NEXT: %_0 = fpext float %_3 to double
+// CHECK-NEXT: %0 = fadd fast float %y, %y
+// CHECK-NEXT: %1 = fmul fast float %0, %x
+// CHECK-NEXT: %2 = insertvalue { double, float, float } undef, double %_0, 0
+// CHECK-NEXT: %3 = insertvalue { double, float, float } %2, float %1, 1
+// CHECK-NEXT: %4 = insertvalue { double, float, float } %3, float %_4, 2
+// CHECK-NEXT: ret { double, float, float } %4
+// CHECK-NEXT: }
 
 fn main() {
     let x = std::hint::black_box(3.0);
     let y = std::hint::black_box(2.5);
     let scalar = std::hint::black_box(1.0);
     let (r1, r2, r3) = df(x, y, scalar);
-    // 3*3*1.5 = 22.5
+    // 3*3*2.5 = 22.5
     assert_eq!(r1, 22.5);
     // 2*x*y = 2*3*2.5 = 15.0
     assert_eq!(r2, 15.0);

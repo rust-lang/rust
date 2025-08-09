@@ -14,25 +14,27 @@
 use std::autodiff::autodiff_reverse;
 
 #[autodiff_reverse(d_square, Duplicated, Active)]
+#[inline(never)]
 fn square(x: &f64) -> f64 {
     x * x
 }
 
 #[autodiff_reverse(d_square2, Duplicated, Active)]
+#[inline(never)]
 fn square2(x: &f64) -> f64 {
     x * x
 }
 
 // CHECK:; identical_fnc::main
 // CHECK-NEXT:; Function Attrs:
-// CHECK-NEXT:define internal void @_ZN13identical_fnc4main17hf4dbc69c8d2f9130E()
+// CHECK-NEXT:define internal void @_ZN13identical_fnc4main17h6009e4f751bf9407E()
 // CHECK-NEXT:start:
 // CHECK-NOT:br
 // CHECK-NOT:ret
 // CHECK:; call identical_fnc::d_square
-// CHECK-NEXT:  call fastcc void @_ZN13identical_fnc8d_square17h4c364207a2f8e06dE(double %x.val, ptr noalias noundef nonnull align 8 dereferenceable(8) %dx1)
-// CHECK-NEXT:; call identical_fnc::d_square
-// CHECK-NEXT:  call fastcc void @_ZN13identical_fnc8d_square17h4c364207a2f8e06dE(double %x.val, ptr noalias noundef nonnull align 8 dereferenceable(8) %dx2)
+// CHECK-NEXT:call fastcc void @_ZN13identical_fnc8d_square17hcb5768e95528c35fE(double %x.val, ptr noalias noundef align 8 dereferenceable(8) %dx1)
+// CHECK:; call identical_fnc::d_square
+// CHECK-NEXT:call fastcc void @_ZN13identical_fnc8d_square17hcb5768e95528c35fE(double %x.val, ptr noalias noundef align 8 dereferenceable(8) %dx2)
 
 fn main() {
     let x = std::hint::black_box(3.0);
