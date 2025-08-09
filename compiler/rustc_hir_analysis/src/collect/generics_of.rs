@@ -86,7 +86,8 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
             // would implicitly have a closure in its body that would be the parent of
             // the `{ 1 + 2 }` anon const. This closure's generics is simply a witness
             // instead of `['a]`.
-            let parent_did = if let DefKind::AnonConst = tcx.def_kind(parent_did) {
+            let parent_def_kind = tcx.def_kind(parent_did);
+            let parent_did = if let DefKind::AnonConst = parent_def_kind {
                 parent_did
             } else {
                 tcx.hir_get_parent_item(hir_id).to_def_id()
@@ -104,6 +105,13 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
             }
 
             match tcx.anon_const_kind(def_id) {
+                // Stable: the RHS of a const item is desugared to be either a const path or an anon const.
+                // If it's an anon const, it should inherit the const item's generics.
+                ty::AnonConstKind::MCG
+                    if matches!(parent_def_kind, DefKind::Const | DefKind::AssocConst) =>
+                {
+                    Some(parent_did)
+                }
                 // Stable: anon consts are not able to use any generic parameters...
                 ty::AnonConstKind::MCG => None,
                 // we provide generics to repeat expr counts as a backwards compatibility hack. #76200
