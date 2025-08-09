@@ -1232,6 +1232,13 @@ impl Attribute {
             _ => None,
         }
     }
+
+    pub fn is_parsed_attr(&self) -> bool {
+        match self {
+            Attribute::Parsed(_) => true,
+            Attribute::Unparsed(_) => false,
+        }
+    }
 }
 
 impl AttributeExt for Attribute {
@@ -1302,13 +1309,8 @@ impl AttributeExt for Attribute {
         match &self {
             Attribute::Unparsed(u) => u.span,
             // FIXME: should not be needed anymore when all attrs are parsed
-            Attribute::Parsed(AttributeKind::Deprecation { span, .. }) => *span,
             Attribute::Parsed(AttributeKind::DocComment { span, .. }) => *span,
-            Attribute::Parsed(AttributeKind::MacroUse { span, .. }) => *span,
-            Attribute::Parsed(AttributeKind::MayDangle(span)) => *span,
-            Attribute::Parsed(AttributeKind::Ignore { span, .. }) => *span,
-            Attribute::Parsed(AttributeKind::ShouldPanic { span, .. }) => *span,
-            Attribute::Parsed(AttributeKind::AutomaticallyDerived(span)) => *span,
+            Attribute::Parsed(AttributeKind::Deprecation { span, .. }) => *span,
             Attribute::Parsed(AttributeKind::AllowInternalUnsafe(span)) => *span,
             Attribute::Parsed(AttributeKind::Linkage(_, span)) => *span,
             a => panic!("can't get the span of an arbitrary parsed attribute: {a:?}"),
