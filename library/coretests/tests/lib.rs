@@ -36,7 +36,6 @@
 #![feature(drop_guard)]
 #![feature(duration_constants)]
 #![feature(duration_constructors)]
-#![feature(duration_constructors_lite)]
 #![feature(error_generic_member_access)]
 #![feature(exact_div)]
 #![feature(exact_size_is_empty)]
