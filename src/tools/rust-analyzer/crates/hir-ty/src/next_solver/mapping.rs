@@ -21,7 +21,7 @@ use rustc_type_ir::{
 use salsa::plumbing::AsId;
 
 use crate::{
-    ConcreteConst, ConstScalar, ImplTraitId, Interner,
+    ConcreteConst, ConstScalar, ImplTraitId, Interner, MemoryMap,
     db::{
         HirDatabase, InternedClosureId, InternedCoroutineId, InternedOpaqueTyId,
         InternedTypeOrConstParamId,
@@ -1328,7 +1328,10 @@ pub fn convert_const_for_result<'db>(
         rustc_type_ir::ConstKind::Value(value_const) => {
             let bytes = value_const.value.inner();
             let value = chalk_ir::ConstValue::Concrete(chalk_ir::ConcreteConst {
-                interned: ConstScalar::Bytes(bytes.0.clone(), bytes.1.clone()),
+                // SAFETY: we will never actually use this without a database
+                interned: ConstScalar::Bytes(bytes.0.clone(), unsafe {
+                    std::mem::transmute::<MemoryMap<'db>, MemoryMap<'static>>(bytes.1.clone())
+                }),
             });
             return chalk_ir::ConstData {
                 ty: convert_ty_for_result(interner, value_const.ty),

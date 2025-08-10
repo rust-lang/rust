@@ -76,7 +76,7 @@ fn check_str(#[rust_analyzer::rust_fixture] ra_fixture: &str, answer: &str) {
 #[track_caller]
 fn check_answer(
     #[rust_analyzer::rust_fixture] ra_fixture: &str,
-    check: impl FnOnce(&[u8], &MemoryMap),
+    check: impl FnOnce(&[u8], &MemoryMap<'_>),
 ) {
     let (db, file_ids) = TestDB::with_many_files(ra_fixture);
     let file_id = *file_ids.last().unwrap();

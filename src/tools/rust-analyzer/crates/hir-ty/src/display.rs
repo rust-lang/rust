@@ -744,20 +744,20 @@ impl HirDisplay for Const {
 fn render_const_scalar(
     f: &mut HirFormatter<'_>,
     b: &[u8],
-    memory_map: &MemoryMap,
+    memory_map: &MemoryMap<'_>,
     ty: &Ty,
 ) -> Result<(), HirDisplayError> {
     let trait_env = TraitEnvironment::empty(f.krate());
     let interner = DbInterner::new_with(f.db, Some(trait_env.krate), trait_env.block);
     let ty = normalize(f.db, trait_env.clone(), ty.clone());
     let ty = ty.to_nextsolver(interner);
-    render_const_scalar_inner(f, b, memory_map, ty, trait_env, interner)
+    render_const_scalar_inner(f, b, memory_map, ty, trait_env)
 }
 
 fn render_const_scalar_ns(
     f: &mut HirFormatter<'_>,
     b: &[u8],
-    memory_map: &MemoryMap,
+    memory_map: &MemoryMap<'_>,
     ty: crate::next_solver::Ty<'_>,
 ) -> Result<(), HirDisplayError> {
     let trait_env = TraitEnvironment::empty(f.krate());
@@ -767,16 +767,15 @@ fn render_const_scalar_ns(
         trait_env.env.to_nextsolver(interner),
         ty,
     );
-    render_const_scalar_inner(f, b, memory_map, ty, trait_env, interner)
+    render_const_scalar_inner(f, b, memory_map, ty, trait_env)
 }
 
 fn render_const_scalar_inner(
     f: &mut HirFormatter<'_>,
     b: &[u8],
-    memory_map: &MemoryMap,
+    memory_map: &MemoryMap<'_>,
     ty: crate::next_solver::Ty<'_>,
     trait_env: Arc<TraitEnvironment>,
-    interner: DbInterner<'_>,
 ) -> Result<(), HirDisplayError> {
     use rustc_type_ir::TyKind;
     match ty.kind() {
@@ -875,7 +874,7 @@ fn render_const_scalar_inner(
                 let Ok(t) = memory_map.vtable_ty(ty_id) else {
                     return f.write_str("<ty-missing-in-vtable-map>");
                 };
-                let Ok(layout) = f.db.layout_of_ty(t.clone(), trait_env) else {
+                let Ok(layout) = f.db.layout_of_ty_ns(t, trait_env) else {
                     return f.write_str("<layout-error>");
                 };
                 let size = layout.size.bytes_usize();
@@ -883,7 +882,7 @@ fn render_const_scalar_inner(
                     return f.write_str("<ref-data-not-available>");
                 };
                 f.write_str("&")?;
-                render_const_scalar_ns(f, bytes, memory_map, t.to_nextsolver(interner))
+                render_const_scalar_ns(f, bytes, memory_map, t)
             }
             TyKind::Adt(adt, _) if b.len() == 2 * size_of::<usize>() => match adt.def_id() {
                 SolverDefId::AdtId(hir_def::AdtId::StructId(s)) => {
@@ -1052,7 +1051,7 @@ fn render_variant_after_name(
     layout: &Layout,
     args: GenericArgs<'_>,
     b: &[u8],
-    memory_map: &MemoryMap,
+    memory_map: &MemoryMap<'_>,
 ) -> Result<(), HirDisplayError> {
     let interner = DbInterner::new_with(f.db, Some(trait_env.krate), trait_env.block);
     match data.shape {

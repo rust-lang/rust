@@ -212,20 +212,20 @@ pub(crate) type ProgramClause = chalk_ir::ProgramClause<Interner>;
 /// the necessary bits of memory of the const eval session to keep the constant
 /// meaningful.
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
-pub enum MemoryMap {
+pub enum MemoryMap<'db> {
     #[default]
     Empty,
     Simple(Box<[u8]>),
-    Complex(Box<ComplexMemoryMap>),
+    Complex(Box<ComplexMemoryMap<'db>>),
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
-pub struct ComplexMemoryMap {
+pub struct ComplexMemoryMap<'db> {
     memory: IndexMap<usize, Box<[u8]>, FxBuildHasher>,
-    vtable: VTableMap,
+    vtable: VTableMap<'db>,
 }
 
-impl ComplexMemoryMap {
+impl ComplexMemoryMap<'_> {
     fn insert(&mut self, addr: usize, val: Box<[u8]>) {
         match self.memory.entry(addr) {
             Entry::Occupied(mut e) => {
@@ -240,8 +240,8 @@ impl ComplexMemoryMap {
     }
 }
 
-impl MemoryMap {
-    pub fn vtable_ty(&self, id: usize) -> Result<&Ty, MirEvalError> {
+impl<'db> MemoryMap<'db> {
+    pub fn vtable_ty(&self, id: usize) -> Result<crate::next_solver::Ty<'db>, MirEvalError> {
         match self {
             MemoryMap::Empty | MemoryMap::Simple(_) => Err(MirEvalError::InvalidVTableId(id)),
             MemoryMap::Complex(cm) => cm.vtable.ty(id),
@@ -291,10 +291,11 @@ impl MemoryMap {
     }
 }
 
+// FIXME(next-solver):
 /// A concrete constant value
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ConstScalar {
-    Bytes(Box<[u8]>, MemoryMap),
+    Bytes(Box<[u8]>, MemoryMap<'static>),
     // FIXME: this is a hack to get around chalk not being able to represent unevaluatable
     // constants
     UnevaluatedConst(GeneralConstId, Substitution),
@@ -310,6 +311,30 @@ impl Hash for ConstScalar {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         core::mem::discriminant(self).hash(state);
         if let ConstScalar::Bytes(b, _) = self {
+            b.hash(state)
+        }
+    }
+}
+
+/// A concrete constant value
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ConstScalarNs<'db> {
+    Bytes(Box<[u8]>, MemoryMap<'db>),
+    // FIXME: this is a hack to get around chalk not being able to represent unevaluatable
+    // constants
+    UnevaluatedConst(GeneralConstId, Substitution),
+    /// Case of an unknown value that rustc might know but we don't
+    // FIXME: this is a hack to get around chalk not being able to represent unevaluatable
+    // constants
+    // https://github.com/rust-lang/rust-analyzer/pull/8813#issuecomment-840679177
+    // https://rust-lang.zulipchat.com/#narrow/stream/144729-wg-traits/topic/Handling.20non.20evaluatable.20constants'.20equality/near/238386348
+    Unknown,
+}
+
+impl Hash for ConstScalarNs<'_> {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        core::mem::discriminant(self).hash(state);
+        if let ConstScalarNs::Bytes(b, _) = self {
             b.hash(state)
         }
     }
