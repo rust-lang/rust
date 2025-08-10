@@ -420,14 +420,18 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
             // The fields are not expanded yet.
             return;
         }
-        let fields = fields
+        let field_name = |i, field: &ast::FieldDef| {
+            field.ident.unwrap_or_else(|| Ident::from_str_and_span(&format!("{i}"), field.span))
+        };
+        let field_names: Vec<_> =
+            fields.iter().enumerate().map(|(i, field)| field_name(i, field)).collect();
+        let defaults = fields
             .iter()
             .enumerate()
-            .map(|(i, field)| {
-                field.ident.unwrap_or_else(|| Ident::from_str_and_span(&format!("{i}"), field.span))
-            })
+            .filter_map(|(i, field)| field.default.as_ref().map(|_| field_name(i, field).name))
             .collect();
-        self.r.field_names.insert(def_id, fields);
+        self.r.field_names.insert(def_id, field_names);
+        self.r.field_defaults.insert(def_id, defaults);
     }
 
     fn insert_field_visibilities_local(&mut self, def_id: DefId, fields: &[ast::FieldDef]) {

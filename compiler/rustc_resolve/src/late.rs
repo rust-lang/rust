@@ -424,7 +424,7 @@ pub(crate) enum PathSource<'a, 'ast, 'ra> {
     /// Paths in path patterns `Path`.
     Pat,
     /// Paths in struct expressions and patterns `Path { .. }`.
-    Struct,
+    Struct(Option<&'a Expr>),
     /// Paths in tuple struct patterns `Path(..)`.
     TupleStruct(Span, &'ra [Span]),
     /// `m::A::B` in `<T as m::A>::B::C`.
@@ -447,7 +447,7 @@ impl PathSource<'_, '_, '_> {
         match self {
             PathSource::Type
             | PathSource::Trait(_)
-            | PathSource::Struct
+            | PathSource::Struct(_)
             | PathSource::DefineOpaques => TypeNS,
             PathSource::Expr(..)
             | PathSource::Pat
@@ -464,7 +464,7 @@ impl PathSource<'_, '_, '_> {
             PathSource::Type
             | PathSource::Expr(..)
             | PathSource::Pat
-            | PathSource::Struct
+            | PathSource::Struct(_)
             | PathSource::TupleStruct(..)
             | PathSource::ReturnTypeNotation => true,
             PathSource::Trait(_)
@@ -481,7 +481,7 @@ impl PathSource<'_, '_, '_> {
             PathSource::Type => "type",
             PathSource::Trait(_) => "trait",
             PathSource::Pat => "unit struct, unit variant or constant",
-            PathSource::Struct => "struct, variant or union type",
+            PathSource::Struct(_) => "struct, variant or union type",
             PathSource::TraitItem(ValueNS, PathSource::TupleStruct(..))
             | PathSource::TupleStruct(..) => "tuple struct or tuple variant",
             PathSource::TraitItem(ns, _) => match ns {
@@ -576,7 +576,7 @@ impl PathSource<'_, '_, '_> {
                     || matches!(res, Res::Def(DefKind::Const | DefKind::AssocConst, _))
             }
             PathSource::TupleStruct(..) => res.expected_in_tuple_struct_pat(),
-            PathSource::Struct => matches!(
+            PathSource::Struct(_) => matches!(
                 res,
                 Res::Def(
                     DefKind::Struct
@@ -616,8 +616,8 @@ impl PathSource<'_, '_, '_> {
             (PathSource::Trait(_), false) => E0405,
             (PathSource::Type | PathSource::DefineOpaques, true) => E0573,
             (PathSource::Type | PathSource::DefineOpaques, false) => E0412,
-            (PathSource::Struct, true) => E0574,
-            (PathSource::Struct, false) => E0422,
+            (PathSource::Struct(_), true) => E0574,
+            (PathSource::Struct(_), false) => E0422,
             (PathSource::Expr(..), true) | (PathSource::Delegation, true) => E0423,
             (PathSource::Expr(..), false) | (PathSource::Delegation, false) => E0425,
             (PathSource::Pat | PathSource::TupleStruct(..), true) => E0532,
@@ -1482,11 +1482,13 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         path: &[Segment],
         opt_ns: Option<Namespace>, // `None` indicates a module path in import
         finalize: Option<Finalize>,
+        source: PathSource<'_, 'ast, 'ra>,
     ) -> PathResult<'ra> {
         self.r.cm().resolve_path_with_ribs(
             path,
             opt_ns,
             &self.parent_scope,
+            Some(source),
             finalize,
             Some(&self.ribs),
             None,
@@ -1966,7 +1968,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         &mut self,
         partial_res: PartialRes,
         path: &[Segment],
-        source: PathSource<'_, '_, '_>,
+        source: PathSource<'_, 'ast, 'ra>,
         path_span: Span,
     ) {
         let proj_start = path.len() - partial_res.unresolved_segments();
@@ -2019,7 +2021,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 | PathSource::ReturnTypeNotation => false,
                 PathSource::Expr(..)
                 | PathSource::Pat
-                | PathSource::Struct
+                | PathSource::Struct(_)
                 | PathSource::TupleStruct(..)
                 | PathSource::DefineOpaques
                 | PathSource::Delegation => true,
@@ -3866,7 +3868,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     self.smart_resolve_path(pat.id, qself, path, PathSource::Pat);
                 }
                 PatKind::Struct(ref qself, ref path, ref _fields, ref rest) => {
-                    self.smart_resolve_path(pat.id, qself, path, PathSource::Struct);
+                    self.smart_resolve_path(pat.id, qself, path, PathSource::Struct(None));
                     self.record_patterns_with_skipped_bindings(pat, rest);
                 }
                 PatKind::Or(ref ps) => {
@@ -4110,7 +4112,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         id: NodeId,
         qself: &Option<Box<QSelf>>,
         path: &Path,
-        source: PathSource<'_, 'ast, '_>,
+        source: PathSource<'_, 'ast, 'ra>,
     ) {
         self.smart_resolve_path_fragment(
             qself,
@@ -4127,7 +4129,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         &mut self,
         qself: &Option<Box<QSelf>>,
         path: &[Segment],
-        source: PathSource<'_, 'ast, '_>,
+        source: PathSource<'_, 'ast, 'ra>,
         finalize: Finalize,
         record_partial_res: RecordPartialRes,
         parent_qself: Option<&QSelf>,
@@ -4365,7 +4367,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     std_path.push(Segment::from_ident(Ident::with_dummy_span(sym::std)));
                     std_path.extend(path);
                     if let PathResult::Module(_) | PathResult::NonModule(_) =
-                        self.resolve_path(&std_path, Some(ns), None)
+                        self.resolve_path(&std_path, Some(ns), None, source)
                     {
                         // Check if we wrote `str::from_utf8` instead of `std::str::from_utf8`
                         let item_span =
@@ -4439,7 +4441,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         span: Span,
         defer_to_typeck: bool,
         finalize: Finalize,
-        source: PathSource<'_, 'ast, '_>,
+        source: PathSource<'_, 'ast, 'ra>,
     ) -> Result<Option<PartialRes>, Spanned<ResolutionError<'ra>>> {
         let mut fin_res = None;
 
@@ -4488,7 +4490,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         path: &[Segment],
         ns: Namespace,
         finalize: Finalize,
-        source: PathSource<'_, 'ast, '_>,
+        source: PathSource<'_, 'ast, 'ra>,
     ) -> Result<Option<PartialRes>, Spanned<ResolutionError<'ra>>> {
         debug!(
             "resolve_qpath(qself={:?}, path={:?}, ns={:?}, finalize={:?})",
@@ -4551,7 +4553,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             )));
         }
 
-        let result = match self.resolve_path(path, Some(ns), Some(finalize)) {
+        let result = match self.resolve_path(path, Some(ns), Some(finalize), source) {
             PathResult::NonModule(path_res) => path_res,
             PathResult::Module(ModuleOrUniformRoot::Module(module)) if !module.is_normal() => {
                 PartialRes::new(module.res().unwrap())
@@ -4774,7 +4776,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             }
 
             ExprKind::Struct(ref se) => {
-                self.smart_resolve_path(expr.id, &se.qself, &se.path, PathSource::Struct);
+                self.smart_resolve_path(expr.id, &se.qself, &se.path, PathSource::Struct(parent));
                 // This is the same as `visit::walk_expr(self, expr);`, but we want to pass the
                 // parent in for accurate suggestions when encountering `Foo { bar }` that should
                 // have been `Foo { bar: self.bar }`.

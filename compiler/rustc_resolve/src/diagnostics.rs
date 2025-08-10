@@ -1943,8 +1943,15 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     }
 
     fn report_privacy_error(&mut self, privacy_error: &PrivacyError<'ra>) {
-        let PrivacyError { ident, binding, outermost_res, parent_scope, single_nested, dedup_span } =
-            *privacy_error;
+        let PrivacyError {
+            ident,
+            binding,
+            outermost_res,
+            parent_scope,
+            single_nested,
+            dedup_span,
+            ref source,
+        } = *privacy_error;
 
         let res = binding.res();
         let ctor_fields_span = self.ctor_fields_span(binding);
@@ -1959,6 +1966,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let ident_descr = get_descr(binding);
         let mut err =
             self.dcx().create_err(errors::IsPrivate { span: ident.span, ident_descr, ident });
+
+        self.mention_default_field_values(source, ident, &mut err);
 
         let mut not_publicly_reexported = false;
         if let Some((this_res, outer_ident)) = outermost_res {
@@ -2139,6 +2148,85 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         }
 
         err.emit();
+    }
+
+    /// When a private field is being set that has a default field value, we suggest using `..` and
+    /// setting the value of that field implicitly with its default.
+    ///
+    /// If we encounter code like
+    /// ```text
+    /// struct Priv;
+    /// pub struct S {
+    ///     pub field: Priv = Priv,
+    /// }
+    /// ```
+    /// which is used from a place where `Priv` isn't accessible
+    /// ```text
+    /// let _ = S { field: m::Priv1 {} };
+    /// //                    ^^^^^ private struct
+    /// ```
+    /// we will suggest instead using the `default_field_values` syntax instead:
+    /// ```text
+    /// let _ = S { .. };
+    /// ```
+    fn mention_default_field_values(
+        &self,
+        source: &Option<ast::Expr>,
+        ident: Ident,
+        err: &mut Diag<'_>,
+    ) {
+        let Some(expr) = source else { return };
+        let ast::ExprKind::Struct(struct_expr) = &expr.kind else { return };
+        // We don't have to handle type-relative paths because they're forbidden in ADT
+        // expressions, but that would change with `#[feature(more_qualified_paths)]`.
+        let Some(Res::Def(_, def_id)) =
+            self.partial_res_map[&struct_expr.path.segments.iter().last().unwrap().id].full_res()
+        else {
+            return;
+        };
+        let Some(default_fields) = self.field_defaults(def_id) else { return };
+        if struct_expr.fields.is_empty() {
+            return;
+        }
+        let last_span = struct_expr.fields.iter().last().unwrap().span;
+        let mut iter = struct_expr.fields.iter().peekable();
+        let mut prev: Option<Span> = None;
+        while let Some(field) = iter.next() {
+            if field.expr.span.overlaps(ident.span) {
+                err.span_label(field.ident.span, "while setting this field");
+                if default_fields.contains(&field.ident.name) {
+                    let sugg = if last_span == field.span {
+                        vec![(field.span, "..".to_string())]
+                    } else {
+                        vec![
+                            (
+                                // Account for trailing commas and ensure we remove them.
+                                match (prev, iter.peek()) {
+                                    (_, Some(next)) => field.span.with_hi(next.span.lo()),
+                                    (Some(prev), _) => field.span.with_lo(prev.hi()),
+                                    (None, None) => field.span,
+                                },
+                                String::new(),
+                            ),
+                            (last_span.shrink_to_hi(), ", ..".to_string()),
+                        ]
+                    };
+                    err.multipart_suggestion_verbose(
+                        format!(
+                            "the type `{ident}` of field `{}` is private, but you can construct \
+                             the default value defined for it in `{}` using `..` in the struct \
+                             initializer expression",
+                            field.ident,
+                            self.tcx.item_name(def_id),
+                        ),
+                        sugg,
+                        Applicability::MachineApplicable,
+                    );
+                    break;
+                }
+            }
+            prev = Some(field.span);
+        }
     }
 
     pub(crate) fn find_similarly_named_module_or_crate(
