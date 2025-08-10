@@ -205,6 +205,22 @@ pub enum Linkage {
     WeakODR,
 }
 
+#[derive(Clone, Copy, Decodable, Debug, Encodable, PartialEq)]
+#[derive(HashStable_Generic, PrintAttribute)]
+pub enum MirDialect {
+    Analysis,
+    Built,
+    Runtime,
+}
+
+#[derive(Clone, Copy, Decodable, Debug, Encodable, PartialEq)]
+#[derive(HashStable_Generic, PrintAttribute)]
+pub enum MirPhase {
+    Initial,
+    PostCleanup,
+    Optimized,
+}
+
 /// Represents parsed *built-in* inert attributes.
 ///
 /// ## Overview
@@ -323,6 +339,9 @@ pub enum AttributeKind {
 
     /// Represents `#[coverage(..)]`.
     Coverage(Span, CoverageAttrKind),
+
+    /// Represents `#[custom_mir]`.
+    CustomMir(Option<(MirDialect, Span)>, Option<(MirPhase, Span)>, Span),
 
     ///Represents `#[rustc_deny_explicit_impl]`.
     DenyExplicitImpl(Span),
