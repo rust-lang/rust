@@ -205,7 +205,13 @@ impl SpanMapVisitor<'_> {
 // panicking.
 fn hir_enclosing_body_owner(tcx: TyCtxt<'_>, hir_id: HirId) -> Option<LocalDefId> {
     for (_, node) in tcx.hir_parent_iter(hir_id) {
-        if let Some((def_id, _)) = node.associated_body() {
+        // FIXME: associated type impl items don't have an associated body, so we don't handle
+        // them currently.
+        if let Node::ImplItem(impl_item) = node
+            && matches!(impl_item.kind, rustc_hir::ImplItemKind::Type(_))
+        {
+            return None;
+        } else if let Some((def_id, _)) = node.associated_body() {
             return Some(def_id);
         }
     }
