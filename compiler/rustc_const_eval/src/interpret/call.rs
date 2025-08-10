@@ -732,7 +732,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         let tcx = *self.tcx;
 
         let trait_def_id = tcx.trait_of_assoc(def_id).unwrap();
-        let virtual_trait_ref = ty::TraitRef::from_method(tcx, trait_def_id, virtual_instance.args);
+        let virtual_trait_ref = ty::TraitRef::from_assoc(tcx, trait_def_id, virtual_instance.args);
         let existential_trait_ref = ty::ExistentialTraitRef::erase_self_ty(tcx, virtual_trait_ref);
         let concrete_trait_ref = existential_trait_ref.with_self_ty(tcx, dyn_ty);
 

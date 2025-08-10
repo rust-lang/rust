@@ -82,7 +82,7 @@ impl<I: Interner> TraitRef<I> {
         Self::new_from_args(interner, trait_def_id, args)
     }
 
-    pub fn from_method(interner: I, trait_id: I::DefId, args: I::GenericArgs) -> TraitRef<I> {
+    pub fn from_assoc(interner: I, trait_id: I::DefId, args: I::GenericArgs) -> TraitRef<I> {
         let generics = interner.generics_of(trait_id);
         TraitRef::new(interner, trait_id, args.iter().take(generics.count()))
     }

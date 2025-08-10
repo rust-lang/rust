@@ -142,7 +142,7 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
             |err, self_ty, trait_id| {
                 // FIXME(const_trait_impl): Do we need any of this on the non-const codepath?
 
-                let trait_ref = TraitRef::from_method(tcx, trait_id, self.args);
+                let trait_ref = TraitRef::from_assoc(tcx, trait_id, self.args);
 
                 match self_ty.kind() {
                     Param(param_ty) => {
