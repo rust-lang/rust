@@ -410,14 +410,16 @@ class MSVCStrSyntheticProvider:
         else:
             return "&str"
 
+
 def _getVariantName(variant) -> str:
     """
     Since the enum variant's type name is in the form `TheEnumName::TheVariantName$Variant`,
     we can extract `TheVariantName` from it for display purpose.
     """
     s = variant.GetType().GetName()
-    match = re.search(r'::([^:]+)\$Variant$', s)
+    match = re.search(r"::([^:]+)\$Variant$", s)
     return match.group(1) if match else ""
+
 
 class ClangEncodedEnumProvider:
     """Pretty-printer for 'clang-encoded' enums support implemented in LLDB"""
@@ -444,9 +446,7 @@ class ClangEncodedEnumProvider:
                 ClangEncodedEnumProvider.VALUE_MEMBER_NAME
             )
             return value.CreateChildAtOffset(
-                _getVariantName(self.variant),
-                0,
-                value.GetType()
+                _getVariantName(self.variant), 0, value.GetType()
             )
         return None
 
