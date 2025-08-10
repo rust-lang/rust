@@ -8,8 +8,9 @@ use anyhow::Context;
 use base64::{Engine, prelude::BASE64_STANDARD};
 use ide::{
     AnnotationConfig, AssistKind, AssistResolveStrategy, Cancellable, CompletionFieldsToResolve,
-    FilePosition, FileRange, HoverAction, HoverGotoTypeData, InlayFieldsToResolve, Query,
-    RangeInfo, ReferenceCategory, Runnable, RunnableKind, SingleResolve, SourceChange, TextEdit,
+    FilePosition, FileRange, FileStructureConfig, HoverAction, HoverGotoTypeData,
+    InlayFieldsToResolve, Query, RangeInfo, ReferenceCategory, Runnable, RunnableKind,
+    SingleResolve, SourceChange, TextEdit,
 };
 use ide_db::{FxHashMap, SymbolKind};
 use itertools::Itertools;
@@ -568,7 +569,14 @@ pub(crate) fn handle_document_symbol(
 
     let mut parents: Vec<(lsp_types::DocumentSymbol, Option<usize>)> = Vec::new();
 
-    for symbol in snap.analysis.file_structure(file_id)? {
+    let config = snap.config.document_symbol(None);
+
+    let structure_nodes = snap.analysis.file_structure(
+        &FileStructureConfig { exclude_locals: config.search_exclude_locals },
+        file_id,
+    )?;
+
+    for symbol in structure_nodes {
         let mut tags = Vec::new();
         if symbol.deprecated {
             tags.push(SymbolTag::DEPRECATED)
@@ -588,8 +596,7 @@ pub(crate) fn handle_document_symbol(
         parents.push((doc_symbol, symbol.parent));
     }
 
-    // Builds hierarchy from a flat list, in reverse order (so that indices
-    // makes sense)
+    // Builds hierarchy from a flat list, in reverse order (so that indices make sense)
     let document_symbols = {
         let mut acc = Vec::new();
         while let Some((mut node, parent_idx)) = parents.pop() {

@@ -858,6 +858,9 @@ config_data! {
         /// check will be performed.
         check_workspace: bool = true,
 
+        /// Exclude all locals from document symbol search.
+        document_symbol_search_excludeLocals: bool = true,
+
         /// These proc-macros will be ignored when trying to expand them.
         ///
         /// This config takes a map of crate names with the exported proc-macro names to ignore as values.
@@ -1479,6 +1482,13 @@ pub struct FilesConfig {
 pub enum FilesWatcher {
     Client,
     Server,
+}
+
+/// Configuration for document symbol search requests.
+#[derive(Debug, Clone)]
+pub struct DocumentSymbolConfig {
+    /// Should locals be excluded.
+    pub search_exclude_locals: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -2435,6 +2445,12 @@ impl Config {
             refs_trait: *self.lens_enable() && *self.lens_references_trait_enable(),
             enum_variant_refs: *self.lens_enable() && *self.lens_references_enumVariant_enable(),
             location: *self.lens_location(),
+        }
+    }
+
+    pub fn document_symbol(&self, source_root: Option<SourceRootId>) -> DocumentSymbolConfig {
+        DocumentSymbolConfig {
+            search_exclude_locals: *self.document_symbol_search_excludeLocals(source_root),
         }
     }
 

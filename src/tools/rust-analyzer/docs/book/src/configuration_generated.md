@@ -610,6 +610,13 @@ The warnings will be indicated by a blue squiggly underline in code and a blue i
 the `Problems Panel`.
 
 
+## rust-analyzer.document.symbol.search.excludeLocals {#document.symbol.search.excludeLocals}
+
+Default: `true`
+
+Exclude all locals from document symbol search.
+
+
 ## rust-analyzer.files.exclude {#files.exclude}
 
 Default: `[]`
