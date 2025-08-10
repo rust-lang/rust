@@ -119,6 +119,9 @@ pub(crate) fn write_struct_like<'tcx>(
                 write!(f, "_")?;
             }
         }
+        if matches!(ty.kind(), ty::Tuple(..)) && num_fields == 1 {
+            write!(f, ",")?;
+        }
         write!(f, ")")?;
     }
 
