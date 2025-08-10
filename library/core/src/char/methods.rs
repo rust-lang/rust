@@ -6,7 +6,7 @@ use crate::slice;
 use crate::str::from_utf8_unchecked_mut;
 use crate::ub_checks::assert_unsafe_precondition;
 use crate::unicode::printable::is_printable;
-use crate::unicode::{self, conversions};
+use crate::unicode::{self, Case_Ignorable, conversions};
 
 impl char {
     /// The lowest valid code point a `char` can have, `'\0'`.
@@ -968,7 +968,7 @@ impl char {
         !self.is_ascii() && unicode::Grapheme_Extend(self)
     }
 
-    /// Returns `true` if this `char` has the `Cased` property.
+    /// Returns `true` if this `char` has the `Cased` derived property.
     ///
     /// `Cased` is described in Chapter 4 (Character Properties) of the [Unicode Standard] and
     /// specified in the [Unicode Character Database][ucd] [`DerivedCoreProperties.txt`].
@@ -981,7 +981,11 @@ impl char {
     #[doc(hidden)]
     #[unstable(feature = "char_internals", reason = "exposed only for libstd", issue = "none")]
     pub fn is_cased(self) -> bool {
-        if self.is_ascii() { self.is_ascii_alphabetic() } else { unicode::Cased(self) }
+        if self.is_ascii() {
+            self.is_ascii_alphabetic()
+        } else {
+            unicode::Lowercase(self) || unicode::Uppercase(self) || unicode::Lt(self)
+        }
     }
 
     /// Returns `true` if this `char` has the `Case_Ignorable` property.
@@ -1000,7 +1004,7 @@ impl char {
         if self.is_ascii() {
             matches!(self, '\'' | '.' | ':' | '^' | '`')
         } else {
-            unicode::Case_Ignorable(self)
+            Case_Ignorable(self)
         }
     }
 
