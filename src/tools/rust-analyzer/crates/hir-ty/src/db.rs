@@ -94,11 +94,11 @@ pub trait HirDatabase: DefDatabase + std::fmt::Debug {
 
     #[salsa::invoke(crate::layout::layout_of_adt_query)]
     #[salsa::cycle(cycle_result = crate::layout::layout_of_adt_cycle_result)]
-    fn layout_of_adt(
-        &self,
+    fn layout_of_adt<'db>(
+        &'db self,
         def: AdtId,
-        subst: Substitution,
-        env: Arc<TraitEnvironment>,
+        args: crate::next_solver::GenericArgs<'db>,
+        trait_env: Arc<TraitEnvironment>,
     ) -> Result<Arc<Layout>, LayoutError>;
 
     #[salsa::invoke(crate::layout::layout_of_ty_query)]
@@ -299,15 +299,6 @@ pub trait HirDatabase: DefDatabase + std::fmt::Debug {
     fn has_drop_glue(&self, ty: Ty, env: Arc<TraitEnvironment>) -> DropGlue;
 
     // next trait solver
-
-    #[salsa::invoke(crate::layout::layout_of_adt_ns_query)]
-    #[salsa::cycle(cycle_result = crate::layout::layout_of_adt_ns_cycle_result)]
-    fn layout_of_adt_ns<'db>(
-        &'db self,
-        def: AdtId,
-        args: crate::next_solver::GenericArgs<'db>,
-        trait_env: Arc<TraitEnvironment>,
-    ) -> Result<Arc<Layout>, LayoutError>;
 
     #[salsa::invoke(crate::layout::layout_of_ty_ns_query)]
     #[salsa::cycle(cycle_result = crate::layout::layout_of_ty_ns_cycle_result)]

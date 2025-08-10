@@ -31,11 +31,8 @@ use crate::{
     },
 };
 
-pub(crate) use self::adt::{layout_of_adt_cycle_result, layout_of_adt_ns_cycle_result};
-pub use self::{
-    adt::{layout_of_adt_ns_query, layout_of_adt_query},
-    target::target_data_layout_query,
-};
+pub(crate) use self::adt::layout_of_adt_cycle_result;
+pub use self::{adt::layout_of_adt_query, target::target_data_layout_query};
 
 pub(crate) mod adt;
 pub(crate) mod target;
@@ -197,7 +194,7 @@ pub fn layout_of_ty_ns_query<'db>(
                 }
                 _ => {}
             }
-            return db.layout_of_adt_ns(def.inner().id, args, trait_env);
+            return db.layout_of_adt(def.inner().id, args, trait_env);
         }
         TyKind::Bool => Layout::scalar(
             dl,

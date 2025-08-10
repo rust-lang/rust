@@ -10,15 +10,17 @@ use std::{
 
 use cfg::{CfgAtom, CfgDiff};
 use hir::{
-    Adt, AssocItem, Crate, DefWithBody, HasSource, HirDisplay, ImportPathConfig, ModuleDef, Name,
+    Adt, AssocItem, Crate, DefWithBody, HasCrate, HasSource, HirDisplay, ImportPathConfig,
+    ModuleDef, Name,
     db::{DefDatabase, ExpandDatabase, HirDatabase},
+    next_solver::{DbInterner, GenericArgs},
 };
 use hir_def::{
     SyntheticSyntax,
     expr_store::BodySourceMap,
     hir::{ExprId, PatId},
 };
-use hir_ty::{Interner, Substitution, TyExt, TypeFlags};
+use hir_ty::{Interner, TyExt, TypeFlags};
 use ide::{
     Analysis, AnalysisHost, AnnotationConfig, DiagnosticsConfig, Edition, InlayFieldsToResolve,
     InlayHintsConfig, LineCol, RootDatabase,
@@ -361,6 +363,7 @@ impl flags::AnalysisStats {
         let mut all = 0;
         let mut fail = 0;
         for &a in adts {
+            let interner = DbInterner::new_with(db, Some(a.krate(db).base()), None);
             let generic_params = db.generic_params(a.into());
             if generic_params.iter_type_or_consts().next().is_some()
                 || generic_params.iter_lt().next().is_some()
@@ -371,7 +374,7 @@ impl flags::AnalysisStats {
             all += 1;
             let Err(e) = db.layout_of_adt(
                 hir_def::AdtId::from(a),
-                Substitution::empty(Interner),
+                GenericArgs::new_from_iter(interner, []),
                 db.trait_environment(a.into()),
             ) else {
                 continue;

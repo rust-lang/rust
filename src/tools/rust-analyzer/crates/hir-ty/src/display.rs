@@ -944,7 +944,7 @@ fn render_const_scalar_inner(
                 SolverDefId::AdtId(def) => def,
                 _ => unreachable!(),
             };
-            let Ok(layout) = f.db.layout_of_adt_ns(def, args, trait_env.clone()) else {
+            let Ok(layout) = f.db.layout_of_adt(def, args, trait_env.clone()) else {
                 return f.write_str("<layout-error>");
             };
             match def {
