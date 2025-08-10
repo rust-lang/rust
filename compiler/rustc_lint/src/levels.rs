@@ -4,8 +4,8 @@ use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::{Diag, LintDiagnostic, MultiSpan};
 use rustc_feature::{Features, GateIssue};
-use rustc_hir::HirId;
 use rustc_hir::intravisit::{self, Visitor};
+use rustc_hir::{HirId, OwnerId};
 use rustc_index::IndexVec;
 use rustc_middle::bug;
 use rustc_middle::hir::nested_filter;
@@ -116,8 +116,29 @@ impl LintLevelSets {
     }
 }
 
+fn lints_that_will_run_for_id(tcx: TyCtxt<'_>, key: OwnerId) -> Vec<LintId> {
+    let shallow_lint_level = tcx.shallow_lint_levels_on(key);
+
+    let mut needs_to_run = Vec::new();
+
+    for (_, specs) in shallow_lint_level.specs.iter() {
+        for (lint, level_and_source) in specs.iter() {
+            if !matches!(level_and_source.level, Level::Allow) {
+                needs_to_run.push(*lint)
+            }
+        }
+    }
+
+    needs_to_run
+}
+
 fn lints_that_dont_need_to_run(tcx: TyCtxt<'_>, (): ()) -> UnordSet<LintId> {
     let store = unerased_lint_store(&tcx.sess);
+
+    if tcx.sess.opts.lint_cap.is_some_and(|level| level == Level::Allow) {
+        return UnordSet::from_iter(store.get_lints().into_iter().map(|lint| LintId::of(*lint)));
+    }
+
     let root_map = tcx.shallow_lint_levels_on(hir::CRATE_OWNER_ID);
 
     let mut dont_need_to_run: FxHashSet<LintId> = store
@@ -141,15 +162,9 @@ fn lints_that_dont_need_to_run(tcx: TyCtxt<'_>, (): ()) -> UnordSet<LintId> {
         .collect();
 
     for owner in tcx.hir_crate_items(()).owners() {
-        let map = tcx.shallow_lint_levels_on(owner);
-
-        // All lints that appear with a non-allow level must be run.
-        for (_, specs) in map.specs.iter() {
-            for (lint, level_and_source) in specs.iter() {
-                if !matches!(level_and_source.level, Level::Allow) {
-                    dont_need_to_run.remove(lint);
-                }
-            }
+        let will_run = tcx.lints_that_will_run_for_id(owner);
+        for lintid in will_run {
+            dont_need_to_run.remove(lintid);
         }
     }
 
@@ -1008,7 +1023,12 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
 }
 
 pub(crate) fn provide(providers: &mut Providers) {
-    *providers = Providers { shallow_lint_levels_on, lints_that_dont_need_to_run, ..*providers };
+    *providers = Providers {
+        shallow_lint_levels_on,
+        lints_that_dont_need_to_run,
+        lints_that_will_run_for_id,
+        ..*providers
+    };
 }
 
 pub(crate) fn parse_lint_and_tool_name(lint_name: &str) -> (Option<Symbol>, &str) {

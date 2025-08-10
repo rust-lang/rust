@@ -556,6 +556,11 @@ rustc_queries! {
         desc { "computing `#[expect]`ed lints in this crate" }
     }
 
+    query lints_that_will_run_for_id(key: hir::OwnerId) -> &'tcx Vec<LintId> {
+        arena_cache
+        desc { |tcx| "Computing lints that need to run {}", tcx.def_path_str(key) }
+    }
+
     query lints_that_dont_need_to_run(_: ()) -> &'tcx UnordSet<LintId> {
         arena_cache
         desc { "Computing all lints that are explicitly enabled or with a default level greater than Allow" }
