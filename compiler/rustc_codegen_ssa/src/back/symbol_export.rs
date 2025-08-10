@@ -8,7 +8,7 @@ use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LOCAL_CRATE, LocalDefId};
 use rustc_middle::bug;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::middle::exported_symbols::{
-    ExportedSymbol, SymbolExportInfo, SymbolExportKind, SymbolExportLevel, metadata_symbol_name,
+    ExportedSymbol, SymbolExportInfo, SymbolExportKind, SymbolExportLevel,
 };
 use rustc_middle::query::LocalCrate;
 use rustc_middle::ty::{self, GenericArgKind, GenericArgsRef, Instance, SymbolName, Ty, TyCtxt};
@@ -287,23 +287,6 @@ fn exported_non_generic_symbols_provider_local<'tcx>(
                 },
             )
         }));
-    }
-
-    if tcx.crate_types().contains(&CrateType::Dylib)
-        || tcx.crate_types().contains(&CrateType::ProcMacro)
-    {
-        let symbol_name = metadata_symbol_name(tcx);
-        let exported_symbol = ExportedSymbol::NoDefId(SymbolName::new(tcx, &symbol_name));
-
-        symbols.push((
-            exported_symbol,
-            SymbolExportInfo {
-                level: SymbolExportLevel::C,
-                kind: SymbolExportKind::Data,
-                used: true,
-                rustc_std_internal_symbol: false,
-            },
-        ));
     }
 
     // Sort so we get a stable incr. comp. hash.

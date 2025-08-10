@@ -39,6 +39,10 @@ impl Thread {
     }
 }
 
+pub(crate) fn current_os_id() -> Option<u64> {
+    None
+}
+
 pub fn available_parallelism() -> io::Result<NonZero<usize>> {
     unsupported()
 }

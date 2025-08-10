@@ -214,13 +214,11 @@ fn nonzero_const() {
     const ONE: Option<NonZero<u8>> = NonZero::new(1);
     assert!(ONE.is_some());
 
-    /* FIXME(#110395)
     const FROM_NONZERO_U8: u8 = u8::from(NONZERO_U8);
     assert_eq!(FROM_NONZERO_U8, 5);
 
     const NONZERO_CONVERT: NonZero<u32> = NonZero::<u32>::from(NONZERO_U8);
     assert_eq!(NONZERO_CONVERT.get(), 5);
-    */
 }
 
 #[test]
@@ -321,7 +319,7 @@ fn nonzero_trailing_zeros() {
 }
 
 #[test]
-fn test_nonzero_isolate_most_significant_one() {
+fn test_nonzero_isolate_highest_one() {
     // Signed most significant one
     macro_rules! nonzero_int_impl {
         ($($T:ty),+) => {
@@ -335,8 +333,8 @@ fn test_nonzero_isolate_most_significant_one() {
                     let mut i = 0;
                     while i < <$T>::BITS {
                         assert_eq!(
-                            NonZero::<$T>::new(BITS >> i).unwrap().isolate_most_significant_one(),
-                            NonZero::<$T>::new(MOST_SIG_ONE >> i).unwrap().isolate_most_significant_one()
+                            NonZero::<$T>::new(BITS >> i).unwrap().isolate_highest_one(),
+                            NonZero::<$T>::new(MOST_SIG_ONE >> i).unwrap().isolate_highest_one()
                         );
                         i += 1;
                     }
@@ -356,8 +354,8 @@ fn test_nonzero_isolate_most_significant_one() {
                     let mut i = 0;
                     while i < <$T>::BITS {
                         assert_eq!(
-                            NonZero::<$T>::new(BITS >> i).unwrap().isolate_most_significant_one(),
-                            NonZero::<$T>::new(MOST_SIG_ONE >> i).unwrap().isolate_most_significant_one(),
+                            NonZero::<$T>::new(BITS >> i).unwrap().isolate_highest_one(),
+                            NonZero::<$T>::new(MOST_SIG_ONE >> i).unwrap().isolate_highest_one(),
                         );
                         i += 1;
                     }
@@ -371,7 +369,7 @@ fn test_nonzero_isolate_most_significant_one() {
 }
 
 #[test]
-fn test_nonzero_isolate_least_significant_one() {
+fn test_nonzero_isolate_lowest_one() {
     // Signed least significant one
     macro_rules! nonzero_int_impl {
         ($($T:ty),+) => {
@@ -385,8 +383,8 @@ fn test_nonzero_isolate_least_significant_one() {
                     let mut i = 0;
                     while i < <$T>::BITS {
                         assert_eq!(
-                            NonZero::<$T>::new(BITS << i).unwrap().isolate_least_significant_one(),
-                            NonZero::<$T>::new(LEAST_SIG_ONE << i).unwrap().isolate_least_significant_one()
+                            NonZero::<$T>::new(BITS << i).unwrap().isolate_lowest_one(),
+                            NonZero::<$T>::new(LEAST_SIG_ONE << i).unwrap().isolate_lowest_one()
                         );
                         i += 1;
                     }
@@ -406,8 +404,8 @@ fn test_nonzero_isolate_least_significant_one() {
                     let mut i = 0;
                     while i < <$T>::BITS {
                         assert_eq!(
-                            NonZero::<$T>::new(BITS << i).unwrap().isolate_least_significant_one(),
-                            NonZero::<$T>::new(LEAST_SIG_ONE << i).unwrap().isolate_least_significant_one(),
+                            NonZero::<$T>::new(BITS << i).unwrap().isolate_lowest_one(),
+                            NonZero::<$T>::new(LEAST_SIG_ONE << i).unwrap().isolate_lowest_one(),
                         );
                         i += 1;
                     }

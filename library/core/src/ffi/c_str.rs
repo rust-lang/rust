@@ -652,7 +652,7 @@ impl CStr {
     }
 }
 
-#[stable(feature = "c_string_eq_c_str", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "c_string_eq_c_str", since = "1.90.0")]
 impl PartialEq<&Self> for CStr {
     #[inline]
     fn eq(&self, other: &&Self) -> bool {

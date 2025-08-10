@@ -262,6 +262,15 @@ pub(crate) fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> Option<LLVMFea
         // Filter out features that are not supported by the current LLVM version
         ("aarch64", "fpmr") => None, // only existed in 18
         ("arm", "fp16") => Some(LLVMFeature::new("fullfp16")),
+        // NVPTX targets added in LLVM 20
+        ("nvptx64", "sm_100") if get_version().0 < 20 => None,
+        ("nvptx64", "sm_100a") if get_version().0 < 20 => None,
+        ("nvptx64", "sm_101") if get_version().0 < 20 => None,
+        ("nvptx64", "sm_101a") if get_version().0 < 20 => None,
+        ("nvptx64", "sm_120") if get_version().0 < 20 => None,
+        ("nvptx64", "sm_120a") if get_version().0 < 20 => None,
+        ("nvptx64", "ptx86") if get_version().0 < 20 => None,
+        ("nvptx64", "ptx87") if get_version().0 < 20 => None,
         // Filter out features that are not supported by the current LLVM version
         ("loongarch64", "div32" | "lam-bh" | "lamcas" | "ld-seq-sa" | "scq")
             if get_version().0 < 20 =>
@@ -324,15 +333,12 @@ pub(crate) fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> Option<LLVMFea
 ///
 /// We do not have to worry about RUSTC_SPECIFIC_FEATURES here, those are handled outside codegen.
 pub(crate) fn target_config(sess: &Session) -> TargetConfig {
-    // Add base features for the target.
-    // We do *not* add the -Ctarget-features there, and instead duplicate the logic for that below.
-    // The reason is that if LLVM considers a feature implied but we do not, we don't want that to
-    // show up in `cfg`. That way, `cfg` is entirely under our control -- except for the handling of
-    // the target CPU, that is still expanded to target features (with all their implied features)
-    // by LLVM.
     let target_machine = create_informational_target_machine(sess, true);
 
     let (unstable_target_features, target_features) = cfg_target_feature(sess, |feature| {
+        // This closure determines whether the target CPU has the feature according to LLVM. We do
+        // *not* consider the `-Ctarget-feature`s here, as that will be handled later in
+        // `cfg_target_feature`.
         if let Some(feat) = to_llvm_features(sess, feature) {
             // All the LLVM features this expands to must be enabled.
             for llvm_feature in feat {
@@ -371,24 +377,25 @@ fn update_target_reliable_float_cfg(sess: &Session, cfg: &mut TargetConfig) {
     let target_abi = sess.target.options.abi.as_ref();
     let target_pointer_width = sess.target.pointer_width;
     let version = get_version();
+    let lt_20_1_1 = version < (20, 1, 1);
+    let lt_21_0_0 = version < (21, 0, 0);
 
     cfg.has_reliable_f16 = match (target_arch, target_os) {
-        // Selection failure <https://github.com/llvm/llvm-project/issues/50374>
-        ("s390x", _) => false,
-        // LLVM crash without neon <https://github.com/llvm/llvm-project/issues/129394> (now fixed)
+        // LLVM crash without neon <https://github.com/llvm/llvm-project/issues/129394> (fixed in llvm20)
         ("aarch64", _)
-            if !cfg.target_features.iter().any(|f| f.as_str() == "neon")
-                && version < (20, 1, 1) =>
+            if !cfg.target_features.iter().any(|f| f.as_str() == "neon") && lt_20_1_1 =>
         {
             false
         }
         // Unsupported <https://github.com/llvm/llvm-project/issues/94434>
         ("arm64ec", _) => false,
+        // Selection failure <https://github.com/llvm/llvm-project/issues/50374> (fixed in llvm21)
+        ("s390x", _) if lt_21_0_0 => false,
         // MinGW ABI bugs <https://gcc.gnu.org/bugzilla/show_bug.cgi?id=115054>
         ("x86_64", "windows") if target_env == "gnu" && target_abi != "llvm" => false,
         // Infinite recursion <https://github.com/llvm/llvm-project/issues/97981>
         ("csky", _) => false,
-        ("hexagon", _) => false,
+        ("hexagon", _) if lt_21_0_0 => false, // (fixed in llvm21)
         ("powerpc" | "powerpc64", _) => false,
         ("sparc" | "sparc64", _) => false,
         ("wasm32" | "wasm64", _) => false,
@@ -401,9 +408,10 @@ fn update_target_reliable_float_cfg(sess: &Session, cfg: &mut TargetConfig) {
     cfg.has_reliable_f128 = match (target_arch, target_os) {
         // Unsupported <https://github.com/llvm/llvm-project/issues/94434>
         ("arm64ec", _) => false,
-        // Selection bug <https://github.com/llvm/llvm-project/issues/96432>
-        ("mips64" | "mips64r6", _) => false,
-        // Selection bug <https://github.com/llvm/llvm-project/issues/95471>
+        // Selection bug <https://github.com/llvm/llvm-project/issues/96432> (fixed in llvm20)
+        ("mips64" | "mips64r6", _) if lt_20_1_1 => false,
+        // Selection bug <https://github.com/llvm/llvm-project/issues/95471>. This issue is closed
+        // but basic math still does not work.
         ("nvptx64", _) => false,
         // Unsupported https://github.com/llvm/llvm-project/issues/121122
         ("amdgpu", _) => false,
@@ -413,8 +421,8 @@ fn update_target_reliable_float_cfg(sess: &Session, cfg: &mut TargetConfig) {
         // ABI unsupported  <https://github.com/llvm/llvm-project/issues/41838>
         ("sparc", _) => false,
         // Stack alignment bug <https://github.com/llvm/llvm-project/issues/77401>. NB: tests may
-        // not fail if our compiler-builtins is linked.
-        ("x86", _) => false,
+        // not fail if our compiler-builtins is linked. (fixed in llvm21)
+        ("x86", _) if lt_21_0_0 => false,
         // MinGW ABI bugs <https://gcc.gnu.org/bugzilla/show_bug.cgi?id=115054>
         ("x86_64", "windows") if target_env == "gnu" && target_abi != "llvm" => false,
         // There are no known problems on other platforms, so the only requirement is that symbols

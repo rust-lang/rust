@@ -2056,10 +2056,6 @@ unsafe extern "C" {
         NumExpansionRegions: size_t,
         BranchRegions: *const crate::coverageinfo::ffi::BranchRegion,
         NumBranchRegions: size_t,
-        MCDCBranchRegions: *const crate::coverageinfo::ffi::MCDCBranchRegion,
-        NumMCDCBranchRegions: size_t,
-        MCDCDecisionRegions: *const crate::coverageinfo::ffi::MCDCDecisionRegion,
-        NumMCDCDecisionRegions: size_t,
         BufferOut: &RustString,
     );
 

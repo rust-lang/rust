@@ -55,12 +55,6 @@ error: malformed `patchable_function_entry` attribute input
 LL | #[patchable_function_entry]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[patchable_function_entry(prefix_nops = m, entry_nops = n)]`
 
-error: malformed `coroutine` attribute input
-  --> $DIR/malformed-attrs.rs:108:5
-   |
-LL |     #[coroutine = 63] || {}
-   |     ^^^^^^^^^^^^^^^^^ help: must be of the form: `#[coroutine]`
-
 error: malformed `must_not_suspend` attribute input
   --> $DIR/malformed-attrs.rs:129:1
    |
@@ -435,6 +429,15 @@ LL | #[proc_macro = 18]
    | |            |
    | |            didn't expect any arguments here
    | help: must be of the form: `#[proc_macro]`
+
+error[E0565]: malformed `coroutine` attribute input
+  --> $DIR/malformed-attrs.rs:108:5
+   |
+LL |     #[coroutine = 63] || {}
+   |     ^^^^^^^^^^^^----^
+   |     |           |
+   |     |           didn't expect any arguments here
+   |     help: must be of the form: `#[coroutine]`
 
 error[E0565]: malformed `proc_macro_attribute` attribute input
   --> $DIR/malformed-attrs.rs:113:1

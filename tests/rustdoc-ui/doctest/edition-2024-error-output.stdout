@@ -9,7 +9,7 @@ Test executable failed (exit status: 101).
 
 stderr:
 
-thread 'main' panicked at $TMP:6:1:
+thread 'main' ($TID) panicked at $TMP:6:1:
 assertion `left == right` failed
   left: 4
  right: 5

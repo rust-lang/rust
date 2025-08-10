@@ -115,6 +115,10 @@ impl Thread {
     }
 }
 
+pub(crate) fn current_os_id() -> Option<u64> {
+    None
+}
+
 pub fn available_parallelism() -> io::Result<NonZero<usize>> {
     unsafe { Ok(NonZero::new_unchecked(hermit_abi::available_parallelism())) }
 }

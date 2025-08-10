@@ -4,7 +4,7 @@
 //@ build-fail
 //@ failure-status:101
 //@ normalize-stderr: ".*note: .*\n\n" -> ""
-//@ normalize-stderr: "thread 'rustc' panicked.*:\n.*\n" -> ""
+//@ normalize-stderr: "thread 'rustc'.*panicked.*:\n.*\n" -> ""
 //@ normalize-stderr: "internal compiler error:.*: intrinsic const_deallocate " -> ""
 //@ rustc-env:RUST_BACKTRACE=0
 

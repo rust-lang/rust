@@ -1,6 +1,6 @@
 #![cfg_attr(test, allow(dead_code))] // why is this necessary?
 
-use super::abi::usercalls;
+use super::abi::{thread, usercalls};
 use super::unsupported;
 use crate::ffi::CStr;
 use crate::io;
@@ -147,6 +147,10 @@ impl Thread {
     pub fn join(self) {
         self.0.wait();
     }
+}
+
+pub(crate) fn current_os_id() -> Option<u64> {
+    Some(thread::current().addr().get() as u64)
 }
 
 pub fn available_parallelism() -> io::Result<NonZero<usize>> {

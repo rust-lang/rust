@@ -15,7 +15,7 @@ LL |     Pin::new(&S).x();
 LL |     Pin::new(&mut S).x();
    |              ++++
 
-error[E0599]: no method named `x` found for struct `Pin` in the current scope
+error[E0599]: no method named `x` found for struct `Pin<Ptr>` in the current scope
   --> $DIR/arbitrary_self_types_pin_needing_borrow.rs:10:17
    |
 LL |     Pin::new(S).x();

@@ -1,8 +1,8 @@
 
-thread 'main' panicked at tests/panic/panic1.rs:LL:CC:
+thread 'main' ($TID) panicked at tests/panic/panic1.rs:LL:CC:
 panicking from libstd
 stack backtrace:
-   0: std::panicking::begin_panic_handler
+   0: std::panicking::panic_handler
  at RUSTLIB/std/src/panicking.rs:LL:CC
    1: std::rt::panic_fmt
  at RUSTLIB/core/src/panicking.rs:LL:CC

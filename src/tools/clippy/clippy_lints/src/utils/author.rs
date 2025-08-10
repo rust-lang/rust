@@ -348,7 +348,7 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
                             IntTy::I128 => "I128",
                         };
                         format!("LitIntType::Signed(IntTy::{t})")
-                    }
+                    },
                     LitIntType::Unsigned(uint_ty) => {
                         let t = match uint_ty {
                             UintTy::Usize => "Usize",
@@ -359,7 +359,7 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
                             UintTy::U128 => "U128",
                         };
                         format!("LitIntType::Unsigned(UintTy::{t})")
-                    }
+                    },
                     LitIntType::Unsuffixed => String::from("LitIntType::Unsuffixed"),
                 };
                 kind!("Int({i}, {int_ty})");
@@ -374,7 +374,7 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
                             FloatTy::F128 => "F128",
                         };
                         format!("LitFloatType::Suffixed(FloatTy::{t})")
-                    }
+                    },
                     LitFloatType::Unsuffixed => String::from("LitFloatType::Unsuffixed"),
                 };
                 kind!("Float(_, {float_ty})");

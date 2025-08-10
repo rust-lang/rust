@@ -1671,6 +1671,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         dst: RValue<'gcc>,
         src: RValue<'gcc>,
         order: AtomicOrdering,
+        ret_ptr: bool,
     ) -> RValue<'gcc> {
         let size = get_maybe_pointer_size(src);
         let name = match op {
@@ -1698,6 +1699,9 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         let atomic_function = self.context.get_builtin_function(name);
         let order = self.context.new_rvalue_from_int(self.i32_type, order.to_gcc());
 
+        // FIXME: If `ret_ptr` is true and `src` is an integer, we should really tell GCC
+        // that this is a pointer operation that needs to preserve provenance -- but like LLVM,
+        // GCC does not currently seems to support that.
         let void_ptr_type = self.context.new_type::<*mut ()>();
         let volatile_void_ptr_type = void_ptr_type.make_volatile();
         let dst = self.context.new_cast(self.location, dst, volatile_void_ptr_type);
@@ -1705,7 +1709,8 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         let new_src_type = atomic_function.get_param(1).to_rvalue().get_type();
         let src = self.context.new_bitcast(self.location, src, new_src_type);
         let res = self.context.new_call(self.location, atomic_function, &[dst, src, order]);
-        self.context.new_cast(self.location, res, src.get_type())
+        let res_type = if ret_ptr { void_ptr_type } else { src.get_type() };
+        self.context.new_cast(self.location, res, res_type)
     }
 
     fn atomic_fence(&mut self, order: AtomicOrdering, scope: SynchronizationScope) {

@@ -13,6 +13,9 @@ impl const T for S {}
 const fn f<A: [const] T>() {} //[stock]~ ERROR const trait impls are experimental
 fn g<A: const T>() {} //[stock]~ ERROR const trait impls are experimental
 
+const trait Trait {} //[stock]~ ERROR const trait impls are experimental
+#[cfg(false)] const trait Trait {} //[stock]~ ERROR const trait impls are experimental
+
 macro_rules! discard { ($ty:ty) => {} }
 
 discard! { impl [const] T } //[stock]~ ERROR const trait impls are experimental
