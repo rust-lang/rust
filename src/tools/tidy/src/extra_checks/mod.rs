@@ -23,8 +23,6 @@ use std::process::Command;
 use std::str::FromStr;
 use std::{fmt, fs, io};
 
-use build_helper::util::ensure_version_or_cargo_install;
-
 use crate::CiInfo;
 
 mod rustdoc_js;
@@ -43,7 +41,6 @@ const RUFF_CONFIG_PATH: &[&str] = &["src", "tools", "tidy", "config", "ruff.toml
 const RUFF_CACHE_PATH: &[&str] = &["cache", "ruff_cache"];
 const PIP_REQ_PATH: &[&str] = &["src", "tools", "tidy", "config", "requirements.txt"];
 
-// this must be kept in sync with with .github/workflows/spellcheck.yml
 const SPELLCHECK_DIRS: &[&str] = &["compiler", "library", "src/bootstrap", "src/librustdoc"];
 
 pub fn check(
@@ -588,7 +585,8 @@ fn spellcheck_runner(
     cargo: &Path,
     args: &[&str],
 ) -> Result<(), Error> {
-    let bin_path = ensure_version_or_cargo_install(outdir, cargo, "typos-cli", "typos", "1.34.0")?;
+    let bin_path =
+        crate::ensure_version_or_cargo_install(outdir, cargo, "typos-cli", "typos", "1.34.0")?;
 
     match Command::new(bin_path).current_dir(src_root).args(args).status() {
         Ok(status) => {
