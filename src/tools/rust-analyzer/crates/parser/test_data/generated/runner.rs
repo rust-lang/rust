@@ -796,6 +796,12 @@ mod err {
     #[test]
     fn impl_type() { run_and_expect_errors("test_data/parser/inline/err/impl_type.rs"); }
     #[test]
+    fn invalid_question_for_type_trait_bound() {
+        run_and_expect_errors(
+            "test_data/parser/inline/err/invalid_question_for_type_trait_bound.rs",
+        );
+    }
+    #[test]
     fn let_else_right_curly_brace() {
         run_and_expect_errors("test_data/parser/inline/err/let_else_right_curly_brace.rs");
     }
