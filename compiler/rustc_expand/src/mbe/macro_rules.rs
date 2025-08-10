@@ -30,7 +30,7 @@ use rustc_span::hygiene::Transparency;
 use rustc_span::{Ident, Span, Symbol, kw, sym};
 use tracing::{debug, instrument, trace, trace_span};
 
-use super::diagnostics::failed_to_match_macro;
+use super::diagnostics::{FailedMacro, failed_to_match_macro};
 use super::macro_parser::{NamedMatches, NamedParseResult};
 use super::{SequenceRepetition, diagnostics};
 use crate::base::{
@@ -139,7 +139,6 @@ pub(super) enum MacroRule {
         rhs: mbe::TokenTree,
     },
     /// A derive rule, for use with `#[m]`
-    #[expect(unused)]
     Derive { body: Vec<MatcherLoc>, body_span: Span, rhs: mbe::TokenTree },
 }
 
@@ -167,6 +166,63 @@ impl MacroRulesMacroExpander {
 
     pub fn kinds(&self) -> MacroKinds {
         self.kinds
+    }
+
+    pub fn expand_derive(
+        &self,
+        cx: &mut ExtCtxt<'_>,
+        sp: Span,
+        body: &TokenStream,
+    ) -> Result<TokenStream, ErrorGuaranteed> {
+        // This is similar to `expand_macro`, but they have very different signatures, and will
+        // diverge further once derives support arguments.
+        let Self { name, ref rules, node_id, .. } = *self;
+        let psess = &cx.sess.psess;
+
+        if cx.trace_macros() {
+            let msg = format!("expanding `#[derive({name})] {}`", pprust::tts_to_string(body));
+            trace_macros_note(&mut cx.expansions, sp, msg);
+        }
+
+        match try_match_macro_derive(psess, name, body, rules, &mut NoopTracker) {
+            Ok((rule_index, rule, named_matches)) => {
+                let MacroRule::Derive { rhs, .. } = rule else {
+                    panic!("try_match_macro_derive returned non-derive rule");
+                };
+                let mbe::TokenTree::Delimited(rhs_span, _, rhs) = rhs else {
+                    cx.dcx().span_bug(sp, "malformed macro derive rhs");
+                };
+
+                let id = cx.current_expansion.id;
+                let tts = transcribe(psess, &named_matches, rhs, *rhs_span, self.transparency, id)
+                    .map_err(|e| e.emit())?;
+
+                if cx.trace_macros() {
+                    let msg = format!("to `{}`", pprust::tts_to_string(&tts));
+                    trace_macros_note(&mut cx.expansions, sp, msg);
+                }
+
+                if is_defined_in_current_crate(node_id) {
+                    cx.resolver.record_macro_rule_usage(node_id, rule_index);
+                }
+
+                Ok(tts)
+            }
+            Err(CanRetry::No(guar)) => Err(guar),
+            Err(CanRetry::Yes) => {
+                let (_, guar) = failed_to_match_macro(
+                    cx.psess(),
+                    sp,
+                    self.span,
+                    name,
+                    FailedMacro::Derive,
+                    body,
+                    rules,
+                );
+                cx.macro_error_and_trace_macros_diag();
+                Err(guar)
+            }
+        }
     }
 }
 
@@ -329,8 +385,15 @@ fn expand_macro<'cx>(
         }
         Err(CanRetry::Yes) => {
             // Retry and emit a better error.
-            let (span, guar) =
-                failed_to_match_macro(cx.psess(), sp, def_span, name, None, &arg, rules);
+            let (span, guar) = failed_to_match_macro(
+                cx.psess(),
+                sp,
+                def_span,
+                name,
+                FailedMacro::Func,
+                &arg,
+                rules,
+            );
             cx.macro_error_and_trace_macros_diag();
             DummyResult::any(span, guar)
         }
@@ -392,8 +455,15 @@ fn expand_macro_attr(
         Err(CanRetry::No(guar)) => Err(guar),
         Err(CanRetry::Yes) => {
             // Retry and emit a better error.
-            let (_, guar) =
-                failed_to_match_macro(cx.psess(), sp, def_span, name, Some(&args), &body, rules);
+            let (_, guar) = failed_to_match_macro(
+                cx.psess(),
+                sp,
+                def_span,
+                name,
+                FailedMacro::Attr(&args),
+                &body,
+                rules,
+            );
             cx.trace_macros_diag();
             Err(guar)
         }
@@ -527,6 +597,44 @@ pub(super) fn try_match_macro_attr<'matcher, T: Tracker<'matcher>>(
             Success(body_named_matches) => {
                 psess.gated_spans.merge(gated_spans_snapshot);
                 named_matches.extend(body_named_matches);
+                return Ok((i, rule, named_matches));
+            }
+            Failure(_) => {
+                mem::swap(&mut gated_spans_snapshot, &mut psess.gated_spans.spans.borrow_mut())
+            }
+            Error(_, _) => return Err(CanRetry::Yes),
+            ErrorReported(guar) => return Err(CanRetry::No(guar)),
+        }
+    }
+
+    Err(CanRetry::Yes)
+}
+
+/// Try expanding the macro derive. Returns the index of the successful arm and its
+/// named_matches if it was successful, and nothing if it failed. On failure, it's the caller's job
+/// to use `track` accordingly to record all errors correctly.
+#[instrument(level = "debug", skip(psess, body, rules, track), fields(tracking = %T::description()))]
+pub(super) fn try_match_macro_derive<'matcher, T: Tracker<'matcher>>(
+    psess: &ParseSess,
+    name: Ident,
+    body: &TokenStream,
+    rules: &'matcher [MacroRule],
+    track: &mut T,
+) -> Result<(usize, &'matcher MacroRule, NamedMatches), CanRetry> {
+    // This uses the same strategy as `try_match_macro`
+    let body_parser = parser_from_cx(psess, body.clone(), T::recovery());
+    let mut tt_parser = TtParser::new(name);
+    for (i, rule) in rules.iter().enumerate() {
+        let MacroRule::Derive { body, .. } = rule else { continue };
+
+        let mut gated_spans_snapshot = mem::take(&mut *psess.gated_spans.spans.borrow_mut());
+
+        let result = tt_parser.parse_tt(&mut Cow::Borrowed(&body_parser), body, track);
+        track.after_arm(true, &result);
+
+        match result {
+            Success(named_matches) => {
+                psess.gated_spans.merge(gated_spans_snapshot);
                 return Ok((i, rule, named_matches));
             }
             Failure(_) => {
