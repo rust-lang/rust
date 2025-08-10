@@ -1700,10 +1700,15 @@ You have to build a stage1 compiler for `{}` first, and then use it to build a s
         #[cfg(feature = "build-metrics")]
         self.metrics.enter_step(&step, self);
 
+        if self.config.print_step_timings && !self.config.dry_run() {
+            println!("[TIMING:start] {}", pretty_print_step(&step));
+        }
+
         let (out, dur) = {
             let start = Instant::now();
             let zero = Duration::new(0, 0);
             let parent = self.time_spent_on_dependencies.replace(zero);
+
             let out = step.clone().run(self);
             let dur = start.elapsed();
             let deps = self.time_spent_on_dependencies.replace(parent + dur);
@@ -1711,13 +1716,9 @@ You have to build a stage1 compiler for `{}` first, and then use it to build a s
         };
 
         if self.config.print_step_timings && !self.config.dry_run() {
-            let step_string = format!("{step:?}");
-            let brace_index = step_string.find('{').unwrap_or(0);
-            let type_string = type_name::<S>();
             println!(
-                "[TIMING] {} {} -- {}.{:03}",
-                &type_string.strip_prefix("bootstrap::").unwrap_or(type_string),
-                &step_string[brace_index..],
+                "[TIMING:end] {} -- {}.{:03}",
+                pretty_print_step(&step),
                 dur.as_secs(),
                 dur.subsec_millis()
             );
@@ -1802,6 +1803,17 @@ You have to build a stage1 compiler for `{}` first, and then use it to build a s
     pub fn exec_ctx(&self) -> &ExecutionContext {
         &self.config.exec_ctx
     }
+}
+
+fn pretty_print_step<S: Step>(step: &S) -> String {
+    let step_dbg_repr = format!("{step:?}");
+    let brace_index = step_dbg_repr.find('{').unwrap_or(0);
+
+    // Normalize step type path to only keep the module and the type name
+    let path = type_name::<S>().rsplit("::").take(2).collect::<Vec<_>>();
+    let type_string = path.into_iter().rev().collect::<Vec<_>>().join("::");
+
+    format!("{type_string} {}", &step_dbg_repr[brace_index..])
 }
 
 impl<'a> AsRef<ExecutionContext> for Builder<'a> {
