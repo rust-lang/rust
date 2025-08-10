@@ -29,7 +29,7 @@ fn is_tracing_enabled() -> bool {
 #[cfg_attr(feature = "tracing", instrument(level = "trace", name = "main"))]
 fn main() {
     #[cfg(feature = "tracing")]
-    let _guard = setup_tracing();
+    let guard = setup_tracing(is_profiling_enabled());
 
     let start_time = Instant::now();
 
@@ -183,7 +183,12 @@ fn main() {
     }
 
     #[cfg(feature = "tracing")]
-    build.report_step_graph(&tracing_dir);
+    {
+        build.report_step_graph(&tracing_dir);
+        if let Some(guard) = guard {
+            guard.copy_to_dir(&tracing_dir);
+        }
+    }
 
     if tracing_enabled {
         eprintln!("Tracing/profiling output has been written to {}", latest_trace_dir.display());
@@ -257,25 +262,53 @@ fn check_version(config: &Config) -> Option<String> {
 // - `tracing`'s `#[instrument(..)]` macro will need to be gated like `#![cfg_attr(feature =
 //   "tracing", instrument(..))]`.
 #[cfg(feature = "tracing")]
-fn setup_tracing() -> impl Drop {
+fn setup_tracing(profiling_enabled: bool) -> Option<TracingGuard> {
+    use std::fs::File;
+    use std::io::BufWriter;
+
     use tracing_forest::ForestLayer;
     use tracing_subscriber::EnvFilter;
     use tracing_subscriber::layer::SubscriberExt;
 
     let filter = EnvFilter::from_env("BOOTSTRAP_TRACING");
 
-    let mut chrome_layer = tracing_chrome::ChromeLayerBuilder::new().include_args(true);
+    let registry = tracing_subscriber::registry().with(filter).with(ForestLayer::default());
 
-    // Writes the Chrome profile to trace-<unix-timestamp>.json if enabled
-    if !is_profiling_enabled() {
-        chrome_layer = chrome_layer.writer(io::sink());
+    let guard = if profiling_enabled {
+        // When we're creating this layer, we do not yet know the location of the tracing output
+        // directory, because it is stored in the output directory determined after Config is parsed,
+        // but we already want to make tracing calls during (and before) config parsing.
+        // So we store the output into a temporary file, and then move it to the tracing directory
+        // before bootstrap ends.
+        let tempdir = tempfile::TempDir::new().expect("Cannot create temporary directory");
+        let chrome_tracing_path = tempdir.path().join("bootstrap-trace.json");
+        let file = BufWriter::new(File::create(&chrome_tracing_path).unwrap());
+
+        let chrome_layer =
+            tracing_chrome::ChromeLayerBuilder::new().writer(file).include_args(true);
+        let (chrome_layer, guard) = chrome_layer.build();
+
+        tracing::subscriber::set_global_default(registry.with(chrome_layer)).unwrap();
+        Some(TracingGuard { guard, _tempdir: tempdir, chrome_tracing_path })
+    } else {
+        tracing::subscriber::set_global_default(registry).unwrap();
+        None
+    };
+
+    guard
+}
+
+#[cfg(feature = "tracing")]
+struct TracingGuard {
+    guard: tracing_chrome::FlushGuard,
+    _tempdir: tempfile::TempDir,
+    chrome_tracing_path: std::path::PathBuf,
+}
+
+#[cfg(feature = "tracing")]
+impl TracingGuard {
+    fn copy_to_dir(self, dir: &std::path::Path) {
+        drop(self.guard);
+        std::fs::rename(&self.chrome_tracing_path, dir.join("chrome-trace.json")).unwrap();
     }
-
-    let (chrome_layer, _guard) = chrome_layer.build();
-
-    let registry =
-        tracing_subscriber::registry().with(filter).with(ForestLayer::default()).with(chrome_layer);
-
-    tracing::subscriber::set_global_default(registry).unwrap();
-    _guard
 }
