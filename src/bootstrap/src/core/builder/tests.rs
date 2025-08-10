@@ -1128,7 +1128,6 @@ mod snapshot {
         [build] rustc 1 <host> -> cargo-clippy 2 <host>
         [build] rustc 1 <host> -> miri 2 <host>
         [build] rustc 1 <host> -> cargo-miri 2 <host>
-        [doc] rustc 1 <host> -> std 1 <host> crates=[]
         ");
     }
 
@@ -1452,7 +1451,7 @@ mod snapshot {
         [build] rustc 1 <host> -> miri 2 <target1>
         [build] rustc 1 <host> -> cargo-miri 2 <target1>
         [build] rustc 1 <host> -> LlvmBitcodeLinker 2 <target1>
-        [doc] rustc 1 <host> -> std 1 <target1> crates=[]
+        [doc] rustc 2 <target1> -> std 2 <target1> crates=[]
         ");
     }
 
