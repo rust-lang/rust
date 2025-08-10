@@ -37,9 +37,7 @@ use crate::core::builder;
 use crate::core::builder::Kind;
 use crate::core::config::{DryRun, LldMode, LlvmLibunwind, TargetSelection, flags};
 use crate::utils::exec::{BootstrapCommand, command};
-use crate::utils::helpers::{
-    self, dir_is_empty, exe, libdir, set_file_times, split_debuginfo, symlink_dir,
-};
+use crate::utils::helpers::{self, dir_is_empty, exe, libdir, set_file_times, split_debuginfo};
 
 mod core;
 mod utils;
@@ -53,7 +51,7 @@ use tracing::{instrument, span};
 pub use utils::change_tracker::{
     CONFIG_CHANGE_HISTORY, find_recent_config_change_ids, human_readable_changes,
 };
-pub use utils::helpers::PanicTracker;
+pub use utils::helpers::{PanicTracker, symlink_dir};
 
 use crate::core::build_steps::vendor::VENDOR_DIR;
 

@@ -13,7 +13,7 @@ use std::{env, process};
 
 use bootstrap::{
     Build, CONFIG_CHANGE_HISTORY, ChangeId, Config, Flags, Subcommand, debug,
-    find_recent_config_change_ids, human_readable_changes, t,
+    find_recent_config_change_ids, human_readable_changes, symlink_dir, t,
 };
 #[cfg(feature = "tracing")]
 use tracing::instrument;
@@ -107,10 +107,21 @@ fn main() {
     let out_dir = config.out.clone();
 
     let tracing_enabled = is_tracing_enabled();
+
+    // Prepare a directory for tracing output
+    // Also store a symlink named "latest" to point to the latest tracing directory.
     let tracing_dir = out_dir.join("bootstrap-trace").join(std::process::id().to_string());
+    let latest_trace_dir = tracing_dir.parent().unwrap().join("latest");
     if tracing_enabled {
         let _ = std::fs::remove_dir_all(&tracing_dir);
         std::fs::create_dir_all(&tracing_dir).unwrap();
+
+        #[cfg(windows)]
+        let _ = std::fs::remove_dir(&latest_trace_dir);
+        #[cfg(not(windows))]
+        let _ = std::fs::remove_file(&latest_trace_dir);
+
+        t!(symlink_dir(&config, &tracing_dir, &latest_trace_dir));
     }
 
     debug!("creating new build based on config");
@@ -175,7 +186,7 @@ fn main() {
     build.report_step_graph(&tracing_dir);
 
     if tracing_enabled {
-        eprintln!("Tracing/profiling output has been written to {}", tracing_dir.display());
+        eprintln!("Tracing/profiling output has been written to {}", latest_trace_dir.display());
     }
 }
 
