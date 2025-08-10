@@ -26,22 +26,24 @@ SOURCE_FILE
         COLON ":"
         WHITESPACE " "
         TYPE_BOUND_LIST
-          TYPE_BOUND
-            FOR_BINDER
-              FOR_KW "for"
-              GENERIC_PARAM_LIST
-                L_ANGLE "<"
-                R_ANGLE ">"
-            WHITESPACE " "
-            QUESTION "?"
-            PATH_TYPE
-              PATH
-                PATH_SEGMENT
-                  NAME_REF
-                    IDENT "Sized"
+          QUESTION "?"
+      WHERE_PRED
+        FOR_BINDER
+          FOR_KW "for"
+          GENERIC_PARAM_LIST
+            L_ANGLE "<"
+            R_ANGLE ">"
+        WHITESPACE " "
+        PATH_TYPE
+          PATH
+            PATH_SEGMENT
+              NAME_REF
+                IDENT "Sized"
     WHITESPACE " "
     BLOCK_EXPR
       STMT_LIST
         L_CURLY "{"
         R_CURLY "}"
   WHITESPACE "\n"
+error 20: expected comma
+error 31: expected colon
