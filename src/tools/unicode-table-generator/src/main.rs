@@ -90,7 +90,7 @@ static PROPERTIES: &[&str] = &[
     "Alphabetic",
     "Lowercase",
     "Uppercase",
-    "Cased",
+    "Lt",
     "Case_Ignorable",
     "Grapheme_Extend",
     "White_Space",
