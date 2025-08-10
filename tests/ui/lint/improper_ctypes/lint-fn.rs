@@ -1,5 +1,6 @@
 #![allow(private_interfaces)]
-#![deny(improper_ctypes_definitions)]
+#![deny(improper_ctypes, improper_c_fn_definitions)]
+#![deny(improper_c_callbacks)]
 
 use std::default::Default;
 use std::marker::PhantomData;
@@ -26,7 +27,7 @@ pub struct ZeroSize;
 
 pub type RustFn = fn();
 
-pub type RustBadRet = extern "C" fn() -> Box<u32>;
+pub type RustBadRet = extern "C" fn() -> (u32,u64); //~ ERROR uses type `(u32, u64)`
 
 pub type CVoidRet = ();
 
@@ -39,7 +40,7 @@ pub struct TransparentI128(i128);
 pub struct TransparentStr(&'static str);
 
 #[repr(transparent)]
-pub struct TransparentBadFn(RustBadRet);
+pub struct TransparentBadFn(RustBadRet); // note: non-null ptr assumption
 
 #[repr(transparent)]
 pub struct TransparentInt(u32);
@@ -68,14 +69,15 @@ pub extern "C" fn ptr_unit(p: *const ()) { }
 pub extern "C" fn ptr_tuple(p: *const ((),)) { }
 
 pub extern "C" fn slice_type(p: &[u32]) { }
-//~^ ERROR: uses type `[u32]`
+//~^ ERROR: uses type `&[u32]`
 
 pub extern "C" fn str_type(p: &str) { }
-//~^ ERROR: uses type `str`
+//~^ ERROR: uses type `&str`
 
 pub extern "C" fn box_type(p: Box<u32>) { }
 
 pub extern "C" fn opt_box_type(p: Option<Box<u32>>) { }
+// no error here!
 
 pub extern "C" fn boxed_slice(p: Box<[u8]>) { }
 //~^ ERROR: uses type `Box<[u8]>`
@@ -113,19 +115,22 @@ pub extern "C" fn fn_type2(p: fn()) { }
 //~^ ERROR uses type `fn()`
 
 pub extern "C" fn fn_contained(p: RustBadRet) { }
+// ^ FIXME it doesn't see the error... but at least it reports it elsewhere?
 
 pub extern "C" fn transparent_str(p: TransparentStr) { }
-//~^ ERROR: uses type `str`
+//~^ ERROR: uses type `TransparentStr`
 
 pub extern "C" fn transparent_fn(p: TransparentBadFn) { }
+// ^ possible FIXME: it doesn't see the actual FnPtr's error...
+//   but at least it reports it elsewhere?
 
 pub extern "C" fn good3(fptr: Option<extern "C" fn()>) { }
 
-pub extern "C" fn good4(aptr: &[u8; 4 as usize]) { }
+pub extern "C" fn argument_with_assumptions_4(aptr: &[u8; 4 as usize]) { }
 
 pub extern "C" fn good5(s: StructWithProjection) { }
 
-pub extern "C" fn good6(s: StructWithProjectionAndLifetime) { }
+pub extern "C" fn argument_with_assumptions_6(s: StructWithProjectionAndLifetime) { }
 
 pub extern "C" fn good7(fptr: extern "C" fn() -> ()) { }
 
@@ -141,7 +146,7 @@ pub extern "C" fn good12(size: usize) { }
 
 pub extern "C" fn good13(n: TransparentInt) { }
 
-pub extern "C" fn good14(p: TransparentRef) { }
+pub extern "C" fn argument_with_assumptions_14(p: TransparentRef) { }
 
 pub extern "C" fn good15(p: TransparentLifetime) { }
 
@@ -149,7 +154,7 @@ pub extern "C" fn good16(p: TransparentUnit<ZeroSize>) { }
 
 pub extern "C" fn good17(p: TransparentCustomZst) { }
 
-#[allow(improper_ctypes_definitions)]
+#[allow(improper_c_fn_definitions)]
 pub extern "C" fn good18(_: &String) { }
 
 pub extern "C" fn good_i128_type(p: i128) { }
