@@ -790,6 +790,7 @@ fn doc_std(
 
 /// Prepare a compiler that will be able to document something for `target` at `stage`.
 fn prepare_doc_compiler(builder: &Builder<'_>, target: TargetSelection, stage: u32) -> Compiler {
+    assert!(stage > 0, "Cannot document anything in stage 0");
     let build_compiler = builder.compiler(stage - 1, builder.host_target);
     builder.std(build_compiler, target);
     build_compiler
@@ -1226,10 +1227,13 @@ fn symlink_dir_force(config: &Config, original: &Path, link: &Path) {
     );
 }
 
+/// Builds the Rust compiler book.
 #[derive(Ord, PartialOrd, Debug, Clone, Hash, PartialEq, Eq)]
 pub struct RustcBook {
     build_compiler: Compiler,
     target: TargetSelection,
+    /// Test that the examples of lints in the book produce the correct lints in the expected
+    /// format.
     validate: bool,
 }
 
@@ -1331,8 +1335,8 @@ impl Step for RustcBook {
 }
 
 /// Documents the reference.
-/// It is always done using a stage 1+ compiler, because it references in-tree compiler/stdlib
-/// concepts.
+/// It has to always be done using a stage 1+ compiler, because it references in-tree
+/// compiler/stdlib concepts.
 #[derive(Ord, PartialOrd, Debug, Clone, Hash, PartialEq, Eq)]
 pub struct Reference {
     build_compiler: Compiler,
