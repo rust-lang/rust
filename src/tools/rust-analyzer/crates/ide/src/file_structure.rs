@@ -213,7 +213,6 @@ fn structure_node(node: &SyntaxNode, config: &FileStructureConfig) -> Option<Str
                     detail: it.ty().map(|ty| ty.to_string()),
                     deprecated: false,
                 };
-
                 Some(node)
             },
             ast::ExternBlock(it) => {

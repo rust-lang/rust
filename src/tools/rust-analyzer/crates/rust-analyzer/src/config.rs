@@ -3083,7 +3083,7 @@ macro_rules! _config_data {
     }) => {
         /// Default config values for this grouping.
         #[allow(non_snake_case)]
-        #[derive(Debug, Clone )]
+        #[derive(Debug, Clone)]
         struct $name { $($field: $ty,)* }
 
         impl_for_config_data!{
