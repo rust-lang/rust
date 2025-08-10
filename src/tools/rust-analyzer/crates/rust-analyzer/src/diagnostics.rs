@@ -26,6 +26,19 @@ pub struct DiagnosticsMapConfig {
 
 pub(crate) type DiagnosticsGeneration = usize;
 
+#[derive(Debug, Clone)]
+pub(crate) struct WorkspaceFlycheckDiagnostic {
+    pub(crate) generation: DiagnosticsGeneration,
+    pub(crate) per_package:
+        FxHashMap<Option<Arc<PackageId>>, FxHashMap<FileId, Vec<lsp_types::Diagnostic>>>,
+}
+
+impl WorkspaceFlycheckDiagnostic {
+    fn new(generation: DiagnosticsGeneration) -> Self {
+        WorkspaceFlycheckDiagnostic { generation, per_package: Default::default() }
+    }
+}
+
 #[derive(Debug, Default, Clone)]
 pub(crate) struct DiagnosticCollection {
     // FIXME: should be FxHashMap<FileId, Vec<ra_id::Diagnostic>>
@@ -33,9 +46,7 @@ pub(crate) struct DiagnosticCollection {
         FxHashMap<FileId, (DiagnosticsGeneration, Vec<lsp_types::Diagnostic>)>,
     pub(crate) native_semantic:
         FxHashMap<FileId, (DiagnosticsGeneration, Vec<lsp_types::Diagnostic>)>,
-    // FIXME: should be Vec<flycheck::Diagnostic>
-    pub(crate) check:
-        Vec<FxHashMap<Option<Arc<PackageId>>, FxHashMap<FileId, Vec<lsp_types::Diagnostic>>>>,
+    pub(crate) check: Vec<WorkspaceFlycheckDiagnostic>,
     pub(crate) check_fixes: CheckFixes,
     changes: FxHashSet<FileId>,
     /// Counter for supplying a new generation number for diagnostics.
@@ -57,7 +68,7 @@ impl DiagnosticCollection {
         let Some(check) = self.check.get_mut(flycheck_id) else {
             return;
         };
-        self.changes.extend(check.drain().flat_map(|(_, v)| v.into_keys()));
+        self.changes.extend(check.per_package.drain().flat_map(|(_, v)| v.into_keys()));
         if let Some(fixes) = Arc::make_mut(&mut self.check_fixes).get_mut(flycheck_id) {
             fixes.clear();
         }
@@ -66,7 +77,9 @@ impl DiagnosticCollection {
     pub(crate) fn clear_check_all(&mut self) {
         Arc::make_mut(&mut self.check_fixes).clear();
         self.changes.extend(
-            self.check.iter_mut().flat_map(|it| it.drain().flat_map(|(_, v)| v.into_keys())),
+            self.check
+                .iter_mut()
+                .flat_map(|it| it.per_package.drain().flat_map(|(_, v)| v.into_keys())),
         )
     }
 
@@ -79,11 +92,21 @@ impl DiagnosticCollection {
             return;
         };
         let package_id = Some(package_id);
-        if let Some(checks) = check.remove(&package_id) {
+        if let Some(checks) = check.per_package.remove(&package_id) {
             self.changes.extend(checks.into_keys());
         }
         if let Some(fixes) = Arc::make_mut(&mut self.check_fixes).get_mut(flycheck_id) {
             fixes.remove(&package_id);
+        }
+    }
+
+    pub(crate) fn clear_check_older_than(
+        &mut self,
+        flycheck_id: usize,
+        generation: DiagnosticsGeneration,
+    ) {
+        if self.check[flycheck_id].generation < generation {
+            self.clear_check(flycheck_id);
         }
     }
 
@@ -96,15 +119,23 @@ impl DiagnosticCollection {
     pub(crate) fn add_check_diagnostic(
         &mut self,
         flycheck_id: usize,
+        generation: DiagnosticsGeneration,
         package_id: &Option<Arc<PackageId>>,
         file_id: FileId,
         diagnostic: lsp_types::Diagnostic,
         fix: Option<Box<Fix>>,
     ) {
         if self.check.len() <= flycheck_id {
-            self.check.resize_with(flycheck_id + 1, Default::default);
+            self.check
+                .resize_with(flycheck_id + 1, || WorkspaceFlycheckDiagnostic::new(generation));
+        }
+
+        // Getting message from old generation. Might happen in restarting checks.
+        if self.check[flycheck_id].generation > generation {
+            return;
         }
         let diagnostics = self.check[flycheck_id]
+            .per_package
             .entry(package_id.clone())
             .or_default()
             .entry(file_id)
@@ -177,7 +208,7 @@ impl DiagnosticCollection {
         let check = self
             .check
             .iter()
-            .flat_map(|it| it.values())
+            .flat_map(|it| it.per_package.values())
             .filter_map(move |it| it.get(&file_id))
             .flatten();
         native_syntax.chain(native_semantic).chain(check)
