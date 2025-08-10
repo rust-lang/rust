@@ -1,5 +1,6 @@
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::LangItem;
+use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::bug;
@@ -10,11 +11,12 @@ use rustc_middle::ty::{
 };
 use rustc_span::sym;
 use rustc_trait_selection::traits;
-use tracing::debug;
+use tracing::{debug, instrument};
 use traits::translate_args;
 
 use crate::errors::UnexpectedFnPtrAssociatedItem;
 
+#[instrument(level = "debug", skip(tcx), ret)]
 fn resolve_instance_raw<'tcx>(
     tcx: TyCtxt<'tcx>,
     key: ty::PseudoCanonicalInput<'tcx, (DefId, GenericArgsRef<'tcx>)>,
@@ -90,13 +92,30 @@ fn resolve_instance_raw<'tcx>(
             let ty = args.type_at(0);
             ty::InstanceKind::AsyncDropGlue(def_id, ty)
         } else {
-            debug!(" => free item");
+            debug!(" => free or inherent item");
             ty::InstanceKind::Item(def_id)
         };
 
         Ok(Some(Instance { def, args }))
     };
-    debug!("resolve_instance: result={:?}", result);
+    if let Ok(Some(Instance { def: ty::InstanceKind::Item(def_id), args })) = result
+        && matches!(tcx.def_kind(def_id), DefKind::Const | DefKind::AssocConst)
+    {
+        debug!(" => resolved to const item");
+        let ct = tcx.const_of_item(def_id).instantiate(tcx, args);
+        debug!("ct={ct:?}");
+        if let ty::ConstKind::Unevaluated(uv) = ct.kind() {
+            if tcx.def_kind(uv.def) == DefKind::AnonConst {
+                return Ok(Some(ty::Instance {
+                    def: ty::InstanceKind::Item(uv.def),
+                    args: uv.args,
+                }));
+            } else {
+                let input = PseudoCanonicalInput { typing_env, value: (uv.def, uv.args) };
+                return tcx.resolve_instance_raw(input);
+            }
+        }
+    }
     result
 }
 
