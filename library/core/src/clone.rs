@@ -153,10 +153,14 @@ mod uninit;
 /// Standard library collections such as
 /// [`HashMap`], [`HashSet`], [`BTreeMap`], [`BTreeSet`] and [`BinaryHeap`]
 /// rely on their keys respecting this property for correct behavior.
+/// Furthermore, these collections require that cloning a key preserves the outcome of the
+/// [`Hash`] and [`Ord`] methods. Thankfully, this follows automatically from `x.clone() == x`
+/// if `Hash` and `Ord` are correctly implemented according to their own requirements.
 ///
-/// This property is automatically satisfied when deriving both `Clone` and [`PartialEq`]
-/// using `#[derive(Clone, PartialEq)]` or when additionally deriving [`Eq`]
-/// using `#[derive(Clone, PartialEq, Eq)]`.
+/// When deriving both `Clone` and [`PartialEq`] using `#[derive(Clone, PartialEq)]`
+/// or when additionally deriving [`Eq`] using `#[derive(Clone, PartialEq, Eq)]`,
+/// then this property is automatically upheld – provided that it is satisfied by
+/// the underlying types.
 ///
 /// Violating this property is a logic error. The behavior resulting from a logic error is not
 /// specified, but users of the trait must ensure that such logic errors do *not* result in
