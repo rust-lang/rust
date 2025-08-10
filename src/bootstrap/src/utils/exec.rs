@@ -15,7 +15,6 @@ use std::hash::Hash;
 use std::io::{BufWriter, Write};
 use std::panic::Location;
 use std::path::Path;
-use std::process;
 use std::process::{
     Child, ChildStderr, ChildStdout, Command, CommandArgs, CommandEnvs, ExitStatus, Output, Stdio,
 };
@@ -26,10 +25,10 @@ use build_helper::ci::CiEnv;
 use build_helper::drop_bomb::DropBomb;
 use build_helper::exit;
 
-use crate::PathBuf;
 use crate::core::config::DryRun;
 #[cfg(feature = "tracing")]
 use crate::trace_cmd;
+use crate::{PathBuf, t};
 
 /// What should be done when the command fails.
 #[derive(Debug, Copy, Clone)]
@@ -121,17 +120,9 @@ impl CommandProfiler {
         entry.traces.push(ExecutionTrace::CacheHit);
     }
 
-    pub fn report_summary(&self, start_time: Instant) {
-        let pid = process::id();
-        let filename = format!("bootstrap-profile-{pid}.txt");
-
-        let file = match File::create(&filename) {
-            Ok(f) => f,
-            Err(e) => {
-                eprintln!("Failed to create profiler output file: {e}");
-                return;
-            }
-        };
+    /// Report summary of executed commands file at the specified `path`.
+    pub fn report_summary(&self, path: &Path, start_time: Instant) {
+        let file = t!(File::create(path));
 
         let mut writer = BufWriter::new(file);
         let stats = self.stats.lock().unwrap();
@@ -221,8 +212,6 @@ impl CommandProfiler {
         writeln!(writer, "Total cache hits: {total_cache_hits}").unwrap();
         writeln!(writer, "Estimated time saved due to cache hits: {total_saved_duration:.2?}")
             .unwrap();
-
-        println!("Command profiler report saved to {filename}");
     }
 }
 

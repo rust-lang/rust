@@ -2016,13 +2016,13 @@ to download LLVM rather than building it.
         &self.config.exec_ctx
     }
 
-    pub fn report_summary(&self, start_time: Instant) {
-        self.config.exec_ctx.profiler().report_summary(start_time);
+    pub fn report_summary(&self, path: &Path, start_time: Instant) {
+        self.config.exec_ctx.profiler().report_summary(path, start_time);
     }
 
     #[cfg(feature = "tracing")]
-    pub fn report_step_graph(self) {
-        self.step_graph.into_inner().store_to_dot_files();
+    pub fn report_step_graph(self, directory: &Path) {
+        self.step_graph.into_inner().store_to_dot_files(directory);
     }
 }
 

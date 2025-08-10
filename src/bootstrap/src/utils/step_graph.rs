@@ -1,8 +1,10 @@
 use std::collections::{HashMap, HashSet};
 use std::fmt::Debug;
 use std::io::BufWriter;
+use std::path::Path;
 
 use crate::core::builder::{AnyDebug, Step};
+use crate::t;
 
 /// Records the executed steps and their dependencies in a directed graph,
 /// which can then be rendered into a DOT file for visualization.
@@ -80,10 +82,10 @@ impl StepGraph {
         }
     }
 
-    pub fn store_to_dot_files(self) {
+    pub fn store_to_dot_files(self, directory: &Path) {
         for (key, graph) in self.graphs.into_iter() {
-            let filename = format!("bootstrap-steps{key}.dot");
-            graph.render(&filename).unwrap();
+            let filename = directory.join(format!("step-graph{key}.dot"));
+            t!(graph.render(&filename));
         }
     }
 }
@@ -147,7 +149,7 @@ impl DotGraph {
         self.key_to_index.get(key).copied()
     }
 
-    fn render(&self, path: &str) -> std::io::Result<()> {
+    fn render(&self, path: &Path) -> std::io::Result<()> {
         use std::io::Write;
 
         let mut file = BufWriter::new(std::fs::File::create(path)?);

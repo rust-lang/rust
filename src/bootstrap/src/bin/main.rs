@@ -18,8 +18,12 @@ use bootstrap::{
 #[cfg(feature = "tracing")]
 use tracing::instrument;
 
-fn is_bootstrap_profiling_enabled() -> bool {
+fn is_profiling_enabled() -> bool {
     env::var("BOOTSTRAP_PROFILE").is_ok_and(|v| v == "1")
+}
+
+fn is_tracing_enabled() -> bool {
+    is_profiling_enabled() || cfg!(feature = "tracing")
 }
 
 #[cfg_attr(feature = "tracing", instrument(level = "trace", name = "main"))]
@@ -102,6 +106,13 @@ fn main() {
     let dump_bootstrap_shims = config.dump_bootstrap_shims;
     let out_dir = config.out.clone();
 
+    let tracing_enabled = is_tracing_enabled();
+    let tracing_dir = out_dir.join("bootstrap-trace").join(std::process::id().to_string());
+    if tracing_enabled {
+        let _ = std::fs::remove_dir_all(&tracing_dir);
+        std::fs::create_dir_all(&tracing_dir).unwrap();
+    }
+
     debug!("creating new build based on config");
     let mut build = Build::new(config);
     build.build();
@@ -156,12 +167,16 @@ fn main() {
         }
     }
 
-    if is_bootstrap_profiling_enabled() {
-        build.report_summary(start_time);
+    if is_profiling_enabled() {
+        build.report_summary(&tracing_dir.join("command-stats.txt"), start_time);
     }
 
     #[cfg(feature = "tracing")]
-    build.report_step_graph();
+    build.report_step_graph(&tracing_dir);
+
+    if tracing_enabled {
+        eprintln!("Tracing/profiling output has been written to {}", tracing_dir.display());
+    }
 }
 
 fn check_version(config: &Config) -> Option<String> {
@@ -241,7 +256,7 @@ fn setup_tracing() -> impl Drop {
     let mut chrome_layer = tracing_chrome::ChromeLayerBuilder::new().include_args(true);
 
     // Writes the Chrome profile to trace-<unix-timestamp>.json if enabled
-    if !is_bootstrap_profiling_enabled() {
+    if !is_profiling_enabled() {
         chrome_layer = chrome_layer.writer(io::sink());
     }
 
