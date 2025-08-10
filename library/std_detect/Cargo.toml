@@ -21,7 +21,6 @@ is-it-maintained-open-issues = { repository = "rust-lang/stdarch" }
 maintenance = { status = "experimental" }
 
 [dependencies]
-cfg-if = "1.0.0"
 core = { path = "../core" }
 alloc = { path = "../alloc" }
 

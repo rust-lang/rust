@@ -101,8 +101,8 @@ impl Cache {
     }
 }
 
-cfg_if::cfg_if! {
-    if #[cfg(feature = "std_detect_env_override")] {
+cfg_select! {
+    feature = "std_detect_env_override" => {
         #[inline]
         fn disable_features(disable: &[u8], value: &mut Initializer) {
             if let Ok(disable) = core::str::from_utf8(disable) {
@@ -116,8 +116,8 @@ cfg_if::cfg_if! {
         fn initialize(mut value: Initializer) -> Initializer {
             use core::ffi::CStr;
             const RUST_STD_DETECT_UNSTABLE: &CStr = c"RUST_STD_DETECT_UNSTABLE";
-            cfg_if::cfg_if! {
-                if #[cfg(windows)] {
+            cfg_select! {
+                windows => {
                     use alloc::vec;
                     #[link(name = "kernel32")]
                     unsafe extern "system" {
@@ -132,7 +132,8 @@ cfg_if::cfg_if! {
                             disable_features(&env[..len as usize], &mut value);
                         }
                     }
-                } else {
+                }
+                _ => {
                     let env = unsafe {
                         libc::getenv(RUST_STD_DETECT_UNSTABLE.as_ptr())
                     };
@@ -146,7 +147,8 @@ cfg_if::cfg_if! {
             do_initialize(value);
             value
         }
-    } else {
+    }
+    _ => {
         #[inline]
         fn initialize(value: Initializer) -> Initializer {
             do_initialize(value);

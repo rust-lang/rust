@@ -122,8 +122,8 @@ unsafe extern "C" {
     pub fn _Unwind_GetDataRelBase(ctx: *mut _Unwind_Context) -> _Unwind_Ptr;
 }
 
-cfg_if::cfg_if! {
-if #[cfg(any(target_vendor = "apple", target_os = "netbsd", not(target_arch = "arm")))] {
+cfg_select! {
+any(target_vendor = "apple", target_os = "netbsd", not(target_arch = "arm")) => {
     // Not ARM EHABI
     //
     // 32-bit ARM on iOS/tvOS/watchOS use either DWARF/Compact unwinding or
@@ -150,7 +150,8 @@ if #[cfg(any(target_vendor = "apple", target_os = "netbsd", not(target_arch = "a
         pub fn _Unwind_FindEnclosingFunction(pc: *mut c_void) -> *mut c_void;
     }
 
-} else {
+}
+_ => {
     // ARM EHABI
     #[repr(C)]
     #[derive(Copy, Clone, PartialEq)]
@@ -257,10 +258,10 @@ if #[cfg(any(target_vendor = "apple", target_os = "netbsd", not(target_arch = "a
         pc
     }
 }
-} // cfg_if!
+} // cfg_select!
 
-cfg_if::cfg_if! {
-if #[cfg(all(target_vendor = "apple", not(target_os = "watchos"), target_arch = "arm"))] {
+cfg_select! {
+all(target_vendor = "apple", not(target_os = "watchos"), target_arch = "arm") => {
     // 32-bit ARM Apple (except for watchOS armv7k specifically) uses SjLj and
     // does not provide _Unwind_Backtrace()
     unsafe extern "C-unwind" {
@@ -268,7 +269,8 @@ if #[cfg(all(target_vendor = "apple", not(target_os = "watchos"), target_arch = 
     }
 
     pub use _Unwind_SjLj_RaiseException as _Unwind_RaiseException;
-} else {
+}
+_ => {
     #[cfg_attr(
         all(feature = "llvm-libunwind", any(target_os = "fuchsia", target_os = "linux", target_os = "xous")),
         link(name = "unwind", kind = "static", modifiers = "-bundle")
@@ -286,13 +288,13 @@ if #[cfg(all(target_vendor = "apple", not(target_os = "watchos"), target_arch = 
                                  -> _Unwind_Reason_Code;
     }
 }
-} // cfg_if!
+} // cfg_select!
 
-cfg_if::cfg_if! {
-if #[cfg(any(
-        all(windows, any(target_arch = "aarch64", target_arch = "x86_64"), target_env = "gnu"),
-        target_os = "cygwin",
-    ))] {
+cfg_select! {
+any(
+    all(windows, any(target_arch = "aarch64", target_arch = "x86_64"), target_env = "gnu"),
+    target_os = "cygwin",
+) => {
     // We declare these as opaque types. This is fine since you just need to
     // pass them to _GCC_specific_handler and forget about them.
     pub enum EXCEPTION_RECORD {}
@@ -316,4 +318,5 @@ if #[cfg(any(
                                 -> EXCEPTION_DISPOSITION;
     }
 }
-} // cfg_if!
+_ => {}
+} // cfg_select!
