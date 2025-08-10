@@ -1,13 +1,15 @@
 #![forbid(unsafe_op_in_unsafe_fn)]
 
-cfg_if::cfg_if! {
-    if #[cfg(unix)] {
+cfg_select! {
+    unix => {
         mod unix;
         pub use unix::{AnonPipe, pipe};
-    } else if #[cfg(windows)] {
+    }
+    windows => {
         mod windows;
         pub use windows::{AnonPipe, pipe};
-    } else {
+    }
+    _ => {
         mod unsupported;
         pub use unsupported::{AnonPipe, pipe};
     }
