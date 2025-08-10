@@ -72,6 +72,8 @@
 //! or not.
 
 use std::collections::{BTreeMap, HashMap};
+use std::fmt;
+use std::fmt::Write;
 use std::ops::Range;
 
 use ucd_parse::Codepoints;
@@ -222,7 +224,7 @@ fn main() {
     let ranges_by_property = &unicode_data.ranges;
 
     if let Some(path) = test_path {
-        std::fs::write(&path, generate_tests(&write_location, ranges_by_property)).unwrap();
+        std::fs::write(&path, generate_tests(ranges_by_property).unwrap()).unwrap();
     }
 
     let mut table_file = String::new();
@@ -326,66 +328,57 @@ fn fmt_list<V: std::fmt::Debug>(values: impl IntoIterator<Item = V>) -> String {
     out
 }
 
-fn generate_tests(data_path: &str, ranges: &[(&str, Vec<Range<u32>>)]) -> String {
+fn generate_tests(ranges: &[(&str, Vec<Range<u32>>)]) -> Result<String, fmt::Error> {
     let mut s = String::new();
-    s.push_str("#![allow(incomplete_features, unused)]\n");
-    s.push_str("#![feature(const_generics)]\n\n");
-    s.push_str("\n#[allow(unused)]\nuse std::hint;\n");
-    s.push_str(&format!("#[path = \"{data_path}\"]\n"));
-    s.push_str("mod unicode_data;\n\n");
-
-    s.push_str("\nfn main() {\n");
-
+    writeln!(s, "#![feature(core_intrinsics)]")?;
+    writeln!(s, "#![allow(internal_features, dead_code)]")?;
+    writeln!(s, "// ignore-tidy-filelength")?;
+    writeln!(s, "use std::intrinsics;")?;
+    writeln!(s, "mod unicode_data;")?;
+    writeln!(s, "fn main() {{")?;
     for (property, ranges) in ranges {
-        s.push_str(&format!(r#"    println!("Testing {property}");"#));
-        s.push('\n');
-        s.push_str(&format!("    {}_true();\n", property.to_lowercase()));
-        s.push_str(&format!("    {}_false();\n", property.to_lowercase()));
-        let mut is_true = Vec::new();
-        let mut is_false = Vec::new();
-        for ch_num in 0..(std::char::MAX as u32) {
-            if std::char::from_u32(ch_num).is_none() {
-                continue;
-            }
-            if ranges.iter().any(|r| r.contains(&ch_num)) {
-                is_true.push(ch_num);
-            } else {
-                is_false.push(ch_num);
-            }
-        }
+        let prop = property.to_lowercase();
+        writeln!(s, r#"    println!("Testing {prop}");"#)?;
+        writeln!(s, "    {prop}_true();")?;
+        writeln!(s, "    {prop}_false();")?;
+        let (is_true, is_false): (Vec<_>, Vec<_>) = (char::MIN..=char::MAX)
+            .filter(|c| !c.is_ascii())
+            .map(u32::from)
+            .partition(|c| ranges.iter().any(|r| r.contains(c)));
 
-        s.push_str(&format!("    fn {}_true() {{\n", property.to_lowercase()));
-        generate_asserts(&mut s, property, &is_true, true);
-        s.push_str("    }\n\n");
-        s.push_str(&format!("    fn {}_false() {{\n", property.to_lowercase()));
-        generate_asserts(&mut s, property, &is_false, false);
-        s.push_str("    }\n\n");
+        writeln!(s, "    fn {prop}_true() {{")?;
+        generate_asserts(&mut s, &prop, &is_true, true)?;
+        writeln!(s, "    }}")?;
+
+        writeln!(s, "    fn {prop}_false() {{")?;
+        generate_asserts(&mut s, &prop, &is_false, false)?;
+        writeln!(s, "    }}")?;
     }
 
-    s.push('}');
-    s
+    writeln!(s, "}}")?;
+    Ok(s)
 }
 
-fn generate_asserts(s: &mut String, property: &str, points: &[u32], truthy: bool) {
+fn generate_asserts(
+    s: &mut String,
+    prop: &str,
+    points: &[u32],
+    truthy: bool,
+) -> Result<(), fmt::Error> {
+    let truthy = if truthy { "" } else { "!" };
     for range in ranges_from_set(points) {
-        if range.end == range.start + 1 {
-            s.push_str(&format!(
-                "        assert!({}unicode_data::{}::lookup({:?}), \"{}\");\n",
-                if truthy { "" } else { "!" },
-                property.to_lowercase(),
-                std::char::from_u32(range.start).unwrap(),
-                range.start,
-            ));
-        } else {
-            s.push_str(&format!("        for chn in {range:?}u32 {{\n"));
-            s.push_str(&format!(
-                "            assert!({}unicode_data::{}::lookup(std::char::from_u32(chn).unwrap()), \"{{:?}}\", chn);\n",
-                if truthy { "" } else { "!" },
-                property.to_lowercase(),
-            ));
-            s.push_str("        }\n");
+        let start = char::from_u32(range.start).unwrap();
+        let end = char::from_u32(range.end - 1).unwrap();
+        match range.len() {
+            1 => writeln!(s, "        assert!({truthy}unicode_data::{prop}::lookup({start:?}));")?,
+            _ => {
+                writeln!(s, "        for c in {start:?}..={end:?} {{")?;
+                writeln!(s, "            assert!({truthy}unicode_data::{prop}::lookup(c));")?;
+                writeln!(s, "        }}")?;
+            }
         }
     }
+    Ok(())
 }
 
 /// Group the elements of `set` into contigous ranges
