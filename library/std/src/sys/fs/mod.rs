@@ -118,7 +118,9 @@ pub fn set_permissions_nofollow(path: &Path, perm: crate::fs::Permissions) -> io
 
 #[cfg(not(unix))]
 pub fn set_permissions_nofollow(_path: &Path, _perm: crate::fs::Permissions) -> io::Result<()> {
-    crate::unimplemented!("set_permissions_nofollow is not implmented on non-unix platforms")
+    crate::unimplemented!(
+        "`set_permissions_nofollow` is currently only implemented on Unix platforms"
+    )
 }
 
 pub fn canonicalize(path: &Path) -> io::Result<PathBuf> {

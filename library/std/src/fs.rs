@@ -3134,9 +3134,9 @@ pub fn set_permissions<P: AsRef<Path>>(path: P, perm: Permissions) -> io::Result
 ///
 /// # Platform-specific behavior
 ///
-/// Currently unimplmented on windows.
+/// Currently unimplemented on Windows.
 ///
-/// On unix platforms, this results in a [`FilesystemLoop`] error if the last element is a symlink.
+/// On Unix platforms, this results in a [`FilesystemLoop`] error if the last element is a symlink.
 ///
 /// This behavior may change in the future.
 ///
