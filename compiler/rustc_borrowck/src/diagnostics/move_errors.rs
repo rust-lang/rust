@@ -571,9 +571,11 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
     fn get_closure_bound_clause_span(&self, def_id: DefId) -> Span {
         let tcx = self.infcx.tcx;
         let typeck_result = tcx.typeck(self.mir_def_id());
-        let Some(closure_def_id) = def_id.as_local() else { return DUMMY_SP };
-        let hir::Node::Expr(expr) = tcx.hir_node_by_def_id(closure_def_id) else { return DUMMY_SP };
-        let hir::Node::Expr(parent) = tcx.parent_hir_node(expr.hir_id) else { return DUMMY_SP };
+        // Check whether the closure is an argument to a call, if so,
+        // get the instantiated where-bounds of that call.
+        let closure_hir_id = tcx.local_def_id_to_hir_id(def_id.expect_local());
+        let hir::Node::Expr(parent) = tcx.parent_hir_node(closure_hir_id) else { return DUMMY_SP };
+
         let predicates = match parent.kind {
             hir::ExprKind::Call(callee, _) => {
                 let Some(ty) = typeck_result.node_type_opt(callee.hir_id) else { return DUMMY_SP };
@@ -589,9 +591,9 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             }
             _ => return DUMMY_SP,
         };
+
+        // Check whether one of the where-bounds requires the closure to impl `Fn[Mut]`.
         for (pred, span) in predicates.predicates.iter().zip(predicates.spans.iter()) {
-            tracing::info!(?pred);
-            tracing::info!(?span);
             if let Some(clause) = pred.as_trait_clause()
                 && let ty::Closure(clause_closure_def_id, _) = clause.self_ty().skip_binder().kind()
                 && *clause_closure_def_id == def_id
