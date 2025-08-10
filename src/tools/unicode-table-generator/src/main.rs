@@ -187,33 +187,19 @@ fn load_data() -> UnicodeData {
         }
     }
 
-    let mut properties: HashMap<&'static str, Vec<Range<u32>>> = properties
+    let mut properties: Vec<(&'static str, Vec<Range<u32>>)> = properties
         .into_iter()
-        .map(|(k, v)| {
-            (
-                k,
-                v.into_iter()
-                    .flat_map(|codepoints| match codepoints {
-                        Codepoints::Single(c) => c
-                            .scalar()
-                            .map(|ch| ch as u32..ch as u32 + 1)
-                            .into_iter()
-                            .collect::<Vec<_>>(),
-                        Codepoints::Range(c) => c
-                            .into_iter()
-                            .flat_map(|c| c.scalar().map(|ch| ch as u32..ch as u32 + 1))
-                            .collect::<Vec<_>>(),
-                    })
-                    .collect::<Vec<Range<u32>>>(),
-            )
+        .map(|(prop, codepoints)| {
+            let codepoints = codepoints
+                .into_iter()
+                .flatten()
+                .flat_map(|cp| cp.scalar())
+                .map(u32::from)
+                .collect::<Vec<_>>();
+            (prop, ranges_from_set(&codepoints))
         })
         .collect();
 
-    for ranges in properties.values_mut() {
-        merge_ranges(ranges);
-    }
-
-    let mut properties = properties.into_iter().collect::<Vec<_>>();
     properties.sort_by_key(|p| p.0);
     UnicodeData { ranges: properties, to_lower, to_upper }
 }
@@ -402,48 +388,13 @@ fn generate_asserts(s: &mut String, property: &str, points: &[u32], truthy: bool
     }
 }
 
+/// Group the elements of `set` into contigous ranges
 fn ranges_from_set(set: &[u32]) -> Vec<Range<u32>> {
-    let mut ranges = set.iter().map(|e| (*e)..(*e + 1)).collect::<Vec<Range<u32>>>();
-    merge_ranges(&mut ranges);
-    ranges
-}
-
-fn merge_ranges(ranges: &mut Vec<Range<u32>>) {
-    loop {
-        let mut new_ranges = Vec::new();
-        let mut idx_iter = 0..(ranges.len() - 1);
-        let mut should_insert_last = true;
-        while let Some(idx) = idx_iter.next() {
-            let cur = ranges[idx].clone();
-            let next = ranges[idx + 1].clone();
-            if cur.end == next.start {
-                if idx_iter.next().is_none() {
-                    // We're merging the last element
-                    should_insert_last = false;
-                }
-                new_ranges.push(cur.start..next.end);
-            } else {
-                // We're *not* merging the last element
-                should_insert_last = true;
-                new_ranges.push(cur);
-            }
-        }
-        if should_insert_last {
-            new_ranges.push(ranges.last().unwrap().clone());
-        }
-        if new_ranges.len() == ranges.len() {
-            *ranges = new_ranges;
-            break;
-        } else {
-            *ranges = new_ranges;
-        }
-    }
-
-    let mut last_end = None;
-    for range in ranges {
-        if let Some(last) = last_end {
-            assert!(range.start > last, "{range:?}");
-        }
-        last_end = Some(range.end);
-    }
+    set.chunk_by(|a, b| a + 1 == *b)
+        .map(|chunk| {
+            let start = *chunk.first().unwrap();
+            let end = *chunk.last().unwrap();
+            start..(end + 1)
+        })
+        .collect()
 }
