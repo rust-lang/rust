@@ -10,7 +10,7 @@ LL |             field: MissingType
   ::: $DIR/span-from-proc-macro.rs:8:1
    |
 LL | #[error_from_attribute]
-   | ----------------------- in this procedural macro expansion
+   | ----------------------- in this attribute macro expansion
 
 error[E0412]: cannot find type `OtherMissingType` in this scope
   --> $DIR/auxiliary/span-from-proc-macro.rs:42:21

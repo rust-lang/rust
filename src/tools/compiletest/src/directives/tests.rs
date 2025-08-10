@@ -637,6 +637,7 @@ fn matches_env() {
         ("x86_64-unknown-linux-gnu", "gnu"),
         ("x86_64-fortanix-unknown-sgx", "sgx"),
         ("arm-unknown-linux-musleabi", "musl"),
+        ("aarch64-apple-ios-macabi", "macabi"),
     ];
     for (target, env) in envs {
         let config: Config = cfg().target(target).build();
@@ -647,11 +648,7 @@ fn matches_env() {
 
 #[test]
 fn matches_abi() {
-    let abis = [
-        ("aarch64-apple-ios-macabi", "macabi"),
-        ("x86_64-unknown-linux-gnux32", "x32"),
-        ("arm-unknown-linux-gnueabi", "eabi"),
-    ];
+    let abis = [("x86_64-unknown-linux-gnux32", "x32"), ("arm-unknown-linux-gnueabi", "eabi")];
     for (target, abi) in abis {
         let config: Config = cfg().target(target).build();
         assert!(config.matches_abi(abi), "{target} {abi}");

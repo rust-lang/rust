@@ -517,7 +517,7 @@ impl Build {
             local_rebuild: config.local_rebuild,
             fail_fast: config.cmd.fail_fast(),
             doc_tests: config.cmd.doc_tests(),
-            verbosity: config.verbose,
+            verbosity: config.exec_ctx.verbosity as usize,
 
             host_target: config.host_target,
             hosts: config.hosts.clone(),
@@ -1105,17 +1105,6 @@ impl Build {
         self.msg(Kind::Doc, compiler.stage, what, compiler.host, target.into())
     }
 
-    #[must_use = "Groups should not be dropped until the Step finishes running"]
-    #[track_caller]
-    fn msg_build(
-        &self,
-        compiler: Compiler,
-        what: impl Display,
-        target: impl Into<Option<TargetSelection>>,
-    ) -> Option<gha::Group> {
-        self.msg(Kind::Build, compiler.stage, what, compiler.host, target)
-    }
-
     /// Return a `Group` guard for a [`Step`] that is built for each `--stage`.
     ///
     /// [`Step`]: crate::core::builder::Step
@@ -1162,20 +1151,21 @@ impl Build {
 
     #[must_use = "Groups should not be dropped until the Step finishes running"]
     #[track_caller]
-    fn msg_sysroot_tool(
+    fn msg_rustc_tool(
         &self,
         action: impl Into<Kind>,
-        stage: u32,
+        build_stage: u32,
         what: impl Display,
         host: TargetSelection,
         target: TargetSelection,
     ) -> Option<gha::Group> {
         let action = action.into().description();
         let msg = |fmt| format!("{action} {what} {fmt}");
+
         let msg = if host == target {
-            msg(format_args!("(stage{stage} -> stage{}, {target})", stage + 1))
+            msg(format_args!("(stage{build_stage} -> stage{}, {target})", build_stage + 1))
         } else {
-            msg(format_args!("(stage{stage}:{host} -> stage{}:{target})", stage + 1))
+            msg(format_args!("(stage{build_stage}:{host} -> stage{}:{target})", build_stage + 1))
         };
         self.group(&msg)
     }

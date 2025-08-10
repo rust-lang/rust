@@ -193,5 +193,83 @@ error: this ident consists of a single char
 LL | fn wrong_pythagoras(a: f32, b: f32) -> f32 {
    |                             ^
 
-error: aborting due to 32 previous errors
+error: this ident consists of a single char
+  --> tests/ui/min_ident_chars.rs:137:19
+   |
+LL |     fn fmt(&self, g: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+   |                   ^
+
+error: this ident consists of a single char
+  --> tests/ui/min_ident_chars.rs:144:14
+   |
+LL |     let a = |f: i8| f;
+   |              ^
+
+error: this ident consists of a single char
+  --> tests/ui/min_ident_chars.rs:144:9
+   |
+LL |     let a = |f: i8| f;
+   |         ^
+
+error: this ident consists of a single char
+  --> tests/ui/min_ident_chars.rs:149:7
+   |
+LL | trait D {
+   |       ^
+
+error: this ident consists of a single char
+  --> tests/ui/min_ident_chars.rs:151:10
+   |
+LL |     fn f(g: i32);
+   |          ^
+
+error: this ident consists of a single char
+  --> tests/ui/min_ident_chars.rs:151:8
+   |
+LL |     fn f(g: i32);
+   |        ^
+
+error: this ident consists of a single char
+  --> tests/ui/min_ident_chars.rs:156:8
+   |
+LL |     fn g(arg: i8) {
+   |        ^
+
+error: this ident consists of a single char
+  --> tests/ui/min_ident_chars.rs:158:12
+   |
+LL |         fn c(d: u8) {}
+   |            ^
+
+error: this ident consists of a single char
+  --> tests/ui/min_ident_chars.rs:158:14
+   |
+LL |         fn c(d: u8) {}
+   |              ^
+
+error: this ident consists of a single char
+  --> tests/ui/min_ident_chars.rs:166:12
+   |
+LL |         fn h() {}
+   |            ^
+
+error: this ident consists of a single char
+  --> tests/ui/min_ident_chars.rs:168:18
+   |
+LL |         fn inner(a: i32) {}
+   |                  ^
+
+error: this ident consists of a single char
+  --> tests/ui/min_ident_chars.rs:170:18
+   |
+LL |         let a = |f: String| f;
+   |                  ^
+
+error: this ident consists of a single char
+  --> tests/ui/min_ident_chars.rs:170:13
+   |
+LL |         let a = |f: String| f;
+   |             ^
+
+error: aborting due to 45 previous errors
 

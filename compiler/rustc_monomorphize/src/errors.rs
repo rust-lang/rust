@@ -1,21 +1,16 @@
-use std::path::PathBuf;
-
 use rustc_macros::{Diagnostic, LintDiagnostic};
-use rustc_middle::ty::Ty;
+use rustc_middle::ty::{Instance, Ty};
 use rustc_span::{Span, Symbol};
 
 #[derive(Diagnostic)]
 #[diag(monomorphize_recursion_limit)]
-pub(crate) struct RecursionLimit {
+pub(crate) struct RecursionLimit<'tcx> {
     #[primary_span]
     pub span: Span,
-    pub shrunk: String,
+    pub instance: Instance<'tcx>,
     #[note]
     pub def_span: Span,
     pub def_path_str: String,
-    #[note(monomorphize_written_to_path)]
-    pub was_written: bool,
-    pub path: PathBuf,
 }
 
 #[derive(Diagnostic)]
@@ -53,10 +48,18 @@ pub(crate) struct CouldntDumpMonoStats {
 
 #[derive(Diagnostic)]
 #[diag(monomorphize_encountered_error_while_instantiating)]
-pub(crate) struct EncounteredErrorWhileInstantiating {
+pub(crate) struct EncounteredErrorWhileInstantiating<'tcx> {
     #[primary_span]
     pub span: Span,
-    pub formatted_item: String,
+    pub kind: &'static str,
+    pub instance: Instance<'tcx>,
+}
+
+#[derive(Diagnostic)]
+#[diag(monomorphize_encountered_error_while_instantiating_global_asm)]
+pub(crate) struct EncounteredErrorWhileInstantiatingGlobalAsm {
+    #[primary_span]
+    pub span: Span,
 }
 
 #[derive(Diagnostic)]

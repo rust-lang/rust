@@ -289,3 +289,10 @@ mod issue9120 {
         //~^ search_is_some
     }
 }
+
+fn issue15102() {
+    let values = [None, Some(3)];
+    let has_even = values.iter().any(|v| matches!(&v, Some(x) if x % 2 == 0));
+    //~^ search_is_some
+    println!("{has_even}");
+}

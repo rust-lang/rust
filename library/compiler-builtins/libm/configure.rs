@@ -1,9 +1,9 @@
 // Configuration shared with both libm and libm-test
 
+use std::env;
 use std::path::PathBuf;
-use std::process::{Command, Stdio};
-use std::{env, str};
 
+#[derive(Debug)]
 #[allow(dead_code)]
 pub struct Config {
     pub manifest_dir: PathBuf,
@@ -33,26 +33,6 @@ impl Config {
             .map(|s| s.to_lowercase().replace("_", "-"))
             .collect();
 
-        // Query rustc for options that Cargo does not provide env for. The bootstrap hack is used
-        // to get consistent output regardless of channel (`f16`/`f128` config options are hidden
-        // on stable otherwise).
-        let mut cmd = Command::new(env::var("RUSTC").unwrap());
-        cmd.args(["--print=cfg", "--target", &target_triple])
-            .env("RUSTC_BOOTSTRAP", "1")
-            .stderr(Stdio::inherit());
-        let out = cmd
-            .output()
-            .unwrap_or_else(|e| panic!("failed to run `{cmd:?}`: {e}"));
-        let rustc_cfg = str::from_utf8(&out.stdout).unwrap();
-
-        // If we couldn't query `rustc` (e.g. a custom JSON target was used), make the safe
-        // choice and leave `f16` and `f128` disabled.
-        let rustc_output_ok = out.status.success();
-        let reliable_f128 =
-            rustc_output_ok && rustc_cfg.lines().any(|l| l == "target_has_reliable_f128");
-        let reliable_f16 =
-            rustc_output_ok && rustc_cfg.lines().any(|l| l == "target_has_reliable_f16");
-
         Self {
             target_triple,
             manifest_dir: PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap()),
@@ -66,8 +46,10 @@ impl Config {
             target_string: env::var("TARGET").unwrap(),
             target_vendor: env::var("CARGO_CFG_TARGET_VENDOR").unwrap(),
             target_features,
-            reliable_f128,
-            reliable_f16,
+            // Note that these are unstable options, so only show up with the nightly compiler or
+            // with `RUSTC_BOOTSTRAP=1` (which is required to use the types anyway).
+            reliable_f128: env::var_os("CARGO_CFG_TARGET_HAS_RELIABLE_F128").is_some(),
+            reliable_f16: env::var_os("CARGO_CFG_TARGET_HAS_RELIABLE_F16").is_some(),
         }
     }
 }

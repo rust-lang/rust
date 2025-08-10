@@ -194,6 +194,10 @@ impl Thread {
     }
 }
 
+pub(crate) fn current_os_id() -> Option<u64> {
+    None
+}
+
 pub fn available_parallelism() -> io::Result<NonZero<usize>> {
     cfg_if::cfg_if! {
         if #[cfg(target_feature = "atomics")] {

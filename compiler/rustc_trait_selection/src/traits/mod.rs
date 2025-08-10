@@ -763,7 +763,7 @@ fn instantiate_and_check_impossible_predicates<'tcx>(
     // Specifically check trait fulfillment to avoid an error when trying to resolve
     // associated items.
     if let Some(trait_def_id) = tcx.trait_of_assoc(key.0) {
-        let trait_ref = ty::TraitRef::from_method(tcx, trait_def_id, key.1);
+        let trait_ref = ty::TraitRef::from_assoc(tcx, trait_def_id, key.1);
         predicates.push(trait_ref.upcast(tcx));
     }
 

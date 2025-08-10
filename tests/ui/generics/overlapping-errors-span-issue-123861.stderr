@@ -15,7 +15,7 @@ help: add a parameter list
 LL | fn mainIterator<_ = _>() {}
    |                       ++
 
-error: defaults for type parameters are only allowed in `struct`, `enum`, `type`, or `trait` definitions
+error: defaults for generic parameters are not allowed here
   --> $DIR/overlapping-errors-span-issue-123861.rs:1:17
    |
 LL | fn mainIterator<_ = _> {}
@@ -35,7 +35,7 @@ error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0121`.
 Future incompatibility report: Future breakage diagnostic:
-error: defaults for type parameters are only allowed in `struct`, `enum`, `type`, or `trait` definitions
+error: defaults for generic parameters are not allowed here
   --> $DIR/overlapping-errors-span-issue-123861.rs:1:17
    |
 LL | fn mainIterator<_ = _> {}
