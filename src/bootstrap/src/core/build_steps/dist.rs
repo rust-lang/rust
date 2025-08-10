@@ -1389,38 +1389,39 @@ impl Step for Miri {
 }
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
-pub struct CodegenBackend {
-    pub compiler: Compiler,
-    pub backend: CodegenBackendKind,
+pub struct CraneliftCodegenBackend {
+    pub build_compiler: Compiler,
 }
 
-impl Step for CodegenBackend {
+impl Step for CraneliftCodegenBackend {
     type Output = Option<GeneratedTarball>;
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("compiler/rustc_codegen_cranelift")
+        // We only want to build the cranelift backend in `x dist` if the backend was enabled
+        // in rust.codegen-backends.
+        // Sadly, we don't have access to the actual target for which we're disting clif here..
+        // So we just use the host target.
+        let clif_enabled_by_default = run
+            .builder
+            .config
+            .enabled_codegen_backends(run.builder.host_target)
+            .contains(&CodegenBackendKind::Cranelift);
+        run.alias("rustc_codegen_cranelift").default_condition(clif_enabled_by_default)
     }
 
     fn make_run(run: RunConfig<'_>) {
-        for backend in run.builder.config.codegen_backends(run.target) {
-            if backend.is_llvm() {
-                continue; // Already built as part of rustc
-            }
-
-            run.builder.ensure(CodegenBackend {
-                compiler: run.builder.compiler(run.builder.top_stage, run.target),
-                backend: backend.clone(),
-            });
-        }
+        run.builder.ensure(CraneliftCodegenBackend {
+            build_compiler: run.builder.compiler_for(
+                run.builder.top_stage,
+                run.builder.config.host_target,
+                run.target,
+            ),
+        });
     }
 
     fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
-        if builder.config.dry_run() {
-            return None;
-        }
-
         // This prevents rustc_codegen_cranelift from being built for "dist"
         // or "install" on the stable/beta channels. It is not yet stable and
         // should not be included.
@@ -1428,46 +1429,39 @@ impl Step for CodegenBackend {
             return None;
         }
 
-        if !builder.config.codegen_backends(self.compiler.host).contains(&self.backend) {
-            return None;
-        }
-
-        if self.backend.is_cranelift() && !target_supports_cranelift_backend(self.compiler.host) {
+        let target = self.build_compiler.host;
+        let compilers =
+            RustcPrivateCompilers::from_build_compiler(builder, self.build_compiler, target);
+        if !target_supports_cranelift_backend(target) {
             builder.info("target not supported by rustc_codegen_cranelift. skipping");
             return None;
         }
 
-        let compiler = self.compiler;
-        let backend = self.backend;
-
-        let mut tarball = Tarball::new(
-            builder,
-            &format!("rustc-codegen-{}", backend.name()),
-            &compiler.host.triple,
-        );
-        if backend.is_cranelift() {
-            tarball.set_overlay(OverlayKind::RustcCodegenCranelift);
-        } else {
-            panic!("Unknown codegen backend {}", backend.name());
-        }
+        let mut tarball = Tarball::new(builder, "rustc-codegen-cranelift", &target.triple);
+        tarball.set_overlay(OverlayKind::RustcCodegenCranelift);
         tarball.is_preview(true);
-        tarball.add_legal_and_readme_to(format!("share/doc/{}", backend.crate_name()));
+        tarball.add_legal_and_readme_to("share/doc/rustc_codegen_cranelift");
 
-        let src = builder.sysroot(compiler);
-        let backends_src = builder.sysroot_codegen_backends(compiler);
+        builder.ensure(compile::CraneliftCodegenBackend { compilers });
+
+        if builder.config.dry_run() {
+            return None;
+        }
+
+        let src = builder.sysroot(self.build_compiler);
+        let backends_src = builder.sysroot_codegen_backends(self.build_compiler);
         let backends_rel = backends_src
             .strip_prefix(src)
             .unwrap()
-            .strip_prefix(builder.sysroot_libdir_relative(compiler))
+            .strip_prefix(builder.sysroot_libdir_relative(self.build_compiler))
             .unwrap();
         // Don't use custom libdir here because ^lib/ will be resolved again with installer
         let backends_dst = PathBuf::from("lib").join(backends_rel);
 
-        let backend_name = backend.crate_name();
         let mut found_backend = false;
         for backend in fs::read_dir(&backends_src).unwrap() {
             let file_name = backend.unwrap().file_name();
-            if file_name.to_str().unwrap().contains(&backend_name) {
+            if file_name.to_str().unwrap().contains("rustc_codegen_cranelift") {
                 tarball.add_file(
                     backends_src.join(file_name),
                     &backends_dst,
@@ -1479,6 +1473,13 @@ impl Step for CodegenBackend {
         assert!(found_backend);
 
         Some(tarball.generate())
+    }
+
+    fn metadata(&self) -> Option<StepMetadata> {
+        Some(
+            StepMetadata::dist("rustc_codegen_cranelift", self.build_compiler.host)
+                .built_by(self.build_compiler),
+        )
     }
 }
 
@@ -1590,9 +1591,8 @@ impl Step for Extended {
         add_component!("clippy" => Clippy { build_compiler: compiler, target });
         add_component!("miri" => Miri { build_compiler: compiler, target });
         add_component!("analysis" => Analysis { compiler, target });
-        add_component!("rustc-codegen-cranelift" => CodegenBackend {
-            compiler: builder.compiler(stage, target),
-            backend: CodegenBackendKind::Cranelift,
+        add_component!("rustc-codegen-cranelift" => CraneliftCodegenBackend {
+            build_compiler: compiler,
         });
         add_component!("llvm-bitcode-linker" => LlvmBitcodeLinker {
             build_compiler: compiler,

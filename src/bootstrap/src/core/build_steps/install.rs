@@ -12,7 +12,7 @@ use crate::core::config::{Config, TargetSelection};
 use crate::utils::exec::command;
 use crate::utils::helpers::t;
 use crate::utils::tarball::GeneratedTarball;
-use crate::{CodegenBackendKind, Compiler, Kind};
+use crate::{Compiler, Kind};
 
 #[cfg(target_os = "illumos")]
 const SHELL: &str = "bash";
@@ -274,9 +274,8 @@ install!((self, builder, _config),
         install_sh(builder, "rustc", self.compiler.stage, Some(self.target), &tarball);
     };
     RustcCodegenCranelift, alias = "rustc-codegen-cranelift", Self::should_build(_config), only_hosts: true, {
-        if let Some(tarball) = builder.ensure(dist::CodegenBackend {
-            compiler: self.compiler,
-            backend: CodegenBackendKind::Cranelift,
+        if let Some(tarball) = builder.ensure(dist::CraneliftCodegenBackend {
+            build_compiler: self.compiler,
         }) {
             install_sh(builder, "rustc-codegen-cranelift", self.compiler.stage, Some(self.target), &tarball);
         } else {

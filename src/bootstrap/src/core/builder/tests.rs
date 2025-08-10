@@ -1288,6 +1288,42 @@ mod snapshot {
         ");
     }
 
+    // Enable dist cranelift tarball by default with `x dist` if cranelift is enabled in
+    // `rust.codegen-backends`.
+    #[test]
+    fn dist_cranelift_by_default() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx
+                .config("dist")
+                .args(&["--set", "rust.codegen-backends=['llvm', 'cranelift']"])
+                .render_steps(), @r"
+        [build] rustc 0 <host> -> UnstableBookGen 1 <host>
+        [build] rustc 0 <host> -> Rustbook 1 <host>
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 0 <host> -> rustc_codegen_cranelift 1 <host>
+        [build] rustc 1 <host> -> std 1 <host>
+        [build] rustc 1 <host> -> rustc 2 <host>
+        [build] rustc 1 <host> -> rustc_codegen_cranelift 2 <host>
+        [build] rustdoc 2 <host>
+        [doc] std 2 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
+        [build] rustc 1 <host> -> error-index 2 <host>
+        [doc] rustc 1 <host> -> error-index 2 <host>
+        [build] rustc 2 <host> -> std 2 <host>
+        [build] rustc 0 <host> -> LintDocs 1 <host>
+        [build] rustc 0 <host> -> RustInstaller 1 <host>
+        [dist] docs <host>
+        [doc] std 2 <host> crates=[]
+        [dist] mingw <host>
+        [build] rustc 0 <host> -> GenerateCopyright 1 <host>
+        [dist] rustc <host>
+        [dist] rustc 1 <host> -> rustc_codegen_cranelift 2 <host>
+        [dist] rustc 1 <host> -> std 1 <host>
+        [dist] src <>
+        ");
+    }
+
     #[test]
     fn check_compiler_no_explicit_stage() {
         let ctx = TestCtx::new();
