@@ -101,7 +101,7 @@ use crate::{self as ty, Interner};
 ///   `yield` inside the coroutine.
 /// * `GR`: The "return type", which is the type of value returned upon
 ///   completion of the coroutine.
-#[derive_where(Clone, Copy, PartialEq, Eq, Hash, Debug; I: Interner)]
+#[derive_where(Clone, Copy, PartialEq, Hash, Debug; I: Interner)]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic, Lift_Generic)]
 pub struct ClosureArgs<I: Interner> {
     /// Lifetime and type parameters from the enclosing function,
@@ -111,6 +111,8 @@ pub struct ClosureArgs<I: Interner> {
     /// when monomorphizing.
     pub args: I::GenericArgs,
 }
+
+impl<I: Interner> Eq for ClosureArgs<I> {}
 
 /// Struct returned by `split()`.
 pub struct ClosureArgsParts<I: Interner> {
@@ -203,11 +205,13 @@ impl<I: Interner> ClosureArgs<I> {
     }
 }
 
-#[derive_where(Clone, Copy, PartialEq, Eq, Hash, Debug; I: Interner)]
+#[derive_where(Clone, Copy, PartialEq, Hash, Debug; I: Interner)]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic, Lift_Generic)]
 pub struct CoroutineClosureArgs<I: Interner> {
     pub args: I::GenericArgs,
 }
+
+impl<I: Interner> Eq for CoroutineClosureArgs<I> {}
 
 /// See docs for explanation of how each argument is used.
 ///
@@ -348,7 +352,7 @@ impl<I: Interner> TypeVisitor<I> for HasRegionsBoundAt {
     }
 }
 
-#[derive_where(Clone, Copy, PartialEq, Eq, Hash, Debug; I: Interner)]
+#[derive_where(Clone, Copy, PartialEq, Hash, Debug; I: Interner)]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
 pub struct CoroutineClosureSignature<I: Interner> {
     pub tupled_inputs_ty: I::Ty,
@@ -370,6 +374,8 @@ pub struct CoroutineClosureSignature<I: Interner> {
     #[type_foldable(identity)]
     pub abi: I::Abi,
 }
+
+impl<I: Interner> Eq for CoroutineClosureSignature<I> {}
 
 impl<I: Interner> CoroutineClosureSignature<I> {
     /// Construct a coroutine from the closure signature. Since a coroutine signature
@@ -541,7 +547,7 @@ impl<I: Interner> TypeFolder<I> for FoldEscapingRegions<I> {
     }
 }
 
-#[derive_where(Clone, Copy, PartialEq, Eq, Hash, Debug; I: Interner)]
+#[derive_where(Clone, Copy, PartialEq, Hash, Debug; I: Interner)]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
 pub struct GenSig<I: Interner> {
     pub resume_ty: I::Ty,
@@ -549,12 +555,15 @@ pub struct GenSig<I: Interner> {
     pub return_ty: I::Ty,
 }
 
+impl<I: Interner> Eq for GenSig<I> {}
 /// Similar to `ClosureArgs`; see the above documentation for more.
-#[derive_where(Clone, Copy, PartialEq, Eq, Hash, Debug; I: Interner)]
+#[derive_where(Clone, Copy, PartialEq, Hash, Debug; I: Interner)]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic, Lift_Generic)]
 pub struct CoroutineArgs<I: Interner> {
     pub args: I::GenericArgs,
 }
+
+impl<I: Interner> Eq for CoroutineArgs<I> {}
 
 pub struct CoroutineArgsParts<I: Interner> {
     /// This is the args of the typeck root.

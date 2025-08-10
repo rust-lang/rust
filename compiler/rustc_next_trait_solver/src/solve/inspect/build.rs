@@ -68,7 +68,7 @@ impl<I: Interner> From<WipCanonicalGoalEvaluationStep<I>> for DebugSolver<I> {
     }
 }
 
-#[derive_where(PartialEq, Eq, Debug; I: Interner)]
+#[derive_where(PartialEq, Debug; I: Interner)]
 struct WipGoalEvaluation<I: Interner> {
     pub uncanonicalized_goal: Goal<I, I::Predicate>,
     pub orig_values: Vec<I::GenericArg>,
@@ -77,6 +77,8 @@ struct WipGoalEvaluation<I: Interner> {
     pub final_revision: Option<WipCanonicalGoalEvaluationStep<I>>,
     pub result: Option<QueryResult<I>>,
 }
+
+impl<I: Interner> Eq for WipGoalEvaluation<I> {}
 
 impl<I: Interner> WipGoalEvaluation<I> {
     fn finalize(self) -> inspect::GoalEvaluation<I> {
@@ -98,7 +100,7 @@ impl<I: Interner> WipGoalEvaluation<I> {
 /// This only exists during proof tree building and does not have
 /// a corresponding struct in `inspect`. We need this to track a
 /// bunch of metadata about the current evaluation.
-#[derive_where(PartialEq, Eq, Debug; I: Interner)]
+#[derive_where(PartialEq, Debug; I: Interner)]
 struct WipCanonicalGoalEvaluationStep<I: Interner> {
     /// Unlike `EvalCtxt::var_values`, we append a new
     /// generic arg here whenever we create a new inference
@@ -110,6 +112,8 @@ struct WipCanonicalGoalEvaluationStep<I: Interner> {
     probe_depth: usize,
     evaluation: WipProbe<I>,
 }
+
+impl<I: Interner> Eq for WipCanonicalGoalEvaluationStep<I> {}
 
 impl<I: Interner> WipCanonicalGoalEvaluationStep<I> {
     fn current_evaluation_scope(&mut self) -> &mut WipProbe<I> {
@@ -132,13 +136,15 @@ impl<I: Interner> WipCanonicalGoalEvaluationStep<I> {
     }
 }
 
-#[derive_where(PartialEq, Eq, Debug; I: Interner)]
+#[derive_where(PartialEq, Debug; I: Interner)]
 struct WipProbe<I: Interner> {
     initial_num_var_values: usize,
     steps: Vec<WipProbeStep<I>>,
     kind: Option<inspect::ProbeKind<I>>,
     final_state: Option<inspect::CanonicalState<I, ()>>,
 }
+
+impl<I: Interner> Eq for WipProbe<I> {}
 
 impl<I: Interner> WipProbe<I> {
     fn finalize(self) -> inspect::Probe<I> {
@@ -150,13 +156,15 @@ impl<I: Interner> WipProbe<I> {
     }
 }
 
-#[derive_where(PartialEq, Eq, Debug; I: Interner)]
+#[derive_where(PartialEq, Debug; I: Interner)]
 enum WipProbeStep<I: Interner> {
     AddGoal(GoalSource, inspect::CanonicalState<I, Goal<I, I::Predicate>>),
     NestedProbe(WipProbe<I>),
     MakeCanonicalResponse { shallow_certainty: Certainty },
     RecordImplArgs { impl_args: inspect::CanonicalState<I, I::GenericArgs> },
 }
+
+impl<I: Interner> Eq for WipProbeStep<I> {}
 
 impl<I: Interner> WipProbeStep<I> {
     fn finalize(self) -> inspect::ProbeStep<I> {
