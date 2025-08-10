@@ -410,18 +410,18 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 }
                 let typeck = self.infcx.tcx.typeck(self.mir_def_id());
                 let parent = self.infcx.tcx.parent_hir_node(expr.hir_id);
-                let (def_id, call_id, args, offset) = if let hir::Node::Expr(parent_expr) = parent
+                let (def_id, args, offset) = if let hir::Node::Expr(parent_expr) = parent
                     && let hir::ExprKind::MethodCall(_, _, args, _) = parent_expr.kind
                 {
                     let def_id = typeck.type_dependent_def_id(parent_expr.hir_id);
-                    (def_id, Some(parent_expr.hir_id), args, 1)
+                    (def_id, args, 1)
                 } else if let hir::Node::Expr(parent_expr) = parent
                     && let hir::ExprKind::Call(call, args) = parent_expr.kind
                     && let ty::FnDef(def_id, _) = typeck.node_type(call.hir_id).kind()
                 {
-                    (Some(*def_id), Some(call.hir_id), args, 0)
+                    (Some(*def_id), args, 0)
                 } else {
-                    (None, None, &[][..], 0)
+                    (None, &[][..], 0)
                 };
                 let ty = place.ty(self.body, self.infcx.tcx).ty;
 
@@ -459,11 +459,12 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     // If the moved place is used generically by the callee and a reference to it
                     // would still satisfy any bounds on its type, suggest borrowing.
                     if let Some(&param) = arg_param
-                        && let Some(generic_args) = call_id.and_then(|id| typeck.node_args_opt(id))
+                        && let hir::Node::Expr(call_expr) = parent
                         && let Some(ref_mutability) = self.suggest_borrow_generic_arg(
                             err,
+                            typeck,
+                            call_expr,
                             def_id,
-                            generic_args,
                             param,
                             moved_place,
                             pos + offset,
@@ -627,8 +628,9 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
     fn suggest_borrow_generic_arg(
         &self,
         err: &mut Diag<'_>,
+        typeck: &ty::TypeckResults<'tcx>,
+        call_expr: &hir::Expr<'tcx>,
         callee_did: DefId,
-        generic_args: ty::GenericArgsRef<'tcx>,
         param: ty::ParamTy,
         moved_place: PlaceRef<'tcx>,
         moved_arg_pos: usize,
@@ -638,6 +640,19 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         let tcx = self.infcx.tcx;
         let sig = tcx.fn_sig(callee_did).instantiate_identity().skip_binder();
         let clauses = tcx.predicates_of(callee_did);
+
+        let generic_args = match call_expr.kind {
+            // For method calls, generic arguments are attached to the call node.
+            hir::ExprKind::MethodCall(..) => typeck.node_args_opt(call_expr.hir_id)?,
+            // For normal calls, generic arguments are in the callee's type.
+            // This diagnostic is only run for `FnDef` callees.
+            hir::ExprKind::Call(callee, _)
+                if let &ty::FnDef(_, args) = typeck.node_type(callee.hir_id).kind() =>
+            {
+                args
+            }
+            _ => return None,
+        };
 
         // First, is there at least one method on one of `param`'s trait bounds?
         // This keeps us from suggesting borrowing the argument to `mem::drop`, e.g.
