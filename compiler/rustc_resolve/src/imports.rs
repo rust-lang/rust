@@ -937,8 +937,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     /// into the module.
     fn resolve_import<'r>(self: &mut ImportResolver<'r, 'ra, 'tcx>, import: Import<'ra>) -> usize {
         debug!(
-            "(resolving import for module) resolving import `{}::...` in `{}`",
+            "(resolving import for module) resolving import `{}::{}` in `{}`",
             Segment::names_to_string(&import.module_path),
+            import_kind_to_string(&import.kind),
             module_to_string(import.parent_scope.module).unwrap_or_else(|| "???".to_string()),
         );
         let module = if let Some(module) = import.imported_module.get() {
@@ -963,7 +964,13 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             ImportKind::Single { source, target, ref bindings, type_ns_only, .. } => {
                 (source, target, bindings, type_ns_only)
             }
-            ImportKind::Glob { .. } => {
+            ImportKind::Glob { is_prelude, .. } => {
+                if is_prelude
+                    && let ModuleOrUniformRoot::Module(module) =
+                        import.imported_module.get().unwrap()
+                {
+                    self.r._get_mut_unchecked().prelude = Some(module);
+                }
                 self.glob_imports.push(import);
                 return 0;
             }
