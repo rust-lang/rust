@@ -21,11 +21,11 @@ pub(crate) fn generate_case_mapping(data: &UnicodeData) -> (String, [usize; 2]) 
     (file, [lower_size, upper_size])
 }
 
-fn generate_tables(case: &str, data: &BTreeMap<u32, (u32, u32, u32)>) -> (String, usize) {
+fn generate_tables(case: &str, data: &BTreeMap<u32, [u32; 3]>) -> (String, usize) {
     let mut mappings = Vec::with_capacity(data.len());
     let mut multis = Vec::new();
 
-    for (&key, &(a, b, c)) in data.iter() {
+    for (&key, &[a, b, c]) in data.iter() {
         let key = char::from_u32(key).unwrap();
 
         if key.is_ascii() {

@@ -100,11 +100,11 @@ static PROPERTIES: &[&str] = &[
 
 struct UnicodeData {
     ranges: Vec<(&'static str, Vec<Range<u32>>)>,
-    to_upper: BTreeMap<u32, (u32, u32, u32)>,
-    to_lower: BTreeMap<u32, (u32, u32, u32)>,
+    to_upper: BTreeMap<u32, [u32; 3]>,
+    to_lower: BTreeMap<u32, [u32; 3]>,
 }
 
-fn to_mapping(origin: u32, codepoints: Vec<ucd_parse::Codepoint>) -> Option<(u32, u32, u32)> {
+fn to_mapping(origin: u32, codepoints: Vec<ucd_parse::Codepoint>) -> Option<[u32; 3]> {
     let mut a = None;
     let mut b = None;
     let mut c = None;
@@ -125,7 +125,7 @@ fn to_mapping(origin: u32, codepoints: Vec<ucd_parse::Codepoint>) -> Option<(u32
         }
     }
 
-    Some((a.unwrap(), b.unwrap_or(0), c.unwrap_or(0)))
+    Some([a.unwrap(), b.unwrap_or(0), c.unwrap_or(0)])
 }
 
 static UNICODE_DIRECTORY: &str = "unicode-downloads";
@@ -165,12 +165,12 @@ fn load_data() -> UnicodeData {
         if let Some(mapped) = row.simple_lowercase_mapping
             && mapped != row.codepoint
         {
-            to_lower.insert(row.codepoint.value(), (mapped.value(), 0, 0));
+            to_lower.insert(row.codepoint.value(), [mapped.value(), 0, 0]);
         }
         if let Some(mapped) = row.simple_uppercase_mapping
             && mapped != row.codepoint
         {
-            to_upper.insert(row.codepoint.value(), (mapped.value(), 0, 0));
+            to_upper.insert(row.codepoint.value(), [mapped.value(), 0, 0]);
         }
     }
 
@@ -224,7 +224,7 @@ fn main() {
     let ranges_by_property = &unicode_data.ranges;
 
     if let Some(path) = test_path {
-        std::fs::write(&path, generate_tests(ranges_by_property).unwrap()).unwrap();
+        std::fs::write(&path, generate_tests(&unicode_data).unwrap()).unwrap();
     }
 
     let mut table_file = String::new();
@@ -328,7 +328,7 @@ fn fmt_list<V: std::fmt::Debug>(values: impl IntoIterator<Item = V>) -> String {
     out
 }
 
-fn generate_tests(ranges: &[(&str, Vec<Range<u32>>)]) -> Result<String, fmt::Error> {
+fn generate_tests(data: &UnicodeData) -> Result<String, fmt::Error> {
     let mut s = String::new();
     writeln!(s, "#![feature(core_intrinsics)]")?;
     writeln!(s, "#![allow(internal_features, dead_code)]")?;
@@ -336,7 +336,7 @@ fn generate_tests(ranges: &[(&str, Vec<Range<u32>>)]) -> Result<String, fmt::Err
     writeln!(s, "use std::intrinsics;")?;
     writeln!(s, "mod unicode_data;")?;
     writeln!(s, "fn main() {{")?;
-    for (property, ranges) in ranges {
+    for (property, ranges) in &data.ranges {
         let prop = property.to_lowercase();
         writeln!(s, r#"    println!("Testing {prop}");"#)?;
         writeln!(s, "    {prop}_true();")?;
@@ -353,6 +353,36 @@ fn generate_tests(ranges: &[(&str, Vec<Range<u32>>)]) -> Result<String, fmt::Err
         writeln!(s, "    fn {prop}_false() {{")?;
         generate_asserts(&mut s, &prop, &is_false, false)?;
         writeln!(s, "    }}")?;
+    }
+
+    for (name, conversion) in ["to_lower", "to_upper"].iter().zip([&data.to_lower, &data.to_upper])
+    {
+        writeln!(s, r#"    println!("Testing {name}");"#)?;
+        for (c, mapping) in conversion {
+            let c = char::from_u32(*c).unwrap();
+            let mapping = mapping.map(|c| char::from_u32(c).unwrap());
+            writeln!(
+                s,
+                r#"    assert_eq!(unicode_data::conversions::{name}({c:?}), {mapping:?});"#
+            )?;
+        }
+        let unmapped: Vec<_> = (char::MIN..=char::MAX)
+            .filter(|c| !c.is_ascii())
+            .map(u32::from)
+            .filter(|c| !conversion.contains_key(c))
+            .collect();
+        let unmapped_ranges = ranges_from_set(&unmapped);
+        for range in unmapped_ranges {
+            let start = char::from_u32(range.start).unwrap();
+            let end = char::from_u32(range.end - 1).unwrap();
+            writeln!(s, "    for c in {start:?}..={end:?} {{")?;
+            writeln!(
+                s,
+                r#"        assert_eq!(unicode_data::conversions::{name}(c), [c, '\0', '\0']);"#
+            )?;
+
+            writeln!(s, "    }}")?;
+        }
     }
 
     writeln!(s, "}}")?;
