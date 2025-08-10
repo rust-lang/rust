@@ -585,6 +585,9 @@ impl<'tcx> GenericArgs<'tcx> {
         tcx.mk_args_from_iter(target_args.iter().chain(self.iter().skip(defs.count())))
     }
 
+    /// Truncates this list of generic args to have at most the number of args in `generics`.
+    ///
+    /// You might be looking for [`TraitRef::from_assoc`](super::TraitRef::from_assoc).
     pub fn truncate_to(&self, tcx: TyCtxt<'tcx>, generics: &ty::Generics) -> GenericArgsRef<'tcx> {
         tcx.mk_args(&self[..generics.count()])
     }
