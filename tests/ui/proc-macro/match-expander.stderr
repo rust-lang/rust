@@ -2,10 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/match-expander.rs:8:5
    |
 LL |     match_expander::matcher!();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |     |
-   |     expected `S`, found `bool`
-   |     this expression has type `S`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `S`, found `bool`
    |
    = note: this error originates in the macro `match_expander::matcher` (in Nightly builds, run with -Z macro-backtrace for more info)
 

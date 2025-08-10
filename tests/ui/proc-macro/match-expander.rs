@@ -8,6 +8,5 @@ fn main() {
     match_expander::matcher!();
     //~^ ERROR: mismatched types
     //~| NOTE: expected `S`, found `bool`
-    //~| NOTE: this expression has type `S`
     //~| NOTE: in this expansion of match_expander::matcher!
 }
