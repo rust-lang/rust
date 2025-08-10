@@ -108,6 +108,15 @@ passes_coverage_attribute_not_allowed =
     .no_body = function has no body
     .help = coverage attribute can be applied to a function (with body), impl block, or module
 
+passes_custom_mir_incompatible_dialect_and_phase =
+    The {$dialect} dialect is not compatible with the {$phase} phase
+    .dialect_span = this dialect...
+    .phase_span = ... is not compatible with this phase
+
+passes_custom_mir_phase_requires_dialect =
+    `dialect` key required
+    .phase_span = `phase` argument requires a `dialect` argument
+
 passes_dead_codes =
     { $multiple ->
       *[true] multiple {$descr}s are
