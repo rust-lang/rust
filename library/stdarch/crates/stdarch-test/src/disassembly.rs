@@ -27,9 +27,9 @@ fn normalize(mut symbol: &str) -> String {
         symbol = symbol[last_colon + 1..].to_string();
     }
 
-    // Normalize to no leading underscore to handle platforms that may
+    // Normalize to no leading mangling chars to handle platforms that may
     // inject extra ones in symbol names.
-    while symbol.starts_with('_') || symbol.starts_with('.') {
+    while symbol.starts_with('_') || symbol.starts_with('.') || symbol.starts_with('#') {
         symbol.remove(0);
     }
     // Windows/x86 has a suffix such as @@4.
@@ -49,6 +49,8 @@ pub(crate) fn disassemble_myself() -> HashSet<Function> {
         "i686-pc-windows-msvc"
     } else if cfg!(target_arch = "aarch64") {
         "aarch64-pc-windows-msvc"
+    } else if cfg!(target_arch = "arm64ec") {
+        "arm64ec-pc-windows-msvc"
     } else {
         panic!("disassembly unimplemented")
     };
