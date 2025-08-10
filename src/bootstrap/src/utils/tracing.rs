@@ -55,7 +55,7 @@ macro_rules! trace_cmd {
             ::tracing::span!(
                 target: "COMMAND",
                 ::tracing::Level::TRACE,
-                "executing command",
+                "cmd",
                 cmd = $cmd.fingerprint().format_short_cmd(),
                 full_cmd = ?$cmd
             ).entered()
