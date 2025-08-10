@@ -1487,7 +1487,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// # Panics
     ///
     /// Panics if the range has `start_bound > end_bound`, or, if the range is
-    /// bounded on either end and past the length of the dequeue.
+    /// bounded on either end and past the length of the deque.
     ///
     /// # Examples
     ///
@@ -1523,7 +1523,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// # Panics
     ///
     /// Panics if the range has `start_bound > end_bound`, or, if the range is
-    /// bounded on either end and past the length of the dequeue.
+    /// bounded on either end and past the length of the deque.
     ///
     /// # Examples
     ///
@@ -1569,7 +1569,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// # Panics
     ///
     /// Panics if the range has `start_bound > end_bound`, or, if the range is
-    /// bounded on either end and past the length of the dequeue.
+    /// bounded on either end and past the length of the deque.
     ///
     /// # Leaking
     ///
