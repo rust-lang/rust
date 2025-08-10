@@ -347,18 +347,21 @@ where
 
     // Check the qualifs of the value of `const` items.
     let uneval = match constant.const_ {
-        Const::Ty(_, ct)
-            if matches!(
-                ct.kind(),
-                ty::ConstKind::Param(_) | ty::ConstKind::Error(_) | ty::ConstKind::Value(_)
-            ) =>
-        {
-            None
-        }
-        Const::Ty(_, c) => {
-            bug!("expected ConstKind::Param or ConstKind::Value here, found {:?}", c)
-        }
+        // Type-level constants that are already concrete or are params/errors: fall back to
+        // type-based qualifs below.
+        Const::Ty(_, ct) => match ct.kind() {
+            ty::ConstKind::Param(_) | ty::ConstKind::Error(_) | ty::ConstKind::Value(_) => None,
+            // A type-level unevaluated const (e.g., from generic const exprs). Treat like a
+            // MIR unevaluated const so we can look up qualifs on the referenced def.
+            ty::ConstKind::Unevaluated(uv) => Some(mir::UnevaluatedConst::new(uv.def, uv.args)),
+            // Any other kind should not reach this path in MIR const-checking.
+            other => {
+                bug!("expected ConstKind::Param or ConstKind::Value here, found {:?}", other)
+            }
+        },
+        // A MIR unevaluated const: inspect its definition's qualifs below.
         Const::Unevaluated(uv, _) => Some(uv),
+        // Already a value: rely on type-based qualifs below.
         Const::Val(..) => None,
     };
 
