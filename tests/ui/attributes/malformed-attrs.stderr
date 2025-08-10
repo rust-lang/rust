@@ -660,3 +660,69 @@ error: aborting due to 74 previous errors; 3 warnings emitted
 
 Some errors have detailed explanations: E0308, E0463, E0539, E0565, E0658, E0805.
 For more information about an error, try `rustc --explain E0308`.
+Future incompatibility report: Future breakage diagnostic:
+error: valid forms for the attribute are `#[doc(hidden|inline|...)]` and `#[doc = "string"]`
+  --> $DIR/malformed-attrs.rs:40:1
+   |
+LL | #[doc]
+   | ^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #57571 <https://github.com/rust-lang/rust/issues/57571>
+   = note: `#[deny(ill_formed_attribute_input)]` on by default
+
+Future breakage diagnostic:
+error: valid forms for the attribute are `#[doc(hidden|inline|...)]` and `#[doc = "string"]`
+  --> $DIR/malformed-attrs.rs:73:1
+   |
+LL | #[doc]
+   | ^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #57571 <https://github.com/rust-lang/rust/issues/57571>
+   = note: `#[deny(ill_formed_attribute_input)]` on by default
+
+Future breakage diagnostic:
+error: attribute must be of the form `#[link(name = "...", /*opt*/ kind = "dylib|static|...", /*opt*/ wasm_import_module = "...", /*opt*/ import_name_type = "decorated|noprefix|undecorated")]`
+  --> $DIR/malformed-attrs.rs:80:1
+   |
+LL | #[link]
+   | ^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #57571 <https://github.com/rust-lang/rust/issues/57571>
+   = note: `#[deny(ill_formed_attribute_input)]` on by default
+
+Future breakage diagnostic:
+error: valid forms for the attribute are `#[inline(always|never)]` and `#[inline]`
+  --> $DIR/malformed-attrs.rs:50:1
+   |
+LL | #[inline = 5]
+   | ^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #57571 <https://github.com/rust-lang/rust/issues/57571>
+   = note: `#[deny(ill_formed_attribute_input)]` on by default
+
+Future breakage diagnostic:
+error: valid forms for the attribute are `#[ignore = "reason"]` and `#[ignore]`
+  --> $DIR/malformed-attrs.rs:91:1
+   |
+LL | #[ignore()]
+   | ^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #57571 <https://github.com/rust-lang/rust/issues/57571>
+   = note: `#[deny(ill_formed_attribute_input)]` on by default
+
+Future breakage diagnostic:
+error: valid forms for the attribute are `#[ignore = "reason"]` and `#[ignore]`
+  --> $DIR/malformed-attrs.rs:220:1
+   |
+LL | #[ignore = 1]
+   | ^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #57571 <https://github.com/rust-lang/rust/issues/57571>
+   = note: `#[deny(ill_formed_attribute_input)]` on by default
+
