@@ -1,0 +1,30 @@
+//@ run-pass
+
+#![feature(unsize)]
+#![feature(coerce_unsized)]
+
+use std::fmt::Display;
+use std::marker::Unsize;
+use std::ops::CoerceUnsized;
+
+#[repr(transparent)]
+struct X<'a, T: ?Sized> {
+    f: &'a T,
+}
+
+impl<'a, T: ?Sized> Drop for X<'a, T> {
+    fn drop(&mut self) {
+        panic!()
+    }
+}
+
+impl<'a, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<X<'a, U>> for X<'a, T> where
+    &'a T: CoerceUnsized<&'a U>
+{
+}
+
+const Y: X<'static, i32> = X { f: &0 };
+
+fn main() {
+    let _: [X<'static, dyn Display>; 0] = [Y; 0];
+}
