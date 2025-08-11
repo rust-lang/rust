@@ -5,7 +5,7 @@ use std::mem;
 use std::ops::Deref;
 
 use rustc_ast::NodeId;
-use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
+use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::intern::Interned;
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, MultiSpan, pluralize, struct_span_code_err};
@@ -47,16 +47,20 @@ pub(crate) struct ImportResolver<'r, 'ra, 'tcx> {
     batch: Vec<Import<'ra>>,      // a.k.a. indeterminate_imports, also treated as output
 
     // outputs
+    prelude: Option<Module<'ra>>,
     determined_imports: Vec<Import<'ra>>,
-    glob_import_outputs: Vec<(Module<'ra>, BindingKey, NameBinding<'ra>, bool)>,
+    module_glob_importers: FxIndexMap<Module<'ra>, Vec<Import<'ra>>>,
+    glob_import_bindings: Vec<(Module<'ra>, BindingKey, NameBinding<'ra>, bool)>,
     glob_res_outputs: Vec<(NodeId, PartialRes)>,
     import_bindings: PerNS<Vec<(Module<'ra>, Import<'ra>, PendingBinding<'ra>)>>,
 }
 
 struct ImportResolutionOutputs<'ra> {
+    prelude: Option<Module<'ra>>,
     indeterminate_imports: Vec<Import<'ra>>,
     determined_imports: Vec<Import<'ra>>,
-    glob_import_outputs: Vec<(Module<'ra>, BindingKey, NameBinding<'ra>, bool)>,
+    module_glob_importers: FxIndexMap<Module<'ra>, Vec<Import<'ra>>>,
+    glob_import_bindings: Vec<(Module<'ra>, BindingKey, NameBinding<'ra>, bool)>,
     glob_res_outputs: Vec<(NodeId, PartialRes)>,
     import_bindings: PerNS<Vec<(Module<'ra>, Import<'ra>, PendingBinding<'ra>)>>,
 }
@@ -66,20 +70,24 @@ impl<'r, 'ra, 'tcx> ImportResolver<'r, 'ra, 'tcx> {
         ImportResolver {
             r: cmr,
             batch,
-            determined_imports: Vec::new(),
-            import_bindings: PerNS::default(),
-            glob_import_outputs: Vec::new(),
-            glob_res_outputs: Vec::new(),
+            prelude: None,
+            determined_imports: Default::default(),
+            module_glob_importers: Default::default(),
+            glob_import_bindings: Default::default(),
+            glob_res_outputs: Default::default(),
+            import_bindings: Default::default(),
         }
     }
 
     fn into_outputs(self) -> ImportResolutionOutputs<'ra> {
         ImportResolutionOutputs {
+            prelude: self.prelude,
             indeterminate_imports: self.batch,
             determined_imports: self.determined_imports,
-            import_bindings: self.import_bindings,
-            glob_import_outputs: self.glob_import_outputs,
+            module_glob_importers: self.module_glob_importers,
+            glob_import_bindings: self.glob_import_bindings,
             glob_res_outputs: self.glob_res_outputs,
+            import_bindings: self.import_bindings,
         }
     }
 }
@@ -89,7 +97,17 @@ impl<'ra> ImportResolutionOutputs<'ra> {
         r.indeterminate_imports = self.indeterminate_imports;
         r.determined_imports.extend(self.determined_imports);
 
-        for (module, key, binding, warn_ambiguity) in self.glob_import_outputs {
+        // It's possible this particular round didn't set the prelude, so we should not
+        // unset it in the main resolver.
+        if self.prelude.is_some() {
+            r.prelude = self.prelude;
+        }
+
+        for (module, glob_importers) in self.module_glob_importers {
+            module.glob_importers.borrow_mut().extend(glob_importers);
+        }
+
+        for (module, key, binding, warn_ambiguity) in self.glob_import_bindings {
             let _ = r.try_define_local(module, key.ident.0, key.ns, binding, warn_ambiguity);
         }
 
@@ -648,12 +666,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let mut prev_indeterminate_count = usize::MAX;
         let mut indeterminate_count = self.indeterminate_imports.len() * 3;
         while indeterminate_count < prev_indeterminate_count {
-            self.assert_speculative = true;
             prev_indeterminate_count = indeterminate_count;
             let batch = mem::take(&mut self.indeterminate_imports);
+            self.assert_speculative = true;
             let (outputs, count) = ImportResolver::new(self.cm(), batch).resolve_batch();
-            indeterminate_count = count;
             self.assert_speculative = false;
+            indeterminate_count = count;
             outputs.commit(self);
         }
     }
@@ -1589,12 +1607,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         if module == import.parent_scope.module {
             return;
         } else if is_prelude {
-            self.r.prelude.set(Some(module));
+            self.prelude = Some(module);
             return;
         }
 
         // Add to module's glob_importers
-        module.glob_importers.borrow_mut().push(import);
+        self.module_glob_importers.entry(module).or_default().push(import);
 
         // Ensure that `resolutions` isn't borrowed during `try_define`,
         // since it might get updated via a glob cycle.
@@ -1618,7 +1636,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     .resolution(import.parent_scope.module, key)
                     .and_then(|r| r.binding())
                     .is_some_and(|binding| binding.warn_ambiguity_recursive());
-                self.glob_import_outputs.push((
+                self.glob_import_bindings.push((
                     import.parent_scope.module,
                     key,
                     imported_binding,

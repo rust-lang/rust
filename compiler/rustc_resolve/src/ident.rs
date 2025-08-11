@@ -575,7 +575,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     },
                     Scope::StdLibPrelude => {
                         let mut result = Err(Determinacy::Determined);
-                        if let Some(prelude) = this.prelude.get()
+                        if let Some(prelude) = this.prelude
                             && let Ok(binding) = this.reborrow().resolve_ident_in_module_unadjusted(
                                 ModuleOrUniformRoot::Module(prelude),
                                 ident,
