@@ -205,8 +205,14 @@ pub fn decorate_builtin_lint(
             }
             .decorate_lint(diag);
         }
-        BuiltinLintDiag::UnusedBuiltinAttribute { attr_name, macro_name, invoc_span } => {
-            lints::UnusedBuiltinAttribute { invoc_span, attr_name, macro_name }.decorate_lint(diag);
+        BuiltinLintDiag::UnusedBuiltinAttribute {
+            attr_name,
+            macro_name,
+            invoc_span,
+            attr_span,
+        } => {
+            lints::UnusedBuiltinAttribute { invoc_span, attr_name, macro_name, attr_span }
+                .decorate_lint(diag);
         }
         BuiltinLintDiag::TrailingMacro(is_trailing, name) => {
             lints::TrailingMacro { is_trailing, name }.decorate_lint(diag);

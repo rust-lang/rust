@@ -469,6 +469,8 @@ pub(crate) struct FfiConstInvalidTarget {
 pub(crate) struct MustUseNoEffect {
     pub article: &'static str,
     pub target: rustc_hir::Target,
+    #[suggestion(code = "", applicability = "machine-applicable", style = "tool-only")]
+    pub attr_span: Span,
 }
 
 #[derive(Diagnostic)]
