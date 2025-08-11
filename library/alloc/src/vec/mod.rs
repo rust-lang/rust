@@ -51,18 +51,18 @@
 //!
 //! # Memory layout
 //!
-//! For non-zero-sized values, a [`Vec`] will use the [`Global`] allocator for its allocation. It is
+//! For non-zero-sized types, [`Vec`] uses the [`Global`] allocator for its allocation. It is
 //! valid to convert both ways between a [`Vec`] and a raw pointer allocated with the [`Global`]
-//! allocator, given that the [`Layout`] used with the allocator is correct for a sequence of
-//! `capacity` values of the type, and the first `len` values pointed to by the raw pointer are
+//! allocator, provided that the [`Layout`] used with the allocator is correct for a sequence of
+//! `capacity` elements of the type, and the first `len` values pointed to by the raw pointer are
 //! valid. More precisely, a `ptr: *mut T` that has been allocated with the [`Global`] allocator
 //! with [`Layout::array::<T>(capacity)`][Layout::array] may be converted into a vec using
 //! [`Vec::<T>::from_raw_parts(ptr, len, capacity)`](Vec::from_raw_parts).
 //! Conversely, the memory backing a `value: *mut T` obtained from [`Vec::<T>::as_mut_ptr`] may be
 //! deallocated using the [`Global`] allocator with the same layout.
 //!
-//! For zero-sized values, the `Vec` pointer has to be non-null and sufficiently aligned. The
-//! recommended way to build a `Vec` of ZSTs if [`vec!`] cannot be used is to use
+//! For zero-sized types (ZSTs), the `Vec` pointer must be non-null and sufficiently aligned.
+//! The recommended way to build a `Vec` of ZSTs if [`vec!`] cannot be used is to use
 //! [`ptr::NonNull::dangling`].
 //!
 //! [`push`]: Vec::push
