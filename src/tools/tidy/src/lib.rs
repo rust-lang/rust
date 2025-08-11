@@ -242,6 +242,7 @@ pub fn ensure_version_or_cargo_install(
         matches!(bin_path.try_exists(), Ok(true)),
         "cargo install did not produce the expected binary"
     );
+    eprintln!("finished building tool {bin_name}");
     Ok(bin_path)
 }
 
