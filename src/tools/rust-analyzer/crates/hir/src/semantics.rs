@@ -2288,18 +2288,19 @@ impl<'db> SemanticsScope<'db> {
 
     /// Iterates over associated types that may be specified after the given path (using
     /// `Ty::Assoc` syntax).
-    pub fn assoc_type_shorthand_candidates<R>(
+    pub fn assoc_type_shorthand_candidates(
         &self,
         resolution: &PathResolution,
-        mut cb: impl FnMut(&Name, TypeAlias) -> Option<R>,
-    ) -> Option<R> {
-        let def = self.resolver.generic_def()?;
-        hir_ty::associated_type_shorthand_candidates(
-            self.db,
-            def,
-            resolution.in_type_ns()?,
-            |name, id| cb(name, id.into()),
-        )
+        mut cb: impl FnMut(TypeAlias),
+    ) {
+        let (Some(def), Some(resolution)) = (self.resolver.generic_def(), resolution.in_type_ns())
+        else {
+            return;
+        };
+        hir_ty::associated_type_shorthand_candidates(self.db, def, resolution, |_, id| {
+            cb(id.into());
+            None::<()>
+        });
     }
 
     pub fn generic_def(&self) -> Option<crate::GenericDef> {
