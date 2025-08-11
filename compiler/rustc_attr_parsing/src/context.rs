@@ -5,7 +5,7 @@ use std::sync::LazyLock;
 
 use private::Sealed;
 use rustc_ast::{AttrStyle, MetaItemLit, NodeId};
-use rustc_errors::Diagnostic;
+use rustc_errors::{Diag, Diagnostic, Level};
 use rustc_feature::AttributeTemplate;
 use rustc_hir::attrs::AttributeKind;
 use rustc_hir::lints::{AttributeLint, AttributeLintKind};
@@ -261,11 +261,7 @@ impl Stage for Early {
         sess: &'sess Session,
         diag: impl for<'x> Diagnostic<'x>,
     ) -> ErrorGuaranteed {
-        if self.emit_errors.should_emit() {
-            sess.dcx().emit_err(diag)
-        } else {
-            sess.dcx().create_err(diag).delay_as_bug()
-        }
+        self.should_emit().emit_err_or_delay(sess.dcx().create_err(diag))
     }
 
     fn should_emit(&self) -> ShouldEmit {
@@ -331,7 +327,7 @@ impl<'f, 'sess: 'f, S: Stage> SharedContext<'f, 'sess, S> {
     /// must be delayed until after HIR is built. This method will take care of the details of
     /// that.
     pub(crate) fn emit_lint(&mut self, lint: AttributeLintKind, span: Span) {
-        if !self.stage.should_emit().should_emit() {
+        if matches!(self.stage.should_emit(), ShouldEmit::Nothing) {
             return;
         }
         let id = self.target_id;
@@ -649,8 +645,13 @@ pub enum OmitDoc {
     Skip,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub enum ShouldEmit {
+    /// The operations will emit errors, and lints, and errors are fatal.
+    ///
+    /// Only relevant when early parsing, in late parsing equivalent to `ErrorsAndLints`.
+    /// Late parsing is never fatal, and instead tries to emit as many diagnostics as possible.
+    EarlyFatal,
     /// The operation will emit errors and lints.
     /// This is usually what you need.
     ErrorsAndLints,
@@ -660,10 +661,27 @@ pub enum ShouldEmit {
 }
 
 impl ShouldEmit {
-    pub fn should_emit(&self) -> bool {
+    pub(crate) fn emit_err_or_delay(&self, diag: Diag<'_>) -> ErrorGuaranteed {
         match self {
-            ShouldEmit::ErrorsAndLints => true,
-            ShouldEmit::Nothing => false,
+            ShouldEmit::EarlyFatal if diag.level() == Level::DelayedBug => diag.emit(),
+            ShouldEmit::EarlyFatal => diag.upgrade_to_fatal().emit(),
+            ShouldEmit::ErrorsAndLints => diag.emit(),
+            ShouldEmit::Nothing => diag.delay_as_bug(),
+        }
+    }
+
+    pub(crate) fn maybe_emit_err(&self, diag: Diag<'_>) {
+        match self {
+            ShouldEmit::EarlyFatal if diag.level() == Level::DelayedBug => {
+                diag.emit();
+            }
+            ShouldEmit::EarlyFatal => {
+                diag.upgrade_to_fatal().emit();
+            }
+            ShouldEmit::ErrorsAndLints => {
+                diag.emit();
+            }
+            ShouldEmit::Nothing => {}
         }
     }
 }
