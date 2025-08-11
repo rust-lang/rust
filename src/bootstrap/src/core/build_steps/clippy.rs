@@ -6,7 +6,8 @@
 //!   which is performed by the `x clippy ci` command.
 //!
 //! In order to prepare a build compiler for running clippy, use the
-//! [check::prepare_compiler_for_check] function. That prepares a compiler and a standard library
+//! [prepare_compiler_for_check] function. That prepares a
+//! compiler and a standard library
 //! for running Clippy. The second part (actually building Clippy) is performed inside
 //! [Builder::cargo_clippy_cmd]. It would be nice if this was more explicit, and we actually had
 //! to pass a prebuilt Clippy from the outside when running `cargo clippy`, but that would be
