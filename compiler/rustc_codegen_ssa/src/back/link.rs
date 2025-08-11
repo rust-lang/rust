@@ -3200,11 +3200,15 @@ fn add_apple_sdk(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor) -> 
     let LinkerFlavor::Darwin(cc, _) = flavor else {
         return None;
     };
-    if os == "macos" && cc != Cc::No {
-        // FIXME(madsmtm): Remove this branch.
-        return None;
-    }
 
+    // The default compiler driver on macOS is at `/usr/bin/cc`. This is a trampoline binary that
+    // effectively invokes `xcrun cc` internally to look up both the compiler binary and the SDK
+    // root from the current Xcode installation. When cross-compiling, when `rustc` is invoked
+    // inside Xcode, or when invoking the linker directly, this default logic is unsuitable, so
+    // instead we invoke `xcrun` manually.
+    //
+    // (Note that this doesn't mean we get a duplicate lookup here - passing `SDKROOT` below will
+    // cause the trampoline binary to skip looking up the SDK itself).
     let sdkroot = sess.time("get_apple_sdk_root", || get_apple_sdk_root(sess))?;
 
     if cc == Cc::Yes {
