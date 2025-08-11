@@ -355,6 +355,7 @@ fn adjust_for_rust_scalar<'tcx>(
 
             if matches!(kind, PointerKind::SharedRef { frozen: true }) && !is_return {
                 attrs.set(ArgAttribute::ReadOnly);
+                attrs.set(ArgAttribute::CapturesReadOnly);
             }
         }
     }
