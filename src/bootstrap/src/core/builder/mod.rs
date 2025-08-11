@@ -1677,8 +1677,6 @@ You have to build a stage1 compiler for `{}` first, and then use it to build a s
                 panic!("{}", out);
             }
             if let Some(out) = self.cache.get(&step) {
-                self.verbose_than(1, || println!("{}c {:?}", "  ".repeat(stack.len()), step));
-
                 #[cfg(feature = "tracing")]
                 {
                     if let Some(parent) = stack.last() {
@@ -1688,7 +1686,6 @@ You have to build a stage1 compiler for `{}` first, and then use it to build a s
                 }
                 return out;
             }
-            self.verbose_than(1, || println!("{}> {:?}", "  ".repeat(stack.len()), step));
 
             #[cfg(feature = "tracing")]
             {
@@ -1749,7 +1746,6 @@ You have to build a stage1 compiler for `{}` first, and then use it to build a s
             let cur_step = stack.pop().expect("step stack empty");
             assert_eq!(cur_step.downcast_ref(), Some(&step));
         }
-        self.verbose_than(1, || println!("{}< {:?}", "  ".repeat(self.stack.borrow().len()), step));
         self.cache.put(step, out.clone());
         out
     }
