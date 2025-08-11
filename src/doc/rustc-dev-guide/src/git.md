@@ -344,7 +344,7 @@ Here is some general advice about how to keep your local repo
 up-to-date with upstream changes:
 
 Using `git pull upstream master` while on your local master branch regularly
-will keep it up-to-date. You will also want to rebase your feature branches
+will keep it up-to-date. You will also want to keep your feature branches
 up-to-date as well. After pulling, you can checkout the feature branches
 and rebase them:
 
