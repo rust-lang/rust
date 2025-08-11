@@ -1,5 +1,5 @@
 ---
-name: Problem with rustdoc
+name: Problem with rustdoc tool
 about: Report an issue with how docs get generated.
 labels: C-bug, T-rustdoc
 ---
