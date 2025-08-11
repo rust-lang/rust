@@ -217,7 +217,7 @@ pub const fn identity<T>(x: T) -> T {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_diagnostic_item = "AsRef"]
 #[const_trait]
-#[rustc_const_unstable(feature = "const_try", issue = "74935")]
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
 pub trait AsRef<T: PointeeSized>: PointeeSized {
     /// Converts this type into a shared reference of the (usually inferred) input type.
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -370,7 +370,7 @@ pub trait AsRef<T: PointeeSized>: PointeeSized {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_diagnostic_item = "AsMut"]
 #[const_trait]
-#[rustc_const_unstable(feature = "const_try", issue = "74935")]
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
 pub trait AsMut<T: PointeeSized>: PointeeSized {
     /// Converts this type into a mutable reference of the (usually inferred) input type.
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -449,7 +449,7 @@ pub trait AsMut<T: PointeeSized>: PointeeSized {
 #[rustc_diagnostic_item = "Into"]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(search_unbox)]
-#[rustc_const_unstable(feature = "const_from", issue = "143773")]
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
 #[const_trait]
 pub trait Into<T>: Sized {
     /// Converts this type into the (usually inferred) input type.
@@ -586,7 +586,7 @@ pub trait Into<T>: Sized {
     note = "to coerce a `{T}` into a `{Self}`, use `&*` as a prefix",
 ))]
 #[doc(search_unbox)]
-#[rustc_const_unstable(feature = "const_from", issue = "143773")]
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
 #[const_trait]
 pub trait From<T>: Sized {
     /// Converts to this type from the input type.
@@ -615,7 +615,7 @@ pub trait From<T>: Sized {
 /// [`Into`], see there for details.
 #[rustc_diagnostic_item = "TryInto"]
 #[stable(feature = "try_from", since = "1.34.0")]
-#[rustc_const_unstable(feature = "const_from", issue = "143773")]
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
 #[const_trait]
 pub trait TryInto<T>: Sized {
     /// The type returned in the event of a conversion error.
@@ -695,7 +695,7 @@ pub trait TryInto<T>: Sized {
 /// [`try_from`]: TryFrom::try_from
 #[rustc_diagnostic_item = "TryFrom"]
 #[stable(feature = "try_from", since = "1.34.0")]
-#[rustc_const_unstable(feature = "const_from", issue = "143773")]
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
 #[const_trait]
 pub trait TryFrom<T>: Sized {
     /// The type returned in the event of a conversion error.
@@ -714,7 +714,7 @@ pub trait TryFrom<T>: Sized {
 
 // As lifts over &
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_try", issue = "74935")]
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
 impl<T: PointeeSized, U: PointeeSized> const AsRef<U> for &T
 where
     T: [const] AsRef<U>,
@@ -727,7 +727,7 @@ where
 
 // As lifts over &mut
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_try", issue = "74935")]
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
 impl<T: PointeeSized, U: PointeeSized> const AsRef<U> for &mut T
 where
     T: [const] AsRef<U>,
@@ -748,7 +748,7 @@ where
 
 // AsMut lifts over &mut
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_try", issue = "74935")]
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
 impl<T: PointeeSized, U: PointeeSized> const AsMut<U> for &mut T
 where
     T: [const] AsMut<U>,
@@ -769,7 +769,7 @@ where
 
 // From implies Into
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_from", issue = "143773")]
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
 impl<T, U> const Into<U> for T
 where
     U: [const] From<T>,
@@ -787,7 +787,7 @@ where
 
 // From (and thus Into) is reflexive
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_from", issue = "143773")]
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
 impl<T> const From<T> for T {
     /// Returns the argument unchanged.
     #[inline(always)]
@@ -804,7 +804,7 @@ impl<T> const From<T> for T {
 #[stable(feature = "convert_infallible", since = "1.34.0")]
 #[rustc_reservation_impl = "permitting this impl would forbid us from adding \
                             `impl<T> From<!> for T` later; see rust-lang/rust#64715 for details"]
-#[rustc_const_unstable(feature = "const_from", issue = "143773")]
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
 impl<T> const From<!> for T {
     fn from(t: !) -> T {
         t
@@ -813,7 +813,7 @@ impl<T> const From<!> for T {
 
 // TryFrom implies TryInto
 #[stable(feature = "try_from", since = "1.34.0")]
-#[rustc_const_unstable(feature = "const_from", issue = "143773")]
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
 impl<T, U> const TryInto<U> for T
 where
     U: [const] TryFrom<T>,
@@ -829,7 +829,7 @@ where
 // Infallible conversions are semantically equivalent to fallible conversions
 // with an uninhabited error type.
 #[stable(feature = "try_from", since = "1.34.0")]
-#[rustc_const_unstable(feature = "const_from", issue = "143773")]
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
 impl<T, U> const TryFrom<U> for T
 where
     U: [const] Into<T>,
@@ -847,7 +847,7 @@ where
 ////////////////////////////////////////////////////////////////////////////////
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_try", issue = "74935")]
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
 impl<T> const AsRef<[T]> for [T] {
     #[inline(always)]
     fn as_ref(&self) -> &[T] {
@@ -856,7 +856,7 @@ impl<T> const AsRef<[T]> for [T] {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_try", issue = "74935")]
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
 impl<T> const AsMut<[T]> for [T] {
     #[inline(always)]
     fn as_mut(&mut self) -> &mut [T] {
@@ -865,7 +865,7 @@ impl<T> const AsMut<[T]> for [T] {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_try", issue = "74935")]
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
 impl const AsRef<str> for str {
     #[inline(always)]
     fn as_ref(&self) -> &str {
@@ -874,7 +874,7 @@ impl const AsRef<str> for str {
 }
 
 #[stable(feature = "as_mut_str_for_str", since = "1.51.0")]
-#[rustc_const_unstable(feature = "const_try", issue = "74935")]
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
 impl const AsMut<str> for str {
     #[inline(always)]
     fn as_mut(&mut self) -> &mut str {
@@ -936,7 +936,7 @@ impl const AsMut<str> for str {
 pub enum Infallible {}
 
 #[stable(feature = "convert_infallible", since = "1.34.0")]
-#[rustc_const_unstable(feature = "const_try", issue = "74935")]
+#[rustc_const_unstable(feature = "const_clone", issue = "142757")]
 impl const Clone for Infallible {
     fn clone(&self) -> Infallible {
         match *self {}
@@ -986,7 +986,7 @@ impl Ord for Infallible {
 }
 
 #[stable(feature = "convert_infallible", since = "1.34.0")]
-#[rustc_const_unstable(feature = "const_try", issue = "74935")]
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
 impl const From<!> for Infallible {
     #[inline]
     fn from(x: !) -> Self {

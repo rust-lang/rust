@@ -1,4 +1,4 @@
-#![feature(const_trait_impl, const_from)]
+#![feature(const_trait_impl, const_convert)]
 
 //@ check-pass
 
