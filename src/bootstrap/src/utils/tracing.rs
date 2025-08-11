@@ -48,19 +48,21 @@ macro_rules! error {
     }
 }
 
-#[macro_export]
-macro_rules! trace_cmd {
-    ($cmd:expr) => {
-        {
-            ::tracing::span!(
-                target: "COMMAND",
-                ::tracing::Level::TRACE,
-                "cmd",
-                cmd = $cmd.fingerprint().format_short_cmd(),
-                full_cmd = ?$cmd
-            ).entered()
-        }
-    };
+#[cfg(feature = "tracing")]
+const COMMAND_SPAN_TARGET: &str = "COMMAND";
+
+#[cfg(feature = "tracing")]
+pub fn trace_cmd(command: &crate::BootstrapCommand) -> tracing::span::EnteredSpan {
+    let fingerprint = command.fingerprint();
+    tracing::span!(
+        target: COMMAND_SPAN_TARGET,
+        tracing::Level::TRACE,
+        "cmd",
+        cmd_name = fingerprint.program_name().to_string(),
+        cmd = fingerprint.format_short_cmd(),
+        full_cmd = ?command
+    )
+    .entered()
 }
 
 // # Note on `tracing` usage in bootstrap
@@ -87,7 +89,8 @@ mod inner {
     use tracing_subscriber::registry::{LookupSpan, SpanRef};
     use tracing_subscriber::{EnvFilter, Layer};
 
-    use crate::STEP_NAME_TARGET;
+    use crate::STEP_SPAN_TARGET;
+    use crate::utils::tracing::COMMAND_SPAN_TARGET;
 
     pub fn setup_tracing(profiling_enabled: bool) -> Option<TracingGuard> {
         let filter = EnvFilter::from_env("BOOTSTRAP_TRACING");
@@ -110,8 +113,12 @@ mod inner {
                 .name_fn(Box::new(|event_or_span| match event_or_span {
                     tracing_chrome::EventOrSpan::Event(e) => e.metadata().name().to_string(),
                     tracing_chrome::EventOrSpan::Span(s) => {
-                        if s.metadata().target() == STEP_NAME_TARGET
+                        if s.metadata().target() == STEP_SPAN_TARGET
                             && let Some(extension) = s.extensions().get::<StepNameExtension>()
+                        {
+                            extension.0.clone()
+                        } else if s.metadata().target() == COMMAND_SPAN_TARGET
+                            && let Some(extension) = s.extensions().get::<CommandNameExtension>()
                         {
                             extension.0.clone()
                         } else {
@@ -151,6 +158,8 @@ mod inner {
         message: Option<String>,
         /// Name of a recorded psna
         step_name: Option<String>,
+        /// Short name of an executed command
+        cmd_name: Option<String>,
         /// The rest of arbitrary event/span fields
         fields: Vec<(&'static str, String)>,
     }
@@ -162,6 +171,9 @@ mod inner {
             match field.name() {
                 "step_name" => {
                     self.step_name = Some(value.to_string());
+                }
+                "cmd_name" => {
+                    self.cmd_name = Some(value.to_string());
                 }
                 name => {
                     self.fields.push((name, value.to_string()));
@@ -187,8 +199,11 @@ mod inner {
         Enter,
     }
 
-    /// Holds the name of a step, stored in `tracing_subscriber`'s extensions.
+    /// Holds the name of a step span, stored in `tracing_subscriber`'s extensions.
     struct StepNameExtension(String);
+
+    /// Holds the name of a command span, stored in `tracing_subscriber`'s extensions.
+    struct CommandNameExtension(String);
 
     #[derive(Default)]
     struct TracingPrinter {
@@ -264,7 +279,7 @@ mod inner {
             // We handle steps specially. We instrument them dynamically in `Builder::ensure`,
             // and we want to have custom name for each step span. But tracing doesn't allow setting
             // dynamic span names. So we detect step spans here and override their name.
-            if span.metadata().target() == STEP_NAME_TARGET {
+            if span.metadata().target() == STEP_SPAN_TARGET {
                 let name = field_values.and_then(|v| v.step_name.as_deref()).unwrap_or(span.name());
                 write!(writer, "{name}")?;
 
@@ -334,8 +349,14 @@ mod inner {
 
             // We need to propagate the actual name of the span to the Chrome layer below, because
             // it cannot access field values. We do that through extensions.
-            if let Some(step_name) = field_values.step_name.clone() {
+            if attrs.metadata().target() == STEP_SPAN_TARGET
+                && let Some(step_name) = field_values.step_name.clone()
+            {
                 ctx.span(id).unwrap().extensions_mut().insert(StepNameExtension(step_name));
+            } else if attrs.metadata().target() == COMMAND_SPAN_TARGET
+                && let Some(cmd_name) = field_values.cmd_name.clone()
+            {
+                ctx.span(id).unwrap().extensions_mut().insert(CommandNameExtension(cmd_name));
             }
             self.span_values.lock().unwrap().insert(id.clone(), field_values);
         }

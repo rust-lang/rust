@@ -2469,7 +2469,7 @@ pub fn stream_cargo(
     let mut cmd = cargo.into_cmd();
 
     #[cfg(feature = "tracing")]
-    let _run_span = crate::trace_cmd!(cmd);
+    let _run_span = crate::utils::tracing::trace_cmd(&cmd);
 
     // Instruct Cargo to give us json messages on stdout, critically leaving
     // stderr as piped so we can get those pretty colors.

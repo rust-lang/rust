@@ -26,8 +26,6 @@ use build_helper::drop_bomb::DropBomb;
 use build_helper::exit;
 
 use crate::core::config::DryRun;
-#[cfg(feature = "tracing")]
-use crate::trace_cmd;
 use crate::{PathBuf, t};
 
 /// What should be done when the command fails.
@@ -76,9 +74,17 @@ pub struct CommandFingerprint {
 }
 
 impl CommandFingerprint {
+    #[cfg(feature = "tracing")]
+    pub(crate) fn program_name(&self) -> String {
+        Path::new(&self.program)
+            .file_name()
+            .map(|p| p.to_string_lossy().to_string())
+            .unwrap_or_else(|| "<unknown command>".to_string())
+    }
+
     /// Helper method to format both Command and BootstrapCommand as a short execution line,
     /// without all the other details (e.g. environment variables).
-    pub fn format_short_cmd(&self) -> String {
+    pub(crate) fn format_short_cmd(&self) -> String {
         use std::fmt::Write;
 
         let mut cmd = self.program.to_string_lossy().to_string();
@@ -676,7 +682,7 @@ impl ExecutionContext {
         let fingerprint = command.fingerprint();
 
         #[cfg(feature = "tracing")]
-        let span_guard = trace_cmd!(command);
+        let span_guard = crate::utils::tracing::trace_cmd(command);
 
         if let Some(cached_output) = self.command_cache.get(&fingerprint) {
             command.mark_as_executed();
@@ -768,7 +774,7 @@ impl ExecutionContext {
         }
 
         #[cfg(feature = "tracing")]
-        let span_guard = trace_cmd!(command);
+        let span_guard = crate::utils::tracing::trace_cmd(command);
 
         let start_time = Instant::now();
         let fingerprint = command.fingerprint();

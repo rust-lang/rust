@@ -948,7 +948,7 @@ impl Step for Libdir {
 }
 
 #[cfg(feature = "tracing")]
-pub const STEP_NAME_TARGET: &str = "STEP";
+pub const STEP_SPAN_TARGET: &str = "STEP";
 
 impl<'a> Builder<'a> {
     fn get_step_descriptions(kind: Kind) -> Vec<StepDescription> {
@@ -1713,7 +1713,7 @@ You have to build a stage1 compiler for `{}` first, and then use it to build a s
             let _span = {
                 // Keep the target and field names synchronized with `setup_tracing`.
                 let span = tracing::info_span!(
-                    target: STEP_NAME_TARGET,
+                    target: STEP_SPAN_TARGET,
                     // We cannot use a dynamic name here, so instead we record the actual step name
                     // in the step_name field.
                     "step",
