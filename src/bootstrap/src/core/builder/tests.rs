@@ -742,6 +742,21 @@ mod snapshot {
     }
 
     #[test]
+    fn build_compiler_lld_opt_in() {
+        with_lld_opt_in_targets(vec![host_target()], || {
+            let ctx = TestCtx::new();
+            insta::assert_snapshot!(
+                ctx.config("build")
+                    .path("compiler")
+                    .render_steps(), @r"
+            [build] llvm <host>
+            [build] rustc 0 <host> -> rustc 1 <host>
+            [build] rustc 0 <host> -> LldWrapper 1 <host>
+            ");
+        });
+    }
+
+    #[test]
     fn build_library_no_explicit_stage() {
         let ctx = TestCtx::new();
         insta::assert_snapshot!(
@@ -939,7 +954,7 @@ mod snapshot {
         [build] llvm <host>
         [build] rustc 0 <host> -> rustc 1 <host>
         [build] rustdoc 1 <host>
-        [doc] std 1 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
+        [doc] rustc 1 <host> -> std 1 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
         ");
     }
 
@@ -1008,19 +1023,36 @@ mod snapshot {
                 .render_steps(), @r"
         [build] rustc 0 <host> -> UnstableBookGen 1 <host>
         [build] rustc 0 <host> -> Rustbook 1 <host>
+        [doc] unstable-book (book) <host>
         [build] llvm <host>
         [build] rustc 0 <host> -> rustc 1 <host>
         [build] rustc 1 <host> -> std 1 <host>
+        [doc] book (book) <host>
+        [doc] book/first-edition (book) <host>
+        [doc] book/second-edition (book) <host>
+        [doc] book/2018-edition (book) <host>
+        [build] rustdoc 1 <host>
+        [doc] rustc 1 <host> -> standalone 2 <host>
         [build] rustc 1 <host> -> rustc 2 <host>
         [build] rustdoc 2 <host>
-        [doc] std 2 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
+        [doc] rustc 2 <host> -> std 2 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
         [build] rustc 1 <host> -> error-index 2 <host>
         [doc] rustc 1 <host> -> error-index 2 <host>
-        [build] rustc 2 <host> -> std 2 <host>
+        [doc] nomicon (book) <host>
+        [doc] rustc 1 <host> -> reference (book) 2 <host>
+        [doc] rustdoc (book) <host>
+        [doc] rust-by-example (book) <host>
         [build] rustc 0 <host> -> LintDocs 1 <host>
+        [doc] rustc (book) <host>
+        [doc] cargo (book) <host>
+        [doc] clippy (book) <host>
+        [doc] embedded-book (book) <host>
+        [doc] edition-guide (book) <host>
+        [doc] style-guide (book) <host>
+        [doc] rustc 1 <host> -> releases 2 <host>
         [build] rustc 0 <host> -> RustInstaller 1 <host>
         [dist] docs <host>
-        [doc] std 2 <host> crates=[]
+        [doc] rustc 2 <host> -> std 2 <host> crates=[]
         [dist] mingw <host>
         [build] rustc 0 <host> -> GenerateCopyright 1 <host>
         [dist] rustc <host>
@@ -1046,25 +1078,42 @@ mod snapshot {
             .render_steps(), @r"
         [build] rustc 0 <host> -> UnstableBookGen 1 <host>
         [build] rustc 0 <host> -> Rustbook 1 <host>
+        [doc] unstable-book (book) <host>
         [build] llvm <host>
         [build] rustc 0 <host> -> rustc 1 <host>
         [build] rustc 0 <host> -> LldWrapper 1 <host>
         [build] rustc 0 <host> -> WasmComponentLd 1 <host>
         [build] rustc 0 <host> -> LlvmBitcodeLinker 1 <host>
         [build] rustc 1 <host> -> std 1 <host>
+        [doc] book (book) <host>
+        [doc] book/first-edition (book) <host>
+        [doc] book/second-edition (book) <host>
+        [doc] book/2018-edition (book) <host>
+        [build] rustdoc 1 <host>
+        [doc] rustc 1 <host> -> standalone 2 <host>
         [build] rustc 1 <host> -> rustc 2 <host>
         [build] rustc 1 <host> -> LldWrapper 2 <host>
         [build] rustc 1 <host> -> WasmComponentLd 2 <host>
         [build] rustc 1 <host> -> LlvmBitcodeLinker 2 <host>
         [build] rustdoc 2 <host>
-        [doc] std 2 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
+        [doc] rustc 2 <host> -> std 2 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
         [build] rustc 1 <host> -> error-index 2 <host>
         [doc] rustc 1 <host> -> error-index 2 <host>
-        [build] rustc 2 <host> -> std 2 <host>
+        [doc] nomicon (book) <host>
+        [doc] rustc 1 <host> -> reference (book) 2 <host>
+        [doc] rustdoc (book) <host>
+        [doc] rust-by-example (book) <host>
         [build] rustc 0 <host> -> LintDocs 1 <host>
+        [doc] rustc (book) <host>
+        [doc] cargo (book) <host>
+        [doc] clippy (book) <host>
+        [doc] embedded-book (book) <host>
+        [doc] edition-guide (book) <host>
+        [doc] style-guide (book) <host>
+        [doc] rustc 1 <host> -> releases 2 <host>
         [build] rustc 0 <host> -> RustInstaller 1 <host>
         [dist] docs <host>
-        [doc] std 2 <host> crates=[]
+        [doc] rustc 2 <host> -> std 2 <host> crates=[]
         [dist] mingw <host>
         [build] rustc 1 <host> -> rust-analyzer-proc-macro-srv 2 <host>
         [build] rustc 0 <host> -> GenerateCopyright 1 <host>
@@ -1093,22 +1142,56 @@ mod snapshot {
                 .render_steps(), @r"
         [build] rustc 0 <host> -> UnstableBookGen 1 <host>
         [build] rustc 0 <host> -> Rustbook 1 <host>
+        [doc] unstable-book (book) <host>
+        [doc] unstable-book (book) <target1>
         [build] llvm <host>
         [build] rustc 0 <host> -> rustc 1 <host>
         [build] rustc 1 <host> -> std 1 <host>
+        [doc] book (book) <host>
+        [doc] book/first-edition (book) <host>
+        [doc] book/second-edition (book) <host>
+        [doc] book/2018-edition (book) <host>
+        [build] rustdoc 1 <host>
+        [build] rustc 1 <host> -> std 1 <target1>
+        [doc] book (book) <target1>
+        [doc] book/first-edition (book) <target1>
+        [doc] book/second-edition (book) <target1>
+        [doc] book/2018-edition (book) <target1>
+        [doc] rustc 1 <host> -> standalone 2 <host>
+        [doc] rustc 1 <host> -> standalone 2 <target1>
         [build] rustc 1 <host> -> rustc 2 <host>
         [build] rustdoc 2 <host>
-        [doc] std 2 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
-        [doc] std 2 <target1> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
+        [doc] rustc 2 <host> -> std 2 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
+        [doc] rustc 2 <host> -> std 2 <target1> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
         [build] rustc 1 <host> -> error-index 2 <host>
         [doc] rustc 1 <host> -> error-index 2 <host>
-        [build] rustc 2 <host> -> std 2 <host>
+        [doc] nomicon (book) <host>
+        [doc] nomicon (book) <target1>
+        [doc] rustc 1 <host> -> reference (book) 2 <host>
+        [doc] rustc 1 <host> -> reference (book) 2 <target1>
+        [doc] rustdoc (book) <host>
+        [doc] rustdoc (book) <target1>
+        [doc] rust-by-example (book) <host>
+        [doc] rust-by-example (book) <target1>
         [build] rustc 0 <host> -> LintDocs 1 <host>
+        [doc] rustc (book) <host>
+        [doc] cargo (book) <host>
+        [doc] cargo (book) <target1>
+        [doc] clippy (book) <host>
+        [doc] clippy (book) <target1>
+        [doc] embedded-book (book) <host>
+        [doc] embedded-book (book) <target1>
+        [doc] edition-guide (book) <host>
+        [doc] edition-guide (book) <target1>
+        [doc] style-guide (book) <host>
+        [doc] style-guide (book) <target1>
+        [doc] rustc 1 <host> -> releases 2 <host>
+        [doc] rustc 1 <host> -> releases 2 <target1>
         [build] rustc 0 <host> -> RustInstaller 1 <host>
         [dist] docs <host>
         [dist] docs <target1>
-        [doc] std 2 <host> crates=[]
-        [doc] std 2 <target1> crates=[]
+        [doc] rustc 2 <host> -> std 2 <host> crates=[]
+        [doc] rustc 2 <host> -> std 2 <target1> crates=[]
         [dist] mingw <host>
         [dist] mingw <target1>
         [build] rustc 0 <host> -> GenerateCopyright 1 <host>
@@ -1132,12 +1215,19 @@ mod snapshot {
                 .render_steps(), @r"
         [build] rustc 0 <host> -> UnstableBookGen 1 <host>
         [build] rustc 0 <host> -> Rustbook 1 <host>
+        [doc] unstable-book (book) <host>
         [build] llvm <host>
         [build] rustc 0 <host> -> rustc 1 <host>
         [build] rustc 1 <host> -> std 1 <host>
+        [doc] book (book) <host>
+        [doc] book/first-edition (book) <host>
+        [doc] book/second-edition (book) <host>
+        [doc] book/2018-edition (book) <host>
+        [build] rustdoc 1 <host>
+        [doc] rustc 1 <host> -> standalone 2 <host>
         [build] rustc 1 <host> -> rustc 2 <host>
         [build] rustdoc 2 <host>
-        [doc] std 2 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
+        [doc] rustc 2 <host> -> std 2 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
         [build] rustc 1 <host> -> error-index 2 <host>
         [doc] rustc 1 <host> -> error-index 2 <host>
         [build] llvm <target1>
@@ -1145,12 +1235,22 @@ mod snapshot {
         [build] rustc 1 <host> -> rustc 2 <target1>
         [build] rustc 1 <host> -> error-index 2 <target1>
         [doc] rustc 1 <host> -> error-index 2 <target1>
-        [build] rustc 2 <host> -> std 2 <host>
+        [doc] nomicon (book) <host>
+        [doc] rustc 1 <host> -> reference (book) 2 <host>
+        [doc] rustdoc (book) <host>
+        [doc] rust-by-example (book) <host>
         [build] rustc 0 <host> -> LintDocs 1 <host>
-        [build] rustc 2 <host> -> std 2 <target1>
+        [doc] rustc (book) <host>
+        [doc] rustc (book) <target1>
+        [doc] cargo (book) <host>
+        [doc] clippy (book) <host>
+        [doc] embedded-book (book) <host>
+        [doc] edition-guide (book) <host>
+        [doc] style-guide (book) <host>
+        [doc] rustc 1 <host> -> releases 2 <host>
         [build] rustc 0 <host> -> RustInstaller 1 <host>
         [dist] docs <host>
-        [doc] std 2 <host> crates=[]
+        [doc] rustc 2 <host> -> std 2 <host> crates=[]
         [dist] mingw <host>
         [build] rustc 0 <host> -> GenerateCopyright 1 <host>
         [dist] rustc <host>
@@ -1173,28 +1273,61 @@ mod snapshot {
                 .render_steps(), @r"
         [build] rustc 0 <host> -> UnstableBookGen 1 <host>
         [build] rustc 0 <host> -> Rustbook 1 <host>
+        [doc] unstable-book (book) <host>
+        [doc] unstable-book (book) <target1>
         [build] llvm <host>
         [build] rustc 0 <host> -> rustc 1 <host>
         [build] rustc 1 <host> -> std 1 <host>
+        [doc] book (book) <host>
+        [doc] book/first-edition (book) <host>
+        [doc] book/second-edition (book) <host>
+        [doc] book/2018-edition (book) <host>
+        [build] rustdoc 1 <host>
+        [build] rustc 1 <host> -> std 1 <target1>
+        [doc] book (book) <target1>
+        [doc] book/first-edition (book) <target1>
+        [doc] book/second-edition (book) <target1>
+        [doc] book/2018-edition (book) <target1>
+        [doc] rustc 1 <host> -> standalone 2 <host>
+        [doc] rustc 1 <host> -> standalone 2 <target1>
         [build] rustc 1 <host> -> rustc 2 <host>
         [build] rustdoc 2 <host>
-        [doc] std 2 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
-        [doc] std 2 <target1> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
+        [doc] rustc 2 <host> -> std 2 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
+        [doc] rustc 2 <host> -> std 2 <target1> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
         [build] rustc 1 <host> -> error-index 2 <host>
         [doc] rustc 1 <host> -> error-index 2 <host>
         [build] llvm <target1>
-        [build] rustc 1 <host> -> std 1 <target1>
         [build] rustc 1 <host> -> rustc 2 <target1>
         [build] rustc 1 <host> -> error-index 2 <target1>
         [doc] rustc 1 <host> -> error-index 2 <target1>
-        [build] rustc 2 <host> -> std 2 <host>
+        [doc] nomicon (book) <host>
+        [doc] nomicon (book) <target1>
+        [doc] rustc 1 <host> -> reference (book) 2 <host>
+        [doc] rustc 1 <host> -> reference (book) 2 <target1>
+        [doc] rustdoc (book) <host>
+        [doc] rustdoc (book) <target1>
+        [doc] rust-by-example (book) <host>
+        [doc] rust-by-example (book) <target1>
         [build] rustc 0 <host> -> LintDocs 1 <host>
-        [build] rustc 2 <host> -> std 2 <target1>
+        [doc] rustc (book) <host>
+        [doc] rustc (book) <target1>
+        [doc] cargo (book) <host>
+        [doc] cargo (book) <target1>
+        [doc] clippy (book) <host>
+        [doc] clippy (book) <target1>
+        [doc] embedded-book (book) <host>
+        [doc] embedded-book (book) <target1>
+        [doc] edition-guide (book) <host>
+        [doc] edition-guide (book) <target1>
+        [doc] style-guide (book) <host>
+        [doc] style-guide (book) <target1>
+        [doc] rustc 1 <host> -> releases 2 <host>
+        [doc] rustc 1 <host> -> releases 2 <target1>
         [build] rustc 0 <host> -> RustInstaller 1 <host>
         [dist] docs <host>
         [dist] docs <target1>
-        [doc] std 2 <host> crates=[]
-        [doc] std 2 <target1> crates=[]
+        [doc] rustc 2 <host> -> std 2 <host> crates=[]
+        [doc] rustc 2 <host> -> std 2 <target1> crates=[]
         [dist] mingw <host>
         [dist] mingw <target1>
         [build] rustc 0 <host> -> GenerateCopyright 1 <host>
@@ -1219,16 +1352,33 @@ mod snapshot {
                 .render_steps(), @r"
         [build] rustc 0 <host> -> UnstableBookGen 1 <host>
         [build] rustc 0 <host> -> Rustbook 1 <host>
+        [doc] unstable-book (book) <target1>
         [build] llvm <host>
         [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 1 <host> -> std 1 <target1>
+        [doc] book (book) <target1>
+        [doc] book/first-edition (book) <target1>
+        [doc] book/second-edition (book) <target1>
+        [doc] book/2018-edition (book) <target1>
+        [build] rustdoc 1 <host>
         [build] rustc 1 <host> -> std 1 <host>
+        [doc] rustc 1 <host> -> standalone 2 <target1>
         [build] rustc 1 <host> -> rustc 2 <host>
         [build] rustdoc 2 <host>
-        [doc] std 2 <target1> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
-        [build] rustc 2 <host> -> std 2 <host>
+        [doc] rustc 2 <host> -> std 2 <target1> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
+        [doc] nomicon (book) <target1>
+        [doc] rustc 1 <host> -> reference (book) 2 <target1>
+        [doc] rustdoc (book) <target1>
+        [doc] rust-by-example (book) <target1>
+        [doc] cargo (book) <target1>
+        [doc] clippy (book) <target1>
+        [doc] embedded-book (book) <target1>
+        [doc] edition-guide (book) <target1>
+        [doc] style-guide (book) <target1>
+        [doc] rustc 1 <host> -> releases 2 <target1>
         [build] rustc 0 <host> -> RustInstaller 1 <host>
         [dist] docs <target1>
-        [doc] std 2 <target1> crates=[]
+        [doc] rustc 2 <host> -> std 2 <target1> crates=[]
         [dist] mingw <target1>
         [build] rustc 2 <host> -> std 2 <target1>
         [dist] rustc 2 <host> -> std 2 <target1>
@@ -1249,26 +1399,42 @@ mod snapshot {
                 .render_steps(), @r"
         [build] rustc 0 <host> -> UnstableBookGen 1 <host>
         [build] rustc 0 <host> -> Rustbook 1 <host>
+        [doc] unstable-book (book) <target1>
         [build] llvm <host>
         [build] rustc 0 <host> -> rustc 1 <host>
         [build] rustc 0 <host> -> WasmComponentLd 1 <host>
+        [build] rustc 1 <host> -> std 1 <target1>
+        [doc] book (book) <target1>
+        [doc] book/first-edition (book) <target1>
+        [doc] book/second-edition (book) <target1>
+        [doc] book/2018-edition (book) <target1>
+        [build] rustdoc 1 <host>
         [build] rustc 1 <host> -> std 1 <host>
+        [doc] rustc 1 <host> -> standalone 2 <target1>
         [build] rustc 1 <host> -> rustc 2 <host>
         [build] rustc 1 <host> -> WasmComponentLd 2 <host>
         [build] rustdoc 2 <host>
-        [doc] std 2 <target1> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
+        [doc] rustc 2 <host> -> std 2 <target1> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
         [build] llvm <target1>
-        [build] rustc 1 <host> -> std 1 <target1>
         [build] rustc 1 <host> -> rustc 2 <target1>
         [build] rustc 1 <host> -> WasmComponentLd 2 <target1>
         [build] rustc 1 <host> -> error-index 2 <target1>
         [doc] rustc 1 <host> -> error-index 2 <target1>
-        [build] rustc 2 <host> -> std 2 <host>
-        [build] rustc 2 <host> -> std 2 <target1>
+        [doc] nomicon (book) <target1>
+        [doc] rustc 1 <host> -> reference (book) 2 <target1>
+        [doc] rustdoc (book) <target1>
+        [doc] rust-by-example (book) <target1>
         [build] rustc 0 <host> -> LintDocs 1 <host>
+        [doc] rustc (book) <target1>
+        [doc] cargo (book) <target1>
+        [doc] clippy (book) <target1>
+        [doc] embedded-book (book) <target1>
+        [doc] edition-guide (book) <target1>
+        [doc] style-guide (book) <target1>
+        [doc] rustc 1 <host> -> releases 2 <target1>
         [build] rustc 0 <host> -> RustInstaller 1 <host>
         [dist] docs <target1>
-        [doc] std 2 <target1> crates=[]
+        [doc] rustc 2 <host> -> std 2 <target1> crates=[]
         [dist] mingw <target1>
         [build] rustdoc 2 <target1>
         [build] rustc 1 <host> -> rust-analyzer-proc-macro-srv 2 <target1>
@@ -1285,6 +1451,7 @@ mod snapshot {
         [build] rustc 1 <host> -> miri 2 <target1>
         [build] rustc 1 <host> -> cargo-miri 2 <target1>
         [build] rustc 1 <host> -> LlvmBitcodeLinker 2 <target1>
+        [doc] rustc 2 <target1> -> std 2 <target1> crates=[]
         ");
     }
 
@@ -1300,21 +1467,38 @@ mod snapshot {
                 .render_steps(), @r"
         [build] rustc 0 <host> -> UnstableBookGen 1 <host>
         [build] rustc 0 <host> -> Rustbook 1 <host>
+        [doc] unstable-book (book) <host>
         [build] llvm <host>
         [build] rustc 0 <host> -> rustc 1 <host>
         [build] rustc 0 <host> -> rustc_codegen_cranelift 1 <host>
         [build] rustc 1 <host> -> std 1 <host>
+        [doc] book (book) <host>
+        [doc] book/first-edition (book) <host>
+        [doc] book/second-edition (book) <host>
+        [doc] book/2018-edition (book) <host>
+        [build] rustdoc 1 <host>
+        [doc] rustc 1 <host> -> standalone 2 <host>
         [build] rustc 1 <host> -> rustc 2 <host>
         [build] rustc 1 <host> -> rustc_codegen_cranelift 2 <host>
         [build] rustdoc 2 <host>
-        [doc] std 2 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
+        [doc] rustc 2 <host> -> std 2 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
         [build] rustc 1 <host> -> error-index 2 <host>
         [doc] rustc 1 <host> -> error-index 2 <host>
-        [build] rustc 2 <host> -> std 2 <host>
+        [doc] nomicon (book) <host>
+        [doc] rustc 1 <host> -> reference (book) 2 <host>
+        [doc] rustdoc (book) <host>
+        [doc] rust-by-example (book) <host>
         [build] rustc 0 <host> -> LintDocs 1 <host>
+        [doc] rustc (book) <host>
+        [doc] cargo (book) <host>
+        [doc] clippy (book) <host>
+        [doc] embedded-book (book) <host>
+        [doc] edition-guide (book) <host>
+        [doc] style-guide (book) <host>
+        [doc] rustc 1 <host> -> releases 2 <host>
         [build] rustc 0 <host> -> RustInstaller 1 <host>
         [dist] docs <host>
-        [doc] std 2 <host> crates=[]
+        [doc] rustc 2 <host> -> std 2 <host> crates=[]
         [dist] mingw <host>
         [build] rustc 0 <host> -> GenerateCopyright 1 <host>
         [dist] rustc <host>
@@ -1693,14 +1877,32 @@ mod snapshot {
                 .render_steps(), @r"
         [build] rustc 0 <host> -> UnstableBookGen 1 <host>
         [build] rustc 0 <host> -> Rustbook 1 <host>
+        [doc] unstable-book (book) <host>
+        [doc] book (book) <host>
+        [doc] book/first-edition (book) <host>
+        [doc] book/second-edition (book) <host>
+        [doc] book/2018-edition (book) <host>
+        [build] rustdoc 0 <host>
+        [doc] rustc 0 <host> -> standalone 1 <host>
         [build] llvm <host>
         [build] rustc 0 <host> -> rustc 1 <host>
         [build] rustdoc 1 <host>
-        [doc] std 1 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
+        [doc] rustc 1 <host> -> std 1 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
         [build] rustc 0 <host> -> error-index 1 <host>
         [doc] rustc 0 <host> -> error-index 1 <host>
+        [doc] nomicon (book) <host>
         [build] rustc 1 <host> -> std 1 <host>
+        [doc] rustc 1 <host> -> reference (book) 2 <host>
+        [doc] rustdoc (book) <host>
+        [doc] rust-by-example (book) <host>
         [build] rustc 0 <host> -> LintDocs 1 <host>
+        [doc] rustc (book) <host>
+        [doc] cargo (book) <host>
+        [doc] clippy (book) <host>
+        [doc] embedded-book (book) <host>
+        [doc] edition-guide (book) <host>
+        [doc] style-guide (book) <host>
+        [doc] rustc 0 <host> -> releases 1 <host>
         ");
     }
 
@@ -1714,7 +1916,7 @@ mod snapshot {
         [build] llvm <host>
         [build] rustc 0 <host> -> rustc 1 <host>
         [build] rustdoc 1 <host>
-        [doc] std 1 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
+        [doc] rustc 1 <host> -> std 1 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
         ");
     }
 
@@ -1728,7 +1930,7 @@ mod snapshot {
         [build] llvm <host>
         [build] rustc 0 <host> -> rustc 1 <host>
         [build] rustdoc 1 <host>
-        [doc] std 1 <host> crates=[core]
+        [doc] rustc 1 <host> -> std 1 <host> crates=[core]
         ");
     }
 
@@ -1743,23 +1945,8 @@ mod snapshot {
         [build] llvm <host>
         [build] rustc 0 <host> -> rustc 1 <host>
         [build] rustdoc 1 <host>
-        [doc] std 1 <host> crates=[core]
+        [doc] rustc 1 <host> -> std 1 <host> crates=[core]
         ");
-    }
-
-    #[test]
-    fn test_lld_opt_in() {
-        with_lld_opt_in_targets(vec![host_target()], || {
-            let ctx = TestCtx::new();
-            insta::assert_snapshot!(
-                ctx.config("build")
-                    .path("compiler")
-                    .render_steps(), @r"
-            [build] llvm <host>
-            [build] rustc 0 <host> -> rustc 1 <host>
-            [build] rustc 0 <host> -> LldWrapper 1 <host>
-            ");
-        });
     }
 
     #[test]
@@ -1773,7 +1960,7 @@ mod snapshot {
         [build] llvm <host>
         [build] rustc 0 <host> -> rustc 1 <host>
         [build] rustdoc 1 <host>
-        [doc] std 1 <host> crates=[alloc,core]
+        [doc] rustc 1 <host> -> std 1 <host> crates=[alloc,core]
         ");
     }
 
@@ -1789,22 +1976,15 @@ mod snapshot {
         [build] llvm <host>
         [build] rustc 0 <host> -> rustc 1 <host>
         [build] rustdoc 1 <host>
-        [doc] std 1 <target1> crates=[alloc,core]
+        [doc] rustc 1 <host> -> std 1 <target1> crates=[alloc,core]
         ");
     }
 
     #[test]
+    #[should_panic]
     fn doc_compiler_stage_0() {
         let ctx = TestCtx::new();
-        insta::assert_snapshot!(
-            ctx.config("doc")
-                .path("compiler")
-                .stage(0)
-                .render_steps(), @r"
-        [build] rustdoc 0 <host>
-        [build] llvm <host>
-        [doc] rustc 0 <host>
-        ");
+        ctx.config("doc").path("compiler").stage(0).run();
     }
 
     #[test]
@@ -1815,11 +1995,9 @@ mod snapshot {
                 .path("compiler")
                 .stage(1)
                 .render_steps(), @r"
+        [build] rustdoc 0 <host>
         [build] llvm <host>
-        [build] rustc 0 <host> -> rustc 1 <host>
-        [build] rustc 1 <host> -> std 1 <host>
-        [build] rustdoc 1 <host>
-        [doc] rustc 1 <host>
+        [doc] rustc 0 <host> -> rustc 1 <host>
         ");
     }
 
@@ -1834,24 +2012,16 @@ mod snapshot {
         [build] llvm <host>
         [build] rustc 0 <host> -> rustc 1 <host>
         [build] rustc 1 <host> -> std 1 <host>
-        [build] rustc 1 <host> -> rustc 2 <host>
-        [build] rustc 2 <host> -> std 2 <host>
-        [build] rustdoc 2 <host>
-        [doc] rustc 2 <host>
+        [build] rustdoc 1 <host>
+        [doc] rustc 1 <host> -> rustc 2 <host>
         ");
     }
 
     #[test]
+    #[should_panic]
     fn doc_compiletest_stage_0() {
         let ctx = TestCtx::new();
-        insta::assert_snapshot!(
-            ctx.config("doc")
-                .path("src/tools/compiletest")
-                .stage(0)
-                .render_steps(), @r"
-        [build] rustdoc 0 <host>
-        [doc] Compiletest <host>
-        ");
+        ctx.config("doc").path("src/tools/compiletest").stage(0).run();
     }
 
     #[test]
@@ -1862,11 +2032,8 @@ mod snapshot {
                 .path("src/tools/compiletest")
                 .stage(1)
                 .render_steps(), @r"
-        [build] llvm <host>
-        [build] rustc 0 <host> -> rustc 1 <host>
-        [build] rustc 1 <host> -> std 1 <host>
-        [build] rustdoc 1 <host>
-        [doc] Compiletest <host>
+        [build] rustdoc 0 <host>
+        [doc] rustc 0 <host> -> Compiletest 1 <host>
         ");
     }
 
@@ -1878,13 +2045,24 @@ mod snapshot {
                 .path("src/tools/compiletest")
                 .stage(2)
                 .render_steps(), @r"
+        [build] rustdoc 0 <host>
+        [doc] rustc 0 <host> -> Compiletest 1 <host>
+        ");
+    }
+
+    // Reference should be auto-bumped to stage 2.
+    #[test]
+    fn doc_reference() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("doc")
+                .path("reference")
+                .render_steps(), @r"
         [build] llvm <host>
         [build] rustc 0 <host> -> rustc 1 <host>
         [build] rustc 1 <host> -> std 1 <host>
-        [build] rustc 1 <host> -> rustc 2 <host>
-        [build] rustc 2 <host> -> std 2 <host>
-        [build] rustdoc 2 <host>
-        [doc] Compiletest <host>
+        [build] rustc 0 <host> -> Rustbook 1 <host>
+        [doc] rustc 1 <host> -> reference (book) 2 <host>
         ");
     }
 }

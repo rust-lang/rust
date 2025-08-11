@@ -212,10 +212,10 @@ impl Step for HtmlCheck {
         }
         // Ensure that a few different kinds of documentation are available.
         builder.default_doc(&[]);
-        builder.ensure(crate::core::build_steps::doc::Rustc::new(
+        builder.ensure(crate::core::build_steps::doc::Rustc::for_stage(
+            builder,
             builder.top_stage,
             self.target,
-            builder,
         ));
 
         builder
@@ -983,8 +983,8 @@ impl Step for RustdocJSStd {
                 command.arg("--test-file").arg(path);
             }
         }
-        builder.ensure(crate::core::build_steps::doc::Std::new(
-            builder.top_stage,
+        builder.ensure(crate::core::build_steps::doc::Std::from_build_compiler(
+            builder.compiler(builder.top_stage, builder.host_target),
             self.target,
             DocumentationFormat::Html,
         ));
@@ -3310,11 +3310,8 @@ impl Step for LintDocs {
     /// Tests that the lint examples in the rustc book generate the correct
     /// lints and have the expected format.
     fn run(self, builder: &Builder<'_>) {
-        builder.ensure(crate::core::build_steps::doc::RustcBook {
-            compiler: self.compiler,
-            target: self.target,
-            validate: true,
-        });
+        builder
+            .ensure(crate::core::build_steps::doc::RustcBook::validate(self.compiler, self.target));
     }
 }
 
