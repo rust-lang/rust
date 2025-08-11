@@ -24,6 +24,7 @@ use crate::attributes::codegen_attrs::{
     UsedParser,
 };
 use crate::attributes::confusables::ConfusablesParser;
+use crate::attributes::crate_level::CrateNameParser;
 use crate::attributes::deprecation::DeprecationParser;
 use crate::attributes::dummy::DummyParser;
 use crate::attributes::inline::{InlineParser, RustcForceInlineParser};
@@ -166,6 +167,7 @@ attribute_parsers!(
 
         // tidy-alphabetical-start
         Single<CoverageParser>,
+        Single<CrateNameParser>,
         Single<CustomMirParser>,
         Single<DeprecationParser>,
         Single<DummyParser>,
@@ -310,7 +312,9 @@ pub struct AcceptContext<'f, 'sess, S: Stage> {
     /// The span of the attribute currently being parsed
     pub(crate) attr_span: Span,
 
+    /// Whether it is an inner or outer attribute
     pub(crate) attr_style: AttrStyle,
+
     /// The expected structure of the attribute.
     ///
     /// Used in reporting errors to give a hint to users what the attribute *should* look like.
@@ -683,7 +687,9 @@ impl ShouldEmit {
             ShouldEmit::ErrorsAndLints => {
                 diag.emit();
             }
-            ShouldEmit::Nothing => {}
+            ShouldEmit::Nothing => {
+                diag.cancel();
+            }
         }
     }
 }

@@ -1,5 +1,5 @@
 use rustc_ast::LitKind;
-use rustc_ast::attr::{AttributeExt, first_attr_value_str_by_name};
+use rustc_ast::attr::AttributeExt;
 use rustc_feature::is_builtin_attr_name;
 use rustc_hir::RustcVersion;
 use rustc_span::{Symbol, sym};
@@ -25,10 +25,6 @@ pub fn parse_version(s: Symbol) -> Option<RustcVersion> {
 
 pub fn is_builtin_attr(attr: &impl AttributeExt) -> bool {
     attr.is_doc_comment() || attr.ident().is_some_and(|ident| is_builtin_attr_name(ident.name))
-}
-
-pub fn find_crate_name(attrs: &[impl AttributeExt]) -> Option<Symbol> {
-    first_attr_value_str_by_name(attrs, sym::crate_name)
 }
 
 pub fn is_doc_alias_attrs_contain_symbol<'tcx, T: AttributeExt + 'tcx>(
