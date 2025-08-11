@@ -904,10 +904,7 @@ impl SyntaxExtension {
             find_attr!(attrs, AttributeKind::AllowInternalUnstable(i, _) => i)
                 .map(|i| i.as_slice())
                 .unwrap_or_default();
-        // FIXME(jdonszelman): allow_internal_unsafe isn't yet new-style
-        // let allow_internal_unsafe = find_attr!(attrs, AttributeKind::AllowInternalUnsafe);
-        let allow_internal_unsafe =
-            ast::attr::find_by_name(attrs, sym::allow_internal_unsafe).is_some();
+        let allow_internal_unsafe = find_attr!(attrs, AttributeKind::AllowInternalUnsafe(_));
 
         let local_inner_macros = ast::attr::find_by_name(attrs, sym::macro_export)
             .and_then(|macro_export| macro_export.meta_item_list())
