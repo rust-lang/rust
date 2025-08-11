@@ -1155,8 +1155,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 let is_valid = doc_fake_variadic_is_allowed_self_ty(i.self_ty)
                     || if let Some(&[hir::GenericArg::Type(ty)]) = i
                         .of_trait
-                        .as_ref()
-                        .and_then(|trait_ref| trait_ref.path.segments.last())
+                        .and_then(|of_trait| of_trait.trait_ref.path.segments.last())
                         .map(|last_segment| last_segment.args().args)
                     {
                         matches!(&ty.kind, hir::TyKind::Tup([_]))
@@ -1646,8 +1645,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             && let parent_hir_id = self.tcx.parent_hir_id(hir_id)
             && let hir::Node::Item(item) = self.tcx.hir_node(parent_hir_id)
             && let hir::ItemKind::Impl(impl_) = item.kind
-            && let Some(trait_) = impl_.of_trait
-            && let Some(def_id) = trait_.trait_def_id()
+            && let Some(of_trait) = impl_.of_trait
+            && let Some(def_id) = of_trait.trait_ref.trait_def_id()
             && self.tcx.is_lang_item(def_id, hir::LangItem::Drop)
         {
             return;

@@ -183,14 +183,14 @@ fn check_enum<'tcx>(cx: &LateContext<'tcx>, item: &'tcx Item<'_>, func_expr: &Ex
 impl<'tcx> LateLintPass<'tcx> for DerivableImpls {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
         if let ItemKind::Impl(Impl {
-            of_trait: Some(trait_ref),
+            of_trait: Some(of_trait),
             items: [child],
             self_ty,
             ..
         }) = item.kind
             && !cx.tcx.is_automatically_derived(item.owner_id.to_def_id())
             && !item.span.from_expansion()
-            && let Some(def_id) = trait_ref.trait_def_id()
+            && let Some(def_id) = of_trait.trait_ref.trait_def_id()
             && cx.tcx.is_diagnostic_item(sym::Default, def_id)
             && let impl_item_hir = child.hir_id()
             && let Node::ImplItem(impl_item) = cx.tcx.hir_node(impl_item_hir)
