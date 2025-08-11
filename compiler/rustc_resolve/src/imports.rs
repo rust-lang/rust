@@ -44,51 +44,28 @@ type Res = def::Res<NodeId>;
 
 pub(crate) struct ImportResolver<'r, 'ra, 'tcx> {
     r: CmResolver<'r, 'ra, 'tcx>, // always immutable
-    batch: Vec<Import<'ra>>,      // a.k.a. indeterminate_imports, also treated as output
-
-    // outputs
-    prelude: Option<Module<'ra>>,
-    determined_imports: Vec<Import<'ra>>,
-    module_glob_importers: FxIndexMap<Module<'ra>, Vec<Import<'ra>>>,
-    glob_import_bindings: Vec<(Module<'ra>, BindingKey, NameBinding<'ra>, bool)>,
-    glob_res_outputs: Vec<(NodeId, PartialRes)>,
-    import_bindings: PerNS<Vec<(Module<'ra>, Import<'ra>, PendingBinding<'ra>)>>,
+    outputs: ImportResolutionOutputs<'ra>,
 }
 
+#[derive(Default)]
 struct ImportResolutionOutputs<'ra> {
     prelude: Option<Module<'ra>>,
     indeterminate_imports: Vec<Import<'ra>>,
     determined_imports: Vec<Import<'ra>>,
     module_glob_importers: FxIndexMap<Module<'ra>, Vec<Import<'ra>>>,
-    glob_import_bindings: Vec<(Module<'ra>, BindingKey, NameBinding<'ra>, bool)>,
-    glob_res_outputs: Vec<(NodeId, PartialRes)>,
-    import_bindings: PerNS<Vec<(Module<'ra>, Import<'ra>, PendingBinding<'ra>)>>,
+    glob_import_bindings:
+        Vec<(Module<'ra>, BindingKey, NameBinding<'ra>, bool /* warn_ambiguity */)>,
+    glob_path_res: Vec<(NodeId, PartialRes)>,
+    single_import_bindings: PerNS<Vec<(Module<'ra>, Import<'ra>, PendingBinding<'ra>)>>,
 }
 
 impl<'r, 'ra, 'tcx> ImportResolver<'r, 'ra, 'tcx> {
-    pub(crate) fn new(cmr: CmResolver<'r, 'ra, 'tcx>, batch: Vec<Import<'ra>>) -> Self {
-        ImportResolver {
-            r: cmr,
-            batch,
-            prelude: None,
-            determined_imports: Default::default(),
-            module_glob_importers: Default::default(),
-            glob_import_bindings: Default::default(),
-            glob_res_outputs: Default::default(),
-            import_bindings: Default::default(),
-        }
+    pub(crate) fn new(cmr: CmResolver<'r, 'ra, 'tcx>) -> Self {
+        ImportResolver { r: cmr, outputs: Default::default() }
     }
 
     fn into_outputs(self) -> ImportResolutionOutputs<'ra> {
-        ImportResolutionOutputs {
-            prelude: self.prelude,
-            indeterminate_imports: self.batch,
-            determined_imports: self.determined_imports,
-            module_glob_importers: self.module_glob_importers,
-            glob_import_bindings: self.glob_import_bindings,
-            glob_res_outputs: self.glob_res_outputs,
-            import_bindings: self.import_bindings,
-        }
+        self.outputs
     }
 }
 
@@ -111,11 +88,11 @@ impl<'ra> ImportResolutionOutputs<'ra> {
             let _ = r.try_define_local(module, key.ident.0, key.ns, binding, warn_ambiguity);
         }
 
-        for (id, res) in self.glob_res_outputs {
+        for (id, res) in self.glob_path_res {
             r.record_partial_res(id, res);
         }
 
-        for (ns, import_bindings) in self.import_bindings.into_iter_with() {
+        for (ns, import_bindings) in self.single_import_bindings.into_iter_with() {
             for (parent, import, pending_binding) in import_bindings {
                 let ImportKind::Single { target, ref bindings, .. } = import.kind else {
                     unreachable!();
@@ -669,7 +646,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             prev_indeterminate_count = indeterminate_count;
             let batch = mem::take(&mut self.indeterminate_imports);
             self.assert_speculative = true;
-            let (outputs, count) = ImportResolver::new(self.cm(), batch).resolve_batch();
+            let (outputs, count) = ImportResolver::new(self.cm()).resolve_batch(batch);
             self.assert_speculative = false;
             indeterminate_count = count;
             outputs.commit(self);
@@ -678,14 +655,15 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
     fn resolve_batch<'r>(
         mut self: ImportResolver<'r, 'ra, 'tcx>,
+        batch: Vec<Import<'ra>>,
     ) -> (ImportResolutionOutputs<'ra>, usize) {
         let mut indeterminate_count = 0;
-        for import in mem::take(&mut self.batch) {
+        for import in batch {
             let import_indeterminate_count = self.resolve_import(import);
             indeterminate_count += import_indeterminate_count;
             match import_indeterminate_count {
-                0 => self.determined_imports.push(import),
-                _ => self.batch.push(import),
+                0 => self.outputs.determined_imports.push(import),
+                _ => self.outputs.indeterminate_imports.push(import),
             }
         }
         (self.into_outputs(), indeterminate_count)
@@ -1040,7 +1018,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         return;
                     }
                 };
-                self.import_bindings[ns].push((parent, import, pending_binding));
+                self.outputs.single_import_bindings[ns].push((parent, import, pending_binding));
             }
         });
 
@@ -1607,12 +1585,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         if module == import.parent_scope.module {
             return;
         } else if is_prelude {
-            self.prelude = Some(module);
+            self.outputs.prelude = Some(module);
             return;
         }
 
         // Add to module's glob_importers
-        self.module_glob_importers.entry(module).or_default().push(import);
+        self.outputs.module_glob_importers.entry(module).or_default().push(import);
 
         // Ensure that `resolutions` isn't borrowed during `try_define`,
         // since it might get updated via a glob cycle.
@@ -1636,7 +1614,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     .resolution(import.parent_scope.module, key)
                     .and_then(|r| r.binding())
                     .is_some_and(|binding| binding.warn_ambiguity_recursive());
-                self.glob_import_bindings.push((
+                self.outputs.glob_import_bindings.push((
                     import.parent_scope.module,
                     key,
                     imported_binding,
@@ -1646,7 +1624,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         }
 
         // Record the destination of this import
-        self.glob_res_outputs.push((id, PartialRes::new(module.res().unwrap())));
+        self.outputs.glob_path_res.push((id, PartialRes::new(module.res().unwrap())));
     }
 
     // Miscellaneous post-processing, including recording re-exports,
