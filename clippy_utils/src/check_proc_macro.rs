@@ -511,6 +511,14 @@ fn ast_ty_search_pat(ty: &ast::Ty) -> (Pat, Pat) {
                 (Pat::Str(""), Pat::Str(""))
             }
         },
+        TyKind::MacCall(mac_call) => {
+            let start = if let Some(first) = mac_call.path.segments.first() {
+                ident_search_pat(first.ident).0
+            } else {
+                Pat::Str("")
+            };
+            (start, Pat::Str(""))
+        },
         _ => (Pat::Str(""), Pat::Str("")),
     }
 }
