@@ -11,8 +11,6 @@ LL |         let _f = to_fn(|| x = 42);
    |                  |     |
    |                  |     in this closure
    |                  expects `Fn` instead of `FnMut`
-   |
-   = help: consider using `std::sync::atomic::AtomicI32` instead, which allows for multiple threads to access and modify the value
 
 error[E0596]: cannot borrow `y` as mutable, as it is a captured variable in a `Fn` closure
   --> $DIR/borrow-immutable-upvar-mutation.rs:24:31
@@ -27,8 +25,6 @@ LL |         let _g = to_fn(|| set(&mut y));
    |                  |     |
    |                  |     in this closure
    |                  expects `Fn` instead of `FnMut`
-   |
-   = help: consider using `std::sync::atomic::AtomicUsize` instead, which allows for multiple threads to access and modify the value
 
 error[E0594]: cannot assign to `z`, as it is a captured variable in a `Fn` closure
   --> $DIR/borrow-immutable-upvar-mutation.rs:29:22
@@ -44,8 +40,6 @@ LL |             to_fn(|| z = 42);
    |             |     |
    |             |     in this closure
    |             expects `Fn` instead of `FnMut`
-   |
-   = help: consider using `std::sync::atomic::AtomicUsize` instead, which allows for multiple threads to access and modify the value
 
 error[E0594]: cannot assign to `x`, as it is a captured variable in a `Fn` closure
   --> $DIR/borrow-immutable-upvar-mutation.rs:36:32

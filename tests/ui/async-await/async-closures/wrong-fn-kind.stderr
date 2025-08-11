@@ -36,8 +36,6 @@ LL |     needs_async_fn(async || {
 LL |
 LL |         x += 1;
    |         - mutable borrow occurs due to use of `x` in closure
-   |
-   = help: consider using `std::sync::atomic::AtomicI32` instead, which allows for multiple threads to access and modify the value
 
 error: aborting due to 2 previous errors
 
