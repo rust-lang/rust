@@ -16,7 +16,7 @@ impl<S: Stage> SingleAttributeParser<S> for SkipDuringMethodDispatchParser {
     const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepInnermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
 
-    const TEMPLATE: AttributeTemplate = template!(List: "array, boxed_slice");
+    const TEMPLATE: AttributeTemplate = template!(List: &["array, boxed_slice"]);
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
         let mut array = false;

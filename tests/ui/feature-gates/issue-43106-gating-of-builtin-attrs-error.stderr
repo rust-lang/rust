@@ -304,7 +304,7 @@ error[E0517]: attribute should be applied to a struct, enum, or union
 LL |     #[repr(Rust)] impl S { }
    |            ^^^^   ---------- not a struct, enum, or union
 
-error: valid forms for the attribute are `#[inline(always|never)]` and `#[inline]`
+error: valid forms for the attribute are `#[inline(always)]`, `#[inline(never)]`, and `#[inline]`
   --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:46:5
    |
 LL |     #[inline = "2100"] fn f() { }
@@ -319,7 +319,7 @@ error: aborting due to 38 previous errors
 Some errors have detailed explanations: E0517, E0518, E0658.
 For more information about an error, try `rustc --explain E0517`.
 Future incompatibility report: Future breakage diagnostic:
-error: valid forms for the attribute are `#[inline(always|never)]` and `#[inline]`
+error: valid forms for the attribute are `#[inline(always)]`, `#[inline(never)]`, and `#[inline]`
   --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:46:5
    |
 LL |     #[inline = "2100"] fn f() { }

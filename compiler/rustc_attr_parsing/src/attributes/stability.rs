@@ -48,7 +48,7 @@ impl<S: Stage> AttributeParser<S> for StabilityParser {
     const ATTRIBUTES: AcceptMapping<Self, S> = &[
         (
             &[sym::stable],
-            template!(List: r#"feature = "name", since = "version""#),
+            template!(List: &[r#"feature = "name", since = "version""#]),
             |this, cx, args| {
                 reject_outside_std!(cx);
                 if !this.check_duplicate(cx)
@@ -60,7 +60,7 @@ impl<S: Stage> AttributeParser<S> for StabilityParser {
         ),
         (
             &[sym::unstable],
-            template!(List: r#"feature = "name", reason = "...", issue = "N""#),
+            template!(List: &[r#"feature = "name", reason = "...", issue = "N""#]),
             |this, cx, args| {
                 reject_outside_std!(cx);
                 if !this.check_duplicate(cx)
@@ -131,7 +131,7 @@ pub(crate) struct BodyStabilityParser {
 impl<S: Stage> AttributeParser<S> for BodyStabilityParser {
     const ATTRIBUTES: AcceptMapping<Self, S> = &[(
         &[sym::rustc_default_body_unstable],
-        template!(List: r#"feature = "name", reason = "...", issue = "N""#),
+        template!(List: &[r#"feature = "name", reason = "...", issue = "N""#]),
         |this, cx, args| {
             reject_outside_std!(cx);
             if this.stability.is_some() {
@@ -177,29 +177,37 @@ impl ConstStabilityParser {
 
 impl<S: Stage> AttributeParser<S> for ConstStabilityParser {
     const ATTRIBUTES: AcceptMapping<Self, S> = &[
-        (&[sym::rustc_const_stable], template!(List: r#"feature = "name""#), |this, cx, args| {
-            reject_outside_std!(cx);
+        (
+            &[sym::rustc_const_stable],
+            template!(List: &[r#"feature = "name""#]),
+            |this, cx, args| {
+                reject_outside_std!(cx);
 
-            if !this.check_duplicate(cx)
-                && let Some((feature, level)) = parse_stability(cx, args)
-            {
-                this.stability = Some((
-                    PartialConstStability { level, feature, promotable: false },
-                    cx.attr_span,
-                ));
-            }
-        }),
-        (&[sym::rustc_const_unstable], template!(List: r#"feature = "name""#), |this, cx, args| {
-            reject_outside_std!(cx);
-            if !this.check_duplicate(cx)
-                && let Some((feature, level)) = parse_unstability(cx, args)
-            {
-                this.stability = Some((
-                    PartialConstStability { level, feature, promotable: false },
-                    cx.attr_span,
-                ));
-            }
-        }),
+                if !this.check_duplicate(cx)
+                    && let Some((feature, level)) = parse_stability(cx, args)
+                {
+                    this.stability = Some((
+                        PartialConstStability { level, feature, promotable: false },
+                        cx.attr_span,
+                    ));
+                }
+            },
+        ),
+        (
+            &[sym::rustc_const_unstable],
+            template!(List: &[r#"feature = "name""#]),
+            |this, cx, args| {
+                reject_outside_std!(cx);
+                if !this.check_duplicate(cx)
+                    && let Some((feature, level)) = parse_unstability(cx, args)
+                {
+                    this.stability = Some((
+                        PartialConstStability { level, feature, promotable: false },
+                        cx.attr_span,
+                    ));
+                }
+            },
+        ),
         (&[sym::rustc_promotable], template!(Word), |this, cx, _| {
             reject_outside_std!(cx);
             this.promotable = true;
