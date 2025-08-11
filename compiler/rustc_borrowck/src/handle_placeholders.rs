@@ -157,7 +157,7 @@ fn region_definitions<'tcx>(
     for info in var_infos.iter() {
         let origin = match info.origin {
             RegionVariableOrigin::Nll(origin) => origin,
-            _ => NllRegionVariableOrigin::Existential { from_forall: false, name: None },
+            _ => NllRegionVariableOrigin::Existential { name: None },
         };
 
         let definition = RegionDefinition { origin, universe: info.universe, external_name: None };
