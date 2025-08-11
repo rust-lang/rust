@@ -1292,7 +1292,12 @@ impl Builder<'_> {
 
             if let Some(limit) = limit
                 && (build_compiler_stage == 0
-                    || self.config.default_codegen_backend(target).unwrap_or_default().is_llvm())
+                    || self
+                        .config
+                        .default_codegen_backend(target)
+                        .cloned()
+                        .unwrap_or_default()
+                        .is_llvm())
             {
                 rustflags.arg(&format!("-Cllvm-args=-import-instr-limit={limit}"));
             }
