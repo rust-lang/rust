@@ -3,6 +3,7 @@ use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::Applicability;
 use rustc_hir::LangItem;
 use rustc_hir::def::DefKind;
+use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::span_bug;
 use rustc_middle::thir::visit::{self, Visitor};
 use rustc_middle::thir::{BodyTy, Expr, ExprId, ExprKind, Thir};
@@ -184,15 +185,23 @@ impl<'tcx> TailCallCkVisitor<'_, 'tcx> {
     }
 
     /// Returns true if function of type `ty` needs location argument
-    /// (i.e. if a function is marked as `#[track_caller]`).
-    ///
-    /// Panics if the function's instance can't be immediately resolved.
+    /// (i.e. if a function is marked as `#[track_caller]`,
+    /// is an override of a default trait method marked as `#[track_caller]`
+    /// or an implementation of a prototype method marked as `#[track_caller]`)
     fn needs_location(&self, ty: Ty<'tcx>) -> bool {
         if let &ty::FnDef(did, substs) = ty.kind() {
-            let instance =
-                ty::Instance::expect_resolve(self.tcx, self.typing_env, did, substs, DUMMY_SP);
-
-            instance.def.requires_caller_location(self.tcx)
+            // If this is a default trait method, it won't be resolved to a concrete instance.
+            if self
+                .tcx
+                .opt_associated_item(did)
+                .is_some_and(|impl_item| impl_item.container == ty::AssocItemContainer::Trait)
+            {
+                self.tcx.codegen_fn_attrs(did).flags.intersects(CodegenFnAttrFlags::TRACK_CALLER)
+            } else {
+                let instance =
+                    ty::Instance::expect_resolve(self.tcx, self.typing_env, did, substs, DUMMY_SP);
+                instance.def.requires_caller_location(self.tcx)
+            }
         } else {
             false
         }
