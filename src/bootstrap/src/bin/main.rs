@@ -268,6 +268,7 @@ fn setup_tracing(profiling_enabled: bool) -> Option<TracingGuard> {
     use std::io::BufWriter;
     use std::sync::atomic::{AtomicU32, Ordering};
 
+    use bootstrap::STEP_NAME_TARGET;
     use chrono::{DateTime, Utc};
     use tracing::field::{Field, Visit};
     use tracing::{Event, Id, Level, Subscriber};
@@ -277,18 +278,40 @@ fn setup_tracing(profiling_enabled: bool) -> Option<TracingGuard> {
 
     let filter = EnvFilter::from_env("BOOTSTRAP_TRACING");
 
+    /// Visitor that extracts both known and unknown field values from events and spans.
     #[derive(Default)]
     struct FieldValues {
+        /// Main event message
         message: Option<String>,
+        /// Name of a recorded psna
+        step_name: Option<String>,
+        /// The rest of arbitrary event/span fields
         fields: Vec<(&'static str, String)>,
     }
 
     impl Visit for FieldValues {
+        /// Record fields if possible using `record_str`, to avoid rendering simple strings with
+        /// their `Debug` representation, which adds extra quotes.
+        fn record_str(&mut self, field: &Field, value: &str) {
+            match field.name() {
+                "step_name" => {
+                    self.step_name = Some(value.to_string());
+                }
+                name => {
+                    self.fields.push((name, value.to_string()));
+                }
+            }
+        }
+
         fn record_debug(&mut self, field: &Field, value: &dyn Debug) {
-            if field.name() == "message" {
-                self.message = Some(format!("{value:?}"));
-            } else {
-                self.fields.push((field.name(), format!("{value:?}")));
+            let formatted = format!("{value:?}");
+            match field.name() {
+                "message" => {
+                    self.message = Some(formatted);
+                }
+                name => {
+                    self.fields.push((name, formatted));
+                }
             }
         }
     }
@@ -297,6 +320,9 @@ fn setup_tracing(profiling_enabled: bool) -> Option<TracingGuard> {
     enum SpanAction {
         Enter,
     }
+
+    /// Holds the name of a step, stored in `tracing_subscriber`'s extensions.
+    struct StepNameExtension(String);
 
     #[derive(Default)]
     struct TracingPrinter {
@@ -369,17 +395,31 @@ fn setup_tracing(profiling_enabled: bool) -> Option<TracingGuard> {
                 }
             }
 
-            write!(writer, "{}", span.name())?;
-            if let Some(values) = field_values.filter(|v| !v.fields.is_empty()) {
-                write!(writer, " [")?;
-                for (index, (name, value)) in values.fields.iter().enumerate() {
-                    write!(writer, "{name} = {value}")?;
-                    if index < values.fields.len() - 1 {
-                        write!(writer, ", ")?;
-                    }
+            // We handle steps specially. We instrument them dynamically in `Builder::ensure`,
+            // and we want to have custom name for each step span. But tracing doesn't allow setting
+            // dynamic span names. So we detect step spans here and override their name.
+            if span.metadata().target() == STEP_NAME_TARGET {
+                let name = field_values.and_then(|v| v.step_name.as_deref()).unwrap_or(span.name());
+                write!(writer, "{name}")?;
+
+                // There should be only one more field called `args`
+                if let Some(values) = field_values {
+                    let field = &values.fields[0];
+                    write!(writer, " {{{}}}", field.1)?;
                 }
-                write!(writer, "]")?;
-            }
+            } else {
+                write!(writer, "{}", span.name())?;
+                if let Some(values) = field_values.filter(|v| !v.fields.is_empty()) {
+                    write!(writer, " [")?;
+                    for (index, (name, value)) in values.fields.iter().enumerate() {
+                        write!(writer, "{name} = {value}")?;
+                        if index < values.fields.len() - 1 {
+                            write!(writer, ", ")?;
+                        }
+                    }
+                    write!(writer, "]")?;
+                }
+            };
 
             write_location(writer, span.metadata())?;
             writeln!(writer)?;
@@ -424,18 +464,18 @@ fn setup_tracing(profiling_enabled: bool) -> Option<TracingGuard> {
             self.write_event(&mut writer, event).unwrap();
         }
 
-        fn on_new_span(
-            &self,
-            attrs: &tracing::span::Attributes<'_>,
-            id: &Id,
-            _ctx: Context<'_, S>,
-        ) {
+        fn on_new_span(&self, attrs: &tracing::span::Attributes<'_>, id: &Id, ctx: Context<'_, S>) {
             // Record value of span fields
             // Note that we do not implement changing values of span fields after they are created.
             // For that we would also need to implement the `on_record` method
-
             let mut field_values = FieldValues::default();
             attrs.record(&mut field_values);
+
+            // We need to propagate the actual name of the span to the Chrome layer below, because
+            // it cannot access field values. We do that through extensions.
+            if let Some(step_name) = field_values.step_name.clone() {
+                ctx.span(id).unwrap().extensions_mut().insert(StepNameExtension(step_name));
+            }
             self.span_values.lock().unwrap().insert(id.clone(), field_values);
         }
 
@@ -466,8 +506,21 @@ fn setup_tracing(profiling_enabled: bool) -> Option<TracingGuard> {
         let chrome_tracing_path = tempdir.path().join("bootstrap-trace.json");
         let file = BufWriter::new(File::create(&chrome_tracing_path).unwrap());
 
-        let chrome_layer =
-            tracing_chrome::ChromeLayerBuilder::new().writer(file).include_args(true);
+        let chrome_layer = tracing_chrome::ChromeLayerBuilder::new()
+            .writer(file)
+            .include_args(true)
+            .name_fn(Box::new(|event_or_span| match event_or_span {
+                tracing_chrome::EventOrSpan::Event(e) => e.metadata().name().to_string(),
+                tracing_chrome::EventOrSpan::Span(s) => {
+                    if s.metadata().target() == STEP_NAME_TARGET
+                        && let Some(extension) = s.extensions().get::<StepNameExtension>()
+                    {
+                        extension.0.clone()
+                    } else {
+                        s.metadata().name().to_string()
+                    }
+                }
+            }));
         let (chrome_layer, guard) = chrome_layer.build();
 
         tracing::subscriber::set_global_default(registry.with(chrome_layer)).unwrap();

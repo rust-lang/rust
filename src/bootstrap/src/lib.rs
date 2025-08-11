@@ -43,6 +43,8 @@ mod core;
 mod utils;
 
 pub use core::builder::PathSet;
+#[cfg(feature = "tracing")]
+pub use core::builder::STEP_NAME_TARGET;
 pub use core::config::flags::{Flags, Subcommand};
 pub use core::config::{ChangeId, Config};
 
