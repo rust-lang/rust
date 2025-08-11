@@ -216,10 +216,10 @@ macro_rules! template {
     (List: $descr: expr) => { $crate::template!(@ false, Some($descr), &[], None, None) };
     (List: $descr: expr, $link: literal) => { $crate::template!(@ false, Some($descr), &[], None, Some($link)) };
     (OneOf: $one_of: expr) => { $crate::template!(@ false, None, $one_of, None, None) };
-    (NameValueStr: $descr: expr) => { $crate::template!(@ false, None, &[], Some(&[$descr]), None) };
-    (NameValueStr: $descr: expr, $link: literal) => { $crate::template!(@ false, None, &[], Some(&[$descr]), Some($link)) };
-    (OneOfNameValueStr: $descr: expr) => { $crate::template!(@ false, None, &[], Some($descr), None) };
-    (OneOfNameValueStr: $descr: expr, $link: literal) => { $crate::template!(@ false, None, &[], Some($descr), Some($link)) };
+    (NameValueStr: [$($descr: literal),* $(,)?]) => { $crate::template!(@ false, None, &[], Some(&[$($descr,)*]), None) };
+    (NameValueStr: [$($descr: literal),* $(,)?], $link: literal) => { $crate::template!(@ false, None, &[], Some(&[$($descr,)*]), Some($link)) };
+    (NameValueStr: $descr: literal) => { $crate::template!(@ false, None, &[], Some(&[$descr]), None) };
+    (NameValueStr: $descr: literal, $link: literal) => { $crate::template!(@ false, None, &[], Some(&[$descr]), Some($link)) };
     (Word, List: $descr: expr) => { $crate::template!(@ true, Some($descr), &[], None, None) };
     (Word, List: $descr: expr, $link: literal) => { $crate::template!(@ true, Some($descr), &[], None, Some($link)) };
     (Word, NameValueStr: $descr: expr) => { $crate::template!(@ true, None, &[], Some(&[$descr]), None) };
@@ -579,7 +579,7 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ungated!(
         crate_type, CrateLevel,
         template!(
-            OneOfNameValueStr: &["bin", "lib", "dylib", "cdylib", "rlib", "staticlib", "sdylib", "proc-macro"],
+            NameValueStr: ["bin", "lib", "dylib", "cdylib", "rlib", "staticlib", "sdylib", "proc-macro"],
             "https://doc.rust-lang.org/reference/linkage.html"
         ),
         DuplicatesOk, EncodeCrossCrate::No,
@@ -696,7 +696,7 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     // Runtime
     ungated!(
         windows_subsystem, CrateLevel,
-        template!(OneOfNameValueStr: &["windows", "console"], "https://doc.rust-lang.org/reference/runtime.html#the-windows_subsystem-attribute"),
+        template!(NameValueStr: ["windows", "console"], "https://doc.rust-lang.org/reference/runtime.html#the-windows_subsystem-attribute"),
         FutureWarnFollowing, EncodeCrossCrate::No
     ),
     ungated!( // RFC 2070
@@ -1027,7 +1027,7 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     // ==========================================================================
 
     gated!(
-        linkage, Normal, template!(OneOfNameValueStr: &[
+        linkage, Normal, template!(NameValueStr: [
             "available_externally",
             "common",
             "extern_weak",
@@ -1061,7 +1061,7 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ),
     rustc_attr!(
         rustc_macro_transparency, Normal,
-        template!(OneOfNameValueStr: &["transparent", "semiopaque", "opaque"]), ErrorFollowing,
+        template!(NameValueStr: ["transparent", "semiopaque", "opaque"]), ErrorFollowing,
         EncodeCrossCrate::Yes, "used internally for testing macro hygiene",
     ),
     rustc_attr!(
