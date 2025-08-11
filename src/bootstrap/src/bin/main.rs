@@ -7,13 +7,14 @@
 
 use std::fs::{self, OpenOptions};
 use std::io::{self, BufRead, BufReader, IsTerminal, Write};
+use std::path::Path;
 use std::str::FromStr;
 use std::time::Instant;
 use std::{env, process};
 
 use bootstrap::{
     Build, CONFIG_CHANGE_HISTORY, ChangeId, Config, Flags, Subcommand, debug,
-    find_recent_config_change_ids, human_readable_changes, symlink_dir, t,
+    find_recent_config_change_ids, human_readable_changes, t,
 };
 
 fn is_tracing_enabled() -> bool {
@@ -114,7 +115,18 @@ fn main() {
         #[cfg(not(windows))]
         let _ = std::fs::remove_file(&latest_trace_dir);
 
-        t!(symlink_dir(&config, &tracing_dir, &latest_trace_dir));
+        #[cfg(not(windows))]
+        fn symlink_dir_inner(original: &Path, link: &Path) -> io::Result<()> {
+            use std::os::unix::fs;
+            fs::symlink(original, link)
+        }
+
+        #[cfg(windows)]
+        fn symlink_dir_inner(target: &Path, junction: &Path) -> io::Result<()> {
+            junction::create(target, junction)
+        }
+
+        t!(symlink_dir_inner(&tracing_dir, &latest_trace_dir));
     }
 
     debug!("creating new build based on config");
