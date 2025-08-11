@@ -1,0 +1,13 @@
+[package]
+name = "wasm32_test"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+crate-type = ["cdylib"]
+name = "wasm32_program"
+
+[profile.release]
+codegen-units = 1
+lto = "fat"
+opt-level = "z"
