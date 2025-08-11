@@ -25,6 +25,7 @@ LL |     #[repr(nothing)]
    |            ^^^^^^^
    |
    = help: valid reprs are `Rust` (default), `C`, `align`, `packed`, `transparent`, `simd`, `i8`, `u8`, `i16`, `u16`, `i32`, `u32`, `i64`, `u64`, `i128`, `u128`, `isize`, `usize`
+   = note: for more information, visit <https://doc.rust-lang.org/reference/type-layout.html?highlight=repr#representations>
 
 error[E0552]: unrecognized representation hint
   --> $DIR/issue-43988.rs:18:12
@@ -33,6 +34,7 @@ LL |     #[repr(something_not_real)]
    |            ^^^^^^^^^^^^^^^^^^
    |
    = help: valid reprs are `Rust` (default), `C`, `align`, `packed`, `transparent`, `simd`, `i8`, `u8`, `i16`, `u16`, `i32`, `u32`, `i64`, `u64`, `i128`, `u128`, `isize`, `usize`
+   = note: for more information, visit <https://doc.rust-lang.org/reference/type-layout.html?highlight=repr#representations>
 
 error[E0539]: malformed `repr` attribute input
   --> $DIR/issue-43988.rs:24:5
