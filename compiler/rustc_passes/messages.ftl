@@ -669,8 +669,8 @@ passes_rustc_std_internal_symbol =
     .label = not a function or static
 
 passes_rustc_unstable_feature_bound =
-    attribute should be applied to `impl` or free function outside of any `impl` or trait
-    .label = not an `impl` or free function
+    attribute should be applied to `impl`, trait or free function
+    .label = not an `impl`, trait or free function
 
 passes_should_be_applied_to_fn =
     attribute should be applied to a function definition
