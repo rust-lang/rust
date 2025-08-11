@@ -94,7 +94,6 @@ static PROPERTIES: &[&str] = &[
     "Case_Ignorable",
     "Grapheme_Extend",
     "White_Space",
-    "Cc",
     "N",
 ];
 
