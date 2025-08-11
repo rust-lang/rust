@@ -857,7 +857,9 @@ impl Step for Cargo {
     fn run(self, builder: &Builder<'_>) -> ToolBuildResult {
         builder.build.require_submodule("src/tools/cargo", None);
 
+        builder.std(self.build_compiler, builder.host_target);
         builder.std(self.build_compiler, self.target);
+
         builder.ensure(ToolBuild {
             build_compiler: self.build_compiler,
             target: self.target,
