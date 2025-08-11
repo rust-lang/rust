@@ -54,6 +54,8 @@ pub use utils::change_tracker::{
     CONFIG_CHANGE_HISTORY, find_recent_config_change_ids, human_readable_changes,
 };
 pub use utils::helpers::{PanicTracker, symlink_dir};
+#[cfg(feature = "tracing")]
+pub use utils::tracing::setup_tracing;
 
 use crate::core::build_steps::vendor::VENDOR_DIR;
 
