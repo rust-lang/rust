@@ -81,7 +81,7 @@ pub use crate::{
     annotations::{Annotation, AnnotationConfig, AnnotationKind, AnnotationLocation},
     call_hierarchy::{CallHierarchyConfig, CallItem},
     expand_macro::ExpandedMacro,
-    file_structure::{StructureNode, StructureNodeKind},
+    file_structure::{FileStructureConfig, StructureNode, StructureNodeKind},
     folding_ranges::{Fold, FoldKind},
     highlight_related::{HighlightRelatedConfig, HighlightedRange},
     hover::{
@@ -430,12 +430,16 @@ impl Analysis {
 
     /// Returns a tree representation of symbols in the file. Useful to draw a
     /// file outline.
-    pub fn file_structure(&self, file_id: FileId) -> Cancellable<Vec<StructureNode>> {
+    pub fn file_structure(
+        &self,
+        config: &FileStructureConfig,
+        file_id: FileId,
+    ) -> Cancellable<Vec<StructureNode>> {
         // FIXME: Edition
         self.with_db(|db| {
             let editioned_file_id_wrapper = EditionedFileId::current_edition(&self.db, file_id);
-
-            file_structure::file_structure(&db.parse(editioned_file_id_wrapper).tree())
+            let source_file = db.parse(editioned_file_id_wrapper).tree();
+            file_structure::file_structure(&source_file, config)
         })
     }
 

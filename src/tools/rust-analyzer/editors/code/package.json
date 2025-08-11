@@ -1586,6 +1586,16 @@
                 }
             },
             {
+                "title": "Document",
+                "properties": {
+                    "rust-analyzer.document.symbol.search.excludeLocals": {
+                        "markdownDescription": "Exclude all locals from document symbol search.",
+                        "default": true,
+                        "type": "boolean"
+                    }
+                }
+            },
+            {
                 "title": "Files",
                 "properties": {
                     "rust-analyzer.files.exclude": {

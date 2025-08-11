@@ -8,8 +8,9 @@ use anyhow::Context;
 use base64::{Engine, prelude::BASE64_STANDARD};
 use ide::{
     AnnotationConfig, AssistKind, AssistResolveStrategy, Cancellable, CompletionFieldsToResolve,
-    FilePosition, FileRange, HoverAction, HoverGotoTypeData, InlayFieldsToResolve, Query,
-    RangeInfo, ReferenceCategory, Runnable, RunnableKind, SingleResolve, SourceChange, TextEdit,
+    FilePosition, FileRange, FileStructureConfig, HoverAction, HoverGotoTypeData,
+    InlayFieldsToResolve, Query, RangeInfo, ReferenceCategory, Runnable, RunnableKind,
+    SingleResolve, SourceChange, TextEdit,
 };
 use ide_db::{FxHashMap, SymbolKind};
 use itertools::Itertools;
@@ -566,41 +567,47 @@ pub(crate) fn handle_document_symbol(
     let file_id = try_default!(from_proto::file_id(&snap, &params.text_document.uri)?);
     let line_index = snap.file_line_index(file_id)?;
 
-    let mut parents: Vec<(lsp_types::DocumentSymbol, Option<usize>)> = Vec::new();
+    let mut symbols: Vec<(lsp_types::DocumentSymbol, Option<usize>)> = Vec::new();
 
-    for symbol in snap.analysis.file_structure(file_id)? {
+    let config = snap.config.document_symbol(None);
+
+    let structure_nodes = snap.analysis.file_structure(
+        &FileStructureConfig { exclude_locals: config.search_exclude_locals },
+        file_id,
+    )?;
+
+    for node in structure_nodes {
         let mut tags = Vec::new();
-        if symbol.deprecated {
+        if node.deprecated {
             tags.push(SymbolTag::DEPRECATED)
         };
 
         #[allow(deprecated)]
-        let doc_symbol = lsp_types::DocumentSymbol {
-            name: symbol.label,
-            detail: symbol.detail,
-            kind: to_proto::structure_node_kind(symbol.kind),
+        let symbol = lsp_types::DocumentSymbol {
+            name: node.label,
+            detail: node.detail,
+            kind: to_proto::structure_node_kind(node.kind),
             tags: Some(tags),
-            deprecated: Some(symbol.deprecated),
-            range: to_proto::range(&line_index, symbol.node_range),
-            selection_range: to_proto::range(&line_index, symbol.navigation_range),
+            deprecated: Some(node.deprecated),
+            range: to_proto::range(&line_index, node.node_range),
+            selection_range: to_proto::range(&line_index, node.navigation_range),
             children: None,
         };
-        parents.push((doc_symbol, symbol.parent));
+        symbols.push((symbol, node.parent));
     }
 
-    // Builds hierarchy from a flat list, in reverse order (so that indices
-    // makes sense)
+    // Builds hierarchy from a flat list, in reverse order (so that the indices make sense)
     let document_symbols = {
         let mut acc = Vec::new();
-        while let Some((mut node, parent_idx)) = parents.pop() {
-            if let Some(children) = &mut node.children {
+        while let Some((mut symbol, parent_idx)) = symbols.pop() {
+            if let Some(children) = &mut symbol.children {
                 children.reverse();
             }
             let parent = match parent_idx {
                 None => &mut acc,
-                Some(i) => parents[i].0.children.get_or_insert_with(Vec::new),
+                Some(i) => symbols[i].0.children.get_or_insert_with(Vec::new),
             };
-            parent.push(node);
+            parent.push(symbol);
         }
         acc.reverse();
         acc
@@ -610,7 +617,7 @@ pub(crate) fn handle_document_symbol(
         document_symbols.into()
     } else {
         let url = to_proto::url(&snap, file_id);
-        let mut symbol_information = Vec::<SymbolInformation>::new();
+        let mut symbol_information = Vec::new();
         for symbol in document_symbols {
             flatten_document_symbol(&symbol, None, &url, &mut symbol_information);
         }
@@ -647,7 +654,7 @@ pub(crate) fn handle_workspace_symbol(
     let _p = tracing::info_span!("handle_workspace_symbol").entered();
 
     let config = snap.config.workspace_symbol(None);
-    let (all_symbols, libs) = decide_search_scope_and_kind(&params, &config);
+    let (all_symbols, libs) = decide_search_kind_and_scope(&params, &config);
 
     let query = {
         let query: String = params.query.chars().filter(|&c| c != '#' && c != '*').collect();
@@ -670,7 +677,7 @@ pub(crate) fn handle_workspace_symbol(
 
     return Ok(Some(lsp_types::WorkspaceSymbolResponse::Nested(res)));
 
-    fn decide_search_scope_and_kind(
+    fn decide_search_kind_and_scope(
         params: &WorkspaceSymbolParams,
         config: &WorkspaceSymbolConfig,
     ) -> (bool, bool) {
