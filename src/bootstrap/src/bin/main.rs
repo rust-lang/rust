@@ -263,16 +263,198 @@ fn check_version(config: &Config) -> Option<String> {
 //   "tracing", instrument(..))]`.
 #[cfg(feature = "tracing")]
 fn setup_tracing(profiling_enabled: bool) -> Option<TracingGuard> {
+    use std::fmt::Debug;
     use std::fs::File;
     use std::io::BufWriter;
+    use std::sync::atomic::{AtomicU32, Ordering};
 
-    use tracing_forest::ForestLayer;
-    use tracing_subscriber::EnvFilter;
-    use tracing_subscriber::layer::SubscriberExt;
+    use chrono::{DateTime, Utc};
+    use tracing::field::{Field, Visit};
+    use tracing::{Event, Id, Level, Subscriber};
+    use tracing_subscriber::layer::{Context, SubscriberExt};
+    use tracing_subscriber::registry::{LookupSpan, SpanRef};
+    use tracing_subscriber::{EnvFilter, Layer};
 
     let filter = EnvFilter::from_env("BOOTSTRAP_TRACING");
 
-    let registry = tracing_subscriber::registry().with(filter).with(ForestLayer::default());
+    #[derive(Default)]
+    struct FieldValues {
+        message: Option<String>,
+        fields: Vec<(&'static str, String)>,
+    }
+
+    impl Visit for FieldValues {
+        fn record_debug(&mut self, field: &Field, value: &dyn Debug) {
+            if field.name() == "message" {
+                self.message = Some(format!("{value:?}"));
+            } else {
+                self.fields.push((field.name(), format!("{value:?}")));
+            }
+        }
+    }
+
+    #[derive(Copy, Clone)]
+    enum SpanAction {
+        Enter,
+    }
+
+    #[derive(Default)]
+    struct TracingPrinter {
+        indent: AtomicU32,
+        span_values: std::sync::Mutex<std::collections::HashMap<tracing::Id, FieldValues>>,
+    }
+
+    impl TracingPrinter {
+        fn format_header<W: Write>(
+            &self,
+            writer: &mut W,
+            time: DateTime<Utc>,
+            level: &Level,
+        ) -> std::io::Result<()> {
+            // Use a fixed-width timestamp without date, that shouldn't be very important
+            let timestamp = time.format("%H:%M:%S.%3f");
+            write!(writer, "{timestamp} ")?;
+            // Make sure that levels are aligned to the same number of characters, in order not to
+            // break the layout
+            write!(writer, "{level:>5} ")?;
+            write!(writer, "{}", " ".repeat(self.indent.load(Ordering::Relaxed) as usize))
+        }
+
+        fn write_event<W: Write>(&self, writer: &mut W, event: &Event<'_>) -> std::io::Result<()> {
+            let now = Utc::now();
+
+            self.format_header(writer, now, event.metadata().level())?;
+
+            let mut field_values = FieldValues::default();
+            event.record(&mut field_values);
+
+            if let Some(msg) = &field_values.message {
+                write!(writer, "{msg}")?;
+            }
+
+            if !field_values.fields.is_empty() {
+                if field_values.message.is_some() {
+                    write!(writer, " ")?;
+                }
+                write!(writer, "[")?;
+                for (index, (name, value)) in field_values.fields.iter().enumerate() {
+                    write!(writer, "{name} = {value}")?;
+                    if index < field_values.fields.len() - 1 {
+                        write!(writer, ", ")?;
+                    }
+                }
+                write!(writer, "]")?;
+            }
+            write_location(writer, event.metadata())?;
+            writeln!(writer)?;
+            Ok(())
+        }
+
+        fn write_span<W: Write, S>(
+            &self,
+            writer: &mut W,
+            span: SpanRef<'_, S>,
+            field_values: Option<&FieldValues>,
+            action: SpanAction,
+        ) -> std::io::Result<()>
+        where
+            S: for<'lookup> LookupSpan<'lookup>,
+        {
+            let now = Utc::now();
+
+            self.format_header(writer, now, span.metadata().level())?;
+            match action {
+                SpanAction::Enter => {
+                    write!(writer, "> ")?;
+                }
+            }
+
+            write!(writer, "{}", span.name())?;
+            if let Some(values) = field_values.filter(|v| !v.fields.is_empty()) {
+                write!(writer, " [")?;
+                for (index, (name, value)) in values.fields.iter().enumerate() {
+                    write!(writer, "{name} = {value}")?;
+                    if index < values.fields.len() - 1 {
+                        write!(writer, ", ")?;
+                    }
+                }
+                write!(writer, "]")?;
+            }
+
+            write_location(writer, span.metadata())?;
+            writeln!(writer)?;
+            Ok(())
+        }
+    }
+
+    fn write_location<W: Write>(
+        writer: &mut W,
+        metadata: &'static tracing::Metadata<'static>,
+    ) -> std::io::Result<()> {
+        use std::path::{Path, PathBuf};
+
+        if let Some(filename) = metadata.file() {
+            // Keep only the module name and file name to make it shorter
+            let filename: PathBuf = Path::new(filename)
+                .components()
+                // Take last two path components
+                .rev()
+                .take(2)
+                .collect::<Vec<_>>()
+                .into_iter()
+                .rev()
+                .collect();
+
+            write!(writer, " ({}", filename.display())?;
+            if let Some(line) = metadata.line() {
+                write!(writer, ":{line}")?;
+            }
+            write!(writer, ")")?;
+        }
+        Ok(())
+    }
+
+    impl<S> Layer<S> for TracingPrinter
+    where
+        S: Subscriber,
+        S: for<'lookup> LookupSpan<'lookup>,
+    {
+        fn on_event(&self, event: &Event<'_>, _ctx: Context<'_, S>) {
+            let mut writer = std::io::stderr().lock();
+            self.write_event(&mut writer, event).unwrap();
+        }
+
+        fn on_new_span(
+            &self,
+            attrs: &tracing::span::Attributes<'_>,
+            id: &Id,
+            _ctx: Context<'_, S>,
+        ) {
+            // Record value of span fields
+            // Note that we do not implement changing values of span fields after they are created.
+            // For that we would also need to implement the `on_record` method
+
+            let mut field_values = FieldValues::default();
+            attrs.record(&mut field_values);
+            self.span_values.lock().unwrap().insert(id.clone(), field_values);
+        }
+
+        fn on_enter(&self, id: &Id, ctx: Context<'_, S>) {
+            if let Some(span) = ctx.span(id) {
+                let mut writer = std::io::stderr().lock();
+                let values = self.span_values.lock().unwrap();
+                let values = values.get(id);
+                self.write_span(&mut writer, span, values, SpanAction::Enter).unwrap();
+            }
+            self.indent.fetch_add(1, Ordering::Relaxed);
+        }
+
+        fn on_exit(&self, _id: &Id, _ctx: Context<'_, S>) {
+            self.indent.fetch_sub(1, Ordering::Relaxed);
+        }
+    }
+
+    let registry = tracing_subscriber::registry().with(filter).with(TracingPrinter::default());
 
     let guard = if profiling_enabled {
         // When we're creating this layer, we do not yet know the location of the tracing output
