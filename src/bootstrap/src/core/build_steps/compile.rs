@@ -1761,18 +1761,28 @@ fn copy_codegen_backends_to_sysroot(
     }
 
     if stamp.path().exists() {
-        let dylib = t!(fs::read_to_string(stamp.path()));
-        let file = Path::new(&dylib);
-        let filename = file.file_name().unwrap().to_str().unwrap();
-        // change `librustc_codegen_cranelift-xxxxxx.so` to
-        // `librustc_codegen_cranelift-release.so`
-        let target_filename = {
-            let dash = filename.find('-').unwrap();
-            let dot = filename.find('.').unwrap();
-            format!("{}-{}{}", &filename[..dash], builder.rust_release(), &filename[dot..])
-        };
-        builder.copy_link(file, &dst.join(target_filename), FileType::NativeLibrary);
+        let file = get_codegen_backend_file(&stamp);
+        builder.copy_link(
+            &file,
+            &dst.join(normalize_codegen_backend_name(builder, &file)),
+            FileType::NativeLibrary,
+        );
     }
+}
+
+/// Gets the path to a dynamic codegen backend library from its build stamp.
+pub fn get_codegen_backend_file(stamp: &BuildStamp) -> PathBuf {
+    PathBuf::from(t!(fs::read_to_string(stamp.path())))
+}
+
+/// Normalize the name of a dynamic codegen backend library.
+pub fn normalize_codegen_backend_name(builder: &Builder<'_>, path: &Path) -> String {
+    let filename = path.file_name().unwrap().to_str().unwrap();
+    // change e.g. `librustc_codegen_cranelift-xxxxxx.so` to
+    // `librustc_codegen_cranelift-release.so`
+    let dash = filename.find('-').unwrap();
+    let dot = filename.find('.').unwrap();
+    format!("{}-{}{}", &filename[..dash], builder.rust_release(), &filename[dot..])
 }
 
 pub fn compiler_file(

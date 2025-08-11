@@ -19,6 +19,7 @@ use object::read::archive::ArchiveFile;
 #[cfg(feature = "tracing")]
 use tracing::instrument;
 
+use crate::core::build_steps::compile::{get_codegen_backend_file, normalize_codegen_backend_name};
 use crate::core::build_steps::doc::DocumentationFormat;
 use crate::core::build_steps::tool::{self, RustcPrivateCompilers, Tool};
 use crate::core::build_steps::vendor::{VENDOR_DIR, Vendor};
@@ -1460,35 +1461,29 @@ impl Step for CraneliftCodegenBackend {
         tarball.is_preview(true);
         tarball.add_legal_and_readme_to("share/doc/rustc_codegen_cranelift");
 
-        builder.ensure(compile::CraneliftCodegenBackend { compilers });
+        let stamp = builder.ensure(compile::CraneliftCodegenBackend { compilers });
 
         if builder.config.dry_run() {
             return None;
         }
 
-        let src = builder.sysroot(self.build_compiler);
-        let backends_src = builder.sysroot_codegen_backends(self.build_compiler);
-        let backends_rel = backends_src
-            .strip_prefix(src)
+        // Get the relative path of where the codegen backend should be stored.
+        let backends_dst = builder.sysroot_codegen_backends(compilers.target_compiler());
+        let backends_rel = backends_dst
+            .strip_prefix(builder.sysroot(compilers.target_compiler()))
             .unwrap()
-            .strip_prefix(builder.sysroot_libdir_relative(self.build_compiler))
+            .strip_prefix(builder.sysroot_libdir_relative(compilers.target_compiler()))
             .unwrap();
         // Don't use custom libdir here because ^lib/ will be resolved again with installer
         let backends_dst = PathBuf::from("lib").join(backends_rel);
 
-        let mut found_backend = false;
-        for backend in fs::read_dir(&backends_src).unwrap() {
-            let file_name = backend.unwrap().file_name();
-            if file_name.to_str().unwrap().contains("rustc_codegen_cranelift") {
-                tarball.add_file(
-                    backends_src.join(file_name),
-                    &backends_dst,
-                    FileType::NativeLibrary,
-                );
-                found_backend = true;
-            }
-        }
-        assert!(found_backend);
+        let codegen_backend_dylib = get_codegen_backend_file(&stamp);
+        tarball.add_renamed_file(
+            &codegen_backend_dylib,
+            &backends_dst,
+            &normalize_codegen_backend_name(builder, &codegen_backend_dylib),
+            FileType::NativeLibrary,
+        );
 
         Some(tarball.generate())
     }
