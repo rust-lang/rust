@@ -210,6 +210,10 @@
 #[allow(unused_extern_crates)]
 extern crate self as core;
 
+/* The core prelude, not as all-encompassing as the std prelude */
+// The compiler expects the prelude definition to be defined before it's use statement.
+pub mod prelude;
+
 #[prelude_import]
 #[allow(unused)]
 use prelude::rust_2024::*;
@@ -294,10 +298,6 @@ pub mod f64;
 
 #[macro_use]
 pub mod num;
-
-/* The core prelude, not as all-encompassing as the std prelude */
-
-pub mod prelude;
 
 /* Core modules for ownership management */
 
