@@ -2294,7 +2294,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         match target {
             // FIXME(staged_api): There's no reason we can't support more targets here. We're just
             // being conservative to begin with.
-            Target::Fn | Target::Impl { .. } => {}
+            Target::Fn | Target::Impl { .. } | Target::Trait => {}
             Target::ExternCrate
             | Target::Use
             | Target::Static
@@ -2309,7 +2309,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             | Target::Struct
             | Target::Field
             | Target::Union
-            | Target::Trait
             | Target::TraitAlias
             | Target::Expression
             | Target::Statement
