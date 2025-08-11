@@ -12,8 +12,6 @@ LL |     s.assoc_func(|| x = ());
    |       |          |  cannot assign
    |       |          in this closure
    |       expects `Fn` instead of `FnMut`
-   |
-   = help: consider using `std::sync::atomic::Mutex<()>` instead, which allows for multiple threads to access and modify the value
 
 error[E0594]: cannot assign to `x`, as it is a captured variable in a `Fn` closure
   --> $DIR/wrong-closure-arg-suggestion-125325.rs:25:13
@@ -29,8 +27,6 @@ LL |     func(|| x = ())
    |     |    |
    |     |    in this closure
    |     expects `Fn` instead of `FnMut`
-   |
-   = help: consider using `std::sync::atomic::Mutex<()>` instead, which allows for multiple threads to access and modify the value
 
 error: aborting due to 2 previous errors
 

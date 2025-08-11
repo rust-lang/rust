@@ -58,8 +58,6 @@ LL |         ||
    |         ^^ cannot borrow as mutable
 LL |          x = 1;}
    |          - mutable borrow occurs due to use of `x` in closure
-   |
-   = help: consider using `std::sync::atomic::AtomicI32` instead, which allows for multiple threads to access and modify the value
 
 error[E0596]: cannot borrow `x` as mutable, as it is a captured variable in a `Fn` closure
   --> $DIR/closure-captures.rs:31:9
@@ -103,8 +101,6 @@ LL |         ||
    |         ^^ cannot borrow as mutable
 LL |          x = 1;}
    |          - mutable borrow occurs due to use of `x` in closure
-   |
-   = help: consider using `std::sync::atomic::AtomicI32` instead, which allows for multiple threads to access and modify the value
 
 error[E0594]: cannot assign to `x`, as it is not declared as mutable
   --> $DIR/closure-captures.rs:43:5

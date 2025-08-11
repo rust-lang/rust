@@ -12,8 +12,6 @@ LL |     call(|| {
    |     expects `Fn` instead of `FnMut`
 LL |         counter += 1;
    |         ^^^^^^^^^^^^ cannot assign
-   |
-   = help: consider using `std::sync::atomic::AtomicI32` instead, which allows for multiple threads to access and modify the value
 
 error: aborting due to 1 previous error
 

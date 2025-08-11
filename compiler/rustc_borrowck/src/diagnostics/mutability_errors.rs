@@ -6,7 +6,6 @@ use core::ops::ControlFlow;
 use either::Either;
 use hir::{ExprKind, Param};
 use rustc_abi::FieldIdx;
-use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{Applicability, Diag};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::{self as hir, BindingMode, ByRef, Node};
@@ -952,8 +951,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         }
     }
 
-    /// When modifying a binding from inside of an `Fn` closure, point at the binding definition
-    /// and suggest using an `std::sync` type that would allow the code to compile.
+    /// When modifying a binding from inside of an `Fn` closure, point at the binding definition.
     fn point_at_binding_outside_closure(
         &self,
         err: &mut Diag<'_>,
@@ -985,31 +983,6 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                             && let hir::def::Res::Local(hir_id) = path.res
                             && let hir::Node::Pat(pat) = self.infcx.tcx.hir_node(hir_id)
                         {
-                            let hir = self.infcx.tcx.hir();
-                            let def_id = hir.enclosing_body_owner(self.mir_hir_id());
-                            let typeck_results = self.infcx.tcx.typeck(def_id);
-                            let ty = typeck_results.node_type_opt(expr.hir_id);
-                            if let Some(ty) = ty {
-                                let mutex = format!("std::sync::atomic::Mutex<{ty}>");
-                                let mutex = mutex.as_str();
-                                let suggestions: FxHashMap<_, _> = [
-                                    (self.infcx.tcx.types.isize, "std::sync::atomic::AtomicIsize"),
-                                    (self.infcx.tcx.types.usize, "std::sync::atomic::AtomicUsize"),
-                                    (self.infcx.tcx.types.i64, "std::sync::atomic::AtomicI64"),
-                                    (self.infcx.tcx.types.u64, "std::sync::atomic::AtomicU64"),
-                                    (self.infcx.tcx.types.i32, "std::sync::atomic::AtomicI32"),
-                                    (self.infcx.tcx.types.u32, "std::sync::atomic::AtomicU32"),
-                                    (self.infcx.tcx.types.i16, "std::sync::atomic::AtomicI16"),
-                                    (self.infcx.tcx.types.u16, "std::sync::atomic::AtomicU16"),
-                                    (self.infcx.tcx.types.i8, "std::sync::atomic::AtomicI8"),
-                                    (self.infcx.tcx.types.u8, "std::sync::atomic::AtomicU8"),
-                                    (self.infcx.tcx.types.bool, "std::sync::atomic::AtomicBool"),
-                                ]
-                                .into_iter()
-                                .collect();
-                                let ty = suggestions.get(&ty).unwrap_or(&mutex);
-                                err.help(format!("consider using `{ty}` instead, which allows for multiple threads to access and modify the value"));
-                            }
                             let name = upvar.to_string(self.infcx.tcx);
                             err.span_label(
                                 pat.span,
