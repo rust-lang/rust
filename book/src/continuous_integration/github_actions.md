@@ -15,7 +15,7 @@ jobs:
   clippy_check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Run Clippy
         run: cargo clippy --all-targets --all-features
 ```
