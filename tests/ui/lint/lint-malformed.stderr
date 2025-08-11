@@ -18,6 +18,7 @@ error: malformed `deny` attribute input
 LL | #![deny = "foo"]
    | ^^^^^^^^^^^^^^^^
    |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/diagnostics.html#lint-check-attributes>
 help: the following are the possible correct uses
    |
 LL - #![deny = "foo"]

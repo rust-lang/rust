@@ -4,6 +4,7 @@ error: malformed `crate_type` attribute input
 LL | #![crate_type = foo!()]
    | ^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/linkage.html>
 help: the following are the possible correct uses
    |
 LL - #![crate_type = foo!()]

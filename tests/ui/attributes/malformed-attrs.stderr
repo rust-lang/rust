@@ -31,6 +31,7 @@ error: malformed `windows_subsystem` attribute input
 LL | #![windows_subsystem]
    | ^^^^^^^^^^^^^^^^^^^^^
    |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/runtime.html#the-windows_subsystem-attribute>
 help: the following are the possible correct uses
    |
 LL | #![windows_subsystem = "console"]
@@ -43,6 +44,8 @@ error: malformed `crate_name` attribute input
    |
 LL | #[crate_name]
    | ^^^^^^^^^^^^^ help: must be of the form: `#[crate_name = "name"]`
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/crates-and-source-files.html#the-crate_name-attribute>
 
 error: malformed `no_sanitize` attribute input
   --> $DIR/malformed-attrs.rs:89:1
@@ -55,6 +58,8 @@ error: malformed `instruction_set` attribute input
    |
 LL | #[instruction_set]
    | ^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[instruction_set(set)]`
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/codegen.html#the-instruction_set-attribute>
 
 error: malformed `patchable_function_entry` attribute input
   --> $DIR/malformed-attrs.rs:105:1
@@ -89,6 +94,7 @@ error: malformed `linkage` attribute input
 LL |     #[linkage]
    |     ^^^^^^^^^^
    |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/linkage.html>
 help: the following are the possible correct uses
    |
 LL |     #[linkage = "available_externally"]
@@ -107,6 +113,7 @@ error: malformed `allow` attribute input
 LL | #[allow]
    | ^^^^^^^^
    |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/diagnostics.html#lint-check-attributes>
 help: the following are the possible correct uses
    |
 LL | #[allow(lint1)]
@@ -122,6 +129,7 @@ error: malformed `expect` attribute input
 LL | #[expect]
    | ^^^^^^^^^
    |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/diagnostics.html#lint-check-attributes>
 help: the following are the possible correct uses
    |
 LL | #[expect(lint1)]
@@ -137,6 +145,7 @@ error: malformed `warn` attribute input
 LL | #[warn]
    | ^^^^^^^
    |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/diagnostics.html#lint-check-attributes>
 help: the following are the possible correct uses
    |
 LL | #[warn(lint1)]
@@ -152,6 +161,7 @@ error: malformed `deny` attribute input
 LL | #[deny]
    | ^^^^^^^
    |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/diagnostics.html#lint-check-attributes>
 help: the following are the possible correct uses
    |
 LL | #[deny(lint1)]
@@ -167,6 +177,7 @@ error: malformed `forbid` attribute input
 LL | #[forbid]
    | ^^^^^^^^^
    |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/diagnostics.html#lint-check-attributes>
 help: the following are the possible correct uses
    |
 LL | #[forbid(lint1)]
@@ -181,6 +192,8 @@ error: malformed `debugger_visualizer` attribute input
    |
 LL | #[debugger_visualizer]
    | ^^^^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[debugger_visualizer(natvis_file = "...", gdb_script_file = "...")]`
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/debugger.html#the-debugger_visualizer-attribute>
 
 error: malformed `thread_local` attribute input
   --> $DIR/malformed-attrs.rs:200:1
@@ -193,6 +206,8 @@ error: malformed `no_link` attribute input
    |
 LL | #[no_link()]
    | ^^^^^^^^^^^^ help: must be of the form: `#[no_link]`
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/items/extern-crates.html#the-no_link-attribute>
 
 error: malformed `macro_export` attribute input
   --> $DIR/malformed-attrs.rs:211:1
@@ -200,6 +215,7 @@ error: malformed `macro_export` attribute input
 LL | #[macro_export = 18]
    | ^^^^^^^^^^^^^^^^^^^^
    |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/macros-by-example.html#path-based-scope>
 help: the following are the possible correct uses
    |
 LL - #[macro_export = 18]
@@ -250,6 +266,7 @@ LL | #[doc]
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #57571 <https://github.com/rust-lang/rust/issues/57571>
+   = note: for more information, visit <https://doc.rust-lang.org/rustdoc/write-documentation/the-doc-attribute.html>
    = note: `#[deny(ill_formed_attribute_input)]` on by default
 
 error: valid forms for the attribute are `#[doc(hidden)]`, `#[doc(inline)]`, and `#[doc = "string"]`
@@ -260,6 +277,7 @@ LL | #[doc]
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #57571 <https://github.com/rust-lang/rust/issues/57571>
+   = note: for more information, visit <https://doc.rust-lang.org/rustdoc/write-documentation/the-doc-attribute.html>
 
 error: valid forms for the attribute are `#[link(name = "...")]`, `#[link(name = "...", kind = "dylib|static|...")]`, `#[link(name = "...", wasm_import_module = "...")]`, `#[link(name = "...", import_name_type = "decorated|noprefix|undecorated")]`, and `#[link(name = "...", kind = "dylib|static|...", wasm_import_module = "...", import_name_type = "decorated|noprefix|undecorated")]`
   --> $DIR/malformed-attrs.rs:80:1
@@ -269,6 +287,7 @@ LL | #[link]
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #57571 <https://github.com/rust-lang/rust/issues/57571>
+   = note: for more information, visit <https://doc.rust-lang.org/reference/items/external-blocks.html#the-link-attribute>
 
 error: invalid argument
   --> $DIR/malformed-attrs.rs:185:1

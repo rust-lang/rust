@@ -2685,6 +2685,9 @@ pub(crate) struct UnusedCrateDependency {
 pub(crate) struct IllFormedAttributeInput {
     pub num_suggestions: usize,
     pub suggestions: DiagArgValue,
+    #[note]
+    pub has_docs: bool,
+    pub docs: &'static str,
 }
 
 #[derive(LintDiagnostic)]

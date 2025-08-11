@@ -127,6 +127,8 @@ pub struct AttributeTemplate {
     /// If `Some`, the attribute is allowed to be a name/value pair where the
     /// value is a string, like `#[must_use = "reason"]`.
     pub name_value_str: Option<&'static [&'static str]>,
+    /// A link to the document for this attribute.
+    pub docs: Option<&'static str>,
 }
 
 impl AttributeTemplate {
@@ -209,21 +211,33 @@ pub enum AttributeDuplicates {
 /// supports forms `#[attr]` and `#[attr(description)]`.
 #[macro_export]
 macro_rules! template {
-    (Word) => { $crate::template!(@ true, None, &[], None) };
-    (List: $descr: expr) => { $crate::template!(@ false, Some($descr), &[], None) };
-    (OneOf: $one_of: expr) => { $crate::template!(@ false, None, $one_of, None) };
-    (NameValueStr: $descr: expr) => { $crate::template!(@ false, None, &[], Some(&[$descr])) };
-    (OneOfNameValueStr: $descr: expr) => { $crate::template!(@ false, None, &[], Some($descr)) };
-    (Word, List: $descr: expr) => { $crate::template!(@ true, Some($descr), &[], None) };
-    (Word, NameValueStr: $descr: expr) => { $crate::template!(@ true, None, &[], Some(&[$descr])) };
+    (Word) => { $crate::template!(@ true, None, &[], None, None) };
+    (Word, $link: literal) => { $crate::template!(@ true, None, &[], None, Some($link)) };
+    (List: $descr: expr) => { $crate::template!(@ false, Some($descr), &[], None, None) };
+    (List: $descr: expr, $link: literal) => { $crate::template!(@ false, Some($descr), &[], None, Some($link)) };
+    (OneOf: $one_of: expr) => { $crate::template!(@ false, None, $one_of, None, None) };
+    (NameValueStr: $descr: expr) => { $crate::template!(@ false, None, &[], Some(&[$descr]), None) };
+    (NameValueStr: $descr: expr, $link: literal) => { $crate::template!(@ false, None, &[], Some(&[$descr]), Some($link)) };
+    (OneOfNameValueStr: $descr: expr) => { $crate::template!(@ false, None, &[], Some($descr), None) };
+    (OneOfNameValueStr: $descr: expr, $link: literal) => { $crate::template!(@ false, None, &[], Some($descr), Some($link)) };
+    (Word, List: $descr: expr) => { $crate::template!(@ true, Some($descr), &[], None, None) };
+    (Word, List: $descr: expr, $link: literal) => { $crate::template!(@ true, Some($descr), &[], None, Some($link)) };
+    (Word, NameValueStr: $descr: expr) => { $crate::template!(@ true, None, &[], Some(&[$descr]), None) };
+    (Word, NameValueStr: $descr: expr, $link: literal) => { $crate::template!(@ true, None, &[], Some(&[$descr]), Some($link)) };
     (List: $descr1: expr, NameValueStr: $descr2: expr) => {
-        $crate::template!(@ false, Some($descr1), &[], Some(&[$descr2]))
+        $crate::template!(@ false, Some($descr1), &[], Some(&[$descr2]), None)
+    };
+    (List: $descr1: expr, NameValueStr: $descr2: expr, $link: literal) => {
+        $crate::template!(@ false, Some($descr1), &[], Some(&[$descr2]), Some($link))
     };
     (Word, List: $descr1: expr, NameValueStr: $descr2: expr) => {
-        $crate::template!(@ true, Some($descr1), &[], Some(&[$descr2]))
+        $crate::template!(@ true, Some($descr1), &[], Some(&[$descr2]), None)
     };
-    (@ $word: expr, $list: expr, $one_of: expr, $name_value_str: expr) => { $crate::AttributeTemplate {
-        word: $word, list: $list, one_of: $one_of, name_value_str: $name_value_str
+    (Word, List: $descr1: expr, NameValueStr: $descr2: expr, $link: literal) => {
+        $crate::template!(@ true, Some($descr1), &[], Some(&[$descr2]), Some($link))
+    };
+    (@ $word: expr, $list: expr, $one_of: expr, $name_value_str: expr, $link: expr) => { $crate::AttributeTemplate {
+        word: $word, list: $list, one_of: $one_of, name_value_str: $name_value_str, docs: $link,
     } };
 }
 
@@ -396,18 +410,42 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     // ==========================================================================
 
     // Conditional compilation:
-    ungated!(cfg, Normal, template!(List: &["predicate"]), DuplicatesOk, EncodeCrossCrate::Yes),
-    ungated!(cfg_attr, Normal, template!(List: &["predicate, attr1, attr2, ..."]), DuplicatesOk, EncodeCrossCrate::Yes),
+    ungated!(
+        cfg, Normal,
+        template!(
+            List: &["predicate"],
+            "https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute"
+        ),
+        DuplicatesOk, EncodeCrossCrate::Yes
+    ),
+    ungated!(
+        cfg_attr, Normal,
+        template!(
+            List: &["predicate, attr1, attr2, ..."],
+            "https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg_attr-attribute"
+        ),
+        DuplicatesOk, EncodeCrossCrate::Yes
+    ),
 
     // Testing:
     ungated!(
-        ignore, Normal, template!(Word, NameValueStr: "reason"), WarnFollowing,
-        EncodeCrossCrate::No,
+        ignore, Normal,
+        template!(
+            Word,
+            NameValueStr: "reason",
+            "https://doc.rust-lang.org/reference/attributes/testing.html#the-ignore-attribute"
+        ),
+        WarnFollowing, EncodeCrossCrate::No,
     ),
     ungated!(
         should_panic, Normal,
-        template!(Word, List: &[r#"expected = "reason""#], NameValueStr: "reason"), FutureWarnFollowing,
-        EncodeCrossCrate::No,
+        template!(
+            Word,
+            List: &[r#"expected = "reason""#],
+            NameValueStr: "reason",
+            "https://doc.rust-lang.org/reference/attributes/testing.html#the-should_panic-attribute"
+        ),
+        FutureWarnFollowing, EncodeCrossCrate::No,
     ),
     // FIXME(Centril): This can be used on stable but shouldn't.
     ungated!(
@@ -416,46 +454,102 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ),
 
     // Macros:
-    ungated!(automatically_derived, Normal, template!(Word), WarnFollowing, EncodeCrossCrate::Yes),
     ungated!(
-        macro_use, Normal, template!(Word, List: &["name1, name2, ..."]), WarnFollowingWordOnly,
-        EncodeCrossCrate::No,
+        automatically_derived, Normal,
+        template!(
+            Word,
+            "https://doc.rust-lang.org/reference/attributes/derive.html#the-automatically_derived-attribute"
+        ),
+        WarnFollowing, EncodeCrossCrate::Yes
+    ),
+    ungated!(
+        macro_use, Normal,
+        template!(
+            Word,
+            List: &["name1, name2, ..."],
+            "https://doc.rust-lang.org/reference/macros-by-example.html#the-macro_use-attribute"
+        ),
+        WarnFollowingWordOnly, EncodeCrossCrate::No,
     ),
     ungated!(macro_escape, Normal, template!(Word), WarnFollowing, EncodeCrossCrate::No), // Deprecated synonym for `macro_use`.
     ungated!(
-        macro_export, Normal, template!(Word, List: &["local_inner_macros"]),
+        macro_export, Normal,
+        template!(
+            Word,
+            List: &["local_inner_macros"],
+            "https://doc.rust-lang.org/reference/macros-by-example.html#path-based-scope"
+        ),
         WarnFollowing, EncodeCrossCrate::Yes
     ),
-    ungated!(proc_macro, Normal, template!(Word), ErrorFollowing, EncodeCrossCrate::No),
     ungated!(
-        proc_macro_derive, Normal, template!(List: &["TraitName", "TraitName, attributes(name1, name2, ...)"]),
+        proc_macro, Normal,
+        template!(
+            Word,
+            "https://doc.rust-lang.org/reference/procedural-macros.html#function-like-procedural-macros"),
+        ErrorFollowing, EncodeCrossCrate::No
+    ),
+    ungated!(
+        proc_macro_derive, Normal,
+        template!(
+            List: &["TraitName", "TraitName, attributes(name1, name2, ...)"],
+            "https://doc.rust-lang.org/reference/procedural-macros.html#derive-macros"
+        ),
         ErrorFollowing, EncodeCrossCrate::No,
     ),
-    ungated!(proc_macro_attribute, Normal, template!(Word), ErrorFollowing, EncodeCrossCrate::No),
+    ungated!(
+        proc_macro_attribute, Normal,
+        template!(Word, "https://doc.rust-lang.org/reference/procedural-macros.html#attribute-macros"),
+        ErrorFollowing, EncodeCrossCrate::No
+    ),
 
     // Lints:
     ungated!(
-        warn, Normal, template!(List: &["lint1", "lint1, lint2, ...", r#"lint1, lint2, lint3, reason = "...""#]),
+        warn, Normal,
+        template!(
+            List: &["lint1", "lint1, lint2, ...", r#"lint1, lint2, lint3, reason = "...""#],
+            "https://doc.rust-lang.org/reference/attributes/diagnostics.html#lint-check-attributes"
+        ),
         DuplicatesOk, EncodeCrossCrate::No,
     ),
     ungated!(
-        allow, Normal, template!(List: &["lint1", "lint1, lint2, ...", r#"lint1, lint2, lint3, reason = "...""#]),
+        allow, Normal,
+        template!(
+            List: &["lint1", "lint1, lint2, ...", r#"lint1, lint2, lint3, reason = "...""#],
+            "https://doc.rust-lang.org/reference/attributes/diagnostics.html#lint-check-attributes"
+        ),
         DuplicatesOk, EncodeCrossCrate::No,
     ),
     ungated!(
-        expect, Normal, template!(List: &["lint1", "lint1, lint2, ...", r#"lint1, lint2, lint3, reason = "...""#]),
+        expect, Normal,
+        template!(
+            List: &["lint1", "lint1, lint2, ...", r#"lint1, lint2, lint3, reason = "...""#],
+            "https://doc.rust-lang.org/reference/attributes/diagnostics.html#lint-check-attributes"
+        ),
         DuplicatesOk, EncodeCrossCrate::No,
     ),
     ungated!(
-        forbid, Normal, template!(List: &["lint1", "lint1, lint2, ...", r#"lint1, lint2, lint3, reason = "...""#]),
+        forbid, Normal,
+        template!(
+            List: &["lint1", "lint1, lint2, ...", r#"lint1, lint2, lint3, reason = "...""#],
+            "https://doc.rust-lang.org/reference/attributes/diagnostics.html#lint-check-attributes"
+        ),
         DuplicatesOk, EncodeCrossCrate::No
     ),
     ungated!(
-        deny, Normal, template!(List: &["lint1", "lint1, lint2, ...", r#"lint1, lint2, lint3, reason = "...""#]),
+        deny, Normal,
+        template!(
+            List: &["lint1", "lint1, lint2, ...", r#"lint1, lint2, lint3, reason = "...""#],
+            "https://doc.rust-lang.org/reference/attributes/diagnostics.html#lint-check-attributes"
+        ),
         DuplicatesOk, EncodeCrossCrate::No
     ),
     ungated!(
-        must_use, Normal, template!(Word, NameValueStr: "reason"),
+        must_use, Normal,
+        template!(
+            Word,
+            NameValueStr: "reason",
+            "https://doc.rust-lang.org/reference/attributes/diagnostics.html#the-must_use-attribute"
+        ),
         FutureWarnFollowing, EncodeCrossCrate::Yes
     ),
     gated!(
@@ -467,19 +561,28 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         template!(
             Word,
             List: &[r#"/*opt*/ since = "version", /*opt*/ note = "reason""#],
-            NameValueStr: "reason"
+            NameValueStr: "reason",
+            "https://doc.rust-lang.org/reference/attributes/diagnostics.html#the-deprecated-attribute"
         ),
         ErrorFollowing, EncodeCrossCrate::Yes
     ),
 
     // Crate properties:
     ungated!(
-        crate_name, CrateLevel, template!(NameValueStr: "name"), FutureWarnFollowing,
-        EncodeCrossCrate::No,
+        crate_name, CrateLevel,
+        template!(
+            NameValueStr: "name",
+            "https://doc.rust-lang.org/reference/crates-and-source-files.html#the-crate_name-attribute"
+        ),
+        FutureWarnFollowing, EncodeCrossCrate::No,
     ),
     ungated!(
-        crate_type, CrateLevel, template!(OneOfNameValueStr: &["bin", "lib", "dylib", "cdylib", "rlib", "staticlib", "sdylib", "proc-macro"]), DuplicatesOk,
-        EncodeCrossCrate::No,
+        crate_type, CrateLevel,
+        template!(
+            OneOfNameValueStr: &["bin", "lib", "dylib", "cdylib", "rlib", "staticlib", "sdylib", "proc-macro"],
+            "https://doc.rust-lang.org/reference/linkage.html"
+        ),
+        DuplicatesOk, EncodeCrossCrate::No,
     ),
 
     // ABI, linking, symbols, and FFI
@@ -491,33 +594,67 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
             r#"name = "...", wasm_import_module = "...""#,
             r#"name = "...", import_name_type = "decorated|noprefix|undecorated""#,
             r#"name = "...", kind = "dylib|static|...", wasm_import_module = "...", import_name_type = "decorated|noprefix|undecorated""#,
-        ]),
-        DuplicatesOk,
-        EncodeCrossCrate::No,
+        ], "https://doc.rust-lang.org/reference/items/external-blocks.html#the-link-attribute"),
+        DuplicatesOk, EncodeCrossCrate::No,
     ),
     ungated!(
-        link_name, Normal, template!(NameValueStr: "name"),
+        link_name, Normal,
+        template!(NameValueStr: "name", "https://doc.rust-lang.org/reference/items/external-blocks.html#the-link_name-attribute"),
         FutureWarnPreceding, EncodeCrossCrate::Yes
     ),
-    ungated!(no_link, Normal, template!(Word), WarnFollowing, EncodeCrossCrate::No),
-    ungated!(repr, Normal, template!(List: &["C"]), DuplicatesOk, EncodeCrossCrate::No),
+    ungated!(
+        no_link, Normal,
+        template!(Word, "https://doc.rust-lang.org/reference/items/extern-crates.html#the-no_link-attribute"),
+        WarnFollowing, EncodeCrossCrate::No
+    ),
+    ungated!(
+        repr, Normal,
+        template!(List: &["C"], "https://doc.rust-lang.org/reference/type-layout.html#representations"),
+        DuplicatesOk, EncodeCrossCrate::No
+    ),
     // FIXME(#82232, #143834): temporarily renamed to mitigate `#[align]` nameres ambiguity
     gated!(rustc_align, Normal, template!(List: &["alignment"]), DuplicatesOk, EncodeCrossCrate::No, fn_align, experimental!(rustc_align)),
-    ungated!(unsafe(Edition2024) export_name, Normal, template!(NameValueStr: "name"), FutureWarnPreceding, EncodeCrossCrate::No),
-    ungated!(unsafe(Edition2024) link_section, Normal, template!(NameValueStr: "name"), FutureWarnPreceding, EncodeCrossCrate::No),
-    ungated!(unsafe(Edition2024) no_mangle, Normal, template!(Word), WarnFollowing, EncodeCrossCrate::No),
-    ungated!(used, Normal, template!(Word, List: &["compiler", "linker"]), WarnFollowing, EncodeCrossCrate::No),
-    ungated!(link_ordinal, Normal, template!(List: &["ordinal"]), ErrorPreceding, EncodeCrossCrate::Yes),
-    ungated!(unsafe naked, Normal, template!(Word), WarnFollowing, EncodeCrossCrate::No),
+    ungated!(
+        unsafe(Edition2024) export_name, Normal,
+        template!(NameValueStr: "name", "https://doc.rust-lang.org/reference/abi.html#the-export_name-attribute"),
+        FutureWarnPreceding, EncodeCrossCrate::No
+    ),
+    ungated!(
+        unsafe(Edition2024) link_section, Normal,
+        template!(NameValueStr: "name", "https://doc.rust-lang.org/reference/abi.html#the-link_section-attribute"),
+        FutureWarnPreceding, EncodeCrossCrate::No
+    ),
+    ungated!(
+        unsafe(Edition2024) no_mangle, Normal,
+        template!(Word, "https://doc.rust-lang.org/reference/abi.html#the-no_mangle-attribute"),
+        WarnFollowing, EncodeCrossCrate::No
+    ),
+    ungated!(
+        used, Normal,
+        template!(Word, List: &["compiler", "linker"], "https://doc.rust-lang.org/reference/abi.html#the-used-attribute"),
+        WarnFollowing, EncodeCrossCrate::No
+    ),
+    ungated!(
+        link_ordinal, Normal,
+        template!(List: &["ordinal"], "https://doc.rust-lang.org/reference/items/external-blocks.html#the-link_ordinal-attribute"),
+        ErrorPreceding, EncodeCrossCrate::Yes
+    ),
+    ungated!(
+        unsafe naked, Normal,
+        template!(Word, "https://doc.rust-lang.org/reference/attributes/codegen.html#the-naked-attribute"),
+        WarnFollowing, EncodeCrossCrate::No
+    ),
 
     // Limits:
     ungated!(
-        recursion_limit, CrateLevel, template!(NameValueStr: "N"), FutureWarnFollowing,
-        EncodeCrossCrate::No
+        recursion_limit, CrateLevel,
+        template!(NameValueStr: "N", "https://doc.rust-lang.org/reference/attributes/limits.html#the-recursion_limit-attribute"),
+        FutureWarnFollowing, EncodeCrossCrate::No
     ),
     ungated!(
-        type_length_limit, CrateLevel, template!(NameValueStr: "N"), FutureWarnFollowing,
-        EncodeCrossCrate::No
+        type_length_limit, CrateLevel,
+        template!(NameValueStr: "N", "https://doc.rust-lang.org/reference/attributes/limits.html#the-type_length_limit-attribute"),
+        FutureWarnFollowing, EncodeCrossCrate::No
     ),
     gated!(
         move_size_limit, CrateLevel, template!(NameValueStr: "N"), ErrorFollowing,
@@ -525,32 +662,81 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ),
 
     // Entry point:
-    ungated!(no_main, CrateLevel, template!(Word), WarnFollowing, EncodeCrossCrate::No),
+    ungated!(
+        no_main, CrateLevel,
+        template!(Word, "https://doc.rust-lang.org/reference/crates-and-source-files.html#the-no_main-attribute"),
+        WarnFollowing, EncodeCrossCrate::No
+    ),
 
     // Modules, prelude, and resolution:
-    ungated!(path, Normal, template!(NameValueStr: "file"), FutureWarnFollowing, EncodeCrossCrate::No),
-    ungated!(no_std, CrateLevel, template!(Word), WarnFollowing, EncodeCrossCrate::No),
-    ungated!(no_implicit_prelude, Normal, template!(Word), WarnFollowing, EncodeCrossCrate::No),
-    ungated!(non_exhaustive, Normal, template!(Word), WarnFollowing, EncodeCrossCrate::Yes),
+    ungated!(
+        path, Normal,
+        template!(NameValueStr: "file", "https://doc.rust-lang.org/reference/items/modules.html#the-path-attribute"),
+        FutureWarnFollowing, EncodeCrossCrate::No
+    ),
+    ungated!(
+        no_std, CrateLevel,
+        template!(Word, "https://doc.rust-lang.org/reference/names/preludes.html#the-no_std-attribute"),
+        WarnFollowing, EncodeCrossCrate::No
+    ),
+    ungated!(
+        no_implicit_prelude, Normal,
+        template!(Word, "https://doc.rust-lang.org/reference/names/preludes.html#the-no_implicit_prelude-attribute"),
+        WarnFollowing, EncodeCrossCrate::No
+    ),
+    ungated!(
+        non_exhaustive, Normal,
+        template!(Word, "https://doc.rust-lang.org/reference/attributes/type_system.html#the-non_exhaustive-attribute"),
+        WarnFollowing, EncodeCrossCrate::Yes
+    ),
 
     // Runtime
     ungated!(
         windows_subsystem, CrateLevel,
-        template!(OneOfNameValueStr: &["windows", "console"]), FutureWarnFollowing,
-        EncodeCrossCrate::No
+        template!(OneOfNameValueStr: &["windows", "console"], "https://doc.rust-lang.org/reference/runtime.html#the-windows_subsystem-attribute"),
+        FutureWarnFollowing, EncodeCrossCrate::No
     ),
-    ungated!(panic_handler, Normal, template!(Word), WarnFollowing, EncodeCrossCrate::Yes), // RFC 2070
+    ungated!( // RFC 2070
+        panic_handler, Normal,
+        template!(Word, "https://doc.rust-lang.org/reference/panic.html#the-panic_handler-attribute"),
+        WarnFollowing, EncodeCrossCrate::Yes
+    ),
 
     // Code generation:
-    ungated!(inline, Normal, template!(Word, List: &["always", "never"]), FutureWarnFollowing, EncodeCrossCrate::No),
-    ungated!(cold, Normal, template!(Word), WarnFollowing, EncodeCrossCrate::No),
-    ungated!(no_builtins, CrateLevel, template!(Word), WarnFollowing, EncodeCrossCrate::Yes),
     ungated!(
-        target_feature, Normal, template!(List: &[r#"enable = "name""#]),
+        inline, Normal,
+        template!(
+            Word,
+            List: &["always", "never"],
+            "https://doc.rust-lang.org/reference/attributes/codegen.html#the-inline-attribute"
+        ),
+        FutureWarnFollowing, EncodeCrossCrate::No
+    ),
+    ungated!(
+        cold, Normal,
+        template!(Word, "https://doc.rust-lang.org/reference/attributes/codegen.html#the-cold-attribute"),
+        WarnFollowing, EncodeCrossCrate::No
+    ),
+    ungated!(
+        no_builtins, CrateLevel,
+        template!(Word, "https://doc.rust-lang.org/reference/attributes/codegen.html#the-no_builtins-attribute"),
+        WarnFollowing, EncodeCrossCrate::Yes
+    ),
+    ungated!(
+        target_feature, Normal,
+        template!(List: &[r#"enable = "name""#], "https://doc.rust-lang.org/reference/attributes/codegen.html#the-target_feature-attribute"),
         DuplicatesOk, EncodeCrossCrate::No,
     ),
-    ungated!(track_caller, Normal, template!(Word), WarnFollowing, EncodeCrossCrate::Yes),
-    ungated!(instruction_set, Normal, template!(List: &["set"]), ErrorPreceding, EncodeCrossCrate::No),
+    ungated!(
+        track_caller, Normal,
+        template!(Word, "https://doc.rust-lang.org/reference/attributes/codegen.html#the-track_caller-attribute"),
+        WarnFollowing, EncodeCrossCrate::Yes
+    ),
+    ungated!(
+        instruction_set, Normal,
+        template!(List: &["set"], "https://doc.rust-lang.org/reference/attributes/codegen.html#the-instruction_set-attribute"),
+        ErrorPreceding, EncodeCrossCrate::No
+    ),
     gated!(
         no_sanitize, Normal,
         template!(List: &["address, kcfi, memory, thread"]), DuplicatesOk,
@@ -563,18 +749,31 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ),
 
     ungated!(
-        doc, Normal, template!(List: &["hidden", "inline"], NameValueStr: "string"), DuplicatesOk,
-        EncodeCrossCrate::Yes
+        doc, Normal,
+        template!(
+            List: &["hidden", "inline"],
+            NameValueStr: "string",
+            "https://doc.rust-lang.org/rustdoc/write-documentation/the-doc-attribute.html"
+        ),
+        DuplicatesOk, EncodeCrossCrate::Yes
     ),
 
     // Debugging
     ungated!(
         debugger_visualizer, Normal,
-        template!(List: &[r#"natvis_file = "...", gdb_script_file = "...""#]),
+        template!(
+            List: &[r#"natvis_file = "...", gdb_script_file = "...""#],
+            "https://doc.rust-lang.org/reference/attributes/debugger.html#the-debugger_visualizer-attribute"
+        ),
         DuplicatesOk, EncodeCrossCrate::No
     ),
-    ungated!(collapse_debuginfo, Normal, template!(List: &["no", "external", "yes"]), ErrorFollowing,
-        EncodeCrossCrate::Yes
+    ungated!(
+        collapse_debuginfo, Normal,
+        template!(
+            List: &["no", "external", "yes"],
+            "https://doc.rust-lang.org/reference/attributes/debugger.html#the-collapse_debuginfo-attribute"
+        ),
+        ErrorFollowing, EncodeCrossCrate::Yes
     ),
 
     // ==========================================================================
@@ -835,7 +1034,7 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
             "linkonce_odr",
             "weak",
             "weak_odr",
-        ]),
+        ], "https://doc.rust-lang.org/reference/linkage.html"),
         ErrorPreceding, EncodeCrossCrate::No,
         "the `linkage` attribute is experimental and not portable across platforms",
     ),

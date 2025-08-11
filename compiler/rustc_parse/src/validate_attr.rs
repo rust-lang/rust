@@ -313,24 +313,27 @@ fn emit_malformed_attribute(
             ILL_FORMED_ATTRIBUTE_INPUT,
             span,
             ast::CRATE_NODE_ID,
-            BuiltinLintDiag::IllFormedAttributeInput { suggestions: suggestions.clone() },
+            BuiltinLintDiag::IllFormedAttributeInput {
+                suggestions: suggestions.clone(),
+                docs: template.docs,
+            },
         );
     } else {
         suggestions.sort();
-        psess
-            .dcx()
-            .struct_span_err(span, error_msg)
-            .with_span_suggestions(
-                span,
-                if suggestions.len() == 1 {
-                    "must be of the form"
-                } else {
-                    "the following are the possible correct uses"
-                },
-                suggestions,
-                Applicability::HasPlaceholders,
-            )
-            .emit();
+        let mut err = psess.dcx().struct_span_err(span, error_msg).with_span_suggestions(
+            span,
+            if suggestions.len() == 1 {
+                "must be of the form"
+            } else {
+                "the following are the possible correct uses"
+            },
+            suggestions,
+            Applicability::HasPlaceholders,
+        );
+        if let Some(link) = template.docs {
+            err.note(format!("for more information, visit <{link}>"));
+        }
+        err.emit();
     }
 }
 
