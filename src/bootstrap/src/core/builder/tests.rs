@@ -2072,25 +2072,6 @@ mod snapshot {
         insta::assert_snapshot!(
             ctx.config("clippy")
                 .path("ci")
-                .render_steps(), @r"
-        [clippy] rustc 0 <host> -> bootstrap 1 <host>
-        [build] llvm <host>
-        [build] rustc 0 <host> -> rustc 1 <host>
-        [build] rustc 0 <host> -> clippy-driver 1 <host>
-        [build] rustc 0 <host> -> cargo-clippy 1 <host>
-        [clippy] rustc 1 <host> -> std 1 <host>
-        [clippy] rustc 0 <host> -> rustc 1 <host>
-        [check] rustc 0 <host> -> rustc 1 <host>
-        [clippy] rustc 0 <host> -> rustc_codegen_gcc 1 <host>
-        ");
-    }
-
-    #[test]
-    fn clippy_ci_stage_2() {
-        let ctx = TestCtx::new();
-        insta::assert_snapshot!(
-            ctx.config("clippy")
-                .path("ci")
                 .stage(2)
                 .render_steps(), @r"
         [build] llvm <host>
@@ -2099,10 +2080,7 @@ mod snapshot {
         [build] rustc 0 <host> -> clippy-driver 1 <host>
         [build] rustc 0 <host> -> cargo-clippy 1 <host>
         [clippy] rustc 1 <host> -> bootstrap 2 <host>
-        [build] rustc 1 <host> -> rustc 2 <host>
-        [build] rustc 1 <host> -> clippy-driver 2 <host>
-        [build] rustc 1 <host> -> cargo-clippy 2 <host>
-        [clippy] rustc 2 <host> -> std 2 <host>
+        [clippy] rustc 1 <host> -> std 1 <host>
         [clippy] rustc 1 <host> -> rustc 2 <host>
         [check] rustc 1 <host> -> rustc 2 <host>
         [clippy] rustc 1 <host> -> rustc_codegen_gcc 2 <host>

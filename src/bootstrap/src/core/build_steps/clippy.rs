@@ -12,6 +12,8 @@
 //! to pass a prebuilt Clippy from the outside when running `cargo clippy`, but that would be
 //! (as usual) a massive undertaking/refactoring.
 
+use build_helper::exit;
+
 use super::compile::{run_cargo, rustc_cargo, std_cargo};
 use super::tool::{SourceType, prepare_tool_cargo};
 use crate::builder::{Builder, ShouldRun};
@@ -153,6 +155,15 @@ impl Std {
             config,
             crates,
         }
+    }
+
+    fn from_build_compiler(
+        build_compiler: Compiler,
+        target: TargetSelection,
+        config: LintConfig,
+        crates: Vec<String>,
+    ) -> Self {
+        Self { build_compiler, target, config, crates }
     }
 }
 
@@ -479,6 +490,7 @@ lint_any!(
     TestFloatParse, "src/tools/test-float-parse", "test-float-parse", Mode::ToolStd;
 );
 
+/// Runs Clippy on in-tree sources of selected projects using in-tree CLippy.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct CI {
     target: TargetSelection,
@@ -499,7 +511,20 @@ impl Step for CI {
     }
 
     fn run(self, builder: &Builder<'_>) -> Self::Output {
+        if builder.top_stage != 2 {
+            eprintln!("ERROR: `x clippy ci` should always be executed with --stage 2");
+            exit!(1);
+        }
+
+        // We want to check in-tree source using in-tree clippy. However, if we naively did
+        // a stage 2 `x clippy ci`, it would *build* a stage 2 rustc, in order to lint stage 2
+        // std, which is wasteful.
+        // So we want to lint stage 2 [bootstrap/rustc/...], but only stage 1 std rustc_codegen_gcc.
+        // We thus construct the compilers in this step manually, to optimize the number of
+        // steps that get built.
+
         builder.ensure(Bootstrap {
+            // This will be the stage 1 compiler
             build_compiler: prepare_compiler_for_check(builder, self.target, Mode::ToolTarget),
             target: self.target,
             config: self.config.merge(&LintConfig {
@@ -509,6 +534,7 @@ impl Step for CI {
                 forbid: vec![],
             }),
         });
+
         let library_clippy_cfg = LintConfig {
             allow: vec!["clippy::all".into()],
             warn: vec![],
@@ -526,8 +552,9 @@ impl Step for CI {
             ],
             forbid: vec![],
         };
-        builder.ensure(Std::new(
-            builder,
+        builder.ensure(Std::from_build_compiler(
+            // This will be the stage 1 compiler, to avoid building rustc stage 2 just to lint std
+            builder.compiler(1, self.target),
             self.target,
             self.config.merge(&library_clippy_cfg),
             vec![],
@@ -552,6 +579,7 @@ impl Step for CI {
             ],
             forbid: vec![],
         };
+        // This will lint stage 2 rustc using stage 1 Clippy
         builder.ensure(Rustc::new(
             builder,
             self.target,
@@ -565,6 +593,7 @@ impl Step for CI {
             deny: vec!["warnings".into()],
             forbid: vec![],
         };
+        // This will check stage 2 rustc
         builder.ensure(CodegenGcc::new(
             builder,
             self.target,
