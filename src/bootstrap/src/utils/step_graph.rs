@@ -3,7 +3,7 @@ use std::fmt::Debug;
 use std::io::BufWriter;
 use std::path::Path;
 
-use crate::core::builder::{AnyDebug, Step};
+use crate::core::builder::{AnyDebug, Step, pretty_step_name};
 use crate::t;
 
 /// Records the executed steps and their dependencies in a directed graph,
@@ -43,13 +43,7 @@ impl StepGraph {
                 metadata.get_target()
             )
         } else {
-            let type_name = std::any::type_name::<S>();
-            type_name
-                .strip_prefix("bootstrap::core::")
-                .unwrap_or(type_name)
-                .strip_prefix("build_steps::")
-                .unwrap_or(type_name)
-                .to_string()
+            pretty_step_name::<S>()
         };
 
         let node = Node { label, tooltip: node_key.clone() };

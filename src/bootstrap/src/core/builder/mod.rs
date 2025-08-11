@@ -1717,7 +1717,7 @@ You have to build a stage1 compiler for `{}` first, and then use it to build a s
                     // We cannot use a dynamic name here, so instead we record the actual step name
                     // in the step_name field.
                     "step",
-                    step_name = step_name::<S>(),
+                    step_name = pretty_step_name::<S>(),
                     args = step_debug_args(&step)
                 );
                 span.entered()
@@ -1819,7 +1819,7 @@ You have to build a stage1 compiler for `{}` first, and then use it to build a s
 }
 
 /// Return qualified step name, e.g. `compile::Rustc`.
-fn step_name<S: Step>() -> String {
+pub fn pretty_step_name<S: Step>() -> String {
     // Normalize step type path to only keep the module and the type name
     let path = type_name::<S>().rsplit("::").take(2).collect::<Vec<_>>();
     path.into_iter().rev().collect::<Vec<_>>().join("::")
@@ -1834,7 +1834,7 @@ fn step_debug_args<S: Step>(step: &S) -> String {
 }
 
 fn pretty_print_step<S: Step>(step: &S) -> String {
-    format!("{} {{ {} }}", step_name::<S>(), step_debug_args(step))
+    format!("{} {{ {} }}", pretty_step_name::<S>(), step_debug_args(step))
 }
 
 impl<'a> AsRef<ExecutionContext> for Builder<'a> {
