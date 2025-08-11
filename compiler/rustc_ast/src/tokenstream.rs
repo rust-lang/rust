@@ -907,6 +907,12 @@ impl TokenTreeCursor {
     pub fn bump(&mut self) {
         self.index += 1;
     }
+
+    // For skipping ahead in rare circumstances.
+    #[inline]
+    pub fn bump_to_end(&mut self) {
+        self.index = self.stream.len();
+    }
 }
 
 /// A `TokenStream` cursor that produces `Token`s. It's a bit odd that
