@@ -16,19 +16,15 @@ use bootstrap::{
     find_recent_config_change_ids, human_readable_changes, symlink_dir, t,
 };
 
-fn is_profiling_enabled() -> bool {
-    env::var("BOOTSTRAP_PROFILE").is_ok_and(|v| v == "1")
-}
-
 fn is_tracing_enabled() -> bool {
-    is_profiling_enabled() || cfg!(feature = "tracing")
+    cfg!(feature = "tracing")
 }
 
 fn main() {
     #[cfg(feature = "tracing")]
-    let guard = bootstrap::setup_tracing(is_profiling_enabled());
+    let guard = bootstrap::setup_tracing("BOOTSTRAP_TRACING");
 
-    let start_time = Instant::now();
+    let _start_time = Instant::now();
 
     let args = env::args().skip(1).collect::<Vec<_>>();
 
@@ -175,19 +171,11 @@ fn main() {
         }
     }
 
-    if is_profiling_enabled() {
-        build.report_summary(&tracing_dir.join("command-stats.txt"), start_time);
-    }
-
     #[cfg(feature = "tracing")]
     {
+        build.report_summary(&tracing_dir.join("command-stats.txt"), _start_time);
         build.report_step_graph(&tracing_dir);
-        if let Some(guard) = guard {
-            guard.copy_to_dir(&tracing_dir);
-        }
-    }
-
-    if tracing_enabled {
+        guard.copy_to_dir(&tracing_dir);
         eprintln!("Tracing/profiling output has been written to {}", latest_trace_dir.display());
     }
 }

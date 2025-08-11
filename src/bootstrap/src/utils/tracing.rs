@@ -92,50 +92,43 @@ mod inner {
     use crate::STEP_SPAN_TARGET;
     use crate::utils::tracing::COMMAND_SPAN_TARGET;
 
-    pub fn setup_tracing(profiling_enabled: bool) -> Option<TracingGuard> {
-        let filter = EnvFilter::from_env("BOOTSTRAP_TRACING");
+    pub fn setup_tracing(env_name: &str) -> TracingGuard {
+        let filter = EnvFilter::from_env(env_name);
 
         let registry = tracing_subscriber::registry().with(filter).with(TracingPrinter::default());
 
-        let guard = if profiling_enabled {
-            // When we're creating this layer, we do not yet know the location of the tracing output
-            // directory, because it is stored in the output directory determined after Config is parsed,
-            // but we already want to make tracing calls during (and before) config parsing.
-            // So we store the output into a temporary file, and then move it to the tracing directory
-            // before bootstrap ends.
-            let tempdir = tempfile::TempDir::new().expect("Cannot create temporary directory");
-            let chrome_tracing_path = tempdir.path().join("bootstrap-trace.json");
-            let file = std::io::BufWriter::new(File::create(&chrome_tracing_path).unwrap());
+        // When we're creating this layer, we do not yet know the location of the tracing output
+        // directory, because it is stored in the output directory determined after Config is parsed,
+        // but we already want to make tracing calls during (and before) config parsing.
+        // So we store the output into a temporary file, and then move it to the tracing directory
+        // before bootstrap ends.
+        let tempdir = tempfile::TempDir::new().expect("Cannot create temporary directory");
+        let chrome_tracing_path = tempdir.path().join("bootstrap-trace.json");
+        let file = std::io::BufWriter::new(File::create(&chrome_tracing_path).unwrap());
 
-            let chrome_layer = tracing_chrome::ChromeLayerBuilder::new()
-                .writer(file)
-                .include_args(true)
-                .name_fn(Box::new(|event_or_span| match event_or_span {
-                    tracing_chrome::EventOrSpan::Event(e) => e.metadata().name().to_string(),
-                    tracing_chrome::EventOrSpan::Span(s) => {
-                        if s.metadata().target() == STEP_SPAN_TARGET
-                            && let Some(extension) = s.extensions().get::<StepNameExtension>()
-                        {
-                            extension.0.clone()
-                        } else if s.metadata().target() == COMMAND_SPAN_TARGET
-                            && let Some(extension) = s.extensions().get::<CommandNameExtension>()
-                        {
-                            extension.0.clone()
-                        } else {
-                            s.metadata().name().to_string()
-                        }
+        let chrome_layer = tracing_chrome::ChromeLayerBuilder::new()
+            .writer(file)
+            .include_args(true)
+            .name_fn(Box::new(|event_or_span| match event_or_span {
+                tracing_chrome::EventOrSpan::Event(e) => e.metadata().name().to_string(),
+                tracing_chrome::EventOrSpan::Span(s) => {
+                    if s.metadata().target() == STEP_SPAN_TARGET
+                        && let Some(extension) = s.extensions().get::<StepNameExtension>()
+                    {
+                        extension.0.clone()
+                    } else if s.metadata().target() == COMMAND_SPAN_TARGET
+                        && let Some(extension) = s.extensions().get::<CommandNameExtension>()
+                    {
+                        extension.0.clone()
+                    } else {
+                        s.metadata().name().to_string()
                     }
-                }));
-            let (chrome_layer, guard) = chrome_layer.build();
+                }
+            }));
+        let (chrome_layer, guard) = chrome_layer.build();
 
-            tracing::subscriber::set_global_default(registry.with(chrome_layer)).unwrap();
-            Some(TracingGuard { guard, _tempdir: tempdir, chrome_tracing_path })
-        } else {
-            tracing::subscriber::set_global_default(registry).unwrap();
-            None
-        };
-
-        guard
+        tracing::subscriber::set_global_default(registry.with(chrome_layer)).unwrap();
+        TracingGuard { guard, _tempdir: tempdir, chrome_tracing_path }
     }
 
     pub struct TracingGuard {
