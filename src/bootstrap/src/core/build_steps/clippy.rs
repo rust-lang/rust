@@ -13,7 +13,7 @@
 //! (as usual) a massive undertaking/refactoring.
 
 use super::compile::{run_cargo, rustc_cargo, std_cargo};
-use super::tool::{RustcPrivateCompilers, SourceType, prepare_tool_cargo};
+use super::tool::{SourceType, prepare_tool_cargo};
 use crate::builder::{Builder, ShouldRun};
 use crate::core::build_steps::check::prepare_compiler_for_check;
 use crate::core::build_steps::compile::std_crates_for_run_make;
@@ -306,7 +306,7 @@ impl Step for Rustc {
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct CodegenGcc {
-    compilers: RustcPrivateCompilers,
+    build_compiler: Compiler,
     target: TargetSelection,
     config: LintConfig,
 }
@@ -314,7 +314,7 @@ pub struct CodegenGcc {
 impl CodegenGcc {
     fn new(builder: &Builder<'_>, target: TargetSelection, config: LintConfig) -> Self {
         Self {
-            compilers: RustcPrivateCompilers::new(builder, builder.top_stage, target),
+            build_compiler: prepare_compiler_for_check(builder, target, Mode::Codegen),
             target,
             config,
         }
@@ -335,7 +335,7 @@ impl Step for CodegenGcc {
     }
 
     fn run(self, builder: &Builder<'_>) -> Self::Output {
-        let build_compiler = self.compilers.build_compiler();
+        let build_compiler = self.build_compiler;
         let target = self.target;
 
         let cargo = prepare_tool_cargo(
@@ -367,10 +367,7 @@ impl Step for CodegenGcc {
     }
 
     fn metadata(&self) -> Option<StepMetadata> {
-        Some(
-            StepMetadata::clippy("rustc_codegen_gcc", self.target)
-                .built_by(self.compilers.build_compiler()),
-        )
+        Some(StepMetadata::clippy("rustc_codegen_gcc", self.target).built_by(self.build_compiler))
     }
 }
 
