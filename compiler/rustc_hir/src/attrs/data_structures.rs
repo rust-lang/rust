@@ -324,6 +324,9 @@ pub enum AttributeKind {
     /// Represents `#[coverage(..)]`.
     Coverage(Span, CoverageAttrKind),
 
+    /// Represents `#[crate_name = ...]`
+    CrateName { name: Symbol, name_span: Span, style: AttrStyle },
+
     ///Represents `#[rustc_deny_explicit_impl]`.
     DenyExplicitImpl(Span),
 

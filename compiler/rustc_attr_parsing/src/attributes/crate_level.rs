@@ -1,0 +1,34 @@
+use rustc_feature::{AttributeTemplate, template};
+use rustc_hir::attrs::AttributeKind;
+use rustc_span::{Symbol, sym};
+
+use super::{AttributeOrder, OnDuplicate, SingleAttributeParser};
+use crate::context::{ALL_TARGETS, AcceptContext, AllowedTargets, Stage};
+use crate::parser::ArgParser;
+
+pub(crate) struct CrateNameParser;
+
+impl<S: Stage> SingleAttributeParser<S> for CrateNameParser {
+    const PATH: &[Symbol] = &[sym::crate_name];
+    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::WarnButFutureError;
+    const TEMPLATE: AttributeTemplate = template!(NameValueStr: "name");
+
+    // FIXME: crate name is allowed on all targets and ignored,
+    //        even though it should only be valid on crates of course
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(ALL_TARGETS);
+
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
+        let ArgParser::NameValue(n) = args else {
+            cx.expected_name_value(cx.attr_span, None);
+            return None;
+        };
+
+        let Some(name) = n.value_as_str() else {
+            cx.expected_string_literal(n.value_span, Some(n.value_as_lit()));
+            return None;
+        };
+
+        Some(AttributeKind::CrateName { name, name_span: n.value_span, style: cx.attr_style })
+    }
+}

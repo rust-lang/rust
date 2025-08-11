@@ -14,6 +14,7 @@ use rustc_hir::{
     AttrArgs, AttrItem, AttrPath, Attribute, HashIgnoredAttrId, HirId, MethodKind, Target,
 };
 use rustc_session::Session;
+use rustc_session::lint::BuiltinLintDiag;
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, Symbol, sym};
 
 use crate::attributes::allow_unstable::{
@@ -25,6 +26,7 @@ use crate::attributes::codegen_attrs::{
     TargetFeatureParser, TrackCallerParser, UsedParser,
 };
 use crate::attributes::confusables::ConfusablesParser;
+use crate::attributes::crate_level::CrateNameParser;
 use crate::attributes::deprecation::DeprecationParser;
 use crate::attributes::dummy::DummyParser;
 use crate::attributes::inline::{InlineParser, RustcForceInlineParser};
@@ -65,6 +67,7 @@ use crate::attributes::traits::{
 use crate::attributes::transparency::TransparencyParser;
 use crate::attributes::{AttributeParser as _, Combine, Single, WithoutArgs};
 use crate::context::MaybeWarn::{Allow, Error, Warn};
+use crate::lints::lint_name;
 use crate::parser::{ArgParser, MetaItemParser, PathParser};
 use crate::session_diagnostics::{
     AttributeParseError, AttributeParseErrorReason, InvalidTarget, UnknownMetaItem,
@@ -167,6 +170,7 @@ attribute_parsers!(
 
         // tidy-alphabetical-start
         Single<CoverageParser>,
+        Single<CrateNameParser>,
         Single<DeprecationParser>,
         Single<DummyParser>,
         Single<ExportNameParser>,
@@ -313,7 +317,9 @@ pub struct AcceptContext<'f, 'sess, S: Stage> {
     /// The span of the attribute currently being parsed
     pub(crate) attr_span: Span,
 
+    /// Whether it is an inner or outer attribute
     pub(crate) attr_style: AttrStyle,
+
     /// The expected structure of the attribute.
     ///
     /// Used in reporting errors to give a hint to users what the attribute *should* look like.
@@ -760,12 +766,33 @@ impl<'sess> AttributeParser<'sess, Early> {
         target_node_id: NodeId,
         features: Option<&'sess Features>,
     ) -> Option<Attribute> {
+        Self::parse_limited_should_emit(
+            sess,
+            attrs,
+            sym,
+            target_span,
+            target_node_id,
+            features,
+            ShouldEmit::Nothing,
+        )
+    }
+
+    /// Usually you want `parse_limited`, which defaults to no errors.
+    pub fn parse_limited_should_emit(
+        sess: &'sess Session,
+        attrs: &[ast::Attribute],
+        sym: Symbol,
+        target_span: Span,
+        target_node_id: NodeId,
+        features: Option<&'sess Features>,
+        should_emit: ShouldEmit,
+    ) -> Option<Attribute> {
         let mut p = Self {
             features,
             tools: Vec::new(),
             parse_only: Some(sym),
             sess,
-            stage: Early { emit_errors: ShouldEmit::Nothing },
+            stage: Early { emit_errors: should_emit },
         };
         let mut parsed = p.parse_attribute_list(
             attrs,
@@ -774,8 +801,13 @@ impl<'sess> AttributeParser<'sess, Early> {
             Target::Crate, // Does not matter, we're not going to emit errors anyways
             OmitDoc::Skip,
             std::convert::identity,
-            |_lint| {
-                panic!("can't emit lints here for now (nothing uses this atm)");
+            |AttributeLint { id, span, kind }| {
+                sess.psess.buffer_lint(
+                    lint_name(&kind),
+                    span,
+                    id,
+                    BuiltinLintDiag::AttributeLint(kind),
+                );
             },
         );
         assert!(parsed.len() <= 1);

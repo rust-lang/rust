@@ -1,8 +1,10 @@
 use std::borrow::Cow;
 
 use rustc_ast::util::unicode::TEXT_FLOW_CONTROL_CHARS;
+use rustc_attr_parsing::decorate_attribute_lint_kind;
 use rustc_errors::{
-    Applicability, Diag, DiagArgValue, LintDiagnostic, elided_lifetime_in_path_suggestion,
+    Applicability, AttributeLintDecorator, Diag, DiagArgValue, LintDiagnostic,
+    elided_lifetime_in_path_suggestion,
 };
 use rustc_middle::middle::stability;
 use rustc_middle::ty::TyCtxt;
@@ -476,5 +478,15 @@ pub fn decorate_builtin_lint(
         BuiltinLintDiag::UnexpectedBuiltinCfg { cfg, cfg_name, controlled_by } => {
             lints::UnexpectedBuiltinCfg { cfg, cfg_name, controlled_by }.decorate_lint(diag)
         }
+        BuiltinLintDiag::AttributeLint(attr) => {
+            decorate_attribute_lint_kind(&attr, DiagEmitter(diag));
+        }
+    }
+}
+
+struct DiagEmitter<'a, 'b>(&'a mut Diag<'b, ()>);
+impl AttributeLintDecorator for DiagEmitter<'_, '_> {
+    fn decorate(self, diag: impl for<'a> LintDiagnostic<'a, ()>) {
+        diag.decorate_lint(self.0);
     }
 }
