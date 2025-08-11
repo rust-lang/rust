@@ -51,8 +51,6 @@ enum GetSafeTransmuteErrorAndReason {
     Error { err_msg: String, safe_transmute_explanation: Option<String> },
 }
 
-struct UnsatisfiedConst(pub bool);
-
 /// Crude way of getting back an `Expr` from a `Span`.
 pub struct FindExprBySpan<'hir> {
     pub span: Span,
