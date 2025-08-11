@@ -2485,7 +2485,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                                     .then_some(TypoSuggestion::typo_from_ident(ident.0, res))
                             }));
 
-                            if let Some(prelude) = self.r.prelude {
+                            if let Some(prelude) = self.r.prelude.get() {
                                 self.r.add_module_candidates(prelude, &mut names, &filter_fn, None);
                             }
                         }

@@ -48,14 +48,16 @@ pub(crate) struct ImportResolver<'r, 'ra, 'tcx> {
 
     // outputs
     determined_imports: Vec<Import<'ra>>,
-    glob_imports: Vec<Import<'ra>>,
+    glob_import_outputs: Vec<(Module<'ra>, BindingKey, NameBinding<'ra>, bool)>,
+    glob_res_outputs: Vec<(NodeId, PartialRes)>,
     import_bindings: PerNS<Vec<(Module<'ra>, Import<'ra>, PendingBinding<'ra>)>>,
 }
 
 struct ImportResolutionOutputs<'ra> {
     indeterminate_imports: Vec<Import<'ra>>,
     determined_imports: Vec<Import<'ra>>,
-    glob_imports: Vec<Import<'ra>>,
+    glob_import_outputs: Vec<(Module<'ra>, BindingKey, NameBinding<'ra>, bool)>,
+    glob_res_outputs: Vec<(NodeId, PartialRes)>,
     import_bindings: PerNS<Vec<(Module<'ra>, Import<'ra>, PendingBinding<'ra>)>>,
 }
 
@@ -65,8 +67,9 @@ impl<'r, 'ra, 'tcx> ImportResolver<'r, 'ra, 'tcx> {
             r: cmr,
             batch,
             determined_imports: Vec::new(),
-            glob_imports: Vec::new(),
             import_bindings: PerNS::default(),
+            glob_import_outputs: Vec::new(),
+            glob_res_outputs: Vec::new(),
         }
     }
 
@@ -74,8 +77,9 @@ impl<'r, 'ra, 'tcx> ImportResolver<'r, 'ra, 'tcx> {
         ImportResolutionOutputs {
             indeterminate_imports: self.batch,
             determined_imports: self.determined_imports,
-            glob_imports: self.glob_imports,
             import_bindings: self.import_bindings,
+            glob_import_outputs: self.glob_import_outputs,
+            glob_res_outputs: self.glob_res_outputs,
         }
     }
 }
@@ -85,8 +89,12 @@ impl<'ra> ImportResolutionOutputs<'ra> {
         r.indeterminate_imports = self.indeterminate_imports;
         r.determined_imports.extend(self.determined_imports);
 
-        for glob in self.glob_imports {
-            r.resolve_glob_import(glob);
+        for (module, key, binding, warn_ambiguity) in self.glob_import_outputs {
+            let _ = r.try_define_local(module, key.ident.0, key.ns, binding, warn_ambiguity);
+        }
+
+        for (id, res) in self.glob_res_outputs {
+            r.record_partial_res(id, res);
         }
 
         for (ns, import_bindings) in self.import_bindings.into_iter_with() {
@@ -964,14 +972,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             ImportKind::Single { source, target, ref bindings, type_ns_only, .. } => {
                 (source, target, bindings, type_ns_only)
             }
-            ImportKind::Glob { is_prelude, .. } => {
-                if is_prelude
-                    && let ModuleOrUniformRoot::Module(module) =
-                        import.imported_module.get().unwrap()
-                {
-                    self.r._get_mut_unchecked().prelude = Some(module);
-                }
-                self.glob_imports.push(import);
+            ImportKind::Glob { .. } => {
+                self.resolve_glob_import(import);
                 return 0;
             }
             _ => unreachable!(),
@@ -1565,7 +1567,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         false
     }
 
-    fn resolve_glob_import(&mut self, import: Import<'ra>) {
+    fn resolve_glob_import<'r>(self: &mut ImportResolver<'r, 'ra, 'tcx>, import: Import<'ra>) {
         // This function is only called for glob imports.
         let ImportKind::Glob { id, is_prelude, .. } = import.kind else { unreachable!() };
 
@@ -1587,7 +1589,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         if module == import.parent_scope.module {
             return;
         } else if is_prelude {
-            self.prelude = Some(module);
+            self.r.prelude.set(Some(module));
             return;
         }
 
@@ -1616,18 +1618,17 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     .resolution(import.parent_scope.module, key)
                     .and_then(|r| r.binding())
                     .is_some_and(|binding| binding.warn_ambiguity_recursive());
-                let _ = self.try_define_local(
+                self.glob_import_outputs.push((
                     import.parent_scope.module,
-                    key.ident.0,
-                    key.ns,
+                    key,
                     imported_binding,
                     warn_ambiguity,
-                );
+                ));
             }
         }
 
         // Record the destination of this import
-        self.record_partial_res(id, PartialRes::new(module.res().unwrap()));
+        self.glob_res_outputs.push((id, PartialRes::new(module.res().unwrap())));
     }
 
     // Miscellaneous post-processing, including recording re-exports,

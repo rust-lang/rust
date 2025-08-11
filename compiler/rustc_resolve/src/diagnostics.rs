@@ -1112,7 +1112,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     );
                 }
                 Scope::StdLibPrelude => {
-                    if let Some(prelude) = this.prelude {
+                    if let Some(prelude) = this.prelude.get() {
                         let mut tmp_suggestions = Vec::new();
                         this.add_module_candidates(prelude, &mut tmp_suggestions, filter_fn, None);
                         suggestions.extend(

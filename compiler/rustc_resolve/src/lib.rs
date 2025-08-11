@@ -1058,7 +1058,7 @@ pub struct Resolver<'ra, 'tcx> {
     /// Assert that we are in speculative resolution mode.
     assert_speculative: bool,
 
-    prelude: Option<Module<'ra>>,
+    prelude: Cell<Option<Module<'ra>>>,
     extern_prelude: FxIndexMap<Macros20NormalizedIdent, ExternPreludeEntry<'ra>>,
 
     /// N.B., this is used only for better diagnostics, not name resolution itself.
@@ -1533,7 +1533,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             // AST.
             graph_root,
             assert_speculative: false, // Only set/cleared in Resolver::resolve_imports for now
-            prelude: None,
+            prelude: Cell::new(None),
             extern_prelude,
 
             field_names: Default::default(),
@@ -1881,7 +1881,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     this.get_mut().traits_in_module(module, assoc_item, &mut found_traits);
                 }
                 Scope::StdLibPrelude => {
-                    if let Some(module) = this.prelude {
+                    if let Some(module) = this.prelude.get() {
                         this.get_mut().traits_in_module(module, assoc_item, &mut found_traits);
                     }
                 }
@@ -2024,7 +2024,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             if let ImportKind::MacroUse { warn_private: true } = import.kind {
                 // Do not report the lint if the macro name resolves in stdlib prelude
                 // even without the problematic `macro_use` import.
-                let found_in_stdlib_prelude = self.prelude.is_some_and(|prelude| {
+                let found_in_stdlib_prelude = self.prelude.get().is_some_and(|prelude| {
                     let empty_module = self.empty_module;
                     let arenas = self.arenas;
                     self.cm()
