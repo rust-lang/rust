@@ -122,6 +122,7 @@ LL | #[proc_macro_derive(unsafe(Foo))]
    |                           |
    |                           didn't expect any arguments here
    |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/procedural-macros.html#derive-macros>
 help: try changing it to one of the following valid forms of the attribute
    |
 LL - #[proc_macro_derive(unsafe(Foo))]

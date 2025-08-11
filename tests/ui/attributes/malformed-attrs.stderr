@@ -6,6 +6,8 @@ LL | #[cfg]
    | |
    | expected this to be a list
    | help: must be of the form: `#[cfg(predicate)]`
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute>
 
 error: malformed `cfg_attr` attribute input
   --> $DIR/malformed-attrs.rs:101:1
@@ -354,7 +356,16 @@ error[E0539]: malformed `rustc_macro_transparency` attribute input
   --> $DIR/malformed-attrs.rs:43:1
    |
 LL | #[rustc_macro_transparency]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[rustc_macro_transparency = "transparent|semitransparent|opaque"]`
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL | #[rustc_macro_transparency = "opaque"]
+   |                            ++++++++++
+LL | #[rustc_macro_transparency = "semitransparent"]
+   |                            +++++++++++++++++++
+LL | #[rustc_macro_transparency = "transparent"]
+   |                            +++++++++++++++
 
 error[E0539]: malformed `repr` attribute input
   --> $DIR/malformed-attrs.rs:45:1
@@ -362,6 +373,7 @@ error[E0539]: malformed `repr` attribute input
 LL | #[repr]
    | ^^^^^^^ expected this to be a list
    |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/type-layout.html#representations>
 help: try changing it to one of the following valid forms of the attribute
    |
 LL | #[repr(<integer type>)]
@@ -496,12 +508,16 @@ error[E0539]: malformed `link_name` attribute input
    |
 LL | #[link_name]
    | ^^^^^^^^^^^^ help: must be of the form: `#[link_name = "name"]`
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/items/external-blocks.html#the-link_name-attribute>
 
 error[E0539]: malformed `link_section` attribute input
   --> $DIR/malformed-attrs.rs:85:1
    |
 LL | #[link_section]
    | ^^^^^^^^^^^^^^^ help: must be of the form: `#[link_section = "name"]`
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/abi.html#the-link_section-attribute>
 
 error[E0539]: malformed `coverage` attribute input
   --> $DIR/malformed-attrs.rs:87:1
@@ -560,6 +576,7 @@ LL | #[must_use = 1]
    |              |
    |              expected a string literal here
    |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/diagnostics.html#the-must_use-attribute>
 help: try changing it to one of the following valid forms of the attribute
    |
 LL - #[must_use = 1]
@@ -575,6 +592,7 @@ error[E0539]: malformed `proc_macro_derive` attribute input
 LL | #[proc_macro_derive]
    | ^^^^^^^^^^^^^^^^^^^^ expected this to be a list
    |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/procedural-macros.html#derive-macros>
 help: try changing it to one of the following valid forms of the attribute
    |
 LL | #[proc_macro_derive(TraitName)]
@@ -635,6 +653,8 @@ LL |     #[link_ordinal]
    |     |
    |     expected this to be a list
    |     help: must be of the form: `#[link_ordinal(ordinal)]`
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/items/external-blocks.html#the-link_ordinal-attribute>
 
 error[E0565]: malformed `ffi_const` attribute input
   --> $DIR/malformed-attrs.rs:168:5

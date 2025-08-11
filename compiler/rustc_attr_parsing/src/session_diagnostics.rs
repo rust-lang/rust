@@ -691,6 +691,9 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for AttributeParseError {
             }
         }
 
+        if let Some(link) = self.template.docs {
+            diag.note(format!("for more information, visit <{link}>"));
+        }
         let suggestions = self.template.suggestions(false, &name);
         diag.span_suggestions(
             self.attr_span,

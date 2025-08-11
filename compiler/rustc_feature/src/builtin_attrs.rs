@@ -609,7 +609,10 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ),
     ungated!(
         repr, Normal,
-        template!(List: &["C"], "https://doc.rust-lang.org/reference/type-layout.html#representations"),
+        template!(
+            List: &["C", "Rust", "transparent", "align(...)", "packed(...)", "<integer type>"],
+            "https://doc.rust-lang.org/reference/type-layout.html#representations"
+        ),
         DuplicatesOk, EncodeCrossCrate::No
     ),
     // FIXME(#82232, #143834): temporarily renamed to mitigate `#[align]` nameres ambiguity
