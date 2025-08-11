@@ -86,7 +86,8 @@ use hir_ty::{
     method_resolution,
     mir::{MutBorrowKind, interpret_mir},
     next_solver::{
-        DbInterner, GenericArgs, SolverDefId, infer::InferCtxt, mapping::ChalkToNextSolver,
+        ClauseKind, DbInterner, GenericArgs, SolverDefId, infer::InferCtxt,
+        mapping::ChalkToNextSolver,
     },
     primitive::UintTy,
     traits::FnTrait,
@@ -114,6 +115,7 @@ pub use crate::{
         VisibleTraits,
     },
 };
+use rustc_type_ir::inherent::IntoKind;
 
 // Be careful with these re-exports.
 //
@@ -4245,11 +4247,15 @@ impl TypeParam {
     /// parameter, not additional bounds that might be added e.g. by a method if
     /// the parameter comes from an impl!
     pub fn trait_bounds(self, db: &dyn HirDatabase) -> Vec<Trait> {
-        db.generic_predicates_for_param(self.id.parent(), self.id.into(), None)
+        db.generic_predicates_for_param_ns(self.id.parent(), self.id.into(), None)
             .iter()
-            .filter_map(|pred| match &pred.skip_binders().skip_binders() {
-                hir_ty::WhereClause::Implemented(trait_ref) => {
-                    Some(Trait::from(trait_ref.hir_trait_id()))
+            .filter_map(|pred| match &pred.kind().skip_binder() {
+                ClauseKind::Trait(trait_ref) => {
+                    let trait_ = match trait_ref.def_id() {
+                        SolverDefId::TraitId(t) => t,
+                        _ => unreachable!(),
+                    };
+                    Some(Trait::from(trait_))
                 }
                 _ => None,
             })

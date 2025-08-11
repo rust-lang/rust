@@ -4,10 +4,7 @@
 use std::{cell::LazyCell, iter};
 
 use base_db::Crate;
-use chalk_ir::{
-    DebruijnIndex,
-    fold::{FallibleTypeFolder, Shift},
-};
+use chalk_ir::{DebruijnIndex, fold::FallibleTypeFolder};
 use hir_def::{
     EnumId, EnumVariantId, FunctionId, Lookup, TraitId, TypeAliasId, TypeOrConstParamId,
     db::DefDatabase,
@@ -20,6 +17,7 @@ use hir_expand::name::Name;
 use intern::sym;
 use rustc_abi::TargetDataLayout;
 use rustc_hash::FxHashSet;
+use rustc_type_ir::inherent::{IntoKind, SliceLike};
 use smallvec::{SmallVec, smallvec};
 use span::Edition;
 use stdx::never;
@@ -31,6 +29,11 @@ use crate::{
     db::HirDatabase,
     layout::{Layout, TagEncoding},
     mir::pad16,
+    next_solver::{
+        DbInterner,
+        mapping::{ChalkToNextSolver, convert_args_for_result},
+    },
+    to_chalk_trait_id,
 };
 
 pub(crate) fn fn_traits(db: &dyn DefDatabase, krate: Crate) -> impl Iterator<Item = TraitId> + '_ {
@@ -191,25 +194,37 @@ fn direct_super_traits_cb(db: &dyn DefDatabase, trait_: TraitId, cb: impl FnMut(
 }
 
 fn direct_super_trait_refs(db: &dyn HirDatabase, trait_ref: &TraitRef, cb: impl FnMut(TraitRef)) {
+    let interner = DbInterner::new_with(db, None, None);
     let generic_params = db.generic_params(trait_ref.hir_trait_id().into());
     let trait_self = match generic_params.trait_self_param() {
         Some(p) => TypeOrConstParamId { parent: trait_ref.hir_trait_id().into(), local_id: p },
         None => return,
     };
-    db.generic_predicates_for_param(trait_self.parent, trait_self, None)
+    let trait_ref_args: crate::next_solver::GenericArgs<'_> =
+        trait_ref.substitution.to_nextsolver(interner);
+    db.generic_predicates_for_param_ns(trait_self.parent, trait_self, None)
         .iter()
         .filter_map(|pred| {
-            pred.as_ref().filter_map(|pred| match pred.skip_binders() {
-                // FIXME: how to correctly handle higher-ranked bounds here?
-                WhereClause::Implemented(tr) => Some(
-                    tr.clone()
-                        .shifted_out_to(Interner, DebruijnIndex::ONE)
-                        .expect("FIXME unexpected higher-ranked trait bound"),
-                ),
+            let pred = pred.kind();
+            // FIXME: how to correctly handle higher-ranked bounds here?
+            let pred = pred.no_bound_vars().expect("FIXME unexpected higher-ranked trait bound");
+            match pred {
+                rustc_type_ir::ClauseKind::Trait(t) => {
+                    let t =
+                        rustc_type_ir::EarlyBinder::bind(t).instantiate(interner, trait_ref_args);
+                    let trait_id = match t.def_id() {
+                        crate::next_solver::SolverDefId::TraitId(id) => to_chalk_trait_id(id),
+                        _ => unreachable!(),
+                    };
+
+                    let substitution =
+                        convert_args_for_result(interner, t.trait_ref.args.as_slice());
+                    let tr = chalk_ir::TraitRef { trait_id, substitution };
+                    Some(tr)
+                }
                 _ => None,
-            })
+            }
         })
-        .map(|pred| pred.substitute(Interner, &trait_ref.substitution))
         .for_each(cb);
 }
 

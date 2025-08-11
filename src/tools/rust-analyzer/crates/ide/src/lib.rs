@@ -674,7 +674,9 @@ impl Analysis {
         position: FilePosition,
     ) -> Cancellable<Option<Vec<HighlightedRange>>> {
         self.with_db(|db| {
-            highlight_related::highlight_related(&Semantics::new(db), config, position)
+            salsa::attach(db, || {
+                highlight_related::highlight_related(&Semantics::new(db), config, position)
+            })
         })
     }
 

@@ -581,11 +581,13 @@ fn goto_type_action_for_def(
         });
     }
 
-    if let Ok(generic_def) = GenericDef::try_from(def) {
-        generic_def.type_or_const_params(db).into_iter().for_each(|it| {
-            walk_and_push_ty(db, &it.ty(db), &mut push_new_def);
-        });
-    }
+    salsa::attach(db, || {
+        if let Ok(generic_def) = GenericDef::try_from(def) {
+            generic_def.type_or_const_params(db).into_iter().for_each(|it| {
+                walk_and_push_ty(db, &it.ty(db), &mut push_new_def);
+            });
+        }
+    });
 
     let ty = match def {
         Definition::Local(it) => Some(it.ty(db)),
