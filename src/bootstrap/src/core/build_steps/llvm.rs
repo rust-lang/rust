@@ -15,8 +15,6 @@ use std::sync::OnceLock;
 use std::{env, fs};
 
 use build_helper::git::PathFreshness;
-#[cfg(feature = "tracing")]
-use tracing::instrument;
 
 use crate::core::builder::{Builder, RunConfig, ShouldRun, Step, StepMetadata};
 use crate::core::config::{Config, TargetSelection};
@@ -266,15 +264,6 @@ impl Step for Llvm {
     }
 
     /// Compile LLVM for `target`.
-    #[cfg_attr(
-        feature = "tracing",
-        instrument(
-            level = "debug",
-            name = "Llvm::run",
-            skip_all,
-            fields(target = ?self.target),
-        ),
-    )]
     fn run(self, builder: &Builder<'_>) -> LlvmResult {
         let target = self.target;
         let target_native = if self.target.starts_with("riscv") {
@@ -919,15 +908,6 @@ impl Step for Enzyme {
     }
 
     /// Compile Enzyme for `target`.
-    #[cfg_attr(
-        feature = "tracing",
-        instrument(
-            level = "debug",
-            name = "Enzyme::run",
-            skip_all,
-            fields(target = ?self.target),
-        ),
-    )]
     fn run(self, builder: &Builder<'_>) -> PathBuf {
         builder.require_submodule(
             "src/tools/enzyme",

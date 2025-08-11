@@ -15,8 +15,6 @@ use bootstrap::{
     Build, CONFIG_CHANGE_HISTORY, ChangeId, Config, Flags, Subcommand, debug,
     find_recent_config_change_ids, human_readable_changes, symlink_dir, t,
 };
-#[cfg(feature = "tracing")]
-use tracing::instrument;
 
 fn is_profiling_enabled() -> bool {
     env::var("BOOTSTRAP_PROFILE").is_ok_and(|v| v == "1")
@@ -26,7 +24,6 @@ fn is_tracing_enabled() -> bool {
     is_profiling_enabled() || cfg!(feature = "tracing")
 }
 
-#[cfg_attr(feature = "tracing", instrument(level = "trace", name = "main"))]
 fn main() {
     #[cfg(feature = "tracing")]
     let guard = setup_tracing(is_profiling_enabled());
