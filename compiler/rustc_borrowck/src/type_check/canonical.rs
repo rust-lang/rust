@@ -2,8 +2,9 @@ use std::fmt;
 
 use rustc_errors::ErrorGuaranteed;
 use rustc_infer::infer::canonical::Canonical;
+use rustc_infer::infer::outlives::env::RegionBoundPairs;
 use rustc_middle::bug;
-use rustc_middle::mir::ConstraintCategory;
+use rustc_middle::mir::{Body, ConstraintCategory};
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable, Upcast};
 use rustc_span::Span;
 use rustc_span::def_id::DefId;
@@ -14,7 +15,69 @@ use rustc_trait_selection::traits::query::type_op::{self, TypeOpOutput};
 use tracing::{debug, instrument};
 
 use super::{Locations, NormalizeLocation, TypeChecker};
+use crate::BorrowckInferCtxt;
 use crate::diagnostics::ToUniverseInfo;
+use crate::type_check::{MirTypeckRegionConstraints, constraint_conversion};
+use crate::universal_regions::UniversalRegions;
+
+#[instrument(skip(infcx, constraints, op), level = "trace")]
+pub(crate) fn fully_perform_op_raw<'tcx, R: fmt::Debug, Op>(
+    infcx: &BorrowckInferCtxt<'tcx>,
+    body: &Body<'tcx>,
+    universal_regions: &UniversalRegions<'tcx>,
+    region_bound_pairs: &RegionBoundPairs<'tcx>,
+    known_type_outlives_obligations: &[ty::PolyTypeOutlivesPredicate<'tcx>],
+    constraints: &mut MirTypeckRegionConstraints<'tcx>,
+    locations: Locations,
+    category: ConstraintCategory<'tcx>,
+    op: Op,
+) -> Result<R, ErrorGuaranteed>
+where
+    Op: type_op::TypeOp<'tcx, Output = R>,
+    Op::ErrorInfo: ToUniverseInfo<'tcx>,
+{
+    let old_universe = infcx.universe();
+
+    let TypeOpOutput { output, constraints: query_constraints, error_info } =
+        op.fully_perform(infcx, locations.span(body))?;
+    if cfg!(debug_assertions) {
+        let data = infcx.take_and_reset_region_constraints();
+        if !data.is_empty() {
+            panic!("leftover region constraints: {data:#?}");
+        }
+    }
+
+    debug!(?output, ?query_constraints);
+
+    if let Some(data) = query_constraints {
+        constraint_conversion::ConstraintConversion::new(
+            infcx,
+            universal_regions,
+            region_bound_pairs,
+            infcx.param_env,
+            known_type_outlives_obligations,
+            locations,
+            locations.span(body),
+            category,
+            constraints,
+        )
+        .convert_all(data);
+    }
+
+    // If the query has created new universes and errors are going to be emitted, register the
+    // cause of these new universes for improved diagnostics.
+    let universe = infcx.universe();
+    if old_universe != universe
+        && let Some(error_info) = error_info
+    {
+        let universe_info = error_info.to_universe_info(old_universe);
+        for u in (old_universe + 1)..=universe {
+            constraints.universe_causes.insert(u, universe_info.clone());
+        }
+    }
+
+    Ok(output)
+}
 
 impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     /// Given some operation `op` that manipulates types, proves
@@ -38,36 +101,17 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         Op: type_op::TypeOp<'tcx, Output = R>,
         Op::ErrorInfo: ToUniverseInfo<'tcx>,
     {
-        let old_universe = self.infcx.universe();
-
-        let TypeOpOutput { output, constraints, error_info } =
-            op.fully_perform(self.infcx, locations.span(self.body))?;
-        if cfg!(debug_assertions) {
-            let data = self.infcx.take_and_reset_region_constraints();
-            if !data.is_empty() {
-                panic!("leftover region constraints: {data:#?}");
-            }
-        }
-
-        debug!(?output, ?constraints);
-
-        if let Some(data) = constraints {
-            self.push_region_constraints(locations, category, data);
-        }
-
-        // If the query has created new universes and errors are going to be emitted, register the
-        // cause of these new universes for improved diagnostics.
-        let universe = self.infcx.universe();
-        if old_universe != universe
-            && let Some(error_info) = error_info
-        {
-            let universe_info = error_info.to_universe_info(old_universe);
-            for u in (old_universe + 1)..=universe {
-                self.constraints.universe_causes.insert(u, universe_info.clone());
-            }
-        }
-
-        Ok(output)
+        fully_perform_op_raw(
+            self.infcx,
+            self.body,
+            self.universal_regions,
+            self.region_bound_pairs,
+            self.known_type_outlives_obligations,
+            self.constraints,
+            locations,
+            category,
+            op,
+        )
     }
 
     pub(super) fn instantiate_canonical<T>(
