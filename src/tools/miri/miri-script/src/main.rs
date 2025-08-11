@@ -142,25 +142,6 @@ pub enum Command {
         #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
         flags: Vec<String>,
     },
-    /// Pull and merge Miri changes from the rustc repo.
-    ///
-    /// The fetched commit is stored in the `rust-version` file, so the next `./miri toolchain` will
-    /// install the rustc that just got pulled.
-    RustcPull {
-        /// The commit to fetch (default: latest rustc commit).
-        commit: Option<String>,
-    },
-    /// Push Miri changes back to the rustc repo.
-    ///
-    /// This will pull a copy of the rustc history into the Miri repo, unless you set the RUSTC_GIT
-    /// env var to an existing clone of the rustc repo.
-    RustcPush {
-        /// The Github user that owns the rustc fork to which we should push.
-        github_user: String,
-        /// The branch to push to.
-        #[arg(default_value = "miri-sync")]
-        branch: String,
-    },
     /// Squash the commits of the current feature branch into one.
     Squash,
 }
@@ -184,8 +165,7 @@ impl Command {
                 flags.extend(remainder);
                 Ok(())
             }
-            Self::Bench { .. } | Self::RustcPull { .. } | Self::RustcPush { .. } | Self::Squash =>
-                bail!("unexpected \"--\" found in arguments"),
+            Self::Bench { .. } | Self::Squash => bail!("unexpected \"--\" found in arguments"),
         }
     }
 }

@@ -1,11 +1,12 @@
 use std::assert_matches::assert_matches;
 
 use hir::Node;
-use rustc_attr_data_structures::{AttributeKind, find_attr};
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir as hir;
+use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::find_attr;
 use rustc_middle::ty::{
     self, GenericPredicates, ImplTraitInTraitData, Ty, TyCtxt, TypeVisitable, TypeVisitor, Upcast,
 };
@@ -516,8 +517,7 @@ pub(super) fn explicit_predicates_of<'tcx>(
                 projection.args == trait_identity_args
                     // FIXME(return_type_notation): This check should be more robust
                     && !tcx.is_impl_trait_in_trait(projection.def_id)
-                    && tcx.associated_item(projection.def_id).container_id(tcx)
-                        == def_id.to_def_id()
+                    && tcx.parent(projection.def_id) == def_id.to_def_id()
             } else {
                 false
             }

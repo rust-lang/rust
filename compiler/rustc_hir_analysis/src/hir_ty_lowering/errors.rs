@@ -755,7 +755,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let limit = if candidates.len() == 5 { 5 } else { 4 };
 
         for (index, &item) in candidates.iter().take(limit).enumerate() {
-            let impl_ = tcx.impl_of_method(item).unwrap();
+            let impl_ = tcx.parent(item);
 
             let note_span = if item.is_local() {
                 Some(tcx.def_span(item))
@@ -888,8 +888,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 ty::PredicateKind::Clause(ty::ClauseKind::Projection(pred)) => {
                     // `<Foo as Iterator>::Item = String`.
                     let projection_term = pred.projection_term;
-                    let quiet_projection_term =
-                        projection_term.with_self_ty(tcx, Ty::new_var(tcx, ty::TyVid::ZERO));
+                    let quiet_projection_term = projection_term
+                        .with_replaced_self_ty(tcx, Ty::new_var(tcx, ty::TyVid::ZERO));
 
                     let term = pred.term;
                     let obligation = format!("{projection_term} = {term}");

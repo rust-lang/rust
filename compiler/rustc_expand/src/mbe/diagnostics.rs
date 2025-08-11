@@ -7,29 +7,40 @@ use rustc_macros::Subdiagnostic;
 use rustc_parse::parser::{Parser, Recovery, token_descr};
 use rustc_session::parse::ParseSess;
 use rustc_span::source_map::SourceMap;
-use rustc_span::{ErrorGuaranteed, Ident, Span};
+use rustc_span::{DUMMY_SP, ErrorGuaranteed, Ident, Span};
 use tracing::debug;
 
 use super::macro_rules::{MacroRule, NoopTracker, parser_from_cx};
 use crate::expand::{AstFragmentKind, parse_ast_fragment};
 use crate::mbe::macro_parser::ParseResult::*;
 use crate::mbe::macro_parser::{MatcherLoc, NamedParseResult, TtParser};
-use crate::mbe::macro_rules::{Tracker, try_match_macro};
+use crate::mbe::macro_rules::{Tracker, try_match_macro, try_match_macro_attr};
 
 pub(super) fn failed_to_match_macro(
     psess: &ParseSess,
     sp: Span,
     def_span: Span,
     name: Ident,
-    arg: TokenStream,
+    attr_args: Option<&TokenStream>,
+    body: &TokenStream,
     rules: &[MacroRule],
 ) -> (Span, ErrorGuaranteed) {
     debug!("failed to match macro");
+    let def_head_span = if !def_span.is_dummy() && !psess.source_map().is_imported(def_span) {
+        psess.source_map().guess_head_span(def_span)
+    } else {
+        DUMMY_SP
+    };
+
     // An error occurred, try the expansion again, tracking the expansion closely for better
     // diagnostics.
     let mut tracker = CollectTrackerAndEmitter::new(psess.dcx(), sp);
 
-    let try_success_result = try_match_macro(psess, name, &arg, rules, &mut tracker);
+    let try_success_result = if let Some(attr_args) = attr_args {
+        try_match_macro_attr(psess, name, attr_args, body, rules, &mut tracker)
+    } else {
+        try_match_macro(psess, name, body, rules, &mut tracker)
+    };
 
     if try_success_result.is_ok() {
         // Nonterminal parser recovery might turn failed matches into successful ones,
@@ -47,6 +58,18 @@ pub(super) fn failed_to_match_macro(
 
     let Some(BestFailure { token, msg: label, remaining_matcher, .. }) = tracker.best_failure
     else {
+        // FIXME: we should report this at macro resolution time, as we do for
+        // `resolve_macro_cannot_use_as_attr`. We can do that once we track multiple macro kinds for a
+        // Def.
+        if attr_args.is_none() && !rules.iter().any(|rule| matches!(rule, MacroRule::Func { .. })) {
+            let msg = format!("macro has no rules for function-like invocation `{name}!`");
+            let mut err = psess.dcx().struct_span_err(sp, msg);
+            if !def_head_span.is_dummy() {
+                let msg = "this macro has no rules for function-like invocation";
+                err.span_label(def_head_span, msg);
+            }
+            return (sp, err.emit());
+        }
         return (sp, psess.dcx().span_delayed_bug(sp, "failed to match a macro"));
     };
 
@@ -54,8 +77,8 @@ pub(super) fn failed_to_match_macro(
 
     let mut err = psess.dcx().struct_span_err(span, parse_failure_msg(&token, None));
     err.span_label(span, label);
-    if !def_span.is_dummy() && !psess.source_map().is_imported(def_span) {
-        err.span_label(psess.source_map().guess_head_span(def_span), "when calling this macro");
+    if !def_head_span.is_dummy() {
+        err.span_label(def_head_span, "when calling this macro");
     }
 
     annotate_doc_comment(&mut err, psess.source_map(), span);
@@ -79,13 +102,16 @@ pub(super) fn failed_to_match_macro(
     }
 
     // Check whether there's a missing comma in this macro call, like `println!("{}" a);`
-    if let Some((arg, comma_span)) = arg.add_comma() {
+    if attr_args.is_none()
+        && let Some((body, comma_span)) = body.add_comma()
+    {
         for rule in rules {
-            let parser = parser_from_cx(psess, arg.clone(), Recovery::Allowed);
+            let MacroRule::Func { lhs, .. } = rule else { continue };
+            let parser = parser_from_cx(psess, body.clone(), Recovery::Allowed);
             let mut tt_parser = TtParser::new(name);
 
             if let Success(_) =
-                tt_parser.parse_tt(&mut Cow::Borrowed(&parser), &rule.lhs, &mut NoopTracker)
+                tt_parser.parse_tt(&mut Cow::Borrowed(&parser), lhs, &mut NoopTracker)
             {
                 if comma_span.is_dummy() {
                     err.note("you might be missing a comma");
@@ -116,13 +142,13 @@ struct CollectTrackerAndEmitter<'dcx, 'matcher> {
 
 struct BestFailure {
     token: Token,
-    position_in_tokenstream: u32,
+    position_in_tokenstream: (bool, u32),
     msg: &'static str,
     remaining_matcher: MatcherLoc,
 }
 
 impl BestFailure {
-    fn is_better_position(&self, position: u32) -> bool {
+    fn is_better_position(&self, position: (bool, u32)) -> bool {
         position > self.position_in_tokenstream
     }
 }
@@ -142,7 +168,7 @@ impl<'dcx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'dcx, 'match
         }
     }
 
-    fn after_arm(&mut self, result: &NamedParseResult<Self::Failure>) {
+    fn after_arm(&mut self, in_body: bool, result: &NamedParseResult<Self::Failure>) {
         match result {
             Success(_) => {
                 // Nonterminal parser recovery might turn failed matches into successful ones,
@@ -155,14 +181,15 @@ impl<'dcx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'dcx, 'match
             Failure((token, approx_position, msg)) => {
                 debug!(?token, ?msg, "a new failure of an arm");
 
+                let position_in_tokenstream = (in_body, *approx_position);
                 if self
                     .best_failure
                     .as_ref()
-                    .is_none_or(|failure| failure.is_better_position(*approx_position))
+                    .is_none_or(|failure| failure.is_better_position(position_in_tokenstream))
                 {
                     self.best_failure = Some(BestFailure {
                         token: *token,
-                        position_in_tokenstream: *approx_position,
+                        position_in_tokenstream,
                         msg,
                         remaining_matcher: self
                             .remaining_matcher

@@ -2,7 +2,7 @@ use std::any::Any;
 use std::mem;
 use std::sync::Arc;
 
-use rustc_attr_data_structures::Deprecation;
+use rustc_hir::attrs::Deprecation;
 use rustc_hir::def::{CtorKind, DefKind};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LOCAL_CRATE};
 use rustc_hir::definitions::{DefKey, DefPath, DefPathHash};
@@ -71,24 +71,6 @@ impl<'a, 'tcx, T: Copy + Decodable<DecodeContext<'a, 'tcx>>> ProcessQueryValue<'
     #[inline(always)]
     fn process_decoded(self, tcx: TyCtxt<'tcx>, err: impl Fn() -> !) -> &'tcx [T] {
         if let Some(iter) = self { tcx.arena.alloc_from_iter(iter) } else { err() }
-    }
-}
-
-impl<'a, 'tcx, T: Copy + Decodable<DecodeContext<'a, 'tcx>>>
-    ProcessQueryValue<'tcx, ty::EarlyBinder<'tcx, &'tcx [T]>>
-    for Option<DecodeIterator<'a, 'tcx, T>>
-{
-    #[inline(always)]
-    fn process_decoded(
-        self,
-        tcx: TyCtxt<'tcx>,
-        err: impl Fn() -> !,
-    ) -> ty::EarlyBinder<'tcx, &'tcx [T]> {
-        ty::EarlyBinder::bind(if let Some(iter) = self {
-            tcx.arena.alloc_from_iter(iter)
-        } else {
-            err()
-        })
     }
 }
 
@@ -413,6 +395,7 @@ provide! { tcx, def_id, other, cdata,
 
     crate_extern_paths => { cdata.source().paths().cloned().collect() }
     expn_that_defined => { cdata.get_expn_that_defined(def_id.index, tcx.sess) }
+    default_field => { cdata.get_default_field(def_id.index) }
     is_doc_hidden => { cdata.get_attr_flags(def_id.index).contains(AttrFlags::IS_DOC_HIDDEN) }
     doc_link_resolutions => { tcx.arena.alloc(cdata.get_doc_link_resolutions(def_id.index)) }
     doc_link_traits_in_scope => {
@@ -627,14 +610,37 @@ impl CStore {
         }
     }
 
-    pub(crate) fn update_extern_crate(&mut self, cnum: CrateNum, extern_crate: ExternCrate) {
+    /// Track how an extern crate has been loaded. Called after resolving an import in the local crate.
+    ///
+    /// * the `name` is for [`Self::set_resolved_extern_crate_name`] saving `--extern name=`
+    /// * `extern_crate` is for diagnostics
+    pub(crate) fn update_extern_crate(
+        &mut self,
+        cnum: CrateNum,
+        name: Symbol,
+        extern_crate: ExternCrate,
+    ) {
+        debug_assert_eq!(
+            extern_crate.dependency_of, LOCAL_CRATE,
+            "this function should not be called on transitive dependencies"
+        );
+        self.set_resolved_extern_crate_name(name, cnum);
+        self.update_transitive_extern_crate_diagnostics(cnum, extern_crate);
+    }
+
+    /// `CrateMetadata` uses `ExternCrate` only for diagnostics
+    fn update_transitive_extern_crate_diagnostics(
+        &mut self,
+        cnum: CrateNum,
+        extern_crate: ExternCrate,
+    ) {
         let cmeta = self.get_crate_data_mut(cnum);
-        if cmeta.update_extern_crate(extern_crate) {
+        if cmeta.update_extern_crate_diagnostics(extern_crate) {
             // Propagate the extern crate info to dependencies if it was updated.
             let extern_crate = ExternCrate { dependency_of: cnum, ..extern_crate };
             let dependencies = mem::take(&mut cmeta.dependencies);
             for &dep_cnum in &dependencies {
-                self.update_extern_crate(dep_cnum, extern_crate);
+                self.update_transitive_extern_crate_diagnostics(dep_cnum, extern_crate);
             }
             self.get_crate_data_mut(cnum).dependencies = dependencies;
         }

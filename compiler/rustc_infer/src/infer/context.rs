@@ -22,6 +22,10 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
         self.next_trait_solver
     }
 
+    fn in_hir_typeck(&self) -> bool {
+        self.in_hir_typeck
+    }
+
     fn typing_mode(&self) -> ty::TypingMode<'tcx> {
         self.typing_mode()
     }

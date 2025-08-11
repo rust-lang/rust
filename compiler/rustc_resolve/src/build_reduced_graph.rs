@@ -13,12 +13,12 @@ use rustc_ast::{
     self as ast, AssocItem, AssocItemKind, Block, ConstItem, Delegation, Fn, ForeignItem,
     ForeignItemKind, Impl, Item, ItemKind, NodeId, StaticItem, StmtKind, TyAlias,
 };
-use rustc_attr_data_structures::{AttributeKind, MacroUseArgs};
 use rustc_attr_parsing as attr;
 use rustc_attr_parsing::AttributeParser;
 use rustc_expand::base::ResolverExpand;
 use rustc_expand::expand::AstFragment;
 use rustc_hir::Attribute;
+use rustc_hir::attrs::{AttributeKind, MacroUseArgs};
 use rustc_hir::def::{self, *};
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LocalDefId};
 use rustc_index::bit_set::DenseBitSet;
@@ -27,7 +27,7 @@ use rustc_middle::metadata::ModChild;
 use rustc_middle::ty::{Feed, Visibility};
 use rustc_middle::{bug, span_bug};
 use rustc_span::hygiene::{ExpnId, LocalExpnId, MacroKind};
-use rustc_span::{Ident, Span, Symbol, kw, sym};
+use rustc_span::{Ident, Macros20NormalizedIdent, Span, Symbol, kw, sym};
 use thin_vec::ThinVec;
 use tracing::debug;
 
@@ -223,7 +223,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
     pub(crate) fn build_reduced_graph_external(&self, module: Module<'ra>) {
         for child in self.tcx.module_children(module.def_id()) {
-            let parent_scope = ParentScope::module(module, self);
+            let parent_scope = ParentScope::module(module, self.arenas);
             self.build_reduced_graph_for_external_crate_res(child, parent_scope)
         }
     }
@@ -373,7 +373,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                         res,
                     ))
                 };
-                match self.r.resolve_path(
+                match self.r.cm().resolve_path(
                     &segments,
                     None,
                     parent_scope,
@@ -420,14 +420,18 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
             // The fields are not expanded yet.
             return;
         }
-        let fields = fields
+        let field_name = |i, field: &ast::FieldDef| {
+            field.ident.unwrap_or_else(|| Ident::from_str_and_span(&format!("{i}"), field.span))
+        };
+        let field_names: Vec<_> =
+            fields.iter().enumerate().map(|(i, field)| field_name(i, field)).collect();
+        let defaults = fields
             .iter()
             .enumerate()
-            .map(|(i, field)| {
-                field.ident.unwrap_or_else(|| Ident::from_str_and_span(&format!("{i}"), field.span))
-            })
+            .filter_map(|(i, field)| field.default.as_ref().map(|_| field_name(i, field).name))
             .collect();
-        self.r.field_names.insert(def_id, fields);
+        self.r.field_names.insert(def_id, field_names);
+        self.r.field_defaults.insert(def_id, defaults);
     }
 
     fn insert_field_visibilities_local(&mut self, def_id: DefId, fields: &[ast::FieldDef]) {
@@ -968,9 +972,9 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
         }
         self.r.potentially_unused_imports.push(import);
         let imported_binding = self.r.import(binding, import);
-        if parent == self.r.graph_root {
-            let ident = ident.normalize_to_macros_2_0();
-            if let Some(entry) = self.r.extern_prelude.get(&ident)
+        if ident.name != kw::Underscore && parent == self.r.graph_root {
+            let norm_ident = Macros20NormalizedIdent::new(ident);
+            if let Some(entry) = self.r.extern_prelude.get(&norm_ident)
                 && expansion != LocalExpnId::ROOT
                 && orig_name.is_some()
                 && !entry.is_import()
@@ -984,24 +988,29 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                 // more details: https://github.com/rust-lang/rust/pull/111761
                 return;
             }
-            let entry = self
-                .r
-                .extern_prelude
-                .entry(ident)
-                .or_insert(ExternPreludeEntry { binding: None, introduced_by_item: true });
-            if orig_name.is_some() {
-                entry.introduced_by_item = true;
-            }
-            // Binding from `extern crate` item in source code can replace
-            // a binding from `--extern` on command line here.
-            if !entry.is_import() {
-                entry.binding = Some(imported_binding)
-            } else if ident.name != kw::Underscore {
-                self.r.dcx().span_delayed_bug(
-                    item.span,
-                    format!("it had been define the external module '{ident}' multiple times"),
-                );
-            }
+
+            use indexmap::map::Entry;
+            match self.r.extern_prelude.entry(norm_ident) {
+                Entry::Occupied(mut occupied) => {
+                    let entry = occupied.get_mut();
+                    if let Some(old_binding) = entry.binding.get()
+                        && old_binding.is_import()
+                    {
+                        let msg = format!("extern crate `{ident}` already in extern prelude");
+                        self.r.tcx.dcx().span_delayed_bug(item.span, msg);
+                    } else {
+                        // Binding from `extern crate` item in source code can replace
+                        // a binding from `--extern` on command line here.
+                        entry.binding.set(Some(imported_binding));
+                        entry.introduced_by_item = orig_name.is_some();
+                    }
+                    entry
+                }
+                Entry::Vacant(vacant) => vacant.insert(ExternPreludeEntry {
+                    binding: Cell::new(Some(imported_binding)),
+                    introduced_by_item: true,
+                }),
+            };
         }
         self.r.define_binding_local(parent, ident, TypeNS, imported_binding);
     }
@@ -1123,7 +1132,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
             });
         } else {
             for ident in single_imports.iter().cloned() {
-                let result = self.r.maybe_resolve_ident_in_module(
+                let result = self.r.cm().maybe_resolve_ident_in_module(
                     ModuleOrUniformRoot::Module(module),
                     ident,
                     MacroNS,

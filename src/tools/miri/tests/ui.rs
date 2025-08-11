@@ -248,7 +248,8 @@ regexes! {
     // erase alloc ids
     "alloc[0-9]+"                    => "ALLOC",
     // erase thread ids
-    r"unnamed-[0-9]+"               => "unnamed-ID",
+    r"unnamed-[0-9]+"                => "unnamed-ID",
+    r"thread '(?P<name>.*?)' \(\d+\) panicked" => "thread '$name' ($$TID) panicked",
     // erase borrow tags
     "<[0-9]+>"                       => "<TAG>",
     "<[0-9]+="                       => "<TAG=",
@@ -336,6 +337,20 @@ fn main() -> Result<()> {
     if cfg!(all(unix, feature = "native-lib")) && target == host {
         ui(Mode::Pass, "tests/native-lib/pass", &target, WithoutDependencies, tmpdir.path())?;
         ui(Mode::Fail, "tests/native-lib/fail", &target, WithoutDependencies, tmpdir.path())?;
+    }
+
+    // We only enable GenMC tests when the `genmc` feature is enabled, but also only on platforms we support:
+    // FIXME(genmc,macos): Add `target_os = "macos"` once `https://github.com/dtolnay/cxx/issues/1535` is fixed.
+    // FIXME(genmc,cross-platform): remove `host == target` check once cross-platform support with GenMC is possible.
+    if cfg!(all(
+        feature = "genmc",
+        target_os = "linux",
+        target_pointer_width = "64",
+        target_endian = "little"
+    )) && host == target
+    {
+        ui(Mode::Pass, "tests/genmc/pass", &target, WithDependencies, tmpdir.path())?;
+        ui(Mode::Fail, "tests/genmc/fail", &target, WithDependencies, tmpdir.path())?;
     }
 
     Ok(())

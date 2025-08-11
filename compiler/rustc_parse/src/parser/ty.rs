@@ -1,4 +1,3 @@
-use rustc_ast::ptr::P;
 use rustc_ast::token::{self, IdentIsRaw, MetaVarKind, Token, TokenKind};
 use rustc_ast::util::case::Case;
 use rustc_ast::{
@@ -14,10 +13,10 @@ use thin_vec::{ThinVec, thin_vec};
 
 use super::{Parser, PathStyle, SeqSep, TokenType, Trailing};
 use crate::errors::{
-    self, DynAfterMut, ExpectedFnPathFoundFnKeyword, ExpectedMutOrConstInRawPointerType,
-    FnPtrWithGenerics, FnPtrWithGenericsSugg, HelpUseLatestEdition, InvalidDynKeyword,
-    LifetimeAfterMut, NeedPlusAfterTraitObjectLifetime, NestedCVariadicType,
-    ReturnTypesUseThinArrow,
+    self, AttributeOnEmptyType, AttributeOnType, DynAfterMut, ExpectedFnPathFoundFnKeyword,
+    ExpectedMutOrConstInRawPointerType, FnPtrWithGenerics, FnPtrWithGenericsSugg,
+    HelpUseLatestEdition, InvalidDynKeyword, LifetimeAfterMut, NeedPlusAfterTraitObjectLifetime,
+    NestedCVariadicType, ReturnTypesUseThinArrow,
 };
 use crate::parser::item::FrontMatterParsingMode;
 use crate::{exp, maybe_recover_from_interpolated_ty_qpath};
@@ -105,7 +104,7 @@ fn can_begin_dyn_bound_in_edition_2015(t: &Token) -> bool {
 
 impl<'a> Parser<'a> {
     /// Parses a type.
-    pub fn parse_ty(&mut self) -> PResult<'a, P<Ty>> {
+    pub fn parse_ty(&mut self) -> PResult<'a, Box<Ty>> {
         // Make sure deeply nested types don't overflow the stack.
         ensure_sufficient_stack(|| {
             self.parse_ty_common(
@@ -122,7 +121,7 @@ impl<'a> Parser<'a> {
     pub(super) fn parse_ty_with_generics_recovery(
         &mut self,
         ty_params: &Generics,
-    ) -> PResult<'a, P<Ty>> {
+    ) -> PResult<'a, Box<Ty>> {
         self.parse_ty_common(
             AllowPlus::Yes,
             AllowCVariadic::No,
@@ -136,7 +135,7 @@ impl<'a> Parser<'a> {
     /// Parse a type suitable for a function or function pointer parameter.
     /// The difference from `parse_ty` is that this version allows `...`
     /// (`CVarArgs`) at the top level of the type.
-    pub(super) fn parse_ty_for_param(&mut self) -> PResult<'a, P<Ty>> {
+    pub(super) fn parse_ty_for_param(&mut self) -> PResult<'a, Box<Ty>> {
         self.parse_ty_common(
             AllowPlus::Yes,
             AllowCVariadic::Yes,
@@ -153,7 +152,7 @@ impl<'a> Parser<'a> {
     ///     `+` is prohibited to maintain operator priority (P(+) < P(&)).
     /// Example 2: `value1 as TYPE + value2`
     ///     `+` is prohibited to avoid interactions with expression grammar.
-    pub(super) fn parse_ty_no_plus(&mut self) -> PResult<'a, P<Ty>> {
+    pub(super) fn parse_ty_no_plus(&mut self) -> PResult<'a, Box<Ty>> {
         self.parse_ty_common(
             AllowPlus::No,
             AllowCVariadic::No,
@@ -166,7 +165,7 @@ impl<'a> Parser<'a> {
 
     /// Parses a type following an `as` cast. Similar to `parse_ty_no_plus`, but signaling origin
     /// for better diagnostics involving `?`.
-    pub(super) fn parse_as_cast_ty(&mut self) -> PResult<'a, P<Ty>> {
+    pub(super) fn parse_as_cast_ty(&mut self) -> PResult<'a, Box<Ty>> {
         self.parse_ty_common(
             AllowPlus::No,
             AllowCVariadic::No,
@@ -177,7 +176,7 @@ impl<'a> Parser<'a> {
         )
     }
 
-    pub(super) fn parse_ty_no_question_mark_recover(&mut self) -> PResult<'a, P<Ty>> {
+    pub(super) fn parse_ty_no_question_mark_recover(&mut self) -> PResult<'a, Box<Ty>> {
         self.parse_ty_common(
             AllowPlus::Yes,
             AllowCVariadic::No,
@@ -190,7 +189,7 @@ impl<'a> Parser<'a> {
 
     /// Parse a type without recovering `:` as `->` to avoid breaking code such
     /// as `where fn() : for<'a>`.
-    pub(super) fn parse_ty_for_where_clause(&mut self) -> PResult<'a, P<Ty>> {
+    pub(super) fn parse_ty_for_where_clause(&mut self) -> PResult<'a, Box<Ty>> {
         self.parse_ty_common(
             AllowPlus::Yes,
             AllowCVariadic::No,
@@ -250,10 +249,30 @@ impl<'a> Parser<'a> {
         recover_return_sign: RecoverReturnSign,
         ty_generics: Option<&Generics>,
         recover_question_mark: RecoverQuestionMark,
-    ) -> PResult<'a, P<Ty>> {
+    ) -> PResult<'a, Box<Ty>> {
         let allow_qpath_recovery = recover_qpath == RecoverQPath::Yes;
         maybe_recover_from_interpolated_ty_qpath!(self, allow_qpath_recovery);
+        if self.token == token::Pound && self.look_ahead(1, |t| *t == token::OpenBracket) {
+            let attrs_wrapper = self.parse_outer_attributes()?;
+            let raw_attrs = attrs_wrapper.take_for_recovery(self.psess);
+            let attr_span = raw_attrs[0].span.to(raw_attrs.last().unwrap().span);
+            let (full_span, guar) = match self.parse_ty() {
+                Ok(ty) => {
+                    let full_span = attr_span.until(ty.span);
+                    let guar = self
+                        .dcx()
+                        .emit_err(AttributeOnType { span: attr_span, fix_span: full_span });
+                    (attr_span, guar)
+                }
+                Err(err) => {
+                    err.cancel();
+                    let guar = self.dcx().emit_err(AttributeOnEmptyType { span: attr_span });
+                    (attr_span, guar)
+                }
+            };
 
+            return Ok(self.mk_ty(full_span, TyKind::Err(guar)));
+        }
         if let Some(ty) = self.eat_metavar_seq_with_matcher(
             |mv_kind| matches!(mv_kind, MetaVarKind::Ty { .. }),
             |this| this.parse_ty_no_question_mark_recover(),
@@ -405,7 +424,7 @@ impl<'a> Parser<'a> {
         let span = lo.to(self.prev_token.span);
         self.psess.gated_spans.gate(sym::unsafe_binders, span);
 
-        Ok(TyKind::UnsafeBinder(P(UnsafeBinderTy { generic_params, inner_ty })))
+        Ok(TyKind::UnsafeBinder(Box::new(UnsafeBinderTy { generic_params, inner_ty })))
     }
 
     /// Parses either:
@@ -590,7 +609,7 @@ impl<'a> Parser<'a> {
     /// - `[u8, 5]` → suggests using `;`, return a Array type
     /// - `[u8 5]` → suggests using `;`, return a Array type
     /// Consider to add more cases in the future.
-    fn maybe_recover_array_ty_without_semi(&mut self, elt_ty: P<Ty>) -> PResult<'a, TyKind> {
+    fn maybe_recover_array_ty_without_semi(&mut self, elt_ty: Box<Ty>) -> PResult<'a, TyKind> {
         let span = self.token.span;
         let token_descr = super::token_descr(&self.token);
         let mut err =
@@ -753,7 +772,13 @@ impl<'a> Parser<'a> {
         let decl = self.parse_fn_decl(|_| false, AllowPlus::No, recover_return_sign)?;
 
         let decl_span = span_start.to(self.prev_token.span);
-        Ok(TyKind::FnPtr(P(FnPtrTy { ext, safety, generic_params: params, decl, decl_span })))
+        Ok(TyKind::FnPtr(Box::new(FnPtrTy {
+            ext,
+            safety,
+            generic_params: params,
+            decl,
+            decl_span,
+        })))
     }
 
     /// Recover from function pointer types with a generic parameter list (e.g. `fn<'a>(&'a str)`).
@@ -895,7 +920,7 @@ impl<'a> Parser<'a> {
         let path = self.parse_path_inner(PathStyle::Type, ty_generics)?;
         if self.eat(exp!(Bang)) {
             // Macro invocation in type position
-            Ok(TyKind::MacCall(P(MacCall { path, args: self.parse_delim_args()? })))
+            Ok(TyKind::MacCall(Box::new(MacCall { path, args: self.parse_delim_args()? })))
         } else if allow_plus == AllowPlus::Yes && self.check_plus() {
             // `Trait1 + Trait2 + 'a`
             self.parse_remaining_bounds_path(ThinVec::new(), path, lo, true, ast::Parens::No)
@@ -995,7 +1020,7 @@ impl<'a> Parser<'a> {
         let bound = GenericBound::Outlives(lt);
         if let ast::Parens::Yes = parens {
             // FIXME(Centril): Consider not erroring here and accepting `('lt)` instead,
-            // possibly introducing `GenericBound::Paren(P<GenericBound>)`?
+            // possibly introducing `GenericBound::Paren(Box<GenericBound>)`?
             self.recover_paren_lifetime(lo)?;
         }
         Ok(bound)
@@ -1297,12 +1322,14 @@ impl<'a> Parser<'a> {
                     segments: thin_vec![ast::PathSegment {
                         ident: Ident::new(sym::Fn, fn_token_span),
                         id: DUMMY_NODE_ID,
-                        args: Some(P(ast::GenericArgs::Parenthesized(ast::ParenthesizedArgs {
-                            span: args_lo.to(self.prev_token.span),
-                            inputs: decl.inputs.iter().map(|a| a.ty.clone()).collect(),
-                            inputs_span: args_lo.until(decl.output.span()),
-                            output: decl.output.clone(),
-                        }))),
+                        args: Some(Box::new(ast::GenericArgs::Parenthesized(
+                            ast::ParenthesizedArgs {
+                                span: args_lo.to(self.prev_token.span),
+                                inputs: decl.inputs.iter().map(|a| a.ty.clone()).collect(),
+                                inputs_span: args_lo.until(decl.output.span()),
+                                output: decl.output.clone(),
+                            }
+                        ))),
                     }],
                     tokens: None,
                 })
@@ -1444,7 +1471,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub(super) fn mk_ty(&self, span: Span, kind: TyKind) -> P<Ty> {
-        P(Ty { kind, span, id: ast::DUMMY_NODE_ID, tokens: None })
+    pub(super) fn mk_ty(&self, span: Span, kind: TyKind) -> Box<Ty> {
+        Box::new(Ty { kind, span, id: ast::DUMMY_NODE_ID, tokens: None })
     }
 }

@@ -1,12 +1,11 @@
 use rustc_abi::ExternAbi;
-use rustc_ast::ptr::P;
 use rustc_ast::visit::AssocCtxt;
 use rustc_ast::*;
-use rustc_attr_data_structures::{AttributeKind, find_attr};
 use rustc_errors::{E0570, ErrorGuaranteed, struct_span_code_err};
+use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::{DefKind, PerNS, Res};
 use rustc_hir::def_id::{CRATE_DEF_ID, LocalDefId};
-use rustc_hir::{self as hir, HirId, LifetimeSource, PredicateOrigin};
+use rustc_hir::{self as hir, HirId, LifetimeSource, PredicateOrigin, find_attr};
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::span_bug;
 use rustc_middle::ty::{ResolverAstLowering, TyCtxt};
@@ -102,7 +101,7 @@ impl<'a, 'hir> ItemLowerer<'a, 'hir> {
 impl<'hir> LoweringContext<'_, 'hir> {
     pub(super) fn lower_mod(
         &mut self,
-        items: &[P<Item>],
+        items: &[Box<Item>],
         spans: &ModSpans,
     ) -> &'hir hir::Mod<'hir> {
         self.arena.alloc(hir::Mod {
@@ -462,7 +461,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             }
             ItemKind::MacroDef(ident, MacroDef { body, macro_rules }) => {
                 let ident = self.lower_ident(*ident);
-                let body = P(self.lower_delim_args(body));
+                let body = Box::new(self.lower_delim_args(body));
                 let def_id = self.local_def_id(id);
                 let def_kind = self.tcx.def_kind(def_id);
                 let DefKind::Macro(macro_kind) = def_kind else {
@@ -627,6 +626,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 } else {
                     // For non-empty lists we can just drop all the data, the prefix is already
                     // present in HIR as a part of nested imports.
+                    let span = self.lower_span(span);
                     self.arena.alloc(hir::UsePath { res: PerNS::default(), segments: &[], span })
                 };
                 hir::ItemKind::Use(path, hir::UseKind::ListStem)
@@ -1567,7 +1567,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         attrs: &[hir::Attribute],
     ) -> hir::FnHeader {
         let asyncness = if let Some(CoroutineKind::Async { span, .. }) = h.coroutine_kind {
-            hir::IsAsync::Async(span)
+            hir::IsAsync::Async(self.lower_span(span))
         } else {
             hir::IsAsync::NotAsync
         };
@@ -1804,7 +1804,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let res = Res::Def(DefKind::TyParam, def_id);
                 let ident = self.lower_ident(ident);
                 let ty_path = self.arena.alloc(hir::Path {
-                    span: param_span,
+                    span: self.lower_span(param_span),
                     res,
                     segments: self
                         .arena

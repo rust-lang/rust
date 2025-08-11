@@ -13,7 +13,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, ex: &'tcx Expr<'tcx>, recv: &'
         && let (_, ref_depth, Mutability::Mut) = peel_mid_ty_refs_is_mutable(cx.typeck_results().expr_ty(recv))
         && ref_depth >= 1
         && let Some(method_id) = cx.typeck_results().type_dependent_def_id(ex.hir_id)
-        && let Some(impl_id) = cx.tcx.impl_of_method(method_id)
+        && let Some(impl_id) = cx.tcx.impl_of_assoc(method_id)
         && is_type_diagnostic_item(cx, cx.tcx.type_of(impl_id).instantiate_identity(), sym::Mutex)
     {
         span_lint_and_sugg(

@@ -19,6 +19,20 @@ const NEEDS_CANONICAL: TypeFlags = TypeFlags::from_bits(
 )
 .unwrap();
 
+#[derive(Debug, Clone, Copy)]
+enum CanonicalizeInputKind {
+    /// When canonicalizing the `param_env`, we keep `'static` as merging
+    /// trait candidates relies on it when deciding whether a where-bound
+    /// is trivial.
+    ParamEnv,
+    /// When canonicalizing predicates, we don't keep `'static`. If we're
+    /// currently outside of the trait solver and canonicalize the root goal
+    /// during HIR typeck, we replace each occurance of a region with a
+    /// unique region variable. See the comment on `InferCtxt::in_hir_typeck`
+    /// for more details.
+    Predicate { is_hir_typeck_root_goal: bool },
+}
+
 /// Whether we're canonicalizing a query input or the query response.
 ///
 /// When canonicalizing an input we're in the context of the caller
@@ -26,10 +40,7 @@ const NEEDS_CANONICAL: TypeFlags = TypeFlags::from_bits(
 /// query.
 #[derive(Debug, Clone, Copy)]
 enum CanonicalizeMode {
-    /// When canonicalizing the `param_env`, we keep `'static` as merging
-    /// trait candidates relies on it when deciding whether a where-bound
-    /// is trivial.
-    Input { keep_static: bool },
+    Input(CanonicalizeInputKind),
     /// FIXME: We currently return region constraints referring to
     /// placeholders and inference variables from a binder instantiated
     /// inside of the query.
@@ -122,7 +133,7 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
                     let mut variables = Vec::new();
                     let mut env_canonicalizer = Canonicalizer {
                         delegate,
-                        canonicalize_mode: CanonicalizeMode::Input { keep_static: true },
+                        canonicalize_mode: CanonicalizeMode::Input(CanonicalizeInputKind::ParamEnv),
 
                         variables: &mut variables,
                         variable_lookup_table: Default::default(),
@@ -154,7 +165,7 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
         } else {
             let mut env_canonicalizer = Canonicalizer {
                 delegate,
-                canonicalize_mode: CanonicalizeMode::Input { keep_static: true },
+                canonicalize_mode: CanonicalizeMode::Input(CanonicalizeInputKind::ParamEnv),
 
                 variables,
                 variable_lookup_table: Default::default(),
@@ -180,6 +191,7 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
     pub fn canonicalize_input<P: TypeFoldable<I>>(
         delegate: &'a D,
         variables: &'a mut Vec<I::GenericArg>,
+        is_hir_typeck_root_goal: bool,
         input: QueryInput<I, P>,
     ) -> ty::Canonical<I, QueryInput<I, P>> {
         // First canonicalize the `param_env` while keeping `'static`
@@ -189,7 +201,9 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
         // while *mostly* reusing the canonicalizer from above.
         let mut rest_canonicalizer = Canonicalizer {
             delegate,
-            canonicalize_mode: CanonicalizeMode::Input { keep_static: false },
+            canonicalize_mode: CanonicalizeMode::Input(CanonicalizeInputKind::Predicate {
+                is_hir_typeck_root_goal,
+            }),
 
             variables,
             variable_lookup_table,
@@ -296,7 +310,7 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
         }
     }
 
-    fn cached_fold_ty(&mut self, t: I::Ty) -> I::Ty {
+    fn inner_fold_ty(&mut self, t: I::Ty) -> I::Ty {
         let kind = match t.kind() {
             ty::Infer(i) => match i {
                 ty::TyVar(vid) => {
@@ -413,10 +427,10 @@ impl<D: SolverDelegate<Interner = I>, I: Interner> TypeFolder<I> for Canonicaliz
             // We don't canonicalize `ReStatic` in the `param_env` as we use it
             // when checking whether a `ParamEnv` candidate is global.
             ty::ReStatic => match self.canonicalize_mode {
-                CanonicalizeMode::Input { keep_static: false } => {
+                CanonicalizeMode::Input(CanonicalizeInputKind::Predicate { .. }) => {
                     CanonicalVarKind::Region(ty::UniverseIndex::ROOT)
                 }
-                CanonicalizeMode::Input { keep_static: true }
+                CanonicalizeMode::Input(CanonicalizeInputKind::ParamEnv)
                 | CanonicalizeMode::Response { .. } => return r,
             },
 
@@ -428,12 +442,12 @@ impl<D: SolverDelegate<Interner = I>, I: Interner> TypeFolder<I> for Canonicaliz
             // `ReErased`. We may be able to short-circuit registering region
             // obligations if we encounter a `ReErased` on one side, for example.
             ty::ReErased | ty::ReError(_) => match self.canonicalize_mode {
-                CanonicalizeMode::Input { .. } => CanonicalVarKind::Region(ty::UniverseIndex::ROOT),
+                CanonicalizeMode::Input(_) => CanonicalVarKind::Region(ty::UniverseIndex::ROOT),
                 CanonicalizeMode::Response { .. } => return r,
             },
 
             ty::ReEarlyParam(_) | ty::ReLateParam(_) => match self.canonicalize_mode {
-                CanonicalizeMode::Input { .. } => CanonicalVarKind::Region(ty::UniverseIndex::ROOT),
+                CanonicalizeMode::Input(_) => CanonicalVarKind::Region(ty::UniverseIndex::ROOT),
                 CanonicalizeMode::Response { .. } => {
                     panic!("unexpected region in response: {r:?}")
                 }
@@ -441,7 +455,7 @@ impl<D: SolverDelegate<Interner = I>, I: Interner> TypeFolder<I> for Canonicaliz
 
             ty::RePlaceholder(placeholder) => match self.canonicalize_mode {
                 // We canonicalize placeholder regions as existentials in query inputs.
-                CanonicalizeMode::Input { .. } => CanonicalVarKind::Region(ty::UniverseIndex::ROOT),
+                CanonicalizeMode::Input(_) => CanonicalVarKind::Region(ty::UniverseIndex::ROOT),
                 CanonicalizeMode::Response { max_input_universe } => {
                     // If we have a placeholder region inside of a query, it must be from
                     // a new universe.
@@ -459,9 +473,7 @@ impl<D: SolverDelegate<Interner = I>, I: Interner> TypeFolder<I> for Canonicaliz
                     "region vid should have been resolved fully before canonicalization"
                 );
                 match self.canonicalize_mode {
-                    CanonicalizeMode::Input { keep_static: _ } => {
-                        CanonicalVarKind::Region(ty::UniverseIndex::ROOT)
-                    }
+                    CanonicalizeMode::Input(_) => CanonicalVarKind::Region(ty::UniverseIndex::ROOT),
                     CanonicalizeMode::Response { .. } => {
                         CanonicalVarKind::Region(self.delegate.universe_of_lt(vid).unwrap())
                     }
@@ -469,16 +481,34 @@ impl<D: SolverDelegate<Interner = I>, I: Interner> TypeFolder<I> for Canonicaliz
             }
         };
 
-        let var = self.get_or_insert_bound_var(r, kind);
+        let var = if let CanonicalizeMode::Input(CanonicalizeInputKind::Predicate {
+            is_hir_typeck_root_goal: true,
+        }) = self.canonicalize_mode
+        {
+            let var = ty::BoundVar::from(self.variables.len());
+            self.variables.push(r.into());
+            self.var_kinds.push(kind);
+            var
+        } else {
+            self.get_or_insert_bound_var(r, kind)
+        };
 
         Region::new_anon_bound(self.cx(), self.binder_index, var)
     }
 
     fn fold_ty(&mut self, t: I::Ty) -> I::Ty {
-        if let Some(&ty) = self.cache.get(&(self.binder_index, t)) {
+        if let CanonicalizeMode::Input(CanonicalizeInputKind::Predicate {
+            is_hir_typeck_root_goal: true,
+        }) = self.canonicalize_mode
+        {
+            // If we're canonicalizing a root goal during HIR typeck, we
+            // must not use the `cache` as we want to map each occurrence
+            // of a region to a unique existential variable.
+            self.inner_fold_ty(t)
+        } else if let Some(&ty) = self.cache.get(&(self.binder_index, t)) {
             ty
         } else {
-            let res = self.cached_fold_ty(t);
+            let res = self.inner_fold_ty(t);
             let old = self.cache.insert((self.binder_index, t), res);
             assert_eq!(old, None);
             res
@@ -541,9 +571,9 @@ impl<D: SolverDelegate<Interner = I>, I: Interner> TypeFolder<I> for Canonicaliz
 
     fn fold_clauses(&mut self, c: I::Clauses) -> I::Clauses {
         match self.canonicalize_mode {
-            CanonicalizeMode::Input { keep_static: true }
+            CanonicalizeMode::Input(CanonicalizeInputKind::ParamEnv)
             | CanonicalizeMode::Response { max_input_universe: _ } => {}
-            CanonicalizeMode::Input { keep_static: false } => {
+            CanonicalizeMode::Input(CanonicalizeInputKind::Predicate { .. }) => {
                 panic!("erasing 'static in env")
             }
         }

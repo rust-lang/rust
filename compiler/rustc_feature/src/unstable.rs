@@ -225,8 +225,6 @@ declare_features! (
     (unstable, multiple_supertrait_upcastable, "1.69.0", None),
     /// Allow negative trait bounds. This is an internal-only feature for testing the trait solver!
     (internal, negative_bounds, "1.71.0", None),
-    /// Allows using `#[omit_gdb_pretty_printer_section]`.
-    (internal, omit_gdb_pretty_printer_section, "1.5.0", None),
     /// Set the maximum pattern complexity allowed (not limited by default).
     (internal, pattern_complexity_limit, "1.78.0", None),
     /// Allows using pattern types.
@@ -329,6 +327,7 @@ declare_features! (
     (unstable, m68k_target_feature, "1.85.0", Some(134328)),
     (unstable, mips_target_feature, "1.27.0", Some(44839)),
     (unstable, movrs_target_feature, "1.88.0", Some(137976)),
+    (unstable, nvptx_target_feature, "CURRENT_RUSTC_VERSION", Some(44839)),
     (unstable, powerpc_target_feature, "1.27.0", Some(44839)),
     (unstable, prfchw_target_feature, "1.78.0", Some(44839)),
     (unstable, riscv_target_feature, "1.45.0", Some(44839)),
@@ -354,7 +353,7 @@ declare_features! (
     /// Allows `extern "avr-interrupt" fn()` and `extern "avr-non-blocking-interrupt" fn()`.
     (unstable, abi_avr_interrupt, "1.45.0", Some(69664)),
     /// Allows `extern "cmse-nonsecure-call" fn()`.
-    (unstable, abi_cmse_nonsecure_call, "CURRENT_RUSTC_VERSION", Some(81391)),
+    (unstable, abi_cmse_nonsecure_call, "1.90.0", Some(81391)),
     /// Allows `extern "custom" fn()`.
     (unstable, abi_custom, "1.89.0", Some(140829)),
     /// Allows `extern "gpu-kernel" fn()`.
@@ -546,7 +545,7 @@ declare_features! (
     (incomplete, inherent_associated_types, "1.52.0", Some(8995)),
     /// Allows using `pointer` and `reference` in intra-doc links
     (unstable, intra_doc_pointers, "1.51.0", Some(80896)),
-    // Allows setting the threshold for the `large_assignments` lint.
+    /// Allows setting the threshold for the `large_assignments` lint.
     (unstable, large_assignments, "1.52.0", Some(83518)),
     /// Allow to have type alias types for inter-crate use.
     (incomplete, lazy_type_alias, "1.72.0", Some(112792)),
@@ -554,7 +553,9 @@ declare_features! (
     /// to pass custom arguments to the linker.
     (unstable, link_arg_attribute, "1.76.0", Some(99427)),
     /// Allows fused `loop`/`match` for direct intraprocedural jumps.
-    (incomplete, loop_match, "CURRENT_RUSTC_VERSION", Some(132306)),
+    (incomplete, loop_match, "1.90.0", Some(132306)),
+    /// Allow `macro_rules!` attribute rules
+    (unstable, macro_attr, "CURRENT_RUSTC_VERSION", Some(83527)),
     /// Give access to additional metadata about declarative macro meta-variables.
     (unstable, macro_metavar_expr, "1.61.0", Some(83527)),
     /// Provides a way to concatenate identifiers using metavariable expressions.

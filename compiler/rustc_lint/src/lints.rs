@@ -902,9 +902,8 @@ pub(crate) struct MappingToUnit {
     pub argument_label: Span,
     #[label(lint_map_label)]
     pub map_label: Span,
-    #[suggestion(style = "verbose", code = "{replace}", applicability = "maybe-incorrect")]
+    #[suggestion(style = "verbose", code = "for_each", applicability = "maybe-incorrect")]
     pub suggestion: Span,
-    pub replace: String,
 }
 
 // internal.rs
@@ -1186,6 +1185,22 @@ pub(crate) struct DanglingPointersFromTemporaries<'tcx> {
     pub ptr_span: Span,
     #[label(lint_label_temporary)]
     pub temporary_span: Span,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(lint_dangling_pointers_from_locals)]
+#[note]
+pub(crate) struct DanglingPointersFromLocals<'tcx> {
+    pub ret_ty: Ty<'tcx>,
+    #[label(lint_ret_ty)]
+    pub ret_ty_span: Span,
+    pub fn_kind: &'static str,
+    #[label(lint_local_var)]
+    pub local_var: Span,
+    pub local_var_name: Ident,
+    pub local_var_ty: Ty<'tcx>,
+    #[label(lint_created_at)]
+    pub created_at: Option<Span>,
 }
 
 // multiple_supertrait_upcastable.rs
@@ -3276,7 +3291,7 @@ impl<'a, G: EmissionGuarantee> LintDiagnostic<'a, G> for MismatchedLifetimeSynta
             diag.subdiagnostic(s);
 
             for mut s in suggestions {
-                s.make_tool_only();
+                s.make_optional_alternative();
                 diag.subdiagnostic(s);
             }
         }
@@ -3287,33 +3302,33 @@ impl<'a, G: EmissionGuarantee> LintDiagnostic<'a, G> for MismatchedLifetimeSynta
 pub(crate) enum MismatchedLifetimeSyntaxesSuggestion {
     Implicit {
         suggestions: Vec<Span>,
-        tool_only: bool,
+        optional_alternative: bool,
     },
 
     Mixed {
         implicit_suggestions: Vec<Span>,
         explicit_anonymous_suggestions: Vec<(Span, String)>,
-        tool_only: bool,
+        optional_alternative: bool,
     },
 
     Explicit {
         lifetime_name: String,
         suggestions: Vec<(Span, String)>,
-        tool_only: bool,
+        optional_alternative: bool,
     },
 }
 
 impl MismatchedLifetimeSyntaxesSuggestion {
-    fn make_tool_only(&mut self) {
+    fn make_optional_alternative(&mut self) {
         use MismatchedLifetimeSyntaxesSuggestion::*;
 
-        let tool_only = match self {
-            Implicit { tool_only, .. } | Mixed { tool_only, .. } | Explicit { tool_only, .. } => {
-                tool_only
-            }
+        let optional_alternative = match self {
+            Implicit { optional_alternative, .. }
+            | Mixed { optional_alternative, .. }
+            | Explicit { optional_alternative, .. } => optional_alternative,
         };
 
-        *tool_only = true;
+        *optional_alternative = true;
     }
 }
 
@@ -3321,22 +3336,40 @@ impl Subdiagnostic for MismatchedLifetimeSyntaxesSuggestion {
     fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
         use MismatchedLifetimeSyntaxesSuggestion::*;
 
-        let style = |tool_only| {
-            if tool_only { SuggestionStyle::CompletelyHidden } else { SuggestionStyle::ShowAlways }
+        let style = |optional_alternative| {
+            if optional_alternative {
+                SuggestionStyle::CompletelyHidden
+            } else {
+                SuggestionStyle::ShowAlways
+            }
+        };
+
+        let applicability = |optional_alternative| {
+            // `cargo fix` can't handle more than one fix for the same issue,
+            // so hide alternative suggestions from it by marking them as maybe-incorrect
+            if optional_alternative {
+                Applicability::MaybeIncorrect
+            } else {
+                Applicability::MachineApplicable
+            }
         };
 
         match self {
-            Implicit { suggestions, tool_only } => {
+            Implicit { suggestions, optional_alternative } => {
                 let suggestions = suggestions.into_iter().map(|s| (s, String::new())).collect();
                 diag.multipart_suggestion_with_style(
                     fluent::lint_mismatched_lifetime_syntaxes_suggestion_implicit,
                     suggestions,
-                    Applicability::MaybeIncorrect,
-                    style(tool_only),
+                    applicability(optional_alternative),
+                    style(optional_alternative),
                 );
             }
 
-            Mixed { implicit_suggestions, explicit_anonymous_suggestions, tool_only } => {
+            Mixed {
+                implicit_suggestions,
+                explicit_anonymous_suggestions,
+                optional_alternative,
+            } => {
                 let message = if implicit_suggestions.is_empty() {
                     fluent::lint_mismatched_lifetime_syntaxes_suggestion_mixed_only_paths
                 } else {
@@ -3352,12 +3385,12 @@ impl Subdiagnostic for MismatchedLifetimeSyntaxesSuggestion {
                 diag.multipart_suggestion_with_style(
                     message,
                     suggestions,
-                    Applicability::MaybeIncorrect,
-                    style(tool_only),
+                    applicability(optional_alternative),
+                    style(optional_alternative),
                 );
             }
 
-            Explicit { lifetime_name, suggestions, tool_only } => {
+            Explicit { lifetime_name, suggestions, optional_alternative } => {
                 diag.arg("lifetime_name", lifetime_name);
                 let msg = diag.eagerly_translate(
                     fluent::lint_mismatched_lifetime_syntaxes_suggestion_explicit,
@@ -3366,8 +3399,8 @@ impl Subdiagnostic for MismatchedLifetimeSyntaxesSuggestion {
                 diag.multipart_suggestion_with_style(
                     msg,
                     suggestions,
-                    Applicability::MaybeIncorrect,
-                    style(tool_only),
+                    applicability(optional_alternative),
+                    style(optional_alternative),
                 );
             }
         }

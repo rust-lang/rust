@@ -128,9 +128,9 @@ fn main() {
         check!(pal, &library_path);
 
         // Checks that need to be done for both the compiler and std libraries.
-        check!(unit_tests, &src_path);
-        check!(unit_tests, &compiler_path);
-        check!(unit_tests, &library_path);
+        check!(unit_tests, &src_path, false);
+        check!(unit_tests, &compiler_path, false);
+        check!(unit_tests, &library_path, true);
 
         if bins::check_filesystem_support(&[&root_path], &output_directory) {
             check!(bins, &root_path);

@@ -2683,6 +2683,8 @@ impl Path {
     ///
     /// assert_eq!("foo", Path::new("foo.rs").file_prefix().unwrap());
     /// assert_eq!("foo", Path::new("foo.tar.gz").file_prefix().unwrap());
+    /// assert_eq!(".config", Path::new(".config").file_prefix().unwrap());
+    /// assert_eq!(".config", Path::new(".config.toml").file_prefix().unwrap());
     /// ```
     ///
     /// # See Also
@@ -3259,8 +3261,8 @@ impl Path {
     ///
     /// # Examples
     ///
-    #[cfg_attr(unix, doc = "```no_run")]
-    #[cfg_attr(not(unix), doc = "```ignore")]
+    /// ```rust,no_run
+    /// # #[cfg(unix)] {
     /// use std::path::Path;
     /// use std::os::unix::fs::symlink;
     ///
@@ -3268,6 +3270,7 @@ impl Path {
     /// symlink("/origin_does_not_exist/", link_path).unwrap();
     /// assert_eq!(link_path.is_symlink(), true);
     /// assert_eq!(link_path.exists(), false);
+    /// # }
     /// ```
     ///
     /// # See Also

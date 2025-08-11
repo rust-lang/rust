@@ -777,9 +777,9 @@ fn test_unstable_options_tracking_hash() {
     tracked!(
         coverage_options,
         CoverageOptions {
-            level: CoverageLevel::Mcdc,
-            no_mir_spans: true,
-            discard_all_spans_in_codegen: true
+            level: CoverageLevel::Branch,
+            // (don't collapse test-only options onto the same line)
+            discard_all_spans_in_codegen: true,
         }
     );
     tracked!(crate_attr, vec!["abc".to_string()]);

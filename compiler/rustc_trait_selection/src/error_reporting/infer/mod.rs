@@ -235,28 +235,29 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             }
 
             fn print_region(&mut self, _region: ty::Region<'_>) -> Result<(), PrintError> {
-                Err(fmt::Error)
+                unreachable!(); // because `path_generic_args` ignores the `GenericArgs`
             }
 
             fn print_type(&mut self, _ty: Ty<'tcx>) -> Result<(), PrintError> {
-                Err(fmt::Error)
+                unreachable!(); // because `path_generic_args` ignores the `GenericArgs`
             }
 
             fn print_dyn_existential(
                 &mut self,
                 _predicates: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
             ) -> Result<(), PrintError> {
-                Err(fmt::Error)
+                unreachable!(); // because `path_generic_args` ignores the `GenericArgs`
             }
 
             fn print_const(&mut self, _ct: ty::Const<'tcx>) -> Result<(), PrintError> {
-                Err(fmt::Error)
+                unreachable!(); // because `path_generic_args` ignores the `GenericArgs`
             }
 
             fn path_crate(&mut self, cnum: CrateNum) -> Result<(), PrintError> {
                 self.segments = vec![self.tcx.crate_name(cnum)];
                 Ok(())
             }
+
             fn path_qualified(
                 &mut self,
                 _self_ty: Ty<'tcx>,
@@ -268,12 +269,12 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             fn path_append_impl(
                 &mut self,
                 _print_prefix: impl FnOnce(&mut Self) -> Result<(), PrintError>,
-                _disambiguated_data: &DisambiguatedDefPathData,
                 _self_ty: Ty<'tcx>,
                 _trait_ref: Option<ty::TraitRef<'tcx>>,
             ) -> Result<(), PrintError> {
                 Err(fmt::Error)
             }
+
             fn path_append(
                 &mut self,
                 print_prefix: impl FnOnce(&mut Self) -> Result<(), PrintError>,
@@ -283,6 +284,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 self.segments.push(disambiguated_data.as_sym(true));
                 Ok(())
             }
+
             fn path_generic_args(
                 &mut self,
                 print_prefix: impl FnOnce(&mut Self) -> Result<(), PrintError>,
@@ -298,8 +300,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             // let _ = [{struct Foo; Foo}, {struct Foo; Foo}];
             if did1.krate != did2.krate {
                 let abs_path = |def_id| {
-                    let mut printer = AbsolutePathPrinter { tcx: self.tcx, segments: vec![] };
-                    printer.print_def_path(def_id, &[]).map(|_| printer.segments)
+                    let mut p = AbsolutePathPrinter { tcx: self.tcx, segments: vec![] };
+                    p.print_def_path(def_id, &[]).map(|_| p.segments)
                 };
 
                 // We compare strings because DefPath can be different
@@ -1928,7 +1930,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         &self,
         trace: &TypeTrace<'tcx>,
         terr: TypeError<'tcx>,
-        path: &mut Option<PathBuf>,
+        long_ty_path: &mut Option<PathBuf>,
     ) -> Vec<TypeErrorAdditionalDiags> {
         let mut suggestions = Vec::new();
         let span = trace.cause.span;
@@ -2007,7 +2009,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         })
         | ObligationCauseCode::BlockTailExpression(.., source)) = code
             && let hir::MatchSource::TryDesugar(_) = source
-            && let Some((expected_ty, found_ty)) = self.values_str(trace.values, &trace.cause, path)
+            && let Some((expected_ty, found_ty)) =
+                self.values_str(trace.values, &trace.cause, long_ty_path)
         {
             suggestions.push(TypeErrorAdditionalDiags::TryCannotConvert {
                 found: found_ty.content(),
@@ -2137,11 +2140,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         &self,
         values: ValuePairs<'tcx>,
         cause: &ObligationCause<'tcx>,
-        file: &mut Option<PathBuf>,
+        long_ty_path: &mut Option<PathBuf>,
     ) -> Option<(DiagStyledString, DiagStyledString)> {
         match values {
             ValuePairs::Regions(exp_found) => self.expected_found_str(exp_found),
-            ValuePairs::Terms(exp_found) => self.expected_found_str_term(exp_found, file),
+            ValuePairs::Terms(exp_found) => self.expected_found_str_term(exp_found, long_ty_path),
             ValuePairs::Aliases(exp_found) => self.expected_found_str(exp_found),
             ValuePairs::ExistentialTraitRef(exp_found) => self.expected_found_str(exp_found),
             ValuePairs::ExistentialProjection(exp_found) => self.expected_found_str(exp_found),
@@ -2181,7 +2184,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     fn expected_found_str_term(
         &self,
         exp_found: ty::error::ExpectedFound<ty::Term<'tcx>>,
-        path: &mut Option<PathBuf>,
+        long_ty_path: &mut Option<PathBuf>,
     ) -> Option<(DiagStyledString, DiagStyledString)> {
         let exp_found = self.resolve_vars_if_possible(exp_found);
         if exp_found.references_error() {
@@ -2198,11 +2201,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 let exp_s = exp.content();
                 let fnd_s = fnd.content();
                 if exp_s.len() > len {
-                    let exp_s = self.tcx.short_string(expected, path);
+                    let exp_s = self.tcx.short_string(expected, long_ty_path);
                     exp = DiagStyledString::highlighted(exp_s);
                 }
                 if fnd_s.len() > len {
-                    let fnd_s = self.tcx.short_string(found, path);
+                    let fnd_s = self.tcx.short_string(found, long_ty_path);
                     fnd = DiagStyledString::highlighted(fnd_s);
                 }
                 (exp, fnd)

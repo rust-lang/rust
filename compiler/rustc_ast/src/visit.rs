@@ -20,7 +20,6 @@ use rustc_span::{Ident, Span, Symbol};
 use thin_vec::ThinVec;
 
 use crate::ast::*;
-use crate::ptr::P;
 use crate::tokenstream::DelimSpan;
 
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -82,7 +81,7 @@ pub(crate) trait Visitable<'a, V: Visitor<'a>> {
     fn visit(&'a self, visitor: &mut V, extra: Self::Extra) -> V::Result;
 }
 
-impl<'a, V: Visitor<'a>, T: ?Sized> Visitable<'a, V> for P<T>
+impl<'a, V: Visitor<'a>, T: ?Sized> Visitable<'a, V> for Box<T>
 where
     T: Visitable<'a, V>,
 {
@@ -322,7 +321,7 @@ macro_rules! common_visitor_and_walkers {
             Fn(FnCtxt, &'a $($mut)? Visibility, &'a $($mut)? Fn),
 
             /// E.g., `|x, y| body`.
-            Closure(&'a $($mut)? ClosureBinder, &'a $($mut)? Option<CoroutineKind>, &'a $($mut)? P<FnDecl>, &'a $($mut)? P<Expr>),
+            Closure(&'a $($mut)? ClosureBinder, &'a $($mut)? Option<CoroutineKind>, &'a $($mut)? Box<FnDecl>, &'a $($mut)? Box<Expr>),
         }
 
         impl<'a> FnKind<'a> {
@@ -390,9 +389,9 @@ macro_rules! common_visitor_and_walkers {
             ThinVec<(NodeId, Path)>,
             ThinVec<PathSegment>,
             ThinVec<PreciseCapturingArg>,
-            ThinVec<P<Pat>>,
-            ThinVec<P<Ty>>,
-            ThinVec<P<TyPat>>,
+            ThinVec<Box<Pat>>,
+            ThinVec<Box<Ty>>,
+            ThinVec<Box<TyPat>>,
         );
 
         // This macro generates `impl Visitable` and `impl MutVisitable` that forward to `Walkable`
@@ -676,11 +675,11 @@ macro_rules! common_visitor_and_walkers {
                     // Do nothing.
                 }
 
-                fn flat_map_foreign_item(&mut self, ni: P<ForeignItem>) -> SmallVec<[P<ForeignItem>; 1]> {
+                fn flat_map_foreign_item(&mut self, ni: Box<ForeignItem>) -> SmallVec<[Box<ForeignItem>; 1]> {
                     walk_flat_map_foreign_item(self, ni)
                 }
 
-                fn flat_map_item(&mut self, i: P<Item>) -> SmallVec<[P<Item>; 1]> {
+                fn flat_map_item(&mut self, i: Box<Item>) -> SmallVec<[Box<Item>; 1]> {
                     walk_flat_map_item(self, i)
                 }
 
@@ -690,9 +689,9 @@ macro_rules! common_visitor_and_walkers {
 
                 fn flat_map_assoc_item(
                     &mut self,
-                    i: P<AssocItem>,
+                    i: Box<AssocItem>,
                     ctxt: AssocCtxt,
-                ) -> SmallVec<[P<AssocItem>; 1]> {
+                ) -> SmallVec<[Box<AssocItem>; 1]> {
                     walk_flat_map_assoc_item(self, i, ctxt)
                 }
 
@@ -704,7 +703,7 @@ macro_rules! common_visitor_and_walkers {
                     walk_flat_map_arm(self, arm)
                 }
 
-                fn filter_map_expr(&mut self, e: P<Expr>) -> Option<P<Expr>> {
+                fn filter_map_expr(&mut self, e: Box<Expr>) -> Option<Box<Expr>> {
                     walk_filter_map_expr(self, e)
                 }
 
@@ -1144,15 +1143,15 @@ macro_rules! generate_list_visit_fns {
 }
 
 generate_list_visit_fns! {
-    visit_items, P<Item>, visit_item;
-    visit_foreign_items, P<ForeignItem>, visit_foreign_item;
+    visit_items, Box<Item>, visit_item;
+    visit_foreign_items, Box<ForeignItem>, visit_foreign_item;
     visit_generic_params, GenericParam, visit_generic_param;
     visit_stmts, Stmt, visit_stmt;
-    visit_exprs, P<Expr>, visit_expr;
+    visit_exprs, Box<Expr>, visit_expr;
     visit_expr_fields, ExprField, visit_expr_field;
     visit_pat_fields, PatField, visit_pat_field;
     visit_variants, Variant, visit_variant;
-    visit_assoc_items, P<AssocItem>, visit_assoc_item, ctxt: AssocCtxt;
+    visit_assoc_items, Box<AssocItem>, visit_assoc_item, ctxt: AssocCtxt;
     visit_where_predicates, WherePredicate, visit_where_predicate;
     visit_params, Param, visit_param;
     visit_field_defs, FieldDef, visit_field_def;

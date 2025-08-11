@@ -193,6 +193,9 @@
 //@ revisions: armv7a_nuttx_eabihf
 //@ [armv7a_nuttx_eabihf] compile-flags: --target armv7a-nuttx-eabihf
 //@ [armv7a_nuttx_eabihf] needs-llvm-components: arm
+//@ revisions: armv7a_vex_v5
+//@ [armv7a_vex_v5] compile-flags: --target armv7a-vex-v5
+//@ [armv7a_vex_v5] needs-llvm-components: arm
 //@ revisions: armv7r_none_eabi
 //@ [armv7r_none_eabi] compile-flags: --target armv7r-none-eabi
 //@ [armv7r_none_eabi] needs-llvm-components: arm

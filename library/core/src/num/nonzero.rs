@@ -203,7 +203,7 @@ impl<T> Copy for NonZero<T> where T: ZeroablePrimitive {}
 #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
 impl<T> const PartialEq for NonZero<T>
 where
-    T: ZeroablePrimitive + ~const PartialEq,
+    T: ZeroablePrimitive + [const] PartialEq,
 {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
@@ -629,7 +629,7 @@ macro_rules! nonzero_integer {
             #[doc = concat!("let a = NonZero::<", stringify!($Int), ">::new(0b_01100100)?;")]
             #[doc = concat!("let b = NonZero::<", stringify!($Int), ">::new(0b_01000000)?;")]
             ///
-            /// assert_eq!(a.isolate_most_significant_one(), b);
+            /// assert_eq!(a.isolate_highest_one(), b);
             /// # Some(())
             /// # }
             /// ```
@@ -637,7 +637,7 @@ macro_rules! nonzero_integer {
             #[must_use = "this returns the result of the operation, \
                         without modifying the original"]
             #[inline(always)]
-            pub const fn isolate_most_significant_one(self) -> Self {
+            pub const fn isolate_highest_one(self) -> Self {
                 let n = self.get() & (((1 as $Int) << (<$Int>::BITS - 1)).wrapping_shr(self.leading_zeros()));
 
                 // SAFETY:
@@ -659,7 +659,7 @@ macro_rules! nonzero_integer {
             #[doc = concat!("let a = NonZero::<", stringify!($Int), ">::new(0b_01100100)?;")]
             #[doc = concat!("let b = NonZero::<", stringify!($Int), ">::new(0b_00000100)?;")]
             ///
-            /// assert_eq!(a.isolate_least_significant_one(), b);
+            /// assert_eq!(a.isolate_lowest_one(), b);
             /// # Some(())
             /// # }
             /// ```
@@ -667,7 +667,7 @@ macro_rules! nonzero_integer {
             #[must_use = "this returns the result of the operation, \
                         without modifying the original"]
             #[inline(always)]
-            pub const fn isolate_least_significant_one(self) -> Self {
+            pub const fn isolate_lowest_one(self) -> Self {
                 let n = self.get();
                 let n = n & n.wrapping_neg();
 

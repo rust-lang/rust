@@ -21,7 +21,7 @@ fn resolve_instance_raw<'tcx>(
 ) -> Result<Option<Instance<'tcx>>, ErrorGuaranteed> {
     let PseudoCanonicalInput { typing_env, value: (def_id, args) } = key;
 
-    let result = if let Some(trait_def_id) = tcx.trait_of_item(def_id) {
+    let result = if let Some(trait_def_id) = tcx.trait_of_assoc(def_id) {
         debug!(" => associated item, attempting to find impl in typing_env {:#?}", typing_env);
         resolve_associated_item(
             tcx,
@@ -109,7 +109,7 @@ fn resolve_associated_item<'tcx>(
 ) -> Result<Option<Instance<'tcx>>, ErrorGuaranteed> {
     debug!(?trait_item_id, ?typing_env, ?trait_id, ?rcvr_args, "resolve_associated_item");
 
-    let trait_ref = ty::TraitRef::from_method(tcx, trait_id, rcvr_args);
+    let trait_ref = ty::TraitRef::from_assoc(tcx, trait_id, rcvr_args);
 
     let input = typing_env.as_query_input(trait_ref);
     let vtbl = match tcx.codegen_select_candidate(input) {
@@ -238,7 +238,7 @@ fn resolve_associated_item<'tcx>(
             Some(ty::Instance::new_raw(leaf_def.item.def_id, args))
         }
         traits::ImplSource::Builtin(BuiltinImplSource::Object(_), _) => {
-            let trait_ref = ty::TraitRef::from_method(tcx, trait_id, rcvr_args);
+            let trait_ref = ty::TraitRef::from_assoc(tcx, trait_id, rcvr_args);
             if trait_ref.has_non_region_infer() || trait_ref.has_non_region_param() {
                 // We only resolve totally substituted vtable entries.
                 None

@@ -86,7 +86,11 @@ impl Thread {
     /// # Safety
     ///
     /// See `thread::Builder::spawn_unchecked` for safety requirements.
-    pub unsafe fn new(stack: usize, p: Box<dyn FnOnce()>) -> io::Result<Thread> {
+    pub unsafe fn new(
+        stack: usize,
+        _name: Option<&str>,
+        p: Box<dyn FnOnce()>,
+    ) -> io::Result<Thread> {
         let inner = Box::new(ThreadInner {
             start: UnsafeCell::new(ManuallyDrop::new(p)),
             lifecycle: AtomicUsize::new(LIFECYCLE_INIT),
@@ -355,6 +359,10 @@ unsafe fn terminate_and_delete_current_task() -> ! {
     expect_success_aborting(unsafe { abi::exd_tsk() }, &"exd_tsk");
     // Safety: `exd_tsk` never returns on success
     unsafe { crate::hint::unreachable_unchecked() };
+}
+
+pub(crate) fn current_os_id() -> Option<u64> {
+    None
 }
 
 pub fn available_parallelism() -> io::Result<NonZero<usize>> {

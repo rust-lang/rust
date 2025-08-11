@@ -25,7 +25,6 @@ pub(crate) use expr::ForbiddenLetReason;
 pub(crate) use item::FnParseMode;
 pub use pat::{CommaRecoveryMode, RecoverColon, RecoverComma};
 use path::PathStyle;
-use rustc_ast::ptr::P;
 use rustc_ast::token::{
     self, IdentIsRaw, InvisibleOrigin, MetaVarKind, NtExprKind, NtPatKind, Token, TokenKind,
 };
@@ -1286,7 +1285,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses inline const expressions.
-    fn parse_const_block(&mut self, span: Span, pat: bool) -> PResult<'a, P<Expr>> {
+    fn parse_const_block(&mut self, span: Span, pat: bool) -> PResult<'a, Box<Expr>> {
         self.expect_keyword(exp!(Const))?;
         let (attrs, blk) = self.parse_inner_attrs_and_block(None)?;
         let anon_const = AnonConst {
@@ -1343,9 +1342,9 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_delim_args(&mut self) -> PResult<'a, P<DelimArgs>> {
+    fn parse_delim_args(&mut self) -> PResult<'a, Box<DelimArgs>> {
         if let Some(args) = self.parse_delim_args_inner() {
-            Ok(P(args))
+            Ok(Box::new(args))
         } else {
             self.unexpected_any()
         }
@@ -1470,7 +1469,7 @@ impl<'a> Parser<'a> {
                 let path = self.parse_path(PathStyle::Mod)?; // `path`
                 self.expect(exp!(CloseParen))?; // `)`
                 let vis = VisibilityKind::Restricted {
-                    path: P(path),
+                    path: Box::new(path),
                     id: ast::DUMMY_NODE_ID,
                     shorthand: false,
                 };
@@ -1487,7 +1486,7 @@ impl<'a> Parser<'a> {
                 let path = self.parse_path(PathStyle::Mod)?; // `crate`/`super`/`self`
                 self.expect(exp!(CloseParen))?; // `)`
                 let vis = VisibilityKind::Restricted {
-                    path: P(path),
+                    path: Box::new(path),
                     id: ast::DUMMY_NODE_ID,
                     shorthand: true,
                 };
@@ -1652,14 +1651,14 @@ pub enum ParseNtResult {
     Tt(TokenTree),
     Ident(Ident, IdentIsRaw),
     Lifetime(Ident, IdentIsRaw),
-    Item(P<ast::Item>),
-    Block(P<ast::Block>),
-    Stmt(P<ast::Stmt>),
-    Pat(P<ast::Pat>, NtPatKind),
-    Expr(P<ast::Expr>, NtExprKind),
-    Literal(P<ast::Expr>),
-    Ty(P<ast::Ty>),
-    Meta(P<ast::AttrItem>),
-    Path(P<ast::Path>),
-    Vis(P<ast::Visibility>),
+    Item(Box<ast::Item>),
+    Block(Box<ast::Block>),
+    Stmt(Box<ast::Stmt>),
+    Pat(Box<ast::Pat>, NtPatKind),
+    Expr(Box<ast::Expr>, NtExprKind),
+    Literal(Box<ast::Expr>),
+    Ty(Box<ast::Ty>),
+    Meta(Box<ast::AttrItem>),
+    Path(Box<ast::Path>),
+    Vis(Box<ast::Visibility>),
 }

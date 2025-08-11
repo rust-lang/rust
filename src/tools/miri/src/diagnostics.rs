@@ -382,7 +382,7 @@ pub fn report_error<'tcx>(
                             helps.push(note_span!(span, "{:?} was deallocated here:", alloc_id));
                         }
                     }
-                    AbiMismatchArgument { .. } => {
+                    AbiMismatchArgument { .. } | AbiMismatchReturn { .. } => {
                         helps.push(note!("this means these two types are not *guaranteed* to be ABI-compatible across all targets"));
                         helps.push(note!("if you think this code should be accepted anyway, please report an issue with Miri"));
                     }

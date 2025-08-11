@@ -1,7 +1,7 @@
 //! Test that all bytes of a TypeId must have the
 //! TypeId marker provenance.
 
-#![feature(const_type_id, const_trait_impl, const_cmp)]
+#![feature( const_trait_impl, const_cmp)]
 
 use std::any::TypeId;
 

@@ -997,12 +997,11 @@ fn promote_candidates<'tcx>(
     for candidate in candidates.into_iter().rev() {
         let Location { block, statement_index } = candidate.location;
         if let StatementKind::Assign(box (place, _)) = &body[block].statements[statement_index].kind
+            && let Some(local) = place.as_local()
         {
-            if let Some(local) = place.as_local() {
-                if temps[local] == TempState::PromotedOut {
-                    // Already promoted.
-                    continue;
-                }
+            if temps[local] == TempState::PromotedOut {
+                // Already promoted.
+                continue;
             }
         }
 
@@ -1066,11 +1065,11 @@ fn promote_candidates<'tcx>(
             _ => true,
         });
         let terminator = block.terminator_mut();
-        if let TerminatorKind::Drop { place, target, .. } = &terminator.kind {
-            if let Some(index) = place.as_local() {
-                if promoted(index) {
-                    terminator.kind = TerminatorKind::Goto { target: *target };
-                }
+        if let TerminatorKind::Drop { place, target, .. } = &terminator.kind
+            && let Some(index) = place.as_local()
+        {
+            if promoted(index) {
+                terminator.kind = TerminatorKind::Goto { target: *target };
             }
         }
     }

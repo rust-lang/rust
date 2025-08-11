@@ -16,6 +16,7 @@ use tracing::instrument;
 pub use self::cargo::{Cargo, cargo_profile_var};
 pub use crate::Compiler;
 use crate::core::build_steps::compile::{Std, StdLink};
+use crate::core::build_steps::tool::RustcPrivateCompilers;
 use crate::core::build_steps::{
     check, clean, clippy, compile, dist, doc, gcc, install, llvm, run, setup, test, tool, vendor,
 };
@@ -77,7 +78,7 @@ impl Deref for Builder<'_> {
 /// type's [`Debug`] implementation.
 ///
 /// (Trying to debug-print `dyn Any` results in the unhelpful `"Any { .. }"`.)
-trait AnyDebug: Any + Debug {}
+pub trait AnyDebug: Any + Debug {}
 impl<T: Any + Debug> AnyDebug for T {}
 impl dyn AnyDebug {
     /// Equivalent to `<dyn Any>::downcast_ref`.
@@ -141,7 +142,7 @@ pub trait Step: 'static + Clone + Debug + PartialEq + Eq + Hash {
 #[allow(unused)]
 #[derive(Debug, PartialEq, Eq)]
 pub struct StepMetadata {
-    name: &'static str,
+    name: String,
     kind: Kind,
     target: TargetSelection,
     built_by: Option<Compiler>,
@@ -151,28 +152,28 @@ pub struct StepMetadata {
 }
 
 impl StepMetadata {
-    pub fn build(name: &'static str, target: TargetSelection) -> Self {
+    pub fn build(name: &str, target: TargetSelection) -> Self {
         Self::new(name, target, Kind::Build)
     }
 
-    pub fn check(name: &'static str, target: TargetSelection) -> Self {
+    pub fn check(name: &str, target: TargetSelection) -> Self {
         Self::new(name, target, Kind::Check)
     }
 
-    pub fn doc(name: &'static str, target: TargetSelection) -> Self {
+    pub fn doc(name: &str, target: TargetSelection) -> Self {
         Self::new(name, target, Kind::Doc)
     }
 
-    pub fn dist(name: &'static str, target: TargetSelection) -> Self {
+    pub fn dist(name: &str, target: TargetSelection) -> Self {
         Self::new(name, target, Kind::Dist)
     }
 
-    pub fn test(name: &'static str, target: TargetSelection) -> Self {
+    pub fn test(name: &str, target: TargetSelection) -> Self {
         Self::new(name, target, Kind::Test)
     }
 
-    fn new(name: &'static str, target: TargetSelection, kind: Kind) -> Self {
-        Self { name, kind, target, built_by: None, stage: None, metadata: None }
+    fn new(name: &str, target: TargetSelection, kind: Kind) -> Self {
+        Self { name: name.to_string(), kind, target, built_by: None, stage: None, metadata: None }
     }
 
     pub fn built_by(mut self, compiler: Compiler) -> Self {
@@ -196,6 +197,14 @@ impl StepMetadata {
             // For std, its stage corresponds to the stage of the compiler that builds it.
             // For everything else, a stage N things gets built by a stage N-1 compiler.
             .map(|compiler| if self.name == "std" { compiler.stage } else { compiler.stage + 1 }))
+    }
+
+    pub fn get_name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn get_target(&self) -> TargetSelection {
+        self.target
     }
 }
 
@@ -950,7 +959,8 @@ impl<'a> Builder<'a> {
                 compile::Std,
                 compile::Rustc,
                 compile::Assemble,
-                compile::CodegenBackend,
+                compile::CraneliftCodegenBackend,
+                compile::GccCodegenBackend,
                 compile::StartupObjects,
                 tool::BuildManifest,
                 tool::Rustbook,
@@ -1033,6 +1043,7 @@ impl<'a> Builder<'a> {
                 check::Compiletest,
                 check::FeaturesStatusDump,
                 check::CoverageDump,
+                check::Linkchecker,
                 // This has special staging logic, it may run on stage 1 while others run on stage 0.
                 // It takes quite some time to build stage 1, so put this at the end.
                 //
@@ -1140,7 +1151,7 @@ impl<'a> Builder<'a> {
                 dist::JsonDocs,
                 dist::Mingw,
                 dist::Rustc,
-                dist::CodegenBackend,
+                dist::CraneliftCodegenBackend,
                 dist::Std,
                 dist::RustcDev,
                 dist::Analysis,
@@ -1534,8 +1545,11 @@ You have to build a stage1 compiler for `{}` first, and then use it to build a s
             .map(|entry| entry.path())
     }
 
-    pub fn rustdoc(&self, compiler: Compiler) -> PathBuf {
-        self.ensure(tool::Rustdoc { compiler }).tool_path
+    /// Returns a path to `Rustdoc` that "belongs" to the `target_compiler`.
+    /// It can be either a stage0 rustdoc or a locally built rustdoc that *links* to
+    /// `target_compiler`.
+    pub fn rustdoc_for_compiler(&self, target_compiler: Compiler) -> PathBuf {
+        self.ensure(tool::Rustdoc { target_compiler })
     }
 
     pub fn cargo_clippy_cmd(&self, run_compiler: Compiler) -> BootstrapCommand {
@@ -1551,10 +1565,13 @@ You have to build a stage1 compiler for `{}` first, and then use it to build a s
             return cmd;
         }
 
-        let _ =
-            self.ensure(tool::Clippy { compiler: run_compiler, target: self.build.host_target });
-        let cargo_clippy = self
-            .ensure(tool::CargoClippy { compiler: run_compiler, target: self.build.host_target });
+        // FIXME: double check that `run_compiler`'s stage is what we want to use
+        let compilers =
+            RustcPrivateCompilers::new(self, run_compiler.stage, self.build.host_target);
+        assert_eq!(run_compiler, compilers.target_compiler());
+
+        let _ = self.ensure(tool::Clippy::from_compilers(compilers));
+        let cargo_clippy = self.ensure(tool::CargoClippy::from_compilers(compilers));
         let mut dylib_path = helpers::dylib_path();
         dylib_path.insert(0, self.sysroot(run_compiler).join("lib"));
 
@@ -1566,11 +1583,14 @@ You have to build a stage1 compiler for `{}` first, and then use it to build a s
 
     pub fn cargo_miri_cmd(&self, run_compiler: Compiler) -> BootstrapCommand {
         assert!(run_compiler.stage > 0, "miri can not be invoked at stage 0");
+
+        let compilers =
+            RustcPrivateCompilers::new(self, run_compiler.stage, self.build.host_target);
+        assert_eq!(run_compiler, compilers.target_compiler());
+
         // Prepare the tools
-        let miri =
-            self.ensure(tool::Miri { compiler: run_compiler, target: self.build.host_target });
-        let cargo_miri =
-            self.ensure(tool::CargoMiri { compiler: run_compiler, target: self.build.host_target });
+        let miri = self.ensure(tool::Miri::from_compilers(compilers));
+        let cargo_miri = self.ensure(tool::CargoMiri::from_compilers(compilers));
         // Invoke cargo-miri, make sure it can find miri and cargo.
         let mut cmd = command(cargo_miri.tool_path);
         cmd.env("MIRI", &miri.tool_path);
@@ -1595,7 +1615,7 @@ You have to build a stage1 compiler for `{}` first, and then use it to build a s
             // equivalently to rustc.
             .env("RUSTDOC_LIBDIR", self.rustc_libdir(compiler))
             .env("CFG_RELEASE_CHANNEL", &self.config.channel)
-            .env("RUSTDOC_REAL", self.rustdoc(compiler))
+            .env("RUSTDOC_REAL", self.rustdoc_for_compiler(compiler))
             .env("RUSTC_BOOTSTRAP", "1");
 
         cmd.arg("-Wrustdoc::invalid_codeblock_attributes");
@@ -1604,7 +1624,7 @@ You have to build a stage1 compiler for `{}` first, and then use it to build a s
             cmd.arg("-Dwarnings");
         }
         cmd.arg("-Znormalize-docs");
-        cmd.args(linker_args(self, compiler.host, LldThreads::Yes, compiler.stage));
+        cmd.args(linker_args(self, compiler.host, LldThreads::Yes));
         cmd
     }
 
@@ -1656,9 +1676,24 @@ You have to build a stage1 compiler for `{}` first, and then use it to build a s
             if let Some(out) = self.cache.get(&step) {
                 self.verbose_than(1, || println!("{}c {:?}", "  ".repeat(stack.len()), step));
 
+                #[cfg(feature = "tracing")]
+                {
+                    if let Some(parent) = stack.last() {
+                        let mut graph = self.build.step_graph.borrow_mut();
+                        graph.register_cached_step(&step, parent, self.config.dry_run());
+                    }
+                }
                 return out;
             }
             self.verbose_than(1, || println!("{}> {:?}", "  ".repeat(stack.len()), step));
+
+            #[cfg(feature = "tracing")]
+            {
+                let parent = stack.last();
+                let mut graph = self.build.step_graph.borrow_mut();
+                graph.register_step_execution(&step, parent, self.config.dry_run());
+            }
+
             stack.push(Box::new(step.clone()));
         }
 
@@ -1704,11 +1739,11 @@ You have to build a stage1 compiler for `{}` first, and then use it to build a s
     /// Ensure that a given step is built *only if it's supposed to be built by default*, returning
     /// its output. This will cache the step, so it's safe (and good!) to call this as often as
     /// needed to ensure that all dependencies are build.
-    pub(crate) fn ensure_if_default<T, S: Step<Output = Option<T>>>(
+    pub(crate) fn ensure_if_default<T, S: Step<Output = T>>(
         &'a self,
         step: S,
         kind: Kind,
-    ) -> S::Output {
+    ) -> Option<S::Output> {
         let desc = StepDescription::from::<S>(kind);
         let should_run = (desc.should_run)(ShouldRun::new(self, desc.kind));
 
@@ -1720,7 +1755,7 @@ You have to build a stage1 compiler for `{}` first, and then use it to build a s
         }
 
         // Only execute if it's supposed to run as default
-        if desc.default && should_run.is_really_default() { self.ensure(step) } else { None }
+        if desc.default && should_run.is_really_default() { Some(self.ensure(step)) } else { None }
     }
 
     /// Checks if any of the "should_run" paths is in the `Builder` paths.

@@ -1,7 +1,5 @@
 # Editions
 
-<!-- toc -->
-
 This chapter gives an overview of how Edition support works in rustc.
 This assumes that you are familiar with what Editions are (see the [Edition Guide]).
 

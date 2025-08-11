@@ -10,13 +10,13 @@ use super::super::riscv::imply_features;
 use super::auxvec;
 use crate::detect::{Feature, bit, cache};
 
-// See <https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/include/uapi/linux/prctl.h?h=v6.15>
+// See <https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/include/uapi/linux/prctl.h?h=v6.16>
 // for runtime status query constants.
 const PR_RISCV_V_GET_CONTROL: libc::c_int = 70;
 const PR_RISCV_V_VSTATE_CTRL_ON: libc::c_int = 2;
 const PR_RISCV_V_VSTATE_CTRL_CUR_MASK: libc::c_int = 3;
 
-// See <https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/arch/riscv/include/uapi/asm/hwprobe.h?h=v6.15>
+// See <https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/arch/riscv/include/uapi/asm/hwprobe.h?h=v6.16>
 // for riscv_hwprobe struct and hardware probing constants.
 
 #[repr(C)]
@@ -98,6 +98,7 @@ const RISCV_HWPROBE_EXT_ZVFBFWMA: u64 = 1 << 54;
 const RISCV_HWPROBE_EXT_ZICBOM: u64 = 1 << 55;
 const RISCV_HWPROBE_EXT_ZAAMO: u64 = 1 << 56;
 const RISCV_HWPROBE_EXT_ZALRSC: u64 = 1 << 57;
+const RISCV_HWPROBE_EXT_ZABHA: u64 = 1 << 58;
 
 const RISCV_HWPROBE_KEY_CPUPERF_0: i64 = 5;
 const RISCV_HWPROBE_MISALIGNED_FAST: u64 = 3;
@@ -138,7 +139,7 @@ pub(crate) fn detect_features() -> cache::Initializer {
     // Use auxiliary vector to enable single-letter ISA extensions.
     // The values are part of the platform-specific [asm/hwcap.h][hwcap]
     //
-    // [hwcap]: https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/arch/riscv/include/uapi/asm/hwcap.h?h=v6.15
+    // [hwcap]: https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/arch/riscv/include/uapi/asm/hwcap.h?h=v6.16
     let auxv = auxvec::auxv().expect("read auxvec"); // should not fail on RISC-V platform
     let mut has_i = bit::test(auxv.hwcap, (b'i' - b'a').into());
     #[allow(clippy::eq_op)]
@@ -233,6 +234,7 @@ pub(crate) fn detect_features() -> cache::Initializer {
         enable_feature(Feature::zalrsc, test(RISCV_HWPROBE_EXT_ZALRSC));
         enable_feature(Feature::zaamo, test(RISCV_HWPROBE_EXT_ZAAMO));
         enable_feature(Feature::zawrs, test(RISCV_HWPROBE_EXT_ZAWRS));
+        enable_feature(Feature::zabha, test(RISCV_HWPROBE_EXT_ZABHA));
         enable_feature(Feature::zacas, test(RISCV_HWPROBE_EXT_ZACAS));
         enable_feature(Feature::ztso, test(RISCV_HWPROBE_EXT_ZTSO));
 

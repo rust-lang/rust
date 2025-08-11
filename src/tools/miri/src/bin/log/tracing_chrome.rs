@@ -12,6 +12,7 @@
 //!   ```rust
 //!   tracing::info_span!("my_span", tracing_separate_thread = tracing::field::Empty, /* ... */)
 //!   ```
+//! - use i64 instead of u64 for the "id" in [ChromeLayer::get_root_id] to be compatible with Perfetto
 //!
 //! Depending on the tracing-chrome crate from crates.io is unfortunately not possible, since it
 //! depends on `tracing_core` which conflicts with rustc_private's `tracing_core` (meaning it would
@@ -285,9 +286,9 @@ struct Callsite {
 }
 
 enum Message {
-    Enter(f64, Callsite, Option<u64>),
+    Enter(f64, Callsite, Option<i64>),
     Event(f64, Callsite),
-    Exit(f64, Callsite, Option<u64>),
+    Exit(f64, Callsite, Option<i64>),
     NewThread(usize, String),
     Flush,
     Drop,
@@ -519,14 +520,17 @@ where
         }
     }
 
-    fn get_root_id(&self, span: SpanRef<S>) -> Option<u64> {
+    fn get_root_id(&self, span: SpanRef<S>) -> Option<i64> {
+        // Returns `Option<i64>` instead of `Option<u64>` because apparently Perfetto gives an
+        // error if an id does not fit in a 64-bit signed integer in 2's complement. We cast the
+        // span id from `u64` to `i64` with wraparound, since negative values are fine.
         match self.trace_style {
             TraceStyle::Threaded => {
                 if span.fields().field("tracing_separate_thread").is_some() {
                     // assign an independent "id" to spans with argument "tracing_separate_thread",
                     // so they appear a separate trace line in trace visualization tools, see
                     // https://docs.google.com/document/d/1CvAClvFfyA5R-PhYUmn5OOQtYMH4h6I0nSsKchNAySU/preview#heading=h.jh64i9l3vwa1
-                    Some(span.id().into_u64())
+                    Some(span.id().into_u64().cast_signed()) // the comment above explains the cast
                 } else {
                     None
                 }
@@ -539,6 +543,7 @@ where
                     .unwrap_or(span)
                     .id()
                     .into_u64()
+                    .cast_signed() // the comment above explains the cast
             ),
         }
     }

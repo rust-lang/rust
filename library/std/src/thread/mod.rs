@@ -183,7 +183,7 @@ mod current;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use current::current;
-pub(crate) use current::{current_id, current_or_unnamed, drop_current};
+pub(crate) use current::{current_id, current_or_unnamed, current_os_id, drop_current};
 use current::{set_current, try_with_current};
 
 mod spawnhook;
@@ -595,7 +595,7 @@ impl Builder {
             // Similarly, the `sys` implementation must guarantee that no references to the closure
             // exist after the thread has terminated, which is signaled by `Thread::join`
             // returning.
-            native: unsafe { imp::Thread::new(stack_size, main)? },
+            native: unsafe { imp::Thread::new(stack_size, my_thread.name(), main)? },
             thread: my_thread,
             packet: my_packet,
         })
@@ -2018,6 +2018,9 @@ fn _assert_sync_and_send() {
 ///   which may take time on systems with large numbers of mountpoints.
 ///   (This does not apply to cgroup v2, or to processes not in a
 ///   cgroup.)
+/// - It does not attempt to take `ulimit` into account. If there is a limit set on the number of
+///   threads, `available_parallelism` cannot know how much of that limit a Rust program should
+///   take, or know in a reliable and race-free way how much of that limit is already taken.
 ///
 /// On all targets:
 /// - It may overcount the amount of parallelism available when running in a VM

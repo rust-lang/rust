@@ -70,7 +70,6 @@ use std::sync::Arc;
 use rustc_abi::Align;
 use rustc_arena::TypedArena;
 use rustc_ast::expand::allocator::AllocatorKind;
-use rustc_attr_data_structures::StrippedCfgItem;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::sorted_map::SortedMap;
@@ -78,6 +77,7 @@ use rustc_data_structures::steal::Steal;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::ErrorGuaranteed;
+use rustc_hir::attrs::StrippedCfgItem;
 use rustc_hir::def::{DefKind, DocLinkResMap};
 use rustc_hir::def_id::{
     CrateNum, DefId, DefIdMap, LocalDefId, LocalDefIdMap, LocalDefIdSet, LocalModDefId,
@@ -101,7 +101,7 @@ use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::source_map::Spanned;
 use rustc_span::{DUMMY_SP, Span, Symbol};
 use rustc_target::spec::PanicStrategy;
-use {rustc_abi as abi, rustc_ast as ast, rustc_attr_data_structures as attr, rustc_hir as hir};
+use {rustc_abi as abi, rustc_ast as ast, rustc_hir as hir};
 
 use crate::infer::canonical::{self, Canonical};
 use crate::lint::LintExpectation;
@@ -1178,11 +1178,10 @@ rustc_queries! {
 
     /// Return the live symbols in the crate for dead code check.
     ///
-    /// The second return value maps from ADTs to ignored derived traits (e.g. Debug and Clone) and
-    /// their respective impl (i.e., part of the derive macro)
+    /// The second return value maps from ADTs to ignored derived traits (e.g. Debug and Clone).
     query live_symbols_and_ignored_derived_traits(_: ()) -> &'tcx (
         LocalDefIdSet,
-        LocalDefIdMap<FxIndexSet<(DefId, DefId)>>
+        LocalDefIdMap<FxIndexSet<DefId>>,
     ) {
         arena_cache
         desc { "finding live symbols in crate" }
@@ -1390,9 +1389,11 @@ rustc_queries! {
         eval_always
         desc { "checking effective visibilities" }
     }
-    query check_private_in_public(_: ()) {
-        eval_always
-        desc { "checking for private elements in public interfaces" }
+    query check_private_in_public(module_def_id: LocalModDefId) {
+        desc { |tcx|
+            "checking for private elements in public interfaces for {}",
+            describe_as_module(module_def_id, tcx)
+        }
     }
 
     query reachable_set(_: ()) -> &'tcx LocalDefIdSet {
@@ -1455,19 +1456,19 @@ rustc_queries! {
         cache_on_disk_if { true }
     }
 
-    query lookup_stability(def_id: DefId) -> Option<attr::Stability> {
+    query lookup_stability(def_id: DefId) -> Option<hir::Stability> {
         desc { |tcx| "looking up stability of `{}`", tcx.def_path_str(def_id) }
         cache_on_disk_if { def_id.is_local() }
         separate_provide_extern
     }
 
-    query lookup_const_stability(def_id: DefId) -> Option<attr::ConstStability> {
+    query lookup_const_stability(def_id: DefId) -> Option<hir::ConstStability> {
         desc { |tcx| "looking up const stability of `{}`", tcx.def_path_str(def_id) }
         cache_on_disk_if { def_id.is_local() }
         separate_provide_extern
     }
 
-    query lookup_default_body_stability(def_id: DefId) -> Option<attr::DefaultBodyStability> {
+    query lookup_default_body_stability(def_id: DefId) -> Option<hir::DefaultBodyStability> {
         desc { |tcx| "looking up default body stability of `{}`", tcx.def_path_str(def_id) }
         separate_provide_extern
     }
@@ -1861,6 +1862,12 @@ rustc_queries! {
         desc { |tcx| "looking up whether `{}` has `default`", tcx.def_path_str(def_id) }
         separate_provide_extern
         feedable
+    }
+
+    /// Returns whether the field corresponding to the `DefId` has a default field value.
+    query default_field(def_id: DefId) -> Option<DefId> {
+        desc { |tcx| "looking up the `const` corresponding to the default for `{}`", tcx.def_path_str(def_id) }
+        separate_provide_extern
     }
 
     query check_well_formed(key: LocalDefId) -> Result<(), ErrorGuaranteed> {

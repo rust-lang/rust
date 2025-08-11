@@ -421,6 +421,13 @@ impl Step for Llvm {
             ldflags.shared.push(" -latomic");
         }
 
+        if target.starts_with("arm64ec") {
+            // MSVC linker requires the -machine:arm64ec flag to be passed to
+            // know it's linking as Arm64EC (vs Arm64X).
+            ldflags.exe.push(" -machine:arm64ec");
+            ldflags.shared.push(" -machine:arm64ec");
+        }
+
         if target.is_msvc() {
             cfg.define("CMAKE_MSVC_RUNTIME_LIBRARY", "MultiThreaded");
             cfg.static_crt(true);
@@ -986,6 +993,7 @@ impl Step for Enzyme {
             .env("LLVM_CONFIG_REAL", &llvm_config)
             .define("LLVM_ENABLE_ASSERTIONS", "ON")
             .define("ENZYME_EXTERNAL_SHARED_LIB", "ON")
+            .define("ENZYME_BC_LOADER", "OFF")
             .define("LLVM_DIR", builder.llvm_out(target));
 
         cfg.build();
@@ -1528,8 +1536,12 @@ impl Step for Libunwind {
 
         // FIXME: https://github.com/alexcrichton/cc-rs/issues/545#issuecomment-679242845
         let mut count = 0;
-        for entry in fs::read_dir(&out_dir).unwrap() {
-            let file = entry.unwrap().path().canonicalize().unwrap();
+        let mut files = fs::read_dir(&out_dir)
+            .unwrap()
+            .map(|entry| entry.unwrap().path().canonicalize().unwrap())
+            .collect::<Vec<_>>();
+        files.sort();
+        for file in files {
             if file.is_file() && file.extension() == Some(OsStr::new("o")) {
                 // Object file name without the hash prefix is "Unwind-EHABI", "Unwind-seh" or "libunwind".
                 let base_name = unhashed_basename(&file);

@@ -6,8 +6,7 @@ use rustc_macros::{HashStable, extension};
 use rustc_type_ir as ir;
 
 use crate::ty::{
-    self, DebruijnIndex, EarlyBinder, PredicatePolarity, Ty, TyCtxt, TypeFlags, Upcast, UpcastFrom,
-    WithCachedTypeInfo,
+    self, DebruijnIndex, EarlyBinder, Ty, TyCtxt, TypeFlags, Upcast, UpcastFrom, WithCachedTypeInfo,
 };
 
 pub type TraitRef<'tcx> = ir::TraitRef<TyCtxt<'tcx>>;
@@ -536,15 +535,6 @@ impl<'tcx> UpcastFrom<TyCtxt<'tcx>, ty::Binder<'tcx, TraitRef<'tcx>>> for Clause
     }
 }
 
-impl<'tcx> UpcastFrom<TyCtxt<'tcx>, ty::Binder<'tcx, TraitRef<'tcx>>> for PolyTraitPredicate<'tcx> {
-    fn upcast_from(from: ty::Binder<'tcx, TraitRef<'tcx>>, _tcx: TyCtxt<'tcx>) -> Self {
-        from.map_bound(|trait_ref| TraitPredicate {
-            trait_ref,
-            polarity: PredicatePolarity::Positive,
-        })
-    }
-}
-
 impl<'tcx> UpcastFrom<TyCtxt<'tcx>, TraitPredicate<'tcx>> for Predicate<'tcx> {
     fn upcast_from(from: TraitPredicate<'tcx>, tcx: TyCtxt<'tcx>) -> Self {
         PredicateKind::Clause(ClauseKind::Trait(from)).upcast(tcx)
@@ -703,4 +693,16 @@ impl<'tcx> Predicate<'tcx> {
             _ => bug!("{self} is not a clause"),
         }
     }
+}
+
+// Some types are used a lot. Make sure they don't unintentionally get bigger.
+#[cfg(target_pointer_width = "64")]
+mod size_asserts {
+    use rustc_data_structures::static_assert_size;
+
+    use super::*;
+    // tidy-alphabetical-start
+    static_assert_size!(PredicateKind<'_>, 32);
+    static_assert_size!(WithCachedTypeInfo<PredicateKind<'_>>, 56);
+    // tidy-alphabetical-end
 }

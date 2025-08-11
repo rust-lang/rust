@@ -16,7 +16,11 @@ error: `[const]` is not allowed here
 LL | struct Struct<T: [const] Trait> { field: T }
    |                  ^^^^^^^
    |
-   = note: this item cannot have `[const]` trait bounds
+note: structs cannot have `[const]` trait bounds
+  --> $DIR/conditionally-const-invalid-places.rs:9:1
+   |
+LL | struct Struct<T: [const] Trait> { field: T }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: `[const]` is not allowed here
   --> $DIR/conditionally-const-invalid-places.rs:10:23
@@ -24,7 +28,11 @@ error: `[const]` is not allowed here
 LL | struct TupleStruct<T: [const] Trait>(T);
    |                       ^^^^^^^
    |
-   = note: this item cannot have `[const]` trait bounds
+note: structs cannot have `[const]` trait bounds
+  --> $DIR/conditionally-const-invalid-places.rs:10:1
+   |
+LL | struct TupleStruct<T: [const] Trait>(T);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: `[const]` is not allowed here
   --> $DIR/conditionally-const-invalid-places.rs:11:22
@@ -32,7 +40,11 @@ error: `[const]` is not allowed here
 LL | struct UnitStruct<T: [const] Trait>;
    |                      ^^^^^^^
    |
-   = note: this item cannot have `[const]` trait bounds
+note: structs cannot have `[const]` trait bounds
+  --> $DIR/conditionally-const-invalid-places.rs:11:1
+   |
+LL | struct UnitStruct<T: [const] Trait>;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: `[const]` is not allowed here
   --> $DIR/conditionally-const-invalid-places.rs:14:14
@@ -40,7 +52,11 @@ error: `[const]` is not allowed here
 LL | enum Enum<T: [const] Trait> { Variant(T) }
    |              ^^^^^^^
    |
-   = note: this item cannot have `[const]` trait bounds
+note: enums cannot have `[const]` trait bounds
+  --> $DIR/conditionally-const-invalid-places.rs:14:1
+   |
+LL | enum Enum<T: [const] Trait> { Variant(T) }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: `[const]` is not allowed here
   --> $DIR/conditionally-const-invalid-places.rs:16:16
@@ -48,7 +64,11 @@ error: `[const]` is not allowed here
 LL | union Union<T: [const] Trait> { field: T }
    |                ^^^^^^^
    |
-   = note: this item cannot have `[const]` trait bounds
+note: unions cannot have `[const]` trait bounds
+  --> $DIR/conditionally-const-invalid-places.rs:16:1
+   |
+LL | union Union<T: [const] Trait> { field: T }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: `[const]` is not allowed here
   --> $DIR/conditionally-const-invalid-places.rs:19:14

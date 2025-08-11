@@ -2,7 +2,7 @@ error[E0567]: auto traits cannot have generic parameters
   --> $DIR/issue-117789.rs:1:17
    |
 LL | auto trait Trait<P> {}
-   |            -----^^^ help: remove the parameters
+   |            -----^^^
    |            |
    |            auto trait cannot have generic parameters
 

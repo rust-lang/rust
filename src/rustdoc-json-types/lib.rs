@@ -37,8 +37,8 @@ pub type FxHashMap<K, V> = HashMap<K, V>; // re-export for use in src/librustdoc
 // will instead cause conflicts. See #94591 for more. (This paragraph and the "Latest feature" line
 // are deliberately not in a doc comment, because they need not be in public docs.)
 //
-// Latest feature: Structured Attributes
-pub const FORMAT_VERSION: u32 = 54;
+// Latest feature: Add Attribute::MacroUse
+pub const FORMAT_VERSION: u32 = 55;
 
 /// The root of the emitted JSON blob.
 ///
@@ -215,6 +215,9 @@ pub enum Attribute {
 
     /// `#[must_use]`
     MustUse { reason: Option<String> },
+
+    /// `#[macro_export]`
+    MacroExport,
 
     /// `#[export_name = "name"]`
     ExportName(String),

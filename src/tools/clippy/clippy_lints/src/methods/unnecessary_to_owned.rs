@@ -621,8 +621,8 @@ fn is_cloned_or_copied(cx: &LateContext<'_>, method_name: Symbol, method_def_id:
 /// Returns true if the named method can be used to convert the receiver to its "owned"
 /// representation.
 fn is_to_owned_like<'a>(cx: &LateContext<'a>, call_expr: &Expr<'a>, method_name: Symbol, method_def_id: DefId) -> bool {
-    is_clone_like(cx, method_name, method_def_id)
-        || is_cow_into_owned(cx, method_name, method_def_id)
+    is_cow_into_owned(cx, method_name, method_def_id)
+        || (method_name != sym::to_string && is_clone_like(cx, method_name, method_def_id))
         || is_to_string_on_string_like(cx, call_expr, method_name, method_def_id)
 }
 
@@ -694,7 +694,7 @@ fn check_if_applicable_to_argument<'tcx>(cx: &LateContext<'tcx>, arg: &Expr<'tcx
             sym::to_string => cx.tcx.is_diagnostic_item(sym::to_string_method, method_def_id),
             sym::to_vec => cx
                 .tcx
-                .impl_of_method(method_def_id)
+                .impl_of_assoc(method_def_id)
                 .filter(|&impl_did| cx.tcx.type_of(impl_did).instantiate_identity().is_slice())
                 .is_some(),
             _ => false,
@@ -734,7 +734,7 @@ fn check_if_applicable_to_argument<'tcx>(cx: &LateContext<'tcx>, arg: &Expr<'tcx
 fn check_borrow_predicate<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>) {
     if let ExprKind::MethodCall(_, caller, &[arg], _) = expr.kind
         && let Some(method_def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id)
-        && cx.tcx.trait_of_item(method_def_id).is_none()
+        && cx.tcx.trait_of_assoc(method_def_id).is_none()
         && let Some(borrow_id) = cx.tcx.get_diagnostic_item(sym::Borrow)
         && cx.tcx.predicates_of(method_def_id).predicates.iter().any(|(pred, _)| {
             if let ClauseKind::Trait(trait_pred) = pred.kind().skip_binder()

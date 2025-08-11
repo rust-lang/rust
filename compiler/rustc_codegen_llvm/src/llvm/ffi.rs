@@ -97,6 +97,16 @@ pub(crate) enum ModuleFlagMergeBehavior {
 
 // Consts for the LLVM CallConv type, pre-cast to usize.
 
+#[derive(Copy, Clone, PartialEq, Debug)]
+#[repr(C)]
+#[allow(dead_code)]
+pub(crate) enum TailCallKind {
+    None = 0,
+    Tail = 1,
+    MustTail = 2,
+    NoTail = 3,
+}
+
 /// LLVM CallingConv::ID. Should we wrap this?
 ///
 /// See <https://github.com/llvm/llvm-project/blob/main/llvm/include/llvm/IR/CallingConv.h>
@@ -1186,6 +1196,7 @@ unsafe extern "C" {
     pub(crate) safe fn LLVMIsGlobalConstant(GlobalVar: &Value) -> Bool;
     pub(crate) safe fn LLVMSetGlobalConstant(GlobalVar: &Value, IsConstant: Bool);
     pub(crate) safe fn LLVMSetTailCall(CallInst: &Value, IsTailCall: Bool);
+    pub(crate) safe fn LLVMRustSetTailCallKind(CallInst: &Value, Kind: TailCallKind);
 
     // Operations on attributes
     pub(crate) fn LLVMCreateStringAttribute(
@@ -2045,10 +2056,6 @@ unsafe extern "C" {
         NumExpansionRegions: size_t,
         BranchRegions: *const crate::coverageinfo::ffi::BranchRegion,
         NumBranchRegions: size_t,
-        MCDCBranchRegions: *const crate::coverageinfo::ffi::MCDCBranchRegion,
-        NumMCDCBranchRegions: size_t,
-        MCDCDecisionRegions: *const crate::coverageinfo::ffi::MCDCDecisionRegion,
-        NumMCDCDecisionRegions: size_t,
         BufferOut: &RustString,
     );
 
@@ -2612,13 +2619,6 @@ unsafe extern "C" {
         len: usize,
         Identifier: *const c_char,
     ) -> Option<&Module>;
-    pub(crate) fn LLVMRustGetSliceFromObjectDataByName(
-        data: *const u8,
-        len: usize,
-        name: *const u8,
-        name_len: usize,
-        out_len: &mut usize,
-    ) -> *const u8;
 
     pub(crate) fn LLVMRustLinkerNew(M: &Module) -> &mut Linker<'_>;
     pub(crate) fn LLVMRustLinkerAdd(

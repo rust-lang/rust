@@ -7,8 +7,28 @@ LL | type Opaque<'a> = impl Sized + 'a;
 LL |     (id, id)
    |     ^^^^^^^^
 
+error[E0792]: expected generic lifetime parameter, found `'_`
+  --> $DIR/hkl_forbidden.rs:11:5
+   |
+LL | type Opaque<'a> = impl Sized + 'a;
+   |             -- this generic parameter must be used with a generic lifetime parameter
+...
+LL |     (id, id)
+   |     ^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
 error[E0792]: expected generic lifetime parameter, found `'a`
-  --> $DIR/hkl_forbidden.rs:22:5
+  --> $DIR/hkl_forbidden.rs:24:5
+   |
+LL | type Opaque2<'a> = impl Sized + 'a;
+   |              -- this generic parameter must be used with a generic lifetime parameter
+...
+LL |     id2
+   |     ^^^
+
+error[E0792]: expected generic lifetime parameter, found `'b`
+  --> $DIR/hkl_forbidden.rs:24:5
    |
 LL | type Opaque2<'a> = impl Sized + 'a;
    |              -- this generic parameter must be used with a generic lifetime parameter
@@ -17,7 +37,7 @@ LL |     id2
    |     ^^^
 
 error[E0792]: expected generic lifetime parameter, found `'_`
-  --> $DIR/hkl_forbidden.rs:29:5
+  --> $DIR/hkl_forbidden.rs:33:5
    |
 LL | type Opaque3<'a> = impl Sized + 'a;
    |              -- this generic parameter must be used with a generic lifetime parameter
@@ -26,7 +46,7 @@ LL |     (id, s)
    |     ^^^^^^^
 
 error[E0792]: expected generic lifetime parameter, found `'_`
-  --> $DIR/hkl_forbidden.rs:35:5
+  --> $DIR/hkl_forbidden.rs:39:5
    |
 LL | type Opaque4<'a> = impl Sized + 'a;
    |              -- this generic parameter must be used with a generic lifetime parameter
@@ -35,7 +55,7 @@ LL |     (s, id)
    |     ^^^^^^^
 
 error[E0792]: expected generic lifetime parameter, found `'a`
-  --> $DIR/hkl_forbidden.rs:41:5
+  --> $DIR/hkl_forbidden.rs:45:5
    |
 LL | type Inner<'a> = impl Sized;
    |            -- this generic parameter must be used with a generic lifetime parameter
@@ -43,6 +63,6 @@ LL | type Inner<'a> = impl Sized;
 LL |     |x| x
    |     ^^^^^
 
-error: aborting due to 5 previous errors
+error: aborting due to 7 previous errors
 
 For more information about this error, try `rustc --explain E0792`.

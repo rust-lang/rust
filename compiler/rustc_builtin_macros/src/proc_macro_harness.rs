@@ -1,15 +1,14 @@
 use std::{mem, slice};
 
-use rustc_ast::ptr::P;
 use rustc_ast::visit::{self, Visitor};
 use rustc_ast::{self as ast, HasNodeId, NodeId, attr};
 use rustc_ast_pretty::pprust;
-use rustc_attr_data_structures::AttributeKind;
 use rustc_attr_parsing::AttributeParser;
 use rustc_errors::DiagCtxtHandle;
 use rustc_expand::base::{ExtCtxt, ResolverExpand};
 use rustc_expand::expand::{AstFragment, ExpansionConfig};
 use rustc_feature::Features;
+use rustc_hir::attrs::AttributeKind;
 use rustc_session::Session;
 use rustc_span::hygiene::AstPass;
 use rustc_span::source_map::SourceMap;
@@ -286,7 +285,7 @@ impl<'a> Visitor<'a> for CollectProcMacros<'a> {
 //              // ...
 //          ];
 //      }
-fn mk_decls(cx: &mut ExtCtxt<'_>, macros: &[ProcMacro]) -> P<ast::Item> {
+fn mk_decls(cx: &mut ExtCtxt<'_>, macros: &[ProcMacro]) -> Box<ast::Item> {
     let expn_id = cx.resolver.expansion_for_ast_pass(
         DUMMY_SP,
         AstPass::ProcMacroHarness,

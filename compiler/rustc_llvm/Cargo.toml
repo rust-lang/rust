@@ -10,11 +10,13 @@ libc = "0.2.73"
 
 [build-dependencies]
 # tidy-alphabetical-start
-# Pinned so `cargo update` bumps don't cause breakage. Please also update the
-# pinned `cc` in `rustc_codegen_ssa` if you update `cc` here.
+# `cc` updates often break things, so we pin it here. Cargo enforces "max 1 semver-compat version
+# per crate", so if you change this, you need to also change it in `rustc_codegen_ssa`.
 cc = "=1.2.16"
 # tidy-alphabetical-end
 
 [features]
+# tidy-alphabetical-start
 # Used by ./x.py check --compile-time-deps to skip building C++ code
 check_only = []
+# tidy-alphabetical-end

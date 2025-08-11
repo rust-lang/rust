@@ -142,7 +142,7 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
             |err, self_ty, trait_id| {
                 // FIXME(const_trait_impl): Do we need any of this on the non-const codepath?
 
-                let trait_ref = TraitRef::from_method(tcx, trait_id, self.args);
+                let trait_ref = TraitRef::from_assoc(tcx, trait_id, self.args);
 
                 match self_ty.kind() {
                     Param(param_ty) => {
@@ -295,21 +295,18 @@ fn build_error_for_const_call<'tcx>(
                             }
                             let deref = "*".repeat(num_refs);
 
-                            if let Ok(call_str) = ccx.tcx.sess.source_map().span_to_snippet(span) {
-                                if let Some(eq_idx) = call_str.find("==") {
-                                    if let Some(rhs_idx) =
-                                        call_str[(eq_idx + 2)..].find(|c: char| !c.is_whitespace())
-                                    {
-                                        let rhs_pos =
-                                            span.lo() + BytePos::from_usize(eq_idx + 2 + rhs_idx);
-                                        let rhs_span = span.with_lo(rhs_pos).with_hi(rhs_pos);
-                                        sugg = Some(errors::ConsiderDereferencing {
-                                            deref,
-                                            span: span.shrink_to_lo(),
-                                            rhs_span,
-                                        });
-                                    }
-                                }
+                            if let Ok(call_str) = ccx.tcx.sess.source_map().span_to_snippet(span)
+                                && let Some(eq_idx) = call_str.find("==")
+                                && let Some(rhs_idx) =
+                                    call_str[(eq_idx + 2)..].find(|c: char| !c.is_whitespace())
+                            {
+                                let rhs_pos = span.lo() + BytePos::from_usize(eq_idx + 2 + rhs_idx);
+                                let rhs_span = span.with_lo(rhs_pos).with_hi(rhs_pos);
+                                sugg = Some(errors::ConsiderDereferencing {
+                                    deref,
+                                    span: span.shrink_to_lo(),
+                                    rhs_span,
+                                });
                             }
                         }
                         _ => {}

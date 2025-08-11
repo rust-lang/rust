@@ -100,11 +100,11 @@ use std::fs::{self, File};
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
-use rustc_attr_data_structures::InlineAttr;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::sync;
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_hir::LangItem;
+use rustc_hir::attrs::InlineAttr;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, DefIdSet, LOCAL_CRATE};
 use rustc_hir::definitions::DefPathDataName;
@@ -650,13 +650,13 @@ fn characteristic_def_id_of_mono_item<'tcx>(
             // its self-type. If the self-type does not provide a characteristic
             // DefId, we use the location of the impl after all.
 
-            if tcx.trait_of_item(def_id).is_some() {
+            if tcx.trait_of_assoc(def_id).is_some() {
                 let self_ty = instance.args.type_at(0);
                 // This is a default implementation of a trait method.
                 return characteristic_def_id_of_type(self_ty).or(Some(def_id));
             }
 
-            if let Some(impl_def_id) = tcx.impl_of_method(def_id) {
+            if let Some(impl_def_id) = tcx.impl_of_assoc(def_id) {
                 if tcx.sess.opts.incremental.is_some()
                     && tcx
                         .trait_id_of_impl(impl_def_id)
@@ -1178,12 +1178,11 @@ fn collect_and_partition_mono_items(tcx: TyCtxt<'_>, (): ()) -> MonoItemPartitio
     let autodiff_items = tcx.arena.alloc_from_iter(autodiff_items);
 
     // Output monomorphization stats per def_id
-    if let SwitchWithOptPath::Enabled(ref path) = tcx.sess.opts.unstable_opts.dump_mono_stats {
-        if let Err(err) =
+    if let SwitchWithOptPath::Enabled(ref path) = tcx.sess.opts.unstable_opts.dump_mono_stats
+        && let Err(err) =
             dump_mono_items_stats(tcx, codegen_units, path, tcx.crate_name(LOCAL_CRATE))
-        {
-            tcx.dcx().emit_fatal(CouldntDumpMonoStats { error: err.to_string() });
-        }
+    {
+        tcx.dcx().emit_fatal(CouldntDumpMonoStats { error: err.to_string() });
     }
 
     if tcx.sess.opts.unstable_opts.print_mono_items {

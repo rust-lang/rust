@@ -182,14 +182,7 @@ pub enum InstrumentCoverage {
 pub struct CoverageOptions {
     pub level: CoverageLevel,
 
-    /// `-Zcoverage-options=no-mir-spans`: Don't extract block coverage spans
-    /// from MIR statements/terminators, making it easier to inspect/debug
-    /// branch and MC/DC coverage mappings.
-    ///
-    /// For internal debugging only. If other code changes would make it hard
-    /// to keep supporting this flag, remove it.
-    pub no_mir_spans: bool,
-
+    /// **(internal test-only flag)**
     /// `-Zcoverage-options=discard-all-spans-in-codegen`: During codegen,
     /// discard all coverage spans as though they were invalid. Needed by
     /// regression tests for #133606, because we don't have an easy way to
@@ -197,7 +190,7 @@ pub struct CoverageOptions {
     pub discard_all_spans_in_codegen: bool,
 }
 
-/// Controls whether branch coverage or MC/DC coverage is enabled.
+/// Controls whether branch coverage is enabled.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Default)]
 pub enum CoverageLevel {
     /// Instrument for coverage at the MIR block level.
@@ -221,9 +214,6 @@ pub enum CoverageLevel {
     /// instrumentation, so it might be removed in the future when MC/DC is
     /// sufficiently complete, or if it is making MC/DC changes difficult.
     Condition,
-    /// Instrument for MC/DC. Mostly a superset of condition coverage, but might
-    /// differ in some corner cases.
-    Mcdc,
 }
 
 // The different settings that the `-Z offload` flag can have.

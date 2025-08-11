@@ -1,36 +1,30 @@
+mod argument;
 mod compile;
 mod config;
 mod intrinsic;
 mod json_parser;
 mod types;
 
-use std::fs::File;
+use std::fs::{self, File};
 
 use rayon::prelude::*;
 
-use crate::arm::config::POLY128_OSTREAM_DEF;
-use crate::common::SupportedArchitectureTest;
 use crate::common::cli::ProcessedCli;
 use crate::common::compare::compare_outputs;
 use crate::common::gen_c::{write_main_cpp, write_mod_cpp};
-use crate::common::gen_rust::compile_rust_programs;
-use crate::common::intrinsic::{Intrinsic, IntrinsicDefinition};
+use crate::common::gen_rust::{
+    compile_rust_programs, write_bin_cargo_toml, write_lib_cargo_toml, write_lib_rs, write_main_rs,
+};
+use crate::common::intrinsic::Intrinsic;
 use crate::common::intrinsic_helpers::TypeKind;
-use crate::common::write_file::write_rust_testfiles;
-use config::{AARCH_CONFIGURATIONS, F16_FORMATTING_DEF, build_notices};
+use crate::common::{SupportedArchitectureTest, chunk_info};
+use config::{AARCH_CONFIGURATIONS, F16_FORMATTING_DEF, POLY128_OSTREAM_DEF, build_notices};
 use intrinsic::ArmIntrinsicType;
 use json_parser::get_neon_intrinsics;
 
 pub struct ArmArchitectureTest {
     intrinsics: Vec<Intrinsic<ArmIntrinsicType>>,
     cli_options: ProcessedCli,
-}
-
-fn chunk_info(intrinsic_count: usize) -> (usize, usize) {
-    let available_parallelism = std::thread::available_parallelism().unwrap().get();
-    let chunk_size = intrinsic_count.div_ceil(Ord::min(available_parallelism, intrinsic_count));
-
-    (chunk_size, intrinsic_count.div_ceil(chunk_size))
 }
 
 impl SupportedArchitectureTest for ArmArchitectureTest {
@@ -68,9 +62,10 @@ impl SupportedArchitectureTest for ArmArchitectureTest {
 
         let (chunk_size, chunk_count) = chunk_info(self.intrinsics.len());
 
-        let cpp_compiler = compile::build_cpp_compilation(&self.cli_options).unwrap();
+        let cpp_compiler_wrapped = compile::build_cpp_compilation(&self.cli_options);
 
         let notice = &build_notices("// ");
+        fs::create_dir_all("c_programs").unwrap();
         self.intrinsics
             .par_chunks(chunk_size)
             .enumerate()
@@ -79,10 +74,15 @@ impl SupportedArchitectureTest for ArmArchitectureTest {
                 let mut file = File::create(&c_filename).unwrap();
                 write_mod_cpp(&mut file, notice, c_target, platform_headers, chunk).unwrap();
 
-                // compile this cpp file into a .o file
-                let output = cpp_compiler
-                    .compile_object_file(&format!("mod_{i}.cpp"), &format!("mod_{i}.o"))?;
-                assert!(output.status.success(), "{output:?}");
+                // compile this cpp file into a .o file.
+                //
+                // This is done because `cpp_compiler_wrapped` is None when
+                // the --generate-only flag is passed
+                if let Some(cpp_compiler) = cpp_compiler_wrapped.as_ref() {
+                    let output = cpp_compiler
+                        .compile_object_file(&format!("mod_{i}.cpp"), &format!("mod_{i}.o"))?;
+                    assert!(output.status.success(), "{output:?}");
+                }
 
                 Ok(())
             })
@@ -98,46 +98,84 @@ impl SupportedArchitectureTest for ArmArchitectureTest {
         )
         .unwrap();
 
-        // compile this cpp file into a .o file
-        info!("compiling main.cpp");
-        let output = cpp_compiler
-            .compile_object_file("main.cpp", "intrinsic-test-programs.o")
-            .unwrap();
-        assert!(output.status.success(), "{output:?}");
+        // This is done because `cpp_compiler_wrapped` is None when
+        // the --generate-only flag is passed
+        if let Some(cpp_compiler) = cpp_compiler_wrapped.as_ref() {
+            // compile this cpp file into a .o file
+            info!("compiling main.cpp");
+            let output = cpp_compiler
+                .compile_object_file("main.cpp", "intrinsic-test-programs.o")
+                .unwrap();
+            assert!(output.status.success(), "{output:?}");
 
-        let object_files = (0..chunk_count)
-            .map(|i| format!("mod_{i}.o"))
-            .chain(["intrinsic-test-programs.o".to_owned()]);
+            let object_files = (0..chunk_count)
+                .map(|i| format!("mod_{i}.o"))
+                .chain(["intrinsic-test-programs.o".to_owned()]);
 
-        let output = cpp_compiler
-            .link_executable(object_files, "intrinsic-test-programs")
-            .unwrap();
-        assert!(output.status.success(), "{output:?}");
+            let output = cpp_compiler
+                .link_executable(object_files, "intrinsic-test-programs")
+                .unwrap();
+            assert!(output.status.success(), "{output:?}");
+        }
 
         true
     }
 
     fn build_rust_file(&self) -> bool {
-        let rust_target = if self.cli_options.target.contains("v7") {
+        std::fs::create_dir_all("rust_programs/src").unwrap();
+
+        let architecture = if self.cli_options.target.contains("v7") {
             "arm"
         } else {
             "aarch64"
         };
+
+        let (chunk_size, chunk_count) = chunk_info(self.intrinsics.len());
+
+        let mut cargo = File::create("rust_programs/Cargo.toml").unwrap();
+        write_bin_cargo_toml(&mut cargo, chunk_count).unwrap();
+
+        let mut main_rs = File::create("rust_programs/src/main.rs").unwrap();
+        write_main_rs(
+            &mut main_rs,
+            chunk_count,
+            AARCH_CONFIGURATIONS,
+            "",
+            self.intrinsics.iter().map(|i| i.name.as_str()),
+        )
+        .unwrap();
+
         let target = &self.cli_options.target;
         let toolchain = self.cli_options.toolchain.as_deref();
         let linker = self.cli_options.linker.as_deref();
-        let intrinsics_name_list = write_rust_testfiles(
-            self.intrinsics
-                .iter()
-                .map(|i| i as &dyn IntrinsicDefinition<_>)
-                .collect::<Vec<_>>(),
-            rust_target,
-            &build_notices("// "),
-            F16_FORMATTING_DEF,
-            AARCH_CONFIGURATIONS,
-        );
 
-        compile_rust_programs(intrinsics_name_list, toolchain, target, linker)
+        let notice = &build_notices("// ");
+        self.intrinsics
+            .par_chunks(chunk_size)
+            .enumerate()
+            .map(|(i, chunk)| {
+                std::fs::create_dir_all(format!("rust_programs/mod_{i}/src"))?;
+
+                let rust_filename = format!("rust_programs/mod_{i}/src/lib.rs");
+                trace!("generating `{rust_filename}`");
+                let mut file = File::create(rust_filename)?;
+
+                let cfg = AARCH_CONFIGURATIONS;
+                let definitions = F16_FORMATTING_DEF;
+                write_lib_rs(&mut file, architecture, notice, cfg, definitions, chunk)?;
+
+                let toml_filename = format!("rust_programs/mod_{i}/Cargo.toml");
+                trace!("generating `{toml_filename}`");
+                let mut file = File::create(toml_filename).unwrap();
+
+                write_lib_cargo_toml(&mut file, &format!("mod_{i}"))?;
+
+                Ok(())
+            })
+            .collect::<Result<(), std::io::Error>>()
+            .unwrap();
+
+        compile_rust_programs(toolchain, target, linker)
     }
 
     fn compare_outputs(&self) -> bool {

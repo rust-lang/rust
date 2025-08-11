@@ -8,8 +8,8 @@ pub struct Handler {
 }
 
 impl Handler {
-    pub unsafe fn new() -> Handler {
-        make_handler(false)
+    pub unsafe fn new(thread_name: Option<Box<str>>) -> Handler {
+        make_handler(false, thread_name)
     }
 
     fn null() -> Handler {
@@ -72,7 +72,6 @@ mod imp {
     use crate::sync::OnceLock;
     use crate::sync::atomic::{Atomic, AtomicBool, AtomicPtr, AtomicUsize, Ordering};
     use crate::sys::pal::unix::os;
-    use crate::thread::with_current_name;
     use crate::{io, mem, panic, ptr};
 
     // Signal handler for the SIGSEGV and SIGBUS handlers. We've got guard pages
@@ -120,7 +119,8 @@ mod imp {
                     && thread_info.guard_page_range.contains(&fault_addr)
                 {
                     let name = thread_info.thread_name.as_deref().unwrap_or("<unknown>");
-                    rtprintpanic!("\nthread '{name}' has overflowed its stack\n");
+                    let tid = crate::thread::current_os_id();
+                    rtprintpanic!("\nthread '{name}' ({tid}) has overflowed its stack\n");
                     rtabort!("stack overflow");
                 }
             })
@@ -158,13 +158,12 @@ mod imp {
                 if !NEED_ALTSTACK.load(Ordering::Relaxed) {
                     // haven't set up our sigaltstack yet
                     NEED_ALTSTACK.store(true, Ordering::Release);
-                    let handler = unsafe { make_handler(true) };
+                    let handler = unsafe { make_handler(true, None) };
                     MAIN_ALTSTACK.store(handler.data, Ordering::Relaxed);
                     mem::forget(handler);
 
                     if let Some(guard_page_range) = guard_page_range.take() {
-                        let thread_name = with_current_name(|name| name.map(Box::from));
-                        set_current_info(guard_page_range, thread_name);
+                        set_current_info(guard_page_range, Some(Box::from("main")));
                     }
                 }
 
@@ -230,14 +229,13 @@ mod imp {
     /// # Safety
     /// Mutates the alternate signal stack
     #[forbid(unsafe_op_in_unsafe_fn)]
-    pub unsafe fn make_handler(main_thread: bool) -> Handler {
+    pub unsafe fn make_handler(main_thread: bool, thread_name: Option<Box<str>>) -> Handler {
         if !NEED_ALTSTACK.load(Ordering::Acquire) {
             return Handler::null();
         }
 
         if !main_thread {
             if let Some(guard_page_range) = unsafe { current_guard() } {
-                let thread_name = with_current_name(|name| name.map(Box::from));
                 set_current_info(guard_page_range, thread_name);
             }
         }
@@ -634,7 +632,10 @@ mod imp {
 
     pub unsafe fn cleanup() {}
 
-    pub unsafe fn make_handler(_main_thread: bool) -> super::Handler {
+    pub unsafe fn make_handler(
+        _main_thread: bool,
+        _thread_name: Option<Box<str>>,
+    ) -> super::Handler {
         super::Handler::null()
     }
 
@@ -696,7 +697,8 @@ mod imp {
             if code == c::EXCEPTION_STACK_OVERFLOW {
                 crate::thread::with_current_name(|name| {
                     let name = name.unwrap_or("<unknown>");
-                    rtprintpanic!("\nthread '{name}' has overflowed its stack\n");
+                    let tid = crate::thread::current_os_id();
+                    rtprintpanic!("\nthread '{name}' ({tid}) has overflowed its stack\n");
                 });
             }
             c::EXCEPTION_CONTINUE_SEARCH
@@ -717,7 +719,10 @@ mod imp {
 
     pub unsafe fn cleanup() {}
 
-    pub unsafe fn make_handler(main_thread: bool) -> super::Handler {
+    pub unsafe fn make_handler(
+        main_thread: bool,
+        _thread_name: Option<Box<str>>,
+    ) -> super::Handler {
         if !main_thread {
             reserve_stack();
         }

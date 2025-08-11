@@ -44,11 +44,11 @@ impl Node {
 /// For example, `ast::Visitor` has `visit_ident`, but `Ident`s are always
 /// stored inline within other AST nodes, so we don't implement `visit_ident`
 /// here. In contrast, we do implement `visit_expr` because `ast::Expr` is
-/// always stored as `P<ast::Expr>`, and every such expression should be
+/// always stored as `Box<ast::Expr>`, and every such expression should be
 /// measured separately.
 ///
 /// In general, a `visit_foo` method should be implemented here if the
-/// corresponding `Foo` type is always stored on its own, e.g.: `P<Foo>`,
+/// corresponding `Foo` type is always stored on its own, e.g.: `Box<Foo>`,
 /// `Box<Foo>`, `Vec<Foo>`, `Box<[Foo]>`.
 ///
 /// There are some types in the AST and HIR tree that the visitors do not have

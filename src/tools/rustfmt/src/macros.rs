@@ -12,9 +12,9 @@
 use std::collections::HashMap;
 use std::panic::{AssertUnwindSafe, catch_unwind};
 
+use rustc_ast::ast;
 use rustc_ast::token::{Delimiter, Token, TokenKind};
 use rustc_ast::tokenstream::{TokenStream, TokenStreamIter, TokenTree};
-use rustc_ast::{ast, ptr};
 use rustc_ast_pretty::pprust;
 use rustc_span::{BytePos, DUMMY_SP, Ident, Span, Symbol};
 use tracing::debug;
@@ -53,10 +53,10 @@ pub(crate) enum MacroPosition {
 
 #[derive(Debug)]
 pub(crate) enum MacroArg {
-    Expr(ptr::P<ast::Expr>),
-    Ty(ptr::P<ast::Ty>),
-    Pat(ptr::P<ast::Pat>),
-    Item(ptr::P<ast::Item>),
+    Expr(Box<ast::Expr>),
+    Ty(Box<ast::Ty>),
+    Pat(Box<ast::Pat>),
+    Item(Box<ast::Item>),
     Keyword(Ident, Span),
 }
 

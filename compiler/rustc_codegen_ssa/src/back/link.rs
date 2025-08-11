@@ -880,6 +880,14 @@ fn link_natively(
                             windows_registry::find_tool(&sess.target.arch, "link.exe").is_some();
 
                         sess.dcx().emit_note(errors::LinkExeUnexpectedError);
+
+                        // STATUS_STACK_BUFFER_OVERRUN is also used for fast abnormal program termination, e.g. abort().
+                        // Emit a special diagnostic to let people know that this most likely doesn't indicate a stack buffer overrun.
+                        const STATUS_STACK_BUFFER_OVERRUN: i32 = 0xc0000409u32 as _;
+                        if code == STATUS_STACK_BUFFER_OVERRUN {
+                            sess.dcx().emit_note(errors::LinkExeStatusStackBufferOverrun);
+                        }
+
                         if is_vs_installed && has_linker {
                             // the linker is broken
                             sess.dcx().emit_note(errors::RepairVSBuildTools);
@@ -1011,11 +1019,12 @@ fn link_natively(
             (Strip::Debuginfo, _) => {
                 strip_with_external_utility(sess, stripcmd, out_filename, &["--strip-debug"])
             }
-            // Per the manpage, `-x` is the maximum safe strip level for dynamic libraries. (#93988)
+
+            // Per the manpage, --discard-all is the maximum safe strip level for dynamic libraries. (#93988)
             (
                 Strip::Symbols,
                 CrateType::Dylib | CrateType::Cdylib | CrateType::ProcMacro | CrateType::Sdylib,
-            ) => strip_with_external_utility(sess, stripcmd, out_filename, &["-x"]),
+            ) => strip_with_external_utility(sess, stripcmd, out_filename, &["--discard-all"]),
             (Strip::Symbols, _) => {
                 strip_with_external_utility(sess, stripcmd, out_filename, &["--strip-all"])
             }
@@ -3025,7 +3034,7 @@ pub(crate) fn are_upstream_rust_objects_already_included(sess: &Session) -> bool
 /// We need to communicate five things to the linker on Apple/Darwin targets:
 /// - The architecture.
 /// - The operating system (and that it's an Apple platform).
-/// - The environment / ABI.
+/// - The environment.
 /// - The deployment target.
 /// - The SDK version.
 fn add_apple_link_args(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor) {
@@ -3039,7 +3048,7 @@ fn add_apple_link_args(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavo
     // `sess.target.arch` (`target_arch`) is not detailed enough.
     let llvm_arch = sess.target.llvm_target.split_once('-').expect("LLVM target must have arch").0;
     let target_os = &*sess.target.os;
-    let target_abi = &*sess.target.abi;
+    let target_env = &*sess.target.env;
 
     // The architecture name to forward to the linker.
     //
@@ -3090,14 +3099,14 @@ fn add_apple_link_args(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavo
         // > - visionos-simulator
         // > - xros-simulator
         // > - driverkit
-        let platform_name = match (target_os, target_abi) {
+        let platform_name = match (target_os, target_env) {
             (os, "") => os,
             ("ios", "macabi") => "mac-catalyst",
             ("ios", "sim") => "ios-simulator",
             ("tvos", "sim") => "tvos-simulator",
             ("watchos", "sim") => "watchos-simulator",
             ("visionos", "sim") => "visionos-simulator",
-            _ => bug!("invalid OS/ABI combination for Apple target: {target_os}, {target_abi}"),
+            _ => bug!("invalid OS/env combination for Apple target: {target_os}, {target_env}"),
         };
 
         let min_version = sess.apple_deployment_target().fmt_full().to_string();
@@ -3369,12 +3378,12 @@ fn warn_if_linked_with_gold(sess: &Session, path: &Path) -> Result<(), Box<dyn s
 
         let section =
             elf.sections(endian, data)?.section_by_name(endian, b".note.gnu.gold-version");
-        if let Some((_, section)) = section {
-            if let Some(mut notes) = section.notes(endian, data)? {
-                return Ok(notes.any(|note| {
-                    note.is_ok_and(|note| note.n_type(endian) == elf::NT_GNU_GOLD_VERSION)
-                }));
-            }
+        if let Some((_, section)) = section
+            && let Some(mut notes) = section.notes(endian, data)?
+        {
+            return Ok(notes.any(|note| {
+                note.is_ok_and(|note| note.n_type(endian) == elf::NT_GNU_GOLD_VERSION)
+            }));
         }
 
         Ok(false)

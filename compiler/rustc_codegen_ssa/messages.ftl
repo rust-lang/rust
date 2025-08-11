@@ -101,6 +101,8 @@ codegen_ssa_invalid_monomorphization_basic_float_type = invalid monomorphization
 
 codegen_ssa_invalid_monomorphization_basic_integer_type = invalid monomorphization of `{$name}` intrinsic: expected basic integer type, found `{$ty}`
 
+codegen_ssa_invalid_monomorphization_basic_integer_or_ptr_type = invalid monomorphization of `{$name}` intrinsic: expected basic integer or pointer type, found `{$ty}`
+
 codegen_ssa_invalid_monomorphization_cannot_return = invalid monomorphization of `{$name}` intrinsic: cannot return `{$ret_ty}`, expected `u{$expected_int_bits}` or `[u8; {$expected_bytes}]`
 
 codegen_ssa_invalid_monomorphization_cast_wide_pointer = invalid monomorphization of `{$name}` intrinsic: cannot cast wide pointer `{$ty}`
@@ -177,6 +179,10 @@ codegen_ssa_invalid_windows_subsystem = invalid windows subsystem `{$subsystem}`
 codegen_ssa_ld64_unimplemented_modifier = `as-needed` modifier not implemented yet for ld64
 
 codegen_ssa_lib_def_write_failure = failed to write lib.def file: {$error}
+
+codegen_ssa_link_exe_status_stack_buffer_overrun = 0xc0000409 is `STATUS_STACK_BUFFER_OVERRUN`
+    .abort_note = this may have been caused by a program abort and not a stack buffer overrun
+    .event_log_note = consider checking the Application Event Log for Windows Error Reporting events to see the fail fast error code
 
 codegen_ssa_link_exe_unexpected_error = `link.exe` returned an unexpected error
 

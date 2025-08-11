@@ -649,8 +649,6 @@ pub const fn must_use<T>(value: T) -> T {
 ///     }
 /// }
 /// ```
-///
-///
 #[unstable(feature = "likely_unlikely", issue = "136873")]
 #[inline(always)]
 pub const fn likely(b: bool) -> bool {

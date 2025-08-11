@@ -7,9 +7,14 @@ edition = "2024"
 proc-macro = true
 
 [dependencies]
-syn = { version = "2.0.9", features = ["full", "extra-traits"] }
+# tidy-alphabetical-start
 proc-macro2 = "1"
 quote = "1"
+syn = { version = "2.0.9", features = ["full", "extra-traits"] }
+# tidy-alphabetical-end
 
 [features]
+# tidy-alphabetical-start
 nightly = []
+# tidy-alphabetical-end
+
