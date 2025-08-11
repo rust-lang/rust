@@ -105,7 +105,7 @@ impl DiagnosticCollection {
         flycheck_id: usize,
         generation: DiagnosticsGeneration,
     ) {
-        if self.check[flycheck_id].generation < generation {
+        if self.check.get(flycheck_id).is_some_and(|it| it.generation < generation) {
             self.clear_check(flycheck_id);
         }
     }
