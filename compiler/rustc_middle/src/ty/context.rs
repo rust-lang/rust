@@ -1418,6 +1418,8 @@ pub struct TyCtxt<'tcx> {
 }
 
 impl<'tcx> LintEmitter for TyCtxt<'tcx> {
+    type Id = HirId;
+
     fn emit_node_span_lint(
         self,
         lint: &'static Lint,

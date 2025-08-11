@@ -66,6 +66,8 @@ extern "Rust" {
 }
 
 #[must_use] //~ ERROR unused attribute
+//~^ ERROR `#[must_use]` attribute cannot be used on macro calls
+//~| WARN this was previously accepted by the compiler but is being phased out
 global_asm!("");
 
 #[must_use] //~ ERROR attribute cannot be used on
