@@ -1415,7 +1415,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         recursive: bool,
         reset_provenance_and_padding: bool,
     ) -> InterpResult<'tcx> {
-        let _span = enter_trace_span!(
+        let _trace = enter_trace_span!(
             M,
             "validate_operand",
             "recursive={recursive}, reset_provenance_and_padding={reset_provenance_and_padding}, val={val:?}"
