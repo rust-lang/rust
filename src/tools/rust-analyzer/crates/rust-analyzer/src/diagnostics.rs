@@ -134,6 +134,7 @@ impl DiagnosticCollection {
         if self.check[flycheck_id].generation > generation {
             return;
         }
+        self.check[flycheck_id].generation = generation;
         let diagnostics = self.check[flycheck_id]
             .per_package
             .entry(package_id.clone())
