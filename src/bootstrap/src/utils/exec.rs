@@ -681,15 +681,15 @@ impl ExecutionContext {
     ) -> DeferredCommand<'a> {
         let fingerprint = command.fingerprint();
 
-        #[cfg(feature = "tracing")]
-        let span_guard = crate::utils::tracing::trace_cmd(command);
-
         if let Some(cached_output) = self.command_cache.get(&fingerprint) {
             command.mark_as_executed();
             self.verbose(|| println!("Cache hit: {command:?}"));
             self.profiler.record_cache_hit(fingerprint);
             return DeferredCommand { state: CommandState::Cached(cached_output) };
         }
+
+        #[cfg(feature = "tracing")]
+        let span_guard = crate::utils::tracing::trace_cmd(command);
 
         let created_at = command.get_created_location();
         let executed_at = std::panic::Location::caller();
