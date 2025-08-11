@@ -162,4 +162,114 @@ fn bad_lines() {
     println!("This is bad.");
 }
 
+struct Foo;
+impl Foo {
+    fn bad_lines() {
+        //~^ too_many_lines
+
+        println!("Dont get confused by braces: {{}}");
+        println!("This is bad.");
+        println!("This is bad.");
+        println!("This is bad.");
+        println!("This is bad.");
+        println!("This is bad.");
+        println!("This is bad.");
+        println!("This is bad.");
+        println!("This is bad.");
+        println!("This is bad.");
+        println!("This is bad.");
+        println!("This is bad.");
+        println!("This is bad.");
+        println!("This is bad.");
+        println!("This is bad.");
+        println!("This is bad.");
+        println!("This is bad.");
+        println!("This is bad.");
+        println!("This is bad.");
+        println!("This is bad.");
+        println!("This is bad.");
+        println!("This is bad.");
+        println!("This is bad.");
+        println!("This is bad.");
+        println!("This is bad.");
+        println!("This is bad.");
+        println!("This is bad.");
+        println!("This is bad.");
+        println!("This is bad.");
+        println!("This is bad.");
+        println!("This is bad.");
+        println!("This is bad.");
+        println!("This is bad.");
+        println!("This is bad.");
+        println!("This is bad.");
+        println!("This is bad.");
+        println!("This is bad.");
+        println!("This is bad.");
+        println!("This is bad.");
+        println!("This is bad.");
+        println!("This is bad.");
+        println!("This is bad.");
+        println!("This is bad.");
+        println!("This is bad.");
+        println!("This is bad.");
+        println!("This is bad.");
+        println!("This is bad.");
+        println!("This is bad.");
+        println!("This is bad.");
+        println!("This is bad.");
+        println!("This is bad.");
+        println!("This is bad.");
+        println!("This is bad.");
+        println!("This is bad.");
+        println!("This is bad.");
+        println!("This is bad.");
+        println!("This is bad.");
+        println!("This is bad.");
+        println!("This is bad.");
+        println!("This is bad.");
+        println!("This is bad.");
+        println!("This is bad.");
+        println!("This is bad.");
+        println!("This is bad.");
+        println!("This is bad.");
+        println!("This is bad.");
+        println!("This is bad.");
+        println!("This is bad.");
+        println!("This is bad.");
+        println!("This is bad.");
+        println!("This is bad.");
+        println!("This is bad.");
+        println!("This is bad.");
+        println!("This is bad.");
+        println!("This is bad.");
+        println!("This is bad.");
+        println!("This is bad.");
+        println!("This is bad.");
+        println!("This is bad.");
+        println!("This is bad.");
+        println!("This is bad.");
+        println!("This is bad.");
+        println!("This is bad.");
+        println!("This is bad.");
+        println!("This is bad.");
+        println!("This is bad.");
+        println!("This is bad.");
+        println!("This is bad.");
+        println!("This is bad.");
+        println!("This is bad.");
+        println!("This is bad.");
+        println!("This is bad.");
+        println!("This is bad.");
+        println!("This is bad.");
+        println!("This is bad.");
+        println!("This is bad.");
+        println!("This is bad.");
+        println!("This is bad.");
+        println!("This is bad.");
+        println!("This is bad.");
+        println!("This is bad.");
+        println!("This is bad.");
+    }
+}
+
 fn main() {}
