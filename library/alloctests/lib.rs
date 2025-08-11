@@ -49,6 +49,7 @@
 // Language features:
 // tidy-alphabetical-start
 #![feature(cfg_sanitize)]
+#![feature(const_trait_impl)]
 #![feature(dropck_eyepatch)]
 #![feature(lang_items)]
 #![feature(min_specialization)]
