@@ -10,8 +10,8 @@ use super::TOO_MANY_LINES;
 pub(super) fn check_fn(
     cx: &LateContext<'_>,
     kind: FnKind<'_>,
-    span: Span,
     body: &hir::Body<'_>,
+    span: Span,
     too_many_lines_threshold: u64,
 ) {
     // Closures must be contained in a parent body, which will be checked for `too_many_lines`.
