@@ -401,6 +401,9 @@ codegen_ssa_version_script_write_failure = failed to write version script: {$err
 
 codegen_ssa_visual_studio_not_installed = you may need to install Visual Studio build tools with the "C++ build tools" workload
 
+codegen_ssa_xcrun_about =
+    the SDK is needed by the linker to know where to find symbols in system libraries and for embedding the SDK version in the final object file
+
 codegen_ssa_xcrun_command_line_tools_insufficient =
     when compiling for iOS, tvOS, visionOS or watchOS, you need a full installation of Xcode
 
