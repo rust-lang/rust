@@ -577,6 +577,29 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
         self.level = Level::DelayedBug;
     }
 
+    /// Make emitting this diagnostic fatal
+    ///
+    /// Changes the level of this diagnostic to Fatal, and importantly also changes the emission guarantee.
+    /// This is sound for errors that would otherwise be printed, but now simply exit the process instead.
+    /// This function still gives an emission guarantee, the guarantee is now just that it exits fatally.
+    /// For delayed bugs this is different, since those are buffered. If we upgrade one to fatal, another
+    /// might now be ignored.
+    #[rustc_lint_diagnostics]
+    #[track_caller]
+    pub fn upgrade_to_fatal(mut self) -> Diag<'a, FatalAbort> {
+        assert!(
+            matches!(self.level, Level::Error),
+            "upgrade_to_fatal: cannot upgrade {:?} to Fatal: not an error",
+            self.level
+        );
+        self.level = Level::Fatal;
+
+        // Take is okay since we immediately rewrap it in another diagnostic.
+        // i.e. we do emit it despite defusing the original diagnostic's drop bomb.
+        let diag = self.diag.take();
+        Diag { dcx: self.dcx, diag, _marker: PhantomData }
+    }
+
     with_fn! { with_span_label,
     /// Appends a labeled span to the diagnostic.
     ///

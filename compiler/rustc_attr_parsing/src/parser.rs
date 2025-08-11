@@ -328,15 +328,16 @@ fn expr_to_lit(
         match res {
             Ok(lit) => {
                 if token_lit.suffix.is_some() {
-                    psess
-                        .dcx()
-                        .create_err(SuffixedLiteralInAttribute { span: lit.span })
-                        .emit_unless_delay(!should_emit.should_emit());
+                    should_emit.emit_err_or_delay(
+                        psess.dcx().create_err(SuffixedLiteralInAttribute { span: lit.span }),
+                    );
                     None
                 } else {
-                    if should_emit.should_emit() && !lit.kind.is_unsuffixed() {
+                    if !lit.kind.is_unsuffixed() {
                         // Emit error and continue, we can still parse the attribute as if the suffix isn't there
-                        psess.dcx().emit_err(SuffixedLiteralInAttribute { span: lit.span });
+                        should_emit.maybe_emit_err(
+                            psess.dcx().create_err(SuffixedLiteralInAttribute { span: lit.span }),
+                        );
                     }
 
                     Some(lit)
@@ -366,7 +367,7 @@ fn expr_to_lit(
             err.downgrade_to_delayed_bug();
         }
 
-        err.emit_unless_delay(!should_emit.should_emit());
+        should_emit.emit_err_or_delay(err);
         None
     }
 }
@@ -397,9 +398,11 @@ impl<'a, 'sess> MetaItemListParserContext<'a, 'sess> {
             }
         };
 
-        if self.should_emit.should_emit() && !lit.kind.is_unsuffixed() {
+        if !lit.kind.is_unsuffixed() {
             // Emit error and continue, we can still parse the attribute as if the suffix isn't there
-            self.parser.dcx().emit_err(SuffixedLiteralInAttribute { span: lit.span });
+            self.should_emit.maybe_emit_err(
+                self.parser.dcx().create_err(SuffixedLiteralInAttribute { span: lit.span }),
+            );
         }
 
         Ok(lit)
@@ -539,7 +542,7 @@ impl<'a> MetaItemListParser<'a> {
         ) {
             Ok(s) => Some(s),
             Err(e) => {
-                e.emit_unless_delay(!should_emit.should_emit());
+                should_emit.emit_err_or_delay(e);
                 None
             }
         }
