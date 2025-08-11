@@ -528,7 +528,9 @@ impl Analysis {
         let search_scope = AssertUnwindSafe(search_scope);
         self.with_db(|db| {
             let _ = &search_scope;
-            references::find_all_refs(&Semantics::new(db), position, search_scope.0)
+            salsa::attach(db, || {
+                references::find_all_refs(&Semantics::new(db), position, search_scope.0)
+            })
         })
     }
 
@@ -574,7 +576,7 @@ impl Analysis {
         &self,
         position: FilePosition,
     ) -> Cancellable<Option<RangeInfo<Vec<NavigationTarget>>>> {
-        self.with_db(|db| call_hierarchy::call_hierarchy(db, position))
+        self.with_db(|db| salsa::attach(db, || call_hierarchy::call_hierarchy(db, position)))
     }
 
     /// Computes incoming calls for the given file position.

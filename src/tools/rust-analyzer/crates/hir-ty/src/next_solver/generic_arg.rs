@@ -263,7 +263,9 @@ impl<'db> rustc_type_ir::inherent::GenericArgs<DbInterner<'db>> for GenericArgs<
         interner: DbInterner<'db>,
         def_id: <DbInterner<'db> as rustc_type_ir::Interner>::DefId,
     ) -> <DbInterner<'db> as rustc_type_ir::Interner>::GenericArgs {
-        Self::for_item(interner, def_id, |name, index, kind, _| mk_param(index, name, kind))
+        Self::for_item(interner, def_id, |name, index, kind, _| {
+            mk_param(interner, index, name, kind)
+        })
     }
 
     fn extend_with_error(
@@ -383,16 +385,19 @@ impl<'db> rustc_type_ir::inherent::GenericArgs<DbInterner<'db>> for GenericArgs<
     }
 }
 
-pub fn mk_param<'db>(index: u32, name: &Symbol, kind: GenericParamDefKind) -> GenericArg<'db> {
+pub fn mk_param<'db>(
+    interner: DbInterner<'db>,
+    index: u32,
+    name: &Symbol,
+    kind: GenericParamDefKind,
+) -> GenericArg<'db> {
     let name = name.clone();
     match kind {
         GenericParamDefKind::Lifetime => {
-            Region::new_early_param(DbInterner::conjure(), EarlyParamRegion { index }).into()
+            Region::new_early_param(interner, EarlyParamRegion { index }).into()
         }
-        GenericParamDefKind::Type => Ty::new_param(DbInterner::conjure(), index, name).into(),
-        GenericParamDefKind::Const => {
-            Const::new_param(DbInterner::conjure(), ParamConst { index }).into()
-        }
+        GenericParamDefKind::Type => Ty::new_param(interner, index, name).into(),
+        GenericParamDefKind::Const => Const::new_param(interner, ParamConst { index }).into(),
     }
 }
 

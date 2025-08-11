@@ -118,8 +118,9 @@ pub use infer::{
 pub use interner::Interner;
 pub use lower::{
     ImplTraitLoweringMode, LifetimeElisionKind, ParamLoweringMode, TyDefId, TyLoweringContext,
-    ValueTyDefId, associated_type_shorthand_candidates, diagnostics::*,
+    ValueTyDefId, diagnostics::*,
 };
+pub use lower_nextsolver::associated_type_shorthand_candidates;
 pub use mapping::{
     ToChalk, from_assoc_type_id, from_chalk_trait_id, from_foreign_def_id, from_placeholder_idx,
     lt_from_placeholder_idx, lt_to_placeholder_idx, to_assoc_type_id, to_chalk_trait_id,

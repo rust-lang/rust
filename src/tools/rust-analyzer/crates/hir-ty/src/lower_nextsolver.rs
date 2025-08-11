@@ -12,14 +12,14 @@ pub(crate) mod path;
 use std::{
     cell::OnceCell,
     iter, mem,
-    ops::{self, Not as _},
+    ops::{self, Deref, Not as _},
 };
 
 use base_db::Crate;
 use either::Either;
 use hir_def::{
     AdtId, AssocItemId, CallableDefId, ConstParamId, EnumVariantId, FunctionId, GenericDefId,
-    GenericParamId, ImplId, ItemContainerId, LocalFieldId, Lookup, StructId, TypeAliasId,
+    GenericParamId, ImplId, ItemContainerId, LocalFieldId, Lookup, StructId, TraitId, TypeAliasId,
     TypeOrConstParamId, VariantId,
     expr_store::{
         ExpressionStore,
@@ -49,6 +49,7 @@ use rustc_type_ir::{
     inherent::{GenericArg as _, GenericArgs as _, IntoKind as _, Region as _, SliceLike, Ty as _},
 };
 use salsa::plumbing::AsId;
+use smallvec::{SmallVec, smallvec};
 use stdx::never;
 use triomphe::Arc;
 
@@ -1606,4 +1607,132 @@ pub(crate) fn associated_type_by_name_including_super_traits<'db>(
         let assoc_type = trait_id.trait_items(db).associated_type_by_name(name)?;
         Some((t.skip_binder(), assoc_type))
     })
+}
+
+pub fn associated_type_shorthand_candidates(
+    db: &dyn HirDatabase,
+    def: GenericDefId,
+    res: TypeNs,
+    mut cb: impl FnMut(&Name, TypeAliasId) -> bool,
+) -> Option<TypeAliasId> {
+    let interner = DbInterner::new_with(db, None, None);
+    named_associated_type_shorthand_candidates(interner, def, res, None, |name, _, id| {
+        cb(name, id).then_some(id)
+    })
+}
+
+#[tracing::instrument(skip(interner, check_alias))]
+fn named_associated_type_shorthand_candidates<'db, R>(
+    interner: DbInterner<'db>,
+    // If the type parameter is defined in an impl and we're in a method, there
+    // might be additional where clauses to consider
+    def: GenericDefId,
+    res: TypeNs,
+    assoc_name: Option<Name>,
+    mut check_alias: impl FnMut(&Name, TraitRef<'db>, TypeAliasId) -> Option<R>,
+) -> Option<R> {
+    let db = interner.db;
+    let mut search = |t: TraitRef<'db>| -> Option<R> {
+        let trait_id = match t.def_id {
+            SolverDefId::TraitId(id) => id,
+            _ => unreachable!(),
+        };
+        let mut checked_traits = FxHashSet::default();
+        let mut check_trait = |trait_id: TraitId| {
+            let name = &db.trait_signature(trait_id).name;
+            tracing::debug!(?trait_id, ?name);
+            if !checked_traits.insert(trait_id) {
+                return None;
+            }
+            let data = trait_id.trait_items(db);
+
+            tracing::debug!(?data.items);
+            for (name, assoc_id) in &data.items {
+                if let &AssocItemId::TypeAliasId(alias) = assoc_id
+                    && let Some(ty) = check_alias(name, t, alias)
+                {
+                    return Some(ty);
+                }
+            }
+            None
+        };
+        let mut stack: SmallVec<[_; 4]> = smallvec![trait_id];
+        while let Some(trait_def_id) = stack.pop() {
+            if let Some(alias) = check_trait(trait_def_id) {
+                return Some(alias);
+            }
+            for pred in generic_predicates_filtered_by(
+                db,
+                GenericDefId::TraitId(trait_def_id),
+                PredicateFilter::SelfTrait,
+                |pred| pred == GenericDefId::TraitId(trait_def_id),
+            )
+            .0
+            .deref()
+            {
+                tracing::debug!(?pred);
+                let trait_id = match pred.kind().skip_binder() {
+                    rustc_type_ir::ClauseKind::Trait(pred) => pred.def_id(),
+                    _ => continue,
+                };
+                let trait_id = match trait_id {
+                    SolverDefId::TraitId(trait_id) => trait_id,
+                    _ => continue,
+                };
+                stack.push(trait_id);
+            }
+            tracing::debug!(?stack);
+        }
+
+        None
+    };
+
+    match res {
+        TypeNs::SelfType(impl_id) => {
+            let trait_ref = db.impl_trait_ns(impl_id)?;
+
+            // we're _in_ the impl -- the binders get added back later. Correct,
+            // but it would be nice to make this more explicit
+            search(trait_ref.skip_binder())
+        }
+        TypeNs::GenericParam(param_id) => {
+            // Handle `Self::Type` referring to own associated type in trait definitions
+            // This *must* be done first to avoid cycles with
+            // `generic_predicates_for_param`, but not sure that it's sufficient,
+            // see FIXME in `search`.
+            if let GenericDefId::TraitId(trait_id) = param_id.parent() {
+                let trait_name = &db.trait_signature(trait_id).name;
+                tracing::debug!(?trait_name);
+                let trait_generics = generics(db, trait_id.into());
+                tracing::debug!(?trait_generics);
+                if trait_generics[param_id.local_id()].is_trait_self() {
+                    let args = crate::next_solver::GenericArgs::identity_for_item(
+                        interner,
+                        trait_id.into(),
+                    );
+                    let trait_ref = TraitRef::new_from_args(interner, trait_id.into(), args);
+                    tracing::debug!(?args, ?trait_ref);
+                    return search(trait_ref);
+                }
+            }
+
+            let predicates =
+                db.generic_predicates_for_param_ns(def, param_id.into(), assoc_name.clone());
+            predicates
+                .iter()
+                .find_map(|pred| match (*pred).kind().skip_binder() {
+                    rustc_type_ir::ClauseKind::Trait(trait_predicate) => Some(trait_predicate),
+                    _ => None,
+                })
+                .and_then(|trait_predicate| {
+                    let trait_ref = trait_predicate.trait_ref;
+                    assert!(
+                        !trait_ref.has_escaping_bound_vars(),
+                        "FIXME unexpected higher-ranked trait bound"
+                    );
+                    search(trait_ref)
+                })
+        }
+        _ => None,
+    }
 }

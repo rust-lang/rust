@@ -804,15 +804,6 @@ pub(crate) fn callable_item_signature_query(db: &dyn HirDatabase, def: CallableD
     }
 }
 
-pub fn associated_type_shorthand_candidates<R>(
-    db: &dyn HirDatabase,
-    def: GenericDefId,
-    res: TypeNs,
-    mut cb: impl FnMut(&Name, TypeAliasId) -> Option<R>,
-) -> Option<R> {
-    named_associated_type_shorthand_candidates(db, def, res, None, |name, _, id| cb(name, id))
-}
-
 fn named_associated_type_shorthand_candidates<R>(
     db: &dyn HirDatabase,
     // If the type parameter is defined in an impl and we're in a method, there

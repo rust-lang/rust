@@ -2299,7 +2299,7 @@ impl<'db> SemanticsScope<'db> {
         };
         hir_ty::associated_type_shorthand_candidates(self.db, def, resolution, |_, id| {
             cb(id.into());
-            None::<()>
+            false
         });
     }
 

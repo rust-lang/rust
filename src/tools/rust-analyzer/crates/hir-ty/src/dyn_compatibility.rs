@@ -564,7 +564,7 @@ fn receiver_is_dispatchable<'db>(
         // U: Trait<Arg1, ..., ArgN>
         let trait_def_id = SolverDefId::TraitId(trait_);
         let args = GenericArgs::for_item(interner, trait_def_id, |name, index, kind, _| {
-            if index == 0 { unsized_self_ty.into() } else { mk_param(index, name, kind) }
+            if index == 0 { unsized_self_ty.into() } else { mk_param(interner, index, name, kind) }
         });
         let trait_predicate =
             crate::next_solver::TraitRef::new_from_args(interner, trait_def_id, args);
@@ -611,7 +611,7 @@ fn receiver_for_self_ty<'db>(
         interner,
         SolverDefId::FunctionId(func),
         |name, index, kind, _| {
-            if index == 0 { self_ty.into() } else { mk_param(index, name, kind) }
+            if index == 0 { self_ty.into() } else { mk_param(interner, index, name, kind) }
         },
     );
 
