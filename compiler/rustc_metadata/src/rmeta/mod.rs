@@ -6,15 +6,16 @@ use decoder::{DecodeContext, Metadata};
 use def_path_hash_map::DefPathHashMapRef;
 use encoder::EncodeContext;
 pub use encoder::{EncodedMetadata, encode_metadata, rendered_const};
+pub(crate) use parameterized::ParameterizedOverTcx;
 use rustc_abi::{FieldIdx, ReprOptions, VariantIdx};
-use rustc_attr_data_structures::StrippedCfgItem;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::svh::Svh;
-use rustc_hir::PreciseCapturingArgKind;
+use rustc_hir::attrs::StrippedCfgItem;
 use rustc_hir::def::{CtorKind, DefKind, DocLinkResMap};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, DefIndex, DefPathHash, StableCrateId};
 use rustc_hir::definitions::DefKey;
 use rustc_hir::lang_items::LangItem;
+use rustc_hir::{PreciseCapturingArgKind, attrs};
 use rustc_index::IndexVec;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_macros::{
@@ -26,12 +27,10 @@ use rustc_middle::middle::debugger_visualizer::DebuggerVisualizerFile;
 use rustc_middle::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo};
 use rustc_middle::middle::lib_features::FeatureStability;
 use rustc_middle::middle::resolve_bound_vars::ObjectLifetimeDefault;
+use rustc_middle::mir;
 use rustc_middle::ty::fast_reject::SimplifiedType;
-use rustc_middle::ty::{
-    self, DeducedParamAttrs, ParameterizedOverTcx, Ty, TyCtxt, UnusedGenericParams,
-};
+use rustc_middle::ty::{self, DeducedParamAttrs, Ty, TyCtxt, UnusedGenericParams};
 use rustc_middle::util::Providers;
-use rustc_middle::{mir, trivially_parameterized_over_tcx};
 use rustc_serialize::opaque::FileEncoder;
 use rustc_session::config::{SymbolManglingVersion, TargetModifier};
 use rustc_session::cstore::{CrateDepKind, ForeignModule, LinkagePreference, NativeLib};
@@ -40,13 +39,14 @@ use rustc_span::hygiene::{ExpnIndex, MacroKind, SyntaxContextKey};
 use rustc_span::{self, ExpnData, ExpnHash, ExpnId, Ident, Span, Symbol};
 use rustc_target::spec::{PanicStrategy, TargetTuple};
 use table::TableBuilder;
-use {rustc_ast as ast, rustc_attr_data_structures as attrs, rustc_hir as hir};
+use {rustc_ast as ast, rustc_hir as hir};
 
 use crate::creader::CrateMetadataRef;
 
 mod decoder;
 mod def_path_hash_map;
 mod encoder;
+mod parameterized;
 mod table;
 
 pub(crate) fn rustc_version(cfg_version: &'static str) -> String {
@@ -86,10 +86,6 @@ struct LazyValue<T> {
     _marker: PhantomData<fn() -> T>,
 }
 
-impl<T: ParameterizedOverTcx> ParameterizedOverTcx for LazyValue<T> {
-    type Value<'tcx> = LazyValue<T::Value<'tcx>>;
-}
-
 impl<T> LazyValue<T> {
     fn from_position(position: NonZero<usize>) -> LazyValue<T> {
         LazyValue { position, _marker: PhantomData }
@@ -110,10 +106,6 @@ struct LazyArray<T> {
     position: NonZero<usize>,
     num_elems: usize,
     _marker: PhantomData<fn() -> T>,
-}
-
-impl<T: ParameterizedOverTcx> ParameterizedOverTcx for LazyArray<T> {
-    type Value<'tcx> = LazyArray<T::Value<'tcx>>;
 }
 
 impl<T> Default for LazyArray<T> {
@@ -141,10 +133,6 @@ struct LazyTable<I, T> {
     /// How many elements are in the table.
     len: usize,
     _marker: PhantomData<fn(I) -> T>,
-}
-
-impl<I: 'static, T: ParameterizedOverTcx> ParameterizedOverTcx for LazyTable<I, T> {
-    type Value<'tcx> = LazyTable<I, T::Value<'tcx>>;
 }
 
 impl<I, T> LazyTable<I, T> {
@@ -200,7 +188,7 @@ type ExpnHashTable = LazyTable<ExpnIndex, Option<LazyValue<ExpnHash>>>;
 #[derive(MetadataEncodable, MetadataDecodable)]
 pub(crate) struct ProcMacroData {
     proc_macro_decls_static: DefIndex,
-    stability: Option<attrs::Stability>,
+    stability: Option<hir::Stability>,
     macros: LazyArray<DefIndex>,
 }
 
@@ -422,9 +410,9 @@ define_tables! {
     safety: Table<DefIndex, hir::Safety>,
     def_span: Table<DefIndex, LazyValue<Span>>,
     def_ident_span: Table<DefIndex, LazyValue<Span>>,
-    lookup_stability: Table<DefIndex, LazyValue<attrs::Stability>>,
-    lookup_const_stability: Table<DefIndex, LazyValue<attrs::ConstStability>>,
-    lookup_default_body_stability: Table<DefIndex, LazyValue<attrs::DefaultBodyStability>>,
+    lookup_stability: Table<DefIndex, LazyValue<hir::Stability>>,
+    lookup_const_stability: Table<DefIndex, LazyValue<hir::ConstStability>>,
+    lookup_default_body_stability: Table<DefIndex, LazyValue<hir::DefaultBodyStability>>,
     lookup_deprecation_entry: Table<DefIndex, LazyValue<attrs::Deprecation>>,
     explicit_predicates_of: Table<DefIndex, LazyValue<ty::GenericPredicates<'static>>>,
     generics_of: Table<DefIndex, LazyValue<ty::Generics>>,
@@ -593,15 +581,4 @@ const SYMBOL_PREDEFINED: u8 = 2;
 pub fn provide(providers: &mut Providers) {
     encoder::provide(providers);
     decoder::provide(providers);
-}
-
-trivially_parameterized_over_tcx! {
-    VariantData,
-    RawDefId,
-    TraitImpls,
-    IncoherentImpls,
-    CrateHeader,
-    CrateRoot,
-    CrateDep,
-    AttrFlags,
 }

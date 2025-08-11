@@ -1,7 +1,5 @@
 # Compiletest
 
-<!-- toc -->
-
 ## Introduction
 
 `compiletest` is the main test harness of the Rust test suite. It allows test

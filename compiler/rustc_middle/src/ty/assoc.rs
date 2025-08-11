@@ -1,8 +1,9 @@
-use rustc_attr_data_structures::{AttributeKind, find_attr};
 use rustc_data_structures::sorted_map::SortedIndexMultiMap;
 use rustc_hir as hir;
+use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::{DefKind, Namespace};
 use rustc_hir::def_id::DefId;
+use rustc_hir::find_attr;
 use rustc_macros::{Decodable, Encodable, HashStable};
 use rustc_span::{Ident, Symbol};
 

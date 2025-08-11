@@ -1,3 +1,4 @@
+#![cfg_attr(bootstrap, feature(strict_overflow_ops))]
 #![feature(abort_unwind)]
 #![feature(cfg_select)]
 #![feature(rustc_private)]
@@ -7,10 +8,10 @@
 #![feature(never_type)]
 #![feature(try_blocks)]
 #![feature(io_error_more)]
+#![feature(if_let_guard)]
 #![feature(variant_count)]
 #![feature(yeet_expr)]
 #![feature(nonzero_ops)]
-#![feature(strict_overflow_ops)]
 #![feature(pointer_is_aligned_to)]
 #![feature(ptr_metadata)]
 #![feature(unqualified_local_imports)]
@@ -56,7 +57,6 @@ extern crate tracing;
 extern crate rustc_abi;
 extern crate rustc_apfloat;
 extern crate rustc_ast;
-extern crate rustc_attr_data_structures;
 extern crate rustc_const_eval;
 extern crate rustc_data_structures;
 extern crate rustc_errors;
@@ -142,9 +142,7 @@ pub use crate::eval::{
     AlignmentCheck, BacktraceStyle, IsolatedOp, MiriConfig, MiriEntryFnType, RejectOpWith,
     ValidationMode, create_ecx, eval_entry,
 };
-pub use crate::helpers::{
-    AccessKind, EvalContextExt as _, MaybeEnteredTraceSpan, ToU64 as _, ToUsize as _,
-};
+pub use crate::helpers::{AccessKind, EvalContextExt as _, ToU64 as _, ToUsize as _};
 pub use crate::intrinsics::EvalContextExt as _;
 pub use crate::machine::{
     AllocExtra, DynMachineCallback, FrameExtra, MachineCallback, MemoryKind, MiriInterpCx,
@@ -158,6 +156,7 @@ pub use crate::shims::foreign_items::{DynSym, EvalContextExt as _};
 pub use crate::shims::io_error::{EvalContextExt as _, IoError, LibcError};
 pub use crate::shims::os_str::EvalContextExt as _;
 pub use crate::shims::panic::EvalContextExt as _;
+pub use crate::shims::sig::EvalContextExt as _;
 pub use crate::shims::time::EvalContextExt as _;
 pub use crate::shims::tls::TlsData;
 pub use crate::shims::unwind::{CatchUnwindData, EvalContextExt as _};

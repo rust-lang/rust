@@ -67,5 +67,17 @@ error: implicitly cloning a `PathBuf` by calling `to_path_buf` on its dereferenc
 LL |     let _ = pathbuf_ref.to_path_buf();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `(**pathbuf_ref).clone()`
 
-error: aborting due to 11 previous errors
+error: implicitly cloning a `String` by calling `to_owned` on its dereferenced type
+  --> tests/ui/implicit_clone.rs:140:13
+   |
+LL |     let _ = s.to_owned();
+   |             ^^^^^^^^^^^^ help: consider using: `s.clone()`
+
+error: implicitly cloning a `String` by calling `to_string` on its dereferenced type
+  --> tests/ui/implicit_clone.rs:142:13
+   |
+LL |     let _ = s.to_string();
+   |             ^^^^^^^^^^^^^ help: consider using: `s.clone()`
+
+error: aborting due to 13 previous errors
 

@@ -17,6 +17,6 @@ proc-macro2 = "1.0"
 quote = "1.0"
 regex = "1.5"
 serde = { version = "1.0", features = ["derive"] }
-serde_with = "1.14"
+serde_with = { version = "3.2.0", default-features = false, features = ["macros"] }
 serde_yaml = "0.8"
 walkdir = "2.3.2"

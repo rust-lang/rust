@@ -1,7 +1,5 @@
 # The `ty` module: representing types
 
-<!-- toc -->
-
 The `ty` module defines how the Rust compiler represents types internally. It also defines the
 *typing context* (`tcx` or `TyCtxt`), which is the central data structure in the compiler.
 

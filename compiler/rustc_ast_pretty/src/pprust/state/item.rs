@@ -2,7 +2,6 @@ use ast::StaticItem;
 use itertools::{Itertools, Position};
 use rustc_ast as ast;
 use rustc_ast::ModKind;
-use rustc_ast::ptr::P;
 use rustc_span::Ident;
 
 use crate::pp::BoxMarker;
@@ -628,10 +627,10 @@ impl<'a> State<'a> {
         &mut self,
         attrs: &[ast::Attribute],
         vis: &ast::Visibility,
-        qself: &Option<P<ast::QSelf>>,
+        qself: &Option<Box<ast::QSelf>>,
         path: &ast::Path,
         kind: DelegationKind<'_>,
-        body: &Option<P<ast::Block>>,
+        body: &Option<Box<ast::Block>>,
     ) {
         let body_cb_ib = body.as_ref().map(|body| (body, self.head("")));
         self.print_visibility(vis);

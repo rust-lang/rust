@@ -73,8 +73,7 @@ fn internal_extern_flags() -> Vec<String> {
             && INTERNAL_TEST_DEPENDENCIES.contains(&name)
         {
             // A dependency may be listed twice if it is available in sysroot,
-            // and the sysroot dependencies are listed first. As of the writing,
-            // this only seems to apply to if_chain.
+            // and the sysroot dependencies are listed first.
             crates.insert(name, path);
         }
     }
@@ -434,6 +433,7 @@ fn ui_cargo_toml_metadata() {
 #[derive(Template)]
 #[template(path = "index_template.html")]
 struct Renderer<'a> {
+    count: usize,
     lints: &'a Vec<LintMetadata>,
 }
 
@@ -513,7 +513,12 @@ impl DiagnosticCollector {
 
             fs::write(
                 "util/gh-pages/index.html",
-                Renderer { lints: &metadata }.render().unwrap(),
+                Renderer {
+                    count: LINTS.len(),
+                    lints: &metadata,
+                }
+                .render()
+                .unwrap(),
             )
             .unwrap();
         });

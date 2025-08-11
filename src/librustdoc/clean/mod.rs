@@ -36,13 +36,13 @@ use std::mem;
 
 use rustc_ast::token::{Token, TokenKind};
 use rustc_ast::tokenstream::{TokenStream, TokenTree};
-use rustc_attr_data_structures::{AttributeKind, find_attr};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet, IndexEntry};
 use rustc_errors::codes::*;
 use rustc_errors::{FatalError, struct_span_code_err};
+use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::{DefId, DefIdMap, DefIdSet, LOCAL_CRATE, LocalDefId};
-use rustc_hir::{LangItem, PredicateOrigin};
+use rustc_hir::{LangItem, PredicateOrigin, find_attr};
 use rustc_hir_analysis::hir_ty_lowering::FeedConstTy;
 use rustc_hir_analysis::{lower_const_arg_for_rustdoc, lower_ty};
 use rustc_middle::metadata::Reexport;
@@ -1662,7 +1662,7 @@ fn clean_qpath<'tcx>(hir_ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> Type 
             }
 
             let trait_segments = &p.segments[..p.segments.len() - 1];
-            let trait_def = cx.tcx.associated_item(p.res.def_id()).container_id(cx.tcx);
+            let trait_def = cx.tcx.parent(p.res.def_id());
             let trait_ = self::Path {
                 res: Res::Def(DefKind::Trait, trait_def),
                 segments: trait_segments.iter().map(|x| clean_path_segment(x, cx)).collect(),

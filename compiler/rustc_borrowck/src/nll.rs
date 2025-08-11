@@ -5,7 +5,8 @@ use std::path::PathBuf;
 use std::rc::Rc;
 use std::str::FromStr;
 
-use polonius_engine::{Algorithm, Output};
+use polonius_engine::{Algorithm, AllFacts, Output};
+use rustc_data_structures::frozen::Frozen;
 use rustc_index::IndexSlice;
 use rustc_middle::mir::pretty::{PrettyPrintMirOptions, dump_mir_with_options};
 use rustc_middle::mir::{Body, PassWhere, Promoted, create_dump_file, dump_enabled, dump_mir};
@@ -18,14 +19,16 @@ use rustc_span::sym;
 use tracing::{debug, instrument};
 
 use crate::borrow_set::BorrowSet;
+use crate::consumers::RustcFacts;
 use crate::diagnostics::RegionErrors;
 use crate::handle_placeholders::compute_sccs_applying_placeholder_outlives_constraints;
-use crate::polonius::PoloniusDiagnosticsContext;
 use crate::polonius::legacy::{
     PoloniusFacts, PoloniusFactsExt, PoloniusLocationTable, PoloniusOutput,
 };
+use crate::polonius::{PoloniusContext, PoloniusDiagnosticsContext};
 use crate::region_infer::RegionInferenceContext;
-use crate::type_check::{self, MirTypeckResults};
+use crate::type_check::MirTypeckRegionConstraints;
+use crate::type_check::free_region_relations::UniversalRegionRelations;
 use crate::universal_regions::UniversalRegions;
 use crate::{
     BorrowCheckRootCtxt, BorrowckInferCtxt, ClosureOutlivesSubject, ClosureRegionRequirements,
@@ -76,41 +79,18 @@ pub(crate) fn replace_regions_in_mir<'tcx>(
 pub(crate) fn compute_regions<'tcx>(
     root_cx: &mut BorrowCheckRootCtxt<'tcx>,
     infcx: &BorrowckInferCtxt<'tcx>,
-    universal_regions: UniversalRegions<'tcx>,
     body: &Body<'tcx>,
-    promoted: &IndexSlice<Promoted, Body<'tcx>>,
     location_table: &PoloniusLocationTable,
     move_data: &MoveData<'tcx>,
     borrow_set: &BorrowSet<'tcx>,
+    location_map: Rc<DenseLocationMap>,
+    universal_region_relations: Frozen<UniversalRegionRelations<'tcx>>,
+    constraints: MirTypeckRegionConstraints<'tcx>,
+    mut polonius_facts: Option<AllFacts<RustcFacts>>,
+    polonius_context: Option<PoloniusContext>,
 ) -> NllOutput<'tcx> {
-    let is_polonius_legacy_enabled = infcx.tcx.sess.opts.unstable_opts.polonius.is_legacy_enabled();
-    let polonius_input = root_cx.consumer.as_ref().map_or(false, |c| c.polonius_input())
-        || is_polonius_legacy_enabled;
     let polonius_output = root_cx.consumer.as_ref().map_or(false, |c| c.polonius_output())
-        || is_polonius_legacy_enabled;
-    let mut polonius_facts =
-        (polonius_input || PoloniusFacts::enabled(infcx.tcx)).then_some(PoloniusFacts::default());
-
-    let location_map = Rc::new(DenseLocationMap::new(body));
-
-    // Run the MIR type-checker.
-    let MirTypeckResults {
-        constraints,
-        universal_region_relations,
-        opaque_type_values,
-        polonius_context,
-    } = type_check::type_check(
-        root_cx,
-        infcx,
-        body,
-        promoted,
-        universal_regions,
-        location_table,
-        borrow_set,
-        &mut polonius_facts,
-        move_data,
-        Rc::clone(&location_map),
-    );
+        || infcx.tcx.sess.opts.unstable_opts.polonius.is_legacy_enabled();
 
     let lowered_constraints = compute_sccs_applying_placeholder_outlives_constraints(
         constraints,
@@ -167,13 +147,6 @@ pub(crate) fn compute_regions<'tcx>(
     // Solve the region constraints.
     let (closure_region_requirements, nll_errors) =
         regioncx.solve(infcx, body, polonius_output.clone());
-
-    if let Some(guar) = nll_errors.has_errors() {
-        // Suppress unhelpful extra errors in `infer_opaque_types`.
-        infcx.set_tainted_by_errors(guar);
-    }
-
-    regioncx.infer_opaque_types(root_cx, infcx, opaque_type_values);
 
     NllOutput {
         regioncx,

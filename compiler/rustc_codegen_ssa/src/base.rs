@@ -7,11 +7,11 @@ use itertools::Itertools;
 use rustc_abi::FIRST_VARIANT;
 use rustc_ast as ast;
 use rustc_ast::expand::allocator::AllocatorKind;
-use rustc_attr_data_structures::OptimizeAttr;
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_data_structures::profiling::{get_resident_set_size, print_time_passes_entry};
 use rustc_data_structures::sync::{IntoDynSyncSend, par_map};
 use rustc_data_structures::unord::UnordMap;
+use rustc_hir::attrs::OptimizeAttr;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{ItemId, Target};
@@ -702,8 +702,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
         // These modules are generally cheap and won't throw off scheduling.
         let cost = 0;
         submit_codegened_module_to_llvm(
-            &backend,
-            &ongoing_codegen.coordinator.sender,
+            &ongoing_codegen.coordinator,
             ModuleCodegen::new_allocator(llmod_id, module_llvm),
             cost,
         );
@@ -800,18 +799,12 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
                 // compilation hang on post-monomorphization errors.
                 tcx.dcx().abort_if_errors();
 
-                submit_codegened_module_to_llvm(
-                    &backend,
-                    &ongoing_codegen.coordinator.sender,
-                    module,
-                    cost,
-                );
+                submit_codegened_module_to_llvm(&ongoing_codegen.coordinator, module, cost);
             }
             CguReuse::PreLto => {
                 submit_pre_lto_module_to_llvm(
-                    &backend,
                     tcx,
-                    &ongoing_codegen.coordinator.sender,
+                    &ongoing_codegen.coordinator,
                     CachedModuleCodegen {
                         name: cgu.name().to_string(),
                         source: cgu.previous_work_product(tcx),
@@ -820,8 +813,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
             }
             CguReuse::PostLto => {
                 submit_post_lto_module_to_llvm(
-                    &backend,
-                    &ongoing_codegen.coordinator.sender,
+                    &ongoing_codegen.coordinator,
                     CachedModuleCodegen {
                         name: cgu.name().to_string(),
                         source: cgu.previous_work_product(tcx),

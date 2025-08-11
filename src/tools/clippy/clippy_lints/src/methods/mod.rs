@@ -5450,7 +5450,7 @@ impl Methods {
                         implicit_clone::check(cx, name, expr, recv);
                     }
                 },
-                (sym::to_os_string | sym::to_path_buf | sym::to_vec, []) => {
+                (sym::to_os_string | sym::to_path_buf | sym::to_string | sym::to_vec, []) => {
                     implicit_clone::check(cx, name, expr, recv);
                 },
                 (sym::type_id, []) => {

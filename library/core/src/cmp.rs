@@ -2022,7 +2022,7 @@ mod impls {
     #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
     impl<A: PointeeSized, B: PointeeSized> const PartialEq<&B> for &A
     where
-        A: ~const PartialEq<B>,
+        A: [const] PartialEq<B>,
     {
         #[inline]
         fn eq(&self, other: &&B) -> bool {
@@ -2094,7 +2094,7 @@ mod impls {
     #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
     impl<A: PointeeSized, B: PointeeSized> const PartialEq<&mut B> for &mut A
     where
-        A: ~const PartialEq<B>,
+        A: [const] PartialEq<B>,
     {
         #[inline]
         fn eq(&self, other: &&mut B) -> bool {
@@ -2164,7 +2164,7 @@ mod impls {
     #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
     impl<A: PointeeSized, B: PointeeSized> const PartialEq<&mut B> for &A
     where
-        A: ~const PartialEq<B>,
+        A: [const] PartialEq<B>,
     {
         #[inline]
         fn eq(&self, other: &&mut B) -> bool {
@@ -2180,7 +2180,7 @@ mod impls {
     #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
     impl<A: PointeeSized, B: PointeeSized> const PartialEq<&B> for &mut A
     where
-        A: ~const PartialEq<B>,
+        A: [const] PartialEq<B>,
     {
         #[inline]
         fn eq(&self, other: &&B) -> bool {

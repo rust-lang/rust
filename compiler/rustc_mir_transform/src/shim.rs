@@ -75,7 +75,7 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceKind<'tcx>) -> Body<
             build_call_shim(tcx, instance, Some(adjustment), CallKind::Direct(def_id))
         }
         ty::InstanceKind::FnPtrShim(def_id, ty) => {
-            let trait_ = tcx.trait_of_item(def_id).unwrap();
+            let trait_ = tcx.trait_of_assoc(def_id).unwrap();
             // Supports `Fn` or `async Fn` traits.
             let adjustment = match tcx
                 .fn_trait_kind_from_def_id(trait_)

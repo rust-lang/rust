@@ -57,6 +57,7 @@
 #![feature(sized_hierarchy)]
 #![feature(try_blocks)]
 #![feature(try_trait_v2)]
+#![feature(try_trait_v2_residual)]
 #![feature(try_trait_v2_yeet)]
 #![feature(type_alias_impl_trait)]
 #![feature(yeet_expr)]

@@ -36,7 +36,7 @@
 //! fn bar<T>(a: T, b: impl for<'a> Fn(&'a T)) {}
 //! fn foo<T>(x: T) {
 //!     bar(x, |y| { /* ... */})
-//!          // ^ closure arg
+//!     //      ^ closure arg
 //! }
 //! ```
 //!
@@ -177,6 +177,7 @@ impl<'tcx> InferCtxt<'tcx> {
     }
 
     pub fn take_registered_region_assumptions(&self) -> Vec<ty::ArgOutlivesPredicate<'tcx>> {
+        assert!(!self.in_snapshot(), "cannot take registered region assumptions in a snapshot");
         std::mem::take(&mut self.inner.borrow_mut().region_assumptions)
     }
 

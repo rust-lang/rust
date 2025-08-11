@@ -1,12 +1,12 @@
 warning: You have explicitly enabled MIR optimizations, overriding Miri's default which is to completely disable them. Any optimizations may hide UB that Miri would otherwise detect, and it is not necessarily possible to predict what kind of UB will be missed. If you are enabling optimizations to make Miri run faster, we advise using cfg(miri) to shrink your workload instead. The performance benefit of enabling MIR optimizations is usually marginal at best.
 
 
-thread 'main' panicked at tests/fail/terminate-terminator.rs:LL:CC:
+thread 'main' ($TID) panicked at tests/fail/terminate-terminator.rs:LL:CC:
 explicit panic
 note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
 note: in Miri, you may have to set `MIRIFLAGS=-Zmiri-env-forward=RUST_BACKTRACE` for the environment variable to have an effect
 
-thread 'main' panicked at RUSTLIB/core/src/panicking.rs:LL:CC:
+thread 'main' ($TID) panicked at RUSTLIB/core/src/panicking.rs:LL:CC:
 panic in a function that cannot unwind
 stack backtrace:
 thread caused non-unwinding panic. aborting.
@@ -18,10 +18,10 @@ LL | ABORT()
    |
    = note: BACKTRACE:
    = note: inside `std::sys::pal::PLATFORM::abort_internal` at RUSTLIB/std/src/sys/pal/PLATFORM/mod.rs:LL:CC
-   = note: inside `std::panicking::rust_panic_with_hook` at RUSTLIB/std/src/panicking.rs:LL:CC
+   = note: inside `std::panicking::panic_with_hook` at RUSTLIB/std/src/panicking.rs:LL:CC
    = note: inside closure at RUSTLIB/std/src/panicking.rs:LL:CC
-   = note: inside `std::sys::backtrace::__rust_end_short_backtrace::<{closure@std::panicking::begin_panic_handler::{closure#0}}, !>` at RUSTLIB/std/src/sys/backtrace.rs:LL:CC
-   = note: inside `std::panicking::begin_panic_handler` at RUSTLIB/std/src/panicking.rs:LL:CC
+   = note: inside `std::sys::backtrace::__rust_end_short_backtrace::<{closure@std::panicking::panic_handler::{closure#0}}, !>` at RUSTLIB/std/src/sys/backtrace.rs:LL:CC
+   = note: inside `std::panicking::panic_handler` at RUSTLIB/std/src/panicking.rs:LL:CC
    = note: inside `core::panicking::panic_nounwind` at RUSTLIB/core/src/panicking.rs:LL:CC
    = note: inside `core::panicking::panic_cannot_unwind` at RUSTLIB/core/src/panicking.rs:LL:CC
 note: inside `has_cleanup`

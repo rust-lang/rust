@@ -12,7 +12,7 @@ use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 use rustc_abi::{Align, ExternAbi, Size};
 use rustc_apfloat::{Float, FloatConvert};
-use rustc_attr_data_structures::InlineAttr;
+use rustc_hir::attrs::InlineAttr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 #[allow(unused)]
 use rustc_data_structures::static_assert_size;
@@ -76,13 +76,8 @@ pub struct FrameExtra<'tcx> {
 impl<'tcx> std::fmt::Debug for FrameExtra<'tcx> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         // Omitting `timing`, it does not support `Debug`.
-        let FrameExtra {
-            borrow_tracker,
-            catch_unwind,
-            timing: _,
-            is_user_relevant,
-            data_race,
-        } = self;
+        let FrameExtra { borrow_tracker, catch_unwind, timing: _, is_user_relevant, data_race } =
+            self;
         f.debug_struct("FrameData")
             .field("borrow_tracker", borrow_tracker)
             .field("catch_unwind", catch_unwind)
@@ -607,6 +602,9 @@ pub struct MiriMachine<'tcx> {
 }
 
 impl<'tcx> MiriMachine<'tcx> {
+    /// Create a new MiriMachine.
+    ///
+    /// Invariant: `genmc_ctx.is_some() == config.genmc_config.is_some()`
     pub(crate) fn new(
         config: &MiriConfig,
         layout_cx: LayoutCx<'tcx>,
@@ -630,7 +628,7 @@ impl<'tcx> MiriMachine<'tcx> {
         });
         let rng = StdRng::seed_from_u64(config.seed.unwrap_or(0));
         let borrow_tracker = config.borrow_tracker.map(|bt| bt.instantiate_global_state(config));
-        let data_race = if config.genmc_mode {
+        let data_race = if config.genmc_config.is_some() {
             // `genmc_ctx` persists across executions, so we don't create a new one here.
             GlobalDataRaceHandler::Genmc(genmc_ctx.unwrap())
         } else if config.data_race_detector {

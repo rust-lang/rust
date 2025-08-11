@@ -58,7 +58,11 @@ impl Thread {
         }
     }
 
-    pub unsafe fn new(stack: usize, p: Box<dyn FnOnce()>) -> io::Result<Thread> {
+    pub unsafe fn new(
+        stack: usize,
+        _name: Option<&str>,
+        p: Box<dyn FnOnce()>,
+    ) -> io::Result<Thread> {
         unsafe {
             Thread::new_with_coreid(stack, p, -1 /* = no specific core */)
         }
@@ -109,6 +113,10 @@ impl Thread {
     pub fn into_id(self) -> Tid {
         ManuallyDrop::new(self).tid
     }
+}
+
+pub(crate) fn current_os_id() -> Option<u64> {
+    None
 }
 
 pub fn available_parallelism() -> io::Result<NonZero<usize>> {

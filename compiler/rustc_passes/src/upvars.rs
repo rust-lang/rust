@@ -75,19 +75,19 @@ impl<'tcx> Visitor<'tcx> for CaptureCollector<'_, 'tcx> {
     }
 
     fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
-        if let hir::ExprKind::Closure(closure) = expr.kind {
-            if let Some(upvars) = self.tcx.upvars_mentioned(closure.def_id) {
-                // Every capture of a closure expression is a local in scope,
-                // that is moved/copied/borrowed into the closure value, and
-                // for this analysis they are like any other access to a local.
-                //
-                // E.g. in `|b| |c| (a, b, c)`, the upvars of the inner closure
-                // are `a` and `b`, and while `a` is not directly used in the
-                // outer closure, it needs to be an upvar there too, so that
-                // the inner closure can take it (from the outer closure's env).
-                for (&var_id, upvar) in upvars {
-                    self.visit_local_use(var_id, upvar.span);
-                }
+        if let hir::ExprKind::Closure(closure) = expr.kind
+            && let Some(upvars) = self.tcx.upvars_mentioned(closure.def_id)
+        {
+            // Every capture of a closure expression is a local in scope,
+            // that is moved/copied/borrowed into the closure value, and
+            // for this analysis they are like any other access to a local.
+            //
+            // E.g. in `|b| |c| (a, b, c)`, the upvars of the inner closure
+            // are `a` and `b`, and while `a` is not directly used in the
+            // outer closure, it needs to be an upvar there too, so that
+            // the inner closure can take it (from the outer closure's env).
+            for (&var_id, upvar) in upvars {
+                self.visit_local_use(var_id, upvar.span);
             }
         }
 

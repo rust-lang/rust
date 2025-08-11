@@ -16,3 +16,15 @@ fn control_flow_discriminants_match_result() {
         discriminant_value(&Result::<i32, i32>::Ok(3)),
     );
 }
+
+#[test]
+fn control_flow_break_ok() {
+    assert_eq!(ControlFlow::<char, i32>::Break('b').break_ok(), Ok('b'));
+    assert_eq!(ControlFlow::<char, i32>::Continue(3).break_ok(), Err(3));
+}
+
+#[test]
+fn control_flow_continue_ok() {
+    assert_eq!(ControlFlow::<char, i32>::Break('b').continue_ok(), Err('b'));
+    assert_eq!(ControlFlow::<char, i32>::Continue(3).continue_ok(), Ok(3));
+}

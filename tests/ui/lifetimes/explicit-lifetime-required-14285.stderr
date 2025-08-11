@@ -1,0 +1,15 @@
+error[E0621]: explicit lifetime required in the type of `a`
+  --> $DIR/explicit-lifetime-required-14285.rs:14:5
+   |
+LL |     B(a)
+   |     ^^^^ lifetime `'a` required
+   |
+help: add explicit lifetime `'a` to the type of `a`
+   |
+LL - fn foo<'a>(a: &dyn Foo) -> B<'a> {
+LL + fn foo<'a>(a: &'a (dyn Foo + 'a)) -> B<'a> {
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0621`.

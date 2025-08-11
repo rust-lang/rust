@@ -8,10 +8,10 @@ define-function: (
     [x, i_x],
     block {
         // Checking they have the same y position.
-        compare-elements-position: (
+        compare-elements-position-near: (
             "//*[@id='method.create_an_iterator_from_read']//a[normalize-space()='NotableStructWithLongName']",
             "//*[@id='method.create_an_iterator_from_read']//*[@class='tooltip']",
-            ["y"],
+            {"y": 1},
         )
         // Checking they don't have the same x position.
         compare-elements-position-false: (

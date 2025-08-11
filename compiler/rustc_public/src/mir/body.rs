@@ -349,7 +349,7 @@ impl AssertMessage {
     }
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, Serialize)]
 pub enum BinOp {
     Add,
     AddUnchecked,
@@ -384,7 +384,7 @@ impl BinOp {
     }
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, Serialize)]
 pub enum UnOp {
     Not,
     Neg,
@@ -490,7 +490,7 @@ pub enum StatementKind {
     Nop,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize)]
 pub enum Rvalue {
     /// Creates a pointer with the indicated mutability to the place.
     ///
@@ -666,7 +666,7 @@ impl Rvalue {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize)]
 pub enum AggregateKind {
     Array(Ty),
     Tuple,
@@ -677,14 +677,14 @@ pub enum AggregateKind {
     RawPtr(Ty, Mutability),
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize)]
 pub enum Operand {
     Copy(Place),
     Move(Place),
     Constant(ConstOperand),
 }
 
-#[derive(Clone, Eq, PartialEq, Serialize)]
+#[derive(Clone, Eq, PartialEq, Hash, Serialize)]
 pub struct Place {
     pub local: Local,
     /// projection out of a place (access a field, deref a pointer, etc)
@@ -697,7 +697,7 @@ impl From<Local> for Place {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize)]
 pub struct ConstOperand {
     pub span: Span,
     pub user_ty: Option<UserTypeAnnotationIndex>,
@@ -770,7 +770,7 @@ pub enum VarDebugInfoContents {
 // ProjectionElem<Local, Ty>) and user-provided type annotations (for which the projection elements
 // are of type ProjectionElem<(), ()>).
 // In rustc_public's IR we don't need this generality, so we just use ProjectionElem for Places.
-#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize)]
 pub enum ProjectionElem {
     /// Dereference projections (e.g. `*_1`) project to the address referenced by the base place.
     Deref,
@@ -913,7 +913,7 @@ impl SwitchTargets {
     }
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, Serialize)]
 pub enum BorrowKind {
     /// Data must be immutable and is aliasable.
     Shared,
@@ -940,7 +940,7 @@ impl BorrowKind {
     }
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, Serialize)]
 pub enum RawPtrKind {
     Mut,
     Const,
@@ -958,14 +958,14 @@ impl RawPtrKind {
     }
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, Serialize)]
 pub enum MutBorrowKind {
     Default,
     TwoPhaseBorrow,
     ClosureCapture,
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, Serialize)]
 pub enum FakeBorrowKind {
     /// A shared (deep) borrow. Data must be immutable and is aliasable.
     Deep,
@@ -982,13 +982,13 @@ pub enum Mutability {
     Mut,
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, Serialize)]
 pub enum Safety {
     Safe,
     Unsafe,
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, Serialize)]
 pub enum PointerCoercion {
     /// Go from a fn-item type to a fn-pointer type.
     ReifyFnPointer,
@@ -1015,7 +1015,7 @@ pub enum PointerCoercion {
     Unsize,
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, Serialize)]
 pub enum CastKind {
     // FIXME(smir-rename): rename this to PointerExposeProvenance
     PointerExposeAddress,
@@ -1030,7 +1030,7 @@ pub enum CastKind {
     Transmute,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize)]
 pub enum NullOp {
     /// Returns the size of a value of that type.
     SizeOf,

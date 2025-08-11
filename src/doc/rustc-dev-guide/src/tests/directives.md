@@ -1,7 +1,5 @@
 # Compiletest directives
 
-<!-- toc -->
-
 <!--
 FIXME(jieyouxu) completely revise this chapter.
 -->
@@ -52,6 +50,8 @@ not be exhaustive. Directives can generally be found by browsing the
 
 ### Auxiliary builds
 
+See [Building auxiliary crates](compiletest.html#building-auxiliary-crates)
+
 | Directive             | Explanation                                                                                           | Supported test suites | Possible values                               |
 |-----------------------|-------------------------------------------------------------------------------------------------------|-----------------------|-----------------------------------------------|
 | `aux-bin`             | Build a aux binary, made available in `auxiliary/bin` relative to test directory                      | All except `run-make` | Path to auxiliary `.rs` file                  |
@@ -61,8 +61,7 @@ not be exhaustive. Directives can generally be found by browsing the
 | `proc-macro`          | Similar to `aux-build`, but for aux forces host and don't use `-Cprefer-dynamic`[^pm].                | All except `run-make` | Path to auxiliary proc-macro `.rs` file       |
 | `build-aux-docs`      | Build docs for auxiliaries as well.  Note that this only works with `aux-build`, not `aux-crate`.     | All except `run-make` | N/A                                           |
 
-[^pm]: please see the Auxiliary proc-macro section in the
-    [compiletest](./compiletest.md) chapter for specifics.
+[^pm]: please see the [Auxiliary proc-macro section](compiletest.html#auxiliary-proc-macro) in the compiletest chapter for specifics.
 
 ### Controlling outcome expectations
 
@@ -293,13 +292,12 @@ See [Pretty-printer](compiletest.md#pretty-printer-tests).
 
 - `no-auto-check-cfg` — disable auto check-cfg (only for `--check-cfg` tests)
 - [`revisions`](compiletest.md#revisions) — compile multiple times
-- [`unused-revision-names`](compiletest.md#ignoring-unused-revision-names) -
-      suppress tidy checks for mentioning unknown revision names
 -[`forbid-output`](compiletest.md#incremental-tests) — incremental cfail rejects
       output pattern
 - [`should-ice`](compiletest.md#incremental-tests) — incremental cfail should
       ICE
 - [`reference`] — an annotation linking to a rule in the reference
+- `disable-gdb-pretty-printers` — disable gdb pretty printers for debuginfo tests
 
 [`reference`]: https://github.com/rust-lang/reference/blob/master/docs/authoring.md#test-rule-annotations
 
@@ -315,6 +313,17 @@ test suites that use those tools:
 - `llvm-cov-flags` adds extra flags when running LLVM's `llvm-cov` tool.
   - Used by [coverage tests](compiletest.md#coverage-tests) in `coverage-run` mode.
 
+### Tidy specific directives
+
+The following directives control how the [tidy script](../conventions.md#formatting)
+verifies tests.
+
+- `ignore-tidy-target-specific-tests` disables checking that the appropriate
+  LLVM component is required (via a `needs-llvm-components` directive) when a
+  test is compiled for a specific target (via the `--target` flag in a
+  `compile-flag` directive).
+- [`unused-revision-names`](compiletest.md#ignoring-unused-revision-names) -
+      suppress tidy checks for mentioning unknown revision names.
 
 ## Substitutions
 
@@ -349,7 +358,7 @@ described below:
   - Example: `x86_64-unknown-linux-gnu`
 
 See
-[`tests/ui/commandline-argfile.rs`](https://github.com/rust-lang/rust/blob/master/tests/ui/argfile/commandline-argfile.rs)
+[`tests/ui/argfile/commandline-argfile.rs`](https://github.com/rust-lang/rust/blob/master/tests/ui/argfile/commandline-argfile.rs)
 for an example of a test that uses this substitution.
 
 [output normalization]: ui.md#normalization

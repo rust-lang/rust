@@ -1,5 +1,9 @@
 // Test that we don't ICE when computing the drop types for
 
+//@ ignore-compare-mode-polonius (explicit revisions)
+//@ revisions: nll polonius
+//@ [polonius] compile-flags: -Zpolonius=next
+
 trait Decode<'a> {
     type Decoder;
 }
@@ -14,7 +18,7 @@ pub struct ADecoder<'a> {
 }
 fn make_a_decoder<'a>() -> ADecoder<'a> {
     //~^ ERROR the trait bound
-    //~| ERROR the trait bound
+    //[nll]~| ERROR the trait bound
     panic!()
 }
 

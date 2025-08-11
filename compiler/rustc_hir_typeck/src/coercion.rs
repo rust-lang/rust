@@ -37,10 +37,10 @@
 
 use std::ops::Deref;
 
-use rustc_attr_data_structures::InlineAttr;
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, Diag, struct_span_code_err};
 use rustc_hir as hir;
+use rustc_hir::attrs::InlineAttr;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
 use rustc_infer::infer::relate::RelateResult;
@@ -1800,11 +1800,13 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                             .kind()
                             .map_bound(|clause| match clause {
                                 ty::ClauseKind::Trait(trait_pred) => Some(ty::ClauseKind::Trait(
-                                    trait_pred.with_self_ty(fcx.tcx, ty),
+                                    trait_pred.with_replaced_self_ty(fcx.tcx, ty),
                                 )),
-                                ty::ClauseKind::Projection(proj_pred) => Some(
-                                    ty::ClauseKind::Projection(proj_pred.with_self_ty(fcx.tcx, ty)),
-                                ),
+                                ty::ClauseKind::Projection(proj_pred) => {
+                                    Some(ty::ClauseKind::Projection(
+                                        proj_pred.with_replaced_self_ty(fcx.tcx, ty),
+                                    ))
+                                }
                                 _ => None,
                             })
                             .transpose()?;

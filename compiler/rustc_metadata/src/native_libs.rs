@@ -3,9 +3,10 @@ use std::path::{Path, PathBuf};
 
 use rustc_abi::ExternAbi;
 use rustc_ast::CRATE_NODE_ID;
-use rustc_attr_data_structures::{AttributeKind, find_attr};
 use rustc_attr_parsing as attr;
 use rustc_data_structures::fx::FxHashSet;
+use rustc_hir::attrs::AttributeKind;
+use rustc_hir::find_attr;
 use rustc_middle::query::LocalCrate;
 use rustc_middle::ty::{self, List, Ty, TyCtxt};
 use rustc_session::Session;
@@ -82,7 +83,7 @@ pub fn walk_native_lib_search_dirs<R>(
     // Mac Catalyst uses the macOS SDK, but to link to iOS-specific frameworks
     // we must have the support library stubs in the library search path (#121430).
     if let Some(sdk_root) = apple_sdk_root
-        && sess.target.llvm_target.contains("macabi")
+        && sess.target.env == "macabi"
     {
         f(&sdk_root.join("System/iOSSupport/usr/lib"), false)?;
         f(&sdk_root.join("System/iOSSupport/System/Library/Frameworks"), true)?;

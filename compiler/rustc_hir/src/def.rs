@@ -295,10 +295,19 @@ impl DefKind {
         }
     }
 
+    pub fn is_assoc(self) -> bool {
+        matches!(self, DefKind::AssocConst | DefKind::AssocFn | DefKind::AssocTy)
+    }
+
     /// This is a "module" in name resolution sense.
     #[inline]
     pub fn is_module_like(self) -> bool {
         matches!(self, DefKind::Mod | DefKind::Enum | DefKind::Trait)
+    }
+
+    #[inline]
+    pub fn is_adt(self) -> bool {
+        matches!(self, DefKind::Struct | DefKind::Union | DefKind::Enum)
     }
 
     #[inline]
@@ -307,6 +316,43 @@ impl DefKind {
             self,
             DefKind::Fn | DefKind::AssocFn | DefKind::Closure | DefKind::SyntheticCoroutineBody
         )
+    }
+
+    /// Whether the corresponding item has generic parameters, ie. the `generics_of` query works.
+    pub fn has_generics(self) -> bool {
+        match self {
+            DefKind::AnonConst
+            | DefKind::AssocConst
+            | DefKind::AssocFn
+            | DefKind::AssocTy
+            | DefKind::Closure
+            | DefKind::Const
+            | DefKind::Ctor(..)
+            | DefKind::Enum
+            | DefKind::Field
+            | DefKind::Fn
+            | DefKind::ForeignTy
+            | DefKind::Impl { .. }
+            | DefKind::InlineConst
+            | DefKind::OpaqueTy
+            | DefKind::Static { .. }
+            | DefKind::Struct
+            | DefKind::SyntheticCoroutineBody
+            | DefKind::Trait
+            | DefKind::TraitAlias
+            | DefKind::TyAlias
+            | DefKind::Union
+            | DefKind::Variant => true,
+            DefKind::ConstParam
+            | DefKind::ExternCrate
+            | DefKind::ForeignMod
+            | DefKind::GlobalAsm
+            | DefKind::LifetimeParam
+            | DefKind::Macro(_)
+            | DefKind::Mod
+            | DefKind::TyParam
+            | DefKind::Use => false,
+        }
     }
 
     /// Whether `query get_codegen_attrs` should be used with this definition.
@@ -356,7 +402,7 @@ impl DefKind {
 /// For example, everything prefixed with `/* Res */` in this example has
 /// an associated `Res`:
 ///
-/// ```
+/// ```ignore (illustrative)
 /// fn str_to_string(s: & /* Res */ str) -> /* Res */ String {
 ///     /* Res */ String::from(/* Res */ s)
 /// }
@@ -417,7 +463,7 @@ pub enum Res<Id = hir::HirId> {
     /// }
     ///
     /// impl Foo for Bar {
-    ///     fn foo() -> Box<Self> { // SelfTyAlias
+    ///     fn foo() -> Box<Self /* SelfTyAlias */> {
     ///         let _: Self;        // SelfTyAlias
     ///
     ///         todo!()

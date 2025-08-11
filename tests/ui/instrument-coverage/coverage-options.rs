@@ -1,4 +1,4 @@
-//@ revisions: block branch condition mcdc bad
+//@ revisions: block branch condition bad
 //@ compile-flags -Cinstrument-coverage -Zno-profiler-runtime
 
 //@ [block] check-pass
@@ -9,9 +9,6 @@
 
 //@ [condition] check-pass
 //@ [condition] compile-flags: -Zcoverage-options=condition
-
-//@ [mcdc] check-pass
-//@ [mcdc] compile-flags: -Zcoverage-options=mcdc
 
 //@ [bad] check-fail
 //@ [bad] compile-flags: -Zcoverage-options=bad

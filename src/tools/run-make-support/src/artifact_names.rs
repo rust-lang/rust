@@ -35,6 +35,8 @@ pub fn dynamic_lib_extension() -> &'static str {
         "dylib"
     } else if target.contains("windows") {
         "dll"
+    } else if target.contains("aix") {
+        "a"
     } else {
         "so"
     }

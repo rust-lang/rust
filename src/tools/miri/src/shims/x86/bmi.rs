@@ -35,7 +35,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return interp_ok(EmulateItemResult::NotSupported);
         }
 
-        let [left, right] = this.check_shim(abi, CanonAbi::C, link_name, args)?;
+        let [left, right] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
         let left = this.read_scalar(left)?;
         let right = this.read_scalar(right)?;
 

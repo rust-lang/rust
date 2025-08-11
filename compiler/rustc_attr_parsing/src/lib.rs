@@ -1,13 +1,13 @@
 //! Centralized logic for parsing and attributes.
 //!
 //! ## Architecture
-//! This crate is part of a series of crates that handle attribute processing.
-//! - [rustc_attr_data_structures](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_attr_data_structures/index.html): Defines the data structures that store parsed attributes
+//! This crate is part of a series of crates and modules that handle attribute processing.
+//! - [rustc_hir::attrs](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/index.html): Defines the data structures that store parsed attributes
 //! - [rustc_attr_parsing](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_attr_parsing/index.html): This crate, handles the parsing of attributes
-//! - (planned) rustc_attr_validation: Will handle attribute validation
+//! - (planned) rustc_attr_validation: Will handle attribute validation, logic currently handled in `rustc_passes`
 //!
 //! The separation between data structures and parsing follows the principle of separation of concerns.
-//! Data structures (`rustc_attr_data_structures`) define what attributes look like after parsing.
+//! Data structures (`rustc_hir::attrs`) define what attributes look like after parsing.
 //! This crate (`rustc_attr_parsing`) handles how to convert raw tokens into those structures.
 //! This split allows other parts of the compiler to use the data structures without needing
 //! the parsing logic, making the codebase more modular and maintainable.
@@ -62,7 +62,7 @@
 //! a "stability" of an item. So, the stability attribute has an
 //! [`AttributeParser`](attributes::AttributeParser) that recognizes both the `#[stable()]`
 //! and `#[unstable()]` syntactic attributes, and at the end produce a single
-//! [`AttributeKind::Stability`](rustc_attr_data_structures::AttributeKind::Stability).
+//! [`AttributeKind::Stability`](rustc_hir::attrs::AttributeKind::Stability).
 //!
 //! When multiple instances of the same attribute are allowed, they're combined into a single
 //! semantic attribute. For example:

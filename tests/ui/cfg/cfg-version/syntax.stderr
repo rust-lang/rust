@@ -128,60 +128,150 @@ error[E0425]: cannot find function `key_value_form` in this scope
    |
 LL |     key_value_form();
    |     ^^^^^^^^^^^^^^ not found in this scope
+   |
+note: found an item that was configured out
+  --> $DIR/syntax.rs:32:4
+   |
+LL | #[cfg(version = "1.43")]
+   |       ---------------- the item is gated behind the `1.43` feature
+LL |
+LL | fn key_value_form() {}
+   |    ^^^^^^^^^^^^^^
 
 error[E0425]: cannot find function `not_numbers_or_periods` in this scope
   --> $DIR/syntax.rs:143:5
    |
 LL |     not_numbers_or_periods();
    |     ^^^^^^^^^^^^^^^^^^^^^^ not found in this scope
+   |
+note: found an item that was configured out
+  --> $DIR/syntax.rs:53:4
+   |
+LL | #[cfg(version("foo"))]
+   |              ------- the item is gated here
+LL |
+LL | fn not_numbers_or_periods() {}
+   |    ^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0425]: cannot find function `complex_semver_with_metadata` in this scope
   --> $DIR/syntax.rs:144:5
    |
 LL |     complex_semver_with_metadata();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not found in this scope
+   |
+note: found an item that was configured out
+  --> $DIR/syntax.rs:57:4
+   |
+LL | #[cfg(version("1.20.0-stable"))]
+   |              ----------------- the item is gated here
+LL |
+LL | fn complex_semver_with_metadata() {}
+   |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0425]: cannot find function `invalid_major_only` in this scope
   --> $DIR/syntax.rs:145:5
    |
 LL |     invalid_major_only();
    |     ^^^^^^^^^^^^^^^^^^ not found in this scope
+   |
+note: found an item that was configured out
+  --> $DIR/syntax.rs:80:4
+   |
+LL | #[cfg(version("1"))]
+   |              ----- the item is gated here
+LL |
+LL | fn invalid_major_only() {}
+   |    ^^^^^^^^^^^^^^^^^^
 
 error[E0425]: cannot find function `invalid_major_only_zero` in this scope
   --> $DIR/syntax.rs:146:5
    |
 LL |     invalid_major_only_zero();
    |     ^^^^^^^^^^^^^^^^^^^^^^^ not found in this scope
+   |
+note: found an item that was configured out
+  --> $DIR/syntax.rs:84:4
+   |
+LL | #[cfg(version("0"))]
+   |              ----- the item is gated here
+LL |
+LL | fn invalid_major_only_zero() {}
+   |    ^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0425]: cannot find function `invalid_major_only_negative` in this scope
   --> $DIR/syntax.rs:147:5
    |
 LL |     invalid_major_only_negative();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ not found in this scope
+   |
+note: found an item that was configured out
+  --> $DIR/syntax.rs:97:4
+   |
+LL | #[cfg(version("-1"))]
+   |              ------ the item is gated here
+LL |
+LL | fn invalid_major_only_negative() {}
+   |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0425]: cannot find function `exceed_u16_major` in this scope
   --> $DIR/syntax.rs:148:5
    |
 LL |     exceed_u16_major();
    |     ^^^^^^^^^^^^^^^^ not found in this scope
+   |
+note: found an item that was configured out
+  --> $DIR/syntax.rs:103:4
+   |
+LL | #[cfg(version("65536"))]
+   |              --------- the item is gated here
+LL |
+LL | fn exceed_u16_major() {}
+   |    ^^^^^^^^^^^^^^^^
 
 error[E0425]: cannot find function `exceed_u16_minor` in this scope
   --> $DIR/syntax.rs:149:5
    |
 LL |     exceed_u16_minor();
    |     ^^^^^^^^^^^^^^^^ not found in this scope
+   |
+note: found an item that was configured out
+  --> $DIR/syntax.rs:107:4
+   |
+LL | #[cfg(version("1.65536.0"))]
+   |              ------------- the item is gated here
+LL |
+LL | fn exceed_u16_minor() {}
+   |    ^^^^^^^^^^^^^^^^
 
 error[E0425]: cannot find function `exceed_u16_patch` in this scope
   --> $DIR/syntax.rs:150:5
    |
 LL |     exceed_u16_patch();
    |     ^^^^^^^^^^^^^^^^ not found in this scope
+   |
+note: found an item that was configured out
+  --> $DIR/syntax.rs:111:4
+   |
+LL | #[cfg(version("1.0.65536"))]
+   |              ------------- the item is gated here
+LL |
+LL | fn exceed_u16_patch() {}
+   |    ^^^^^^^^^^^^^^^^
 
 error[E0425]: cannot find function `exceed_u16_mixed` in this scope
   --> $DIR/syntax.rs:151:5
    |
 LL |     exceed_u16_mixed();
    |     ^^^^^^^^^^^^^^^^ not found in this scope
+   |
+note: found an item that was configured out
+  --> $DIR/syntax.rs:115:4
+   |
+LL | #[cfg(version("65536.0.65536"))]
+   |              ----------------- the item is gated here
+LL |
+LL | fn exceed_u16_mixed() {}
+   |    ^^^^^^^^^^^^^^^^
 
 error: aborting due to 14 previous errors; 14 warnings emitted
 

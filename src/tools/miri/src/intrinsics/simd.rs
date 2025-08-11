@@ -6,9 +6,8 @@ use rustc_middle::ty::FloatTy;
 use rustc_middle::{mir, ty};
 use rustc_span::{Symbol, sym};
 
-use crate::helpers::{
-    ToHost, ToSoft, bool_to_simd_element, check_intrinsic_arg_count, simd_element_to_bool,
-};
+use super::check_intrinsic_arg_count;
+use crate::helpers::{ToHost, ToSoft, bool_to_simd_element, simd_element_to_bool};
 use crate::*;
 
 #[derive(Copy, Clone)]

@@ -1986,3 +1986,29 @@ extern "C" void LLVMRustSetNoSanitizeHWAddress(LLVMValueRef Global) {
   MD.NoHWAddress = true;
   GV.setSanitizerMetadata(MD);
 }
+
+enum class LLVMRustTailCallKind {
+  None = 0,
+  Tail = 1,
+  MustTail = 2,
+  NoTail = 3
+};
+
+extern "C" void LLVMRustSetTailCallKind(LLVMValueRef Call,
+                                        LLVMRustTailCallKind Kind) {
+  CallInst *CI = unwrap<CallInst>(Call);
+  switch (Kind) {
+  case LLVMRustTailCallKind::None:
+    CI->setTailCallKind(CallInst::TCK_None);
+    break;
+  case LLVMRustTailCallKind::Tail:
+    CI->setTailCallKind(CallInst::TCK_Tail);
+    break;
+  case LLVMRustTailCallKind::MustTail:
+    CI->setTailCallKind(CallInst::TCK_MustTail);
+    break;
+  case LLVMRustTailCallKind::NoTail:
+    CI->setTailCallKind(CallInst::TCK_NoTail);
+    break;
+  }
+}

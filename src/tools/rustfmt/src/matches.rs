@@ -2,7 +2,7 @@
 
 use std::iter::repeat;
 
-use rustc_ast::{MatchKind, ast, ptr};
+use rustc_ast::{MatchKind, ast};
 use rustc_span::{BytePos, Span};
 use tracing::debug;
 
@@ -394,7 +394,7 @@ fn flatten_arm_body<'a>(
 
 fn rewrite_match_body(
     context: &RewriteContext<'_>,
-    body: &ptr::P<ast::Expr>,
+    body: &Box<ast::Expr>,
     pats_str: &str,
     shape: Shape,
     has_guard: bool,
@@ -569,7 +569,7 @@ fn rewrite_match_body(
 // The `if ...` guard on a match arm.
 fn rewrite_guard(
     context: &RewriteContext<'_>,
-    guard: &Option<ptr::P<ast::Expr>>,
+    guard: &Option<Box<ast::Expr>>,
     shape: Shape,
     // The amount of space used up on this line for the pattern in
     // the arm (excludes offset).

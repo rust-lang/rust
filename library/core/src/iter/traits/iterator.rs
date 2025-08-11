@@ -807,7 +807,7 @@ pub trait Iterator {
     /// might be preferable to keep a functional style with longer iterators:
     ///
     /// ```
-    /// (0..5).flat_map(|x| x * 100 .. x * 110)
+    /// (0..5).flat_map(|x| (x * 100)..(x * 110))
     ///       .enumerate()
     ///       .filter(|&(i, x)| (i + x) % 3 == 0)
     ///       .for_each(|(i, x)| println!("{i}:{x}"));
@@ -1875,7 +1875,7 @@ pub trait Iterator {
     /// without giving up ownership of the original iterator,
     /// so you can use the original iterator afterwards.
     ///
-    /// Uses [impl<I: Iterator + ?Sized> Iterator for &mut I { type Item = I::Item; ...}](https://doc.rust-lang.org/nightly/std/iter/trait.Iterator.html#impl-Iterator-for-%26mut+I).
+    /// Uses [`impl<I: Iterator + ?Sized> Iterator for &mut I { type Item = I::Item; ...}`](https://doc.rust-lang.org/nightly/std/iter/trait.Iterator.html#impl-Iterator-for-%26mut+I).
     ///
     /// # Examples
     ///

@@ -33,8 +33,8 @@ where
         self.trait_ref
     }
 
-    fn with_self_ty(self, cx: I, self_ty: I::Ty) -> Self {
-        self.with_self_ty(cx, self_ty)
+    fn with_replaced_self_ty(self, cx: I, self_ty: I::Ty) -> Self {
+        self.with_replaced_self_ty(cx, self_ty)
     }
 
     fn trait_def_id(self, _: I) -> I::DefId {
@@ -229,7 +229,7 @@ where
         }
 
         // We need to make sure to stall any coroutines we are inferring to avoid query cycles.
-        if let Some(cand) = ecx.try_stall_coroutine_witness(goal.predicate.self_ty()) {
+        if let Some(cand) = ecx.try_stall_coroutine(goal.predicate.self_ty()) {
             return cand;
         }
 
@@ -294,7 +294,7 @@ where
         }
 
         // We need to make sure to stall any coroutines we are inferring to avoid query cycles.
-        if let Some(cand) = ecx.try_stall_coroutine_witness(goal.predicate.self_ty()) {
+        if let Some(cand) = ecx.try_stall_coroutine(goal.predicate.self_ty()) {
             return cand;
         }
 
@@ -1263,7 +1263,9 @@ where
             let goals =
                 ecx.enter_forall(constituent_tys(ecx, goal.predicate.self_ty())?, |ecx, tys| {
                     tys.into_iter()
-                        .map(|ty| goal.with(ecx.cx(), goal.predicate.with_self_ty(ecx.cx(), ty)))
+                        .map(|ty| {
+                            goal.with(ecx.cx(), goal.predicate.with_replaced_self_ty(ecx.cx(), ty))
+                        })
                         .collect::<Vec<_>>()
                 });
             ecx.add_goals(GoalSource::ImplWhereBound, goals);
@@ -1344,11 +1346,10 @@ where
         mut candidates: Vec<Candidate<I>>,
     ) -> Result<(CanonicalResponse<I>, Option<TraitGoalProvenVia>), NoSolution> {
         if let TypingMode::Coherence = self.typing_mode() {
-            let all_candidates: Vec<_> = candidates.into_iter().map(|c| c.result).collect();
-            return if let Some(response) = self.try_merge_responses(&all_candidates) {
+            return if let Some(response) = self.try_merge_candidates(&candidates) {
                 Ok((response, Some(TraitGoalProvenVia::Misc)))
             } else {
-                self.flounder(&all_candidates).map(|r| (r, None))
+                self.flounder(&candidates).map(|r| (r, None))
             };
         }
 
@@ -1373,11 +1374,9 @@ where
             .any(|c| matches!(c.source, CandidateSource::ParamEnv(ParamEnvSource::NonGlobal)));
         if has_non_global_where_bounds {
             let where_bounds: Vec<_> = candidates
-                .iter()
-                .filter(|c| matches!(c.source, CandidateSource::ParamEnv(_)))
-                .map(|c| c.result)
+                .extract_if(.., |c| matches!(c.source, CandidateSource::ParamEnv(_)))
                 .collect();
-            return if let Some(response) = self.try_merge_responses(&where_bounds) {
+            return if let Some(response) = self.try_merge_candidates(&where_bounds) {
                 Ok((response, Some(TraitGoalProvenVia::ParamEnv)))
             } else {
                 Ok((self.bail_with_ambiguity(&where_bounds), None))
@@ -1386,11 +1385,9 @@ where
 
         if candidates.iter().any(|c| matches!(c.source, CandidateSource::AliasBound)) {
             let alias_bounds: Vec<_> = candidates
-                .iter()
-                .filter(|c| matches!(c.source, CandidateSource::AliasBound))
-                .map(|c| c.result)
+                .extract_if(.., |c| matches!(c.source, CandidateSource::AliasBound))
                 .collect();
-            return if let Some(response) = self.try_merge_responses(&alias_bounds) {
+            return if let Some(response) = self.try_merge_candidates(&alias_bounds) {
                 Ok((response, Some(TraitGoalProvenVia::AliasBound)))
             } else {
                 Ok((self.bail_with_ambiguity(&alias_bounds), None))
@@ -1415,11 +1412,10 @@ where
             TraitGoalProvenVia::Misc
         };
 
-        let all_candidates: Vec<_> = candidates.into_iter().map(|c| c.result).collect();
-        if let Some(response) = self.try_merge_responses(&all_candidates) {
+        if let Some(response) = self.try_merge_candidates(&candidates) {
             Ok((response, Some(proven_via)))
         } else {
-            self.flounder(&all_candidates).map(|r| (r, None))
+            self.flounder(&candidates).map(|r| (r, None))
         }
     }
 
@@ -1432,11 +1428,8 @@ where
         self.merge_trait_candidates(candidates)
     }
 
-    fn try_stall_coroutine_witness(
-        &mut self,
-        self_ty: I::Ty,
-    ) -> Option<Result<Candidate<I>, NoSolution>> {
-        if let ty::CoroutineWitness(def_id, _) = self_ty.kind() {
+    fn try_stall_coroutine(&mut self, self_ty: I::Ty) -> Option<Result<Candidate<I>, NoSolution>> {
+        if let ty::Coroutine(def_id, _) = self_ty.kind() {
             match self.typing_mode() {
                 TypingMode::Analysis {
                     defining_opaque_types_and_generators: stalled_generators,

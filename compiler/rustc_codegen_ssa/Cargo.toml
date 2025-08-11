@@ -8,8 +8,8 @@ edition = "2024"
 ar_archive_writer = "0.4.2"
 bitflags = "2.4.1"
 bstr = "1.11.3"
-# Pinned so `cargo update` bumps don't cause breakage. Please also update the
-# `cc` in `rustc_llvm` if you update the `cc` here.
+# `cc` updates often break things, so we pin it here. Cargo enforces "max 1 semver-compat version
+# per crate", so if you change this, you need to also change it in `rustc_llvm`.
 cc = "=1.2.16"
 itertools = "0.12"
 pathdiff = "0.2.0"
@@ -17,7 +17,6 @@ regex = "1.4"
 rustc_abi = { path = "../rustc_abi" }
 rustc_arena = { path = "../rustc_arena" }
 rustc_ast = { path = "../rustc_ast" }
-rustc_attr_data_structures = { path = "../rustc_attr_data_structures" }
 rustc_attr_parsing = { path = "../rustc_attr_parsing" }
 rustc_data_structures = { path = "../rustc_data_structures" }
 rustc_errors = { path = "../rustc_errors" }

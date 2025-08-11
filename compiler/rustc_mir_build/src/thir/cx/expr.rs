@@ -1,10 +1,11 @@
 use itertools::Itertools;
 use rustc_abi::{FIRST_VARIANT, FieldIdx};
 use rustc_ast::UnsafeBinderCastKind;
-use rustc_attr_data_structures::{AttributeKind, find_attr};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir as hir;
+use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
+use rustc_hir::find_attr;
 use rustc_index::Idx;
 use rustc_middle::hir::place::{
     Place as HirPlace, PlaceBase as HirPlaceBase, ProjectionKind as HirProjectionKind,
@@ -105,11 +106,11 @@ impl<'tcx> ThirBuildCx<'tcx> {
         //   // ^ error message points at this expression.
         // }
         let mut adjust_span = |expr: &mut Expr<'tcx>| {
-            if let ExprKind::Block { block } = expr.kind {
-                if let Some(last_expr) = self.thir[block].expr {
-                    span = self.thir[last_expr].span;
-                    expr.span = span;
-                }
+            if let ExprKind::Block { block } = expr.kind
+                && let Some(last_expr) = self.thir[block].expr
+            {
+                span = self.thir[last_expr].span;
+                expr.span = span;
             }
         };
 
@@ -851,9 +852,9 @@ impl<'tcx> ThirBuildCx<'tcx> {
                 if find_attr!(self.tcx.hir_attrs(expr.hir_id), AttributeKind::ConstContinue(_)) {
                     match dest.target_id {
                         Ok(target_id) => {
-                            let Some(value) = value else {
+                            let (Some(value), Some(_)) = (value, dest.label) else {
                                 let span = expr.span;
-                                self.tcx.dcx().emit_fatal(ConstContinueMissingValue { span })
+                                self.tcx.dcx().emit_fatal(ConstContinueMissingLabelOrValue { span })
                             };
 
                             ExprKind::ConstContinue {
@@ -955,21 +956,25 @@ impl<'tcx> ThirBuildCx<'tcx> {
                         dcx.emit_fatal(LoopMatchBadRhs { span: block_body_expr.span })
                     };
 
-                    fn local(expr: &rustc_hir::Expr<'_>) -> Option<hir::HirId> {
-                        if let hir::ExprKind::Path(hir::QPath::Resolved(_, path)) = expr.kind {
-                            if let Res::Local(hir_id) = path.res {
-                                return Some(hir_id);
-                            }
+                    fn local(
+                        cx: &mut ThirBuildCx<'_>,
+                        expr: &rustc_hir::Expr<'_>,
+                    ) -> Option<hir::HirId> {
+                        if let hir::ExprKind::Path(hir::QPath::Resolved(_, path)) = expr.kind
+                            && let Res::Local(hir_id) = path.res
+                            && !cx.is_upvar(hir_id)
+                        {
+                            return Some(hir_id);
                         }
 
                         None
                     }
 
-                    let Some(scrutinee_hir_id) = local(scrutinee) else {
+                    let Some(scrutinee_hir_id) = local(self, scrutinee) else {
                         dcx.emit_fatal(LoopMatchInvalidMatch { span: scrutinee.span })
                     };
 
-                    if local(state) != Some(scrutinee_hir_id) {
+                    if local(self, state) != Some(scrutinee_hir_id) {
                         dcx.emit_fatal(LoopMatchInvalidUpdate {
                             scrutinee: scrutinee.span,
                             lhs: state.span,
@@ -1260,10 +1265,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
     fn convert_var(&mut self, var_hir_id: hir::HirId) -> ExprKind<'tcx> {
         // We want upvars here not captures.
         // Captures will be handled in MIR.
-        let is_upvar = self
-            .tcx
-            .upvars_mentioned(self.body_owner)
-            .is_some_and(|upvars| upvars.contains_key(&var_hir_id));
+        let is_upvar = self.is_upvar(var_hir_id);
 
         debug!(
             "convert_var({:?}): is_upvar={}, body_owner={:?}",
@@ -1441,6 +1443,12 @@ impl<'tcx> ThirBuildCx<'tcx> {
                 }
             }
         }
+    }
+
+    fn is_upvar(&mut self, var_hir_id: hir::HirId) -> bool {
+        self.tcx
+            .upvars_mentioned(self.body_owner)
+            .is_some_and(|upvars| upvars.contains_key(&var_hir_id))
     }
 
     /// Converts a list of named fields (i.e., for struct-like struct/enum ADTs) into FieldExpr.

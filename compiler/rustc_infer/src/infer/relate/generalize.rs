@@ -19,6 +19,24 @@ use crate::infer::type_variable::TypeVariableValue;
 use crate::infer::unify_key::ConstVariableValue;
 use crate::infer::{InferCtxt, RegionVariableOrigin, relate};
 
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+enum TermVid {
+    Ty(ty::TyVid),
+    Const(ty::ConstVid),
+}
+
+impl From<ty::TyVid> for TermVid {
+    fn from(value: ty::TyVid) -> Self {
+        TermVid::Ty(value)
+    }
+}
+
+impl From<ty::ConstVid> for TermVid {
+    fn from(value: ty::ConstVid) -> Self {
+        TermVid::Const(value)
+    }
+}
+
 impl<'tcx> InferCtxt<'tcx> {
     /// The idea is that we should ensure that the type variable `target_vid`
     /// is equal to, a subtype of, or a supertype of `source_ty`.
@@ -238,20 +256,18 @@ impl<'tcx> InferCtxt<'tcx> {
         &self,
         span: Span,
         structurally_relate_aliases: StructurallyRelateAliases,
-        target_vid: impl Into<ty::TermVid>,
+        target_vid: impl Into<TermVid>,
         ambient_variance: ty::Variance,
         source_term: T,
     ) -> RelateResult<'tcx, Generalization<T>> {
         assert!(!source_term.has_escaping_bound_vars());
         let (for_universe, root_vid) = match target_vid.into() {
-            ty::TermVid::Ty(ty_vid) => {
-                (self.probe_ty_var(ty_vid).unwrap_err(), ty::TermVid::Ty(self.root_var(ty_vid)))
+            TermVid::Ty(ty_vid) => {
+                (self.probe_ty_var(ty_vid).unwrap_err(), TermVid::Ty(self.root_var(ty_vid)))
             }
-            ty::TermVid::Const(ct_vid) => (
+            TermVid::Const(ct_vid) => (
                 self.probe_const_var(ct_vid).unwrap_err(),
-                ty::TermVid::Const(
-                    self.inner.borrow_mut().const_unification_table().find(ct_vid).vid,
-                ),
+                TermVid::Const(self.inner.borrow_mut().const_unification_table().find(ct_vid).vid),
             ),
         };
 
@@ -299,7 +315,7 @@ struct Generalizer<'me, 'tcx> {
     /// The vid of the type variable that is in the process of being
     /// instantiated. If we find this within the value we are folding,
     /// that means we would have created a cyclic value.
-    root_vid: ty::TermVid,
+    root_vid: TermVid,
 
     /// The universe of the type variable that is in the process of being
     /// instantiated. If we find anything that this universe cannot name,
@@ -469,7 +485,7 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for Generalizer<'_, 'tcx> {
             ty::Infer(ty::TyVar(vid)) => {
                 let mut inner = self.infcx.inner.borrow_mut();
                 let vid = inner.type_variables().root_var(vid);
-                if ty::TermVid::Ty(vid) == self.root_vid {
+                if TermVid::Ty(vid) == self.root_vid {
                     // If sub-roots are equal, then `root_vid` and
                     // `vid` are related via subtyping.
                     Err(self.cyclic_term_error())
@@ -621,7 +637,7 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for Generalizer<'_, 'tcx> {
                 // If root const vids are equal, then `root_vid` and
                 // `vid` are related and we'd be inferring an infinitely
                 // deep const.
-                if ty::TermVid::Const(
+                if TermVid::Const(
                     self.infcx.inner.borrow_mut().const_unification_table().find(vid).vid,
                 ) == self.root_vid
                 {

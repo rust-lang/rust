@@ -142,7 +142,6 @@ case $HOST_TARGET in
     # Host
     GC_STRESS=1 MIR_OPT=1 MANY_SEEDS=64 TEST_BENCH=1 CARGO_MIRI_ENV=1 run_tests
     # Extra tier 1
-    MANY_SEEDS=64 TEST_TARGET=i686-unknown-linux-gnu run_tests
     MANY_SEEDS=64 TEST_TARGET=x86_64-apple-darwin run_tests
     MANY_SEEDS=64 TEST_TARGET=x86_64-pc-windows-gnu run_tests
     ;;
@@ -161,8 +160,6 @@ case $HOST_TARGET in
   aarch64-unknown-linux-gnu)
     # Host
     GC_STRESS=1 MIR_OPT=1 MANY_SEEDS=64 TEST_BENCH=1 CARGO_MIRI_ENV=1 run_tests
-    # Extra tier 1 candidate
-    MANY_SEEDS=64 TEST_TARGET=aarch64-pc-windows-msvc run_tests
     # Extra tier 2
     MANY_SEEDS=16 TEST_TARGET=arm-unknown-linux-gnueabi run_tests # 32bit ARM
     MANY_SEEDS=16 TEST_TARGET=aarch64-pc-windows-gnullvm run_tests # gnullvm ABI
@@ -189,12 +186,19 @@ case $HOST_TARGET in
     ;;
   i686-pc-windows-msvc)
     # Host
-    # Without GC_STRESS as this is the slowest runner.
+    # Without GC_STRESS as this is a very slow runner.
     MIR_OPT=1 MANY_SEEDS=64 TEST_BENCH=1 run_tests
     # Extra tier 1
     # We really want to ensure a Linux target works on a Windows host,
     # and a 64bit target works on a 32bit host.
     TEST_TARGET=x86_64-unknown-linux-gnu run_tests
+    ;;
+  aarch64-pc-windows-msvc)
+    # Host
+    # Without GC_STRESS as this is a very slow runner.
+    MIR_OPT=1 MANY_SEEDS=64 TEST_BENCH=1 CARGO_MIRI_ENV=1 run_tests
+    # Extra tier 1
+    MANY_SEEDS=64 TEST_TARGET=i686-unknown-linux-gnu run_tests
     ;;
   *)
     echo "FATAL: unknown host target: $HOST_TARGET"

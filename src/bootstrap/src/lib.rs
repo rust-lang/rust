@@ -123,6 +123,46 @@ impl PartialEq for Compiler {
     }
 }
 
+/// Represents a codegen backend.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Default)]
+pub enum CodegenBackendKind {
+    #[default]
+    Llvm,
+    Cranelift,
+    Gcc,
+    Custom(String),
+}
+
+impl CodegenBackendKind {
+    /// Name of the codegen backend, as identified in the `compiler` directory
+    /// (`rustc_codegen_<name>`).
+    pub fn name(&self) -> &str {
+        match self {
+            CodegenBackendKind::Llvm => "llvm",
+            CodegenBackendKind::Cranelift => "cranelift",
+            CodegenBackendKind::Gcc => "gcc",
+            CodegenBackendKind::Custom(name) => name,
+        }
+    }
+
+    /// Name of the codegen backend's crate, e.g. `rustc_codegen_cranelift`.
+    pub fn crate_name(&self) -> String {
+        format!("rustc_codegen_{}", self.name())
+    }
+
+    pub fn is_llvm(&self) -> bool {
+        matches!(self, Self::Llvm)
+    }
+
+    pub fn is_cranelift(&self) -> bool {
+        matches!(self, Self::Cranelift)
+    }
+
+    pub fn is_gcc(&self) -> bool {
+        matches!(self, Self::Gcc)
+    }
+}
+
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
 pub enum DocTests {
     /// Run normal tests and doc tests (default).
@@ -148,7 +188,6 @@ pub enum GitRepo {
 /// although most functions are implemented as free functions rather than
 /// methods specifically on this structure itself (to make it easier to
 /// organize).
-#[derive(Clone)]
 pub struct Build {
     /// User-specified configuration from `bootstrap.toml`.
     config: Config,
@@ -204,6 +243,9 @@ pub struct Build {
 
     #[cfg(feature = "build-metrics")]
     metrics: crate::utils::metrics::BuildMetrics,
+
+    #[cfg(feature = "tracing")]
+    step_graph: std::cell::RefCell<crate::utils::step_graph::StepGraph>,
 }
 
 #[derive(Debug, Clone)]
@@ -475,7 +517,7 @@ impl Build {
             local_rebuild: config.local_rebuild,
             fail_fast: config.cmd.fail_fast(),
             doc_tests: config.cmd.doc_tests(),
-            verbosity: config.verbose,
+            verbosity: config.exec_ctx.verbosity as usize,
 
             host_target: config.host_target,
             hosts: config.hosts.clone(),
@@ -507,6 +549,9 @@ impl Build {
 
             #[cfg(feature = "build-metrics")]
             metrics: crate::utils::metrics::BuildMetrics::init(),
+
+            #[cfg(feature = "tracing")]
+            step_graph: std::cell::RefCell::new(crate::utils::step_graph::StepGraph::default()),
         };
 
         // If local-rust is the same major.minor as the current version, then force a
@@ -1060,17 +1105,6 @@ impl Build {
         self.msg(Kind::Doc, compiler.stage, what, compiler.host, target.into())
     }
 
-    #[must_use = "Groups should not be dropped until the Step finishes running"]
-    #[track_caller]
-    fn msg_build(
-        &self,
-        compiler: Compiler,
-        what: impl Display,
-        target: impl Into<Option<TargetSelection>>,
-    ) -> Option<gha::Group> {
-        self.msg(Kind::Build, compiler.stage, what, compiler.host, target)
-    }
-
     /// Return a `Group` guard for a [`Step`] that is built for each `--stage`.
     ///
     /// [`Step`]: crate::core::builder::Step
@@ -1117,20 +1151,21 @@ impl Build {
 
     #[must_use = "Groups should not be dropped until the Step finishes running"]
     #[track_caller]
-    fn msg_sysroot_tool(
+    fn msg_rustc_tool(
         &self,
         action: impl Into<Kind>,
-        stage: u32,
+        build_stage: u32,
         what: impl Display,
         host: TargetSelection,
         target: TargetSelection,
     ) -> Option<gha::Group> {
         let action = action.into().description();
         let msg = |fmt| format!("{action} {what} {fmt}");
+
         let msg = if host == target {
-            msg(format_args!("(stage{stage} -> stage{}, {target})", stage + 1))
+            msg(format_args!("(stage{build_stage} -> stage{}, {target})", build_stage + 1))
         } else {
-            msg(format_args!("(stage{stage}:{host} -> stage{}:{target})", stage + 1))
+            msg(format_args!("(stage{build_stage}:{host} -> stage{}:{target})", build_stage + 1))
         };
         self.group(&msg)
     }
@@ -1983,6 +2018,11 @@ to download LLVM rather than building it.
 
     pub fn report_summary(&self, start_time: Instant) {
         self.config.exec_ctx.profiler().report_summary(start_time);
+    }
+
+    #[cfg(feature = "tracing")]
+    pub fn report_step_graph(self) {
+        self.step_graph.into_inner().store_to_dot_files();
     }
 }
 

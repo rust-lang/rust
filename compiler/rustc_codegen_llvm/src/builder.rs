@@ -15,6 +15,7 @@ use rustc_codegen_ssa::mir::place::PlaceRef;
 use rustc_codegen_ssa::traits::*;
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_hir::def_id::DefId;
+use rustc_middle::bug;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::ty::layout::{
     FnAbiError, FnAbiOfHelpers, FnAbiRequest, HasTypingEnv, LayoutError, LayoutOfHelpers,
@@ -24,7 +25,7 @@ use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_sanitizers::{cfi, kcfi};
 use rustc_session::config::OptLevel;
 use rustc_span::Span;
-use rustc_target::callconv::FnAbi;
+use rustc_target::callconv::{FnAbi, PassMode};
 use rustc_target::spec::{HasTargetSpec, SanitizerSet, Target};
 use smallvec::SmallVec;
 use tracing::{debug, instrument};
@@ -556,13 +557,25 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         let (size, signed) = ty.int_size_and_signed(self.tcx);
         let width = size.bits();
 
-        if oop == OverflowOp::Sub && !signed {
-            // Emit sub and icmp instead of llvm.usub.with.overflow. LLVM considers these
-            // to be the canonical form. It will attempt to reform llvm.usub.with.overflow
-            // in the backend if profitable.
-            let sub = self.sub(lhs, rhs);
-            let cmp = self.icmp(IntPredicate::IntULT, lhs, rhs);
-            return (sub, cmp);
+        if !signed {
+            match oop {
+                OverflowOp::Sub => {
+                    // Emit sub and icmp instead of llvm.usub.with.overflow. LLVM considers these
+                    // to be the canonical form. It will attempt to reform llvm.usub.with.overflow
+                    // in the backend if profitable.
+                    let sub = self.sub(lhs, rhs);
+                    let cmp = self.icmp(IntPredicate::IntULT, lhs, rhs);
+                    return (sub, cmp);
+                }
+                OverflowOp::Add => {
+                    // Like with sub above, using icmp is the preferred form. See
+                    // <https://rust-lang.zulipchat.com/#narrow/channel/187780-t-compiler.2Fllvm/topic/.60uadd.2Ewith.2Eoverflow.60.20.28again.29/near/533041085>
+                    let add = self.add(lhs, rhs);
+                    let cmp = self.icmp(IntPredicate::IntULT, add, lhs);
+                    return (add, cmp);
+                }
+                OverflowOp::Mul => {}
+            }
         }
 
         let oop_str = match oop {
@@ -687,10 +700,10 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                         bx.nonnull_metadata(load);
                     }
 
-                    if let Some(pointee) = layout.pointee_info_at(bx, offset) {
-                        if let Some(_) = pointee.safe {
-                            bx.align_metadata(load, pointee.align);
-                        }
+                    if let Some(pointee) = layout.pointee_info_at(bx, offset)
+                        && let Some(_) = pointee.safe
+                    {
+                        bx.align_metadata(load, pointee.align);
                     }
                 }
                 abi::Primitive::Float(_) => {}
@@ -1326,15 +1339,13 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         &mut self,
         op: rustc_codegen_ssa::common::AtomicRmwBinOp,
         dst: &'ll Value,
-        mut src: &'ll Value,
+        src: &'ll Value,
         order: rustc_middle::ty::AtomicOrdering,
+        ret_ptr: bool,
     ) -> &'ll Value {
-        // The only RMW operation that LLVM supports on pointers is compare-exchange.
-        let requires_cast_to_int = self.val_ty(src) == self.type_ptr()
-            && op != rustc_codegen_ssa::common::AtomicRmwBinOp::AtomicXchg;
-        if requires_cast_to_int {
-            src = self.ptrtoint(src, self.type_isize());
-        }
+        // FIXME: If `ret_ptr` is true and `src` is not a pointer, we *should* tell LLVM that the
+        // LHS is a pointer and the operation should be provenance-preserving, but LLVM does not
+        // currently support that (https://github.com/llvm/llvm-project/issues/120837).
         let mut res = unsafe {
             llvm::LLVMBuildAtomicRMW(
                 self.llbuilder,
@@ -1345,7 +1356,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                 llvm::False, // SingleThreaded
             )
         };
-        if requires_cast_to_int {
+        if ret_ptr && self.val_ty(res) != self.type_ptr() {
             res = self.inttoptr(res, self.type_ptr());
         }
         res
@@ -1429,6 +1440,28 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
             fn_abi.apply_attrs_callsite(self, call);
         }
         call
+    }
+
+    fn tail_call(
+        &mut self,
+        llty: Self::Type,
+        fn_attrs: Option<&CodegenFnAttrs>,
+        fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
+        llfn: Self::Value,
+        args: &[Self::Value],
+        funclet: Option<&Self::Funclet>,
+        instance: Option<Instance<'tcx>>,
+    ) {
+        let call = self.call(llty, fn_attrs, Some(fn_abi), llfn, args, funclet, instance);
+        llvm::LLVMRustSetTailCallKind(call, llvm::TailCallKind::MustTail);
+
+        match &fn_abi.ret.mode {
+            PassMode::Ignore | PassMode::Indirect { .. } => self.ret_void(),
+            PassMode::Direct(_) | PassMode::Pair { .. } => self.ret(call),
+            mode @ PassMode::Cast { .. } => {
+                bug!("Encountered `PassMode::{mode:?}` during codegen")
+            }
+        }
     }
 
     fn zext(&mut self, val: &'ll Value, dest_ty: &'ll Type) -> &'ll Value {
@@ -1862,49 +1895,5 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
         index: &'ll Value,
     ) {
         self.call_intrinsic("llvm.instrprof.increment", &[], &[fn_name, hash, num_counters, index]);
-    }
-
-    /// Emits a call to `llvm.instrprof.mcdc.parameters`.
-    ///
-    /// This doesn't produce any code directly, but is used as input by
-    /// the LLVM pass that handles coverage instrumentation.
-    ///
-    /// (See clang's [`CodeGenPGO::emitMCDCParameters`] for comparison.)
-    ///
-    /// [`CodeGenPGO::emitMCDCParameters`]:
-    ///     https://github.com/rust-lang/llvm-project/blob/5399a24/clang/lib/CodeGen/CodeGenPGO.cpp#L1124
-    #[instrument(level = "debug", skip(self))]
-    pub(crate) fn mcdc_parameters(
-        &mut self,
-        fn_name: &'ll Value,
-        hash: &'ll Value,
-        bitmap_bits: &'ll Value,
-    ) {
-        self.call_intrinsic("llvm.instrprof.mcdc.parameters", &[], &[fn_name, hash, bitmap_bits]);
-    }
-
-    #[instrument(level = "debug", skip(self))]
-    pub(crate) fn mcdc_tvbitmap_update(
-        &mut self,
-        fn_name: &'ll Value,
-        hash: &'ll Value,
-        bitmap_index: &'ll Value,
-        mcdc_temp: &'ll Value,
-    ) {
-        let args = &[fn_name, hash, bitmap_index, mcdc_temp];
-        self.call_intrinsic("llvm.instrprof.mcdc.tvbitmap.update", &[], args);
-    }
-
-    #[instrument(level = "debug", skip(self))]
-    pub(crate) fn mcdc_condbitmap_reset(&mut self, mcdc_temp: &'ll Value) {
-        self.store(self.const_i32(0), mcdc_temp, self.tcx.data_layout.i32_align.abi);
-    }
-
-    #[instrument(level = "debug", skip(self))]
-    pub(crate) fn mcdc_condbitmap_update(&mut self, cond_index: &'ll Value, mcdc_temp: &'ll Value) {
-        let align = self.tcx.data_layout.i32_align.abi;
-        let current_tv_index = self.load(self.cx.type_i32(), mcdc_temp, align);
-        let new_tv_index = self.add(current_tv_index, cond_index);
-        self.store(new_tv_index, mcdc_temp, align);
     }
 }

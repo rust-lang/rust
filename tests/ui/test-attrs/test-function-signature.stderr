@@ -26,7 +26,7 @@ error[E0277]: the trait bound `i32: Termination` is not satisfied
   --> $DIR/test-function-signature.rs:9:13
    |
 LL | #[test]
-   | ------- in this procedural macro expansion
+   | ------- in this attribute macro expansion
 LL | fn bar() -> i32 {
    |             ^^^ the trait `Termination` is not implemented for `i32`
    |

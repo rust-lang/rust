@@ -789,10 +789,10 @@ impl<'tcx> IsIdentity for CanonicalUserType<'tcx> {
                         },
 
                         GenericArgKind::Lifetime(r) => match r.kind() {
-                            ty::ReBound(debruijn, br) => {
+                            ty::ReBound(debruijn, b) => {
                                 // We only allow a `ty::INNERMOST` index in generic parameters.
                                 assert_eq!(debruijn, ty::INNERMOST);
-                                cvar == br.var
+                                cvar == b.var
                             }
                             _ => false,
                         },
@@ -801,7 +801,7 @@ impl<'tcx> IsIdentity for CanonicalUserType<'tcx> {
                             ty::ConstKind::Bound(debruijn, b) => {
                                 // We only allow a `ty::INNERMOST` index in generic parameters.
                                 assert_eq!(debruijn, ty::INNERMOST);
-                                cvar == b
+                                cvar == b.var
                             }
                             _ => false,
                         },

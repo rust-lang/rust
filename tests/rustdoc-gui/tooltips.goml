@@ -1,0 +1,15 @@
+// This test checks that the right font is applied to the `i` tooltip element.
+
+define-function: (
+    "check-font",
+    [path],
+    block {
+        go-to: "file://" + |DOC_PATH| + "/test_docs/" + |path|
+        assert-css: (
+            "a.tooltip", {"font-family": '"Source Serif 4", NanumBarunGothic, serif'}, ALL,
+        )
+    }
+)
+
+call-function: ("check-font", {"path": "tooltips/fn.bar.html"})
+call-function: ("check-font", {"path": "tooltips/struct.X.html"})

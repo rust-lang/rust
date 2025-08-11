@@ -19,12 +19,11 @@ use serde_derive::Deserialize;
 use tracing::{instrument, span};
 
 use crate::core::build_steps::gcc::{Gcc, add_cg_gcc_cargo_flags};
-use crate::core::build_steps::tool::{SourceType, copy_lld_artifacts};
+use crate::core::build_steps::tool::{RustcPrivateCompilers, SourceType, copy_lld_artifacts};
 use crate::core::build_steps::{dist, llvm};
 use crate::core::builder;
 use crate::core::builder::{
-    Builder, Cargo, Kind, PathSet, RunConfig, ShouldRun, Step, StepMetadata, TaskPath,
-    crate_description,
+    Builder, Cargo, Kind, RunConfig, ShouldRun, Step, StepMetadata, crate_description,
 };
 use crate::core::config::{DebuginfoLevel, LlvmLibunwind, RustcLto, TargetSelection};
 use crate::utils::build_stamp;
@@ -33,7 +32,10 @@ use crate::utils::exec::command;
 use crate::utils::helpers::{
     exe, get_clang_cl_resource_dir, is_debug_info, is_dylib, symlink_dir, t, up_to_date,
 };
-use crate::{CLang, Compiler, DependencyType, FileType, GitRepo, LLVM_TOOLS, Mode, debug, trace};
+use crate::{
+    CLang, CodegenBackendKind, Compiler, DependencyType, FileType, GitRepo, LLVM_TOOLS, Mode,
+    debug, trace,
+};
 
 /// Build a standard library for the given `target` using the given `compiler`.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -266,7 +268,7 @@ impl Step for Std {
                 target,
                 Kind::Build,
             );
-            std_cargo(builder, target, compiler.stage, &mut cargo);
+            std_cargo(builder, target, &mut cargo);
             for krate in &*self.crates {
                 cargo.arg("-p").arg(krate);
             }
@@ -494,7 +496,7 @@ fn compiler_rt_for_profiler(builder: &Builder<'_>) -> PathBuf {
 
 /// Configure cargo to compile the standard library, adding appropriate env vars
 /// and such.
-pub fn std_cargo(builder: &Builder<'_>, target: TargetSelection, stage: u32, cargo: &mut Cargo) {
+pub fn std_cargo(builder: &Builder<'_>, target: TargetSelection, cargo: &mut Cargo) {
     // rustc already ensures that it builds with the minimum deployment
     // target, so ideally we shouldn't need to do anything here.
     //
@@ -642,12 +644,8 @@ pub fn std_cargo(builder: &Builder<'_>, target: TargetSelection, stage: u32, car
     // built with bitcode so that the produced rlibs can be used for both LTO
     // builds (which use bitcode) and non-LTO builds (which use object code).
     // So we override the override here!
-    //
-    // But we don't bother for the stage 0 compiler because it's never used
-    // with LTO.
-    if stage >= 1 {
-        cargo.rustflag("-Cembed-bitcode=yes");
-    }
+    cargo.rustflag("-Cembed-bitcode=yes");
+
     if builder.config.rust_lto == RustcLto::Off {
         cargo.rustflag("-Clto=off");
     }
@@ -1128,7 +1126,7 @@ impl Step for Rustc {
             cargo.env("RUSTC_BOLT_LINK_FLAGS", "1");
         }
 
-        let _guard = builder.msg_sysroot_tool(
+        let _guard = builder.msg_rustc_tool(
             Kind::Build,
             build_compiler.stage,
             format_args!("compiler artifacts{}", crate_description(&self.crates)),
@@ -1330,7 +1328,7 @@ pub fn rustc_cargo_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetS
     }
 
     if let Some(backend) = builder.config.default_codegen_backend(target) {
-        cargo.env("CFG_DEFAULT_CODEGEN_BACKEND", backend);
+        cargo.env("CFG_DEFAULT_CODEGEN_BACKEND", backend.name());
     }
 
     let libdir_relative = builder.config.libdir_relative().unwrap_or_else(|| Path::new("lib"));
@@ -1540,101 +1538,47 @@ impl Step for RustcLink {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct CodegenBackend {
-    pub target: TargetSelection,
-    pub compiler: Compiler,
-    pub backend: String,
+pub struct GccCodegenBackend {
+    compilers: RustcPrivateCompilers,
 }
 
-fn needs_codegen_config(run: &RunConfig<'_>) -> bool {
-    let mut needs_codegen_cfg = false;
-    for path_set in &run.paths {
-        needs_codegen_cfg = match path_set {
-            PathSet::Set(set) => set.iter().any(|p| is_codegen_cfg_needed(p, run)),
-            PathSet::Suite(suite) => is_codegen_cfg_needed(suite, run),
-        }
-    }
-    needs_codegen_cfg
-}
-
-pub(crate) const CODEGEN_BACKEND_PREFIX: &str = "rustc_codegen_";
-
-fn is_codegen_cfg_needed(path: &TaskPath, run: &RunConfig<'_>) -> bool {
-    let path = path.path.to_str().unwrap();
-
-    let is_explicitly_called = |p| -> bool { run.builder.paths.contains(p) };
-    let should_enforce = run.builder.kind == Kind::Dist || run.builder.kind == Kind::Install;
-
-    if path.contains(CODEGEN_BACKEND_PREFIX) {
-        let mut needs_codegen_backend_config = true;
-        for backend in run.builder.config.codegen_backends(run.target) {
-            if path.ends_with(&(CODEGEN_BACKEND_PREFIX.to_owned() + backend)) {
-                needs_codegen_backend_config = false;
-            }
-        }
-        if (is_explicitly_called(&PathBuf::from(path)) || should_enforce)
-            && needs_codegen_backend_config
-        {
-            run.builder.info(
-                "WARNING: no codegen-backends config matched the requested path to build a codegen backend. \
-                HELP: add backend to codegen-backends in bootstrap.toml.",
-            );
-            return true;
-        }
-    }
-
-    false
-}
-
-impl Step for CodegenBackend {
-    type Output = ();
+impl Step for GccCodegenBackend {
+    type Output = BuildStamp;
     const ONLY_HOSTS: bool = true;
-    /// Only the backends specified in the `codegen-backends` entry of `bootstrap.toml` are built.
-    const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.paths(&["compiler/rustc_codegen_cranelift", "compiler/rustc_codegen_gcc"])
+        run.alias("rustc_codegen_gcc").alias("cg_gcc")
     }
 
     fn make_run(run: RunConfig<'_>) {
-        if needs_codegen_config(&run) {
-            return;
-        }
-
-        for backend in run.builder.config.codegen_backends(run.target) {
-            if backend == "llvm" {
-                continue; // Already built as part of rustc
-            }
-
-            run.builder.ensure(CodegenBackend {
-                target: run.target,
-                compiler: run.builder.compiler(run.builder.top_stage, run.build_triple()),
-                backend: backend.clone(),
-            });
-        }
+        run.builder.ensure(GccCodegenBackend {
+            compilers: RustcPrivateCompilers::new(run.builder, run.builder.top_stage, run.target),
+        });
     }
 
     #[cfg_attr(
         feature = "tracing",
         instrument(
             level = "debug",
-            name = "CodegenBackend::run",
+            name = "GccCodegenBackend::run",
             skip_all,
             fields(
-                compiler = ?self.compiler,
-                target = ?self.target,
-                backend = ?self.target,
+                compilers = ?self.compilers,
             ),
         ),
     )]
-    fn run(self, builder: &Builder<'_>) {
-        let compiler = self.compiler;
-        let target = self.target;
-        let backend = self.backend;
+    fn run(self, builder: &Builder<'_>) -> Self::Output {
+        let target = self.compilers.target();
+        let build_compiler = self.compilers.build_compiler();
 
-        builder.ensure(Rustc::new(compiler, target));
+        let stamp = build_stamp::codegen_backend_stamp(
+            builder,
+            build_compiler,
+            target,
+            &CodegenBackendKind::Gcc,
+        );
 
-        if builder.config.keep_stage.contains(&compiler.stage) {
+        if builder.config.keep_stage.contains(&build_compiler.stage) {
             trace!("`keep-stage` requested");
             builder.info(
                 "WARNING: Using a potentially old codegen backend. \
@@ -1642,20 +1586,97 @@ impl Step for CodegenBackend {
             );
             // Codegen backends are linked separately from this step today, so we don't do
             // anything here.
-            return;
+            return stamp;
         }
-
-        let compiler_to_use = builder.compiler_for(compiler.stage, compiler.host, target);
-        if compiler_to_use != compiler {
-            builder.ensure(CodegenBackend { compiler: compiler_to_use, target, backend });
-            return;
-        }
-
-        let out_dir = builder.cargo_out(compiler, Mode::Codegen, target);
 
         let mut cargo = builder::Cargo::new(
             builder,
-            compiler,
+            build_compiler,
+            Mode::Codegen,
+            SourceType::InTree,
+            target,
+            Kind::Build,
+        );
+        cargo.arg("--manifest-path").arg(builder.src.join("compiler/rustc_codegen_gcc/Cargo.toml"));
+        rustc_cargo_env(builder, &mut cargo, target);
+
+        let gcc = builder.ensure(Gcc { target });
+        add_cg_gcc_cargo_flags(&mut cargo, &gcc);
+
+        let _guard = builder.msg_rustc_tool(
+            Kind::Build,
+            build_compiler.stage,
+            "codegen backend gcc",
+            build_compiler.host,
+            target,
+        );
+        let files = run_cargo(builder, cargo, vec![], &stamp, vec![], false, false);
+        write_codegen_backend_stamp(stamp, files, builder.config.dry_run())
+    }
+
+    fn metadata(&self) -> Option<StepMetadata> {
+        Some(
+            StepMetadata::build("rustc_codegen_gcc", self.compilers.target())
+                .built_by(self.compilers.build_compiler()),
+        )
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct CraneliftCodegenBackend {
+    pub compilers: RustcPrivateCompilers,
+}
+
+impl Step for CraneliftCodegenBackend {
+    type Output = BuildStamp;
+    const ONLY_HOSTS: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.alias("rustc_codegen_cranelift").alias("cg_clif")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(CraneliftCodegenBackend {
+            compilers: RustcPrivateCompilers::new(run.builder, run.builder.top_stage, run.target),
+        });
+    }
+
+    #[cfg_attr(
+        feature = "tracing",
+        instrument(
+            level = "debug",
+            name = "CraneliftCodegenBackend::run",
+            skip_all,
+            fields(
+                compilers = ?self.compilers,
+            ),
+        ),
+    )]
+    fn run(self, builder: &Builder<'_>) -> Self::Output {
+        let target = self.compilers.target();
+        let build_compiler = self.compilers.build_compiler();
+
+        let stamp = build_stamp::codegen_backend_stamp(
+            builder,
+            build_compiler,
+            target,
+            &CodegenBackendKind::Cranelift,
+        );
+
+        if builder.config.keep_stage.contains(&build_compiler.stage) {
+            trace!("`keep-stage` requested");
+            builder.info(
+                "WARNING: Using a potentially old codegen backend. \
+                This may not behave well.",
+            );
+            // Codegen backends are linked separately from this step today, so we don't do
+            // anything here.
+            return stamp;
+        }
+
+        let mut cargo = builder::Cargo::new(
+            builder,
+            build_compiler,
             Mode::Codegen,
             SourceType::InTree,
             target,
@@ -1663,58 +1684,67 @@ impl Step for CodegenBackend {
         );
         cargo
             .arg("--manifest-path")
-            .arg(builder.src.join(format!("compiler/rustc_codegen_{backend}/Cargo.toml")));
+            .arg(builder.src.join("compiler/rustc_codegen_cranelift/Cargo.toml"));
         rustc_cargo_env(builder, &mut cargo, target);
 
-        // Ideally, we'd have a separate step for the individual codegen backends,
-        // like we have in tests (test::CodegenGCC) but that would require a lot of restructuring.
-        // If the logic gets more complicated, it should probably be done.
-        if backend == "gcc" {
-            let gcc = builder.ensure(Gcc { target });
-            add_cg_gcc_cargo_flags(&mut cargo, &gcc);
-        }
-
-        let tmp_stamp = BuildStamp::new(&out_dir).with_prefix("tmp");
-
-        let _guard = builder.msg_build(compiler, format_args!("codegen backend {backend}"), target);
-        let files = run_cargo(builder, cargo, vec![], &tmp_stamp, vec![], false, false);
-        if builder.config.dry_run() {
-            return;
-        }
-        let mut files = files.into_iter().filter(|f| {
-            let filename = f.file_name().unwrap().to_str().unwrap();
-            is_dylib(f) && filename.contains("rustc_codegen_")
-        });
-        let codegen_backend = match files.next() {
-            Some(f) => f,
-            None => panic!("no dylibs built for codegen backend?"),
-        };
-        if let Some(f) = files.next() {
-            panic!(
-                "codegen backend built two dylibs:\n{}\n{}",
-                codegen_backend.display(),
-                f.display()
-            );
-        }
-        let stamp = build_stamp::codegen_backend_stamp(builder, compiler, target, &backend);
-        let codegen_backend = codegen_backend.to_str().unwrap();
-        t!(stamp.add_stamp(codegen_backend).write());
+        let _guard = builder.msg_rustc_tool(
+            Kind::Build,
+            build_compiler.stage,
+            "codegen backend cranelift",
+            build_compiler.host,
+            target,
+        );
+        let files = run_cargo(builder, cargo, vec![], &stamp, vec![], false, false);
+        write_codegen_backend_stamp(stamp, files, builder.config.dry_run())
     }
+
+    fn metadata(&self) -> Option<StepMetadata> {
+        Some(
+            StepMetadata::build("rustc_codegen_cranelift", self.compilers.target())
+                .built_by(self.compilers.build_compiler()),
+        )
+    }
+}
+
+/// Write filtered `files` into the passed build stamp and returns it.
+fn write_codegen_backend_stamp(
+    mut stamp: BuildStamp,
+    files: Vec<PathBuf>,
+    dry_run: bool,
+) -> BuildStamp {
+    if dry_run {
+        return stamp;
+    }
+
+    let mut files = files.into_iter().filter(|f| {
+        let filename = f.file_name().unwrap().to_str().unwrap();
+        is_dylib(f) && filename.contains("rustc_codegen_")
+    });
+    let codegen_backend = match files.next() {
+        Some(f) => f,
+        None => panic!("no dylibs built for codegen backend?"),
+    };
+    if let Some(f) = files.next() {
+        panic!("codegen backend built two dylibs:\n{}\n{}", codegen_backend.display(), f.display());
+    }
+
+    let codegen_backend = codegen_backend.to_str().unwrap();
+    stamp = stamp.add_stamp(codegen_backend);
+    t!(stamp.write());
+    stamp
 }
 
 /// Creates the `codegen-backends` folder for a compiler that's about to be
 /// assembled as a complete compiler.
 ///
-/// This will take the codegen artifacts produced by `compiler` and link them
+/// This will take the codegen artifacts recorded in the given `stamp` and link them
 /// into an appropriate location for `target_compiler` to be a functional
 /// compiler.
 fn copy_codegen_backends_to_sysroot(
     builder: &Builder<'_>,
-    compiler: Compiler,
+    stamp: BuildStamp,
     target_compiler: Compiler,
 ) {
-    let target = target_compiler.host;
-
     // Note that this step is different than all the other `*Link` steps in
     // that it's not assembling a bunch of libraries but rather is primarily
     // moving the codegen backend into place. The codegen backend of rustc is
@@ -1730,25 +1760,18 @@ fn copy_codegen_backends_to_sysroot(
         return;
     }
 
-    for backend in builder.config.codegen_backends(target) {
-        if backend == "llvm" {
-            continue; // Already built as part of rustc
-        }
-
-        let stamp = build_stamp::codegen_backend_stamp(builder, compiler, target, backend);
-        if stamp.path().exists() {
-            let dylib = t!(fs::read_to_string(stamp.path()));
-            let file = Path::new(&dylib);
-            let filename = file.file_name().unwrap().to_str().unwrap();
-            // change `librustc_codegen_cranelift-xxxxxx.so` to
-            // `librustc_codegen_cranelift-release.so`
-            let target_filename = {
-                let dash = filename.find('-').unwrap();
-                let dot = filename.find('.').unwrap();
-                format!("{}-{}{}", &filename[..dash], builder.rust_release(), &filename[dot..])
-            };
-            builder.copy_link(file, &dst.join(target_filename), FileType::NativeLibrary);
-        }
+    if stamp.path().exists() {
+        let dylib = t!(fs::read_to_string(stamp.path()));
+        let file = Path::new(&dylib);
+        let filename = file.file_name().unwrap().to_str().unwrap();
+        // change `librustc_codegen_cranelift-xxxxxx.so` to
+        // `librustc_codegen_cranelift-release.so`
+        let target_filename = {
+            let dash = filename.find('-').unwrap();
+            let dot = filename.find('.').unwrap();
+            format!("{}-{}{}", &filename[..dash], builder.rust_release(), &filename[dot..])
+        };
+        builder.copy_link(file, &dst.join(target_filename), FileType::NativeLibrary);
     }
 }
 
@@ -2157,42 +2180,52 @@ impl Step for Assemble {
         );
         build_compiler.stage = actual_stage;
 
-        #[cfg(feature = "tracing")]
-        let _codegen_backend_span =
-            span!(tracing::Level::DEBUG, "building requested codegen backends").entered();
-        for backend in builder.config.codegen_backends(target_compiler.host) {
-            if backend == "llvm" {
-                debug!("llvm codegen backend is already built as part of rustc");
-                continue; // Already built as part of rustc
-            }
+        let mut codegen_backend_stamps = vec![];
+        {
+            #[cfg(feature = "tracing")]
+            let _codegen_backend_span =
+                span!(tracing::Level::DEBUG, "building requested codegen backends").entered();
 
-            // FIXME: this is a horrible hack used to make `x check` work when other codegen
-            // backends are enabled.
-            // `x check` will check stage 1 rustc, which copies its rmetas to the stage0 sysroot.
-            // Then it checks codegen backends, which correctly use these rmetas.
-            // Then it needs to check std, but for that it needs to build stage 1 rustc.
-            // This copies the build rmetas into the stage0 sysroot, effectively poisoning it,
-            // because we then have both check and build rmetas in the same sysroot.
-            // That would be fine on its own. However, when another codegen backend is enabled,
-            // then building stage 1 rustc implies also building stage 1 codegen backend (even if
-            // it isn't used for anything). And since that tries to use the poisoned
-            // rmetas, it fails to build.
-            // We don't actually need to build rustc-private codegen backends for checking std,
-            // so instead we skip that.
-            // Note: this would be also an issue for other rustc-private tools, but that is "solved"
-            // by check::Std being last in the list of checked things (see
-            // `Builder::get_step_descriptions`).
-            if builder.kind == Kind::Check && builder.top_stage == 1 {
-                continue;
+            for backend in builder.config.enabled_codegen_backends(target_compiler.host) {
+                // FIXME: this is a horrible hack used to make `x check` work when other codegen
+                // backends are enabled.
+                // `x check` will check stage 1 rustc, which copies its rmetas to the stage0 sysroot.
+                // Then it checks codegen backends, which correctly use these rmetas.
+                // Then it needs to check std, but for that it needs to build stage 1 rustc.
+                // This copies the build rmetas into the stage0 sysroot, effectively poisoning it,
+                // because we then have both check and build rmetas in the same sysroot.
+                // That would be fine on its own. However, when another codegen backend is enabled,
+                // then building stage 1 rustc implies also building stage 1 codegen backend (even if
+                // it isn't used for anything). And since that tries to use the poisoned
+                // rmetas, it fails to build.
+                // We don't actually need to build rustc-private codegen backends for checking std,
+                // so instead we skip that.
+                // Note: this would be also an issue for other rustc-private tools, but that is "solved"
+                // by check::Std being last in the list of checked things (see
+                // `Builder::get_step_descriptions`).
+                if builder.kind == Kind::Check && builder.top_stage == 1 {
+                    continue;
+                }
+
+                let prepare_compilers = || {
+                    RustcPrivateCompilers::from_build_and_target_compiler(
+                        build_compiler,
+                        target_compiler,
+                    )
+                };
+
+                let stamp = match backend {
+                    CodegenBackendKind::Cranelift => {
+                        builder.ensure(CraneliftCodegenBackend { compilers: prepare_compilers() })
+                    }
+                    CodegenBackendKind::Gcc => {
+                        builder.ensure(GccCodegenBackend { compilers: prepare_compilers() })
+                    }
+                    CodegenBackendKind::Llvm | CodegenBackendKind::Custom(_) => continue,
+                };
+                codegen_backend_stamps.push(stamp);
             }
-            builder.ensure(CodegenBackend {
-                compiler: build_compiler,
-                target: target_compiler.host,
-                backend: backend.clone(),
-            });
         }
-        #[cfg(feature = "tracing")]
-        drop(_codegen_backend_span);
 
         let stage = target_compiler.stage;
         let host = target_compiler.host;
@@ -2253,7 +2286,9 @@ impl Step for Assemble {
         }
 
         debug!("copying codegen backends to sysroot");
-        copy_codegen_backends_to_sysroot(builder, build_compiler, target_compiler);
+        for stamp in codegen_backend_stamps {
+            copy_codegen_backends_to_sysroot(builder, stamp, target_compiler);
+        }
 
         if builder.config.lld_enabled {
             let lld_wrapper =
@@ -2377,15 +2412,19 @@ pub fn run_cargo(
     let mut deps = Vec::new();
     let mut toplevel = Vec::new();
     let ok = stream_cargo(builder, cargo, tail_args, &mut |msg| {
-        let (filenames, crate_types) = match msg {
+        let (filenames_vec, crate_types) = match msg {
             CargoMessage::CompilerArtifact {
                 filenames,
                 target: CargoTarget { crate_types },
                 ..
-            } => (filenames, crate_types),
+            } => {
+                let mut f: Vec<String> = filenames.into_iter().map(|s| s.into_owned()).collect();
+                f.sort(); // Sort the filenames
+                (f, crate_types)
+            }
             _ => return,
         };
-        for filename in filenames {
+        for filename in filenames_vec {
             // Skip files like executables
             let mut keep = false;
             if filename.ends_with(".lib")

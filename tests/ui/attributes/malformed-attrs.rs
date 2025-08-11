@@ -20,12 +20,8 @@
 #![feature(linkage)]
 #![feature(cfi_encoding, extern_types)]
 #![feature(patchable_function_entry)]
-#![feature(omit_gdb_pretty_printer_section)]
 #![feature(fundamental)]
 
-
-#![omit_gdb_pretty_printer_section = 1]
-//~^ ERROR malformed `omit_gdb_pretty_printer_section` attribute input
 
 #![windows_subsystem]
 //~^ ERROR malformed

@@ -2,6 +2,7 @@
 //@ min-gdb-version: 13.0
 
 //@ compile-flags:-g
+//@ disable-gdb-pretty-printers
 
 // === GDB TESTS ===================================================================================
 
@@ -68,9 +69,6 @@
 // lldb-command:v nested_non_zero_nope
 // lldb-check:[...] Nope
 
-
-#![feature(omit_gdb_pretty_printer_section)]
-#![omit_gdb_pretty_printer_section]
 
 // If a struct has exactly two variants, one of them is empty, and the other one
 // contains a non-nullable pointer, then this value is used as the discriminator.

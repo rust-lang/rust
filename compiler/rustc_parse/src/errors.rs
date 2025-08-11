@@ -585,14 +585,13 @@ pub(crate) struct MissingInInForLoop {
 
 #[derive(Subdiagnostic)]
 pub(crate) enum MissingInInForLoopSub {
+    // User wrote `for pat of expr {}`
     // Has been misleading, at least in the past (closed Issue #48492), thus maybe-incorrect
-    #[suggestion(
-        parse_use_in_not_of,
-        style = "verbose",
-        applicability = "maybe-incorrect",
-        code = "in"
-    )]
+    #[suggestion(parse_use_in, style = "verbose", applicability = "maybe-incorrect", code = "in")]
     InNotOf(#[primary_span] Span),
+    // User wrote `for pat = expr {}`
+    #[suggestion(parse_use_in, style = "verbose", applicability = "maybe-incorrect", code = "in")]
+    InNotEq(#[primary_span] Span),
     #[suggestion(parse_add_in, style = "verbose", applicability = "maybe-incorrect", code = " in ")]
     AddIn(#[primary_span] Span),
 }
@@ -1484,6 +1483,34 @@ pub(crate) struct DocCommentOnParamType {
 #[derive(Diagnostic)]
 #[diag(parse_attribute_on_param_type)]
 pub(crate) struct AttributeOnParamType {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_attribute_on_type)]
+pub(crate) struct AttributeOnType {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    #[suggestion(code = "", applicability = "machine-applicable", style = "tool-only")]
+    pub fix_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_attribute_on_generic_arg)]
+pub(crate) struct AttributeOnGenericArg {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    #[suggestion(code = "", applicability = "machine-applicable", style = "tool-only")]
+    pub fix_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_attribute_on_empty_type)]
+pub(crate) struct AttributeOnEmptyType {
     #[primary_span]
     #[label]
     pub span: Span,

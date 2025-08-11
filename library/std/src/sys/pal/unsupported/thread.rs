@@ -10,7 +10,11 @@ pub const DEFAULT_MIN_STACK_SIZE: usize = 64 * 1024;
 
 impl Thread {
     // unsafe: see thread::Builder::spawn_unchecked for safety requirements
-    pub unsafe fn new(_stack: usize, _p: Box<dyn FnOnce()>) -> io::Result<Thread> {
+    pub unsafe fn new(
+        _stack: usize,
+        _name: Option<&str>,
+        _p: Box<dyn FnOnce()>,
+    ) -> io::Result<Thread> {
         unsupported()
     }
 
@@ -33,6 +37,10 @@ impl Thread {
     pub fn join(self) {
         self.0
     }
+}
+
+pub(crate) fn current_os_id() -> Option<u64> {
+    None
 }
 
 pub fn available_parallelism() -> io::Result<NonZero<usize>> {

@@ -675,7 +675,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let bodies = SortedMap::from_presorted_elements(bodies);
 
         // Don't hash unless necessary, because it's expensive.
-        let (opt_hash_including_bodies, attrs_hash, delayed_lints_hash) =
+        let rustc_middle::hir::Hashes { opt_hash_including_bodies, attrs_hash, delayed_lints_hash } =
             self.tcx.hash_owner_nodes(node, &bodies, &attrs, &delayed_lints, define_opaque);
         let num_nodes = self.item_local_id_counter.as_usize();
         let (nodes, parenting) = index::index_hir(self.tcx, node, &bodies, num_nodes);
@@ -1217,7 +1217,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     fn lower_path_ty(
         &mut self,
         t: &Ty,
-        qself: &Option<ptr::P<QSelf>>,
+        qself: &Option<Box<QSelf>>,
         path: &Path,
         param_mode: ParamMode,
         itctx: ImplTraitContext,
@@ -2368,7 +2368,17 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         &mut self,
         modifiers: TraitBoundModifiers,
     ) -> hir::TraitBoundModifiers {
-        hir::TraitBoundModifiers { constness: modifiers.constness, polarity: modifiers.polarity }
+        let constness = match modifiers.constness {
+            BoundConstness::Never => BoundConstness::Never,
+            BoundConstness::Always(span) => BoundConstness::Always(self.lower_span(span)),
+            BoundConstness::Maybe(span) => BoundConstness::Maybe(self.lower_span(span)),
+        };
+        let polarity = match modifiers.polarity {
+            BoundPolarity::Positive => BoundPolarity::Positive,
+            BoundPolarity::Negative(span) => BoundPolarity::Negative(self.lower_span(span)),
+            BoundPolarity::Maybe(span) => BoundPolarity::Maybe(self.lower_span(span)),
+        };
+        hir::TraitBoundModifiers { constness, polarity }
     }
 
     // Helper methods for building HIR.
@@ -2414,6 +2424,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         init: Option<&'hir hir::Expr<'hir>>,
     ) -> hir::Stmt<'hir> {
         let hir_id = self.next_id();
+        let span = self.lower_span(span);
         let local = hir::LetStmt {
             super_: Some(span),
             hir_id,
@@ -2421,7 +2432,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             pat,
             els: None,
             source: hir::LocalSource::Normal,
-            span: self.lower_span(span),
+            span,
             ty: None,
         };
         self.stmt(span, hir::StmtKind::Let(self.arena.alloc(local)))

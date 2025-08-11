@@ -3,6 +3,7 @@
 use std::assert_matches::debug_assert_matches;
 use std::borrow::Cow;
 use std::iter;
+use std::path::PathBuf;
 
 use itertools::{EitherOrBoth, Itertools};
 use rustc_abi::ExternAbi;
@@ -737,7 +738,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 get_name(err, &local.pat.kind)
             }
             // Different to previous arm because one is `&hir::Local` and the other
-            // is `P<hir::Local>`.
+            // is `Box<hir::Local>`.
             hir::Node::LetStmt(local) => get_name(err, &local.pat.kind),
             _ => None,
         }
@@ -987,7 +988,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     else {
                         return false;
                     };
-                    if self.tcx.trait_of_item(did) != Some(clone_trait) {
+                    if self.tcx.trait_of_assoc(did) != Some(clone_trait) {
                         return false;
                     }
                     Some(ident.span)
@@ -1369,6 +1370,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 );
                 let self_ty_str =
                     self.tcx.short_string(old_pred.self_ty().skip_binder(), err.long_ty_path());
+                let trait_path = self
+                    .tcx
+                    .short_string(old_pred.print_modifiers_and_trait_path(), err.long_ty_path());
+
                 if has_custom_message {
                     err.note(msg);
                 } else {
@@ -1376,10 +1381,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 }
                 err.span_label(
                     span,
-                    format!(
-                        "the trait `{}` is not implemented for `{self_ty_str}`",
-                        old_pred.print_modifiers_and_trait_path()
-                    ),
+                    format!("the trait `{trait_path}` is not implemented for `{self_ty_str}`"),
                 );
             };
 
@@ -2213,26 +2215,26 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         span: Span,
         trait_ref: DefId,
     ) {
-        if let Some(assoc_item) = self.tcx.opt_associated_item(item_def_id) {
-            if let ty::AssocKind::Const { .. } | ty::AssocKind::Type { .. } = assoc_item.kind {
-                err.note(format!(
-                    "{}s cannot be accessed directly on a `trait`, they can only be \
+        if let Some(assoc_item) = self.tcx.opt_associated_item(item_def_id)
+            && let ty::AssocKind::Const { .. } | ty::AssocKind::Type { .. } = assoc_item.kind
+        {
+            err.note(format!(
+                "{}s cannot be accessed directly on a `trait`, they can only be \
                         accessed through a specific `impl`",
-                    self.tcx.def_kind_descr(assoc_item.as_def_kind(), item_def_id)
-                ));
+                self.tcx.def_kind_descr(assoc_item.as_def_kind(), item_def_id)
+            ));
 
-                if !assoc_item.is_impl_trait_in_trait() {
-                    err.span_suggestion_verbose(
-                        span,
-                        "use the fully qualified path to an implementation",
-                        format!(
-                            "<Type as {}>::{}",
-                            self.tcx.def_path_str(trait_ref),
-                            assoc_item.name()
-                        ),
-                        Applicability::HasPlaceholders,
-                    );
-                }
+            if !assoc_item.is_impl_trait_in_trait() {
+                err.span_suggestion_verbose(
+                    span,
+                    "use the fully qualified path to an implementation",
+                    format!(
+                        "<Type as {}>::{}",
+                        self.tcx.def_path_str(trait_ref),
+                        assoc_item.name()
+                    ),
+                    Applicability::HasPlaceholders,
+                );
             }
         }
     }
@@ -3333,17 +3335,22 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     tcx.async_fn_trait_kind_from_def_id(data.parent_trait_pred.def_id()).is_some();
 
                 if !is_upvar_tys_infer_tuple && !is_builtin_async_fn_trait {
-                    let ty_str = tcx.short_string(ty, err.long_ty_path());
-                    let msg = format!("required because it appears within the type `{ty_str}`");
+                    let mut msg = || {
+                        let ty_str = tcx.short_string(ty, err.long_ty_path());
+                        format!("required because it appears within the type `{ty_str}`")
+                    };
                     match ty.kind() {
-                        ty::Adt(def, _) => match tcx.opt_item_ident(def.did()) {
-                            Some(ident) => {
-                                err.span_note(ident.span, msg);
+                        ty::Adt(def, _) => {
+                            let msg = msg();
+                            match tcx.opt_item_ident(def.did()) {
+                                Some(ident) => {
+                                    err.span_note(ident.span, msg);
+                                }
+                                None => {
+                                    err.note(msg);
+                                }
                             }
-                            None => {
-                                err.note(msg);
-                            }
-                        },
+                        }
                         ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }) => {
                             // If the previous type is async fn, this is the future generated by the body of an async function.
                             // Avoid printing it twice (it was already printed in the `ty::Coroutine` arm below).
@@ -3363,6 +3370,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             {
                                 // See comment above; skip printing twice.
                             } else {
+                                let msg = msg();
                                 err.span_note(tcx.def_span(def_id), msg);
                             }
                         }
@@ -3392,6 +3400,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             err.note("`str` is considered to contain a `[u8]` slice for auto trait purposes");
                         }
                         _ => {
+                            let msg = msg();
                             err.note(msg);
                         }
                     };
@@ -3441,7 +3450,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 }
                 let self_ty_str =
                     tcx.short_string(parent_trait_pred.skip_binder().self_ty(), err.long_ty_path());
-                let trait_name = parent_trait_pred.print_modifiers_and_trait_path().to_string();
+                let trait_name = tcx.short_string(
+                    parent_trait_pred.print_modifiers_and_trait_path(),
+                    err.long_ty_path(),
+                );
                 let msg = format!("required for `{self_ty_str}` to implement `{trait_name}`");
                 let mut is_auto_trait = false;
                 match tcx.hir_get_if_local(data.impl_or_alias_def_id) {
@@ -3539,10 +3551,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         parent_trait_pred.skip_binder().self_ty(),
                         err.long_ty_path(),
                     );
-                    err.note(format!(
-                        "required for `{self_ty}` to implement `{}`",
-                        parent_trait_pred.print_modifiers_and_trait_path()
-                    ));
+                    let trait_path = tcx.short_string(
+                        parent_trait_pred.print_modifiers_and_trait_path(),
+                        err.long_ty_path(),
+                    );
+                    err.note(format!("required for `{self_ty}` to implement `{trait_path}`"));
                 }
                 // #74711: avoid a stack overflow
                 ensure_sufficient_stack(|| {
@@ -3558,15 +3571,20 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 });
             }
             ObligationCauseCode::ImplDerivedHost(ref data) => {
-                let self_ty =
-                    self.resolve_vars_if_possible(data.derived.parent_host_pred.self_ty());
-                let msg = format!(
-                    "required for `{self_ty}` to implement `{} {}`",
-                    data.derived.parent_host_pred.skip_binder().constness,
+                let self_ty = tcx.short_string(
+                    self.resolve_vars_if_possible(data.derived.parent_host_pred.self_ty()),
+                    err.long_ty_path(),
+                );
+                let trait_path = tcx.short_string(
                     data.derived
                         .parent_host_pred
                         .map_bound(|pred| pred.trait_ref)
                         .print_only_trait_path(),
+                    err.long_ty_path(),
+                );
+                let msg = format!(
+                    "required for `{self_ty}` to implement `{} {trait_path}`",
+                    data.derived.parent_host_pred.skip_binder().constness,
                 );
                 match tcx.hir_get_if_local(data.impl_def_id) {
                     Some(Node::Item(hir::Item {
@@ -3942,7 +3960,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             if let hir::Expr { kind: hir::ExprKind::MethodCall(_, rcvr, _, _), .. } = expr
                 && let Some(ty) = typeck_results.node_type_opt(rcvr.hir_id)
                 && let Some(failed_pred) = failed_pred.as_trait_clause()
-                && let pred = failed_pred.map_bound(|pred| pred.with_self_ty(tcx, ty))
+                && let pred = failed_pred.map_bound(|pred| pred.with_replaced_self_ty(tcx, ty))
                 && self.predicate_must_hold_modulo_regions(&Obligation::misc(
                     tcx, expr.span, body_id, param_env, pred,
                 ))
@@ -4624,9 +4642,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         let Some(root_pred) = root_obligation.predicate.as_trait_clause() else { return };
 
         let trait_ref = root_pred.map_bound(|root_pred| {
-            root_pred
-                .trait_ref
-                .with_self_ty(self.tcx, Ty::new_tup(self.tcx, &[root_pred.trait_ref.self_ty()]))
+            root_pred.trait_ref.with_replaced_self_ty(
+                self.tcx,
+                Ty::new_tup(self.tcx, &[root_pred.trait_ref.self_ty()]),
+            )
         });
 
         let obligation =
@@ -5350,6 +5369,7 @@ pub(super) fn get_explanation_based_on_obligation<'tcx>(
     obligation: &PredicateObligation<'tcx>,
     trait_predicate: ty::PolyTraitPredicate<'tcx>,
     pre_message: String,
+    long_ty_path: &mut Option<PathBuf>,
 ) -> String {
     if let ObligationCauseCode::MainFunctionType = obligation.cause.code() {
         "consider using `()`, or a `Result`".to_owned()
@@ -5368,7 +5388,7 @@ pub(super) fn get_explanation_based_on_obligation<'tcx>(
             format!(
                 "{pre_message}the trait `{}` is not implemented for{desc} `{}`",
                 trait_predicate.print_modifiers_and_trait_path(),
-                tcx.short_string(trait_predicate.self_ty().skip_binder(), &mut None),
+                tcx.short_string(trait_predicate.self_ty().skip_binder(), long_ty_path),
             )
         } else {
             // "the trait bound `T: !Send` is not satisfied" reads better than "`!Send` is

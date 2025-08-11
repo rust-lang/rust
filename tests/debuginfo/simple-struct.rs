@@ -1,4 +1,5 @@
 //@ compile-flags: -g -Zmir-enable-passes=-CheckAlignment
+//@ disable-gdb-pretty-printers
 
 // === GDB TESTS ===================================================================================
 
@@ -84,8 +85,6 @@
 
 #![allow(unused_variables)]
 #![allow(dead_code)]
-#![feature(omit_gdb_pretty_printer_section)]
-#![omit_gdb_pretty_printer_section]
 
 struct NoPadding16 {
     x: u16,

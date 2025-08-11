@@ -3,8 +3,6 @@
 The full bootstrapping process takes quite a while. Here are some suggestions to
 make your life easier.
 
-<!-- toc -->
-
 ## Installing a pre-push hook
 
 CI will automatically fail your build if it doesn't pass `tidy`, our internal

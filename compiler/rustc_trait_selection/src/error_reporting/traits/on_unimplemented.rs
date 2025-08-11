@@ -99,7 +99,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         &self,
         trait_pred: ty::PolyTraitPredicate<'tcx>,
         obligation: &PredicateObligation<'tcx>,
-        long_ty_file: &mut Option<PathBuf>,
+        long_ty_path: &mut Option<PathBuf>,
     ) -> OnUnimplementedNote {
         if trait_pred.polarity() != ty::PredicatePolarity::Positive {
             return OnUnimplementedNote::default();
@@ -281,7 +281,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     GenericParamDefKind::Type { .. } | GenericParamDefKind::Const { .. } => {
                         if let Some(ty) = trait_pred.trait_ref.args[param.index as usize].as_type()
                         {
-                            self.tcx.short_string(ty, long_ty_file)
+                            self.tcx.short_string(ty, long_ty_path)
                         } else {
                             trait_pred.trait_ref.args[param.index as usize].to_string()
                         }
@@ -381,15 +381,15 @@ impl IgnoredDiagnosticOption {
         old: Option<Span>,
         option_name: &'static str,
     ) {
-        if let (Some(new_item), Some(old_item)) = (new, old) {
-            if let Some(item_def_id) = item_def_id.as_local() {
-                tcx.emit_node_span_lint(
-                    MALFORMED_DIAGNOSTIC_ATTRIBUTES,
-                    tcx.local_def_id_to_hir_id(item_def_id),
-                    new_item,
-                    IgnoredDiagnosticOption { span: new_item, prev_span: old_item, option_name },
-                );
-            }
+        if let (Some(new_item), Some(old_item)) = (new, old)
+            && let Some(item_def_id) = item_def_id.as_local()
+        {
+            tcx.emit_node_span_lint(
+                MALFORMED_DIAGNOSTIC_ATTRIBUTES,
+                tcx.local_def_id_to_hir_id(item_def_id),
+                new_item,
+                IgnoredDiagnosticOption { span: new_item, prev_span: old_item, option_name },
+            );
         }
     }
 }

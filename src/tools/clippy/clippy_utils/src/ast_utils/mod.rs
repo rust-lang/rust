@@ -5,7 +5,6 @@
 #![allow(clippy::wildcard_imports, clippy::enum_glob_use)]
 
 use crate::{both, over};
-use rustc_ast::ptr::P;
 use rustc_ast::{self as ast, *};
 use rustc_span::symbol::Ident;
 use std::mem;
@@ -83,11 +82,11 @@ pub fn eq_field_pat(l: &PatField, r: &PatField) -> bool {
         && over(&l.attrs, &r.attrs, eq_attr)
 }
 
-pub fn eq_qself(l: &P<QSelf>, r: &P<QSelf>) -> bool {
+pub fn eq_qself(l: &Box<QSelf>, r: &Box<QSelf>) -> bool {
     l.position == r.position && eq_ty(&l.ty, &r.ty)
 }
 
-pub fn eq_maybe_qself(l: Option<&P<QSelf>>, r: Option<&P<QSelf>>) -> bool {
+pub fn eq_maybe_qself(l: Option<&Box<QSelf>>, r: Option<&Box<QSelf>>) -> bool {
     match (l, r) {
         (Some(l), Some(r)) => eq_qself(l, r),
         (None, None) => true,
@@ -130,7 +129,7 @@ pub fn eq_generic_arg(l: &GenericArg, r: &GenericArg) -> bool {
     }
 }
 
-pub fn eq_expr_opt(l: Option<&P<Expr>>, r: Option<&P<Expr>>) -> bool {
+pub fn eq_expr_opt(l: Option<&Box<Expr>>, r: Option<&Box<Expr>>) -> bool {
     both(l, r, |l, r| eq_expr(l, r))
 }
 
@@ -727,7 +726,7 @@ pub fn eq_fn_header(l: &FnHeader, r: &FnHeader) -> bool {
 }
 
 #[expect(clippy::ref_option, reason = "This is the type how it is stored in the AST")]
-pub fn eq_opt_fn_contract(l: &Option<P<FnContract>>, r: &Option<P<FnContract>>) -> bool {
+pub fn eq_opt_fn_contract(l: &Option<Box<FnContract>>, r: &Option<Box<FnContract>>) -> bool {
     match (l, r) {
         (Some(l), Some(r)) => {
             eq_expr_opt(l.requires.as_ref(), r.requires.as_ref()) && eq_expr_opt(l.ensures.as_ref(), r.ensures.as_ref())
