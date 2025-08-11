@@ -338,7 +338,7 @@ your fork with `git push --force-with-lease`.
 
 ### Keeping things up to date
 
-The above section on [Rebasing](#rebasing) is a specific
+The [above section](#rebasing) is a specific
 guide on rebasing work and dealing with merge conflicts.
 Here is some general advice about how to keep your local repo
 up-to-date with upstream changes:
