@@ -54,13 +54,17 @@ const COMMAND_SPAN_TARGET: &str = "COMMAND";
 #[cfg(feature = "tracing")]
 pub fn trace_cmd(command: &crate::BootstrapCommand) -> tracing::span::EnteredSpan {
     let fingerprint = command.fingerprint();
+    let location = command.get_created_location();
+    let location = format!("{}:{}", location.file(), location.line());
+
     tracing::span!(
         target: COMMAND_SPAN_TARGET,
         tracing::Level::TRACE,
         "cmd",
         cmd_name = fingerprint.program_name().to_string(),
         cmd = fingerprint.format_short_cmd(),
-        full_cmd = ?command
+        full_cmd = ?command,
+        location
     )
     .entered()
 }
@@ -269,33 +273,66 @@ mod inner {
                 }
             }
 
-            // We handle steps specially. We instrument them dynamically in `Builder::ensure`,
-            // and we want to have custom name for each step span. But tracing doesn't allow setting
-            // dynamic span names. So we detect step spans here and override their name.
-            if span.metadata().target() == STEP_SPAN_TARGET {
-                let name = field_values.and_then(|v| v.step_name.as_deref()).unwrap_or(span.name());
-                write!(writer, "{name}")?;
-
-                // There should be only one more field called `args`
-                if let Some(values) = field_values {
-                    let field = &values.fields[0];
-                    write!(writer, " {{{}}}", field.1)?;
-                }
-            } else {
-                write!(writer, "{}", span.name())?;
-                if let Some(values) = field_values.filter(|v| !v.fields.is_empty()) {
+            fn write_fields<'a, I: IntoIterator<Item = &'a (&'a str, String)>, W: Write>(
+                writer: &mut W,
+                iter: I,
+            ) -> std::io::Result<()> {
+                let items = iter.into_iter().collect::<Vec<_>>();
+                if !items.is_empty() {
                     write!(writer, " [")?;
-                    for (index, (name, value)) in values.fields.iter().enumerate() {
+                    for (index, (name, value)) in items.iter().enumerate() {
                         write!(writer, "{name} = {value}")?;
-                        if index < values.fields.len() - 1 {
+                        if index < items.len() - 1 {
                             write!(writer, ", ")?;
                         }
                     }
                     write!(writer, "]")?;
                 }
-            };
+                Ok(())
+            }
 
-            write_location(writer, span.metadata())?;
+            // We handle steps specially. We instrument them dynamically in `Builder::ensure`,
+            // and we want to have custom name for each step span. But tracing doesn't allow setting
+            // dynamic span names. So we detect step spans here and override their name.
+            match span.metadata().target() {
+                // Executed step
+                STEP_SPAN_TARGET => {
+                    let name =
+                        field_values.and_then(|v| v.step_name.as_deref()).unwrap_or(span.name());
+                    write!(writer, "{name}")?;
+
+                    // There should be only one more field called `args`
+                    if let Some(values) = field_values {
+                        let field = &values.fields[0];
+                        write!(writer, " {{{}}}", field.1)?;
+                    }
+                    write_location(writer, span.metadata())?;
+                }
+                // Executed command
+                COMMAND_SPAN_TARGET => {
+                    write!(writer, "{}", span.name())?;
+                    if let Some(values) = field_values {
+                        write_fields(
+                            writer,
+                            values.fields.iter().filter(|(name, _)| *name != "location"),
+                        )?;
+                        write!(
+                            writer,
+                            " ({})",
+                            values.fields.iter().find(|(name, _)| *name == "location").unwrap().1
+                        )?;
+                    }
+                }
+                // Other span
+                _ => {
+                    write!(writer, "{}", span.name())?;
+                    if let Some(values) = field_values {
+                        write_fields(writer, values.fields.iter())?;
+                    }
+                    write_location(writer, span.metadata())?;
+                }
+            }
+
             writeln!(writer)?;
             Ok(())
         }
