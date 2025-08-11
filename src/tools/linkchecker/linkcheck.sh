@@ -23,7 +23,9 @@
 
 set -e
 
-html_dir="$(rustc +nightly --print sysroot)/share/doc/rust/html"
+# Only check host docs now
+host_triple=$(rustc +nightly --print host-tuple)
+html_dir="$(rustc +nightly --print sysroot)/share/doc/rust/html/$host_triple"
 
 if [ ! -d "$html_dir" ]
 then
