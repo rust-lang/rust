@@ -36,12 +36,14 @@ questions about how the compiler works can go in [#t-compiler/help][z-help].
 [z-help]: https://rust-lang.zulipchat.com/#narrow/channel/182449-t-compiler.2Fhelp
 
 **Please ask questions!** A lot of people report feeling that they are "wasting
-expert time", but nobody on `t-compiler` feels this way. Contributors are
+expert's time", but nobody on `t-compiler` feels this way. Contributors are
 important to us.
 
 Also, if you feel comfortable, prefer public topics, as this means others can
 see the questions and answers, and perhaps even integrate them back into this
 guide :)
+
+**Tip**: If you're not a native English speaker and feel unsure about writing, try using a translator to help. But avoid using LLM tools that generate long, complex words. In daily teamwork, **simple and clear words** are best for easy understanding. Even small typos or grammar mistakes can make you seem more human, and people connect better with humans.
 
 ### Experts
 
