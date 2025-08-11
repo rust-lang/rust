@@ -49,7 +49,26 @@
 //! v[1] = v[1] + 5;
 //! ```
 //!
+//! # Memory layout
+//!
+//! For non-zero-sized types, [`Vec`] uses the [`Global`] allocator for its allocation. It is
+//! valid to convert both ways between a [`Vec`] and a raw pointer allocated with the [`Global`]
+//! allocator, provided that the [`Layout`] used with the allocator is correct for a sequence of
+//! `capacity` elements of the type, and the first `len` values pointed to by the raw pointer are
+//! valid. More precisely, a `ptr: *mut T` that has been allocated with the [`Global`] allocator
+//! with [`Layout::array::<T>(capacity)`][Layout::array] may be converted into a vec using
+//! [`Vec::<T>::from_raw_parts(ptr, len, capacity)`](Vec::from_raw_parts).
+//! Conversely, the memory backing a `value: *mut T` obtained from [`Vec::<T>::as_mut_ptr`] may be
+//! deallocated using the [`Global`] allocator with the same layout.
+//!
+//! For zero-sized types (ZSTs), the `Vec` pointer must be non-null and sufficiently aligned.
+//! The recommended way to build a `Vec` of ZSTs if [`vec!`] cannot be used is to use
+//! [`ptr::NonNull::dangling`].
+//!
 //! [`push`]: Vec::push
+//! [`ptr::NonNull::dangling`]: NonNull::dangling
+//! [`Layout`]: crate::alloc::Layout
+//! [Layout::array]: crate::alloc::Layout::array
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -770,12 +789,15 @@ impl<T> Vec<T> {
     /// order as the arguments to [`from_raw_parts`].
     ///
     /// After calling this function, the caller is responsible for the
-    /// memory previously managed by the `Vec`. The only way to do
-    /// this is to convert the raw pointer, length, and capacity back
-    /// into a `Vec` with the [`from_raw_parts`] function, allowing
-    /// the destructor to perform the cleanup.
+    /// memory previously managed by the `Vec`. Most often, one does
+    /// this by converting the raw pointer, length, and capacity back
+    /// into a `Vec` with the [`from_raw_parts`] function; more generally,
+    /// if `T` is non-zero-sized one may use any method that calls
+    /// [`dealloc`] with a layout of `Layout::array::<T>(capacity)`,
+    /// and if `T` is zero-sized nothing needs to be done.
     ///
     /// [`from_raw_parts`]: Vec::from_raw_parts
+    /// [`dealloc`]: crate::alloc::GlobalAlloc::dealloc
     ///
     /// # Examples
     ///
@@ -1755,6 +1777,12 @@ impl<T, A: Allocator> Vec<T, A> {
     /// may still invalidate this pointer.
     /// See the second example below for how this guarantee can be used.
     ///
+    /// The method also guarantees that, as long as `T` is not zero-sized, the pointer may be
+    /// passed into [`dealloc`] with a layout of `Layout::array::<T>(capacity)` in order to
+    /// deallocate the backing memory. If this is done, be careful not to run the destructor
+    /// of the `Vec`, as dropping it will result in double-frees. Wrapping the `Vec` in a
+    /// [`ManuallyDrop`] is the typical way to achieve this.
+    ///
     /// # Examples
     ///
     /// ```
@@ -1787,9 +1815,24 @@ impl<T, A: Allocator> Vec<T, A> {
     /// }
     /// ```
     ///
+    /// Deallocating a vector using [`Box`] (which uses [`dealloc`] internally):
+    ///
+    /// ```
+    /// use std::mem::{ManuallyDrop, MaybeUninit};
+    ///
+    /// let mut v = ManuallyDrop::new(vec![0, 1, 2]);
+    /// let ptr = v.as_mut_ptr();
+    /// let capacity = v.capacity();
+    /// let slice_ptr: *mut [MaybeUninit<i32>] =
+    ///     std::ptr::slice_from_raw_parts_mut(ptr.cast(), capacity);
+    /// drop(unsafe { Box::from_raw(slice_ptr) });
+    /// ```
+    ///
     /// [`as_mut_ptr`]: Vec::as_mut_ptr
     /// [`as_ptr`]: Vec::as_ptr
     /// [`as_non_null`]: Vec::as_non_null
+    /// [`dealloc`]: crate::alloc::GlobalAlloc::dealloc
+    /// [`ManuallyDrop`]: core::mem::ManuallyDrop
     #[stable(feature = "vec_as_ptr", since = "1.37.0")]
     #[rustc_const_stable(feature = "const_vec_string_slice", since = "1.87.0")]
     #[rustc_never_returns_null_ptr]
