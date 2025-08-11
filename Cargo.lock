@@ -3791,7 +3791,6 @@ dependencies = [
  "rustc_error_messages",
  "rustc_fluent_macro",
  "rustc_hashes",
- "rustc_hir_id",
  "rustc_index",
  "rustc_lexer",
  "rustc_lint_defs",
