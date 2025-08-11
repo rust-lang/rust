@@ -1939,10 +1939,15 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         //
         // and here we prefer to blame the source (the y = x statement).
         let blame_source = match from_region_origin {
-            NllRegionVariableOrigin::FreeRegion
-            | NllRegionVariableOrigin::Existential { from_forall: false, name: _ } => true,
-            NllRegionVariableOrigin::Placeholder(_)
-            | NllRegionVariableOrigin::Existential { from_forall: true, name: _ } => false,
+            NllRegionVariableOrigin::FreeRegion => true,
+            NllRegionVariableOrigin::Placeholder(_) => false,
+            // `'existential: 'whatever` never results in a region error by itself.
+            // We may always infer it to `'static` afterall. This means while an error
+            // path may go through an existential, these existentials are never the
+            // `from_region`.
+            NllRegionVariableOrigin::Existential { name: _ } => {
+                unreachable!("existentials can outlive everything")
+            }
         };
 
         // To pick a constraint to blame, we organize constraints by how interesting we expect them

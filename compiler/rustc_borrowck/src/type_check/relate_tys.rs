@@ -216,7 +216,7 @@ impl<'a, 'b, 'tcx> NllTypeRelating<'a, 'b, 'tcx> {
                     *ex_reg_var
                 } else {
                     let ex_reg_var =
-                        self.next_existential_region_var(true, br.kind.get_name(infcx.infcx.tcx));
+                        self.next_existential_region_var(br.kind.get_name(infcx.infcx.tcx));
                     debug!(?ex_reg_var);
                     reg_map.insert(br, ex_reg_var);
 
@@ -244,17 +244,9 @@ impl<'a, 'b, 'tcx> NllTypeRelating<'a, 'b, 'tcx> {
     }
 
     #[instrument(skip(self), level = "debug")]
-    fn next_existential_region_var(
-        &mut self,
-        from_forall: bool,
-        name: Option<Symbol>,
-    ) -> ty::Region<'tcx> {
-        let origin = NllRegionVariableOrigin::Existential { name, from_forall };
-
-        let reg_var =
-            self.type_checker.infcx.next_nll_region_var(origin, || RegionCtxt::Existential(name));
-
-        reg_var
+    fn next_existential_region_var(&mut self, name: Option<Symbol>) -> ty::Region<'tcx> {
+        let origin = NllRegionVariableOrigin::Existential { name };
+        self.type_checker.infcx.next_nll_region_var(origin, || RegionCtxt::Existential(name))
     }
 
     #[instrument(skip(self), level = "debug")]
