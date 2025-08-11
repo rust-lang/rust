@@ -3194,39 +3194,34 @@ fn add_apple_link_args(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavo
 }
 
 fn add_apple_sdk(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor) -> Option<PathBuf> {
-    let os = &sess.target.os;
-    if sess.target.vendor != "apple"
-        || !matches!(os.as_ref(), "ios" | "tvos" | "watchos" | "visionos" | "macos")
-        || !matches!(flavor, LinkerFlavor::Darwin(..))
-    {
+    if !sess.target.is_like_darwin {
+        return None;
+    }
+    let LinkerFlavor::Darwin(cc, _) = flavor else {
+        return None;
+    };
+    if os == "macos" && cc != Cc::No {
+        // FIXME(madsmtm): Remove this branch.
         return None;
     }
 
-    if os == "macos" && !matches!(flavor, LinkerFlavor::Darwin(Cc::No, _)) {
-        return None;
+    let sdkroot = sess.time("get_apple_sdk_root", || get_apple_sdk_root(sess))?;
+
+    if cc == Cc::Yes {
+        // Use `-isysroot` instead of `--sysroot`, as only the former
+        // makes Clang treat it as a platform SDK.
+        //
+        // This is admittedly a bit strange, as on most targets
+        // `-isysroot` only applies to include header files, but on Apple
+        // targets this also applies to libraries and frameworks.
+        cmd.cc_arg("-isysroot");
+        cmd.cc_arg(&sdk_root);
+    } else {
+        cmd.link_arg("-syslibroot");
+        cmd.link_arg(&sdkroot);
     }
 
-    let sdk_root = sess.time("get_apple_sdk_root", || get_apple_sdk_root(sess))?;
-
-    match flavor {
-        LinkerFlavor::Darwin(Cc::Yes, _) => {
-            // Use `-isysroot` instead of `--sysroot`, as only the former
-            // makes Clang treat it as a platform SDK.
-            //
-            // This is admittedly a bit strange, as on most targets
-            // `-isysroot` only applies to include header files, but on Apple
-            // targets this also applies to libraries and frameworks.
-            cmd.cc_arg("-isysroot");
-            cmd.cc_arg(&sdk_root);
-        }
-        LinkerFlavor::Darwin(Cc::No, _) => {
-            cmd.link_arg("-syslibroot");
-            cmd.link_arg(&sdk_root);
-        }
-        _ => unreachable!(),
-    }
-
-    Some(sdk_root)
+    Some(sdkroot)
 }
 
 fn get_apple_sdk_root(sess: &Session) -> Option<PathBuf> {
