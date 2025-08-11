@@ -421,7 +421,9 @@ fn ast_ty_search_pat(ty: &ast::Ty) -> (Pat, Pat) {
     match &ty.kind {
         TyKind::Slice(..) | TyKind::Array(..) => (Pat::Str("["), Pat::Str("]")),
         TyKind::Ptr(MutTy { ty, .. }) => (Pat::Str("*"), ast_ty_search_pat(ty).1),
-        TyKind::Ref(_, MutTy { ty, .. }) => (Pat::Str("&"), ast_ty_search_pat(ty).1),
+        TyKind::Ref(_, MutTy { ty, .. }) | TyKind::PinnedRef(_, MutTy { ty, .. }) => {
+            (Pat::Str("&"), ast_ty_search_pat(ty).1)
+        },
         TyKind::FnPtr(fn_ptr) => (
             if let Safety::Unsafe(_) = fn_ptr.safety {
                 Pat::Str("unsafe")
