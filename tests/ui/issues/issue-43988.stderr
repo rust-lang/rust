@@ -9,7 +9,10 @@ LL |     #[inline(XYZ)]
 help: try changing it to one of the following valid forms of the attribute
    |
 LL -     #[inline(XYZ)]
-LL +     #[inline(always|never)]
+LL +     #[inline(always)]
+   |
+LL -     #[inline(XYZ)]
+LL +     #[inline(never)]
    |
 LL -     #[inline(XYZ)]
 LL +     #[inline]
@@ -35,10 +38,19 @@ error[E0539]: malformed `repr` attribute input
   --> $DIR/issue-43988.rs:24:5
    |
 LL |     #[repr]
-   |     ^^^^^^^
-   |     |
-   |     expected this to be a list
-   |     help: must be of the form: `#[repr(C | Rust | align(...) | packed(...) | <integer type> | transparent)]`
+   |     ^^^^^^^ expected this to be a list
+   |
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL |     #[repr(<integer type>)]
+   |           ++++++++++++++++
+LL |     #[repr(C)]
+   |           +++
+LL |     #[repr(Rust)]
+   |           ++++++
+LL |     #[repr(align(...))]
+   |           ++++++++++++
+   = and 2 other candidates
 
 error[E0539]: malformed `inline` attribute input
   --> $DIR/issue-43988.rs:30:5
@@ -51,7 +63,10 @@ LL |     #[inline(ABC)]
 help: try changing it to one of the following valid forms of the attribute
    |
 LL -     #[inline(ABC)]
-LL +     #[inline(always|never)]
+LL +     #[inline(always)]
+   |
+LL -     #[inline(ABC)]
+LL +     #[inline(never)]
    |
 LL -     #[inline(ABC)]
 LL +     #[inline]
@@ -61,10 +76,19 @@ error[E0539]: malformed `repr` attribute input
   --> $DIR/issue-43988.rs:34:14
    |
 LL |     let _z = #[repr] 1;
-   |              ^^^^^^^
-   |              |
-   |              expected this to be a list
-   |              help: must be of the form: `#[repr(C | Rust | align(...) | packed(...) | <integer type> | transparent)]`
+   |              ^^^^^^^ expected this to be a list
+   |
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL |     let _z = #[repr(<integer type>)] 1;
+   |                    ++++++++++++++++
+LL |     let _z = #[repr(C)] 1;
+   |                    +++
+LL |     let _z = #[repr(Rust)] 1;
+   |                    ++++++
+LL |     let _z = #[repr(align(...))] 1;
+   |                    ++++++++++++
+   = and 2 other candidates
 
 error[E0518]: attribute should be applied to function or closure
   --> $DIR/issue-43988.rs:5:5

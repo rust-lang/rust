@@ -1,4 +1,4 @@
-error: valid forms for the attribute are `#[inline(always|never)]` and `#[inline]`
+error: valid forms for the attribute are `#[inline(always)]`, `#[inline(never)]`, and `#[inline]`
   --> $DIR/lint_on_root.rs:3:1
    |
 LL | #![inline = ""]

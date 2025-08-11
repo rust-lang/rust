@@ -16,7 +16,7 @@ use crate::{
     CfgMatchesLintEmitter, fluent_generated, parse_version, session_diagnostics, try_gate_cfg,
 };
 
-pub const CFG_TEMPLATE: AttributeTemplate = template!(List: "predicate");
+pub const CFG_TEMPLATE: AttributeTemplate = template!(List: &["predicate"]);
 
 pub fn parse_cfg_attr<'c, S: Stage>(
     cx: &'c mut AcceptContext<'_, '_, S>,

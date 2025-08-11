@@ -29,7 +29,7 @@ impl<S: Stage> SingleAttributeParser<S> for ProcMacroDeriveParser {
     const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const TEMPLATE: AttributeTemplate =
-        template!(List: "TraitName, /*opt*/ attributes(name1, name2, ...)");
+        template!(List: &["TraitName", "TraitName, attributes(name1, name2, ...)"]);
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
         let (trait_name, helper_attrs) = parse_derive_like(cx, args, true)?;
@@ -47,7 +47,7 @@ impl<S: Stage> SingleAttributeParser<S> for RustcBuiltinMacroParser {
     const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const TEMPLATE: AttributeTemplate =
-        template!(List: "TraitName, /*opt*/ attributes(name1, name2, ...)");
+        template!(List: &["TraitName", "TraitName, attributes(name1, name2, ...)"]);
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
         let (builtin_name, helper_attrs) = parse_derive_like(cx, args, false)?;

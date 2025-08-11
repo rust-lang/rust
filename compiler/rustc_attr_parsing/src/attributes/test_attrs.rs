@@ -52,7 +52,7 @@ impl<S: Stage> SingleAttributeParser<S> for ShouldPanicParser {
     const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::WarnButFutureError;
     const TEMPLATE: AttributeTemplate =
-        template!(Word, List: r#"expected = "reason""#, NameValueStr: "reason");
+        template!(Word, List: &[r#"expected = "reason""#], NameValueStr: "reason");
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
         Some(AttributeKind::ShouldPanic {

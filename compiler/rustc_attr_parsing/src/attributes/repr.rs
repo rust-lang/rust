@@ -26,8 +26,7 @@ impl<S: Stage> CombineAttributeParser<S> for ReprParser {
     const CONVERT: ConvertFn<Self::Item> =
         |items, first_span| AttributeKind::Repr { reprs: items, first_span };
     // FIXME(jdonszelmann): never used
-    const TEMPLATE: AttributeTemplate =
-        template!(List: "C | Rust | align(...) | packed(...) | <integer type> | transparent");
+    const TEMPLATE: AttributeTemplate = template!(List: &["C", "Rust", "transparent", "align(...)", "packed(...)", "<integer type>"]);
 
     fn extend<'c>(
         cx: &'c mut AcceptContext<'_, '_, S>,
@@ -275,7 +274,7 @@ pub(crate) struct AlignParser(Option<(Align, Span)>);
 
 impl AlignParser {
     const PATH: &'static [Symbol] = &[sym::rustc_align];
-    const TEMPLATE: AttributeTemplate = template!(List: "<alignment in bytes>");
+    const TEMPLATE: AttributeTemplate = template!(List: &["<alignment in bytes>"]);
 
     fn parse<'c, S: Stage>(
         &mut self,

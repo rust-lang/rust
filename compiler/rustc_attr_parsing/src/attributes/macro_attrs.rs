@@ -31,7 +31,7 @@ pub(crate) struct MacroUseParser {
     first_span: Option<Span>,
 }
 
-const MACRO_USE_TEMPLATE: AttributeTemplate = template!(Word, List: "name1, name2, ...");
+const MACRO_USE_TEMPLATE: AttributeTemplate = template!(Word, List: &["name1, name2, ..."]);
 
 impl<S: Stage> AttributeParser<S> for MacroUseParser {
     const ATTRIBUTES: AcceptMapping<Self, S> = &[(

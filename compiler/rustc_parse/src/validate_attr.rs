@@ -298,11 +298,15 @@ fn emit_malformed_attribute(
         suggestions.push(format!("#{inner}[{name}]"));
     }
     if let Some(descr) = template.list {
-        suggestions.push(format!("#{inner}[{name}({descr})]"));
+        for descr in descr {
+            suggestions.push(format!("#{inner}[{name}({descr})]"));
+        }
     }
     suggestions.extend(template.one_of.iter().map(|&word| format!("#{inner}[{name}({word})]")));
     if let Some(descr) = template.name_value_str {
-        suggestions.push(format!("#{inner}[{name} = \"{descr}\"]"));
+        for descr in descr {
+            suggestions.push(format!("#{inner}[{name} = \"{descr}\"]"));
+        }
     }
     if should_warn(name) {
         psess.buffer_lint(
