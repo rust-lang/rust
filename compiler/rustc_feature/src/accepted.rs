@@ -396,6 +396,8 @@ declare_features! (
     (accepted, slice_patterns, "1.42.0", Some(62254)),
     /// Allows use of `&foo[a..b]` as a slicing syntax.
     (accepted, slicing_syntax, "1.0.0", None),
+    /// Allows use of `sse4a` target feature.
+    (accepted, sse4a_target_feature, "CURRENT_RUSTC_VERSION", Some(44839)),
     /// Allows elision of `'static` lifetimes in `static`s and `const`s.
     (accepted, static_in_const, "1.17.0", Some(35897)),
     /// Allows the definition recursive static items.
@@ -408,6 +410,8 @@ declare_features! (
     (accepted, target_feature, "1.27.0", None),
     /// Allows the use of `#[target_feature]` on safe functions.
     (accepted, target_feature_11, "1.86.0", Some(69098)),
+    /// Allows use of `tbm` target feature.
+    (accepted, tbm_target_feature, "CURRENT_RUSTC_VERSION", Some(44839)),
     /// Allows `fn main()` with return types which implements `Termination` (RFC 1937).
     (accepted, termination_trait, "1.26.0", Some(43301)),
     /// Allows `#[test]` functions where the return type implements `Termination` (RFC 1937).
