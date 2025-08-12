@@ -160,6 +160,10 @@ pub(super) fn add_version_to_llvm_target(
 pub(super) fn get_sdk_root(sess: &Session) -> Option<PathBuf> {
     let sdk_name = sdk_name(&sess.target);
 
+    // Attempt to invoke `xcrun` to find the SDK.
+    //
+    // Note that when cross-compiling from e.g. Linux, the `xcrun` binary may sometimes be provided
+    // as a shim by a cross-compilation helper tool. It usually isn't, but we still try nonetheless.
     match xcrun_show_sdk_path(sdk_name, sess.verbose_internals()) {
         Ok((path, stderr)) => {
             // Emit extra stderr, such as if `-verbose` was passed, or if `xcrun` emitted a warning.
@@ -169,7 +173,19 @@ pub(super) fn get_sdk_root(sess: &Session) -> Option<PathBuf> {
             Some(path)
         }
         Err(err) => {
-            let mut diag = sess.dcx().create_err(err);
+            // Failure to find the SDK is not a hard error, since the user might have specified it
+            // in a manner unknown to us (moreso if cross-compiling):
+            // - A compiler driver like `zig cc` which links using an internally bundled SDK.
+            // - Extra linker arguments (`-Clink-arg=-syslibroot`).
+            // - A custom linker or custom compiler driver.
+            //
+            // Though we still warn, since such cases are uncommon, and it is very hard to debug if
+            // you do not know the details.
+            //
+            // FIXME(madsmtm): Make this a lint, to allow deny warnings to work.
+            // (Or fix <https://github.com/rust-lang/rust/issues/21204>).
+            let mut diag = sess.dcx().create_warn(err);
+            diag.note(fluent::codegen_ssa_xcrun_about);
 
             // Recognize common error cases, and give more Rust-specific error messages for those.
             if let Some(developer_dir) = xcode_select_developer_dir() {
@@ -209,6 +225,8 @@ fn xcrun_show_sdk_path(
     sdk_name: &'static str,
     verbose: bool,
 ) -> Result<(PathBuf, String), XcrunError> {
+    // Intentionally invoke the `xcrun` in PATH, since e.g. nixpkgs provide an `xcrun` shim, so we
+    // don't want to require `/usr/bin/xcrun`.
     let mut cmd = Command::new("xcrun");
     if verbose {
         cmd.arg("--verbose");
@@ -280,7 +298,7 @@ fn stdout_to_path(mut stdout: Vec<u8>) -> PathBuf {
     }
     #[cfg(unix)]
     let path = <OsString as std::os::unix::ffi::OsStringExt>::from_vec(stdout);
-    #[cfg(not(unix))] // Unimportant, this is only used on macOS
-    let path = OsString::from(String::from_utf8(stdout).unwrap());
+    #[cfg(not(unix))] // Not so important, this is mostly used on macOS
+    let path = OsString::from(String::from_utf8(stdout).expect("stdout must be UTF-8"));
     PathBuf::from(path)
 }
