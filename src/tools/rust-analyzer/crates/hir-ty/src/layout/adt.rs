@@ -34,7 +34,7 @@ pub fn layout_of_adt_query<'db>(
     let handle_variant = |def: VariantId, var: &VariantFields| {
         var.fields()
             .iter()
-            .map(|(fd, _)| db.layout_of_ty_ns(field_ty(db, def, fd, &args), trait_env.clone()))
+            .map(|(fd, _)| db.layout_of_ty(field_ty(db, def, fd, &args), trait_env.clone()))
             .collect::<Result<Vec<_>, _>>()
     };
     let (variants, repr, is_special_no_niche) = match def {

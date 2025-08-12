@@ -92,7 +92,7 @@ pub fn intern_const_ref<'a>(
     krate: Crate,
 ) -> Const<'a> {
     let interner = DbInterner::new_with(db, Some(krate), None);
-    let layout = db.layout_of_ty_ns(ty, TraitEnvironment::empty(krate));
+    let layout = db.layout_of_ty(ty, TraitEnvironment::empty(krate));
     let kind = match value {
         LiteralConstRef::Int(i) => {
             // FIXME: We should handle failure of layout better.

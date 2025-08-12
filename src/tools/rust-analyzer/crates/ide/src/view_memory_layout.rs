@@ -139,7 +139,7 @@ pub(crate) fn view_memory_layout(
         nodes[parent_idx].children_len = fields.len() as u64;
 
         for (field, child_ty) in fields.iter() {
-            if let Ok(child_layout) = child_ty.layout(db) {
+            if let Ok(child_layout) = salsa::attach(db, || child_ty.layout(db)) {
                 nodes.push(MemoryLayoutNode {
                     item_name: field.name(db),
                     typename: salsa::attach(db, || {
@@ -172,7 +172,7 @@ pub(crate) fn view_memory_layout(
         }
 
         for (i, (_, child_ty)) in fields.iter().enumerate() {
-            if let Ok(child_layout) = child_ty.layout(db) {
+            if let Ok(child_layout) = salsa::attach(db, || child_ty.layout(db)) {
                 read_layout(nodes, db, child_ty, &child_layout, children_start + i, display_target);
             }
         }

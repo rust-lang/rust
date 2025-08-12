@@ -1389,8 +1389,9 @@ impl Field {
     }
 
     pub fn layout(&self, db: &dyn HirDatabase) -> Result<Layout, LayoutError> {
+        let interner = DbInterner::new_with(db, None, None);
         db.layout_of_ty(
-            self.ty(db).ty,
+            self.ty(db).ty.to_nextsolver(interner),
             db.trait_environment(match hir_def::VariantId::from(self.parent) {
                 hir_def::VariantId::EnumVariantId(id) => {
                     GenericDefId::AdtId(id.lookup(db).parent.into())
@@ -5906,7 +5907,8 @@ impl<'db> Type<'db> {
     }
 
     pub fn layout(&self, db: &'db dyn HirDatabase) -> Result<Layout, LayoutError> {
-        db.layout_of_ty(self.ty.clone(), self.env.clone())
+        let interner = DbInterner::new_with(db, None, None);
+        db.layout_of_ty(self.ty.to_nextsolver(interner), self.env.clone())
             .map(|layout| Layout(layout, db.target_data_layout(self.env.krate).unwrap()))
     }
 

@@ -137,18 +137,20 @@ pub(crate) fn hover(
     let edition =
         sema.attach_first_edition(file_id).map(|it| it.edition(db)).unwrap_or(Edition::CURRENT);
     let display_target = sema.first_crate(file_id)?.to_display_target(db);
-    let mut res = if range.is_empty() {
-        hover_offset(
-            sema,
-            FilePosition { file_id, offset: range.start() },
-            file,
-            config,
-            edition,
-            display_target,
-        )
-    } else {
-        hover_ranged(sema, frange, file, config, edition, display_target)
-    }?;
+    let mut res = salsa::attach(sema.db, || {
+        if range.is_empty() {
+            hover_offset(
+                sema,
+                FilePosition { file_id, offset: range.start() },
+                file,
+                config,
+                edition,
+                display_target,
+            )
+        } else {
+            hover_ranged(sema, frange, file, config, edition, display_target)
+        }
+    })?;
 
     if let HoverDocFormat::PlainText = config.format {
         res.info.markup = remove_markdown(res.info.markup.as_str()).into();

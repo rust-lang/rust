@@ -854,7 +854,7 @@ impl<'db> Evaluator<'db> {
         let interner = DbInterner::new_with(self.db, None, None);
         let r = self
             .db
-            .layout_of_ty_ns(ty, self.trait_env.clone())
+            .layout_of_ty(ty, self.trait_env.clone())
             .map_err(|e| MirEvalError::LayoutError(e, convert_ty_for_result(interner, ty)))?;
         self.layout_cache.borrow_mut().insert(ty, r.clone());
         Ok(r)

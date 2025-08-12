@@ -840,7 +840,7 @@ fn render_const_scalar_inner(
             TyKind::Slice(ty) => {
                 let addr = usize::from_le_bytes(b[0..b.len() / 2].try_into().unwrap());
                 let count = usize::from_le_bytes(b[b.len() / 2..].try_into().unwrap());
-                let Ok(layout) = f.db.layout_of_ty_ns(ty, trait_env) else {
+                let Ok(layout) = f.db.layout_of_ty(ty, trait_env) else {
                     return f.write_str("<layout-error>");
                 };
                 let size_one = layout.size.bytes_usize();
@@ -874,7 +874,7 @@ fn render_const_scalar_inner(
                 let Ok(t) = memory_map.vtable_ty(ty_id) else {
                     return f.write_str("<ty-missing-in-vtable-map>");
                 };
-                let Ok(layout) = f.db.layout_of_ty_ns(t, trait_env) else {
+                let Ok(layout) = f.db.layout_of_ty(t, trait_env) else {
                     return f.write_str("<layout-error>");
                 };
                 let size = layout.size.bytes_usize();
@@ -905,7 +905,7 @@ fn render_const_scalar_inner(
                         return f.write_str("<layout-error>");
                     }
                 });
-                let Ok(layout) = f.db.layout_of_ty_ns(t, trait_env) else {
+                let Ok(layout) = f.db.layout_of_ty(t, trait_env) else {
                     return f.write_str("<layout-error>");
                 };
                 let size = layout.size.bytes_usize();
@@ -917,7 +917,7 @@ fn render_const_scalar_inner(
             }
         },
         TyKind::Tuple(tys) => {
-            let Ok(layout) = f.db.layout_of_ty_ns(ty, trait_env.clone()) else {
+            let Ok(layout) = f.db.layout_of_ty(ty, trait_env.clone()) else {
                 return f.write_str("<layout-error>");
             };
             f.write_str("(")?;
@@ -929,7 +929,7 @@ fn render_const_scalar_inner(
                     f.write_str(", ")?;
                 }
                 let offset = layout.fields.offset(id).bytes_usize();
-                let Ok(layout) = f.db.layout_of_ty_ns(ty, trait_env.clone()) else {
+                let Ok(layout) = f.db.layout_of_ty(ty, trait_env.clone()) else {
                     f.write_str("<layout-error>")?;
                     continue;
                 };
@@ -1006,7 +1006,7 @@ fn render_const_scalar_inner(
             let Some(len) = consteval_nextsolver::try_const_usize(f.db, len) else {
                 return f.write_str("<unknown-array-len>");
             };
-            let Ok(layout) = f.db.layout_of_ty_ns(ty, trait_env) else {
+            let Ok(layout) = f.db.layout_of_ty(ty, trait_env) else {
                 return f.write_str("<layout-error>");
             };
             let size_one = layout.size.bytes_usize();
@@ -1061,7 +1061,8 @@ fn render_variant_after_name(
                 let ty = field_types[id]
                     .clone()
                     .substitute(Interner, &convert_args_for_result(interner, args.as_slice()));
-                let Ok(layout) = f.db.layout_of_ty(ty.clone(), trait_env.clone()) else {
+                let Ok(layout) = f.db.layout_of_ty(ty.to_nextsolver(interner), trait_env.clone())
+                else {
                     return f.write_str("<layout-error>");
                 };
                 let size = layout.size.bytes_usize();
