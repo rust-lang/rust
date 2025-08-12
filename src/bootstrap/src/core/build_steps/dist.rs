@@ -75,7 +75,7 @@ impl Step for Docs {
     /// Builds the `rust-docs` installer component.
     fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
         let host = self.host;
-        builder.default_doc(&[]);
+        builder.run_default_doc_steps();
 
         let dest = "share/doc/rust/html";
 
@@ -154,7 +154,7 @@ impl Step for RustcDocs {
     /// Builds the `rustc-docs` installer component.
     fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
         let host = self.host;
-        builder.default_doc(&[]);
+        builder.run_default_doc_steps();
 
         let mut tarball = Tarball::new(builder, "rustc-docs", &host.triple);
         tarball.set_product_name("Rustc Documentation");

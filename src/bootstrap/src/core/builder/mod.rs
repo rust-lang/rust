@@ -1308,8 +1308,9 @@ impl<'a> Builder<'a> {
         self.run_step_descriptions(&Builder::get_step_descriptions(self.kind), &self.paths);
     }
 
-    pub fn default_doc(&self, paths: &[PathBuf]) {
-        self.run_step_descriptions(&Builder::get_step_descriptions(Kind::Doc), paths);
+    /// Run all default documentation steps to build documentation.
+    pub fn run_default_doc_steps(&self) {
+        self.run_step_descriptions(&Builder::get_step_descriptions(Kind::Doc), &[]);
     }
 
     pub fn doc_rust_lang_org_channel(&self) -> String {
