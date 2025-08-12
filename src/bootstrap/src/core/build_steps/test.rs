@@ -561,7 +561,6 @@ impl Miri {
 
 impl Step for Miri {
     type Output = ();
-    const ONLY_HOSTS: bool = false;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("src/tools/miri")
@@ -681,7 +680,6 @@ pub struct CargoMiri {
 
 impl Step for CargoMiri {
     type Output = ();
-    const ONLY_HOSTS: bool = false;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("src/tools/miri/cargo-miri")
@@ -1599,7 +1597,6 @@ pub struct MirOpt {
 impl Step for MirOpt {
     type Output = ();
     const DEFAULT: bool = true;
-    const ONLY_HOSTS: bool = false;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.suite_path("tests/mir-opt")
