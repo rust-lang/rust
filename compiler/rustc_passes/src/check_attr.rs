@@ -18,7 +18,9 @@ use rustc_feature::{
     ACCEPTED_LANG_FEATURES, AttributeDuplicates, AttributeType, BUILTIN_ATTRIBUTE_MAP,
     BuiltinAttribute,
 };
-use rustc_hir::attrs::{AttributeKind, InlineAttr, MirDialect, MirPhase, ReprAttr, SanitizerSet};
+use rustc_hir::attrs::{
+    AttributeKind, EiiDecl, EiiImpl, InlineAttr, MirDialect, MirPhase, ReprAttr, SanitizerSet,
+};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalModDefId;
 use rustc_hir::intravisit::{self, Visitor};
@@ -218,8 +220,12 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 Attribute::Parsed(AttributeKind::Link(_, attr_span)) => {
                     self.check_link(hir_id, *attr_span, span, target)
                 }
+                Attribute::Parsed(AttributeKind::EiiImpls(impls)) => {
+                     self.check_eii_impl(impls, target)
+                },
                 Attribute::Parsed(
-                    AttributeKind::BodyStability { .. }
+                    AttributeKind::EiiExternTarget { .. }
+                    | AttributeKind::BodyStability { .. }
                     | AttributeKind::ConstStabilityIndirect
                     | AttributeKind::MacroTransparency(_)
                     | AttributeKind::Pointee(..)
@@ -454,6 +460,30 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         );
     }
 
+    fn check_eii_impl(&self, impls: &[EiiImpl], target: Target) {
+        for EiiImpl { span, inner_span, eii_macro, impl_marked_unsafe, is_default: _ } in impls {
+            match target {
+                Target::Fn => {}
+                _ => {
+                    self.dcx().emit_err(errors::EiiImplNotFunction { span: *span });
+                }
+            }
+
+            if find_attr!(self.tcx.get_all_attrs(*eii_macro), AttributeKind::EiiExternTarget(EiiDecl { impl_unsafe, .. }) if *impl_unsafe)
+                && !impl_marked_unsafe
+            {
+                self.dcx().emit_err(errors::EiiImplRequiresUnsafe {
+                    span: *span,
+                    name: self.tcx.item_name(*eii_macro),
+                    suggestion: errors::EiiImplRequiresUnsafeSuggestion {
+                        left: inner_span.shrink_to_lo(),
+                        right: inner_span.shrink_to_hi(),
+                    },
+                });
+            }
+        }
+    }
+
     /// Checks if `#[diagnostic::do_not_recommend]` is applied on a trait impl and that it has no
     /// arguments.
     fn check_do_not_recommend(
@@ -652,6 +682,17 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         name: lang_item,
                         sig_span: sig.span,
                     });
+                }
+
+                if let Some(impls) = find_attr!(attrs, AttributeKind::EiiImpls(impls) => impls) {
+                    let sig = self.tcx.hir_node(hir_id).fn_sig().unwrap();
+                    for i in impls {
+                        self.dcx().emit_err(errors::EiiWithTrackCaller {
+                            attr_span,
+                            name: self.tcx.item_name(i.eii_macro),
+                            sig_span: sig.span,
+                        });
+                    }
                 }
             }
             _ => {}
