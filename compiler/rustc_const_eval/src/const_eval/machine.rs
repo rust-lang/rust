@@ -237,7 +237,7 @@ impl<'tcx> CompileTimeInterpCx<'tcx> {
     ) -> InterpResult<'tcx, Option<ty::Instance<'tcx>>> {
         let def_id = instance.def_id();
 
-        if self.tcx.has_attr(def_id, sym::rustc_const_panic_str)
+        if self.tcx.is_lang_item(def_id, LangItem::PanicDisplay)
             || self.tcx.is_lang_item(def_id, LangItem::BeginPanic)
         {
             let args = self.copy_fn_args(args);
