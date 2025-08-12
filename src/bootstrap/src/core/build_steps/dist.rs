@@ -458,7 +458,7 @@ impl Step for Rustc {
         return tarball.generate();
 
         fn prepare_image(builder: &Builder<'_>, target_compiler: Compiler, image: &Path) {
-            let host = target_compiler.host;
+            let target = target_compiler.host;
             let src = builder.sysroot(target_compiler);
 
             // Copy rustc binary
@@ -517,14 +517,14 @@ impl Step for Rustc {
             // components like the llvm tools and LLD. LLD is included below and
             // tools/LLDB come later, so let's just throw it in the rustc
             // component for now.
-            maybe_install_llvm_runtime(builder, host, image);
+            maybe_install_llvm_runtime(builder, target, image);
 
-            let dst_dir = image.join("lib/rustlib").join(host).join("bin");
+            let dst_dir = image.join("lib/rustlib").join(target).join("bin");
             t!(fs::create_dir_all(&dst_dir));
 
             // Copy over lld if it's there
             if builder.config.lld_enabled {
-                let src_dir = builder.sysroot_target_bindir(target_compiler, host);
+                let src_dir = builder.sysroot_target_bindir(target_compiler, target);
                 let rust_lld = exe("rust-lld", target_compiler.host);
                 builder.copy_link(
                     &src_dir.join(&rust_lld),
@@ -547,7 +547,7 @@ impl Step for Rustc {
             if builder.config.llvm_enabled(target_compiler.host)
                 && builder.config.llvm_tools_enabled
             {
-                let src_dir = builder.sysroot_target_bindir(target_compiler, host);
+                let src_dir = builder.sysroot_target_bindir(target_compiler, target);
                 let llvm_objcopy = exe("llvm-objcopy", target_compiler.host);
                 let rust_objcopy = exe("rust-objcopy", target_compiler.host);
                 builder.copy_link(
@@ -558,7 +558,7 @@ impl Step for Rustc {
             }
 
             if builder.tool_enabled("wasm-component-ld") {
-                let src_dir = builder.sysroot_target_bindir(target_compiler, host);
+                let src_dir = builder.sysroot_target_bindir(target_compiler, target);
                 let ld = exe("wasm-component-ld", target_compiler.host);
                 builder.copy_link(&src_dir.join(&ld), &dst_dir.join(&ld), FileType::Executable);
             }
@@ -580,7 +580,7 @@ impl Step for Rustc {
             }
 
             // Debugger scripts
-            builder.ensure(DebuggerScripts { sysroot: image.to_owned(), host });
+            builder.ensure(DebuggerScripts { sysroot: image.to_owned(), target });
 
             // HTML copyright files
             let file_list = builder.ensure(super::run::GenerateCopyright);
@@ -610,10 +610,12 @@ impl Step for Rustc {
     }
 }
 
+/// Copies debugger scripts for `target` into the given compiler `sysroot`.
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct DebuggerScripts {
+    /// Sysroot of a compiler into which will the debugger scripts be copied to.
     pub sysroot: PathBuf,
-    pub host: TargetSelection,
+    pub target: TargetSelection,
 }
 
 impl Step for DebuggerScripts {
@@ -623,16 +625,15 @@ impl Step for DebuggerScripts {
         run.never()
     }
 
-    /// Copies debugger scripts for `target` into the `sysroot` specified.
     fn run(self, builder: &Builder<'_>) {
-        let host = self.host;
+        let target = self.target;
         let sysroot = self.sysroot;
         let dst = sysroot.join("lib/rustlib/etc");
         t!(fs::create_dir_all(&dst));
         let cp_debugger_script = |file: &str| {
             builder.install(&builder.src.join("src/etc/").join(file), &dst, FileType::Regular);
         };
-        if host.contains("windows-msvc") {
+        if target.contains("windows-msvc") {
             // windbg debugger scripts
             builder.install(
                 &builder.src.join("src/etc/rust-windbg.cmd"),

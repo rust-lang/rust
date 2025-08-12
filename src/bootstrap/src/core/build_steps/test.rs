@@ -1719,7 +1719,7 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         if suite == "debuginfo" {
             builder.ensure(dist::DebuggerScripts {
                 sysroot: builder.sysroot(compiler).to_path_buf(),
-                host: target,
+                target,
             });
         }
         if suite == "run-make" {
