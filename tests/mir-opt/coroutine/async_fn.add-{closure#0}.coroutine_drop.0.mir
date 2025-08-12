@@ -48,74 +48,58 @@ fn add::{closure#0}(_1: &mut {async fn body of add()}) -> () {
 
     bb0: {
         _26 = discriminant((*_1));
-        switchInt(move _26) -> [0: bb11, 3: bb14, otherwise: bb15];
+        switchInt(move _26) -> [0: bb7, 3: bb10, otherwise: bb11];
     }
 
     bb1: {
         StorageDead(_24);
         StorageDead(_23);
-        drop((((*_1) as variant#3).2: {async block@$DIR/async_fn.rs:34:13: 34:18})) -> [return: bb2, unwind: bb7];
+        drop((((*_1) as variant#3).2: {async block@$DIR/async_fn.rs:34:13: 34:18})) -> [return: bb2, unwind: bb5];
     }
 
     bb2: {
         nop;
-        goto -> bb3;
-    }
-
-    bb3: {
         StorageDead(_8);
-        goto -> bb4;
-    }
-
-    bb4: {
         StorageDead(_5);
         nop;
-        nop;
-        goto -> bb12;
-    }
-
-    bb5: {
-        return;
-    }
-
-    bb6 (cleanup): {
-        resume;
-    }
-
-    bb7 (cleanup): {
         nop;
         goto -> bb8;
     }
 
-    bb8 (cleanup): {
-        StorageDead(_8);
-        goto -> bb9;
+    bb3: {
+        return;
     }
 
-    bb9 (cleanup): {
+    bb4 (cleanup): {
+        resume;
+    }
+
+    bb5 (cleanup): {
+        nop;
+        StorageDead(_8);
         StorageDead(_5);
         nop;
         nop;
+        goto -> bb4;
+    }
+
+    bb6: {
+        return;
+    }
+
+    bb7: {
+        goto -> bb9;
+    }
+
+    bb8: {
+        goto -> bb3;
+    }
+
+    bb9: {
         goto -> bb6;
     }
 
     bb10: {
-        return;
-    }
-
-    bb11: {
-        goto -> bb13;
-    }
-
-    bb12: {
-        goto -> bb5;
-    }
-
-    bb13: {
-        goto -> bb10;
-    }
-
-    bb14: {
         StorageLive(_5);
         StorageLive(_8);
         StorageLive(_23);
@@ -123,7 +107,7 @@ fn add::{closure#0}(_1: &mut {async fn body of add()}) -> () {
         goto -> bb1;
     }
 
-    bb15: {
+    bb11: {
         return;
     }
 }

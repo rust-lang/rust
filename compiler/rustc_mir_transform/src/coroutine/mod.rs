@@ -160,6 +160,7 @@ const SELF_ARG: Local = Local::arg(0);
 pub(crate) const CTX_ARG: Local = Local::arg(1);
 
 /// A `yield` point in the coroutine.
+#[derive(Debug)]
 struct SuspensionPoint<'tcx> {
     /// State discriminant used when suspending or resuming at this point.
     state: usize,
