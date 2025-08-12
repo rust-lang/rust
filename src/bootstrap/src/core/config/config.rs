@@ -955,7 +955,7 @@ impl Config {
         config.download_rustc_commit =
             download_ci_rustc_commit(dwn_ctx, rust_download_rustc, config.llvm_assertions);
 
-        if debug_assertions_requested {
+        if debug_assertions_requested && config.download_rustc_commit.is_some() {
             eprintln!(
                 "WARN: `rust.debug-assertions = true` will prevent downloading CI rustc as alt CI \
                 rustc is not currently built with debug assertions."
