@@ -1,4 +1,4 @@
-use std::ops::{Index, IndexMut};
+use std::ops::Index;
 
 use derive_where::derive_where;
 use rustc_index::IndexVec;
@@ -48,6 +48,12 @@ pub(super) struct StackEntry<X: Cx> {
     pub nested_goals: NestedGoals<X>,
 }
 
+/// The stack of goals currently being computed.
+///
+/// An element is *deeper* in the stack if its index is *lower*.
+///
+/// Only the last entry of the stack is mutable. All other entries get
+/// lazily updated in `update_parent_goal`.
 #[derive_where(Default; X: Cx)]
 pub(super) struct Stack<X: Cx> {
     entries: IndexVec<StackDepth, StackEntry<X>>,
@@ -62,16 +68,16 @@ impl<X: Cx> Stack<X> {
         self.entries.len()
     }
 
-    pub(super) fn last_index(&self) -> Option<StackDepth> {
-        self.entries.last_index()
-    }
-
     pub(super) fn last(&self) -> Option<&StackEntry<X>> {
         self.entries.raw.last()
     }
 
     pub(super) fn last_mut(&mut self) -> Option<&mut StackEntry<X>> {
         self.entries.raw.last_mut()
+    }
+
+    pub(super) fn last_mut_with_index(&mut self) -> Option<(StackDepth, &mut StackEntry<X>)> {
+        self.entries.last_index().map(|idx| (idx, &mut self.entries[idx]))
     }
 
     pub(super) fn next_index(&self) -> StackDepth {
@@ -106,11 +112,5 @@ impl<X: Cx> Index<StackDepth> for Stack<X> {
     type Output = StackEntry<X>;
     fn index(&self, index: StackDepth) -> &StackEntry<X> {
         &self.entries[index]
-    }
-}
-
-impl<X: Cx> IndexMut<StackDepth> for Stack<X> {
-    fn index_mut(&mut self, index: StackDepth) -> &mut Self::Output {
-        &mut self.entries[index]
     }
 }
