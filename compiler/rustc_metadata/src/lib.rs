@@ -15,6 +15,7 @@
 pub use rmeta::provide;
 
 mod dependency_format;
+mod eii;
 mod foreign_modules;
 mod native_libs;
 mod rmeta;
