@@ -17,7 +17,7 @@ impl<S: Stage> SingleAttributeParser<S> for OptimizeParser {
     const PATH: &[Symbol] = &[sym::optimize];
     const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::WarnButFutureError;
-    const TEMPLATE: AttributeTemplate = template!(List: "size|speed|none");
+    const TEMPLATE: AttributeTemplate = template!(List: &["size", "speed", "none"]);
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
         let Some(list) = args.list() else {
@@ -253,7 +253,7 @@ pub(crate) struct UsedParser {
 impl<S: Stage> AttributeParser<S> for UsedParser {
     const ATTRIBUTES: AcceptMapping<Self, S> = &[(
         &[sym::used],
-        template!(Word, List: "compiler|linker"),
+        template!(Word, List: &["compiler", "linker"]),
         |group: &mut Self, cx, args| {
             let used_by = match args {
                 ArgParser::NoArgs => UsedBy::Linker,
@@ -327,7 +327,7 @@ impl<S: Stage> CombineAttributeParser<S> for TargetFeatureParser {
     type Item = (Symbol, Span);
     const PATH: &[Symbol] = &[sym::target_feature];
     const CONVERT: ConvertFn<Self::Item> = |items, span| AttributeKind::TargetFeature(items, span);
-    const TEMPLATE: AttributeTemplate = template!(List: "enable = \"feat1, feat2\"");
+    const TEMPLATE: AttributeTemplate = template!(List: &["enable = \"feat1, feat2\""]);
 
     fn extend<'c>(
         cx: &'c mut AcceptContext<'_, '_, S>,

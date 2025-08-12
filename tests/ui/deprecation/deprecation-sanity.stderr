@@ -18,11 +18,15 @@ LL -     #[deprecated(since = "a", note)]
 LL +     #[deprecated = "reason"]
    |
 LL -     #[deprecated(since = "a", note)]
-LL +     #[deprecated(/*opt*/ since = "version", /*opt*/ note = "reason")]
+LL +     #[deprecated(note = "reason")]
    |
 LL -     #[deprecated(since = "a", note)]
-LL +     #[deprecated]
+LL +     #[deprecated(since = "version")]
    |
+LL -     #[deprecated(since = "a", note)]
+LL +     #[deprecated(since = "version", note = "reason")]
+   |
+   = and 1 other candidate
 
 error[E0539]: malformed `deprecated` attribute input
   --> $DIR/deprecation-sanity.rs:10:5
@@ -38,11 +42,15 @@ LL -     #[deprecated(since, note = "a")]
 LL +     #[deprecated = "reason"]
    |
 LL -     #[deprecated(since, note = "a")]
-LL +     #[deprecated(/*opt*/ since = "version", /*opt*/ note = "reason")]
+LL +     #[deprecated(note = "reason")]
    |
 LL -     #[deprecated(since, note = "a")]
-LL +     #[deprecated]
+LL +     #[deprecated(since = "version")]
    |
+LL -     #[deprecated(since, note = "a")]
+LL +     #[deprecated(since = "version", note = "reason")]
+   |
+   = and 1 other candidate
 
 error[E0539]: malformed `deprecated` attribute input
   --> $DIR/deprecation-sanity.rs:13:5
@@ -58,11 +66,15 @@ LL -     #[deprecated(since = "a", note(b))]
 LL +     #[deprecated = "reason"]
    |
 LL -     #[deprecated(since = "a", note(b))]
-LL +     #[deprecated(/*opt*/ since = "version", /*opt*/ note = "reason")]
+LL +     #[deprecated(note = "reason")]
    |
 LL -     #[deprecated(since = "a", note(b))]
-LL +     #[deprecated]
+LL +     #[deprecated(since = "version")]
    |
+LL -     #[deprecated(since = "a", note(b))]
+LL +     #[deprecated(since = "version", note = "reason")]
+   |
+   = and 1 other candidate
 
 error[E0539]: malformed `deprecated` attribute input
   --> $DIR/deprecation-sanity.rs:16:5
@@ -78,11 +90,15 @@ LL -     #[deprecated(since(b), note = "a")]
 LL +     #[deprecated = "reason"]
    |
 LL -     #[deprecated(since(b), note = "a")]
-LL +     #[deprecated(/*opt*/ since = "version", /*opt*/ note = "reason")]
+LL +     #[deprecated(note = "reason")]
    |
 LL -     #[deprecated(since(b), note = "a")]
-LL +     #[deprecated]
+LL +     #[deprecated(since = "version")]
    |
+LL -     #[deprecated(since(b), note = "a")]
+LL +     #[deprecated(since = "version", note = "reason")]
+   |
+   = and 1 other candidate
 
 error[E0539]: malformed `deprecated` attribute input
   --> $DIR/deprecation-sanity.rs:19:5
@@ -108,11 +124,15 @@ LL -     #[deprecated("test")]
 LL +     #[deprecated = "reason"]
    |
 LL -     #[deprecated("test")]
-LL +     #[deprecated(/*opt*/ since = "version", /*opt*/ note = "reason")]
+LL +     #[deprecated(note = "reason")]
    |
 LL -     #[deprecated("test")]
-LL +     #[deprecated]
+LL +     #[deprecated(since = "version")]
    |
+LL -     #[deprecated("test")]
+LL +     #[deprecated(since = "version", note = "reason")]
+   |
+   = and 1 other candidate
 
 error: multiple `deprecated` attributes
   --> $DIR/deprecation-sanity.rs:27:1
@@ -140,11 +160,15 @@ LL - #[deprecated(since = "a", since = "b", note = "c")]
 LL + #[deprecated = "reason"]
    |
 LL - #[deprecated(since = "a", since = "b", note = "c")]
-LL + #[deprecated(/*opt*/ since = "version", /*opt*/ note = "reason")]
+LL + #[deprecated(note = "reason")]
    |
 LL - #[deprecated(since = "a", since = "b", note = "c")]
-LL + #[deprecated]
+LL + #[deprecated(since = "version")]
    |
+LL - #[deprecated(since = "a", since = "b", note = "c")]
+LL + #[deprecated(since = "version", note = "reason")]
+   |
+   = and 1 other candidate
 
 error: this `#[deprecated]` annotation has no effect
   --> $DIR/deprecation-sanity.rs:35:1
