@@ -45,8 +45,8 @@ declare_lint_pass!(InfallibleTryFrom => [INFALLIBLE_TRY_FROM]);
 impl<'tcx> LateLintPass<'tcx> for InfallibleTryFrom {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'tcx>) {
         let ItemKind::Impl(imp) = item.kind else { return };
-        let Some(r#trait) = imp.of_trait else { return };
-        let Some(trait_def_id) = r#trait.trait_def_id() else {
+        let Some(of_trait) = imp.of_trait else { return };
+        let Some(trait_def_id) = of_trait.trait_ref.trait_def_id() else {
             return;
         };
         if !cx.tcx.is_diagnostic_item(sym::TryFrom, trait_def_id) {

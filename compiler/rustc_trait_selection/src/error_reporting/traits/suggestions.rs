@@ -3471,8 +3471,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         ..
                     })) => {
                         let mut spans = Vec::with_capacity(2);
-                        if let Some(trait_ref) = of_trait {
-                            spans.push(trait_ref.path.span);
+                        if let Some(of_trait) = of_trait {
+                            spans.push(of_trait.trait_ref.path.span);
                         }
                         spans.push(self_ty.span);
                         let mut spans: MultiSpan = spans.into();
@@ -3480,7 +3480,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             self_ty.span.ctxt().outer_expn_data().kind,
                             ExpnKind::Macro(MacroKind::Derive, _)
                         ) || matches!(
-                            of_trait.as_ref().map(|t| t.path.span.ctxt().outer_expn_data().kind),
+                            of_trait.map(|t| t.trait_ref.path.span.ctxt().outer_expn_data().kind),
                             Some(ExpnKind::Macro(MacroKind::Derive, _))
                         ) {
                             spans.push_span_label(
@@ -3592,7 +3592,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         ..
                     })) => {
                         let mut spans = vec![self_ty.span];
-                        spans.extend(of_trait.as_ref().map(|t| t.path.span));
+                        spans.extend(of_trait.map(|t| t.trait_ref.path.span));
                         let mut spans: MultiSpan = spans.into();
                         spans.push_span_label(data.span, "unsatisfied trait bound introduced here");
                         err.span_note(spans, msg);
