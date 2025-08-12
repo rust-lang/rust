@@ -1,21 +1,25 @@
 #[cfg]
 //~^ ERROR malformed `cfg` attribute
 //~| NOTE expected this to be a list
+//~| NOTE for more information, visit
 struct S1;
 
 #[cfg = 10]
 //~^ ERROR malformed `cfg` attribute
 //~| NOTE expected this to be a list
+//~| NOTE for more information, visit
 struct S2;
 
 #[cfg()]
 //~^ ERROR malformed `cfg` attribute
 //~| NOTE expected a single argument here
+//~| NOTE for more information, visit
 struct S3;
 
 #[cfg(a, b)]
 //~^ ERROR malformed `cfg` attribute
 //~| NOTE expected a single argument here
+//~| NOTE for more information, visit
 struct S4;
 
 #[cfg("str")] //~ ERROR `cfg` predicate key must be an identifier
@@ -29,6 +33,7 @@ struct S7;
 
 #[cfg(a = 10)] //~ ERROR malformed `cfg` attribute input
 //~^ NOTE expected a string literal here
+//~| NOTE for more information, visit
 struct S8;
 
 #[cfg(a = b"hi")]  //~ ERROR malformed `cfg` attribute input
