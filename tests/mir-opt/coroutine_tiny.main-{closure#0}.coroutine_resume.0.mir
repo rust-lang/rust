@@ -25,61 +25,49 @@ fn main::{closure#0}(_1: Pin<&mut {coroutine@$DIR/coroutine_tiny.rs:21:5: 21:13}
     debug _x => _2;
     let mut _0: std::ops::CoroutineState<(), ()>;
     let _3: HasDrop;
-    let mut _4: !;
-    let mut _5: ();
-    let _6: u8;
-    let mut _7: ();
-    let _8: ();
-    let mut _9: ();
-    let mut _10: u32;
-    let mut _11: &mut {coroutine@$DIR/coroutine_tiny.rs:21:5: 21:13};
+    let _4: u8;
+    let _5: ();
+    let mut _6: ();
+    let mut _7: u32;
+    let mut _8: &mut {coroutine@$DIR/coroutine_tiny.rs:21:5: 21:13};
     scope 1 {
-        debug _d => (((*_11) as variant#3).0: HasDrop);
+        debug _d => (((*_8) as variant#3).0: HasDrop);
     }
 
     bb0: {
-        _11 = copy (_1.0: &mut {coroutine@$DIR/coroutine_tiny.rs:21:5: 21:13});
-        _10 = discriminant((*_11));
-        switchInt(move _10) -> [0: bb1, 3: bb5, otherwise: bb6];
+        _8 = copy (_1.0: &mut {coroutine@$DIR/coroutine_tiny.rs:21:5: 21:13});
+        _7 = discriminant((*_8));
+        switchInt(move _7) -> [0: bb1, 3: bb5, otherwise: bb6];
     }
 
     bb1: {
         nop;
-        (((*_11) as variant#3).0: HasDrop) = HasDrop;
-        StorageLive(_4);
+        (((*_8) as variant#3).0: HasDrop) = const HasDrop;
         goto -> bb2;
     }
 
     bb2: {
-        StorageLive(_6);
-        StorageLive(_7);
-        _7 = ();
-        _0 = CoroutineState::<(), ()>::Yielded(move _7);
+        StorageLive(_4);
+        _0 = CoroutineState::<(), ()>::Yielded(const ());
         StorageDead(_4);
-        StorageDead(_6);
-        StorageDead(_7);
-        discriminant((*_11)) = 3;
+        discriminant((*_8)) = 3;
         return;
     }
 
     bb3: {
-        StorageDead(_7);
-        StorageDead(_6);
-        StorageLive(_8);
-        _8 = callee() -> [return: bb4, unwind unreachable];
+        StorageDead(_4);
+        StorageLive(_5);
+        _5 = callee() -> [return: bb4, unwind unreachable];
     }
 
     bb4: {
-        StorageDead(_8);
-        _5 = const ();
+        StorageDead(_5);
         goto -> bb2;
     }
 
     bb5: {
         StorageLive(_4);
-        StorageLive(_6);
-        StorageLive(_7);
-        _6 = move _2;
+        _4 = move _2;
         goto -> bb3;
     }
 
