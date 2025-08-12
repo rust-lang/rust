@@ -172,7 +172,6 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
         }
     }
 
-    #[allow(dead_code)] // FIXME(81658): should be used + lint reinstated after #83171 relands.
     fn handle_assign(&mut self, expr: &'tcx hir::Expr<'tcx>) {
         if self
             .typeck_results()
@@ -189,7 +188,6 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
         }
     }
 
-    #[allow(dead_code)] // FIXME(81658): should be used + lint reinstated after #83171 relands.
     fn check_for_self_assign(&mut self, assign: &'tcx hir::Expr<'tcx>) {
         fn check_for_self_assign_helper<'tcx>(
             typeck_results: &'tcx ty::TypeckResults<'tcx>,
@@ -575,6 +573,10 @@ impl<'tcx> Visitor<'tcx> for MarkSymbolVisitor<'tcx> {
             }
             hir::ExprKind::OffsetOf(..) => {
                 self.handle_offset_of(expr);
+            }
+            hir::ExprKind::Assign(ref lhs, ..) => {
+                self.handle_assign(lhs);
+                self.check_for_self_assign(expr);
             }
             _ => (),
         }
