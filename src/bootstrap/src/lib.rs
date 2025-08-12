@@ -1130,11 +1130,12 @@ impl Build {
         let action = action.into().description();
         let msg = |fmt| format!("{action} stage{actual_stage} {what}{fmt}");
         let msg = if let Some(target) = target.into() {
+            let build_stage = host_and_stage.stage;
             let host = host_and_stage.host;
             if host == target {
-                msg(format_args!(" ({target})"))
+                msg(format_args!(" (stage{build_stage} -> stage{actual_stage}, {target})"))
             } else {
-                msg(format_args!(" ({host} -> {target})"))
+                msg(format_args!(" (stage{build_stage}:{host} -> stage{actual_stage}:{target})"))
             }
         } else {
             msg(format_args!(""))
