@@ -1103,7 +1103,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         self_ty.span.ctxt().outer_expn_data().kind,
                         ExpnKind::Macro(MacroKind::Derive, _)
                     ) || matches!(
-                        of_trait.as_ref().map(|t| t.path.span.ctxt().outer_expn_data().kind),
+                        of_trait.map(|t| t.trait_ref.path.span.ctxt().outer_expn_data().kind),
                         Some(ExpnKind::Macro(MacroKind::Derive, _))
                     ) =>
                     {
@@ -1165,13 +1165,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             entry.0.insert(cause_span);
                             entry.1.insert((cause_span, "unsatisfied trait bound introduced here"));
                         } else {
-                            if let Some(trait_ref) = of_trait {
-                                entry.0.insert(trait_ref.path.span);
+                            if let Some(of_trait) = of_trait {
+                                entry.0.insert(of_trait.trait_ref.path.span);
                             }
                             entry.0.insert(self_ty.span);
                         };
-                        if let Some(trait_ref) = of_trait {
-                            entry.1.insert((trait_ref.path.span, ""));
+                        if let Some(of_trait) = of_trait {
+                            entry.1.insert((of_trait.trait_ref.path.span, ""));
                         }
                         entry.1.insert((self_ty.span, ""));
                     }
