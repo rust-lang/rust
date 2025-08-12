@@ -17,6 +17,7 @@ extern "C" {
 #[link_name]
 //~^ ERROR malformed `link_name` attribute input
 //~| HELP must be of the form
+//~| NOTE for more information, visit
 extern "C" {
     fn bar() -> u32;
 }

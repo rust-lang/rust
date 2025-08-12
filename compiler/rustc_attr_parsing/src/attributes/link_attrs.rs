@@ -16,7 +16,10 @@ impl<S: Stage> SingleAttributeParser<S> for LinkNameParser {
     const PATH: &[Symbol] = &[sym::link_name];
     const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepInnermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::WarnButFutureError;
-    const TEMPLATE: AttributeTemplate = template!(NameValueStr: "name");
+    const TEMPLATE: AttributeTemplate = template!(
+        NameValueStr: "name",
+        "https://doc.rust-lang.org/reference/items/external-blocks.html#the-link_name-attribute"
+    );
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
         let Some(nv) = args.name_value() else {
@@ -38,7 +41,10 @@ impl<S: Stage> SingleAttributeParser<S> for LinkSectionParser {
     const PATH: &[Symbol] = &[sym::link_section];
     const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepInnermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::WarnButFutureError;
-    const TEMPLATE: AttributeTemplate = template!(NameValueStr: "name");
+    const TEMPLATE: AttributeTemplate = template!(
+        NameValueStr: "name",
+        "https://doc.rust-lang.org/reference/abi.html#the-link_section-attribute"
+    );
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
         let Some(nv) = args.name_value() else {
@@ -94,7 +100,10 @@ impl<S: Stage> SingleAttributeParser<S> for LinkOrdinalParser {
     const PATH: &[Symbol] = &[sym::link_ordinal];
     const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
-    const TEMPLATE: AttributeTemplate = template!(List: "ordinal");
+    const TEMPLATE: AttributeTemplate = template!(
+        List: &["ordinal"],
+        "https://doc.rust-lang.org/reference/items/external-blocks.html#the-link_ordinal-attribute"
+    );
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
         let ordinal = parse_single_integer(cx, args)?;
