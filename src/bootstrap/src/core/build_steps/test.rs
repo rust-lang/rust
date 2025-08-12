@@ -153,7 +153,7 @@ You can skip linkcheck with --skip src/tools/linkchecker"
         }
 
         // Build all the default documentation.
-        builder.default_doc(&[]);
+        builder.run_default_doc_steps();
 
         // Build the linkchecker before calling `msg`, since GHA doesn't support nested groups.
         let linkchecker = builder.tool_cmd(Tool::Linkchecker);
@@ -208,7 +208,7 @@ impl Step for HtmlCheck {
             panic!("Cannot run html-check tests");
         }
         // Ensure that a few different kinds of documentation are available.
-        builder.default_doc(&[]);
+        builder.run_default_doc_steps();
         builder.ensure(crate::core::build_steps::doc::Rustc::for_stage(
             builder,
             builder.top_stage,
