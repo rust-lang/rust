@@ -61,7 +61,7 @@ xz2 = "0.1"
 sysinfo = { version = "0.36.0", default-features = false, optional = true, features = ["system"] }
 
 # Dependencies needed by the `tracing` feature
-chrono = { version = "0.4", optional = true }
+chrono = { version = "0.4", default-features = false, optional = true, features = ["now", "std"] }
 tracing = { version = "0.1", optional = true, features = ["attributes"] }
 tracing-chrome = { version = "0.7", optional = true }
 tracing-subscriber = { version = "0.3", optional = true, features = ["env-filter", "fmt", "registry", "std"] }
