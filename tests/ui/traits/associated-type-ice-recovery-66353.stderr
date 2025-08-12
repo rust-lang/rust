@@ -1,0 +1,29 @@
+error[E0277]: the trait bound `(): _A` is not satisfied
+  --> $DIR/associated-type-ice-recovery-66353.rs:13:15
+   |
+LL |     _Func::< <() as _A>::AssocT >::func(());
+   |               ^^ the trait `_A` is not implemented for `()`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/associated-type-ice-recovery-66353.rs:8:1
+   |
+LL | trait _A {
+   | ^^^^^^^^
+
+error[E0277]: the trait bound `(): _Func<_>` is not satisfied
+  --> $DIR/associated-type-ice-recovery-66353.rs:13:41
+   |
+LL |     _Func::< <() as _A>::AssocT >::func(());
+   |     ----------------------------------- ^^ the trait `_Func<_>` is not implemented for `()`
+   |     |
+   |     required by a bound introduced by this call
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/associated-type-ice-recovery-66353.rs:4:1
+   |
+LL | trait _Func<T> {
+   | ^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

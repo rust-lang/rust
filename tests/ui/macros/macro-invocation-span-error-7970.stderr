@@ -1,5 +1,5 @@
 error: unexpected end of macro invocation
-  --> $DIR/macro-invocation-span-error-7970.rs:9:5
+  --> $DIR/macro-invocation-span-error-7970.rs:8:5
    |
 LL | macro_rules! one_arg_macro {
    | -------------------------- when calling this macro
@@ -10,7 +10,7 @@ LL |     one_arg_macro!();
 note: while trying to match meta-variable `$fmt:expr`
   --> $DIR/macro-invocation-span-error-7970.rs:3:6
    |
-LL |     ($fmt:expr) => {
+LL |     ($fmt:expr) => (print!(concat!($fmt, "
    |      ^^^^^^^^^
 
 error: aborting due to 1 previous error
