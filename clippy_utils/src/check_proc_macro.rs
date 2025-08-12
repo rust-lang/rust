@@ -521,7 +521,18 @@ fn ast_ty_search_pat(ty: &ast::Ty) -> (Pat, Pat) {
         },
 
         // implicit, so has no contents to match against
-        TyKind::ImplicitSelf | _ => (Pat::Str(""), Pat::Str("")),
+        TyKind::ImplicitSelf
+
+        // experimental
+        |TyKind::Pat(..)
+
+        // unused
+        | TyKind::CVarArgs
+        | TyKind::Typeof(_)
+
+        // placeholder
+        | TyKind::Dummy
+        | TyKind::Err(_) => (Pat::Str(""), Pat::Str("")),
     }
 }
 
