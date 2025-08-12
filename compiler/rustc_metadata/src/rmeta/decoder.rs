@@ -39,6 +39,7 @@ use rustc_span::{
 use tracing::debug;
 
 use crate::creader::CStore;
+use crate::eii::EiiMapEncodedKeyValue;
 use crate::rmeta::table::IsDefault;
 use crate::rmeta::*;
 
@@ -1485,6 +1486,13 @@ impl<'a> CrateMetadataRef<'a> {
                 },
             ),
         )
+    }
+
+    fn get_externally_implementable_items(
+        self,
+        tcx: TyCtxt<'_>,
+    ) -> impl Iterator<Item = EiiMapEncodedKeyValue> {
+        self.root.externally_implementable_items.decode((self, tcx))
     }
 
     fn get_missing_lang_items<'tcx>(self, tcx: TyCtxt<'tcx>) -> &'tcx [LangItem] {
