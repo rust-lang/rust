@@ -214,7 +214,7 @@ install!((self, builder, _config),
         // `expect` should be safe, only None when host != build, but this
         // only runs when host == build
         let tarball = builder.ensure(dist::Std {
-            compiler: self.compiler,
+            build_compiler: self.compiler,
             target: self.target
         }).expect("missing std");
         install_sh(builder, "std", self.compiler.stage, Some(self.target), &tarball);

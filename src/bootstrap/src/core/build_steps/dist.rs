@@ -747,9 +747,16 @@ fn copy_target_libs(
     }
 }
 
+/// Builds the standard library (`rust-std`) dist component for a given `target`.
+/// This includes the standard library dynamic library file (e.g. .so/.dll), along with stdlib
+/// .rlibs.
+///
+/// Note that due to uplifting, we actually ship the stage 1 library
+/// (built using the stage1 compiler) even with a stage 2 dist, unless `full-bootstrap` is enabled.
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct Std {
-    pub compiler: Compiler,
+    /// Compiler that will build the standard library.
+    pub build_compiler: Compiler,
     pub target: TargetSelection,
 }
 
@@ -762,31 +769,43 @@ impl Step for Std {
     }
 
     fn make_run(run: RunConfig<'_>) {
+        // This is a build time optimization for running just `x dist rust-std` (without
+        // `x dist rustc`).
+        // If we know that we will be uplifting a stage2+ library from stage 1 anyway,
+        // there is no point in building a stage2 rustc, which will then not do anything (because
+        // the stdlib will be uplifted).
+        let top_stage = run.builder.top_stage;
+        let stage = if top_stage > 1
+            && compile::Std::should_be_uplifted_from_stage_1(run.builder, top_stage, run.target)
+        {
+            run.builder.info(&format!(
+                "Note: stage {top_stage} library for `{}` would be uplifted from stage 1, so stage was downgraded from {top_stage} to 1 to avoid needless compiler build(s)",
+                run.target
+            ));
+            1
+        } else {
+            top_stage
+        };
         run.builder.ensure(Std {
-            compiler: run.builder.compiler_for(
-                run.builder.top_stage,
-                run.builder.config.host_target,
-                run.target,
-            ),
+            build_compiler: run.builder.compiler(stage, run.builder.config.host_target),
             target: run.target,
         });
     }
 
     fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
-        let compiler = self.compiler;
+        let build_compiler = self.build_compiler;
         let target = self.target;
 
-        if skip_host_target_lib(builder, compiler) {
+        if skip_host_target_lib(builder, build_compiler) {
             return None;
         }
 
-        builder.std(compiler, target);
+        builder.std(build_compiler, target);
 
         let mut tarball = Tarball::new(builder, "rust-std", &target.triple);
         tarball.include_target_in_component_name(true);
 
-        let compiler_to_use = builder.compiler_for(compiler.stage, compiler.host, target);
-        let stamp = build_stamp::libstd_stamp(builder, compiler_to_use, target);
+        let stamp = build_stamp::libstd_stamp(builder, build_compiler, target);
         verify_uefi_rlib_format(builder, target, &stamp);
         copy_target_libs(builder, target, tarball.image_dir(), &stamp);
 
@@ -794,7 +813,7 @@ impl Step for Std {
     }
 
     fn metadata(&self) -> Option<StepMetadata> {
-        Some(StepMetadata::dist("std", self.target).built_by(self.compiler))
+        Some(StepMetadata::dist("std", self.target).built_by(self.build_compiler))
     }
 }
 
@@ -1630,7 +1649,8 @@ impl Step for Extended {
         // the std files during uninstall. To do this ensure that rustc comes
         // before rust-std in the list below.
         tarballs.push(builder.ensure(Rustc { target_compiler }));
-        tarballs.push(builder.ensure(Std { compiler, target }).expect("missing std"));
+        tarballs
+            .push(builder.ensure(Std { build_compiler: compiler, target }).expect("missing std"));
 
         if target.is_windows_gnu() {
             tarballs.push(builder.ensure(Mingw { target }).expect("missing mingw"));
