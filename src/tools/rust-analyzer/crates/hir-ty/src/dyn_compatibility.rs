@@ -2,7 +2,6 @@
 
 use std::ops::ControlFlow;
 
-use chalk_ir::DebruijnIndex;
 use hir_def::{
     AssocItemId, ConstId, CrateRootModuleId, FunctionId, GenericDefId, HasModule, TraitId,
     TypeAliasId, lang_item::LangItem, signatures::TraitFlags,
@@ -11,23 +10,20 @@ use intern::Symbol;
 use rustc_hash::FxHashSet;
 use rustc_type_ir::{
     AliasTyKind, ClauseKind, PredicatePolarity, TypeSuperVisitable as _, TypeVisitable as _,
-    Upcast,
+    Upcast, elaborate,
     inherent::{IntoKind, SliceLike},
 };
 use smallvec::SmallVec;
 
 use crate::{
-    ImplTraitId, Interner, TyKind, WhereClause, all_super_traits,
+    ImplTraitId, all_super_traits,
     db::{HirDatabase, InternedOpaqueTyId},
-    from_chalk_trait_id,
-    generics::trait_self_param_idx,
     lower_nextsolver::associated_ty_item_bounds,
     next_solver::{
         Clause, Clauses, DbInterner, GenericArgs, ParamEnv, SolverDefId, TraitPredicate,
         TypingMode, infer::DbInternerInferExt, mk_param,
     },
     traits::next_trait_solve_in_ctxt,
-    utils::elaborate_clause_supertraits,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -133,27 +129,23 @@ pub fn generics_require_sized_self(db: &dyn HirDatabase, def: GenericDefId) -> b
         return false;
     };
 
-    let Some(trait_self_param_idx) = trait_self_param_idx(db, def) else {
-        return false;
-    };
-
-    let predicates = &*db.generic_predicates(def);
-    let predicates = predicates.iter().map(|p| p.skip_binders().skip_binders().clone());
-    elaborate_clause_supertraits(db, predicates).any(|pred| match pred {
-        WhereClause::Implemented(trait_ref) => {
-            if from_chalk_trait_id(trait_ref.trait_id) == sized
-                && let TyKind::BoundVar(it) =
-                    *trait_ref.self_type_parameter(Interner).kind(Interner)
-            {
-                // Since `generic_predicates` is `Binder<Binder<..>>`, the `DebrujinIndex` of
-                // self-parameter is `1`
-                return it
-                    .index_if_bound_at(DebruijnIndex::ONE)
-                    .is_some_and(|idx| idx == trait_self_param_idx);
+    let interner = DbInterner::new_with(db, Some(krate), None);
+    let predicates = db.generic_predicates_ns(def);
+    elaborate::elaborate(interner, predicates.iter().copied()).any(|pred| {
+        match pred.kind().skip_binder() {
+            ClauseKind::Trait(trait_pred) => {
+                if SolverDefId::TraitId(sized) == trait_pred.def_id()
+                    && let rustc_type_ir::TyKind::Param(param_ty) =
+                        trait_pred.trait_ref.self_ty().kind()
+                    && param_ty.index == 0
+                {
+                    true
+                } else {
+                    false
+                }
             }
-            false
+            _ => false,
         }
-        _ => false,
     })
 }
 
