@@ -889,14 +889,19 @@ impl Step for RustcDev {
     }
 }
 
+/// The `rust-analysis` component used to create a tarball of save-analysis metadata.
+///
+/// This component has been deprecated and its contents now only include a warning about
+/// its non-availability.
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct Analysis {
-    pub compiler: Compiler,
-    pub target: TargetSelection,
+    build_compiler: Compiler,
+    target: TargetSelection,
 }
 
 impl Step for Analysis {
     type Output = Option<GeneratedTarball>;
+
     const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -905,24 +910,17 @@ impl Step for Analysis {
     }
 
     fn make_run(run: RunConfig<'_>) {
+        // The step just produces a deprecation notice, so we just hardcode stage 1
         run.builder.ensure(Analysis {
-            // Find the actual compiler (handling the full bootstrap option) which
-            // produced the save-analysis data because that data isn't copied
-            // through the sysroot uplifting.
-            compiler: run.builder.compiler_for(
-                run.builder.top_stage,
-                run.builder.config.host_target,
-                run.target,
-            ),
+            build_compiler: run.builder.compiler(1, run.builder.config.host_target),
             target: run.target,
         });
     }
 
-    /// Creates a tarball of (degenerate) save-analysis metadata, if available.
     fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
-        let compiler = self.compiler;
+        let compiler = self.build_compiler;
         let target = self.target;
-        if !builder.config.is_host_target(compiler.host) {
+        if skip_host_target_lib(builder, compiler) {
             return None;
         }
 
@@ -944,6 +942,10 @@ impl Step for Analysis {
         tarball.include_target_in_component_name(true);
         tarball.add_dir(src, format!("lib/rustlib/{}/analysis", target.triple));
         Some(tarball.generate())
+    }
+
+    fn metadata(&self) -> Option<StepMetadata> {
+        Some(StepMetadata::dist("analysis", self.target).built_by(self.build_compiler))
     }
 }
 
@@ -1669,7 +1671,7 @@ impl Step for Extended {
         add_component!("llvm-components" => LlvmTools { target });
         add_component!("clippy" => Clippy { build_compiler: compiler, target });
         add_component!("miri" => Miri { build_compiler: compiler, target });
-        add_component!("analysis" => Analysis { compiler, target });
+        add_component!("analysis" => Analysis { build_compiler: compiler, target });
         add_component!("rustc-codegen-cranelift" => CraneliftCodegenBackend {
             build_compiler: compiler,
             target
