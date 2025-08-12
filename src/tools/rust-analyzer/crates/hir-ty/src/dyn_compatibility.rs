@@ -16,7 +16,7 @@ use rustc_type_ir::{
 use smallvec::SmallVec;
 
 use crate::{
-    ImplTraitId, all_super_traits,
+    ImplTraitId,
     db::{HirDatabase, InternedOpaqueTyId},
     lower_nextsolver::associated_ty_item_bounds,
     next_solver::{
@@ -53,13 +53,22 @@ pub fn dyn_compatibility(
     db: &dyn HirDatabase,
     trait_: TraitId,
 ) -> Option<DynCompatibilityViolation> {
-    for super_trait in all_super_traits(db, trait_).into_iter().skip(1).rev() {
-        if db.dyn_compatibility_of_trait(super_trait).is_some() {
-            return Some(DynCompatibilityViolation::HasNonCompatibleSuperTrait(super_trait));
+    let interner = DbInterner::new_with(db, Some(trait_.krate(db)), None);
+    for super_trait in elaborate::supertrait_def_ids(interner, SolverDefId::TraitId(trait_)) {
+        let super_trait = match super_trait {
+            SolverDefId::TraitId(id) => id,
+            _ => unreachable!(),
+        };
+        if let Some(v) = db.dyn_compatibility_of_trait(super_trait) {
+            return if super_trait == trait_ {
+                Some(v)
+            } else {
+                Some(DynCompatibilityViolation::HasNonCompatibleSuperTrait(super_trait))
+            };
         }
     }
 
-    db.dyn_compatibility_of_trait(trait_)
+    None
 }
 
 pub fn dyn_compatibility_with_callback<F>(
@@ -70,7 +79,13 @@ pub fn dyn_compatibility_with_callback<F>(
 where
     F: FnMut(DynCompatibilityViolation) -> ControlFlow<()>,
 {
-    for super_trait in all_super_traits(db, trait_).into_iter().skip(1).rev() {
+    let interner = DbInterner::new_with(db, Some(trait_.krate(db)), None);
+    for super_trait in elaborate::supertrait_def_ids(interner, SolverDefId::TraitId(trait_)).skip(1)
+    {
+        let super_trait = match super_trait {
+            SolverDefId::TraitId(id) => id,
+            _ => unreachable!(),
+        };
         if db.dyn_compatibility_of_trait(super_trait).is_some() {
             cb(DynCompatibilityViolation::HasNonCompatibleSuperTrait(trait_))?;
         }
@@ -225,6 +240,7 @@ fn contains_illegal_self_type_reference<'db, T: rustc_type_ir::TypeVisitable<DbI
             &mut self,
             ty: <DbInterner<'db> as rustc_type_ir::Interner>::Ty,
         ) -> Self::Result {
+            let interner = DbInterner::new_with(self.db, None, None);
             match ty.kind() {
                 rustc_type_ir::TyKind::Param(param) if param.index == 0 => ControlFlow::Break(()),
                 rustc_type_ir::TyKind::Param(_) => ControlFlow::Continue(()),
@@ -238,7 +254,17 @@ fn contains_illegal_self_type_reference<'db, T: rustc_type_ir::TypeVisitable<DbI
                             _ => unreachable!(),
                         };
                         if self.super_traits.is_none() {
-                            self.super_traits = Some(all_super_traits(self.db, self.trait_));
+                            self.super_traits = Some(
+                                elaborate::supertrait_def_ids(
+                                    interner,
+                                    SolverDefId::TraitId(self.trait_),
+                                )
+                                .map(|super_trait| match super_trait {
+                                    SolverDefId::TraitId(id) => id,
+                                    _ => unreachable!(),
+                                })
+                                .collect(),
+                            )
                         }
                         if self.super_traits.as_ref().is_some_and(|s| s.contains(&trait_)) {
                             ControlFlow::Continue(())
