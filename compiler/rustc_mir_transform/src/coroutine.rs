@@ -174,6 +174,7 @@ const SELF_ARG: Local = Local::from_u32(1);
 const CTX_ARG: Local = Local::from_u32(2);
 
 /// A `yield` point in the coroutine.
+#[derive(Debug)]
 struct SuspensionPoint<'tcx> {
     /// State discriminant used when suspending or resuming at this point.
     state: usize,
@@ -651,7 +652,7 @@ fn replace_resume_ty_local<'tcx>(
     // We have to replace the `ResumeTy` that is used for type and borrow checking
     // with `&mut Context<'_>` in MIR.
     #[cfg(debug_assertions)]
-    {
+    if local_ty != context_mut_ref {
         if let ty::Adt(resume_ty_adt, _) = local_ty.kind() {
             let expected_adt = tcx.adt_def(tcx.require_lang_item(LangItem::ResumeTy, body.span));
             assert_eq!(*resume_ty_adt, expected_adt);

@@ -627,7 +627,6 @@ fn run_runtime_lowering_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         &add_retag::AddRetag,
         &erase_deref_temps::EraseDerefTemps,
         &elaborate_box_derefs::ElaborateBoxDerefs,
-        &coroutine::StateTransform,
         &Lint(known_panics_lint::KnownPanicsLint),
     ];
     pm::run_passes_no_validate(tcx, body, passes, Some(MirPhase::Runtime(RuntimePhase::Initial)));
@@ -742,6 +741,7 @@ pub(crate) fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'
             &simplify::SimplifyLocals::Final,
             &multiple_return_terminators::MultipleReturnTerminators,
             &large_enums::EnumSizeOpt { discrepancy: 128 },
+            &coroutine::StateTransform,
             // Some cleanup necessary at least for LLVM and potentially other codegen backends.
             &add_call_guards::CriticalCallEdges,
             // Cleanup for human readability, off by default.
