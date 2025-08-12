@@ -715,7 +715,7 @@ impl Step for Rustdoc {
     type Output = PathBuf;
 
     const DEFAULT: bool = true;
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("src/tools/rustdoc").path("src/librustdoc")
@@ -837,7 +837,7 @@ impl Cargo {
 impl Step for Cargo {
     type Output = ToolBuildResult;
     const DEFAULT: bool = true;
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let builder = run.builder;
@@ -913,7 +913,7 @@ impl LldWrapper {
 impl Step for LldWrapper {
     type Output = BuiltLldWrapper;
 
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("src/tools/lld-wrapper")
@@ -1014,7 +1014,7 @@ impl WasmComponentLd {
 impl Step for WasmComponentLd {
     type Output = ToolBuildResult;
 
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("src/tools/wasm-component-ld")
@@ -1077,7 +1077,7 @@ impl RustAnalyzer {
 impl Step for RustAnalyzer {
     type Output = ToolBuildResult;
     const DEFAULT: bool = true;
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let builder = run.builder;
@@ -1130,7 +1130,7 @@ impl Step for RustAnalyzerProcMacroSrv {
     type Output = ToolBuildResult;
 
     const DEFAULT: bool = true;
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let builder = run.builder;
@@ -1220,7 +1220,7 @@ impl LlvmBitcodeLinker {
 impl Step for LlvmBitcodeLinker {
     type Output = ToolBuildResult;
     const DEFAULT: bool = true;
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let builder = run.builder;
@@ -1274,7 +1274,7 @@ pub enum LibcxxVersion {
 impl Step for LibcxxVersionTool {
     type Output = LibcxxVersion;
     const DEFAULT: bool = false;
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.never()
@@ -1435,7 +1435,7 @@ macro_rules! tool_rustc_extended {
         impl Step for $name {
             type Output = ToolBuildResult;
             const DEFAULT: bool = true; // Overridden by `should_run_tool_build_step`
-            const ONLY_HOSTS: bool = true;
+            const IS_HOST: bool = true;
 
             fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
                 should_run_extended_rustc_tool(
@@ -1603,7 +1603,7 @@ impl TestFloatParse {
 
 impl Step for TestFloatParse {
     type Output = ToolBuildResult;
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
     const DEFAULT: bool = false;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {

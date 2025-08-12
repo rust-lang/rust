@@ -31,7 +31,7 @@ pub struct GccOutput {
 impl Step for Gcc {
     type Output = GccOutput;
 
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("src/gcc").alias("gcc")

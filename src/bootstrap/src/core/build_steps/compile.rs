@@ -989,7 +989,7 @@ impl Step for Rustc {
     /// uplifting it from stage Y, causing the other stage to fail when attempting to link with
     /// stage X which was never actually built.
     type Output = u32;
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
     const DEFAULT: bool = false;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -1544,7 +1544,7 @@ pub struct GccCodegenBackend {
 
 impl Step for GccCodegenBackend {
     type Output = BuildStamp;
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.alias("rustc_codegen_gcc").alias("cg_gcc")
@@ -1629,7 +1629,7 @@ pub struct CraneliftCodegenBackend {
 
 impl Step for CraneliftCodegenBackend {
     type Output = BuildStamp;
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.alias("rustc_codegen_cranelift").alias("cg_clif")
@@ -1993,7 +1993,7 @@ pub struct Assemble {
 
 impl Step for Assemble {
     type Output = Compiler;
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("compiler/rustc").path("compiler")

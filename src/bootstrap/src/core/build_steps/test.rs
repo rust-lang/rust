@@ -51,7 +51,7 @@ pub struct CrateBootstrap {
 
 impl Step for CrateBootstrap {
     type Output = ();
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
     const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -109,7 +109,7 @@ pub struct Linkcheck {
 
 impl Step for Linkcheck {
     type Output = ();
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
     const DEFAULT: bool = true;
 
     /// Runs the `linkchecker` tool as compiled in `stage` by the `host` compiler.
@@ -190,7 +190,7 @@ pub struct HtmlCheck {
 impl Step for HtmlCheck {
     type Output = ();
     const DEFAULT: bool = true;
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let builder = run.builder;
@@ -237,7 +237,7 @@ pub struct Cargotest {
 
 impl Step for Cargotest {
     type Output = ();
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("src/tools/cargotest")
@@ -314,7 +314,7 @@ impl Cargo {
 
 impl Step for Cargo {
     type Output = ();
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path(Self::CRATE_PATH)
@@ -411,7 +411,7 @@ pub struct RustAnalyzer {
 
 impl Step for RustAnalyzer {
     type Output = ();
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
     const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -470,7 +470,7 @@ pub struct Rustfmt {
 
 impl Step for Rustfmt {
     type Output = ();
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("src/tools/rustfmt")
@@ -809,7 +809,7 @@ pub struct Clippy {
 
 impl Step for Clippy {
     type Output = ();
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
     const DEFAULT: bool = false;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -909,7 +909,7 @@ pub struct RustdocTheme {
 impl Step for RustdocTheme {
     type Output = ();
     const DEFAULT: bool = true;
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("src/tools/rustdoc-themes")
@@ -946,7 +946,7 @@ pub struct RustdocJSStd {
 impl Step for RustdocJSStd {
     type Output = ();
     const DEFAULT: bool = true;
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let default = run.builder.config.nodejs.is_some();
@@ -1006,7 +1006,7 @@ pub struct RustdocJSNotStd {
 impl Step for RustdocJSNotStd {
     type Output = ();
     const DEFAULT: bool = true;
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let default = run.builder.config.nodejs.is_some();
@@ -1061,7 +1061,7 @@ pub struct RustdocGUI {
 impl Step for RustdocGUI {
     type Output = ();
     const DEFAULT: bool = true;
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let builder = run.builder;
@@ -1160,7 +1160,7 @@ pub struct Tidy;
 impl Step for Tidy {
     type Output = ();
     const DEFAULT: bool = true;
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     /// Runs the `tidy` tool.
     ///
@@ -1278,7 +1278,7 @@ macro_rules! test {
             mode: $mode:expr,
             suite: $suite:expr,
             default: $default:expr
-            $( , only_hosts: $only_hosts:expr )? // default: false
+            $( , IS_HOST: $IS_HOST:expr )? // default: false
             $( , compare_mode: $compare_mode:expr )? // default: None
             $( , )? // optional trailing comma
         }
@@ -1293,10 +1293,10 @@ macro_rules! test {
         impl Step for $name {
             type Output = ();
             const DEFAULT: bool = $default;
-            const ONLY_HOSTS: bool = (const {
+            const IS_HOST: bool = (const {
                 #[allow(unused_assignments, unused_mut)]
                 let mut value = false;
-                $( value = $only_hosts; )?
+                $( value = $IS_HOST; )?
                 value
             });
 
@@ -1344,7 +1344,7 @@ pub struct CrateRunMakeSupport {
 
 impl Step for CrateRunMakeSupport {
     type Output = ();
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("src/tools/run-make-support")
@@ -1381,7 +1381,7 @@ pub struct CrateBuildHelper {
 
 impl Step for CrateBuildHelper {
     type Output = ();
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("src/build_helper")
@@ -1449,7 +1449,7 @@ test!(UiFullDeps {
     mode: "ui",
     suite: "ui-fulldeps",
     default: true,
-    only_hosts: true,
+    IS_HOST: true,
 });
 
 test!(Rustdoc {
@@ -1457,14 +1457,14 @@ test!(Rustdoc {
     mode: "rustdoc",
     suite: "rustdoc",
     default: true,
-    only_hosts: true,
+    IS_HOST: true,
 });
 test!(RustdocUi {
     path: "tests/rustdoc-ui",
     mode: "ui",
     suite: "rustdoc-ui",
     default: true,
-    only_hosts: true,
+    IS_HOST: true,
 });
 
 test!(RustdocJson {
@@ -1472,7 +1472,7 @@ test!(RustdocJson {
     mode: "rustdoc-json",
     suite: "rustdoc-json",
     default: true,
-    only_hosts: true,
+    IS_HOST: true,
 });
 
 test!(Pretty {
@@ -1480,7 +1480,7 @@ test!(Pretty {
     mode: "pretty",
     suite: "pretty",
     default: true,
-    only_hosts: true,
+    IS_HOST: true,
 });
 
 test!(RunMake { path: "tests/run-make", mode: "run-make", suite: "run-make", default: true });
@@ -1511,7 +1511,7 @@ impl Step for Coverage {
     type Output = ();
     const DEFAULT: bool = true;
     /// Compiletest will automatically skip the "coverage-run" tests if necessary.
-    const ONLY_HOSTS: bool = false;
+    const IS_HOST: bool = false;
 
     fn should_run(mut run: ShouldRun<'_>) -> ShouldRun<'_> {
         // Support various invocation styles, including:
@@ -1590,7 +1590,7 @@ test!(CoverageRunRustdoc {
     mode: "coverage-run",
     suite: "coverage-run-rustdoc",
     default: true,
-    only_hosts: true,
+    IS_HOST: true,
 });
 
 // For the mir-opt suite we do not use macros, as we need custom behavior when blessing.
@@ -2278,7 +2278,7 @@ struct BookTest {
 
 impl Step for BookTest {
     type Output = ();
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.never()
@@ -2445,7 +2445,7 @@ macro_rules! test_book {
             impl Step for $name {
                 type Output = ();
                 const DEFAULT: bool = $default;
-                const ONLY_HOSTS: bool = true;
+                const IS_HOST: bool = true;
 
                 fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
                     run.path($path)
@@ -2505,7 +2505,7 @@ pub struct ErrorIndex {
 impl Step for ErrorIndex {
     type Output = ();
     const DEFAULT: bool = true;
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         // Also add `error-index` here since that is what appears in the error message
@@ -2601,7 +2601,7 @@ pub struct CrateLibrustc {
 impl Step for CrateLibrustc {
     type Output = ();
     const DEFAULT: bool = true;
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.crate_or_deps("rustc-main").path("compiler")
@@ -2887,7 +2887,7 @@ pub struct CrateRustdoc {
 impl Step for CrateRustdoc {
     type Output = ();
     const DEFAULT: bool = true;
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.paths(&["src/librustdoc", "src/tools/rustdoc"])
@@ -2979,7 +2979,7 @@ pub struct CrateRustdocJsonTypes {
 impl Step for CrateRustdocJsonTypes {
     type Output = ();
     const DEFAULT: bool = true;
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("src/rustdoc-json-types")
@@ -3168,7 +3168,7 @@ pub struct Bootstrap;
 impl Step for Bootstrap {
     type Output = ();
     const DEFAULT: bool = true;
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     /// Tests the build system itself.
     fn run(self, builder: &Builder<'_>) {
@@ -3237,7 +3237,7 @@ pub struct TierCheck {
 impl Step for TierCheck {
     type Output = ();
     const DEFAULT: bool = true;
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("src/tools/tier-check")
@@ -3291,7 +3291,7 @@ pub struct LintDocs {
 impl Step for LintDocs {
     type Output = ();
     const DEFAULT: bool = true;
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("src/tools/lint-docs")
@@ -3317,7 +3317,7 @@ pub struct RustInstaller;
 
 impl Step for RustInstaller {
     type Output = ();
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
     const DEFAULT: bool = true;
 
     /// Ensure the version placeholder replacement tool builds
@@ -3442,7 +3442,7 @@ pub struct CodegenCranelift {
 impl Step for CodegenCranelift {
     type Output = ();
     const DEFAULT: bool = true;
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.paths(&["compiler/rustc_codegen_cranelift"])
@@ -3570,7 +3570,7 @@ pub struct CodegenGCC {
 impl Step for CodegenGCC {
     type Output = ();
     const DEFAULT: bool = true;
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.paths(&["compiler/rustc_codegen_gcc"])
@@ -3703,7 +3703,7 @@ pub struct TestFloatParse {
 
 impl Step for TestFloatParse {
     type Output = ();
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
     const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -3769,7 +3769,7 @@ pub struct CollectLicenseMetadata;
 
 impl Step for CollectLicenseMetadata {
     type Output = PathBuf;
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("src/tools/collect-license-metadata")
