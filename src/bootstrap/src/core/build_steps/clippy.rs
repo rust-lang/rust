@@ -143,11 +143,11 @@ impl Step for Std {
 
     fn run(self, builder: &Builder<'_>) {
         let target = self.target;
-        let compiler = builder.compiler(builder.top_stage, builder.config.host_target);
+        let build_compiler = builder.compiler(builder.top_stage, builder.config.host_target);
 
         let mut cargo = builder::Cargo::new(
             builder,
-            compiler,
+            build_compiler,
             Mode::Std,
             SourceType::InTree,
             target,
@@ -160,14 +160,19 @@ impl Step for Std {
             cargo.arg("-p").arg(krate);
         }
 
-        let _guard =
-            builder.msg_clippy(format_args!("library{}", crate_description(&self.crates)), target);
+        let _guard = builder.msg(
+            Kind::Clippy,
+            format_args!("library{}", crate_description(&self.crates)),
+            Mode::Std,
+            build_compiler,
+            target,
+        );
 
         run_cargo(
             builder,
             cargo,
             lint_args(builder, &self.config, IGNORED_RULES_FOR_STD_AND_RUSTC),
-            &build_stamp::libstd_stamp(builder, compiler, target),
+            &build_stamp::libstd_stamp(builder, build_compiler, target),
             vec![],
             true,
             false,
@@ -203,33 +208,33 @@ impl Step for Rustc {
     /// This will lint the compiler for a particular stage of the build using
     /// the `compiler` targeting the `target` architecture.
     fn run(self, builder: &Builder<'_>) {
-        let compiler = builder.compiler(builder.top_stage, builder.config.host_target);
+        let build_compiler = builder.compiler(builder.top_stage, builder.config.host_target);
         let target = self.target;
 
         if !builder.download_rustc() {
-            if compiler.stage != 0 {
+            if build_compiler.stage != 0 {
                 // If we're not in stage 0, then we won't have a std from the beta
                 // compiler around. That means we need to make sure there's one in
                 // the sysroot for the compiler to find. Otherwise, we're going to
                 // fail when building crates that need to generate code (e.g., build
                 // scripts and their dependencies).
-                builder.std(compiler, compiler.host);
-                builder.std(compiler, target);
+                builder.std(build_compiler, build_compiler.host);
+                builder.std(build_compiler, target);
             } else {
-                builder.ensure(check::Std::new(compiler, target));
+                builder.ensure(check::Std::new(build_compiler, target));
             }
         }
 
         let mut cargo = builder::Cargo::new(
             builder,
-            compiler,
+            build_compiler,
             Mode::Rustc,
             SourceType::InTree,
             target,
             Kind::Clippy,
         );
 
-        rustc_cargo(builder, &mut cargo, target, &compiler, &self.crates);
+        rustc_cargo(builder, &mut cargo, target, &build_compiler, &self.crates);
 
         // Explicitly pass -p for all compiler crates -- this will force cargo
         // to also lint the tests/benches/examples for these crates, rather
@@ -238,14 +243,19 @@ impl Step for Rustc {
             cargo.arg("-p").arg(krate);
         }
 
-        let _guard =
-            builder.msg_clippy(format_args!("compiler{}", crate_description(&self.crates)), target);
+        let _guard = builder.msg(
+            Kind::Clippy,
+            format_args!("compiler{}", crate_description(&self.crates)),
+            Mode::Rustc,
+            build_compiler,
+            target,
+        );
 
         run_cargo(
             builder,
             cargo,
             lint_args(builder, &self.config, IGNORED_RULES_FOR_STD_AND_RUSTC),
-            &build_stamp::librustc_stamp(builder, compiler, target),
+            &build_stamp::librustc_stamp(builder, build_compiler, target),
             vec![],
             true,
             false,
@@ -284,16 +294,16 @@ macro_rules! lint_any {
             }
 
             fn run(self, builder: &Builder<'_>) -> Self::Output {
-                let compiler = builder.compiler(builder.top_stage, builder.config.host_target);
+                let build_compiler = builder.compiler(builder.top_stage, builder.config.host_target);
                 let target = self.target;
 
                 if !builder.download_rustc() {
-                    builder.ensure(check::Rustc::new(builder, compiler, target));
+                    builder.ensure(check::Rustc::new(builder, build_compiler, target));
                 };
 
                 let cargo = prepare_tool_cargo(
                     builder,
-                    compiler,
+                    build_compiler,
                     Mode::ToolRustc,
                     target,
                     Kind::Clippy,
@@ -302,17 +312,16 @@ macro_rules! lint_any {
                     &[],
                 );
 
-                let _guard = builder.msg_tool(
+                let _guard = builder.msg(
                     Kind::Clippy,
-                    Mode::ToolRustc,
                     $readable_name,
-                    compiler.stage,
-                    &compiler.host,
-                    &target,
+                    Mode::ToolRustc,
+                    build_compiler,
+                    target,
                 );
 
                 let stringified_name = stringify!($name).to_lowercase();
-                let stamp = BuildStamp::new(&builder.cargo_out(compiler, Mode::ToolRustc, target))
+                let stamp = BuildStamp::new(&builder.cargo_out(build_compiler, Mode::ToolRustc, target))
                     .with_prefix(&format!("{}-check", stringified_name));
 
                 run_cargo(

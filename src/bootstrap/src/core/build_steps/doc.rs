@@ -239,7 +239,7 @@ impl Step for TheBook {
     fn run(self, builder: &Builder<'_>) {
         builder.require_submodule("src/doc/book", None);
 
-        let compiler = self.build_compiler;
+        let build_compiler = self.build_compiler;
         let target = self.target;
 
         let absolute_path = builder.src.join("src/doc/book");
@@ -273,20 +273,20 @@ impl Step for TheBook {
         let shared_assets = builder.ensure(SharedAssets { target });
 
         // build the redirect pages
-        let _guard = builder.msg_doc(compiler, "book redirect pages", target);
+        let _guard = builder.msg(Kind::Doc, "book redirect pages", None, build_compiler, target);
         for file in t!(fs::read_dir(redirect_path)) {
             let file = t!(file);
             let path = file.path();
             let path = path.to_str().unwrap();
 
-            invoke_rustdoc(builder, compiler, &shared_assets, target, path);
+            invoke_rustdoc(builder, build_compiler, &shared_assets, target, path);
         }
     }
 }
 
 fn invoke_rustdoc(
     builder: &Builder<'_>,
-    compiler: Compiler,
+    build_compiler: Compiler,
     shared_assets: &SharedAssetsPaths,
     target: TargetSelection,
     markdown: &str,
@@ -298,7 +298,7 @@ fn invoke_rustdoc(
     let header = builder.src.join("src/doc/redirect.inc");
     let footer = builder.src.join("src/doc/footer.inc");
 
-    let mut cmd = builder.rustdoc_cmd(compiler);
+    let mut cmd = builder.rustdoc_cmd(build_compiler);
 
     let out = out.join("book");
 
@@ -362,7 +362,7 @@ impl Step for Standalone {
     fn run(self, builder: &Builder<'_>) {
         let target = self.target;
         let build_compiler = self.build_compiler;
-        let _guard = builder.msg_doc(build_compiler, "standalone", target);
+        let _guard = builder.msg(Kind::Doc, "standalone", None, build_compiler, target);
         let out = builder.doc_out(target);
         t!(fs::create_dir_all(&out));
 
@@ -469,7 +469,7 @@ impl Step for Releases {
     fn run(self, builder: &Builder<'_>) {
         let target = self.target;
         let build_compiler = self.build_compiler;
-        let _guard = builder.msg_doc(build_compiler, "releases", target);
+        let _guard = builder.msg(Kind::Doc, "releases", None, build_compiler, target);
         let out = builder.doc_out(target);
         t!(fs::create_dir_all(&out));
 
@@ -784,7 +784,7 @@ fn doc_std(
 
     let description =
         format!("library{} in {} format", crate_description(requested_crates), format.as_str());
-    let _guard = builder.msg_doc(build_compiler, description, target);
+    let _guard = builder.msg(Kind::Doc, description, None, build_compiler, target);
 
     cargo.into_cmd().run(builder);
     builder.cp_link_r(&out_dir, out);
@@ -861,11 +861,11 @@ impl Step for Rustc {
         let build_compiler = self.build_compiler;
         builder.std(build_compiler, builder.config.host_target);
 
-        let _guard = builder.msg_rustc_tool(
+        let _guard = builder.msg(
             Kind::Doc,
-            build_compiler.stage,
             format!("compiler{}", crate_description(&self.crates)),
-            build_compiler.host,
+            Mode::Rustc,
+            build_compiler,
             target,
         );
 
@@ -1059,7 +1059,7 @@ macro_rules! tool_doc {
                 let proc_macro_out_dir = builder.stage_out(build_compiler, mode).join("doc");
                 symlink_dir_force(&builder.config, &out, &proc_macro_out_dir);
 
-                let _guard = builder.msg_doc(build_compiler, stringify!($tool).to_lowercase(), target);
+                let _guard = builder.msg(Kind::Doc, stringify!($tool).to_lowercase(), None, build_compiler, target);
                 cargo.into_cmd().run(builder);
 
                 if !builder.config.dry_run() {
@@ -1314,13 +1314,8 @@ impl Step for RustcBook {
         // bootstrap.toml), then this needs to explicitly update the dylib search
         // path.
         builder.add_rustc_lib_path(self.build_compiler, &mut cmd);
-        let doc_generator_guard = builder.msg(
-            Kind::Run,
-            self.build_compiler.stage,
-            "lint-docs",
-            self.build_compiler.host,
-            self.target,
-        );
+        let doc_generator_guard =
+            builder.msg(Kind::Run, "lint-docs", None, self.build_compiler, self.target);
         cmd.run(builder);
         drop(doc_generator_guard);
 

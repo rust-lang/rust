@@ -159,7 +159,7 @@ impl Step for Std {
             return;
         }
 
-        let compiler = if builder.download_rustc() && self.force_recompile {
+        let build_compiler = if builder.download_rustc() && self.force_recompile {
             // When there are changes in the library tree with CI-rustc, we want to build
             // the stageN library and that requires using stageN-1 compiler.
             builder.compiler(self.compiler.stage.saturating_sub(1), builder.config.host_target)
@@ -173,7 +173,8 @@ impl Step for Std {
             && builder.config.is_host_target(target)
             && !self.force_recompile
         {
-            let sysroot = builder.ensure(Sysroot { compiler, force_recompile: false });
+            let sysroot =
+                builder.ensure(Sysroot { compiler: build_compiler, force_recompile: false });
             cp_rustc_component_to_ci_sysroot(
                 builder,
                 &sysroot,
@@ -182,53 +183,58 @@ impl Step for Std {
             return;
         }
 
-        if builder.config.keep_stage.contains(&compiler.stage)
-            || builder.config.keep_stage_std.contains(&compiler.stage)
+        if builder.config.keep_stage.contains(&build_compiler.stage)
+            || builder.config.keep_stage_std.contains(&build_compiler.stage)
         {
             trace!(keep_stage = ?builder.config.keep_stage);
             trace!(keep_stage_std = ?builder.config.keep_stage_std);
 
             builder.info("WARNING: Using a potentially old libstd. This may not behave well.");
 
-            builder.ensure(StartupObjects { compiler, target });
+            builder.ensure(StartupObjects { compiler: build_compiler, target });
 
-            self.copy_extra_objects(builder, &compiler, target);
+            self.copy_extra_objects(builder, &build_compiler, target);
 
-            builder.ensure(StdLink::from_std(self, compiler));
+            builder.ensure(StdLink::from_std(self, build_compiler));
             return;
         }
 
-        let mut target_deps = builder.ensure(StartupObjects { compiler, target });
+        let mut target_deps = builder.ensure(StartupObjects { compiler: build_compiler, target });
 
-        let compiler_to_use = builder.compiler_for(compiler.stage, compiler.host, target);
+        let compiler_to_use =
+            builder.compiler_for(build_compiler.stage, build_compiler.host, target);
         trace!(?compiler_to_use);
 
-        if compiler_to_use != compiler
+        if compiler_to_use != build_compiler
             // Never uplift std unless we have compiled stage 1; if stage 1 is compiled,
             // uplift it from there.
             //
             // FIXME: improve `fn compiler_for` to avoid adding stage condition here.
-            && compiler.stage > 1
+            && build_compiler.stage > 1
         {
-            trace!(?compiler_to_use, ?compiler, "compiler != compiler_to_use, uplifting library");
+            trace!(
+                ?compiler_to_use,
+                ?build_compiler,
+                "build_compiler != compiler_to_use, uplifting library"
+            );
 
             builder.std(compiler_to_use, target);
             let msg = if compiler_to_use.host == target {
                 format!(
                     "Uplifting library (stage{} -> stage{})",
-                    compiler_to_use.stage, compiler.stage
+                    compiler_to_use.stage, build_compiler.stage
                 )
             } else {
                 format!(
                     "Uplifting library (stage{}:{} -> stage{}:{})",
-                    compiler_to_use.stage, compiler_to_use.host, compiler.stage, target
+                    compiler_to_use.stage, compiler_to_use.host, build_compiler.stage, target
                 )
             };
             builder.info(&msg);
 
             // Even if we're not building std this stage, the new sysroot must
             // still contain the third party objects needed by various targets.
-            self.copy_extra_objects(builder, &compiler, target);
+            self.copy_extra_objects(builder, &build_compiler, target);
 
             builder.ensure(StdLink::from_std(self, compiler_to_use));
             return;
@@ -236,11 +242,11 @@ impl Step for Std {
 
         trace!(
             ?compiler_to_use,
-            ?compiler,
+            ?build_compiler,
             "compiler == compiler_to_use, handling not-cross-compile scenario"
         );
 
-        target_deps.extend(self.copy_extra_objects(builder, &compiler, target));
+        target_deps.extend(self.copy_extra_objects(builder, &build_compiler, target));
 
         // We build a sysroot for mir-opt tests using the same trick that Miri does: A check build
         // with -Zalways-encode-mir. This frees us from the need to have a target linker, and the
@@ -249,7 +255,7 @@ impl Step for Std {
             trace!("building special sysroot for mir-opt tests");
             let mut cargo = builder::Cargo::new_for_mir_opt_tests(
                 builder,
-                compiler,
+                build_compiler,
                 Mode::Std,
                 SourceType::InTree,
                 target,
@@ -262,7 +268,7 @@ impl Step for Std {
             trace!("building regular sysroot");
             let mut cargo = builder::Cargo::new(
                 builder,
-                compiler,
+                build_compiler,
                 Mode::Std,
                 SourceType::InTree,
                 target,
@@ -285,16 +291,16 @@ impl Step for Std {
 
         let _guard = builder.msg(
             Kind::Build,
-            compiler.stage,
             format_args!("library artifacts{}", crate_description(&self.crates)),
-            compiler.host,
+            Mode::Std,
+            build_compiler,
             target,
         );
         run_cargo(
             builder,
             cargo,
             vec![],
-            &build_stamp::libstd_stamp(builder, compiler, target),
+            &build_stamp::libstd_stamp(builder, build_compiler, target),
             target_deps,
             self.is_for_mir_opt_tests, // is_check
             false,
@@ -302,7 +308,7 @@ impl Step for Std {
 
         builder.ensure(StdLink::from_std(
             self,
-            builder.compiler(compiler.stage, builder.config.host_target),
+            builder.compiler(build_compiler.stage, builder.config.host_target),
         ));
     }
 
@@ -1126,11 +1132,11 @@ impl Step for Rustc {
             cargo.env("RUSTC_BOLT_LINK_FLAGS", "1");
         }
 
-        let _guard = builder.msg_rustc_tool(
+        let _guard = builder.msg(
             Kind::Build,
-            build_compiler.stage,
             format_args!("compiler artifacts{}", crate_description(&self.crates)),
-            build_compiler.host,
+            Mode::Rustc,
+            build_compiler,
             target,
         );
         let stamp = build_stamp::librustc_stamp(builder, build_compiler, target);
@@ -1603,13 +1609,8 @@ impl Step for GccCodegenBackend {
         let gcc = builder.ensure(Gcc { target });
         add_cg_gcc_cargo_flags(&mut cargo, &gcc);
 
-        let _guard = builder.msg_rustc_tool(
-            Kind::Build,
-            build_compiler.stage,
-            "codegen backend gcc",
-            build_compiler.host,
-            target,
-        );
+        let _guard =
+            builder.msg(Kind::Build, "codegen backend gcc", Mode::Codegen, build_compiler, target);
         let files = run_cargo(builder, cargo, vec![], &stamp, vec![], false, false);
         write_codegen_backend_stamp(stamp, files, builder.config.dry_run())
     }
@@ -1687,11 +1688,11 @@ impl Step for CraneliftCodegenBackend {
             .arg(builder.src.join("compiler/rustc_codegen_cranelift/Cargo.toml"));
         rustc_cargo_env(builder, &mut cargo, target);
 
-        let _guard = builder.msg_rustc_tool(
+        let _guard = builder.msg(
             Kind::Build,
-            build_compiler.stage,
             "codegen backend cranelift",
-            build_compiler.host,
+            Mode::Codegen,
+            build_compiler,
             target,
         );
         let files = run_cargo(builder, cargo, vec![], &stamp, vec![], false, false);
