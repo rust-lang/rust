@@ -1,7 +1,12 @@
+//! These tests are not run automatically right now. Please run these tests manually by copying them
+//! to a separate project when modifying any related code.
+
 use super::alloc::*;
-use super::time::*;
+use super::time::system_time_internal::{from_uefi, to_uefi};
 use crate::io::{IoSlice, IoSliceMut};
 use crate::time::Duration;
+
+const SECS_IN_MINUTE: u64 = 60;
 
 #[test]
 fn align() {
@@ -24,21 +29,61 @@ fn align() {
 }
 
 #[test]
-fn epoch() {
-    let t = r_efi::system::Time {
-        year: 1970,
+fn systemtime_start() {
+    let t = r_efi::efi::Time {
+        year: 1900,
         month: 1,
         day: 1,
         hour: 0,
         minute: 0,
         second: 0,
         nanosecond: 0,
-        timezone: r_efi::efi::UNSPECIFIED_TIMEZONE,
+        timezone: -1440,
         daylight: 0,
-        pad1: 0,
         pad2: 0,
     };
-    assert_eq!(system_time_internal::uefi_time_to_duration(t), Duration::new(0, 0));
+    assert_eq!(from_uefi(&t), Duration::new(0, 0));
+    assert_eq!(t, to_uefi(&from_uefi(&t), -1440, 0).unwrap());
+    assert!(to_uefi(&from_uefi(&t), 0, 0).is_none());
+}
+
+#[test]
+fn systemtime_utc_start() {
+    let t = r_efi::efi::Time {
+        year: 1900,
+        month: 1,
+        day: 1,
+        hour: 0,
+        minute: 0,
+        second: 0,
+        pad1: 0,
+        nanosecond: 0,
+        timezone: 0,
+        daylight: 0,
+        pad2: 0,
+    };
+    assert_eq!(from_uefi(&t), Duration::new(1440 * SECS_IN_MINUTE, 0));
+    assert_eq!(t, to_uefi(&from_uefi(&t), 0, 0).unwrap());
+    assert!(to_uefi(&from_uefi(&t), -1440, 0).is_some());
+}
+
+#[test]
+fn systemtime_end() {
+    let t = r_efi::efi::Time {
+        year: 9999,
+        month: 12,
+        day: 31,
+        hour: 23,
+        minute: 59,
+        second: 59,
+        pad1: 0,
+        nanosecond: 0,
+        timezone: 1440,
+        daylight: 0,
+        pad2: 0,
+    };
+    assert!(to_uefi(&from_uefi(&t), 1440, 0).is_some());
+    assert!(to_uefi(&from_uefi(&t), 1439, 0).is_none());
 }
 
 // UEFI IoSlice and IoSliceMut Tests
