@@ -823,8 +823,9 @@ impl Step for Std {
 /// (Don't confuse this with [`RustDev`], without the `c`!)
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct RustcDev {
-    pub compiler: Compiler,
-    pub target: TargetSelection,
+    /// The compiler that will build rustc which will be shipped in this component.
+    build_compiler: Compiler,
+    target: TargetSelection,
 }
 
 impl Step for RustcDev {
@@ -838,28 +839,27 @@ impl Step for RustcDev {
 
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(RustcDev {
-            compiler: run.builder.compiler_for(
-                run.builder.top_stage,
-                run.builder.config.host_target,
-                run.target,
-            ),
+            // We currently always ship a stage 2 rustc-dev component, so we build it with the
+            // stage 1 compiler. This might change in the future.
+            // The precise stage used here is important, so we hard-code it.
+            build_compiler: run.builder.compiler(1, run.builder.config.host_target),
             target: run.target,
         });
     }
 
     fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
-        let compiler = self.compiler;
+        let build_compiler = self.build_compiler;
         let target = self.target;
-        if skip_host_target_lib(builder, compiler) {
+        if skip_host_target_lib(builder, build_compiler) {
             return None;
         }
 
-        builder.ensure(compile::Rustc::new(compiler, target));
+        // Build the compiler that we will ship
+        builder.ensure(compile::Rustc::new(build_compiler, target));
 
         let tarball = Tarball::new(builder, "rustc-dev", &target.triple);
 
-        let compiler_to_use = builder.compiler_for(compiler.stage, compiler.host, target);
-        let stamp = build_stamp::librustc_stamp(builder, compiler_to_use, target);
+        let stamp = build_stamp::librustc_stamp(builder, build_compiler, target);
         copy_target_libs(builder, target, tarball.image_dir(), &stamp);
 
         let src_files = &["Cargo.lock"];
@@ -882,6 +882,10 @@ impl Step for RustcDev {
         }
 
         Some(tarball.generate())
+    }
+
+    fn metadata(&self) -> Option<StepMetadata> {
+        Some(StepMetadata::dist("rustc-dev", self.target).built_by(self.build_compiler))
     }
 }
 
