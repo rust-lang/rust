@@ -28,13 +28,13 @@ error: abi: Scalar(Initialized { value: Int(I32, true), valid_range: 0..=4294967
 LL | enum AbsentVariantUntagged {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: size: Size(8 bytes)
+error: size: Size(4 bytes)
   --> $DIR/enum.rs:38:1
    |
 LL | enum UninhabitedVariantUntagged {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: abi: ScalarPair(Initialized { value: Int(I32, false), valid_range: 0..=0 }, Initialized { value: Int(I32, true), valid_range: 0..=4294967295 })
+error: abi: Scalar(Initialized { value: Int(I32, true), valid_range: 0..=4294967295 })
   --> $DIR/enum.rs:38:1
    |
 LL | enum UninhabitedVariantUntagged {
@@ -52,13 +52,13 @@ error: abi: ScalarPair(Initialized { value: Int(I8, false), valid_range: 0..=0 }
 LL | enum UninhabitedVariantUntaggedBigger {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: size: Size(3 bytes)
+error: size: Size(2 bytes)
   --> $DIR/enum.rs:56:1
    |
 LL | enum UninhabitedVariantWithNiche {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: abi: Memory { sized: true }
+error: abi: ScalarPair(Initialized { value: Int(I8, false), valid_range: 0..=1 }, Initialized { value: Int(I8, true), valid_range: 0..=255 })
   --> $DIR/enum.rs:56:1
    |
 LL | enum UninhabitedVariantWithNiche {
