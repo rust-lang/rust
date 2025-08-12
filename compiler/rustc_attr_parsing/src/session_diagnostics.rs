@@ -498,6 +498,7 @@ pub(crate) struct ReprIdent {
 #[derive(Diagnostic)]
 #[diag(attr_parsing_unrecognized_repr_hint, code = E0552)]
 #[help]
+#[note]
 pub(crate) struct UnrecognizedReprHint {
     #[primary_span]
     pub span: Span,
@@ -690,6 +691,9 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for AttributeParseError {
             }
         }
 
+        if let Some(link) = self.template.docs {
+            diag.note(format!("for more information, visit <{link}>"));
+        }
         let suggestions = self.template.suggestions(false, &name);
         diag.span_suggestions(
             self.attr_span,
