@@ -821,10 +821,13 @@ impl<'tcx> Ty<'tcx> {
     #[inline]
     pub fn new_coroutine_witness(
         tcx: TyCtxt<'tcx>,
-        id: DefId,
+        def_id: DefId,
         args: GenericArgsRef<'tcx>,
     ) -> Ty<'tcx> {
-        Ty::new(tcx, CoroutineWitness(id, args))
+        if cfg!(debug_assertions) {
+            tcx.debug_assert_args_compatible(tcx.typeck_root_def_id(def_id), args);
+        }
+        Ty::new(tcx, CoroutineWitness(def_id, args))
     }
 
     // misc
