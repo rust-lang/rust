@@ -40,7 +40,7 @@ impl<S: Stage> SingleAttributeParser<S> for DeprecationParser {
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const TEMPLATE: AttributeTemplate = template!(
         Word,
-        List: r#"/*opt*/ since = "version", /*opt*/ note = "reason""#,
+        List: &[r#"since = "version""#, r#"note = "reason""#, r#"since = "version", note = "reason""#],
         NameValueStr: "reason"
     );
 

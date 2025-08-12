@@ -78,7 +78,7 @@
 #[export_stable = 1]
 //~^ ERROR malformed
 #[link]
-//~^ ERROR attribute must be of the form
+//~^ ERROR valid forms for the attribute are
 //~| WARN this was previously accepted by the compiler
 #[link_name]
 //~^ ERROR malformed

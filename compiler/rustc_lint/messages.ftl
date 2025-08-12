@@ -349,6 +349,7 @@ lint_ill_formed_attribute_input = {$num_suggestions ->
         [1] attribute must be of the form {$suggestions}
         *[other] valid forms for the attribute are {$suggestions}
     }
+    .note = for more information, visit <{$docs}>
 
 lint_impl_trait_overcaptures = `{$self_ty}` will capture more lifetimes than possibly intended in edition 2024
     .note = specifically, {$num_captured ->
