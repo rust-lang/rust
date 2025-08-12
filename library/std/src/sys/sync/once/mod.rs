@@ -7,6 +7,11 @@
 // This also gives us the opportunity to optimize the implementation a bit which
 // should help the fast path on call sites.
 
+/// The panic message used when a `Once` is accessed after being poisoned.
+///
+/// This message is checked by `LazyLock` to detect when a `Once` has been poisoned.
+pub(crate) const ONCE_POISON_PANIC_MSG: &str = "Once instance has previously been poisoned";
+
 cfg_if::cfg_if! {
     if #[cfg(any(
         all(target_os = "windows", not(target_vendor="win7")),

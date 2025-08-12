@@ -159,7 +159,7 @@ impl Once {
                 COMPLETE => return,
                 POISONED if !ignore_poisoning => {
                     // Panic to propagate the poison.
-                    panic!("Once instance has previously been poisoned");
+                    panic!("{}", super::ONCE_POISON_PANIC_MSG);
                 }
                 _ => {
                     current = wait(&self.state_and_queue, current, !ignore_poisoning);
@@ -189,7 +189,7 @@ impl Once {
                 COMPLETE => break,
                 POISONED if !ignore_poisoning => {
                     // Panic to propagate the poison.
-                    panic!("Once instance has previously been poisoned");
+                    panic!("{}", super::ONCE_POISON_PANIC_MSG);
                 }
                 POISONED | INCOMPLETE => {
                     // Try to register this thread as the one RUNNING.
