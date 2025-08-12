@@ -9,7 +9,7 @@ use rustc_middle::thir::visit::{self, Visitor};
 use rustc_middle::thir::{BodyTy, Expr, ExprId, ExprKind, Thir};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::def_id::{DefId, LocalDefId};
-use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span};
+use rustc_span::{ErrorGuaranteed, Span};
 
 pub(crate) fn check_tail_calls(tcx: TyCtxt<'_>, def: LocalDefId) -> Result<(), ErrorGuaranteed> {
     let (thir, expr) = tcx.thir_body(def)?;
@@ -21,7 +21,6 @@ pub(crate) fn check_tail_calls(tcx: TyCtxt<'_>, def: LocalDefId) -> Result<(), E
     }
 
     let is_closure = matches!(tcx.def_kind(def), DefKind::Closure);
-    let caller_ty = tcx.type_of(def).skip_binder();
 
     let mut visitor = TailCallCkVisitor {
         tcx,
@@ -30,7 +29,7 @@ pub(crate) fn check_tail_calls(tcx: TyCtxt<'_>, def: LocalDefId) -> Result<(), E
         // FIXME(#132279): we're clearly in a body here.
         typing_env: ty::TypingEnv::non_body_analysis(tcx, def),
         is_closure,
-        caller_ty,
+        caller_def_id: def,
     };
 
     visitor.visit_expr(&thir[expr]);
@@ -47,8 +46,8 @@ struct TailCallCkVisitor<'a, 'tcx> {
     /// The result of the checks, `Err(_)` if there was a problem with some
     /// tail call, `Ok(())` if all of them were fine.
     found_errors: Result<(), ErrorGuaranteed>,
-    /// Type of the caller function.
-    caller_ty: Ty<'tcx>,
+    /// `LocalDefId` of the caller function.
+    caller_def_id: LocalDefId,
 }
 
 impl<'tcx> TailCallCkVisitor<'_, 'tcx> {
@@ -168,7 +167,7 @@ impl<'tcx> TailCallCkVisitor<'_, 'tcx> {
             // coercing the function to an `fn()` pointer. (although in that case the tailcall is
             // basically useless -- the shim calls the actual function, so tailcalling the shim is
             // equivalent to calling the function)
-            let caller_needs_location = self.needs_location(self.caller_ty);
+            let caller_needs_location = self.caller_needs_location();
 
             if caller_needs_location {
                 self.report_track_caller_caller(expr.span);
@@ -184,27 +183,13 @@ impl<'tcx> TailCallCkVisitor<'_, 'tcx> {
         }
     }
 
-    /// Returns true if function of type `ty` needs location argument
-    /// (i.e. if a function is marked as `#[track_caller]`,
-    /// is an override of a default trait method marked as `#[track_caller]`
-    /// or an implementation of a prototype method marked as `#[track_caller]`)
-    fn needs_location(&self, ty: Ty<'tcx>) -> bool {
-        if let &ty::FnDef(did, substs) = ty.kind() {
-            // If this is a default trait method, it won't be resolved to a concrete instance.
-            if self
-                .tcx
-                .opt_associated_item(did)
-                .is_some_and(|impl_item| impl_item.container == ty::AssocItemContainer::Trait)
-            {
-                self.tcx.codegen_fn_attrs(did).flags.intersects(CodegenFnAttrFlags::TRACK_CALLER)
-            } else {
-                let instance =
-                    ty::Instance::expect_resolve(self.tcx, self.typing_env, did, substs, DUMMY_SP);
-                instance.def.requires_caller_location(self.tcx)
-            }
-        } else {
-            false
-        }
+    /// Returns true if the caller function needs location argument
+    /// (i.e. if a function is marked as `#[track_caller]`)
+    fn caller_needs_location(&self) -> bool {
+        self.tcx
+            .codegen_fn_attrs(self.caller_def_id)
+            .flags
+            .contains(CodegenFnAttrFlags::TRACK_CALLER)
     }
 
     fn report_in_closure(&mut self, expr: &Expr<'_>) {
