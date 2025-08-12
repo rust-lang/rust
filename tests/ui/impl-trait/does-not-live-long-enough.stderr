@@ -1,12 +1,14 @@
 error[E0373]: closure may outlive the current function, but it borrows `prefix`, which is owned by the current function
   --> $DIR/does-not-live-long-enough.rs:6:33
    |
+LL |     fn started_with<'a>(&'a self, prefix: &'a str) -> impl Iterator<Item=&'a str> {
+   |                     -- lifetime `'a` defined here
 LL |         self.data.iter().filter(|s| s.starts_with(prefix)).map(|s| s.as_ref())
    |                                 ^^^               ------ `prefix` is borrowed here
    |                                 |
    |                                 may outlive borrowed value `prefix`
    |
-note: closure is returned here
+note: function requires argument type to outlive `'a`
   --> $DIR/does-not-live-long-enough.rs:6:9
    |
 LL |         self.data.iter().filter(|s| s.starts_with(prefix)).map(|s| s.as_ref())

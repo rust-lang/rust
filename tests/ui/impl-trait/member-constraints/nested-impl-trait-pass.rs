@@ -1,7 +1,9 @@
 // Nested impl-traits can impose different member constraints on the same region variable.
 
 //@ check-pass
-// FIXME(-Znext-solver): enable this test
+//@ revisions: current next
+//@ ignore-compare-mode-next-solver (explicit revisions)
+//@[next] compile-flags: -Znext-solver
 
 trait Cap<'a> {}
 impl<T> Cap<'_> for T {}

@@ -6,7 +6,7 @@ LL | fn boom<'a, 'b>() -> impl Extend<'a, 'b> {
    |         |
    |         lifetime `'a` defined here
 LL |     None::<&'_ &'_ ()>
-   |     ^^^^^^^^^^^^^^^^^^ function was supposed to return data with lifetime `'b` but it is returning data with lifetime `'a`
+   |     ^^^^^^^^^^^^^^^^^^ opaque type requires that `'a` must outlive `'b`
    |
    = help: consider adding the following bound: `'a: 'b`
 

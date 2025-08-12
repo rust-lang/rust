@@ -8,7 +8,7 @@ fn get_one<'a>(a: *mut &'a str) -> impl IntoIterator<Item = Opaque<'a>> {
         Some(a)
     } else {
         None::<Opaque<'static>>
-        //~^ ERROR hidden type for `Opaque<'static>` captures lifetime that does not appear in bounds
+        //~^ ERROR expected generic lifetime parameter, found `'static`
     }
 }
 
