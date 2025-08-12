@@ -971,11 +971,23 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         target_span: Span,
         target: Target,
     ) -> &'hir [hir::Attribute] {
-        if attrs.is_empty() {
+        self.lower_attrs_with_extra(id, attrs, target_span, target, &[])
+    }
+
+    fn lower_attrs_with_extra(
+        &mut self,
+        id: HirId,
+        attrs: &[Attribute],
+        target_span: Span,
+        target: Target,
+        extra_hir_attributes: &[hir::Attribute],
+    ) -> &'hir [hir::Attribute] {
+        if attrs.is_empty() && extra_hir_attributes.is_empty() {
             &[]
         } else {
-            let lowered_attrs =
+            let mut lowered_attrs =
                 self.lower_attrs_vec(attrs, self.lower_span(target_span), id, target);
+            lowered_attrs.extend(extra_hir_attributes.iter().cloned());
 
             assert_eq!(id.owner, self.current_hir_id_owner);
             let ret = self.arena.alloc_from_iter(lowered_attrs);

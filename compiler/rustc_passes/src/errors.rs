@@ -1305,3 +1305,42 @@ pub(crate) struct CustomMirIncompatibleDialectAndPhase {
     #[label]
     pub phase_span: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag(passes_eii_impl_not_function)]
+pub(crate) struct EiiImplNotFunction {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes_eii_impl_requires_unsafe)]
+pub(crate) struct EiiImplRequiresUnsafe {
+    #[primary_span]
+    pub span: Span,
+    pub name: Symbol,
+    #[subdiagnostic]
+    pub suggestion: EiiImplRequiresUnsafeSuggestion,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(
+    passes_eii_impl_requires_unsafe_suggestion,
+    applicability = "machine-applicable"
+)]
+pub(crate) struct EiiImplRequiresUnsafeSuggestion {
+    #[suggestion_part(code = "unsafe(")]
+    pub left: Span,
+    #[suggestion_part(code = ")")]
+    pub right: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes_eii_fn_with_track_caller)]
+pub(crate) struct EiiWithTrackCaller {
+    #[primary_span]
+    pub attr_span: Span,
+    pub name: Symbol,
+    #[label]
+    pub sig_span: Span,
+}

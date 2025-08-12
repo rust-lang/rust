@@ -590,3 +590,18 @@ passes_useless_stability =
     this stability annotation is useless
     .label = useless stability annotation
     .item = the stability attribute annotates this item
+
+passes_eii_fn_with_target_feature =
+    `#[{$name}]` is not allowed to have `#[target_feature]`
+    .label = `#[{$name}]` is not allowed to have `#[target_feature]`
+
+passes_eii_fn_with_track_caller =
+    `#[{$name}]` is not allowed to have `#[track_caller]`
+    .label = `#[{$name}]` is not allowed to have `#[track_caller]`
+
+passes_eii_impl_not_function =
+    `eii_macro_for` is only valid on functions
+
+passes_eii_impl_requires_unsafe =
+    `#[{$name}]` is unsafe to implement
+passes_eii_impl_requires_unsafe_suggestion = wrap the attribute in `unsafe(...)`

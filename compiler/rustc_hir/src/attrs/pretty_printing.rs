@@ -5,6 +5,7 @@ use rustc_ast::token::{CommentKind, DocFragmentKind};
 use rustc_ast::{AttrStyle, IntTy, UintTy};
 use rustc_ast_pretty::pp::Printer;
 use rustc_data_structures::fx::FxIndexMap;
+use rustc_span::def_id::DefId;
 use rustc_span::hygiene::Transparency;
 use rustc_span::{ErrorGuaranteed, Ident, Span, Symbol};
 use rustc_target::spec::SanitizerSet;
@@ -170,4 +171,5 @@ print_debug!(
     DocFragmentKind,
     Transparency,
     SanitizerSet,
+    DefId,
 );
