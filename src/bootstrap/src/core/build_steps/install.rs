@@ -276,6 +276,7 @@ install!((self, builder, _config),
     RustcCodegenCranelift, alias = "rustc-codegen-cranelift", Self::should_build(_config), only_hosts: true, {
         if let Some(tarball) = builder.ensure(dist::CraneliftCodegenBackend {
             build_compiler: self.compiler,
+            target: self.target
         }) {
             install_sh(builder, "rustc-codegen-cranelift", self.compiler.stage, Some(self.target), &tarball);
         } else {
