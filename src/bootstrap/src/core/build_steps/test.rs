@@ -2232,6 +2232,7 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         let _group = builder.msg(
             Kind::Test,
             format!("compiletest suite={suite} mode={mode}"),
+            // FIXME: compiletest sometimes behaves as ToolStd, we could expose that difference here
             Mode::ToolBootstrap,
             compiler,
             target,

@@ -215,7 +215,7 @@ impl Step for Std {
             trace!(
                 ?compiler_to_use,
                 ?build_compiler,
-                "compiler != compiler_to_use, uplifting library"
+                "build_compiler != compiler_to_use, uplifting library"
             );
 
             builder.std(compiler_to_use, target);
@@ -1609,13 +1609,8 @@ impl Step for GccCodegenBackend {
         let gcc = builder.ensure(Gcc { target });
         add_cg_gcc_cargo_flags(&mut cargo, &gcc);
 
-        let _guard = builder.msg(
-            Kind::Build,
-            format_args!("codegen backend gcc"),
-            Mode::Codegen,
-            build_compiler,
-            target,
-        );
+        let _guard =
+            builder.msg(Kind::Build, "codegen backend gcc", Mode::Codegen, build_compiler, target);
         let files = run_cargo(builder, cargo, vec![], &stamp, vec![], false, false);
         write_codegen_backend_stamp(stamp, files, builder.config.dry_run())
     }
@@ -1695,7 +1690,7 @@ impl Step for CraneliftCodegenBackend {
 
         let _guard = builder.msg(
             Kind::Build,
-            format_args!("codegen backend cranelift"),
+            "codegen backend cranelift",
             Mode::Codegen,
             build_compiler,
             target,
