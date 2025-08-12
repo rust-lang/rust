@@ -2,11 +2,7 @@
 
 use std::ops::ControlFlow;
 
-use chalk_ir::{
-    DebruijnIndex,
-    visit::{TypeSuperVisitable, TypeVisitable, TypeVisitor},
-};
-use chalk_solve::rust_ir::InlineBound;
+use chalk_ir::DebruijnIndex;
 use hir_def::{
     AssocItemId, ConstId, CrateRootModuleId, FunctionId, GenericDefId, HasModule, TraitId,
     TypeAliasId, lang_item::LangItem, signatures::TraitFlags,
@@ -21,14 +17,14 @@ use rustc_type_ir::{
 use smallvec::SmallVec;
 
 use crate::{
-    AliasEq, AliasTy, Binders, BoundVar, ImplTraitId, Interner, ProjectionTyExt, Ty, TyKind,
-    WhereClause, all_super_traits,
+    ImplTraitId, Interner, TyKind, WhereClause, all_super_traits,
     db::{HirDatabase, InternedOpaqueTyId},
-    from_assoc_type_id, from_chalk_trait_id,
+    from_chalk_trait_id,
     generics::trait_self_param_idx,
+    lower_nextsolver::associated_ty_item_bounds,
     next_solver::{
-        Clauses, DbInterner, GenericArgs, ParamEnv, SolverDefId, TraitPredicate, TypingMode,
-        infer::DbInternerInferExt, mk_param,
+        Clause, Clauses, DbInterner, GenericArgs, ParamEnv, SolverDefId, TraitPredicate,
+        TypingMode, infer::DbInternerInferExt, mk_param,
     },
     traits::next_trait_solve_in_ctxt,
     utils::elaborate_clause_supertraits,
@@ -165,7 +161,7 @@ pub fn generics_require_sized_self(db: &dyn HirDatabase, def: GenericDefId) -> b
 // but we don't have good way to render such locations.
 // So, just return single boolean value for existence of such `Self` reference
 fn predicates_reference_self(db: &dyn HirDatabase, trait_: TraitId) -> bool {
-    db.generic_predicates(trait_.into())
+    db.generic_predicates_ns(trait_.into())
         .iter()
         .any(|pred| predicate_references_self(db, trait_, pred, AllowSelfProjection::No))
 }
@@ -177,37 +173,18 @@ fn bounds_reference_self(db: &dyn HirDatabase, trait_: TraitId) -> bool {
         .items
         .iter()
         .filter_map(|(_, it)| match *it {
-            AssocItemId::TypeAliasId(id) => {
-                let assoc_ty_data = db.associated_ty_data(id);
-                Some(assoc_ty_data)
-            }
+            AssocItemId::TypeAliasId(id) => Some(associated_ty_item_bounds(db, id)),
             _ => None,
         })
-        .any(|assoc_ty_data| {
-            assoc_ty_data.binders.skip_binders().bounds.iter().any(|bound| {
-                let def = from_assoc_type_id(assoc_ty_data.id).into();
-                match bound.skip_binders() {
-                    InlineBound::TraitBound(it) => it.args_no_self.iter().any(|arg| {
-                        contains_illegal_self_type_reference(
-                            db,
-                            def,
-                            trait_,
-                            arg,
-                            DebruijnIndex::ONE,
-                            AllowSelfProjection::Yes,
-                        )
-                    }),
-                    InlineBound::AliasEqBound(it) => it.parameters.iter().any(|arg| {
-                        contains_illegal_self_type_reference(
-                            db,
-                            def,
-                            trait_,
-                            arg,
-                            DebruijnIndex::ONE,
-                            AllowSelfProjection::Yes,
-                        )
-                    }),
-                }
+        .any(|bounds| {
+            bounds.skip_binder().iter().any(|pred| match pred.skip_binder() {
+                rustc_type_ir::ExistentialPredicate::Trait(it) => it.args.iter().any(|arg| {
+                    contains_illegal_self_type_reference(db, trait_, &arg, AllowSelfProjection::Yes)
+                }),
+                rustc_type_ir::ExistentialPredicate::Projection(it) => it.args.iter().any(|arg| {
+                    contains_illegal_self_type_reference(db, trait_, &arg, AllowSelfProjection::Yes)
+                }),
+                rustc_type_ir::ExistentialPredicate::AutoTrait(_) => false,
             })
         })
 }
@@ -218,120 +195,26 @@ enum AllowSelfProjection {
     No,
 }
 
-fn predicate_references_self(
-    db: &dyn HirDatabase,
+fn predicate_references_self<'db>(
+    db: &'db dyn HirDatabase,
     trait_: TraitId,
-    predicate: &Binders<Binders<WhereClause>>,
+    predicate: &Clause<'db>,
     allow_self_projection: AllowSelfProjection,
 ) -> bool {
-    match predicate.skip_binders().skip_binders() {
-        WhereClause::Implemented(trait_ref) => {
-            trait_ref.substitution.iter(Interner).skip(1).any(|arg| {
-                contains_illegal_self_type_reference(
-                    db,
-                    trait_.into(),
-                    trait_,
-                    arg,
-                    DebruijnIndex::ONE,
-                    allow_self_projection,
-                )
-            })
-        }
-        WhereClause::AliasEq(AliasEq { alias: AliasTy::Projection(proj), .. }) => {
-            proj.substitution.iter(Interner).skip(1).any(|arg| {
-                contains_illegal_self_type_reference(
-                    db,
-                    trait_.into(),
-                    trait_,
-                    arg,
-                    DebruijnIndex::ONE,
-                    allow_self_projection,
-                )
+    match predicate.kind().skip_binder() {
+        ClauseKind::Trait(trait_pred) => trait_pred.trait_ref.args.iter().skip(1).any(|arg| {
+            contains_illegal_self_type_reference(db, trait_, &arg, allow_self_projection)
+        }),
+        ClauseKind::Projection(proj_pred) => {
+            proj_pred.projection_term.args.iter().skip(1).any(|arg| {
+                contains_illegal_self_type_reference(db, trait_, &arg, allow_self_projection)
             })
         }
         _ => false,
     }
 }
 
-fn contains_illegal_self_type_reference<T: TypeVisitable<Interner>>(
-    db: &dyn HirDatabase,
-    def: GenericDefId,
-    trait_: TraitId,
-    t: &T,
-    outer_binder: DebruijnIndex,
-    allow_self_projection: AllowSelfProjection,
-) -> bool {
-    let Some(trait_self_param_idx) = trait_self_param_idx(db, def) else {
-        return false;
-    };
-    struct IllegalSelfTypeVisitor<'a> {
-        db: &'a dyn HirDatabase,
-        trait_: TraitId,
-        super_traits: Option<SmallVec<[TraitId; 4]>>,
-        trait_self_param_idx: usize,
-        allow_self_projection: AllowSelfProjection,
-    }
-    impl TypeVisitor<Interner> for IllegalSelfTypeVisitor<'_> {
-        type BreakTy = ();
-
-        fn as_dyn(&mut self) -> &mut dyn TypeVisitor<Interner, BreakTy = Self::BreakTy> {
-            self
-        }
-
-        fn interner(&self) -> Interner {
-            Interner
-        }
-
-        fn visit_ty(&mut self, ty: &Ty, outer_binder: DebruijnIndex) -> ControlFlow<Self::BreakTy> {
-            match ty.kind(Interner) {
-                TyKind::BoundVar(BoundVar { debruijn, index }) => {
-                    if *debruijn == outer_binder && *index == self.trait_self_param_idx {
-                        ControlFlow::Break(())
-                    } else {
-                        ty.super_visit_with(self.as_dyn(), outer_binder)
-                    }
-                }
-                TyKind::Alias(AliasTy::Projection(proj)) => match self.allow_self_projection {
-                    AllowSelfProjection::Yes => {
-                        let trait_ = proj.trait_(self.db);
-                        if self.super_traits.is_none() {
-                            self.super_traits = Some(all_super_traits(self.db, self.trait_));
-                        }
-                        if self.super_traits.as_ref().is_some_and(|s| s.contains(&trait_)) {
-                            ControlFlow::Continue(())
-                        } else {
-                            ty.super_visit_with(self.as_dyn(), outer_binder)
-                        }
-                    }
-                    AllowSelfProjection::No => ty.super_visit_with(self.as_dyn(), outer_binder),
-                },
-                _ => ty.super_visit_with(self.as_dyn(), outer_binder),
-            }
-        }
-
-        fn visit_const(
-            &mut self,
-            constant: &chalk_ir::Const<Interner>,
-            outer_binder: DebruijnIndex,
-        ) -> std::ops::ControlFlow<Self::BreakTy> {
-            constant.data(Interner).ty.super_visit_with(self.as_dyn(), outer_binder)
-        }
-    }
-
-    let mut visitor = IllegalSelfTypeVisitor {
-        db,
-        trait_,
-        super_traits: None,
-        trait_self_param_idx,
-        allow_self_projection,
-    };
-    t.visit_with(visitor.as_dyn(), outer_binder).is_break()
-}
-
-fn contains_illegal_self_type_reference_ns<
-    'db,
-    T: rustc_type_ir::TypeVisitable<DbInterner<'db>>,
->(
+fn contains_illegal_self_type_reference<'db, T: rustc_type_ir::TypeVisitable<DbInterner<'db>>>(
     db: &'db dyn HirDatabase,
     trait_: TraitId,
     t: &T,
@@ -440,13 +323,17 @@ where
     }
 
     let sig = db.callable_item_signature_ns(func.into());
-    if sig.skip_binder().inputs().iter().skip(1).any(|ty| {
-        contains_illegal_self_type_reference_ns(db, trait_, &ty, AllowSelfProjection::Yes)
-    }) {
+    if sig
+        .skip_binder()
+        .inputs()
+        .iter()
+        .skip(1)
+        .any(|ty| contains_illegal_self_type_reference(db, trait_, &ty, AllowSelfProjection::Yes))
+    {
         cb(MethodViolationCode::ReferencesSelfInput)?;
     }
 
-    if contains_illegal_self_type_reference_ns(
+    if contains_illegal_self_type_reference(
         db,
         trait_,
         &sig.skip_binder().output(),
@@ -496,7 +383,7 @@ where
             continue;
         }
 
-        if contains_illegal_self_type_reference_ns(db, trait_, &pred, AllowSelfProjection::Yes) {
+        if contains_illegal_self_type_reference(db, trait_, &pred, AllowSelfProjection::Yes) {
             cb(MethodViolationCode::WhereClauseReferencesSelf)?;
             break;
         }

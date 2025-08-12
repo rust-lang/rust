@@ -62,9 +62,10 @@ use crate::{
     lower::{Diagnostics, PathDiagnosticCallbackData, create_diagnostics},
     next_solver::{
         AdtDef, AliasTy, Binder, BoundExistentialPredicates, BoundRegionKind, BoundTyKind,
-        BoundVarKind, BoundVarKinds, Clause, Const, DbInterner, EarlyBinder, EarlyParamRegion,
-        ErrorGuaranteed, GenericArgs, PolyFnSig, Predicate, Region, SolverDefId, TraitPredicate,
-        TraitRef, Ty, Tys, abi::Safety, generics::GenericParamDefKind, mapping::ChalkToNextSolver,
+        BoundVarKind, BoundVarKinds, Clause, Clauses, Const, DbInterner, EarlyBinder,
+        EarlyParamRegion, ErrorGuaranteed, GenericArgs, PolyFnSig, Predicate, Region, SolverDefId,
+        TraitPredicate, TraitRef, Ty, Tys, abi::Safety, generics::GenericParamDefKind,
+        mapping::ChalkToNextSolver,
     },
 };
 
@@ -1591,6 +1592,95 @@ fn fn_sig_for_enum_variant_constructor<'db>(
         safety: Safety::Safe,
         inputs_and_output,
     }))
+}
+
+pub(crate) fn associated_ty_item_bounds<'db>(
+    db: &'db dyn HirDatabase,
+    type_alias: TypeAliasId,
+) -> EarlyBinder<'db, BoundExistentialPredicates<'db>> {
+    let trait_ = match type_alias.lookup(db).container {
+        ItemContainerId::TraitId(t) => t,
+        _ => panic!("associated type not in trait"),
+    };
+
+    let type_alias_data = db.type_alias_signature(type_alias);
+    let resolver = hir_def::resolver::HasResolver::resolver(type_alias, db);
+    let interner = DbInterner::new_with(db, Some(resolver.krate()), None);
+    let mut ctx = TyLoweringContext::new(
+        db,
+        &resolver,
+        &type_alias_data.store,
+        type_alias.into(),
+        LifetimeElisionKind::AnonymousReportError,
+    );
+    // FIXME: we should never create non-existential predicates in the first place
+    // For now, use an error type so we don't run into dummy binder issues
+    let self_ty = Ty::new_error(interner, ErrorGuaranteed);
+
+    let mut bounds = Vec::new();
+    for bound in &type_alias_data.bounds {
+        ctx.lower_type_bound(bound, self_ty, false).for_each(|pred| {
+            if let Some(bound) = pred
+                .kind()
+                .map_bound(|c| match c {
+                    rustc_type_ir::ClauseKind::Trait(t) => {
+                        let id = t.def_id();
+                        let id = match id {
+                            SolverDefId::TraitId(id) => id,
+                            _ => unreachable!(),
+                        };
+                        let is_auto = db.trait_signature(id).flags.contains(TraitFlags::AUTO);
+                        if is_auto {
+                            Some(ExistentialPredicate::AutoTrait(t.def_id()))
+                        } else {
+                            Some(ExistentialPredicate::Trait(ExistentialTraitRef::new_from_args(
+                                interner,
+                                t.def_id(),
+                                GenericArgs::new_from_iter(
+                                    interner,
+                                    t.trait_ref.args.iter().skip(1),
+                                ),
+                            )))
+                        }
+                    }
+                    rustc_type_ir::ClauseKind::Projection(p) => Some(
+                        ExistentialPredicate::Projection(ExistentialProjection::new_from_args(
+                            interner,
+                            p.def_id(),
+                            GenericArgs::new_from_iter(
+                                interner,
+                                p.projection_term.args.iter().skip(1),
+                            ),
+                            p.term,
+                        )),
+                    ),
+                    rustc_type_ir::ClauseKind::TypeOutlives(outlives_predicate) => None,
+                    rustc_type_ir::ClauseKind::RegionOutlives(_)
+                    | rustc_type_ir::ClauseKind::ConstArgHasType(_, _)
+                    | rustc_type_ir::ClauseKind::WellFormed(_)
+                    | rustc_type_ir::ClauseKind::ConstEvaluatable(_)
+                    | rustc_type_ir::ClauseKind::HostEffect(_)
+                    | rustc_type_ir::ClauseKind::UnstableFeature(_) => unreachable!(),
+                })
+                .transpose()
+            {
+                bounds.push(bound);
+            }
+        });
+    }
+
+    if !ctx.unsized_types.contains(&self_ty) {
+        let sized_trait = LangItem::Sized.resolve_trait(db, resolver.krate());
+        let sized_clause = Binder::dummy(ExistentialPredicate::Trait(ExistentialTraitRef::new(
+            interner,
+            SolverDefId::TraitId(trait_),
+            [] as [crate::next_solver::GenericArg<'_>; 0],
+        )));
+        bounds.push(sized_clause);
+        bounds.shrink_to_fit();
+    }
+
+    EarlyBinder::bind(BoundExistentialPredicates::new_from_iter(interner, bounds))
 }
 
 pub(crate) fn associated_type_by_name_including_super_traits<'db>(
