@@ -81,7 +81,7 @@ impl FixedSizeEncoding for u64 {
 }
 
 macro_rules! fixed_size_enum {
-    ($ty:ty { $(($($pat:tt)*))* }) => {
+    ($ty:ty { $(($($pat:tt)*))* } $( unreachable { $(($($upat:tt)*))+ } )?) => {
         impl FixedSizeEncoding for Option<$ty> {
             type ByteArray = [u8;1];
 
@@ -103,11 +103,23 @@ macro_rules! fixed_size_enum {
                 b[0] = match self {
                     None => unreachable!(),
                     $(Some($($pat)*) => 1 + ${index()},)*
+                    $(Some($($($upat)*)|+) => unreachable!(),)?
                 }
             }
         }
     }
 }
+
+// Workaround; need const traits to construct bitflags in a const
+macro_rules! const_macro_kinds {
+    ($($name:ident),+$(,)?) => (MacroKinds::from_bits_truncate($(MacroKinds::$name.bits())|+))
+}
+const MACRO_KINDS_ATTR_BANG: MacroKinds = const_macro_kinds!(ATTR, BANG);
+const MACRO_KINDS_DERIVE_BANG: MacroKinds = const_macro_kinds!(DERIVE, BANG);
+const MACRO_KINDS_DERIVE_ATTR: MacroKinds = const_macro_kinds!(DERIVE, ATTR);
+const MACRO_KINDS_DERIVE_ATTR_BANG: MacroKinds = const_macro_kinds!(DERIVE, ATTR, BANG);
+// Ensure that we get a compilation error if MacroKinds gets extended without updating metadata.
+const _: () = assert!(MACRO_KINDS_DERIVE_ATTR_BANG.is_all());
 
 fixed_size_enum! {
     DefKind {
@@ -151,10 +163,16 @@ fixed_size_enum! {
         ( Ctor(CtorOf::Struct, CtorKind::Const)    )
         ( Ctor(CtorOf::Variant, CtorKind::Fn)      )
         ( Ctor(CtorOf::Variant, CtorKind::Const)   )
-        ( Macro(MacroKind::Bang)                   )
-        ( Macro(MacroKind::Attr)                   )
-        ( Macro(MacroKind::Derive)                 )
+        ( Macro(MacroKinds::BANG)                  )
+        ( Macro(MacroKinds::ATTR)                  )
+        ( Macro(MacroKinds::DERIVE)                )
+        ( Macro(MACRO_KINDS_ATTR_BANG)             )
+        ( Macro(MACRO_KINDS_DERIVE_ATTR)           )
+        ( Macro(MACRO_KINDS_DERIVE_BANG)           )
+        ( Macro(MACRO_KINDS_DERIVE_ATTR_BANG)      )
         ( SyntheticCoroutineBody                   )
+    } unreachable {
+        ( Macro(_)                                 )
     }
 }
 
