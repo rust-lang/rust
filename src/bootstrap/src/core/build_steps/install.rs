@@ -275,7 +275,7 @@ install!((self, builder, _config),
     };
     Rustc, path = "compiler/rustc", true, IS_HOST: true, {
         let tarball = builder.ensure(dist::Rustc {
-            compiler: builder.compiler(builder.top_stage, self.target),
+            target_compiler: builder.compiler(builder.top_stage, self.target),
         });
         install_sh(builder, "rustc", self.compiler.stage, Some(self.target), &tarball);
     };
