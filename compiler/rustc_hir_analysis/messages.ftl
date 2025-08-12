@@ -612,3 +612,14 @@ hir_analysis_wrong_number_of_generic_arguments_to_intrinsic =
         [one] parameter
         *[other] parameters
     }
+
+hir_analysis_lifetimes_or_bounds_mismatch_on_eii =
+    lifetime parameters or bounds of `{$ident}` do not match the declaration
+    .label = lifetimes do not match
+    .generics_label = lifetimes in impl do not match this signature
+    .where_label = this `where` clause might not match the one in the declaration
+    .bounds_label = this bound might be missing in the implementation
+
+hir_analysis_eii_with_generics =
+    #[{$eii_name}] cannot have generic parameters other than lifetimes
+    .label = required by this attribute
