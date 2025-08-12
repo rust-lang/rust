@@ -6,6 +6,7 @@
 use std::fmt::Display;
 use std::marker::Unsize;
 use std::ops::CoerceUnsized;
+use std::rc::Weak;
 
 #[repr(transparent)]
 struct X<'a, T: ?Sized> {
@@ -27,4 +28,11 @@ const Y: X<'static, i32> = X { f: &0 };
 
 fn main() {
     let _: [X<'static, dyn Display>; 0] = [Y; 0];
+    coercion_on_weak_in_const();
+}
+
+fn coercion_on_weak_in_const() {
+    const X: Weak<i32> = Weak::new();
+    const Y: [Weak<dyn Send>; 0] = [X; 0];
+    let _ = Y;
 }
