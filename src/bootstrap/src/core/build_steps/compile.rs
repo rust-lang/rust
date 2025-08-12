@@ -37,11 +37,12 @@ use crate::{
     debug, trace,
 };
 
-/// Build a standard library for the given `target` using the given `compiler`.
+/// Build a standard library for the given `target` using the given `build_compiler`.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Std {
     pub target: TargetSelection,
-    pub compiler: Compiler,
+    /// Compiler that builds the standard library.
+    pub build_compiler: Compiler,
     /// Whether to build only a subset of crates in the standard library.
     ///
     /// This shouldn't be used from other steps; see the comment on [`Rustc`].
@@ -54,10 +55,10 @@ pub struct Std {
 }
 
 impl Std {
-    pub fn new(compiler: Compiler, target: TargetSelection) -> Self {
+    pub fn new(build_compiler: Compiler, target: TargetSelection) -> Self {
         Self {
             target,
-            compiler,
+            build_compiler,
             crates: Default::default(),
             force_recompile: false,
             extra_rust_args: &[],
@@ -120,7 +121,7 @@ impl Step for Std {
         trace!(force_recompile);
 
         run.builder.ensure(Std {
-            compiler: run.builder.compiler(run.builder.top_stage, run.build_triple()),
+            build_compiler: run.builder.compiler(run.builder.top_stage, run.build_triple()),
             target: run.target,
             crates,
             force_recompile,
@@ -138,8 +139,8 @@ impl Step for Std {
         let target = self.target;
 
         // We already have std ready to be used for stage 0.
-        if self.compiler.stage == 0 {
-            let compiler = self.compiler;
+        if self.build_compiler.stage == 0 {
+            let compiler = self.build_compiler;
             builder.ensure(StdLink::from_std(self, compiler));
 
             return;
@@ -148,9 +149,10 @@ impl Step for Std {
         let build_compiler = if builder.download_rustc() && self.force_recompile {
             // When there are changes in the library tree with CI-rustc, we want to build
             // the stageN library and that requires using stageN-1 compiler.
-            builder.compiler(self.compiler.stage.saturating_sub(1), builder.config.host_target)
+            builder
+                .compiler(self.build_compiler.stage.saturating_sub(1), builder.config.host_target)
         } else {
-            self.compiler
+            self.build_compiler
         };
 
         // When using `download-rustc`, we already have artifacts for the host available. Don't
@@ -299,7 +301,7 @@ impl Step for Std {
     }
 
     fn metadata(&self) -> Option<StepMetadata> {
-        Some(StepMetadata::build("std", self.target).built_by(self.compiler))
+        Some(StepMetadata::build("std", self.target).built_by(self.build_compiler))
     }
 }
 
@@ -680,7 +682,7 @@ impl StdLink {
     pub fn from_std(std: Std, host_compiler: Compiler) -> Self {
         Self {
             compiler: host_compiler,
-            target_compiler: std.compiler,
+            target_compiler: std.build_compiler,
             target: std.target,
             crates: std.crates,
             force_recompile: std.force_recompile,
