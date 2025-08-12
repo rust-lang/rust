@@ -526,7 +526,7 @@ where
         &self,
         mir_place: mir::Place<'tcx>,
     ) -> InterpResult<'tcx, PlaceTy<'tcx, M::Provenance>> {
-        let _span =
+        let _trace =
             enter_trace_span!(M, step::eval_place, ?mir_place, tracing_separate_thread = Empty);
 
         let mut place = self.local_to_place(mir_place.local)?;

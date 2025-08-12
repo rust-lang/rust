@@ -207,6 +207,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 Attribute::Parsed(AttributeKind::ConstContinue(attr_span)) => {
                     self.check_const_continue(hir_id, *attr_span, target)
                 }
+                Attribute::Parsed(AttributeKind::AllowInternalUnsafe(attr_span)) => {
+                    self.check_allow_internal_unsafe(hir_id, *attr_span, span, target, attrs)
+                }
                 Attribute::Parsed(AttributeKind::AllowInternalUnstable(_, first_span)) => {
                     self.check_allow_internal_unstable(hir_id, *first_span, span, target, attrs)
                 }
@@ -413,7 +416,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             // internal
                             | sym::prelude_import
                             | sym::panic_handler
-                            | sym::allow_internal_unsafe
                             | sym::lang
                             | sym::needs_allocator
                             | sym::default_lib_allocator
@@ -1155,8 +1157,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 let is_valid = doc_fake_variadic_is_allowed_self_ty(i.self_ty)
                     || if let Some(&[hir::GenericArg::Type(ty)]) = i
                         .of_trait
-                        .as_ref()
-                        .and_then(|trait_ref| trait_ref.path.segments.last())
+                        .and_then(|of_trait| of_trait.trait_ref.path.segments.last())
                         .map(|last_segment| last_segment.args().args)
                     {
                         matches!(&ty.kind, hir::TyKind::Tup([_]))
@@ -1646,8 +1647,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             && let parent_hir_id = self.tcx.parent_hir_id(hir_id)
             && let hir::Node::Item(item) = self.tcx.hir_node(parent_hir_id)
             && let hir::ItemKind::Impl(impl_) = item.kind
-            && let Some(trait_) = impl_.of_trait
-            && let Some(def_id) = trait_.trait_def_id()
+            && let Some(of_trait) = impl_.of_trait
+            && let Some(def_id) = of_trait.trait_ref.trait_def_id()
             && self.tcx.is_lang_item(def_id, hir::LangItem::Drop)
         {
             return;
@@ -2212,7 +2213,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
 
     /// Outputs an error for `#[allow_internal_unstable]` which can only be applied to macros.
     /// (Allows proc_macro functions)
-    // FIXME(jdonszelmann): if possible, move to attr parsing
     fn check_allow_internal_unstable(
         &self,
         hir_id: HirId,
@@ -2220,6 +2220,42 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         span: Span,
         target: Target,
         attrs: &[Attribute],
+    ) {
+        self.check_macro_only_attr(
+            hir_id,
+            attr_span,
+            span,
+            target,
+            attrs,
+            "allow_internal_unstable",
+        )
+    }
+
+    /// Outputs an error for `#[allow_internal_unsafe]` which can only be applied to macros.
+    /// (Allows proc_macro functions)
+    fn check_allow_internal_unsafe(
+        &self,
+        hir_id: HirId,
+        attr_span: Span,
+        span: Span,
+        target: Target,
+        attrs: &[Attribute],
+    ) {
+        self.check_macro_only_attr(hir_id, attr_span, span, target, attrs, "allow_internal_unsafe")
+    }
+
+    /// Outputs an error for attributes that can only be applied to macros, such as
+    /// `#[allow_internal_unsafe]` and `#[allow_internal_unstable]`.
+    /// (Allows proc_macro functions)
+    // FIXME(jdonszelmann): if possible, move to attr parsing
+    fn check_macro_only_attr(
+        &self,
+        hir_id: HirId,
+        attr_span: Span,
+        span: Span,
+        target: Target,
+        attrs: &[Attribute],
+        attr_name: &str,
     ) {
         match target {
             Target::Fn => {
@@ -2238,18 +2274,14 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             // erroneously allowed it and some crates used it accidentally, to be compatible
             // with crates depending on them, we can't throw an error here.
             Target::Field | Target::Arm => {
-                self.inline_attr_str_error_without_macro_def(
-                    hir_id,
-                    attr_span,
-                    "allow_internal_unstable",
-                );
+                self.inline_attr_str_error_without_macro_def(hir_id, attr_span, attr_name);
                 return;
             }
             // otherwise continue out of the match
             _ => {}
         }
 
-        self.tcx.dcx().emit_err(errors::AllowInternalUnstable { attr_span, span });
+        self.tcx.dcx().emit_err(errors::MacroOnlyAttribute { attr_span, span });
     }
 
     /// Checks if the items on the `#[debugger_visualizer]` attribute are valid.
@@ -2294,7 +2326,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         match target {
             // FIXME(staged_api): There's no reason we can't support more targets here. We're just
             // being conservative to begin with.
-            Target::Fn | Target::Impl { .. } => {}
+            Target::Fn | Target::Impl { .. } | Target::Trait => {}
             Target::ExternCrate
             | Target::Use
             | Target::Static
@@ -2309,7 +2341,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             | Target::Struct
             | Target::Field
             | Target::Union
-            | Target::Trait
             | Target::TraitAlias
             | Target::Expression
             | Target::Statement

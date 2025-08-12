@@ -31,7 +31,10 @@ pub(crate) struct MacroUseParser {
     first_span: Option<Span>,
 }
 
-const MACRO_USE_TEMPLATE: AttributeTemplate = template!(Word, List: "name1, name2, ...");
+const MACRO_USE_TEMPLATE: AttributeTemplate = template!(
+    Word, List: &["name1, name2, ..."],
+    "https://doc.rust-lang.org/reference/macros-by-example.html#the-macro_use-attribute"
+);
 
 impl<S: Stage> AttributeParser<S> for MacroUseParser {
     const ATTRIBUTES: AcceptMapping<Self, S> = &[(
@@ -112,4 +115,12 @@ impl<S: Stage> AttributeParser<S> for MacroUseParser {
     fn finalize(self, _cx: &FinalizeContext<'_, '_, S>) -> Option<AttributeKind> {
         Some(AttributeKind::MacroUse { span: self.first_span?, arguments: self.state })
     }
+}
+
+pub(crate) struct AllowInternalUnsafeParser;
+
+impl<S: Stage> NoArgsAttributeParser<S> for AllowInternalUnsafeParser {
+    const PATH: &[Symbol] = &[sym::allow_internal_unsafe];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Ignore;
+    const CREATE: fn(Span) -> AttributeKind = |span| AttributeKind::AllowInternalUnsafe(span);
 }

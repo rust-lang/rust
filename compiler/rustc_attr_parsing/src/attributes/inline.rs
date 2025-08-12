@@ -18,7 +18,11 @@ impl<S: Stage> SingleAttributeParser<S> for InlineParser {
     const PATH: &'static [Symbol] = &[sym::inline];
     const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::WarnButFutureError;
-    const TEMPLATE: AttributeTemplate = template!(Word, List: "always|never");
+    const TEMPLATE: AttributeTemplate = template!(
+        Word,
+        List: &["always", "never"],
+        "https://doc.rust-lang.org/reference/attributes/codegen.html#the-inline-attribute"
+    );
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
         match args {
@@ -59,7 +63,7 @@ impl<S: Stage> SingleAttributeParser<S> for RustcForceInlineParser {
     const PATH: &'static [Symbol] = &[sym::rustc_force_inline];
     const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::WarnButFutureError;
-    const TEMPLATE: AttributeTemplate = template!(Word, List: "reason", NameValueStr: "reason");
+    const TEMPLATE: AttributeTemplate = template!(Word, List: &["reason"], NameValueStr: "reason");
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
         let reason = match args {

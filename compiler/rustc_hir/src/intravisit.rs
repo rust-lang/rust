@@ -590,21 +590,21 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item<'v>) -> V::
             try_visit!(visitor.visit_generics(generics));
             try_visit!(visitor.visit_enum_def(enum_definition));
         }
-        ItemKind::Impl(Impl {
-            constness: _,
-            safety: _,
-            defaultness: _,
-            polarity: _,
-            defaultness_span: _,
-            generics,
-            of_trait,
-            self_ty,
-            items,
-        }) => {
+        ItemKind::Impl(Impl { generics, of_trait, self_ty, items }) => {
             try_visit!(visitor.visit_generics(generics));
-            visit_opt!(visitor, visit_trait_ref, of_trait);
+            if let Some(TraitImplHeader {
+                constness: _,
+                safety: _,
+                polarity: _,
+                defaultness: _,
+                defaultness_span: _,
+                trait_ref,
+            }) = of_trait
+            {
+                try_visit!(visitor.visit_trait_ref(trait_ref));
+            }
             try_visit!(visitor.visit_ty_unambig(self_ty));
-            walk_list!(visitor, visit_impl_item_ref, *items);
+            walk_list!(visitor, visit_impl_item_ref, items);
         }
         ItemKind::Struct(ident, ref generics, ref struct_definition)
         | ItemKind::Union(ident, ref generics, ref struct_definition) => {

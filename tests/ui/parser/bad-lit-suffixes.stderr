@@ -158,6 +158,7 @@ LL | #[must_use = "string"suffix]
    |              |
    |              expected a string literal here
    |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/diagnostics.html#the-must_use-attribute>
 help: try changing it to one of the following valid forms of the attribute
    |
 LL - #[must_use = "string"suffix]

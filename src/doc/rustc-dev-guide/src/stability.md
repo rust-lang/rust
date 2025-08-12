@@ -182,6 +182,11 @@ of the standard library raises it to a warning with
 `#![warn(deprecated_in_future)]`.
 
 ## unstable_feature_bound
-The `#[unstable_feature_bound(foo)]` attribute can be used together with `#[unstable]` attribute to mark an `impl` of stable type and stable trait as unstable. In std/core, an item annotated with `#[unstable_feature_bound(foo)]` can only be used by another item that is also annotated with `#[unstable_feature_bound(foo)]`. Outside of std/core, using an item with `#[unstable_feature_bound(foo)]` requires the feature to be enabled with `#![feature(foo)]` attribute on the crate. Currently, only `impl`s and free functions can be annotated with `#[unstable_feature_bound]`.
+The `#[unstable_feature_bound(foo)]` attribute can be used together with `#[unstable]` attribute to mark an `impl` of stable type and stable trait as unstable. In std/core, an item annotated with `#[unstable_feature_bound(foo)]` can only be used by another item that is also annotated with `#[unstable_feature_bound(foo)]`. Outside of std/core, using an item with `#[unstable_feature_bound(foo)]` requires the feature to be enabled with `#![feature(foo)]` attribute on the crate.
+
+Currently, the items that can be annotated with `#[unstable_feature_bound]` are:
+- `impl`
+- free function
+- trait
 
 [blog]: https://www.ralfj.de/blog/2018/07/19/const.html

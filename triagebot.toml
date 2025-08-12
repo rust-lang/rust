@@ -207,6 +207,7 @@ trigger_labels = [
     "regression-from-stable-to-beta",
     "regression-from-stable-to-nightly",
     "I-unsound",
+    "I-miscompile",
 ]
 exclude_labels = [
     "P-*",

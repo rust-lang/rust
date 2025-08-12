@@ -528,8 +528,9 @@ pub fn path_def_id<'tcx>(cx: &LateContext<'_>, maybe_path: &impl MaybePath<'tcx>
 pub fn trait_ref_of_method<'tcx>(cx: &LateContext<'tcx>, owner: OwnerId) -> Option<&'tcx TraitRef<'tcx>> {
     if let Node::Item(item) = cx.tcx.hir_node(cx.tcx.hir_owner_parent(owner))
         && let ItemKind::Impl(impl_) = &item.kind
+        && let Some(of_trait) = impl_.of_trait
     {
-        return impl_.of_trait.as_ref();
+        return Some(&of_trait.trait_ref);
     }
     None
 }

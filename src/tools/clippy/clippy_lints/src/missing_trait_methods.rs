@@ -61,10 +61,10 @@ impl<'tcx> LateLintPass<'tcx> for MissingTraitMethods {
         if !is_lint_allowed(cx, MISSING_TRAIT_METHODS, item.hir_id())
             && span_is_local(item.span)
             && let ItemKind::Impl(Impl {
-                of_trait: Some(trait_ref),
+                of_trait: Some(of_trait),
                 ..
             }) = item.kind
-            && let Some(trait_id) = trait_ref.trait_def_id()
+            && let Some(trait_id) = of_trait.trait_ref.trait_def_id()
         {
             let trait_item_ids: DefIdSet = cx
                 .tcx

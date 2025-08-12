@@ -663,20 +663,44 @@ impl<'a> Parser<'a> {
                 };
                 let trait_ref = TraitRef { path, ref_id: ty_first.id };
 
-                (Some(trait_ref), ty_second)
+                let of_trait = Some(Box::new(TraitImplHeader {
+                    defaultness,
+                    safety,
+                    constness,
+                    polarity,
+                    trait_ref,
+                }));
+                (of_trait, ty_second)
             }
-            None => (None, ty_first), // impl Type
+            None => {
+                let self_ty = ty_first;
+                let error = |modifier, modifier_name, modifier_span| {
+                    self.dcx().create_err(errors::TraitImplModifierInInherentImpl {
+                        span: self_ty.span,
+                        modifier,
+                        modifier_name,
+                        modifier_span,
+                        self_ty: self_ty.span,
+                    })
+                };
+
+                if let Safety::Unsafe(span) = safety {
+                    error("unsafe", "unsafe", span).with_code(E0197).emit();
+                }
+                if let ImplPolarity::Negative(span) = polarity {
+                    error("!", "negative", span).emit();
+                }
+                if let Defaultness::Default(def_span) = defaultness {
+                    error("default", "default", def_span).emit();
+                }
+                if let Const::Yes(span) = constness {
+                    error("const", "const", span).emit();
+                }
+                (None, self_ty)
+            }
         };
-        Ok(ItemKind::Impl(Box::new(Impl {
-            safety,
-            polarity,
-            defaultness,
-            constness,
-            generics,
-            of_trait,
-            self_ty,
-            items: impl_items,
-        })))
+
+        Ok(ItemKind::Impl(Impl { generics, of_trait, self_ty, items: impl_items }))
     }
 
     fn parse_item_delegation(&mut self) -> PResult<'a, ItemKind> {
@@ -1364,10 +1388,10 @@ impl<'a> Parser<'a> {
         };
 
         match &mut item_kind {
-            ItemKind::Impl(box Impl { of_trait: Some(trai), constness, .. }) => {
-                *constness = Const::Yes(const_span);
+            ItemKind::Impl(Impl { of_trait: Some(of_trait), .. }) => {
+                of_trait.constness = Const::Yes(const_span);
 
-                let before_trait = trai.path.span.shrink_to_lo();
+                let before_trait = of_trait.trait_ref.path.span.shrink_to_lo();
                 let const_up_to_impl = const_span.with_hi(impl_span.lo());
                 err.with_multipart_suggestion(
                     "you might have meant to write a const trait impl",

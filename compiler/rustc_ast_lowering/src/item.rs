@@ -340,13 +340,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 );
                 hir::ItemKind::Union(ident, generics, vdata)
             }
-            ItemKind::Impl(box Impl {
-                safety,
-                polarity,
-                defaultness,
-                constness,
+            ItemKind::Impl(Impl {
                 generics: ast_generics,
-                of_trait: trait_ref,
+                of_trait,
                 self_ty: ty,
                 items: impl_items,
             }) => {
@@ -364,54 +360,30 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 // lifetime to be added, but rather a reference to a
                 // parent lifetime.
                 let itctx = ImplTraitContext::Universal;
-                let (generics, (trait_ref, lowered_ty)) =
+                let (generics, (of_trait, lowered_ty)) =
                     self.lower_generics(ast_generics, id, itctx, |this| {
-                        let modifiers = TraitBoundModifiers {
-                            constness: BoundConstness::Never,
-                            asyncness: BoundAsyncness::Normal,
-                            // we don't use this in bound lowering
-                            polarity: BoundPolarity::Positive,
-                        };
-
-                        let trait_ref = trait_ref.as_ref().map(|trait_ref| {
-                            this.lower_trait_ref(
-                                modifiers,
-                                trait_ref,
-                                ImplTraitContext::Disallowed(ImplTraitPosition::Trait),
-                            )
-                        });
+                        let of_trait = of_trait
+                            .as_deref()
+                            .map(|of_trait| this.lower_trait_impl_header(of_trait));
 
                         let lowered_ty = this.lower_ty(
                             ty,
                             ImplTraitContext::Disallowed(ImplTraitPosition::ImplSelf),
                         );
 
-                        (trait_ref, lowered_ty)
+                        (of_trait, lowered_ty)
                     });
 
                 let new_impl_items = self
                     .arena
                     .alloc_from_iter(impl_items.iter().map(|item| self.lower_impl_item_ref(item)));
 
-                // `defaultness.has_value()` is never called for an `impl`, always `true` in order
-                // to not cause an assertion failure inside the `lower_defaultness` function.
-                let has_val = true;
-                let (defaultness, defaultness_span) = self.lower_defaultness(*defaultness, has_val);
-                let polarity = match polarity {
-                    ImplPolarity::Positive => ImplPolarity::Positive,
-                    ImplPolarity::Negative(s) => ImplPolarity::Negative(self.lower_span(*s)),
-                };
-                hir::ItemKind::Impl(self.arena.alloc(hir::Impl {
-                    constness: self.lower_constness(*constness),
-                    safety: self.lower_safety(*safety, hir::Safety::Safe),
-                    polarity,
-                    defaultness,
-                    defaultness_span,
+                hir::ItemKind::Impl(hir::Impl {
                     generics,
-                    of_trait: trait_ref,
+                    of_trait,
                     self_ty: lowered_ty,
                     items: new_impl_items,
-                }))
+                })
             }
             ItemKind::Trait(box Trait {
                 constness,
@@ -980,6 +952,44 @@ impl<'hir> LoweringContext<'_, 'hir> {
     /// Construct `ExprKind::Err` for the given `span`.
     pub(crate) fn expr_err(&mut self, span: Span, guar: ErrorGuaranteed) -> hir::Expr<'hir> {
         self.expr(span, hir::ExprKind::Err(guar))
+    }
+
+    fn lower_trait_impl_header(
+        &mut self,
+        trait_impl_header: &TraitImplHeader,
+    ) -> &'hir hir::TraitImplHeader<'hir> {
+        let TraitImplHeader { constness, safety, polarity, defaultness, ref trait_ref } =
+            *trait_impl_header;
+        let constness = self.lower_constness(constness);
+        let safety = self.lower_safety(safety, hir::Safety::Safe);
+        let polarity = match polarity {
+            ImplPolarity::Positive => ImplPolarity::Positive,
+            ImplPolarity::Negative(s) => ImplPolarity::Negative(self.lower_span(s)),
+        };
+        // `defaultness.has_value()` is never called for an `impl`, always `true` in order
+        // to not cause an assertion failure inside the `lower_defaultness` function.
+        let has_val = true;
+        let (defaultness, defaultness_span) = self.lower_defaultness(defaultness, has_val);
+        let modifiers = TraitBoundModifiers {
+            constness: BoundConstness::Never,
+            asyncness: BoundAsyncness::Normal,
+            // we don't use this in bound lowering
+            polarity: BoundPolarity::Positive,
+        };
+        let trait_ref = self.lower_trait_ref(
+            modifiers,
+            trait_ref,
+            ImplTraitContext::Disallowed(ImplTraitPosition::Trait),
+        );
+
+        self.arena.alloc(hir::TraitImplHeader {
+            constness,
+            safety,
+            polarity,
+            defaultness,
+            defaultness_span,
+            trait_ref,
+        })
     }
 
     fn lower_impl_item(

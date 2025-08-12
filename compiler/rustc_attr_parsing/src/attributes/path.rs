@@ -12,7 +12,10 @@ impl<S: Stage> SingleAttributeParser<S> for PathParser {
     const PATH: &[Symbol] = &[sym::path];
     const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::WarnButFutureError;
-    const TEMPLATE: AttributeTemplate = template!(NameValueStr: "file");
+    const TEMPLATE: AttributeTemplate = template!(
+        NameValueStr: "file",
+        "https://doc.rust-lang.org/reference/items/modules.html#the-path-attribute"
+    );
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
         let Some(nv) = args.name_value() else {

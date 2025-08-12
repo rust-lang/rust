@@ -76,7 +76,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     ///
     /// This does NOT move the statement counter forward, the caller has to do that!
     pub fn eval_statement(&mut self, stmt: &mir::Statement<'tcx>) -> InterpResult<'tcx> {
-        let _span = enter_trace_span!(
+        let _trace = enter_trace_span!(
             M,
             step::eval_statement,
             stmt = ?stmt.kind,
@@ -465,7 +465,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     }
 
     fn eval_terminator(&mut self, terminator: &mir::Terminator<'tcx>) -> InterpResult<'tcx> {
-        let _span = enter_trace_span!(
+        let _trace = enter_trace_span!(
             M,
             step::eval_terminator,
             terminator = ?terminator.kind,

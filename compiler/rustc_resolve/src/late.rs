@@ -2620,7 +2620,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 self.resolve_adt(item, generics);
             }
 
-            ItemKind::Impl(box Impl {
+            ItemKind::Impl(Impl {
                 ref generics,
                 ref of_trait,
                 ref self_ty,
@@ -2631,7 +2631,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 self.resolve_implementation(
                     &item.attrs,
                     generics,
-                    of_trait,
+                    of_trait.as_deref(),
                     self_ty,
                     item.id,
                     impl_items,
@@ -3177,7 +3177,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         &mut self,
         attrs: &[ast::Attribute],
         generics: &'ast Generics,
-        opt_trait_reference: &'ast Option<TraitRef>,
+        of_trait: Option<&'ast ast::TraitImplHeader>,
         self_type: &'ast Ty,
         item_id: NodeId,
         impl_items: &'ast [Box<AssocItem>],
@@ -3201,7 +3201,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                         |this| {
                             // Resolve the trait reference, if necessary.
                             this.with_optional_trait_ref(
-                                opt_trait_reference.as_ref(),
+                                of_trait.map(|t| &t.trait_ref),
                                 self_type,
                                 |this, trait_id| {
                                     this.resolve_doc_links(attrs, MaybeExported::Impl(trait_id));
@@ -3224,9 +3224,9 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                                         is_trait_impl: trait_id.is_some()
                                     };
                                     this.with_self_rib(res, |this| {
-                                        if let Some(trait_ref) = opt_trait_reference.as_ref() {
+                                        if let Some(of_trait) = of_trait {
                                             // Resolve type arguments in the trait path.
-                                            visit::walk_trait_ref(this, trait_ref);
+                                            visit::walk_trait_ref(this, &of_trait.trait_ref);
                                         }
                                         // Resolve the self type.
                                         this.visit_ty(self_type);
@@ -5183,7 +5183,7 @@ impl<'ast> Visitor<'ast> for ItemInfoCollector<'_, '_, '_> {
             | ItemKind::Enum(_, generics, _)
             | ItemKind::Struct(_, generics, _)
             | ItemKind::Union(_, generics, _)
-            | ItemKind::Impl(box Impl { generics, .. })
+            | ItemKind::Impl(Impl { generics, .. })
             | ItemKind::Trait(box Trait { generics, .. })
             | ItemKind::TraitAlias(_, generics, _) => {
                 if let ItemKind::Fn(box Fn { sig, .. }) = &item.kind {
