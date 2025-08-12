@@ -1057,6 +1057,7 @@ mod snapshot {
         [build] rustc 0 <host> -> GenerateCopyright 1 <host>
         [dist] rustc <host>
         [dist] rustc 1 <host> -> std 1 <host>
+        [dist] rustc 1 <host> -> rustc-dev 2 <host>
         [dist] src <>
         "
         );
@@ -1119,6 +1120,7 @@ mod snapshot {
         [build] rustc 0 <host> -> GenerateCopyright 1 <host>
         [dist] rustc <host>
         [dist] rustc 1 <host> -> std 1 <host>
+        [dist] rustc 1 <host> -> rustc-dev 2 <host>
         [dist] src <>
         [build] rustc 1 <host> -> cargo 2 <host>
         [build] rustc 1 <host> -> rust-analyzer 2 <host>
@@ -1199,6 +1201,7 @@ mod snapshot {
         [dist] rustc 1 <host> -> std 1 <host>
         [build] rustc 2 <host> -> std 2 <target1>
         [dist] rustc 2 <host> -> std 2 <target1>
+        [dist] rustc 1 <host> -> rustc-dev 2 <host>
         [dist] src <>
         "
         );
@@ -1257,6 +1260,8 @@ mod snapshot {
         [build] rustdoc 2 <target1>
         [dist] rustc <target1>
         [dist] rustc 1 <host> -> std 1 <host>
+        [dist] rustc 1 <host> -> rustc-dev 2 <host>
+        [dist] rustc 1 <host> -> rustc-dev 2 <target1>
         [dist] src <>
         "
         );
@@ -1336,6 +1341,8 @@ mod snapshot {
         [dist] rustc <target1>
         [dist] rustc 1 <host> -> std 1 <host>
         [dist] rustc 1 <host> -> std 1 <target1>
+        [dist] rustc 1 <host> -> rustc-dev 2 <host>
+        [dist] rustc 1 <host> -> rustc-dev 2 <target1>
         [dist] src <>
         "
         );
@@ -1441,6 +1448,7 @@ mod snapshot {
         [build] rustc 0 <host> -> GenerateCopyright 1 <host>
         [dist] rustc <target1>
         [dist] rustc 1 <host> -> std 1 <target1>
+        [dist] rustc 1 <host> -> rustc-dev 2 <target1>
         [dist] src <>
         [build] rustc 1 <host> -> cargo 2 <target1>
         [build] rustc 1 <host> -> rust-analyzer 2 <target1>
@@ -1504,6 +1512,7 @@ mod snapshot {
         [dist] rustc <host>
         [dist] rustc 1 <host> -> rustc_codegen_cranelift 2 <host>
         [dist] rustc 1 <host> -> std 1 <host>
+        [dist] rustc 1 <host> -> rustc-dev 2 <host>
         [dist] src <>
         ");
     }
