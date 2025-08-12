@@ -1,3 +1,18 @@
+error: inherent impls cannot be const
+  --> $DIR/macro-const-trait-bound-theoretical-regression.rs:10:40
+   |
+LL |     (impl $c:ident Trait) => { impl $c Trait {} };
+   |                                        ^^^^^ inherent impl for this type
+...
+LL | demo! { impl const Trait }
+   | --------------------------
+   | |            |
+   | |            const because of this
+   | in this macro invocation
+   |
+   = note: only trait implementations may be annotated with `const`
+   = note: this error originates in the macro `demo` (in Nightly builds, run with -Z macro-backtrace for more info)
+
 error: macro expansion ignores keyword `dyn` and any tokens following
   --> $DIR/macro-const-trait-bound-theoretical-regression.rs:14:31
    |
@@ -8,21 +23,6 @@ LL | demo! { dyn const Trait }
    | ------------------------- caused by the macro expansion here
    |
    = note: the usage of `demo!` is likely invalid in item context
-
-error: inherent impls cannot be `const`
-  --> $DIR/macro-const-trait-bound-theoretical-regression.rs:10:40
-   |
-LL |     (impl $c:ident Trait) => { impl $c Trait {} };
-   |                                        ^^^^^ inherent impl for this type
-...
-LL | demo! { impl const Trait }
-   | --------------------------
-   | |            |
-   | |            `const` because of this
-   | in this macro invocation
-   |
-   = note: only trait implementations may be annotated with `const`
-   = note: this error originates in the macro `demo` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0658]: const trait impls are experimental
   --> $DIR/macro-const-trait-bound-theoretical-regression.rs:17:14

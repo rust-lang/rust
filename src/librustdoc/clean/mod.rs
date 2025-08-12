@@ -2768,7 +2768,7 @@ fn clean_maybe_renamed_item<'tcx>(
         // These kinds of item either don't need a `name` or accept a `None` one so we handle them
         // before.
         match item.kind {
-            ItemKind::Impl(impl_) => return clean_impl(impl_, item.owner_id.def_id, cx),
+            ItemKind::Impl(ref impl_) => return clean_impl(impl_, item.owner_id.def_id, cx),
             ItemKind::Use(path, kind) => {
                 return clean_use_statement(
                     item,
@@ -2896,7 +2896,7 @@ fn clean_impl<'tcx>(
 ) -> Vec<Item> {
     let tcx = cx.tcx;
     let mut ret = Vec::new();
-    let trait_ = impl_.of_trait.as_ref().map(|t| clean_trait_ref(t, cx));
+    let trait_ = impl_.of_trait.map(|t| clean_trait_ref(&t.trait_ref, cx));
     let items = impl_
         .items
         .iter()
@@ -2922,7 +2922,10 @@ fn clean_impl<'tcx>(
         });
     let mut make_item = |trait_: Option<Path>, for_: Type, items: Vec<Item>| {
         let kind = ImplItem(Box::new(Impl {
-            safety: impl_.safety,
+            safety: match impl_.of_trait {
+                Some(of_trait) => of_trait.safety,
+                None => hir::Safety::Safe,
+            },
             generics: clean_generics(impl_.generics, cx),
             trait_,
             for_,

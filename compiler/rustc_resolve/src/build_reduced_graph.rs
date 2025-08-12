@@ -11,7 +11,7 @@ use std::sync::Arc;
 use rustc_ast::visit::{self, AssocCtxt, Visitor, WalkItemKind};
 use rustc_ast::{
     self as ast, AssocItem, AssocItemKind, Block, ConstItem, Delegation, Fn, ForeignItem,
-    ForeignItemKind, Impl, Item, ItemKind, NodeId, StaticItem, StmtKind, TyAlias,
+    ForeignItemKind, Item, ItemKind, NodeId, StaticItem, StmtKind, TyAlias,
 };
 use rustc_attr_parsing as attr;
 use rustc_attr_parsing::AttributeParser;
@@ -906,10 +906,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
             }
 
             // These items do not add names to modules.
-            ItemKind::Impl(box Impl { of_trait: Some(..), .. })
-            | ItemKind::Impl { .. }
-            | ItemKind::ForeignMod(..)
-            | ItemKind::GlobalAsm(..) => {}
+            ItemKind::Impl { .. } | ItemKind::ForeignMod(..) | ItemKind::GlobalAsm(..) => {}
 
             ItemKind::MacroDef(..) | ItemKind::MacCall(_) | ItemKind::DelegationMac(..) => {
                 unreachable!()
