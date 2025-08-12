@@ -1,10 +1,10 @@
-error[E0433]: failed to resolve: could not find `inner` in `type_ns`
+error[E0433]: cannot find `inner` in `type_ns`
   --> $DIR/prelude-order.rs:61:12
    |
 LL | #[type_ns::inner]
    |            ^^^^^ could not find `inner` in `type_ns`
 
-error[E0433]: failed to resolve: could not find `inner` in `usize`
+error[E0433]: cannot find `inner` in `usize`
   --> $DIR/prelude-order.rs:73:10
    |
 LL | #[usize::inner]

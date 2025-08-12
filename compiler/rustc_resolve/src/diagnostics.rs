@@ -788,9 +788,13 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             ResolutionError::SelfImportOnlyInImportListWithNonEmptyPrefix => {
                 self.dcx().create_err(errs::SelfImportOnlyInImportListWithNonEmptyPrefix { span })
             }
-            ResolutionError::FailedToResolve { segment, label, suggestion, module } => {
-                let mut err =
-                    struct_span_code_err!(self.dcx(), span, E0433, "failed to resolve: {label}");
+            ResolutionError::FailedToResolve { segment, label, suggestion, module, scope } => {
+                let mut err = struct_span_code_err!(
+                    self.dcx(),
+                    span,
+                    E0433,
+                    "cannot find `{segment}` in {scope}"
+                );
                 err.span_label(span, label);
 
                 if let Some((suggestions, msg, applicability)) = suggestion {
@@ -801,13 +805,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     err.multipart_suggestion(msg, suggestions, applicability);
                 }
 
-                if let Some(segment) = segment {
-                    let module = match module {
-                        Some(ModuleOrUniformRoot::Module(m)) if let Some(id) = m.opt_def_id() => id,
-                        _ => CRATE_DEF_ID.to_def_id(),
-                    };
-                    self.find_cfg_stripped(&mut err, &segment, module);
-                }
+                let module = match module {
+                    Some(ModuleOrUniformRoot::Module(m)) if let Some(id) = m.opt_def_id() => id,
+                    _ => CRATE_DEF_ID.to_def_id(),
+                };
+                self.find_cfg_stripped(&mut err, &segment, module);
 
                 err
             }
@@ -1001,10 +1003,17 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             VisResolutionError::AncestorOnly(span) => {
                 self.dcx().create_err(errs::AncestorOnly(span))
             }
-            VisResolutionError::FailedToResolve(span, label, suggestion) => self.into_struct_error(
-                span,
-                ResolutionError::FailedToResolve { segment: None, label, suggestion, module: None },
-            ),
+            VisResolutionError::FailedToResolve(span, segment, label, suggestion, scope) => self
+                .into_struct_error(
+                    span,
+                    ResolutionError::FailedToResolve {
+                        segment,
+                        label,
+                        suggestion,
+                        module: None,
+                        scope,
+                    },
+                ),
             VisResolutionError::ExpectedFound(span, path_str, res) => {
                 self.dcx().create_err(errs::ExpectedModuleFound { span, res, path_str })
             }

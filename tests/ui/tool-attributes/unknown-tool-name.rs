@@ -1,2 +1,3 @@
-#[foo::bar] //~ ERROR failed to resolve: use of unresolved module or unlinked crate `foo`
+#[foo::bar] //~ ERROR: cannot find `foo`
+//~^ NOTE: use of unresolved module or unlinked crate `foo`
 fn main() {}

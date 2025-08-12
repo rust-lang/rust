@@ -10,7 +10,7 @@ macro a() {
     mod u {
         // Late resolution.
         fn f() { my_core::mem::drop(0); }
-        //~^ ERROR failed to resolve: use of unresolved module or unlinked crate `my_core`
+        //~^ ERROR cannot find
     }
 }
 
@@ -23,7 +23,7 @@ mod v {
 mod u {
     // Late resolution.
     fn f() { my_core::mem::drop(0); }
-    //~^ ERROR failed to resolve: use of unresolved module or unlinked crate `my_core`
+    //~^ ERROR cannot find
 }
 
 fn main() {}

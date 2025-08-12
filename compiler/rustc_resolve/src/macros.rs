@@ -899,6 +899,16 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 ),
                 path_res @ (PathResult::NonModule(..) | PathResult::Failed { .. }) => {
                     let mut suggestion = None;
+                    let scope = match path_res {
+                        PathResult::Failed { ref scope, .. } => scope.clone(),
+                        PathResult::NonModule(partial_res) => {
+                            match &path[..partial_res.unresolved_segments()] {
+                                [.., prev] => format!("`{}`", prev.ident),
+                                _ => "this scope".to_string(),
+                            }
+                        }
+                        _ => "this scope".to_string(),
+                    };
                     let (span, label, module, segment) =
                         if let PathResult::Failed { span, label, module, segment_name, .. } =
                             path_res
@@ -937,10 +947,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     self.report_error(
                         span,
                         ResolutionError::FailedToResolve {
-                            segment: Some(segment),
+                            segment,
                             label,
                             suggestion,
                             module,
+                            scope,
                         },
                     );
                 }

@@ -1513,6 +1513,16 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
             allow_super &= ns == TypeNS && (name == kw::SelfLower || name == kw::Super);
 
+            let scope = match &path[..segment_idx] {
+                [.., prev] => {
+                    if prev.ident.name == kw::PathRoot {
+                        format!("the crate root")
+                    } else {
+                        format!("`{}`", prev.ident)
+                    }
+                }
+                _ => format!("this scope"),
+            };
             if ns == TypeNS {
                 if allow_super && name == kw::Super {
                     let mut ctxt = ident.span.ctxt().normalize_to_macros_2_0();
@@ -1536,6 +1546,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         finalize.is_some(),
                         module_had_parse_errors,
                         module,
+                        scope,
                         || ("there are too many leading `super` keywords".to_string(), None),
                     );
                 }
@@ -1582,6 +1593,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     finalize.is_some(),
                     module_had_parse_errors,
                     module,
+                    scope,
                     || {
                         let name_str = if name == kw::PathRoot {
                             "crate root".to_string()
@@ -1705,6 +1717,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             finalize.is_some(),
                             module_had_parse_errors,
                             module,
+                            scope,
                             || {
                                 let label = format!(
                                     "`{ident}` is {} {}, not a module",
@@ -1735,6 +1748,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         finalize.is_some(),
                         module_had_parse_errors,
                         module,
+                        scope,
                         || {
                             this.get_mut().report_path_resolution_error(
                                 path,

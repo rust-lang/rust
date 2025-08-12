@@ -1,4 +1,4 @@
-error[E0433]: failed to resolve: you might be missing crate `core`
+error[E0433]: cannot find `core` in the crate root
   --> $DIR/portable-intrinsics-arent-exposed.rs:4:5
    |
 LL | use core::simd::intrinsics;

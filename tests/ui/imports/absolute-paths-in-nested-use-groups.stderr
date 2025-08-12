@@ -1,17 +1,17 @@
-error[E0433]: failed to resolve: crate root in paths can only be used in start position
+error[E0433]: cannot find `{{root}}` in `foo`
   --> $DIR/absolute-paths-in-nested-use-groups.rs:6:5
    |
 LL |     ::bar,
    |     ^ crate root in paths can only be used in start position
 
-error[E0433]: failed to resolve: `super` in paths can only be used in start position
-  --> $DIR/absolute-paths-in-nested-use-groups.rs:7:5
+error[E0433]: cannot find `super` in `foo`
+  --> $DIR/absolute-paths-in-nested-use-groups.rs:9:5
    |
 LL |     super::bar,
    |     ^^^^^ `super` in paths can only be used in start position
 
-error[E0433]: failed to resolve: `self` in paths can only be used in start position
-  --> $DIR/absolute-paths-in-nested-use-groups.rs:8:5
+error[E0433]: cannot find `self` in `foo`
+  --> $DIR/absolute-paths-in-nested-use-groups.rs:12:5
    |
 LL |     self::bar,
    |     ^^^^ `self` in paths can only be used in start position

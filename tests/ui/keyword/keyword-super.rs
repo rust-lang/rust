@@ -1,3 +1,4 @@
 fn main() {
-    let super: isize; //~ ERROR failed to resolve: there are too many leading `super` keywords
+    let super: isize; //~ ERROR: cannot find
+    //~^ NOTE: there are too many leading `super` keywords
 }
