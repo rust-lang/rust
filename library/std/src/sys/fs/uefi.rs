@@ -18,6 +18,8 @@ pub struct File(!);
 pub struct FileAttr {
     attr: u64,
     size: u64,
+    created: r_efi::efi::Time,
+    times: FileTimes,
 }
 
 pub struct ReadDir(!);
@@ -33,7 +35,10 @@ pub struct OpenOptions {
 }
 
 #[derive(Copy, Clone, Debug, Default)]
-pub struct FileTimes {}
+pub struct FileTimes {
+    accessed: r_efi::efi::Time,
+    modified: r_efi::efi::Time,
+}
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 // Bool indicates if file is readonly
@@ -60,15 +65,15 @@ impl FileAttr {
     }
 
     pub fn modified(&self) -> io::Result<SystemTime> {
-        unsupported()
+        Ok(SystemTime::from_uefi(self.times.modified))
     }
 
     pub fn accessed(&self) -> io::Result<SystemTime> {
-        unsupported()
+        Ok(SystemTime::from_uefi(self.times.accessed))
     }
 
     pub fn created(&self) -> io::Result<SystemTime> {
-        unsupported()
+        Ok(SystemTime::from_uefi(self.created))
     }
 }
 
@@ -92,8 +97,13 @@ impl FilePermissions {
 }
 
 impl FileTimes {
-    pub fn set_accessed(&mut self, _t: SystemTime) {}
-    pub fn set_modified(&mut self, _t: SystemTime) {}
+    pub fn set_accessed(&mut self, t: SystemTime) {
+        self.accessed = t.to_uefi_loose(self.accessed.timezone, self.accessed.daylight);
+    }
+
+    pub fn set_modified(&mut self, t: SystemTime) {
+        self.modified = t.to_uefi_loose(self.modified.timezone, self.modified.daylight);
+    }
 }
 
 impl FileType {

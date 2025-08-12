@@ -8,6 +8,20 @@ use crate::time::Duration;
 
 const SECS_IN_MINUTE: u64 = 60;
 
+const MAX_UEFI_TIME: Duration = from_uefi(r_efi::efi::Time {
+    year: 9999,
+    month: 12,
+    day: 31,
+    hour: 23,
+    minute: 59,
+    second: 59,
+    nanosecond: 999_999_999,
+    timezone: 1440,
+    daylight: 0,
+    pad1: 0,
+    pad2: 0,
+});
+
 #[test]
 fn align() {
     // UEFI ABI specifies that allocation alignment minimum is always 8. So this can be
@@ -44,7 +58,7 @@ fn systemtime_start() {
     };
     assert_eq!(from_uefi(&t), Duration::new(0, 0));
     assert_eq!(t, to_uefi(&from_uefi(&t), -1440, 0).unwrap());
-    assert!(to_uefi(&from_uefi(&t), 0, 0).is_none());
+    assert!(to_uefi(&from_uefi(&t), 0, 0).is_err());
 }
 
 #[test]
@@ -64,7 +78,7 @@ fn systemtime_utc_start() {
     };
     assert_eq!(from_uefi(&t), Duration::new(1440 * SECS_IN_MINUTE, 0));
     assert_eq!(t, to_uefi(&from_uefi(&t), 0, 0).unwrap());
-    assert!(to_uefi(&from_uefi(&t), -1440, 0).is_some());
+    assert!(to_uefi(&from_uefi(&t), -1440, 0).is_err());
 }
 
 #[test]
@@ -82,8 +96,44 @@ fn systemtime_end() {
         daylight: 0,
         pad2: 0,
     };
-    assert!(to_uefi(&from_uefi(&t), 1440, 0).is_some());
-    assert!(to_uefi(&from_uefi(&t), 1439, 0).is_none());
+    assert!(to_uefi(&from_uefi(&t), 1440, 0).is_ok());
+    assert!(to_uefi(&from_uefi(&t), 1439, 0).is_err());
+}
+
+#[test]
+fn min_time() {
+    let inp = Duration::from_secs(1440 * SECS_IN_MINUTE);
+    let new_tz = to_uefi(&inp, 1440, 0).err().unwrap();
+    assert_eq!(new_tz, 0);
+    assert!(to_uefi(&inp, new_tz, 0).is_ok());
+
+    let inp = Duration::from_secs(1450 * SECS_IN_MINUTE);
+    let new_tz = to_uefi(&inp, 1440, 0).err().unwrap();
+    assert_eq!(new_tz, 10);
+    assert!(to_uefi(&inp, new_tz, 0).is_ok());
+
+    let inp = Duration::from_secs(1450 * SECS_IN_MINUTE + 10);
+    let new_tz = to_uefi(&inp, 1440, 0).err().unwrap();
+    assert_eq!(new_tz, 9);
+    assert!(to_uefi(&inp, new_tz, 0).is_ok());
+}
+
+#[test]
+fn max_time() {
+    let inp = MAX_UEFI_TIME;
+    let new_tz = to_uefi(&inp, -1440, 0).err().unwrap();
+    assert_eq!(new_tz, 1440);
+    assert!(to_uefi(&inp, new_tz, 0).is_ok());
+
+    let inp = MAX_UEFI_TIME - Duration::from_secs(1440 * SECS_IN_MINUTE);
+    let new_tz = to_uefi(&inp, -1440, 0).err().unwrap();
+    assert_eq!(new_tz, 0);
+    assert!(to_uefi(&inp, new_tz, 0).is_ok());
+
+    let inp = MAX_UEFI_TIME - Duration::from_secs(1440 * SECS_IN_MINUTE + 10);
+    let new_tz = to_uefi(&inp, -1440, 0).err().unwrap();
+    assert_eq!(new_tz, 0);
+    assert!(to_uefi(&inp, new_tz, 0).is_ok());
 }
 
 // UEFI IoSlice and IoSliceMut Tests
