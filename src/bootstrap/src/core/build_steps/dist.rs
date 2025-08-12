@@ -363,9 +363,13 @@ fn get_cc_search_dirs(
     (bin_path, lib_path)
 }
 
+/// Builds the `rust-mingw` installer component.
+///
+/// This contains all the bits and pieces to run the MinGW Windows targets
+/// without any extra installed software (e.g., we bundle gcc, libraries, etc.).
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct Mingw {
-    pub host: TargetSelection,
+    target: TargetSelection,
 }
 
 impl Step for Mingw {
@@ -377,29 +381,25 @@ impl Step for Mingw {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(Mingw { host: run.target });
+        run.builder.ensure(Mingw { target: run.target });
     }
 
-    /// Builds the `rust-mingw` installer component.
-    ///
-    /// This contains all the bits and pieces to run the MinGW Windows targets
-    /// without any extra installed software (e.g., we bundle gcc, libraries, etc).
     fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
-        let host = self.host;
-        if !host.ends_with("pc-windows-gnu") || !builder.config.dist_include_mingw_linker {
+        let target = self.target;
+        if !target.ends_with("pc-windows-gnu") || !builder.config.dist_include_mingw_linker {
             return None;
         }
 
-        let mut tarball = Tarball::new(builder, "rust-mingw", &host.triple);
+        let mut tarball = Tarball::new(builder, "rust-mingw", &target.triple);
         tarball.set_product_name("Rust MinGW");
 
-        make_win_dist(tarball.image_dir(), host, builder);
+        make_win_dist(tarball.image_dir(), target, builder);
 
         Some(tarball.generate())
     }
 
     fn metadata(&self) -> Option<StepMetadata> {
-        Some(StepMetadata::dist("mingw", self.host))
+        Some(StepMetadata::dist("mingw", self.target))
     }
 }
 
@@ -1625,7 +1625,7 @@ impl Step for Extended {
         tarballs.push(builder.ensure(Std { compiler, target }).expect("missing std"));
 
         if target.is_windows_gnu() {
-            tarballs.push(builder.ensure(Mingw { host: target }).expect("missing mingw"));
+            tarballs.push(builder.ensure(Mingw { target }).expect("missing mingw"));
         }
 
         add_component!("rust-docs" => Docs { host: target });
