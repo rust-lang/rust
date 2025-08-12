@@ -102,8 +102,8 @@ const BAD_UNINHABITED_WITH_DATA2: Result<(i32, !), (i32, Never)> = unsafe { mem:
 
 // All variants have same-size data but only one inhabited.
 // Use `0` as constant to make behavior endianness-independent.
-const GOOD_SEMIINHABITED_WITH_DATA1: Result<i32, (i32, !)> = unsafe { mem::transmute(0u64) };
-const GOOD_SEMIINHABITED_WITH_DATA2: Result<(i32, !), i32> = unsafe { mem::transmute(1u64) };
+const GOOD_SEMIINHABITED_WITH_DATA1: Result<i32, (i32, !)> = unsafe { mem::transmute(0u32) };
+const GOOD_SEMIINHABITED_WITH_DATA2: Result<(i32, !), i32> = unsafe { mem::transmute(0u32) };
 
 const TEST_ICE_89765: () = {
     // This is a regression test for https://github.com/rust-lang/rust/issues/89765.
