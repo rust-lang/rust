@@ -403,13 +403,24 @@ impl Step for Mingw {
     }
 }
 
+/// Creates the `rustc` installer component.
+///
+/// This includes:
+/// - The compiler and LLVM.
+/// - Debugger scripts.
+/// - Various helper tools, e.g. LLD or Rust Analyzer proc-macro server (if enabled).
+/// - The licenses of all code used by the compiler.
+///
+/// It does not include any standard library.
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct Rustc {
-    pub compiler: Compiler,
+    /// This is the compiler that we will *ship* in this dist step.
+    pub target_compiler: Compiler,
 }
 
 impl Step for Rustc {
     type Output = GeneratedTarball;
+
     const DEFAULT: bool = true;
     const IS_HOST: bool = true;
 
@@ -418,19 +429,19 @@ impl Step for Rustc {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder
-            .ensure(Rustc { compiler: run.builder.compiler(run.builder.top_stage, run.target) });
+        run.builder.ensure(Rustc {
+            target_compiler: run.builder.compiler(run.builder.top_stage, run.target),
+        });
     }
 
-    /// Creates the `rustc` installer component.
     fn run(self, builder: &Builder<'_>) -> GeneratedTarball {
-        let compiler = self.compiler;
-        let host = self.compiler.host;
+        let target_compiler = self.target_compiler;
+        let target = self.target_compiler.host;
 
-        let tarball = Tarball::new(builder, "rustc", &host.triple);
+        let tarball = Tarball::new(builder, "rustc", &target.triple);
 
         // Prepare the rustc "image", what will actually end up getting installed
-        prepare_image(builder, compiler, tarball.image_dir());
+        prepare_image(builder, target_compiler, tarball.image_dir());
 
         // On MinGW we've got a few runtime DLL dependencies that we need to
         // include.
@@ -439,16 +450,16 @@ impl Step for Rustc {
         // anything requiring us to distribute a license, but it's likely the
         // install will *also* include the rust-mingw package, which also needs
         // licenses, so to be safe we just include it here in all MinGW packages.
-        if host.contains("pc-windows-gnu") && builder.config.dist_include_mingw_linker {
-            runtime_dll_dist(tarball.image_dir(), host, builder);
+        if target.contains("pc-windows-gnu") && builder.config.dist_include_mingw_linker {
+            runtime_dll_dist(tarball.image_dir(), target, builder);
             tarball.add_dir(builder.src.join("src/etc/third-party"), "share/doc");
         }
 
         return tarball.generate();
 
-        fn prepare_image(builder: &Builder<'_>, compiler: Compiler, image: &Path) {
-            let host = compiler.host;
-            let src = builder.sysroot(compiler);
+        fn prepare_image(builder: &Builder<'_>, target_compiler: Compiler, image: &Path) {
+            let host = target_compiler.host;
+            let src = builder.sysroot(target_compiler);
 
             // Copy rustc binary
             t!(fs::create_dir_all(image.join("bin")));
@@ -461,17 +472,11 @@ impl Step for Rustc {
                 .as_ref()
                 .is_none_or(|tools| tools.iter().any(|tool| tool == "rustdoc"))
             {
-                let rustdoc = builder.rustdoc_for_compiler(compiler);
+                let rustdoc = builder.rustdoc_for_compiler(target_compiler);
                 builder.install(&rustdoc, &image.join("bin"), FileType::Executable);
             }
 
-            let ra_proc_macro_srv_compiler =
-                builder.compiler_for(compiler.stage, builder.config.host_target, compiler.host);
-            let compilers = RustcPrivateCompilers::from_build_compiler(
-                builder,
-                ra_proc_macro_srv_compiler,
-                compiler.host,
-            );
+            let compilers = RustcPrivateCompilers::from_target_compiler(builder, target_compiler);
 
             if let Some(ra_proc_macro_srv) = builder.ensure_if_default(
                 tool::RustAnalyzerProcMacroSrv::from_compilers(compilers),
@@ -481,11 +486,11 @@ impl Step for Rustc {
                 builder.install(&ra_proc_macro_srv.tool_path, &dst, FileType::Executable);
             }
 
-            let libdir_relative = builder.libdir_relative(compiler);
+            let libdir_relative = builder.libdir_relative(target_compiler);
 
             // Copy runtime DLLs needed by the compiler
             if libdir_relative.to_str() != Some("bin") {
-                let libdir = builder.rustc_libdir(compiler);
+                let libdir = builder.rustc_libdir(target_compiler);
                 for entry in builder.read_dir(&libdir) {
                     // A safeguard that we will not ship libgccjit.so from the libdir, in case the
                     // GCC codegen backend is enabled by default.
@@ -519,8 +524,8 @@ impl Step for Rustc {
 
             // Copy over lld if it's there
             if builder.config.lld_enabled {
-                let src_dir = builder.sysroot_target_bindir(compiler, host);
-                let rust_lld = exe("rust-lld", compiler.host);
+                let src_dir = builder.sysroot_target_bindir(target_compiler, host);
+                let rust_lld = exe("rust-lld", target_compiler.host);
                 builder.copy_link(
                     &src_dir.join(&rust_lld),
                     &dst_dir.join(&rust_lld),
@@ -530,7 +535,7 @@ impl Step for Rustc {
                 let self_contained_lld_dst_dir = dst_dir.join("gcc-ld");
                 t!(fs::create_dir(&self_contained_lld_dst_dir));
                 for name in crate::LLD_FILE_NAMES {
-                    let exe_name = exe(name, compiler.host);
+                    let exe_name = exe(name, target_compiler.host);
                     builder.copy_link(
                         &self_contained_lld_src_dir.join(&exe_name),
                         &self_contained_lld_dst_dir.join(&exe_name),
@@ -539,10 +544,12 @@ impl Step for Rustc {
                 }
             }
 
-            if builder.config.llvm_enabled(compiler.host) && builder.config.llvm_tools_enabled {
-                let src_dir = builder.sysroot_target_bindir(compiler, host);
-                let llvm_objcopy = exe("llvm-objcopy", compiler.host);
-                let rust_objcopy = exe("rust-objcopy", compiler.host);
+            if builder.config.llvm_enabled(target_compiler.host)
+                && builder.config.llvm_tools_enabled
+            {
+                let src_dir = builder.sysroot_target_bindir(target_compiler, host);
+                let llvm_objcopy = exe("llvm-objcopy", target_compiler.host);
+                let rust_objcopy = exe("rust-objcopy", target_compiler.host);
                 builder.copy_link(
                     &src_dir.join(&llvm_objcopy),
                     &dst_dir.join(&rust_objcopy),
@@ -551,8 +558,8 @@ impl Step for Rustc {
             }
 
             if builder.tool_enabled("wasm-component-ld") {
-                let src_dir = builder.sysroot_target_bindir(compiler, host);
-                let ld = exe("wasm-component-ld", compiler.host);
+                let src_dir = builder.sysroot_target_bindir(target_compiler, host);
+                let ld = exe("wasm-component-ld", target_compiler.host);
                 builder.copy_link(&src_dir.join(&ld), &dst_dir.join(&ld), FileType::Executable);
             }
 
@@ -599,7 +606,7 @@ impl Step for Rustc {
     }
 
     fn metadata(&self) -> Option<StepMetadata> {
-        Some(StepMetadata::dist("rustc", self.compiler.host))
+        Some(StepMetadata::dist("rustc", self.target_compiler.host))
     }
 }
 
@@ -1621,7 +1628,7 @@ impl Step for Extended {
         // upgrades rustc was upgraded before rust-std. To avoid rustc clobbering
         // the std files during uninstall. To do this ensure that rustc comes
         // before rust-std in the list below.
-        tarballs.push(builder.ensure(Rustc { compiler: target_compiler }));
+        tarballs.push(builder.ensure(Rustc { target_compiler }));
         tarballs.push(builder.ensure(Std { compiler, target }).expect("missing std"));
 
         if target.is_windows_gnu() {
