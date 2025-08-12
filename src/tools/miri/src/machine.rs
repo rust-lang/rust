@@ -1109,6 +1109,8 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         ret: Option<mir::BasicBlock>,
         unwind: mir::UnwindAction,
     ) -> InterpResult<'tcx, Option<(&'tcx mir::Body<'tcx>, ty::Instance<'tcx>)>> {
+        let _trace = enter_trace_span!("find_mir_or_eval_fn");
+
         // For foreign items, try to see if we can emulate them.
         if ecx.tcx.is_foreign_item(instance.def_id()) {
             // An external function call that does not have a MIR body. We either find MIR elsewhere
