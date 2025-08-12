@@ -46,12 +46,17 @@ fn render(
         ctx.source_range()
     };
 
-    let (name, escaped_name) =
-        (name.as_str(), name.display(ctx.db(), completion.edition).to_smolstr());
+    let orig_name = macro_.name(ctx.db());
+    let (name, orig_name, escaped_name) = (
+        name.as_str(),
+        orig_name.as_str(),
+        name.display(ctx.db(), completion.edition).to_smolstr(),
+    );
     let docs = ctx.docs(macro_);
     let docs_str = docs.as_ref().map(Documentation::as_str).unwrap_or_default();
     let is_fn_like = macro_.is_fn_like(completion.db);
-    let (bra, ket) = if is_fn_like { guess_macro_braces(name, docs_str) } else { ("", "") };
+    let (bra, ket) =
+        if is_fn_like { guess_macro_braces(name, orig_name, docs_str) } else { ("", "") };
 
     let needs_bang = is_fn_like && !is_use_path && !has_macro_bang;
 
@@ -109,9 +114,13 @@ fn banged_name(name: &str) -> SmolStr {
     SmolStr::from_iter([name, "!"])
 }
 
-fn guess_macro_braces(macro_name: &str, docs: &str) -> (&'static str, &'static str) {
+fn guess_macro_braces(
+    macro_name: &str,
+    orig_name: &str,
+    docs: &str,
+) -> (&'static str, &'static str) {
     let mut votes = [0, 0, 0];
-    for (idx, s) in docs.match_indices(&macro_name) {
+    for (idx, s) in docs.match_indices(macro_name).chain(docs.match_indices(orig_name)) {
         let (before, after) = (&docs[..idx], &docs[idx + s.len()..]);
         // Ensure to match the full word
         if after.starts_with('!')
@@ -240,7 +249,25 @@ fn main() { $0 }
 macro_rules! foo { () => {} }
 fn main() { foo! {$0} }
 "#,
-        )
+        );
+
+        check_edit(
+            "bar!",
+            r#"
+/// `foo![]`
+#[macro_export]
+macro_rules! foo { () => {} }
+pub use crate::foo as bar;
+fn main() { $0 }
+"#,
+            r#"
+/// `foo![]`
+#[macro_export]
+macro_rules! foo { () => {} }
+pub use crate::foo as bar;
+fn main() { bar![$0] }
+"#,
+        );
     }
 
     #[test]
