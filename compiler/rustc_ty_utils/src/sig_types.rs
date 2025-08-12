@@ -87,7 +87,7 @@ pub fn walk_types<'tcx, V: SpannedTypeVisitor<'tcx>>(
         DefKind::InlineConst | DefKind::Closure | DefKind::SyntheticCoroutineBody => {}
         DefKind::Impl { of_trait } => {
             if of_trait {
-                let span = tcx.hir_node_by_def_id(item).expect_item().expect_impl().of_trait.unwrap().path.span;
+                let span = tcx.hir_node_by_def_id(item).expect_item().expect_impl().of_trait.unwrap().trait_ref.path.span;
                 let args = &tcx.impl_trait_ref(item).unwrap().instantiate_identity().args[1..];
                 try_visit!(visitor.visit(span, args));
             }
