@@ -587,6 +587,11 @@ pub fn run_tests(config: Arc<Config>) {
                 }
             }
         }
+        // FIXME: not really true, few tests in tests/debuginfo do not require any debugger
+        assert!(
+            !configs.is_empty(),
+            "no debuggers found, debuginfo tests can't run without debugger"
+        );
     } else {
         configs.push(config.clone());
     };
@@ -597,7 +602,7 @@ pub fn run_tests(config: Arc<Config>) {
     for c in configs {
         tests.extend(collect_and_make_tests(c));
     }
-
+    assert!(!tests.is_empty(), "no test found for run, verify configuration");
     tests.sort_by(|a, b| Ord::cmp(&a.desc.name, &b.desc.name));
 
     // Delegate to the executor to filter and run the big list of test structures
