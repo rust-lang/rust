@@ -87,6 +87,8 @@ trivially_parameterized_over_tcx! {
     rustc_hir::Safety,
     rustc_hir::Stability,
     rustc_hir::attrs::Deprecation,
+    rustc_hir::attrs::EiiDecl,
+    rustc_hir::attrs::EiiImpl,
     rustc_hir::attrs::StrippedCfgItem<rustc_hir::def_id::DefIndex>,
     rustc_hir::def::DefKind,
     rustc_hir::def::DocLinkResMap,
