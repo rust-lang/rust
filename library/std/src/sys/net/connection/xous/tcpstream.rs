@@ -3,9 +3,12 @@ use core::sync::atomic::{Atomic, AtomicBool, AtomicU32, AtomicUsize, Ordering};
 use super::*;
 use crate::fmt;
 use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut};
-use crate::net::{IpAddr, Ipv4Addr, Shutdown, SocketAddr, SocketAddrV4, SocketAddrV6};
+use crate::net::{
+    IpAddr, Ipv4Addr, Shutdown, SocketAddr, SocketAddrV4, SocketAddrV6, ToSocketAddrs,
+};
 use crate::os::xous::services;
 use crate::sync::Arc;
+use crate::sys::net::connection::each_addr;
 use crate::time::Duration;
 
 macro_rules! unimpl {
@@ -79,8 +82,8 @@ impl TcpStream {
         }
     }
 
-    pub fn connect(socketaddr: io::Result<&SocketAddr>) -> io::Result<TcpStream> {
-        Self::connect_timeout(socketaddr?, Duration::ZERO)
+    pub fn connect<A: ToSocketAddrs>(addr: A) -> io::Result<TcpStream> {
+        each_addr(addr, |addr| Self::connect_timeout(addr, Duration::ZERO))
     }
 
     pub fn connect_timeout(addr: &SocketAddr, duration: Duration) -> io::Result<TcpStream> {
