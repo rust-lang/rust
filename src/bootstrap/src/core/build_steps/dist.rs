@@ -75,6 +75,9 @@ impl Step for Docs {
     /// Builds the `rust-docs` installer component.
     fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
         let host = self.host;
+        // FIXME: explicitly enumerate the steps that should be executed here, and gather their
+        // documentation, rather than running all default steps and then read their output
+        // from a shared directory.
         builder.run_default_doc_steps();
 
         let dest = "share/doc/rust/html";
@@ -132,13 +135,20 @@ impl Step for JsonDocs {
     }
 }
 
+/// Builds the `rustc-docs` installer component.
+/// Apart from the documentation of the `rustc_*` crates, it also includes the documentation of
+/// various in-tree helper tools (bootstrap, build_helper, tidy),
+/// and also rustc_private tools like rustdoc, clippy, miri or rustfmt.
+///
+/// It is currently hosted at https://doc.rust-lang.org/nightly/nightly-rustc
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct RustcDocs {
-    pub host: TargetSelection,
+    target: TargetSelection,
 }
 
 impl Step for RustcDocs {
-    type Output = Option<GeneratedTarball>;
+    type Output = GeneratedTarball;
+
     const DEFAULT: bool = true;
     const IS_HOST: bool = true;
 
@@ -148,18 +158,17 @@ impl Step for RustcDocs {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(RustcDocs { host: run.target });
+        run.builder.ensure(RustcDocs { target: run.target });
     }
 
-    /// Builds the `rustc-docs` installer component.
-    fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
-        let host = self.host;
+    fn run(self, builder: &Builder<'_>) -> Self::Output {
+        let target = self.target;
         builder.run_default_doc_steps();
 
-        let mut tarball = Tarball::new(builder, "rustc-docs", &host.triple);
+        let mut tarball = Tarball::new(builder, "rustc-docs", &target.triple);
         tarball.set_product_name("Rustc Documentation");
-        tarball.add_bulk_dir(builder.compiler_doc_out(host), "share/doc/rust/html/rustc");
-        Some(tarball.generate())
+        tarball.add_bulk_dir(builder.compiler_doc_out(target), "share/doc/rust/html/rustc");
+        tarball.generate()
     }
 }
 
