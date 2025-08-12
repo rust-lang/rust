@@ -1,6 +1,7 @@
+use super::each_addr;
 use crate::fmt;
 use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut};
-use crate::net::{Ipv4Addr, Ipv6Addr, Shutdown, SocketAddr};
+use crate::net::{Ipv4Addr, Ipv6Addr, Shutdown, SocketAddr, ToSocketAddrs};
 use crate::sync::{Arc, Mutex};
 use crate::sys::unsupported;
 use crate::time::Duration;
@@ -15,13 +16,17 @@ pub struct TcpStream {
 }
 
 impl TcpStream {
-    pub fn connect(addr: io::Result<&SocketAddr>) -> io::Result<TcpStream> {
-        let inner = tcp::Tcp::connect(addr?, None)?;
-        Ok(Self {
-            inner,
-            read_timeout: Arc::new(Mutex::new(None)),
-            write_timeout: Arc::new(Mutex::new(None)),
-        })
+    pub fn connect<A: ToSocketAddrs>(addr: A) -> io::Result<TcpStream> {
+        return each_addr(addr, inner);
+
+        fn inner(addr: &SocketAddr) -> io::Result<TcpStream> {
+            let inner = tcp::Tcp::connect(addr, None)?;
+            Ok(TcpStream {
+                inner,
+                read_timeout: Arc::new(Mutex::new(None)),
+                write_timeout: Arc::new(Mutex::new(None)),
+            })
+        }
     }
 
     pub fn connect_timeout(addr: &SocketAddr, timeout: Duration) -> io::Result<TcpStream> {
@@ -145,7 +150,7 @@ pub struct TcpListener {
 }
 
 impl TcpListener {
-    pub fn bind(_: io::Result<&SocketAddr>) -> io::Result<TcpListener> {
+    pub fn bind<A: ToSocketAddrs>(_: A) -> io::Result<TcpListener> {
         unsupported()
     }
 
@@ -195,7 +200,7 @@ impl fmt::Debug for TcpListener {
 pub struct UdpSocket(!);
 
 impl UdpSocket {
-    pub fn bind(_: io::Result<&SocketAddr>) -> io::Result<UdpSocket> {
+    pub fn bind<A: ToSocketAddrs>(_: A) -> io::Result<UdpSocket> {
         unsupported()
     }
 
@@ -315,7 +320,7 @@ impl UdpSocket {
         self.0
     }
 
-    pub fn connect(&self, _: io::Result<&SocketAddr>) -> io::Result<()> {
+    pub fn connect<A: ToSocketAddrs>(&self, _: A) -> io::Result<()> {
         self.0
     }
 }
