@@ -594,23 +594,13 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         discr_range_of_repr: impl Fn(i128, i128) -> (Integer, bool),
         discriminants: impl Iterator<Item = (VariantIdx, i128)>,
     ) -> LayoutCalculatorResult<FieldIdx, VariantIdx, F> {
-        // Until we've decided whether to use the tagged or
-        // niche filling LayoutData, we don't want to intern the
-        // variant layouts, so we can't store them in the
-        // overall LayoutData. Store the overall LayoutData
-        // and the variant LayoutDatas here until then.
-        struct TmpLayout<FieldIdx: Idx, VariantIdx: Idx> {
-            layout: LayoutData<FieldIdx, VariantIdx>,
-            variants: IndexVec<VariantIdx, LayoutData<FieldIdx, VariantIdx>>,
-        }
-
         let dl = self.cx.data_layout();
         // bail if the enum has an incoherent repr that cannot be computed
         if repr.packed() {
             return Err(LayoutCalculatorError::ReprConflict);
         }
 
-        let calculate_niche_filling_layout = || -> Option<TmpLayout<FieldIdx, VariantIdx>> {
+        let calculate_niche_filling_layout = || -> Option<LayoutData<FieldIdx, VariantIdx>> {
             if repr.inhibit_enum_layout_opt() {
                 return None;
             }
@@ -746,7 +736,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                         niche_start,
                     },
                     tag_field: FieldIdx::new(0),
-                    variants: IndexVec::new(),
+                    variants: variant_layouts,
                 },
                 fields: FieldsShape::Arbitrary {
                     offsets: [niche_offset].into(),
@@ -762,7 +752,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                 randomization_seed: combined_seed,
             };
 
-            Some(TmpLayout { layout, variants: variant_layouts })
+            Some(layout)
         };
 
         let niche_filling_layout = calculate_niche_filling_layout();
@@ -1093,7 +1083,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                 tag,
                 tag_encoding: TagEncoding::Direct,
                 tag_field: FieldIdx::new(0),
-                variants: IndexVec::new(),
+                variants: layout_variants,
             },
             fields: FieldsShape::Arbitrary {
                 offsets: [Size::ZERO].into(),
@@ -1109,18 +1099,16 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
             randomization_seed: combined_seed,
         };
 
-        let tagged_layout = TmpLayout { layout: tagged_layout, variants: layout_variants };
-
-        let mut best_layout = match (tagged_layout, niche_filling_layout) {
+        let best_layout = match (tagged_layout, niche_filling_layout) {
             (tl, Some(nl)) => {
                 // Pick the smaller layout; otherwise,
                 // pick the layout with the larger niche; otherwise,
                 // pick tagged as it has simpler codegen.
                 use cmp::Ordering::*;
-                let niche_size = |tmp_l: &TmpLayout<FieldIdx, VariantIdx>| {
-                    tmp_l.layout.largest_niche.map_or(0, |n| n.available(dl))
+                let niche_size = |l: &LayoutData<FieldIdx, VariantIdx>| {
+                    l.largest_niche.map_or(0, |n| n.available(dl))
                 };
-                match (tl.layout.size.cmp(&nl.layout.size), niche_size(&tl).cmp(&niche_size(&nl))) {
+                match (tl.size.cmp(&nl.size), niche_size(&tl).cmp(&niche_size(&nl))) {
                     (Greater, _) => nl,
                     (Equal, Less) => nl,
                     _ => tl,
@@ -1129,16 +1117,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
             (tl, None) => tl,
         };
 
-        // Now we can intern the variant layouts and store them in the enum layout.
-        best_layout.layout.variants = match best_layout.layout.variants {
-            Variants::Multiple { tag, tag_encoding, tag_field, .. } => {
-                Variants::Multiple { tag, tag_encoding, tag_field, variants: best_layout.variants }
-            }
-            Variants::Single { .. } | Variants::Empty => {
-                panic!("encountered a single-variant or empty enum during multi-variant layout")
-            }
-        };
-        Ok(best_layout.layout)
+        Ok(best_layout)
     }
 
     fn univariant_biased<
