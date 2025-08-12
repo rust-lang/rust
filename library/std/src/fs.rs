@@ -3036,6 +3036,9 @@ pub fn remove_dir_all<P: AsRef<Path>>(path: P) -> io::Result<()> {
 /// Entries for the current and parent directories (typically `.` and `..`) are
 /// skipped.
 ///
+/// The order in which `read_dir` returns entries can change between calls. If reproducible
+/// ordering is required, the entries should be explicitly sorted.
+///
 /// # Platform-specific behavior
 ///
 /// This function currently corresponds to the `opendir` function on Unix
