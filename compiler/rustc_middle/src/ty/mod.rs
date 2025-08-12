@@ -1925,21 +1925,50 @@ impl<'tcx> TyCtxt<'tcx> {
         self.impl_trait_ref(def_id).map(|tr| tr.skip_binder().def_id)
     }
 
-    /// If the given `DefId` is an associated item, returns the `DefId` of the parent trait or impl.
-    pub fn assoc_parent(self, def_id: DefId) -> Option<DefId> {
-        self.def_kind(def_id).is_assoc().then(|| self.parent(def_id))
+    /// If the given `DefId` is an associated item, returns the `DefId` and `DefKind` of the parent trait or impl.
+    pub fn assoc_parent(self, def_id: DefId) -> Option<(DefId, DefKind)> {
+        if !self.def_kind(def_id).is_assoc() {
+            return None;
+        }
+        let parent = self.parent(def_id);
+        let def_kind = self.def_kind(parent);
+        Some((parent, def_kind))
     }
 
     /// If the given `DefId` is an associated item of a trait,
     /// returns the `DefId` of the trait; otherwise, returns `None`.
     pub fn trait_of_assoc(self, def_id: DefId) -> Option<DefId> {
-        self.assoc_parent(def_id).filter(|id| self.def_kind(id) == DefKind::Trait)
+        match self.assoc_parent(def_id) {
+            Some((id, DefKind::Trait)) => Some(id),
+            _ => None,
+        }
     }
 
     /// If the given `DefId` is an associated item of an impl,
     /// returns the `DefId` of the impl; otherwise returns `None`.
     pub fn impl_of_assoc(self, def_id: DefId) -> Option<DefId> {
-        self.assoc_parent(def_id).filter(|id| matches!(self.def_kind(id), DefKind::Impl { .. }))
+        match self.assoc_parent(def_id) {
+            Some((id, DefKind::Impl { .. })) => Some(id),
+            _ => None,
+        }
+    }
+
+    /// If the given `DefId` is an associated item of an inherent impl,
+    /// returns the `DefId` of the impl; otherwise, returns `None`.
+    pub fn inherent_impl_of_assoc(self, def_id: DefId) -> Option<DefId> {
+        match self.assoc_parent(def_id) {
+            Some((id, DefKind::Impl { of_trait: false })) => Some(id),
+            _ => None,
+        }
+    }
+
+    /// If the given `DefId` is an associated item of a trait impl,
+    /// returns the `DefId` of the impl; otherwise, returns `None`.
+    pub fn trait_impl_of_assoc(self, def_id: DefId) -> Option<DefId> {
+        match self.assoc_parent(def_id) {
+            Some((id, DefKind::Impl { of_trait: true })) => Some(id),
+            _ => None,
+        }
     }
 
     pub fn is_exportable(self, def_id: DefId) -> bool {
