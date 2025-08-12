@@ -42,7 +42,7 @@ use crate::{
 
 type Res = def::Res<NodeId>;
 
-pub(crate) struct ImportResolver<'r, 'ra, 'tcx> {
+struct ImportResolver<'r, 'ra, 'tcx> {
     r: CmResolver<'r, 'ra, 'tcx>, // always immutable
     outputs: ImportResolutionOutputs<'ra>,
 }
@@ -57,16 +57,6 @@ struct ImportResolutionOutputs<'ra> {
         Vec<(Module<'ra>, BindingKey, NameBinding<'ra>, bool /* warn_ambiguity */)>,
     glob_path_res: Vec<(NodeId, PartialRes)>,
     single_import_bindings: PerNS<Vec<(Module<'ra>, Import<'ra>, PendingBinding<'ra>)>>,
-}
-
-impl<'r, 'ra, 'tcx> ImportResolver<'r, 'ra, 'tcx> {
-    pub(crate) fn new(cmr: CmResolver<'r, 'ra, 'tcx>) -> Self {
-        ImportResolver { r: cmr, outputs: Default::default() }
-    }
-
-    fn into_outputs(self) -> ImportResolutionOutputs<'ra> {
-        self.outputs
-    }
 }
 
 impl<'ra> ImportResolutionOutputs<'ra> {
@@ -646,7 +636,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             prev_indeterminate_count = indeterminate_count;
             let batch = mem::take(&mut self.indeterminate_imports);
             self.assert_speculative = true;
-            let (outputs, count) = ImportResolver::new(self.cm()).resolve_batch(batch);
+            let (outputs, count) =
+                ImportResolver { r: self.cm(), outputs: Default::default() }.resolve_batch(batch);
             self.assert_speculative = false;
             indeterminate_count = count;
             outputs.commit(self);
@@ -666,7 +657,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 _ => self.outputs.indeterminate_imports.push(import),
             }
         }
-        (self.into_outputs(), indeterminate_count)
+        (self.outputs, indeterminate_count)
     }
 
     pub(crate) fn finalize_imports(&mut self) {
