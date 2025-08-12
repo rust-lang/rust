@@ -105,7 +105,7 @@ fn b::{closure#0}(_1: Pin<&mut {async fn body of b()}>, _2: &mut Context<'_>) ->
     bb0: {
         _39 = copy (_1.0: &mut {async fn body of b()});
         _38 = discriminant((*_39));
-        switchInt(move _38) -> [0: bb1, 1: bb29, 3: bb27, 4: bb28, otherwise: bb8];
+        switchInt(move _38) -> [0: bb1, 1: bb27, 3: bb25, 4: bb26, otherwise: bb8];
     }
 
     bb1: {
@@ -121,7 +121,6 @@ fn b::{closure#0}(_1: Pin<&mut {async fn body of b()}>, _2: &mut Context<'_>) ->
 
     bb3: {
         StorageDead(_5);
-        PlaceMention(_4);
         nop;
         (((*_39) as variant#3).0: {async fn body of a()}) = move _4;
         goto -> bb4;
@@ -157,7 +156,6 @@ fn b::{closure#0}(_1: Pin<&mut {async fn body of b()}>, _2: &mut Context<'_>) ->
     bb7: {
         StorageDead(_13);
         StorageDead(_10);
-        PlaceMention(_9);
         _16 = discriminant(_9);
         switchInt(move _16) -> [0: bb10, 1: bb9, otherwise: bb8];
     }
@@ -206,30 +204,25 @@ fn b::{closure#0}(_1: Pin<&mut {async fn body of b()}>, _2: &mut Context<'_>) ->
 
     bb12: {
         nop;
-        goto -> bb13;
-    }
-
-    bb13: {
         StorageDead(_4);
         StorageDead(_3);
         StorageLive(_21);
         StorageLive(_22);
-        _22 = a() -> [return: bb14, unwind unreachable];
+        _22 = a() -> [return: bb13, unwind unreachable];
+    }
+
+    bb13: {
+        _21 = <{async fn body of a()} as IntoFuture>::into_future(move _22) -> [return: bb14, unwind unreachable];
     }
 
     bb14: {
-        _21 = <{async fn body of a()} as IntoFuture>::into_future(move _22) -> [return: bb15, unwind unreachable];
+        StorageDead(_22);
+        nop;
+        (((*_39) as variant#4).0: {async fn body of a()}) = move _21;
+        goto -> bb15;
     }
 
     bb15: {
-        StorageDead(_22);
-        PlaceMention(_21);
-        nop;
-        (((*_39) as variant#4).0: {async fn body of a()}) = move _21;
-        goto -> bb16;
-    }
-
-    bb16: {
         StorageLive(_24);
         StorageLive(_25);
         StorageLive(_26);
@@ -237,34 +230,33 @@ fn b::{closure#0}(_1: Pin<&mut {async fn body of b()}>, _2: &mut Context<'_>) ->
         StorageLive(_28);
         _28 = &mut (((*_39) as variant#4).0: {async fn body of a()});
         _27 = &mut (*_28);
-        _26 = Pin::<&mut {async fn body of a()}>::new_unchecked(move _27) -> [return: bb17, unwind unreachable];
+        _26 = Pin::<&mut {async fn body of a()}>::new_unchecked(move _27) -> [return: bb16, unwind unreachable];
     }
 
-    bb17: {
+    bb16: {
         StorageDead(_27);
         StorageLive(_29);
         StorageLive(_30);
         StorageLive(_31);
         _31 = copy _2;
         _30 = move _31;
-        goto -> bb18;
+        goto -> bb17;
+    }
+
+    bb17: {
+        _29 = &mut (*_30);
+        StorageDead(_31);
+        _25 = <{async fn body of a()} as Future>::poll(move _26, move _29) -> [return: bb18, unwind unreachable];
     }
 
     bb18: {
-        _29 = &mut (*_30);
-        StorageDead(_31);
-        _25 = <{async fn body of a()} as Future>::poll(move _26, move _29) -> [return: bb19, unwind unreachable];
+        StorageDead(_29);
+        StorageDead(_26);
+        _32 = discriminant(_25);
+        switchInt(move _32) -> [0: bb20, 1: bb19, otherwise: bb8];
     }
 
     bb19: {
-        StorageDead(_29);
-        StorageDead(_26);
-        PlaceMention(_25);
-        _32 = discriminant(_25);
-        switchInt(move _32) -> [0: bb21, 1: bb20, otherwise: bb8];
-    }
-
-    bb20: {
         _24 = const ();
         StorageDead(_30);
         StorageDead(_28);
@@ -281,7 +273,7 @@ fn b::{closure#0}(_1: Pin<&mut {async fn body of b()}>, _2: &mut Context<'_>) ->
         return;
     }
 
-    bb21: {
+    bb20: {
         StorageLive(_33);
         _33 = copy ((_25 as Ready).0: ());
         _37 = copy _33;
@@ -290,38 +282,34 @@ fn b::{closure#0}(_1: Pin<&mut {async fn body of b()}>, _2: &mut Context<'_>) ->
         StorageDead(_28);
         StorageDead(_25);
         StorageDead(_24);
-        drop((((*_39) as variant#4).0: {async fn body of a()})) -> [return: bb23, unwind unreachable];
+        drop((((*_39) as variant#4).0: {async fn body of a()})) -> [return: bb22, unwind unreachable];
     }
 
-    bb22: {
+    bb21: {
         StorageDead(_36);
         _2 = move _35;
         StorageDead(_35);
         _7 = const ();
-        goto -> bb16;
+        goto -> bb15;
     }
 
-    bb23: {
+    bb22: {
         nop;
+        StorageDead(_21);
         goto -> bb24;
     }
 
-    bb24: {
-        StorageDead(_21);
-        goto -> bb26;
-    }
-
-    bb25: {
+    bb23: {
         _0 = Poll::<()>::Ready(move _37);
         discriminant((*_39)) = 1;
         return;
     }
 
-    bb26: {
-        goto -> bb25;
+    bb24: {
+        goto -> bb23;
     }
 
-    bb27: {
+    bb25: {
         StorageLive(_3);
         StorageLive(_4);
         StorageLive(_19);
@@ -330,15 +318,15 @@ fn b::{closure#0}(_1: Pin<&mut {async fn body of b()}>, _2: &mut Context<'_>) ->
         goto -> bb11;
     }
 
-    bb28: {
+    bb26: {
         StorageLive(_21);
         StorageLive(_35);
         StorageLive(_36);
         _35 = move _2;
-        goto -> bb22;
+        goto -> bb21;
     }
 
-    bb29: {
-        assert(const false, "`async fn` resumed after completion") -> [success: bb29, unwind unreachable];
+    bb27: {
+        assert(const false, "`async fn` resumed after completion") -> [success: bb27, unwind unreachable];
     }
 }
