@@ -374,11 +374,14 @@ enum LifetimeBinderKind {
     FnPtrType,
     PolyTrait,
     WhereBound,
+    // Item covers foreign items, ADTs, type aliases, trait associated items and
+    // trait alias associated items.
     Item,
     ConstItem,
     Function,
     Closure,
     ImplBlock,
+    // Covers only `impl` associated types.
     ImplAssocType,
 }
 
@@ -1950,14 +1953,12 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         let Some((rib, span)) = self.lifetime_ribs[..i]
             .iter()
             .rev()
-            .skip(1)
-            .filter_map(|rib| match rib.kind {
+            .find_map(|rib| match rib.kind {
                 LifetimeRibKind::Generics { span, kind: LifetimeBinderKind::ImplBlock, .. } => {
                     Some((rib, span))
                 }
                 _ => None,
             })
-            .next()
         else {
             return;
         };
