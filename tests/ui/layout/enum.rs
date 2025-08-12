@@ -35,8 +35,8 @@ enum AbsentVariantUntagged { //~ERROR: size: Size(4 bytes)
 // Even if uninhabited variants are not absent, the enum can still be laid out without
 // a tag.
 #[rustc_layout(size, abi)]
-enum UninhabitedVariantUntagged { //~ERROR: size: Size(8 bytes)
-    //~^ ERROR: abi: ScalarPair(Initialized
+enum UninhabitedVariantUntagged { //~ERROR: size: Size(4 bytes)
+    //~^ ERROR: abi: Scalar(Initialized
     A(i32),
     B(i32, !),
 }
@@ -53,8 +53,8 @@ enum UninhabitedVariantUntaggedBigger { //~ERROR: size: Size(8 bytes)
 }
 
 #[rustc_layout(size, abi)]
-enum UninhabitedVariantWithNiche { //~ERROR: size: Size(3 bytes)
-    //~^ERROR: abi: Memory
+enum UninhabitedVariantWithNiche { //~ERROR: size: Size(2 bytes)
+    //~^ERROR: abi: ScalarPair(Initialized { value: Int(I8, false), valid_range: 0..=1 }, Initialized { value: Int(I8, true), valid_range: 0..=255 })
     A(i8, bool),
     B(u8, u8, !),
 }
