@@ -473,33 +473,27 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
             eq_id(*li, *ri) && eq_generics(lg, rg) && over(lb, rb, eq_generic_bound)
         },
         (
-            Impl(box ast::Impl {
-                safety: lu,
-                polarity: lp,
-                defaultness: ld,
-                constness: lc,
+            Impl(ast::Impl {
                 generics: lg,
                 of_trait: lot,
                 self_ty: lst,
                 items: li,
             }),
-            Impl(box ast::Impl {
-                safety: ru,
-                polarity: rp,
-                defaultness: rd,
-                constness: rc,
+            Impl(ast::Impl {
                 generics: rg,
                 of_trait: rot,
                 self_ty: rst,
                 items: ri,
             }),
         ) => {
-            matches!(lu, Safety::Default) == matches!(ru, Safety::Default)
-                && matches!(lp, ImplPolarity::Positive) == matches!(rp, ImplPolarity::Positive)
-                && eq_defaultness(*ld, *rd)
-                && matches!(lc, ast::Const::No) == matches!(rc, ast::Const::No)
-                && eq_generics(lg, rg)
-                && both(lot.as_ref(), rot.as_ref(), |l, r| eq_path(&l.path, &r.path))
+            eq_generics(lg, rg)
+                && both(lot.as_deref(), rot.as_deref(), |l, r| {
+                    matches!(l.safety, Safety::Default) == matches!(r.safety, Safety::Default)
+                        && matches!(l.polarity, ImplPolarity::Positive) == matches!(r.polarity, ImplPolarity::Positive)
+                        && eq_defaultness(l.defaultness, r.defaultness)
+                        && matches!(l.constness, ast::Const::No) == matches!(r.constness, ast::Const::No)
+                        && eq_path(&l.trait_ref.path, &r.trait_ref.path)
+                })
                 && eq_ty(lst, rst)
                 && over(li, ri, |l, r| eq_item(l, r, eq_assoc_item_kind))
         },
