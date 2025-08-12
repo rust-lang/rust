@@ -18,6 +18,9 @@ pub struct File(!);
 pub struct FileAttr {
     attr: u64,
     size: u64,
+    accessed: SystemTime,
+    modified: SystemTime,
+    created: SystemTime,
 }
 
 pub struct ReadDir(!);
@@ -33,7 +36,10 @@ pub struct OpenOptions {
 }
 
 #[derive(Copy, Clone, Debug, Default)]
-pub struct FileTimes {}
+pub struct FileTimes {
+    accessed: Option<SystemTime>,
+    modified: Option<SystemTime>,
+}
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 // Bool indicates if file is readonly
@@ -60,15 +66,15 @@ impl FileAttr {
     }
 
     pub fn modified(&self) -> io::Result<SystemTime> {
-        unsupported()
+        Ok(self.modified)
     }
 
     pub fn accessed(&self) -> io::Result<SystemTime> {
-        unsupported()
+        Ok(self.accessed)
     }
 
     pub fn created(&self) -> io::Result<SystemTime> {
-        unsupported()
+        Ok(self.created)
     }
 }
 
@@ -92,8 +98,13 @@ impl FilePermissions {
 }
 
 impl FileTimes {
-    pub fn set_accessed(&mut self, _t: SystemTime) {}
-    pub fn set_modified(&mut self, _t: SystemTime) {}
+    pub fn set_accessed(&mut self, t: SystemTime) {
+        self.accessed = Some(t);
+    }
+
+    pub fn set_modified(&mut self, t: SystemTime) {
+        self.modified = Some(t);
+    }
 }
 
 impl FileType {
@@ -394,6 +405,7 @@ mod uefi_fs {
     use crate::path::Path;
     use crate::ptr::NonNull;
     use crate::sys::helpers;
+    use crate::sys::time::{self, SystemTime};
 
     pub(crate) struct File(NonNull<file::Protocol>);
 
@@ -540,5 +552,24 @@ mod uefi_fs {
         )?;
 
         Ok(())
+    }
+
+    /// EDK2 FAT driver uses EFI_UNSPECIFIED_TIMEZONE to represent localtime. So for proper
+    /// conversion to SystemTime, we use the current time to get the timezone in such cases.
+    #[expect(dead_code)]
+    fn uefi_to_systemtime(mut time: r_efi::efi::Time) -> SystemTime {
+        time.timezone = if time.timezone == r_efi::efi::UNSPECIFIED_TIMEZONE {
+            time::system_time_internal::now().unwrap().timezone
+        } else {
+            time.timezone
+        };
+        SystemTime::from_uefi(time)
+    }
+
+    /// Convert to UEFI Time with the current timezone.
+    #[expect(dead_code)]
+    fn systemtime_to_uefi(time: SystemTime) -> r_efi::efi::Time {
+        let now = time::system_time_internal::now().unwrap();
+        time.to_uefi_loose(now.timezone, now.daylight)
     }
 }
