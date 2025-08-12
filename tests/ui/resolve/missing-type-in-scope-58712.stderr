@@ -1,0 +1,20 @@
+error[E0412]: cannot find type `DeviceId` in this scope
+  --> $DIR/missing-type-in-scope-58712.rs:7:20
+   |
+LL | impl<H> AddrVec<H, DeviceId> {
+   |                    ^^^^^^^^ not found in this scope
+   |
+help: you might be missing a type parameter
+   |
+LL | impl<H, DeviceId> AddrVec<H, DeviceId> {
+   |       ++++++++++
+
+error[E0412]: cannot find type `DeviceId` in this scope
+  --> $DIR/missing-type-in-scope-58712.rs:9:29
+   |
+LL |     pub fn device(&self) -> DeviceId {
+   |                             ^^^^^^^^ not found in this scope
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0412`.
