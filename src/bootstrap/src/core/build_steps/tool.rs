@@ -26,7 +26,7 @@ use crate::core::builder::{
 use crate::core::config::{DebuginfoLevel, RustcLto, TargetSelection};
 use crate::utils::exec::{BootstrapCommand, command};
 use crate::utils::helpers::{add_dylib_path, exe, t};
-use crate::{Compiler, FileType, Kind, Mode, gha};
+use crate::{Compiler, FileType, Kind, Mode};
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub enum SourceType {
@@ -56,28 +56,6 @@ struct ToolBuild {
     cargo_args: Vec<String>,
     /// Whether the tool builds a binary or a library.
     artifact_kind: ToolArtifactKind,
-}
-
-impl Builder<'_> {
-    #[track_caller]
-    pub(crate) fn msg_tool(
-        &self,
-        kind: Kind,
-        mode: Mode,
-        tool: &str,
-        build_stage: u32,
-        host: &TargetSelection,
-        target: &TargetSelection,
-    ) -> Option<gha::Group> {
-        match mode {
-            // depends on compiler stage, different to host compiler
-            Mode::ToolRustc => {
-                self.msg_rustc_tool(kind, build_stage, format_args!("tool {tool}"), *host, *target)
-            }
-            // doesn't depend on compiler, same as host compiler
-            _ => self.msg(kind, build_stage, format_args!("tool {tool}"), *host, *target),
-        }
-    }
 }
 
 /// Result of the tool build process. Each `Step` in this module is responsible
@@ -166,14 +144,8 @@ impl Step for ToolBuild {
 
         cargo.args(self.cargo_args);
 
-        let _guard = builder.msg_tool(
-            Kind::Build,
-            self.mode,
-            self.tool,
-            self.build_compiler.stage,
-            &self.build_compiler.host,
-            &self.target,
-        );
+        let _guard =
+            builder.msg(Kind::Build, self.tool, self.mode, self.build_compiler, self.target);
 
         // we check this below
         let build_success = compile::stream_cargo(builder, cargo, vec![], &mut |_| {});

@@ -410,6 +410,25 @@ forward! {
     download_rustc() -> bool,
 }
 
+/// A mostly temporary helper struct before we can migrate everything in bootstrap to use
+/// the concept of a build compiler.
+struct HostAndStage {
+    host: TargetSelection,
+    stage: u32,
+}
+
+impl From<(TargetSelection, u32)> for HostAndStage {
+    fn from((host, stage): (TargetSelection, u32)) -> Self {
+        Self { host, stage }
+    }
+}
+
+impl From<Compiler> for HostAndStage {
+    fn from(compiler: Compiler) -> Self {
+        Self { host: compiler.host, stage: compiler.stage }
+    }
+}
+
 impl Build {
     /// Creates a new set of build configuration from the `flags` on the command
     /// line and the filesystem `config`.
@@ -1072,45 +1091,14 @@ impl Build {
         }
     }
 
-    #[must_use = "Groups should not be dropped until the Step finishes running"]
-    #[track_caller]
-    fn msg_clippy(
-        &self,
-        what: impl Display,
-        target: impl Into<Option<TargetSelection>>,
-    ) -> Option<gha::Group> {
-        self.msg(Kind::Clippy, self.config.stage, what, self.config.host_target, target)
-    }
-
-    #[must_use = "Groups should not be dropped until the Step finishes running"]
-    #[track_caller]
-    fn msg_check(
-        &self,
-        what: impl Display,
-        target: impl Into<Option<TargetSelection>>,
-        custom_stage: Option<u32>,
-    ) -> Option<gha::Group> {
-        self.msg(
-            Kind::Check,
-            custom_stage.unwrap_or(self.config.stage),
-            what,
-            self.config.host_target,
-            target,
-        )
-    }
-
-    #[must_use = "Groups should not be dropped until the Step finishes running"]
-    #[track_caller]
-    fn msg_doc(
-        &self,
-        compiler: Compiler,
-        what: impl Display,
-        target: impl Into<Option<TargetSelection>> + Copy,
-    ) -> Option<gha::Group> {
-        self.msg(Kind::Doc, compiler.stage, what, compiler.host, target.into())
-    }
-
-    /// Return a `Group` guard for a [`Step`] that is built for each `--stage`.
+    /// Return a `Group` guard for a [`Step`] that:
+    /// - Performs `action`
+    /// - On `what`
+    ///   - Where `what` possibly corresponds to a `mode`
+    /// - `action` is performed using the given build compiler (`host_and_stage`).
+    ///   - Since some steps do not use the concept of a build compiler yet, it is also possible
+    ///     to pass the host and stage explicitly.
+    /// - With a given `target`.
     ///
     /// [`Step`]: crate::core::builder::Step
     #[must_use = "Groups should not be dropped until the Step finishes running"]
@@ -1118,15 +1106,31 @@ impl Build {
     fn msg(
         &self,
         action: impl Into<Kind>,
-        stage: u32,
         what: impl Display,
-        host: impl Into<Option<TargetSelection>>,
+        mode: impl Into<Option<Mode>>,
+        host_and_stage: impl Into<HostAndStage>,
         target: impl Into<Option<TargetSelection>>,
     ) -> Option<gha::Group> {
+        let host_and_stage = host_and_stage.into();
+        let actual_stage = match mode.into() {
+            // Std has the same stage as the compiler that builds it
+            Some(Mode::Std) => host_and_stage.stage,
+            // Other things have stage corresponding to their build compiler + 1
+            Some(
+                Mode::Rustc
+                | Mode::Codegen
+                | Mode::ToolBootstrap
+                | Mode::ToolTarget
+                | Mode::ToolStd
+                | Mode::ToolRustc,
+            )
+            | None => host_and_stage.stage + 1,
+        };
+
         let action = action.into().description();
-        let msg = |fmt| format!("{action} stage{stage} {what}{fmt}");
+        let msg = |fmt| format!("{action} stage{actual_stage} {what}{fmt}");
         let msg = if let Some(target) = target.into() {
-            let host = host.into().unwrap();
+            let host = host_and_stage.host;
             if host == target {
                 msg(format_args!(" ({target})"))
             } else {
@@ -1151,27 +1155,6 @@ impl Build {
     ) -> Option<gha::Group> {
         let action = action.into().description();
         let msg = format!("{action} {what} for {target}");
-        self.group(&msg)
-    }
-
-    #[must_use = "Groups should not be dropped until the Step finishes running"]
-    #[track_caller]
-    fn msg_rustc_tool(
-        &self,
-        action: impl Into<Kind>,
-        build_stage: u32,
-        what: impl Display,
-        host: TargetSelection,
-        target: TargetSelection,
-    ) -> Option<gha::Group> {
-        let action = action.into().description();
-        let msg = |fmt| format!("{action} {what} {fmt}");
-
-        let msg = if host == target {
-            msg(format_args!("(stage{build_stage} -> stage{}, {target})", build_stage + 1))
-        } else {
-            msg(format_args!("(stage{build_stage}:{host} -> stage{}:{target})", build_stage + 1))
-        };
         self.group(&msg)
     }
 
