@@ -3,8 +3,11 @@ mod tests;
 
 use crate::ffi::{c_int, c_void};
 use crate::io::{self, BorrowedCursor, ErrorKind, IoSlice, IoSliceMut};
-use crate::net::{Ipv4Addr, Ipv6Addr, Shutdown, SocketAddr, SocketAddrV4, SocketAddrV6};
+use crate::net::{
+    Ipv4Addr, Ipv6Addr, Shutdown, SocketAddr, SocketAddrV4, SocketAddrV6, ToSocketAddrs,
+};
 use crate::sys::common::small_c_string::run_with_cstr;
+use crate::sys::net::connection::each_addr;
 use crate::sys_common::{AsInner, FromInner};
 use crate::time::Duration;
 use crate::{cmp, fmt, mem, ptr};
@@ -342,14 +345,15 @@ pub struct TcpStream {
 }
 
 impl TcpStream {
-    pub fn connect(addr: io::Result<&SocketAddr>) -> io::Result<TcpStream> {
-        let addr = addr?;
-
+    pub fn connect<A: ToSocketAddrs>(addr: A) -> io::Result<TcpStream> {
         init();
+        return each_addr(addr, inner);
 
-        let sock = Socket::new(addr, c::SOCK_STREAM)?;
-        sock.connect(addr)?;
-        Ok(TcpStream { inner: sock })
+        fn inner(addr: &SocketAddr) -> io::Result<TcpStream> {
+            let sock = Socket::new(addr, c::SOCK_STREAM)?;
+            sock.connect(addr)?;
+            Ok(TcpStream { inner: sock })
+        }
     }
 
     pub fn connect_timeout(addr: &SocketAddr, timeout: Duration) -> io::Result<TcpStream> {
@@ -512,48 +516,45 @@ pub struct TcpListener {
 }
 
 impl TcpListener {
-    pub fn bind(addr: io::Result<&SocketAddr>) -> io::Result<TcpListener> {
-        let addr = addr?;
-
+    pub fn bind<A: ToSocketAddrs>(addr: A) -> io::Result<TcpListener> {
         init();
+        return each_addr(addr, inner);
 
-        let sock = Socket::new(addr, c::SOCK_STREAM)?;
+        fn inner(addr: &SocketAddr) -> io::Result<TcpListener> {
+            let sock = Socket::new(addr, c::SOCK_STREAM)?;
 
-        // On platforms with Berkeley-derived sockets, this allows to quickly
-        // rebind a socket, without needing to wait for the OS to clean up the
-        // previous one.
-        //
-        // On Windows, this allows rebinding sockets which are actively in use,
-        // which allows “socket hijacking”, so we explicitly don't set it here.
-        // https://docs.microsoft.com/en-us/windows/win32/winsock/using-so-reuseaddr-and-so-exclusiveaddruse
-        #[cfg(not(windows))]
-        setsockopt(&sock, c::SOL_SOCKET, c::SO_REUSEADDR, 1 as c_int)?;
+            // On platforms with Berkeley-derived sockets, this allows to quickly
+            // rebind a socket, without needing to wait for the OS to clean up the
+            // previous one.
+            //
+            // On Windows, this allows rebinding sockets which are actively in use,
+            // which allows “socket hijacking”, so we explicitly don't set it here.
+            // https://docs.microsoft.com/en-us/windows/win32/winsock/using-so-reuseaddr-and-so-exclusiveaddruse
+            #[cfg(not(windows))]
+            setsockopt(&sock, c::SOL_SOCKET, c::SO_REUSEADDR, 1 as c_int)?;
 
-        // Bind our new socket
-        let (addr, len) = socket_addr_to_c(addr);
-        cvt(unsafe { c::bind(sock.as_raw(), addr.as_ptr(), len as _) })?;
+            // Bind our new socket
+            let (addr, len) = socket_addr_to_c(addr);
+            cvt(unsafe { c::bind(sock.as_raw(), addr.as_ptr(), len as _) })?;
 
-        cfg_select! {
-            target_os = "horizon" => {
+            let backlog = if cfg!(target_os = "horizon") {
                 // The 3DS doesn't support a big connection backlog. Sometimes
                 // it allows up to about 37, but other times it doesn't even
                 // accept 32. There may be a global limitation causing this.
-                let backlog = 20;
-            }
-            target_os = "haiku" => {
+                20
+            } else if cfg!(target_os = "haiku") {
                 // Haiku does not support a queue length > 32
                 // https://github.com/haiku/haiku/blob/979a0bc487864675517fb2fab28f87dc8bf43041/headers/posix/sys/socket.h#L81
-                let backlog = 32;
-            }
-            _ => {
+                32
+            } else {
                 // The default for all other platforms
-                let backlog = 128;
-            }
-        }
+                128
+            };
 
-        // Start listening
-        cvt(unsafe { c::listen(sock.as_raw(), backlog) })?;
-        Ok(TcpListener { inner: sock })
+            // Start listening
+            cvt(unsafe { c::listen(sock.as_raw(), backlog) })?;
+            Ok(TcpListener { inner: sock })
+        }
     }
 
     #[inline]
@@ -639,15 +640,16 @@ pub struct UdpSocket {
 }
 
 impl UdpSocket {
-    pub fn bind(addr: io::Result<&SocketAddr>) -> io::Result<UdpSocket> {
-        let addr = addr?;
-
+    pub fn bind<A: ToSocketAddrs>(addr: A) -> io::Result<UdpSocket> {
         init();
+        return each_addr(addr, inner);
 
-        let sock = Socket::new(addr, c::SOCK_DGRAM)?;
-        let (addr, len) = socket_addr_to_c(addr);
-        cvt(unsafe { c::bind(sock.as_raw(), addr.as_ptr(), len as _) })?;
-        Ok(UdpSocket { inner: sock })
+        fn inner(addr: &SocketAddr) -> io::Result<UdpSocket> {
+            let sock = Socket::new(addr, c::SOCK_DGRAM)?;
+            let (addr, len) = socket_addr_to_c(addr);
+            cvt(unsafe { c::bind(sock.as_raw(), addr.as_ptr(), len as _) })?;
+            Ok(UdpSocket { inner: sock })
+        }
     }
 
     #[inline]
@@ -822,9 +824,13 @@ impl UdpSocket {
         Ok(ret as usize)
     }
 
-    pub fn connect(&self, addr: io::Result<&SocketAddr>) -> io::Result<()> {
-        let (addr, len) = socket_addr_to_c(addr?);
-        cvt_r(|| unsafe { c::connect(self.inner.as_raw(), addr.as_ptr(), len) }).map(drop)
+    pub fn connect<A: ToSocketAddrs>(&self, addr: A) -> io::Result<()> {
+        return each_addr(addr, |addr| inner(self, addr));
+
+        fn inner(this: &UdpSocket, addr: &SocketAddr) -> io::Result<()> {
+            let (addr, len) = socket_addr_to_c(addr);
+            cvt_r(|| unsafe { c::connect(this.inner.as_raw(), addr.as_ptr(), len) }).map(drop)
+        }
     }
 }
 
