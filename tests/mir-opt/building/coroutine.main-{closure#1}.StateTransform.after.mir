@@ -50,19 +50,19 @@ fn main::{closure#1}(_1: Pin<&mut {coroutine@$DIR/coroutine.rs:25:5: 25:18}>, _2
     let mut _25: &mut {coroutine@$DIR/coroutine.rs:25:5: 25:18};
 
     bb0: {
-        _18 = deref_copy (_1.0: &mut {coroutine@$DIR/coroutine.rs:25:5: 25:18});
+        _18 = copy (_1.0: &mut {coroutine@$DIR/coroutine.rs:25:5: 25:18});
         _17 = discriminant((*_18));
         switchInt(move _17) -> [0: bb1, 1: bb19, 3: bb17, 4: bb18, otherwise: bb20];
     }
 
     bb1: {
-        _19 = deref_copy (_1.0: &mut {coroutine@$DIR/coroutine.rs:25:5: 25:18});
+        _19 = copy (_1.0: &mut {coroutine@$DIR/coroutine.rs:25:5: 25:18});
         (((*_19) as variant#4).0: std::string::String) = move _2;
         StorageLive(_3);
         StorageLive(_4);
         StorageLive(_5);
         StorageLive(_6);
-        _20 = deref_copy (_1.0: &mut {coroutine@$DIR/coroutine.rs:25:5: 25:18});
+        _20 = copy (_1.0: &mut {coroutine@$DIR/coroutine.rs:25:5: 25:18});
         _6 = &(((*_20) as variant#4).0: std::string::String);
         _5 = <String as Clone>::clone(move _6) -> [return: bb2, unwind unreachable];
     }
@@ -84,7 +84,7 @@ fn main::{closure#1}(_1: Pin<&mut {coroutine@$DIR/coroutine.rs:25:5: 25:18}>, _2
         _0 = CoroutineState::<(&str, String, &Location<'_>), ()>::Yielded(move _4);
         StorageDead(_3);
         StorageDead(_4);
-        _21 = deref_copy (_1.0: &mut {coroutine@$DIR/coroutine.rs:25:5: 25:18});
+        _21 = copy (_1.0: &mut {coroutine@$DIR/coroutine.rs:25:5: 25:18});
         discriminant((*_21)) = 3;
         return;
     }
@@ -108,7 +108,7 @@ fn main::{closure#1}(_1: Pin<&mut {coroutine@$DIR/coroutine.rs:25:5: 25:18}>, _2
         _10 = &(*_11);
         StorageLive(_12);
         StorageLive(_13);
-        _22 = deref_copy (_1.0: &mut {coroutine@$DIR/coroutine.rs:25:5: 25:18});
+        _22 = copy (_1.0: &mut {coroutine@$DIR/coroutine.rs:25:5: 25:18});
         _13 = &(((*_22) as variant#4).0: std::string::String);
         _12 = <String as Clone>::clone(move _13) -> [return: bb8, unwind unreachable];
     }
@@ -135,7 +135,7 @@ fn main::{closure#1}(_1: Pin<&mut {coroutine@$DIR/coroutine.rs:25:5: 25:18}>, _2
         StorageDead(_9);
         StorageDead(_11);
         StorageDead(_15);
-        _23 = deref_copy (_1.0: &mut {coroutine@$DIR/coroutine.rs:25:5: 25:18});
+        _23 = copy (_1.0: &mut {coroutine@$DIR/coroutine.rs:25:5: 25:18});
         discriminant((*_23)) = 4;
         return;
     }
@@ -154,7 +154,7 @@ fn main::{closure#1}(_1: Pin<&mut {coroutine@$DIR/coroutine.rs:25:5: 25:18}>, _2
         StorageDead(_11);
         StorageDead(_8);
         _16 = const ();
-        _24 = deref_copy (_1.0: &mut {coroutine@$DIR/coroutine.rs:25:5: 25:18});
+        _24 = copy (_1.0: &mut {coroutine@$DIR/coroutine.rs:25:5: 25:18});
         drop((((*_24) as variant#4).0: std::string::String)) -> [return: bb14, unwind unreachable];
     }
 
@@ -164,7 +164,7 @@ fn main::{closure#1}(_1: Pin<&mut {coroutine@$DIR/coroutine.rs:25:5: 25:18}>, _2
 
     bb15: {
         _0 = CoroutineState::<(&str, String, &Location<'_>), ()>::Complete(move _16);
-        _25 = deref_copy (_1.0: &mut {coroutine@$DIR/coroutine.rs:25:5: 25:18});
+        _25 = copy (_1.0: &mut {coroutine@$DIR/coroutine.rs:25:5: 25:18});
         discriminant((*_25)) = 1;
         return;
     }
