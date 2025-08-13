@@ -92,7 +92,7 @@ use hir::{
 use ide_db::{
     EditionedFileId, FileId, FileRange, FxHashMap, FxHashSet, RootDatabase, Severity, SnippetCap,
     assists::{Assist, AssistId, AssistResolveStrategy, ExprFillDefaultMode},
-    base_db::{ReleaseChannel, RootQueryDb as _},
+    base_db::{ReleaseChannel, RootQueryDb as _, salsa},
     generated::lints::{CLIPPY_LINT_GROUPS, DEFAULT_LINT_GROUPS, DEFAULT_LINTS, Lint, LintGroup},
     imports::insert_use::InsertUseConfig,
     label::Label,
@@ -537,10 +537,12 @@ pub fn full_diagnostics(
     resolve: &AssistResolveStrategy,
     file_id: FileId,
 ) -> Vec<Diagnostic> {
-    let mut res = syntax_diagnostics(db, config, file_id);
-    let sema = semantic_diagnostics(db, config, resolve, file_id);
-    res.extend(sema);
-    res
+    salsa::attach(db, || {
+        let mut res = syntax_diagnostics(db, config, file_id);
+        let sema = semantic_diagnostics(db, config, resolve, file_id);
+        res.extend(sema);
+        res
+    })
 }
 
 /// Returns whether to keep this diagnostic (or remove it).

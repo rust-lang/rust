@@ -13,14 +13,15 @@ use stdx::always;
 use triomphe::Arc;
 
 use crate::{
-    Canonical, DomainGoal, FnAbi, FnPointer, FnSig, Guidance, InEnvironment, Interner, Lifetime,
-    Solution, Substitution, TraitEnvironment, Ty, TyBuilder, TyExt,
+    Canonical, DomainGoal, FnAbi, FnPointer, FnSig, InEnvironment, Interner, Lifetime,
+    Substitution, TraitEnvironment, Ty, TyBuilder, TyExt,
     autoderef::{Autoderef, AutoderefKind},
     db::HirDatabase,
     infer::{
         Adjust, Adjustment, AutoBorrow, InferOk, InferenceContext, OverloadedDeref, PointerCast,
         TypeError, TypeMismatch,
     },
+    traits::NextTraitSolveResult,
     utils::ClosureSubst,
 };
 
@@ -715,13 +716,18 @@ impl InferenceTable<'_> {
         // solve `CoerceUnsized` and `Unsize` goals at this point and leaves the
         // rest for later. Also, there's some logic about sized type variables.
         // Need to find out in what cases this is necessary
-        let solution = self
-            .db
-            .trait_solve(krate, self.trait_env.block, canonicalized.value.clone().cast(Interner))
-            .ok_or(TypeError)?;
+        let solution = self.db.trait_solve(
+            krate,
+            self.trait_env.block,
+            canonicalized.value.clone().cast(Interner),
+        );
 
         match solution {
-            Solution::Unique(v) => {
+            // FIXME: this is a weaker guarantee than Chalk's `Guidance::Unique`
+            // was. Chalk's unique guidance at least guarantees that the real solution
+            // is some "subset" of the solutions matching the guidance, but the
+            // substs for `Certainty::No` don't have that same guarantee (I think).
+            NextTraitSolveResult::Certain(v) => {
                 canonicalized.apply_solution(
                     self,
                     Canonical {
@@ -731,13 +737,12 @@ impl InferenceTable<'_> {
                     },
                 );
             }
-            Solution::Ambig(Guidance::Definite(subst)) => {
-                // FIXME need to record an obligation here
-                canonicalized.apply_solution(self, subst)
+            // ...so, should think about how to get some actually get some guidance here
+            NextTraitSolveResult::Uncertain(..) | NextTraitSolveResult::NoSolution => {
+                return Err(TypeError);
             }
-            // FIXME actually we maybe should also accept unknown guidance here
-            _ => return Err(TypeError),
-        };
+        }
+
         let unsize =
             Adjustment { kind: Adjust::Pointer(PointerCast::Unsize), target: to_ty.clone() };
         let adjustments = match reborrow {

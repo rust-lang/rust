@@ -88,52 +88,54 @@ pub(crate) use closure::{CaptureKind, CapturedItem, CapturedItemWithoutTy};
 
 /// The entry point of type inference.
 pub(crate) fn infer_query(db: &dyn HirDatabase, def: DefWithBodyId) -> Arc<InferenceResult> {
-    let _p = tracing::info_span!("infer_query").entered();
-    let resolver = def.resolver(db);
-    let body = db.body(def);
-    let mut ctx = InferenceContext::new(db, def, &body, resolver);
+    crate::next_solver::with_new_cache(|| {
+        let _p = tracing::info_span!("infer_query").entered();
+        let resolver = def.resolver(db);
+        let body = db.body(def);
+        let mut ctx = InferenceContext::new(db, def, &body, resolver);
 
-    match def {
-        DefWithBodyId::FunctionId(f) => {
-            ctx.collect_fn(f);
-        }
-        DefWithBodyId::ConstId(c) => ctx.collect_const(c, &db.const_signature(c)),
-        DefWithBodyId::StaticId(s) => ctx.collect_static(&db.static_signature(s)),
-        DefWithBodyId::VariantId(v) => {
-            ctx.return_ty = TyBuilder::builtin(
-                match db.enum_signature(v.lookup(db).parent).variant_body_type() {
-                    hir_def::layout::IntegerType::Pointer(signed) => match signed {
-                        true => BuiltinType::Int(BuiltinInt::Isize),
-                        false => BuiltinType::Uint(BuiltinUint::Usize),
+        match def {
+            DefWithBodyId::FunctionId(f) => {
+                ctx.collect_fn(f);
+            }
+            DefWithBodyId::ConstId(c) => ctx.collect_const(c, &db.const_signature(c)),
+            DefWithBodyId::StaticId(s) => ctx.collect_static(&db.static_signature(s)),
+            DefWithBodyId::VariantId(v) => {
+                ctx.return_ty = TyBuilder::builtin(
+                    match db.enum_signature(v.lookup(db).parent).variant_body_type() {
+                        hir_def::layout::IntegerType::Pointer(signed) => match signed {
+                            true => BuiltinType::Int(BuiltinInt::Isize),
+                            false => BuiltinType::Uint(BuiltinUint::Usize),
+                        },
+                        hir_def::layout::IntegerType::Fixed(size, signed) => match signed {
+                            true => BuiltinType::Int(match size {
+                                Integer::I8 => BuiltinInt::I8,
+                                Integer::I16 => BuiltinInt::I16,
+                                Integer::I32 => BuiltinInt::I32,
+                                Integer::I64 => BuiltinInt::I64,
+                                Integer::I128 => BuiltinInt::I128,
+                            }),
+                            false => BuiltinType::Uint(match size {
+                                Integer::I8 => BuiltinUint::U8,
+                                Integer::I16 => BuiltinUint::U16,
+                                Integer::I32 => BuiltinUint::U32,
+                                Integer::I64 => BuiltinUint::U64,
+                                Integer::I128 => BuiltinUint::U128,
+                            }),
+                        },
                     },
-                    hir_def::layout::IntegerType::Fixed(size, signed) => match signed {
-                        true => BuiltinType::Int(match size {
-                            Integer::I8 => BuiltinInt::I8,
-                            Integer::I16 => BuiltinInt::I16,
-                            Integer::I32 => BuiltinInt::I32,
-                            Integer::I64 => BuiltinInt::I64,
-                            Integer::I128 => BuiltinInt::I128,
-                        }),
-                        false => BuiltinType::Uint(match size {
-                            Integer::I8 => BuiltinUint::U8,
-                            Integer::I16 => BuiltinUint::U16,
-                            Integer::I32 => BuiltinUint::U32,
-                            Integer::I64 => BuiltinUint::U64,
-                            Integer::I128 => BuiltinUint::U128,
-                        }),
-                    },
-                },
-            );
+                );
+            }
         }
-    }
 
-    ctx.infer_body();
+        ctx.infer_body();
 
-    ctx.infer_mut_body();
+        ctx.infer_mut_body();
 
-    ctx.infer_closures();
+        ctx.infer_closures();
 
-    Arc::new(ctx.resolve_all())
+        Arc::new(ctx.resolve_all())
+    })
 }
 
 pub(crate) fn infer_cycle_result(_: &dyn HirDatabase, _: DefWithBodyId) -> Arc<InferenceResult> {
@@ -144,6 +146,7 @@ pub(crate) fn infer_cycle_result(_: &dyn HirDatabase, _: DefWithBodyId) -> Arc<I
 ///
 /// This is appropriate to use only after type-check: it assumes
 /// that normalization will succeed, for example.
+#[tracing::instrument(level = "debug", skip(db))]
 pub(crate) fn normalize(db: &dyn HirDatabase, trait_env: Arc<TraitEnvironment>, ty: Ty) -> Ty {
     // FIXME: TypeFlags::HAS_CT_PROJECTION is not implemented in chalk, so TypeFlags::HAS_PROJECTION only
     // works for the type case, so we check array unconditionally. Remove the array part
@@ -1077,14 +1080,22 @@ impl<'db> InferenceContext<'db> {
         // Functions might be defining usage sites of TAITs.
         // To define an TAITs, that TAIT must appear in the function's signatures.
         // So, it suffices to check for params and return types.
-        if self
-            .return_ty
-            .data(Interner)
-            .flags
-            .intersects(TypeFlags::HAS_TY_OPAQUE.union(TypeFlags::HAS_TY_INFER))
-        {
-            tait_candidates.insert(self.return_ty.clone());
-        }
+        fold_tys(
+            self.return_ty.clone(),
+            |ty, _| {
+                match ty.kind(Interner) {
+                    TyKind::OpaqueType(..)
+                    | TyKind::Alias(AliasTy::Opaque(..))
+                    | TyKind::InferenceVar(..) => {
+                        tait_candidates.insert(self.return_ty.clone());
+                    }
+                    _ => {}
+                }
+                ty
+            },
+            DebruijnIndex::INNERMOST,
+        );
+
         self.make_tait_coercion_table(tait_candidates.iter());
     }
 

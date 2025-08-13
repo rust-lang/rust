@@ -1691,7 +1691,7 @@ fn test<T: Trait<Type = u32>>(x: T, y: impl Trait<Type = i64>) {
     get2(y);
     get(set(S));
     get2(set(S));
-    get2(S::<str>);
+    get2(S::<usize>);
 }"#,
         expect![[r#"
             49..50 't': T
@@ -1703,7 +1703,7 @@ fn test<T: Trait<Type = u32>>(x: T, y: impl Trait<Type = i64>) {
             166..167 't': T
             256..257 'x': T
             262..263 'y': impl Trait<Type = i64>
-            289..397 '{     ...r>); }': ()
+            289..399 '{     ...e>); }': ()
             295..298 'get': fn get<T>(T) -> <T as Trait>::Type
             295..301 'get(x)': u32
             299..300 'x': T
@@ -1726,9 +1726,9 @@ fn test<T: Trait<Type = u32>>(x: T, y: impl Trait<Type = i64>) {
             367..370 'set': fn set<S<u64>>(S<u64>) -> S<u64>
             367..373 'set(S)': S<u64>
             371..372 'S': S<u64>
-            380..384 'get2': fn get2<str, S<str>>(S<str>) -> str
-            380..394 'get2(S::<str>)': str
-            385..393 'S::<str>': S<str>
+            380..384 'get2': fn get2<usize, S<usize>>(S<usize>) -> usize
+            380..396 'get2(S...size>)': usize
+            385..395 'S::<usize>': S<usize>
         "#]],
     );
 }
@@ -2740,7 +2740,7 @@ impl<F: core::ops::Deref<Target = impl Bar>> Foo<F> {
 fn dyn_trait_through_chalk() {
     check_types(
         r#"
-//- minicore: deref
+//- minicore: deref, unsize, dispatch_from_dyn
 struct Box<T: ?Sized> {}
 impl<T: ?Sized> core::ops::Deref for Box<T> {
     type Target = T;
@@ -3228,7 +3228,7 @@ fn foo() {
 fn infer_dyn_fn_output() {
     check_types(
         r#"
-//- minicore: fn
+//- minicore: fn, dispatch_from_dyn
 fn foo() {
     let f: &dyn Fn() -> i32;
     f();
@@ -4255,8 +4255,8 @@ fn f<'a>(v: &dyn Trait<Assoc<i32> = &'a i32>) {
             127..128 'v': &'? (dyn Trait<Assoc<i32> = &'a i32> + '?)
             164..195 '{     ...f(); }': ()
             170..171 'v': &'? (dyn Trait<Assoc<i32> = &'a i32> + '?)
-            170..184 'v.get::<i32>()': &'? i32
-            170..192 'v.get:...eref()': &'? i32
+            170..184 'v.get::<i32>()': {unknown}
+            170..192 'v.get:...eref()': &'? {unknown}
         "#]],
     );
 }
@@ -4785,30 +4785,30 @@ fn allowed2<'a>(baz: impl Baz<Assoc = &'a (impl Foo + 'a)>) {}
 fn allowed3(baz: impl Baz<Assoc = Qux<impl Foo>>) {}
 "#,
         expect![[r#"
-            139..140 'f': impl Fn({unknown}) + ?Sized
+            139..140 'f': impl Fn({unknown})
             161..193 '{     ...oo); }': ()
             171..174 'foo': S
             177..178 'S': S
-            184..185 'f': impl Fn({unknown}) + ?Sized
+            184..185 'f': impl Fn({unknown})
             184..190 'f(foo)': ()
             186..189 'foo': S
-            251..252 'f': impl Fn(&'? {unknown}) + ?Sized
+            251..252 'f': impl Fn(&'? {unknown})
             274..307 '{     ...oo); }': ()
             284..287 'foo': S
             290..291 'S': S
-            297..298 'f': impl Fn(&'? {unknown}) + ?Sized
+            297..298 'f': impl Fn(&'? {unknown})
             297..304 'f(&foo)': ()
             299..303 '&foo': &'? S
             300..303 'foo': S
-            325..328 'bar': impl Bar<{unknown}> + ?Sized
+            325..328 'bar': impl Bar<{unknown}>
             350..352 '{}': ()
-            405..408 'bar': impl Bar<&'? {unknown}> + ?Sized
+            405..408 'bar': impl Bar<&'? {unknown}>
             431..433 '{}': ()
-            447..450 'baz': impl Baz<Assoc = impl Foo + ?Sized> + ?Sized
+            447..450 'baz': impl Baz<Assoc = impl Foo>
             480..482 '{}': ()
-            500..503 'baz': impl Baz<Assoc = &'a impl Foo + 'a + ?Sized> + ?Sized
+            500..503 'baz': impl Baz<Assoc = &'a impl Foo + 'a>
             544..546 '{}': ()
-            560..563 'baz': impl Baz<Assoc = Qux<impl Foo + ?Sized>> + ?Sized
+            560..563 'baz': impl Baz<Assoc = Qux<impl Foo>>
             598..600 '{}': ()
         "#]],
     )
@@ -4927,6 +4927,70 @@ fn main() {
             73..94 'foo(as...|| ())': ()
             77..93 'async ... || ()': impl AsyncFn() -> impl Future<Output = ()>
             91..93 '()': ()
+        "#]],
+    );
+}
+
+#[test]
+fn new_solver_crash_1() {
+    check_infer(
+        r#"
+pub trait Deserializer<'de> {
+    type Error;
+}
+
+fn deserialize_abs_pathbuf<'de, D>(de: D) -> D::Error
+where
+    D: Deserializer<'de>,
+{
+}
+"#,
+        expect![[r#"
+            84..86 'de': D
+            135..138 '{ }': Deserializer::Error<'de, D>
+        "#]],
+    );
+}
+
+#[test]
+fn new_solver_crash_2() {
+    check_infer(
+        r#"
+//- minicore: deref, send, sync
+use core::ops::Deref;
+
+trait Error {}
+
+struct AnyhowError;
+
+impl Deref for AnyhowError {
+    type Target = dyn Error + Send + Sync;
+
+    fn deref(&self) -> &Self::Target { loop {} }
+}
+
+impl AnyhowError {
+    fn downcast<T>(self) {}
+}
+
+
+fn main() {
+    let e = AnyhowError;
+    e.downcast::<()>();
+}
+"#,
+        expect![[r#"
+            147..151 'self': &'? AnyhowError
+            170..181 '{ loop {} }': &'? (dyn Error + Send + Sync + 'static)
+            172..179 'loop {}': !
+            177..179 '{}': ()
+            223..227 'self': AnyhowError
+            229..231 '{}': ()
+            246..298 '{     ...>(); }': ()
+            256..257 'e': AnyhowError
+            260..271 'AnyhowError': AnyhowError
+            277..278 'e': AnyhowError
+            277..295 'e.down...<()>()': ()
         "#]],
     );
 }

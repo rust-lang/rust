@@ -4,6 +4,7 @@ use expect_test::{Expect, expect};
 use hir::Semantics;
 use ide_db::{
     FilePosition, FileRange, RootDatabase,
+    base_db::salsa,
     defs::Definition,
     documentation::{DocsRangeMap, Documentation, HasDocs},
 };
@@ -63,8 +64,10 @@ fn check_doc_links(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
         .flat_map(|(text_range, link, ns)| {
             let attr = range.map(text_range);
             let is_inner_attr = attr.map(|(_file, attr)| attr.is_inner_attr()).unwrap_or(false);
-            let def = resolve_doc_path_for_def(sema.db, cursor_def, &link, ns, is_inner_attr)
-                .unwrap_or_else(|| panic!("Failed to resolve {link}"));
+            let def = salsa::attach(sema.db, || {
+                resolve_doc_path_for_def(sema.db, cursor_def, &link, ns, is_inner_attr)
+                    .unwrap_or_else(|| panic!("Failed to resolve {link}"))
+            });
             def.try_to_nav(sema.db).unwrap().into_iter().zip(iter::repeat(link))
         })
         .map(|(nav_target, link)| {

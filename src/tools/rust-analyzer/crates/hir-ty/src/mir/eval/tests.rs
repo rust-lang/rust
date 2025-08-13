@@ -5,7 +5,9 @@ use syntax::{TextRange, TextSize};
 use test_fixture::WithFixture;
 
 use crate::display::DisplayTarget;
-use crate::{Interner, Substitution, db::HirDatabase, mir::MirLowerError, test_db::TestDB};
+use crate::{
+    Interner, Substitution, db::HirDatabase, mir::MirLowerError, setup_tracing, test_db::TestDB,
+};
 
 use super::{MirEvalError, interpret_mir};
 
@@ -49,6 +51,7 @@ fn check_pass_and_stdio(
     expected_stdout: &str,
     expected_stderr: &str,
 ) {
+    let _tracing = setup_tracing();
     let (db, file_ids) = TestDB::with_many_files(ra_fixture);
     let file_id = *file_ids.last().unwrap();
     let x = eval_main(&db, file_id);

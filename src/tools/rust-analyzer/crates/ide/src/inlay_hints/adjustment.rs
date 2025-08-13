@@ -411,10 +411,9 @@ fn main() {
     (()) == {()};
   // ^^&
          // ^^^^&
-    let closure: dyn Fn = || ();
+    let closure: &dyn Fn = &|| ();
+                         //^^^^^^<unsize>&*
     closure();
-  //^^^^^^^(&
-  //^^^^^^^)
     Struct[0];
   //^^^^^^(&
   //^^^^^^)
@@ -507,9 +506,10 @@ fn main() {
     (()) == {()};
   // ^^.&
          // ^^^^.&
-    let closure: dyn Fn = || ();
+    let closure: &dyn Fn = &|| ();
+                         //^^^^^^(
+                         //^^^^^^).*.&.<unsize>
     closure();
-  //^^^^^^^.&
     Struct[0];
   //^^^^^^.&
     &mut Struct[0];

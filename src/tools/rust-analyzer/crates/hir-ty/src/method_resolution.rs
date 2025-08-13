@@ -16,22 +16,24 @@ use hir_def::{
 use hir_expand::name::Name;
 use intern::sym;
 use rustc_hash::{FxHashMap, FxHashSet};
+use rustc_type_ir::inherent::{IntoKind, SliceLike};
 use smallvec::{SmallVec, smallvec};
 use stdx::never;
 use triomphe::Arc;
 
 use crate::{
     AdtId, Canonical, CanonicalVarKinds, DebruijnIndex, DynTyExt, ForeignDefId, GenericArgData,
-    Goal, Guidance, InEnvironment, Interner, Mutability, Scalar, Solution, Substitution,
-    TraitEnvironment, TraitRef, TraitRefExt, Ty, TyBuilder, TyExt, TyKind, TyVariableKind,
-    VariableKind, WhereClause,
+    Goal, InEnvironment, Interner, Mutability, Scalar, Substitution, TraitEnvironment, TraitRef,
+    TraitRefExt, Ty, TyBuilder, TyExt, TyKind, TyVariableKind, VariableKind, WhereClause,
     autoderef::{self, AutoderefKind},
     db::HirDatabase,
     error_lifetime, from_chalk_trait_id, from_foreign_def_id,
     infer::{Adjust, Adjustment, OverloadedDeref, PointerCast, unify::InferenceTable},
     lang_items::is_box,
+    next_solver::SolverDefId,
     primitive::{FloatTy, IntTy, UintTy},
     to_chalk_trait_id,
+    traits::NextTraitSolveResult,
     utils::all_super_traits,
 };
 
@@ -43,6 +45,7 @@ pub enum TyFingerprint {
     Slice,
     Array,
     Never,
+    Ref(Mutability),
     RawPtr(Mutability),
     Scalar(Scalar),
     // These can have user-defined impls:
@@ -88,7 +91,7 @@ impl TyFingerprint {
             TyKind::Raw(mutability, ..) => TyFingerprint::RawPtr(*mutability),
             TyKind::Foreign(alias_id, ..) => TyFingerprint::ForeignType(*alias_id),
             TyKind::Dyn(_) => ty.dyn_trait().map(TyFingerprint::Dyn)?,
-            TyKind::Ref(_, _, ty) => return TyFingerprint::for_trait_impl(ty),
+            TyKind::Ref(mutability, _, _) => TyFingerprint::Ref(*mutability),
             TyKind::Tuple(_, subst) => {
                 let first_ty = subst.interned().first().map(|arg| arg.assert_ty_ref(Interner));
                 match first_ty {
@@ -110,6 +113,94 @@ impl TyFingerprint {
             | TyKind::BoundVar(_)
             | TyKind::InferenceVar(_, _)
             | TyKind::Error => return None,
+        };
+        Some(fp)
+    }
+
+    /// Creates a TyFingerprint for looking up a trait impl.
+    pub fn for_trait_impl_ns<'db>(ty: &crate::next_solver::Ty<'db>) -> Option<TyFingerprint> {
+        use rustc_type_ir::TyKind;
+        let fp = match (*ty).kind() {
+            TyKind::Str => TyFingerprint::Str,
+            TyKind::Never => TyFingerprint::Never,
+            TyKind::Slice(..) => TyFingerprint::Slice,
+            TyKind::Array(..) => TyFingerprint::Array,
+            TyKind::Int(int) => TyFingerprint::Scalar(Scalar::Int(match int {
+                rustc_type_ir::IntTy::Isize => IntTy::Isize,
+                rustc_type_ir::IntTy::I8 => IntTy::I8,
+                rustc_type_ir::IntTy::I16 => IntTy::I16,
+                rustc_type_ir::IntTy::I32 => IntTy::I32,
+                rustc_type_ir::IntTy::I64 => IntTy::I64,
+                rustc_type_ir::IntTy::I128 => IntTy::I128,
+            })),
+            TyKind::Uint(uint) => TyFingerprint::Scalar(Scalar::Uint(match uint {
+                rustc_type_ir::UintTy::Usize => UintTy::Usize,
+                rustc_type_ir::UintTy::U8 => UintTy::U8,
+                rustc_type_ir::UintTy::U16 => UintTy::U16,
+                rustc_type_ir::UintTy::U32 => UintTy::U32,
+                rustc_type_ir::UintTy::U64 => UintTy::U64,
+                rustc_type_ir::UintTy::U128 => UintTy::U128,
+            })),
+            TyKind::Float(float) => TyFingerprint::Scalar(Scalar::Float(match float {
+                rustc_type_ir::FloatTy::F16 => FloatTy::F16,
+                rustc_type_ir::FloatTy::F32 => FloatTy::F32,
+                rustc_type_ir::FloatTy::F64 => FloatTy::F64,
+                rustc_type_ir::FloatTy::F128 => FloatTy::F128,
+            })),
+            TyKind::Bool => TyFingerprint::Scalar(Scalar::Bool),
+            TyKind::Char => TyFingerprint::Scalar(Scalar::Char),
+            TyKind::Adt(def, _) => TyFingerprint::Adt(def.inner().id),
+            TyKind::RawPtr(.., mutability) => match mutability {
+                rustc_ast_ir::Mutability::Mut => TyFingerprint::RawPtr(Mutability::Mut),
+                rustc_ast_ir::Mutability::Not => TyFingerprint::RawPtr(Mutability::Not),
+            },
+            TyKind::Foreign(def) => {
+                let SolverDefId::ForeignId(def) = def else { unreachable!() };
+                TyFingerprint::ForeignType(crate::to_foreign_def_id(def))
+            }
+            TyKind::Dynamic(bounds, _, _) => {
+                let trait_ref = bounds
+                    .as_slice()
+                    .iter()
+                    .map(|b| (*b).skip_binder())
+                    .filter_map(|b| match b {
+                        rustc_type_ir::ExistentialPredicate::Trait(t) => Some(t.def_id),
+                        _ => None,
+                    })
+                    .next()?;
+                let trait_id = match trait_ref {
+                    SolverDefId::TraitId(id) => id,
+                    _ => panic!("Bad GenericDefId in trait ref"),
+                };
+                TyFingerprint::Dyn(trait_id)
+            }
+            TyKind::Ref(_, _, mutability) => match mutability {
+                rustc_ast_ir::Mutability::Mut => TyFingerprint::Ref(Mutability::Mut),
+                rustc_ast_ir::Mutability::Not => TyFingerprint::Ref(Mutability::Not),
+            },
+            TyKind::Tuple(tys) => {
+                let first_ty = tys.as_slice().iter().next();
+                match first_ty {
+                    Some(ty) => return TyFingerprint::for_trait_impl_ns(ty),
+                    None => TyFingerprint::Unit,
+                }
+            }
+            TyKind::FnDef(_, _)
+            | TyKind::Closure(_, _)
+            | TyKind::Coroutine(..)
+            | TyKind::CoroutineWitness(..)
+            | TyKind::Pat(..)
+            | TyKind::CoroutineClosure(..) => TyFingerprint::Unnameable,
+            TyKind::FnPtr(sig, _) => {
+                TyFingerprint::Function(sig.inputs().skip_binder().len() as u32)
+            }
+            TyKind::Alias(..)
+            | TyKind::Placeholder(_)
+            | TyKind::Bound(..)
+            | TyKind::Infer(_)
+            | TyKind::Error(_)
+            | TyKind::Param(..)
+            | TyKind::UnsafeBinder(..) => return None,
         };
         Some(fp)
     }
@@ -807,10 +898,13 @@ fn find_matching_impl(
 
             let wcs = crate::chalk_db::convert_where_clauses(db, impl_.into(), &impl_substs)
                 .into_iter()
-                .map(|b| b.cast(Interner));
-            let goal = crate::Goal::all(Interner, wcs);
-            table.try_obligation(goal.clone())?;
-            table.register_obligation(goal);
+                .map(|b| -> Goal { b.cast(Interner) });
+            for goal in wcs {
+                if table.try_obligation(goal.clone()).no_solution() {
+                    return None;
+                }
+                table.register_obligation(goal);
+            }
             Some((impl_.impl_items(db), table.resolve_completely(impl_substs)))
         })
     })
@@ -1313,7 +1407,7 @@ fn iterate_trait_method_candidates(
                 };
             if !known_implemented {
                 let goal = generic_implements_goal(db, &table.trait_env, t, &canonical_self_ty);
-                if db.trait_solve(krate, block, goal.cast(Interner)).is_none() {
+                if db.trait_solve(krate, block, goal.cast(Interner)).no_solution() {
                     continue 'traits;
                 }
             }
@@ -1496,9 +1590,9 @@ pub(crate) fn resolve_indexing_op(
     let deref_chain = autoderef_method_receiver(&mut table, ty);
     for (ty, adj) in deref_chain {
         let goal = generic_implements_goal(db, &table.trait_env, index_trait, &ty);
-        if db
+        if !db
             .trait_solve(table.trait_env.krate, table.trait_env.block, goal.cast(Interner))
-            .is_some()
+            .no_solution()
         {
             return Some(adj);
         }
@@ -1692,7 +1786,7 @@ fn is_valid_impl_fn_candidate(
             );
 
             match solution {
-                Some(Solution::Unique(canonical_subst)) => {
+                NextTraitSolveResult::Certain(canonical_subst) => {
                     canonicalized.apply_solution(
                         table,
                         Canonical {
@@ -1701,16 +1795,13 @@ fn is_valid_impl_fn_candidate(
                         },
                     );
                 }
-                Some(Solution::Ambig(Guidance::Definite(substs))) => {
-                    canonicalized.apply_solution(table, substs);
-                }
-                Some(_) => (),
-                None => return IsValidCandidate::No,
+                NextTraitSolveResult::Uncertain(..) => {}
+                NextTraitSolveResult::NoSolution => return IsValidCandidate::No,
             }
         }
 
         for goal in goals {
-            if table.try_obligation(goal).is_none() {
+            if table.try_obligation(goal).no_solution() {
                 return IsValidCandidate::No;
             }
         }
@@ -1726,9 +1817,7 @@ pub fn implements_trait(
     trait_: TraitId,
 ) -> bool {
     let goal = generic_implements_goal(db, env, trait_, ty);
-    let solution = db.trait_solve(env.krate, env.block, goal.cast(Interner));
-
-    solution.is_some()
+    !db.trait_solve(env.krate, env.block, goal.cast(Interner)).no_solution()
 }
 
 pub fn implements_trait_unique(
@@ -1738,9 +1827,7 @@ pub fn implements_trait_unique(
     trait_: TraitId,
 ) -> bool {
     let goal = generic_implements_goal(db, env, trait_, ty);
-    let solution = db.trait_solve(env.krate, env.block, goal.cast(Interner));
-
-    matches!(solution, Some(crate::Solution::Unique(_)))
+    db.trait_solve(env.krate, env.block, goal.cast(Interner)).certain()
 }
 
 /// This creates Substs for a trait with the given Self type and type variables

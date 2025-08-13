@@ -383,12 +383,17 @@ language_item_table! {
     AsyncFnMut,              sym::async_fn_mut,        async_fn_mut_trait,         Target::Trait,          GenericRequirement::Exact(1);
     AsyncFnOnce,             sym::async_fn_once,       async_fn_once_trait,        Target::Trait,          GenericRequirement::Exact(1);
 
-    AsyncFnOnceOutput,       sym::async_fn_once_output,async_fn_once_output,       Target::AssocTy,        GenericRequirement::None;
+    CallRefFuture,           sym::call_ref_future,     call_ref_future_ty,         Target::AssocTy,        GenericRequirement::None;
+    CallOnceFuture,          sym::call_once_future,    call_once_future_ty,        Target::AssocTy,        GenericRequirement::None;
+    AsyncFnOnceOutput,       sym::async_fn_once_output, async_fn_once_output_ty,   Target::AssocTy,        GenericRequirement::None;
+
     FnOnceOutput,            sym::fn_once_output,      fn_once_output,             Target::AssocTy,        GenericRequirement::None;
 
     Future,                  sym::future_trait,        future_trait,               Target::Trait,          GenericRequirement::Exact(0);
     CoroutineState,          sym::coroutine_state,     coroutine_state,            Target::Enum,           GenericRequirement::None;
     Coroutine,               sym::coroutine,           coroutine_trait,            Target::Trait,          GenericRequirement::Minimum(1);
+    CoroutineReturn,         sym::coroutine_return,    coroutine_return_ty,        Target::AssocTy,        GenericRequirement::None;
+    CoroutineYield,          sym::coroutine_yield,     coroutine_yield_ty,         Target::AssocTy,        GenericRequirement::None;
     Unpin,                   sym::unpin,               unpin_trait,                Target::Trait,          GenericRequirement::None;
     Pin,                     sym::pin,                 pin_type,                   Target::Struct,         GenericRequirement::None;
 

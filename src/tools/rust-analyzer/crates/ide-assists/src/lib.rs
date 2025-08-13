@@ -67,7 +67,7 @@ mod tests;
 pub mod utils;
 
 use hir::Semantics;
-use ide_db::{EditionedFileId, RootDatabase};
+use ide_db::{EditionedFileId, RootDatabase, base_db::salsa};
 use syntax::{Edition, TextRange};
 
 pub(crate) use crate::assist_context::{AssistContext, Assists};
@@ -93,8 +93,11 @@ pub fn assists(
         .unwrap_or_else(|| EditionedFileId::new(db, range.file_id, Edition::CURRENT));
     let ctx = AssistContext::new(sema, config, hir::FileRange { file_id, range: range.range });
     let mut acc = Assists::new(&ctx, resolve);
-    handlers::all().iter().for_each(|handler| {
-        handler(&mut acc, &ctx);
+    // the handlers may invoke trait solving related things which accesses salsa structs outside queries
+    salsa::attach(db, || {
+        handlers::all().iter().for_each(|handler| {
+            handler(&mut acc, &ctx);
+        });
     });
     acc.finish()
 }

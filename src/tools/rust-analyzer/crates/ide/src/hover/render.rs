@@ -10,6 +10,7 @@ use hir::{
 };
 use ide_db::{
     RootDatabase,
+    base_db::salsa,
     defs::Definition,
     documentation::{DocsRangeMap, HasDocs},
     famous_defs::FamousDefs,
@@ -44,7 +45,7 @@ pub(super) fn type_info_of(
         Either::Left(expr) => sema.type_of_expr(expr)?,
         Either::Right(pat) => sema.type_of_pat(pat)?,
     };
-    type_info(sema, _config, ty_info, edition, display_target)
+    salsa::attach(sema.db, || type_info(sema, _config, ty_info, edition, display_target))
 }
 
 pub(super) fn closure_expr(

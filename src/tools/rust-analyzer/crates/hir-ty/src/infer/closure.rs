@@ -3,12 +3,13 @@
 use std::{cmp, convert::Infallible, mem, ops::ControlFlow};
 
 use chalk_ir::{
-    BoundVar, DebruijnIndex, FnSubst, Mutability, TyKind,
+    BoundVar, DebruijnIndex, FnSubst, GenericArg, Mutability, TyKind,
     cast::Cast,
     fold::{FallibleTypeFolder, Shift, TypeFoldable},
     visit::{TypeSuperVisitable, TypeVisitable, TypeVisitor},
 };
 use either::Either;
+use hir_def::Lookup;
 use hir_def::{
     DefWithBodyId, FieldId, HasModule, TupleFieldId, TupleId, VariantId,
     expr_store::path::Path,
@@ -19,8 +20,8 @@ use hir_def::{
     item_tree::FieldsShape,
     lang_item::LangItem,
     resolver::ValueNs,
+    type_ref::TypeRefId,
 };
-use hir_def::{Lookup, type_ref::TypeRefId};
 use hir_expand::name::Name;
 use intern::sym;
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -30,8 +31,8 @@ use syntax::utils::is_raw_identifier;
 
 use crate::{
     Adjust, Adjustment, AliasEq, AliasTy, Binders, BindingMode, ChalkTraitId, ClosureId, DynTy,
-    DynTyExt, FnAbi, FnPointer, FnSig, GenericArg, Interner, OpaqueTy, ProjectionTy,
-    ProjectionTyExt, Substitution, Ty, TyBuilder, TyExt, WhereClause,
+    DynTyExt, FnAbi, FnPointer, FnSig, Interner, OpaqueTy, ProjectionTy, ProjectionTyExt,
+    Substitution, Ty, TyBuilder, TyExt, WhereClause,
     db::{HirDatabase, InternedClosure, InternedCoroutine},
     error_lifetime, from_assoc_type_id, from_chalk_trait_id, from_placeholder_idx,
     generics::Generics,

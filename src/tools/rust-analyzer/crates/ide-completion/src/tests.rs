@@ -26,7 +26,7 @@ mod visibility;
 
 use base_db::SourceDatabase;
 use expect_test::Expect;
-use hir::PrefixKind;
+use hir::{PrefixKind, setup_tracing};
 use ide_db::{
     FilePosition, RootDatabase, SnippetCap,
     imports::insert_use::{ImportGranularity, InsertUseConfig},
@@ -120,6 +120,8 @@ fn completion_list_with_config_raw(
     include_keywords: bool,
     trigger_character: Option<char>,
 ) -> Vec<CompletionItem> {
+    let _tracing = setup_tracing();
+
     // filter out all but one built-in type completion for smaller test outputs
     let items = get_all_items(config, ra_fixture, trigger_character);
     items

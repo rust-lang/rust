@@ -733,7 +733,7 @@ fn signature_help_for_tuple_pat_ish<'db>(
 mod tests {
 
     use expect_test::{Expect, expect};
-    use ide_db::FilePosition;
+    use ide_db::{FilePosition, base_db::salsa};
     use stdx::format_to;
     use test_fixture::ChangeFixture;
 
@@ -762,7 +762,7 @@ mod tests {
             "#
         );
         let (db, position) = position(&fixture);
-        let sig_help = crate::signature_help::signature_help(&db, position);
+        let sig_help = salsa::attach(&db, || crate::signature_help::signature_help(&db, position));
         let actual = match sig_help {
             Some(sig_help) => {
                 let mut rendered = String::new();

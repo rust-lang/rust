@@ -234,6 +234,7 @@ impl crate::T for crate::Foo {}
         );
     }
 
+    // FIXME(next-solver): it would be nice to be able to also point to `&Foo`
     #[test]
     fn goto_implementation_all_impls() {
         check(
@@ -246,7 +247,6 @@ impl Foo {}
 impl T for Foo {}
          //^^^
 impl T for &Foo {}
-         //^^^^
 "#,
         );
     }

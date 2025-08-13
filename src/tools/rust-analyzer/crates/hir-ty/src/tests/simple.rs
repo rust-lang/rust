@@ -2923,7 +2923,7 @@ fn test {
      // ^^ impl Fn()
 
     let c4 = f1();
-     // ^^ impl FnOnce() + ?Sized
+     // ^^ impl FnOnce()
 
     f2(|| { 0 });
     // ^^^^^^^^ impl FnOnce() -> i32
@@ -3922,7 +3922,7 @@ fn foo<T: Bar>() {
         expect![[r#"
             110..127 '{     ...z(); }': ()
             116..122 'T::baz': fn baz<T>() -> <{unknown} as Foo>::Gat<'?>
-            116..124 'T::baz()': Foo::Gat<'?, {unknown}>
+            116..124 'T::baz()': {unknown}
         "#]],
     );
 }

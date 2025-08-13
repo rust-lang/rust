@@ -10,7 +10,7 @@ use hir::{
 };
 use ide_db::{
     RootDatabase, SymbolKind,
-    base_db::{AnchoredPath, SourceDatabase},
+    base_db::{AnchoredPath, SourceDatabase, salsa},
     defs::{Definition, IdentClass},
     famous_defs::FamousDefs,
     helpers::pick_best_token,
@@ -108,7 +108,7 @@ pub(crate) fn goto_definition(
             }
 
             Some(
-                IdentClass::classify_node(sema, &parent)?
+                salsa::attach(sema.db, || IdentClass::classify_node(sema, &parent))?
                     .definitions()
                     .into_iter()
                     .flat_map(|(def, _)| {

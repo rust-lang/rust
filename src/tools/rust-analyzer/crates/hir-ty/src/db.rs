@@ -17,7 +17,7 @@ use smallvec::SmallVec;
 use triomphe::Arc;
 
 use crate::{
-    Binders, Const, ImplTraitId, ImplTraits, InferenceResult, Interner, PolyFnSig, Substitution,
+    Binders, Const, ImplTraitId, ImplTraits, InferenceResult, PolyFnSig, Substitution,
     TraitEnvironment, TraitRef, Ty, TyDefId, ValueTyDefId, chalk_db,
     consteval::ConstEvalError,
     drop::DropGlue,
@@ -26,6 +26,7 @@ use crate::{
     lower::{Diagnostics, GenericDefaults, GenericPredicates},
     method_resolution::{InherentImpls, TraitImpls, TyFingerprint},
     mir::{BorrowckResult, MirBody, MirLowerError},
+    traits::NextTraitSolveResult,
 };
 
 #[query_group::query_group]
@@ -295,24 +296,162 @@ pub trait HirDatabase: DefDatabase + std::fmt::Debug {
     ) -> Ty;
 
     #[salsa::invoke(crate::traits::trait_solve_query)]
+    #[salsa::transparent]
     fn trait_solve(
         &self,
         krate: Crate,
         block: Option<BlockId>,
         goal: crate::Canonical<crate::InEnvironment<crate::Goal>>,
-    ) -> Option<crate::Solution>;
-
-    #[salsa::invoke(chalk_db::program_clauses_for_chalk_env_query)]
-    fn program_clauses_for_chalk_env(
-        &self,
-        krate: Crate,
-        block: Option<BlockId>,
-        env: chalk_ir::Environment<Interner>,
-    ) -> chalk_ir::ProgramClauses<Interner>;
+    ) -> NextTraitSolveResult;
 
     #[salsa::invoke(crate::drop::has_drop_glue)]
     #[salsa::cycle(cycle_result = crate::drop::has_drop_glue_cycle_result)]
     fn has_drop_glue(&self, ty: Ty, env: Arc<TraitEnvironment>) -> DropGlue;
+
+    // next trait solver
+
+    #[salsa::invoke(crate::layout::layout_of_adt_ns_query)]
+    #[salsa::cycle(cycle_result = crate::layout::layout_of_adt_ns_cycle_result)]
+    fn layout_of_adt_ns<'db>(
+        &'db self,
+        def: AdtId,
+        args: crate::next_solver::GenericArgs<'db>,
+        trait_env: Arc<TraitEnvironment>,
+    ) -> Result<Arc<Layout>, LayoutError>;
+
+    #[salsa::invoke(crate::layout::layout_of_ty_ns_query)]
+    #[salsa::cycle(cycle_result = crate::layout::layout_of_ty_ns_cycle_result)]
+    fn layout_of_ty_ns<'db>(
+        &'db self,
+        ty: crate::next_solver::Ty<'db>,
+        env: Arc<TraitEnvironment>,
+    ) -> Result<Arc<Layout>, LayoutError>;
+
+    #[salsa::invoke(crate::lower_nextsolver::ty_query)]
+    #[salsa::transparent]
+    fn ty_ns<'db>(
+        &'db self,
+        def: TyDefId,
+    ) -> crate::next_solver::EarlyBinder<'db, crate::next_solver::Ty<'db>>;
+
+    #[salsa::invoke(crate::lower_nextsolver::type_for_type_alias_with_diagnostics_query)]
+    #[salsa::cycle(cycle_result = crate::lower_nextsolver::type_for_type_alias_with_diagnostics_cycle_result)]
+    fn type_for_type_alias_with_diagnostics_ns<'db>(
+        &'db self,
+        def: TypeAliasId,
+    ) -> (crate::next_solver::EarlyBinder<'db, crate::next_solver::Ty<'db>>, Diagnostics);
+
+    #[salsa::invoke(crate::lower_nextsolver::impl_self_ty_with_diagnostics_query)]
+    #[salsa::cycle(cycle_result = crate::lower_nextsolver::impl_self_ty_with_diagnostics_cycle_result)]
+    fn impl_self_ty_with_diagnostics_ns<'db>(
+        &'db self,
+        def: ImplId,
+    ) -> (crate::next_solver::EarlyBinder<'db, crate::next_solver::Ty<'db>>, Diagnostics);
+
+    #[salsa::invoke(crate::lower_nextsolver::impl_self_ty_query)]
+    #[salsa::transparent]
+    fn impl_self_ty_ns<'db>(
+        &'db self,
+        def: ImplId,
+    ) -> crate::next_solver::EarlyBinder<'db, crate::next_solver::Ty<'db>>;
+
+    // FIXME: Make this a non-interned query.
+    #[salsa::invoke_interned(crate::lower_nextsolver::const_param_ty_with_diagnostics_query)]
+    fn const_param_ty_with_diagnostics_ns<'db>(
+        &'db self,
+        def: ConstParamId,
+    ) -> (crate::next_solver::Ty<'db>, Diagnostics);
+
+    #[salsa::invoke(crate::lower_nextsolver::const_param_ty_query)]
+    #[salsa::transparent]
+    fn const_param_ty_ns<'db>(&'db self, def: ConstParamId) -> crate::next_solver::Ty<'db>;
+
+    #[salsa::invoke(crate::lower_nextsolver::impl_trait_with_diagnostics_query)]
+    fn impl_trait_with_diagnostics_ns<'db>(
+        &'db self,
+        def: ImplId,
+    ) -> Option<(
+        crate::next_solver::EarlyBinder<'db, crate::next_solver::TraitRef<'db>>,
+        Diagnostics,
+    )>;
+
+    #[salsa::invoke(crate::lower_nextsolver::impl_trait_query)]
+    #[salsa::transparent]
+    fn impl_trait_ns<'db>(
+        &'db self,
+        def: ImplId,
+    ) -> Option<crate::next_solver::EarlyBinder<'db, crate::next_solver::TraitRef<'db>>>;
+
+    #[salsa::invoke(crate::lower_nextsolver::field_types_with_diagnostics_query)]
+    fn field_types_with_diagnostics_ns<'db>(
+        &'db self,
+        var: VariantId,
+    ) -> (
+        Arc<
+            ArenaMap<
+                LocalFieldId,
+                crate::next_solver::EarlyBinder<'db, crate::next_solver::Ty<'db>>,
+            >,
+        >,
+        Diagnostics,
+    );
+
+    #[salsa::invoke(crate::lower_nextsolver::field_types_query)]
+    #[salsa::transparent]
+    fn field_types_ns<'db>(
+        &'db self,
+        var: VariantId,
+    ) -> Arc<
+        ArenaMap<LocalFieldId, crate::next_solver::EarlyBinder<'db, crate::next_solver::Ty<'db>>>,
+    >;
+
+    #[salsa::invoke(crate::lower_nextsolver::callable_item_signature_query)]
+    fn callable_item_signature_ns<'db>(
+        &'db self,
+        def: CallableDefId,
+    ) -> crate::next_solver::EarlyBinder<'db, crate::next_solver::PolyFnSig<'db>>;
+
+    #[salsa::invoke(crate::lower_nextsolver::return_type_impl_traits)]
+    fn return_type_impl_traits_ns<'db>(
+        &'db self,
+        def: FunctionId,
+    ) -> Option<Arc<crate::next_solver::EarlyBinder<'db, crate::lower_nextsolver::ImplTraits<'db>>>>;
+
+    #[salsa::invoke(crate::lower_nextsolver::type_alias_impl_traits)]
+    fn type_alias_impl_traits_ns<'db>(
+        &'db self,
+        def: TypeAliasId,
+    ) -> Option<Arc<crate::next_solver::EarlyBinder<'db, crate::lower_nextsolver::ImplTraits<'db>>>>;
+
+    #[salsa::invoke(crate::lower_nextsolver::generic_predicates_for_param_query)]
+    #[salsa::cycle(cycle_result = crate::lower_nextsolver::generic_predicates_for_param_cycle_result)]
+    fn generic_predicates_for_param_ns<'db>(
+        &'db self,
+        def: GenericDefId,
+        param_id: TypeOrConstParamId,
+        assoc_name: Option<Name>,
+    ) -> crate::lower_nextsolver::GenericPredicates<'db>;
+
+    #[salsa::invoke(crate::lower_nextsolver::generic_predicates_query)]
+    fn generic_predicates_ns<'db>(
+        &'db self,
+        def: GenericDefId,
+    ) -> crate::lower_nextsolver::GenericPredicates<'db>;
+
+    #[salsa::invoke(
+        crate::lower_nextsolver::generic_predicates_without_parent_with_diagnostics_query
+    )]
+    fn generic_predicates_without_parent_with_diagnostics_ns<'db>(
+        &'db self,
+        def: GenericDefId,
+    ) -> (crate::lower_nextsolver::GenericPredicates<'db>, Diagnostics);
+
+    #[salsa::invoke(crate::lower_nextsolver::generic_predicates_without_parent_query)]
+    #[salsa::transparent]
+    fn generic_predicates_without_parent_ns<'db>(
+        &'db self,
+        def: GenericDefId,
+    ) -> crate::lower_nextsolver::GenericPredicates<'db>;
 }
 
 #[test]

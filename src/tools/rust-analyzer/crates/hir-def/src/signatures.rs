@@ -395,7 +395,7 @@ impl ImplSignature {
 
 bitflags::bitflags! {
     #[derive(Debug, Clone, Copy, Eq, PartialEq, Default)]
-    pub struct TraitFlags: u8 {
+    pub struct TraitFlags: u16 {
         const RUSTC_HAS_INCOHERENT_INHERENT_IMPLS = 1 << 1;
         const FUNDAMENTAL = 1 << 2;
         const UNSAFE = 1 << 3;
@@ -403,6 +403,7 @@ bitflags::bitflags! {
         const SKIP_ARRAY_DURING_METHOD_DISPATCH = 1 << 5;
         const SKIP_BOXED_SLICE_DURING_METHOD_DISPATCH = 1 << 6;
         const RUSTC_PAREN_SUGAR = 1 << 7;
+        const COINDUCTIVE = 1 << 8;
     }
 }
 
@@ -435,6 +436,9 @@ impl TraitSignature {
         }
         if attrs.by_key(sym::rustc_paren_sugar).exists() {
             flags |= TraitFlags::RUSTC_PAREN_SUGAR;
+        }
+        if attrs.by_key(sym::rustc_coinductive).exists() {
+            flags |= TraitFlags::COINDUCTIVE;
         }
         let mut skip_array_during_method_dispatch =
             attrs.by_key(sym::rustc_skip_array_during_method_dispatch).exists();

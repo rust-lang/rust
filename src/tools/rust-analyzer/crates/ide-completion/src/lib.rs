@@ -10,6 +10,7 @@ mod snippet;
 #[cfg(test)]
 mod tests;
 
+use base_db::salsa;
 use ide_db::{
     FilePosition, FxHashSet, RootDatabase,
     imports::insert_use::{self, ImportScope},
@@ -228,7 +229,7 @@ pub fn completions(
     {
         let acc = &mut completions;
 
-        match analysis {
+        salsa::attach(db, || match analysis {
             CompletionAnalysis::Name(name_ctx) => completions::complete_name(acc, ctx, name_ctx),
             CompletionAnalysis::NameRef(name_ref_ctx) => {
                 completions::complete_name_ref(acc, ctx, name_ref_ctx)
@@ -256,7 +257,7 @@ pub fn completions(
                 );
             }
             CompletionAnalysis::UnexpandedAttrTT { .. } | CompletionAnalysis::String { .. } => (),
-        }
+        })
     }
 
     Some(completions.into())
