@@ -3,7 +3,7 @@
 
 use std::sync;
 
-use base_db::{Crate, impl_intern_key};
+use base_db::Crate;
 use hir_def::{
     AdtId, BlockId, CallableDefId, ConstParamId, DefWithBodyId, EnumVariantId, FunctionId,
     GeneralConstId, GenericDefId, ImplId, LifetimeParamId, LocalFieldId, StaticId, TraitId,
@@ -459,40 +459,44 @@ fn hir_database_is_dyn_compatible() {
     fn _assert_dyn_compatible(_: &dyn HirDatabase) {}
 }
 
-#[salsa_macros::interned(no_lifetime, revisions = usize::MAX)]
+#[salsa_macros::interned(no_lifetime, debug, revisions = usize::MAX)]
 #[derive(PartialOrd, Ord)]
 pub struct InternedTypeOrConstParamId {
     pub loc: TypeOrConstParamId,
 }
-impl ::std::fmt::Debug for InternedTypeOrConstParamId {
-    fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
-        f.debug_tuple(stringify!(InternedTypeOrConstParamId))
-            .field(&format_args!("{:04x}", self.0.index()))
-            .finish()
-    }
-}
 
-#[salsa_macros::interned(no_lifetime, revisions = usize::MAX)]
+#[salsa_macros::interned(no_lifetime, debug, revisions = usize::MAX)]
 #[derive(PartialOrd, Ord)]
 pub struct InternedLifetimeParamId {
     pub loc: LifetimeParamId,
 }
-impl ::std::fmt::Debug for InternedLifetimeParamId {
-    fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
-        f.debug_tuple(stringify!(InternedLifetimeParamId))
-            .field(&format_args!("{:04x}", self.0.index()))
-            .finish()
-    }
+
+#[salsa_macros::interned(no_lifetime, debug, revisions = usize::MAX)]
+#[derive(PartialOrd, Ord)]
+pub struct InternedConstParamId {
+    pub loc: ConstParamId,
 }
 
-impl_intern_key!(InternedConstParamId, ConstParamId);
-
-impl_intern_key!(InternedOpaqueTyId, ImplTraitId);
+#[salsa_macros::interned(no_lifetime, debug, revisions = usize::MAX)]
+#[derive(PartialOrd, Ord)]
+pub struct InternedOpaqueTyId {
+    pub loc: ImplTraitId,
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct InternedClosure(pub DefWithBodyId, pub ExprId);
-impl_intern_key!(InternedClosureId, InternedClosure);
+
+#[salsa_macros::interned(no_lifetime, debug, revisions = usize::MAX)]
+#[derive(PartialOrd, Ord)]
+pub struct InternedClosureId {
+    pub loc: InternedClosure,
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct InternedCoroutine(pub DefWithBodyId, pub ExprId);
-impl_intern_key!(InternedCoroutineId, InternedCoroutine);
+
+#[salsa_macros::interned(no_lifetime, debug, revisions = usize::MAX)]
+#[derive(PartialOrd, Ord)]
+pub struct InternedCoroutineId {
+    pub loc: InternedCoroutine,
+}
