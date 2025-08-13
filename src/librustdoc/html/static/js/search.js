@@ -2060,7 +2060,9 @@ class DocSearch {
             // Deprecated and unstable items and items with no description
             this.searchIndexDeprecated.set(crate, new RoaringBitmap(crateCorpus.c));
             this.searchIndexEmptyDesc.set(crate, new RoaringBitmap(crateCorpus.e));
-            this.searchIndexUnstable.set(crate, new RoaringBitmap(crateCorpus.u));
+            if (crateCorpus.u !== undefined && crateCorpus.u !== null) {
+                this.searchIndexUnstable.set(crate, new RoaringBitmap(crateCorpus.u));
+            }
             let descIndex = 0;
 
             /**
