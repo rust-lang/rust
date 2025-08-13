@@ -6,7 +6,7 @@ use rustc_middle::ty::{self, TypingMode};
 use rustc_span::DUMMY_SP;
 use rustc_span::def_id::DefId;
 use rustc_trait_selection::traits::{self, query::evaluate_obligation::InferCtxtExt};
-use tracing::{debug, instrument, trace};
+use tracing::{debug, instrument};
 
 use crate::clean;
 use crate::clean::{
@@ -22,6 +22,9 @@ pub(crate) fn synthesize_blanket_impls(
     let tcx = cx.tcx;
     let ty = tcx.type_of(item_def_id);
 
+    let infcx =
+        tcx.infer_ctxt().with_next_trait_solver(true).build(TypingMode::non_body_analysis());
+
     let mut blanket_impls = Vec::new();
     for trait_def_id in tcx.visible_traits() {
         if !cx.cache.effective_visibilities.is_reachable(tcx, trait_def_id)
@@ -32,16 +35,10 @@ pub(crate) fn synthesize_blanket_impls(
         // NOTE: doesn't use `for_each_relevant_impl` to avoid looking at anything besides blanket impls
         let trait_impls = tcx.trait_impls_of(trait_def_id);
         for &impl_def_id in trait_impls.blanket_impls() {
-            trace!("considering impl `{impl_def_id:?}` for trait `{trait_def_id:?}`");
-
             let trait_ref = tcx.impl_trait_ref(impl_def_id);
-            if !matches!(trait_ref.skip_binder().self_ty().kind(), ty::Param(_)) {
-                continue;
-            }
-            let infcx = tcx
-                .infer_ctxt()
-                .with_next_trait_solver(true)
-                .build(TypingMode::non_body_analysis());
+
+            let ty::Param(_) = trait_ref.skip_binder().self_ty().kind() else { continue };
+
             let ocx = traits::ObligationCtxt::new(&infcx);
 
             let args = infcx.fresh_args_for_item(DUMMY_SP, item_def_id);
