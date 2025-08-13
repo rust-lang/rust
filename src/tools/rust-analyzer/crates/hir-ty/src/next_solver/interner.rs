@@ -626,8 +626,7 @@ impl<'db> inherent::AdtDef<DbInterner<'db>> for AdtDef {
     fn struct_tail_ty(
         self,
         interner: DbInterner<'db>,
-    ) -> Option<EarlyBinder<DbInterner<'db>, <DbInterner<'db> as rustc_type_ir::Interner>::Ty>>
-    {
+    ) -> Option<EarlyBinder<DbInterner<'db>, Ty<'db>>> {
         let db = interner.db();
         let hir_def::AdtId::StructId(struct_id) = self.inner().id else {
             return None;
@@ -641,10 +640,7 @@ impl<'db> inherent::AdtDef<DbInterner<'db>> for AdtDef {
     fn all_field_tys(
         self,
         interner: DbInterner<'db>,
-    ) -> EarlyBinder<
-        DbInterner<'db>,
-        impl IntoIterator<Item = <DbInterner<'db> as rustc_type_ir::Interner>::Ty>,
-    > {
+    ) -> EarlyBinder<DbInterner<'db>, impl IntoIterator<Item = Ty<'db>>> {
         let db = interner.db();
         // FIXME: this is disabled just to match the behavior with chalk right now
         let field_tys = |id: VariantId| {
@@ -682,8 +678,7 @@ impl<'db> inherent::AdtDef<DbInterner<'db>> for AdtDef {
         self,
         interner: DbInterner<'db>,
         sizedness: SizedTraitKind,
-    ) -> Option<EarlyBinder<DbInterner<'db>, <DbInterner<'db> as rustc_type_ir::Interner>::Ty>>
-    {
+    ) -> Option<EarlyBinder<DbInterner<'db>, Ty<'db>>> {
         if self.is_struct() {
             let tail_ty = self.all_field_tys(interner).skip_binder().into_iter().last()?;
 
