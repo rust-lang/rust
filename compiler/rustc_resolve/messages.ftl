@@ -242,6 +242,9 @@ resolve_lowercase_self =
     attempt to use a non-constant value in a constant
     .suggestion = try using `Self`
 
+resolve_macro_cannot_use_as_fn_like =
+    `{$ident}` exists, but has no rules for function-like invocation
+
 resolve_macro_cannot_use_as_attr =
     `{$ident}` exists, but has no `attr` rules
 
