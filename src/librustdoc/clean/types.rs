@@ -665,11 +665,11 @@ impl Item {
                 // won't be printing correct syntax plus the syntax is unstable.
                 match tcx.opt_associated_item(def_id) {
                     Some(ty::AssocItem {
-                        container: ty::AssocItemContainer::Impl,
+                        container: ty::AssocContainer::Impl,
                         trait_item_def_id: Some(_),
                         ..
                     })
-                    | Some(ty::AssocItem { container: ty::AssocItemContainer::Trait, .. }) => {
+                    | Some(ty::AssocItem { container: ty::AssocContainer::Trait, .. }) => {
                         hir::Constness::NotConst
                     }
                     None | Some(_) => hir::Constness::Const,
@@ -752,8 +752,8 @@ impl Item {
             | MethodItem(..) => {
                 let assoc_item = tcx.associated_item(def_id);
                 let is_trait_item = match assoc_item.container {
-                    ty::AssocItemContainer::Trait => true,
-                    ty::AssocItemContainer::Impl => {
+                    ty::AssocContainer::Trait => true,
+                    ty::AssocContainer::Impl => {
                         // Trait impl items always inherit the impl's visibility --
                         // we don't want to show `pub`.
                         tcx.impl_trait_ref(tcx.parent(assoc_item.def_id)).is_some()

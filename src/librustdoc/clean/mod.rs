@@ -1297,12 +1297,12 @@ pub(crate) fn clean_middle_assoc_item(assoc_item: &ty::AssocItem, cx: &mut DocCo
             simplify::move_bounds_to_generic_parameters(&mut generics);
 
             match assoc_item.container {
-                ty::AssocItemContainer::Impl => ImplAssocConstItem(Box::new(Constant {
+                ty::AssocContainer::Impl => ImplAssocConstItem(Box::new(Constant {
                     generics,
                     kind: ConstantKind::Extern { def_id: assoc_item.def_id },
                     type_: ty,
                 })),
-                ty::AssocItemContainer::Trait => {
+                ty::AssocContainer::Trait => {
                     if tcx.defaultness(assoc_item.def_id).has_value() {
                         ProvidedAssocConstItem(Box::new(Constant {
                             generics,
@@ -1320,10 +1320,10 @@ pub(crate) fn clean_middle_assoc_item(assoc_item: &ty::AssocItem, cx: &mut DocCo
 
             if has_self {
                 let self_ty = match assoc_item.container {
-                    ty::AssocItemContainer::Impl => {
+                    ty::AssocContainer::Impl => {
                         tcx.type_of(assoc_item.container_id(tcx)).instantiate_identity()
                     }
-                    ty::AssocItemContainer::Trait => tcx.types.self_param,
+                    ty::AssocContainer::Trait => tcx.types.self_param,
                 };
                 let self_param_ty =
                     tcx.fn_sig(assoc_item.def_id).instantiate_identity().input(0).skip_binder();
@@ -1340,13 +1340,13 @@ pub(crate) fn clean_middle_assoc_item(assoc_item: &ty::AssocItem, cx: &mut DocCo
             }
 
             let provided = match assoc_item.container {
-                ty::AssocItemContainer::Impl => true,
-                ty::AssocItemContainer::Trait => assoc_item.defaultness(tcx).has_value(),
+                ty::AssocContainer::Impl => true,
+                ty::AssocContainer::Trait => assoc_item.defaultness(tcx).has_value(),
             };
             if provided {
                 let defaultness = match assoc_item.container {
-                    ty::AssocItemContainer::Impl => Some(assoc_item.defaultness(tcx)),
-                    ty::AssocItemContainer::Trait => None,
+                    ty::AssocContainer::Impl => Some(assoc_item.defaultness(tcx)),
+                    ty::AssocContainer::Trait => None,
                 };
                 MethodItem(item, defaultness)
             } else {
@@ -1377,7 +1377,7 @@ pub(crate) fn clean_middle_assoc_item(assoc_item: &ty::AssocItem, cx: &mut DocCo
             }
 
             let mut predicates = tcx.explicit_predicates_of(assoc_item.def_id).predicates;
-            if let ty::AssocItemContainer::Trait = assoc_item.container {
+            if let ty::AssocContainer::Trait = assoc_item.container {
                 let bounds = tcx.explicit_item_bounds(assoc_item.def_id).iter_identity_copied();
                 predicates = tcx.arena.alloc_from_iter(bounds.chain(predicates.iter().copied()));
             }
@@ -1388,7 +1388,7 @@ pub(crate) fn clean_middle_assoc_item(assoc_item: &ty::AssocItem, cx: &mut DocCo
             );
             simplify::move_bounds_to_generic_parameters(&mut generics);
 
-            if let ty::AssocItemContainer::Trait = assoc_item.container {
+            if let ty::AssocContainer::Trait = assoc_item.container {
                 // Move bounds that are (likely) directly attached to the associated type
                 // from the where-clause to the associated type.
                 // There is no guarantee that this is what the user actually wrote but we have

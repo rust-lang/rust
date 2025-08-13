@@ -313,7 +313,7 @@ trivial! {
     rustc_middle::traits::WellFormedLoc,
     rustc_middle::ty::adjustment::CoerceUnsizedInfo,
     rustc_middle::ty::AssocItem,
-    rustc_middle::ty::AssocItemContainer,
+    rustc_middle::ty::AssocContainer,
     rustc_middle::ty::Asyncness,
     rustc_middle::ty::AsyncDestructor,
     rustc_middle::ty::BoundVariableKind,

@@ -853,11 +853,11 @@ fn foo(&self) -> Self::T { String::new() }
                     && self.infcx.can_eq(param_env, assoc_ty, found)
                 {
                     let msg = match assoc_item.container {
-                        ty::AssocItemContainer::Trait => {
+                        ty::AssocContainer::Trait => {
                             "associated type defaults can't be assumed inside the \
                                             trait defining them"
                         }
-                        ty::AssocItemContainer::Impl => {
+                        ty::AssocContainer::Impl => {
                             "associated type is `default` and may be overridden"
                         }
                     };

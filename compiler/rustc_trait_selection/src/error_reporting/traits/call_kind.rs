@@ -5,7 +5,7 @@
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{LangItem, lang_items};
-use rustc_middle::ty::{AssocItemContainer, GenericArgsRef, Instance, Ty, TyCtxt, TypingEnv};
+use rustc_middle::ty::{AssocContainer, GenericArgsRef, Instance, Ty, TyCtxt, TypingEnv};
 use rustc_span::{DUMMY_SP, DesugaringKind, Ident, Span, sym};
 use tracing::debug;
 
@@ -76,8 +76,8 @@ pub fn call_kind<'tcx>(
     let parent = tcx.opt_associated_item(method_did).and_then(|assoc| {
         let container_id = assoc.container_id(tcx);
         match assoc.container {
-            AssocItemContainer::Impl => tcx.trait_id_of_impl(container_id),
-            AssocItemContainer::Trait => Some(container_id),
+            AssocContainer::Impl => tcx.trait_id_of_impl(container_id),
+            AssocContainer::Trait => Some(container_id),
         }
     });
 
