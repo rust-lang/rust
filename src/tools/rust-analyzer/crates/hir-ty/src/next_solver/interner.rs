@@ -289,7 +289,7 @@ impl<'db> DbInterner<'db> {
             krate: None,
             block: None,
         })
-        .unwrap()
+        .expect("db is expected to be attached")
     }
 
     pub fn new_with(
