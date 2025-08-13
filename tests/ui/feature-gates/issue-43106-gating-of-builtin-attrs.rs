@@ -71,6 +71,7 @@
 //~^^ WARN this was previously accepted by the compiler
 #![must_use]
 //~^ WARN `#[must_use]` has no effect
+//~| HELP remove the attribute
 // see issue-43106-gating-of-stable.rs
 // see issue-43106-gating-of-unstable.rs
 // see issue-43106-gating-of-deprecated.rs
@@ -599,16 +600,20 @@ mod deprecated {
 }
 
 #[must_use] //~ WARN `#[must_use]` has no effect
+//~^ HELP remove the attribute
 mod must_use {
     mod inner { #![must_use] } //~ WARN `#[must_use]` has no effect
+    //~^ HELP remove the attribute
 
     #[must_use] fn f() { }
 
     #[must_use] struct S;
 
     #[must_use] type T = S; //~ WARN `#[must_use]` has no effect
+    //~^ HELP remove the attribute
 
     #[must_use] impl S { } //~ WARN `#[must_use]` has no effect
+    //~^ HELP remove the attribute
 }
 
 #[windows_subsystem = "windows"]

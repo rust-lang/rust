@@ -1622,7 +1622,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             UNUSED_ATTRIBUTES,
             hir_id,
             attr_span,
-            errors::MustUseNoEffect { article, target },
+            errors::MustUseNoEffect { article, target, attr_span },
         );
     }
 

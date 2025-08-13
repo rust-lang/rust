@@ -2155,6 +2155,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                             attr_name,
                             macro_name: pprust::path_to_string(&call.path),
                             invoc_span: call.path.span,
+                            attr_span: attr.span,
                         },
                     );
                 }
