@@ -13,7 +13,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::intern::Interned;
 use rustc_errors::{Applicability, Diag, DiagMessage};
 use rustc_hir::def::Namespace::*;
-use rustc_hir::def::{DefKind, Namespace, PerNS};
+use rustc_hir::def::{DefKind, MacroKinds, Namespace, PerNS};
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LOCAL_CRATE};
 use rustc_hir::{Mutability, Safety};
 use rustc_middle::ty::{Ty, TyCtxt};
@@ -25,7 +25,6 @@ use rustc_resolve::rustdoc::{
 use rustc_session::config::CrateType;
 use rustc_session::lint::Lint;
 use rustc_span::BytePos;
-use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{Ident, Symbol, sym};
 use smallvec::{SmallVec, smallvec};
 use tracing::{debug, info, instrument, trace};
@@ -115,9 +114,11 @@ impl Res {
 
         let prefix = match kind {
             DefKind::Fn | DefKind::AssocFn => return Suggestion::Function,
-            DefKind::Macro(MacroKind::Bang) => return Suggestion::Macro,
+            // FIXME: handle macros with multiple kinds, and attribute/derive macros that aren't
+            // proc macros
+            DefKind::Macro(MacroKinds::BANG) => return Suggestion::Macro,
 
-            DefKind::Macro(MacroKind::Derive) => "derive",
+            DefKind::Macro(MacroKinds::DERIVE) => "derive",
             DefKind::Struct => "struct",
             DefKind::Enum => "enum",
             DefKind::Trait => "trait",
@@ -881,9 +882,12 @@ fn trait_impls_for<'a>(
 fn is_derive_trait_collision<T>(ns: &PerNS<Result<Vec<(Res, T)>, ResolutionFailure<'_>>>) -> bool {
     if let (Ok(type_ns), Ok(macro_ns)) = (&ns.type_ns, &ns.macro_ns) {
         type_ns.iter().any(|(res, _)| matches!(res, Res::Def(DefKind::Trait, _)))
-            && macro_ns
-                .iter()
-                .any(|(res, _)| matches!(res, Res::Def(DefKind::Macro(MacroKind::Derive), _)))
+            && macro_ns.iter().any(|(res, _)| {
+                matches!(
+                    res,
+                    Res::Def(DefKind::Macro(kinds), _) if kinds.contains(MacroKinds::DERIVE)
+                )
+            })
     } else {
         false
     }
@@ -1674,11 +1678,11 @@ impl Disambiguator {
 
         let suffixes = [
             // If you update this list, please also update the relevant rustdoc book section!
-            ("!()", DefKind::Macro(MacroKind::Bang)),
-            ("!{}", DefKind::Macro(MacroKind::Bang)),
-            ("![]", DefKind::Macro(MacroKind::Bang)),
+            ("!()", DefKind::Macro(MacroKinds::BANG)),
+            ("!{}", DefKind::Macro(MacroKinds::BANG)),
+            ("![]", DefKind::Macro(MacroKinds::BANG)),
             ("()", DefKind::Fn),
-            ("!", DefKind::Macro(MacroKind::Bang)),
+            ("!", DefKind::Macro(MacroKinds::BANG)),
         ];
 
         if let Some(idx) = link.find('@') {
@@ -1697,7 +1701,7 @@ impl Disambiguator {
                     safety: Safety::Safe,
                 }),
                 "function" | "fn" | "method" => Kind(DefKind::Fn),
-                "derive" => Kind(DefKind::Macro(MacroKind::Derive)),
+                "derive" => Kind(DefKind::Macro(MacroKinds::DERIVE)),
                 "field" => Kind(DefKind::Field),
                 "variant" => Kind(DefKind::Variant),
                 "type" => NS(Namespace::TypeNS),
