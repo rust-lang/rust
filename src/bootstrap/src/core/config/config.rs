@@ -868,14 +868,14 @@ impl Config {
         build_jobs = flags_jobs.or(build_jobs);
         build_build = flags_build.or(build_build);
 
-        let build_dir = flags_build_dir.or(build_build_dir.map(PathBuf::from));
-        let host = if let Some(TargetSelectionList(hosts)) = flags_host {
+        let build_dir_ = flags_build_dir.or(build_build_dir.map(PathBuf::from));
+        let host_ = if let Some(TargetSelectionList(hosts)) = flags_host {
             Some(hosts)
         } else {
             build_host
                 .map(|file_host| file_host.iter().map(|h| TargetSelection::from_user(h)).collect())
         };
-        let target = if let Some(TargetSelectionList(targets)) = flags_target {
+        let target_ = if let Some(TargetSelectionList(targets)) = flags_target {
             Some(targets)
         } else {
             build_target.map(|file_target| {
@@ -971,7 +971,7 @@ impl Config {
             host_target = TargetSelection::from_user(&build);
         }
 
-        set(&mut out, build_dir);
+        set(&mut out, build_dir_);
         // NOTE: Bootstrap spawns various commands with different working directories.
         // To avoid writing to random places on the file system, `config.out` needs to be an absolute path.
         if !out.is_absolute() {
@@ -1051,8 +1051,8 @@ impl Config {
             out = dir;
         }
 
-        hosts = if let Some(hosts) = host { hosts } else { vec![host_target] };
-        targets = if let Some(targets) = target {
+        hosts = if let Some(hosts) = host_ { hosts } else { vec![host_target] };
+        targets = if let Some(targets) = target_ {
             targets
         } else {
             // If target is *not* configured, then default to the host
