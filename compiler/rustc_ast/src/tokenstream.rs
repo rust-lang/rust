@@ -5,6 +5,7 @@
 //! which are themselves a single [`Token`] or a `Delimited` subsequence of tokens.
 
 use std::borrow::Cow;
+use std::hash::Hash;
 use std::ops::Range;
 use std::sync::Arc;
 use std::{cmp, fmt, iter, mem};
@@ -12,8 +13,9 @@ use std::{cmp, fmt, iter, mem};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync;
 use rustc_macros::{Decodable, Encodable, HashStable_Generic, Walkable};
-use rustc_serialize::{Decodable, Encodable};
-use rustc_span::{DUMMY_SP, Span, SpanDecoder, SpanEncoder, Symbol, sym};
+use rustc_serialize::{Decodable, Encodable, Encoder};
+use rustc_span::def_id::{CrateNum, DefIndex};
+use rustc_span::{ByteSymbol, DUMMY_SP, Span, SpanDecoder, SpanEncoder, Symbol, sym};
 use thin_vec::ThinVec;
 
 use crate::ast::AttrStyle;
