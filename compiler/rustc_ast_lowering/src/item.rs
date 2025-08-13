@@ -436,14 +436,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let body = Box::new(self.lower_delim_args(body));
                 let def_id = self.local_def_id(id);
                 let def_kind = self.tcx.def_kind(def_id);
-                let DefKind::Macro(macro_kind) = def_kind else {
+                let DefKind::Macro(macro_kinds) = def_kind else {
                     unreachable!(
                         "expected DefKind::Macro for macro item, found {}",
                         def_kind.descr(def_id.to_def_id())
                     );
                 };
                 let macro_def = self.arena.alloc(ast::MacroDef { body, macro_rules: *macro_rules });
-                hir::ItemKind::Macro(ident, macro_def, macro_kind)
+                hir::ItemKind::Macro(ident, macro_def, macro_kinds)
             }
             ItemKind::Delegation(box delegation) => {
                 let delegation_results = self.lower_delegation(delegation, id, false);
