@@ -939,12 +939,6 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
         let value = match *rvalue {
             // Forward values.
             Rvalue::Use(ref mut operand) => return self.simplify_operand(operand, location),
-            Rvalue::CopyForDeref(place) => {
-                let mut operand = Operand::Copy(place);
-                let val = self.simplify_operand(&mut operand, location);
-                *rvalue = Rvalue::Use(operand);
-                return val;
-            }
 
             // Roots.
             Rvalue::Repeat(ref mut op, amount) => {
@@ -986,6 +980,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
 
             // Unsupported values.
             Rvalue::ThreadLocalRef(..) | Rvalue::ShallowInitBox(..) => return None,
+            Rvalue::CopyForDeref(_) => bug!("`CopyForDeref` in runtime MIR"),
         };
         let ty = rvalue.ty(self.local_decls, self.tcx);
         Some(self.insert(ty, value))
