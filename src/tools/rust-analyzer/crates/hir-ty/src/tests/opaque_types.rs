@@ -159,3 +159,19 @@ static ALIAS: i32 = {
         "#]],
     )
 }
+
+#[test]
+fn leak_auto_traits() {
+    check_no_mismatches(
+        r#"
+//- minicore: send
+fn foo() -> impl Sized {}
+
+fn is_send<T: Send>(_: T) {}
+
+fn main() {
+    is_send(foo());
+}
+        "#,
+    );
+}

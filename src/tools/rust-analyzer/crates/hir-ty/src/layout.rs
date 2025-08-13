@@ -182,7 +182,7 @@ pub fn layout_of_ty_ns_query<'db>(
     };
     let dl = &*target;
     let cx = LayoutCx::new(dl);
-    let infer_ctxt = interner.infer_ctxt().build(TypingMode::non_body_analysis());
+    let infer_ctxt = interner.infer_ctxt().build(TypingMode::PostAnalysis);
     let cause = ObligationCause::dummy();
     let ty = deeply_normalize(infer_ctxt.at(&cause, ParamEnv::empty()), ty).unwrap_or(ty);
     let result = match ty.kind() {
@@ -335,27 +335,6 @@ pub fn layout_of_ty_ns_query<'db>(
             ptr.valid_range_mut().start = 1;
             Layout::scalar(dl, ptr)
         }
-        TyKind::Alias(_, ty) => match ty.def_id {
-            SolverDefId::TypeAliasId(_) => {
-                return Err(LayoutError::HasPlaceholder);
-            }
-            SolverDefId::InternedOpaqueTyId(opaque) => {
-                let impl_trait_id = db.lookup_intern_impl_trait_id(opaque);
-                match impl_trait_id {
-                    crate::ImplTraitId::ReturnTypeImplTrait(func, idx) => {
-                        let infer = db.infer(func.into());
-                        return db.layout_of_ty(infer.type_of_rpit[idx].clone(), trait_env);
-                    }
-                    crate::ImplTraitId::TypeAliasImplTrait(..) => {
-                        return Err(LayoutError::NotImplemented);
-                    }
-                    crate::ImplTraitId::AsyncBlockTypeImplTrait(_, _) => {
-                        return Err(LayoutError::NotImplemented);
-                    }
-                }
-            }
-            _ => unreachable!(),
-        },
         TyKind::Closure(c, args) => {
             let id = match c {
                 SolverDefId::InternedClosureId(id) => id,
@@ -389,7 +368,11 @@ pub fn layout_of_ty_ns_query<'db>(
         }
 
         TyKind::Error(_) => return Err(LayoutError::HasErrorType),
-        TyKind::Placeholder(_) | TyKind::Bound(..) | TyKind::Infer(..) | TyKind::Param(..) => {
+        TyKind::Placeholder(_)
+        | TyKind::Bound(..)
+        | TyKind::Infer(..)
+        | TyKind::Param(..)
+        | TyKind::Alias(..) => {
             return Err(LayoutError::HasPlaceholder);
         }
     };
