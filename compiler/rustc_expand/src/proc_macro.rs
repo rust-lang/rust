@@ -1,6 +1,3 @@
-use std::cell::Cell;
-use std::ptr::NonNull;
-
 use rustc_ast::tokenstream::TokenStream;
 use rustc_data_structures::svh::Svh;
 use rustc_errors::ErrorGuaranteed;
@@ -36,7 +33,7 @@ impl<T> pm::bridge::server::MessagePipe<T> for MessagePipe<T> {
     }
 }
 
-pub fn exec_strategy(sess: &Session) -> impl pm::bridge::server::ExecutionStrategy + 'static {
+fn exec_strategy(sess: &Session) -> impl pm::bridge::server::ExecutionStrategy + 'static {
     pm::bridge::server::MaybeCrossThread::<MessagePipe<_>>::new(
         sess.opts.unstable_opts.proc_macro_execution_strategy
             == ProcMacroExecutionStrategy::CrossThread,
@@ -107,7 +104,7 @@ impl base::AttrProcMacro for AttrProcMacro {
 }
 
 pub struct DeriveProcMacro {
-    pub client: pm::bridge::client::Client<pm::TokenStream, pm::TokenStream>,
+    pub client: DeriveClient,
 }
 
 impl MultiItemModifier for DeriveProcMacro {
@@ -136,32 +133,31 @@ impl MultiItemModifier for DeriveProcMacro {
         // altogether. See #73345.
         crate::base::ann_pretty_printing_compatibility_hack(&item, &ecx.sess.psess);
         let input = item.to_tokens();
-        let res = ty::tls::with(|tcx| {
-            let input = tcx.arena.alloc(input) as &TokenStream;
-            let invoc_id = ecx.current_expansion.id;
-            let invoc_expn_data = invoc_id.expn_data();
 
-            assert_eq!(invoc_expn_data.call_site, span);
+        let invoc_id = ecx.current_expansion.id;
 
-            // FIXME(pr-time): Is this the correct way to check for incremental compilation (as
-            // well as for `cache_proc_macros`)?
-            if tcx.sess.opts.incremental.is_some()
-                && tcx.sess.opts.unstable_opts.cache_derive_macros
-            {
+        let res = if ecx.sess.opts.incremental.is_some()
+            && ecx.sess.opts.unstable_opts.cache_derive_macros
+        {
+            ty::tls::with(|tcx| {
                 // FIXME(pr-time): Just using the crate hash to notice when the proc-macro code has
                 // changed. How to *correctly* depend on exactly the macro definition?
                 // I.e., depending on the crate hash is just a HACK, and ideally the dependency would be
                 // more narrow.
+                let invoc_expn_data = invoc_id.expn_data();
                 let macro_def_id = invoc_expn_data.macro_def_id.unwrap();
                 let proc_macro_crate_hash = tcx.crate_hash(macro_def_id.krate);
 
+                let input = tcx.arena.alloc(input) as &TokenStream;
                 let key = (invoc_id, proc_macro_crate_hash, input);
 
-                enter_context((ecx, self.client), move || tcx.derive_macro_expansion(key).cloned())
-            } else {
-                expand_derive_macro(tcx, invoc_id, input, ecx, self.client).cloned()
-            }
-        });
+                QueryDeriveExpandCtx::enter(ecx, self.client, move || {
+                    tcx.derive_macro_expansion(key).cloned()
+                })
+            })
+        } else {
+            expand_derive_macro(invoc_id, input, ecx, self.client)
+        };
 
         let Ok(output) = res else {
             // error will already have been emitted
@@ -205,36 +201,36 @@ pub(super) fn provide_derive_macro_expansion<'tcx>(
 ) -> Result<&'tcx TokenStream, ()> {
     let (invoc_id, _macro_crate_hash, input) = key;
 
-    with_context(|(ecx, client)| expand_derive_macro(tcx, invoc_id, input, ecx, *client))
+    QueryDeriveExpandCtx::with(|ecx, client| {
+        expand_derive_macro(invoc_id, input.clone(), ecx, client)
+            .map(|ts| tcx.arena.alloc(ts) as &TokenStream)
+    })
 }
 
-type CLIENT = pm::bridge::client::Client<pm::TokenStream, pm::TokenStream>;
+type DeriveClient = pm::bridge::client::Client<pm::TokenStream, pm::TokenStream>;
 
-fn expand_derive_macro<'tcx>(
-    tcx: TyCtxt<'tcx>,
+fn expand_derive_macro(
     invoc_id: LocalExpnId,
-    input: &'tcx TokenStream,
+    input: TokenStream,
     ecx: &mut ExtCtxt<'_>,
-    client: CLIENT,
-) -> Result<&'tcx TokenStream, ()> {
+    client: DeriveClient,
+) -> Result<TokenStream, ()> {
     let invoc_expn_data = invoc_id.expn_data();
     let span = invoc_expn_data.call_site;
     let event_arg = invoc_expn_data.kind.descr();
-    let _timer = tcx.sess.prof.generic_activity_with_arg_recorder(
-        "expand_derive_proc_macro_inner",
-        |recorder| {
-            recorder.record_arg_with_span(tcx.sess.source_map(), event_arg.clone(), span);
-        },
-    );
+    let _timer =
+        ecx.sess.prof.generic_activity_with_arg_recorder("expand_proc_macro", |recorder| {
+            recorder.record_arg_with_span(ecx.sess.source_map(), event_arg.clone(), span);
+        });
 
     let proc_macro_backtrace = ecx.ecfg.proc_macro_backtrace;
-    let strategy = crate::proc_macro::exec_strategy(tcx.sess);
-    let server = crate::proc_macro_server::Rustc::new(ecx);
+    let strategy = exec_strategy(ecx.sess);
+    let server = proc_macro_server::Rustc::new(ecx);
 
-    match client.run(&strategy, server, input.clone(), proc_macro_backtrace) {
-        Ok(stream) => Ok(tcx.arena.alloc(stream) as &TokenStream),
+    match client.run(&strategy, server, input, proc_macro_backtrace) {
+        Ok(stream) => Ok(stream),
         Err(e) => {
-            tcx.dcx().emit_err({
+            ecx.dcx().emit_err({
                 errors::ProcMacroDerivePanicked {
                     span,
                     message: e.as_str().map(|message| errors::ProcMacroDerivePanickedHelp {
@@ -247,53 +243,47 @@ fn expand_derive_macro<'tcx>(
     }
 }
 
-// based on rust/compiler/rustc_middle/src/ty/context/tls.rs
-thread_local! {
-    /// A thread local variable that stores a pointer to the current `CONTEXT`.
-    static TLV: Cell<(*mut (), Option<CLIENT>)> = const { Cell::new((std::ptr::null_mut(), None)) };
+/// Stores the context necessary to expand a derive proc macro via a query.
+struct QueryDeriveExpandCtx {
+    /// Type-erased version of `&mut ExtCtxt`
+    expansion_ctx: *mut (),
+    client: DeriveClient,
 }
 
-/// Sets `context` as the new current `CONTEXT` for the duration of the function `f`.
-#[inline]
-pub(crate) fn enter_context<'a, F, R>(context: (&mut ExtCtxt<'a>, CLIENT), f: F) -> R
-where
-    F: FnOnce() -> R,
-{
-    let (ectx, client) = context;
-    let erased = (ectx as *mut _ as *mut (), Some(client));
-    TLV.with(|tlv| {
-        let old = tlv.replace(erased);
-        let _reset = rustc_data_structures::defer(move || tlv.set(old));
-        f()
-    })
+impl QueryDeriveExpandCtx {
+    /// Store the extension context and the client into the thread local value.
+    /// It will be accessible via the `with` method while `f` is active.
+    fn enter<F, R>(ecx: &mut ExtCtxt<'_>, client: DeriveClient, f: F) -> R
+    where
+        F: FnOnce() -> R,
+    {
+        // We need erasure to get rid of the lifetime
+        let ctx = Self { expansion_ctx: ecx as *mut _ as *mut (), client };
+        DERIVE_EXPAND_CTX.set(&ctx, || f())
+    }
+
+    /// Accesses the thread local value of the derive expansion context.
+    /// Must be called while the `enter` function is active.
+    fn with<F, R>(f: F) -> R
+    where
+        F: for<'a, 'b> FnOnce(&'b mut ExtCtxt<'a>, DeriveClient) -> R,
+    {
+        DERIVE_EXPAND_CTX.with(|ctx| {
+            let ectx = {
+                let casted = ctx.expansion_ctx.cast::<ExtCtxt<'_>>();
+                // SAFETY: We can only get the value from `with` while the `enter` function
+                // is active (on the callstack), and that function's signature ensures that the
+                // lifetime is valid.
+                // If `with` is called at some other time, it will panic due to usage of
+                // `scoped_tls::with`.
+                unsafe { casted.as_mut().unwrap() }
+            };
+
+            f(ectx, ctx.client)
+        })
+    }
 }
 
-/// Allows access to the current `CONTEXT`.
-/// Panics if there is no `CONTEXT` available.
-#[inline]
-#[track_caller]
-fn with_context<F, R>(f: F) -> R
-where
-    F: for<'a, 'b> FnOnce(&'b mut (&mut ExtCtxt<'a>, CLIENT)) -> R,
-{
-    let (ectx, client_opt) = TLV.get();
-    let ectx = NonNull::new(ectx).expect("no CONTEXT stored in tls");
-
-    // We could get an `CONTEXT` pointer from another thread.
-    // Ensure that `CONTEXT` is `DynSync`.
-    // FIXME(pr-time): we should not be able to?
-    // sync::assert_dyn_sync::<CONTEXT<'_>>();
-
-    // prevent double entering, as that would allow creating two `&mut ExtCtxt`s
-    // FIXME(pr-time): probably use a RefCell instead (which checks this properly)?
-    TLV.with(|tlv| {
-        let old = tlv.replace((std::ptr::null_mut(), None));
-        let _reset = rustc_data_structures::defer(move || tlv.set(old));
-        let ectx = {
-            let mut casted = ectx.cast::<ExtCtxt<'_>>();
-            unsafe { casted.as_mut() }
-        };
-
-        f(&mut (ectx, client_opt.unwrap()))
-    })
-}
+// When we invoke a query to expand a derive proc macro, we need to provide it with the expansion
+// context and derive Client. We do that using a thread-local.
+scoped_tls::scoped_thread_local!(static DERIVE_EXPAND_CTX: QueryDeriveExpandCtx);
