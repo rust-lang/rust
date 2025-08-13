@@ -791,7 +791,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
     #[allow(dead_code)]
     fn dump_for_debugging(&self) {
-        let body = Body::new(
+        let mut body = Body::new(
             MirSource::item(self.def_id.to_def_id()),
             self.cfg.basic_blocks.clone(),
             self.source_scopes.clone(),
@@ -803,7 +803,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             self.coroutine.clone(),
             None,
         );
-        //body.coverage_info_hi = self.coverage_info.clone().map(|b| b.into_done());
+        body.coverage_info_hi = self.coverage_info.as_ref().map(|b| b.as_done());
 
         use rustc_middle::mir::pretty;
         let options = pretty::PrettyPrintMirOptions::from_cli(self.tcx);
