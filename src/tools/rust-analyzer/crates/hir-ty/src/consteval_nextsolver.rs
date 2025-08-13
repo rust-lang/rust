@@ -27,7 +27,7 @@ use crate::{
     next_solver::{
         Const, ConstBytes, ConstKind, DbInterner, ErrorGuaranteed, GenericArg, GenericArgs,
         ParamConst, SolverDefId, Ty, ValueConst,
-        mapping::{ChalkToNextSolver, convert_args_for_result, convert_binder_to_early_binder},
+        mapping::{ChalkToNextSolver, convert_binder_to_early_binder},
     },
 };
 
@@ -145,7 +145,7 @@ pub fn try_const_usize<'db>(db: &'db dyn HirDatabase, c: Const<'db>) -> Option<u
                 SolverDefId::StaticId(id) => GeneralConstId::StaticId(id),
                 _ => unreachable!(),
             };
-            let subst = convert_args_for_result(interner, unevaluated_const.args.as_slice());
+            let subst = ChalkToNextSolver::from_nextsolver(unevaluated_const.args, interner);
             let ec = db.const_eval(c, subst, None).ok()?.to_nextsolver(interner);
             try_const_usize(db, ec)
         }
@@ -168,7 +168,7 @@ pub fn try_const_isize<'db>(db: &'db dyn HirDatabase, c: &Const<'db>) -> Option<
                 SolverDefId::StaticId(id) => GeneralConstId::StaticId(id),
                 _ => unreachable!(),
             };
-            let subst = convert_args_for_result(interner, unevaluated_const.args.as_slice());
+            let subst = ChalkToNextSolver::from_nextsolver(unevaluated_const.args, interner);
             let ec = db.const_eval(c, subst, None).ok()?.to_nextsolver(interner);
             try_const_isize(db, &ec)
         }

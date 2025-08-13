@@ -46,7 +46,7 @@ impl<'db> InferCtxt<'db> {
         UndoLogs::<UndoLog<'db>>::num_open_snapshots(&self.inner.borrow_mut().undo_log)
     }
 
-    fn start_snapshot(&self) -> CombinedSnapshot {
+    pub(crate) fn start_snapshot(&self) -> CombinedSnapshot {
         debug!("start_snapshot()");
 
         let mut inner = self.inner.borrow_mut();
@@ -59,7 +59,7 @@ impl<'db> InferCtxt<'db> {
     }
 
     #[instrument(skip(self, snapshot), level = "debug")]
-    fn rollback_to(&self, snapshot: CombinedSnapshot) {
+    pub(crate) fn rollback_to(&self, snapshot: CombinedSnapshot) {
         let CombinedSnapshot { undo_snapshot, region_constraints_snapshot, universe } = snapshot;
 
         self.universe.set(universe);

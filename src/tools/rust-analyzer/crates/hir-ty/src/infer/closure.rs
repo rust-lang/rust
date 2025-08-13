@@ -568,7 +568,7 @@ impl InferenceContext<'_> {
         let supplied_sig = self.supplied_sig_of_closure(body, ret_type, arg_types, closure_kind);
 
         let snapshot = self.table.snapshot();
-        if !self.table.unify(&expected_sig.substitution, &supplied_sig.expected_sig.substitution) {
+        if !self.table.unify::<_, crate::next_solver::GenericArgs<'_>>(&expected_sig.substitution.0, &supplied_sig.expected_sig.substitution.0) {
             self.table.rollback_to(snapshot);
         }
 

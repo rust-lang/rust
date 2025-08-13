@@ -14,7 +14,7 @@ use crate::{
     db::HirDatabase,
     next_solver::{
         ClauseKind, CoercePredicate, PredicateKind, SubtypePredicate,
-        mapping::{ChalkToNextSolver, convert_args_for_result},
+        mapping::ChalkToNextSolver,
         util::sizedness_fast_path,
     },
 };
@@ -200,7 +200,7 @@ impl<'db> SolverDelegate for SolverContext<'db> {
             SolverDefId::StaticId(c) => GeneralConstId::StaticId(c),
             _ => unreachable!(),
         };
-        let subst = convert_args_for_result(self.interner, uv.args.as_slice());
+        let subst = ChalkToNextSolver::from_nextsolver(uv.args, self.interner);
         let ec = self.cx().db.const_eval(c, subst, None).ok()?;
         Some(ec.to_nextsolver(self.interner))
     }

@@ -957,23 +957,13 @@ pub fn callable_sig_from_fn_trait(
     )
     .build();
 
-    let block = trait_env.block;
-    let trait_env = trait_env.env.clone();
-    let obligation =
-        InEnvironment { goal: trait_ref.clone().cast(Interner), environment: trait_env.clone() };
-    let canonical = table.canonicalize(obligation.clone());
-    if !db.trait_solve(krate, block, canonical.cast(Interner)).no_solution() {
-        table.register_obligation(obligation.goal);
+    if !table.try_obligation(trait_ref.clone().cast(Interner)).no_solution() {
+        table.register_obligation(trait_ref.clone().cast(Interner));
         let return_ty = table.normalize_projection_ty(projection);
         for fn_x in [FnTrait::Fn, FnTrait::FnMut, FnTrait::FnOnce] {
             let fn_x_trait = fn_x.get_id(db, krate)?;
             trait_ref.trait_id = to_chalk_trait_id(fn_x_trait);
-            let obligation: chalk_ir::InEnvironment<chalk_ir::Goal<Interner>> = InEnvironment {
-                goal: trait_ref.clone().cast(Interner),
-                environment: trait_env.clone(),
-            };
-            let canonical = table.canonicalize(obligation.clone());
-            if !db.trait_solve(krate, block, canonical.cast(Interner)).no_solution() {
+            if !table.try_obligation(trait_ref.clone().cast(Interner)).no_solution() {
                 let ret_ty = table.resolve_completely(return_ty);
                 let args_ty = table.resolve_completely(args_ty);
                 let params = args_ty

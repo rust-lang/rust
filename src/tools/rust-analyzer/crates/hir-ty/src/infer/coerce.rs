@@ -7,22 +7,20 @@
 
 use std::iter;
 
-use chalk_ir::{BoundVar, Goal, Mutability, TyKind, TyVariableKind, cast::Cast};
-use hir_def::{hir::ExprId, lang_item::LangItem};
+use chalk_ir::{BoundVar, Mutability, TyKind, TyVariableKind, cast::Cast};
+use hir_def::{
+    hir::ExprId,
+    lang_item::LangItem,
+};
+use rustc_type_ir::solve::Certainty;
 use stdx::always;
 use triomphe::Arc;
 
 use crate::{
-    Canonical, DomainGoal, FnAbi, FnPointer, FnSig, InEnvironment, Interner, Lifetime,
-    Substitution, TraitEnvironment, Ty, TyBuilder, TyExt,
-    autoderef::{Autoderef, AutoderefKind},
-    db::HirDatabase,
-    infer::{
+    autoderef::{Autoderef, AutoderefKind}, db::HirDatabase, infer::{
         Adjust, Adjustment, AutoBorrow, InferOk, InferenceContext, OverloadedDeref, PointerCast,
         TypeError, TypeMismatch,
-    },
-    traits::NextTraitSolveResult,
-    utils::ClosureSubst,
+    }, utils::ClosureSubst, Canonical, FnAbi, FnPointer, FnSig, Goal, InEnvironment, Interner, Lifetime, Substitution, TraitEnvironment, Ty, TyBuilder, TyExt
 };
 
 use super::unify::InferenceTable;
@@ -42,7 +40,7 @@ fn simple(kind: Adjust) -> impl FnOnce(Ty) -> Vec<Adjustment> {
 fn success(
     adj: Vec<Adjustment>,
     target: Ty,
-    goals: Vec<InEnvironment<Goal<Interner>>>,
+    goals: Vec<InEnvironment<Goal>>,
 ) -> CoerceResult {
     Ok(InferOk { goals, value: (adj, target) })
 }
@@ -304,7 +302,7 @@ impl InferenceTable<'_> {
     fn coerce_inner(&mut self, from_ty: Ty, to_ty: &Ty, coerce_never: CoerceNever) -> CoerceResult {
         if from_ty.is_never() {
             if let TyKind::InferenceVar(tv, TyVariableKind::General) = to_ty.kind(Interner) {
-                self.set_diverging(*tv, true);
+                self.set_diverging(*tv, TyVariableKind::General, true);
             }
             if coerce_never == CoerceNever::Yes {
                 // Subtle: If we are coercing from `!` to `?T`, where `?T` is an unbound
@@ -707,41 +705,15 @@ impl InferenceTable<'_> {
             b.push(coerce_from).push(to_ty.clone()).build()
         };
 
-        let goal: InEnvironment<DomainGoal> =
-            InEnvironment::new(&self.trait_env.env, coerce_unsized_tref.cast(Interner));
+        let goal: Goal = coerce_unsized_tref.cast(Interner);
 
-        let canonicalized = self.canonicalize_with_free_vars(goal);
-
-        // FIXME: rustc's coerce_unsized is more specialized -- it only tries to
-        // solve `CoerceUnsized` and `Unsize` goals at this point and leaves the
-        // rest for later. Also, there's some logic about sized type variables.
-        // Need to find out in what cases this is necessary
-        let solution = self.db.trait_solve(
-            krate,
-            self.trait_env.block,
-            canonicalized.value.clone().cast(Interner),
-        );
-
-        match solution {
-            // FIXME: this is a weaker guarantee than Chalk's `Guidance::Unique`
-            // was. Chalk's unique guidance at least guarantees that the real solution
-            // is some "subset" of the solutions matching the guidance, but the
-            // substs for `Certainty::No` don't have that same guarantee (I think).
-            NextTraitSolveResult::Certain(v) => {
-                canonicalized.apply_solution(
-                    self,
-                    Canonical {
-                        binders: v.binders,
-                        // FIXME handle constraints
-                        value: v.value.subst,
-                    },
-                );
+        self.commit_if_ok(|table| {
+            match table.solve_obligation(goal) {
+                Ok(Certainty::Yes) => Ok(()),
+                Ok(Certainty::Maybe(_)) => Ok(()),
+                Err(_) => Err(TypeError),
             }
-            // ...so, should think about how to get some actually get some guidance here
-            NextTraitSolveResult::Uncertain(..) | NextTraitSolveResult::NoSolution => {
-                return Err(TypeError);
-            }
-        }
+        })?;
 
         let unsize =
             Adjustment { kind: Adjust::Pointer(PointerCast::Unsize), target: to_ty.clone() };

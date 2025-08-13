@@ -10,15 +10,7 @@ use hir_expand::name::Name;
 use stdx::never;
 
 use crate::{
-    InferenceDiagnostic, Interner, Substitution, TraitRef, TraitRefExt, Ty, TyBuilder, TyExt,
-    TyKind, ValueTyDefId,
-    builder::ParamKind,
-    consteval, error_lifetime,
-    generics::generics,
-    infer::diagnostics::InferenceTyLoweringContext as TyLoweringContext,
-    lower::LifetimeElisionKind,
-    method_resolution::{self, VisibleFromModule},
-    to_chalk_trait_id,
+    builder::ParamKind, consteval, error_lifetime, generics::generics, infer::diagnostics::InferenceTyLoweringContext as TyLoweringContext, method_resolution::{self, VisibleFromModule}, next_solver::mapping::ChalkToNextSolver, to_chalk_trait_id, InferenceDiagnostic, Interner, LifetimeElisionKind, Substitution, TraitRef, TraitRefExt, Ty, TyBuilder, TyExt, TyKind, ValueTyDefId
 };
 
 use super::{ExprOrPatId, InferenceContext, InferenceTyDiagnosticSource};
@@ -322,7 +314,7 @@ impl InferenceContext<'_> {
             return Some(result);
         }
 
-        let canonical_ty = self.canonicalize(ty.clone());
+        let canonical_ty = self.canonicalize(ty.clone().to_nextsolver(self.table.interner));
 
         let mut not_visible = None;
         let res = method_resolution::iterate_method_candidates(

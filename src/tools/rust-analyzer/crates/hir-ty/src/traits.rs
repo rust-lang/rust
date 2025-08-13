@@ -1,6 +1,7 @@
 //! Trait solving using Chalk.
 
 use core::fmt;
+use std::hash::Hash;
 
 use chalk_ir::{DebruijnIndex, GoalData, fold::TypeFoldable};
 use chalk_solve::rust_ir;
@@ -20,17 +21,9 @@ use stdx::never;
 use triomphe::Arc;
 
 use crate::{
-    AliasEq, AliasTy, Canonical, DomainGoal, Goal, InEnvironment, Interner, ProjectionTy,
-    ProjectionTyExt, TraitRefExt, Ty, TyKind, TypeFlags, WhereClause,
-    db::HirDatabase,
-    infer::unify::InferenceTable,
-    next_solver::{
-        DbInterner, GenericArg, SolverContext, Span,
-        infer::{DbInternerInferExt, InferCtxt},
-        mapping::{ChalkToNextSolver, convert_canonical_args_for_result},
-        util::mini_canonicalize,
-    },
-    utils::UnevaluatedConstEvaluatorFolder,
+    db::HirDatabase, infer::unify::InferenceTable, next_solver::{
+        infer::{DbInternerInferExt, InferCtxt}, mapping::{convert_canonical_args_for_result, ChalkToNextSolver}, util::mini_canonicalize, DbInterner, GenericArg, Predicate, SolverContext, Span
+    }, utils::UnevaluatedConstEvaluatorFolder, AliasEq, AliasTy, Canonical, DomainGoal, Goal, InEnvironment, Interner, ProjectionTy, ProjectionTyExt, TraitRefExt, Ty, TyKind, TypeFlags, WhereClause
 };
 
 /// A set of clauses that we assume to be true. E.g. if we are inside this function:
@@ -231,7 +224,6 @@ impl NextTraitSolveResult {
     }
 }
 
-/// Solve a trait goal using Chalk.
 pub fn next_trait_solve(
     db: &dyn HirDatabase,
     krate: Crate,
@@ -276,6 +268,57 @@ pub fn next_trait_solve(
         Err(_) => NextTraitSolveResult::NoSolution,
         Ok((_, Certainty::Yes, args)) => NextTraitSolveResult::Certain(
             convert_canonical_args_for_result(DbInterner::new_with(db, Some(krate), block), args),
+        ),
+        Ok((_, Certainty::Maybe(_), args)) => {
+            let subst = convert_canonical_args_for_result(
+                DbInterner::new_with(db, Some(krate), block),
+                args,
+            );
+            NextTraitSolveResult::Uncertain(chalk_ir::Canonical {
+                binders: subst.binders,
+                value: subst.value.subst,
+            })
+        }
+    }
+}
+
+pub fn next_trait_solve_canonical<'db>(
+    db: &'db dyn HirDatabase,
+    krate: Crate,
+    block: Option<BlockId>,
+    goal: crate::next_solver::Canonical<'db, crate::next_solver::Goal<'db, Predicate<'db>>>,
+) -> NextTraitSolveResult {
+    // FIXME: should use analysis_in_body, but that needs GenericDefId::Block
+    let context = SolverContext(
+        DbInterner::new_with(db, Some(krate), block)
+            .infer_ctxt()
+            .build(TypingMode::non_body_analysis()),
+    );
+
+    tracing::info!(?goal);
+
+    let (goal, var_values) =
+        context.instantiate_canonical(&goal);
+    tracing::info!(?var_values);
+
+    let res = context.evaluate_root_goal(
+        goal.clone(),
+        Span::dummy(),
+        None
+    );
+
+    let vars =
+        var_values.var_values.iter().map(|g| context.0.resolve_vars_if_possible(g)).collect();
+    let canonical_var_values = mini_canonicalize(context, vars);
+
+    let res = res.map(|r| (r.has_changed, r.certainty, canonical_var_values));
+
+    tracing::debug!("solve_nextsolver({:?}) => {:?}", goal, res);
+
+    match res {
+        Err(_) => NextTraitSolveResult::NoSolution,
+        Ok((_, Certainty::Yes, args)) => NextTraitSolveResult::Certain(
+            convert_canonical_args_for_result(DbInterner::new_with(db, Some(krate), block), args)
         ),
         Ok((_, Certainty::Maybe(_), args)) => {
             let subst = convert_canonical_args_for_result(
