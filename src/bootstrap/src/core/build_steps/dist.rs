@@ -478,7 +478,19 @@ impl Step for Rustc {
             if libdir_relative.to_str() != Some("bin") {
                 let libdir = builder.rustc_libdir(compiler);
                 for entry in builder.read_dir(&libdir) {
-                    if is_dylib(&entry.path()) {
+                    // A safeguard that we will not ship libgccjit.so from the libdir, in case the
+                    // GCC codegen backend is enabled by default.
+                    // Long-term we should probably split the config options for:
+                    // - Include cg_gcc in the rustc sysroot by default
+                    // - Run dist of a specific codegen backend in `x dist` by default
+                    if is_dylib(&entry.path())
+                        && !entry
+                            .path()
+                            .file_name()
+                            .and_then(|n| n.to_str())
+                            .map(|n| n.contains("libgccjit"))
+                            .unwrap_or(false)
+                    {
                         // Don't use custom libdir here because ^lib/ will be resolved again
                         // with installer
                         builder.install(&entry.path(), &image.join("lib"), FileType::NativeLibrary);
