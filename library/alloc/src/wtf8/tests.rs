@@ -1,3 +1,5 @@
+use realalloc::string::ToString;
+
 use super::*;
 
 #[test]
@@ -82,82 +84,85 @@ fn code_point_to_char_lossy() {
 
 #[test]
 fn wtf8buf_new() {
-    assert_eq!(Wtf8Buf::new().bytes, b"");
+    assert_eq!(Wtf8Buf::new().as_bytes(), b"");
 }
 
 #[test]
 fn wtf8buf_from_str() {
-    assert_eq!(Wtf8Buf::from_str("").bytes, b"");
-    assert_eq!(Wtf8Buf::from_str("aé 💩").bytes, b"a\xC3\xA9 \xF0\x9F\x92\xA9");
+    assert_eq!(Wtf8Buf::from_str("").as_bytes(), b"");
+    assert_eq!(Wtf8Buf::from_str("aé 💩").as_bytes(), b"a\xC3\xA9 \xF0\x9F\x92\xA9");
 }
 
 #[test]
 fn wtf8buf_from_string() {
-    assert_eq!(Wtf8Buf::from_string(String::from("")).bytes, b"");
-    assert_eq!(Wtf8Buf::from_string(String::from("aé 💩")).bytes, b"a\xC3\xA9 \xF0\x9F\x92\xA9");
+    assert_eq!(Wtf8Buf::from_string(String::from("")).as_bytes(), b"");
+    assert_eq!(
+        Wtf8Buf::from_string(String::from("aé 💩")).as_bytes(),
+        b"a\xC3\xA9 \xF0\x9F\x92\xA9"
+    );
 }
 
 #[test]
 fn wtf8buf_from_wide() {
     let buf = Wtf8Buf::from_wide(&[]);
-    assert_eq!(buf.bytes, b"");
+    assert_eq!(buf.as_bytes(), b"");
     assert!(buf.is_known_utf8);
 
     let buf = Wtf8Buf::from_wide(&[0x61, 0xE9, 0x20, 0xD83D, 0xDCA9]);
-    assert_eq!(buf.bytes, b"a\xC3\xA9 \xF0\x9F\x92\xA9");
+    assert_eq!(buf.as_bytes(), b"a\xC3\xA9 \xF0\x9F\x92\xA9");
     assert!(buf.is_known_utf8);
 
     let buf = Wtf8Buf::from_wide(&[0x61, 0xE9, 0x20, 0xD83D, 0xD83D, 0xDCA9]);
-    assert_eq!(buf.bytes, b"a\xC3\xA9 \xED\xA0\xBD\xF0\x9F\x92\xA9");
+    assert_eq!(buf.as_bytes(), b"a\xC3\xA9 \xED\xA0\xBD\xF0\x9F\x92\xA9");
     assert!(!buf.is_known_utf8);
 
     let buf = Wtf8Buf::from_wide(&[0xD800]);
-    assert_eq!(buf.bytes, b"\xED\xA0\x80");
+    assert_eq!(buf.as_bytes(), b"\xED\xA0\x80");
     assert!(!buf.is_known_utf8);
 
     let buf = Wtf8Buf::from_wide(&[0xDBFF]);
-    assert_eq!(buf.bytes, b"\xED\xAF\xBF");
+    assert_eq!(buf.as_bytes(), b"\xED\xAF\xBF");
     assert!(!buf.is_known_utf8);
 
     let buf = Wtf8Buf::from_wide(&[0xDC00]);
-    assert_eq!(buf.bytes, b"\xED\xB0\x80");
+    assert_eq!(buf.as_bytes(), b"\xED\xB0\x80");
     assert!(!buf.is_known_utf8);
 
     let buf = Wtf8Buf::from_wide(&[0xDFFF]);
-    assert_eq!(buf.bytes, b"\xED\xBF\xBF");
+    assert_eq!(buf.as_bytes(), b"\xED\xBF\xBF");
     assert!(!buf.is_known_utf8);
 }
 
 #[test]
 fn wtf8buf_push_str() {
     let mut string = Wtf8Buf::new();
-    assert_eq!(string.bytes, b"");
+    assert_eq!(string.as_bytes(), b"");
     assert!(string.is_known_utf8);
 
     string.push_str("aé 💩");
-    assert_eq!(string.bytes, b"a\xC3\xA9 \xF0\x9F\x92\xA9");
+    assert_eq!(string.as_bytes(), b"a\xC3\xA9 \xF0\x9F\x92\xA9");
     assert!(string.is_known_utf8);
 }
 
 #[test]
 fn wtf8buf_push_char() {
     let mut string = Wtf8Buf::from_str("aé ");
-    assert_eq!(string.bytes, b"a\xC3\xA9 ");
+    assert_eq!(string.as_bytes(), b"a\xC3\xA9 ");
     assert!(string.is_known_utf8);
 
     string.push_char('💩');
-    assert_eq!(string.bytes, b"a\xC3\xA9 \xF0\x9F\x92\xA9");
+    assert_eq!(string.as_bytes(), b"a\xC3\xA9 \xF0\x9F\x92\xA9");
     assert!(string.is_known_utf8);
 }
 
 #[test]
 fn wtf8buf_push() {
     let mut string = Wtf8Buf::from_str("aé ");
-    assert_eq!(string.bytes, b"a\xC3\xA9 ");
+    assert_eq!(string.as_bytes(), b"a\xC3\xA9 ");
     assert!(string.is_known_utf8);
 
     string.push(CodePoint::from_char('💩'));
-    assert_eq!(string.bytes, b"a\xC3\xA9 \xF0\x9F\x92\xA9");
+    assert_eq!(string.as_bytes(), b"a\xC3\xA9 \xF0\x9F\x92\xA9");
     assert!(string.is_known_utf8);
 
     fn c(value: u32) -> CodePoint {
@@ -168,53 +173,53 @@ fn wtf8buf_push() {
     string.push(c(0xD83D)); // lead
     assert!(!string.is_known_utf8);
     string.push(c(0xDCA9)); // trail
-    assert_eq!(string.bytes, b"\xF0\x9F\x92\xA9"); // Magic!
+    assert_eq!(string.as_bytes(), b"\xF0\x9F\x92\xA9"); // Magic!
 
     let mut string = Wtf8Buf::new();
     string.push(c(0xD83D)); // lead
     assert!(!string.is_known_utf8);
     string.push(c(0x20)); // not surrogate
     string.push(c(0xDCA9)); // trail
-    assert_eq!(string.bytes, b"\xED\xA0\xBD \xED\xB2\xA9");
+    assert_eq!(string.as_bytes(), b"\xED\xA0\xBD \xED\xB2\xA9");
 
     let mut string = Wtf8Buf::new();
     string.push(c(0xD800)); // lead
     assert!(!string.is_known_utf8);
     string.push(c(0xDBFF)); // lead
-    assert_eq!(string.bytes, b"\xED\xA0\x80\xED\xAF\xBF");
+    assert_eq!(string.as_bytes(), b"\xED\xA0\x80\xED\xAF\xBF");
 
     let mut string = Wtf8Buf::new();
     string.push(c(0xD800)); // lead
     assert!(!string.is_known_utf8);
     string.push(c(0xE000)); // not surrogate
-    assert_eq!(string.bytes, b"\xED\xA0\x80\xEE\x80\x80");
+    assert_eq!(string.as_bytes(), b"\xED\xA0\x80\xEE\x80\x80");
 
     let mut string = Wtf8Buf::new();
     string.push(c(0xD7FF)); // not surrogate
     assert!(string.is_known_utf8);
     string.push(c(0xDC00)); // trail
     assert!(!string.is_known_utf8);
-    assert_eq!(string.bytes, b"\xED\x9F\xBF\xED\xB0\x80");
+    assert_eq!(string.as_bytes(), b"\xED\x9F\xBF\xED\xB0\x80");
 
     let mut string = Wtf8Buf::new();
     string.push(c(0x61)); // not surrogate, < 3 bytes
     assert!(string.is_known_utf8);
     string.push(c(0xDC00)); // trail
     assert!(!string.is_known_utf8);
-    assert_eq!(string.bytes, b"\x61\xED\xB0\x80");
+    assert_eq!(string.as_bytes(), b"\x61\xED\xB0\x80");
 
     let mut string = Wtf8Buf::new();
     string.push(c(0xDC00)); // trail
     assert!(!string.is_known_utf8);
-    assert_eq!(string.bytes, b"\xED\xB0\x80");
+    assert_eq!(string.as_bytes(), b"\xED\xB0\x80");
 }
 
 #[test]
 fn wtf8buf_push_wtf8() {
     let mut string = Wtf8Buf::from_str("aé");
-    assert_eq!(string.bytes, b"a\xC3\xA9");
+    assert_eq!(string.as_bytes(), b"a\xC3\xA9");
     string.push_wtf8(Wtf8::from_str(" 💩"));
-    assert_eq!(string.bytes, b"a\xC3\xA9 \xF0\x9F\x92\xA9");
+    assert_eq!(string.as_bytes(), b"a\xC3\xA9 \xF0\x9F\x92\xA9");
     assert!(string.is_known_utf8);
 
     fn w(v: &[u8]) -> &Wtf8 {
@@ -224,42 +229,42 @@ fn wtf8buf_push_wtf8() {
     let mut string = Wtf8Buf::new();
     string.push_wtf8(w(b"\xED\xA0\xBD")); // lead
     string.push_wtf8(w(b"\xED\xB2\xA9")); // trail
-    assert_eq!(string.bytes, b"\xF0\x9F\x92\xA9"); // Magic!
+    assert_eq!(string.as_bytes(), b"\xF0\x9F\x92\xA9"); // Magic!
 
     let mut string = Wtf8Buf::new();
     string.push_wtf8(w(b"\xED\xA0\xBD")); // lead
     string.push_wtf8(w(b" ")); // not surrogate
     string.push_wtf8(w(b"\xED\xB2\xA9")); // trail
-    assert_eq!(string.bytes, b"\xED\xA0\xBD \xED\xB2\xA9");
+    assert_eq!(string.as_bytes(), b"\xED\xA0\xBD \xED\xB2\xA9");
     assert!(!string.is_known_utf8);
 
     let mut string = Wtf8Buf::new();
     string.push_wtf8(w(b"\xED\xA0\x80")); // lead
     string.push_wtf8(w(b"\xED\xAF\xBF")); // lead
-    assert_eq!(string.bytes, b"\xED\xA0\x80\xED\xAF\xBF");
+    assert_eq!(string.as_bytes(), b"\xED\xA0\x80\xED\xAF\xBF");
     assert!(!string.is_known_utf8);
 
     let mut string = Wtf8Buf::new();
     string.push_wtf8(w(b"\xED\xA0\x80")); // lead
     string.push_wtf8(w(b"\xEE\x80\x80")); // not surrogate
-    assert_eq!(string.bytes, b"\xED\xA0\x80\xEE\x80\x80");
+    assert_eq!(string.as_bytes(), b"\xED\xA0\x80\xEE\x80\x80");
     assert!(!string.is_known_utf8);
 
     let mut string = Wtf8Buf::new();
     string.push_wtf8(w(b"\xED\x9F\xBF")); // not surrogate
     string.push_wtf8(w(b"\xED\xB0\x80")); // trail
-    assert_eq!(string.bytes, b"\xED\x9F\xBF\xED\xB0\x80");
+    assert_eq!(string.as_bytes(), b"\xED\x9F\xBF\xED\xB0\x80");
     assert!(!string.is_known_utf8);
 
     let mut string = Wtf8Buf::new();
     string.push_wtf8(w(b"a")); // not surrogate, < 3 bytes
     string.push_wtf8(w(b"\xED\xB0\x80")); // trail
-    assert_eq!(string.bytes, b"\x61\xED\xB0\x80");
+    assert_eq!(string.as_bytes(), b"\x61\xED\xB0\x80");
     assert!(!string.is_known_utf8);
 
     let mut string = Wtf8Buf::new();
     string.push_wtf8(w(b"\xED\xB0\x80")); // trail
-    assert_eq!(string.bytes, b"\xED\xB0\x80");
+    assert_eq!(string.as_bytes(), b"\xED\xB0\x80");
     assert!(!string.is_known_utf8);
 }
 
@@ -269,15 +274,15 @@ fn wtf8buf_truncate() {
     assert!(string.is_known_utf8);
 
     string.truncate(3);
-    assert_eq!(string.bytes, b"a\xC3\xA9");
+    assert_eq!(string.as_bytes(), b"a\xC3\xA9");
     assert!(string.is_known_utf8);
 
     string.truncate(1);
-    assert_eq!(string.bytes, b"a");
+    assert_eq!(string.as_bytes(), b"a");
     assert!(string.is_known_utf8);
 
     string.truncate(0);
-    assert_eq!(string.bytes, b"");
+    assert_eq!(string.as_bytes(), b"");
     assert!(string.is_known_utf8);
 }
 
@@ -287,11 +292,11 @@ fn wtf8buf_truncate_around_non_bmp() {
     assert!(string.is_known_utf8);
 
     string.truncate(4);
-    assert_eq!(string.bytes, b"\xF0\x9F\x92\xA9");
+    assert_eq!(string.as_bytes(), b"\xF0\x9F\x92\xA9");
     assert!(string.is_known_utf8);
 
     string.truncate(0);
-    assert_eq!(string.bytes, b"");
+    assert_eq!(string.as_bytes(), b"");
     assert!(string.is_known_utf8);
 }
 
@@ -361,7 +366,7 @@ fn wtf8buf_from_iterator() {
         Wtf8Buf { bytes: b"a\xC3\xA9 \xF0\x9F\x92\xA9".to_vec(), is_known_utf8: true }
     );
 
-    assert_eq!(f(&[0xD83D, 0xDCA9]).bytes, b"\xF0\x9F\x92\xA9"); // Magic!
+    assert_eq!(f(&[0xD83D, 0xDCA9]).as_bytes(), b"\xF0\x9F\x92\xA9"); // Magic!
     assert_eq!(
         f(&[0xD83D, 0x20, 0xDCA9]),
         Wtf8Buf { bytes: b"\xED\xA0\xBD \xED\xB2\xA9".to_vec(), is_known_utf8: false }
@@ -401,7 +406,7 @@ fn wtf8buf_extend() {
         Wtf8Buf { bytes: b"a\xC3\xA9 \xF0\x9F\x92\xA9".to_vec(), is_known_utf8: true }
     );
 
-    assert_eq!(e(&[0xD83D], &[0xDCA9]).bytes, b"\xF0\x9F\x92\xA9"); // Magic!
+    assert_eq!(e(&[0xD83D], &[0xDCA9]).as_bytes(), b"\xF0\x9F\x92\xA9"); // Magic!
     assert_eq!(
         e(&[0xD83D, 0x20], &[0xDCA9]),
         Wtf8Buf { bytes: b"\xED\xA0\xBD \xED\xB2\xA9".to_vec(), is_known_utf8: false }
@@ -449,8 +454,8 @@ fn wtf8buf_show_str() {
 
 #[test]
 fn wtf8_from_str() {
-    assert_eq!(&Wtf8::from_str("").bytes, b"");
-    assert_eq!(&Wtf8::from_str("aé 💩").bytes, b"a\xC3\xA9 \xF0\x9F\x92\xA9");
+    assert_eq!(&Wtf8::from_str("").as_bytes(), b"");
+    assert_eq!(&Wtf8::from_str("aé 💩").as_bytes(), b"a\xC3\xA9 \xF0\x9F\x92\xA9");
 }
 
 #[test]
@@ -461,7 +466,7 @@ fn wtf8_len() {
 
 #[test]
 fn wtf8_slice() {
-    assert_eq!(&Wtf8::from_str("aé 💩")[1..4].bytes, b"\xC3\xA9 ");
+    assert_eq!(&Wtf8::from_str("aé 💩")[1..4].as_bytes(), b"\xC3\xA9 ");
 }
 
 #[test]
@@ -472,7 +477,7 @@ fn wtf8_slice_not_code_point_boundary() {
 
 #[test]
 fn wtf8_slice_from() {
-    assert_eq!(&Wtf8::from_str("aé 💩")[1..].bytes, b"\xC3\xA9 \xF0\x9F\x92\xA9");
+    assert_eq!(&Wtf8::from_str("aé 💩")[1..].as_bytes(), b"\xC3\xA9 \xF0\x9F\x92\xA9");
 }
 
 #[test]
@@ -483,7 +488,7 @@ fn wtf8_slice_from_not_code_point_boundary() {
 
 #[test]
 fn wtf8_slice_to() {
-    assert_eq!(&Wtf8::from_str("aé 💩")[..4].bytes, b"a\xC3\xA9 ");
+    assert_eq!(&Wtf8::from_str("aé 💩")[..4].as_bytes(), b"a\xC3\xA9 ");
 }
 
 #[test]
@@ -529,12 +534,12 @@ fn wtf8_as_str() {
 
 #[test]
 fn wtf8_to_string_lossy() {
-    assert_eq!(Wtf8::from_str("").to_string_lossy(), Cow::Borrowed(""));
-    assert_eq!(Wtf8::from_str("aé 💩").to_string_lossy(), Cow::Borrowed("aé 💩"));
+    assert_eq!(to_string_lossy(Wtf8::from_str("")), Cow::Borrowed(""));
+    assert_eq!(to_string_lossy(Wtf8::from_str("aé 💩")), Cow::Borrowed("aé 💩"));
     let mut string = Wtf8Buf::from_str("aé 💩");
     string.push(CodePoint::from_u32(0xD800).unwrap());
     let expected: Cow<'_, str> = Cow::Owned(String::from("aé 💩�"));
-    assert_eq!(string.to_string_lossy(), expected);
+    assert_eq!(to_string_lossy(&string), expected);
 }
 
 #[test]
@@ -548,7 +553,7 @@ fn wtf8_display() {
 
     let mut string = Wtf8Buf::from_str("aé 💩");
     string.push(CodePoint::from_u32(0xD800).unwrap());
-    assert_eq!("aé 💩�", d(string.as_inner()));
+    assert_eq!("aé 💩�", d(string.as_ref()));
 }
 
 #[test]
@@ -577,67 +582,41 @@ fn wtf8_encode_wide_size_hint() {
 #[test]
 fn wtf8_clone_into() {
     let mut string = Wtf8Buf::new();
-    Wtf8::from_str("green").clone_into(&mut string);
-    assert_eq!(string.bytes, b"green");
+    clone_into(Wtf8::from_str("green"), &mut string);
+    assert_eq!(string.as_bytes(), b"green");
 
     let mut string = Wtf8Buf::from_str("green");
-    Wtf8::from_str("").clone_into(&mut string);
-    assert_eq!(string.bytes, b"");
+    clone_into(Wtf8::from_str(""), &mut string);
+    assert_eq!(string.as_bytes(), b"");
 
     let mut string = Wtf8Buf::from_str("red");
-    Wtf8::from_str("green").clone_into(&mut string);
-    assert_eq!(string.bytes, b"green");
+    clone_into(Wtf8::from_str("green"), &mut string);
+    assert_eq!(string.as_bytes(), b"green");
 
     let mut string = Wtf8Buf::from_str("green");
-    Wtf8::from_str("red").clone_into(&mut string);
-    assert_eq!(string.bytes, b"red");
+    clone_into(Wtf8::from_str("red"), &mut string);
+    assert_eq!(string.as_bytes(), b"red");
 
     let mut string = Wtf8Buf::from_str("green");
     assert!(string.is_known_utf8);
-    unsafe { Wtf8::from_bytes_unchecked(b"\xED\xA0\x80").clone_into(&mut string) };
-    assert_eq!(string.bytes, b"\xED\xA0\x80");
+    clone_into(unsafe { Wtf8::from_bytes_unchecked(b"\xED\xA0\x80") }, &mut string);
+    assert_eq!(string.as_bytes(), b"\xED\xA0\x80");
     assert!(!string.is_known_utf8);
-}
-
-#[test]
-fn wtf8_to_ascii_lowercase() {
-    let lowercase = Wtf8::from_str("").to_ascii_lowercase();
-    assert_eq!(lowercase.bytes, b"");
-
-    let lowercase = Wtf8::from_str("GrEeN gRaPeS! 🍇").to_ascii_lowercase();
-    assert_eq!(lowercase.bytes, b"green grapes! \xf0\x9f\x8d\x87");
-
-    let lowercase = unsafe { Wtf8::from_bytes_unchecked(b"\xED\xA0\x80").to_ascii_lowercase() };
-    assert_eq!(lowercase.bytes, b"\xED\xA0\x80");
-    assert!(!lowercase.is_known_utf8);
-}
-
-#[test]
-fn wtf8_to_ascii_uppercase() {
-    let uppercase = Wtf8::from_str("").to_ascii_uppercase();
-    assert_eq!(uppercase.bytes, b"");
-
-    let uppercase = Wtf8::from_str("GrEeN gRaPeS! 🍇").to_ascii_uppercase();
-    assert_eq!(uppercase.bytes, b"GREEN GRAPES! \xf0\x9f\x8d\x87");
-
-    let uppercase = unsafe { Wtf8::from_bytes_unchecked(b"\xED\xA0\x80").to_ascii_uppercase() };
-    assert_eq!(uppercase.bytes, b"\xED\xA0\x80");
-    assert!(!uppercase.is_known_utf8);
 }
 
 #[test]
 fn wtf8_make_ascii_lowercase() {
     let mut lowercase = Wtf8Buf::from_str("");
     lowercase.make_ascii_lowercase();
-    assert_eq!(lowercase.bytes, b"");
+    assert_eq!(lowercase.as_bytes(), b"");
 
     let mut lowercase = Wtf8Buf::from_str("GrEeN gRaPeS! 🍇");
     lowercase.make_ascii_lowercase();
-    assert_eq!(lowercase.bytes, b"green grapes! \xf0\x9f\x8d\x87");
+    assert_eq!(lowercase.as_bytes(), b"green grapes! \xf0\x9f\x8d\x87");
 
-    let mut lowercase = unsafe { Wtf8::from_bytes_unchecked(b"\xED\xA0\x80").to_owned() };
+    let mut lowercase = to_owned(unsafe { Wtf8::from_bytes_unchecked(b"\xED\xA0\x80") });
     lowercase.make_ascii_lowercase();
-    assert_eq!(lowercase.bytes, b"\xED\xA0\x80");
+    assert_eq!(lowercase.as_bytes(), b"\xED\xA0\x80");
     assert!(!lowercase.is_known_utf8);
 }
 
@@ -645,22 +624,22 @@ fn wtf8_make_ascii_lowercase() {
 fn wtf8_make_ascii_uppercase() {
     let mut uppercase = Wtf8Buf::from_str("");
     uppercase.make_ascii_uppercase();
-    assert_eq!(uppercase.bytes, b"");
+    assert_eq!(uppercase.as_bytes(), b"");
 
     let mut uppercase = Wtf8Buf::from_str("GrEeN gRaPeS! 🍇");
     uppercase.make_ascii_uppercase();
-    assert_eq!(uppercase.bytes, b"GREEN GRAPES! \xf0\x9f\x8d\x87");
+    assert_eq!(uppercase.as_bytes(), b"GREEN GRAPES! \xf0\x9f\x8d\x87");
 
-    let mut uppercase = unsafe { Wtf8::from_bytes_unchecked(b"\xED\xA0\x80").to_owned() };
+    let mut uppercase = to_owned(unsafe { Wtf8::from_bytes_unchecked(b"\xED\xA0\x80") });
     uppercase.make_ascii_uppercase();
-    assert_eq!(uppercase.bytes, b"\xED\xA0\x80");
+    assert_eq!(uppercase.as_bytes(), b"\xED\xA0\x80");
     assert!(!uppercase.is_known_utf8);
 }
 
 #[test]
 fn wtf8_to_owned() {
-    let string = unsafe { Wtf8::from_bytes_unchecked(b"\xED\xA0\x80").to_owned() };
-    assert_eq!(string.bytes, b"\xED\xA0\x80");
+    let string = to_owned(unsafe { Wtf8::from_bytes_unchecked(b"\xED\xA0\x80") });
+    assert_eq!(string.as_bytes(), b"\xED\xA0\x80");
     assert!(!string.is_known_utf8);
 }
 
@@ -669,44 +648,44 @@ fn wtf8_valid_utf8_boundaries() {
     let mut string = Wtf8Buf::from_str("aé 💩");
     string.push(CodePoint::from_u32(0xD800).unwrap());
     string.push(CodePoint::from_u32(0xD800).unwrap());
-    check_utf8_boundary(&string, 0);
-    check_utf8_boundary(&string, 1);
-    check_utf8_boundary(&string, 3);
-    check_utf8_boundary(&string, 4);
-    check_utf8_boundary(&string, 8);
-    check_utf8_boundary(&string, 14);
+    string.check_utf8_boundary(0);
+    string.check_utf8_boundary(1);
+    string.check_utf8_boundary(3);
+    string.check_utf8_boundary(4);
+    string.check_utf8_boundary(8);
+    string.check_utf8_boundary(14);
     assert_eq!(string.len(), 14);
 
     string.push_char('a');
-    check_utf8_boundary(&string, 14);
-    check_utf8_boundary(&string, 15);
+    string.check_utf8_boundary(14);
+    string.check_utf8_boundary(15);
 
     let mut string = Wtf8Buf::from_str("a");
     string.push(CodePoint::from_u32(0xD800).unwrap());
-    check_utf8_boundary(&string, 1);
+    string.check_utf8_boundary(1);
 
     let mut string = Wtf8Buf::from_str("\u{D7FF}");
     string.push(CodePoint::from_u32(0xD800).unwrap());
-    check_utf8_boundary(&string, 3);
+    string.check_utf8_boundary(3);
 
     let mut string = Wtf8Buf::new();
     string.push(CodePoint::from_u32(0xD800).unwrap());
     string.push_char('\u{D7FF}');
-    check_utf8_boundary(&string, 3);
+    string.check_utf8_boundary(3);
 }
 
 #[test]
 #[should_panic(expected = "byte index 4 is out of bounds")]
 fn wtf8_utf8_boundary_out_of_bounds() {
     let string = Wtf8::from_str("aé");
-    check_utf8_boundary(&string, 4);
+    string.check_utf8_boundary(4);
 }
 
 #[test]
 #[should_panic(expected = "byte index 1 is not a codepoint boundary")]
 fn wtf8_utf8_boundary_inside_codepoint() {
     let string = Wtf8::from_str("é");
-    check_utf8_boundary(&string, 1);
+    string.check_utf8_boundary(1);
 }
 
 #[test]
@@ -714,7 +693,7 @@ fn wtf8_utf8_boundary_inside_codepoint() {
 fn wtf8_utf8_boundary_inside_surrogate() {
     let mut string = Wtf8Buf::new();
     string.push(CodePoint::from_u32(0xD800).unwrap());
-    check_utf8_boundary(&string, 1);
+    string.check_utf8_boundary(1);
 }
 
 #[test]
@@ -723,20 +702,22 @@ fn wtf8_utf8_boundary_between_surrogates() {
     let mut string = Wtf8Buf::new();
     string.push(CodePoint::from_u32(0xD800).unwrap());
     string.push(CodePoint::from_u32(0xD800).unwrap());
-    check_utf8_boundary(&string, 3);
+    string.check_utf8_boundary(3);
 }
 
 #[test]
 fn wobbled_wtf8_plus_bytes_isnt_utf8() {
-    let mut string: Wtf8Buf = unsafe { Wtf8::from_bytes_unchecked(b"\xED\xA0\x80").to_owned() };
+    let mut string: Wtf8Buf = to_owned(unsafe { Wtf8::from_bytes_unchecked(b"\xED\xA0\x80") });
     assert!(!string.is_known_utf8);
-    string.extend_from_slice(b"some utf-8");
+    unsafe {
+        string.extend_from_slice_unchecked(b"some utf-8");
+    }
     assert!(!string.is_known_utf8);
 }
 
 #[test]
 fn wobbled_wtf8_plus_str_isnt_utf8() {
-    let mut string: Wtf8Buf = unsafe { Wtf8::from_bytes_unchecked(b"\xED\xA0\x80").to_owned() };
+    let mut string: Wtf8Buf = to_owned(unsafe { Wtf8::from_bytes_unchecked(b"\xED\xA0\x80") });
     assert!(!string.is_known_utf8);
     string.push_str("some utf-8");
     assert!(!string.is_known_utf8);
