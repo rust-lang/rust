@@ -6,7 +6,7 @@ LL | fn bar<'a>() {
 LL |     foo::<&'a i32>();
    |     ^^^^^^^^^^^^^^ requires that `'a` must outlive `'static`
    |
-note: due to current limitations in the borrow checker, this implies a `'static` lifetime
+note: due to a current limitation of the type system, this implies a `'static` lifetime
   --> $DIR/issue-26217.rs:1:19
    |
 LL | fn foo<T>() where for<'a> T: 'a {}

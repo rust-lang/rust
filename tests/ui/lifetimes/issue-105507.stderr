@@ -4,7 +4,7 @@ error: `T` does not live long enough
 LL |     require_trait(wrap);
    |     ^^^^^^^^^^^^^^^^^^^
    |
-note: due to current limitations in the borrow checker, this implies a `'static` lifetime
+note: due to a current limitation of the type system, this implies a `'static` lifetime
   --> $DIR/issue-105507.rs:27:35
    |
 LL |         for<'a> T::Projected<'a>: MyTrait,
@@ -20,7 +20,7 @@ error: `U` does not live long enough
 LL |     require_trait(wrap1);
    |     ^^^^^^^^^^^^^^^^^^^^
    |
-note: due to current limitations in the borrow checker, this implies a `'static` lifetime
+note: due to a current limitation of the type system, this implies a `'static` lifetime
   --> $DIR/issue-105507.rs:27:35
    |
 LL |         for<'a> T::Projected<'a>: MyTrait,

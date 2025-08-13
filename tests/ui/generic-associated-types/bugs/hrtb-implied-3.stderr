@@ -11,7 +11,7 @@ LL |     trivial_bound(iter);
    |     `iter` escapes the function body here
    |     argument requires that `'1` must outlive `'static`
    |
-note: due to current limitations in the borrow checker, this implies a `'static` lifetime
+note: due to a current limitation of the type system, this implies a `'static` lifetime
   --> $DIR/hrtb-implied-3.rs:14:5
    |
 LL |     for<'a> I::Item<'a>: Sized,

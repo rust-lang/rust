@@ -13,7 +13,7 @@ error: `Self` does not live long enough
 LL |         <B as FromLendingIterator<A>>::from_iter(self)
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: due to current limitations in the borrow checker, this implies a `'static` lifetime
+note: due to a current limitation of the type system, this implies a `'static` lifetime
   --> $DIR/lending_iterator.rs:4:21
    |
 LL |     fn from_iter<T: for<'x> LendingIterator<Item<'x> = A>>(iter: T) -> Self;

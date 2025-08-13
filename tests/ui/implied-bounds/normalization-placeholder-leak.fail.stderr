@@ -31,7 +31,7 @@ LL |     fn test_lifetime<'lt, T: Trait>(_: Foo<&'lt u8>) {}
    |     |                lifetime `'lt` defined here
    |     requires that `'lt` must outlive `'static`
    |
-note: due to current limitations in the borrow checker, this implies a `'static` lifetime
+note: due to a current limitation of the type system, this implies a `'static` lifetime
   --> $DIR/normalization-placeholder-leak.rs:19:5
    |
 LL |     for<'x> T::Ty<'x>: Sized;
@@ -46,7 +46,7 @@ LL |     fn test_alias<'lt, T: AnotherTrait>(_: Foo<T::Ty2::<'lt>>) {}
    |     |             lifetime `'lt` defined here
    |     requires that `'lt` must outlive `'static`
    |
-note: due to current limitations in the borrow checker, this implies a `'static` lifetime
+note: due to a current limitation of the type system, this implies a `'static` lifetime
   --> $DIR/normalization-placeholder-leak.rs:19:5
    |
 LL |     for<'x> T::Ty<'x>: Sized;
