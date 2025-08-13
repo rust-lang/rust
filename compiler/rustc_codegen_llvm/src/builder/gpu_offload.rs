@@ -368,9 +368,11 @@ fn gen_call_handling<'ll>(
 
         let v = unsafe { llvm::LLVMGetOperand(kernel_call, index as u32).unwrap() };
         builder.store(v, alloca, Align::EIGHT);
-        let val = builder.load(in_ty, alloca, Align::EIGHT);
-        let gep = builder.inbounds_gep(cx.type_f32(), val, &[i32_0]);
-        vals.push(val);
+        //let val = builder.load(in_ty, alloca, Align::EIGHT);
+        //let gep = builder.inbounds_gep(cx.type_f32(), val, &[i32_0]);
+        let gep = builder.inbounds_gep(cx.type_f32(), v, &[i32_0]);
+        vals.push(v);
+        //vals.push(val);
         geps.push(gep);
     }
 
