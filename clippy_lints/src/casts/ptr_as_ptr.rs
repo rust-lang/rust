@@ -4,7 +4,7 @@ use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::sugg::Sugg;
 use rustc_errors::Applicability;
-use rustc_hir::{self as hir, Expr, ExprKind, Mutability, QPath, TyKind};
+use rustc_hir::{self as hir, Expr, ExprKind, QPath, TyKind};
 use rustc_lint::LateContext;
 use rustc_middle::ty::{self, Ty};
 use rustc_span::{Span, sym};
@@ -37,8 +37,7 @@ pub(super) fn check<'tcx>(
 ) {
     if let ty::RawPtr(_, from_mutbl) = cast_from.kind()
         && let ty::RawPtr(to_pointee_ty, to_mutbl) = cast_to.kind()
-        && matches!((from_mutbl, to_mutbl),
-            (Mutability::Not, Mutability::Not) | (Mutability::Mut, Mutability::Mut))
+        && from_mutbl == to_mutbl
         // The `U` in `pointer::cast` have to be `Sized`
         // as explained here: https://github.com/rust-lang/rust/issues/60602.
         && to_pointee_ty.is_sized(cx.tcx, cx.typing_env())
