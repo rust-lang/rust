@@ -16,5 +16,231 @@ error: abi: ScalarPair(Initialized { value: Int(I8, false), valid_range: 0..=1 }
 LL | enum ScalarPairDifferingSign {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 3 previous errors
+error: size: Size(4 bytes)
+  --> $DIR/enum.rs:29:1
+   |
+LL | enum AbsentVariantUntagged {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: abi: Scalar(Initialized { value: Int(I32, true), valid_range: 0..=4294967295 })
+  --> $DIR/enum.rs:29:1
+   |
+LL | enum AbsentVariantUntagged {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: size: Size(8 bytes)
+  --> $DIR/enum.rs:38:1
+   |
+LL | enum UninhabitedVariantUntagged {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: abi: ScalarPair(Initialized { value: Int(I32, false), valid_range: 0..=0 }, Initialized { value: Int(I32, true), valid_range: 0..=4294967295 })
+  --> $DIR/enum.rs:38:1
+   |
+LL | enum UninhabitedVariantUntagged {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: size: Size(8 bytes)
+  --> $DIR/enum.rs:49:1
+   |
+LL | enum UninhabitedVariantUntaggedBigger {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: abi: Memory { sized: true }
+  --> $DIR/enum.rs:49:1
+   |
+LL | enum UninhabitedVariantUntaggedBigger {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: size: Size(3 bytes)
+  --> $DIR/enum.rs:56:1
+   |
+LL | enum UninhabitedVariantWithNiche {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: abi: Memory { sized: true }
+  --> $DIR/enum.rs:56:1
+   |
+LL | enum UninhabitedVariantWithNiche {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: layout_of(UninhabitedVariantLargeWithNiche) = Layout {
+           size: Size(4 bytes),
+           align: AbiAlign {
+               abi: Align(1 bytes),
+           },
+           backend_repr: Memory {
+               sized: true,
+           },
+           fields: Arbitrary {
+               offsets: [
+                   Size(0 bytes),
+               ],
+               in_memory_order: [
+                   0,
+               ],
+           },
+           largest_niche: Some(
+               Niche {
+                   offset: Size(0 bytes),
+                   value: Int(
+                       I8,
+                       false,
+                   ),
+                   valid_range: 0..=0,
+               },
+           ),
+           uninhabited: false,
+           variants: Multiple {
+               tag: Initialized {
+                   value: Int(
+                       I8,
+                       false,
+                   ),
+                   valid_range: 0..=0,
+               },
+               tag_encoding: Direct,
+               tag_field: 0,
+               variants: [
+                   Layout {
+                       size: Size(3 bytes),
+                       align: AbiAlign {
+                           abi: Align(1 bytes),
+                       },
+                       backend_repr: Memory {
+                           sized: true,
+                       },
+                       fields: Arbitrary {
+                           offsets: [
+                               Size(1 bytes),
+                               Size(2 bytes),
+                           ],
+                           in_memory_order: [
+                               0,
+                               1,
+                           ],
+                       },
+                       largest_niche: Some(
+                           Niche {
+                               offset: Size(2 bytes),
+                               value: Int(
+                                   I8,
+                                   false,
+                               ),
+                               valid_range: 0..=1,
+                           },
+                       ),
+                       uninhabited: false,
+                       variants: Single {
+                           index: 0,
+                           variants: None,
+                       },
+                       max_repr_align: None,
+                       unadjusted_abi_align: Align(1 bytes),
+                       randomization_seed: 17394913183323368564,
+                   },
+                   Layout {
+                       size: Size(4 bytes),
+                       align: AbiAlign {
+                           abi: Align(1 bytes),
+                       },
+                       backend_repr: Memory {
+                           sized: true,
+                       },
+                       fields: Arbitrary {
+                           offsets: [
+                               Size(1 bytes),
+                               Size(2 bytes),
+                               Size(3 bytes),
+                               Size(4 bytes),
+                           ],
+                           in_memory_order: [
+                               0,
+                               1,
+                               2,
+                               3,
+                           ],
+                       },
+                       largest_niche: None,
+                       uninhabited: true,
+                       variants: Single {
+                           index: 1,
+                           variants: None,
+                       },
+                       max_repr_align: None,
+                       unadjusted_abi_align: Align(1 bytes),
+                       randomization_seed: 17538183959353994357,
+                   },
+               ],
+           },
+           max_repr_align: None,
+           unadjusted_abi_align: Align(1 bytes),
+           randomization_seed: 15362464571658798427,
+       }
+  --> $DIR/enum.rs:63:1
+   |
+LL | enum UninhabitedVariantLargeWithNiche {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: size: Size(3 bytes)
+  --> $DIR/enum.rs:77:1
+   |
+LL | enum AllUninhabitedVariants {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: abi: Memory { sized: true }
+  --> $DIR/enum.rs:77:1
+   |
+LL | enum AllUninhabitedVariants {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: size: Size(2 bytes)
+  --> $DIR/enum.rs:88:1
+   |
+LL | enum AlignedI8 {
+   | ^^^^^^^^^^^^^^
+
+error: abi: Memory { sized: true }
+  --> $DIR/enum.rs:88:1
+   |
+LL | enum AlignedI8 {
+   | ^^^^^^^^^^^^^^
+
+error: size: Size(4 bytes)
+  --> $DIR/enum.rs:96:1
+   |
+LL | enum TaggedI8 {
+   | ^^^^^^^^^^^^^
+
+error: abi: Memory { sized: true }
+  --> $DIR/enum.rs:96:1
+   |
+LL | enum TaggedI8 {
+   | ^^^^^^^^^^^^^
+
+error: size: Size(4 bytes)
+  --> $DIR/enum.rs:105:1
+   |
+LL | enum TaggedI16 {
+   | ^^^^^^^^^^^^^^
+
+error: abi: Memory { sized: true }
+  --> $DIR/enum.rs:105:1
+   |
+LL | enum TaggedI16 {
+   | ^^^^^^^^^^^^^^
+
+error: size: Size(2 bytes)
+  --> $DIR/enum.rs:113:1
+   |
+LL | enum AllUninhabitedVariantsAlignedZst {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: abi: Scalar(Initialized { value: Int(I16, false), valid_range: 0..=0 })
+  --> $DIR/enum.rs:113:1
+   |
+LL | enum AllUninhabitedVariantsAlignedZst {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 22 previous errors
 
