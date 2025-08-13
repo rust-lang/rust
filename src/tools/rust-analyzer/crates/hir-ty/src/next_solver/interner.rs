@@ -22,8 +22,8 @@ use rustc_type_ir::inherent::{
 use rustc_type_ir::lang_items::TraitSolverLangItem;
 use rustc_type_ir::solve::SizedTraitKind;
 use rustc_type_ir::{
-    AliasTerm, AliasTermKind, AliasTy, EarlyBinder, FlagComputation, Flags, ImplPolarity, InferTy,
-    ProjectionPredicate, TraitPredicate, TraitRef, Upcast,
+    AliasTerm, AliasTermKind, AliasTy, AliasTyKind, EarlyBinder, FlagComputation, Flags,
+    ImplPolarity, InferTy, ProjectionPredicate, TraitPredicate, TraitRef, Upcast,
 };
 use salsa::plumbing::AsId;
 use smallvec::{SmallVec, smallvec};
@@ -1024,8 +1024,8 @@ impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
         false
     }
 
-    fn expand_abstract_consts<T: rustc_type_ir::TypeFoldable<Self>>(self, t: T) -> T {
-        t
+    fn expand_abstract_consts<T: rustc_type_ir::TypeFoldable<Self>>(self, _: T) -> T {
+        unreachable!("only used by the old trait solver in rustc");
     }
 
     fn generics_of(self, def_id: Self::DefId) -> Self::GenericsOf {
@@ -1054,6 +1054,9 @@ impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
             ),
             SolverDefId::InternedOpaqueTyId(_def_id) => {
                 // FIXME(next-solver): track variances
+                //
+                // We compute them based on the only `Ty` level info in rustc,
+                // move `variances_of_opaque` into `rustc_next_trait_solver` for reuse.
                 VariancesOf::new_from_iter(
                     self,
                     (0..self.generics_of(def_id).count()).map(|_| Variance::Invariant),
@@ -1074,6 +1077,9 @@ impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
                 crate::TyDefId::TypeAliasId(id)
             }
             SolverDefId::AdtId(id) => crate::TyDefId::AdtId(id),
+            // FIXME(next-solver): need to support opaque types. This uses the types of
+            // `query mir_borrowck` in rustc. If we're ignoring regions, we could simply
+            // use the type inferred by general type inference here.
             _ => panic!("Unexpected def_id `{def_id:?}` provided for `type_of`"),
         };
         self.db().ty_ns(def_id)
@@ -1087,9 +1093,12 @@ impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
         AdtDef::new(def_id, self)
     }
 
-    fn alias_ty_kind(self, alias: rustc_type_ir::AliasTy<Self>) -> rustc_type_ir::AliasTyKind {
-        // FIXME: not currently creating any others
-        rustc_type_ir::AliasTyKind::Projection
+    fn alias_ty_kind(self, alias: rustc_type_ir::AliasTy<Self>) -> AliasTyKind {
+        match alias.def_id {
+            SolverDefId::InternedOpaqueTyId(_) => AliasTyKind::Opaque,
+            SolverDefId::TypeAliasId(_) => AliasTyKind::Projection,
+            _ => unimplemented!("Unexpected alias: {:?}", alias.def_id),
+        }
     }
 
     fn alias_term_kind(
@@ -1100,7 +1109,7 @@ impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
             SolverDefId::InternedOpaqueTyId(_) => AliasTermKind::OpaqueTy,
             SolverDefId::TypeAliasId(_) => AliasTermKind::ProjectionTy,
             SolverDefId::ConstId(_) => AliasTermKind::UnevaluatedConst,
-            _ => unreachable!("Unexpected alias: {:?}", alias.def_id),
+            _ => todo!("Unexpected alias: {:?}", alias.def_id),
         }
     }
 
@@ -1741,7 +1750,7 @@ impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
     }
 
     fn has_item_definition(self, def_id: Self::DefId) -> bool {
-        // FIXME: should check if has value
+        // FIXME(next-solver): should check if the associated item has a value.
         true
     }
 
@@ -1811,7 +1820,8 @@ impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
     }
 
     fn trait_may_be_implemented_via_object(self, trait_def_id: Self::DefId) -> bool {
-        // FIXME(next-solver)
+        // FIXME(next-solver): should check the `TraitFlags` for
+        // the `#[rustc_do_not_implement_via_object]` flag
         true
     }
 
@@ -1982,7 +1992,8 @@ impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
         self,
         def_id: Self::LocalDefId,
     ) -> rustc_type_ir::EarlyBinder<Self, Self::Ty> {
-        // FIXME(next-solver)
+        // FIXME(next-solver): This should look at the type computed for the
+        // opaque by HIR typeck.
         unimplemented!()
     }
 
