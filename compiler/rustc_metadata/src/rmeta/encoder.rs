@@ -1254,7 +1254,7 @@ fn should_encode_type(tcx: TyCtxt<'_>, def_id: LocalDefId, def_kind: DefKind) ->
         DefKind::AssocTy => {
             let assoc_item = tcx.associated_item(def_id);
             match assoc_item.container {
-                ty::AssocContainer::Impl => true,
+                ty::AssocContainer::InherentImpl | ty::AssocContainer::TraitImpl(_) => true,
                 ty::AssocContainer::Trait => assoc_item.defaultness(tcx).has_value(),
             }
         }
@@ -1726,23 +1726,16 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let item = tcx.associated_item(def_id);
 
         self.tables.defaultness.set_some(def_id.index, item.defaultness(tcx));
-        self.tables.assoc_container.set_some(def_id.index, item.container);
+        record!(self.tables.assoc_container[def_id] <- item.container);
 
-        match item.container {
-            AssocContainer::Trait => {
-                if item.is_type() {
-                    self.encode_explicit_item_bounds(def_id);
-                    self.encode_explicit_item_self_bounds(def_id);
-                    if tcx.is_conditionally_const(def_id) {
-                        record_defaulted_array!(self.tables.explicit_implied_const_bounds[def_id]
-                            <- self.tcx.explicit_implied_const_bounds(def_id).skip_binder());
-                    }
-                }
-            }
-            AssocContainer::Impl => {
-                if let Some(trait_item_def_id) = item.trait_item_def_id {
-                    self.tables.trait_item_def_id.set_some(def_id.index, trait_item_def_id.into());
-                }
+        if let AssocContainer::Trait = item.container
+            && item.is_type()
+        {
+            self.encode_explicit_item_bounds(def_id);
+            self.encode_explicit_item_self_bounds(def_id);
+            if tcx.is_conditionally_const(def_id) {
+                record_defaulted_array!(self.tables.explicit_implied_const_bounds[def_id]
+                    <- self.tcx.explicit_implied_const_bounds(def_id).skip_binder());
             }
         }
         if let ty::AssocKind::Type { data: ty::AssocTypeData::Rpitit(rpitit_info) } = item.kind {

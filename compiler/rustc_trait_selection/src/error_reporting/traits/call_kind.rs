@@ -76,7 +76,8 @@ pub fn call_kind<'tcx>(
     let parent = tcx.opt_associated_item(method_did).and_then(|assoc| {
         let container_id = assoc.container_id(tcx);
         match assoc.container {
-            AssocContainer::Impl => tcx.trait_id_of_impl(container_id),
+            AssocContainer::InherentImpl => None,
+            AssocContainer::TraitImpl(_) => tcx.trait_id_of_impl(container_id),
             AssocContainer::Trait => Some(container_id),
         }
     });
