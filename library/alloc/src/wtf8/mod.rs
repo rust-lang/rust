@@ -451,53 +451,46 @@ impl Extend<CodePoint> for Wtf8Buf {
     }
 }
 
-// helps diff
-mod wtf8 {
-    use super::*;
+/// Creates an owned `Wtf8Buf` from a borrowed `Wtf8`.
+pub(super) fn to_owned(slice: &Wtf8) -> Wtf8Buf {
+    Wtf8Buf { bytes: slice.as_bytes().to_vec(), is_known_utf8: false }
+}
 
-    /// Creates an owned `Wtf8Buf` from a borrowed `Wtf8`.
-    pub(super) fn to_owned(slice: &Wtf8) -> Wtf8Buf {
-        Wtf8Buf { bytes: slice.as_bytes().to_vec(), is_known_utf8: false }
-    }
-
-    /// Lossily converts the string to UTF-8.
-    /// Returns a UTF-8 `&str` slice if the contents are well-formed in UTF-8.
-    ///
-    /// Surrogates are replaced with `"\u{FFFD}"` (the replacement character “�”).
-    ///
-    /// This only copies the data if necessary (if it contains any surrogate).
-    pub(super) fn to_string_lossy(slice: &Wtf8) -> Cow<'_, str> {
-        let Some((surrogate_pos, _)) = slice.next_surrogate(0) else {
-            return Cow::Borrowed(unsafe { str::from_utf8_unchecked(slice.as_bytes()) });
-        };
-        let wtf8_bytes = slice.as_bytes();
-        let mut utf8_bytes = Vec::with_capacity(slice.len());
-        utf8_bytes.extend_from_slice(&wtf8_bytes[..surrogate_pos]);
-        utf8_bytes.extend_from_slice("\u{FFFD}".as_bytes());
-        let mut pos = surrogate_pos + 3;
-        loop {
-            match slice.next_surrogate(pos) {
-                Some((surrogate_pos, _)) => {
-                    utf8_bytes.extend_from_slice(&wtf8_bytes[pos..surrogate_pos]);
-                    utf8_bytes.extend_from_slice("\u{FFFD}".as_bytes());
-                    pos = surrogate_pos + 3;
-                }
-                None => {
-                    utf8_bytes.extend_from_slice(&wtf8_bytes[pos..]);
-                    return Cow::Owned(unsafe { String::from_utf8_unchecked(utf8_bytes) });
-                }
+/// Lossily converts the string to UTF-8.
+/// Returns a UTF-8 `&str` slice if the contents are well-formed in UTF-8.
+///
+/// Surrogates are replaced with `"\u{FFFD}"` (the replacement character “�”).
+///
+/// This only copies the data if necessary (if it contains any surrogate).
+pub(super) fn to_string_lossy(slice: &Wtf8) -> Cow<'_, str> {
+    let Some((surrogate_pos, _)) = slice.next_surrogate(0) else {
+        return Cow::Borrowed(unsafe { str::from_utf8_unchecked(slice.as_bytes()) });
+    };
+    let wtf8_bytes = slice.as_bytes();
+    let mut utf8_bytes = Vec::with_capacity(slice.len());
+    utf8_bytes.extend_from_slice(&wtf8_bytes[..surrogate_pos]);
+    utf8_bytes.extend_from_slice("\u{FFFD}".as_bytes());
+    let mut pos = surrogate_pos + 3;
+    loop {
+        match slice.next_surrogate(pos) {
+            Some((surrogate_pos, _)) => {
+                utf8_bytes.extend_from_slice(&wtf8_bytes[pos..surrogate_pos]);
+                utf8_bytes.extend_from_slice("\u{FFFD}".as_bytes());
+                pos = surrogate_pos + 3;
+            }
+            None => {
+                utf8_bytes.extend_from_slice(&wtf8_bytes[pos..]);
+                return Cow::Owned(unsafe { String::from_utf8_unchecked(utf8_bytes) });
             }
         }
     }
-
-    #[inline]
-    pub(super) fn clone_into(slice: &Wtf8, buf: &mut Wtf8Buf) {
-        buf.is_known_utf8 = false;
-        slice.as_bytes().clone_into(&mut buf.bytes);
-    }
 }
 
-use self::wtf8::{to_owned, to_string_lossy, clone_into};
+#[inline]
+pub(super) fn clone_into(slice: &Wtf8, buf: &mut Wtf8Buf) {
+    buf.is_known_utf8 = false;
+    slice.as_bytes().clone_into(&mut buf.bytes);
+}
 
 #[cfg(not(test))]
 impl Wtf8 {
