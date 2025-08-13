@@ -12,6 +12,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 
+use crate::FileType;
 use crate::core::builder::{Builder, Cargo, Kind, RunConfig, ShouldRun, Step};
 use crate::core::config::TargetSelection;
 use crate::utils::build_stamp::{BuildStamp, generate_smart_stamp_hash};
@@ -26,6 +27,18 @@ pub struct Gcc {
 #[derive(Clone)]
 pub struct GccOutput {
     pub libgccjit: PathBuf,
+}
+
+impl GccOutput {
+    /// Install the required libgccjit library file(s) to the specified `path`.
+    pub fn install_to(&self, builder: &Builder<'_>, directory: &Path) {
+        let dst = directory.join(self.libgccjit.file_name().unwrap());
+        builder.install(&self.libgccjit, directory, FileType::NativeLibrary);
+        // FIXME: try to remove the alias, it shouldn't be needed
+        // We just have to teach rustc_codegen_gcc to link to libgccjit.so directly, instead of
+        // linking to libgccjit.so.0.
+        create_lib_alias(builder, &dst);
+    }
 }
 
 impl Step for Gcc {
