@@ -2347,7 +2347,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // We want it to always point to the trait item.
             // If we're pointing at an inherent function, we don't need to do anything,
             // so we fetch the parent and verify if it's a trait item.
-            && let maybe_trait_item_def_id = assoc_item.trait_item_def_id.unwrap_or(def_id)
+            && let Ok(maybe_trait_item_def_id) = assoc_item.trait_item_or_self()
             && let maybe_trait_def_id = self.tcx.parent(maybe_trait_item_def_id)
             // Just an easy way to check "trait_def_id == Fn/FnMut/FnOnce"
             && let Some(call_kind) = self.tcx.fn_trait_kind_from_def_id(maybe_trait_def_id)

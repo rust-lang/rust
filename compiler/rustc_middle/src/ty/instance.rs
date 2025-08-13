@@ -18,8 +18,8 @@ use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::ty::normalize_erasing_regions::NormalizationError;
 use crate::ty::print::{FmtPrinter, Print};
 use crate::ty::{
-    self, EarlyBinder, GenericArgs, GenericArgsRef, Ty, TyCtxt, TypeFoldable, TypeSuperVisitable,
-    TypeVisitable, TypeVisitableExt, TypeVisitor,
+    self, AssocContainer, EarlyBinder, GenericArgs, GenericArgsRef, Ty, TyCtxt, TypeFoldable,
+    TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
 };
 
 /// An `InstanceKind` along with the args that are needed to substitute the instance.
@@ -612,10 +612,12 @@ impl<'tcx> Instance<'tcx> {
                 // Reify `Trait::method` implementations if KCFI is enabled
                 // FIXME(maurer) only reify it if it is a vtable-safe function
                 _ if tcx.sess.is_sanitizer_kcfi_enabled()
-                    && tcx
-                        .opt_associated_item(def_id)
-                        .and_then(|assoc| assoc.trait_item_def_id)
-                        .is_some() =>
+                    && let Some(assoc) = tcx.opt_associated_item(def_id)
+                    && matches!(
+                        assoc.container,
+                        AssocContainer::Trait | AssocContainer::TraitImpl(_)
+                    )
+                    && !assoc.is_impl_trait_in_trait() =>
                 {
                     // If this function could also go in a vtable, we need to `ReifyShim` it with
                     // KCFI because it can only attach one type per function.

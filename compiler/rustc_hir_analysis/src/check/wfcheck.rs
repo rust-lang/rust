@@ -944,12 +944,13 @@ pub(crate) fn check_associated_item(
 
         // Avoid bogus "type annotations needed `Foo: Bar`" errors on `impl Bar for Foo` in case
         // other `Foo` impls are incoherent.
-        tcx.ensure_ok()
-            .coherent_trait(tcx.parent(item.trait_item_def_id.unwrap_or(item_id.into())))?;
+        tcx.ensure_ok().coherent_trait(tcx.parent(item.trait_item_or_self()?))?;
 
         let self_ty = match item.container {
             ty::AssocContainer::Trait => tcx.types.self_param,
-            ty::AssocContainer::Impl => tcx.type_of(item.container_id(tcx)).instantiate_identity(),
+            ty::AssocContainer::InherentImpl | ty::AssocContainer::TraitImpl(_) => {
+                tcx.type_of(item.container_id(tcx)).instantiate_identity()
+            }
         };
 
         let span = tcx.def_span(item_id);

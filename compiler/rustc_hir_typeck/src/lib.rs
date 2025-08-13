@@ -290,8 +290,7 @@ fn infer_type_if_missing<'tcx>(fcx: &FnCtxt<'_, 'tcx>, node: Node<'tcx>) -> Opti
     {
         if let Some(item) = tcx.opt_associated_item(def_id.into())
             && let ty::AssocKind::Const { .. } = item.kind
-            && let ty::AssocContainer::Impl = item.container
-            && let Some(trait_item_def_id) = item.trait_item_def_id
+            && let ty::AssocContainer::TraitImpl(Ok(trait_item_def_id)) = item.container
         {
             let impl_def_id = item.container_id(tcx);
             let impl_trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap().instantiate_identity();

@@ -663,16 +663,13 @@ impl Item {
                 // rustc's `is_const_fn` returns `true` for associated functions that have an `impl const` parent
                 // or that have a `const trait` parent. Do not display those as `const` in rustdoc because we
                 // won't be printing correct syntax plus the syntax is unstable.
-                match tcx.opt_associated_item(def_id) {
-                    Some(ty::AssocItem {
-                        container: ty::AssocContainer::Impl,
-                        trait_item_def_id: Some(_),
-                        ..
-                    })
-                    | Some(ty::AssocItem { container: ty::AssocContainer::Trait, .. }) => {
-                        hir::Constness::NotConst
-                    }
-                    None | Some(_) => hir::Constness::Const,
+                if let Some(assoc) = tcx.opt_associated_item(def_id)
+                    && let ty::AssocContainer::Trait | ty::AssocContainer::TraitImpl(_) =
+                        assoc.container
+                {
+                    hir::Constness::NotConst
+                } else {
+                    hir::Constness::Const
                 }
             } else {
                 hir::Constness::NotConst
@@ -750,17 +747,13 @@ impl Item {
             | RequiredAssocTypeItem(..)
             | RequiredMethodItem(..)
             | MethodItem(..) => {
-                let assoc_item = tcx.associated_item(def_id);
-                let is_trait_item = match assoc_item.container {
-                    ty::AssocContainer::Trait => true,
-                    ty::AssocContainer::Impl => {
-                        // Trait impl items always inherit the impl's visibility --
-                        // we don't want to show `pub`.
-                        tcx.impl_trait_ref(tcx.parent(assoc_item.def_id)).is_some()
+                match tcx.associated_item(def_id).container {
+                    // Trait impl items always inherit the impl's visibility --
+                    // we don't want to show `pub`.
+                    ty::AssocContainer::Trait | ty::AssocContainer::TraitImpl(_) => {
+                        return None;
                     }
-                };
-                if is_trait_item {
-                    return None;
+                    ty::AssocContainer::InherentImpl => {}
                 }
             }
             _ => {}

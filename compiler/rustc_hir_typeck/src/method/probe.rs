@@ -1672,7 +1672,7 @@ impl<'tcx> Pick<'tcx> {
     /// Do not use for type checking.
     pub(crate) fn differs_from(&self, other: &Self) -> bool {
         let Self {
-            item: AssocItem { def_id, kind: _, container: _, trait_item_def_id: _ },
+            item: AssocItem { def_id, kind: _, container: _ },
             kind: _,
             import_ids: _,
             autoderefs: _,
