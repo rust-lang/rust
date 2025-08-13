@@ -8,17 +8,8 @@ use rustc_middle::ty::{self, Ty};
 
 use super::CAST_PTR_ALIGNMENT;
 
-pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>) {
-    if let ExprKind::Cast(cast_expr, cast_to) = expr.kind {
-        if is_hir_ty_cfg_dependant(cx, cast_to) {
-            return;
-        }
-        let (cast_from, cast_to) = (
-            cx.typeck_results().expr_ty(cast_expr),
-            cx.typeck_results().expr_ty(expr),
-        );
-        lint_cast_ptr_alignment(cx, expr, cast_from, cast_to);
-    }
+pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>, cast_from: Ty<'tcx>, cast_to: Ty<'tcx>) {
+    lint_cast_ptr_alignment(cx, expr, cast_from, cast_to);
 }
 
 pub(super) fn check_cast_method(cx: &LateContext<'_>, expr: &Expr<'_>) {
