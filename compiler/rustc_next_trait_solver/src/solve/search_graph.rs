@@ -48,7 +48,9 @@ where
     ) -> QueryResult<I> {
         match kind {
             PathKind::Coinductive => response_no_constraints(cx, input, Certainty::Yes),
-            PathKind::Unknown => response_no_constraints(cx, input, Certainty::overflow(false)),
+            PathKind::Unknown | PathKind::ForcedAmbiguity => {
+                response_no_constraints(cx, input, Certainty::overflow(false))
+            }
             // Even though we know these cycles to be unproductive, we still return
             // overflow during coherence. This is both as we are not 100% confident in
             // the implementation yet and any incorrect errors would be unsound there.

@@ -92,9 +92,6 @@ impl<'tcx> RegionErrors<'tcx> {
     ) -> impl Iterator<Item = (RegionErrorKind<'tcx>, ErrorGuaranteed)> {
         self.0.into_iter()
     }
-    pub(crate) fn has_errors(&self) -> Option<ErrorGuaranteed> {
-        self.0.get(0).map(|x| x.1)
-    }
 }
 
 impl std::fmt::Debug for RegionErrors<'_> {

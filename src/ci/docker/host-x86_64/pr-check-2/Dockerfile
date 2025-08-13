@@ -28,16 +28,16 @@ RUN sh /scripts/sccache.sh
 
 ENV SCRIPT \
         python3 ../x.py check && \
-        python3 ../x.py clippy ci && \
+        python3 ../x.py clippy ci --stage 2 && \
         python3 ../x.py test --stage 1 core alloc std test proc_macro && \
         python3 ../x.py test --stage 1 src/tools/compiletest && \
-        python3 ../x.py doc --stage 0 bootstrap && \
+        python3 ../x.py doc bootstrap && \
         # Build both public and internal documentation.
-        RUSTDOCFLAGS=\"--document-private-items --document-hidden-items\" python3 ../x.py doc --stage 0 compiler && \
-        RUSTDOCFLAGS=\"--document-private-items --document-hidden-items\" python3 ../x.py doc --stage 1 library && \
+        RUSTDOCFLAGS=\"--document-private-items --document-hidden-items\" python3 ../x.py doc compiler --stage 1 && \
+        RUSTDOCFLAGS=\"--document-private-items --document-hidden-items\" python3 ../x.py doc library --stage 1 && \
         mkdir -p /checkout/obj/staging/doc && \
         cp -r build/x86_64-unknown-linux-gnu/doc /checkout/obj/staging && \
-        RUSTDOCFLAGS=\"--document-private-items --document-hidden-items\" python3 ../x.py doc --stage 1 library/test && \
+        RUSTDOCFLAGS=\"--document-private-items --document-hidden-items\" python3 ../x.py doc library/test --stage 1 && \
         # The BOOTSTRAP_TRACING flag is added to verify whether the
         # bootstrap process compiles successfully with this flag enabled.
         BOOTSTRAP_TRACING=1 python3 ../x.py --help

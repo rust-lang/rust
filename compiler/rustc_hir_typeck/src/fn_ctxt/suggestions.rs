@@ -936,7 +936,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             Node::ImplItem(item) => {
                 // If it doesn't impl a trait, we can add a return type
                 let Node::Item(&hir::Item {
-                    kind: hir::ItemKind::Impl(&hir::Impl { of_trait, .. }),
+                    kind: hir::ItemKind::Impl(hir::Impl { of_trait, .. }),
                     ..
                 }) = self.tcx.parent_hir_node(item.hir_id())
                 else {

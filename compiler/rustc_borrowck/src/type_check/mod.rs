@@ -182,6 +182,17 @@ pub(crate) fn type_check<'tcx>(
         )
     });
 
+    // In case type check encountered an error region, we suppress unhelpful extra
+    // errors in by clearing out all outlives bounds that we may end up checking.
+    if let Some(guar) = universal_region_relations.universal_regions.encountered_re_error() {
+        debug!("encountered an error region; removing constraints!");
+        constraints.outlives_constraints = Default::default();
+        constraints.member_constraints = Default::default();
+        constraints.type_tests = Default::default();
+        root_cx.set_tainted_by_errors(guar);
+        infcx.set_tainted_by_errors(guar);
+    }
+
     MirTypeckResults {
         constraints,
         universal_region_relations,

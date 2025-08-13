@@ -1,14 +1,17 @@
+use std::collections::HashMap;
 use std::env;
 use std::ffi::OsString;
 use std::fs::{self, File};
 use std::io::{BufRead, BufReader, BufWriter, ErrorKind, Write};
 use std::path::{Path, PathBuf};
-use std::sync::OnceLock;
+use std::sync::{Arc, Mutex, OnceLock};
 
+use build_helper::git::PathFreshness;
 use xz2::bufread::XzDecoder;
 
-use crate::core::config::{BUILDER_CONFIG_FILENAME, TargetSelection};
+use crate::core::config::{BUILDER_CONFIG_FILENAME, Target, TargetSelection};
 use crate::utils::build_stamp::BuildStamp;
+use crate::utils::channel;
 use crate::utils::exec::{ExecutionContext, command};
 use crate::utils::helpers::{exe, hex_encode, move_file};
 use crate::{Config, t};
@@ -398,14 +401,21 @@ impl Config {
 
 /// Only should be used for pre config initialization downloads.
 pub(crate) struct DownloadContext<'a> {
-    host_target: TargetSelection,
-    out: &'a Path,
-    patch_binaries_for_nix: Option<bool>,
-    exec_ctx: &'a ExecutionContext,
-    stage0_metadata: &'a build_helper::stage0_parser::Stage0,
-    llvm_assertions: bool,
-    bootstrap_cache_path: &'a Option<PathBuf>,
-    is_running_on_ci: bool,
+    pub path_modification_cache: Arc<Mutex<HashMap<Vec<&'static str>, PathFreshness>>>,
+    pub src: &'a Path,
+    pub rust_info: &'a channel::GitInfo,
+    pub submodules: &'a Option<bool>,
+    pub download_rustc_commit: &'a Option<String>,
+    pub host_target: TargetSelection,
+    pub llvm_from_ci: bool,
+    pub target_config: &'a HashMap<TargetSelection, Target>,
+    pub out: &'a Path,
+    pub patch_binaries_for_nix: Option<bool>,
+    pub exec_ctx: &'a ExecutionContext,
+    pub stage0_metadata: &'a build_helper::stage0_parser::Stage0,
+    pub llvm_assertions: bool,
+    pub bootstrap_cache_path: &'a Option<PathBuf>,
+    pub is_running_on_ci: bool,
 }
 
 impl<'a> AsRef<DownloadContext<'a>> for DownloadContext<'a> {
@@ -417,7 +427,14 @@ impl<'a> AsRef<DownloadContext<'a>> for DownloadContext<'a> {
 impl<'a> From<&'a Config> for DownloadContext<'a> {
     fn from(value: &'a Config) -> Self {
         DownloadContext {
+            path_modification_cache: value.path_modification_cache.clone(),
+            src: &value.src,
             host_target: value.host_target,
+            rust_info: &value.rust_info,
+            download_rustc_commit: &value.download_rustc_commit,
+            submodules: &value.submodules,
+            llvm_from_ci: value.llvm_from_ci,
+            target_config: &value.target_config,
             out: &value.out,
             patch_binaries_for_nix: value.patch_binaries_for_nix,
             exec_ctx: &value.exec_ctx,

@@ -375,7 +375,7 @@ fn do_mir_borrowck<'tcx>(
         polonius_context,
     );
 
-    regioncx.infer_opaque_types(root_cx, &infcx, opaque_type_values);
+    let opaque_type_errors = regioncx.infer_opaque_types(root_cx, &infcx, opaque_type_values);
 
     // Dump MIR results into a file, if that is enabled. This lets us
     // write unit-tests, as well as helping with debugging.
@@ -471,7 +471,11 @@ fn do_mir_borrowck<'tcx>(
     };
 
     // Compute and report region errors, if any.
-    mbcx.report_region_errors(nll_errors);
+    if nll_errors.is_empty() {
+        mbcx.report_opaque_type_errors(opaque_type_errors);
+    } else {
+        mbcx.report_region_errors(nll_errors);
+    }
 
     let (mut flow_analysis, flow_entry_states) =
         get_flow_results(tcx, body, &move_data, &borrow_set, &regioncx);

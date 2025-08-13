@@ -160,6 +160,10 @@ impl StepMetadata {
         Self::new(name, target, Kind::Check)
     }
 
+    pub fn clippy(name: &str, target: TargetSelection) -> Self {
+        Self::new(name, target, Kind::Clippy)
+    }
+
     pub fn doc(name: &str, target: TargetSelection) -> Self {
         Self::new(name, target, Kind::Doc)
     }
@@ -959,7 +963,8 @@ impl<'a> Builder<'a> {
                 compile::Std,
                 compile::Rustc,
                 compile::Assemble,
-                compile::CodegenBackend,
+                compile::CraneliftCodegenBackend,
+                compile::GccCodegenBackend,
                 compile::StartupObjects,
                 tool::BuildManifest,
                 tool::Rustbook,
@@ -1150,7 +1155,7 @@ impl<'a> Builder<'a> {
                 dist::JsonDocs,
                 dist::Mingw,
                 dist::Rustc,
-                dist::CodegenBackend,
+                dist::CraneliftCodegenBackend,
                 dist::Std,
                 dist::RustcDev,
                 dist::Analysis,
@@ -1551,35 +1556,6 @@ You have to build a stage1 compiler for `{}` first, and then use it to build a s
         self.ensure(tool::Rustdoc { target_compiler })
     }
 
-    pub fn cargo_clippy_cmd(&self, run_compiler: Compiler) -> BootstrapCommand {
-        if run_compiler.stage == 0 {
-            let cargo_clippy = self
-                .config
-                .initial_cargo_clippy
-                .clone()
-                .unwrap_or_else(|| self.build.config.download_clippy());
-
-            let mut cmd = command(cargo_clippy);
-            cmd.env("CARGO", &self.initial_cargo);
-            return cmd;
-        }
-
-        // FIXME: double check that `run_compiler`'s stage is what we want to use
-        let compilers =
-            RustcPrivateCompilers::new(self, run_compiler.stage, self.build.host_target);
-        assert_eq!(run_compiler, compilers.target_compiler());
-
-        let _ = self.ensure(tool::Clippy::from_compilers(compilers));
-        let cargo_clippy = self.ensure(tool::CargoClippy::from_compilers(compilers));
-        let mut dylib_path = helpers::dylib_path();
-        dylib_path.insert(0, self.sysroot(run_compiler).join("lib"));
-
-        let mut cmd = command(cargo_clippy.tool_path);
-        cmd.env(helpers::dylib_path_var(), env::join_paths(&dylib_path).unwrap());
-        cmd.env("CARGO", &self.initial_cargo);
-        cmd
-    }
-
     pub fn cargo_miri_cmd(&self, run_compiler: Compiler) -> BootstrapCommand {
         assert!(run_compiler.stage > 0, "miri can not be invoked at stage 0");
 
@@ -1596,13 +1572,44 @@ You have to build a stage1 compiler for `{}` first, and then use it to build a s
         cmd.env("CARGO", &self.initial_cargo);
         // Need to add the `run_compiler` libs. Those are the libs produces *by* `build_compiler`
         // in `tool::ToolBuild` step, so they match the Miri we just built. However this means they
-        // are actually living one stage up, i.e. we are running `stage0-tools-bin/miri` with the
+        // are actually living one stage up, i.e. we are running `stage1-tools-bin/miri` with the
         // libraries in `stage1/lib`. This is an unfortunate off-by-1 caused (possibly) by the fact
         // that Miri doesn't have an "assemble" step like rustc does that would cross the stage boundary.
         // We can't use `add_rustc_lib_path` as that's a NOP on Windows but we do need these libraries
         // added to the PATH due to the stage mismatch.
         // Also see https://github.com/rust-lang/rust/pull/123192#issuecomment-2028901503.
         add_dylib_path(self.rustc_lib_paths(run_compiler), &mut cmd);
+        cmd
+    }
+
+    /// Create a Cargo command for running Clippy.
+    /// The used Clippy is (or in the case of stage 0, already was) built using `build_compiler`.
+    pub fn cargo_clippy_cmd(&self, build_compiler: Compiler) -> BootstrapCommand {
+        if build_compiler.stage == 0 {
+            let cargo_clippy = self
+                .config
+                .initial_cargo_clippy
+                .clone()
+                .unwrap_or_else(|| self.build.config.download_clippy());
+
+            let mut cmd = command(cargo_clippy);
+            cmd.env("CARGO", &self.initial_cargo);
+            return cmd;
+        }
+
+        // If we're linting something with build_compiler stage N, we want to build Clippy stage N
+        // and use that to lint it. That is why we use the `build_compiler` as the target compiler
+        // for RustcPrivateCompilers. We will use build compiler stage N-1 to build Clippy stage N.
+        let compilers = RustcPrivateCompilers::from_target_compiler(self, build_compiler);
+
+        let _ = self.ensure(tool::Clippy::from_compilers(compilers));
+        let cargo_clippy = self.ensure(tool::CargoClippy::from_compilers(compilers));
+        let mut dylib_path = helpers::dylib_path();
+        dylib_path.insert(0, self.sysroot(build_compiler).join("lib"));
+
+        let mut cmd = command(cargo_clippy.tool_path);
+        cmd.env(helpers::dylib_path_var(), env::join_paths(&dylib_path).unwrap());
+        cmd.env("CARGO", &self.initial_cargo);
         cmd
     }
 

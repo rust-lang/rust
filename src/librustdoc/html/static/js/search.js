@@ -1465,6 +1465,11 @@ class DocSearch {
          */
         this.searchIndexEmptyDesc = new Map();
         /**
+         * @type {Map<String, RoaringBitmap>}
+         */
+        this.searchIndexUnstable = new Map();
+
+        /**
          *  @type {Uint32Array}
          */
         this.functionTypeFingerprint = new Uint32Array(0);
@@ -2052,9 +2057,10 @@ class DocSearch {
             };
             const descShardList = [descShard];
 
-            // Deprecated items and items with no description
+            // Deprecated and unstable items and items with no description
             this.searchIndexDeprecated.set(crate, new RoaringBitmap(crateCorpus.c));
             this.searchIndexEmptyDesc.set(crate, new RoaringBitmap(crateCorpus.e));
+            this.searchIndexUnstable.set(crate, new RoaringBitmap(crateCorpus.u));
             let descIndex = 0;
 
             /**
@@ -3326,6 +3332,25 @@ class DocSearch {
                     return a - b;
                 }
 
+                // sort unstable items later
+                // FIXME: there is some doubt if this is the most effecient way to implement this.
+                // alternative options include:
+                // * put is_unstable on each item when the index is built.
+                //   increases memory usage but avoids a hashmap lookup.
+                // * put is_unstable on each item before sorting.
+                //   better worst case performance but worse average case performance.
+                a = Number(
+                    // @ts-expect-error
+                    this.searchIndexUnstable.get(aaa.item.crate).contains(aaa.item.bitIndex),
+                );
+                b = Number(
+                    // @ts-expect-error
+                    this.searchIndexUnstable.get(bbb.item.crate).contains(bbb.item.bitIndex),
+                );
+                if (a !== b) {
+                    return a - b;
+                }
+
                 // sort by crate (current crate comes first)
                 a = Number(aaa.item.crate !== preferredCrate);
                 b = Number(bbb.item.crate !== preferredCrate);
@@ -3336,6 +3361,13 @@ class DocSearch {
                 // sort by item name length (longer goes later)
                 a = Number(aaa.word.length);
                 b = Number(bbb.word.length);
+                if (a !== b) {
+                    return a - b;
+                }
+
+                // sort doc alias items later
+                a = Number(aaa.item.is_alias === true);
+                b = Number(bbb.item.is_alias === true);
                 if (a !== b) {
                     return a - b;
                 }

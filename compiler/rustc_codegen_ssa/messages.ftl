@@ -180,6 +180,10 @@ codegen_ssa_ld64_unimplemented_modifier = `as-needed` modifier not implemented y
 
 codegen_ssa_lib_def_write_failure = failed to write lib.def file: {$error}
 
+codegen_ssa_link_exe_status_stack_buffer_overrun = 0xc0000409 is `STATUS_STACK_BUFFER_OVERRUN`
+    .abort_note = this may have been caused by a program abort and not a stack buffer overrun
+    .event_log_note = consider checking the Application Event Log for Windows Error Reporting events to see the fail fast error code
+
 codegen_ssa_link_exe_unexpected_error = `link.exe` returned an unexpected error
 
 codegen_ssa_link_script_unavailable = can only use link script when linking with GNU-like linker
@@ -396,6 +400,9 @@ codegen_ssa_use_cargo_directive = use the `cargo:rustc-link-lib` directive to sp
 codegen_ssa_version_script_write_failure = failed to write version script: {$error}
 
 codegen_ssa_visual_studio_not_installed = you may need to install Visual Studio build tools with the "C++ build tools" workload
+
+codegen_ssa_xcrun_about =
+    the SDK is needed by the linker to know where to find symbols in system libraries and for embedding the SDK version in the final object file
 
 codegen_ssa_xcrun_command_line_tools_insufficient =
     when compiling for iOS, tvOS, visionOS or watchOS, you need a full installation of Xcode

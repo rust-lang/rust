@@ -196,7 +196,10 @@ pub(crate) fn detect_llvm_freshness(config: &Config, is_git: bool) -> PathFreshn
 ///
 /// This checks the build triple platform to confirm we're usable at all, and if LLVM
 /// with/without assertions is available.
-pub(crate) fn is_ci_llvm_available_for_target(config: &Config, asserts: bool) -> bool {
+pub(crate) fn is_ci_llvm_available_for_target(
+    host_target: &TargetSelection,
+    asserts: bool,
+) -> bool {
     // This is currently all tier 1 targets and tier 2 targets with host tools
     // (since others may not have CI artifacts)
     // https://doc.rust-lang.org/rustc/platform-support.html#tier-1
@@ -235,8 +238,8 @@ pub(crate) fn is_ci_llvm_available_for_target(config: &Config, asserts: bool) ->
         ("x86_64-unknown-netbsd", false),
     ];
 
-    if !supported_platforms.contains(&(&*config.host_target.triple, asserts))
-        && (asserts || !supported_platforms.contains(&(&*config.host_target.triple, true)))
+    if !supported_platforms.contains(&(&*host_target.triple, asserts))
+        && (asserts || !supported_platforms.contains(&(&*host_target.triple, true)))
     {
         return false;
     }
@@ -419,6 +422,13 @@ impl Step for Llvm {
             // LLVM wants 64-bit atomics, while mipsel is 32-bit only, so needs -latomic
             ldflags.exe.push(" -latomic");
             ldflags.shared.push(" -latomic");
+        }
+
+        if target.starts_with("arm64ec") {
+            // MSVC linker requires the -machine:arm64ec flag to be passed to
+            // know it's linking as Arm64EC (vs Arm64X).
+            ldflags.exe.push(" -machine:arm64ec");
+            ldflags.shared.push(" -machine:arm64ec");
         }
 
         if target.is_msvc() {
@@ -986,6 +996,7 @@ impl Step for Enzyme {
             .env("LLVM_CONFIG_REAL", &llvm_config)
             .define("LLVM_ENABLE_ASSERTIONS", "ON")
             .define("ENZYME_EXTERNAL_SHARED_LIB", "ON")
+            .define("ENZYME_BC_LOADER", "OFF")
             .define("LLVM_DIR", builder.llvm_out(target));
 
         cfg.build();

@@ -16,7 +16,7 @@ pub(crate) struct ConfusablesParser {
 impl<S: Stage> AttributeParser<S> for ConfusablesParser {
     const ATTRIBUTES: AcceptMapping<Self, S> = &[(
         &[sym::rustc_confusables],
-        template!(List: r#""name1", "name2", ..."#),
+        template!(List: &[r#""name1", "name2", ..."#]),
         |this, cx, args| {
             let Some(list) = args.list() else {
                 cx.expected_list(cx.attr_span);

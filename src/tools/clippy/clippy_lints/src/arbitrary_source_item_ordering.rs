@@ -534,6 +534,7 @@ fn get_item_name(item: &Item<'_>) -> Option<String> {
 
                         if let Some(of_trait) = im.of_trait {
                             let mut trait_segs: Vec<String> = of_trait
+                                .trait_ref
                                 .path
                                 .segments
                                 .iter()

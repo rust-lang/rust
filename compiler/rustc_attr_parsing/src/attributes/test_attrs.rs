@@ -13,7 +13,10 @@ impl<S: Stage> SingleAttributeParser<S> for IgnoreParser {
     const PATH: &[Symbol] = &[sym::ignore];
     const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
-    const TEMPLATE: AttributeTemplate = template!(Word, NameValueStr: "reason");
+    const TEMPLATE: AttributeTemplate = template!(
+        Word, NameValueStr: "reason",
+        "https://doc.rust-lang.org/reference/attributes/testing.html#the-ignore-attribute"
+    );
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
         Some(AttributeKind::Ignore {
@@ -51,8 +54,10 @@ impl<S: Stage> SingleAttributeParser<S> for ShouldPanicParser {
     const PATH: &[Symbol] = &[sym::should_panic];
     const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::WarnButFutureError;
-    const TEMPLATE: AttributeTemplate =
-        template!(Word, List: r#"expected = "reason""#, NameValueStr: "reason");
+    const TEMPLATE: AttributeTemplate = template!(
+        Word, List: &[r#"expected = "reason""#], NameValueStr: "reason",
+        "https://doc.rust-lang.org/reference/attributes/testing.html#the-should_panic-attribute"
+    );
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
         Some(AttributeKind::ShouldPanic {

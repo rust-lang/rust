@@ -428,47 +428,53 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let arm_source_info = self.source_info(arm.span);
                 let arm_scope = (arm.scope, arm_source_info);
                 let match_scope = self.local_scope();
+                let guard_scope = arm
+                    .guard
+                    .map(|_| region::Scope { data: region::ScopeData::MatchGuard, ..arm.scope });
                 self.in_scope(arm_scope, arm.lint_level, |this| {
-                    let old_dedup_scope =
-                        mem::replace(&mut this.fixed_temps_scope, Some(arm.scope));
+                    this.opt_in_scope(guard_scope.map(|scope| (scope, arm_source_info)), |this| {
+                        // `if let` guard temps needing deduplicating will be in the guard scope.
+                        let old_dedup_scope =
+                            mem::replace(&mut this.fixed_temps_scope, guard_scope);
 
-                    // `try_to_place` may fail if it is unable to resolve the given
-                    // `PlaceBuilder` inside a closure. In this case, we don't want to include
-                    // a scrutinee place. `scrutinee_place_builder` will fail to be resolved
-                    // if the only match arm is a wildcard (`_`).
-                    // Example:
-                    // ```
-                    // let foo = (0, 1);
-                    // let c = || {
-                    //    match foo { _ => () };
-                    // };
-                    // ```
-                    let scrutinee_place = scrutinee_place_builder.try_to_place(this);
-                    let opt_scrutinee_place =
-                        scrutinee_place.as_ref().map(|place| (Some(place), scrutinee_span));
-                    let scope = this.declare_bindings(
-                        None,
-                        arm.span,
-                        &arm.pattern,
-                        arm.guard,
-                        opt_scrutinee_place,
-                    );
+                        // `try_to_place` may fail if it is unable to resolve the given
+                        // `PlaceBuilder` inside a closure. In this case, we don't want to include
+                        // a scrutinee place. `scrutinee_place_builder` will fail to be resolved
+                        // if the only match arm is a wildcard (`_`).
+                        // Example:
+                        // ```
+                        // let foo = (0, 1);
+                        // let c = || {
+                        //    match foo { _ => () };
+                        // };
+                        // ```
+                        let scrutinee_place = scrutinee_place_builder.try_to_place(this);
+                        let opt_scrutinee_place =
+                            scrutinee_place.as_ref().map(|place| (Some(place), scrutinee_span));
+                        let scope = this.declare_bindings(
+                            None,
+                            arm.span,
+                            &arm.pattern,
+                            arm.guard,
+                            opt_scrutinee_place,
+                        );
 
-                    let arm_block = this.bind_pattern(
-                        outer_source_info,
-                        branch,
-                        &built_match_tree.fake_borrow_temps,
-                        scrutinee_span,
-                        Some((arm, match_scope)),
-                    );
+                        let arm_block = this.bind_pattern(
+                            outer_source_info,
+                            branch,
+                            &built_match_tree.fake_borrow_temps,
+                            scrutinee_span,
+                            Some((arm, match_scope)),
+                        );
 
-                    this.fixed_temps_scope = old_dedup_scope;
+                        this.fixed_temps_scope = old_dedup_scope;
 
-                    if let Some(source_scope) = scope {
-                        this.source_scope = source_scope;
-                    }
+                        if let Some(source_scope) = scope {
+                            this.source_scope = source_scope;
+                        }
 
-                    this.expr_into_dest(destination, arm_block, arm.body)
+                        this.expr_into_dest(destination, arm_block, arm.body)
+                    })
                 })
                 .into_block()
             })
@@ -2517,7 +2523,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // bindings and temporaries created for and by the guard. As a result, the drop order
             // for the arm will correspond to the binding order of the final sub-branch lowered.
             if matches!(schedule_drops, ScheduleDrops::No) {
-                self.clear_top_scope(arm.scope);
+                self.clear_match_arm_and_guard_scopes(arm.scope);
             }
 
             let source_info = self.source_info(guard_span);

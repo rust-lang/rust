@@ -384,7 +384,7 @@ fn emit_orphan_check_error<'tcx>(
         traits::OrphanCheckErr::NonLocalInputType(tys) => {
             let item = tcx.hir_expect_item(impl_def_id);
             let impl_ = item.expect_impl();
-            let hir_trait_ref = impl_.of_trait.as_ref().unwrap();
+            let of_trait = impl_.of_trait.unwrap();
 
             let span = tcx.def_span(impl_def_id);
             let mut diag = tcx.dcx().create_err(match trait_ref.self_ty().kind() {
@@ -401,7 +401,7 @@ fn emit_orphan_check_error<'tcx>(
                     impl_.self_ty.span
                 } else {
                     // Point at `C<B>` in `impl<A, B> for C<B> in D<A>`
-                    hir_trait_ref.path.span
+                    of_trait.trait_ref.path.span
                 };
 
                 ty = tcx.erase_regions(ty);

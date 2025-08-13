@@ -1,4 +1,3 @@
-use rustc_ast::ptr::P;
 use rustc_ast::token::Delimiter;
 use rustc_ast::tokenstream::{DelimSpan, TokenStream};
 use rustc_ast::*;
@@ -48,7 +47,7 @@ fn expand<'cx>(
     ExpandResult::Ready(MacEager::expr(
         cx.expr(
             sp,
-            ExprKind::MacCall(P(MacCall {
+            ExprKind::MacCall(Box::new(MacCall {
                 path: Path {
                     span: sp,
                     segments: cx
@@ -58,7 +57,7 @@ fn expand<'cx>(
                         .collect(),
                     tokens: None,
                 },
-                args: P(DelimArgs {
+                args: Box::new(DelimArgs {
                     dspan: DelimSpan::from_single(sp),
                     delim: Delimiter::Parenthesis,
                     tokens: tts,
