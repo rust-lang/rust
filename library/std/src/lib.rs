@@ -329,6 +329,7 @@
 // tidy-alphabetical-start
 #![feature(bstr)]
 #![feature(bstr_internals)]
+#![feature(cast_maybe_uninit)]
 #![feature(char_internals)]
 #![feature(clone_to_uninit)]
 #![feature(const_cmp)]
