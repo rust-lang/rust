@@ -21,6 +21,7 @@ rustc_hir = { path = "../rustc_hir" }
 rustc_lexer = { path = "../rustc_lexer" }
 rustc_lint_defs = { path = "../rustc_lint_defs" }
 rustc_macros = { path = "../rustc_macros" }
+rustc_middle = { path = "../rustc_middle" }
 rustc_parse = { path = "../rustc_parse" }
 # We must use the proc_macro version that we will compile proc-macros against,
 # not the one from our own sysroot.

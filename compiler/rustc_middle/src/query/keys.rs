@@ -2,11 +2,13 @@
 
 use std::ffi::OsStr;
 
+use rustc_ast::tokenstream::TokenStream;
+use rustc_data_structures::svh::Svh;
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE, LocalDefId, LocalModDefId, ModDefId};
 use rustc_hir::hir_id::{HirId, OwnerId};
 use rustc_query_system::dep_graph::DepNodeIndex;
 use rustc_query_system::query::{DefIdCache, DefaultCache, SingleCache, VecCache};
-use rustc_span::{DUMMY_SP, Ident, Span, Symbol};
+use rustc_span::{DUMMY_SP, Ident, LocalExpnId, Span, Symbol};
 
 use crate::infer::canonical::CanonicalQueryInput;
 use crate::mir::mono::CollectionMode;
@@ -613,6 +615,19 @@ impl Key for (LocalDefId, HirId) {
     #[inline(always)]
     fn key_as_def_id(&self) -> Option<DefId> {
         Some(self.0.into())
+    }
+}
+
+impl<'tcx> Key for (LocalExpnId, Svh, &'tcx TokenStream) {
+    type Cache<V> = DefaultCache<Self, V>;
+
+    fn default_span(&self, _tcx: TyCtxt<'_>) -> Span {
+        self.0.expn_data().call_site
+    }
+
+    #[inline(always)]
+    fn key_as_def_id(&self) -> Option<DefId> {
+        None
     }
 }
 
