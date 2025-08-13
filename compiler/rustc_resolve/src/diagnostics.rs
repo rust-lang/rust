@@ -1016,16 +1016,14 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         .emit()
     }
 
-    /// Lookup typo candidate in scope for a macro or import.
-    fn early_lookup_typo_candidate(
+    pub(crate) fn add_scope_set_candidates(
         &mut self,
+        suggestions: &mut Vec<TypoSuggestion>,
         scope_set: ScopeSet<'ra>,
         parent_scope: &ParentScope<'ra>,
-        ident: Ident,
+        ctxt: SyntaxContext,
         filter_fn: &impl Fn(Res) -> bool,
-    ) -> Option<TypoSuggestion> {
-        let mut suggestions = Vec::new();
-        let ctxt = ident.span.ctxt();
+    ) {
         self.cm().visit_scopes(scope_set, parent_scope, ctxt, |this, scope, use_prelude, _| {
             match scope {
                 Scope::DeriveHelpers(expn_id) => {
@@ -1055,7 +1053,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     }
                 }
                 Scope::Module(module, _) => {
-                    this.add_module_candidates(module, &mut suggestions, filter_fn, None);
+                    this.add_module_candidates(module, suggestions, filter_fn, None);
                 }
                 Scope::MacroUsePrelude => {
                     suggestions.extend(this.macro_use_prelude.iter().filter_map(
@@ -1113,6 +1111,19 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
             None::<()>
         });
+    }
+
+    /// Lookup typo candidate in scope for a macro or import.
+    fn early_lookup_typo_candidate(
+        &mut self,
+        scope_set: ScopeSet<'ra>,
+        parent_scope: &ParentScope<'ra>,
+        ident: Ident,
+        filter_fn: &impl Fn(Res) -> bool,
+    ) -> Option<TypoSuggestion> {
+        let mut suggestions = Vec::new();
+        let ctxt = ident.span.ctxt();
+        self.add_scope_set_candidates(&mut suggestions, scope_set, parent_scope, ctxt, filter_fn);
 
         // Make sure error reporting is deterministic.
         suggestions.sort_by(|a, b| a.candidate.as_str().cmp(b.candidate.as_str()));
