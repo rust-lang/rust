@@ -213,6 +213,12 @@ pub(crate) unsafe fn create_module<'ll>(
             target_data_layout = target_data_layout.replace("p8:128:128:128:48", "p8:128:128")
         }
     }
+    if llvm_version < (22, 0, 0) {
+        if sess.target.arch == "avr" {
+            // LLVM 22.0 updated the default layout on avr: https://github.com/llvm/llvm-project/pull/153010
+            target_data_layout = target_data_layout.replace("n8:16", "n8")
+        }
+    }
 
     // Ensure the data-layout values hardcoded remain the defaults.
     {
