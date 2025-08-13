@@ -182,7 +182,7 @@ pub fn layout_of_ty_ns_query<'db>(
     };
     let dl = &*target;
     let cx = LayoutCx::new(dl);
-    let infer_ctxt = interner.infer_ctxt().build(TypingMode::non_body_analysis());
+    let infer_ctxt = interner.infer_ctxt().build(TypingMode::PostAnalysis);
     let cause = ObligationCause::dummy();
     let ty = deeply_normalize(infer_ctxt.at(&cause, ParamEnv::empty()), ty).unwrap_or(ty);
     let result = match ty.kind() {
@@ -368,7 +368,11 @@ pub fn layout_of_ty_ns_query<'db>(
         }
 
         TyKind::Error(_) => return Err(LayoutError::HasErrorType),
-        TyKind::Placeholder(_) | TyKind::Bound(..) | TyKind::Infer(..) | TyKind::Param(..) | TyKind::Alias(..) => {
+        TyKind::Placeholder(_)
+        | TyKind::Bound(..)
+        | TyKind::Infer(..)
+        | TyKind::Param(..)
+        | TyKind::Alias(..) => {
             return Err(LayoutError::HasPlaceholder);
         }
     };
