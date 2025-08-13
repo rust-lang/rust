@@ -7,6 +7,7 @@ use rustc_errors::{
     MultiSpan, Subdiagnostic,
 };
 use rustc_hir::Target;
+use rustc_hir::attrs::{MirDialect, MirPhase};
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::ty::{MainDefinition, Ty};
 use rustc_span::{DUMMY_SP, Span, Symbol};
@@ -1865,4 +1866,26 @@ pub(crate) struct AlignAttrApplication {
     pub hint_span: Span,
     #[label]
     pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes_custom_mir_phase_requires_dialect)]
+pub(crate) struct CustomMirPhaseRequiresDialect {
+    #[primary_span]
+    pub attr_span: Span,
+    #[label]
+    pub phase_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes_custom_mir_incompatible_dialect_and_phase)]
+pub(crate) struct CustomMirIncompatibleDialectAndPhase {
+    pub dialect: MirDialect,
+    pub phase: MirPhase,
+    #[primary_span]
+    pub attr_span: Span,
+    #[label]
+    pub dialect_span: Span,
+    #[label]
+    pub phase_span: Span,
 }
