@@ -459,7 +459,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             span,
                             format!("this is an iterator with items of type `{}`", args.type_at(0)),
                         );
-                    } else {
+                    } else if !span.overlaps(cause.span) {
                         let expected_ty = self.tcx.short_string(expected_ty, err.long_ty_path());
                         err.span_label(span, format!("this expression has type `{expected_ty}`"));
                     }

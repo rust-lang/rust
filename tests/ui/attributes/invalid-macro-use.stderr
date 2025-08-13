@@ -1,11 +1,11 @@
 error[E0469]: imported macro not found
-  --> $DIR/invalid-macro-use.rs:47:13
+  --> $DIR/invalid-macro-use.rs:51:13
    |
 LL | #[macro_use(a)]
    |             ^
 
 error[E0469]: imported macro not found
-  --> $DIR/invalid-macro-use.rs:49:13
+  --> $DIR/invalid-macro-use.rs:53:13
    |
 LL | #[macro_use(b)]
    |             ^
@@ -24,6 +24,7 @@ LL | #[macro_use(5)]
    |             |
    |             expected a valid identifier here
    |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/macros-by-example.html#the-macro_use-attribute>
 help: try changing it to one of the following valid forms of the attribute
    |
 LL - #[macro_use(5)]
@@ -34,13 +35,14 @@ LL + #[macro_use]
    |
 
 error[E0565]: malformed `macro_use` attribute input
-  --> $DIR/invalid-macro-use.rs:13:1
+  --> $DIR/invalid-macro-use.rs:14:1
    |
 LL | #[macro_use(a = "b")]
    | ^^^^^^^^^^^^^^-----^^
    |               |
    |               didn't expect any arguments here
    |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/macros-by-example.html#the-macro_use-attribute>
 help: try changing it to one of the following valid forms of the attribute
    |
 LL - #[macro_use(a = "b")]
@@ -51,13 +53,14 @@ LL + #[macro_use]
    |
 
 error[E0565]: malformed `macro_use` attribute input
-  --> $DIR/invalid-macro-use.rs:18:1
+  --> $DIR/invalid-macro-use.rs:20:1
    |
 LL | #[macro_use(a(b))]
    | ^^^^^^^^^^^^^---^^
    |              |
    |              didn't expect any arguments here
    |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/macros-by-example.html#the-macro_use-attribute>
 help: try changing it to one of the following valid forms of the attribute
    |
 LL - #[macro_use(a(b))]
@@ -68,13 +71,14 @@ LL + #[macro_use]
    |
 
 error[E0539]: malformed `macro_use` attribute input
-  --> $DIR/invalid-macro-use.rs:23:1
+  --> $DIR/invalid-macro-use.rs:26:1
    |
 LL | #[macro_use(a::b)]
    | ^^^^^^^^^^^^----^^
    |             |
    |             expected a valid identifier here
    |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/macros-by-example.html#the-macro_use-attribute>
 help: try changing it to one of the following valid forms of the attribute
    |
 LL - #[macro_use(a::b)]
@@ -85,13 +89,13 @@ LL + #[macro_use]
    |
 
 error: unused attribute
-  --> $DIR/invalid-macro-use.rs:28:1
+  --> $DIR/invalid-macro-use.rs:32:1
    |
 LL | #[macro_use(a)]
    | ^^^^^^^^^^^^^^^ help: remove this attribute
    |
 note: attribute also specified here
-  --> $DIR/invalid-macro-use.rs:30:1
+  --> $DIR/invalid-macro-use.rs:34:1
    |
 LL | #[macro_use]
    | ^^^^^^^^^^^^
@@ -102,25 +106,25 @@ LL | #![deny(unused_attributes)]
    |         ^^^^^^^^^^^^^^^^^
 
 error: unused attribute
-  --> $DIR/invalid-macro-use.rs:36:1
+  --> $DIR/invalid-macro-use.rs:40:1
    |
 LL | #[macro_use(a)]
    | ^^^^^^^^^^^^^^^ help: remove this attribute
    |
 note: attribute also specified here
-  --> $DIR/invalid-macro-use.rs:34:1
+  --> $DIR/invalid-macro-use.rs:38:1
    |
 LL | #[macro_use]
    | ^^^^^^^^^^^^
 
 error: unused attribute
-  --> $DIR/invalid-macro-use.rs:42:1
+  --> $DIR/invalid-macro-use.rs:46:1
    |
 LL | #[macro_use]
    | ^^^^^^^^^^^^ help: remove this attribute
    |
 note: attribute also specified here
-  --> $DIR/invalid-macro-use.rs:40:1
+  --> $DIR/invalid-macro-use.rs:44:1
    |
 LL | #[macro_use]
    | ^^^^^^^^^^^^

@@ -800,6 +800,7 @@ where
     let re = regex!("\t?\u{001f}([+-])");
 
     let raw_diff = format!("{:#?}", DebugDiffWithAdapter { new, old, ctxt });
+    let raw_diff = dot::escape_html(&raw_diff);
 
     // Replace newlines in the `Debug` output with `<br/>`
     let raw_diff = raw_diff.replace('\n', r#"<br align="left"/>"#);

@@ -1310,6 +1310,7 @@ impl AttributeExt for Attribute {
             Attribute::Parsed(AttributeKind::Ignore { span, .. }) => *span,
             Attribute::Parsed(AttributeKind::ShouldPanic { span, .. }) => *span,
             Attribute::Parsed(AttributeKind::AutomaticallyDerived(span)) => *span,
+            Attribute::Parsed(AttributeKind::AllowInternalUnsafe(span)) => *span,
             a => panic!("can't get the span of an arbitrary parsed attribute: {a:?}"),
         }
     }
@@ -4194,7 +4195,7 @@ impl<'hir> Item<'hir> {
         expect_trait_alias, (Ident, &'hir Generics<'hir>, GenericBounds<'hir>),
             ItemKind::TraitAlias(ident, generics, bounds), (*ident, generics, bounds);
 
-        expect_impl, &'hir Impl<'hir>, ItemKind::Impl(imp), imp;
+        expect_impl, &Impl<'hir>, ItemKind::Impl(imp), imp;
     }
 }
 
@@ -4372,7 +4373,7 @@ pub enum ItemKind<'hir> {
     TraitAlias(Ident, &'hir Generics<'hir>, GenericBounds<'hir>),
 
     /// An implementation, e.g., `impl<A> Trait for Foo { .. }`.
-    Impl(&'hir Impl<'hir>),
+    Impl(Impl<'hir>),
 }
 
 /// Represents an impl block declaration.
@@ -4381,6 +4382,14 @@ pub enum ItemKind<'hir> {
 /// Refer to [`ImplItem`] for an associated item within an impl block.
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub struct Impl<'hir> {
+    pub generics: &'hir Generics<'hir>,
+    pub of_trait: Option<&'hir TraitImplHeader<'hir>>,
+    pub self_ty: &'hir Ty<'hir>,
+    pub items: &'hir [ImplItemId],
+}
+
+#[derive(Debug, Clone, Copy, HashStable_Generic)]
+pub struct TraitImplHeader<'hir> {
     pub constness: Constness,
     pub safety: Safety,
     pub polarity: ImplPolarity,
@@ -4388,13 +4397,7 @@ pub struct Impl<'hir> {
     // We do not put a `Span` in `Defaultness` because it breaks foreign crate metadata
     // decoding as `Span`s cannot be decoded when a `Session` is not available.
     pub defaultness_span: Option<Span>,
-    pub generics: &'hir Generics<'hir>,
-
-    /// The trait being implemented, if any.
-    pub of_trait: Option<TraitRef<'hir>>,
-
-    pub self_ty: &'hir Ty<'hir>,
-    pub items: &'hir [ImplItemId],
+    pub trait_ref: TraitRef<'hir>,
 }
 
 impl ItemKind<'_> {
@@ -4756,8 +4759,8 @@ impl<'hir> Node<'hir> {
     /// Get a `hir::Impl` if the node is an impl block for the given `trait_def_id`.
     pub fn impl_block_of_trait(self, trait_def_id: DefId) -> Option<&'hir Impl<'hir>> {
         if let Node::Item(Item { kind: ItemKind::Impl(impl_block), .. }) = self
-            && let Some(trait_ref) = impl_block.of_trait
-            && let Some(trait_id) = trait_ref.trait_def_id()
+            && let Some(of_trait) = impl_block.of_trait
+            && let Some(trait_id) = of_trait.trait_ref.trait_def_id()
             && trait_id == trait_def_id
         {
             Some(impl_block)
@@ -4952,7 +4955,7 @@ mod size_asserts {
     static_assert_size!(GenericArg<'_>, 16);
     static_assert_size!(GenericBound<'_>, 64);
     static_assert_size!(Generics<'_>, 56);
-    static_assert_size!(Impl<'_>, 80);
+    static_assert_size!(Impl<'_>, 40);
     static_assert_size!(ImplItem<'_>, 96);
     static_assert_size!(ImplItemKind<'_>, 40);
     static_assert_size!(Item<'_>, 88);
@@ -4967,6 +4970,7 @@ mod size_asserts {
     static_assert_size!(Res, 12);
     static_assert_size!(Stmt<'_>, 32);
     static_assert_size!(StmtKind<'_>, 16);
+    static_assert_size!(TraitImplHeader<'_>, 48);
     static_assert_size!(TraitItem<'_>, 88);
     static_assert_size!(TraitItemKind<'_>, 48);
     static_assert_size!(Ty<'_>, 48);

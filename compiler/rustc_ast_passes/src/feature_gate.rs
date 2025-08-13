@@ -217,18 +217,18 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 }
             }
 
-            ast::ItemKind::Impl(box ast::Impl { polarity, defaultness, of_trait, .. }) => {
-                if let &ast::ImplPolarity::Negative(span) = polarity {
+            ast::ItemKind::Impl(ast::Impl { of_trait: Some(of_trait), .. }) => {
+                if let ast::ImplPolarity::Negative(span) = of_trait.polarity {
                     gate!(
                         &self,
                         negative_impls,
-                        span.to(of_trait.as_ref().map_or(span, |t| t.path.span)),
+                        span.to(of_trait.trait_ref.path.span),
                         "negative trait bounds are not fully implemented; \
                          use marker types for now"
                     );
                 }
 
-                if let ast::Defaultness::Default(_) = defaultness {
+                if let ast::Defaultness::Default(_) = of_trait.defaultness {
                     gate!(&self, specialization, i.span, "specialization is unstable");
                 }
             }

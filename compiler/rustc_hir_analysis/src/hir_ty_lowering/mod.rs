@@ -2732,7 +2732,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         };
         let i = tcx.parent_hir_node(fn_hir_id).expect_item().expect_impl();
 
-        let trait_ref = self.lower_impl_trait_ref(i.of_trait.as_ref()?, self.lower_ty(i.self_ty));
+        let trait_ref = self.lower_impl_trait_ref(&i.of_trait?.trait_ref, self.lower_ty(i.self_ty));
 
         let assoc = tcx.associated_items(trait_ref.def_id).find_by_ident_and_kind(
             tcx,

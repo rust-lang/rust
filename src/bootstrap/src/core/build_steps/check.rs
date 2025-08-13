@@ -72,7 +72,6 @@ impl Step for Std {
 
     fn run(self, builder: &Builder<'_>) {
         let build_compiler = self.build_compiler;
-        let stage = build_compiler.stage;
         let target = self.target;
 
         let mut cargo = builder::Cargo::new(
@@ -94,10 +93,12 @@ impl Step for Std {
             cargo.arg("-p").arg(krate);
         }
 
-        let _guard = builder.msg_check(
+        let _guard = builder.msg(
+            Kind::Check,
             format_args!("library artifacts{}", crate_description(&self.crates)),
+            Mode::Std,
+            self.build_compiler,
             target,
-            Some(stage),
         );
 
         let stamp = build_stamp::libstd_stamp(builder, build_compiler, target).with_prefix("check");
@@ -136,7 +137,13 @@ impl Step for Std {
 
         let stamp =
             build_stamp::libstd_stamp(builder, build_compiler, target).with_prefix("check-test");
-        let _guard = builder.msg_check("library test/bench/example targets", target, Some(stage));
+        let _guard = builder.msg(
+            Kind::Check,
+            "library test/bench/example targets",
+            Mode::Std,
+            self.build_compiler,
+            target,
+        );
         run_cargo(builder, cargo, builder.config.free_args.clone(), &stamp, vec![], true, false);
     }
 
@@ -227,10 +234,12 @@ impl Step for Rustc {
             cargo.arg("-p").arg(krate);
         }
 
-        let _guard = builder.msg_check(
+        let _guard = builder.msg(
+            Kind::Check,
             format_args!("compiler artifacts{}", crate_description(&self.crates)),
+            Mode::Rustc,
+            self.build_compiler,
             target,
-            None,
         );
 
         let stamp =
@@ -357,7 +366,13 @@ impl Step for CodegenBackend {
             .arg(builder.src.join(format!("compiler/{}/Cargo.toml", backend.crate_name())));
         rustc_cargo_env(builder, &mut cargo, target);
 
-        let _guard = builder.msg_check(backend.crate_name(), target, None);
+        let _guard = builder.msg(
+            Kind::Check,
+            backend.crate_name(),
+            Mode::Codegen,
+            self.build_compiler,
+            target,
+        );
 
         let stamp = build_stamp::codegen_backend_stamp(builder, build_compiler, target, &backend)
             .with_prefix("check");
@@ -482,14 +497,7 @@ fn run_tool_check_step(
     let stamp = BuildStamp::new(&builder.cargo_out(build_compiler, mode, target))
         .with_prefix(&format!("{display_name}-check"));
 
-    let stage = match mode {
-        // Mode::ToolRustc is included here because of how msg_sysroot_tool prints stages
-        Mode::Std | Mode::ToolRustc => build_compiler.stage,
-        _ => build_compiler.stage + 1,
-    };
-
-    let _guard =
-        builder.msg_tool(builder.kind, mode, display_name, stage, &build_compiler.host, &target);
+    let _guard = builder.msg(builder.kind, display_name, mode, build_compiler, target);
     run_cargo(builder, cargo, builder.config.free_args.clone(), &stamp, vec![], true, false);
 }
 

@@ -306,11 +306,53 @@ impl DefKind {
     }
 
     #[inline]
+    pub fn is_adt(self) -> bool {
+        matches!(self, DefKind::Struct | DefKind::Union | DefKind::Enum)
+    }
+
+    #[inline]
     pub fn is_fn_like(self) -> bool {
         matches!(
             self,
             DefKind::Fn | DefKind::AssocFn | DefKind::Closure | DefKind::SyntheticCoroutineBody
         )
+    }
+
+    /// Whether the corresponding item has generic parameters, ie. the `generics_of` query works.
+    pub fn has_generics(self) -> bool {
+        match self {
+            DefKind::AnonConst
+            | DefKind::AssocConst
+            | DefKind::AssocFn
+            | DefKind::AssocTy
+            | DefKind::Closure
+            | DefKind::Const
+            | DefKind::Ctor(..)
+            | DefKind::Enum
+            | DefKind::Field
+            | DefKind::Fn
+            | DefKind::ForeignTy
+            | DefKind::Impl { .. }
+            | DefKind::InlineConst
+            | DefKind::OpaqueTy
+            | DefKind::Static { .. }
+            | DefKind::Struct
+            | DefKind::SyntheticCoroutineBody
+            | DefKind::Trait
+            | DefKind::TraitAlias
+            | DefKind::TyAlias
+            | DefKind::Union
+            | DefKind::Variant => true,
+            DefKind::ConstParam
+            | DefKind::ExternCrate
+            | DefKind::ForeignMod
+            | DefKind::GlobalAsm
+            | DefKind::LifetimeParam
+            | DefKind::Macro(_)
+            | DefKind::Mod
+            | DefKind::TyParam
+            | DefKind::Use => false,
+        }
     }
 
     /// Whether `query get_codegen_attrs` should be used with this definition.

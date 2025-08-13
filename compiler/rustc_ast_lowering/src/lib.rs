@@ -296,6 +296,7 @@ enum RelaxedBoundPolicy<'a> {
 enum RelaxedBoundForbiddenReason {
     TraitObjectTy,
     SuperTrait,
+    AssocTyBounds,
     LateBoundVarsInScope,
 }
 
@@ -1109,9 +1110,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         &*self.arena.alloc(self.ty(constraint.span, hir::TyKind::Err(guar)));
                     hir::AssocItemConstraintKind::Equality { term: err_ty.into() }
                 } else {
-                    // FIXME(#135229): These should be forbidden!
-                    let bounds =
-                        self.lower_param_bounds(bounds, RelaxedBoundPolicy::Allowed, itctx);
+                    let bounds = self.lower_param_bounds(
+                        bounds,
+                        RelaxedBoundPolicy::Forbidden(RelaxedBoundForbiddenReason::AssocTyBounds),
+                        itctx,
+                    );
                     hir::AssocItemConstraintKind::Bound { bounds }
                 }
             }
@@ -1217,7 +1220,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     fn lower_path_ty(
         &mut self,
         t: &Ty,
-        qself: &Option<ptr::P<QSelf>>,
+        qself: &Option<Box<QSelf>>,
         path: &Path,
         param_mode: ParamMode,
         itctx: ImplTraitContext,
@@ -2124,7 +2127,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         diag.emit();
                         return;
                     }
-                    RelaxedBoundForbiddenReason::LateBoundVarsInScope => {}
+                    RelaxedBoundForbiddenReason::AssocTyBounds
+                    | RelaxedBoundForbiddenReason::LateBoundVarsInScope => {}
                 };
             }
         }

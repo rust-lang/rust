@@ -822,6 +822,7 @@ struct PrivacyError<'ra> {
     parent_scope: ParentScope<'ra>,
     /// Is the format `use a::{b,c}`?
     single_nested: bool,
+    source: Option<ast::Expr>,
 }
 
 #[derive(Debug)]
@@ -1064,6 +1065,7 @@ pub struct Resolver<'ra, 'tcx> {
 
     /// N.B., this is used only for better diagnostics, not name resolution itself.
     field_names: LocalDefIdMap<Vec<Ident>>,
+    field_defaults: LocalDefIdMap<Vec<Symbol>>,
 
     /// Span of the privacy modifier in fields of an item `DefId` accessible with dot syntax.
     /// Used for hints during error reporting.
@@ -1538,6 +1540,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             extern_prelude,
 
             field_names: Default::default(),
+            field_defaults: Default::default(),
             field_visibility_spans: FxHashMap::default(),
 
             determined_imports: Vec::new(),
@@ -2312,6 +2315,21 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     .iter()
                     .map(|&def_id| {
                         Ident::new(self.tcx.item_name(def_id), self.tcx.def_span(def_id))
+                    })
+                    .collect(),
+            ),
+        }
+    }
+
+    fn field_defaults(&self, def_id: DefId) -> Option<Vec<Symbol>> {
+        match def_id.as_local() {
+            Some(def_id) => self.field_defaults.get(&def_id).cloned(),
+            None => Some(
+                self.tcx
+                    .associated_item_def_ids(def_id)
+                    .iter()
+                    .filter_map(|&def_id| {
+                        self.tcx.default_field(def_id).map(|_| self.tcx.item_name(def_id))
                     })
                     .collect(),
             ),

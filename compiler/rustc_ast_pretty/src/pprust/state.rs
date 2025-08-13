@@ -10,7 +10,6 @@ use std::borrow::Cow;
 use std::sync::Arc;
 
 use rustc_ast::attr::AttrIdGenerator;
-use rustc_ast::ptr::P;
 use rustc_ast::token::{self, CommentKind, Delimiter, IdentIsRaw, Token, TokenKind};
 use rustc_ast::tokenstream::{Spacing, TokenStream, TokenTree};
 use rustc_ast::util::classify;
@@ -1178,7 +1177,7 @@ impl<'a> State<'a> {
         self.end(rb);
     }
 
-    fn commasep_exprs(&mut self, b: Breaks, exprs: &[P<ast::Expr>]) {
+    fn commasep_exprs(&mut self, b: Breaks, exprs: &[Box<ast::Expr>]) {
         self.commasep_cmnt(b, exprs, |s, e| s.print_expr(e, FixupContext::default()), |e| e.span)
     }
 

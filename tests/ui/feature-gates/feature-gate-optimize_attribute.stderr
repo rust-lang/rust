@@ -43,9 +43,20 @@ error[E0539]: malformed `optimize` attribute input
    |
 LL | #[optimize(banana)]
    | ^^^^^^^^^^^------^^
-   | |          |
-   | |          valid arguments are `size`, `speed` or `none`
-   | help: must be of the form: `#[optimize(size|speed|none)]`
+   |            |
+   |            valid arguments are `size`, `speed` or `none`
+   |
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL - #[optimize(banana)]
+LL + #[optimize(none)]
+   |
+LL - #[optimize(banana)]
+LL + #[optimize(size)]
+   |
+LL - #[optimize(banana)]
+LL + #[optimize(speed)]
+   |
 
 error: aborting due to 5 previous errors
 

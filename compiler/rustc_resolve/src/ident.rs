@@ -1029,6 +1029,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     binding,
                     dedup_span: path_span,
                     outermost_res: None,
+                    source: None,
                     parent_scope: *parent_scope,
                     single_nested: path_span != root_span,
                 });
@@ -1435,7 +1436,16 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         parent_scope: &ParentScope<'ra>,
         ignore_import: Option<Import<'ra>>,
     ) -> PathResult<'ra> {
-        self.resolve_path_with_ribs(path, opt_ns, parent_scope, None, None, None, ignore_import)
+        self.resolve_path_with_ribs(
+            path,
+            opt_ns,
+            parent_scope,
+            None,
+            None,
+            None,
+            None,
+            ignore_import,
+        )
     }
     #[instrument(level = "debug", skip(self))]
     pub(crate) fn resolve_path<'r>(
@@ -1451,6 +1461,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             path,
             opt_ns,
             parent_scope,
+            None,
             finalize,
             None,
             ignore_binding,
@@ -1463,6 +1474,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         path: &[Segment],
         opt_ns: Option<Namespace>, // `None` indicates a module path in import
         parent_scope: &ParentScope<'ra>,
+        source: Option<PathSource<'_, '_, '_>>,
         finalize: Option<Finalize>,
         ribs: Option<&PerNS<Vec<Rib<'ra>>>>,
         ignore_binding: Option<NameBinding<'ra>>,
@@ -1645,6 +1657,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     if finalize.is_some() {
                         for error in &mut self.get_mut().privacy_errors[privacy_errors_len..] {
                             error.outermost_res = Some((res, ident));
+                            error.source = match source {
+                                Some(PathSource::Struct(Some(expr)))
+                                | Some(PathSource::Expr(Some(expr))) => Some(expr.clone()),
+                                _ => None,
+                            };
                         }
                     }
 

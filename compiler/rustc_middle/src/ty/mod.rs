@@ -1031,6 +1031,8 @@ pub struct ParamEnvAnd<'tcx, T> {
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, HashStable)]
 #[derive(TypeVisitable, TypeFoldable)]
 pub struct TypingEnv<'tcx> {
+    #[type_foldable(identity)]
+    #[type_visitable(ignore)]
     pub typing_mode: TypingMode<'tcx>,
     pub param_env: ParamEnv<'tcx>,
 }

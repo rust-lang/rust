@@ -139,6 +139,34 @@ mod uninit;
 /// // Note: With the manual implementations the above line will compile.
 /// ```
 ///
+/// ## `Clone` and `PartialEq`/`Eq`
+/// `Clone` is intended for the duplication of objects. Consequently, when implementing
+/// both `Clone` and [`PartialEq`], the following property is expected to hold:
+/// ```text
+/// x == x -> x.clone() == x
+/// ```
+/// In other words, if an object compares equal to itself,
+/// its clone must also compare equal to the original.
+///
+/// For types that also implement [`Eq`] – for which `x == x` always holds –
+/// this implies that `x.clone() == x` must always be true.
+/// Standard library collections such as
+/// [`HashMap`], [`HashSet`], [`BTreeMap`], [`BTreeSet`] and [`BinaryHeap`]
+/// rely on their keys respecting this property for correct behavior.
+/// Furthermore, these collections require that cloning a key preserves the outcome of the
+/// [`Hash`] and [`Ord`] methods. Thankfully, this follows automatically from `x.clone() == x`
+/// if `Hash` and `Ord` are correctly implemented according to their own requirements.
+///
+/// When deriving both `Clone` and [`PartialEq`] using `#[derive(Clone, PartialEq)]`
+/// or when additionally deriving [`Eq`] using `#[derive(Clone, PartialEq, Eq)]`,
+/// then this property is automatically upheld – provided that it is satisfied by
+/// the underlying types.
+///
+/// Violating this property is a logic error. The behavior resulting from a logic error is not
+/// specified, but users of the trait must ensure that such logic errors do *not* result in
+/// undefined behavior. This means that `unsafe` code **must not** rely on this property
+/// being satisfied.
+///
 /// ## Additional implementors
 ///
 /// In addition to the [implementors listed below][impls],
@@ -152,6 +180,11 @@ mod uninit;
 ///   (even if the referent doesn't),
 ///   while variables captured by mutable reference never implement `Clone`.
 ///
+/// [`HashMap`]: ../../std/collections/struct.HashMap.html
+/// [`HashSet`]: ../../std/collections/struct.HashSet.html
+/// [`BTreeMap`]: ../../std/collections/struct.BTreeMap.html
+/// [`BTreeSet`]: ../../std/collections/struct.BTreeSet.html
+/// [`BinaryHeap`]: ../../std/collections/struct.BinaryHeap.html
 /// [impls]: #implementors
 #[stable(feature = "rust1", since = "1.0.0")]
 #[lang = "clone"]
