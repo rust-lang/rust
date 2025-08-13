@@ -121,7 +121,7 @@ LL | const BAD_UNINHABITED_WITH_DATA2: Result<(i32, !), (i32, Never)> = unsafe {
    |                                                                             ^^^^^^^^^^^^^^^^^^^^ evaluation of `BAD_UNINHABITED_WITH_DATA2` failed here
 
 error[E0080]: read discriminant of an uninhabited enum variant
-  --> $DIR/ub-enum.rs:106:9
+  --> $DIR/ub-enum.rs:111:9
    |
 LL |         std::mem::discriminant(&*(&() as *const () as *const Never));
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `TEST_ICE_89765` failed inside this call
