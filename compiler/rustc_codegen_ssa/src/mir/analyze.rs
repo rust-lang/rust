@@ -144,7 +144,7 @@ impl<'a, 'b, 'tcx, Bx: BuilderMethods<'b, 'tcx>> LocalAnalyzer<'a, 'b, 'tcx, Bx>
                 layout = match *elem {
                     mir::PlaceElem::Field(fidx, ..) => layout.field(self.fx.cx, fidx.as_usize()),
                     mir::PlaceElem::Downcast(_, vidx)
-                        if let abi::Variants::Single { index: single_variant } =
+                        if let abi::Variants::Single { index: single_variant, .. } =
                             layout.variants
                             && vidx == single_variant =>
                     {

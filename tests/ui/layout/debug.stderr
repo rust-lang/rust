@@ -58,6 +58,7 @@ error: layout_of(E) = Layout {
                        uninhabited: false,
                        variants: Single {
                            index: 0,
+                           variants: None,
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(1 bytes),
@@ -100,6 +101,7 @@ error: layout_of(E) = Layout {
                        uninhabited: true,
                        variants: Single {
                            index: 1,
+                           variants: None,
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(4 bytes),
@@ -153,6 +155,7 @@ error: layout_of(S) = Layout {
            uninhabited: false,
            variants: Single {
                index: 0,
+               variants: None,
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(4 bytes),
@@ -178,6 +181,7 @@ error: layout_of(U) = Layout {
            uninhabited: false,
            variants: Single {
                index: 0,
+               variants: None,
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(4 bytes),
@@ -272,6 +276,7 @@ error: layout_of(Result<i32, i32>) = Layout {
                        uninhabited: false,
                        variants: Single {
                            index: 0,
+                           variants: None,
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(4 bytes),
@@ -310,6 +315,7 @@ error: layout_of(Result<i32, i32>) = Layout {
                        uninhabited: false,
                        variants: Single {
                            index: 1,
+                           variants: None,
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(4 bytes),
@@ -345,6 +351,7 @@ error: layout_of(i32) = Layout {
            uninhabited: false,
            variants: Single {
                index: 0,
+               variants: None,
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(4 bytes),
@@ -370,6 +377,7 @@ error: layout_of(V) = Layout {
            uninhabited: false,
            variants: Single {
                index: 0,
+               variants: None,
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(2 bytes),
@@ -395,6 +403,7 @@ error: layout_of(W) = Layout {
            uninhabited: false,
            variants: Single {
                index: 0,
+               variants: None,
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(2 bytes),
@@ -420,6 +429,7 @@ error: layout_of(Y) = Layout {
            uninhabited: false,
            variants: Single {
                index: 0,
+               variants: None,
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(2 bytes),
@@ -445,6 +455,7 @@ error: layout_of(P1) = Layout {
            uninhabited: false,
            variants: Single {
                index: 0,
+               variants: None,
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(1 bytes),
@@ -470,6 +481,7 @@ error: layout_of(P2) = Layout {
            uninhabited: false,
            variants: Single {
                index: 0,
+               variants: None,
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(1 bytes),
@@ -495,6 +507,7 @@ error: layout_of(P3) = Layout {
            uninhabited: false,
            variants: Single {
                index: 0,
+               variants: None,
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(1 bytes),
@@ -520,6 +533,7 @@ error: layout_of(P4) = Layout {
            uninhabited: false,
            variants: Single {
                index: 0,
+               variants: None,
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(1 bytes),
@@ -550,6 +564,7 @@ error: layout_of(P5) = Layout {
            uninhabited: false,
            variants: Single {
                index: 0,
+               variants: None,
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(1 bytes),
@@ -580,6 +595,7 @@ error: layout_of(MaybeUninit<u8>) = Layout {
            uninhabited: false,
            variants: Single {
                index: 0,
+               variants: None,
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(1 bytes),

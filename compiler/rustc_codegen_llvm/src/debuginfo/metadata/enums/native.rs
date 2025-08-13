@@ -357,7 +357,7 @@ fn build_discr_member_di_node<'ll, 'tcx>(
 
     match enum_or_coroutine_type_and_layout.layout.variants() {
         // A single-variant or no-variant enum has no discriminant.
-        &Variants::Single { .. } | &Variants::Empty => None,
+        &Variants::Single { .. } | &Variants::Empty { .. } => None,
 
         &Variants::Multiple { tag_field, .. } => {
             let tag_base_type = tag_base_type(cx.tcx, enum_or_coroutine_type_and_layout);
