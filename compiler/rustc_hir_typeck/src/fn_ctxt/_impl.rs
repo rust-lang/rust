@@ -1021,7 +1021,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let container_id = assoc_item.container_id(tcx);
                 debug!(?def_id, ?container, ?container_id);
                 match container {
-                    ty::AssocItemContainer::Trait => {
+                    ty::AssocContainer::Trait => {
                         if let Err(e) = callee::check_legal_trait_for_method_call(
                             tcx,
                             path_span,
@@ -1033,7 +1033,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             self.set_tainted_by_errors(e);
                         }
                     }
-                    ty::AssocItemContainer::Impl => {
+                    ty::AssocContainer::Impl => {
                         if segments.len() == 1 {
                             // `<T>::assoc` will end up here, and so
                             // can `T::assoc`. If this came from an

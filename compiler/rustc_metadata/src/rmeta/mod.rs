@@ -459,7 +459,7 @@ define_tables! {
     def_keys: Table<DefIndex, LazyValue<DefKey>>,
     proc_macro_quoted_spans: Table<usize, LazyValue<Span>>,
     variant_data: Table<DefIndex, LazyValue<VariantData>>,
-    assoc_container: Table<DefIndex, ty::AssocItemContainer>,
+    assoc_container: Table<DefIndex, ty::AssocContainer>,
     macro_definition: Table<DefIndex, LazyValue<ast::DelimArgs>>,
     proc_macro: Table<DefIndex, MacroKind>,
     deduced_param_attrs: Table<DefIndex, LazyArray<DeducedParamAttrs>>,

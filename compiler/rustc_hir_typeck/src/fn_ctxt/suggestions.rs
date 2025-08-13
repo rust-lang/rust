@@ -1816,7 +1816,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if segment.ident.name == sym::clone
             && results.type_dependent_def_id(expr.hir_id).is_some_and(|did| {
                     let assoc_item = self.tcx.associated_item(did);
-                    assoc_item.container == ty::AssocItemContainer::Trait
+                    assoc_item.container == ty::AssocContainer::Trait
                         && assoc_item.container_id(self.tcx) == clone_trait_did
                 })
             // If that clone call hasn't already dereferenced the self type (i.e. don't give this

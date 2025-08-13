@@ -22,7 +22,7 @@ use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::mir::interpret;
 use rustc_middle::query::Providers;
 use rustc_middle::traits::specialization_graph;
-use rustc_middle::ty::AssocItemContainer;
+use rustc_middle::ty::AssocContainer;
 use rustc_middle::ty::codec::TyEncoder;
 use rustc_middle::ty::fast_reject::{self, TreatParams};
 use rustc_middle::{bug, span_bug};
@@ -1254,8 +1254,8 @@ fn should_encode_type(tcx: TyCtxt<'_>, def_id: LocalDefId, def_kind: DefKind) ->
         DefKind::AssocTy => {
             let assoc_item = tcx.associated_item(def_id);
             match assoc_item.container {
-                ty::AssocItemContainer::Impl => true,
-                ty::AssocItemContainer::Trait => assoc_item.defaultness(tcx).has_value(),
+                ty::AssocContainer::Impl => true,
+                ty::AssocContainer::Trait => assoc_item.defaultness(tcx).has_value(),
             }
         }
         DefKind::TyParam => {
@@ -1729,7 +1729,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         self.tables.assoc_container.set_some(def_id.index, item.container);
 
         match item.container {
-            AssocItemContainer::Trait => {
+            AssocContainer::Trait => {
                 if item.is_type() {
                     self.encode_explicit_item_bounds(def_id);
                     self.encode_explicit_item_self_bounds(def_id);
@@ -1739,7 +1739,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     }
                 }
             }
-            AssocItemContainer::Impl => {
+            AssocContainer::Impl => {
                 if let Some(trait_item_def_id) = item.trait_item_def_id {
                     self.tables.trait_item_def_id.set_some(def_id.index, trait_item_def_id.into());
                 }
