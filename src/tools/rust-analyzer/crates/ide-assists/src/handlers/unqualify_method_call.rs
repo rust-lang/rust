@@ -1,3 +1,4 @@
+use hir::AsAssocItem;
 use syntax::{
     TextRange,
     ast::{self, AstNode, HasArgList, prec::ExprPrecedence},
@@ -43,6 +44,7 @@ pub(crate) fn unqualify_method_call(acc: &mut Assists, ctx: &AssistContext<'_>) 
     let qualifier = path.qualifier()?;
     let method_name = path.segment()?.name_ref()?;
 
+    let scope = ctx.sema.scope(path.syntax())?;
     let res = ctx.sema.resolve_path(&path)?;
     let hir::PathResolution::Def(hir::ModuleDef::Function(fun)) = res else { return None };
     if !fun.has_self_param(ctx.sema.db) {
@@ -78,7 +80,14 @@ pub(crate) fn unqualify_method_call(acc: &mut Assists, ctx: &AssistContext<'_>) 
                 edit.insert(close, ")");
             }
             edit.replace(replace_comma, format!(".{method_name}("));
-            add_import(qualifier, ctx, edit);
+
+            if let Some(fun) = fun.as_assoc_item(ctx.db())
+                && let Some(trait_) = fun.container_or_implemented_trait(ctx.db())
+                && !scope.can_use_trait_methods(trait_)
+            {
+                // Only add an import for trait methods that are not already imported.
+                add_import(qualifier, ctx, edit);
+            }
         },
     )
 }
@@ -233,6 +242,113 @@ fn f() { core::ops::Add::add(2,$0 2); }"#,
 struct S;
 impl S { fn assoc(S: S, S: S) {} }
 fn f() { S::assoc$0(S, S); }"#,
+        );
+    }
+
+    #[test]
+    fn inherent_method() {
+        check_assist(
+            unqualify_method_call,
+            r#"
+mod foo {
+    pub struct Bar;
+    impl Bar {
+        pub fn bar(self) {}
+    }
+}
+
+fn baz() {
+    foo::Bar::b$0ar(foo::Bar);
+}
+        "#,
+            r#"
+mod foo {
+    pub struct Bar;
+    impl Bar {
+        pub fn bar(self) {}
+    }
+}
+
+fn baz() {
+    foo::Bar.bar();
+}
+        "#,
+        );
+    }
+
+    #[test]
+    fn trait_method_in_impl() {
+        check_assist(
+            unqualify_method_call,
+            r#"
+mod foo {
+    pub trait Bar {
+        pub fn bar(self) {}
+    }
+}
+
+struct Baz;
+impl foo::Bar for Baz {
+    fn bar(self) {
+        foo::Bar::b$0ar(Baz);
+    }
+}
+        "#,
+            r#"
+mod foo {
+    pub trait Bar {
+        pub fn bar(self) {}
+    }
+}
+
+struct Baz;
+impl foo::Bar for Baz {
+    fn bar(self) {
+        Baz.bar();
+    }
+}
+        "#,
+        );
+    }
+
+    #[test]
+    fn trait_method_already_imported() {
+        check_assist(
+            unqualify_method_call,
+            r#"
+mod foo {
+    pub struct Foo;
+    pub trait Bar {
+        pub fn bar(self) {}
+    }
+    impl Bar for Foo {
+        pub fn bar(self) {}
+    }
+}
+
+use foo::Bar;
+
+fn baz() {
+    foo::Bar::b$0ar(foo::Foo);
+}
+        "#,
+            r#"
+mod foo {
+    pub struct Foo;
+    pub trait Bar {
+        pub fn bar(self) {}
+    }
+    impl Bar for Foo {
+        pub fn bar(self) {}
+    }
+}
+
+use foo::Bar;
+
+fn baz() {
+    foo::Foo.bar();
+}
+        "#,
         );
     }
 }

@@ -2247,6 +2247,11 @@ impl<'db> SemanticsScope<'db> {
         }
     }
 
+    /// Checks if a trait is in scope, either because of an import or because we're in an impl of it.
+    pub fn can_use_trait_methods(&self, t: Trait) -> bool {
+        self.resolver.traits_in_scope(self.db).contains(&t.id)
+    }
+
     /// Resolve a path as-if it was written at the given scope. This is
     /// necessary a heuristic, as it doesn't take hygiene into account.
     pub fn speculative_resolve(&self, ast_path: &ast::Path) -> Option<PathResolution> {
