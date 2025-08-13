@@ -509,7 +509,7 @@ impl Config {
         // TOML values by accident instead, because flags have higher priority.
         let Build {
             description: build_description,
-            build: mut build_build,
+            build: build_build,
             host: build_host,
             target: build_target,
             build_dir: build_build_dir,
@@ -556,7 +556,7 @@ impl Config {
             metrics: _,
             android_ndk: build_android_ndk,
             optimized_compiler_builtins: build_optimized_compiler_builtins,
-            jobs: mut build_jobs,
+            jobs: build_jobs,
             compiletest_diff_tool: build_compiletest_diff_tool,
             compiletest_use_stage0_libtest: build_compiletest_use_stage0_libtest,
             tidy_extra_checks: build_tidy_extra_checks,
@@ -811,21 +811,59 @@ impl Config {
         let rust_codegen_backends = rust_codegen_backends_
             .map(|backends| parse_codegen_backends(backends, "rust"))
             .unwrap_or(vec![CodegenBackendKind::Llvm]);
-
-        let mut ccache = None;
-        let mut submodules = None;
-        let mut target_config = HashMap::new();
-        let mut download_rustc_commit = None;
         let deny_warnings = match flags_warnings {
             Warnings::Deny => true,
             Warnings::Warn => false,
             Warnings::Default => rust_deny_warnings.unwrap_or(true),
         };
-        let mut llvm_assertions = false;
+        let ccache = match build_ccache {
+            Some(StringOrBool::String(s)) => Some(s),
+            Some(StringOrBool::Bool(true)) => Some("ccache".to_string()),
+            _ => None,
+        };
+
+        if rust_optimize_.as_ref().is_some_and(|v| matches!(v, RustOptimize::Bool(false))) {
+            eprintln!(
+                "WARNING: setting `optimize` to `false` is known to cause errors and \
+                should be considered unsupported. Refer to `bootstrap.example.toml` \
+                for more details."
+            );
+        }
+        let rust_codegen_units = rust_codegen_units_.map(threads_from_config);
+        let rust_codegen_units_std = rust_codegen_units_std_.map(threads_from_config);
+        let rust_optimize = rust_optimize_.unwrap_or(RustOptimize::Bool(true));
+        let gcc_ci_mode = match gcc_download_ci_gcc {
+            Some(value) => match value {
+                true => GccCiMode::DownloadFromCi,
+                false => GccCiMode::BuildLocally,
+            },
+            None => GccCiMode::default(),
+        };
+        let jobs = Some(threads_from_config(flags_jobs.or(build_jobs).unwrap_or(0)));
+        let host_target = flags_build
+            .or(build_build)
+            .map(|build| TargetSelection::from_user(&build))
+            .unwrap_or_else(get_host_target);
+
+        let submodules = build_submodules;
+        let llvm_assertions = llvm_assertions_.unwrap_or(false);
+        let compiletest_diff_tool = build_compiletest_diff_tool;
+        let compiletest_use_stage0_libtest = build_compiletest_use_stage0_libtest.unwrap_or(true);
+        let tidy_extra_checks = build_tidy_extra_checks;
+        let explicit_stage_from_config = build_test_stage.is_some()
+            || build_build_stage.is_some()
+            || build_doc_stage.is_some()
+            || build_dist_stage.is_some()
+            || build_install_stage.is_some()
+            || build_check_stage.is_some()
+            || build_bench_stage.is_some();
+        let description = build_description;
+
+        let mut target_config = HashMap::new();
+        let mut download_rustc_commit = None;
         let llvm_link_shared = Cell::default();
         let mut llvm_from_ci = false;
         let mut lld_enabled = false;
-        let mut host_target = get_host_target();
         let mut channel = "dev".to_string();
         let mut out = PathBuf::from("build");
         let mut rust_info = GitInfo::Absent;
@@ -839,9 +877,6 @@ impl Config {
             build_rustc = build_rustc.take().or(std::env::var_os("RUSTC").map(|p| p.into()));
             build_cargo = build_cargo.take().or(std::env::var_os("CARGO").map(|p| p.into()));
         }
-
-        build_jobs = flags_jobs.or(build_jobs);
-        build_build = flags_build.or(build_build);
 
         let build_dir_ = flags_build_dir.or(build_build_dir.map(PathBuf::from));
         let host_ = if let Some(TargetSelectionList(hosts)) = flags_host {
@@ -886,6 +921,13 @@ impl Config {
             .to_path_buf();
         }
 
+        #[cfg(feature = "tracing")]
+        span!(
+            target: "CONFIG_HANDLING",
+            tracing::Level::TRACE,
+            "normalizing and combining `flag.skip`/`flag.exclude` paths",
+            "config.skip" = ?skip,
+        );
         let skip = paths_
             .into_iter()
             .map(|p| {
@@ -899,19 +941,6 @@ impl Config {
                 }
             })
             .collect();
-
-        #[cfg(feature = "tracing")]
-        span!(
-            target: "CONFIG_HANDLING",
-            tracing::Level::TRACE,
-            "normalizing and combining `flag.skip`/`flag.exclude` paths",
-            "config.skip" = ?skip,
-        );
-
-        let jobs = Some(threads_from_config(build_jobs.unwrap_or(0)));
-        if let Some(build) = build_build {
-            host_target = TargetSelection::from_user(&build);
-        }
 
         set(&mut out, build_dir_);
         // NOTE: Bootstrap spawns various commands with different working directories.
@@ -1001,10 +1030,6 @@ impl Config {
             // toolchains.
             hosts.clone()
         };
-
-        submodules = build_submodules;
-
-        llvm_assertions = llvm_assertions_.unwrap_or(false);
 
         let file_content = t!(fs::read_to_string(src.join("src/ci/channel")));
         let ci_channel = file_content.trim_end();
@@ -1160,19 +1185,6 @@ impl Config {
             }
         }
 
-        if rust_optimize_.as_ref().is_some_and(|v| matches!(v, RustOptimize::Bool(false))) {
-            eprintln!(
-                "WARNING: setting `optimize` to `false` is known to cause errors and \
-                should be considered unsupported. Refer to `bootstrap.example.toml` \
-                for more details."
-            );
-        }
-
-        let rust_codegen_units = rust_codegen_units_.map(threads_from_config);
-        let rust_codegen_units_std = rust_codegen_units_std_.map(threads_from_config);
-
-        let rust_optimize = rust_optimize_.unwrap_or(RustOptimize::Bool(true));
-
         // We make `x86_64-unknown-linux-gnu` use the self-contained linker by default, so we will
         // build our internal lld and use it as the default linker, by setting the `rust.lld` config
         // to true by default:
@@ -1197,8 +1209,6 @@ impl Config {
         } else {
             set(&mut lld_enabled, rust_lld_enabled);
         }
-
-        let description = build_description;
 
         // We need to override `rust.channel` if it's manually specified when using the CI rustc.
         // This is because if the compiler uses a different channel than the one specified in bootstrap.toml,
@@ -1298,22 +1308,6 @@ impl Config {
             llvm_link_shared.set(Some(true));
         }
 
-        let gcc_ci_mode = match gcc_download_ci_gcc {
-            Some(value) => match value {
-                true => GccCiMode::DownloadFromCi,
-                false => GccCiMode::BuildLocally,
-            },
-            None => GccCiMode::default(),
-        };
-
-        match build_ccache {
-            Some(StringOrBool::String(ref s)) => ccache = Some(s.to_string()),
-            Some(StringOrBool::Bool(true)) => {
-                ccache = Some("ccache".to_string());
-            }
-            Some(StringOrBool::Bool(false)) | None => {}
-        }
-
         if llvm_from_ci {
             let triple = &host_target.triple;
             let dwn_ctx = DownloadContext::new(
@@ -1403,18 +1397,8 @@ impl Config {
 
         let optimized_compiler_builtins =
             build_optimized_compiler_builtins.unwrap_or(channel != "dev");
-        let compiletest_diff_tool = build_compiletest_diff_tool;
-        let compiletest_use_stage0_libtest = build_compiletest_use_stage0_libtest.unwrap_or(true);
-        let tidy_extra_checks = build_tidy_extra_checks;
 
         let download_rustc = download_rustc_commit.is_some();
-        let explicit_stage_from_config = build_test_stage.is_some()
-            || build_build_stage.is_some()
-            || build_doc_stage.is_some()
-            || build_dist_stage.is_some()
-            || build_install_stage.is_some()
-            || build_check_stage.is_some()
-            || build_bench_stage.is_some();
 
         let stage = match cmd {
             Subcommand::Check { .. } => flags_stage.or(build_check_stage).unwrap_or(1),
