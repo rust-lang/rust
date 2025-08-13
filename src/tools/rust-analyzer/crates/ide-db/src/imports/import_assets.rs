@@ -475,8 +475,6 @@ fn validate_resolvable(
         }
         // FIXME
         ModuleDef::Trait(_) => return None,
-        // FIXME
-        ModuleDef::TraitAlias(_) => return None,
         ModuleDef::TypeAlias(alias) => alias.ty(db),
         ModuleDef::BuiltinType(builtin) => builtin.ty(db),
         ModuleDef::Adt(adt) => adt.ty(db),

@@ -260,10 +260,6 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
                 };
                 return (ty, None);
             }
-            TypeNs::TraitAliasId(_) => {
-                // FIXME(trait_alias): Implement trait alias.
-                return (Ty::new_error(self.ctx.interner, ErrorGuaranteed), None);
-            }
             TypeNs::GenericParam(param_id) => {
                 let generics = self.ctx.generics();
                 let idx = generics.type_or_const_param_idx(param_id.into());
@@ -343,8 +339,7 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
             TypeNs::AdtId(_)
             | TypeNs::EnumVariantId(_)
             | TypeNs::TypeAliasId(_)
-            | TypeNs::TraitId(_)
-            | TypeNs::TraitAliasId(_) => {}
+            | TypeNs::TraitId(_) => {}
         }
     }
 

@@ -225,7 +225,6 @@ pub(crate) fn resolve_doc_path_for_def(
         Definition::Const(it) => it.resolve_doc_path(db, link, ns, is_inner_doc),
         Definition::Static(it) => it.resolve_doc_path(db, link, ns, is_inner_doc),
         Definition::Trait(it) => it.resolve_doc_path(db, link, ns, is_inner_doc),
-        Definition::TraitAlias(it) => it.resolve_doc_path(db, link, ns, is_inner_doc),
         Definition::TypeAlias(it) => it.resolve_doc_path(db, link, ns, is_inner_doc),
         Definition::Macro(it) => it.resolve_doc_path(db, link, ns, is_inner_doc),
         Definition::Field(it) => it.resolve_doc_path(db, link, ns, is_inner_doc),
@@ -671,10 +670,8 @@ fn filename_and_frag_for_def(
             None => String::from("index.html"),
         },
         Definition::Trait(t) => {
+            // FIXME(trait-alias): url should be traitalias. for aliases
             format!("trait.{}.html", t.name(db).as_str())
-        }
-        Definition::TraitAlias(t) => {
-            format!("traitalias.{}.html", t.name(db).as_str())
         }
         Definition::TypeAlias(t) => {
             format!("type.{}.html", t.name(db).as_str())

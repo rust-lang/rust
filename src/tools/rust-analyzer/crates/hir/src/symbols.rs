@@ -148,9 +148,6 @@ impl<'a> SymbolCollector<'a> {
                     let trait_do_not_complete = this.push_decl(id, name, false, None);
                     this.collect_from_trait(id, trait_do_not_complete);
                 }
-                ModuleDefId::TraitAliasId(id) => {
-                    this.push_decl(id, name, false, None);
-                }
                 ModuleDefId::TypeAliasId(id) => {
                     this.push_decl(id, name, false, None);
                 }

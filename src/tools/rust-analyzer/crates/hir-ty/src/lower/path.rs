@@ -220,10 +220,6 @@ impl<'a, 'b> PathLoweringContext<'a, 'b> {
                 };
                 return (ty, None);
             }
-            TypeNs::TraitAliasId(_) => {
-                // FIXME(trait_alias): Implement trait alias.
-                return (TyKind::Error.intern(Interner), None);
-            }
             TypeNs::GenericParam(param_id) => match self.ctx.type_param_mode {
                 ParamLoweringMode::Placeholder => {
                     TyKind::Placeholder(to_placeholder_idx(self.ctx.db, param_id.into()))
@@ -311,8 +307,7 @@ impl<'a, 'b> PathLoweringContext<'a, 'b> {
             TypeNs::AdtId(_)
             | TypeNs::EnumVariantId(_)
             | TypeNs::TypeAliasId(_)
-            | TypeNs::TraitId(_)
-            | TypeNs::TraitAliasId(_) => {}
+            | TypeNs::TraitId(_) => {}
         }
     }
 

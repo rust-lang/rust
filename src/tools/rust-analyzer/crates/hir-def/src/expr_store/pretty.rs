@@ -183,7 +183,6 @@ pub fn print_signature(db: &dyn DefDatabase, owner: GenericDefId, edition: Editi
         }
         GenericDefId::ImplId(id) => format!("unimplemented {id:?}"),
         GenericDefId::StaticId(id) => format!("unimplemented {id:?}"),
-        GenericDefId::TraitAliasId(id) => format!("unimplemented {id:?}"),
         GenericDefId::TraitId(id) => format!("unimplemented {id:?}"),
         GenericDefId::TypeAliasId(id) => format!("unimplemented {id:?}"),
     }

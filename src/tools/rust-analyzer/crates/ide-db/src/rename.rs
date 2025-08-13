@@ -163,7 +163,6 @@ impl Definition {
             Definition::Const(it) => name_range(it, sema).and_then(syn_ctx_is_root),
             Definition::Static(it) => name_range(it, sema).and_then(syn_ctx_is_root),
             Definition::Trait(it) => name_range(it, sema).and_then(syn_ctx_is_root),
-            Definition::TraitAlias(it) => name_range(it, sema).and_then(syn_ctx_is_root),
             Definition::TypeAlias(it) => name_range(it, sema).and_then(syn_ctx_is_root),
             Definition::Local(it) => {
                 name_range(it.primary_source(sema.db), sema).and_then(syn_ctx_is_root)

@@ -2,7 +2,7 @@
 
 use hir_def::{
     AdtId, ConstId, EnumId, EnumVariantId, FunctionId, GenericDefId, ImplId, StaticId, StructId,
-    TraitAliasId, TraitId, TypeAliasId, UnionId,
+    TraitId, TypeAliasId, UnionId,
 };
 use rustc_type_ir::inherent;
 use stdx::impl_from;
@@ -24,7 +24,6 @@ pub enum SolverDefId {
     FunctionId(FunctionId),
     ImplId(ImplId),
     StaticId(StaticId),
-    TraitAliasId(TraitAliasId),
     TraitId(TraitId),
     TypeAliasId(TypeAliasId),
     ForeignId(TypeAliasId),
@@ -40,7 +39,6 @@ impl_from!(
     FunctionId,
     ImplId,
     StaticId,
-    TraitAliasId,
     TraitId,
     TypeAliasId,
     InternedClosureId,
@@ -57,7 +55,6 @@ impl From<GenericDefId> for SolverDefId {
             GenericDefId::FunctionId(function_id) => SolverDefId::FunctionId(function_id),
             GenericDefId::ImplId(impl_id) => SolverDefId::ImplId(impl_id),
             GenericDefId::StaticId(static_id) => SolverDefId::StaticId(static_id),
-            GenericDefId::TraitAliasId(trait_alias_id) => SolverDefId::TraitAliasId(trait_alias_id),
             GenericDefId::TraitId(trait_id) => SolverDefId::TraitId(trait_id),
             GenericDefId::TypeAliasId(type_alias_id) => SolverDefId::TypeAliasId(type_alias_id),
         }
@@ -74,7 +71,6 @@ impl TryFrom<SolverDefId> for GenericDefId {
             SolverDefId::FunctionId(function_id) => GenericDefId::FunctionId(function_id),
             SolverDefId::ImplId(impl_id) => GenericDefId::ImplId(impl_id),
             SolverDefId::StaticId(static_id) => GenericDefId::StaticId(static_id),
-            SolverDefId::TraitAliasId(trait_alias_id) => GenericDefId::TraitAliasId(trait_alias_id),
             SolverDefId::TraitId(trait_id) => GenericDefId::TraitId(trait_id),
             SolverDefId::TypeAliasId(type_alias_id) => GenericDefId::TypeAliasId(type_alias_id),
             SolverDefId::ForeignId(_) => return Err(value),

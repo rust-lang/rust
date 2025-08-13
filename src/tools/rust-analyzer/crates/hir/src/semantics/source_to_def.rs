@@ -89,8 +89,8 @@ use either::Either;
 use hir_def::{
     AdtId, BlockId, ConstId, ConstParamId, DefWithBodyId, EnumId, EnumVariantId, ExternBlockId,
     ExternCrateId, FieldId, FunctionId, GenericDefId, GenericParamId, ImplId, LifetimeParamId,
-    Lookup, MacroId, ModuleId, StaticId, StructId, TraitAliasId, TraitId, TypeAliasId, TypeParamId,
-    UnionId, UseId, VariantId,
+    Lookup, MacroId, ModuleId, StaticId, StructId, TraitId, TypeAliasId, TypeParamId, UnionId,
+    UseId, VariantId,
     dyn_map::{
         DynMap,
         keys::{self, Key},
@@ -251,12 +251,6 @@ impl SourceToDefCtx<'_, '_> {
 
     pub(super) fn trait_to_def(&mut self, src: InFile<&ast::Trait>) -> Option<TraitId> {
         self.to_def(src, keys::TRAIT)
-    }
-    pub(super) fn trait_alias_to_def(
-        &mut self,
-        src: InFile<&ast::TraitAlias>,
-    ) -> Option<TraitAliasId> {
-        self.to_def(src, keys::TRAIT_ALIAS)
     }
     pub(super) fn impl_to_def(&mut self, src: InFile<&ast::Impl>) -> Option<ImplId> {
         self.to_def(src, keys::IMPL)
@@ -555,9 +549,6 @@ impl SourceToDefCtx<'_, '_> {
                 }
                 ast::Item::Enum(it) => this.enum_to_def(InFile::new(file_id, it)).map(Into::into),
                 ast::Item::Trait(it) => this.trait_to_def(InFile::new(file_id, it)).map(Into::into),
-                ast::Item::TraitAlias(it) => {
-                    this.trait_alias_to_def(InFile::new(file_id, it)).map(Into::into)
-                }
                 ast::Item::TypeAlias(it) => {
                     this.type_alias_to_def(InFile::new(file_id, it)).map(Into::into)
                 }
@@ -635,9 +626,6 @@ impl SourceToDefCtx<'_, '_> {
                 ast::Item::Enum(it) => self.enum_to_def(container.with_value(it))?.into(),
                 ast::Item::TypeAlias(it) => ChildContainer::GenericDefId(
                     self.type_alias_to_def(container.with_value(it))?.into(),
-                ),
-                ast::Item::TraitAlias(it) => ChildContainer::GenericDefId(
-                    self.trait_alias_to_def(container.with_value(it))?.into(),
                 ),
                 ast::Item::Struct(it) => {
                     let def = self.struct_to_def(container.with_value(it))?;

@@ -493,7 +493,6 @@ fn module_def_doctest(db: &RootDatabase, def: Definition) -> Option<Runnable> {
         Definition::Const(it) => it.attrs(db),
         Definition::Static(it) => it.attrs(db),
         Definition::Trait(it) => it.attrs(db),
-        Definition::TraitAlias(it) => it.attrs(db),
         Definition::TypeAlias(it) => it.attrs(db),
         Definition::Macro(it) => it.attrs(db),
         Definition::SelfType(it) => it.attrs(db),

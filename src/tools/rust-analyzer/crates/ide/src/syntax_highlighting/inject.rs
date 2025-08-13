@@ -311,7 +311,6 @@ fn module_def_to_hl_tag(def: Definition) -> HlTag {
         Definition::Const(_) => SymbolKind::Const,
         Definition::Static(_) => SymbolKind::Static,
         Definition::Trait(_) => SymbolKind::Trait,
-        Definition::TraitAlias(_) => SymbolKind::TraitAlias,
         Definition::TypeAlias(_) => SymbolKind::TypeAlias,
         Definition::BuiltinLifetime(_) => SymbolKind::LifetimeParam,
         Definition::BuiltinType(_) => return HlTag::BuiltinType,

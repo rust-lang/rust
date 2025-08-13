@@ -154,9 +154,6 @@ impl ChildBySource for ItemScope {
                 }
                 ModuleDefId::StaticId(id) => insert_item_loc(db, map, file_id, id, keys::STATIC),
                 ModuleDefId::TraitId(id) => insert_item_loc(db, map, file_id, id, keys::TRAIT),
-                ModuleDefId::TraitAliasId(id) => {
-                    insert_item_loc(db, map, file_id, id, keys::TRAIT_ALIAS)
-                }
                 ModuleDefId::AdtId(adt) => match adt {
                     AdtId::StructId(id) => insert_item_loc(db, map, file_id, id, keys::STRUCT),
                     AdtId::UnionId(id) => insert_item_loc(db, map, file_id, id, keys::UNION),

@@ -990,7 +990,6 @@ struct FixedPoint<T, U, V>(&'static FixedPoint<(), T, U>, V);
                 ModuleDefId::AdtId(it) => it.into(),
                 ModuleDefId::ConstId(it) => it.into(),
                 ModuleDefId::TraitId(it) => it.into(),
-                ModuleDefId::TraitAliasId(it) => it.into(),
                 ModuleDefId::TypeAliasId(it) => it.into(),
                 _ => return,
             })
@@ -1018,10 +1017,6 @@ struct FixedPoint<T, U, V>(&'static FixedPoint<(), T, U>, V);
                             loc.source(&db).value.name().unwrap()
                         }
                         GenericDefId::TraitId(it) => {
-                            let loc = it.lookup(&db);
-                            loc.source(&db).value.name().unwrap()
-                        }
-                        GenericDefId::TraitAliasId(it) => {
                             let loc = it.lookup(&db);
                             loc.source(&db).value.name().unwrap()
                         }
