@@ -345,16 +345,6 @@ impl Wtf8 {
     pub fn eq_ignore_ascii_case(&self, other: &Self) -> bool {
         self.bytes.eq_ignore_ascii_case(&other.bytes)
     }
-
-    #[inline]
-    pub fn is_code_point_boundary(&self, index: usize) -> bool {
-        is_code_point_boundary(self, index)
-    }
-
-    #[inline]
-    pub fn check_utf8_boundary(&self, index: usize) {
-        check_utf8_boundary(self, index)
-    }
 }
 
 /// Returns a slice of the given string for the byte range \[`begin`..`end`).
@@ -435,44 +425,44 @@ fn decode_surrogate(second_byte: u8, third_byte: u8) -> u16 {
     0xD800 | (second_byte as u16 & 0x3F) << 6 | third_byte as u16 & 0x3F
 }
 
-// helps diff to be unindented
+impl Wtf8 {
+    /// Copied from str::is_char_boundary
+    #[inline]
+    pub fn is_code_point_boundary(&self, index: usize) -> bool {
+        if index == 0 {
+            return true;
+        }
+        match self.bytes.get(index) {
+            None => index == self.len(),
+            Some(&b) => (b as i8) >= -0x40,
+        }
+    }
 
-/// Copied from str::is_char_boundary
-#[inline]
-pub fn is_code_point_boundary(slice: &Wtf8, index: usize) -> bool {
-    if index == 0 {
-        return true;
-    }
-    match slice.bytes.get(index) {
-        None => index == slice.len(),
-        Some(&b) => (b as i8) >= -0x40,
-    }
-}
-
-/// Verify that `index` is at the edge of either a valid UTF-8 codepoint
-/// (i.e. a codepoint that's not a surrogate) or of the whole string.
-///
-/// These are the cases currently permitted by `OsStr::slice_encoded_bytes`.
-/// Splitting between surrogates is valid as far as WTF-8 is concerned, but
-/// we do not permit it in the public API because WTF-8 is considered an
-/// implementation detail.
-#[track_caller]
-#[inline]
-pub fn check_utf8_boundary(slice: &Wtf8, index: usize) {
-    if index == 0 {
-        return;
-    }
-    match slice.bytes.get(index) {
-        Some(0xED) => (), // Might be a surrogate
-        Some(&b) if (b as i8) >= -0x40 => return,
-        Some(_) => panic!("byte index {index} is not a codepoint boundary"),
-        None if index == slice.len() => return,
-        None => panic!("byte index {index} is out of bounds"),
-    }
-    if slice.bytes[index + 1] >= 0xA0 {
-        // There's a surrogate after index. Now check before index.
-        if index >= 3 && slice.bytes[index - 3] == 0xED && slice.bytes[index - 2] >= 0xA0 {
-            panic!("byte index {index} lies between surrogate codepoints");
+    /// Verify that `index` is at the edge of either a valid UTF-8 codepoint
+    /// (i.e. a codepoint that's not a surrogate) or of the whole string.
+    ///
+    /// These are the cases currently permitted by `OsStr::self_encoded_bytes`.
+    /// Splitting between surrogates is valid as far as WTF-8 is concerned, but
+    /// we do not permit it in the public API because WTF-8 is considered an
+    /// implementation detail.
+    #[track_caller]
+    #[inline]
+    pub fn check_utf8_boundary(&self, index: usize) {
+        if index == 0 {
+            return;
+        }
+        match self.bytes.get(index) {
+            Some(0xED) => (), // Might be a surrogate
+            Some(&b) if (b as i8) >= -0x40 => return,
+            Some(_) => panic!("byte index {index} is not a codepoint boundary"),
+            None if index == self.len() => return,
+            None => panic!("byte index {index} is out of bounds"),
+        }
+        if self.bytes[index + 1] >= 0xA0 {
+            // There's a surrogate after index. Now check before index.
+            if index >= 3 && self.bytes[index - 3] == 0xED && self.bytes[index - 2] >= 0xA0 {
+                panic!("byte index {index} lies between surrogate codepoints");
+            }
         }
     }
 }
