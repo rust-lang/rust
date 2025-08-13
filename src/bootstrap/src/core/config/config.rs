@@ -1285,7 +1285,6 @@ impl Config {
         rust_randomize_layout = rust_randomize_layout_.unwrap_or_default();
         llvm_tools_enabled = rust_llvm_tools.unwrap_or(true);
 
-        llvm_enzyme = channel == "dev" || channel == "nightly";
         rustc_default_linker = rust_default_linker;
         musl_root = rust_musl_root.map(PathBuf::from);
         save_toolstates = rust_save_toolstates.map(PathBuf::from);
