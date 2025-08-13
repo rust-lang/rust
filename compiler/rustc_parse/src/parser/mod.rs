@@ -1128,7 +1128,7 @@ impl<'a> Parser<'a> {
         self.break_last_token = 0;
         if next.0.span.is_dummy() {
             // Tweak the location for better diagnostics, but keep syntactic context intact.
-            let fallback_span = self.token.span;
+            let fallback_span = self.token.span.shrink_to_hi();
             next.0.span = fallback_span.with_ctxt(next.0.span.ctxt());
         }
         debug_assert!(!matches!(

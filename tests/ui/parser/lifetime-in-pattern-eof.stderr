@@ -1,0 +1,20 @@
+error: unexpected lifetime `'a` in pattern
+  --> $DIR/lifetime-in-pattern-eof.rs:4:17
+   |
+LL | const x: () = |&'a
+   |                 ^^
+   |
+help: remove the lifetime
+   |
+LL - const x: () = |&'a
+LL + const x: () = |&
+   |
+
+error: expected parameter name, found `<eof>`
+  --> $DIR/lifetime-in-pattern-eof.rs:4:19
+   |
+LL | const x: () = |&'a
+   |                   ^ expected parameter name
+
+error: aborting due to 2 previous errors
+
