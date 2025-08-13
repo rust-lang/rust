@@ -160,7 +160,7 @@ struct Host {
 
 impl Metrics {
     fn new(sh: &Shell) -> anyhow::Result<Metrics> {
-        let host = Host::new(sh)?;
+        let host = Host::new(sh).unwrap_or_else(|_| Host::unknown());
         let timestamp = SystemTime::now();
         let revision = cmd!(sh, "git rev-parse HEAD").read()?;
         let perf_revision = "a584462e145a0c04760fd9391daefb4f6bd13a99".into();
@@ -191,9 +191,13 @@ impl Metrics {
 }
 
 impl Host {
+    fn unknown() -> Host {
+        Host { os: "unknown".into(), cpu: "unknown".into(), mem: "unknown".into() }
+    }
+
     fn new(sh: &Shell) -> anyhow::Result<Host> {
         if cfg!(not(target_os = "linux")) {
-            return Ok(Host { os: "unknown".into(), cpu: "unknown".into(), mem: "unknown".into() });
+            return Ok(Host::unknown());
         }
 
         let os = read_field(sh, "/etc/os-release", "PRETTY_NAME=")?.trim_matches('"').to_owned();
