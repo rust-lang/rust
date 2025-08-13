@@ -87,7 +87,7 @@ impl<'tcx> crate::MirPass<'tcx> for ElaborateDrops {
             .elaborate()
         };
         elaborate_patch.apply(body);
-        deref_finder(tcx, body);
+        deref_finder(tcx, body, true);
     }
 
     fn is_required(&self) -> bool {
