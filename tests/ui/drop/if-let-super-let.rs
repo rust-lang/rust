@@ -25,8 +25,8 @@ fn main() {
         );
         #[cfg(e2024)]
         (
-            if let _ = { super let _x = o.log(2); } { o.push(0) },
-            o.push(1),
+            if let _ = { super let _x = o.log(1); } { o.push(0) },
+            o.push(2),
         );
     });
     assert_drop_order(0..=2, |o| {
@@ -37,15 +37,15 @@ fn main() {
         );
         #[cfg(e2024)]
         (
-            if let true = { super let _x = o.log(2); false } {} else { o.push(0) },
-            o.push(1),
+            if let true = { super let _x = o.log(0); false } {} else { o.push(1) },
+            o.push(2),
         );
     });
 
     // `pin!` should behave likewise.
     assert_drop_order(0..=2, |o| {
         #[cfg(e2021)] (if let _ = pin!(o.log(2)) { o.push(0) }, o.push(1));
-        #[cfg(e2024)] (if let _ = pin!(o.log(2)) { o.push(0) }, o.push(1));
+        #[cfg(e2024)] (if let _ = pin!(o.log(1)) { o.push(0) }, o.push(2));
     });
     assert_drop_order(0..=2, |o| {
         #[cfg(e2021)]
@@ -55,8 +55,8 @@ fn main() {
         );
         #[cfg(e2024)]
         (
-            if let None = Some(pin!(o.log(2))) {} else { o.push(0) },
-            o.push(1),
+            if let None = Some(pin!(o.log(0))) {} else { o.push(1) },
+            o.push(2),
         );
     });
 
@@ -65,15 +65,15 @@ fn main() {
     // dropped before the first operand's temporary. This is consistent across Editions.
     assert_drop_order(0..=1, |o| {
         match () {
-            _ if let _ = o.log(0)
-                && let _ = { super let _x = o.log(1); } => {}
+            _ if let _ = o.log(1)
+                && let _ = { super let _x = o.log(0); } => {}
             _ => unreachable!(),
         }
     });
     assert_drop_order(0..=1, |o| {
         match () {
-            _ if let _ = o.log(0)
-                && let _ = pin!(o.log(1)) => {}
+            _ if let _ = o.log(1)
+                && let _ = pin!(o.log(0)) => {}
             _ => unreachable!(),
         }
     });
