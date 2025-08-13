@@ -97,10 +97,10 @@ pub extern "C" fn float_ptr_same_lanes(v: f64x2) -> PtrX2 {
     // CHECK-NOT: alloca
     // CHECK: %[[TEMP:.+]] = alloca [16 x i8]
     // CHECK-NOT: alloca
-    // CHECK: call void @llvm.lifetime.start.p0(i64 16, ptr %[[TEMP]])
+    // CHECK: call void @llvm.lifetime.start.p0({{(i64 16, )?}}ptr %[[TEMP]])
     // CHECK: store <2 x double> %v, ptr %[[TEMP]]
     // CHECK: %[[RET:.+]] = load <2 x ptr>, ptr %[[TEMP]]
-    // CHECK: call void @llvm.lifetime.end.p0(i64 16, ptr %[[TEMP]])
+    // CHECK: call void @llvm.lifetime.end.p0({{(i64 16, )?}}ptr %[[TEMP]])
     // CHECK: ret <2 x ptr> %[[RET]]
     unsafe { transmute(v) }
 }
@@ -111,10 +111,10 @@ pub extern "C" fn ptr_float_same_lanes(v: PtrX2) -> f64x2 {
     // CHECK-NOT: alloca
     // CHECK: %[[TEMP:.+]] = alloca [16 x i8]
     // CHECK-NOT: alloca
-    // CHECK: call void @llvm.lifetime.start.p0(i64 16, ptr %[[TEMP]])
+    // CHECK: call void @llvm.lifetime.start.p0({{(i64 16, )?}}ptr %[[TEMP]])
     // CHECK: store <2 x ptr> %v, ptr %[[TEMP]]
     // CHECK: %[[RET:.+]] = load <2 x double>, ptr %[[TEMP]]
-    // CHECK: call void @llvm.lifetime.end.p0(i64 16, ptr %[[TEMP]])
+    // CHECK: call void @llvm.lifetime.end.p0({{(i64 16, )?}}ptr %[[TEMP]])
     // CHECK: ret <2 x double> %[[RET]]
     unsafe { transmute(v) }
 }
@@ -125,10 +125,10 @@ pub extern "C" fn int_ptr_same_lanes(v: i64x2) -> PtrX2 {
     // CHECK-NOT: alloca
     // CHECK: %[[TEMP:.+]] = alloca [16 x i8]
     // CHECK-NOT: alloca
-    // CHECK: call void @llvm.lifetime.start.p0(i64 16, ptr %[[TEMP]])
+    // CHECK: call void @llvm.lifetime.start.p0({{(i64 16, )?}}ptr %[[TEMP]])
     // CHECK: store <2 x i64> %v, ptr %[[TEMP]]
     // CHECK: %[[RET:.+]] = load <2 x ptr>, ptr %[[TEMP]]
-    // CHECK: call void @llvm.lifetime.end.p0(i64 16, ptr %[[TEMP]])
+    // CHECK: call void @llvm.lifetime.end.p0({{(i64 16, )?}}ptr %[[TEMP]])
     // CHECK: ret <2 x ptr> %[[RET]]
     unsafe { transmute(v) }
 }
@@ -139,10 +139,10 @@ pub extern "C" fn ptr_int_same_lanes(v: PtrX2) -> i64x2 {
     // CHECK-NOT: alloca
     // CHECK: %[[TEMP:.+]] = alloca [16 x i8]
     // CHECK-NOT: alloca
-    // CHECK: call void @llvm.lifetime.start.p0(i64 16, ptr %[[TEMP]])
+    // CHECK: call void @llvm.lifetime.start.p0({{(i64 16, )?}}ptr %[[TEMP]])
     // CHECK: store <2 x ptr> %v, ptr %[[TEMP]]
     // CHECK: %[[RET:.+]] = load <2 x i64>, ptr %[[TEMP]]
-    // CHECK: call void @llvm.lifetime.end.p0(i64 16, ptr %[[TEMP]])
+    // CHECK: call void @llvm.lifetime.end.p0({{(i64 16, )?}}ptr %[[TEMP]])
     // CHECK: ret <2 x i64> %[[RET]]
     unsafe { transmute(v) }
 }
@@ -153,10 +153,10 @@ pub extern "C" fn float_ptr_widen(v: f32x4) -> PtrX2 {
     // CHECK-NOT: alloca
     // CHECK: %[[TEMP:.+]] = alloca [16 x i8]
     // CHECK-NOT: alloca
-    // CHECK: call void @llvm.lifetime.start.p0(i64 16, ptr %[[TEMP]])
+    // CHECK: call void @llvm.lifetime.start.p0({{(i64 16, )?}}ptr %[[TEMP]])
     // CHECK: store <4 x float> %v, ptr %[[TEMP]]
     // CHECK: %[[RET:.+]] = load <2 x ptr>, ptr %[[TEMP]]
-    // CHECK: call void @llvm.lifetime.end.p0(i64 16, ptr %[[TEMP]])
+    // CHECK: call void @llvm.lifetime.end.p0({{(i64 16, )?}}ptr %[[TEMP]])
     // CHECK: ret <2 x ptr> %[[RET]]
     unsafe { transmute(v) }
 }
@@ -167,10 +167,10 @@ pub extern "C" fn int_ptr_widen(v: i32x4) -> PtrX2 {
     // CHECK-NOT: alloca
     // CHECK: %[[TEMP:.+]] = alloca [16 x i8]
     // CHECK-NOT: alloca
-    // CHECK: call void @llvm.lifetime.start.p0(i64 16, ptr %[[TEMP]])
+    // CHECK: call void @llvm.lifetime.start.p0({{(i64 16, )?}}ptr %[[TEMP]])
     // CHECK: store <4 x i32> %v, ptr %[[TEMP]]
     // CHECK: %[[RET:.+]] = load <2 x ptr>, ptr %[[TEMP]]
-    // CHECK: call void @llvm.lifetime.end.p0(i64 16, ptr %[[TEMP]])
+    // CHECK: call void @llvm.lifetime.end.p0({{(i64 16, )?}}ptr %[[TEMP]])
     // CHECK: ret <2 x ptr> %[[RET]]
     unsafe { transmute(v) }
 }
