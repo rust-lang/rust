@@ -147,6 +147,7 @@ pub(crate) struct PathExprCtx<'db> {
     /// Whether this expression is the direct condition of an if or while expression
     pub(crate) in_condition: bool,
     pub(crate) incomplete_let: bool,
+    pub(crate) in_value: bool,
     pub(crate) ref_expr_parent: Option<ast::RefExpr>,
     pub(crate) after_amp: bool,
     /// The surrounding RecordExpression we are completing a functional update
