@@ -24,7 +24,7 @@ use rustc_parse::parser::{ForceCollect, Parser};
 use rustc_session::config::CollapseMacroDebuginfo;
 use rustc_session::parse::ParseSess;
 use rustc_session::{Limit, Session};
-use rustc_span::def_id::{CrateNum, DefId, LocalDefId};
+use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::{AstPass, ExpnData, ExpnKind, LocalExpnId, MacroKind};
 use rustc_span::source_map::SourceMap;
@@ -1111,10 +1111,6 @@ pub trait ResolverExpand {
         expn_id: LocalExpnId,
         path: &ast::Path,
     ) -> Result<bool, Indeterminate>;
-
-    /// Decodes the proc-macro quoted span in the specified crate, with the specified id.
-    /// No caching is performed.
-    fn get_proc_macro_quoted_span(&self, krate: CrateNum, id: usize) -> Span;
 
     /// The order of items in the HIR is unrelated to the order of
     /// items in the AST. However, we generate proc macro harnesses

@@ -273,9 +273,6 @@ pub struct ParseSess {
     pub file_depinfo: Lock<FxIndexSet<Symbol>>,
     /// Whether cfg(version) should treat the current release as incomplete
     pub assume_incomplete_release: bool,
-    /// Spans passed to `proc_macro::quote_span`. Each span has a numerical
-    /// identifier represented by its position in the vector.
-    proc_macro_quoted_spans: AppendOnlyVec<Span>,
     /// Used to generate new `AttrId`s. Every `AttrId` is unique.
     pub attr_id_generator: AttrIdGenerator,
 }
@@ -310,7 +307,6 @@ impl ParseSess {
             env_depinfo: Default::default(),
             file_depinfo: Default::default(),
             assume_incomplete_release: false,
-            proc_macro_quoted_spans: Default::default(),
             attr_id_generator: AttrIdGenerator::new(),
         }
     }
@@ -362,16 +358,6 @@ impl ParseSess {
                 diagnostic,
             });
         });
-    }
-
-    pub fn save_proc_macro_span(&self, span: Span) -> usize {
-        self.proc_macro_quoted_spans.push(span)
-    }
-
-    pub fn proc_macro_quoted_spans(&self) -> impl Iterator<Item = (usize, Span)> {
-        // This is equivalent to `.iter().copied().enumerate()`, but that isn't possible for
-        // AppendOnlyVec, so we resort to this scheme.
-        self.proc_macro_quoted_spans.iter_enumerated()
     }
 
     pub fn dcx(&self) -> DiagCtxtHandle<'_> {

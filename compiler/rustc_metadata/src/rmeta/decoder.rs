@@ -1470,15 +1470,6 @@ impl<'a> CrateMetadataRef<'a> {
         self.root.native_libraries.decode((self, sess))
     }
 
-    fn get_proc_macro_quoted_span(self, index: usize, sess: &Session) -> Span {
-        self.root
-            .tables
-            .proc_macro_quoted_spans
-            .get(self, index)
-            .unwrap_or_else(|| panic!("Missing proc macro quoted span: {index:?}"))
-            .decode((self, sess))
-    }
-
     fn get_foreign_modules(self, sess: &'a Session) -> impl Iterator<Item = ForeignModule> {
         self.root.foreign_modules.decode((self, sess))
     }
