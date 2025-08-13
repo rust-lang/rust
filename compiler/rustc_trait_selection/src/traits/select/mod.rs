@@ -4,9 +4,9 @@
 
 use std::assert_matches::assert_matches;
 use std::cell::{Cell, RefCell};
+use std::cmp;
 use std::fmt::{self, Display};
 use std::ops::ControlFlow;
-use std::{cmp, iter};
 
 use hir::def::DefKind;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
@@ -2185,32 +2185,23 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 ty::Binder::dummy(vec![ty])
             }
 
-            ty::Coroutine(coroutine_def_id, args) => {
-                match self.tcx().coroutine_movability(coroutine_def_id) {
-                    hir::Movability::Static => {
-                        unreachable!("tried to assemble `Sized` for static coroutine")
-                    }
-                    hir::Movability::Movable => {
-                        if self.tcx().features().coroutine_clone() {
-                            ty::Binder::dummy(
-                                args.as_coroutine()
-                                    .upvar_tys()
-                                    .iter()
-                                    .chain([Ty::new_coroutine_witness(
-                                        self.tcx(),
-                                        coroutine_def_id,
-                                        self.tcx().mk_args(args.as_coroutine().parent_args()),
-                                    )])
-                                    .collect::<Vec<_>>(),
-                            )
-                        } else {
-                            unreachable!(
-                                "tried to assemble `Sized` for coroutine without enabled feature"
-                            )
-                        }
+            ty::Coroutine(def_id, args) => match self.tcx().coroutine_movability(def_id) {
+                hir::Movability::Static => {
+                    unreachable!("tried to assemble `Clone` for static coroutine")
+                }
+                hir::Movability::Movable => {
+                    if self.tcx().features().coroutine_clone() {
+                        ty::Binder::dummy(vec![
+                            args.as_coroutine().tupled_upvars_ty(),
+                            Ty::new_coroutine_witness_for_coroutine(self.tcx(), def_id, args),
+                        ])
+                    } else {
+                        unreachable!(
+                            "tried to assemble `Clone` for coroutine without enabled feature"
+                        )
                     }
                 }
-            }
+            },
 
             ty::CoroutineWitness(def_id, args) => self
                 .infcx
@@ -2333,13 +2324,10 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
 
             ty::Coroutine(def_id, args) => {
                 let ty = self.infcx.shallow_resolve(args.as_coroutine().tupled_upvars_ty());
-                let witness = Ty::new_coroutine_witness(
-                    self.tcx(),
-                    def_id,
-                    self.tcx().mk_args(args.as_coroutine().parent_args()),
-                );
+                let tcx = self.tcx();
+                let witness = Ty::new_coroutine_witness_for_coroutine(tcx, def_id, args);
                 ty::Binder::dummy(AutoImplConstituents {
-                    types: [ty].into_iter().chain(iter::once(witness)).collect(),
+                    types: vec![ty, witness],
                     assumptions: vec![],
                 })
             }

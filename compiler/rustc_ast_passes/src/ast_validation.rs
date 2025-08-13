@@ -22,7 +22,6 @@ use std::str::FromStr;
 
 use itertools::{Either, Itertools};
 use rustc_abi::{CanonAbi, ExternAbi, InterruptKind};
-use rustc_ast::ptr::P;
 use rustc_ast::visit::{AssocCtxt, BoundKind, FnCtxt, FnKind, Visitor, walk_list};
 use rustc_ast::*;
 use rustc_ast_pretty::pprust::{self, State};
@@ -719,7 +718,7 @@ impl<'a> AstValidator<'a> {
         }
     }
 
-    fn deny_items(&self, trait_items: &[P<AssocItem>], ident_span: Span) {
+    fn deny_items(&self, trait_items: &[Box<AssocItem>], ident_span: Span) {
         if !trait_items.is_empty() {
             let spans: Vec<_> = trait_items.iter().map(|i| i.kind.ident().unwrap().span).collect();
             let total = trait_items.first().unwrap().span.to(trait_items.last().unwrap().span);
@@ -955,13 +954,16 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         }
 
         match &item.kind {
-            ItemKind::Impl(box Impl {
-                safety,
-                polarity,
-                defaultness: _,
-                constness,
+            ItemKind::Impl(Impl {
                 generics,
-                of_trait: Some(t),
+                of_trait:
+                    Some(box TraitImplHeader {
+                        safety,
+                        polarity,
+                        defaultness: _,
+                        constness,
+                        trait_ref: t,
+                    }),
                 self_ty,
                 items,
             }) => {
@@ -993,46 +995,12 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     walk_list!(this, visit_assoc_item, items, AssocCtxt::Impl { of_trait: true });
                 });
             }
-            ItemKind::Impl(box Impl {
-                safety,
-                polarity,
-                defaultness,
-                constness,
-                generics,
-                of_trait: None,
-                self_ty,
-                items,
-            }) => {
-                let error = |annotation_span, annotation, only_trait| errors::InherentImplCannot {
-                    span: self_ty.span,
-                    annotation_span,
-                    annotation,
-                    self_ty: self_ty.span,
-                    only_trait,
-                };
-
+            ItemKind::Impl(Impl { generics, of_trait: None, self_ty, items }) => {
                 self.visit_attrs_vis(&item.attrs, &item.vis);
                 self.visibility_not_permitted(
                     &item.vis,
                     errors::VisibilityNotPermittedNote::IndividualImplItems,
                 );
-                if let &Safety::Unsafe(span) = safety {
-                    self.dcx().emit_err(errors::InherentImplCannotUnsafe {
-                        span: self_ty.span,
-                        annotation_span: span,
-                        annotation: "unsafe",
-                        self_ty: self_ty.span,
-                    });
-                }
-                if let &ImplPolarity::Negative(span) = polarity {
-                    self.dcx().emit_err(error(span, "negative", false));
-                }
-                if let &Defaultness::Default(def_span) = defaultness {
-                    self.dcx().emit_err(error(def_span, "`default`", true));
-                }
-                if let &Const::Yes(span) = constness {
-                    self.dcx().emit_err(error(span, "`const`", true));
-                }
 
                 self.with_tilde_const(Some(TildeConstReason::Impl { span: item.span }), |this| {
                     this.visit_generics(generics)

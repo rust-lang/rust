@@ -793,6 +793,7 @@ pub enum BuiltinLintDiag {
     },
     IllFormedAttributeInput {
         suggestions: Vec<String>,
+        docs: Option<&'static str>,
     },
     InnerAttributeUnstable {
         is_macro: bool,

@@ -183,7 +183,7 @@ fn in_impl<'tcx>(
         && let item = cx.tcx.hir_expect_item(impl_def_id.expect_local())
         && let ItemKind::Impl(item) = &item.kind
         && let Some(of_trait) = &item.of_trait
-        && let Some(seg) = of_trait.path.segments.last()
+        && let Some(seg) = of_trait.trait_ref.path.segments.last()
         && let Res::Def(_, trait_id) = seg.res
         && trait_id == bin_op
         && let Some(generic_args) = seg.args

@@ -623,16 +623,10 @@ impl Stdio {
             // permissions as well as the ability to be inherited to child
             // processes (as this is about to be inherited).
             Stdio::Null => {
-                let size = size_of::<c::SECURITY_ATTRIBUTES>();
-                let mut sa = c::SECURITY_ATTRIBUTES {
-                    nLength: size as u32,
-                    lpSecurityDescriptor: ptr::null_mut(),
-                    bInheritHandle: 1,
-                };
                 let mut opts = OpenOptions::new();
                 opts.read(stdio_id == c::STD_INPUT_HANDLE);
                 opts.write(stdio_id != c::STD_INPUT_HANDLE);
-                opts.security_attributes(&mut sa);
+                opts.inherit_handle(true);
                 File::open(Path::new(r"\\.\NUL"), &opts).map(|file| file.into_inner())
             }
         }

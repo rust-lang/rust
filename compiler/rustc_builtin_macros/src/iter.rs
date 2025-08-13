@@ -1,4 +1,3 @@
-use rustc_ast::ptr::P;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::{CoroutineKind, DUMMY_NODE_ID, Expr, ast, token};
 use rustc_errors::PResult;
@@ -24,7 +23,7 @@ fn parse_closure<'a>(
     cx: &mut ExtCtxt<'a>,
     span: Span,
     stream: TokenStream,
-) -> PResult<'a, P<Expr>> {
+) -> PResult<'a, Box<Expr>> {
     let mut closure_parser = cx.new_parser_from_tts(stream);
 
     let coroutine_kind = Some(CoroutineKind::Gen {

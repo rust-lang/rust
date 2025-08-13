@@ -874,7 +874,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         !is_skip_attr(segments)
     }
 
-    fn walk_mod_items(&mut self, items: &[rustc_ast::ptr::P<ast::Item>]) {
+    fn walk_mod_items(&mut self, items: &[Box<ast::Item>]) {
         self.visit_items_with_reordering(&ptr_vec_to_ref_vec(items));
     }
 

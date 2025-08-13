@@ -19,7 +19,7 @@ impl<S: Stage> SingleAttributeParser<S> for TransparencyParser {
         cx.dcx().span_err(vec![used, unused], "multiple macro transparency attributes");
     });
     const TEMPLATE: AttributeTemplate =
-        template!(NameValueStr: "transparent|semitransparent|opaque");
+        template!(NameValueStr: ["transparent", "semitransparent", "opaque"]);
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
         let Some(nv) = args.name_value() else {

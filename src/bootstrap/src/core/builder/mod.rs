@@ -959,7 +959,8 @@ impl<'a> Builder<'a> {
                 compile::Std,
                 compile::Rustc,
                 compile::Assemble,
-                compile::CodegenBackend,
+                compile::CraneliftCodegenBackend,
+                compile::GccCodegenBackend,
                 compile::StartupObjects,
                 tool::BuildManifest,
                 tool::Rustbook,
@@ -1150,7 +1151,7 @@ impl<'a> Builder<'a> {
                 dist::JsonDocs,
                 dist::Mingw,
                 dist::Rustc,
-                dist::CodegenBackend,
+                dist::CraneliftCodegenBackend,
                 dist::Std,
                 dist::RustcDev,
                 dist::Analysis,
@@ -1596,7 +1597,7 @@ You have to build a stage1 compiler for `{}` first, and then use it to build a s
         cmd.env("CARGO", &self.initial_cargo);
         // Need to add the `run_compiler` libs. Those are the libs produces *by* `build_compiler`
         // in `tool::ToolBuild` step, so they match the Miri we just built. However this means they
-        // are actually living one stage up, i.e. we are running `stage0-tools-bin/miri` with the
+        // are actually living one stage up, i.e. we are running `stage1-tools-bin/miri` with the
         // libraries in `stage1/lib`. This is an unfortunate off-by-1 caused (possibly) by the fact
         // that Miri doesn't have an "assemble" step like rustc does that would cross the stage boundary.
         // We can't use `add_rustc_lib_path` as that's a NOP on Windows but we do need these libraries

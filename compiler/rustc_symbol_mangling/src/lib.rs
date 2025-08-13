@@ -218,32 +218,33 @@ fn compute_symbol_name<'tcx>(
         }
     }
 
-    // Foreign items by default use no mangling for their symbol name. There's a
-    // few exceptions to this rule though:
-    //
-    // * This can be overridden with the `#[link_name]` attribute
-    //
-    // * On the wasm32 targets there is a bug (or feature) in LLD [1] where the
-    //   same-named symbol when imported from different wasm modules will get
-    //   hooked up incorrectly. As a result foreign symbols, on the wasm target,
-    //   with a wasm import module, get mangled. Additionally our codegen will
-    //   deduplicate symbols based purely on the symbol name, but for wasm this
-    //   isn't quite right because the same-named symbol on wasm can come from
-    //   different modules. For these reasons if `#[link(wasm_import_module)]`
-    //   is present we mangle everything on wasm because the demangled form will
-    //   show up in the `wasm-import-name` custom attribute in LLVM IR.
-    //
-    // * `#[rustc_std_internal_symbol]` mangles the symbol name in a special way
-    //   both for exports and imports through foreign items. This is handled above.
-    // [1]: https://bugs.llvm.org/show_bug.cgi?id=44316
-    if tcx.is_foreign_item(def_id)
-        && (!tcx.sess.target.is_like_wasm
-            || !tcx.wasm_import_module_map(def_id.krate).contains_key(&def_id))
+    let wasm_import_module_exception_force_mangling = {
+        // * On the wasm32 targets there is a bug (or feature) in LLD [1] where the
+        //   same-named symbol when imported from different wasm modules will get
+        //   hooked up incorrectly. As a result foreign symbols, on the wasm target,
+        //   with a wasm import module, get mangled. Additionally our codegen will
+        //   deduplicate symbols based purely on the symbol name, but for wasm this
+        //   isn't quite right because the same-named symbol on wasm can come from
+        //   different modules. For these reasons if `#[link(wasm_import_module)]`
+        //   is present we mangle everything on wasm because the demangled form will
+        //   show up in the `wasm-import-name` custom attribute in LLVM IR.
+        //
+        // [1]: https://bugs.llvm.org/show_bug.cgi?id=44316
+        //
+        // So, on wasm if a foreign item loses its `#[no_mangle]`, it might *still*
+        // be mangled if we're forced to. Note: I don't like this.
+        // These kinds of exceptions should be added during the `codegen_attrs` query.
+        // However, we don't have the wasm import module map there yet.
+        tcx.is_foreign_item(def_id)
+            && tcx.sess.target.is_like_wasm
+            && tcx.wasm_import_module_map(LOCAL_CRATE).contains_key(&def_id.into())
+    };
+
+    if let Some(name) = attrs.link_name
+        && !wasm_import_module_exception_force_mangling
     {
-        if let Some(name) = attrs.link_name {
-            return name.to_string();
-        }
-        return tcx.item_name(def_id).to_string();
+        // Use provided name
+        return name.to_string();
     }
 
     if let Some(name) = attrs.export_name {
@@ -251,7 +252,9 @@ fn compute_symbol_name<'tcx>(
         return name.to_string();
     }
 
-    if attrs.flags.contains(CodegenFnAttrFlags::NO_MANGLE) {
+    if attrs.flags.contains(CodegenFnAttrFlags::NO_MANGLE)
+        && !wasm_import_module_exception_force_mangling
+    {
         // Don't mangle
         return tcx.item_name(def_id).to_string();
     }
