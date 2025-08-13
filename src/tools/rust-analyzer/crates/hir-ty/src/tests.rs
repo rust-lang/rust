@@ -6,11 +6,11 @@ mod incremental;
 mod macros;
 mod method_resolution;
 mod never_type;
+mod opaque_types;
 mod patterns;
 mod regression;
 mod simple;
 mod traits;
-mod type_alias_impl_traits;
 
 use base_db::{Crate, SourceDatabase};
 use expect_test::Expect;

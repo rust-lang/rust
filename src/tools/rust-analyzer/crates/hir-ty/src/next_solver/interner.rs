@@ -626,12 +626,8 @@ impl<'db> inherent::AdtDef<DbInterner<'db>> for AdtDef {
     fn struct_tail_ty(
         self,
         interner: DbInterner<'db>,
-    ) -> Option<
-        rustc_type_ir::EarlyBinder<
-            DbInterner<'db>,
-            <DbInterner<'db> as rustc_type_ir::Interner>::Ty,
-        >,
-    > {
+    ) -> Option<EarlyBinder<DbInterner<'db>, <DbInterner<'db> as rustc_type_ir::Interner>::Ty>>
+    {
         let db = interner.db();
         let hir_def::AdtId::StructId(struct_id) = self.inner().id else {
             return None;
@@ -645,7 +641,7 @@ impl<'db> inherent::AdtDef<DbInterner<'db>> for AdtDef {
     fn all_field_tys(
         self,
         interner: DbInterner<'db>,
-    ) -> rustc_type_ir::EarlyBinder<
+    ) -> EarlyBinder<
         DbInterner<'db>,
         impl IntoIterator<Item = <DbInterner<'db> as rustc_type_ir::Interner>::Ty>,
     > {
@@ -679,19 +675,15 @@ impl<'db> inherent::AdtDef<DbInterner<'db>> for AdtDef {
                 .collect(),
         };
 
-        rustc_type_ir::EarlyBinder::bind(tys)
+        EarlyBinder::bind(tys)
     }
 
     fn sizedness_constraint(
         self,
         interner: DbInterner<'db>,
         sizedness: SizedTraitKind,
-    ) -> Option<
-        rustc_type_ir::EarlyBinder<
-            DbInterner<'db>,
-            <DbInterner<'db> as rustc_type_ir::Interner>::Ty,
-        >,
-    > {
+    ) -> Option<EarlyBinder<DbInterner<'db>, <DbInterner<'db> as rustc_type_ir::Interner>::Ty>>
+    {
         if self.is_struct() {
             let tail_ty = self.all_field_tys(interner).skip_binder().into_iter().last()?;
 
@@ -1066,7 +1058,7 @@ impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
         }
     }
 
-    fn type_of(self, def_id: Self::DefId) -> rustc_type_ir::EarlyBinder<Self, Self::Ty> {
+    fn type_of(self, def_id: Self::DefId) -> EarlyBinder<Self, Self::Ty> {
         let def_id = match def_id {
             SolverDefId::TypeAliasId(id) => {
                 use hir_def::Lookup;
@@ -1077,9 +1069,13 @@ impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
                 crate::TyDefId::TypeAliasId(id)
             }
             SolverDefId::AdtId(id) => crate::TyDefId::AdtId(id),
-            // FIXME(next-solver): need to support opaque types. This uses the types of
-            // `query mir_borrowck` in rustc. If we're ignoring regions, we could simply
-            // use the type inferred by general type inference here.
+            // FIXME(next-solver): This uses the types of `query mir_borrowck` in rustc.
+            //
+            // We currently always use the type from HIR typeck which ignores regions. This
+            // should be fine.
+            SolverDefId::InternedOpaqueTyId(_) => {
+                return self.type_of_opaque_hir_typeck(def_id);
+            }
             _ => panic!("Unexpected def_id `{def_id:?}` provided for `type_of`"),
         };
         self.db().ty_ns(def_id)
@@ -1109,7 +1105,7 @@ impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
             SolverDefId::InternedOpaqueTyId(_) => AliasTermKind::OpaqueTy,
             SolverDefId::TypeAliasId(_) => AliasTermKind::ProjectionTy,
             SolverDefId::ConstId(_) => AliasTermKind::UnevaluatedConst,
-            _ => todo!("Unexpected alias: {:?}", alias.def_id),
+            _ => unimplemented!("Unexpected alias: {:?}", alias.def_id),
         }
     }
 
@@ -1204,8 +1200,7 @@ impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
     fn fn_sig(
         self,
         def_id: Self::DefId,
-    ) -> rustc_type_ir::EarlyBinder<Self, rustc_type_ir::Binder<Self, rustc_type_ir::FnSig<Self>>>
-    {
+    ) -> EarlyBinder<Self, rustc_type_ir::Binder<Self, rustc_type_ir::FnSig<Self>>> {
         let id = match def_id {
             SolverDefId::FunctionId(id) => CallableDefId::FunctionId(id),
             SolverDefId::Ctor(ctor) => match ctor {
@@ -1258,7 +1253,7 @@ impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
     fn item_bounds(
         self,
         def_id: Self::DefId,
-    ) -> rustc_type_ir::EarlyBinder<Self, impl IntoIterator<Item = Self::Clause>> {
+    ) -> EarlyBinder<Self, impl IntoIterator<Item = Self::Clause>> {
         explicit_item_bounds(self, def_id).map_bound(|bounds| {
             Clauses::new_from_iter(self, elaborate(self, bounds).collect::<Vec<_>>())
         })
@@ -1268,7 +1263,7 @@ impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
     fn item_self_bounds(
         self,
         def_id: Self::DefId,
-    ) -> rustc_type_ir::EarlyBinder<Self, impl IntoIterator<Item = Self::Clause>> {
+    ) -> EarlyBinder<Self, impl IntoIterator<Item = Self::Clause>> {
         explicit_item_bounds(self, def_id).map_bound(|bounds| {
             Clauses::new_from_iter(
                 self,
@@ -1280,7 +1275,7 @@ impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
     fn item_non_self_bounds(
         self,
         def_id: Self::DefId,
-    ) -> rustc_type_ir::EarlyBinder<Self, impl IntoIterator<Item = Self::Clause>> {
+    ) -> EarlyBinder<Self, impl IntoIterator<Item = Self::Clause>> {
         let all_bounds: FxHashSet<_> = self.item_bounds(def_id).skip_binder().into_iter().collect();
         let own_bounds: FxHashSet<_> =
             self.item_self_bounds(def_id).skip_binder().into_iter().collect();
@@ -1298,7 +1293,7 @@ impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
     fn predicates_of(
         self,
         def_id: Self::DefId,
-    ) -> rustc_type_ir::EarlyBinder<Self, impl IntoIterator<Item = Self::Clause>> {
+    ) -> EarlyBinder<Self, impl IntoIterator<Item = Self::Clause>> {
         let predicates = self.db().generic_predicates_ns(def_id.try_into().unwrap());
         let predicates: Vec<_> = predicates.iter().cloned().collect();
         EarlyBinder::bind(predicates.into_iter())
@@ -1308,7 +1303,7 @@ impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
     fn own_predicates_of(
         self,
         def_id: Self::DefId,
-    ) -> rustc_type_ir::EarlyBinder<Self, impl IntoIterator<Item = Self::Clause>> {
+    ) -> EarlyBinder<Self, impl IntoIterator<Item = Self::Clause>> {
         let predicates = self.db().generic_predicates_without_parent_ns(def_id.try_into().unwrap());
         let predicates: Vec<_> = predicates.iter().cloned().collect();
         EarlyBinder::bind(predicates.into_iter())
@@ -1318,8 +1313,7 @@ impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
     fn explicit_super_predicates_of(
         self,
         def_id: Self::DefId,
-    ) -> rustc_type_ir::EarlyBinder<Self, impl IntoIterator<Item = (Self::Clause, Self::Span)>>
-    {
+    ) -> EarlyBinder<Self, impl IntoIterator<Item = (Self::Clause, Self::Span)>> {
         let predicates: Vec<(Clause<'db>, Span)> = self
             .db()
             .generic_predicates_ns(def_id.try_into().unwrap())
@@ -1327,15 +1321,14 @@ impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
             .cloned()
             .map(|p| (p, Span::dummy()))
             .collect();
-        rustc_type_ir::EarlyBinder::bind(predicates)
+        EarlyBinder::bind(predicates)
     }
 
     #[tracing::instrument(skip(self), ret)]
     fn explicit_implied_predicates_of(
         self,
         def_id: Self::DefId,
-    ) -> rustc_type_ir::EarlyBinder<Self, impl IntoIterator<Item = (Self::Clause, Self::Span)>>
-    {
+    ) -> EarlyBinder<Self, impl IntoIterator<Item = (Self::Clause, Self::Span)>> {
         let predicates: Vec<(Clause<'db>, Span)> = self
             .db()
             .generic_predicates_ns(def_id.try_into().unwrap())
@@ -1343,13 +1336,13 @@ impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
             .cloned()
             .map(|p| (p, Span::dummy()))
             .collect();
-        rustc_type_ir::EarlyBinder::bind(predicates)
+        EarlyBinder::bind(predicates)
     }
 
     fn impl_super_outlives(
         self,
         impl_def_id: Self::DefId,
-    ) -> rustc_type_ir::EarlyBinder<Self, impl IntoIterator<Item = Self::Clause>> {
+    ) -> EarlyBinder<Self, impl IntoIterator<Item = Self::Clause>> {
         let impl_id = match impl_def_id {
             SolverDefId::ImplId(id) => id,
             _ => unreachable!(),
@@ -1372,11 +1365,11 @@ impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
     fn const_conditions(
         self,
         def_id: Self::DefId,
-    ) -> rustc_type_ir::EarlyBinder<
+    ) -> EarlyBinder<
         Self,
         impl IntoIterator<Item = rustc_type_ir::Binder<Self, rustc_type_ir::TraitRef<Self>>>,
     > {
-        rustc_type_ir::EarlyBinder::bind([unimplemented!()])
+        EarlyBinder::bind([unimplemented!()])
     }
 
     fn has_target_features(self, def_id: Self::DefId) -> bool {
@@ -1763,7 +1756,7 @@ impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
     fn impl_trait_ref(
         self,
         impl_def_id: Self::DefId,
-    ) -> rustc_type_ir::EarlyBinder<Self, rustc_type_ir::TraitRef<Self>> {
+    ) -> EarlyBinder<Self, rustc_type_ir::TraitRef<Self>> {
         let impl_id = match impl_def_id {
             SolverDefId::ImplId(id) => id,
             _ => panic!("Unexpected SolverDefId in impl_trait_ref"),
@@ -1960,12 +1953,12 @@ impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
     fn explicit_implied_const_bounds(
         self,
         def_id: Self::DefId,
-    ) -> rustc_type_ir::EarlyBinder<
+    ) -> EarlyBinder<
         Self,
         impl IntoIterator<Item = rustc_type_ir::Binder<Self, rustc_type_ir::TraitRef<Self>>>,
     > {
         // FIXME(next-solver)
-        rustc_type_ir::EarlyBinder::bind([])
+        EarlyBinder::bind([])
     }
 
     fn fn_is_const(self, def_id: Self::DefId) -> bool {
@@ -1988,22 +1981,31 @@ impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
         None
     }
 
-    fn type_of_opaque_hir_typeck(
-        self,
-        def_id: Self::LocalDefId,
-    ) -> rustc_type_ir::EarlyBinder<Self, Self::Ty> {
-        // FIXME(next-solver): This should look at the type computed for the
-        // opaque by HIR typeck.
-        unimplemented!()
+    fn type_of_opaque_hir_typeck(self, def_id: Self::LocalDefId) -> EarlyBinder<Self, Self::Ty> {
+        match def_id {
+            SolverDefId::InternedOpaqueTyId(opaque) => {
+                let impl_trait_id = self.db().lookup_intern_impl_trait_id(opaque);
+                match impl_trait_id {
+                    crate::ImplTraitId::ReturnTypeImplTrait(func, idx) => {
+                        let infer = self.db().infer(func.into());
+                        EarlyBinder::bind(infer.type_of_rpit[idx].to_nextsolver(self))
+                    }
+                    crate::ImplTraitId::TypeAliasImplTrait(..)
+                    | crate::ImplTraitId::AsyncBlockTypeImplTrait(_, _) => {
+                        // FIXME(next-solver)
+                        EarlyBinder::bind(Ty::new_error(self, ErrorGuaranteed))
+                    }
+                }
+            }
+            _ => panic!("Unexpected SolverDefId in type_of_opaque_hir_typeck"),
+        }
     }
 
     fn coroutine_hidden_types(
         self,
         def_id: Self::DefId,
-    ) -> rustc_type_ir::EarlyBinder<
-        Self,
-        rustc_type_ir::Binder<Self, rustc_type_ir::CoroutineWitnessTypes<Self>>,
-    > {
+    ) -> EarlyBinder<Self, rustc_type_ir::Binder<Self, rustc_type_ir::CoroutineWitnessTypes<Self>>>
+    {
         // FIXME(next-solver)
         unimplemented!()
     }
