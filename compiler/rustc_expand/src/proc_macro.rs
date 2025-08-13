@@ -145,7 +145,8 @@ impl MultiItemModifier for DeriveProcMacro {
 
             // FIXME(pr-time): Is this the correct way to check for incremental compilation (as
             // well as for `cache_proc_macros`)?
-            if tcx.sess.opts.incremental.is_some() && tcx.sess.opts.unstable_opts.cache_proc_macros
+            if tcx.sess.opts.incremental.is_some()
+                && tcx.sess.opts.unstable_opts.cache_derive_macros
             {
                 // FIXME(pr-time): Just using the crate hash to notice when the proc-macro code has
                 // changed. How to *correctly* depend on exactly the macro definition?
@@ -197,6 +198,7 @@ impl MultiItemModifier for DeriveProcMacro {
     }
 }
 
+/// Provide a query for computing the output of a derive macro.
 pub(super) fn provide_derive_macro_expansion<'tcx>(
     tcx: TyCtxt<'tcx>,
     key: (LocalExpnId, Svh, &'tcx TokenStream),
