@@ -2,7 +2,7 @@ use Determinacy::*;
 use Namespace::*;
 use rustc_ast::{self as ast, NodeId};
 use rustc_errors::ErrorGuaranteed;
-use rustc_hir::def::{DefKind, Namespace, NonMacroAttrKind, PartialRes, PerNS};
+use rustc_hir::def::{DefKind, MacroKinds, Namespace, NonMacroAttrKind, PartialRes, PerNS};
 use rustc_middle::bug;
 use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::lint::builtin::PROC_MACRO_DERIVE_RESOLUTION_FALLBACK;
@@ -259,7 +259,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         {
             let ext = &self.get_macro_by_def_id(def_id).ext;
             if ext.builtin_name.is_none()
-                && ext.macro_kind() == MacroKind::Derive
+                && ext.macro_kinds() == MacroKinds::DERIVE
                 && parent.expansion.outer_expn_is_descendant_of(*ctxt)
             {
                 return Some((parent, derive_fallback_lint_id));
@@ -632,17 +632,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
                 match result {
                     Ok((binding, flags)) => {
-                        let binding_macro_kind = binding.macro_kind();
-                        // If we're looking for an attribute, that might be supported by a
-                        // `macro_rules!` macro.
-                        // FIXME: Replace this with tracking multiple macro kinds for one Def.
-                        if !(sub_namespace_match(binding_macro_kind, macro_kind)
-                            || (binding_macro_kind == Some(MacroKind::Bang)
-                                && macro_kind == Some(MacroKind::Attr)
-                                && this
-                                    .get_macro(binding.res())
-                                    .is_some_and(|macro_data| macro_data.attr_ext.is_some())))
-                        {
+                        if !sub_namespace_match(binding.macro_kinds(), macro_kind) {
                             return None;
                         }
 
