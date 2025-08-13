@@ -409,6 +409,24 @@ async function runChecks(testFile, doSearch, parseQuery, getCorrections) {
     return res;
 }
 
+function mostRecentMatch(staticFiles, regex) {
+    const matchingEntries = fs.readdirSync(staticFiles)
+        .filter(f => f.match(regex))
+        .map(f => {
+            const stats = fs.statSync(path.join(staticFiles, f));
+            return {
+                path: f,
+                time: stats.mtimeMs,
+            };
+        });
+    if (matchingEntries.length === 0) {
+        throw "No static file matching regex";
+    }
+    // We sort entries in descending order.
+    matchingEntries.sort((a, b) => b.time - a.time);
+    return matchingEntries[0].path;
+}
+
 /**
  * Load searchNNN.js and search-indexNNN.js.
  *
@@ -452,7 +470,7 @@ function loadSearchJS(doc_folder, resource_suffix) {
     };
 
     const staticFiles = path.join(doc_folder, "static.files");
-    const searchJs = fs.readdirSync(staticFiles).find(f => f.match(/search.*\.js$/));
+    const searchJs = mostRecentMatch(staticFiles, /search.*\.js$/);
     const searchModule = require(path.join(staticFiles, searchJs));
     searchModule.initSearch(searchIndex.searchIndex);
     const docSearch = searchModule.docSearch;
