@@ -3251,7 +3251,7 @@ pub fn get_path_from_caller_to_method_type<'tcx>(
     let def_id = assoc_item.container_id(tcx);
     match assoc_item.container {
         rustc_ty::AssocContainer::Trait => get_path_to_callee(tcx, from, def_id),
-        rustc_ty::AssocContainer::Impl => {
+        rustc_ty::AssocContainer::InherentImpl | rustc_ty::AssocContainer::TraitImpl(_) => {
             let ty = tcx.type_of(def_id).instantiate_identity();
             get_path_to_ty(tcx, from, ty, args)
         },

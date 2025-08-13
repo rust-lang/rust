@@ -1194,10 +1194,6 @@ impl<'a> CrateMetadataRef<'a> {
         self.root.tables.default_fields.get(self, id).map(|d| d.decode(self))
     }
 
-    fn get_trait_item_def_id(self, id: DefIndex) -> Option<DefId> {
-        self.root.tables.trait_item_def_id.get(self, id).map(|d| d.decode_from_cdata(self))
-    }
-
     fn get_expn_that_defined(self, id: DefIndex, sess: &Session) -> ExpnId {
         self.root
             .tables
@@ -1359,14 +1355,9 @@ impl<'a> CrateMetadataRef<'a> {
             }
             _ => bug!("cannot get associated-item of `{:?}`", self.def_key(id)),
         };
-        let container = self.root.tables.assoc_container.get(self, id).unwrap();
+        let container = self.root.tables.assoc_container.get(self, id).unwrap().decode(self);
 
-        ty::AssocItem {
-            kind,
-            def_id: self.local_def_id(id),
-            trait_item_def_id: self.get_trait_item_def_id(id),
-            container,
-        }
+        ty::AssocItem { kind, def_id: self.local_def_id(id), container }
     }
 
     fn get_ctor(self, node_id: DefIndex) -> Option<(CtorKind, DefId)> {

@@ -1033,7 +1033,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             self.set_tainted_by_errors(e);
                         }
                     }
-                    ty::AssocContainer::Impl => {
+                    ty::AssocContainer::InherentImpl | ty::AssocContainer::TraitImpl(_) => {
                         if segments.len() == 1 {
                             // `<T>::assoc` will end up here, and so
                             // can `T::assoc`. If this came from an

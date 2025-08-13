@@ -222,13 +222,6 @@ fixed_size_enum! {
 }
 
 fixed_size_enum! {
-    ty::AssocContainer {
-        ( Trait )
-        ( Impl  )
-    }
-}
-
-fixed_size_enum! {
     MacroKind {
         ( Attr   )
         ( Bang   )

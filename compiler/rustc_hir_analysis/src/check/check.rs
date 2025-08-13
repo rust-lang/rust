@@ -1009,7 +1009,7 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
             res = res.and(check_associated_item(tcx, def_id));
             let assoc_item = tcx.associated_item(def_id);
             match assoc_item.container {
-                ty::AssocContainer::Impl => {}
+                ty::AssocContainer::InherentImpl | ty::AssocContainer::TraitImpl(_) => {}
                 ty::AssocContainer::Trait => {
                     res = res.and(check_trait_item(tcx, def_id));
                 }
@@ -1026,7 +1026,7 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
             res = res.and(check_associated_item(tcx, def_id));
             let assoc_item = tcx.associated_item(def_id);
             match assoc_item.container {
-                ty::AssocContainer::Impl => {}
+                ty::AssocContainer::InherentImpl | ty::AssocContainer::TraitImpl(_) => {}
                 ty::AssocContainer::Trait => {
                     res = res.and(check_trait_item(tcx, def_id));
                 }
@@ -1043,7 +1043,7 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
 
             let assoc_item = tcx.associated_item(def_id);
             let has_type = match assoc_item.container {
-                ty::AssocContainer::Impl => true,
+                ty::AssocContainer::InherentImpl | ty::AssocContainer::TraitImpl(_) => true,
                 ty::AssocContainer::Trait => {
                     tcx.ensure_ok().explicit_item_bounds(def_id);
                     tcx.ensure_ok().explicit_item_self_bounds(def_id);
@@ -1177,12 +1177,9 @@ fn check_impl_items_against_trait<'tcx>(
 
     for &impl_item in impl_item_refs {
         let ty_impl_item = tcx.associated_item(impl_item);
-        let ty_trait_item = if let Some(trait_item_id) = ty_impl_item.trait_item_def_id {
-            tcx.associated_item(trait_item_id)
-        } else {
-            // Checked in `associated_item`.
-            tcx.dcx().span_delayed_bug(tcx.def_span(impl_item), "missing associated item in trait");
-            continue;
+        let ty_trait_item = match ty_impl_item.expect_trait_impl() {
+            Ok(trait_item_id) => tcx.associated_item(trait_item_id),
+            Err(ErrorGuaranteed { .. }) => continue,
         };
 
         let res = tcx.ensure_ok().compare_impl_item(impl_item.expect_local());

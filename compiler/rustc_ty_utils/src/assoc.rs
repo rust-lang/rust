@@ -63,7 +63,7 @@ fn associated_items(tcx: TyCtxt<'_>, def_id: DefId) -> ty::AssocItems {
 fn impl_item_implementor_ids(tcx: TyCtxt<'_>, impl_id: DefId) -> DefIdMap<DefId> {
     tcx.associated_items(impl_id)
         .in_definition_order()
-        .filter_map(|item| item.trait_item_def_id.map(|trait_item| (trait_item, item.def_id)))
+        .filter_map(|item| item.trait_item_def_id().map(|trait_item| (trait_item, item.def_id)))
         .collect()
 }
 
@@ -97,12 +97,7 @@ fn associated_item_from_trait_item(
         }
     };
 
-    ty::AssocItem {
-        kind,
-        def_id: owner_id.to_def_id(),
-        trait_item_def_id: Some(owner_id.to_def_id()),
-        container: ty::AssocContainer::Trait,
-    }
+    ty::AssocItem { kind, def_id: owner_id.to_def_id(), container: ty::AssocContainer::Trait }
 }
 
 fn associated_item_from_impl_item(tcx: TyCtxt<'_>, impl_item: &hir::ImplItem<'_>) -> ty::AssocItem {
@@ -118,15 +113,13 @@ fn associated_item_from_impl_item(tcx: TyCtxt<'_>, impl_item: &hir::ImplItem<'_>
         }
     };
 
-    ty::AssocItem {
-        kind,
-        def_id: owner_id.to_def_id(),
-        container: ty::AssocContainer::Impl,
-        trait_item_def_id: match impl_item.impl_kind {
-            ImplItemImplKind::Inherent { .. } => None,
-            ImplItemImplKind::Trait { trait_item_def_id, .. } => trait_item_def_id.ok(),
-        },
-    }
+    let container = match impl_item.impl_kind {
+        ImplItemImplKind::Inherent { .. } => ty::AssocContainer::InherentImpl,
+        ImplItemImplKind::Trait { trait_item_def_id, .. } => {
+            ty::AssocContainer::TraitImpl(trait_item_def_id)
+        }
+    };
+    ty::AssocItem { kind, def_id: owner_id.to_def_id(), container }
 }
 struct RPITVisitor<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
@@ -262,7 +255,6 @@ fn associated_type_for_impl_trait_in_trait(
             }),
         },
         def_id,
-        trait_item_def_id: None,
         container: ty::AssocContainer::Trait,
     });
 
@@ -328,8 +320,7 @@ fn associated_type_for_impl_trait_in_impl(
             }),
         },
         def_id,
-        trait_item_def_id: Some(trait_assoc_def_id),
-        container: ty::AssocContainer::Impl,
+        container: ty::AssocContainer::TraitImpl(Ok(trait_assoc_def_id)),
     });
 
     // Copy visility of the containing function.

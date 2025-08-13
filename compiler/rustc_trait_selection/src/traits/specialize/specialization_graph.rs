@@ -387,7 +387,7 @@ pub(crate) fn assoc_def(
     if let Some(assoc_item) = ancestors.leaf_def(tcx, assoc_def_id) {
         // Ensure that the impl is constrained, otherwise projection may give us
         // bad unconstrained infer vars.
-        if assoc_item.item.container == ty::AssocContainer::Impl
+        if let ty::AssocContainer::TraitImpl(_) = assoc_item.item.container
             && let Some(impl_def_id) = assoc_item.item.container_id(tcx).as_local()
         {
             tcx.ensure_ok().enforce_impl_non_lifetime_params_are_constrained(impl_def_id)?;
