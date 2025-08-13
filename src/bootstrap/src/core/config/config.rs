@@ -963,7 +963,7 @@ impl Config {
             target: "CONFIG_HANDLING",
             tracing::Level::TRACE,
             "normalizing and combining `flag.skip`/`flag.exclude` paths",
-            "config.skip" = ?config.skip,
+            "config.skip" = ?skip,
         );
 
         jobs = Some(threads_from_config(build_jobs.unwrap_or(0)));
