@@ -915,6 +915,7 @@ impl<'tcx> LateLintPass<'tcx> for Casts {
             cast_slice_from_raw_parts::check_implicit_cast(cx, expr);
         }
         cast_ptr_alignment::check(cx, expr);
+        cast_ptr_alignment::check_cast_method(cx, expr);
         ptr_as_ptr::check(cx, expr, self.msrv);
         cast_slice_different_sizes::check(cx, expr, self.msrv);
         ptr_cast_constness::check_null_ptr_cast_method(cx, expr);
