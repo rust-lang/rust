@@ -74,14 +74,13 @@ fn is_used_as_unaligned(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
         ExprKind::Call(func, [arg, ..]) if arg.hir_id == e.hir_id => {
             if let ExprKind::Path(path) = &func.kind
                 && let Some(def_id) = cx.qpath_res(path, func.hir_id).opt_def_id()
+                && let Some(name) = cx.tcx.get_diagnostic_name(def_id)
                 && matches!(
-                    cx.tcx.get_diagnostic_name(def_id),
-                    Some(
-                        sym::ptr_write_unaligned
-                            | sym::ptr_read_unaligned
-                            | sym::intrinsics_unaligned_volatile_load
-                            | sym::intrinsics_unaligned_volatile_store
-                    )
+                    name,
+                    sym::ptr_write_unaligned
+                        | sym::ptr_read_unaligned
+                        | sym::intrinsics_unaligned_volatile_load
+                        | sym::intrinsics_unaligned_volatile_store
                 )
             {
                 true
