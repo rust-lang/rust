@@ -6,10 +6,6 @@ LL |     assert_eq!(Ok(Some("hi")), foo());
    |
    = note: expected enum `Result<Option<&str>, _>`
               found enum `Result<Option<String>, ()>`
-help: try wrapping the expression in `Err`
-   |
-LL |     assert_eq!(Ok(Some("hi")), Err(foo()));
-   |                                ++++     +
 
 error[E0308]: mismatched types
   --> $DIR/suggest-add-wrapper-issue-145294.rs:25:30
@@ -19,10 +15,6 @@ LL |     assert_eq!(Bar::A("hi"), bar());
    |
    = note: expected enum `Bar<&str, _>`
               found enum `Bar<String, ()>`
-help: try wrapping the expression in `Bar::B`
-   |
-LL |     assert_eq!(Bar::A("hi"), Bar::B(bar()));
-   |                              +++++++     +
 
 error: aborting due to 2 previous errors
 

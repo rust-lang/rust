@@ -2378,6 +2378,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .filter_map(|variant| {
                     let sole_field = &variant.single_field();
 
+                    // When expected_ty and expr_ty are the same ADT, we prefer to compare their internal generic params,
+                    // When the current variant has a sole field whose type is still an unresolved inference variable,
+                    // suggestions would be often wrong. So suppress the suggestion. See #145294.
+                    if let (ty::Adt(exp_adt, _), ty::Adt(act_adt, _)) = (expected.kind(), expr_ty.kind())
+                        && exp_adt.did() == act_adt.did()
+                        && sole_field.ty(self.tcx, args).is_ty_var() {
+                            return None;
+                    }
+
                     let field_is_local = sole_field.did.is_local();
                     let field_is_accessible =
                         sole_field.vis.is_accessible_from(expr.hir_id.owner.def_id, self.tcx)
