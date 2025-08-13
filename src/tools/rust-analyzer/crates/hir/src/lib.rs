@@ -4523,10 +4523,7 @@ impl Impl {
     }
 
     pub fn trait_ref(self, db: &dyn HirDatabase) -> Option<TraitRef<'_>> {
-        let interner = DbInterner::new_with(db, None, None);
-        let substs = TyBuilder::placeholder_subst(db, self.id);
-        let trait_ref =
-            db.impl_trait(self.id)?.substitute(Interner, &substs).to_nextsolver(interner);
+        let trait_ref = db.impl_trait_ns(self.id)?.instantiate_identity();
         let resolver = self.id.resolver(db);
         Some(TraitRef::new_with_resolver(db, &resolver, trait_ref))
     }
