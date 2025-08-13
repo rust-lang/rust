@@ -3,8 +3,6 @@
 //! Chalk (in both directions); plus some helper functions for more specialized
 //! conversions.
 
-use chalk_solve::rust_ir;
-
 use hir_def::{LifetimeParamId, TraitId, TypeAliasId, TypeOrConstParamId};
 use salsa::{
     Id,
@@ -51,23 +49,6 @@ impl ToChalk for CallableDefId {
 
     fn from_chalk(db: &dyn HirDatabase, fn_def_id: FnDefId) -> CallableDefId {
         salsa::plumbing::FromIdWithDb::from_id(fn_def_id.0, db.zalsa())
-    }
-}
-
-pub(crate) struct TypeAliasAsValue(pub(crate) TypeAliasId);
-
-impl ToChalk for TypeAliasAsValue {
-    type Chalk = chalk_db::AssociatedTyValueId;
-
-    fn to_chalk(self, _db: &dyn HirDatabase) -> chalk_db::AssociatedTyValueId {
-        rust_ir::AssociatedTyValueId(self.0.as_id())
-    }
-
-    fn from_chalk(
-        _db: &dyn HirDatabase,
-        assoc_ty_value_id: chalk_db::AssociatedTyValueId,
-    ) -> TypeAliasAsValue {
-        TypeAliasAsValue(TypeAliasId::from_id(assoc_ty_value_id.0))
     }
 }
 

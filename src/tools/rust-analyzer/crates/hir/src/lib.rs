@@ -66,7 +66,7 @@ use hir_def::{
     },
     per_ns::PerNs,
     resolver::{HasResolver, Resolver},
-    signatures::{ImplFlags, StaticFlags, TraitFlags, VariantFields},
+    signatures::{ImplFlags, StaticFlags, StructFlags, TraitFlags, VariantFields},
     src::HasSource as _,
     visibility::visibility_from_ast,
 };
@@ -4945,42 +4945,79 @@ impl<'db> Type<'db> {
     }
 
     pub fn contains_reference(&self, db: &'db dyn HirDatabase) -> bool {
-        return go(db, self.env.krate, &self.ty);
+        return go(db, &self.ty);
 
-        fn go(db: &dyn HirDatabase, krate: base_db::Crate, ty: &Ty) -> bool {
+        fn is_phantom_data(db: &dyn HirDatabase, adt_id: AdtId) -> bool {
+            match adt_id {
+                hir_def::AdtId::StructId(s) => {
+                    let flags = db.struct_signature(s).flags;
+                    flags.contains(StructFlags::IS_PHANTOM_DATA)
+                }
+                hir_def::AdtId::UnionId(_) => false,
+                hir_def::AdtId::EnumId(_) => false,
+            }
+        }
+
+        fn go(db: &dyn HirDatabase, ty: &Ty) -> bool {
             match ty.kind(Interner) {
                 // Reference itself
                 TyKind::Ref(_, _, _) => true,
 
                 // For non-phantom_data adts we check variants/fields as well as generic parameters
-                TyKind::Adt(adt_id, substitution)
-                    if !db.adt_datum(krate, *adt_id).flags.phantom_data =>
-                {
-                    let adt_datum = &db.adt_datum(krate, *adt_id);
-                    let adt_datum_bound =
-                        adt_datum.binders.clone().substitute(Interner, substitution);
-                    adt_datum_bound
-                        .variants
+                TyKind::Adt(adt_id, substitution) if !is_phantom_data(db, adt_id.0) => {
+                    let _variant_id_to_fields = |id: VariantId| {
+                        let variant_data = &id.fields(db);
+                        if variant_data.fields().is_empty() {
+                            vec![]
+                        } else {
+                            let field_types = db.field_types(id);
+                            variant_data
+                                .fields()
+                                .iter()
+                                .map(|(idx, _)| {
+                                    field_types[idx].clone().substitute(Interner, substitution)
+                                })
+                                .filter(|it| !it.contains_unknown())
+                                .collect()
+                        }
+                    };
+                    let variant_id_to_fields = |_: VariantId| vec![];
+
+                    let variants = match adt_id.0 {
+                        hir_def::AdtId::StructId(id) => {
+                            vec![variant_id_to_fields(id.into())]
+                        }
+                        hir_def::AdtId::EnumId(id) => id
+                            .enum_variants(db)
+                            .variants
+                            .iter()
+                            .map(|&(variant_id, _, _)| variant_id_to_fields(variant_id.into()))
+                            .collect(),
+                        hir_def::AdtId::UnionId(id) => {
+                            vec![variant_id_to_fields(id.into())]
+                        }
+                    };
+
+                    variants
                         .into_iter()
-                        .flat_map(|variant| variant.fields.into_iter())
-                        .any(|ty| go(db, krate, &ty))
+                        .flat_map(|variant| variant.into_iter())
+                        .any(|ty| go(db, &ty))
                         || substitution
                             .iter(Interner)
                             .filter_map(|x| x.ty(Interner))
-                            .any(|ty| go(db, krate, ty))
+                            .any(|ty| go(db, ty))
                 }
                 // And for `PhantomData<T>`, we check `T`.
                 TyKind::Adt(_, substitution)
                 | TyKind::Tuple(_, substitution)
                 | TyKind::OpaqueType(_, substitution)
                 | TyKind::AssociatedType(_, substitution)
-                | TyKind::FnDef(_, substitution) => substitution
-                    .iter(Interner)
-                    .filter_map(|x| x.ty(Interner))
-                    .any(|ty| go(db, krate, ty)),
+                | TyKind::FnDef(_, substitution) => {
+                    substitution.iter(Interner).filter_map(|x| x.ty(Interner)).any(|ty| go(db, ty))
+                }
 
                 // For `[T]` or `*T` we check `T`
-                TyKind::Array(ty, _) | TyKind::Slice(ty) | TyKind::Raw(_, ty) => go(db, krate, ty),
+                TyKind::Array(ty, _) | TyKind::Slice(ty) | TyKind::Raw(_, ty) => go(db, ty),
 
                 // Consider everything else as not reference
                 _ => false,

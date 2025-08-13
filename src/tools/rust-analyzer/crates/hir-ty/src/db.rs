@@ -1,8 +1,6 @@
 //! The home of `HirDatabase`, which is the Salsa database containing all the
 //! type inference-related queries.
 
-use std::sync;
-
 use base_db::Crate;
 use hir_def::{
     AdtId, BlockId, CallableDefId, ConstParamId, DefWithBodyId, EnumVariantId, FunctionId,
@@ -240,26 +238,6 @@ pub trait HirDatabase: DefDatabase + std::fmt::Debug {
     #[salsa::interned]
     fn intern_coroutine(&self, id: InternedCoroutine) -> InternedCoroutineId;
 
-    #[salsa::invoke(chalk_db::associated_ty_data_query)]
-    fn associated_ty_data(&self, id: TypeAliasId) -> sync::Arc<chalk_db::AssociatedTyDatum>;
-
-    #[salsa::invoke(chalk_db::trait_datum_query)]
-    fn trait_datum(
-        &self,
-        krate: Crate,
-        trait_id: chalk_db::TraitId,
-    ) -> sync::Arc<chalk_db::TraitDatum>;
-
-    #[salsa::invoke(chalk_db::adt_datum_query)]
-    fn adt_datum(&self, krate: Crate, struct_id: chalk_db::AdtId) -> sync::Arc<chalk_db::AdtDatum>;
-
-    #[salsa::invoke(chalk_db::impl_datum_query)]
-    fn impl_datum(&self, krate: Crate, impl_id: chalk_db::ImplId)
-    -> sync::Arc<chalk_db::ImplDatum>;
-
-    #[salsa::invoke(chalk_db::fn_def_datum_query)]
-    fn fn_def_datum(&self, fn_def_id: CallableDefId) -> sync::Arc<chalk_db::FnDefDatum>;
-
     #[salsa::invoke(chalk_db::fn_def_variance_query)]
     fn fn_def_variance(&self, fn_def_id: CallableDefId) -> chalk_db::Variances;
 
@@ -273,13 +251,6 @@ pub trait HirDatabase: DefDatabase + std::fmt::Debug {
         cycle_result = crate::variance::variances_of_cycle_initial,
     )]
     fn variances_of(&self, def: GenericDefId) -> Option<Arc<[crate::variance::Variance]>>;
-
-    #[salsa::invoke(chalk_db::associated_ty_value_query)]
-    fn associated_ty_value(
-        &self,
-        krate: Crate,
-        id: chalk_db::AssociatedTyValueId,
-    ) -> sync::Arc<chalk_db::AssociatedTyValue>;
 
     #[salsa::invoke(crate::traits::normalize_projection_query)]
     #[salsa::transparent]
