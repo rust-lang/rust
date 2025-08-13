@@ -22,6 +22,7 @@ error: fn_abi_of(i8) = FnAbi {
                            uninhabited: false,
                            variants: Single {
                                index: 0,
+                               variants: None,
                            },
                            max_repr_align: None,
                            unadjusted_abi_align: Align(1 bytes),
@@ -60,6 +61,7 @@ error: fn_abi_of(i8) = FnAbi {
                        uninhabited: false,
                        variants: Single {
                            index: 0,
+                           variants: None,
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(1 bytes),
@@ -111,6 +113,7 @@ error: fn_abi_of(u8) = FnAbi {
                            uninhabited: false,
                            variants: Single {
                                index: 0,
+                               variants: None,
                            },
                            max_repr_align: None,
                            unadjusted_abi_align: Align(1 bytes),
@@ -149,6 +152,7 @@ error: fn_abi_of(u8) = FnAbi {
                        uninhabited: false,
                        variants: Single {
                            index: 0,
+                           variants: None,
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(1 bytes),
@@ -200,6 +204,7 @@ error: fn_abi_of(i16) = FnAbi {
                            uninhabited: false,
                            variants: Single {
                                index: 0,
+                               variants: None,
                            },
                            max_repr_align: None,
                            unadjusted_abi_align: Align(2 bytes),
@@ -238,6 +243,7 @@ error: fn_abi_of(i16) = FnAbi {
                        uninhabited: false,
                        variants: Single {
                            index: 0,
+                           variants: None,
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(2 bytes),
@@ -289,6 +295,7 @@ error: fn_abi_of(u16) = FnAbi {
                            uninhabited: false,
                            variants: Single {
                                index: 0,
+                               variants: None,
                            },
                            max_repr_align: None,
                            unadjusted_abi_align: Align(2 bytes),
@@ -327,6 +334,7 @@ error: fn_abi_of(u16) = FnAbi {
                        uninhabited: false,
                        variants: Single {
                            index: 0,
+                           variants: None,
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(2 bytes),
@@ -378,6 +386,7 @@ error: fn_abi_of(i32) = FnAbi {
                            uninhabited: false,
                            variants: Single {
                                index: 0,
+                               variants: None,
                            },
                            max_repr_align: None,
                            unadjusted_abi_align: Align(4 bytes),
@@ -416,6 +425,7 @@ error: fn_abi_of(i32) = FnAbi {
                        uninhabited: false,
                        variants: Single {
                            index: 0,
+                           variants: None,
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(4 bytes),
@@ -467,6 +477,7 @@ error: fn_abi_of(u32) = FnAbi {
                            uninhabited: false,
                            variants: Single {
                                index: 0,
+                               variants: None,
                            },
                            max_repr_align: None,
                            unadjusted_abi_align: Align(4 bytes),
@@ -505,6 +516,7 @@ error: fn_abi_of(u32) = FnAbi {
                        uninhabited: false,
                        variants: Single {
                            index: 0,
+                           variants: None,
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(4 bytes),
