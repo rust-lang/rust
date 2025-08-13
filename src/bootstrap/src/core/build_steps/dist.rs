@@ -1410,6 +1410,7 @@ impl Step for Miri {
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct CraneliftCodegenBackend {
     pub build_compiler: Compiler,
+    pub target: TargetSelection,
 }
 
 impl Step for CraneliftCodegenBackend {
@@ -1437,6 +1438,7 @@ impl Step for CraneliftCodegenBackend {
                 run.builder.config.host_target,
                 run.target,
             ),
+            target: run.target,
         });
     }
 
@@ -1448,7 +1450,7 @@ impl Step for CraneliftCodegenBackend {
             return None;
         }
 
-        let target = self.build_compiler.host;
+        let target = self.target;
         let compilers =
             RustcPrivateCompilers::from_build_compiler(builder, self.build_compiler, target);
         if !target_supports_cranelift_backend(target) {
@@ -1608,6 +1610,7 @@ impl Step for Extended {
         add_component!("analysis" => Analysis { compiler, target });
         add_component!("rustc-codegen-cranelift" => CraneliftCodegenBackend {
             build_compiler: compiler,
+            target
         });
         add_component!("llvm-bitcode-linker" => LlvmBitcodeLinker {
             build_compiler: compiler,
