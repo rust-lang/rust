@@ -167,7 +167,8 @@ impl<'tcx> LateLintPass<'tcx> for MissingInline {
         let container_id = assoc_item.container_id(cx.tcx);
         let trait_def_id = match assoc_item.container {
             AssocContainer::Trait => Some(container_id),
-            AssocContainer::Impl => cx.tcx.impl_trait_ref(container_id).map(|t| t.skip_binder().def_id),
+            AssocContainer::TraitImpl(_) => cx.tcx.impl_trait_ref(container_id).map(|t| t.skip_binder().def_id),
+            AssocContainer::InherentImpl => None,
         };
 
         if let Some(trait_def_id) = trait_def_id
