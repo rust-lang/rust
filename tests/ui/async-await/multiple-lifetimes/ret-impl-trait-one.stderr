@@ -9,7 +9,7 @@ LL |   async fn async_ret_impl_trait3<'a, 'b>(a: &'a u8, b: &'b u8) -> impl Trai
 LL | |
 LL | |     (a, b)
 LL | | }
-   | |_^ opaque type requires that `'a` must outlive `'b`
+   | |_^ function was supposed to return data with lifetime `'b` but it is returning data with lifetime `'a`
    |
    = help: consider adding the following bound: `'a: 'b`
 

@@ -1405,16 +1405,37 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     }
 
     /// Walks the graph of constraints (where `'a: 'b` is considered
-    /// an edge `'a -> 'b`) to find all paths from `from_region` to
-    /// `to_region`. The paths are accumulated into the vector
-    /// `results`. The paths are stored as a series of
-    /// `ConstraintIndex` values -- in other words, a list of *edges*.
+    /// an edge `'a -> 'b`) to find a path from `from_region` to
+    /// `to_region`.
     ///
     /// Returns: a series of constraints as well as the region `R`
     /// that passed the target test.
     #[instrument(skip(self, target_test), ret)]
-    pub(crate) fn find_constraint_paths_between_regions(
+    pub(crate) fn find_constraint_path_between_regions(
         &self,
+        from_region: RegionVid,
+        target_test: impl Fn(RegionVid) -> bool,
+    ) -> Option<(Vec<OutlivesConstraint<'tcx>>, RegionVid)> {
+        self.find_constraint_path_between_regions_inner(true, from_region, &target_test).or_else(
+            || self.find_constraint_path_between_regions_inner(false, from_region, &target_test),
+        )
+    }
+
+    /// The constraints we get from equating the hidden type of each use of an opaque
+    /// with its final concrete type may end up getting preferred over other, potentially
+    /// longer constraint paths.
+    ///
+    /// Given that we compute the final concrete type by relying on this existing constraint
+    /// path, this can easily end up hiding the actual reason for why we require these regions
+    /// to be equal.
+    ///
+    /// To handle this, we first look at the path while ignoring these constraints and then
+    /// retry while considering them. This is not perfect, as the `from_region` may have already
+    /// been partially related to its argument region, so while we rely on a member constraint
+    /// to get a complete path, the most relevant step of that path already existed before then.
+    fn find_constraint_path_between_regions_inner(
+        &self,
+        ignore_opaque_type_constraints: bool,
         from_region: RegionVid,
         target_test: impl Fn(RegionVid) -> bool,
     ) -> Option<(Vec<OutlivesConstraint<'tcx>>, RegionVid)> {
@@ -1431,7 +1452,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         while let Some(r) = deque.pop_front() {
             debug!(
-                "find_constraint_paths_between_regions: from_region={:?} r={:?} value={}",
+                "find_constraint_path_between_regions: from_region={:?} r={:?} value={}",
                 from_region,
                 r,
                 self.region_value_str(r),
@@ -1503,9 +1524,16 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 let edges = self.constraint_graph.outgoing_edges_from_graph(r, &self.constraints);
                 // This loop can be hot.
                 for constraint in edges {
-                    if matches!(constraint.category, ConstraintCategory::IllegalUniverse) {
-                        debug!("Ignoring illegal universe constraint: {constraint:?}");
-                        continue;
+                    match constraint.category {
+                        ConstraintCategory::IllegalUniverse => {
+                            debug!("Ignoring illegal universe constraint: {constraint:?}");
+                            continue;
+                        }
+                        ConstraintCategory::OpaqueType if ignore_opaque_type_constraints => {
+                            debug!("Ignoring member constraint: {constraint:?}");
+                            continue;
+                        }
+                        _ => {}
                     }
                     debug_assert_eq!(constraint.sup, r);
                     handle_trace(constraint.sub, Trace::FromGraph(constraint));
@@ -1521,7 +1549,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     pub(crate) fn find_sub_region_live_at(&self, fr1: RegionVid, location: Location) -> RegionVid {
         trace!(scc = ?self.constraint_sccs.scc(fr1));
         trace!(universe = ?self.max_nameable_universe(self.constraint_sccs.scc(fr1)));
-        self.find_constraint_paths_between_regions(fr1, |r| {
+        self.find_constraint_path_between_regions(fr1, |r| {
             // First look for some `r` such that `fr1: r` and `r` is live at `location`
             trace!(?r, liveness_constraints=?self.liveness_constraints.pretty_print_live_points(r));
             self.liveness_constraints.is_live_at(r, location)
@@ -1531,9 +1559,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             // `fr1: r` and `r` is a placeholder from some universe
             // `fr1` cannot name. This would force `fr1` to be
             // `'static`.
-            self.find_constraint_paths_between_regions(fr1, |r| {
-                self.cannot_name_placeholder(fr1, r)
-            })
+            self.find_constraint_path_between_regions(fr1, |r| self.cannot_name_placeholder(fr1, r))
         })
         .or_else(|| {
             // If we fail to find THAT, it may be that `fr1` is a
@@ -1546,9 +1572,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             // must be able to name the universe of R2, because R2 will
             // be at least `'empty(Universe(R2))`, and `R1` must be at
             // larger than that.
-            self.find_constraint_paths_between_regions(fr1, |r| {
-                self.cannot_name_placeholder(r, fr1)
-            })
+            self.find_constraint_path_between_regions(fr1, |r| self.cannot_name_placeholder(r, fr1))
         })
         .map(|(_path, r)| r)
         .unwrap()
@@ -1604,9 +1628,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     ) -> (BlameConstraint<'tcx>, Vec<OutlivesConstraint<'tcx>>) {
         // Find all paths
         let (path, target_region) = self
-            .find_constraint_paths_between_regions(from_region, target_test)
+            .find_constraint_path_between_regions(from_region, target_test)
             .or_else(|| {
-                self.find_constraint_paths_between_regions(from_region, |r| {
+                self.find_constraint_path_between_regions(from_region, |r| {
                     self.cannot_name_placeholder(from_region, r)
                 })
             })
