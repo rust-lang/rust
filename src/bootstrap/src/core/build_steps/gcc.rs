@@ -32,12 +32,15 @@ pub struct GccOutput {
 impl GccOutput {
     /// Install the required libgccjit library file(s) to the specified `path`.
     pub fn install_to(&self, builder: &Builder<'_>, directory: &Path) {
-        let dst = directory.join(self.libgccjit.file_name().unwrap());
-        builder.install(&self.libgccjit, directory, FileType::NativeLibrary);
-        // FIXME: try to remove the alias, it shouldn't be needed
-        // We just have to teach rustc_codegen_gcc to link to libgccjit.so directly, instead of
-        // linking to libgccjit.so.0.
-        create_lib_alias(builder, &dst);
+        // At build time, cg_gcc has to link to libgccjit.so (the unversioned symbol).
+        // However, at runtime, it will by default look for libgccjit.so.0.
+        // So when we install the built libgccjit.so file to the target `directory`, we add it there
+        // with the `.0` suffix.
+        let mut target_filename = self.libgccjit.file_name().unwrap().to_str().unwrap().to_string();
+        target_filename.push_str(".0");
+
+        let dst = directory.join(target_filename);
+        builder.copy_link(&self.libgccjit, &dst, FileType::NativeLibrary);
     }
 }
 
@@ -74,20 +77,10 @@ impl Step for Gcc {
         }
 
         build_gcc(&metadata, builder, target);
-        create_lib_alias(builder, &libgccjit_path);
 
         t!(metadata.stamp.write());
 
         GccOutput { libgccjit: libgccjit_path }
-    }
-}
-
-/// Creates a libgccjit.so.0 alias next to libgccjit.so if it does not
-/// already exist
-fn create_lib_alias(builder: &Builder<'_>, libgccjit: &PathBuf) {
-    let lib_alias = libgccjit.parent().unwrap().join("libgccjit.so.0");
-    if !lib_alias.exists() {
-        t!(builder.symlink_file(libgccjit, lib_alias));
     }
 }
 
@@ -137,7 +130,6 @@ fn try_download_gcc(builder: &Builder<'_>, target: TargetSelection) -> Option<Pa
             }
 
             let libgccjit = root.join("lib").join("libgccjit.so");
-            create_lib_alias(builder, &libgccjit);
             Some(libgccjit)
         }
         PathFreshness::HasLocalModifications { .. } => {
