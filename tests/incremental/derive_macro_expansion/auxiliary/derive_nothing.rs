@@ -10,11 +10,5 @@ use proc_macro::TokenStream;
 pub fn derive(_input: TokenStream) -> TokenStream {
     eprintln!("invoked");
 
-    return r#"
-        pub mod nothing_mod {
-            pub fn nothing() {
-                eprintln!("nothing");
-            }
-        }
-    "#.parse().unwrap();
+    TokenStream::new()
 }
