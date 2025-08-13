@@ -53,7 +53,7 @@ LL | ||         let y = &*x;
 LL | ||         *x += 1;
 LL | ||         y
 LL | ||     })()
-   | ||______^_- opaque type requires that borrow lasts for `'1`
+   | ||______^_- argument requires that borrow lasts for `'1`
    | |_______|
    |         creates a temporary value which is freed while still in use
 LL |    }
@@ -102,7 +102,7 @@ LL | ||         let y = &*x;
 LL | ||         *x += 1;
 LL | ||         y
 LL | ||     })()
-   | ||______^_- opaque type requires that borrow lasts for `'1`
+   | ||______^_- argument requires that borrow lasts for `'1`
    | |_______|
    |         creates a temporary value which is freed while still in use
 LL |    }
