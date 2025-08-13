@@ -93,10 +93,6 @@ fn defaultness(tcx: TyCtxt<'_>, def_id: LocalDefId) -> hir::Defaultness {
             ..
         })
         | hir::Node::TraitItem(hir::TraitItem { defaultness, .. }) => *defaultness,
-        hir::Node::ImplItem(hir::ImplItem {
-            impl_kind: hir::ImplItemImplKind::Inherent { .. },
-            ..
-        }) => hir::Defaultness::Final,
         node => {
             bug!("`defaultness` called on {:?}", node);
         }

@@ -1258,7 +1258,10 @@ pub(crate) fn clean_impl_item<'tcx>(
             })),
             hir::ImplItemKind::Fn(ref sig, body) => {
                 let m = clean_function(cx, sig, impl_.generics, ParamsSrc::Body(body));
-                let defaultness = cx.tcx.defaultness(impl_.owner_id);
+                let defaultness = match impl_.impl_kind {
+                    hir::ImplItemImplKind::Inherent { .. } => hir::Defaultness::Final,
+                    hir::ImplItemImplKind::Trait { defaultness, .. } => defaultness,
+                };
                 MethodItem(m, Some(defaultness))
             }
             hir::ImplItemKind::Type(hir_ty) => {

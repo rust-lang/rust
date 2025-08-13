@@ -1725,7 +1725,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let tcx = self.tcx;
         let item = tcx.associated_item(def_id);
 
-        self.tables.defaultness.set_some(def_id.index, item.defaultness(tcx));
+        if matches!(item.container, AssocContainer::Trait | AssocContainer::TraitImpl(_)) {
+            self.tables.defaultness.set_some(def_id.index, item.defaultness(tcx));
+        }
+
         record!(self.tables.assoc_container[def_id] <- item.container);
 
         if let AssocContainer::Trait = item.container
