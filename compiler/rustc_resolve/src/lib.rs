@@ -53,7 +53,8 @@ use rustc_feature::BUILTIN_ATTRIBUTES;
 use rustc_hir::attrs::StrippedCfgItem;
 use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{
-    self, CtorOf, DefKind, DocLinkResMap, LifetimeRes, NonMacroAttrKind, PartialRes, PerNS,
+    self, CtorOf, DefKind, DocLinkResMap, LifetimeRes, MacroKinds, NonMacroAttrKind, PartialRes,
+    PerNS,
 };
 use rustc_hir::def_id::{CRATE_DEF_ID, CrateNum, DefId, LOCAL_CRATE, LocalDefId, LocalDefIdMap};
 use rustc_hir::definitions::DisambiguatorState;
@@ -969,8 +970,8 @@ impl<'ra> NameBindingData<'ra> {
         matches!(self.res(), Res::Def(DefKind::AssocConst | DefKind::AssocFn | DefKind::AssocTy, _))
     }
 
-    fn macro_kind(&self) -> Option<MacroKind> {
-        self.res().macro_kind()
+    fn macro_kinds(&self) -> Option<MacroKinds> {
+        self.res().macro_kinds()
     }
 
     // Suppose that we resolved macro invocation with `invoc_parent_expansion` to binding `binding`
@@ -1030,14 +1031,13 @@ struct DeriveData {
 
 struct MacroData {
     ext: Arc<SyntaxExtension>,
-    attr_ext: Option<Arc<SyntaxExtension>>,
     nrules: usize,
     macro_rules: bool,
 }
 
 impl MacroData {
     fn new(ext: Arc<SyntaxExtension>) -> MacroData {
-        MacroData { ext, attr_ext: None, nrules: 0, macro_rules: false }
+        MacroData { ext, nrules: 0, macro_rules: false }
     }
 }
 

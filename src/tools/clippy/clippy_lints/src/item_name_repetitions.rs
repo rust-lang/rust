@@ -8,7 +8,6 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::{EnumDef, FieldDef, Item, ItemKind, OwnerId, QPath, TyKind, Variant, VariantData};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::impl_lint_pass;
-use rustc_span::MacroKind;
 use rustc_span::symbol::Symbol;
 
 declare_clippy_lint! {
@@ -503,8 +502,8 @@ impl LateLintPass<'_> for ItemNameRepetitions {
                 );
             }
 
-            let is_macro_rule = matches!(item.kind, ItemKind::Macro(_, _, MacroKind::Bang));
-            if both_are_public && item_camel.len() > mod_camel.len() && !is_macro_rule {
+            let is_macro = matches!(item.kind, ItemKind::Macro(_, _, _));
+            if both_are_public && item_camel.len() > mod_camel.len() && !is_macro {
                 let matching = count_match_start(mod_camel, &item_camel);
                 let rmatching = count_match_end(mod_camel, &item_camel);
                 let nchars = mod_camel.chars().count();
