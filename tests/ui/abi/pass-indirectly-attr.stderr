@@ -32,6 +32,7 @@ error: fn_abi_of(extern_c) = FnAbi {
                            uninhabited: false,
                            variants: Single {
                                index: 0,
+                               variants: None,
                            },
                            max_repr_align: None,
                            unadjusted_abi_align: Align(1 bytes),
@@ -71,6 +72,7 @@ error: fn_abi_of(extern_c) = FnAbi {
                        uninhabited: false,
                        variants: Single {
                            index: 0,
+                           variants: None,
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(1 bytes),
@@ -114,6 +116,7 @@ error: fn_abi_of(extern_rust) = FnAbi {
                            uninhabited: false,
                            variants: Single {
                                index: 0,
+                               variants: None,
                            },
                            max_repr_align: None,
                            unadjusted_abi_align: Align(1 bytes),
@@ -171,6 +174,7 @@ error: fn_abi_of(extern_rust) = FnAbi {
                        uninhabited: false,
                        variants: Single {
                            index: 0,
+                           variants: None,
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(1 bytes),

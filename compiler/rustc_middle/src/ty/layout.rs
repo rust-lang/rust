@@ -776,14 +776,17 @@ where
     ) -> TyAndLayout<'tcx> {
         let layout = match this.variants {
             // If all variants but one are uninhabited, the variant layout is the enum layout.
-            Variants::Single { index } if index == variant_index => {
+            Variants::Single { index, .. } if index == variant_index => {
                 return this;
             }
 
-            Variants::Single { .. } | Variants::Empty => {
+            Variants::Single { variants: None, .. } | Variants::Empty { variants: None } => {
                 // Single-variant and no-variant enums *can* have other variants, but those are
-                // uninhabited. Produce a layout that has the right fields for that variant, so that
-                // the rest of the compiler can project fields etc as usual.
+                // uninhabited. For such enums, `variants` will only be `None` if all such
+                // variants are "absent", i.e. only consist of 1-ZSTs.
+                // (If any is not absent, then `variants` would be `Some` and we'd not be here.)
+                // Produce a layout that has the right fields for that variant, all at offset 0,
+                // so that the rest of the compiler can project fields etc as usual.
 
                 let tcx = cx.tcx();
                 let typing_env = cx.typing_env();
@@ -800,15 +803,17 @@ where
                     ty::Adt(def, _) => def.variant(variant_index).fields.len(),
                     _ => bug!("`ty_and_layout_for_variant` on unexpected type {}", this.ty),
                 };
-                tcx.mk_layout(LayoutData::uninhabited_variant(cx, variant_index, fields))
+                tcx.mk_layout(LayoutData::absent_variant(cx, variant_index, fields))
             }
 
-            Variants::Multiple { ref variants, .. } => {
+            Variants::Single { variants: Some(ref variants), .. }
+            | Variants::Empty { variants: Some(ref variants) }
+            | Variants::Multiple { ref variants, .. } => {
                 cx.tcx().mk_layout(variants[variant_index].clone())
             }
         };
 
-        assert_eq!(*layout.variants(), Variants::Single { index: variant_index });
+        assert_eq!(*layout.variants(), Variants::Single { index: variant_index, variants: None });
 
         TyAndLayout { ty: this.ty, layout }
     }
@@ -949,8 +954,8 @@ where
                 ),
 
                 ty::Coroutine(def_id, args) => match this.variants {
-                    Variants::Empty => unreachable!(),
-                    Variants::Single { index } => TyMaybeWithLayout::Ty(
+                    Variants::Empty { .. } => unreachable!(),
+                    Variants::Single { index, .. } => TyMaybeWithLayout::Ty(
                         args.as_coroutine()
                             .state_tys(def_id, tcx)
                             .nth(index.as_usize())
@@ -971,11 +976,13 @@ where
                 // ADTs.
                 ty::Adt(def, args) => {
                     match this.variants {
-                        Variants::Single { index } => {
+                        Variants::Single { index, .. } => {
                             let field = &def.variant(index).fields[FieldIdx::from_usize(i)];
                             TyMaybeWithLayout::Ty(field.ty(tcx, args))
                         }
-                        Variants::Empty => panic!("there is no field in Variants::Empty types"),
+                        Variants::Empty { .. } => {
+                            panic!("there is no field in Variants::Empty types")
+                        }
 
                         // Discriminant field for enums (where applicable).
                         Variants::Multiple { tag, .. } => {

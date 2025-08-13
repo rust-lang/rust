@@ -35,6 +35,7 @@ error: layout_of((*const T) is !null) = Layout {
            uninhabited: false,
            variants: Single {
                index: 0,
+               variants: None,
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(8 bytes),
@@ -102,6 +103,7 @@ error: layout_of(Option<(*const ()) is !null>) = Layout {
                        uninhabited: false,
                        variants: Single {
                            index: 0,
+                           variants: None,
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(1 bytes),
@@ -144,6 +146,7 @@ error: layout_of(Option<(*const ()) is !null>) = Layout {
                        uninhabited: false,
                        variants: Single {
                            index: 1,
+                           variants: None,
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(8 bytes),
@@ -204,6 +207,7 @@ error: layout_of((*const [u8]) is !null) = Layout {
            uninhabited: false,
            variants: Single {
                index: 0,
+               variants: None,
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(8 bytes),

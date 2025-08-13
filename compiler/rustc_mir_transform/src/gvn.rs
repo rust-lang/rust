@@ -1675,7 +1675,7 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
         variant: VariantIdx,
     ) -> Option<(FieldIdx, Ty<'tcx>)> {
         if let Ok(layout) = self.ecx.layout_of(ty)
-            && let abi::Variants::Single { index } = layout.variants
+            && let abi::Variants::Single { index, .. } = layout.variants
             && index == variant
             && let Some((field_idx, field_layout)) = layout.non_1zst_field(&self.ecx)
             && layout.size == field_layout.size

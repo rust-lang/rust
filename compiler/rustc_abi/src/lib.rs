@@ -1857,12 +1857,27 @@ impl BackendRepr {
 #[cfg_attr(feature = "nightly", derive(HashStable_Generic))]
 pub enum Variants<FieldIdx: Idx, VariantIdx: Idx> {
     /// A type with no valid variants. Must be uninhabited.
-    Empty,
+    ///
+    /// We still need to hold variant layout information for `offset_of!`
+    /// on uninhabited enum variants with non-zero-sized fields.
+    Empty {
+        /// Always `None` for non-enums.
+        /// For enums, this is `None` if all variants are "absent"
+        /// (have no non-1-ZST fields), and is `Some` otherwise.
+        variants: Option<IndexVec<VariantIdx, LayoutData<FieldIdx, VariantIdx>>>,
+    },
 
-    /// Single enum variants, structs/tuples, unions, and all non-ADTs.
+    /// Enums with one inhabited variant and no tag, structs/tuples, unions, and all non-ADTs.
+    ///
+    /// We still need to hold variant layout information for `offset_of!`
+    /// on uninhabited enum variants with non-zero-sized fields.
     Single {
         /// Always `0` for types that cannot have multiple variants.
         index: VariantIdx,
+        /// Always `None` for non-enums.
+        /// For enums, this is `None` if all uninhabited variants are "absent"
+        /// (have no non-1-ZST fields), and is `Some` otherwise.
+        variants: Option<IndexVec<VariantIdx, LayoutData<FieldIdx, VariantIdx>>>,
     },
 
     /// Enum-likes with more than one variant: each variant comes with

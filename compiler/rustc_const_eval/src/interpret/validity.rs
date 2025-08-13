@@ -303,7 +303,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
                     };
                 }
             }
-            Variants::Single { .. } | Variants::Empty => {}
+            Variants::Single { .. } | Variants::Empty { .. } => {}
         }
 
         // Now we know we are projecting to a field, so figure out which one.
@@ -341,11 +341,11 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
             ty::Adt(def, ..) if def.is_enum() => {
                 // we might be projecting *to* a variant, or to a field *in* a variant.
                 match layout.variants {
-                    Variants::Single { index } => {
+                    Variants::Single { index, .. } => {
                         // Inside a variant
                         PathElem::Field(def.variant(index).fields[FieldIdx::from_usize(field)].name)
                     }
-                    Variants::Empty => panic!("there is no field in Variants::Empty types"),
+                    Variants::Empty { .. } => panic!("there is no field in Variants::Empty types"),
                     Variants::Multiple { .. } => bug!("we handled variants above"),
                 }
             }
@@ -1016,7 +1016,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
             }
             // Don't forget potential other variants.
             match &layout.variants {
-                Variants::Single { .. } | Variants::Empty => {
+                Variants::Single { .. } | Variants::Empty { .. } => {
                     // Fully handled above.
                 }
                 Variants::Multiple { variants, .. } => {

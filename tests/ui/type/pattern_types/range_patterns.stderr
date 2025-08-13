@@ -33,6 +33,7 @@ error: layout_of(NonZero<u32>) = Layout {
            uninhabited: false,
            variants: Single {
                index: 0,
+               variants: None,
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(4 bytes),
@@ -78,6 +79,7 @@ error: layout_of((u32) is 1..) = Layout {
            uninhabited: false,
            variants: Single {
                index: 0,
+               variants: None,
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(4 bytes),
@@ -143,6 +145,7 @@ error: layout_of(Option<(u32) is 1..>) = Layout {
                        uninhabited: false,
                        variants: Single {
                            index: 0,
+                           variants: None,
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(1 bytes),
@@ -183,6 +186,7 @@ error: layout_of(Option<(u32) is 1..>) = Layout {
                        uninhabited: false,
                        variants: Single {
                            index: 1,
+                           variants: None,
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(4 bytes),
@@ -254,6 +258,7 @@ error: layout_of(Option<NonZero<u32>>) = Layout {
                        uninhabited: false,
                        variants: Single {
                            index: 0,
+                           variants: None,
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(1 bytes),
@@ -294,6 +299,7 @@ error: layout_of(Option<NonZero<u32>>) = Layout {
                        uninhabited: false,
                        variants: Single {
                            index: 1,
+                           variants: None,
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(4 bytes),
@@ -345,6 +351,7 @@ error: layout_of(NonZeroU32New) = Layout {
            uninhabited: false,
            variants: Single {
                index: 0,
+               variants: None,
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(4 bytes),
@@ -418,6 +425,7 @@ error: layout_of((i8) is -10..=10) = Layout {
            uninhabited: false,
            variants: Single {
                index: 0,
+               variants: None,
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(1 bytes),
@@ -463,6 +471,7 @@ error: layout_of((i8) is i8::MIN..=0) = Layout {
            uninhabited: false,
            variants: Single {
                index: 0,
+               variants: None,
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(1 bytes),
