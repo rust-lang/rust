@@ -1449,8 +1449,8 @@ fn compare_self_type<'tcx>(
 
     let self_string = |method: ty::AssocItem| {
         let untransformed_self_ty = match method.container {
-            ty::AssocItemContainer::Impl => impl_trait_ref.self_ty(),
-            ty::AssocItemContainer::Trait => tcx.types.self_param,
+            ty::AssocContainer::Impl => impl_trait_ref.self_ty(),
+            ty::AssocContainer::Trait => tcx.types.self_param,
         };
         let self_arg_ty = tcx.fn_sig(method.def_id).instantiate_identity().input(0);
         let (infcx, param_env) = tcx
@@ -2458,8 +2458,8 @@ fn param_env_with_gat_bounds<'tcx>(
 
     for impl_ty in impl_tys_to_install {
         let trait_ty = match impl_ty.container {
-            ty::AssocItemContainer::Trait => impl_ty,
-            ty::AssocItemContainer::Impl => tcx.associated_item(impl_ty.trait_item_def_id.unwrap()),
+            ty::AssocContainer::Trait => impl_ty,
+            ty::AssocContainer::Impl => tcx.associated_item(impl_ty.trait_item_def_id.unwrap()),
         };
 
         let mut bound_vars: smallvec::SmallVec<[ty::BoundVariableKind; 8]> =

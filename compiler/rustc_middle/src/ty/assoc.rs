@@ -11,7 +11,7 @@ use super::{TyCtxt, Visibility};
 use crate::ty;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug, HashStable, Hash, Encodable, Decodable)]
-pub enum AssocItemContainer {
+pub enum AssocContainer {
     Trait,
     Impl,
 }
@@ -21,7 +21,7 @@ pub enum AssocItemContainer {
 pub struct AssocItem {
     pub def_id: DefId,
     pub kind: AssocKind,
-    pub container: AssocItemContainer,
+    pub container: AssocContainer,
 
     /// If this is an item in an impl of a trait then this is the `DefId` of
     /// the associated item on the trait that this implements.
@@ -71,16 +71,16 @@ impl AssocItem {
     #[inline]
     pub fn trait_container(&self, tcx: TyCtxt<'_>) -> Option<DefId> {
         match self.container {
-            AssocItemContainer::Impl => None,
-            AssocItemContainer::Trait => Some(tcx.parent(self.def_id)),
+            AssocContainer::Impl => None,
+            AssocContainer::Trait => Some(tcx.parent(self.def_id)),
         }
     }
 
     #[inline]
     pub fn impl_container(&self, tcx: TyCtxt<'_>) -> Option<DefId> {
         match self.container {
-            AssocItemContainer::Impl => Some(tcx.parent(self.def_id)),
-            AssocItemContainer::Trait => None,
+            AssocContainer::Impl => Some(tcx.parent(self.def_id)),
+            AssocContainer::Trait => None,
         }
     }
 
@@ -157,10 +157,10 @@ impl AssocItem {
         }
 
         let def_id = match (self.container, self.trait_item_def_id) {
-            (AssocItemContainer::Trait, _) => self.def_id,
-            (AssocItemContainer::Impl, Some(trait_item_did)) => trait_item_did,
+            (AssocContainer::Trait, _) => self.def_id,
+            (AssocContainer::Impl, Some(trait_item_did)) => trait_item_did,
             // Inherent impl but this attr is only applied to trait assoc items.
-            (AssocItemContainer::Impl, None) => return true,
+            (AssocContainer::Impl, None) => return true,
         };
         find_attr!(tcx.get_all_attrs(def_id), AttributeKind::TypeConst(_))
     }

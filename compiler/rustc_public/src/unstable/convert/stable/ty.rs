@@ -1076,14 +1076,14 @@ impl<'tcx> Stable<'tcx> for ty::AssocKind {
     }
 }
 
-impl<'tcx> Stable<'tcx> for ty::AssocItemContainer {
-    type T = crate::ty::AssocItemContainer;
+impl<'tcx> Stable<'tcx> for ty::AssocContainer {
+    type T = crate::ty::AssocContainer;
 
     fn stable(&self, _: &mut Tables<'_, BridgeTys>, _: &CompilerCtxt<'_, BridgeTys>) -> Self::T {
-        use crate::ty::AssocItemContainer;
+        use crate::ty::AssocContainer;
         match self {
-            ty::AssocItemContainer::Trait => AssocItemContainer::Trait,
-            ty::AssocItemContainer::Impl => AssocItemContainer::Impl,
+            ty::AssocContainer::Trait => AssocContainer::Trait,
+            ty::AssocContainer::Impl => AssocContainer::Impl,
         }
     }
 }
