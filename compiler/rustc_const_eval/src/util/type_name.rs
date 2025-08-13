@@ -7,12 +7,12 @@ use rustc_middle::bug;
 use rustc_middle::ty::print::{PrettyPrinter, PrintError, Printer};
 use rustc_middle::ty::{self, GenericArg, GenericArgKind, Ty, TyCtxt};
 
-struct AbsolutePathPrinter<'tcx> {
+struct TypeNamePrinter<'tcx> {
     tcx: TyCtxt<'tcx>,
     path: String,
 }
 
-impl<'tcx> Printer<'tcx> for AbsolutePathPrinter<'tcx> {
+impl<'tcx> Printer<'tcx> for TypeNamePrinter<'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
@@ -75,26 +75,26 @@ impl<'tcx> Printer<'tcx> for AbsolutePathPrinter<'tcx> {
         self.pretty_print_dyn_existential(predicates)
     }
 
-    fn path_crate(&mut self, cnum: CrateNum) -> Result<(), PrintError> {
+    fn print_crate_name(&mut self, cnum: CrateNum) -> Result<(), PrintError> {
         self.path.push_str(self.tcx.crate_name(cnum).as_str());
         Ok(())
     }
 
-    fn path_qualified(
+    fn print_path_with_qualified(
         &mut self,
         self_ty: Ty<'tcx>,
         trait_ref: Option<ty::TraitRef<'tcx>>,
     ) -> Result<(), PrintError> {
-        self.pretty_path_qualified(self_ty, trait_ref)
+        self.pretty_print_path_with_qualified(self_ty, trait_ref)
     }
 
-    fn path_append_impl(
+    fn print_path_with_impl(
         &mut self,
         print_prefix: impl FnOnce(&mut Self) -> Result<(), PrintError>,
         self_ty: Ty<'tcx>,
         trait_ref: Option<ty::TraitRef<'tcx>>,
     ) -> Result<(), PrintError> {
-        self.pretty_path_append_impl(
+        self.pretty_print_path_with_impl(
             |cx| {
                 print_prefix(cx)?;
 
@@ -107,7 +107,7 @@ impl<'tcx> Printer<'tcx> for AbsolutePathPrinter<'tcx> {
         )
     }
 
-    fn path_append(
+    fn print_path_with_simple(
         &mut self,
         print_prefix: impl FnOnce(&mut Self) -> Result<(), PrintError>,
         disambiguated_data: &DisambiguatedDefPathData,
@@ -119,7 +119,7 @@ impl<'tcx> Printer<'tcx> for AbsolutePathPrinter<'tcx> {
         Ok(())
     }
 
-    fn path_generic_args(
+    fn print_path_with_generic_args(
         &mut self,
         print_prefix: impl FnOnce(&mut Self) -> Result<(), PrintError>,
         args: &[GenericArg<'tcx>],
@@ -135,7 +135,7 @@ impl<'tcx> Printer<'tcx> for AbsolutePathPrinter<'tcx> {
     }
 }
 
-impl<'tcx> PrettyPrinter<'tcx> for AbsolutePathPrinter<'tcx> {
+impl<'tcx> PrettyPrinter<'tcx> for TypeNamePrinter<'tcx> {
     fn should_print_region(&self, _region: ty::Region<'_>) -> bool {
         false
     }
@@ -159,7 +159,7 @@ impl<'tcx> PrettyPrinter<'tcx> for AbsolutePathPrinter<'tcx> {
     }
 }
 
-impl Write for AbsolutePathPrinter<'_> {
+impl Write for TypeNamePrinter<'_> {
     fn write_str(&mut self, s: &str) -> std::fmt::Result {
         self.path.push_str(s);
         Ok(())
@@ -167,7 +167,7 @@ impl Write for AbsolutePathPrinter<'_> {
 }
 
 pub fn type_name<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> String {
-    let mut p = AbsolutePathPrinter { tcx, path: String::new() };
+    let mut p = TypeNamePrinter { tcx, path: String::new() };
     p.print_type(ty).unwrap();
     p.path
 }
