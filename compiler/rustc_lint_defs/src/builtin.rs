@@ -39,7 +39,6 @@ declare_lint_pass! {
         DEPRECATED_WHERE_CLAUSE_LOCATION,
         DUPLICATE_MACRO_ATTRIBUTES,
         ELIDED_LIFETIMES_IN_ASSOCIATED_CONSTANT,
-        ELIDED_LIFETIMES_IN_PATHS,
         EXPLICIT_BUILTIN_CFGS_IN_FLAGS,
         EXPORTED_PRIVATE_DEPENDENCIES,
         FFI_UNWIND_CALLS,
@@ -1751,41 +1750,6 @@ declare_lint! {
         reason: FutureIncompatibilityReason::EditionError(Edition::Edition2018),
         reference: "issue #46906 <https://github.com/rust-lang/rust/issues/46906>",
     };
-}
-
-declare_lint! {
-    /// The `elided_lifetimes_in_paths` lint detects the use of hidden
-    /// lifetime parameters.
-    ///
-    /// ### Example
-    ///
-    /// ```rust,compile_fail
-    /// #![deny(elided_lifetimes_in_paths)]
-    /// #![deny(warnings)]
-    /// struct Foo<'a> {
-    ///     x: &'a u32
-    /// }
-    ///
-    /// fn foo(x: &Foo) {
-    /// }
-    /// ```
-    ///
-    /// {{produces}}
-    ///
-    /// ### Explanation
-    ///
-    /// Elided lifetime parameters can make it difficult to see at a glance
-    /// that borrowing is occurring. This lint ensures that lifetime
-    /// parameters are always explicitly stated, even if it is the `'_`
-    /// [placeholder lifetime].
-    ///
-    /// This lint is "allow" by default because it has some known issues, and
-    /// may require a significant transition for old code.
-    ///
-    /// [placeholder lifetime]: https://doc.rust-lang.org/reference/lifetime-elision.html#lifetime-elision-in-functions
-    pub ELIDED_LIFETIMES_IN_PATHS,
-    Allow,
-    "hidden lifetime parameters in types are deprecated"
 }
 
 declare_lint! {

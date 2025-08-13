@@ -670,7 +670,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             def_id,
             span,
             generic_args: segment.args(),
-            infer_args: segment.infer_args,
+            infer_args: segment.infer_args(),
             incorrect_args: &arg_count.correct,
         };
         let args = lower_generic_args(

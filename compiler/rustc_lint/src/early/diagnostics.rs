@@ -1,9 +1,7 @@
 use std::borrow::Cow;
 
 use rustc_ast::util::unicode::TEXT_FLOW_CONTROL_CHARS;
-use rustc_errors::{
-    Applicability, Diag, DiagArgValue, LintDiagnostic, elided_lifetime_in_path_suggestion,
-};
+use rustc_errors::{Applicability, Diag, DiagArgValue, LintDiagnostic};
 use rustc_middle::middle::stability;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
@@ -71,19 +69,6 @@ pub fn decorate_builtin_lint(
         BuiltinLintDiag::MacroExpandedMacroExportsAccessedByAbsolutePaths(span_def) => {
             lints::MacroExpandedMacroExportsAccessedByAbsolutePaths { definition: span_def }
                 .decorate_lint(diag)
-        }
-
-        BuiltinLintDiag::ElidedLifetimesInPaths(n, path_span, incl_angl_brckt, insertion_span) => {
-            lints::ElidedLifetimesInPaths {
-                subdiag: elided_lifetime_in_path_suggestion(
-                    sess.source_map(),
-                    n,
-                    path_span,
-                    incl_angl_brckt,
-                    insertion_span,
-                ),
-            }
-            .decorate_lint(diag);
         }
         BuiltinLintDiag::UnknownCrateTypes { span, candidate } => {
             let sugg = candidate.map(|candidate| lints::UnknownCrateTypesSub { span, candidate });

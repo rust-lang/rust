@@ -54,7 +54,7 @@ use rustc_hir::def_id::{CRATE_DEF_ID, LOCAL_CRATE, LocalDefId};
 use rustc_hir::lints::DelayedLint;
 use rustc_hir::{
     self as hir, AngleBrackets, ConstArg, GenericArg, HirId, ItemLocalMap, LifetimeSource,
-    LifetimeSyntax, ParamName, TraitCandidate,
+    LifetimeSyntax, ParamName, PathFlags, TraitCandidate,
 };
 use rustc_index::{Idx, IndexSlice, IndexVec};
 use rustc_macros::extension;
@@ -782,6 +782,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let def_id = self.tcx.require_lang_item(lang_item, span);
         let def_kind = self.tcx.def_kind(def_id);
         let res = Res::Def(def_kind, def_id);
+        let mut flags = PathFlags::empty();
+        flags.set(PathFlags::INFER_ARGS, args.is_none());
         self.arena.alloc(hir::Path {
             span,
             res,
@@ -790,7 +792,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 hir_id: self.next_id(),
                 res,
                 args,
-                infer_args: args.is_none(),
+                flags,
             }]),
         })
     }

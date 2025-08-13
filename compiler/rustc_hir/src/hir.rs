@@ -16,6 +16,7 @@ pub use rustc_ast::{
 };
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::sorted_map::SortedMap;
+use rustc_data_structures::stable_hasher::HashStable;
 use rustc_data_structures::tagged_ptr::TaggedRef;
 use rustc_index::IndexVec;
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
@@ -374,17 +375,37 @@ pub struct PathSegment<'hir> {
     /// distinction.
     pub args: Option<&'hir GenericArgs<'hir>>,
 
-    /// Whether to infer remaining type parameters, if any.
-    /// This only applies to expression and pattern paths, and
-    /// out of those only the segments with no type parameters
-    /// to begin with, e.g., `Vec::new` is `<Vec<..>>::new::<..>`.
-    pub infer_args: bool,
+    pub flags: PathFlags,
+}
+
+bitflags::bitflags! {
+    #[derive(Debug, Clone, Copy)]
+    pub struct PathFlags: u8 {
+        /// Whether to infer remaining type parameters, if any.
+        /// This only applies to expression and pattern paths, and
+        /// out of those only the segments with no type parameters
+        /// to begin with, e.g., `Vec::new` is `<Vec<..>>::new::<..>`.
+        const INFER_ARGS = 1 << 0;
+
+        /// Whether this path is an implicit `Self` type path.
+        const IMPLICIT_SELF = 1 << 1;
+    }
+}
+
+impl<CTX> HashStable<CTX> for PathFlags {
+    fn hash_stable(
+        &self,
+        hcx: &mut CTX,
+        hasher: &mut rustc_data_structures::stable_hasher::StableHasher,
+    ) {
+        self.bits().hash_stable(hcx, hasher)
+    }
 }
 
 impl<'hir> PathSegment<'hir> {
     /// Converts an identifier to the corresponding segment.
     pub fn new(ident: Ident, hir_id: HirId, res: Res) -> PathSegment<'hir> {
-        PathSegment { ident, hir_id, res, infer_args: true, args: None }
+        PathSegment { ident, hir_id, res, flags: PathFlags::INFER_ARGS, args: None }
     }
 
     pub fn invalid() -> Self {
@@ -398,6 +419,14 @@ impl<'hir> PathSegment<'hir> {
             const DUMMY: &GenericArgs<'_> = &GenericArgs::none();
             DUMMY
         }
+    }
+
+    pub fn infer_args(&self) -> bool {
+        self.flags.contains(PathFlags::INFER_ARGS)
+    }
+
+    pub fn implicit_self(&self) -> bool {
+        self.flags.contains(PathFlags::IMPLICIT_SELF)
     }
 }
 

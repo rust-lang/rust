@@ -1382,7 +1382,6 @@ ui/let-else/issue-100103.rs
 ui/let-else/issue-102317.rs
 ui/let-else/issue-94176.rs
 ui/let-else/issue-99975.rs
-ui/lifetimes/auxiliary/issue-91763-aux.rs
 ui/lifetimes/issue-103582-hint-for-missing-lifetime-bound-on-trait-object-using-type-alias.rs
 ui/lifetimes/issue-104432-unused-lifetimes-in-expansion.rs
 ui/lifetimes/issue-105227.rs
@@ -1415,7 +1414,6 @@ ui/lifetimes/issue-84398.rs
 ui/lifetimes/issue-84604.rs
 ui/lifetimes/issue-90170-elision-mismatch.rs
 ui/lifetimes/issue-90600-expected-return-static-indirect.rs
-ui/lifetimes/issue-91763.rs
 ui/lifetimes/issue-93911.rs
 ui/lifetimes/issue-95023.rs
 ui/lifetimes/issue-97193.rs

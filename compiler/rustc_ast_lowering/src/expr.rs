@@ -4,10 +4,9 @@ use std::sync::Arc;
 use rustc_ast::*;
 use rustc_ast_pretty::pprust::expr_to_string;
 use rustc_data_structures::stack::ensure_sufficient_stack;
-use rustc_hir as hir;
 use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::{HirId, find_attr};
+use rustc_hir::{self as hir, HirId, PathFlags, find_attr};
 use rustc_middle::span_bug;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::errors::report_lit_error;
@@ -125,6 +124,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         ImplTraitContext::Disallowed(ImplTraitPosition::Path),
                         // Method calls can't have bound modifiers
                         None,
+                        PathFlags::empty(),
                     ));
                     let receiver = self.lower_expr(receiver);
                     let args =

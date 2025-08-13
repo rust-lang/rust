@@ -6,7 +6,7 @@ use rustc_errors::struct_span_code_err;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LocalDefId};
-use rustc_hir::{AmbigArg, PolyTraitRef};
+use rustc_hir::{AmbigArg, PathFlags, PolyTraitRef};
 use rustc_middle::bug;
 use rustc_middle::ty::{
     self as ty, IsSuggestable, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
@@ -600,7 +600,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     hir_id: constraint.hir_id,
                     res: Res::Err,
                     args: Some(constraint.gen_args),
-                    infer_args: false,
+                    flags: PathFlags::empty(),
                 };
 
                 let alias_args = self.lower_generic_args_of_assoc_item(
