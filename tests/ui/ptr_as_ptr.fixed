@@ -2,8 +2,8 @@
 
 #![warn(clippy::ptr_as_ptr)]
 
-#[macro_use]
 extern crate proc_macros;
+use proc_macros::{external, inline_macros};
 
 mod issue_11278_a {
     #[derive(Debug)]
