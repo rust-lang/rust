@@ -22,6 +22,23 @@ impl Tcp {
         }
     }
 
+    pub(crate) fn bind(addr: &SocketAddr) -> io::Result<Self> {
+        match addr {
+            SocketAddr::V4(x) => {
+                let temp = tcp4::Tcp4::new()?;
+                temp.configure(false, None, Some(x))?;
+                Ok(Tcp::V4(temp))
+            }
+            SocketAddr::V6(_) => todo!(),
+        }
+    }
+
+    pub(crate) fn accept(&self) -> io::Result<Self> {
+        match self {
+            Self::V4(client) => client.accept().map(Tcp::V4),
+        }
+    }
+
     pub(crate) fn write(&self, buf: &[u8], timeout: Option<Duration>) -> io::Result<usize> {
         match self {
             Self::V4(client) => client.write(buf, timeout),

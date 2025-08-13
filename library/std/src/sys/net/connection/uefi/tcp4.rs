@@ -15,7 +15,7 @@ pub(crate) struct Tcp4 {
     protocol: NonNull<tcp4::Protocol>,
     flag: AtomicBool,
     #[expect(dead_code)]
-    service_binding: helpers::ServiceProtocol,
+    service_binding: Option<helpers::ServiceProtocol>,
 }
 
 const DEFAULT_ADDR: efi::Ipv4Address = efi::Ipv4Address { addr: [0u8; 4] };
@@ -25,7 +25,7 @@ impl Tcp4 {
         let service_binding = helpers::ServiceProtocol::open(tcp4::SERVICE_BINDING_PROTOCOL_GUID)?;
         let protocol = helpers::open_protocol(service_binding.child_handle(), tcp4::PROTOCOL_GUID)?;
 
-        Ok(Self { service_binding, protocol, flag: AtomicBool::new(false) })
+        Ok(Self { service_binding: Some(service_binding), protocol, flag: AtomicBool::new(false) })
     }
 
     pub(crate) fn configure(
@@ -42,11 +42,13 @@ impl Tcp4 {
             (DEFAULT_ADDR, 0)
         };
 
-        // FIXME: Remove when passive connections with proper subnet handling are added
-        assert!(station_address.is_none());
-        let use_default_address = efi::Boolean::TRUE;
-        let (station_address, station_port) = (DEFAULT_ADDR, 0);
-        let subnet_mask = helpers::ipv4_to_r_efi(crate::net::Ipv4Addr::new(0, 0, 0, 0));
+        let use_default_address = station_address.is_none().into();
+        let (station_address, station_port) = if let Some(x) = station_address {
+            (helpers::ipv4_to_r_efi(*x.ip()), x.port())
+        } else {
+            (DEFAULT_ADDR, 0)
+        };
+        let subnet_mask = helpers::ipv4_to_r_efi(crate::net::Ipv4Addr::new(255, 255, 255, 0));
 
         let mut config_data = tcp4::ConfigData {
             type_of_service: TYPE_OF_SERVICE,
@@ -83,6 +85,33 @@ impl Tcp4 {
         };
 
         if r.is_error() { Err(io::Error::from_raw_os_error(r.as_usize())) } else { Ok(config_data) }
+    }
+
+    pub(crate) fn accept(&self) -> io::Result<Self> {
+        let evt = unsafe { self.create_evt() }?;
+        let completion_token =
+            tcp4::CompletionToken { event: evt.as_ptr(), status: Status::SUCCESS };
+        let mut listen_token =
+            tcp4::ListenToken { completion_token, new_child_handle: crate::ptr::null_mut() };
+
+        let protocol = self.protocol.as_ptr();
+        let r = unsafe { ((*protocol).accept)(protocol, &mut listen_token) };
+        if r.is_error() {
+            return Err(io::Error::from_raw_os_error(r.as_usize()));
+        }
+
+        unsafe { self.wait_or_cancel(None, &mut listen_token.completion_token) }?;
+
+        if completion_token.status.is_error() {
+            Err(io::Error::from_raw_os_error(completion_token.status.as_usize()))
+        } else {
+            let handle = NonNull::new(listen_token.new_child_handle).unwrap();
+            let protocol = helpers::open_protocol(handle, tcp4::PROTOCOL_GUID)?;
+
+            // The spec does not seem to state if we need to call ServiceBinding->DestroyChild for
+            // this handle
+            Ok(Self { service_binding: None, protocol, flag: AtomicBool::new(false) })
+        }
     }
 
     pub(crate) fn connect(&self, timeout: Option<Duration>) -> io::Result<()> {
