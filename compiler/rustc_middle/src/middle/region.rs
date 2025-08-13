@@ -299,4 +299,43 @@ impl ScopeTree {
 
         true
     }
+
+    /// Returns the scope of non-lifetime-extended temporaries within a given scope, as well as
+    /// whether we've recorded a potential backwards-incompatible change to lint on.
+    /// Returns `None` when no enclosing temporary scope is found, such as for static items.
+    pub fn default_temporary_scope(&self, inner: Scope) -> (Option<Scope>, Option<Scope>) {
+        let mut id = inner;
+        let mut backwards_incompatible = None;
+
+        while let Some(&p) = self.parent_map.get(&id) {
+            match p.data {
+                ScopeData::Destruction => {
+                    debug!("temporary_scope({inner:?}) = {id:?} [enclosing]");
+                    return (Some(id), backwards_incompatible);
+                }
+                ScopeData::IfThenRescope | ScopeData::MatchGuard => {
+                    debug!("temporary_scope({inner:?}) = {p:?} [enclosing]");
+                    return (Some(p), backwards_incompatible);
+                }
+                ScopeData::Node
+                | ScopeData::CallSite
+                | ScopeData::Arguments
+                | ScopeData::IfThen
+                | ScopeData::Remainder(_) => {
+                    // If we haven't already passed through a backwards-incompatible node,
+                    // then check if we are passing through one now and record it if so.
+                    // This is for now only working for cases where a temporary lifetime is
+                    // *shortened*.
+                    if backwards_incompatible.is_none() {
+                        backwards_incompatible =
+                            self.backwards_incompatible_scope.get(&p.local_id).copied();
+                    }
+                    id = p
+                }
+            }
+        }
+
+        debug!("temporary_scope({inner:?}) = None");
+        (None, backwards_incompatible)
+    }
 }

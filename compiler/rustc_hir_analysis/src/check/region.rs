@@ -490,12 +490,8 @@ fn resolve_local<'tcx>(
             //
             // Iterate up to the enclosing destruction scope to find the same scope that will also
             // be used for the result of the block itself.
-            while let Some(s) = visitor.cx.var_parent {
-                let parent = visitor.scope_tree.parent_map.get(&s).cloned();
-                if let Some(Scope { data: ScopeData::Destruction, .. }) = parent {
-                    break;
-                }
-                visitor.cx.var_parent = parent;
+            if let Some(inner_scope) = visitor.cx.var_parent {
+                (visitor.cx.var_parent, _) = visitor.scope_tree.default_temporary_scope(inner_scope)
             }
         }
     }
