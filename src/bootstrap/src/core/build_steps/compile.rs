@@ -189,50 +189,49 @@ impl Step for Std {
 
         let mut target_deps = builder.ensure(StartupObjects { compiler: build_compiler, target });
 
-        let compiler_to_use =
-            builder.compiler_for(build_compiler.stage, build_compiler.host, target);
-        trace!(?compiler_to_use);
+        // Stage of the stdlib that we're building
+        let stage = build_compiler.stage;
 
-        if compiler_to_use != build_compiler
-            // Never uplift std unless we have compiled stage 1; if stage 1 is compiled,
-            // uplift it from there.
-            //
-            // FIXME: improve `fn compiler_for` to avoid adding stage condition here.
-            && build_compiler.stage > 1
+        // If we're building a stage2+ libstd, full bootstrap is
+        // disabled and we have a stage1 libstd already compiled for the given target,
+        // then simply uplift a previously built stage1 library.
+        if build_compiler.stage > 1
+            && !builder.config.full_bootstrap
+            // This estimates if a stage1 libstd exists for the given target. If we're not
+            // cross-compiling, it should definitely exist by the time we're building a stage2
+            // libstd.
+            // Or if we are cross-compiling, and we are building a cross-compiled rustc, then that
+            // rustc needs to link to a cross-compiled libstd, so again we should have a stage1
+            // libstd for the given target prepared.
+            // Even if we guess wrong in the cross-compiled case, the worst that should happen is
+            // that we build a fresh stage1 libstd below, and then we immediately uplift it, so we
+            // don't pay the libstd build cost twice.
+            && (target == builder.host_target || builder.config.hosts.contains(&target))
         {
-            trace!(
-                ?compiler_to_use,
-                ?build_compiler,
-                "build_compiler != compiler_to_use, uplifting library"
-            );
+            let build_compiler_for_std_to_uplift = builder.compiler(1, builder.host_target);
+            builder.std(build_compiler_for_std_to_uplift, target);
 
-            builder.std(compiler_to_use, target);
-            let msg = if compiler_to_use.host == target {
+            let msg = if build_compiler_for_std_to_uplift.host == target {
                 format!(
-                    "Uplifting library (stage{} -> stage{})",
-                    compiler_to_use.stage, build_compiler.stage
+                    "Uplifting library (stage{} -> stage{stage})",
+                    build_compiler_for_std_to_uplift.stage
                 )
             } else {
                 format!(
-                    "Uplifting library (stage{}:{} -> stage{}:{})",
-                    compiler_to_use.stage, compiler_to_use.host, build_compiler.stage, target
+                    "Uplifting library (stage{}:{} -> stage{stage}:{target})",
+                    build_compiler_for_std_to_uplift.stage, build_compiler_for_std_to_uplift.host,
                 )
             };
+
             builder.info(&msg);
 
             // Even if we're not building std this stage, the new sysroot must
             // still contain the third party objects needed by various targets.
             self.copy_extra_objects(builder, &build_compiler, target);
 
-            builder.ensure(StdLink::from_std(self, compiler_to_use));
+            builder.ensure(StdLink::from_std(self, build_compiler_for_std_to_uplift));
             return;
         }
-
-        trace!(
-            ?compiler_to_use,
-            ?build_compiler,
-            "compiler == compiler_to_use, handling not-cross-compile scenario"
-        );
 
         target_deps.extend(self.copy_extra_objects(builder, &build_compiler, target));
 
