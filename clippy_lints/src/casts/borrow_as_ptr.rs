@@ -22,13 +22,11 @@ pub(super) fn check<'tcx>(
         && !matches!(target.ty.kind, TyKind::TraitObject(..))
         && let ExprKind::AddrOf(BorrowKind::Ref, mutability, e) = cast_expr.kind
         && !is_lint_allowed(cx, BORROW_AS_PTR, expr.hir_id)
+        // Fix #9884
+        && !is_expr_temporary_value(cx, e)
     {
         let mut app = Applicability::MachineApplicable;
         let snip = snippet_with_context(cx, e.span, cast_expr.span.ctxt(), "..", &mut app).0;
-        // Fix #9884
-        if is_expr_temporary_value(cx, e) {
-            return false;
-        }
 
         let (suggestion, span) = if msrv.meets(cx, msrvs::RAW_REF_OP) {
             // Make sure that the span to be replaced doesn't include parentheses, that could break the
