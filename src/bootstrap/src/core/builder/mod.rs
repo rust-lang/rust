@@ -100,8 +100,13 @@ pub trait Step: 'static + Clone + Debug + PartialEq + Eq + Hash {
     /// by `Step::should_run`.
     const DEFAULT: bool = false;
 
-    /// If true, then this rule should be skipped if --target was specified, but --host was not
-    const ONLY_HOSTS: bool = false;
+    /// If this value is true, then the values of `run.target` passed to the `make_run` function of
+    /// this Step will be determined based on the `--host` flag.
+    /// If this value is false, then they will be determined based on the `--target` flag.
+    ///
+    /// A corollary of the above is that if this is set to true, then the step will be skipped if
+    /// `--target` was specified, but `--host` was explicitly set to '' (empty string).
+    const IS_HOST: bool = false;
 
     /// Primary function to implement `Step` logic.
     ///
@@ -294,7 +299,7 @@ pub fn crate_description(crates: &[impl AsRef<str>]) -> String {
 
 struct StepDescription {
     default: bool,
-    only_hosts: bool,
+    is_host: bool,
     should_run: fn(ShouldRun<'_>) -> ShouldRun<'_>,
     make_run: fn(RunConfig<'_>),
     name: &'static str,
@@ -496,7 +501,7 @@ impl StepDescription {
     fn from<S: Step>(kind: Kind) -> StepDescription {
         StepDescription {
             default: S::DEFAULT,
-            only_hosts: S::ONLY_HOSTS,
+            is_host: S::IS_HOST,
             should_run: S::should_run,
             make_run: S::make_run,
             name: std::any::type_name::<S>(),
@@ -512,7 +517,7 @@ impl StepDescription {
         }
 
         // Determine the targets participating in this rule.
-        let targets = if self.only_hosts { &builder.hosts } else { &builder.targets };
+        let targets = if self.is_host { &builder.hosts } else { &builder.targets };
 
         for target in targets {
             let run = RunConfig { builder, paths: pathsets.clone(), target: *target };

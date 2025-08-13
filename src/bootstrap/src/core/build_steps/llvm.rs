@@ -255,7 +255,7 @@ pub struct Llvm {
 impl Step for Llvm {
     type Output = LlvmResult;
 
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("src/llvm-project").path("src/llvm-project/llvm")
@@ -908,7 +908,7 @@ pub struct Enzyme {
 
 impl Step for Enzyme {
     type Output = PathBuf;
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("src/tools/enzyme/enzyme")
@@ -1013,7 +1013,7 @@ pub struct Lld {
 
 impl Step for Lld {
     type Output = PathBuf;
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("src/llvm-project/lld")

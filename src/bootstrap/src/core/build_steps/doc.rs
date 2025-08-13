@@ -830,7 +830,7 @@ impl Rustc {
 impl Step for Rustc {
     type Output = ();
     const DEFAULT: bool = true;
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let builder = run.builder;
@@ -975,7 +975,7 @@ macro_rules! tool_doc {
         impl Step for $tool {
             type Output = ();
             const DEFAULT: bool = true;
-            const ONLY_HOSTS: bool = true;
+            const IS_HOST: bool = true;
 
             fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
                 let builder = run.builder;
@@ -1139,7 +1139,7 @@ pub struct ErrorIndex {
 impl Step for ErrorIndex {
     type Output = ();
     const DEFAULT: bool = true;
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let builder = run.builder;
@@ -1181,7 +1181,7 @@ pub struct UnstableBookGen {
 impl Step for UnstableBookGen {
     type Output = ();
     const DEFAULT: bool = true;
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let builder = run.builder;
@@ -1248,7 +1248,7 @@ impl RustcBook {
 impl Step for RustcBook {
     type Output = ();
     const DEFAULT: bool = true;
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let builder = run.builder;
