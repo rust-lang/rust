@@ -107,14 +107,16 @@ pub(crate) fn inlay_hints(
         }
     };
     let mut preorder = file.preorder();
-    while let Some(event) = preorder.next() {
-        if matches!((&event, range_limit), (WalkEvent::Enter(node), Some(range)) if range.intersect(node.text_range()).is_none())
-        {
-            preorder.skip_subtree();
-            continue;
+    salsa::attach(sema.db, || {
+        while let Some(event) = preorder.next() {
+            if matches!((&event, range_limit), (WalkEvent::Enter(node), Some(range)) if range.intersect(node.text_range()).is_none())
+            {
+                preorder.skip_subtree();
+                continue;
+            }
+            hints(event);
         }
-        hints(event);
-    }
+    });
     if let Some(range_limit) = range_limit {
         acc.retain(|hint| range_limit.contains_range(hint.range));
     }
@@ -736,7 +738,7 @@ fn label_of_ty(
         config: &InlayHintsConfig,
         display_target: DisplayTarget,
     ) -> Result<(), HirDisplayError> {
-        let iter_item_type = salsa::attach(sema.db, || hint_iterator(sema, famous_defs, ty));
+        let iter_item_type = hint_iterator(sema, famous_defs, ty);
         match iter_item_type {
             Some((iter_trait, item, ty)) => {
                 const LABEL_START: &str = "impl ";
