@@ -983,6 +983,7 @@ lint_unused_allocation_mut = unnecessary allocation, use `&mut` instead
 
 lint_unused_builtin_attribute = unused attribute `{$attr_name}`
     .note = the built-in attribute `{$attr_name}` will be ignored, since it's applied to the macro invocation `{$macro_name}`
+    .suggestion = remove the attribute
 
 lint_unused_closure =
     unused {$pre}{$count ->

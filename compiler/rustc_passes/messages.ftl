@@ -510,6 +510,7 @@ passes_must_not_suspend =
 
 passes_must_use_no_effect =
     `#[must_use]` has no effect when applied to {$article} {$target}
+    .suggestion = remove the attribute
 
 passes_no_link =
     attribute should be applied to an `extern crate` item
