@@ -130,7 +130,9 @@ pub enum RuntimePhase {
     /// * [`TerminatorKind::Yield`]
     /// * [`TerminatorKind::CoroutineDrop`]
     /// * [`Rvalue::Aggregate`] for any `AggregateKind` except `Array`
+    /// * [`Rvalue::CopyForDeref`]
     /// * [`PlaceElem::OpaqueCast`]
+    /// * [`LocalInfo::DerefTemp`]
     ///
     /// And the following variants are allowed:
     /// * [`StatementKind::Retag`]

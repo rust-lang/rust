@@ -240,7 +240,7 @@ fn build_adrop_for_coroutine_shim<'tcx>(
                 source_info,
                 StatementKind::Assign(Box::new((
                     Place::from(proxy_ref_local),
-                    Rvalue::CopyForDeref(proxy_ref_place),
+                    Rvalue::Use(Operand::Copy(proxy_ref_place)),
                 ))),
             ),
         );
@@ -261,7 +261,7 @@ fn build_adrop_for_coroutine_shim<'tcx>(
                         source_info,
                         StatementKind::Assign(Box::new((
                             Place::from(cor_ptr_local),
-                            Rvalue::CopyForDeref(impl_ptr_place),
+                            Rvalue::Use(Operand::Copy(impl_ptr_place)),
                         ))),
                     ),
                 );
@@ -334,7 +334,7 @@ fn build_adrop_for_adrop_shim<'tcx>(
         source_info,
         StatementKind::Assign(Box::new((
             Place::from(proxy_ref_local),
-            Rvalue::CopyForDeref(proxy_ref_place),
+            Rvalue::Use(Operand::Copy(proxy_ref_place)),
         ))),
     ));
 
@@ -350,7 +350,7 @@ fn build_adrop_for_adrop_shim<'tcx>(
                 source_info,
                 StatementKind::Assign(Box::new((
                     Place::from(cor_ptr_local),
-                    Rvalue::CopyForDeref(impl_ptr_place),
+                    Rvalue::Use(Operand::Copy(impl_ptr_place)),
                 ))),
             ));
         }

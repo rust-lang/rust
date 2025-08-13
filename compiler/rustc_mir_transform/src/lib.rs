@@ -137,6 +137,7 @@ declare_passes! {
     mod dest_prop : DestinationPropagation;
     pub mod dump_mir : Marker;
     mod early_otherwise_branch : EarlyOtherwiseBranch;
+    mod erase_deref_temps : EraseDerefTemps;
     mod elaborate_box_derefs : ElaborateBoxDerefs;
     mod elaborate_drops : ElaborateDrops;
     mod function_item_references : FunctionItemReferences;
@@ -616,6 +617,8 @@ fn run_runtime_lowering_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         // Otherwise it should run fairly late, but before optimizations begin.
         &add_retag::AddRetag,
         &elaborate_box_derefs::ElaborateBoxDerefs,
+        // `EraseDerefTemps` needs to run before `StateTransform`.
+        &erase_deref_temps::EraseDerefTemps,
         &coroutine::StateTransform,
         &Lint(known_panics_lint::KnownPanicsLint),
     ];
