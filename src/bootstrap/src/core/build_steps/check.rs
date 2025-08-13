@@ -102,7 +102,7 @@ impl Step for Std {
         );
 
         let stamp = build_stamp::libstd_stamp(builder, build_compiler, target).with_prefix("check");
-        run_cargo(builder, cargo, builder.config.free_args.clone(), &stamp, vec![], true, false);
+        run_cargo(builder, cargo, builder.config.free_args.clone(), &stamp, vec![], false);
 
         drop(_guard);
 
@@ -144,7 +144,7 @@ impl Step for Std {
             self.build_compiler,
             target,
         );
-        run_cargo(builder, cargo, builder.config.free_args.clone(), &stamp, vec![], true, false);
+        run_cargo(builder, cargo, builder.config.free_args.clone(), &stamp, vec![], false);
     }
 
     fn metadata(&self) -> Option<StepMetadata> {
@@ -245,7 +245,7 @@ impl Step for Rustc {
         let stamp =
             build_stamp::librustc_stamp(builder, build_compiler, target).with_prefix("check");
 
-        run_cargo(builder, cargo, builder.config.free_args.clone(), &stamp, vec![], true, false);
+        run_cargo(builder, cargo, builder.config.free_args.clone(), &stamp, vec![], false);
 
         let libdir = builder.sysroot_target_libdir(build_compiler, target);
         let hostdir = builder.sysroot_target_libdir(build_compiler, build_compiler.host);
@@ -377,7 +377,7 @@ impl Step for CodegenBackend {
         let stamp = build_stamp::codegen_backend_stamp(builder, build_compiler, target, &backend)
             .with_prefix("check");
 
-        run_cargo(builder, cargo, builder.config.free_args.clone(), &stamp, vec![], true, false);
+        run_cargo(builder, cargo, builder.config.free_args.clone(), &stamp, vec![], false);
     }
 
     fn metadata(&self) -> Option<StepMetadata> {
@@ -498,7 +498,7 @@ fn run_tool_check_step(
         .with_prefix(&format!("{display_name}-check"));
 
     let _guard = builder.msg(builder.kind, display_name, mode, build_compiler, target);
-    run_cargo(builder, cargo, builder.config.free_args.clone(), &stamp, vec![], true, false);
+    run_cargo(builder, cargo, builder.config.free_args.clone(), &stamp, vec![], false);
 }
 
 tool_check_step!(Rustdoc {
