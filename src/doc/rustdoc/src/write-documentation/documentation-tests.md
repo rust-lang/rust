@@ -191,6 +191,20 @@ We can document it by escaping the initial `#`:
 /// ## bar # baz";
 ```
 
+Here is an example with a macro rule which matches on tokens starting with `#`:
+
+`````rust,no_run
+/// ```
+/// macro_rules! ignore { (##tag) => {}; }
+/// ignore! {
+///     ###tag
+/// }
+/// ```
+# fn f() {}
+`````
+
+As you can see, the rule is expecting two `#`, so when calling it, we need to add an extra `#`
+because the first one is used as escape.
 
 ## Using `?` in doc tests
 
