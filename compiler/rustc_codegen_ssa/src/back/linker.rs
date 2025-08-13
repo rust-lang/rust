@@ -828,7 +828,27 @@ impl<'a> Linker for GccLinker<'a> {
                 self.sess.dcx().emit_fatal(errors::LibDefWriteFailure { error });
             }
             self.link_arg(path);
-        } else if crate_type == CrateType::Executable && !self.sess.target.is_like_solaris {
+        } else if self.sess.target.is_like_solaris {
+            // Write a Solaris LD mapfile
+            // Documented at https://docs.oracle.com/cd/E53394_01/html/E54813/gjpky.html#OSLLGman-scsvd
+            let res: io::Result<()> = try {
+                let mut f = File::create_buffered(&path)?;
+                writeln!(f, "$mapfile_version 2")?;
+                writeln!(f, "SYMBOL_SCOPE {{")?;
+                if !symbols.is_empty() {
+                    writeln!(f, "  global:")?;
+                    for (sym, _) in symbols {
+                        debug!("    {sym};");
+                        writeln!(f, "    {sym};")?;
+                    }
+                }
+                writeln!(f, "\n  local:\n    *;\n}};")?;
+            };
+            if let Err(error) = res {
+                self.sess.dcx().emit_fatal(errors::VersionScriptWriteFailure { error });
+            }
+            self.link_arg("-M").link_arg(path);
+        } else if crate_type == CrateType::Executable {
             let res: io::Result<()> = try {
                 let mut f = File::create_buffered(&path)?;
                 writeln!(f, "{{")?;
@@ -859,13 +879,9 @@ impl<'a> Linker for GccLinker<'a> {
             if let Err(error) = res {
                 self.sess.dcx().emit_fatal(errors::VersionScriptWriteFailure { error });
             }
-            if self.sess.target.is_like_solaris {
-                self.link_arg("-M").link_arg(path);
-            } else {
-                let mut arg = OsString::from("--version-script=");
-                arg.push(path);
-                self.link_arg(arg).link_arg("--no-undefined-version");
-            }
+            let mut arg = OsString::from("--version-script=");
+            arg.push(path);
+            self.link_arg(arg).link_arg("--no-undefined-version");
         }
     }
 
