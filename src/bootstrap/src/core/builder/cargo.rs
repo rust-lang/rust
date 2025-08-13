@@ -433,6 +433,15 @@ impl Builder<'_> {
         let out_dir = self.stage_out(compiler, mode);
         cargo.env("CARGO_TARGET_DIR", &out_dir);
 
+        // Bootstrap makes a lot of assumptions about the artifacts produced in the target
+        // directory. If users override the "build directory" using `build-dir`
+        // (https://doc.rust-lang.org/nightly/cargo/reference/unstable.html#build-dir), then
+        // bootstrap couldn't find these artifacts. So we forcefully override that option to our
+        // target directory here.
+        // In the future, we could attempt to read the build-dir location from Cargo and actually
+        // respect it.
+        cargo.env("CARGO_BUILD_BUILD_DIR", &out_dir);
+
         // Found with `rg "init_env_logger\("`. If anyone uses `init_env_logger`
         // from out of tree it shouldn't matter, since x.py is only used for
         // building in-tree.
@@ -493,7 +502,9 @@ impl Builder<'_> {
         if cmd_kind == Kind::Doc {
             let my_out = match mode {
                 // This is the intended out directory for compiler documentation.
-                Mode::Rustc | Mode::ToolRustc => self.compiler_doc_out(target),
+                Mode::Rustc | Mode::ToolRustc | Mode::ToolBootstrap => {
+                    self.compiler_doc_out(target)
+                }
                 Mode::Std => {
                     if self.config.cmd.json() {
                         out_dir.join(target).join("json-doc")

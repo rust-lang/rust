@@ -447,12 +447,14 @@ pub fn decorate_builtin_lint(
         BuiltinLintDiag::UnusedCrateDependency { extern_crate, local_crate } => {
             lints::UnusedCrateDependency { extern_crate, local_crate }.decorate_lint(diag)
         }
-        BuiltinLintDiag::IllFormedAttributeInput { suggestions } => {
+        BuiltinLintDiag::IllFormedAttributeInput { suggestions, docs } => {
             lints::IllFormedAttributeInput {
                 num_suggestions: suggestions.len(),
                 suggestions: DiagArgValue::StrListSepByAnd(
                     suggestions.into_iter().map(|s| format!("`{s}`").into()).collect(),
                 ),
+                has_docs: docs.is_some(),
+                docs: docs.unwrap_or(""),
             }
             .decorate_lint(diag)
         }

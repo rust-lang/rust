@@ -10,7 +10,6 @@ extern crate rustc_span;
 use rustc_ast::ast::{AttrKind, Attribute, DUMMY_NODE_ID, Expr};
 use rustc_ast::mut_visit::{self, MutVisitor};
 use rustc_ast::node_id::NodeId;
-use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Token};
 use rustc_ast::tokenstream::{AttrTokenStream, AttrTokenTree, LazyAttrTokenStream};
 use rustc_errors::Diag;
@@ -19,7 +18,7 @@ use rustc_session::parse::ParseSess;
 use rustc_span::{AttrId, DUMMY_SP, FileName, Span};
 use std::sync::Arc;
 
-pub fn parse_expr(psess: &ParseSess, source_code: &str) -> Option<P<Expr>> {
+pub fn parse_expr(psess: &ParseSess, source_code: &str) -> Option<Box<Expr>> {
     let parser = rustc_parse::unwrap_or_emit_fatal(rustc_parse::new_parser_from_source_str(
         psess,
         FileName::anon_source_code(source_code),

@@ -44,7 +44,7 @@ impl RvalueScopes {
                     debug!("temporary_scope({expr_id:?}) = {id:?} [enclosing]");
                     return (Some(id), backwards_incompatible);
                 }
-                ScopeData::IfThenRescope => {
+                ScopeData::IfThenRescope | ScopeData::MatchGuard => {
                     debug!("temporary_scope({expr_id:?}) = {p:?} [enclosing]");
                     return (Some(p), backwards_incompatible);
                 }

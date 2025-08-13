@@ -1,0 +1,20 @@
+- // MIR for `slice_in_place` before RemoveUnneededDrops
++ // MIR for `slice_in_place` after RemoveUnneededDrops
+  
+  fn slice_in_place(_1: *mut [char]) -> () {
+      debug ptr => _1;
+      let mut _0: ();
+      let mut _2: *mut [char];
+  
+      bb0: {
+          StorageLive(_2);
+          _2 = copy _1;
+-         _0 = drop_in_place::<[char]>(move _2) -> [return: bb1, unwind continue];
+-     }
+- 
+-     bb1: {
+          StorageDead(_2);
+          return;
+      }
+  }
+  

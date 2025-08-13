@@ -642,7 +642,7 @@ parse_missing_for_in_trait_impl = missing `for` in a trait impl
     .suggestion = add `for` here
 
 parse_missing_in_in_for_loop = missing `in` in `for` loop
-    .use_in_not_of = try using `in` here instead
+    .use_in = try using `in` here instead
     .add_in = try adding `in` here
 
 parse_missing_let_before_mut = missing keyword
@@ -868,6 +868,11 @@ parse_trailing_vert_not_allowed = a trailing `|` is not allowed in an or-pattern
 parse_trait_alias_cannot_be_auto = trait aliases cannot be `auto`
 parse_trait_alias_cannot_be_const = trait aliases cannot be `const`
 parse_trait_alias_cannot_be_unsafe = trait aliases cannot be `unsafe`
+
+parse_trait_impl_modifier_in_inherent_impl = inherent impls cannot be {$modifier_name}
+    .because = {$modifier_name} because of this
+    .type = inherent impl for this type
+    .note = only trait implementations may be annotated with `{$modifier}`
 
 parse_transpose_dyn_or_impl = `for<...>` expected after `{$kw}`, not before
     .suggestion = move `{$kw}` before the `for<...>`

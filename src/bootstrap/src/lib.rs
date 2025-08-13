@@ -410,6 +410,25 @@ forward! {
     download_rustc() -> bool,
 }
 
+/// A mostly temporary helper struct before we can migrate everything in bootstrap to use
+/// the concept of a build compiler.
+struct HostAndStage {
+    host: TargetSelection,
+    stage: u32,
+}
+
+impl From<(TargetSelection, u32)> for HostAndStage {
+    fn from((host, stage): (TargetSelection, u32)) -> Self {
+        Self { host, stage }
+    }
+}
+
+impl From<Compiler> for HostAndStage {
+    fn from(compiler: Compiler) -> Self {
+        Self { host: compiler.host, stage: compiler.stage }
+    }
+}
+
 impl Build {
     /// Creates a new set of build configuration from the `flags` on the command
     /// line and the filesystem `config`.
@@ -859,14 +878,17 @@ impl Build {
         if self.config.rust_optimize.is_release() { "release" } else { "debug" }
     }
 
-    fn tools_dir(&self, compiler: Compiler) -> PathBuf {
-        let out = self.out.join(compiler.host).join(format!("stage{}-tools-bin", compiler.stage));
+    fn tools_dir(&self, build_compiler: Compiler) -> PathBuf {
+        let out = self
+            .out
+            .join(build_compiler.host)
+            .join(format!("stage{}-tools-bin", build_compiler.stage + 1));
         t!(fs::create_dir_all(&out));
         out
     }
 
     /// Returns the root directory for all output generated in a particular
-    /// stage when running with a particular host compiler.
+    /// stage when being built with a particular build compiler.
     ///
     /// The mode indicates what the root directory is for.
     fn stage_out(&self, build_compiler: Compiler, mode: Mode) -> PathBuf {
@@ -876,15 +898,17 @@ impl Build {
             (None, "bootstrap-tools")
         }
         fn staged_tool(build_compiler: Compiler) -> (Option<u32>, &'static str) {
-            (Some(build_compiler.stage), "tools")
+            (Some(build_compiler.stage + 1), "tools")
         }
 
         let (stage, suffix) = match mode {
+            // Std is special, stage N std is built with stage N rustc
             Mode::Std => (Some(build_compiler.stage), "std"),
-            Mode::Rustc => (Some(build_compiler.stage), "rustc"),
-            Mode::Codegen => (Some(build_compiler.stage), "codegen"),
+            // The rest of things are built with stage N-1 rustc
+            Mode::Rustc => (Some(build_compiler.stage + 1), "rustc"),
+            Mode::Codegen => (Some(build_compiler.stage + 1), "codegen"),
             Mode::ToolBootstrap => bootstrap_tool(),
-            Mode::ToolStd | Mode::ToolRustc => (Some(build_compiler.stage), "tools"),
+            Mode::ToolStd | Mode::ToolRustc => (Some(build_compiler.stage + 1), "tools"),
             Mode::ToolTarget => {
                 // If we're not cross-compiling (the common case), share the target directory with
                 // bootstrap tools to reuse the build cache.
@@ -907,8 +931,8 @@ impl Build {
     /// Returns the root output directory for all Cargo output in a given stage,
     /// running a particular compiler, whether or not we're building the
     /// standard library, and targeting the specified architecture.
-    fn cargo_out(&self, compiler: Compiler, mode: Mode, target: TargetSelection) -> PathBuf {
-        self.stage_out(compiler, mode).join(target).join(self.cargo_dir())
+    fn cargo_out(&self, build_compiler: Compiler, mode: Mode, target: TargetSelection) -> PathBuf {
+        self.stage_out(build_compiler, mode).join(target).join(self.cargo_dir())
     }
 
     /// Root output directory of LLVM for `target`
@@ -1067,45 +1091,14 @@ impl Build {
         }
     }
 
-    #[must_use = "Groups should not be dropped until the Step finishes running"]
-    #[track_caller]
-    fn msg_clippy(
-        &self,
-        what: impl Display,
-        target: impl Into<Option<TargetSelection>>,
-    ) -> Option<gha::Group> {
-        self.msg(Kind::Clippy, self.config.stage, what, self.config.host_target, target)
-    }
-
-    #[must_use = "Groups should not be dropped until the Step finishes running"]
-    #[track_caller]
-    fn msg_check(
-        &self,
-        what: impl Display,
-        target: impl Into<Option<TargetSelection>>,
-        custom_stage: Option<u32>,
-    ) -> Option<gha::Group> {
-        self.msg(
-            Kind::Check,
-            custom_stage.unwrap_or(self.config.stage),
-            what,
-            self.config.host_target,
-            target,
-        )
-    }
-
-    #[must_use = "Groups should not be dropped until the Step finishes running"]
-    #[track_caller]
-    fn msg_doc(
-        &self,
-        compiler: Compiler,
-        what: impl Display,
-        target: impl Into<Option<TargetSelection>> + Copy,
-    ) -> Option<gha::Group> {
-        self.msg(Kind::Doc, compiler.stage, what, compiler.host, target.into())
-    }
-
-    /// Return a `Group` guard for a [`Step`] that is built for each `--stage`.
+    /// Return a `Group` guard for a [`Step`] that:
+    /// - Performs `action`
+    /// - On `what`
+    ///   - Where `what` possibly corresponds to a `mode`
+    /// - `action` is performed using the given build compiler (`host_and_stage`).
+    ///   - Since some steps do not use the concept of a build compiler yet, it is also possible
+    ///     to pass the host and stage explicitly.
+    /// - With a given `target`.
     ///
     /// [`Step`]: crate::core::builder::Step
     #[must_use = "Groups should not be dropped until the Step finishes running"]
@@ -1113,19 +1106,36 @@ impl Build {
     fn msg(
         &self,
         action: impl Into<Kind>,
-        stage: u32,
         what: impl Display,
-        host: impl Into<Option<TargetSelection>>,
+        mode: impl Into<Option<Mode>>,
+        host_and_stage: impl Into<HostAndStage>,
         target: impl Into<Option<TargetSelection>>,
     ) -> Option<gha::Group> {
+        let host_and_stage = host_and_stage.into();
+        let actual_stage = match mode.into() {
+            // Std has the same stage as the compiler that builds it
+            Some(Mode::Std) => host_and_stage.stage,
+            // Other things have stage corresponding to their build compiler + 1
+            Some(
+                Mode::Rustc
+                | Mode::Codegen
+                | Mode::ToolBootstrap
+                | Mode::ToolTarget
+                | Mode::ToolStd
+                | Mode::ToolRustc,
+            )
+            | None => host_and_stage.stage + 1,
+        };
+
         let action = action.into().description();
-        let msg = |fmt| format!("{action} stage{stage} {what}{fmt}");
+        let msg = |fmt| format!("{action} stage{actual_stage} {what}{fmt}");
         let msg = if let Some(target) = target.into() {
-            let host = host.into().unwrap();
+            let build_stage = host_and_stage.stage;
+            let host = host_and_stage.host;
             if host == target {
-                msg(format_args!(" ({target})"))
+                msg(format_args!(" (stage{build_stage} -> stage{actual_stage}, {target})"))
             } else {
-                msg(format_args!(" ({host} -> {target})"))
+                msg(format_args!(" (stage{build_stage}:{host} -> stage{actual_stage}:{target})"))
             }
         } else {
             msg(format_args!(""))
@@ -1146,27 +1156,6 @@ impl Build {
     ) -> Option<gha::Group> {
         let action = action.into().description();
         let msg = format!("{action} {what} for {target}");
-        self.group(&msg)
-    }
-
-    #[must_use = "Groups should not be dropped until the Step finishes running"]
-    #[track_caller]
-    fn msg_rustc_tool(
-        &self,
-        action: impl Into<Kind>,
-        build_stage: u32,
-        what: impl Display,
-        host: TargetSelection,
-        target: TargetSelection,
-    ) -> Option<gha::Group> {
-        let action = action.into().description();
-        let msg = |fmt| format!("{action} {what} {fmt}");
-
-        let msg = if host == target {
-            msg(format_args!("(stage{build_stage} -> stage{}, {target})", build_stage + 1))
-        } else {
-            msg(format_args!("(stage{build_stage}:{host} -> stage{}:{target})", build_stage + 1))
-        };
         self.group(&msg)
     }
 

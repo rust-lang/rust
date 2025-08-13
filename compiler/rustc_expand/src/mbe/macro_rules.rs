@@ -347,7 +347,7 @@ fn expand_macro_attr(
 
     if cx.trace_macros() {
         let msg = format!(
-            "expanding `$[{name}({})] {}`",
+            "expanding `#[{name}({})] {}`",
             pprust::tts_to_string(&args),
             pprust::tts_to_string(&body),
         );

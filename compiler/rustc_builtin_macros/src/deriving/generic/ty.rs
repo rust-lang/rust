@@ -2,7 +2,6 @@
 //! when specifying impls to be derived.
 
 pub(crate) use Ty::*;
-use rustc_ast::ptr::P;
 use rustc_ast::{self as ast, Expr, GenericArg, GenericParamKind, Generics, SelfKind};
 use rustc_expand::base::ExtCtxt;
 use rustc_span::source_map::respan;
@@ -41,7 +40,7 @@ impl Path {
         span: Span,
         self_ty: Ident,
         self_generics: &Generics,
-    ) -> P<ast::Ty> {
+    ) -> Box<ast::Ty> {
         cx.ty_path(self.to_path(cx, span, self_ty, self_generics))
     }
     pub(crate) fn to_path(
@@ -90,7 +89,7 @@ impl Ty {
         span: Span,
         self_ty: Ident,
         self_generics: &Generics,
-    ) -> P<ast::Ty> {
+    ) -> Box<ast::Ty> {
         match self {
             Ref(ty, mutbl) => {
                 let raw_ty = ty.to_ty(cx, span, self_ty, self_generics);
@@ -192,7 +191,7 @@ impl Bounds {
     }
 }
 
-pub(crate) fn get_explicit_self(cx: &ExtCtxt<'_>, span: Span) -> (P<Expr>, ast::ExplicitSelf) {
+pub(crate) fn get_explicit_self(cx: &ExtCtxt<'_>, span: Span) -> (Box<Expr>, ast::ExplicitSelf) {
     // This constructs a fresh `self` path.
     let self_path = cx.expr_self(span);
     let self_ty = respan(span, SelfKind::Region(None, ast::Mutability::Not));

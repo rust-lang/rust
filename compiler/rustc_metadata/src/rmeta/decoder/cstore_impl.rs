@@ -75,24 +75,6 @@ impl<'a, 'tcx, T: Copy + Decodable<DecodeContext<'a, 'tcx>>> ProcessQueryValue<'
 }
 
 impl<'a, 'tcx, T: Copy + Decodable<DecodeContext<'a, 'tcx>>>
-    ProcessQueryValue<'tcx, ty::EarlyBinder<'tcx, &'tcx [T]>>
-    for Option<DecodeIterator<'a, 'tcx, T>>
-{
-    #[inline(always)]
-    fn process_decoded(
-        self,
-        tcx: TyCtxt<'tcx>,
-        err: impl Fn() -> !,
-    ) -> ty::EarlyBinder<'tcx, &'tcx [T]> {
-        ty::EarlyBinder::bind(if let Some(iter) = self {
-            tcx.arena.alloc_from_iter(iter)
-        } else {
-            err()
-        })
-    }
-}
-
-impl<'a, 'tcx, T: Copy + Decodable<DecodeContext<'a, 'tcx>>>
     ProcessQueryValue<'tcx, Option<&'tcx [T]>> for Option<DecodeIterator<'a, 'tcx, T>>
 {
     #[inline(always)]
@@ -413,6 +395,7 @@ provide! { tcx, def_id, other, cdata,
 
     crate_extern_paths => { cdata.source().paths().cloned().collect() }
     expn_that_defined => { cdata.get_expn_that_defined(def_id.index, tcx.sess) }
+    default_field => { cdata.get_default_field(def_id.index) }
     is_doc_hidden => { cdata.get_attr_flags(def_id.index).contains(AttrFlags::IS_DOC_HIDDEN) }
     doc_link_resolutions => { tcx.arena.alloc(cdata.get_doc_link_resolutions(def_id.index)) }
     doc_link_traits_in_scope => {

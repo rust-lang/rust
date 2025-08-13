@@ -346,7 +346,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         destination: &PlaceTy<'tcx, M::Provenance>,
         mut cont: ReturnContinuation,
     ) -> InterpResult<'tcx> {
-        let _span = enter_trace_span!(M, step::init_stack_frame, %instance, tracing_separate_thread = Empty);
+        let _trace = enter_trace_span!(M, step::init_stack_frame, %instance, tracing_separate_thread = Empty);
 
         // Compute callee information.
         // FIXME: for variadic support, do we have to somehow determine callee's extra_args?
@@ -527,7 +527,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         target: Option<mir::BasicBlock>,
         unwind: mir::UnwindAction,
     ) -> InterpResult<'tcx> {
-        let _span =
+        let _trace =
             enter_trace_span!(M, step::init_fn_call, tracing_separate_thread = Empty, ?fn_val)
                 .or_if_tracing_disabled(|| trace!("init_fn_call: {:#?}", fn_val));
 
