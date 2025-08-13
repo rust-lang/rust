@@ -225,3 +225,10 @@ pub mod mem {
     #[rustc_intrinsic]
     pub unsafe fn transmute<Src, Dst>(src: Src) -> Dst;
 }
+
+#[lang = "c_void"]
+#[repr(u8)]
+pub enum c_void {
+    __variant1,
+    __variant2,
+}
