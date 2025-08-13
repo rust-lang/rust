@@ -2865,7 +2865,7 @@ fn debug_lookahead() {
         kind: Eof,
         span: Span {
             lo: BytePos(
-                27,
+                28,
             ),
             hi: BytePos(
                 28,
