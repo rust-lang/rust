@@ -3,9 +3,12 @@
 
 use std::mem::offset_of;
 
+enum Never {}
+
 enum Alpha {
     One(u8),
     Two(u8),
+    Three(u8, u8, Never),
 }
 
 fn main() {
@@ -16,4 +19,8 @@ fn main() {
     offset_of!(Alpha, Two.foo); //~ ERROR no field named `foo` on enum variant `Alpha::Two`
     offset_of!(Alpha, NonExistent); //~ ERROR no variant named `NonExistent` found for enum `Alpha`
     offset_of!(Beta, One); //~ ERROR cannot find type `Beta` in this scope
+    offset_of!(Alpha, Three.0);
+    offset_of!(Alpha, Three.1);
+    offset_of!(Alpha, Three.2);
+    offset_of!(Alpha, Three.2.NonExistent); //~ ERROR no variant named `NonExistent` found for enum `Never`
 }
