@@ -139,3 +139,24 @@ mod issue8710 {
         }
     }
 }
+
+// PartialEq is not stable in consts yet
+fn issue15376() {
+    enum NonConstEq {
+        A,
+        B,
+    }
+    impl PartialEq for NonConstEq {
+        fn eq(&self, _other: &Self) -> bool {
+            true
+        }
+    }
+
+    const N: NonConstEq = NonConstEq::A;
+
+    // `impl PartialEq` is not const, suggest `matches!`
+    const _: u32 = if matches!(N, NonConstEq::A) { 0 } else { 1 };
+    //~^ ERROR: this pattern matching can be expressed using `matches!`
+    const _: u32 = if matches!(Some(N), Some(NonConstEq::A)) { 0 } else { 1 };
+    //~^ ERROR: this pattern matching can be expressed using `matches!`
+}
