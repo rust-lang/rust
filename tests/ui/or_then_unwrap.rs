@@ -28,6 +28,12 @@ fn main() {
     //
     //~^^ or_then_unwrap
 
+    // Call with macro should preserve the macro call rather than expand it
+    let option: Option<Vec<&str>> = None;
+    let _ = option.or(Some(vec!["fallback"])).unwrap(); // should trigger lint
+    //
+    //~^^ or_then_unwrap
+
     // as part of a method chain
     let option: Option<&str> = None;
     let _ = option.map(|v| v).or(Some("fallback")).unwrap().to_string().chars(); // should trigger lint
