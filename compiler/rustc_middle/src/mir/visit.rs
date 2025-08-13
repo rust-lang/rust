@@ -864,7 +864,7 @@ macro_rules! make_mir_visitor {
                     ty,
                     user_ty,
                     source_info,
-                    local_info: _,
+                    local_info,
                 } = local_decl;
 
                 self.visit_source_info(source_info);
@@ -877,6 +877,17 @@ macro_rules! make_mir_visitor {
                     for user_ty in & $($mutability)? user_ty.contents {
                         self.visit_user_type_projection(user_ty);
                     }
+                }
+
+                let location = Location::START;
+
+                // FIXME: ?
+                if let ClearCrossCrate::Set(box LocalInfo::DerefTemp { alias_for }) = local_info {
+                    self.visit_place(
+                        alias_for,
+                        PlaceContext::NonUse(NonUseContext::DerefTempDecl),
+                        location
+                    );
                 }
             }
 
@@ -1373,6 +1384,8 @@ pub enum NonUseContext {
     VarDebugInfo,
     /// A `BackwardIncompatibleDropHint` statement, meant for edition 2024 lints.
     BackwardIncompatibleDropHint,
+    /// `LocalInfo::DerefTemp`
+    DerefTempDecl,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -1448,7 +1461,11 @@ impl PlaceContext {
         match self {
             PlaceContext::MutatingUse(_) => ty::Invariant,
             PlaceContext::NonUse(
-                StorageDead | StorageLive | VarDebugInfo | BackwardIncompatibleDropHint,
+                StorageDead
+                | StorageLive
+                | VarDebugInfo
+                | BackwardIncompatibleDropHint
+                | DerefTempDecl,
             ) => ty::Invariant,
             PlaceContext::NonMutatingUse(
                 Inspect | Copy | Move | PlaceMention | SharedBorrow | FakeBorrow | RawBorrow

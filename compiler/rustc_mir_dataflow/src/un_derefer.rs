@@ -9,6 +9,19 @@ pub(crate) struct UnDerefer<'tcx> {
 
 impl<'tcx> UnDerefer<'tcx> {
     #[inline]
+    pub(crate) fn from_local_decls(local_decls: &LocalDecls<'tcx>) -> Self {
+        let mut this = Self::default();
+
+        for (local, decl) in local_decls.iter_enumerated() {
+            if let LocalInfo::DerefTemp { alias_for } = decl.local_info() {
+                this.insert(local, alias_for.as_ref());
+            }
+        }
+
+        this
+    }
+
+    #[inline]
     pub(crate) fn insert(&mut self, local: Local, reffed: PlaceRef<'tcx>) {
         let mut chain = self.deref_chains.remove(&reffed.local).unwrap_or_default();
         chain.push(reffed);

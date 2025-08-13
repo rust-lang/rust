@@ -12,6 +12,7 @@ use super::{
     Init, InitIndex, InitKind, InitLocation, LocationMap, LookupResult, MoveData, MoveOut,
     MoveOutIndex, MovePath, MovePathIndex, MovePathLookup,
 };
+use crate::un_derefer::UnDerefer;
 
 struct MoveDataBuilder<'a, 'tcx, F> {
     body: &'a Body<'tcx>,
@@ -58,7 +59,7 @@ impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
                 rev_lookup: MovePathLookup {
                     locals,
                     projections: Default::default(),
-                    un_derefer: Default::default(),
+                    un_derefer: UnDerefer::from_local_decls(&body.local_decls),
                 },
                 move_paths,
                 path_map,
@@ -342,15 +343,15 @@ impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
     fn gather_statement(&mut self, stmt: &Statement<'tcx>) {
         debug!("gather_statement({:?}, {:?})", self.loc, stmt);
         match &stmt.kind {
-            StatementKind::Assign(box (place, Rvalue::CopyForDeref(reffed))) => {
+            StatementKind::Assign(box (place, Rvalue::CopyForDeref(_reffed))) => {
                 let local = place.as_local().unwrap();
                 assert!(self.body.local_decls[local].is_deref_temp());
 
-                let rev_lookup = &mut self.data.rev_lookup;
+                //let rev_lookup = &mut self.data.rev_lookup;
 
-                rev_lookup.un_derefer.insert(local, reffed.as_ref());
-                let base_local = rev_lookup.un_derefer.deref_chain(local).first().unwrap().local;
-                rev_lookup.locals[local] = rev_lookup.locals[base_local];
+                //rev_lookup.un_derefer.insert(local, reffed.as_ref());
+                //let base_local = rev_lookup.un_derefer.deref_chain(local).first().unwrap().local;
+                //rev_lookup.locals[local] = rev_lookup.locals[base_local];
             }
             StatementKind::Assign(box (place, rval)) => {
                 self.create_move_path(*place);

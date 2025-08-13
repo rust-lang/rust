@@ -1110,7 +1110,7 @@ pub enum LocalInfo<'tcx> {
     /// and subject to Edition 2024 temporary lifetime rules
     IfThenRescopeTemp { if_then: HirId },
     /// A temporary created during the pass `Derefer` to avoid it's retagging
-    DerefTemp,
+    DerefTemp { alias_for: Place<'tcx> },
     /// A temporary created for borrow checking.
     FakeBorrow,
     /// A local without anything interesting about it.
@@ -1191,7 +1191,7 @@ impl<'tcx> LocalDecl<'tcx> {
     /// Returns `true` if this is a DerefTemp
     pub fn is_deref_temp(&self) -> bool {
         match self.local_info() {
-            LocalInfo::DerefTemp => true,
+            LocalInfo::DerefTemp { .. } => true,
             _ => false,
         }
     }

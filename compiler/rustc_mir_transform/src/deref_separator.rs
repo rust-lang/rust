@@ -36,16 +36,17 @@ impl<'a, 'tcx> MutVisitor<'tcx> for DerefChecker<'a, 'tcx> {
             for (idx, (p_ref, p_elem)) in place.iter_projections().enumerate() {
                 if !p_ref.projection.is_empty() && p_elem == ProjectionElem::Deref {
                     let ty = p_ref.ty(self.local_decls, self.tcx).ty;
-                    let temp = self.patcher.new_local_with_info(
-                        ty,
-                        self.local_decls[p_ref.local].source_info.span,
-                        LocalInfo::DerefTemp,
-                    );
 
                     // We are adding current p_ref's projections to our
                     // temp value, excluding projections we already covered.
                     let deref_place = Place::from(place_local)
                         .project_deeper(&p_ref.projection[last_len..], self.tcx);
+
+                    let temp = self.patcher.new_local_with_info(
+                        ty,
+                        self.local_decls[p_ref.local].source_info.span,
+                        LocalInfo::DerefTemp { alias_for: deref_place },
+                    );
 
                     self.patcher.add_assign(
                         loc,
