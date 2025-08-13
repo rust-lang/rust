@@ -650,6 +650,8 @@ impl<H: std::hash::Hasher> SpanEncoder for HashEncoder<H> {
     }
 }
 
+/// TokenStream needs to be hashable because it is used as a query key for caching derive macro
+/// expansions.
 impl Hash for TokenStream {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         Encodable::encode(self, &mut HashEncoder { hasher: state });
