@@ -3,6 +3,7 @@
 //@ ignore-cross-compile
 //
 //@ compile-flags: -Zsanitizer=address
+//@ compile-flags: -C unsafe-allow-abi-mismatch=sanitizer
 //@ run-fail-or-crash
 //@ error-pattern: ERROR: AddressSanitizer: stack-use-after-scope
 

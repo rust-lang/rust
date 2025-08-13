@@ -6,6 +6,8 @@
 //@ needs-sanitizer-address
 //@ ignore-cross-compile
 //
+//@ compile-flags: -C unsafe-allow-abi-mismatch=sanitizer
+//
 //@ no-prefer-dynamic
 //@ revisions: opt0 opt1
 //@ compile-flags: -Zsanitizer=address -Clto=thin

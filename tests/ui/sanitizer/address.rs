@@ -3,6 +3,7 @@
 //@ ignore-cross-compile
 //
 //@ compile-flags: -Z sanitizer=address -O -g
+//@ compile-flags: -C unsafe-allow-abi-mismatch=sanitizer
 //
 //@ run-fail-or-crash
 //@ error-pattern: AddressSanitizer: stack-buffer-overflow

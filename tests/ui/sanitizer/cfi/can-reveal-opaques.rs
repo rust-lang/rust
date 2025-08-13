@@ -1,5 +1,6 @@
 //@ needs-sanitizer-cfi
 //@ compile-flags: -Ccodegen-units=1 -Clto -Ctarget-feature=-crt-static -Zsanitizer=cfi
+//@ compile-flags: -C unsafe-allow-abi-mismatch=sanitizer
 //@ no-prefer-dynamic
 //@ only-x86_64-unknown-linux-gnu
 //@ ignore-backends: gcc
