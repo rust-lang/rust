@@ -11,8 +11,8 @@ use base_db::Crate;
 use chalk_ir::{BoundVar, Safety, TyKind};
 use either::Either;
 use hir_def::{
-    GenericDefId, HasModule, ImportPathConfig, LocalFieldId, Lookup, ModuleDefId, ModuleId,
-    TraitId,
+    GeneralConstId, GenericDefId, HasModule, ImportPathConfig, LocalFieldId, Lookup, ModuleDefId,
+    ModuleId, TraitId,
     db::DefDatabase,
     expr_store::{ExpressionStore, path::Path},
     find_path::{self, PrefixKind},
@@ -38,7 +38,7 @@ use rustc_apfloat::{
 };
 use rustc_hash::FxHashSet;
 use rustc_type_ir::{
-    AliasTyKind,
+    AliasTyKind, RegionKind,
     inherent::{AdtDef, IntoKind, SliceLike},
 };
 use smallvec::SmallVec;
@@ -61,8 +61,9 @@ use crate::{
     next_solver::{
         BoundExistentialPredicate, Ctor, DbInterner, GenericArgs, SolverDefId,
         mapping::{
-            ChalkToNextSolver, convert_args_for_result, convert_const_for_result,
-            convert_region_for_result, convert_ty_for_result,
+            ChalkToNextSolver, bound_var_to_lifetime_idx, bound_var_to_type_or_const_param_idx,
+            convert_args_for_result, convert_const_for_result, convert_region_for_result,
+            convert_ty_for_result,
         },
     },
     primitive, to_assoc_type_id,
@@ -715,28 +716,56 @@ impl HirDisplay for GenericArg {
     }
 }
 
+impl<'db> HirDisplay for crate::next_solver::GenericArg<'db> {
+    fn hir_fmt(&self, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
+        match self.kind() {
+            rustc_type_ir::GenericArgKind::Type(ty) => ty.hir_fmt(f),
+            rustc_type_ir::GenericArgKind::Lifetime(lt) => lt.hir_fmt(f),
+            rustc_type_ir::GenericArgKind::Const(c) => c.hir_fmt(f),
+        }
+    }
+}
+
 impl HirDisplay for Const {
     fn hir_fmt(&self, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
-        let data = self.interned();
-        match &data.value {
-            ConstValue::BoundVar(idx) => idx.hir_fmt(f),
-            ConstValue::InferenceVar(..) => write!(f, "#c#"),
-            ConstValue::Placeholder(idx) => {
-                let id = from_placeholder_idx(f.db, *idx);
+        let c = self.to_nextsolver(DbInterner::new_with(f.db, None, None));
+        c.hir_fmt(f)
+    }
+}
+
+impl<'db> HirDisplay for crate::next_solver::Const<'db> {
+    fn hir_fmt(&self, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
+        match self.kind() {
+            rustc_type_ir::ConstKind::Bound(db, bound_const) => {
+                write!(f, "?{}.{}", db.as_u32(), bound_const.as_u32())
+            }
+            rustc_type_ir::ConstKind::Infer(..) => write!(f, "#c#"),
+            rustc_type_ir::ConstKind::Placeholder(idx) => {
+                let id = bound_var_to_type_or_const_param_idx(f.db, idx.bound);
                 let generics = generics(f.db, id.parent);
                 let param_data = &generics[id.local_id];
                 write!(f, "{}", param_data.name().unwrap().display(f.db, f.edition()))?;
                 Ok(())
             }
-            ConstValue::Concrete(c) => match &c.interned {
-                ConstScalar::Bytes(b, m) => render_const_scalar(f, b, m, &data.ty),
-                ConstScalar::UnevaluatedConst(c, parameters) => {
-                    write!(f, "{}", c.name(f.db))?;
-                    hir_fmt_generics(f, parameters.as_slice(Interner), c.generic_def(f.db), None)?;
-                    Ok(())
-                }
-                ConstScalar::Unknown => f.write_char('_'),
-            },
+            rustc_type_ir::ConstKind::Value(const_bytes) => render_const_scalar_ns(
+                f,
+                &const_bytes.value.inner().0,
+                &const_bytes.value.inner().1,
+                const_bytes.ty,
+            ),
+            rustc_type_ir::ConstKind::Unevaluated(unev) => {
+                let c = match unev.def {
+                    SolverDefId::ConstId(id) => GeneralConstId::ConstId(id),
+                    SolverDefId::StaticId(id) => GeneralConstId::StaticId(id),
+                    _ => unreachable!(),
+                };
+                write!(f, "{}", c.name(f.db))?;
+                hir_fmt_generics_ns(f, unev.args.as_slice(), c.generic_def(f.db), None)?;
+                Ok(())
+            }
+            rustc_type_ir::ConstKind::Error(..) => f.write_char('_'),
+            rustc_type_ir::ConstKind::Expr(..) => write!(f, "<const-expr>"),
+            rustc_type_ir::ConstKind::Param(_) => write!(f, "<param>"),
         }
     }
 }
@@ -1748,6 +1777,27 @@ fn hir_fmt_generics(
     Ok(())
 }
 
+fn hir_fmt_generics_ns<'db>(
+    f: &mut HirFormatter<'_>,
+    parameters: &[crate::next_solver::GenericArg<'db>],
+    generic_def: Option<hir_def::GenericDefId>,
+    self_: Option<crate::next_solver::Ty<'db>>,
+) -> Result<(), HirDisplayError> {
+    if parameters.is_empty() {
+        return Ok(());
+    }
+
+    let parameters_to_write = generic_args_sans_defaults_ns(f, generic_def, parameters);
+
+    if !parameters_to_write.is_empty() {
+        write!(f, "<")?;
+        hir_fmt_generic_arguments_ns(f, parameters_to_write, self_)?;
+        write!(f, ">")?;
+    }
+
+    Ok(())
+}
+
 fn generic_args_sans_defaults<'ga>(
     f: &mut HirFormatter<'_>,
     generic_def: Option<hir_def::GenericDefId>,
@@ -1803,6 +1853,87 @@ fn generic_args_sans_defaults<'ga>(
     }
 }
 
+fn hir_fmt_generic_args<'db>(
+    f: &mut HirFormatter<'_>,
+    parameters: &[crate::next_solver::GenericArg<'db>],
+    generic_def: Option<hir_def::GenericDefId>,
+    self_: Option<crate::next_solver::Ty<'db>>,
+) -> Result<(), HirDisplayError> {
+    if parameters.is_empty() {
+        return Ok(());
+    }
+
+    let parameters_to_write = generic_args_sans_defaults_ns(f, generic_def, parameters);
+
+    if !parameters_to_write.is_empty() {
+        write!(f, "<")?;
+        hir_fmt_generic_arguments_ns(f, parameters_to_write, self_)?;
+        write!(f, ">")?;
+    }
+
+    Ok(())
+}
+
+fn generic_args_sans_defaults_ns<'ga, 'db>(
+    f: &mut HirFormatter<'_>,
+    generic_def: Option<hir_def::GenericDefId>,
+    parameters: &'ga [crate::next_solver::GenericArg<'db>],
+) -> &'ga [crate::next_solver::GenericArg<'db>] {
+    let interner = DbInterner::new_with(f.db, Some(f.krate()), None);
+    if f.display_kind.is_source_code() || f.omit_verbose_types() {
+        match generic_def
+            .map(|generic_def_id| f.db.generic_defaults(generic_def_id))
+            .filter(|it| !it.is_empty())
+        {
+            None => parameters,
+            Some(default_parameters) => {
+                let should_show = |arg: &crate::next_solver::GenericArg<'db>, i: usize| {
+                    let is_err = |arg: &crate::next_solver::GenericArg<'db>| match arg.kind() {
+                        rustc_type_ir::GenericArgKind::Lifetime(it) => {
+                            matches!(it.kind(), RegionKind::ReError(..))
+                        }
+                        rustc_type_ir::GenericArgKind::Type(it) => {
+                            matches!(it.kind(), rustc_type_ir::TyKind::Error(..))
+                        }
+                        rustc_type_ir::GenericArgKind::Const(it) => {
+                            matches!(it.kind(), rustc_type_ir::ConstKind::Error(..),)
+                        }
+                    };
+                    // if the arg is error like, render it to inform the user
+                    if is_err(arg) {
+                        return true;
+                    }
+                    // otherwise, if the arg is equal to the param default, hide it (unless the
+                    // default is an error which can happen for the trait Self type)
+                    match default_parameters.get(i) {
+                        None => true,
+                        Some(default_parameter) => {
+                            // !is_err(default_parameter.skip_binders())
+                            // &&
+                            arg != &default_parameter
+                                .clone()
+                                .substitute(
+                                    Interner,
+                                    &convert_args_for_result(interner, &parameters[..i]),
+                                )
+                                .to_nextsolver(interner)
+                        }
+                    }
+                };
+                let mut default_from = 0;
+                for (i, parameter) in parameters.iter().enumerate() {
+                    if should_show(parameter, i) {
+                        default_from = i + 1;
+                    }
+                }
+                &parameters[0..default_from]
+            }
+        }
+    } else {
+        parameters
+    }
+}
+
 fn hir_fmt_generic_arguments(
     f: &mut HirFormatter<'_>,
     parameters: &[GenericArg],
@@ -1821,6 +1952,30 @@ fn hir_fmt_generic_arguments(
         }
         match self_ {
             self_ @ Some(_) if generic_arg.ty(Interner) == self_ => write!(f, "Self")?,
+            _ => generic_arg.hir_fmt(f)?,
+        }
+    }
+    Ok(())
+}
+
+fn hir_fmt_generic_arguments_ns<'db>(
+    f: &mut HirFormatter<'_>,
+    parameters: &[crate::next_solver::GenericArg<'db>],
+    self_: Option<crate::next_solver::Ty<'db>>,
+) -> Result<(), HirDisplayError> {
+    let mut first = true;
+    let lifetime_offset = parameters.iter().position(|arg| arg.region().is_some());
+
+    let (ty_or_const, lifetimes) = match lifetime_offset {
+        Some(offset) => parameters.split_at(offset),
+        None => (parameters, &[][..]),
+    };
+    for generic_arg in lifetimes.iter().chain(ty_or_const) {
+        if !mem::take(&mut first) {
+            write!(f, ", ")?;
+        }
+        match self_ {
+            self_ @ Some(_) if generic_arg.ty() == self_ => write!(f, "Self")?,
             _ => generic_arg.hir_fmt(f)?,
         }
     }
@@ -2067,6 +2222,20 @@ impl HirDisplay for TraitRef {
     }
 }
 
+impl<'db> HirDisplay for crate::next_solver::TraitRef<'db> {
+    fn hir_fmt(&self, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
+        let trait_ = match self.def_id {
+            SolverDefId::TraitId(id) => id,
+            _ => unreachable!(),
+        };
+        f.start_location_link(trait_.into());
+        write!(f, "{}", f.db.trait_signature(trait_).name.display(f.db, f.edition()))?;
+        f.end_location_link();
+        let substs = self.args.as_slice();
+        hir_fmt_generic_args(f, &substs[1..], None, substs[0].ty())
+    }
+}
+
 impl HirDisplay for WhereClause {
     fn hir_fmt(&self, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
         if f.should_truncate() {
@@ -2143,6 +2312,35 @@ impl HirDisplay for LifetimeData {
             }
             LifetimeData::Erased => write!(f, "'<erased>"),
             LifetimeData::Phantom(void, _) => match *void {},
+        }
+    }
+}
+
+impl<'db> HirDisplay for crate::next_solver::Region<'db> {
+    fn hir_fmt(&self, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
+        match self.kind() {
+            rustc_type_ir::RegionKind::RePlaceholder(idx) => {
+                let id = bound_var_to_lifetime_idx(f.db, idx.bound.var);
+                let generics = generics(f.db, id.parent);
+                let param_data = &generics[id.local_id];
+                write!(f, "{}", param_data.name.display(f.db, f.edition()))?;
+                Ok(())
+            }
+            rustc_type_ir::RegionKind::ReBound(db, idx) => {
+                write!(f, "?{}.{}", db.as_u32(), idx.var.as_u32())
+            }
+            rustc_type_ir::RegionKind::ReVar(_) => write!(f, "_"),
+            rustc_type_ir::RegionKind::ReStatic => write!(f, "'static"),
+            rustc_type_ir::RegionKind::ReError(..) => {
+                if cfg!(test) {
+                    write!(f, "'?")
+                } else {
+                    write!(f, "'_")
+                }
+            }
+            rustc_type_ir::RegionKind::ReErased => write!(f, "'<erased>"),
+            rustc_type_ir::RegionKind::ReEarlyParam(_) => write!(f, "<param>"),
+            rustc_type_ir::RegionKind::ReLateParam(_) => write!(f, "<late-param>"),
         }
     }
 }

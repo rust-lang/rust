@@ -18,13 +18,14 @@ use rustc_type_ir::{
     shift_vars,
     solve::Goal,
 };
-use salsa::plumbing::AsId;
+use salsa::plumbing::FromId;
+use salsa::{Id, plumbing::AsId};
 
 use crate::{
     ConcreteConst, ConstScalar, ImplTraitId, Interner, MemoryMap,
     db::{
-        HirDatabase, InternedClosureId, InternedCoroutineId, InternedOpaqueTyId,
-        InternedTypeOrConstParamId,
+        HirDatabase, InternedClosureId, InternedCoroutineId, InternedLifetimeParamId,
+        InternedOpaqueTyId, InternedTypeOrConstParamId,
     },
     from_assoc_type_id, from_chalk_trait_id,
     mapping::ToChalk,
@@ -53,6 +54,24 @@ pub fn to_placeholder_idx<T: Clone + std::fmt::Debug>(
         universe: UniverseIndex::ZERO,
         bound: map(BoundVar::from_usize(interned_id.as_id().index() as usize)),
     }
+}
+
+pub fn bound_var_to_type_or_const_param_idx(
+    db: &dyn HirDatabase,
+    var: rustc_type_ir::BoundVar,
+) -> TypeOrConstParamId {
+    // SAFETY: We cannot really encapsulate this unfortunately, so just hope this is sound.
+    let interned_id = InternedTypeOrConstParamId::from_id(unsafe { Id::from_index(var.as_u32()) });
+    interned_id.loc(db)
+}
+
+pub fn bound_var_to_lifetime_idx(
+    db: &dyn HirDatabase,
+    var: rustc_type_ir::BoundVar,
+) -> LifetimeParamId {
+    // SAFETY: We cannot really encapsulate this unfortunately, so just hope this is sound.
+    let interned_id = InternedLifetimeParamId::from_id(unsafe { Id::from_index(var.as_u32()) });
+    interned_id.loc(db)
 }
 
 pub fn convert_binder_to_early_binder<'db, T: rustc_type_ir::TypeFoldable<DbInterner<'db>>>(

@@ -35,6 +35,29 @@ impl<'db> std::fmt::Debug for GenericArg<'db> {
     }
 }
 
+impl<'db> GenericArg<'db> {
+    pub fn ty(self) -> Option<Ty<'db>> {
+        match self.kind() {
+            GenericArgKind::Type(ty) => Some(ty),
+            _ => None,
+        }
+    }
+
+    pub fn expect_ty(self) -> Ty<'db> {
+        match self.kind() {
+            GenericArgKind::Type(ty) => ty,
+            _ => panic!("Expected ty, got {:?}", self),
+        }
+    }
+
+    pub fn region(self) -> Option<Region<'db>> {
+        match self.kind() {
+            GenericArgKind::Lifetime(r) => Some(r),
+            _ => None,
+        }
+    }
+}
+
 impl<'db> From<Term<'db>> for GenericArg<'db> {
     fn from(value: Term<'db>) -> Self {
         match value {

@@ -115,7 +115,7 @@ pub use crate::{
         VisibleTraits,
     },
 };
-use rustc_type_ir::inherent::IntoKind;
+use rustc_type_ir::inherent::{IntoKind, SliceLike};
 
 // Be careful with these re-exports.
 //
@@ -4513,14 +4513,20 @@ impl Impl {
     }
 
     pub fn trait_(self, db: &dyn HirDatabase) -> Option<Trait> {
-        let trait_ref = db.impl_trait(self.id)?;
-        let id = trait_ref.skip_binders().hir_trait_id();
+        let trait_ref = db.impl_trait_ns(self.id)?;
+        let id = trait_ref.skip_binder().def_id;
+        let id = match id {
+            SolverDefId::TraitId(id) => id,
+            _ => unreachable!(),
+        };
         Some(Trait { id })
     }
 
     pub fn trait_ref(self, db: &dyn HirDatabase) -> Option<TraitRef<'_>> {
+        let interner = DbInterner::new_with(db, None, None);
         let substs = TyBuilder::placeholder_subst(db, self.id);
-        let trait_ref = db.impl_trait(self.id)?.substitute(Interner, &substs);
+        let trait_ref =
+            db.impl_trait(self.id)?.substitute(Interner, &substs).to_nextsolver(interner);
         let resolver = self.id.resolver(db);
         Some(TraitRef::new_with_resolver(db, &resolver, trait_ref))
     }
@@ -4589,7 +4595,7 @@ impl Impl {
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub struct TraitRef<'db> {
     env: Arc<TraitEnvironment>,
-    trait_ref: hir_ty::TraitRef,
+    trait_ref: hir_ty::next_solver::TraitRef<'db>,
     _pd: PhantomCovariantLifetime<'db>,
 }
 
@@ -4597,7 +4603,7 @@ impl<'db> TraitRef<'db> {
     pub(crate) fn new_with_resolver(
         db: &'db dyn HirDatabase,
         resolver: &Resolver<'_>,
-        trait_ref: hir_ty::TraitRef,
+        trait_ref: hir_ty::next_solver::TraitRef<'db>,
     ) -> Self {
         let env = resolver
             .generic_def()
@@ -4606,25 +4612,26 @@ impl<'db> TraitRef<'db> {
     }
 
     pub fn trait_(&self) -> Trait {
-        let id = self.trait_ref.hir_trait_id();
+        let id = match self.trait_ref.def_id {
+            SolverDefId::TraitId(id) => id,
+            _ => unreachable!(),
+        };
         Trait { id }
     }
 
-    pub fn self_ty(&self) -> Type<'_> {
-        let ty = self.trait_ref.self_type_parameter(Interner);
-        Type { env: self.env.clone(), ty, _pd: PhantomCovariantLifetime::new() }
+    pub fn self_ty(&self) -> TypeNs<'_> {
+        let ty = self.trait_ref.self_ty();
+        TypeNs { env: self.env.clone(), ty, _pd: PhantomCovariantLifetime::new() }
     }
 
     /// Returns `idx`-th argument of this trait reference if it is a type argument. Note that the
     /// first argument is the `Self` type.
-    pub fn get_type_argument(&self, idx: usize) -> Option<Type<'db>> {
-        self.trait_ref
-            .substitution
-            .as_slice(Interner)
-            .get(idx)
-            .and_then(|arg| arg.ty(Interner))
-            .cloned()
-            .map(|ty| Type { env: self.env.clone(), ty, _pd: PhantomCovariantLifetime::new() })
+    pub fn get_type_argument(&self, idx: usize) -> Option<TypeNs<'db>> {
+        self.trait_ref.args.as_slice().get(idx).and_then(|arg| arg.ty()).map(|ty| TypeNs {
+            env: self.env.clone(),
+            ty,
+            _pd: PhantomCovariantLifetime::new(),
+        })
     }
 }
 
