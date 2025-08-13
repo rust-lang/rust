@@ -402,6 +402,7 @@ bitflags::bitflags! {
         const SKIP_BOXED_SLICE_DURING_METHOD_DISPATCH = 1 << 6;
         const RUSTC_PAREN_SUGAR = 1 << 7;
         const COINDUCTIVE = 1 << 8;
+        const ALIAS = 1 << 9;
     }
 }
 
@@ -425,6 +426,9 @@ impl TraitSignature {
         }
         if source.value.unsafe_token().is_some() {
             flags.insert(TraitFlags::UNSAFE);
+        }
+        if source.value.eq_token().is_some() {
+            flags.insert(TraitFlags::ALIAS);
         }
         if attrs.by_key(sym::fundamental).exists() {
             flags |= TraitFlags::FUNDAMENTAL;

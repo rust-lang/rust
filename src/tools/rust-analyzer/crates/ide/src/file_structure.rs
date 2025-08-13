@@ -943,7 +943,7 @@ fn let_statements() {
                         navigation_range: 251..256,
                         node_range: 245..262,
                         kind: SymbolKind(
-                            TraitAlias,
+                            Trait,
                         ),
                         detail: None,
                         deprecated: false,

@@ -1172,7 +1172,6 @@ impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
             | SolverDefId::AdtId(_)
             | SolverDefId::TraitId(_)
             | SolverDefId::ImplId(_)
-            | SolverDefId::TraitAliasId(_)
             | SolverDefId::Ctor(..)
             | SolverDefId::InternedOpaqueTyId(..) => panic!(),
         };
@@ -1790,7 +1789,12 @@ impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
     }
 
     fn trait_is_alias(self, trait_def_id: Self::DefId) -> bool {
-        matches!(trait_def_id, SolverDefId::TraitAliasId(_))
+        let trait_ = match trait_def_id {
+            SolverDefId::TraitId(id) => id,
+            _ => panic!("Unexpected SolverDefId in trait_is_alias"),
+        };
+        let trait_data = self.db().trait_signature(trait_);
+        trait_data.flags.contains(TraitFlags::ALIAS)
     }
 
     fn trait_is_dyn_compatible(self, trait_def_id: Self::DefId) -> bool {
