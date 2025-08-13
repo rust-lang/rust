@@ -232,7 +232,13 @@ impl Step for Rustc {
     }
 
     fn metadata(&self) -> Option<StepMetadata> {
-        Some(StepMetadata::check("rustc", self.target).built_by(self.build_compiler))
+        let metadata = StepMetadata::check("rustc", self.target).built_by(self.build_compiler);
+        let metadata = if self.crates.is_empty() {
+            metadata
+        } else {
+            metadata.with_metadata(format!("({} crates)", self.crates.len()))
+        };
+        Some(metadata)
     }
 }
 
