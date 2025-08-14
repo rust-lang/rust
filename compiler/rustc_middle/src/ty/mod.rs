@@ -1002,6 +1002,17 @@ impl<'tcx> ParamEnv<'tcx> {
     pub fn and<T: TypeVisitable<TyCtxt<'tcx>>>(self, value: T) -> ParamEnvAnd<'tcx, T> {
         ParamEnvAnd { param_env: self, value }
     }
+
+    /// Eagerly reveal all opaque types in the `param_env`.
+    pub fn with_normalized(self, tcx: TyCtxt<'tcx>) -> ParamEnv<'tcx> {
+        // No need to reveal opaques with the new solver enabled,
+        // since we have lazy norm.
+        if tcx.next_trait_solver_globally() {
+            self
+        } else {
+            ParamEnv::new(tcx.reveal_opaque_types_in_bounds(self.caller_bounds))
+        }
+    }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, TypeFoldable, TypeVisitable)]
@@ -1055,7 +1066,17 @@ impl<'tcx> TypingEnv<'tcx> {
     }
 
     pub fn post_analysis(tcx: TyCtxt<'tcx>, def_id: impl IntoQueryParam<DefId>) -> TypingEnv<'tcx> {
-        tcx.typing_env_normalized_for_post_analysis(def_id)
+        TypingEnv {
+            typing_mode: TypingMode::PostAnalysis,
+            param_env: tcx.param_env_normalized_for_post_analysis(def_id),
+        }
+    }
+
+    pub fn codegen(tcx: TyCtxt<'tcx>, def_id: impl IntoQueryParam<DefId>) -> TypingEnv<'tcx> {
+        TypingEnv {
+            typing_mode: TypingMode::Codegen,
+            param_env: tcx.param_env_normalized_for_post_analysis(def_id),
+        }
     }
 
     /// Modify the `typing_mode` to `PostAnalysis` or `Codegen` and eagerly reveal all opaque types
@@ -1066,14 +1087,20 @@ impl<'tcx> TypingEnv<'tcx> {
             return self;
         }
 
-        // No need to reveal opaques with the new solver enabled,
-        // since we have lazy norm.
-        let param_env = if tcx.next_trait_solver_globally() {
-            param_env
-        } else {
-            ParamEnv::new(tcx.reveal_opaque_types_in_bounds(param_env.caller_bounds()))
-        };
+        let param_env = param_env.with_normalized(tcx);
         TypingEnv { typing_mode: TypingMode::PostAnalysis, param_env }
+    }
+
+    /// Modify the `typing_mode` to `PostAnalysis` or `Codegen` and eagerly reveal all opaque types
+    /// in the `param_env`.
+    pub fn with_codegen_normalized(self, tcx: TyCtxt<'tcx>) -> TypingEnv<'tcx> {
+        let TypingEnv { typing_mode, param_env } = self;
+        if let TypingMode::Codegen = typing_mode {
+            return self;
+        }
+
+        let param_env = param_env.with_normalized(tcx);
+        TypingEnv { typing_mode: TypingMode::Codegen, param_env }
     }
 
     /// Combine this typing environment with the given `value` to be used by

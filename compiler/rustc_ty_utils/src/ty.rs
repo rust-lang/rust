@@ -285,8 +285,8 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ImplTraitInTraitFinder<'_, 'tcx> {
     }
 }
 
-fn typing_env_normalized_for_post_analysis(tcx: TyCtxt<'_>, def_id: DefId) -> ty::TypingEnv<'_> {
-    ty::TypingEnv::non_body_analysis(tcx, def_id).with_post_analysis_normalized(tcx)
+fn param_env_normalized_for_post_analysis(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
+    tcx.param_env(def_id).with_normalized(tcx)
 }
 
 /// Check if a function is async.
@@ -402,7 +402,7 @@ pub(crate) fn provide(providers: &mut Providers) {
         asyncness,
         adt_sizedness_constraint,
         param_env,
-        typing_env_normalized_for_post_analysis,
+        param_env_normalized_for_post_analysis,
         defaultness,
         unsizing_params_for_adt,
         impl_self_is_guaranteed_unsized,
