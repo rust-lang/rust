@@ -333,10 +333,15 @@ impl RealPredicate {
     }
 }
 
-/// LLVMTypeKind
-#[derive(Copy, Clone, PartialEq, Debug)]
+/// Must match the layout of `LLVMTypeKind`.
+///
+/// Use [`RawEnum<TypeKind>`] for values of `LLVMTypeKind` returned from LLVM,
+/// to avoid risk of UB if LLVM adds new enum values.
+///
+/// All of LLVM's variants should be declared here, even if no Rust-side code refers
+/// to them, because unknown variants will cause [`RawEnum::to_rust`] to panic.
+#[derive(Copy, Clone, PartialEq, Debug, TryFromU32)]
 #[repr(C)]
-#[expect(dead_code, reason = "Some variants are unused, but are kept to match LLVM-C")]
 pub(crate) enum TypeKind {
     Void = 0,
     Half = 1,
@@ -1046,6 +1051,8 @@ unsafe extern "C" {
         Dialect: AsmDialect,
         CanThrow: llvm::Bool,
     ) -> &'ll Value;
+
+    pub(crate) safe fn LLVMGetTypeKind(Ty: &Type) -> RawEnum<TypeKind>;
 
     // Operations on integer types
     pub(crate) fn LLVMInt1TypeInContext(C: &Context) -> &Type;
@@ -1841,9 +1848,6 @@ unsafe extern "C" {
 
     // Create and destroy contexts.
     pub(crate) fn LLVMRustContextCreate(shouldDiscardNames: bool) -> &'static mut Context;
-
-    /// See llvm::LLVMTypeKind::getTypeID.
-    pub(crate) fn LLVMRustGetTypeKind(Ty: &Type) -> TypeKind;
 
     // Operations on all values
     pub(crate) fn LLVMRustGlobalAddMetadata<'a>(
