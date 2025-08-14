@@ -478,7 +478,7 @@ fn gen_call_handling<'ll>(
     // FIXME(offload): launch kernels
     let mut values = vec![];
     values.push((4, cx.get_const_i32(3)));
-    values.push((4, cx.get_const_i32(3)));
+    values.push((4, cx.get_const_i32(num_args)));
     values.push((8, geps.0));
     values.push((8, geps.1));
     values.push((8, geps.2));
