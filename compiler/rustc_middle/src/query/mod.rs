@@ -2651,11 +2651,11 @@ rustc_queries! {
     }
 
     query generics_require_sized_self(def_id: DefId) -> bool {
-        desc { "check whether the item has a `where Self: Sized` bound" }
+        desc { |tcx| "check whether `{}` has a `where Self: Sized` bound", tcx.def_path_str(def_id) }
     }
 
     query cross_crate_inlinable(def_id: DefId) -> bool {
-        desc { "whether the item should be made inlinable across crates" }
+        desc { |tcx| "whether `{}` should be made inlinable across crates", tcx.def_path_str(def_id) }
         separate_provide_extern
     }
 
