@@ -125,7 +125,17 @@ pub fn dump_mir_with_options<'tcx, F>(
         return;
     }
 
-    dump_matched_mir_node(tcx, pass_num, pass_name, disambiguator, body, extra_data, options);
+    let _: io::Result<()> = try {
+        let mut file = create_dump_file(tcx, "mir", pass_num, pass_name, disambiguator, body)?;
+        dump_mir_to_writer(tcx, pass_name, disambiguator, body, &mut file, extra_data, options)?;
+    };
+
+    if tcx.sess.opts.unstable_opts.dump_mir_graphviz {
+        let _: io::Result<()> = try {
+            let mut file = create_dump_file(tcx, "dot", pass_num, pass_name, disambiguator, body)?;
+            write_mir_fn_graphviz(tcx, body, false, &mut file)?;
+        };
+    }
 }
 
 pub fn dump_enabled(tcx: TyCtxt<'_>, pass_name: &str, def_id: DefId) -> bool {
@@ -185,30 +195,6 @@ where
     write_user_type_annotations(tcx, body, w)?;
     write_mir_fn(tcx, body, &mut extra_data, w, options)?;
     extra_data(PassWhere::AfterCFG, w)
-}
-
-fn dump_matched_mir_node<'tcx, F>(
-    tcx: TyCtxt<'tcx>,
-    pass_num: bool,
-    pass_name: &str,
-    disambiguator: &dyn Display,
-    body: &Body<'tcx>,
-    extra_data: F,
-    options: PrettyPrintMirOptions,
-) where
-    F: FnMut(PassWhere, &mut dyn io::Write) -> io::Result<()>,
-{
-    let _: io::Result<()> = try {
-        let mut file = create_dump_file(tcx, "mir", pass_num, pass_name, disambiguator, body)?;
-        dump_mir_to_writer(tcx, pass_name, disambiguator, body, &mut file, extra_data, options)?;
-    };
-
-    if tcx.sess.opts.unstable_opts.dump_mir_graphviz {
-        let _: io::Result<()> = try {
-            let mut file = create_dump_file(tcx, "dot", pass_num, pass_name, disambiguator, body)?;
-            write_mir_fn_graphviz(tcx, body, false, &mut file)?;
-        };
-    }
 }
 
 /// Returns the path to the filename where we should dump a given MIR.
