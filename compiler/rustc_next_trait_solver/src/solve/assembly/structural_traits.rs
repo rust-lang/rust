@@ -4,7 +4,7 @@
 use derive_where::derive_where;
 use rustc_type_ir::data_structures::HashMap;
 use rustc_type_ir::inherent::*;
-use rustc_type_ir::lang_items::TraitSolverLangItem;
+use rustc_type_ir::lang_items::{TraitSolverLangItem, TraitSolverTraitLangItem};
 use rustc_type_ir::solve::SizedTraitKind;
 use rustc_type_ir::solve::inspect::ProbeKind;
 use rustc_type_ir::{
@@ -466,7 +466,7 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_async_callable<I: 
                 nested.push(
                     ty::TraitRef::new(
                         cx,
-                        cx.require_lang_item(TraitSolverLangItem::AsyncFnKindHelper),
+                        cx.require_trait_lang_item(TraitSolverTraitLangItem::AsyncFnKindHelper),
                         [kind_ty, Ty::from_closure_kind(cx, goal_kind)],
                     )
                     .upcast(cx),
@@ -508,7 +508,7 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_async_callable<I: 
             let args = args.as_closure();
             let bound_sig = args.sig();
             let sig = bound_sig.skip_binder();
-            let future_trait_def_id = cx.require_lang_item(TraitSolverLangItem::Future);
+            let future_trait_def_id = cx.require_trait_lang_item(TraitSolverTraitLangItem::Future);
             // `Closure`s only implement `AsyncFn*` when their return type
             // implements `Future`.
             let mut nested = vec![
@@ -526,7 +526,7 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_async_callable<I: 
                 }
             } else {
                 let async_fn_kind_trait_def_id =
-                    cx.require_lang_item(TraitSolverLangItem::AsyncFnKindHelper);
+                    cx.require_trait_lang_item(TraitSolverTraitLangItem::AsyncFnKindHelper);
                 // When we don't know the closure kind (and therefore also the closure's upvars,
                 // which are computed at the same time), we must delay the computation of the
                 // generator's upvars. We do this using the `AsyncFnKindHelper`, which as a trait
@@ -593,7 +593,7 @@ fn fn_item_to_async_callable<I: Interner>(
     bound_sig: ty::Binder<I, ty::FnSig<I>>,
 ) -> Result<(ty::Binder<I, AsyncCallableRelevantTypes<I>>, Vec<I::Predicate>), NoSolution> {
     let sig = bound_sig.skip_binder();
-    let future_trait_def_id = cx.require_lang_item(TraitSolverLangItem::Future);
+    let future_trait_def_id = cx.require_trait_lang_item(TraitSolverTraitLangItem::Future);
     // `FnDef` and `FnPtr` only implement `AsyncFn*` when their
     // return type implements `Future`.
     let nested = vec![
@@ -744,7 +744,7 @@ pub(in crate::solve) fn const_conditions_for_destruct<I: Interner>(
     cx: I,
     self_ty: I::Ty,
 ) -> Result<Vec<ty::TraitRef<I>>, NoSolution> {
-    let destruct_def_id = cx.require_lang_item(TraitSolverLangItem::Destruct);
+    let destruct_def_id = cx.require_trait_lang_item(TraitSolverTraitLangItem::Destruct);
 
     match self_ty.kind() {
         // `ManuallyDrop` is trivially `[const] Destruct` as we do not run any drop glue on it.
@@ -763,7 +763,7 @@ pub(in crate::solve) fn const_conditions_for_destruct<I: Interner>(
                 Some(AdtDestructorKind::NotConst) => return Err(NoSolution),
                 // `Drop` impl exists, and it's const. Require `Ty: [const] Drop` to hold.
                 Some(AdtDestructorKind::Const) => {
-                    let drop_def_id = cx.require_lang_item(TraitSolverLangItem::Drop);
+                    let drop_def_id = cx.require_trait_lang_item(TraitSolverTraitLangItem::Drop);
                     let drop_trait_ref = ty::TraitRef::new(cx, drop_def_id, [self_ty]);
                     const_conditions.push(drop_trait_ref);
                 }
@@ -881,7 +881,7 @@ where
 
     // FIXME(associated_const_equality): Also add associated consts to
     // the requirements here.
-    for associated_type_def_id in cx.associated_type_def_ids(trait_ref.def_id) {
+    for associated_type_def_id in cx.associated_type_def_ids(trait_ref.def_id.into()) {
         // associated types that require `Self: Sized` do not show up in the built-in
         // implementation of `Trait for dyn Trait`, and can be dropped here.
         if cx.generics_require_sized_self(associated_type_def_id) {

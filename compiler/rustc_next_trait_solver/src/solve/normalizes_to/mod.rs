@@ -5,7 +5,7 @@ mod opaque_types;
 
 use rustc_type_ir::fast_reject::DeepRejectCtxt;
 use rustc_type_ir::inherent::*;
-use rustc_type_ir::lang_items::TraitSolverLangItem;
+use rustc_type_ir::lang_items::{TraitSolverLangItem, TraitSolverTraitLangItem};
 use rustc_type_ir::solve::SizedTraitKind;
 use rustc_type_ir::{self as ty, Interner, NormalizesTo, PredicateKind, Upcast as _};
 use tracing::instrument;
@@ -103,7 +103,7 @@ where
         self.with_replaced_self_ty(cx, self_ty)
     }
 
-    fn trait_def_id(self, cx: I) -> I::DefId {
+    fn trait_def_id(self, cx: I) -> I::TraitId {
         self.trait_def_id(cx)
     }
 
@@ -456,7 +456,11 @@ where
         // A built-in `Fn` impl only holds if the output is sized.
         // (FIXME: technically we only need to check this if the type is a fn ptr...)
         let output_is_sized_pred = tupled_inputs_and_output.map_bound(|(_, output)| {
-            ty::TraitRef::new(cx, cx.require_lang_item(TraitSolverLangItem::Sized), [output])
+            ty::TraitRef::new(
+                cx,
+                cx.require_trait_lang_item(TraitSolverTraitLangItem::Sized),
+                [output],
+            )
         });
 
         let pred = tupled_inputs_and_output
@@ -503,7 +507,11 @@ where
         // (FIXME: technically we only need to check this if the type is a fn ptr...)
         let output_is_sized_pred = tupled_inputs_and_output_and_coroutine.map_bound(
             |AsyncCallableRelevantTypes { output_coroutine_ty: output_ty, .. }| {
-                ty::TraitRef::new(cx, cx.require_lang_item(TraitSolverLangItem::Sized), [output_ty])
+                ty::TraitRef::new(
+                    cx,
+                    cx.require_trait_lang_item(TraitSolverTraitLangItem::Sized),
+                    [output_ty],
+                )
             },
         );
 
@@ -678,7 +686,7 @@ where
                     ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|ecx| {
                         let sized_predicate = ty::TraitRef::new(
                             cx,
-                            cx.require_lang_item(TraitSolverLangItem::Sized),
+                            cx.require_trait_lang_item(TraitSolverTraitLangItem::Sized),
                             [I::GenericArg::from(goal.predicate.self_ty())],
                         );
                         ecx.add_goal(GoalSource::Misc, goal.with(cx, sized_predicate));
@@ -983,13 +991,13 @@ where
         target_container_def_id: I::DefId,
     ) -> Result<I::GenericArgs, NoSolution> {
         let cx = self.cx();
-        Ok(if target_container_def_id == impl_trait_ref.def_id {
+        Ok(if target_container_def_id == impl_trait_ref.def_id.into() {
             // Default value from the trait definition. No need to rebase.
             goal.predicate.alias.args
         } else if target_container_def_id == impl_def_id {
             // Same impl, no need to fully translate, just a rebase from
             // the trait is sufficient.
-            goal.predicate.alias.args.rebase_onto(cx, impl_trait_ref.def_id, impl_args)
+            goal.predicate.alias.args.rebase_onto(cx, impl_trait_ref.def_id.into(), impl_args)
         } else {
             let target_args = self.fresh_args_for_item(target_container_def_id);
             let target_trait_ref =
@@ -1004,7 +1012,7 @@ where
                     .iter_instantiated(cx, target_args)
                     .map(|pred| goal.with(cx, pred)),
             );
-            goal.predicate.alias.args.rebase_onto(cx, impl_trait_ref.def_id, target_args)
+            goal.predicate.alias.args.rebase_onto(cx, impl_trait_ref.def_id.into(), target_args)
         })
     }
 }
