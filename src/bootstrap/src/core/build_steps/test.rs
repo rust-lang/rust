@@ -10,8 +10,6 @@ use std::path::{Path, PathBuf};
 use std::{env, fs, iter};
 
 use build_helper::exit;
-#[cfg(feature = "tracing")]
-use tracing::instrument;
 
 use crate::core::build_steps::compile::{Std, run_cargo};
 use crate::core::build_steps::doc::DocumentationFormat;
@@ -760,10 +758,6 @@ impl Step for CompiletestTest {
     }
 
     /// Runs `cargo test` for compiletest.
-    #[cfg_attr(
-        feature = "tracing",
-        instrument(level = "debug", name = "CompiletestTest::run", skip_all)
-    )]
     fn run(self, builder: &Builder<'_>) {
         let host = self.host;
 

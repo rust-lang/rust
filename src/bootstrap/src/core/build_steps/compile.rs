@@ -16,7 +16,7 @@ use std::{env, fs, str};
 
 use serde_derive::Deserialize;
 #[cfg(feature = "tracing")]
-use tracing::{instrument, span};
+use tracing::span;
 
 use crate::core::build_steps::gcc::{Gcc, GccOutput, add_cg_gcc_cargo_flags};
 use crate::core::build_steps::tool::{RustcPrivateCompilers, SourceType, copy_lld_artifacts};
@@ -104,7 +104,6 @@ impl Step for Std {
         run.crate_or_deps("sysroot").path("library")
     }
 
-    #[cfg_attr(feature = "tracing", instrument(level = "trace", name = "Std::make_run", skip_all))]
     fn make_run(run: RunConfig<'_>) {
         let crates = std_crates_for_run_make(&run);
         let builder = run.builder;
@@ -135,19 +134,6 @@ impl Step for Std {
     /// This will build the standard library for a particular stage of the build
     /// using the `compiler` targeting the `target` architecture. The artifacts
     /// created will also be linked into the sysroot directory.
-    #[cfg_attr(
-        feature = "tracing",
-        instrument(
-            level = "debug",
-            name = "Std::run",
-            skip_all,
-            fields(
-                target = ?self.target,
-                compiler = ?self.compiler,
-                force_recompile = self.force_recompile
-            ),
-        ),
-    )]
     fn run(self, builder: &Builder<'_>) {
         let target = self.target;
 
@@ -717,19 +703,6 @@ impl Step for StdLink {
     /// Note that this assumes that `compiler` has already generated the libstd
     /// libraries for `target`, and this method will find them in the relevant
     /// output directory.
-    #[cfg_attr(
-        feature = "tracing",
-        instrument(
-            level = "trace",
-            name = "StdLink::run",
-            skip_all,
-            fields(
-                compiler = ?self.compiler,
-                target_compiler = ?self.target_compiler,
-                target = ?self.target
-            ),
-        ),
-    )]
     fn run(self, builder: &Builder<'_>) {
         let compiler = self.compiler;
         let target_compiler = self.target_compiler;
@@ -895,15 +868,6 @@ impl Step for StartupObjects {
     /// They don't require any library support as they're just plain old object
     /// files, so we just use the nightly snapshot compiler to always build them (as
     /// no other compilers are guaranteed to be available).
-    #[cfg_attr(
-        feature = "tracing",
-        instrument(
-            level = "trace",
-            name = "StartupObjects::run",
-            skip_all,
-            fields(compiler = ?self.compiler, target = ?self.target),
-        ),
-    )]
     fn run(self, builder: &Builder<'_>) -> Vec<(PathBuf, DependencyType)> {
         let for_compiler = self.compiler;
         let target = self.target;
@@ -1033,15 +997,6 @@ impl Step for Rustc {
     /// This will build the compiler for a particular stage of the build using
     /// the `build_compiler` targeting the `target` architecture. The artifacts
     /// created will also be linked into the sysroot directory.
-    #[cfg_attr(
-        feature = "tracing",
-        instrument(
-            level = "debug",
-            name = "Rustc::run",
-            skip_all,
-            fields(previous_compiler = ?self.build_compiler, target = ?self.target),
-        ),
-    )]
     fn run(self, builder: &Builder<'_>) -> u32 {
         let build_compiler = self.build_compiler;
         let target = self.target;
@@ -1517,19 +1472,6 @@ impl Step for RustcLink {
     }
 
     /// Same as `std_link`, only for librustc
-    #[cfg_attr(
-        feature = "tracing",
-        instrument(
-            level = "trace",
-            name = "RustcLink::run",
-            skip_all,
-            fields(
-                compiler = ?self.compiler,
-                previous_stage_compiler = ?self.previous_stage_compiler,
-                target = ?self.target,
-            ),
-        ),
-    )]
     fn run(self, builder: &Builder<'_>) {
         let compiler = self.compiler;
         let previous_stage_compiler = self.previous_stage_compiler;
@@ -1571,17 +1513,6 @@ impl Step for GccCodegenBackend {
         });
     }
 
-    #[cfg_attr(
-        feature = "tracing",
-        instrument(
-            level = "debug",
-            name = "GccCodegenBackend::run",
-            skip_all,
-            fields(
-                compilers = ?self.compilers,
-            ),
-        ),
-    )]
     fn run(self, builder: &Builder<'_>) -> Self::Output {
         let target = self.compilers.target();
         let build_compiler = self.compilers.build_compiler();
@@ -1656,17 +1587,6 @@ impl Step for CraneliftCodegenBackend {
         });
     }
 
-    #[cfg_attr(
-        feature = "tracing",
-        instrument(
-            level = "debug",
-            name = "CraneliftCodegenBackend::run",
-            skip_all,
-            fields(
-                compilers = ?self.compilers,
-            ),
-        ),
-    )]
     fn run(self, builder: &Builder<'_>) -> Self::Output {
         let target = self.compilers.target();
         let build_compiler = self.compilers.build_compiler();
@@ -1841,15 +1761,6 @@ impl Step for Sysroot {
     /// Returns the sysroot that `compiler` is supposed to use.
     /// For the stage0 compiler, this is stage0-sysroot (because of the initial std build).
     /// For all other stages, it's the same stage directory that the compiler lives in.
-    #[cfg_attr(
-        feature = "tracing",
-        instrument(
-            level = "debug",
-            name = "Sysroot::run",
-            skip_all,
-            fields(compiler = ?self.compiler),
-        ),
-    )]
     fn run(self, builder: &Builder<'_>) -> PathBuf {
         let compiler = self.compiler;
         let host_dir = builder.out.join(compiler.host);
@@ -2025,15 +1936,6 @@ impl Step for Assemble {
     /// This will assemble a compiler in `build/$host/stage$stage`. The compiler
     /// must have been previously produced by the `stage - 1` builder.build
     /// compiler.
-    #[cfg_attr(
-        feature = "tracing",
-        instrument(
-            level = "debug",
-            name = "Assemble::run",
-            skip_all,
-            fields(target_compiler = ?self.target_compiler),
-        ),
-    )]
     fn run(self, builder: &Builder<'_>) -> Compiler {
         let target_compiler = self.target_compiler;
 
@@ -2592,7 +2494,7 @@ pub fn stream_cargo(
     let mut cmd = cargo.into_cmd();
 
     #[cfg(feature = "tracing")]
-    let _run_span = crate::trace_cmd!(cmd);
+    let _run_span = crate::utils::tracing::trace_cmd(&cmd);
 
     // Instruct Cargo to give us json messages on stdout, critically leaving
     // stderr as piped so we can get those pretty colors.
