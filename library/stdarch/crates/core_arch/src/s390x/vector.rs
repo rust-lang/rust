@@ -114,6 +114,9 @@ unsafe extern "unadjusted" {
     #[link_name = "llvm.s390.vsumqf"] fn vsumqf(a: vector_unsigned_int, b: vector_unsigned_int) -> u128;
     #[link_name = "llvm.s390.vsumqg"] fn vsumqg(a: vector_unsigned_long_long, b: vector_unsigned_long_long) -> u128;
 
+    #[link_name = "llvm.s390.vaccq"] fn vaccq(a: u128, b: u128) -> u128;
+    #[link_name = "llvm.s390.vacccq"] fn vacccq(a: u128, b: u128, c: u128) -> u128;
+
     #[link_name = "llvm.s390.vscbiq"] fn vscbiq(a: u128, b: u128) -> u128;
     #[link_name = "llvm.s390.vsbiq"] fn vsbiq(a: u128, b: u128, c: u128) -> u128;
     #[link_name = "llvm.s390.vsbcbiq"] fn vsbcbiq(a: u128, b: u128, c: u128) -> u128;
@@ -4694,7 +4697,9 @@ pub unsafe fn vec_addc_u128(
 ) -> vector_unsigned_char {
     let a: u128 = transmute(a);
     let b: u128 = transmute(b);
-    transmute(a.overflowing_add(b).1 as u128)
+    // FIXME(llvm) https://github.com/llvm/llvm-project/pull/153557
+    // transmute(a.overflowing_add(b).1 as u128)
+    transmute(vaccq(a, b))
 }
 
 /// Vector Add With Carry unsigned 128-bits
@@ -4729,8 +4734,10 @@ pub unsafe fn vec_addec_u128(
     let a: u128 = transmute(a);
     let b: u128 = transmute(b);
     let c: u128 = transmute(c);
-    let (_d, carry) = a.carrying_add(b, c & 1 != 0);
-    transmute(carry as u128)
+    // FIXME(llvm) https://github.com/llvm/llvm-project/pull/153557
+    // let (_d, carry) = a.carrying_add(b, c & 1 != 0);
+    // transmute(carry as u128)
+    transmute(vacccq(a, b, c))
 }
 
 /// Vector Subtract with Carryout
