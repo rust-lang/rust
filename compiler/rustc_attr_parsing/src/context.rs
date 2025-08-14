@@ -27,7 +27,7 @@ use crate::attributes::dummy::DummyParser;
 use crate::attributes::inline::{InlineParser, RustcForceInlineParser};
 use crate::attributes::link_attrs::{
     ExportStableParser, FfiConstParser, FfiPureParser, LinkNameParser, LinkOrdinalParser,
-    LinkSectionParser, StdInternalSymbolParser,
+    LinkSectionParser, LinkageParser, StdInternalSymbolParser,
 };
 use crate::attributes::lint_helpers::{
     AsPtrParser, AutomaticallyDerivedParser, PassByValueParser, PubTransparentParser,
@@ -167,6 +167,7 @@ attribute_parsers!(
         Single<LinkNameParser>,
         Single<LinkOrdinalParser>,
         Single<LinkSectionParser>,
+        Single<LinkageParser>,
         Single<MustUseParser>,
         Single<OptimizeParser>,
         Single<PathAttributeParser>,

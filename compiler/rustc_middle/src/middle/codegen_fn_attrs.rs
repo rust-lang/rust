@@ -2,13 +2,12 @@ use std::borrow::Cow;
 
 use rustc_abi::Align;
 use rustc_ast::expand::autodiff_attrs::AutoDiffAttrs;
-use rustc_hir::attrs::{InlineAttr, InstructionSetAttr, OptimizeAttr};
+use rustc_hir::attrs::{InlineAttr, InstructionSetAttr, Linkage, OptimizeAttr};
 use rustc_hir::def_id::DefId;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_span::Symbol;
 use rustc_target::spec::SanitizerSet;
 
-use crate::mir::mono::Linkage;
 use crate::ty::{InstanceKind, TyCtxt};
 
 impl<'tcx> TyCtxt<'tcx> {

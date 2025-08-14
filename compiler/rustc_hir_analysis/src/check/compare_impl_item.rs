@@ -445,10 +445,10 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
     tcx: TyCtxt<'tcx>,
     impl_m_def_id: LocalDefId,
 ) -> Result<&'tcx DefIdMap<ty::EarlyBinder<'tcx, Ty<'tcx>>>, ErrorGuaranteed> {
-    let impl_m = tcx.opt_associated_item(impl_m_def_id.to_def_id()).unwrap();
-    let trait_m = tcx.opt_associated_item(impl_m.trait_item_def_id.unwrap()).unwrap();
+    let impl_m = tcx.associated_item(impl_m_def_id.to_def_id());
+    let trait_m = tcx.associated_item(impl_m.trait_item_def_id.unwrap());
     let impl_trait_ref =
-        tcx.impl_trait_ref(impl_m.impl_container(tcx).unwrap()).unwrap().instantiate_identity();
+        tcx.impl_trait_ref(tcx.parent(impl_m_def_id.to_def_id())).unwrap().instantiate_identity();
     // First, check a few of the same things as `compare_impl_method`,
     // just so we don't ICE during instantiation later.
     check_method_is_structurally_compatible(tcx, impl_m, trait_m, impl_trait_ref, true)?;

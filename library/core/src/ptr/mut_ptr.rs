@@ -1990,6 +1990,15 @@ impl<T> *mut [T] {
     }
 }
 
+impl<T> *mut T {
+    /// Casts from a pointer-to-`T` to a pointer-to-`[T; N]`.
+    #[inline]
+    #[unstable(feature = "ptr_cast_array", issue = "144514")]
+    pub const fn cast_array<const N: usize>(self) -> *mut [T; N] {
+        self.cast()
+    }
+}
+
 impl<T, const N: usize> *mut [T; N] {
     /// Returns a raw pointer to the array's buffer.
     ///

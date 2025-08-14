@@ -10,7 +10,7 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHas
 use rustc_data_structures::unord::UnordMap;
 use rustc_hashes::Hash128;
 use rustc_hir::ItemId;
-use rustc_hir::attrs::InlineAttr;
+use rustc_hir::attrs::{InlineAttr, Linkage};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdSet, LOCAL_CRATE};
 use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_query_system::ich::StableHashingContext;
@@ -366,22 +366,6 @@ pub struct MonoItemData {
 
     /// A cached copy of the result of `MonoItem::size_estimate`.
     pub size_estimate: usize,
-}
-
-/// Specifies the linkage type for a `MonoItem`.
-///
-/// See <https://llvm.org/docs/LangRef.html#linkage-types> for more details about these variants.
-#[derive(Copy, Clone, PartialEq, Debug, TyEncodable, TyDecodable, HashStable)]
-pub enum Linkage {
-    External,
-    AvailableExternally,
-    LinkOnceAny,
-    LinkOnceODR,
-    WeakAny,
-    WeakODR,
-    Internal,
-    ExternalWeak,
-    Common,
 }
 
 /// Specifies the symbol visibility with regards to dynamic linking.

@@ -1310,6 +1310,7 @@ impl AttributeExt for Attribute {
             Attribute::Parsed(AttributeKind::ShouldPanic { span, .. }) => *span,
             Attribute::Parsed(AttributeKind::AutomaticallyDerived(span)) => *span,
             Attribute::Parsed(AttributeKind::AllowInternalUnsafe(span)) => *span,
+            Attribute::Parsed(AttributeKind::Linkage(_, span)) => *span,
             a => panic!("can't get the span of an arbitrary parsed attribute: {a:?}"),
         }
     }
