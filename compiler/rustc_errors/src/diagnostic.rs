@@ -1113,7 +1113,7 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
             .map(|snippet| {
                 debug_assert!(
                     !(sp.is_empty() && snippet.is_empty()),
-                    "Span must not be empty and have no suggestion"
+                    "Span `{sp:?}` must not be empty and have no suggestion"
                 );
                 Substitution { parts: vec![SubstitutionPart { snippet, span: sp }] }
             })
