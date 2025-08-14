@@ -873,8 +873,7 @@ impl Config {
             None => false,
         };
 
-        let default = channel == "dev";
-        let omit_git_hash = rust_omit_git_hash.unwrap_or(default);
+        let omit_git_hash = rust_omit_git_hash.unwrap_or(channel == "dev");
 
         rust_info = git_info(&exec_ctx, omit_git_hash, &src);
         let cargo_info = git_info(&exec_ctx, omit_git_hash, &src.join("src/tools/cargo"));
@@ -1317,14 +1316,6 @@ impl Config {
             )
         };
 
-        if rust_optimize_.as_ref().is_some_and(|v| matches!(v, RustOptimize::Bool(false))) {
-            eprintln!(
-                "WARNING: setting `optimize` to `false` is known to cause errors and \
-                should be considered unsupported. Refer to `bootstrap.example.toml` \
-                for more details."
-            );
-        }
-
         Config {
             out,
             rust_info,
@@ -1363,6 +1354,12 @@ impl Config {
             channel,
             is_running_on_ci,
             path_modification_cache,
+            patch_binaries_for_nix,
+            stage0_metadata,
+            download_rustc_commit,
+            llvm_thin_lto,
+            llvm_link_shared,
+            rustc_debug_assertions,
             change_id: toml.change_id.inner,
             bypass_bootstrap_lock: flags_bypass_bootstrap_lock,
             ccache: match build_ccache {
@@ -1389,8 +1386,6 @@ impl Config {
             compile_time_deps: flags_compile_time_deps,
             test_compare_mode: rust_test_compare_mode.unwrap_or(false),
             color: flags_color,
-            patch_binaries_for_nix,
-            stage0_metadata,
             android_ndk: build_android_ndk,
             optimized_compiler_builtins,
             stdout_is_tty: std::io::stdout().is_terminal(),
@@ -1411,7 +1406,6 @@ impl Config {
             incremental: flags_incremental || rust_incremental == Some(true),
             dump_bootstrap_shims: flags_dump_bootstrap_shims,
             free_args: flags_free_args,
-            download_rustc_commit,
             deny_warnings: match flags_warnings {
                 Warnings::Deny => true,
                 Warnings::Warn => false,
@@ -1423,11 +1417,9 @@ impl Config {
             llvm_offload: llvm_offload_.unwrap_or(false),
             llvm_plugins: llvm_plugin.unwrap_or_default(),
             llvm_optimize: llvm_optimize_.unwrap_or(true),
-            llvm_thin_lto,
             llvm_release_debuginfo: llvm_release_debuginfo_.unwrap_or(false),
             llvm_static_stdcpp: llvm_static_libstdcpp.unwrap_or(false),
             llvm_libzstd: llvm_libzstd_.unwrap_or(false),
-            llvm_link_shared,
             llvm_clang_cl: llvm_clang_cl_,
             llvm_targets: llvm_targets_,
             llvm_experimental_targets: llvm_experimental_targets_,
@@ -1455,7 +1447,6 @@ impl Config {
             rust_optimize: rust_optimize_.unwrap_or(RustOptimize::Bool(true)),
             rust_codegen_units: rust_codegen_units_.map(threads_from_config),
             rust_codegen_units_std: rust_codegen_units_std_.map(threads_from_config),
-            rustc_debug_assertions,
             std_debug_assertions: rust_std_debug_assertions.unwrap_or(rustc_debug_assertions),
             tools_debug_assertions: rust_tools_debug_assertions.unwrap_or(rustc_debug_assertions),
             rust_overflow_checks_std: rust_overflow_checks_std_.unwrap_or(rust_overflow_checks),
