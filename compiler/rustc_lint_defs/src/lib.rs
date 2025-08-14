@@ -10,9 +10,9 @@ use rustc_data_structures::stable_hasher::{
 };
 use rustc_error_messages::{DiagArgValue, DiagMessage, IntoDiagArg, MultiSpan};
 use rustc_hir::def::Namespace;
-use rustc_hir::def_id::DefPathHash;
 use rustc_hir_id::{HashStableContext, HirId, ItemLocalId};
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
+use rustc_span::def_id::DefPathHash;
 pub use rustc_span::edition::Edition;
 use rustc_span::{Ident, MacroRulesNormalizedIdent, Span, Symbol, sym};
 use serde::{Deserialize, Serialize};
