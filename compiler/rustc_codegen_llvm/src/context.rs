@@ -660,7 +660,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
     }
 }
 impl<'ll> SimpleCx<'ll> {
-    pub(crate) fn get_return_type(&self, ty: &'ll Type) -> &'ll Type {
+    pub(crate) fn _get_return_type(&self, ty: &'ll Type) -> &'ll Type {
         assert_eq!(self.type_kind(ty), TypeKind::Function);
         unsafe { llvm::LLVMGetReturnType(ty) }
     }

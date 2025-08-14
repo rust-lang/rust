@@ -3,23 +3,26 @@ use std::cmp::Ordering;
 
 use rustc_abi::{Align, BackendRepr, ExternAbi, Float, HasDataLayout, Primitive, Size};
 use rustc_codegen_ssa::base::{compare_simd_types, wants_msvc_seh, wants_wasm_eh};
+use rustc_codegen_ssa::codegen_attrs::autodiff_attrs;
 use rustc_codegen_ssa::common::{IntPredicate, TypeKind};
 use rustc_codegen_ssa::errors::{ExpectedPointerMutability, InvalidMonomorphization};
 use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
 use rustc_codegen_ssa::mir::place::{PlaceRef, PlaceValue};
 use rustc_codegen_ssa::traits::*;
 use rustc_hir as hir;
+use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_middle::mir::BinOp;
 use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, HasTypingEnv, LayoutOf};
-use rustc_middle::ty::{self, GenericArgsRef, Ty};
+use rustc_middle::ty::{self, GenericArgsRef, Instance, Ty};
 use rustc_middle::{bug, span_bug};
 use rustc_span::{Span, Symbol, sym};
-use rustc_symbol_mangling::mangle_internal_symbol;
+use rustc_symbol_mangling::{mangle_internal_symbol, symbol_name_for_instance_in_crate};
 use rustc_target::spec::PanicStrategy;
 use tracing::debug;
 
 use crate::abi::FnAbiLlvmExt;
 use crate::builder::Builder;
+use crate::builder::autodiff::generate_enzyme_call;
 use crate::context::CodegenCx;
 use crate::llvm::{self, Metadata};
 use crate::type_::Type;
@@ -174,9 +177,16 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         span: Span,
     ) -> Result<(), ty::Instance<'tcx>> {
         let tcx = self.tcx;
+        let callee_ty = instance.ty(tcx, self.typing_env());
 
-        let name = tcx.item_name(instance.def_id());
         let fn_args = instance.args;
+
+        let sig = callee_ty.fn_sig(tcx);
+        let sig = tcx.normalize_erasing_late_bound_regions(self.typing_env(), sig);
+        let ret_ty = sig.output();
+        let name = tcx.item_name(instance.def_id());
+
+        let llret_ty = self.layout_of(ret_ty).llvm_type(self);
 
         let simple = call_simple_intrinsic(self, name, args);
         let llval = match name {
@@ -188,6 +198,66 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     &[self.val_ty(ptr), self.type_isize()],
                     &[ptr, args[1].immediate()],
                 )
+            }
+            sym::autodiff => {
+                let val_arr: Vec<&'ll Value> = match args[2].val {
+                    crate::intrinsic::OperandValue::Ref(ref place_value) => {
+                        let mut ret_arr = vec![];
+                        let tuple_place = PlaceRef { val: *place_value, layout: args[2].layout };
+
+                        for i in 0..tuple_place.layout.layout.0.fields.count() {
+                            let field_place = tuple_place.project_field(self, i);
+                            let field_layout = tuple_place.layout.field(self, i);
+                            let llvm_ty = field_layout.llvm_type(self.cx);
+
+                            let field_val =
+                                self.load(llvm_ty, field_place.val.llval, field_place.val.align);
+
+                            ret_arr.push(field_val)
+                        }
+
+                        ret_arr
+                    }
+                    crate::intrinsic::OperandValue::Pair(v1, v2) => vec![v1, v2],
+                    OperandValue::Immediate(v) => vec![v],
+                    OperandValue::ZeroSized => bug!("unexpected `ZeroSized` arg"),
+                };
+
+                // Get source, diff, and attrs
+                let source_id = match fn_args.into_type_list(tcx)[0].kind() {
+                    ty::FnDef(def_id, _) => def_id,
+                    _ => bug!("invalid args"),
+                };
+                let fn_source = Instance::mono(tcx, *source_id);
+                let source_symbol =
+                    symbol_name_for_instance_in_crate(tcx, fn_source.clone(), LOCAL_CRATE);
+                let fn_to_diff: Option<&'ll llvm::Value> = self.cx.get_function(&source_symbol);
+                let Some(fn_to_diff) = fn_to_diff else { bug!("could not find source function") };
+
+                let diff_id = match fn_args.into_type_list(tcx)[1].kind() {
+                    ty::FnDef(def_id, _) => def_id,
+                    _ => bug!("invalid args"),
+                };
+                let fn_diff = Instance::mono(tcx, *diff_id);
+                let diff_symbol =
+                    symbol_name_for_instance_in_crate(tcx, fn_diff.clone(), LOCAL_CRATE);
+
+                let diff_attrs = autodiff_attrs(tcx, *diff_id);
+                let Some(diff_attrs) = diff_attrs else { bug!("could not find autodiff attrs") };
+
+                // Build body
+                generate_enzyme_call(
+                    self,
+                    self.cx,
+                    fn_to_diff,
+                    &diff_symbol,
+                    llret_ty,
+                    &val_arr,
+                    diff_attrs.clone(),
+                    result,
+                );
+
+                return Ok(());
             }
             sym::is_val_statically_known => {
                 if let OperandValue::Immediate(imm) = args[0].val {
