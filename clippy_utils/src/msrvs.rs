@@ -189,24 +189,24 @@ impl MsrvStack {
 fn parse_attrs(sess: &Session, attrs: &[impl AttributeExt]) -> Option<RustcVersion> {
     let mut msrv_attrs = attrs.iter().filter(|attr| attr.path_matches(&[sym::clippy, sym::msrv]));
 
-    if let Some(msrv_attr) = msrv_attrs.next() {
-        if let Some(duplicate) = msrv_attrs.next_back() {
-            sess.dcx()
-                .struct_span_err(duplicate.span(), "`clippy::msrv` is defined multiple times")
-                .with_span_note(msrv_attr.span(), "first definition found here")
-                .emit();
+    let msrv_attr = msrv_attrs.next()?;
+
+    if let Some(duplicate) = msrv_attrs.next_back() {
+        sess.dcx()
+            .struct_span_err(duplicate.span(), "`clippy::msrv` is defined multiple times")
+            .with_span_note(msrv_attr.span(), "first definition found here")
+            .emit();
+    }
+
+    if let Some(msrv) = msrv_attr.value_str() {
+        if let Some(version) = parse_version(msrv) {
+            return Some(version);
         }
 
-        if let Some(msrv) = msrv_attr.value_str() {
-            if let Some(version) = parse_version(msrv) {
-                return Some(version);
-            }
-
-            sess.dcx()
-                .span_err(msrv_attr.span(), format!("`{msrv}` is not a valid Rust version"));
-        } else {
-            sess.dcx().span_err(msrv_attr.span(), "bad clippy attribute");
-        }
+        sess.dcx()
+            .span_err(msrv_attr.span(), format!("`{msrv}` is not a valid Rust version"));
+    } else {
+        sess.dcx().span_err(msrv_attr.span(), "bad clippy attribute");
     }
 
     None
