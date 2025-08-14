@@ -51,3 +51,26 @@ impl<S: Stage> SingleAttributeParser<S> for RustcObjectLifetimeDefaultParser {
         Some(AttributeKind::RustcObjectLifetimeDefault)
     }
 }
+
+pub(crate) struct RustcScalableVectorParser;
+
+impl<S: Stage> SingleAttributeParser<S> for RustcScalableVectorParser {
+    const PATH: &[rustc_span::Symbol] = &[sym::rustc_scalable_vector];
+    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepInnermost;
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const TEMPLATE: AttributeTemplate = template!(Word, List: "count");
+
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
+        if args.no_args().is_ok() {
+            return Some(AttributeKind::RustcScalableVector {
+                element_count: None,
+                span: cx.attr_span,
+            });
+        }
+
+        parse_single_integer(cx, args).map(|n| AttributeKind::RustcScalableVector {
+            element_count: Some(n),
+            span: cx.attr_span,
+        })
+    }
+}

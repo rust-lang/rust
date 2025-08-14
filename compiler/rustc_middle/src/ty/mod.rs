@@ -24,7 +24,9 @@ pub use assoc::*;
 pub use generic_args::{GenericArgKind, TermKind, *};
 pub use generics::*;
 pub use intrinsic::IntrinsicDef;
-use rustc_abi::{Align, FieldIdx, Integer, IntegerType, ReprFlags, ReprOptions, VariantIdx};
+use rustc_abi::{
+    Align, FieldIdx, Integer, IntegerType, ReprFlags, ReprOptions, ScalableElt, VariantIdx,
+};
 use rustc_ast::node_id::NodeMap;
 pub use rustc_ast_ir::{Movability, Mutability, try_visit};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
@@ -1469,9 +1471,20 @@ impl<'tcx> TyCtxt<'tcx> {
             field_shuffle_seed ^= user_seed;
         }
 
-        if let Some(reprs) =
-            find_attr!(self.get_all_attrs(did), AttributeKind::Repr { reprs, .. } => reprs)
-        {
+        let attrs = self.get_all_attrs(did);
+        let elt = find_attr!(
+            attrs,
+            AttributeKind::RustcScalableVector { element_count, .. } => element_count
+        )
+        .map(|elt| match elt {
+            Some(n) => ScalableElt::ElementCount(*n),
+            None => ScalableElt::Container,
+        });
+        if elt.is_some() {
+            flags.insert(ReprFlags::IS_SCALABLE);
+        }
+
+        if let Some(reprs) = find_attr!(attrs, AttributeKind::Repr { reprs, .. } => reprs) {
             for (r, _) in reprs {
                 flags.insert(match *r {
                     attr::ReprRust => ReprFlags::empty(),
@@ -1530,7 +1543,14 @@ impl<'tcx> TyCtxt<'tcx> {
             flags.insert(ReprFlags::IS_LINEAR);
         }
 
-        ReprOptions { int: size, align: max_align, pack: min_pack, flags, field_shuffle_seed }
+        ReprOptions {
+            int: size,
+            align: max_align,
+            pack: min_pack,
+            flags,
+            field_shuffle_seed,
+            scalable: elt,
+        }
     }
 
     /// Look up the name of a definition across crates. This does not look at HIR.

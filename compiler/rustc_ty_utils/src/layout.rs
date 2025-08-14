@@ -3,8 +3,8 @@ use rustc_abi::Integer::{I8, I32};
 use rustc_abi::Primitive::{self, Float, Int, Pointer};
 use rustc_abi::{
     AddressSpace, BackendRepr, FIRST_VARIANT, FieldIdx, FieldsShape, HasDataLayout, Layout,
-    LayoutCalculatorError, LayoutData, Niche, ReprOptions, Scalar, Size, StructKind, TagEncoding,
-    VariantIdx, Variants, WrappingRange,
+    LayoutCalculatorError, LayoutData, Niche, ReprOptions, ScalableElt, Scalar, Size, StructKind,
+    TagEncoding, VariantIdx, Variants, WrappingRange,
 };
 use rustc_hashes::Hash64;
 use rustc_index::IndexVec;
@@ -537,6 +537,37 @@ fn layout_of_uncached<'tcx>(
             univariant(tys, kind)?
         }
 
+        // Scalable vector types
+        //
+        // ```rust (ignore, example)
+        // #[rustc_scalable_vector(3)]
+        // struct svuint32_t(u32);
+        // ```
+        ty::Adt(def, args)
+            if matches!(def.repr().scalable, Some(ScalableElt::ElementCount(..))) =>
+        {
+            let Some(element_ty) = def
+                .is_struct()
+                .then(|| &def.variant(FIRST_VARIANT).fields)
+                .filter(|fields| fields.len() == 1)
+                .map(|fields| fields[FieldIdx::ZERO].ty(tcx, args))
+            else {
+                let guar = tcx
+                    .dcx()
+                    .delayed_bug("#[rustc_scalable_vector] was applied to an invalid type");
+                return Err(error(cx, LayoutError::ReferencesError(guar)));
+            };
+            let Some(ScalableElt::ElementCount(element_count)) = def.repr().scalable else {
+                let guar = tcx
+                    .dcx()
+                    .delayed_bug("#[rustc_scalable_vector] was applied to an invalid type");
+                return Err(error(cx, LayoutError::ReferencesError(guar)));
+            };
+
+            let element_layout = cx.layout_of(element_ty)?;
+            map_layout(cx.calc.scalable_vector_type(element_layout, element_count as u64))?
+        }
+
         // SIMD vector types.
         ty::Adt(def, args) if def.repr().simd() => {
             // Supported SIMD vectors are ADTs with a single array field:
@@ -560,7 +591,6 @@ fn layout_of_uncached<'tcx>(
                 .ok_or_else(|| error(cx, LayoutError::Unknown(ty)))?;
 
             let e_ly = cx.layout_of(e_ty)?;
-
             map_layout(cx.calc.simd_type(e_ly, e_len, def.repr().packed()))?
         }
 

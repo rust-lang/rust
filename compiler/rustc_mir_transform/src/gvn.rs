@@ -1519,7 +1519,9 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             BackendRepr::ScalarPair(a, b) => {
                 !a.is_always_valid(&self.ecx) || !b.is_always_valid(&self.ecx)
             }
-            BackendRepr::SimdVector { .. } | BackendRepr::Memory { .. } => false,
+            BackendRepr::SimdVector { .. }
+            | BackendRepr::ScalableVector { .. }
+            | BackendRepr::Memory { .. } => false,
         }
     }
 
