@@ -4994,3 +4994,35 @@ fn main() {
         "#]],
     );
 }
+
+#[test]
+fn trait_object_binders() {
+    check_infer(
+        r#"
+//- minicore: iterator, dispatch_from_dyn
+fn main() {
+    struct Box<T: ?Sized>(*const T);
+    impl<I: Iterator + ?Sized> Iterator for Box<I> {
+        type Item = I::Item;
+        fn next(&mut self) -> Option<I::Item> {
+            loop {}
+        }
+    }
+    let iter: Box<dyn Iterator<Item = &[u8]> + 'static> = loop {};
+    let _ = iter.into_iter();
+}"#,
+        expect![[r#"
+            10..313 '{     ...r(); }': ()
+            223..227 'iter': Box<dyn Iterator<Item = &'? [u8]> + 'static>
+            273..280 'loop {}': !
+            278..280 '{}': ()
+            290..291 '_': Box<dyn Iterator<Item = &'? [u8]> + 'static>
+            294..298 'iter': Box<dyn Iterator<Item = &'? [u8]> + 'static>
+            294..310 'iter.i...iter()': Box<dyn Iterator<Item = &'? [u8]> + 'static>
+            152..156 'self': &'? mut Box<I>
+            177..208 '{     ...     }': Option<Iterator::Item<I>>
+            191..198 'loop {}': !
+            196..198 '{}': ()
+        "#]],
+    );
+}
