@@ -13,9 +13,6 @@ use std::ffi::OsStr;
 use std::path::PathBuf;
 use std::{env, fs};
 
-#[cfg(feature = "tracing")]
-use tracing::instrument;
-
 use crate::core::build_steps::compile::is_lto_stage;
 use crate::core::build_steps::toolstate::ToolState;
 use crate::core::build_steps::{compile, llvm};
@@ -415,14 +412,6 @@ macro_rules! bootstrap_tool {
                 });
             }
 
-            #[cfg_attr(
-                feature = "tracing",
-                instrument(
-                    level = "debug",
-                    name = $tool_name,
-                    skip_all,
-                ),
-            )]
             fn run(self, builder: &Builder<'_>) -> ToolBuildResult {
                 $(
                     for submodule in $submodules {
@@ -901,15 +890,6 @@ impl Step for LldWrapper {
         });
     }
 
-    #[cfg_attr(
-        feature = "tracing",
-        instrument(
-            level = "debug",
-            name = "LldWrapper::run",
-            skip_all,
-            fields(build_compiler = ?self.build_compiler),
-        ),
-    )]
     fn run(self, builder: &Builder<'_>) -> Self::Output {
         let lld_dir = builder.ensure(llvm::Lld { target: self.target });
         let tool = builder.ensure(ToolBuild {
@@ -1002,15 +982,6 @@ impl Step for WasmComponentLd {
         });
     }
 
-    #[cfg_attr(
-        feature = "tracing",
-        instrument(
-            level = "debug",
-            name = "WasmComponentLd::run",
-            skip_all,
-            fields(build_compiler = ?self.build_compiler),
-        ),
-    )]
     fn run(self, builder: &Builder<'_>) -> ToolBuildResult {
         builder.ensure(ToolBuild {
             build_compiler: self.build_compiler,
@@ -1207,10 +1178,6 @@ impl Step for LlvmBitcodeLinker {
         });
     }
 
-    #[cfg_attr(
-        feature = "tracing",
-        instrument(level = "debug", name = "LlvmBitcodeLinker::run", skip_all)
-    )]
     fn run(self, builder: &Builder<'_>) -> ToolBuildResult {
         builder.ensure(ToolBuild {
             build_compiler: self.build_compiler,
