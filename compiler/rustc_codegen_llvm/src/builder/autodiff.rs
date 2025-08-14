@@ -1,40 +1,93 @@
 use std::ptr;
 
-use rustc_ast::expand::autodiff_attrs::{AutoDiffAttrs, AutoDiffItem, DiffActivity, DiffMode};
-use rustc_codegen_ssa::ModuleCodegen;
+use rustc_ast::expand::autodiff_attrs::{AutoDiffAttrs, DiffActivity, DiffMode};
 use rustc_codegen_ssa::common::TypeKind;
 use rustc_codegen_ssa::traits::{BaseTypeCodegenMethods, BuilderMethods};
-use rustc_errors::FatalError;
-use rustc_middle::bug;
-use tracing::{debug, trace};
+use rustc_middle::ty::{PseudoCanonicalInput, Ty, TyCtxt, TypingEnv};
+use rustc_middle::{bug, ty};
+use tracing::debug;
 
-use crate::back::write::llvm_err;
 use crate::builder::{Builder, PlaceRef, UNNAMED};
 use crate::context::SimpleCx;
 use crate::declare::declare_simple_fn;
-use crate::errors::{AutoDiffWithoutEnable, LlvmError};
 use crate::llvm::AttributePlace::Function;
 use crate::llvm::{Metadata, True, Type};
 use crate::value::Value;
-use crate::{CodegenContext, LlvmCodegenBackend, ModuleLlvm, attributes, llvm};
+use crate::{attributes, llvm};
 
-fn _get_params(fnc: &Value) -> Vec<&Value> {
-    let param_num = llvm::LLVMCountParams(fnc) as usize;
-    let mut fnc_args: Vec<&Value> = vec![];
-    fnc_args.reserve(param_num);
-    unsafe {
-        llvm::LLVMGetParams(fnc, fnc_args.as_mut_ptr());
-        fnc_args.set_len(param_num);
+pub(crate) fn adjust_activity_to_abi<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    fn_ty: Ty<'tcx>,
+    da: &mut Vec<DiffActivity>,
+) {
+    if !matches!(fn_ty.kind(), ty::FnDef(..)) {
+        bug!("expected fn def for autodiff, got {:?}", fn_ty);
     }
-    fnc_args
-}
 
-fn _has_sret(fnc: &Value) -> bool {
-    let num_args = llvm::LLVMCountParams(fnc) as usize;
-    if num_args == 0 {
-        false
-    } else {
-        unsafe { llvm::LLVMRustHasAttributeAtIndex(fnc, 0, llvm::AttributeKind::StructRet) }
+    // We don't actually pass the types back into the type system.
+    // All we do is decide how to handle the arguments.
+    let sig = fn_ty.fn_sig(tcx).skip_binder();
+
+    let mut new_activities = vec![];
+    let mut new_positions = vec![];
+    for (i, ty) in sig.inputs().iter().enumerate() {
+        if let Some(inner_ty) = ty.builtin_deref(true) {
+            if inner_ty.is_slice() {
+                // Now we need to figure out the size of each slice element in memory to allow
+                // safety checks and usability improvements in the backend.
+                let sty = match inner_ty.builtin_index() {
+                    Some(sty) => sty,
+                    None => {
+                        panic!("slice element type unknown");
+                    }
+                };
+                let pci = PseudoCanonicalInput {
+                    typing_env: TypingEnv::fully_monomorphized(),
+                    value: sty,
+                };
+
+                let layout = tcx.layout_of(pci);
+                let elem_size = match layout {
+                    Ok(layout) => layout.size,
+                    Err(_) => {
+                        bug!("autodiff failed to compute slice element size");
+                    }
+                };
+                let elem_size: u32 = elem_size.bytes() as u32;
+
+                // We know that the length will be passed as extra arg.
+                if !da.is_empty() {
+                    // We are looking at a slice. The length of that slice will become an
+                    // extra integer on llvm level. Integers are always const.
+                    // However, if the slice get's duplicated, we want to know to later check the
+                    // size. So we mark the new size argument as FakeActivitySize.
+                    // There is one FakeActivitySize per slice, so for convenience we store the
+                    // slice element size in bytes in it. We will use the size in the backend.
+                    let activity = match da[i] {
+                        DiffActivity::DualOnly
+                        | DiffActivity::Dual
+                        | DiffActivity::Dualv
+                        | DiffActivity::DuplicatedOnly
+                        | DiffActivity::Duplicated => {
+                            DiffActivity::FakeActivitySize(Some(elem_size))
+                        }
+                        DiffActivity::Const => DiffActivity::Const,
+                        _ => bug!("unexpected activity for ptr/ref"),
+                    };
+                    new_activities.push(activity);
+                    new_positions.push(i + 1);
+                }
+
+                continue;
+            }
+        }
+    }
+    // now add the extra activities coming from slices
+    // Reverse order to not invalidate the indices
+    for _ in 0..new_activities.len() {
+        let pos = new_positions.pop().unwrap();
+        let activity = new_activities.pop().unwrap();
+        da.insert(pos, activity);
     }
 }
 
@@ -66,12 +119,12 @@ fn match_args_from_caller_to_enzyme<'ll, 'tcx>(
     let mut outer_pos: usize = 0;
     let mut activity_pos = 0;
 
-    let enzyme_const = cx.create_metadata("enzyme_const".to_string()).unwrap();
-    let enzyme_out = cx.create_metadata("enzyme_out".to_string()).unwrap();
-    let enzyme_dup = cx.create_metadata("enzyme_dup".to_string()).unwrap();
-    let enzyme_dupv = cx.create_metadata("enzyme_dupv".to_string()).unwrap();
-    let enzyme_dupnoneed = cx.create_metadata("enzyme_dupnoneed".to_string()).unwrap();
-    let enzyme_dupnoneedv = cx.create_metadata("enzyme_dupnoneedv".to_string()).unwrap();
+    let enzyme_const = cx.create_metadata(b"enzyme_const");
+    let enzyme_out = cx.create_metadata(b"enzyme_out");
+    let enzyme_dup = cx.create_metadata(b"enzyme_dup");
+    let enzyme_dupv = cx.create_metadata(b"enzyme_dupv");
+    let enzyme_dupnoneed = cx.create_metadata(b"enzyme_dupnoneed");
+    let enzyme_dupnoneedv = cx.create_metadata(b"enzyme_dupnoneedv");
 
     while activity_pos < inputs.len() {
         let diff_activity = inputs[activity_pos as usize];
@@ -223,7 +276,7 @@ pub(crate) fn generate_enzyme_call<'ll, 'tcx>(
     //  %0 = fmul double %x, %x
     //  ret double %0
     // }
-    // ```
+    //
     // define double @dsquare(double %x) {
     //  return 0.0;
     // }
@@ -245,8 +298,7 @@ pub(crate) fn generate_enzyme_call<'ll, 'tcx>(
 
     // FIXME(ZuseZ4): the CC/Addr/Vis values are best effort guesses, we should look at tests and
     // think a bit more about what should go here.
-    // FIXME(Sa4dUs): have to find a way to get the cc, using `FastCallConv` for now
-    let cc = 8;
+    let cc = unsafe { llvm::LLVMGetFunctionCallConv(fn_to_diff) };
     let ad_fn = declare_simple_fn(
         cx,
         &ad_name,
@@ -265,12 +317,12 @@ pub(crate) fn generate_enzyme_call<'ll, 'tcx>(
     let mut args = Vec::with_capacity(num_args as usize + 1);
     args.push(fn_to_diff);
 
-    let enzyme_primal_ret = cx.create_metadata("enzyme_primal_return".to_string()).unwrap();
+    let enzyme_primal_ret = cx.create_metadata(b"enzyme_primal_return");
     if matches!(attrs.ret_activity, DiffActivity::Dual | DiffActivity::Active) {
         args.push(cx.get_metadata_value(enzyme_primal_ret));
     }
     if attrs.width > 1 {
-        let enzyme_width = cx.create_metadata("enzyme_width".to_string()).unwrap();
+        let enzyme_width = cx.create_metadata(b"enzyme_width");
         args.push(cx.get_metadata_value(enzyme_width));
         args.push(cx.get_const_int(cx.type_i64(), attrs.width as u64));
     }
@@ -287,62 +339,4 @@ pub(crate) fn generate_enzyme_call<'ll, 'tcx>(
     let call = builder.call(enzyme_ty, None, None, ad_fn, &args, None, None);
 
     builder.store_to_place(call, dest.val);
-}
-
-pub(crate) fn differentiate<'ll>(
-    module: &'ll ModuleCodegen<ModuleLlvm>,
-    cgcx: &CodegenContext<LlvmCodegenBackend>,
-    diff_items: Vec<AutoDiffItem>,
-) -> Result<(), FatalError> {
-    // TODO(Sa4dUs): delete all this logic
-    for item in &diff_items {
-        trace!("{}", item);
-    }
-
-    let diag_handler = cgcx.create_dcx();
-
-    let cx = SimpleCx::new(module.module_llvm.llmod(), module.module_llvm.llcx, cgcx.pointer_size);
-
-    // First of all, did the user try to use autodiff without using the -Zautodiff=Enable flag?
-    if !diff_items.is_empty()
-        && !cgcx.opts.unstable_opts.autodiff.contains(&rustc_session::config::AutoDiff::Enable)
-    {
-        return Err(diag_handler.handle().emit_almost_fatal(AutoDiffWithoutEnable));
-    }
-
-    // Here we replace the placeholder code with the actual autodiff code, which calls Enzyme.
-    for item in diff_items.iter() {
-        let name = item.source.clone();
-        let fn_def: Option<&llvm::Value> = cx.get_function(&name);
-        let Some(_fn_def) = fn_def else {
-            return Err(llvm_err(
-                diag_handler.handle(),
-                LlvmError::PrepareAutoDiff {
-                    src: item.source.clone(),
-                    target: item.target.clone(),
-                    error: "could not find source function".to_owned(),
-                },
-            ));
-        };
-        debug!(?item.target);
-        let fn_target: Option<&llvm::Value> = cx.get_function(&item.target);
-        let Some(_fn_target) = fn_target else {
-            return Err(llvm_err(
-                diag_handler.handle(),
-                LlvmError::PrepareAutoDiff {
-                    src: item.source.clone(),
-                    target: item.target.clone(),
-                    error: "could not find target function".to_owned(),
-                },
-            ));
-        };
-
-        // generate_enzyme_call(&cx, fn_def, fn_target, item.attrs.clone());
-    }
-
-    // FIXME(ZuseZ4): support SanitizeHWAddress and prevent illegal/unsupported opts
-
-    trace!("done with differentiate()");
-
-    Ok(())
 }

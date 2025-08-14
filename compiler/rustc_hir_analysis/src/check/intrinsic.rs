@@ -172,8 +172,6 @@ pub(crate) fn check_intrinsic_type(
         }
     };
 
-    let has_autodiff = tcx.has_attr(intrinsic_id, sym::rustc_autodiff);
-
     let bound_vars = tcx.mk_bound_variable_kinds(&[
         ty::BoundVariableKind::Region(ty::BoundRegionKind::Anon),
         ty::BoundVariableKind::Region(ty::BoundRegionKind::Anon),
@@ -198,6 +196,7 @@ pub(crate) fn check_intrinsic_type(
         (Ty::new_ref(tcx, env_region, va_list_ty, mutbl), va_list_ty)
     };
 
+    let safety = intrinsic_operation_unsafety(tcx, intrinsic_id);
     let n_lts = 0;
     let (n_tps, n_cts, inputs, output) = match intrinsic_name {
         sym::autodiff => (4, 0, vec![param(0), param(1), param(2)], param(3)),
