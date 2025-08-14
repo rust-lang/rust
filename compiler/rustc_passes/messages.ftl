@@ -542,10 +542,6 @@ passes_no_mangle_foreign =
     .note = symbol names in extern blocks are not mangled
     .suggestion = remove this attribute
 
-passes_no_sanitize =
-    `#[no_sanitize({$attr_str})]` should be applied to {$accepted_kind}
-    .label = not {$accepted_kind}
-
 passes_non_exhaustive_with_default_field_values =
     `#[non_exhaustive]` can't be used to annotate items with default field values
     .label = this struct has default field values
@@ -672,6 +668,12 @@ passes_rustc_std_internal_symbol =
 passes_rustc_unstable_feature_bound =
     attribute should be applied to `impl`, trait or free function
     .label = not an `impl`, trait or free function
+
+passes_sanitize_attribute_not_allowed =
+    sanitize attribute not allowed here
+    .not_fn_impl_mod = not a function, impl block, or module
+    .no_body = function has no body
+    .help = sanitize attribute can be applied to a function (with body), impl block, or module
 
 passes_should_be_applied_to_fn =
     attribute should be applied to a function definition

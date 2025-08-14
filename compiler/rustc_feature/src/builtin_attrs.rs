@@ -741,9 +741,8 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         ErrorPreceding, EncodeCrossCrate::No
     ),
     gated!(
-        no_sanitize, Normal,
-        template!(List: &["address, kcfi, memory, thread"]), DuplicatesOk,
-        EncodeCrossCrate::No, experimental!(no_sanitize)
+        sanitize, Normal, template!(List: &[r#"address = "on|off""#, r#"kernel_address = "on|off""#, r#"cfi = "on|off""#, r#"hwaddress = "on|off""#, r#"kcfi = "on|off""#, r#"memory = "on|off""#, r#"memtag = "on|off""#, r#"shadow_call_stack = "on|off""#, r#"thread = "on|off""#]), ErrorPreceding,
+        EncodeCrossCrate::No, sanitize, experimental!(sanitize),
     ),
     gated!(
         coverage, Normal, template!(OneOf: &[sym::off, sym::on]),

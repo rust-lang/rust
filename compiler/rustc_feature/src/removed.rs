@@ -190,6 +190,9 @@ declare_features! (
     (removed, no_coverage, "1.74.0", Some(84605), Some("renamed to `coverage_attribute`"), 114656),
     /// Allows `#[no_debug]`.
     (removed, no_debug, "1.43.0", Some(29721), Some("removed due to lack of demand"), 69667),
+    // Allows the use of `no_sanitize` attribute.
+    /// The feature was renamed to `sanitize` and the attribute to `#[sanitize(xyz = "on|off")]`
+    (removed, no_sanitize, "CURRENT_RUSTC_VERSION", Some(39699), Some(r#"renamed to sanitize(xyz = "on|off")"#), 142681),
     /// Note: this feature was previously recorded in a separate
     /// `STABLE_REMOVED` list because it, uniquely, was once stable but was
     /// then removed. But there was no utility storing it separately, so now
