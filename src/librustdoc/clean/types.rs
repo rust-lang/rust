@@ -11,7 +11,7 @@ use rustc_ast::attr::AttributeExt;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_hir::attrs::{AttributeKind, DeprecatedSince, Deprecation, DocAttribute};
-use rustc_hir::def::{CtorKind, DefKind, Res};
+use rustc_hir::def::{CtorKind, DefKind, MacroKinds, Res};
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{Attribute, BodyId, ConstStability, Mutability, Stability, StableSince, find_attr};
@@ -724,6 +724,24 @@ impl Item {
         find_attr!(&self.attrs.other_attrs, AttributeKind::NonExhaustive(..))
     }
 
+    pub(crate) fn bang_macro_types(&self) -> Option<Vec<ItemType>> {
+        match self.kind {
+            ItemKind::MacroItem(_, None) => Some(vec![ItemType::Macro]),
+            ItemKind::MacroItem(_, Some(kinds)) => Some(
+                kinds
+                    .iter()
+                    .map(|kind| match kind {
+                        MacroKinds::BANG => ItemType::Macro,
+                        MacroKinds::ATTR => ItemType::ProcAttribute,
+                        MacroKinds::DERIVE => ItemType::ProcDerive,
+                        _ => panic!("unexpected macro kind {kind:?}"),
+                    })
+                    .collect::<Vec<_>>(),
+            ),
+            _ => None,
+        }
+    }
+
     /// Returns a documentation-level item type from the item.
     pub(crate) fn type_(&self) -> ItemType {
         ItemType::from(self)
@@ -894,7 +912,7 @@ pub(crate) enum ItemKind {
     ForeignStaticItem(Static, hir::Safety),
     /// `type`s from an extern block
     ForeignTypeItem,
-    MacroItem(Macro),
+    MacroItem(Macro, Option<MacroKinds>),
     ProcMacroItem(ProcMacro),
     PrimitiveItem(PrimitiveType),
     /// A required associated constant in a trait declaration.
@@ -949,7 +967,7 @@ impl ItemKind {
             | ForeignFunctionItem(_, _)
             | ForeignStaticItem(_, _)
             | ForeignTypeItem
-            | MacroItem(_)
+            | MacroItem(..)
             | ProcMacroItem(_)
             | PrimitiveItem(_)
             | RequiredAssocConstItem(..)

@@ -7,7 +7,7 @@ use rustc_abi::VariantIdx;
 use rustc_ast::join_path_syms;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
 use rustc_hir as hir;
-use rustc_hir::def::CtorKind;
+use rustc_hir::def::{CtorKind, MacroKinds};
 use rustc_hir::def_id::DefId;
 use rustc_index::IndexVec;
 use rustc_middle::ty::{self, TyCtxt};
@@ -129,6 +129,9 @@ pub(super) fn print_item(cx: &Context<'_>, item: &clean::Item) -> impl fmt::Disp
         let item_vars = ItemVars {
             typ,
             name: item.name.as_ref().unwrap().as_str(),
+            // If `type_` returns `None`, it means it's a bang macro with multiple kinds, but
+            // since we're generating its documentation page, we can default to the "parent" type,
+            // ie "bang macro".
             item_type: &item.type_().to_string(),
             path_components,
             stability_since_raw: &stability_since_raw,
@@ -153,7 +156,7 @@ pub(super) fn print_item(cx: &Context<'_>, item: &clean::Item) -> impl fmt::Disp
             clean::TypeAliasItem(t) => {
                 write!(buf, "{}", item_type_alias(cx, item, t))
             }
-            clean::MacroItem(m) => write!(buf, "{}", item_macro(cx, item, m)),
+            clean::MacroItem(m, kinds) => write!(buf, "{}", item_macro(cx, item, m, *kinds)),
             clean::ProcMacroItem(m) => {
                 write!(buf, "{}", item_proc_macro(cx, item, m))
             }
@@ -227,8 +230,17 @@ fn item_module(cx: &Context<'_>, item: &clean::Item, items: &[clean::Item]) -> i
         let mut not_stripped_items: FxIndexMap<ItemType, Vec<(usize, &clean::Item)>> =
             FxIndexMap::default();
 
-        for (index, item) in items.iter().filter(|i| !i.is_stripped()).enumerate() {
-            not_stripped_items.entry(item.type_()).or_default().push((index, item));
+        let mut index = 0;
+        for item in items.iter().filter(|i| !i.is_stripped()) {
+            if let Some(types) = item.bang_macro_types() {
+                for type_ in types {
+                    not_stripped_items.entry(type_).or_default().push((index, item));
+                    index += 1;
+                }
+            } else {
+                not_stripped_items.entry(item.type_()).or_default().push((index, item));
+                index += 1;
+            }
         }
 
         // the order of item types in the listing
@@ -1876,8 +1888,13 @@ fn item_variants(
     })
 }
 
-fn item_macro(cx: &Context<'_>, it: &clean::Item, t: &clean::Macro) -> impl fmt::Display {
-    fmt::from_fn(|w| {
+fn item_macro(
+    cx: &Context<'_>,
+    it: &clean::Item,
+    t: &clean::Macro,
+    kinds: Option<MacroKinds>,
+) -> impl fmt::Display {
+    fmt::from_fn(move |w| {
         wrap_item(w, |w| {
             render_attributes_in_code(w, it, "", cx)?;
             if !t.macro_rules {
@@ -1885,6 +1902,14 @@ fn item_macro(cx: &Context<'_>, it: &clean::Item, t: &clean::Macro) -> impl fmt:
             }
             write!(w, "{}", Escape(&t.source))
         })?;
+        if let Some(kinds) = kinds {
+            write!(
+                w,
+                "<h3 class='macro-info'>ⓘ This is {} {}</h3>",
+                kinds.article(),
+                kinds.descr(),
+            )?;
+        }
         write!(w, "{}", document(cx, it, None, HeadingOffset::H2))
     })
 }
