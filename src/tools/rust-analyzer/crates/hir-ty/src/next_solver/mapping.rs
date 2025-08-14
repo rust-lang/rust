@@ -1147,6 +1147,9 @@ pub(crate) fn convert_ty_for_result<'db>(interner: DbInterner<'db>, ty: Ty<'db>)
                             }
                         }),
                     );
+
+                    let p = shift_vars(interner, p, 1);
+
                     let where_clause = match p.skip_binder() {
                         rustc_type_ir::ExistentialPredicate::Trait(trait_ref) => {
                             let trait_ref = TraitRef::new(
