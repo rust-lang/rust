@@ -398,7 +398,7 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
                 resolution.exts = Some(
                     match self.cm().resolve_macro_path(
                         &resolution.path,
-                        Some(MacroKind::Derive),
+                        MacroKind::Derive,
                         &parent_scope,
                         true,
                         force,
@@ -563,7 +563,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     ) -> Result<(Arc<SyntaxExtension>, Res), Indeterminate> {
         let (ext, res) = match self.cm().resolve_macro_or_delegation_path(
             path,
-            Some(kind),
+            kind,
             parent_scope,
             true,
             force,
@@ -710,7 +710,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     pub(crate) fn resolve_macro_path<'r>(
         self: CmResolver<'r, 'ra, 'tcx>,
         path: &ast::Path,
-        kind: Option<MacroKind>,
+        kind: MacroKind,
         parent_scope: &ParentScope<'ra>,
         trace: bool,
         force: bool,
@@ -733,7 +733,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     fn resolve_macro_or_delegation_path<'r>(
         mut self: CmResolver<'r, 'ra, 'tcx>,
         ast_path: &ast::Path,
-        kind: Option<MacroKind>,
+        kind: MacroKind,
         parent_scope: &ParentScope<'ra>,
         trace: bool,
         force: bool,
@@ -747,7 +747,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
         // Possibly apply the macro helper hack
         if deleg_impl.is_none()
-            && kind == Some(MacroKind::Bang)
+            && kind == MacroKind::Bang
             && let [segment] = path.as_slice()
             && segment.ident.span.ctxt().outer_expn_data().local_inner_macros
         {
@@ -775,7 +775,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             };
 
             if trace {
-                let kind = kind.expect("macro kind must be specified if tracing is enabled");
                 // FIXME: Should be an output of Speculative Resolution.
                 self.multi_segment_macro_resolutions.borrow_mut().push((
                     path,
@@ -790,10 +789,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             self.prohibit_imported_non_macro_attrs(None, res.ok(), path_span);
             res
         } else {
-            let scope_set = kind.map_or(ScopeSet::All(MacroNS), ScopeSet::Macro);
             let binding = self.reborrow().early_resolve_ident_in_lexical_scope(
                 path[0].ident,
-                scope_set,
+                ScopeSet::Macro(kind),
                 parent_scope,
                 None,
                 force,
@@ -805,7 +803,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             }
 
             if trace {
-                let kind = kind.expect("macro kind must be specified if tracing is enabled");
                 // FIXME: Should be an output of Speculative Resolution.
                 self.single_segment_macro_resolutions.borrow_mut().push((
                     path[0].ident,

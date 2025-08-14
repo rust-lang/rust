@@ -38,8 +38,8 @@ use crate::late::{
 };
 use crate::ty::fast_reject::SimplifiedType;
 use crate::{
-    Module, ModuleKind, ModuleOrUniformRoot, PathResult, PathSource, Resolver, Segment, errors,
-    path_names_to_string,
+    Module, ModuleKind, ModuleOrUniformRoot, PathResult, PathSource, Resolver, ScopeSet, Segment,
+    errors, path_names_to_string,
 };
 
 type Res = def::Res<ast::NodeId>;
@@ -2458,44 +2458,29 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                     }
                 }
 
+                if let RibKind::Module(module) = rib.kind
+                    && let ModuleKind::Block = module.kind
+                {
+                    self.r.add_module_candidates(module, &mut names, &filter_fn, Some(ctxt));
+                } else if let RibKind::Module(module) = rib.kind {
+                    // Encountered a module item, abandon ribs and look into that module and preludes.
+                    self.r.add_scope_set_candidates(
+                        &mut names,
+                        ScopeSet::Late(ns, module, None),
+                        &self.parent_scope,
+                        ctxt,
+                        filter_fn,
+                    );
+                    break;
+                }
+
                 if let RibKind::MacroDefinition(def) = rib.kind
                     && def == self.r.macro_def(ctxt)
                 {
                     // If an invocation of this macro created `ident`, give up on `ident`
                     // and switch to `ident`'s source from the macro definition.
                     ctxt.remove_mark();
-                    continue;
                 }
-
-                // Items in scope
-                if let RibKind::Module(module) = rib.kind {
-                    // Items from this module
-                    self.r.add_module_candidates(module, &mut names, &filter_fn, Some(ctxt));
-
-                    if let ModuleKind::Block = module.kind {
-                        // We can see through blocks
-                    } else {
-                        // Items from the prelude
-                        if !module.no_implicit_prelude {
-                            names.extend(self.r.extern_prelude.keys().flat_map(|ident| {
-                                let res = Res::Def(DefKind::Mod, CRATE_DEF_ID.to_def_id());
-                                filter_fn(res)
-                                    .then_some(TypoSuggestion::typo_from_ident(ident.0, res))
-                            }));
-
-                            if let Some(prelude) = self.r.prelude {
-                                self.r.add_module_candidates(prelude, &mut names, &filter_fn, None);
-                            }
-                        }
-                        break;
-                    }
-                }
-            }
-            // Add primitive types to the mix
-            if filter_fn(Res::PrimTy(PrimTy::Bool)) {
-                names.extend(PrimTy::ALL.iter().map(|prim_ty| {
-                    TypoSuggestion::typo_from_name(prim_ty.name(), Res::PrimTy(*prim_ty))
-                }))
             }
         } else {
             // Search in module.
