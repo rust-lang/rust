@@ -491,22 +491,12 @@ impl<'tcx> LoweredTy<'tcx> {
 }
 
 fn never_type_behavior(tcx: TyCtxt<'_>) -> (DivergingFallbackBehavior, DivergingBlockBehavior) {
+    // FIXME(waffle): rip out the whole system which allows you to choose never type fallback
     let (fallback, block) = parse_never_type_options_attr(tcx);
-    let fallback = fallback.unwrap_or_else(|| default_fallback(tcx));
+    let fallback = fallback.unwrap_or_else(|| DivergingFallbackBehavior::ToNever);
     let block = block.unwrap_or_default();
 
     (fallback, block)
-}
-
-/// Returns the default fallback which is used when there is no explicit override via `#![never_type_options(...)]`.
-fn default_fallback(tcx: TyCtxt<'_>) -> DivergingFallbackBehavior {
-    // Edition 2024: fallback to `!`
-    if tcx.sess.edition().at_least_rust_2024() {
-        return DivergingFallbackBehavior::ToNever;
-    }
-
-    // Otherwise: fallback to `()`
-    DivergingFallbackBehavior::ToUnit
 }
 
 fn parse_never_type_options_attr(
