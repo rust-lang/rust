@@ -4722,7 +4722,6 @@ name = "rustc_traits"
 version = "0.0.0"
 dependencies = [
  "rustc_data_structures",
- "rustc_hir",
  "rustc_infer",
  "rustc_middle",
  "rustc_span",
