@@ -30,10 +30,6 @@ pub struct Std {
 
 impl Std {
     const CRATE_OR_DEPS: &[&str] = &["sysroot", "coretests", "alloctests"];
-
-    pub fn new(build_compiler: Compiler, target: TargetSelection) -> Self {
-        Self { build_compiler, target, crates: vec![] }
-    }
 }
 
 impl Step for Std {
@@ -168,12 +164,8 @@ pub struct Rustc {
 }
 
 impl Rustc {
-    pub fn new(builder: &Builder<'_>, build_compiler: Compiler, target: TargetSelection) -> Self {
-        let crates = builder
-            .in_tree_crates("rustc-main", Some(target))
-            .into_iter()
-            .map(|krate| krate.name.to_string())
-            .collect();
+    pub fn new(builder: &Builder<'_>, target: TargetSelection, crates: Vec<String>) -> Self {
+        let build_compiler = prepare_compiler_for_check(builder, target, Mode::Rustc);
         Self { build_compiler, target, crates }
     }
 }
@@ -189,11 +181,7 @@ impl Step for Rustc {
 
     fn make_run(run: RunConfig<'_>) {
         let crates = run.make_run_crates(Alias::Compiler);
-        run.builder.ensure(Rustc {
-            target: run.target,
-            build_compiler: prepare_compiler_for_check(run.builder, run.target, Mode::Rustc),
-            crates,
-        });
+        run.builder.ensure(Rustc::new(run.builder, run.target, crates));
     }
 
     /// Check the compiler.
@@ -206,15 +194,6 @@ impl Step for Rustc {
     fn run(self, builder: &Builder<'_>) {
         let build_compiler = self.build_compiler;
         let target = self.target;
-
-        // Build host std for compiling build scripts
-        builder.std(build_compiler, build_compiler.host);
-
-        // Build target std so that the checked rustc can link to it during the check
-        // FIXME: maybe we can a way to only do a check of std here?
-        // But for that we would have to copy the stdlib rmetas to the sysroot of the build
-        // compiler, which conflicts with std rlibs, if we also build std.
-        builder.std(build_compiler, target);
 
         let mut cargo = builder::Cargo::new(
             builder,
@@ -253,12 +232,18 @@ impl Step for Rustc {
     }
 
     fn metadata(&self) -> Option<StepMetadata> {
-        Some(StepMetadata::check("rustc", self.target).built_by(self.build_compiler))
+        let metadata = StepMetadata::check("rustc", self.target).built_by(self.build_compiler);
+        let metadata = if self.crates.is_empty() {
+            metadata
+        } else {
+            metadata.with_metadata(format!("({} crates)", self.crates.len()))
+        };
+        Some(metadata)
     }
 }
 
 /// Prepares a compiler that will check something with the given `mode`.
-fn prepare_compiler_for_check(
+pub fn prepare_compiler_for_check(
     builder: &Builder<'_>,
     target: TargetSelection,
     mode: Mode,
@@ -289,11 +274,13 @@ fn prepare_compiler_for_check(
             build_compiler
         }
         Mode::ToolRustc | Mode::Codegen => {
-            // FIXME: this is a hack, see description of Mode::Rustc below
-            let stage = if host == target { builder.top_stage - 1 } else { builder.top_stage };
-            // When checking tool stage N, we check it with compiler stage N-1
-            let build_compiler = builder.compiler(stage, host);
-            builder.ensure(Rustc::new(builder, build_compiler, target));
+            // Check Rustc to produce the required rmeta artifacts for rustc_private, and then
+            // return the build compiler that was used to check rustc.
+            // We do not need to check examples/tests/etc. of Rustc for rustc_private, so we pass
+            // an empty set of crates, which will avoid using `cargo -p`.
+            let check = Rustc::new(builder, target, vec![]);
+            let build_compiler = check.build_compiler;
+            builder.ensure(check);
             build_compiler
         }
         Mode::Rustc => {
@@ -305,7 +292,18 @@ fn prepare_compiler_for_check(
             // FIXME: remove this and either fix cross-compilation check on stage 2 (which has a
             // myriad of other problems) or disable cross-checking on stage 1.
             let stage = if host == target { builder.top_stage - 1 } else { builder.top_stage };
-            builder.compiler(stage, host)
+            let build_compiler = builder.compiler(stage, host);
+
+            // Build host std for compiling build scripts
+            builder.std(build_compiler, build_compiler.host);
+
+            // Build target std so that the checked rustc can link to it during the check
+            // FIXME: maybe we can a way to only do a check of std here?
+            // But for that we would have to copy the stdlib rmetas to the sysroot of the build
+            // compiler, which conflicts with std rlibs, if we also build std.
+            builder.std(build_compiler, target);
+
+            build_compiler
         }
         Mode::Std => {
             // When checking std stage N, we want to do it with the stage N compiler
