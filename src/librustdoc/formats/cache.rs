@@ -602,7 +602,6 @@ fn add_item_to_search_index(tcx: TyCtxt<'_>, cache: &mut Cache, item: &clean::It
         search_type,
         aliases,
         deprecation,
-        stability: item.stability(tcx),
     };
     cache.search_index.push(index_item);
 }

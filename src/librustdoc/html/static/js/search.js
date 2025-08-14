@@ -1465,11 +1465,6 @@ class DocSearch {
          */
         this.searchIndexEmptyDesc = new Map();
         /**
-         * @type {Map<String, RoaringBitmap>}
-         */
-        this.searchIndexUnstable = new Map();
-
-        /**
          *  @type {Uint32Array}
          */
         this.functionTypeFingerprint = new Uint32Array(0);
@@ -2057,10 +2052,9 @@ class DocSearch {
             };
             const descShardList = [descShard];
 
-            // Deprecated and unstable items and items with no description
+            // Deprecated items and items with no description
             this.searchIndexDeprecated.set(crate, new RoaringBitmap(crateCorpus.c));
             this.searchIndexEmptyDesc.set(crate, new RoaringBitmap(crateCorpus.e));
-            this.searchIndexUnstable.set(crate, new RoaringBitmap(crateCorpus.u));
             let descIndex = 0;
 
             /**
@@ -3327,19 +3321,6 @@ class DocSearch {
                 b = Number(
                     // @ts-expect-error
                     this.searchIndexDeprecated.get(bbb.item.crate).contains(bbb.item.bitIndex),
-                );
-                if (a !== b) {
-                    return a - b;
-                }
-
-                // sort unstable items later
-                a = Number(
-                    // @ts-expect-error
-                    this.searchIndexUnstable.get(aaa.item.crate).contains(aaa.item.bitIndex),
-                );
-                b = Number(
-                    // @ts-expect-error
-                    this.searchIndexUnstable.get(bbb.item.crate).contains(bbb.item.bitIndex),
                 );
                 if (a !== b) {
                     return a - b;
