@@ -1034,7 +1034,7 @@ impl<'tcx> PatRangeBoundary<'tcx> {
             Self::NegInfinity | Self::PosInfinity => None,
         }
     }
-    pub fn eval_bits(self, ty: Ty<'tcx>, tcx: TyCtxt<'tcx>) -> u128 {
+    pub fn to_bits(self, ty: Ty<'tcx>, tcx: TyCtxt<'tcx>) -> u128 {
         match self {
             Self::Finite(value) => value.try_to_scalar_int().unwrap().to_bits_unchecked(),
             Self::NegInfinity => {
@@ -1077,8 +1077,8 @@ impl<'tcx> PatRangeBoundary<'tcx> {
             _ => {}
         }
 
-        let a = self.eval_bits(ty, tcx);
-        let b = other.eval_bits(ty, tcx);
+        let a = self.to_bits(ty, tcx);
+        let b = other.to_bits(ty, tcx);
 
         match ty.kind() {
             ty::Float(ty::FloatTy::F16) => {

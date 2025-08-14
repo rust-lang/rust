@@ -135,7 +135,7 @@ pub type ConstToValTreeResult<'tcx> = Result<Result<ValTree<'tcx>, Ty<'tcx>>, Er
 /// A type-level constant value.
 ///
 /// Represents a typed, fully evaluated constant.
-/// Note that this is used by pattern elaboration to represent values which cannot occur in types,
+/// Note that this is also used by pattern elaboration to represent values which cannot occur in types,
 /// such as raw pointers and floats.
 #[derive(Copy, Clone, Debug, Hash, Eq, PartialEq)]
 #[derive(HashStable, TyEncodable, TyDecodable, TypeFoldable, TypeVisitable, Lift)]

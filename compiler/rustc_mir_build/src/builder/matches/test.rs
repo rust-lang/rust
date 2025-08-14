@@ -695,7 +695,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 }
             }
 
-            (TestKind::Eq { value: test_val, .. }, TestCase::Constant { value: case_val, .. }) => {
+            (TestKind::Eq { value: test_val, .. }, TestCase::Constant { value: case_val }) => {
                 if test_val == case_val {
                     fully_matched = true;
                     Some(TestBranch::Success)

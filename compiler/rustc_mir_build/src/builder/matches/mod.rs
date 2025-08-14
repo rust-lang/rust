@@ -1316,12 +1316,12 @@ enum TestKind<'tcx> {
     If,
 
     /// Test for equality with value, possibly after an unsizing coercion to
-    /// `ty`,
+    /// `cast_ty`,
     Eq {
         value: ty::Value<'tcx>,
         // Integer types are handled by `SwitchInt`, and constants with ADT
         // types and `&[T]` types are converted back into patterns, so this can
-        // only be `&str` or `f*`.
+        // only be `&str` or floats.
         cast_ty: Ty<'tcx>,
     },
 
