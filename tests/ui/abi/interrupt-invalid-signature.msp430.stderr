@@ -1,0 +1,28 @@
+error: invalid signature for `extern "msp430-interrupt"` function
+  --> $DIR/interrupt-invalid-signature.rs:40:41
+   |
+LL | extern "msp430-interrupt" fn msp430_arg(_byte: u8) {}
+   |                                         ^^^^^^^^^
+   |
+   = note: functions with the "msp430-interrupt" ABI cannot have any parameters or return type
+help: remove the parameters and return type
+   |
+LL - extern "msp430-interrupt" fn msp430_arg(_byte: u8) {}
+LL + extern "msp430-interrupt" fn msp430_arg() {}
+   |
+
+error: invalid signature for `extern "msp430-interrupt"` function
+  --> $DIR/interrupt-invalid-signature.rs:65:46
+   |
+LL | extern "msp430-interrupt" fn msp430_ret() -> u8 {
+   |                                              ^^
+   |
+   = note: functions with the "msp430-interrupt" ABI cannot have any parameters or return type
+help: remove the parameters and return type
+   |
+LL - extern "msp430-interrupt" fn msp430_ret() -> u8 {
+LL + extern "msp430-interrupt" fn msp430_ret() {
+   |
+
+error: aborting due to 2 previous errors
+
