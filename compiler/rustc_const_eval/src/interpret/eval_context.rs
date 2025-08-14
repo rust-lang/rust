@@ -325,8 +325,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         let _span = enter_trace_span!(
             M,
             "instantiate_from_frame_and_normalize_erasing_regions",
-            "{}",
-            frame.instance
+            %frame.instance
         );
         frame
             .instance
