@@ -140,13 +140,12 @@ pub(crate) fn try_inline(
         Res::Def(DefKind::Macro(kinds), did) => {
             let mac = build_macro(cx, did, name, kinds);
 
-            // FIXME: handle attributes and derives that aren't proc macros, and macros with
-            // multiple kinds
             let type_kind = match kinds {
                 MacroKinds::BANG => ItemType::Macro,
                 MacroKinds::ATTR => ItemType::ProcAttribute,
                 MacroKinds::DERIVE => ItemType::ProcDerive,
-                _ => todo!("Handle macros with multiple kinds"),
+                _ if kinds.contains(MacroKinds::BANG) => ItemType::Macro,
+                _ => panic!("unsupported macro kind {kinds:?}"),
             };
             record_extern_fqn(cx, did, type_kind);
             mac
@@ -764,13 +763,14 @@ fn build_macro(
     macro_kinds: MacroKinds,
 ) -> clean::ItemKind {
     match CStore::from_tcx(cx.tcx).load_macro_untracked(def_id, cx.tcx) {
-        // FIXME: handle attributes and derives that aren't proc macros, and macros with multiple
-        // kinds
         LoadedMacro::MacroDef { def, .. } => match macro_kinds {
-            MacroKinds::BANG => clean::MacroItem(clean::Macro {
-                source: utils::display_macro_source(cx, name, &def),
-                macro_rules: def.macro_rules,
-            }),
+            MacroKinds::BANG => clean::MacroItem(
+                clean::Macro {
+                    source: utils::display_macro_source(cx, name, &def),
+                    macro_rules: def.macro_rules,
+                },
+                None,
+            ),
             MacroKinds::DERIVE => clean::ProcMacroItem(clean::ProcMacro {
                 kind: MacroKind::Derive,
                 helpers: Vec::new(),
@@ -779,7 +779,14 @@ fn build_macro(
                 kind: MacroKind::Attr,
                 helpers: Vec::new(),
             }),
-            _ => todo!("Handle macros with multiple kinds"),
+            _ if macro_kinds == (MacroKinds::BANG | MacroKinds::ATTR) => clean::MacroItem(
+                clean::Macro {
+                    source: utils::display_macro_source(cx, name, &def),
+                    macro_rules: def.macro_rules,
+                },
+                Some(macro_kinds),
+            ),
+            _ => panic!("unsupported macro kind {macro_kinds:?}"),
         },
         LoadedMacro::ProcMacro(ext) => {
             // Proc macros can only have a single kind

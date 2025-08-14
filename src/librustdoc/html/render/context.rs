@@ -13,6 +13,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_span::edition::Edition;
 use rustc_span::{BytePos, FileName, Symbol, sym};
+use serde::ser::SerializeSeq;
 use tracing::info;
 
 use super::print_item::{full_path, print_item, print_item_path};
@@ -166,6 +167,27 @@ impl SharedContext<'_> {
     }
 }
 
+struct SidebarItem {
+    name: String,
+    is_actually_macro: bool,
+}
+
+impl serde::Serialize for SidebarItem {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        if self.is_actually_macro {
+            let mut seq = serializer.serialize_seq(Some(2))?;
+            seq.serialize_element(&self.name)?;
+            seq.serialize_element(&1)?;
+            seq.end()
+        } else {
+            serializer.serialize_some(&Some(&self.name))
+        }
+    }
+}
+
 impl<'tcx> Context<'tcx> {
     pub(crate) fn tcx(&self) -> TyCtxt<'tcx> {
         self.shared.tcx
@@ -306,7 +328,20 @@ impl<'tcx> Context<'tcx> {
     }
 
     /// Construct a map of items shown in the sidebar to a plain-text summary of their docs.
-    fn build_sidebar_items(&self, m: &clean::Module) -> BTreeMap<String, Vec<String>> {
+    fn build_sidebar_items(&self, m: &clean::Module) -> BTreeMap<String, Vec<SidebarItem>> {
+        fn build_sidebar_items_inner(
+            name: Symbol,
+            type_: ItemType,
+            map: &mut BTreeMap<String, Vec<SidebarItem>>,
+            inserted: &mut FxHashMap<ItemType, FxHashSet<Symbol>>,
+            is_actually_macro: bool,
+        ) {
+            if inserted.entry(type_).or_default().insert(name) {
+                let type_ = type_.to_string();
+                let name = name.to_string();
+                map.entry(type_).or_default().push(SidebarItem { name, is_actually_macro });
+            }
+        }
         // BTreeMap instead of HashMap to get a sorted output
         let mut map: BTreeMap<_, Vec<_>> = BTreeMap::new();
         let mut inserted: FxHashMap<ItemType, FxHashSet<Symbol>> = FxHashMap::default();
@@ -315,23 +350,24 @@ impl<'tcx> Context<'tcx> {
             if item.is_stripped() {
                 continue;
             }
-
-            let short = item.type_();
-            let myname = match item.name {
+            let name = match item.name {
                 None => continue,
                 Some(s) => s,
             };
-            if inserted.entry(short).or_default().insert(myname) {
-                let short = short.to_string();
-                let myname = myname.to_string();
-                map.entry(short).or_default().push(myname);
+
+            if let Some(types) = item.bang_macro_types() {
+                for type_ in types {
+                    build_sidebar_items_inner(name, type_, &mut map, &mut inserted, true);
+                }
+            } else {
+                build_sidebar_items_inner(name, item.type_(), &mut map, &mut inserted, false);
             }
         }
 
         match self.shared.module_sorting {
             ModuleSorting::Alphabetical => {
                 for items in map.values_mut() {
-                    items.sort();
+                    items.sort_by(|a, b| a.name.cmp(&b.name));
                 }
             }
             ModuleSorting::DeclarationOrder => {}
@@ -864,7 +900,11 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             self.shared.fs.write(joint_dst, buf)?;
 
             if !self.info.render_redirect_pages {
-                self.shared.all.borrow_mut().append(full_path(self, item), &item_type);
+                self.shared.all.borrow_mut().append(
+                    full_path(self, item),
+                    &item_type,
+                    item.bang_macro_types(),
+                );
             }
             // If the item is a macro, redirect from the old macro URL (with !)
             // to the new one (without).
