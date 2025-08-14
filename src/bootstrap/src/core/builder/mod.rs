@@ -947,6 +947,9 @@ impl Step for Libdir {
     }
 }
 
+#[cfg(feature = "tracing")]
+pub const STEP_SPAN_TARGET: &str = "STEP";
+
 impl<'a> Builder<'a> {
     fn get_step_descriptions(kind: Kind) -> Vec<StepDescription> {
         macro_rules! describe {
@@ -1674,8 +1677,6 @@ You have to build a stage1 compiler for `{}` first, and then use it to build a s
                 panic!("{}", out);
             }
             if let Some(out) = self.cache.get(&step) {
-                self.verbose_than(1, || println!("{}c {:?}", "  ".repeat(stack.len()), step));
-
                 #[cfg(feature = "tracing")]
                 {
                     if let Some(parent) = stack.last() {
@@ -1685,7 +1686,6 @@ You have to build a stage1 compiler for `{}` first, and then use it to build a s
                 }
                 return out;
             }
-            self.verbose_than(1, || println!("{}> {:?}", "  ".repeat(stack.len()), step));
 
             #[cfg(feature = "tracing")]
             {
@@ -1700,10 +1700,29 @@ You have to build a stage1 compiler for `{}` first, and then use it to build a s
         #[cfg(feature = "build-metrics")]
         self.metrics.enter_step(&step, self);
 
+        if self.config.print_step_timings && !self.config.dry_run() {
+            println!("[TIMING:start] {}", pretty_print_step(&step));
+        }
+
         let (out, dur) = {
             let start = Instant::now();
             let zero = Duration::new(0, 0);
             let parent = self.time_spent_on_dependencies.replace(zero);
+
+            #[cfg(feature = "tracing")]
+            let _span = {
+                // Keep the target and field names synchronized with `setup_tracing`.
+                let span = tracing::info_span!(
+                    target: STEP_SPAN_TARGET,
+                    // We cannot use a dynamic name here, so instead we record the actual step name
+                    // in the step_name field.
+                    "step",
+                    step_name = pretty_step_name::<S>(),
+                    args = step_debug_args(&step)
+                );
+                span.entered()
+            };
+
             let out = step.clone().run(self);
             let dur = start.elapsed();
             let deps = self.time_spent_on_dependencies.replace(parent + dur);
@@ -1711,13 +1730,9 @@ You have to build a stage1 compiler for `{}` first, and then use it to build a s
         };
 
         if self.config.print_step_timings && !self.config.dry_run() {
-            let step_string = format!("{step:?}");
-            let brace_index = step_string.find('{').unwrap_or(0);
-            let type_string = type_name::<S>();
             println!(
-                "[TIMING] {} {} -- {}.{:03}",
-                &type_string.strip_prefix("bootstrap::").unwrap_or(type_string),
-                &step_string[brace_index..],
+                "[TIMING:end] {} -- {}.{:03}",
+                pretty_print_step(&step),
                 dur.as_secs(),
                 dur.subsec_millis()
             );
@@ -1731,7 +1746,6 @@ You have to build a stage1 compiler for `{}` first, and then use it to build a s
             let cur_step = stack.pop().expect("step stack empty");
             assert_eq!(cur_step.downcast_ref(), Some(&step));
         }
-        self.verbose_than(1, || println!("{}< {:?}", "  ".repeat(self.stack.borrow().len()), step));
         self.cache.put(step, out.clone());
         out
     }
@@ -1802,6 +1816,25 @@ You have to build a stage1 compiler for `{}` first, and then use it to build a s
     pub fn exec_ctx(&self) -> &ExecutionContext {
         &self.config.exec_ctx
     }
+}
+
+/// Return qualified step name, e.g. `compile::Rustc`.
+pub fn pretty_step_name<S: Step>() -> String {
+    // Normalize step type path to only keep the module and the type name
+    let path = type_name::<S>().rsplit("::").take(2).collect::<Vec<_>>();
+    path.into_iter().rev().collect::<Vec<_>>().join("::")
+}
+
+/// Renders `step` using its `Debug` implementation and extract the field arguments out of it.
+fn step_debug_args<S: Step>(step: &S) -> String {
+    let step_dbg_repr = format!("{step:?}");
+    let brace_start = step_dbg_repr.find('{').unwrap_or(0);
+    let brace_end = step_dbg_repr.rfind('}').unwrap_or(step_dbg_repr.len());
+    step_dbg_repr[brace_start + 1..brace_end - 1].trim().to_string()
+}
+
+fn pretty_print_step<S: Step>(step: &S) -> String {
+    format!("{} {{ {} }}", pretty_step_name::<S>(), step_debug_args(step))
 }
 
 impl<'a> AsRef<ExecutionContext> for Builder<'a> {
