@@ -732,7 +732,7 @@ lint_pattern_in_foreign = patterns aren't allowed in foreign function declaratio
 lint_private_extern_crate_reexport = extern crate `{$ident}` is private and cannot be re-exported
     .suggestion = consider making the `extern crate` item publicly accessible
 
-lint_proc_macro_derive_resolution_fallback = cannot find {$ns} `{$ident}` in this scope
+lint_proc_macro_derive_resolution_fallback = cannot find {$ns_descr} `{$ident}` in this scope
     .label = names from parent modules are not accessible without an explicit import
 
 lint_query_instability = using `{$query}` can result in unstable query results
