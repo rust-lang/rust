@@ -499,6 +499,10 @@ impl Builder<'_> {
             build_stamp::clear_if_dirty(self, &out_dir, &backend);
         }
 
+        if self.config.cmd.timings() {
+            cargo.arg("--timings");
+        }
+
         if cmd_kind == Kind::Doc {
             let my_out = match mode {
                 // This is the intended out directory for compiler documentation.
