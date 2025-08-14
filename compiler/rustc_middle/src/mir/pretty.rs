@@ -91,7 +91,7 @@ pub fn dump_mir<'tcx, F>(
     body: &Body<'tcx>,
     extra_data: F,
 ) where
-    F: FnMut(PassWhere, &mut dyn io::Write) -> io::Result<()>,
+    F: Fn(PassWhere, &mut dyn io::Write) -> io::Result<()>,
 {
     dump_mir_with_options(
         tcx,
@@ -119,7 +119,7 @@ pub fn dump_mir_with_options<'tcx, F>(
     extra_data: F,
     options: PrettyPrintMirOptions,
 ) where
-    F: FnMut(PassWhere, &mut dyn io::Write) -> io::Result<()>,
+    F: Fn(PassWhere, &mut dyn io::Write) -> io::Result<()>,
 {
     if !dump_enabled(tcx, pass_name, body.source.def_id()) {
         return;
@@ -171,11 +171,11 @@ pub fn dump_mir_to_writer<'tcx, F>(
     disambiguator: &dyn Display,
     body: &Body<'tcx>,
     w: &mut dyn io::Write,
-    mut extra_data: F,
+    extra_data: F,
     options: PrettyPrintMirOptions,
 ) -> io::Result<()>
 where
-    F: FnMut(PassWhere, &mut dyn io::Write) -> io::Result<()>,
+    F: Fn(PassWhere, &mut dyn io::Write) -> io::Result<()>,
 {
     // see notes on #41697 above
     let def_path =
@@ -193,7 +193,7 @@ where
     writeln!(w)?;
     extra_data(PassWhere::BeforeCFG, w)?;
     write_user_type_annotations(tcx, body, w)?;
-    write_mir_fn(tcx, body, &mut extra_data, w, options)?;
+    write_mir_fn(tcx, body, &extra_data, w, options)?;
     extra_data(PassWhere::AfterCFG, w)
 }
 
@@ -343,11 +343,11 @@ pub fn write_mir_pretty<'tcx>(
         }
 
         let render_body = |w: &mut dyn io::Write, body| -> io::Result<()> {
-            write_mir_fn(tcx, body, &mut |_, _| Ok(()), w, options)?;
+            write_mir_fn(tcx, body, &|_, _| Ok(()), w, options)?;
 
             for body in tcx.promoted_mir(def_id) {
                 writeln!(w)?;
-                write_mir_fn(tcx, body, &mut |_, _| Ok(()), w, options)?;
+                write_mir_fn(tcx, body, &|_, _| Ok(()), w, options)?;
             }
             Ok(())
         };
@@ -359,7 +359,7 @@ pub fn write_mir_pretty<'tcx>(
             writeln!(w, "// MIR FOR CTFE")?;
             // Do not use `render_body`, as that would render the promoteds again, but these
             // are shared between mir_for_ctfe and optimized_mir
-            write_mir_fn(tcx, tcx.mir_for_ctfe(def_id), &mut |_, _| Ok(()), w, options)?;
+            write_mir_fn(tcx, tcx.mir_for_ctfe(def_id), &|_, _| Ok(()), w, options)?;
         } else {
             let instance_mir = tcx.instance_mir(ty::InstanceKind::Item(def_id));
             render_body(w, instance_mir)?;
@@ -372,12 +372,12 @@ pub fn write_mir_pretty<'tcx>(
 pub fn write_mir_fn<'tcx, F>(
     tcx: TyCtxt<'tcx>,
     body: &Body<'tcx>,
-    extra_data: &mut F,
+    extra_data: &F,
     w: &mut dyn io::Write,
     options: PrettyPrintMirOptions,
 ) -> io::Result<()>
 where
-    F: FnMut(PassWhere, &mut dyn io::Write) -> io::Result<()>,
+    F: Fn(PassWhere, &mut dyn io::Write) -> io::Result<()>,
 {
     write_mir_intro(tcx, body, w, options)?;
     for block in body.basic_blocks.indices() {
@@ -710,12 +710,12 @@ fn write_basic_block<'tcx, F>(
     tcx: TyCtxt<'tcx>,
     block: BasicBlock,
     body: &Body<'tcx>,
-    extra_data: &mut F,
+    extra_data: &F,
     w: &mut dyn io::Write,
     options: PrettyPrintMirOptions,
 ) -> io::Result<()>
 where
-    F: FnMut(PassWhere, &mut dyn io::Write) -> io::Result<()>,
+    F: Fn(PassWhere, &mut dyn io::Write) -> io::Result<()>,
 {
     let data = &body[block];
 
@@ -1363,11 +1363,11 @@ fn post_fmt_projection(projection: &[PlaceElem<'_>], fmt: &mut Formatter<'_>) ->
 fn write_extra<'tcx, F>(
     tcx: TyCtxt<'tcx>,
     write: &mut dyn io::Write,
-    mut visit_op: F,
+    visit_op: F,
     options: PrettyPrintMirOptions,
 ) -> io::Result<()>
 where
-    F: FnMut(&mut ExtraComments<'tcx>),
+    F: Fn(&mut ExtraComments<'tcx>),
 {
     if options.include_extra_comments {
         let mut extra_comments = ExtraComments { tcx, comments: vec![] };

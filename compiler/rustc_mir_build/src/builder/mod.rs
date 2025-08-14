@@ -834,7 +834,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 pretty::write_mir_fn(
                     self.tcx,
                     &body,
-                    &mut |_, _| Ok(()),
+                    &|_, _| Ok(()),
                     &mut std::io::stdout(),
                     options,
                 )
