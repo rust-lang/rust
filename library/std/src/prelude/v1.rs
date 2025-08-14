@@ -66,6 +66,7 @@ mod ambiguous_macro_only_std {
     mod vec {}
     #[allow(hidden_glob_reexports)]
     mod panic {}
+    #[allow(exported_private_dependencies)]
     #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
     pub use crate::*;
 }
