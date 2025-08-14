@@ -1671,7 +1671,7 @@ impl<'a> Parser<'a> {
     /// If the user writes `S { ref field: name }` instead of `S { field: ref name }`, we suggest
     /// the correct code.
     fn recover_misplaced_pattern_modifiers(&self, fields: &ThinVec<PatField>, err: &mut Diag<'a>) {
-        if let Some(last) = fields.iter().last()
+        if let Some(last) = fields.last()
             && last.is_shorthand
             && let PatKind::Ident(binding, ident, None) = last.pat.kind
             && binding != BindingMode::NONE

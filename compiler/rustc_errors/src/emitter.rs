@@ -2497,7 +2497,7 @@ impl HumanEmitter {
                 {
                     let mut buffer = StyledBuffer::new();
                     if !self.short_message {
-                        if let Some(child) = children.iter().next()
+                        if let Some(child) = children.first()
                             && child.span.primary_spans().is_empty()
                         {
                             // We'll continue the vertical bar to point into the next note.

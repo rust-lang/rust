@@ -770,7 +770,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
         let mut diag = struct_span_code_err!(self.dcx(), span, E0432, "{msg}");
 
-        if let Some((_, UnresolvedImportError { note: Some(note), .. })) = errors.iter().last() {
+        if let Some((_, UnresolvedImportError { note: Some(note), .. })) = errors.last() {
             diag.note(note.clone());
         }
 

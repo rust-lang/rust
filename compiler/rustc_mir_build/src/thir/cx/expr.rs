@@ -187,7 +187,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
                     ty::Adt(_, args) => args,
                     _ => bug!("ReborrowPin with non-Pin type"),
                 };
-                let pin_ty = pin_ty_args.iter().next().unwrap().expect_ty();
+                let pin_ty = pin_ty_args.first().unwrap().expect_ty();
                 let ptr_target_ty = match pin_ty.kind() {
                     ty::Ref(_, ty, _) => *ty,
                     _ => bug!("ReborrowPin with non-Ref type"),

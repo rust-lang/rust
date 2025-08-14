@@ -439,10 +439,10 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
                 let discr = discr.load_scalar(fx);
 
                 let use_bool_opt = switch_ty.kind() == fx.tcx.types.bool.kind()
-                    || (targets.iter().count() == 1 && targets.iter().next().unwrap().0 == 0);
+                    || (targets.iter().count() == 1 && targets.iter().first().unwrap().0 == 0);
                 if use_bool_opt {
                     assert_eq!(targets.iter().count(), 1);
-                    let (then_value, then_block) = targets.iter().next().unwrap();
+                    let (then_value, then_block) = targets.iter().first().unwrap();
                     let then_block = fx.get_block(then_block);
                     let else_block = fx.get_block(targets.otherwise());
                     let test_zero = match then_value {

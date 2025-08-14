@@ -771,7 +771,7 @@ impl<'a> AstValidator<'a> {
         self.dcx().emit_err(errors::ArgsBeforeConstraint {
             arg_spans: arg_spans.clone(),
             constraints: constraint_spans[0],
-            args: *arg_spans.iter().last().unwrap(),
+            args: *arg_spans.last().unwrap(),
             data: data.span,
             constraint_spans: errors::EmptyLabelManySpans(constraint_spans),
             arg_spans2: errors::EmptyLabelManySpans(arg_spans),
