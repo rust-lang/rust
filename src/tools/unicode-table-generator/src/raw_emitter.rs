@@ -98,6 +98,7 @@ impl RawEmitter {
         self.blank_line();
 
         writeln!(&mut self.file, "pub const fn lookup(c: char) -> bool {{").unwrap();
+        writeln!(&mut self.file, "    debug_assert!(!c.is_ascii());").unwrap();
         if first_code_point > 0x7f {
             writeln!(&mut self.file, "    (c as u32) >= {first_code_point:#04x} &&").unwrap();
         }
@@ -155,6 +156,12 @@ impl RawEmitter {
 pub fn emit_codepoints(emitter: &mut RawEmitter, ranges: &[Range<u32>]) {
     emitter.blank_line();
 
+    if ranges.len() <= 10 {
+        emitter.emit_match(ranges).unwrap();
+        emitter.desc = String::from("match");
+        return;
+    }
+
     let mut bitset = emitter.clone();
     let bitset_ok = bitset.emit_bitset(ranges).is_ok();
 
@@ -168,15 +175,6 @@ pub fn emit_codepoints(emitter: &mut RawEmitter, ranges: &[Range<u32>]) {
         *emitter = skiplist;
         emitter.desc = String::from("skiplist");
     }
-}
-
-pub fn emit_whitespace(emitter: &mut RawEmitter, ranges: &[Range<u32>]) {
-    emitter.blank_line();
-
-    let mut cascading = emitter.clone();
-    cascading.emit_cascading_map(ranges);
-    *emitter = cascading;
-    emitter.desc = String::from("cascading");
 }
 
 struct Canonicalized {
@@ -339,10 +337,13 @@ impl Canonicalized {
         // We'll probably always have some slack though so this loop will still
         // be needed.
         for &w in unique_words {
-            unique_mapping.entry(w).or_insert_with(|| {
+            if !unique_mapping.contains_key(&w) {
+                assert_eq!(
+                    unique_mapping.insert(w, UniqueMapping::Canonical(canonical_words.len())),
+                    None
+                );
                 canonical_words.push(w);
-                UniqueMapping::Canonical(canonical_words.len())
-            });
+            }
         }
         assert_eq!(canonicalized_words.len() + canonical_words.len(), unique_words.len());
         assert_eq!(unique_mapping.len(), unique_words.len());
