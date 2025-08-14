@@ -93,7 +93,7 @@ pub(crate) fn build_index(
                 ),
                 aliases: item.attrs.get_doc_aliases(),
                 deprecation: item.deprecation(tcx),
-                is_unstable: item.stability(tcx).is_some_and(|x| x.is_unstable()),
+                stability: item.stability(tcx),
             });
         }
     }
@@ -713,7 +713,7 @@ pub(crate) fn build_index(
                     // bitmasks always use 1-indexing for items, with 0 as the crate itself
                     deprecated.push(u32::try_from(index + 1).unwrap());
                 }
-                if item.is_unstable {
+                if item.is_unstable() {
                     unstable.push(u32::try_from(index + 1).unwrap());
                 }
             }
