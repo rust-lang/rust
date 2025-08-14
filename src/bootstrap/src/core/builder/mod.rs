@@ -1271,7 +1271,7 @@ impl<'a> Builder<'a> {
     pub fn new(build: &Build) -> Builder<'_> {
         let paths = &build.config.paths;
         let (kind, paths) = match build.config.cmd {
-            Subcommand::Build => (Kind::Build, &paths[..]),
+            Subcommand::Build { .. } => (Kind::Build, &paths[..]),
             Subcommand::Check { .. } => (Kind::Check, &paths[..]),
             Subcommand::Clippy { .. } => (Kind::Clippy, &paths[..]),
             Subcommand::Fix => (Kind::Fix, &paths[..]),
