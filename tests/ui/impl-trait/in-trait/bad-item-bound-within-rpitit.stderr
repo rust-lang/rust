@@ -25,7 +25,7 @@ LL |     fn iter(&self) -> impl 'a + Iterator<Item = I::Item<'a>> {
    |
    = note: add `#[allow(refining_impl_trait)]` if it is intended for this to be part of the public API of this crate
    = note: we are soliciting feedback, see issue #121718 <https://github.com/rust-lang/rust/issues/121718> for more information
-   = note: `#[warn(refining_impl_trait_reachable)]` on by default
+   = note: `#[warn(refining_impl_trait_reachable)]` (part of `#[warn(refining_impl_trait)]`) on by default
 help: replace the return type so that it matches the trait
    |
 LL -     fn iter(&self) -> impl 'a + Iterator<Item = I::Item<'a>> {

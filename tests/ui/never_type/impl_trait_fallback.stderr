@@ -12,7 +12,7 @@ note: in edition 2024, the requirement `!: T` will fail
    |
 LL | fn should_ret_unit() -> impl T {
    |                         ^^^^^^
-   = note: `#[warn(dependency_on_unit_never_type_fallback)]` on by default
+   = note: `#[warn(dependency_on_unit_never_type_fallback)]` (part of `#[warn(rust_2024_compatibility)]`) on by default
 
 warning: 1 warning emitted
 
@@ -31,5 +31,5 @@ note: in edition 2024, the requirement `!: T` will fail
    |
 LL | fn should_ret_unit() -> impl T {
    |                         ^^^^^^
-   = note: `#[warn(dependency_on_unit_never_type_fallback)]` on by default
+   = note: `#[warn(dependency_on_unit_never_type_fallback)]` (part of `#[warn(rust_2024_compatibility)]`) on by default
 

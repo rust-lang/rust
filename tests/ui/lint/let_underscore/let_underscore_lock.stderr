@@ -4,7 +4,7 @@ error: non-binding let on a synchronization lock
 LL |     let _ = data.lock().unwrap();
    |         ^ this lock is not assigned to a binding and is immediately dropped
    |
-   = note: `#[deny(let_underscore_lock)]` on by default
+   = note: `#[deny(let_underscore_lock)]` (part of `#[deny(let_underscore)]`) on by default
 help: consider binding to an unused variable to avoid immediately dropping the value
    |
 LL |     let _unused = data.lock().unwrap();

@@ -109,7 +109,7 @@ LL | fn stdcall_ptr(f: extern "stdcall" fn()) {
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #137018 <https://github.com/rust-lang/rust/issues/137018>
    = help: if you need `extern "stdcall"` on win32 and `extern "C"` everywhere else, use `extern "system"`
-   = note: `#[warn(unsupported_calling_conventions)]` on by default
+   = note: `#[warn(unsupported_calling_conventions)]` (part of `#[warn(future_incompatible)]`) on by default
 
 warning: "stdcall" is not a supported ABI for the current target
   --> $DIR/unsupported.rs:87:1
