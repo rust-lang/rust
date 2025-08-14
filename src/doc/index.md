@@ -172,9 +172,9 @@ unsafe Rust. It's also sometimes called "the 'nomicon."
 [The Unstable Book](unstable-book/index.html) has documentation for unstable
 features.
 
-### The `rustc` Contribution Guide
+### The `rustc` Development Guide
 
-[The `rustc` Guide](https://rustc-dev-guide.rust-lang.org/)
+[The `rustc-dev-guide`](https://rustc-dev-guide.rust-lang.org/)
 documents how the compiler works and how to contribute to it. This is useful if
 you want to build or modify the Rust compiler from source (e.g. to target
 something non-standard).
