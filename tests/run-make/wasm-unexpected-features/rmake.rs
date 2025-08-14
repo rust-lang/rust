@@ -2,31 +2,19 @@
 
 use std::path::Path;
 
-use run_make_support::{cargo, path, rfs, target, wasmparser};
+use run_make_support::{rfs, rustc, wasmparser};
 
 fn main() {
-    let target_dir = path("target");
-
-    cargo()
-        .args([
-            "rustc",
-            "--manifest-path",
-            "wasm32_test/Cargo.toml",
-            "--profile",
-            "release",
-            "--target",
-            "wasm32-wasip1",
-            "-Zbuild-std=core,alloc,panic_abort",
-            "--",
-            "-Clink-arg=--import-memory",
-            "-Clinker-plugin-lto=on",
-        ])
-        .env("RUSTFLAGS", "-Ctarget-cpu=mvp")
-        .env("CARGO_TARGET_DIR", &target_dir)
+    rustc()
+        .input("foo.rs")
+        .target("wasm32-wasip1")
+        .target_cpu("mvp")
+        .opt_level("z")
+        .lto("fat")
+        .linker_plugin_lto("on")
+        .link_arg("--import-memory")
         .run();
-
-    let wasm32_program_path = target_dir.join(target()).join("release").join("wasm32_program.wasm");
-    verify_features(&wasm32_program_path);
+    verify_features(Path::new("foo.wasm"));
 }
 
 fn verify_features(path: &Path) {
