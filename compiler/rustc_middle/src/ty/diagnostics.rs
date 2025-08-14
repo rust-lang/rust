@@ -23,7 +23,7 @@ impl IntoDiagArg for Ty<'_> {
     fn into_diag_arg(self, path: &mut Option<std::path::PathBuf>) -> rustc_errors::DiagArgValue {
         ty::tls::with(|tcx| {
             let ty = tcx.short_string(self, path);
-            rustc_errors::DiagArgValue::Str(std::borrow::Cow::Owned(ty))
+            DiagArgValue::Str(std::borrow::Cow::Owned(ty))
         })
     }
 }
@@ -32,7 +32,7 @@ impl IntoDiagArg for Instance<'_> {
     fn into_diag_arg(self, path: &mut Option<std::path::PathBuf>) -> rustc_errors::DiagArgValue {
         ty::tls::with(|tcx| {
             let instance = tcx.short_string_namespace(self, path, Namespace::ValueNS);
-            rustc_errors::DiagArgValue::Str(std::borrow::Cow::Owned(instance))
+            DiagArgValue::Str(std::borrow::Cow::Owned(instance))
         })
     }
 }
