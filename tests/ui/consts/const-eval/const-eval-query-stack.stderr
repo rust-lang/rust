@@ -9,6 +9,7 @@ note: please make sure that you have updated to the latest nightly
 
 query stack during panic:
 #0 [eval_to_allocation_raw] const-evaluating + checking `X`
-#1 [eval_to_const_value_raw] simplifying constant for the type system `X`
-#2 [analysis] running analysis passes on this crate
+#1 [eval_to_allocation_raw] const-evaluating + checking `X`
+#2 [eval_to_const_value_raw] simplifying constant for the type system `X`
+#3 [analysis] running analysis passes on this crate
 end of query stack
