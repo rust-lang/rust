@@ -37,14 +37,14 @@ use crate::core::builder;
 use crate::core::builder::Kind;
 use crate::core::config::{DryRun, LldMode, LlvmLibunwind, TargetSelection, flags};
 use crate::utils::exec::{BootstrapCommand, command};
-use crate::utils::helpers::{
-    self, dir_is_empty, exe, libdir, set_file_times, split_debuginfo, symlink_dir,
-};
+use crate::utils::helpers::{self, dir_is_empty, exe, libdir, set_file_times, split_debuginfo};
 
 mod core;
 mod utils;
 
 pub use core::builder::PathSet;
+#[cfg(feature = "tracing")]
+pub use core::builder::STEP_SPAN_TARGET;
 pub use core::config::flags::{Flags, Subcommand};
 pub use core::config::{ChangeId, Config};
 
@@ -53,7 +53,9 @@ use tracing::{instrument, span};
 pub use utils::change_tracker::{
     CONFIG_CHANGE_HISTORY, find_recent_config_change_ids, human_readable_changes,
 };
-pub use utils::helpers::PanicTracker;
+pub use utils::helpers::{PanicTracker, symlink_dir};
+#[cfg(feature = "tracing")]
+pub use utils::tracing::setup_tracing;
 
 use crate::core::build_steps::vendor::VENDOR_DIR;
 
@@ -2005,13 +2007,13 @@ to download LLVM rather than building it.
         &self.config.exec_ctx
     }
 
-    pub fn report_summary(&self, start_time: Instant) {
-        self.config.exec_ctx.profiler().report_summary(start_time);
+    pub fn report_summary(&self, path: &Path, start_time: Instant) {
+        self.config.exec_ctx.profiler().report_summary(path, start_time);
     }
 
     #[cfg(feature = "tracing")]
-    pub fn report_step_graph(self) {
-        self.step_graph.into_inner().store_to_dot_files();
+    pub fn report_step_graph(self, directory: &Path) {
+        self.step_graph.into_inner().store_to_dot_files(directory);
     }
 }
 

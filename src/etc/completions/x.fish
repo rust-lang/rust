@@ -97,6 +97,7 @@ complete -c x -n "__fish_x_using_subcommand build" -l llvm-profile-use -d 'use P
 complete -c x -n "__fish_x_using_subcommand build" -l reproducible-artifact -d 'Additional reproducible artifacts that should be added to the reproducible artifacts archive' -r
 complete -c x -n "__fish_x_using_subcommand build" -l set -d 'override options in bootstrap.toml' -r -f
 complete -c x -n "__fish_x_using_subcommand build" -l ci -d 'Make bootstrap to behave as it\'s running on the CI environment or not' -r -f -a "{true\t'',false\t''}"
+complete -c x -n "__fish_x_using_subcommand build" -l timings -d 'Pass `--timings` to Cargo to get crate build timings'
 complete -c x -n "__fish_x_using_subcommand build" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
 complete -c x -n "__fish_x_using_subcommand build" -s i -l incremental -d 'use incremental compilation'
 complete -c x -n "__fish_x_using_subcommand build" -l include-default-paths -d 'include default paths in addition to the provided ones'
@@ -133,6 +134,7 @@ complete -c x -n "__fish_x_using_subcommand check" -l reproducible-artifact -d '
 complete -c x -n "__fish_x_using_subcommand check" -l set -d 'override options in bootstrap.toml' -r -f
 complete -c x -n "__fish_x_using_subcommand check" -l ci -d 'Make bootstrap to behave as it\'s running on the CI environment or not' -r -f -a "{true\t'',false\t''}"
 complete -c x -n "__fish_x_using_subcommand check" -l all-targets -d 'Check all targets'
+complete -c x -n "__fish_x_using_subcommand check" -l timings -d 'Pass `--timings` to Cargo to get crate build timings'
 complete -c x -n "__fish_x_using_subcommand check" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
 complete -c x -n "__fish_x_using_subcommand check" -s i -l incremental -d 'use incremental compilation'
 complete -c x -n "__fish_x_using_subcommand check" -l include-default-paths -d 'include default paths in addition to the provided ones'
