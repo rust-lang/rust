@@ -23,6 +23,7 @@
 - [Linker-plugin-based LTO](linker-plugin-lto.md)
 - [Checking Conditional Configurations](check-cfg.md)
     - [Cargo Specifics](check-cfg/cargo-specifics.md)
+- [Remap source paths](remap-source-paths.md)
 - [Exploit Mitigations](exploit-mitigations.md)
 - [Symbol Mangling](symbol-mangling/index.md)
     - [v0 Symbol Format](symbol-mangling/v0.md)
