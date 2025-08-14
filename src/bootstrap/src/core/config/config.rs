@@ -692,10 +692,21 @@ impl Config {
         let mut llvm_from_ci = false;
         let mut lld_enabled = false;
         let mut channel = "dev".to_string();
-        let mut out = PathBuf::from("build");
+        let mut out = flags_build_dir
+            .or(build_build_dir.map(PathBuf::from))
+            .unwrap_or_else(|| PathBuf::from("build"));
         let mut rust_info = GitInfo::Absent;
 
         if cfg!(test) {
+            // Use the build directory of the original x.py invocation, so that we can set `initial_rustc` properly.
+            if out == PathBuf::from("build") {
+                out = Path::new(
+                    &env::var_os("CARGO_TARGET_DIR").expect("cargo test directly is not supported"),
+                )
+                .parent()
+                .unwrap()
+                .to_path_buf();
+            }
             // When configuring bootstrap for tests, make sure to set the rustc and Cargo to the
             // same ones used to call the tests (if custom ones are not defined in the toml). If we
             // don't do that, bootstrap will use its own detection logic to find a suitable rustc
@@ -705,7 +716,13 @@ impl Config {
             build_cargo = build_cargo.take().or(std::env::var_os("CARGO").map(|p| p.into()));
         }
 
-        let build_dir_ = flags_build_dir.or(build_build_dir.map(PathBuf::from));
+        // NOTE: Bootstrap spawns various commands with different working directories.
+        // To avoid writing to random places on the file system, `config.out` needs to be an absolute path.
+        if !out.is_absolute() {
+            // `canonicalize` requires the path to already exist. Use our vendored copy of `absolute` instead.
+            out = absolute(&out).expect("can't make empty path absolute");
+        }
+
         let host_ = if let Some(TargetSelectionList(hosts)) = flags_host {
             Some(hosts)
         } else {
@@ -736,18 +753,6 @@ impl Config {
             paths_.extend(exclude);
         }
 
-        // Infer the rest of the configuration.
-
-        if cfg!(test) {
-            // Use the build directory of the original x.py invocation, so that we can set `initial_rustc` properly.
-            out = Path::new(
-                &env::var_os("CARGO_TARGET_DIR").expect("cargo test directly is not supported"),
-            )
-            .parent()
-            .unwrap()
-            .to_path_buf();
-        }
-
         let skip = paths_
             .into_iter()
             .map(|p| {
@@ -768,14 +773,6 @@ impl Config {
             "normalizing and combining `flag.skip`/`flag.exclude` paths",
             "config.skip" = ?skip,
         );
-
-        set(&mut out, build_dir_);
-        // NOTE: Bootstrap spawns various commands with different working directories.
-        // To avoid writing to random places on the file system, `config.out` needs to be an absolute path.
-        if !out.is_absolute() {
-            // `canonicalize` requires the path to already exist. Use our vendored copy of `absolute` instead.
-            out = absolute(&out).expect("can't make empty path absolute");
-        }
 
         if build_cargo_clippy.is_some() && build_rustc.is_none() {
             println!(
