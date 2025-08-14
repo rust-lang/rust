@@ -1741,7 +1741,7 @@ fn deny_equality_constraints(
                         .map(|segment| segment.ident.name)
                         .zip(poly.trait_ref.path.segments.iter().map(|segment| segment.ident.name))
                         .all(|(a, b)| a == b)
-                        && let Some(potential_assoc) = full_path.segments.iter().last()
+                        && let Some(potential_assoc) = full_path.segments.last()
                     {
                         suggest(poly, potential_assoc, predicate);
                     }
