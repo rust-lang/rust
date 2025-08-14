@@ -5,7 +5,7 @@ use crate::HashIgnoredAttrId;
 use crate::hir::{
     AttributeMap, BodyId, Crate, ForeignItemId, ImplItemId, ItemId, OwnerNodes, TraitItemId,
 };
-use crate::hir_id::{HirId, ItemLocalId};
+use crate::hir_id::ItemLocalId;
 use crate::lints::DelayedLints;
 
 /// Requirements for a `StableHashingContext` to be used in this crate.
@@ -13,25 +13,6 @@ use crate::lints::DelayedLints;
 /// instead of implementing everything in `rustc_middle`.
 pub trait HashStableContext: rustc_ast::HashStableContext + rustc_abi::HashStableContext {
     fn hash_attr_id(&mut self, id: &HashIgnoredAttrId, hasher: &mut StableHasher);
-}
-
-impl<HirCtx: crate::HashStableContext> ToStableHashKey<HirCtx> for HirId {
-    type KeyType = (DefPathHash, ItemLocalId);
-
-    #[inline]
-    fn to_stable_hash_key(&self, hcx: &HirCtx) -> (DefPathHash, ItemLocalId) {
-        let def_path_hash = self.owner.def_id.to_stable_hash_key(hcx);
-        (def_path_hash, self.local_id)
-    }
-}
-
-impl<HirCtx: crate::HashStableContext> ToStableHashKey<HirCtx> for ItemLocalId {
-    type KeyType = ItemLocalId;
-
-    #[inline]
-    fn to_stable_hash_key(&self, _: &HirCtx) -> ItemLocalId {
-        *self
-    }
 }
 
 impl<HirCtx: crate::HashStableContext> ToStableHashKey<HirCtx> for BodyId {
