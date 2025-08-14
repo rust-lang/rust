@@ -10,10 +10,9 @@ use tracing::debug;
 use crate::builder::{Builder, PlaceRef, UNNAMED};
 use crate::context::SimpleCx;
 use crate::declare::declare_simple_fn;
-use crate::llvm::AttributePlace::Function;
+use crate::llvm;
 use crate::llvm::{Metadata, True, Type};
 use crate::value::Value;
-use crate::{attributes, llvm};
 
 pub(crate) fn adjust_activity_to_abi<'tcx>(
     tcx: TyCtxt<'tcx>,
@@ -307,11 +306,6 @@ pub(crate) fn generate_enzyme_call<'ll, 'tcx>(
         llvm::Visibility::Default,
         enzyme_ty,
     );
-
-    // Otherwise LLVM might inline our temporary code before the enzyme pass has a chance to
-    // do it's work.
-    let attr = llvm::AttributeKind::NoInline.create_attr(cx.llcx);
-    attributes::apply_to_llfn(ad_fn, Function, &[attr]);
 
     let num_args = llvm::LLVMCountParams(&fn_to_diff);
     let mut args = Vec::with_capacity(num_args as usize + 1);
