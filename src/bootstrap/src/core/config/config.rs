@@ -682,6 +682,18 @@ impl Config {
             .or(build_build)
             .map(|build| TargetSelection::from_user(&build))
             .unwrap_or_else(get_host_target);
+        let hosts = flags_host
+            .map(|TargetSelectionList(hosts)| hosts)
+            .or_else(|| {
+                build_host.map(|h| h.iter().map(|t| TargetSelection::from_user(t)).collect())
+            })
+            .unwrap_or_else(|| vec![host_target]);
+        let targets = flags_target
+            .map(|TargetSelectionList(targets)| targets)
+            .or_else(|| {
+                build_target.map(|t| t.iter().map(|t| TargetSelection::from_user(t)).collect())
+            })
+            .unwrap_or_else(|| hosts.clone());
 
         let submodules = build_submodules;
         let llvm_assertions = llvm_assertions_.unwrap_or(false);
@@ -723,29 +735,13 @@ impl Config {
             out = absolute(&out).expect("can't make empty path absolute");
         }
 
-        let host_ = if let Some(TargetSelectionList(hosts)) = flags_host {
-            Some(hosts)
-        } else {
-            build_host
-                .map(|file_host| file_host.iter().map(|h| TargetSelection::from_user(h)).collect())
-        };
-        let target_ = if let Some(TargetSelectionList(targets)) = flags_target {
-            Some(targets)
-        } else {
-            build_target.map(|file_target| {
-                file_target.iter().map(|h| TargetSelection::from_user(h)).collect()
-            })
-        };
-
-        if let Some(rustc) = &build_rustc
-            && !flags_skip_stage0_validation
-        {
-            check_stage0_version(rustc, "rustc", &src, &exec_ctx);
-        }
-        if let Some(cargo) = &build_cargo
-            && !flags_skip_stage0_validation
-        {
-            check_stage0_version(cargo, "cargo", &src, &exec_ctx);
+        if !flags_skip_stage0_validation {
+            if let Some(rustc) = &build_rustc {
+                check_stage0_version(rustc, "rustc", &src, &exec_ctx);
+            }
+            if let Some(cargo) = &build_cargo {
+                check_stage0_version(cargo, "cargo", &src, &exec_ctx);
+            }
         }
 
         let mut paths_: Vec<PathBuf> = flags_skip.into_iter().chain(flags_exclude).collect();
@@ -845,15 +841,6 @@ impl Config {
             t!(fs::create_dir_all(&dir));
             out = dir;
         }
-
-        let hosts = if let Some(hosts) = host_ { hosts } else { vec![host_target] };
-        let targets = if let Some(targets) = target_ {
-            targets
-        } else {
-            // If target is *not* configured, then default to the host
-            // toolchains.
-            hosts.clone()
-        };
 
         let file_content = t!(fs::read_to_string(src.join("src/ci/channel")));
         let ci_channel = file_content.trim_end();
@@ -1314,49 +1301,6 @@ impl Config {
         };
 
         Config {
-            out,
-            rust_info,
-            cargo_info,
-            rust_analyzer_info,
-            clippy_info,
-            miri_info,
-            rustfmt_info,
-            enzyme_info,
-            in_tree_llvm_info,
-            in_tree_gcc_info,
-            initial_cargo,
-            initial_rustc,
-            initial_cargo_clippy,
-            initial_sysroot,
-            initial_rustfmt,
-            submodules,
-            paths: flags_paths,
-            vendor,
-            target_config,
-            omit_git_hash,
-            skip,
-            stage,
-            src,
-            config,
-            cmd,
-            llvm_from_ci,
-            llvm_assertions,
-            lld_mode,
-            lld_enabled,
-            rust_overflow_checks,
-            host_target,
-            hosts,
-            targets,
-            dist_vendor,
-            channel,
-            is_running_on_ci,
-            path_modification_cache,
-            patch_binaries_for_nix,
-            stage0_metadata,
-            download_rustc_commit,
-            llvm_thin_lto,
-            llvm_link_shared,
-            rustc_debug_assertions,
             change_id: toml.change_id.inner,
             bypass_bootstrap_lock: flags_bypass_bootstrap_lock,
             ccache: match build_ccache {
@@ -1521,6 +1465,49 @@ impl Config {
             tidy_extra_checks: build_tidy_extra_checks,
             skip_std_check_if_no_download_rustc: flags_skip_std_check_if_no_download_rustc,
             exec_ctx,
+            out,
+            rust_info,
+            cargo_info,
+            rust_analyzer_info,
+            clippy_info,
+            miri_info,
+            rustfmt_info,
+            enzyme_info,
+            in_tree_llvm_info,
+            in_tree_gcc_info,
+            initial_cargo,
+            initial_rustc,
+            initial_cargo_clippy,
+            initial_sysroot,
+            initial_rustfmt,
+            submodules,
+            paths: flags_paths,
+            vendor,
+            target_config,
+            omit_git_hash,
+            skip,
+            stage,
+            src,
+            config,
+            cmd,
+            llvm_from_ci,
+            llvm_assertions,
+            lld_mode,
+            lld_enabled,
+            rust_overflow_checks,
+            host_target,
+            hosts,
+            targets,
+            dist_vendor,
+            channel,
+            is_running_on_ci,
+            path_modification_cache,
+            patch_binaries_for_nix,
+            stage0_metadata,
+            download_rustc_commit,
+            llvm_thin_lto,
+            llvm_link_shared,
+            rustc_debug_assertions,
         }
     }
 
