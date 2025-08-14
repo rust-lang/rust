@@ -1342,7 +1342,7 @@ impl Config {
             Subcommand::Doc { .. } => {
                 flags_stage.or(build_doc_stage).unwrap_or(if download_rustc { 2 } else { 1 })
             }
-            Subcommand::Build => {
+            Subcommand::Build { .. } => {
                 flags_stage.or(build_build_stage).unwrap_or(if download_rustc { 2 } else { 1 })
             }
             Subcommand::Test { .. } | Subcommand::Miri { .. } => {
@@ -1363,7 +1363,7 @@ impl Config {
 
         // Now check that the selected stage makes sense, and if not, print a warning and end
         match (config.stage, &config.cmd) {
-            (0, Subcommand::Build) => {
+            (0, Subcommand::Build { .. }) => {
                 eprintln!("ERROR: cannot build anything on stage 0. Use at least stage 1.");
                 exit!(1);
             }
@@ -1396,7 +1396,7 @@ impl Config {
                 Subcommand::Test { .. }
                 | Subcommand::Miri { .. }
                 | Subcommand::Doc { .. }
-                | Subcommand::Build
+                | Subcommand::Build { .. }
                 | Subcommand::Bench { .. }
                 | Subcommand::Dist
                 | Subcommand::Install => {
