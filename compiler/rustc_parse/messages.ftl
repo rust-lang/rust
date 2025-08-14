@@ -862,8 +862,8 @@ parse_too_many_hashes = too many `#` symbols: raw strings may be delimited by up
 
 parse_too_short_hex_escape = numeric character escape is too short
 
-parse_trailing_vert_not_allowed = a trailing `|` is not allowed in an or-pattern
-    .suggestion = remove the `{$token}`
+parse_trailing_vert_not_allowed = a trailing `{$token}` is not allowed in an or-pattern
+parse_trailing_vert_not_allowed_suggestion = remove the `{$token}`
 
 parse_trait_alias_cannot_be_auto = trait aliases cannot be `auto`
 parse_trait_alias_cannot_be_const = trait aliases cannot be `const`
