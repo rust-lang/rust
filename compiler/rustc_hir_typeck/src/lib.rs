@@ -251,10 +251,6 @@ fn typeck_with_inspect<'tcx>(
         fcx.report_ambiguity_errors();
     }
 
-    if let None = fcx.infcx.tainted_by_errors() {
-        fcx.check_transmutes();
-    }
-
     fcx.check_asms();
 
     let typeck_results = fcx.resolve_type_vars_in_body(body);
@@ -555,6 +551,7 @@ pub fn provide(providers: &mut Providers) {
         method_autoderef_steps: method::probe::method_autoderef_steps,
         typeck,
         used_trait_imports,
+        check_transmutes: intrinsicck::check_transmutes,
         ..*providers
     };
 }
