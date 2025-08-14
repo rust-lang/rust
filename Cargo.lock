@@ -4139,7 +4139,6 @@ dependencies = [
  "rustc_ast",
  "rustc_data_structures",
  "rustc_error_messages",
- "rustc_hir",
  "rustc_hir_id",
  "rustc_macros",
  "rustc_serialize",

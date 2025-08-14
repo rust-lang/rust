@@ -9,7 +9,6 @@ use rustc_data_structures::stable_hasher::{
     HashStable, StableCompare, StableHasher, ToStableHashKey,
 };
 use rustc_error_messages::{DiagArgValue, DiagMessage, IntoDiagArg, MultiSpan};
-use rustc_hir::def::Namespace;
 use rustc_hir_id::{HashStableContext, HirId, ItemLocalId};
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_span::def_id::DefPathHash;
@@ -625,7 +624,7 @@ pub enum BuiltinLintDiag {
     AbsPathWithModule(Span),
     ProcMacroDeriveResolutionFallback {
         span: Span,
-        ns: Namespace,
+        ns_descr: &'static str,
         ident: Ident,
     },
     MacroExpandedMacroExportsAccessedByAbsolutePaths(Span),
