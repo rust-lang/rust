@@ -198,16 +198,16 @@ fn parse_attrs(sess: &Session, attrs: &[impl AttributeExt]) -> Option<RustcVersi
             .emit();
     }
 
-    if let Some(msrv) = msrv_attr.value_str() {
-        if let Some(version) = parse_version(msrv) {
-            return Some(version);
-        }
+    let Some(msrv) = msrv_attr.value_str() else {
+        sess.dcx().span_err(msrv_attr.span(), "bad clippy attribute");
+        return None;
+    };
 
+    let Some(version) = parse_version(msrv) else {
         sess.dcx()
             .span_err(msrv_attr.span(), format!("`{msrv}` is not a valid Rust version"));
-    } else {
-        sess.dcx().span_err(msrv_attr.span(), "bad clippy attribute");
-    }
+        return None;
+    };
 
-    None
+    Some(version)
 }
