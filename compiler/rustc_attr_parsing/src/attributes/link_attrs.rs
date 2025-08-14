@@ -1,6 +1,6 @@
 use rustc_feature::{AttributeTemplate, template};
-use rustc_hir::attrs::AttributeKind;
 use rustc_hir::attrs::AttributeKind::{LinkName, LinkOrdinal, LinkSection};
+use rustc_hir::attrs::{AttributeKind, Linkage};
 use rustc_span::{Span, Symbol, sym};
 
 use crate::attributes::{
@@ -127,5 +127,79 @@ impl<S: Stage> SingleAttributeParser<S> for LinkOrdinalParser {
         };
 
         Some(LinkOrdinal { ordinal, span: cx.attr_span })
+    }
+}
+
+pub(crate) struct LinkageParser;
+
+impl<S: Stage> SingleAttributeParser<S> for LinkageParser {
+    const PATH: &[Symbol] = &[sym::linkage];
+
+    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
+
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+
+    const TEMPLATE: AttributeTemplate = template!(NameValueStr: [
+        "available_externally",
+        "common",
+        "extern_weak",
+        "external",
+        "internal",
+        "linkonce",
+        "linkonce_odr",
+        "weak",
+        "weak_odr",
+    ]);
+
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
+        let Some(name_value) = args.name_value() else {
+            cx.expected_name_value(cx.attr_span, Some(sym::linkage));
+            return None;
+        };
+
+        let Some(value) = name_value.value_as_str() else {
+            cx.expected_string_literal(name_value.value_span, Some(name_value.value_as_lit()));
+            return None;
+        };
+
+        // Use the names from src/llvm/docs/LangRef.rst here. Most types are only
+        // applicable to variable declarations and may not really make sense for
+        // Rust code in the first place but allow them anyway and trust that the
+        // user knows what they're doing. Who knows, unanticipated use cases may pop
+        // up in the future.
+        //
+        // ghost, dllimport, dllexport and linkonce_odr_autohide are not supported
+        // and don't have to be, LLVM treats them as no-ops.
+        let linkage = match value {
+            sym::available_externally => Linkage::AvailableExternally,
+            sym::common => Linkage::Common,
+            sym::extern_weak => Linkage::ExternalWeak,
+            sym::external => Linkage::External,
+            sym::internal => Linkage::Internal,
+            sym::linkonce => Linkage::LinkOnceAny,
+            sym::linkonce_odr => Linkage::LinkOnceODR,
+            sym::weak => Linkage::WeakAny,
+            sym::weak_odr => Linkage::WeakODR,
+
+            _ => {
+                cx.expected_specific_argument(
+                    name_value.value_span,
+                    vec![
+                        "available_externally",
+                        "common",
+                        "extern_weak",
+                        "external",
+                        "internal",
+                        "linkonce",
+                        "linkonce_odr",
+                        "weak",
+                        "weak_odr",
+                    ],
+                );
+                return None;
+            }
+        };
+
+        Some(AttributeKind::Linkage(linkage, cx.attr_span))
     }
 }

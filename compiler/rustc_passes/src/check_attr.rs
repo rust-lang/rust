@@ -332,6 +332,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 &Attribute::Parsed(AttributeKind::Coroutine(attr_span)) => {
                     self.check_coroutine(attr_span, target)
                 }
+                &Attribute::Parsed(AttributeKind::Linkage(_, attr_span)) => {
+                    self.check_linkage(attr_span, span, target);
+                }
                 Attribute::Unparsed(attr_item) => {
                     style = Some(attr_item.style);
                     match attr.path().as_slice() {
@@ -395,7 +398,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         [sym::autodiff_forward, ..] | [sym::autodiff_reverse, ..] => {
                             self.check_autodiff(hir_id, attr, span, target)
                         }
-                        [sym::linkage, ..] => self.check_linkage(attr, span, target),
                         [
                             // ok
                             sym::allow
@@ -2707,7 +2709,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         }
     }
 
-    fn check_linkage(&self, attr: &Attribute, span: Span, target: Target) {
+    fn check_linkage(&self, attr_span: Span, span: Span, target: Target) {
         match target {
             Target::Fn
             | Target::Method(..)
@@ -2715,7 +2717,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             | Target::ForeignStatic
             | Target::ForeignFn => {}
             _ => {
-                self.dcx().emit_err(errors::Linkage { attr_span: attr.span(), span });
+                self.dcx().emit_err(errors::Linkage { attr_span, span });
             }
         }
     }

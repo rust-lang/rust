@@ -90,25 +90,6 @@ error: malformed `cfi_encoding` attribute input
 LL | #[cfi_encoding]
    | ^^^^^^^^^^^^^^^ help: must be of the form: `#[cfi_encoding = "encoding"]`
 
-error: malformed `linkage` attribute input
-  --> $DIR/malformed-attrs.rs:170:5
-   |
-LL |     #[linkage]
-   |     ^^^^^^^^^^
-   |
-   = note: for more information, visit <https://doc.rust-lang.org/reference/linkage.html>
-help: the following are the possible correct uses
-   |
-LL |     #[linkage = "available_externally"]
-   |               ++++++++++++++++++++++++
-LL |     #[linkage = "common"]
-   |               ++++++++++
-LL |     #[linkage = "extern_weak"]
-   |               +++++++++++++++
-LL |     #[linkage = "external"]
-   |               ++++++++++++
-   = and 5 other candidates
-
 error: malformed `allow` attribute input
   --> $DIR/malformed-attrs.rs:175:1
    |
@@ -658,6 +639,24 @@ LL |     #[unsafe(ffi_const = 1)]
    |     |                  |
    |     |                  didn't expect any arguments here
    |     help: must be of the form: `#[ffi_const]`
+
+error[E0539]: malformed `linkage` attribute input
+  --> $DIR/malformed-attrs.rs:170:5
+   |
+LL |     #[linkage]
+   |     ^^^^^^^^^^ expected this to be of the form `linkage = "..."`
+   |
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL |     #[linkage = "available_externally"]
+   |               ++++++++++++++++++++++++
+LL |     #[linkage = "common"]
+   |               ++++++++++
+LL |     #[linkage = "extern_weak"]
+   |               +++++++++++++++
+LL |     #[linkage = "external"]
+   |               ++++++++++++
+   = and 5 other candidates
 
 error[E0565]: malformed `automatically_derived` attribute input
   --> $DIR/malformed-attrs.rs:188:1
