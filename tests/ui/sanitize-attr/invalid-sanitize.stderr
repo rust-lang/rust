@@ -1,0 +1,82 @@
+error: malformed `sanitize` attribute input
+  --> $DIR/invalid-sanitize.rs:18:1
+   |
+LL | #[sanitize = "off"]
+   | ^^^^^^^^^^^^^^^^^^^
+   |
+help: the following are the possible correct uses
+   |
+LL - #[sanitize = "off"]
+LL + #[sanitize(address = "on|off")]
+   |
+LL - #[sanitize = "off"]
+LL + #[sanitize(cfi = "on|off")]
+   |
+LL - #[sanitize = "off"]
+LL + #[sanitize(hwaddress = "on|off")]
+   |
+LL - #[sanitize = "off"]
+LL + #[sanitize(kcfi = "on|off")]
+   |
+   = and 5 other candidates
+
+error: malformed `sanitize` attribute input
+  --> $DIR/invalid-sanitize.rs:21:1
+   |
+LL | #[sanitize]
+   | ^^^^^^^^^^^
+   |
+help: the following are the possible correct uses
+   |
+LL | #[sanitize(address = "on|off")]
+   |           ++++++++++++++++++++
+LL | #[sanitize(cfi = "on|off")]
+   |           ++++++++++++++++
+LL | #[sanitize(hwaddress = "on|off")]
+   |           ++++++++++++++++++++++
+LL | #[sanitize(kcfi = "on|off")]
+   |           +++++++++++++++++
+   = and 5 other candidates
+
+error: multiple `sanitize` attributes
+  --> $DIR/invalid-sanitize.rs:7:1
+   |
+LL | #[sanitize(address = "off")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
+   |
+note: attribute also specified here
+  --> $DIR/invalid-sanitize.rs:8:1
+   |
+LL | #[sanitize(address = "off")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: multiple `sanitize` attributes
+  --> $DIR/invalid-sanitize.rs:11:1
+   |
+LL | #[sanitize(address = "on")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
+   |
+note: attribute also specified here
+  --> $DIR/invalid-sanitize.rs:12:1
+   |
+LL | #[sanitize(address = "off")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: invalid argument for `sanitize`
+  --> $DIR/invalid-sanitize.rs:3:1
+   |
+LL | #[sanitize(brontosaurus = "off")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: expected one of: `address`, `kernel_address`, `cfi`, `hwaddress`, `kcfi`, `memory`, `memtag`, `shadow_call_stack`, or `thread`
+
+error: invalid argument for `sanitize`
+  --> $DIR/invalid-sanitize.rs:15:1
+   |
+LL | #[sanitize(address = "bogus")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: expected one of: `address`, `kernel_address`, `cfi`, `hwaddress`, `kcfi`, `memory`, `memtag`, `shadow_call_stack`, or `thread`
+
+error: aborting due to 6 previous errors
+

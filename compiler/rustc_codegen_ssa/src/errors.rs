@@ -1121,9 +1121,9 @@ impl IntoDiagArg for ExpectedPointerMutability {
 }
 
 #[derive(Diagnostic)]
-#[diag(codegen_ssa_invalid_no_sanitize)]
+#[diag(codegen_ssa_invalid_sanitize)]
 #[note]
-pub(crate) struct InvalidNoSanitize {
+pub(crate) struct InvalidSanitize {
     #[primary_span]
     pub span: Span,
 }
