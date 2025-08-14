@@ -1089,6 +1089,13 @@ class VlqHexDecoder {
 class RoaringBitmap {
     /** @param {string} str */
     constructor(str) {
+        this.keys = [];
+        this.cardinalities = [];
+        this.containers = [];
+
+        if (str === undefined || str === null) {
+            return;
+        }
         // https://github.com/RoaringBitmap/RoaringFormatSpec
         //
         // Roaring bitmaps are used for flags that can be kept in their
@@ -1113,15 +1120,12 @@ class RoaringBitmap {
         } else {
             is_run = new Uint8Array();
         }
-        this.keys = [];
-        this.cardinalities = [];
         for (let j = 0; j < size; ++j) {
             this.keys.push(u8array[i] | (u8array[i + 1] << 8));
             i += 2;
             this.cardinalities.push((u8array[i] | (u8array[i + 1] << 8)) + 1);
             i += 2;
         }
-        this.containers = [];
         let offsets = null;
         if (!has_runs || this.keys.length >= 4) {
             offsets = [];
@@ -2060,9 +2064,7 @@ class DocSearch {
             // Deprecated and unstable items and items with no description
             this.searchIndexDeprecated.set(crate, new RoaringBitmap(crateCorpus.c));
             this.searchIndexEmptyDesc.set(crate, new RoaringBitmap(crateCorpus.e));
-            if (crateCorpus.u !== undefined && crateCorpus.u !== null) {
-                this.searchIndexUnstable.set(crate, new RoaringBitmap(crateCorpus.u));
-            }
+            this.searchIndexUnstable.set(crate, new RoaringBitmap(crateCorpus.u));
             let descIndex = 0;
 
             /**
