@@ -1,4 +1,3 @@
-use std::assert_matches::debug_assert_matches;
 use std::cell::{Cell, RefCell};
 use std::cmp::max;
 use std::ops::Deref;
@@ -16,7 +15,7 @@ use rustc_infer::infer::{BoundRegionConversionTime, DefineOpaqueTypes, InferOk, 
 use rustc_infer::traits::ObligationCauseCode;
 use rustc_middle::middle::stability;
 use rustc_middle::ty::elaborate::supertrait_def_ids;
-use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams, simplify_type};
+use rustc_middle::ty::fast_reject::{TreatParams, simplify_type};
 use rustc_middle::ty::{
     self, AssocItem, AssocItemContainer, GenericArgs, GenericArgsRef, GenericParamDefKind,
     ParamEnvAnd, Ty, TyCtxt, TypeVisitableExt, Upcast,
@@ -803,8 +802,8 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     );
                 }
             }
-            ty::Param(_) => {
-                self.assemble_inherent_candidates_from_param(raw_self_ty);
+            ty::Param(p) => {
+                self.assemble_inherent_candidates_from_param(p);
             }
             ty::Bool
             | ty::Char
@@ -905,16 +904,18 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     }
 
     #[instrument(level = "debug", skip(self))]
-    fn assemble_inherent_candidates_from_param(&mut self, param_ty: Ty<'tcx>) {
-        debug_assert_matches!(param_ty.kind(), ty::Param(_));
-
-        let tcx = self.tcx;
+    fn assemble_inherent_candidates_from_param(&mut self, param_ty: ty::ParamTy) {
         let bounds = self.param_env.caller_bounds().iter().filter_map(|predicate| {
             let bound_predicate = predicate.kind();
             match bound_predicate.skip_binder() {
-                ty::ClauseKind::Trait(trait_predicate) => DeepRejectCtxt::relate_rigid_rigid(tcx)
-                    .types_may_unify(param_ty, trait_predicate.trait_ref.self_ty())
-                    .then(|| bound_predicate.rebind(trait_predicate.trait_ref)),
+                ty::ClauseKind::Trait(trait_predicate) => {
+                    match *trait_predicate.trait_ref.self_ty().kind() {
+                        ty::Param(p) if p == param_ty => {
+                            Some(bound_predicate.rebind(trait_predicate.trait_ref))
+                        }
+                        _ => None,
+                    }
+                }
                 ty::ClauseKind::RegionOutlives(_)
                 | ty::ClauseKind::TypeOutlives(_)
                 | ty::ClauseKind::Projection(_)
