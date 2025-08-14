@@ -498,6 +498,17 @@ fn layout_of_uncached<'tcx>(
         }
 
         ty::Coroutine(def_id, args) => {
+            match cx.typing_env.typing_mode {
+                ty::TypingMode::Codegen => {}
+                ty::TypingMode::Coherence
+                | ty::TypingMode::Analysis { .. }
+                | ty::TypingMode::Borrowck { .. }
+                | ty::TypingMode::PostBorrowckAnalysis { .. }
+                | ty::TypingMode::PostAnalysis => {
+                    return Err(error(cx, LayoutError::TooGeneric(ty)));
+                }
+            }
+
             use rustc_middle::ty::layout::PrimitiveExt as _;
 
             let info = tcx.coroutine_layout(def_id, args)?;
@@ -637,7 +648,10 @@ fn layout_of_uncached<'tcx>(
 
             let maybe_unsized = def.is_struct()
                 && def.non_enum_variant().tail_opt().is_some_and(|last_field| {
-                    let typing_env = ty::TypingEnv::post_analysis(tcx, def.did());
+                    let typing_env = ty::TypingEnv {
+                        typing_mode: cx.typing_env.typing_mode,
+                        param_env: tcx.param_env_normalized_for_post_analysis(def.did()),
+                    };
                     !tcx.type_of(last_field.did).instantiate_identity().is_sized(tcx, typing_env)
                 });
 
