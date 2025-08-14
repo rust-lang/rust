@@ -368,7 +368,7 @@ where
     fn opaque_type_is_rigid(&self, def_id: I::DefId) -> bool {
         match self.typing_mode() {
             // Opaques are never rigid outside of analysis mode.
-            TypingMode::Coherence | TypingMode::PostAnalysis => false,
+            TypingMode::Coherence | TypingMode::PostAnalysis | TypingMode::Codegen => false,
             // During analysis, opaques are rigid unless they may be defined by
             // the current body.
             TypingMode::Analysis { defining_opaque_types_and_generators: non_rigid_opaques }
