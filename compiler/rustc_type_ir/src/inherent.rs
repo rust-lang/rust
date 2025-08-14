@@ -649,11 +649,11 @@ pub trait DefId<I: Interner>: Copy + Debug + Hash + Eq + TypeFoldable<I> {
 pub trait BoundExistentialPredicates<I: Interner>:
     Copy + Debug + Hash + Eq + Relate<I> + SliceLike<Item = ty::Binder<I, ty::ExistentialPredicate<I>>>
 {
-    fn principal_def_id(self) -> Option<I::DefId>;
+    fn principal_def_id(self) -> Option<I::TraitId>;
 
     fn principal(self) -> Option<ty::Binder<I, ty::ExistentialTraitRef<I>>>;
 
-    fn auto_traits(self) -> impl IntoIterator<Item = I::DefId>;
+    fn auto_traits(self) -> impl IntoIterator<Item = I::TraitId>;
 
     fn projection_bounds(
         self,
