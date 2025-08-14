@@ -1696,7 +1696,11 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
             return;
         }
 
-        self.call_intrinsic(intrinsic, &[self.val_ty(ptr)], &[self.cx.const_u64(size), ptr]);
+        if crate::llvm_util::get_version() >= (22, 0, 0) {
+            self.call_intrinsic(intrinsic, &[self.val_ty(ptr)], &[ptr]);
+        } else {
+            self.call_intrinsic(intrinsic, &[self.val_ty(ptr)], &[self.cx.const_u64(size), ptr]);
+        }
     }
 }
 impl<'a, 'll, CX: Borrow<SCx<'ll>>> GenericBuilder<'a, 'll, CX> {
