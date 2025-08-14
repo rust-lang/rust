@@ -364,7 +364,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let borrow_kind = super::util::ref_pat_borrow_kind(mutability);
         let source_info = self.source_info(span);
         let re_erased = self.tcx.lifetimes.re_erased;
-        let trait_item = self.tcx.require_lang_item(trait_item, None);
+        let trait_item = self.tcx.require_lang_item(trait_item, span);
         let method = trait_method(self.tcx, trait_item, method, [ty]);
         let ref_src = self.temp(Ty::new_ref(self.tcx, re_erased, ty, mutability), span);
         // `let ref_src = &src_place;`
@@ -437,7 +437,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         val: Operand<'tcx>,
     ) {
         let str_ty = self.tcx.types.str_;
-        let eq_def_id = self.tcx.require_lang_item(LangItem::PartialEq, Some(source_info.span));
+        let eq_def_id = self.tcx.require_lang_item(LangItem::PartialEq, source_info.span);
         let method = trait_method(self.tcx, eq_def_id, sym::eq, [str_ty, str_ty]);
 
         let bool_ty = self.tcx.types.bool;

@@ -1,4 +1,5 @@
 use std::io;
+use std::io::ErrorKind;
 
 use crate::*;
 
@@ -12,6 +13,29 @@ pub enum IoError {
     Raw(Scalar),
 }
 pub use self::IoError::*;
+
+impl IoError {
+    pub(crate) fn into_ntstatus(self) -> i32 {
+        let raw = match self {
+            HostError(e) =>
+                match e.kind() {
+                    // STATUS_MEDIA_WRITE_PROTECTED
+                    ErrorKind::ReadOnlyFilesystem => 0xC00000A2u32,
+                    // STATUS_FILE_INVALID
+                    ErrorKind::InvalidInput => 0xC0000098,
+                    // STATUS_DISK_FULL
+                    ErrorKind::QuotaExceeded => 0xC000007F,
+                    // STATUS_ACCESS_DENIED
+                    ErrorKind::PermissionDenied => 0xC0000022,
+                    // For the default error code we arbitrarily pick 0xC0000185, STATUS_IO_DEVICE_ERROR.
+                    _ => 0xC0000185,
+                },
+            // For the default error code we arbitrarily pick 0xC0000185, STATUS_IO_DEVICE_ERROR.
+            _ => 0xC0000185,
+        };
+        raw.cast_signed()
+    }
+}
 
 impl From<io::Error> for IoError {
     fn from(value: io::Error) -> Self {

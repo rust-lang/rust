@@ -71,6 +71,7 @@ window.searchState = {
         } else {
             window.location.hash = '';
         }
+        updateLintCount();
     },
 };
 
@@ -249,10 +250,10 @@ window.filters = {
                 }
                 return {
                     elem: elem,
-                    group: elem.querySelector(".label-lint-group").innerText,
-                    level: elem.querySelector(".label-lint-level").innerText,
+                    group: elem.querySelector(".lint-group").innerText,
+                    level: elem.querySelector(".lint-level").innerText,
                     version: parseInt(version.split(".")[1]),
-                    applicability: elem.querySelector(".label-applicability").innerText,
+                    applicability: elem.querySelector(".applicability").innerText,
                     filteredOut: false,
                     searchFilteredOut: false,
                 };
@@ -553,10 +554,10 @@ function addListeners() {
             return;
         }
 
-        if (event.target.classList.contains("lint-anchor")) {
-            lintAnchor(event);
-        } else if (event.target.classList.contains("copy-to-clipboard")) {
+        if (event.target.classList.contains("copy-to-clipboard")) {
             copyToClipboard(event);
+        } else if (event.target.classList.contains("anchor")) {
+            lintAnchor(event);
         }
     });
 
@@ -592,7 +593,6 @@ disableShortcutsButton.checked = disableShortcuts;
 
 addListeners();
 highlightLazily();
-
 generateSettings();
 generateSearch();
 parseURLFilters();

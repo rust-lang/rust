@@ -1,5 +1,4 @@
 use std::borrow::Cow;
-use std::env;
 use std::fmt::{Display, from_fn};
 use std::num::ParseIntError;
 use std::str::FromStr;
@@ -51,14 +50,14 @@ impl Arch {
         })
     }
 
-    fn target_cpu(self, abi: TargetAbi) -> &'static str {
+    fn target_cpu(self, env: TargetEnv) -> &'static str {
         match self {
             Armv7k => "cortex-a8",
             Armv7s => "swift", // iOS 10 is only supported on iPhone 5 or higher.
-            Arm64 => match abi {
-                TargetAbi::Normal => "apple-a7",
-                TargetAbi::Simulator => "apple-a12",
-                TargetAbi::MacCatalyst => "apple-a12",
+            Arm64 => match env {
+                TargetEnv::Normal => "apple-a7",
+                TargetEnv::Simulator => "apple-a12",
+                TargetEnv::MacCatalyst => "apple-a12",
             },
             Arm64e => "apple-a12",
             Arm64_32 => "apple-s4",
@@ -83,14 +82,14 @@ impl Arch {
 }
 
 #[derive(Copy, Clone, PartialEq)]
-pub(crate) enum TargetAbi {
+pub(crate) enum TargetEnv {
     Normal,
     Simulator,
     MacCatalyst,
 }
 
-impl TargetAbi {
-    fn target_abi(self) -> &'static str {
+impl TargetEnv {
+    fn target_env(self) -> &'static str {
         match self {
             Self::Normal => "",
             Self::MacCatalyst => "macabi",
@@ -104,13 +103,20 @@ impl TargetAbi {
 pub(crate) fn base(
     os: &'static str,
     arch: Arch,
-    abi: TargetAbi,
+    env: TargetEnv,
 ) -> (TargetOptions, StaticCow<str>, StaticCow<str>) {
     let mut opts = TargetOptions {
-        abi: abi.target_abi().into(),
         llvm_floatabi: Some(FloatAbi::Hard),
         os: os.into(),
-        cpu: arch.target_cpu(abi).into(),
+        env: env.target_env().into(),
+        // NOTE: We originally set `cfg(target_abi = "macabi")` / `cfg(target_abi = "sim")`,
+        // before it was discovered that those are actually environments:
+        // https://github.com/rust-lang/rust/issues/133331
+        //
+        // But let's continue setting them for backwards compatibility.
+        // FIXME(madsmtm): Warn about using these in the future.
+        abi: env.target_env().into(),
+        cpu: arch.target_cpu(env).into(),
         link_env_remove: link_env_remove(os),
         vendor: "apple".into(),
         linker_flavor: LinkerFlavor::Darwin(Cc::Yes, Lld::No),
@@ -124,7 +130,13 @@ pub(crate) fn base(
         // to v4, so we do the same.
         // https://github.com/llvm/llvm-project/blob/378778a0d10c2f8d5df8ceff81f95b6002984a4b/clang/lib/Driver/ToolChains/Darwin.cpp#L1203
         default_dwarf_version: 4,
-        frame_pointer: FramePointer::Always,
+        frame_pointer: match arch {
+            // clang ignores `-fomit-frame-pointer` for Armv7, it only accepts `-momit-leaf-frame-pointer`
+            Armv7k | Armv7s => FramePointer::Always,
+            // clang supports omitting frame pointers for the rest, but... don't?
+            Arm64 | Arm64e | Arm64_32 => FramePointer::NonLeaf,
+            I386 | I686 | X86_64 | X86_64h => FramePointer::Always,
+        },
         has_rpath: true,
         dll_suffix: ".dylib".into(),
         archive_format: "darwin".into(),
@@ -162,14 +174,14 @@ pub(crate) fn base(
         // All Apple x86-32 targets have SSE2.
         opts.rustc_abi = Some(RustcAbi::X86Sse2);
     }
-    (opts, unversioned_llvm_target(os, arch, abi), arch.target_arch())
+    (opts, unversioned_llvm_target(os, arch, env), arch.target_arch())
 }
 
 /// Generate part of the LLVM target triple.
 ///
 /// See `rustc_codegen_ssa::back::versioned_llvm_target` for the full triple passed to LLVM and
 /// Clang.
-fn unversioned_llvm_target(os: &str, arch: Arch, abi: TargetAbi) -> StaticCow<str> {
+fn unversioned_llvm_target(os: &str, arch: Arch, env: TargetEnv) -> StaticCow<str> {
     let arch = arch.target_name();
     // Convert to the "canonical" OS name used by LLVM:
     // https://github.com/llvm/llvm-project/blob/llvmorg-18.1.8/llvm/lib/TargetParser/Triple.cpp#L236-L282
@@ -181,10 +193,10 @@ fn unversioned_llvm_target(os: &str, arch: Arch, abi: TargetAbi) -> StaticCow<st
         "visionos" => "xros",
         _ => unreachable!("tried to get LLVM target OS for non-Apple platform"),
     };
-    let environment = match abi {
-        TargetAbi::Normal => "",
-        TargetAbi::MacCatalyst => "-macabi",
-        TargetAbi::Simulator => "-simulator",
+    let environment = match env {
+        TargetEnv::Normal => "",
+        TargetEnv::MacCatalyst => "-macabi",
+        TargetEnv::Simulator => "-simulator",
     };
     format!("{arch}-apple-{os}{environment}").into()
 }
@@ -196,29 +208,10 @@ fn link_env_remove(os: &'static str) -> StaticCow<[StaticCow<str>]> {
     // that's only applicable to cross-OS compilation. Always leave anything for the
     // host OS alone though.
     if os == "macos" {
-        let mut env_remove = Vec::with_capacity(2);
-        // Remove the `SDKROOT` environment variable if it's clearly set for the wrong platform, which
-        // may occur when we're linking a custom build script while targeting iOS for example.
-        if let Ok(sdkroot) = env::var("SDKROOT") {
-            if sdkroot.contains("iPhoneOS.platform")
-                || sdkroot.contains("iPhoneSimulator.platform")
-                || sdkroot.contains("AppleTVOS.platform")
-                || sdkroot.contains("AppleTVSimulator.platform")
-                || sdkroot.contains("WatchOS.platform")
-                || sdkroot.contains("WatchSimulator.platform")
-                || sdkroot.contains("XROS.platform")
-                || sdkroot.contains("XRSimulator.platform")
-            {
-                env_remove.push("SDKROOT".into())
-            }
-        }
-        // Additionally, `IPHONEOS_DEPLOYMENT_TARGET` must not be set when using the Xcode linker at
+        // `IPHONEOS_DEPLOYMENT_TARGET` must not be set when using the Xcode linker at
         // "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/ld",
         // although this is apparently ignored when using the linker at "/usr/bin/ld".
-        env_remove.push("IPHONEOS_DEPLOYMENT_TARGET".into());
-        env_remove.push("TVOS_DEPLOYMENT_TARGET".into());
-        env_remove.push("XROS_DEPLOYMENT_TARGET".into());
-        env_remove.into()
+        cvs!["IPHONEOS_DEPLOYMENT_TARGET", "TVOS_DEPLOYMENT_TARGET", "XROS_DEPLOYMENT_TARGET"]
     } else {
         // Otherwise if cross-compiling for a different OS/SDK (including Mac Catalyst), remove any part
         // of the linking environment that's wrong and reversed.
@@ -303,7 +296,7 @@ impl OSVersion {
     /// This matches what LLVM does, see in part:
     /// <https://github.com/llvm/llvm-project/blob/llvmorg-18.1.8/llvm/lib/TargetParser/Triple.cpp#L1900-L1932>
     pub fn minimum_deployment_target(target: &Target) -> Self {
-        let (major, minor, patch) = match (&*target.os, &*target.arch, &*target.abi) {
+        let (major, minor, patch) = match (&*target.os, &*target.arch, &*target.env) {
             ("macos", "aarch64", _) => (11, 0, 0),
             ("ios", "aarch64", "macabi") => (14, 0, 0),
             ("ios", "aarch64", "sim") => (14, 0, 0),

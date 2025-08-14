@@ -73,21 +73,32 @@ To build a corpus, you may want to use:
 
 - The rustc/rust-analyzer/clippy test suites (or even source code) --- though avoid
   tests that are already known to cause failures, which often begin with comments
-  like `// failure-status: 101` or `// known-bug: #NNN`.
-- The already-fixed ICEs in [Glacier][glacier] --- though avoid the unfixed
-  ones in `ices/`!
+  like `//@ failure-status: 101` or `//@ known-bug: #NNN`.
+- The already-fixed ICEs in the archived [Glacier][glacier] repository --- though
+  avoid the unfixed ones in `ices/`!
+
+[glacier]: https://github.com/rust-lang/glacier
 
 ## Extra credit
 
 Here are a few things you can do to help the Rust project after filing an ICE.
 
-- [Bisect][bisect] the bug to figure out when it was introduced 
+- [Bisect][bisect] the bug to figure out when it was introduced.
+  If you find the regressing PR / commit, you can mark the issue with the label
+  `S-has-bisection`. If not, consider applying `E-needs-bisection` instead.
 - Fix "distractions": problems with the test case that don't contribute to
   triggering the ICE, such as syntax errors or borrow-checking errors
-- Minimize the test case (see below)
-- Add the minimal test case to [Glacier][glacier]
+- Minimize the test case (see below). If successful, you can label the
+  issue with `S-has-mcve`. Otherwise, you can apply `E-needs-mcve`.
+- Add the minimal test case to the rust-lang/rust repo as a [crashes test].
+  While you're at it, consider including other "untracked" crashes in your PR.
+  Please don't forget to mark your issue with `S-bug-has-test` afterwards.
+
+See also [applying and removing labels][labeling].
 
 [bisect]: https://rust-lang.github.io/cargo-bisect-rustc/
+[crashes test]: tests/compiletest.html#crashes-tests
+[labeling]: https://forge.rust-lang.org/release/issue-triaging.html#applying-and-removing-labels
 
 ## Minimization
 
@@ -143,7 +154,6 @@ ICEs that require debug assertions to reproduce should be tagged
 - [tree-splicer][tree-splicer] generates new source files by combining existing
   ones while maintaining correct syntax
 
-[glacier]: https://github.com/rust-lang/glacier
 [fuzz-rustc]: https://github.com/dwrensha/fuzz-rustc
 [icemaker]: https://github.com/matthiaskrgr/icemaker/
 [tree-splicer]: https://github.com/langston-barrett/tree-splicer/

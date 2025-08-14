@@ -1,8 +1,8 @@
-error: Undefined Behavior: Race condition detected between (1) multiple differently-sized atomic loads, including one load on thread `unnamed-ID` and (2) 1-byte atomic store on thread `unnamed-ID` at ALLOC. (2) just happened here
+error: Undefined Behavior: Race condition detected between (1) multiple differently-sized atomic loads, including one load on thread `unnamed-ID` and (2) 1-byte atomic store on thread `unnamed-ID` at ALLOC
   --> tests/fail/data_race/mixed_size_read_read_write.rs:LL:CC
    |
 LL |                 a8[0].store(0, Ordering::SeqCst);
-   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Race condition detected between (1) multiple differently-sized atomic loads, including one load on thread `unnamed-ID` and (2) 1-byte atomic store on thread `unnamed-ID` at ALLOC. (2) just happened here
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ (2) just happened here
    |
 help: and (1) occurred earlier here
   --> tests/fail/data_race/mixed_size_read_read_write.rs:LL:CC

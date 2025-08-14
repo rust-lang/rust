@@ -3,7 +3,7 @@ use clippy_utils::diagnostics::{span_lint, span_lint_and_then};
 use clippy_utils::source::snippet;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::{get_discriminant_value, is_isize_or_usize};
-use clippy_utils::{expr_or_init, sym};
+use clippy_utils::{expr_or_init, is_in_const_context, sym};
 use rustc_abi::IntegerType;
 use rustc_errors::{Applicability, Diag};
 use rustc_hir::def::{DefKind, Res};
@@ -56,7 +56,7 @@ fn apply_reductions(cx: &LateContext<'_>, nbits: u64, expr: &Expr<'_>, signed: b
             if signed {
                 return nbits;
             }
-            let max_bits = if method.ident.as_str() == "min" {
+            let max_bits = if method.ident.name == sym::min {
                 get_constant_bits(cx, right)
             } else {
                 None
@@ -64,7 +64,7 @@ fn apply_reductions(cx: &LateContext<'_>, nbits: u64, expr: &Expr<'_>, signed: b
             apply_reductions(cx, nbits, left, signed).min(max_bits.unwrap_or(u64::MAX))
         },
         ExprKind::MethodCall(method, _, [lo, hi], _) => {
-            if method.ident.as_str() == "clamp"
+            if method.ident.name == sym::clamp
                 //FIXME: make this a diagnostic item
                 && let (Some(lo_bits), Some(hi_bits)) = (get_constant_bits(cx, lo), get_constant_bits(cx, hi))
             {
@@ -91,15 +91,14 @@ pub(super) fn check(
     cast_to: Ty<'_>,
     cast_to_span: Span,
 ) {
-    let msg = match (cast_from.kind(), cast_to.is_integral()) {
-        (ty::Int(_) | ty::Uint(_), true) => {
+    let msg = match (cast_from.kind(), utils::int_ty_to_nbits(cx.tcx, cast_to)) {
+        (ty::Int(_) | ty::Uint(_), Some(to_nbits)) => {
             let from_nbits = apply_reductions(
                 cx,
-                utils::int_ty_to_nbits(cast_from, cx.tcx),
+                utils::int_ty_to_nbits(cx.tcx, cast_from).unwrap(),
                 cast_expr,
                 cast_from.is_signed(),
             );
-            let to_nbits = utils::int_ty_to_nbits(cast_to, cx.tcx);
 
             let (should_lint, suffix) = match (is_isize_or_usize(cast_from), is_isize_or_usize(cast_to)) {
                 (true, true) | (false, false) => (to_nbits < from_nbits, ""),
@@ -121,7 +120,7 @@ pub(super) fn check(
             format!("casting `{cast_from}` to `{cast_to}` may truncate the value{suffix}",)
         },
 
-        (ty::Adt(def, _), true) if def.is_enum() => {
+        (ty::Adt(def, _), Some(to_nbits)) if def.is_enum() => {
             let (from_nbits, variant) = if let ExprKind::Path(p) = &cast_expr.kind
                 && let Res::Def(DefKind::Ctor(..), id) = cx.qpath_res(p, cast_expr.hir_id)
             {
@@ -132,7 +131,6 @@ pub(super) fn check(
             } else {
                 (utils::enum_ty_to_nbits(*def, cx.tcx), None)
             };
-            let to_nbits = utils::int_ty_to_nbits(cast_to, cx.tcx);
 
             let cast_from_ptr_size = def.repr().int.is_none_or(|ty| matches!(ty, IntegerType::Pointer(_),));
             let suffix = match (cast_from_ptr_size, is_isize_or_usize(cast_to)) {
@@ -157,11 +155,11 @@ pub(super) fn check(
             format!("casting `{cast_from}` to `{cast_to}` may truncate the value{suffix}")
         },
 
-        (ty::Float(_), true) => {
+        (ty::Float(_), Some(_)) => {
             format!("casting `{cast_from}` to `{cast_to}` may truncate the value")
         },
 
-        (ty::Float(FloatTy::F64), false) if matches!(cast_to.kind(), &ty::Float(FloatTy::F32)) => {
+        (ty::Float(FloatTy::F64), None) if matches!(cast_to.kind(), &ty::Float(FloatTy::F32)) => {
             "casting `f64` to `f32` may truncate the value".to_string()
         },
 
@@ -170,7 +168,9 @@ pub(super) fn check(
 
     span_lint_and_then(cx, CAST_POSSIBLE_TRUNCATION, expr.span, msg, |diag| {
         diag.help("if this is intentional allow the lint with `#[allow(clippy::cast_possible_truncation)]` ...");
-        if !cast_from.is_floating_point() {
+        // TODO: Remove the condition for const contexts when `try_from` and other commonly used methods
+        // become const fn.
+        if !is_in_const_context(cx) && !cast_from.is_floating_point() {
             offer_suggestion(cx, expr, cast_expr, cast_to_span, diag);
         }
     });

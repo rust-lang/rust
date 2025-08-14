@@ -273,8 +273,6 @@ impl<'tcx> Graph {
 
         // Descend the specialization tree, where `parent` is the current parent node.
         loop {
-            use self::Inserted::*;
-
             let insert_result = self.children.entry(parent).or_default().insert(
                 tcx,
                 impl_def_id,
@@ -283,11 +281,11 @@ impl<'tcx> Graph {
             )?;
 
             match insert_result {
-                BecameNewSibling(opt_lint) => {
+                Inserted::BecameNewSibling(opt_lint) => {
                     last_lint = opt_lint;
                     break;
                 }
-                ReplaceChildren(grand_children_to_be) => {
+                Inserted::ReplaceChildren(grand_children_to_be) => {
                     // We currently have
                     //
                     //     P
@@ -326,7 +324,7 @@ impl<'tcx> Graph {
                     }
                     break;
                 }
-                ShouldRecurseOn(new_parent) => {
+                Inserted::ShouldRecurseOn(new_parent) => {
                     parent = new_parent;
                 }
             }

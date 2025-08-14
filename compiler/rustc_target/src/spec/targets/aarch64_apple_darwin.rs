@@ -1,8 +1,8 @@
-use crate::spec::base::apple::{Arch, TargetAbi, base};
-use crate::spec::{FramePointer, SanitizerSet, Target, TargetMetadata, TargetOptions};
+use crate::spec::base::apple::{Arch, TargetEnv, base};
+use crate::spec::{SanitizerSet, Target, TargetMetadata, TargetOptions};
 
 pub(crate) fn target() -> Target {
-    let (opts, llvm_target, arch) = base("macos", Arch::Arm64, TargetAbi::Normal);
+    let (opts, llvm_target, arch) = base("macos", Arch::Arm64, TargetEnv::Normal);
     Target {
         llvm_target,
         metadata: TargetMetadata {
@@ -17,11 +17,11 @@ pub(crate) fn target() -> Target {
         arch,
         options: TargetOptions {
             mcount: "\u{1}mcount".into(),
-            frame_pointer: FramePointer::NonLeaf,
             cpu: "apple-m1".into(),
             max_atomic_width: Some(128),
             // FIXME: The leak sanitizer currently fails the tests, see #88132.
             supported_sanitizers: SanitizerSet::ADDRESS | SanitizerSet::CFI | SanitizerSet::THREAD,
+            supports_xray: true,
             ..opts
         },
     }

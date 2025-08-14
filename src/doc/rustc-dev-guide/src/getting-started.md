@@ -3,8 +3,6 @@
 Thank you for your interest in contributing to Rust! There are many ways to
 contribute, and we appreciate all of them.
 
-<!-- toc -->
-
 If this is your first time contributing, the [walkthrough] chapter can give you a good example of
 how a typical contribution would go.
 
@@ -89,7 +87,7 @@ filtering the search to areas you're interested in. For example:
 Not all important or beginner work has issue labels.
 See below for how to find work that isn't labelled.
 
-[help-wanted-search]: https://github.com/issues?q=is%3Aopen+is%3Aissue+org%3Arust-lang+no%3Aassignee+label%3AE-easy%2C%22good+first+issue%22%2Cgood-first-issue%2CE-medium%2CEasy%2CE-help-wanted%2CE-mentor+-label%3AS-blocked+
+[help-wanted-search]: https://github.com/issues?q=is%3Aopen+is%3Aissue+org%3Arust-lang+no%3Aassignee+label%3AE-easy%2C%22good+first+issue%22%2Cgood-first-issue%2CE-medium%2CEasy%2CE-help-wanted%2CE-mentor+-label%3AS-blocked+-linked%3Apr+
 [Triage]: ./contributing.md#issue-triage
 
 ### Recurring work
@@ -98,8 +96,6 @@ Some work is too large to be done by a single person. In this case, it's common 
 issues" to co-ordinate the work between contributors. Here are some example tracking issues where
 it's easy to pick up work without a large time commitment:
 
-- [Rustdoc Askama Migration](https://github.com/rust-lang/rust/issues/108868)
-- [Diagnostic Translation](https://github.com/rust-lang/rust/issues/100717)
 - [Move UI tests to subdirectories](https://github.com/rust-lang/rust/issues/73494)
 
 If you find more recurring work, please feel free to add it here!
@@ -160,9 +156,6 @@ feel comfortable jumping straight into the large `rust-lang/rust` codebase.
 The following tasks are doable without much background knowledge but are
 incredibly helpful:
 
-- [Cleanup crew][iceb]: find minimal reproductions of ICEs, bisect
-  regressions, etc. This is a way of helping that saves a ton of time for
-  others to fix an error later.
 - [Writing documentation][wd]: if you are feeling a bit more intrepid, you could try
   to read a part of the code and write doc comments for it. This will help you
   to learn some part of the compiler while also producing a useful artifact!
@@ -181,7 +174,6 @@ incredibly helpful:
 [users]: https://users.rust-lang.org/
 [so]: http://stackoverflow.com/questions/tagged/rust
 [community-library]: https://github.com/rust-lang/rfcs/labels/A-community-library
-[iceb]: ./notification-groups/cleanup-crew.md
 [wd]: ./contributing.md#writing-documentation
 [wg]: https://rust-lang.github.io/compiler-team/working-groups/
 [triage]: ./contributing.md#issue-triage

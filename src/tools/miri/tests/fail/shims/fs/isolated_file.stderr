@@ -2,7 +2,7 @@ error: unsupported operation: `open` not available when isolation is enabled
   --> RUSTLIB/std/src/sys/fs/PLATFORM.rs:LL:CC
    |
 LL |         let fd = cvt_r(|| unsafe { open64(path.as_ptr(), flags, opts.mode as c_int) })?;
-   |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `open` not available when isolation is enabled
+   |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unsupported operation occurred here
    |
    = help: set `MIRIFLAGS=-Zmiri-disable-isolation` to disable isolation;
    = help: or set `MIRIFLAGS=-Zmiri-isolation-error=warn` to make Miri return an error code from isolated operations (if supported for that operation) and continue with a warning

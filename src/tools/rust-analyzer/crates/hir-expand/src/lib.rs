@@ -199,9 +199,9 @@ impl ExpandErrorKind {
             },
             &ExpandErrorKind::MissingProcMacroExpander(def_crate) => {
                 match db.proc_macros_for_crate(def_crate).as_ref().and_then(|it| it.get_error()) {
-                    Some((e, hard_err)) => RenderedExpandError {
-                        message: e.to_owned(),
-                        error: hard_err,
+                    Some(e) => RenderedExpandError {
+                        message: e.to_string(),
+                        error: e.is_hard_error(),
                         kind: RenderedExpandError::GENERAL_KIND,
                     },
                     None => RenderedExpandError {
@@ -365,12 +365,11 @@ impl HirFileId {
                 HirFileId::FileId(id) => break id,
                 HirFileId::MacroFile(file) => {
                     let loc = db.lookup_intern_macro_call(file);
-                    if loc.def.is_include() {
-                        if let MacroCallKind::FnLike { eager: Some(eager), .. } = &loc.kind {
-                            if let Ok(it) = include_input_to_file_id(db, file, &eager.arg) {
-                                break it;
-                            }
-                        }
+                    if loc.def.is_include()
+                        && let MacroCallKind::FnLike { eager: Some(eager), .. } = &loc.kind
+                        && let Ok(it) = include_input_to_file_id(db, file, &eager.arg)
+                    {
+                        break it;
                     }
                     self = loc.kind.file_id();
                 }
@@ -390,6 +389,10 @@ impl HirFileId {
                 }
             }
         }
+    }
+
+    pub fn call_node(self, db: &dyn ExpandDatabase) -> Option<InFile<SyntaxNode>> {
+        Some(db.lookup_intern_macro_call(self.macro_file()?).to_node(db))
     }
 
     pub fn as_builtin_derive_attr_node(
@@ -644,12 +647,11 @@ impl MacroCallLoc {
         db: &dyn ExpandDatabase,
         macro_call_id: MacroCallId,
     ) -> Option<EditionedFileId> {
-        if self.def.is_include() {
-            if let MacroCallKind::FnLike { eager: Some(eager), .. } = &self.kind {
-                if let Ok(it) = include_input_to_file_id(db, macro_call_id, &eager.arg) {
-                    return Some(it);
-                }
-            }
+        if self.def.is_include()
+            && let MacroCallKind::FnLike { eager: Some(eager), .. } = &self.kind
+            && let Ok(it) = include_input_to_file_id(db, macro_call_id, &eager.arg)
+        {
+            return Some(it);
         }
 
         None
@@ -684,8 +686,11 @@ impl MacroCallKind {
 
     /// Returns the original file range that best describes the location of this macro call.
     ///
-    /// Unlike `MacroCallKind::original_call_range`, this also spans the item of attributes and derives.
-    pub fn original_call_range_with_body(self, db: &dyn ExpandDatabase) -> FileRange {
+    /// This spans the entire macro call, including its input. That is for
+    /// - fn_like! {}, it spans the path and token tree
+    /// - #\[derive], it spans the `#[derive(...)]` attribute and the annotated item
+    /// - #\[attr], it spans the `#[attr(...)]` attribute and the annotated item
+    pub fn original_call_range_with_input(self, db: &dyn ExpandDatabase) -> FileRange {
         let mut kind = self;
         let file_id = loop {
             match kind.file_id() {
@@ -708,8 +713,8 @@ impl MacroCallKind {
     /// Returns the original file range that best describes the location of this macro call.
     ///
     /// Here we try to roughly match what rustc does to improve diagnostics: fn-like macros
-    /// get the whole `ast::MacroCall`, attribute macros get the attribute's range, and derives
-    /// get only the specific derive that is being referred to.
+    /// get the macro path (rustc shows the whole `ast::MacroCall`), attribute macros get the
+    /// attribute's range, and derives get only the specific derive that is being referred to.
     pub fn original_call_range(self, db: &dyn ExpandDatabase) -> FileRange {
         let mut kind = self;
         let file_id = loop {
@@ -722,7 +727,14 @@ impl MacroCallKind {
         };
 
         let range = match kind {
-            MacroCallKind::FnLike { ast_id, .. } => ast_id.to_ptr(db).text_range(),
+            MacroCallKind::FnLike { ast_id, .. } => {
+                let node = ast_id.to_node(db);
+                node.path()
+                    .unwrap()
+                    .syntax()
+                    .text_range()
+                    .cover(node.excl_token().unwrap().text_range())
+            }
             MacroCallKind::Derive { ast_id, derive_attr_index, .. } => {
                 // FIXME: should be the range of the macro name, not the whole derive
                 // FIXME: handle `cfg_attr`
@@ -848,7 +860,10 @@ impl ExpansionInfo {
         map_node_range_up(db, &self.exp_map, range)
     }
 
-    /// Maps up the text range out of the expansion into is macro call.
+    /// Maps up the text range out of the expansion into its macro call.
+    ///
+    /// Note that this may return multiple ranges as we lose the precise association between input to output
+    /// and as such we may consider inputs that are unrelated.
     pub fn map_range_up_once(
         &self,
         db: &dyn ExpandDatabase,
@@ -864,11 +879,10 @@ impl ExpansionInfo {
                 InFile { file_id, value: smallvec::smallvec![span.range + anchor_offset] }
             }
             SpanMap::ExpansionSpanMap(arg_map) => {
-                let arg_range = self
-                    .arg
-                    .value
-                    .as_ref()
-                    .map_or_else(|| TextRange::empty(TextSize::from(0)), |it| it.text_range());
+                let Some(arg_node) = &self.arg.value else {
+                    return InFile::new(self.arg.file_id, smallvec::smallvec![]);
+                };
+                let arg_range = arg_node.text_range();
                 InFile::new(
                     self.arg.file_id,
                     arg_map
@@ -1050,7 +1064,7 @@ impl ExpandTo {
 
 intern::impl_internable!(ModPath, attrs::AttrInput);
 
-#[salsa_macros::interned(no_lifetime, debug)]
+#[salsa_macros::interned(no_lifetime, debug, revisions = usize::MAX)]
 #[doc(alias = "MacroFileId")]
 pub struct MacroCallId {
     pub loc: MacroCallLoc,

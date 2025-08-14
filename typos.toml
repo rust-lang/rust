@@ -1,0 +1,74 @@
+[files]
+extend-exclude = [
+    # exclude git (sub)modules and generated content
+    "compiler/rustc_codegen_gcc",
+    "compiler/rustc_codegen_cranelift",
+    "compiler/rustc_baked_icu_data",
+    "library/compiler-builtins",
+    "library/backtrace",
+    "library/stdarch",
+    # generated lorem ipsum texts
+    "library/alloctests/benches/str.rs",
+    "library/alloctests/tests/str.rs",
+]
+
+[default.extend-words]
+# Add exclusions here, lines should be like `x = "x"`, where `x` is excluded word.
+#
+# Also see docs: https://github.com/crate-ci/typos/blob/v1.28.2/docs/reference.md
+rplace = "rplace"
+arange = "arange"
+unstalled = "unstalled"
+taits = "taits"
+Datas = "Datas"
+splitted = "splitted"
+leafs = "leafs"
+makro = "makro"
+optin = "optin"
+unparseable = "unparseable"
+smove = "smove"
+childs = "childs"
+filetimes = "filetimes"
+misformed = "misformed"
+targetting = "targetting"
+publically = "publically"
+clonable = "clonable"
+
+# this can be valid word, depends on dictionary edition
+#matcheable = "matcheable"
+
+[default.extend-identifiers]
+# An entry goes here if the typo is part of some existing ident
+# where you want to keep it, but don't want to allow
+# such typos everywhere.
+#
+# I.e. you don't want (or can't) fix some constant name, like
+# `DNS_ERROR_INVAILD_VIRTUALIZATION_INSTANCE_NAME` but actually
+# want to see `INVAILD` typo fixed in other places.
+ERROR_FILENAME_EXCED_RANGE = "ERROR_FILENAME_EXCED_RANGE"
+DNS_ERROR_INVAILD_VIRTUALIZATION_INSTANCE_NAME = "DNS_ERROR_INVAILD_VIRTUALIZATION_INSTANCE_NAME"
+ERROR_DS_FILTER_USES_CONTRUCTED_ATTRS = "ERROR_DS_FILTER_USES_CONTRUCTED_ATTRS"
+ERROR_DS_NOT_AUTHORITIVE_FOR_DST_NC = "ERROR_DS_NOT_AUTHORITIVE_FOR_DST_NC"
+ERROR_MCA_OCCURED = "ERROR_MCA_OCCURED"
+ERRNO_ACCES = "ERRNO_ACCES"
+tolen = "tolen"
+numer = "numer"
+
+[default]
+extend-ignore-words-re = [
+    # words with length <= 4 chars is likely noise
+    "^[a-zA-Z]{1,4}$",
+]
+
+extend-ignore-re = [
+    # ignore these intentional typo examples
+    "/// 1 \\| #\\[cfg\\(widnows\\)\\]",
+    "/// warning: unexpected `cfg` condition name: `widnows`",
+    "/// #\\[cfg\\(widnows\\)\\]",
+    "\\.arg\\(\"Oh no, a tpyo!\"\\)",
+    # string used in benches
+    "\"core::iter::adapters::Copie\"",
+    "-Ccontrol-flow-guard",
+    "concat!\\(\"CURRENT_RUSTC_VERSIO\", \"N\"\\)",
+    "\\*\\*v\\*\\*ariable"
+]

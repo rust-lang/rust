@@ -15,11 +15,12 @@ use std::{env, process};
 use tidy::*;
 
 fn main() {
-    // Running Cargo will read the libstd Cargo.toml
+    // Enable nightly, because Cargo will read the libstd Cargo.toml
     // which uses the unstable `public-dependency` feature.
-    //
-    // `setenv` might not be thread safe, so run it before using multiple threads.
-    env::set_var("RUSTC_BOOTSTRAP", "1");
+    // SAFETY: no other threads have been spawned
+    unsafe {
+        env::set_var("RUSTC_BOOTSTRAP", "1");
+    }
 
     let root_path: PathBuf = env::args_os().nth(1).expect("need path to root of repo").into();
     let cargo: PathBuf = env::args_os().nth(2).expect("need path to cargo").into();
@@ -28,6 +29,7 @@ fn main() {
     let concurrency: NonZeroUsize =
         FromStr::from_str(&env::args().nth(4).expect("need concurrency"))
             .expect("concurrency must be a number");
+    let npm: PathBuf = env::args_os().nth(5).expect("need name/path of npm command").into();
 
     let root_manifest = root_path.join("Cargo.toml");
     let src_path = root_path.join("src");
@@ -35,6 +37,7 @@ fn main() {
     let library_path = root_path.join("library");
     let compiler_path = root_path.join("compiler");
     let librustdoc_path = src_path.join("librustdoc");
+    let tools_path = src_path.join("tools");
     let crashes_path = tests_path.join("crashes");
 
     let args: Vec<String> = env::args().skip(1).collect();
@@ -47,7 +50,9 @@ fn main() {
     let extra_checks =
         cfg_args.iter().find(|s| s.starts_with("--extra-checks=")).map(String::as_str);
 
-    let bad = std::sync::Arc::new(AtomicBool::new(false));
+    let mut bad = false;
+    let ci_info = CiInfo::new(&mut bad);
+    let bad = std::sync::Arc::new(AtomicBool::new(bad));
 
     let drain_handles = |handles: &mut VecDeque<ScopedJoinHandle<'_, ()>>| {
         // poll all threads for completion before awaiting the oldest one
@@ -108,11 +113,12 @@ fn main() {
         check!(rustdoc_gui_tests, &tests_path);
         check!(rustdoc_css_themes, &librustdoc_path);
         check!(rustdoc_templates, &librustdoc_path);
+        check!(rustdoc_json, &src_path, &ci_info);
         check!(known_bug, &crashes_path);
         check!(unknown_revision, &tests_path);
 
         // Checks that only make sense for the compiler.
-        check!(error_codes, &root_path, &[&compiler_path, &librustdoc_path], verbose);
+        check!(error_codes, &root_path, &[&compiler_path, &librustdoc_path], verbose, &ci_info);
         check!(fluent_alphabetical, &compiler_path, bless);
         check!(fluent_period, &compiler_path);
         check!(target_policy, &root_path);
@@ -122,9 +128,9 @@ fn main() {
         check!(pal, &library_path);
 
         // Checks that need to be done for both the compiler and std libraries.
-        check!(unit_tests, &src_path);
-        check!(unit_tests, &compiler_path);
-        check!(unit_tests, &library_path);
+        check!(unit_tests, &src_path, false);
+        check!(unit_tests, &compiler_path, false);
+        check!(unit_tests, &library_path, true);
 
         if bins::check_filesystem_support(&[&root_path], &output_directory) {
             check!(bins, &root_path);
@@ -149,6 +155,8 @@ fn main() {
 
         check!(triagebot, &root_path);
 
+        check!(filenames, &root_path);
+
         let collected = {
             drain_handles(&mut handles);
 
@@ -168,7 +176,18 @@ fn main() {
         };
         check!(unstable_book, &src_path, collected);
 
-        check!(ext_tool_checks, &root_path, &output_directory, bless, extra_checks, pos_args);
+        check!(
+            extra_checks,
+            &root_path,
+            &output_directory,
+            &ci_info,
+            &librustdoc_path,
+            &tools_path,
+            &npm,
+            bless,
+            extra_checks,
+            pos_args
+        );
     });
 
     if bad.load(Ordering::Relaxed) {

@@ -13,7 +13,8 @@ use ui_test::custom_flags::edition::Edition;
 use ui_test::dependencies::DependencyBuilder;
 use ui_test::per_test_config::TestConfig;
 use ui_test::spanned::Spanned;
-use ui_test::{CommandBuilder, Config, Format, Match, ignore_output_conflict, status_emitter};
+use ui_test::status_emitter::StatusEmitter;
+use ui_test::{CommandBuilder, Config, Match, ignore_output_conflict};
 
 #[derive(Copy, Clone, Debug)]
 enum Mode {
@@ -29,23 +30,19 @@ fn miri_path() -> PathBuf {
     PathBuf::from(env::var("MIRI").unwrap_or_else(|_| env!("CARGO_BIN_EXE_miri").into()))
 }
 
-fn get_host() -> String {
-    rustc_version::VersionMeta::for_command(std::process::Command::new(miri_path()))
-        .expect("failed to parse rustc version info")
-        .host
-}
-
 pub fn flagsplit(flags: &str) -> Vec<String> {
     // This code is taken from `RUSTFLAGS` handling in cargo.
     flags.split(' ').map(str::trim).filter(|s| !s.is_empty()).map(str::to_string).collect()
 }
 
 // Build the shared object file for testing native function calls.
-fn build_native_lib() -> PathBuf {
-    let cc = env::var("CC").unwrap_or_else(|_| "cc".into());
+fn build_native_lib(target: &str) -> PathBuf {
+    // Loosely follow the logic of the `cc` crate for finding the compiler.
+    let cc = env::var(format!("CC_{target}"))
+        .or_else(|_| env::var("CC"))
+        .unwrap_or_else(|_| "cc".into());
     // Target directory that we can write to.
-    let so_target_dir =
-        Path::new(&env::var_os("CARGO_TARGET_DIR").unwrap()).join("miri-native-lib");
+    let so_target_dir = Path::new(env!("CARGO_TARGET_TMPDIR")).join("miri-native-lib");
     // Create the directory if it does not already exist.
     std::fs::create_dir_all(&so_target_dir)
         .expect("Failed to create directory for shared object file");
@@ -101,7 +98,9 @@ fn miri_config(
     let mut config = Config {
         target: Some(target.to_owned()),
         program,
-        out_dir: PathBuf::from(std::env::var_os("CARGO_TARGET_DIR").unwrap()).join("miri_ui"),
+        // When changing this, remember to also adjust the logic in bootstrap, in Miri's test step,
+        // that deletes the `miri_ui` dir when it needs a rebuild.
+        out_dir: PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("miri_ui"),
         threads: std::env::var("MIRI_TEST_THREADS")
             .ok()
             .map(|threads| NonZero::new(threads.parse().unwrap()).unwrap()),
@@ -143,7 +142,7 @@ fn miri_config(
                     envs: vec![("RUSTFLAGS".into(), None)],
                     ..CommandBuilder::cargo()
                 },
-                crate_manifest_path: Path::new("test_dependencies").join("Cargo.toml"),
+                crate_manifest_path: Path::new("tests/deps").join("Cargo.toml"),
                 build_std: None,
                 bless_lockfile: bless,
             },
@@ -202,7 +201,7 @@ fn run_tests(
     // If we're testing the native-lib functionality, then build the shared object file for testing
     // external C function calls and push the relevant compiler flag.
     if path.starts_with("tests/native-lib/") {
-        let native_lib = build_native_lib();
+        let native_lib = build_native_lib(target);
         let mut flag = std::ffi::OsString::from("-Zmiri-native-lib=");
         flag.push(native_lib.into_os_string());
         config.program.args.push(flag);
@@ -218,10 +217,7 @@ fn run_tests(
         // This could be used to overwrite the `Config` on a per-test basis.
         |_, _| {},
         // No GHA output as that would also show in the main rustc repo.
-        match args.format {
-            Format::Terse => status_emitter::Text::quiet(),
-            Format::Pretty => status_emitter::Text::verbose(),
-        },
+        Box::<dyn StatusEmitter>::from(args.format),
     )
 }
 
@@ -252,7 +248,8 @@ regexes! {
     // erase alloc ids
     "alloc[0-9]+"                    => "ALLOC",
     // erase thread ids
-    r"unnamed-[0-9]+"               => "unnamed-ID",
+    r"unnamed-[0-9]+"                => "unnamed-ID",
+    r"thread '(?P<name>.*?)' \(\d+\) panicked" => "thread '$name' ($$TID) panicked",
     // erase borrow tags
     "<[0-9]+>"                       => "<TAG>",
     "<[0-9]+="                       => "<TAG=",
@@ -306,23 +303,30 @@ fn ui(
         .with_context(|| format!("ui tests in {path} for {target} failed"))
 }
 
-fn get_target() -> String {
-    env::var("MIRI_TEST_TARGET").ok().unwrap_or_else(get_host)
+fn get_host() -> String {
+    rustc_version::VersionMeta::for_command(std::process::Command::new(miri_path()))
+        .expect("failed to parse rustc version info")
+        .host
+}
+
+fn get_target(host: &str) -> String {
+    env::var("MIRI_TEST_TARGET").ok().unwrap_or_else(|| host.to_owned())
 }
 
 fn main() -> Result<()> {
     ui_test::color_eyre::install()?;
 
-    let target = get_target();
+    let host = get_host();
+    let target = get_target(&host);
     let tmpdir = tempfile::Builder::new().prefix("miri-uitest-").tempdir()?;
 
     let mut args = std::env::args_os();
 
     // Skip the program name and check whether this is a `./miri run-dep` invocation
-    if let Some(first) = args.nth(1) {
-        if first == "--miri-run-dep-mode" {
-            return run_dep_mode(target, args);
-        }
+    if let Some(first) = args.nth(1)
+        && first == "--miri-run-dep-mode"
+    {
+        return run_dep_mode(target, args);
     }
 
     ui(Mode::Pass, "tests/pass", &target, WithoutDependencies, tmpdir.path())?;
@@ -330,9 +334,23 @@ fn main() -> Result<()> {
     ui(Mode::Panic, "tests/panic", &target, WithDependencies, tmpdir.path())?;
     ui(Mode::Fail, "tests/fail", &target, WithoutDependencies, tmpdir.path())?;
     ui(Mode::Fail, "tests/fail-dep", &target, WithDependencies, tmpdir.path())?;
-    if cfg!(unix) {
+    if cfg!(all(unix, feature = "native-lib")) && target == host {
         ui(Mode::Pass, "tests/native-lib/pass", &target, WithoutDependencies, tmpdir.path())?;
         ui(Mode::Fail, "tests/native-lib/fail", &target, WithoutDependencies, tmpdir.path())?;
+    }
+
+    // We only enable GenMC tests when the `genmc` feature is enabled, but also only on platforms we support:
+    // FIXME(genmc,macos): Add `target_os = "macos"` once `https://github.com/dtolnay/cxx/issues/1535` is fixed.
+    // FIXME(genmc,cross-platform): remove `host == target` check once cross-platform support with GenMC is possible.
+    if cfg!(all(
+        feature = "genmc",
+        target_os = "linux",
+        target_pointer_width = "64",
+        target_endian = "little"
+    )) && host == target
+    {
+        ui(Mode::Pass, "tests/genmc/pass", &target, WithDependencies, tmpdir.path())?;
+        ui(Mode::Fail, "tests/genmc/fail", &target, WithDependencies, tmpdir.path())?;
     }
 
     Ok(())

@@ -142,6 +142,7 @@ fn check_let_some_else_return_none(cx: &LateContext<'_>, stmt: &Stmt<'_>) {
         && let Some(ret) = find_let_else_ret_expression(els)
         && let Some(inner_pat) = pat_and_expr_can_be_question_mark(cx, pat, ret)
         && !span_contains_comment(cx.tcx.sess.source_map(), els.span)
+        && !span_contains_cfg(cx, els.span)
     {
         let mut applicability = Applicability::MaybeIncorrect;
         let init_expr_str = Sugg::hir_with_applicability(cx, init_expr, "..", &mut applicability).maybe_paren();

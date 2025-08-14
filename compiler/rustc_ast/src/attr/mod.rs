@@ -13,7 +13,6 @@ use crate::ast::{
     Expr, ExprKind, LitKind, MetaItem, MetaItemInner, MetaItemKind, MetaItemLit, NormalAttr, Path,
     PathSegment, Safety,
 };
-use crate::ptr::P;
 use crate::token::{self, CommentKind, Delimiter, InvisibleOrigin, MetaVarKind, Token};
 use crate::tokenstream::{
     DelimSpan, LazyAttrTokenStream, Spacing, TokenStream, TokenStreamIter, TokenTree,
@@ -63,7 +62,7 @@ impl Attribute {
 
     pub fn unwrap_normal_item(self) -> AttrItem {
         match self.kind {
-            AttrKind::Normal(normal) => normal.into_inner().item,
+            AttrKind::Normal(normal) => normal.item,
             AttrKind::DocComment(..) => panic!("unexpected doc comment"),
         }
     }
@@ -206,12 +205,28 @@ impl AttributeExt for Attribute {
         }
     }
 
-    fn style(&self) -> AttrStyle {
-        self.style
+    fn doc_resolution_scope(&self) -> Option<AttrStyle> {
+        match &self.kind {
+            AttrKind::DocComment(..) => Some(self.style),
+            AttrKind::Normal(normal)
+                if normal.item.path == sym::doc && normal.item.value_str().is_some() =>
+            {
+                Some(self.style)
+            }
+            _ => None,
+        }
+    }
+
+    fn is_automatically_derived_attr(&self) -> bool {
+        self.has_name(sym::automatically_derived)
     }
 }
 
 impl Attribute {
+    pub fn style(&self) -> AttrStyle {
+        self.style
+    }
+
     pub fn may_have_doc_links(&self) -> bool {
         self.doc_str().is_some_and(|s| comments::may_have_doc_links(s.as_str()))
     }
@@ -644,7 +659,7 @@ pub fn mk_attr_from_item(
     span: Span,
 ) -> Attribute {
     Attribute {
-        kind: AttrKind::Normal(P(NormalAttr { item, tokens })),
+        kind: AttrKind::Normal(Box::new(NormalAttr { item, tokens })),
         id: g.mk_attr_id(),
         style,
         span,
@@ -694,7 +709,7 @@ pub fn mk_attr_name_value_str(
     span: Span,
 ) -> Attribute {
     let lit = token::Lit::new(token::Str, escape_string_symbol(val), None);
-    let expr = P(Expr {
+    let expr = Box::new(Expr {
         id: DUMMY_NODE_ID,
         kind: ExprKind::Lit(lit),
         span,
@@ -798,6 +813,7 @@ pub trait AttributeExt: Debug {
             .iter()
             .any(|kind| self.has_name(*kind))
     }
+    fn is_automatically_derived_attr(&self) -> bool;
 
     /// Returns the documentation and its kind if this is a doc comment or a sugared doc comment.
     /// * `///doc` returns `Some(("doc", CommentKind::Line))`.
@@ -806,7 +822,14 @@ pub trait AttributeExt: Debug {
     /// * `#[doc(...)]` returns `None`.
     fn doc_str_and_comment_kind(&self) -> Option<(Symbol, CommentKind)>;
 
-    fn style(&self) -> AttrStyle;
+    /// Returns outer or inner if this is a doc attribute or a sugared doc
+    /// comment, otherwise None.
+    ///
+    /// This is used in the case of doc comments on modules, to decide whether
+    /// to resolve intra-doc links against the symbols in scope within the
+    /// commented module (for inner doc) vs within its parent module (for outer
+    /// doc).
+    fn doc_resolution_scope(&self) -> Option<AttrStyle>;
 }
 
 // FIXME(fn_delegation): use function delegation instead of manually forwarding
@@ -880,9 +903,5 @@ impl Attribute {
 
     pub fn doc_str_and_comment_kind(&self) -> Option<(Symbol, CommentKind)> {
         AttributeExt::doc_str_and_comment_kind(self)
-    }
-
-    pub fn style(&self) -> AttrStyle {
-        AttributeExt::style(self)
     }
 }

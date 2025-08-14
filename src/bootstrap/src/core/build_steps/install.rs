@@ -38,7 +38,9 @@ fn sanitize_sh(path: &Path, is_cygwin: bool) -> String {
         if ch.next() != Some('/') {
             return None;
         }
-        Some(format!("/{}/{}", drive, &s[drive.len_utf8() + 2..]))
+        // The prefix for Windows drives in Cygwin/MSYS2 is configurable, but
+        // /proc/cygdrive is available regardless of configuration since 1.7.33
+        Some(format!("/proc/cygdrive/{}/{}", drive, &s[drive.len_utf8() + 2..]))
     }
 }
 
@@ -53,7 +55,7 @@ fn is_dir_writable_for_user(dir: &Path) -> bool {
             if e.kind() == std::io::ErrorKind::PermissionDenied {
                 false
             } else {
-                panic!("Failed the write access check for the current user. {}", e);
+                panic!("Failed the write access check for the current user. {e}");
             }
         }
     }
@@ -66,12 +68,18 @@ fn install_sh(
     host: Option<TargetSelection>,
     tarball: &GeneratedTarball,
 ) {
-    let _guard = builder.msg(Kind::Install, stage, package, host, host);
+    let _guard = builder.msg(
+        Kind::Install,
+        package,
+        None,
+        (host.unwrap_or(builder.host_target), stage),
+        host,
+    );
 
     let prefix = default_path(&builder.config.prefix, "/usr/local");
     let sysconfdir = prefix.join(default_path(&builder.config.sysconfdir, "/etc"));
     let destdir_env = env::var_os("DESTDIR").map(PathBuf::from);
-    let is_cygwin = builder.config.build.is_cygwin();
+    let is_cygwin = builder.config.host_target.is_cygwin();
 
     // Sanity checks on the write access of user.
     //
@@ -185,7 +193,7 @@ macro_rules! install {
 
             fn make_run(run: RunConfig<'_>) {
                 run.builder.ensure($name {
-                    compiler: run.builder.compiler(run.builder.top_stage, run.builder.config.build),
+                    compiler: run.builder.compiler(run.builder.top_stage, run.builder.config.host_target),
                     target: run.target,
                 });
             }
@@ -213,13 +221,13 @@ install!((self, builder, _config),
     };
     Cargo, alias = "cargo", Self::should_build(_config), only_hosts: true, {
         let tarball = builder
-            .ensure(dist::Cargo { compiler: self.compiler, target: self.target })
+            .ensure(dist::Cargo { build_compiler: self.compiler, target: self.target })
             .expect("missing cargo");
         install_sh(builder, "cargo", self.compiler.stage, Some(self.target), &tarball);
     };
     RustAnalyzer, alias = "rust-analyzer", Self::should_build(_config), only_hosts: true, {
         if let Some(tarball) =
-            builder.ensure(dist::RustAnalyzer { compiler: self.compiler, target: self.target })
+            builder.ensure(dist::RustAnalyzer { build_compiler: self.compiler, target: self.target })
         {
             install_sh(builder, "rust-analyzer", self.compiler.stage, Some(self.target), &tarball);
         } else {
@@ -230,12 +238,12 @@ install!((self, builder, _config),
     };
     Clippy, alias = "clippy", Self::should_build(_config), only_hosts: true, {
         let tarball = builder
-            .ensure(dist::Clippy { compiler: self.compiler, target: self.target })
+            .ensure(dist::Clippy { build_compiler: self.compiler, target: self.target })
             .expect("missing clippy");
         install_sh(builder, "clippy", self.compiler.stage, Some(self.target), &tarball);
     };
     Miri, alias = "miri", Self::should_build(_config), only_hosts: true, {
-        if let Some(tarball) = builder.ensure(dist::Miri { compiler: self.compiler, target: self.target }) {
+        if let Some(tarball) = builder.ensure(dist::Miri { build_compiler: self.compiler, target: self.target }) {
             install_sh(builder, "miri", self.compiler.stage, Some(self.target), &tarball);
         } else {
             // Miri is only available on nightly
@@ -244,7 +252,7 @@ install!((self, builder, _config),
             );
         }
     };
-    LlvmTools, alias = "llvm-tools", Self::should_build(_config), only_hosts: true, {
+    LlvmTools, alias = "llvm-tools", _config.llvm_tools_enabled && _config.llvm_enabled(_config.host_target), only_hosts: true, {
         if let Some(tarball) = builder.ensure(dist::LlvmTools { target: self.target }) {
             install_sh(builder, "llvm-tools", self.compiler.stage, Some(self.target), &tarball);
         } else {
@@ -255,7 +263,7 @@ install!((self, builder, _config),
     };
     Rustfmt, alias = "rustfmt", Self::should_build(_config), only_hosts: true, {
         if let Some(tarball) = builder.ensure(dist::Rustfmt {
-            compiler: self.compiler,
+            build_compiler: self.compiler,
             target: self.target
         }) {
             install_sh(builder, "rustfmt", self.compiler.stage, Some(self.target), &tarball);
@@ -272,9 +280,9 @@ install!((self, builder, _config),
         install_sh(builder, "rustc", self.compiler.stage, Some(self.target), &tarball);
     };
     RustcCodegenCranelift, alias = "rustc-codegen-cranelift", Self::should_build(_config), only_hosts: true, {
-        if let Some(tarball) = builder.ensure(dist::CodegenBackend {
-            compiler: self.compiler,
-            backend: "cranelift".to_string(),
+        if let Some(tarball) = builder.ensure(dist::CraneliftCodegenBackend {
+            build_compiler: self.compiler,
+            target: self.target
         }) {
             install_sh(builder, "rustc-codegen-cranelift", self.compiler.stage, Some(self.target), &tarball);
         } else {
@@ -285,7 +293,7 @@ install!((self, builder, _config),
         }
     };
     LlvmBitcodeLinker, alias = "llvm-bitcode-linker", Self::should_build(_config), only_hosts: true, {
-        if let Some(tarball) = builder.ensure(dist::LlvmBitcodeLinker { compiler: self.compiler, target: self.target }) {
+        if let Some(tarball) = builder.ensure(dist::LlvmBitcodeLinker { build_compiler: self.compiler, target: self.target }) {
             install_sh(builder, "llvm-bitcode-linker", self.compiler.stage, Some(self.target), &tarball);
         } else {
             builder.info(

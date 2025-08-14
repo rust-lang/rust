@@ -1,3 +1,5 @@
+use std::sync::{Arc, LazyLock};
+
 use rustc_data_structures::sync::IntoDynSyncSend;
 use rustc_error_messages::fluent_bundle::resolver::errors::{ReferenceKind, ResolverError};
 use rustc_error_messages::{DiagMessage, langid};
@@ -5,23 +7,9 @@ use rustc_error_messages::{DiagMessage, langid};
 use crate::FluentBundle;
 use crate::error::{TranslateError, TranslateErrorKind};
 use crate::fluent_bundle::*;
-use crate::translation::Translate;
+use crate::translation::Translator;
 
-struct Dummy {
-    bundle: FluentBundle,
-}
-
-impl Translate for Dummy {
-    fn fluent_bundle(&self) -> Option<&FluentBundle> {
-        None
-    }
-
-    fn fallback_fluent_bundle(&self) -> &FluentBundle {
-        &self.bundle
-    }
-}
-
-fn make_dummy(ftl: &'static str) -> Dummy {
+fn make_translator(ftl: &'static str) -> Translator {
     let resource = FluentResource::try_new(ftl.into()).expect("Failed to parse an FTL string.");
 
     let langid_en = langid!("en-US");
@@ -33,12 +21,15 @@ fn make_dummy(ftl: &'static str) -> Dummy {
 
     bundle.add_resource(resource).expect("Failed to add FTL resources to the bundle.");
 
-    Dummy { bundle }
+    Translator {
+        fluent_bundle: None,
+        fallback_fluent_bundle: Arc::new(LazyLock::new(Box::new(|| bundle))),
+    }
 }
 
 #[test]
 fn wellformed_fluent() {
-    let dummy = make_dummy("mir_build_borrow_of_moved_value = borrow of moved value
+    let translator = make_translator("mir_build_borrow_of_moved_value = borrow of moved value
     .label = value moved into `{$name}` here
     .occurs_because_label = move occurs because `{$name}` has type `{$ty}` which does not implement the `Copy` trait
     .value_borrowed_label = value borrowed here after move
@@ -54,7 +45,7 @@ fn wellformed_fluent() {
         );
 
         assert_eq!(
-            dummy.translate_message(&message, &args).unwrap(),
+            translator.translate_message(&message, &args).unwrap(),
             "borrow this binding in the pattern to avoid moving the value"
         );
     }
@@ -66,7 +57,7 @@ fn wellformed_fluent() {
         );
 
         assert_eq!(
-            dummy.translate_message(&message, &args).unwrap(),
+            translator.translate_message(&message, &args).unwrap(),
             "value borrowed here after move"
         );
     }
@@ -78,7 +69,7 @@ fn wellformed_fluent() {
         );
 
         assert_eq!(
-            dummy.translate_message(&message, &args).unwrap(),
+            translator.translate_message(&message, &args).unwrap(),
             "move occurs because `\u{2068}Foo\u{2069}` has type `\u{2068}std::string::String\u{2069}` which does not implement the `Copy` trait"
         );
 
@@ -89,7 +80,7 @@ fn wellformed_fluent() {
             );
 
             assert_eq!(
-                dummy.translate_message(&message, &args).unwrap(),
+                translator.translate_message(&message, &args).unwrap(),
                 "value moved into `\u{2068}Foo\u{2069}` here"
             );
         }
@@ -98,7 +89,7 @@ fn wellformed_fluent() {
 
 #[test]
 fn misformed_fluent() {
-    let dummy = make_dummy("mir_build_borrow_of_moved_value = borrow of moved value
+    let translator = make_translator("mir_build_borrow_of_moved_value = borrow of moved value
     .label = value moved into `{name}` here
     .occurs_because_label = move occurs because `{$oops}` has type `{$ty}` which does not implement the `Copy` trait
     .suggestion = borrow this binding in the pattern to avoid moving the value");
@@ -112,7 +103,7 @@ fn misformed_fluent() {
             Some("value_borrowed_label".into()),
         );
 
-        let err = dummy.translate_message(&message, &args).unwrap_err();
+        let err = translator.translate_message(&message, &args).unwrap_err();
         assert!(
             matches!(
                 &err,
@@ -141,7 +132,7 @@ fn misformed_fluent() {
             Some("label".into()),
         );
 
-        let err = dummy.translate_message(&message, &args).unwrap_err();
+        let err = translator.translate_message(&message, &args).unwrap_err();
         if let TranslateError::Two {
             primary: box TranslateError::One { kind: TranslateErrorKind::PrimaryBundleMissing, .. },
             fallback: box TranslateError::One { kind: TranslateErrorKind::Fluent { errs }, .. },
@@ -168,7 +159,7 @@ fn misformed_fluent() {
             Some("occurs_because_label".into()),
         );
 
-        let err = dummy.translate_message(&message, &args).unwrap_err();
+        let err = translator.translate_message(&message, &args).unwrap_err();
         if let TranslateError::Two {
             primary: box TranslateError::One { kind: TranslateErrorKind::PrimaryBundleMissing, .. },
             fallback: box TranslateError::One { kind: TranslateErrorKind::Fluent { errs }, .. },

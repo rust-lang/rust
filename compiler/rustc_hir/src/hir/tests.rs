@@ -45,7 +45,6 @@ define_tests! {
 #[test]
 fn trait_object_roundtrips() {
     trait_object_roundtrips_impl(TraitObjectSyntax::Dyn);
-    trait_object_roundtrips_impl(TraitObjectSyntax::DynStar);
     trait_object_roundtrips_impl(TraitObjectSyntax::None);
 }
 
@@ -55,7 +54,7 @@ fn trait_object_roundtrips_impl(syntax: TraitObjectSyntax) {
         ident: Ident::new(sym::name, DUMMY_SP),
         kind: LifetimeKind::Static,
         source: LifetimeSource::Other,
-        syntax: LifetimeSyntax::Hidden,
+        syntax: LifetimeSyntax::Implicit,
     };
     let unambig = TyKind::TraitObject::<'_, ()>(&[], TaggedRef::new(&lt, syntax));
     let unambig_to_ambig = unsafe { std::mem::transmute::<_, TyKind<'_, AmbigArg>>(unambig) };

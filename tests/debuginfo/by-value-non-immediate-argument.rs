@@ -1,7 +1,10 @@
 //@ min-lldb-version: 1800
 //@ min-gdb-version: 13.0
 //@ compile-flags:-g
+//@ disable-gdb-pretty-printers
 //@ ignore-windows-gnu: #128973
+//@ ignore-aarch64-unknown-linux-gnu (gdb tries to read from 0x0; FIXME: #128973)
+//@ ignore-powerpc64: #128973 on both -gnu and -musl
 
 // === GDB TESTS ===================================================================================
 
@@ -59,9 +62,6 @@
 // lldb-command:v x
 // lldb-check:[...] Case1 { x: 0, y: 8970181431921507452 }
 // lldb-command:continue
-
-#![feature(omit_gdb_pretty_printer_section)]
-#![omit_gdb_pretty_printer_section]
 
 #[derive(Clone)]
 struct Struct {

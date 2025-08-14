@@ -1,11 +1,11 @@
 error: unnecessary qualification
-  --> $DIR/lint-qualification.rs:12:5
+  --> $DIR/lint-qualification.rs:13:5
    |
 LL |     foo::bar();
    |     ^^^^^^^^
    |
 note: the lint level is defined here
-  --> $DIR/lint-qualification.rs:2:9
+  --> $DIR/lint-qualification.rs:3:9
    |
 LL | #![deny(unused_qualifications)]
    |         ^^^^^^^^^^^^^^^^^^^^^
@@ -16,7 +16,7 @@ LL +     bar();
    |
 
 error: unnecessary qualification
-  --> $DIR/lint-qualification.rs:13:5
+  --> $DIR/lint-qualification.rs:14:5
    |
 LL |     crate::foo::bar();
    |     ^^^^^^^^^^^^^^^
@@ -28,7 +28,7 @@ LL +     bar();
    |
 
 error: unnecessary qualification
-  --> $DIR/lint-qualification.rs:18:13
+  --> $DIR/lint-qualification.rs:19:13
    |
 LL |     let _ = std::string::String::new();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -40,7 +40,7 @@ LL +     let _ = String::new();
    |
 
 error: unnecessary qualification
-  --> $DIR/lint-qualification.rs:20:12
+  --> $DIR/lint-qualification.rs:21:12
    |
 LL |     let _: std::vec::Vec<String> = std::vec::Vec::<String>::new();
    |            ^^^^^^^^^^^^^^^^^^^^^
@@ -52,7 +52,7 @@ LL +     let _: Vec<String> = std::vec::Vec::<String>::new();
    |
 
 error: unnecessary qualification
-  --> $DIR/lint-qualification.rs:20:36
+  --> $DIR/lint-qualification.rs:21:36
    |
 LL |     let _: std::vec::Vec<String> = std::vec::Vec::<String>::new();
    |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -64,19 +64,19 @@ LL +     let _: std::vec::Vec<String> = Vec::<String>::new();
    |
 
 error: unused import: `std::fmt`
-  --> $DIR/lint-qualification.rs:24:9
+  --> $DIR/lint-qualification.rs:25:9
    |
 LL |     use std::fmt;
    |         ^^^^^^^^
    |
 note: the lint level is defined here
-  --> $DIR/lint-qualification.rs:3:9
+  --> $DIR/lint-qualification.rs:4:9
    |
 LL | #![deny(unused_imports)]
    |         ^^^^^^^^^^^^^^
 
 error: unnecessary qualification
-  --> $DIR/lint-qualification.rs:29:13
+  --> $DIR/lint-qualification.rs:30:13
    |
 LL |     let _ = <bool as std::default::Default>::default(); // issue #121999 (modified)
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

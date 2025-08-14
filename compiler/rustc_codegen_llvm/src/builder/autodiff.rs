@@ -2,7 +2,6 @@ use std::ptr;
 
 use rustc_ast::expand::autodiff_attrs::{AutoDiffAttrs, AutoDiffItem, DiffActivity, DiffMode};
 use rustc_codegen_ssa::ModuleCodegen;
-use rustc_codegen_ssa::back::write::ModuleConfig;
 use rustc_codegen_ssa::common::TypeKind;
 use rustc_codegen_ssa::traits::BaseTypeCodegenMethods;
 use rustc_errors::FatalError;
@@ -76,12 +75,12 @@ fn match_args_from_caller_to_enzyme<'ll>(
         outer_pos = 1;
     }
 
-    let enzyme_const = cx.create_metadata("enzyme_const".to_string()).unwrap();
-    let enzyme_out = cx.create_metadata("enzyme_out".to_string()).unwrap();
-    let enzyme_dup = cx.create_metadata("enzyme_dup".to_string()).unwrap();
-    let enzyme_dupv = cx.create_metadata("enzyme_dupv".to_string()).unwrap();
-    let enzyme_dupnoneed = cx.create_metadata("enzyme_dupnoneed".to_string()).unwrap();
-    let enzyme_dupnoneedv = cx.create_metadata("enzyme_dupnoneedv".to_string()).unwrap();
+    let enzyme_const = cx.create_metadata(b"enzyme_const");
+    let enzyme_out = cx.create_metadata(b"enzyme_out");
+    let enzyme_dup = cx.create_metadata(b"enzyme_dup");
+    let enzyme_dupv = cx.create_metadata(b"enzyme_dupv");
+    let enzyme_dupnoneed = cx.create_metadata(b"enzyme_dupnoneed");
+    let enzyme_dupnoneedv = cx.create_metadata(b"enzyme_dupnoneedv");
 
     while activity_pos < inputs.len() {
         let diff_activity = inputs[activity_pos as usize];
@@ -114,7 +113,7 @@ fn match_args_from_caller_to_enzyme<'ll>(
             let mul = unsafe {
                 llvm::LLVMBuildMul(
                     builder.llbuilder,
-                    cx.get_const_i64(elem_bytes_size),
+                    cx.get_const_int(cx.type_i64(), elem_bytes_size),
                     next_outer_arg,
                     UNNAMED,
                 )
@@ -306,7 +305,7 @@ fn generate_enzyme_call<'ll>(
     // add outer_fn name to ad_name to make it unique, in case users apply autodiff to multiple
     // functions. Unwrap will only panic, if LLVM gave us an invalid string.
     let name = llvm::get_value_name(outer_fn);
-    let outer_fn_name = std::str::from_utf8(name).unwrap();
+    let outer_fn_name = std::str::from_utf8(&name).unwrap();
     ad_name.push_str(outer_fn_name);
 
     // Let us assume the user wrote the following function square:
@@ -378,14 +377,14 @@ fn generate_enzyme_call<'ll>(
         let mut args = Vec::with_capacity(num_args as usize + 1);
         args.push(fn_to_diff);
 
-        let enzyme_primal_ret = cx.create_metadata("enzyme_primal_return".to_string()).unwrap();
+        let enzyme_primal_ret = cx.create_metadata(b"enzyme_primal_return");
         if matches!(attrs.ret_activity, DiffActivity::Dual | DiffActivity::Active) {
             args.push(cx.get_metadata_value(enzyme_primal_ret));
         }
         if attrs.width > 1 {
-            let enzyme_width = cx.create_metadata("enzyme_width".to_string()).unwrap();
+            let enzyme_width = cx.create_metadata(b"enzyme_width");
             args.push(cx.get_metadata_value(enzyme_width));
-            args.push(cx.get_const_i64(attrs.width as u64));
+            args.push(cx.get_const_int(cx.type_i64(), attrs.width as u64));
         }
 
         let has_sret = has_sret(outer_fn);
@@ -461,7 +460,6 @@ pub(crate) fn differentiate<'ll>(
     module: &'ll ModuleCodegen<ModuleLlvm>,
     cgcx: &CodegenContext<LlvmCodegenBackend>,
     diff_items: Vec<AutoDiffItem>,
-    _config: &ModuleConfig,
 ) -> Result<(), FatalError> {
     for item in &diff_items {
         trace!("{}", item);

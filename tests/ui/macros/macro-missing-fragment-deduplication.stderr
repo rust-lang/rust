@@ -1,29 +1,75 @@
 error: missing fragment specifier
   --> $DIR/macro-missing-fragment-deduplication.rs:4:6
    |
-LL |     ($name) => {}
+LL |     ($name) => {};
    |      ^^^^^
+   |
+   = note: fragment specifiers must be provided
+   = help: valid fragment specifiers are `ident`, `block`, `stmt`, `expr`, `pat`, `ty`, `lifetime`, `literal`, `path`, `meta`, `tt`, `item` and `vis`, along with `expr_2021` and `pat_param` for edition compatibility
+help: try adding a specifier here
+   |
+LL |     ($name:spec) => {};
+   |           +++++
 
-error: missing fragment specifier
+error: unexpected end of macro invocation
+  --> $DIR/macro-missing-fragment-deduplication.rs:8:5
+   |
+LL | macro_rules! m {
+   | -------------- when calling this macro
+...
+LL |     m!();
+   |     ^^^^ missing tokens in macro arguments
+   |
+note: while trying to match meta-variable `$name:tt`
   --> $DIR/macro-missing-fragment-deduplication.rs:4:6
    |
-LL |     ($name) => {}
+LL |     ($name) => {};
    |      ^^^^^
+
+error: unexpected end of macro invocation
+  --> $DIR/macro-missing-fragment-deduplication.rs:9:5
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #40107 <https://github.com/rust-lang/rust/issues/40107>
-   = note: `#[deny(missing_fragment_specifier)]` on by default
-
-error: aborting due to 2 previous errors
-
-Future incompatibility report: Future breakage diagnostic:
-error: missing fragment specifier
+LL | macro_rules! m {
+   | -------------- when calling this macro
+...
+LL |     m!();
+   |     ^^^^ missing tokens in macro arguments
+   |
+note: while trying to match meta-variable `$name:tt`
   --> $DIR/macro-missing-fragment-deduplication.rs:4:6
    |
-LL |     ($name) => {}
+LL |     ($name) => {};
    |      ^^^^^
+
+error: unexpected end of macro invocation
+  --> $DIR/macro-missing-fragment-deduplication.rs:10:5
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #40107 <https://github.com/rust-lang/rust/issues/40107>
-   = note: `#[deny(missing_fragment_specifier)]` on by default
+LL | macro_rules! m {
+   | -------------- when calling this macro
+...
+LL |     m!();
+   |     ^^^^ missing tokens in macro arguments
+   |
+note: while trying to match meta-variable `$name:tt`
+  --> $DIR/macro-missing-fragment-deduplication.rs:4:6
+   |
+LL |     ($name) => {};
+   |      ^^^^^
+
+error: unexpected end of macro invocation
+  --> $DIR/macro-missing-fragment-deduplication.rs:11:5
+   |
+LL | macro_rules! m {
+   | -------------- when calling this macro
+...
+LL |     m!();
+   |     ^^^^ missing tokens in macro arguments
+   |
+note: while trying to match meta-variable `$name:tt`
+  --> $DIR/macro-missing-fragment-deduplication.rs:4:6
+   |
+LL |     ($name) => {};
+   |      ^^^^^
+
+error: aborting due to 5 previous errors
 

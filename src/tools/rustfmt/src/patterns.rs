@@ -1,5 +1,4 @@
 use rustc_ast::ast::{self, BindingMode, ByRef, Pat, PatField, PatKind, RangeEnd, RangeSyntax};
-use rustc_ast::ptr;
 use rustc_span::{BytePos, Span};
 
 use crate::comment::{FindUncommented, combine_strs_with_missing_comments};
@@ -77,7 +76,7 @@ fn is_short_pattern_inner(context: &RewriteContext<'_>, pat: &ast::Pat) -> bool 
 }
 
 pub(crate) struct RangeOperand<'a, T> {
-    pub operand: &'a Option<ptr::P<T>>,
+    pub operand: &'a Option<Box<T>>,
     pub span: Span,
 }
 
@@ -329,8 +328,8 @@ impl Rewrite for Pat {
 pub fn rewrite_range_pat<T: Rewrite>(
     context: &RewriteContext<'_>,
     shape: Shape,
-    lhs: &Option<ptr::P<T>>,
-    rhs: &Option<ptr::P<T>>,
+    lhs: &Option<Box<T>>,
+    rhs: &Option<Box<T>>,
     end_kind: &rustc_span::source_map::Spanned<RangeEnd>,
     span: Span,
 ) -> RewriteResult {
@@ -371,7 +370,7 @@ pub fn rewrite_range_pat<T: Rewrite>(
 }
 
 fn rewrite_struct_pat(
-    qself: &Option<ptr::P<ast::QSelf>>,
+    qself: &Option<Box<ast::QSelf>>,
     path: &ast::Path,
     fields: &[ast::PatField],
     ellipsis: bool,
@@ -505,7 +504,7 @@ impl Rewrite for PatField {
 
 #[derive(Debug)]
 pub(crate) enum TuplePatField<'a> {
-    Pat(&'a ptr::P<ast::Pat>),
+    Pat(&'a Box<ast::Pat>),
     Dotdot(Span),
 }
 
@@ -562,7 +561,7 @@ pub(crate) fn can_be_overflowed_pat(
 }
 
 fn rewrite_tuple_pat(
-    pats: &[ptr::P<ast::Pat>],
+    pats: &[Box<ast::Pat>],
     path_str: Option<String>,
     span: Span,
     context: &RewriteContext<'_>,

@@ -8,7 +8,7 @@ use crate::os::xous::ffi::{
     map_memory, update_memory_flags,
 };
 use crate::os::xous::services::{TicktimerScalar, ticktimer_server};
-use crate::time::Duration;
+use crate::time::{Duration, Instant};
 
 pub struct Thread {
     tid: ThreadId,
@@ -20,7 +20,11 @@ pub const GUARD_PAGE_SIZE: usize = 4096;
 
 impl Thread {
     // unsafe: see thread::Builder::spawn_unchecked for safety requirements
-    pub unsafe fn new(stack: usize, p: Box<dyn FnOnce()>) -> io::Result<Thread> {
+    pub unsafe fn new(
+        stack: usize,
+        _name: Option<&str>,
+        p: Box<dyn FnOnce()>,
+    ) -> io::Result<Thread> {
         let p = Box::into_raw(Box::new(p));
         let mut stack_size = crate::cmp::max(stack, MIN_STACK_SIZE);
 
@@ -128,9 +132,21 @@ impl Thread {
         }
     }
 
+    pub fn sleep_until(deadline: Instant) {
+        let now = Instant::now();
+
+        if let Some(delay) = deadline.checked_duration_since(now) {
+            Self::sleep(delay);
+        }
+    }
+
     pub fn join(self) {
         join_thread(self.tid).unwrap();
     }
+}
+
+pub(crate) fn current_os_id() -> Option<u64> {
+    None
 }
 
 pub fn available_parallelism() -> io::Result<NonZero<usize>> {

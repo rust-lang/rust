@@ -17,6 +17,12 @@ pub trait SolverDelegate: Deref<Target = Self::Infcx> + Sized {
     where
         V: TypeFoldable<Self::Interner>;
 
+    fn compute_goal_fast_path(
+        &self,
+        goal: Goal<Self::Interner, <Self::Interner as Interner>::Predicate>,
+        span: <Self::Interner as Interner>::Span,
+    ) -> Option<Certainty>;
+
     fn fresh_var_for_kind_with_span(
         &self,
         arg: <Self::Interner as Interner>::GenericArg,
@@ -53,7 +59,7 @@ pub trait SolverDelegate: Deref<Target = Self::Infcx> + Sized {
 
     fn instantiate_canonical_var_with_infer(
         &self,
-        cv_info: ty::CanonicalVarInfo<Self::Interner>,
+        kind: ty::CanonicalVarKind<Self::Interner>,
         span: <Self::Interner as Interner>::Span,
         universe_map: impl Fn(ty::UniverseIndex) -> ty::UniverseIndex,
     ) -> <Self::Interner as Interner>::GenericArg;

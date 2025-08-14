@@ -81,7 +81,15 @@ LL | fn test(map: HashMap<String, ()>, key: &str) -> HashMap<String, ()> {
    = help: consider using a set instead
 
 error: map with zero-sized value type
-  --> tests/ui/zero_sized_hashmap_values.rs:75:34
+  --> tests/ui/zero_sized_hashmap_values.rs:91:14
+   |
+LL |     type D = HashMap<u32, S<E>>;
+   |              ^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using a set instead
+
+error: map with zero-sized value type
+  --> tests/ui/zero_sized_hashmap_values.rs:96:34
    |
 LL |     let _: HashMap<String, ()> = HashMap::new();
    |                                  ^^^^^^^
@@ -89,7 +97,7 @@ LL |     let _: HashMap<String, ()> = HashMap::new();
    = help: consider using a set instead
 
 error: map with zero-sized value type
-  --> tests/ui/zero_sized_hashmap_values.rs:75:12
+  --> tests/ui/zero_sized_hashmap_values.rs:96:12
    |
 LL |     let _: HashMap<String, ()> = HashMap::new();
    |            ^^^^^^^^^^^^^^^^^^^
@@ -97,12 +105,12 @@ LL |     let _: HashMap<String, ()> = HashMap::new();
    = help: consider using a set instead
 
 error: map with zero-sized value type
-  --> tests/ui/zero_sized_hashmap_values.rs:81:12
+  --> tests/ui/zero_sized_hashmap_values.rs:102:12
    |
 LL |     let _: HashMap<_, _> = std::iter::empty::<(String, ())>().collect();
    |            ^^^^^^^^^^^^^
    |
    = help: consider using a set instead
 
-error: aborting due to 13 previous errors
+error: aborting due to 14 previous errors
 

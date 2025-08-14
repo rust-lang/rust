@@ -1,18 +1,18 @@
 use hir::{ExprKind, Node, is_range_literal};
 use rustc_abi::{Integer, Size};
-use rustc_hir::HirId;
+use rustc_hir::{HirId, attrs};
 use rustc_middle::ty::Ty;
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::{bug, ty};
 use rustc_span::Span;
-use {rustc_ast as ast, rustc_attr_parsing as attr, rustc_hir as hir};
+use {rustc_ast as ast, rustc_hir as hir};
 
 use crate::LateContext;
 use crate::context::LintContext;
 use crate::lints::{
     OnlyCastu8ToChar, OverflowingBinHex, OverflowingBinHexSign, OverflowingBinHexSignBitSub,
     OverflowingBinHexSub, OverflowingInt, OverflowingIntHelp, OverflowingLiteral, OverflowingUInt,
-    RangeEndpointOutOfRange, UseInclusiveRange,
+    RangeEndpointOutOfRange, SurrogateCharCast, TooLargeCharCast, UseInclusiveRange,
 };
 use crate::types::{OVERFLOWING_LITERALS, TypeLimits};
 
@@ -38,12 +38,18 @@ fn lint_overflowing_range_endpoint<'tcx>(
 
     // We only want to handle exclusive (`..`) ranges,
     // which are represented as `ExprKind::Struct`.
-    let Node::ExprField(field) = cx.tcx.parent_hir_node(hir_id) else { return false };
-    let Node::Expr(struct_expr) = cx.tcx.parent_hir_node(field.hir_id) else { return false };
+    let Node::ExprField(field) = cx.tcx.parent_hir_node(hir_id) else {
+        return false;
+    };
+    let Node::Expr(struct_expr) = cx.tcx.parent_hir_node(field.hir_id) else {
+        return false;
+    };
     if !is_range_literal(struct_expr) {
         return false;
     };
-    let ExprKind::Struct(_, [start, end], _) = &struct_expr.kind else { return false };
+    let ExprKind::Struct(_, [start, end], _) = &struct_expr.kind else {
+        return false;
+    };
 
     // We can suggest using an inclusive range
     // (`..=`) instead only if it is the `end` that is
@@ -61,7 +67,9 @@ fn lint_overflowing_range_endpoint<'tcx>(
     };
 
     let sub_sugg = if span.lo() == lit_span.lo() {
-        let Ok(start) = cx.sess().source_map().span_to_snippet(start.span) else { return false };
+        let Ok(start) = cx.sess().source_map().span_to_snippet(start.span) else {
+            return false;
+        };
         UseInclusiveRange::WithoutParen {
             sugg: struct_expr.span.shrink_to_lo().to(lit_span.shrink_to_hi()),
             start,
@@ -131,18 +139,18 @@ fn report_bin_hex_error(
     cx: &LateContext<'_>,
     hir_id: HirId,
     span: Span,
-    ty: attr::IntType,
+    ty: attrs::IntType,
     size: Size,
     repr_str: String,
     val: u128,
     negative: bool,
 ) {
     let (t, actually) = match ty {
-        attr::IntType::SignedInt(t) => {
+        attrs::IntType::SignedInt(t) => {
             let actually = if negative { -(size.sign_extend(val)) } else { size.sign_extend(val) };
             (t.name_str(), actually.to_string())
         }
-        attr::IntType::UnsignedInt(t) => {
+        attrs::IntType::UnsignedInt(t) => {
             let actually = size.truncate(val);
             (t.name_str(), actually.to_string())
         }
@@ -264,7 +272,7 @@ fn lint_int_literal<'tcx>(
                 cx,
                 hir_id,
                 span,
-                attr::IntType::SignedInt(ty::ast_int_ty(t)),
+                attrs::IntType::SignedInt(t),
                 Integer::from_int_ty(cx, t).size(),
                 repr_str,
                 v,
@@ -316,11 +324,25 @@ fn lint_uint_literal<'tcx>(
             match par_e.kind {
                 hir::ExprKind::Cast(..) => {
                     if let ty::Char = cx.typeck_results().expr_ty(par_e).kind() {
-                        cx.emit_span_lint(
-                            OVERFLOWING_LITERALS,
-                            par_e.span,
-                            OnlyCastu8ToChar { span: par_e.span, literal: lit_val },
-                        );
+                        if lit_val > 0x10FFFF {
+                            cx.emit_span_lint(
+                                OVERFLOWING_LITERALS,
+                                par_e.span,
+                                TooLargeCharCast { literal: lit_val },
+                            );
+                        } else if (0xD800..=0xDFFF).contains(&lit_val) {
+                            cx.emit_span_lint(
+                                OVERFLOWING_LITERALS,
+                                par_e.span,
+                                SurrogateCharCast { literal: lit_val },
+                            );
+                        } else {
+                            cx.emit_span_lint(
+                                OVERFLOWING_LITERALS,
+                                par_e.span,
+                                OnlyCastu8ToChar { span: par_e.span, literal: lit_val },
+                            );
+                        }
                         return;
                     }
                 }
@@ -336,7 +358,7 @@ fn lint_uint_literal<'tcx>(
                 cx,
                 hir_id,
                 span,
-                attr::IntType::UnsignedInt(ty::ast_uint_ty(t)),
+                attrs::IntType::UnsignedInt(t),
                 Integer::from_uint_ty(cx, t).size(),
                 repr_str,
                 lit_val,

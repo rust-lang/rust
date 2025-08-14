@@ -342,7 +342,6 @@ pub struct Weak<
     // `Weak::new` sets this to `usize::MAX` so that it doesn’t need
     // to allocate space on the heap. That's not a value a real pointer
     // will ever have because RcInner has alignment at least 2.
-    // This is only possible when `T: Sized`; unsized `T` never dangle.
     ptr: NonNull<ArcInner<T>>,
     alloc: A,
 }
@@ -1468,6 +1467,30 @@ impl<T: ?Sized> Arc<T> {
         unsafe { Arc::from_raw_in(ptr, Global) }
     }
 
+    /// Consumes the `Arc`, returning the wrapped pointer.
+    ///
+    /// To avoid a memory leak the pointer must be converted back to an `Arc` using
+    /// [`Arc::from_raw`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::sync::Arc;
+    ///
+    /// let x = Arc::new("hello".to_owned());
+    /// let x_ptr = Arc::into_raw(x);
+    /// assert_eq!(unsafe { &*x_ptr }, "hello");
+    /// # // Prevent leaks for Miri.
+    /// # drop(unsafe { Arc::from_raw(x_ptr) });
+    /// ```
+    #[must_use = "losing the pointer will leak memory"]
+    #[stable(feature = "rc_raw", since = "1.17.0")]
+    #[rustc_never_returns_null_ptr]
+    pub fn into_raw(this: Self) -> *const T {
+        let this = ManuallyDrop::new(this);
+        Self::as_ptr(&*this)
+    }
+
     /// Increments the strong reference count on the `Arc<T>` associated with the
     /// provided pointer by one.
     ///
@@ -1557,30 +1580,6 @@ impl<T: ?Sized, A: Allocator> Arc<T, A> {
     #[unstable(feature = "allocator_api", issue = "32838")]
     pub fn allocator(this: &Self) -> &A {
         &this.alloc
-    }
-
-    /// Consumes the `Arc`, returning the wrapped pointer.
-    ///
-    /// To avoid a memory leak the pointer must be converted back to an `Arc` using
-    /// [`Arc::from_raw`].
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::sync::Arc;
-    ///
-    /// let x = Arc::new("hello".to_owned());
-    /// let x_ptr = Arc::into_raw(x);
-    /// assert_eq!(unsafe { &*x_ptr }, "hello");
-    /// # // Prevent leaks for Miri.
-    /// # drop(unsafe { Arc::from_raw(x_ptr) });
-    /// ```
-    #[must_use = "losing the pointer will leak memory"]
-    #[stable(feature = "rc_raw", since = "1.17.0")]
-    #[rustc_never_returns_null_ptr]
-    pub fn into_raw(this: Self) -> *const T {
-        let this = ManuallyDrop::new(this);
-        Self::as_ptr(&*this)
     }
 
     /// Consumes the `Arc`, returning the wrapped pointer and allocator.
@@ -1677,7 +1676,7 @@ impl<T: ?Sized, A: Allocator> Arc<T, A> {
     /// use std::alloc::System;
     ///
     /// let x = Arc::new_in("hello".to_owned(), System);
-    /// let x_ptr = Arc::into_raw(x);
+    /// let (x_ptr, alloc) = Arc::into_raw_with_allocator(x);
     ///
     /// unsafe {
     ///     // Convert back to an `Arc` to prevent leak.
@@ -1699,7 +1698,7 @@ impl<T: ?Sized, A: Allocator> Arc<T, A> {
     /// use std::alloc::System;
     ///
     /// let x: Arc<[u32], _> = Arc::new_in([1, 2, 3], System);
-    /// let x_ptr: *const [u32] = Arc::into_raw(x);
+    /// let x_ptr: *const [u32] = Arc::into_raw_with_allocator(x).0;
     ///
     /// unsafe {
     ///     let x: Arc<[u32; 3], _> = Arc::from_raw_in(x_ptr.cast::<[u32; 3]>(), System);
@@ -1851,7 +1850,7 @@ impl<T: ?Sized, A: Allocator> Arc<T, A> {
     /// let five = Arc::new_in(5, System);
     ///
     /// unsafe {
-    ///     let ptr = Arc::into_raw(five);
+    ///     let (ptr, _alloc) = Arc::into_raw_with_allocator(five);
     ///     Arc::increment_strong_count_in(ptr, System);
     ///
     ///     // This assertion is deterministic because we haven't shared
@@ -1900,7 +1899,7 @@ impl<T: ?Sized, A: Allocator> Arc<T, A> {
     /// let five = Arc::new_in(5, System);
     ///
     /// unsafe {
-    ///     let ptr = Arc::into_raw(five);
+    ///     let (ptr, _alloc) = Arc::into_raw_with_allocator(five);
     ///     Arc::increment_strong_count_in(ptr, System);
     ///
     ///     // Those assertions are deterministic because we haven't shared
@@ -2864,6 +2863,39 @@ impl<T: ?Sized> Weak<T> {
     pub unsafe fn from_raw(ptr: *const T) -> Self {
         unsafe { Weak::from_raw_in(ptr, Global) }
     }
+
+    /// Consumes the `Weak<T>` and turns it into a raw pointer.
+    ///
+    /// This converts the weak pointer into a raw pointer, while still preserving the ownership of
+    /// one weak reference (the weak count is not modified by this operation). It can be turned
+    /// back into the `Weak<T>` with [`from_raw`].
+    ///
+    /// The same restrictions of accessing the target of the pointer as with
+    /// [`as_ptr`] apply.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::sync::{Arc, Weak};
+    ///
+    /// let strong = Arc::new("hello".to_owned());
+    /// let weak = Arc::downgrade(&strong);
+    /// let raw = weak.into_raw();
+    ///
+    /// assert_eq!(1, Arc::weak_count(&strong));
+    /// assert_eq!("hello", unsafe { &*raw });
+    ///
+    /// drop(unsafe { Weak::from_raw(raw) });
+    /// assert_eq!(0, Arc::weak_count(&strong));
+    /// ```
+    ///
+    /// [`from_raw`]: Weak::from_raw
+    /// [`as_ptr`]: Weak::as_ptr
+    #[must_use = "losing the pointer will leak memory"]
+    #[stable(feature = "weak_into_raw", since = "1.45.0")]
+    pub fn into_raw(self) -> *const T {
+        ManuallyDrop::new(self).as_ptr()
+    }
 }
 
 impl<T: ?Sized, A: Allocator> Weak<T, A> {
@@ -2914,39 +2946,6 @@ impl<T: ?Sized, A: Allocator> Weak<T, A> {
             // so use raw pointer manipulation.
             unsafe { &raw mut (*ptr).data }
         }
-    }
-
-    /// Consumes the `Weak<T>` and turns it into a raw pointer.
-    ///
-    /// This converts the weak pointer into a raw pointer, while still preserving the ownership of
-    /// one weak reference (the weak count is not modified by this operation). It can be turned
-    /// back into the `Weak<T>` with [`from_raw`].
-    ///
-    /// The same restrictions of accessing the target of the pointer as with
-    /// [`as_ptr`] apply.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::sync::{Arc, Weak};
-    ///
-    /// let strong = Arc::new("hello".to_owned());
-    /// let weak = Arc::downgrade(&strong);
-    /// let raw = weak.into_raw();
-    ///
-    /// assert_eq!(1, Arc::weak_count(&strong));
-    /// assert_eq!("hello", unsafe { &*raw });
-    ///
-    /// drop(unsafe { Weak::from_raw(raw) });
-    /// assert_eq!(0, Arc::weak_count(&strong));
-    /// ```
-    ///
-    /// [`from_raw`]: Weak::from_raw
-    /// [`as_ptr`]: Weak::as_ptr
-    #[must_use = "losing the pointer will leak memory"]
-    #[stable(feature = "weak_into_raw", since = "1.45.0")]
-    pub fn into_raw(self) -> *const T {
-        ManuallyDrop::new(self).as_ptr()
     }
 
     /// Consumes the `Weak<T>`, returning the wrapped pointer and allocator.

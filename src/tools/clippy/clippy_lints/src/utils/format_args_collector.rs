@@ -3,7 +3,7 @@ use clippy_utils::source::SpanRangeExt;
 use itertools::Itertools;
 use rustc_ast::{Crate, Expr, ExprKind, FormatArgs};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_lexer::{TokenKind, tokenize};
+use rustc_lexer::{FrontmatterAllowed, TokenKind, tokenize};
 use rustc_lint::{EarlyContext, EarlyLintPass};
 use rustc_session::impl_lint_pass;
 use rustc_span::{Span, hygiene};
@@ -82,7 +82,7 @@ fn has_span_from_proc_macro(cx: &EarlyContext<'_>, args: &FormatArgs) -> bool {
         .all(|sp| {
             sp.check_source_text(cx, |src| {
                 // text should be either `, name` or `, name =`
-                let mut iter = tokenize(src).filter(|t| {
+                let mut iter = tokenize(src, FrontmatterAllowed::No).filter(|t| {
                     !matches!(
                         t.kind,
                         TokenKind::LineComment { .. } | TokenKind::BlockComment { .. } | TokenKind::Whitespace

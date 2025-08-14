@@ -1,4 +1,3 @@
-use rustc_ast::ptr::P;
 use rustc_ast::{
     self as ast, Fn, FnHeader, FnSig, Generics, ItemKind, Safety, Stmt, StmtKind, TyKind,
 };
@@ -46,7 +45,7 @@ pub(crate) fn expand(
     let const_body = ecx.expr_block(ecx.block(span, stmts));
     let const_item = ecx.item_const(span, Ident::new(kw::Underscore, span), const_ty, const_body);
     let const_item = if is_stmt {
-        Annotatable::Stmt(P(ecx.stmt_item(span, const_item)))
+        Annotatable::Stmt(Box::new(ecx.stmt_item(span, const_item)))
     } else {
         Annotatable::Item(const_item)
     };
@@ -62,8 +61,8 @@ pub(crate) fn expand(
 fn generate_handler(cx: &ExtCtxt<'_>, handler: Ident, span: Span, sig_span: Span) -> Stmt {
     let usize = cx.path_ident(span, Ident::new(sym::usize, span));
     let ty_usize = cx.ty_path(usize);
-    let size = Ident::from_str_and_span("size", span);
-    let align = Ident::from_str_and_span("align", span);
+    let size = Ident::new(sym::size, span);
+    let align = Ident::new(sym::align, span);
 
     let layout_new = cx.std_path(&[sym::alloc, sym::Layout, sym::from_size_align_unchecked]);
     let layout_new = cx.expr_path(cx.path(span, layout_new));

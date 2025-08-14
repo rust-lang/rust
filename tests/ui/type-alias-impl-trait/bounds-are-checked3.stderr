@@ -2,9 +2,8 @@ error[E0277]: `T` doesn't implement `std::fmt::Display`
   --> $DIR/bounds-are-checked3.rs:9:35
    |
 LL | type Foo<T: Debug> = (impl Debug, Struct<T>);
-   |                                   ^^^^^^^^^ `T` cannot be formatted with the default formatter
+   |                                   ^^^^^^^^^ the trait `std::fmt::Display` is not implemented for `T`
    |
-   = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
 note: required by a bound in `Struct`
   --> $DIR/bounds-are-checked3.rs:5:18
    |

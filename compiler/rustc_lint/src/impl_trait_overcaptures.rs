@@ -15,8 +15,7 @@ use rustc_middle::ty::relate::{
     Relate, RelateResult, TypeRelation, structurally_relate_consts, structurally_relate_tys,
 };
 use rustc_middle::ty::{
-    self, Ty, TyCtxt, TypeFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
-    TypeVisitor,
+    self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint::FutureIncompatibilityReason;
@@ -72,7 +71,7 @@ declare_lint! {
     "`impl Trait` will capture more lifetimes than possibly intended in edition 2024",
     @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::EditionSemanticsChange(Edition::Edition2024),
-        reference: "<https://doc.rust-lang.org/nightly/edition-guide/rust-2024/rpit-lifetime-capture.html>",
+        reference: "<https://doc.rust-lang.org/edition-guide/rust-2024/rpit-lifetime-capture.html>",
     };
 }
 
@@ -137,7 +136,7 @@ enum ParamKind {
     // Early-bound var.
     Early(Symbol, u32),
     // Late-bound var on function, not within a binder. We can capture these.
-    Free(DefId, Symbol),
+    Free(DefId),
     // Late-bound var in a binder. We can't capture these yet.
     Late,
 }
@@ -157,12 +156,11 @@ fn check_fn(tcx: TyCtxt<'_>, parent_def_id: LocalDefId) {
     }
 
     for bound_var in sig.bound_vars() {
-        let ty::BoundVariableKind::Region(ty::BoundRegionKind::Named(def_id, name)) = bound_var
-        else {
+        let ty::BoundVariableKind::Region(ty::BoundRegionKind::Named(def_id)) = bound_var else {
             span_bug!(tcx.def_span(parent_def_id), "unexpected non-lifetime binder on fn sig");
         };
 
-        in_scope_parameters.insert(def_id, ParamKind::Free(def_id, name));
+        in_scope_parameters.insert(def_id, ParamKind::Free(def_id));
     }
 
     let sig = tcx.liberate_late_bound_regions(parent_def_id.to_def_id(), sig);
@@ -210,14 +208,14 @@ where
     VarFn: FnOnce() -> FxHashMap<DefId, ty::Variance>,
     OutlivesFn: FnOnce() -> OutlivesEnvironment<'tcx>,
 {
-    fn visit_binder<T: TypeFoldable<TyCtxt<'tcx>>>(&mut self, t: &ty::Binder<'tcx, T>) {
+    fn visit_binder<T: TypeVisitable<TyCtxt<'tcx>>>(&mut self, t: &ty::Binder<'tcx, T>) {
         // When we get into a binder, we need to add its own bound vars to the scope.
         let mut added = vec![];
         for arg in t.bound_vars() {
             let arg: ty::BoundVariableKind = arg;
             match arg {
-                ty::BoundVariableKind::Region(ty::BoundRegionKind::Named(def_id, ..))
-                | ty::BoundVariableKind::Ty(ty::BoundTyKind::Param(def_id, _)) => {
+                ty::BoundVariableKind::Region(ty::BoundRegionKind::Named(def_id))
+                | ty::BoundVariableKind::Ty(ty::BoundTyKind::Param(def_id)) => {
                     added.push(def_id);
                     let unique = self.in_scope_parameters.insert(def_id, ParamKind::Late);
                     assert_eq!(unique, None);
@@ -317,10 +315,10 @@ where
                             self.tcx,
                             ty::EarlyParamRegion { name, index },
                         ),
-                        ParamKind::Free(def_id, name) => ty::Region::new_late_param(
+                        ParamKind::Free(def_id) => ty::Region::new_late_param(
                             self.tcx,
                             self.parent_def_id.to_def_id(),
-                            ty::LateParamRegionKind::Named(def_id, name),
+                            ty::LateParamRegionKind::Named(def_id),
                         ),
                         // Totally ignore late bound args from binders.
                         ParamKind::Late => return true,
@@ -461,16 +459,13 @@ fn extract_def_id_from_arg<'tcx>(
     generics: &'tcx ty::Generics,
     arg: ty::GenericArg<'tcx>,
 ) -> DefId {
-    match arg.unpack() {
+    match arg.kind() {
         ty::GenericArgKind::Lifetime(re) => match re.kind() {
             ty::ReEarlyParam(ebr) => generics.region_param(ebr, tcx).def_id,
-            ty::ReBound(
-                _,
-                ty::BoundRegion { kind: ty::BoundRegionKind::Named(def_id, ..), .. },
-            )
+            ty::ReBound(_, ty::BoundRegion { kind: ty::BoundRegionKind::Named(def_id), .. })
             | ty::ReLateParam(ty::LateParamRegion {
                 scope: _,
-                kind: ty::LateParamRegionKind::Named(def_id, ..),
+                kind: ty::LateParamRegionKind::Named(def_id),
             }) => def_id,
             _ => unreachable!(),
         },
@@ -533,13 +528,10 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for FunctionalVariances<'tcx> {
     ) -> RelateResult<'tcx, ty::Region<'tcx>> {
         let def_id = match a.kind() {
             ty::ReEarlyParam(ebr) => self.generics.region_param(ebr, self.tcx).def_id,
-            ty::ReBound(
-                _,
-                ty::BoundRegion { kind: ty::BoundRegionKind::Named(def_id, ..), .. },
-            )
+            ty::ReBound(_, ty::BoundRegion { kind: ty::BoundRegionKind::Named(def_id), .. })
             | ty::ReLateParam(ty::LateParamRegion {
                 scope: _,
-                kind: ty::LateParamRegionKind::Named(def_id, ..),
+                kind: ty::LateParamRegionKind::Named(def_id),
             }) => def_id,
             _ => {
                 return Ok(a);

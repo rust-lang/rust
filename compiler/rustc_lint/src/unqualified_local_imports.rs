@@ -1,4 +1,3 @@
-use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{self as hir};
 use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::kw;
@@ -47,17 +46,15 @@ declare_lint_pass!(UnqualifiedLocalImports => [UNQUALIFIED_LOCAL_IMPORTS]);
 impl<'tcx> LateLintPass<'tcx> for UnqualifiedLocalImports {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'tcx>) {
         let hir::ItemKind::Use(path, _kind) = item.kind else { return };
-        // `path` has three resolutions for the type, module, value namespaces.
-        // Check if any of them qualifies: local crate, and not a macro.
-        // (Macros can't be imported any other way so we don't complain about them.)
-        let is_local_import = |res: &Res| {
-            matches!(
-                res,
-                hir::def::Res::Def(def_kind, def_id)
-                    if def_id.is_local() && !matches!(def_kind, DefKind::Macro(_)),
-            )
-        };
-        if !path.res.iter().any(is_local_import) {
+        // Check the type and value namespace resolutions for a local crate.
+        let is_local_import = matches!(
+            path.res.type_ns,
+            Some(hir::def::Res::Def(_, def_id)) if def_id.is_local()
+        ) || matches!(
+            path.res.value_ns,
+            Some(hir::def::Res::Def(_, def_id)) if def_id.is_local()
+        );
+        if !is_local_import {
             return;
         }
         // So this does refer to something local. Let's check whether it starts with `self`,

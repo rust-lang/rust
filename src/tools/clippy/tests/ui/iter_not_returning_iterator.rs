@@ -71,7 +71,7 @@ impl S {
 
 struct S2([u8]);
 impl S2 {
-    fn iter(&self) -> core::slice::Iter<u8> {
+    fn iter(&self) -> core::slice::Iter<'_, u8> {
         self.0.iter()
     }
 }

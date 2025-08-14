@@ -17,12 +17,12 @@ enum CleanArg {
 impl CleanArg {
     fn new() -> Result<Self, String> {
         // We skip the binary and the "clean" option.
-        for arg in std::env::args().skip(2) {
+        if let Some(arg) = std::env::args().nth(2) {
             return match arg.as_str() {
                 "all" => Ok(Self::All),
                 "ui-tests" => Ok(Self::UiTests),
                 "--help" => Ok(Self::Help),
-                a => Err(format!("Unknown argument `{}`", a)),
+                a => Err(format!("Unknown argument `{a}`")),
             };
         }
         Ok(Self::default())

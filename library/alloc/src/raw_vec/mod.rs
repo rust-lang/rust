@@ -287,7 +287,7 @@ impl<T, A: Allocator> RawVec<T, A> {
     }
 
     #[inline]
-    pub(crate) fn non_null(&self) -> NonNull<T> {
+    pub(crate) const fn non_null(&self) -> NonNull<T> {
         self.inner.non_null()
     }
 
@@ -761,7 +761,7 @@ impl<A: Allocator> RawVecInner<A> {
 }
 
 // not marked inline(never) since we want optimizers to be able to observe the specifics of this
-// function, see tests/codegen/vec-reserve-extend.rs.
+// function, see tests/codegen-llvm/vec-reserve-extend.rs.
 #[cold]
 fn finish_grow<A>(
     new_layout: Layout,

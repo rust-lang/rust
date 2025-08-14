@@ -1,8 +1,8 @@
-warning: unused import: `m::Tr1 as _`
+warning: unused import: `crate::m::Tr1 as _`
   --> $DIR/basic.rs:26:9
    |
-LL |     use m::Tr1 as _;
-   |         ^^^^^^^^^^^
+LL |     use crate::m::Tr1 as _;
+   |         ^^^^^^^^^^^^^^^^^^
    |
 note: the lint level is defined here
   --> $DIR/basic.rs:4:9
@@ -10,11 +10,11 @@ note: the lint level is defined here
 LL | #![warn(unused_imports, unused_extern_crates)]
    |         ^^^^^^^^^^^^^^
 
-warning: unused import: `S as _`
+warning: unused import: `crate::S as _`
   --> $DIR/basic.rs:27:9
    |
-LL |     use S as _;
-   |         ^^^^^^
+LL |     use crate::S as _;
+   |         ^^^^^^^^^^^^^
 
 warning: 2 warnings emitted
 

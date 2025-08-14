@@ -34,7 +34,7 @@ pub fn get_fn<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, instance: Instance<'tcx>) 
         unreachable!();
         /*
         // Create a fn pointer with the new signature.
-        let ptrty = fn_abi.ptr_to_gcc_type(cx);
+        let ptrtype = fn_abi.ptr_to_gcc_type(cx);
 
         // This is subtle and surprising, but sometimes we have to bitcast
         // the resulting fn pointer.  The reason has to do with external
@@ -59,7 +59,7 @@ pub fn get_fn<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, instance: Instance<'tcx>) 
         // This can occur on either a crate-local or crate-external
         // reference. It also occurs when testing libcore and in some
         // other weird situations. Annoying.
-        if cx.val_ty(func) != ptrty {
+        if cx.val_ty(func) != ptrtype {
             // TODO(antoyo): cast the pointer.
             func
         }
@@ -105,8 +105,8 @@ pub fn get_fn<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, instance: Instance<'tcx>) 
             let is_hidden = if is_generic {
                 // This is a monomorphization of a generic function.
                 if !(cx.tcx.sess.opts.share_generics()
-                    || tcx.codegen_fn_attrs(instance_def_id).inline
-                        == rustc_attr_parsing::InlineAttr::Never)
+                    || tcx.codegen_instance_attrs(instance.def).inline
+                        == rustc_hir::attrs::InlineAttr::Never)
                 {
                     // When not sharing generics, all instances are in the same
                     // crate and have hidden visibility.

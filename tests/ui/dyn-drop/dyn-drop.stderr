@@ -1,5 +1,5 @@
 error: types that do not implement `Drop` can still have drop glue, consider instead using `std::mem::needs_drop` to detect whether a type is trivially dropped
-  --> $DIR/dyn-drop.rs:3:19
+  --> $DIR/dyn-drop.rs:2:19
    |
 LL | fn foo(_: Box<dyn Drop>) {}
    |                   ^^^^
@@ -11,25 +11,25 @@ LL | #![deny(dyn_drop)]
    |         ^^^^^^^^
 
 error: types that do not implement `Drop` can still have drop glue, consider instead using `std::mem::needs_drop` to detect whether a type is trivially dropped
-  --> $DIR/dyn-drop.rs:4:16
+  --> $DIR/dyn-drop.rs:3:16
    |
 LL | fn bar(_: &dyn Drop) {}
    |                ^^^^
 
 error: types that do not implement `Drop` can still have drop glue, consider instead using `std::mem::needs_drop` to detect whether a type is trivially dropped
-  --> $DIR/dyn-drop.rs:5:16
+  --> $DIR/dyn-drop.rs:4:20
    |
-LL | fn baz(_: *mut Drop) {}
-   |                ^^^^
+LL | fn baz(_: *mut dyn Drop) {}
+   |                    ^^^^
 
 error: types that do not implement `Drop` can still have drop glue, consider instead using `std::mem::needs_drop` to detect whether a type is trivially dropped
-  --> $DIR/dyn-drop.rs:7:15
+  --> $DIR/dyn-drop.rs:6:15
    |
 LL |   _x: Box<dyn Drop>
    |               ^^^^
 
 error: types that do not implement `Drop` can still have drop glue, consider instead using `std::mem::needs_drop` to detect whether a type is trivially dropped
-  --> $DIR/dyn-drop.rs:14:16
+  --> $DIR/dyn-drop.rs:13:16
    |
 LL |   type T = dyn Drop;
    |                ^^^^

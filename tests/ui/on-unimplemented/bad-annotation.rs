@@ -59,7 +59,7 @@ trait EmptyOn {}
 //~^^^ NOTE expected value here
 trait ExpectedPredicateInOn {}
 
-#[rustc_on_unimplemented(on(x = "y"), message = "y")]
+#[rustc_on_unimplemented(on(Self = "y"), message = "y")]
 trait OnWithoutDirectives {}
 
 #[rustc_on_unimplemented(on(from_desugaring, on(from_desugaring, message = "x")), message = "y")]
@@ -107,3 +107,13 @@ trait InvalidPredicate {}
 //~^ ERROR invalid flag in `on`-clause
 //~^^ NOTE expected one of the `crate_local`, `direct` or `from_desugaring` flags, not `something`
 trait InvalidFlag {}
+
+#[rustc_on_unimplemented(on(_Self = "y", message = "y"))]
+//~^ ERROR invalid name in `on`-clause
+//~^^ NOTE expected one of `cause`, `from_desugaring`, `Self` or any generic parameter of the trait, not `_Self`
+trait InvalidName {}
+
+#[rustc_on_unimplemented(on(abc = "y", message = "y"))]
+//~^ ERROR invalid name in `on`-clause
+//~^^ NOTE expected one of `cause`, `from_desugaring`, `Self` or any generic parameter of the trait, not `abc`
+trait InvalidName2 {}

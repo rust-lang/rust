@@ -7,8 +7,6 @@
 //@ run-pass
 //@ needs-subprocess
 
-#![feature(avx512_target_feature)]
-
 #![allow(overflowing_literals)]
 #![allow(unused_variables)]
 

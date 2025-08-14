@@ -27,6 +27,7 @@ fn consistent_clippy_crate_versions() {
         "clippy_config/Cargo.toml",
         "clippy_lints/Cargo.toml",
         "clippy_utils/Cargo.toml",
+        "declare_clippy_lint/Cargo.toml",
     ];
 
     for path in paths {

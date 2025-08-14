@@ -95,10 +95,10 @@ use crate::sys_common::{FromInner, IntoInner};
 /// let now = Instant::now();
 /// let days_per_10_millennia = 365_2425;
 /// let solar_seconds_per_day = 60 * 60 * 24;
-/// let millenium_in_solar_seconds = 31_556_952_000;
-/// assert_eq!(millenium_in_solar_seconds, days_per_10_millennia * solar_seconds_per_day / 10);
+/// let millennium_in_solar_seconds = 31_556_952_000;
+/// assert_eq!(millennium_in_solar_seconds, days_per_10_millennia * solar_seconds_per_day / 10);
 ///
-/// let duration = Duration::new(millenium_in_solar_seconds, 0);
+/// let duration = Duration::new(millennium_in_solar_seconds, 0);
 /// println!("{:?}", now + duration);
 /// ```
 ///
@@ -407,6 +407,15 @@ impl Instant {
     pub fn checked_sub(&self, duration: Duration) -> Option<Instant> {
         self.0.checked_sub_duration(&duration).map(Instant)
     }
+
+    // Used by platform specific `sleep_until` implementations such as the one used on Linux.
+    #[cfg_attr(
+        not(target_os = "linux"),
+        allow(unused, reason = "not every platform has a specific `sleep_until`")
+    )]
+    pub(crate) fn into_inner(self) -> time::Instant {
+        self.0
+    }
 }
 
 #[stable(feature = "time2", since = "1.8.0")]
@@ -542,8 +551,13 @@ impl SystemTime {
     /// println!("{difference:?}");
     /// ```
     #[stable(feature = "time2", since = "1.8.0")]
-    pub fn duration_since(&self, earlier: SystemTime) -> Result<Duration, SystemTimeError> {
-        self.0.sub_time(&earlier.0).map_err(SystemTimeError)
+    #[rustc_const_unstable(feature = "const_system_time", issue = "144517")]
+    pub const fn duration_since(&self, earlier: SystemTime) -> Result<Duration, SystemTimeError> {
+        // FIXME: map_err in const
+        match self.0.sub_time(&earlier.0) {
+            Ok(time) => Ok(time),
+            Err(err) => Err(SystemTimeError(err)),
+        }
     }
 
     /// Returns the difference from this system time to the
@@ -580,7 +594,8 @@ impl SystemTime {
     /// `SystemTime` (which means it's inside the bounds of the underlying data structure), `None`
     /// otherwise.
     #[stable(feature = "time_checked_add", since = "1.34.0")]
-    pub fn checked_add(&self, duration: Duration) -> Option<SystemTime> {
+    #[rustc_const_unstable(feature = "const_system_time", issue = "144517")]
+    pub const fn checked_add(&self, duration: Duration) -> Option<SystemTime> {
         self.0.checked_add_duration(&duration).map(SystemTime)
     }
 
@@ -588,13 +603,15 @@ impl SystemTime {
     /// `SystemTime` (which means it's inside the bounds of the underlying data structure), `None`
     /// otherwise.
     #[stable(feature = "time_checked_add", since = "1.34.0")]
-    pub fn checked_sub(&self, duration: Duration) -> Option<SystemTime> {
+    #[rustc_const_unstable(feature = "const_system_time", issue = "144517")]
+    pub const fn checked_sub(&self, duration: Duration) -> Option<SystemTime> {
         self.0.checked_sub_duration(&duration).map(SystemTime)
     }
 }
 
 #[stable(feature = "time2", since = "1.8.0")]
-impl Add<Duration> for SystemTime {
+#[rustc_const_unstable(feature = "const_ops", issue = "143802")]
+impl const Add<Duration> for SystemTime {
     type Output = SystemTime;
 
     /// # Panics
@@ -607,14 +624,16 @@ impl Add<Duration> for SystemTime {
 }
 
 #[stable(feature = "time_augmented_assignment", since = "1.9.0")]
-impl AddAssign<Duration> for SystemTime {
+#[rustc_const_unstable(feature = "const_ops", issue = "143802")]
+impl const AddAssign<Duration> for SystemTime {
     fn add_assign(&mut self, other: Duration) {
         *self = *self + other;
     }
 }
 
 #[stable(feature = "time2", since = "1.8.0")]
-impl Sub<Duration> for SystemTime {
+#[rustc_const_unstable(feature = "const_ops", issue = "143802")]
+impl const Sub<Duration> for SystemTime {
     type Output = SystemTime;
 
     fn sub(self, dur: Duration) -> SystemTime {
@@ -623,7 +642,8 @@ impl Sub<Duration> for SystemTime {
 }
 
 #[stable(feature = "time_augmented_assignment", since = "1.9.0")]
-impl SubAssign<Duration> for SystemTime {
+#[rustc_const_unstable(feature = "const_ops", issue = "143802")]
+impl const SubAssign<Duration> for SystemTime {
     fn sub_assign(&mut self, other: Duration) {
         *self = *self - other;
     }
@@ -690,7 +710,8 @@ impl SystemTimeError {
     /// ```
     #[must_use]
     #[stable(feature = "time2", since = "1.8.0")]
-    pub fn duration(&self) -> Duration {
+    #[rustc_const_unstable(feature = "const_system_time", issue = "144517")]
+    pub const fn duration(&self) -> Duration {
         self.0
     }
 }

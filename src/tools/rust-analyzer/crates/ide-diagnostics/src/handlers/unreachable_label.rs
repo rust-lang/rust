@@ -12,6 +12,7 @@ pub(crate) fn unreachable_label(
         format!("use of unreachable label `{}`", name.display(ctx.sema.db, ctx.edition)),
         d.node.map(|it| it.into()),
     )
+    .stable()
 }
 
 #[cfg(test)]

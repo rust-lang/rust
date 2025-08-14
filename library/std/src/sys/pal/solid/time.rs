@@ -39,7 +39,8 @@ impl SystemTime {
         Self(t)
     }
 
-    pub fn sub_time(&self, other: &SystemTime) -> Result<Duration, Duration> {
+    #[rustc_const_unstable(feature = "const_system_time", issue = "144517")]
+    pub const fn sub_time(&self, other: &SystemTime) -> Result<Duration, Duration> {
         if self.0 >= other.0 {
             Ok(Duration::from_secs((self.0 as u64).wrapping_sub(other.0 as u64)))
         } else {
@@ -47,11 +48,13 @@ impl SystemTime {
         }
     }
 
-    pub fn checked_add_duration(&self, other: &Duration) -> Option<SystemTime> {
+    #[rustc_const_unstable(feature = "const_system_time", issue = "144517")]
+    pub const fn checked_add_duration(&self, other: &Duration) -> Option<SystemTime> {
         Some(SystemTime(self.0.checked_add_unsigned(other.as_secs())?))
     }
 
-    pub fn checked_sub_duration(&self, other: &Duration) -> Option<SystemTime> {
+    #[rustc_const_unstable(feature = "const_system_time", issue = "144517")]
+    pub const fn checked_sub_duration(&self, other: &Duration) -> Option<SystemTime> {
         Some(SystemTime(self.0.checked_sub_unsigned(other.as_secs())?))
     }
 }

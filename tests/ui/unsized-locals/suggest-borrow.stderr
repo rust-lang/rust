@@ -6,7 +6,6 @@ LL |     let x: [u8] = vec!(1, 2, 3)[..];
    |
    = help: the trait `Sized` is not implemented for `[u8]`
    = note: all local variables must have a statically known size
-   = help: unsized locals are gated as an unstable feature
 help: consider borrowing here
    |
 LL |     let x: &[u8] = vec!(1, 2, 3)[..];
@@ -51,7 +50,6 @@ LL |     let x: [u8] = &vec!(1, 2, 3)[..];
    |
    = help: the trait `Sized` is not implemented for `[u8]`
    = note: all local variables must have a statically known size
-   = help: unsized locals are gated as an unstable feature
 help: consider borrowing here
    |
 LL |     let x: &[u8] = &vec!(1, 2, 3)[..];

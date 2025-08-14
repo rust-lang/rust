@@ -6,7 +6,6 @@ use std::iter;
 
 use ide_db::{FxHashMap, famous_defs::FamousDefs, syntax_helpers::node_ext::walk_ty};
 use itertools::Itertools;
-use span::EditionedFileId;
 use syntax::{SmolStr, format_smolstr};
 use syntax::{
     SyntaxKind, SyntaxToken,
@@ -23,7 +22,6 @@ pub(super) fn fn_hints(
     ctx: &mut InlayHintCtx,
     fd: &FamousDefs<'_, '_>,
     config: &InlayHintsConfig,
-    file_id: EditionedFileId,
     func: ast::Fn,
 ) -> Option<()> {
     if config.lifetime_elision_hints == LifetimeElisionHints::Never {
@@ -40,7 +38,6 @@ pub(super) fn fn_hints(
         ctx,
         fd,
         config,
-        file_id,
         param_list.params().filter_map(|it| {
             Some((
                 it.pat().and_then(|it| match it {
@@ -74,30 +71,29 @@ pub(super) fn fn_ptr_hints(
     ctx: &mut InlayHintCtx,
     fd: &FamousDefs<'_, '_>,
     config: &InlayHintsConfig,
-    file_id: EditionedFileId,
     func: ast::FnPtrType,
 ) -> Option<()> {
     if config.lifetime_elision_hints == LifetimeElisionHints::Never {
         return None;
     }
 
-    let parent_for_type = func
+    let parent_for_binder = func
         .syntax()
         .ancestors()
         .skip(1)
         .take_while(|it| matches!(it.kind(), SyntaxKind::PAREN_TYPE | SyntaxKind::FOR_TYPE))
-        .find_map(ast::ForType::cast);
+        .find_map(ast::ForType::cast)
+        .and_then(|it| it.for_binder());
 
     let param_list = func.param_list()?;
-    let generic_param_list = parent_for_type.as_ref().and_then(|it| it.generic_param_list());
+    let generic_param_list = parent_for_binder.as_ref().and_then(|it| it.generic_param_list());
     let ret_type = func.ret_type();
-    let for_kw = parent_for_type.as_ref().and_then(|it| it.for_token());
+    let for_kw = parent_for_binder.as_ref().and_then(|it| it.for_token());
     hints_(
         acc,
         ctx,
         fd,
         config,
-        file_id,
         param_list.params().filter_map(|it| {
             Some((
                 it.pat().and_then(|it| match it {
@@ -140,8 +136,7 @@ pub(super) fn fn_path_hints(
     ctx: &mut InlayHintCtx,
     fd: &FamousDefs<'_, '_>,
     config: &InlayHintsConfig,
-    file_id: EditionedFileId,
-    func: ast::PathType,
+    func: &ast::PathType,
 ) -> Option<()> {
     if config.lifetime_elision_hints == LifetimeElisionHints::Never {
         return None;
@@ -149,21 +144,21 @@ pub(super) fn fn_path_hints(
 
     // FIXME: Support general path types
     let (param_list, ret_type) = func.path().as_ref().and_then(path_as_fn)?;
-    let parent_for_type = func
+    let parent_for_binder = func
         .syntax()
         .ancestors()
         .skip(1)
         .take_while(|it| matches!(it.kind(), SyntaxKind::PAREN_TYPE | SyntaxKind::FOR_TYPE))
-        .find_map(ast::ForType::cast);
+        .find_map(ast::ForType::cast)
+        .and_then(|it| it.for_binder());
 
-    let generic_param_list = parent_for_type.as_ref().and_then(|it| it.generic_param_list());
-    let for_kw = parent_for_type.as_ref().and_then(|it| it.for_token());
+    let generic_param_list = parent_for_binder.as_ref().and_then(|it| it.generic_param_list());
+    let for_kw = parent_for_binder.as_ref().and_then(|it| it.for_token());
     hints_(
         acc,
         ctx,
         fd,
         config,
-        file_id,
         param_list.type_args().filter_map(|it| Some((None, it.ty()?))),
         generic_param_list,
         ret_type,
@@ -202,7 +197,6 @@ fn hints_(
     ctx: &mut InlayHintCtx,
     FamousDefs(_, _): &FamousDefs<'_, '_>,
     config: &InlayHintsConfig,
-    _file_id: EditionedFileId,
     params: impl Iterator<Item = (Option<ast::Name>, ast::Type)>,
     generic_param_list: Option<ast::GenericParamList>,
     ret_type: Option<ast::RetType>,
@@ -330,35 +324,35 @@ fn hints_(
 
     // apply hints
     // apply output if required
-    if let (Some(output_lt), Some(r)) = (&output, ret_type) {
-        if let Some(ty) = r.ty() {
-            walk_ty(&ty, &mut |ty| match ty {
-                ast::Type::RefType(ty) if ty.lifetime().is_none() => {
-                    if let Some(amp) = ty.amp_token() {
-                        is_trivial = false;
-                        acc.push(mk_lt_hint(amp, output_lt.to_string()));
-                    }
-                    false
+    if let (Some(output_lt), Some(r)) = (&output, ret_type)
+        && let Some(ty) = r.ty()
+    {
+        walk_ty(&ty, &mut |ty| match ty {
+            ast::Type::RefType(ty) if ty.lifetime().is_none() => {
+                if let Some(amp) = ty.amp_token() {
+                    is_trivial = false;
+                    acc.push(mk_lt_hint(amp, output_lt.to_string()));
                 }
-                ast::Type::FnPtrType(_) => {
+                false
+            }
+            ast::Type::FnPtrType(_) => {
+                is_trivial = false;
+                true
+            }
+            ast::Type::PathType(t) => {
+                if t.path()
+                    .and_then(|it| it.segment())
+                    .and_then(|it| it.parenthesized_arg_list())
+                    .is_some()
+                {
                     is_trivial = false;
                     true
+                } else {
+                    false
                 }
-                ast::Type::PathType(t) => {
-                    if t.path()
-                        .and_then(|it| it.segment())
-                        .and_then(|it| it.parenthesized_arg_list())
-                        .is_some()
-                    {
-                        is_trivial = false;
-                        true
-                    } else {
-                        false
-                    }
-                }
-                _ => false,
-            })
-        }
+            }
+            _ => false,
+        })
     }
 
     if config.lifetime_elision_hints == LifetimeElisionHints::SkipTrivial && is_trivial {

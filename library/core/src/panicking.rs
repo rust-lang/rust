@@ -206,7 +206,6 @@ pub mod panic_const {
     }
     // Separated panic constants list for async drop feature
     // (May be joined when the corresponding lang items will be in the bootstrap)
-    #[cfg(not(bootstrap))]
     panic_const! {
         panic_const_coroutine_resumed_drop = "coroutine resumed after async drop",
         panic_const_async_fn_resumed_drop = "`async fn` resumed after async drop",
@@ -311,6 +310,22 @@ fn panic_null_pointer_dereference() -> ! {
 
     panic_nounwind_fmt(
         format_args!("null pointer dereference occurred"),
+        /* force_no_backtrace */ false,
+    )
+}
+
+#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never), cold, optimize(size))]
+#[cfg_attr(feature = "panic_immediate_abort", inline)]
+#[track_caller]
+#[lang = "panic_invalid_enum_construction"] // needed by codegen for panic on invalid enum construction.
+#[rustc_nounwind] // `CheckEnums` MIR pass requires this function to never unwind
+fn panic_invalid_enum_construction(source: u128) -> ! {
+    if cfg!(feature = "panic_immediate_abort") {
+        super::intrinsics::abort()
+    }
+
+    panic_nounwind_fmt(
+        format_args!("trying to construct an enum from an invalid value {source:#x}"),
         /* force_no_backtrace */ false,
     )
 }

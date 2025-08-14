@@ -5,11 +5,11 @@ use ast::HasName;
 use cfg::{CfgAtom, CfgExpr};
 use hir::{
     AsAssocItem, AttrsWithOwner, HasAttrs, HasCrate, HasSource, ModPath, Name, PathKind, Semantics,
-    Symbol, db::HirDatabase, sym, symbols::FxIndexSet,
+    Symbol, db::HirDatabase, sym,
 };
 use ide_assists::utils::{has_test_related_attribute, test_related_attribute_syn};
 use ide_db::{
-    FilePosition, FxHashMap, FxIndexMap, RootDatabase, SymbolKind,
+    FilePosition, FxHashMap, FxIndexMap, FxIndexSet, RootDatabase, SymbolKind,
     base_db::RootQueryDb,
     defs::Definition,
     documentation::docs_from_attrs,
@@ -351,7 +351,7 @@ pub(crate) fn runnable_fn(
     )
     .call_site();
 
-    let file_range = fn_source.syntax().original_file_range_with_macro_call_body(sema.db);
+    let file_range = fn_source.syntax().original_file_range_with_macro_call_input(sema.db);
     let update_test =
         UpdateTest::find_snapshot_macro(sema, &fn_source.file_syntax(sema.db), file_range);
 
@@ -425,7 +425,7 @@ pub(crate) fn runnable_impl(
 
     let impl_source = sema.source(*def)?;
     let impl_syntax = impl_source.syntax();
-    let file_range = impl_syntax.original_file_range_with_macro_call_body(sema.db);
+    let file_range = impl_syntax.original_file_range_with_macro_call_input(sema.db);
     let update_test =
         UpdateTest::find_snapshot_macro(sema, &impl_syntax.file_syntax(sema.db), file_range);
 
@@ -514,20 +514,19 @@ fn module_def_doctest(db: &RootDatabase, def: Definition) -> Option<Runnable> {
             .flat_map(|it| it.name(db))
             .for_each(|name| format_to!(path, "{}::", name.display(db, edition)));
         // This probably belongs to canonical_path?
-        if let Some(assoc_item) = def.as_assoc_item(db) {
-            if let Some(ty) = assoc_item.implementing_ty(db) {
-                if let Some(adt) = ty.as_adt() {
-                    let name = adt.name(db);
-                    let mut ty_args = ty.generic_parameters(db, display_target).peekable();
-                    format_to!(path, "{}", name.display(db, edition));
-                    if ty_args.peek().is_some() {
-                        format_to!(path, "<{}>", ty_args.format_with(",", |ty, cb| cb(&ty)));
-                    }
-                    format_to!(path, "::{}", def_name.display(db, edition));
-                    path.retain(|c| c != ' ');
-                    return Some(path);
-                }
+        if let Some(assoc_item) = def.as_assoc_item(db)
+            && let Some(ty) = assoc_item.implementing_ty(db)
+            && let Some(adt) = ty.as_adt()
+        {
+            let name = adt.name(db);
+            let mut ty_args = ty.generic_parameters(db, display_target).peekable();
+            format_to!(path, "{}", name.display(db, edition));
+            if ty_args.peek().is_some() {
+                format_to!(path, "<{}>", ty_args.format_with(",", |ty, cb| cb(&ty)));
             }
+            format_to!(path, "::{}", def_name.display(db, edition));
+            path.retain(|c| c != ' ');
+            return Some(path);
         }
         format_to!(path, "{}", def_name.display(db, edition));
         Some(path)
@@ -697,14 +696,13 @@ impl UpdateTest {
                     continue;
                 };
                 for item in items {
-                    if let hir::ItemInNs::Macros(makro) = item {
-                        if Definition::Macro(makro)
+                    if let hir::ItemInNs::Macros(makro) = item
+                        && Definition::Macro(makro)
                             .usages(sema)
                             .in_scope(&search_scope)
                             .at_least_one()
-                        {
-                            return true;
-                        }
+                    {
+                        return true;
                     }
                 }
             }
@@ -1241,10 +1239,10 @@ generate_main!();
                 [
                     "(TestMod, NavigationTarget { file_id: FileId(0), full_range: 0..345, name: \"\", kind: Module })",
                     "(TestMod, NavigationTarget { file_id: FileId(0), full_range: 282..312, focus_range: 286..291, name: \"tests\", kind: Module, description: \"mod tests\" })",
-                    "(Test, NavigationTarget { file_id: FileId(0), full_range: 298..310, name: \"foo_test\", kind: Function })",
-                    "(TestMod, NavigationTarget { file_id: FileId(0), full_range: 313..326, name: \"tests2\", kind: Module, description: \"mod tests2\" }, true)",
-                    "(Test, NavigationTarget { file_id: FileId(0), full_range: 313..326, name: \"foo_test2\", kind: Function }, true)",
-                    "(Bin, NavigationTarget { file_id: FileId(0), full_range: 327..344, name: \"main\", kind: Function })",
+                    "(Test, NavigationTarget { file_id: FileId(0), full_range: 298..307, name: \"foo_test\", kind: Function })",
+                    "(TestMod, NavigationTarget { file_id: FileId(0), full_range: 313..323, name: \"tests2\", kind: Module, description: \"mod tests2\" }, true)",
+                    "(Test, NavigationTarget { file_id: FileId(0), full_range: 313..323, name: \"foo_test2\", kind: Function }, true)",
+                    "(Bin, NavigationTarget { file_id: FileId(0), full_range: 327..341, name: \"main\", kind: Function })",
                 ]
             "#]],
         );
@@ -1272,10 +1270,10 @@ foo!();
 "#,
             expect![[r#"
                 [
-                    "(TestMod, NavigationTarget { file_id: FileId(0), full_range: 210..217, name: \"foo_tests\", kind: Module, description: \"mod foo_tests\" }, true)",
-                    "(Test, NavigationTarget { file_id: FileId(0), full_range: 210..217, name: \"foo0\", kind: Function }, true)",
-                    "(Test, NavigationTarget { file_id: FileId(0), full_range: 210..217, name: \"foo1\", kind: Function }, true)",
-                    "(Test, NavigationTarget { file_id: FileId(0), full_range: 210..217, name: \"foo2\", kind: Function }, true)",
+                    "(TestMod, NavigationTarget { file_id: FileId(0), full_range: 210..214, name: \"foo_tests\", kind: Module, description: \"mod foo_tests\" }, true)",
+                    "(Test, NavigationTarget { file_id: FileId(0), full_range: 210..214, name: \"foo0\", kind: Function }, true)",
+                    "(Test, NavigationTarget { file_id: FileId(0), full_range: 210..214, name: \"foo1\", kind: Function }, true)",
+                    "(Test, NavigationTarget { file_id: FileId(0), full_range: 210..214, name: \"foo2\", kind: Function }, true)",
                 ]
             "#]],
         );

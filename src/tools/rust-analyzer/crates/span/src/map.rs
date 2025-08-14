@@ -41,13 +41,13 @@ where
 
     /// Pushes a new span onto the [`SpanMap`].
     pub fn push(&mut self, offset: TextSize, span: SpanData<S>) {
-        if cfg!(debug_assertions) {
-            if let Some(&(last_offset, _)) = self.spans.last() {
-                assert!(
-                    last_offset < offset,
-                    "last_offset({last_offset:?}) must be smaller than offset({offset:?})"
-                );
-            }
+        if cfg!(debug_assertions)
+            && let Some(&(last_offset, _)) = self.spans.last()
+        {
+            assert!(
+                last_offset < offset,
+                "last_offset({last_offset:?}) must be smaller than offset({offset:?})"
+            );
         }
         self.spans.push((offset, span));
     }
@@ -169,7 +169,7 @@ impl fmt::Display for RealSpanMap {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(f, "RealSpanMap({:?}):", self.file_id)?;
         for span in self.pairs.iter() {
-            writeln!(f, "{}: {}", u32::from(span.0), span.1.into_raw())?;
+            writeln!(f, "{}: {:#?}", u32::from(span.0), span.1)?;
         }
         Ok(())
     }

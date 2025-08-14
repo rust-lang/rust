@@ -8,12 +8,14 @@ fn num_to_digit(_1: char) -> u32 {
         let _2: std::option::Option<u32>;
         scope 2 (inlined Option::<u32>::is_some) {
             let mut _3: isize;
+            scope 3 {
+            }
         }
     }
-    scope 3 (inlined #[track_caller] Option::<u32>::unwrap) {
+    scope 4 (inlined #[track_caller] Option::<u32>::unwrap) {
         let mut _5: isize;
         let mut _6: !;
-        scope 4 {
+        scope 5 {
         }
     }
 

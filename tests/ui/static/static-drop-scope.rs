@@ -4,12 +4,6 @@ impl Drop for WithDtor {
     fn drop(&mut self) {}
 }
 
-static PROMOTION_FAIL_S: Option<&'static WithDtor> = Some(&WithDtor);
-//~^ ERROR destructor of
-
-const PROMOTION_FAIL_C: Option<&'static WithDtor> = Some(&WithDtor);
-//~^ ERROR destructor of
-
 static EARLY_DROP_S: i32 = (WithDtor, 0).1;
 //~^ ERROR destructor of
 

@@ -1,14 +1,14 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::path_to_local_id;
 use clippy_utils::source::{SpanRangeExt, snippet};
 use clippy_utils::ty::is_type_diagnostic_item;
+use clippy_utils::{path_to_local_id, sym};
 use rustc_ast::{LitKind, StrStyle};
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
 use rustc_hir::{BindingMode, Block, Expr, ExprKind, HirId, LetStmt, PatKind, QPath, Stmt, StmtKind, TyKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_session::impl_lint_pass;
-use rustc_span::{Span, Symbol, sym};
+use rustc_span::{Span, Symbol};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -177,7 +177,7 @@ impl<'tcx> LateLintPass<'tcx> for PathbufThenPush<'tcx> {
             && let StmtKind::Expr(expr) | StmtKind::Semi(expr) = stmt.kind
             && let ExprKind::MethodCall(name, self_arg, [arg_expr], _) = expr.kind
             && path_to_local_id(self_arg, searcher.local_id)
-            && name.ident.as_str() == "push"
+            && name.ident.name == sym::push
         {
             searcher.err_span = searcher.err_span.to(stmt.span);
             searcher.arg = Some(*arg_expr);

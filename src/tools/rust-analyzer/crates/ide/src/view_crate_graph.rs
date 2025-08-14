@@ -79,7 +79,7 @@ impl<'a> dot::Labeller<'a, Crate, Edge<'a>> for DotCrateGraph<'_> {
     }
 
     fn node_id(&'a self, n: &Crate) -> Id<'a> {
-        let id = n.as_id().as_u32();
+        let id = n.as_id().index();
         Id::new(format!("_{id:?}")).unwrap()
     }
 

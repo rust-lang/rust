@@ -51,11 +51,12 @@ pub(crate) fn expand_deriving_default(
         }],
         associated_types: Vec::new(),
         is_const,
+        is_staged_api_crate: cx.ecfg.features.staged_api(),
     };
     trait_def.expand(cx, mitem, item, push)
 }
 
-fn default_call(cx: &ExtCtxt<'_>, span: Span) -> ast::ptr::P<ast::Expr> {
+fn default_call(cx: &ExtCtxt<'_>, span: Span) -> Box<ast::Expr> {
     // Note that `kw::Default` is "default" and `sym::Default` is "Default"!
     let default_ident = cx.std_path(&[kw::Default, sym::Default, kw::Default]);
     cx.expr_call_global(span, default_ident, ThinVec::new())

@@ -2,7 +2,10 @@ use std::borrow::Borrow;
 use std::cmp;
 
 use libc::c_uint;
-use rustc_abi::{BackendRepr, HasDataLayout, Primitive, Reg, RegKind, Size};
+use rustc_abi::{
+    ArmCall, BackendRepr, CanonAbi, HasDataLayout, InterruptKind, Primitive, Reg, RegKind, Size,
+    X86Call,
+};
 use rustc_codegen_ssa::MemFlags;
 use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
 use rustc_codegen_ssa::mir::place::{PlaceRef, PlaceValue};
@@ -12,7 +15,7 @@ use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::{bug, ty};
 use rustc_session::config;
 use rustc_target::callconv::{
-    ArgAbi, ArgAttribute, ArgAttributes, ArgExtension, CastTarget, Conv, FnAbi, PassMode,
+    ArgAbi, ArgAttribute, ArgAttributes, ArgExtension, CastTarget, FnAbi, PassMode,
 };
 use rustc_target::spec::SanitizerSet;
 use smallvec::SmallVec;
@@ -21,6 +24,7 @@ use crate::attributes::{self, llfn_attrs_from_instance};
 use crate::builder::Builder;
 use crate::context::CodegenCx;
 use crate::llvm::{self, Attribute, AttributePlace};
+use crate::llvm_util;
 use crate::type_::Type;
 use crate::type_of::LayoutLlvmExt;
 use crate::value::Value;
@@ -143,7 +147,7 @@ impl LlvmType for CastTarget {
                 "total size {:?} cannot be divided into units of zero size",
                 self.rest.total
             );
-            if self.rest.total.bytes() % self.rest.unit.size.bytes() != 0 {
+            if !self.rest.total.bytes().is_multiple_of(self.rest.unit.size.bytes()) {
                 assert_eq!(self.rest.unit.kind, RegKind::Integer, "only int regs can be split");
             }
             self.rest.total.bytes().div_ceil(self.rest.unit.size.bytes())
@@ -172,7 +176,6 @@ impl LlvmType for CastTarget {
 }
 
 trait ArgAbiExt<'ll, 'tcx> {
-    fn memory_ty(&self, cx: &CodegenCx<'ll, 'tcx>) -> &'ll Type;
     fn store(
         &self,
         bx: &mut Builder<'_, 'll, 'tcx>,
@@ -188,12 +191,6 @@ trait ArgAbiExt<'ll, 'tcx> {
 }
 
 impl<'ll, 'tcx> ArgAbiExt<'ll, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
-    /// Gets the LLVM type for a place of the original Rust type of
-    /// this argument/return, i.e., the result of `type_of::type_of`.
-    fn memory_ty(&self, cx: &CodegenCx<'ll, 'tcx>) -> &'ll Type {
-        self.layout.llvm_type(cx)
-    }
-
     /// Stores a direct/indirect value described by this ArgAbi into a
     /// place for the original Rust type of this argument/return.
     /// Can be used for both storing formal arguments into Rust variables
@@ -233,7 +230,7 @@ impl<'ll, 'tcx> ArgAbiExt<'ll, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
                 let llscratch = bx.alloca(scratch_size, scratch_align);
                 bx.lifetime_start(llscratch, scratch_size);
                 // ...store the value...
-                bx.store(val, llscratch, scratch_align);
+                rustc_codegen_ssa::mir::store_cast(bx, cast, val, llscratch, scratch_align);
                 // ... and then memcpy it to the intended destination.
                 bx.memcpy(
                     dst.val.llval,
@@ -301,9 +298,6 @@ impl<'ll, 'tcx> ArgAbiBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         dst: PlaceRef<'tcx, &'ll Value>,
     ) {
         arg_abi.store(self, val, dst)
-    }
-    fn arg_memory_ty(&self, arg_abi: &ArgAbi<'tcx, Ty<'tcx>>) -> &'ll Type {
-        arg_abi.memory_ty(self)
     }
 }
 
@@ -419,11 +413,17 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
         if !self.can_unwind {
             func_attrs.push(llvm::AttributeKind::NoUnwind.create_attr(cx.llcx));
         }
-        if let Conv::RiscvInterrupt { kind } = self.conv {
-            func_attrs.push(llvm::CreateAttrStringValue(cx.llcx, "interrupt", kind.as_str()));
-        }
-        if let Conv::CCmseNonSecureEntry = self.conv {
-            func_attrs.push(llvm::CreateAttrString(cx.llcx, "cmse_nonsecure_entry"))
+        match self.conv {
+            CanonAbi::Interrupt(InterruptKind::RiscvMachine) => {
+                func_attrs.push(llvm::CreateAttrStringValue(cx.llcx, "interrupt", "machine"))
+            }
+            CanonAbi::Interrupt(InterruptKind::RiscvSupervisor) => {
+                func_attrs.push(llvm::CreateAttrStringValue(cx.llcx, "interrupt", "supervisor"))
+            }
+            CanonAbi::Arm(ArmCall::CCmseNonSecureEntry) => {
+                func_attrs.push(llvm::CreateAttrString(cx.llcx, "cmse_nonsecure_entry"))
+            }
+            _ => (),
         }
         attributes::apply_to_llfn(llfn, llvm::AttributePlace::Function, &{ func_attrs });
 
@@ -501,7 +501,16 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                     }
                 }
                 PassMode::Indirect { attrs, meta_attrs: None, on_stack: false } => {
-                    apply(attrs);
+                    let i = apply(attrs);
+                    if cx.sess().opts.optimize != config::OptLevel::No
+                        && llvm_util::get_version() >= (21, 0, 0)
+                    {
+                        attributes::apply_to_llfn(
+                            llfn,
+                            llvm::AttributePlace::Argument(i),
+                            &[llvm::AttributeKind::DeadOnReturn.create_attr(cx.llcx)],
+                        );
+                    }
                 }
                 PassMode::Indirect { attrs, meta_attrs: Some(meta_attrs), on_stack } => {
                     assert!(!on_stack);
@@ -610,7 +619,7 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
             llvm::SetInstructionCallConv(callsite, cconv);
         }
 
-        if self.conv == Conv::CCmseNonSecureCall {
+        if self.conv == CanonAbi::Arm(ArmCall::CCmseNonSecureCall) {
             // This will probably get ignored on all targets but those supporting the TrustZone-M
             // extension (thumbv8m targets).
             let cmse_nonsecure_call = llvm::CreateAttrString(bx.cx.llcx, "cmse_nonsecure_call");
@@ -646,17 +655,15 @@ impl AbiBuilderMethods for Builder<'_, '_, '_> {
 }
 
 impl llvm::CallConv {
-    pub(crate) fn from_conv(conv: Conv, arch: &str) -> Self {
+    pub(crate) fn from_conv(conv: CanonAbi, arch: &str) -> Self {
         match conv {
-            Conv::C
-            | Conv::Rust
-            | Conv::CCmseNonSecureCall
-            | Conv::CCmseNonSecureEntry
-            | Conv::RiscvInterrupt { .. } => llvm::CCallConv,
-            Conv::Cold => llvm::ColdCallConv,
-            Conv::PreserveMost => llvm::PreserveMost,
-            Conv::PreserveAll => llvm::PreserveAll,
-            Conv::GpuKernel => {
+            CanonAbi::C | CanonAbi::Rust => llvm::CCallConv,
+            CanonAbi::RustCold => llvm::PreserveMost,
+            // Functions with this calling convention can only be called from assembly, but it is
+            // possible to declare an `extern "custom"` block, so the backend still needs a calling
+            // convention for declaring foreign functions.
+            CanonAbi::Custom => llvm::CCallConv,
+            CanonAbi::GpuKernel => {
                 if arch == "amdgpu" {
                     llvm::AmdgpuKernel
                 } else if arch == "nvptx64" {
@@ -665,17 +672,25 @@ impl llvm::CallConv {
                     panic!("Architecture {arch} does not support GpuKernel calling convention");
                 }
             }
-            Conv::AvrInterrupt => llvm::AvrInterrupt,
-            Conv::AvrNonBlockingInterrupt => llvm::AvrNonBlockingInterrupt,
-            Conv::ArmAapcs => llvm::ArmAapcsCallConv,
-            Conv::Msp430Intr => llvm::Msp430Intr,
-            Conv::X86Fastcall => llvm::X86FastcallCallConv,
-            Conv::X86Intr => llvm::X86_Intr,
-            Conv::X86Stdcall => llvm::X86StdcallCallConv,
-            Conv::X86ThisCall => llvm::X86_ThisCall,
-            Conv::X86VectorCall => llvm::X86_VectorCall,
-            Conv::X86_64SysV => llvm::X86_64_SysV,
-            Conv::X86_64Win64 => llvm::X86_64_Win64,
+            CanonAbi::Interrupt(interrupt_kind) => match interrupt_kind {
+                InterruptKind::Avr => llvm::AvrInterrupt,
+                InterruptKind::AvrNonBlocking => llvm::AvrNonBlockingInterrupt,
+                InterruptKind::Msp430 => llvm::Msp430Intr,
+                InterruptKind::RiscvMachine | InterruptKind::RiscvSupervisor => llvm::CCallConv,
+                InterruptKind::X86 => llvm::X86_Intr,
+            },
+            CanonAbi::Arm(arm_call) => match arm_call {
+                ArmCall::Aapcs => llvm::ArmAapcsCallConv,
+                ArmCall::CCmseNonSecureCall | ArmCall::CCmseNonSecureEntry => llvm::CCallConv,
+            },
+            CanonAbi::X86(x86_call) => match x86_call {
+                X86Call::Fastcall => llvm::X86FastcallCallConv,
+                X86Call::Stdcall => llvm::X86StdcallCallConv,
+                X86Call::SysV64 => llvm::X86_64_SysV,
+                X86Call::Thiscall => llvm::X86_ThisCall,
+                X86Call::Vectorcall => llvm::X86_VectorCall,
+                X86Call::Win64 => llvm::X86_64_Win64,
+            },
         }
     }
 }

@@ -2,43 +2,72 @@ error: unused extern crate
   --> $DIR/unnecessary-extern-crate.rs:6:1
    |
 LL | extern crate core;
-   | ^^^^^^^^^^^^^^^^^^ help: remove it
+   | ^^^^^^^^^^^^^^^^^^ unused
    |
 note: the lint level is defined here
   --> $DIR/unnecessary-extern-crate.rs:3:9
    |
 LL | #![deny(unused_extern_crates)]
    |         ^^^^^^^^^^^^^^^^^^^^
+help: remove the unused `extern crate`
+   |
+LL - extern crate core;
+   |
 
 error: unused extern crate
   --> $DIR/unnecessary-extern-crate.rs:9:1
    |
 LL | extern crate core as x;
-   | ^^^^^^^^^^^^^^^^^^^^^^^ help: remove it
+   | ^^^^^^^^^^^^^^^^^^^^^^^ unused
+   |
+help: remove the unused `extern crate`
+   |
+LL - extern crate core as x;
+   |
 
 error: unused extern crate
   --> $DIR/unnecessary-extern-crate.rs:31:5
    |
 LL |     extern crate core;
-   |     ^^^^^^^^^^^^^^^^^^ help: remove it
+   |     ^^^^^^^^^^^^^^^^^^ unused
+   |
+help: remove the unused `extern crate`
+   |
+LL -     extern crate core;
+   |
 
 error: unused extern crate
   --> $DIR/unnecessary-extern-crate.rs:35:5
    |
 LL |     extern crate core as x;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^ help: remove it
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ unused
+   |
+help: remove the unused `extern crate`
+   |
+LL -     extern crate core as x;
+   |
 
 error: unused extern crate
   --> $DIR/unnecessary-extern-crate.rs:44:9
    |
 LL |         extern crate core;
-   |         ^^^^^^^^^^^^^^^^^^ help: remove it
+   |         ^^^^^^^^^^^^^^^^^^ unused
+   |
+help: remove the unused `extern crate`
+   |
+LL -         extern crate core;
+   |
 
 error: unused extern crate
   --> $DIR/unnecessary-extern-crate.rs:48:9
    |
 LL |         extern crate core as x;
-   |         ^^^^^^^^^^^^^^^^^^^^^^^ help: remove it
+   |         ^^^^^^^^^^^^^^^^^^^^^^^ unused
+   |
+help: remove the unused `extern crate`
+   |
+LL -         extern crate core as x;
+   |
 
 error: aborting due to 6 previous errors
 

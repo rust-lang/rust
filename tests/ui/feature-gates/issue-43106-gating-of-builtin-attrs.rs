@@ -57,7 +57,7 @@
 // see gated-link-args.rs
 // see issue-43106-gating-of-macro_escape.rs for crate-level; but non crate-level is below at "2700"
 // (cannot easily test gating of crate-level #[no_std]; but non crate-level is below at "2600")
-#![proc_macro_derive()] //~ WARN `#[proc_macro_derive]` only has an effect
+#![proc_macro_derive(Test)] //~ WARN `#[proc_macro_derive]` only has an effect
 #![doc = "2400"]
 #![cold] //~ WARN attribute should be applied to a function
 //~^ WARN this was previously accepted
@@ -71,6 +71,7 @@
 //~^^ WARN this was previously accepted by the compiler
 #![must_use]
 //~^ WARN `#[must_use]` has no effect
+//~| HELP remove the attribute
 // see issue-43106-gating-of-stable.rs
 // see issue-43106-gating-of-unstable.rs
 // see issue-43106-gating-of-deprecated.rs
@@ -269,7 +270,13 @@ mod automatically_derived {
     #[automatically_derived] type T = S;
     //~^ WARN `#[automatically_derived]
 
+    #[automatically_derived] trait W { }
+    //~^ WARN `#[automatically_derived]
+
     #[automatically_derived] impl S { }
+    //~^ WARN `#[automatically_derived]
+
+    #[automatically_derived] impl W for S { }
 }
 
 #[no_mangle]
@@ -593,16 +600,20 @@ mod deprecated {
 }
 
 #[must_use] //~ WARN `#[must_use]` has no effect
+//~^ HELP remove the attribute
 mod must_use {
     mod inner { #![must_use] } //~ WARN `#[must_use]` has no effect
+    //~^ HELP remove the attribute
 
     #[must_use] fn f() { }
 
     #[must_use] struct S;
 
     #[must_use] type T = S; //~ WARN `#[must_use]` has no effect
+    //~^ HELP remove the attribute
 
     #[must_use] impl S { } //~ WARN `#[must_use]` has no effect
+    //~^ HELP remove the attribute
 }
 
 #[windows_subsystem = "windows"]

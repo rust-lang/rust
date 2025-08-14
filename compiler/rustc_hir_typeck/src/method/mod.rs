@@ -11,9 +11,8 @@ use rustc_errors::{Applicability, Diag, SubdiagMessage};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Namespace};
 use rustc_hir::def_id::DefId;
-use rustc_infer::infer::{self, InferOk};
+use rustc_infer::infer::{BoundRegionConversionTime, InferOk};
 use rustc_infer::traits::PredicateObligations;
-use rustc_middle::query::Providers;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::{
     self, GenericArgs, GenericArgsRef, GenericParamDefKind, Ty, TypeVisitableExt,
@@ -27,10 +26,6 @@ use tracing::{debug, instrument};
 pub(crate) use self::MethodError::*;
 use self::probe::{IsSuggestion, ProbeScope};
 use crate::FnCtxt;
-
-pub(crate) fn provide(providers: &mut Providers) {
-    probe::provide(providers);
-}
 
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct MethodCallee<'tcx> {
@@ -375,7 +370,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // type parameters or early-bound regions.
         let tcx = self.tcx;
         // We use `Ident::with_dummy_span` since no built-in operator methods have
-        // any macro-specific hygeine, so the span's context doesn't really matter.
+        // any macro-specific hygiene, so the span's context doesn't really matter.
         let Some(method_item) =
             self.associated_value(trait_def_id, Ident::with_dummy_span(method_name))
         else {
@@ -400,8 +395,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // function signature so that normalization does not need to deal
         // with bound regions.
         let fn_sig = tcx.fn_sig(def_id).instantiate(self.tcx, args);
-        let fn_sig =
-            self.instantiate_binder_with_fresh_vars(obligation.cause.span, infer::FnCall, fn_sig);
+        let fn_sig = self.instantiate_binder_with_fresh_vars(
+            obligation.cause.span,
+            BoundRegionConversionTime::FnCall,
+            fn_sig,
+        );
 
         let InferOk { value: fn_sig, obligations: o } =
             self.at(&obligation.cause, self.param_env).normalize(fn_sig);
@@ -430,19 +428,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         ));
 
         // Also add an obligation for the method type being well-formed.
-        let method_ty = Ty::new_fn_ptr(tcx, ty::Binder::dummy(fn_sig));
         debug!(
-            "lookup_method_in_trait: matched method method_ty={:?} obligation={:?}",
-            method_ty, obligation
+            "lookup_method_in_trait: matched method fn_sig={:?} obligation={:?}",
+            fn_sig, obligation
         );
-        obligations.push(traits::Obligation::new(
-            tcx,
-            obligation.cause,
-            self.param_env,
-            ty::Binder::dummy(ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(
-                method_ty.into(),
-            ))),
-        ));
+        for ty in fn_sig.inputs_and_output {
+            obligations.push(traits::Obligation::new(
+                tcx,
+                obligation.cause.clone(),
+                self.param_env,
+                ty::Binder::dummy(ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(ty.into()))),
+            ));
+        }
 
         let callee = MethodCallee { def_id, args, sig: fn_sig };
         debug!("callee = {:?}", callee);

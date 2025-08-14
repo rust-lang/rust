@@ -1,8 +1,8 @@
-error: Undefined Behavior: Data race detected between (1) non-atomic write on thread `unnamed-ID` and (2) non-atomic write on thread `unnamed-ID` at ALLOC. (2) just happened here
+error: Undefined Behavior: Data race detected between (1) non-atomic write on thread `unnamed-ID` and (2) non-atomic write on thread `unnamed-ID` at ALLOC
   --> tests/fail/data_race/dangling_thread_async_race.rs:LL:CC
    |
-LL |             *c.0 = 64;
-   |             ^^^^^^^^^ Data race detected between (1) non-atomic write on thread `unnamed-ID` and (2) non-atomic write on thread `unnamed-ID` at ALLOC. (2) just happened here
+LL | ...   *c.0 = 64;
+   |       ^^^^^^^^^ (2) just happened here
    |
 help: and (1) occurred earlier here
   --> tests/fail/data_race/dangling_thread_async_race.rs:LL:CC

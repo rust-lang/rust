@@ -21,11 +21,13 @@ LL |     ss.r
 error[E0621]: explicit lifetime required in the type of `ss`
   --> $DIR/object-lifetime-default-from-box-error.rs:33:5
    |
-LL | fn store1<'b>(ss: &mut SomeStruct, b: Box<dyn SomeTrait+'b>) {
-   |                   --------------- help: add explicit lifetime `'b` to the type of `ss`: `&mut SomeStruct<'b>`
-...
 LL |     ss.r = b;
    |     ^^^^ lifetime `'b` required
+   |
+help: add explicit lifetime `'b` to the type of `ss`
+   |
+LL | fn store1<'b>(ss: &mut SomeStruct<'b>, b: Box<dyn SomeTrait+'b>) {
+   |                                  ++++
 
 error: aborting due to 3 previous errors
 

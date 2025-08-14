@@ -191,6 +191,20 @@ We can document it by escaping the initial `#`:
 /// ## bar # baz";
 ```
 
+Here is an example with a macro rule which matches on tokens starting with `#`:
+
+`````rust,no_run
+/// ```
+/// macro_rules! ignore { (##tag) => {}; }
+/// ignore! {
+///     ###tag
+/// }
+/// ```
+# fn f() {}
+`````
+
+As you can see, the rule is expecting two `#`, so when calling it, we need to add an extra `#`
+because the first one is used as escape.
 
 ## Using `?` in doc tests
 
@@ -462,7 +476,7 @@ struct Foo;
 ```
 
 In older versions, this will be ignored on all targets, but starting with
-version CURRENT_RUSTC_VERSION, `ignore-x86_64` will override `ignore`.
+version 1.88.0, `ignore-x86_64` will override `ignore`.
 
 ### Custom CSS classes for code blocks
 

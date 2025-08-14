@@ -1,8 +1,12 @@
-error[E0492]: constants cannot refer to interior mutable data
+error[E0492]: interior mutable shared borrows of temporaries that have their lifetime extended until the end of the program are not allowed
   --> $DIR/qualif_overwrite_2.rs:8:5
    |
 LL |     &{a.0}
-   |     ^^^^^^ this borrow of an interior mutable value may end up in the final value
+   |     ^^^^^^ this borrow of an interior mutable value refers to such a temporary
+   |
+   = note: Temporaries in constants and statics can have their lifetime extended until the end of the program
+   = note: To avoid accidentally creating global mutable state, such temporaries must be immutable
+   = help: If you really want global mutable state, try replacing the temporary by an interior mutable `static` or a `static mut`
 
 error: aborting due to 1 previous error
 

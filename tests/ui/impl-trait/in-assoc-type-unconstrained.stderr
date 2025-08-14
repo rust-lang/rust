@@ -12,14 +12,6 @@ note: required by a bound in `compare_ty::Trait::Ty`
 LL |         type Ty: IntoIterator<Item = ()>;
    |                               ^^^^^^^^^ required by this bound in `Trait::Ty`
 
-error: unconstrained opaque type
-  --> $DIR/in-assoc-type-unconstrained.rs:8:26
-   |
-LL |         type Ty = Option<impl Sized>;
-   |                          ^^^^^^^^^^
-   |
-   = note: `Ty` must be used in combination with a concrete type within the same impl
-
 error[E0053]: method `method` has an incompatible type for trait
   --> $DIR/in-assoc-type-unconstrained.rs:22:24
    |
@@ -41,6 +33,14 @@ help: change the output type to match the trait
 LL -         fn method() -> () {}
 LL +         fn method() -> <() as compare_method::Trait>::Ty {}
    |
+
+error: unconstrained opaque type
+  --> $DIR/in-assoc-type-unconstrained.rs:8:26
+   |
+LL |         type Ty = Option<impl Sized>;
+   |                          ^^^^^^^^^^
+   |
+   = note: `Ty` must be used in combination with a concrete type within the same impl
 
 error: unconstrained opaque type
   --> $DIR/in-assoc-type-unconstrained.rs:20:19

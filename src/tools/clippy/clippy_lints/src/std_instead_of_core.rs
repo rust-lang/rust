@@ -1,13 +1,12 @@
 use clippy_config::Conf;
-use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_sugg};
 use clippy_utils::is_from_proc_macro;
 use clippy_utils::msrvs::Msrv;
-use rustc_attr_parsing::{StabilityLevel, StableSince};
 use rustc_errors::Applicability;
-use rustc_hir::def::Res;
+use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
-use rustc_hir::{HirId, Path, PathSegment};
-use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_hir::{Block, Body, HirId, Path, PathSegment, StabilityLevel, StableSince};
+use rustc_lint::{LateContext, LateLintPass, Lint, LintContext};
 use rustc_session::impl_lint_pass;
 use rustc_span::symbol::kw;
 use rustc_span::{Span, sym};
@@ -88,38 +87,52 @@ declare_clippy_lint! {
 }
 
 pub struct StdReexports {
-    // Paths which can be either a module or a macro (e.g. `std::env`) will cause this check to happen
-    // twice. First for the mod, second for the macro. This is used to avoid the lint reporting for the macro
-    // when the path could be also be used to access the module.
-    prev_span: Span,
+    lint_points: Option<(Span, Vec<LintPoint>)>,
     msrv: Msrv,
 }
 
 impl StdReexports {
     pub fn new(conf: &'static Conf) -> Self {
         Self {
-            prev_span: Span::default(),
+            lint_points: Option::default(),
             msrv: conf.msrv,
+        }
+    }
+
+    fn lint_if_finish(&mut self, cx: &LateContext<'_>, krate: Span, lint_point: LintPoint) {
+        match &mut self.lint_points {
+            Some((prev_krate, prev_lints)) if prev_krate.overlaps(krate) => {
+                prev_lints.push(lint_point);
+            },
+            _ => emit_lints(cx, self.lint_points.replace((krate, vec![lint_point]))),
         }
     }
 }
 
 impl_lint_pass!(StdReexports => [STD_INSTEAD_OF_CORE, STD_INSTEAD_OF_ALLOC, ALLOC_INSTEAD_OF_CORE]);
 
+#[derive(Debug)]
+enum LintPoint {
+    Available(Span, &'static Lint, &'static str, &'static str),
+    Conflict,
+}
+
 impl<'tcx> LateLintPass<'tcx> for StdReexports {
     fn check_path(&mut self, cx: &LateContext<'tcx>, path: &Path<'tcx>, _: HirId) {
-        if let Res::Def(_, def_id) = path.res
+        if let Res::Def(def_kind, def_id) = path.res
             && let Some(first_segment) = get_first_segment(path)
             && is_stable(cx, def_id, self.msrv)
             && !path.span.in_external_macro(cx.sess().source_map())
             && !is_from_proc_macro(cx, &first_segment.ident)
+            && !matches!(def_kind, DefKind::Macro(_))
+            && let Some(last_segment) = path.segments.last()
         {
             let (lint, used_mod, replace_with) = match first_segment.ident.name {
                 sym::std => match cx.tcx.crate_name(def_id.krate) {
                     sym::core => (STD_INSTEAD_OF_CORE, "std", "core"),
                     sym::alloc => (STD_INSTEAD_OF_ALLOC, "std", "alloc"),
                     _ => {
-                        self.prev_span = first_segment.ident.span;
+                        self.lint_if_finish(cx, first_segment.ident.span, LintPoint::Conflict);
                         return;
                     },
                 },
@@ -127,31 +140,83 @@ impl<'tcx> LateLintPass<'tcx> for StdReexports {
                     if cx.tcx.crate_name(def_id.krate) == sym::core {
                         (ALLOC_INSTEAD_OF_CORE, "alloc", "core")
                     } else {
-                        self.prev_span = first_segment.ident.span;
+                        self.lint_if_finish(cx, first_segment.ident.span, LintPoint::Conflict);
                         return;
                     }
                 },
-                _ => return,
+                _ => {
+                    self.lint_if_finish(cx, first_segment.ident.span, LintPoint::Conflict);
+                    return;
+                },
             };
-            if first_segment.ident.span != self.prev_span {
-                #[expect(clippy::collapsible_span_lint_calls, reason = "rust-clippy#7797")]
-                span_lint_and_then(
-                    cx,
-                    lint,
-                    first_segment.ident.span,
-                    format!("used import from `{used_mod}` instead of `{replace_with}`"),
-                    |diag| {
-                        diag.span_suggestion(
-                            first_segment.ident.span,
-                            format!("consider importing the item from `{replace_with}`"),
-                            replace_with.to_string(),
-                            Applicability::MachineApplicable,
-                        );
-                    },
-                );
-                self.prev_span = first_segment.ident.span;
-            }
+
+            self.lint_if_finish(
+                cx,
+                first_segment.ident.span,
+                LintPoint::Available(last_segment.ident.span, lint, used_mod, replace_with),
+            );
         }
+    }
+
+    fn check_block_post(&mut self, cx: &LateContext<'tcx>, _: &Block<'tcx>) {
+        emit_lints(cx, self.lint_points.take());
+    }
+
+    fn check_body_post(&mut self, cx: &LateContext<'tcx>, _: &Body<'tcx>) {
+        emit_lints(cx, self.lint_points.take());
+    }
+
+    fn check_crate_post(&mut self, cx: &LateContext<'tcx>) {
+        emit_lints(cx, self.lint_points.take());
+    }
+}
+
+fn emit_lints(cx: &LateContext<'_>, lint_points: Option<(Span, Vec<LintPoint>)>) {
+    let Some((krate_span, lint_points)) = lint_points else {
+        return;
+    };
+
+    let mut lint: Option<(&'static Lint, &'static str, &'static str)> = None;
+    let mut has_conflict = false;
+    for lint_point in &lint_points {
+        match lint_point {
+            LintPoint::Available(_, l, used_mod, replace_with)
+                if lint.is_none_or(|(prev_l, ..)| l.name == prev_l.name) =>
+            {
+                lint = Some((l, used_mod, replace_with));
+            },
+            _ => {
+                has_conflict = true;
+                break;
+            },
+        }
+    }
+
+    if !has_conflict && let Some((lint, used_mod, replace_with)) = lint {
+        span_lint_and_sugg(
+            cx,
+            lint,
+            krate_span,
+            format!("used import from `{used_mod}` instead of `{replace_with}`"),
+            format!("consider importing the item from `{replace_with}`"),
+            (*replace_with).to_string(),
+            Applicability::MachineApplicable,
+        );
+        return;
+    }
+
+    for lint_point in lint_points {
+        let LintPoint::Available(span, lint, used_mod, replace_with) = lint_point else {
+            continue;
+        };
+        span_lint_and_help(
+            cx,
+            lint,
+            span,
+            format!("used import from `{used_mod}` instead of `{replace_with}`"),
+            None,
+            format!("consider importing the item from `{replace_with}`"),
+        );
     }
 }
 
@@ -183,7 +248,7 @@ fn is_stable(cx: &LateContext<'_>, mut def_id: DefId, msrv: Msrv) -> bool {
             let stable = match since {
                 StableSince::Version(v) => msrv.meets(cx, v),
                 StableSince::Current => msrv.current(cx).is_none(),
-                StableSince::Err => false,
+                StableSince::Err(_) => false,
             };
 
             if !stable {

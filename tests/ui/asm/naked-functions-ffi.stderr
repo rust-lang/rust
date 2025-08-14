@@ -8,13 +8,5 @@ LL | pub extern "C" fn naked(p: char) -> u128 {
    = note: the `char` type has no C equivalent
    = note: `#[warn(improper_ctypes_definitions)]` on by default
 
-warning: `extern` fn uses type `u128`, which is not FFI-safe
-  --> $DIR/naked-functions-ffi.rs:8:37
-   |
-LL | pub extern "C" fn naked(p: char) -> u128 {
-   |                                     ^^^^ not FFI-safe
-   |
-   = note: 128-bit integers don't currently have a known stable ABI
-
-warning: 2 warnings emitted
+warning: 1 warning emitted
 

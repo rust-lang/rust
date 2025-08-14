@@ -11,7 +11,9 @@ use rustc_macros::LintDiagnostic;
 use rustc_middle::bug;
 use rustc_middle::ty::print::PrintTraitRefExt;
 use rustc_middle::ty::{self, GenericArgsRef, GenericParamDef, GenericParamDefKind, TyCtxt};
-use rustc_session::lint::builtin::UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES;
+use rustc_session::lint::builtin::{
+    MALFORMED_DIAGNOSTIC_ATTRIBUTES, MALFORMED_DIAGNOSTIC_FORMAT_LITERALS,
+};
 use rustc_span::{Span, Symbol, sym};
 use tracing::{debug, info};
 
@@ -97,7 +99,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         &self,
         trait_pred: ty::PolyTraitPredicate<'tcx>,
         obligation: &PredicateObligation<'tcx>,
-        long_ty_file: &mut Option<PathBuf>,
+        long_ty_path: &mut Option<PathBuf>,
     ) -> OnUnimplementedNote {
         if trait_pred.polarity() != ty::PredicatePolarity::Positive {
             return OnUnimplementedNote::default();
@@ -279,7 +281,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     GenericParamDefKind::Type { .. } | GenericParamDefKind::Const { .. } => {
                         if let Some(ty) = trait_pred.trait_ref.args[param.index as usize].as_type()
                         {
-                            self.tcx.short_string(ty, long_ty_file)
+                            self.tcx.short_string(ty, long_ty_path)
                         } else {
                             trait_pred.trait_ref.args[param.index as usize].to_string()
                         }
@@ -334,7 +336,7 @@ pub struct OnUnimplementedNote {
     pub append_const_msg: Option<AppendConstMessage>,
 }
 
-/// Append a message for `~const Trait` errors.
+/// Append a message for `[const] Trait` errors.
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
 pub enum AppendConstMessage {
     #[default]
@@ -379,15 +381,15 @@ impl IgnoredDiagnosticOption {
         old: Option<Span>,
         option_name: &'static str,
     ) {
-        if let (Some(new_item), Some(old_item)) = (new, old) {
-            if let Some(item_def_id) = item_def_id.as_local() {
-                tcx.emit_node_span_lint(
-                    UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
-                    tcx.local_def_id_to_hir_id(item_def_id),
-                    new_item,
-                    IgnoredDiagnosticOption { span: new_item, prev_span: old_item, option_name },
-                );
-            }
+        if let (Some(new_item), Some(old_item)) = (new, old)
+            && let Some(item_def_id) = item_def_id.as_local()
+        {
+            tcx.emit_node_span_lint(
+                MALFORMED_DIAGNOSTIC_ATTRIBUTES,
+                tcx.local_def_id_to_hir_id(item_def_id),
+                new_item,
+                IgnoredDiagnosticOption { span: new_item, prev_span: old_item, option_name },
+            );
         }
     }
 }
@@ -429,7 +431,19 @@ impl<'tcx> OnUnimplementedDirective {
                 .next()
                 .ok_or_else(|| tcx.dcx().emit_err(InvalidOnClause::Empty { span }))?;
 
-            match OnUnimplementedCondition::parse(cond) {
+            let generics: Vec<Symbol> = tcx
+                .generics_of(item_def_id)
+                .own_params
+                .iter()
+                .filter_map(|param| {
+                    if matches!(param.kind, GenericParamDefKind::Lifetime) {
+                        None
+                    } else {
+                        Some(param.name)
+                    }
+                })
+                .collect();
+            match OnUnimplementedCondition::parse(cond, &generics) {
                 Ok(condition) => Some(condition),
                 Err(e) => return Err(tcx.dcx().emit_err(e)),
             }
@@ -521,7 +535,7 @@ impl<'tcx> OnUnimplementedDirective {
             if is_diagnostic_namespace_variant {
                 if let Some(def_id) = item_def_id.as_local() {
                     tcx.emit_node_span_lint(
-                        UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
+                        MALFORMED_DIAGNOSTIC_ATTRIBUTES,
                         tcx.local_def_id_to_hir_id(def_id),
                         vec![item.span()],
                         MalformedOnUnimplementedAttrLint::new(item.span()),
@@ -677,7 +691,7 @@ impl<'tcx> OnUnimplementedDirective {
 
                 if let Some(item_def_id) = item_def_id.as_local() {
                     tcx.emit_node_span_lint(
-                        UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
+                        MALFORMED_DIAGNOSTIC_ATTRIBUTES,
                         tcx.local_def_id_to_hir_id(item_def_id),
                         report_span,
                         MalformedOnUnimplementedAttrLint::new(report_span),
@@ -690,7 +704,7 @@ impl<'tcx> OnUnimplementedDirective {
                 Attribute::Unparsed(p) if !matches!(p.args, AttrArgs::Empty) => {
                     if let Some(item_def_id) = item_def_id.as_local() {
                         tcx.emit_node_span_lint(
-                            UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
+                            MALFORMED_DIAGNOSTIC_ATTRIBUTES,
                             tcx.local_def_id_to_hir_id(item_def_id),
                             attr.span(),
                             MalformedOnUnimplementedAttrLint::new(attr.span()),
@@ -700,7 +714,7 @@ impl<'tcx> OnUnimplementedDirective {
                 _ => {
                     if let Some(item_def_id) = item_def_id.as_local() {
                         tcx.emit_node_span_lint(
-                            UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
+                            MALFORMED_DIAGNOSTIC_ATTRIBUTES,
                             tcx.local_def_id_to_hir_id(item_def_id),
                             attr.span(),
                             MissingOptionsForOnUnimplementedAttr,
@@ -798,7 +812,8 @@ impl<'tcx> OnUnimplementedFormatString {
 
         let mut result = Ok(());
 
-        match FormatString::parse(self.symbol, self.span, &ctx) {
+        let snippet = tcx.sess.source_map().span_to_snippet(self.span).ok();
+        match FormatString::parse(self.symbol, snippet, self.span, &ctx) {
             // Warnings about format specifiers, deprecated parameters, wrong parameters etc.
             // In other words we'd like to let the author know, but we can still try to format the string later
             Ok(FormatString { warnings, .. }) => {
@@ -836,34 +851,27 @@ impl<'tcx> OnUnimplementedFormatString {
                     }
                 }
             }
-            // Errors from the underlying `rustc_parse_format::Parser`
-            Err(errors) => {
+            // Error from the underlying `rustc_parse_format::Parser`
+            Err(e) => {
                 // we cannot return errors from processing the format string as hard error here
                 // as the diagnostic namespace guarantees that malformed input cannot cause an error
                 //
                 // if we encounter any error while processing we nevertheless want to show it as warning
                 // so that users are aware that something is not correct
-                for e in errors {
-                    if self.is_diagnostic_namespace_variant {
-                        if let Some(trait_def_id) = trait_def_id.as_local() {
-                            tcx.emit_node_span_lint(
-                                UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
-                                tcx.local_def_id_to_hir_id(trait_def_id),
-                                self.span,
-                                WrappedParserError { description: e.description, label: e.label },
-                            );
-                        }
-                    } else {
-                        let reported = struct_span_code_err!(
-                            tcx.dcx(),
+                if self.is_diagnostic_namespace_variant {
+                    if let Some(trait_def_id) = trait_def_id.as_local() {
+                        tcx.emit_node_span_lint(
+                            MALFORMED_DIAGNOSTIC_FORMAT_LITERALS,
+                            tcx.local_def_id_to_hir_id(trait_def_id),
                             self.span,
-                            E0231,
-                            "{}",
-                            e.description,
-                        )
-                        .emit();
-                        result = Err(reported);
+                            WrappedParserError { description: e.description, label: e.label },
+                        );
                     }
+                } else {
+                    let reported =
+                        struct_span_code_err!(tcx.dcx(), self.span, E0231, "{}", e.description,)
+                            .emit();
+                    result = Err(reported);
                 }
             }
         }
@@ -884,7 +892,8 @@ impl<'tcx> OnUnimplementedFormatString {
             Ctx::RustcOnUnimplemented { tcx, trait_def_id }
         };
 
-        if let Ok(s) = FormatString::parse(self.symbol, self.span, &ctx) {
+        // No point passing a snippet here, we already did that in `verify`
+        if let Ok(s) = FormatString::parse(self.symbol, None, self.span, &ctx) {
             s.format(args)
         } else {
             // we cannot return errors from processing the format string as hard error here

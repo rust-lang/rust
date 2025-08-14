@@ -31,8 +31,8 @@ use syntax::{SyntaxNodePtr, TextRange};
 use triomphe::Arc;
 
 use crate::{
-    CallableDefId, ClosureId, ComplexMemoryMap, Const, ConstData, ConstScalar, FnDefId, Interner,
-    MemoryMap, Substitution, TraitEnvironment, Ty, TyBuilder, TyExt, TyKind,
+    AliasTy, CallableDefId, ClosureId, ComplexMemoryMap, Const, ConstData, ConstScalar, FnDefId,
+    Interner, MemoryMap, Substitution, ToChalk, TraitEnvironment, Ty, TyBuilder, TyExt, TyKind,
     consteval::{ConstEvalError, intern_const_scalar, try_const_usize},
     db::{HirDatabase, InternedClosure},
     display::{ClosureStyle, DisplayTarget, HirDisplay},
@@ -630,7 +630,7 @@ impl Evaluator<'_> {
             Ok(target_data_layout) => target_data_layout,
             Err(e) => return Err(MirEvalError::TargetDataLayoutNotAvailable(e)),
         };
-        let cached_ptr_size = target_data_layout.pointer_size.bytes_usize();
+        let cached_ptr_size = target_data_layout.pointer_size().bytes_usize();
         Ok(Evaluator {
             target_data_layout,
             stack: vec![0],
@@ -657,12 +657,12 @@ impl Evaluator<'_> {
             cached_ptr_size,
             cached_fn_trait_func: LangItem::Fn
                 .resolve_trait(db, crate_id)
-                .and_then(|x| db.trait_items(x).method_by_name(&Name::new_symbol_root(sym::call))),
+                .and_then(|x| x.trait_items(db).method_by_name(&Name::new_symbol_root(sym::call))),
             cached_fn_mut_trait_func: LangItem::FnMut.resolve_trait(db, crate_id).and_then(|x| {
-                db.trait_items(x).method_by_name(&Name::new_symbol_root(sym::call_mut))
+                x.trait_items(db).method_by_name(&Name::new_symbol_root(sym::call_mut))
             }),
             cached_fn_once_trait_func: LangItem::FnOnce.resolve_trait(db, crate_id).and_then(|x| {
-                db.trait_items(x).method_by_name(&Name::new_symbol_root(sym::call_once))
+                x.trait_items(db).method_by_name(&Name::new_symbol_root(sym::call_once))
             }),
         })
     }
@@ -1082,18 +1082,18 @@ impl Evaluator<'_> {
         let stack_size = {
             let mut stack_ptr = self.stack.len();
             for (id, it) in body.locals.iter() {
-                if id == return_slot() {
-                    if let Some(destination) = destination {
-                        locals.ptr.insert(id, destination);
-                        continue;
-                    }
+                if id == return_slot()
+                    && let Some(destination) = destination
+                {
+                    locals.ptr.insert(id, destination);
+                    continue;
                 }
                 let (size, align) = self.size_align_of_sized(
                     &it.ty,
                     &locals,
                     "no unsized local in extending stack",
                 )?;
-                while stack_ptr % align != 0 {
+                while !stack_ptr.is_multiple_of(align) {
                     stack_ptr += 1;
                 }
                 let my_ptr = stack_ptr;
@@ -1631,7 +1631,7 @@ impl Evaluator<'_> {
             Variants::Empty => unreachable!(),
             Variants::Single { index } => {
                 let r =
-                    self.const_eval_discriminant(self.db.enum_variants(e).variants[index.0].0)?;
+                    self.const_eval_discriminant(e.enum_variants(self.db).variants[index.0].0)?;
                 Ok(r)
             }
             Variants::Multiple { tag, tag_encoding, variants, .. } => {
@@ -1656,7 +1656,7 @@ impl Evaluator<'_> {
                             .unwrap_or(*untagged_variant)
                             .0;
                         let result =
-                            self.const_eval_discriminant(self.db.enum_variants(e).variants[idx].0)?;
+                            self.const_eval_discriminant(e.enum_variants(self.db).variants[idx].0)?;
                         Ok(result)
                     }
                 }
@@ -1673,14 +1673,14 @@ impl Evaluator<'_> {
         if let Some(it) = goal(kind) {
             return Ok(it);
         }
-        if let TyKind::Adt(id, subst) = kind {
-            if let AdtId::StructId(struct_id) = id.0 {
-                let field_types = self.db.field_types(struct_id.into());
-                if let Some(ty) =
-                    field_types.iter().last().map(|it| it.1.clone().substitute(Interner, subst))
-                {
-                    return self.coerce_unsized_look_through_fields(&ty, goal);
-                }
+        if let TyKind::Adt(id, subst) = kind
+            && let AdtId::StructId(struct_id) = id.0
+        {
+            let field_types = self.db.field_types(struct_id.into());
+            if let Some(ty) =
+                field_types.iter().last().map(|it| it.1.clone().substitute(Interner, subst))
+            {
+                return self.coerce_unsized_look_through_fields(&ty, goal);
             }
         }
         Err(MirEvalError::CoerceUnsizedError(ty.clone()))
@@ -1749,8 +1749,7 @@ impl Evaluator<'_> {
                         AdtId::UnionId(_) => not_supported!("unsizing unions"),
                         AdtId::EnumId(_) => not_supported!("unsizing enums"),
                     };
-                    let Some((last_field, _)) =
-                        self.db.variant_fields(id.into()).fields().iter().next_back()
+                    let Some((last_field, _)) = id.fields(self.db).fields().iter().next_back()
                     else {
                         not_supported!("unsizing struct without field");
                     };
@@ -1779,17 +1778,15 @@ impl Evaluator<'_> {
         locals: &Locals,
     ) -> Result<(usize, Arc<Layout>, Option<(usize, usize, i128)>)> {
         let adt = it.adt_id(self.db);
-        if let DefWithBodyId::VariantId(f) = locals.body.owner {
-            if let VariantId::EnumVariantId(it) = it {
-                if let AdtId::EnumId(e) = adt {
-                    if f.lookup(self.db).parent == e {
-                        // Computing the exact size of enums require resolving the enum discriminants. In order to prevent loops (and
-                        // infinite sized type errors) we use a dummy layout
-                        let i = self.const_eval_discriminant(it)?;
-                        return Ok((16, self.layout(&TyBuilder::unit())?, Some((0, 16, i))));
-                    }
-                }
-            }
+        if let DefWithBodyId::VariantId(f) = locals.body.owner
+            && let VariantId::EnumVariantId(it) = it
+            && let AdtId::EnumId(e) = adt
+            && f.lookup(self.db).parent == e
+        {
+            // Computing the exact size of enums require resolving the enum discriminants. In order to prevent loops (and
+            // infinite sized type errors) we use a dummy layout
+            let i = self.const_eval_discriminant(it)?;
+            return Ok((16, self.layout(&TyBuilder::unit())?, Some((0, 16, i))));
         }
         let layout = self.layout_adt(adt, subst)?;
         Ok(match &layout.variants {
@@ -1910,10 +1907,10 @@ impl Evaluator<'_> {
                         let name = const_id.name(self.db);
                         MirEvalError::ConstEvalError(name, Box::new(e))
                     })?;
-                if let chalk_ir::ConstValue::Concrete(c) = &result_owner.data(Interner).value {
-                    if let ConstScalar::Bytes(v, mm) = &c.interned {
-                        break 'b (v, mm);
-                    }
+                if let chalk_ir::ConstValue::Concrete(c) = &result_owner.data(Interner).value
+                    && let ConstScalar::Bytes(v, mm) = &c.interned
+                {
+                    break 'b (v, mm);
                 }
                 not_supported!("unevaluatable constant");
             }
@@ -2056,14 +2053,13 @@ impl Evaluator<'_> {
                 .is_sized()
                 .then(|| (layout.size.bytes_usize(), layout.align.abi.bytes() as usize)));
         }
-        if let DefWithBodyId::VariantId(f) = locals.body.owner {
-            if let Some((AdtId::EnumId(e), _)) = ty.as_adt() {
-                if f.lookup(self.db).parent == e {
-                    // Computing the exact size of enums require resolving the enum discriminants. In order to prevent loops (and
-                    // infinite sized type errors) we use a dummy size
-                    return Ok(Some((16, 16)));
-                }
-            }
+        if let DefWithBodyId::VariantId(f) = locals.body.owner
+            && let Some((AdtId::EnumId(e), _)) = ty.as_adt()
+            && f.lookup(self.db).parent == e
+        {
+            // Computing the exact size of enums require resolving the enum discriminants. In order to prevent loops (and
+            // infinite sized type errors) we use a dummy size
+            return Ok(Some((16, 16)));
         }
         let layout = self.layout(ty);
         if self.assert_placeholder_ty_is_unused
@@ -2104,7 +2100,7 @@ impl Evaluator<'_> {
         if !align.is_power_of_two() || align > 10000 {
             return Err(MirEvalError::UndefinedBehavior(format!("Alignment {align} is invalid")));
         }
-        while self.heap.len() % align != 0 {
+        while !self.heap.len().is_multiple_of(align) {
             self.heap.push(0);
         }
         if size.checked_add(self.heap.len()).is_none_or(|x| x > self.memory_limit) {
@@ -2196,7 +2192,7 @@ impl Evaluator<'_> {
                         }
                     }
                 }
-                chalk_ir::TyKind::Array(inner, len) => {
+                TyKind::Array(inner, len) => {
                     let len = match try_const_usize(this.db, len) {
                         Some(it) => it as usize,
                         None => not_supported!("non evaluatable array len in patching addresses"),
@@ -2214,7 +2210,7 @@ impl Evaluator<'_> {
                         )?;
                     }
                 }
-                chalk_ir::TyKind::Tuple(_, subst) => {
+                TyKind::Tuple(_, subst) => {
                     let layout = this.layout(ty)?;
                     for (id, ty) in subst.iter(Interner).enumerate() {
                         let ty = ty.assert_ty_ref(Interner); // Tuple only has type argument
@@ -2230,9 +2226,9 @@ impl Evaluator<'_> {
                         )?;
                     }
                 }
-                chalk_ir::TyKind::Adt(adt, subst) => match adt.0 {
+                TyKind::Adt(adt, subst) => match adt.0 {
                     AdtId::StructId(s) => {
-                        let data = this.db.variant_fields(s.into());
+                        let data = s.fields(this.db);
                         let layout = this.layout(ty)?;
                         let field_types = this.db.field_types(s.into());
                         for (f, _) in data.fields().iter() {
@@ -2261,7 +2257,7 @@ impl Evaluator<'_> {
                             bytes,
                             e,
                         ) {
-                            let data = &this.db.variant_fields(v.into());
+                            let data = v.fields(this.db);
                             let field_types = this.db.field_types(v.into());
                             for (f, _) in data.fields().iter() {
                                 let offset =
@@ -2281,6 +2277,10 @@ impl Evaluator<'_> {
                     }
                     AdtId::UnionId(_) => (),
                 },
+                TyKind::Alias(AliasTy::Projection(proj)) => {
+                    let ty = this.db.normalize_projection(proj.clone(), this.trait_env.clone());
+                    rec(this, bytes, &ty, locals, mm, stack_depth_limit - 1)?;
+                }
                 _ => (),
             }
             Ok(())
@@ -2771,12 +2771,15 @@ impl Evaluator<'_> {
             Err(e) => {
                 let db = self.db;
                 let loc = variant.lookup(db);
-                let enum_loc = loc.parent.lookup(db);
                 let edition = self.crate_id.data(self.db).edition;
                 let name = format!(
                     "{}::{}",
-                    enum_loc.id.item_tree(db)[enum_loc.id.value].name.display(db, edition),
-                    loc.id.item_tree(db)[loc.id.value].name.display(db, edition),
+                    self.db.enum_signature(loc.parent).name.display(db, edition),
+                    loc.parent
+                        .enum_variants(self.db)
+                        .variant_name_by_id(variant)
+                        .unwrap()
+                        .display(db, edition),
                 );
                 Err(MirEvalError::ConstEvalError(name, Box::new(e)))
             }
@@ -2805,7 +2808,7 @@ impl Evaluator<'_> {
     ) -> Result<()> {
         let Some(drop_fn) = (|| {
             let drop_trait = LangItem::Drop.resolve_trait(self.db, self.crate_id)?;
-            self.db.trait_items(drop_trait).method_by_name(&Name::new_symbol_root(sym::drop))
+            drop_trait.trait_items(self.db).method_by_name(&Name::new_symbol_root(sym::drop))
         })() else {
             // in some tests we don't have drop trait in minicore, and
             // we can ignore drop in them.
@@ -2835,7 +2838,7 @@ impl Evaluator<'_> {
                             return Ok(());
                         }
                         let layout = self.layout_adt(id.0, subst.clone())?;
-                        let variant_fields = self.db.variant_fields(s.into());
+                        let variant_fields = s.fields(self.db);
                         match variant_fields.shape {
                             FieldsShape::Record | FieldsShape::Tuple => {
                                 let field_types = self.db.field_types(s.into());
@@ -2915,7 +2918,7 @@ pub fn render_const_using_debug_impl(
         not_supported!("core::fmt::Debug not found");
     };
     let Some(debug_fmt_fn) =
-        db.trait_items(debug_trait).method_by_name(&Name::new_symbol_root(sym::fmt))
+        debug_trait.trait_items(db).method_by_name(&Name::new_symbol_root(sym::fmt))
     else {
         not_supported!("core::fmt::Debug::fmt not found");
     };
@@ -2927,7 +2930,7 @@ pub fn render_const_using_debug_impl(
     let a2 = evaluator.heap_allocate(evaluator.ptr_size() * 2, evaluator.ptr_size())?;
     evaluator.write_memory(a2, &data.addr.to_bytes())?;
     let debug_fmt_fn_ptr = evaluator.vtable_map.id(TyKind::FnDef(
-        db.intern_callable_def(debug_fmt_fn.into()).into(),
+        CallableDefId::FunctionId(debug_fmt_fn).to_chalk(db),
         Substitution::from1(Interner, c.data(Interner).ty.clone()),
     )
     .intern(Interner));
@@ -3042,7 +3045,10 @@ impl IntValue {
             (8, true) => Self::I64(i64::from_le_bytes(bytes.try_into().unwrap())),
             (16, false) => Self::U128(u128::from_le_bytes(bytes.try_into().unwrap())),
             (16, true) => Self::I128(i128::from_le_bytes(bytes.try_into().unwrap())),
-            _ => panic!("invalid integer size"),
+            (len, is_signed) => {
+                never!("invalid integer size: {len}, signed: {is_signed}");
+                Self::I32(0)
+            }
         }
     }
 

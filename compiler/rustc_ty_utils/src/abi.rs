@@ -11,9 +11,10 @@ use rustc_middle::ty::layout::{
 };
 use rustc_middle::ty::{self, InstanceKind, Ty, TyCtxt};
 use rustc_session::config::OptLevel;
+use rustc_span::DUMMY_SP;
 use rustc_span::def_id::DefId;
 use rustc_target::callconv::{
-    ArgAbi, ArgAttribute, ArgAttributes, ArgExtension, Conv, FnAbi, PassMode, RiscvInterruptKind,
+    AbiMap, ArgAbi, ArgAttribute, ArgAttributes, ArgExtension, FnAbi, PassMode,
 };
 use tracing::debug;
 
@@ -38,7 +39,7 @@ fn fn_sig_for_fn_abi<'tcx>(
             tcx.thread_local_ptr_ty(instance.def_id()),
             false,
             hir::Safety::Safe,
-            rustc_abi::ExternAbi::Unadjusted,
+            rustc_abi::ExternAbi::Rust,
         );
     }
 
@@ -124,7 +125,7 @@ fn fn_sig_for_fn_abi<'tcx>(
 
             let env_ty = Ty::new_mut_ref(tcx, tcx.lifetimes.re_erased, ty);
 
-            let pin_did = tcx.require_lang_item(LangItem::Pin, None);
+            let pin_did = tcx.require_lang_item(LangItem::Pin, DUMMY_SP);
             let pin_adt_ref = tcx.adt_def(pin_did);
             let pin_args = tcx.mk_args(&[env_ty.into()]);
             let env_ty = match coroutine_kind {
@@ -149,7 +150,7 @@ fn fn_sig_for_fn_abi<'tcx>(
                     // The signature should be `Future::poll(_, &mut Context<'_>) -> Poll<Output>`
                     assert_eq!(sig.yield_ty, tcx.types.unit);
 
-                    let poll_did = tcx.require_lang_item(LangItem::Poll, None);
+                    let poll_did = tcx.require_lang_item(LangItem::Poll, DUMMY_SP);
                     let poll_adt_ref = tcx.adt_def(poll_did);
                     let poll_args = tcx.mk_args(&[sig.return_ty.into()]);
                     let ret_ty = Ty::new_adt(tcx, poll_adt_ref, poll_args);
@@ -160,7 +161,7 @@ fn fn_sig_for_fn_abi<'tcx>(
                     {
                         if let ty::Adt(resume_ty_adt, _) = sig.resume_ty.kind() {
                             let expected_adt =
-                                tcx.adt_def(tcx.require_lang_item(LangItem::ResumeTy, None));
+                                tcx.adt_def(tcx.require_lang_item(LangItem::ResumeTy, DUMMY_SP));
                             assert_eq!(*resume_ty_adt, expected_adt);
                         } else {
                             panic!("expected `ResumeTy`, found `{:?}`", sig.resume_ty);
@@ -172,7 +173,7 @@ fn fn_sig_for_fn_abi<'tcx>(
                 }
                 hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Gen, _) => {
                     // The signature should be `Iterator::next(_) -> Option<Yield>`
-                    let option_did = tcx.require_lang_item(LangItem::Option, None);
+                    let option_did = tcx.require_lang_item(LangItem::Option, DUMMY_SP);
                     let option_adt_ref = tcx.adt_def(option_did);
                     let option_args = tcx.mk_args(&[sig.yield_ty.into()]);
                     let ret_ty = Ty::new_adt(tcx, option_adt_ref, option_args);
@@ -196,7 +197,7 @@ fn fn_sig_for_fn_abi<'tcx>(
                     {
                         if let ty::Adt(resume_ty_adt, _) = sig.resume_ty.kind() {
                             let expected_adt =
-                                tcx.adt_def(tcx.require_lang_item(LangItem::ResumeTy, None));
+                                tcx.adt_def(tcx.require_lang_item(LangItem::ResumeTy, DUMMY_SP));
                             assert_eq!(*resume_ty_adt, expected_adt);
                         } else {
                             panic!("expected `ResumeTy`, found `{:?}`", sig.resume_ty);
@@ -208,7 +209,7 @@ fn fn_sig_for_fn_abi<'tcx>(
                 }
                 hir::CoroutineKind::Coroutine(_) => {
                     // The signature should be `Coroutine::resume(_, Resume) -> CoroutineState<Yield, Return>`
-                    let state_did = tcx.require_lang_item(LangItem::CoroutineState, None);
+                    let state_did = tcx.require_lang_item(LangItem::CoroutineState, DUMMY_SP);
                     let state_adt_ref = tcx.adt_def(state_did);
                     let state_args = tcx.mk_args(&[sig.yield_ty.into(), sig.return_ty.into()]);
                     let ret_ty = Ty::new_adt(tcx, state_adt_ref, state_args);
@@ -240,45 +241,6 @@ fn fn_sig_for_fn_abi<'tcx>(
     }
 }
 
-#[inline]
-fn conv_from_spec_abi(tcx: TyCtxt<'_>, abi: ExternAbi, c_variadic: bool) -> Conv {
-    use rustc_abi::ExternAbi::*;
-    match tcx.sess.target.adjust_abi(abi, c_variadic) {
-        Rust | RustCall => Conv::Rust,
-
-        // This is intentionally not using `Conv::Cold`, as that has to preserve
-        // even SIMD registers, which is generally not a good trade-off.
-        RustCold => Conv::PreserveMost,
-
-        // It's the ABI's job to select this, not ours.
-        System { .. } => bug!("system abi should be selected elsewhere"),
-        EfiApi => bug!("eficall abi should be selected elsewhere"),
-
-        Stdcall { .. } => Conv::X86Stdcall,
-        Fastcall { .. } => Conv::X86Fastcall,
-        Vectorcall { .. } => Conv::X86VectorCall,
-        Thiscall { .. } => Conv::X86ThisCall,
-        C { .. } => Conv::C,
-        Unadjusted => Conv::C,
-        Win64 { .. } => Conv::X86_64Win64,
-        SysV64 { .. } => Conv::X86_64SysV,
-        Aapcs { .. } => Conv::ArmAapcs,
-        CCmseNonSecureCall => Conv::CCmseNonSecureCall,
-        CCmseNonSecureEntry => Conv::CCmseNonSecureEntry,
-        PtxKernel => Conv::GpuKernel,
-        Msp430Interrupt => Conv::Msp430Intr,
-        X86Interrupt => Conv::X86Intr,
-        GpuKernel => Conv::GpuKernel,
-        AvrInterrupt => Conv::AvrInterrupt,
-        AvrNonBlockingInterrupt => Conv::AvrNonBlockingInterrupt,
-        RiscvInterruptM => Conv::RiscvInterrupt { kind: RiscvInterruptKind::Machine },
-        RiscvInterruptS => Conv::RiscvInterrupt { kind: RiscvInterruptKind::Supervisor },
-
-        // These API constants ought to be more specific...
-        Cdecl { .. } => Conv::C,
-    }
-}
-
 fn fn_abi_of_fn_ptr<'tcx>(
     tcx: TyCtxt<'tcx>,
     query: ty::PseudoCanonicalInput<'tcx, (ty::PolyFnSig<'tcx>, &'tcx ty::List<Ty<'tcx>>)>,
@@ -306,20 +268,21 @@ fn fn_abi_of_instance<'tcx>(
 }
 
 // Handle safe Rust thin and wide pointers.
-fn adjust_for_rust_scalar<'tcx>(
+fn arg_attrs_for_rust_scalar<'tcx>(
     cx: LayoutCx<'tcx>,
-    attrs: &mut ArgAttributes,
     scalar: Scalar,
     layout: TyAndLayout<'tcx>,
     offset: Size,
     is_return: bool,
     drop_target_pointee: Option<Ty<'tcx>>,
-) {
+) -> ArgAttributes {
+    let mut attrs = ArgAttributes::new();
+
     // Booleans are always a noundef i1 that needs to be zero-extended.
     if scalar.is_bool() {
         attrs.ext(ArgExtension::Zext);
         attrs.set(ArgAttribute::NoUndef);
-        return;
+        return attrs;
     }
 
     if !scalar.is_uninit_valid() {
@@ -327,7 +290,7 @@ fn adjust_for_rust_scalar<'tcx>(
     }
 
     // Only pointer types handled below.
-    let Scalar::Initialized { value: Pointer(_), valid_range } = scalar else { return };
+    let Scalar::Initialized { value: Pointer(_), valid_range } = scalar else { return attrs };
 
     // Set `nonnull` if the validity range excludes zero, or for the argument to `drop_in_place`,
     // which must be nonnull per its documented safety requirements.
@@ -396,6 +359,8 @@ fn adjust_for_rust_scalar<'tcx>(
             }
         }
     }
+
+    attrs
 }
 
 /// Ensure that the ABI makes basic sense.
@@ -441,28 +406,18 @@ fn fn_abi_sanity_check<'tcx>(
                         // For an unsized type we'd only pass the sized prefix, so there is no universe
                         // in which we ever want to allow this.
                         assert!(sized, "`PassMode::Direct` for unsized type in ABI: {:#?}", fn_abi);
+
                         // This really shouldn't happen even for sized aggregates, since
                         // `immediate_llvm_type` will use `layout.fields` to turn this Rust type into an
                         // LLVM type. This means all sorts of Rust type details leak into the ABI.
-                        // However wasm sadly *does* currently use this mode for it's "C" ABI so we
-                        // have to allow it -- but we absolutely shouldn't let any more targets do
-                        // that. (Also see <https://github.com/rust-lang/rust/issues/115666>.)
-                        //
-                        // The unadjusted ABI also uses Direct for all args and is ill-specified,
+                        // The unadjusted ABI however uses Direct for all args. It is ill-specified,
                         // but unfortunately we need it for calling certain LLVM intrinsics.
-
-                        match spec_abi {
-                            ExternAbi::Unadjusted => {}
-                            ExternAbi::C { unwind: _ }
-                                if matches!(&*tcx.sess.target.arch, "wasm32" | "wasm64") => {}
-                            _ => {
-                                panic!(
-                                    "`PassMode::Direct` for aggregates only allowed for \"unadjusted\" functions and on wasm\n\
-                                      Problematic type: {:#?}",
-                                    arg.layout,
-                                );
-                            }
-                        }
+                        assert!(
+                            matches!(spec_abi, ExternAbi::Unadjusted),
+                            "`PassMode::Direct` for aggregates only allowed for \"unadjusted\"\n\
+                             Problematic type: {:#?}",
+                            arg.layout,
+                        );
                     }
                 }
             }
@@ -519,9 +474,10 @@ fn fn_abi_new_uncached<'tcx>(
     let (caller_location, determined_fn_def_id, is_virtual_call) = if let Some(instance) = instance
     {
         let is_virtual_call = matches!(instance.def, ty::InstanceKind::Virtual(..));
+        let is_tls_shim_call = matches!(instance.def, ty::InstanceKind::ThreadLocalShim(_));
         (
             instance.def.requires_caller_location(tcx).then(|| tcx.caller_location_ty()),
-            if is_virtual_call { None } else { Some(instance.def_id()) },
+            if is_virtual_call || is_tls_shim_call { None } else { Some(instance.def_id()) },
             is_virtual_call,
         )
     } else {
@@ -529,7 +485,8 @@ fn fn_abi_new_uncached<'tcx>(
     };
     let sig = tcx.normalize_erasing_regions(cx.typing_env, sig);
 
-    let conv = conv_from_spec_abi(cx.tcx(), sig.abi, sig.c_variadic);
+    let abi_map = AbiMap::from_target(&tcx.sess.target);
+    let conv = abi_map.canonize_abi(sig.abi, sig.c_variadic).unwrap();
 
     let mut inputs = sig.inputs();
     let extra_args = if sig.abi == ExternAbi::RustCall {
@@ -577,17 +534,7 @@ fn fn_abi_new_uncached<'tcx>(
         };
 
         let mut arg = ArgAbi::new(cx, layout, |layout, scalar, offset| {
-            let mut attrs = ArgAttributes::new();
-            adjust_for_rust_scalar(
-                *cx,
-                &mut attrs,
-                scalar,
-                *layout,
-                offset,
-                is_return,
-                drop_target_pointee,
-            );
-            attrs
+            arg_attrs_for_rust_scalar(*cx, scalar, *layout, offset, is_return, drop_target_pointee)
         });
 
         if arg.layout.is_zst() {
@@ -610,6 +557,7 @@ fn fn_abi_new_uncached<'tcx>(
         c_variadic: sig.c_variadic,
         fixed_count: inputs.len() as u32,
         conv,
+        // FIXME return false for tls shim
         can_unwind: fn_can_unwind(
             tcx,
             // Since `#[rustc_nounwind]` can change unwinding, we cannot infer unwinding by `fn_def_id` for a virtual call.
@@ -622,8 +570,9 @@ fn fn_abi_new_uncached<'tcx>(
         &mut fn_abi,
         sig.abi,
         // If this is a virtual call, we cannot pass the `fn_def_id`, as it might call other
-        // functions from vtable. Internally, `deduced_param_attrs` attempts to infer attributes by
-        // visit the function body.
+        // functions from vtable. And for a tls shim, passing the `fn_def_id` would refer to
+        // the underlying static. Internally, `deduced_param_attrs` attempts to infer attributes
+        // by visit the function body.
         determined_fn_def_id,
     );
     debug!("fn_abi_new_uncached = {:?}", fn_abi);
@@ -689,11 +638,11 @@ fn fn_abi_adjust_for_abi<'tcx>(
                 // The `deduced_param_attrs` list could be empty if this is a type of function
                 // we can't deduce any parameters for, so make sure the argument index is in
                 // bounds.
-                if let Some(deduced_param_attrs) = deduced_param_attrs.get(arg_idx) {
-                    if deduced_param_attrs.read_only {
-                        attrs.regular.insert(ArgAttribute::ReadOnly);
-                        debug!("added deduced read-only attribute");
-                    }
+                if let Some(deduced_param_attrs) = deduced_param_attrs.get(arg_idx)
+                    && deduced_param_attrs.read_only
+                {
+                    attrs.regular.insert(ArgAttribute::ReadOnly);
+                    debug!("added deduced read-only attribute");
                 }
             }
         }

@@ -55,3 +55,14 @@ fn swap8() {
     let i2 = 1;
     v.swap(i1 + i2, i2);
 }
+
+fn issue_14931() {
+    let mut v = [1, 2, 3, 4];
+
+    let mut i1 = 0;
+    for i2 in 0..4 {
+        v.swap(i1, i2);
+
+        i1 += 2;
+    }
+}

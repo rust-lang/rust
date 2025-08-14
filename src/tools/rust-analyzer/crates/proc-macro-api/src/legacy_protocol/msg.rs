@@ -1,5 +1,6 @@
 //! Defines messages for cross-process message passing based on `ndjson` wire protocol
 pub(crate) mod flat;
+pub use self::flat::*;
 
 use std::io::{self, BufRead, Write};
 
@@ -8,23 +9,6 @@ use serde::de::DeserializeOwned;
 use serde_derive::{Deserialize, Serialize};
 
 use crate::ProcMacroKind;
-
-pub use self::flat::{
-    FlatTree, SpanDataIndexMap, deserialize_span_data_index_map, serialize_span_data_index_map,
-};
-pub use span::TokenId;
-
-// The versions of the server protocol
-pub const NO_VERSION_CHECK_VERSION: u32 = 0;
-pub const VERSION_CHECK_VERSION: u32 = 1;
-pub const ENCODE_CLOSE_SPAN_VERSION: u32 = 2;
-pub const HAS_GLOBAL_SPANS: u32 = 3;
-pub const RUST_ANALYZER_SPAN_SUPPORT: u32 = 4;
-/// Whether literals encode their kind as an additional u32 field and idents their rawness as a u32 field.
-pub const EXTENDED_LEAF_DATA: u32 = 5;
-
-/// Current API version of the proc-macro protocol.
-pub const CURRENT_API_VERSION: u32 = EXTENDED_LEAF_DATA;
 
 /// Represents requests sent from the client to the proc-macro-srv.
 #[derive(Debug, Serialize, Deserialize)]
@@ -47,7 +31,7 @@ pub enum Request {
 }
 
 /// Defines the mode used for handling span data.
-#[derive(Copy, Clone, Default, Debug, Serialize, Deserialize)]
+#[derive(Copy, Clone, Default, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub enum SpanMode {
     /// Default mode, where spans are identified by an ID.
     #[default]
@@ -201,11 +185,15 @@ type ProtocolWrite<W: Write> = for<'o, 'msg> fn(out: &'o mut W, msg: &'msg str) 
 #[cfg(test)]
 mod tests {
     use intern::{Symbol, sym};
-    use span::{Edition, ErasedFileAstId, Span, SpanAnchor, SyntaxContext, TextRange, TextSize};
+    use span::{
+        Edition, ROOT_ERASED_FILE_AST_ID, Span, SpanAnchor, SyntaxContext, TextRange, TextSize,
+    };
     use tt::{
         Delimiter, DelimiterKind, Ident, Leaf, Literal, Punct, Spacing, TopSubtree,
         TopSubtreeBuilder,
     };
+
+    use crate::version;
 
     use super::*;
 
@@ -215,7 +203,7 @@ mod tests {
                 span::FileId::from_raw(0xe4e4e),
                 span::Edition::CURRENT,
             ),
-            ast_id: ErasedFileAstId::from_raw(0),
+            ast_id: ROOT_ERASED_FILE_AST_ID,
         };
 
         let mut builder = TopSubtreeBuilder::new(Delimiter {
@@ -305,7 +293,7 @@ mod tests {
     #[test]
     fn test_proc_macro_rpc_works() {
         let tt = fixture_token_tree();
-        for v in RUST_ANALYZER_SPAN_SUPPORT..=CURRENT_API_VERSION {
+        for v in version::RUST_ANALYZER_SPAN_SUPPORT..=version::CURRENT_API_VERSION {
             let mut span_data_table = Default::default();
             let task = ExpandMacro {
                 data: ExpandMacroData {

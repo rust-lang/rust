@@ -2,20 +2,16 @@ error[E0121]: the placeholder `_` is not allowed within types on item signatures
   --> $DIR/issue-118048.rs:7:6
    |
 LL | foo!(_);
-   |      ^
-   |      |
-   |      not allowed in type signatures
-   |      not allowed in type signatures
-   |
-help: use type parameters instead
-   |
-LL ~         fn foo<T>(_: $ty, _: $ty) {}
-LL |     }
-LL | }
-LL |
-LL ~ foo!(T);
-   |
+   |      ^ not allowed in type signatures
 
-error: aborting due to 1 previous error
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
+  --> $DIR/issue-118048.rs:7:6
+   |
+LL | foo!(_);
+   |      ^ not allowed in type signatures
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0121`.

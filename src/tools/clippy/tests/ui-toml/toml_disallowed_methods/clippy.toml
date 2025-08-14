@@ -14,4 +14,7 @@ disallowed-methods = [
     "conf_disallowed_methods::Struct::method",
     "conf_disallowed_methods::Trait::provided_method",
     "conf_disallowed_methods::Trait::implemented_method",
+    # re-exports
+    "conf_disallowed_methods::identity",
+    "conf_disallowed_methods::renamed",
 ]

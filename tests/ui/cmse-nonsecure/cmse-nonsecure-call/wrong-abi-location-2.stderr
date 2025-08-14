@@ -1,7 +1,7 @@
-error[E0781]: the `"C-cmse-nonsecure-call"` ABI is only allowed on function pointers
+error[E0781]: the `"cmse-nonsecure-call"` ABI is only allowed on function pointers
   --> $DIR/wrong-abi-location-2.rs:10:1
    |
-LL | / extern "C-cmse-nonsecure-call" {
+LL | / extern "cmse-nonsecure-call" {
 LL | |     fn test();
 LL | | }
    | |_^

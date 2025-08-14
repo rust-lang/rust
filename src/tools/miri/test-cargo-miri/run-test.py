@@ -142,24 +142,19 @@ def test_cargo_miri_run():
     )
 
 def test_cargo_miri_test():
-    # rustdoc is not run on foreign targets
-    is_foreign = ARGS.target is not None
-    default_ref = "test.cross-target.stdout.ref" if is_foreign else "test.default.stdout.ref"
-    filter_ref = "test.filter.cross-target.stdout.ref" if is_foreign else "test.filter.stdout.ref"
-
     test("`cargo miri test`",
         cargo_miri("test"),
-        default_ref, "test.empty.ref",
+        "test.default.stdout.ref", "test.empty.ref",
         env={'MIRIFLAGS': "-Zmiri-seed=4242"},
     )
     test("`cargo miri test` (no isolation, no doctests)",
         cargo_miri("test") + ["--bins", "--tests"], # no `--lib`, we disabled that in `Cargo.toml`
-        "test.cross-target.stdout.ref", "test.empty.ref",
+        "test.no-doc.stdout.ref", "test.empty.ref",
         env={'MIRIFLAGS': "-Zmiri-disable-isolation"},
     )
     test("`cargo miri test` (with filter)",
         cargo_miri("test") + ["--", "--format=pretty", "pl"],
-        filter_ref, "test.empty.ref",
+        "test.filter.stdout.ref", "test.empty.ref",
     )
     test("`cargo miri test` (test target)",
         cargo_miri("test") + ["--test", "test", "--", "--format=pretty"],
@@ -171,7 +166,7 @@ def test_cargo_miri_test():
     )
     test("`cargo miri t` (subcrate, no isolation)",
         cargo_miri("t") + ["-p", "subcrate"],
-        "test.subcrate.cross-target.stdout.ref" if is_foreign else "test.subcrate.stdout.ref",
+        "test.subcrate.stdout.ref",
         "test.empty.ref",
         env={'MIRIFLAGS': "-Zmiri-disable-isolation"},
     )
@@ -181,12 +176,12 @@ def test_cargo_miri_test():
     )
     test("`cargo miri test` (custom target dir)",
         cargo_miri("test") + ["--target-dir=custom-test"],
-        default_ref, "test.empty.ref",
+        "test.default.stdout.ref", "test.empty.ref",
     )
     del os.environ["CARGO_TARGET_DIR"] # this overrides `build.target-dir` passed by `--config`, so unset it
     test("`cargo miri test` (config-cli)",
         cargo_miri("test") + ["--config=build.target-dir=\"config-cli\""],
-        default_ref, "test.empty.ref",
+        "test.default.stdout.ref", "test.empty.ref",
     )
     if ARGS.multi_target:
         test_cargo_miri_multi_target()

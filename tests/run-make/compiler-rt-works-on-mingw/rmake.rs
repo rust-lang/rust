@@ -5,7 +5,7 @@
 
 //@ only-windows-gnu
 
-use run_make_support::{cxx, is_msvc, llvm_ar, run, rustc, static_lib_name};
+use run_make_support::{cxx, llvm_ar, run, rustc, static_lib_name};
 
 fn main() {
     cxx().input("foo.cpp").arg("-c").out_exe("foo.o").run();

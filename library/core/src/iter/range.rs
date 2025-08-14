@@ -20,6 +20,7 @@ unsafe_impl_trusted_step![AsciiChar char i8 i16 i32 i64 i128 isize u8 u16 u32 u6
 ///
 /// The *successor* operation moves towards values that compare greater.
 /// The *predecessor* operation moves towards values that compare lesser.
+#[rustc_diagnostic_item = "range_step"]
 #[unstable(feature = "step_trait", issue = "42168")]
 pub trait Step: Clone + PartialOrd + Sized {
     /// Returns the bounds on the number of *successor* steps required to get from `start` to `end`

@@ -27,10 +27,10 @@ pub enum Path {
 }
 
 // This type is being used a lot, make sure it doesn't grow unintentionally.
-#[cfg(target_arch = "x86_64")]
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 const _: () = {
-    assert!(size_of::<Path>() == 16);
-    assert!(size_of::<Option<Path>>() == 16);
+    assert!(size_of::<Path>() == 24);
+    assert!(size_of::<Option<Path>>() == 24);
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

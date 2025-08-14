@@ -163,7 +163,7 @@ pub mod d {
             };
             self.log.borrow_mut().push(self.uid);
             indent_println(self.trail, &format!("+-- Drop {}", self));
-            indent_println(::PREF_INDENT, "");
+            indent_println(super::PREF_INDENT, "");
         }
     }
 }

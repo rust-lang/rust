@@ -1,5 +1,4 @@
-#![feature(abi_vectorcall)]
-
+#![feature(rust_cold_cc)]
 //@ has "$.index[?(@.name=='Foo')]"
 pub struct Foo;
 
@@ -19,11 +18,8 @@ impl Foo {
     //@ is "$.index[?(@.name=='abi_system_unwind')].inner.function.header.abi" '{"System": {"unwind": true}}'
     pub extern "system-unwind" fn abi_system_unwind() {}
 
-    //@ is "$.index[?(@.name=='abi_vectorcall')].inner.function.header.abi.Other" '"\"vectorcall\""'
-    pub extern "vectorcall" fn abi_vectorcall() {}
-
-    //@ is "$.index[?(@.name=='abi_vectorcall_unwind')].inner.function.header.abi.Other" '"\"vectorcall-unwind\""'
-    pub extern "vectorcall-unwind" fn abi_vectorcall_unwind() {}
+    //@ is "$.index[?(@.name=='abi_rust_cold')].inner.function.header.abi.Other" '"\"rust-cold\""'
+    pub extern "rust-cold" fn abi_rust_cold() {}
 }
 
 pub trait Bar {
@@ -42,9 +38,6 @@ pub trait Bar {
     //@ is "$.index[?(@.name=='trait_abi_system_unwind')].inner.function.header.abi" '{"System": {"unwind": true}}'
     extern "system-unwind" fn trait_abi_system_unwind() {}
 
-    //@ is "$.index[?(@.name=='trait_abi_vectorcall')].inner.function.header.abi.Other" '"\"vectorcall\""'
-    extern "vectorcall" fn trait_abi_vectorcall() {}
-
-    //@ is "$.index[?(@.name=='trait_abi_vectorcall_unwind')].inner.function.header.abi.Other" '"\"vectorcall-unwind\""'
-    extern "vectorcall-unwind" fn trait_abi_vectorcall_unwind() {}
+    //@ is "$.index[?(@.name=='trait_abi_rust_cold')].inner.function.header.abi.Other" '"\"rust-cold\""'
+    extern "rust-cold" fn trait_abi_rust_cold() {}
 }

@@ -8,8 +8,8 @@ pub struct Handler {
 }
 
 impl Handler {
-    pub unsafe fn new() -> Handler {
-        make_handler(false)
+    pub unsafe fn new(thread_name: Option<Box<str>>) -> Handler {
+        make_handler(false, thread_name)
     }
 
     fn null() -> Handler {
@@ -25,15 +25,36 @@ impl Drop for Handler {
     }
 }
 
-#[cfg(any(
-    target_os = "linux",
-    target_os = "freebsd",
-    target_os = "hurd",
-    target_os = "macos",
-    target_os = "netbsd",
-    target_os = "openbsd",
-    target_os = "solaris",
-    target_os = "illumos",
+#[cfg(all(
+    not(miri),
+    any(
+        target_os = "linux",
+        target_os = "freebsd",
+        target_os = "hurd",
+        target_os = "macos",
+        target_os = "netbsd",
+        target_os = "openbsd",
+        target_os = "solaris",
+        target_os = "illumos",
+    ),
+))]
+mod thread_info;
+
+// miri doesn't model signals nor stack overflows and this code has some
+// synchronization properties that we don't want to expose to user code,
+// hence we disable it on miri.
+#[cfg(all(
+    not(miri),
+    any(
+        target_os = "linux",
+        target_os = "freebsd",
+        target_os = "hurd",
+        target_os = "macos",
+        target_os = "netbsd",
+        target_os = "openbsd",
+        target_os = "solaris",
+        target_os = "illumos",
+    )
 ))]
 mod imp {
     use libc::{
@@ -46,22 +67,12 @@ mod imp {
     use libc::{mmap64, mprotect, munmap};
 
     use super::Handler;
-    use crate::cell::Cell;
+    use super::thread_info::{delete_current_info, set_current_info, with_current_info};
     use crate::ops::Range;
     use crate::sync::OnceLock;
     use crate::sync::atomic::{Atomic, AtomicBool, AtomicPtr, AtomicUsize, Ordering};
     use crate::sys::pal::unix::os;
-    use crate::{io, mem, ptr, thread};
-
-    // We use a TLS variable to store the address of the guard page. While TLS
-    // variables are not guaranteed to be signal-safe, this works out in practice
-    // since we make sure to write to the variable before the signal stack is
-    // installed, thereby ensuring that the variable is always allocated when
-    // the signal handler is called.
-    thread_local! {
-        // FIXME: use `Range` once that implements `Copy`.
-        static GUARD: Cell<(usize, usize)> = const { Cell::new((0, 0)) };
-    }
+    use crate::{io, mem, panic, ptr};
 
     // Signal handler for the SIGSEGV and SIGBUS handlers. We've got guard pages
     // (unmapped pages) at the end of every thread's stack, so if a thread ends
@@ -93,29 +104,36 @@ mod imp {
         info: *mut libc::siginfo_t,
         _data: *mut libc::c_void,
     ) {
-        let (start, end) = GUARD.get();
         // SAFETY: this pointer is provided by the system and will always point to a valid `siginfo_t`.
-        let addr = unsafe { (*info).si_addr().addr() };
+        let fault_addr = unsafe { (*info).si_addr().addr() };
 
-        // If the faulting address is within the guard page, then we print a
-        // message saying so and abort.
-        if start <= addr && addr < end {
-            thread::with_current_name(|name| {
-                let name = name.unwrap_or("<unknown>");
-                rtprintpanic!("\nthread '{name}' has overflowed its stack\n");
-            });
-
-            rtabort!("stack overflow");
-        } else {
-            // Unregister ourselves by reverting back to the default behavior.
-            // SAFETY: assuming all platforms define struct sigaction as "zero-initializable"
-            let mut action: sigaction = unsafe { mem::zeroed() };
-            action.sa_sigaction = SIG_DFL;
-            // SAFETY: pray this is a well-behaved POSIX implementation of fn sigaction
-            unsafe { sigaction(signum, &action, ptr::null_mut()) };
-
-            // See comment above for why this function returns.
+        // `with_current_info` expects that the process aborts after it is
+        // called. If the signal was not caused by a memory access, this might
+        // not be true. We detect this by noticing that the `si_addr` field is
+        // zero if the signal is synthetic.
+        if fault_addr != 0 {
+            with_current_info(|thread_info| {
+                // If the faulting address is within the guard page, then we print a
+                // message saying so and abort.
+                if let Some(thread_info) = thread_info
+                    && thread_info.guard_page_range.contains(&fault_addr)
+                {
+                    let name = thread_info.thread_name.as_deref().unwrap_or("<unknown>");
+                    let tid = crate::thread::current_os_id();
+                    rtprintpanic!("\nthread '{name}' ({tid}) has overflowed its stack\n");
+                    rtabort!("stack overflow");
+                }
+            })
         }
+
+        // Unregister ourselves by reverting back to the default behavior.
+        // SAFETY: assuming all platforms define struct sigaction as "zero-initializable"
+        let mut action: sigaction = unsafe { mem::zeroed() };
+        action.sa_sigaction = SIG_DFL;
+        // SAFETY: pray this is a well-behaved POSIX implementation of fn sigaction
+        unsafe { sigaction(signum, &action, ptr::null_mut()) };
+
+        // See comment above for why this function returns.
     }
 
     static PAGE_SIZE: Atomic<usize> = AtomicUsize::new(0);
@@ -128,9 +146,7 @@ mod imp {
     pub unsafe fn init() {
         PAGE_SIZE.store(os::page_size(), Ordering::Relaxed);
 
-        // Always write to GUARD to ensure the TLS variable is allocated.
-        let guard = unsafe { install_main_guard().unwrap_or(0..0) };
-        GUARD.set((guard.start, guard.end));
+        let mut guard_page_range = unsafe { install_main_guard() };
 
         // SAFETY: assuming all platforms define struct sigaction as "zero-initializable"
         let mut action: sigaction = unsafe { mem::zeroed() };
@@ -142,10 +158,15 @@ mod imp {
                 if !NEED_ALTSTACK.load(Ordering::Relaxed) {
                     // haven't set up our sigaltstack yet
                     NEED_ALTSTACK.store(true, Ordering::Release);
-                    let handler = unsafe { make_handler(true) };
+                    let handler = unsafe { make_handler(true, None) };
                     MAIN_ALTSTACK.store(handler.data, Ordering::Relaxed);
                     mem::forget(handler);
+
+                    if let Some(guard_page_range) = guard_page_range.take() {
+                        set_current_info(guard_page_range, Some(Box::from("main")));
+                    }
                 }
+
                 action.sa_flags = SA_SIGINFO | SA_ONSTACK;
                 action.sa_sigaction = signal_handler as sighandler_t;
                 // SAFETY: only overriding signals if the default is set
@@ -208,15 +229,15 @@ mod imp {
     /// # Safety
     /// Mutates the alternate signal stack
     #[forbid(unsafe_op_in_unsafe_fn)]
-    pub unsafe fn make_handler(main_thread: bool) -> Handler {
+    pub unsafe fn make_handler(main_thread: bool, thread_name: Option<Box<str>>) -> Handler {
         if !NEED_ALTSTACK.load(Ordering::Acquire) {
             return Handler::null();
         }
 
         if !main_thread {
-            // Always write to GUARD to ensure the TLS variable is allocated.
-            let guard = unsafe { current_guard() }.unwrap_or(0..0);
-            GUARD.set((guard.start, guard.end));
+            if let Some(guard_page_range) = unsafe { current_guard() } {
+                set_current_info(guard_page_range, thread_name);
+            }
         }
 
         // SAFETY: assuming stack_t is zero-initializable
@@ -261,6 +282,8 @@ mod imp {
             // a mapping that started one page earlier, so walk back a page and unmap from there.
             unsafe { munmap(data.sub(page_size), sigstack_size + page_size) };
         }
+
+        delete_current_info();
     }
 
     /// Modern kernels on modern hardware can have dynamic signal stack sizes.
@@ -590,23 +613,29 @@ mod imp {
 // usually have fewer qualms about forwards compatibility, since the runtime
 // is shipped with the OS):
 // <https://github.com/apple/swift/blob/swift-5.10-RELEASE/stdlib/public/runtime/CrashHandlerMacOS.cpp>
-#[cfg(not(any(
-    target_os = "linux",
-    target_os = "freebsd",
-    target_os = "hurd",
-    target_os = "macos",
-    target_os = "netbsd",
-    target_os = "openbsd",
-    target_os = "solaris",
-    target_os = "illumos",
-    target_os = "cygwin",
-)))]
+#[cfg(any(
+    miri,
+    not(any(
+        target_os = "linux",
+        target_os = "freebsd",
+        target_os = "hurd",
+        target_os = "macos",
+        target_os = "netbsd",
+        target_os = "openbsd",
+        target_os = "solaris",
+        target_os = "illumos",
+        target_os = "cygwin",
+    ))
+))]
 mod imp {
     pub unsafe fn init() {}
 
     pub unsafe fn cleanup() {}
 
-    pub unsafe fn make_handler(_main_thread: bool) -> super::Handler {
+    pub unsafe fn make_handler(
+        _main_thread: bool,
+        _thread_name: Option<Box<str>>,
+    ) -> super::Handler {
         super::Handler::null()
     }
 
@@ -668,7 +697,8 @@ mod imp {
             if code == c::EXCEPTION_STACK_OVERFLOW {
                 crate::thread::with_current_name(|name| {
                     let name = name.unwrap_or("<unknown>");
-                    rtprintpanic!("\nthread '{name}' has overflowed its stack\n");
+                    let tid = crate::thread::current_os_id();
+                    rtprintpanic!("\nthread '{name}' ({tid}) has overflowed its stack\n");
                 });
             }
             c::EXCEPTION_CONTINUE_SEARCH
@@ -689,7 +719,10 @@ mod imp {
 
     pub unsafe fn cleanup() {}
 
-    pub unsafe fn make_handler(main_thread: bool) -> super::Handler {
+    pub unsafe fn make_handler(
+        main_thread: bool,
+        _thread_name: Option<Box<str>>,
+    ) -> super::Handler {
         if !main_thread {
             reserve_stack();
         }

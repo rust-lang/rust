@@ -17,7 +17,7 @@ use crate::ty::{self, TyCtxt};
 impl<'tcx> TyCtxt<'tcx> {
     /// Returns the `DefId` for a given `LangItem`.
     /// If not found, fatally aborts compilation.
-    pub fn require_lang_item(self, lang_item: LangItem, span: Option<Span>) -> DefId {
+    pub fn require_lang_item(self, lang_item: LangItem, span: Span) -> DefId {
         self.lang_items().get(lang_item).unwrap_or_else(|| {
             self.dcx().emit_fatal(crate::error::RequiresLangItem { span, name: lang_item.name() });
         })

@@ -14,6 +14,7 @@ use rustc_middle::{bug, span_bug};
 use rustc_span::{DUMMY_SP, Ident, Span};
 
 use super::{HirPlaceholderCollector, ItemCtxt, bad_placeholder};
+use crate::check::wfcheck::check_static_item;
 use crate::errors::TypeofReservedKeywordUsed;
 use crate::hir_ty_lowering::HirTyLowerer;
 
@@ -206,7 +207,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
         },
 
         Node::Item(item) => match item.kind {
-            ItemKind::Static(ident, ty, .., body_id) => {
+            ItemKind::Static(_, ident, ty, body_id) => {
                 if ty.is_suggestable_infer_ty() {
                     infer_placeholder_type(
                         icx.lowerer(),
@@ -217,10 +218,18 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
                         "static variable",
                     )
                 } else {
-                    icx.lower_ty(ty)
+                    let ty = icx.lower_ty(ty);
+                    // MIR relies on references to statics being scalars.
+                    // Verify that here to avoid ill-formed MIR.
+                    // We skip the `Sync` check to avoid cycles for type-alias-impl-trait,
+                    // relying on the fact that non-Sync statics don't ICE the rest of the compiler.
+                    match check_static_item(tcx, def_id, ty, /* should_check_for_sync */ false) {
+                        Ok(()) => ty,
+                        Err(guar) => Ty::new_error(tcx, guar),
+                    }
                 }
             }
-            ItemKind::Const(ident, ty, _, body_id) => {
+            ItemKind::Const(ident, _, ty, body_id) => {
                 if ty.is_suggestable_infer_ty() {
                     infer_placeholder_type(
                         icx.lowerer(),
@@ -234,7 +243,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
                     icx.lower_ty(ty)
                 }
             }
-            ItemKind::TyAlias(_, self_ty, _) => icx.lower_ty(self_ty),
+            ItemKind::TyAlias(_, _, self_ty) => icx.lower_ty(self_ty),
             ItemKind::Impl(hir::Impl { self_ty, .. }) => match self_ty.find_self_aliases() {
                 spans if spans.len() > 0 => {
                     let guar = tcx
@@ -242,7 +251,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
                         .emit_err(crate::errors::SelfInImplSelf { span: spans.into(), note: () });
                     Ty::new_error(tcx, guar)
                 }
-                _ => icx.lower_ty(*self_ty),
+                _ => icx.lower_ty(self_ty),
             },
             ItemKind::Fn { .. } => {
                 let args = ty::GenericArgs::identity_for_item(tcx, def_id);
@@ -275,7 +284,17 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
                 let args = ty::GenericArgs::identity_for_item(tcx, def_id);
                 Ty::new_fn_def(tcx, def_id.to_def_id(), args)
             }
-            ForeignItemKind::Static(t, _, _) => icx.lower_ty(t),
+            ForeignItemKind::Static(ty, _, _) => {
+                let ty = icx.lower_ty(ty);
+                // MIR relies on references to statics being scalars.
+                // Verify that here to avoid ill-formed MIR.
+                // We skip the `Sync` check to avoid cycles for type-alias-impl-trait,
+                // relying on the fact that non-Sync statics don't ICE the rest of the compiler.
+                match check_static_item(tcx, def_id, ty, /* should_check_for_sync */ false) {
+                    Ok(()) => ty,
+                    Err(guar) => Ty::new_error(tcx, guar),
+                }
+            }
             ForeignItemKind::Type => Ty::new_foreign(tcx, def_id.to_def_id()),
         },
 
@@ -452,13 +471,6 @@ fn infer_placeholder_type<'tcx>(
             if let Some(ty) = node.ty() {
                 visitor.visit_ty_unambig(ty);
             }
-            // If we have just one span, let's try to steal a const `_` feature error.
-            let try_steal_span = if !tcx.features().generic_arg_infer() && visitor.spans.len() == 1
-            {
-                visitor.spans.first().copied()
-            } else {
-                None
-            };
             // If we didn't find any infer tys, then just fallback to `span`.
             if visitor.spans.is_empty() {
                 visitor.spans.push(span);
@@ -489,15 +501,7 @@ fn infer_placeholder_type<'tcx>(
                 }
             }
 
-            if let Some(try_steal_span) = try_steal_span {
-                cx.dcx().try_steal_replace_and_emit_err(
-                    try_steal_span,
-                    StashKey::UnderscoreForArrayLengths,
-                    diag,
-                )
-            } else {
-                diag.emit()
-            }
+            diag.emit()
         });
     Ty::new_error(tcx, guar)
 }
@@ -532,5 +536,5 @@ pub(crate) fn type_alias_is_lazy<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) ->
             }
         }
     }
-    HasTait.visit_ty_unambig(tcx.hir_expect_item(def_id).expect_ty_alias().1).is_break()
+    HasTait.visit_ty_unambig(tcx.hir_expect_item(def_id).expect_ty_alias().2).is_break()
 }

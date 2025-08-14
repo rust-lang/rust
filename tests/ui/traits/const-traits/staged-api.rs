@@ -23,7 +23,7 @@ impl const MyTrait for Foo {
 }
 
 #[rustc_allow_const_fn_unstable(const_trait_impl, unstable)]
-const fn conditionally_const<T: ~const MyTrait>() {
+const fn conditionally_const<T: [const] MyTrait>() {
     T::func();
 }
 

@@ -116,13 +116,18 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
         ];
 
         let sized_trait = need!(cx.tcx.lang_items().sized_trait());
+        let meta_sized_trait = need!(cx.tcx.lang_items().meta_sized_trait());
 
         let preds = traits::elaborate(cx.tcx, cx.param_env.caller_bounds().iter())
             .filter(|p| !p.is_global())
             .filter_map(|pred| {
                 // Note that we do not want to deal with qualified predicates here.
                 match pred.kind().no_bound_vars() {
-                    Some(ty::ClauseKind::Trait(pred)) if pred.def_id() != sized_trait => Some(pred),
+                    Some(ty::ClauseKind::Trait(pred))
+                        if pred.def_id() != sized_trait && pred.def_id() != meta_sized_trait =>
+                    {
+                        Some(pred)
+                    },
                     _ => None,
                 }
             })
@@ -212,7 +217,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
                     }
 
                     if is_type_diagnostic_item(cx, ty, sym::Vec)
-                        && let Some(clone_spans) = get_spans(cx, Some(body.id()), idx, &[("clone", ".to_owned()")])
+                        && let Some(clone_spans) = get_spans(cx, Some(body.id()), idx, &[(sym::clone, ".to_owned()")])
                         && let TyKind::Path(QPath::Resolved(_, path)) = input.kind
                         && let Some(elem_ty) = path
                             .segments
@@ -241,8 +246,10 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
                         for (span, suggestion) in clone_spans {
                             diag.span_suggestion(
                                 span,
-                                span.get_source_text(cx)
-                                    .map_or("change the call to".to_owned(), |src| format!("change `{src}` to")),
+                                span.get_source_text(cx).map_or_else(
+                                    || "change the call to".to_owned(),
+                                    |src| format!("change `{src}` to"),
+                                ),
                                 suggestion,
                                 Applicability::Unspecified,
                             );
@@ -253,8 +260,12 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
                     }
 
                     if is_type_lang_item(cx, ty, LangItem::String)
-                        && let Some(clone_spans) =
-                            get_spans(cx, Some(body.id()), idx, &[("clone", ".to_string()"), ("as_str", "")])
+                        && let Some(clone_spans) = get_spans(
+                            cx,
+                            Some(body.id()),
+                            idx,
+                            &[(sym::clone, ".to_string()"), (sym::as_str, "")],
+                        )
                     {
                         diag.span_suggestion(
                             input.span,
@@ -266,8 +277,10 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
                         for (span, suggestion) in clone_spans {
                             diag.span_suggestion(
                                 span,
-                                span.get_source_text(cx)
-                                    .map_or("change the call to".to_owned(), |src| format!("change `{src}` to")),
+                                span.get_source_text(cx).map_or_else(
+                                    || "change the call to".to_owned(),
+                                    |src| format!("change `{src}` to"),
+                                ),
                                 suggestion,
                                 Applicability::Unspecified,
                             );
@@ -298,11 +311,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
 
 /// Functions marked with these attributes must have the exact signature.
 pub(crate) fn requires_exact_signature(attrs: &[Attribute]) -> bool {
-    attrs.iter().any(|attr| {
-        [sym::proc_macro, sym::proc_macro_attribute, sym::proc_macro_derive]
-            .iter()
-            .any(|&allow| attr.has_name(allow))
-    })
+    attrs.iter().any(Attribute::is_proc_macro_attr)
 }
 
 #[derive(Default)]

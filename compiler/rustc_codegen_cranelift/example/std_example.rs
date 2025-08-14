@@ -166,6 +166,7 @@ fn main() {
         enum Never {}
     }
 
+    #[cfg(not(target_arch = "s390x"))] // s390x doesn't have vector instructions enabled by default
     foo(I64X2([0, 0]));
 
     transmute_wide_pointer();
@@ -203,9 +204,11 @@ fn rust_call_abi() {
     rust_call_abi_callee((1, 2));
 }
 
+#[cfg_attr(target_arch = "s390x", allow(dead_code))]
 #[repr(simd)]
 struct I64X2([i64; 2]);
 
+#[cfg_attr(target_arch = "s390x", allow(dead_code))]
 #[allow(improper_ctypes_definitions)]
 extern "C" fn foo(_a: I64X2) {}
 

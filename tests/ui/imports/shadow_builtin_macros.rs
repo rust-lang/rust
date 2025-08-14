@@ -6,17 +6,17 @@ mod foo {
 }
 
 mod m1 {
-    use foo::panic; // ok
+    use crate::foo::panic; // ok
     fn f() { panic!(); }
 }
 
 mod m2 {
-    use foo::*;
+    use crate::foo::*;
     fn f() { panic!(); } //~ ERROR ambiguous
 }
 
 mod m3 {
-    ::two_macros::m!(use foo::panic;);
+    ::two_macros::m!(use crate::foo::panic;);
     fn f() { panic!(); } //~ ERROR ambiguous
 }
 
@@ -40,12 +40,12 @@ mod bar {
 }
 
 mod m6 {
-    use bar::n; // ok
+    use crate::bar::n; // ok
     n!();
 }
 
 mod m7 {
-    use bar::*;
+    use crate::bar::*;
     n!(); //~ ERROR ambiguous
 }
 

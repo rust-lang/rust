@@ -4,7 +4,7 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::higher::IfLet;
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::ty::is_copy;
-use clippy_utils::{is_expn_of, is_lint_allowed, path_to_local};
+use clippy_utils::{is_lint_allowed, path_to_local};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
@@ -12,7 +12,6 @@ use rustc_hir::HirId;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::nested_filter;
-use rustc_middle::ty;
 use rustc_session::impl_lint_pass;
 use rustc_span::Span;
 use rustc_span::symbol::Ident;
@@ -72,7 +71,7 @@ impl_lint_pass!(IndexRefutableSlice => [INDEX_REFUTABLE_SLICE]);
 impl<'tcx> LateLintPass<'tcx> for IndexRefutableSlice {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>) {
         if let Some(IfLet { let_pat, if_then, .. }) = IfLet::hir(cx, expr)
-            && (!expr.span.from_expansion() || is_expn_of(expr.span, "if_chain").is_some())
+            && !expr.span.from_expansion()
             && !is_lint_allowed(cx, INDEX_REFUTABLE_SLICE, expr.hir_id)
             && let found_slices = find_slice_values(cx, let_pat)
             && !found_slices.is_empty()
@@ -109,11 +108,11 @@ fn find_slice_values(cx: &LateContext<'_>, pat: &hir::Pat<'_>) -> FxIndexMap<Hir
             }
 
             let bound_ty = cx.typeck_results().node_type(pat.hir_id);
-            if let ty::Slice(inner_ty) | ty::Array(inner_ty, _) = bound_ty.peel_refs().kind() {
+            if let Some(inner_ty) = bound_ty.peel_refs().builtin_index() {
                 // The values need to use the `ref` keyword if they can't be copied.
                 // This will need to be adjusted if the lint want to support mutable access in the future
                 let src_is_ref = bound_ty.is_ref() && by_ref == hir::ByRef::No;
-                let needs_ref = !(src_is_ref || is_copy(cx, *inner_ty));
+                let needs_ref = !(src_is_ref || is_copy(cx, inner_ty));
 
                 let slice_info = slices
                     .entry(value_hir_id)

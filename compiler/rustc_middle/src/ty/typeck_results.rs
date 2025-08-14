@@ -199,7 +199,7 @@ pub struct TypeckResults<'tcx> {
 
     /// Tracks the rvalue scoping rules which defines finer scoping for rvalue expressions
     /// by applying extended parameter rules.
-    /// Details may be find in `rustc_hir_analysis::check::rvalue_scopes`.
+    /// Details may be found in `rustc_hir_analysis::check::rvalue_scopes`.
     pub rvalue_scopes: RvalueScopes,
 
     /// Stores the predicates that apply on coroutine witness types.
@@ -777,8 +777,8 @@ impl<'tcx> IsIdentity for CanonicalUserType<'tcx> {
                     return false;
                 }
 
-                iter::zip(user_args.args, BoundVar::ZERO..).all(|(kind, cvar)| {
-                    match kind.unpack() {
+                iter::zip(user_args.args, BoundVar::ZERO..).all(|(arg, cvar)| {
+                    match arg.kind() {
                         GenericArgKind::Type(ty) => match ty.kind() {
                             ty::Bound(debruijn, b) => {
                                 // We only allow a `ty::INNERMOST` index in generic parameters.
@@ -789,10 +789,10 @@ impl<'tcx> IsIdentity for CanonicalUserType<'tcx> {
                         },
 
                         GenericArgKind::Lifetime(r) => match r.kind() {
-                            ty::ReBound(debruijn, br) => {
+                            ty::ReBound(debruijn, b) => {
                                 // We only allow a `ty::INNERMOST` index in generic parameters.
                                 assert_eq!(debruijn, ty::INNERMOST);
-                                cvar == br.var
+                                cvar == b.var
                             }
                             _ => false,
                         },
@@ -801,7 +801,7 @@ impl<'tcx> IsIdentity for CanonicalUserType<'tcx> {
                             ty::ConstKind::Bound(debruijn, b) => {
                                 // We only allow a `ty::INNERMOST` index in generic parameters.
                                 assert_eq!(debruijn, ty::INNERMOST);
-                                cvar == b
+                                cvar == b.var
                             }
                             _ => false,
                         },

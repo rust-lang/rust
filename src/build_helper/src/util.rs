@@ -2,7 +2,6 @@ use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::Path;
 use std::process::Command;
-use std::sync::OnceLock;
 
 /// Invokes `build_helper::util::detail_exit` with `cfg!(test)`
 ///
@@ -19,29 +18,28 @@ macro_rules! exit {
 pub fn detail_exit(code: i32, is_test: bool) -> ! {
     // if in test and code is an error code, panic with status code provided
     if is_test {
-        panic!("status code: {}", code);
+        panic!("status code: {code}");
     } else {
-        // otherwise,exit with provided status code
+        // otherwise, exit with provided status code
         std::process::exit(code);
     }
 }
 
 pub fn fail(s: &str) -> ! {
-    eprintln!("\n\n{}\n\n", s);
+    eprintln!("\n\n{s}\n\n");
     detail_exit(1, cfg!(test));
 }
 
 pub fn try_run(cmd: &mut Command, print_cmd_on_fail: bool) -> Result<(), ()> {
     let status = match cmd.status() {
         Ok(status) => status,
-        Err(e) => fail(&format!("failed to execute command: {:?}\nerror: {}", cmd, e)),
+        Err(e) => fail(&format!("failed to execute command: {cmd:?}\nerror: {e}")),
     };
     if !status.success() {
         if print_cmd_on_fail {
             println!(
-                "\n\ncommand did not execute successfully: {:?}\n\
-                 expected success, got: {}\n\n",
-                cmd, status
+                "\n\ncommand did not execute successfully: {cmd:?}\n\
+                 expected success, got: {status}\n\n"
             );
         }
         Err(())
@@ -51,25 +49,20 @@ pub fn try_run(cmd: &mut Command, print_cmd_on_fail: bool) -> Result<(), ()> {
 }
 
 /// Returns the submodule paths from the `.gitmodules` file in the given directory.
-pub fn parse_gitmodules(target_dir: &Path) -> &[String] {
-    static SUBMODULES_PATHS: OnceLock<Vec<String>> = OnceLock::new();
+pub fn parse_gitmodules(target_dir: &Path) -> Vec<String> {
     let gitmodules = target_dir.join(".gitmodules");
     assert!(gitmodules.exists(), "'{}' file is missing.", gitmodules.display());
 
-    let init_submodules_paths = || {
-        let file = File::open(gitmodules).unwrap();
+    let file = File::open(gitmodules).unwrap();
 
-        let mut submodules_paths = vec![];
-        for line in BufReader::new(file).lines().map_while(Result::ok) {
-            let line = line.trim();
-            if line.starts_with("path") {
-                let actual_path = line.split(' ').last().expect("Couldn't get value of path");
-                submodules_paths.push(actual_path.to_owned());
-            }
+    let mut submodules_paths = vec![];
+    for line in BufReader::new(file).lines().map_while(Result::ok) {
+        let line = line.trim();
+        if line.starts_with("path") {
+            let actual_path = line.split(' ').next_back().expect("Couldn't get value of path");
+            submodules_paths.push(actual_path.to_owned());
         }
+    }
 
-        submodules_paths
-    };
-
-    SUBMODULES_PATHS.get_or_init(|| init_submodules_paths())
+    submodules_paths
 }

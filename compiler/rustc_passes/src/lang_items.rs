@@ -287,7 +287,7 @@ impl<'ast, 'tcx> visit::Visitor<'ast> for LanguageItemCollector<'ast, 'tcx> {
             ast::ItemKind::Union(..) => Target::Union,
             ast::ItemKind::Trait(_) => Target::Trait,
             ast::ItemKind::TraitAlias(..) => Target::TraitAlias,
-            ast::ItemKind::Impl(_) => Target::Impl,
+            ast::ItemKind::Impl(imp_) => Target::Impl { of_trait: imp_.of_trait.is_some() },
             ast::ItemKind::MacroDef(..) => Target::MacroDef,
             ast::ItemKind::MacCall(_) | ast::ItemKind::DelegationMac(_) => {
                 unreachable!("macros should have been expanded")
@@ -307,18 +307,14 @@ impl<'ast, 'tcx> visit::Visitor<'ast> for LanguageItemCollector<'ast, 'tcx> {
         self.parent_item = parent_item;
     }
 
-    fn visit_enum_def(&mut self, enum_definition: &'ast ast::EnumDef) {
-        for variant in &enum_definition.variants {
-            self.check_for_lang(
-                Target::Variant,
-                self.resolver.node_id_to_def_id[&variant.id],
-                &variant.attrs,
-                variant.span,
-                None,
-            );
-        }
-
-        visit::walk_enum_def(self, enum_definition);
+    fn visit_variant(&mut self, variant: &'ast ast::Variant) {
+        self.check_for_lang(
+            Target::Variant,
+            self.resolver.node_id_to_def_id[&variant.id],
+            &variant.attrs,
+            variant.span,
+            None,
+        );
     }
 
     fn visit_assoc_item(&mut self, i: &'ast ast::AssocItem, ctxt: visit::AssocCtxt) {

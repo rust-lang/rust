@@ -1,4 +1,6 @@
+#![cfg_attr(feature = "nightly", rustc_diagnostic_item = "type_ir")]
 // tidy-alphabetical-start
+#![allow(rustc::direct_use_of_rustc_type_ir)]
 #![allow(rustc::usage_of_ty_tykind)]
 #![allow(rustc::usage_of_type_ir_inherent)]
 #![allow(rustc::usage_of_type_ir_traits)]
@@ -73,7 +75,7 @@ pub use pattern::*;
 pub use predicate::*;
 pub use predicate_kind::*;
 pub use region_kind::*;
-pub use rustc_ast_ir::{Movability, Mutability, Pinnedness};
+pub use rustc_ast_ir::{FloatTy, IntTy, Movability, Mutability, Pinnedness, UintTy};
 pub use ty_info::*;
 pub use ty_kind::*;
 pub use upcast::*;
@@ -383,16 +385,6 @@ rustc_index::newtype_index! {
     #[debug_format = "{}"]
     #[gate_rustc_only]
     pub struct BoundVar {}
-}
-
-impl<I: Interner> inherent::BoundVarLike<I> for BoundVar {
-    fn var(self) -> BoundVar {
-        self
-    }
-
-    fn assert_eq(self, _var: I::BoundVarKind) {
-        unreachable!("FIXME: We really should have a separate `BoundConst` for consts")
-    }
 }
 
 /// Represents the various closure traits in the language. This

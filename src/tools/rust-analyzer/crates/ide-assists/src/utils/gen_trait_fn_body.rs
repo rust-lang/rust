@@ -1,10 +1,7 @@
 //! This module contains functions to generate default trait impl function bodies where possible.
 
 use hir::TraitRef;
-use syntax::{
-    ast::{self, AstNode, BinaryOp, CmpOp, HasName, LogicOp, edit::AstNodeEdit, make},
-    ted,
-};
+use syntax::ast::{self, AstNode, BinaryOp, CmpOp, HasName, LogicOp, edit::AstNodeEdit, make};
 
 /// Generate custom trait bodies without default implementation where possible.
 ///
@@ -17,22 +14,34 @@ pub(crate) fn gen_trait_fn_body(
     func: &ast::Fn,
     trait_path: &ast::Path,
     adt: &ast::Adt,
-    trait_ref: Option<TraitRef>,
-) -> Option<()> {
+    trait_ref: Option<TraitRef<'_>>,
+) -> Option<ast::BlockExpr> {
+    let _ = func.body()?;
     match trait_path.segment()?.name_ref()?.text().as_str() {
-        "Clone" => gen_clone_impl(adt, func),
-        "Debug" => gen_debug_impl(adt, func),
-        "Default" => gen_default_impl(adt, func),
-        "Hash" => gen_hash_impl(adt, func),
-        "PartialEq" => gen_partial_eq(adt, func, trait_ref),
-        "PartialOrd" => gen_partial_ord(adt, func, trait_ref),
+        "Clone" => {
+            stdx::always!(func.name().is_some_and(|name| name.text() == "clone"));
+            gen_clone_impl(adt)
+        }
+        "Debug" => gen_debug_impl(adt),
+        "Default" => gen_default_impl(adt),
+        "Hash" => {
+            stdx::always!(func.name().is_some_and(|name| name.text() == "hash"));
+            gen_hash_impl(adt)
+        }
+        "PartialEq" => {
+            stdx::always!(func.name().is_some_and(|name| name.text() == "eq"));
+            gen_partial_eq(adt, trait_ref)
+        }
+        "PartialOrd" => {
+            stdx::always!(func.name().is_some_and(|name| name.text() == "partial_cmp"));
+            gen_partial_ord(adt, trait_ref)
+        }
         _ => None,
     }
 }
 
 /// Generate a `Clone` impl based on the fields and members of the target type.
-fn gen_clone_impl(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
-    stdx::always!(func.name().is_some_and(|name| name.text() == "clone"));
+fn gen_clone_impl(adt: &ast::Adt) -> Option<ast::BlockExpr> {
     fn gen_clone_call(target: ast::Expr) -> ast::Expr {
         let method = make::name_ref("clone");
         make::expr_method_call(target, method, make::arg_list(None)).into()
@@ -139,12 +148,11 @@ fn gen_clone_impl(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
         }
     };
     let body = make::block_expr(None, Some(expr)).indent(ast::edit::IndentLevel(1));
-    ted::replace(func.body()?.syntax(), body.clone_for_update().syntax());
-    Some(())
+    Some(body)
 }
 
 /// Generate a `Debug` impl based on the fields and members of the target type.
-fn gen_debug_impl(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
+fn gen_debug_impl(adt: &ast::Adt) -> Option<ast::BlockExpr> {
     let annotated_name = adt.name()?;
     match adt {
         // `Debug` cannot be derived for unions, so no default impl can be provided.
@@ -248,8 +256,7 @@ fn gen_debug_impl(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
 
             let body = make::block_expr(None, Some(match_expr.into()));
             let body = body.indent(ast::edit::IndentLevel(1));
-            ted::replace(func.body()?.syntax(), body.clone_for_update().syntax());
-            Some(())
+            Some(body)
         }
 
         ast::Adt::Struct(strukt) => {
@@ -296,14 +303,13 @@ fn gen_debug_impl(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
             let method = make::name_ref("finish");
             let expr = make::expr_method_call(expr, method, make::arg_list(None)).into();
             let body = make::block_expr(None, Some(expr)).indent(ast::edit::IndentLevel(1));
-            ted::replace(func.body()?.syntax(), body.clone_for_update().syntax());
-            Some(())
+            Some(body)
         }
     }
 }
 
 /// Generate a `Debug` impl based on the fields and members of the target type.
-fn gen_default_impl(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
+fn gen_default_impl(adt: &ast::Adt) -> Option<ast::BlockExpr> {
     fn gen_default_call() -> Option<ast::Expr> {
         let fn_name = make::ext::path_from_idents(["Default", "default"])?;
         Some(make::expr_call(make::expr_path(fn_name), make::arg_list(None)).into())
@@ -342,15 +348,13 @@ fn gen_default_impl(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
                 }
             };
             let body = make::block_expr(None, Some(expr)).indent(ast::edit::IndentLevel(1));
-            ted::replace(func.body()?.syntax(), body.clone_for_update().syntax());
-            Some(())
+            Some(body)
         }
     }
 }
 
 /// Generate a `Hash` impl based on the fields and members of the target type.
-fn gen_hash_impl(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
-    stdx::always!(func.name().is_some_and(|name| name.text() == "hash"));
+fn gen_hash_impl(adt: &ast::Adt) -> Option<ast::BlockExpr> {
     fn gen_hash_call(target: ast::Expr) -> ast::Stmt {
         let method = make::name_ref("hash");
         let arg = make::expr_path(make::ext::ident_path("state"));
@@ -400,13 +404,11 @@ fn gen_hash_impl(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
         },
     };
 
-    ted::replace(func.body()?.syntax(), body.clone_for_update().syntax());
-    Some(())
+    Some(body)
 }
 
 /// Generate a `PartialEq` impl based on the fields and members of the target type.
-fn gen_partial_eq(adt: &ast::Adt, func: &ast::Fn, trait_ref: Option<TraitRef>) -> Option<()> {
-    stdx::always!(func.name().is_some_and(|name| name.text() == "eq"));
+fn gen_partial_eq(adt: &ast::Adt, trait_ref: Option<TraitRef<'_>>) -> Option<ast::BlockExpr> {
     fn gen_eq_chain(expr: Option<ast::Expr>, cmp: ast::Expr) -> Option<ast::Expr> {
         match expr {
             Some(expr) => Some(make::expr_bin_op(expr, BinaryOp::LogicOp(LogicOp::And), cmp)),
@@ -595,12 +597,10 @@ fn gen_partial_eq(adt: &ast::Adt, func: &ast::Fn, trait_ref: Option<TraitRef>) -
         },
     };
 
-    ted::replace(func.body()?.syntax(), body.clone_for_update().syntax());
-    Some(())
+    Some(body)
 }
 
-fn gen_partial_ord(adt: &ast::Adt, func: &ast::Fn, trait_ref: Option<TraitRef>) -> Option<()> {
-    stdx::always!(func.name().is_some_and(|name| name.text() == "partial_cmp"));
+fn gen_partial_ord(adt: &ast::Adt, trait_ref: Option<TraitRef<'_>>) -> Option<ast::BlockExpr> {
     fn gen_partial_eq_match(match_target: ast::Expr) -> Option<ast::Stmt> {
         let mut arms = vec![];
 
@@ -686,8 +686,7 @@ fn gen_partial_ord(adt: &ast::Adt, func: &ast::Fn, trait_ref: Option<TraitRef>) 
         },
     };
 
-    ted::replace(func.body()?.syntax(), body.clone_for_update().syntax());
-    Some(())
+    Some(body)
 }
 
 fn make_discriminant() -> Option<ast::Expr> {

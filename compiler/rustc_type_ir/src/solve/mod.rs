@@ -1,6 +1,5 @@
 pub mod inspect;
 
-use std::fmt;
 use std::hash::Hash;
 
 use derive_where::derive_where;
@@ -8,6 +7,7 @@ use derive_where::derive_where;
 use rustc_macros::{Decodable_NoContext, Encodable_NoContext, HashStable_NoContext};
 use rustc_type_ir_macros::{Lift_Generic, TypeFoldable_Generic, TypeVisitable_Generic};
 
+use crate::lang_items::TraitSolverLangItem;
 use crate::search_graph::PathKind;
 use crate::{self as ty, Canonical, CanonicalVarValues, Interner, Upcast};
 
@@ -31,12 +31,8 @@ pub struct NoSolution;
 ///
 /// Most of the time the `param_env` contains the `where`-bounds of the function
 /// we're currently typechecking while the `predicate` is some trait bound.
-#[derive_where(Clone; I: Interner, P: Clone)]
+#[derive_where(Clone, Hash, PartialEq, Debug; I: Interner, P)]
 #[derive_where(Copy; I: Interner, P: Copy)]
-#[derive_where(Hash; I: Interner, P: Hash)]
-#[derive_where(PartialEq; I: Interner, P: PartialEq)]
-#[derive_where(Eq; I: Interner, P: Eq)]
-#[derive_where(Debug; I: Interner, P: fmt::Debug)]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic, Lift_Generic)]
 #[cfg_attr(
     feature = "nightly",
@@ -46,6 +42,8 @@ pub struct Goal<I: Interner, P> {
     pub param_env: I::ParamEnv,
     pub predicate: P,
 }
+
+impl<I: Interner, P: Eq> Eq for Goal<I, P> {}
 
 impl<I: Interner, P> Goal<I, P> {
     pub fn new(cx: I, param_env: I::ParamEnv, predicate: impl Upcast<I, P>) -> Goal<I, P> {
@@ -78,7 +76,7 @@ pub enum GoalSource {
     TypeRelating,
     /// We're proving a where-bound of an impl.
     ImplWhereBound,
-    /// Const conditions that need to hold for `~const` alias bounds to hold.
+    /// Const conditions that need to hold for `[const]` alias bounds to hold.
     AliasBoundConstCondition,
     /// Instantiating a higher-ranked goal and re-proving it.
     InstantiateHigherRanked,
@@ -97,12 +95,8 @@ pub enum GoalSource {
     NormalizeGoal(PathKind),
 }
 
-#[derive_where(Clone; I: Interner, Goal<I, P>: Clone)]
+#[derive_where(Clone, Hash, PartialEq, Debug; I: Interner, Goal<I, P>)]
 #[derive_where(Copy; I: Interner, Goal<I, P>: Copy)]
-#[derive_where(Hash; I: Interner, Goal<I, P>: Hash)]
-#[derive_where(PartialEq; I: Interner, Goal<I, P>: PartialEq)]
-#[derive_where(Eq; I: Interner, Goal<I, P>: Eq)]
-#[derive_where(Debug; I: Interner, Goal<I, P>: fmt::Debug)]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
 #[cfg_attr(
     feature = "nightly",
@@ -113,8 +107,10 @@ pub struct QueryInput<I: Interner, P> {
     pub predefined_opaques_in_body: I::PredefinedOpaques,
 }
 
+impl<I: Interner, P: Eq> Eq for QueryInput<I, P> {}
+
 /// Opaques that are defined in the inference context before a query is called.
-#[derive_where(Clone, Hash, PartialEq, Eq, Debug, Default; I: Interner)]
+#[derive_where(Clone, Hash, PartialEq, Debug, Default; I: Interner)]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
 #[cfg_attr(
     feature = "nightly",
@@ -124,8 +120,10 @@ pub struct PredefinedOpaquesData<I: Interner> {
     pub opaque_types: Vec<(ty::OpaqueTypeKey<I>, I::Ty)>,
 }
 
+impl<I: Interner> Eq for PredefinedOpaquesData<I> {}
+
 /// Possible ways the given goal can be proven.
-#[derive_where(Clone, Copy, Hash, PartialEq, Eq, Debug; I: Interner)]
+#[derive_where(Clone, Copy, Hash, PartialEq, Debug; I: Interner)]
 pub enum CandidateSource<I: Interner> {
     /// A user written impl.
     ///
@@ -188,6 +186,8 @@ pub enum CandidateSource<I: Interner> {
     CoherenceUnknowable,
 }
 
+impl<I: Interner> Eq for CandidateSource<I> {}
+
 #[derive(Clone, Copy, Hash, PartialEq, Eq, Debug)]
 pub enum ParamEnvSource {
     /// Preferred eagerly.
@@ -216,7 +216,7 @@ pub enum BuiltinImplSource {
     TraitUpcasting(usize),
 }
 
-#[derive_where(Clone, Copy, Hash, PartialEq, Eq, Debug; I: Interner)]
+#[derive_where(Clone, Copy, Hash, PartialEq, Debug; I: Interner)]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
 #[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
 pub struct Response<I: Interner> {
@@ -226,8 +226,10 @@ pub struct Response<I: Interner> {
     pub external_constraints: I::ExternalConstraints,
 }
 
+impl<I: Interner> Eq for Response<I> {}
+
 /// Additional constraints returned on success.
-#[derive_where(Clone, Hash, PartialEq, Eq, Debug, Default; I: Interner)]
+#[derive_where(Clone, Hash, PartialEq, Debug, Default; I: Interner)]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
 #[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
 pub struct ExternalConstraintsData<I: Interner> {
@@ -236,10 +238,22 @@ pub struct ExternalConstraintsData<I: Interner> {
     pub normalization_nested_goals: NestedNormalizationGoals<I>,
 }
 
-#[derive_where(Clone, Hash, PartialEq, Eq, Debug, Default; I: Interner)]
+impl<I: Interner> Eq for ExternalConstraintsData<I> {}
+
+impl<I: Interner> ExternalConstraintsData<I> {
+    pub fn is_empty(&self) -> bool {
+        self.region_constraints.is_empty()
+            && self.opaque_types.is_empty()
+            && self.normalization_nested_goals.is_empty()
+    }
+}
+
+#[derive_where(Clone, Hash, PartialEq, Debug, Default; I: Interner)]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
 #[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
 pub struct NestedNormalizationGoals<I: Interner>(pub Vec<(GoalSource, Goal<I, I::Predicate>)>);
+
+impl<I: Interner> Eq for NestedNormalizationGoals<I> {}
 
 impl<I: Interner> NestedNormalizationGoals<I> {
     pub fn empty() -> Self {
@@ -357,4 +371,25 @@ impl MaybeCause {
 pub enum AdtDestructorKind {
     NotConst,
     Const,
+}
+
+/// Which sizedness trait - `Sized`, `MetaSized`? `PointeeSized` is omitted as it is removed during
+/// lowering.
+#[derive(Copy, Clone, Debug, Eq, Hash, PartialEq)]
+#[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
+pub enum SizedTraitKind {
+    /// `Sized` trait
+    Sized,
+    /// `MetaSized` trait
+    MetaSized,
+}
+
+impl SizedTraitKind {
+    /// Returns `DefId` of corresponding language item.
+    pub fn require_lang_item<I: Interner>(self, cx: I) -> I::DefId {
+        cx.require_lang_item(match self {
+            SizedTraitKind::Sized => TraitSolverLangItem::Sized,
+            SizedTraitKind::MetaSized => TraitSolverLangItem::MetaSized,
+        })
+    }
 }

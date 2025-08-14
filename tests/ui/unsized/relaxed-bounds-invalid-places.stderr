@@ -1,0 +1,88 @@
+error: this relaxed bound is not permitted here
+  --> $DIR/relaxed-bounds-invalid-places.rs:6:28
+   |
+LL | struct S1<T>(T) where (T): ?Sized;
+   |                            ^^^^^^
+   |
+   = note: in this context, relaxed bounds are only allowed on type parameters defined by the closest item
+
+error: this relaxed bound is not permitted here
+  --> $DIR/relaxed-bounds-invalid-places.rs:8:27
+   |
+LL | struct S2<T>(T) where u8: ?Sized;
+   |                           ^^^^^^
+   |
+   = note: in this context, relaxed bounds are only allowed on type parameters defined by the closest item
+
+error: this relaxed bound is not permitted here
+  --> $DIR/relaxed-bounds-invalid-places.rs:10:35
+   |
+LL | struct S3<T>(T) where &'static T: ?Sized;
+   |                                   ^^^^^^
+   |
+   = note: in this context, relaxed bounds are only allowed on type parameters defined by the closest item
+
+error: this relaxed bound is not permitted here
+  --> $DIR/relaxed-bounds-invalid-places.rs:14:34
+   |
+LL | struct S4<T>(T) where for<'a> T: ?Trait<'a>;
+   |                                  ^^^^^^^^^^
+   |
+   = note: in this context, relaxed bounds are only allowed on type parameters defined by the closest item
+
+error: this relaxed bound is not permitted here
+  --> $DIR/relaxed-bounds-invalid-places.rs:22:21
+   |
+LL |     fn f() where T: ?Sized {}
+   |                     ^^^^^^
+   |
+   = note: in this context, relaxed bounds are only allowed on type parameters defined by the closest item
+
+error: this relaxed bound is not permitted here
+  --> $DIR/relaxed-bounds-invalid-places.rs:27:41
+   |
+LL | struct S6<T>(T) where T: Iterator<Item: ?Sized>;
+   |                                         ^^^^^^
+   |
+   = note: in this context, relaxed bounds are only allowed on type parameters defined by the closest item
+
+error: relaxed bounds are not permitted in supertrait bounds
+  --> $DIR/relaxed-bounds-invalid-places.rs:29:11
+   |
+LL | trait Tr: ?Sized {}
+   |           ^^^^^^
+   |
+   = note: traits are `?Sized` by default
+
+error: relaxed bounds are not permitted in trait object types
+  --> $DIR/relaxed-bounds-invalid-places.rs:33:20
+   |
+LL | type O1 = dyn Tr + ?Sized;
+   |                    ^^^^^^
+
+error: relaxed bounds are not permitted in trait object types
+  --> $DIR/relaxed-bounds-invalid-places.rs:34:15
+   |
+LL | type O2 = dyn ?Sized + ?Sized + Tr;
+   |               ^^^^^^
+
+error: relaxed bounds are not permitted in trait object types
+  --> $DIR/relaxed-bounds-invalid-places.rs:34:24
+   |
+LL | type O2 = dyn ?Sized + ?Sized + Tr;
+   |                        ^^^^^^
+
+error: bound modifier `?` can only be applied to `Sized`
+  --> $DIR/relaxed-bounds-invalid-places.rs:14:34
+   |
+LL | struct S4<T>(T) where for<'a> T: ?Trait<'a>;
+   |                                  ^^^^^^^^^^
+
+error: bound modifier `?` can only be applied to `Sized`
+  --> $DIR/relaxed-bounds-invalid-places.rs:18:33
+   |
+LL | struct S5<T>(*const T) where T: ?Trait<'static> + ?Sized;
+   |                                 ^^^^^^^^^^^^^^^
+
+error: aborting due to 12 previous errors
+

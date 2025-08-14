@@ -113,11 +113,9 @@ global_asm!("", options(FOO));
 global_asm!("", options(FOO,));
 //~^ ERROR expected one of `)`, `att_syntax`, or `raw`, found `FOO`
 global_asm!("", options(nomem FOO));
-//~^ ERROR the `nomem` option cannot be used with `global_asm!`
-//~| ERROR expected one of `)` or `,`, found `FOO`
+//~^ ERROR expected one of `)` or `,`, found `FOO`
 global_asm!("", options(nomem, FOO));
-//~^ ERROR the `nomem` option cannot be used with `global_asm!`
-//~| ERROR expected one of `)`, `att_syntax`, or `raw`, found `FOO`
+//~^ ERROR expected one of `)`, `att_syntax`, or `raw`, found `FOO`
 global_asm!("{}", options(), const FOO);
 global_asm!("", clobber_abi(FOO));
 //~^ ERROR expected string literal

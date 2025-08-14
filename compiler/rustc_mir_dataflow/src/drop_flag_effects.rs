@@ -1,5 +1,6 @@
 use rustc_abi::VariantIdx;
 use rustc_middle::mir::{self, Body, Location, Terminator, TerminatorKind};
+use smallvec::SmallVec;
 use tracing::debug;
 
 use super::move_paths::{InitKind, LookupResult, MoveData, MovePathIndex};
@@ -123,10 +124,9 @@ pub fn drop_flag_effects_for_location<'tcx, F>(
     // Drop does not count as a move but we should still consider the variable uninitialized.
     if let Some(Terminator { kind: TerminatorKind::Drop { place, .. }, .. }) =
         body.stmt_at(loc).right()
+        && let LookupResult::Exact(mpi) = move_data.rev_lookup.find(place.as_ref())
     {
-        if let LookupResult::Exact(mpi) = move_data.rev_lookup.find(place.as_ref()) {
-            on_all_children_bits(move_data, mpi, |mpi| callback(mpi, DropFlagState::Absent))
-        }
+        on_all_children_bits(move_data, mpi, |mpi| callback(mpi, DropFlagState::Absent))
     }
 
     debug!("drop_flag_effects: assignment for location({:?})", loc);
@@ -155,15 +155,28 @@ where
     }
 }
 
-/// Calls `handle_inactive_variant` for each descendant move path of `enum_place` that contains a
-/// `Downcast` to a variant besides the `active_variant`.
-///
-/// NOTE: If there are no move paths corresponding to an inactive variant,
-/// `handle_inactive_variant` will not be called for that variant.
+/// Indicates which variants are inactive at a `SwitchInt` edge by listing their `VariantIdx`s or
+/// specifying the single active variant's `VariantIdx`.
+pub(crate) enum InactiveVariants {
+    Inactives(SmallVec<[VariantIdx; 4]>),
+    Active(VariantIdx),
+}
+
+impl InactiveVariants {
+    fn contains(&self, variant_idx: VariantIdx) -> bool {
+        match self {
+            InactiveVariants::Inactives(inactives) => inactives.contains(&variant_idx),
+            InactiveVariants::Active(active) => variant_idx != *active,
+        }
+    }
+}
+
+/// Calls `handle_inactive_variant` for each child move path of `enum_place` corresponding to an
+/// inactive variant at a particular `SwitchInt` edge.
 pub(crate) fn on_all_inactive_variants<'tcx>(
     move_data: &MoveData<'tcx>,
     enum_place: mir::Place<'tcx>,
-    active_variant: VariantIdx,
+    inactive_variants: &InactiveVariants,
     mut handle_inactive_variant: impl FnMut(MovePathIndex),
 ) {
     let LookupResult::Exact(enum_mpi) = move_data.rev_lookup.find(enum_place.as_ref()) else {
@@ -182,7 +195,7 @@ pub(crate) fn on_all_inactive_variants<'tcx>(
             unreachable!();
         };
 
-        if variant_idx != active_variant {
+        if inactive_variants.contains(variant_idx) {
             on_all_children_bits(move_data, variant_mpi, |mpi| handle_inactive_variant(mpi));
         }
     }

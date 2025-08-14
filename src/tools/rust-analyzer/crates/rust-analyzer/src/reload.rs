@@ -18,7 +18,7 @@ use std::{iter, mem};
 use hir::{ChangeWithProcMacros, ProcMacrosBuilder, db::DefDatabase};
 use ide_db::{
     FxHashMap,
-    base_db::{CrateGraphBuilder, ProcMacroPaths, salsa::Durability},
+    base_db::{CrateGraphBuilder, ProcMacroLoadingError, ProcMacroPaths, salsa::Durability},
 };
 use itertools::Itertools;
 use load_cargo::{ProjectFolders, load_proc_macro};
@@ -69,6 +69,7 @@ impl GlobalState {
     /// are ready to do semantic work.
     pub(crate) fn is_quiescent(&self) -> bool {
         self.vfs_done
+            && self.fetch_ws_receiver.is_none()
             && !self.fetch_workspaces_queue.op_in_progress()
             && !self.fetch_build_data_queue.op_in_progress()
             && !self.fetch_proc_macros_queue.op_in_progress()
@@ -112,6 +113,16 @@ impl GlobalState {
                 self.config.expand_proc_attr_macros(),
                 Durability::HIGH,
             );
+        }
+
+        if self.config.cargo(None) != old_config.cargo(None) {
+            let req = FetchWorkspaceRequest { path: None, force_crate_graph_reload: false };
+            self.fetch_workspaces_queue.request_op("cargo config changed".to_owned(), req)
+        }
+
+        if self.config.cfg_set_test(None) != old_config.cfg_set_test(None) {
+            let req = FetchWorkspaceRequest { path: None, force_crate_graph_reload: false };
+            self.fetch_workspaces_queue.request_op("cfg_set_test config changed".to_owned(), req)
         }
     }
 
@@ -183,8 +194,7 @@ impl GlobalState {
                 format_to!(message, "{e}");
             });
 
-            let proc_macro_clients =
-                self.proc_macro_clients.iter().map(Some).chain(iter::repeat_with(|| None));
+            let proc_macro_clients = self.proc_macro_clients.iter().chain(iter::repeat(&None));
 
             for (ws, proc_macro_client) in self.workspaces.iter().zip(proc_macro_clients) {
                 if let ProjectWorkspaceKind::Cargo { error: Some(error), .. }
@@ -241,7 +251,8 @@ impl GlobalState {
                             message.push_str("\n\n");
                         }
                     }
-                    _ => (),
+                    // sysroot was explicitly not set so we didn't discover a server
+                    None => {}
                 }
             }
         }
@@ -291,17 +302,17 @@ impl GlobalState {
 
                 if let (Some(_command), Some(path)) = (&discover_command, &path) {
                     let build = linked_projects.iter().find_map(|project| match project {
-                        LinkedProject::InlineJsonProject(it) => it.crate_by_buildfile(path),
+                        LinkedProject::InlineProjectJson(it) => it.crate_by_buildfile(path),
                         _ => None,
                     });
 
-                    if let Some(build) = build {
-                        if is_quiescent {
-                            let path = AbsPathBuf::try_from(build.build_file)
-                                .expect("Unable to convert to an AbsPath");
-                            let arg = DiscoverProjectParam::Buildfile(path);
-                            sender.send(Task::DiscoverLinkedProjects(arg)).unwrap();
-                        }
+                    if let Some(build) = build
+                        && is_quiescent
+                    {
+                        let path = AbsPathBuf::try_from(build.build_file)
+                            .expect("Unable to convert to an AbsPath");
+                        let arg = DiscoverProjectParam::Buildfile(path);
+                        sender.send(Task::DiscoverLinkedProjects(arg)).unwrap();
                     }
                 }
 
@@ -317,7 +328,7 @@ impl GlobalState {
                                 &progress,
                             )
                         }
-                        LinkedProject::InlineJsonProject(it) => {
+                        LinkedProject::InlineProjectJson(it) => {
                             let workspace = project_model::ProjectWorkspace::load_inline(
                                 it.clone(),
                                 &cargo_config,
@@ -408,16 +419,13 @@ impl GlobalState {
             };
 
             let mut builder = ProcMacrosBuilder::default();
-            let proc_macro_clients = proc_macro_clients
-                .iter()
-                .map(|res| res.as_ref().map_err(|e| e.to_string()))
-                .chain(iter::repeat_with(|| Err("proc-macro-srv is not running".into())));
+            let proc_macro_clients = proc_macro_clients.iter().chain(iter::repeat(&None));
             for (client, paths) in proc_macro_clients.zip(paths) {
                 for (crate_id, res) in paths.iter() {
                     let expansion_res = match client {
-                        Ok(client) => match res {
+                        Some(Ok(client)) => match res {
                             Ok((crate_name, path)) => {
-                                progress(path.to_string());
+                                progress(format!("loading proc-macros: {path}"));
                                 let ignored_proc_macros = ignored_proc_macros
                                     .iter()
                                     .find_map(|(name, macros)| {
@@ -427,9 +435,14 @@ impl GlobalState {
 
                                 load_proc_macro(client, path, ignored_proc_macros)
                             }
-                            Err(e) => Err((e.clone(), true)),
+                            Err(e) => Err(e.clone()),
                         },
-                        Err(ref e) => Err((e.clone(), true)),
+                        Some(Err(e)) => Err(ProcMacroLoadingError::ProcMacroSrvError(
+                            e.to_string().into_boxed_str(),
+                        )),
+                        None => Err(ProcMacroLoadingError::ProcMacroSrvError(
+                            "proc-macro-srv is not running".into(),
+                        )),
                     };
                     builder.insert(*crate_id, expansion_res)
                 }
@@ -644,7 +657,10 @@ impl GlobalState {
             self.proc_macro_clients = Arc::from_iter(self.workspaces.iter().map(|ws| {
                 let path = match self.config.proc_macro_srv() {
                     Some(path) => path,
-                    None => ws.find_sysroot_proc_macro_srv()?,
+                    None => match ws.find_sysroot_proc_macro_srv()? {
+                        Ok(path) => path,
+                        Err(e) => return Some(Err(e)),
+                    },
                 };
 
                 let env: FxHashMap<_, _> = match &ws.kind {
@@ -659,6 +675,10 @@ impl GlobalState {
                         .chain(
                             ws.sysroot
                                 .root()
+                                .filter(|_| {
+                                    !self.config.extra_env(None).contains_key("RUSTUP_TOOLCHAIN")
+                                        && std::env::var_os("RUSTUP_TOOLCHAIN").is_none()
+                                })
                                 .map(|it| ("RUSTUP_TOOLCHAIN".to_owned(), Some(it.to_string()))),
                         )
                         .collect(),
@@ -667,14 +687,14 @@ impl GlobalState {
                 };
                 info!("Using proc-macro server at {path}");
 
-                ProcMacroClient::spawn(&path, &env).map_err(|err| {
+                Some(ProcMacroClient::spawn(&path, &env).map_err(|err| {
                     tracing::error!(
                         "Failed to run proc-macro server from path {path}, error: {err:?}",
                     );
                     anyhow::format_err!(
                         "Failed to run proc-macro server from path {path}, error: {err:?}",
                     )
-                })
+                }))
             }))
         }
 
@@ -738,14 +758,14 @@ impl GlobalState {
                 change.set_proc_macros(
                     crate_graph
                         .iter()
-                        .map(|id| (id, Err(("proc-macro has not been built yet".to_owned(), true))))
+                        .map(|id| (id, Err(ProcMacroLoadingError::NotYetBuilt)))
                         .collect(),
                 );
             } else {
                 change.set_proc_macros(
                     crate_graph
                         .iter()
-                        .map(|id| (id, Err(("proc-macro expansion is disabled".to_owned(), false))))
+                        .map(|id| (id, Err(ProcMacroLoadingError::Disabled)))
                         .collect(),
                 );
             }

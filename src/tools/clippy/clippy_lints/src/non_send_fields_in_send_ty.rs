@@ -83,10 +83,10 @@ impl<'tcx> LateLintPass<'tcx> for NonSendFieldInSendTy {
         if !item.span.in_external_macro(cx.tcx.sess.source_map())
             && let Some(send_trait) = cx.tcx.get_diagnostic_item(sym::Send)
             && let ItemKind::Impl(hir_impl) = &item.kind
-            && let Some(trait_ref) = &hir_impl.of_trait
-            && let Some(trait_id) = trait_ref.trait_def_id()
+            && let Some(of_trait) = &hir_impl.of_trait
+            && let Some(trait_id) = of_trait.trait_ref.trait_def_id()
             && send_trait == trait_id
-            && hir_impl.polarity == ImplPolarity::Positive
+            && of_trait.polarity == ImplPolarity::Positive
             && let Some(ty_trait_ref) = cx.tcx.impl_trait_ref(item.owner_id)
             && let self_ty = ty_trait_ref.instantiate_identity().self_ty()
             && let ty::Adt(adt_def, impl_trait_args) = self_ty.kind()
@@ -172,7 +172,7 @@ impl NonSendField<'_> {
 /// Example: `MyStruct<P, Box<Q, R>>` => `vec![P, Q, R]`
 fn collect_generic_params(ty: Ty<'_>) -> Vec<Ty<'_>> {
     ty.walk()
-        .filter_map(|inner| match inner.unpack() {
+        .filter_map(|inner| match inner.kind() {
             GenericArgKind::Type(inner_ty) => Some(inner_ty),
             _ => None,
         })
@@ -208,7 +208,7 @@ fn ty_allowed_with_raw_pointer_heuristic<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'t
         ty::Adt(_, args) => {
             if contains_pointer_like(cx, ty) {
                 // descends only if ADT contains any raw pointers
-                args.iter().all(|generic_arg| match generic_arg.unpack() {
+                args.iter().all(|generic_arg| match generic_arg.kind() {
                     GenericArgKind::Type(ty) => ty_allowed_with_raw_pointer_heuristic(cx, ty, send_trait),
                     // Lifetimes and const generics are not solid part of ADT and ignored
                     GenericArgKind::Lifetime(_) | GenericArgKind::Const(_) => true,
@@ -226,7 +226,7 @@ fn ty_allowed_with_raw_pointer_heuristic<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'t
 /// Checks if the type contains any pointer-like types in args (including nested ones)
 fn contains_pointer_like<'tcx>(cx: &LateContext<'tcx>, target_ty: Ty<'tcx>) -> bool {
     for ty_node in target_ty.walk() {
-        if let GenericArgKind::Type(inner_ty) = ty_node.unpack() {
+        if let GenericArgKind::Type(inner_ty) = ty_node.kind() {
             match inner_ty.kind() {
                 ty::RawPtr(_, _) => {
                     return true;

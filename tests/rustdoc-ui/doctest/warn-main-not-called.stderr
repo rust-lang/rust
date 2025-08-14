@@ -1,0 +1,14 @@
+warning: the `main` function of this doctest won't be run as it contains expressions at the top level, meaning that the whole doctest code will be wrapped in a function
+  --> $DIR/warn-main-not-called.rs:10:1
+   |
+10 | //! ```
+   | ^^^^^^^
+
+warning: the `main` function of this doctest won't be run as it contains expressions at the top level, meaning that the whole doctest code will be wrapped in a function
+  --> $DIR/warn-main-not-called.rs:19:1
+   |
+19 | //! ```
+   | ^^^^^^^
+
+warning: 2 warnings emitted
+

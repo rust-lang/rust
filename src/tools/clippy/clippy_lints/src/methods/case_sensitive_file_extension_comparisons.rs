@@ -1,6 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::{SpanRangeExt, indent_of, reindent_multiline};
+use clippy_utils::sym;
 use clippy_utils::ty::is_type_lang_item;
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
@@ -21,15 +22,15 @@ pub(super) fn check<'tcx>(
 ) {
     if let ExprKind::MethodCall(path_segment, ..) = recv.kind
         && matches!(
-            path_segment.ident.name.as_str(),
-            "to_lowercase" | "to_uppercase" | "to_ascii_lowercase" | "to_ascii_uppercase"
+            path_segment.ident.name,
+            sym::to_lowercase | sym::to_uppercase | sym::to_ascii_lowercase | sym::to_ascii_uppercase
         )
     {
         return;
     }
 
     if let Some(method_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id)
-        && let Some(impl_id) = cx.tcx.impl_of_method(method_id)
+        && let Some(impl_id) = cx.tcx.impl_of_assoc(method_id)
         && cx.tcx.type_of(impl_id).instantiate_identity().is_str()
         && let ExprKind::Lit(Spanned {
             node: LitKind::Str(ext_literal, ..),

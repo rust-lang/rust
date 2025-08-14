@@ -1,0 +1,9 @@
+error[E0635]: feature `try_trait` has been renamed to `try_trait_v2`
+  --> $DIR/renamed_feature.rs:1:12
+   |
+LL | #![feature(try_trait)]
+   |            ^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0635`.

@@ -1,24 +1,24 @@
 use rustc_data_structures::fx::FxHashMap;
 
 use clippy_utils::diagnostics::{span_lint, span_lint_and_then};
-use clippy_utils::ty::{is_type_diagnostic_item, match_type};
-use clippy_utils::{match_any_def_paths, paths};
+use clippy_utils::ty::is_type_diagnostic_item;
+use clippy_utils::{paths, sym};
 use rustc_ast::ast::LitKind;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::LateContext;
 use rustc_middle::ty::Ty;
+use rustc_span::Span;
 use rustc_span::source_map::Spanned;
-use rustc_span::{Span, sym};
 
 use super::{NONSENSICAL_OPEN_OPTIONS, SUSPICIOUS_OPEN_OPTIONS};
 
 fn is_open_options(cx: &LateContext<'_>, ty: Ty<'_>) -> bool {
-    is_type_diagnostic_item(cx, ty, sym::FsOpenOptions) || match_type(cx, ty, &paths::TOKIO_IO_OPEN_OPTIONS)
+    is_type_diagnostic_item(cx, ty, sym::FsOpenOptions) || paths::TOKIO_IO_OPEN_OPTIONS.matches_ty(cx, ty)
 }
 
 pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>, recv: &'tcx Expr<'_>) {
     if let Some(method_id) = cx.typeck_results().type_dependent_def_id(e.hir_id)
-        && let Some(impl_id) = cx.tcx.impl_of_method(method_id)
+        && let Some(impl_id) = cx.tcx.impl_of_assoc(method_id)
         && is_open_options(cx, cx.tcx.type_of(impl_id).instantiate_identity())
     {
         let mut options = Vec::new();
@@ -76,7 +76,7 @@ fn get_open_options(
                         ..
                     } = span
                     {
-                        Argument::Set(*lit)
+                        Argument::Set(lit)
                     } else {
                         // The function is called with a literal which is not a boolean literal.
                         // This is theoretically possible, but not very likely.
@@ -87,23 +87,23 @@ fn get_open_options(
                 _ => Argument::Unknown,
             };
 
-            match path.ident.as_str() {
-                "create" => {
+            match path.ident.name {
+                sym::create => {
                     options.push((OpenOption::Create, argument_option, span));
                 },
-                "create_new" => {
+                sym::create_new => {
                     options.push((OpenOption::CreateNew, argument_option, span));
                 },
-                "append" => {
+                sym::append => {
                     options.push((OpenOption::Append, argument_option, span));
                 },
-                "truncate" => {
+                sym::truncate => {
                     options.push((OpenOption::Truncate, argument_option, span));
                 },
-                "read" => {
+                sym::read => {
                     options.push((OpenOption::Read, argument_option, span));
                 },
-                "write" => {
+                sym::write => {
                     options.push((OpenOption::Write, argument_option, span));
                 },
                 _ => {
@@ -111,7 +111,7 @@ fn get_open_options(
                     // This might be a user defined extension trait with a method like `truncate_write`
                     // which would be a false positive
                     if let Some(method_def_id) = cx.typeck_results().type_dependent_def_id(argument.hir_id)
-                        && cx.tcx.trait_of_item(method_def_id).is_some()
+                        && cx.tcx.trait_of_assoc(method_def_id).is_some()
                     {
                         return false;
                     }
@@ -126,14 +126,14 @@ fn get_open_options(
         && let ExprKind::Path(path) = callee.kind
         && let Some(did) = cx.qpath_res(&path, callee.hir_id).opt_def_id()
     {
-        let std_file_options = [sym::file_options, sym::open_options_new];
+        let is_std_options = matches!(
+            cx.tcx.get_diagnostic_name(did),
+            Some(sym::file_options | sym::open_options_new)
+        );
 
-        let tokio_file_options: &[&[&str]] = &[&paths::TOKIO_IO_OPEN_OPTIONS_NEW, &paths::TOKIO_FILE_OPTIONS];
-
-        let is_std_options = std_file_options
-            .into_iter()
-            .any(|sym| cx.tcx.is_diagnostic_item(sym, did));
-        is_std_options || match_any_def_paths(cx, did, tokio_file_options).is_some()
+        is_std_options
+            || paths::TOKIO_IO_OPEN_OPTIONS_NEW.matches(cx, did)
+            || paths::TOKIO_FILE_OPTIONS.matches(cx, did)
     } else {
         false
     }

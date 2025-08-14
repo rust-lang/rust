@@ -83,6 +83,13 @@ pub(super) fn check<'tcx>(
                 )[..],
             );
         }
+
+        // If the return type requires adjustments, we need to add a `.map` after the iterator
+        let inner_ret_adjust = cx.typeck_results().expr_adjustments(inner_ret);
+        if !inner_ret_adjust.is_empty() {
+            snippet.push_str(".map(|v| v as _)");
+        }
+
         // Extends to `last_stmt` to include semicolon in case of `return None;`
         let lint_span = span.to(last_stmt.span).to(last_ret.span);
         span_lint_and_then(

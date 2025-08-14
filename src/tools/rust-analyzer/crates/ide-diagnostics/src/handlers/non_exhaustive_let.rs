@@ -14,6 +14,7 @@ pub(crate) fn non_exhaustive_let(
         format!("non-exhaustive pattern: {}", d.uncovered_patterns),
         d.pat.map(Into::into),
     )
+    .stable()
 }
 
 #[cfg(test)]
@@ -101,6 +102,55 @@ fn test(x: Result<i32, !>) {
 fn test(x: Result<i32, &'static !>) {
     let Ok(_y) = x;
       //^^^^^^ error: non-exhaustive pattern: `Err(_)` not covered
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn empty_patterns_normalize() {
+        check_diagnostics(
+            r#"
+enum Infallible {}
+
+trait Foo {
+    type Assoc;
+}
+enum Enum<T: Foo> {
+    A,
+    B(T::Assoc),
+}
+
+impl Foo for () {
+    type Assoc = Infallible;
+}
+
+fn foo(v: Enum<()>) {
+    let Enum::A = v;
+}
+        "#,
+        );
+    }
+
+    #[test]
+    fn regression_20259() {
+        check_diagnostics(
+            r#"
+//- minicore: deref
+use core::ops::Deref;
+
+struct Foo<T>(T);
+
+impl<T> Deref for Foo<T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+fn test(x: Foo<(i32, bool)>) {
+    let (_a, _b): &(i32, bool) = &x;
 }
 "#,
         );

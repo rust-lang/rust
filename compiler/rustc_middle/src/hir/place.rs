@@ -43,6 +43,9 @@ pub enum ProjectionKind {
     ///
     /// This is unused if `-Znext-solver` is enabled.
     OpaqueCast,
+
+    /// `unwrap_binder!(expr)`
+    UnwrapUnsafeBinder,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, TyEncodable, TyDecodable, HashStable)]

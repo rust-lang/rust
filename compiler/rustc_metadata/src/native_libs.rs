@@ -5,6 +5,8 @@ use rustc_abi::ExternAbi;
 use rustc_ast::CRATE_NODE_ID;
 use rustc_attr_parsing as attr;
 use rustc_data_structures::fx::FxHashSet;
+use rustc_hir::attrs::AttributeKind;
+use rustc_hir::find_attr;
 use rustc_middle::query::LocalCrate;
 use rustc_middle::ty::{self, List, Ty, TyCtxt};
 use rustc_session::Session;
@@ -81,7 +83,7 @@ pub fn walk_native_lib_search_dirs<R>(
     // Mac Catalyst uses the macOS SDK, but to link to iOS-specific frameworks
     // we must have the support library stubs in the library search path (#121430).
     if let Some(sdk_root) = apple_sdk_root
-        && sess.target.llvm_target.contains("macabi")
+        && sess.target.env == "macabi"
     {
         f(&sdk_root.join("System/iOSSupport/usr/lib"), false)?;
         f(&sdk_root.join("System/iOSSupport/System/Library/Frameworks"), true)?;
@@ -496,14 +498,9 @@ impl<'tcx> Collector<'tcx> {
                 }
                 _ => {
                     for &child_item in foreign_items {
-                        if self.tcx.def_kind(child_item).has_codegen_attrs()
-                            && self.tcx.codegen_fn_attrs(child_item).link_ordinal.is_some()
+                        if let Some(span) = find_attr!(self.tcx.get_all_attrs(child_item), AttributeKind::LinkOrdinal {span, ..} => *span)
                         {
-                            let link_ordinal_attr =
-                                self.tcx.get_attr(child_item, sym::link_ordinal).unwrap();
-                            sess.dcx().emit_err(errors::LinkOrdinalRawDylib {
-                                span: link_ordinal_attr.span(),
-                            });
+                            sess.dcx().emit_err(errors::LinkOrdinalRawDylib { span });
                         }
                     }
 
@@ -652,7 +649,13 @@ impl<'tcx> Collector<'tcx> {
     ) -> DllImport {
         let span = self.tcx.def_span(item);
 
-        // this logic is similar to `Target::adjust_abi` (in rustc_target/src/spec/mod.rs) but errors on unsupported inputs
+        // This `extern` block should have been checked for general ABI support before, but let's
+        // double-check that.
+        assert!(self.tcx.sess.target.is_abi_supported(abi));
+
+        // This logic is similar to `AbiMap::canonize_abi` (in rustc_target/src/spec/abi_map.rs) but
+        // we need more detail than those adjustments, and we can't support all ABIs that are
+        // generally supported.
         let calling_convention = if self.tcx.sess.target.arch == "x86" {
             match abi {
                 ExternAbi::C { .. } | ExternAbi::Cdecl { .. } => DllCallingConvention::C,
@@ -679,7 +682,7 @@ impl<'tcx> Collector<'tcx> {
                     DllCallingConvention::Vectorcall(self.i686_arg_list_size(item))
                 }
                 _ => {
-                    self.tcx.dcx().emit_fatal(errors::UnsupportedAbiI686 { span });
+                    self.tcx.dcx().emit_fatal(errors::RawDylibUnsupportedAbi { span });
                 }
             }
         } else {
@@ -688,7 +691,7 @@ impl<'tcx> Collector<'tcx> {
                     DllCallingConvention::C
                 }
                 _ => {
-                    self.tcx.dcx().emit_fatal(errors::UnsupportedAbi { span });
+                    self.tcx.dcx().emit_fatal(errors::RawDylibUnsupportedAbi { span });
                 }
             }
         };
@@ -698,8 +701,21 @@ impl<'tcx> Collector<'tcx> {
             .link_ordinal
             .map_or(import_name_type, |ord| Some(PeImportNameType::Ordinal(ord)));
 
+        let name = codegen_fn_attrs.link_name.unwrap_or_else(|| self.tcx.item_name(item));
+
+        if self.tcx.sess.target.binary_format == BinaryFormat::Elf {
+            let name = name.as_str();
+            if name.contains('\0') {
+                self.tcx.dcx().emit_err(errors::RawDylibMalformed { span });
+            } else if let Some((left, right)) = name.split_once('@')
+                && (left.is_empty() || right.is_empty() || right.contains('@'))
+            {
+                self.tcx.dcx().emit_err(errors::RawDylibMalformed { span });
+            }
+        }
+
         DllImport {
-            name: codegen_fn_attrs.link_name.unwrap_or(self.tcx.item_name(item)),
+            name,
             import_name_type,
             calling_convention,
             span,

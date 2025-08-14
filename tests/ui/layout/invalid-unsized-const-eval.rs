@@ -10,6 +10,6 @@ struct LazyLock {
 }
 
 static EMPTY_SET: LazyLock = todo!();
-//~^ ERROR could not evaluate static initializer
+//~^ ERROR the type `(dyn Sync, ())` has an unknown layout
 
 fn main() {}

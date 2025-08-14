@@ -10,6 +10,9 @@ use std::mem::MaybeUninit;
 #[path = "../../utils/mod.rs"]
 mod utils;
 
+#[path = "../../utils/libc.rs"]
+mod libc_utils;
+
 fn main() {
     let path =
         utils::prepare_with_content("fail-libc-read-and-uninit-premature-eof.txt", &[1u8, 2, 3]);
@@ -18,9 +21,10 @@ fn main() {
         let fd = libc::open(cpath.as_ptr(), libc::O_RDONLY);
         assert_ne!(fd, -1);
         let mut buf: MaybeUninit<[u8; 4]> = std::mem::MaybeUninit::uninit();
-        // Read 4 bytes from a 3-byte file.
-        assert_eq!(libc::read(fd, buf.as_mut_ptr().cast::<std::ffi::c_void>(), 4), 3);
-        buf.assume_init(); //~ERROR: Undefined Behavior: constructing invalid value at .value[3]: encountered uninitialized memory, but expected an integer
+        // Read as much as we can from a 3-byte file.
+        let res = libc_utils::read_all(fd, buf.as_mut_ptr().cast::<std::ffi::c_void>(), 4);
+        assert!(res == 3);
+        buf.assume_init(); //~ERROR: encountered uninitialized memory, but expected an integer
         assert_eq!(libc::close(fd), 0);
     }
     remove_file(&path).unwrap();

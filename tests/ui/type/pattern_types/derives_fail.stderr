@@ -26,9 +26,7 @@ LL | #[derive(Clone, Copy, PartialEq, Eq, Debug, Ord, PartialOrd, Hash, Default)
    |                                      ----- in this derive macro expansion
 LL | #[repr(transparent)]
 LL | struct Nanoseconds(NanoI32);
-   |                    ^^^^^^^ `(i32) is 0..=999999999` cannot be formatted using `{:?}` because it doesn't implement `Debug`
-   |
-   = help: the trait `Debug` is not implemented for `(i32) is 0..=999999999`
+   |                    ^^^^^^^ the trait `Debug` is not implemented for `(i32) is 0..=999999999`
 
 error[E0277]: the trait bound `(i32) is 0..=999999999: Ord` is not satisfied
   --> $DIR/derives_fail.rs:11:20

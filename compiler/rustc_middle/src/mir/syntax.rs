@@ -284,15 +284,15 @@ pub enum FakeBorrowKind {
     ///
     /// This is used when lowering deref patterns, where shallow borrows wouldn't prevent something
     /// like:
-    // ```compile_fail
-    // let mut b = Box::new(false);
-    // match b {
-    //     deref!(true) => {} // not reached because `*b == false`
-    //     _ if { *b = true; false } => {} // not reached because the guard is `false`
-    //     deref!(false) => {} // not reached because the guard changed it
-    //     // UB because we reached the unreachable.
-    // }
-    // ```
+    /// ```compile_fail
+    /// let mut b = Box::new(false);
+    /// match b {
+    ///     deref!(true) => {} // not reached because `*b == false`
+    ///     _ if { *b = true; false } => {} // not reached because the guard is `false`
+    ///     deref!(false) => {} // not reached because the guard changed it
+    ///     // UB because we reached the unreachable.
+    /// }
+    /// ```
     Deep,
 }
 
@@ -381,7 +381,7 @@ pub enum StatementKind<'tcx> {
     /// computing these locals.
     ///
     /// If the local is already allocated, calling `StorageLive` again will implicitly free the
-    /// local and then allocate fresh uninitilized memory. If a local is already deallocated,
+    /// local and then allocate fresh uninitialized memory. If a local is already deallocated,
     /// calling `StorageDead` again is a NOP.
     StorageLive(Local),
 
@@ -1075,6 +1075,7 @@ pub enum AssertKind<O> {
     ResumedAfterDrop(CoroutineKind),
     MisalignedPointerDereference { required: O, found: O },
     NullPointerDereference,
+    InvalidEnumConstruction(O),
 }
 
 #[derive(Clone, Debug, PartialEq, TyEncodable, TyDecodable, Hash, HashStable)]
@@ -1132,13 +1133,6 @@ pub type AssertMessage<'tcx> = AssertKind<Operand<'tcx>>;
 ///
 /// Each local naturally corresponds to the place `Place { local, projection: [] }`. This place has
 /// the address of the local's allocation and the type of the local.
-///
-/// **Needs clarification:** Unsized locals seem to present a bit of an issue. Their allocation
-/// can't actually be created on `StorageLive`, because it's unclear how big to make the allocation.
-/// Furthermore, MIR produces assignments to unsized locals, although that is not permitted under
-/// `#![feature(unsized_locals)]` in Rust. Besides just putting "unsized locals are special and
-/// different" in a bunch of places, I (JakobDegen) don't know how to incorporate this behavior into
-/// the current MIR semantics in a clean way - possibly this needs some design work first.
 ///
 /// For places that are not locals, ie they have a non-empty list of projections, we define the
 /// values as a function of the parent place, that is the place with its last [`ProjectionElem`]
@@ -1531,8 +1525,6 @@ pub enum CastKind {
     ///
     /// MIR is well-formed if the input and output types have different sizes,
     /// but running a transmute between differently-sized types is UB.
-    ///
-    /// Allowed only in [`MirPhase::Runtime`]; Earlier it's a [`TerminatorKind::Call`].
     Transmute,
 }
 

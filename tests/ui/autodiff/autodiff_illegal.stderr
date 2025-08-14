@@ -1,8 +1,8 @@
 error[E0658]: attributes on expressions are experimental
   --> $DIR/autodiff_illegal.rs:53:5
    |
-LL |     #[autodiff(df7, Forward, Dual)]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     #[autodiff_forward(df7, Dual)]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
    = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
@@ -17,26 +17,26 @@ LL | pub fn f1(x: f64) {
 error: expected 1 activities, but found 2
   --> $DIR/autodiff_illegal.rs:20:1
    |
-LL | #[autodiff(df3, Reverse, Duplicated, Const)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | #[autodiff_reverse(df3, Duplicated, Const)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: expected 1 activities, but found 0
   --> $DIR/autodiff_illegal.rs:27:1
    |
-LL | #[autodiff(df4, Reverse)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | #[autodiff_reverse(df4)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: Dual can not be used in Reverse Mode
   --> $DIR/autodiff_illegal.rs:34:1
    |
-LL | #[autodiff(df5, Reverse, Dual)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | #[autodiff_reverse(df5, Dual)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: Duplicated can not be used in Forward Mode
   --> $DIR/autodiff_illegal.rs:41:1
    |
-LL | #[autodiff(df6, Forward, Duplicated)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | #[autodiff_forward(df6, Duplicated)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: Duplicated can not be used for this type
   --> $DIR/autodiff_illegal.rs:42:14
@@ -95,69 +95,54 @@ error[E0428]: the name `fn_exists` is defined multiple times
 LL | fn fn_exists() {}
    | -------------- previous definition of the value `fn_exists` here
 ...
-LL | #[autodiff(fn_exists, Reverse, Active)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `fn_exists` redefined here
+LL | #[autodiff_reverse(fn_exists, Active)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `fn_exists` redefined here
    |
    = note: `fn_exists` must be defined only once in the value namespace of this module
 
-error: autodiff requires at least a name and mode
-  --> $DIR/autodiff_illegal.rs:95:1
-   |
-LL | / pub fn f11() {
-LL | |
-LL | |     unimplemented!()
-LL | | }
-   | |_^
-
-error: unknown Mode: `Debug`. Use `Forward` or `Reverse`
-  --> $DIR/autodiff_illegal.rs:101:18
-   |
-LL | #[autodiff(df12, Debug)]
-   |                  ^^^^^
-
 error: did not recognize Activity: `Reverse`
-  --> $DIR/autodiff_illegal.rs:109:27
+  --> $DIR/autodiff_illegal.rs:95:26
    |
-LL | #[autodiff(df13, Forward, Reverse)]
-   |                           ^^^^^^^
+LL | #[autodiff_reverse(df13, Reverse)]
+   |                          ^^^^^^^
 
 error: invalid return activity Active in Forward Mode
-  --> $DIR/autodiff_illegal.rs:161:1
+  --> $DIR/autodiff_illegal.rs:147:1
    |
-LL | #[autodiff(df19, Forward, Dual, Active)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | #[autodiff_forward(df19, Dual, Active)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: invalid return activity Dual in Reverse Mode
-  --> $DIR/autodiff_illegal.rs:167:1
+  --> $DIR/autodiff_illegal.rs:153:1
    |
-LL | #[autodiff(df20, Reverse, Active, Dual)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | #[autodiff_reverse(df20, Active, Dual)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: invalid return activity Duplicated in Reverse Mode
-  --> $DIR/autodiff_illegal.rs:174:1
+  --> $DIR/autodiff_illegal.rs:160:1
    |
-LL | #[autodiff(df21, Reverse, Active, Duplicated)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | #[autodiff_reverse(df21, Active, Duplicated)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0433]: failed to resolve: use of undeclared type `MyFloat`
-  --> $DIR/autodiff_illegal.rs:130:1
+  --> $DIR/autodiff_illegal.rs:116:1
    |
-LL | #[autodiff(df15, Reverse, Active, Active)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ use of undeclared type `MyFloat`
+LL | #[autodiff_reverse(df15, Active, Active)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ use of undeclared type `MyFloat`
 
 error[E0433]: failed to resolve: use of undeclared type `F64Trans`
-  --> $DIR/autodiff_illegal.rs:154:1
+  --> $DIR/autodiff_illegal.rs:140:1
    |
-LL | #[autodiff(df18, Reverse, Active, Active)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ use of undeclared type `F64Trans`
+LL | #[autodiff_reverse(df18, Active, Active)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ use of undeclared type `F64Trans`
 
 error[E0599]: the function or associated item `default` exists for tuple `(DoesNotImplDefault, DoesNotImplDefault)`, but its trait bounds were not satisfied
-  --> $DIR/autodiff_illegal.rs:181:1
+  --> $DIR/autodiff_illegal.rs:167:1
    |
 LL | struct DoesNotImplDefault;
    | ------------------------- doesn't satisfy `DoesNotImplDefault: Default`
-LL | #[autodiff(df22, Forward, Dual)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ function or associated item cannot be called on `(DoesNotImplDefault, DoesNotImplDefault)` due to unsatisfied trait bounds
+LL | #[autodiff_forward(df22, Dual)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ function or associated item cannot be called on `(DoesNotImplDefault, DoesNotImplDefault)` due to unsatisfied trait bounds
    |
    = note: the following trait bounds were not satisfied:
            `DoesNotImplDefault: Default`
@@ -168,7 +153,7 @@ LL + #[derive(Default)]
 LL | struct DoesNotImplDefault;
    |
 
-error: aborting due to 23 previous errors
+error: aborting due to 21 previous errors
 
 Some errors have detailed explanations: E0428, E0433, E0599, E0658.
 For more information about an error, try `rustc --explain E0428`.

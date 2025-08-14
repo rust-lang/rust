@@ -8,8 +8,10 @@
 //! is computed by selecting an idea from this table.
 
 use rustc_hir as hir;
+use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::find_attr;
 use rustc_middle::bug;
 use rustc_middle::ty::fast_reject::{SimplifiedType, TreatParams, simplify_type};
 use rustc_middle::ty::{self, CrateInherentImpls, Ty, TyCtxt};
@@ -85,7 +87,10 @@ impl<'tcx> InherentCollect<'tcx> {
             }
 
             for &impl_item in items {
-                if !self.tcx.has_attr(impl_item, sym::rustc_allow_incoherent_impl) {
+                if !find_attr!(
+                    self.tcx.get_all_attrs(impl_item),
+                    AttributeKind::AllowIncoherentImpl(_)
+                ) {
                     let impl_span = self.tcx.def_span(impl_def_id);
                     return Err(self.tcx.dcx().emit_err(errors::InherentTyOutsideRelevant {
                         span: impl_span,
@@ -116,7 +121,10 @@ impl<'tcx> InherentCollect<'tcx> {
         if !self.tcx.hir_rustc_coherence_is_core() {
             if self.tcx.features().rustc_attrs() {
                 for &impl_item in items {
-                    if !self.tcx.has_attr(impl_item, sym::rustc_allow_incoherent_impl) {
+                    if !find_attr!(
+                        self.tcx.get_all_attrs(impl_item),
+                        AttributeKind::AllowIncoherentImpl(_)
+                    ) {
                         let span = self.tcx.def_span(impl_def_id);
                         return Err(self.tcx.dcx().emit_err(errors::InherentTyOutsidePrimitive {
                             span,

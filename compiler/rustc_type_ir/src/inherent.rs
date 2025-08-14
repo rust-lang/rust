@@ -11,8 +11,8 @@ use rustc_ast_ir::Mutability;
 use crate::elaborate::Elaboratable;
 use crate::fold::{TypeFoldable, TypeSuperFoldable};
 use crate::relate::Relate;
-use crate::solve::AdtDestructorKind;
-use crate::visit::{Flags, TypeSuperVisitable, TypeVisitable};
+use crate::solve::{AdtDestructorKind, SizedTraitKind};
+use crate::visit::{Flags, TypeSuperVisitable, TypeVisitable, TypeVisitableExt};
 use crate::{self as ty, CollectAndApply, Interner, UpcastFrom};
 
 pub trait Ty<I: Interner<Ty = Self>>:
@@ -183,8 +183,7 @@ pub trait Ty<I: Interner<Ty = Self>>:
             | ty::Bound(_, _)
             | ty::Placeholder(_)
             | ty::Infer(_)
-            | ty::Error(_)
-            | ty::Dynamic(_, _, ty::DynStar) => false,
+            | ty::Error(_) => false,
         }
     }
 }
@@ -228,6 +227,8 @@ pub trait Region<I: Interner<Region = Self>>:
 
     fn new_static(interner: I) -> Self;
 
+    fn new_placeholder(interner: I, var: I::PlaceholderRegion) -> Self;
+
     fn is_bound(self) -> bool {
         matches!(self.kind(), ty::ReBound(..))
     }
@@ -250,9 +251,11 @@ pub trait Const<I: Interner<Const = Self>>:
 
     fn new_var(interner: I, var: ty::ConstVid) -> Self;
 
-    fn new_bound(interner: I, debruijn: ty::DebruijnIndex, var: I::BoundConst) -> Self;
+    fn new_bound(interner: I, debruijn: ty::DebruijnIndex, bound_const: I::BoundConst) -> Self;
 
     fn new_anon_bound(interner: I, debruijn: ty::DebruijnIndex, var: ty::BoundVar) -> Self;
+
+    fn new_placeholder(interner: I, param: I::PlaceholderConst) -> Self;
 
     fn new_unevaluated(interner: I, uv: ty::UnevaluatedConst<I>) -> Self;
 
@@ -297,7 +300,16 @@ pub trait GenericArg<I: Interner<GenericArg = Self>>:
     + From<I::Ty>
     + From<I::Region>
     + From<I::Const>
+    + From<I::Term>
 {
+    fn as_term(&self) -> Option<I::Term> {
+        match self.kind() {
+            ty::GenericArgKind::Lifetime(_) => None,
+            ty::GenericArgKind::Type(ty) => Some(ty.into()),
+            ty::GenericArgKind::Const(ct) => Some(ct.into()),
+        }
+    }
+
     fn as_type(&self) -> Option<I::Ty> {
         if let ty::GenericArgKind::Type(ty) = self.kind() { Some(ty) } else { None }
     }
@@ -502,14 +514,66 @@ pub trait Clause<I: Interner<Clause = Self>>:
     fn instantiate_supertrait(self, cx: I, trait_ref: ty::Binder<I, ty::TraitRef<I>>) -> Self;
 }
 
+pub trait Clauses<I: Interner<Clauses = Self>>:
+    Copy
+    + Debug
+    + Hash
+    + Eq
+    + TypeSuperVisitable<I>
+    + TypeSuperFoldable<I>
+    + Flags
+    + SliceLike<Item = I::Clause>
+{
+}
+
 /// Common capabilities of placeholder kinds
-pub trait PlaceholderLike: Copy + Debug + Hash + Eq {
+pub trait PlaceholderLike<I: Interner>: Copy + Debug + Hash + Eq {
     fn universe(self) -> ty::UniverseIndex;
     fn var(self) -> ty::BoundVar;
 
+    type Bound: BoundVarLike<I>;
+    fn new(ui: ty::UniverseIndex, bound: Self::Bound) -> Self;
+    fn new_anon(ui: ty::UniverseIndex, var: ty::BoundVar) -> Self;
     fn with_updated_universe(self, ui: ty::UniverseIndex) -> Self;
+}
 
-    fn new(ui: ty::UniverseIndex, var: ty::BoundVar) -> Self;
+pub trait PlaceholderConst<I: Interner>: PlaceholderLike<I, Bound = I::BoundConst> {
+    fn find_const_ty_from_env(self, env: I::ParamEnv) -> I::Ty;
+}
+impl<I: Interner> PlaceholderConst<I> for I::PlaceholderConst {
+    fn find_const_ty_from_env(self, env: I::ParamEnv) -> I::Ty {
+        let mut candidates = env.caller_bounds().iter().filter_map(|clause| {
+            // `ConstArgHasType` are never desugared to be higher ranked.
+            match clause.kind().skip_binder() {
+                ty::ClauseKind::ConstArgHasType(placeholder_ct, ty) => {
+                    assert!(!(placeholder_ct, ty).has_escaping_bound_vars());
+
+                    match placeholder_ct.kind() {
+                        ty::ConstKind::Placeholder(placeholder_ct) if placeholder_ct == self => {
+                            Some(ty)
+                        }
+                        _ => None,
+                    }
+                }
+                _ => None,
+            }
+        });
+
+        // N.B. it may be tempting to fix ICEs by making this function return
+        // `Option<Ty<'tcx>>` instead of `Ty<'tcx>`; however, this is generally
+        // considered to be a bandaid solution, since it hides more important
+        // underlying issues with how we construct generics and predicates of
+        // items. It's advised to fix the underlying issue rather than trying
+        // to modify this function.
+        let ty = candidates.next().unwrap_or_else(|| {
+            panic!("cannot find `{self:?}` in param-env: {env:#?}");
+        });
+        assert!(
+            candidates.next().is_none(),
+            "did not expect duplicate `ConstParamHasTy` for `{self:?}` in param-env: {env:#?}"
+        );
+        ty
+    }
 }
 
 pub trait IntoKind {
@@ -518,13 +582,13 @@ pub trait IntoKind {
     fn kind(self) -> Self::Kind;
 }
 
-pub trait BoundVarLike<I: Interner> {
+pub trait BoundVarLike<I: Interner>: Copy + Debug + Hash + Eq {
     fn var(self) -> ty::BoundVar;
 
     fn assert_eq(self, var: I::BoundVarKind);
 }
 
-pub trait ParamLike {
+pub trait ParamLike: Copy + Debug + Hash + Eq {
     fn index(self) -> u32;
 }
 
@@ -545,7 +609,11 @@ pub trait AdtDef<I: Interner>: Copy + Debug + Hash + Eq {
     // FIXME: perhaps use `all_fields` and expose `FieldDef`.
     fn all_field_tys(self, interner: I) -> ty::EarlyBinder<I, impl IntoIterator<Item = I::Ty>>;
 
-    fn sized_constraint(self, interner: I) -> Option<ty::EarlyBinder<I, I::Ty>>;
+    fn sizedness_constraint(
+        self,
+        interner: I,
+        sizedness: SizedTraitKind,
+    ) -> Option<ty::EarlyBinder<I, I::Ty>>;
 
     fn is_fundamental(self) -> bool;
 
@@ -562,6 +630,8 @@ pub trait Features<I: Interner>: Copy {
     fn coroutine_clone(self) -> bool;
 
     fn associated_const_equality(self) -> bool;
+
+    fn feature_bound_holds_in_crate(self, symbol: I::Symbol) -> bool;
 }
 
 pub trait DefId<I: Interner>: Copy + Debug + Hash + Eq + TypeFoldable<I> {
@@ -586,6 +656,13 @@ pub trait BoundExistentialPredicates<I: Interner>:
 
 pub trait Span<I: Interner>: Copy + Debug + Hash + Eq + TypeFoldable<I> {
     fn dummy() -> Self;
+}
+
+pub trait OpaqueTypeStorageEntries: Debug + Copy + Default {
+    /// Whether the number of opaques has changed in a way that necessitates
+    /// reevaluating a goal. For now, this is only when the number of non-duplicated
+    /// entries changed.
+    fn needs_reevaluation(self, canonicalized: usize) -> bool;
 }
 
 pub trait SliceLike: Sized + Copy {

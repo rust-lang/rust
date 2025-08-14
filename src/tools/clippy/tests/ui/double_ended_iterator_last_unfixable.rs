@@ -1,4 +1,4 @@
-//@no-rustfix
+//@no-rustfix: requires manual changes
 #![warn(clippy::double_ended_iterator_last)]
 
 // Should not be linted because applying the lint would move the original iterator. This can only be

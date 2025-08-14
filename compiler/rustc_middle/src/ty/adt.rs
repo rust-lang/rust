@@ -9,14 +9,14 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::stable_hasher::{HashStable, HashingControls, StableHasher};
 use rustc_errors::ErrorGuaranteed;
+use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefId;
-use rustc_hir::{self as hir, LangItem};
+use rustc_hir::{self as hir, LangItem, find_attr};
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_query_system::ich::StableHashingContext;
 use rustc_session::DataTypeKind;
-use rustc_span::sym;
 use rustc_type_ir::solve::AdtDestructorKind;
 use tracing::{debug, info, trace};
 
@@ -229,8 +229,12 @@ impl<'tcx> rustc_type_ir::inherent::AdtDef<TyCtxt<'tcx>> for AdtDef<'tcx> {
         )
     }
 
-    fn sized_constraint(self, tcx: TyCtxt<'tcx>) -> Option<ty::EarlyBinder<'tcx, Ty<'tcx>>> {
-        self.sized_constraint(tcx)
+    fn sizedness_constraint(
+        self,
+        tcx: TyCtxt<'tcx>,
+        sizedness: ty::SizedTraitKind,
+    ) -> Option<ty::EarlyBinder<'tcx, Ty<'tcx>>> {
+        self.sizedness_constraint(tcx, sizedness)
     }
 
     fn is_fundamental(self) -> bool {
@@ -274,7 +278,9 @@ impl AdtDefData {
         debug!("AdtDef::new({:?}, {:?}, {:?}, {:?})", did, kind, variants, repr);
         let mut flags = AdtFlags::NO_ADT_FLAGS;
 
-        if kind == AdtKind::Enum && tcx.has_attr(did, sym::non_exhaustive) {
+        if kind == AdtKind::Enum
+            && find_attr!(tcx.get_all_attrs(did), AttributeKind::NonExhaustive(..))
+        {
             debug!("found non-exhaustive variant list for {:?}", did);
             flags = flags | AdtFlags::IS_VARIANT_LIST_NON_EXHAUSTIVE;
         }
@@ -289,7 +295,7 @@ impl AdtDefData {
             flags |= AdtFlags::HAS_CTOR;
         }
 
-        if tcx.has_attr(did, sym::fundamental) {
+        if find_attr!(tcx.get_all_attrs(did), AttributeKind::Fundamental) {
             flags |= AdtFlags::IS_FUNDAMENTAL;
         }
         if tcx.is_lang_item(did, LangItem::PhantomData) {
@@ -560,10 +566,10 @@ impl<'tcx> AdtDef<'tcx> {
         let mut prev_discr = None::<Discr<'tcx>>;
         self.variants().iter_enumerated().map(move |(i, v)| {
             let mut discr = prev_discr.map_or(initial, |d| d.wrap_incr(tcx));
-            if let VariantDiscr::Explicit(expr_did) = v.discr {
-                if let Ok(new_discr) = self.eval_explicit_discr(tcx, expr_did) {
-                    discr = new_discr;
-                }
+            if let VariantDiscr::Explicit(expr_did) = v.discr
+                && let Ok(new_discr) = self.eval_explicit_discr(tcx, expr_did)
+            {
+                discr = new_discr;
             }
             prev_discr = Some(discr);
 
@@ -634,10 +640,15 @@ impl<'tcx> AdtDef<'tcx> {
         tcx.adt_async_destructor(self.did())
     }
 
-    /// Returns a type such that `Self: Sized` if and only if that type is `Sized`,
-    /// or `None` if the type is always sized.
-    pub fn sized_constraint(self, tcx: TyCtxt<'tcx>) -> Option<ty::EarlyBinder<'tcx, Ty<'tcx>>> {
-        if self.is_struct() { tcx.adt_sized_constraint(self.did()) } else { None }
+    /// If this ADT is a struct, returns a type such that `Self: {Meta,Pointee,}Sized` if and only
+    /// if that type is `{Meta,Pointee,}Sized`, or `None` if this ADT is always
+    /// `{Meta,Pointee,}Sized`.
+    pub fn sizedness_constraint(
+        self,
+        tcx: TyCtxt<'tcx>,
+        sizedness: ty::SizedTraitKind,
+    ) -> Option<ty::EarlyBinder<'tcx, Ty<'tcx>>> {
+        if self.is_struct() { tcx.adt_sizedness_constraint((self.did(), sizedness)) } else { None }
     }
 }
 

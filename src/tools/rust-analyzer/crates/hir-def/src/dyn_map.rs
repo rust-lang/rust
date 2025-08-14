@@ -67,8 +67,14 @@ pub mod keys {
     pub const PROC_MACRO: Key<ast::Fn, ProcMacroId> = Key::new();
     pub const MACRO_CALL: Key<ast::MacroCall, MacroCallId> = Key::new();
     pub const ATTR_MACRO_CALL: Key<ast::Item, MacroCallId> = Key::new();
-    pub const DERIVE_MACRO_CALL: Key<ast::Attr, (AttrId, MacroCallId, Box<[Option<MacroCallId>]>)> =
-        Key::new();
+    pub const DERIVE_MACRO_CALL: Key<
+        ast::Attr,
+        (
+            AttrId,
+            /* derive() */ MacroCallId,
+            /* actual derive macros */ Box<[Option<MacroCallId>]>,
+        ),
+    > = Key::new();
 
     /// XXX: AST Nodes and SyntaxNodes have identity equality semantics: nodes are
     /// equal if they point to exactly the same object.

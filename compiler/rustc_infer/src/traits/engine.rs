@@ -19,7 +19,8 @@ pub enum ScrubbedTraitError<'tcx> {
     TrueError,
     /// An ambiguity. This goal may hold if further inference is done.
     Ambiguity,
-    /// An old-solver-style cycle error, which will fatal.
+    /// An old-solver-style cycle error, which will fatal. This is not
+    /// returned by the new solver.
     Cycle(PredicateObligations<'tcx>),
 }
 

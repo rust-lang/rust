@@ -6,7 +6,14 @@ import type * as ra from "./lsp_ext";
 import { Cargo } from "./toolchain";
 import type { Ctx } from "./ctx";
 import { createTaskFromRunnable, prepareEnv } from "./run";
-import { execute, isCargoRunnableArgs, unwrapUndefinable, log, normalizeDriveLetter } from "./util";
+import {
+    execute,
+    isCargoRunnableArgs,
+    unwrapUndefinable,
+    log,
+    normalizeDriveLetter,
+    Env,
+} from "./util";
 import type { Config } from "./config";
 
 // Here we want to keep track on everything that's currently running
@@ -206,10 +213,7 @@ type SourceFileMap = {
     destination: string;
 };
 
-async function discoverSourceFileMap(
-    env: Record<string, string>,
-    cwd: string,
-): Promise<SourceFileMap | undefined> {
+async function discoverSourceFileMap(env: Env, cwd: string): Promise<SourceFileMap | undefined> {
     const sysroot = env["RUSTC_TOOLCHAIN"];
     if (sysroot) {
         // let's try to use the default toolchain
@@ -232,7 +236,7 @@ type PropertyFetcher<Config, Input, Key extends keyof Config> = (
 
 type DebugConfigProvider<Type extends string, DebugConfig extends BaseDebugConfig<Type>> = {
     executableProperty: keyof DebugConfig;
-    environmentProperty: PropertyFetcher<DebugConfig, Record<string, string>, keyof DebugConfig>;
+    environmentProperty: PropertyFetcher<DebugConfig, Env, keyof DebugConfig>;
     runnableArgsProperty: PropertyFetcher<DebugConfig, ra.CargoRunnableArgs, keyof DebugConfig>;
     sourceFileMapProperty?: keyof DebugConfig;
     type: Type;
@@ -276,7 +280,7 @@ const knownEngines: {
             "environment",
             Object.entries(env).map((entry) => ({
                 name: entry[0],
-                value: entry[1],
+                value: entry[1] ?? "",
             })),
         ],
         runnableArgsProperty: (runnableArgs: ra.CargoRunnableArgs) => [
@@ -304,10 +308,7 @@ const knownEngines: {
     },
 };
 
-async function getDebugExecutable(
-    runnableArgs: ra.CargoRunnableArgs,
-    env: Record<string, string>,
-): Promise<string> {
+async function getDebugExecutable(runnableArgs: ra.CargoRunnableArgs, env: Env): Promise<string> {
     const cargo = new Cargo(runnableArgs.workspaceRoot || ".", env);
     const executable = await cargo.executableFromArgs(runnableArgs);
 
@@ -328,7 +329,7 @@ function getDebugConfig(
     runnable: ra.Runnable,
     runnableArgs: ra.CargoRunnableArgs,
     executable: string,
-    env: Record<string, string>,
+    env: Env,
     sourceFileMap?: Record<string, string>,
 ): vscode.DebugConfiguration {
     const {
@@ -380,14 +381,14 @@ type CodeLldbDebugConfig = {
     args: string[];
     sourceMap: Record<string, string> | undefined;
     sourceLanguages: ["rust"];
-    env: Record<string, string>;
+    env: Env;
 } & BaseDebugConfig<"lldb">;
 
 type NativeDebugConfig = {
     target: string;
     // See https://github.com/WebFreak001/code-debug/issues/359
     arguments: string;
-    env: Record<string, string>;
+    env: Env;
     valuesFormatting: "prettyPrinters";
 } & BaseDebugConfig<"gdb">;
 

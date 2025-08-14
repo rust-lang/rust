@@ -1,8 +1,8 @@
 //! Concrete error types for all operations which may be invalid in a certain const context.
 
 use hir::{ConstContext, LangItem};
+use rustc_errors::Diag;
 use rustc_errors::codes::*;
-use rustc_errors::{Applicability, Diag};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::TyCtxtInferExt;
@@ -142,14 +142,14 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
             |err, self_ty, trait_id| {
                 // FIXME(const_trait_impl): Do we need any of this on the non-const codepath?
 
-                let trait_ref = TraitRef::from_method(tcx, trait_id, self.args);
+                let trait_ref = TraitRef::from_assoc(tcx, trait_id, self.args);
 
                 match self_ty.kind() {
                     Param(param_ty) => {
                         debug!(?param_ty);
                         if let Some(generics) = tcx.hir_node_by_def_id(caller).generics() {
                             let constraint = with_no_trimmed_paths!(format!(
-                                "~const {}",
+                                "[const] {}",
                                 trait_ref.print_trait_sugared(),
                             ));
                             suggest_constraining_type_param(
@@ -281,7 +281,7 @@ fn build_error_for_const_call<'tcx>(
                 let mut sugg = None;
 
                 if ccx.tcx.is_lang_item(trait_id, LangItem::PartialEq) {
-                    match (args[0].unpack(), args[1].unpack()) {
+                    match (args[0].kind(), args[1].kind()) {
                         (GenericArgKind::Type(self_ty), GenericArgKind::Type(rhs_ty))
                             if self_ty == rhs_ty
                                 && self_ty.is_ref()
@@ -295,21 +295,18 @@ fn build_error_for_const_call<'tcx>(
                             }
                             let deref = "*".repeat(num_refs);
 
-                            if let Ok(call_str) = ccx.tcx.sess.source_map().span_to_snippet(span) {
-                                if let Some(eq_idx) = call_str.find("==") {
-                                    if let Some(rhs_idx) =
-                                        call_str[(eq_idx + 2)..].find(|c: char| !c.is_whitespace())
-                                    {
-                                        let rhs_pos =
-                                            span.lo() + BytePos::from_usize(eq_idx + 2 + rhs_idx);
-                                        let rhs_span = span.with_lo(rhs_pos).with_hi(rhs_pos);
-                                        sugg = Some(errors::ConsiderDereferencing {
-                                            deref,
-                                            span: span.shrink_to_lo(),
-                                            rhs_span,
-                                        });
-                                    }
-                                }
+                            if let Ok(call_str) = ccx.tcx.sess.source_map().span_to_snippet(span)
+                                && let Some(eq_idx) = call_str.find("==")
+                                && let Some(rhs_idx) =
+                                    call_str[(eq_idx + 2)..].find(|c: char| !c.is_whitespace())
+                            {
+                                let rhs_pos = span.lo() + BytePos::from_usize(eq_idx + 2 + rhs_idx);
+                                let rhs_span = span.with_lo(rhs_pos).with_hi(rhs_pos);
+                                sugg = Some(errors::ConsiderDereferencing {
+                                    deref,
+                                    span: span.shrink_to_lo(),
+                                    rhs_span,
+                                });
                             }
                         }
                         _ => {}
@@ -345,11 +342,7 @@ fn build_error_for_const_call<'tcx>(
                 non_or_conditionally,
             });
 
-            note_trait_if_possible(
-                &mut err,
-                self_ty,
-                tcx.require_lang_item(LangItem::Deref, Some(span)),
-            );
+            note_trait_if_possible(&mut err, self_ty, tcx.require_lang_item(LangItem::Deref, span));
             err
         }
         _ if tcx.opt_parent(callee) == tcx.get_diagnostic_item(sym::FmtArgumentsNew) => {
@@ -388,7 +381,6 @@ pub(crate) struct CallUnstable {
     /// expose on stable.
     pub feature_enabled: bool,
     pub safe_to_expose_on_stable: bool,
-    pub suggestion_span: Option<Span>,
     /// true if `def_id` is the function we are calling, false if `def_id` is an unstable trait.
     pub is_function_call: bool,
 }
@@ -416,20 +408,7 @@ impl<'tcx> NonConstOp<'tcx> for CallUnstable {
                 def_path: ccx.tcx.def_path_str(self.def_id),
             })
         };
-        // FIXME: make this translatable
-        let msg = format!("add `#![feature({})]` to the crate attributes to enable", self.feature);
-        #[allow(rustc::untranslatable_diagnostic)]
-        if let Some(span) = self.suggestion_span {
-            err.span_suggestion_verbose(
-                span,
-                msg,
-                format!("#![feature({})]\n", self.feature),
-                Applicability::MachineApplicable,
-            );
-        } else {
-            err.help(msg);
-        }
-
+        ccx.tcx.disabled_nightly_features(&mut err, [(String::new(), self.feature)]);
         err
     }
 }
@@ -456,7 +435,6 @@ pub(crate) struct IntrinsicUnstable {
     pub name: Symbol,
     pub feature: Symbol,
     pub const_stable_indirect: bool,
-    pub suggestion: Option<Span>,
 }
 
 impl<'tcx> NonConstOp<'tcx> for IntrinsicUnstable {
@@ -476,8 +454,7 @@ impl<'tcx> NonConstOp<'tcx> for IntrinsicUnstable {
             span,
             name: self.name,
             feature: self.feature,
-            suggestion: self.suggestion,
-            help: self.suggestion.is_none(),
+            suggestion: ccx.tcx.crate_level_attribute_injection_span(),
         })
     }
 }
@@ -486,24 +463,25 @@ impl<'tcx> NonConstOp<'tcx> for IntrinsicUnstable {
 pub(crate) struct Coroutine(pub hir::CoroutineKind);
 impl<'tcx> NonConstOp<'tcx> for Coroutine {
     fn status_in_item(&self, _: &ConstCx<'_, 'tcx>) -> Status {
-        if let hir::CoroutineKind::Desugared(
-            hir::CoroutineDesugaring::Async,
-            hir::CoroutineSource::Block,
-        ) = self.0
-        {
-            Status::Unstable {
+        match self.0 {
+            hir::CoroutineKind::Desugared(
+                hir::CoroutineDesugaring::Async,
+                hir::CoroutineSource::Block,
+            )
+            // FIXME(coroutines): eventually we want to gate const coroutine coroutines behind a
+            // different feature.
+            | hir::CoroutineKind::Coroutine(_) => Status::Unstable {
                 gate: sym::const_async_blocks,
                 gate_already_checked: false,
                 safe_to_expose_on_stable: false,
                 is_function_call: false,
-            }
-        } else {
-            Status::Forbidden
+            },
+            _ => Status::Forbidden,
         }
     }
 
     fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> Diag<'tcx> {
-        let msg = format!("{:#}s are not allowed in {}s", self.0, ccx.const_kind());
+        let msg = format!("{} are not allowed in {}s", self.0.to_plural_string(), ccx.const_kind());
         if let Status::Unstable { gate, .. } = self.status_in_item(ccx) {
             ccx.tcx.sess.create_feature_err(errors::UnallowedOpInConstContext { span, msg }, gate)
         } else {
@@ -586,12 +564,7 @@ impl<'tcx> NonConstOp<'tcx> for EscapingCellBorrow {
         DiagImportance::Secondary
     }
     fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> Diag<'tcx> {
-        ccx.dcx().create_err(errors::InteriorMutableRefEscaping {
-            span,
-            opt_help: matches!(ccx.const_kind(), hir::ConstContext::Static(_)),
-            kind: ccx.const_kind(),
-            teach: ccx.tcx.sess.teach(E0492),
-        })
+        ccx.dcx().create_err(errors::InteriorMutableBorrowEscaping { span, kind: ccx.const_kind() })
     }
 }
 
@@ -599,7 +572,7 @@ impl<'tcx> NonConstOp<'tcx> for EscapingCellBorrow {
 /// This op is for `&mut` borrows in the trailing expression of a constant
 /// which uses the "enclosing scopes rule" to leak its locals into anonymous
 /// static or const items.
-pub(crate) struct EscapingMutBorrow(pub hir::BorrowKind);
+pub(crate) struct EscapingMutBorrow;
 
 impl<'tcx> NonConstOp<'tcx> for EscapingMutBorrow {
     fn status_in_item(&self, _ccx: &ConstCx<'_, 'tcx>) -> Status {
@@ -613,18 +586,7 @@ impl<'tcx> NonConstOp<'tcx> for EscapingMutBorrow {
     }
 
     fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> Diag<'tcx> {
-        match self.0 {
-            hir::BorrowKind::Raw => ccx.tcx.dcx().create_err(errors::MutableRawEscaping {
-                span,
-                kind: ccx.const_kind(),
-                teach: ccx.tcx.sess.teach(E0764),
-            }),
-            hir::BorrowKind::Ref => ccx.dcx().create_err(errors::MutableRefEscaping {
-                span,
-                kind: ccx.const_kind(),
-                teach: ccx.tcx.sess.teach(E0764),
-            }),
-        }
+        ccx.dcx().create_err(errors::MutableBorrowEscaping { span, kind: ccx.const_kind() })
     }
 }
 

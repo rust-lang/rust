@@ -56,8 +56,7 @@ fn lower_slice_len_call<'tcx>(block: &mut BasicBlockData<'tcx>, slice_len_fn_ite
         // make new RValue for Len
         let r_value = Rvalue::UnaryOp(UnOp::PtrMetadata, arg.node.clone());
         let len_statement_kind = StatementKind::Assign(Box::new((*destination, r_value)));
-        let add_statement =
-            Statement { kind: len_statement_kind, source_info: terminator.source_info };
+        let add_statement = Statement::new(terminator.source_info, len_statement_kind);
 
         // modify terminator into simple Goto
         let new_terminator_kind = TerminatorKind::Goto { target: *bb };

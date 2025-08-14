@@ -1,8 +1,8 @@
 error[E0603]: crate import `core` is private
-  --> $DIR/pub-reexport-priv-extern-crate.rs:10:15
+  --> $DIR/pub-reexport-priv-extern-crate.rs:10:22
    |
-LL |     use foo1::core;
-   |               ^^^^ private crate import
+LL |     use crate::foo1::core;
+   |                      ^^^^ private crate import
    |
 note: the crate import `core` is defined here
   --> $DIR/pub-reexport-priv-extern-crate.rs:6:5
@@ -11,10 +11,10 @@ LL |     extern crate core;
    |     ^^^^^^^^^^^^^^^^^^
 
 error[E0603]: crate import `core` is private
-  --> $DIR/pub-reexport-priv-extern-crate.rs:17:24
+  --> $DIR/pub-reexport-priv-extern-crate.rs:17:31
    |
-LL |     pub use foo2::bar::core;
-   |                        ^^^^ private crate import
+LL |     pub use crate::foo2::bar::core;
+   |                               ^^^^ private crate import
    |
 note: the crate import `core` is defined here
   --> $DIR/pub-reexport-priv-extern-crate.rs:12:9

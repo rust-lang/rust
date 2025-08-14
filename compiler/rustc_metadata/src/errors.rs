@@ -45,7 +45,8 @@ pub struct CrateDepMultiple {
 #[derive(Subdiagnostic)]
 #[note(metadata_crate_dep_not_static)]
 pub struct NonStaticCrateDep {
-    pub crate_name: Symbol,
+    /// It's different from `crate_name` in main Diagnostic.
+    pub crate_name_: Symbol,
 }
 
 #[derive(Subdiagnostic)]
@@ -300,15 +301,8 @@ pub struct NoLinkModOverride {
 }
 
 #[derive(Diagnostic)]
-#[diag(metadata_unsupported_abi_i686)]
-pub struct UnsupportedAbiI686 {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(metadata_unsupported_abi)]
-pub struct UnsupportedAbi {
+#[diag(metadata_raw_dylib_unsupported_abi)]
+pub struct RawDylibUnsupportedAbi {
     #[primary_span]
     pub span: Span,
 }
@@ -810,4 +804,21 @@ pub struct UnknownTargetModifierUnsafeAllowed {
     #[primary_span]
     pub span: Span,
     pub flag_name: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(metadata_async_drop_types_in_dependency)]
+#[help]
+pub struct AsyncDropTypesInDependency {
+    #[primary_span]
+    pub span: Span,
+    pub extern_crate: Symbol,
+    pub local_crate: Symbol,
+}
+
+#[derive(Diagnostic)]
+#[diag(metadata_raw_dylib_malformed)]
+pub struct RawDylibMalformed {
+    #[primary_span]
+    pub span: Span,
 }

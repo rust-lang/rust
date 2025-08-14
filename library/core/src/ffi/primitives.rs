@@ -35,7 +35,7 @@ type_alias! { "c_float.md", c_float = f32; }
 type_alias! { "c_double.md", c_double = f64; }
 
 mod c_char_definition {
-    crate::cfg_match! {
+    crate::cfg_select! {
         // These are the targets on which c_char is unsigned. Usually the
         // signedness is the same for all target_os values on a given architecture
         // but there are some exceptions (see isSignedCharDefault() in clang).
@@ -133,7 +133,7 @@ mod c_char_definition {
 }
 
 mod c_long_definition {
-    crate::cfg_match! {
+    crate::cfg_select! {
         any(
             all(target_pointer_width = "64", not(windows)),
             // wasm32 Linux ABI uses 64-bit long
@@ -172,7 +172,7 @@ pub type c_ptrdiff_t = isize;
 pub type c_ssize_t = isize;
 
 mod c_int_definition {
-    crate::cfg_match! {
+    crate::cfg_select! {
         any(target_arch = "avr", target_arch = "msp430") => {
             pub(super) type c_int = i16;
             pub(super) type c_uint = u16;

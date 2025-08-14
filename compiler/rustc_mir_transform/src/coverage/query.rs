@@ -1,3 +1,5 @@
+use rustc_hir::attrs::{AttributeKind, CoverageAttrKind};
+use rustc_hir::find_attr;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::coverage::{BasicCoverageBlock, CoverageIdsInfo, CoverageKind, MappingKind};
@@ -5,7 +7,6 @@ use rustc_middle::mir::{Body, Statement, StatementKind};
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_middle::util::Providers;
 use rustc_span::def_id::LocalDefId;
-use rustc_span::sym;
 use tracing::trace;
 
 use crate::coverage::counters::node_flow::make_node_counters;
@@ -32,16 +33,6 @@ fn is_eligible_for_coverage(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
         return false;
     }
 
-    // Don't instrument functions with `#[automatically_derived]` on their
-    // enclosing impl block, on the assumption that most users won't care about
-    // coverage for derived impls.
-    if let Some(impl_of) = tcx.impl_of_method(def_id.to_def_id())
-        && tcx.is_automatically_derived(impl_of)
-    {
-        trace!("InstrumentCoverage skipped for {def_id:?} (automatically derived)");
-        return false;
-    }
-
     if tcx.codegen_fn_attrs(def_id).flags.contains(CodegenFnAttrFlags::NAKED) {
         trace!("InstrumentCoverage skipped for {def_id:?} (`#[naked]`)");
         return false;
@@ -57,22 +48,28 @@ fn is_eligible_for_coverage(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
 
 /// Query implementation for `coverage_attr_on`.
 fn coverage_attr_on(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
-    // Check for annotations directly on this def.
-    if let Some(attr) = tcx.get_attr(def_id, sym::coverage) {
-        match attr.meta_item_list().as_deref() {
-            Some([item]) if item.has_name(sym::off) => return false,
-            Some([item]) if item.has_name(sym::on) => return true,
-            Some(_) | None => {
-                // Other possibilities should have been rejected by `rustc_parse::validate_attr`.
-                // Use `span_delayed_bug` to avoid an ICE in failing builds (#127880).
-                tcx.dcx().span_delayed_bug(attr.span(), "unexpected value of coverage attribute");
-            }
+    // Check for a `#[coverage(..)]` attribute on this def.
+    if let Some(kind) =
+        find_attr!(tcx.get_all_attrs(def_id), AttributeKind::Coverage(_sp, kind) => kind)
+    {
+        match kind {
+            CoverageAttrKind::On => return true,
+            CoverageAttrKind::Off => return false,
         }
+    };
+
+    // Treat `#[automatically_derived]` as an implied `#[coverage(off)]`, on
+    // the assumption that most users won't want coverage for derived impls.
+    //
+    // This affects not just the associated items of an impl block, but also
+    // any closures and other nested functions within those associated items.
+    if tcx.is_automatically_derived(def_id.to_def_id()) {
+        return false;
     }
 
+    // Check the parent def (and so on recursively) until we find an
+    // enclosing attribute or reach the crate root.
     match tcx.opt_local_parent(def_id) {
-        // Check the parent def (and so on recursively) until we find an
-        // enclosing attribute or reach the crate root.
         Some(parent) => tcx.coverage_attr_on(parent),
         // We reached the crate root without seeing a coverage attribute, so
         // allow coverage instrumentation by default.
@@ -114,11 +111,6 @@ fn coverage_ids_info<'tcx>(
                 bcb_needs_counter.insert(true_bcb);
                 bcb_needs_counter.insert(false_bcb);
             }
-            MappingKind::MCDCBranch { true_bcb, false_bcb, mcdc_params: _ } => {
-                bcb_needs_counter.insert(true_bcb);
-                bcb_needs_counter.insert(false_bcb);
-            }
-            MappingKind::MCDCDecision(_) => {}
         }
     }
 

@@ -326,5 +326,53 @@ LL -     let y = b.map_or(true, |b| b == *s);
 LL +     let y = b.is_none_or(|b| b == *s);
    |
 
-error: aborting due to 26 previous errors
+error: this `map_or` can be simplified
+  --> tests/ui/unnecessary_map_or.rs:139:13
+   |
+LL |     assert!(Some("test").map_or(false, |x| x == "test"));
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use a standard comparison instead
+   |
+LL -     assert!(Some("test").map_or(false, |x| x == "test"));
+LL +     assert!(Some("test") == Some("test"));
+   |
+
+error: this `map_or` can be simplified
+  --> tests/ui/unnecessary_map_or.rs:143:13
+   |
+LL |     assert!(Some("test").map_or(false, |x| x == "test").then(|| 1).is_some());
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use a standard comparison instead
+   |
+LL -     assert!(Some("test").map_or(false, |x| x == "test").then(|| 1).is_some());
+LL +     assert!((Some("test") == Some("test")).then(|| 1).is_some());
+   |
+
+error: this `map_or` can be simplified
+  --> tests/ui/unnecessary_map_or.rs:160:9
+   |
+LL |     _ = s.lock().unwrap().map_or(false, |s| s == "foo");
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use is_some_and instead
+   |
+LL -     _ = s.lock().unwrap().map_or(false, |s| s == "foo");
+LL +     _ = s.lock().unwrap().is_some_and(|s| s == "foo");
+   |
+
+error: this `map_or` can be simplified
+  --> tests/ui/unnecessary_map_or.rs:164:9
+   |
+LL |     _ = s.map_or(false, |s| s == "foo");
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use is_some_and instead
+   |
+LL -     _ = s.map_or(false, |s| s == "foo");
+LL +     _ = s.is_some_and(|s| s == "foo");
+   |
+
+error: aborting due to 30 previous errors
 

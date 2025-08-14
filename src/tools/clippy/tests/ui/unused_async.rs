@@ -119,3 +119,21 @@ fn main() {
     foo();
     bar();
 }
+
+mod issue14704 {
+    use std::sync::Arc;
+
+    trait Action {
+        async fn cancel(self: Arc<Self>) {}
+    }
+}
+
+mod issue15305 {
+    async fn todo_task() -> Result<(), String> {
+        todo!("Implement task");
+    }
+
+    async fn unimplemented_task() -> Result<(), String> {
+        unimplemented!("Implement task");
+    }
+}

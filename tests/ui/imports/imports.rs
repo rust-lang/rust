@@ -3,7 +3,7 @@
 
 // Like other items, private imports can be imported and used non-lexically in paths.
 mod a {
-    use a as foo;
+    use crate::a as foo;
     use self::foo::foo as bar;
 
     mod b {
@@ -18,22 +18,22 @@ pub fn f() -> bool { true }
 
 // Items and explicit imports shadow globs.
 fn g() {
-    use foo::*;
-    use bar::*;
+    use crate::foo::*;
+    use crate::bar::*;
     fn f() -> bool { true }
     let _: bool = f();
 }
 
 fn h() {
-    use foo::*;
-    use bar::*;
-    use f;
+    use crate::foo::*;
+    use crate::bar::*;
+    use crate::f;
     let _: bool = f();
 }
 
 // Here, there appears to be shadowing but isn't because of namespaces.
 mod b {
-    use foo::*; // This imports `f` in the value namespace.
+    use crate::foo::*; // This imports `f` in the value namespace.
     use super::b as f; // This imports `f` only in the type namespace,
     fn test() { self::f(); } // so the glob isn't shadowed.
 }
@@ -55,12 +55,13 @@ mod c {
 
 // Unused names can be ambiguous.
 mod d {
-    pub use foo::*; // This imports `f` in the value namespace.
-    pub use bar::*; // This also imports `f` in the value namespace.
+    pub use crate::foo::*; // This imports `f` in the value namespace.
+    pub use crate::bar::*; // This also imports `f` in the value namespace.
 }
 
 mod e {
-    pub use d::*; // n.b. Since `e::f` is not used, this is not considered to be a use of `d::f`.
+    pub use crate::d::*; // n.b. Since `e::f` is not used,
+                         // this is not considered to be a use of `d::f`.
 }
 
 fn main() {}

@@ -1,3 +1,4 @@
+use crate::macros::root_macro_call_first_node;
 use crate::visitors::{Descend, Visitable, for_each_expr, for_each_expr_without_closures};
 use crate::{self as utils, get_enclosing_loop_or_multi_call_closure};
 use core::ops::ControlFlow;
@@ -9,6 +10,7 @@ use rustc_lint::LateContext;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::mir::FakeReadCause;
 use rustc_middle::ty;
+use rustc_span::sym;
 
 /// Returns a set of mutated local variable IDs, or `None` if mutations could not be determined.
 pub fn mutated_variables<'tcx>(expr: &'tcx Expr<'_>, cx: &LateContext<'tcx>) -> Option<HirIdSet> {
@@ -138,6 +140,46 @@ impl<'tcx> Visitor<'tcx> for BindingUsageFinder<'_, 'tcx> {
     fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
         self.cx.tcx
     }
+}
+
+/// Checks if the given expression is a macro call to `todo!()` or `unimplemented!()`.
+pub fn is_todo_unimplemented_macro(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
+    root_macro_call_first_node(cx, expr).is_some_and(|macro_call| {
+        [sym::todo_macro, sym::unimplemented_macro]
+            .iter()
+            .any(|&sym| cx.tcx.is_diagnostic_item(sym, macro_call.def_id))
+    })
+}
+
+/// Checks if the given expression is a stub, i.e., a `todo!()` or `unimplemented!()` expression,
+/// or a block whose last expression is a `todo!()` or `unimplemented!()`.
+pub fn is_todo_unimplemented_stub(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
+    if let ExprKind::Block(block, _) = expr.kind {
+        if let Some(last_expr) = block.expr {
+            return is_todo_unimplemented_macro(cx, last_expr);
+        }
+
+        return block.stmts.last().is_some_and(|stmt| {
+            if let hir::StmtKind::Expr(expr) | hir::StmtKind::Semi(expr) = stmt.kind {
+                return is_todo_unimplemented_macro(cx, expr);
+            }
+            false
+        });
+    }
+
+    is_todo_unimplemented_macro(cx, expr)
+}
+
+/// Checks if the given expression contains macro call to `todo!()` or `unimplemented!()`.
+pub fn contains_todo_unimplement_macro(cx: &LateContext<'_>, expr: &'_ Expr<'_>) -> bool {
+    for_each_expr_without_closures(expr, |e| {
+        if is_todo_unimplemented_macro(cx, e) {
+            ControlFlow::Break(())
+        } else {
+            ControlFlow::Continue(())
+        }
+    })
+    .is_some()
 }
 
 pub fn contains_return_break_continue_macro(expression: &Expr<'_>) -> bool {

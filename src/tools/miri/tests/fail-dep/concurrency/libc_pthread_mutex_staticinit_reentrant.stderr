@@ -2,7 +2,7 @@ error: Undefined Behavior: trying to acquire default mutex already locked by the
   --> tests/fail-dep/concurrency/libc_pthread_mutex_staticinit_reentrant.rs:LL:CC
    |
 LL |         libc::pthread_mutex_lock(&mut mutex as *mut _);
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ trying to acquire default mutex already locked by the current thread
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Undefined Behavior occurred here
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

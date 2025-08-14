@@ -7,7 +7,6 @@ use std::os::windows::ffi::{OsStrExt, OsStringExt};
 use std::path::{Path, PathBuf};
 
 use rustc_middle::ty::Ty;
-use rustc_middle::ty::layout::LayoutOf;
 
 use crate::*;
 

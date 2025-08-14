@@ -7,8 +7,14 @@
 #![no_std]
 #![no_core]
 
+#[lang = "pointee_sized"]
+trait PointeeSized {}
+
+#[lang = "meta_sized"]
+trait MetaSized: PointeeSized {}
+
 #[lang = "sized"]
-trait Sized {}
+trait Sized: MetaSized {}
 
 #[lang = "copy"]
 pub trait Copy {}
@@ -17,7 +23,7 @@ pub trait Copy {}
 auto trait Leak {}
 
 // implicit T: Leak here
-fn foo<T: ?Sized>(_: &T) {}
+fn foo<T: PointeeSized>(_: &T) {}
 
 mod extern_leak {
     use crate::*;

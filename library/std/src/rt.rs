@@ -26,6 +26,13 @@ use crate::sync::Once;
 use crate::thread::{self, main_thread};
 use crate::{mem, panic, sys};
 
+// This function is needed by the panic runtime.
+#[cfg(not(test))]
+#[rustc_std_internal_symbol]
+fn __rust_abort() {
+    crate::process::abort();
+}
+
 // Prints to the "panic output", depending on the platform this may be:
 // - the standard error output
 // - some dedicated platform specific output
@@ -47,7 +54,7 @@ macro_rules! rtabort {
     ($($t:tt)*) => {
         {
             rtprintpanic!("fatal runtime error: {}, aborting\n", format_args!($($t)*));
-            crate::sys::abort_internal();
+            crate::process::abort();
         }
     }
 }

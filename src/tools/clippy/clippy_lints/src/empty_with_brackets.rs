@@ -92,9 +92,12 @@ impl_lint_pass!(EmptyWithBrackets => [EMPTY_STRUCTS_WITH_BRACKETS, EMPTY_ENUM_VA
 
 impl LateLintPass<'_> for EmptyWithBrackets {
     fn check_item(&mut self, cx: &LateContext<'_>, item: &Item<'_>) {
-        if let ItemKind::Struct(ident, var_data, _) = &item.kind
+        // FIXME: handle `struct $name {}`
+        if let ItemKind::Struct(ident, generics, var_data) = &item.kind
+            && !item.span.from_expansion()
+            && !ident.span.from_expansion()
             && has_brackets(var_data)
-            && let span_after_ident = item.span.with_lo(ident.span.hi())
+            && let span_after_ident = item.span.with_lo(generics.span.hi())
             && has_no_fields(cx, var_data, span_after_ident)
         {
             span_lint_and_then(
@@ -115,10 +118,12 @@ impl LateLintPass<'_> for EmptyWithBrackets {
     }
 
     fn check_variant(&mut self, cx: &LateContext<'_>, variant: &Variant<'_>) {
-        // the span of the parentheses/braces
-        let span_after_ident = variant.span.with_lo(variant.ident.span.hi());
-
-        if has_no_fields(cx, &variant.data, span_after_ident) {
+        // FIXME: handle `$name {}`
+        if !variant.span.from_expansion()
+            && !variant.ident.span.from_expansion()
+            && let span_after_ident = variant.span.with_lo(variant.ident.span.hi())
+            && has_no_fields(cx, &variant.data, span_after_ident)
+        {
             match variant.data {
                 VariantData::Struct { .. } => {
                     // Empty struct variants can be linted immediately

@@ -1,4 +1,5 @@
 //@ compile-flags:-g
+//@ disable-gdb-pretty-printers
 
 // === GDB TESTS ===================================================================================
 
@@ -18,8 +19,6 @@
 // lldb-check:[...] { a = { 0 = '\x01' 1 = '\x01' } b = 257 }
 
 #![allow(unused)]
-#![feature(omit_gdb_pretty_printer_section)]
-#![omit_gdb_pretty_printer_section]
 
 union U {
     a: (u8, u8),

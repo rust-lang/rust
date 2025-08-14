@@ -14,7 +14,7 @@ error[E0599]: no function or associated item named `default` found for trait obj
   --> $DIR/issue-43924.rs:14:39
    |
 LL |     assert_eq!(<() as Foo<u32>>::Out::default().to_string(), "false");
-   |                                       ^^^^^^^ function or associated item not found in `dyn ToString`
+   |                                       ^^^^^^^ function or associated item not found in `(dyn ToString + 'static)`
 
 error: aborting due to 2 previous errors
 

@@ -66,8 +66,8 @@ jobs:
       run: |
           sudo dpkg --force-overwrite -i gcc-15.deb
           echo 'gcc-path = "/usr/lib"' > config.toml
-          echo "LIBRARY_PATH=/usr/lib" >> $GITHUB_ENV
-          echo "LD_LIBRARY_PATH=/usr/lib" >> $GITHUB_ENV
+          
+          
 
     - name: Set env
       run: |

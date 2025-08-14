@@ -8,10 +8,10 @@ use rustc_middle::bug;
 use rustc_middle::mir::{write_mir_graphviz, write_mir_pretty};
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_mir_build::thir::print::{thir_flat, thir_tree};
+use rustc_public::rustc_internal::pretty::write_smir_pretty;
 use rustc_session::Session;
 use rustc_session::config::{OutFileName, PpHirMode, PpMode, PpSourceMode};
 use rustc_span::{FileName, Ident};
-use stable_mir::rustc_internal::pretty::write_smir_pretty;
 use tracing::debug;
 use {rustc_ast as ast, rustc_hir_pretty as pprust_hir};
 
@@ -292,7 +292,11 @@ pub fn print<'tcx>(sess: &Session, ppm: PpMode, ex: PrintExtra<'tcx>) {
         }
         HirTree => {
             debug!("pretty printing HIR tree");
-            format!("{:#?}", ex.tcx().hir_crate(()))
+            ex.tcx()
+                .hir_crate_items(())
+                .owners()
+                .map(|owner| format!("{:#?} => {:#?}\n", owner, ex.tcx().hir_owner_nodes(owner)))
+                .collect()
         }
         Mir => {
             let mut out = Vec::new();

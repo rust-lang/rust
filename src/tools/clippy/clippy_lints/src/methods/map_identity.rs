@@ -5,7 +5,7 @@ use rustc_ast::BindingMode;
 use rustc_errors::Applicability;
 use rustc_hir::{self as hir, Node, PatKind};
 use rustc_lint::LateContext;
-use rustc_span::{Span, sym};
+use rustc_span::{Span, Symbol, sym};
 
 use super::MAP_IDENTITY;
 
@@ -14,7 +14,7 @@ pub(super) fn check(
     expr: &hir::Expr<'_>,
     caller: &hir::Expr<'_>,
     map_arg: &hir::Expr<'_>,
-    name: &str,
+    name: Symbol,
     _map_span: Span,
 ) {
     let caller_ty = cx.typeck_results().expr_ty(caller);

@@ -90,9 +90,9 @@ use rustc_data_structures::fx::FxHashMap;
 
 use super::AllocDataRaceHandler;
 use super::data_race::{GlobalState as DataRaceState, ThreadClockSet};
-use super::range_object_map::{AccessType, RangeObjectMap};
 use super::vector_clock::{VClock, VTimestamp, VectorIdx};
 use crate::concurrency::GlobalDataRaceHandler;
+use crate::data_structures::range_object_map::{AccessType, RangeObjectMap};
 use crate::*;
 
 pub type AllocState = StoreBufferAlloc;

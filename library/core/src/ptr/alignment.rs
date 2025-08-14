@@ -1,3 +1,5 @@
+#![allow(clippy::enum_clike_unportable_variant)]
+
 use crate::num::NonZero;
 use crate::ub_checks::assert_unsafe_precondition;
 use crate::{cmp, fmt, hash, mem, num};
@@ -73,6 +75,7 @@ impl Alignment {
     /// It must *not* be zero.
     #[unstable(feature = "ptr_alignment_type", issue = "102070")]
     #[inline]
+    #[track_caller]
     pub const unsafe fn new_unchecked(align: usize) -> Self {
         assert_unsafe_precondition!(
             check_language_ub,
@@ -188,7 +191,8 @@ impl TryFrom<usize> for Alignment {
 }
 
 #[unstable(feature = "ptr_alignment_type", issue = "102070")]
-impl From<Alignment> for NonZero<usize> {
+#[rustc_const_unstable(feature = "const_try", issue = "74935")]
+impl const From<Alignment> for NonZero<usize> {
     #[inline]
     fn from(align: Alignment) -> NonZero<usize> {
         align.as_nonzero()
@@ -196,7 +200,8 @@ impl From<Alignment> for NonZero<usize> {
 }
 
 #[unstable(feature = "ptr_alignment_type", issue = "102070")]
-impl From<Alignment> for usize {
+#[rustc_const_unstable(feature = "const_try", issue = "74935")]
+impl const From<Alignment> for usize {
     #[inline]
     fn from(align: Alignment) -> usize {
         align.as_usize()
@@ -229,7 +234,8 @@ impl hash::Hash for Alignment {
 
 /// Returns [`Alignment::MIN`], which is valid for any type.
 #[unstable(feature = "ptr_alignment_type", issue = "102070")]
-impl Default for Alignment {
+#[rustc_const_unstable(feature = "const_default", issue = "143894")]
+impl const Default for Alignment {
     fn default() -> Alignment {
         Alignment::MIN
     }
@@ -237,7 +243,7 @@ impl Default for Alignment {
 
 #[cfg(target_pointer_width = "16")]
 #[derive(Copy, Clone, PartialEq, Eq)]
-#[repr(u16)]
+#[repr(usize)]
 enum AlignmentEnum {
     _Align1Shl0 = 1 << 0,
     _Align1Shl1 = 1 << 1,
@@ -259,7 +265,7 @@ enum AlignmentEnum {
 
 #[cfg(target_pointer_width = "32")]
 #[derive(Copy, Clone, PartialEq, Eq)]
-#[repr(u32)]
+#[repr(usize)]
 enum AlignmentEnum {
     _Align1Shl0 = 1 << 0,
     _Align1Shl1 = 1 << 1,
@@ -297,7 +303,7 @@ enum AlignmentEnum {
 
 #[cfg(target_pointer_width = "64")]
 #[derive(Copy, Clone, PartialEq, Eq)]
-#[repr(u64)]
+#[repr(usize)]
 enum AlignmentEnum {
     _Align1Shl0 = 1 << 0,
     _Align1Shl1 = 1 << 1,

@@ -16,9 +16,7 @@ use rustc_macros::{HashStable, TyDecodable, TyEncodable, extension};
 use rustc_session::config::OptLevel;
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, Symbol, sym};
 use rustc_target::callconv::FnAbi;
-use rustc_target::spec::{
-    HasTargetSpec, HasWasmCAbiOpt, HasX86AbiOpt, PanicStrategy, Target, WasmCAbi, X86Abi,
-};
+use rustc_target::spec::{HasTargetSpec, HasX86AbiOpt, PanicStrategy, Target, X86Abi};
 use tracing::debug;
 use {rustc_abi as abi, rustc_hir as hir};
 
@@ -109,8 +107,8 @@ impl abi::Integer {
             abi::Integer::I8
         };
 
-        // If there are no negative values, we can use the unsigned fit.
-        if min >= 0 {
+        // Pick the smallest fit.
+        if unsigned_fit <= signed_fit {
             (cmp::max(unsigned_fit, at_least), false)
         } else {
             (cmp::max(signed_fit, at_least), true)
@@ -565,12 +563,6 @@ impl<'tcx> HasTargetSpec for TyCtxt<'tcx> {
     }
 }
 
-impl<'tcx> HasWasmCAbiOpt for TyCtxt<'tcx> {
-    fn wasm_c_abi_opt(&self) -> WasmCAbi {
-        self.sess.opts.unstable_opts.wasm_c_abi
-    }
-}
-
 impl<'tcx> HasX86AbiOpt for TyCtxt<'tcx> {
     fn x86_abi_opt(&self) -> X86Abi {
         X86Abi {
@@ -622,12 +614,6 @@ impl<'tcx> HasDataLayout for LayoutCx<'tcx> {
 impl<'tcx> HasTargetSpec for LayoutCx<'tcx> {
     fn target_spec(&self) -> &Target {
         self.calc.cx.target_spec()
-    }
-}
-
-impl<'tcx> HasWasmCAbiOpt for LayoutCx<'tcx> {
-    fn wasm_c_abi_opt(&self) -> WasmCAbi {
-        self.calc.cx.wasm_c_abi_opt()
     }
 }
 
@@ -934,7 +920,7 @@ where
                             .unwrap(),
                     ),
                     Variants::Multiple { tag, tag_field, .. } => {
-                        if i == tag_field {
+                        if FieldIdx::from_usize(i) == tag_field {
                             return TyMaybeWithLayout::TyAndLayout(tag_layout(tag));
                         }
                         TyMaybeWithLayout::Ty(args.as_coroutine().prefix_tys()[i])
@@ -957,21 +943,6 @@ where
                             assert_eq!(i, 0);
                             return TyMaybeWithLayout::TyAndLayout(tag_layout(tag));
                         }
-                    }
-                }
-
-                ty::Dynamic(_, _, ty::DynStar) => {
-                    if i == 0 {
-                        TyMaybeWithLayout::Ty(Ty::new_mut_ptr(tcx, tcx.types.unit))
-                    } else if i == 1 {
-                        // FIXME(dyn-star) same FIXME as above applies here too
-                        TyMaybeWithLayout::Ty(Ty::new_imm_ref(
-                            tcx,
-                            tcx.lifetimes.re_static,
-                            Ty::new_array(tcx, tcx.types.usize, 3),
-                        ))
-                    } else {
-                        bug!("no field {i} on dyn*")
                     }
                 }
 
@@ -1060,8 +1031,10 @@ where
                         tag_field,
                         variants,
                         ..
-                    } if variants.len() == 2 && this.fields.offset(*tag_field) == offset => {
-                        let tagged_variant = if untagged_variant.as_u32() == 0 {
+                    } if variants.len() == 2
+                        && this.fields.offset(tag_field.as_usize()) == offset =>
+                    {
+                        let tagged_variant = if *untagged_variant == VariantIdx::ZERO {
                             VariantIdx::from_u32(1)
                         } else {
                             VariantIdx::from_u32(0)
@@ -1082,11 +1055,11 @@ where
                     _ => Some(this),
                 };
 
-                if let Some(variant) = data_variant {
+                if let Some(variant) = data_variant
                     // We're not interested in any unions.
-                    if let FieldsShape::Union(_) = variant.fields {
-                        data_variant = None;
-                    }
+                    && let FieldsShape::Union(_) = variant.fields
+                {
+                    data_variant = None;
                 }
 
                 let mut result = None;
@@ -1094,7 +1067,7 @@ where
                 if let Some(variant) = data_variant {
                     // FIXME(erikdesjardins): handle non-default addrspace ptr sizes
                     // (requires passing in the expected address space from the caller)
-                    let ptr_end = offset + Primitive::Pointer(AddressSpace::DATA).size(cx);
+                    let ptr_end = offset + Primitive::Pointer(AddressSpace::ZERO).size(cx);
                     for i in 0..variant.fields.count() {
                         let field_start = variant.fields.offset(i);
                         if field_start <= offset {
@@ -1260,10 +1233,12 @@ pub fn fn_can_unwind(tcx: TyCtxt<'_>, fn_def_id: Option<DefId>, abi: ExternAbi) 
         | EfiApi
         | AvrInterrupt
         | AvrNonBlockingInterrupt
+        | CmseNonSecureCall
+        | CmseNonSecureEntry
+        | Custom
         | RiscvInterruptM
         | RiscvInterruptS
-        | CCmseNonSecureCall
-        | CCmseNonSecureEntry
+        | RustInvalid
         | Unadjusted => false,
         Rust | RustCall | RustCold => tcx.sess.panic_strategy() == PanicStrategy::Unwind,
     }

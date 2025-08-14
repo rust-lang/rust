@@ -45,7 +45,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidReferenceCasting {
             let init = cx.expr_or_init(e);
             let orig_cast = if init.span != e.span { Some(init.span) } else { None };
 
-            // small cache to avoid recomputing needlesly computing peel_casts of init
+            // small cache to avoid recomputing needlessly computing peel_casts of init
             let mut peel_casts = {
                 let mut peel_casts_cache = None;
                 move || *peel_casts_cache.get_or_insert_with(|| peel_casts(cx, init))

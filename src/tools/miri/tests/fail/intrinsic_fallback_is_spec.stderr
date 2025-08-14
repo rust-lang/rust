@@ -2,7 +2,7 @@ error: unsupported operation: Miri can only use intrinsic fallback bodies that e
   --> tests/fail/intrinsic_fallback_is_spec.rs:LL:CC
    |
 LL |     ptr_guaranteed_cmp::<()>(std::ptr::null(), std::ptr::null());
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Miri can only use intrinsic fallback bodies that exactly reflect the specification: they fully check for UB and are as non-deterministic as possible. After verifying that `ptr_guaranteed_cmp` does so, add the `#[miri::intrinsic_fallback_is_spec]` attribute to it; also ping @rust-lang/miri when you do that
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unsupported operation occurred here
    |
    = help: this is likely not a bug in the program; it indicates that the program performed an operation that Miri does not support
    = note: BACKTRACE:

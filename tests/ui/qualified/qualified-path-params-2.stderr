@@ -7,7 +7,7 @@ LL | type A = <S as Tr>::A::f<u8>;
 help: if there were a trait named `Example` with associated type `f` implemented for `<S as Tr>::A`, you could use the fully-qualified path
    |
 LL - type A = <S as Tr>::A::f<u8>;
-LL + type A = <<S as Tr>::A as Example>::f;
+LL + type A = <<S as Tr>::A as Example>::f<u8>;
    |
 
 error: aborting due to 1 previous error

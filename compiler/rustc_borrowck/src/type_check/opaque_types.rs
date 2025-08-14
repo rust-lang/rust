@@ -221,7 +221,7 @@ fn register_member_constraints<'tcx>(
         .iter()
         .enumerate()
         .filter(|(i, _)| variances[*i] == ty::Invariant)
-        .filter_map(|(_, arg)| match arg.unpack() {
+        .filter_map(|(_, arg)| match arg.kind() {
             GenericArgKind::Lifetime(r) => Some(typeck.to_region_vid(r)),
             GenericArgKind::Type(_) | GenericArgKind::Const(_) => None,
         })

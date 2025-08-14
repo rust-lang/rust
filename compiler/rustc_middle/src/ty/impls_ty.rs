@@ -60,7 +60,7 @@ where
 
 impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for ty::GenericArg<'tcx> {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-        self.unpack().hash_stable(hcx, hasher);
+        self.kind().hash_stable(hcx, hasher);
     }
 }
 

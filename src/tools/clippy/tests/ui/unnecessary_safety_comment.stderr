@@ -1,4 +1,4 @@
-error: constant item has unnecessary safety comment
+error: constant has unnecessary safety comment
   --> tests/ui/unnecessary_safety_comment.rs:6:5
    |
 LL |     const CONST: u32 = 0;
@@ -12,7 +12,7 @@ LL |     // SAFETY:
    = note: `-D clippy::unnecessary-safety-comment` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::unnecessary_safety_comment)]`
 
-error: static item has unnecessary safety comment
+error: static has unnecessary safety comment
   --> tests/ui/unnecessary_safety_comment.rs:10:5
    |
 LL |     static STATIC: u32 = 0;

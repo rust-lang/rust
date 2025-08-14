@@ -1,6 +1,4 @@
 //@aux-build:proc_macros.rs
-#![feature(let_chains)]
-#![allow(unused)]
 #![allow(
     clippy::assign_op_pattern,
     clippy::blocks_in_conditions,

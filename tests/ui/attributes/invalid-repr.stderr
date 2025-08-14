@@ -1,11 +1,11 @@
-error[E0517]: attribute should be applied to a struct, enum, function, associated function, or union
+error[E0517]: attribute should be applied to a struct, enum, or union
   --> $DIR/invalid-repr.rs:1:8
    |
 LL | #[repr(align(16))]
    |        ^^^^^^^^^
 LL |
 LL | pub type Foo = i32;
-   | ------------------- not a struct, enum, function, associated function, or union
+   | ------------------- not a struct, enum, or union
 
 error: aborting due to 1 previous error
 

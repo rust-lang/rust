@@ -32,8 +32,8 @@ assert-css: (
     {"display": "block"}
 )
 
-// Click elsewhere.
-click: "body"
+// Click the toggle to close it
+click: ".sidebar-menu-toggle"
 assert-css: (".sidebar", {"display": "block", "left": "-1000px"})
 
 // Open the sidebar menu, and make sure pressing Escape closes it.
@@ -57,6 +57,8 @@ scroll-to: ".block.keyword li:nth-child(1)"
 compare-elements-position-near: (".block.keyword li:nth-child(1)", ".mobile-topbar", {"y": 544})
 
 // Now checking the background color of the sidebar.
+// Close the sidebar menu.
+press-key: "Escape"
 show-text: true
 
 define-function: (
@@ -72,6 +74,10 @@ define-function: (
             "background-color": |background|,
             "color": |color|,
         })
+        // Make sure the sidebar is full width
+        compare-elements-size: (".sidebar", "body", ["width"])
+        // Close the sidebar menu.
+        press-key: "Escape"
     },
 )
 

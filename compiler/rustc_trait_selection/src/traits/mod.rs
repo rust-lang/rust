@@ -36,8 +36,8 @@ use rustc_middle::ty::{
     self, GenericArgs, GenericArgsRef, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
     TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypingMode, Upcast,
 };
+use rustc_span::Span;
 use rustc_span::def_id::DefId;
-use rustc_span::{DUMMY_SP, Span};
 use tracing::{debug, instrument};
 
 pub use self::coherence::{
@@ -221,7 +221,7 @@ fn pred_known_to_hold_modulo_regions<'tcx>(
 
     if result.must_apply_modulo_regions() {
         true
-    } else if result.may_apply() {
+    } else if result.may_apply() && !infcx.next_trait_solver() {
         // Sometimes obligations are ambiguous because the recursive evaluator
         // is not smart enough, so we fall back to fulfillment when we're not certain
         // that an obligation holds or not. Even still, we must make sure that
@@ -340,7 +340,7 @@ pub fn normalize_param_env_or_error<'tcx>(
     let mut predicates: Vec<_> = util::elaborate(
         tcx,
         unnormalized_env.caller_bounds().into_iter().map(|predicate| {
-            if tcx.features().generic_const_exprs() {
+            if tcx.features().generic_const_exprs() || tcx.next_trait_solver_globally() {
                 return predicate;
             }
 
@@ -405,8 +405,6 @@ pub fn normalize_param_env_or_error<'tcx>(
             // compatibility. Eventually when lazy norm is implemented this can just be removed.
             // We do not normalize types here as there is no backwards compatibility requirement
             // for us to do so.
-            //
-            // FIXME(-Znext-solver): remove this hack since we have deferred projection equality
             predicate.fold_with(&mut ConstNormalizer(tcx))
         }),
     )
@@ -483,7 +481,7 @@ pub enum EvaluateConstErr {
     /// some unevaluated constant with either generic parameters or inference variables in its
     /// generic arguments.
     HasGenericsOrInfers,
-    /// The type this constant evalauted to is not valid for use in const generics. This should
+    /// The type this constant evaluated to is not valid for use in const generics. This should
     /// always result in an error when checking the constant is correctly typed for the parameter
     /// it is an argument to, so a bug is delayed when encountering this.
     InvalidConstParamTy(ErrorGuaranteed),
@@ -542,10 +540,13 @@ pub fn try_evaluate_const<'tcx>(
         | ty::ConstKind::Placeholder(_)
         | ty::ConstKind::Expr(_) => Err(EvaluateConstErr::HasGenericsOrInfers),
         ty::ConstKind::Unevaluated(uv) => {
+            let opt_anon_const_kind =
+                (tcx.def_kind(uv.def) == DefKind::AnonConst).then(|| tcx.anon_const_kind(uv.def));
+
             // Postpone evaluation of constants that depend on generic parameters or
             // inference variables.
             //
-            // We use `TypingMode::PostAnalysis`  here which is not *technically* correct
+            // We use `TypingMode::PostAnalysis` here which is not *technically* correct
             // to be revealing opaque types here as borrowcheck has not run yet. However,
             // CTFE itself uses `TypingMode::PostAnalysis` unconditionally even during
             // typeck and not doing so has a lot of (undesirable) fallout (#101478, #119821).
@@ -553,67 +554,99 @@ pub fn try_evaluate_const<'tcx>(
             //
             // FIXME: `const_eval_resolve_for_typeck` should probably just modify the env itself
             // instead of having this logic here
-            let (args, typing_env) = if tcx.features().generic_const_exprs()
-                && uv.has_non_region_infer()
-            {
-                // `feature(generic_const_exprs)` causes anon consts to inherit all parent generics. This can cause
-                // inference variables and generic parameters to show up in `ty::Const` even though the anon const
-                // does not actually make use of them. We handle this case specially and attempt to evaluate anyway.
-                match tcx.thir_abstract_const(uv.def) {
-                    Ok(Some(ct)) => {
-                        let ct = tcx.expand_abstract_consts(ct.instantiate(tcx, uv.args));
-                        if let Err(e) = ct.error_reported() {
-                            return Err(EvaluateConstErr::EvaluationFailure(e));
-                        } else if ct.has_non_region_infer() || ct.has_non_region_param() {
-                            // If the anon const *does* actually use generic parameters or inference variables from
-                            // the generic arguments provided for it, then we should *not* attempt to evaluate it.
-                            return Err(EvaluateConstErr::HasGenericsOrInfers);
-                        } else {
-                            let args = replace_param_and_infer_args_with_placeholder(tcx, uv.args);
-                            let typing_env = infcx
-                                .typing_env(tcx.erase_regions(param_env))
-                                .with_post_analysis_normalized(tcx);
-                            (args, typing_env)
+            let (args, typing_env) = match opt_anon_const_kind {
+                // We handle `generic_const_exprs` separately as reasonable ways of handling constants in the type system
+                // completely fall apart under `generic_const_exprs` and makes this whole function Really hard to reason
+                // about if you have to consider gce whatsoever.
+                Some(ty::AnonConstKind::GCE) => {
+                    if uv.has_non_region_infer() || uv.has_non_region_param() {
+                        // `feature(generic_const_exprs)` causes anon consts to inherit all parent generics. This can cause
+                        // inference variables and generic parameters to show up in `ty::Const` even though the anon const
+                        // does not actually make use of them. We handle this case specially and attempt to evaluate anyway.
+                        match tcx.thir_abstract_const(uv.def) {
+                            Ok(Some(ct)) => {
+                                let ct = tcx.expand_abstract_consts(ct.instantiate(tcx, uv.args));
+                                if let Err(e) = ct.error_reported() {
+                                    return Err(EvaluateConstErr::EvaluationFailure(e));
+                                } else if ct.has_non_region_infer() || ct.has_non_region_param() {
+                                    // If the anon const *does* actually use generic parameters or inference variables from
+                                    // the generic arguments provided for it, then we should *not* attempt to evaluate it.
+                                    return Err(EvaluateConstErr::HasGenericsOrInfers);
+                                } else {
+                                    let args =
+                                        replace_param_and_infer_args_with_placeholder(tcx, uv.args);
+                                    let typing_env = infcx
+                                        .typing_env(tcx.erase_regions(param_env))
+                                        .with_post_analysis_normalized(tcx);
+                                    (args, typing_env)
+                                }
+                            }
+                            Err(_) | Ok(None) => {
+                                let args = GenericArgs::identity_for_item(tcx, uv.def);
+                                let typing_env = ty::TypingEnv::post_analysis(tcx, uv.def);
+                                (args, typing_env)
+                            }
                         }
-                    }
-                    Err(_) | Ok(None) => {
-                        let args = GenericArgs::identity_for_item(tcx, uv.def);
-                        let typing_env = ty::TypingEnv::post_analysis(tcx, uv.def);
-                        (args, typing_env)
+                    } else {
+                        let typing_env = infcx
+                            .typing_env(tcx.erase_regions(param_env))
+                            .with_post_analysis_normalized(tcx);
+                        (uv.args, typing_env)
                     }
                 }
-            } else if tcx.def_kind(uv.def) == DefKind::AnonConst && uv.has_non_region_infer() {
-                // FIXME: remove this when `const_evaluatable_unchecked` is a hard error.
-                //
-                // Diagnostics will sometimes replace the identity args of anon consts in
-                // array repeat expr counts with inference variables so we have to handle this
-                // even though it is not something we should ever actually encounter.
-                //
-                // Array repeat expr counts are allowed to syntactically use generic parameters
-                // but must not actually depend on them in order to evalaute successfully. This means
-                // that it is actually fine to evalaute them in their own environment rather than with
-                // the actually provided generic arguments.
-                tcx.dcx().delayed_bug(
-                    "Encountered anon const with inference variable args but no error reported",
-                );
+                Some(ty::AnonConstKind::RepeatExprCount) => {
+                    if uv.has_non_region_infer() {
+                        // Diagnostics will sometimes replace the identity args of anon consts in
+                        // array repeat expr counts with inference variables so we have to handle this
+                        // even though it is not something we should ever actually encounter.
+                        //
+                        // Array repeat expr counts are allowed to syntactically use generic parameters
+                        // but must not actually depend on them in order to evalaute successfully. This means
+                        // that it is actually fine to evalaute them in their own environment rather than with
+                        // the actually provided generic arguments.
+                        tcx.dcx().delayed_bug("AnonConst with infer args but no error reported");
+                    }
 
-                let args = GenericArgs::identity_for_item(tcx, uv.def);
-                let typing_env = ty::TypingEnv::post_analysis(tcx, uv.def);
-                (args, typing_env)
-            } else {
-                // FIXME: This codepath is reachable under `associated_const_equality` and in the
-                // future will be reachable by `min_generic_const_args`. We should handle inference
-                // variables and generic parameters properly instead of doing nothing.
-                let typing_env = infcx
-                    .typing_env(tcx.erase_regions(param_env))
-                    .with_post_analysis_normalized(tcx);
-                (uv.args, typing_env)
+                    // The generic args of repeat expr counts under `min_const_generics` are not supposed to
+                    // affect evaluation of the constant as this would make it a "truly" generic const arg.
+                    // To prevent this we discard all the generic arguments and evalaute with identity args
+                    // and in its own environment instead of the current environment we are normalizing in.
+                    let args = GenericArgs::identity_for_item(tcx, uv.def);
+                    let typing_env = ty::TypingEnv::post_analysis(tcx, uv.def);
+
+                    (args, typing_env)
+                }
+                _ => {
+                    // We are only dealing with "truly" generic/uninferred constants here:
+                    // - GCEConsts have been handled separately
+                    // - Repeat expr count back compat consts have also been handled separately
+                    // So we are free to simply defer evaluation here.
+                    //
+                    // FIXME: This assumes that `args` are normalized which is not necessarily true
+                    //
+                    // Const patterns are converted to type system constants before being
+                    // evaluated. However, we don't care about them here as pattern evaluation
+                    // logic does not go through type system normalization. If it did this would
+                    // be a backwards compatibility problem as we do not enforce "syntactic" non-
+                    // usage of generic parameters like we do here.
+                    if uv.args.has_non_region_param() || uv.args.has_non_region_infer() {
+                        return Err(EvaluateConstErr::HasGenericsOrInfers);
+                    }
+
+                    let typing_env = infcx
+                        .typing_env(tcx.erase_regions(param_env))
+                        .with_post_analysis_normalized(tcx);
+                    (uv.args, typing_env)
+                }
             };
-            let uv = ty::UnevaluatedConst::new(uv.def, args);
 
+            let uv = ty::UnevaluatedConst::new(uv.def, args);
             let erased_uv = tcx.erase_regions(uv);
+
             use rustc_middle::mir::interpret::ErrorHandled;
-            match tcx.const_eval_resolve_for_typeck(typing_env, erased_uv, DUMMY_SP) {
+            // FIXME: `def_span` will point at the definition of this const; ideally, we'd point at
+            // where it gets used as a const generic.
+            match tcx.const_eval_resolve_for_typeck(typing_env, erased_uv, tcx.def_span(uv.def)) {
                 Ok(Ok(val)) => Ok(ty::Const::new_value(
                     tcx,
                     val,
@@ -673,7 +706,10 @@ fn replace_param_and_infer_args_with_placeholder<'tcx>(
                 self.idx += 1;
                 ty::Const::new_placeholder(
                     self.tcx,
-                    ty::PlaceholderConst { universe: ty::UniverseIndex::ROOT, bound: idx },
+                    ty::PlaceholderConst {
+                        universe: ty::UniverseIndex::ROOT,
+                        bound: ty::BoundConst { var: idx },
+                    },
                 )
             } else {
                 c.super_fold_with(self)
@@ -690,24 +726,26 @@ fn replace_param_and_infer_args_with_placeholder<'tcx>(
 /// used during analysis.
 pub fn impossible_predicates<'tcx>(tcx: TyCtxt<'tcx>, predicates: Vec<ty::Clause<'tcx>>) -> bool {
     debug!("impossible_predicates(predicates={:?})", predicates);
-    let (infcx, param_env) =
-        tcx.infer_ctxt().build_with_typing_env(ty::TypingEnv::fully_monomorphized());
+    let (infcx, param_env) = tcx
+        .infer_ctxt()
+        .with_next_trait_solver(true)
+        .build_with_typing_env(ty::TypingEnv::fully_monomorphized());
+
     let ocx = ObligationCtxt::new(&infcx);
     let predicates = ocx.normalize(&ObligationCause::dummy(), param_env, predicates);
     for predicate in predicates {
         let obligation = Obligation::new(tcx, ObligationCause::dummy(), param_env, predicate);
         ocx.register_obligation(obligation);
     }
-    let errors = ocx.select_all_or_error();
 
-    if !errors.is_empty() {
-        return true;
-    }
-
-    // Leak check for any higher-ranked trait mismatches.
-    // We only need to do this in the old solver, since the new solver already
-    // leak-checks.
-    if !infcx.next_trait_solver() && infcx.leak_check(ty::UniverseIndex::ROOT, None).is_err() {
+    // Use `select_where_possible` to only return impossible for true errors,
+    // and not ambiguities or overflows. Since the new trait solver forces
+    // some currently undetected overlap between `dyn Trait: Trait` built-in
+    // vs user-written impls to AMBIGUOUS, this may return ambiguity even
+    // with no infer vars. There may also be ways to encounter ambiguity due
+    // to post-mono overflow.
+    let true_errors = ocx.select_where_possible();
+    if !true_errors.is_empty() {
         return true;
     }
 
@@ -724,8 +762,8 @@ fn instantiate_and_check_impossible_predicates<'tcx>(
 
     // Specifically check trait fulfillment to avoid an error when trying to resolve
     // associated items.
-    if let Some(trait_def_id) = tcx.trait_of_item(key.0) {
-        let trait_ref = ty::TraitRef::from_method(tcx, trait_def_id, key.1);
+    if let Some(trait_def_id) = tcx.trait_of_assoc(key.0) {
+        let trait_ref = ty::TraitRef::from_assoc(tcx, trait_def_id, key.1);
         predicates.push(trait_ref.upcast(tcx));
     }
 

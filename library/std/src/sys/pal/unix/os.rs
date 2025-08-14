@@ -282,7 +282,7 @@ pub fn current_exe() -> io::Result<PathBuf> {
         return getcwd().map(|cwd| cwd.join(path))?.canonicalize();
     }
     // Search PATH to infer current_exe.
-    if let Some(p) = getenv(OsStr::from_bytes("PATH".as_bytes())) {
+    if let Some(p) = env::var_os(OsStr::from_bytes("PATH".as_bytes())) {
         for search_path in split_paths(&p) {
             let pb = search_path.join(&path);
             if pb.is_file()
@@ -633,7 +633,10 @@ pub fn temp_dir() -> PathBuf {
 }
 
 pub fn home_dir() -> Option<PathBuf> {
-    return crate::env::var_os("HOME").or_else(|| unsafe { fallback() }).map(PathBuf::from);
+    return crate::env::var_os("HOME")
+        .filter(|s| !s.is_empty())
+        .or_else(|| unsafe { fallback() })
+        .map(PathBuf::from);
 
     #[cfg(any(
         target_os = "android",

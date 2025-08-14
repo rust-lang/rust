@@ -5,7 +5,8 @@
 // The win64 ABI is used. It differs from the sysv64 ABI, so we must use a windows target with
 // LLVM. "x86_64-unknown-windows" is used to get the minimal subset of windows-specific features.
 
-use crate::callconv::Conv;
+use rustc_abi::{CanonAbi, X86Call};
+
 use crate::spec::{RustcAbi, Target, TargetMetadata, base};
 
 pub(crate) fn target() -> Target {
@@ -13,7 +14,7 @@ pub(crate) fn target() -> Target {
     base.cpu = "x86-64".into();
     base.plt_by_default = false;
     base.max_atomic_width = Some(64);
-    base.entry_abi = Conv::X86_64Win64;
+    base.entry_abi = CanonAbi::X86(X86Call::Win64);
 
     // We disable MMX and SSE for now, even though UEFI allows using them. Problem is, you have to
     // enable these CPU features explicitly before their first use, otherwise their instructions

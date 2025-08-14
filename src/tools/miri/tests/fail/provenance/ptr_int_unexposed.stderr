@@ -2,7 +2,7 @@ error: Undefined Behavior: memory access failed: attempting to access 4 bytes, b
   --> tests/fail/provenance/ptr_int_unexposed.rs:LL:CC
    |
 LL |     assert_eq!(unsafe { *ptr }, 3);
-   |                         ^^^^ memory access failed: attempting to access 4 bytes, but got $HEX[noalloc] which is a dangling pointer (it has no provenance)
+   |                         ^^^^ Undefined Behavior occurred here
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

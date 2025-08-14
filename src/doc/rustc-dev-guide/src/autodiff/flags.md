@@ -6,6 +6,7 @@ To support you while debugging or profiling, we have added support for an experi
 
 ```text
 PrintTA // Print TypeAnalysis information
+PrintTAFn // Print TypeAnalysis information for a specific function
 PrintAA // Print ActivityAnalysis information
 Print // Print differentiated functions while they are being generated and optimized
 PrintPerf // Print AD related Performance warnings
@@ -16,7 +17,9 @@ LooseTypes // Risk incorrect derivatives instead of aborting when missing Type I
 ```
 
 <div class="warning">
+
 `LooseTypes` is often helpful to get rid of Enzyme errors stating `Can not deduce type of <X>` and to be able to run some code. But please keep in mind that this flag absolutely has the chance to cause incorrect gradients. Even worse, the gradients might be correct for certain input values, but not for others. So please create issues about such bugs and only use this flag temporarily while you wait for your bug to be fixed.
+
 </div>
 
 ### Benchmark flags

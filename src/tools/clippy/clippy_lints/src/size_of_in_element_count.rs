@@ -1,9 +1,10 @@
 use clippy_utils::diagnostics::span_lint_and_help;
+use clippy_utils::sym;
 use rustc_hir::{BinOpKind, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{self, Ty};
 use rustc_session::declare_lint_pass;
-use rustc_span::sym;
+use rustc_span::Symbol;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -62,17 +63,17 @@ fn get_pointee_ty_and_count_expr<'tcx>(
     cx: &LateContext<'tcx>,
     expr: &'tcx Expr<'_>,
 ) -> Option<(Ty<'tcx>, &'tcx Expr<'tcx>)> {
-    const METHODS: [&str; 10] = [
-        "copy_to",
-        "copy_from",
-        "copy_to_nonoverlapping",
-        "copy_from_nonoverlapping",
-        "add",
-        "wrapping_add",
-        "sub",
-        "wrapping_sub",
-        "offset",
-        "wrapping_offset",
+    const METHODS: [Symbol; 10] = [
+        sym::copy_to,
+        sym::copy_from,
+        sym::copy_to_nonoverlapping,
+        sym::copy_from_nonoverlapping,
+        sym::add,
+        sym::wrapping_add,
+        sym::sub,
+        sym::wrapping_sub,
+        sym::offset,
+        sym::wrapping_offset,
     ];
 
     if let ExprKind::Call(func, [.., count]) = expr.kind
@@ -97,7 +98,7 @@ fn get_pointee_ty_and_count_expr<'tcx>(
     }
     if let ExprKind::MethodCall(method_path, ptr_self, [.., count], _) = expr.kind
         // Find calls to copy_{from,to}{,_nonoverlapping}
-        && let method_ident = method_path.ident.as_str()
+        && let method_ident = method_path.ident.name
         && METHODS.contains(&method_ident)
 
         // Get the pointee type

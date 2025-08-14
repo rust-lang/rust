@@ -1,5 +1,5 @@
 error[E0432]: unresolved import `v20::v13`
-  --> $DIR/unevaluated-const-ice-119731.rs:38:15
+  --> $DIR/unevaluated-const-ice-119731.rs:42:15
    |
 LL | pub use v20::{v13, v17};
    |               ^^^
@@ -23,7 +23,7 @@ LL |         pub const fn v21() -> v18 {}
    |                               ^^^ help: a type alias with a similar name exists: `v11`
 
 error[E0412]: cannot find type `v18` in this scope
-  --> $DIR/unevaluated-const-ice-119731.rs:31:31
+  --> $DIR/unevaluated-const-ice-119731.rs:35:31
    |
 LL |     pub type v11 = [[usize; v4]; v4];
    |     --------------------------------- similarly named type alias `v11` defined here
@@ -32,7 +32,7 @@ LL |         pub const fn v21() -> v18 {
    |                               ^^^ help: a type alias with a similar name exists: `v11`
 
 error[E0422]: cannot find struct, variant or union type `v18` in this scope
-  --> $DIR/unevaluated-const-ice-119731.rs:33:13
+  --> $DIR/unevaluated-const-ice-119731.rs:37:13
    |
 LL |     pub type v11 = [[usize; v4]; v4];
    |     --------------------------------- similarly named type alias `v11` defined here
@@ -86,6 +86,38 @@ LL |     impl<const v10: usize> v17<v10, v2> {
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
+error: maximum number of nodes exceeded in constant v20::v17::<v10, v2>::{constant#0}
+  --> $DIR/unevaluated-const-ice-119731.rs:28:37
+   |
+LL |     impl<const v10: usize> v17<v10, v2> {
+   |                                     ^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: maximum number of nodes exceeded in constant v20::v17::<v10, v2>::{constant#0}
+  --> $DIR/unevaluated-const-ice-119731.rs:28:37
+   |
+LL |     impl<const v10: usize> v17<v10, v2> {
+   |                                     ^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: maximum number of nodes exceeded in constant v20::v17::<v10, v2>::{constant#0}
+  --> $DIR/unevaluated-const-ice-119731.rs:28:37
+   |
+LL |     impl<const v10: usize> v17<v10, v2> {
+   |                                     ^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: maximum number of nodes exceeded in constant v20::v17::<v10, v2>::{constant#0}
+  --> $DIR/unevaluated-const-ice-119731.rs:28:37
+   |
+LL |     impl<const v10: usize> v17<v10, v2> {
+   |                                     ^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
 error[E0592]: duplicate definitions with name `v21`
   --> $DIR/unevaluated-const-ice-119731.rs:23:9
    |
@@ -95,7 +127,7 @@ LL |         pub const fn v21() -> v18 {}
 LL |         pub const fn v21() -> v18 {
    |         ------------------------- other definition for `v21`
 
-error: aborting due to 10 previous errors; 2 warnings emitted
+error: aborting due to 14 previous errors; 2 warnings emitted
 
 Some errors have detailed explanations: E0412, E0422, E0425, E0432, E0592.
 For more information about an error, try `rustc --explain E0412`.

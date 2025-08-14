@@ -6,7 +6,7 @@ use rustc_errors::codes::*;
 use rustc_errors::{Applicability, ErrorGuaranteed, MultiSpan, struct_span_code_err};
 use rustc_hir::def::*;
 use rustc_hir::def_id::LocalDefId;
-use rustc_hir::{self as hir, BindingMode, ByRef, HirId};
+use rustc_hir::{self as hir, BindingMode, ByRef, HirId, MatchSource};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::Level;
 use rustc_middle::bug;
@@ -153,6 +153,12 @@ impl<'p, 'tcx> Visitor<'p, 'tcx> for MatchVisitor<'p, 'tcx> {
             }
             ExprKind::Match { scrutinee, box ref arms, match_source } => {
                 self.check_match(scrutinee, arms, match_source, ex.span);
+            }
+            ExprKind::LoopMatch {
+                match_data: box LoopMatchMatchData { scrutinee, box ref arms, span },
+                ..
+            } => {
+                self.check_match(scrutinee, arms, MatchSource::Normal, span);
             }
             ExprKind::Let { box ref pat, expr } => {
                 self.check_let(pat, Some(expr), ex.span);
@@ -331,7 +337,11 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
             | WrapUnsafeBinder { source } => self.is_known_valid_scrutinee(&self.thir()[*source]),
 
             // These diverge.
-            Become { .. } | Break { .. } | Continue { .. } | Return { .. } => true,
+            Become { .. }
+            | Break { .. }
+            | Continue { .. }
+            | ConstContinue { .. }
+            | Return { .. } => true,
 
             // These are statements that evaluate to `()`.
             Assign { .. } | AssignOp { .. } | InlineAsm { .. } | Let { .. } => true,
@@ -353,6 +363,7 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
             | Literal { .. }
             | LogicalOp { .. }
             | Loop { .. }
+            | LoopMatch { .. }
             | Match { .. }
             | NamedConst { .. }
             | NonHirLiteral { .. }
@@ -395,6 +406,7 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
             scrut_span,
             refutable,
             known_valid_scrutinee,
+            internal_state: Default::default(),
         }
     }
 
@@ -685,8 +697,8 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
             let span = self.tcx.def_span(def_id);
             let variable = self.tcx.item_name(def_id).to_string();
             // When we encounter a constant as the binding name, point at the `const` definition.
-            interpreted_as_const = Some(span);
-            interpreted_as_const_sugg = Some(InterpretedAsConst { span: pat.span, variable });
+            interpreted_as_const = Some(InterpretedAsConst { span, variable: variable.clone() });
+            interpreted_as_const_sugg = Some(InterpretedAsConstSugg { span: pat.span, variable });
         } else if let PatKind::Constant { .. } = unpeeled_pat.kind
             && let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(pat.span)
         {
@@ -738,6 +750,8 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
             false
         };
 
+        let witness_1 = cx.print_witness_pat(witnesses.get(0).unwrap());
+
         self.error = Err(self.tcx.dcx().emit_err(PatternNotCovered {
             span: pat.span,
             origin,
@@ -746,6 +760,7 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
             interpreted_as_const,
             interpreted_as_const_sugg,
             witness_1_is_privately_uninhabited,
+            witness_1,
             _p: (),
             pattern_ty,
             let_suggestion,
@@ -1047,26 +1062,21 @@ fn find_fallback_pattern_typo<'tcx>(
                 let hir::ItemKind::Use(path, _) = item.kind else {
                     continue;
                 };
-                for res in &path.res {
-                    if let Res::Def(DefKind::Const, id) = res
-                        && infcx.can_eq(param_env, ty, cx.tcx.type_of(id).instantiate_identity())
-                    {
-                        if cx.tcx.visibility(id).is_accessible_from(parent, cx.tcx) {
-                            // The original const is accessible, suggest using it directly.
-                            let item_name = cx.tcx.item_name(*id);
-                            accessible.push(item_name);
-                            accessible_path.push(with_no_trimmed_paths!(cx.tcx.def_path_str(id)));
-                        } else if cx
-                            .tcx
-                            .visibility(item.owner_id)
-                            .is_accessible_from(parent, cx.tcx)
-                        {
-                            // The const is accessible only through the re-export, point at
-                            // the `use`.
-                            let ident = item.kind.ident().unwrap();
-                            imported.push(ident.name);
-                            imported_spans.push(ident.span);
-                        }
+                if let Some(value_ns) = path.res.value_ns
+                    && let Res::Def(DefKind::Const, id) = value_ns
+                    && infcx.can_eq(param_env, ty, cx.tcx.type_of(id).instantiate_identity())
+                {
+                    if cx.tcx.visibility(id).is_accessible_from(parent, cx.tcx) {
+                        // The original const is accessible, suggest using it directly.
+                        let item_name = cx.tcx.item_name(id);
+                        accessible.push(item_name);
+                        accessible_path.push(with_no_trimmed_paths!(cx.tcx.def_path_str(id)));
+                    } else if cx.tcx.visibility(item.owner_id).is_accessible_from(parent, cx.tcx) {
+                        // The const is accessible only through the re-export, point at
+                        // the `use`.
+                        let ident = item.kind.ident().unwrap();
+                        imported.push(ident.name);
+                        imported_spans.push(ident.span);
                     }
                 }
             }
@@ -1074,7 +1084,7 @@ fn find_fallback_pattern_typo<'tcx>(
                 && infcx.can_eq(param_env, ty, cx.tcx.type_of(item.owner_id).instantiate_identity())
             {
                 // Look for local consts.
-                let item_name = cx.tcx.item_name(item.owner_id.into());
+                let item_name = cx.tcx.item_name(item.owner_id);
                 let vis = cx.tcx.visibility(item.owner_id);
                 if vis.is_accessible_from(parent, cx.tcx) {
                     accessible.push(item_name);
@@ -1145,14 +1155,12 @@ fn find_fallback_pattern_typo<'tcx>(
                     }
                     hir::Node::Block(hir::Block { stmts, .. }) => {
                         for stmt in *stmts {
-                            if let hir::StmtKind::Let(let_stmt) = stmt.kind {
-                                if let hir::PatKind::Binding(_, _, binding_name, _) =
+                            if let hir::StmtKind::Let(let_stmt) = stmt.kind
+                                && let hir::PatKind::Binding(_, _, binding_name, _) =
                                     let_stmt.pat.kind
-                                {
-                                    if name == binding_name.name {
-                                        lint.pattern_let_binding = Some(binding_name.span);
-                                    }
-                                }
+                                && name == binding_name.name
+                            {
+                                lint.pattern_let_binding = Some(binding_name.span);
                             }
                         }
                     }

@@ -6,7 +6,7 @@ use std::process::Command;
 use camino::{Utf8Path, Utf8PathBuf};
 use glob::glob;
 
-use crate::common::{UI_COVERAGE, UI_COVERAGE_MAP};
+use crate::common::{TestSuite, UI_COVERAGE, UI_COVERAGE_MAP};
 use crate::runtest::{Emit, ProcRes, TestCx, WillExecute};
 use crate::util::static_regex;
 
@@ -91,7 +91,7 @@ impl<'test> TestCx<'test> {
         let mut profraw_paths = vec![profraw_path];
         let mut bin_paths = vec![self.make_exe_name()];
 
-        if self.config.suite == "coverage-run-rustdoc" {
+        if self.config.suite == TestSuite::CoverageRunRustdoc {
             self.run_doctests_for_coverage(&mut profraw_paths, &mut bin_paths);
         }
 
@@ -357,9 +357,9 @@ impl<'test> TestCx<'test> {
                 // Add this line to the current subview.
                 subviews
                     .last_mut()
-                    .ok_or(format!(
-                        "unexpected subview line outside of a subview on line {line_num}"
-                    ))?
+                    .ok_or_else(|| {
+                        format!("unexpected subview line outside of a subview on line {line_num}")
+                    })?
                     .push(line);
             } else {
                 // This line is not part of a subview, so sort and print any

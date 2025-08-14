@@ -30,7 +30,7 @@ trait TraitVisibility { }
 #[cfg(not(any(cfail1,cfail4)))]
 #[rustc_clean(cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes")]
+#[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes,predicates_of")]
 #[rustc_clean(cfg="cfail6")]
 pub trait TraitVisibility { }
 
@@ -43,7 +43,7 @@ trait TraitUnsafety { }
 #[cfg(not(any(cfail1,cfail4)))]
 #[rustc_clean(except="opt_hir_owner_nodes", cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(except="opt_hir_owner_nodes", cfg="cfail5")]
+#[rustc_clean(except="opt_hir_owner_nodes,predicates_of", cfg="cfail5")]
 #[rustc_clean(cfg="cfail6")]
 unsafe trait TraitUnsafety { }
 
@@ -57,7 +57,7 @@ trait TraitAddMethod {
 #[cfg(not(any(cfail1,cfail4)))]
 #[rustc_clean(except="opt_hir_owner_nodes,associated_item_def_ids", cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(except="opt_hir_owner_nodes,associated_item_def_ids", cfg="cfail5")]
+#[rustc_clean(except="opt_hir_owner_nodes,associated_item_def_ids,predicates_of", cfg="cfail5")]
 #[rustc_clean(cfg="cfail6")]
 pub trait TraitAddMethod {
     fn method();
@@ -74,7 +74,7 @@ trait TraitChangeMethodName {
 #[cfg(not(any(cfail1,cfail4)))]
 #[rustc_clean(except="opt_hir_owner_nodes,associated_item_def_ids", cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(except="opt_hir_owner_nodes,associated_item_def_ids", cfg="cfail5")]
+#[rustc_clean(except="opt_hir_owner_nodes,associated_item_def_ids,predicates_of", cfg="cfail5")]
 #[rustc_clean(cfg="cfail6")]
 trait TraitChangeMethodName {
     fn methodChanged();
@@ -440,7 +440,7 @@ trait TraitAddExternModifier {
 
 // Change extern "C" to extern "stdcall"
 #[cfg(any(cfail1,cfail4))]
-trait TraitChangeExternCToRustIntrinsic {
+trait TraitChangeExternCToExternSystem {
     // --------------------------------------------------------------
     // -------------------------
     // --------------------------------------------------------------
@@ -458,7 +458,7 @@ trait TraitChangeExternCToRustIntrinsic {
     #[rustc_clean(cfg="cfail3")]
     #[rustc_clean(except="opt_hir_owner_nodes,fn_sig", cfg="cfail5")]
     #[rustc_clean(cfg="cfail6")]
-    extern "stdcall" fn method();
+    extern "system" fn method();
 }
 
 
@@ -559,7 +559,7 @@ trait TraitAddBuiltinBoundToMethodTypeParameter {
 #[cfg(not(any(cfail1,cfail4)))]
 #[rustc_clean(cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(except="opt_hir_owner_nodes", cfg="cfail5")]
+#[rustc_clean(except="opt_hir_owner_nodes,predicates_of", cfg="cfail5")]
 #[rustc_clean(cfg="cfail6")]
 trait TraitAddBuiltinBoundToMethodTypeParameter {
     #[rustc_clean(except="opt_hir_owner_nodes", cfg="cfail2")]
@@ -827,7 +827,7 @@ trait TraitAddAssociatedConstant {
 #[cfg(not(any(cfail1,cfail4)))]
 #[rustc_clean(except="opt_hir_owner_nodes,associated_item_def_ids", cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(except="opt_hir_owner_nodes,associated_item_def_ids", cfg="cfail5")]
+#[rustc_clean(except="opt_hir_owner_nodes,associated_item_def_ids,predicates_of", cfg="cfail5")]
 #[rustc_clean(cfg="cfail6")]
 trait TraitAddAssociatedConstant {
     const Value: u32;

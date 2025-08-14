@@ -498,12 +498,12 @@ impl<D: Deps> DepGraph<D> {
 
                     #[cfg(debug_assertions)]
                     {
-                        if let Some(target) = task_deps.node {
-                            if let Some(ref forbidden_edge) = data.current.forbidden_edge {
-                                let src = forbidden_edge.index_to_node.lock()[&dep_node_index];
-                                if forbidden_edge.test(&src, &target) {
-                                    panic!("forbidden edge {:?} -> {:?} created", src, target)
-                                }
+                        if let Some(target) = task_deps.node
+                            && let Some(ref forbidden_edge) = data.current.forbidden_edge
+                        {
+                            let src = forbidden_edge.index_to_node.lock()[&dep_node_index];
+                            if forbidden_edge.test(&src, &target) {
+                                panic!("forbidden edge {:?} -> {:?} created", src, target)
                             }
                         }
                     }
@@ -1342,7 +1342,7 @@ impl DepNodeColorMap {
 
     /// This tries to atomically mark a node green and assign `index` as the new
     /// index. This returns `Ok` if `index` gets assigned, otherwise it returns
-    /// the alreadly allocated index in `Err`.
+    /// the already allocated index in `Err`.
     #[inline]
     pub(super) fn try_mark_green(
         &self,
@@ -1433,6 +1433,8 @@ fn panic_on_forbidden_read<D: Deps>(data: &DepGraphData<D>, dep_node_index: DepN
         && let Some(nodes) = &data.current.nodes_in_current_session
     {
         // Try to find it among the nodes allocated so far in this session
+        // This is OK, there's only ever one node result possible so this is deterministic.
+        #[allow(rustc::potential_query_instability)]
         if let Some((node, _)) = nodes.lock().iter().find(|&(_, index)| *index == dep_node_index) {
             dep_node = Some(*node);
         }

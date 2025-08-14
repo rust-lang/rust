@@ -32,7 +32,7 @@ overrideCommand = [
 [language-server.rust-analyzer.config.rustfmt]
 overrideCommand = [
     "build/rust-analyzer/host/rustfmt/bin/rustfmt",
-    "--edition=2021"
+    "--edition=2024"
 ]
 
 [language-server.rust-analyzer.config.procMacro]
@@ -59,4 +59,5 @@ overrideCommand = [
     "--json-output",
     "--build-dir",
     "build/rust-analyzer",
+    "--compile-time-deps"
 ]

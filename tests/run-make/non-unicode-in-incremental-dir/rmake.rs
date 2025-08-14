@@ -1,3 +1,4 @@
+//@ ignore-cross-compile
 use run_make_support::{rfs, rustc};
 
 fn main() {

@@ -284,12 +284,14 @@ fn can_cast(
     let v = match src_layout.ty.kind() {
         ty::Uint(_) => from_scalar.to_uint(src_layout.size),
         ty::Int(_) => from_scalar.to_int(src_layout.size) as u128,
-        _ => unreachable!("invalid int"),
+        // We can also transform the values of other integer representations (such as char),
+        // although this may not be practical in real-world scenarios.
+        _ => return false,
     };
     let size = match *cast_ty.kind() {
         ty::Int(t) => Integer::from_int_ty(&tcx, t).size(),
         ty::Uint(t) => Integer::from_uint_ty(&tcx, t).size(),
-        _ => unreachable!("invalid int"),
+        _ => return false,
     };
     let v = size.truncate(v);
     let cast_scalar = ScalarInt::try_from_uint(v, size).unwrap();

@@ -240,7 +240,7 @@ LL |     unsafe impl TrailingComment for () {} // SAFETY:
    |
    = help: consider adding a safety comment on the preceding line
 
-error: constant item has unnecessary safety comment
+error: constant has unnecessary safety comment
   --> tests/ui-toml/undocumented_unsafe_blocks/undocumented_unsafe_blocks.rs:508:5
    |
 LL |     const BIG_NUMBER: i32 = 1000000;
@@ -450,5 +450,13 @@ help: consider removing the safety comment
 LL |     // SAFETY: unnecessary_safety_comment triggers here
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 52 previous errors
+error: unsafe block missing a safety comment
+  --> tests/ui-toml/undocumented_unsafe_blocks/undocumented_unsafe_blocks.rs:733:12
+   |
+LL |     return unsafe { h() };
+   |            ^^^^^^^^^^^^^^
+   |
+   = help: consider adding a safety comment on the preceding line
+
+error: aborting due to 53 previous errors
 

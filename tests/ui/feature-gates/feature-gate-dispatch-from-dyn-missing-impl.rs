@@ -31,5 +31,4 @@ impl Trait for i32 {
 fn main() {
     Ptr(Box::new(4)) as Ptr<dyn Trait>;
     //~^ ERROR the trait `Trait` is not dyn compatible
-    //~^^ ERROR the trait `Trait` is not dyn compatible
 }

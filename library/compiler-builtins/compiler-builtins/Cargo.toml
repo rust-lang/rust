@@ -1,0 +1,62 @@
+# NOTE: Must be kept in sync with `../builtins-shim/Cargo.toml`.
+#
+# This manifest is actually used in-tree by rust-lang/rust,
+# `../builtins-shim/Cargo.toml` is used by out-of-tree testing. See the other
+# manifest for further details.
+
+[package]
+name = "compiler_builtins"
+version = "0.1.160"
+authors = ["Jorge Aparicio <japaricious@gmail.com>"]
+description = "Compiler intrinsics used by the Rust compiler."
+repository = "https://github.com/rust-lang/compiler-builtins"
+license = "MIT AND Apache-2.0 WITH LLVM-exception AND (MIT OR Apache-2.0)"
+edition = "2024"
+publish = false
+links = "compiler-rt"
+
+[lib]
+bench = false
+doctest = false
+test = false
+# make sure this crate isn't included in public standard library docs
+doc = false
+
+[dependencies]
+core = { path = "../../core", optional = true }
+
+[build-dependencies]
+cc = { optional = true, version = "1.2" }
+
+[features]
+default = ["compiler-builtins"]
+
+# Enable compilation of C code in compiler-rt, filling in some more optimized
+# implementations and also filling in unimplemented intrinsics
+c = ["dep:cc"]
+
+# For implementations where there is both a generic version and a platform-
+# specific version, use the generic version. This is meant to enable testing
+# the generic versions on all platforms.
+no-asm = []
+
+# Workaround for codegen backends which haven't yet implemented `f16` and
+# `f128` support. Disabled any intrinsics which use those types.
+no-f16-f128 = []
+
+# Flag this library as the unstable compiler-builtins lib
+compiler-builtins = []
+
+# Generate memory-related intrinsics like memcpy
+mem = []
+
+# Mangle all names so this can be linked in with other versions or other
+# compiler-rt implementations. Also used for testing
+mangled-names = []
+
+# Only used in the compiler's build system
+rustc-dep-of-std = ["compiler-builtins", "dep:core"]
+
+# This makes certain traits and function specializations public that
+# are not normally public but are required by the `builtins-test`
+unstable-public-internals = []

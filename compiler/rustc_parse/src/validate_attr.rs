@@ -1,12 +1,15 @@
 //! Meta-syntax validation logic of attributes for post-expansion.
 
+use std::slice;
+
 use rustc_ast::token::Delimiter;
 use rustc_ast::tokenstream::DelimSpan;
 use rustc_ast::{
     self as ast, AttrArgs, Attribute, DelimArgs, MetaItem, MetaItemInner, MetaItemKind, NodeId,
-    Safety,
+    Path, Safety,
 };
-use rustc_errors::{Applicability, FatalError, PResult};
+use rustc_attr_parsing::{AttributeParser, Late};
+use rustc_errors::{Applicability, DiagCtxtHandle, FatalError, PResult};
 use rustc_feature::{AttributeSafety, AttributeTemplate, BUILTIN_ATTRIBUTE_MAP, BuiltinAttribute};
 use rustc_session::errors::report_lit_error;
 use rustc_session::lint::BuiltinLintDiag;
@@ -103,7 +106,7 @@ pub fn parse_meta<'a>(psess: &'a ParseSess, attr: &Attribute) -> PResult<'a, Met
                     res
                 } else {
                     // Example cases:
-                    // - `#[foo = 1+1]`: results in `ast::ExprKind::BinOp`.
+                    // - `#[foo = 1+1]`: results in `ast::ExprKind::Binary`.
                     // - `#[foo = include_str!("nonexistent-file.rs")]`:
                     //   results in `ast::ExprKind::Err`. In that case we delay
                     //   the error because an earlier error will have already
@@ -180,9 +183,14 @@ pub fn check_attribute_safety(
             let diag_span = attr_item.span();
 
             // Attributes can be safe in earlier editions, and become unsafe in later ones.
+            //
+            // Use the span of the attribute's name to determine the edition: the span of the
+            // attribute as a whole may be inaccurate if it was emitted by a macro.
+            //
+            // See https://github.com/rust-lang/rust/issues/142182.
             let emit_error = match unsafe_since {
                 None => true,
-                Some(unsafe_since) => attr.span.edition() >= unsafe_since,
+                Some(unsafe_since) => path_span.edition() >= unsafe_since,
             };
 
             if emit_error {
@@ -242,14 +250,12 @@ pub fn check_attribute_safety(
 
 // Called by `check_builtin_meta_item` and code that manually denies
 // `unsafe(...)` in `cfg`
-pub fn deny_builtin_meta_unsafety(psess: &ParseSess, meta: &MetaItem) {
+pub fn deny_builtin_meta_unsafety(diag: DiagCtxtHandle<'_>, unsafety: Safety, name: &Path) {
     // This only supports denying unsafety right now - making builtin attributes
     // support unsafety will requite us to thread the actual `Attribute` through
     // for the nice diagnostics.
-    if let Safety::Unsafe(unsafe_span) = meta.unsafety {
-        psess
-            .dcx()
-            .emit_err(errors::InvalidAttrUnsafe { span: unsafe_span, name: meta.path.clone() });
+    if let Safety::Unsafe(unsafe_span) = unsafety {
+        diag.emit_err(errors::InvalidAttrUnsafe { span: unsafe_span, name: name.clone() });
     }
 }
 
@@ -262,11 +268,15 @@ pub fn check_builtin_meta_item(
     deny_unsafety: bool,
 ) {
     if !is_attr_template_compatible(&template, &meta.kind) {
+        // attrs with new parsers are locally validated so excluded here
+        if AttributeParser::<Late>::is_parsed_attribute(slice::from_ref(&name)) {
+            return;
+        }
         emit_malformed_attribute(psess, style, meta.span, name, template);
     }
 
     if deny_unsafety {
-        deny_builtin_meta_unsafety(psess, meta);
+        deny_builtin_meta_unsafety(psess.dcx(), meta.unsafety, &meta.path);
     }
 }
 
@@ -279,9 +289,7 @@ fn emit_malformed_attribute(
 ) {
     // Some of previously accepted forms were used in practice,
     // report them as warnings for now.
-    let should_warn = |name| {
-        matches!(name, sym::doc | sym::ignore | sym::inline | sym::link | sym::test | sym::bench)
-    };
+    let should_warn = |name| matches!(name, sym::doc | sym::link | sym::test | sym::bench);
 
     let error_msg = format!("malformed `{name}` attribute input");
     let mut suggestions = vec![];
@@ -290,35 +298,42 @@ fn emit_malformed_attribute(
         suggestions.push(format!("#{inner}[{name}]"));
     }
     if let Some(descr) = template.list {
-        suggestions.push(format!("#{inner}[{name}({descr})]"));
+        for descr in descr {
+            suggestions.push(format!("#{inner}[{name}({descr})]"));
+        }
     }
     suggestions.extend(template.one_of.iter().map(|&word| format!("#{inner}[{name}({word})]")));
     if let Some(descr) = template.name_value_str {
-        suggestions.push(format!("#{inner}[{name} = \"{descr}\"]"));
+        for descr in descr {
+            suggestions.push(format!("#{inner}[{name} = \"{descr}\"]"));
+        }
     }
     if should_warn(name) {
         psess.buffer_lint(
             ILL_FORMED_ATTRIBUTE_INPUT,
             span,
             ast::CRATE_NODE_ID,
-            BuiltinLintDiag::IllFormedAttributeInput { suggestions: suggestions.clone() },
+            BuiltinLintDiag::IllFormedAttributeInput {
+                suggestions: suggestions.clone(),
+                docs: template.docs,
+            },
         );
     } else {
         suggestions.sort();
-        psess
-            .dcx()
-            .struct_span_err(span, error_msg)
-            .with_span_suggestions(
-                span,
-                if suggestions.len() == 1 {
-                    "must be of the form"
-                } else {
-                    "the following are the possible correct uses"
-                },
-                suggestions,
-                Applicability::HasPlaceholders,
-            )
-            .emit();
+        let mut err = psess.dcx().struct_span_err(span, error_msg).with_span_suggestions(
+            span,
+            if suggestions.len() == 1 {
+                "must be of the form"
+            } else {
+                "the following are the possible correct uses"
+            },
+            suggestions,
+            Applicability::HasPlaceholders,
+        );
+        if let Some(link) = template.docs {
+            err.note(format!("for more information, visit <{link}>"));
+        }
+        err.emit();
     }
 }
 

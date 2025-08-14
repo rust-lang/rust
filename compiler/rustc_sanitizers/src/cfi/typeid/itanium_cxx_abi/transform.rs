@@ -14,7 +14,7 @@ use rustc_middle::ty::{
     TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt, UintTy,
 };
 use rustc_span::def_id::DefId;
-use rustc_span::sym;
+use rustc_span::{DUMMY_SP, sym};
 use rustc_trait_selection::traits;
 use tracing::{debug, instrument};
 
@@ -339,10 +339,10 @@ pub(crate) fn transform_instance<'tcx>(
     } else if let ty::InstanceKind::Virtual(def_id, _) = instance.def {
         // Transform self into a trait object of the trait that defines the method for virtual
         // functions to match the type erasure done below.
-        let upcast_ty = match tcx.trait_of_item(def_id) {
+        let upcast_ty = match tcx.trait_of_assoc(def_id) {
             Some(trait_id) => trait_object_ty(
                 tcx,
-                ty::Binder::dummy(ty::TraitRef::from_method(tcx, trait_id, instance.args)),
+                ty::Binder::dummy(ty::TraitRef::from_assoc(tcx, trait_id, instance.args)),
             ),
             // drop_in_place won't have a defining trait, skip the upcast
             None => instance.args.type_at(0),
@@ -364,7 +364,7 @@ pub(crate) fn transform_instance<'tcx>(
         };
         instance.args = tcx.mk_args_trait(self_ty, instance.args.into_iter().skip(1));
     } else if let ty::InstanceKind::VTableShim(def_id) = instance.def
-        && let Some(trait_id) = tcx.trait_of_item(def_id)
+        && let Some(trait_id) = tcx.trait_of_assoc(def_id)
     {
         // Adjust the type ids of VTableShims to the type id expected in the call sites for the
         // entry in the vtable (i.e., by using the signature of the closure passed as an argument
@@ -414,7 +414,7 @@ pub(crate) fn transform_instance<'tcx>(
                 }
                 ty::Coroutine(..) => match tcx.coroutine_kind(instance.def_id()).unwrap() {
                     hir::CoroutineKind::Coroutine(..) => (
-                        tcx.require_lang_item(LangItem::Coroutine, None),
+                        tcx.require_lang_item(LangItem::Coroutine, DUMMY_SP),
                         Some(instance.args.as_coroutine().resume_ty()),
                     ),
                     hir::CoroutineKind::Desugared(desugaring, _) => {
@@ -423,11 +423,11 @@ pub(crate) fn transform_instance<'tcx>(
                             hir::CoroutineDesugaring::AsyncGen => LangItem::AsyncIterator,
                             hir::CoroutineDesugaring::Gen => LangItem::Iterator,
                         };
-                        (tcx.require_lang_item(lang_item, None), None)
+                        (tcx.require_lang_item(lang_item, DUMMY_SP), None)
                     }
                 },
                 ty::CoroutineClosure(..) => (
-                    tcx.require_lang_item(LangItem::FnOnce, None),
+                    tcx.require_lang_item(LangItem::FnOnce, DUMMY_SP),
                     Some(
                         tcx.instantiate_bound_regions_with_erased(
                             instance.args.as_coroutine_closure().coroutine_closure_sig(),
@@ -466,7 +466,7 @@ fn implemented_method<'tcx>(
     let method_id;
     let trait_id;
     let trait_method;
-    let ancestor = if let Some(impl_id) = tcx.impl_of_method(instance.def_id()) {
+    let ancestor = if let Some(impl_id) = tcx.impl_of_assoc(instance.def_id()) {
         // Implementation in an `impl` block
         trait_ref = tcx.impl_trait_ref(impl_id)?;
         let impl_method = tcx.associated_item(instance.def_id());
@@ -480,8 +480,8 @@ fn implemented_method<'tcx>(
         // Provided method in a `trait` block
         trait_method = trait_method_bound;
         method_id = instance.def_id();
-        trait_id = tcx.trait_of_item(method_id)?;
-        trait_ref = ty::EarlyBinder::bind(TraitRef::from_method(tcx, trait_id, instance.args));
+        trait_id = tcx.trait_of_assoc(method_id)?;
+        trait_ref = ty::EarlyBinder::bind(TraitRef::from_assoc(tcx, trait_id, instance.args));
         trait_id
     } else {
         return None;

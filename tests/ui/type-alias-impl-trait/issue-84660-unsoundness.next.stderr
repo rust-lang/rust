@@ -7,7 +7,7 @@ LL | impl<In, Out> Trait<Bar, In> for Out {
 LL | impl<In, Out> Trait<(), In> for Out {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation
 
-error[E0284]: type annotations needed: cannot satisfy `Bar == _`
+error[E0282]: type annotations needed
   --> $DIR/issue-84660-unsoundness.rs:24:37
    |
 LL |       fn convert(_i: In) -> Self::Out {
@@ -16,9 +16,9 @@ LL | |
 LL | |
 LL | |         unreachable!();
 LL | |     }
-   | |_____^ cannot satisfy `Bar == _`
+   | |_____^ cannot infer type
 
 error: aborting due to 2 previous errors
 
-Some errors have detailed explanations: E0119, E0284.
+Some errors have detailed explanations: E0119, E0282.
 For more information about an error, try `rustc --explain E0119`.

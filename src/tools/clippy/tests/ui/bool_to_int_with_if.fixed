@@ -1,4 +1,3 @@
-#![feature(let_chains)]
 #![warn(clippy::bool_to_int_with_if)]
 #![allow(unused, dead_code, clippy::unnecessary_operation, clippy::no_effect)]
 

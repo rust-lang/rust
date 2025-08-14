@@ -1464,6 +1464,15 @@ impl File {
         Ok(n as u64)
     }
 
+    pub fn size(&self) -> Option<io::Result<u64>> {
+        match self.file_attr().map(|attr| attr.size()) {
+            // Fall back to default implementation if the returned size is 0,
+            // we might be in a proc mount.
+            Ok(0) => None,
+            result => Some(result),
+        }
+    }
+
     pub fn tell(&self) -> io::Result<u64> {
         self.seek(SeekFrom::Current(0))
     }
@@ -1482,7 +1491,6 @@ impl File {
             target_os = "redox",
             target_os = "espidf",
             target_os = "horizon",
-            target_os = "vxworks",
             target_os = "nuttx",
         )))]
         let to_timespec = |time: Option<SystemTime>| match time {
@@ -1498,11 +1506,10 @@ impl File {
             None => Ok(libc::timespec { tv_sec: 0, tv_nsec: libc::UTIME_OMIT as _ }),
         };
         cfg_if::cfg_if! {
-            if #[cfg(any(target_os = "redox", target_os = "espidf", target_os = "horizon", target_os = "vxworks", target_os = "nuttx"))] {
+            if #[cfg(any(target_os = "redox", target_os = "espidf", target_os = "horizon", target_os = "nuttx"))] {
                 // Redox doesn't appear to support `UTIME_OMIT`.
                 // ESP-IDF and HorizonOS do not support `futimens` at all and the behavior for those OS is therefore
                 // the same as for Redox.
-                // `futimens` and `UTIME_OMIT` are a work in progress for vxworks.
                 let _ = times;
                 Err(io::const_error!(
                     io::ErrorKind::Unsupported,

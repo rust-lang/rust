@@ -236,17 +236,15 @@ type InTypeAliasGenericParamDefault<T = impl Debug> = T;
 //~^ ERROR `impl Trait` is not allowed in generic parameter defaults
 
 // Disallowed
-impl <T = impl Debug> T {}
-//~^ ERROR defaults for type parameters are only allowed in `struct`, `enum`, `type`, or `trait` definitions
-//~| WARNING this was previously accepted by the compiler but is being phased out
-//~| ERROR `impl Trait` is not allowed in generic parameter defaults
+#[expect(invalid_type_param_default)]
+impl<T = impl Debug> T {}
+//~^ ERROR `impl Trait` is not allowed in generic parameter defaults
 //~| ERROR no nominal type found
 
 // Disallowed
+#[expect(invalid_type_param_default)]
 fn in_method_generic_param_default<T = impl Debug>(_: T) {}
-//~^ ERROR defaults for type parameters are only allowed in `struct`, `enum`, `type`, or `trait` definitions
-//~| WARNING this was previously accepted by the compiler but is being phased out
-//~| ERROR `impl Trait` is not allowed in generic parameter defaults
+//~^ ERROR `impl Trait` is not allowed in generic parameter defaults
 
 fn main() {
     let _in_local_variable: impl Fn() = || {};

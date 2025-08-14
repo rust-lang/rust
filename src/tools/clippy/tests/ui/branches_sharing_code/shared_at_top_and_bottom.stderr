@@ -159,5 +159,31 @@ LL ~     }
 LL +     x * 4
    |
 
-error: aborting due to 5 previous errors
+error: all if blocks contain the same code at both the start and the end
+  --> tests/ui/branches_sharing_code/shared_at_top_and_bottom.rs:158:9
+   |
+LL | /         if false {
+LL | |
+LL | |             let x = 1;
+   | |______________________^
+   |
+note: this code is shared at the end
+  --> tests/ui/branches_sharing_code/shared_at_top_and_bottom.rs:166:9
+   |
+LL | /             let y = 1;
+LL | |         }
+   | |_________^
+   = warning: some moved values might need to be renamed to avoid wrong references
+help: consider moving these statements before the if
+   |
+LL ~         let x = 1;
+LL +         if false {
+   |
+help: consider moving these statements after the if
+   |
+LL ~         }
+LL +         let y = 1;
+   |
+
+error: aborting due to 6 previous errors
 

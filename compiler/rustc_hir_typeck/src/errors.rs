@@ -2,11 +2,15 @@
 
 use std::borrow::Cow;
 
+use rustc_abi::ExternAbi;
+use rustc_ast::Label;
 use rustc_errors::codes::*;
 use rustc_errors::{
-    Applicability, Diag, DiagArgValue, DiagSymbolList, EmissionGuarantee, IntoDiagArg, MultiSpan,
-    Subdiagnostic,
+    Applicability, Diag, DiagArgValue, DiagCtxtHandle, DiagSymbolList, Diagnostic,
+    EmissionGuarantee, IntoDiagArg, Level, MultiSpan, Subdiagnostic,
 };
+use rustc_hir as hir;
+use rustc_hir::ExprKind;
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::ty::{self, Ty};
 use rustc_span::edition::{Edition, LATEST_STABLE_EDITION};
@@ -26,8 +30,6 @@ pub(crate) struct BaseExpressionDoubleDot {
         style = "verbose"
     )]
     pub default_field_values_suggestion: Option<Span>,
-    #[subdiagnostic]
-    pub default_field_values_help: Option<BaseExpressionDoubleDotEnableDefaultFieldValues>,
     #[subdiagnostic]
     pub add_expr: Option<BaseExpressionDoubleDotAddExpr>,
     #[subdiagnostic]
@@ -57,10 +59,6 @@ pub(crate) struct BaseExpressionDoubleDotAddExpr {
     #[primary_span]
     pub span: Span,
 }
-
-#[derive(Subdiagnostic)]
-#[help(hir_typeck_base_expression_double_dot_enable_default_field_values)]
-pub(crate) struct BaseExpressionDoubleDotEnableDefaultFieldValues;
 
 #[derive(Diagnostic)]
 #[diag(hir_typeck_field_multiply_specified_in_initializer, code = E0062)]
@@ -202,11 +200,11 @@ pub(crate) enum ExplicitDestructorCallSugg {
 
 #[derive(Diagnostic)]
 #[diag(hir_typeck_missing_parentheses_in_range, code = E0689)]
-pub(crate) struct MissingParenthesesInRange {
+pub(crate) struct MissingParenthesesInRange<'tcx> {
     #[primary_span]
     #[label(hir_typeck_missing_parentheses_in_range)]
     pub span: Span,
-    pub ty_str: String,
+    pub ty: Ty<'tcx>,
     pub method_name: String,
     #[subdiagnostic]
     pub add_missing_parentheses: Option<AddMissingParenthesesInRange>,
@@ -608,24 +606,6 @@ impl Subdiagnostic for RemoveSemiForCoerce {
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_typeck_const_select_must_be_const)]
-#[help]
-pub(crate) struct ConstSelectMustBeConst {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(hir_typeck_const_select_must_be_fn)]
-#[note]
-#[help]
-pub(crate) struct ConstSelectMustBeFn<'a> {
-    #[primary_span]
-    pub span: Span,
-    pub ty: Ty<'a>,
-}
-
-#[derive(Diagnostic)]
 #[diag(hir_typeck_union_pat_multiple_fields)]
 pub(crate) struct UnionPatMultipleFields {
     #[primary_span]
@@ -680,6 +660,18 @@ pub(crate) enum SuggestBoxing {
         hir_typeck_suggest_boxing_when_appropriate,
         applicability = "machine-applicable"
     )]
+    ExprFieldShorthand {
+        #[suggestion_part(code = "{ident}: Box::new(")]
+        start: Span,
+        #[suggestion_part(code = ")")]
+        end: Span,
+        ident: Ident,
+    },
+    #[note(hir_typeck_suggest_boxing_note)]
+    #[multipart_suggestion(
+        hir_typeck_suggest_boxing_when_appropriate,
+        applicability = "machine-applicable"
+    )]
     Other {
         #[suggestion_part(code = "Box::new(")]
         start: Span,
@@ -709,15 +701,140 @@ pub(crate) struct TrivialCast<'tcx> {
     pub cast_ty: Ty<'tcx>,
 }
 
+pub(crate) struct BreakNonLoop<'a> {
+    pub span: Span,
+    pub head: Option<Span>,
+    pub kind: &'a str,
+    pub suggestion: String,
+    pub loop_label: Option<Label>,
+    pub break_label: Option<Label>,
+    pub break_expr_kind: &'a ExprKind<'a>,
+    pub break_expr_span: Span,
+}
+
+impl<'a, G: EmissionGuarantee> Diagnostic<'_, G> for BreakNonLoop<'a> {
+    #[track_caller]
+    fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_, G> {
+        let mut diag = Diag::new(dcx, level, fluent::hir_typeck_break_non_loop);
+        diag.span(self.span);
+        diag.code(E0571);
+        diag.arg("kind", self.kind);
+        diag.span_label(self.span, fluent::hir_typeck_label);
+        if let Some(head) = self.head {
+            diag.span_label(head, fluent::hir_typeck_label2);
+        }
+        diag.span_suggestion(
+            self.span,
+            fluent::hir_typeck_suggestion,
+            self.suggestion,
+            Applicability::MaybeIncorrect,
+        );
+        if let (Some(label), None) = (self.loop_label, self.break_label) {
+            match self.break_expr_kind {
+                ExprKind::Path(hir::QPath::Resolved(
+                    None,
+                    hir::Path { segments: [segment], res: hir::def::Res::Err, .. },
+                )) if label.ident.to_string() == format!("'{}", segment.ident) => {
+                    // This error is redundant, we will have already emitted a
+                    // suggestion to use the label when `segment` wasn't found
+                    // (hence the `Res::Err` check).
+                    diag.downgrade_to_delayed_bug();
+                }
+                _ => {
+                    diag.span_suggestion(
+                        self.break_expr_span,
+                        fluent::hir_typeck_break_expr_suggestion,
+                        label.ident,
+                        Applicability::MaybeIncorrect,
+                    );
+                }
+            }
+        }
+        diag
+    }
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_typeck_continue_labeled_block, code = E0696)]
+pub(crate) struct ContinueLabeledBlock {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    #[label(hir_typeck_block_label)]
+    pub block_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_typeck_break_inside_closure, code = E0267)]
+pub(crate) struct BreakInsideClosure<'a> {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    #[label(hir_typeck_closure_label)]
+    pub closure_span: Span,
+    pub name: &'a str,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_typeck_break_inside_coroutine, code = E0267)]
+pub(crate) struct BreakInsideCoroutine<'a> {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    #[label(hir_typeck_coroutine_label)]
+    pub coroutine_span: Span,
+    pub name: &'a str,
+    pub kind: &'a str,
+    pub source: &'a str,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_typeck_outside_loop, code = E0268)]
+pub(crate) struct OutsideLoop<'a> {
+    #[primary_span]
+    #[label]
+    pub spans: Vec<Span>,
+    pub name: &'a str,
+    pub is_break: bool,
+    #[subdiagnostic]
+    pub suggestion: Option<OutsideLoopSuggestion>,
+}
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(hir_typeck_outside_loop_suggestion, applicability = "maybe-incorrect")]
+pub(crate) struct OutsideLoopSuggestion {
+    #[suggestion_part(code = "'block: ")]
+    pub block_span: Span,
+    #[suggestion_part(code = " 'block")]
+    pub break_spans: Vec<Span>,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_typeck_unlabeled_in_labeled_block, code = E0695)]
+pub(crate) struct UnlabeledInLabeledBlock<'a> {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    pub cf_type: &'a str,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_typeck_unlabeled_cf_in_while_condition, code = E0590)]
+pub(crate) struct UnlabeledCfInWhileCondition<'a> {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    pub cf_type: &'a str,
+}
+
 #[derive(Diagnostic)]
 #[diag(hir_typeck_no_associated_item, code = E0599)]
-pub(crate) struct NoAssociatedItem {
+pub(crate) struct NoAssociatedItem<'tcx> {
     #[primary_span]
     pub span: Span,
     pub item_kind: &'static str,
     pub item_ident: Ident,
     pub ty_prefix: Cow<'static, str>,
-    pub ty_str: String,
+    pub ty: Ty<'tcx>,
     pub trait_missing_method: bool,
 }
 
@@ -970,4 +1087,72 @@ pub(crate) struct RegisterTypeUnstable<'a> {
     #[primary_span]
     pub span: Span,
     pub ty: Ty<'a>,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_typeck_naked_asm_outside_naked_fn)]
+pub(crate) struct NakedAsmOutsideNakedFn {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_typeck_no_patterns)]
+pub(crate) struct NoPatterns {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_typeck_params_not_allowed)]
+#[help]
+pub(crate) struct ParamsNotAllowed {
+    #[primary_span]
+    pub span: Span,
+}
+
+pub(crate) struct NakedFunctionsAsmBlock {
+    pub span: Span,
+    pub multiple_asms: Vec<Span>,
+    pub non_asms: Vec<Span>,
+}
+
+impl<G: EmissionGuarantee> Diagnostic<'_, G> for NakedFunctionsAsmBlock {
+    #[track_caller]
+    fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_, G> {
+        let mut diag = Diag::new(dcx, level, fluent::hir_typeck_naked_functions_asm_block);
+        diag.span(self.span);
+        diag.code(E0787);
+        for span in self.multiple_asms.iter() {
+            diag.span_label(*span, fluent::hir_typeck_label_multiple_asm);
+        }
+        for span in self.non_asms.iter() {
+            diag.span_label(*span, fluent::hir_typeck_label_non_asm);
+        }
+        diag
+    }
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_typeck_naked_functions_must_naked_asm, code = E0787)]
+pub(crate) struct NakedFunctionsMustNakedAsm {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_typeck_abi_cannot_be_called)]
+pub(crate) struct AbiCannotBeCalled {
+    #[primary_span]
+    #[note]
+    pub span: Span,
+    pub abi: ExternAbi,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_typeck_const_continue_bad_label)]
+pub(crate) struct ConstContinueBadLabel {
+    #[primary_span]
+    pub span: Span,
 }

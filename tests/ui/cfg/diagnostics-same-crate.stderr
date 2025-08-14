@@ -7,13 +7,11 @@ LL |     use super::inner::doesnt_exist;
 note: found an item that was configured out
   --> $DIR/diagnostics-same-crate.rs:11:13
    |
+LL |     #[cfg(false)]
+   |           ----- the item is gated here
+...
 LL |     pub mod doesnt_exist {
    |             ^^^^^^^^^^^^
-note: the item is gated here
-  --> $DIR/diagnostics-same-crate.rs:8:5
-   |
-LL |     #[cfg(false)]
-   |     ^^^^^^^^^^^^^
 
 error[E0432]: unresolved import `super::inner::doesnt_exist`
   --> $DIR/diagnostics-same-crate.rs:35:23
@@ -24,16 +22,14 @@ LL |     use super::inner::doesnt_exist::hi;
 note: found an item that was configured out
   --> $DIR/diagnostics-same-crate.rs:11:13
    |
+LL |     #[cfg(false)]
+   |           ----- the item is gated here
+...
 LL |     pub mod doesnt_exist {
    |             ^^^^^^^^^^^^
-note: the item is gated here
-  --> $DIR/diagnostics-same-crate.rs:8:5
-   |
-LL |     #[cfg(false)]
-   |     ^^^^^^^^^^^^^
 
 error[E0433]: failed to resolve: could not find `doesnt_exist` in `inner`
-  --> $DIR/diagnostics-same-crate.rs:54:12
+  --> $DIR/diagnostics-same-crate.rs:53:12
    |
 LL |     inner::doesnt_exist::hello();
    |            ^^^^^^^^^^^^ could not find `doesnt_exist` in `inner`
@@ -41,13 +37,11 @@ LL |     inner::doesnt_exist::hello();
 note: found an item that was configured out
   --> $DIR/diagnostics-same-crate.rs:11:13
    |
+LL |     #[cfg(false)]
+   |           ----- the item is gated here
+...
 LL |     pub mod doesnt_exist {
    |             ^^^^^^^^^^^^
-note: the item is gated here
-  --> $DIR/diagnostics-same-crate.rs:8:5
-   |
-LL |     #[cfg(false)]
-   |     ^^^^^^^^^^^^^
 
 error[E0425]: cannot find function `uwu` in module `inner`
   --> $DIR/diagnostics-same-crate.rs:49:12
@@ -58,16 +52,13 @@ LL |     inner::uwu();
 note: found an item that was configured out
   --> $DIR/diagnostics-same-crate.rs:5:12
    |
+LL |     #[cfg(false)]
+   |           ----- the item is gated here
 LL |     pub fn uwu() {}
    |            ^^^
-note: the item is gated here
-  --> $DIR/diagnostics-same-crate.rs:4:5
-   |
-LL |     #[cfg(false)]
-   |     ^^^^^^^^^^^^^
 
 error[E0425]: cannot find function `meow` in module `inner::right`
-  --> $DIR/diagnostics-same-crate.rs:58:19
+  --> $DIR/diagnostics-same-crate.rs:57:19
    |
 LL |     inner::right::meow();
    |                   ^^^^ not found in `inner::right`
@@ -75,13 +66,10 @@ LL |     inner::right::meow();
 note: found an item that was configured out
   --> $DIR/diagnostics-same-crate.rs:26:16
    |
+LL |         #[cfg(feature = "what-a-cool-feature")]
+   |               ------------------------------- the item is gated behind the `what-a-cool-feature` feature
 LL |         pub fn meow() {}
    |                ^^^^
-note: the item is gated behind the `what-a-cool-feature` feature
-  --> $DIR/diagnostics-same-crate.rs:25:15
-   |
-LL |         #[cfg(feature = "what-a-cool-feature")]
-   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0425]: cannot find function `uwu` in this scope
   --> $DIR/diagnostics-same-crate.rs:45:5
@@ -90,10 +78,18 @@ LL |     uwu();
    |     ^^^ not found in this scope
 
 error[E0425]: cannot find function `vanished` in this scope
-  --> $DIR/diagnostics-same-crate.rs:64:5
+  --> $DIR/diagnostics-same-crate.rs:62:5
    |
 LL |     vanished();
    |     ^^^^^^^^ not found in this scope
+   |
+note: found an item that was configured out
+  --> $DIR/diagnostics-same-crate.rs:41:8
+   |
+LL | #[cfg(i_dont_exist_and_you_can_do_nothing_about_it)]
+   |       -------------------------------------------- the item is gated here
+LL | pub fn vanished() {}
+   |        ^^^^^^^^
 
 error: aborting due to 7 previous errors
 

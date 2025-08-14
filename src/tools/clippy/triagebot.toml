@@ -1,7 +1,7 @@
 [relabel]
 allow-unauthenticated = [
     "A-*", "C-*", "E-*", "I-*", "L-*", "P-*", "S-*", "T-*",
-    "good-first-issue", "beta-nominated"
+    "good first issue", "beta-nominated"
 ]
 
 # Allows shortcuts like `@rustbot ready`
@@ -13,7 +13,14 @@ allow-unauthenticated = [
 
 [note]
 
-[canonicalize-issue-links]
+[close]
+
+[transfer]
+
+[issue-links]
+
+[mentions."clippy_lints/src/doc"]
+cc = ["@notriddle"]
 
 # Prevents mentions in commits to avoid users being spammed
 [no-mentions]
@@ -38,11 +45,15 @@ reviewed_label = "S-waiting-on-author"
 [autolabel."S-waiting-on-review"]
 new_pr = true
 
+[concern]
+# These labels are set when there are unresolved concerns, removed otherwise
+labels = ["S-waiting-on-concerns"]
+
 [assign]
 contributing_url = "https://github.com/rust-lang/rust-clippy/blob/master/CONTRIBUTING.md"
 users_on_vacation = [
     "matthiaskrgr",
-    "samueltardieu",
+    "Manishearth",
 ]
 
 [assign.owners]

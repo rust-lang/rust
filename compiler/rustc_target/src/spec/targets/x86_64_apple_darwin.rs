@@ -1,8 +1,8 @@
-use crate::spec::base::apple::{Arch, TargetAbi, base};
-use crate::spec::{FramePointer, SanitizerSet, Target, TargetMetadata, TargetOptions};
+use crate::spec::base::apple::{Arch, TargetEnv, base};
+use crate::spec::{SanitizerSet, Target, TargetMetadata, TargetOptions};
 
 pub(crate) fn target() -> Target {
-    let (opts, llvm_target, arch) = base("macos", Arch::X86_64, TargetAbi::Normal);
+    let (opts, llvm_target, arch) = base("macos", Arch::X86_64, TargetEnv::Normal);
     Target {
         llvm_target,
         metadata: TargetMetadata {
@@ -18,11 +18,11 @@ pub(crate) fn target() -> Target {
         options: TargetOptions {
             mcount: "\u{1}mcount".into(),
             max_atomic_width: Some(128), // penryn+ supports cmpxchg16b
-            frame_pointer: FramePointer::Always,
             supported_sanitizers: SanitizerSet::ADDRESS
                 | SanitizerSet::CFI
                 | SanitizerSet::LEAK
                 | SanitizerSet::THREAD,
+            supports_xray: true,
             ..opts
         },
     }

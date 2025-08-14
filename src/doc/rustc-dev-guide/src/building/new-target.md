@@ -6,8 +6,6 @@ relevant to your desired goal.
 
 See also the associated documentation in the [target tier policy].
 
-<!-- toc -->
-
 [target tier policy]: https://doc.rust-lang.org/rustc/target-tier-policy.html#adding-a-new-target
 
 ## Specifying a new LLVM
@@ -85,7 +83,7 @@ Look for existing targets to use as examples.
 After adding your target to the `rustc_target` crate you may want to add
 `core`, `std`, ... with support for your new target. In that case you will
 probably need access to some `target_*` cfg. Unfortunately when building with
-stage0 (the beta compiler), you'll get an error that the target cfg is
+stage0 (a precompiled compiler), you'll get an error that the target cfg is
 unexpected because stage0 doesn't know about the new target specification and
 we pass `--check-cfg` in order to tell it to check.
 
@@ -174,8 +172,8 @@ compiler, you can use it instead of the JSON file for both arguments.
 ## Promoting a target from tier 2 (target) to tier 2 (host)
 
 There are two levels of tier 2 targets:
-  a) Targets that are only cross-compiled (`rustup target add`)
-  b) Targets that [have a native toolchain][tier2-native] (`rustup toolchain install`)
+- Targets that are only cross-compiled (`rustup target add`)
+- Targets that [have a native toolchain][tier2-native] (`rustup toolchain install`)
 
 [tier2-native]: https://doc.rust-lang.org/nightly/rustc/target-tier-policy.html#tier-2-with-host-tools
 

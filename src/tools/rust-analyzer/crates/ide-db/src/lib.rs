@@ -92,9 +92,7 @@ pub struct RootDatabase {
 impl std::panic::RefUnwindSafe for RootDatabase {}
 
 #[salsa_macros::db]
-impl salsa::Database for RootDatabase {
-    fn salsa_event(&self, _event: &dyn Fn() -> salsa::Event) {}
-}
+impl salsa::Database for RootDatabase {}
 
 impl Drop for RootDatabase {
     fn drop(&mut self) {
@@ -246,7 +244,7 @@ pub trait LineIndexDatabase: base_db::RootQueryDb {
 
 fn line_index(db: &dyn LineIndexDatabase, file_id: FileId) -> Arc<LineIndex> {
     let text = db.file_text(file_id).text(db);
-    Arc::new(LineIndex::new(&text))
+    Arc::new(LineIndex::new(text))
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]

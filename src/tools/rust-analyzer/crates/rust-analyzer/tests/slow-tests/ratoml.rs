@@ -439,6 +439,7 @@ assist.emitMustUse = true"#,
 }
 
 #[test]
+#[ignore = "flaky test that tends to hang"]
 fn ratoml_inherit_config_from_ws_root() {
     if skip_slow_tests() {
         return;

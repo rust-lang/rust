@@ -1,3 +1,5 @@
+//@ needs-target-std
+//
 // Specifying how rustc outputs a file can be done in different ways, such as
 // the output flag or the KIND=NAME syntax. However, some of these methods used
 // to result in different hashes on output files even though they yielded the

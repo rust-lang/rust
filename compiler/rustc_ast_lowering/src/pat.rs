@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use rustc_ast::ptr::P;
 use rustc_ast::*;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir::def::{DefKind, Res};
@@ -154,7 +153,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
     fn lower_pat_tuple(
         &mut self,
-        pats: &[P<Pat>],
+        pats: &[Box<Pat>],
         ctx: &str,
     ) -> (&'hir [hir::Pat<'hir>], hir::DotDotPos) {
         let mut elems = Vec::with_capacity(pats.len());
@@ -209,7 +208,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     /// When encountering `($binding_mode $ident @)? ..` (`slice`),
     /// this is interpreted as a sub-slice pattern semantically.
     /// Patterns that follow, which are not like `slice` -- or an error occurs, are in `after`.
-    fn lower_pat_slice(&mut self, pats: &[P<Pat>]) -> hir::PatKind<'hir> {
+    fn lower_pat_slice(&mut self, pats: &[Box<Pat>]) -> hir::PatKind<'hir> {
         let mut before = Vec::new();
         let mut after = Vec::new();
         let mut slice = None;
@@ -390,19 +389,15 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         allow_paths: bool,
     ) -> &'hir hir::PatExpr<'hir> {
         let span = self.lower_span(expr.span);
-        let err = |guar| hir::PatExprKind::Lit {
-            lit: self.arena.alloc(respan(span, LitKind::Err(guar))),
-            negated: false,
-        };
+        let err =
+            |guar| hir::PatExprKind::Lit { lit: respan(span, LitKind::Err(guar)), negated: false };
         let kind = match &expr.kind {
             ExprKind::Lit(lit) => {
                 hir::PatExprKind::Lit { lit: self.lower_lit(lit, span), negated: false }
             }
             ExprKind::ConstBlock(c) => hir::PatExprKind::ConstBlock(self.lower_const_block(c)),
-            ExprKind::IncludedBytes(bytes) => hir::PatExprKind::Lit {
-                lit: self
-                    .arena
-                    .alloc(respan(span, LitKind::ByteStr(Arc::clone(bytes), StrStyle::Cooked))),
+            ExprKind::IncludedBytes(byte_sym) => hir::PatExprKind::Lit {
+                lit: respan(span, LitKind::ByteStr(*byte_sym, StrStyle::Cooked)),
                 negated: false,
             },
             ExprKind::Err(guar) => err(*guar),

@@ -3,7 +3,7 @@ use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::ty::is_copy;
 use rustc_lint::LateContext;
 use rustc_middle::ty::Ty;
-use rustc_span::Span;
+use rustc_span::{Span, Symbol};
 use std::fmt;
 
 use super::WRONG_SELF_CONVENTION;
@@ -83,17 +83,18 @@ impl fmt::Display for Convention {
 #[allow(clippy::too_many_arguments)]
 pub(super) fn check<'tcx>(
     cx: &LateContext<'tcx>,
-    item_name: &str,
+    item_name: Symbol,
     self_ty: Ty<'tcx>,
     first_arg_ty: Ty<'tcx>,
     first_arg_span: Span,
     implements_trait: bool,
     is_trait_item: bool,
 ) {
+    let item_name_str = item_name.as_str();
     if let Some((conventions, self_kinds)) = &CONVENTIONS.iter().find(|(convs, _)| {
         convs
             .iter()
-            .all(|conv| conv.check(cx, self_ty, item_name, implements_trait, is_trait_item))
+            .all(|conv| conv.check(cx, self_ty, item_name_str, implements_trait, is_trait_item))
     }) {
         // don't lint if it implements a trait but not willing to check `Copy` types conventions (see #7032)
         if implements_trait

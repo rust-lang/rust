@@ -238,6 +238,9 @@ impl<'tcx> ut::UnifyKey for TyVidEqKey<'tcx> {
     fn tag() -> &'static str {
         "TyVidEqKey"
     }
+    fn order_roots(a: Self, _: &Self::Value, b: Self, _: &Self::Value) -> Option<(Self, Self)> {
+        if a.vid.as_u32() < b.vid.as_u32() { Some((a, b)) } else { Some((b, a)) }
+    }
 }
 
 impl<'tcx> ut::UnifyValue for TypeVariableValue<'tcx> {

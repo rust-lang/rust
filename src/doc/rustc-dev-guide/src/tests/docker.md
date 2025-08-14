@@ -6,12 +6,12 @@ need to install Docker on a Linux, Windows, or macOS system (typically Linux
 will be much faster than Windows or macOS because the latter use virtual
 machines to emulate a Linux environment).
 
-Jobs running in CI are configured through a set of bash scripts, and it is not always trivial to reproduce their behavior locally. If you want to run a CI job locally in the simplest way possible, you can use a provided helper Python script that tries to replicate what happens on CI as closely as possible:
+Jobs running in CI are configured through a set of bash scripts, and it is not always trivial to reproduce their behavior locally. If you want to run a CI job locally in the simplest way possible, you can use a provided helper `citool` that tries to replicate what happens on CI as closely as possible:
 
 ```bash
-python3 src/ci/github-actions/ci.py run-local <job-name>
+cargo run --manifest-path src/ci/citool/Cargo.toml run-local <job-name>
 # For example:
-python3 src/ci/github-actions/ci.py run-local dist-x86_64-linux-alt
+cargo run --manifest-path src/ci/citool/Cargo.toml run-local dist-x86_64-linux-alt
 ```
 
 If the above script does not work for you, you would like to have more control of the Docker image execution, or you want to understand what exactly happens during Docker job execution, then continue reading below.
@@ -52,15 +52,6 @@ Some additional notes about using the interactive mode:
   `docker container ls` outside of the container to list the available
   containers. With the container name, run `docker exec -it <CONTAINER>
   /bin/bash` where `<CONTAINER>` is the container name like `4ba195e95cef`.
-
-The approach described above is a relatively low-level interface for running the Docker images
-directly. If you want to run a full CI Linux job locally with Docker, in a way that is as close to CI as possible, you can use the following command:
-
-```bash
-cargo run --manifest-path src/ci/citool/Cargo.toml run-local <job-name>
-# For example:
-cargo run --manifest-path src/ci/citool/Cargo.toml run-local dist-x86_64-linux-alt
-```
 
 [Docker]: https://www.docker.com/
 [`src/ci/docker`]: https://github.com/rust-lang/rust/tree/master/src/ci/docker

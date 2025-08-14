@@ -36,34 +36,28 @@ LL |         ref mut Self => (),
    |                 ^^^^ expected identifier, found keyword
 
 error: expected identifier, found keyword `Self`
-  --> $DIR/self_type_keyword.rs:23:15
+  --> $DIR/self_type_keyword.rs:21:15
    |
 LL |         Foo { Self } => (),
    |               ^^^^ expected identifier, found keyword
 
 error: expected identifier, found keyword `Self`
-  --> $DIR/self_type_keyword.rs:31:26
+  --> $DIR/self_type_keyword.rs:29:26
    |
 LL |     extern crate core as Self;
    |                          ^^^^ expected identifier, found keyword
 
 error: expected identifier, found keyword `Self`
-  --> $DIR/self_type_keyword.rs:36:32
+  --> $DIR/self_type_keyword.rs:34:32
    |
 LL |     use std::option::Option as Self;
    |                                ^^^^ expected identifier, found keyword
 
 error: expected identifier, found keyword `Self`
-  --> $DIR/self_type_keyword.rs:41:11
+  --> $DIR/self_type_keyword.rs:39:11
    |
 LL |     trait Self {}
    |           ^^^^ expected identifier, found keyword
-
-error: cannot find macro `Self` in this scope
-  --> $DIR/self_type_keyword.rs:21:9
-   |
-LL |         Self!() => (),
-   |         ^^^^
 
 error[E0531]: cannot find unit struct, unit variant or constant `Self` in this scope
   --> $DIR/self_type_keyword.rs:16:13
@@ -86,7 +80,7 @@ LL | struct Bar<'Self>;
    = help: consider removing `'Self`, referring to it in a field, or using a marker such as `PhantomData`
 
 error[E0308]: mismatched types
-  --> $DIR/self_type_keyword.rs:23:9
+  --> $DIR/self_type_keyword.rs:21:9
    |
 LL |     match 15 {
    |           -- this expression has type `{integer}`
@@ -95,12 +89,12 @@ LL |         Foo { Self } => (),
    |         ^^^^^^^^^^^^ expected integer, found `Foo`
 
 error[E0026]: struct `Foo` does not have a field named `Self`
-  --> $DIR/self_type_keyword.rs:23:15
+  --> $DIR/self_type_keyword.rs:21:15
    |
 LL |         Foo { Self } => (),
    |               ^^^^ struct `Foo` does not have this field
 
-error: aborting due to 14 previous errors
+error: aborting due to 13 previous errors
 
 Some errors have detailed explanations: E0026, E0308, E0392, E0531.
 For more information about an error, try `rustc --explain E0026`.

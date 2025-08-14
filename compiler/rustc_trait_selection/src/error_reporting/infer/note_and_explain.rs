@@ -1,14 +1,16 @@
 use rustc_errors::Applicability::{MachineApplicable, MaybeIncorrect};
 use rustc_errors::{Diag, MultiSpan, pluralize};
 use rustc_hir as hir;
+use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::DefKind;
+use rustc_hir::find_attr;
 use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::fast_reject::DeepRejectCtxt;
 use rustc_middle::ty::print::{FmtPrinter, Printer};
 use rustc_middle::ty::{self, Ty, suggest_constraining_type_param};
 use rustc_span::def_id::DefId;
-use rustc_span::{BytePos, Span, Symbol, sym};
+use rustc_span::{BytePos, Span, Symbol};
 use tracing::debug;
 
 use crate::error_reporting::TypeErrCtxt;
@@ -353,26 +355,6 @@ impl<T> Trait<T> for X {
                             ));
                         }
                     }
-                    (ty::Dynamic(t, _, ty::DynKind::DynStar), _)
-                        if let Some(def_id) = t.principal_def_id() =>
-                    {
-                        let mut has_matching_impl = false;
-                        tcx.for_each_relevant_impl(def_id, values.found, |did| {
-                            if DeepRejectCtxt::relate_rigid_infer(tcx)
-                                .types_may_unify(values.found, tcx.type_of(did).skip_binder())
-                            {
-                                has_matching_impl = true;
-                            }
-                        });
-                        if has_matching_impl {
-                            let trait_name = tcx.item_name(def_id);
-                            diag.help(format!(
-                                "`{}` implements `{trait_name}`, `#[feature(dyn_star)]` is likely \
-                                 not enabled; that feature it is currently incomplete",
-                                values.found,
-                            ));
-                        }
-                    }
                     (_, ty::Alias(ty::Opaque, opaque_ty))
                     | (ty::Alias(ty::Opaque, opaque_ty), _) => {
                         if opaque_ty.def_id.is_local()
@@ -420,19 +402,33 @@ impl<T> Trait<T> for X {
                         }
                         // If two if arms can be coerced to a trait object, provide a structured
                         // suggestion.
-                        let ObligationCauseCode::IfExpression(cause) = cause.code() else {
+                        let ObligationCauseCode::IfExpression { expr_id, .. } = cause.code() else {
                             return;
                         };
-                        let hir::Node::Block(blk) = self.tcx.hir_node(cause.then_id) else {
-                            return;
-                        };
-                        let Some(then) = blk.expr else {
-                            return;
-                        };
-                        let hir::Node::Block(blk) = self.tcx.hir_node(cause.else_id) else {
-                            return;
-                        };
-                        let Some(else_) = blk.expr else {
+                        let hir::Node::Expr(&hir::Expr {
+                            kind:
+                                hir::ExprKind::If(
+                                    _,
+                                    &hir::Expr {
+                                        kind:
+                                            hir::ExprKind::Block(
+                                                &hir::Block { expr: Some(then), .. },
+                                                _,
+                                            ),
+                                        ..
+                                    },
+                                    Some(&hir::Expr {
+                                        kind:
+                                            hir::ExprKind::Block(
+                                                &hir::Block { expr: Some(else_), .. },
+                                                _,
+                                            ),
+                                        ..
+                                    }),
+                                ),
+                            ..
+                        }) = self.tcx.hir_node(*expr_id)
+                        else {
                             return;
                         };
                         let expected = match values.found.kind() {
@@ -486,8 +482,10 @@ impl<T> Trait<T> for X {
                         }
                     }
                     (ty::Adt(_, _), ty::Adt(def, args))
-                        if let ObligationCauseCode::IfExpression(cause) = cause.code()
-                            && let hir::Node::Block(blk) = self.tcx.hir_node(cause.then_id)
+                        if let ObligationCauseCode::IfExpression { expr_id, .. } = cause.code()
+                            && let hir::Node::Expr(if_expr) = self.tcx.hir_node(*expr_id)
+                            && let hir::ExprKind::If(_, then_expr, _) = if_expr.kind
+                            && let hir::ExprKind::Block(blk, _) = then_expr.kind
                             && let Some(then) = blk.expr
                             && def.is_box()
                             && let boxed_ty = args.type_at(0)
@@ -539,8 +537,7 @@ impl<T> Trait<T> for X {
                 }
             }
             TypeError::TargetFeatureCast(def_id) => {
-                let target_spans =
-                    tcx.get_attrs(def_id, sym::target_feature).map(|attr| attr.span());
+                let target_spans = find_attr!(tcx.get_all_attrs(def_id), AttributeKind::TargetFeature(.., span) => *span);
                 diag.note(
                     "functions with `#[target_feature]` can only be coerced to `unsafe` function pointers"
                 );
@@ -656,7 +653,6 @@ impl<T> Trait<T> for X {
             )
         );
         let impl_comparison = matches!(cause_code, ObligationCauseCode::CompareImplItem { .. });
-        let assoc = tcx.associated_item(proj_ty.def_id);
         if impl_comparison {
             // We do not want to suggest calling functions when the reason of the
             // type error is a comparison of an `impl` with its `trait`.
@@ -664,7 +660,7 @@ impl<T> Trait<T> for X {
             let point_at_assoc_fn = if callable_scope
                 && self.point_at_methods_that_satisfy_associated_type(
                     diag,
-                    assoc.container_id(tcx),
+                    tcx.parent(proj_ty.def_id),
                     current_method_ident,
                     proj_ty.def_id,
                     values.expected,
@@ -845,54 +841,32 @@ fn foo(&self) -> Self::T { String::new() }
 
         let param_env = tcx.param_env(body_owner_def_id);
 
-        match item {
-            hir::Node::Item(hir::Item { kind: hir::ItemKind::Trait(.., items), .. }) => {
-                // FIXME: account for `#![feature(specialization)]`
-                for item in &items[..] {
-                    match item.kind {
-                        hir::AssocItemKind::Type => {
-                            // FIXME: account for returning some type in a trait fn impl that has
-                            // an assoc type as a return type (#72076).
-                            if let hir::Defaultness::Default { has_value: true } =
-                                tcx.defaultness(item.id.owner_id)
-                            {
-                                let assoc_ty = tcx.type_of(item.id.owner_id).instantiate_identity();
-                                if self.infcx.can_eq(param_env, assoc_ty, found) {
-                                    diag.span_label(
-                                        item.span,
-                                        "associated type defaults can't be assumed inside the \
-                                            trait defining them",
-                                    );
-                                    return true;
-                                }
-                            }
+        if let DefKind::Trait | DefKind::Impl { .. } = tcx.def_kind(parent_id) {
+            let assoc_items = tcx.associated_items(parent_id);
+            // FIXME: account for `#![feature(specialization)]`
+            for assoc_item in assoc_items.in_definition_order() {
+                if assoc_item.is_type()
+                    // FIXME: account for returning some type in a trait fn impl that has
+                    // an assoc type as a return type (#72076).
+                    && let hir::Defaultness::Default { has_value: true } = assoc_item.defaultness(tcx)
+                    && let assoc_ty = tcx.type_of(assoc_item.def_id).instantiate_identity()
+                    && self.infcx.can_eq(param_env, assoc_ty, found)
+                {
+                    let msg = match assoc_item.container {
+                        ty::AssocItemContainer::Trait => {
+                            "associated type defaults can't be assumed inside the \
+                                            trait defining them"
                         }
-                        _ => {}
-                    }
+                        ty::AssocItemContainer::Impl => {
+                            "associated type is `default` and may be overridden"
+                        }
+                    };
+                    diag.span_label(tcx.def_span(assoc_item.def_id), msg);
+                    return true;
                 }
             }
-            hir::Node::Item(hir::Item {
-                kind: hir::ItemKind::Impl(hir::Impl { items, .. }),
-                ..
-            }) => {
-                for item in &items[..] {
-                    if let hir::AssocItemKind::Type = item.kind {
-                        let assoc_ty = tcx.type_of(item.id.owner_id).instantiate_identity();
-                        if let hir::Defaultness::Default { has_value: true } =
-                            tcx.defaultness(item.id.owner_id)
-                            && self.infcx.can_eq(param_env, assoc_ty, found)
-                        {
-                            diag.span_label(
-                                item.span,
-                                "associated type is `default` and may be overridden",
-                            );
-                            return true;
-                        }
-                    }
-                }
-            }
-            _ => {}
         }
+
         false
     }
 
@@ -971,8 +945,8 @@ fn foo(&self) -> Self::T { String::new() }
     }
 
     pub fn format_generic_args(&self, args: &[ty::GenericArg<'tcx>]) -> String {
-        FmtPrinter::print_string(self.tcx, hir::def::Namespace::TypeNS, |cx| {
-            cx.path_generic_args(|_| Ok(()), args)
+        FmtPrinter::print_string(self.tcx, hir::def::Namespace::TypeNS, |p| {
+            p.print_path_with_generic_args(|_| Ok(()), args)
         })
         .expect("could not write to `String`.")
     }

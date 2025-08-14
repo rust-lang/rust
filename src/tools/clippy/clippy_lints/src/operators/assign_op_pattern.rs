@@ -1,8 +1,9 @@
 use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::msrvs::Msrv;
 use clippy_utils::source::SpanRangeExt;
 use clippy_utils::ty::implements_trait;
 use clippy_utils::visitors::for_each_expr_without_closures;
-use clippy_utils::{binop_traits, eq_expr_value, trait_ref_of_method};
+use clippy_utils::{binop_traits, eq_expr_value, is_in_const_context, trait_ref_of_method};
 use core::ops::ControlFlow;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
@@ -19,6 +20,7 @@ pub(super) fn check<'tcx>(
     expr: &'tcx hir::Expr<'_>,
     assignee: &'tcx hir::Expr<'_>,
     e: &'tcx hir::Expr<'_>,
+    _msrv: Msrv,
 ) {
     if let hir::ExprKind::Binary(op, l, r) = &e.kind {
         let lint = |assignee: &hir::Expr<'_>, rhs: &hir::Expr<'_>| {
@@ -26,7 +28,7 @@ pub(super) fn check<'tcx>(
             let rty = cx.typeck_results().expr_ty(rhs);
             if let Some((_, lang_item)) = binop_traits(op.node)
                 && let Some(trait_id) = cx.tcx.lang_items().get(lang_item)
-                && let parent_fn = cx.tcx.hir_get_parent_item(e.hir_id).def_id
+                && let parent_fn = cx.tcx.hir_get_parent_item(e.hir_id)
                 && trait_ref_of_method(cx, parent_fn).is_none_or(|t| t.path.res.def_id() != trait_id)
                 && implements_trait(cx, ty, trait_id, &[rty.into()])
             {
@@ -40,6 +42,13 @@ pub(super) fn check<'tcx>(
                         return;
                     }
                 }
+
+                // Skip if the trait is not stable in const contexts
+                // FIXME: reintroduce a better check after this is merged back into Clippy
+                if is_in_const_context(cx) {
+                    return;
+                }
+
                 span_lint_and_then(
                     cx,
                     ASSIGN_OP_PATTERN,

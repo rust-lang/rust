@@ -1,10 +1,10 @@
 error[E0252]: the name `foo` is defined multiple times
   --> $DIR/duplicate.rs:15:9
    |
-LL |     use a::foo;
-   |         ------ previous import of the value `foo` here
-LL |     use a::foo;
-   |         ^^^^^^ `foo` reimported here
+LL |     use crate::a::foo;
+   |         ------------- previous import of the value `foo` here
+LL |     use crate::a::foo;
+   |         ^^^^^^^^^^^^^ `foo` reimported here
    |
    = note: `foo` must be defined only once in the value namespace of this module
 
@@ -38,14 +38,14 @@ LL |     f::foo();
 note: `foo` could refer to the function imported here
   --> $DIR/duplicate.rs:24:13
    |
-LL |     pub use a::*;
-   |             ^^^^
+LL |     pub use crate::a::*;
+   |             ^^^^^^^^^^^
    = help: consider adding an explicit import of `foo` to disambiguate
 note: `foo` could also refer to the function imported here
   --> $DIR/duplicate.rs:25:13
    |
-LL |     pub use b::*;
-   |             ^^^^
+LL |     pub use crate::b::*;
+   |             ^^^^^^^^^^^
    = help: consider adding an explicit import of `foo` to disambiguate
 
 error[E0659]: `foo` is ambiguous
@@ -68,7 +68,7 @@ LL |     use self::m2::*;
    |         ^^^^^^^^^^^
    = help: consider adding an explicit import of `foo` to disambiguate
 
-warning: `foo` is ambiguous
+error: `foo` is ambiguous
   --> $DIR/duplicate.rs:36:8
    |
 LL |     g::foo();
@@ -80,18 +80,42 @@ LL |     g::foo();
 note: `foo` could refer to the function imported here
   --> $DIR/duplicate.rs:24:13
    |
-LL |     pub use a::*;
-   |             ^^^^
+LL |     pub use crate::a::*;
+   |             ^^^^^^^^^^^
    = help: consider adding an explicit import of `foo` to disambiguate
 note: `foo` could also refer to the function imported here
   --> $DIR/duplicate.rs:25:13
    |
-LL |     pub use b::*;
-   |             ^^^^
+LL |     pub use crate::b::*;
+   |             ^^^^^^^^^^^
    = help: consider adding an explicit import of `foo` to disambiguate
-   = note: `#[warn(ambiguous_glob_imports)]` on by default
+   = note: `#[deny(ambiguous_glob_imports)]` on by default
 
-error: aborting due to 4 previous errors; 1 warning emitted
+error: aborting due to 5 previous errors
 
 Some errors have detailed explanations: E0252, E0659.
 For more information about an error, try `rustc --explain E0252`.
+Future incompatibility report: Future breakage diagnostic:
+error: `foo` is ambiguous
+  --> $DIR/duplicate.rs:36:8
+   |
+LL |     g::foo();
+   |        ^^^ ambiguous name
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #114095 <https://github.com/rust-lang/rust/issues/114095>
+   = note: ambiguous because of multiple glob imports of a name in the same module
+note: `foo` could refer to the function imported here
+  --> $DIR/duplicate.rs:24:13
+   |
+LL |     pub use crate::a::*;
+   |             ^^^^^^^^^^^
+   = help: consider adding an explicit import of `foo` to disambiguate
+note: `foo` could also refer to the function imported here
+  --> $DIR/duplicate.rs:25:13
+   |
+LL |     pub use crate::b::*;
+   |             ^^^^^^^^^^^
+   = help: consider adding an explicit import of `foo` to disambiguate
+   = note: `#[deny(ambiguous_glob_imports)]` on by default
+

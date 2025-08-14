@@ -74,11 +74,15 @@ impl SimplifyCfg {
 }
 
 pub(super) fn simplify_cfg<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-    CfgSimplifier::new(tcx, body).simplify();
+    if CfgSimplifier::new(tcx, body).simplify() {
+        // `simplify` returns that it changed something. We must invalidate the CFG caches as they
+        // are not consistent with the modified CFG any more.
+        body.basic_blocks.invalidate_cfg_cache();
+    }
     remove_dead_blocks(body);
 
     // FIXME: Should probably be moved into some kind of pass manager
-    body.basic_blocks_mut().raw.shrink_to_fit();
+    body.basic_blocks.as_mut_preserves_cfg().shrink_to_fit();
 }
 
 impl<'tcx> crate::MirPass<'tcx> for SimplifyCfg {
@@ -121,12 +125,16 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
         // Preserve `SwitchInt` reads on built and analysis MIR, or if `-Zmir-preserve-ub`.
         let preserve_switch_reads = matches!(body.phase, MirPhase::Built | MirPhase::Analysis(_))
             || tcx.sess.opts.unstable_opts.mir_preserve_ub;
-        let basic_blocks = body.basic_blocks_mut();
+        // Do not clear caches yet. The caller to `simplify` will do it if anything changed.
+        let basic_blocks = body.basic_blocks.as_mut_preserves_cfg();
 
         CfgSimplifier { preserve_switch_reads, basic_blocks, pred_count }
     }
 
-    fn simplify(mut self) {
+    /// Returns whether we actually simplified anything. In that case, the caller *must* invalidate
+    /// the CFG caches of the MIR body.
+    #[must_use]
+    fn simplify(mut self) -> bool {
         self.strip_nops();
 
         // Vec of the blocks that should be merged. We store the indices here, instead of the
@@ -134,6 +142,7 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
         // We do not push the statements directly into the target block (`bb`) as that is slower
         // due to additional reallocations
         let mut merged_blocks = Vec::new();
+        let mut outer_changed = false;
         loop {
             let mut changed = false;
 
@@ -177,7 +186,11 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
             if !changed {
                 break;
             }
+
+            outer_changed = true;
         }
+
+        outer_changed
     }
 
     /// This function will return `None` if
@@ -212,6 +225,7 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
             current = target;
         }
         let last = current;
+        *changed |= *start != last;
         *start = last;
         while let Some((current, mut terminator)) = terminators.pop() {
             let Terminator { kind: TerminatorKind::Goto { ref mut target }, .. } = terminator

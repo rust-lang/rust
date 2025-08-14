@@ -7,8 +7,9 @@ use std::assert_matches::assert_matches;
 use either::{Either, Left, Right};
 use rustc_abi::{BackendRepr, HasDataLayout, Size};
 use rustc_middle::ty::Ty;
-use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
+use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::{bug, mir, span_bug};
+use tracing::field::Empty;
 use tracing::{instrument, trace};
 
 use super::{
@@ -16,6 +17,7 @@ use super::{
     InterpResult, Machine, MemoryKind, Misalignment, OffsetMode, OpTy, Operand, Pointer,
     Projectable, Provenance, Scalar, alloc_range, interp_ok, mir_assign_valid_types,
 };
+use crate::enter_trace_span;
 
 #[derive(Copy, Clone, Hash, PartialEq, Eq, Debug)]
 /// Information required for the sound usage of a `MemPlace`.
@@ -118,7 +120,7 @@ impl<'tcx, Prov: Provenance> MPlaceTy<'tcx, Prov> {
     pub fn fake_alloc_zst(layout: TyAndLayout<'tcx>) -> Self {
         assert!(layout.is_zst());
         let align = layout.align.abi;
-        let ptr = Pointer::from_addr_invalid(align.bytes()); // no provenance, absolute address
+        let ptr = Pointer::without_provenance(align.bytes()); // no provenance, absolute address
         MPlaceTy { mplace: MemPlace { ptr, meta: MemPlaceMeta::None, misaligned: None }, layout }
     }
 
@@ -470,7 +472,7 @@ where
     ) -> InterpResult<'tcx, Option<AllocRef<'_, 'tcx, M::Provenance, M::AllocExtra, M::Bytes>>>
     {
         let (size, _align) = self
-            .size_and_align_of_mplace(mplace)?
+            .size_and_align_of_val(mplace)?
             .unwrap_or((mplace.layout.size, mplace.layout.align.abi));
         // We check alignment separately, and *after* checking everything else.
         // If an access is both OOB and misaligned, we want to see the bounds error.
@@ -486,7 +488,7 @@ where
     ) -> InterpResult<'tcx, Option<AllocRefMut<'_, 'tcx, M::Provenance, M::AllocExtra, M::Bytes>>>
     {
         let (size, _align) = self
-            .size_and_align_of_mplace(mplace)?
+            .size_and_align_of_val(mplace)?
             .unwrap_or((mplace.layout.size, mplace.layout.align.abi));
         // We check alignment separately, and raise that error *after* checking everything else.
         // If an access is both OOB and misaligned, we want to see the bounds error.
@@ -524,6 +526,9 @@ where
         &self,
         mir_place: mir::Place<'tcx>,
     ) -> InterpResult<'tcx, PlaceTy<'tcx, M::Provenance>> {
+        let _trace =
+            enter_trace_span!(M, step::eval_place, ?mir_place, tracing_separate_thread = Empty);
+
         let mut place = self.local_to_place(mir_place.local)?;
         // Using `try_fold` turned out to be bad for performance, hence the loop.
         for elem in mir_place.projection.iter() {
@@ -572,7 +577,7 @@ where
             Right((local, offset, locals_addr, layout)) => {
                 if offset.is_some() {
                     // This has been projected to a part of this local, or had the type changed.
-                    // FIMXE: there are cases where we could still avoid allocating an mplace.
+                    // FIXME: there are cases where we could still avoid allocating an mplace.
                     Left(place.force_mplace(self)?)
                 } else {
                     debug_assert_eq!(locals_addr, self.frame().locals_addr());
@@ -888,11 +893,11 @@ where
         trace!("copy_op: {:?} <- {:?}: {}", *dest, src, dest.layout().ty);
 
         let dest = dest.force_mplace(self)?;
-        let Some((dest_size, _)) = self.size_and_align_of_mplace(&dest)? else {
+        let Some((dest_size, _)) = self.size_and_align_of_val(&dest)? else {
             span_bug!(self.cur_span(), "copy_op needs (dynamically) sized values")
         };
         if cfg!(debug_assertions) {
-            let src_size = self.size_and_align_of_mplace(&src)?.unwrap().0;
+            let src_size = self.size_and_align_of_val(&src)?.unwrap().0;
             assert_eq!(src_size, dest_size, "Cannot copy differently-sized data");
         } else {
             // As a cheap approximation, we compare the fixed parts of the size.
@@ -980,7 +985,7 @@ where
         kind: MemoryKind<M::MemoryKind>,
         meta: MemPlaceMeta<M::Provenance>,
     ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::Provenance>> {
-        let Some((size, align)) = self.size_and_align_of(&meta, &layout)? else {
+        let Some((size, align)) = self.size_and_align_from_meta(&meta, &layout)? else {
             span_bug!(self.cur_span(), "cannot allocate space for `extern` type, size is not known")
         };
         let ptr = self.allocate_ptr(size, align, kind, AllocInit::Uninit)?;
@@ -1056,9 +1061,9 @@ mod size_asserts {
 
     use super::*;
     // tidy-alphabetical-start
+    static_assert_size!(MPlaceTy<'_>, 64);
     static_assert_size!(MemPlace, 48);
     static_assert_size!(MemPlaceMeta, 24);
-    static_assert_size!(MPlaceTy<'_>, 64);
     static_assert_size!(Place, 48);
     static_assert_size!(PlaceTy<'_>, 64);
     // tidy-alphabetical-end

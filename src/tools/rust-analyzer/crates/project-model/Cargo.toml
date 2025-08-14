@@ -10,6 +10,7 @@ license.workspace = true
 rust-version.workspace = true
 
 [lib]
+doctest = false
 
 [dependencies]
 anyhow.workspace = true
@@ -19,6 +20,7 @@ semver.workspace = true
 serde_json.workspace = true
 serde.workspace = true
 serde_derive.workspace = true
+temp-dir.workspace = true
 tracing.workspace = true
 triomphe.workspace = true
 la-arena.workspace = true

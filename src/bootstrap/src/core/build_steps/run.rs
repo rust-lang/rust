@@ -5,15 +5,17 @@
 
 use std::path::PathBuf;
 
-use crate::Mode;
+use clap_complete::{Generator, shells};
+
 use crate::core::build_steps::dist::distdir;
 use crate::core::build_steps::test;
-use crate::core::build_steps::tool::{self, SourceType, Tool};
+use crate::core::build_steps::tool::{self, RustcPrivateCompilers, SourceType, Tool};
 use crate::core::build_steps::vendor::{Vendor, default_paths_to_vendor};
 use crate::core::builder::{Builder, Kind, RunConfig, ShouldRun, Step};
 use crate::core::config::TargetSelection;
 use crate::core::config::flags::get_completion;
 use crate::utils::exec::command;
+use crate::{Mode, t};
 
 #[derive(Debug, PartialOrd, Ord, Clone, Hash, PartialEq, Eq)]
 pub struct BuildManifest;
@@ -116,20 +118,30 @@ impl Step for Miri {
     }
 
     fn run(self, builder: &Builder<'_>) {
-        let host = builder.build.build;
+        let host = builder.build.host_target;
         let target = self.target;
-        let stage = builder.top_stage;
+
+        // `x run` uses stage 0 by default but miri does not work well with stage 0.
+        // Change the stage to 1 if it's not set explicitly.
+        let stage = if builder.config.is_explicit_stage() || builder.top_stage >= 1 {
+            builder.top_stage
+        } else {
+            1
+        };
+
         if stage == 0 {
             eprintln!("miri cannot be run at stage 0");
             std::process::exit(1);
         }
 
         // This compiler runs on the host, we'll just use it for the target.
-        let target_compiler = builder.compiler(stage, host);
-        let host_compiler = tool::get_tool_rustc_compiler(builder, target_compiler);
+        let compilers = RustcPrivateCompilers::new(builder, stage, target);
+        let miri_build = builder.ensure(tool::Miri::from_compilers(compilers));
+        let host_compiler = miri_build.build_compiler;
 
         // Get a target sysroot for Miri.
-        let miri_sysroot = test::Miri::build_miri_sysroot(builder, target_compiler, target);
+        let miri_sysroot =
+            test::Miri::build_miri_sysroot(builder, compilers.target_compiler(), target);
 
         // # Run miri.
         // Running it via `cargo run` as that figures out the right dylib path.
@@ -243,6 +255,7 @@ impl Step for GenerateCopyright {
         cmd.env("SRC_DIR", &builder.src);
         cmd.env("VENDOR_DIR", &vendored_sources);
         cmd.env("CARGO", &builder.initial_cargo);
+        cmd.env("CARGO_HOME", t!(home::cargo_home()));
         // it is important that generate-copyright runs from the root of the
         // source tree, because it uses relative paths
         cmd.current_dir(&builder.src);
@@ -274,36 +287,35 @@ impl Step for GenerateWindowsSys {
     }
 }
 
+/// Return tuples of (shell, file containing completions).
+pub fn get_completion_paths(builder: &Builder<'_>) -> Vec<(&'static dyn Generator, PathBuf)> {
+    vec![
+        (&shells::Bash as &'static dyn Generator, builder.src.join("src/etc/completions/x.py.sh")),
+        (&shells::Zsh, builder.src.join("src/etc/completions/x.py.zsh")),
+        (&shells::Fish, builder.src.join("src/etc/completions/x.py.fish")),
+        (&shells::PowerShell, builder.src.join("src/etc/completions/x.py.ps1")),
+        (&shells::Bash, builder.src.join("src/etc/completions/x.sh")),
+        (&shells::Zsh, builder.src.join("src/etc/completions/x.zsh")),
+        (&shells::Fish, builder.src.join("src/etc/completions/x.fish")),
+        (&shells::PowerShell, builder.src.join("src/etc/completions/x.ps1")),
+    ]
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct GenerateCompletions;
-
-macro_rules! generate_completions {
-    ( $( ( $shell:ident, $filename:expr ) ),* ) => {
-        $(
-            if let Some(comp) = get_completion($shell, &$filename) {
-                std::fs::write(&$filename, comp).expect(&format!("writing {} completion", stringify!($shell)));
-            }
-        )*
-    };
-}
 
 impl Step for GenerateCompletions {
     type Output = ();
 
     /// Uses `clap_complete` to generate shell completions.
     fn run(self, builder: &Builder<'_>) {
-        use clap_complete::shells::{Bash, Fish, PowerShell, Zsh};
-
-        generate_completions!(
-            (Bash, builder.src.join("src/etc/completions/x.py.sh")),
-            (Zsh, builder.src.join("src/etc/completions/x.py.zsh")),
-            (Fish, builder.src.join("src/etc/completions/x.py.fish")),
-            (PowerShell, builder.src.join("src/etc/completions/x.py.ps1")),
-            (Bash, builder.src.join("src/etc/completions/x.sh")),
-            (Zsh, builder.src.join("src/etc/completions/x.zsh")),
-            (Fish, builder.src.join("src/etc/completions/x.fish")),
-            (PowerShell, builder.src.join("src/etc/completions/x.ps1"))
-        );
+        for (shell, path) in get_completion_paths(builder) {
+            if let Some(comp) = get_completion(shell, &path) {
+                std::fs::write(&path, comp).unwrap_or_else(|e| {
+                    panic!("writing completion into {} failed: {e:?}", path.display())
+                });
+            }
+        }
     }
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -437,7 +449,7 @@ impl Step for Rustfmt {
     }
 
     fn run(self, builder: &Builder<'_>) {
-        let host = builder.build.build;
+        let host = builder.build.host_target;
 
         // `x run` uses stage 0 by default but rustfmt does not work well with stage 0.
         // Change the stage to 1 if it's not set explicitly.
@@ -453,8 +465,8 @@ impl Step for Rustfmt {
             std::process::exit(1);
         }
 
-        let compiler = builder.compiler(stage, host);
-        let rustfmt_build = builder.ensure(tool::Rustfmt { compiler, target: host });
+        let compilers = RustcPrivateCompilers::new(builder, stage, host);
+        let rustfmt_build = builder.ensure(tool::Rustfmt::from_compilers(compilers));
 
         let mut rustfmt = tool::prepare_tool_cargo(
             builder,

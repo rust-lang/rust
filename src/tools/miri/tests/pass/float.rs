@@ -45,6 +45,30 @@ macro_rules! assert_approx_eq {
     };
 }
 
+/// From IEEE 754 a Signaling NaN for single precision has the following representation:
+/// ```
+/// s | 1111 1111 | 0x..x
+/// ````
+/// Were at least one `x` is a 1.
+///
+/// This sNaN has the following representation and is used for testing purposes.:
+/// ```
+/// 0 | 1111111 | 01..0
+/// ```
+const SNAN_F32: f32 = f32::from_bits(0x7fa00000);
+
+/// From IEEE 754 a Signaling NaN for double precision has the following representation:
+/// ```
+/// s | 1111 1111 111 | 0x..x
+/// ````
+/// Were at least one `x` is a 1.
+///
+/// This sNaN has the following representation and is used for testing purposes.:
+/// ```
+/// 0 | 1111 1111 111 | 01..0
+/// ```
+const SNAN_F64: f64 = f64::from_bits(0x7ff4000000000000);
+
 fn main() {
     basic();
     casts();
@@ -1008,17 +1032,72 @@ pub fn libm() {
     assert_approx_eq!(25f32.powf(-2f32), 0.0016f32);
     assert_approx_eq!(400f64.powf(0.5f64), 20f64);
 
+    // Some inputs to powf and powi result in fixed outputs
+    // and thus must be exactly equal to that value.
+    // C standard says:
+    // 1^y = 1 for any y, even a NaN.
+    assert_eq!(1f32.powf(10.0), 1.0);
+    assert_eq!(1f64.powf(100.0), 1.0);
+    assert_eq!(1f32.powf(f32::INFINITY), 1.0);
+    assert_eq!(1f64.powf(f64::INFINITY), 1.0);
+    assert_eq!(1f32.powf(f32::NAN), 1.0);
+    assert_eq!(1f64.powf(f64::NAN), 1.0);
+
+    // f*::NAN is a quiet NAN and should return 1 as well.
+    assert_eq!(f32::NAN.powf(0.0), 1.0);
+    assert_eq!(f64::NAN.powf(0.0), 1.0);
+
+    assert_eq!(42f32.powf(0.0), 1.0);
+    assert_eq!(42f64.powf(0.0), 1.0);
+    assert_eq!(f32::INFINITY.powf(0.0), 1.0);
+    assert_eq!(f64::INFINITY.powf(0.0), 1.0);
+
+    // f*::NAN is a quiet NAN and should return 1 as well.
+    assert_eq!(f32::NAN.powi(0), 1.0);
+    assert_eq!(f64::NAN.powi(0), 1.0);
+
+    assert_eq!(10.0f32.powi(0), 1.0);
+    assert_eq!(10.0f64.powi(0), 1.0);
+    assert_eq!(f32::INFINITY.powi(0), 1.0);
+    assert_eq!(f64::INFINITY.powi(0), 1.0);
+
+    assert_eq!((-1f32).powf(f32::INFINITY), 1.0);
+    assert_eq!((-1f64).powf(f64::INFINITY), 1.0);
+    assert_eq!((-1f32).powf(f32::NEG_INFINITY), 1.0);
+    assert_eq!((-1f64).powf(f64::NEG_INFINITY), 1.0);
+
+    assert_eq!(0f32.powi(10), 0.0);
+    assert_eq!(0f64.powi(100), 0.0);
+    assert_eq!(0f32.powi(9), 0.0);
+    assert_eq!(0f64.powi(99), 0.0);
+
+    assert_biteq((-0f32).powf(10.0), 0.0, "-0^x = +0 where x is positive");
+    assert_biteq((-0f64).powf(100.0), 0.0, "-0^x = +0 where x is positive");
+    assert_biteq((-0f32).powf(9.0), -0.0, "-0^x = -0 where x is negative");
+    assert_biteq((-0f64).powf(99.0), -0.0, "-0^x = -0 where x is negative");
+
+    assert_biteq((-0f32).powi(10), 0.0, "-0^x = +0 where x is positive");
+    assert_biteq((-0f64).powi(100), 0.0, "-0^x = +0 where x is positive");
+    assert_biteq((-0f32).powi(9), -0.0, "-0^x = -0 where x is negative");
+    assert_biteq((-0f64).powi(99), -0.0, "-0^x = -0 where x is negative");
+
     assert_approx_eq!(1f32.exp(), f32::consts::E);
     assert_approx_eq!(1f64.exp(), f64::consts::E);
+    assert_eq!(0f32.exp(), 1.0);
+    assert_eq!(0f64.exp(), 1.0);
 
     assert_approx_eq!(1f32.exp_m1(), f32::consts::E - 1.0);
     assert_approx_eq!(1f64.exp_m1(), f64::consts::E - 1.0);
 
     assert_approx_eq!(10f32.exp2(), 1024f32);
     assert_approx_eq!(50f64.exp2(), 1125899906842624f64);
+    assert_eq!(0f32.exp2(), 1.0);
+    assert_eq!(0f64.exp2(), 1.0);
 
     assert_approx_eq!(f32::consts::E.ln(), 1f32);
-    assert_approx_eq!(1f64.ln(), 0f64);
+    assert_approx_eq!(f64::consts::E.ln(), 1f64);
+    assert_eq!(1f32.ln(), 0.0);
+    assert_eq!(1f64.ln(), 0.0);
 
     assert_approx_eq!(0f32.ln_1p(), 0f32);
     assert_approx_eq!(0f64.ln_1p(), 0f64);
@@ -1047,7 +1126,8 @@ pub fn libm() {
 
     // Trigonometric functions.
 
-    assert_approx_eq!(0f32.sin(), 0f32);
+    assert_eq!(0f32.sin(), 0f32);
+    assert_eq!(0f64.sin(), 0f64);
     assert_approx_eq!((f64::consts::PI / 2f64).sin(), 1f64);
     assert_approx_eq!(f32::consts::FRAC_PI_6.sin(), 0.5);
     assert_approx_eq!(f64::consts::FRAC_PI_6.sin(), 0.5);
@@ -1059,7 +1139,23 @@ pub fn libm() {
     assert_approx_eq!(2.0f32.asinh(), 1.443635475178810342493276740273105f32);
     assert_approx_eq!((-2.0f64).asinh(), -1.443635475178810342493276740273105f64);
 
-    assert_approx_eq!(0f32.cos(), 1f32);
+    // Ensure `sin` always returns something that is a valid input for `asin`, and same for
+    // `cos` and `acos`.
+    let halve_pi_f32 = std::f32::consts::FRAC_PI_2;
+    let halve_pi_f64 = std::f64::consts::FRAC_PI_2;
+    let pi_f32 = std::f32::consts::PI;
+    let pi_f64 = std::f64::consts::PI;
+    for _ in 0..64 {
+        // sin() should be clamped to [-1, 1] so asin() can never return NaN
+        assert!(!halve_pi_f32.sin().asin().is_nan());
+        assert!(!halve_pi_f64.sin().asin().is_nan());
+        // cos() should be clamped to [-1, 1] so acos() can never return NaN
+        assert!(!pi_f32.cos().acos().is_nan());
+        assert!(!pi_f64.cos().acos().is_nan());
+    }
+
+    assert_eq!(0f32.cos(), 1f32);
+    assert_eq!(0f64.cos(), 1f64);
     assert_approx_eq!((f64::consts::PI * 2f64).cos(), 1f64);
     assert_approx_eq!(f32::consts::FRAC_PI_3.cos(), 0.5);
     assert_approx_eq!(f64::consts::FRAC_PI_3.cos(), 0.5);
@@ -1250,7 +1346,7 @@ fn test_min_max_nondet() {
     /// Ensure that if we call the closure often enough, we see both `true` and `false.`
     #[track_caller]
     fn ensure_both(f: impl Fn() -> bool) {
-        let rounds = 16;
+        let rounds = 32;
         let first = f();
         for _ in 1..rounds {
             if f() != first {
@@ -1278,7 +1374,6 @@ fn test_non_determinism() {
         frem_algebraic, frem_fast, fsub_algebraic, fsub_fast,
     };
     use std::{f32, f64};
-    // TODO: Also test powi and powf when the non-determinism is implemented for them
 
     /// Ensure that the operation is non-deterministic
     #[track_caller]
@@ -1318,21 +1413,23 @@ fn test_non_determinism() {
     }
     pub fn test_operations_f32(a: f32, b: f32) {
         test_operations_f!(a, b);
-        // FIXME: temporarily disabled as it breaks std tests.
-        // ensure_nondet(|| a.log(b));
-        // ensure_nondet(|| a.exp());
-        // ensure_nondet(|| 10f32.exp2());
-        // ensure_nondet(|| f32::consts::E.ln());
+        // FIXME: some are temporarily disabled as it breaks std tests.
+        ensure_nondet(|| a.powf(b));
+        ensure_nondet(|| a.powi(2));
+        ensure_nondet(|| a.log(b));
+        ensure_nondet(|| a.exp());
+        ensure_nondet(|| 10f32.exp2());
+        ensure_nondet(|| f32::consts::E.ln());
+        ensure_nondet(|| 10f32.log10());
+        ensure_nondet(|| 8f32.log2());
         // ensure_nondet(|| 1f32.ln_1p());
-        // ensure_nondet(|| 10f32.log10());
-        // ensure_nondet(|| 8f32.log2());
         // ensure_nondet(|| 27.0f32.cbrt());
         // ensure_nondet(|| 3.0f32.hypot(4.0f32));
-        // ensure_nondet(|| 1f32.sin());
-        // ensure_nondet(|| 0f32.cos());
-        // // On i686-pc-windows-msvc , these functions are implemented by calling the `f64` version,
-        // // which means the little rounding errors Miri introduces are discard by the cast down to `f32`.
-        // // Just skip the test for them.
+        ensure_nondet(|| 1f32.sin());
+        ensure_nondet(|| 1f32.cos());
+        // On i686-pc-windows-msvc , these functions are implemented by calling the `f64` version,
+        // which means the little rounding errors Miri introduces are discarded by the cast down to
+        // `f32`. Just skip the test for them.
         // if !cfg!(all(target_os = "windows", target_env = "msvc", target_arch = "x86")) {
         //     ensure_nondet(|| 1.0f32.tan());
         //     ensure_nondet(|| 1.0f32.asin());
@@ -1353,18 +1450,20 @@ fn test_non_determinism() {
     }
     pub fn test_operations_f64(a: f64, b: f64) {
         test_operations_f!(a, b);
-        // FIXME: temporarily disabled as it breaks std tests.
-        // ensure_nondet(|| a.log(b));
-        // ensure_nondet(|| a.exp());
-        // ensure_nondet(|| 50f64.exp2());
-        // ensure_nondet(|| 3f64.ln());
+        // FIXME: some are temporarily disabled as it breaks std tests.
+        ensure_nondet(|| a.powf(b));
+        ensure_nondet(|| a.powi(2));
+        ensure_nondet(|| a.log(b));
+        ensure_nondet(|| a.exp());
+        ensure_nondet(|| 50f64.exp2());
+        ensure_nondet(|| 3f64.ln());
+        ensure_nondet(|| f64::consts::E.log10());
+        ensure_nondet(|| f64::consts::E.log2());
         // ensure_nondet(|| 1f64.ln_1p());
-        // ensure_nondet(|| f64::consts::E.log10());
-        // ensure_nondet(|| f64::consts::E.log2());
         // ensure_nondet(|| 27.0f64.cbrt());
         // ensure_nondet(|| 3.0f64.hypot(4.0f64));
-        // ensure_nondet(|| 1f64.sin());
-        // ensure_nondet(|| 0f64.cos());
+        ensure_nondet(|| 1f64.sin());
+        ensure_nondet(|| 1f64.cos());
         // ensure_nondet(|| 1.0f64.tan());
         // ensure_nondet(|| 1.0f64.asin());
         // ensure_nondet(|| 5.0f64.acos());
@@ -1389,4 +1488,17 @@ fn test_non_determinism() {
     test_operations_f32(12., 5.);
     test_operations_f64(19., 11.);
     test_operations_f128(25., 18.);
+
+    // SNaN^0 = (1 | NaN)
+    ensure_nondet(|| f32::powf(SNAN_F32, 0.0).is_nan());
+    ensure_nondet(|| f64::powf(SNAN_F64, 0.0).is_nan());
+
+    // 1^SNaN = (1 | NaN)
+    ensure_nondet(|| f32::powf(1.0, SNAN_F32).is_nan());
+    ensure_nondet(|| f64::powf(1.0, SNAN_F64).is_nan());
+
+    // same as powf (keep it consistent):
+    // x^SNaN = (1 | NaN)
+    ensure_nondet(|| f32::powi(SNAN_F32, 0).is_nan());
+    ensure_nondet(|| f64::powi(SNAN_F64, 0).is_nan());
 }

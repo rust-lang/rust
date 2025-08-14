@@ -2,10 +2,10 @@ error[E0308]: mismatched types
   --> $DIR/different-fn.rs:10:5
    |
 LL |     [0; size_of::<Foo<T>>()]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^ expected `size_of::<T>()`, found `0`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^ expected `size_of::<T>()`, found `size_of::<Foo<T>>()`
    |
    = note: expected constant `size_of::<T>()`
-              found constant `0`
+              found constant `size_of::<Foo<T>>()`
 
 error: unconstrained generic constant
   --> $DIR/different-fn.rs:10:9

@@ -41,7 +41,7 @@ pub enum Target {
     Union,
     Trait,
     TraitAlias,
-    Impl,
+    Impl { of_trait: bool },
     Expression,
     Statement,
     Arm,
@@ -51,7 +51,7 @@ pub enum Target {
     ForeignFn,
     ForeignStatic,
     ForeignTy,
-    GenericParam(GenericParamKind),
+    GenericParam { kind: GenericParamKind, has_default: bool },
     MacroDef,
     Param,
     PatField,
@@ -86,14 +86,14 @@ impl Target {
             | Target::Union
             | Target::Trait
             | Target::TraitAlias
-            | Target::Impl
+            | Target::Impl { .. }
             | Target::Expression
             | Target::Statement
             | Target::Arm
             | Target::ForeignFn
             | Target::ForeignStatic
             | Target::ForeignTy
-            | Target::GenericParam(_)
+            | Target::GenericParam { .. }
             | Target::MacroDef
             | Target::Param
             | Target::PatField
@@ -119,7 +119,7 @@ impl Target {
             ItemKind::Union(..) => Target::Union,
             ItemKind::Trait(..) => Target::Trait,
             ItemKind::TraitAlias(..) => Target::TraitAlias,
-            ItemKind::Impl { .. } => Target::Impl,
+            ItemKind::Impl(imp_) => Target::Impl { of_trait: imp_.of_trait.is_some() },
         }
     }
 
@@ -141,7 +141,7 @@ impl Target {
             DefKind::Union => Target::Union,
             DefKind::Trait => Target::Trait,
             DefKind::TraitAlias => Target::TraitAlias,
-            DefKind::Impl { .. } => Target::Impl,
+            DefKind::Impl { of_trait } => Target::Impl { of_trait },
             _ => panic!("impossible case reached"),
         }
     }
@@ -169,11 +169,17 @@ impl Target {
 
     pub fn from_generic_param(generic_param: &hir::GenericParam<'_>) -> Target {
         match generic_param.kind {
-            hir::GenericParamKind::Type { .. } => Target::GenericParam(GenericParamKind::Type),
+            hir::GenericParamKind::Type { default, .. } => Target::GenericParam {
+                kind: GenericParamKind::Type,
+                has_default: default.is_some(),
+            },
             hir::GenericParamKind::Lifetime { .. } => {
-                Target::GenericParam(GenericParamKind::Lifetime)
+                Target::GenericParam { kind: GenericParamKind::Lifetime, has_default: false }
             }
-            hir::GenericParamKind::Const { .. } => Target::GenericParam(GenericParamKind::Const),
+            hir::GenericParamKind::Const { default, .. } => Target::GenericParam {
+                kind: GenericParamKind::Const,
+                has_default: default.is_some(),
+            },
         }
     }
 
@@ -196,7 +202,8 @@ impl Target {
             Target::Union => "union",
             Target::Trait => "trait",
             Target::TraitAlias => "trait alias",
-            Target::Impl => "implementation block",
+            Target::Impl { of_trait: false } => "inherent implementation block",
+            Target::Impl { of_trait: true } => "trait implementation block",
             Target::Expression => "expression",
             Target::Statement => "statement",
             Target::Arm => "match arm",
@@ -210,7 +217,7 @@ impl Target {
             Target::ForeignFn => "foreign function",
             Target::ForeignStatic => "foreign static item",
             Target::ForeignTy => "foreign type",
-            Target::GenericParam(kind) => match kind {
+            Target::GenericParam { kind, has_default: _ } => match kind {
                 GenericParamKind::Type => "type parameter",
                 GenericParamKind::Lifetime => "lifetime parameter",
                 GenericParamKind::Const => "const parameter",

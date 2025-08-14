@@ -1,3 +1,5 @@
+//@ needs-target-std
+//
 // The crate "foo" tied to this test executes a very specific function,
 // which involves boxing an instance of the struct Foo. However,
 // this once caused a segmentation fault in cargo release builds due to an LLVM

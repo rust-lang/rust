@@ -1,3 +1,7 @@
+//@ ignore-cross-compile
+//@ needs-crate-type: proc-macro
+//@ ignore-musl (FIXME: can't find `-lunwind`)
+
 // A compiler bug caused the following issue:
 // If a crate A depends on crate B, and crate B
 // depends on crate C, and crate C contains a procedural

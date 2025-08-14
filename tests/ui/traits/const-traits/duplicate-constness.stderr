@@ -1,0 +1,8 @@
+error: expected identifier, found `]`
+  --> $DIR/duplicate-constness.rs:5:27
+   |
+LL | struct S<T: [const] [const] Tr>;
+   |                           ^ expected identifier
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,39 @@
+error[E0412]: cannot find type `T` in this scope
+  --> $DIR/projection-error.rs:13:17
+   |
+LL | pub trait Tr<A> {
+   | --------------- similarly named trait `Tr` defined here
+...
+LL | fn mk_array(_x: T) -> [(); <T as Tr<bool>>::SIZE] {}
+   |                 ^
+   |
+help: a trait with a similar name exists
+   |
+LL | fn mk_array(_x: Tr) -> [(); <T as Tr<bool>>::SIZE] {}
+   |                  +
+help: you might be missing a type parameter
+   |
+LL | fn mk_array<T>(_x: T) -> [(); <T as Tr<bool>>::SIZE] {}
+   |            +++
+
+error[E0412]: cannot find type `T` in this scope
+  --> $DIR/projection-error.rs:13:29
+   |
+LL | pub trait Tr<A> {
+   | --------------- similarly named trait `Tr` defined here
+...
+LL | fn mk_array(_x: T) -> [(); <T as Tr<bool>>::SIZE] {}
+   |                             ^
+   |
+help: a trait with a similar name exists
+   |
+LL | fn mk_array(_x: T) -> [(); <Tr as Tr<bool>>::SIZE] {}
+   |                              +
+help: you might be missing a type parameter
+   |
+LL | fn mk_array<T>(_x: T) -> [(); <T as Tr<bool>>::SIZE] {}
+   |            +++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0412`.

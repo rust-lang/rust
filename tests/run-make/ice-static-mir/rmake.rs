@@ -1,3 +1,5 @@
+//@ needs-target-std
+//
 // Trying to access mid-level internal representation (MIR) in statics
 // used to cause an internal compiler error (ICE), now handled as a proper
 // error since #100211. This test checks that the correct error is printed

@@ -1,22 +1,22 @@
 struct T;
 
 mod t1 {
-    type Foo = ::T;
+    type Foo = crate::T;
     mod Foo {} //~ ERROR the name `Foo` is defined multiple times
 }
 
 mod t2 {
-    type Foo = ::T;
+    type Foo = crate::T;
     struct Foo; //~ ERROR the name `Foo` is defined multiple times
 }
 
 mod t3 {
-    type Foo = ::T;
+    type Foo = crate::T;
     enum Foo {} //~ ERROR the name `Foo` is defined multiple times
 }
 
 mod t4 {
-    type Foo = ::T;
+    type Foo = crate::T;
     fn Foo() {} // ok
 }
 
@@ -26,7 +26,7 @@ mod t5 {
 }
 
 mod t6 {
-    type Foo = ::T;
+    type Foo = crate::T;
     impl Foo {} // ok
 }
 

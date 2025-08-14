@@ -89,10 +89,12 @@ impl FileEncoder {
         self.buffered = 0;
     }
 
+    #[inline]
     pub fn file(&self) -> &File {
         &self.file
     }
 
+    #[inline]
     pub fn path(&self) -> &Path {
         &self.path
     }

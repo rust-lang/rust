@@ -2,7 +2,7 @@ error: Undefined Behavior: overflow in signed division (dividing MIN by -1)
   --> tests/fail/intrinsics/unchecked_div1.rs:LL:CC
    |
 LL |         std::intrinsics::unchecked_div(i16::MIN, -1);
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ overflow in signed division (dividing MIN by -1)
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Undefined Behavior occurred here
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

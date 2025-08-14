@@ -58,7 +58,7 @@ fn rustfmt(
 fn get_rustfmt_version(build: &Builder<'_>) -> Option<(String, BuildStamp)> {
     let stamp_file = BuildStamp::new(&build.out).with_prefix("rustfmt");
 
-    let mut cmd = command(build.initial_rustfmt()?);
+    let mut cmd = command(build.config.initial_rustfmt.as_ref()?);
     cmd.arg("--version");
 
     let output = cmd.allow_failure().run_capture(build);
@@ -243,7 +243,7 @@ pub fn format(build: &Builder<'_>, check: bool, all: bool, paths: &[PathBuf]) {
 
     let override_ = override_builder.build().unwrap(); // `override` is a reserved keyword
 
-    let rustfmt_path = build.initial_rustfmt().unwrap_or_else(|| {
+    let rustfmt_path = build.config.initial_rustfmt.clone().unwrap_or_else(|| {
         eprintln!("fmt error: `x fmt` is not supported on this channel");
         crate::exit!(1);
     });
@@ -318,10 +318,10 @@ pub fn format(build: &Builder<'_>, check: bool, all: bool, paths: &[PathBuf]) {
                     // `into_path` produces an absolute path. Try to strip `cwd` to get a shorter
                     // relative path.
                     let mut path = entry.clone().into_path();
-                    if let Ok(cwd) = cwd {
-                        if let Ok(path2) = path.strip_prefix(cwd) {
-                            path = path2.to_path_buf();
-                        }
+                    if let Ok(cwd) = cwd
+                        && let Ok(path2) = path.strip_prefix(cwd)
+                    {
+                        path = path2.to_path_buf();
                     }
                     path.display().to_string()
                 });
@@ -346,6 +346,6 @@ pub fn format(build: &Builder<'_>, check: bool, all: bool, paths: &[PathBuf]) {
     // since last merge.
     //
     // NOTE: Because of the exit above, this is only reachable if formatting / format checking
-    // succeeded. So we are not commiting the version if formatting was not good.
+    // succeeded. So we are not committing the version if formatting was not good.
     update_rustfmt_version(build);
 }

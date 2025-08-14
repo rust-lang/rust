@@ -263,7 +263,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 // something that already has `Fn`-like bounds (or is a closure), so we can't
                 // restrict anyways.
             } else {
-                let copy_did = self.infcx.tcx.require_lang_item(LangItem::Copy, Some(span));
+                let copy_did = self.infcx.tcx.require_lang_item(LangItem::Copy, span);
                 self.suggest_adding_bounds(&mut err, ty, copy_did, span);
             }
 
@@ -410,18 +410,18 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 }
                 let typeck = self.infcx.tcx.typeck(self.mir_def_id());
                 let parent = self.infcx.tcx.parent_hir_node(expr.hir_id);
-                let (def_id, call_id, args, offset) = if let hir::Node::Expr(parent_expr) = parent
+                let (def_id, args, offset) = if let hir::Node::Expr(parent_expr) = parent
                     && let hir::ExprKind::MethodCall(_, _, args, _) = parent_expr.kind
                 {
                     let def_id = typeck.type_dependent_def_id(parent_expr.hir_id);
-                    (def_id, Some(parent_expr.hir_id), args, 1)
+                    (def_id, args, 1)
                 } else if let hir::Node::Expr(parent_expr) = parent
                     && let hir::ExprKind::Call(call, args) = parent_expr.kind
                     && let ty::FnDef(def_id, _) = typeck.node_type(call.hir_id).kind()
                 {
-                    (Some(*def_id), Some(call.hir_id), args, 0)
+                    (Some(*def_id), args, 0)
                 } else {
-                    (None, None, &[][..], 0)
+                    (None, &[][..], 0)
                 };
                 let ty = place.ty(self.body, self.infcx.tcx).ty;
 
@@ -459,11 +459,12 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     // If the moved place is used generically by the callee and a reference to it
                     // would still satisfy any bounds on its type, suggest borrowing.
                     if let Some(&param) = arg_param
-                        && let Some(generic_args) = call_id.and_then(|id| typeck.node_args_opt(id))
+                        && let hir::Node::Expr(call_expr) = parent
                         && let Some(ref_mutability) = self.suggest_borrow_generic_arg(
                             err,
+                            typeck,
+                            call_expr,
                             def_id,
-                            generic_args,
                             param,
                             moved_place,
                             pos + offset,
@@ -518,11 +519,11 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 } = move_spans
                     && can_suggest_clone
                 {
-                    self.suggest_cloning(err, ty, expr, Some(move_spans));
+                    self.suggest_cloning(err, place.as_ref(), ty, expr, Some(move_spans));
                 } else if self.suggest_hoisting_call_outside_loop(err, expr) && can_suggest_clone {
                     // The place where the type moves would be misleading to suggest clone.
                     // #121466
-                    self.suggest_cloning(err, ty, expr, Some(move_spans));
+                    self.suggest_cloning(err, place.as_ref(), ty, expr, Some(move_spans));
                 }
             }
 
@@ -627,8 +628,9 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
     fn suggest_borrow_generic_arg(
         &self,
         err: &mut Diag<'_>,
+        typeck: &ty::TypeckResults<'tcx>,
+        call_expr: &hir::Expr<'tcx>,
         callee_did: DefId,
-        generic_args: ty::GenericArgsRef<'tcx>,
         param: ty::ParamTy,
         moved_place: PlaceRef<'tcx>,
         moved_arg_pos: usize,
@@ -638,6 +640,19 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         let tcx = self.infcx.tcx;
         let sig = tcx.fn_sig(callee_did).instantiate_identity().skip_binder();
         let clauses = tcx.predicates_of(callee_did);
+
+        let generic_args = match call_expr.kind {
+            // For method calls, generic arguments are attached to the call node.
+            hir::ExprKind::MethodCall(..) => typeck.node_args_opt(call_expr.hir_id)?,
+            // For normal calls, generic arguments are in the callee's type.
+            // This diagnostic is only run for `FnDef` callees.
+            hir::ExprKind::Call(callee, _)
+                if let &ty::FnDef(_, args) = typeck.node_type(callee.hir_id).kind() =>
+            {
+                args
+            }
+            _ => return None,
+        };
 
         // First, is there at least one method on one of `param`'s trait bounds?
         // This keeps us from suggesting borrowing the argument to `mem::drop`, e.g.
@@ -1224,6 +1239,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
     pub(crate) fn suggest_cloning(
         &self,
         err: &mut Diag<'_>,
+        place: PlaceRef<'tcx>,
         ty: Ty<'tcx>,
         expr: &'tcx hir::Expr<'tcx>,
         use_spans: Option<UseSpans<'tcx>>,
@@ -1238,7 +1254,13 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         }
 
         if self.implements_clone(ty) {
-            self.suggest_cloning_inner(err, ty, expr);
+            if self.in_move_closure(expr) {
+                if let Some(name) = self.describe_place(place) {
+                    self.suggest_clone_of_captured_var_in_move_closure(err, &name, use_spans);
+                }
+            } else {
+                self.suggest_cloning_inner(err, ty, expr);
+            }
         } else if let ty::Adt(def, args) = ty.kind()
             && def.did().as_local().is_some()
             && def.variants().iter().all(|variant| {
@@ -1283,6 +1305,58 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 span,
                 format!("if `{ty}` implemented `Clone`, you could clone the value"),
             );
+        } else if let ty::Adt(_, _) = ty.kind()
+            && let Some(clone_trait) = self.infcx.tcx.lang_items().clone_trait()
+        {
+            // For cases like `Option<NonClone>`, where `Option<T>: Clone` if `T: Clone`, we point
+            // at the types that should be `Clone`.
+            let ocx = ObligationCtxt::new_with_diagnostics(self.infcx);
+            let cause = ObligationCause::misc(expr.span, self.mir_def_id());
+            ocx.register_bound(cause, self.infcx.param_env, ty, clone_trait);
+            let errors = ocx.select_all_or_error();
+            if errors.iter().all(|error| {
+                match error.obligation.predicate.as_clause().and_then(|c| c.as_trait_clause()) {
+                    Some(clause) => match clause.self_ty().skip_binder().kind() {
+                        ty::Adt(def, _) => def.did().is_local() && clause.def_id() == clone_trait,
+                        _ => false,
+                    },
+                    None => false,
+                }
+            }) {
+                let mut type_spans = vec![];
+                let mut types = FxIndexSet::default();
+                for clause in errors
+                    .iter()
+                    .filter_map(|e| e.obligation.predicate.as_clause())
+                    .filter_map(|c| c.as_trait_clause())
+                {
+                    let ty::Adt(def, _) = clause.self_ty().skip_binder().kind() else { continue };
+                    type_spans.push(self.infcx.tcx.def_span(def.did()));
+                    types.insert(
+                        self.infcx
+                            .tcx
+                            .short_string(clause.self_ty().skip_binder(), &mut err.long_ty_path()),
+                    );
+                }
+                let mut span: MultiSpan = type_spans.clone().into();
+                for sp in type_spans {
+                    span.push_span_label(sp, "consider implementing `Clone` for this type");
+                }
+                span.push_span_label(expr.span, "you could clone this value");
+                let types: Vec<_> = types.into_iter().collect();
+                let msg = match &types[..] {
+                    [only] => format!("`{only}`"),
+                    [head @ .., last] => format!(
+                        "{} and `{last}`",
+                        head.iter().map(|t| format!("`{t}`")).collect::<Vec<_>>().join(", ")
+                    ),
+                    [] => unreachable!(),
+                };
+                err.span_note(
+                    span,
+                    format!("if {msg} implemented `Clone`, you could clone the value"),
+                );
+            }
         }
     }
 
@@ -1505,7 +1579,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             if let hir::ExprKind::AddrOf(_, _, borrowed_expr) = expr.kind
                 && let Some(ty) = typeck_results.expr_ty_opt(borrowed_expr)
             {
-                self.suggest_cloning(&mut err, ty, borrowed_expr, Some(move_spans));
+                self.suggest_cloning(&mut err, place.as_ref(), ty, borrowed_expr, Some(move_spans));
             } else if typeck_results.expr_adjustments(expr).first().is_some_and(|adj| {
                 matches!(
                     adj.kind,
@@ -1518,7 +1592,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 )
             }) && let Some(ty) = typeck_results.expr_ty_opt(expr)
             {
-                self.suggest_cloning(&mut err, ty, expr, Some(move_spans));
+                self.suggest_cloning(&mut err, place.as_ref(), ty, expr, Some(move_spans));
             }
         }
         self.buffer_error(err);
@@ -1915,7 +1989,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
 
         let local_ty = self.body.local_decls[place.local].ty;
         let typeck_results = tcx.typeck(self.mir_def_id());
-        let clone = tcx.require_lang_item(LangItem::Clone, Some(body.span));
+        let clone = tcx.require_lang_item(LangItem::Clone, body.span);
         for expr in expr_finder.clones {
             if let hir::ExprKind::MethodCall(_, rcvr, _, span) = expr.kind
                 && let Some(rcvr_ty) = typeck_results.node_type_opt(rcvr.hir_id)
@@ -2325,7 +2399,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         if let Some(body_expr) = finder.body_expr
             && let Some(loop_span) = finder.loop_span
             && let Some(def_id) = typeck_results.type_dependent_def_id(body_expr.hir_id)
-            && let Some(trait_did) = tcx.trait_of_item(def_id)
+            && let Some(trait_did) = tcx.trait_of_assoc(def_id)
             && tcx.is_diagnostic_item(sym::Iterator, trait_did)
         {
             if let Some(loop_bind) = finder.loop_bind {
@@ -2474,13 +2548,13 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
 
         // Check that the parent of the closure is a method call,
         // with receiver matching with local's type (modulo refs)
-        if let hir::Node::Expr(parent) = tcx.parent_hir_node(closure_expr.hir_id) {
-            if let hir::ExprKind::MethodCall(_, recv, ..) = parent.kind {
-                let recv_ty = typeck_results.expr_ty(recv);
+        if let hir::Node::Expr(parent) = tcx.parent_hir_node(closure_expr.hir_id)
+            && let hir::ExprKind::MethodCall(_, recv, ..) = parent.kind
+        {
+            let recv_ty = typeck_results.expr_ty(recv);
 
-                if recv_ty.peel_refs() != local_ty {
-                    return;
-                }
+            if recv_ty.peel_refs() != local_ty {
+                return;
             }
         }
 
@@ -2746,16 +2820,16 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 // With the place of a union and a field access into it, we traverse the second
                 // borrowed place and look for an access to a different field of the same union.
                 for (place_base, elem) in second_borrowed_place.iter_projections().rev() {
-                    if let ProjectionElem::Field(field, _) = elem {
-                        if let Some(union_ty) = union_ty(place_base) {
-                            if field != target_field && place_base == target_base {
-                                return Some((
-                                    self.describe_any_place(place_base),
-                                    self.describe_any_place(first_borrowed_place.as_ref()),
-                                    self.describe_any_place(second_borrowed_place.as_ref()),
-                                    union_ty.to_string(),
-                                ));
-                            }
+                    if let ProjectionElem::Field(field, _) = elem
+                        && let Some(union_ty) = union_ty(place_base)
+                    {
+                        if field != target_field && place_base == target_base {
+                            return Some((
+                                self.describe_any_place(place_base),
+                                self.describe_any_place(first_borrowed_place.as_ref()),
+                                self.describe_any_place(second_borrowed_place.as_ref()),
+                                union_ty.to_string(),
+                            ));
                         }
                     }
                 }
@@ -2942,16 +3016,15 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             from_closure: false,
             ..
         } = explanation
-        {
-            if let Err(diag) = self.try_report_cannot_return_reference_to_local(
+            && let Err(diag) = self.try_report_cannot_return_reference_to_local(
                 borrow,
                 borrow_span,
                 span,
                 category,
                 opt_place_desc.as_ref(),
-            ) {
-                return diag;
-            }
+            )
+        {
+            return diag;
         }
 
         let name = format!("`{name}`");
@@ -3201,14 +3274,6 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                         let expr_ty: Option<Ty<'_>> =
                             visitor.prop_expr.map(|expr| typeck_results.expr_ty(expr).peel_refs());
 
-                        let is_format_arguments_item = if let Some(expr_ty) = expr_ty
-                            && let ty::Adt(adt, _) = expr_ty.kind()
-                        {
-                            self.infcx.tcx.is_lang_item(adt.did(), LangItem::FormatArguments)
-                        } else {
-                            false
-                        };
-
                         if visitor.found == 0
                             && stmt.span.contains(proper_span)
                             && let Some(p) = sm.span_to_margin(stmt.span)
@@ -3229,20 +3294,24 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                                     Applicability::MaybeIncorrect,
                                 );
                             }
-                            if !is_format_arguments_item {
-                                let addition = format!("let binding = {};\n{}", s, " ".repeat(p));
-                                err.multipart_suggestion_verbose(
-                                    msg,
-                                    vec![
-                                        (stmt.span.shrink_to_lo(), addition),
-                                        (proper_span, "binding".to_string()),
-                                    ],
-                                    Applicability::MaybeIncorrect,
-                                );
+
+                            let mutability = if matches!(borrow.kind(), BorrowKind::Mut { .. }) {
+                                "mut "
                             } else {
-                                err.note("the result of `format_args!` can only be assigned directly if no placeholders in its arguments are used");
-                                err.note("to learn more, visit <https://doc.rust-lang.org/std/macro.format_args.html>");
-                            }
+                                ""
+                            };
+
+                            let addition =
+                                format!("let {}binding = {};\n{}", mutability, s, " ".repeat(p));
+                            err.multipart_suggestion_verbose(
+                                msg,
+                                vec![
+                                    (stmt.span.shrink_to_lo(), addition),
+                                    (proper_span, "binding".to_string()),
+                                ],
+                                Applicability::MaybeIncorrect,
+                            );
+
                             suggested = true;
                             break;
                         }
@@ -3314,7 +3383,13 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     "function parameter".to_string(),
                     "function parameter borrowed here".to_string(),
                 ),
-                LocalKind::Temp if self.body.local_decls[local].is_user_variable() => {
+                LocalKind::Temp
+                    if self.body.local_decls[local].is_user_variable()
+                        && !self.body.local_decls[local]
+                            .source_info
+                            .span
+                            .in_external_macro(self.infcx.tcx.sess.source_map()) =>
+                {
                     ("local binding".to_string(), "local binding introduced here".to_string())
                 }
                 LocalKind::ReturnPointer | LocalKind::Temp => {
@@ -3711,30 +3786,30 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         let loan_span = loan_spans.args_or_use();
 
         let descr_place = self.describe_any_place(place.as_ref());
-        if let BorrowKind::Fake(_) = loan.kind {
-            if let Some(section) = self.classify_immutable_section(loan.assigned_place) {
-                let mut err = self.cannot_mutate_in_immutable_section(
-                    span,
-                    loan_span,
-                    &descr_place,
-                    section,
-                    "assign",
-                );
+        if let BorrowKind::Fake(_) = loan.kind
+            && let Some(section) = self.classify_immutable_section(loan.assigned_place)
+        {
+            let mut err = self.cannot_mutate_in_immutable_section(
+                span,
+                loan_span,
+                &descr_place,
+                section,
+                "assign",
+            );
 
-                loan_spans.var_subdiag(&mut err, Some(loan.kind), |kind, var_span| {
-                    use crate::session_diagnostics::CaptureVarCause::*;
-                    match kind {
-                        hir::ClosureKind::Coroutine(_) => BorrowUseInCoroutine { var_span },
-                        hir::ClosureKind::Closure | hir::ClosureKind::CoroutineClosure(_) => {
-                            BorrowUseInClosure { var_span }
-                        }
+            loan_spans.var_subdiag(&mut err, Some(loan.kind), |kind, var_span| {
+                use crate::session_diagnostics::CaptureVarCause::*;
+                match kind {
+                    hir::ClosureKind::Coroutine(_) => BorrowUseInCoroutine { var_span },
+                    hir::ClosureKind::Closure | hir::ClosureKind::CoroutineClosure(_) => {
+                        BorrowUseInClosure { var_span }
                     }
-                });
+                }
+            });
 
-                self.buffer_error(err);
+            self.buffer_error(err);
 
-                return;
-            }
+            return;
         }
 
         let mut err = self.cannot_assign_to_borrowed(span, loan_span, &descr_place);
@@ -3987,119 +4062,116 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     "annotate_argument_and_return_for_borrow: target={:?} stmt={:?}",
                     target, stmt
                 );
-                if let StatementKind::Assign(box (place, rvalue)) = &stmt.kind {
-                    if let Some(assigned_to) = place.as_local() {
-                        debug!(
-                            "annotate_argument_and_return_for_borrow: assigned_to={:?} \
+                if let StatementKind::Assign(box (place, rvalue)) = &stmt.kind
+                    && let Some(assigned_to) = place.as_local()
+                {
+                    debug!(
+                        "annotate_argument_and_return_for_borrow: assigned_to={:?} \
                              rvalue={:?}",
-                            assigned_to, rvalue
-                        );
-                        // Check if our `target` was captured by a closure.
-                        if let Rvalue::Aggregate(
-                            box AggregateKind::Closure(def_id, args),
-                            operands,
-                        ) = rvalue
-                        {
-                            let def_id = def_id.expect_local();
-                            for operand in operands {
-                                let (Operand::Copy(assigned_from) | Operand::Move(assigned_from)) =
-                                    operand
-                                else {
-                                    continue;
-                                };
-                                debug!(
-                                    "annotate_argument_and_return_for_borrow: assigned_from={:?}",
-                                    assigned_from
-                                );
+                        assigned_to, rvalue
+                    );
+                    // Check if our `target` was captured by a closure.
+                    if let Rvalue::Aggregate(box AggregateKind::Closure(def_id, args), operands) =
+                        rvalue
+                    {
+                        let def_id = def_id.expect_local();
+                        for operand in operands {
+                            let (Operand::Copy(assigned_from) | Operand::Move(assigned_from)) =
+                                operand
+                            else {
+                                continue;
+                            };
+                            debug!(
+                                "annotate_argument_and_return_for_borrow: assigned_from={:?}",
+                                assigned_from
+                            );
 
-                                // Find the local from the operand.
-                                let Some(assigned_from_local) =
-                                    assigned_from.local_or_deref_local()
-                                else {
-                                    continue;
-                                };
+                            // Find the local from the operand.
+                            let Some(assigned_from_local) = assigned_from.local_or_deref_local()
+                            else {
+                                continue;
+                            };
 
-                                if assigned_from_local != target {
-                                    continue;
-                                }
-
-                                // If a closure captured our `target` and then assigned
-                                // into a place then we should annotate the closure in
-                                // case it ends up being assigned into the return place.
-                                annotated_closure =
-                                    self.annotate_fn_sig(def_id, args.as_closure().sig());
-                                debug!(
-                                    "annotate_argument_and_return_for_borrow: \
-                                     annotated_closure={:?} assigned_from_local={:?} \
-                                     assigned_to={:?}",
-                                    annotated_closure, assigned_from_local, assigned_to
-                                );
-
-                                if assigned_to == mir::RETURN_PLACE {
-                                    // If it was assigned directly into the return place, then
-                                    // return now.
-                                    return annotated_closure;
-                                } else {
-                                    // Otherwise, update the target.
-                                    target = assigned_to;
-                                }
+                            if assigned_from_local != target {
+                                continue;
                             }
 
-                            // If none of our closure's operands matched, then skip to the next
-                            // statement.
-                            continue;
+                            // If a closure captured our `target` and then assigned
+                            // into a place then we should annotate the closure in
+                            // case it ends up being assigned into the return place.
+                            annotated_closure =
+                                self.annotate_fn_sig(def_id, args.as_closure().sig());
+                            debug!(
+                                "annotate_argument_and_return_for_borrow: \
+                                     annotated_closure={:?} assigned_from_local={:?} \
+                                     assigned_to={:?}",
+                                annotated_closure, assigned_from_local, assigned_to
+                            );
+
+                            if assigned_to == mir::RETURN_PLACE {
+                                // If it was assigned directly into the return place, then
+                                // return now.
+                                return annotated_closure;
+                            } else {
+                                // Otherwise, update the target.
+                                target = assigned_to;
+                            }
                         }
 
-                        // Otherwise, look at other types of assignment.
-                        let assigned_from = match rvalue {
-                            Rvalue::Ref(_, _, assigned_from) => assigned_from,
-                            Rvalue::Use(operand) => match operand {
-                                Operand::Copy(assigned_from) | Operand::Move(assigned_from) => {
-                                    assigned_from
-                                }
-                                _ => continue,
-                            },
-                            _ => continue,
-                        };
-                        debug!(
-                            "annotate_argument_and_return_for_borrow: \
-                             assigned_from={:?}",
-                            assigned_from,
-                        );
-
-                        // Find the local from the rvalue.
-                        let Some(assigned_from_local) = assigned_from.local_or_deref_local() else {
-                            continue;
-                        };
-                        debug!(
-                            "annotate_argument_and_return_for_borrow: \
-                             assigned_from_local={:?}",
-                            assigned_from_local,
-                        );
-
-                        // Check if our local matches the target - if so, we've assigned our
-                        // borrow to a new place.
-                        if assigned_from_local != target {
-                            continue;
-                        }
-
-                        // If we assigned our `target` into a new place, then we should
-                        // check if it was the return place.
-                        debug!(
-                            "annotate_argument_and_return_for_borrow: \
-                             assigned_from_local={:?} assigned_to={:?}",
-                            assigned_from_local, assigned_to
-                        );
-                        if assigned_to == mir::RETURN_PLACE {
-                            // If it was then return the annotated closure if there was one,
-                            // else, annotate this function.
-                            return annotated_closure.or_else(fallback);
-                        }
-
-                        // If we didn't assign into the return place, then we just update
-                        // the target.
-                        target = assigned_to;
+                        // If none of our closure's operands matched, then skip to the next
+                        // statement.
+                        continue;
                     }
+
+                    // Otherwise, look at other types of assignment.
+                    let assigned_from = match rvalue {
+                        Rvalue::Ref(_, _, assigned_from) => assigned_from,
+                        Rvalue::Use(operand) => match operand {
+                            Operand::Copy(assigned_from) | Operand::Move(assigned_from) => {
+                                assigned_from
+                            }
+                            _ => continue,
+                        },
+                        _ => continue,
+                    };
+                    debug!(
+                        "annotate_argument_and_return_for_borrow: \
+                             assigned_from={:?}",
+                        assigned_from,
+                    );
+
+                    // Find the local from the rvalue.
+                    let Some(assigned_from_local) = assigned_from.local_or_deref_local() else {
+                        continue;
+                    };
+                    debug!(
+                        "annotate_argument_and_return_for_borrow: \
+                             assigned_from_local={:?}",
+                        assigned_from_local,
+                    );
+
+                    // Check if our local matches the target - if so, we've assigned our
+                    // borrow to a new place.
+                    if assigned_from_local != target {
+                        continue;
+                    }
+
+                    // If we assigned our `target` into a new place, then we should
+                    // check if it was the return place.
+                    debug!(
+                        "annotate_argument_and_return_for_borrow: \
+                             assigned_from_local={:?} assigned_to={:?}",
+                        assigned_from_local, assigned_to
+                    );
+                    if assigned_to == mir::RETURN_PLACE {
+                        // If it was then return the annotated closure if there was one,
+                        // else, annotate this function.
+                        return annotated_closure.or_else(fallback);
+                    }
+
+                    // If we didn't assign into the return place, then we just update
+                    // the target.
+                    target = assigned_to;
                 }
             }
 
@@ -4111,32 +4183,31 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             );
             if let TerminatorKind::Call { destination, target: Some(_), args, .. } =
                 &terminator.kind
+                && let Some(assigned_to) = destination.as_local()
             {
-                if let Some(assigned_to) = destination.as_local() {
+                debug!(
+                    "annotate_argument_and_return_for_borrow: assigned_to={:?} args={:?}",
+                    assigned_to, args
+                );
+                for operand in args {
+                    let (Operand::Copy(assigned_from) | Operand::Move(assigned_from)) =
+                        &operand.node
+                    else {
+                        continue;
+                    };
                     debug!(
-                        "annotate_argument_and_return_for_borrow: assigned_to={:?} args={:?}",
-                        assigned_to, args
+                        "annotate_argument_and_return_for_borrow: assigned_from={:?}",
+                        assigned_from,
                     );
-                    for operand in args {
-                        let (Operand::Copy(assigned_from) | Operand::Move(assigned_from)) =
-                            &operand.node
-                        else {
-                            continue;
-                        };
+
+                    if let Some(assigned_from_local) = assigned_from.local_or_deref_local() {
                         debug!(
-                            "annotate_argument_and_return_for_borrow: assigned_from={:?}",
-                            assigned_from,
+                            "annotate_argument_and_return_for_borrow: assigned_from_local={:?}",
+                            assigned_from_local,
                         );
 
-                        if let Some(assigned_from_local) = assigned_from.local_or_deref_local() {
-                            debug!(
-                                "annotate_argument_and_return_for_borrow: assigned_from_local={:?}",
-                                assigned_from_local,
-                            );
-
-                            if assigned_to == mir::RETURN_PLACE && assigned_from_local == target {
-                                return annotated_closure.or_else(fallback);
-                            }
+                        if assigned_to == mir::RETURN_PLACE && assigned_from_local == target {
+                            return annotated_closure.or_else(fallback);
                         }
                     }
                 }
@@ -4185,7 +4256,9 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         //    anything.
         let return_ty = sig.output();
         match return_ty.skip_binder().kind() {
-            ty::Ref(return_region, _, _) if return_region.has_name() && !is_closure => {
+            ty::Ref(return_region, _, _)
+                if return_region.is_named(self.infcx.tcx) && !is_closure =>
+            {
                 // This is case 1 from above, return type is a named reference so we need to
                 // search for relevant arguments.
                 let mut arguments = Vec::new();
@@ -4233,10 +4306,10 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 // as the HIR doesn't have full types for closure arguments.
                 let return_ty = sig.output().skip_binder();
                 let mut return_span = fn_decl.output.span();
-                if let hir::FnRetTy::Return(ty) = &fn_decl.output {
-                    if let hir::TyKind::Ref(lifetime, _) = ty.kind {
-                        return_span = lifetime.ident.span;
-                    }
+                if let hir::FnRetTy::Return(ty) = &fn_decl.output
+                    && let hir::TyKind::Ref(lifetime, _) = ty.kind
+                {
+                    return_span = lifetime.ident.span;
                 }
 
                 Some(AnnotatedBorrowFnSignature::NamedFunction {

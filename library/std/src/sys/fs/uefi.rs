@@ -280,6 +280,10 @@ impl File {
         self.0
     }
 
+    pub fn size(&self) -> Option<io::Result<u64>> {
+        self.0
+    }
+
     pub fn tell(&self) -> io::Result<u64> {
         self.0
     }

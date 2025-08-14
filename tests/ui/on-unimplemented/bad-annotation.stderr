@@ -125,7 +125,19 @@ error[E0232]: invalid flag in `on`-clause
 LL | #[rustc_on_unimplemented(on(something, message = "y"))]
    |                             ^^^^^^^^^ expected one of the `crate_local`, `direct` or `from_desugaring` flags, not `something`
 
-error: aborting due to 18 previous errors
+error[E0232]: invalid name in `on`-clause
+  --> $DIR/bad-annotation.rs:111:29
+   |
+LL | #[rustc_on_unimplemented(on(_Self = "y", message = "y"))]
+   |                             ^^^^^ expected one of `cause`, `from_desugaring`, `Self` or any generic parameter of the trait, not `_Self`
+
+error[E0232]: invalid name in `on`-clause
+  --> $DIR/bad-annotation.rs:116:29
+   |
+LL | #[rustc_on_unimplemented(on(abc = "y", message = "y"))]
+   |                             ^^^ expected one of `cause`, `from_desugaring`, `Self` or any generic parameter of the trait, not `abc`
+
+error: aborting due to 20 previous errors
 
 Some errors have detailed explanations: E0230, E0231, E0232.
 For more information about an error, try `rustc --explain E0230`.

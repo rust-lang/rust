@@ -20,7 +20,7 @@
 // Reason: cross-compilation fails to export native symbols
 
 use run_make_support::{
-    build_native_static_lib, dynamic_lib_name, is_msvc, llvm_nm, rust_lib_name, rustc,
+    build_native_static_lib, dynamic_lib_name, is_windows_msvc, llvm_nm, rust_lib_name, rustc,
     static_lib_name,
 };
 
@@ -60,7 +60,7 @@ fn main() {
         .assert_stdout_contains_regex("U _*native_func");
 
     // This part of the test does not function on Windows MSVC - no symbols are printed.
-    if !is_msvc() {
+    if !is_windows_msvc() {
         // Build a cdylib, `native-staticlib` will not appear on the linker line because it was
         // bundled previously. The cdylib will contain the `native_func` symbol in the end.
         rustc()

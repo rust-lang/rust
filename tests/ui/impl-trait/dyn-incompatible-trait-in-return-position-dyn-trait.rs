@@ -21,6 +21,8 @@ impl DynIncompatible for B {
 
 fn car() -> dyn DynIncompatible { //~ ERROR the trait `DynIncompatible` is not dyn compatible
 //~^ ERROR return type cannot be a trait object without pointer indirection
+//~| ERROR the trait `DynIncompatible` is not dyn compatible
+//~| ERROR the trait `DynIncompatible` is not dyn compatible
     if true {
         return A;
     }
@@ -29,9 +31,9 @@ fn car() -> dyn DynIncompatible { //~ ERROR the trait `DynIncompatible` is not d
 
 fn cat() -> Box<dyn DynIncompatible> { //~ ERROR the trait `DynIncompatible` is not dyn compatible
     if true {
-        return Box::new(A); //~ ERROR is not dyn compatible
+        return Box::new(A);
     }
-    Box::new(B) //~ ERROR is not dyn compatible
+    Box::new(B)
 }
 
 fn main() {}

@@ -13,5 +13,17 @@ error: use of `.to_digit(..).is_some()`
 LL |     let _ = char::to_digit(c, 8).is_some();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `char::is_digit(c, 8)`
 
-error: aborting due to 2 previous errors
+error: use of `.to_digit(..).is_some()`
+  --> tests/ui/to_digit_is_some.rs:16:9
+   |
+LL |         c.to_digit(8).is_some()
+   |         ^^^^^^^^^^^^^^^^^^^^^^^ help: try: `c.is_digit(8)`
+
+error: use of `.to_digit(..).is_some()`
+  --> tests/ui/to_digit_is_some.rs:26:5
+   |
+LL |     c.to_digit(8).is_some()
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ help: try: `c.is_digit(8)`
+
+error: aborting due to 4 previous errors
 

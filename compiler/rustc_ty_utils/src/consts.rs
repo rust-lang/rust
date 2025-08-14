@@ -120,7 +120,7 @@ fn recurse_build<'tcx>(
         }
         &ExprKind::Literal { lit, neg } => {
             let sp = node.span;
-            tcx.at(sp).lit_to_const(LitToConstInput { lit: &lit.node, ty: node.ty, neg })
+            tcx.at(sp).lit_to_const(LitToConstInput { lit: lit.node, ty: node.ty, neg })
         }
         &ExprKind::NonHirLiteral { lit, user_ty: _ } => {
             let val = ty::ValTree::from_scalar_int(tcx, lit);
@@ -226,7 +226,11 @@ fn recurse_build<'tcx>(
         ExprKind::Yield { .. } => {
             error(GenericConstantTooComplexSub::YieldNotSupported(node.span))?
         }
-        ExprKind::Continue { .. } | ExprKind::Break { .. } | ExprKind::Loop { .. } => {
+        ExprKind::Continue { .. }
+        | ExprKind::ConstContinue { .. }
+        | ExprKind::Break { .. }
+        | ExprKind::Loop { .. }
+        | ExprKind::LoopMatch { .. } => {
             error(GenericConstantTooComplexSub::LoopNotSupported(node.span))?
         }
         ExprKind::Box { .. } => error(GenericConstantTooComplexSub::BoxNotSupported(node.span))?,
@@ -329,6 +333,7 @@ impl<'a, 'tcx> IsThirPolymorphic<'a, 'tcx> {
             | thir::ExprKind::NeverToAny { .. }
             | thir::ExprKind::PointerCoercion { .. }
             | thir::ExprKind::Loop { .. }
+            | thir::ExprKind::LoopMatch { .. }
             | thir::ExprKind::Let { .. }
             | thir::ExprKind::Match { .. }
             | thir::ExprKind::Block { .. }
@@ -342,6 +347,7 @@ impl<'a, 'tcx> IsThirPolymorphic<'a, 'tcx> {
             | thir::ExprKind::RawBorrow { .. }
             | thir::ExprKind::Break { .. }
             | thir::ExprKind::Continue { .. }
+            | thir::ExprKind::ConstContinue { .. }
             | thir::ExprKind::Return { .. }
             | thir::ExprKind::Become { .. }
             | thir::ExprKind::Array { .. }

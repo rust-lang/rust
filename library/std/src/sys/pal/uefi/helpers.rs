@@ -444,17 +444,17 @@ impl<'a> DevicePathNode<'a> {
 
 impl<'a> PartialEq for DevicePathNode<'a> {
     fn eq(&self, other: &Self) -> bool {
-        let self_len = self.length();
-        let other_len = other.length();
-
-        self_len == other_len
-            && unsafe {
-                compiler_builtins::mem::memcmp(
-                    self.protocol.as_ptr().cast(),
-                    other.protocol.as_ptr().cast(),
-                    usize::from(self_len),
-                ) == 0
-            }
+        // Compare as a single buffer rather than by field since it optimizes better.
+        //
+        // SAFETY: `Protocol` is followed by a buffer of `length - sizeof::<Protocol>()`. `Protocol`
+        // has no padding so it is sound to interpret as a slice.
+        unsafe {
+            let s1 =
+                slice::from_raw_parts(self.protocol.as_ptr().cast::<u8>(), self.length().into());
+            let s2 =
+                slice::from_raw_parts(other.protocol.as_ptr().cast::<u8>(), other.length().into());
+            s1 == s2
+        }
     }
 }
 
@@ -487,7 +487,7 @@ impl<T> OwnedProtocol<T> {
         let protocol: *mut T = Box::into_raw(Box::new(protocol));
         let mut handle: r_efi::efi::Handle = crate::ptr::null_mut();
 
-        // FIXME: Move into r-efi once extended_varargs_abi_support is stablized
+        // FIXME: Move into r-efi once extended_varargs_abi_support is stabilized
         let func: BootInstallMultipleProtocolInterfaces =
             unsafe { crate::mem::transmute((*bt.as_ptr()).install_multiple_protocol_interfaces) };
 
@@ -521,7 +521,7 @@ impl<T> Drop for OwnedProtocol<T> {
         // Do not deallocate a runtime protocol
         if let Some(bt) = boot_services() {
             let bt: NonNull<r_efi::efi::BootServices> = bt.cast();
-            // FIXME: Move into r-efi once extended_varargs_abi_support is stablized
+            // FIXME: Move into r-efi once extended_varargs_abi_support is stabilized
             let func: BootUninstallMultipleProtocolInterfaces = unsafe {
                 crate::mem::transmute((*bt.as_ptr()).uninstall_multiple_protocol_interfaces)
             };
@@ -645,7 +645,7 @@ pub(crate) fn get_device_path_from_map(map: &Path) -> io::Result<BorrowedDeviceP
 }
 
 /// Helper for UEFI Protocols which are created and destroyed using
-/// [EFI_SERVICE_BINDING_PROTCOL](https://uefi.org/specs/UEFI/2.11/11_Protocols_UEFI_Driver_Model.html#efi-service-binding-protocol)
+/// [EFI_SERVICE_BINDING_PROTOCOL](https://uefi.org/specs/UEFI/2.11/11_Protocols_UEFI_Driver_Model.html#efi-service-binding-protocol)
 pub(crate) struct ServiceProtocol {
     service_guid: r_efi::efi::Guid,
     handle: NonNull<crate::ffi::c_void>,
@@ -653,7 +653,6 @@ pub(crate) struct ServiceProtocol {
 }
 
 impl ServiceProtocol {
-    #[expect(dead_code)]
     pub(crate) fn open(service_guid: r_efi::efi::Guid) -> io::Result<Self> {
         let handles = locate_handles(service_guid)?;
 
@@ -670,7 +669,6 @@ impl ServiceProtocol {
         Err(io::const_error!(io::ErrorKind::NotFound, "no service binding protocol found"))
     }
 
-    #[expect(dead_code)]
     pub(crate) fn child_handle(&self) -> NonNull<crate::ffi::c_void> {
         self.child_handle
     }
@@ -732,6 +730,10 @@ impl OwnedEvent {
         }
     }
 
+    pub(crate) fn as_ptr(&self) -> efi::Event {
+        self.0.as_ptr()
+    }
+
     pub(crate) fn into_raw(self) -> *mut crate::ffi::c_void {
         let r = self.0.as_ptr();
         crate::mem::forget(self);
@@ -754,4 +756,12 @@ impl Drop for OwnedEvent {
             };
         }
     }
+}
+
+pub(crate) const fn ipv4_to_r_efi(addr: crate::net::Ipv4Addr) -> efi::Ipv4Address {
+    efi::Ipv4Address { addr: addr.octets() }
+}
+
+pub(crate) const fn ipv4_from_r_efi(ip: efi::Ipv4Address) -> crate::net::Ipv4Addr {
+    crate::net::Ipv4Addr::new(ip.addr[0], ip.addr[1], ip.addr[2], ip.addr[3])
 }

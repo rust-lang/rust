@@ -10,7 +10,7 @@ use self::two::*;
 mod empty_helper {}
 
 mod one {
-    use empty_helper;
+    use crate::empty_helper;
 
     #[derive(Empty)]
     #[empty_helper]
@@ -18,7 +18,7 @@ mod one {
 }
 
 mod two {
-    use empty_helper;
+    use crate::empty_helper;
 
     #[derive(Empty)]
     #[empty_helper]

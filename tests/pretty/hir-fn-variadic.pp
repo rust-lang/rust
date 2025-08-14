@@ -3,10 +3,10 @@
 //@ pp-exact:hir-fn-variadic.pp
 
 #![feature(c_variadic)]
+#[attr = MacroUse {arguments: UseAll}]
+extern crate std;
 #[prelude_import]
 use ::std::prelude::rust_2015::*;
-#[macro_use]
-extern crate std;
 
 extern "C" {
     unsafe fn foo(x: i32, va1: ...);

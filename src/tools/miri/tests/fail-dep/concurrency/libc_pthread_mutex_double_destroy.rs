@@ -1,4 +1,6 @@
 //@ignore-target: windows # No pthreads on Windows
+//@ normalize-stderr-test: "(\n)ALLOC \(.*\) \{\n(.*\n)*\}(\n)" -> "${1}ALLOC DUMP${3}"
+//@ normalize-stderr-test: "\[0x[0-9a-z]..0x[0-9a-z]\]" -> "[0xX..0xY]"
 
 /// Test that destroying a pthread_mutex twice fails, even without a check for number validity
 
@@ -16,6 +18,6 @@ fn main() {
         libc::pthread_mutex_destroy(mutex.as_mut_ptr());
 
         libc::pthread_mutex_destroy(mutex.as_mut_ptr());
-        //~^ ERROR: Undefined Behavior: using uninitialized data, but this operation requires initialized memory
+        //~^ ERROR: /Undefined Behavior: reading memory .*, but memory is uninitialized/
     }
 }

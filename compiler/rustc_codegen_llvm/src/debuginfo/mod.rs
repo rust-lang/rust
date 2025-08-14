@@ -147,6 +147,12 @@ pub(crate) fn finalize(cx: &CodegenCx<'_, '_>) {
     }
 }
 
+impl<'ll> Builder<'_, 'll, '_> {
+    pub(crate) fn get_dbg_loc(&self) -> Option<&'ll DILocation> {
+        unsafe { llvm::LLVMGetCurrentDebugLocation2(self.llbuilder) }
+    }
+}
+
 impl<'ll> DebugInfoBuilderMethods for Builder<'_, 'll, '_> {
     // FIXME(eddyb) find a common convention for all of the debuginfo-related
     // names (choose between `dbg`, `debug`, `debuginfo`, `debug_info` etc.).
@@ -207,10 +213,6 @@ impl<'ll> DebugInfoBuilderMethods for Builder<'_, 'll, '_> {
         unsafe {
             llvm::LLVMSetCurrentDebugLocation2(self.llbuilder, ptr::null());
         }
-    }
-
-    fn get_dbg_loc(&self) -> Option<&'ll DILocation> {
-        unsafe { llvm::LLVMGetCurrentDebugLocation2(self.llbuilder) }
     }
 
     fn insert_reference_to_gdb_debug_scripts_section_global(&mut self) {
@@ -531,7 +533,7 @@ impl<'ll, 'tcx> DebugInfoCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             // First, let's see if this is a method within an inherent impl. Because
             // if yes, we want to make the result subroutine DIE a child of the
             // subroutine's self-type.
-            if let Some(impl_def_id) = cx.tcx.impl_of_method(instance.def_id()) {
+            if let Some(impl_def_id) = cx.tcx.impl_of_assoc(instance.def_id()) {
                 // If the method does *not* belong to a trait, proceed
                 if cx.tcx.trait_id_of_impl(impl_def_id).is_none() {
                     let impl_self_ty = cx.tcx.instantiate_and_normalize_erasing_regions(

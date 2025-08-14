@@ -10,7 +10,7 @@ use sha2::digest::Digest;
 use crate::core::builder::Builder;
 use crate::core::config::TargetSelection;
 use crate::utils::helpers::{hex_encode, mtime};
-use crate::{Compiler, Mode, helpers, t};
+use crate::{CodegenBackendKind, Compiler, Mode, helpers, t};
 
 #[cfg(test)]
 mod tests;
@@ -129,10 +129,10 @@ pub fn codegen_backend_stamp(
     builder: &Builder<'_>,
     compiler: Compiler,
     target: TargetSelection,
-    backend: &str,
+    backend: &CodegenBackendKind,
 ) -> BuildStamp {
     BuildStamp::new(&builder.cargo_out(compiler, Mode::Codegen, target))
-        .with_prefix(&format!("librustc_codegen_{backend}"))
+        .with_prefix(&format!("lib{}", backend.crate_name()))
 }
 
 /// Cargo's output path for the standard library in a given stage, compiled
@@ -146,13 +146,13 @@ pub fn libstd_stamp(
 }
 
 /// Cargo's output path for librustc in a given stage, compiled by a particular
-/// compiler for the specified target.
+/// `build_compiler` for the specified target.
 pub fn librustc_stamp(
     builder: &Builder<'_>,
-    compiler: Compiler,
+    build_compiler: Compiler,
     target: TargetSelection,
 ) -> BuildStamp {
-    BuildStamp::new(&builder.cargo_out(compiler, Mode::Rustc, target)).with_prefix("librustc")
+    BuildStamp::new(&builder.cargo_out(build_compiler, Mode::Rustc, target)).with_prefix("librustc")
 }
 
 /// Computes a hash representing the state of a repository/submodule and additional input.

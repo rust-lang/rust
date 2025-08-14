@@ -59,7 +59,7 @@ pub(super) fn check(
         && is_type_lang_item(cx, cx.typeck_results().expr_ty(collect_expr), LangItem::String)
         && let Some(take_id) = cx.typeck_results().type_dependent_def_id(take_expr.hir_id)
         && let Some(iter_trait_id) = cx.tcx.get_diagnostic_item(sym::Iterator)
-        && cx.tcx.trait_of_item(take_id) == Some(iter_trait_id)
+        && cx.tcx.trait_of_assoc(take_id) == Some(iter_trait_id)
         && let Some(repeat_kind) = parse_repeat_arg(cx, repeat_arg)
         && let ctxt = collect_expr.span.ctxt()
         && ctxt == take_expr.span.ctxt()

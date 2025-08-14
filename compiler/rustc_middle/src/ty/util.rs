@@ -16,6 +16,7 @@ use rustc_index::bit_set::GrowableBitSet;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable, extension};
 use rustc_session::Limit;
 use rustc_span::sym;
+use rustc_type_ir::solve::SizedTraitKind;
 use smallvec::{SmallVec, smallvec};
 use tracing::{debug, instrument};
 
@@ -26,12 +27,12 @@ use crate::query::Providers;
 use crate::ty::layout::{FloatExt, IntegerExt};
 use crate::ty::{
     self, Asyncness, FallibleTypeFolder, GenericArgKind, GenericArgsRef, Ty, TyCtxt, TypeFoldable,
-    TypeFolder, TypeSuperFoldable, TypeVisitableExt, Upcast, fold_regions,
+    TypeFolder, TypeSuperFoldable, TypeVisitableExt, Upcast,
 };
 
 #[derive(Copy, Clone, Debug)]
 pub struct Discr<'tcx> {
-    /// Bit representation of the discriminant (e.g., `-128i8` is `0xFF_u128`).
+    /// Bit representation of the discriminant (e.g., `-1i8` is `0xFF_u128`).
     pub val: u128,
     pub ty: Ty<'tcx>,
 }
@@ -465,7 +466,7 @@ impl<'tcx> TyCtxt<'tcx> {
             dtor_candidate = Some(impl_did);
         }
 
-        Some(ty::AsyncDestructor { impl_did: dtor_candidate? })
+        Some(ty::AsyncDestructor { impl_did: dtor_candidate?.into() })
     }
 
     /// Returns the set of types that are required to be alive in
@@ -516,8 +517,8 @@ impl<'tcx> TyCtxt<'tcx> {
         let item_args = ty::GenericArgs::identity_for_item(self, def.did());
 
         let result = iter::zip(item_args, impl_args)
-            .filter(|&(_, k)| {
-                match k.unpack() {
+            .filter(|&(_, arg)| {
+                match arg.kind() {
                     GenericArgKind::Lifetime(region) => match region.kind() {
                         ty::ReEarlyParam(ebr) => {
                             !impl_generics.region_param(ebr, self).pure_wrt_drop
@@ -554,7 +555,7 @@ impl<'tcx> TyCtxt<'tcx> {
         let mut seen = GrowableBitSet::default();
         let mut seen_late = FxHashSet::default();
         for arg in args {
-            match arg.unpack() {
+            match arg.kind() {
                 GenericArgKind::Lifetime(lt) => match (ignore_regions, lt.kind()) {
                     (CheckRegions::FromFunction, ty::ReBound(di, reg)) => {
                         if !seen_late.insert((di, reg)) {
@@ -737,40 +738,6 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
-    /// Return the set of types that should be taken into account when checking
-    /// trait bounds on a coroutine's internal state. This properly replaces
-    /// `ReErased` with new existential bound lifetimes.
-    pub fn coroutine_hidden_types(
-        self,
-        def_id: DefId,
-    ) -> ty::EarlyBinder<'tcx, ty::Binder<'tcx, &'tcx ty::List<Ty<'tcx>>>> {
-        let coroutine_layout = self.mir_coroutine_witnesses(def_id);
-        let mut vars = vec![];
-        let bound_tys = self.mk_type_list_from_iter(
-            coroutine_layout
-                .as_ref()
-                .map_or_else(|| [].iter(), |l| l.field_tys.iter())
-                .filter(|decl| !decl.ignore_for_traits)
-                .map(|decl| {
-                    let ty = fold_regions(self, decl.ty, |re, debruijn| {
-                        assert_eq!(re, self.lifetimes.re_erased);
-                        let var = ty::BoundVar::from_usize(vars.len());
-                        vars.push(ty::BoundVariableKind::Region(ty::BoundRegionKind::Anon));
-                        ty::Region::new_bound(
-                            self,
-                            debruijn,
-                            ty::BoundRegion { var, kind: ty::BoundRegionKind::Anon },
-                        )
-                    });
-                    ty
-                }),
-        );
-        ty::EarlyBinder::bind(ty::Binder::bind_with_vars(
-            bound_tys,
-            self.mk_bound_variable_kinds(&vars),
-        ))
-    }
-
     /// Expands the given impl trait type, stopping if the type is recursive.
     #[instrument(skip(self), level = "debug", ret)]
     pub fn try_expand_impl_trait_type(
@@ -801,6 +768,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn def_kind_descr(self, def_kind: DefKind, def_id: DefId) -> &'static str {
         match def_kind {
             DefKind::AssocFn if self.associated_item(def_id).is_method() => "method",
+            DefKind::AssocTy if self.opt_rpitit_info(def_id).is_some() => "opaque type",
             DefKind::Closure if let Some(coroutine_kind) = self.coroutine_kind(def_id) => {
                 match coroutine_kind {
                     hir::CoroutineKind::Desugared(
@@ -1084,9 +1052,11 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for FreeAliasTypeExpander<'tcx> {
         }
 
         self.depth += 1;
-        ensure_sufficient_stack(|| {
+        let ty = ensure_sufficient_stack(|| {
             self.tcx.type_of(alias.def_id).instantiate(self.tcx, alias.args).fold_with(self)
-        })
+        });
+        self.depth -= 1;
+        ty
     }
 
     fn fold_const(&mut self, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
@@ -1166,7 +1136,8 @@ impl<'tcx> Ty<'tcx> {
     /// strange rules like `<T as Foo<'static>>::Bar: Sized` that
     /// actually carry lifetime requirements.
     pub fn is_sized(self, tcx: TyCtxt<'tcx>, typing_env: ty::TypingEnv<'tcx>) -> bool {
-        self.is_trivially_sized(tcx) || tcx.is_sized_raw(typing_env.as_query_input(self))
+        self.has_trivial_sizedness(tcx, SizedTraitKind::Sized)
+            || tcx.is_sized_raw(typing_env.as_query_input(self))
     }
 
     /// Checks whether values of this type `T` implement the `Freeze`
@@ -1712,7 +1683,7 @@ pub fn intrinsic_raw(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<ty::Intrinsi
             _ => true,
         };
         Some(ty::IntrinsicDef {
-            name: tcx.item_name(def_id.into()),
+            name: tcx.item_name(def_id),
             must_be_overridden,
             const_stable: tcx.has_attr(def_id, sym::rustc_intrinsic_const_stable_indirect),
         })

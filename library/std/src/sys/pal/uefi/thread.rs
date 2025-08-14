@@ -3,7 +3,7 @@ use crate::ffi::CStr;
 use crate::io;
 use crate::num::NonZero;
 use crate::ptr::NonNull;
-use crate::time::Duration;
+use crate::time::{Duration, Instant};
 
 pub struct Thread(!);
 
@@ -11,7 +11,11 @@ pub const DEFAULT_MIN_STACK_SIZE: usize = 64 * 1024;
 
 impl Thread {
     // unsafe: see thread::Builder::spawn_unchecked for safety requirements
-    pub unsafe fn new(_stack: usize, _p: Box<dyn FnOnce()>) -> io::Result<Thread> {
+    pub unsafe fn new(
+        _stack: usize,
+        _name: Option<&str>,
+        _p: Box<dyn FnOnce()>,
+    ) -> io::Result<Thread> {
         unsupported()
     }
 
@@ -39,9 +43,21 @@ impl Thread {
         }
     }
 
+    pub fn sleep_until(deadline: Instant) {
+        let now = Instant::now();
+
+        if let Some(delay) = deadline.checked_duration_since(now) {
+            Self::sleep(delay);
+        }
+    }
+
     pub fn join(self) {
         self.0
     }
+}
+
+pub(crate) fn current_os_id() -> Option<u64> {
+    None
 }
 
 pub fn available_parallelism() -> io::Result<NonZero<usize>> {

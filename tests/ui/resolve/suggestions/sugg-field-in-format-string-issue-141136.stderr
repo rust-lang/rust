@@ -1,0 +1,48 @@
+error: invalid format string: expected `}`, found `x`
+  --> $DIR/sugg-field-in-format-string-issue-141136.rs:9:28
+   |
+LL |         let _ = format!("{ x}");
+   |                          - ^ expected `}` in format string
+   |                          |
+   |                          because of this opening brace
+   |
+   = note: if you intended to print `{`, you can escape it using `{{`
+
+error[E0425]: cannot find value `x` in this scope
+  --> $DIR/sugg-field-in-format-string-issue-141136.rs:7:27
+   |
+LL |         let _ = format!("{x}");
+   |                           ^
+   |
+   = help: you might have meant to use the available field in a format string: `"{}", self.x`
+
+error[E0425]: cannot find value `x` in this scope
+  --> $DIR/sugg-field-in-format-string-issue-141136.rs:8:27
+   |
+LL |         let _ = format!("{x }");
+   |                           ^^
+   |
+   = help: you might have meant to use the available field in a format string: `"{}", self.x`
+
+error[E0425]: cannot find value `x` in this scope
+  --> $DIR/sugg-field-in-format-string-issue-141136.rs:10:31
+   |
+LL |         let _ = format!("{}", x);
+   |                               ^
+   |
+help: you might have meant to use the available field
+   |
+LL |         let _ = format!("{}", self.x);
+   |                               +++++
+
+error[E0425]: cannot find value `x` in this scope
+  --> $DIR/sugg-field-in-format-string-issue-141136.rs:11:20
+   |
+LL |         println!("{x}");
+   |                    ^
+   |
+   = help: you might have meant to use the available field in a format string: `"{}", self.x`
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0425`.

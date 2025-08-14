@@ -4,6 +4,7 @@ error[E0557]: feature has been removed
 LL | #![feature(macro_reexport)]
    |            ^^^^^^^^^^^^^^ feature has been removed
    |
+   = note: removed in 1.0.0; see <https://github.com/rust-lang/rust/pull/49982> for more information
    = note: subsumed by `pub use`
 
 error: cannot find attribute `macro_reexport` in this scope

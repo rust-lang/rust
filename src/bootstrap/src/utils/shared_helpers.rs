@@ -1,8 +1,15 @@
 //! This module serves two purposes:
-//!     1. It is part of the `utils` module and used in other parts of bootstrap.
-//!     2. It is embedded inside bootstrap shims to avoid a dependency on the bootstrap library.
-//!        Therefore, this module should never use any other bootstrap module. This reduces binary
-//!        size and improves compilation time by minimizing linking time.
+//!
+//! 1. It is part of the `utils` module and used in other parts of bootstrap.
+//! 2. It is embedded inside bootstrap shims to avoid a dependency on the bootstrap library.
+//!    Therefore, this module should never use any other bootstrap module. This reduces binary size
+//!    and improves compilation time by minimizing linking time.
+
+// # Note on tests
+//
+// If we were to declare a tests submodule here, the shim binaries that include this module via
+// `#[path]` would fail to find it, which breaks `./x check bootstrap`. So instead the unit tests
+// for this module are in `super::tests::shared_helpers_tests`.
 
 #![allow(dead_code)]
 
@@ -13,14 +20,10 @@ use std::io::Write;
 use std::process::Command;
 use std::str::FromStr;
 
-// If we were to declare a tests submodule here, the shim binaries that include this
-// module via `#[path]` would fail to find it, which breaks `./x check bootstrap`.
-// So instead the unit tests for this module are in `super::tests::shared_helpers_tests`.
-
 /// Returns the environment variable which the dynamic library lookup path
 /// resides in for this platform.
 pub fn dylib_path_var() -> &'static str {
-    if cfg!(target_os = "windows") {
+    if cfg!(any(target_os = "windows", target_os = "cygwin")) {
         "PATH"
     } else if cfg!(target_vendor = "apple") {
         "DYLD_LIBRARY_PATH"
@@ -46,7 +49,16 @@ pub fn dylib_path() -> Vec<std::path::PathBuf> {
 /// Given an executable called `name`, return the filename for the
 /// executable for a particular target.
 pub fn exe(name: &str, target: &str) -> String {
-    if target.contains("windows") {
+    // On Cygwin, the decision to append .exe or not is not as straightforward.
+    // Executable files do actually have .exe extensions so on hosts other than
+    // Cygwin it is necessary.  But on a Cygwin host there is magic happening
+    // that redirects requests for file X to file X.exe if it exists, and
+    // furthermore /proc/self/exe (and thus std::env::current_exe) always
+    // returns the name *without* the .exe extension.  For comparisons against
+    // that to match, we therefore do not append .exe for Cygwin targets on
+    // a Cygwin host.
+    if target.contains("windows") || (cfg!(not(target_os = "cygwin")) && target.contains("cygwin"))
+    {
         format!("{name}.exe")
     } else if target.contains("uefi") {
         format!("{name}.efi")
@@ -69,10 +81,11 @@ pub fn parse_rustc_verbose() -> usize {
 }
 
 /// Parses the value of the "RUSTC_STAGE" environment variable and returns it as a `String`.
+/// This is the stage of the *build compiler*, which we are wrapping using a rustc/rustdoc wrapper.
 ///
 /// If "RUSTC_STAGE" was not set, the program will be terminated with 101.
-pub fn parse_rustc_stage() -> String {
-    env::var("RUSTC_STAGE").unwrap_or_else(|_| {
+pub fn parse_rustc_stage() -> u32 {
+    env::var("RUSTC_STAGE").ok().and_then(|v| v.parse().ok()).unwrap_or_else(|| {
         // Don't panic here; it's reasonable to try and run these shims directly. Give a helpful error instead.
         eprintln!("rustc shim: FATAL: RUSTC_STAGE was not set");
         eprintln!("rustc shim: NOTE: use `x.py build -vvv` to see all environment variables set by bootstrap");
@@ -90,7 +103,7 @@ pub fn maybe_dump(dump_name: String, cmd: &Command) {
 
         let mut file = OpenOptions::new().create(true).append(true).open(dump_file).unwrap();
 
-        let cmd_dump = format!("{:?}\n", cmd);
+        let cmd_dump = format!("{cmd:?}\n");
         let cmd_dump = cmd_dump.replace(&env::var("BUILD_OUT").unwrap(), "${BUILD_OUT}");
         let cmd_dump = cmd_dump.replace(&env::var("CARGO_HOME").unwrap(), "${CARGO_HOME}");
 

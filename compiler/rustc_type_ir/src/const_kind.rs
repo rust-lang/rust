@@ -10,7 +10,7 @@ use rustc_type_ir_macros::{Lift_Generic, TypeFoldable_Generic, TypeVisitable_Gen
 use crate::{self as ty, DebruijnIndex, Interner};
 
 /// Represents a constant in Rust.
-#[derive_where(Clone, Copy, Hash, PartialEq, Eq; I: Interner)]
+#[derive_where(Clone, Copy, Hash, PartialEq; I: Interner)]
 #[cfg_attr(
     feature = "nightly",
     derive(Encodable_NoContext, Decodable_NoContext, HashStable_NoContext)
@@ -45,6 +45,8 @@ pub enum ConstKind<I: Interner> {
     Expr(I::ExprConst),
 }
 
+impl<I: Interner> Eq for ConstKind<I> {}
+
 impl<I: Interner> fmt::Debug for ConstKind<I> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         use ConstKind::*;
@@ -63,7 +65,7 @@ impl<I: Interner> fmt::Debug for ConstKind<I> {
 }
 
 /// An unevaluated (potentially generic) constant used in the type-system.
-#[derive_where(Clone, Copy, Debug, Hash, PartialEq, Eq; I: Interner)]
+#[derive_where(Clone, Copy, Debug, Hash, PartialEq; I: Interner)]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic, Lift_Generic)]
 #[cfg_attr(
     feature = "nightly",
@@ -73,6 +75,8 @@ pub struct UnevaluatedConst<I: Interner> {
     pub def: I::DefId,
     pub args: I::GenericArgs,
 }
+
+impl<I: Interner> Eq for UnevaluatedConst<I> {}
 
 impl<I: Interner> UnevaluatedConst<I> {
     #[inline]

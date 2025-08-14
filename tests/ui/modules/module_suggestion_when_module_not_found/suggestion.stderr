@@ -1,0 +1,49 @@
+error[E0432]: unresolved import `submodule`
+  --> $DIR/suggestion.rs:2:5
+   |
+LL | use submodule::cat;
+   |     ^^^^^^^^^ use of unresolved module or unlinked crate `submodule`
+   |
+help: to make use of source file $DIR/submodule/mod.rs, use `mod submodule` in this file to declare the module
+   |
+LL + mod submodule;
+   |
+
+error[E0432]: unresolved import `submodule2`
+  --> $DIR/suggestion.rs:3:5
+   |
+LL | use submodule2::help;
+   |     ^^^^^^^^^^ use of unresolved module or unlinked crate `submodule2`
+   |
+help: to make use of source file $DIR/submodule2.rs, use `mod submodule2` in this file to declare the module
+   |
+LL + mod submodule2;
+   |
+
+error[E0432]: unresolved import `submodule3`
+  --> $DIR/success.rs:3:5
+   |
+LL | use submodule3::ferris; // these modules are unresolved.
+   |     ^^^^^^^^^^ use of unresolved module or unlinked crate `submodule3`
+   |
+help: to make use of source file $DIR/success/submodule3/mod.rs, use `mod submodule3` in this file to declare the module
+  --> $DIR/suggestion.rs:2:1
+   |
+LL + mod submodule3;
+   |
+
+error[E0432]: unresolved import `submodule4`
+  --> $DIR/success.rs:4:5
+   |
+LL | use submodule4::error;
+   |     ^^^^^^^^^^ use of unresolved module or unlinked crate `submodule4`
+   |
+help: to make use of source file $DIR/success/submodule4.rs, use `mod submodule4` in this file to declare the module
+  --> $DIR/suggestion.rs:2:1
+   |
+LL + mod submodule4;
+   |
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0432`.

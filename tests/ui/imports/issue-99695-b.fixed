@@ -11,7 +11,7 @@ mod m {
         pub struct other_item;
     }
 
-    use ::nu;
+    use crate::nu;
 pub use self::p::{other_item as _};
     //~^ ERROR unresolved import `self::p::nu` [E0432]
     //~| HELP a macro with this name exists at the root of the crate

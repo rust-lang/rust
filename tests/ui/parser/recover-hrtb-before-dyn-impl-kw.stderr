@@ -1,5 +1,5 @@
 error: `for<...>` expected after `dyn`, not before
-  --> $DIR/recover-hrtb-before-dyn-impl-kw.rs:3:21
+  --> $DIR/recover-hrtb-before-dyn-impl-kw.rs:5:21
    |
 LL | fn test(_: &for<'a> dyn Trait) {}
    |                     ^^^
@@ -11,7 +11,7 @@ LL + fn test(_: &dyn for<'a> Trait) {}
    |
 
 error: `for<...>` expected after `impl`, not before
-  --> $DIR/recover-hrtb-before-dyn-impl-kw.rs:6:21
+  --> $DIR/recover-hrtb-before-dyn-impl-kw.rs:8:21
    |
 LL | fn test2(_: for<'a> impl Trait) {}
    |                     ^^^^
@@ -23,7 +23,7 @@ LL + fn test2(_: impl for<'a> Trait) {}
    |
 
 error: expected identifier, found `>`
-  --> $DIR/recover-hrtb-before-dyn-impl-kw.rs:10:24
+  --> $DIR/recover-hrtb-before-dyn-impl-kw.rs:12:24
    |
 LL | type A2 = dyn<for<> dyn>;
    |                        ^ expected identifier

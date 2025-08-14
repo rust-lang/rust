@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::{indent_of, snippet};
-use clippy_utils::{expr_or_init, get_attr, path_to_local, peel_hir_expr_unary};
+use clippy_utils::{expr_or_init, get_attr, path_to_local, peel_hir_expr_unary, sym};
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
@@ -10,7 +10,7 @@ use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::ty::{GenericArgKind, Ty};
 use rustc_session::impl_lint_pass;
 use rustc_span::symbol::Ident;
-use rustc_span::{DUMMY_SP, Span, sym};
+use rustc_span::{DUMMY_SP, Span};
 use std::borrow::Cow;
 use std::collections::hash_map::Entry;
 
@@ -168,8 +168,8 @@ impl<'cx, 'others, 'tcx> AttrChecker<'cx, 'others, 'tcx> {
         if let Some(adt) = ty.ty_adt_def() {
             let mut iter = get_attr(
                 self.cx.sess(),
-                self.cx.tcx.get_attrs_unchecked(adt.did()),
-                "has_significant_drop",
+                self.cx.tcx.get_all_attrs(adt.did()),
+                sym::has_significant_drop,
             );
             if iter.next().is_some() {
                 return true;
@@ -184,7 +184,7 @@ impl<'cx, 'others, 'tcx> AttrChecker<'cx, 'others, 'tcx> {
                     }
                 }
                 for generic_arg in *b {
-                    if let GenericArgKind::Type(ty) = generic_arg.unpack()
+                    if let GenericArgKind::Type(ty) = generic_arg.kind()
                         && self.has_sig_drop_attr(ty, depth)
                     {
                         return true;

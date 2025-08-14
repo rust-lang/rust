@@ -5,7 +5,7 @@ impl X<N> {}
 //~| ERROR unresolved item provided when a constant was expected
 impl<T, const A: u8 = 2> X<N> {}
 //~^ ERROR cannot find type `N` in this scope
-//~| ERROR defaults for const parameters are only allowed in `struct`, `enum`, `type`, or `trait` definitions
+//~| ERROR defaults for generic parameters are not allowed here
 //~| ERROR unresolved item provided when a constant was expected
 
 fn foo(_: T) where T: Send {}

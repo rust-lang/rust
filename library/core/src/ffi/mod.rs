@@ -20,7 +20,7 @@ pub use self::c_str::FromBytesUntilNulError;
 pub use self::c_str::FromBytesWithNulError;
 use crate::fmt;
 
-#[stable(feature = "c_str_module", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "c_str_module", since = "1.88.0")]
 pub mod c_str;
 
 #[unstable(
@@ -28,7 +28,7 @@ pub mod c_str;
     issue = "44930",
     reason = "the `c_variadic` feature has not been properly tested on all supported platforms"
 )]
-pub use self::va_list::{VaList, VaListImpl};
+pub use self::va_list::{VaArgSafe, VaList, VaListImpl};
 
 #[unstable(
     feature = "c_variadic",

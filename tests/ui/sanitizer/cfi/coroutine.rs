@@ -3,6 +3,7 @@
 //@ revisions: cfi kcfi
 // FIXME(#122848) Remove only-linux once OSX CFI binaries work
 //@ only-linux
+//@ ignore-backends: gcc
 //@ edition: 2024
 //@ [cfi] needs-sanitizer-cfi
 //@ [kcfi] needs-sanitizer-kcfi

@@ -39,6 +39,13 @@ impl VfsPath {
         }
     }
 
+    pub fn into_abs_path(self) -> Option<AbsPathBuf> {
+        match self.0 {
+            VfsPathRepr::PathBuf(it) => Some(it),
+            VfsPathRepr::VirtualPath(_) => None,
+        }
+    }
+
     /// Creates a new `VfsPath` with `path` adjoined to `self`.
     pub fn join(&self, path: &str) -> Option<VfsPath> {
         match &self.0 {

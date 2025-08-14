@@ -45,3 +45,15 @@ fn main() {
         x = ();
     };
 }
+
+fn issue15377() {
+    let (a): _ = 0;
+    //~^ let_with_type_underscore
+    let ((a)): _ = 0;
+    //~^ let_with_type_underscore
+    let ((a,)): _ = (0,);
+    //~^ let_with_type_underscore
+    #[rustfmt::skip]
+    let (   (a   )   ):  _ = 0;
+    //~^ let_with_type_underscore
+}

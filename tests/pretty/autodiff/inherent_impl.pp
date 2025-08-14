@@ -11,7 +11,7 @@ extern crate std;
 //@ pretty-compare-only
 //@ pp-exact:inherent_impl.pp
 
-use std::autodiff::autodiff;
+use std::autodiff::autodiff_reverse;
 
 struct Foo {
     a: f64,

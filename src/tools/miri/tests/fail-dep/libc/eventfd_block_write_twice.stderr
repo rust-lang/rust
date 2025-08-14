@@ -1,8 +1,8 @@
-error: deadlock: the evaluated program deadlocked
+error: the evaluated program deadlocked
   --> RUSTLIB/std/src/sys/pal/PLATFORM/thread.rs:LL:CC
    |
 LL |         let ret = unsafe { libc::pthread_join(id, ptr::null_mut()) };
-   |                                                                  ^ the evaluated program deadlocked
+   |                                                                  ^ this thread got stuck here
    |
    = note: BACKTRACE:
    = note: inside `std::sys::pal::PLATFORM::thread::Thread::join` at RUSTLIB/std/src/sys/pal/PLATFORM/thread.rs:LL:CC
@@ -14,24 +14,24 @@ note: inside `main`
 LL |     thread2.join().unwrap();
    |     ^^^^^^^^^^^^^^
 
-error: deadlock: the evaluated program deadlocked
+error: the evaluated program deadlocked
    |
-   = note: the evaluated program deadlocked
+   = note: this thread got stuck here
    = note: (no span available)
    = note: BACKTRACE on thread `unnamed-ID`:
 
-error: deadlock: the evaluated program deadlocked
+error: the evaluated program deadlocked
   --> tests/fail-dep/libc/eventfd_block_write_twice.rs:LL:CC
    |
 LL |             libc::write(fd, sized_8_data.as_ptr() as *const libc::c_void, 8).try_into().unwrap()
-   |                                                                            ^ the evaluated program deadlocked
+   |                                                                            ^ this thread got stuck here
    |
    = note: BACKTRACE on thread `unnamed-ID`:
    = note: inside closure at tests/fail-dep/libc/eventfd_block_write_twice.rs:LL:CC
 
-error: deadlock: the evaluated program deadlocked
+error: the evaluated program deadlocked
    |
-   = note: the evaluated program deadlocked
+   = note: this thread got stuck here
    = note: (no span available)
    = note: BACKTRACE on thread `unnamed-ID`:
 

@@ -34,14 +34,10 @@ pub(super) fn check<'tcx>(
 }
 
 fn used_in_comparison_with_zero(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
-    let Node::Expr(parent_expr) = cx.tcx.parent_hir_node(expr.hir_id) else {
-        return false;
-    };
-    let ExprKind::Binary(op, lhs, rhs) = parent_expr.kind else {
-        return false;
-    };
-
-    if op.node == BinOpKind::Eq || op.node == BinOpKind::Ne {
+    if let Node::Expr(parent_expr) = cx.tcx.parent_hir_node(expr.hir_id)
+        && let ExprKind::Binary(op, lhs, rhs) = parent_expr.kind
+        && let BinOpKind::Eq | BinOpKind::Ne = op.node
+    {
         let ecx = ConstEvalCtxt::new(cx);
         matches!(ecx.eval(lhs), Some(Constant::Int(0))) || matches!(ecx.eval(rhs), Some(Constant::Int(0)))
     } else {
@@ -56,35 +52,28 @@ struct OperandInfo {
 }
 
 fn analyze_operand(operand: &Expr<'_>, cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<OperandInfo> {
-    match ConstEvalCtxt::new(cx).eval(operand) {
-        Some(Constant::Int(v)) => match *cx.typeck_results().expr_ty(expr).kind() {
+    match ConstEvalCtxt::new(cx).eval(operand)? {
+        Constant::Int(v) => match *cx.typeck_results().expr_ty(expr).kind() {
             ty::Int(ity) => {
                 let value = sext(cx.tcx, v, ity);
-                return Some(OperandInfo {
+                Some(OperandInfo {
                     string_representation: Some(value.to_string()),
                     is_negative: value < 0,
                     is_integral: true,
-                });
+                })
             },
-            ty::Uint(_) => {
-                return Some(OperandInfo {
-                    string_representation: None,
-                    is_negative: false,
-                    is_integral: true,
-                });
-            },
-            _ => {},
+            ty::Uint(_) => Some(OperandInfo {
+                string_representation: None,
+                is_negative: false,
+                is_integral: true,
+            }),
+            _ => None,
         },
         // FIXME(f16_f128): add when casting is available on all platforms
-        Some(Constant::F32(f)) => {
-            return Some(floating_point_operand_info(&f));
-        },
-        Some(Constant::F64(f)) => {
-            return Some(floating_point_operand_info(&f));
-        },
-        _ => {},
+        Constant::F32(f) => Some(floating_point_operand_info(&f)),
+        Constant::F64(f) => Some(floating_point_operand_info(&f)),
+        _ => None,
     }
-    None
 }
 
 fn floating_point_operand_info<T: Display + PartialOrd + From<f32>>(f: &T) -> OperandInfo {

@@ -5,8 +5,8 @@ use rustc_data_structures::intern::Interned;
 use rustc_macros::HashStable_Generic;
 
 use crate::{
-    AbiAndPrefAlign, Align, BackendRepr, FieldsShape, Float, HasDataLayout, LayoutData, Niche,
-    PointeeInfo, Primitive, Scalar, Size, TargetDataLayout, Variants,
+    AbiAlign, Align, BackendRepr, FieldsShape, Float, HasDataLayout, LayoutData, Niche,
+    PointeeInfo, Primitive, Size, Variants,
 };
 
 // Explicitly import `Float` to avoid ambiguity with `Primitive::Float`.
@@ -39,6 +39,13 @@ rustc_index::newtype_index! {
     pub struct FieldIdx {}
 }
 
+impl FieldIdx {
+    /// The second field, at index 1.
+    ///
+    /// For use alongside [`FieldIdx::ZERO`], particularly with scalar pairs.
+    pub const ONE: FieldIdx = FieldIdx::from_u32(1);
+}
+
 rustc_index::newtype_index! {
     /// The *source-order* index of a variant in a type.
     ///
@@ -64,7 +71,7 @@ pub struct Layout<'a>(pub Interned<'a, LayoutData<FieldIdx, VariantIdx>>);
 
 impl<'a> fmt::Debug for Layout<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // See comment on `<LayoutS as Debug>::fmt` above.
+        // See comment on `<LayoutData as Debug>::fmt` above.
         self.0.0.fmt(f)
     }
 }
@@ -93,7 +100,7 @@ impl<'a> Layout<'a> {
         self.0.0.largest_niche
     }
 
-    pub fn align(self) -> AbiAndPrefAlign {
+    pub fn align(self) -> AbiAlign {
         self.0.0.align
     }
 
@@ -107,16 +114,6 @@ impl<'a> Layout<'a> {
 
     pub fn unadjusted_abi_align(self) -> Align {
         self.0.0.unadjusted_abi_align
-    }
-
-    /// Whether the layout is from a type that implements [`std::marker::PointerLike`].
-    ///
-    /// Currently, that means that the type is pointer-sized, pointer-aligned,
-    /// and has a initialized (non-union), scalar ABI.
-    pub fn is_pointer_like(self, data_layout: &TargetDataLayout) -> bool {
-        self.size() == data_layout.pointer_size
-            && self.align().abi == data_layout.pointer_align.abi
-            && matches!(self.backend_repr(), BackendRepr::Scalar(Scalar::Initialized { .. }))
     }
 }
 
@@ -274,7 +271,7 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
 
     /// Finds the one field that is not a 1-ZST.
     /// Returns `None` if there are multiple non-1-ZST fields or only 1-ZST-fields.
-    pub fn non_1zst_field<C>(&self, cx: &C) -> Option<(usize, Self)>
+    pub fn non_1zst_field<C>(&self, cx: &C) -> Option<(FieldIdx, Self)>
     where
         Ty: TyAbiInterface<'a, C> + Copy,
     {
@@ -288,7 +285,7 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
                 // More than one non-1-ZST field.
                 return None;
             }
-            found = Some((field_idx, field));
+            found = Some((FieldIdx::from_usize(field_idx), field));
         }
         found
     }

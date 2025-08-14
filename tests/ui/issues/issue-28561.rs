@@ -37,6 +37,7 @@ struct Array<T> {
 }
 
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[allow(unpredictable_function_pointer_comparisons)]
 struct Fn<A, B, C, D, E, F, G, H, I, J, K, L> {
     f00: fn(),
     f01: fn(A),

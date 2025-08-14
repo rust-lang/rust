@@ -8,16 +8,16 @@ mod bogus_attribute_types_1 {
     #[stable(feature = "a", since = "4.4.4", reason)] //~ ERROR unknown meta item 'reason' [E0541]
     fn f1() { }
 
-    #[stable(feature = "a", since)] //~ ERROR expected a quoted string literal [E0539]
+    #[stable(feature = "a", since)] //~ ERROR malformed `stable` attribute input [E0539]
     fn f2() { }
 
-    #[stable(feature, since = "3.3.3")] //~ ERROR expected a quoted string literal [E0539]
+    #[stable(feature, since = "3.3.3")] //~ ERROR malformed `stable` attribute input [E0539]
     fn f3() { }
 
-    #[stable(feature = "a", since(b))] //~ ERROR expected a quoted string literal [E0539]
+    #[stable(feature = "a", since(b))] //~ ERROR malformed `stable` attribute input [E0539]
     fn f5() { }
 
-    #[stable(feature(b), since = "3.3.3")] //~ ERROR expected a quoted string literal [E0539]
+    #[stable(feature(b), since = "3.3.3")] //~ ERROR malformed `stable` attribute input [E0539]
     fn f6() { }
 }
 

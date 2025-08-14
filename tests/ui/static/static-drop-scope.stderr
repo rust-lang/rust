@@ -1,21 +1,5 @@
-error[E0493]: destructor of `WithDtor` cannot be evaluated at compile-time
-  --> $DIR/static-drop-scope.rs:7:60
-   |
-LL | static PROMOTION_FAIL_S: Option<&'static WithDtor> = Some(&WithDtor);
-   |                                                            ^^^^^^^^- value is dropped here
-   |                                                            |
-   |                                                            the destructor for this type cannot be evaluated in statics
-
-error[E0493]: destructor of `WithDtor` cannot be evaluated at compile-time
-  --> $DIR/static-drop-scope.rs:10:59
-   |
-LL | const PROMOTION_FAIL_C: Option<&'static WithDtor> = Some(&WithDtor);
-   |                                                           ^^^^^^^^- value is dropped here
-   |                                                           |
-   |                                                           the destructor for this type cannot be evaluated in constants
-
 error[E0493]: destructor of `(WithDtor, i32)` cannot be evaluated at compile-time
-  --> $DIR/static-drop-scope.rs:13:28
+  --> $DIR/static-drop-scope.rs:7:28
    |
 LL | static EARLY_DROP_S: i32 = (WithDtor, 0).1;
    |                            ^^^^^^^^^^^^^ - value is dropped here
@@ -23,7 +7,7 @@ LL | static EARLY_DROP_S: i32 = (WithDtor, 0).1;
    |                            the destructor for this type cannot be evaluated in statics
 
 error[E0493]: destructor of `(WithDtor, i32)` cannot be evaluated at compile-time
-  --> $DIR/static-drop-scope.rs:16:27
+  --> $DIR/static-drop-scope.rs:10:27
    |
 LL | const EARLY_DROP_C: i32 = (WithDtor, 0).1;
    |                           ^^^^^^^^^^^^^ - value is dropped here
@@ -31,7 +15,7 @@ LL | const EARLY_DROP_C: i32 = (WithDtor, 0).1;
    |                           the destructor for this type cannot be evaluated in constants
 
 error[E0493]: destructor of `(Option<WithDtor>, i32)` cannot be evaluated at compile-time
-  --> $DIR/static-drop-scope.rs:27:34
+  --> $DIR/static-drop-scope.rs:21:34
    |
 LL | const EARLY_DROP_C_OPTION: i32 = (Some(WithDtor), 0).1;
    |                                  ^^^^^^^^^^^^^^^^^^^ - value is dropped here
@@ -39,7 +23,7 @@ LL | const EARLY_DROP_C_OPTION: i32 = (Some(WithDtor), 0).1;
    |                                  the destructor for this type cannot be evaluated in constants
 
 error[E0493]: destructor of `(Option<WithDtor>, i32)` cannot be evaluated at compile-time
-  --> $DIR/static-drop-scope.rs:32:43
+  --> $DIR/static-drop-scope.rs:26:43
    |
 LL | const EARLY_DROP_C_OPTION_CONSTANT: i32 = (HELPER, 0).1;
    |                                           ^^^^^^^^^^^ - value is dropped here
@@ -47,7 +31,7 @@ LL | const EARLY_DROP_C_OPTION_CONSTANT: i32 = (HELPER, 0).1;
    |                                           the destructor for this type cannot be evaluated in constants
 
 error[E0493]: destructor of `T` cannot be evaluated at compile-time
-  --> $DIR/static-drop-scope.rs:19:24
+  --> $DIR/static-drop-scope.rs:13:24
    |
 LL | const fn const_drop<T>(_: T) {}
    |                        ^      - value is dropped here
@@ -55,7 +39,7 @@ LL | const fn const_drop<T>(_: T) {}
    |                        the destructor for this type cannot be evaluated in constant functions
 
 error[E0493]: destructor of `(T, ())` cannot be evaluated at compile-time
-  --> $DIR/static-drop-scope.rs:23:5
+  --> $DIR/static-drop-scope.rs:17:5
    |
 LL |     (x, ()).1
    |     ^^^^^^^ the destructor for this type cannot be evaluated in constant functions
@@ -63,6 +47,6 @@ LL |
 LL | }
    | - value is dropped here
 
-error: aborting due to 8 previous errors
+error: aborting due to 6 previous errors
 
 For more information about this error, try `rustc --explain E0493`.

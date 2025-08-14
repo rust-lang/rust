@@ -2,7 +2,7 @@ error: found `malloc` symbol definition that clashes with a built-in shim
   --> tests/fail/function_calls/exported_symbol_shim_clashing.rs:LL:CC
    |
 LL |         malloc(0);
-   |         ^^^^^^^^^ found `malloc` symbol definition that clashes with a built-in shim
+   |         ^^^^^^^^^ error occurred here
    |
 help: the `malloc` symbol is defined here
   --> tests/fail/function_calls/exported_symbol_shim_clashing.rs:LL:CC

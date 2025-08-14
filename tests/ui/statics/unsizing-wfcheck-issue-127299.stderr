@@ -51,7 +51,6 @@ LL | trait Qux {
    |       --- this trait is not dyn compatible...
 LL |     fn bar() -> i32;
    |        ^^^ ...because associated function `bar` has no `self` parameter
-   = note: required for the cast from `&'static str` to `&'static (dyn Qux + 'static)`
 help: consider turning `bar` into a method by giving it a `&self` argument
    |
 LL |     fn bar(&self) -> i32;
@@ -61,30 +60,7 @@ help: alternatively, consider constraining `bar` so it does not apply to trait o
 LL |     fn bar() -> i32 where Self: Sized;
    |                     +++++++++++++++++
 
-error[E0038]: the trait `Qux` is not dyn compatible
-  --> $DIR/unsizing-wfcheck-issue-127299.rs:12:35
-   |
-LL | static FOO: &Lint = &Lint { desc: "desc" };
-   |                                   ^^^^^^ `Qux` is not dyn compatible
-   |
-note: for a trait to be dyn compatible it needs to allow building a vtable
-      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
-  --> $DIR/unsizing-wfcheck-issue-127299.rs:4:8
-   |
-LL | trait Qux {
-   |       --- this trait is not dyn compatible...
-LL |     fn bar() -> i32;
-   |        ^^^ ...because associated function `bar` has no `self` parameter
-help: consider turning `bar` into a method by giving it a `&self` argument
-   |
-LL |     fn bar(&self) -> i32;
-   |            +++++
-help: alternatively, consider constraining `bar` so it does not apply to trait objects
-   |
-LL |     fn bar() -> i32 where Self: Sized;
-   |                     +++++++++++++++++
-
-error: aborting due to 4 previous errors
+error: aborting due to 3 previous errors
 
 Some errors have detailed explanations: E0038, E0277.
 For more information about an error, try `rustc --explain E0038`.

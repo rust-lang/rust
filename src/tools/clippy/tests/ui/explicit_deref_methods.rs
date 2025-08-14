@@ -8,7 +8,8 @@
     clippy::needless_borrow,
     clippy::no_effect,
     clippy::uninlined_format_args,
-    clippy::unnecessary_literal_unwrap
+    clippy::unnecessary_literal_unwrap,
+    clippy::deref_addrof
 )]
 
 use std::ops::{Deref, DerefMut};
@@ -81,14 +82,9 @@ fn main() {
     //~^ explicit_deref_methods
 
     let b: &str = a.deref().deref();
-    //~^ explicit_deref_methods
 
     let opt_a = Some(a.clone());
     let b = opt_a.unwrap().deref();
-    //~^ explicit_deref_methods
-
-    // make sure `Aaa::deref` instead of `aaa.deref()` is not linted, as well as fully qualified
-    // syntax
 
     Aaa::deref(&Aaa);
     Aaa::deref_mut(&mut Aaa);
@@ -139,4 +135,9 @@ fn main() {
     let no_lint = NoLint(42);
     let b = no_lint.deref();
     let b = no_lint.deref_mut();
+
+    let _ = &Deref::deref(&"foo"); //~ explicit_deref_methods
+    let mut x = String::new();
+    let _ = &DerefMut::deref_mut(&mut x); //~ explicit_deref_methods
+    let _ = &DerefMut::deref_mut((&mut &mut x).deref_mut()); //~ explicit_deref_methods
 }

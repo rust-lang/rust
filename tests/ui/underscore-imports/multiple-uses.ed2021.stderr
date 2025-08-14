@@ -1,0 +1,49 @@
+error: expected identifier, found reserved identifier `_`
+  --> $DIR/multiple-uses.rs:4:9
+   |
+LL | pub use _::{a, b};
+   |         ^ expected identifier, found reserved identifier
+
+error: expected identifier, found reserved identifier `_`
+  --> $DIR/multiple-uses.rs:6:18
+   |
+LL | pub use std::{a, _};
+   |                  ^ expected identifier, found reserved identifier
+
+error: expected identifier, found reserved identifier `_`
+  --> $DIR/multiple-uses.rs:9:18
+   |
+LL | pub use std::{b, _, c};
+   |                  ^ expected identifier, found reserved identifier
+
+error: expected identifier, found reserved identifier `_`
+  --> $DIR/multiple-uses.rs:12:15
+   |
+LL | pub use std::{_, d};
+   |               ^ expected identifier, found reserved identifier
+
+error[E0432]: unresolved import `std::a`
+  --> $DIR/multiple-uses.rs:6:15
+   |
+LL | pub use std::{a, _};
+   |               ^ no `a` in the root
+
+error[E0432]: unresolved imports `std::b`, `std::c`
+  --> $DIR/multiple-uses.rs:9:15
+   |
+LL | pub use std::{b, _, c};
+   |               ^     ^
+   |               |     |
+   |               |     no `c` in the root
+   |               |     help: a similar name exists in the module: `rc`
+   |               no `b` in the root
+
+error[E0432]: unresolved import `std::d`
+  --> $DIR/multiple-uses.rs:12:18
+   |
+LL | pub use std::{_, d};
+   |                  ^ no `d` in the root
+
+error: aborting due to 7 previous errors
+
+For more information about this error, try `rustc --explain E0432`.

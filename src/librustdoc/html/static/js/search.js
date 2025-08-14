@@ -830,7 +830,7 @@ function createQueryElement(query, parserState, name, generics, isInGenerics) {
  */
 function makePrimitiveElement(name, extra) {
     return Object.assign({
-        name: name,
+        name,
         id: null,
         fullPath: [name],
         pathWithoutLast: [],
@@ -1133,6 +1133,7 @@ class RoaringBitmap {
         }
         for (let j = 0; j < size; ++j) {
             if (offsets && offsets[j] !== i) {
+                // eslint-disable-next-line no-console
                 console.log(this.containers);
                 throw new Error(`corrupt bitmap ${j}: ${i} / ${offsets[j]}`);
             }
@@ -1464,6 +1465,11 @@ class DocSearch {
          */
         this.searchIndexEmptyDesc = new Map();
         /**
+         * @type {Map<String, RoaringBitmap>}
+         */
+        this.searchIndexUnstable = new Map();
+
+        /**
          *  @type {Uint32Array}
          */
         this.functionTypeFingerprint = new Uint32Array(0);
@@ -1482,6 +1488,7 @@ class DocSearch {
          */
         this.assocTypeIdNameMap = new Map();
         this.ALIASES = new Map();
+        this.FOUND_ALIASES = new Set();
         this.rootPath = rootPath;
         this.searchState = searchState;
 
@@ -2029,6 +2036,8 @@ class DocSearch {
         // normalized names, type signature objects and fingerprints, and aliases.
         id = 0;
 
+        /** @type {Array<[string, { [key: string]: Array<number> },  number]>} */
+        const allAliases = [];
         for (const [crate, crateCorpus] of rawSearchIndex) {
             // a string representing the lengths of each description shard
             // a string representing the list of function types
@@ -2048,9 +2057,12 @@ class DocSearch {
             };
             const descShardList = [descShard];
 
-            // Deprecated items and items with no description
+            // Deprecated and unstable items and items with no description
             this.searchIndexDeprecated.set(crate, new RoaringBitmap(crateCorpus.c));
             this.searchIndexEmptyDesc.set(crate, new RoaringBitmap(crateCorpus.e));
+            if (crateCorpus.u !== undefined && crateCorpus.u !== null) {
+                this.searchIndexUnstable.set(crate, new RoaringBitmap(crateCorpus.u));
+            }
             let descIndex = 0;
 
             /**
@@ -2177,10 +2189,10 @@ class DocSearch {
                 paths[i] = { ty, name, path, exactPath, unboxFlag };
             }
 
-            // convert `item*` into an object form, and construct word indices.
+            // Convert `item*` into an object form, and construct word indices.
             //
-            // before any analysis is performed lets gather the search terms to
-            // search against apart from the rest of the data.  This is a quick
+            // Before any analysis is performed, let's gather the search terms to
+            // search against apart from the rest of the data. This is a quick
             // operation that is cached for the life of the page state so that
             // all other search operations have access to this cached data for
             // faster analysis operations
@@ -2268,28 +2280,57 @@ class DocSearch {
             }
 
             if (aliases) {
-                const currentCrateAliases = new Map();
-                this.ALIASES.set(crate, currentCrateAliases);
-                for (const alias_name in aliases) {
-                    if (!Object.prototype.hasOwnProperty.call(aliases, alias_name)) {
-                        continue;
-                    }
-
-                    /** @type{number[]} */
-                    let currentNameAliases;
-                    if (currentCrateAliases.has(alias_name)) {
-                        currentNameAliases = currentCrateAliases.get(alias_name);
-                    } else {
-                        currentNameAliases = [];
-                        currentCrateAliases.set(alias_name, currentNameAliases);
-                    }
-                    for (const local_alias of aliases[alias_name]) {
-                        currentNameAliases.push(local_alias + currentIndex);
-                    }
-                }
+                // We need to add the aliases in `searchIndex` after we finished filling it
+                // to not mess up indexes.
+                allAliases.push([crate, aliases, currentIndex]);
             }
             currentIndex += itemTypes.length;
             this.searchState.descShards.set(crate, descShardList);
+        }
+
+        for (const [crate, aliases, index] of allAliases) {
+            for (const [alias_name, alias_refs] of Object.entries(aliases)) {
+                if (!this.ALIASES.has(crate)) {
+                    this.ALIASES.set(crate, new Map());
+                }
+                const word = alias_name.toLowerCase();
+                const crate_alias_map = this.ALIASES.get(crate);
+                if (!crate_alias_map.has(word)) {
+                    crate_alias_map.set(word, []);
+                }
+                const aliases_map = crate_alias_map.get(word);
+
+                const normalizedName = word.indexOf("_") === -1 ? word : word.replace(/_/g, "");
+                for (const alias of alias_refs) {
+                    const originalIndex = alias + index;
+                    const original = searchIndex[originalIndex];
+                    /** @type {rustdoc.Row} */
+                    const row = {
+                        crate,
+                        name: alias_name,
+                        normalizedName,
+                        is_alias: true,
+                        ty: original.ty,
+                        type: original.type,
+                        paramNames: [],
+                        word,
+                        id,
+                        parent: undefined,
+                        original,
+                        path: "",
+                        implDisambiguator: original.implDisambiguator,
+                        // Needed to load the description of the original item.
+                        // @ts-ignore
+                        descShard: original.descShard,
+                        descIndex: original.descIndex,
+                        bitIndex: original.bitIndex,
+                    };
+                    aliases_map.push(row);
+                    this.nameTrie.insert(normalizedName, id, this.tailTable);
+                    id += 1;
+                    searchIndex.push(row);
+                }
+            }
         }
         // Drop the (rather large) hash table used for reusing function items
         this.TYPES_POOL = new Map();
@@ -2514,13 +2555,17 @@ class DocSearch {
      *
      * @param  {rustdoc.ParsedQuery<rustdoc.ParserQueryElement>} origParsedQuery
      *     - The parsed user query
-     * @param  {Object} [filterCrates] - Crate to search in if defined
-     * @param  {Object} [currentCrate] - Current crate, to rank results from this crate higher
+     * @param  {Object} filterCrates - Crate to search in if defined
+     * @param  {string} currentCrate - Current crate, to rank results from this crate higher
      *
      * @return {Promise<rustdoc.ResultsTable>}
      */
     async execQuery(origParsedQuery, filterCrates, currentCrate) {
-        const results_others = new Map(), results_in_args = new Map(),
+        /** @type {rustdoc.Results} */
+        const results_others = new Map(),
+            /** @type {rustdoc.Results} */
+            results_in_args = new Map(),
+            /** @type {rustdoc.Results} */
             results_returned = new Map();
 
         /** @type {rustdoc.ParsedQuery<rustdoc.QueryElement>} */
@@ -2531,6 +2576,8 @@ class DocSearch {
             parsedQuery.elems.reduce((acc, next) => acc + next.pathLast.length, 0) +
             parsedQuery.returned.reduce((acc, next) => acc + next.pathLast.length, 0);
         const maxEditDistance = Math.floor(queryLen / 3);
+        // We reinitialize the `FOUND_ALIASES` map.
+        this.FOUND_ALIASES.clear();
 
         /**
          * @type {Map<string, number>}
@@ -2690,6 +2737,10 @@ class DocSearch {
         const buildHrefAndPath = item => {
             let displayPath;
             let href;
+            if (item.is_alias) {
+                this.FOUND_ALIASES.add(item.word);
+                item = item.original;
+            }
             const type = itemTypes[item.ty];
             const name = item.name;
             let path = item.path;
@@ -3193,8 +3244,7 @@ class DocSearch {
                 result.item = this.searchIndex[result.id];
                 result.word = this.searchIndex[result.id].word;
                 if (isReturnTypeQuery) {
-                    // we are doing a return-type based search,
-                    // deprioritize "clone-like" results,
+                    // We are doing a return-type based search, deprioritize "clone-like" results,
                     // ie. functions that also take the queried type as an argument.
                     const resultItemType = result.item && result.item.type;
                     if (!resultItemType) {
@@ -3284,6 +3334,25 @@ class DocSearch {
                     return a - b;
                 }
 
+                // sort unstable items later
+                // FIXME: there is some doubt if this is the most effecient way to implement this.
+                // alternative options include:
+                // * put is_unstable on each item when the index is built.
+                //   increases memory usage but avoids a hashmap lookup.
+                // * put is_unstable on each item before sorting.
+                //   better worst case performance but worse average case performance.
+                a = Number(
+                    // @ts-expect-error
+                    this.searchIndexUnstable.get(aaa.item.crate).contains(aaa.item.bitIndex),
+                );
+                b = Number(
+                    // @ts-expect-error
+                    this.searchIndexUnstable.get(bbb.item.crate).contains(bbb.item.bitIndex),
+                );
+                if (a !== b) {
+                    return a - b;
+                }
+
                 // sort by crate (current crate comes first)
                 a = Number(aaa.item.crate !== preferredCrate);
                 b = Number(bbb.item.crate !== preferredCrate);
@@ -3294,6 +3363,13 @@ class DocSearch {
                 // sort by item name length (longer goes later)
                 a = Number(aaa.word.length);
                 b = Number(bbb.word.length);
+                if (a !== b) {
+                    return a - b;
+                }
+
+                // sort doc alias items later
+                a = Number(aaa.item.is_alias === true);
+                b = Number(bbb.item.is_alias === true);
                 if (a !== b) {
                     return a - b;
                 }
@@ -4254,28 +4330,13 @@ class DocSearch {
             return false;
         }
 
-        // this does not yet have a type in `rustdoc.d.ts`.
-        // @ts-expect-error
-        function createAliasFromItem(item) {
-            return {
-                crate: item.crate,
-                name: item.name,
-                path: item.path,
-                descShard: item.descShard,
-                descIndex: item.descIndex,
-                exactPath: item.exactPath,
-                ty: item.ty,
-                parent: item.parent,
-                type: item.type,
-                is_alias: true,
-                bitIndex: item.bitIndex,
-                implDisambiguator: item.implDisambiguator,
-            };
-        }
-
         // @ts-expect-error
         const handleAliases = async(ret, query, filterCrates, currentCrate) => {
             const lowerQuery = query.toLowerCase();
+            if (this.FOUND_ALIASES.has(lowerQuery)) {
+                return;
+            }
+            this.FOUND_ALIASES.add(lowerQuery);
             // We separate aliases and crate aliases because we want to have current crate
             // aliases to be before the others in the displayed results.
             // @ts-expect-error
@@ -4287,7 +4348,7 @@ class DocSearch {
                     && this.ALIASES.get(filterCrates).has(lowerQuery)) {
                     const query_aliases = this.ALIASES.get(filterCrates).get(lowerQuery);
                     for (const alias of query_aliases) {
-                        aliases.push(createAliasFromItem(this.searchIndex[alias]));
+                        aliases.push(alias);
                     }
                 }
             } else {
@@ -4297,7 +4358,7 @@ class DocSearch {
                         const pushTo = crate === currentCrate ? crateAliases : aliases;
                         const query_aliases = crateAliasesIndex.get(lowerQuery);
                         for (const alias of query_aliases) {
-                            pushTo.push(createAliasFromItem(this.searchIndex[alias]));
+                            pushTo.push(alias);
                         }
                     }
                 }
@@ -4305,9 +4366,9 @@ class DocSearch {
 
             // @ts-expect-error
             const sortFunc = (aaa, bbb) => {
-                if (aaa.path < bbb.path) {
+                if (aaa.original.path < bbb.original.path) {
                     return 1;
-                } else if (aaa.path === bbb.path) {
+                } else if (aaa.original.path === bbb.original.path) {
                     return 0;
                 }
                 return -1;
@@ -4317,20 +4378,9 @@ class DocSearch {
             aliases.sort(sortFunc);
 
             // @ts-expect-error
-            const fetchDesc = alias => {
-                // @ts-expect-error
-                return this.searchIndexEmptyDesc.get(alias.crate).contains(alias.bitIndex) ?
-                    "" : this.searchState.loadDesc(alias);
-            };
-            const [crateDescs, descs] = await Promise.all([
-                // @ts-expect-error
-                Promise.all(crateAliases.map(fetchDesc)),
-                Promise.all(aliases.map(fetchDesc)),
-            ]);
-
-            // @ts-expect-error
             const pushFunc = alias => {
-                alias.alias = query;
+                // Cloning `alias` to prevent its fields to be updated.
+                alias = {...alias};
                 const res = buildHrefAndPath(alias);
                 alias.displayPath = pathSplitter(res[0]);
                 alias.fullPath = alias.displayPath + alias.name;
@@ -4342,15 +4392,7 @@ class DocSearch {
                 }
             };
 
-            aliases.forEach((alias, i) => {
-                // @ts-expect-error
-                alias.desc = descs[i];
-            });
             aliases.forEach(pushFunc);
-            // @ts-expect-error
-            crateAliases.forEach((alias, i) => {
-                alias.desc = crateDescs[i];
-            });
             // @ts-expect-error
             crateAliases.forEach(pushFunc);
         };
@@ -4364,7 +4406,7 @@ class DocSearch {
          *
          * The `results` map contains information which will be used to sort the search results:
          *
-         * * `fullId` is a `string`` used as the key of the object we use for the `results` map.
+         * * `fullId` is an `integer`` used as the key of the object we use for the `results` map.
          * * `id` is the index in the `searchIndex` array for this element.
          * * `index` is an `integer`` used to sort by the position of the word in the item's name.
          * * `dist` is the main metric used to sort the search results.
@@ -4372,19 +4414,18 @@ class DocSearch {
          *   distance computed for everything other than the last path component.
          *
          * @param {rustdoc.Results} results
-         * @param {string} fullId
+         * @param {number} fullId
          * @param {number} id
          * @param {number} index
          * @param {number} dist
          * @param {number} path_dist
+         * @param {number} maxEditDistance
          */
-        // @ts-expect-error
         function addIntoResults(results, fullId, id, index, dist, path_dist, maxEditDistance) {
             if (dist <= maxEditDistance || index !== -1) {
                 if (results.has(fullId)) {
                     const result = results.get(fullId);
-                    // @ts-expect-error
-                    if (result.dontValidate || result.dist <= dist) {
+                    if (result === undefined || result.dontValidate || result.dist <= dist) {
                         return;
                     }
                 }
@@ -4451,9 +4492,8 @@ class DocSearch {
                 return;
             }
 
-            // @ts-expect-error
             results.max_dist = Math.max(results.max_dist || 0, tfpDist);
-            addIntoResults(results, row.id.toString(), pos, 0, tfpDist, 0, Number.MAX_VALUE);
+            addIntoResults(results, row.id, pos, 0, tfpDist, 0, Number.MAX_VALUE);
         }
 
         /**
@@ -4494,7 +4534,7 @@ class DocSearch {
             if (parsedQuery.foundElems === 1 && !parsedQuery.hasReturnArrow) {
                 const elem = parsedQuery.elems[0];
                 // use arrow functions to preserve `this`.
-                // @ts-expect-error
+                /** @type {function(number): void} */
                 const handleNameSearch = id => {
                     const row = this.searchIndex[id];
                     if (!typePassesFilter(elem.typeFilter, row.ty) ||
@@ -4504,22 +4544,21 @@ class DocSearch {
 
                     let pathDist = 0;
                     if (elem.fullPath.length > 1) {
-                        // @ts-expect-error
-                        pathDist = checkPath(elem.pathWithoutLast, row);
-                        if (pathDist === null) {
+
+                        const maybePathDist = checkPath(elem.pathWithoutLast, row);
+                        if (maybePathDist === null) {
                             return;
                         }
+                        pathDist = maybePathDist;
                     }
 
                     if (parsedQuery.literalSearch) {
                         if (row.word === elem.pathLast) {
-                            // @ts-expect-error
-                            addIntoResults(results_others, row.id, id, 0, 0, pathDist);
+                            addIntoResults(results_others, row.id, id, 0, 0, pathDist, 0);
                         }
                     } else {
                         addIntoResults(
                             results_others,
-                            // @ts-expect-error
                             row.id,
                             id,
                             row.normalizedName.indexOf(elem.normalizedPathLast),
@@ -4560,31 +4599,23 @@ class DocSearch {
                         const returned = row.type && row.type.output
                             && checkIfInList(row.type.output, elem, row.type.where_clause, null, 0);
                         if (in_args) {
-                            // @ts-expect-error
                             results_in_args.max_dist = Math.max(
-                                // @ts-expect-error
                                 results_in_args.max_dist || 0,
                                 tfpDist,
                             );
                             const maxDist = results_in_args.size < MAX_RESULTS ?
                                 (tfpDist + 1) :
-                                // @ts-expect-error
                                 results_in_args.max_dist;
-                            // @ts-expect-error
                             addIntoResults(results_in_args, row.id, i, -1, tfpDist, 0, maxDist);
                         }
                         if (returned) {
-                            // @ts-expect-error
                             results_returned.max_dist = Math.max(
-                                // @ts-expect-error
                                 results_returned.max_dist || 0,
                                 tfpDist,
                             );
                             const maxDist = results_returned.size < MAX_RESULTS ?
                                 (tfpDist + 1) :
-                                // @ts-expect-error
                                 results_returned.max_dist;
-                            // @ts-expect-error
                             addIntoResults(results_returned, row.id, i, -1, tfpDist, 0, maxDist);
                         }
                     }
@@ -4594,18 +4625,17 @@ class DocSearch {
                 // types with generic parameters go last.
                 // That's because of the way unification is structured: it eats off
                 // the end, and hits a fast path if the last item is a simple atom.
-                // @ts-expect-error
+                /** @type {function(rustdoc.QueryElement, rustdoc.QueryElement): number} */
                 const sortQ = (a, b) => {
                     const ag = a.generics.length === 0 && a.bindings.size === 0;
                     const bg = b.generics.length === 0 && b.bindings.size === 0;
                     if (ag !== bg) {
-                        // @ts-expect-error
-                        return ag - bg;
+                        // unary `+` converts booleans into integers.
+                        return +ag - +bg;
                     }
-                    const ai = a.id > 0;
-                    const bi = b.id > 0;
-                    // @ts-expect-error
-                    return ai - bi;
+                    const ai = a.id !== null && a.id > 0;
+                    const bi = b.id !== null && b.id > 0;
+                    return +ai - +bi;
                 };
                 parsedQuery.elems.sort(sortQ);
                 parsedQuery.returned.sort(sortQ);
@@ -4621,9 +4651,7 @@ class DocSearch {
 
         const isType = parsedQuery.foundElems !== 1 || parsedQuery.hasReturnArrow;
         const [sorted_in_args, sorted_returned, sorted_others] = await Promise.all([
-            // @ts-expect-error
             sortResults(results_in_args, "elems", currentCrate),
-            // @ts-expect-error
             sortResults(results_returned, "returned", currentCrate),
             // @ts-expect-error
             sortResults(results_others, (isType ? "query" : null), currentCrate),
@@ -4723,7 +4751,6 @@ function printTab(nb) {
         iter += 1;
     });
     if (foundCurrentTab && foundCurrentResultSet) {
-        // @ts-expect-error
         searchState.currentTab = nb;
         // Corrections only kick in on type-based searches.
         const correctionsElem = document.getElementsByClassName("search-corrections");
@@ -4776,7 +4803,6 @@ function getFilterCrates() {
 
 // @ts-expect-error
 function nextTab(direction) {
-    // @ts-expect-error
     const next = (searchState.currentTab + direction + 3) % searchState.focusedByTab.length;
     // @ts-expect-error
     searchState.focusedByTab[searchState.currentTab] = document.activeElement;
@@ -4787,14 +4813,12 @@ function nextTab(direction) {
 // Focus the first search result on the active tab, or the result that
 // was focused last time this tab was active.
 function focusSearchResult() {
-    // @ts-expect-error
     const target = searchState.focusedByTab[searchState.currentTab] ||
         document.querySelectorAll(".search-results.active a").item(0) ||
-        // @ts-expect-error
         document.querySelectorAll("#search-tabs button").item(searchState.currentTab);
-    // @ts-expect-error
     searchState.focusedByTab[searchState.currentTab] = null;
     if (target) {
+        // @ts-expect-error
         target.focus();
     }
 }
@@ -4815,7 +4839,7 @@ async function addTab(array, query, display) {
         output.className = "search-results " + extraClass;
 
         const lis = Promise.all(array.map(async item => {
-            const name = item.name;
+            const name = item.is_alias ? item.original.name : item.name;
             const type = itemTypes[item.ty];
             const longType = longItemTypes[item.ty];
             const typeName = longType.length !== 0 ? `${longType}` : "?";
@@ -4835,7 +4859,7 @@ async function addTab(array, query, display) {
             let alias = " ";
             if (item.is_alias) {
                 alias = ` <div class="alias">\
-<b>${item.alias}</b><i class="grey">&nbsp;- see&nbsp;</i>\
+<b>${item.name}</b><i class="grey">&nbsp;- see&nbsp;</i>\
 </div>`;
             }
             resultName.insertAdjacentHTML(
@@ -4946,7 +4970,6 @@ function makeTabHeader(tabNb, text, nbElems) {
     const fmtNbElems =
         nbElems < 10  ? `\u{2007}(${nbElems})\u{2007}\u{2007}` :
         nbElems < 100 ? `\u{2007}(${nbElems})\u{2007}` : `\u{2007}(${nbElems})`;
-    // @ts-expect-error
     if (searchState.currentTab === tabNb) {
         return "<button class=\"selected\">" + text +
             "<span class=\"count\">" + fmtNbElems + "</span></button>";
@@ -4960,7 +4983,6 @@ function makeTabHeader(tabNb, text, nbElems) {
  * @param {string} filterCrates
  */
 async function showResults(results, go_to_first, filterCrates) {
-    // @ts-expect-error
     const search = searchState.outputElement();
     if (go_to_first || (results.others.length === 1
         && getSettingValue("go-to-only-result") === "true")
@@ -4978,7 +5000,6 @@ async function showResults(results, go_to_first, filterCrates) {
         // will be used, starting search again since the search input is not empty, leading you
         // back to the previous page again.
         window.onunload = () => { };
-        // @ts-expect-error
         searchState.removeQueryParameters();
         const elem = document.createElement("a");
         elem.href = results.others[0].href;
@@ -4998,7 +5019,6 @@ async function showResults(results, go_to_first, filterCrates) {
     // Navigate to the relevant tab if the current tab is empty, like in case users search
     // for "-> String". If they had selected another tab previously, they have to click on
     // it again.
-    // @ts-expect-error
     let currentTab = searchState.currentTab;
     if ((currentTab === 0 && results.others.length === 0) ||
         (currentTab === 1 && results.in_args.length === 0) ||
@@ -5086,8 +5106,8 @@ async function showResults(results, go_to_first, filterCrates) {
     resultsElem.appendChild(ret_in_args);
     resultsElem.appendChild(ret_returned);
 
-    search.innerHTML = output;
     // @ts-expect-error
+    search.innerHTML = output;
     if (searchState.rustdocToolbar) {
         // @ts-expect-error
         search.querySelector(".main-heading").appendChild(searchState.rustdocToolbar);
@@ -5096,9 +5116,9 @@ async function showResults(results, go_to_first, filterCrates) {
     if (crateSearch) {
         crateSearch.addEventListener("input", updateCrate);
     }
+    // @ts-expect-error
     search.appendChild(resultsElem);
     // Reset focused elements.
-    // @ts-expect-error
     searchState.showResults(search);
     // @ts-expect-error
     const elems = document.getElementById("search-tabs").childNodes;
@@ -5109,7 +5129,6 @@ async function showResults(results, go_to_first, filterCrates) {
         const j = i;
         // @ts-expect-error
         elem.onclick = () => printTab(j);
-        // @ts-expect-error
         searchState.focusedByTab.push(null);
         i += 1;
     }
@@ -5121,7 +5140,6 @@ function updateSearchHistory(url) {
     if (!browserSupportsHistoryApi()) {
         return;
     }
-    // @ts-expect-error
     const params = searchState.getQueryStringParams();
     if (!history.state && !params.search) {
         history.pushState(null, "", url);
@@ -5148,10 +5166,8 @@ async function search(forced) {
         return;
     }
 
-    // @ts-expect-error
     searchState.setLoadingSearch();
 
-    // @ts-expect-error
     const params = searchState.getQueryStringParams();
 
     // In case we have no information about the saved crate and there is a URL query parameter,
@@ -5161,7 +5177,6 @@ async function search(forced) {
     }
 
     // Update document title to maintain a meaningful browser history
-    // @ts-expect-error
     searchState.title = "\"" + query.userQuery + "\" Search - Rust";
 
     // Because searching is incremental by character, only the most
@@ -5183,33 +5198,28 @@ async function search(forced) {
 function onSearchSubmit(e) {
     // @ts-expect-error
     e.preventDefault();
-    // @ts-expect-error
     searchState.clearInputTimeout();
     search();
 }
 
 function putBackSearch() {
-    // @ts-expect-error
     const search_input = searchState.input;
-    // @ts-expect-error
     if (!searchState.input) {
         return;
     }
     // @ts-expect-error
     if (search_input.value !== "" && !searchState.isDisplayed()) {
-        // @ts-expect-error
         searchState.showResults();
         if (browserSupportsHistoryApi()) {
             history.replaceState(null, "",
+                // @ts-expect-error
                 buildUrl(search_input.value, getFilterCrates()));
         }
-        // @ts-expect-error
         document.title = searchState.title;
     }
 }
 
 function registerSearchEvents() {
-    // @ts-expect-error
     const params = searchState.getQueryStringParams();
 
     // Populate search bar with query string search term when provided,
@@ -5223,14 +5233,12 @@ function registerSearchEvents() {
     }
 
     const searchAfter500ms = () => {
-        // @ts-expect-error
         searchState.clearInputTimeout();
         // @ts-expect-error
         if (searchState.input.value.length === 0) {
-            // @ts-expect-error
             searchState.hideResults();
         } else {
-            // @ts-expect-error
+            // @ts-ignore
             searchState.timeout = setTimeout(search, 500);
         }
     };
@@ -5247,7 +5255,6 @@ function registerSearchEvents() {
             return;
         }
         // Do NOT e.preventDefault() here. It will prevent pasting.
-        // @ts-expect-error
         searchState.clearInputTimeout();
         // zero-timeout necessary here because at the time of event handler execution the
         // pasted content is not in the input field yet. Shouldn’t make any difference for
@@ -5273,7 +5280,6 @@ function registerSearchEvents() {
                 // @ts-expect-error
                 previous.focus();
             } else {
-                // @ts-expect-error
                 searchState.focus();
             }
             e.preventDefault();
@@ -5326,7 +5332,6 @@ function registerSearchEvents() {
         const previousTitle = document.title;
 
         window.addEventListener("popstate", e => {
-            // @ts-expect-error
             const params = searchState.getQueryStringParams();
             // Revert to the previous title manually since the History
             // API ignores the title parameter.
@@ -5354,7 +5359,6 @@ function registerSearchEvents() {
                 searchState.input.value = "";
                 // When browsing back from search results the main page
                 // visibility must be reset.
-                // @ts-expect-error
                 searchState.hideResults();
             }
         });
@@ -5367,7 +5371,6 @@ function registerSearchEvents() {
     // that try to sync state between the URL and the search input. To work around it,
     // do a small amount of re-init on page show.
     window.onpageshow = () => {
-        // @ts-expect-error
         const qSearch = searchState.getQueryStringParams().search;
         // @ts-expect-error
         if (searchState.input.value === "" && qSearch) {
@@ -5391,43 +5394,6 @@ function updateCrate(ev) {
     // the filter. To prevent this, we need to remove the previous results.
     currentResults = null;
     search(true);
-}
-
-// @ts-expect-error
-function initSearch(searchIndx) {
-    rawSearchIndex = searchIndx;
-    if (typeof window !== "undefined") {
-        // @ts-expect-error
-        docSearch = new DocSearch(rawSearchIndex, ROOT_PATH, searchState);
-        registerSearchEvents();
-        // If there's a search term in the URL, execute the search now.
-        if (window.searchState.getQueryStringParams().search) {
-            search();
-        }
-    } else if (typeof exports !== "undefined") {
-        // @ts-expect-error
-        docSearch = new DocSearch(rawSearchIndex, ROOT_PATH, searchState);
-        exports.docSearch = docSearch;
-        exports.parseQuery = DocSearch.parseQuery;
-    }
-}
-
-if (typeof exports !== "undefined") {
-    exports.initSearch = initSearch;
-}
-
-if (typeof window !== "undefined") {
-    // @ts-expect-error
-    window.initSearch = initSearch;
-    // @ts-expect-error
-    if (window.searchIndex !== undefined) {
-        // @ts-expect-error
-        initSearch(window.searchIndex);
-    }
-} else {
-    // Running in Node, not a browser. Run initSearch just to produce the
-    // exports.
-    initSearch(new Map());
 }
 
 // Parts of this code are based on Lucene, which is licensed under the
@@ -5908,3 +5874,44 @@ Lev1TParametricDescription.prototype.toStates3 = /*3 bits per value */ new Int32
 Lev1TParametricDescription.prototype.offsetIncrs3 = /*2 bits per value */ new Int32Array([
     0xa0fc0000,0x5555ba08,0x55555555,
 ]);
+
+// ====================
+// WARNING: Nothing should be added below this comment: we need the `initSearch` function to
+// be called ONLY when the whole file has been parsed and loaded.
+
+// @ts-expect-error
+function initSearch(searchIndex) {
+    rawSearchIndex = searchIndex;
+    if (typeof window !== "undefined") {
+        // @ts-expect-error
+        docSearch = new DocSearch(rawSearchIndex, ROOT_PATH, searchState);
+        registerSearchEvents();
+        // If there's a search term in the URL, execute the search now.
+        if (window.searchState.getQueryStringParams().search) {
+            search();
+        }
+    } else if (typeof exports !== "undefined") {
+        // @ts-expect-error
+        docSearch = new DocSearch(rawSearchIndex, ROOT_PATH, searchState);
+        exports.docSearch = docSearch;
+        exports.parseQuery = DocSearch.parseQuery;
+    }
+}
+
+if (typeof exports !== "undefined") {
+    exports.initSearch = initSearch;
+}
+
+if (typeof window !== "undefined") {
+    // @ts-expect-error
+    window.initSearch = initSearch;
+    // @ts-expect-error
+    if (window.searchIndex !== undefined) {
+        // @ts-expect-error
+        initSearch(window.searchIndex);
+    }
+} else {
+    // Running in Node, not a browser. Run initSearch just to produce the
+    // exports.
+    initSearch(new Map());
+}

@@ -1,0 +1,11 @@
+error[E0109]: type arguments are not allowed on module `Mod`
+  --> $DIR/module-type-args-error.rs:14:11
+   |
+LL |     Mod::<i32>::FakeVariant(0);
+   |     ---   ^^^ type argument not allowed
+   |     |
+   |     not allowed on module `Mod`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0109`.

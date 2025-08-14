@@ -1,10 +1,13 @@
 use rustc_errors::codes::*;
-use rustc_errors::{Applicability, ElidedLifetimeInPathSubdiag, MultiSpan};
+use rustc_errors::{
+    Applicability, Diag, ElidedLifetimeInPathSubdiag, EmissionGuarantee, IntoDiagArg, MultiSpan,
+    Subdiagnostic,
+};
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{Ident, Span, Symbol};
 
-use crate::Res;
 use crate::late::PatternSource;
+use crate::{Res, fluent_generated as fluent};
 
 #[derive(Diagnostic)]
 #[diag(resolve_generic_params_from_outer_item, code = E0401)]
@@ -669,6 +672,12 @@ pub(crate) struct MacroSuggMovePosition {
 
 #[derive(Subdiagnostic)]
 pub(crate) enum MacroRulesNot {
+    #[label(resolve_macro_cannot_use_as_fn_like)]
+    Func {
+        #[primary_span]
+        span: Span,
+        ident: Ident,
+    },
     #[label(resolve_macro_cannot_use_as_attr)]
     Attr {
         #[primary_span]
@@ -816,13 +825,6 @@ pub(crate) struct ExternCrateLoadingMacroNotAtCrateRoot {
 }
 
 #[derive(Diagnostic)]
-#[diag(resolve_bad_macro_import, code = E0466)]
-pub(crate) struct BadMacroImport {
-    #[primary_span]
-    pub(crate) span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag(resolve_extern_crate_self_requires_renaming)]
 pub(crate) struct ExternCrateSelfRequiresRenaming {
     #[primary_span]
@@ -878,12 +880,12 @@ pub(crate) struct MacroExpandedExternCrateCannotShadowExternArguments {
 
 #[derive(Diagnostic)]
 #[diag(resolve_elided_anonymous_lifetime_report_error, code = E0637)]
-pub(crate) struct ElidedAnonymousLivetimeReportError {
+pub(crate) struct ElidedAnonymousLifetimeReportError {
     #[primary_span]
     #[label]
     pub(crate) span: Span,
     #[subdiagnostic]
-    pub(crate) suggestion: Option<ElidedAnonymousLivetimeReportErrorSuggestion>,
+    pub(crate) suggestion: Option<ElidedAnonymousLifetimeReportErrorSuggestion>,
 }
 
 #[derive(Diagnostic)]
@@ -897,7 +899,7 @@ pub(crate) struct LendingIteratorReportError {
 
 #[derive(Diagnostic)]
 #[diag(resolve_anonymous_lifetime_non_gat_report_error)]
-pub(crate) struct AnonymousLivetimeNonGatReportError {
+pub(crate) struct AnonymousLifetimeNonGatReportError {
     #[primary_span]
     #[label]
     pub(crate) lifetime: Span,
@@ -908,7 +910,7 @@ pub(crate) struct AnonymousLivetimeNonGatReportError {
     resolve_elided_anonymous_lifetime_report_error_suggestion,
     applicability = "machine-applicable"
 )]
-pub(crate) struct ElidedAnonymousLivetimeReportErrorSuggestion {
+pub(crate) struct ElidedAnonymousLifetimeReportErrorSuggestion {
     #[suggestion_part(code = "for<'a> ")]
     pub(crate) lo: Span,
     #[suggestion_part(code = "'a ")]
@@ -917,7 +919,7 @@ pub(crate) struct ElidedAnonymousLivetimeReportErrorSuggestion {
 
 #[derive(Diagnostic)]
 #[diag(resolve_explicit_anonymous_lifetime_report_error, code = E0637)]
-pub(crate) struct ExplicitAnonymousLivetimeReportError {
+pub(crate) struct ExplicitAnonymousLifetimeReportError {
     #[primary_span]
     #[label]
     pub(crate) span: Span,
@@ -934,6 +936,7 @@ pub(crate) struct ImplicitElidedLifetimeNotAllowedHere {
 
 #[derive(Diagnostic)]
 #[diag(resolve_underscore_lifetime_is_reserved, code = E0637)]
+#[help]
 pub(crate) struct UnderscoreLifetimeIsReserved {
     #[primary_span]
     #[label]
@@ -978,6 +981,7 @@ pub(crate) struct VariableNotInAllPatterns {
 pub(crate) struct NameDefinedMultipleTime {
     #[primary_span]
     pub(crate) span: Span,
+    pub(crate) name: Symbol,
     pub(crate) descr: &'static str,
     pub(crate) container: &'static str,
     #[subdiagnostic]
@@ -992,13 +996,11 @@ pub(crate) enum NameDefinedMultipleTimeLabel {
     Reimported {
         #[primary_span]
         span: Span,
-        name: Symbol,
     },
     #[label(resolve_name_defined_multiple_time_redefined)]
     Redefined {
         #[primary_span]
         span: Span,
-        name: Symbol,
     },
 }
 
@@ -1008,14 +1010,12 @@ pub(crate) enum NameDefinedMultipleTimeOldBindingLabel {
     Import {
         #[primary_span]
         span: Span,
-        name: Symbol,
         old_kind: &'static str,
     },
     #[label(resolve_name_defined_multiple_time_old_binding_definition)]
     Definition {
         #[primary_span]
         span: Span,
-        name: Symbol,
         old_kind: &'static str,
     },
 }
@@ -1210,26 +1210,35 @@ pub(crate) struct IdentInScopeButItIsDesc<'a> {
     pub(crate) imported_ident_desc: &'a str,
 }
 
-#[derive(Subdiagnostic)]
-#[note(resolve_found_an_item_configured_out)]
 pub(crate) struct FoundItemConfigureOut {
-    #[primary_span]
     pub(crate) span: Span,
+    pub(crate) item_was: ItemWas,
 }
 
-#[derive(Subdiagnostic)]
-#[note(resolve_item_was_behind_feature)]
-pub(crate) struct ItemWasBehindFeature {
-    pub(crate) feature: Symbol,
-    #[primary_span]
-    pub(crate) span: Span,
+pub(crate) enum ItemWas {
+    BehindFeature { feature: Symbol, span: Span },
+    CfgOut { span: Span },
 }
 
-#[derive(Subdiagnostic)]
-#[note(resolve_item_was_cfg_out)]
-pub(crate) struct ItemWasCfgOut {
-    #[primary_span]
-    pub(crate) span: Span,
+impl Subdiagnostic for FoundItemConfigureOut {
+    fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
+        let mut multispan: MultiSpan = self.span.into();
+        match self.item_was {
+            ItemWas::BehindFeature { feature, span } => {
+                let key = "feature".into();
+                let value = feature.into_diag_arg(&mut None);
+                let msg = diag.dcx.eagerly_translate_to_string(
+                    fluent::resolve_item_was_behind_feature,
+                    [(&key, &value)].into_iter(),
+                );
+                multispan.push_span_label(span, msg);
+            }
+            ItemWas::CfgOut { span } => {
+                multispan.push_span_label(span, fluent::resolve_item_was_cfg_out);
+            }
+        }
+        diag.span_note(multispan, fluent::resolve_found_an_item_configured_out);
+    }
 }
 
 #[derive(Diagnostic)]

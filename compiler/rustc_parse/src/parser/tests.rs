@@ -8,12 +8,12 @@ use std::sync::{Arc, Mutex};
 use std::{io, str};
 
 use ast::token::IdentIsRaw;
-use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, Token};
 use rustc_ast::tokenstream::{DelimSpacing, DelimSpan, Spacing, TokenStream, TokenTree};
 use rustc_ast::{self as ast, PatKind, visit};
 use rustc_ast_pretty::pprust::item_to_string;
 use rustc_errors::emitter::{HumanEmitter, OutputTheme};
+use rustc_errors::translation::Translator;
 use rustc_errors::{DiagCtxt, MultiSpan, PResult};
 use rustc_session::parse::ParseSess;
 use rustc_span::source_map::{FilePathMapping, SourceMap};
@@ -41,9 +41,8 @@ fn string_to_parser(psess: &ParseSess, source_str: String) -> Parser<'_> {
 fn create_test_handler(theme: OutputTheme) -> (DiagCtxt, Arc<SourceMap>, Arc<Mutex<Vec<u8>>>) {
     let output = Arc::new(Mutex::new(Vec::new()));
     let source_map = Arc::new(SourceMap::new(FilePathMapping::empty()));
-    let fallback_bundle =
-        rustc_errors::fallback_fluent_bundle(vec![crate::DEFAULT_LOCALE_RESOURCE], false);
-    let mut emitter = HumanEmitter::new(Box::new(Shared { data: output.clone() }), fallback_bundle)
+    let translator = Translator::with_fallback_bundle(vec![crate::DEFAULT_LOCALE_RESOURCE], false);
+    let mut emitter = HumanEmitter::new(Box::new(Shared { data: output.clone() }), translator)
         .sm(Some(source_map.clone()))
         .diagnostic_width(Some(140));
     emitter = emitter.theme(theme);
@@ -2114,15 +2113,15 @@ fn foo() {
 error: foo
   --> test.rs:3:6
    |
-3  |      X0 Y0 Z0
+ 3 |      X0 Y0 Z0
    |  _______^
-4  | |    X1 Y1 Z1
+ 4 | |    X1 Y1 Z1
    | | ____^____-
    | ||____|
    |  |    `X` is a good letter
-5  |  | 1
-6  |  | 2
-7  |  | 3
+ 5 |  | 1
+ 6 |  | 2
+ 7 |  | 3
 ...   |
 15 |  |   X2 Y2 Z2
 16 |  |   X3 Y3 Z3
@@ -2133,15 +2132,15 @@ error: foo
 error: foo
    ╭▸ test.rs:3:6
    │
-3  │      X0 Y0 Z0
+ 3 │      X0 Y0 Z0
    │ ┏━━━━━━━┛
-4  │ ┃    X1 Y1 Z1
+ 4 │ ┃    X1 Y1 Z1
    │ ┃┌────╿────┘
    │ ┗│━━━━┥
    │  │    `X` is a good letter
-5  │  │ 1
-6  │  │ 2
-7  │  │ 3
+ 5 │  │ 1
+ 6 │  │ 2
+ 7 │  │ 3
    ‡  │
 15 │  │   X2 Y2 Z2
 16 │  │   X3 Y3 Z3
@@ -2189,15 +2188,15 @@ fn foo() {
 error: foo
   --> test.rs:3:6
    |
-3  |      X0 Y0 Z0
+ 3 |      X0 Y0 Z0
    |  _______^
-4  | |  1
-5  | |  2
-6  | |  3
-7  | |    X1 Y1 Z1
+ 4 | |  1
+ 5 | |  2
+ 6 | |  3
+ 7 | |    X1 Y1 Z1
    | | _________-
-8  | || 4
-9  | || 5
+ 8 | || 4
+ 9 | || 5
 10 | || 6
 11 | ||   X2 Y2 Z2
    | ||__________- `Z` is a good letter too
@@ -2211,15 +2210,15 @@ error: foo
 error: foo
    ╭▸ test.rs:3:6
    │
-3  │      X0 Y0 Z0
+ 3 │      X0 Y0 Z0
    │ ┏━━━━━━━┛
-4  │ ┃  1
-5  │ ┃  2
-6  │ ┃  3
-7  │ ┃    X1 Y1 Z1
+ 4 │ ┃  1
+ 5 │ ┃  2
+ 6 │ ┃  3
+ 7 │ ┃    X1 Y1 Z1
    │ ┃┌─────────┘
-8  │ ┃│ 4
-9  │ ┃│ 5
+ 8 │ ┃│ 4
+ 9 │ ┃│ 5
 10 │ ┃│ 6
 11 │ ┃│   X2 Y2 Z2
    │ ┃└──────────┘ `Z` is a good letter too
@@ -2240,7 +2239,7 @@ fn parse_item_from_source_str(
     name: FileName,
     source: String,
     psess: &ParseSess,
-) -> PResult<'_, Option<P<ast::Item>>> {
+) -> PResult<'_, Option<Box<ast::Item>>> {
     unwrap_or_emit_fatal(new_parser_from_source_str(psess, name, source))
         .parse_item(ForceCollect::No)
 }
@@ -2251,12 +2250,12 @@ fn sp(a: u32, b: u32) -> Span {
 }
 
 /// Parses a string, return an expression.
-fn string_to_expr(source_str: String) -> P<ast::Expr> {
+fn string_to_expr(source_str: String) -> Box<ast::Expr> {
     with_error_checking_parse(source_str, &psess(), |p| p.parse_expr())
 }
 
 /// Parses a string, returns an item.
-fn string_to_item(source_str: String) -> Option<P<ast::Item>> {
+fn string_to_item(source_str: String) -> Option<Box<ast::Item>> {
     with_error_checking_parse(source_str, &psess(), |p| p.parse_item(ForceCollect::No))
 }
 
@@ -2520,7 +2519,7 @@ fn ttdelim_span() {
         name: FileName,
         source: String,
         psess: &ParseSess,
-    ) -> PResult<'_, P<ast::Expr>> {
+    ) -> PResult<'_, Box<ast::Expr>> {
         unwrap_or_emit_fatal(new_parser_from_source_str(psess, name, source)).parse_expr()
     }
 

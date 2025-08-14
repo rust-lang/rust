@@ -9,7 +9,7 @@
 
 
 mod foo {
-    use foo::bar::*;
+    use crate::foo::bar::*;
     pub mod bar {
         pub static a : isize = 10;
     }

@@ -4,8 +4,10 @@ use std::ops::ControlFlow;
 use rustc_abi::ExternAbi;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_hir as hir;
+use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::find_attr;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::privacy::{EffectiveVisibility, Level};
@@ -14,7 +16,7 @@ use rustc_middle::ty::{
     self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor, Visibility,
 };
 use rustc_session::config::CrateType;
-use rustc_span::{Span, sym};
+use rustc_span::Span;
 
 use crate::errors::UnexportableItem;
 
@@ -44,7 +46,7 @@ impl<'tcx> ExportableItemCollector<'tcx> {
     }
 
     fn item_is_exportable(&self, def_id: LocalDefId) -> bool {
-        let has_attr = self.tcx.has_attr(def_id, sym::export_stable);
+        let has_attr = find_attr!(self.tcx.get_all_attrs(def_id), AttributeKind::ExportStable);
         if !self.in_exportable_mod && !has_attr {
             return false;
         }
@@ -53,11 +55,11 @@ impl<'tcx> ExportableItemCollector<'tcx> {
         let is_pub = visibilities.is_directly_public(def_id);
 
         if has_attr && !is_pub {
-            let vis = visibilities.effective_vis(def_id).cloned().unwrap_or(
+            let vis = visibilities.effective_vis(def_id).cloned().unwrap_or_else(|| {
                 EffectiveVisibility::from_vis(Visibility::Restricted(
                     self.tcx.parent_module_from_def_id(def_id).to_local_def_id(),
-                )),
-            );
+                ))
+            });
             let vis = vis.at_level(Level::Direct);
             let span = self.tcx.def_span(def_id);
 
@@ -80,7 +82,7 @@ impl<'tcx> ExportableItemCollector<'tcx> {
     fn walk_item_with_mod(&mut self, item: &'tcx hir::Item<'tcx>) {
         let def_id = item.hir_id().owner.def_id;
         let old_exportable_mod = self.in_exportable_mod;
-        if self.tcx.get_attr(def_id, sym::export_stable).is_some() {
+        if find_attr!(self.tcx.get_all_attrs(def_id), AttributeKind::ExportStable) {
             self.in_exportable_mod = true;
         }
         let old_seen_exportable_in_mod = std::mem::replace(&mut self.seen_exportable_in_mod, false);
@@ -132,7 +134,7 @@ impl<'tcx> Visitor<'tcx> for ExportableItemCollector<'tcx> {
                 self.add_exportable(def_id);
             }
             hir::ItemKind::Use(path, _) => {
-                for res in &path.res {
+                for res in path.res.present_items() {
                     // Only local items are exportable.
                     if let Some(res_id) = res.opt_def_id()
                         && let Some(res_id) = res_id.as_local()

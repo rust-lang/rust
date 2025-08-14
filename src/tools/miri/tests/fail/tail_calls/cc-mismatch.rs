@@ -1,4 +1,4 @@
-//@error-in-other-file: Undefined Behavior: calling a function with calling convention C using calling convention Rust
+//@error-in-other-file: Undefined Behavior: calling a function with calling convention "C" using calling convention "Rust"
 #![feature(explicit_tail_calls)]
 #![allow(incomplete_features)]
 

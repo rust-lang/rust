@@ -13,8 +13,7 @@ use rustc_type_ir::{self as ty, Interner};
 use crate::delegate::SolverDelegate;
 use crate::solve::eval_ctxt::canonical;
 use crate::solve::{
-    CanonicalInput, Certainty, GenerateProofTree, Goal, GoalEvaluationKind, GoalSource,
-    QueryResult, inspect,
+    Certainty, GenerateProofTree, Goal, GoalEvaluationKind, GoalSource, QueryResult, inspect,
 };
 
 /// The core data structure when building proof trees.
@@ -54,7 +53,6 @@ where
 enum DebugSolver<I: Interner> {
     Root,
     GoalEvaluation(WipGoalEvaluation<I>),
-    CanonicalGoalEvaluation(WipCanonicalGoalEvaluation<I>),
     CanonicalGoalEvaluationStep(WipCanonicalGoalEvaluationStep<I>),
 }
 
@@ -64,55 +62,35 @@ impl<I: Interner> From<WipGoalEvaluation<I>> for DebugSolver<I> {
     }
 }
 
-impl<I: Interner> From<WipCanonicalGoalEvaluation<I>> for DebugSolver<I> {
-    fn from(g: WipCanonicalGoalEvaluation<I>) -> DebugSolver<I> {
-        DebugSolver::CanonicalGoalEvaluation(g)
-    }
-}
-
 impl<I: Interner> From<WipCanonicalGoalEvaluationStep<I>> for DebugSolver<I> {
     fn from(g: WipCanonicalGoalEvaluationStep<I>) -> DebugSolver<I> {
         DebugSolver::CanonicalGoalEvaluationStep(g)
     }
 }
 
-#[derive_where(PartialEq, Eq, Debug; I: Interner)]
+#[derive_where(PartialEq, Debug; I: Interner)]
 struct WipGoalEvaluation<I: Interner> {
     pub uncanonicalized_goal: Goal<I, I::Predicate>,
     pub orig_values: Vec<I::GenericArg>,
-    pub evaluation: Option<WipCanonicalGoalEvaluation<I>>,
+    pub encountered_overflow: bool,
+    /// After we finished evaluating this is moved into `kind`.
+    pub final_revision: Option<WipCanonicalGoalEvaluationStep<I>>,
+    pub result: Option<QueryResult<I>>,
 }
+
+impl<I: Interner> Eq for WipGoalEvaluation<I> {}
 
 impl<I: Interner> WipGoalEvaluation<I> {
     fn finalize(self) -> inspect::GoalEvaluation<I> {
         inspect::GoalEvaluation {
             uncanonicalized_goal: self.uncanonicalized_goal,
             orig_values: self.orig_values,
-            evaluation: self.evaluation.unwrap().finalize(),
-        }
-    }
-}
-
-#[derive_where(PartialEq, Eq, Debug; I: Interner)]
-struct WipCanonicalGoalEvaluation<I: Interner> {
-    goal: CanonicalInput<I>,
-    encountered_overflow: bool,
-    /// Only used for uncached goals. After we finished evaluating
-    /// the goal, this is interned and moved into `kind`.
-    final_revision: Option<WipCanonicalGoalEvaluationStep<I>>,
-    result: Option<QueryResult<I>>,
-}
-
-impl<I: Interner> WipCanonicalGoalEvaluation<I> {
-    fn finalize(self) -> inspect::CanonicalGoalEvaluation<I> {
-        inspect::CanonicalGoalEvaluation {
-            goal: self.goal,
             kind: if self.encountered_overflow {
                 assert!(self.final_revision.is_none());
-                inspect::CanonicalGoalEvaluationKind::Overflow
+                inspect::GoalEvaluationKind::Overflow
             } else {
                 let final_revision = self.final_revision.unwrap().finalize();
-                inspect::CanonicalGoalEvaluationKind::Evaluation { final_revision }
+                inspect::GoalEvaluationKind::Evaluation { final_revision }
             },
             result: self.result.unwrap(),
         }
@@ -122,7 +100,7 @@ impl<I: Interner> WipCanonicalGoalEvaluation<I> {
 /// This only exists during proof tree building and does not have
 /// a corresponding struct in `inspect`. We need this to track a
 /// bunch of metadata about the current evaluation.
-#[derive_where(PartialEq, Eq, Debug; I: Interner)]
+#[derive_where(PartialEq, Debug; I: Interner)]
 struct WipCanonicalGoalEvaluationStep<I: Interner> {
     /// Unlike `EvalCtxt::var_values`, we append a new
     /// generic arg here whenever we create a new inference
@@ -134,6 +112,8 @@ struct WipCanonicalGoalEvaluationStep<I: Interner> {
     probe_depth: usize,
     evaluation: WipProbe<I>,
 }
+
+impl<I: Interner> Eq for WipCanonicalGoalEvaluationStep<I> {}
 
 impl<I: Interner> WipCanonicalGoalEvaluationStep<I> {
     fn current_evaluation_scope(&mut self) -> &mut WipProbe<I> {
@@ -156,13 +136,15 @@ impl<I: Interner> WipCanonicalGoalEvaluationStep<I> {
     }
 }
 
-#[derive_where(PartialEq, Eq, Debug; I: Interner)]
+#[derive_where(PartialEq, Debug; I: Interner)]
 struct WipProbe<I: Interner> {
     initial_num_var_values: usize,
     steps: Vec<WipProbeStep<I>>,
     kind: Option<inspect::ProbeKind<I>>,
     final_state: Option<inspect::CanonicalState<I, ()>>,
 }
+
+impl<I: Interner> Eq for WipProbe<I> {}
 
 impl<I: Interner> WipProbe<I> {
     fn finalize(self) -> inspect::Probe<I> {
@@ -174,13 +156,15 @@ impl<I: Interner> WipProbe<I> {
     }
 }
 
-#[derive_where(PartialEq, Eq, Debug; I: Interner)]
+#[derive_where(PartialEq, Debug; I: Interner)]
 enum WipProbeStep<I: Interner> {
     AddGoal(GoalSource, inspect::CanonicalState<I, Goal<I, I::Predicate>>),
     NestedProbe(WipProbe<I>),
     MakeCanonicalResponse { shallow_certainty: Certainty },
     RecordImplArgs { impl_args: inspect::CanonicalState<I, I::GenericArgs> },
 }
+
+impl<I: Interner> Eq for WipProbeStep<I> {}
 
 impl<I: Interner> WipProbeStep<I> {
     fn finalize(self) -> inspect::ProbeStep<I> {
@@ -256,55 +240,27 @@ impl<D: SolverDelegate<Interner = I>, I: Interner> ProofTreeBuilder<D> {
 
     pub(in crate::solve) fn new_goal_evaluation(
         &mut self,
-        goal: Goal<I, I::Predicate>,
+        uncanonicalized_goal: Goal<I, I::Predicate>,
         orig_values: &[I::GenericArg],
         kind: GoalEvaluationKind,
     ) -> ProofTreeBuilder<D> {
         self.opt_nested(|| match kind {
             GoalEvaluationKind::Root => Some(WipGoalEvaluation {
-                uncanonicalized_goal: goal,
+                uncanonicalized_goal,
                 orig_values: orig_values.to_vec(),
-                evaluation: None,
+                encountered_overflow: false,
+                final_revision: None,
+                result: None,
             }),
             GoalEvaluationKind::Nested => None,
         })
     }
 
-    pub(crate) fn new_canonical_goal_evaluation(
-        &mut self,
-        goal: CanonicalInput<I>,
-    ) -> ProofTreeBuilder<D> {
-        self.nested(|| WipCanonicalGoalEvaluation {
-            goal,
-            encountered_overflow: false,
-            final_revision: None,
-            result: None,
-        })
-    }
-
-    pub(crate) fn canonical_goal_evaluation(
-        &mut self,
-        canonical_goal_evaluation: ProofTreeBuilder<D>,
-    ) {
-        if let Some(this) = self.as_mut() {
-            match (this, *canonical_goal_evaluation.state.unwrap()) {
-                (
-                    DebugSolver::GoalEvaluation(goal_evaluation),
-                    DebugSolver::CanonicalGoalEvaluation(canonical_goal_evaluation),
-                ) => {
-                    let prev = goal_evaluation.evaluation.replace(canonical_goal_evaluation);
-                    assert_eq!(prev, None);
-                }
-                _ => unreachable!(),
-            }
-        }
-    }
-
     pub(crate) fn canonical_goal_evaluation_overflow(&mut self) {
         if let Some(this) = self.as_mut() {
             match this {
-                DebugSolver::CanonicalGoalEvaluation(canonical_goal_evaluation) => {
-                    canonical_goal_evaluation.encountered_overflow = true;
+                DebugSolver::GoalEvaluation(goal_evaluation) => {
+                    goal_evaluation.encountered_overflow = true;
                 }
                 _ => unreachable!(),
             };
@@ -343,10 +299,10 @@ impl<D: SolverDelegate<Interner = I>, I: Interner> ProofTreeBuilder<D> {
         if let Some(this) = self.as_mut() {
             match (this, *goal_evaluation_step.state.unwrap()) {
                 (
-                    DebugSolver::CanonicalGoalEvaluation(canonical_goal_evaluations),
+                    DebugSolver::GoalEvaluation(goal_evaluation),
                     DebugSolver::CanonicalGoalEvaluationStep(goal_evaluation_step),
                 ) => {
-                    canonical_goal_evaluations.final_revision = Some(goal_evaluation_step);
+                    goal_evaluation.final_revision = Some(goal_evaluation_step);
                 }
                 _ => unreachable!(),
             }
@@ -489,8 +445,8 @@ impl<D: SolverDelegate<Interner = I>, I: Interner> ProofTreeBuilder<D> {
     pub(crate) fn query_result(&mut self, result: QueryResult<I>) {
         if let Some(this) = self.as_mut() {
             match this {
-                DebugSolver::CanonicalGoalEvaluation(canonical_goal_evaluation) => {
-                    assert_eq!(canonical_goal_evaluation.result.replace(result), None);
+                DebugSolver::GoalEvaluation(goal_evaluation) => {
+                    assert_eq!(goal_evaluation.result.replace(result), None);
                 }
                 DebugSolver::CanonicalGoalEvaluationStep(evaluation_step) => {
                     assert_eq!(

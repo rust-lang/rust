@@ -28,3 +28,9 @@ fn main() {
     //~| HELP use an `if-else` expression instead
     //~| ERROR expected one of `.`, `;`, `?`, `else`, or an operator, found `:`
 }
+
+fn expr(a: u64, b: u64) -> u64 {
+    a > b ? a : b
+    //~^ ERROR Rust has no ternary operator
+    //~| HELP use an `if-else` expression instead
+}

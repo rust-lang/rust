@@ -11,4 +11,4 @@ Features are comma-separated, for example `-Z allow-features=ffi_pure,f16`.
 If the flag is present, any feature listed will be allowed and any feature not listed will be disallowed.
 Any unrecognized feature is ignored.
 
-[`RUSTC_BOOTSTRAP`]: ./rustc-bootstrap.html
+[`RUSTC_BOOTSTRAP`]: ../compiler-environment-variables/RUSTC_BOOTSTRAP.html

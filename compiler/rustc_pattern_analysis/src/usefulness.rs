@@ -70,7 +70,7 @@
 //! # Constructors and fields
 //!
 //! In the value `Pair(Some(0), true)`, `Pair` is called the constructor of the value, and `Some(0)`
-//! and `true` are its fields. Every matcheable value can be decomposed in this way. Examples of
+//! and `true` are its fields. Every matchable value can be decomposed in this way. Examples of
 //! constructors are: `Some`, `None`, `(,)` (the 2-tuple constructor), `Foo {..}` (the constructor
 //! for a struct `Foo`), and `2` (the constructor for the number `2`).
 //!
@@ -102,7 +102,7 @@
 //! [`Constructor::is_covered_by`].
 //!
 //! Note 1: variable bindings (like the `x` in `Some(x)`) match anything, so we treat them as wildcards.
-//! Note 2: this only applies to matcheable values. For example a value of type `Rc<u64>` can't be
+//! Note 2: this only applies to matchable values. For example a value of type `Rc<u64>` can't be
 //! deconstructed that way.
 //!
 //!
@@ -720,7 +720,7 @@ use tracing::{debug, instrument};
 use self::PlaceValidity::*;
 use crate::constructor::{Constructor, ConstructorSet, IntRange};
 use crate::pat::{DeconstructedPat, PatId, PatOrWild, WitnessPat};
-use crate::{MatchArm, PatCx, PrivateUninhabitedField};
+use crate::{MatchArm, PatCx, PrivateUninhabitedField, checks};
 #[cfg(not(feature = "rustc"))]
 pub fn ensure_sufficient_stack<R>(f: impl FnOnce() -> R) -> R {
     f()
@@ -994,7 +994,8 @@ impl<Cx: PatCx> PlaceInfo<Cx> {
         if !missing_ctors.is_empty() && !report_individual_missing_ctors {
             // Report `_` as missing.
             missing_ctors = vec![Constructor::Wildcard];
-        } else if missing_ctors.iter().any(|c| c.is_non_exhaustive()) {
+        } else if missing_ctors.iter().any(|c| c.is_non_exhaustive()) && !cx.exhaustive_witnesses()
+        {
             // We need to report a `_` anyway, so listing other constructors would be redundant.
             // `NonExhaustive` is displayed as `_` just like `Wildcard`, but it will be picked
             // up by diagnostics to add a note about why `_` is required here.
@@ -1747,7 +1748,9 @@ fn compute_exhaustiveness_and_usefulness<'a, 'p, Cx: PatCx>(
         // `ctor` is *irrelevant* if there's another constructor in `split_ctors` that matches
         // strictly fewer rows. In that case we can sometimes skip it. See the top of the file for
         // details.
-        let ctor_is_relevant = matches!(ctor, Constructor::Missing) || missing_ctors.is_empty();
+        let ctor_is_relevant = matches!(ctor, Constructor::Missing)
+            || missing_ctors.is_empty()
+            || mcx.tycx.exhaustive_witnesses();
         let mut spec_matrix = matrix.specialize_constructor(pcx, &ctor, ctor_is_relevant)?;
         let mut witnesses = ensure_sufficient_stack(|| {
             compute_exhaustiveness_and_usefulness(mcx, &mut spec_matrix)
@@ -1836,6 +1839,11 @@ pub fn compute_match_usefulness<'p, Cx: PatCx>(
     scrut_validity: PlaceValidity,
     complexity_limit: usize,
 ) -> Result<UsefulnessReport<'p, Cx>, Cx::Error> {
+    // The analysis doesn't support deref patterns mixed with normal constructors; error if present.
+    if tycx.match_may_contain_deref_pats() {
+        checks::detect_mixed_deref_pat_ctors(tycx, arms)?;
+    }
+
     let mut cx = UsefulnessCtxt {
         tycx,
         branch_usefulness: FxHashMap::default(),

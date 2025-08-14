@@ -6,6 +6,7 @@ mod opaque_types;
 use rustc_type_ir::fast_reject::DeepRejectCtxt;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::TraitSolverLangItem;
+use rustc_type_ir::solve::SizedTraitKind;
 use rustc_type_ir::{self as ty, Interner, NormalizesTo, PredicateKind, Upcast as _};
 use tracing::instrument;
 
@@ -98,8 +99,8 @@ where
         self.alias.trait_ref(cx)
     }
 
-    fn with_self_ty(self, cx: I, self_ty: I::Ty) -> Self {
-        self.with_self_ty(cx, self_ty)
+    fn with_replaced_self_ty(self, cx: I, self_ty: I::Ty) -> Self {
+        self.with_replaced_self_ty(cx, self_ty)
     }
 
     fn trait_def_id(self, cx: I) -> I::DefId {
@@ -111,25 +112,57 @@ where
         goal: Goal<I, Self>,
         assumption: I::Clause,
     ) -> Result<(), NoSolution> {
-        if let Some(projection_pred) = assumption.as_projection_clause() {
-            if projection_pred.item_def_id() == goal.predicate.def_id() {
-                if DeepRejectCtxt::relate_rigid_rigid(ecx.cx()).args_may_unify(
-                    goal.predicate.alias.args,
-                    projection_pred.skip_binder().projection_term.args,
-                ) {
-                    return Ok(());
-                }
-            }
+        if let Some(projection_pred) = assumption.as_projection_clause()
+            && projection_pred.item_def_id() == goal.predicate.def_id()
+            && DeepRejectCtxt::relate_rigid_rigid(ecx.cx()).args_may_unify(
+                goal.predicate.alias.args,
+                projection_pred.skip_binder().projection_term.args,
+            )
+        {
+            Ok(())
+        } else {
+            Err(NoSolution)
         }
-
-        Err(NoSolution)
     }
 
     fn match_assumption(
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
         assumption: I::Clause,
-    ) -> Result<(), NoSolution> {
+        then: impl FnOnce(&mut EvalCtxt<'_, D>) -> QueryResult<I>,
+    ) -> QueryResult<I> {
+        let cx = ecx.cx();
+        // FIXME(generic_associated_types): Addresses aggressive inference in #92917.
+        //
+        // If this type is a GAT with currently unconstrained arguments, we do not
+        // want to normalize it via a candidate which only applies for a specific
+        // instantiation. We could otherwise keep the GAT as rigid and succeed this way.
+        // See tests/ui/generic-associated-types/no-incomplete-gat-arg-inference.rs.
+        //
+        // This only avoids normalization if the GAT arguments are fully unconstrained.
+        // This is quite arbitrary but fixing it causes some ambiguity, see #125196.
+        match goal.predicate.alias.kind(cx) {
+            ty::AliasTermKind::ProjectionTy | ty::AliasTermKind::ProjectionConst => {
+                for arg in goal.predicate.alias.own_args(cx).iter() {
+                    let Some(term) = arg.as_term() else {
+                        continue;
+                    };
+                    let term = ecx.structurally_normalize_term(goal.param_env, term)?;
+                    if term.is_infer() {
+                        return ecx.evaluate_added_goals_and_make_canonical_response(
+                            Certainty::AMBIGUOUS,
+                        );
+                    }
+                }
+            }
+            ty::AliasTermKind::OpaqueTy
+            | ty::AliasTermKind::InherentTy
+            | ty::AliasTermKind::InherentConst
+            | ty::AliasTermKind::FreeTy
+            | ty::AliasTermKind::FreeConst
+            | ty::AliasTermKind::UnevaluatedConst => {}
+        }
+
         let projection_pred = assumption.as_projection_clause().unwrap();
 
         let assumption_projection_pred = ecx.instantiate_binder_with_infer(projection_pred);
@@ -139,7 +172,6 @@ where
 
         // Add GAT where clauses from the trait's definition
         // FIXME: We don't need these, since these are the type's own WF obligations.
-        let cx = ecx.cx();
         ecx.add_goals(
             GoalSource::AliasWellFormed,
             cx.own_predicates_of(goal.predicate.def_id())
@@ -147,7 +179,7 @@ where
                 .map(|pred| goal.with(cx, pred)),
         );
 
-        Ok(())
+        then(ecx)
     }
 
     fn consider_additional_alias_assumptions(
@@ -381,11 +413,12 @@ where
         panic!("trait aliases do not have associated types: {:?}", goal);
     }
 
-    fn consider_builtin_sized_candidate(
+    fn consider_builtin_sizedness_candidates(
         _ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
+        _sizedness: SizedTraitKind,
     ) -> Result<Candidate<I>, NoSolution> {
-        panic!("`Sized` does not have an associated type: {:?}", goal);
+        panic!("`Sized`/`MetaSized` does not have an associated type: {:?}", goal);
     }
 
     fn consider_builtin_copy_clone_candidate(
@@ -624,8 +657,7 @@ where
             | ty::Coroutine(..)
             | ty::CoroutineWitness(..)
             | ty::Never
-            | ty::Foreign(..)
-            | ty::Dynamic(_, _, ty::DynStar) => Ty::new_unit(cx),
+            | ty::Foreign(..) => Ty::new_unit(cx),
 
             ty::Error(e) => Ty::new_error(cx, e),
 

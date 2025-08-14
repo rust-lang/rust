@@ -1,4 +1,4 @@
-use rustc_attr_parsing::InlineAttr;
+use rustc_hir::attrs::InlineAttr;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::mir::visit::Visitor;
@@ -18,7 +18,7 @@ fn cross_crate_inlinable(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
     let codegen_fn_attrs = tcx.codegen_fn_attrs(def_id);
     // If this has an extern indicator, then this function is globally shared and thus will not
     // generate cgu-internal copies which would make it cross-crate inlinable.
-    if codegen_fn_attrs.contains_extern_indicator() {
+    if codegen_fn_attrs.contains_extern_indicator(tcx, def_id.into()) {
         return false;
     }
 
@@ -48,6 +48,13 @@ fn cross_crate_inlinable(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
         InlineAttr::Never => return false,
         InlineAttr::Hint | InlineAttr::Always | InlineAttr::Force { .. } => return true,
         _ => {}
+    }
+
+    // If the crate is likely to be mostly unused, use cross-crate inlining to defer codegen until
+    // the function is referenced, in order to skip codegen for unused functions. This is
+    // intentionally after the check for `inline(never)`, so that `inline(never)` wins.
+    if tcx.sess.opts.unstable_opts.hint_mostly_unused {
+        return true;
     }
 
     let sig = tcx.fn_sig(def_id).instantiate_identity();

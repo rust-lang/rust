@@ -2,36 +2,39 @@ error[E0277]: the trait bound `String: Copy` is not satisfied
   --> $DIR/const-fn-in-vec.rs:1:47
    |
 LL | static _MAYBE_STRINGS: [Option<String>; 5] = [None; 5];
-   |                                               ^^^^
-   |                                               |
-   |                                               the trait `Copy` is not implemented for `String`
-   |                                               help: create an inline `const` block: `const { None }`
+   |                                               ^^^^ the trait `Copy` is not implemented for `String`
    |
    = note: required for `Option<String>` to implement `Copy`
    = note: the `Copy` trait is required because this value will be copied for each element of the array
+help: create an inline `const` block
+   |
+LL | static _MAYBE_STRINGS: [Option<String>; 5] = [const { None }; 5];
+   |                                               +++++++      +
 
 error[E0277]: the trait bound `String: Copy` is not satisfied
   --> $DIR/const-fn-in-vec.rs:7:34
    |
 LL |     let _strings: [String; 5] = [String::new(); 5];
-   |                                  ^^^^^^^^^^^^^
-   |                                  |
-   |                                  the trait `Copy` is not implemented for `String`
-   |                                  help: create an inline `const` block: `const { String::new() }`
+   |                                  ^^^^^^^^^^^^^ the trait `Copy` is not implemented for `String`
    |
    = note: the `Copy` trait is required because this value will be copied for each element of the array
+help: create an inline `const` block
+   |
+LL |     let _strings: [String; 5] = [const { String::new() }; 5];
+   |                                  +++++++               +
 
 error[E0277]: the trait bound `String: Copy` is not satisfied
   --> $DIR/const-fn-in-vec.rs:12:48
    |
 LL |     let _maybe_strings: [Option<String>; 5] = [None; 5];
-   |                                                ^^^^
-   |                                                |
-   |                                                the trait `Copy` is not implemented for `String`
-   |                                                help: create an inline `const` block: `const { None }`
+   |                                                ^^^^ the trait `Copy` is not implemented for `String`
    |
    = note: required for `Option<String>` to implement `Copy`
    = note: the `Copy` trait is required because this value will be copied for each element of the array
+help: create an inline `const` block
+   |
+LL |     let _maybe_strings: [Option<String>; 5] = [const { None }; 5];
+   |                                                +++++++      +
 
 error: aborting due to 3 previous errors
 

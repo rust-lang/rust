@@ -1,6 +1,6 @@
 //@ run-pass
-#![allow(incomplete_features, unused_braces, unused_parens)]
-#![feature(unsized_locals, unsized_fn_params)]
+#![allow(internal_features, unused_braces, unused_parens)]
+#![feature(unsized_fn_params)]
 
 struct A<X: ?Sized>(#[allow(dead_code)] X);
 
@@ -18,11 +18,6 @@ impl std::ops::Add<i32> for A<[u8]> {
 }
 
 fn main() {
-    udrop::<[u8]>(loop {
-        break *foo();
-    });
-    udrop::<[u8]>(if true { *foo() } else { *foo() });
-    udrop::<[u8]>({ *foo() });
     udrop::<[u8]>((*foo()));
     *afoo() + 42;
     udrop as fn([u8]);

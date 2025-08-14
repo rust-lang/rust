@@ -11,10 +11,12 @@ use minicore::*;
 struct Ty;
 impl Deref for Ty {
     type Target = ();
-    fn deref(&self) -> &Self::Target { &() }
+    fn deref(&self) -> &Self::Target {
+        &()
+    }
 }
 
 const fn foo() {
     *Ty;
-    //~^ ERROR the trait bound `Ty: ~const minicore::Deref` is not satisfied
+    //~^ ERROR the trait bound `Ty: [const] minicore::Deref` is not satisfied
 }

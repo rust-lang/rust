@@ -1,0 +1,31 @@
+error[E0369]: cannot add `Box<isize>` to `Box<isize>`
+  --> $DIR/autoderef-box-no-add.rs:25:24
+   |
+LL |     let z: isize = a.x + b.y;
+   |                    --- ^ --- Box<isize>
+   |                    |
+   |                    Box<isize>
+   |
+note: the foreign item type `Box<isize>` doesn't implement `Add`
+  --> $SRC_DIR/alloc/src/boxed.rs:LL:COL
+  ::: $SRC_DIR/alloc/src/boxed.rs:LL:COL
+   |
+   = note: not implement `Add`
+
+error[E0369]: cannot add `Box<isize>` to `Box<isize>`
+  --> $DIR/autoderef-box-no-add.rs:31:33
+   |
+LL |     let answer: isize = forty.a + two.a;
+   |                         ------- ^ ----- Box<isize>
+   |                         |
+   |                         Box<isize>
+   |
+note: the foreign item type `Box<isize>` doesn't implement `Add`
+  --> $SRC_DIR/alloc/src/boxed.rs:LL:COL
+  ::: $SRC_DIR/alloc/src/boxed.rs:LL:COL
+   |
+   = note: not implement `Add`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0369`.

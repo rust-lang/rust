@@ -5,14 +5,9 @@ LL | const unsafe fn bar() -> u32 { unsafe { foo() } }
    |                                         ^^^^^
    |
    = help: mark the callee as `#[rustc_const_stable_indirect]` if it does not itself require any unstable features
-help: if the caller is not (yet) meant to be exposed to stable, add `#[rustc_const_unstable]` (this is what you probably want to do)
+help: if the caller is not (yet) meant to be exposed to stable const contexts, add `#[rustc_const_unstable]`
    |
 LL + #[rustc_const_unstable(feature = "...", issue = "...")]
-LL | const unsafe fn bar() -> u32 { unsafe { foo() } }
-   |
-help: otherwise, as a last resort `#[rustc_allow_const_fn_unstable]` can be used to bypass stability checks (this requires team approval)
-   |
-LL + #[rustc_allow_const_fn_unstable(foo)]
 LL | const unsafe fn bar() -> u32 { unsafe { foo() } }
    |
 
@@ -23,14 +18,9 @@ LL | const unsafe fn bar2() -> u32 { unsafe { foo2() } }
    |                                          ^^^^^^
    |
    = help: mark the callee as `#[rustc_const_stable_indirect]` if it does not itself require any unstable features
-help: if the caller is not (yet) meant to be exposed to stable, add `#[rustc_const_unstable]` (this is what you probably want to do)
+help: if the caller is not (yet) meant to be exposed to stable const contexts, add `#[rustc_const_unstable]`
    |
 LL + #[rustc_const_unstable(feature = "...", issue = "...")]
-LL | const unsafe fn bar2() -> u32 { unsafe { foo2() } }
-   |
-help: otherwise, as a last resort `#[rustc_allow_const_fn_unstable]` can be used to bypass stability checks (this requires team approval)
-   |
-LL + #[rustc_allow_const_fn_unstable(foo2)]
 LL | const unsafe fn bar2() -> u32 { unsafe { foo2() } }
    |
 
@@ -41,14 +31,9 @@ LL | const unsafe fn bar2_gated() -> u32 { unsafe { foo2_gated() } }
    |                                                ^^^^^^^^^^^^
    |
    = help: mark the callee as `#[rustc_const_stable_indirect]` if it does not itself require any unstable features
-help: if the caller is not (yet) meant to be exposed to stable, add `#[rustc_const_unstable]` (this is what you probably want to do)
+help: if the caller is not (yet) meant to be exposed to stable const contexts, add `#[rustc_const_unstable]`
    |
 LL + #[rustc_const_unstable(feature = "...", issue = "...")]
-LL | const unsafe fn bar2_gated() -> u32 { unsafe { foo2_gated() } }
-   |
-help: otherwise, as a last resort `#[rustc_allow_const_fn_unstable]` can be used to bypass stability checks (this requires team approval)
-   |
-LL + #[rustc_allow_const_fn_unstable(foo2)]
 LL | const unsafe fn bar2_gated() -> u32 { unsafe { foo2_gated() } }
    |
 

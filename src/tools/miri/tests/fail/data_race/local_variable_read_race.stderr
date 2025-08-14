@@ -1,8 +1,8 @@
-error: Undefined Behavior: Data race detected between (1) non-atomic read on thread `main` and (2) non-atomic write on thread `unnamed-ID` at ALLOC. (2) just happened here
+error: Undefined Behavior: Data race detected between (1) non-atomic read on thread `main` and (2) non-atomic write on thread `unnamed-ID` at ALLOC
   --> tests/fail/data_race/local_variable_read_race.rs:LL:CC
    |
 LL |             *ptr = 127;
-   |             ^^^^^^^^^^ Data race detected between (1) non-atomic read on thread `main` and (2) non-atomic write on thread `unnamed-ID` at ALLOC. (2) just happened here
+   |             ^^^^^^^^^^ (2) just happened here
    |
 help: and (1) occurred earlier here
   --> tests/fail/data_race/local_variable_read_race.rs:LL:CC

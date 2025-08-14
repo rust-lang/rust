@@ -15,18 +15,18 @@ pub(crate) struct ResolutionScope<'db> {
     node: SyntaxNode,
 }
 
-pub(crate) struct ResolvedRule {
-    pub(crate) pattern: ResolvedPattern,
-    pub(crate) template: Option<ResolvedPattern>,
+pub(crate) struct ResolvedRule<'db> {
+    pub(crate) pattern: ResolvedPattern<'db>,
+    pub(crate) template: Option<ResolvedPattern<'db>>,
     pub(crate) index: usize,
 }
 
-pub(crate) struct ResolvedPattern {
+pub(crate) struct ResolvedPattern<'db> {
     pub(crate) placeholders_by_stand_in: FxHashMap<SmolStr, parsing::Placeholder>,
     pub(crate) node: SyntaxNode,
     // Paths in `node` that we've resolved.
     pub(crate) resolved_paths: FxHashMap<SyntaxNode, ResolvedPath>,
-    pub(crate) ufcs_function_calls: FxHashMap<SyntaxNode, UfcsCallInfo>,
+    pub(crate) ufcs_function_calls: FxHashMap<SyntaxNode, UfcsCallInfo<'db>>,
     pub(crate) contains_self: bool,
 }
 
@@ -36,18 +36,18 @@ pub(crate) struct ResolvedPath {
     pub(crate) depth: u32,
 }
 
-pub(crate) struct UfcsCallInfo {
+pub(crate) struct UfcsCallInfo<'db> {
     pub(crate) call_expr: ast::CallExpr,
     pub(crate) function: hir::Function,
-    pub(crate) qualifier_type: Option<hir::Type>,
+    pub(crate) qualifier_type: Option<hir::Type<'db>>,
 }
 
-impl ResolvedRule {
+impl<'db> ResolvedRule<'db> {
     pub(crate) fn new(
         rule: parsing::ParsedRule,
-        resolution_scope: &ResolutionScope<'_>,
+        resolution_scope: &ResolutionScope<'db>,
         index: usize,
-    ) -> Result<ResolvedRule, SsrError> {
+    ) -> Result<ResolvedRule<'db>, SsrError> {
         let resolver =
             Resolver { resolution_scope, placeholders_by_stand_in: rule.placeholders_by_stand_in };
         let resolved_template = match rule.template {
@@ -74,8 +74,8 @@ struct Resolver<'a, 'db> {
     placeholders_by_stand_in: FxHashMap<SmolStr, parsing::Placeholder>,
 }
 
-impl Resolver<'_, '_> {
-    fn resolve_pattern_tree(&self, pattern: SyntaxNode) -> Result<ResolvedPattern, SsrError> {
+impl<'db> Resolver<'_, 'db> {
+    fn resolve_pattern_tree(&self, pattern: SyntaxNode) -> Result<ResolvedPattern<'db>, SsrError> {
         use syntax::ast::AstNode;
         use syntax::{SyntaxElement, T};
         let mut resolved_paths = FxHashMap::default();
@@ -83,21 +83,17 @@ impl Resolver<'_, '_> {
         let ufcs_function_calls = resolved_paths
             .iter()
             .filter_map(|(path_node, resolved)| {
-                if let Some(grandparent) = path_node.parent().and_then(|parent| parent.parent()) {
-                    if let Some(call_expr) = ast::CallExpr::cast(grandparent.clone()) {
-                        if let hir::PathResolution::Def(hir::ModuleDef::Function(function)) =
-                            resolved.resolution
-                        {
-                            if function.as_assoc_item(self.resolution_scope.scope.db).is_some() {
-                                let qualifier_type =
-                                    self.resolution_scope.qualifier_type(path_node);
-                                return Some((
-                                    grandparent,
-                                    UfcsCallInfo { call_expr, function, qualifier_type },
-                                ));
-                            }
-                        }
-                    }
+                if let Some(grandparent) = path_node.parent().and_then(|parent| parent.parent())
+                    && let Some(call_expr) = ast::CallExpr::cast(grandparent.clone())
+                    && let hir::PathResolution::Def(hir::ModuleDef::Function(function)) =
+                        resolved.resolution
+                    && function.as_assoc_item(self.resolution_scope.scope.db).is_some()
+                {
+                    let qualifier_type = self.resolution_scope.qualifier_type(path_node);
+                    return Some((
+                        grandparent,
+                        UfcsCallInfo { call_expr, function, qualifier_type },
+                    ));
                 }
                 None
             })
@@ -153,12 +149,11 @@ impl Resolver<'_, '_> {
     /// Returns whether `path` contains a placeholder, but ignores any placeholders within type
     /// arguments.
     fn path_contains_placeholder(&self, path: &ast::Path) -> bool {
-        if let Some(segment) = path.segment() {
-            if let Some(name_ref) = segment.name_ref() {
-                if self.placeholders_by_stand_in.contains_key(name_ref.text().as_str()) {
-                    return true;
-                }
-            }
+        if let Some(segment) = path.segment()
+            && let Some(name_ref) = segment.name_ref()
+            && self.placeholders_by_stand_in.contains_key(name_ref.text().as_str())
+        {
+            return true;
         }
         if let Some(qualifier) = path.qualifier() {
             return self.path_contains_placeholder(&qualifier);
@@ -250,16 +245,14 @@ impl<'db> ResolutionScope<'db> {
         }
     }
 
-    fn qualifier_type(&self, path: &SyntaxNode) -> Option<hir::Type> {
+    fn qualifier_type(&self, path: &SyntaxNode) -> Option<hir::Type<'db>> {
         use syntax::ast::AstNode;
-        if let Some(path) = ast::Path::cast(path.clone()) {
-            if let Some(qualifier) = path.qualifier() {
-                if let Some(hir::PathResolution::Def(hir::ModuleDef::Adt(adt))) =
-                    self.resolve_path(&qualifier)
-                {
-                    return Some(adt.ty(self.scope.db));
-                }
-            }
+        if let Some(path) = ast::Path::cast(path.clone())
+            && let Some(qualifier) = path.qualifier()
+            && let Some(hir::PathResolution::Def(hir::ModuleDef::Adt(adt))) =
+                self.resolve_path(&qualifier)
+        {
+            return Some(adt.ty(self.scope.db));
         }
         None
     }
@@ -299,11 +292,11 @@ fn pick_node_for_resolution(node: SyntaxNode) -> SyntaxNode {
 /// Returns whether `path` or any of its qualifiers contains type arguments.
 fn path_contains_type_arguments(path: Option<ast::Path>) -> bool {
     if let Some(path) = path {
-        if let Some(segment) = path.segment() {
-            if segment.generic_arg_list().is_some() {
-                cov_mark::hit!(type_arguments_within_path);
-                return true;
-            }
+        if let Some(segment) = path.segment()
+            && segment.generic_arg_list().is_some()
+        {
+            cov_mark::hit!(type_arguments_within_path);
+            return true;
         }
         return path_contains_type_arguments(path.qualifier());
     }

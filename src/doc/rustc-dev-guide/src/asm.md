@@ -1,7 +1,5 @@
 # Inline assembly
 
-<!-- toc -->
-
 ## Overview
 
 Inline assembly in rustc mostly revolves around taking an `asm!` macro invocation and plumbing it
@@ -155,9 +153,9 @@ can't know ahead of time whether a function will require a frame/base pointer.
 
 Various tests for inline assembly are available:
 
-- `tests/assembly/asm`
+- `tests/assembly-llvm/asm`
 - `tests/ui/asm`
-- `tests/codegen/asm-*`
+- `tests/codegen-llvm/asm-*`
 
 Every architecture supported by inline assembly must have exhaustive tests in
-`tests/assembly/asm` which test all combinations of register classes and types.
+`tests/assembly-llvm/asm` which test all combinations of register classes and types.

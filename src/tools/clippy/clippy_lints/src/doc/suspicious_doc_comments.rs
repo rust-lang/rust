@@ -1,9 +1,9 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use rustc_ast::AttrStyle;
 use rustc_ast::token::CommentKind;
-use rustc_attr_parsing::AttributeKind;
 use rustc_errors::Applicability;
 use rustc_hir::Attribute;
+use rustc_hir::attrs::AttributeKind;
 use rustc_lint::LateContext;
 use rustc_span::Span;
 

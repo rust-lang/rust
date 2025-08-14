@@ -2,14 +2,15 @@ error[E0277]: `()` is not a future
   --> $DIR/issue-101715.rs:11:10
    |
 LL |         .await
-   |         -^^^^^
-   |         ||
-   |         |`()` is not a future
-   |         help: remove the `.await`
+   |          ^^^^^ `()` is not a future
    |
    = help: the trait `Future` is not implemented for `()`
    = note: () must be a future or must implement `IntoFuture` to be awaited
    = note: required for `()` to implement `IntoFuture`
+help: remove the `.await`
+   |
+LL -         .await
+   |
 
 error: aborting due to 1 previous error
 

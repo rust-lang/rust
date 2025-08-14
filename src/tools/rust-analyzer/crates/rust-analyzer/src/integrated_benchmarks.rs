@@ -147,7 +147,7 @@ fn integrated_completion_benchmark() {
         let _it = stdx::timeit("change");
         let mut text = host.analysis().file_text(file_id).unwrap().to_string();
         let completion_offset =
-            patch(&mut text, "db.struct_data(self.id)", "sel;\ndb.struct_data(self.id)")
+            patch(&mut text, "db.struct_signature(self.id)", "sel;\ndb.struct_signature(self.id)")
                 + "sel".len();
         let mut change = ChangeWithProcMacros::default();
         change.change_file(file_id, Some(text));
@@ -197,9 +197,11 @@ fn integrated_completion_benchmark() {
     let completion_offset = {
         let _it = stdx::timeit("change");
         let mut text = host.analysis().file_text(file_id).unwrap().to_string();
-        let completion_offset =
-            patch(&mut text, "sel;\ndb.struct_data(self.id)", ";sel;\ndb.struct_data(self.id)")
-                + ";sel".len();
+        let completion_offset = patch(
+            &mut text,
+            "sel;\ndb.struct_signature(self.id)",
+            ";sel;\ndb.struct_signature(self.id)",
+        ) + ";sel".len();
         let mut change = ChangeWithProcMacros::default();
         change.change_file(file_id, Some(text));
         host.apply_change(change);
@@ -247,9 +249,11 @@ fn integrated_completion_benchmark() {
     let completion_offset = {
         let _it = stdx::timeit("change");
         let mut text = host.analysis().file_text(file_id).unwrap().to_string();
-        let completion_offset =
-            patch(&mut text, "sel;\ndb.struct_data(self.id)", "self.;\ndb.struct_data(self.id)")
-                + "self.".len();
+        let completion_offset = patch(
+            &mut text,
+            "sel;\ndb.struct_signature(self.id)",
+            "self.;\ndb.struct_signature(self.id)",
+        ) + "self.".len();
         let mut change = ChangeWithProcMacros::default();
         change.change_file(file_id, Some(text));
         host.apply_change(change);
@@ -366,7 +370,7 @@ fn integrated_diagnostics_benchmark() {
     {
         let _it = stdx::timeit("change");
         let mut text = host.analysis().file_text(file_id).unwrap().to_string();
-        patch(&mut text, "db.struct_data(self.id)", "();\ndb.struct_data(self.id)");
+        patch(&mut text, "db.struct_signature(self.id)", "();\ndb.struct_signature(self.id)");
         let mut change = ChangeWithProcMacros::default();
         change.change_file(file_id, Some(text));
         host.apply_change(change);

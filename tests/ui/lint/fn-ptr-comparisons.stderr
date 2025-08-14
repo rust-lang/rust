@@ -1,5 +1,5 @@
 warning: function pointer comparisons do not produce meaningful results since their addresses are not guaranteed to be unique
-  --> $DIR/fn-ptr-comparisons.rs:26:13
+  --> $DIR/fn-ptr-comparisons.rs:25:13
    |
 LL |     let _ = f == a;
    |             ^^^^^^
@@ -15,7 +15,7 @@ LL +     let _ = std::ptr::fn_addr_eq(f, a as fn());
    |
 
 warning: function pointer comparisons do not produce meaningful results since their addresses are not guaranteed to be unique
-  --> $DIR/fn-ptr-comparisons.rs:28:13
+  --> $DIR/fn-ptr-comparisons.rs:27:13
    |
 LL |     let _ = f != a;
    |             ^^^^^^
@@ -30,7 +30,7 @@ LL +     let _ = !std::ptr::fn_addr_eq(f, a as fn());
    |
 
 warning: function pointer comparisons do not produce meaningful results since their addresses are not guaranteed to be unique
-  --> $DIR/fn-ptr-comparisons.rs:30:13
+  --> $DIR/fn-ptr-comparisons.rs:29:13
    |
 LL |     let _ = f == g;
    |             ^^^^^^
@@ -45,7 +45,7 @@ LL +     let _ = std::ptr::fn_addr_eq(f, g);
    |
 
 warning: function pointer comparisons do not produce meaningful results since their addresses are not guaranteed to be unique
-  --> $DIR/fn-ptr-comparisons.rs:32:13
+  --> $DIR/fn-ptr-comparisons.rs:31:13
    |
 LL |     let _ = f == f;
    |             ^^^^^^
@@ -60,7 +60,7 @@ LL +     let _ = std::ptr::fn_addr_eq(f, f);
    |
 
 warning: function pointer comparisons do not produce meaningful results since their addresses are not guaranteed to be unique
-  --> $DIR/fn-ptr-comparisons.rs:34:13
+  --> $DIR/fn-ptr-comparisons.rs:33:13
    |
 LL |     let _ = g == g;
    |             ^^^^^^
@@ -75,7 +75,7 @@ LL +     let _ = std::ptr::fn_addr_eq(g, g);
    |
 
 warning: function pointer comparisons do not produce meaningful results since their addresses are not guaranteed to be unique
-  --> $DIR/fn-ptr-comparisons.rs:36:13
+  --> $DIR/fn-ptr-comparisons.rs:35:13
    |
 LL |     let _ = g == g;
    |             ^^^^^^
@@ -90,7 +90,7 @@ LL +     let _ = std::ptr::fn_addr_eq(g, g);
    |
 
 warning: function pointer comparisons do not produce meaningful results since their addresses are not guaranteed to be unique
-  --> $DIR/fn-ptr-comparisons.rs:38:13
+  --> $DIR/fn-ptr-comparisons.rs:37:13
    |
 LL |     let _ = &g == &g;
    |             ^^^^^^^^
@@ -105,7 +105,7 @@ LL +     let _ = std::ptr::fn_addr_eq(g, g);
    |
 
 warning: function pointer comparisons do not produce meaningful results since their addresses are not guaranteed to be unique
-  --> $DIR/fn-ptr-comparisons.rs:40:13
+  --> $DIR/fn-ptr-comparisons.rs:39:13
    |
 LL |     let _ = a as fn() == g;
    |             ^^^^^^^^^^^^^^
@@ -120,7 +120,7 @@ LL +     let _ = std::ptr::fn_addr_eq(a as fn(), g);
    |
 
 warning: function pointer comparisons do not produce meaningful results since their addresses are not guaranteed to be unique
-  --> $DIR/fn-ptr-comparisons.rs:44:13
+  --> $DIR/fn-ptr-comparisons.rs:43:13
    |
 LL |     let _ = cfn == c;
    |             ^^^^^^^^
@@ -135,7 +135,7 @@ LL +     let _ = std::ptr::fn_addr_eq(cfn, c as extern "C" fn());
    |
 
 warning: function pointer comparisons do not produce meaningful results since their addresses are not guaranteed to be unique
-  --> $DIR/fn-ptr-comparisons.rs:48:13
+  --> $DIR/fn-ptr-comparisons.rs:47:13
    |
 LL |     let _ = argsfn == args;
    |             ^^^^^^^^^^^^^^
@@ -150,7 +150,7 @@ LL +     let _ = std::ptr::fn_addr_eq(argsfn, args as extern "C" fn(i32) -> i32)
    |
 
 warning: function pointer comparisons do not produce meaningful results since their addresses are not guaranteed to be unique
-  --> $DIR/fn-ptr-comparisons.rs:52:13
+  --> $DIR/fn-ptr-comparisons.rs:51:13
    |
 LL |     let _ = t == test;
    |             ^^^^^^^^^
@@ -165,7 +165,7 @@ LL +     let _ = std::ptr::fn_addr_eq(t, test as unsafe extern "C" fn());
    |
 
 warning: function pointer comparisons do not produce meaningful results since their addresses are not guaranteed to be unique
-  --> $DIR/fn-ptr-comparisons.rs:56:13
+  --> $DIR/fn-ptr-comparisons.rs:54:13
    |
 LL |     let _ = a1.f == a2.f;
    |             ^^^^^^^^^^^^

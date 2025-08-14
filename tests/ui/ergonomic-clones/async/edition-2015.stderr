@@ -1,5 +1,5 @@
 error: `async use` blocks are only allowed in Rust 2018 or later
-  --> $DIR/edition-2015.rs:5:5
+  --> $DIR/edition-2015.rs:6:5
    |
 LL |     async use {};
    |     ^^^^^^^^^

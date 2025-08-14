@@ -1,16 +1,16 @@
 error[E0255]: the name `bar` is defined multiple times
   --> $DIR/issue-8640.rs:5:5
    |
-LL |     use baz::bar;
-   |         -------- previous import of the module `bar` here
+LL |     use crate::baz::bar;
+   |         --------------- previous import of the module `bar` here
 LL |     mod bar {}
    |     ^^^^^^^ `bar` redefined here
    |
    = note: `bar` must be defined only once in the type namespace of this module
 help: you can use `as` to change the binding name of the import
    |
-LL |     use baz::bar as other_bar;
-   |                  ++++++++++++
+LL |     use crate::baz::bar as other_bar;
+   |                         ++++++++++++
 
 error: aborting due to 1 previous error
 

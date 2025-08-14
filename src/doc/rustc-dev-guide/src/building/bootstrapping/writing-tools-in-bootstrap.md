@@ -4,7 +4,7 @@ There are three types of tools you can write in bootstrap:
 
 - **`Mode::ToolBootstrap`**
   Use this for tools that don’t need anything from the in-tree compiler and can run with the stage0 `rustc`.
-  The output is placed in the "stage0-bootstrap-tools" directory. This mode is for general-purpose tools built
+  The output is placed in the "bootstrap-tools" directory. This mode is for general-purpose tools built
   entirely with the stage0 compiler, including target libraries and only works for stage 0.
 
 - **`Mode::ToolStd`**

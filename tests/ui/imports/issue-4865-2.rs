@@ -12,7 +12,7 @@ pub mod say {
 }
 
 pub mod hello {
-    use say;
+    use crate::say;
 
     pub fn hello() {
         say::hello();

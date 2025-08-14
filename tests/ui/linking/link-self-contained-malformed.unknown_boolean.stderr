@@ -1,0 +1,2 @@
+error: incorrect value `maybe` for codegen option `link-self-contained` - one of: `y`, `yes`, `on`, `n`, `no`, `off`, or a list of enabled (`+` prefix) and disabled (`-` prefix) components: `crto`, `libc`, `unwind`, `linker`, `sanitizers`, `mingw` was expected
+

@@ -16,10 +16,10 @@ pub fn is_windows() -> bool {
     target().contains("windows")
 }
 
-/// Check if target uses msvc.
+/// Check if target is windows-msvc.
 #[must_use]
-pub fn is_msvc() -> bool {
-    target().contains("msvc")
+pub fn is_windows_msvc() -> bool {
+    target().ends_with("windows-msvc")
 }
 
 /// Check if target is windows-gnu.
@@ -44,6 +44,12 @@ pub fn is_darwin() -> bool {
 #[must_use]
 pub fn is_aix() -> bool {
     target().contains("aix")
+}
+
+/// Check if target is arm64ec.
+#[must_use]
+pub fn is_arm64ec() -> bool {
+    target().starts_with("arm64ec")
 }
 
 /// Get the target OS on Apple operating systems.

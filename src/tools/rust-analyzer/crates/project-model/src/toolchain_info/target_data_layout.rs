@@ -20,7 +20,7 @@ pub fn get(
             })
     };
     let (sysroot, current_dir) = match config {
-        QueryConfig::Cargo(sysroot, cargo_toml) => {
+        QueryConfig::Cargo(sysroot, cargo_toml, _) => {
             let mut cmd = sysroot.tool(Tool::Cargo, cargo_toml.parent(), extra_env);
             cmd.env("RUSTC_BOOTSTRAP", "1");
             cmd.args(["rustc", "-Z", "unstable-options"]).args(RUSTC_ARGS).args([
@@ -66,7 +66,7 @@ mod tests {
         let sysroot = Sysroot::empty();
         let manifest_path =
             ManifestPath::try_from(AbsPathBuf::assert(Utf8PathBuf::from(manifest_path))).unwrap();
-        let cfg = QueryConfig::Cargo(&sysroot, &manifest_path);
+        let cfg = QueryConfig::Cargo(&sysroot, &manifest_path, &None);
         assert!(get(cfg, None, &FxHashMap::default()).is_ok());
     }
 

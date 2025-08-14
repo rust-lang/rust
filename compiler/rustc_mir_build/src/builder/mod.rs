@@ -66,8 +66,7 @@ pub fn build_mir<'tcx>(tcx: TyCtxt<'tcx>, def: LocalDefId) -> Body<'tcx> {
                 }
             };
 
-            // this must run before MIR dump, because
-            // "not all control paths return a value" is reported here.
+            // Checking liveness after building the THIR ensures there were no typeck errors.
             //
             // maybe move the check to a MIR pass?
             tcx.ensure_ok().check_liveness(def);
@@ -451,10 +450,6 @@ fn construct_fn<'tcx>(
     let span = tcx.def_span(fn_def);
     let fn_id = tcx.local_def_id_to_hir_id(fn_def);
 
-    // The representation of thir for `-Zunpretty=thir-tree` relies on
-    // the entry expression being the last element of `thir.exprs`.
-    assert_eq!(expr.as_usize(), thir.exprs.len() - 1);
-
     // Figure out what primary body this item has.
     let body = tcx.hir_body_owned_by(fn_def);
     let span_with_body = tcx.hir_span_with_body(fn_id);
@@ -563,7 +558,7 @@ fn construct_const<'a, 'tcx>(
     // Figure out what primary body this item has.
     let (span, const_ty_span) = match tcx.hir_node(hir_id) {
         Node::Item(hir::Item {
-            kind: hir::ItemKind::Static(_, ty, _, _) | hir::ItemKind::Const(_, ty, _, _),
+            kind: hir::ItemKind::Static(_, _, ty, _) | hir::ItemKind::Const(_, _, ty, _),
             span,
             ..
         })
@@ -1050,11 +1045,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     }
 }
 
-fn parse_float_into_constval<'tcx>(
-    num: Symbol,
-    float_ty: ty::FloatTy,
-    neg: bool,
-) -> Option<ConstValue<'tcx>> {
+fn parse_float_into_constval(num: Symbol, float_ty: ty::FloatTy, neg: bool) -> Option<ConstValue> {
     parse_float_into_scalar(num, float_ty, neg).map(|s| ConstValue::Scalar(s.into()))
 }
 

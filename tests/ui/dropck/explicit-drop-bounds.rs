@@ -31,6 +31,7 @@ where
 {
     fn drop(&mut self) {}
     //[bad1]~^ ERROR the trait bound `T: Copy` is not satisfied
+    //[bad1]~| ERROR the trait bound `T: Copy` is not satisfied
 }
 
 #[cfg(bad2)]
@@ -39,6 +40,7 @@ impl<T> Drop for DropMe<T>
 {
     fn drop(&mut self) {}
     //[bad2]~^ ERROR the trait bound `T: Copy` is not satisfied
+    //[bad2]~| ERROR the trait bound `T: Copy` is not satisfied
 }
 
 fn main() {}

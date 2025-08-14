@@ -4,7 +4,7 @@ error: generic parameters may not be used in const operations
 LL |     bar::<{ [1; N] }>();
    |                 ^ cannot perform const operation using `N`
    |
-   = help: const parameters may only be used as standalone arguments, i.e. `N`
+   = help: const parameters may only be used as standalone arguments here, i.e. `N`
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
 
 error: generic parameters may not be used in const operations
@@ -13,7 +13,7 @@ error: generic parameters may not be used in const operations
 LL |     bar::<{ [1; { N + 1 }] }>();
    |                   ^ cannot perform const operation using `N`
    |
-   = help: const parameters may only be used as standalone arguments, i.e. `N`
+   = help: const parameters may only be used as standalone arguments here, i.e. `N`
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
 
 error: aborting due to 2 previous errors

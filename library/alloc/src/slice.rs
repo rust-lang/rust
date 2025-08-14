@@ -16,10 +16,6 @@ use core::cmp::Ordering::{self, Less};
 use core::mem::MaybeUninit;
 #[cfg(not(no_global_oom_handling))]
 use core::ptr;
-#[unstable(feature = "array_chunks", issue = "74985")]
-pub use core::slice::ArrayChunks;
-#[unstable(feature = "array_chunks", issue = "74985")]
-pub use core::slice::ArrayChunksMut;
 #[unstable(feature = "array_windows", issue = "75027")]
 pub use core::slice::ArrayWindows;
 #[stable(feature = "inherent_ascii_escape", since = "1.60.0")]
@@ -69,7 +65,7 @@ use crate::boxed::Box;
 use crate::vec::Vec;
 
 impl<T> [T] {
-    /// Sorts the slice, preserving initial order of equal elements.
+    /// Sorts the slice in ascending order, preserving initial order of equal elements.
     ///
     /// This sort is stable (i.e., does not reorder equal elements) and *O*(*n* \* log(*n*))
     /// worst-case.
@@ -137,7 +133,8 @@ impl<T> [T] {
         stable_sort(self, T::lt);
     }
 
-    /// Sorts the slice with a comparison function, preserving initial order of equal elements.
+    /// Sorts the slice in ascending order with a comparison function, preserving initial order of
+    /// equal elements.
     ///
     /// This sort is stable (i.e., does not reorder equal elements) and *O*(*n* \* log(*n*))
     /// worst-case.
@@ -197,7 +194,8 @@ impl<T> [T] {
         stable_sort(self, |a, b| compare(a, b) == Less);
     }
 
-    /// Sorts the slice with a key extraction function, preserving initial order of equal elements.
+    /// Sorts the slice in ascending order with a key extraction function, preserving initial order
+    /// of equal elements.
     ///
     /// This sort is stable (i.e., does not reorder equal elements) and *O*(*m* \* *n* \* log(*n*))
     /// worst-case, where the key function is *O*(*m*).
@@ -252,7 +250,8 @@ impl<T> [T] {
         stable_sort(self, |a, b| f(a).lt(&f(b)));
     }
 
-    /// Sorts the slice with a key extraction function, preserving initial order of equal elements.
+    /// Sorts the slice in ascending order with a key extraction function, preserving initial order
+    /// of equal elements.
     ///
     /// This sort is stable (i.e., does not reorder equal elements) and *O*(*m* \* *n* + *n* \*
     /// log(*n*)) worst-case, where the key function is *O*(*m*).
@@ -489,8 +488,6 @@ impl<T> [T] {
     /// This function will panic if the capacity would overflow.
     ///
     /// # Examples
-    ///
-    /// Basic usage:
     ///
     /// ```
     /// assert_eq!([1, 2].repeat(3), vec![1, 2, 1, 2, 1, 2]);

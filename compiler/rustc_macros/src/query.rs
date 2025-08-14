@@ -51,6 +51,7 @@ impl Parse for Query {
         let key = Pat::parse_single(&arg_content)?;
         arg_content.parse::<Token![:]>()?;
         let arg = arg_content.parse()?;
+        let _ = arg_content.parse::<Option<Token![,]>>()?;
         let result = input.parse()?;
 
         // Parse the query modifiers
@@ -267,6 +268,18 @@ fn add_query_desc_cached_impl(
 ) {
     let Query { name, key, modifiers, .. } = &query;
 
+    // This dead code exists to instruct rust-analyzer about the link between the `rustc_queries`
+    // query names and the corresponding produced provider. The issue is that by nature of this
+    // macro producing a higher order macro that has all its token in the macro declaration we lose
+    // any meaningful spans, resulting in rust-analyzer being unable to make the connection between
+    // the query name and the corresponding providers field. The trick to fix this is to have
+    // `rustc_queries` emit a field access with the given name's span which allows it to successfully
+    // show references / go to definition to the corresponding provider assignment which is usually
+    // the more interesting place.
+    let ra_hint = quote! {
+        let crate::query::Providers { #name: _, .. };
+    };
+
     // Find out if we should cache the query on disk
     let cache = if let Some((args, expr)) = modifiers.cache.as_ref() {
         let tcx = args.as_ref().map(|t| quote! { #t }).unwrap_or_else(|| quote! { _ });
@@ -277,6 +290,7 @@ fn add_query_desc_cached_impl(
             #[allow(unused_variables, unused_braces, rustc::pass_by_value)]
             #[inline]
             pub fn #name<'tcx>(#tcx: TyCtxt<'tcx>, #key: &crate::query::queries::#name::Key<'tcx>) -> bool {
+                #ra_hint
                 #expr
             }
         }
@@ -286,6 +300,7 @@ fn add_query_desc_cached_impl(
             #[allow(rustc::pass_by_value)]
             #[inline]
             pub fn #name<'tcx>(_: TyCtxt<'tcx>, _: &crate::query::queries::#name::Key<'tcx>) -> bool {
+                #ra_hint
                 false
             }
         }
@@ -398,7 +413,6 @@ pub(super) fn rustc_queries(input: TokenStream) -> TokenStream {
                 "Query {name} cannot be both `feedable` and `eval_always`."
             );
             feedable_queries.extend(quote! {
-                #(#doc_comments)*
                 [#attribute_stream] fn #name(#arg) #result,
             });
         }

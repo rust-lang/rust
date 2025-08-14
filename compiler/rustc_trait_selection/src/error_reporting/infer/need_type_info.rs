@@ -215,7 +215,7 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for ClosureEraser<'a, 'tcx> {
                                 // `_` because then we'd end up with `Vec<_, _>`, instead of
                                 // `Vec<_>`.
                                 arg
-                            } else if let GenericArgKind::Type(_) = arg.unpack() {
+                            } else if let GenericArgKind::Type(_) = arg.kind() {
                                 // We don't replace lifetime or const params, only type params.
                                 self.new_infer().into()
                             } else {
@@ -244,7 +244,7 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for ClosureEraser<'a, 'tcx> {
 }
 
 fn fmt_printer<'a, 'tcx>(infcx: &'a InferCtxt<'tcx>, ns: Namespace) -> FmtPrinter<'a, 'tcx> {
-    let mut printer = FmtPrinter::new(infcx.tcx, ns);
+    let mut p = FmtPrinter::new(infcx.tcx, ns);
     let ty_getter = move |ty_vid| {
         if infcx.probe_ty_var(ty_vid).is_ok() {
             warn!("resolved ty var in error message");
@@ -270,11 +270,11 @@ fn fmt_printer<'a, 'tcx>(infcx: &'a InferCtxt<'tcx>, ns: Namespace) -> FmtPrinte
             None
         }
     };
-    printer.ty_infer_name_resolver = Some(Box::new(ty_getter));
+    p.ty_infer_name_resolver = Some(Box::new(ty_getter));
     let const_getter =
         move |ct_vid| Some(infcx.tcx.item_name(infcx.const_var_origin(ct_vid)?.param_def_id?));
-    printer.const_infer_name_resolver = Some(Box::new(const_getter));
-    printer
+    p.const_infer_name_resolver = Some(Box::new(const_getter));
+    p
 }
 
 fn ty_to_string<'tcx>(
@@ -282,7 +282,7 @@ fn ty_to_string<'tcx>(
     ty: Ty<'tcx>,
     called_method_def_id: Option<DefId>,
 ) -> String {
-    let mut printer = fmt_printer(infcx, Namespace::TypeNS);
+    let mut p = fmt_printer(infcx, Namespace::TypeNS);
     let ty = infcx.resolve_vars_if_possible(ty);
     // We use `fn` ptr syntax for closures, but this only works when the closure does not capture
     // anything. We also remove all type parameters that are fully known to the type system.
@@ -292,8 +292,8 @@ fn ty_to_string<'tcx>(
         // We don't want the regular output for `fn`s because it includes its path in
         // invalid pseudo-syntax, we want the `fn`-pointer output instead.
         (ty::FnDef(..), _) => {
-            ty.fn_sig(infcx.tcx).print(&mut printer).unwrap();
-            printer.into_buffer()
+            ty.fn_sig(infcx.tcx).print(&mut p).unwrap();
+            p.into_buffer()
         }
         (_, Some(def_id))
             if ty.is_ty_or_numeric_infer()
@@ -303,8 +303,8 @@ fn ty_to_string<'tcx>(
         }
         _ if ty.is_ty_or_numeric_infer() => "/* Type */".to_string(),
         _ => {
-            ty.print(&mut printer).unwrap();
-            printer.into_buffer()
+            ty.print(&mut p).unwrap();
+            p.into_buffer()
         }
     }
 }
@@ -347,7 +347,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         highlight: ty::print::RegionHighlightMode<'tcx>,
     ) -> InferenceDiagnosticsData {
         let tcx = self.tcx;
-        match term.unpack() {
+        match term.kind() {
             TermKind::Ty(ty) => {
                 if let ty::Infer(ty::TyVar(ty_vid)) = *ty.kind() {
                     let var_origin = self.infcx.type_var_origin(ty_vid);
@@ -436,8 +436,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 infer_subdiags,
                 multi_suggestions,
                 bad_label,
-                was_written: false,
-                path: Default::default(),
             }),
             TypeAnnotationNeeded::E0283 => self.dcx().create_err(AmbiguousImpl {
                 span,
@@ -447,8 +445,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 infer_subdiags,
                 multi_suggestions,
                 bad_label,
-                was_written: false,
-                path: Default::default(),
             }),
             TypeAnnotationNeeded::E0284 => self.dcx().create_err(AmbiguousReturn {
                 span,
@@ -458,8 +454,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 infer_subdiags,
                 multi_suggestions,
                 bad_label,
-                was_written: false,
-                path: Default::default(),
             }),
         }
     }
@@ -496,7 +490,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             return self.bad_inference_failure_err(failure_span, arg_data, error_code);
         };
 
-        let (source_kind, name, path) = kind.ty_localized_msg(self);
+        let (source_kind, name, long_ty_path) = kind.ty_localized_msg(self);
         let failure_span = if should_label_span && !failure_span.overlaps(span) {
             Some(failure_span)
         } else {
@@ -561,21 +555,20 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 {
                     "Vec<_>".to_string()
                 } else {
-                    let mut printer = fmt_printer(self, Namespace::TypeNS);
-                    printer
-                        .comma_sep(generic_args.iter().copied().map(|arg| {
-                            if arg.is_suggestable(self.tcx, true) {
-                                return arg;
-                            }
+                    let mut p = fmt_printer(self, Namespace::TypeNS);
+                    p.comma_sep(generic_args.iter().copied().map(|arg| {
+                        if arg.is_suggestable(self.tcx, true) {
+                            return arg;
+                        }
 
-                            match arg.unpack() {
-                                GenericArgKind::Lifetime(_) => bug!("unexpected lifetime"),
-                                GenericArgKind::Type(_) => self.next_ty_var(DUMMY_SP).into(),
-                                GenericArgKind::Const(_) => self.next_const_var(DUMMY_SP).into(),
-                            }
-                        }))
-                        .unwrap();
-                    printer.into_buffer()
+                        match arg.kind() {
+                            GenericArgKind::Lifetime(_) => bug!("unexpected lifetime"),
+                            GenericArgKind::Type(_) => self.next_ty_var(DUMMY_SP).into(),
+                            GenericArgKind::Const(_) => self.next_const_var(DUMMY_SP).into(),
+                        }
+                    }))
+                    .unwrap();
+                    p.into_buffer()
                 };
 
                 if !have_turbofish {
@@ -589,9 +582,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             InferSourceKind::FullyQualifiedMethodCall { receiver, successor, args, def_id } => {
                 let placeholder = Some(self.next_ty_var(DUMMY_SP));
                 if let Some(args) = args.make_suggestable(self.infcx.tcx, true, placeholder) {
-                    let mut printer = fmt_printer(self, Namespace::ValueNS);
-                    printer.print_def_path(def_id, args).unwrap();
-                    let def_path = printer.into_buffer();
+                    let mut p = fmt_printer(self, Namespace::ValueNS);
+                    p.print_def_path(def_id, args).unwrap();
+                    let def_path = p.into_buffer();
 
                     // We only care about whether we have to add `&` or `&mut ` for now.
                     // This is the case if the last adjustment is a borrow and the
@@ -629,7 +622,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 }
             }
         }
-        match error_code {
+        let mut err = match error_code {
             TypeAnnotationNeeded::E0282 => self.dcx().create_err(AnnotationRequired {
                 span,
                 source_kind,
@@ -638,8 +631,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 infer_subdiags,
                 multi_suggestions,
                 bad_label: None,
-                was_written: path.is_some(),
-                path: path.unwrap_or_default(),
             }),
             TypeAnnotationNeeded::E0283 => self.dcx().create_err(AmbiguousImpl {
                 span,
@@ -649,8 +640,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 infer_subdiags,
                 multi_suggestions,
                 bad_label: None,
-                was_written: path.is_some(),
-                path: path.unwrap_or_default(),
             }),
             TypeAnnotationNeeded::E0284 => self.dcx().create_err(AmbiguousReturn {
                 span,
@@ -660,10 +649,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 infer_subdiags,
                 multi_suggestions,
                 bad_label: None,
-                was_written: path.is_some(),
-                path: path.unwrap_or_default(),
             }),
-        }
+        };
+        *err.long_ty_path() = long_ty_path;
+        err
     }
 }
 
@@ -727,22 +716,24 @@ impl<'tcx> InferSource<'tcx> {
 
 impl<'tcx> InferSourceKind<'tcx> {
     fn ty_localized_msg(&self, infcx: &InferCtxt<'tcx>) -> (&'static str, String, Option<PathBuf>) {
-        let mut path = None;
+        let mut long_ty_path = None;
         match *self {
             InferSourceKind::LetBinding { ty, .. }
             | InferSourceKind::ClosureArg { ty, .. }
             | InferSourceKind::ClosureReturn { ty, .. } => {
                 if ty.is_closure() {
-                    ("closure", closure_as_fn_str(infcx, ty), path)
+                    ("closure", closure_as_fn_str(infcx, ty), long_ty_path)
                 } else if !ty.is_ty_or_numeric_infer() {
-                    ("normal", infcx.tcx.short_string(ty, &mut path), path)
+                    ("normal", infcx.tcx.short_string(ty, &mut long_ty_path), long_ty_path)
                 } else {
-                    ("other", String::new(), path)
+                    ("other", String::new(), long_ty_path)
                 }
             }
             // FIXME: We should be able to add some additional info here.
             InferSourceKind::GenericArg { .. }
-            | InferSourceKind::FullyQualifiedMethodCall { .. } => ("other", String::new(), path),
+            | InferSourceKind::FullyQualifiedMethodCall { .. } => {
+                ("other", String::new(), long_ty_path)
+            }
         }
     }
 }
@@ -803,7 +794,7 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
         }
         impl<'tcx> CostCtxt<'tcx> {
             fn arg_cost(self, arg: GenericArg<'tcx>) -> usize {
-                match arg.unpack() {
+                match arg.kind() {
                     GenericArgKind::Lifetime(_) => 0, // erased
                     GenericArgKind::Type(ty) => self.ty_cost(ty),
                     GenericArgKind::Const(_) => 3, // some non-zero value
@@ -898,7 +889,7 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
             return true;
         }
 
-        match (arg.unpack(), self.target.unpack()) {
+        match (arg.kind(), self.target.kind()) {
             (GenericArgKind::Type(inner_ty), TermKind::Ty(target_ty)) => {
                 use ty::{Infer, TyVar};
                 match (inner_ty.kind(), target_ty.kind()) {
@@ -909,11 +900,11 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
                 }
             }
             (GenericArgKind::Const(inner_ct), TermKind::Const(target_ct)) => {
-                use ty::InferConst::*;
                 match (inner_ct.kind(), target_ct.kind()) {
-                    (ty::ConstKind::Infer(Var(a_vid)), ty::ConstKind::Infer(Var(b_vid))) => {
-                        self.tecx.root_const_var(a_vid) == self.tecx.root_const_var(b_vid)
-                    }
+                    (
+                        ty::ConstKind::Infer(ty::InferConst::Var(a_vid)),
+                        ty::ConstKind::Infer(ty::InferConst::Var(b_vid)),
+                    ) => self.tecx.root_const_var(a_vid) == self.tecx.root_const_var(b_vid),
                     _ => false,
                 }
             }
@@ -929,7 +920,7 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
             if self.generic_arg_is_target(inner) {
                 return true;
             }
-            match inner.unpack() {
+            match inner.kind() {
                 GenericArgKind::Lifetime(_) => {}
                 GenericArgKind::Type(ty) => {
                     if matches!(
@@ -1303,7 +1294,7 @@ impl<'a, 'tcx> Visitor<'tcx> for FindInferSourceVisitor<'a, 'tcx> {
             && let Some(args) = self.node_args_opt(expr.hir_id)
             && args.iter().any(|arg| self.generic_arg_contains_target(arg))
             && let Some(def_id) = self.typeck_results.type_dependent_def_id(expr.hir_id)
-            && self.tecx.tcx.trait_of_item(def_id).is_some()
+            && self.tecx.tcx.trait_of_assoc(def_id).is_some()
             && !has_impl_trait(def_id)
             // FIXME(fn_delegation): In delegation item argument spans are equal to last path
             // segment. This leads to ICE's when emitting `multipart_suggestion`.

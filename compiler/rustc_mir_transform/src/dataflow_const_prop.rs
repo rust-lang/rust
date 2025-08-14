@@ -16,7 +16,6 @@ use rustc_middle::bug;
 use rustc_middle::mir::interpret::{InterpResult, Scalar};
 use rustc_middle::mir::visit::{MutVisitor, PlaceContext, Visitor};
 use rustc_middle::mir::*;
-use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_mir_dataflow::fmt::DebugWithContext;
 use rustc_mir_dataflow::lattice::{FlatSet, HasBottom};
@@ -616,7 +615,7 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
             place,
             operand,
             &mut |elem, op| match elem {
-                TrackElem::Field(idx) => self.ecx.project_field(op, idx.as_usize()).discard_err(),
+                TrackElem::Field(idx) => self.ecx.project_field(op, idx).discard_err(),
                 TrackElem::Variant(idx) => self.ecx.project_downcast(op, idx).discard_err(),
                 TrackElem::Discriminant => {
                     let variant = self.ecx.read_discriminant(op).discard_err()?;
@@ -890,7 +889,8 @@ fn try_write_constant<'tcx>(
 
         ty::Tuple(elem_tys) => {
             for (i, elem) in elem_tys.iter().enumerate() {
-                let Some(field) = map.apply(place, TrackElem::Field(FieldIdx::from_usize(i))) else {
+                let i = FieldIdx::from_usize(i);
+                let Some(field) = map.apply(place, TrackElem::Field(i)) else {
                     throw_machine_stop_str!("missing field in tuple")
                 };
                 let field_dest = ecx.project_field(dest, i)?;
@@ -928,7 +928,7 @@ fn try_write_constant<'tcx>(
                 let Some(field) = map.apply(variant_place, TrackElem::Field(i)) else {
                     throw_machine_stop_str!("missing field in ADT")
                 };
-                let field_dest = ecx.project_field(&variant_dest, i.as_usize())?;
+                let field_dest = ecx.project_field(&variant_dest, i)?;
                 try_write_constant(ecx, &field_dest, field, ty, state, map)?;
             }
             ecx.write_discriminant(variant_idx, dest)?;

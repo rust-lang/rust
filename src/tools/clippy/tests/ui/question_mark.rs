@@ -539,3 +539,25 @@ fn issue_14615(a: MutexGuard<Option<u32>>) -> Option<String> {
     //~^^^ question_mark
     Some(format!("{a}"))
 }
+
+fn const_in_pattern(x: Option<(i32, i32)>) -> Option<()> {
+    const N: i32 = 0;
+
+    let Some((x, N)) = x else {
+        return None;
+    };
+
+    None
+}
+
+fn issue_13642(x: Option<i32>) -> Option<()> {
+    let Some(x) = x else {
+        #[cfg(false)]
+        panic!();
+
+        #[cfg(true)]
+        return None;
+    };
+
+    None
+}

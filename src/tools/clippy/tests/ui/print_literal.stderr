@@ -229,5 +229,53 @@ LL +         bar
 LL ~ "
    |
 
-error: aborting due to 18 previous errors
+error: literal with an empty format string
+  --> tests/ui/print_literal.rs:100:52
+   |
+LL |     println!("Hello {3} is {0:2$.1$}", 0.01, 2, 3, "x");
+   |                                                    ^^^
+   |
+help: try
+   |
+LL -     println!("Hello {3} is {0:2$.1$}", 0.01, 2, 3, "x");
+LL +     println!("Hello x is {0:2$.1$}", 0.01, 2, 3);
+   |
+
+error: literal with an empty format string
+  --> tests/ui/print_literal.rs:102:49
+   |
+LL |     println!("Hello {2} is {0:3$.1$}", 0.01, 2, "x", 3);
+   |                                                 ^^^
+   |
+help: try
+   |
+LL -     println!("Hello {2} is {0:3$.1$}", 0.01, 2, "x", 3);
+LL +     println!("Hello x is {0:2$.1$}", 0.01, 2, 3);
+   |
+
+error: literal with an empty format string
+  --> tests/ui/print_literal.rs:104:46
+   |
+LL |     println!("Hello {1} is {0:3$.2$}", 0.01, "x", 2, 3);
+   |                                              ^^^
+   |
+help: try
+   |
+LL -     println!("Hello {1} is {0:3$.2$}", 0.01, "x", 2, 3);
+LL +     println!("Hello x is {0:2$.1$}", 0.01, 2, 3);
+   |
+
+error: literal with an empty format string
+  --> tests/ui/print_literal.rs:106:40
+   |
+LL |     println!("Hello {0} is {1:3$.2$}", "x", 0.01, 2, 3);
+   |                                        ^^^
+   |
+help: try
+   |
+LL -     println!("Hello {0} is {1:3$.2$}", "x", 0.01, 2, 3);
+LL +     println!("Hello x is {0:2$.1$}", 0.01, 2, 3);
+   |
+
+error: aborting due to 22 previous errors
 

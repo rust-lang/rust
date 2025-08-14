@@ -1,4 +1,4 @@
-error: this type has already been used as a bound predicate
+error: type `T` has already been used as a bound predicate
   --> tests/ui/type_repetition_in_bounds.rs:14:5
    |
 LL |     T: Clone,
@@ -11,7 +11,7 @@ note: the lint level is defined here
 LL | #![deny(clippy::type_repetition_in_bounds)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: this type has already been used as a bound predicate
+error: type `Self` has already been used as a bound predicate
   --> tests/ui/type_repetition_in_bounds.rs:32:5
    |
 LL |     Self: Copy + Default + Ord,
@@ -19,7 +19,7 @@ LL |     Self: Copy + Default + Ord,
    |
    = help: consider combining the bounds: `Self: Clone + Copy + Default + Ord`
 
-error: this type has already been used as a bound predicate
+error: type `T` has already been used as a bound predicate
   --> tests/ui/type_repetition_in_bounds.rs:107:5
    |
 LL |     T: Clone,
@@ -27,7 +27,7 @@ LL |     T: Clone,
    |
    = help: consider combining the bounds: `T: ?Sized + Clone`
 
-error: this type has already been used as a bound predicate
+error: type `T` has already been used as a bound predicate
   --> tests/ui/type_repetition_in_bounds.rs:113:5
    |
 LL |     T: ?Sized,
@@ -35,13 +35,29 @@ LL |     T: ?Sized,
    |
    = help: consider combining the bounds: `T: Clone + ?Sized`
 
-error: this type has already been used as a bound predicate
+error: type `T` has already been used as a bound predicate
   --> tests/ui/type_repetition_in_bounds.rs:139:9
    |
 LL |         T: Trait<Option<usize>, Box<[String]>, bool> + 'static,
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: consider combining the bounds: `T: ?Sized + Trait<Option<usize>, Box<[String]>, bool>`
+   = help: consider combining the bounds: `T: ?Sized + Trait<Option<usize>, Box<[String]>, bool> + 'static`
 
-error: aborting due to 5 previous errors
+error: type `K` has already been used as a bound predicate
+  --> tests/ui/type_repetition_in_bounds.rs:148:5
+   |
+LL |     K: Clone,
+   |     ^^^^^^^^
+   |
+   = help: consider combining the bounds: `K: 'a + Clone`
+
+error: type `Vec<T>` has already been used as a bound predicate
+  --> tests/ui/type_repetition_in_bounds.rs:157:5
+   |
+LL |     Vec<T>: Clone,
+   |     ^^^^^^^^^^^^^
+   |
+   = help: consider combining the bounds: `Vec<T>: Clone + Clone`
+
+error: aborting due to 7 previous errors
 

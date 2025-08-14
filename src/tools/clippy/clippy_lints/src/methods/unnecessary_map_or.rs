@@ -62,7 +62,8 @@ pub(super) fn check<'a>(
 
     let ext_def_span = def.span.until(map.span);
 
-    let (sugg, method, applicability) = if let ExprKind::Closure(map_closure) = map.kind
+    let (sugg, method, applicability) = if cx.typeck_results().expr_adjustments(recv).is_empty()
+            && let ExprKind::Closure(map_closure) = map.kind
             && let closure_body = cx.tcx.hir_body(map_closure.body)
             && let closure_body_value = closure_body.value.peel_blocks()
             && let ExprKind::Binary(op, l, r) = closure_body_value.kind
@@ -108,10 +109,16 @@ pub(super) fn check<'a>(
         );
 
         let sugg = if let Some(parent_expr) = get_parent_expr(cx, expr) {
-            match parent_expr.kind {
-                ExprKind::Binary(..) | ExprKind::Unary(..) | ExprKind::Cast(..) => binop.maybe_paren(),
-                ExprKind::MethodCall(_, receiver, _, _) if receiver.hir_id == expr.hir_id => binop.maybe_paren(),
-                _ => binop,
+            if parent_expr.span.eq_ctxt(expr.span) {
+                match parent_expr.kind {
+                    ExprKind::Binary(..) | ExprKind::Unary(..) | ExprKind::Cast(..) => binop.maybe_paren(),
+                    ExprKind::MethodCall(_, receiver, _, _) if receiver.hir_id == expr.hir_id => binop.maybe_paren(),
+                    _ => binop,
+                }
+            } else {
+                // if our parent expr is created by a macro, then it should be the one taking care of
+                // parenthesising us if necessary
+                binop
             }
         } else {
             binop

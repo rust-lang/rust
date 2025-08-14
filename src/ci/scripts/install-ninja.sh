@@ -12,7 +12,7 @@ if isWindows; then
     7z x -oninja ninja.zip
     rm ninja.zip
     ciCommandSetEnv "RUST_CONFIGURE_ARGS" "${RUST_CONFIGURE_ARGS} --enable-ninja"
-    ciCommandAddPath "$(pwd)/ninja"
+    ciCommandAddPath "$(cygpath -m "$(pwd)/ninja")"
 elif isMacOS; then
     brew install ninja
 fi

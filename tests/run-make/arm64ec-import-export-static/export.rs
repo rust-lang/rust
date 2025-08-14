@@ -5,8 +5,12 @@
 #![no_std]
 
 // This is needed because of #![no_core]:
+#[lang = "pointee_sized"]
+pub trait PointeeSized {}
+#[lang = "meta_sized"]
+pub trait MetaSized: PointeeSized {}
 #[lang = "sized"]
-trait Sized {}
+pub trait Sized: MetaSized {}
 #[lang = "sync"]
 trait Sync {}
 impl Sync for i32 {}

@@ -42,7 +42,9 @@ pub fn main_inner(profile: Profile) {
         .expect("failed to get absolute path of `gcc-path`")
         .display()
         .to_string();
-    env::set_var("LD_LIBRARY_PATH", gcc_path);
+    unsafe {
+        env::set_var("LD_LIBRARY_PATH", gcc_path);
+    }
 
     fn rust_filter(path: &Path) -> bool {
         path.is_file() && path.extension().expect("extension").to_str().expect("to_str") == "rs"
@@ -55,10 +57,10 @@ pub fn main_inner(profile: Profile) {
 
     #[cfg(not(feature = "master"))]
     fn filter(filename: &Path) -> bool {
-        if let Some(filename) = filename.to_str() {
-            if filename.ends_with("gep.rs") {
-                return false;
-            }
+        if let Some(filename) = filename.to_str()
+            && filename.ends_with("gep.rs")
+        {
+            return false;
         }
         rust_filter(filename)
     }
@@ -67,15 +69,14 @@ pub fn main_inner(profile: Profile) {
         .test_dir("tests/run")
         .test_path_filter(filter)
         .test_extract(|path| {
-            let lines = std::fs::read_to_string(path)
+            std::fs::read_to_string(path)
                 .expect("read file")
                 .lines()
                 .skip_while(|l| !l.starts_with("//"))
                 .take_while(|l| l.starts_with("//"))
                 .map(|l| &l[2..])
                 .collect::<Vec<_>>()
-                .join("\n");
-            lines
+                .join("\n")
         })
         .test_cmds(move |path| {
             // Test command 1: Compile `x.rs` into `tempdir/x`.

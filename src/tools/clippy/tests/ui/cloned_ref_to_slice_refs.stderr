@@ -1,0 +1,23 @@
+error: this call to `clone` can be replaced with `std::slice::from_ref`
+  --> tests/ui/cloned_ref_to_slice_refs.rs:10:17
+   |
+LL |         let _ = &[data_ref.clone()];
+   |                 ^^^^^^^^^^^^^^^^^^^ help: try: `std::slice::from_ref(data_ref)`
+   |
+   = note: `-D clippy::cloned-ref-to-slice-refs` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::cloned_ref_to_slice_refs)]`
+
+error: this call to `clone` can be replaced with `std::slice::from_ref`
+  --> tests/ui/cloned_ref_to_slice_refs.rs:14:17
+   |
+LL |         let _ = &[Data.clone()];
+   |                 ^^^^^^^^^^^^^^^ help: try: `std::slice::from_ref(&Data)`
+
+error: this call to `clone` can be replaced with `std::slice::from_ref`
+  --> tests/ui/cloned_ref_to_slice_refs.rs:21:17
+   |
+LL |         let _ = &[Point(0, 0).clone()];
+   |                 ^^^^^^^^^^^^^^^^^^^^^^ help: try: `std::slice::from_ref(&Point(0, 0))`
+
+error: aborting due to 3 previous errors
+

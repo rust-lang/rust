@@ -42,7 +42,6 @@ use hir_def::{
 use hir_expand::name::Name;
 use la_arena::{Arena, ArenaMap};
 use rustc_hash::FxHashSet;
-use rustc_pattern_analysis::Captures;
 use stdx::{impl_from, never};
 use triomphe::{Arc, ThinArc};
 
@@ -151,10 +150,10 @@ impl LifetimeElisionKind {
 }
 
 #[derive(Debug)]
-pub struct TyLoweringContext<'a> {
-    pub db: &'a dyn HirDatabase,
-    resolver: &'a Resolver,
-    store: &'a ExpressionStore,
+pub struct TyLoweringContext<'db> {
+    pub db: &'db dyn HirDatabase,
+    resolver: &'db Resolver<'db>,
+    store: &'db ExpressionStore,
     def: GenericDefId,
     generics: OnceCell<Generics>,
     in_binders: DebruijnIndex,
@@ -170,11 +169,11 @@ pub struct TyLoweringContext<'a> {
     lifetime_elision: LifetimeElisionKind,
 }
 
-impl<'a> TyLoweringContext<'a> {
+impl<'db> TyLoweringContext<'db> {
     pub fn new(
-        db: &'a dyn HirDatabase,
-        resolver: &'a Resolver,
-        store: &'a ExpressionStore,
+        db: &'db dyn HirDatabase,
+        resolver: &'db Resolver<'db>,
+        store: &'db ExpressionStore,
         def: GenericDefId,
         lifetime_elision: LifetimeElisionKind,
     ) -> Self {
@@ -582,11 +581,33 @@ impl<'a> TyLoweringContext<'a> {
         match bound {
             &TypeBound::Path(path, TraitBoundModifier::None) | &TypeBound::ForLifetime(_, path) => {
                 // FIXME Don't silently drop the hrtb lifetimes here
-                if let Some((trait_ref, ctx)) = self.lower_trait_ref_from_path(path, self_ty) {
-                    if !ignore_bindings {
-                        assoc_bounds = ctx.assoc_type_bindings_from_type_bound(trait_ref.clone());
+                if let Some((trait_ref, mut ctx)) =
+                    self.lower_trait_ref_from_path(path, self_ty.clone())
+                {
+                    // FIXME(sized-hierarchy): Remove this bound modifications once we have implemented
+                    // sized-hierarchy correctly.
+                    let meta_sized = LangItem::MetaSized
+                        .resolve_trait(ctx.ty_ctx().db, ctx.ty_ctx().resolver.krate());
+                    let pointee_sized = LangItem::PointeeSized
+                        .resolve_trait(ctx.ty_ctx().db, ctx.ty_ctx().resolver.krate());
+                    let destruct = LangItem::Destruct
+                        .resolve_trait(ctx.ty_ctx().db, ctx.ty_ctx().resolver.krate());
+                    let hir_trait_id = trait_ref.hir_trait_id();
+                    if meta_sized.is_some_and(|it| it == hir_trait_id)
+                        || destruct.is_some_and(|it| it == hir_trait_id)
+                    {
+                        // Ignore this bound
+                    } else if pointee_sized.is_some_and(|it| it == hir_trait_id) {
+                        // Regard this as `?Sized` bound
+                        ctx.ty_ctx().unsized_types.insert(self_ty);
+                    } else {
+                        if !ignore_bindings {
+                            assoc_bounds =
+                                ctx.assoc_type_bindings_from_type_bound(trait_ref.clone());
+                        }
+                        clause =
+                            Some(crate::wrap_empty_binders(WhereClause::Implemented(trait_ref)));
                     }
-                    clause = Some(crate::wrap_empty_binders(WhereClause::Implemented(trait_ref)));
                 }
             }
             &TypeBound::Path(path, TraitBoundModifier::Maybe) => {
@@ -712,7 +733,7 @@ impl<'a> TyLoweringContext<'a> {
                             .unwrap_or(it),
                         None => it,
                     },
-                    None => static_lifetime(),
+                    None => error_lifetime(),
                 },
             })
             .intern(Interner)
@@ -806,13 +827,13 @@ fn named_associated_type_shorthand_candidates<R>(
 ) -> Option<R> {
     let mut search = |t| {
         all_super_trait_refs(db, t, |t| {
-            let data = db.trait_items(t.hir_trait_id());
+            let data = t.hir_trait_id().trait_items(db);
 
             for (name, assoc_id) in &data.items {
-                if let AssocItemId::TypeAliasId(alias) = assoc_id {
-                    if let Some(result) = cb(name, &t, *alias) {
-                        return Some(result);
-                    }
+                if let AssocItemId::TypeAliasId(alias) = assoc_id
+                    && let Some(result) = cb(name, &t, *alias)
+                {
+                    return Some(result);
                 }
             }
             None
@@ -884,7 +905,12 @@ pub(crate) fn field_types_with_diagnostics_query(
     db: &dyn HirDatabase,
     variant_id: VariantId,
 ) -> (Arc<ArenaMap<LocalFieldId, Binders<Ty>>>, Diagnostics) {
-    let var_data = db.variant_fields(variant_id);
+    let var_data = variant_id.fields(db);
+    let fields = var_data.fields();
+    if fields.is_empty() {
+        return (Arc::new(ArenaMap::default()), None);
+    }
+
     let (resolver, def): (_, GenericDefId) = match variant_id {
         VariantId::StructId(it) => (it.resolver(db), it.into()),
         VariantId::UnionId(it) => (it.resolver(db), it.into()),
@@ -900,7 +926,7 @@ pub(crate) fn field_types_with_diagnostics_query(
         LifetimeElisionKind::AnonymousReportError,
     )
     .with_type_param_mode(ParamLoweringMode::Variable);
-    for (field_id, field_data) in var_data.fields().iter() {
+    for (field_id, field_data) in fields.iter() {
         res.insert(field_id, make_binders(db, &generics, ctx.lower_ty(field_data.type_ref)));
     }
     (Arc::new(res), create_diagnostics(ctx.diagnostics))
@@ -921,6 +947,10 @@ pub(crate) fn generic_predicates_for_param_query(
     assoc_name: Option<Name>,
 ) -> GenericPredicates {
     let generics = generics(db, def);
+    if generics.has_no_predicates() && generics.is_empty() {
+        return GenericPredicates(None);
+    }
+
     let resolver = def.resolver(db);
     let mut ctx = TyLoweringContext::new(
         db,
@@ -937,8 +967,32 @@ pub(crate) fn generic_predicates_for_param_query(
         | WherePredicate::TypeBound { target, bound, .. } => {
             let invalid_target = { ctx.lower_ty_only_param(*target) != Some(param_id) };
             if invalid_target {
-                // If this is filtered out without lowering, `?Sized` is not gathered into `ctx.unsized_types`
-                if let TypeBound::Path(_, TraitBoundModifier::Maybe) = bound {
+                // FIXME(sized-hierarchy): Revisit and adjust this properly once we have implemented
+                // sized-hierarchy correctly.
+                // If this is filtered out without lowering, `?Sized` or `PointeeSized` is not gathered into
+                // `ctx.unsized_types`
+                let lower = || -> bool {
+                    match bound {
+                        TypeBound::Path(_, TraitBoundModifier::Maybe) => true,
+                        TypeBound::Path(path, _) | TypeBound::ForLifetime(_, path) => {
+                            let TypeRef::Path(path) = &ctx.store[path.type_ref()] else {
+                                return false;
+                            };
+                            let Some(pointee_sized) =
+                                LangItem::PointeeSized.resolve_trait(ctx.db, ctx.resolver.krate())
+                            else {
+                                return false;
+                            };
+                            // Lower the path directly with `Resolver` instead of PathLoweringContext`
+                            // to prevent diagnostics duplications.
+                            ctx.resolver.resolve_path_in_type_ns_fully(ctx.db, path).is_some_and(
+                                |it| matches!(it, TypeNs::TraitId(tr) if tr == pointee_sized),
+                            )
+                        }
+                        _ => false,
+                    }
+                }();
+                if lower {
                     ctx.lower_where_predicate(pred, true).for_each(drop);
                 }
                 return false;
@@ -958,7 +1012,7 @@ pub(crate) fn generic_predicates_for_param_query(
                     };
 
                     all_super_traits(db, tr).iter().any(|tr| {
-                        db.trait_items(*tr).items.iter().any(|(name, item)| {
+                        tr.trait_items(db).items.iter().any(|(name, item)| {
                             matches!(item, AssocItemId::TypeAliasId(_)) && name == assoc_name
                         })
                     })
@@ -1026,6 +1080,10 @@ pub(crate) fn trait_environment_query(
     def: GenericDefId,
 ) -> Arc<TraitEnvironment> {
     let generics = generics(db, def);
+    if generics.has_no_predicates() && generics.is_empty() {
+        return TraitEnvironment::empty(def.krate(db));
+    }
+
     let resolver = def.resolver(db);
     let mut ctx = TyLoweringContext::new(
         db,
@@ -1129,6 +1187,10 @@ where
     F: Fn(&WherePredicate, GenericDefId) -> bool,
 {
     let generics = generics(db, def);
+    if generics.has_no_predicates() && generics.is_empty() {
+        return (GenericPredicates(None), None);
+    }
+
     let resolver = def.resolver(db);
     let mut ctx = TyLoweringContext::new(
         db,
@@ -1155,7 +1217,7 @@ where
         }
     }
 
-    if generics.len() > 0 {
+    if !generics.is_empty() {
         let subst = generics.bound_vars_subst(db, DebruijnIndex::INNERMOST);
         let explicitly_unsized_tys = ctx.unsized_types;
         if let Some(implicitly_sized_predicates) =
@@ -1176,13 +1238,13 @@ where
 
 /// Generate implicit `: Sized` predicates for all generics that has no `?Sized` bound.
 /// Exception is Self of a trait def.
-fn implicitly_sized_clauses<'a, 'subst: 'a>(
-    db: &dyn HirDatabase,
+fn implicitly_sized_clauses<'db, 'a, 'subst: 'a>(
+    db: &'db dyn HirDatabase,
     def: GenericDefId,
     explicitly_unsized_tys: &'a FxHashSet<Ty>,
     substitution: &'subst Substitution,
-    resolver: &Resolver,
-) -> Option<impl Iterator<Item = WhereClause> + Captures<'a> + Captures<'subst>> {
+    resolver: &Resolver<'db>,
+) -> Option<impl Iterator<Item = WhereClause>> {
     let sized_trait = LangItem::Sized.resolve_trait(db, resolver.krate()).map(to_chalk_trait_id)?;
 
     let trait_self_idx = trait_self_param_idx(db, def);
@@ -1230,7 +1292,7 @@ pub(crate) fn generic_defaults_with_diagnostics_query(
     def: GenericDefId,
 ) -> (GenericDefaults, Diagnostics) {
     let generic_params = generics(db, def);
-    if generic_params.len() == 0 {
+    if generic_params.is_empty() {
         return (GenericDefaults(None), None);
     }
     let resolver = def.resolver(db);
@@ -1419,7 +1481,7 @@ fn fn_sig_for_struct_constructor(db: &dyn HirDatabase, def: StructId) -> PolyFnS
 
 /// Build the type of a tuple struct constructor.
 fn type_for_struct_constructor(db: &dyn HirDatabase, def: StructId) -> Option<Binders<Ty>> {
-    let struct_data = db.variant_fields(def.into());
+    let struct_data = def.fields(db);
     match struct_data.shape {
         FieldsShape::Record => None,
         FieldsShape::Unit => Some(type_for_adt(db, def.into())),
@@ -1452,7 +1514,7 @@ fn type_for_enum_variant_constructor(
     def: EnumVariantId,
 ) -> Option<Binders<Ty>> {
     let e = def.lookup(db).parent;
-    match db.variant_fields(def.into()).shape {
+    match def.fields(db).shape {
         FieldsShape::Record => None,
         FieldsShape::Unit => Some(type_for_adt(db, e.into())),
         FieldsShape::Tuple => {
@@ -1605,6 +1667,14 @@ pub(crate) fn impl_self_ty_with_diagnostics_query(
     )
 }
 
+pub(crate) fn impl_self_ty_with_diagnostics_cycle_result(
+    db: &dyn HirDatabase,
+    impl_id: ImplId,
+) -> (Binders<Ty>, Diagnostics) {
+    let generics = generics(db, impl_id.into());
+    (make_binders(db, &generics, TyKind::Error.intern(Interner)), None)
+}
+
 pub(crate) fn const_param_ty_query(db: &dyn HirDatabase, def: ConstParamId) -> Ty {
     db.const_param_ty_with_diagnostics(def).0
 }
@@ -1634,12 +1704,12 @@ pub(crate) fn const_param_ty_with_diagnostics_query(
     (ty, create_diagnostics(ctx.diagnostics))
 }
 
-pub(crate) fn impl_self_ty_with_diagnostics_cycle_result(
-    db: &dyn HirDatabase,
-    impl_id: ImplId,
-) -> (Binders<Ty>, Diagnostics) {
-    let generics = generics(db, impl_id.into());
-    (make_binders(db, &generics, TyKind::Error.intern(Interner)), None)
+pub(crate) fn const_param_ty_with_diagnostics_cycle_result(
+    _: &dyn HirDatabase,
+    _: crate::db::HirDatabaseData,
+    _: ConstParamId,
+) -> (Ty, Diagnostics) {
+    (TyKind::Error.intern(Interner), None)
 }
 
 pub(crate) fn impl_trait_query(db: &dyn HirDatabase, impl_id: ImplId) -> Option<Binders<TraitRef>> {

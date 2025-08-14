@@ -1,8 +1,8 @@
 error[E0391]: cycle detected when computing type of `Foo::T`
-  --> $DIR/issue-34373.rs:7:30
+  --> $DIR/issue-34373.rs:7:34
    |
-LL | pub struct Foo<T = Box<Trait<DefaultFoo>>>;
-   |                              ^^^^^^^^^^
+LL | pub struct Foo<T = Box<dyn Trait<DefaultFoo>>>;
+   |                                  ^^^^^^^^^^
    |
 note: ...which requires expanding type alias `DefaultFoo`...
   --> $DIR/issue-34373.rs:9:19
@@ -13,15 +13,15 @@ LL | type DefaultFoo = Foo;
 note: cycle used when checking that `Foo` is well-formed
   --> $DIR/issue-34373.rs:7:1
    |
-LL | pub struct Foo<T = Box<Trait<DefaultFoo>>>;
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | pub struct Foo<T = Box<dyn Trait<DefaultFoo>>>;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
 error[E0392]: type parameter `T` is never used
   --> $DIR/issue-34373.rs:7:16
    |
-LL | pub struct Foo<T = Box<Trait<DefaultFoo>>>;
-   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^ unused type parameter
+LL | pub struct Foo<T = Box<dyn Trait<DefaultFoo>>>;
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unused type parameter
    |
    = help: consider removing `T`, referring to it in a field, or using a marker such as `PhantomData`
    = help: if you intended `T` to be a const parameter, use `const T: /* Type */` instead

@@ -40,9 +40,9 @@ pub(crate) fn run_tests(config: &Config, tests: Vec<CollectedTest>) -> bool {
     // In that case, the tests will effectively be run serially anyway.
     loop {
         // Spawn new test threads, up to the concurrency limit.
-        // FIXME(let_chains): Use a let-chain here when stable in bootstrap.
-        'spawn: while running_tests.len() < concurrency {
-            let Some((id, test)) = fresh_tests.next() else { break 'spawn };
+        while running_tests.len() < concurrency
+            && let Some((id, test)) = fresh_tests.next()
+        {
             listener.test_started(test);
             deadline_queue.push(id, test);
             let join_handle = spawn_test_thread(id, test, completion_tx.clone());
@@ -207,9 +207,9 @@ impl TestOutcome {
 ///
 /// Adapted from `filter_tests` in libtest.
 ///
-/// FIXME(#139660): After the libtest dependency is removed, redesign the whole
-/// filtering system to do a better job of understanding and filtering _paths_,
-/// instead of being tied to libtest's substring/exact matching behaviour.
+/// FIXME(#139660): After the libtest dependency is removed, redesign the whole filtering system to
+/// do a better job of understanding and filtering _paths_, instead of being tied to libtest's
+/// substring/exact matching behaviour.
 fn filter_tests(opts: &Config, tests: Vec<CollectedTest>) -> Vec<CollectedTest> {
     let mut filtered = tests;
 
@@ -235,9 +235,9 @@ fn filter_tests(opts: &Config, tests: Vec<CollectedTest>) -> Vec<CollectedTest> 
 ///
 /// Copied from `get_concurrency` in libtest.
 ///
-/// FIXME(#139660): After the libtest dependency is removed, consider making
-/// bootstrap specify the number of threads on the command-line, instead of
-/// propagating the `RUST_TEST_THREADS` environment variable.
+/// FIXME(#139660): After the libtest dependency is removed, consider making bootstrap specify the
+/// number of threads on the command-line, instead of propagating the `RUST_TEST_THREADS`
+/// environment variable.
 fn get_concurrency() -> usize {
     if let Ok(value) = env::var("RUST_TEST_THREADS") {
         match value.parse::<NonZero<usize>>().ok() {

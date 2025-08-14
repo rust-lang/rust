@@ -12,7 +12,7 @@ use crate::{
 pub(crate) fn complete_type_path(
     acc: &mut Completions,
     ctx: &CompletionContext<'_>,
-    path_ctx @ PathCompletionCtx { qualified, .. }: &PathCompletionCtx,
+    path_ctx @ PathCompletionCtx { qualified, .. }: &PathCompletionCtx<'_>,
     location: &TypeLocation,
 ) {
     let _p = tracing::info_span!("complete_type_path").entered();
@@ -220,7 +220,7 @@ pub(crate) fn complete_type_path(
 pub(crate) fn complete_ascribed_type(
     acc: &mut Completions,
     ctx: &CompletionContext<'_>,
-    path_ctx: &PathCompletionCtx,
+    path_ctx: &PathCompletionCtx<'_>,
     ascription: &TypeAscriptionTarget,
 ) -> Option<()> {
     if !path_ctx.is_trivial_path() {

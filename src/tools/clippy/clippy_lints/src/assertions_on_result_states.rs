@@ -3,14 +3,13 @@ use clippy_utils::macros::{PanicExpn, find_assert_args, root_macro_call_first_no
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::ty::{has_debug_impl, is_copy, is_type_diagnostic_item};
 use clippy_utils::usage::local_used_after_expr;
-use clippy_utils::{is_expr_final_block_expr, path_res};
+use clippy_utils::{is_expr_final_block_expr, path_res, sym};
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{self, Ty};
 use rustc_session::declare_lint_pass;
-use rustc_span::sym;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -68,11 +67,11 @@ impl<'tcx> LateLintPass<'tcx> for AssertionsOnResultStates {
                     return;
                 }
             }
-            let (message, replacement) = match method_segment.ident.as_str() {
-                "is_ok" if type_suitable_to_unwrap(cx, args.type_at(1)) => {
+            let (message, replacement) = match method_segment.ident.name {
+                sym::is_ok if type_suitable_to_unwrap(cx, args.type_at(1)) => {
                     ("called `assert!` with `Result::is_ok`", "unwrap")
                 },
-                "is_err" if type_suitable_to_unwrap(cx, args.type_at(0)) => {
+                sym::is_err if type_suitable_to_unwrap(cx, args.type_at(0)) => {
                     ("called `assert!` with `Result::is_err`", "unwrap_err")
                 },
                 _ => return,

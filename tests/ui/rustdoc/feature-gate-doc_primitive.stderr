@@ -1,11 +1,12 @@
-error[E0658]: `rustc_doc_primitive` is a rustc internal attribute
+error[E0658]: use of an internal attribute
   --> $DIR/feature-gate-doc_primitive.rs:1:1
    |
 LL | #[rustc_doc_primitive = "usize"]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: add `#![feature(rustc_attrs)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = note: the `#[rustc_doc_primitive]` attribute is an internal implementation detail that will never be stable
+   = note: the `#[rustc_doc_primitive]` attribute is used by the standard library to provide a way to generate documentation for primitive types
 
 error: aborting due to 1 previous error
 

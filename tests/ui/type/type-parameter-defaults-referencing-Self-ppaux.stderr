@@ -1,20 +1,8 @@
-error[E0620]: cast to unsized type: `i32` as `dyn MyAdd<i32>`
-  --> $DIR/type-parameter-defaults-referencing-Self-ppaux.rs:14:13
-   |
-LL |     let y = x as dyn MyAdd<i32>;
-   |             ^^^^^^^^^^^^^^^^^^^
-   |
-help: consider using a box or reference as appropriate
-  --> $DIR/type-parameter-defaults-referencing-Self-ppaux.rs:14:13
-   |
-LL |     let y = x as dyn MyAdd<i32>;
-   |             ^
-
 error[E0038]: the trait `MyAdd` is not dyn compatible
-  --> $DIR/type-parameter-defaults-referencing-Self-ppaux.rs:14:18
+  --> $DIR/type-parameter-defaults-referencing-Self-ppaux.rs:14:22
    |
 LL |     let y = x as dyn MyAdd<i32>;
-   |                  ^^^^^^^^^^^^^^ `MyAdd` is not dyn compatible
+   |                      ^^^^^^^^^^ `MyAdd` is not dyn compatible
    |
 note: for a trait to be dyn compatible it needs to allow building a vtable
       for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
@@ -25,7 +13,6 @@ LL | trait MyAdd<Rhs=Self> { fn add(&self, other: &Rhs) -> Self; }
    = help: consider moving `add` to another trait
    = help: only type `i32` implements `MyAdd`; consider using it directly instead.
 
-error: aborting due to 2 previous errors
+error: aborting due to 1 previous error
 
-Some errors have detailed explanations: E0038, E0620.
-For more information about an error, try `rustc --explain E0038`.
+For more information about this error, try `rustc --explain E0038`.

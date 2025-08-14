@@ -514,3 +514,35 @@ mod issue13768 {
         };
     }
 }
+
+mod issue14598 {
+    fn bar() -> Result<bool, &'static str> {
+        let value = match foo() {
+            //~^ manual_let_else
+            Err(_) => return Err("abc"),
+            Ok(value) => value,
+        };
+
+        let w = Some(0);
+        let v = match w {
+            //~^ manual_let_else
+            None => return Err("abc"),
+            Some(x) => x,
+        };
+
+        enum Foo<T> {
+            Foo(T),
+        }
+
+        let v = match Foo::Foo(Some(())) {
+            Foo::Foo(Some(_)) => return Err("abc"),
+            Foo::Foo(v) => v,
+        };
+
+        Ok(value == 42)
+    }
+
+    fn foo() -> Result<u32, &'static str> {
+        todo!()
+    }
+}

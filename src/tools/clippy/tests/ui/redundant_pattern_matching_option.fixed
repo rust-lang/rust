@@ -1,4 +1,4 @@
-#![feature(let_chains, if_let_guard)]
+#![feature(if_let_guard)]
 #![warn(clippy::redundant_pattern_matching)]
 #![allow(
     clippy::needless_bool,

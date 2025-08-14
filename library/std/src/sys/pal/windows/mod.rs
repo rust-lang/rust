@@ -328,8 +328,12 @@ pub fn dur2timeout(dur: Duration) -> u32 {
 
 /// Use `__fastfail` to abort the process
 ///
-/// This is the same implementation as in libpanic_abort's `__rust_start_panic`. See
-/// that function for more information on `__fastfail`
+/// In Windows 8 and later, this will terminate the process immediately without
+/// running any in-process exception handlers. In earlier versions of Windows,
+/// this sequence of instructions will be treated as an access violation, which
+/// will still terminate the process but might run some exception handlers.
+///
+/// https://docs.microsoft.com/en-us/cpp/intrinsics/fastfail
 #[cfg(not(miri))] // inline assembly does not work in Miri
 pub fn abort_internal() -> ! {
     unsafe {

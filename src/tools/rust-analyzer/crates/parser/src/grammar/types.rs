@@ -249,13 +249,14 @@ fn fn_ptr_type(p: &mut Parser<'_>) {
 }
 
 pub(super) fn for_binder(p: &mut Parser<'_>) {
-    assert!(p.at(T![for]));
+    let m = p.start();
     p.bump(T![for]);
     if p.at(T![<]) {
-        generic_params::opt_generic_param_list(p);
+        generic_params::generic_param_list(p);
     } else {
         p.error("expected `<`");
     }
+    m.complete(p, FOR_BINDER);
 }
 
 // test for_type
@@ -330,15 +331,6 @@ fn bare_dyn_trait_type(p: &mut Parser<'_>) {
     m.complete(p, DYN_TRAIT_TYPE);
 }
 
-// test path_type
-// type A = Foo;
-// type B = ::Foo;
-// type C = self::Foo;
-// type D = super::Foo;
-pub(super) fn path_type(p: &mut Parser<'_>) {
-    path_type_bounds(p, true);
-}
-
 // test macro_call_type
 // type A = foo!();
 // type B = crate::foo!();
@@ -365,6 +357,11 @@ fn path_or_macro_type(p: &mut Parser<'_>, allow_bounds: bool) {
     }
 }
 
+// test path_type
+// type A = Foo;
+// type B = ::Foo;
+// type C = self::Foo;
+// type D = super::Foo;
 pub(super) fn path_type_bounds(p: &mut Parser<'_>, allow_bounds: bool) {
     assert!(paths::is_path_start(p));
     let m = p.start();

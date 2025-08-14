@@ -55,7 +55,7 @@ Bootstrap will conditionally build `tracing` support and enable `tracing` output
 
 Example basic usage[^just-trace]:
 
-[^just-trace]: It is not recommend to use *just* `BOOTSTRAP_TRACING=TRACE` because that will dump *everything* at `TRACE` level, including logs intentionally gated behind custom targets as they are too verbose even for `TRACE` level by default.
+[^just-trace]: It is not recommended to use *just* `BOOTSTRAP_TRACING=TRACE` because that will dump *everything* at `TRACE` level, including logs intentionally gated behind custom targets as they are too verbose even for `TRACE` level by default.
 
 ```bash
 $ BOOTSTRAP_TRACING=bootstrap=TRACE ./x build library --stage 1
@@ -123,6 +123,12 @@ if [#96176][cleanup-compiler-for] is resolved.
 
 [cleanup-compiler-for]: https://github.com/rust-lang/rust/issues/96176
 
+### Rendering step graph
+
+When you run bootstrap with the `BOOTSTRAP_TRACING` environment variable configured, bootstrap will automatically output a DOT file that shows all executed steps and their dependencies. The files will have a prefix `bootstrap-steps`. You can use e.g. `xdot` to visualize the file or e.g. `dot -Tsvg` to convert the DOT file to a SVG file.
+
+A separate DOT file will be outputted for dry-run and non-dry-run execution.
+
 ### Using `tracing` in bootstrap
 
 Both `tracing::*` macros and the `tracing::instrument` proc-macro attribute need to be gated behind `tracing` feature. Examples:
@@ -168,10 +174,17 @@ For `#[instrument]`, it's recommended to:
 
 ### Profiling bootstrap
 
-You can use the `COMMAND` tracing target to trace execution of most commands spawned by bootstrap. If you also use the `BOOTSTRAP_PROFILE=1` environment variable, bootstrap will generate a Chrome JSON trace file, which can be visualized in Chrome's `chrome://tracing` page or on https://ui.perfetto.dev.
+You can set the `BOOTSTRAP_PROFILE=1` environment variable to enable command execution profiling during bootstrap. This generates:
+
+* A Chrome trace file (for visualization in `chrome://tracing` or [Perfetto](https://ui.perfetto.dev)) if tracing is enabled via `BOOTSTRAP_TRACING=COMMAND=trace`
+* A plain-text summary file, `bootstrap-profile-{pid}.txt`, listing all commands sorted by execution time (slowest first), along with cache hits and working directories
+
+Note: the `.txt` report is always generated when `BOOTSTRAP_PROFILE=1` is set — tracing is not required.
+
+Example usage:
 
 ```bash
-$ BOOTSTRAP_TRACING=COMMAND=trace BOOTSTRAP_PROFILE=1 ./x build library
+$ BOOTSTRAP_PROFILE=1 BOOTSTRAP_TRACING=COMMAND=trace ./x build library
 ```
 
 ### rust-analyzer integration?

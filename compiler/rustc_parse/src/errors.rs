@@ -71,6 +71,20 @@ pub(crate) struct BadQPathStage2 {
     pub wrap: WrapType,
 }
 
+#[derive(Diagnostic)]
+#[diag(parse_trait_impl_modifier_in_inherent_impl)]
+#[note]
+pub(crate) struct TraitImplModifierInInherentImpl {
+    #[primary_span]
+    pub span: Span,
+    pub modifier: &'static str,
+    pub modifier_name: &'static str,
+    #[label(parse_because)]
+    pub modifier_span: Span,
+    #[label(parse_type)]
+    pub self_ty: Span,
+}
+
 #[derive(Subdiagnostic)]
 #[multipart_suggestion(parse_suggestion, applicability = "machine-applicable")]
 pub(crate) struct WrapType {
@@ -436,10 +450,28 @@ pub(crate) enum IfExpressionMissingThenBlockSub {
 
 #[derive(Diagnostic)]
 #[diag(parse_ternary_operator)]
-#[help]
 pub(crate) struct TernaryOperator {
     #[primary_span]
     pub span: Span,
+    /// If we have a span for the condition expression, suggest the if/else
+    #[subdiagnostic]
+    pub sugg: Option<TernaryOperatorSuggestion>,
+    /// Otherwise, just print the suggestion message
+    #[help(parse_use_if_else)]
+    pub no_sugg: bool,
+}
+
+#[derive(Subdiagnostic, Copy, Clone)]
+#[multipart_suggestion(parse_use_if_else, applicability = "maybe-incorrect", style = "verbose")]
+pub(crate) struct TernaryOperatorSuggestion {
+    #[suggestion_part(code = "if ")]
+    pub before_cond: Span,
+    #[suggestion_part(code = "{{")]
+    pub question: Span,
+    #[suggestion_part(code = "}} else {{")]
+    pub colon: Span,
+    #[suggestion_part(code = " }}")]
+    pub end: Span,
 }
 
 #[derive(Subdiagnostic)]
@@ -567,14 +599,13 @@ pub(crate) struct MissingInInForLoop {
 
 #[derive(Subdiagnostic)]
 pub(crate) enum MissingInInForLoopSub {
+    // User wrote `for pat of expr {}`
     // Has been misleading, at least in the past (closed Issue #48492), thus maybe-incorrect
-    #[suggestion(
-        parse_use_in_not_of,
-        style = "verbose",
-        applicability = "maybe-incorrect",
-        code = "in"
-    )]
+    #[suggestion(parse_use_in, style = "verbose", applicability = "maybe-incorrect", code = "in")]
     InNotOf(#[primary_span] Span),
+    // User wrote `for pat = expr {}`
+    #[suggestion(parse_use_in, style = "verbose", applicability = "maybe-incorrect", code = "in")]
+    InNotEq(#[primary_span] Span),
     #[suggestion(parse_add_in, style = "verbose", applicability = "maybe-incorrect", code = " in ")]
     AddIn(#[primary_span] Span),
 }
@@ -1472,6 +1503,34 @@ pub(crate) struct AttributeOnParamType {
 }
 
 #[derive(Diagnostic)]
+#[diag(parse_attribute_on_type)]
+pub(crate) struct AttributeOnType {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    #[suggestion(code = "", applicability = "machine-applicable", style = "tool-only")]
+    pub fix_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_attribute_on_generic_arg)]
+pub(crate) struct AttributeOnGenericArg {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    #[suggestion(code = "", applicability = "machine-applicable", style = "tool-only")]
+    pub fix_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_attribute_on_empty_type)]
+pub(crate) struct AttributeOnEmptyType {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(parse_pattern_method_param_without_body, code = E0642)]
 pub(crate) struct PatternMethodParamWithoutBody {
     #[primary_span]
@@ -1761,6 +1820,13 @@ pub(crate) struct AsyncBoundModifierIn2015 {
 }
 
 #[derive(Diagnostic)]
+#[diag(parse_let_chain_pre_2024)]
+pub(crate) struct LetChainPre2024 {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(parse_self_argument_pointer)]
 pub(crate) struct SelfArgumentPointer {
     #[primary_span]
@@ -1933,6 +1999,14 @@ pub(crate) struct BoundsNotAllowedOnTraitAliases {
 pub(crate) struct TraitAliasCannotBeAuto {
     #[primary_span]
     #[label(parse_trait_alias_cannot_be_auto)]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_trait_alias_cannot_be_const)]
+pub(crate) struct TraitAliasCannotBeConst {
+    #[primary_span]
+    #[label(parse_trait_alias_cannot_be_const)]
     pub span: Span,
 }
 
@@ -2920,22 +2994,22 @@ pub(crate) struct DynAfterMut {
 
 #[derive(Diagnostic)]
 #[diag(parse_fn_pointer_cannot_be_const)]
+#[note]
 pub(crate) struct FnPointerCannotBeConst {
     #[primary_span]
-    pub span: Span,
     #[label]
-    pub qualifier: Span,
+    pub span: Span,
     #[suggestion(code = "", applicability = "maybe-incorrect", style = "verbose")]
     pub suggestion: Span,
 }
 
 #[derive(Diagnostic)]
 #[diag(parse_fn_pointer_cannot_be_async)]
+#[note]
 pub(crate) struct FnPointerCannotBeAsync {
     #[primary_span]
-    pub span: Span,
     #[label]
-    pub qualifier: Span,
+    pub span: Span,
     #[suggestion(code = "", applicability = "maybe-incorrect", style = "verbose")]
     pub suggestion: Span,
 }
@@ -3506,4 +3580,74 @@ pub(crate) struct MoveSelfModifier {
     #[suggestion_part(code = "{modifier}")]
     pub insertion_span: Span,
     pub modifier: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_asm_unsupported_operand)]
+pub(crate) struct AsmUnsupportedOperand<'a> {
+    #[primary_span]
+    #[label]
+    pub(crate) span: Span,
+    pub(crate) symbol: &'a str,
+    pub(crate) macro_name: &'static str,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_asm_underscore_input)]
+pub(crate) struct AsmUnderscoreInput {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_asm_sym_no_path)]
+pub(crate) struct AsmSymNoPath {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_asm_requires_template)]
+pub(crate) struct AsmRequiresTemplate {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_asm_expected_comma)]
+pub(crate) struct AsmExpectedComma {
+    #[primary_span]
+    #[label]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_asm_expected_other)]
+pub(crate) struct AsmExpectedOther {
+    #[primary_span]
+    #[label(parse_asm_expected_other)]
+    pub(crate) span: Span,
+    pub(crate) is_inline_asm: bool,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_asm_non_abi)]
+pub(crate) struct NonABI {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_asm_expected_string_literal)]
+pub(crate) struct AsmExpectedStringLiteral {
+    #[primary_span]
+    #[label]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_asm_expected_register_class_or_explicit_register)]
+pub(crate) struct ExpectedRegisterClassOrExplicitRegister {
+    #[primary_span]
+    pub(crate) span: Span,
 }

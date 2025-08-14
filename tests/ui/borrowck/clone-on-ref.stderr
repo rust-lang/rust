@@ -30,7 +30,7 @@ LL |     drop(x);
    |          ^ move out of `x` occurs here
 LL |
 LL |     println!("{b}");
-   |               --- borrow later used here
+   |                - borrow later used here
    |
 help: if `T` implemented `Clone`, you could clone the value
   --> $DIR/clone-on-ref.rs:11:8
@@ -57,7 +57,7 @@ LL |     drop(x);
    |          ^ move out of `x` occurs here
 LL |
 LL |     println!("{b:?}");
-   |               ----- borrow later used here
+   |                - borrow later used here
    |
 note: if `A` implemented `Clone`, you could clone the value
   --> $DIR/clone-on-ref.rs:19:1

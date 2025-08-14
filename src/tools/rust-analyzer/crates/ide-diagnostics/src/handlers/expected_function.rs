@@ -7,7 +7,7 @@ use crate::{Diagnostic, DiagnosticCode, DiagnosticsContext};
 // This diagnostic is triggered if a call is made on something that is not callable.
 pub(crate) fn expected_function(
     ctx: &DiagnosticsContext<'_>,
-    d: &hir::ExpectedFunction,
+    d: &hir::ExpectedFunction<'_>,
 ) -> Diagnostic {
     Diagnostic::new_with_syntax_node_ptr(
         ctx,
@@ -15,7 +15,6 @@ pub(crate) fn expected_function(
         format!("expected function, found {}", d.found.display(ctx.sema.db, ctx.display_target)),
         d.call.map(|it| it.into()),
     )
-    .experimental()
 }
 
 #[cfg(test)]

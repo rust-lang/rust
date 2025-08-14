@@ -41,7 +41,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         &mut self,
         thread: &OpTy<'tcx>,
         retval: &OpTy<'tcx>,
-    ) -> InterpResult<'tcx, Scalar> {
+        return_dest: &MPlaceTy<'tcx>,
+    ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
         if !this.ptr_is_null(this.read_pointer(retval)?)? {
@@ -51,12 +52,15 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         let thread = this.read_scalar(thread)?.to_int(this.libc_ty_layout("pthread_t").size)?;
         let Ok(thread) = this.thread_id_try_from(thread) else {
-            return interp_ok(this.eval_libc("ESRCH"));
+            this.write_scalar(this.eval_libc("ESRCH"), return_dest)?;
+            return interp_ok(());
         };
 
-        this.join_thread_exclusive(thread)?;
-
-        interp_ok(Scalar::from_u32(0))
+        this.join_thread_exclusive(
+            thread,
+            /* success_retval */ Scalar::from_u32(0),
+            return_dest,
+        )
     }
 
     fn pthread_detach(&mut self, thread: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
@@ -86,7 +90,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         &mut self,
         thread: Scalar,
         name: Scalar,
-        name_max_len: usize,
+        name_max_len: u64,
         truncate: bool,
     ) -> InterpResult<'tcx, ThreadNameResult> {
         let this = self.eval_context_mut();
@@ -99,9 +103,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let mut name = this.read_c_str(name)?.to_owned();
 
         // Comparing with `>=` to account for null terminator.
-        if name.len() >= name_max_len {
+        if name.len().to_u64() >= name_max_len {
             if truncate {
-                name.truncate(name_max_len.saturating_sub(1));
+                name.truncate(name_max_len.saturating_sub(1).try_into().unwrap());
             } else {
                 return interp_ok(ThreadNameResult::NameTooLong);
             }

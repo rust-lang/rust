@@ -1,7 +1,7 @@
 [package]
 name = "clippy_lints_internal"
 version = "0.0.1"
-edition = "2021"
+edition = "2024"
 
 [dependencies]
 clippy_config = { path = "../clippy_config" }

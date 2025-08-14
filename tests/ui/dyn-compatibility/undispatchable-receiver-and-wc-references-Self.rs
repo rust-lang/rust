@@ -25,5 +25,4 @@ pub fn foo() {
     let fetcher = fetcher();
     //~^ ERROR the trait `Fetcher` is not dyn compatible
     let _ = fetcher.get();
-    //~^ ERROR the trait `Fetcher` is not dyn compatible
 }

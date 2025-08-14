@@ -4,7 +4,7 @@ use getopts::Options;
 pub struct Config {
     /// The directory documentation output was generated in
     pub doc_dir: String,
-    /// The file documentation was generated for, with docck commands to check
+    /// The file documentation was generated for, with docck directives to check
     pub template: String,
 }
 

@@ -1,0 +1,6 @@
+──────────────────────────────────────────────────
+Warning: this tree is indicative only. Some tags may have been hidden.
+0..   8
+| Act |    └─┬──<TAG=root of the allocation>
+|?Cel |      └────<TAG=a>
+──────────────────────────────────────────────────

@@ -1,10 +1,9 @@
 use clippy_utils::diagnostics::{span_lint_and_note, span_lint_and_sugg};
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::ty::{has_drop, is_copy};
-use clippy_utils::{contains_name, get_parent_expr, in_automatically_derived, is_from_proc_macro};
+use clippy_utils::{contains_name, get_parent_expr, in_automatically_derived, is_expr_default, is_from_proc_macro};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
-use rustc_hir::def::Res;
 use rustc_hir::{Block, Expr, ExprKind, PatKind, QPath, Stmt, StmtKind, StructTailExpr};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
@@ -129,7 +128,7 @@ impl<'tcx> LateLintPass<'tcx> for Default {
                 // only take bindings to identifiers
                 && let PatKind::Binding(_, binding_id, ident, _) = local.pat.kind
                 // only when assigning `... = Default::default()`
-                && is_expr_default(expr, cx)
+                && is_expr_default(cx, expr)
                 && let binding_type = cx.typeck_results().node_type(binding_id)
                 && let ty::Adt(adt, args) = *binding_type.kind()
                 && adt.is_struct()
@@ -248,19 +247,6 @@ impl<'tcx> LateLintPass<'tcx> for Default {
                 self.reassigned_linted.insert(span);
             }
         }
-    }
-}
-
-/// Checks if the given expression is the `default` method belonging to the `Default` trait.
-fn is_expr_default<'tcx>(expr: &'tcx Expr<'tcx>, cx: &LateContext<'tcx>) -> bool {
-    if let ExprKind::Call(fn_expr, []) = &expr.kind
-        && let ExprKind::Path(qpath) = &fn_expr.kind
-        && let Res::Def(_, def_id) = cx.qpath_res(qpath, fn_expr.hir_id)
-    {
-        // right hand side of assignment is `Default::default`
-        cx.tcx.is_diagnostic_item(sym::default_fn, def_id)
-    } else {
-        false
     }
 }
 

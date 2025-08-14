@@ -3,7 +3,7 @@ use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::{
     SpanlessEq, get_parent_expr, higher, is_block_like, is_else_clause, is_expn_of, is_parent_stmt,
-    is_receiver_of_method_call, peel_blocks, peel_blocks_with_stmt, span_extract_comment,
+    is_receiver_of_method_call, peel_blocks, peel_blocks_with_stmt, span_contains_comment, sym,
 };
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
@@ -128,14 +128,13 @@ fn condition_needs_parentheses(e: &Expr<'_>) -> bool {
 impl<'tcx> LateLintPass<'tcx> for NeedlessBool {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
         use self::Expression::{Bool, RetBool};
-        if e.span.from_expansion() || !span_extract_comment(cx.tcx.sess.source_map(), e.span).is_empty() {
-            return;
-        }
-        if let Some(higher::If {
-            cond,
-            then,
-            r#else: Some(r#else),
-        }) = higher::If::hir(e)
+        if !e.span.from_expansion()
+            && let Some(higher::If {
+                cond,
+                then,
+                r#else: Some(else_expr),
+            }) = higher::If::hir(e)
+            && !span_contains_comment(cx.tcx.sess.source_map(), e.span)
         {
             let reduce = |ret, not| {
                 let mut applicability = Applicability::MachineApplicable;
@@ -167,7 +166,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessBool {
                     applicability,
                 );
             };
-            if let Some((a, b)) = fetch_bool_block(then).and_then(|a| Some((a, fetch_bool_block(r#else)?))) {
+            if let Some((a, b)) = fetch_bool_block(then).and_then(|a| Some((a, fetch_bool_block(else_expr)?))) {
                 match (a, b) {
                     (RetBool(true), RetBool(true)) | (Bool(true), Bool(true)) => {
                         span_lint(
@@ -193,17 +192,22 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessBool {
                 }
             }
             if let Some((lhs_a, a)) = fetch_assign(then)
-                && let Some((lhs_b, b)) = fetch_assign(r#else)
+                && let Some((lhs_b, b)) = fetch_assign(else_expr)
                 && SpanlessEq::new(cx).eq_expr(lhs_a, lhs_b)
             {
                 let mut applicability = Applicability::MachineApplicable;
                 let cond = Sugg::hir_with_applicability(cx, cond, "..", &mut applicability);
                 let lhs = snippet_with_applicability(cx, lhs_a.span, "..", &mut applicability);
-                let sugg = if a == b {
+                let mut sugg = if a == b {
                     format!("{cond}; {lhs} = {a:?};")
                 } else {
                     format!("{lhs} = {};", if a { cond } else { !cond })
                 };
+
+                if is_else_clause(cx.tcx, e) {
+                    sugg = format!("{{ {sugg} }}");
+                }
+
                 span_lint_and_sugg(
                     cx,
                     NEEDLESS_BOOL_ASSIGN,
@@ -320,7 +324,7 @@ fn check_comparison<'a, 'tcx>(
             cx.typeck_results().expr_ty(left_side),
             cx.typeck_results().expr_ty(right_side),
         );
-        if is_expn_of(left_side.span, "cfg").is_some() || is_expn_of(right_side.span, "cfg").is_some() {
+        if is_expn_of(left_side.span, sym::cfg).is_some() || is_expn_of(right_side.span, sym::cfg).is_some() {
             return;
         }
         if l_ty.is_bool() && r_ty.is_bool() {

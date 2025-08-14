@@ -26,10 +26,10 @@ mod a {
 
 mod b {
     pub fn g() {
-        ::a::f();
+        crate::a::f();
     }
 }
 
 fn main() {
-    thread::spawn(move|| { ::b::g() }).join().unwrap_err();
+    thread::spawn(move|| { b::g() }).join().unwrap_err();
 }

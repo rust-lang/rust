@@ -1,11 +1,11 @@
-error[E0658]: diagnostic items compiler internal support for linting
+error[E0658]: use of an internal attribute
   --> $DIR/diagnostic_item.rs:1:1
    |
 LL | #[rustc_diagnostic_item = "foomp"]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: add `#![feature(rustc_attrs)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = note: the `#[rustc_diagnostic_item]` attribute allows the compiler to reference types from the standard library for diagnostic purposes
 
 error: aborting due to 1 previous error
 

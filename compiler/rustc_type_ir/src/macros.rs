@@ -53,11 +53,11 @@ TrivialTypeTraversalImpls! {
     crate::BoundConstness,
     crate::DebruijnIndex,
     crate::PredicatePolarity,
+    crate::UniverseIndex,
+    crate::Variance,
     crate::solve::BuiltinImplSource,
     crate::solve::Certainty,
     crate::solve::GoalSource,
-    crate::UniverseIndex,
-    crate::Variance,
     rustc_ast_ir::Mutability,
     // tidy-alphabetical-end
 }

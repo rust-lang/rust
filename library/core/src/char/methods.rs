@@ -4,6 +4,7 @@ use super::*;
 use crate::panic::const_panic;
 use crate::slice;
 use crate::str::from_utf8_unchecked_mut;
+use crate::ub_checks::assert_unsafe_precondition;
 use crate::unicode::printable::is_printable;
 use crate::unicode::{self, conversions};
 
@@ -394,6 +395,7 @@ impl char {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_char_convert", since = "1.67.0")]
+    #[rustc_diagnostic_item = "char_to_digit"]
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[inline]
@@ -918,7 +920,11 @@ impl char {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn is_alphanumeric(self) -> bool {
-        self.is_alphabetic() || self.is_numeric()
+        if self.is_ascii() {
+            self.is_ascii_alphanumeric()
+        } else {
+            unicode::Alphabetic(self) || unicode::N(self)
+        }
     }
 
     /// Returns `true` if this `char` has the general category for control codes.
@@ -1200,6 +1206,26 @@ impl char {
         } else {
             None
         }
+    }
+
+    /// Converts this char into an [ASCII character](`ascii::Char`), without
+    /// checking whether it is valid.
+    ///
+    /// # Safety
+    ///
+    /// This char must be within the ASCII range, or else this is UB.
+    #[must_use]
+    #[unstable(feature = "ascii_char", issue = "110998")]
+    #[inline]
+    pub const unsafe fn as_ascii_unchecked(&self) -> ascii::Char {
+        assert_unsafe_precondition!(
+            check_library_ub,
+            "as_ascii_unchecked requires that the char is valid ASCII",
+            (it: &char = self) => it.is_ascii()
+        );
+
+        // SAFETY: the caller promised that this char is ASCII.
+        unsafe { ascii::Char::from_u8_unchecked(*self as u8) }
     }
 
     /// Makes a copy of the value in its ASCII upper case equivalent.

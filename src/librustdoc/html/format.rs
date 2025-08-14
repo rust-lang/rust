@@ -7,26 +7,26 @@
 //! some of them support an alternate format that emits text, but that should
 //! not be used external to this module.
 
-use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::fmt::{self, Display, Write};
 use std::iter::{self, once};
 use std::slice;
 
-use itertools::Either;
+use itertools::{Either, Itertools};
 use rustc_abi::ExternAbi;
-use rustc_attr_parsing::{ConstStability, StabilityLevel, StableSince};
+use rustc_ast::join_path_syms;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
+use rustc_hir::{ConstStability, StabilityLevel, StableSince};
 use rustc_metadata::creader::{CStore, LoadedMacro};
 use rustc_middle::ty::{self, TyCtxt, TypingMode};
 use rustc_span::symbol::kw;
 use rustc_span::{Symbol, sym};
 use tracing::{debug, trace};
 
-use super::url_parts_builder::{UrlPartsBuilder, estimate_item_path_byte_length};
+use super::url_parts_builder::UrlPartsBuilder;
 use crate::clean::types::ExternalLocation;
 use crate::clean::utils::find_nearest_parent_module;
 use crate::clean::{self, ExternalCrate, PrimitiveType};
@@ -114,9 +114,9 @@ impl clean::Generics {
             let real_params =
                 fmt::from_fn(|f| real_params.clone().map(|g| g.print(cx)).joined(", ", f));
             if f.alternate() {
-                write!(f, "<{:#}>", real_params)
+                write!(f, "<{real_params:#}>")
             } else {
-                write!(f, "&lt;{}&gt;", real_params)
+                write!(f, "&lt;{real_params}&gt;")
             }
         })
     }
@@ -269,7 +269,7 @@ impl clean::GenericBound {
         fmt::from_fn(move |f| match self {
             clean::GenericBound::Outlives(lt) => write!(f, "{}", lt.print()),
             clean::GenericBound::TraitBound(ty, modifiers) => {
-                // `const` and `~const` trait bounds are experimental; don't render them.
+                // `const` and `[const]` trait bounds are experimental; don't render them.
                 let hir::TraitBoundModifiers { polarity, constness: _ } = modifiers;
                 f.write_str(match polarity {
                     hir::BoundPolarity::Positive => "",
@@ -368,18 +368,8 @@ pub(crate) enum HrefError {
     Private,
     // Not in external cache, href link should be in same page
     NotInExternalCache,
-}
-
-// Panics if `syms` is empty.
-pub(crate) fn join_with_double_colon(syms: &[Symbol]) -> String {
-    let mut s = String::with_capacity(estimate_item_path_byte_length(syms.len()));
-    // NOTE: using `Joined::joined` here causes a noticeable perf regression
-    s.push_str(syms[0].as_str());
-    for sym in &syms[1..] {
-        s.push_str("::");
-        s.push_str(sym.as_str());
-    }
-    s
+    /// Refers to an unnamable item, such as one defined within a function or const block.
+    UnnamableItem,
 }
 
 /// This function is to get the external macro path because they are not in the cache used in
@@ -483,12 +473,32 @@ fn generate_item_def_id_path(
     let mut is_remote = false;
 
     let url_parts = url_parts(cx.cache(), def_id, module_fqp, &cx.current, &mut is_remote)?;
-    let (url_parts, shortty, fqp) = make_href(root_path, shortty, url_parts, &fqp, is_remote)?;
-    if def_id == original_def_id {
-        return Ok((url_parts, shortty, fqp));
+    let mut url_parts = make_href(root_path, shortty, url_parts, &fqp, is_remote);
+    if def_id != original_def_id {
+        let kind = ItemType::from_def_kind(original_def_kind, Some(def_kind));
+        url_parts = format!("{url_parts}#{kind}.{}", tcx.item_name(original_def_id))
+    };
+    Ok((url_parts, shortty, fqp))
+}
+
+/// Checks if the given defid refers to an item that is unnamable, such as one defined in a const block.
+fn is_unnamable(tcx: TyCtxt<'_>, did: DefId) -> bool {
+    let mut cur_did = did;
+    while let Some(parent) = tcx.opt_parent(cur_did) {
+        match tcx.def_kind(parent) {
+            // items defined in these can be linked to, as long as they are visible
+            DefKind::Mod | DefKind::ForeignMod => cur_did = parent,
+            // items in impls can be linked to,
+            // as long as we can link to the item the impl is on.
+            // since associated traits are not a thing,
+            // it should not be possible to refer to an impl item if
+            // the base type is not namable.
+            DefKind::Impl { .. } => return false,
+            // everything else does not have docs generated for it
+            _ => return true,
+        }
     }
-    let kind = ItemType::from_def_kind(original_def_kind, Some(def_kind));
-    Ok((format!("{url_parts}#{kind}.{}", tcx.item_name(original_def_id)), shortty, fqp))
+    return false;
 }
 
 fn to_module_fqp(shortty: ItemType, fqp: &[Symbol]) -> &[Symbol] {
@@ -510,7 +520,7 @@ fn url_parts(
             builder.extend(module_fqp.iter().copied());
             Ok(builder)
         }
-        ExternalLocation::Local => Ok(href_relative_parts(module_fqp, relative_to).collect()),
+        ExternalLocation::Local => Ok(href_relative_parts(module_fqp, relative_to)),
         ExternalLocation::Unknown => Err(HrefError::DocumentationNotBuilt),
     }
 }
@@ -521,7 +531,7 @@ fn make_href(
     mut url_parts: UrlPartsBuilder,
     fqp: &[Symbol],
     is_remote: bool,
-) -> Result<(String, ItemType, Vec<Symbol>), HrefError> {
+) -> String {
     if !is_remote && let Some(root_path) = root_path {
         let root = root_path.trim_end_matches('/');
         url_parts.push_front(root);
@@ -536,7 +546,7 @@ fn make_href(
             url_parts.push_fmt(format_args!("{shortty}.{last}.html"));
         }
     }
-    Ok((url_parts.finish(), shortty, fqp.to_vec()))
+    url_parts.finish()
 }
 
 pub(crate) fn href_with_root_path(
@@ -564,6 +574,9 @@ pub(crate) fn href_with_root_path(
         }
         _ => original_did,
     };
+    if is_unnamable(cx.tcx(), did) {
+        return Err(HrefError::UnnamableItem);
+    }
     let cache = cx.cache();
     let relative_to = &cx.current;
 
@@ -587,7 +600,7 @@ pub(crate) fn href_with_root_path(
         Some(&(ref fqp, shortty)) => (fqp, shortty, {
             let module_fqp = to_module_fqp(shortty, fqp.as_slice());
             debug!(?fqp, ?shortty, ?module_fqp);
-            href_relative_parts(module_fqp, relative_to).collect()
+            href_relative_parts(module_fqp, relative_to)
         }),
         None => {
             // Associated items are handled differently with "jump to def". The anchor is generated
@@ -606,7 +619,8 @@ pub(crate) fn href_with_root_path(
             }
         }
     };
-    make_href(root_path, shortty, url_parts, fqp, is_remote)
+    let url_parts = make_href(root_path, shortty, url_parts, fqp, is_remote);
+    Ok((url_parts, shortty, fqp.clone()))
 }
 
 pub(crate) fn href(
@@ -619,34 +633,30 @@ pub(crate) fn href(
 /// Both paths should only be modules.
 /// This is because modules get their own directories; that is, `std::vec` and `std::vec::Vec` will
 /// both need `../iter/trait.Iterator.html` to get at the iterator trait.
-pub(crate) fn href_relative_parts<'fqp>(
-    fqp: &'fqp [Symbol],
-    relative_to_fqp: &[Symbol],
-) -> Box<dyn Iterator<Item = Symbol> + 'fqp> {
+pub(crate) fn href_relative_parts(fqp: &[Symbol], relative_to_fqp: &[Symbol]) -> UrlPartsBuilder {
     for (i, (f, r)) in fqp.iter().zip(relative_to_fqp.iter()).enumerate() {
         // e.g. linking to std::iter from std::vec (`dissimilar_part_count` will be 1)
         if f != r {
             let dissimilar_part_count = relative_to_fqp.len() - i;
             let fqp_module = &fqp[i..];
-            return Box::new(
-                iter::repeat_n(sym::dotdot, dissimilar_part_count)
-                    .chain(fqp_module.iter().copied()),
-            );
+            return iter::repeat_n(sym::dotdot, dissimilar_part_count)
+                .chain(fqp_module.iter().copied())
+                .collect();
         }
     }
     match relative_to_fqp.len().cmp(&fqp.len()) {
         Ordering::Less => {
             // e.g. linking to std::sync::atomic from std::sync
-            Box::new(fqp[relative_to_fqp.len()..fqp.len()].iter().copied())
+            fqp[relative_to_fqp.len()..fqp.len()].iter().copied().collect()
         }
         Ordering::Greater => {
             // e.g. linking to std::sync from std::sync::atomic
             let dissimilar_part_count = relative_to_fqp.len() - fqp.len();
-            Box::new(iter::repeat_n(sym::dotdot, dissimilar_part_count))
+            iter::repeat_n(sym::dotdot, dissimilar_part_count).collect()
         }
         Ordering::Equal => {
             // linking to the same module
-            Box::new(iter::empty())
+            UrlPartsBuilder::new()
         }
     }
 }
@@ -676,7 +686,7 @@ pub(crate) fn link_tooltip(
             write!(f, "{}", cx.tcx().item_name(id))?;
         } else if !fqp.is_empty() {
             write!(f, "{shortty} ")?;
-            fqp.iter().joined("::", f)?;
+            write!(f, "{}", join_path_syms(fqp))?;
         }
         Ok(())
     })
@@ -707,14 +717,14 @@ fn resolved_path(
                     write!(
                         f,
                         "{path}::{anchor}",
-                        path = join_with_double_colon(&fqp[..fqp.len() - 1]),
-                        anchor = anchor(did, *fqp.last().unwrap(), cx)
+                        path = join_path_syms(&fqp[..fqp.len() - 1]),
+                        anchor = print_anchor(did, *fqp.last().unwrap(), cx)
                     )
                 } else {
                     write!(f, "{}", last.name)
                 }
             } else {
-                write!(f, "{}", anchor(did, last.name, cx))
+                write!(f, "{}", print_anchor(did, last.name, cx))
             }
         });
         write!(w, "{path}{args}", args = last.args.print(cx))?;
@@ -800,7 +810,7 @@ fn primitive_link_fragment(
     Ok(())
 }
 
-fn tybounds(
+fn print_tybounds(
     bounds: &[clean::PolyTrait],
     lt: &Option<clean::Lifetime>,
     cx: &Context<'_>,
@@ -832,14 +842,14 @@ fn print_higher_ranked_params_with_space(
     })
 }
 
-pub(crate) fn anchor(did: DefId, text: Symbol, cx: &Context<'_>) -> impl Display {
+pub(crate) fn print_anchor(did: DefId, text: Symbol, cx: &Context<'_>) -> impl Display {
     fmt::from_fn(move |f| {
         let parts = href(did, cx);
         if let Ok((url, short_ty, fqp)) = parts {
             write!(
                 f,
                 r#"<a class="{short_ty}" href="{url}" title="{short_ty} {path}">{text}</a>"#,
-                path = join_with_double_colon(&fqp),
+                path = join_path_syms(fqp),
                 text = EscapeBodyText(text.as_str()),
             )
         } else {
@@ -856,24 +866,24 @@ fn fmt_type(
 ) -> fmt::Result {
     trace!("fmt_type(t = {t:?})");
 
-    match *t {
+    match t {
         clean::Generic(name) => f.write_str(name.as_str()),
         clean::SelfTy => f.write_str("Self"),
-        clean::Type::Path { ref path } => {
+        clean::Type::Path { path } => {
             // Paths like `T::Output` and `Self::Output` should be rendered with all segments.
             let did = path.def_id();
             resolved_path(f, did, path, path.is_assoc_ty(), use_absolute, cx)
         }
-        clean::DynTrait(ref bounds, ref lt) => {
+        clean::DynTrait(bounds, lt) => {
             f.write_str("dyn ")?;
-            tybounds(bounds, lt, cx).fmt(f)
+            print_tybounds(bounds, lt, cx).fmt(f)
         }
         clean::Infer => write!(f, "_"),
         clean::Primitive(clean::PrimitiveType::Never) => {
             primitive_link(f, PrimitiveType::Never, format_args!("!"), cx)
         }
-        clean::Primitive(prim) => primitive_link(f, prim, format_args!("{}", prim.as_sym()), cx),
-        clean::BareFunction(ref decl) => {
+        &clean::Primitive(prim) => primitive_link(f, prim, format_args!("{}", prim.as_sym()), cx),
+        clean::BareFunction(decl) => {
             print_higher_ranked_params_with_space(&decl.generic_params, cx, "for").fmt(f)?;
             decl.safety.print_with_space().fmt(f)?;
             print_abi_with_space(decl.abi).fmt(f)?;
@@ -884,11 +894,11 @@ fn fmt_type(
             }
             decl.decl.print(cx).fmt(f)
         }
-        clean::UnsafeBinder(ref binder) => {
+        clean::UnsafeBinder(binder) => {
             print_higher_ranked_params_with_space(&binder.generic_params, cx, "unsafe").fmt(f)?;
             binder.ty.print(cx).fmt(f)
         }
-        clean::Tuple(ref typs) => match &typs[..] {
+        clean::Tuple(typs) => match &typs[..] {
             &[] => primitive_link(f, PrimitiveType::Unit, format_args!("()"), cx),
             [one] => {
                 if let clean::Generic(name) = one {
@@ -925,45 +935,36 @@ fn fmt_type(
                 }
             }
         },
-        clean::Slice(ref t) => match **t {
-            clean::Generic(name) => {
-                primitive_link(f, PrimitiveType::Slice, format_args!("[{name}]"), cx)
-            }
-            _ => {
-                write!(f, "[")?;
-                t.print(cx).fmt(f)?;
-                write!(f, "]")
-            }
-        },
-        clean::Type::Pat(ref t, ref pat) => {
+        clean::Slice(box clean::Generic(name)) => {
+            primitive_link(f, PrimitiveType::Slice, format_args!("[{name}]"), cx)
+        }
+        clean::Slice(t) => {
+            write!(f, "[")?;
+            t.print(cx).fmt(f)?;
+            write!(f, "]")
+        }
+        clean::Type::Pat(t, pat) => {
             fmt::Display::fmt(&t.print(cx), f)?;
             write!(f, " is {pat}")
         }
-        clean::Array(ref t, ref n) => match **t {
-            clean::Generic(name) if !f.alternate() => primitive_link(
-                f,
-                PrimitiveType::Array,
-                format_args!("[{name}; {n}]", n = Escape(n)),
-                cx,
-            ),
-            _ => {
-                write!(f, "[")?;
-                t.print(cx).fmt(f)?;
-                if f.alternate() {
-                    write!(f, "; {n}")?;
-                } else {
-                    write!(f, "; ")?;
-                    primitive_link(
-                        f,
-                        PrimitiveType::Array,
-                        format_args!("{n}", n = Escape(n)),
-                        cx,
-                    )?;
-                }
-                write!(f, "]")
+        clean::Array(box clean::Generic(name), n) if !f.alternate() => primitive_link(
+            f,
+            PrimitiveType::Array,
+            format_args!("[{name}; {n}]", n = Escape(n)),
+            cx,
+        ),
+        clean::Array(t, n) => {
+            write!(f, "[")?;
+            t.print(cx).fmt(f)?;
+            if f.alternate() {
+                write!(f, "; {n}")?;
+            } else {
+                write!(f, "; ")?;
+                primitive_link(f, PrimitiveType::Array, format_args!("{n}", n = Escape(n)), cx)?;
             }
-        },
-        clean::RawPointer(m, ref t) => {
+            write!(f, "]")
+        }
+        clean::RawPointer(m, t) => {
             let m = match m {
                 hir::Mutability::Mut => "mut",
                 hir::Mutability::Not => "const",
@@ -991,7 +992,7 @@ fn fmt_type(
                 t.print(cx).fmt(f)
             }
         }
-        clean::BorrowedRef { lifetime: ref l, mutability, type_: ref ty } => {
+        clean::BorrowedRef { lifetime: l, mutability, type_: ty } => {
             let lt = fmt::from_fn(|f| match l {
                 Some(l) => write!(f, "{} ", l.print()),
                 _ => Ok(()),
@@ -1028,22 +1029,37 @@ fn fmt_type(
             }
             Ok(())
         }
-        clean::ImplTrait(ref bounds) => {
+        clean::ImplTrait(bounds) => {
             f.write_str("impl ")?;
             print_generic_bounds(bounds, cx).fmt(f)
         }
-        clean::QPath(box clean::QPathData {
-            ref assoc,
-            ref self_type,
-            ref trait_,
-            should_show_cast,
-        }) => {
+        clean::QPath(qpath) => qpath.print(cx).fmt(f),
+    }
+}
+
+impl clean::Type {
+    pub(crate) fn print(&self, cx: &Context<'_>) -> impl Display {
+        fmt::from_fn(move |f| fmt_type(self, f, false, cx))
+    }
+}
+
+impl clean::Path {
+    pub(crate) fn print(&self, cx: &Context<'_>) -> impl Display {
+        fmt::from_fn(move |f| resolved_path(f, self.def_id(), self, false, false, cx))
+    }
+}
+
+impl clean::QPathData {
+    fn print(&self, cx: &Context<'_>) -> impl Display {
+        let Self { ref assoc, ref self_type, should_fully_qualify, ref trait_ } = *self;
+
+        fmt::from_fn(move |f| {
             // FIXME(inherent_associated_types): Once we support non-ADT self-types (#106719),
             // we need to surround them with angle brackets in some cases (e.g. `<dyn …>::P`).
 
             if f.alternate() {
                 if let Some(trait_) = trait_
-                    && should_show_cast
+                    && should_fully_qualify
                 {
                     write!(f, "<{:#} as {:#}>::", self_type.print(cx), trait_.print(cx))?
                 } else {
@@ -1051,7 +1067,7 @@ fn fmt_type(
                 }
             } else {
                 if let Some(trait_) = trait_
-                    && should_show_cast
+                    && should_fully_qualify
                 {
                     write!(f, "&lt;{} as {}&gt;::", self_type.print(cx), trait_.print(cx))?
                 } else {
@@ -1093,7 +1109,7 @@ fn fmt_type(
                                     title=\"type {path}::{name}\">{name}</a>",
                         shortty = ItemType::AssocType,
                         name = assoc.name,
-                        path = join_with_double_colon(&path),
+                        path = join_path_syms(path),
                     )
                 } else {
                     write!(f, "{}", assoc.name)
@@ -1103,19 +1119,7 @@ fn fmt_type(
             }?;
 
             assoc.args.print(cx).fmt(f)
-        }
-    }
-}
-
-impl clean::Type {
-    pub(crate) fn print(&self, cx: &Context<'_>) -> impl Display {
-        fmt::from_fn(move |f| fmt_type(self, f, false, cx))
-    }
-}
-
-impl clean::Path {
-    pub(crate) fn print(&self, cx: &Context<'_>) -> impl Display {
-        fmt::from_fn(move |f| resolved_path(f, self.def_id(), self, false, false, cx))
+        })
     }
 }
 
@@ -1131,16 +1135,16 @@ impl clean::Impl {
                     write!(f, "!")?;
                 }
                 if self.kind.is_fake_variadic()
-                    && let generics = ty.generics()
-                    && let &[inner_type] = generics.as_ref().map_or(&[][..], |v| &v[..])
+                    && let Some(generics) = ty.generics()
+                    && let Ok(inner_type) = generics.exactly_one()
                 {
                     let last = ty.last();
                     if f.alternate() {
-                        write!(f, "{}<", last)?;
+                        write!(f, "{last}<")?;
                         self.print_type(inner_type, f, use_absolute, cx)?;
                         write!(f, ">")?;
                     } else {
-                        write!(f, "{}&lt;", anchor(ty.def_id(), last, cx))?;
+                        write!(f, "{}&lt;", print_anchor(ty.def_id(), last, cx))?;
                         self.print_type(inner_type, f, use_absolute, cx)?;
                         write!(f, "&gt;")?;
                     }
@@ -1211,11 +1215,10 @@ impl clean::Impl {
             }
         } else if let clean::Type::Path { path } = type_
             && let Some(generics) = path.generics()
-            && generics.len() == 1
+            && let Ok(ty) = generics.exactly_one()
             && self.kind.is_fake_variadic()
         {
-            let ty = generics[0];
-            let wrapper = anchor(path.def_id(), path.last(), cx);
+            let wrapper = print_anchor(path.def_id(), path.last(), cx);
             if f.alternate() {
                 write!(f, "{wrapper:#}&lt;")?;
             } else {
@@ -1241,7 +1244,7 @@ pub(crate) fn print_params(params: &[clean::Parameter], cx: &Context<'_>) -> imp
             .map(|param| {
                 fmt::from_fn(|f| {
                     if let Some(name) = param.name {
-                        write!(f, "{}: ", name)?;
+                        write!(f, "{name}: ")?;
                     }
                     param.type_.print(cx).fmt(f)
                 })
@@ -1363,7 +1366,7 @@ impl clean::FnDecl {
                     write!(f, "const ")?;
                 }
                 if let Some(name) = param.name {
-                    write!(f, "{}: ", name)?;
+                    write!(f, "{name}: ")?;
                 }
                 param.type_.print(cx).fmt(f)?;
             }
@@ -1403,50 +1406,47 @@ impl clean::FnDecl {
 }
 
 pub(crate) fn visibility_print_with_space(item: &clean::Item, cx: &Context<'_>) -> impl Display {
-    use std::fmt::Write as _;
-    let vis: Cow<'static, str> = match item.visibility(cx.tcx()) {
-        None => "".into(),
-        Some(ty::Visibility::Public) => "pub ".into(),
-        Some(ty::Visibility::Restricted(vis_did)) => {
-            // FIXME(camelid): This may not work correctly if `item_did` is a module.
-            //                 However, rustdoc currently never displays a module's
-            //                 visibility, so it shouldn't matter.
-            let parent_module = find_nearest_parent_module(cx.tcx(), item.item_id.expect_def_id());
-
-            if vis_did.is_crate_root() {
-                "pub(crate) ".into()
-            } else if parent_module == Some(vis_did) {
-                // `pub(in foo)` where `foo` is the parent module
-                // is the same as no visibility modifier
-                "".into()
-            } else if parent_module.and_then(|parent| find_nearest_parent_module(cx.tcx(), parent))
-                == Some(vis_did)
-            {
-                "pub(super) ".into()
-            } else {
-                let path = cx.tcx().def_path(vis_did);
-                debug!("path={path:?}");
-                // modified from `resolved_path()` to work with `DefPathData`
-                let last_name = path.data.last().unwrap().data.get_opt_name().unwrap();
-                let anchor = anchor(vis_did, last_name, cx);
-
-                let mut s = "pub(in ".to_owned();
-                for seg in &path.data[..path.data.len() - 1] {
-                    let _ = write!(s, "{}::", seg.data.get_opt_name().unwrap());
-                }
-                let _ = write!(s, "{anchor}) ");
-                s.into()
-            }
-        }
-    };
-
-    let is_doc_hidden = item.is_doc_hidden();
     fmt::from_fn(move |f| {
-        if is_doc_hidden {
+        if item.is_doc_hidden() {
             f.write_str("#[doc(hidden)] ")?;
         }
 
-        f.write_str(&vis)
+        match item.visibility(cx.tcx()) {
+            None => {}
+            Some(ty::Visibility::Public) => f.write_str("pub ")?,
+            Some(ty::Visibility::Restricted(vis_did)) => {
+                // FIXME(camelid): This may not work correctly if `item_did` is a module.
+                //                 However, rustdoc currently never displays a module's
+                //                 visibility, so it shouldn't matter.
+                let parent_module =
+                    find_nearest_parent_module(cx.tcx(), item.item_id.expect_def_id());
+
+                if vis_did.is_crate_root() {
+                    f.write_str("pub(crate) ")?;
+                } else if parent_module == Some(vis_did) {
+                    // `pub(in foo)` where `foo` is the parent module
+                    // is the same as no visibility modifier; do nothing
+                } else if parent_module
+                    .and_then(|parent| find_nearest_parent_module(cx.tcx(), parent))
+                    == Some(vis_did)
+                {
+                    f.write_str("pub(super) ")?;
+                } else {
+                    let path = cx.tcx().def_path(vis_did);
+                    debug!("path={path:?}");
+                    // modified from `resolved_path()` to work with `DefPathData`
+                    let last_name = path.data.last().unwrap().data.get_opt_name().unwrap();
+                    let anchor = print_anchor(vis_did, last_name, cx);
+
+                    f.write_str("pub(in ")?;
+                    for seg in &path.data[..path.data.len() - 1] {
+                        write!(f, "{}::", seg.data.get_opt_name().unwrap())?;
+                    }
+                    write!(f, "{anchor}) ")?;
+                }
+            }
+        }
+        Ok(())
     })
 }
 

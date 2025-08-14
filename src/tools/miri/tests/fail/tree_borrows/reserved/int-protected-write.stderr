@@ -12,7 +12,7 @@ error: Undefined Behavior: write access through <TAG> (y, callee:y, caller:y) at
   --> tests/fail/tree_borrows/reserved/int-protected-write.rs:LL:CC
    |
 LL |             *y = 0;
-   |             ^^^^^^ write access through <TAG> (y, callee:y, caller:y) at ALLOC[0x0] is forbidden
+   |             ^^^^^^ Undefined Behavior occurred here
    |
    = help: this indicates a potential bug in the program: it performed an invalid operation, but the Tree Borrows rules it violated are still experimental
    = help: the accessed tag <TAG> (y, callee:y, caller:y) is foreign to the protected tag <TAG> (callee:x) (i.e., it is not a child)

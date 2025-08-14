@@ -1,4 +1,4 @@
-use crate::spec::{StackProbeType, Target, TargetMetadata, TargetOptions, base};
+use crate::spec::{FramePointer, StackProbeType, Target, TargetMetadata, TargetOptions, base};
 
 pub(crate) fn target() -> Target {
     Target {
@@ -15,6 +15,10 @@ pub(crate) fn target() -> Target {
         options: TargetOptions {
             abi: "ilp32".into(),
             features: "+v8a,+outline-atomics".into(),
+            // the AAPCS64 expects use of non-leaf frame pointers per
+            // https://github.com/ARM-software/abi-aa/blob/4492d1570eb70c8fd146623e0db65b2d241f12e7/aapcs64/aapcs64.rst#the-frame-pointer
+            // and we tend to encounter interesting bugs in AArch64 unwinding code if we do not
+            frame_pointer: FramePointer::NonLeaf,
             max_atomic_width: Some(128),
             stack_probes: StackProbeType::Inline,
             mcount: "\u{1}_mcount".into(),

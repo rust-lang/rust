@@ -2,7 +2,7 @@ error: abnormal termination: trace/breakpoint trap
   --> tests/fail/breakpoint.rs:LL:CC
    |
 LL |     core::intrinsics::breakpoint();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ trace/breakpoint trap
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ abnormal termination occurred here
    |
    = note: BACKTRACE:
    = note: inside `main` at tests/fail/breakpoint.rs:LL:CC

@@ -185,20 +185,22 @@ fn invocation_fixtures(
                     for it in tokens.iter() {
                         collect_from_op(it, builder, seed);
                     }
-                    if i + 1 != cnt {
-                        if let Some(sep) = separator {
-                            match &**sep {
-                                Separator::Literal(it) => {
-                                    builder.push(tt::Leaf::Literal(it.clone()))
+                    if i + 1 != cnt
+                        && let Some(sep) = separator
+                    {
+                        match &**sep {
+                            Separator::Literal(it) => builder.push(tt::Leaf::Literal(it.clone())),
+                            Separator::Ident(it) => builder.push(tt::Leaf::Ident(it.clone())),
+                            Separator::Puncts(puncts) => {
+                                for it in puncts {
+                                    builder.push(tt::Leaf::Punct(*it))
                                 }
-                                Separator::Ident(it) => builder.push(tt::Leaf::Ident(it.clone())),
-                                Separator::Puncts(puncts) => {
-                                    for it in puncts {
-                                        builder.push(tt::Leaf::Punct(*it))
-                                    }
-                                }
-                            };
-                        }
+                            }
+                            Separator::Lifetime(punct, ident) => {
+                                builder.push(tt::Leaf::Punct(*punct));
+                                builder.push(tt::Leaf::Ident(ident.clone()));
+                            }
+                        };
                     }
                 }
             }

@@ -8,13 +8,14 @@ SOURCE_FILE
     EQ "="
     WHITESPACE " "
     FOR_TYPE
-      FOR_KW "for"
-      GENERIC_PARAM_LIST
-        L_ANGLE "<"
-        LIFETIME_PARAM
-          LIFETIME
-            LIFETIME_IDENT "'a"
-        R_ANGLE ">"
+      FOR_BINDER
+        FOR_KW "for"
+        GENERIC_PARAM_LIST
+          L_ANGLE "<"
+          LIFETIME_PARAM
+            LIFETIME
+              LIFETIME_IDENT "'a"
+          R_ANGLE ">"
       WHITESPACE " "
       REF_TYPE
         AMP "&"
@@ -37,13 +38,14 @@ SOURCE_FILE
     EQ "="
     WHITESPACE " "
     FOR_TYPE
-      FOR_KW "for"
-      GENERIC_PARAM_LIST
-        L_ANGLE "<"
-        LIFETIME_PARAM
-          LIFETIME
-            LIFETIME_IDENT "'a"
-        R_ANGLE ">"
+      FOR_BINDER
+        FOR_KW "for"
+        GENERIC_PARAM_LIST
+          L_ANGLE "<"
+          LIFETIME_PARAM
+            LIFETIME
+              LIFETIME_IDENT "'a"
+          R_ANGLE ">"
       WHITESPACE " "
       TUPLE_TYPE
         L_PAREN "("
@@ -70,13 +72,14 @@ SOURCE_FILE
     EQ "="
     WHITESPACE " "
     FOR_TYPE
-      FOR_KW "for"
-      GENERIC_PARAM_LIST
-        L_ANGLE "<"
-        LIFETIME_PARAM
-          LIFETIME
-            LIFETIME_IDENT "'a"
-        R_ANGLE ">"
+      FOR_BINDER
+        FOR_KW "for"
+        GENERIC_PARAM_LIST
+          L_ANGLE "<"
+          LIFETIME_PARAM
+            LIFETIME
+              LIFETIME_IDENT "'a"
+          R_ANGLE ">"
       WHITESPACE " "
       SLICE_TYPE
         L_BRACK "["
@@ -97,22 +100,24 @@ SOURCE_FILE
     EQ "="
     WHITESPACE " "
     FOR_TYPE
-      FOR_KW "for"
-      GENERIC_PARAM_LIST
-        L_ANGLE "<"
-        LIFETIME_PARAM
-          LIFETIME
-            LIFETIME_IDENT "'a"
-        R_ANGLE ">"
-      WHITESPACE " "
-      FOR_TYPE
+      FOR_BINDER
         FOR_KW "for"
         GENERIC_PARAM_LIST
           L_ANGLE "<"
           LIFETIME_PARAM
             LIFETIME
-              LIFETIME_IDENT "'b"
+              LIFETIME_IDENT "'a"
           R_ANGLE ">"
+      WHITESPACE " "
+      FOR_TYPE
+        FOR_BINDER
+          FOR_KW "for"
+          GENERIC_PARAM_LIST
+            L_ANGLE "<"
+            LIFETIME_PARAM
+              LIFETIME
+                LIFETIME_IDENT "'b"
+            R_ANGLE ">"
         WHITESPACE " "
         FN_PTR_TYPE
           FN_KW "fn"
@@ -164,31 +169,34 @@ SOURCE_FILE
       WHERE_KW "where"
       WHITESPACE "\n    "
       WHERE_PRED
-        FOR_KW "for"
-        GENERIC_PARAM_LIST
-          L_ANGLE "<"
-          LIFETIME_PARAM
-            LIFETIME
-              LIFETIME_IDENT "'a"
-          R_ANGLE ">"
-        WHITESPACE " "
-        FOR_TYPE
+        FOR_BINDER
           FOR_KW "for"
           GENERIC_PARAM_LIST
             L_ANGLE "<"
             LIFETIME_PARAM
               LIFETIME
-                LIFETIME_IDENT "'b"
+                LIFETIME_IDENT "'a"
             R_ANGLE ">"
-          WHITESPACE " "
-          FOR_TYPE
+        WHITESPACE " "
+        FOR_TYPE
+          FOR_BINDER
             FOR_KW "for"
             GENERIC_PARAM_LIST
               L_ANGLE "<"
               LIFETIME_PARAM
                 LIFETIME
-                  LIFETIME_IDENT "'c"
+                  LIFETIME_IDENT "'b"
               R_ANGLE ">"
+          WHITESPACE " "
+          FOR_TYPE
+            FOR_BINDER
+              FOR_KW "for"
+              GENERIC_PARAM_LIST
+                L_ANGLE "<"
+                LIFETIME_PARAM
+                  LIFETIME
+                    LIFETIME_IDENT "'c"
+                R_ANGLE ">"
             WHITESPACE " "
             FN_PTR_TYPE
               FN_KW "fn"

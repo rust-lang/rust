@@ -2,7 +2,7 @@ error: Undefined Behavior: trying to set discriminant of a Option<std::num::NonZ
   --> tests/fail/enum-set-discriminant-niche-variant-wrong.rs:LL:CC
    |
 LL |             SetDiscriminant(*ptr, 1);
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^ trying to set discriminant of a Option<std::num::NonZero<i32>> to the niched variant, but the value does not match
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^ Undefined Behavior occurred here
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

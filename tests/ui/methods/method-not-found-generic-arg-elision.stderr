@@ -10,7 +10,7 @@ LL |     let d = point_i32.distance();
    = note: the method was found for
            - `Point<f64>`
 
-error[E0599]: no method named `other` found for struct `Point` in the current scope
+error[E0599]: no method named `other` found for struct `Point<T>` in the current scope
   --> $DIR/method-not-found-generic-arg-elision.rs:84:23
    |
 LL | struct Point<T> {
@@ -19,11 +19,11 @@ LL | struct Point<T> {
 LL |     let d = point_i32.other();
    |                       ^^^^^ method not found in `Point<i32>`
 
-error[E0599]: no method named `extend` found for struct `Map` in the current scope
+error[E0599]: no method named `extend` found for struct `Map<I, F>` in the current scope
   --> $DIR/method-not-found-generic-arg-elision.rs:87:67
    |
 LL |     v.iter().map(Box::new(|x| x * x) as Box<dyn Fn(&i32) -> i32>).extend(std::iter::once(100));
-   |                                                                   ^^^^^^ method not found in `Map<Iter<'_, i32>, Box<dyn Fn(&i32) -> i32>>`
+   |                                                                   ^^^^^^ method not found in `Map<std::slice::Iter<'_, i32>, Box<dyn for<'a> Fn(&'a i32) -> i32>>`
 
 error[E0599]: no method named `method` found for struct `Wrapper<bool>` in the current scope
   --> $DIR/method-not-found-generic-arg-elision.rs:90:13
@@ -41,7 +41,7 @@ LL |     wrapper.method();
            - `Wrapper<i8>`
            and 2 more types
 
-error[E0599]: no method named `other` found for struct `Wrapper` in the current scope
+error[E0599]: no method named `other` found for struct `Wrapper<T>` in the current scope
   --> $DIR/method-not-found-generic-arg-elision.rs:92:13
    |
 LL | struct Wrapper<T>(T);
@@ -64,7 +64,7 @@ LL |     wrapper.method();
            - `Wrapper2<'a, i32, C>`
            - `Wrapper2<'a, i8, C>`
 
-error[E0599]: no method named `other` found for struct `Wrapper2` in the current scope
+error[E0599]: no method named `other` found for struct `Wrapper2<'a, T, C>` in the current scope
   --> $DIR/method-not-found-generic-arg-elision.rs:98:13
    |
 LL | struct Wrapper2<'a, T, const C: usize> {

@@ -1,0 +1,20 @@
+// regression test for #141758
+//@ run-rustfix
+//@ check-pass
+
+#![warn(unused_lifetimes)]
+#![allow(incomplete_features, unused_imports, dead_code)]
+#![feature(unsafe_binders)]
+
+use std::unsafe_binder::unwrap_binder;
+
+#[derive(Copy, Clone)]
+pub struct S([usize; 8]);
+
+// Regression test for <https://github.com/rust-lang/rust/issues/141418>.
+pub fn by_value(_x: unsafe<'a> &'a S) -> usize {
+    //~^ WARN lifetime parameter `'b` never used
+    0
+}
+
+fn main() {}

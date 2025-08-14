@@ -2,7 +2,7 @@
 
 use std::fmt;
 
-use rustc_hir::def::{CtorOf, DefKind};
+use rustc_hir::def::{CtorOf, DefKind, MacroKinds};
 use rustc_span::hygiene::MacroKind;
 use serde::{Serialize, Serializer};
 
@@ -70,12 +70,12 @@ impl Serialize for ItemType {
 
 impl<'a> From<&'a clean::Item> for ItemType {
     fn from(item: &'a clean::Item) -> ItemType {
-        let kind = match item.kind {
-            clean::StrippedItem(box ref item) => item,
-            ref kind => kind,
+        let kind = match &item.kind {
+            clean::StrippedItem(box item) => item,
+            kind => kind,
         };
 
-        match *kind {
+        match kind {
             clean::ModuleItem(..) => ItemType::Module,
             clean::ExternCrateItem { .. } => ItemType::ExternCrate,
             clean::ImportItem(..) => ItemType::Import,
@@ -103,7 +103,7 @@ impl<'a> From<&'a clean::Item> for ItemType {
             clean::ForeignTypeItem => ItemType::ForeignType,
             clean::KeywordItem => ItemType::Keyword,
             clean::TraitAliasItem(..) => ItemType::TraitAlias,
-            clean::ProcMacroItem(ref mac) => match mac.kind {
+            clean::ProcMacroItem(mac) => match mac.kind {
                 MacroKind::Bang => ItemType::Macro,
                 MacroKind::Attr => ItemType::ProcAttribute,
                 MacroKind::Derive => ItemType::ProcDerive,
@@ -134,22 +134,16 @@ impl ItemType {
             DefKind::Trait => Self::Trait,
             DefKind::TyAlias => Self::TypeAlias,
             DefKind::TraitAlias => Self::TraitAlias,
-            DefKind::Macro(kind) => match kind {
-                MacroKind::Bang => ItemType::Macro,
-                MacroKind::Attr => ItemType::ProcAttribute,
-                MacroKind::Derive => ItemType::ProcDerive,
-            },
+            DefKind::Macro(MacroKinds::BANG) => ItemType::Macro,
+            DefKind::Macro(MacroKinds::ATTR) => ItemType::ProcAttribute,
+            DefKind::Macro(MacroKinds::DERIVE) => ItemType::ProcDerive,
+            DefKind::Macro(_) => todo!("Handle macros with multiple kinds"),
             DefKind::ForeignTy => Self::ForeignType,
             DefKind::Variant => Self::Variant,
             DefKind::Field => Self::StructField,
             DefKind::AssocTy => Self::AssocType,
-            DefKind::AssocFn => {
-                if let Some(DefKind::Trait) = parent_kind {
-                    Self::TyMethod
-                } else {
-                    Self::Method
-                }
-            }
+            DefKind::AssocFn if let Some(DefKind::Trait) = parent_kind => Self::TyMethod,
+            DefKind::AssocFn => Self::Method,
             DefKind::Ctor(CtorOf::Struct, _) => Self::Struct,
             DefKind::Ctor(CtorOf::Variant, _) => Self::Variant,
             DefKind::AssocConst => Self::AssocConst,
@@ -170,7 +164,7 @@ impl ItemType {
     }
 
     pub(crate) fn as_str(&self) -> &'static str {
-        match *self {
+        match self {
             ItemType::Module => "mod",
             ItemType::ExternCrate => "externcrate",
             ItemType::Import => "import",
@@ -199,10 +193,10 @@ impl ItemType {
         }
     }
     pub(crate) fn is_method(&self) -> bool {
-        matches!(*self, ItemType::Method | ItemType::TyMethod)
+        matches!(self, ItemType::Method | ItemType::TyMethod)
     }
     pub(crate) fn is_adt(&self) -> bool {
-        matches!(*self, ItemType::Struct | ItemType::Union | ItemType::Enum)
+        matches!(self, ItemType::Struct | ItemType::Union | ItemType::Enum)
     }
 }
 

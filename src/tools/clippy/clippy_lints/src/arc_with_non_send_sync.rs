@@ -50,7 +50,7 @@ impl<'tcx> LateLintPass<'tcx> for ArcWithNonSendSync {
             && let arg_ty = cx.typeck_results().expr_ty(arg)
             // make sure that the type is not and does not contain any type parameters
             && arg_ty.walk().all(|arg| {
-                !matches!(arg.unpack(), GenericArgKind::Type(ty) if matches!(ty.kind(), ty::Param(_)))
+                !matches!(arg.kind(), GenericArgKind::Type(ty) if matches!(ty.kind(), ty::Param(_)))
             })
             && let Some(send) = cx.tcx.get_diagnostic_item(sym::Send)
             && let Some(sync) = cx.tcx.lang_items().sync_trait()
@@ -73,7 +73,7 @@ impl<'tcx> LateLintPass<'tcx> for ArcWithNonSendSync {
                         diag.note(format!(
                             "`Arc<{arg_ty}>` is not `Send` and `Sync` as `{arg_ty}` is {reason}"
                         ));
-                        diag.help("if the `Arc` will not used be across threads replace it with an `Rc`");
+                        diag.help("if the `Arc` will not be used across threads replace it with an `Rc`");
                         diag.help(format!(
                             "otherwise make `{arg_ty}` `Send` and `Sync` or consider a wrapper type such as `Mutex`"
                         ));

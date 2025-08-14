@@ -11,15 +11,13 @@ use rustc_middle::ty::{
 };
 use rustc_span::{ErrorGuaranteed, Span};
 use rustc_trait_selection::error_reporting::traits::report_dyn_incompatibility;
-use rustc_trait_selection::traits::{self, hir_ty_lowering_dyn_compatibility_violations};
+use rustc_trait_selection::traits;
 use smallvec::{SmallVec, smallvec};
 use tracing::{debug, instrument};
 
 use super::HirTyLowerer;
 use crate::errors::SelfInTypeAlias;
-use crate::hir_ty_lowering::{
-    GenericArgCountMismatch, GenericArgCountResult, PredicateFilter, RegionInferReason,
-};
+use crate::hir_ty_lowering::{GenericArgCountMismatch, PredicateFilter, RegionInferReason};
 
 impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     /// Lower a trait object type from the HIR to our internal notion of a type.
@@ -37,38 +35,22 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
         let mut user_written_bounds = Vec::new();
         let mut potential_assoc_types = Vec::new();
-        for trait_bound in hir_bounds.iter() {
-            if let hir::BoundPolarity::Maybe(_) = trait_bound.modifiers.polarity {
-                continue;
-            }
-            if let GenericArgCountResult {
-                correct:
-                    Err(GenericArgCountMismatch { invalid_args: cur_potential_assoc_types, .. }),
-                ..
-            } = self.lower_poly_trait_ref(
-                &trait_bound.trait_ref,
-                trait_bound.span,
-                hir::BoundConstness::Never,
-                hir::BoundPolarity::Positive,
+        for poly_trait_ref in hir_bounds.iter() {
+            let result = self.lower_poly_trait_ref(
+                poly_trait_ref,
                 dummy_self,
                 &mut user_written_bounds,
                 PredicateFilter::SelfOnly,
-            ) {
-                potential_assoc_types.extend(cur_potential_assoc_types);
+            );
+            if let Err(GenericArgCountMismatch { invalid_args, .. }) = result.correct {
+                potential_assoc_types.extend(invalid_args);
             }
         }
 
         let ast_bounds: Vec<_> =
             hir_bounds.iter().map(|&trait_ref| hir::GenericBound::Trait(trait_ref)).collect();
 
-        self.add_default_traits_with_filter(
-            &mut user_written_bounds,
-            dummy_self,
-            &ast_bounds,
-            None,
-            span,
-            |tr| tr != hir::LangItem::Sized,
-        );
+        self.add_default_traits(&mut user_written_bounds, dummy_self, &ast_bounds, None, span);
 
         let (elaborated_trait_bounds, elaborated_projection_bounds) =
             traits::expand_trait_aliases(tcx, user_written_bounds.iter().copied());
@@ -76,17 +58,15 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             .into_iter()
             .partition(|(trait_ref, _)| !tcx.trait_is_auto(trait_ref.def_id()));
 
-        // We  don't support empty trait objects.
+        // We don't support empty trait objects.
         if regular_traits.is_empty() && auto_traits.is_empty() {
-            let guar = self.report_trait_object_with_no_traits_error(
-                span,
-                user_written_bounds.iter().copied(),
-            );
+            let guar =
+                self.report_trait_object_with_no_traits(span, user_written_bounds.iter().copied());
             return Ty::new_error(tcx, guar);
         }
         // We don't support >1 principal
         if regular_traits.len() > 1 {
-            let guar = self.report_trait_object_addition_traits_error(&regular_traits);
+            let guar = self.report_trait_object_addition_traits(&regular_traits);
             return Ty::new_error(tcx, guar);
         }
         // Don't create a dyn trait if we have errors in the principal.
@@ -99,8 +79,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         // to avoid ICEs.
         for (clause, span) in user_written_bounds {
             if let Some(trait_pred) = clause.as_trait_clause() {
-                let violations =
-                    hir_ty_lowering_dyn_compatibility_violations(tcx, trait_pred.def_id());
+                let violations = self.dyn_compatibility_violations(trait_pred.def_id());
                 if !violations.is_empty() {
                     let reported = report_dyn_incompatibility(
                         tcx,
@@ -132,7 +111,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     if references_self {
                         // With trait alias and type alias combined, type resolver
                         // may not be able to catch all illegal `Self` usages (issue 139082)
-                        let guar = tcx.dcx().emit_err(SelfInTypeAlias { span });
+                        let guar = self.dcx().emit_err(SelfInTypeAlias { span });
                         b.term = replace_dummy_self_with_error(tcx, b.term, guar);
                     }
                 }
@@ -218,7 +197,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         let pred = bound_predicate.rebind(pred);
                         // A `Self` within the original bound will be instantiated with a
                         // `trait_object_dummy_self`, so check for that.
-                        let references_self = match pred.skip_binder().term.unpack() {
+                        let references_self = match pred.skip_binder().term.kind() {
                             ty::TermKind::Ty(ty) => ty.walk().any(|arg| arg == dummy_self.into()),
                             // FIXME(associated_const_equality): We should walk the const instead of not doing anything
                             ty::TermKind::Const(_) => false,
@@ -360,7 +339,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     hir_bound.trait_ref.path.res == Res::Def(DefKind::Trait, trait_ref.def_id)
                         && hir_bound.span.contains(span)
                 });
-                self.complain_about_missing_type_params(
+                self.report_missing_type_params(
                     missing_type_params,
                     trait_ref.def_id,
                     span,

@@ -2,7 +2,7 @@ error: Undefined Behavior: pointer not dereferenceable: pointer must point to so
   --> tests/fail-dep/libc/memrchr_null.rs:LL:CC
    |
 LL |         libc::memrchr(ptr::null(), 0, 0);
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ pointer not dereferenceable: pointer must point to some allocation, but got null pointer
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Undefined Behavior occurred here
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

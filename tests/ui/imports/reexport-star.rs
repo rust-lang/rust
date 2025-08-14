@@ -6,7 +6,7 @@ mod a {
 }
 
 mod b {
-    pub use a::*;
+    pub use crate::a::*;
 }
 
 pub fn main() {

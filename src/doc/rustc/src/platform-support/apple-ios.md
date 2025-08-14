@@ -66,6 +66,20 @@ Rust programs can be built for these targets by specifying `--target`, if
 $ rustc --target aarch64-apple-ios your-code.rs
 ```
 
+The simulator variants can be differentiated from the variants running
+on-device with the `target_env = "sim"` cfg (or `target_abi = "sim"` before
+Rust CURRENT_RUSTC_VERSION).
+
+```rust
+if cfg!(all(target_vendor = "apple", target_env = "sim")) {
+    // Do something on the iOS/tvOS/visionOS/watchOS Simulator.
+} {
+    // Everything else, like Windows and non-Simulator iOS.
+}
+```
+
+This is similar to the `TARGET_OS_SIMULATOR` define in C code.
+
 ## Testing
 
 There is no support for running the Rust or standard library testsuite at the

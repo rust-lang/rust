@@ -1,5 +1,7 @@
-#![allow(bare_trait_objects)]
+//@ edition: 2015
 //@ check-pass
+#![allow(bare_trait_objects)]
+
 pub struct FormatWith<'a, I, F> {
     sep: &'a str,
     /// FormatWith uses interior mutability because Display::fmt takes &self.

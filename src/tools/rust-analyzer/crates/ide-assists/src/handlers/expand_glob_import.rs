@@ -272,16 +272,16 @@ impl Refs {
                 .clone()
                 .into_iter()
                 .filter(|r| {
-                    if let Definition::Trait(tr) = r.def {
-                        if tr.items(ctx.db()).into_iter().any(|ai| {
+                    if let Definition::Trait(tr) = r.def
+                        && tr.items(ctx.db()).into_iter().any(|ai| {
                             if let AssocItem::Function(f) = ai {
                                 def_is_referenced_in(Definition::Function(f), ctx)
                             } else {
                                 false
                             }
-                        }) {
-                            return true;
-                        }
+                        })
+                    {
+                        return true;
                     }
 
                     def_is_referenced_in(r.def, ctx)

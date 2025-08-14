@@ -4,9 +4,7 @@
 
 // tidy-alphabetical-start
 #![allow(internal_features)]
-#![cfg_attr(bootstrap, feature(let_chains))]
 #![feature(associated_type_defaults)]
-#![feature(box_patterns)]
 #![feature(closure_track_caller)]
 #![feature(debug_closure_helpers)]
 #![feature(exhaustive_patterns)]
@@ -20,6 +18,7 @@
 extern crate self as rustc_hir;
 
 mod arena;
+pub mod attrs;
 pub mod def;
 pub mod def_path_hash_map;
 pub mod definitions;
@@ -29,9 +28,12 @@ mod hir;
 pub mod hir_id;
 pub mod intravisit;
 pub mod lang_items;
+pub mod lints;
 pub mod pat_util;
+mod stability;
 mod stable_hash_impls;
 mod target;
+mod version;
 pub mod weak_lang_items;
 
 #[cfg(test)]
@@ -41,7 +43,9 @@ mod tests;
 pub use hir::*;
 pub use hir_id::*;
 pub use lang_items::{LangItem, LanguageItems};
+pub use stability::*;
 pub use stable_hash_impls::HashStableContext;
 pub use target::{MethodKind, Target};
+pub use version::*;
 
 arena_types!(rustc_arena::declare_arena);

@@ -37,7 +37,7 @@ error: use of a disallowed type `std::io::Read`
 LL | fn trait_obj(_: &dyn std::io::Read) {}
    |                      ^^^^^^^^^^^^^
 
-error: use of a disallowed type `std::primitive::usize`
+error: use of a disallowed type `usize`
   --> tests/ui-toml/toml_disallowed_types/conf_disallowed_types.rs:26:33
    |
 LL | fn full_and_single_path_prim(_: usize, _: bool) {}
@@ -49,13 +49,13 @@ error: use of a disallowed type `bool`
 LL | fn full_and_single_path_prim(_: usize, _: bool) {}
    |                                           ^^^^
 
-error: use of a disallowed type `std::primitive::usize`
+error: use of a disallowed type `usize`
   --> tests/ui-toml/toml_disallowed_types/conf_disallowed_types.rs:30:28
    |
 LL | fn const_generics<const C: usize>() {}
    |                            ^^^^^
 
-error: use of a disallowed type `std::primitive::usize`
+error: use of a disallowed type `usize`
   --> tests/ui-toml/toml_disallowed_types/conf_disallowed_types.rs:33:24
    |
 LL | struct GenArg<const U: usize>([u8; U]);
@@ -123,7 +123,7 @@ error: use of a disallowed type `proc_macro2::Ident`
 LL |     let _ = syn::Ident::new("", todo!());
    |             ^^^^^^^^^^
 
-error: use of a disallowed type `std::primitive::usize`
+error: use of a disallowed type `usize`
   --> tests/ui-toml/toml_disallowed_types/conf_disallowed_types.rs:61:12
    |
 LL |     let _: usize = 64_usize;

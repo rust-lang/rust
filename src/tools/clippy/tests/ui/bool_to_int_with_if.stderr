@@ -1,5 +1,5 @@
 error: boolean to int conversion using if
-  --> tests/ui/bool_to_int_with_if.rs:14:5
+  --> tests/ui/bool_to_int_with_if.rs:13:5
    |
 LL | /     if a {
 LL | |
@@ -14,7 +14,7 @@ LL | |     };
    = help: to override `-D warnings` add `#[allow(clippy::bool_to_int_with_if)]`
 
 error: boolean to int conversion using if
-  --> tests/ui/bool_to_int_with_if.rs:20:5
+  --> tests/ui/bool_to_int_with_if.rs:19:5
    |
 LL | /     if a {
 LL | |
@@ -27,7 +27,7 @@ LL | |     };
    = note: `!a as i32` or `(!a).into()` can also be valid options
 
 error: boolean to int conversion using if
-  --> tests/ui/bool_to_int_with_if.rs:26:5
+  --> tests/ui/bool_to_int_with_if.rs:25:5
    |
 LL | /     if !a {
 LL | |
@@ -40,7 +40,7 @@ LL | |     };
    = note: `!a as i32` or `(!a).into()` can also be valid options
 
 error: boolean to int conversion using if
-  --> tests/ui/bool_to_int_with_if.rs:32:5
+  --> tests/ui/bool_to_int_with_if.rs:31:5
    |
 LL | /     if a || b {
 LL | |
@@ -53,7 +53,7 @@ LL | |     };
    = note: `(a || b) as i32` or `(a || b).into()` can also be valid options
 
 error: boolean to int conversion using if
-  --> tests/ui/bool_to_int_with_if.rs:38:5
+  --> tests/ui/bool_to_int_with_if.rs:37:5
    |
 LL | /     if cond(a, b) {
 LL | |
@@ -66,7 +66,7 @@ LL | |     };
    = note: `cond(a, b) as i32` or `cond(a, b).into()` can also be valid options
 
 error: boolean to int conversion using if
-  --> tests/ui/bool_to_int_with_if.rs:44:5
+  --> tests/ui/bool_to_int_with_if.rs:43:5
    |
 LL | /     if x + y < 4 {
 LL | |
@@ -79,7 +79,7 @@ LL | |     };
    = note: `(x + y < 4) as i32` or `(x + y < 4).into()` can also be valid options
 
 error: boolean to int conversion using if
-  --> tests/ui/bool_to_int_with_if.rs:54:12
+  --> tests/ui/bool_to_int_with_if.rs:53:12
    |
 LL |       } else if b {
    |  ____________^
@@ -93,7 +93,7 @@ LL | |     };
    = note: `b as i32` or `b.into()` can also be valid options
 
 error: boolean to int conversion using if
-  --> tests/ui/bool_to_int_with_if.rs:64:12
+  --> tests/ui/bool_to_int_with_if.rs:63:12
    |
 LL |       } else if b {
    |  ____________^
@@ -107,7 +107,7 @@ LL | |     };
    = note: `!b as i32` or `(!b).into()` can also be valid options
 
 error: boolean to int conversion using if
-  --> tests/ui/bool_to_int_with_if.rs:130:5
+  --> tests/ui/bool_to_int_with_if.rs:129:5
    |
 LL |     if a { 1 } else { 0 }
    |     ^^^^^^^^^^^^^^^^^^^^^ help: replace with from: `u8::from(a)`
@@ -115,7 +115,7 @@ LL |     if a { 1 } else { 0 }
    = note: `a as u8` or `a.into()` can also be valid options
 
 error: boolean to int conversion using if
-  --> tests/ui/bool_to_int_with_if.rs:174:13
+  --> tests/ui/bool_to_int_with_if.rs:173:13
    |
 LL |     let _ = if dbg!(4 > 0) { 1 } else { 0 };
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with from: `i32::from(dbg!(4 > 0))`
@@ -123,7 +123,7 @@ LL |     let _ = if dbg!(4 > 0) { 1 } else { 0 };
    = note: `dbg!(4 > 0) as i32` or `dbg!(4 > 0).into()` can also be valid options
 
 error: boolean to int conversion using if
-  --> tests/ui/bool_to_int_with_if.rs:177:18
+  --> tests/ui/bool_to_int_with_if.rs:176:18
    |
 LL |     let _ = dbg!(if 4 > 0 { 1 } else { 0 });
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with from: `i32::from(4 > 0)`

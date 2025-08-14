@@ -9,7 +9,7 @@ use rustc_macros::extension;
 pub use rustc_middle::traits::query::NormalizationResult;
 use rustc_middle::ty::{
     self, FallibleTypeFolder, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable, TypeSuperVisitable,
-    TypeVisitableExt, TypeVisitor, TypingMode,
+    TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode,
 };
 use rustc_span::DUMMY_SP;
 use tracing::{debug, info, instrument};
@@ -127,7 +127,7 @@ struct MaxEscapingBoundVarVisitor {
 }
 
 impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for MaxEscapingBoundVarVisitor {
-    fn visit_binder<T: TypeFoldable<TyCtxt<'tcx>>>(&mut self, t: &ty::Binder<'tcx, T>) {
+    fn visit_binder<T: TypeVisitable<TyCtxt<'tcx>>>(&mut self, t: &ty::Binder<'tcx, T>) {
         self.outer_index.shift_in(1);
         t.super_visit_with(self);
         self.outer_index.shift_out(1);

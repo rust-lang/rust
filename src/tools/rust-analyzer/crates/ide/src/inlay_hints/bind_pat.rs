@@ -41,13 +41,11 @@ pub(super) fn hints(
                 Some(it.colon_token())
             },
             ast::LetStmt(it) => {
-                if config.hide_closure_initialization_hints {
-                    if let Some(ast::Expr::ClosureExpr(closure)) = it.initializer() {
-                        if closure_has_block_body(&closure) {
+                if config.hide_closure_initialization_hints
+                    && let Some(ast::Expr::ClosureExpr(closure)) = it.initializer()
+                        && closure_has_block_body(&closure) {
                             return None;
                         }
-                    }
-                }
                 if it.ty().is_some() {
                     return None;
                 }
@@ -380,9 +378,9 @@ fn main() {
     let foo = foo3();
      // ^^^ impl Fn(f64, f64) -> u32
     let foo = foo4();
-     // ^^^ &'static (dyn Fn(f64, f64) -> u32 + 'static)
+     // ^^^ &'static dyn Fn(f64, f64) -> u32
     let foo = foo5();
-     // ^^^ &'static (dyn Fn(&(dyn Fn(f64, f64) -> u32 + 'static), f64) -> u32 + 'static)
+     // ^^^ &'static dyn Fn(&dyn Fn(f64, f64) -> u32, f64) -> u32
     let foo = foo6();
      // ^^^ impl Fn(f64, f64) -> u32
     let foo = foo7();
@@ -413,7 +411,7 @@ fn main() {
     let foo = foo3();
      // ^^^ impl Fn(f64, f64) -> u32
     let foo = foo4();
-     // ^^^ &'static (dyn Fn(f64, f64) -> u32 + 'static)
+     // ^^^ &'static dyn Fn(f64, f64) -> u32
     let foo = foo5();
     let foo = foo6();
     let foo = foo7();

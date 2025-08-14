@@ -4,7 +4,7 @@ error[E0277]: the trait bound `str: UpperHex` is not satisfied
 LL |     format!("{:X}", "3");
    |              ----   ^^^ the trait `UpperHex` is not implemented for `str`
    |              |
-   |              required by a bound introduced by this call
+   |              required by this formatting parameter
    |
    = help: the following other types implement trait `UpperHex`:
              &T
@@ -17,8 +17,6 @@ LL |     format!("{:X}", "3");
              i32
            and 9 others
    = note: required for `&str` to implement `UpperHex`
-note: required by a bound in `core::fmt::rt::Argument::<'_>::new_upper_hex`
-  --> $SRC_DIR/core/src/fmt/rt.rs:LL:COL
    = note: this error originates in the macro `$crate::__export::format_args` which comes from the expansion of the macro `format` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 1 previous error

@@ -52,7 +52,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             assert_matches!(
                 self.tcx().coroutine_kind(self.tcx().coroutine_for_closure(mir_def_id)),
                 Some(hir::CoroutineKind::Desugared(
-                    hir::CoroutineDesugaring::Async,
+                    hir::CoroutineDesugaring::Async | hir::CoroutineDesugaring::Gen,
                     hir::CoroutineSource::Closure
                 )),
                 "this needs to be modified if we're lowering non-async closures"
@@ -66,10 +66,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 Ty::new_tup(self.tcx(), user_provided_sig.inputs()),
                 args.tupled_upvars_ty(),
                 args.coroutine_captures_by_ref_ty(),
-                self.infcx
-                    .next_region_var(RegionVariableOrigin::MiscVariable(self.body.span), || {
-                        RegionCtxt::Unknown
-                    }),
+                self.infcx.next_region_var(RegionVariableOrigin::Misc(self.body.span), || {
+                    RegionCtxt::Unknown
+                }),
             );
 
             let next_ty_var = || self.infcx.next_ty_var(self.body.span);
@@ -87,7 +86,6 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         // them with fresh ty vars.
                         resume_ty: next_ty_var(),
                         yield_ty: next_ty_var(),
-                        witness: next_ty_var(),
                     },
                 )
                 .args,

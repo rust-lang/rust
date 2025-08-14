@@ -23,3 +23,9 @@ fn main() {
         }
     }
 }
+
+const FOO: () = break;
+//~^ ERROR: `break` outside of a loop or labeled block
+
+static BAR: () = break;
+//~^ ERROR: `break` outside of a loop or labeled block

@@ -182,22 +182,15 @@ pub enum InstrumentCoverage {
 pub struct CoverageOptions {
     pub level: CoverageLevel,
 
-    /// `-Zcoverage-options=no-mir-spans`: Don't extract block coverage spans
-    /// from MIR statements/terminators, making it easier to inspect/debug
-    /// branch and MC/DC coverage mappings.
-    ///
-    /// For internal debugging only. If other code changes would make it hard
-    /// to keep supporting this flag, remove it.
-    pub no_mir_spans: bool,
-
-    /// `-Zcoverage-options=discard-all-spans-in-codegen`: During codgen,
+    /// **(internal test-only flag)**
+    /// `-Zcoverage-options=discard-all-spans-in-codegen`: During codegen,
     /// discard all coverage spans as though they were invalid. Needed by
     /// regression tests for #133606, because we don't have an easy way to
     /// reproduce it from actual source code.
     pub discard_all_spans_in_codegen: bool,
 }
 
-/// Controls whether branch coverage or MC/DC coverage is enabled.
+/// Controls whether branch coverage is enabled.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Default)]
 pub enum CoverageLevel {
     /// Instrument for coverage at the MIR block level.
@@ -221,19 +214,25 @@ pub enum CoverageLevel {
     /// instrumentation, so it might be removed in the future when MC/DC is
     /// sufficiently complete, or if it is making MC/DC changes difficult.
     Condition,
-    /// Instrument for MC/DC. Mostly a superset of condition coverage, but might
-    /// differ in some corner cases.
-    Mcdc,
+}
+
+// The different settings that the `-Z offload` flag can have.
+#[derive(Clone, Copy, PartialEq, Hash, Debug)]
+pub enum Offload {
+    /// Enable the llvm offload pipeline
+    Enable,
 }
 
 /// The different settings that the `-Z autodiff` flag can have.
-#[derive(Clone, Copy, PartialEq, Hash, Debug)]
+#[derive(Clone, PartialEq, Hash, Debug)]
 pub enum AutoDiff {
     /// Enable the autodiff opt pipeline
     Enable,
 
     /// Print TypeAnalysis information
     PrintTA,
+    /// Print TypeAnalysis information for a specific function
+    PrintTAFn(String),
     /// Print ActivityAnalysis Information
     PrintAA,
     /// Print Performance Warnings from Enzyme
@@ -334,12 +333,12 @@ impl LinkSelfContained {
         if let Some(component_to_enable) = component.strip_prefix('+') {
             self.explicitly_set = None;
             self.enabled_components
-                .insert(LinkSelfContainedComponents::from_str(component_to_enable)?);
+                .insert(LinkSelfContainedComponents::from_str(component_to_enable).ok()?);
             Some(())
         } else if let Some(component_to_disable) = component.strip_prefix('-') {
             self.explicitly_set = None;
             self.disabled_components
-                .insert(LinkSelfContainedComponents::from_str(component_to_disable)?);
+                .insert(LinkSelfContainedComponents::from_str(component_to_disable).ok()?);
             Some(())
         } else {
             None
@@ -368,12 +367,34 @@ impl LinkSelfContained {
     }
 
     /// To help checking CLI usage while some of the values are unstable: returns whether one of the
-    /// components was set individually. This would also require the `-Zunstable-options` flag, to
-    /// be allowed.
-    fn are_unstable_variants_set(&self) -> bool {
-        let any_component_set =
-            !self.enabled_components.is_empty() || !self.disabled_components.is_empty();
-        self.explicitly_set.is_none() && any_component_set
+    /// unstable components was set individually, for the given `TargetTuple`. This would also
+    /// require the `-Zunstable-options` flag, to be allowed.
+    fn check_unstable_variants(&self, target_tuple: &TargetTuple) -> Result<(), String> {
+        if self.explicitly_set.is_some() {
+            return Ok(());
+        }
+
+        // `-C link-self-contained=-linker` is only stable on x64 linux.
+        let has_minus_linker = self.disabled_components.is_linker_enabled();
+        if has_minus_linker && target_tuple.tuple() != "x86_64-unknown-linux-gnu" {
+            return Err(format!(
+                "`-C link-self-contained=-linker` is unstable on the `{target_tuple}` \
+                    target. The `-Z unstable-options` flag must also be passed to use it on this target",
+            ));
+        }
+
+        // Any `+linker` or other component used is unstable, and that's an error.
+        let unstable_enabled = self.enabled_components;
+        let unstable_disabled = self.disabled_components - LinkSelfContainedComponents::LINKER;
+        if !unstable_enabled.union(unstable_disabled).is_empty() {
+            return Err(String::from(
+                "only `-C link-self-contained` values `y`/`yes`/`on`/`n`/`no`/`off`/`-linker` \
+                are stable, the `-Z unstable-options` flag must also be passed to use \
+                the unstable values",
+            ));
+        }
+
+        Ok(())
     }
 
     /// Returns whether the self-contained linker component was enabled on the CLI, using the
@@ -400,7 +421,7 @@ impl LinkSelfContained {
     }
 }
 
-/// The different values that `-Z linker-features` can take on the CLI: a list of individually
+/// The different values that `-C linker-features` can take on the CLI: a list of individually
 /// enabled or disabled features used during linking.
 ///
 /// There is no need to enable or disable them in bulk. Each feature is fine-grained, and can be
@@ -439,6 +460,39 @@ impl LinkerFeaturesCli {
             }
             _ => None,
         }
+    }
+
+    /// When *not* using `-Z unstable-options` on the CLI, ensure only stable linker features are
+    /// used, for the given `TargetTuple`. Returns `Ok` if no unstable variants are used.
+    /// The caller should ensure that e.g. `nightly_options::is_unstable_enabled()`
+    /// returns false.
+    pub(crate) fn check_unstable_variants(&self, target_tuple: &TargetTuple) -> Result<(), String> {
+        // `-C linker-features=-lld` is only stable on x64 linux.
+        let has_minus_lld = self.disabled.is_lld_enabled();
+        if has_minus_lld && target_tuple.tuple() != "x86_64-unknown-linux-gnu" {
+            return Err(format!(
+                "`-C linker-features=-lld` is unstable on the `{target_tuple}` \
+                    target. The `-Z unstable-options` flag must also be passed to use it on this target",
+            ));
+        }
+
+        // Any `+lld` or non-lld feature used is unstable, and that's an error.
+        let unstable_enabled = self.enabled;
+        let unstable_disabled = self.disabled - LinkerFeatures::LLD;
+        if !unstable_enabled.union(unstable_disabled).is_empty() {
+            let unstable_features: Vec<_> = unstable_enabled
+                .iter()
+                .map(|f| format!("+{}", f.as_str().unwrap()))
+                .chain(unstable_disabled.iter().map(|f| format!("-{}", f.as_str().unwrap())))
+                .collect();
+            return Err(format!(
+                "`-C linker-features={}` is unstable, and also requires the \
+                `-Z unstable-options` flag to be used",
+                unstable_features.join(","),
+            ));
+        }
+
+        Ok(())
     }
 }
 
@@ -1296,6 +1350,28 @@ bitflags::bitflags! {
     }
 }
 
+#[derive(Clone, Debug)]
+pub struct Sysroot {
+    pub explicit: Option<PathBuf>,
+    pub default: PathBuf,
+}
+
+impl Sysroot {
+    pub fn new(explicit: Option<PathBuf>) -> Sysroot {
+        Sysroot { explicit, default: filesearch::default_sysroot() }
+    }
+
+    /// Return explicit sysroot if it was passed with `--sysroot`, or default sysroot otherwise.
+    pub fn path(&self) -> &Path {
+        self.explicit.as_deref().unwrap_or(&self.default)
+    }
+
+    /// Returns both explicit sysroot if it was passed with `--sysroot` and the default sysroot.
+    pub fn all_paths(&self) -> impl Iterator<Item = &Path> {
+        self.explicit.as_deref().into_iter().chain(iter::once(&*self.default))
+    }
+}
+
 pub fn host_tuple() -> &'static str {
     // Get the host triple out of the build environment. This ensures that our
     // idea of the host triple is the same as for the set of libraries we've
@@ -1342,7 +1418,7 @@ impl Default for Options {
             describe_lints: false,
             output_types: OutputTypes(BTreeMap::new()),
             search_paths: vec![],
-            sysroot: filesearch::materialize_sysroot(None),
+            sysroot: Sysroot::new(None),
             target_triple: TargetTuple::from_tuple(host_tuple()),
             test: false,
             incremental: None,
@@ -1364,8 +1440,10 @@ impl Default for Options {
             cli_forced_local_thinlto_off: false,
             remap_path_prefix: Vec::new(),
             real_rust_source_base_dir: None,
+            real_rustc_dev_source_base_dir: None,
             edition: DEFAULT_EDITION,
             json_artifact_notifications: false,
+            json_timings: false,
             json_unused_externs: JsonUnusedExterns::No,
             json_future_incompat: false,
             pretty: None,
@@ -1627,6 +1705,11 @@ impl RustcOptGroup {
             OptionKind::FlagMulti => options.optflagmulti(short_name, long_name, desc),
         };
     }
+
+    /// This is for diagnostics-only.
+    pub fn long_name(&self) -> &str {
+        self.long_name
+    }
 }
 
 pub fn make_opt(
@@ -1880,6 +1963,9 @@ pub struct JsonConfig {
     pub json_rendered: HumanReadableErrorType,
     pub json_color: ColorConfig,
     json_artifact_notifications: bool,
+    /// Output start and end timestamps of several high-level compilation sections
+    /// (frontend, backend, linker).
+    json_timings: bool,
     pub json_unused_externs: JsonUnusedExterns,
     json_future_incompat: bool,
 }
@@ -1921,6 +2007,7 @@ pub fn parse_json(early_dcx: &EarlyDiagCtxt, matches: &getopts::Matches) -> Json
     let mut json_artifact_notifications = false;
     let mut json_unused_externs = JsonUnusedExterns::No;
     let mut json_future_incompat = false;
+    let mut json_timings = false;
     for option in matches.opt_strs("json") {
         // For now conservatively forbid `--color` with `--json` since `--json`
         // won't actually be emitting any colors and anything colorized is
@@ -1937,6 +2024,7 @@ pub fn parse_json(early_dcx: &EarlyDiagCtxt, matches: &getopts::Matches) -> Json
                 }
                 "diagnostic-rendered-ansi" => json_color = ColorConfig::Always,
                 "artifacts" => json_artifact_notifications = true,
+                "timings" => json_timings = true,
                 "unused-externs" => json_unused_externs = JsonUnusedExterns::Loud,
                 "unused-externs-silent" => json_unused_externs = JsonUnusedExterns::Silent,
                 "future-incompat" => json_future_incompat = true,
@@ -1949,6 +2037,7 @@ pub fn parse_json(early_dcx: &EarlyDiagCtxt, matches: &getopts::Matches) -> Json
         json_rendered,
         json_color,
         json_artifact_notifications,
+        json_timings,
         json_unused_externs,
         json_future_incompat,
     }
@@ -2476,6 +2565,7 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
         json_rendered,
         json_color,
         json_artifact_notifications,
+        json_timings,
         json_unused_externs,
         json_future_incompat,
     } = parse_json(early_dcx, matches);
@@ -2496,6 +2586,10 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
 
     let mut unstable_opts = UnstableOptions::build(early_dcx, matches, &mut target_modifiers);
     let (lint_opts, describe_lints, lint_cap) = get_cmd_lint_options(early_dcx, matches);
+
+    if !unstable_opts.unstable_options && json_timings {
+        early_dcx.early_fatal("--json=timings is unstable and requires using `-Zunstable-options`");
+    }
 
     check_error_format_stability(early_dcx, &unstable_opts, error_format);
 
@@ -2601,26 +2695,30 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
         }
     }
 
-    if !nightly_options::is_unstable_enabled(matches)
-        && cg.force_frame_pointers == FramePointer::NonLeaf
-    {
+    let unstable_options_enabled = nightly_options::is_unstable_enabled(matches);
+    if !unstable_options_enabled && cg.force_frame_pointers == FramePointer::NonLeaf {
         early_dcx.early_fatal(
             "`-Cforce-frame-pointers=non-leaf` or `always` also requires `-Zunstable-options` \
                 and a nightly compiler",
         )
     }
 
-    // For testing purposes, until we have more feedback about these options: ensure `-Z
-    // unstable-options` is required when using the unstable `-C link-self-contained` and `-C
-    // linker-flavor` options.
-    if !nightly_options::is_unstable_enabled(matches) {
-        let uses_unstable_self_contained_option =
-            cg.link_self_contained.are_unstable_variants_set();
-        if uses_unstable_self_contained_option {
-            early_dcx.early_fatal(
-                "only `-C link-self-contained` values `y`/`yes`/`on`/`n`/`no`/`off` are stable, \
-                the `-Z unstable-options` flag must also be passed to use the unstable values",
-            );
+    if !nightly_options::is_unstable_enabled(matches)
+        && unstable_opts.offload.contains(&Offload::Enable)
+    {
+        early_dcx.early_fatal(
+            "`-Zoffload=Enable` also requires `-Zunstable-options` \
+                and a nightly compiler",
+        )
+    }
+
+    let target_triple = parse_target_triple(early_dcx, matches);
+
+    // Ensure `-Z unstable-options` is required when using the unstable `-C link-self-contained` and
+    // `-C linker-flavor` options.
+    if !unstable_options_enabled {
+        if let Err(error) = cg.link_self_contained.check_unstable_variants(&target_triple) {
+            early_dcx.early_fatal(error);
         }
 
         if let Some(flavor) = cg.linker_flavor {
@@ -2649,10 +2747,17 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
 
     let prints = collect_print_requests(early_dcx, &mut cg, &unstable_opts, matches);
 
+    // -Zretpoline-external-thunk also requires -Zretpoline
+    if unstable_opts.retpoline_external_thunk {
+        unstable_opts.retpoline = true;
+        target_modifiers.insert(
+            OptionsTargetModifiers::UnstableOptions(UnstableOptionsTargetModifiers::retpoline),
+            "true".to_string(),
+        );
+    }
+
     let cg = cg;
 
-    let sysroot_opt = matches.opt_str("sysroot").map(|m| PathBuf::from(&m));
-    let target_triple = parse_target_triple(early_dcx, matches);
     let opt_level = parse_opt_level(early_dcx, matches, &cg);
     // The `-g` and `-C debuginfo` flags specify the same setting, so we want to be able
     // to use them interchangeably. See the note above (regarding `-O` and `-C opt-level`)
@@ -2660,6 +2765,12 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
     let debug_assertions = cg.debug_assertions.unwrap_or(opt_level == OptLevel::No);
     let debuginfo = select_debuginfo(matches, &cg);
     let debuginfo_compression = unstable_opts.debuginfo_compression;
+
+    if !unstable_options_enabled {
+        if let Err(error) = cg.linker_features.check_unstable_variants(&target_triple) {
+            early_dcx.early_fatal(error);
+        }
+    }
 
     let crate_name = matches.opt_str("crate-name");
     let unstable_features = UnstableFeatures::from_environment(crate_name.as_deref());
@@ -2690,11 +2801,10 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
 
     let logical_env = parse_logical_env(early_dcx, matches);
 
-    let sysroot = filesearch::materialize_sysroot(sysroot_opt);
+    let sysroot = Sysroot::new(matches.opt_str("sysroot").map(PathBuf::from));
 
-    let real_rust_source_base_dir = {
-        // This is the location used by the `rust-src` `rustup` component.
-        let mut candidate = sysroot.join("lib/rustlib/src/rust");
+    let real_source_base_dir = |suffix: &str, confirm: &str| {
+        let mut candidate = sysroot.path().join(suffix);
         if let Ok(metadata) = candidate.symlink_metadata() {
             // Replace the symlink bootstrap creates, with its destination.
             // We could try to use `fs::canonicalize` instead, but that might
@@ -2707,13 +2817,21 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
         }
 
         // Only use this directory if it has a file we can expect to always find.
-        candidate.join("library/std/src/lib.rs").is_file().then_some(candidate)
+        candidate.join(confirm).is_file().then_some(candidate)
     };
+
+    let real_rust_source_base_dir =
+        // This is the location used by the `rust-src` `rustup` component.
+        real_source_base_dir("lib/rustlib/src/rust", "library/std/src/lib.rs");
+
+    let real_rustc_dev_source_base_dir =
+        // This is the location used by the `rustc-dev` `rustup` component.
+        real_source_base_dir("lib/rustlib/rustc-src/rust", "compiler/rustc/src/main.rs");
 
     let mut search_paths = vec![];
     for s in &matches.opt_strs("L") {
         search_paths.push(SearchPath::from_cli_opt(
-            &sysroot,
+            sysroot.path(),
             &target_triple,
             early_dcx,
             s,
@@ -2763,8 +2881,10 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
         cli_forced_local_thinlto_off: disable_local_thinlto,
         remap_path_prefix,
         real_rust_source_base_dir,
+        real_rustc_dev_source_base_dir,
         edition,
         json_artifact_notifications,
+        json_timings,
         json_unused_externs,
         json_future_incompat,
         pretty,
@@ -3057,14 +3177,14 @@ pub(crate) mod dep_tracking {
     use rustc_target::spec::{
         CodeModel, FramePointer, MergeFunctions, OnBrokenPipe, PanicStrategy, RelocModel,
         RelroLevel, SanitizerSet, SplitDebuginfo, StackProtector, SymbolVisibility, TargetTuple,
-        TlsModel, WasmCAbi,
+        TlsModel,
     };
 
     use super::{
         AutoDiff, BranchProtection, CFGuard, CFProtection, CollapseMacroDebuginfo, CoverageOptions,
         CrateType, DebugInfo, DebugInfoCompression, ErrorOutputType, FmtDebug, FunctionReturn,
         InliningThreshold, InstrumentCoverage, InstrumentXRay, LinkerPluginLto, LocationDetail,
-        LtoCli, MirStripDebugInfo, NextSolverConfig, OomStrategy, OptLevel, OutFileName,
+        LtoCli, MirStripDebugInfo, NextSolverConfig, Offload, OomStrategy, OptLevel, OutFileName,
         OutputType, OutputTypes, PatchableFunctionEntry, Polonius, RemapPathScopeComponents,
         ResolveDocLinks, SourceFileHashAlgorithm, SplitDwarfKind, SwitchWithOptPath,
         SymbolManglingVersion, WasiExecModel,
@@ -3109,7 +3229,9 @@ pub(crate) mod dep_tracking {
     }
 
     impl_dep_tracking_hash_via_hash!(
+        (),
         AutoDiff,
+        Offload,
         bool,
         usize,
         NonZero<usize>,
@@ -3168,7 +3290,6 @@ pub(crate) mod dep_tracking {
         Polonius,
         InliningThreshold,
         FunctionReturn,
-        WasmCAbi,
         Align,
     );
 
@@ -3286,7 +3407,7 @@ pub enum OomStrategy {
 }
 
 impl OomStrategy {
-    pub const SYMBOL: &'static str = "__rust_alloc_error_handler_should_panic";
+    pub const SYMBOL: &'static str = "__rust_alloc_error_handler_should_panic_v2";
 
     pub fn should_panic(self) -> u8 {
         match self {

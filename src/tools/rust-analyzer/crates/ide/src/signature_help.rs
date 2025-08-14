@@ -146,12 +146,11 @@ pub(crate) fn signature_help(
 
         // Stop at multi-line expressions, since the signature of the outer call is not very
         // helpful inside them.
-        if let Some(expr) = ast::Expr::cast(node.clone()) {
-            if !matches!(expr, ast::Expr::RecordExpr(..))
-                && expr.syntax().text().contains_char('\n')
-            {
-                break;
-            }
+        if let Some(expr) = ast::Expr::cast(node.clone())
+            && !matches!(expr, ast::Expr::RecordExpr(..))
+            && expr.syntax().text().contains_char('\n')
+        {
+            break;
         }
     }
 
@@ -278,7 +277,7 @@ fn signature_help_for_call(
     }
     res.signature.push(')');
 
-    let mut render = |ret_type: hir::Type| {
+    let mut render = |ret_type: hir::Type<'_>| {
         if !ret_type.is_unit() {
             format_to!(res.signature, " -> {}", ret_type.display(db, display_target));
         }
@@ -366,10 +365,10 @@ fn signature_help_for_generics(
     res.signature.push('<');
     let mut buf = String::new();
     for param in params {
-        if let hir::GenericParam::TypeParam(ty) = param {
-            if ty.is_implicit(db) {
-                continue;
-            }
+        if let hir::GenericParam::TypeParam(ty) = param
+            && ty.is_implicit(db)
+        {
+            continue;
         }
 
         buf.clear();
@@ -597,11 +596,11 @@ fn signature_help_for_tuple_expr(
     Some(res)
 }
 
-fn signature_help_for_record_(
-    sema: &Semantics<'_, RootDatabase>,
+fn signature_help_for_record_<'db>(
+    sema: &Semantics<'db, RootDatabase>,
     field_list_children: SyntaxElementChildren,
     path: &ast::Path,
-    fields2: impl Iterator<Item = (hir::Field, hir::Type)>,
+    fields2: impl Iterator<Item = (hir::Field, hir::Type<'db>)>,
     token: SyntaxToken,
     edition: Edition,
     display_target: DisplayTarget,
@@ -689,13 +688,13 @@ fn signature_help_for_record_(
     Some(res)
 }
 
-fn signature_help_for_tuple_pat_ish(
-    db: &RootDatabase,
+fn signature_help_for_tuple_pat_ish<'db>(
+    db: &'db RootDatabase,
     mut res: SignatureHelp,
     pat: &SyntaxNode,
     token: SyntaxToken,
     mut field_pats: AstChildren<ast::Pat>,
-    fields: impl ExactSizeIterator<Item = hir::Type>,
+    fields: impl ExactSizeIterator<Item = hir::Type<'db>>,
     display_target: DisplayTarget,
 ) -> SignatureHelp {
     let rest_pat = field_pats.find(|it| matches!(it, ast::Pat::RestPat(_)));

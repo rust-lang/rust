@@ -1,8 +1,8 @@
 use std::collections::HashSet;
 
 use super::{Emit, TestCx, WillExecute};
-use crate::errors;
 use crate::util::static_regex;
+use crate::{errors, fatal};
 
 impl TestCx<'_> {
     pub(super) fn run_codegen_units_test(&self) {
@@ -100,7 +100,7 @@ impl TestCx<'_> {
         }
 
         if !(missing.is_empty() && unexpected.is_empty() && wrong_cgus.is_empty()) {
-            panic!();
+            fatal!("!(missing.is_empty() && unexpected.is_empty() && wrong_cgus.is_empty())");
         }
 
         #[derive(Clone, Eq, PartialEq)]

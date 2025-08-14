@@ -617,7 +617,7 @@ impl Error for JoinPathsError {
 /// # Unix
 ///
 /// - Returns the value of the 'HOME' environment variable if it is set
-///   (including to an empty string).
+///   (and not an empty string).
 /// - Otherwise, it tries to determine the home directory by invoking the `getpwuid_r` function
 ///   using the UID of the current user. An empty home directory field returned from the
 ///   `getpwuid_r` function is considered to be a valid value.
@@ -1046,6 +1046,7 @@ pub mod consts {
     /// * `"sparc"`
     /// * `"sparc64"`
     /// * `"hexagon"`
+    /// * `"loongarch32"`
     /// * `"loongarch64"`
     ///
     /// </details>

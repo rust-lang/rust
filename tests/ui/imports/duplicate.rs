@@ -7,34 +7,34 @@ mod b {
 }
 
 mod c {
-    pub use a::foo;
+    pub use crate::a::foo;
 }
 
 mod d {
-    use a::foo;
-    use a::foo; //~ ERROR the name `foo` is defined multiple times
+    use crate::a::foo;
+    use crate::a::foo; //~ ERROR the name `foo` is defined multiple times
 }
 
 mod e {
-    pub use a::*;
-    pub use c::*; // ok
+    pub use crate::a::*;
+    pub use crate::c::*; // ok
 }
 
 mod f {
-    pub use a::*;
-    pub use b::*;
+    pub use crate::a::*;
+    pub use crate::b::*;
 }
 
 mod g {
-    pub use a::*;
-    pub use f::*;
+    pub use crate::a::*;
+    pub use crate::f::*;
 }
 
 fn main() {
     e::foo();
     f::foo(); //~ ERROR `foo` is ambiguous
     g::foo();
-    //~^ WARNING `foo` is ambiguous
+    //~^ ERROR `foo` is ambiguous
     //~| WARNING this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 }
 

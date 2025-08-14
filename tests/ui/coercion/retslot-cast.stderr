@@ -1,8 +1,8 @@
 error[E0308]: mismatched types
   --> $DIR/retslot-cast.rs:13:5
    |
-LL |             -> Option<&Iterator<Item=()>> {
-   |                -------------------------- expected `Option<&dyn Iterator<Item = ()>>` because of return type
+LL |             -> Option<&dyn Iterator<Item=()>> {
+   |                ------------------------------ expected `Option<&dyn Iterator<Item = ()>>` because of return type
 ...
 LL |     inner(x)
    |     ^^^^^^^^ expected trait `Iterator<Item = ()>`, found trait `Iterator<Item = ()> + Send`

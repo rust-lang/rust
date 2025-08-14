@@ -23,10 +23,10 @@ impl<'tcx> MutVisitor<'tcx> for FixReturnPendingVisitor<'tcx> {
         }
 
         // Converting `_0 = Poll::<Rv>::Pending` to `_0 = Poll::<()>::Pending`
-        if let Rvalue::Aggregate(kind, _) = rvalue {
-            if let AggregateKind::Adt(_, _, ref mut args, _, _) = **kind {
-                *args = self.tcx.mk_args(&[self.tcx.types.unit.into()]);
-            }
+        if let Rvalue::Aggregate(kind, _) = rvalue
+            && let AggregateKind::Adt(_, _, ref mut args, _, _) = **kind
+        {
+            *args = self.tcx.mk_args(&[self.tcx.types.unit.into()]);
         }
     }
 }
@@ -42,7 +42,7 @@ fn build_poll_call<'tcx>(
     context_ref_place: &Place<'tcx>,
     unwind: UnwindAction,
 ) -> BasicBlock {
-    let poll_fn = tcx.require_lang_item(LangItem::FuturePoll, None);
+    let poll_fn = tcx.require_lang_item(LangItem::FuturePoll, DUMMY_SP);
     let poll_fn = Ty::new_fn_def(tcx, poll_fn, [fut_ty]);
     let poll_fn = Operand::Constant(Box::new(ConstOperand {
         span: DUMMY_SP,
@@ -77,11 +77,8 @@ fn build_pin_fut<'tcx>(
     let fut_ty = fut_place.ty(&body.local_decls, tcx).ty;
     let fut_ref_ty = Ty::new_mut_ref(tcx, tcx.lifetimes.re_erased, fut_ty);
     let fut_ref_place = Place::from(body.local_decls.push(LocalDecl::new(fut_ref_ty, span)));
-    let pin_fut_new_unchecked_fn = Ty::new_fn_def(
-        tcx,
-        tcx.require_lang_item(LangItem::PinNewUnchecked, Some(span)),
-        [fut_ref_ty],
-    );
+    let pin_fut_new_unchecked_fn =
+        Ty::new_fn_def(tcx, tcx.require_lang_item(LangItem::PinNewUnchecked, span), [fut_ref_ty]);
     let fut_pin_ty = pin_fut_new_unchecked_fn.fn_sig(tcx).output().skip_binder();
     let fut_pin_place = Place::from(body.local_decls.push(LocalDecl::new(fut_pin_ty, span)));
     let pin_fut_new_unchecked_fn = Operand::Constant(Box::new(ConstOperand {
@@ -90,12 +87,11 @@ fn build_pin_fut<'tcx>(
         const_: Const::zero_sized(pin_fut_new_unchecked_fn),
     }));
 
-    let storage_live =
-        Statement { source_info, kind: StatementKind::StorageLive(fut_pin_place.local) };
+    let storage_live = Statement::new(source_info, StatementKind::StorageLive(fut_pin_place.local));
 
-    let fut_ref_assign = Statement {
+    let fut_ref_assign = Statement::new(
         source_info,
-        kind: StatementKind::Assign(Box::new((
+        StatementKind::Assign(Box::new((
             fut_ref_place,
             Rvalue::Ref(
                 tcx.lifetimes.re_erased,
@@ -103,12 +99,12 @@ fn build_pin_fut<'tcx>(
                 fut_place,
             ),
         ))),
-    };
+    );
 
     // call Pin<FutTy>::new_unchecked(&mut fut)
-    let pin_fut_bb = body.basic_blocks_mut().push(BasicBlockData {
-        statements: [storage_live, fut_ref_assign].to_vec(),
-        terminator: Some(Terminator {
+    let pin_fut_bb = body.basic_blocks_mut().push(BasicBlockData::new_stmts(
+        [storage_live, fut_ref_assign].to_vec(),
+        Some(Terminator {
             source_info,
             kind: TerminatorKind::Call {
                 func: pin_fut_new_unchecked_fn,
@@ -120,8 +116,8 @@ fn build_pin_fut<'tcx>(
                 fn_span: span,
             },
         }),
-        is_cleanup: false,
-    });
+        false,
+    ));
     (pin_fut_bb, fut_pin_place)
 }
 
@@ -135,6 +131,7 @@ fn build_poll_switch<'tcx>(
     body: &mut Body<'tcx>,
     poll_enum: Ty<'tcx>,
     poll_unit_place: &Place<'tcx>,
+    fut_pin_place: &Place<'tcx>,
     ready_block: BasicBlock,
     yield_block: BasicBlock,
 ) -> BasicBlock {
@@ -143,30 +140,30 @@ fn build_poll_switch<'tcx>(
     let Discr { val: poll_ready_discr, ty: poll_discr_ty } = poll_enum
         .discriminant_for_variant(
             tcx,
-            poll_enum_adt.variant_index_with_id(tcx.require_lang_item(LangItem::PollReady, None)),
+            poll_enum_adt
+                .variant_index_with_id(tcx.require_lang_item(LangItem::PollReady, DUMMY_SP)),
         )
         .unwrap();
     let poll_pending_discr = poll_enum
         .discriminant_for_variant(
             tcx,
-            poll_enum_adt.variant_index_with_id(tcx.require_lang_item(LangItem::PollPending, None)),
+            poll_enum_adt
+                .variant_index_with_id(tcx.require_lang_item(LangItem::PollPending, DUMMY_SP)),
         )
         .unwrap()
         .val;
     let source_info = SourceInfo::outermost(body.span);
     let poll_discr_place =
         Place::from(body.local_decls.push(LocalDecl::new(poll_discr_ty, source_info.span)));
-    let discr_assign = Statement {
+    let discr_assign = Statement::new(
         source_info,
-        kind: StatementKind::Assign(Box::new((
-            poll_discr_place,
-            Rvalue::Discriminant(*poll_unit_place),
-        ))),
-    };
+        StatementKind::Assign(Box::new((poll_discr_place, Rvalue::Discriminant(*poll_unit_place)))),
+    );
+    let storage_dead = Statement::new(source_info, StatementKind::StorageDead(fut_pin_place.local));
     let unreachable_block = insert_term_block(body, TerminatorKind::Unreachable);
-    body.basic_blocks_mut().push(BasicBlockData {
-        statements: [discr_assign].to_vec(),
-        terminator: Some(Terminator {
+    body.basic_blocks_mut().push(BasicBlockData::new_stmts(
+        [storage_dead, discr_assign].to_vec(),
+        Some(Terminator {
             source_info,
             kind: TerminatorKind::SwitchInt {
                 discr: Operand::Move(poll_discr_place),
@@ -177,8 +174,8 @@ fn build_poll_switch<'tcx>(
                 ),
             },
         }),
-        is_cleanup: false,
-    })
+        false,
+    ))
 }
 
 // Gather blocks, reachable through 'drop' targets of Yield and Drop terminators (chained)
@@ -316,26 +313,34 @@ pub(super) fn expand_async_drops<'tcx>(
         //  pending => return rv (yield)
         //  ready => *continue_bb|drop_bb*
 
+        let source_info = body[bb].terminator.as_ref().unwrap().source_info;
+
         // Compute Poll<> (aka Poll with void return)
-        let poll_adt_ref = tcx.adt_def(tcx.require_lang_item(LangItem::Poll, None));
+        let poll_adt_ref = tcx.adt_def(tcx.require_lang_item(LangItem::Poll, source_info.span));
         let poll_enum = Ty::new_adt(tcx, poll_adt_ref, tcx.mk_args(&[tcx.types.unit.into()]));
-        let poll_decl = LocalDecl::new(poll_enum, body.span);
+        let poll_decl = LocalDecl::new(poll_enum, source_info.span);
         let poll_unit_place = Place::from(body.local_decls.push(poll_decl));
 
         // First state-loop yield for mainline
         let context_ref_place =
-            Place::from(body.local_decls.push(LocalDecl::new(context_mut_ref, body.span)));
-        let source_info = body[bb].terminator.as_ref().unwrap().source_info;
+            Place::from(body.local_decls.push(LocalDecl::new(context_mut_ref, source_info.span)));
         let arg = Rvalue::Use(Operand::Move(Place::from(CTX_ARG)));
-        body[bb].statements.push(Statement {
+        body[bb].statements.push(Statement::new(
             source_info,
-            kind: StatementKind::Assign(Box::new((context_ref_place, arg))),
-        });
+            StatementKind::Assign(Box::new((context_ref_place, arg))),
+        ));
         let yield_block = insert_term_block(body, TerminatorKind::Unreachable); // `kind` replaced later to yield
-        let switch_block =
-            build_poll_switch(tcx, body, poll_enum, &poll_unit_place, target, yield_block);
         let (pin_bb, fut_pin_place) =
             build_pin_fut(tcx, body, fut_place.clone(), UnwindAction::Continue);
+        let switch_block = build_poll_switch(
+            tcx,
+            body,
+            poll_enum,
+            &poll_unit_place,
+            &fut_pin_place,
+            target,
+            yield_block,
+        );
         let call_bb = build_poll_call(
             tcx,
             body,
@@ -353,19 +358,21 @@ pub(super) fn expand_async_drops<'tcx>(
         let mut dropline_context_ref: Option<Place<'_>> = None;
         let mut dropline_call_bb: Option<BasicBlock> = None;
         if !is_dropline_bb {
-            let context_ref_place2: Place<'_> =
-                Place::from(body.local_decls.push(LocalDecl::new(context_mut_ref, body.span)));
+            let context_ref_place2: Place<'_> = Place::from(
+                body.local_decls.push(LocalDecl::new(context_mut_ref, source_info.span)),
+            );
             let drop_yield_block = insert_term_block(body, TerminatorKind::Unreachable); // `kind` replaced later to yield
+            let (pin_bb2, fut_pin_place2) =
+                build_pin_fut(tcx, body, fut_place, UnwindAction::Continue);
             let drop_switch_block = build_poll_switch(
                 tcx,
                 body,
                 poll_enum,
                 &poll_unit_place,
+                &fut_pin_place2,
                 drop.unwrap(),
                 drop_yield_block,
             );
-            let (pin_bb2, fut_pin_place2) =
-                build_pin_fut(tcx, body, fut_place, UnwindAction::Continue);
             let drop_call_bb = build_poll_call(
                 tcx,
                 body,
@@ -382,12 +389,34 @@ pub(super) fn expand_async_drops<'tcx>(
             dropline_call_bb = Some(drop_call_bb);
         }
 
-        // value needed only for return-yields or gen-coroutines, so just const here
-        let value = Operand::Constant(Box::new(ConstOperand {
-            span: body.span,
-            user_ty: None,
-            const_: Const::from_bool(tcx, false),
-        }));
+        let value =
+            if matches!(coroutine_kind, CoroutineKind::Desugared(CoroutineDesugaring::AsyncGen, _))
+            {
+                // For AsyncGen we need `yield Poll<OptRet>::Pending`
+                let full_yield_ty = body.yield_ty().unwrap();
+                let ty::Adt(_poll_adt, args) = *full_yield_ty.kind() else { bug!() };
+                let ty::Adt(_option_adt, args) = *args.type_at(0).kind() else { bug!() };
+                let yield_ty = args.type_at(0);
+                Operand::Constant(Box::new(ConstOperand {
+                    span: source_info.span,
+                    const_: Const::Unevaluated(
+                        UnevaluatedConst::new(
+                            tcx.require_lang_item(LangItem::AsyncGenPending, source_info.span),
+                            tcx.mk_args(&[yield_ty.into()]),
+                        ),
+                        full_yield_ty,
+                    ),
+                    user_ty: None,
+                }))
+            } else {
+                // value needed only for return-yields or gen-coroutines, so just const here
+                Operand::Constant(Box::new(ConstOperand {
+                    span: source_info.span,
+                    user_ty: None,
+                    const_: Const::from_bool(tcx, false),
+                }))
+            };
+
         use rustc_middle::mir::AssertKind::ResumedAfterDrop;
         let panic_bb = insert_panic_block(tcx, body, ResumedAfterDrop(coroutine_kind));
 
@@ -517,11 +546,8 @@ pub(super) fn insert_clean_drop<'tcx>(
     };
 
     // Create a block to destroy an unresumed coroutines. This can only destroy upvars.
-    body.basic_blocks_mut().push(BasicBlockData {
-        statements: Vec::new(),
-        terminator: Some(Terminator { source_info, kind: term }),
-        is_cleanup: false,
-    })
+    body.basic_blocks_mut()
+        .push(BasicBlockData::new(Some(Terminator { source_info, kind: term }), false))
 }
 
 pub(super) fn create_coroutine_drop_shim<'tcx>(
@@ -573,7 +599,7 @@ pub(super) fn create_coroutine_drop_shim<'tcx>(
 
     // Update the body's def to become the drop glue.
     let coroutine_instance = body.source.instance;
-    let drop_in_place = tcx.require_lang_item(LangItem::DropInPlace, None);
+    let drop_in_place = tcx.require_lang_item(LangItem::DropInPlace, body.span);
     let drop_instance = InstanceKind::DropGlue(drop_in_place, Some(coroutine_ty));
 
     // Temporary change MirSource to coroutine's instance so that dump_mir produces more sensible
@@ -644,7 +670,7 @@ pub(super) fn create_coroutine_drop_shim_async<'tcx>(
     }
 
     // Replace the return variable: Poll<RetT> to Poll<()>
-    let poll_adt_ref = tcx.adt_def(tcx.require_lang_item(LangItem::Poll, None));
+    let poll_adt_ref = tcx.adt_def(tcx.require_lang_item(LangItem::Poll, body.span));
     let poll_enum = Ty::new_adt(tcx, poll_adt_ref, tcx.mk_args(&[tcx.types.unit.into()]));
     body.local_decls[RETURN_PLACE] = LocalDecl::with_source_info(poll_enum, source_info);
 
@@ -695,16 +721,12 @@ pub(super) fn create_coroutine_drop_shim_proxy_async<'tcx>(
     let source_info = SourceInfo::outermost(body.span);
 
     // Replace the return variable: Poll<RetT> to Poll<()>
-    let poll_adt_ref = tcx.adt_def(tcx.require_lang_item(LangItem::Poll, None));
+    let poll_adt_ref = tcx.adt_def(tcx.require_lang_item(LangItem::Poll, body.span));
     let poll_enum = Ty::new_adt(tcx, poll_adt_ref, tcx.mk_args(&[tcx.types.unit.into()]));
     body.local_decls[RETURN_PLACE] = LocalDecl::with_source_info(poll_enum, source_info);
 
     // call coroutine_drop()
-    let call_bb = body.basic_blocks_mut().push(BasicBlockData {
-        statements: Vec::new(),
-        terminator: None,
-        is_cleanup: false,
-    });
+    let call_bb = body.basic_blocks_mut().push(BasicBlockData::new(None, false));
 
     // return Poll::Ready()
     let ret_bb = insert_poll_ready_block(tcx, &mut body);

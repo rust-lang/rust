@@ -1,4 +1,5 @@
 // Regression test for ICE #125876
+//@ edition: 2015
 
 fn main() {
     std::ptr::from_ref(num).cast_mut().as_deref();

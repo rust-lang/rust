@@ -347,6 +347,13 @@ fn test_thread_id_not_equal() {
 }
 
 #[test]
+fn test_thread_os_id_not_equal() {
+    let spawned_id = thread::spawn(|| thread::current_os_id()).join().unwrap();
+    let current_id = thread::current_os_id();
+    assert!(current_id != spawned_id);
+}
+
+#[test]
 fn test_scoped_threads_drop_result_before_join() {
     let actually_finished = &AtomicBool::new(false);
     struct X<'scope, 'env>(&'scope Scope<'scope, 'env>, &'env AtomicBool);

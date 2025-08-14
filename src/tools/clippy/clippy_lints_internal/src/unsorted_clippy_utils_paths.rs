@@ -1,8 +1,8 @@
 use clippy_utils::diagnostics::span_lint;
+use clippy_utils::sym;
 use rustc_ast::ast::{Crate, ItemKind, ModKind};
 use rustc_lint::{EarlyContext, EarlyLintPass};
-use rustc_lint_defs::declare_tool_lint;
-use rustc_session::declare_lint_pass;
+use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_tool_lint! {
     /// ### What it does
@@ -26,11 +26,11 @@ impl EarlyLintPass for UnsortedClippyUtilsPaths {
         if let Some(utils) = krate
             .items
             .iter()
-            .find(|item| item.kind.ident().is_some_and(|i| i.name.as_str() == "utils"))
+            .find(|item| item.kind.ident().is_some_and(|i| i.name == sym::utils))
             && let ItemKind::Mod(_, _, ModKind::Loaded(ref items, ..)) = utils.kind
             && let Some(paths) = items
                 .iter()
-                .find(|item| item.kind.ident().is_some_and(|i| i.name.as_str() == "paths"))
+                .find(|item| item.kind.ident().is_some_and(|i| i.name == sym::paths))
             && let ItemKind::Mod(_, _, ModKind::Loaded(ref items, ..)) = paths.kind
         {
             let mut last_name: Option<String> = None;

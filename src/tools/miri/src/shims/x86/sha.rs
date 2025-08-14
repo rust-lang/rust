@@ -4,9 +4,10 @@
 //!
 //! [RustCrypto's sha256 module]: https://github.com/RustCrypto/hashes/blob/6be8466247e936c415d8aafb848697f39894a386/sha2/src/sha256/soft.rs
 
+use rustc_abi::CanonAbi;
 use rustc_middle::ty::Ty;
 use rustc_span::Symbol;
-use rustc_target::callconv::{Conv, FnAbi};
+use rustc_target::callconv::FnAbi;
 
 use crate::*;
 
@@ -43,7 +44,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // We reverse the order because x86 is little endian but the copied implementation uses
             // big endian.
             for (i, part) in val.into_iter().rev().enumerate() {
-                let projected = &ecx.project_index(dest, i.try_into().unwrap())?;
+                let projected = &ecx.project_index(dest, i.to_u64())?;
                 ecx.write_scalar(Scalar::from_u32(part), projected)?;
             }
             interp_ok(())
@@ -52,7 +53,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         match unprefixed_name {
             // Used to implement the _mm_sha256rnds2_epu32 function.
             "256rnds2" => {
-                let [a, b, k] = this.check_shim(abi, Conv::C, link_name, args)?;
+                let [a, b, k] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
 
                 let (a_reg, a_len) = this.project_to_simd(a)?;
                 let (b_reg, b_len) = this.project_to_simd(b)?;
@@ -73,7 +74,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             // Used to implement the _mm_sha256msg1_epu32 function.
             "256msg1" => {
-                let [a, b] = this.check_shim(abi, Conv::C, link_name, args)?;
+                let [a, b] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
 
                 let (a_reg, a_len) = this.project_to_simd(a)?;
                 let (b_reg, b_len) = this.project_to_simd(b)?;
@@ -91,7 +92,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             // Used to implement the _mm_sha256msg2_epu32 function.
             "256msg2" => {
-                let [a, b] = this.check_shim(abi, Conv::C, link_name, args)?;
+                let [a, b] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
 
                 let (a_reg, a_len) = this.project_to_simd(a)?;
                 let (b_reg, b_len) = this.project_to_simd(b)?;

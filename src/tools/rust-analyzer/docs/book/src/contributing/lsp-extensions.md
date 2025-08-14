@@ -694,24 +694,6 @@ interface CancelFlycheckParams {}
 
 Cancels all running flycheck processes.
 
-## Syntax Tree
-
-**Method:** `rust-analyzer/syntaxTree`
-
-**Request:**
-
-```typescript
-interface SyntaxTreeParams {
-    textDocument: TextDocumentIdentifier,
-    range?: Range,
-}
-```
-
-**Response:** `string`
-
-Returns textual representation of a parse tree for the file/selected region.
-Primarily for debugging, but very useful for all people working on rust-analyzer itself.
-
 ## View Syntax Tree
 
 **Method:** `rust-analyzer/viewSyntaxTree`

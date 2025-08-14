@@ -1,7 +1,7 @@
 use clippy_config::Conf;
 use clippy_config::types::{DisallowedPathWithoutReplacement, create_disallowed_map};
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::{match_def_path, paths};
+use clippy_utils::paths::{self, PathNS};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, DefIdMap};
 use rustc_lint::{LateContext, LateLintPass};
@@ -182,6 +182,7 @@ impl AwaitHolding {
         let (def_ids, _) = create_disallowed_map(
             tcx,
             &conf.await_holding_invalid_types,
+            PathNS::Type,
             crate::disallowed_types::def_kind_predicate,
             "type",
             false,
@@ -275,12 +276,10 @@ fn emit_invalid_type(
 }
 
 fn is_mutex_guard(cx: &LateContext<'_>, def_id: DefId) -> bool {
-    cx.tcx.is_diagnostic_item(sym::MutexGuard, def_id)
-        || cx.tcx.is_diagnostic_item(sym::RwLockReadGuard, def_id)
-        || cx.tcx.is_diagnostic_item(sym::RwLockWriteGuard, def_id)
-        || match_def_path(cx, def_id, &paths::PARKING_LOT_MUTEX_GUARD)
-        || match_def_path(cx, def_id, &paths::PARKING_LOT_RWLOCK_READ_GUARD)
-        || match_def_path(cx, def_id, &paths::PARKING_LOT_RWLOCK_WRITE_GUARD)
+    match cx.tcx.get_diagnostic_name(def_id) {
+        Some(name) => matches!(name, sym::MutexGuard | sym::RwLockReadGuard | sym::RwLockWriteGuard),
+        None => paths::PARKING_LOT_GUARDS.iter().any(|guard| guard.matches(cx, def_id)),
+    }
 }
 
 fn is_refcell_ref(cx: &LateContext<'_>, def_id: DefId) -> bool {

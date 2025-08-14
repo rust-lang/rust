@@ -179,7 +179,7 @@ impl NodeDebugInfo {
     /// Add a name to the tag. If a same tag is associated to several pointers,
     /// it can have several names which will be separated by commas.
     pub fn add_name(&mut self, name: &str) {
-        if let Some(ref mut prev_name) = &mut self.name {
+        if let Some(prev_name) = &mut self.name {
             prev_name.push_str(", ");
             prev_name.push_str(name);
         } else {
@@ -504,7 +504,7 @@ impl DisplayFmt {
         if let Some(perm) = perm {
             format!(
                 "{ac}{st}",
-                ac = if perm.is_initialized() { self.accessed.yes } else { self.accessed.no },
+                ac = if perm.is_accessed() { self.accessed.yes } else { self.accessed.no },
                 st = perm.permission().short_name(),
             )
         } else {

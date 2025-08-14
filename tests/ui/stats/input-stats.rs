@@ -1,8 +1,13 @@
 //@ check-pass
 //@ compile-flags: -Zinput-stats
 //@ only-64bit
+//@ needs-asm-support
 // layout randomization affects the hir stat output
 //@ needs-deterministic-layouts
+//
+// Filter out the percentages because a change to a single count can affect
+// many or all percentages, which makes the diffs hard to read.
+//@ normalize-stderr: "\([0-9 ][0-9]\.[0-9]%\)" -> "(NN.N%)"
 
 // Type layouts sometimes change. When that happens, until the next bootstrap
 // bump occurs, stage1 and stage2 will give different outputs for this test.
@@ -45,5 +50,7 @@ fn main() {
         _ => {}
     }
 
-    unsafe { asm!("mov rdi, 1"); }
+    // NOTE(workingjubilee): do GPUs support NOPs? remove this cfg if they do
+    #[cfg(not(any(target_arch = "nvptx64", target_arch = "amdgpu")))]
+    unsafe { asm!("nop"); }
 }

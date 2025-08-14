@@ -352,7 +352,7 @@ fn normalize<'a>(MdStream(stream): MdStream<'a>, linkdefs: &mut Vec<MdTree<'a>>)
     let new_defs = stream.iter().filter(|tt| matches!(tt, MdTree::LinkDef { .. }));
     linkdefs.extend(new_defs.cloned());
 
-    // Run plaintest expansions on types that need it, call this function on nested types
+    // Run plaintext expansions on types that need it, call this function on nested types
     for item in stream {
         match item {
             MdTree::PlainText(txt) => expand_plaintext(txt, &mut new_stream, MdTree::PlainText),

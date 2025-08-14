@@ -1,0 +1,37 @@
+warning: anonymous parameters are deprecated and will be removed in the next edition
+  --> $DIR/future-incompatible-lint-group.rs:25:10
+   |
+LL |     fn f(u8) {}
+   |          ^^ help: try naming the parameter or explicitly ignoring it: `_: u8`
+   |
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2018!
+   = note: for more information, see issue #41686 <https://github.com/rust-lang/rust/issues/41686>
+   = note: `#[warn(anonymous_parameters)]` on by default
+
+error: ambiguous associated item
+  --> $DIR/future-incompatible-lint-group.rs:18:17
+   |
+LL |     fn foo() -> Self::V { 0 }
+   |                 ^^^^^^^ help: use fully-qualified syntax: `<E as Tr1>::V`
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #57644 <https://github.com/rust-lang/rust/issues/57644>
+note: `V` could refer to the variant defined here
+  --> $DIR/future-incompatible-lint-group.rs:7:10
+   |
+LL | enum E { V }
+   |          ^
+note: `V` could also refer to the associated type defined here
+  --> $DIR/future-incompatible-lint-group.rs:10:5
+   |
+LL |     type V;
+   |     ^^^^^^
+note: the lint level is defined here
+  --> $DIR/future-incompatible-lint-group.rs:5:9
+   |
+LL | #![deny(future_incompatible)]
+   |         ^^^^^^^^^^^^^^^^^^^
+   = note: `#[deny(ambiguous_associated_items)]` implied by `#[deny(future_incompatible)]`
+
+error: aborting due to 1 previous error; 1 warning emitted
+

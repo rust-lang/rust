@@ -63,16 +63,16 @@ impl MirBody {
             }
             hir_def::DefWithBodyId::VariantId(id) => {
                 let loc = id.lookup(db);
-                let enum_loc = loc.parent.lookup(db);
+                let edition = this.display_target.edition;
                 w!(
                     this,
                     "enum {}::{} = ",
-                    enum_loc.id.item_tree(db)[enum_loc.id.value]
-                        .name
-                        .display(db, this.display_target.edition),
-                    loc.id.item_tree(db)[loc.id.value]
-                        .name
-                        .display(db, this.display_target.edition),
+                    db.enum_signature(loc.parent).name.display(db, edition),
+                    loc.parent
+                        .enum_variants(db)
+                        .variant_name_by_id(id)
+                        .unwrap()
+                        .display(db, edition),
                 )
             }
         });
@@ -219,7 +219,7 @@ impl<'a> MirPrettyCtx<'a> {
 
     fn local_name(&self, local: LocalId) -> LocalName {
         match self.local_to_binding.get(local) {
-            Some(b) => LocalName::Binding(self.hir_body.bindings[*b].name.clone(), local),
+            Some(b) => LocalName::Binding(self.hir_body[*b].name.clone(), local),
             None => LocalName::Unknown(local),
         }
     }
@@ -326,7 +326,7 @@ impl<'a> MirPrettyCtx<'a> {
                     w!(this, ")");
                 }
                 ProjectionElem::Field(Either::Left(field)) => {
-                    let variant_fields = this.db.variant_fields(field.parent);
+                    let variant_fields = field.parent.fields(this.db);
                     let name = &variant_fields.fields()[field.local_id].name;
                     match field.parent {
                         hir_def::VariantId::EnumVariantId(e) => {
@@ -336,7 +336,7 @@ impl<'a> MirPrettyCtx<'a> {
                             w!(
                                 this,
                                 " as {}).{}",
-                                this.db.enum_variants(loc.parent).variants[loc.index as usize]
+                                loc.parent.enum_variants(this.db).variants[loc.index as usize]
                                     .1
                                     .display(this.db, this.display_target.edition),
                                 name.display(this.db, this.display_target.edition)

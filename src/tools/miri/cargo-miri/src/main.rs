@@ -63,27 +63,37 @@ fn main() {
         return;
     }
 
-    // The way rustdoc invokes rustc is indistinguishable from the way cargo invokes rustdoc by the
-    // arguments alone. `phase_cargo_rustdoc` sets this environment variable to let us disambiguate.
-    if env::var_os("MIRI_CALLED_FROM_RUSTDOC").is_some() {
-        // ...however, we then also see this variable when rustdoc invokes us as the testrunner!
-        // The runner is invoked as `$runtool ($runtool-arg)* output_file`;
-        // since we don't specify any runtool-args, and rustdoc supplies multiple arguments to
-        // the test-builder unconditionally, we can just check the number of remaining arguments:
-        if args.len() == 1 {
-            phase_runner(args, RunnerPhase::Rustdoc);
-        } else {
-            phase_rustc(args, RustcPhase::Rustdoc);
-        }
-
-        return;
-    }
-
     let Some(first) = args.next() else {
         show_error!(
             "`cargo-miri` called without first argument; please only invoke this binary through `cargo miri`"
         )
     };
+
+    // The way rustdoc invokes rustc is indistinguishable from the way cargo invokes rustdoc by the
+    // arguments alone. `phase_cargo_rustdoc` sets this environment variable to let us disambiguate.
+    if env::var_os("MIRI_CALLED_FROM_RUSTDOC").is_some() {
+        // ...however, we then also see this variable when rustdoc invokes us as the testrunner!
+        // In that case the first argument is `runner` and there are no more arguments.
+        match first.as_str() {
+            "runner" => phase_runner(args, RunnerPhase::Rustdoc),
+            flag if flag.starts_with("--") || flag.starts_with("@") => {
+                // This is probably rustdoc invoking us to build the test. But we need to get `first`
+                // "back onto the iterator", it is some part of the rustc invocation.
+                phase_rustc(iter::once(first).chain(args), RustcPhase::Rustdoc);
+            }
+            _ => {
+                show_error!(
+                    "`cargo-miri` failed to recognize which phase of the build process this is, please report a bug.\n\
+                    We are inside MIRI_CALLED_FROM_RUSTDOC.\n\
+                    The command-line arguments were: {:#?}",
+                    Vec::from_iter(env::args()),
+                );
+            }
+        }
+
+        return;
+    }
+
     match first.as_str() {
         "miri" => phase_cargo_miri(args),
         "runner" => phase_runner(args, RunnerPhase::Cargo),

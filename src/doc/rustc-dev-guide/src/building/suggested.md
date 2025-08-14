@@ -3,8 +3,6 @@
 The full bootstrapping process takes quite a while. Here are some suggestions to
 make your life easier.
 
-<!-- toc -->
-
 ## Installing a pre-push hook
 
 CI will automatically fail your build if it doesn't pass `tidy`, our internal
@@ -59,6 +57,14 @@ always overrides the inner ones.
 
 ## Configuring `rust-analyzer` for `rustc`
 
+### Checking the "library" tree
+
+Checking the "library" tree requires a stage1 compiler, which can be a heavy process on some computers.
+For this reason, bootstrap has a flag called `--skip-std-check-if-no-download-rustc` that skips checking the
+"library" tree if `rust.download-rustc` isn't available. If you want to avoid putting a heavy load on your computer
+with `rust-analyzer`, you can add the `--skip-std-check-if-no-download-rustc` flag to your `./x check` command in
+the `rust-analyzer` configuration.
+
 ### Project-local rust-analyzer setup
 
 `rust-analyzer` can help you check and format your code whenever you save a
@@ -91,7 +97,7 @@ for two reasons:
   additional rebuilds in some cases.
 
 To avoid these problems:
-- Add `--build-dir=build-rust-analyzer` to all of the custom `x` commands in
+- Add `--build-dir=build/rust-analyzer` to all of the custom `x` commands in
   your editor's rust-analyzer configuration.
   (Feel free to choose a different directory name if desired.)
 - Modify the `rust-analyzer.rustfmt.overrideCommand` setting so that it points
@@ -100,10 +106,7 @@ To avoid these problems:
   copy of `rust-analyzer-proc-macro-srv` in that other build directory.
 
 Using separate build directories for command-line builds and rust-analyzer
-requires extra disk space, and also means that running `./x clean` on the
-command-line will not clean out the separate build directory. To clean the
-separate build directory, run `./x clean --build-dir=build-rust-analyzer`
-instead.
+requires extra disk space.
 
 ### Visual Studio Code
 
@@ -137,7 +140,7 @@ Task] instead:
 
 ### Neovim
 
-For Neovim users there are several options for configuring for rustc. The
+For Neovim users, there are a few options. The
 easiest way is by using [neoconf.nvim](https://github.com/folke/neoconf.nvim/),
 which allows for project-local configuration files with the native LSP. The
 steps for how to use it are below. Note that they require rust-analyzer to
@@ -157,7 +160,7 @@ create a `.vim/coc-settings.json`. The settings can be edited with
 [`src/etc/rust_analyzer_settings.json`].
 
 Another way is without a plugin, and creating your own logic in your
-configuration. The following code will work for any checkout of rust-lang/rust (newer than Febuary 2025):
+configuration. The following code will work for any checkout of rust-lang/rust (newer than February 2025):
 
 ```lua
 local function expand_config_variables(option)
@@ -265,23 +268,6 @@ run the tests at some later time. You can then use `git bisect` to track down
 is that you are left with a fairly fine-grained set of commits at the end, all
 of which build and pass tests. This often helps reviewing.
 
-## `x suggest`
-
-The `x suggest` subcommand suggests (and runs) a subset of the extensive
-`rust-lang/rust` tests based on files you have changed. This is especially
-useful for new contributors who have not mastered the arcane `x` flags yet and
-more experienced contributors as a shorthand for reducing mental effort. In all
-cases it is useful not to run the full tests (which can take on the order of
-tens of minutes) and just run a subset which are relevant to your changes. For
-example, running `tidy` and `linkchecker` is useful when editing Markdown files,
-whereas UI tests are much less likely to be helpful. While `x suggest` is a
-useful tool, it does not guarantee perfect coverage (just as PR CI isn't a
-substitute for bors). See the [dedicated chapter](../tests/suggest-tests.md) for
-more information and contribution instructions.
-
-Please note that `x suggest` is in a beta state currently and the tests that it
-will suggest are limited.
-
 ## Configuring `rustup` to use nightly
 
 Some parts of the bootstrap process uses pinned, nightly versions of tools like
@@ -310,51 +296,15 @@ lets you use `cargo fmt`.
 [the section on vscode]: suggested.md#configuring-rust-analyzer-for-rustc
 [the section on rustup]: how-to-build-and-run.md?highlight=rustup#creating-a-rustup-toolchain
 
-## Faster builds with `--keep-stage`.
+## Faster Builds with CI-rustc  
 
-Sometimes just checking whether the compiler builds is not enough. A common
-example is that you need to add a `debug!` statement to inspect the value of
-some state or better understand the problem. In that case, you don't really need
-a full build. By bypassing bootstrap's cache invalidation, you can often get
-these builds to complete very fast (e.g., around 30 seconds). The only catch is
-this requires a bit of fudging and may produce compilers that don't work (but
-that is easily detected and fixed).
-
-The sequence of commands you want is as follows:
-
-- Initial build: `./x build library`
-  - As [documented previously], this will build a functional stage1 compiler as
-    part of running all stage0 commands (which include building a `std`
-    compatible with the stage1 compiler) as well as the first few steps of the
-    "stage 1 actions" up to "stage1 (sysroot stage1) builds std".
-- Subsequent builds: `./x build library --keep-stage 1`
-  - Note that we added the `--keep-stage 1` flag here
-
-[documented previously]: ./how-to-build-and-run.md#building-the-compiler
-
-As mentioned, the effect of `--keep-stage 1` is that we just _assume_ that the
-old standard library can be re-used. If you are editing the compiler, this is
-almost always true: you haven't changed the standard library, after all. But
-sometimes, it's not true: for example, if you are editing the "metadata" part of
-the compiler, which controls how the compiler encodes types and other states
-into the `rlib` files, or if you are editing things that wind up in the metadata
-(such as the definition of the MIR).
-
-**The TL;DR is that you might get weird behavior from a compile when using
-`--keep-stage 1`** -- for example, strange [ICEs](../appendix/glossary.html#ice)
-or other panics. In that case, you should simply remove the `--keep-stage 1`
-from the command and rebuild. That ought to fix the problem.
-
-You can also use `--keep-stage 1` when running tests. Something like this:
-
-- Initial test run: `./x test tests/ui`
-- Subsequent test run: `./x test tests/ui --keep-stage 1`
-
-### Iterating the standard library with `--keep-stage`
-
-If you are making changes to the standard library, you can use `./x build
---keep-stage 0 library` to iteratively rebuild the standard library without
-rebuilding the compiler.
+If you are not working on the compiler, you often don't need to build the compiler tree.
+For example, you can skip building the compiler and only build the `library` tree or the
+tools under `src/tools`. To achieve that, you have to enable this by setting the `download-rustc`
+option in your configuration. This tells bootstrap to use the latest nightly compiler for `stage > 0`
+steps, meaning it will have two precompiled compilers: stage0 compiler and `download-rustc` compiler
+for `stage > 0` steps. This way, it will never need to build the in-tree compiler. As a result, your
+build time will be significantly reduced by not building the in-tree compiler.
 
 ## Using incremental compilation
 

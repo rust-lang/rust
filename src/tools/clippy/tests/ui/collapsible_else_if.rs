@@ -102,3 +102,45 @@ fn issue_7318() {
     }
     //~^^^ collapsible_else_if
 }
+
+fn issue14799() {
+    use std::ops::ControlFlow;
+
+    let c: ControlFlow<_, ()> = ControlFlow::Break(Some(42));
+    if let ControlFlow::Break(Some(_)) = c {
+        todo!();
+    } else {
+        #[cfg(target_os = "freebsd")]
+        todo!();
+
+        if let ControlFlow::Break(None) = c {
+            todo!();
+        } else {
+            todo!();
+        }
+    }
+}
+
+fn in_parens() {
+    let x = "hello";
+    let y = "world";
+
+    if x == "hello" {
+        print!("Hello ");
+    } else {
+        (if y == "world" { println!("world") } else { println!("!") })
+    }
+    //~^^^ collapsible_else_if
+}
+
+fn in_brackets() {
+    let x = "hello";
+    let y = "world";
+
+    // There is no lint when the inner `if` is in a block.
+    if x == "hello" {
+        print!("Hello ");
+    } else {
+        { if y == "world" { println!("world") } else { println!("!") } }
+    }
+}

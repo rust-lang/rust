@@ -1,8 +1,8 @@
-use crate::spec::base::apple::{Arch, TargetAbi, base};
-use crate::spec::{FramePointer, Target, TargetMetadata, TargetOptions};
+use crate::spec::base::apple::{Arch, TargetEnv, base};
+use crate::spec::{Target, TargetMetadata, TargetOptions};
 
 pub(crate) fn target() -> Target {
-    let (opts, llvm_target, arch) = base("tvos", Arch::Arm64e, TargetAbi::Normal);
+    let (opts, llvm_target, arch) = base("tvos", Arch::Arm64e, TargetEnv::Normal);
     Target {
         llvm_target,
         metadata: TargetMetadata {
@@ -18,7 +18,6 @@ pub(crate) fn target() -> Target {
         options: TargetOptions {
             features: "+neon,+fp-armv8,+apple-a12,+v8.3a,+pauth".into(),
             max_atomic_width: Some(128),
-            frame_pointer: FramePointer::NonLeaf,
             ..opts
         },
     }

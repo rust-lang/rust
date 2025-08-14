@@ -22,6 +22,7 @@ use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt, TypeckResults};
 use rustc_session::impl_lint_pass;
 use rustc_span::symbol::sym;
 use rustc_span::{Span, Symbol};
+use std::borrow::Cow;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -252,13 +253,14 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing<'tcx> {
         }
 
         let typeck = cx.typeck_results();
-        let Some((kind, sub_expr)) = try_parse_ref_op(cx.tcx, typeck, expr) else {
+        let Some((kind, sub_expr, skip_expr)) = try_parse_ref_op(cx.tcx, typeck, expr) else {
             // The whole chain of reference operations has been seen
             if let Some((state, data)) = self.state.take() {
                 report(cx, expr, state, data, typeck);
             }
             return;
         };
+        self.skip_expr = skip_expr;
 
         match (self.state.take(), kind) {
             (None, kind) => {
@@ -303,7 +305,7 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing<'tcx> {
                     RefOp::Method { mutbl, is_ufcs }
                         if !is_lint_allowed(cx, EXPLICIT_DEREF_METHODS, expr.hir_id)
                             // Allow explicit deref in method chains. e.g. `foo.deref().bar()`
-                            && (is_ufcs || !in_postfix_position(cx, expr)) =>
+                            && (is_ufcs || !is_in_method_chain(cx, expr)) =>
                     {
                         let ty_changed_count = usize::from(!deref_method_same_type(expr_ty, typeck.expr_ty(sub_expr)));
                         self.state = Some((
@@ -362,7 +364,7 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing<'tcx> {
                                 // * `&self` methods on `&T` can have auto-borrow, but `&self` methods on `T` will take
                                 //   priority.
                                 if let Some(fn_id) = typeck.type_dependent_def_id(hir_id)
-                                    && let Some(trait_id) = cx.tcx.trait_of_item(fn_id)
+                                    && let Some(trait_id) = cx.tcx.trait_of_assoc(fn_id)
                                     && let arg_ty = cx.tcx.erase_regions(adjusted_ty)
                                     && let ty::Ref(_, sub_ty, _) = *arg_ty.kind()
                                     && let args =
@@ -671,42 +673,38 @@ fn try_parse_ref_op<'tcx>(
     tcx: TyCtxt<'tcx>,
     typeck: &'tcx TypeckResults<'_>,
     expr: &'tcx Expr<'_>,
-) -> Option<(RefOp, &'tcx Expr<'tcx>)> {
-    let (is_ufcs, def_id, arg) = match expr.kind {
-        ExprKind::MethodCall(_, arg, [], _) => (false, typeck.type_dependent_def_id(expr.hir_id)?, arg),
+) -> Option<(RefOp, &'tcx Expr<'tcx>, Option<HirId>)> {
+    let (call_path_id, def_id, arg) = match expr.kind {
+        ExprKind::MethodCall(_, arg, [], _) => (None, typeck.type_dependent_def_id(expr.hir_id)?, arg),
         ExprKind::Call(
-            Expr {
-                kind: ExprKind::Path(path),
+            &Expr {
+                kind: ExprKind::Path(QPath::Resolved(None, path)),
                 hir_id,
                 ..
             },
             [arg],
-        ) => (true, typeck.qpath_res(path, *hir_id).opt_def_id()?, arg),
+        ) => (Some(hir_id), path.res.opt_def_id()?, arg),
         ExprKind::Unary(UnOp::Deref, sub_expr) if !typeck.expr_ty(sub_expr).is_raw_ptr() => {
-            return Some((RefOp::Deref, sub_expr));
+            return Some((RefOp::Deref, sub_expr, None));
         },
-        ExprKind::AddrOf(BorrowKind::Ref, mutability, sub_expr) => return Some((RefOp::AddrOf(mutability), sub_expr)),
+        ExprKind::AddrOf(BorrowKind::Ref, mutability, sub_expr) => {
+            return Some((RefOp::AddrOf(mutability), sub_expr, None));
+        },
         _ => return None,
     };
-    if tcx.is_diagnostic_item(sym::deref_method, def_id) {
-        Some((
-            RefOp::Method {
-                mutbl: Mutability::Not,
-                is_ufcs,
-            },
-            arg,
-        ))
-    } else if tcx.trait_of_item(def_id)? == tcx.lang_items().deref_mut_trait()? {
-        Some((
-            RefOp::Method {
-                mutbl: Mutability::Mut,
-                is_ufcs,
-            },
-            arg,
-        ))
-    } else {
-        None
-    }
+    let mutbl = match tcx.get_diagnostic_name(def_id) {
+        Some(sym::deref_method) => Mutability::Not,
+        Some(sym::deref_mut_method) => Mutability::Mut,
+        _ => return None,
+    };
+    Some((
+        RefOp::Method {
+            mutbl,
+            is_ufcs: call_path_id.is_some(),
+        },
+        arg,
+        call_path_id,
+    ))
 }
 
 // Checks if the adjustments contains a deref of `ManuallyDrop<_>`
@@ -730,7 +728,13 @@ fn deref_method_same_type<'tcx>(result_ty: Ty<'tcx>, arg_ty: Ty<'tcx>) -> bool {
     }
 }
 
-fn in_postfix_position<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'tcx>) -> bool {
+fn is_in_method_chain<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'tcx>) -> bool {
+    if let ExprKind::MethodCall(_, recv, _, _) = e.kind
+        && matches!(recv.kind, ExprKind::MethodCall(..))
+    {
+        return true;
+    }
+
     if let Some(parent) = get_parent_expr(cx, e)
         && parent.span.eq_ctxt(e.span)
     {
@@ -820,7 +824,7 @@ impl TyCoercionStability {
                 TyKind::Slice(_)
                 | TyKind::Array(..)
                 | TyKind::Ptr(_)
-                | TyKind::BareFn(_)
+                | TyKind::FnPtr(_)
                 | TyKind::Pat(..)
                 | TyKind::Never
                 | TyKind::Tup(_)
@@ -944,7 +948,7 @@ fn report<'tcx>(
             mutbl,
         } => {
             let mut app = Applicability::MachineApplicable;
-            let (expr_str, _expr_is_macro_call) =
+            let (expr_str, expr_is_macro_call) =
                 snippet_with_context(cx, expr.span, data.first_expr.span.ctxt(), "..", &mut app);
             let ty = typeck.expr_ty(expr);
             let (_, ref_count) = peel_middle_ty_refs(ty);
@@ -968,20 +972,11 @@ fn report<'tcx>(
                 "&"
             };
 
-            // expr_str (the suggestion) is never shown if is_final_ufcs is true, since it's
-            // `expr.kind == ExprKind::Call`. Therefore, this is, afaik, always unnecessary.
-            /*
-            expr_str = if !expr_is_macro_call && is_final_ufcs && expr.precedence() < ExprPrecedence::Prefix {
+            let expr_str = if !expr_is_macro_call && is_ufcs && cx.precedence(expr) < ExprPrecedence::Prefix {
                 Cow::Owned(format!("({expr_str})"))
             } else {
                 expr_str
             };
-            */
-
-            // Fix #10850, do not lint if it's `Foo::deref` instead of `foo.deref()`.
-            if is_ufcs {
-                return;
-            }
 
             span_lint_and_sugg(
                 cx,
@@ -997,6 +992,15 @@ fn report<'tcx>(
             );
         },
         State::DerefedBorrow(state) => {
+            // Do not suggest removing a non-mandatory `&` in `&*rawptr` in an `unsafe` context,
+            // as this may make rustc trigger its `dangerous_implicit_autorefs` lint.
+            if let ExprKind::AddrOf(BorrowKind::Ref, _, subexpr) = data.first_expr.kind
+                && let ExprKind::Unary(UnOp::Deref, subsubexpr) = subexpr.kind
+                && cx.typeck_results().expr_ty_adjusted(subsubexpr).is_raw_ptr()
+            {
+                return;
+            }
+
             let mut app = Applicability::MachineApplicable;
             let (snip, snip_is_macro) =
                 snippet_with_context(cx, expr.span, data.first_expr.span.ctxt(), "..", &mut app);
@@ -1011,10 +1015,10 @@ fn report<'tcx>(
                         Node::Expr(e) => match e.kind {
                             ExprKind::Call(callee, _) if callee.hir_id != data.first_expr.hir_id => false,
                             ExprKind::Call(..) => {
-                                expr.precedence() < ExprPrecedence::Unambiguous
+                                cx.precedence(expr) < ExprPrecedence::Unambiguous
                                     || matches!(expr.kind, ExprKind::Field(..))
                             },
-                            _ => expr.precedence() < e.precedence(),
+                            _ => cx.precedence(expr) < cx.precedence(e),
                         },
                         _ => false,
                     };
@@ -1062,7 +1066,7 @@ fn report<'tcx>(
                         Mutability::Not => "&",
                         Mutability::Mut => "&mut ",
                     };
-                    (prefix, expr.precedence() < ExprPrecedence::Prefix)
+                    (prefix, cx.precedence(expr) < ExprPrecedence::Prefix)
                 },
                 None if !ty.is_ref() && data.adjusted_ty.is_ref() => ("&", false),
                 _ => ("", false),
@@ -1168,7 +1172,7 @@ impl<'tcx> Dereferencing<'tcx> {
                 },
                 Some(parent) if !parent.span.from_expansion() => {
                     // Double reference might be needed at this point.
-                    if parent.precedence() == ExprPrecedence::Unambiguous {
+                    if cx.precedence(parent) == ExprPrecedence::Unambiguous {
                         // Parentheses would be needed here, don't lint.
                         *outer_pat = None;
                     } else {

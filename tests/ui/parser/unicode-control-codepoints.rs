@@ -34,7 +34,7 @@ fn main() {
     //~^ ERROR unicode codepoint changing visible direction of text present in literal
 
     println!("{{‮}}");
-    //~^ ERROR unicode codepoint changing visible direction of text present in format string
+    //~^ ERROR unicode codepoint changing visible direction of text present in literal
 }
 
 //"/*‮ } ⁦if isAdmin⁩ ⁦ begin admins only */"

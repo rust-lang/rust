@@ -3,13 +3,13 @@ use std::borrow::Cow;
 use std::iter;
 
 use hir::def_id::{DefId, DefIdMap, LocalDefId};
-use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
+use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, ErrorGuaranteed, MultiSpan, pluralize, struct_span_code_err};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::VisitorExt;
 use rustc_hir::{self as hir, AmbigArg, GenericParamKind, ImplItemKind, intravisit};
-use rustc_infer::infer::{self, InferCtxt, TyCtxtInferExt};
+use rustc_infer::infer::{self, BoundRegionConversionTime, InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::util;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{
@@ -264,9 +264,9 @@ fn compare_method_predicate_entailment<'tcx>(
     }
 
     // If we're within a const implementation, we need to make sure that the method
-    // does not assume stronger `~const` bounds than the trait definition.
+    // does not assume stronger `[const]` bounds than the trait definition.
     //
-    // This registers the `~const` bounds of the impl method, which we will prove
+    // This registers the `[const]` bounds of the impl method, which we will prove
     // using the hybrid param-env that we earlier augmented with the const conditions
     // from the impl header and trait method declaration.
     if is_conditionally_const {
@@ -311,7 +311,7 @@ fn compare_method_predicate_entailment<'tcx>(
 
     let unnormalized_impl_sig = infcx.instantiate_binder_with_fresh_vars(
         impl_m_span,
-        infer::HigherRankedType,
+        BoundRegionConversionTime::HigherRankedType,
         tcx.fn_sig(impl_m.def_id).instantiate_identity(),
     );
 
@@ -356,60 +356,13 @@ fn compare_method_predicate_entailment<'tcx>(
     }
 
     if !(impl_sig, trait_sig).references_error() {
-        // Select obligations to make progress on inference before processing
-        // the wf obligation below.
-        // FIXME(-Znext-solver): Not needed when the hack below is removed.
-        let errors = ocx.select_where_possible();
-        if !errors.is_empty() {
-            let reported = infcx.err_ctxt().report_fulfillment_errors(errors);
-            return Err(reported);
-        }
-
-        // See #108544. Annoying, we can end up in cases where, because of winnowing,
-        // we pick param env candidates over a more general impl, leading to more
-        // stricter lifetime requirements than we would otherwise need. This can
-        // trigger the lint. Instead, let's only consider type outlives and
-        // region outlives obligations.
-        //
-        // FIXME(-Znext-solver): Try removing this hack again once the new
-        // solver is stable. We should just be able to register a WF pred for
-        // the fn sig.
-        let mut wf_args: smallvec::SmallVec<[_; 4]> =
-            unnormalized_impl_sig.inputs_and_output.iter().map(|ty| ty.into()).collect();
-        // Annoyingly, asking for the WF predicates of an array (with an unevaluated const (only?))
-        // will give back the well-formed predicate of the same array.
-        let mut wf_args_seen: FxHashSet<_> = wf_args.iter().copied().collect();
-        while let Some(term) = wf_args.pop() {
-            let Some(obligations) = rustc_trait_selection::traits::wf::obligations(
-                infcx,
+        for ty in unnormalized_impl_sig.inputs_and_output {
+            ocx.register_obligation(traits::Obligation::new(
+                infcx.tcx,
+                cause.clone(),
                 param_env,
-                impl_m_def_id,
-                0,
-                term,
-                impl_m_span,
-            ) else {
-                continue;
-            };
-            for obligation in obligations {
-                debug!(?obligation);
-                match obligation.predicate.kind().skip_binder() {
-                    // We need to register Projection oblgiations too, because we may end up with
-                    // an implied `X::Item: 'a`, which gets desugared into `X::Item = ?0`, `?0: 'a`.
-                    // If we only register the region outlives obligation, this leads to an unconstrained var.
-                    // See `implied_bounds_entailment_alias_var.rs` test.
-                    ty::PredicateKind::Clause(
-                        ty::ClauseKind::RegionOutlives(..)
-                        | ty::ClauseKind::TypeOutlives(..)
-                        | ty::ClauseKind::Projection(..),
-                    ) => ocx.register_obligation(obligation),
-                    ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(term)) => {
-                        if wf_args_seen.insert(term) {
-                            wf_args.push(term)
-                        }
-                    }
-                    _ => {}
-                }
-            }
+                ty::ClauseKind::WellFormed(ty.into()),
+            ));
         }
     }
 
@@ -472,7 +425,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for RemapLateParam<'tcx> {
 ///
 /// trait Foo {
 ///     fn bar() -> impl Deref<Target = impl Sized>;
-///              // ^- RPITIT #1        ^- RPITIT #2
+///     //          ^- RPITIT #1        ^- RPITIT #2
 /// }
 ///
 /// impl Foo for () {
@@ -565,7 +518,7 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
         param_env,
         infcx.instantiate_binder_with_fresh_vars(
             return_span,
-            infer::HigherRankedType,
+            BoundRegionConversionTime::HigherRankedType,
             tcx.fn_sig(impl_m.def_id).instantiate_identity(),
         ),
     );
@@ -1220,7 +1173,7 @@ fn check_region_bounds_on_impl_item<'tcx>(
             bounds_span,
             where_span,
         })
-        .emit_unless(delay);
+        .emit_unless_delay(delay);
 
     Err(reported)
 }
@@ -1278,7 +1231,7 @@ fn check_region_late_boundedness<'tcx>(
     for (id_arg, arg) in
         std::iter::zip(ty::GenericArgs::identity_for_item(tcx, impl_m.def_id), impl_m_args)
     {
-        if let ty::GenericArgKind::Lifetime(r) = arg.unpack()
+        if let ty::GenericArgKind::Lifetime(r) = arg.kind()
             && let ty::ReVar(vid) = r.kind()
             && let r = infcx
                 .inner
@@ -1286,7 +1239,7 @@ fn check_region_late_boundedness<'tcx>(
                 .unwrap_region_constraints()
                 .opportunistic_resolve_var(tcx, vid)
             && let ty::ReLateParam(ty::LateParamRegion {
-                kind: ty::LateParamRegionKind::Named(trait_param_def_id, _),
+                kind: ty::LateParamRegionKind::Named(trait_param_def_id),
                 ..
             }) = r.kind()
             && let ty::ReEarlyParam(ebr) = id_arg.expect_region().kind()
@@ -1303,7 +1256,7 @@ fn check_region_late_boundedness<'tcx>(
     for (id_arg, arg) in
         std::iter::zip(ty::GenericArgs::identity_for_item(tcx, trait_m.def_id), trait_m_args)
     {
-        if let ty::GenericArgKind::Lifetime(r) = arg.unpack()
+        if let ty::GenericArgKind::Lifetime(r) = arg.kind()
             && let ty::ReVar(vid) = r.kind()
             && let r = infcx
                 .inner
@@ -1311,7 +1264,7 @@ fn check_region_late_boundedness<'tcx>(
                 .unwrap_region_constraints()
                 .opportunistic_resolve_var(tcx, vid)
             && let ty::ReLateParam(ty::LateParamRegion {
-                kind: ty::LateParamRegionKind::Named(impl_param_def_id, _),
+                kind: ty::LateParamRegionKind::Named(impl_param_def_id),
                 ..
             }) = r.kind()
             && let ty::ReEarlyParam(ebr) = id_arg.expect_region().kind()
@@ -1528,7 +1481,7 @@ fn compare_self_type<'tcx>(
             } else {
                 err.note_trait_signature(trait_m.name(), trait_m.signature(tcx));
             }
-            return Err(err.emit_unless(delay));
+            return Err(err.emit_unless_delay(delay));
         }
 
         (true, false) => {
@@ -1549,7 +1502,7 @@ fn compare_self_type<'tcx>(
                 err.note_trait_signature(trait_m.name(), trait_m.signature(tcx));
             }
 
-            return Err(err.emit_unless(delay));
+            return Err(err.emit_unless_delay(delay));
         }
     }
 
@@ -1709,7 +1662,7 @@ fn compare_number_of_generics<'tcx>(
                 err.span_label(*span, "`impl Trait` introduces an implicit type parameter");
             }
 
-            let reported = err.emit_unless(delay);
+            let reported = err.emit_unless_delay(delay);
             err_occurred = Some(reported);
         }
     }
@@ -1792,7 +1745,7 @@ fn compare_number_of_method_arguments<'tcx>(
             ),
         );
 
-        return Err(err.emit_unless(delay));
+        return Err(err.emit_unless_delay(delay));
     }
 
     Ok(())
@@ -1919,7 +1872,7 @@ fn compare_synthetic_generics<'tcx>(
                     );
                 };
             }
-            error_found = Some(err.emit_unless(delay));
+            error_found = Some(err.emit_unless_delay(delay));
         }
     }
     if let Some(reported) = error_found { Err(reported) } else { Ok(()) }
@@ -2021,7 +1974,7 @@ fn compare_generic_param_kinds<'tcx>(
             err.span_label(impl_header_span, "");
             err.span_label(param_impl_span, make_param_message("found", param_impl));
 
-            let reported = err.emit_unless(delay);
+            let reported = err.emit_unless_delay(delay);
             return Err(reported);
         }
     }
@@ -2382,7 +2335,7 @@ pub(super) fn check_type_bounds<'tcx>(
     )
     .collect();
 
-    // Only in a const implementation do we need to check that the `~const` item bounds hold.
+    // Only in a const implementation do we need to check that the `[const]` item bounds hold.
     if tcx.is_conditionally_const(impl_ty_def_id) {
         obligations.extend(util::elaborate(
             tcx,
@@ -2515,7 +2468,7 @@ fn param_env_with_gat_bounds<'tcx>(
         let normalize_impl_ty_args = ty::GenericArgs::identity_for_item(tcx, container_id)
             .extend_to(tcx, impl_ty.def_id, |param, _| match param.kind {
                 GenericParamDefKind::Type { .. } => {
-                    let kind = ty::BoundTyKind::Param(param.def_id, param.name);
+                    let kind = ty::BoundTyKind::Param(param.def_id);
                     let bound_var = ty::BoundVariableKind::Ty(kind);
                     bound_vars.push(bound_var);
                     Ty::new_bound(
@@ -2526,7 +2479,7 @@ fn param_env_with_gat_bounds<'tcx>(
                     .into()
                 }
                 GenericParamDefKind::Lifetime => {
-                    let kind = ty::BoundRegionKind::Named(param.def_id, param.name);
+                    let kind = ty::BoundRegionKind::Named(param.def_id);
                     let bound_var = ty::BoundVariableKind::Region(kind);
                     bound_vars.push(bound_var);
                     ty::Region::new_bound(
@@ -2545,7 +2498,7 @@ fn param_env_with_gat_bounds<'tcx>(
                     ty::Const::new_bound(
                         tcx,
                         ty::INNERMOST,
-                        ty::BoundVar::from_usize(bound_vars.len() - 1),
+                        ty::BoundConst { var: ty::BoundVar::from_usize(bound_vars.len() - 1) },
                     )
                     .into()
                 }

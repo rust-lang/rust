@@ -5,7 +5,7 @@ pub mod num {
 }
 
 pub mod f64 {
-    impl ::num::Num2 for f64 {
+    impl crate::num::Num2 for f64 {
         #[inline]
         fn from_int2(n: isize) -> f64 { return n as f64;  }
     }

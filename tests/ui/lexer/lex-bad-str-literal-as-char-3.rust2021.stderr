@@ -1,5 +1,5 @@
 error: prefix `world` is unknown
-  --> $DIR/lex-bad-str-literal-as-char-3.rs:5:21
+  --> $DIR/lex-bad-str-literal-as-char-3.rs:6:21
    |
 LL |     println!('hello world');
    |                     ^^^^^ unknown prefix
@@ -12,7 +12,7 @@ LL +     println!("hello world");
    |
 
 error[E0762]: unterminated character literal
-  --> $DIR/lex-bad-str-literal-as-char-3.rs:5:26
+  --> $DIR/lex-bad-str-literal-as-char-3.rs:6:26
    |
 LL |     println!('hello world');
    |                          ^^^

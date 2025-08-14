@@ -37,6 +37,7 @@ use ide_db::{
     SymbolKind, documentation::HasDocs, path_transform::PathTransform,
     syntax_helpers::prettify_macro_expansion, traits::get_missing_assoc_items,
 };
+use syntax::ast::HasGenericParams;
 use syntax::{
     AstNode, SmolStr, SyntaxElement, SyntaxKind, T, TextRange, ToSmolStr,
     ast::{self, HasGenericArgs, HasTypeBounds, edit_in_place::AttrsOwnerEdit, make},
@@ -122,7 +123,7 @@ fn complete_trait_impl_name(
 pub(crate) fn complete_trait_impl_item_by_name(
     acc: &mut Completions,
     ctx: &CompletionContext<'_>,
-    path_ctx: &PathCompletionCtx,
+    path_ctx: &PathCompletionCtx<'_>,
     name_ref: &Option<ast::NameRef>,
     impl_: &Option<ast::Impl>,
 ) {
@@ -227,24 +228,22 @@ fn add_function_impl_(
         .set_documentation(func.docs(ctx.db))
         .set_relevance(CompletionRelevance { exact_name_match: true, ..Default::default() });
 
-    if let Some(source) = ctx.sema.source(func) {
-        if let Some(transformed_fn) =
+    if let Some(source) = ctx.sema.source(func)
+        && let Some(transformed_fn) =
             get_transformed_fn(ctx, source.value, impl_def, async_sugaring)
-        {
-            let function_decl =
-                function_declaration(ctx, &transformed_fn, source.file_id.macro_file());
-            match ctx.config.snippet_cap {
-                Some(cap) => {
-                    let snippet = format!("{function_decl} {{\n    $0\n}}");
-                    item.snippet_edit(cap, TextEdit::replace(replacement_range, snippet));
-                }
-                None => {
-                    let header = format!("{function_decl} {{");
-                    item.text_edit(TextEdit::replace(replacement_range, header));
-                }
-            };
-            item.add_to(acc, ctx.db);
-        }
+    {
+        let function_decl = function_declaration(ctx, &transformed_fn, source.file_id.macro_file());
+        match ctx.config.snippet_cap {
+            Some(cap) => {
+                let snippet = format!("{function_decl} {{\n    $0\n}}");
+                item.snippet_edit(cap, TextEdit::replace(replacement_range, snippet));
+            }
+            None => {
+                let header = format!("{function_decl} {{");
+                item.text_edit(TextEdit::replace(replacement_range, header));
+            }
+        };
+        item.add_to(acc, ctx.db);
     }
 }
 
@@ -275,7 +274,7 @@ fn get_transformed_assoc_item(
     let assoc_item = assoc_item.clone_for_update();
     // FIXME: Paths in nested macros are not handled well. See
     // `macro_generated_assoc_item2` test.
-    transform.apply(assoc_item.syntax());
+    let assoc_item = ast::AssocItem::cast(transform.apply(assoc_item.syntax()))?;
     assoc_item.remove_attrs_and_docs();
     Some(assoc_item)
 }
@@ -300,7 +299,7 @@ fn get_transformed_fn(
     let fn_ = fn_.clone_for_update();
     // FIXME: Paths in nested macros are not handled well. See
     // `macro_generated_assoc_item2` test.
-    transform.apply(fn_.syntax());
+    let fn_ = ast::Fn::cast(transform.apply(fn_.syntax()))?;
     fn_.remove_attrs_and_docs();
     match async_ {
         AsyncSugaring::Desugar => {
@@ -390,6 +389,12 @@ fn add_type_alias_impl(
             } else if let Some(end) = transformed_ty.eq_token().map(|tok| tok.text_range().start())
             {
                 end
+            } else if let Some(end) = transformed_ty
+                .where_clause()
+                .and_then(|wc| wc.where_token())
+                .map(|tok| tok.text_range().start())
+            {
+                end
             } else if let Some(end) =
                 transformed_ty.semicolon_token().map(|tok| tok.text_range().start())
             {
@@ -400,17 +405,29 @@ fn add_type_alias_impl(
 
             let len = end - start;
             let mut decl = transformed_ty.syntax().text().slice(..len).to_string();
-            if !decl.ends_with(' ') {
-                decl.push(' ');
-            }
-            decl.push_str("= ");
+            decl.truncate(decl.trim_end().len());
+            decl.push_str(" = ");
+
+            let wc = transformed_ty
+                .where_clause()
+                .map(|wc| {
+                    let ws = wc
+                        .where_token()
+                        .and_then(|it| it.prev_token())
+                        .filter(|token| token.kind() == SyntaxKind::WHITESPACE)
+                        .map(|token| token.to_string())
+                        .unwrap_or_else(|| " ".into());
+                    format!("{ws}{wc}")
+                })
+                .unwrap_or_default();
 
             match ctx.config.snippet_cap {
                 Some(cap) => {
-                    let snippet = format!("{decl}$0;");
+                    let snippet = format!("{decl}$0{wc};");
                     item.snippet_edit(cap, TextEdit::replace(replacement_range, snippet));
                 }
                 None => {
+                    decl.push_str(&wc);
                     item.text_edit(TextEdit::replace(replacement_range, decl));
                 }
             };
@@ -428,36 +445,36 @@ fn add_const_impl(
 ) {
     let const_name = const_.name(ctx.db).map(|n| n.display_no_db(ctx.edition).to_smolstr());
 
-    if let Some(const_name) = const_name {
-        if let Some(source) = ctx.sema.source(const_) {
-            let assoc_item = ast::AssocItem::Const(source.value);
-            if let Some(transformed_item) = get_transformed_assoc_item(ctx, assoc_item, impl_def) {
-                let transformed_const = match transformed_item {
-                    ast::AssocItem::Const(const_) => const_,
-                    _ => unreachable!(),
-                };
+    if let Some(const_name) = const_name
+        && let Some(source) = ctx.sema.source(const_)
+    {
+        let assoc_item = ast::AssocItem::Const(source.value);
+        if let Some(transformed_item) = get_transformed_assoc_item(ctx, assoc_item, impl_def) {
+            let transformed_const = match transformed_item {
+                ast::AssocItem::Const(const_) => const_,
+                _ => unreachable!(),
+            };
 
-                let label =
-                    make_const_compl_syntax(ctx, &transformed_const, source.file_id.macro_file());
-                let replacement = format!("{label} ");
+            let label =
+                make_const_compl_syntax(ctx, &transformed_const, source.file_id.macro_file());
+            let replacement = format!("{label} ");
 
-                let mut item =
-                    CompletionItem::new(SymbolKind::Const, replacement_range, label, ctx.edition);
-                item.lookup_by(format_smolstr!("const {const_name}"))
-                    .set_documentation(const_.docs(ctx.db))
-                    .set_relevance(CompletionRelevance {
-                        exact_name_match: true,
-                        ..Default::default()
-                    });
-                match ctx.config.snippet_cap {
-                    Some(cap) => item.snippet_edit(
-                        cap,
-                        TextEdit::replace(replacement_range, format!("{replacement}$0;")),
-                    ),
-                    None => item.text_edit(TextEdit::replace(replacement_range, replacement)),
-                };
-                item.add_to(acc, ctx.db);
-            }
+            let mut item =
+                CompletionItem::new(SymbolKind::Const, replacement_range, label, ctx.edition);
+            item.lookup_by(format_smolstr!("const {const_name}"))
+                .set_documentation(const_.docs(ctx.db))
+                .set_relevance(CompletionRelevance {
+                    exact_name_match: true,
+                    ..Default::default()
+                });
+            match ctx.config.snippet_cap {
+                Some(cap) => item.snippet_edit(
+                    cap,
+                    TextEdit::replace(replacement_range, format!("{replacement}$0;")),
+                ),
+                None => item.text_edit(TextEdit::replace(replacement_range, replacement)),
+            };
+            item.add_to(acc, ctx.db);
         }
     }
 }
@@ -1436,6 +1453,30 @@ trait Tr<'b> {
 
 impl<'b> Tr<'b> for () {
     type Ty<'a: 'b, T: Copy, const C: usize> = $0;
+}
+"#,
+        );
+    }
+    #[test]
+    fn includes_where_clause() {
+        check_edit(
+            "type Ty",
+            r#"
+trait Tr {
+    type Ty where Self: Copy;
+}
+
+impl Tr for () {
+    $0
+}
+"#,
+            r#"
+trait Tr {
+    type Ty where Self: Copy;
+}
+
+impl Tr for () {
+    type Ty = $0 where Self: Copy;
 }
 "#,
         );

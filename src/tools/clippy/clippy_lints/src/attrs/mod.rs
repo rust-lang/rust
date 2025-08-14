@@ -207,7 +207,7 @@ declare_clippy_lint! {
 declare_clippy_lint! {
     /// ### What it does
     /// Checks for usage of the `#[allow]` attribute and suggests replacing it with
-    /// the `#[expect]` (See [RFC 2383](https://rust-lang.github.io/rfcs/2383-lint-reasons.html))
+    /// the `#[expect]` attribute (See [RFC 2383](https://rust-lang.github.io/rfcs/2383-lint-reasons.html))
     ///
     /// This lint only warns outer attributes (`#[allow]`), as inner attributes
     /// (`#![allow]`) are usually used to enable or disable lints on a global scale.
@@ -468,7 +468,7 @@ declare_clippy_lint! {
     /// #[ignore = "Some good reason"]
     /// fn test() {}
     /// ```
-    #[clippy::version = "1.85.0"]
+    #[clippy::version = "1.88.0"]
     pub IGNORE_WITHOUT_REASON,
     pedantic,
     "ignored tests without messages"

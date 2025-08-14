@@ -18,13 +18,11 @@ trait Quux {
 fn make_bar<T:Bar>(t: &T) -> &dyn Bar {
     //~^ ERROR E0038
     t
-    //~^ ERROR E0038
 }
 
 fn make_baz<T:Baz>(t: &T) -> &dyn Baz {
     //~^ ERROR E0038
     t
-    //~^ ERROR E0038
 }
 
 fn make_quux<T:Quux>(t: &T) -> &dyn Quux {

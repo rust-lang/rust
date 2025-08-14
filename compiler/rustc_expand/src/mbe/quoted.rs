@@ -16,6 +16,27 @@ pub(crate) const VALID_FRAGMENT_NAMES_MSG: &str = "valid fragment specifiers are
     `ident`, `block`, `stmt`, `expr`, `pat`, `ty`, `lifetime`, `literal`, `path`, \
     `meta`, `tt`, `item` and `vis`, along with `expr_2021` and `pat_param` for edition compatibility";
 
+/// Which part of a macro rule we're parsing
+#[derive(Copy, Clone)]
+pub(crate) enum RulePart {
+    /// The left-hand side, with patterns and metavar definitions with types
+    Pattern,
+    /// The right-hand side body, with metavar references and metavar expressions
+    Body,
+}
+
+impl RulePart {
+    #[inline(always)]
+    fn is_pattern(&self) -> bool {
+        matches!(self, Self::Pattern)
+    }
+
+    #[inline(always)]
+    fn is_body(&self) -> bool {
+        matches!(self, Self::Body)
+    }
+}
+
 /// Takes a `tokenstream::TokenStream` and returns a `Vec<self::TokenTree>`. Specifically, this
 /// takes a generic `TokenStream`, such as is used in the rest of the compiler, and returns a
 /// collection of `TokenTree` for use in parsing a macro.
@@ -23,8 +44,8 @@ pub(crate) const VALID_FRAGMENT_NAMES_MSG: &str = "valid fragment specifiers are
 /// # Parameters
 ///
 /// - `input`: a token stream to read from, the contents of which we are parsing.
-/// - `parsing_patterns`: `parse` can be used to parse either the "patterns" or the "body" of a
-///   macro. Both take roughly the same form _except_ that:
+/// - `part`: whether we're parsing the patterns or the body of a macro. Both take roughly the same
+///   form _except_ that:
 ///   - In a pattern, metavars are declared with their "matcher" type. For example `$var:expr` or
 ///     `$id:ident`. In this example, `expr` and `ident` are "matchers". They are not present in the
 ///     body of a macro rule -- just in the pattern.
@@ -36,9 +57,9 @@ pub(crate) const VALID_FRAGMENT_NAMES_MSG: &str = "valid fragment specifiers are
 /// # Returns
 ///
 /// A collection of `self::TokenTree`. There may also be some errors emitted to `sess`.
-pub(super) fn parse(
+fn parse(
     input: &tokenstream::TokenStream,
-    parsing_patterns: bool,
+    part: RulePart,
     sess: &Session,
     node_id: NodeId,
     features: &Features,
@@ -53,70 +74,98 @@ pub(super) fn parse(
     while let Some(tree) = iter.next() {
         // Given the parsed tree, if there is a metavar and we are expecting matchers, actually
         // parse out the matcher (i.e., in `$id:ident` this would parse the `:` and `ident`).
-        let tree = parse_tree(tree, &mut iter, parsing_patterns, sess, node_id, features, edition);
-        match tree {
-            TokenTree::MetaVar(start_sp, ident) if parsing_patterns => {
-                // Not consuming the next token immediately, as it may not be a colon
-                let span = match iter.peek() {
-                    Some(&tokenstream::TokenTree::Token(
-                        Token { kind: token::Colon, span: colon_span },
-                        _,
-                    )) => {
-                        // Consume the colon first
-                        iter.next();
+        let tree = parse_tree(tree, &mut iter, part, sess, node_id, features, edition);
 
-                        // It's ok to consume the next tree no matter how,
-                        // since if it's not a token then it will be an invalid declaration.
-                        match iter.next() {
-                            Some(tokenstream::TokenTree::Token(token, _)) => match token.ident() {
-                                Some((fragment, _)) => {
-                                    let span = token.span.with_lo(start_sp.lo());
-                                    let edition = || {
-                                        // FIXME(#85708) - once we properly decode a foreign
-                                        // crate's `SyntaxContext::root`, then we can replace
-                                        // this with just `span.edition()`. A
-                                        // `SyntaxContext::root()` from the current crate will
-                                        // have the edition of the current crate, and a
-                                        // `SyntaxContext::root()` from a foreign crate will
-                                        // have the edition of that crate (which we manually
-                                        // retrieve via the `edition` parameter).
-                                        if !span.from_expansion() {
-                                            edition
-                                        } else {
-                                            span.edition()
-                                        }
-                                    };
-                                    let kind = NonterminalKind::from_symbol(fragment.name, edition)
-                                        .unwrap_or_else(|| {
-                                            sess.dcx().emit_err(errors::InvalidFragmentSpecifier {
-                                                span,
-                                                fragment,
-                                                help: VALID_FRAGMENT_NAMES_MSG.into(),
-                                            });
-                                            NonterminalKind::Ident
-                                        });
-                                    result.push(TokenTree::MetaVarDecl(span, ident, Some(kind)));
-                                    continue;
-                                }
-                                _ => token.span,
-                            },
-                            // Invalid, return a nice source location
-                            _ => colon_span.with_lo(start_sp.lo()),
-                        }
-                    }
-                    // Whether it's none or some other tree, it doesn't belong to
-                    // the current meta variable, returning the original span.
-                    _ => start_sp,
-                };
+        if part.is_body() {
+            // No matchers allowed, nothing to process here
+            result.push(tree);
+            continue;
+        }
 
-                result.push(TokenTree::MetaVarDecl(span, ident, None));
-            }
+        let TokenTree::MetaVar(start_sp, ident) = tree else {
+            // Not a metavariable, just return the tree
+            result.push(tree);
+            continue;
+        };
 
-            // Not a metavar or no matchers allowed, so just return the tree
-            _ => result.push(tree),
+        // Push a metavariable with no fragment specifier at the given span
+        let mut missing_fragment_specifier = |span| {
+            sess.dcx().emit_err(errors::MissingFragmentSpecifier {
+                span,
+                add_span: span.shrink_to_hi(),
+                valid: VALID_FRAGMENT_NAMES_MSG,
+            });
+
+            // Fall back to a `TokenTree` since that will match anything if we continue expanding.
+            result.push(TokenTree::MetaVarDecl { span, name: ident, kind: NonterminalKind::TT });
+        };
+
+        // Not consuming the next token immediately, as it may not be a colon
+        if let Some(peek) = iter.peek()
+            && let tokenstream::TokenTree::Token(token, _spacing) = peek
+            && let Token { kind: token::Colon, span: colon_span } = token
+        {
+            // Next token is a colon; consume it
+            iter.next();
+
+            // It's ok to consume the next tree no matter how,
+            // since if it's not a token then it will be an invalid declaration.
+            let Some(tokenstream::TokenTree::Token(token, _)) = iter.next() else {
+                // Invalid, return a nice source location as `var:`
+                missing_fragment_specifier(colon_span.with_lo(start_sp.lo()));
+                continue;
+            };
+
+            let Some((fragment, _)) = token.ident() else {
+                // No identifier for the fragment specifier;
+                missing_fragment_specifier(token.span);
+                continue;
+            };
+
+            let span = token.span.with_lo(start_sp.lo());
+            let edition = || {
+                // FIXME(#85708) - once we properly decode a foreign
+                // crate's `SyntaxContext::root`, then we can replace
+                // this with just `span.edition()`. A
+                // `SyntaxContext::root()` from the current crate will
+                // have the edition of the current crate, and a
+                // `SyntaxContext::root()` from a foreign crate will
+                // have the edition of that crate (which we manually
+                // retrieve via the `edition` parameter).
+                if !span.from_expansion() { edition } else { span.edition() }
+            };
+            let kind = NonterminalKind::from_symbol(fragment.name, edition).unwrap_or_else(|| {
+                sess.dcx().emit_err(errors::InvalidFragmentSpecifier {
+                    span,
+                    fragment,
+                    help: VALID_FRAGMENT_NAMES_MSG,
+                });
+                NonterminalKind::TT
+            });
+            result.push(TokenTree::MetaVarDecl { span, name: ident, kind });
+        } else {
+            // Whether it's none or some other tree, it doesn't belong to
+            // the current meta variable, returning the original span.
+            missing_fragment_specifier(start_sp);
         }
     }
     result
+}
+
+/// Takes a `tokenstream::TokenTree` and returns a `self::TokenTree`. Like `parse`, but for a
+/// single token tree. Emits errors to `sess` if needed.
+#[inline]
+pub(super) fn parse_one_tt(
+    input: tokenstream::TokenTree,
+    part: RulePart,
+    sess: &Session,
+    node_id: NodeId,
+    features: &Features,
+    edition: Edition,
+) -> TokenTree {
+    parse(&tokenstream::TokenStream::new(vec![input]), part, sess, node_id, features, edition)
+        .pop()
+        .unwrap()
 }
 
 /// Asks for the `macro_metavar_expr` feature if it is not enabled
@@ -145,13 +194,13 @@ fn maybe_emit_macro_metavar_expr_concat_feature(features: &Features, sess: &Sess
 /// - `tree`: the tree we wish to convert.
 /// - `outer_iter`: an iterator over trees. We may need to read more tokens from it in order to finish
 ///   converting `tree`
-/// - `parsing_patterns`: same as [parse].
+/// - `part`: same as [parse].
 /// - `sess`: the parsing session. Any errors will be emitted to this session.
 /// - `features`: language features so we can do feature gating.
 fn parse_tree<'a>(
     tree: &'a tokenstream::TokenTree,
     outer_iter: &mut TokenStreamIter<'a>,
-    parsing_patterns: bool,
+    part: RulePart,
     sess: &Session,
     node_id: NodeId,
     features: &Features,
@@ -177,7 +226,7 @@ fn parse_tree<'a>(
             match next {
                 // `tree` is followed by a delimited set of token trees.
                 Some(&tokenstream::TokenTree::Delimited(delim_span, _, delim, ref tts)) => {
-                    if parsing_patterns {
+                    if part.is_pattern() {
                         if delim != Delimiter::Parenthesis {
                             span_dollar_dollar_or_metavar_in_the_lhs_err(
                                 sess,
@@ -232,13 +281,13 @@ fn parse_tree<'a>(
                     // If we didn't find a metavar expression above, then we must have a
                     // repetition sequence in the macro (e.g. `$(pat)*`). Parse the
                     // contents of the sequence itself
-                    let sequence = parse(tts, parsing_patterns, sess, node_id, features, edition);
+                    let sequence = parse(tts, part, sess, node_id, features, edition);
                     // Get the Kleene operator and optional separator
                     let (separator, kleene) =
                         parse_sep_and_kleene_op(&mut iter, delim_span.entire(), sess);
                     // Count the number of captured "names" (i.e., named metavars)
                     let num_captures =
-                        if parsing_patterns { count_metavar_decls(&sequence) } else { 0 };
+                        if part.is_pattern() { count_metavar_decls(&sequence) } else { 0 };
                     TokenTree::Sequence(
                         delim_span,
                         SequenceRepetition { tts: sequence, separator, kleene, num_captures },
@@ -262,7 +311,7 @@ fn parse_tree<'a>(
                     Token { kind: token::Dollar, span: dollar_span2 },
                     _,
                 )) => {
-                    if parsing_patterns {
+                    if part.is_pattern() {
                         span_dollar_dollar_or_metavar_in_the_lhs_err(
                             sess,
                             &Token { kind: token::Dollar, span: dollar_span2 },
@@ -294,10 +343,7 @@ fn parse_tree<'a>(
         &tokenstream::TokenTree::Delimited(span, spacing, delim, ref tts) => TokenTree::Delimited(
             span,
             spacing,
-            Delimited {
-                delim,
-                tts: parse(tts, parsing_patterns, sess, node_id, features, edition),
-            },
+            Delimited { delim, tts: parse(tts, part, sess, node_id, features, edition) },
         ),
     }
 }

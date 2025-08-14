@@ -2,7 +2,7 @@ use std::borrow::Cow;
 
 use rustc_data_structures::intern::Interned;
 use rustc_error_messages::MultiSpan;
-use rustc_macros::HashStable;
+use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_type_ir::walk::TypeWalker;
 use rustc_type_ir::{self as ir, TypeFlags, WithCachedTypeInfo};
 
@@ -93,9 +93,9 @@ impl<'tcx> Const<'tcx> {
     pub fn new_bound(
         tcx: TyCtxt<'tcx>,
         debruijn: ty::DebruijnIndex,
-        var: ty::BoundVar,
+        bound_const: ty::BoundConst,
     ) -> Const<'tcx> {
-        Const::new(tcx, ty::ConstKind::Bound(debruijn, var))
+        Const::new(tcx, ty::ConstKind::Bound(debruijn, bound_const))
     }
 
     #[inline]
@@ -144,6 +144,19 @@ impl<'tcx> Const<'tcx> {
         let reported = tcx.dcx().span_delayed_bug(span, msg);
         Const::new_error(tcx, reported)
     }
+
+    pub fn is_trivially_wf(self) -> bool {
+        match self.kind() {
+            ty::ConstKind::Param(_) | ty::ConstKind::Placeholder(_) | ty::ConstKind::Bound(..) => {
+                true
+            }
+            ty::ConstKind::Infer(_)
+            | ty::ConstKind::Unevaluated(..)
+            | ty::ConstKind::Value(_)
+            | ty::ConstKind::Error(_)
+            | ty::ConstKind::Expr(_) => false,
+        }
+    }
 }
 
 impl<'tcx> rustc_type_ir::inherent::Const<TyCtxt<'tcx>> for Const<'tcx> {
@@ -155,12 +168,20 @@ impl<'tcx> rustc_type_ir::inherent::Const<TyCtxt<'tcx>> for Const<'tcx> {
         Const::new_var(tcx, vid)
     }
 
-    fn new_bound(interner: TyCtxt<'tcx>, debruijn: ty::DebruijnIndex, var: ty::BoundVar) -> Self {
-        Const::new_bound(interner, debruijn, var)
+    fn new_bound(
+        interner: TyCtxt<'tcx>,
+        debruijn: ty::DebruijnIndex,
+        bound_const: ty::BoundConst,
+    ) -> Self {
+        Const::new_bound(interner, debruijn, bound_const)
     }
 
     fn new_anon_bound(tcx: TyCtxt<'tcx>, debruijn: ty::DebruijnIndex, var: ty::BoundVar) -> Self {
-        Const::new_bound(tcx, debruijn, var)
+        Const::new_bound(tcx, debruijn, ty::BoundConst { var })
+    }
+
+    fn new_placeholder(tcx: TyCtxt<'tcx>, placeholder: ty::PlaceholderConst) -> Self {
+        Const::new_placeholder(tcx, placeholder)
     }
 
     fn new_unevaluated(interner: TyCtxt<'tcx>, uv: ty::UnevaluatedConst<'tcx>) -> Self {
@@ -258,4 +279,17 @@ impl<'tcx> Const<'tcx> {
     pub fn walk(self) -> TypeWalker<TyCtxt<'tcx>> {
         TypeWalker::new(self.into())
     }
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, TyEncodable, TyDecodable, HashStable)]
+pub enum AnonConstKind {
+    /// `feature(generic_const_exprs)` anon consts are allowed to use arbitrary generic parameters in scope
+    GCE,
+    /// stable `min_const_generics` anon consts are not allowed to use any generic parameters
+    MCG,
+    /// anon consts used as the length of a repeat expr are syntactically allowed to use generic parameters
+    /// but must not depend on the actual instantiation. See #76200 for more information
+    RepeatExprCount,
+    /// anon consts outside of the type system, e.g. enum discriminants
+    NonTypeSystem,
 }

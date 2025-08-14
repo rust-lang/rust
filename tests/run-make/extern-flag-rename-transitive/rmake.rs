@@ -1,3 +1,5 @@
+//@ needs-target-std
+//
 // In this test, baz.rs is looking for an extern crate "a" which
 // does not exist, and can only run through the --extern rustc flag
 // defining that the "a" crate is in fact just "foo". This test

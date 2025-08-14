@@ -1,6 +1,10 @@
 //@ test-mir-pass: EarlyOtherwiseBranch
 //@ compile-flags: -Zmir-enable-passes=+UnreachableEnumBranching
 
+#![feature(custom_mir, core_intrinsics)]
+
+use std::intrinsics::mir::*;
+
 enum Option2<T> {
     Some(T),
     None,
@@ -124,6 +128,34 @@ fn opt5_failed_type(x: u32, y: u64) -> u32 {
     }
 }
 
+// EMIT_MIR early_otherwise_branch.target_self.EarlyOtherwiseBranch.diff
+#[custom_mir(dialect = "runtime")]
+fn target_self(val: i32) {
+    // CHECK-LABEL: fn target_self(
+    // CHECK: Ne(
+    // CHECK-NEXT: switchInt
+    mir! {
+        {
+            Goto(bb1)
+        }
+        bb1 = {
+            match val {
+                0 => bb2,
+                _ => bb1,
+            }
+        }
+        bb2 = {
+            match val {
+                0 => bb3,
+                _ => bb1,
+            }
+        }
+        bb3 = {
+            Return()
+        }
+    }
+}
+
 fn main() {
     opt1(None, Some(0));
     opt2(None, Some(0));
@@ -131,4 +163,5 @@ fn main() {
     opt4(Option2::None, Option2::Some(0));
     opt5(0, 0);
     opt5_failed(0, 0);
+    target_self(1);
 }

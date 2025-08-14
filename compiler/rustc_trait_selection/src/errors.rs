@@ -1,5 +1,3 @@
-use std::path::PathBuf;
-
 use rustc_ast::Path;
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_errors::codes::*;
@@ -71,6 +69,13 @@ pub enum InvalidOnClause {
         #[label]
         span: Span,
         invalid_flag: Symbol,
+    },
+    #[diag(trait_selection_rustc_on_unimplemented_invalid_name, code = E0232)]
+    InvalidName {
+        #[primary_span]
+        #[label]
+        span: Span,
+        invalid_name: Symbol,
     },
 }
 
@@ -194,11 +199,12 @@ pub struct ClosureFnMutLabel {
 }
 
 #[derive(Diagnostic)]
-#[diag(trait_selection_async_closure_not_fn)]
-pub(crate) struct AsyncClosureNotFn {
+#[diag(trait_selection_coro_closure_not_fn)]
+pub(crate) struct CoroClosureNotFn {
     #[primary_span]
     pub span: Span,
     pub kind: &'static str,
+    pub coro_kind: String,
 }
 
 #[derive(Diagnostic)]
@@ -216,9 +222,6 @@ pub struct AnnotationRequired<'a> {
     pub infer_subdiags: Vec<SourceKindSubdiag<'a>>,
     #[subdiagnostic]
     pub multi_suggestions: Vec<SourceKindMultiSuggestion<'a>>,
-    #[note(trait_selection_full_type_written)]
-    pub was_written: bool,
-    pub path: PathBuf,
 }
 
 // Copy of `AnnotationRequired` for E0283
@@ -237,9 +240,6 @@ pub struct AmbiguousImpl<'a> {
     pub infer_subdiags: Vec<SourceKindSubdiag<'a>>,
     #[subdiagnostic]
     pub multi_suggestions: Vec<SourceKindMultiSuggestion<'a>>,
-    #[note(trait_selection_full_type_written)]
-    pub was_written: bool,
-    pub path: PathBuf,
 }
 
 // Copy of `AnnotationRequired` for E0284
@@ -258,9 +258,6 @@ pub struct AmbiguousReturn<'a> {
     pub infer_subdiags: Vec<SourceKindSubdiag<'a>>,
     #[subdiagnostic]
     pub multi_suggestions: Vec<SourceKindMultiSuggestion<'a>>,
-    #[note(trait_selection_full_type_written)]
-    pub was_written: bool,
-    pub path: PathBuf,
 }
 
 // Used when a better one isn't available
@@ -526,7 +523,7 @@ impl Subdiagnostic for AddLifetimeParamsSuggestion<'_> {
                     match self.tcx.parent_hir_node(self.tcx.local_def_id_to_hir_id(anon_reg.scope))
                     {
                         hir::Node::Item(hir::Item {
-                            kind: hir::ItemKind::Trait(_, _, _, generics, ..),
+                            kind: hir::ItemKind::Trait(_, _, _, _, generics, ..),
                             ..
                         })
                         | hir::Node::Item(hir::Item {
@@ -585,7 +582,7 @@ impl Subdiagnostic for AddLifetimeParamsSuggestion<'_> {
                                         matches!(
                                             arg,
                                             hir::GenericArg::Lifetime(lifetime)
-                                                if lifetime.is_syntactically_hidden()
+                                                if lifetime.is_implicit()
                                         )
                                     }) {
                                         self.suggestions.push((
@@ -635,7 +632,7 @@ impl Subdiagnostic for AddLifetimeParamsSuggestion<'_> {
                 // Do not suggest constraining the `&self` param, but rather the return type.
                 // If that is wrong (because it is not sufficient), a follow up error will tell the
                 // user to fix it. This way we lower the chances of *over* constraining, but still
-                // get the cake of "correctly" contrained in two steps.
+                // get the cake of "correctly" constrained in two steps.
                 visitor.visit_ty_unambig(self.ty_sup);
             }
             visitor.visit_ty_unambig(self.ty_sub);
@@ -751,7 +748,8 @@ pub enum ExplicitLifetimeRequired<'a> {
         #[suggestion(
             trait_selection_explicit_lifetime_required_sugg_with_ident,
             code = "{new_ty}",
-            applicability = "unspecified"
+            applicability = "unspecified",
+            style = "verbose"
         )]
         new_ty_span: Span,
         #[skip_arg]
@@ -766,7 +764,8 @@ pub enum ExplicitLifetimeRequired<'a> {
         #[suggestion(
             trait_selection_explicit_lifetime_required_sugg_with_param_type,
             code = "{new_ty}",
-            applicability = "unspecified"
+            applicability = "unspecified",
+            style = "verbose"
         )]
         new_ty_span: Span,
         #[skip_arg]
@@ -1454,7 +1453,8 @@ pub enum SuggestAccessingField<'a> {
     #[suggestion(
         trait_selection_suggest_accessing_field,
         code = "{snippet}.{name}",
-        applicability = "maybe-incorrect"
+        applicability = "maybe-incorrect",
+        style = "verbose"
     )]
     Safe {
         #[primary_span]
@@ -1466,7 +1466,8 @@ pub enum SuggestAccessingField<'a> {
     #[suggestion(
         trait_selection_suggest_accessing_field,
         code = "unsafe {{ {snippet}.{name} }}",
-        applicability = "maybe-incorrect"
+        applicability = "maybe-incorrect",
+        style = "verbose"
     )]
     Unsafe {
         #[primary_span]

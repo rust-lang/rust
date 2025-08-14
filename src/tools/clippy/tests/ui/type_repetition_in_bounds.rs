@@ -12,7 +12,7 @@ pub fn foo<T>(_t: T)
 where
     T: Copy,
     T: Clone,
-    //~^ ERROR: this type has already been used as a bound predicate
+    //~^ type_repetition_in_bounds
 {
     unimplemented!();
 }
@@ -30,7 +30,7 @@ trait LintBounds
 where
     Self: Clone,
     Self: Copy + Default + Ord,
-    //~^ ERROR: this type has already been used as a bound predicate
+    //~^ type_repetition_in_bounds
     Self: Add<Output = Self> + AddAssign + Sub<Output = Self> + SubAssign,
     Self: Mul<Output = Self> + MulAssign + Div<Output = Self> + DivAssign,
 {
@@ -105,13 +105,13 @@ where
 pub fn f<T: ?Sized>()
 where
     T: Clone,
-    //~^ ERROR: this type has already been used as a bound predicate
+    //~^ type_repetition_in_bounds
 {
 }
 pub fn g<T: Clone>()
 where
     T: ?Sized,
-    //~^ ERROR: this type has already been used as a bound predicate
+    //~^ type_repetition_in_bounds
 {
 }
 
@@ -137,10 +137,27 @@ mod issue8772_pass {
     pub fn f<T: ?Sized, U>(arg: usize)
     where
         T: Trait<Option<usize>, Box<[String]>, bool> + 'static,
-        //~^ ERROR: this type has already been used as a bound predicate
+        //~^ type_repetition_in_bounds
         U: Clone + Sync + 'static,
     {
     }
 }
+
+struct Issue14744<'a, K: 'a>
+where
+    K: Clone,
+{
+    phantom: std::marker::PhantomData<&'a K>,
+}
+//~^^^^ type_repetition_in_bounds
+
+struct ComplexType<T>
+where
+    Vec<T>: Clone,
+    Vec<T>: Clone,
+{
+    t: T,
+}
+//~^^^^ type_repetition_in_bounds
 
 fn main() {}
