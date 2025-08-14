@@ -36,7 +36,7 @@ enum MergingSucc {
     True,
 }
 
-/// Indicates to the call terminator codegen whether a cal
+/// Indicates to the call terminator codegen whether a call
 /// is a normal call or an explicit tail call.
 #[derive(Debug, PartialEq)]
 enum CallKind {
