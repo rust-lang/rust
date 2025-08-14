@@ -11,7 +11,7 @@ use rustc_data_structures::stable_hasher::{
 use rustc_error_messages::{DiagArgValue, DiagMessage, IntoDiagArg, MultiSpan};
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::DefPathHash;
-use rustc_hir::{HashStableContext, HirId, ItemLocalId};
+use rustc_hir_id::{HashStableContext, HirId, ItemLocalId};
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 pub use rustc_span::edition::Edition;
 use rustc_span::{Ident, MacroRulesNormalizedIdent, Span, Symbol, sym};
@@ -140,7 +140,7 @@ impl LintExpectationId {
     }
 }
 
-impl<HCX: rustc_hir::HashStableContext> HashStable<HCX> for LintExpectationId {
+impl<HCX: HashStableContext> HashStable<HCX> for LintExpectationId {
     #[inline]
     fn hash_stable(&self, hcx: &mut HCX, hasher: &mut StableHasher) {
         match self {
@@ -158,7 +158,7 @@ impl<HCX: rustc_hir::HashStableContext> HashStable<HCX> for LintExpectationId {
     }
 }
 
-impl<HCX: rustc_hir::HashStableContext> ToStableHashKey<HCX> for LintExpectationId {
+impl<HCX: HashStableContext> ToStableHashKey<HCX> for LintExpectationId {
     type KeyType = (DefPathHash, ItemLocalId, u16, u16);
 
     #[inline]

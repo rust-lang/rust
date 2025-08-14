@@ -60,7 +60,7 @@ pub use rustc_error_messages::{
     fallback_fluent_bundle, fluent_bundle, into_diag_arg_using_display,
 };
 use rustc_hashes::Hash128;
-use rustc_hir::HirId;
+use rustc_hir_id::HirId;
 pub use rustc_lint_defs::{Applicability, listify, pluralize};
 use rustc_lint_defs::{Lint, LintExpectationId};
 use rustc_macros::{Decodable, Encodable};

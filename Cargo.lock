@@ -3803,7 +3803,7 @@ dependencies = [
  "rustc_error_messages",
  "rustc_fluent_macro",
  "rustc_hashes",
- "rustc_hir",
+ "rustc_hir_id",
  "rustc_index",
  "rustc_lexer",
  "rustc_lint_defs",
@@ -3899,6 +3899,7 @@ dependencies = [
  "rustc_data_structures",
  "rustc_error_messages",
  "rustc_hashes",
+ "rustc_hir_id",
  "rustc_index",
  "rustc_macros",
  "rustc_serialize",
@@ -3934,6 +3935,17 @@ dependencies = [
  "rustc_trait_selection",
  "smallvec",
  "tracing",
+]
+
+[[package]]
+name = "rustc_hir_id"
+version = "0.0.0"
+dependencies = [
+ "rustc_data_structures",
+ "rustc_index",
+ "rustc_macros",
+ "rustc_serialize",
+ "rustc_span",
 ]
 
 [[package]]
@@ -4128,6 +4140,7 @@ dependencies = [
  "rustc_data_structures",
  "rustc_error_messages",
  "rustc_hir",
+ "rustc_hir_id",
  "rustc_macros",
  "rustc_serialize",
  "rustc_span",
