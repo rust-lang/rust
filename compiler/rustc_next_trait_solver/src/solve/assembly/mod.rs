@@ -916,7 +916,8 @@ where
             TypingMode::Analysis { .. }
             | TypingMode::Borrowck { .. }
             | TypingMode::PostBorrowckAnalysis { .. }
-            | TypingMode::PostAnalysis => {}
+            | TypingMode::PostAnalysis
+            | TypingMode::Codegen => {}
         }
 
         let mut i = 0;
@@ -979,7 +980,8 @@ where
             TypingMode::Coherence
             | TypingMode::Borrowck { .. }
             | TypingMode::PostBorrowckAnalysis { .. }
-            | TypingMode::PostAnalysis => vec![],
+            | TypingMode::PostAnalysis
+            | TypingMode::Codegen => vec![],
         };
 
         if opaque_types.is_empty() {

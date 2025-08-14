@@ -179,7 +179,8 @@ where
             TypingMode::Coherence
             | TypingMode::Borrowck { defining_opaque_types: _ }
             | TypingMode::PostBorrowckAnalysis { defined_opaque_types: _ }
-            | TypingMode::PostAnalysis => return Default::default(),
+            | TypingMode::PostAnalysis
+            | TypingMode::Codegen => return Default::default(),
         };
 
         if stalled_coroutines.is_empty() {
