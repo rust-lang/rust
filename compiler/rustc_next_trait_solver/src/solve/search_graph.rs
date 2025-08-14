@@ -68,7 +68,8 @@ where
                 TypingMode::Analysis { .. }
                 | TypingMode::Borrowck { .. }
                 | TypingMode::PostBorrowckAnalysis { .. }
-                | TypingMode::PostAnalysis => Err(NoSolution),
+                | TypingMode::PostAnalysis
+                | TypingMode::Codegen => Err(NoSolution),
             },
         }
     }

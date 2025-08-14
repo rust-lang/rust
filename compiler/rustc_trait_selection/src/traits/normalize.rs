@@ -138,7 +138,7 @@ pub(super) fn needs_normalization<'tcx, T: TypeVisitable<TyCtxt<'tcx>>>(
         | TypingMode::Analysis { .. }
         | TypingMode::Borrowck { .. }
         | TypingMode::PostBorrowckAnalysis { .. } => flags.remove(ty::TypeFlags::HAS_TY_OPAQUE),
-        TypingMode::PostAnalysis => {}
+        TypingMode::PostAnalysis | TypingMode::Codegen => {}
     }
 
     value.has_type_flags(flags)
@@ -401,7 +401,7 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
                     | TypingMode::Analysis { .. }
                     | TypingMode::Borrowck { .. }
                     | TypingMode::PostBorrowckAnalysis { .. } => ty.super_fold_with(self),
-                    TypingMode::PostAnalysis => {
+                    TypingMode::PostAnalysis | TypingMode::Codegen => {
                         let recursion_limit = self.cx().recursion_limit();
                         if !recursion_limit.value_within_limit(self.depth) {
                             self.selcx.infcx.err_ctxt().report_overflow_error(
