@@ -3480,6 +3480,7 @@ dependencies = [
 name = "rustc_attr_parsing"
 version = "0.0.0"
 dependencies = [
+ "itertools",
  "rustc_abi",
  "rustc_ast",
  "rustc_ast_pretty",
