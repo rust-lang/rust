@@ -46,7 +46,7 @@ pub(crate) fn codegen_fn<'tcx>(
         with_no_trimmed_paths!({
             use rustc_middle::mir::pretty;
             let options = pretty::PrettyPrintMirOptions::from_cli(tcx);
-            pretty::write_mir_fn(tcx, mir, &mut |_, _| Ok(()), &mut buf, options).unwrap();
+            pretty::write_mir_fn(tcx, mir, &|_, _| Ok(()), &mut buf, options).unwrap();
         });
         String::from_utf8_lossy(&buf).into_owned()
     });
