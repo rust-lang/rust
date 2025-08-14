@@ -1,0 +1,47 @@
+error: use of a disallowed macro `std::panic`
+  --> tests/ui-toml/disallowed_macros/disallowed_macros_regression.rs:26:5
+   |
+LL |     panic!();
+   |     ^^^^^^^^
+   |
+   = note: `-D clippy::disallowed-macros` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::disallowed_macros)]`
+
+error: use of a disallowed macro `std::panic`
+  --> tests/ui-toml/disallowed_macros/disallowed_macros_regression.rs:28:5
+   |
+LL |     panic!("message");
+   |     ^^^^^^^^^^^^^^^^^
+
+error: use of a disallowed macro `std::panic`
+  --> tests/ui-toml/disallowed_macros/disallowed_macros_regression.rs:30:5
+   |
+LL |     panic!("{}", 123);
+   |     ^^^^^^^^^^^^^^^^^
+
+error: use of a disallowed macro `std::panic`
+  --> tests/ui-toml/disallowed_macros/disallowed_macros_regression.rs:32:5
+   |
+LL |     panic!("{} {}", 123, 456);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: use of a disallowed macro `std::println`
+  --> tests/ui-toml/disallowed_macros/disallowed_macros_regression.rs:34:5
+   |
+LL |     println!("test");
+   |     ^^^^^^^^^^^^^^^^
+
+error: use of a disallowed macro `std::println`
+  --> tests/ui-toml/disallowed_macros/disallowed_macros_regression.rs:36:5
+   |
+LL |     println!("{}", 123);
+   |     ^^^^^^^^^^^^^^^^^^^
+
+error: use of a disallowed macro `std::vec`
+  --> tests/ui-toml/disallowed_macros/disallowed_macros_regression.rs:38:5
+   |
+LL |     vec![1, 2, 3];
+   |     ^^^^^^^^^^^^^
+
+error: aborting due to 7 previous errors
+

@@ -1,21 +1,20 @@
-
 use clippy_config::Conf;
 use clippy_config::types::{DisallowedPath, create_disallowed_map};
 use clippy_utils::diagnostics::{span_lint_and_then, span_lint_hir_and_then};
 use clippy_utils::macros::macro_backtrace;
 use clippy_utils::paths::PathNS;
 use rustc_data_structures::fx::FxHashSet;
+use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefIdMap;
 use rustc_hir::{
-    AmbigArg, Expr, ExprKind, ForeignItem, HirId, ImplItem, Item, ItemKind, OwnerId, Pat, Path, Stmt, TraitItem, Ty,
+    AmbigArg, Attribute, Expr, ExprKind, ForeignItem, HirId, ImplItem, Item, ItemKind, OwnerId, Pat, Path, Stmt,
+    TraitItem, Ty,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::impl_lint_pass;
 use rustc_span::{ExpnId, MacroKind, Span};
-
-use crate::utils::attr_collector::AttrStorage;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -69,14 +68,10 @@ pub struct DisallowedMacros {
     // Track the most recently seen node that can have a `derive` attribute.
     // Needed to use the correct lint level.
     derive_src: Option<OwnerId>,
-
-    // When a macro is disallowed in an early pass, it's stored
-    // and emitted during the late pass. This happens for attributes.
-    early_macro_cache: AttrStorage,
 }
 
 impl DisallowedMacros {
-    pub fn new(tcx: TyCtxt<'_>, conf: &'static Conf, early_macro_cache: AttrStorage) -> Self {
+    pub fn new(tcx: TyCtxt<'_>, conf: &'static Conf) -> Self {
         let (disallowed, _) = create_disallowed_map(
             tcx,
             &conf.disallowed_macros,
@@ -89,7 +84,6 @@ impl DisallowedMacros {
             disallowed,
             seen: FxHashSet::default(),
             derive_src: None,
-            early_macro_cache,
         }
     }
 
@@ -126,15 +120,87 @@ impl DisallowedMacros {
 }
 
 impl_lint_pass!(DisallowedMacros => [DISALLOWED_MACROS]);
-
 impl LateLintPass<'_> for DisallowedMacros {
-    fn check_crate(&mut self, cx: &LateContext<'_>) {
-        // once we check a crate in the late pass we can emit the early pass lints
-        if let Some(attr_spans) = self.early_macro_cache.clone().0.get() {
-            for span in attr_spans {
-                self.check(cx, *span, None);
-            }
-        }
+    fn check_attribute(&mut self, cx: &LateContext<'_>, attr: &Attribute) {
+        let span = match attr {
+            Attribute::Unparsed(attr_item) => attr_item.span,
+            Attribute::Parsed(kind) => match kind {
+                AttributeKind::Align { span, .. }
+                | AttributeKind::AllowConstFnUnstable(_, span)
+                | AttributeKind::AllowIncoherentImpl(span)
+                | AttributeKind::AllowInternalUnstable(_, span)
+                | AttributeKind::AsPtr(span)
+                | AttributeKind::AutomaticallyDerived(span)
+                | AttributeKind::BodyStability { span, .. }
+                | AttributeKind::Coinductive(span)
+                | AttributeKind::Cold(span)
+                | AttributeKind::Confusables { first_span: span, .. }
+                | AttributeKind::ConstContinue(span)
+                | AttributeKind::ConstStability { span, .. }
+                | AttributeKind::ConstTrait(span)
+                | AttributeKind::Coverage(span, _)
+                | AttributeKind::DenyExplicitImpl(span)
+                | AttributeKind::Deprecation { span, .. }
+                | AttributeKind::DoNotImplementViaObject(span)
+                | AttributeKind::DocComment { span, .. }
+                | AttributeKind::ExportName { span, .. }
+                | AttributeKind::FfiConst(span)
+                | AttributeKind::FfiPure(span)
+                | AttributeKind::Ignore { span, .. }
+                | AttributeKind::Inline(_, span)
+                | AttributeKind::LinkName { span, .. }
+                | AttributeKind::LinkOrdinal { span, .. }
+                | AttributeKind::LinkSection { span, .. }
+                | AttributeKind::LoopMatch(span)
+                | AttributeKind::MacroEscape(span)
+                | AttributeKind::MacroUse { span, .. }
+                | AttributeKind::Marker(span)
+                | AttributeKind::MayDangle(span)
+                | AttributeKind::MustUse { span, .. }
+                | AttributeKind::Naked(span)
+                | AttributeKind::NoImplicitPrelude(span)
+                | AttributeKind::NoMangle(span)
+                | AttributeKind::NonExhaustive(span)
+                | AttributeKind::Optimize(_, span)
+                | AttributeKind::ParenSugar(span)
+                | AttributeKind::PassByValue(span)
+                | AttributeKind::Path(_, span)
+                | AttributeKind::Pointee(span)
+                | AttributeKind::ProcMacro(span)
+                | AttributeKind::ProcMacroAttribute(span)
+                | AttributeKind::ProcMacroDerive { span, .. }
+                | AttributeKind::PubTransparent(span)
+                | AttributeKind::Repr { first_span: span, .. }
+                | AttributeKind::RustcBuiltinMacro { span, .. }
+                | AttributeKind::RustcLayoutScalarValidRangeEnd(_, span)
+                | AttributeKind::RustcLayoutScalarValidRangeStart(_, span)
+                | AttributeKind::SkipDuringMethodDispatch { span, .. }
+                | AttributeKind::SpecializationTrait(span)
+                | AttributeKind::Stability { span, .. }
+                | AttributeKind::StdInternalSymbol(span)
+                | AttributeKind::TargetFeature(_, span)
+                | AttributeKind::TrackCaller(span)
+                | AttributeKind::TypeConst(span)
+                | AttributeKind::UnsafeSpecializationMarker(span)
+                | AttributeKind::AllowInternalUnsafe(span)
+                | AttributeKind::Coroutine(span)
+                | AttributeKind::Linkage(_, span)
+                | AttributeKind::ShouldPanic { span, .. }
+                | AttributeKind::Used { span, .. } => *span,
+
+                AttributeKind::CoherenceIsCore
+                | AttributeKind::ConstStabilityIndirect
+                | AttributeKind::Dummy
+                | AttributeKind::ExportStable
+                | AttributeKind::Fundamental
+                | AttributeKind::MacroTransparency(_)
+                | AttributeKind::RustcObjectLifetimeDefault
+                | AttributeKind::UnstableFeatureBound(_) => {
+                    return;
+                },
+            },
+        };
+        self.check(cx, span, self.derive_src);
     }
 
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {

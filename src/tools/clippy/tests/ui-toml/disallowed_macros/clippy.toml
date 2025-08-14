@@ -1,4 +1,5 @@
 disallowed-macros = [
+    "std::panic",
     "std::println",
     "std::vec",
     { path = "std::cfg" },
