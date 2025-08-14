@@ -263,9 +263,7 @@ pub(super) fn find_opaque_ty_constraints_for_rpit<'tcx>(
                 // resolves to itself. We interpret this as the
                 // no values of the hidden type ever being constructed,
                 // so we can just make the hidden type be `!`.
-                // For backwards compatibility reasons, we fall back to
-                // `()` until we the diverging default is changed.
-                EarlyBinder::bind(tcx.types.unit)
+                EarlyBinder::bind(tcx.types.never)
             }
         }
         DefiningScopeKind::MirBorrowck => match tcx.mir_borrowck(owner_def_id) {
