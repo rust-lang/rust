@@ -478,13 +478,12 @@ impl Config {
 
         // Now load the TOML config, as soon as possible
         let (mut toml, toml_path) = load_toml_config(&src, flags_config, &get_toml);
-        let config = toml_path.clone();
 
         let compile_time_deps = flags_compile_time_deps;
         let cmd = flags_cmd;
         let is_running_on_ci = flags_ci.unwrap_or(CiEnv::is_ci());
 
-        postprocess_toml(&mut toml, &src, toml_path, &exec_ctx, &flags_set, &get_toml);
+        postprocess_toml(&mut toml, &src, toml_path.clone(), &exec_ctx, &flags_set, &get_toml);
 
         // Now override TOML values with flags, to make sure that we won't later override flags with
         // TOML values by accident instead, because flags have higher priority.
@@ -660,13 +659,8 @@ impl Config {
         exec_ctx.set_verbosity(cmp::max(build_verbose.unwrap_or_default() as u8, flags_verbose));
 
         let stage0_metadata = build_helper::stage0_parser::parse_stage0_file();
-        let llvm_thin_lto = llvm_thin_lto_.unwrap_or(false);
-        let lld_mode = rust_lld_mode.unwrap_or_default();
         let bootstrap_cache_path = build_bootstrap_cache_path;
         let patch_binaries_for_nix = build_patch_binaries_for_nix;
-        let rustc_debug_assertions =
-            rust_rustc_debug_assertions.unwrap_or(rust_debug == Some(true));
-        let rust_overflow_checks = rust_overflow_checks_.unwrap_or(rust_debug == Some(true));
 
         let path_modification_cache = Arc::new(Mutex::new(HashMap::new()));
 
@@ -688,12 +682,6 @@ impl Config {
                 build_host.map(|h| h.iter().map(|t| TargetSelection::from_user(t)).collect())
             })
             .unwrap_or_else(|| vec![host_target]);
-        let targets = flags_target
-            .map(|TargetSelectionList(targets)| targets)
-            .or_else(|| {
-                build_target.map(|t| t.iter().map(|t| TargetSelection::from_user(t)).collect())
-            })
-            .unwrap_or_else(|| hosts.clone());
 
         let submodules = build_submodules;
         let llvm_assertions = llvm_assertions_.unwrap_or(false);
@@ -743,32 +731,6 @@ impl Config {
                 check_stage0_version(cargo, "cargo", &src, &exec_ctx);
             }
         }
-
-        let mut paths_: Vec<PathBuf> = flags_skip.into_iter().chain(flags_exclude).collect();
-        if let Some(exclude) = build_exclude {
-            paths_.extend(exclude);
-        }
-
-        let skip = paths_
-            .into_iter()
-            .map(|p| {
-                // Never return top-level path here as it would break `--skip`
-                // logic on rustc's internal test framework which is utilized
-                // by compiletest.
-                if cfg!(windows) {
-                    PathBuf::from(p.to_str().unwrap().replace('/', "\\"))
-                } else {
-                    p
-                }
-            })
-            .collect();
-        #[cfg(feature = "tracing")]
-        span!(
-            target: "CONFIG_HANDLING",
-            tracing::Level::TRACE,
-            "normalizing and combining `flag.skip`/`flag.exclude` paths",
-            "config.skip" = ?skip,
-        );
 
         if build_cargo_clippy.is_some() && build_rustc.is_none() {
             println!(
@@ -860,15 +822,6 @@ impl Config {
         let omit_git_hash = rust_omit_git_hash.unwrap_or(channel == "dev");
 
         rust_info = git_info(&exec_ctx, omit_git_hash, &src);
-        let cargo_info = git_info(&exec_ctx, omit_git_hash, &src.join("src/tools/cargo"));
-        let rust_analyzer_info =
-            git_info(&exec_ctx, omit_git_hash, &src.join("src/tools/rust-analyzer"));
-        let clippy_info = git_info(&exec_ctx, omit_git_hash, &src.join("src/tools/clippy"));
-        let miri_info = git_info(&exec_ctx, omit_git_hash, &src.join("src/tools/miri"));
-        let rustfmt_info = git_info(&exec_ctx, omit_git_hash, &src.join("src/tools/rustfmt"));
-        let enzyme_info = git_info(&exec_ctx, omit_git_hash, &src.join("src/tools/enzyme"));
-        let in_tree_llvm_info = git_info(&exec_ctx, false, &src.join("src/llvm-project"));
-        let in_tree_gcc_info = git_info(&exec_ctx, false, &src.join("src/gcc"));
 
         let vendor = build_vendor.unwrap_or(
             rust_info.is_from_tarball()
@@ -1111,7 +1064,7 @@ impl Config {
             }
         }
 
-        if !llvm_from_ci && llvm_thin_lto && llvm_link_shared_.is_none() {
+        if !llvm_from_ci && llvm_thin_lto_.unwrap_or(false) && llvm_link_shared_.is_none() {
             // If we're building with ThinLTO on, by default we want to link
             // to LLVM shared, to avoid re-doing ThinLTO (which happens in
             // the link step) with each stage.
@@ -1147,11 +1100,6 @@ impl Config {
             build_target.llvm_filecheck = Some(ci_llvm_bin.join(exe("FileCheck", host_target)));
         }
 
-        let dist_vendor = dist_vendor_.unwrap_or_else(|| {
-            // If we're building from git or tarball sources, enable it by default.
-            rust_info.is_managed_git_subrepository() || rust_info.is_from_tarball()
-        });
-
         let initial_rustfmt = if let Some(r) = build_rustfmt {
             Some(r)
         } else {
@@ -1175,7 +1123,7 @@ impl Config {
             maybe_download_rustfmt(dwn_ctx)
         };
 
-        if matches!(lld_mode, LldMode::SelfContained)
+        if matches!(rust_lld_mode.unwrap_or_default(), LldMode::SelfContained)
             && !lld_enabled
             && flags_stage.unwrap_or(0) > 0
         {
@@ -1204,9 +1152,6 @@ impl Config {
         if lld_enabled && is_system_llvm(dwn_ctx, host_target) {
             panic!("Cannot enable LLD with `rust.lld = true` when using external llvm-config.");
         }
-
-        let optimized_compiler_builtins =
-            build_optimized_compiler_builtins.unwrap_or(channel != "dev");
 
         let download_rustc = download_rustc_commit.is_some();
 
@@ -1328,7 +1273,8 @@ impl Config {
             test_compare_mode: rust_test_compare_mode.unwrap_or(false),
             color: flags_color,
             android_ndk: build_android_ndk,
-            optimized_compiler_builtins,
+            optimized_compiler_builtins: build_optimized_compiler_builtins
+                .unwrap_or(channel != "dev"),
             stdout_is_tty: std::io::stdout().is_terminal(),
             stderr_is_tty: std::io::stderr().is_terminal(),
             on_fail: flags_on_fail,
@@ -1388,10 +1334,19 @@ impl Config {
             rust_optimize: rust_optimize_.unwrap_or(RustOptimize::Bool(true)),
             rust_codegen_units: rust_codegen_units_.map(threads_from_config),
             rust_codegen_units_std: rust_codegen_units_std_.map(threads_from_config),
-            std_debug_assertions: rust_std_debug_assertions.unwrap_or(rustc_debug_assertions),
-            tools_debug_assertions: rust_tools_debug_assertions.unwrap_or(rustc_debug_assertions),
-            rust_overflow_checks_std: rust_overflow_checks_std_.unwrap_or(rust_overflow_checks),
-            rust_debug_logging: rust_debug_logging_.unwrap_or(rustc_debug_assertions),
+            std_debug_assertions: rust_std_debug_assertions
+                .or(rust_rustc_debug_assertions)
+                .unwrap_or(rust_debug == Some(true)),
+            tools_debug_assertions: rust_tools_debug_assertions
+                .or(rust_rustc_debug_assertions)
+                .unwrap_or(rust_debug == Some(true)),
+            rust_overflow_checks_std: rust_overflow_checks_std_
+                .or(rust_overflow_checks_)
+                .unwrap_or(rust_debug == Some(true)),
+            rust_overflow_checks: rust_overflow_checks_.unwrap_or(rust_debug == Some(true)),
+            rust_debug_logging: rust_debug_logging_
+                .or(rust_rustc_debug_assertions)
+                .unwrap_or(rust_debug == Some(true)),
             rust_debuginfo_level_rustc: with_defaults(rust_debuginfo_level_rustc_),
             rust_debuginfo_level_std: with_defaults(rust_debuginfo_level_std_),
             rust_debuginfo_level_tools: with_defaults(rust_debuginfo_level_tools_),
@@ -1464,50 +1419,78 @@ impl Config {
             compiletest_use_stage0_libtest: build_compiletest_use_stage0_libtest.unwrap_or(true),
             tidy_extra_checks: build_tidy_extra_checks,
             skip_std_check_if_no_download_rustc: flags_skip_std_check_if_no_download_rustc,
+            cargo_info: git_info(&exec_ctx, omit_git_hash, &src.join("src/tools/cargo")),
+            rust_analyzer_info: git_info(
+                &exec_ctx,
+                omit_git_hash,
+                &src.join("src/tools/rust-analyzer"),
+            ),
+            clippy_info: git_info(&exec_ctx, omit_git_hash, &src.join("src/tools/clippy")),
+            miri_info: git_info(&exec_ctx, omit_git_hash, &src.join("src/tools/miri")),
+            rustfmt_info: git_info(&exec_ctx, omit_git_hash, &src.join("src/tools/rustfmt")),
+            enzyme_info: git_info(&exec_ctx, omit_git_hash, &src.join("src/tools/enzyme")),
+            in_tree_llvm_info: git_info(&exec_ctx, false, &src.join("src/llvm-project")),
+            in_tree_gcc_info: git_info(&exec_ctx, false, &src.join("src/gcc")),
+            dist_vendor: dist_vendor_.unwrap_or_else(|| {
+                // If we're building from git or tarball sources, enable it by default.
+                rust_info.is_managed_git_subrepository() || rust_info.is_from_tarball()
+            }),
+            targets: flags_target
+                .map(|TargetSelectionList(targets)| targets)
+                .or_else(|| {
+                    build_target.map(|t| t.iter().map(|t| TargetSelection::from_user(t)).collect())
+                })
+                .unwrap_or_else(|| hosts.clone()),
+            #[allow(clippy::map_identity)]
+            skip: flags_skip
+                .into_iter()
+                .chain(flags_exclude)
+                .chain(build_exclude.unwrap_or_default())
+                .map(|p| {
+                    // Never return top-level path here as it would break `--skip`
+                    // logic on rustc's internal test framework which is utilized by compiletest.
+                    #[cfg(windows)]
+                    {
+                        PathBuf::from(p.to_string_lossy().replace('/', "\\"))
+                    }
+                    #[cfg(not(windows))]
+                    {
+                        p
+                    }
+                })
+                .collect(),
+            paths: flags_paths,
+            config: toml_path,
+            llvm_thin_lto: llvm_thin_lto_.unwrap_or(false),
+            rustc_debug_assertions: rust_rustc_debug_assertions.unwrap_or(rust_debug == Some(true)),
+            lld_mode: rust_lld_mode.unwrap_or_default(),
             exec_ctx,
             out,
             rust_info,
-            cargo_info,
-            rust_analyzer_info,
-            clippy_info,
-            miri_info,
-            rustfmt_info,
-            enzyme_info,
-            in_tree_llvm_info,
-            in_tree_gcc_info,
             initial_cargo,
             initial_rustc,
             initial_cargo_clippy,
             initial_sysroot,
             initial_rustfmt,
             submodules,
-            paths: flags_paths,
             vendor,
             target_config,
             omit_git_hash,
-            skip,
             stage,
             src,
-            config,
             cmd,
             llvm_from_ci,
             llvm_assertions,
-            lld_mode,
             lld_enabled,
-            rust_overflow_checks,
             host_target,
             hosts,
-            targets,
-            dist_vendor,
             channel,
             is_running_on_ci,
             path_modification_cache,
             patch_binaries_for_nix,
             stage0_metadata,
             download_rustc_commit,
-            llvm_thin_lto,
             llvm_link_shared,
-            rustc_debug_assertions,
         }
     }
 
