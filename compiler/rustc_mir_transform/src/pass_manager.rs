@@ -275,13 +275,14 @@ fn run_passes_inner<'tcx>(
     }
 
     let prof_arg = tcx.sess.prof.enabled().then(|| format!("{:?}", body.source.def_id()));
+    let pass_num = true;
 
     if !body.should_skip() {
         let validate = validate_each & tcx.sess.opts.unstable_opts.validate_mir;
         let lint = tcx.sess.opts.unstable_opts.lint_mir;
 
         for pass in passes {
-            let name = pass.name();
+            let pass_name = pass.name();
 
             if !should_run_pass(tcx, *pass, optimizations) {
                 continue;
@@ -290,7 +291,7 @@ fn run_passes_inner<'tcx>(
             let dump_enabled = pass.is_mir_dump_enabled();
 
             if dump_enabled {
-                dump_mir_for_pass(tcx, body, name, false);
+                mir::dump_mir(tcx, pass_num, pass_name, &"before", body, |_, _| Ok(()));
             }
 
             if let Some(prof_arg) = &prof_arg {
@@ -303,13 +304,13 @@ fn run_passes_inner<'tcx>(
             }
 
             if dump_enabled {
-                dump_mir_for_pass(tcx, body, name, true);
+                mir::dump_mir(tcx, pass_num, pass_name, &"after", body, |_, _| Ok(()));
             }
             if validate {
-                validate_body(tcx, body, format!("after pass {name}"));
+                validate_body(tcx, body, format!("after pass {pass_name}"));
             }
             if lint {
-                lint_body(tcx, body, format!("after pass {name}"));
+                lint_body(tcx, body, format!("after pass {pass_name}"));
             }
 
             body.pass_count += 1;
@@ -343,17 +344,6 @@ fn run_passes_inner<'tcx>(
 
 pub(super) fn validate_body<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>, when: String) {
     validate::Validator { when }.run_pass(tcx, body);
-}
-
-fn dump_mir_for_pass<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, pass_name: &str, is_after: bool) {
-    mir::dump_mir(
-        tcx,
-        true,
-        pass_name,
-        if is_after { &"after" } else { &"before" },
-        body,
-        |_, _| Ok(()),
-    );
 }
 
 pub(super) fn dump_mir_for_phase_change<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) {
