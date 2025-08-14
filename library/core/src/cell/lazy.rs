@@ -51,6 +51,7 @@ enum State<T, F> {
 /// //   92
 /// ```
 #[stable(feature = "lazy_cell", since = "1.80.0")]
+#[cfg_attr(not(bootstrap), rustc_significant_interior_mutable_type)]
 pub struct LazyCell<T, F = fn() -> T> {
     state: UnsafeCell<State<T, F>>,
 }
