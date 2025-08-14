@@ -1,8 +1,6 @@
-#[attr = MacroUse {arguments: UseAll}]
 extern crate std;
 #[prelude_import]
 use ::std::prelude::rust_2015::*;
-extern crate std;
 // https://github.com/rust-lang/rust/issues/82329
 //@ compile-flags: -Zunpretty=hir,typed
 //@ check-pass
