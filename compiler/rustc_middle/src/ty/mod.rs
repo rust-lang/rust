@@ -1040,6 +1040,17 @@ impl<'tcx> ParamEnv<'tcx> {
     pub fn and<T: TypeVisitable<TyCtxt<'tcx>>>(self, value: T) -> ParamEnvAnd<'tcx, T> {
         ParamEnvAnd { param_env: self, value }
     }
+
+    /// Eagerly reveal all opaque types in the `param_env`.
+    pub fn with_normalized(self, tcx: TyCtxt<'tcx>) -> ParamEnv<'tcx> {
+        // No need to reveal opaques with the new solver enabled,
+        // since we have lazy norm.
+        if tcx.next_trait_solver_globally() {
+            self
+        } else {
+            ParamEnv::new(tcx.reveal_opaque_types_in_bounds(self.caller_bounds))
+        }
+    }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, TypeFoldable, TypeVisitable)]
@@ -1102,31 +1113,44 @@ impl<'tcx> TypingEnv<'tcx> {
     }
 
     pub fn post_analysis(tcx: TyCtxt<'tcx>, def_id: impl IntoQueryKey<DefId>) -> TypingEnv<'tcx> {
-        let def_id = def_id.into_query_key();
-        tcx.typing_env_normalized_for_post_analysis(def_id)
+        TypingEnv::new(tcx.param_env_normalized_for_post_analysis(def_id), TypingMode::PostAnalysis)
+    }
+
+    pub fn codegen(tcx: TyCtxt<'tcx>, def_id: impl IntoQueryKey<DefId>) -> TypingEnv<'tcx> {
+        TypingEnv::new(tcx.param_env_normalized_for_post_analysis(def_id), TypingMode::Codegen)
     }
 
     /// Modify the `typing_mode` to `PostAnalysis` or `Codegen` and eagerly reveal all opaque types
     /// in the `param_env`.
     pub fn with_post_analysis_normalized(self, tcx: TyCtxt<'tcx>) -> TypingEnv<'tcx> {
         let TypingEnv { typing_mode, param_env } = self;
+        match typing_mode.0.assert_not_erased() {
+            TypingMode::Coherence
+            | TypingMode::Analysis { .. }
+            | TypingMode::Borrowck { .. }
+            | TypingMode::PostBorrowckAnalysis { .. } => {}
+            TypingMode::PostAnalysis | TypingMode::Codegen => return self,
+        }
 
-        // No need to reveal opaques with the new solver enabled,
-        // since we have lazy norm.
-        let param_env = if tcx.next_trait_solver_globally() {
-            param_env
-        } else {
-            match typing_mode.0.assert_not_erased() {
-                TypingMode::Coherence
-                | TypingMode::Analysis { .. }
-                | TypingMode::Borrowck { .. }
-                | TypingMode::PostBorrowckAnalysis { .. } => {}
-                TypingMode::PostAnalysis | TypingMode::Codegen => return self,
-            }
+        let param_env = param_env.with_normalized(tcx);
+        TypingEnv::new(param_env, TypingMode::PostAnalysis)
+    }
 
-            ParamEnv::new(tcx.reveal_opaque_types_in_bounds(param_env.caller_bounds()))
-        };
-        TypingEnv { typing_mode: TypingModeEqWrapper(TypingMode::PostAnalysis), param_env }
+    /// Modify the `typing_mode` to `PostAnalysis` or `Codegen` and eagerly reveal all opaque types
+    /// in the `param_env`.
+    pub fn with_codegen_normalized(self, tcx: TyCtxt<'tcx>) -> TypingEnv<'tcx> {
+        let TypingEnv { typing_mode, param_env } = self;
+        match typing_mode.0.assert_not_erased() {
+            TypingMode::Coherence
+            | TypingMode::Analysis { .. }
+            | TypingMode::Borrowck { .. }
+            | TypingMode::PostBorrowckAnalysis { .. }
+            | TypingMode::PostAnalysis => {}
+            TypingMode::Codegen => return self,
+        }
+
+        let param_env = param_env.with_normalized(tcx);
+        TypingEnv::new(param_env, TypingMode::Codegen)
     }
 
     /// Combine this typing environment with the given `value` to be used by
