@@ -4,8 +4,6 @@
 //@ compile-flags: -Zunpretty=expanded
 //@ edition: 2015
 #![feature(derive_coerce_pointee)]
-#[prelude_import]
-use ::std::prelude::rust_2015::*;
 extern crate std;
 #[prelude_import]
 use ::std::prelude::rust_2015::*;
