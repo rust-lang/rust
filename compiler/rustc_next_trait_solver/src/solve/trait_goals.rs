@@ -1384,6 +1384,18 @@ where
                     // If there's an always applicable candidate, the result of all
                     // other candidates does not matter. This means we can ignore
                     // them when checking whether we've reached a fixpoint.
+                    //
+                    // We always prefer the first always applicable candidate, even if a
+                    // later candidate is also always applicable and would result in fewer
+                    // reruns. We could slightly improve this by e.g. searching for another
+                    // always applicable candidate which doesn't depend on any cycle heads.
+                    //
+                    // NOTE: This is optimization is observable in case there is an always
+                    // applicable global candidate and another non-global candidate which only
+                    // applies because of a provisional result. I can't even think of a test
+                    // case where this would occur and even then, this would not be unsound.
+                    // Supporting this makes the code more involved, so I am just going to
+                    // ignore this for now.
                     MergeCandidateInfo::AlwaysApplicable(i) => {
                         for (j, c) in where_bounds.into_iter().enumerate() {
                             if i != j {
