@@ -26,17 +26,15 @@ pub struct DiagnosticsMapConfig {
 
 pub(crate) type DiagnosticsGeneration = usize;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub(crate) struct WorkspaceFlycheckDiagnostic {
-    pub(crate) generation: DiagnosticsGeneration,
-    pub(crate) per_package:
-        FxHashMap<Option<Arc<PackageId>>, FxHashMap<FileId, Vec<lsp_types::Diagnostic>>>,
+    pub(crate) per_package: FxHashMap<Option<Arc<PackageId>>, PackageFlycheckDiagnostic>,
 }
 
-impl WorkspaceFlycheckDiagnostic {
-    fn new(generation: DiagnosticsGeneration) -> Self {
-        WorkspaceFlycheckDiagnostic { generation, per_package: Default::default() }
-    }
+#[derive(Debug, Clone)]
+pub(crate) struct PackageFlycheckDiagnostic {
+    generation: DiagnosticsGeneration,
+    per_file: FxHashMap<FileId, Vec<lsp_types::Diagnostic>>,
 }
 
 #[derive(Debug, Default, Clone)]
@@ -68,7 +66,7 @@ impl DiagnosticCollection {
         let Some(check) = self.check.get_mut(flycheck_id) else {
             return;
         };
-        self.changes.extend(check.per_package.drain().flat_map(|(_, v)| v.into_keys()));
+        self.changes.extend(check.per_package.drain().flat_map(|(_, v)| v.per_file.into_keys()));
         if let Some(fixes) = Arc::make_mut(&mut self.check_fixes).get_mut(flycheck_id) {
             fixes.clear();
         }
@@ -79,7 +77,7 @@ impl DiagnosticCollection {
         self.changes.extend(
             self.check
                 .iter_mut()
-                .flat_map(|it| it.per_package.drain().flat_map(|(_, v)| v.into_keys())),
+                .flat_map(|it| it.per_package.drain().flat_map(|(_, v)| v.per_file.into_keys())),
         )
     }
 
@@ -93,7 +91,7 @@ impl DiagnosticCollection {
         };
         let package_id = Some(package_id);
         if let Some(checks) = check.per_package.remove(&package_id) {
-            self.changes.extend(checks.into_keys());
+            self.changes.extend(checks.per_file.into_keys());
         }
         if let Some(fixes) = Arc::make_mut(&mut self.check_fixes).get_mut(flycheck_id) {
             fixes.remove(&package_id);
@@ -105,8 +103,20 @@ impl DiagnosticCollection {
         flycheck_id: usize,
         generation: DiagnosticsGeneration,
     ) {
-        if self.check.get(flycheck_id).is_some_and(|it| it.generation < generation) {
-            self.clear_check(flycheck_id);
+        if let Some(flycheck) = self.check.get_mut(flycheck_id) {
+            let mut packages = vec![];
+            self.changes.extend(
+                flycheck
+                    .per_package
+                    .extract_if(|_, v| v.generation < generation)
+                    .inspect(|(package_id, _)| packages.push(package_id.clone()))
+                    .flat_map(|(_, v)| v.per_file.into_keys()),
+            );
+            if let Some(fixes) = Arc::make_mut(&mut self.check_fixes).get_mut(flycheck_id) {
+                for package in packages {
+                    fixes.remove(&package);
+                }
+            }
         }
     }
 
@@ -126,21 +136,19 @@ impl DiagnosticCollection {
         fix: Option<Box<Fix>>,
     ) {
         if self.check.len() <= flycheck_id {
-            self.check
-                .resize_with(flycheck_id + 1, || WorkspaceFlycheckDiagnostic::new(generation));
+            self.check.resize_with(flycheck_id + 1, WorkspaceFlycheckDiagnostic::default);
         }
 
+        let check = &mut self.check[flycheck_id];
+        let package = check.per_package.entry(package_id.clone()).or_insert_with(|| {
+            PackageFlycheckDiagnostic { generation, per_file: FxHashMap::default() }
+        });
         // Getting message from old generation. Might happen in restarting checks.
-        if self.check[flycheck_id].generation > generation {
+        if package.generation > generation {
             return;
         }
-        self.check[flycheck_id].generation = generation;
-        let diagnostics = self.check[flycheck_id]
-            .per_package
-            .entry(package_id.clone())
-            .or_default()
-            .entry(file_id)
-            .or_default();
+        package.generation = generation;
+        let diagnostics = package.per_file.entry(file_id).or_default();
         for existing_diagnostic in diagnostics.iter() {
             if are_diagnostics_equal(existing_diagnostic, &diagnostic) {
                 return;
@@ -210,7 +218,7 @@ impl DiagnosticCollection {
             .check
             .iter()
             .flat_map(|it| it.per_package.values())
-            .filter_map(move |it| it.get(&file_id))
+            .filter_map(move |it| it.per_file.get(&file_id))
             .flatten();
         native_syntax.chain(native_semantic).chain(check)
     }
