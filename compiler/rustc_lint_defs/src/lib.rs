@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use rustc_abi::ExternAbi;
 use rustc_ast::AttrId;
 use rustc_ast::attr::AttributeExt;
@@ -6,7 +8,7 @@ use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::stable_hasher::{
     HashStable, StableCompare, StableHasher, ToStableHashKey,
 };
-use rustc_error_messages::{DiagMessage, MultiSpan};
+use rustc_error_messages::{DiagArgValue, DiagMessage, IntoDiagArg, MultiSpan};
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::DefPathHash;
 use rustc_hir::{HashStableContext, HirId, ItemLocalId};
@@ -294,6 +296,12 @@ impl Level {
             Level::Allow | Level::Expect | Level::Warn | Level::ForceWarn => false,
             Level::Deny | Level::Forbid => true,
         }
+    }
+}
+
+impl IntoDiagArg for Level {
+    fn into_diag_arg(self, _: &mut Option<std::path::PathBuf>) -> DiagArgValue {
+        DiagArgValue::Str(Cow::Borrowed(self.to_cmd_flag()))
     }
 }
 
