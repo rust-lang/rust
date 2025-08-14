@@ -97,6 +97,7 @@ pub(crate) enum ModuleFlagMergeBehavior {
 
 // Consts for the LLVM CallConv type, pre-cast to usize.
 
+/// Must match the layout of `LLVMTailCallKind`.
 #[derive(Copy, Clone, PartialEq, Debug)]
 #[repr(C)]
 #[allow(dead_code)]
@@ -1197,7 +1198,7 @@ unsafe extern "C" {
     pub(crate) safe fn LLVMIsGlobalConstant(GlobalVar: &Value) -> Bool;
     pub(crate) safe fn LLVMSetGlobalConstant(GlobalVar: &Value, IsConstant: Bool);
     pub(crate) safe fn LLVMSetTailCall(CallInst: &Value, IsTailCall: Bool);
-    pub(crate) safe fn LLVMRustSetTailCallKind(CallInst: &Value, Kind: TailCallKind);
+    pub(crate) safe fn LLVMSetTailCallKind(CallInst: &Value, kind: TailCallKind);
 
     // Operations on attributes
     pub(crate) fn LLVMCreateStringAttribute(

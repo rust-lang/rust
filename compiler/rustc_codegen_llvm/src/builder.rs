@@ -1453,7 +1453,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         instance: Option<Instance<'tcx>>,
     ) {
         let call = self.call(llty, fn_attrs, Some(fn_abi), llfn, args, funclet, instance);
-        llvm::LLVMRustSetTailCallKind(call, llvm::TailCallKind::MustTail);
+        llvm::LLVMSetTailCallKind(call, llvm::TailCallKind::MustTail);
 
         match &fn_abi.ret.mode {
             PassMode::Ignore | PassMode::Indirect { .. } => self.ret_void(),
