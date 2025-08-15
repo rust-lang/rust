@@ -1,0 +1,39 @@
+// This test ensures that a bang macro which is also an attribute macro is listed correctly in
+// the sidebar and in the module.
+
+go-to: "file://" + |DOC_PATH| + "/test_docs/macro.b.html"
+// It should be present twice in the sidebar.
+assert-count: ("#rustdoc-modnav a[href='macro.attr_macro.html']", 2)
+assert-count: ("//*[@id='rustdoc-modnav']//a[text()='attr_macro']", 2)
+// We check that the current item in the sidebar is the correct one.
+assert-text: ("#rustdoc-modnav .block.macro .current", "b")
+
+// We now go to the attribute macro page.
+click: "#rustdoc-modnav a[href='macro.attr_macro.html']"
+// It should be present twice in the sidebar.
+assert-count: ("#rustdoc-modnav a[href='macro.attr_macro.html']", 2)
+assert-count: ("//*[@id='rustdoc-modnav']//a[text()='attr_macro']", 2)
+// We check that the current item is the "attr_macro".
+assert-text: ("#rustdoc-modnav .block.macro .current", "attr_macro")
+// Since the item is present twice in the sidebar, we should have two "current" items.
+assert-count: ("#rustdoc-modnav .current", 2)
+// We check it has the expected information.
+assert-text: ("h3.macro-info", "ⓘ This is an attribute/function macro")
+
+// Now we check it's correctly listed in the crate page.
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
+// It should be only present twice.
+assert-count: ("#main-content a[href='macro.attr_macro.html']", 2)
+// First in the "Macros" section.
+assert-text: ("#macros + .item-table a[href='macro.attr_macro.html']", "attr_macro")
+// Then in the "Attribute Macros" section.
+assert-text: ("#attributes + .item-table a[href='macro.attr_macro.html']", "attr_macro")
+
+// And finally we check it's correctly listed in the "all items" page.
+go-to: "file://" + |DOC_PATH| + "/test_docs/all.html"
+// It should be only present twice.
+assert-count: ("#main-content a[href='macro.attr_macro.html']", 2)
+// First in the "Macros" section.
+assert-text: ("#macros + .all-items a[href='macro.attr_macro.html']", "attr_macro")
+// Then in the "Attribute Macros" section.
+assert-text: ("#attributes + .all-items a[href='macro.attr_macro.html']", "attr_macro")
