@@ -371,7 +371,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
     /// will be ignored for the purposes of dead code analysis (see PR #85200
     /// for discussion).
     fn should_ignore_item(&mut self, def_id: DefId) -> bool {
-        if let Some(impl_of) = self.tcx.impl_of_assoc(def_id) {
+        if let Some(impl_of) = self.tcx.trait_impl_of_assoc(def_id) {
             if !self.tcx.is_automatically_derived(impl_of) {
                 return false;
             }

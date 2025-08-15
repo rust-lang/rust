@@ -357,10 +357,10 @@ enum NestedMacroState {
     /// The token `macro_rules` was processed.
     MacroRules,
     /// The tokens `macro_rules!` were processed.
-    MacroRulesNot,
+    MacroRulesBang,
     /// The tokens `macro_rules!` followed by a name were processed. The name may be either directly
     /// an identifier or a meta-variable (that hopefully would be instantiated by an identifier).
-    MacroRulesNotName,
+    MacroRulesBangName,
     /// The keyword `macro` was processed.
     Macro,
     /// The keyword `macro` followed by a name was processed.
@@ -408,24 +408,24 @@ fn check_nested_occurrences(
                 NestedMacroState::MacroRules,
                 &TokenTree::Token(Token { kind: TokenKind::Bang, .. }),
             ) => {
-                state = NestedMacroState::MacroRulesNot;
+                state = NestedMacroState::MacroRulesBang;
             }
             (
-                NestedMacroState::MacroRulesNot,
+                NestedMacroState::MacroRulesBang,
                 &TokenTree::Token(Token { kind: TokenKind::Ident(..), .. }),
             ) => {
-                state = NestedMacroState::MacroRulesNotName;
+                state = NestedMacroState::MacroRulesBangName;
             }
-            (NestedMacroState::MacroRulesNot, &TokenTree::MetaVar(..)) => {
-                state = NestedMacroState::MacroRulesNotName;
+            (NestedMacroState::MacroRulesBang, &TokenTree::MetaVar(..)) => {
+                state = NestedMacroState::MacroRulesBangName;
                 // We check that the meta-variable is correctly used.
                 check_occurrences(psess, node_id, tt, macros, binders, ops, guar);
             }
-            (NestedMacroState::MacroRulesNotName, TokenTree::Delimited(.., del))
+            (NestedMacroState::MacroRulesBangName, TokenTree::Delimited(.., del))
             | (NestedMacroState::MacroName, TokenTree::Delimited(.., del))
                 if del.delim == Delimiter::Brace =>
             {
-                let macro_rules = state == NestedMacroState::MacroRulesNotName;
+                let macro_rules = state == NestedMacroState::MacroRulesBangName;
                 state = NestedMacroState::Empty;
                 let rest =
                     check_nested_macro(psess, node_id, macro_rules, &del.tts, &nested_macros, guar);

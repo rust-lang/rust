@@ -647,6 +647,7 @@ pub enum BuiltinLintDiag {
         attr_name: Symbol,
         macro_name: String,
         invoc_span: Span,
+        attr_span: Span,
     },
     PatternsInFnsWithoutBody {
         span: Span,

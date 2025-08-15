@@ -12,6 +12,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 
+use crate::FileType;
 use crate::core::builder::{Builder, Cargo, Kind, RunConfig, ShouldRun, Step};
 use crate::core::config::TargetSelection;
 use crate::utils::build_stamp::{BuildStamp, generate_smart_stamp_hash};
@@ -28,10 +29,25 @@ pub struct GccOutput {
     pub libgccjit: PathBuf,
 }
 
+impl GccOutput {
+    /// Install the required libgccjit library file(s) to the specified `path`.
+    pub fn install_to(&self, builder: &Builder<'_>, directory: &Path) {
+        // At build time, cg_gcc has to link to libgccjit.so (the unversioned symbol).
+        // However, at runtime, it will by default look for libgccjit.so.0.
+        // So when we install the built libgccjit.so file to the target `directory`, we add it there
+        // with the `.0` suffix.
+        let mut target_filename = self.libgccjit.file_name().unwrap().to_str().unwrap().to_string();
+        target_filename.push_str(".0");
+
+        let dst = directory.join(target_filename);
+        builder.copy_link(&self.libgccjit, &dst, FileType::NativeLibrary);
+    }
+}
+
 impl Step for Gcc {
     type Output = GccOutput;
 
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("src/gcc").alias("gcc")
@@ -61,20 +77,10 @@ impl Step for Gcc {
         }
 
         build_gcc(&metadata, builder, target);
-        create_lib_alias(builder, &libgccjit_path);
 
         t!(metadata.stamp.write());
 
         GccOutput { libgccjit: libgccjit_path }
-    }
-}
-
-/// Creates a libgccjit.so.0 alias next to libgccjit.so if it does not
-/// already exist
-fn create_lib_alias(builder: &Builder<'_>, libgccjit: &PathBuf) {
-    let lib_alias = libgccjit.parent().unwrap().join("libgccjit.so.0");
-    if !lib_alias.exists() {
-        t!(builder.symlink_file(libgccjit, lib_alias));
     }
 }
 
@@ -124,7 +130,6 @@ fn try_download_gcc(builder: &Builder<'_>, target: TargetSelection) -> Option<Pa
             }
 
             let libgccjit = root.join("lib").join("libgccjit.so");
-            create_lib_alias(builder, &libgccjit);
             Some(libgccjit)
         }
         PathFreshness::HasLocalModifications { .. } => {

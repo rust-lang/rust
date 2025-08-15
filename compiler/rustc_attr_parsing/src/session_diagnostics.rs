@@ -480,6 +480,29 @@ pub(crate) struct EmptyAttributeList {
     pub attr_span: Span,
 }
 
+#[derive(LintDiagnostic)]
+#[diag(attr_parsing_invalid_target_lint)]
+#[warning]
+#[help]
+pub(crate) struct InvalidTargetLint {
+    pub name: Symbol,
+    pub target: &'static str,
+    pub applied: String,
+    pub only: &'static str,
+}
+
+#[derive(Diagnostic)]
+#[help]
+#[diag(attr_parsing_invalid_target)]
+pub(crate) struct InvalidTarget {
+    #[primary_span]
+    pub span: Span,
+    pub name: Symbol,
+    pub target: &'static str,
+    pub applied: String,
+    pub only: &'static str,
+}
+
 #[derive(Diagnostic)]
 #[diag(attr_parsing_invalid_alignment_value, code = E0589)]
 pub(crate) struct InvalidAlignmentValue {

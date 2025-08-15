@@ -21,7 +21,6 @@ pub(crate) struct MirOptPanicAbortSyntheticTarget {
 impl Step for MirOptPanicAbortSyntheticTarget {
     type Output = TargetSelection;
     const DEFAULT: bool = true;
-    const ONLY_HOSTS: bool = false;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.never()

@@ -64,202 +64,245 @@ LL - #[rustc_force_inline = 2]
 LL + #[rustc_force_inline]
    |
 
-error: attribute should be applied to a function
+error: `#[rustc_force_inline]` attribute cannot be used on extern crates
   --> $DIR/invalid.rs:30:1
    |
 LL | #[rustc_force_inline]
    | ^^^^^^^^^^^^^^^^^^^^^
-LL |
-LL | extern crate std as other_std;
-   | ------------------------------ not a function definition
+   |
+   = help: `#[rustc_force_inline]` can only be applied to functions
 
-error: attribute should be applied to a function
+error: `#[rustc_force_inline]` attribute cannot be used on use statements
   --> $DIR/invalid.rs:34:1
    |
 LL | #[rustc_force_inline]
    | ^^^^^^^^^^^^^^^^^^^^^
-LL |
-LL | use std::collections::HashMap;
-   | ------------------------------ not a function definition
+   |
+   = help: `#[rustc_force_inline]` can only be applied to functions
 
-error: attribute should be applied to a function
+error: `#[rustc_force_inline]` attribute cannot be used on statics
   --> $DIR/invalid.rs:38:1
    |
 LL | #[rustc_force_inline]
    | ^^^^^^^^^^^^^^^^^^^^^
-LL |
-LL | static _FOO: &'static str = "FOO";
-   | ---------------------------------- not a function definition
+   |
+   = help: `#[rustc_force_inline]` can only be applied to functions
 
-error: attribute should be applied to a function
+error: `#[rustc_force_inline]` attribute cannot be used on constants
   --> $DIR/invalid.rs:42:1
    |
 LL | #[rustc_force_inline]
    | ^^^^^^^^^^^^^^^^^^^^^
-LL |
-LL | const _BAR: u32 = 3;
-   | -------------------- not a function definition
+   |
+   = help: `#[rustc_force_inline]` can only be applied to functions
 
-error: attribute should be applied to a function
+error: `#[rustc_force_inline]` attribute cannot be used on modules
   --> $DIR/invalid.rs:46:1
    |
 LL | #[rustc_force_inline]
    | ^^^^^^^^^^^^^^^^^^^^^
-LL |
-LL | mod foo { }
-   | ----------- not a function definition
+   |
+   = help: `#[rustc_force_inline]` can only be applied to functions
 
-error: attribute should be applied to a function
+error: `#[rustc_force_inline]` attribute cannot be used on foreign modules
   --> $DIR/invalid.rs:50:1
    |
-LL |   #[rustc_force_inline]
-   |   ^^^^^^^^^^^^^^^^^^^^^
-LL |
-LL | / unsafe extern "C" {
-LL | |     #[rustc_force_inline]
-LL | |
-LL | |     static X: &'static u32;
-...  |
-LL | |     fn foo();
-LL | | }
-   | |_- not a function definition
+LL | #[rustc_force_inline]
+   | ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[rustc_force_inline]` can only be applied to functions
 
-error: attribute should be applied to a function
+error: `#[rustc_force_inline]` attribute cannot be used on foreign statics
+  --> $DIR/invalid.rs:53:5
+   |
+LL |     #[rustc_force_inline]
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[rustc_force_inline]` can only be applied to functions
+
+error: `#[rustc_force_inline]` attribute cannot be used on foreign types
+  --> $DIR/invalid.rs:57:5
+   |
+LL |     #[rustc_force_inline]
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[rustc_force_inline]` can only be applied to functions
+
+error: `#[rustc_force_inline]` attribute cannot be used on foreign functions
+  --> $DIR/invalid.rs:61:5
+   |
+LL |     #[rustc_force_inline]
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[rustc_force_inline]` can only be applied to functions
+
+error: `#[rustc_force_inline]` attribute cannot be used on type aliases
   --> $DIR/invalid.rs:66:1
    |
 LL | #[rustc_force_inline]
    | ^^^^^^^^^^^^^^^^^^^^^
-LL |
-LL | type Foo = u32;
-   | --------------- not a function definition
+   |
+   = help: `#[rustc_force_inline]` can only be applied to functions
 
-error: attribute should be applied to a function
+error: `#[rustc_force_inline]` attribute cannot be used on enums
   --> $DIR/invalid.rs:70:1
    |
-LL |   #[rustc_force_inline]
-   |   ^^^^^^^^^^^^^^^^^^^^^
-LL |
-LL | / enum Bar<#[rustc_force_inline] T> {
-LL | |
-LL | |     #[rustc_force_inline]
-...  |
-LL | | }
-   | |_- not a function definition
+LL | #[rustc_force_inline]
+   | ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[rustc_force_inline]` can only be applied to functions
 
-error: attribute should be applied to a function
+error: `#[rustc_force_inline]` attribute cannot be used on function params
   --> $DIR/invalid.rs:72:10
    |
 LL | enum Bar<#[rustc_force_inline] T> {
-   |          ^^^^^^^^^^^^^^^^^^^^^ - not a function definition
+   |          ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[rustc_force_inline]` can only be applied to functions
 
-error: attribute should be applied to a function
+error: `#[rustc_force_inline]` attribute cannot be used on enum variants
   --> $DIR/invalid.rs:74:5
    |
 LL |     #[rustc_force_inline]
    |     ^^^^^^^^^^^^^^^^^^^^^
-LL |
-LL |     Baz(std::marker::PhantomData<T>),
-   |     -------------------------------- not a function definition
+   |
+   = help: `#[rustc_force_inline]` can only be applied to functions
 
-error: attribute should be applied to a function
+error: `#[rustc_force_inline]` attribute cannot be used on structs
   --> $DIR/invalid.rs:79:1
    |
-LL |   #[rustc_force_inline]
-   |   ^^^^^^^^^^^^^^^^^^^^^
-LL |
-LL | / struct Qux {
-LL | |     #[rustc_force_inline]
-LL | |
-LL | |     field: u32,
-LL | | }
-   | |_- not a function definition
+LL | #[rustc_force_inline]
+   | ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[rustc_force_inline]` can only be applied to functions
 
-error: attribute should be applied to a function
+error: `#[rustc_force_inline]` attribute cannot be used on struct fields
   --> $DIR/invalid.rs:82:5
    |
 LL |     #[rustc_force_inline]
    |     ^^^^^^^^^^^^^^^^^^^^^
-LL |
-LL |     field: u32,
-   |     ---------- not a function definition
+   |
+   = help: `#[rustc_force_inline]` can only be applied to functions
 
-error: attribute should be applied to a function
+error: `#[rustc_force_inline]` attribute cannot be used on unions
   --> $DIR/invalid.rs:87:1
    |
-LL |   #[rustc_force_inline]
-   |   ^^^^^^^^^^^^^^^^^^^^^
-LL |
-LL | / union FooBar {
-LL | |     x: u32,
-LL | |     y: u32,
-LL | | }
-   | |_- not a function definition
+LL | #[rustc_force_inline]
+   | ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[rustc_force_inline]` can only be applied to functions
 
-error: attribute should be applied to a function
+error: `#[rustc_force_inline]` attribute cannot be used on traits
   --> $DIR/invalid.rs:94:1
    |
-LL |   #[rustc_force_inline]
-   |   ^^^^^^^^^^^^^^^^^^^^^
-LL |
-LL | / trait FooBaz {
-LL | |     #[rustc_force_inline]
-LL | |
-LL | |     type Foo;
-...  |
-LL | |     fn foo() {}
-LL | | }
-   | |_- not a function definition
+LL | #[rustc_force_inline]
+   | ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[rustc_force_inline]` can only be applied to functions
 
-error: attribute should be applied to a function
+error: `#[rustc_force_inline]` attribute cannot be used on associated types
+  --> $DIR/invalid.rs:97:5
+   |
+LL |     #[rustc_force_inline]
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[rustc_force_inline]` can only be applied to functions
+
+error: `#[rustc_force_inline]` attribute cannot be used on associated consts
+  --> $DIR/invalid.rs:100:5
+   |
+LL |     #[rustc_force_inline]
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[rustc_force_inline]` can only be applied to functions
+
+error: `#[rustc_force_inline]` attribute cannot be used on provided trait methods
+  --> $DIR/invalid.rs:104:5
+   |
+LL |     #[rustc_force_inline]
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[rustc_force_inline]` can only be applied to functions
+
+error: `#[rustc_force_inline]` attribute cannot be used on trait aliases
   --> $DIR/invalid.rs:109:1
    |
 LL | #[rustc_force_inline]
    | ^^^^^^^^^^^^^^^^^^^^^
-LL |
-LL | trait FooQux = FooBaz;
-   | ---------------------- not a function definition
+   |
+   = help: `#[rustc_force_inline]` can only be applied to functions
 
-error: attribute should be applied to a function
+error: `#[rustc_force_inline]` attribute cannot be used on inherent impl blocks
   --> $DIR/invalid.rs:113:1
    |
-LL |   #[rustc_force_inline]
-   |   ^^^^^^^^^^^^^^^^^^^^^
-LL |
-LL | / impl<T> Bar<T> {
-LL | |     #[rustc_force_inline]
-LL | |
-LL | |     fn foo() {}
-LL | | }
-   | |_- not a function definition
+LL | #[rustc_force_inline]
+   | ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[rustc_force_inline]` can only be applied to functions
 
-error: attribute should be applied to a function
+error: `#[rustc_force_inline]` attribute cannot be used on inherent methods
+  --> $DIR/invalid.rs:116:5
+   |
+LL |     #[rustc_force_inline]
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[rustc_force_inline]` can only be applied to functions
+
+error: `#[rustc_force_inline]` attribute cannot be used on trait impl blocks
   --> $DIR/invalid.rs:121:1
    |
-LL |   #[rustc_force_inline]
-   |   ^^^^^^^^^^^^^^^^^^^^^
-LL |
-LL | / impl<T> FooBaz for Bar<T> {
-LL | |     type Foo = u32;
-LL | |     const Bar: i32 = 3;
-LL | | }
-   | |_- not a function definition
+LL | #[rustc_force_inline]
+   | ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[rustc_force_inline]` can only be applied to functions
 
-error: attribute should be applied to a function
+error: `#[rustc_force_inline]` attribute cannot be used on macro defs
   --> $DIR/invalid.rs:128:1
    |
 LL | #[rustc_force_inline]
    | ^^^^^^^^^^^^^^^^^^^^^
-LL |
-LL | macro_rules! barqux { ($foo:tt) => { $foo }; }
-   | ---------------------------------------------- not a function definition
+   |
+   = help: `#[rustc_force_inline]` can only be applied to functions
 
-error: attribute should be applied to a function
+error: `#[rustc_force_inline]` attribute cannot be used on function params
   --> $DIR/invalid.rs:132:11
    |
 LL | fn barqux(#[rustc_force_inline] _x: u32) {}
-   |           ^^^^^^^^^^^^^^^^^^^^^--------
-   |           |
-   |           not a function definition
+   |           ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[rustc_force_inline]` can only be applied to functions
+
+error: `#[rustc_force_inline]` attribute cannot be used on closures
+  --> $DIR/invalid.rs:149:14
+   |
+LL |     let _x = #[rustc_force_inline] || { };
+   |              ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[rustc_force_inline]` can only be applied to functions
+
+error: `#[rustc_force_inline]` attribute cannot be used on expressions
+  --> $DIR/invalid.rs:151:14
+   |
+LL |     let _y = #[rustc_force_inline] 3 + 4;
+   |              ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[rustc_force_inline]` can only be applied to functions
+
+error: `#[rustc_force_inline]` attribute cannot be used on statements
+  --> $DIR/invalid.rs:153:5
+   |
+LL |     #[rustc_force_inline]
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[rustc_force_inline]` can only be applied to functions
+
+error: `#[rustc_force_inline]` attribute cannot be used on match arms
+  --> $DIR/invalid.rs:158:9
+   |
+LL |         #[rustc_force_inline]
+   |         ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[rustc_force_inline]` can only be applied to functions
 
 error: attribute cannot be applied to a `async`, `gen` or `async gen` function
   --> $DIR/invalid.rs:136:1
@@ -287,99 +330,6 @@ LL | #[rustc_force_inline]
 LL |
 LL | async gen fn async_gen_foo() {}
    | ---------------------------- `async`, `gen` or `async gen` function
-
-error: attribute should be applied to a function
-  --> $DIR/invalid.rs:149:14
-   |
-LL |     let _x = #[rustc_force_inline] || { };
-   |              ^^^^^^^^^^^^^^^^^^^^^ ------ not a function definition
-
-error: attribute should be applied to a function
-  --> $DIR/invalid.rs:151:14
-   |
-LL |     let _y = #[rustc_force_inline] 3 + 4;
-   |              ^^^^^^^^^^^^^^^^^^^^^ - not a function definition
-
-error: attribute should be applied to a function
-  --> $DIR/invalid.rs:153:5
-   |
-LL |     #[rustc_force_inline]
-   |     ^^^^^^^^^^^^^^^^^^^^^
-LL |
-LL |     let _z = 3;
-   |     ----------- not a function definition
-
-error: attribute should be applied to a function
-  --> $DIR/invalid.rs:158:9
-   |
-LL |         #[rustc_force_inline]
-   |         ^^^^^^^^^^^^^^^^^^^^^
-LL |
-LL |         1 => (),
-   |         ------- not a function definition
-
-error: attribute should be applied to a function
-  --> $DIR/invalid.rs:97:5
-   |
-LL |     #[rustc_force_inline]
-   |     ^^^^^^^^^^^^^^^^^^^^^
-LL |
-LL |     type Foo;
-   |     --------- not a function definition
-
-error: attribute should be applied to a function
-  --> $DIR/invalid.rs:100:5
-   |
-LL |     #[rustc_force_inline]
-   |     ^^^^^^^^^^^^^^^^^^^^^
-LL |
-LL |     const Bar: i32;
-   |     --------------- not a function definition
-
-error: attribute should be applied to a function
-  --> $DIR/invalid.rs:104:5
-   |
-LL |     #[rustc_force_inline]
-   |     ^^^^^^^^^^^^^^^^^^^^^
-LL |
-LL |     fn foo() {}
-   |     ----------- not a function definition
-
-error: attribute should be applied to a function
-  --> $DIR/invalid.rs:116:5
-   |
-LL |     #[rustc_force_inline]
-   |     ^^^^^^^^^^^^^^^^^^^^^
-LL |
-LL |     fn foo() {}
-   |     ----------- not a function definition
-
-error: attribute should be applied to a function
-  --> $DIR/invalid.rs:53:5
-   |
-LL |     #[rustc_force_inline]
-   |     ^^^^^^^^^^^^^^^^^^^^^
-LL |
-LL |     static X: &'static u32;
-   |     ----------------------- not a function definition
-
-error: attribute should be applied to a function
-  --> $DIR/invalid.rs:57:5
-   |
-LL |     #[rustc_force_inline]
-   |     ^^^^^^^^^^^^^^^^^^^^^
-LL |
-LL |     type Y;
-   |     ------- not a function definition
-
-error: attribute should be applied to a function
-  --> $DIR/invalid.rs:61:5
-   |
-LL |     #[rustc_force_inline]
-   |     ^^^^^^^^^^^^^^^^^^^^^
-LL |
-LL |     fn foo();
-   |     --------- not a function definition
 
 error: aborting due to 37 previous errors
 

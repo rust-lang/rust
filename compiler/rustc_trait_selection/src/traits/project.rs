@@ -1507,7 +1507,7 @@ fn confirm_builtin_candidate<'cx, 'tcx>(
     let tcx = selcx.tcx();
     let self_ty = obligation.predicate.self_ty();
     let item_def_id = obligation.predicate.def_id;
-    let trait_def_id = tcx.trait_of_assoc(item_def_id).unwrap();
+    let trait_def_id = tcx.parent(item_def_id);
     let args = tcx.mk_args(&[self_ty.into()]);
     let (term, obligations) = if tcx.is_lang_item(trait_def_id, LangItem::DiscriminantKind) {
         let discriminant_def_id =

@@ -52,7 +52,6 @@ ERROR_DS_NOT_AUTHORITIVE_FOR_DST_NC = "ERROR_DS_NOT_AUTHORITIVE_FOR_DST_NC"
 ERROR_MCA_OCCURED = "ERROR_MCA_OCCURED"
 ERRNO_ACCES = "ERRNO_ACCES"
 tolen = "tolen"
-numer = "numer"
 
 [default]
 extend-ignore-words-re = [

@@ -518,7 +518,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     .with_span_help(
                         self.get_closure_bound_clause_span(*def_id),
                         "`Fn` and `FnMut` closures require captured values to be able to be \
-                         consumed multiple times, but an `FnOnce` consume them only once",
+                         consumed multiple times, but `FnOnce` closures may consume them only once",
                     )
             }
             _ => {

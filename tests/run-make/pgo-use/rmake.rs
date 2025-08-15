@@ -22,6 +22,7 @@ fn main() {
         .opt_level("2")
         .codegen_units(1)
         .arg("-Cllvm-args=-disable-preinline")
+        .codegen_source_order()
         .profile_generate(cwd())
         .input("main.rs")
         .run();
@@ -40,6 +41,7 @@ fn main() {
         .arg("-Cllvm-args=-disable-preinline")
         .profile_use("merged.profdata")
         .emit("llvm-ir")
+        .codegen_source_order()
         .input("main.rs")
         .run();
     // Check that the generate IR contains some things that we expect.

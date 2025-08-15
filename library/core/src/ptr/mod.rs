@@ -885,10 +885,10 @@ pub const fn without_provenance<T>(addr: usize) -> *const T {
 /// This is useful for initializing types which lazily allocate, like
 /// `Vec::new` does.
 ///
-/// Note that the pointer value may potentially represent a valid pointer to
-/// a `T`, which means this must not be used as a "not yet initialized"
-/// sentinel value. Types that lazily allocate must track initialization by
-/// some other means.
+/// Note that the address of the returned pointer may potentially
+/// be that of a valid pointer, which means this must not be used
+/// as a "not yet initialized" sentinel value.
+/// Types that lazily allocate must track initialization by some other means.
 #[inline(always)]
 #[must_use]
 #[stable(feature = "strict_provenance", since = "1.84.0")]
@@ -928,10 +928,10 @@ pub const fn without_provenance_mut<T>(addr: usize) -> *mut T {
 /// This is useful for initializing types which lazily allocate, like
 /// `Vec::new` does.
 ///
-/// Note that the pointer value may potentially represent a valid pointer to
-/// a `T`, which means this must not be used as a "not yet initialized"
-/// sentinel value. Types that lazily allocate must track initialization by
-/// some other means.
+/// Note that the address of the returned pointer may potentially
+/// be that of a valid pointer, which means this must not be used
+/// as a "not yet initialized" sentinel value.
+/// Types that lazily allocate must track initialization by some other means.
 #[inline(always)]
 #[must_use]
 #[stable(feature = "strict_provenance", since = "1.84.0")]
