@@ -91,7 +91,7 @@ error[E0433]: `crate` in paths can only be used in start position
   --> $DIR/bad-resolve.rs:44:29
    |
 LL | reuse prefix::{self, super, crate};
-   |                             ^^^^^ `crate` in paths can only be used in start position
+   |                             ^^^^^ can only be used in path start position
 
 error: aborting due to 12 previous errors
 

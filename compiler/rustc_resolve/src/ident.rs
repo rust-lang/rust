@@ -1590,16 +1590,24 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     module,
                     || {
                         let name_str = if name == kw::PathRoot {
-                            "crate root".to_string()
+                            "the crate root".to_string()
                         } else {
                             format!("`{name}`")
                         };
-                        let label = if segment_idx == 1 && path[0].ident.name == kw::PathRoot {
-                            format!("global paths cannot start with {name_str}")
+                        let (message, label) = if segment_idx == 1
+                            && path[0].ident.name == kw::PathRoot
+                        {
+                            (
+                                format!("global paths cannot start with {name_str}"),
+                                "cannot start with this".to_string(),
+                            )
                         } else {
-                            format!("{name_str} in paths can only be used in start position")
+                            (
+                                format!("{name_str} in paths can only be used in start position"),
+                                "can only be used in path start position".to_string(),
+                            )
                         };
-                        (label.clone(), label, None)
+                        (message, label, None)
                     },
                 );
             }
