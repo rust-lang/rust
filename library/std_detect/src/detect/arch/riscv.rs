@@ -37,90 +37,121 @@ features! {
     ///
     /// # Unprivileged Specification
     ///
-    /// The supported ratified RISC-V instruction sets are as follows:
+    /// The supported ratified RISC-V instruction sets are as follows (OS
+    /// columns denote runtime feature detection support with or without the
+    /// minimum supported version):
     ///
-    /// * RV32E: `"rv32e"`
-    /// * RV32I: `"rv32i"`
-    /// * RV64I: `"rv64i"`
-    /// * A: `"a"`
-    ///   * Zaamo: `"zaamo"`
-    ///   * Zalrsc: `"zalrsc"`
-    /// * B: `"b"`
-    ///   * Zba: `"zba"`
-    ///   * Zbb: `"zbb"`
-    ///   * Zbs: `"zbs"`
-    /// * C: `"c"`
-    ///   * Zca: `"zca"`
-    ///   * Zcd: `"zcd"` (if D is enabled)
-    ///   * Zcf: `"zcf"` (if F is enabled on RV32)
-    /// * D: `"d"`
-    /// * F: `"f"`
-    /// * M: `"m"`
-    /// * Q: `"q"`
-    /// * V: `"v"`
-    ///   * Zve32x: `"zve32x"`
-    ///   * Zve32f: `"zve32f"`
-    ///   * Zve64x: `"zve64x"`
-    ///   * Zve64f: `"zve64f"`
-    ///   * Zve64d: `"zve64d"`
-    /// * Zicbom: `"zicbom"`
-    /// * Zicboz: `"zicboz"`
-    /// * Zicntr: `"zicntr"`
-    /// * Zicond: `"zicond"`
-    /// * Zicsr: `"zicsr"`
-    /// * Zifencei: `"zifencei"`
-    /// * Zihintntl: `"zihintntl"`
-    /// * Zihintpause: `"zihintpause"`
-    /// * Zihpm: `"zihpm"`
-    /// * Zimop: `"zimop"`
-    /// * Zabha: `"zabha"`
-    /// * Zacas: `"zacas"`
-    /// * Zawrs: `"zawrs"`
-    /// * Zfa: `"zfa"`
-    /// * Zfbfmin: `"zfbfmin"`
-    /// * Zfh: `"zfh"`
-    ///   * Zfhmin: `"zfhmin"`
-    /// * Zfinx: `"zfinx"`
-    /// * Zdinx: `"zdinx"`
-    /// * Zhinx: `"zhinx"`
-    ///   * Zhinxmin: `"zhinxmin"`
-    /// * Zcb: `"zcb"`
-    /// * Zcmop: `"zcmop"`
-    /// * Zbc: `"zbc"`
-    /// * Zbkb: `"zbkb"`
-    /// * Zbkc: `"zbkc"`
-    /// * Zbkx: `"zbkx"`
-    /// * Zk: `"zk"`
-    /// * Zkn: `"zkn"`
-    ///   * Zknd: `"zknd"`
-    ///   * Zkne: `"zkne"`
-    ///   * Zknh: `"zknh"`
-    /// * Zkr: `"zkr"`
-    /// * Zks: `"zks"`
-    ///   * Zksed: `"zksed"`
-    ///   * Zksh: `"zksh"`
-    /// * Zkt: `"zkt"`
-    /// * Zvbb: `"zvbb"`
-    /// * Zvbc: `"zvbc"`
-    /// * Zvfbfmin: `"zvfbfmin"`
-    /// * Zvfbfwma: `"zvfbfwma"`
-    /// * Zvfh: `"zvfh"`
-    ///   * Zvfhmin: `"zvfhmin"`
-    /// * Zvkb: `"zvkb"`
-    /// * Zvkg: `"zvkg"`
-    /// * Zvkn: `"zvkn"`
-    ///   * Zvkned: `"zvkned"`
-    ///   * Zvknha: `"zvknha"`
-    ///   * Zvknhb: `"zvknhb"`
-    /// * Zvknc: `"zvknc"`
-    /// * Zvkng: `"zvkng"`
-    /// * Zvks: `"zvks"`
-    ///   * Zvksed: `"zvksed"`
-    ///   * Zvksh: `"zvksh"`
-    /// * Zvksc: `"zvksc"`
-    /// * Zvksg: `"zvksg"`
-    /// * Zvkt: `"zvkt"`
-    /// * Ztso: `"ztso"`
+    /// | Literal    | Base    | Linux      |
+    /// |:---------- |:------- |:---------- |
+    /// | `"rv32e"`  | RV32E   | No         |
+    /// | `"rv32i"`  | RV32I   | Yes [^ima] |
+    /// | `"rv64i"`  | RV64I   | Yes [^ima] |
+    ///
+    /// | Literal         | Extension   | Linux               |
+    /// |:--------------- |:----------- |:------------------- |
+    /// | `"a"`           | A           | Yes [^ima]          |
+    /// | `"b"`           | B           | 6.5                 |
+    /// | `"c"`           | C           | Yes                 |
+    /// | `"d"`           | D           | Yes                 |
+    /// | `"f"`           | F           | Yes                 |
+    /// | `"m"`           | M           | Yes [^ima]          |
+    /// | `"q"`           | Q           | No                  |
+    /// | `"v"`           | V           | 6.5                 |
+    /// | `"zaamo"`       | Zaamo       | 6.15 [^ima] [^dep]  |
+    /// | `"zabha"`       | Zabha       | 6.16                |
+    /// | `"zacas"`       | Zacas       | 6.8                 |
+    /// | `"zalrsc"`      | Zalrsc      | 6.15 [^ima] [^dep]  |
+    /// | `"zawrs"`       | Zawrs       | 6.11                |
+    /// | `"zba"`         | Zba         | 6.5                 |
+    /// | `"zbb"`         | Zbb         | 6.5                 |
+    /// | `"zbc"`         | Zbc         | 6.8                 |
+    /// | `"zbkb"`        | Zbkb        | 6.8                 |
+    /// | `"zbkc"`        | Zbkc        | 6.8                 |
+    /// | `"zbkx"`        | Zbkx        | 6.8                 |
+    /// | `"zbs"`         | Zbs         | 6.5                 |
+    /// | `"zca"`         | Zca         | 6.11 [^dep]         |
+    /// | `"zcb"`         | Zcb         | 6.11                |
+    /// | `"zcd"`         | Zcd         | 6.11 [^dep]         |
+    /// | `"zcf"`         | Zcf         | 6.11 [^dep]         |
+    /// | `"zcmop"`       | Zcmop       | 6.11                |
+    /// | `"zdinx"`       | Zdinx       | No                  |
+    /// | `"zfa"`         | Zfa         | 6.8                 |
+    /// | `"zfbfmin"`     | Zfbfmin     | 6.15                |
+    /// | `"zfh"`         | Zfh         | 6.8                 |
+    /// | `"zfhmin"`      | Zfhmin      | 6.8                 |
+    /// | `"zfinx"`       | Zfinx       | No                  |
+    /// | `"zhinx"`       | Zhinx       | No                  |
+    /// | `"zhinxmin"`    | Zhinxmin    | No                  |
+    /// | `"zicbom"`      | Zicbom      | 6.15                |
+    /// | `"zicboz"`      | Zicboz      | 6.7                 |
+    /// | `"zicntr"`      | Zicntr      | 6.15 [^ima] [^cntr] |
+    /// | `"zicond"`      | Zicond      | 6.8                 |
+    /// | `"zicsr"`       | Zicsr       | No [^ima] [^dep]    |
+    /// | `"zifencei"`    | Zifencei    | No [^ima]           |
+    /// | `"zihintntl"`   | Zihintntl   | 6.8                 |
+    /// | `"zihintpause"` | Zihintpause | 6.10                |
+    /// | `"zihpm"`       | Zihpm       | 6.15 [^cntr]        |
+    /// | `"zimop"`       | Zimop       | 6.11                |
+    /// | `"zk"`          | Zk          | No [^zkr]           |
+    /// | `"zkn"`         | Zkn         | 6.8                 |
+    /// | `"zknd"`        | Zknd        | 6.8                 |
+    /// | `"zkne"`        | Zkne        | 6.8                 |
+    /// | `"zknh"`        | Zknh        | 6.8                 |
+    /// | `"zkr"`         | Zkr         | No [^zkr]           |
+    /// | `"zks"`         | Zks         | 6.8                 |
+    /// | `"zksed"`       | Zksed       | 6.8                 |
+    /// | `"zksh"`        | Zksh        | 6.8                 |
+    /// | `"zkt"`         | Zkt         | 6.8                 |
+    /// | `"ztso"`        | Ztso        | 6.8                 |
+    /// | `"zvbb"`        | Zvbb        | 6.8                 |
+    /// | `"zvbc"`        | Zvbc        | 6.8                 |
+    /// | `"zve32f"`      | Zve32f      | 6.11 [^dep]         |
+    /// | `"zve32x"`      | Zve32x      | 6.11 [^dep]         |
+    /// | `"zve64d"`      | Zve64d      | 6.11 [^dep]         |
+    /// | `"zve64f"`      | Zve64f      | 6.11 [^dep]         |
+    /// | `"zve64x"`      | Zve64x      | 6.11 [^dep]         |
+    /// | `"zvfbfmin"`    | Zvfbfmin    | 6.15                |
+    /// | `"zvfbfwma"`    | Zvfbfwma    | 6.15                |
+    /// | `"zvfh"`        | Zvfh        | 6.8                 |
+    /// | `"zvfhmin"`     | Zvfhmin     | 6.8                 |
+    /// | `"zvkb"`        | Zvkb        | 6.8                 |
+    /// | `"zvkg"`        | Zvkg        | 6.8                 |
+    /// | `"zvkn"`        | Zvkn        | 6.8                 |
+    /// | `"zvknc"`       | Zvknc       | 6.8                 |
+    /// | `"zvkned"`      | Zvkned      | 6.8                 |
+    /// | `"zvkng"`       | Zvkng       | 6.8                 |
+    /// | `"zvknha"`      | Zvknha      | 6.8                 |
+    /// | `"zvknhb"`      | Zvknhb      | 6.8                 |
+    /// | `"zvks"`        | Zvks        | 6.8                 |
+    /// | `"zvksc"`       | Zvksc       | 6.8                 |
+    /// | `"zvksed"`      | Zvksed      | 6.8                 |
+    /// | `"zvksg"`       | Zvksg       | 6.8                 |
+    /// | `"zvksh"`       | Zvksh       | 6.8                 |
+    /// | `"zvkt"`        | Zvkt        | 6.8                 |
+    ///
+    /// [^ima]: Or enabled when the IMA base behavior is detected on the Linux
+    /// kernel version 6.4 or later (for bases, the only matching one -- either
+    /// `"rv32i"` or `"rv64i"` -- is enabled).
+    ///
+    /// [^cntr]: Even if this extension is available, it does not necessarily
+    /// mean all performance counters are accessible.
+    /// For example, accesses to all performance counters except `time`
+    /// (wall-clock) are blocked by default on the Linux kernel
+    /// version 6.6 or later.
+    /// Also beware that, even if performance counters like `cycle` and
+    /// `instret` are accessible, their value can be unreliable (e.g. returning
+    /// the constant value) under certain circumstances.
+    ///
+    /// [^dep]: Or enabled as a dependency of another extension (a superset)
+    /// even if runtime detection of this feature itself is not supported (as
+    /// long as the runtime detection of the superset is supported).
+    ///
+    /// [^zkr]: Linux does not report existence of this extension even if
+    /// supported by the hardware mainly because the `seed` CSR on the Zkr
+    /// extension (which provides hardware-based randomness) is normally
+    /// inaccessible from the user mode.
+    /// For the Zk extension features except this CSR, check existence of both
+    /// `"zkn"` and `"zkt"` features instead.
     ///
     /// There's also bases and extensions marked as standard instruction set,
     /// but they are in frozen or draft state. These instruction sets are also
