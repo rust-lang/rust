@@ -1206,6 +1206,7 @@ mod snapshot {
         [dist] rustc 1 <host> -> rust-analyzer 2 <host>
         [build] rustc 1 <host> -> rustfmt 2 <host>
         [build] rustc 1 <host> -> cargo-fmt 2 <host>
+        [dist] rustc 1 <host> -> rustfmt 2 <host>
         [build] rustc 1 <host> -> clippy-driver 2 <host>
         [build] rustc 1 <host> -> cargo-clippy 2 <host>
         [dist] rustc 1 <host> -> clippy 2 <host>
@@ -1539,6 +1540,7 @@ mod snapshot {
         [dist] rustc 1 <host> -> rust-analyzer 2 <target1>
         [build] rustc 1 <host> -> rustfmt 2 <target1>
         [build] rustc 1 <host> -> cargo-fmt 2 <target1>
+        [dist] rustc 1 <host> -> rustfmt 2 <target1>
         [build] rustc 1 <host> -> clippy-driver 2 <target1>
         [build] rustc 1 <host> -> cargo-clippy 2 <target1>
         [dist] rustc 1 <host> -> clippy 2 <target1>
@@ -2327,6 +2329,7 @@ mod snapshot {
         [dist] rustc 2 <host> -> rust-analyzer 3 <host>
         [build] rustc 2 <host> -> rustfmt 3 <host>
         [build] rustc 2 <host> -> cargo-fmt 3 <host>
+        [dist] rustc 2 <host> -> rustfmt 3 <host>
         [build] rustc 2 <host> -> clippy-driver 3 <host>
         [build] rustc 2 <host> -> cargo-clippy 3 <host>
         [dist] rustc 2 <host> -> clippy 3 <host>
