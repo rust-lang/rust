@@ -11,6 +11,7 @@
 //! This API is completely unstable and subject to change.
 
 // tidy-alphabetical-start
+#![cfg_attr(bootstrap, feature(never_type))]
 #![cfg_attr(bootstrap, feature(strip_circumfix))]
 #![feature(associated_type_defaults)]
 #![feature(default_field_values)]
@@ -18,7 +19,6 @@
 #![feature(hash_set_entry)]
 #![feature(iter_intersperse)]
 #![feature(iterator_try_reduce)]
-#![feature(never_type)]
 #![feature(try_blocks)]
 #![feature(unwrap_infallible)]
 #![feature(yeet_expr)]

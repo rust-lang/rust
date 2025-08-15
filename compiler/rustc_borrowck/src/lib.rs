@@ -2,11 +2,11 @@
 
 // tidy-alphabetical-start
 #![allow(internal_features)]
+#![cfg_attr(bootstrap, feature(never_type))]
 #![feature(default_field_values)]
 #![feature(deref_patterns)]
 #![feature(file_buffered)]
 #![feature(negative_impls)]
-#![feature(never_type)]
 #![feature(rustc_attrs)]
 #![feature(stmt_expr_attributes)]
 #![feature(try_blocks)]
