@@ -131,7 +131,16 @@ LL |         msg_send!();
    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/never-type-fallback.html>
    = note: this error originates in the macro `msg_send` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 10 previous errors
+warning: the type `!` does not permit zero-initialization
+  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:10:18
+   |
+LL |         unsafe { mem::zeroed() }
+   |                  ^^^^^^^^^^^^^ this code causes undefined behavior when executed
+   |
+   = note: the `!` type has no valid value
+   = note: `#[warn(invalid_value)]` on by default
+
+error: aborting due to 10 previous errors; 1 warning emitted
 
 Future incompatibility report: Future breakage diagnostic:
 error: never type fallback affects this call to an `unsafe` function

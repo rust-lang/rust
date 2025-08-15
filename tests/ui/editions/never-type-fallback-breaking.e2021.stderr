@@ -1,203 +1,74 @@
-error: this function depends on never type fallback being `()`
-  --> $DIR/never-type-fallback-breaking.rs:20:1
-   |
-LL | fn m() {
-   | ^^^^^^
-   |
-   = help: specify the types explicitly
-note: in edition 2024, the requirement `!: Default` will fail
-  --> $DIR/never-type-fallback-breaking.rs:24:17
+error[E0277]: the trait bound `!: Default` is not satisfied
+  --> $DIR/never-type-fallback-breaking.rs:21:17
    |
 LL |         true => Default::default(),
-   |                 ^^^^^^^^^^^^^^^^^^
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in Rust 2024 and in a future release in all editions!
-   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/never-type-fallback.html>
-   = note: `#[deny(dependency_on_unit_never_type_fallback)]` (part of `#[deny(rust_2024_compatibility)]`) on by default
-help: use `()` annotations to avoid fallback changes
+   |                 ^^^^^^^^^^^^^^^^^^ the trait `Default` is not implemented for `!`
    |
-LL |     let x: () = match true {
-   |          ++++
+   = note: this error might have been caused by changes to Rust's type-inference algorithm (see issue #148922 <https://github.com/rust-lang/rust/issues/148922> for more information)
+   = help: you might have intended to use the type `()` here instead
 
-error: this function depends on never type fallback being `()`
-  --> $DIR/never-type-fallback-breaking.rs:32:1
-   |
-LL | fn q() -> Option<()> {
-   | ^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: specify the types explicitly
-note: in edition 2024, the requirement `!: Default` will fail
-  --> $DIR/never-type-fallback-breaking.rs:39:5
+error[E0277]: the trait bound `!: Default` is not satisfied
+  --> $DIR/never-type-fallback-breaking.rs:34:5
    |
 LL |     deserialize()?;
-   |     ^^^^^^^^^^^^^
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in Rust 2024 and in a future release in all editions!
-   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/never-type-fallback.html>
-help: use `()` annotations to avoid fallback changes
+   |     ^^^^^^^^^^^^^ the trait `Default` is not implemented for `!`
    |
-LL |     deserialize::<()>()?;
-   |                ++++++
+   = note: this error might have been caused by changes to Rust's type-inference algorithm (see issue #148922 <https://github.com/rust-lang/rust/issues/148922> for more information)
+   = help: you might have intended to use the type `()` here instead
+note: required by a bound in `deserialize`
+  --> $DIR/never-type-fallback-breaking.rs:30:23
+   |
+LL |     fn deserialize<T: Default>() -> Option<T> {
+   |                       ^^^^^^^ required by this bound in `deserialize`
 
-error: this function depends on never type fallback being `()`
-  --> $DIR/never-type-fallback-breaking.rs:49:1
-   |
-LL | fn meow() -> Result<(), ()> {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: specify the types explicitly
-note: in edition 2024, the requirement `(): From<!>` will fail
-  --> $DIR/never-type-fallback-breaking.rs:52:5
+error[E0277]: the trait bound `(): From<!>` is not satisfied
+  --> $DIR/never-type-fallback-breaking.rs:45:5
    |
 LL |     help(1)?;
-   |     ^^^^^^^
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in Rust 2024 and in a future release in all editions!
-   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/never-type-fallback.html>
-help: use `()` annotations to avoid fallback changes
+   |     ^^^^^^^ the trait `From<!>` is not implemented for `()`
    |
-LL |     help::<(), _>(1)?;
-   |         +++++++++
+   = help: the following other types implement trait `From<T>`:
+             `(T, T)` implements `From<[T; 2]>`
+             `(T, T, T)` implements `From<[T; 3]>`
+             `(T, T, T, T)` implements `From<[T; 4]>`
+             `(T, T, T, T, T)` implements `From<[T; 5]>`
+             `(T, T, T, T, T, T)` implements `From<[T; 6]>`
+             `(T, T, T, T, T, T, T)` implements `From<[T; 7]>`
+             `(T, T, T, T, T, T, T, T)` implements `From<[T; 8]>`
+             `(T, T, T, T, T, T, T, T, T)` implements `From<[T; 9]>`
+           and 4 others
+   = note: required for `!` to implement `Into<()>`
+note: required by a bound in `help`
+  --> $DIR/never-type-fallback-breaking.rs:41:20
+   |
+LL | fn help<'a: 'a, T: Into<()>, U>(_: U) -> Result<T, ()> {
+   |                    ^^^^^^^^ required by this bound in `help`
 
-error: this function depends on never type fallback being `()`
-  --> $DIR/never-type-fallback-breaking.rs:61:1
-   |
-LL | pub fn fallback_return() -> Result<(), ()> {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: specify the types explicitly
-note: in edition 2024, the requirement `!: Default` will fail
-  --> $DIR/never-type-fallback-breaking.rs:64:19
+error[E0277]: the trait bound `!: Default` is not satisfied
+  --> $DIR/never-type-fallback-breaking.rs:55:19
    |
 LL |     takes_apit(|| Default::default())?;
-   |                   ^^^^^^^^^^^^^^^^^^
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in Rust 2024 and in a future release in all editions!
-   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/never-type-fallback.html>
-help: use `()` annotations to avoid fallback changes
+   |                   ^^^^^^^^^^^^^^^^^^ the trait `Default` is not implemented for `!`
    |
-LL |     takes_apit::<()>(|| Default::default())?;
-   |               ++++++
+   = note: this error might have been caused by changes to Rust's type-inference algorithm (see issue #148922 <https://github.com/rust-lang/rust/issues/148922> for more information)
+   = help: you might have intended to use the type `()` here instead
 
-error: this function depends on never type fallback being `()`
-  --> $DIR/never-type-fallback-breaking.rs:75:1
-   |
-LL | fn fully_apit() -> Result<(), ()> {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: specify the types explicitly
-note: in edition 2024, the requirement `!: Default` will fail
-  --> $DIR/never-type-fallback-breaking.rs:78:17
+error[E0277]: the trait bound `!: Default` is not satisfied
+  --> $DIR/never-type-fallback-breaking.rs:67:17
    |
 LL |     takes_apit2(mk()?);
-   |                 ^^^^^
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in Rust 2024 and in a future release in all editions!
-   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/never-type-fallback.html>
-help: use `()` annotations to avoid fallback changes
+   |     ----------- ^^^^^ the trait `Default` is not implemented for `!`
+   |     |
+   |     required by a bound introduced by this call
    |
-LL |     takes_apit2(mk::<()>()?);
-   |                   ++++++
+   = note: this error might have been caused by changes to Rust's type-inference algorithm (see issue #148922 <https://github.com/rust-lang/rust/issues/148922> for more information)
+   = help: you might have intended to use the type `()` here instead
+note: required by a bound in `takes_apit2`
+  --> $DIR/never-type-fallback-breaking.rs:64:25
+   |
+LL | fn takes_apit2(_x: impl Default) {}
+   |                         ^^^^^^^ required by this bound in `takes_apit2`
 
 error: aborting due to 5 previous errors
 
-Future incompatibility report: Future breakage diagnostic:
-error: this function depends on never type fallback being `()`
-  --> $DIR/never-type-fallback-breaking.rs:20:1
-   |
-LL | fn m() {
-   | ^^^^^^
-   |
-   = help: specify the types explicitly
-note: in edition 2024, the requirement `!: Default` will fail
-  --> $DIR/never-type-fallback-breaking.rs:24:17
-   |
-LL |         true => Default::default(),
-   |                 ^^^^^^^^^^^^^^^^^^
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in Rust 2024 and in a future release in all editions!
-   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/never-type-fallback.html>
-   = note: `#[deny(dependency_on_unit_never_type_fallback)]` (part of `#[deny(rust_2024_compatibility)]`) on by default
-help: use `()` annotations to avoid fallback changes
-   |
-LL |     let x: () = match true {
-   |          ++++
-
-Future breakage diagnostic:
-error: this function depends on never type fallback being `()`
-  --> $DIR/never-type-fallback-breaking.rs:32:1
-   |
-LL | fn q() -> Option<()> {
-   | ^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: specify the types explicitly
-note: in edition 2024, the requirement `!: Default` will fail
-  --> $DIR/never-type-fallback-breaking.rs:39:5
-   |
-LL |     deserialize()?;
-   |     ^^^^^^^^^^^^^
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in Rust 2024 and in a future release in all editions!
-   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/never-type-fallback.html>
-   = note: `#[deny(dependency_on_unit_never_type_fallback)]` (part of `#[deny(rust_2024_compatibility)]`) on by default
-help: use `()` annotations to avoid fallback changes
-   |
-LL |     deserialize::<()>()?;
-   |                ++++++
-
-Future breakage diagnostic:
-error: this function depends on never type fallback being `()`
-  --> $DIR/never-type-fallback-breaking.rs:49:1
-   |
-LL | fn meow() -> Result<(), ()> {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: specify the types explicitly
-note: in edition 2024, the requirement `(): From<!>` will fail
-  --> $DIR/never-type-fallback-breaking.rs:52:5
-   |
-LL |     help(1)?;
-   |     ^^^^^^^
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in Rust 2024 and in a future release in all editions!
-   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/never-type-fallback.html>
-   = note: `#[deny(dependency_on_unit_never_type_fallback)]` (part of `#[deny(rust_2024_compatibility)]`) on by default
-help: use `()` annotations to avoid fallback changes
-   |
-LL |     help::<(), _>(1)?;
-   |         +++++++++
-
-Future breakage diagnostic:
-error: this function depends on never type fallback being `()`
-  --> $DIR/never-type-fallback-breaking.rs:61:1
-   |
-LL | pub fn fallback_return() -> Result<(), ()> {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: specify the types explicitly
-note: in edition 2024, the requirement `!: Default` will fail
-  --> $DIR/never-type-fallback-breaking.rs:64:19
-   |
-LL |     takes_apit(|| Default::default())?;
-   |                   ^^^^^^^^^^^^^^^^^^
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in Rust 2024 and in a future release in all editions!
-   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/never-type-fallback.html>
-   = note: `#[deny(dependency_on_unit_never_type_fallback)]` (part of `#[deny(rust_2024_compatibility)]`) on by default
-help: use `()` annotations to avoid fallback changes
-   |
-LL |     takes_apit::<()>(|| Default::default())?;
-   |               ++++++
-
-Future breakage diagnostic:
-error: this function depends on never type fallback being `()`
-  --> $DIR/never-type-fallback-breaking.rs:75:1
-   |
-LL | fn fully_apit() -> Result<(), ()> {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: specify the types explicitly
-note: in edition 2024, the requirement `!: Default` will fail
-  --> $DIR/never-type-fallback-breaking.rs:78:17
-   |
-LL |     takes_apit2(mk()?);
-   |                 ^^^^^
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in Rust 2024 and in a future release in all editions!
-   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/never-type-fallback.html>
-   = note: `#[deny(dependency_on_unit_never_type_fallback)]` (part of `#[deny(rust_2024_compatibility)]`) on by default
-help: use `()` annotations to avoid fallback changes
-   |
-LL |     takes_apit2(mk::<()>()?);
-   |                   ++++++
-
+For more information about this error, try `rustc --explain E0277`.

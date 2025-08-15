@@ -1,5 +1,5 @@
 error: unreachable pattern
-  --> $DIR/impl-trait.rs:17:13
+  --> $DIR/impl-trait.rs:16:13
    |
 LL |             _ => {}
    |             ^------
@@ -9,13 +9,13 @@ LL |             _ => {}
    |
    = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
 note: the lint level is defined here
-  --> $DIR/impl-trait.rs:5:9
+  --> $DIR/impl-trait.rs:4:9
    |
 LL | #![deny(unreachable_patterns)]
    |         ^^^^^^^^^^^^^^^^^^^^
 
 error: unreachable pattern
-  --> $DIR/impl-trait.rs:32:13
+  --> $DIR/impl-trait.rs:31:13
    |
 LL |             _ => {}
    |             ^------
@@ -26,7 +26,7 @@ LL |             _ => {}
    = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
 
 error: unreachable pattern
-  --> $DIR/impl-trait.rs:46:13
+  --> $DIR/impl-trait.rs:45:13
    |
 LL |             Some(_) => {}
    |             ^^^^^^^------
@@ -37,7 +37,7 @@ LL |             Some(_) => {}
    = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
 
 error: unreachable pattern
-  --> $DIR/impl-trait.rs:50:13
+  --> $DIR/impl-trait.rs:49:13
    |
 LL |             None => {}
    |             ---- matches all the relevant values
@@ -45,7 +45,7 @@ LL |             _ => {}
    |             ^ no value can reach this
 
 error: unreachable pattern
-  --> $DIR/impl-trait.rs:60:13
+  --> $DIR/impl-trait.rs:59:13
    |
 LL |             Some(_) => {}
    |             ^^^^^^^------
@@ -56,7 +56,7 @@ LL |             Some(_) => {}
    = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
 
 error: unreachable pattern
-  --> $DIR/impl-trait.rs:64:13
+  --> $DIR/impl-trait.rs:63:13
    |
 LL |             None => {}
    |             ---- matches all the relevant values
@@ -64,7 +64,7 @@ LL |             _ => {}
    |             ^ no value can reach this
 
 error: unreachable pattern
-  --> $DIR/impl-trait.rs:77:9
+  --> $DIR/impl-trait.rs:76:9
    |
 LL |         _ => {}
    |         ^------
@@ -75,7 +75,7 @@ LL |         _ => {}
    = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
 
 error: unreachable pattern
-  --> $DIR/impl-trait.rs:87:9
+  --> $DIR/impl-trait.rs:86:9
    |
 LL |         _ => {}
    |         - matches any value
@@ -83,7 +83,7 @@ LL |         Some((a, b)) => {}
    |         ^^^^^^^^^^^^ no value can reach this
 
 error: unreachable pattern
-  --> $DIR/impl-trait.rs:96:13
+  --> $DIR/impl-trait.rs:95:13
    |
 LL |             _ => {}
    |             ^------
@@ -94,7 +94,7 @@ LL |             _ => {}
    = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
 
 error: unreachable pattern
-  --> $DIR/impl-trait.rs:108:9
+  --> $DIR/impl-trait.rs:107:9
    |
 LL |         Some((a, b)) => {}
    |         ------------ matches all the relevant values
@@ -102,7 +102,7 @@ LL |         Some((mut x, mut y)) => {
    |         ^^^^^^^^^^^^^^^^^^^^ no value can reach this
 
 error: unreachable pattern
-  --> $DIR/impl-trait.rs:128:13
+  --> $DIR/impl-trait.rs:127:13
    |
 LL |             _ => {}
    |             - matches any value
@@ -110,7 +110,7 @@ LL |             Rec { n: 0, w: Some(Rec { n: 0, w: _ }) } => {}
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no value can reach this
 
 error: unreachable pattern
-  --> $DIR/impl-trait.rs:143:13
+  --> $DIR/impl-trait.rs:142:13
    |
 LL |             _ => {}
    |             ^------
@@ -121,7 +121,7 @@ LL |             _ => {}
    = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
 
 error: unreachable pattern
-  --> $DIR/impl-trait.rs:157:13
+  --> $DIR/impl-trait.rs:156:13
    |
 LL |             _ => {}
    |             ^------
@@ -132,7 +132,7 @@ LL |             _ => {}
    = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
 
 error[E0004]: non-exhaustive patterns: type `impl Copy` is non-empty
-  --> $DIR/impl-trait.rs:23:11
+  --> $DIR/impl-trait.rs:22:11
    |
 LL |     match return_never_rpit(x) {}
    |           ^^^^^^^^^^^^^^^^^^^^
@@ -146,7 +146,7 @@ LL ~     }
    |
 
 error[E0004]: non-exhaustive patterns: type `T` is non-empty
-  --> $DIR/impl-trait.rs:38:11
+  --> $DIR/impl-trait.rs:37:11
    |
 LL |     match return_never_tait(x) {}
    |           ^^^^^^^^^^^^^^^^^^^^
