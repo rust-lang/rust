@@ -99,7 +99,7 @@ impl Drop for OwnedTargetMachine {
         // llvm::LLVMRustCreateTargetMachine OwnedTargetMachine is not copyable so there is no
         // double free or use after free.
         unsafe {
-            llvm::LLVMRustDisposeTargetMachine(self.tm_unique.as_mut());
+            llvm::LLVMRustDisposeTargetMachine(self.tm_unique.as_ptr());
         }
     }
 }
