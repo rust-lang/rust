@@ -447,6 +447,24 @@ pub(crate) struct DefaultHasArg {
 }
 
 #[derive(Diagnostic)]
+#[diag(builtin_macros_derive_from_wrong_target)]
+#[note(builtin_macros_derive_from_usage_note)]
+pub(crate) struct DeriveFromWrongTarget<'a> {
+    #[primary_span]
+    pub(crate) span: MultiSpan,
+    pub(crate) kind: &'a str,
+}
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_derive_from_wrong_field_count)]
+#[note(builtin_macros_derive_from_usage_note)]
+pub(crate) struct DeriveFromWrongFieldCount {
+    #[primary_span]
+    pub(crate) span: MultiSpan,
+    pub(crate) multiple_fields: bool,
+}
+
+#[derive(Diagnostic)]
 #[diag(builtin_macros_derive_macro_call)]
 pub(crate) struct DeriveMacroCall {
     #[primary_span]
@@ -903,14 +921,6 @@ pub(crate) struct TakesNoArguments<'a> {
     #[primary_span]
     pub span: Span,
     pub name: &'a str,
-}
-
-#[derive(Diagnostic)]
-#[diag(builtin_macros_proc_macro_attribute_only_be_used_on_bare_functions)]
-pub(crate) struct AttributeOnlyBeUsedOnBareFunctions<'a> {
-    #[primary_span]
-    pub span: Span,
-    pub path: &'a str,
 }
 
 #[derive(Diagnostic)]

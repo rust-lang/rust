@@ -677,12 +677,13 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
     ///  - is the trait from the local crate? If not, we can't suggest changing signatures
     ///  - `Span` of the argument in the trait definition
     fn is_error_in_trait(&self, local: Local) -> (bool, bool, Option<Span>) {
+        let tcx = self.infcx.tcx;
         if self.body.local_kind(local) != LocalKind::Arg {
             return (false, false, None);
         }
         let my_def = self.body.source.def_id();
         let Some(td) =
-            self.infcx.tcx.impl_of_assoc(my_def).and_then(|x| self.infcx.tcx.trait_id_of_impl(x))
+            tcx.trait_impl_of_assoc(my_def).and_then(|id| self.infcx.tcx.trait_id_of_impl(id))
         else {
             return (false, false, None);
         };

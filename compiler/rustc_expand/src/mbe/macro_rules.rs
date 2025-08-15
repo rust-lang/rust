@@ -15,6 +15,7 @@ use rustc_errors::{Applicability, Diag, ErrorGuaranteed, MultiSpan};
 use rustc_feature::Features;
 use rustc_hir as hir;
 use rustc_hir::attrs::AttributeKind;
+use rustc_hir::def::MacroKinds;
 use rustc_hir::find_attr;
 use rustc_lint_defs::BuiltinLintDiag;
 use rustc_lint_defs::builtin::{
@@ -144,6 +145,7 @@ pub struct MacroRulesMacroExpander {
     name: Ident,
     span: Span,
     transparency: Transparency,
+    kinds: MacroKinds,
     rules: Vec<MacroRule>,
 }
 
@@ -157,6 +159,10 @@ impl MacroRulesMacroExpander {
             }
         };
         if has_compile_error_macro(rhs) { None } else { Some((&self.name, span)) }
+    }
+
+    pub fn kinds(&self) -> MacroKinds {
+        self.kinds
     }
 }
 
@@ -540,13 +546,13 @@ pub fn compile_declarative_macro(
     span: Span,
     node_id: NodeId,
     edition: Edition,
-) -> (SyntaxExtension, Option<Arc<SyntaxExtension>>, usize) {
+) -> (SyntaxExtension, usize) {
     let mk_syn_ext = |kind| {
         let is_local = is_defined_in_current_crate(node_id);
         SyntaxExtension::new(sess, kind, span, Vec::new(), edition, ident.name, attrs, is_local)
     };
-    let mk_bang_ext = |expander| mk_syn_ext(SyntaxExtensionKind::LegacyBang(expander));
-    let dummy_syn_ext = |guar| (mk_bang_ext(Arc::new(DummyExpander(guar))), None, 0);
+    let dummy_syn_ext =
+        |guar| (mk_syn_ext(SyntaxExtensionKind::LegacyBang(Arc::new(DummyExpander(guar)))), 0);
 
     let macro_rules = macro_def.macro_rules;
     let exp_sep = if macro_rules { exp!(Semi) } else { exp!(Comma) };
@@ -559,12 +565,12 @@ pub fn compile_declarative_macro(
     let mut guar = None;
     let mut check_emission = |ret: Result<(), ErrorGuaranteed>| guar = guar.or(ret.err());
 
-    let mut has_attr_rules = false;
+    let mut kinds = MacroKinds::empty();
     let mut rules = Vec::new();
 
     while p.token != token::Eof {
         let args = if p.eat_keyword_noexpect(sym::attr) {
-            has_attr_rules = true;
+            kinds |= MacroKinds::ATTR;
             if !features.macro_attr() {
                 feature_err(sess, sym::macro_attr, span, "`macro_rules!` attributes are unstable")
                     .emit();
@@ -581,6 +587,7 @@ pub fn compile_declarative_macro(
             }
             Some(args)
         } else {
+            kinds |= MacroKinds::BANG;
             None
         };
         let lhs_tt = p.parse_token_tree();
@@ -627,6 +634,7 @@ pub fn compile_declarative_macro(
         let guar = sess.dcx().span_err(span, "macros must contain at least one rule");
         return dummy_syn_ext(guar);
     }
+    assert!(!kinds.is_empty());
 
     let transparency = find_attr!(attrs, AttributeKind::MacroTransparency(x) => *x)
         .unwrap_or(Transparency::fallback(macro_rules));
@@ -640,12 +648,8 @@ pub fn compile_declarative_macro(
     // Return the number of rules for unused rule linting, if this is a local macro.
     let nrules = if is_defined_in_current_crate(node_id) { rules.len() } else { 0 };
 
-    let exp = Arc::new(MacroRulesMacroExpander { name: ident, span, node_id, transparency, rules });
-    let opt_attr_ext = has_attr_rules.then(|| {
-        let exp = Arc::clone(&exp);
-        Arc::new(mk_syn_ext(SyntaxExtensionKind::Attr(exp)))
-    });
-    (mk_bang_ext(exp), opt_attr_ext, nrules)
+    let exp = MacroRulesMacroExpander { name: ident, kinds, span, node_id, transparency, rules };
+    (mk_syn_ext(SyntaxExtensionKind::MacroRules(Arc::new(exp))), nrules)
 }
 
 fn check_no_eof(sess: &Session, p: &Parser<'_>, msg: &'static str) -> Option<ErrorGuaranteed> {

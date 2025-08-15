@@ -13,9 +13,6 @@ use std::ffi::OsStr;
 use std::path::PathBuf;
 use std::{env, fs};
 
-#[cfg(feature = "tracing")]
-use tracing::instrument;
-
 use crate::core::build_steps::compile::is_lto_stage;
 use crate::core::build_steps::toolstate::ToolState;
 use crate::core::build_steps::{compile, llvm};
@@ -229,6 +226,14 @@ pub fn prepare_tool_cargo(
     // own copy
     cargo.env("LZMA_API_STATIC", "1");
 
+    // Build jemalloc on AArch64 with support for page sizes up to 64K
+    // See: https://github.com/rust-lang/rust/pull/135081
+    // Note that `miri` always uses jemalloc. As such, there is no checking of the jemalloc build flag.
+    // See also the "JEMALLOC_SYS_WITH_LG_PAGE" setting in the compile build step.
+    if target.starts_with("aarch64") && env::var_os("JEMALLOC_SYS_WITH_LG_PAGE").is_none() {
+        cargo.env("JEMALLOC_SYS_WITH_LG_PAGE", "16");
+    }
+
     // CFG_RELEASE is needed by rustfmt (and possibly other tools) which
     // import rustc-ap-rustc_attr which requires this to be set for the
     // `#[cfg(version(...))]` attribute.
@@ -415,14 +420,6 @@ macro_rules! bootstrap_tool {
                 });
             }
 
-            #[cfg_attr(
-                feature = "tracing",
-                instrument(
-                    level = "debug",
-                    name = $tool_name,
-                    skip_all,
-                ),
-            )]
             fn run(self, builder: &Builder<'_>) -> ToolBuildResult {
                 $(
                     for submodule in $submodules {
@@ -687,7 +684,7 @@ impl Step for Rustdoc {
     type Output = PathBuf;
 
     const DEFAULT: bool = true;
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("src/tools/rustdoc").path("src/librustdoc")
@@ -809,7 +806,7 @@ impl Cargo {
 impl Step for Cargo {
     type Output = ToolBuildResult;
     const DEFAULT: bool = true;
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let builder = run.builder;
@@ -885,7 +882,7 @@ impl LldWrapper {
 impl Step for LldWrapper {
     type Output = BuiltLldWrapper;
 
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("src/tools/lld-wrapper")
@@ -901,15 +898,6 @@ impl Step for LldWrapper {
         });
     }
 
-    #[cfg_attr(
-        feature = "tracing",
-        instrument(
-            level = "debug",
-            name = "LldWrapper::run",
-            skip_all,
-            fields(build_compiler = ?self.build_compiler),
-        ),
-    )]
     fn run(self, builder: &Builder<'_>) -> Self::Output {
         let lld_dir = builder.ensure(llvm::Lld { target: self.target });
         let tool = builder.ensure(ToolBuild {
@@ -986,7 +974,7 @@ impl WasmComponentLd {
 impl Step for WasmComponentLd {
     type Output = ToolBuildResult;
 
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("src/tools/wasm-component-ld")
@@ -1002,15 +990,6 @@ impl Step for WasmComponentLd {
         });
     }
 
-    #[cfg_attr(
-        feature = "tracing",
-        instrument(
-            level = "debug",
-            name = "WasmComponentLd::run",
-            skip_all,
-            fields(build_compiler = ?self.build_compiler),
-        ),
-    )]
     fn run(self, builder: &Builder<'_>) -> ToolBuildResult {
         builder.ensure(ToolBuild {
             build_compiler: self.build_compiler,
@@ -1049,7 +1028,7 @@ impl RustAnalyzer {
 impl Step for RustAnalyzer {
     type Output = ToolBuildResult;
     const DEFAULT: bool = true;
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let builder = run.builder;
@@ -1102,7 +1081,7 @@ impl Step for RustAnalyzerProcMacroSrv {
     type Output = ToolBuildResult;
 
     const DEFAULT: bool = true;
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let builder = run.builder;
@@ -1192,7 +1171,7 @@ impl LlvmBitcodeLinker {
 impl Step for LlvmBitcodeLinker {
     type Output = ToolBuildResult;
     const DEFAULT: bool = true;
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let builder = run.builder;
@@ -1207,10 +1186,6 @@ impl Step for LlvmBitcodeLinker {
         });
     }
 
-    #[cfg_attr(
-        feature = "tracing",
-        instrument(level = "debug", name = "LlvmBitcodeLinker::run", skip_all)
-    )]
     fn run(self, builder: &Builder<'_>) -> ToolBuildResult {
         builder.ensure(ToolBuild {
             build_compiler: self.build_compiler,
@@ -1246,7 +1221,7 @@ pub enum LibcxxVersion {
 impl Step for LibcxxVersionTool {
     type Output = LibcxxVersion;
     const DEFAULT: bool = false;
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.never()
@@ -1407,7 +1382,7 @@ macro_rules! tool_rustc_extended {
         impl Step for $name {
             type Output = ToolBuildResult;
             const DEFAULT: bool = true; // Overridden by `should_run_tool_build_step`
-            const ONLY_HOSTS: bool = true;
+            const IS_HOST: bool = true;
 
             fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
                 should_run_extended_rustc_tool(
@@ -1575,7 +1550,7 @@ impl TestFloatParse {
 
 impl Step for TestFloatParse {
     type Output = ToolBuildResult;
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
     const DEFAULT: bool = false;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {

@@ -195,7 +195,7 @@ impl<T, const N: usize> Buffer<T, N> {
 
         // SAFETY: the index is valid and this is element `a` in the
         // diagram above and has not been dropped yet.
-        unsafe { ptr::drop_in_place(to_drop.cast::<T>()) };
+        unsafe { ptr::drop_in_place(to_drop.cast_init()) };
     }
 }
 

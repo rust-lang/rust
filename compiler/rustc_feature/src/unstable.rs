@@ -334,8 +334,6 @@ declare_features! (
     (unstable, rtm_target_feature, "1.35.0", Some(44839)),
     (unstable, s390x_target_feature, "1.82.0", Some(44839)),
     (unstable, sparc_target_feature, "1.84.0", Some(132783)),
-    (unstable, sse4a_target_feature, "1.27.0", Some(44839)),
-    (unstable, tbm_target_feature, "1.27.0", Some(44839)),
     (unstable, wasm_target_feature, "1.30.0", Some(44839)),
     (unstable, x87_target_feature, "1.85.0", Some(44839)),
     // !!!!    !!!!    !!!!    !!!!   !!!!    !!!!    !!!!    !!!!    !!!!    !!!!    !!!!
@@ -472,6 +470,8 @@ declare_features! (
     (unstable, deprecated_suggestion, "1.61.0", Some(94785)),
     /// Allows deref patterns.
     (incomplete, deref_patterns, "1.79.0", Some(87121)),
+    /// Allows deriving the From trait on single-field structs.
+    (unstable, derive_from, "CURRENT_RUSTC_VERSION", Some(144889)),
     /// Tells rustdoc to automatically generate `#[doc(cfg(...))]`.
     (unstable, doc_auto_cfg, "1.58.0", Some(43781)),
     /// Allows `#[doc(cfg(...))]`.

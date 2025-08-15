@@ -1773,10 +1773,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     locations,
                 );
 
-                assert!(!matches!(
-                    tcx.impl_of_assoc(def_id).map(|imp| tcx.def_kind(imp)),
-                    Some(DefKind::Impl { of_trait: true })
-                ));
+                assert_eq!(tcx.trait_impl_of_assoc(def_id), None);
                 self.prove_predicates(
                     args.types().map(|ty| ty::ClauseKind::WellFormed(ty.into())),
                     locations,

@@ -731,18 +731,21 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     ) {
         let tcx = *self.tcx;
 
-        let trait_def_id = tcx.trait_of_assoc(def_id).unwrap();
+        let trait_def_id = tcx.parent(def_id);
         let virtual_trait_ref = ty::TraitRef::from_assoc(tcx, trait_def_id, virtual_instance.args);
         let existential_trait_ref = ty::ExistentialTraitRef::erase_self_ty(tcx, virtual_trait_ref);
         let concrete_trait_ref = existential_trait_ref.with_self_ty(tcx, dyn_ty);
 
-        let concrete_method = Instance::expect_resolve_for_vtable(
-            tcx,
-            self.typing_env,
-            def_id,
-            virtual_instance.args.rebase_onto(tcx, trait_def_id, concrete_trait_ref.args),
-            self.cur_span(),
-        );
+        let concrete_method = {
+            let _trace = enter_trace_span!(M, resolve::expect_resolve_for_vtable, ?def_id);
+            Instance::expect_resolve_for_vtable(
+                tcx,
+                self.typing_env,
+                def_id,
+                virtual_instance.args.rebase_onto(tcx, trait_def_id, concrete_trait_ref.args),
+                self.cur_span(),
+            )
+        };
         assert_eq!(concrete_instance, concrete_method);
     }
 
@@ -825,7 +828,11 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 place
             }
         };
-        let instance = ty::Instance::resolve_drop_in_place(*self.tcx, place.layout.ty);
+        let instance = {
+            let _trace =
+                enter_trace_span!(M, resolve::resolve_drop_in_place, ty = ?place.layout.ty);
+            ty::Instance::resolve_drop_in_place(*self.tcx, place.layout.ty)
+        };
         let fn_abi = self.fn_abi_of_instance(instance, ty::List::empty())?;
 
         let arg = self.mplace_to_ref(&place)?;

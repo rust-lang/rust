@@ -172,7 +172,7 @@ impl Rustc {
 
 impl Step for Rustc {
     type Output = ();
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
     const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -324,7 +324,7 @@ pub struct CodegenBackend {
 
 impl Step for CodegenBackend {
     type Output = ();
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
     const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -410,7 +410,7 @@ macro_rules! tool_check_step {
 
         impl Step for $name {
             type Output = ();
-            const ONLY_HOSTS: bool = true;
+            const IS_HOST: bool = true;
             /// Most of the tool-checks using this macro are run by default.
             const DEFAULT: bool = true $( && $default )?;
 

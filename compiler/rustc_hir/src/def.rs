@@ -31,6 +31,53 @@ pub enum CtorKind {
     Const,
 }
 
+/// A set of macro kinds, for macros that can have more than one kind
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Encodable, Decodable, Hash, Debug)]
+#[derive(HashStable_Generic)]
+pub struct MacroKinds(u8);
+bitflags::bitflags! {
+    impl MacroKinds: u8 {
+        const BANG = 1 << 0;
+        const ATTR = 1 << 1;
+        const DERIVE = 1 << 2;
+    }
+}
+
+impl From<MacroKind> for MacroKinds {
+    fn from(kind: MacroKind) -> Self {
+        match kind {
+            MacroKind::Bang => Self::BANG,
+            MacroKind::Attr => Self::ATTR,
+            MacroKind::Derive => Self::DERIVE,
+        }
+    }
+}
+
+impl MacroKinds {
+    /// Convert the MacroKinds to a static string.
+    ///
+    /// This hardcodes all the possibilities, in order to return a static string.
+    pub fn descr(self) -> &'static str {
+        match self {
+            // FIXME: change this to "function-like macro" and fix all tests
+            Self::BANG => "macro",
+            Self::ATTR => "attribute macro",
+            Self::DERIVE => "derive macro",
+            _ if self == (Self::ATTR | Self::BANG) => "attribute/function macro",
+            _ if self == (Self::DERIVE | Self::BANG) => "derive/function macro",
+            _ if self == (Self::ATTR | Self::DERIVE) => "attribute/derive macro",
+            _ if self.is_all() => "attribute/derive/function macro",
+            _ if self.is_empty() => "useless macro",
+            _ => unreachable!(),
+        }
+    }
+
+    /// Return an indefinite article (a/an) for use with `descr()`
+    pub fn article(self) -> &'static str {
+        if self.contains(Self::ATTR) { "an" } else { "a" }
+    }
+}
+
 /// An attribute that is not a macro; e.g., `#[inline]` or `#[rustfmt::skip]`.
 #[derive(Clone, Copy, PartialEq, Eq, Encodable, Decodable, Hash, Debug, HashStable_Generic)]
 pub enum NonMacroAttrKind {
@@ -101,7 +148,7 @@ pub enum DefKind {
     AssocConst,
 
     // Macro namespace
-    Macro(MacroKind),
+    Macro(MacroKinds),
 
     // Not namespaced (or they are, but we don't treat them so)
     ExternCrate,
@@ -177,7 +224,7 @@ impl DefKind {
             DefKind::AssocConst => "associated constant",
             DefKind::TyParam => "type parameter",
             DefKind::ConstParam => "const parameter",
-            DefKind::Macro(macro_kind) => macro_kind.descr(),
+            DefKind::Macro(kinds) => kinds.descr(),
             DefKind::LifetimeParam => "lifetime parameter",
             DefKind::Use => "import",
             DefKind::ForeignMod => "foreign module",
@@ -208,7 +255,7 @@ impl DefKind {
             | DefKind::Use
             | DefKind::InlineConst
             | DefKind::ExternCrate => "an",
-            DefKind::Macro(macro_kind) => macro_kind.article(),
+            DefKind::Macro(kinds) => kinds.article(),
             _ => "a",
         }
     }
@@ -845,10 +892,10 @@ impl<Id> Res<Id> {
         )
     }
 
-    pub fn macro_kind(self) -> Option<MacroKind> {
+    pub fn macro_kinds(self) -> Option<MacroKinds> {
         match self {
-            Res::Def(DefKind::Macro(kind), _) => Some(kind),
-            Res::NonMacroAttr(..) => Some(MacroKind::Attr),
+            Res::Def(DefKind::Macro(kinds), _) => Some(kinds),
+            Res::NonMacroAttr(..) => Some(MacroKinds::ATTR),
             _ => None,
         }
     }
