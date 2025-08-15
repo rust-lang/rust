@@ -2,7 +2,7 @@ use std::cell::RefCell;
 use std::collections::hash_map::Entry;
 
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
-use rustc_middle::mir::{self, Body, MirPhase, RuntimePhase};
+use rustc_middle::mir::{Body, MirDumper, MirPhase, RuntimePhase};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use tracing::trace;
@@ -275,7 +275,6 @@ fn run_passes_inner<'tcx>(
     }
 
     let prof_arg = tcx.sess.prof.enabled().then(|| format!("{:?}", body.source.def_id()));
-    let pass_num = true;
 
     if !body.should_skip() {
         let validate = validate_each & tcx.sess.opts.unstable_opts.validate_mir;
@@ -288,10 +287,16 @@ fn run_passes_inner<'tcx>(
                 continue;
             };
 
-            let dump_enabled = pass.is_mir_dump_enabled();
+            let dumper = if pass.is_mir_dump_enabled()
+                && let Some(dumper) = MirDumper::new(tcx, pass_name, body)
+            {
+                Some(dumper.set_show_pass_num().set_disambiguator(&"before"))
+            } else {
+                None
+            };
 
-            if dump_enabled {
-                mir::dump_mir(tcx, pass_num, pass_name, &"before", body, &|_, _| Ok(()));
+            if let Some(dumper) = dumper.as_ref() {
+                dumper.dump_mir(body);
             }
 
             if let Some(prof_arg) = &prof_arg {
@@ -303,9 +308,10 @@ fn run_passes_inner<'tcx>(
                 pass.run_pass(tcx, body);
             }
 
-            if dump_enabled {
-                mir::dump_mir(tcx, pass_num, pass_name, &"after", body, &|_, _| Ok(()));
+            if let Some(dumper) = dumper {
+                dumper.set_disambiguator(&"after").dump_mir(body);
             }
+
             if validate {
                 validate_body(tcx, body, format!("after pass {pass_name}"));
             }
@@ -348,5 +354,7 @@ pub(super) fn validate_body<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>, when
 
 pub(super) fn dump_mir_for_phase_change<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) {
     assert_eq!(body.pass_count, 0);
-    mir::dump_mir(tcx, true, body.phase.name(), &"after", body, &|_, _| Ok(()))
+    if let Some(dumper) = MirDumper::new(tcx, body.phase.name(), body) {
+        dumper.set_show_pass_num().set_disambiguator(&"after").dump_mir(body)
+    }
 }
