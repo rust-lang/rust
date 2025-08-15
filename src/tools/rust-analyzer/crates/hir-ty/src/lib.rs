@@ -292,7 +292,7 @@ impl<'db> MemoryMap<'db> {
     }
 }
 
-// FIXME(next-solver):
+// FIXME(next-solver): add a lifetime to this
 /// A concrete constant value
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ConstScalar {
