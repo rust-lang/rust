@@ -345,9 +345,9 @@
 # want to use vendoring. See https://forge.rust-lang.org/infra/other-installation-methods.html#source-code.
 #build.vendor = if "is a tarball source" && "vendor" dir exists && ".cargo/config.toml" file exists { true } else { false }
 
-# Typically the build system will build the Rust compiler twice. The second
-# compiler, however, will simply use its own libraries to link against. If you
-# would rather to perform a full bootstrap, compiling the compiler three times,
+# If you build the compiler more than twice (stage3+) or the standard library more than once
+# (stage 2+), the third compiler and second library will get uplifted from stage2 and stage1,
+# respectively. If you would like to disable this uplifting, and rather perform a full bootstrap,
 # then you can set this option to true.
 #
 # This is only useful for verifying that rustc generates reproducible builds.
