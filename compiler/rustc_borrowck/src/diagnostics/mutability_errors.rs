@@ -688,7 +688,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             return (false, false, None);
         };
 
-        let implemented_trait_item = self.infcx.tcx.associated_item(my_def).trait_item_def_id;
+        let implemented_trait_item = self.infcx.tcx.trait_item_of(my_def);
 
         (
             true,

@@ -248,7 +248,7 @@ impl<'tcx> LateLintPass<'tcx> for OnlyUsedInRecursion {
                         .tcx
                         .impl_trait_ref(item.owner_id)
                         .map(EarlyBinder::instantiate_identity)
-                    && let Some(trait_item_id) = cx.tcx.associated_item(owner_id).trait_item_def_id
+                    && let Some(trait_item_id) = cx.tcx.trait_item_of(owner_id)
                 {
                     (
                         trait_item_id,

@@ -481,13 +481,11 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
     fn check_impl_or_impl_item_live(&mut self, local_def_id: LocalDefId) -> bool {
         let (impl_block_id, trait_def_id) = match self.tcx.def_kind(local_def_id) {
             // assoc impl items of traits are live if the corresponding trait items are live
-            DefKind::AssocConst | DefKind::AssocTy | DefKind::AssocFn => (
-                self.tcx.local_parent(local_def_id),
-                self.tcx
-                    .associated_item(local_def_id)
-                    .trait_item_def_id
-                    .and_then(|def_id| def_id.as_local()),
-            ),
+            DefKind::AssocConst | DefKind::AssocTy | DefKind::AssocFn => {
+                let trait_item_id =
+                    self.tcx.trait_item_of(local_def_id).and_then(|def_id| def_id.as_local());
+                (self.tcx.local_parent(local_def_id), trait_item_id)
+            }
             // impl items are live if the corresponding traits are live
             DefKind::Impl { of_trait: true } => (
                 local_def_id,

@@ -1935,6 +1935,15 @@ impl<'tcx> TyCtxt<'tcx> {
         Some((parent, def_kind))
     }
 
+    /// Returns the trait item that is implemented by the given item `DefId`.
+    pub fn trait_item_of(self, def_id: impl IntoQueryParam<DefId>) -> Option<DefId> {
+        let assoc = self.opt_associated_item(def_id.into_query_param())?;
+        if assoc.container != AssocItemContainer::Impl {
+            return None;
+        }
+        assoc.trait_item_def_id
+    }
+
     /// If the given `DefId` is an associated item of a trait,
     /// returns the `DefId` of the trait; otherwise, returns `None`.
     pub fn trait_of_assoc(self, def_id: DefId) -> Option<DefId> {
