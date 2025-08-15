@@ -11,12 +11,13 @@ fn main() {
     struct TupStruct(i32);
     let tup_struct = TupStruct(42);
 
-    // #60186 carve outs `{i,u}{32,usize}` as non-lint pseudo-FCW warnings.
+    // Previously, #60186 had carve outs for `{i,u}{32,usize}` as non-lint pseudo-FCW warnings. Now,
+    // they all hard error.
 
     aux::bad_tup_indexing!(0usize);
-    //~^ WARN suffixes on a tuple index are invalid
+    //~^ ERROR suffixes on a tuple index are invalid
     aux::bad_tup_struct_indexing!(tup_struct, 0isize);
-    //~^ WARN suffixes on a tuple index are invalid
+    //~^ ERROR suffixes on a tuple index are invalid
 
     // Not part of the #60186 carve outs.
 

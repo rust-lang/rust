@@ -2226,21 +2226,7 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn expect_no_tuple_index_suffix(&self, span: Span, suffix: Symbol) {
-        if [sym::i32, sym::u32, sym::isize, sym::usize].contains(&suffix) {
-            // #59553: warn instead of reject out of hand to allow the fix to percolate
-            // through the ecosystem when people fix their macros
-            self.dcx().emit_warn(errors::InvalidLiteralSuffixOnTupleIndex {
-                span,
-                suffix,
-                exception: true,
-            });
-        } else {
-            self.dcx().emit_err(errors::InvalidLiteralSuffixOnTupleIndex {
-                span,
-                suffix,
-                exception: false,
-            });
-        }
+        self.dcx().emit_err(errors::InvalidLiteralSuffixOnTupleIndex { span, suffix });
     }
 
     /// Matches `'-' lit | lit` (cf. `ast_validation::AstValidator::check_expr_within_pat`).
