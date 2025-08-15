@@ -21,6 +21,6 @@ fn verify_features(path: &Path) {
     eprintln!("verify {path:?}");
     let file = rfs::read(&path);
 
-    let mut validator = wasmparser::Validator::new_with_features(wasmparser::WasmFeatures::WASM1);
+    let mut validator = wasmparser::Validator::new_with_features(wasmparser::WasmFeatures::MVP);
     validator.validate_all(&file).unwrap();
 }
