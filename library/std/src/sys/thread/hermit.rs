@@ -1,10 +1,5 @@
-#![allow(dead_code)]
-
-use super::hermit_abi;
-use crate::ffi::CStr;
-use crate::mem::ManuallyDrop;
 use crate::num::NonZero;
-use crate::time::{Duration, Instant};
+use crate::time::Duration;
 use crate::{io, ptr};
 
 pub type Tid = hermit_abi::Tid;
@@ -68,57 +63,30 @@ impl Thread {
         }
     }
 
-    #[inline]
-    pub fn yield_now() {
-        unsafe {
-            hermit_abi::yield_now();
-        }
-    }
-
-    #[inline]
-    pub fn set_name(_name: &CStr) {
-        // nope
-    }
-
-    #[inline]
-    pub fn sleep(dur: Duration) {
-        let micros = dur.as_micros() + if dur.subsec_nanos() % 1_000 > 0 { 1 } else { 0 };
-        let micros = u64::try_from(micros).unwrap_or(u64::MAX);
-
-        unsafe {
-            hermit_abi::usleep(micros);
-        }
-    }
-
-    pub fn sleep_until(deadline: Instant) {
-        let now = Instant::now();
-
-        if let Some(delay) = deadline.checked_duration_since(now) {
-            Self::sleep(delay);
-        }
-    }
-
     pub fn join(self) {
         unsafe {
             let _ = hermit_abi::join(self.tid);
         }
     }
-
-    #[inline]
-    pub fn id(&self) -> Tid {
-        self.tid
-    }
-
-    #[inline]
-    pub fn into_id(self) -> Tid {
-        ManuallyDrop::new(self).tid
-    }
-}
-
-pub(crate) fn current_os_id() -> Option<u64> {
-    None
 }
 
 pub fn available_parallelism() -> io::Result<NonZero<usize>> {
     unsafe { Ok(NonZero::new_unchecked(hermit_abi::available_parallelism())) }
+}
+
+#[inline]
+pub fn sleep(dur: Duration) {
+    let micros = dur.as_micros() + if dur.subsec_nanos() % 1_000 > 0 { 1 } else { 0 };
+    let micros = u64::try_from(micros).unwrap_or(u64::MAX);
+
+    unsafe {
+        hermit_abi::usleep(micros);
+    }
+}
+
+#[inline]
+pub fn yield_now() {
+    unsafe {
+        hermit_abi::yield_now();
+    }
 }
