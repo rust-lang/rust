@@ -19,6 +19,7 @@ use crate::errors::{
     NestedCVariadicType, ReturnTypesUseThinArrow,
 };
 use crate::parser::item::FrontMatterParsingMode;
+use crate::parser::{FnContext, FnParseMode};
 use crate::{exp, maybe_recover_from_interpolated_ty_qpath};
 
 /// Signals whether parsing a type should allow `+`.
@@ -769,7 +770,12 @@ impl<'a> Parser<'a> {
         if self.may_recover() && self.token == TokenKind::Lt {
             self.recover_fn_ptr_with_generics(lo, &mut params, param_insertion_point)?;
         }
-        let decl = self.parse_fn_decl(|_| false, AllowPlus::No, recover_return_sign)?;
+        let mode = crate::parser::item::FnParseMode {
+            req_name: |_| false,
+            context: FnContext::Free,
+            req_body: false,
+        };
+        let decl = self.parse_fn_decl(&mode, AllowPlus::No, recover_return_sign)?;
 
         let decl_span = span_start.to(self.prev_token.span);
         Ok(TyKind::FnPtr(Box::new(FnPtrTy {
@@ -1314,7 +1320,8 @@ impl<'a> Parser<'a> {
         self.bump();
         let args_lo = self.token.span;
         let snapshot = self.create_snapshot_for_diagnostic();
-        match self.parse_fn_decl(|_| false, AllowPlus::No, RecoverReturnSign::OnlyFatArrow) {
+        let mode = FnParseMode { req_name: |_| false, context: FnContext::Free, req_body: false };
+        match self.parse_fn_decl(&mode, AllowPlus::No, RecoverReturnSign::OnlyFatArrow) {
             Ok(decl) => {
                 self.dcx().emit_err(ExpectedFnPathFoundFnKeyword { fn_token_span });
                 Some(ast::Path {
@@ -1400,8 +1407,9 @@ impl<'a> Parser<'a> {
 
         // Parse `(T, U) -> R`.
         let inputs_lo = self.token.span;
+        let mode = FnParseMode { req_name: |_| false, context: FnContext::Free, req_body: false };
         let inputs: ThinVec<_> =
-            self.parse_fn_params(|_| false)?.into_iter().map(|input| input.ty).collect();
+            self.parse_fn_params(&mode)?.into_iter().map(|input| input.ty).collect();
         let inputs_span = inputs_lo.to(self.prev_token.span);
         let output = self.parse_ret_ty(AllowPlus::No, RecoverQPath::No, RecoverReturnSign::No)?;
         let args = ast::ParenthesizedArgs {
