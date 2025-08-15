@@ -1340,3 +1340,23 @@ float_test! {
         assert_eq!(Ordering::Less, Float::total_cmp(&-s_nan(), &s_nan()));
     }
 }
+
+float_test! {
+    name: recip,
+    attrs: {
+        f16: #[cfg(any(miri, target_has_reliable_f16_math))],
+        f128: #[cfg(any(miri, target_has_reliable_f128_math))],
+    },
+    test<Float> {
+        let nan: Float = Float::NAN;
+        let inf: Float = Float::INFINITY;
+        let neg_inf: Float = Float::NEG_INFINITY;
+        assert_biteq!((1.0 as Float).recip(), 1.0);
+        assert_biteq!((2.0 as Float).recip(), 0.5);
+        assert_biteq!((-0.4 as Float).recip(), -2.5);
+        assert_biteq!((0.0 as Float).recip(), inf);
+        assert!(nan.recip().is_nan());
+        assert_biteq!(inf.recip(), 0.0);
+        assert_biteq!(neg_inf.recip(), -0.0);
+    }
+}
