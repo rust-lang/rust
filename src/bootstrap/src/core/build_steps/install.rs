@@ -7,6 +7,7 @@ use std::path::{Component, Path, PathBuf};
 use std::{env, fs};
 
 use crate::core::build_steps::dist;
+use crate::core::build_steps::tool::RustcPrivateCompilers;
 use crate::core::builder::{Builder, RunConfig, ShouldRun, Step};
 use crate::core::config::{Config, TargetSelection};
 use crate::utils::exec::command;
@@ -227,7 +228,7 @@ install!((self, builder, _config),
     };
     RustAnalyzer, alias = "rust-analyzer", Self::should_build(_config), IS_HOST: true, {
         if let Some(tarball) =
-            builder.ensure(dist::RustAnalyzer { build_compiler: self.compiler, target: self.target })
+            builder.ensure(dist::RustAnalyzer { compilers: RustcPrivateCompilers::from_build_compiler(builder, self.compiler, self.target), target: self.target })
         {
             install_sh(builder, "rust-analyzer", self.compiler.stage, Some(self.target), &tarball);
         } else {
