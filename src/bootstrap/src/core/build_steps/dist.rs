@@ -1426,7 +1426,7 @@ impl Step for Clippy {
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct Miri {
-    pub build_compiler: Compiler,
+    pub compilers: RustcPrivateCompilers,
     pub target: TargetSelection,
 }
 
@@ -1442,11 +1442,7 @@ impl Step for Miri {
 
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(Miri {
-            build_compiler: run.builder.compiler_for(
-                run.builder.top_stage,
-                run.builder.config.host_target,
-                run.target,
-            ),
+            compilers: RustcPrivateCompilers::new(run.builder, run.builder.top_stage, run.target),
             target: run.target,
         });
     }
@@ -1459,10 +1455,8 @@ impl Step for Miri {
             return None;
         }
 
-        let compilers =
-            RustcPrivateCompilers::from_build_compiler(builder, self.build_compiler, self.target);
-        let miri = builder.ensure(tool::Miri::from_compilers(compilers));
-        let cargomiri = builder.ensure(tool::CargoMiri::from_compilers(compilers));
+        let miri = builder.ensure(tool::Miri::from_compilers(self.compilers));
+        let cargomiri = builder.ensure(tool::CargoMiri::from_compilers(self.compilers));
 
         let mut tarball = Tarball::new(builder, "miri", &self.target.triple);
         tarball.set_overlay(OverlayKind::Miri);
@@ -1471,6 +1465,10 @@ impl Step for Miri {
         tarball.add_file(&cargomiri.tool_path, "bin", FileType::Executable);
         tarball.add_legal_and_readme_to("share/doc/miri");
         Some(tarball.generate())
+    }
+
+    fn metadata(&self) -> Option<StepMetadata> {
+        Some(StepMetadata::dist("miri", self.target).built_by(self.compilers.build_compiler()))
     }
 }
 
@@ -1677,7 +1675,7 @@ impl Step for Extended {
         add_component!("rust-analyzer" => RustAnalyzer { compilers: rustc_private_compilers, target });
         add_component!("llvm-components" => LlvmTools { target });
         add_component!("clippy" => Clippy { compilers: rustc_private_compilers, target });
-        add_component!("miri" => Miri { build_compiler: compiler, target });
+        add_component!("miri" => Miri { compilers: rustc_private_compilers, target });
         add_component!("analysis" => Analysis { build_compiler: compiler, target });
         add_component!("rustc-codegen-cranelift" => CraneliftCodegenBackend {
             build_compiler: compiler,
