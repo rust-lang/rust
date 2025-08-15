@@ -311,7 +311,7 @@ mod prim_bool {}
 /// [`()`]: prim@unit
 /// [2024 edition]: <https://doc.rust-lang.org/edition-guide/rust-2024/never-type-fallback.html>
 ///
-#[unstable(feature = "never_type", issue = "35121")]
+#[stable(feature = "never_type", since = "CURRENT_RUSTC_VERSION")]
 mod prim_never {}
 
 // Required to make auto trait impls render.
