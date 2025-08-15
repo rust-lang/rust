@@ -910,7 +910,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // const stability checking here too, I guess.
         if self.tcx.is_conditionally_const(callee_did) {
             let q = self.tcx.const_conditions(callee_did);
-            // FIXME(const_trait_impl): Use this span with a better cause code.
             for (idx, (cond, pred_span)) in
                 q.instantiate(self.tcx, callee_args).into_iter().enumerate()
             {
