@@ -1148,6 +1148,13 @@ pub(crate) fn convert_ty_for_result<'db>(interner: DbInterner<'db>, ty: Ty<'db>)
                         }),
                     );
 
+                    // Rust and chalk have slightly different
+                    // representation for trait objects.
+                    //
+                    // Chalk uses `for<T0> for<'a> T0: Trait<'a>` while rustc
+                    // uses `ExistentialPredicate`s, which do not have a self ty.
+                    // We need to shift escaping bound vars by 1 to accommodate
+                    // the newly introduced `for<T0>` binder.
                     let p = shift_vars(interner, p, 1);
 
                     let where_clause = match p.skip_binder() {
