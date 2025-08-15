@@ -2021,7 +2021,6 @@ ui/parser/issues/issue-5806.rs
 ui/parser/issues/issue-58094-missing-right-square-bracket.rs
 ui/parser/issues/issue-58856-1.rs
 ui/parser/issues/issue-58856-2.rs
-ui/parser/issues/issue-59418.rs
 ui/parser/issues/issue-60075.rs
 ui/parser/issues/issue-61858.rs
 ui/parser/issues/issue-62524.rs
