@@ -849,8 +849,9 @@ impl<'a> Parser<'a> {
 
     fn parse_precise_capturing_args(
         &mut self,
-    ) -> PResult<'a, (ThinVec<PreciseCapturingArg>, Span)> {
-        let lo = self.token.span;
+        lo: Span,
+        parens: ast::Parens,
+    ) -> PResult<'a, GenericBound> {
         self.expect_lt()?;
         let (args, _, _) = self.parse_seq_to_before_tokens(
             &[exp!(Gt)],
@@ -876,7 +877,22 @@ impl<'a> Parser<'a> {
             },
         )?;
         self.expect_gt()?;
-        Ok((args, lo.to(self.prev_token.span)))
+
+        if let ast::Parens::Yes = parens {
+            self.expect(exp!(CloseParen))?;
+            let hi = self.prev_token.span;
+            let mut diag = self
+                .dcx()
+                .struct_span_err(lo.to(hi), "precise capturing lists may not be parenthesized");
+            diag.multipart_suggestion(
+                "remove the parentheses",
+                vec![(lo, String::new()), (hi, String::new())],
+                Applicability::MachineApplicable,
+            );
+            diag.emit();
+        }
+
+        Ok(GenericBound::Use(args, lo.to(self.prev_token.span)))
     }
 
     /// Is a `dyn B0 + ... + Bn` type allowed here?
@@ -987,24 +1003,18 @@ impl<'a> Parser<'a> {
     /// BOUND = TY_BOUND | LT_BOUND
     /// ```
     fn parse_generic_bound(&mut self) -> PResult<'a, GenericBound> {
-        let lo = self.token.span;
         let leading_token = self.prev_token;
+        let lo = self.token.span;
+
         let parens = if self.eat(exp!(OpenParen)) { ast::Parens::Yes } else { ast::Parens::No };
 
-        let bound = if self.token.is_lifetime() {
-            self.parse_generic_lt_bound(lo, parens)?
+        if self.token.is_lifetime() {
+            self.parse_generic_lt_bound(lo, parens)
         } else if self.eat_keyword(exp!(Use)) {
-            // parse precise captures, if any. This is `use<'lt, 'lt, P, P>`; a list of
-            // lifetimes and ident params (including SelfUpper). These are validated later
-            // for order, duplication, and whether they actually reference params.
-            let use_span = self.prev_token.span;
-            let (args, args_span) = self.parse_precise_capturing_args()?;
-            GenericBound::Use(args, use_span.to(args_span))
+            self.parse_precise_capturing_args(lo, parens)
         } else {
-            self.parse_generic_ty_bound(lo, parens, &leading_token)?
-        };
-
-        Ok(bound)
+            self.parse_generic_ty_bound(lo, parens, &leading_token)
+        }
     }
 
     /// Parses a lifetime ("outlives") bound, e.g. `'a`, according to:
