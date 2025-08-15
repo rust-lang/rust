@@ -33,20 +33,6 @@ fn test_mul_add() {
 }
 
 #[test]
-fn test_recip() {
-    let nan: f32 = f32::NAN;
-    let inf: f32 = f32::INFINITY;
-    let neg_inf: f32 = f32::NEG_INFINITY;
-    assert_biteq!(1.0f32.recip(), 1.0);
-    assert_biteq!(2.0f32.recip(), 0.5);
-    assert_biteq!((-0.4f32).recip(), -2.5);
-    assert_biteq!(0.0f32.recip(), inf);
-    assert!(nan.recip().is_nan());
-    assert_biteq!(inf.recip(), 0.0);
-    assert_biteq!(neg_inf.recip(), -0.0);
-}
-
-#[test]
 fn test_powi() {
     let nan: f32 = f32::NAN;
     let inf: f32 = f32::INFINITY;

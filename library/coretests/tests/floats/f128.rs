@@ -44,22 +44,12 @@ fn test_mul_add() {
 
 #[test]
 #[cfg(any(miri, target_has_reliable_f128_math))]
-fn test_recip() {
-    let nan: f128 = f128::NAN;
-    let inf: f128 = f128::INFINITY;
-    let neg_inf: f128 = f128::NEG_INFINITY;
-    assert_biteq!(1.0f128.recip(), 1.0);
-    assert_biteq!(2.0f128.recip(), 0.5);
-    assert_biteq!((-0.4f128).recip(), -2.5);
-    assert_biteq!(0.0f128.recip(), inf);
+fn test_max_recip() {
     assert_approx_eq!(
         f128::MAX.recip(),
         8.40525785778023376565669454330438228902076605e-4933,
         1e-4900
     );
-    assert!(nan.recip().is_nan());
-    assert_biteq!(inf.recip(), 0.0);
-    assert_biteq!(neg_inf.recip(), -0.0);
 }
 
 #[test]
