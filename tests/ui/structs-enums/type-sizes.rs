@@ -3,7 +3,6 @@
 
 #![allow(non_camel_case_types)]
 #![allow(dead_code)]
-#![feature(never_type)]
 #![feature(pointer_is_aligned_to)]
 #![feature(rustc_attrs)]
 

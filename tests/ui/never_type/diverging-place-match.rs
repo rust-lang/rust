@@ -1,5 +1,3 @@
-#![feature(never_type)]
-
 fn not_a_read() -> ! {
     unsafe {
     //~^ ERROR mismatched types

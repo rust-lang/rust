@@ -2,7 +2,6 @@
 //
 //@ check-pass
 
-#![feature(never_type)]
 #![expect(unreachable_code)]
 
 fn foo(x: !) -> ! {

@@ -3,8 +3,6 @@
 //
 //@ check-fail
 
-#![feature(never_type)]
-
 mod inner {
     pub struct Wrapper<T>(T);
 }

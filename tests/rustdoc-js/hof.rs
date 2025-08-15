@@ -1,5 +1,3 @@
-#![feature(never_type)]
-
 pub struct First<T>(T);
 pub struct Second<T>(T);
 pub struct Third<T>(T);

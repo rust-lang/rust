@@ -1,7 +1,7 @@
 // Regression test for <https://github.com/rust-lang/rust/pull/149545#discussion_r2585205872>
 //
 //@ check-pass
-#![feature(guard_patterns, never_type)]
+#![feature(guard_patterns)]
 #![expect(incomplete_features)]
 #![deny(unreachable_code)]
 

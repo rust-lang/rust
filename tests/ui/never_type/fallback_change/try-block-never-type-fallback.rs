@@ -9,7 +9,6 @@
 // causing a type error (since (): Into<!> does not hold).
 // In edition 2024, it falls back to !, allowing the code to compile correctly.
 
-#![feature(never_type)]
 #![feature(try_blocks)]
 
 fn bar(_: Result<impl Into<!>, u32>) {
