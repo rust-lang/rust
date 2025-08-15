@@ -56,7 +56,7 @@ fn should_build_extended_tool(builder: &Builder<'_>, tool: &str) -> bool {
     builder.config.tools.as_ref().is_none_or(|tools| tools.contains(tool))
 }
 
-#[derive(Debug, PartialOrd, Ord, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct Docs {
     pub host: TargetSelection,
 }
@@ -96,7 +96,7 @@ impl Step for Docs {
     }
 }
 
-#[derive(Debug, PartialOrd, Ord, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct JsonDocs {
     build_compiler: Compiler,
     target: TargetSelection,
@@ -369,7 +369,7 @@ fn get_cc_search_dirs(
 ///
 /// This contains all the bits and pieces to run the MinGW Windows targets
 /// without any extra installed software (e.g., we bundle gcc, libraries, etc.).
-#[derive(Debug, PartialOrd, Ord, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct Mingw {
     target: TargetSelection,
 }
@@ -414,7 +414,7 @@ impl Step for Mingw {
 /// - The licenses of all code used by the compiler.
 ///
 /// It does not include any standard library.
-#[derive(Debug, PartialOrd, Ord, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct Rustc {
     /// This is the compiler that we will *ship* in this dist step.
     pub target_compiler: Compiler,
@@ -755,7 +755,7 @@ fn copy_target_libs(
 ///
 /// Note that due to uplifting, we actually ship the stage 1 library
 /// (built using the stage1 compiler) even with a stage 2 dist, unless `full-bootstrap` is enabled.
-#[derive(Debug, PartialOrd, Ord, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct Std {
     /// Compiler that will build the standard library.
     pub build_compiler: Compiler,
@@ -823,7 +823,7 @@ impl Step for Std {
 /// `rust.download-rustc`.
 ///
 /// (Don't confuse this with [`RustDev`], without the `c`!)
-#[derive(Debug, PartialOrd, Ord, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct RustcDev {
     /// The compiler that will build rustc which will be shipped in this component.
     build_compiler: Compiler,
@@ -1061,7 +1061,7 @@ fn copy_src_dirs(
     }
 }
 
-#[derive(Debug, PartialOrd, Ord, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct Src;
 
 impl Step for Src {
@@ -1122,7 +1122,7 @@ impl Step for Src {
     }
 }
 
-#[derive(Debug, PartialOrd, Ord, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct PlainSourceTarball;
 
 impl Step for PlainSourceTarball {
@@ -2437,7 +2437,7 @@ impl Step for LlvmTools {
 
 /// Distributes the `llvm-bitcode-linker` tool so that it can be used by a compiler whose host
 /// is `target`.
-#[derive(Debug, PartialOrd, Ord, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct LlvmBitcodeLinker {
     /// The linker will be compiled by this compiler.
     pub build_compiler: Compiler,
