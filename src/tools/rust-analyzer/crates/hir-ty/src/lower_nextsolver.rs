@@ -1594,6 +1594,7 @@ fn fn_sig_for_enum_variant_constructor<'db>(
     }))
 }
 
+// FIXME(next-solver): should merge this with `explicit_item_bounds` in some way
 pub(crate) fn associated_ty_item_bounds<'db>(
     db: &'db dyn HirDatabase,
     type_alias: TypeAliasId,
