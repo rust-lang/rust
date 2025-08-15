@@ -16,6 +16,7 @@
 #![crate_type = "lib"]
 #![allow(dead_code)]
 #![allow(deprecated)]
+#![feature(derive_from)]
 
 // Empty struct.
 #[derive(Clone, Copy, Debug, Default, Hash, PartialEq, Eq, PartialOrd, Ord)]
@@ -36,6 +37,14 @@ struct Point {
 struct PackedPoint {
     x: u32,
     y: u32,
+}
+
+#[derive(Clone, Copy, Debug, Default, From, Hash, PartialEq, Eq, PartialOrd, Ord)]
+struct TupleSingleField(u32);
+
+#[derive(Clone, Copy, Debug, Default, From, Hash, PartialEq, Eq, PartialOrd, Ord)]
+struct SingleField {
+    foo: bool,
 }
 
 // A large struct. Note: because this derives `Copy`, it gets the simple
@@ -86,7 +95,7 @@ struct PackedManualCopy(u32);
 impl Copy for PackedManualCopy {}
 
 // A struct with an unsized field. Some derives are not usable in this case.
-#[derive(Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, From, Hash, PartialEq, Eq, PartialOrd, Ord)]
 struct Unsized([u32]);
 
 trait Trait {
