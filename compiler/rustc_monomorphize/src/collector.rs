@@ -789,7 +789,35 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
                 // *Before* monomorphizing, record that we already handled this mention.
                 self.used_mentioned_items.insert(MentionedItem::Fn(callee_ty));
                 let callee_ty = self.monomorphize(callee_ty);
-                visit_fn_use(self.tcx, callee_ty, true, source, &mut self.used_items)
+
+                // HACK(explicit_tail_calls): collect tail calls to `#[track_caller]` functions as indirect,
+                // because we later call them as such, to prevent issues with ABI incompatibility.
+                // Ideally we'd replace such tail calls with normal call + return, but this requires
+                // post-mono MIR optimizations, which we don't yet have.
+                let force_indirect_call =
+                    if matches!(terminator.kind, mir::TerminatorKind::TailCall { .. })
+                        && let &ty::FnDef(def_id, args) = callee_ty.kind()
+                        && let instance = ty::Instance::expect_resolve(
+                            self.tcx,
+                            ty::TypingEnv::fully_monomorphized(),
+                            def_id,
+                            args,
+                            source,
+                        )
+                        && instance.def.requires_caller_location(self.tcx)
+                    {
+                        true
+                    } else {
+                        false
+                    };
+
+                visit_fn_use(
+                    self.tcx,
+                    callee_ty,
+                    !force_indirect_call,
+                    source,
+                    &mut self.used_items,
+                )
             }
             mir::TerminatorKind::Drop { ref place, .. } => {
                 let ty = place.ty(self.body, self.tcx).ty;
