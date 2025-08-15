@@ -23,7 +23,7 @@ where
 
     let ty = place.ty(local_decls, tcx).ty;
     let unsized_tail = || tcx.struct_tail_for_codegen(ty, typing_env);
-    
+
     // Try to normalize the type to resolve any generic parameters
     let normalized_ty = match tcx.try_normalize_erasing_regions(typing_env, ty) {
         Ok(normalized) => normalized,
@@ -32,12 +32,12 @@ where
             ty
         }
     };
-    
+
     match tcx.layout_of(typing_env.as_query_input(normalized_ty)) {
         Ok(layout) => {
             if layout.align.abi <= pack
-                && (layout.is_sized()
-                    || matches!(unsized_tail().kind(), ty::Slice(..) | ty::Str)) {
+                && (layout.is_sized() || matches!(unsized_tail().kind(), ty::Slice(..) | ty::Str))
+            {
                 // If the packed alignment is greater or equal to the field alignment, the type won't be
                 // further disaligned.
                 // However we need to ensure the field is sized; for unsized fields, `layout.align` is
@@ -58,7 +58,7 @@ where
             // We cannot figure out the layout. This often happens with generic types.
             // For const generic arrays like [u8; CAP], we can make a reasonable assumption
             // about their alignment based on the element type.
-            
+
             // Try to determine alignment from the type structure
             if let Some(element_align) = get_element_alignment(tcx, normalized_ty) {
                 if element_align <= pack {
@@ -75,7 +75,7 @@ where
 }
 
 /// Try to determine the alignment of an array element type
-fn get_element_alignment<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<Align> {
+fn get_element_alignment<'tcx>(tcx: TyCtxt<'tcx>, ty: ty::Ty<'tcx>) -> Option<Align> {
     match ty.kind() {
         ty::Array(element_ty, _) => {
             // For arrays, the alignment is the same as the element type
@@ -98,7 +98,6 @@ fn get_element_alignment<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<Align>
         _ => None,
     }
 }
-
 pub fn is_within_packed<'tcx, L>(
     tcx: TyCtxt<'tcx>,
     local_decls: &L,
