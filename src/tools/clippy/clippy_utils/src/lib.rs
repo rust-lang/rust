@@ -1,6 +1,6 @@
 #![feature(box_patterns)]
 #![feature(macro_metavar_expr)]
-#![feature(never_type)]
+#![cfg_attr(bootstrap, feature(never_type))]
 #![feature(rustc_private)]
 #![feature(unwrap_infallible)]
 #![recursion_limit = "512"]
