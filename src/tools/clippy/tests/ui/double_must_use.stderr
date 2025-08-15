@@ -1,5 +1,5 @@
 error: this function has a `#[must_use]` attribute with no message, but returns a type already considered as `#[must_use]`
-  --> tests/ui/double_must_use.rs:8:1
+  --> tests/ui/double_must_use.rs:7:1
    |
 LL | #[must_use]
    | ----------- help: remove the attribute
@@ -11,7 +11,7 @@ LL | pub fn must_use_result() -> Result<(), ()> {
    = help: to override `-D warnings` add `#[allow(clippy::double_must_use)]`
 
 error: this function has a `#[must_use]` attribute with no message, but returns a type already considered as `#[must_use]`
-  --> tests/ui/double_must_use.rs:15:1
+  --> tests/ui/double_must_use.rs:14:1
    |
 LL | #[must_use]
    | ----------- help: remove the attribute
@@ -19,14 +19,14 @@ LL | pub fn must_use_tuple() -> (Result<(), ()>, u8) {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: the return type is `std::result::Result` in tuple element 0
-  --> tests/ui/double_must_use.rs:15:28
+  --> tests/ui/double_must_use.rs:14:28
    |
 LL | pub fn must_use_tuple() -> (Result<(), ()>, u8) {
    |                            ^^^^^^^^^^^^^^^^^^^^
    = note: alternatively, you may add an explicit reason to the `must_use` attribute
 
 error: this function has a `#[must_use]` attribute with no message, but returns a type already considered as `#[must_use]`
-  --> tests/ui/double_must_use.rs:22:1
+  --> tests/ui/double_must_use.rs:21:1
    |
 LL | #[must_use]
    | ----------- help: remove the attribute
@@ -34,14 +34,14 @@ LL | pub fn must_use_array() -> [Result<(), ()>; 1] {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: the return type is array of `std::result::Result`s
-  --> tests/ui/double_must_use.rs:22:28
+  --> tests/ui/double_must_use.rs:21:28
    |
 LL | pub fn must_use_array() -> [Result<(), ()>; 1] {
    |                            ^^^^^^^^^^^^^^^^^^^
    = note: alternatively, you may add an explicit reason to the `must_use` attribute
 
 error: this function has a `#[must_use]` attribute with no message, but returns a type already considered as `#[must_use]`
-  --> tests/ui/double_must_use.rs:40:1
+  --> tests/ui/double_must_use.rs:39:1
    |
 LL | #[must_use]
    | ----------- help: remove the attribute
@@ -49,14 +49,14 @@ LL | async fn async_must_use_result() -> Result<(), ()> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: the return type is implementer of `std::future::Future`
-  --> tests/ui/double_must_use.rs:40:37
+  --> tests/ui/double_must_use.rs:39:37
    |
 LL | async fn async_must_use_result() -> Result<(), ()> {
    |                                     ^^^^^^^^^^^^^^
    = note: alternatively, you may add an explicit reason to the `must_use` attribute
 
 error: this function has a `#[must_use]` attribute with no message, but returns a type already considered as `#[must_use]`
-  --> tests/ui/double_must_use.rs:55:1
+  --> tests/ui/double_must_use.rs:54:1
    |
 LL | #[must_use]
    | ----------- help: remove the attribute
@@ -64,14 +64,14 @@ LL | pub fn must_use_result_with_uninhabited_2() -> Result<T, !> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: the return type is `T` in a `Result` with an uninhabited error
-  --> tests/ui/double_must_use.rs:55:48
+  --> tests/ui/double_must_use.rs:54:48
    |
 LL | pub fn must_use_result_with_uninhabited_2() -> Result<T, !> {
    |                                                ^^^^^^^^^^^^
    = note: alternatively, you may add an explicit reason to the `must_use` attribute
 
 error: this function has a `#[must_use]` attribute with no message, but returns a type already considered as `#[must_use]`
-  --> tests/ui/double_must_use.rs:66:1
+  --> tests/ui/double_must_use.rs:65:1
    |
 LL | #[must_use]
    | ----------- help: remove the attribute
@@ -79,7 +79,7 @@ LL | pub fn must_use_controlflow_with_uninhabited_2() -> ControlFlow<std::conver
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: the return type is `T` in a `ControlFlow` with an uninhabited break
-  --> tests/ui/double_must_use.rs:66:53
+  --> tests/ui/double_must_use.rs:65:53
    |
 LL | pub fn must_use_controlflow_with_uninhabited_2() -> ControlFlow<std::convert::Infallible, T> {
    |                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
