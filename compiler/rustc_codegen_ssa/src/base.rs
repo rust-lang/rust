@@ -647,7 +647,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
 ) -> OngoingCodegen<B> {
     // Skip crate items and just output metadata in -Z no-codegen mode.
     if tcx.sess.opts.unstable_opts.no_codegen || !tcx.sess.opts.output_types.should_codegen() {
-        let ongoing_codegen = start_async_codegen(backend, tcx, target_cpu, &[]);
+        let ongoing_codegen = start_async_codegen(backend, tcx, target_cpu);
 
         ongoing_codegen.codegen_finished(tcx);
 
@@ -665,8 +665,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
 
     // Run the monomorphization collector and partition the collected items into
     // codegen units.
-    let MonoItemPartitions { codegen_units, autodiff_items, .. } =
-        tcx.collect_and_partition_mono_items(());
+    let MonoItemPartitions { codegen_units, .. } = tcx.collect_and_partition_mono_items(());
 
     // Force all codegen_unit queries so they are already either red or green
     // when compile_codegen_unit accesses them. We are not able to re-execute
@@ -679,7 +678,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
         }
     }
 
-    let ongoing_codegen = start_async_codegen(backend.clone(), tcx, target_cpu, autodiff_items);
+    let ongoing_codegen = start_async_codegen(backend.clone(), tcx, target_cpu);
 
     // Codegen an allocator shim, if necessary.
     if let Some(kind) = allocator_kind_for_codegen(tcx) {
