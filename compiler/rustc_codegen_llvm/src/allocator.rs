@@ -8,11 +8,12 @@ use rustc_middle::bug;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{DebugInfo, OomStrategy};
 use rustc_symbol_mangling::mangle_internal_symbol;
+use smallvec::SmallVec;
 
 use crate::builder::SBuilder;
 use crate::declare::declare_simple_fn;
 use crate::llvm::{self, False, True, Type, Value};
-use crate::{SimpleCx, attributes, debuginfo};
+use crate::{SimpleCx, attributes, debuginfo, llvm_util};
 
 pub(crate) unsafe fn codegen(
     tcx: TyCtxt<'_>,
@@ -147,6 +148,20 @@ fn create_wrapper_function(
         llvm::Visibility::from_generic(tcx.sess.default_visibility()),
         ty,
     );
+
+    let mut attrs = SmallVec::<[_; 2]>::new();
+
+    let target_cpu = llvm_util::target_cpu(tcx.sess);
+    let target_cpu_attr = llvm::CreateAttrStringValue(cx.llcx, "target-cpu", target_cpu);
+
+    let tune_cpu_attr = llvm_util::tune_cpu(tcx.sess)
+        .map(|tune_cpu| llvm::CreateAttrStringValue(cx.llcx, "tune-cpu", tune_cpu));
+
+    attrs.push(target_cpu_attr);
+    attrs.extend(tune_cpu_attr);
+
+    attributes::apply_to_llfn(llfn, llvm::AttributePlace::Function, &attrs);
+
     let no_return = if no_return {
         // -> ! DIFlagNoReturn
         let no_return = llvm::AttributeKind::NoReturn.create_attr(cx.llcx);
