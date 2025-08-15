@@ -1360,3 +1360,24 @@ float_test! {
         assert_biteq!(neg_inf.recip(), -0.0);
     }
 }
+
+float_test! {
+    name: powi,
+    attrs: {
+        const: #[cfg(false)],
+        f16: #[cfg(all(not(miri), target_has_reliable_f16_math))],
+        f128: #[cfg(all(not(miri), target_has_reliable_f128_math))],
+    },
+    test<Float> {
+        let nan: Float = Float::NAN;
+        let inf: Float = Float::INFINITY;
+        let neg_inf: Float = Float::NEG_INFINITY;
+        assert_biteq!(Float::ONE.powi(1), Float::ONE);
+        assert_approx_eq!((-3.1 as Float).powi(2), 9.6100000000000005506706202140776519387);
+        assert_approx_eq!((5.9 as Float).powi(-2), 0.028727377190462507313100483690639638451);
+        assert_biteq!((8.3 as Float).powi(0), Float::ONE);
+        assert!(nan.powi(2).is_nan());
+        assert_biteq!(inf.powi(3), inf);
+        assert_biteq!(neg_inf.powi(2), inf);
+    }
+}
