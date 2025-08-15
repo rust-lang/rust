@@ -128,7 +128,9 @@ pub(crate) fn handle_opaque_type_uses<'tcx>(
 
 /// Maps an NLL var to a deterministically chosen equal universal region.
 ///
-/// See the corresponding [rustc-dev-guide chapter] for more details.
+/// See the corresponding [rustc-dev-guide chapter] for more details. This
+/// ignores changes to the region values due to member constraints. Applying
+/// member constraints does not impact the result of this function.
 ///
 /// [rustc-dev-guide chapter]: https://rustc-dev-guide.rust-lang.org/borrow_check/opaque-types-region-inference-restrictions.html
 fn nll_var_to_universal_region<'tcx>(
