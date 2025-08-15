@@ -809,6 +809,7 @@ pub enum BuiltinLintDiag {
         cfg_name: Symbol,
         controlled_by: &'static str,
     },
+    MissingCrtStatic,
 }
 
 /// Lints that are buffered up early on in the `Session` before the
