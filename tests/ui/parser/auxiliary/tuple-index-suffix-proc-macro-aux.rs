@@ -18,14 +18,14 @@ pub fn bad_tup_indexing(input: TokenStream) -> TokenStream {
 pub fn bad_tup_struct_indexing(input: TokenStream) -> TokenStream {
     let mut input = input.into_iter();
 
-    let id_tt = input.next().unwrap();
+    let ident = input.next().unwrap();
     let _comma = input.next().unwrap();
-    let tt = input.next().unwrap();
+    let lit = input.next().unwrap();
 
-    let TokenTree::Ident(ident) = id_tt else {
+    let TokenTree::Ident(ident) = ident else {
         unreachable!("id");
     };
-    let TokenTree::Literal(indexing_expr) = tt else {
+    let TokenTree::Literal(indexing_expr) = lit else {
         unreachable!("lit");
     };
 
