@@ -1,18 +1,18 @@
 // FIXME(f16_f128): only tested on platforms that have symbols and aren't buggy
 #![cfg(target_has_reliable_f128)]
 
-use std::f128::consts;
-
 use super::{assert_approx_eq, assert_biteq};
 
 // Note these tolerances make sense around zero, but not for more extreme exponents.
 
 /// Default tolerances. Works for values that should be near precise but not exact. Roughly
 /// the precision carried by `100 * 100`.
+#[allow(unused)]
 const TOL: f128 = 1e-12;
 
 /// For operations that are near exact, usually not involving math of different
 /// signs.
+#[allow(unused)]
 const TOL_PRECISE: f128 = 1e-28;
 
 /// First pattern over the mantissa
@@ -50,23 +50,6 @@ fn test_max_recip() {
         8.40525785778023376565669454330438228902076605e-4933,
         1e-4900
     );
-}
-
-#[test]
-fn test_to_radians() {
-    let pi: f128 = consts::PI;
-    let nan: f128 = f128::NAN;
-    let inf: f128 = f128::INFINITY;
-    let neg_inf: f128 = f128::NEG_INFINITY;
-    assert_biteq!(0.0f128.to_radians(), 0.0);
-    assert_approx_eq!(154.6f128.to_radians(), 2.6982790235832334267135442069489767804, TOL);
-    assert_approx_eq!((-332.31f128).to_radians(), -5.7999036373023566567593094812182763013, TOL);
-    // check approx rather than exact because round trip for pi doesn't fall on an exactly
-    // representable value (unlike `f32` and `f64`).
-    assert_approx_eq!(180.0f128.to_radians(), pi, TOL_PRECISE);
-    assert!(nan.to_radians().is_nan());
-    assert_biteq!(inf.to_radians(), inf);
-    assert_biteq!(neg_inf.to_radians(), neg_inf);
 }
 
 #[test]

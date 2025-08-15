@@ -1,5 +1,4 @@
 use core::f32;
-use core::f32::consts;
 
 use super::{assert_approx_eq, assert_biteq};
 
@@ -25,21 +24,6 @@ fn test_mul_add() {
     assert_biteq!(f32::math::mul_add(neg_inf, 7.8, 9.0), neg_inf);
     assert_biteq!(f32::math::mul_add(8.9f32, inf, 3.2), inf);
     assert_biteq!(f32::math::mul_add(-3.2f32, 2.4, neg_inf), neg_inf);
-}
-
-#[test]
-fn test_to_radians() {
-    let pi: f32 = consts::PI;
-    let nan: f32 = f32::NAN;
-    let inf: f32 = f32::INFINITY;
-    let neg_inf: f32 = f32::NEG_INFINITY;
-    assert_biteq!(0.0f32.to_radians(), 0.0);
-    assert_approx_eq!(154.6f32.to_radians(), 2.698279);
-    assert_approx_eq!((-332.31f32).to_radians(), -5.799903);
-    assert_biteq!(180.0f32.to_radians(), pi);
-    assert!(nan.to_radians().is_nan());
-    assert_biteq!(inf.to_radians(), inf);
-    assert_biteq!(neg_inf.to_radians(), neg_inf);
 }
 
 #[test]

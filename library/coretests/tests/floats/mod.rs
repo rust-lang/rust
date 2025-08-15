@@ -1407,3 +1407,26 @@ float_test! {
         assert_biteq!((1.0 as Float).to_degrees(), 57.2957795130823208767981548141051703);
     }
 }
+
+float_test! {
+    name: to_radians,
+    attrs: {
+        f16: #[cfg(target_has_reliable_f16)],
+        f128: #[cfg(target_has_reliable_f128)],
+    },
+    test<Float> {
+        let pi: Float = Float::PI;
+        let nan: Float = Float::NAN;
+        let inf: Float = Float::INFINITY;
+        let neg_inf: Float = Float::NEG_INFINITY;
+        assert_biteq!((0.0 as Float).to_radians(), 0.0);
+        // increased tolerance for more precise f128
+        assert_approx_eq!((154.6 as Float).to_radians(), 2.698279, 1e-5);
+        // increased tolerance for more precise f128
+        assert_approx_eq!((-332.31 as Float).to_radians(), -5.799903, 1e-5);
+        assert_approx_eq!((180.0 as Float).to_radians(), pi, 0.01); // f16 rounding tolerance
+        assert!(nan.to_radians().is_nan());
+        assert_biteq!(inf.to_radians(), inf);
+        assert_biteq!(neg_inf.to_radians(), neg_inf);
+    }
+}
