@@ -291,7 +291,7 @@ fn run_passes_inner<'tcx>(
             let dump_enabled = pass.is_mir_dump_enabled();
 
             if dump_enabled {
-                mir::dump_mir(tcx, pass_num, pass_name, &"before", body, |_, _| Ok(()));
+                mir::dump_mir(tcx, pass_num, pass_name, &"before", body, &|_, _| Ok(()));
             }
 
             if let Some(prof_arg) = &prof_arg {
@@ -304,7 +304,7 @@ fn run_passes_inner<'tcx>(
             }
 
             if dump_enabled {
-                mir::dump_mir(tcx, pass_num, pass_name, &"after", body, |_, _| Ok(()));
+                mir::dump_mir(tcx, pass_num, pass_name, &"after", body, &|_, _| Ok(()));
             }
             if validate {
                 validate_body(tcx, body, format!("after pass {pass_name}"));
@@ -348,5 +348,5 @@ pub(super) fn validate_body<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>, when
 
 pub(super) fn dump_mir_for_phase_change<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) {
     assert_eq!(body.pass_count, 0);
-    mir::dump_mir(tcx, true, body.phase.name(), &"after", body, |_, _| Ok(()))
+    mir::dump_mir(tcx, true, body.phase.name(), &"after", body, &|_, _| Ok(()))
 }

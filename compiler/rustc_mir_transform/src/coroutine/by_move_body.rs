@@ -225,7 +225,7 @@ pub(crate) fn coroutine_by_move_body_def_id<'tcx>(
     );
     by_move_body.source =
         mir::MirSource::from_instance(InstanceKind::Item(body_def.def_id().to_def_id()));
-    dump_mir(tcx, false, "built", &"after", &by_move_body, |_, _| Ok(()));
+    dump_mir(tcx, false, "built", &"after", &by_move_body, &|_, _| Ok(()));
 
     // Feed HIR because we try to access this body's attrs in the inliner.
     body_def.feed_hir();

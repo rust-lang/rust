@@ -83,16 +83,14 @@ impl PrettyPrintMirOptions {
 /// - `foo & nll | bar & typeck` == match if `foo` and `nll` both appear in the name
 ///   or `typeck` and `bar` both appear in the name.
 #[inline]
-pub fn dump_mir<'tcx, F>(
+pub fn dump_mir<'tcx>(
     tcx: TyCtxt<'tcx>,
     pass_num: bool,
     pass_name: &str,
     disambiguator: &dyn Display,
     body: &Body<'tcx>,
-    extra_data: F,
-) where
-    F: Fn(PassWhere, &mut dyn io::Write) -> io::Result<()>,
-{
+    extra_data: &dyn Fn(PassWhere, &mut dyn io::Write) -> io::Result<()>,
+) {
     dump_mir_with_options(
         tcx,
         pass_num,
@@ -110,17 +108,15 @@ pub fn dump_mir<'tcx, F>(
 /// See [`dump_mir`] for more details.
 ///
 #[inline]
-pub fn dump_mir_with_options<'tcx, F>(
+pub fn dump_mir_with_options<'tcx>(
     tcx: TyCtxt<'tcx>,
     pass_num: bool,
     pass_name: &str,
     disambiguator: &dyn Display,
     body: &Body<'tcx>,
-    extra_data: F,
+    extra_data: &dyn Fn(PassWhere, &mut dyn io::Write) -> io::Result<()>,
     options: PrettyPrintMirOptions,
-) where
-    F: Fn(PassWhere, &mut dyn io::Write) -> io::Result<()>,
-{
+) {
     if !dump_enabled(tcx, pass_name, body.source.def_id()) {
         return;
     }
@@ -165,18 +161,15 @@ pub fn dump_enabled(tcx: TyCtxt<'_>, pass_name: &str, def_id: DefId) -> bool {
 /// most of the MIR dumping occurs, if one needs to export it to a file they have created with
 /// [create_dump_file], rather than to a new file created as part of [dump_mir], or to stdout/stderr
 /// for debugging purposes.
-pub fn dump_mir_to_writer<'tcx, F>(
+pub fn dump_mir_to_writer<'tcx>(
     tcx: TyCtxt<'tcx>,
     pass_name: &str,
     disambiguator: &dyn Display,
     body: &Body<'tcx>,
     w: &mut dyn io::Write,
-    extra_data: F,
+    extra_data: &dyn Fn(PassWhere, &mut dyn io::Write) -> io::Result<()>,
     options: PrettyPrintMirOptions,
-) -> io::Result<()>
-where
-    F: Fn(PassWhere, &mut dyn io::Write) -> io::Result<()>,
-{
+) -> io::Result<()> {
     // see notes on #41697 above
     let def_path =
         ty::print::with_forced_impl_filename_line!(tcx.def_path_str(body.source.def_id()));
@@ -193,7 +186,7 @@ where
     writeln!(w)?;
     extra_data(PassWhere::BeforeCFG, w)?;
     write_user_type_annotations(tcx, body, w)?;
-    write_mir_fn(tcx, body, &extra_data, w, options)?;
+    write_mir_fn(tcx, body, extra_data, w, options)?;
     extra_data(PassWhere::AfterCFG, w)
 }
 
@@ -369,16 +362,13 @@ pub fn write_mir_pretty<'tcx>(
 }
 
 /// Write out a human-readable textual representation for the given function.
-pub fn write_mir_fn<'tcx, F>(
+pub fn write_mir_fn<'tcx>(
     tcx: TyCtxt<'tcx>,
     body: &Body<'tcx>,
-    extra_data: &F,
+    extra_data: &dyn Fn(PassWhere, &mut dyn io::Write) -> io::Result<()>,
     w: &mut dyn io::Write,
     options: PrettyPrintMirOptions,
-) -> io::Result<()>
-where
-    F: Fn(PassWhere, &mut dyn io::Write) -> io::Result<()>,
-{
+) -> io::Result<()> {
     write_mir_intro(tcx, body, w, options)?;
     for block in body.basic_blocks.indices() {
         extra_data(PassWhere::BeforeBlock(block), w)?;
@@ -706,17 +696,14 @@ pub fn dump_mir_def_ids(tcx: TyCtxt<'_>, single: Option<DefId>) -> Vec<DefId> {
 // Basic blocks and their parts (statements, terminators, ...)
 
 /// Write out a human-readable textual representation for the given basic block.
-fn write_basic_block<'tcx, F>(
+fn write_basic_block<'tcx>(
     tcx: TyCtxt<'tcx>,
     block: BasicBlock,
     body: &Body<'tcx>,
-    extra_data: &F,
+    extra_data: &dyn Fn(PassWhere, &mut dyn io::Write) -> io::Result<()>,
     w: &mut dyn io::Write,
     options: PrettyPrintMirOptions,
-) -> io::Result<()>
-where
-    F: Fn(PassWhere, &mut dyn io::Write) -> io::Result<()>,
-{
+) -> io::Result<()> {
     let data = &body[block];
 
     // Basic block label at the top.
@@ -748,9 +735,7 @@ where
         write_extra(
             tcx,
             w,
-            |visitor| {
-                visitor.visit_statement(statement, current_location);
-            },
+            &|visitor| visitor.visit_statement(statement, current_location),
             options,
         )?;
 
@@ -783,9 +768,7 @@ where
         write_extra(
             tcx,
             w,
-            |visitor| {
-                visitor.visit_terminator(data.terminator(), current_location);
-            },
+            &|visitor| visitor.visit_terminator(data.terminator(), current_location),
             options,
         )?;
     }
@@ -1360,15 +1343,12 @@ fn post_fmt_projection(projection: &[PlaceElem<'_>], fmt: &mut Formatter<'_>) ->
 /// After we print the main statement, we sometimes dump extra
 /// information. There's often a lot of little things "nuzzled up" in
 /// a statement.
-fn write_extra<'tcx, F>(
+fn write_extra<'tcx>(
     tcx: TyCtxt<'tcx>,
     write: &mut dyn io::Write,
-    visit_op: F,
+    visit_op: &dyn Fn(&mut ExtraComments<'tcx>),
     options: PrettyPrintMirOptions,
-) -> io::Result<()>
-where
-    F: Fn(&mut ExtraComments<'tcx>),
-{
+) -> io::Result<()> {
     if options.include_extra_comments {
         let mut extra_comments = ExtraComments { tcx, comments: vec![] };
         visit_op(&mut extra_comments);

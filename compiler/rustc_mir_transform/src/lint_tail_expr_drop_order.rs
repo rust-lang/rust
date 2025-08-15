@@ -227,7 +227,7 @@ pub(crate) fn run_lint<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId, body: &Body<
         return;
     }
 
-    dump_mir(tcx, false, "lint_tail_expr_drop_order", &0 as _, body, |_, _| Ok(()));
+    dump_mir(tcx, false, "lint_tail_expr_drop_order", &0 as _, body, &|_, _| Ok(()));
     let locals_with_user_names = collect_user_names(body);
     let is_closure_like = tcx.is_closure_like(def_id.to_def_id());
 

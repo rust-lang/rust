@@ -175,7 +175,7 @@ fn emit_html_mir<'tcx>(
         &0,
         body,
         &mut buffer,
-        |pass_where, out| {
+        &|pass_where, out| {
             emit_polonius_mir(
                 tcx,
                 regioncx,

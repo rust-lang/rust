@@ -68,7 +68,7 @@ pub(crate) fn replace_regions_in_mir<'tcx>(
     // Replace all remaining regions with fresh inference variables.
     renumber::renumber_mir(infcx, body, promoted);
 
-    dump_mir(infcx.tcx, false, "renumber", &0, body, |_, _| Ok(()));
+    dump_mir(infcx.tcx, false, "renumber", &0, body, &|_, _| Ok(()));
 
     universal_regions
 }
@@ -194,7 +194,7 @@ pub(super) fn dump_nll_mir<'tcx>(
         "nll",
         &0,
         body,
-        |pass_where, out| {
+        &|pass_where, out| {
             emit_nll_mir(tcx, regioncx, closure_region_requirements, borrow_set, pass_where, out)
         },
         options,
