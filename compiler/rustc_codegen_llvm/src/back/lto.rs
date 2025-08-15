@@ -698,6 +698,14 @@ impl ThinBuffer {
         let mut ptr = NonNull::new(ptr).unwrap();
         ThinBuffer(unsafe { ptr.as_mut() })
     }
+
+    pub(crate) fn thin_link_data(&self) -> &[u8] {
+        unsafe {
+            let ptr = llvm::LLVMRustThinLTOBufferThinLinkDataPtr(self.0) as *const _;
+            let len = llvm::LLVMRustThinLTOBufferThinLinkDataLen(self.0);
+            slice::from_raw_parts(ptr, len)
+        }
+    }
 }
 
 impl ThinBufferMethods for ThinBuffer {
@@ -705,14 +713,6 @@ impl ThinBufferMethods for ThinBuffer {
         unsafe {
             let ptr = llvm::LLVMRustThinLTOBufferPtr(self.0) as *const _;
             let len = llvm::LLVMRustThinLTOBufferLen(self.0);
-            slice::from_raw_parts(ptr, len)
-        }
-    }
-
-    fn thin_link_data(&self) -> &[u8] {
-        unsafe {
-            let ptr = llvm::LLVMRustThinLTOBufferThinLinkDataPtr(self.0) as *const _;
-            let len = llvm::LLVMRustThinLTOBufferThinLinkDataLen(self.0);
             slice::from_raw_parts(ptr, len)
         }
     }

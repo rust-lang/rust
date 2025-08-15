@@ -59,7 +59,6 @@ pub trait WriteBackendMethods: Clone + 'static {
 
 pub trait ThinBufferMethods: Send + Sync {
     fn data(&self) -> &[u8];
-    fn thin_link_data(&self) -> &[u8];
 }
 
 pub trait ModuleBufferMethods: Send + Sync {
