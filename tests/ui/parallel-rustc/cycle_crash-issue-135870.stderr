@@ -1,11 +1,11 @@
 error[E0391]: cycle detected when simplifying constant for the type system `FOO`
-  --> $DIR/cycle_crash.rs:3:1
+  --> $DIR/cycle_crash-issue-135870.rs:6:1
    |
 LL | const FOO: usize = FOO;
    | ^^^^^^^^^^^^^^^^
    |
 note: ...which requires const-evaluating + checking `FOO`...
-  --> $DIR/cycle_crash.rs:3:20
+  --> $DIR/cycle_crash-issue-135870.rs:6:20
    |
 LL | const FOO: usize = FOO;
    |                    ^^^

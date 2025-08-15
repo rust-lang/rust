@@ -205,6 +205,8 @@ pub struct TestProps {
     pub dont_require_annotations: HashSet<ErrorKind>,
     /// Whether pretty printers should be disabled in gdb.
     pub disable_gdb_pretty_printers: bool,
+    /// Compare the output by lines, rather than as a single string.
+    pub compare_output_by_lines: bool,
 }
 
 mod directives {
@@ -254,6 +256,7 @@ mod directives {
     // This isn't a real directive, just one that is probably mistyped often
     pub const INCORRECT_COMPILER_FLAGS: &'static str = "compiler-flags";
     pub const DISABLE_GDB_PRETTY_PRINTERS: &'static str = "disable-gdb-pretty-printers";
+    pub const COMPARE_OUTPUT_BY_LINES: &'static str = "compare-output-by-lines";
 }
 
 impl TestProps {
@@ -310,6 +313,7 @@ impl TestProps {
             add_core_stubs: false,
             dont_require_annotations: Default::default(),
             disable_gdb_pretty_printers: false,
+            compare_output_by_lines: false,
         }
     }
 
@@ -663,6 +667,11 @@ impl TestProps {
                         ln,
                         DISABLE_GDB_PRETTY_PRINTERS,
                         &mut self.disable_gdb_pretty_printers,
+                    );
+                    config.set_name_directive(
+                        ln,
+                        COMPARE_OUTPUT_BY_LINES,
+                        &mut self.compare_output_by_lines,
                     );
                 },
             );
