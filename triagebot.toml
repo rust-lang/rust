@@ -628,6 +628,16 @@ trigger_files = [
     "src/ci",
 ]
 
+[autolabel."T-rust-analyzer"]
+trigger_files = [
+    "src/tools/rust-analyzer",
+]
+
+[autolabel."T-rustfmt"]
+trigger_files = [
+    "src/tools/rustfmt",
+]
+
 # ------------------------------------------------------------------------------
 # Prioritization and team nominations
 # ------------------------------------------------------------------------------
