@@ -22,7 +22,7 @@ use std::{fmt, mem, slice};
 use attr_wrapper::{AttrWrapper, UsePreAttrPos};
 pub use diagnostics::AttemptLocalParseRecovery;
 pub(crate) use expr::ForbiddenLetReason;
-pub(crate) use item::FnParseMode;
+pub(crate) use item::{FnContext, FnParseMode};
 pub use pat::{CommaRecoveryMode, RecoverColon, RecoverComma};
 use path::PathStyle;
 use rustc_ast::token::{

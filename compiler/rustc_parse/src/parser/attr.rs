@@ -11,6 +11,7 @@ use tracing::debug;
 use super::{
     AttrWrapper, Capturing, FnParseMode, ForceCollect, Parser, PathStyle, Trailing, UsePreAttrPos,
 };
+use crate::parser::FnContext;
 use crate::{errors, exp, fluent_generated as fluent};
 
 // Public for rustfmt usage
@@ -200,7 +201,7 @@ impl<'a> Parser<'a> {
             AttrWrapper::empty(),
             true,
             false,
-            FnParseMode { req_name: |_| true, req_body: true },
+            FnParseMode { req_name: |_| true, context: FnContext::Free, req_body: true },
             ForceCollect::No,
         ) {
             Ok(Some(item)) => {
