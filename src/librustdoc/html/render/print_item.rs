@@ -313,17 +313,8 @@ fn item_module(cx: &Context<'_>, item: &clean::Item, items: &[clean::Item]) -> i
         let mut not_stripped_items: FxHashMap<ItemType, Vec<(usize, &clean::Item)>> =
             FxHashMap::default();
 
-        let mut index = 0;
-        for item in items.iter().filter(|i| !i.is_stripped()) {
-            if let Some(types) = item.bang_macro_types() {
-                for type_ in types {
-                    not_stripped_items.entry(type_).or_default().push((index, item));
-                    index += 1;
-                }
-            } else {
-                not_stripped_items.entry(item.type_()).or_default().push((index, item));
-                index += 1;
-            }
+        for (index, item) in items.iter().filter(|i| !i.is_stripped()).enumerate() {
+            not_stripped_items.entry(item.type_()).or_default().push((index, item));
         }
 
         // the order of item types in the listing
@@ -535,7 +526,7 @@ fn item_module(cx: &Context<'_>, item: &clean::Item, items: &[clean::Item]) -> i
                             stab_tags = print_extra_info_tags(tcx, myitem, item, None),
                             class = type_,
                             unsafety_flag = unsafety_flag,
-                            href = print_item_path(myitem.type_(), myitem.name.unwrap().as_str()),
+                            href = print_item_path(myitem),
                             title1 = myitem.type_(),
                             title2 = full_path(cx, myitem),
                         )?;
@@ -2293,7 +2284,16 @@ pub(super) fn full_path(cx: &Context<'_>, item: &clean::Item) -> String {
     s
 }
 
-pub(super) fn print_item_path(ty: ItemType, name: &str) -> impl Display {
+pub(super) fn print_item_path(item: &clean::Item) -> impl Display {
+    fmt::from_fn(move |f| match item.kind {
+        clean::ItemKind::ModuleItem(..) => {
+            write!(f, "{}index.html", ensure_trailing_slash(item.name.unwrap().as_str()))
+        }
+        _ => f.write_str(&item.html_filename()),
+    })
+}
+
+pub(super) fn print_ty_path(ty: ItemType, name: &str) -> impl Display {
     fmt::from_fn(move |f| match ty {
         ItemType::Module => write!(f, "{}index.html", ensure_trailing_slash(name)),
         _ => write!(f, "{ty}.{name}.html"),

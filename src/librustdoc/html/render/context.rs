@@ -16,7 +16,7 @@ use rustc_span::{BytePos, FileName, Symbol, sym};
 use serde::ser::SerializeSeq;
 use tracing::info;
 
-use super::print_item::{full_path, print_item, print_item_path};
+use super::print_item::{full_path, print_item, print_item_path, print_ty_path};
 use super::sidebar::{ModuleLike, Sidebar, print_sidebar, sidebar_module_like};
 use super::{AllTypes, LinkFromSrc, StylePath, collect_spans_and_sources, scrape_examples_help};
 use crate::clean::types::ExternalLocation;
@@ -302,7 +302,7 @@ impl<'tcx> Context<'tcx> {
                     for name in &names[..names.len() - 1] {
                         write!(f, "{name}/")?;
                     }
-                    write!(f, "{}", print_item_path(ty, names.last().unwrap().as_str()))
+                    write!(f, "{}", print_ty_path(ty, names.last().unwrap().as_str()))
                 });
                 match self.shared.redirections {
                     Some(ref redirections) => {
@@ -314,7 +314,7 @@ impl<'tcx> Context<'tcx> {
                         let _ = write!(
                             current_path,
                             "{}",
-                            print_item_path(ty, names.last().unwrap().as_str())
+                            print_ty_path(ty, names.last().unwrap().as_str())
                         );
                         redirections.borrow_mut().insert(current_path, path.to_string());
                     }
@@ -329,19 +329,6 @@ impl<'tcx> Context<'tcx> {
 
     /// Construct a map of items shown in the sidebar to a plain-text summary of their docs.
     fn build_sidebar_items(&self, m: &clean::Module) -> BTreeMap<String, Vec<SidebarItem>> {
-        fn build_sidebar_items_inner(
-            name: Symbol,
-            type_: ItemType,
-            map: &mut BTreeMap<String, Vec<SidebarItem>>,
-            inserted: &mut FxHashMap<ItemType, FxHashSet<Symbol>>,
-            is_actually_macro: bool,
-        ) {
-            if inserted.entry(type_).or_default().insert(name) {
-                let type_ = type_.to_string();
-                let name = name.to_string();
-                map.entry(type_).or_default().push(SidebarItem { name, is_actually_macro });
-            }
-        }
         // BTreeMap instead of HashMap to get a sorted output
         let mut map: BTreeMap<_, Vec<_>> = BTreeMap::new();
         let mut inserted: FxHashMap<ItemType, FxHashSet<Symbol>> = FxHashMap::default();
@@ -355,12 +342,14 @@ impl<'tcx> Context<'tcx> {
                 Some(s) => s,
             };
 
-            if let Some(types) = item.bang_macro_types() {
-                for type_ in types {
-                    build_sidebar_items_inner(name, type_, &mut map, &mut inserted, true);
-                }
-            } else {
-                build_sidebar_items_inner(name, item.type_(), &mut map, &mut inserted, false);
+            let type_ = item.type_();
+
+            if inserted.entry(type_).or_default().insert(name) {
+                let type_ = type_.to_string();
+                let name = name.to_string();
+                map.entry(type_)
+                    .or_default()
+                    .push(SidebarItem { name, is_actually_macro: item.is_macro_placeholder() });
             }
         }
 
@@ -833,7 +822,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
 
         info!("Recursing into {}", self.dst.display());
 
-        if !item.is_stripped() {
+        if !item.is_stripped() && !item.is_macro_placeholder() {
             let buf = self.render_item(item, true);
             // buf will be empty if the module is stripped and there is no redirect for it
             if !buf.is_empty() {
@@ -889,26 +878,29 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             self.info.render_redirect_pages = item.is_stripped();
         }
 
+        if item.is_macro_placeholder() {
+            if !self.info.render_redirect_pages {
+                self.shared.all.borrow_mut().append(full_path(self, item), &item);
+            }
+            return Ok(());
+        }
+
         let buf = self.render_item(item, false);
         // buf will be empty if the item is stripped and there is no redirect for it
         if !buf.is_empty() {
-            let name = item.name.as_ref().unwrap();
-            let item_type = item.type_();
-            let file_name = print_item_path(item_type, name.as_str()).to_string();
+            if !self.info.render_redirect_pages {
+                self.shared.all.borrow_mut().append(full_path(self, item), &item);
+            }
+
+            let file_name = print_item_path(item).to_string();
             self.shared.ensure_dir(&self.dst)?;
             let joint_dst = self.dst.join(&file_name);
             self.shared.fs.write(joint_dst, buf)?;
-
-            if !self.info.render_redirect_pages {
-                self.shared.all.borrow_mut().append(
-                    full_path(self, item),
-                    &item_type,
-                    item.bang_macro_types(),
-                );
-            }
             // If the item is a macro, redirect from the old macro URL (with !)
             // to the new one (without).
+            let item_type = item.type_();
             if item_type == ItemType::Macro {
+                let name = item.name.as_ref().unwrap();
                 let redir_name = format!("{item_type}.{name}!.html");
                 if let Some(ref redirections) = self.shared.redirections {
                     let crate_name = &self.shared.layout.krate;

@@ -653,13 +653,7 @@ fn sidebar_module(
                     })
                     .is_some()
         })
-        .flat_map(|it| {
-            if let Some(types) = it.bang_macro_types() {
-                types.into_iter().map(|type_| item_ty_to_section(type_)).collect::<Vec<_>>()
-            } else {
-                vec![item_ty_to_section(it.type_())]
-            }
-        })
+        .map(|it| item_ty_to_section(it.type_()))
         .collect();
 
     sidebar_module_like(item_sections_in_use, ids, module_like)

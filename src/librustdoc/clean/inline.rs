@@ -46,6 +46,27 @@ pub(crate) fn try_inline(
     attrs: Option<(&[hir::Attribute], Option<LocalDefId>)>,
     visited: &mut DefIdSet,
 ) -> Option<Vec<clean::Item>> {
+    fn try_inline_inner(
+        cx: &mut DocContext<'_>,
+        kind: clean::ItemKind,
+        did: DefId,
+        name: Symbol,
+        import_def_id: Option<LocalDefId>,
+    ) -> clean::Item {
+        cx.inlined.insert(did.into());
+        let mut item = crate::clean::generate_item_with_correct_attrs(
+            cx,
+            kind,
+            did,
+            name,
+            import_def_id.as_slice(),
+            None,
+        );
+        // The visibility needs to reflect the one from the reexport and not from the "source" DefId.
+        item.inner.inline_stmt_id = import_def_id;
+        item
+    }
+
     let did = res.opt_def_id()?;
     if did.is_local() {
         return None;
@@ -138,7 +159,7 @@ pub(crate) fn try_inline(
             })
         }
         Res::Def(DefKind::Macro(kinds), did) => {
-            let mac = build_macro(cx, did, name, kinds);
+            let (mac, others) = build_macro(cx, did, name, kinds);
 
             let type_kind = match kinds {
                 MacroKinds::BANG => ItemType::Macro,
@@ -148,23 +169,21 @@ pub(crate) fn try_inline(
                 _ => panic!("unsupported macro kind {kinds:?}"),
             };
             record_extern_fqn(cx, did, type_kind);
-            mac
+            let first = try_inline_inner(cx, mac, did, name, import_def_id);
+            if let Some(others) = others {
+                for mac_kind in others {
+                    let mut mac = first.clone();
+                    mac.inner.kind = mac_kind;
+                    ret.push(mac);
+                }
+            }
+            ret.push(first);
+            return Some(ret);
         }
         _ => return None,
     };
 
-    cx.inlined.insert(did.into());
-    let mut item = crate::clean::generate_item_with_correct_attrs(
-        cx,
-        kind,
-        did,
-        name,
-        import_def_id.as_slice(),
-        None,
-    );
-    // The visibility needs to reflect the one from the reexport and not from the "source" DefId.
-    item.inner.inline_stmt_id = import_def_id;
-    ret.push(item);
+    ret.push(try_inline_inner(cx, kind, did, name, import_def_id));
     Some(ret)
 }
 
@@ -761,31 +780,51 @@ fn build_macro(
     def_id: DefId,
     name: Symbol,
     macro_kinds: MacroKinds,
-) -> clean::ItemKind {
+) -> (clean::ItemKind, Option<Vec<clean::ItemKind>>) {
     match CStore::from_tcx(cx.tcx).load_macro_untracked(def_id, cx.tcx) {
         LoadedMacro::MacroDef { def, .. } => match macro_kinds {
-            MacroKinds::BANG => clean::MacroItem(
-                clean::Macro {
-                    source: utils::display_macro_source(cx, name, &def),
-                    macro_rules: def.macro_rules,
-                },
+            MacroKinds::BANG => (
+                clean::MacroItem(
+                    clean::Macro {
+                        source: utils::display_macro_source(cx, name, &def),
+                        macro_rules: def.macro_rules,
+                    },
+                    None,
+                ),
                 None,
             ),
-            MacroKinds::DERIVE => clean::ProcMacroItem(clean::ProcMacro {
-                kind: MacroKind::Derive,
-                helpers: Vec::new(),
-            }),
-            MacroKinds::ATTR => clean::ProcMacroItem(clean::ProcMacro {
-                kind: MacroKind::Attr,
-                helpers: Vec::new(),
-            }),
-            _ if macro_kinds == (MacroKinds::BANG | MacroKinds::ATTR) => clean::MacroItem(
-                clean::Macro {
-                    source: utils::display_macro_source(cx, name, &def),
-                    macro_rules: def.macro_rules,
-                },
-                Some(macro_kinds),
+            MacroKinds::DERIVE => (
+                clean::ProcMacroItem(clean::ProcMacro {
+                    kind: MacroKind::Derive,
+                    helpers: Vec::new(),
+                }),
+                None,
             ),
+            MacroKinds::ATTR => (
+                clean::ProcMacroItem(clean::ProcMacro {
+                    kind: MacroKind::Attr,
+                    helpers: Vec::new(),
+                }),
+                None,
+            ),
+            _ if macro_kinds.contains(MacroKinds::BANG) => {
+                let kind = clean::MacroItem(
+                    clean::Macro {
+                        source: utils::display_macro_source(cx, name, &def),
+                        macro_rules: def.macro_rules,
+                    },
+                    Some(macro_kinds),
+                );
+                let mut ret = vec![];
+                for kind in macro_kinds.iter().filter(|kind| *kind != MacroKinds::BANG) {
+                    match kind {
+                        MacroKinds::ATTR => ret.push(clean::AttrMacroItem),
+                        MacroKinds::DERIVE => ret.push(clean::DeriveMacroItem),
+                        _ => panic!("unsupported macro kind {kind:?}"),
+                    }
+                }
+                (kind, Some(ret))
+            }
             _ => panic!("unsupported macro kind {macro_kinds:?}"),
         },
         LoadedMacro::ProcMacro(ext) => {
@@ -796,7 +835,7 @@ fn build_macro(
                 MacroKinds::DERIVE => MacroKind::Derive,
                 _ => unreachable!(),
             };
-            clean::ProcMacroItem(clean::ProcMacro { kind, helpers: ext.helper_attrs })
+            (clean::ProcMacroItem(clean::ProcMacro { kind, helpers: ext.helper_attrs }), None)
         }
     }
 }

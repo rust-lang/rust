@@ -664,27 +664,21 @@ impl Item {
         find_attr!(&self.attrs.other_attrs, AttributeKind::NonExhaustive(..))
     }
 
-    pub(crate) fn bang_macro_types(&self) -> Option<Vec<ItemType>> {
-        match self.kind {
-            ItemKind::MacroItem(_, None) => Some(vec![ItemType::Macro]),
-            ItemKind::MacroItem(_, Some(kinds)) => Some(
-                kinds
-                    .iter()
-                    .map(|kind| match kind {
-                        MacroKinds::BANG => ItemType::Macro,
-                        MacroKinds::ATTR => ItemType::ProcAttribute,
-                        MacroKinds::DERIVE => ItemType::ProcDerive,
-                        _ => panic!("unexpected macro kind {kind:?}"),
-                    })
-                    .collect::<Vec<_>>(),
-            ),
-            _ => None,
-        }
-    }
-
     /// Returns a documentation-level item type from the item.
     pub(crate) fn type_(&self) -> ItemType {
         ItemType::from(self)
+    }
+
+    /// Generates the HTML file name based on the item kind.
+    pub(crate) fn html_filename(&self) -> String {
+        let type_ = if self.is_macro_placeholder() { ItemType::Macro } else { self.type_() };
+        format!("{type_}.{}.html", self.name.unwrap())
+    }
+
+    /// If the current item is a "fake" macro (ie, `AttrMacroItem | ItemKind::DeriveMacroItem` which
+    /// don't hold any data), it returns `true`.
+    pub(crate) fn is_macro_placeholder(&self) -> bool {
+        matches!(self.kind, ItemKind::AttrMacroItem | ItemKind::DeriveMacroItem)
     }
 
     pub(crate) fn is_default(&self) -> bool {
@@ -853,6 +847,8 @@ pub(crate) enum ItemKind {
     /// `type`s from an extern block
     ForeignTypeItem,
     MacroItem(Macro, Option<MacroKinds>),
+    AttrMacroItem,
+    DeriveMacroItem,
     ProcMacroItem(ProcMacro),
     PrimitiveItem(PrimitiveType),
     /// A required associated constant in a trait declaration.
@@ -908,6 +904,8 @@ impl ItemKind {
             | ForeignStaticItem(_, _)
             | ForeignTypeItem
             | MacroItem(..)
+            | AttrMacroItem
+            | DeriveMacroItem
             | ProcMacroItem(_)
             | PrimitiveItem(_)
             | RequiredAssocConstItem(..)

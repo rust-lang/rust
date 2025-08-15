@@ -128,6 +128,10 @@ impl<'a> From<&'a clean::Item> for ItemType {
             clean::ForeignFunctionItem(..) => ItemType::Function, // no ForeignFunction
             clean::ForeignStaticItem(..) => ItemType::Static,     // no ForeignStatic
             clean::MacroItem(..) => ItemType::Macro,
+            // Is this a good idea?
+            clean::AttrMacroItem => ItemType::ProcAttribute,
+            // Is this a good idea?
+            clean::DeriveMacroItem => ItemType::ProcDerive,
             clean::PrimitiveItem(..) => ItemType::Primitive,
             clean::RequiredAssocConstItem(..)
             | clean::ProvidedAssocConstItem(..)

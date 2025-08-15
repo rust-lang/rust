@@ -505,44 +505,32 @@ impl AllTypes {
         }
     }
 
-    fn append(
-        &mut self,
-        item_name: String,
-        item_type: &ItemType,
-        extra_types: Option<Vec<ItemType>>,
-    ) {
+    fn append(&mut self, item_name: String, item: &clean::Item) {
         let mut url: Vec<_> = item_name.split("::").skip(1).collect();
         if let Some(name) = url.pop() {
-            let new_url = format!("{}/{item_type}.{name}.html", url.join("/"));
+            let new_url = format!("{}/{}", url.join("/"), item.html_filename());
             url.push(name);
+            let item_type = item.type_();
             let name = url.join("::");
-            if let Some(extra_types) = extra_types {
-                for extra_type in extra_types {
-                    self.append_with_url(name.clone(), &extra_type, new_url.clone());
+            match item_type {
+                ItemType::Struct => self.structs.insert(ItemEntry::new(new_url, name)),
+                ItemType::Enum => self.enums.insert(ItemEntry::new(new_url, name)),
+                ItemType::Union => self.unions.insert(ItemEntry::new(new_url, name)),
+                ItemType::Primitive => self.primitives.insert(ItemEntry::new(new_url, name)),
+                ItemType::Trait => self.traits.insert(ItemEntry::new(new_url, name)),
+                ItemType::Macro => self.macros.insert(ItemEntry::new(new_url, name)),
+                ItemType::Function => self.functions.insert(ItemEntry::new(new_url, name)),
+                ItemType::TypeAlias => self.type_aliases.insert(ItemEntry::new(new_url, name)),
+                ItemType::Static => self.statics.insert(ItemEntry::new(new_url, name)),
+                ItemType::Constant => self.constants.insert(ItemEntry::new(new_url, name)),
+                ItemType::ProcAttribute => {
+                    self.attribute_macros.insert(ItemEntry::new(new_url, name))
                 }
-            } else {
-                self.append_with_url(name, item_type, new_url);
-            }
+                ItemType::ProcDerive => self.derive_macros.insert(ItemEntry::new(new_url, name)),
+                ItemType::TraitAlias => self.trait_aliases.insert(ItemEntry::new(new_url, name)),
+                _ => true,
+            };
         }
-    }
-
-    fn append_with_url(&mut self, name: String, item_type: &ItemType, url: String) {
-        match *item_type {
-            ItemType::Struct => self.structs.insert(ItemEntry::new(url, name)),
-            ItemType::Enum => self.enums.insert(ItemEntry::new(url, name)),
-            ItemType::Union => self.unions.insert(ItemEntry::new(url, name)),
-            ItemType::Primitive => self.primitives.insert(ItemEntry::new(url, name)),
-            ItemType::Trait => self.traits.insert(ItemEntry::new(url, name)),
-            ItemType::Macro => self.macros.insert(ItemEntry::new(url, name)),
-            ItemType::Function => self.functions.insert(ItemEntry::new(url, name)),
-            ItemType::TypeAlias => self.type_aliases.insert(ItemEntry::new(url, name)),
-            ItemType::Static => self.statics.insert(ItemEntry::new(url, name)),
-            ItemType::Constant => self.constants.insert(ItemEntry::new(url, name)),
-            ItemType::ProcAttribute => self.attribute_macros.insert(ItemEntry::new(url, name)),
-            ItemType::ProcDerive => self.derive_macros.insert(ItemEntry::new(url, name)),
-            ItemType::TraitAlias => self.trait_aliases.insert(ItemEntry::new(url, name)),
-            _ => true,
-        };
     }
 
     fn item_sections(&self) -> FxHashSet<ItemSection> {
