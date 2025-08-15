@@ -2653,12 +2653,12 @@ impl Step for Bootstrap {
 /// Should not be considered stable by end users.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct BuildManifest {
-    pub target: TargetSelection,
+    target: TargetSelection,
 }
 
 impl Step for BuildManifest {
     type Output = GeneratedTarball;
-    const DEFAULT: bool = false;
+
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -2676,16 +2676,20 @@ impl Step for BuildManifest {
         tarball.add_file(&build_manifest, "bin", FileType::Executable);
         tarball.generate()
     }
+
+    fn metadata(&self) -> Option<StepMetadata> {
+        Some(StepMetadata::dist("build-manifest", self.target))
+    }
 }
 
 /// Tarball containing artifacts necessary to reproduce the build of rustc.
 ///
-/// Currently this is the PGO profile data.
+/// Currently this is the PGO (and possibly BOLT) profile data.
 ///
 /// Should not be considered stable by end users.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct ReproducibleArtifacts {
-    pub target: TargetSelection,
+    target: TargetSelection,
 }
 
 impl Step for ReproducibleArtifacts {
@@ -2718,6 +2722,10 @@ impl Step for ReproducibleArtifacts {
         }
         if added_anything { Some(tarball.generate()) } else { None }
     }
+
+    fn metadata(&self) -> Option<StepMetadata> {
+        Some(StepMetadata::dist("reproducible-artifacts", self.target))
+    }
 }
 
 /// Tarball containing a prebuilt version of the libgccjit library,
@@ -2725,7 +2733,7 @@ impl Step for ReproducibleArtifacts {
 /// backend needing a prebuilt libLLVM).
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Gcc {
-    pub target: TargetSelection,
+    target: TargetSelection,
 }
 
 impl Step for Gcc {
@@ -2744,5 +2752,9 @@ impl Step for Gcc {
         let output = builder.ensure(super::gcc::Gcc { target: self.target });
         tarball.add_file(&output.libgccjit, "lib", FileType::NativeLibrary);
         tarball.generate()
+    }
+
+    fn metadata(&self) -> Option<StepMetadata> {
+        Some(StepMetadata::dist("gcc", self.target))
     }
 }
