@@ -314,41 +314,31 @@ pub fn prepare_compiler_for_check(
     }
 }
 
-/// Checks a single codegen backend.
+/// Check the Cranelift codegen backend.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct CodegenBackend {
-    pub build_compiler: Compiler,
-    pub target: TargetSelection,
-    pub backend: CodegenBackendKind,
+pub struct CraneliftCodegenBackend {
+    build_compiler: Compiler,
+    target: TargetSelection,
 }
 
-impl Step for CodegenBackend {
+impl Step for CraneliftCodegenBackend {
     type Output = ();
+
     const IS_HOST: bool = true;
     const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.paths(&["compiler/rustc_codegen_cranelift", "compiler/rustc_codegen_gcc"])
+        run.alias("rustc_codegen_cranelift").alias("cg_clif")
     }
 
     fn make_run(run: RunConfig<'_>) {
-        // FIXME: only check the backend(s) that were actually selected in run.paths
         let build_compiler = prepare_compiler_for_check(run.builder, run.target, Mode::Codegen);
-        for backend in [CodegenBackendKind::Cranelift, CodegenBackendKind::Gcc] {
-            run.builder.ensure(CodegenBackend { build_compiler, target: run.target, backend });
-        }
+        run.builder.ensure(CraneliftCodegenBackend { build_compiler, target: run.target });
     }
 
     fn run(self, builder: &Builder<'_>) {
-        // FIXME: remove once https://github.com/rust-lang/rust/issues/112393 is resolved
-        if builder.build.config.vendor && self.backend.is_gcc() {
-            println!("Skipping checking of `rustc_codegen_gcc` with vendoring enabled.");
-            return;
-        }
-
         let build_compiler = self.build_compiler;
         let target = self.target;
-        let backend = self.backend;
 
         let mut cargo = builder::Cargo::new(
             builder,
@@ -361,28 +351,101 @@ impl Step for CodegenBackend {
 
         cargo
             .arg("--manifest-path")
-            .arg(builder.src.join(format!("compiler/{}/Cargo.toml", backend.crate_name())));
+            .arg(builder.src.join("compiler/rustc_codegen_cranelift/Cargo.toml"));
         rustc_cargo_env(builder, &mut cargo, target);
 
         let _guard = builder.msg(
             Kind::Check,
-            backend.crate_name(),
+            "rustc_codegen_cranelift",
             Mode::Codegen,
             self.build_compiler,
             target,
         );
 
-        let stamp = build_stamp::codegen_backend_stamp(builder, build_compiler, target, &backend)
-            .with_prefix("check");
+        let stamp = build_stamp::codegen_backend_stamp(
+            builder,
+            build_compiler,
+            target,
+            &CodegenBackendKind::Cranelift,
+        )
+        .with_prefix("check");
 
         run_cargo(builder, cargo, builder.config.free_args.clone(), &stamp, vec![], true, false);
     }
 
     fn metadata(&self) -> Option<StepMetadata> {
         Some(
-            StepMetadata::check(&self.backend.crate_name(), self.target)
+            StepMetadata::check("rustc_codegen_cranelift", self.target)
                 .built_by(self.build_compiler),
         )
+    }
+}
+
+/// Check the GCC codegen backend.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct GccCodegenBackend {
+    build_compiler: Compiler,
+    target: TargetSelection,
+}
+
+impl Step for GccCodegenBackend {
+    type Output = ();
+
+    const IS_HOST: bool = true;
+    const DEFAULT: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.alias("rustc_codegen_gcc").alias("cg_gcc")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        let build_compiler = prepare_compiler_for_check(run.builder, run.target, Mode::Codegen);
+        run.builder.ensure(GccCodegenBackend { build_compiler, target: run.target });
+    }
+
+    fn run(self, builder: &Builder<'_>) {
+        // FIXME: remove once https://github.com/rust-lang/rust/issues/112393 is resolved
+        if builder.build.config.vendor {
+            println!("Skipping checking of `rustc_codegen_gcc` with vendoring enabled.");
+            return;
+        }
+
+        let build_compiler = self.build_compiler;
+        let target = self.target;
+
+        let mut cargo = builder::Cargo::new(
+            builder,
+            build_compiler,
+            Mode::Codegen,
+            SourceType::InTree,
+            target,
+            builder.kind,
+        );
+
+        cargo.arg("--manifest-path").arg(builder.src.join("compiler/rustc_codegen_gcc/Cargo.toml"));
+        rustc_cargo_env(builder, &mut cargo, target);
+
+        let _guard = builder.msg(
+            Kind::Check,
+            "rustc_codegen_gcc",
+            Mode::Codegen,
+            self.build_compiler,
+            target,
+        );
+
+        let stamp = build_stamp::codegen_backend_stamp(
+            builder,
+            build_compiler,
+            target,
+            &CodegenBackendKind::Gcc,
+        )
+        .with_prefix("check");
+
+        run_cargo(builder, cargo, builder.config.free_args.clone(), &stamp, vec![], true, false);
+    }
+
+    fn metadata(&self) -> Option<StepMetadata> {
+        Some(StepMetadata::check("rustc_codegen_gcc", self.target).built_by(self.build_compiler))
     }
 }
 

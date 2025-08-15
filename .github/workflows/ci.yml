@@ -223,6 +223,11 @@ jobs:
           cd src/ci/citool
           CARGO_INCREMENTAL=0 CARGO_TARGET_DIR=../../../build/citool cargo build
 
+      - name: wait for Windows disk cleanup to finish
+        if: ${{ matrix.free_disk && startsWith(matrix.os, 'windows-') }}
+        run: |
+          python3 src/ci/scripts/free-disk-space-windows-wait.py
+
       - name: run the build
         run: |
           set +e

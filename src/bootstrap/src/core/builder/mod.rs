@@ -1042,7 +1042,8 @@ impl<'a> Builder<'a> {
             Kind::Check | Kind::Fix => describe!(
                 check::Rustc,
                 check::Rustdoc,
-                check::CodegenBackend,
+                check::CraneliftCodegenBackend,
+                check::GccCodegenBackend,
                 check::Clippy,
                 check::Miri,
                 check::CargoMiri,
