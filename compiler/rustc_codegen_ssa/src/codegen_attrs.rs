@@ -6,7 +6,6 @@ use rustc_ast::{LitKind, MetaItem, MetaItemInner, attr};
 use rustc_hir::attrs::{AttributeKind, InlineAttr, InstructionSetAttr, UsedBy};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
-use rustc_hir::weak_lang_items::WEAK_LANG_ITEMS;
 use rustc_hir::{self as hir, Attribute, LangItem, find_attr, lang_items};
 use rustc_middle::middle::codegen_fn_attrs::{
     CodegenFnAttrFlags, CodegenFnAttrs, PatchableFunctionEntry,
@@ -520,14 +519,12 @@ fn handle_lang_items(
     // strippable by the linker.
     //
     // Additionally weak lang items have predetermined symbol names.
-    if let Some(lang_item) = lang_item {
-        if WEAK_LANG_ITEMS.contains(&lang_item) {
-            codegen_fn_attrs.flags |= CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL;
-        }
-        if let Some(link_name) = lang_item.link_name() {
-            codegen_fn_attrs.export_name = Some(link_name);
-            codegen_fn_attrs.link_name = Some(link_name);
-        }
+    if let Some(lang_item) = lang_item
+        && let Some(link_name) = lang_item.link_name()
+    {
+        codegen_fn_attrs.flags |= CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL;
+        codegen_fn_attrs.export_name = Some(link_name);
+        codegen_fn_attrs.link_name = Some(link_name);
     }
 
     // error when using no_mangle on a lang item item
