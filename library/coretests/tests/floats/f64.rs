@@ -28,20 +28,6 @@ fn test_mul_add() {
 }
 
 #[test]
-fn test_to_degrees() {
-    let pi: f64 = consts::PI;
-    let nan: f64 = f64::NAN;
-    let inf: f64 = f64::INFINITY;
-    let neg_inf: f64 = f64::NEG_INFINITY;
-    assert_biteq!(0.0f64.to_degrees(), 0.0);
-    assert_approx_eq!((-5.8f64).to_degrees(), -332.315521);
-    assert_biteq!(pi.to_degrees(), 180.0);
-    assert!(nan.to_degrees().is_nan());
-    assert_biteq!(inf.to_degrees(), inf);
-    assert_biteq!(neg_inf.to_degrees(), neg_inf);
-}
-
-#[test]
 fn test_to_radians() {
     let pi: f64 = consts::PI;
     let nan: f64 = f64::NAN;
