@@ -2357,7 +2357,7 @@ impl<T: Default> Default for Rc<T> {
     /// assert_eq!(*x, 0);
     /// ```
     #[inline]
-    fn default() -> Rc<T> {
+    fn default() -> Self {
         unsafe {
             Self::from_inner(
                 Box::leak(Box::write(
@@ -2373,7 +2373,7 @@ impl<T: Default> Default for Rc<T> {
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "more_rc_default_impls", since = "1.80.0")]
 impl Default for Rc<str> {
-    /// Creates an empty str inside an Rc
+    /// Creates an empty `str` inside an `Rc`.
     ///
     /// This may or may not share an allocation with other Rcs on the same thread.
     #[inline]
@@ -2387,13 +2387,26 @@ impl Default for Rc<str> {
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "more_rc_default_impls", since = "1.80.0")]
 impl<T> Default for Rc<[T]> {
-    /// Creates an empty `[T]` inside an Rc
+    /// Creates an empty `[T]` inside an `Rc`.
     ///
     /// This may or may not share an allocation with other Rcs on the same thread.
     #[inline]
     fn default() -> Self {
         let arr: [T; 0] = [];
         Rc::from(arr)
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
+#[stable(feature = "pin_default_impls", since = "CURRENT_RUSTC_VERSION")]
+impl<T> Default for Pin<Rc<T>>
+where
+    T: ?Sized,
+    Rc<T>: Default,
+{
+    #[inline]
+    fn default() -> Self {
+        unsafe { Pin::new_unchecked(Rc::<T>::default()) }
     }
 }
 
