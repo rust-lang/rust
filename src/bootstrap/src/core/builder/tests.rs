@@ -1201,6 +1201,7 @@ mod snapshot {
         [dist] rustc 1 <host> -> analysis 2 <host>
         [dist] src <>
         [build] rustc 1 <host> -> cargo 2 <host>
+        [dist] rustc 1 <host> -> cargo 2 <host>
         [build] rustc 1 <host> -> rust-analyzer 2 <host>
         [build] rustc 1 <host> -> rustfmt 2 <host>
         [build] rustc 1 <host> -> cargo-fmt 2 <host>
@@ -1530,6 +1531,7 @@ mod snapshot {
         [dist] rustc 1 <host> -> analysis 2 <target1>
         [dist] src <>
         [build] rustc 1 <host> -> cargo 2 <target1>
+        [dist] rustc 1 <host> -> cargo 2 <target1>
         [build] rustc 1 <host> -> rust-analyzer 2 <target1>
         [build] rustc 1 <host> -> rustfmt 2 <target1>
         [build] rustc 1 <host> -> cargo-fmt 2 <target1>

@@ -21,7 +21,9 @@ use tracing::instrument;
 
 use crate::core::build_steps::compile::{get_codegen_backend_file, normalize_codegen_backend_name};
 use crate::core::build_steps::doc::DocumentationFormat;
-use crate::core::build_steps::tool::{self, RustcPrivateCompilers, Tool};
+use crate::core::build_steps::tool::{
+    self, RustcPrivateCompilers, Tool, ToolTargetBuildMode, get_tool_target_compiler,
+};
 use crate::core::build_steps::vendor::{VENDOR_DIR, Vendor};
 use crate::core::build_steps::{compile, llvm};
 use crate::core::builder::{Builder, Kind, RunConfig, ShouldRun, Step, StepMetadata};
@@ -1293,10 +1295,9 @@ impl Step for Cargo {
 
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(Cargo {
-            build_compiler: run.builder.compiler_for(
-                run.builder.top_stage,
-                run.builder.config.host_target,
-                run.target,
+            build_compiler: get_tool_target_compiler(
+                run.builder,
+                ToolTargetBuildMode::Build(run.target),
             ),
             target: run.target,
         });
@@ -1326,6 +1327,10 @@ impl Step for Cargo {
         tarball.add_legal_and_readme_to("share/doc/cargo");
 
         Some(tarball.generate())
+    }
+
+    fn metadata(&self) -> Option<StepMetadata> {
+        Some(StepMetadata::dist("cargo", self.target).built_by(self.build_compiler))
     }
 }
 
