@@ -62,12 +62,12 @@ impl JsonRenderer<'_> {
                     clean::ModuleItem(_)
                         if self.imported_items.contains(&item_id.expect_def_id()) =>
                     {
-                        from_clean_item(item, self)
+                        from_clean_item(item, self)?
                     }
                     _ => return None,
                 }
             }
-            _ => from_clean_item(item, self),
+            _ => from_clean_item(item, self)?,
         };
         Some(Item {
             id,
@@ -269,13 +269,13 @@ impl FromClean<clean::AssocItemConstraintKind> for AssocItemConstraintKind {
     }
 }
 
-fn from_clean_item(item: &clean::Item, renderer: &JsonRenderer<'_>) -> ItemEnum {
+fn from_clean_item(item: &clean::Item, renderer: &JsonRenderer<'_>) -> Option<ItemEnum> {
     use clean::ItemKind::*;
     let name = item.name;
     let is_crate = item.is_crate();
     let header = item.fn_header(renderer.tcx);
 
-    match &item.inner.kind {
+    Some(match &item.inner.kind {
         ModuleItem(m) => {
             ItemEnum::Module(Module { is_crate, items: renderer.ids(&m.items), is_stripped: false })
         }
@@ -310,6 +310,8 @@ fn from_clean_item(item: &clean::Item, renderer: &JsonRenderer<'_>) -> ItemEnum 
             const_: ci.kind.into_json(renderer),
         },
         MacroItem(m, _) => ItemEnum::Macro(m.source.clone()),
+        // They are just placeholders so no need to handle them.
+        AttrMacroItem | DeriveMacroItem => return None,
         ProcMacroItem(m) => ItemEnum::ProcMacro(m.into_json(renderer)),
         PrimitiveItem(p) => {
             ItemEnum::Primitive(Primitive {
@@ -355,7 +357,7 @@ fn from_clean_item(item: &clean::Item, renderer: &JsonRenderer<'_>) -> ItemEnum 
         },
         // All placeholder impl items should have been removed in the stripper passes.
         PlaceholderImplItem => unreachable!(),
-    }
+    })
 }
 
 impl FromClean<clean::Struct> for Struct {

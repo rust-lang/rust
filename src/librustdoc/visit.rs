@@ -42,6 +42,8 @@ pub(crate) trait DocVisitor<'a>: Sized {
             | ForeignStaticItem(..)
             | ForeignTypeItem
             | MacroItem(..)
+            | AttrMacroItem
+            | DeriveMacroItem
             | ProcMacroItem(_)
             | PrimitiveItem(_)
             | RequiredAssocConstItem(..)
