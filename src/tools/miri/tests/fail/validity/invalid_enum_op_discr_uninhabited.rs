@@ -1,6 +1,5 @@
 // Make sure we find these even with many checks disabled.
 //@compile-flags: -Zmiri-disable-alignment-check -Zmiri-disable-stacked-borrows -Zmiri-disable-validation
-#![feature(never_type)]
 
 enum Never {}
 
