@@ -49,7 +49,7 @@ use rustc_middle::ty::{self, ScalarInt, TyCtxt};
 use rustc_mir_dataflow::lattice::HasBottom;
 use rustc_mir_dataflow::value_analysis::{Map, PlaceIndex, State, TrackElem};
 use rustc_span::DUMMY_SP;
-use tracing::{debug, instrument, trace};
+use tracing::{debug, instrument};
 
 use crate::cost_checker::CostChecker;
 
@@ -68,12 +68,6 @@ impl<'tcx> crate::MirPass<'tcx> for JumpThreading {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         let def_id = body.source.def_id();
         debug!(?def_id);
-
-        // Optimizing coroutines creates query cycles.
-        if tcx.is_coroutine(def_id) {
-            trace!("Skipped for coroutine {:?}", def_id);
-            return;
-        }
 
         let typing_env = body.typing_env(tcx);
         let arena = &DroplessArena::default();
