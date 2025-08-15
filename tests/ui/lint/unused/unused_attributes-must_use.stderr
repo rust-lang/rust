@@ -1,154 +1,154 @@
 error: unused attribute `must_use`
-  --> $DIR/unused_attributes-must_use.rs:58:1
+  --> $DIR/unused_attributes-must_use.rs:60:1
    |
 LL | #[must_use]
    | ^^^^^^^^^^^
    |
 note: the built-in attribute `must_use` will be ignored, since it's applied to the macro invocation `global_asm`
-  --> $DIR/unused_attributes-must_use.rs:59:1
+  --> $DIR/unused_attributes-must_use.rs:61:1
    |
 LL | global_asm!("");
    | ^^^^^^^^^^
 note: the lint level is defined here
-  --> $DIR/unused_attributes-must_use.rs:2:9
+  --> $DIR/unused_attributes-must_use.rs:4:9
    |
 LL | #![deny(unused_attributes, unused_must_use)]
    |         ^^^^^^^^^^^^^^^^^
 
-error: `#[must_use]` has no effect when applied to an extern crate
-  --> $DIR/unused_attributes-must_use.rs:5:1
+error: `#[must_use]` has no effect when applied to extern crates
+  --> $DIR/unused_attributes-must_use.rs:7:1
    |
 LL | #[must_use]
    | ^^^^^^^^^^^
 
-error: `#[must_use]` has no effect when applied to a module
-  --> $DIR/unused_attributes-must_use.rs:8:1
+error: `#[must_use]` has no effect when applied to modules
+  --> $DIR/unused_attributes-must_use.rs:10:1
    |
 LL | #[must_use]
    | ^^^^^^^^^^^
 
-error: `#[must_use]` has no effect when applied to a use
-  --> $DIR/unused_attributes-must_use.rs:11:1
+error: `#[must_use]` has no effect when applied to use statements
+  --> $DIR/unused_attributes-must_use.rs:13:1
    |
 LL | #[must_use]
    | ^^^^^^^^^^^
 
-error: `#[must_use]` has no effect when applied to a constant item
-  --> $DIR/unused_attributes-must_use.rs:14:1
-   |
-LL | #[must_use]
-   | ^^^^^^^^^^^
-
-error: `#[must_use]` has no effect when applied to a static item
+error: `#[must_use]` has no effect when applied to constants
   --> $DIR/unused_attributes-must_use.rs:16:1
    |
 LL | #[must_use]
    | ^^^^^^^^^^^
 
-error: `#[must_use]` has no effect when applied to an inherent implementation block
-  --> $DIR/unused_attributes-must_use.rs:33:1
+error: `#[must_use]` has no effect when applied to statics
+  --> $DIR/unused_attributes-must_use.rs:18:1
    |
 LL | #[must_use]
    | ^^^^^^^^^^^
 
-error: `#[must_use]` has no effect when applied to a foreign module
-  --> $DIR/unused_attributes-must_use.rs:47:1
+error: `#[must_use]` has no effect when applied to inherent impl blocks
+  --> $DIR/unused_attributes-must_use.rs:35:1
    |
 LL | #[must_use]
    | ^^^^^^^^^^^
 
-error: `#[must_use]` has no effect when applied to a type alias
-  --> $DIR/unused_attributes-must_use.rs:61:1
+error: `#[must_use]` has no effect when applied to foreign modules
+  --> $DIR/unused_attributes-must_use.rs:49:1
    |
 LL | #[must_use]
    | ^^^^^^^^^^^
 
-error: `#[must_use]` has no effect when applied to a type parameter
-  --> $DIR/unused_attributes-must_use.rs:64:8
+error: `#[must_use]` has no effect when applied to type aliases
+  --> $DIR/unused_attributes-must_use.rs:63:1
+   |
+LL | #[must_use]
+   | ^^^^^^^^^^^
+
+error: `#[must_use]` has no effect when applied to type parameters
+  --> $DIR/unused_attributes-must_use.rs:66:8
    |
 LL | fn qux<#[must_use] T>(_: T) {}
    |        ^^^^^^^^^^^
 
-error: `#[must_use]` has no effect when applied to an trait implementation block
-  --> $DIR/unused_attributes-must_use.rs:79:1
+error: `#[must_use]` has no effect when applied to trait impl blocks
+  --> $DIR/unused_attributes-must_use.rs:81:1
    |
 LL | #[must_use]
    | ^^^^^^^^^^^
 
-error: `#[must_use]` has no effect when applied to a trait alias
-  --> $DIR/unused_attributes-must_use.rs:89:1
+error: `#[must_use]` has no effect when applied to trait aliases
+  --> $DIR/unused_attributes-must_use.rs:91:1
    |
 LL | #[must_use]
    | ^^^^^^^^^^^
 
-error: `#[must_use]` has no effect when applied to a macro def
-  --> $DIR/unused_attributes-must_use.rs:92:1
+error: `#[must_use]` has no effect when applied to macro defs
+  --> $DIR/unused_attributes-must_use.rs:94:1
    |
 LL | #[must_use]
    | ^^^^^^^^^^^
 
-error: `#[must_use]` has no effect when applied to a statement
-  --> $DIR/unused_attributes-must_use.rs:100:5
+error: `#[must_use]` has no effect when applied to statements
+  --> $DIR/unused_attributes-must_use.rs:102:5
    |
 LL |     #[must_use]
    |     ^^^^^^^^^^^
 
-error: `#[must_use]` has no effect when applied to a closure
-  --> $DIR/unused_attributes-must_use.rs:104:13
+error: `#[must_use]` has no effect when applied to closures
+  --> $DIR/unused_attributes-must_use.rs:106:13
    |
 LL |     let x = #[must_use]
    |             ^^^^^^^^^^^
 
-error: `#[must_use]` has no effect when applied to an match arm
-  --> $DIR/unused_attributes-must_use.rs:126:9
+error: `#[must_use]` has no effect when applied to match arms
+  --> $DIR/unused_attributes-must_use.rs:128:9
    |
 LL |         #[must_use]
    |         ^^^^^^^^^^^
 
-error: `#[must_use]` has no effect when applied to a struct field
-  --> $DIR/unused_attributes-must_use.rs:134:28
+error: `#[must_use]` has no effect when applied to struct fields
+  --> $DIR/unused_attributes-must_use.rs:136:28
    |
 LL |     let s = PatternField { #[must_use]  foo: 123 };
    |                            ^^^^^^^^^^^
 
-error: `#[must_use]` has no effect when applied to a pattern field
-  --> $DIR/unused_attributes-must_use.rs:135:24
+error: `#[must_use]` has no effect when applied to pattern fields
+  --> $DIR/unused_attributes-must_use.rs:137:24
    |
 LL |     let PatternField { #[must_use] foo } = s;
    |                        ^^^^^^^^^^^
 
-error: `#[must_use]` has no effect when applied to an associated const
-  --> $DIR/unused_attributes-must_use.rs:68:5
-   |
-LL |     #[must_use]
-   |     ^^^^^^^^^^^
-
-error: `#[must_use]` has no effect when applied to an associated type
+error: `#[must_use]` has no effect when applied to associated consts
   --> $DIR/unused_attributes-must_use.rs:70:5
    |
 LL |     #[must_use]
    |     ^^^^^^^^^^^
 
-error: `#[must_use]` has no effect when applied to a provided trait method
-  --> $DIR/unused_attributes-must_use.rs:83:5
+error: `#[must_use]` has no effect when applied to associated types
+  --> $DIR/unused_attributes-must_use.rs:72:5
    |
 LL |     #[must_use]
    |     ^^^^^^^^^^^
 
-error: `#[must_use]` has no effect when applied to a foreign static item
-  --> $DIR/unused_attributes-must_use.rs:50:5
+error: `#[must_use]` has no effect when applied to provided trait methods
+  --> $DIR/unused_attributes-must_use.rs:85:5
+   |
+LL |     #[must_use]
+   |     ^^^^^^^^^^^
+
+error: `#[must_use]` has no effect when applied to foreign statics
+  --> $DIR/unused_attributes-must_use.rs:52:5
    |
 LL |     #[must_use]
    |     ^^^^^^^^^^^
 
 error: unused `X` that must be used
-  --> $DIR/unused_attributes-must_use.rs:108:5
+  --> $DIR/unused_attributes-must_use.rs:110:5
    |
 LL |     X;
    |     ^
    |
 note: the lint level is defined here
-  --> $DIR/unused_attributes-must_use.rs:2:28
+  --> $DIR/unused_attributes-must_use.rs:4:28
    |
 LL | #![deny(unused_attributes, unused_must_use)]
    |                            ^^^^^^^^^^^^^^^
@@ -158,7 +158,7 @@ LL |     let _ = X;
    |     +++++++
 
 error: unused `Y` that must be used
-  --> $DIR/unused_attributes-must_use.rs:109:5
+  --> $DIR/unused_attributes-must_use.rs:111:5
    |
 LL |     Y::Z;
    |     ^^^^
@@ -169,7 +169,7 @@ LL |     let _ = Y::Z;
    |     +++++++
 
 error: unused `U` that must be used
-  --> $DIR/unused_attributes-must_use.rs:110:5
+  --> $DIR/unused_attributes-must_use.rs:112:5
    |
 LL |     U { unit: () };
    |     ^^^^^^^^^^^^^^
@@ -180,7 +180,7 @@ LL |     let _ = U { unit: () };
    |     +++++++
 
 error: unused return value of `U::method` that must be used
-  --> $DIR/unused_attributes-must_use.rs:111:5
+  --> $DIR/unused_attributes-must_use.rs:113:5
    |
 LL |     U::method();
    |     ^^^^^^^^^^^
@@ -191,7 +191,7 @@ LL |     let _ = U::method();
    |     +++++++
 
 error: unused return value of `foo` that must be used
-  --> $DIR/unused_attributes-must_use.rs:112:5
+  --> $DIR/unused_attributes-must_use.rs:114:5
    |
 LL |     foo();
    |     ^^^^^
@@ -202,7 +202,7 @@ LL |     let _ = foo();
    |     +++++++
 
 error: unused return value of `foreign_foo` that must be used
-  --> $DIR/unused_attributes-must_use.rs:115:9
+  --> $DIR/unused_attributes-must_use.rs:117:9
    |
 LL |         foreign_foo();
    |         ^^^^^^^^^^^^^
@@ -213,7 +213,7 @@ LL |         let _ = foreign_foo();
    |         +++++++
 
 error: unused return value of `Use::get_four` that must be used
-  --> $DIR/unused_attributes-must_use.rs:123:5
+  --> $DIR/unused_attributes-must_use.rs:125:5
    |
 LL |     ().get_four();
    |     ^^^^^^^^^^^^^

@@ -4315,7 +4315,6 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             qself,
             path,
             ns,
-            path_span,
             source.defer_to_typeck(),
             finalize,
             source,
@@ -4438,7 +4437,6 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         qself: &Option<Box<QSelf>>,
         path: &[Segment],
         primary_ns: Namespace,
-        span: Span,
         defer_to_typeck: bool,
         finalize: Finalize,
         source: PathSource<'_, 'ast, 'ra>,
@@ -4463,21 +4461,11 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         }
 
         assert!(primary_ns != MacroNS);
-
-        if qself.is_none() {
-            let path_seg = |seg: &Segment| PathSegment::from_ident(seg.ident);
-            let path = Path { segments: path.iter().map(path_seg).collect(), span, tokens: None };
-            if let Ok((_, res)) = self.r.cm().resolve_macro_path(
-                &path,
-                None,
-                &self.parent_scope,
-                false,
-                false,
-                None,
-                None,
-            ) {
-                return Ok(Some(PartialRes::new(res)));
-            }
+        if qself.is_none()
+            && let PathResult::NonModule(res) =
+                self.r.cm().maybe_resolve_path(path, Some(MacroNS), &self.parent_scope, None)
+        {
+            return Ok(Some(res));
         }
 
         Ok(fin_res)

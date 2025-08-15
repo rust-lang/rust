@@ -3,11 +3,11 @@
 struct Foo;
 
 #[non_exhaustive]
-//~^ ERROR attribute should be applied to a struct or enum [E0701]
+//~^ ERROR attribute cannot be used on
 trait Bar { }
 
 #[non_exhaustive]
-//~^ ERROR attribute should be applied to a struct or enum [E0701]
+//~^ ERROR attribute cannot be used on
 union Baz {
     f1: u16,
     f2: u16

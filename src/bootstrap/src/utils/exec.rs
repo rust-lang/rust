@@ -15,7 +15,6 @@ use std::hash::Hash;
 use std::io::{BufWriter, Write};
 use std::panic::Location;
 use std::path::Path;
-use std::process;
 use std::process::{
     Child, ChildStderr, ChildStdout, Command, CommandArgs, CommandEnvs, ExitStatus, Output, Stdio,
 };
@@ -26,10 +25,8 @@ use build_helper::ci::CiEnv;
 use build_helper::drop_bomb::DropBomb;
 use build_helper::exit;
 
-use crate::PathBuf;
 use crate::core::config::DryRun;
-#[cfg(feature = "tracing")]
-use crate::trace_cmd;
+use crate::{PathBuf, t};
 
 /// What should be done when the command fails.
 #[derive(Debug, Copy, Clone)]
@@ -77,9 +74,17 @@ pub struct CommandFingerprint {
 }
 
 impl CommandFingerprint {
+    #[cfg(feature = "tracing")]
+    pub(crate) fn program_name(&self) -> String {
+        Path::new(&self.program)
+            .file_name()
+            .map(|p| p.to_string_lossy().to_string())
+            .unwrap_or_else(|| "<unknown command>".to_string())
+    }
+
     /// Helper method to format both Command and BootstrapCommand as a short execution line,
     /// without all the other details (e.g. environment variables).
-    pub fn format_short_cmd(&self) -> String {
+    pub(crate) fn format_short_cmd(&self) -> String {
         use std::fmt::Write;
 
         let mut cmd = self.program.to_string_lossy().to_string();
@@ -121,17 +126,9 @@ impl CommandProfiler {
         entry.traces.push(ExecutionTrace::CacheHit);
     }
 
-    pub fn report_summary(&self, start_time: Instant) {
-        let pid = process::id();
-        let filename = format!("bootstrap-profile-{pid}.txt");
-
-        let file = match File::create(&filename) {
-            Ok(f) => f,
-            Err(e) => {
-                eprintln!("Failed to create profiler output file: {e}");
-                return;
-            }
-        };
+    /// Report summary of executed commands file at the specified `path`.
+    pub fn report_summary(&self, path: &Path, start_time: Instant) {
+        let file = t!(File::create(path));
 
         let mut writer = BufWriter::new(file);
         let stats = self.stats.lock().unwrap();
@@ -221,8 +218,6 @@ impl CommandProfiler {
         writeln!(writer, "Total cache hits: {total_cache_hits}").unwrap();
         writeln!(writer, "Estimated time saved due to cache hits: {total_saved_duration:.2?}")
             .unwrap();
-
-        println!("Command profiler report saved to {filename}");
     }
 }
 
@@ -686,15 +681,15 @@ impl ExecutionContext {
     ) -> DeferredCommand<'a> {
         let fingerprint = command.fingerprint();
 
-        #[cfg(feature = "tracing")]
-        let span_guard = trace_cmd!(command);
-
         if let Some(cached_output) = self.command_cache.get(&fingerprint) {
             command.mark_as_executed();
             self.verbose(|| println!("Cache hit: {command:?}"));
             self.profiler.record_cache_hit(fingerprint);
             return DeferredCommand { state: CommandState::Cached(cached_output) };
         }
+
+        #[cfg(feature = "tracing")]
+        let span_guard = crate::utils::tracing::trace_cmd(command);
 
         let created_at = command.get_created_location();
         let executed_at = std::panic::Location::caller();
@@ -779,7 +774,7 @@ impl ExecutionContext {
         }
 
         #[cfg(feature = "tracing")]
-        let span_guard = trace_cmd!(command);
+        let span_guard = crate::utils::tracing::trace_cmd(command);
 
         let start_time = Instant::now();
         let fingerprint = command.fingerprint();

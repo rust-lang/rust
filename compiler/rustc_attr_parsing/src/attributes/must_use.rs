@@ -4,16 +4,16 @@ use rustc_hir::attrs::AttributeKind;
 use rustc_span::{Symbol, sym};
 
 use crate::attributes::{AttributeOrder, OnDuplicate, SingleAttributeParser};
-use crate::context::{AcceptContext, Stage};
+use crate::context::{ALL_TARGETS, AcceptContext, AllowedTargets, Stage};
 use crate::parser::ArgParser;
 use crate::session_diagnostics;
-
 pub(crate) struct MustUseParser;
 
 impl<S: Stage> SingleAttributeParser<S> for MustUseParser {
     const PATH: &[Symbol] = &[sym::must_use];
     const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::WarnButFutureError;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(ALL_TARGETS); //FIXME Still checked fully in `check_attr.rs`
     const TEMPLATE: AttributeTemplate = template!(
         Word, NameValueStr: "reason",
         "https://doc.rust-lang.org/reference/attributes/diagnostics.html#the-must_use-attribute"

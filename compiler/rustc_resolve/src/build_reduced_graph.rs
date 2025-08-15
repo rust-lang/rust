@@ -971,40 +971,35 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
         let imported_binding = self.r.import(binding, import);
         if ident.name != kw::Underscore && parent == self.r.graph_root {
             let norm_ident = Macros20NormalizedIdent::new(ident);
+            // FIXME: this error is technically unnecessary now when extern prelude is split into
+            // two scopes, remove it with lang team approval.
             if let Some(entry) = self.r.extern_prelude.get(&norm_ident)
                 && expansion != LocalExpnId::ROOT
                 && orig_name.is_some()
-                && !entry.is_import()
+                && entry.item_binding.is_none()
             {
                 self.r.dcx().emit_err(
                     errors::MacroExpandedExternCrateCannotShadowExternArguments { span: item.span },
                 );
-                // `return` is intended to discard this binding because it's an
-                // unregistered ambiguity error which would result in a panic
-                // caused by inconsistency `path_res`
-                // more details: https://github.com/rust-lang/rust/pull/111761
-                return;
             }
 
             use indexmap::map::Entry;
             match self.r.extern_prelude.entry(norm_ident) {
                 Entry::Occupied(mut occupied) => {
                     let entry = occupied.get_mut();
-                    if let Some(old_binding) = entry.binding.get()
-                        && old_binding.is_import()
-                    {
+                    if entry.item_binding.is_some() {
                         let msg = format!("extern crate `{ident}` already in extern prelude");
                         self.r.tcx.dcx().span_delayed_bug(item.span, msg);
                     } else {
-                        // Binding from `extern crate` item in source code can replace
-                        // a binding from `--extern` on command line here.
-                        entry.binding.set(Some(imported_binding));
+                        entry.item_binding = Some(imported_binding);
                         entry.introduced_by_item = orig_name.is_some();
                     }
                     entry
                 }
                 Entry::Vacant(vacant) => vacant.insert(ExternPreludeEntry {
-                    binding: Cell::new(Some(imported_binding)),
+                    item_binding: Some(imported_binding),
+                    flag_binding: Cell::new(None),
+                    only_item: true,
                     introduced_by_item: true,
                 }),
             };
@@ -1232,7 +1227,8 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
             ItemKind::Fn(box ast::Fn { ident: fn_ident, .. }) => {
                 match self.proc_macro_stub(item, *fn_ident) {
                     Some((macro_kind, ident, span)) => {
-                        let res = Res::Def(DefKind::Macro(macro_kind), def_id.to_def_id());
+                        let macro_kinds = macro_kind.into();
+                        let res = Res::Def(DefKind::Macro(macro_kinds), def_id.to_def_id());
                         let macro_data = MacroData::new(self.r.dummy_ext(macro_kind));
                         self.r.new_local_macro(def_id, macro_data);
                         self.r.proc_macro_stubs.insert(def_id);

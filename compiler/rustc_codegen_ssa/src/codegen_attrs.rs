@@ -11,7 +11,6 @@ use rustc_hir::{self as hir, Attribute, LangItem, find_attr, lang_items};
 use rustc_middle::middle::codegen_fn_attrs::{
     CodegenFnAttrFlags, CodegenFnAttrs, PatchableFunctionEntry,
 };
-use rustc_middle::mir::mono::Linkage;
 use rustc_middle::query::Providers;
 use rustc_middle::span_bug;
 use rustc_middle::ty::{self as ty, TyCtxt};
@@ -25,31 +24,6 @@ use crate::errors::NoMangleNameless;
 use crate::target_features::{
     check_target_feature_trait_unsafe, check_tied_features, from_target_feature_attr,
 };
-
-fn linkage_by_name(tcx: TyCtxt<'_>, def_id: LocalDefId, name: &str) -> Linkage {
-    use rustc_middle::mir::mono::Linkage::*;
-
-    // Use the names from src/llvm/docs/LangRef.rst here. Most types are only
-    // applicable to variable declarations and may not really make sense for
-    // Rust code in the first place but allow them anyway and trust that the
-    // user knows what they're doing. Who knows, unanticipated use cases may pop
-    // up in the future.
-    //
-    // ghost, dllimport, dllexport and linkonce_odr_autohide are not supported
-    // and don't have to be, LLVM treats them as no-ops.
-    match name {
-        "available_externally" => AvailableExternally,
-        "common" => Common,
-        "extern_weak" => ExternalWeak,
-        "external" => External,
-        "internal" => Internal,
-        "linkonce" => LinkOnceAny,
-        "linkonce_odr" => LinkOnceODR,
-        "weak" => WeakAny,
-        "weak_odr" => WeakODR,
-        _ => tcx.dcx().span_fatal(tcx.def_span(def_id), "invalid linkage specified"),
-    }
-}
 
 /// In some cases, attributes are only valid on functions, but it's the `check_attr`
 /// pass that checks that they aren't used anywhere else, rather than this module.
@@ -101,13 +75,6 @@ fn parse_instruction_set_attr(tcx: TyCtxt<'_>, attr: &Attribute) -> Option<Instr
             None
         }
     }
-}
-
-// FIXME(jdonszelmann): remove when linkage becomes a parsed attr
-fn parse_linkage_attr(tcx: TyCtxt<'_>, did: LocalDefId, attr: &Attribute) -> Option<Linkage> {
-    let val = attr.value_str()?;
-    let linkage = linkage_by_name(tcx, did, val.as_str());
-    Some(linkage)
 }
 
 // FIXME(jdonszelmann): remove when no_sanitize becomes a parsed attr
@@ -332,6 +299,28 @@ fn process_builtin_attrs(
                 AttributeKind::StdInternalSymbol(_) => {
                     codegen_fn_attrs.flags |= CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL
                 }
+                AttributeKind::Linkage(linkage, _) => {
+                    let linkage = Some(*linkage);
+
+                    if tcx.is_foreign_item(did) {
+                        codegen_fn_attrs.import_linkage = linkage;
+
+                        if tcx.is_mutable_static(did.into()) {
+                            let mut diag = tcx.dcx().struct_span_err(
+                                attr.span(),
+                                "extern mutable statics are not allowed with `#[linkage]`",
+                            );
+                            diag.note(
+                                "marking the extern static mutable would allow changing which \
+                                symbol the static references rather than make the target of the \
+                                symbol mutable",
+                            );
+                            diag.emit();
+                        }
+                    } else {
+                        codegen_fn_attrs.linkage = linkage;
+                    }
+                }
                 _ => {}
             }
         }
@@ -349,28 +338,6 @@ fn process_builtin_attrs(
                 codegen_fn_attrs.flags |= CodegenFnAttrFlags::ALLOCATOR_ZEROED
             }
             sym::thread_local => codegen_fn_attrs.flags |= CodegenFnAttrFlags::THREAD_LOCAL,
-            sym::linkage => {
-                let linkage = parse_linkage_attr(tcx, did, attr);
-
-                if tcx.is_foreign_item(did) {
-                    codegen_fn_attrs.import_linkage = linkage;
-
-                    if tcx.is_mutable_static(did.into()) {
-                        let mut diag = tcx.dcx().struct_span_err(
-                            attr.span(),
-                            "extern mutable statics are not allowed with `#[linkage]`",
-                        );
-                        diag.note(
-                            "marking the extern static mutable would allow changing which \
-                            symbol the static references rather than make the target of the \
-                            symbol mutable",
-                        );
-                        diag.emit();
-                    }
-                } else {
-                    codegen_fn_attrs.linkage = linkage;
-                }
-            }
             sym::no_sanitize => {
                 interesting_spans.no_sanitize = Some(attr.span());
                 codegen_fn_attrs.no_sanitize |=

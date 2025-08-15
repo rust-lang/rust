@@ -3176,7 +3176,7 @@ impl<T, A: Allocator> Vec<T, A> {
         // - but the allocation extends out to `self.buf.capacity()` elements, possibly
         // uninitialized
         let spare_ptr = unsafe { ptr.add(self.len) };
-        let spare_ptr = spare_ptr.cast::<MaybeUninit<T>>();
+        let spare_ptr = spare_ptr.cast_uninit();
         let spare_len = self.buf.capacity() - self.len;
 
         // SAFETY:

@@ -19,14 +19,13 @@ use rustc_errors::{
 };
 use rustc_hir as hir;
 use rustc_hir::def::Namespace::{self, *};
-use rustc_hir::def::{self, CtorKind, CtorOf, DefKind};
+use rustc_hir::def::{self, CtorKind, CtorOf, DefKind, MacroKinds};
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId};
 use rustc_hir::{MissingLifetimeKind, PrimTy};
 use rustc_middle::ty;
 use rustc_session::{Session, lint};
 use rustc_span::edit_distance::{edit_distance, find_best_match_for_name};
 use rustc_span::edition::Edition;
-use rustc_span::hygiene::MacroKind;
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
 use thin_vec::ThinVec;
 use tracing::debug;
@@ -39,8 +38,8 @@ use crate::late::{
 };
 use crate::ty::fast_reject::SimplifiedType;
 use crate::{
-    Module, ModuleKind, ModuleOrUniformRoot, PathResult, PathSource, Resolver, Segment, errors,
-    path_names_to_string,
+    Module, ModuleKind, ModuleOrUniformRoot, PathResult, PathSource, Resolver, ScopeSet, Segment,
+    errors, path_names_to_string,
 };
 
 type Res = def::Res<ast::NodeId>;
@@ -1850,12 +1849,12 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
 
         match (res, source) {
             (
-                Res::Def(DefKind::Macro(MacroKind::Bang), def_id),
+                Res::Def(DefKind::Macro(kinds), def_id),
                 PathSource::Expr(Some(Expr {
                     kind: ExprKind::Index(..) | ExprKind::Call(..), ..
                 }))
                 | PathSource::Struct(_),
-            ) => {
+            ) if kinds.contains(MacroKinds::BANG) => {
                 // Don't suggest macro if it's unstable.
                 let suggestable = def_id.is_local()
                     || self.r.tcx.lookup_stability(def_id).is_none_or(|s| s.is_stable());
@@ -1880,7 +1879,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                     err.note("if you want the `try` keyword, you need Rust 2018 or later");
                 }
             }
-            (Res::Def(DefKind::Macro(MacroKind::Bang), _), _) => {
+            (Res::Def(DefKind::Macro(kinds), _), _) if kinds.contains(MacroKinds::BANG) => {
                 err.span_label(span, fallback_label.to_string());
             }
             (Res::Def(DefKind::TyAlias, def_id), PathSource::Trait(_)) => {
@@ -2459,44 +2458,29 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                     }
                 }
 
+                if let RibKind::Module(module) = rib.kind
+                    && let ModuleKind::Block = module.kind
+                {
+                    self.r.add_module_candidates(module, &mut names, &filter_fn, Some(ctxt));
+                } else if let RibKind::Module(module) = rib.kind {
+                    // Encountered a module item, abandon ribs and look into that module and preludes.
+                    self.r.add_scope_set_candidates(
+                        &mut names,
+                        ScopeSet::Late(ns, module, None),
+                        &self.parent_scope,
+                        ctxt,
+                        filter_fn,
+                    );
+                    break;
+                }
+
                 if let RibKind::MacroDefinition(def) = rib.kind
                     && def == self.r.macro_def(ctxt)
                 {
                     // If an invocation of this macro created `ident`, give up on `ident`
                     // and switch to `ident`'s source from the macro definition.
                     ctxt.remove_mark();
-                    continue;
                 }
-
-                // Items in scope
-                if let RibKind::Module(module) = rib.kind {
-                    // Items from this module
-                    self.r.add_module_candidates(module, &mut names, &filter_fn, Some(ctxt));
-
-                    if let ModuleKind::Block = module.kind {
-                        // We can see through blocks
-                    } else {
-                        // Items from the prelude
-                        if !module.no_implicit_prelude {
-                            names.extend(self.r.extern_prelude.keys().flat_map(|ident| {
-                                let res = Res::Def(DefKind::Mod, CRATE_DEF_ID.to_def_id());
-                                filter_fn(res)
-                                    .then_some(TypoSuggestion::typo_from_ident(ident.0, res))
-                            }));
-
-                            if let Some(prelude) = self.r.prelude {
-                                self.r.add_module_candidates(prelude, &mut names, &filter_fn, None);
-                            }
-                        }
-                        break;
-                    }
-                }
-            }
-            // Add primitive types to the mix
-            if filter_fn(Res::PrimTy(PrimTy::Bool)) {
-                names.extend(PrimTy::ALL.iter().map(|prim_ty| {
-                    TypoSuggestion::typo_from_name(prim_ty.name(), Res::PrimTy(*prim_ty))
-                }))
             }
         } else {
             // Search in module.

@@ -22,7 +22,7 @@ pub struct BuildManifest;
 
 impl Step for BuildManifest {
     type Output = ();
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("src/tools/build-manifest")
@@ -61,7 +61,7 @@ pub struct BumpStage0;
 
 impl Step for BumpStage0 {
     type Output = ();
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("src/tools/bump-stage0")
@@ -83,7 +83,7 @@ pub struct ReplaceVersionPlaceholder;
 
 impl Step for ReplaceVersionPlaceholder {
     type Output = ();
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("src/tools/replace-version-placeholder")
@@ -107,7 +107,6 @@ pub struct Miri {
 
 impl Step for Miri {
     type Output = ();
-    const ONLY_HOSTS: bool = false;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("src/tools/miri")
@@ -175,7 +174,7 @@ pub struct CollectLicenseMetadata;
 
 impl Step for CollectLicenseMetadata {
     type Output = PathBuf;
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("src/tools/collect-license-metadata")
@@ -206,7 +205,7 @@ pub struct GenerateCopyright;
 
 impl Step for GenerateCopyright {
     type Output = Vec<PathBuf>;
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("src/tools/generate-copyright")
@@ -270,7 +269,7 @@ pub struct GenerateWindowsSys;
 
 impl Step for GenerateWindowsSys {
     type Output = ();
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("src/tools/generate-windows-sys")
@@ -332,7 +331,7 @@ pub struct UnicodeTableGenerator;
 
 impl Step for UnicodeTableGenerator {
     type Output = ();
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("src/tools/unicode-table-generator")
@@ -354,7 +353,7 @@ pub struct FeaturesStatusDump;
 
 impl Step for FeaturesStatusDump {
     type Output = ();
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("src/tools/features-status-dump")
@@ -416,7 +415,7 @@ impl Step for CoverageDump {
     type Output = ();
 
     const DEFAULT: bool = false;
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("src/tools/coverage-dump")
@@ -438,7 +437,7 @@ pub struct Rustfmt;
 
 impl Step for Rustfmt {
     type Output = ();
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("src/tools/rustfmt")

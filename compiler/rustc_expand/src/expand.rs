@@ -736,8 +736,8 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
 
         let (fragment_kind, span) = (invoc.fragment_kind, invoc.span());
         ExpandResult::Ready(match invoc.kind {
-            InvocationKind::Bang { mac, span } => match ext {
-                SyntaxExtensionKind::Bang(expander) => {
+            InvocationKind::Bang { mac, span } => {
+                if let SyntaxExtensionKind::Bang(expander) = ext {
                     match expander.expand(self.cx, span, mac.args.tokens.clone()) {
                         Ok(tok_result) => {
                             let fragment =
@@ -755,8 +755,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                         }
                         Err(guar) => return ExpandResult::Ready(fragment_kind.dummy(span, guar)),
                     }
-                }
-                SyntaxExtensionKind::LegacyBang(expander) => {
+                } else if let Some(expander) = ext.as_legacy_bang() {
                     let tok_result = match expander.expand(self.cx, span, mac.args.tokens.clone()) {
                         ExpandResult::Ready(tok_result) => tok_result,
                         ExpandResult::Retry(_) => {
@@ -776,11 +775,12 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                         let guar = self.error_wrong_fragment_kind(fragment_kind, &mac, span);
                         fragment_kind.dummy(span, guar)
                     }
+                } else {
+                    unreachable!();
                 }
-                _ => unreachable!(),
-            },
-            InvocationKind::Attr { attr, pos, mut item, derives } => match ext {
-                SyntaxExtensionKind::Attr(expander) => {
+            }
+            InvocationKind::Attr { attr, pos, mut item, derives } => {
+                if let Some(expander) = ext.as_attr() {
                     self.gate_proc_macro_input(&item);
                     self.gate_proc_macro_attr_item(span, &item);
                     let tokens = match &item {
@@ -835,8 +835,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                         }
                         Err(guar) => return ExpandResult::Ready(fragment_kind.dummy(span, guar)),
                     }
-                }
-                SyntaxExtensionKind::LegacyAttr(expander) => {
+                } else if let SyntaxExtensionKind::LegacyAttr(expander) = ext {
                     match validate_attr::parse_meta(&self.cx.sess.psess, &attr) {
                         Ok(meta) => {
                             let item_clone = macro_stats.then(|| item.clone());
@@ -878,15 +877,15 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                             fragment_kind.expect_from_annotatables(iter::once(item))
                         }
                     }
-                }
-                SyntaxExtensionKind::NonMacroAttr => {
+                } else if let SyntaxExtensionKind::NonMacroAttr = ext {
                     // `-Zmacro-stats` ignores these because they don't do any real expansion.
                     self.cx.expanded_inert_attrs.mark(&attr);
                     item.visit_attrs(|attrs| attrs.insert(pos, attr));
                     fragment_kind.expect_from_annotatables(iter::once(item))
+                } else {
+                    unreachable!();
                 }
-                _ => unreachable!(),
-            },
+            }
             InvocationKind::Derive { path, item, is_const } => match ext {
                 SyntaxExtensionKind::Derive(expander)
                 | SyntaxExtensionKind::LegacyDerive(expander) => {
@@ -2155,6 +2154,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                             attr_name,
                             macro_name: pprust::path_to_string(&call.path),
                             invoc_span: call.path.span,
+                            attr_span: attr.span,
                         },
                     );
                 }

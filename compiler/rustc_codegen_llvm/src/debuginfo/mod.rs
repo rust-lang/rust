@@ -533,31 +533,26 @@ impl<'ll, 'tcx> DebugInfoCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             // First, let's see if this is a method within an inherent impl. Because
             // if yes, we want to make the result subroutine DIE a child of the
             // subroutine's self-type.
-            if let Some(impl_def_id) = cx.tcx.impl_of_assoc(instance.def_id()) {
-                // If the method does *not* belong to a trait, proceed
-                if cx.tcx.trait_id_of_impl(impl_def_id).is_none() {
-                    let impl_self_ty = cx.tcx.instantiate_and_normalize_erasing_regions(
-                        instance.args,
-                        cx.typing_env(),
-                        cx.tcx.type_of(impl_def_id),
-                    );
+            // For trait method impls we still use the "parallel namespace"
+            // strategy
+            if let Some(imp_def_id) = cx.tcx.inherent_impl_of_assoc(instance.def_id()) {
+                let impl_self_ty = cx.tcx.instantiate_and_normalize_erasing_regions(
+                    instance.args,
+                    cx.typing_env(),
+                    cx.tcx.type_of(imp_def_id),
+                );
 
-                    // Only "class" methods are generally understood by LLVM,
-                    // so avoid methods on other types (e.g., `<*mut T>::null`).
-                    if let ty::Adt(def, ..) = impl_self_ty.kind()
-                        && !def.is_box()
-                    {
-                        // Again, only create type information if full debuginfo is enabled
-                        if cx.sess().opts.debuginfo == DebugInfo::Full && !impl_self_ty.has_param()
-                        {
-                            return (type_di_node(cx, impl_self_ty), true);
-                        } else {
-                            return (namespace::item_namespace(cx, def.did()), false);
-                        }
+                // Only "class" methods are generally understood by LLVM,
+                // so avoid methods on other types (e.g., `<*mut T>::null`).
+                if let ty::Adt(def, ..) = impl_self_ty.kind()
+                    && !def.is_box()
+                {
+                    // Again, only create type information if full debuginfo is enabled
+                    if cx.sess().opts.debuginfo == DebugInfo::Full && !impl_self_ty.has_param() {
+                        return (type_di_node(cx, impl_self_ty), true);
+                    } else {
+                        return (namespace::item_namespace(cx, def.did()), false);
                     }
-                } else {
-                    // For trait method impls we still use the "parallel namespace"
-                    // strategy
                 }
             }
 
