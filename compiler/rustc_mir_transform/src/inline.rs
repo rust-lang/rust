@@ -121,8 +121,6 @@ trait Inliner<'tcx> {
         callee_attrs: &CodegenFnAttrs,
     ) -> Result<(), &'static str>;
 
-    fn check_caller_mir_body(&self, body: &Body<'tcx>) -> bool;
-
     /// Returns inlining decision that is based on the examination of callee MIR body.
     /// Assumes that codegen attributes have been checked for compatibility already.
     fn check_callee_mir_body(
@@ -194,10 +192,6 @@ impl<'tcx> Inliner<'tcx> for ForceInliner<'tcx> {
     ) -> Result<(), &'static str> {
         debug_assert_matches!(callee_attrs.inline, InlineAttr::Force { .. });
         Ok(())
-    }
-
-    fn check_caller_mir_body(&self, _: &Body<'tcx>) -> bool {
-        true
     }
 
     #[instrument(level = "debug", skip(self, callee_body))]
@@ -346,17 +340,6 @@ impl<'tcx> Inliner<'tcx> for NormalInliner<'tcx> {
         }
     }
 
-    fn check_caller_mir_body(&self, body: &Body<'tcx>) -> bool {
-        // Avoid inlining into coroutines, since their `optimized_mir` is used for layout computation,
-        // which can create a cycle, even when no attempt is made to inline the function in the other
-        // direction.
-        if body.coroutine.is_some() {
-            return false;
-        }
-
-        true
-    }
-
     #[instrument(level = "debug", skip(self, callee_body))]
     fn check_callee_mir_body(
         &self,
@@ -499,10 +482,6 @@ fn inline<'tcx, T: Inliner<'tcx>>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) -> b
     }
 
     let mut inliner = T::new(tcx, def_id, body);
-    if !inliner.check_caller_mir_body(body) {
-        return false;
-    }
-
     let blocks = START_BLOCK..body.basic_blocks.next_index();
     process_blocks(&mut inliner, body, blocks);
     inliner.changed()
@@ -772,11 +751,12 @@ fn check_mir_is_available<'tcx, I: Inliner<'tcx>>(
         && !inliner
             .tcx()
             .is_lang_item(inliner.tcx().parent(caller_def_id), rustc_hir::LangItem::FnOnce)
+        // The caller may be a shim.
+        && let Some(caller_def_id) = caller_def_id.as_local()
     {
         // If we know for sure that the function we're calling will itself try to
         // call us, then we avoid inlining that function.
-        if inliner.tcx().mir_callgraph_cyclic(caller_def_id.expect_local()).contains(&callee_def_id)
-        {
+        if inliner.tcx().mir_callgraph_cyclic(caller_def_id).contains(&callee_def_id) {
             debug!("query cycle avoidance");
             return Err("caller might be reachable from callee");
         }
