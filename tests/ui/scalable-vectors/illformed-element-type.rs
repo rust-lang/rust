@@ -6,7 +6,9 @@
 
 struct Foo;
 enum Bar {}
-union Baz { x: u16 }
+union Baz {
+    x: u16,
+}
 extern "C" {
     type Qux;
 }
