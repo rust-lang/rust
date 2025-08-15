@@ -27,7 +27,7 @@ impl const From<Infallible> for TryFromIntError {
     }
 }
 
-#[unstable(feature = "never_type", issue = "35121")]
+#[stable(feature = "never_type", since = "CURRENT_RUSTC_VERSION")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
 impl const From<!> for TryFromIntError {
     #[inline]

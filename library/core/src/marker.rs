@@ -480,7 +480,7 @@ marker_impls! {
 
 }
 
-#[unstable(feature = "never_type", issue = "35121")]
+#[stable(feature = "never_type", since = "CURRENT_RUSTC_VERSION")]
 impl Copy for ! {}
 
 /// Shared references can be copied, but mutable references *cannot*!
