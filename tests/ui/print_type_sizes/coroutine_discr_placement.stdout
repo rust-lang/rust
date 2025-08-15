@@ -1,3 +1,5 @@
+print-type-size type: `std::pin::Pin<&mut {coroutine@$DIR/coroutine_discr_placement.rs:13:5: 13:7}>`: 8 bytes, alignment: 8 bytes
+print-type-size     field `.pointer`: 8 bytes
 print-type-size type: `{coroutine@$DIR/coroutine_discr_placement.rs:13:5: 13:7}`: 8 bytes, alignment: 4 bytes
 print-type-size     discriminant: 1 bytes
 print-type-size     variant `Unresumed`: 0 bytes
@@ -15,3 +17,9 @@ print-type-size type: `std::mem::MaybeUninit<i32>`: 4 bytes, alignment: 4 bytes
 print-type-size     variant `MaybeUninit`: 4 bytes
 print-type-size         field `.uninit`: 0 bytes
 print-type-size         field `.value`: 4 bytes
+print-type-size type: `std::ops::CoroutineState<(), ()>`: 1 bytes, alignment: 1 bytes
+print-type-size     discriminant: 1 bytes
+print-type-size     variant `Yielded`: 0 bytes
+print-type-size         field `.0`: 0 bytes
+print-type-size     variant `Complete`: 0 bytes
+print-type-size         field `.0`: 0 bytes
