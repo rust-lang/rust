@@ -204,13 +204,9 @@ fn compute_symbol_name<'tcx>(
         // mangling scheme can't be used. For example both the GCC backend and
         // Rust-for-Linux don't support some of the characters used by the
         // legacy symbol mangling scheme.
-        let name = if tcx.is_foreign_item(def_id) {
-            if let Some(name) = attrs.link_name { name } else { tcx.item_name(def_id) }
-        } else {
-            if let Some(name) = attrs.export_name { name } else { tcx.item_name(def_id) }
-        };
+        let name = if let Some(name) = attrs.symbol_name { name } else { tcx.item_name(def_id) };
 
-            return v0::mangle_internal_symbol(tcx, name.as_str());
+        return v0::mangle_internal_symbol(tcx, name.as_str());
     }
 
     let wasm_import_module_exception_force_mangling = {
@@ -235,23 +231,16 @@ fn compute_symbol_name<'tcx>(
             && tcx.wasm_import_module_map(LOCAL_CRATE).contains_key(&def_id.into())
     };
 
-    if let Some(name) = attrs.link_name
-        && !wasm_import_module_exception_force_mangling
-    {
-        // Use provided name
-        return name.to_string();
-    }
+    if !wasm_import_module_exception_force_mangling {
+        if let Some(name) = attrs.symbol_name {
+            // Use provided name
+            return name.to_string();
+        }
 
-    if let Some(name) = attrs.export_name {
-        // Use provided name
-        return name.to_string();
-    }
-
-    if attrs.flags.contains(CodegenFnAttrFlags::NO_MANGLE)
-        && !wasm_import_module_exception_force_mangling
-    {
-        // Don't mangle
-        return tcx.item_name(def_id).to_string();
+        if attrs.flags.contains(CodegenFnAttrFlags::NO_MANGLE) {
+            // Don't mangle
+            return tcx.item_name(def_id).to_string();
+        }
     }
 
     // If we're dealing with an instance of a function that's inlined from

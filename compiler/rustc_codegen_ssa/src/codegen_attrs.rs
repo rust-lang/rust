@@ -189,7 +189,7 @@ fn process_builtin_attrs(
             match p {
                 AttributeKind::Cold(_) => codegen_fn_attrs.flags |= CodegenFnAttrFlags::COLD,
                 AttributeKind::ExportName { name, .. } => {
-                    codegen_fn_attrs.export_name = Some(*name)
+                    codegen_fn_attrs.symbol_name = Some(*name)
                 }
                 AttributeKind::Inline(inline, span) => {
                     codegen_fn_attrs.inline = *inline;
@@ -197,7 +197,13 @@ fn process_builtin_attrs(
                 }
                 AttributeKind::Naked(_) => codegen_fn_attrs.flags |= CodegenFnAttrFlags::NAKED,
                 AttributeKind::Align { align, .. } => codegen_fn_attrs.alignment = Some(*align),
-                AttributeKind::LinkName { name, .. } => codegen_fn_attrs.link_name = Some(*name),
+                AttributeKind::LinkName { name, .. } => {
+                    // FIXME Remove check for foreign functions once #[link_name] on non-foreign
+                    // functions is a hard error
+                    if tcx.is_foreign_item(did) {
+                        codegen_fn_attrs.symbol_name = Some(*name);
+                    }
+                }
                 AttributeKind::LinkOrdinal { ordinal, span } => {
                     codegen_fn_attrs.link_ordinal = Some(*ordinal);
                     interesting_spans.link_ordinal = Some(*span);
@@ -417,7 +423,7 @@ fn apply_overrides(tcx: TyCtxt<'_>, did: LocalDefId, codegen_fn_attrs: &mut Code
             // * `#[rustc_std_internal_symbol]` mangles the symbol name in a special way
             //   both for exports and imports through foreign items. This is handled further,
             //   during symbol mangling logic.
-        } else if codegen_fn_attrs.link_name.is_some() {
+        } else if codegen_fn_attrs.symbol_name.is_some() {
             // * This can be overridden with the `#[link_name]` attribute
         } else {
             // NOTE: there's one more exception that we cannot apply here. On wasm,
@@ -472,7 +478,7 @@ fn check_result(
     }
 
     // error when specifying link_name together with link_ordinal
-    if let Some(_) = codegen_fn_attrs.link_name
+    if let Some(_) = codegen_fn_attrs.symbol_name
         && let Some(_) = codegen_fn_attrs.link_ordinal
     {
         let msg = "cannot use `#[link_name]` with `#[link_ordinal]`";
@@ -523,8 +529,7 @@ fn handle_lang_items(
         && let Some(link_name) = lang_item.link_name()
     {
         codegen_fn_attrs.flags |= CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL;
-        codegen_fn_attrs.export_name = Some(link_name);
-        codegen_fn_attrs.link_name = Some(link_name);
+        codegen_fn_attrs.symbol_name = Some(link_name);
     }
 
     // error when using no_mangle on a lang item item
