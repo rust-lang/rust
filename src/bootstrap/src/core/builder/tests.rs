@@ -1059,6 +1059,7 @@ mod snapshot {
         [dist] rustc 1 <host> -> std 1 <host>
         [dist] rustc 1 <host> -> rustc-dev 2 <host>
         [dist] src <>
+        [dist] reproducible-artifacts <host>
         "
         );
     }
@@ -1137,6 +1138,7 @@ mod snapshot {
         [build] rustc 1 <host> -> cargo-miri 2 <host>
         [dist] rustc 1 <host> -> miri 2 <host>
         [dist] rustc 1 <host> -> extended 2 <host>
+        [dist] reproducible-artifacts <host>
         ");
     }
 
@@ -1210,6 +1212,7 @@ mod snapshot {
         [dist] rustc 2 <host> -> std 2 <target1>
         [dist] rustc 1 <host> -> rustc-dev 2 <host>
         [dist] src <>
+        [dist] reproducible-artifacts <host>
         "
         );
     }
@@ -1270,6 +1273,8 @@ mod snapshot {
         [dist] rustc 1 <host> -> rustc-dev 2 <host>
         [dist] rustc 1 <host> -> rustc-dev 2 <target1>
         [dist] src <>
+        [dist] reproducible-artifacts <host>
+        [dist] reproducible-artifacts <target1>
         "
         );
     }
@@ -1351,6 +1356,8 @@ mod snapshot {
         [dist] rustc 1 <host> -> rustc-dev 2 <host>
         [dist] rustc 1 <host> -> rustc-dev 2 <target1>
         [dist] src <>
+        [dist] reproducible-artifacts <host>
+        [dist] reproducible-artifacts <target1>
         "
         );
     }
@@ -1474,6 +1481,7 @@ mod snapshot {
         [build] rustc 1 <host> -> LlvmBitcodeLinker 2 <target1>
         [doc] rustc 2 <target1> -> std 2 <target1> crates=[]
         [dist] rustc 1 <host> -> extended 2 <target1>
+        [dist] reproducible-artifacts <target1>
         ");
     }
 
@@ -1528,6 +1536,7 @@ mod snapshot {
         [dist] rustc 1 <host> -> std 1 <host>
         [dist] rustc 1 <host> -> rustc-dev 2 <host>
         [dist] src <>
+        [dist] reproducible-artifacts <host>
         ");
     }
 
