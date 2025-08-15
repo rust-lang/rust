@@ -87,7 +87,6 @@ pub(crate) enum ImportKind<'ra> {
         id: NodeId,
     },
     Glob {
-        is_prelude: bool,
         // The visibility of the greatest re-export.
         // n.b. `max_vis` is only used in `finalize_import` to check for re-export errors.
         max_vis: Cell<Option<Visibility>>,
@@ -125,12 +124,9 @@ impl<'ra> std::fmt::Debug for ImportKind<'ra> {
                 .field("nested", nested)
                 .field("id", id)
                 .finish(),
-            Glob { is_prelude, max_vis, id } => f
-                .debug_struct("Glob")
-                .field("is_prelude", is_prelude)
-                .field("max_vis", max_vis)
-                .field("id", id)
-                .finish(),
+            Glob { max_vis, id } => {
+                f.debug_struct("Glob").field("max_vis", max_vis).field("id", id).finish()
+            }
             ExternCrate { source, target, id } => f
                 .debug_struct("ExternCrate")
                 .field("source", source)
@@ -1073,7 +1069,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             ImportKind::Single { source, target, ref bindings, type_ns_only, id, .. } => {
                 (source, target, bindings, type_ns_only, id)
             }
-            ImportKind::Glob { is_prelude, ref max_vis, id } => {
+            ImportKind::Glob { ref max_vis, id } => {
                 if import.module_path.len() <= 1 {
                     // HACK(eddyb) `lint_if_path_starts_with_module` needs at least
                     // 2 segments, so the `resolve_path` above won't trigger it.
@@ -1096,8 +1092,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         module: None,
                     });
                 }
-                if !is_prelude
-                    && let Some(max_vis) = max_vis.get()
+                if let Some(max_vis) = max_vis.get()
                     && !max_vis.is_at_least(import.vis, self.tcx)
                 {
                     let def_id = self.local_def_id(id);
@@ -1485,7 +1480,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
     fn resolve_glob_import(&mut self, import: Import<'ra>) {
         // This function is only called for glob imports.
-        let ImportKind::Glob { id, is_prelude, .. } = import.kind else { unreachable!() };
+        let ImportKind::Glob { id, .. } = import.kind else { unreachable!() };
 
         let ModuleOrUniformRoot::Module(module) = import.imported_module.get().unwrap() else {
             self.dcx().emit_err(CannotGlobImportAllCrates { span: import.span });
@@ -1503,9 +1498,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         }
 
         if module == import.parent_scope.module {
-            return;
-        } else if is_prelude {
-            self.prelude = Some(module);
             return;
         }
 
