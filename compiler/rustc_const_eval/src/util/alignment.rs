@@ -76,10 +76,8 @@ fn get_element_alignment<'tcx>(tcx: TyCtxt<'tcx>, ty: ty::Ty<'tcx>) -> Option<Al
         ty::Array(element_ty, _) => {
             // For arrays, the alignment is the same as the element type
             let param_env = ty::ParamEnv::empty();
-            let typing_env = ty::TypingEnv {
-                typing_mode: ty::TypingMode::non_body_analysis(),
-                param_env,
-            };
+            let typing_env = 
+                ty::TypingEnv { typing_mode: ty::TypingMode::non_body_analysis(), param_env };
             match tcx.layout_of(typing_env.as_query_input(*element_ty)) {
                 Ok(layout) => Some(layout.align.abi),
                 Err(_) => None,
@@ -88,10 +86,8 @@ fn get_element_alignment<'tcx>(tcx: TyCtxt<'tcx>, ty: ty::Ty<'tcx>) -> Option<Al
         ty::Slice(element_ty) => {
             // For slices, the alignment is the same as the element type
             let param_env = ty::ParamEnv::empty();
-            let typing_env = ty::TypingEnv {
-                typing_mode: ty::TypingMode::non_body_analysis(),
-                param_env,
-            };
+            let typing_env = 
+                ty::TypingEnv { typing_mode: ty::TypingMode::non_body_analysis(), param_env };
             match tcx.layout_of(typing_env.as_query_input(*element_ty)) {
                 Ok(layout) => Some(layout.align.abi),
                 Err(_) => None,
