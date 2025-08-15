@@ -23,11 +23,6 @@ impl<'tcx> crate::MirPass<'tcx> for ScalarReplacementOfAggregates {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         debug!(def_id = ?body.source.def_id());
 
-        // Avoid query cycles (coroutines require optimized MIR for layout).
-        if tcx.type_of(body.source.def_id()).instantiate_identity().is_coroutine() {
-            return;
-        }
-
         let mut excluded = excluded_locals(body);
         let typing_env = body.typing_env(tcx);
         loop {
