@@ -38,6 +38,9 @@ mod region_ctxt;
 use member_constraints::apply_member_constraints;
 use region_ctxt::RegionCtxt;
 
+/// We defer errors from [fn handle_opaque_type_uses] and only report them
+/// if there are no `RegionErrors`. If there are region errors, it's likely
+/// that errors here are caused by them and don't need to be handled separately.
 pub(crate) enum DeferredOpaqueTypeError<'tcx> {
     InvalidOpaqueTypeArgs(InvalidOpaqueTypeArgs<'tcx>),
     LifetimeMismatchOpaqueParam(LifetimeMismatchOpaqueParam<'tcx>),
