@@ -28,20 +28,6 @@ fn test_mul_add() {
 }
 
 #[test]
-fn test_powi() {
-    let nan: f64 = f64::NAN;
-    let inf: f64 = f64::INFINITY;
-    let neg_inf: f64 = f64::NEG_INFINITY;
-    assert_approx_eq!(1.0f64.powi(1), 1.0);
-    assert_approx_eq!((-3.1f64).powi(2), 9.61);
-    assert_approx_eq!(5.9f64.powi(-2), 0.028727);
-    assert_biteq!(8.3f64.powi(0), 1.0);
-    assert!(nan.powi(2).is_nan());
-    assert_biteq!(inf.powi(3), inf);
-    assert_biteq!(neg_inf.powi(2), inf);
-}
-
-#[test]
 fn test_to_degrees() {
     let pi: f64 = consts::PI;
     let nan: f64 = f64::NAN;

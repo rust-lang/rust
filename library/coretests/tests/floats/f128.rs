@@ -53,22 +53,6 @@ fn test_max_recip() {
 }
 
 #[test]
-#[cfg(not(miri))]
-#[cfg(target_has_reliable_f128_math)]
-fn test_powi() {
-    let nan: f128 = f128::NAN;
-    let inf: f128 = f128::INFINITY;
-    let neg_inf: f128 = f128::NEG_INFINITY;
-    assert_biteq!(1.0f128.powi(1), 1.0);
-    assert_approx_eq!((-3.1f128).powi(2), 9.6100000000000005506706202140776519387, TOL);
-    assert_approx_eq!(5.9f128.powi(-2), 0.028727377190462507313100483690639638451, TOL);
-    assert_biteq!(8.3f128.powi(0), 1.0);
-    assert!(nan.powi(2).is_nan());
-    assert_biteq!(inf.powi(3), inf);
-    assert_biteq!(neg_inf.powi(2), inf);
-}
-
-#[test]
 fn test_to_degrees() {
     let pi: f128 = consts::PI;
     let nan: f128 = f128::NAN;

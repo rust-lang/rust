@@ -1,11 +1,13 @@
 use std::num::FpCategory as Fp;
 use std::ops::{Add, Div, Mul, Rem, Sub};
 
-trait TestableFloat {
+trait TestableFloat: Sized {
     /// Unsigned int with the same size, for converting to/from bits.
     type Int;
     /// Set the default tolerance for float comparison based on the type.
     const APPROX: Self;
+    /// Allow looser tolerance for f32 on miri
+    const POWI_APPROX: Self = Self::APPROX;
     const ZERO: Self;
     const ONE: Self;
     const MIN_POSITIVE_NORMAL: Self;
@@ -39,6 +41,10 @@ impl TestableFloat for f16 {
 impl TestableFloat for f32 {
     type Int = u32;
     const APPROX: Self = 1e-6;
+    /// Miri adds some extra errors to float functions; make sure the tests still pass.
+    /// These values are purely used as a canary to test against and are thus not a stable guarantee Rust provides.
+    /// They serve as a way to get an idea of the real precision of floating point operations on different platforms.
+    const POWI_APPROX: Self = if cfg!(miri) { 1e-4 } else { Self::APPROX };
     const ZERO: Self = 0.0;
     const ONE: Self = 1.0;
     const MIN_POSITIVE_NORMAL: Self = Self::MIN_POSITIVE;
@@ -1358,5 +1364,26 @@ float_test! {
         assert!(nan.recip().is_nan());
         assert_biteq!(inf.recip(), 0.0);
         assert_biteq!(neg_inf.recip(), -0.0);
+    }
+}
+
+float_test! {
+    name: powi,
+    attrs: {
+        const: #[cfg(false)],
+        f16: #[cfg(all(not(miri), target_has_reliable_f16_math))],
+        f128: #[cfg(all(not(miri), target_has_reliable_f128_math))],
+    },
+    test<Float> {
+        let nan: Float = Float::NAN;
+        let inf: Float = Float::INFINITY;
+        let neg_inf: Float = Float::NEG_INFINITY;
+        assert_approx_eq!(Float::ONE.powi(1), Float::ONE);
+        assert_approx_eq!((-3.1 as Float).powi(2), 9.6100000000000005506706202140776519387, Float::POWI_APPROX);
+        assert_approx_eq!((5.9 as Float).powi(-2), 0.028727377190462507313100483690639638451);
+        assert_biteq!((8.3 as Float).powi(0), Float::ONE);
+        assert!(nan.powi(2).is_nan());
+        assert_biteq!(inf.powi(3), inf);
+        assert_biteq!(neg_inf.powi(2), inf);
     }
 }
