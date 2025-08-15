@@ -1,7 +1,6 @@
 //@ compile-flags: -Copt-level=3
 
 #![crate_type = "lib"]
-#![feature(array_repeat)]
 
 use std::array::repeat;
 
