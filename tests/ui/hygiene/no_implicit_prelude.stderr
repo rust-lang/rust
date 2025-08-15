@@ -1,4 +1,4 @@
-error[E0433]: cannot find `Vec` in this scope
+error[E0433]: cannot find type `Vec` in this scope
   --> $DIR/no_implicit_prelude.rs:11:9
    |
 LL |     fn f() { ::bar::m!(); }

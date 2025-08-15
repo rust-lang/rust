@@ -32,6 +32,6 @@ fn main() {
     //~| NOTE expected `char`, found `bool`
 
     match () {
-        E::V => {} //~ ERROR cannot find `E`
+        E::V => {} //~ ERROR cannot find type `E`
     }
 }

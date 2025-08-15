@@ -25,7 +25,7 @@ fn main() {
     //~| NOTE function or associated item not found in `Struct`
 
     Struc::foo();
-    //~^ ERROR cannot find `Struc`
+    //~^ ERROR cannot find type `Struc`
     //~| NOTE use of undeclared type `Struc`
 
     modul::foo();
@@ -37,6 +37,6 @@ fn main() {
     //~| NOTE could not find `Struc` in `module`
 
     Trai::foo();
-    //~^ ERROR cannot find `Trai`
+    //~^ ERROR cannot find type `Trai`
     //~| NOTE use of undeclared type `Trai`
 }

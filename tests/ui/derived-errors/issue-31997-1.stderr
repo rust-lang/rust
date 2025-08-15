@@ -1,4 +1,4 @@
-error[E0433]: cannot find `HashMap` in this scope
+error[E0433]: cannot find type `HashMap` in this scope
   --> $DIR/issue-31997-1.rs:20:19
    |
 LL |     let mut map = HashMap::new();

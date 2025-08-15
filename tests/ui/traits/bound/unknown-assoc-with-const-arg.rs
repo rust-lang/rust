@@ -7,7 +7,7 @@ trait X {
 
 trait Y {
     fn a() -> NOT_EXIST::unknown<{}> {}
-    //~^ ERROR: cannot find `NOT_EXIST`
+    //~^ ERROR: cannot find type `NOT_EXIST`
 }
 
 trait Z<T> {

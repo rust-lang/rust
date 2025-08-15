@@ -2501,6 +2501,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 )
             });
 
+            let message = format!("cannot find type `{ident}` in {scope}");
             (message, format!("use of undeclared type `{ident}`"), suggestion)
         } else {
             let mut suggestion = None;

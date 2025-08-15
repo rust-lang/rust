@@ -8,7 +8,7 @@ fn sum2<I: Iterator>(i: I) -> i32 where I::Item = i32 {
 }
 fn sum3<J: Iterator>(i: J) -> i32 where I::Item = i32 {
 //~^ ERROR equality constraints are not yet supported in `where` clauses
-//~| ERROR cannot find `I`
+//~| ERROR cannot find type `I`
     panic!()
 }
 

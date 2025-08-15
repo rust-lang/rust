@@ -10,7 +10,7 @@
 fn main() {
     //~^ HELP consider importing this struct
     let _x = NonZero::new(5u32).unwrap();
-    //~^ ERROR cannot find `NonZero`
+    //~^ ERROR cannot find type `NonZero`
 }
 
 #[allow(dead_code)]

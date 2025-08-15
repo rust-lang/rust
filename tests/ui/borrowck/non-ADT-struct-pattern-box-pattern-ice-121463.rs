@@ -4,9 +4,9 @@
 
 fn main() {
     let mut a = E::StructVar { boxed: Box::new(5_i32) };
-    //~^ ERROR cannot find `E`
+    //~^ ERROR cannot find type `E`
     match a {
         E::StructVar { box boxed } => { }
-        //~^ ERROR cannot find `E`
+        //~^ ERROR cannot find type `E`
     }
 }
