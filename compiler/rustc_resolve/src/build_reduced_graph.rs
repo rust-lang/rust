@@ -495,7 +495,22 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
             }
             // We don't add prelude imports to the globs since they only affect lexical scopes,
             // which are not relevant to import resolution.
-            ImportKind::Glob { is_prelude: true, .. } => {}
+            ImportKind::Glob { is_prelude: true, .. } => {
+                // We do resolve the prelude path so it's set before import resolution.
+                let path_res = self.r.cm().maybe_resolve_path(
+                    &import.module_path,
+                    None,
+                    &import.parent_scope,
+                    Some(import),
+                );
+                if let PathResult::Module(
+                    module_or_uniform_root @ ModuleOrUniformRoot::Module(module),
+                ) = path_res
+                {
+                    import.imported_module.set(Some(module_or_uniform_root));
+                    self.r.prelude = Some(module);
+                }
+            }
             ImportKind::Glob { .. } => current_module.globs.borrow_mut().push(import),
             _ => unreachable!(),
         }
