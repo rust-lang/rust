@@ -73,7 +73,6 @@ const _: () = ();
 /// write:
 ///
 /// ```
-/// #![feature(never_type)]
 /// # fn foo() -> u32 {
 /// let x: ! = {
 ///     return 123
@@ -230,7 +229,6 @@ const _: () = ();
 /// for example:
 ///
 /// ```
-/// #![feature(never_type)]
 /// # use std::fmt;
 /// # trait Debug {
 /// #     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result;
