@@ -1609,6 +1609,19 @@ mod snapshot {
     }
 
     #[test]
+    fn dist_bootstrap() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx
+                .config("dist")
+                .path("bootstrap")
+                .render_steps(), @r"
+        [build] rustc 0 <host> -> RustInstaller 1 <host>
+        [dist] bootstrap <host>
+        ");
+    }
+
+    #[test]
     fn check_compiler_no_explicit_stage() {
         let ctx = TestCtx::new();
         insta::assert_snapshot!(

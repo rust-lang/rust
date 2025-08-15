@@ -2604,15 +2604,17 @@ impl Step for RustDev {
 
 /// Tarball intended for internal consumption to ease rustc/std development.
 ///
+/// It only packages the binaries that were already compiled when bootstrap itself was built.
+///
 /// Should not be considered stable by end users.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Bootstrap {
-    pub target: TargetSelection,
+    target: TargetSelection,
 }
 
 impl Step for Bootstrap {
     type Output = Option<GeneratedTarball>;
-    const DEFAULT: bool = false;
+
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -2638,6 +2640,10 @@ impl Step for Bootstrap {
         }
 
         Some(tarball.generate())
+    }
+
+    fn metadata(&self) -> Option<StepMetadata> {
+        Some(StepMetadata::dist("bootstrap", self.target))
     }
 }
 
