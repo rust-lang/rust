@@ -1,0 +1,18 @@
+error: async functions are not allowed in `const` traits
+  --> $DIR/const-trait-async-assoc-fn.rs:5:5
+   |
+LL | const trait Tr {
+   | ----- associated functions of `const` cannot be declared `async`
+LL |     async fn ft1() {}
+   |     ^^^^^
+
+error: async functions are not allowed in `const` trait impls
+  --> $DIR/const-trait-async-assoc-fn.rs:14:5
+   |
+LL | impl const Tr2 for () {
+   |      ----- associated functions of `const` cannot be declared `async`
+LL |     async fn f() {}
+   |     ^^^^^
+
+error: aborting due to 2 previous errors
+
