@@ -50,7 +50,7 @@ serde = "1.0"
 serde_derive = "1.0"
 serde_json = "1.0"
 sha2 = "0.10"
-tar = "0.4"
+tar = { version = "0.4.44", default-features = false }
 termcolor = "1.4"
 toml = "0.5"
 walkdir = "2.4"
