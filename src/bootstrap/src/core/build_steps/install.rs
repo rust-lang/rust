@@ -264,7 +264,7 @@ install!((self, builder, _config),
     };
     Rustfmt, alias = "rustfmt", Self::should_build(_config), IS_HOST: true, {
         if let Some(tarball) = builder.ensure(dist::Rustfmt {
-            build_compiler: self.compiler,
+            compilers: RustcPrivateCompilers::from_build_compiler(builder, self.compiler, self.target),
             target: self.target
         }) {
             install_sh(builder, "rustfmt", self.compiler.stage, Some(self.target), &tarball);
