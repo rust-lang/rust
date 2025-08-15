@@ -239,7 +239,7 @@ install!((self, builder, _config),
     };
     Clippy, alias = "clippy", Self::should_build(_config), IS_HOST: true, {
         let tarball = builder
-            .ensure(dist::Clippy { build_compiler: self.compiler, target: self.target })
+            .ensure(dist::Clippy { compilers: RustcPrivateCompilers::from_build_compiler(builder, self.compiler, self.target), target: self.target })
             .expect("missing clippy");
         install_sh(builder, "clippy", self.compiler.stage, Some(self.target), &tarball);
     };

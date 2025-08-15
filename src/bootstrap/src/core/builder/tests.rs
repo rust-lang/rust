@@ -1208,6 +1208,7 @@ mod snapshot {
         [build] rustc 1 <host> -> cargo-fmt 2 <host>
         [build] rustc 1 <host> -> clippy-driver 2 <host>
         [build] rustc 1 <host> -> cargo-clippy 2 <host>
+        [dist] rustc 1 <host> -> clippy 2 <host>
         [build] rustc 1 <host> -> miri 2 <host>
         [build] rustc 1 <host> -> cargo-miri 2 <host>
         ");
@@ -1539,6 +1540,7 @@ mod snapshot {
         [build] rustc 1 <host> -> cargo-fmt 2 <target1>
         [build] rustc 1 <host> -> clippy-driver 2 <target1>
         [build] rustc 1 <host> -> cargo-clippy 2 <target1>
+        [dist] rustc 1 <host> -> clippy 2 <target1>
         [build] rustc 1 <host> -> miri 2 <target1>
         [build] rustc 1 <host> -> cargo-miri 2 <target1>
         [build] rustc 1 <host> -> LlvmBitcodeLinker 2 <target1>
