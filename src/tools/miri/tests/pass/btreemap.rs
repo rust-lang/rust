@@ -1,7 +1,6 @@
 //@revisions: stack tree
 //@[tree]compile-flags: -Zmiri-tree-borrows
 //@compile-flags: -Zmiri-strict-provenance
-#![feature(btree_extract_if)]
 use std::collections::{BTreeMap, BTreeSet};
 use std::mem;
 

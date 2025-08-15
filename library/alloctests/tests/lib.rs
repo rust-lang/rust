@@ -2,7 +2,6 @@
 #![feature(alloc_layout_extra)]
 #![feature(iter_array_chunks)]
 #![feature(assert_matches)]
-#![feature(btree_extract_if)]
 #![feature(char_max_len)]
 #![feature(cow_is_borrowed)]
 #![feature(core_intrinsics)]
