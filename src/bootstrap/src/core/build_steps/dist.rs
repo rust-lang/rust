@@ -1465,7 +1465,7 @@ impl Step for Miri {
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct CraneliftCodegenBackend {
-    pub build_compiler: Compiler,
+    pub compilers: RustcPrivateCompilers,
     pub target: TargetSelection,
 }
 
@@ -1489,11 +1489,7 @@ impl Step for CraneliftCodegenBackend {
 
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(CraneliftCodegenBackend {
-            build_compiler: run.builder.compiler_for(
-                run.builder.top_stage,
-                run.builder.config.host_target,
-                run.target,
-            ),
+            compilers: RustcPrivateCompilers::new(run.builder, run.builder.top_stage, run.target),
             target: run.target,
         });
     }
@@ -1507,8 +1503,6 @@ impl Step for CraneliftCodegenBackend {
         }
 
         let target = self.target;
-        let compilers =
-            RustcPrivateCompilers::from_build_compiler(builder, self.build_compiler, target);
         if !target_supports_cranelift_backend(target) {
             builder.info("target not supported by rustc_codegen_cranelift. skipping");
             return None;
@@ -1519,6 +1513,7 @@ impl Step for CraneliftCodegenBackend {
         tarball.is_preview(true);
         tarball.add_legal_and_readme_to("share/doc/rustc_codegen_cranelift");
 
+        let compilers = self.compilers;
         let stamp = builder.ensure(compile::CraneliftCodegenBackend { compilers });
 
         if builder.config.dry_run() {
@@ -1548,8 +1543,8 @@ impl Step for CraneliftCodegenBackend {
 
     fn metadata(&self) -> Option<StepMetadata> {
         Some(
-            StepMetadata::dist("rustc_codegen_cranelift", self.build_compiler.host)
-                .built_by(self.build_compiler),
+            StepMetadata::dist("rustc_codegen_cranelift", self.target)
+                .built_by(self.compilers.build_compiler()),
         )
     }
 }
@@ -1669,7 +1664,7 @@ impl Step for Extended {
         add_component!("miri" => Miri { compilers: rustc_private_compilers, target });
         add_component!("analysis" => Analysis { build_compiler: compiler, target });
         add_component!("rustc-codegen-cranelift" => CraneliftCodegenBackend {
-            build_compiler: compiler,
+            compilers: rustc_private_compilers,
             target
         });
         add_component!("llvm-bitcode-linker" => LlvmBitcodeLinker {
