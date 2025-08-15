@@ -1599,10 +1599,10 @@ impl Step for Rustfmt {
     }
 }
 
+/// Extended archive that contains the compiler, standard library and a bunch of tools.
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct Extended {
-    stage: u32,
-    host: TargetSelection,
+    build_compiler: Compiler,
     target: TargetSelection,
 }
 
@@ -1618,8 +1618,9 @@ impl Step for Extended {
 
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(Extended {
-            stage: run.builder.top_stage,
-            host: run.builder.config.host_target,
+            build_compiler: run
+                .builder
+                .compiler(run.builder.top_stage - 1, run.builder.host_target),
             target: run.target,
         });
     }
@@ -1627,10 +1628,7 @@ impl Step for Extended {
     /// Creates a combined installer for the specified target in the provided stage.
     fn run(self, builder: &Builder<'_>) {
         let target = self.target;
-        let stage = self.stage;
-        let compiler = builder.compiler_for(self.stage, self.host, self.target);
-
-        builder.info(&format!("Dist extended stage{} ({})", compiler.stage, target));
+        builder.info(&format!("Dist extended stage{} ({target})", builder.top_stage));
 
         let mut tarballs = Vec::new();
         let mut built_tools = HashSet::new();
@@ -1643,38 +1641,38 @@ impl Step for Extended {
             };
         }
 
-        let target_compiler = builder.compiler(stage, target);
+        let rustc_private_compilers =
+            RustcPrivateCompilers::from_build_compiler(builder, self.build_compiler, target);
+        let build_compiler = rustc_private_compilers.build_compiler();
+        let target_compiler = rustc_private_compilers.target_compiler();
+
         // When rust-std package split from rustc, we needed to ensure that during
         // upgrades rustc was upgraded before rust-std. To avoid rustc clobbering
         // the std files during uninstall. To do this ensure that rustc comes
         // before rust-std in the list below.
         tarballs.push(builder.ensure(Rustc { target_compiler }));
-        tarballs
-            .push(builder.ensure(Std { build_compiler: compiler, target }).expect("missing std"));
+        tarballs.push(builder.ensure(Std { build_compiler, target }).expect("missing std"));
 
         if target.is_windows_gnu() {
             tarballs.push(builder.ensure(Mingw { target }).expect("missing mingw"));
         }
 
-        let rustc_private_compilers =
-            RustcPrivateCompilers::from_build_compiler(builder, compiler, target);
-
         add_component!("rust-docs" => Docs { host: target });
         // Std stage N is documented with compiler stage N
         add_component!("rust-json-docs" => JsonDocs { build_compiler: target_compiler, target });
-        add_component!("cargo" => Cargo { build_compiler: compiler, target });
+        add_component!("cargo" => Cargo { build_compiler, target });
         add_component!("rustfmt" => Rustfmt { compilers: rustc_private_compilers, target });
         add_component!("rust-analyzer" => RustAnalyzer { compilers: rustc_private_compilers, target });
         add_component!("llvm-components" => LlvmTools { target });
         add_component!("clippy" => Clippy { compilers: rustc_private_compilers, target });
         add_component!("miri" => Miri { compilers: rustc_private_compilers, target });
-        add_component!("analysis" => Analysis { build_compiler: compiler, target });
+        add_component!("analysis" => Analysis { build_compiler, target });
         add_component!("rustc-codegen-cranelift" => CraneliftCodegenBackend {
             compilers: rustc_private_compilers,
             target
         });
         add_component!("llvm-bitcode-linker" => LlvmBitcodeLinker {
-            build_compiler: compiler,
+            build_compiler,
             target
         });
 
@@ -2139,6 +2137,10 @@ impl Step for Extended {
                 t!(move_file(exe.join(&filename), distdir(builder).join(&filename)));
             }
         }
+    }
+
+    fn metadata(&self) -> Option<StepMetadata> {
+        Some(StepMetadata::dist("extended", self.target).built_by(self.build_compiler))
     }
 }
 
