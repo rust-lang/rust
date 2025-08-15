@@ -61,7 +61,6 @@
 #![feature(isolate_most_least_significant_one)]
 #![feature(iter_advance_by)]
 #![feature(iter_array_chunks)]
-#![feature(iter_chain)]
 #![feature(iter_collect_into)]
 #![feature(iter_intersperse)]
 #![feature(iter_is_partitioned)]
