@@ -17,7 +17,7 @@ ast_passes_abi_must_not_have_parameters_or_return_type=
 
 ast_passes_abi_must_not_have_return_type=
     invalid signature for `extern {$abi}` function
-    .note = functions with the "custom" ABI cannot have a return type
+    .note = functions with the {$abi} ABI cannot have a return type
     .help = remove the return type
 
 ast_passes_assoc_const_without_body =
