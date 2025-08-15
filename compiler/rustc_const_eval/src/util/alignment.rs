@@ -71,7 +71,7 @@ where
 }
 
 /// Try to determine the alignment of an array element type
-fn get_element_alignment<'tcx>(tcx: TyCtxt<'tcx>, ty: ty::Ty<'tcx>) -> Option<Align> {
+fn get_element_alignment<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<Align> {
     match ty.kind() {
         ty::Array(element_ty, _) => {
             // For arrays, the alignment is the same as the element type
