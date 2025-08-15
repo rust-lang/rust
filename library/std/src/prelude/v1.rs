@@ -56,7 +56,7 @@ pub use core::prelude::v1::{
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
 #[doc(no_inline)]
 pub use crate::{
-    dbg, eprint, eprintln, format, is_x86_feature_detected, print, println, thread_local
+    dbg, eprint, eprintln, format, is_x86_feature_detected, print, println, thread_local, hash_map
 };
 
 // These macros needs special handling, so that we don't export it *and* the modules of the same
