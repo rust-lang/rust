@@ -1,4 +1,4 @@
-#![feature(exhaustive_patterns, never_type)]
+#![feature(exhaustive_patterns)]
 #![expect(clippy::let_and_return, clippy::uninhabited_references)]
 
 enum SingleVariantEnum {

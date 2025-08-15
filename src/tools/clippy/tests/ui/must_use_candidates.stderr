@@ -1,5 +1,5 @@
 error: this function could have a `#[must_use]` attribute
-  --> tests/ui/must_use_candidates.rs:16:8
+  --> tests/ui/must_use_candidates.rs:15:8
    |
 LL | pub fn pure(i: u8) -> u8 {
    |        ^^^^
@@ -13,7 +13,7 @@ LL | pub fn pure(i: u8) -> u8 {
    |
 
 error: this method could have a `#[must_use]` attribute
-  --> tests/ui/must_use_candidates.rs:22:12
+  --> tests/ui/must_use_candidates.rs:21:12
    |
 LL |     pub fn inherent_pure(&self) -> u8 {
    |            ^^^^^^^^^^^^^
@@ -25,7 +25,7 @@ LL ~     pub fn inherent_pure(&self) -> u8 {
    |
 
 error: this function could have a `#[must_use]` attribute
-  --> tests/ui/must_use_candidates.rs:54:8
+  --> tests/ui/must_use_candidates.rs:53:8
    |
 LL | pub fn with_marker(_d: std::marker::PhantomData<&mut u32>) -> bool {
    |        ^^^^^^^^^^^
@@ -37,7 +37,7 @@ LL | pub fn with_marker(_d: std::marker::PhantomData<&mut u32>) -> bool {
    |
 
 error: this function could have a `#[must_use]` attribute
-  --> tests/ui/must_use_candidates.rs:67:8
+  --> tests/ui/must_use_candidates.rs:66:8
    |
 LL | pub fn rcd(_x: Rc<u32>) -> bool {
    |        ^^^
@@ -49,7 +49,7 @@ LL | pub fn rcd(_x: Rc<u32>) -> bool {
    |
 
 error: this function could have a `#[must_use]` attribute
-  --> tests/ui/must_use_candidates.rs:76:8
+  --> tests/ui/must_use_candidates.rs:75:8
    |
 LL | pub fn arcd(_x: Arc<u32>) -> bool {
    |        ^^^^
@@ -61,7 +61,7 @@ LL | pub fn arcd(_x: Arc<u32>) -> bool {
    |
 
 error: this function could have a `#[must_use]` attribute
-  --> tests/ui/must_use_candidates.rs:108:8
+  --> tests/ui/must_use_candidates.rs:107:8
    |
 LL | pub fn result_uninhabited() -> Result<i32, std::convert::Infallible> {
    |        ^^^^^^^^^^^^^^^^^^
@@ -74,7 +74,7 @@ LL | pub fn result_uninhabited() -> Result<i32, std::convert::Infallible> {
    |
 
 error: this function could have a `#[must_use]` attribute
-  --> tests/ui/must_use_candidates.rs:113:8
+  --> tests/ui/must_use_candidates.rs:112:8
    |
 LL | pub fn controlflow_uninhabited() -> std::ops::ControlFlow<std::convert::Infallible, i32> {
    |        ^^^^^^^^^^^^^^^^^^^^^^^

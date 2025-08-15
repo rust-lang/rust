@@ -1,5 +1,5 @@
 error: this function has a `#[must_use]` attribute with no message, but returns a type already marked as `#[must_use]`
-  --> tests/ui/double_must_use.rs:8:1
+  --> tests/ui/double_must_use.rs:7:1
    |
 LL | #[must_use]
    | ----------- help: remove the attribute
@@ -11,7 +11,7 @@ LL | pub fn must_use_result() -> Result<(), ()> {
    = help: to override `-D warnings` add `#[allow(clippy::double_must_use)]`
 
 error: this function has a `#[must_use]` attribute with no message, but returns a type already marked as `#[must_use]`
-  --> tests/ui/double_must_use.rs:15:1
+  --> tests/ui/double_must_use.rs:14:1
    |
 LL | #[must_use]
    | ----------- help: remove the attribute
@@ -21,7 +21,7 @@ LL | pub fn must_use_tuple() -> (Result<(), ()>, u8) {
    = note: alternatively, you may add an explicit reason to the `must_use` attribute
 
 error: this function has a `#[must_use]` attribute with no message, but returns a type already marked as `#[must_use]`
-  --> tests/ui/double_must_use.rs:22:1
+  --> tests/ui/double_must_use.rs:21:1
    |
 LL | #[must_use]
    | ----------- help: remove the attribute
@@ -31,7 +31,7 @@ LL | pub fn must_use_array() -> [Result<(), ()>; 1] {
    = note: alternatively, you may add an explicit reason to the `must_use` attribute
 
 error: this function has a `#[must_use]` attribute with no message, but returns a type already marked as `#[must_use]`
-  --> tests/ui/double_must_use.rs:40:1
+  --> tests/ui/double_must_use.rs:39:1
    |
 LL | #[must_use]
    | ----------- help: remove the attribute
@@ -41,7 +41,7 @@ LL | async fn async_must_use_result() -> Result<(), ()> {
    = note: alternatively, you may add an explicit reason to the `must_use` attribute
 
 error: this function has a `#[must_use]` attribute with no message, but returns a type already marked as `#[must_use]`
-  --> tests/ui/double_must_use.rs:55:1
+  --> tests/ui/double_must_use.rs:54:1
    |
 LL | #[must_use]
    | ----------- help: remove the attribute
@@ -51,7 +51,7 @@ LL | pub fn must_use_result_with_uninhabited_2() -> Result<T, !> {
    = note: alternatively, you may add an explicit reason to the `must_use` attribute
 
 error: this function has a `#[must_use]` attribute with no message, but returns a type already marked as `#[must_use]`
-  --> tests/ui/double_must_use.rs:66:1
+  --> tests/ui/double_must_use.rs:65:1
    |
 LL | #[must_use]
    | ----------- help: remove the attribute
