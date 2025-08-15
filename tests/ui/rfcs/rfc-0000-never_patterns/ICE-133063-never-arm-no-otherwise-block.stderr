@@ -1,5 +1,5 @@
 error: a never pattern is always unreachable
-  --> $DIR/ICE-133063-never-arm-no-otherwise-block.rs:10:31
+  --> $DIR/ICE-133063-never-arm-no-otherwise-block.rs:9:31
    |
 LL |             (!|!) if false => {}
    |                               ^^

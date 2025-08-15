@@ -1,5 +1,5 @@
 error[E0080]: evaluation panicked: explicit panic
-  --> $DIR/panic-never-type.rs:4:17
+  --> $DIR/panic-never-type.rs:3:17
    |
 LL | const VOID: ! = panic!();
    |                 ^^^^^^^^ evaluation of `VOID` failed here

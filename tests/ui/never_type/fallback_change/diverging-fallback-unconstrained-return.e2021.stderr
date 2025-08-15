@@ -1,43 +1,24 @@
-error: this function depends on never type fallback being `()`
-  --> $DIR/diverging-fallback-unconstrained-return.rs:26:1
-   |
-LL | fn main() {
-   | ^^^^^^^^^
-   |
-   = help: specify the types explicitly
-note: in edition 2024, the requirement `!: UnitReturn` will fail
+error[E0277]: the trait bound `!: UnitReturn` is not satisfied
   --> $DIR/diverging-fallback-unconstrained-return.rs:37:23
    |
 LL |     let _ = if true { unconstrained_return() } else { panic!() };
-   |                       ^^^^^^^^^^^^^^^^^^^^^^
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in Rust 2024 and in a future release in all editions!
-   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/never-type-fallback.html>
-   = note: `#[deny(dependency_on_unit_never_type_fallback)]` (part of `#[deny(rust_2024_compatibility)]`) on by default
-help: use `()` annotations to avoid fallback changes
+   |                       ^^^^^^^^^^^^^^^^^^^^^^ the trait `UnitReturn` is not implemented for `!`
    |
-LL |     let _: () = if true { unconstrained_return() } else { panic!() };
-   |          ++++
+help: the following other types implement trait `UnitReturn`
+  --> $DIR/diverging-fallback-unconstrained-return.rs:15:1
+   |
+LL | impl UnitReturn for i32 {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^ `i32`
+LL | impl UnitReturn for () {}
+   | ^^^^^^^^^^^^^^^^^^^^^^ `()`
+   = note: this error might have been caused by changes to Rust's type-inference algorithm (see issue #148922 <https://github.com/rust-lang/rust/issues/148922> for more information)
+   = help: you might have intended to use the type `()` here instead
+note: required by a bound in `unconstrained_return`
+  --> $DIR/diverging-fallback-unconstrained-return.rs:18:28
+   |
+LL | fn unconstrained_return<T: UnitReturn>() -> T {
+   |                            ^^^^^^^^^^ required by this bound in `unconstrained_return`
 
 error: aborting due to 1 previous error
 
-Future incompatibility report: Future breakage diagnostic:
-error: this function depends on never type fallback being `()`
-  --> $DIR/diverging-fallback-unconstrained-return.rs:26:1
-   |
-LL | fn main() {
-   | ^^^^^^^^^
-   |
-   = help: specify the types explicitly
-note: in edition 2024, the requirement `!: UnitReturn` will fail
-  --> $DIR/diverging-fallback-unconstrained-return.rs:37:23
-   |
-LL |     let _ = if true { unconstrained_return() } else { panic!() };
-   |                       ^^^^^^^^^^^^^^^^^^^^^^
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in Rust 2024 and in a future release in all editions!
-   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/never-type-fallback.html>
-   = note: `#[deny(dependency_on_unit_never_type_fallback)]` (part of `#[deny(rust_2024_compatibility)]`) on by default
-help: use `()` annotations to avoid fallback changes
-   |
-LL |     let _: () = if true { unconstrained_return() } else { panic!() };
-   |          ++++
-
+For more information about this error, try `rustc --explain E0277`.
