@@ -48,6 +48,14 @@ print-type-size     variant `Returned`: 1024 bytes
 print-type-size         upvar `.arg`: 1024 bytes
 print-type-size     variant `Panicked`: 1024 bytes
 print-type-size         upvar `.arg`: 1024 bytes
+print-type-size type: `std::pin::Pin<&mut {async fn body of big_fut()}>`: 8 bytes, alignment: 8 bytes
+print-type-size     field `.pointer`: 8 bytes
+print-type-size type: `std::pin::Pin<&mut {async fn body of calls_fut<{async fn body of big_fut()}>()}>`: 8 bytes, alignment: 8 bytes
+print-type-size     field `.pointer`: 8 bytes
+print-type-size type: `std::pin::Pin<&mut {async fn body of test()}>`: 8 bytes, alignment: 8 bytes
+print-type-size     field `.pointer`: 8 bytes
+print-type-size type: `std::pin::Pin<&mut {async fn body of wait()}>`: 8 bytes, alignment: 8 bytes
+print-type-size     field `.pointer`: 8 bytes
 print-type-size type: `std::mem::ManuallyDrop<bool>`: 1 bytes, alignment: 1 bytes
 print-type-size     field `.value`: 1 bytes
 print-type-size type: `std::mem::ManuallyDrop<{async fn body of wait()}>`: 1 bytes, alignment: 1 bytes
