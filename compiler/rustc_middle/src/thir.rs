@@ -832,17 +832,17 @@ pub enum PatKind<'tcx> {
     },
 
     /// One of the following:
-    /// * `&str` (represented as a valtree), which will be handled as a string pattern and thus
+    /// * `&str`, which will be handled as a string pattern and thus
     ///   exhaustiveness checking will detect if you use the same string twice in different
     ///   patterns.
-    /// * integer, bool, char or float (represented as a valtree), which will be handled by
+    /// * integer, bool, char or float, which will be handled by
     ///   exhaustiveness to cover exactly its own value, similar to `&str`, but these values are
     ///   much simpler.
     /// * raw pointers derived from integers, other raw pointers will have already resulted in an
     //    error.
     /// * `String`, if `string_deref_patterns` is enabled.
     Constant {
-        value: mir::Const<'tcx>,
+        value: ty::Value<'tcx>,
     },
 
     /// Pattern obtained by converting a constant (inline or named) to its pattern
@@ -935,7 +935,7 @@ impl<'tcx> PatRange<'tcx> {
         let lo_is_min = match self.lo {
             PatRangeBoundary::NegInfinity => true,
             PatRangeBoundary::Finite(value) => {
-                let lo = value.try_to_bits(size).unwrap() ^ bias;
+                let lo = value.try_to_scalar_int().unwrap().to_bits(size) ^ bias;
                 lo <= min
             }
             PatRangeBoundary::PosInfinity => false,
@@ -944,7 +944,7 @@ impl<'tcx> PatRange<'tcx> {
             let hi_is_max = match self.hi {
                 PatRangeBoundary::NegInfinity => false,
                 PatRangeBoundary::Finite(value) => {
-                    let hi = value.try_to_bits(size).unwrap() ^ bias;
+                    let hi = value.try_to_scalar_int().unwrap().to_bits(size) ^ bias;
                     hi > max || hi == max && self.end == RangeEnd::Included
                 }
                 PatRangeBoundary::PosInfinity => true,
@@ -957,22 +957,17 @@ impl<'tcx> PatRange<'tcx> {
     }
 
     #[inline]
-    pub fn contains(
-        &self,
-        value: mir::Const<'tcx>,
-        tcx: TyCtxt<'tcx>,
-        typing_env: ty::TypingEnv<'tcx>,
-    ) -> Option<bool> {
+    pub fn contains(&self, value: ty::Value<'tcx>, tcx: TyCtxt<'tcx>) -> Option<bool> {
         use Ordering::*;
-        debug_assert_eq!(self.ty, value.ty());
+        debug_assert_eq!(value.ty, self.ty);
         let ty = self.ty;
-        let value = PatRangeBoundary::Finite(value);
+        let value = PatRangeBoundary::Finite(value.valtree);
         // For performance, it's important to only do the second comparison if necessary.
         Some(
-            match self.lo.compare_with(value, ty, tcx, typing_env)? {
+            match self.lo.compare_with(value, ty, tcx)? {
                 Less | Equal => true,
                 Greater => false,
-            } && match value.compare_with(self.hi, ty, tcx, typing_env)? {
+            } && match value.compare_with(self.hi, ty, tcx)? {
                 Less => true,
                 Equal => self.end == RangeEnd::Included,
                 Greater => false,
@@ -981,21 +976,16 @@ impl<'tcx> PatRange<'tcx> {
     }
 
     #[inline]
-    pub fn overlaps(
-        &self,
-        other: &Self,
-        tcx: TyCtxt<'tcx>,
-        typing_env: ty::TypingEnv<'tcx>,
-    ) -> Option<bool> {
+    pub fn overlaps(&self, other: &Self, tcx: TyCtxt<'tcx>) -> Option<bool> {
         use Ordering::*;
         debug_assert_eq!(self.ty, other.ty);
         // For performance, it's important to only do the second comparison if necessary.
         Some(
-            match other.lo.compare_with(self.hi, self.ty, tcx, typing_env)? {
+            match other.lo.compare_with(self.hi, self.ty, tcx)? {
                 Less => true,
                 Equal => self.end == RangeEnd::Included,
                 Greater => false,
-            } && match self.lo.compare_with(other.hi, self.ty, tcx, typing_env)? {
+            } && match self.lo.compare_with(other.hi, self.ty, tcx)? {
                 Less => true,
                 Equal => other.end == RangeEnd::Included,
                 Greater => false,
@@ -1006,11 +996,13 @@ impl<'tcx> PatRange<'tcx> {
 
 impl<'tcx> fmt::Display for PatRange<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if let PatRangeBoundary::Finite(value) = &self.lo {
+        if let &PatRangeBoundary::Finite(valtree) = &self.lo {
+            let value = ty::Value { ty: self.ty, valtree };
             write!(f, "{value}")?;
         }
-        if let PatRangeBoundary::Finite(value) = &self.hi {
+        if let &PatRangeBoundary::Finite(valtree) = &self.hi {
             write!(f, "{}", self.end)?;
+            let value = ty::Value { ty: self.ty, valtree };
             write!(f, "{value}")?;
         } else {
             // `0..` is parsed as an inclusive range, we must display it correctly.
@@ -1024,7 +1016,8 @@ impl<'tcx> fmt::Display for PatRange<'tcx> {
 /// If present, the const must be of a numeric type.
 #[derive(Copy, Clone, Debug, PartialEq, HashStable, TypeVisitable)]
 pub enum PatRangeBoundary<'tcx> {
-    Finite(mir::Const<'tcx>),
+    /// The type of this valtree is stored in the surrounding `PatRange`.
+    Finite(ty::ValTree<'tcx>),
     NegInfinity,
     PosInfinity,
 }
@@ -1035,20 +1028,15 @@ impl<'tcx> PatRangeBoundary<'tcx> {
         matches!(self, Self::Finite(..))
     }
     #[inline]
-    pub fn as_finite(self) -> Option<mir::Const<'tcx>> {
+    pub fn as_finite(self) -> Option<ty::ValTree<'tcx>> {
         match self {
             Self::Finite(value) => Some(value),
             Self::NegInfinity | Self::PosInfinity => None,
         }
     }
-    pub fn eval_bits(
-        self,
-        ty: Ty<'tcx>,
-        tcx: TyCtxt<'tcx>,
-        typing_env: ty::TypingEnv<'tcx>,
-    ) -> u128 {
+    pub fn to_bits(self, ty: Ty<'tcx>, tcx: TyCtxt<'tcx>) -> u128 {
         match self {
-            Self::Finite(value) => value.eval_bits(tcx, typing_env),
+            Self::Finite(value) => value.try_to_scalar_int().unwrap().to_bits_unchecked(),
             Self::NegInfinity => {
                 // Unwrap is ok because the type is known to be numeric.
                 ty.numeric_min_and_max_as_bits(tcx).unwrap().0
@@ -1060,14 +1048,8 @@ impl<'tcx> PatRangeBoundary<'tcx> {
         }
     }
 
-    #[instrument(skip(tcx, typing_env), level = "debug", ret)]
-    pub fn compare_with(
-        self,
-        other: Self,
-        ty: Ty<'tcx>,
-        tcx: TyCtxt<'tcx>,
-        typing_env: ty::TypingEnv<'tcx>,
-    ) -> Option<Ordering> {
+    #[instrument(skip(tcx), level = "debug", ret)]
+    pub fn compare_with(self, other: Self, ty: Ty<'tcx>, tcx: TyCtxt<'tcx>) -> Option<Ordering> {
         use PatRangeBoundary::*;
         match (self, other) {
             // When comparing with infinities, we must remember that `0u8..` and `0u8..=255`
@@ -1095,8 +1077,8 @@ impl<'tcx> PatRangeBoundary<'tcx> {
             _ => {}
         }
 
-        let a = self.eval_bits(ty, tcx, typing_env);
-        let b = other.eval_bits(ty, tcx, typing_env);
+        let a = self.to_bits(ty, tcx);
+        let b = other.to_bits(ty, tcx);
 
         match ty.kind() {
             ty::Float(ty::FloatTy::F16) => {
