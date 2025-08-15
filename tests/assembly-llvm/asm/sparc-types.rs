@@ -7,6 +7,7 @@
 //@[sparcv8plus] needs-llvm-components: sparc
 //@[sparc64] compile-flags: --target sparc64-unknown-linux-gnu
 //@[sparc64] needs-llvm-components: sparc
+//@[sparc64] filecheck-flags: --check-prefixes=CHECK,sparc64
 //@ compile-flags: -Zmerge-functions=disabled
 
 #![feature(no_core, asm_experimental_arch)]

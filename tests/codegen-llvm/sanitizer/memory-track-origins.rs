@@ -6,10 +6,15 @@
 //
 //@ compile-flags: -Zsanitizer=memory -Ctarget-feature=-crt-static
 // [MSAN-0] no extra compile-flags
+//@[MSAN-0] filecheck-flags: --check-prefixes=MSAN-0
 //@[MSAN-1] compile-flags: -Zsanitizer-memory-track-origins=1
+//@[MSAN-1] filecheck-flags: --check-prefixes=MSAN-1
 //@[MSAN-2] compile-flags: -Zsanitizer-memory-track-origins
+//@[MSAN-2] filecheck-flags: --check-prefixes=MSAN-2
 //@[MSAN-1-LTO] compile-flags: -Zsanitizer-memory-track-origins=1 -C lto=fat
+//@[MSAN-1-LTO] filecheck-flags: --check-prefixes=MSAN-1-LTO
 //@[MSAN-2-LTO] compile-flags: -Zsanitizer-memory-track-origins -C lto=fat
+//@[MSAN-2-LTO] filecheck-flags: --check-prefixes=MSAN-2-LTO
 
 #![crate_type = "lib"]
 

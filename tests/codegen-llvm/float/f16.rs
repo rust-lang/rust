@@ -3,12 +3,16 @@
 //@ revisions: x86-sse x86-nosse bit32 bit64
 //@[x86-sse] only-x86
 //@[x86-sse] only-rustc_abi-x86-sse2
+//@[x86-sse] filecheck-flags: --check-prefixes=CHECK,x86-sse
 //@[x86-nosse] only-x86
 //@[x86-nosse] ignore-rustc_abi-x86-sse2
+//@[x86-nosse] filecheck-flags: --check-prefixes=CHECK,x86-nosse
 //@[bit32] ignore-x86
 //@[bit32] only-32bit
+//@[bit32] filecheck-flags: --check-prefixes=CHECK,bit32
 //@[bit64] ignore-x86
 //@[bit64] only-64bit
+//@[bit64] filecheck-flags: --check-prefixes=CHECK,bit64
 
 // Verify that our intrinsics generate the correct LLVM calls for f16
 

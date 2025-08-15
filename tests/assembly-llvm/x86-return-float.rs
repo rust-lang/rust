@@ -15,6 +15,8 @@
 //@[win] needs-llvm-components: x86
 //@[linux] compile-flags: --target i686-unknown-linux-gnu
 //@[win] compile-flags: --target i686-pc-windows-msvc
+//@[linux] filecheck-flags: --check-prefixes=CHECK,linux
+//@[win] filecheck-flags: --check-prefixes=CHECK,win
 
 #![crate_type = "lib"]
 #![feature(f16, f128)]

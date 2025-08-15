@@ -6,6 +6,8 @@
 //@[msvc] needs-llvm-components: x86
 //@[softfloat] compile-flags: --target x86_64-unknown-uefi
 //@[softfloat] needs-llvm-components: x86
+//@[msvc] filecheck-flags: --check-prefixes=CHECK,msvc
+//@[softfloat] filecheck-flags: --check-prefixes=CHECK,softfloat
 
 #![feature(no_core)]
 #![no_core]

@@ -3,18 +3,17 @@
 //@ assembly-output: emit-asm
 //@ compile-flags: -Copt-level=3
 //@[elfv1-be] compile-flags: --target powerpc64-unknown-linux-gnu
+//@[elfv1-be] filecheck-flags: --check-prefixes=CHECK,elfv1-be,be,elf
 //@[elfv1-be] needs-llvm-components: powerpc
 //@[elfv2-be] compile-flags: --target powerpc64-unknown-linux-musl
+//@[elfv2-be] filecheck-flags: --check-prefixes=CHECK,elfv2-be,be,elf
 //@[elfv2-be] needs-llvm-components: powerpc
 //@[elfv2-le] compile-flags: --target powerpc64le-unknown-linux-gnu -C target-cpu=pwr8
+//@[elfv2-le] filecheck-flags: --check-prefixes=CHECK,elfv2-le,elf
 //@[elfv2-le] needs-llvm-components: powerpc
 //@[aix] compile-flags: --target powerpc64-ibm-aix
+//@[aix] filecheck-flags: --check-prefixes=CHECK,aix
 //@[aix] needs-llvm-components: powerpc
-//@[elfv1-be] filecheck-flags: --check-prefix be
-//@[elfv2-be] filecheck-flags: --check-prefix be
-//@[elfv1-be] filecheck-flags: --check-prefix elf
-//@[elfv2-be] filecheck-flags: --check-prefix elf
-//@[elfv2-le] filecheck-flags: --check-prefix elf
 
 #![feature(no_core, lang_items)]
 #![no_std]

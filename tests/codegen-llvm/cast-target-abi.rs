@@ -4,14 +4,19 @@
 //@ compile-flags: -Copt-level=3 -Cno-prepopulate-passes -Zlint-llvm-ir
 
 //@[aarch64] compile-flags: --target aarch64-unknown-linux-gnu
+//@[aarch64] filecheck-flags: --check-prefixes=CHECK,aarch64
 //@[aarch64] needs-llvm-components: aarch64
 //@[loongarch64] compile-flags: --target loongarch64-unknown-linux-gnu
+//@[loongarch64] filecheck-flags: --check-prefixes=CHECK,loongarch64
 //@[loongarch64] needs-llvm-components: loongarch
 //@[powerpc64] compile-flags: --target powerpc64-unknown-linux-gnu
+//@[powerpc64] filecheck-flags: --check-prefixes=CHECK,powerpc64
 //@[powerpc64] needs-llvm-components: powerpc
 //@[sparc64] compile-flags: --target sparc64-unknown-linux-gnu
+//@[sparc64] filecheck-flags: --check-prefixes=CHECK,sparc64
 //@[sparc64] needs-llvm-components: sparc
 //@[x86_64] compile-flags: --target x86_64-unknown-linux-gnu
+//@[x86_64] filecheck-flags: --check-prefixes=CHECK,x86_64
 //@[x86_64] needs-llvm-components: x86
 
 // Tests that arguments with `PassMode::Cast` are handled correctly.

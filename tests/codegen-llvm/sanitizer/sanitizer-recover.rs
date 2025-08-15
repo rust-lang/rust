@@ -8,10 +8,15 @@
 //
 //@                   compile-flags: -Ctarget-feature=-crt-static
 //@[ASAN]             compile-flags: -Zsanitizer=address -Copt-level=0
+//@[ASAN]             filecheck-flags: --check-prefixes=ASAN
 //@[ASAN-RECOVER]     compile-flags: -Zsanitizer=address -Zsanitizer-recover=address -Copt-level=0
+//@[ASAN-RECOVER]     filecheck-flags: --check-prefixes=ASAN-RECOVER
 //@[MSAN]             compile-flags: -Zsanitizer=memory
+//@[MSAN]             filecheck-flags: --check-prefixes=MSAN
 //@[MSAN-RECOVER]     compile-flags: -Zsanitizer=memory  -Zsanitizer-recover=memory
+//@[MSAN-RECOVER]     filecheck-flags: --check-prefixes=MSAN-RECOVER
 //@[MSAN-RECOVER-LTO] compile-flags: -Zsanitizer=memory  -Zsanitizer-recover=memory -C lto=fat
+//@[MSAN-RECOVER-LTO] filecheck-flags: --check-prefixes=MSAN-RECOVER-LTO
 //
 // MSAN-NOT:         @__msan_keep_going
 // MSAN-RECOVER:     @__msan_keep_going = weak_odr {{.*}}constant i32 1

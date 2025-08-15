@@ -5,6 +5,7 @@
 //@[s390x] needs-llvm-components: systemz
 //@[s390x_vector] compile-flags: --target s390x-unknown-linux-gnu -C target-feature=+vector
 //@[s390x_vector] needs-llvm-components: systemz
+//@[s390x_vector] filecheck-flags: --check-prefixes=CHECK,s390x_vector
 //@ compile-flags: -Zmerge-functions=disabled
 
 #![feature(no_core, repr_simd, f128)]

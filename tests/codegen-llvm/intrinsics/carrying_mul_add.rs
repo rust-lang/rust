@@ -1,6 +1,8 @@
 //@ revisions: RAW OPT
 //@ compile-flags: -C opt-level=1
 //@[RAW] compile-flags: -C no-prepopulate-passes
+//@[RAW] filecheck-flags: --check-prefixes=CHECK,RAW
+//@[OPT] filecheck-flags: --check-prefixes=CHECK,OPT
 
 #![crate_type = "lib"]
 #![feature(core_intrinsics)]

@@ -5,6 +5,9 @@
 //@ needs-llvm-components: systemz
 //@[enable-backchain] compile-flags: -Ctarget-feature=+backchain
 //@[disable-backchain] compile-flags: -Ctarget-feature=-backchain
+//@[enable-backchain] filecheck-flags: --check-prefixes=CHECK,enable-backchain
+//@[disable-backchain] filecheck-flags: --check-prefixes=CHECK,disable-backchain
+
 #![feature(no_core, lang_items)]
 #![no_std]
 #![no_core]

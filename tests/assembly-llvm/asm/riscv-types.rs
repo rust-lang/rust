@@ -4,6 +4,7 @@
 
 //@[riscv64] compile-flags: --target riscv64imac-unknown-none-elf
 //@[riscv64] needs-llvm-components: riscv
+//@[riscv64] filecheck-flags: --check-prefixes=CHECK,riscv64
 
 //@[riscv32] compile-flags: --target riscv32imac-unknown-none-elf
 //@[riscv32] needs-llvm-components: riscv
@@ -11,21 +12,22 @@
 //@[riscv64-zfhmin] compile-flags: --target riscv64imac-unknown-none-elf --cfg riscv64
 //@[riscv64-zfhmin] needs-llvm-components: riscv
 //@[riscv64-zfhmin] compile-flags: -C target-feature=+zfhmin
-//@[riscv64-zfhmin] filecheck-flags: --check-prefix riscv64
+//@[riscv64-zfhmin] filecheck-flags: --check-prefixes=CHECK,riscv64
 
 //@[riscv32-zfhmin] compile-flags: --target riscv32imac-unknown-none-elf
 //@[riscv32-zfhmin] needs-llvm-components: riscv
 //@[riscv32-zfhmin] compile-flags: -C target-feature=+zfhmin
+//@[riscv32-zfhmin] filecheck-flags: --check-prefixes=CHECK,zfhmin
 
 //@[riscv64-zfh] compile-flags: --target riscv64imac-unknown-none-elf --cfg riscv64
 //@[riscv64-zfh] needs-llvm-components: riscv
 //@[riscv64-zfh] compile-flags: -C target-feature=+zfh
-//@[riscv64-zfh] filecheck-flags: --check-prefix riscv64 --check-prefix zfhmin
+//@[riscv64-zfh] filecheck-flags: --check-prefixes=CHECK,riscv64 --check-prefix zfhmin
 
 //@[riscv32-zfh] compile-flags: --target riscv32imac-unknown-none-elf
 //@[riscv32-zfh] needs-llvm-components: riscv
 //@[riscv32-zfh] compile-flags: -C target-feature=+zfh
-//@[riscv32-zfh] filecheck-flags: --check-prefix zfhmin
+//@[riscv32-zfh] filecheck-flags: --check-prefixes=CHECK,zfhmin
 
 //@ compile-flags: -C target-feature=+d
 //@ compile-flags: -Zmerge-functions=disabled

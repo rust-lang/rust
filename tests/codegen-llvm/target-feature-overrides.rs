@@ -4,7 +4,9 @@
 //@ needs-llvm-components: x86
 //@ compile-flags: --target=x86_64-unknown-linux-gnu -Copt-level=3
 //@ [COMPAT] compile-flags: -Ctarget-feature=+avx2
+//@ [COMPAT] filecheck-flags: --check-prefixes=CHECK,COMPAT
 //@ [INCOMPAT] compile-flags: -Ctarget-feature=-avx2,-avx
+//@ [INCOMPAT] filecheck-flags: --check-prefixes=CHECK,INCOMPAT
 
 // See also tests/assembly-llvm/target-feature-multiple.rs
 #![feature(no_core, lang_items)]

@@ -5,7 +5,10 @@
 //@[aarch64] only-aarch64
 //@[x86_64] only-x86_64
 //@[x86_64] compile-flags: -Ctarget-feature=+sse3
+//@[aarch64] filecheck-flags: --check-prefixes=CHECK,aarch64
+//@[x86_64] filecheck-flags: --check-prefixes=CHECK,x86_64
 //@ ignore-sgx Test incompatible with LVI mitigations
+
 #![feature(portable_simd)]
 #![feature(core_intrinsics)]
 use std::intrinsics::simd as intrinsics;

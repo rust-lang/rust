@@ -3,14 +3,19 @@
 //@ revisions: aarch64-apple aarch64-linux force x64-apple x64-linux
 //@ [aarch64-apple] needs-llvm-components: aarch64
 //@ [aarch64-apple] compile-flags: --target=aarch64-apple-darwin
+//@ [aarch64-apple] filecheck-flags: --check-prefixes=CHECK,aarch64-apple
 //@ [aarch64-linux] needs-llvm-components: aarch64
 //@ [aarch64-linux] compile-flags: --target=aarch64-unknown-linux-gnu
+//@ [aarch64-linux] filecheck-flags: --check-prefixes=CHECK,aarch64-linux
 //@ [force] needs-llvm-components: x86
 //@ [force] compile-flags: --target=x86_64-unknown-linux-gnu -Cforce-frame-pointers=yes
+//@ [force] filecheck-flags: --check-prefixes=CHECK,force
 //@ [x64-apple] needs-llvm-components: x86
 //@ [x64-apple] compile-flags: --target=x86_64-apple-darwin
+//@ [x64-apple] filecheck-flags: --check-prefixes=CHECK,x64-apple
 //@ [x64-linux] needs-llvm-components: x86
 //@ [x64-linux] compile-flags: --target=x86_64-unknown-linux-gnu
+//@ [x64-linux] filecheck-flags: --check-prefixes=CHECK,x64-linux
 
 #![feature(no_core, lang_items)]
 #![no_core]

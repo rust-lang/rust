@@ -8,6 +8,9 @@
 //@ [riscv64-zbb] needs-llvm-components: riscv
 //@ [loongarch64] compile-flags: --target loongarch64-unknown-linux-gnu
 //@ [loongarch64] needs-llvm-components: loongarch
+//@ [riscv64] filecheck-flags: --check-prefixes=CHECK,riscv64
+//@ [riscv64-zbb] filecheck-flags: --check-prefixes=CHECK,riscv64-zbb
+//@ [loongarch64] filecheck-flags: --check-prefixes=CHECK,loongarch64
 
 #![feature(no_core, lang_items, intrinsics, rustc_attrs)]
 #![crate_type = "lib"]
