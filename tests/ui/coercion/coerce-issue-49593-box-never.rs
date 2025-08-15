@@ -15,8 +15,6 @@
 //
 //@[e2024] check-pass
 
-#![feature(never_type)]
-
 use std::error::Error;
 use std::mem;
 

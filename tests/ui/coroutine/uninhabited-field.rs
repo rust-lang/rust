@@ -3,7 +3,6 @@
 #![allow(unused)]
 #![feature(coroutine_trait)]
 #![feature(coroutines, stmt_expr_attributes)]
-#![feature(never_type)]
 use std::assert_matches;
 use std::ops::Coroutine;
 use std::ops::CoroutineState;
